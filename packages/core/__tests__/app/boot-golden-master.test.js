@@ -1,50 +1,50 @@
 /**
- * Golden master du boot — oracle 0-régression (roadmap boot-di-lifecycle, S0).
+ * Boot golden master — the 0-regression oracle.
  *
- * Capture l'état observable du boot :
- *   (a) l'ordre exact des marqueurs perf `geoleaf:boot:*` émis par boot-core.ts ;
- *   (b) la surface des façades `GeoLeaf.*` présentes après un boot complet.
+ * Captures the boot's observable state:
+ *   (a) the exact order of the `geoleaf:boot:*` perf markers emitted by boot-core.ts;
+ *   (b) the surface of `GeoLeaf.*` facades present after a full boot.
  *
- * ⚠️ REFORGÉ au S6 (Lot 0) — il était ACTEUR ET ORACLE, donc aveugle.
+ * ⚠️ REFORGED — it was ACTOR AND ORACLE, hence blind.
  *
- * Avant, ce fichier faisait deux choses qui annulaient son propre pouvoir :
- *   1. il **stubait `registry.init()`** — c'est-à-dire précisément l'orchestrateur que le
- *      chantier « convergence boot → registry » réécrit. Il validait un monde qui n'existe pas ;
- *   2. il **rejouait lui-même les 8 `runModuleSetup(id)`**, puis vérifiait que les façades
- *      étaient peuplées. Il testait donc son propre appel, pas celui du code. Commenter
- *      `runModuleSetup` dans n'importe quel `*.module.ts` le laissait VERT.
- *   (Sa liste incluait `"poi"`, un id dissous depuis S9 — resté sans effet, mais révélateur.)
+ * Before, this file did two things that cancelled its own power:
+ *   1. it **stubbed `registry.init()`** — i.e. precisely the orchestrator the
+ *      "boot → registry convergence" work rewrites. It validated a world that does not exist;
+ *   2. it **replayed the 8 `runModuleSetup(id)` itself**, then checked the facades
+ *      were populated. It thus tested its own call, not the code's. Commenting out
+ *      `runModuleSetup` in any `*.module.ts` left it GREEN.
+ *   (Its list included `"poi"`, an id long dissolved — without effect, but telling.)
  *
- * Le principe de la reforge : **le stub va SOUS l'objet testé, jamais AU-DESSUS.** MapLibre est
- * mocké globalement (`__tests__/setup.js:486`), donc `registry.init()` tourne POUR DE VRAI et ce
- * sont les vrais `XModule.init()` qui appellent leur setup. Sans carte réelle, les modules
- * posent leurs façades puis s'arrêtent proprement (« Map not available — skipping UI init ») :
- * c'est exactement ce qu'un master de SURFACE doit observer.
+ * The reforge's principle: **the stub goes UNDER the object under test, never ABOVE.** MapLibre
+ * is mocked globally (`__tests__/setup.js`), so `registry.init()` runs FOR REAL and the
+ * real `XModule.init()`s call their setup. Without a real map, the modules
+ * set their facades then stop cleanly ("Map not available — skipping UI init"):
+ * exactly what a SURFACE master must observe.
  *
- * Ce qu'il attrape désormais : tout module qui cesse de poser ses façades (la surface tombe).
- * Ce qu'il n'attrape PAS, par construction — et qui appartient aux autres tiers :
- *   - les ancres PRÉ-boot (`GeoLeaf.I18n`/`notify`) : ici, `CoreMapModule.init()` les replante
- *     pendant le boot, donc la surface post-boot reste intacte même si l'import ne les pose
- *     plus → c'est le contrat gelé par `__tests__/bundle-boot-contract.test.js` (tier artefact) ;
- *   - le corps du getter `_APIController` : `Object.keys()` n'invoque pas les getters, ce master
- *     n'en voit que le NOM → `__tests__/api/api-controller-getter.test.js` ;
- *   - la DCE Rollup et le rendu → tier artefact et sonde navigateur.
+ * What it now catches: any module that stops setting its facades (the surface drops).
+ * What it does NOT catch, by construction — and belongs to the other tiers:
+ *   - the PRE-boot anchors (`GeoLeaf.I18n`/`notify`): here, `CoreMapModule.init()` replants them
+ *     during boot, so the post-boot surface stays intact even if the import no longer sets
+ *     them → that is the contract frozen by `__tests__/bundle-boot-contract.test.js` (artefact tier);
+ *   - the `_APIController` getter's body: `Object.keys()` does not invoke getters, this master
+ *     only sees its NAME → `__tests__/api/api-controller-getter.test.js`;
+ *   - Rollup DCE and rendering → artefact tier and browser probe.
  *
- * Les baselines sont des tableaux en dur, PAS des snapshots : `vitest -u` ne doit pas pouvoir
- * tamponner une régression. Mise à jour à la main, après avoir lu le diff.
+ * The baselines are hardcoded arrays, NOT snapshots: `vitest -u` must not be able to
+ * stamp a regression. Updated by hand, after reading the diff.
  *
- * NB : ce fichier importe la VRAIE chaîne globals — il ne mocke pas `globals.js`
- * (contrairement à boot.test.js) — afin que les façades soient réellement peuplées.
+ * NB: this file imports the REAL globals chain — it does not mock `globals.js`
+ * (unlike boot.test.js) — so the facades are really populated.
  */
 "use strict";
 
-// S1 (presets build) : helpers/boot n'importent plus la chaîne globals en side-effect
-// (ils lisent l'accesseur pur `ensureGeoLeaf()`). On charge la VRAIE chaîne globals
-// explicitement pour peupler `globalThis.GeoLeaf` (B1→B11) avant de requérir le boot.
-// ⚠️ L'ORDRE de ces trois lignes est porteur (B1→B11) et les `import` ESM s'exécutent dans
-// l'ordre de la source, exactement comme les `require` qu'ils remplacent.
+// helpers/boot no longer import the globals chain as a side effect (they
+// read the pure accessor `ensureGeoLeaf()`). The REAL globals chain is
+// loaded explicitly to populate `globalThis.GeoLeaf` (B1→B11) before requiring the boot.
+// ⚠️ The ORDER of these three lines is load-bearing (B1→B11) and ESM
+// `import`s run in source order, exactly like the `require`s they replace.
 import "../../src/globals/globals.js";
-// Charger helpers (peuple _app) puis le boot réel.
+// Load helpers (populates _app) then the real boot.
 import "../../src/app/app-namespace.js";
 import * as bootModule from "../../src/app/boot.js";
 import {
@@ -57,14 +57,15 @@ import {
 
 const _app = bootModule._app;
 const GeoLeaf = globalThis.GeoLeaf;
-// S6 Lot 2: plus AUCUN setup n'est déclenché par ce test. Les façades sont posées par la phase A
-// (à l'import de la chaîne globals ci-dessus), exactement comme dans le bundle livré. Le
-// `runModuleSetup("config")` que le Lot 0 avait dû ajouter ici — parce que `geoleaf.*.js` est
-// aliasé sous vitest, donc la rustine ne tirait pas — est tombé de lui-même, comme annoncé.
+// NO setup is triggered by this test any more. The facades are set by phase A
+// (at the import of the globals chain above), exactly as in the shipped
+// bundle. The `runModuleSetup("config")` an earlier pass had to add here —
+// because `geoleaf.*.js` is aliased under vitest, so the shim did not pull —
+// fell away on its own, as announced.
 
-// ── Baselines figées (mises à jour S1.2 — 2026-06-28) ──
-// Nouvel ordre : profileResources se charge AVANT registry.init()
-// (les modules reçoivent la config profil complète à leur init()).
+// ── Frozen baselines (updated 2026-06-28) ──
+// New order: profileResources loads BEFORE registry.init()
+// (modules receive the full profile config at their init()).
 
 const EXPECTED_BOOT_MARKS = [
     "geoleaf:boot:loadConfig:start",
@@ -75,9 +76,9 @@ const EXPECTED_BOOT_MARKS = [
     "geoleaf:boot:registry:end",
 ];
 
-// EXPECTED_FACADE_KEYS vit désormais dans `scripts/lib/namespace-surface.mjs` (API S4.1) :
-// une seule marche, une seule liste, quatre lecteurs — dont la gate HOST-SYNC, qui la lit à
-// l'AST au lieu de la parser au texte.
+// EXPECTED_FACADE_KEYS now lives in `scripts/lib/namespace-surface.mjs`:
+// one walk, one list, four readers — including the HOST-SYNC gate, which
+// reads it from the AST instead of parsing it as text.
 
 describe("boot — golden master (oracle 0-régression S1→S4)", () => {
     let captured;
@@ -85,7 +86,7 @@ describe("boot — golden master (oracle 0-régression S1→S4)", () => {
     beforeAll(async () => {
         const marks = [];
         const origMark = performance.mark;
-        // Spy performance.mark — plus robuste que getEntriesByName sous happy-dom.
+        // Spy performance.mark — more robust than getEntriesByName under happy-dom.
         performance.mark = (name) => {
             marks.push(name);
             return undefined;
@@ -111,18 +112,18 @@ describe("boot — golden master (oracle 0-régression S1→S4)", () => {
         captured = {
             // `geoleaf:boot:*` only — CALIBRATED, not assumed. 16 marks exist in the codebase,
             // but the 10 `geoleaf:init:*` ones are emitted from INSIDE the module init()s that
-            // need a real map (`core-map.module.ts:141`, `ui.module.ts:128/134`,
-            // `init-deferred-ui.ts:38`). Under a mocked MapLibre the map is never created,
+            // need a real map (`core-map.module.ts`, `ui.module.ts/134`,
+            // `init-deferred-ui.ts`). Under a mocked MapLibre the map is never created,
             // UIModule logs "Map not available — skipping UI init", and those marks never fire.
             // Freezing them here would freeze a fiction. The browser probe (FILET 4) is what
             // asserts their real order.
             marks: marks.filter((m) => String(m).startsWith("geoleaf:boot:")),
             facades: walkNamespace(GeoLeaf).keys,
             members: walkNamespace(GeoLeaf, { descend: DEPTH2_FACADES }).members,
-            // Second instantané 30 ms plus tard : à la profondeur 2, la surface dépend de
-            // l'avancement des `init()`, pas seulement de la phase A. Une divergence entre
-            // les deux est le début d'un test intermittent — et un test intermittent finit
-            // toujours par être `skip`é.
+            // Second snapshot 30 ms later: at depth 2 the surface depends on
+            // the `init()`s' progress, not only phase A. A divergence
+            // between the two is the start of a flaky test — and a flaky
+            // test always ends up `skip`ped.
             membersAgain: null,
         };
         await new Promise((r) => setTimeout(r, 30));
@@ -134,13 +135,15 @@ describe("boot — golden master (oracle 0-régression S1→S4)", () => {
     });
 
     it("expose exactement les MEMBRES figés des façades contractuelles", () => {
-        // API S4.1b — la profondeur 2. Sans elle, commenter `on` dans `kernel/events/facade.ts`
-        // laissait TOUS les tests de surface verts : la clé `Events` était toujours là, sur un
-        // objet ayant perdu la seule méthode que les plugins appellent.
-        // ⚠️ Ce titre disait « les 8 façades » jusqu'au 10/08/2026 ; elles sont 22 depuis
-        // l'élargissement du contrat inverse (S1.4/1.5). Le nombre est retiré du titre plutôt
-        // que corrigé : il se lit dans `DEPTH2_FACADES`, sur lequel cette boucle itère, et un
-        // titre de test est le dernier endroit où l'on pense à mettre un compteur à jour.
+        // Depth 2. Without it, commenting out `on` in
+        // `kernel/events/facade.ts` left ALL the surface tests green: the
+        // `Events` key was still there, on an object having lost the only
+        // method plugins call.
+        // ⚠️ This title said "the 8 facades" until 10/08/2026; they are 22
+        // since the inverse contract's widening. The number is removed from
+        // the title rather than corrected: it reads in `DEPTH2_FACADES`,
+        // which this loop iterates, and a test title is the last place
+        // anyone thinks of updating a counter.
         for (const facade of DEPTH2_FACADES) {
             const d = diffSurface(EXPECTED_FACADE_MEMBERS[facade], captured.members[facade] ?? []);
             expect(
@@ -154,18 +157,18 @@ describe("boot — golden master (oracle 0-régression S1→S4)", () => {
     });
 
     it("la surface de profondeur 2 est stable entre deux mesures", () => {
-        // Un instantané qui bouge entre deux lectures à 30 ms d'écart est un test intermittent
-        // en devenir, et un test intermittent finit par être `skip`é — donc par ne plus rien
-        // garder. Mieux vaut le savoir ici que dans six mois.
+        // A snapshot that moves between two reads 30 ms apart is a flaky
+        // test in the making, and a flaky test ends up `skip`ped — hence
+        // guarding nothing. Better to know it here than in six months.
         expect(captured.membersAgain).toEqual(captured.members);
     });
 
     it("expose exactement la surface de façades `GeoLeaf.*` figée", () => {
-        // Le diff nommé d'abord : sur ~90 clés, `toEqual` seul dit « array differs at index 11 ».
+        // The named diff first: on ~90 keys, `toEqual` alone says "array differs at index 11".
         const d = diffSurface(EXPECTED_FACADE_KEYS, captured.facades);
         expect(d.missing, `clés DISPARUES du namespace : ${d.missing.join(", ")}`).toEqual([]);
         expect(d.extra, `clés APPARUES sur le namespace : ${d.extra.join(", ")}`).toEqual([]);
-        // Filet final : l'égalité stricte reste, elle n'est pas remplacée.
+        // Final net: the strict equality stays, it is not replaced.
         expect(captured.facades).toEqual([...EXPECTED_FACADE_KEYS].sort());
     });
 });

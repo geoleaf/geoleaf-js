@@ -1,12 +1,12 @@
 /**
- * NYC Configuration — rapport de couverture du BOOT du bundle livré
+ * NYC Configuration — coverage report of the shipped bundle's BOOT
  *
- * ⚠️ Ce fichier gouverne UN des six objets nommés « coverage » dans ce dépôt, qui
- * portent quatre sens distincts. La carte complète est dans
- * `docs/reference/ARCHITECTURE.md`, section « coverage — six objets, quatre sens ».
- * (Le renvoi disait `_docs_projet/ARCHITECTURE.md` : ce chemin était mort AVANT la
- * scission — le fichier a toujours vécu sous `reference/`.)
- * Ne jamais rapprocher ce chiffre de la couverture unitaire : autre code, autre chaîne.
+ * ⚠️ This file governs ONE of the six objects named "coverage" in this repo,
+ * which carry four distinct meanings. The full map is in
+ * `docs/reference/ARCHITECTURE.md`, section « coverage — six objets, quatre
+ * sens ». (The pointer used to say a workshop path: it was dead BEFORE the
+ * split — the file has always lived under `reference/`.)
+ * Never bring this figure alongside the unit coverage: other code, other chain.
  *
  * This configuration enables code coverage collection during E2E tests:
  * - Instruments source code for coverage tracking
@@ -39,9 +39,10 @@ module.exports = {
         "json", // JSON for programmatic access
     ],
 
-    // Output directory — T6.2. Valait `coverage-e2e` à la racine : déclaré depuis
-    // toujours, JAMAIS créé sur le disque, faute de consommateur (`report:e2e` n'était
-    // appelé par rien avant T6.1). Il existe enfin, autant qu'il naisse au bon endroit.
+    // Output directory. Used to be `coverage-e2e` at the root: declared since
+    // forever, NEVER created on disk, for lack of a consumer (`report:e2e` was
+    // called by nothing before). It finally exists — may it be born in the right
+    // place.
     reportDir: "artifacts/coverage-e2e",
 
     // Coverage thresholds (start conservative, increase over time)
@@ -52,42 +53,43 @@ module.exports = {
         statements: [50, 80],
     },
 
-    // ── Seuils — recalibrés T6.1 (25/07/2026) ──────────────────────────────────
+    // ── Thresholds — recalibrated 2026-07-25 ───────────────────────────────────
     //
-    // ⚠️ CE QUE CES POURCENTAGES MESURENT, et les trois choses qu'ils NE sont PAS.
+    // ⚠️ WHAT THESE PERCENTAGES MEASURE, and the three things they are NOT.
     //
-    // Ils mesurent la couverture d'UN SEUL chargement de page, par UN SEUL spec
-    // (`e2e/07-boot-sequence.spec.js`, seul appelant de `e2e/helpers/coverage.js` —
-    // d'où le nom du fichier produit, `e2e-boot-sequence.json`), dans un vrai
-    // Chromium, contre le BUNDLE LIVRÉ MINIFIÉ.
+    // They measure the coverage of ONE SINGLE page load, by ONE SINGLE spec
+    // (`e2e/07-boot-sequence.spec.js`, sole caller of `e2e/helpers/coverage.js`
+    // — hence the produced file's name, `e2e-boot-sequence.json`), in a real
+    // Chromium, against the SHIPPED MINIFIED BUNDLE.
     //
-    //   1. Ce n'est PAS « la couverture E2E ». La suite compte 36 specs. Trois autres
-    //      visent la variante instrumentée (`20`, `21`, `22`) sans jamais dumper ; les
-    //      32 restants tournent contre des deploys NON instrumentés, où
-    //      `window.__coverage__` n'existe pas — ils ne peuvent pas contribuer.
-    //   2. Ce n'est PAS la couverture unitaire de CLAUDE.md (92,07 % lignes). Celle-là
-    //      mesure les SOURCES sous Node/jsdom, exercées par des suites écrites pour
-    //      toucher chaque branche. Deux mesures de deux objets — jamais à réconcilier.
-    //   3. Le dénominateur n'est PAS `core/src`. Seuls les 226 fichiers instrumentés
-    //      par `packages/core/rollup.config.mjs:166` (`src/{api,globals,kernel,utils,
-    //      app}`) y entrent. `src/capabilities/**` — 219 fichiers, 44 % de `core/src` —
-    //      est absent du numérateur ET du dénominateur.
+    //   1. This is NOT "the E2E coverage". The suite counts 36 specs. Three
+    //      others target the instrumented variant (`20`, `21`, `22`) without
+    //      ever dumping; the remaining 32 run against NON-instrumented deploys,
+    //      where `window.__coverage__` does not exist — they cannot contribute.
+    //   2. This is NOT the unit coverage (92.07 % lines). That one measures the
+    //      SOURCES under Node/jsdom, exercised by suites written to touch each
+    //      branch. Two measurements of two objects — never to reconcile.
+    //   3. The denominator is NOT `core/src`. Only the 226 files instrumented by
+    //      `packages/core/rollup.config.mjs` (`src/{api,globals,kernel,
+    //      utils,app}`) enter it. `src/capabilities/**` — 219 files, 44 % of
+    //      `core/src` — is absent from numerator AND denominator.
     //
-    // Mesure du 25/07/2026, après remap source-map, sur 216 fichiers présents / 226 :
-    //   lines 39,78 · statements 37,69 · functions 39,50 · branches 27,39
-    // Seuils = mesure − ~10 % relatif, arrondis à l'entier inférieur. Cliquet VERS LE
-    // HAUT uniquement, comme les seuils par paquet (CLAUDE.md).
+    // 2026-07-25 measurement, after source-map remap, on 216 files present /
+    // 226:
+    //   lines 39.78 · statements 37.69 · functions 39.50 · branches 27.39
+    // Thresholds = measurement − ~10 % relative, rounded down. Ratchet UPWARD
+    // only, like the per-package thresholds.
     //
-    // Les valeurs d'avant (8/10/8/8) étaient calibrées « ≤ baseline 8,8 % » AVANT R.9 :
-    // le glob d'instrumentation valait alors `src/modules/**`, éclaté en quatre racines
-    // et donc MORT — seul `app/` était instrumenté. Un seuil calibré sur une mesure
-    // faussée n'attrape rien, même une fois câblé.
+    // The previous values (8/10/8/8) were calibrated "≤ baseline 8.8 %" BEFORE
+    // the instrumentation glob split: it was `src/modules/**`, split into four
+    // roots and therefore DEAD — only `app/` was instrumented. A threshold
+    // calibrated on a skewed measurement catches nothing, even once wired.
     //
-    // ⚠️ Ces seuils ne suffisent pas à eux seuls : `nyc report` sort VERT sur un
-    // `.nyc_output/` vide (`percent.js` renvoie 100 quand `total === 0`, `blankSummary()`
-    // renvoie `pct: 'Unknown'`, et `'Unknown' < 35` vaut `false`). C'est
-    // `scripts/verify-e2e-coverage.cjs` qui ferme ce trou, par un plancher de témoin.
-    // Ne jamais câbler `report:e2e` nu comme étape de CI.
+    // ⚠️ These thresholds do not suffice alone: `nyc report` comes out GREEN on
+    // an empty `.nyc_output/` (`percent.js` returns 100 when `total === 0`,
+    // `blankSummary()` returns `pct: 'Unknown'`, and `'Unknown' < 35` is
+    // `false`). `scripts/verify-e2e-coverage.cjs` is what closes that hole, with
+    // a witness floor. Never wire `report:e2e` bare as a CI step.
     checkCoverage: true,
     lines: 35,
     statements: 33,
@@ -110,12 +112,12 @@ module.exports = {
     // File extensions to process
     extension: [".ts", ".js"],
 
-    // Cache — DÉSACTIVÉ (T6.1). Il valait `.nyc_output`, c'est-à-dire EXACTEMENT le
-    // `tempDir` ci-dessous. Or `nyc/index.js#coverageFileLoad` fait un `JSON.parse` sur
-    // TOUT fichier du tempDir en avalant l'erreur (`return {}`) : un fichier de cache
-    // déposé là aurait fait rétrécir la carte de couverture EN SILENCE, donc baisser le
-    // chiffre sans que rien ne l'explique. `instrument: false` (le bundle arrive déjà
-    // instrumenté par rollup-plugin-istanbul) rend ce cache inutile de toute façon.
+    // Cache — DISABLED. It was `.nyc_output`, i.e. EXACTLY the `tempDir` below.
+    // Yet `nyc/index.js#coverageFileLoad` does a `JSON.parse` on EVERY tempDir
+    // file swallowing the error (`return {}`): a cache file dropped there would
+    // have shrunk the coverage map IN SILENCE, hence lowered the figure with
+    // nothing explaining it. `instrument: false` (the bundle arrives already
+    // instrumented by rollup-plugin-istanbul) makes this cache useless anyway.
     cacheDir: false,
 
     // Temp directory

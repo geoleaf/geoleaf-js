@@ -31,7 +31,7 @@ const getState = () => GeoJSONShared.state;
 // These two bound the default-theme layers, which gate the reveal: `GeoJSONModule.init()`
 // awaits this batch loop, and every module sorted after `geojson` waits on it.
 //
-// 🔻 Raised from 3 to 6 on 07/08/2026 (S5.1). The cap predates HTTP/2 and duplicates a limit
+// 🔻 Raised from 3 to 6 on 07/08/2026. The cap predates HTTP/2 and duplicates a limit
 // the browser already enforces per origin; over a multiplexed connection it only serialises
 // what the transport would have interleaved. 6 stays a bound — it caps how many large GeoJSON
 // bodies are parsed concurrently, which is the real cost here (the heaviest shipped layer is
@@ -165,8 +165,7 @@ function _fitBoundsIfNeeded(
     const bounds = layerGroup.getBounds();
     if (!bounds.isValid()) return;
     const fitOptions: { maxZoom?: number } = {};
-    if (typeof baseOptions.maxZoomOnFit === "number")
-        fitOptions.maxZoom = baseOptions.maxZoomOnFit as number;
+    if (typeof baseOptions.maxZoomOnFit === "number") fitOptions.maxZoom = baseOptions.maxZoomOnFit;
     map.fitBounds(bounds, fitOptions);
     Log.debug("[GeoLeaf.GeoJSON] Map bounds fitted to GeoJSON layers");
     const onMoveEnd = function () {
@@ -218,10 +217,10 @@ async function _dispatchPluginLayer(
     Log: GeoJSONLoaderLog
 ): Promise<LoadedLayerResult | null> {
     const pluginId = d.plugin as string;
-    // S4.5 — un plugin enregistré PARESSEUSEMENT n'a pas encore exécuté son
-    // `registerLayerLoader()`, donc la résolution synchrone ci-dessous rendrait `undefined` et
-    // la couche serait sautée. On lui laisse sa chance AVANT de conclure. Le core ne nomme
-    // toujours aucun plugin : c'est le registre qui sait si cet id a un résolveur.
+    // A LAZILY-registered plugin has not yet run its `registerLayerLoader()`, so
+    // the synchronous resolution below would yield `undefined` and the layer would
+    // be skipped. We give it its chance BEFORE concluding. The core still names no
+    // plugin: the registry is what knows whether this id has a resolver.
     await _deps?.ensurePluginLoaded?.(pluginId);
     const loader = _deps?.getPluginLayerLoader?.(pluginId);
     if (!loader) {
@@ -359,7 +358,7 @@ function _scheduleDeferredLayers(
     state: GeoJSONState,
     Log: GeoJSONLoaderLog
 ): void {
-    (self._loadLayersInIdle(deferredTasks) as Promise<unknown[]>)
+    self._loadLayersInIdle(deferredTasks)
         .then((loadedDeferred: unknown[]) => {
             const loadedDeferredFiltered = (loadedDeferred as LoadedLayerResult[]).filter(Boolean);
             Log.info(
@@ -462,7 +461,7 @@ Loader.loadFromActiveProfile = function (
     const baseOptions = options || {};
     const batchSize = PHASE1_BATCH_SIZE;
     const batchDelay = PHASE1_BATCH_DELAY_MS;
-    const self = this as typeof Loader;
+    const self = this;
     const { immediateTasks, deferredTasks } = _splitTasksByTheme(
         layersDef,
         profile,

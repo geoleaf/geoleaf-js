@@ -7,7 +7,7 @@
 
 /**
  * LayerManager Renderer module — orchestrator
- * Delegates to the specialized sub-modules (split in Sprint 1 of the roadmap).
+ * Delegates to the specialized sub-modules.
  *
  * Sous-modules:
  * - visibility-checker.ts: checkLayerVisibility (read by syncToggles)

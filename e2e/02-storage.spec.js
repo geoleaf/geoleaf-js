@@ -1,18 +1,19 @@
 // @ts-check
-// E2E: 02-storage — map + cache/offline UI (scénario critique storage offline).
-// Selectors updated for the S2 toolbar-slot cache button (data-gl-toolbar-action="offline-ui");
+// E2E: 02-storage — map + cache/offline UI (the critical offline-storage scenario).
+// Selectors updated for the toolbar-slot cache button (data-gl-toolbar-action="offline-ui");
 // the legacy .gl-cache-button anchor was removed when the button became a core toolbar slot.
 
 import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
 import { scanPage } from "./helpers/axe-config.js";
 
-// ARCHI S8 — was 8767 (deploy-storage), retired: storage ships in both gated variants now.
-// ⚠️ 5.5 — visait `deploy-addpoi`, « le plus proche voisin de l'ancien build storage-only ».
-// Cette variante n'existe plus : `addpoi` a fusionné dans `editor`. La cible devient
-// `deploy-full`, qui porte l'édition ET `offline-ui` — donc les boutons d'outils de
-// l'éditeur voisinent désormais le bouton de cache sous test, ce que la note ci-dessus
-// annonçait précisément comme la différence. C'est un changement de VARIANTE, pas de port.
+// Port 8767 (deploy-storage) is retired: storage ships in both gated variants now.
+// ⚠️ This spec then targeted `deploy-addpoi`, "the closest neighbour of the
+// old storage-only build". That variant no longer exists: `addpoi` merged
+// into `editor`. The target becomes `deploy-full`, which carries editing AND
+// `offline-ui` — so the editor's tool buttons now sit beside the cache
+// button under test, which the note above named precisely as the
+// difference. A change of VARIANT, not of port.
 test.use({ baseURL: baseURL("full") });
 
 test.describe("02-storage", () => {

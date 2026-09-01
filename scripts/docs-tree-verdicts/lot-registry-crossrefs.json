@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "registry-crossrefs",
+    "scope": ["scripts/lib/registry-crossrefs.cjs"],
+    "verdicts": {
+        "scripts/lib/registry-crossrefs.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Détecteur des renvois internes morts — un identifiant de registre cité dans une prose dont la section a été retirée",
+            "confidence": "haute",
+            "rationale": "433 LOC, 12 exports, 1 lecteur réel — le test de garde REGISTRY-CROSSREFS, qui joue RX-00, RX-00bis, RX-00ter, RX-01, RX-02 et RX-03 (6 verts au relevé). ⚠️ verify-repo-hygiene.cjs apparaît au grep sans être un importeur : il ne fait que nommer ce fichier dans son allowlist de scripts, en littéral. Un dérivé partagé pour la même raison que packages.cjs et docs-paths.cjs — un second relevé divergerait. LE DÉFAUT QU'IL REND VISIBLE : depuis que la convention retire une ligne soldée de son registre au lieu de la barrer, la prose qui la citait reste et pointe vers une section absente. Aucune gate de liens ne pouvait le voir, leurs périmètres étant tous de doc publique. 🛑 CE QUI FAIT LA VALEUR DU MODULE EST SON DISCRIMINANT, ET IL EST STRUCTUREL PLUTÔT QUE LINGUISTIQUE. Un premier oracle cherchait « tout identifiant qui ne résout pas » et accusait les rangs d'historique, qui ont raison de nommer une ligne retirée puisque leur objet est de dire ce qui s'est passé à une date — un taux de faux positifs qui aurait désarmé la gate le jour de sa pose. Classer de la prose française par le temps du verbe est un cul-de-sac ; ce module classe par la FORME, sur deux étages. ① POINTEUR (voir/cf./Dépend de/→/puce de définition) : la phrase dirige le lecteur ailleurs, donc une cible absente est une flèche vers le vide — BLOQUANT. ② MENTION : tout le reste, où « dérivée de X, soldée le même jour » est juste et « X n'est éprouvée par rien » ne l'est pas, deux phrases de même forme qu'aucune machine ne sépare — NOTANT et gelé en jeu itemisé. Le choix de ne pas bloquer sur ② est délibéré et documenté sur place : la zone vive en portait plus d'une centaine à la pose, et rougir dessus aurait rendu la gate rouge en permanence, donc désarmée dans la semaine. Le gel itemisé attrape ce qui compte — un identifiant nouvellement retiré dont la prose n'a pas suivi. RX-03 fait descendre ce gel et refuse qu'il porte une entrée périmée. TROIS PROPRIÉTÉS QUI SE VÉRIFIENT PLUTÔT QU'ELLES NE S'ANNONCENT : (a) l'exemption narrative s'arrête au `##` SUIVANT et non à la fin du fichier — un premier relevé classait tout le bas d'un registre en historique et n'y voyait donc aucun défaut, l'instrument portant la cécité qu'il mesurait ; (b) patternWitnesses() donne à chacune des 6 formes de pointeur son exemple canonique, et calloutZoneWitness() éprouve que la prose des encadrés est encore dans le périmètre — deux témoins anti-gate-vide, sans lesquels un motif qui cesse de mordre sortirait vert ; (c) la résolution confond délibérément les deux registres, parce qu'une ligne migre de l'un à l'autre et que résoudre fichier par fichier ferait rougir sur une reclassification légitime. HORS ATELIER, IL SAUTE EN LE DISANT : registriesPresent() teste l'existence des 3 fichiers du corpus et le test entier est skipIf. C'est ce qui le rend sûr dans un clone qui ne porte pas son sujet — mais c'est aussi un vert qui n'a rien lu, à ne pas compter comme une preuve. ⚠️ Ses SAMPLES contiennent des identifiants de registre littéraux : ce sont les fixtures que les motifs doivent reconnaître, pas des renvois — ils ne dirigent aucun lecteur nulle part, et les remplacer par des identifiants inventés retirerait au témoin sa valeur d'exemple réel."
+        }
+    }
+}

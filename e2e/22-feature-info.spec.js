@@ -1,76 +1,78 @@
 // @ts-check
-// E2E feature-info — CAPACITÉ CORE (`packages/core/src/capabilities/feature-info/`)
-// sur deploy-coverage (port 8769).
+// E2E feature-info — CORE CAPABILITY
+// (`packages/core/src/capabilities/feature-info/`) on deploy-coverage
+// (port 8769).
 //
-// ⚠️ feature-info N'EST PAS un plugin. Il n'existe aucun package
-// `@geoleaf-plugins/feature-info` : c'est une capacité in-core, installée par
-// `capabilities/feature-info/install.ts` et montée sur `GeoLeaf.FeatureInfo` par son
-// `registerGlobals` (install.ts:49). L'en-tête S2 de ce fichier annonçait un plugin —
-// c'était faux, corrigé ici.
+// ⚠️ feature-info is NOT a plugin. No `@geoleaf-plugins/feature-info` package
+// exists: it is an in-core capability, installed by
+// `capabilities/feature-info/install.ts` and mounted on `GeoLeaf.FeatureInfo`
+// by its `registerGlobals` (install.ts). An earlier header of this file
+// announced a plugin — that was wrong, fixed here.
 //
-// Garde de bout en bout des trois surfaces d'attributs GeoJSON : tooltip (survol),
-// popup (clic) et side-panel (« Voir plus »), pilotées par le seam noyau
-// `geoleaf:feature:hover` / `geoleaf:feature:click` (capabilities/feature-info/lifecycle.ts).
+// End-to-end guard of the three GeoJSON attribute surfaces: tooltip (hover),
+// popup (click) and side-panel ("Voir plus"), driven by the kernel seam
+// `geoleaf:feature:hover` / `geoleaf:feature:click`
+// (capabilities/feature-info/lifecycle.ts).
 //
-// Sélecteurs réellement émis par le code (inspection CAPACITÉS S11) :
-//   - tooltip   → `.gl-fi-tooltip`      (surfaces/tooltip.ts:45)
-//   - popup     → `.gl-fi-popup-ml`     (enveloppe MapLibre, surfaces/popup.ts:128)
-//                 contenant `.gl-poi-popup` (racine du contenu, render/popup-content.ts:205)
-//   - fermeture → touche Échap          (surfaces/popup.ts:135-138)
-// Le popup est construit avec `closeButton: false` (popup.ts:125) : il N'Y A PAS de
-// bouton de fermeture. Les classes `.gl-fi-popup` et `.gl-fi-close` que ce spec visait
-// ne sont émises NULLE PART (grep = 0) — ces trois tests ne pouvaient donc pas passer.
+// Selectors actually emitted by the code (verified by inspection):
+//   - tooltip   → `.gl-fi-tooltip`      (surfaces/tooltip.ts)
+//   - popup     → `.gl-fi-popup-ml`     (MapLibre envelope, surfaces/popup.ts)
+//                 containing `.gl-poi-popup` (content root, render/popup-content.ts)
+//   - close     → Escape key            (surfaces/popup.ts)
+// The popup is built with `closeButton: false` (popup.ts): there IS NO
+// close button. The `.gl-fi-popup` and `.gl-fi-close` classes this spec used
+// to target are emitted NOWHERE (grep = 0) — those three tests could not
+// pass.
 //
-// Cible : deploy-coverage (port 8769), profil `tourism` (deploy/deploy-core/profiles/
-// geoleaf.config.json → data.activeProfile). `npm run build:deploy-coverage` doit avoir été
-// exécuté avant ce spec.
+// Target: deploy-coverage (port 8769), `tourism` profile
+// (deploy/deploy-core/profiles/geoleaf.config.json → data.activeProfile).
+// `npm run build:deploy-coverage` must have run before this spec.
 //
-// `serviceWorkers: 'block'` : empêche le SW PWA de médier le chargement.
+// `serviceWorkers: 'block'`: keeps the PWA SW from mediating the load.
 //
-// Run navigateur : `E2E_TARGET=nginx` vise les vhosts persistants et ne lance AUCUN serveur
-// (e2e/helpers/base-url.js) ; le défaut `ports` reste la cible de référence, celle de la CI.
+// Browser run: `E2E_TARGET=nginx` targets the persistent vhosts and launches
+// NO server (e2e/helpers/base-url.js); the `ports` default stays the
+// reference target, the CI one.
 
 import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
+import { registerCoverageCollection } from "./helpers/coverage.js";
+import { bootMapUntilLoaded } from "./helpers/boot.js";
 
 test.use({ baseURL: baseURL("coverage"), serviceWorkers: "block" });
 
-// ⚠️ Les trois tests de rendu ci-dessous visaient `layerId: "reference-points"`, une couche
-// du profil `_reference` qui n'est PAS déployée — le profil actif est `tourism`. Ils ne
-// passaient donc que par le REPLI IMPLICITE : une couche inconnue peignait tout son sac de
-// propriétés. La décision U2 (02/08/2026) retire ce repli, et c'est le trou qu'elle ferme —
-// une couche inconnue ne doit rien peindre. Les tests sont RE-POINTÉS sur une couche
-// réellement déployée et réellement déclarée, ce qui est plus fort qu'avant : ils
-// éprouvent maintenant la chaîne complète déclaration → résolution → rendu.
-// ⚠️ La couche doit être CHARGÉE au boot, pas seulement déclarée : le chargement
-// intelligent ne monte que les couches du thème par défaut, et une couche déclarée mais
-// non montée rend `unknown-layer` — donc rien. Celle-ci est vérifiée chargée dans un vrai
-// navigateur contre le vhost, avec `properties.Name` déclaré sur les TROIS surfaces.
+// This spec already TARGETED the instrumented variant without ever yielding
+// its coverage: the bundle was measured, the data thrown away at page close.
+// The wiring below pours it in. ⚠️ It only has value since the istanbul
+// `include` covers `src/capabilities/**`: before that, the code exercised
+// here was OUTSIDE the denominator, and three more dumps would have moved
+// nothing.
+registerCoverageCollection(test, "feature-info");
+
+// ⚠️ The three render tests below used to target
+// `layerId: "reference-points"`, a layer of the `_reference` profile that is
+// NOT deployed — the active profile is `tourism`. They thus only passed
+// through the IMPLICIT FALLBACK: an unknown layer painted its whole property
+// bag. The fallback's removal (2026-08-02) closes precisely that hole — an
+// unknown layer must paint nothing. The tests are RE-POINTED at a layer
+// really deployed and really declared, which is stronger than before: they
+// now prove the full declaration → resolution → render chain.
+// ⚠️ The layer must be LOADED at boot, not merely declared: smart loading
+// only mounts the default theme's layers, and a declared-but-unmounted layer
+// renders `unknown-layer` — hence nothing. This one is verified loaded in a
+// real browser against the vhost, with `properties.Name` declared on ALL
+// THREE surfaces.
 const LAYER = "aires_protegees_nationales_sib";
 const FIELD = "Name";
 const FIELD_VALUE = "Parc national des Écrins";
-
-/** Boots the page and waits until GeoLeaf resolved a loaded native maplibregl.Map. */
-async function bootMap(page) {
-    await page.goto("/");
-    await page.waitForSelector(".maplibregl-canvas", { timeout: 15000 });
-    await page.waitForFunction(
-        () => {
-            const native = /** @type {any} */ (window).GeoLeaf?.Core?.getMap?.()?.getNativeMap?.();
-            return !!(native && typeof native.loaded === "function" && native.loaded());
-        },
-        null,
-        { timeout: 20000 }
-    );
-}
 
 /**
  * Dispatches a kernel-seam `CustomEvent` until `selector` shows up in the DOM.
  *
  * The seam is EDGE-triggered, and its listeners are attached by
  * `FeatureInfoLifecycle.init()` — called from `FeatureInfoModule.init()`, which the
- * registry runs in the CAPABILITY pass: `app/boot-install.ts:117-128` registers the 6
- * kernel modules first, `app/boot-core.ts:210` registers the capability ones after
+ * registry runs in the CAPABILITY pass: `app/boot-install.ts` registers the 6
+ * kernel modules first, `app/boot-core.ts` registers the capability ones after
  * them, and `ModuleRegistry.init()` awaits each in that topological order. So the
  * listeners are wired strictly AFTER `UIModule` revealed the map and fired
  * `geoleaf:app:ready`. A single dispatch fired as soon as `.maplibregl-canvas` exists
@@ -96,12 +98,12 @@ async function dispatchSeamUntil(page, type, detail, selector) {
 
 test.describe("feature-info (capacité core) — surfaces GeoJSON", () => {
     test("capacité chargée — GeoLeaf.FeatureInfo disponible", async ({ page }) => {
-        await bootMap(page);
+        await bootMapUntilLoaded(page);
 
-        // Le titre l'a toujours affirmé ; l'assertion, elle, se contentait de
-        // `typeof window.GeoLeaf !== 'undefined'` — vraie même si la capacité était
-        // absente. On vérifie la façade réelle : les 5 méthodes de
-        // `FeatureInfoPublicApi` (types.ts:159, v2.1.0).
+        // The title always claimed it; the assertion settled for
+        // `typeof window.GeoLeaf !== 'undefined'` — true even with the
+        // capability absent. The real facade is verified: the 5 methods of
+        // `FeatureInfoPublicApi` (types.ts, v2.1.0).
         const api = await page.evaluate(() => {
             const fi = /** @type {any} */ (window).GeoLeaf?.FeatureInfo;
             return fi ? Object.keys(fi).sort() : null;
@@ -110,7 +112,7 @@ test.describe("feature-info (capacité core) — surfaces GeoJSON", () => {
     });
 
     test("tooltip apparaît au survol d'une feature GeoJSON", async ({ page }) => {
-        await bootMap(page);
+        await bootMapUntilLoaded(page);
 
         // Dispatch a synthetic geoleaf:feature:hover event (move phase).
         await dispatchSeamUntil(
@@ -133,7 +135,7 @@ test.describe("feature-info (capacité core) — surfaces GeoJSON", () => {
     });
 
     test("popup apparaît au clic d'une feature GeoJSON", async ({ page }) => {
-        await bootMap(page);
+        await bootMapUntilLoaded(page);
 
         await dispatchSeamUntil(
             page,
@@ -151,15 +153,15 @@ test.describe("feature-info (capacité core) — surfaces GeoJSON", () => {
 
         const popup = page.locator(".gl-fi-popup-ml");
         await expect(popup).toBeVisible({ timeout: 3000 });
-        // Le contenu construit par feature-info est la racine `.gl-poi-popup`,
-        // à l'intérieur de l'enveloppe MapLibre.
+        // The content feature-info builds is the `.gl-poi-popup` root, inside
+        // the MapLibre envelope.
         await expect(popup.locator(".gl-poi-popup")).toContainText(FIELD_VALUE);
     });
 
     test("popup se ferme via Échap (le popup est construit closeButton: false)", async ({
         page,
     }) => {
-        await bootMap(page);
+        await bootMapUntilLoaded(page);
 
         await dispatchSeamUntil(
             page,
@@ -176,9 +178,10 @@ test.describe("feature-info (capacité core) — surfaces GeoJSON", () => {
         );
 
         await expect(page.locator(".gl-fi-popup-ml")).toBeVisible({ timeout: 3000 });
-        // Le seul chemin de fermeture au clavier : `_keyHandler` sur `document`
-        // (surfaces/popup.ts:135-138) → `closePopup()` → `Popup.remove()`, qui
-        // détache l'élément — d'où `toHaveCount(0)` plutôt qu'un simple "non visible".
+        // The only keyboard close path: `_keyHandler` on `document`
+        // (surfaces/popup.ts) → `closePopup()` → `Popup.remove()`,
+        // which detaches the element — hence `toHaveCount(0)` rather than a
+        // mere "not visible".
         await page.keyboard.press("Escape");
         await expect(page.locator(".gl-fi-popup-ml")).toHaveCount(0);
     });

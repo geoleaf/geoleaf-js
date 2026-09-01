@@ -2,10 +2,11 @@
 /**
  * PUB-TYPES: the declarations a package SHIPS must be REACHABLE (ARCHI S6).
  *
- * 🔗 **Ce que cette gate NE couvre PAS est écrit une seule fois, dans l'en-tête de
- * `check-shipped-specifiers.cjs` (§ « Le recouvrement des gates du tarball »).** Elle
- * vérifie l'ATTEIGNABILITÉ de l'entrée `types` — jamais ce que cette entrée importe,
- * puisqu'elle ne compile rien. Lire ce tableau avant de conclure d'un vert d'ici.
+ * 🔗 **What this gate does NOT cover is written once, in the header of
+ * `check-shipped-specifiers.cjs` (§ "THE TARBALL GATES' OVERLAP").**
+ * It verifies the `types` entry's REACHABILITY — never what that entry imports,
+ * since it compiles nothing. Read that table before concluding from a green
+ * here.
  *
  * ## The failure this exists to catch
  *
@@ -64,18 +65,19 @@ const ROOT = registry.ROOT;
 /**
  * Packages that deliberately expose no type surface, with the reason.
  *
- * ⚠️ VIDE depuis l'API publique S4.4c — les 17 paquets publient désormais leurs déclarations.
+ * ⚠️ EMPTY since the public-API work — all 17 packages now publish their declarations.
  *
- * Elle contenait `@geoleaf-plugins/addpoi` et `@geoleaf-plugins/offline-ui`, avec ce motif :
- * « compile ../core/src/** donc ne peut pas porter de rootDir ; les déclarations sortaient
- * racinées sur packages/ (514 fichiers, 2,6 Mo, dont 483 du CORE) ». Le constat était juste,
- * et la dette qu'il nommait — le couplage plugin → sources du core — a été payée : les deux
- * paquets n'ont plus aucun import `@core/*`, portent `rootDir: src`, et émettent
- * respectivement 34 et 36 déclarations, **0 du core**.
+ * It contained `@geoleaf-plugins/addpoi` and `@geoleaf-plugins/offline-ui`, with
+ * this motive: "compiles ../core/src/** hence cannot carry a rootDir; the
+ * declarations came out rooted on packages/ (514 files, 2.6 MB, 483 of them the
+ * CORE's)". The observation was right, and the debt it named — the plugin →
+ * core-sources coupling — was paid: both packages have no `@core/*` import
+ * left, carry `rootDir: src`, and emit respectively 34 and 36 declarations,
+ * **0 from the core**.
  *
- * Laisser la constante en place plutôt que de la supprimer : c'est l'endroit documenté où
- * inscrire une exemption future, avec sa raison. Un vide explicite se relit ; une constante
- * absente se réinvente.
+ * Leave the constant in place rather than delete it: it is the documented spot
+ * to record a future exemption, with its reason. An explicit emptiness gets
+ * re-read; an absent constant gets reinvented.
  */
 const NO_TYPES_BY_DESIGN = {};
 

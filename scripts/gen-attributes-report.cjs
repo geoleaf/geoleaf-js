@@ -1,25 +1,25 @@
 /**
- * Le modèle attributaire des profils, en UN tableau plat — généré et gaté.
+ * The profiles' attribute model, in ONE flat table — generated and gated.
  *
- * Tâche **2.9** de `roadmap_collecte-terrain-offline`. C'est la réponse à un besoin
- * que la décision **Q1** a explicitement refusé de satisfaire par un fichier :
- * Mattieu voulait « un seul fichier à ouvrir, une ligne par champ, à remettre à un
- * client ». Le modèle est bon ; sa LOCALISATION a été tranchée autrement, pour trois
- * raisons dures — la garde d'écriture A14 devient une règle de schéma pure quand le
- * bloc vit dans la couche, une ligne orpheline y est structurellement impossible, et
- * `check-config-coverage` dérive déjà sa famille B5 du schéma de couche.
+ * It answers a need that a standing decision explicitly refused to satisfy with
+ * a file: Mattieu wanted "a single file to open, one line per field, to hand a
+ * client". The model is good; its LOCATION was settled otherwise, for three hard
+ * reasons — the A14 write guard becomes a pure schema rule when the block lives
+ * in the layer, an orphan line is structurally impossible there, and
+ * `check-config-coverage` already derives its layer family from the layer
+ * schema.
  *
- * 🛑 **La lisibilité en tableau plat est un besoin de LECTURE, pas de stockage.** Une
- * vue dérivée ne peut pas diverger de sa source ; un fichier concurrent, si. C'est
- * toute la différence entre ce rapport et le `attributes.json` global écarté par Q1 —
- * et c'est pourquoi ce script porte un `--check` câblé dans `ci:local` : régénéré, le
- * rapport est vrai par construction ; oublié, il rougit.
+ * 🛑 **Flat-table readability is a READING need, not a storage one.** A derived
+ * view cannot diverge from its source; a competing file can. That is the whole
+ * difference between this report and the discarded global `attributes.json` —
+ * and why this script carries a `--check` wired into `ci:local`: regenerated,
+ * the report is true by construction; forgotten, it reddens.
  *
- * Même régime que `generate-docs-tree.cjs` et `gen-profile-schema-reference.cjs`.
+ * Same regime as `generate-docs-tree.cjs` and `gen-profile-schema-reference.cjs`.
  *
  * Usage :
- *   node scripts/gen-attributes-report.cjs            → écrit le rapport
- *   node scripts/gen-attributes-report.cjs --check    → échoue s'il a dérivé
+ *   node scripts/gen-attributes-report.cjs            → writes the report
+ *   node scripts/gen-attributes-report.cjs --check    → fails if it drifted
  */
 
 const fs = require("node:fs");
@@ -33,9 +33,9 @@ const OUT_REL = docsPaths.rel(OUT);
 const SURFACES = ["tooltip", "popup", "sidepanel"];
 
 /**
- * Collecte les configs de couche des profils.
+ * Collects the profiles' layer configs.
  *
- * @returns {string[]} Chemins absolus des `*_config.json`.
+ * @returns {string[]} Absolute paths of the `*_config.json`.
  */
 function layerConfigs() {
     const out = [];
@@ -50,24 +50,24 @@ function layerConfigs() {
 }
 
 /**
- * Le profil auquel appartient une config, déduit de son chemin.
+ * The profile a config belongs to, deduced from its path.
  *
- * @param {string} file - Chemin absolu de la config.
- * @returns {string} Identifiant du profil.
+ * @param {string} file - Absolute path of the config.
+ * @returns {string} Profile identifier.
  */
 function profileOf(file) {
     return path.relative(path.join(ROOT, "profiles"), file).split(path.sep)[0];
 }
 
-/** Échappe un tube, qui couperait la cellule du tableau markdown en deux. */
+/** Escapes a pipe, which would cut the markdown table cell in two. */
 const cell = (v) => String(v ?? "").replace(/\|/g, "\\|");
 
-/** Rend les surfaces sous forme de trois marqueurs alignés, lisibles en diagonale. */
+/** Renders the surfaces as three aligned markers, readable diagonally. */
 function surfaceMarks(surfaces) {
     return SURFACES.map((s) => (surfaces?.includes(s) ? s[0].toUpperCase() : "·")).join(" ");
 }
 
-/** Rend les modificateurs de présentation en liste compacte. */
+/** Renders the presentation modifiers as a compact list. */
 function presentationMarks(presentation) {
     if (!presentation) return "—";
     const on = [];
@@ -90,8 +90,8 @@ function build() {
 
         if (!json.attributes) {
             layersWithout++;
-            // ⚠️ Une couche encore sur le bloc legacy est signalée, pas tue : c'est le
-            // compteur de migration de la tâche 2.10, et il doit se lire ici.
+            // ⚠️ A layer still on the legacy block is flagged, not silenced: it is
+            // the migration counter, and it must be readable here.
             if (json.capabilities?.["feature-info"]) {
                 rows.push({
                     profile,
@@ -211,7 +211,5 @@ if (check) {
     fs.mkdirSync(path.dirname(OUT), { recursive: true });
     fs.writeFileSync(OUT, wanted);
     const lines = wanted.split("\n").length;
-    console.log(
-        `✅ [ATTR-REPORT] ${OUT_REL} — ${lines} lignes.`
-    );
+    console.log(`✅ [ATTR-REPORT] ${OUT_REL} — ${lines} lignes.`);
 }

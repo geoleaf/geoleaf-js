@@ -1,55 +1,57 @@
 #!/usr/bin/env node
 /**
- * verify-ci-scripts-tracked.cjs — tout script que `ci:local` invoque est suivi par git.
+ * verify-ci-scripts-tracked.cjs — every script `ci:local` invokes is git-tracked.
  *
- * ## L'angle mort SYMÉTRIQUE de celui que T3.5 a fermé
+ * ## The blind spot SYMMETRIC to an already-closed one
  *
- * `verify-repo-hygiene.cjs` empêche un script NON DÉCLARÉ d'entrer : tout `.cjs`/`.mjs`
- * de `scripts/` absent de `SCRIPTS_ALLOWLIST` fait rougir le check 1. Il ne dit rien du
- * cas inverse — un script DÉCLARÉ et INVOQUÉ mais **non tracé** passe les deux checks
- * sans un mot : un fichier absent de l'index est simplement ignoré du corpus, et une
- * entrée d'allowlist sans fichier n'est pas une erreur.
+ * `verify-repo-hygiene.cjs` keeps an UNDECLARED script from entering: any
+ * `scripts/` `.cjs`/`.mjs` absent from `SCRIPTS_ALLOWLIST` reddens check 1. It
+ * says nothing of the inverse case — a DECLARED, INVOKED but **untracked**
+ * script passes both checks without a word: a file absent from the index is
+ * simply ignored by the corpus, and an allowlist entry without a file is not an
+ * error.
  *
- * Ce n'est pas une hypothèse. `check-subpath-resolve.cjs` a vécu exactement cet état :
- * câblé dans `ci:local`, déclaré, présent sur le disque du seul poste qui l'avait écrit,
- * et **absent de l'index**. Sur un clone frais, `ci:local` échouait au lancement — sur le
- * poste d'origine, il était vert. C'est le pire profil de panne du dépôt : celui qui ne se
- * manifeste que chez quelqu'un d'autre. (Découvert au T2, item 5.6 de la roadmap.)
+ * Not a hypothesis. `check-subpath-resolve.cjs` lived exactly that state: wired
+ * into `ci:local`, declared, present on the disk of the only machine that wrote
+ * it, and **absent from the index**. On a fresh clone, `ci:local` failed at
+ * launch — on the origin machine, it was green. The repo's worst outage profile:
+ * the one that only manifests at someone else's.
  *
- * ## Ce que la gate lit, et pourquoi pas autrement
+ * ## What the gate reads, and why not otherwise
  *
- * Elle **importe** `ci-local.cjs` (qui exporte ses tables depuis le T5.8) et suit les
- * invocations de façon transitive :
+ * It **imports** `ci-local.cjs` (which exports its tables) and follows
+ * invocations transitively:
  *
  *   STEPS / E2E_STEPS  ─┬─→  `node scripts/<x>`         ── directement
  *                       └─→  `npm run <x>` ─→ package.json#scripts ─→ `scripts/<y>` …
- *                                            (les chaînages `npm run` sont suivis aussi)
+ *                                            (`npm run` chains are followed too)
  *
- * puis, depuis chaque script atteint, la clôture de ses `require`/`import` RELATIFS vers
- * `scripts/` — c'est là que vivait l'incident `knip-hints-reporter.mjs` du T3.7 : un
- * module créé, câblé et documenté le jour même, mais dans aucun registre d'hygiène.
+ * then, from each reached script, the closure of its RELATIVE
+ * `require`/`import` toward `scripts/` — that is where the
+ * `knip-hints-reporter.mjs` incident lived: a module created, wired and
+ * documented the same day, yet in no hygiene register.
  *
- * ⚠️ Elle **n'analyse pas** `ci-local.cjs` à la regex. Un parseur textuel qui cesse de
- * matcher après un refactor de la table ne rougit pas : il trouve zéro script, les déclare
- * tous suivis et sort vert. C'est la classe de défaut que T3, T4 et T6 documentent chacun
- * à leur tour — une gate n'a pas besoin de disparaître pour être aveugle, il suffit que
- * son périmètre soit vide.
+ * ⚠️ It does **not analyse** `ci-local.cjs` by regex. A textual parser that
+ * stops matching after a table refactor does not redden: it finds zero scripts,
+ * declares them all tracked and goes green. A gate does not need to disappear
+ * to be blind — an empty perimeter suffices.
  *
- * ## Le témoin à réponse connue
+ * ## The known-answer witness
  *
- * Un `require` ne peut pas rendre une table vide en silence, mais la RÉSOLUTION, elle, le
- * peut : un `npm run` renommé, un `package.json#scripts` restructuré, et le graphe se
- * réduit sans erreur. D'où le plancher (`MIN_RESOLVED`) — même patron que
- * `audit-report-freshness.cjs` (« ≥ 400 fichiers sous core/src ») et
- * `verify-coverage-attribution.cjs`. Sous le plancher, la gate REFUSE de conclure.
+ * A `require` cannot render an empty table in silence, but RESOLUTION can: a
+ * renamed `npm run`, a restructured `package.json#scripts`, and the graph
+ * shrinks without error. Hence the floor (`MIN_RESOLVED`) — same pattern as
+ * `audit-report-freshness.cjs` ("≥ 400 files under core/src") and
+ * `verify-coverage-attribution.cjs`. Under the floor, the gate REFUSES to
+ * conclude.
  *
- * ⚠️ Elle se prouve depuis l'arbre de travail, PAS sur un clone frais : elle interroge
- * l'INDEX (`git ls-files`), donc elle voit le défaut avant le push plutôt qu'après. C'est
- * précisément ce qui la rend utile — un contrôle qui exige un clone frais ne serait jamais
- * lancé au bon moment.
+ * ⚠️ It proves itself from the working tree, NOT on a fresh clone: it queries
+ * the INDEX (`git ls-files`), so it sees the defect before the push rather than
+ * after. Precisely what makes it useful — a check requiring a fresh clone would
+ * never be launched at the right moment.
  *
  * Usage : node scripts/verify-ci-scripts-tracked.cjs [--verbose]
- * Exit 0 = tout script invoqué est tracé, 1 sinon.
+ * Exit 0 = every invoked script is tracked, 1 otherwise.
  */
 
 "use strict";
@@ -58,19 +60,19 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { execSync } = require("node:child_process");
 
-// T6.7a — résolution des `npm run <x> -w <paquet>` : le registre, jamais un chemin en dur.
+// Resolution of `npm run <x> -w <package>`: the registry, never a hard path.
 const registry = require("./lib/packages.cjs");
 
 const ROOT = path.resolve(__dirname, "..");
 const VERBOSE = process.argv.includes("--verbose");
 
 /**
- * Plancher du témoin.
+ * The witness's floor.
  *
- * Mesure du 25/07/2026 : 42 scripts atteints depuis `ci:local` sans `--e2e`, 45 avec.
- * Le plancher est délibérément SOUS la mesure — il n'est pas un cliquet de couverture,
- * il détecte l'effondrement du graphe de résolution. Le relever à la mesure exacte le
- * ferait rougir au premier gate retiré à bon escient (T6.3 retire `benchmark --ci`).
+ * 2026-07-25 measurement: 42 scripts reached from `ci:local` without `--e2e`, 45
+ * with. The floor sits deliberately UNDER the measurement — it is not a coverage
+ * ratchet, it detects the resolution graph's collapse. Raising it to the exact
+ * measurement would redden it at the first rightly-removed gate.
  */
 const MIN_RESOLVED = 30;
 
@@ -82,34 +84,34 @@ const C = {
     dim: "\x1b[2m",
 };
 
-// ── Résolution ───────────────────────────────────────────────────────────────
+// ── Resolution ───────────────────────────────────────────────────────────────
 
 const SCRIPT_RE = /(?:^|[\s"'=])(scripts\/[\w./-]+\.(?:cjs|mjs))/g;
 const NPM_RUN_RE = /npm run ([\w:.-]+)/g;
-/** `-w <spec>` / `--workspace <spec>` / `--workspace=<spec>` — le script vit alors dans CE paquet. */
+/** `-w <spec>` / `--workspace <spec>` / `--workspace=<spec>` — the script then lives in THAT package. */
 const WORKSPACE_RE = /(?:-w|--workspace)[= ]([@\w./-]+)/;
 
-/** Les scripts nommés directement dans une ligne de commande npm. */
+/** The scripts named directly in an npm command line. */
 function scriptsInCommand(cmd) {
     return [...cmd.matchAll(SCRIPT_RE)].map((m) => m[1]);
 }
 
 /**
- * Specifiers de module RÉELS d'un fichier — par l'AST, jamais par regex sur le texte.
+ * A file's REAL module specifiers — by AST, never by regex on the text.
  *
- * ⚠️ La première version de cette fonction lisait la source à la regex. Mesuré à la pose :
- * **6 faux positifs sur 7 signalements**, tous de la même famille — du code cité qui n'est
- * pas du code exécuté :
+ * ⚠️ This function's first version read the source by regex. Measured at
+ * landing: **6 false positives out of 7 reports**, all of the same family —
+ * quoted code that is not executed code:
  *
- *   • `packages.cjs` documente `require("./lib/packages.cjs")` dans son propre en-tête
- *     → résolu en `scripts/lib/lib/packages.cjs` ;
- *   • `check-dynamic-key-writes.cjs` porte `const GUARD_MODULE = "object-path-guard.js"`
- *     → une donnée, pas un import ;
- *   • `probe-gate-visibility.cjs` embarque `await import("./eslint.config.mjs")` dans un
- *     TEMPLATE LITERAL exécuté par un processus fils, avec un autre `cwd`.
+ *   • `packages.cjs` documents `require("./lib/packages.cjs")` in its own header
+ *     → resolved as `scripts/lib/lib/packages.cjs`;
+ *   • `check-dynamic-key-writes.cjs` carries
+ *     `const GUARD_MODULE = "object-path-guard.js"` → data, not an import;
+ *   • `probe-gate-visibility.cjs` embeds `await import("./eslint.config.mjs")`
+ *     in a TEMPLATE LITERAL executed by a child process, with another `cwd`.
  *
- * Une gate qui crie sur du commentaire se fait désarmer en une semaine. L'AST ne voit que
- * les vrais nœuds d'import ; `typescript` est déjà la dépendance de 3 autres gates
+ * A gate that shouts at comments gets disarmed within a week. The AST sees only
+ * real import nodes; `typescript` is already 3 other gates' dependency
  * (`check-facade-purity`, `check-orphan-exports`, `check-contracts-pure`).
  */
 function moduleSpecifiers(absPath, text) {
@@ -141,11 +143,11 @@ function moduleSpecifiers(absPath, text) {
 }
 
 /**
- * Clôture des `require`/`import` RELATIFS d'un script vers `scripts/`.
+ * Closure of a script's RELATIVE `require`/`import` toward `scripts/`.
  *
- * Seuls les specifiers relatifs sont suivis : un `require("typescript")` est une
- * dépendance npm, pas un fichier du dépôt. L'extension est obligatoire dans ce dépôt
- * (CJS explicite, ESM strict), donc aucune résolution d'index à deviner.
+ * Only relative specifiers are followed: a `require("typescript")` is an npm
+ * dependency, not a repo file. The extension is mandatory in this repo (explicit
+ * CJS, strict ESM), so no index resolution to guess.
  */
 function localRequires(relPath, seen) {
     const abs = path.join(ROOT, relPath);
@@ -159,7 +161,7 @@ function localRequires(relPath, seen) {
     return out;
 }
 
-/** Résout la table d'étapes en l'ensemble des scripts du dépôt qu'elle finit par exécuter. */
+/** Resolves the step table into the set of repo scripts it ends up executing. */
 function resolveInvokedScripts() {
     const { STEPS, E2E_STEPS } = require("./ci-local.cjs");
     const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
@@ -167,8 +169,8 @@ function resolveInvokedScripts() {
 
     const found = new Set();
     const visitedNpm = new Set();
-    const origin = new Map(); // script → comment on y est arrivé (pour le rapport)
-    const dangling = []; // `npm run <x>` qui ne résout nulle part — check 2
+    const origin = new Map(); // script → how it was reached (for the report)
+    const dangling = []; // `npm run <x>` resolving nowhere — check 2
 
     const note = (script, from) => {
         if (!origin.has(script)) origin.set(script, from);
@@ -176,11 +178,11 @@ function resolveInvokedScripts() {
     };
 
     /**
-     * Corps d'un `npm run <name>`, résolu dans le BON package.json.
+     * The body of an `npm run <name>`, resolved in the RIGHT package.json.
      *
-     * `-w <spec>` déplace la résolution vers le paquet nommé : `npm run test:bundle
-     * -w @geoleaf/core` ne cherche PAS dans la racine. Sans ce cas, le check 2
-     * ci-dessous crierait au loup sur une étape parfaitement valide de `ci:local`.
+     * `-w <spec>` moves resolution to the named package: `npm run test:bundle
+     * -w @geoleaf/core` does NOT look in the root. Without this case, check 2
+     * below would cry wolf on a perfectly valid `ci:local` step.
      */
     const bodyOf = (name, hostCmd) => {
         const ws = hostCmd && hostCmd.match(WORKSPACE_RE);
@@ -197,12 +199,12 @@ function resolveInvokedScripts() {
         visitedNpm.add(key);
         const cmd = bodyOf(name, hostCmd);
         if (cmd === undefined) {
-            // T6.7a — c'était un `return` muet, sous le commentaire « affaire de
-            // check-versions ». Vérifié : check-versions ne regarde QUE les versions et
-            // les dépendances inter-paquets, il ne lit aucun `scripts`. Cette délégation
-            // n'existait pas. Conséquence mesurée : renommer un script npm sans suivre
-            // son appelant dans ci-local.cjs faisait sortir CE gate VERT, en résolvant
-            // simplement un script de moins (54 → 53, « 53/53 suivis »).
+            // This used to be a mute `return`, under the comment "check-versions'
+            // business". Verified: check-versions looks ONLY at versions and
+            // inter-package dependencies, it reads no `scripts`. That delegation
+            // did not exist. Measured consequence: renaming an npm script without
+            // following its caller in ci-local.cjs made THIS gate go GREEN, by
+            // simply resolving one script fewer (54 → 53, "53/53 tracked").
             dangling.push({ name, from });
             return;
         }
@@ -216,7 +218,7 @@ function resolveInvokedScripts() {
         for (const m of cmd.matchAll(NPM_RUN_RE)) walkNpm(m[1], `ci:local « ${step.name} »`, cmd);
     }
 
-    // Clôture des requires locaux — parcours en largeur jusqu'à saturation.
+    // Local-requires closure — breadth-first walk to saturation.
     const queue = [...found];
     while (queue.length) {
         const current = queue.shift();
@@ -229,7 +231,7 @@ function resolveInvokedScripts() {
     return { scripts: [...found].sort(), origin, dangling };
 }
 
-// ── Contrôle ─────────────────────────────────────────────────────────────────
+// ── Control ──────────────────────────────────────────────────────────────────
 
 function trackedScripts() {
     const out = execSync("git ls-files scripts/", { cwd: ROOT, encoding: "utf8" });
@@ -250,10 +252,10 @@ if (VERBOSE) {
 
 const errors = [];
 
-// ── Check 1 — le témoin ──────────────────────────────────────────────────────
-// Il passe AVANT le contrôle de traçage, délibérément : sur un graphe effondré, « 0 script
-// non tracé » est vrai et ne veut rien dire. Refuser de conclure vaut mieux que conclure
-// juste par accident.
+// ── Check 1 — the witness ────────────────────────────────────────────────────
+// It runs BEFORE the tracking check, deliberately: on a collapsed graph, "0
+// untracked scripts" is true and means nothing. Refusing to conclude beats
+// concluding right by accident.
 if (scripts.length < MIN_RESOLVED) {
     errors.push(
         `témoin en échec — ${scripts.length} scripts résolus (plancher ${MIN_RESOLVED}).\n` +
@@ -262,13 +264,13 @@ if (scripts.length < MIN_RESOLVED) {
     );
 }
 
-// ── Check 2 — aucun `npm run` pendant ────────────────────────────────────────
-// Un `npm run <x>` que rien ne définit ne fait pas rougir ce gate par lui-même : il
-// résout simplement un script de moins, et le rapport annonce « N/N suivis ». Le
-// plancher du check 1 ne le voit pas non plus (il détecte un effondrement, pas une
-// unité). C'est exactement ce qui rendait un renommage de script npm indétectable —
-// la panne n'apparaissait qu'à l'exécution de l'étape, donc pour les étapes `--e2e`
-// seulement quand on passe `--e2e`.
+// ── Check 2 — no dangling `npm run` ──────────────────────────────────────────
+// An `npm run <x>` nothing defines does not redden this gate by itself: it
+// simply resolves one script fewer, and the report announces "N/N tracked". The
+// check-1 floor does not see it either (it detects a collapse, not a unit).
+// Exactly what made an npm-script rename undetectable — the outage only
+// appeared at the step's execution, hence for `--e2e` steps only when `--e2e`
+// is passed.
 for (const d of dangling) {
     errors.push(
         `npm run ${d.name} — AUCUNE définition (ni racine, ni workspace ciblé par -w).\n` +
@@ -277,7 +279,7 @@ for (const d of dangling) {
     );
 }
 
-// ── Check 3 — la propriété ───────────────────────────────────────────────────
+// ── Check 3 — the property ───────────────────────────────────────────────────
 const untracked = scripts.filter((s) => !tracked.has(s));
 for (const s of untracked) {
     const onDisk = fs.existsSync(path.join(ROOT, s));

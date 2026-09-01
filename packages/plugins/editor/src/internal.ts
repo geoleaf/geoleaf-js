@@ -53,8 +53,7 @@ export { _el, _getLabel } from "@geoleaf/field-renderer";
  */
 export function _notify(kind: "success" | "error" | "info" | "warn", message: string): void {
     const notify = getGeoLeaf()?.UI?.notify as
-        | Record<string, ((msg: string) => void) | undefined>
-        | undefined;
+        Record<string, ((msg: string) => void) | undefined> | undefined;
     notify?.[kind]?.(message);
 }
 

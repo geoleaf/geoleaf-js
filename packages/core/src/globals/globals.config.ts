@@ -63,14 +63,14 @@ export function setupConfig(): void {
     Object.assign(_gl.Config as object, Config);
     _gl._DataConverter = DataConverter;
     _gl._ConfigLoader = ConfigLoader;
-    // API S4.3 — `_StyleValidator`, `_ConfigNormalization` et `_ProfileLoader` retirées :
+    // `_StyleValidator`, `_ConfigNormalization` et `_ProfileLoader` retirées :
     // aucun lecteur, aucune déclaration de type.
 }
 
 // ── PHASE A — the facades, at import, in ESM order ───────────────────────────────────────────
 //
 // `setupConfig()` takes no parameters: it needs neither the map adapter nor the merged config,
-// so there is nothing for the registry to order. It was made lazy by S1.3 (micro-core), which
+// so there is nothing for the registry to order. It was made lazy by the micro-core split, which
 // broke the boot twice — `46cd88dc` (GeoLeaf.I18n gone before boot(), plugins lost their dicts
 // silently) and `192c6865` (APIController built at import with 0 managers). The compensation was
 // a rustine in `built-in/api/controller.ts`, which fired this chain from a getter; S6 removed it.

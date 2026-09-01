@@ -1,5 +1,5 @@
 // @ts-check
-// Sprint 3 (perf roadmap) — Runtime regression gate: tolerances + comparison helpers.
+// Runtime regression gate: tolerances + comparison helpers.
 //
 // Companion to perf-baseline.json. Defines how far a live e2e capture may drift
 // from the committed baseline before the run fails.
@@ -19,17 +19,18 @@
 // e2e/06-performance-baseline.spec.js for the truth table.
 //
 // Only GL-INDEPENDENT metrics gate: geojsonRender (addSource/addLayer JS timing)
-// and JS heap. ⚠️ Depuis B-218 (10/08/2026), « JS heap » désigne le DELTA RETENU lu par
-// CDP (`Runtime.getHeapUsage` + `HeapProfiler.collectGarbage`), et plus du tout
-// `performance.memory` — que Chrome rend quantifié et figé pour la durée de la page, donc
-// incapable de voir 10 000 features. Le détail mesuré est au bloc `heapDelta` ci-dessous.
-// FPS captured under virtualized/software GL (WSLg/CI) are NON
-// representative (perf roadmap Sprint 2 finding) — and depuis B-217 (10/08/2026) ils
-// ne sont plus gatés DU TOUT, pas même en direction : la comparaison `clustered` vs
-// `plain` tranchait à 5 fps une grandeur dont le bruit mesuré va de 31 à 52 fps, et
-// elle comparait deux chemins de rendu étrangers (marqueurs DOM vs couches GL). Ce
-// que le spec asserte à leur place est un oracle de clustering déterministe, et le
-// motif complet — avec ce qu'il rend invisible — vit dans le spec, à l'assertion.
+// and JS heap. ⚠️ Since 2026-08-10, "JS heap" means the RETAINED DELTA read via
+// CDP (`Runtime.getHeapUsage` + `HeapProfiler.collectGarbage`), and no longer
+// `performance.memory` — which Chrome quantises and freezes for the page's
+// lifetime, hence unable to see 10,000 features. The measured detail sits at the
+// `heapDelta` block below.
+// FPS captured under virtualized/software GL (WSLg/CI) are NON representative
+// (measured under software GL) — and since 2026-08-10 they are not gated AT
+// ALL, not even directionally: the `clustered` vs `plain` comparison judged at
+// 5 fps a quantity whose measured noise runs from 31 to 52 fps, and it compared
+// two unrelated render paths (DOM markers vs GL layers). What the spec asserts
+// in their place is a deterministic clustering oracle, and the full motive —
+// with what it leaves invisible — lives in the spec, at the assertion.
 // initTime is network-inclusive on the local http-server (spread 1.6–3.3 s), so it
 // keeps an absolute soft ceiling rather than a baseline-relative gate.
 
@@ -41,95 +42,103 @@ const TOLERANCES = {
     // geojsonRender[label].avg_ms — ceiling = max(committed.max * factor, floorMs).
     // floorMs absorbs the sub-ms noise where a pure ratio is meaningless (~0.2 ms).
     geojsonRender: { factor: 3, floorMs: 5 },
-    // Coût mémoire RETENU de 10 000 features — bande absolue, SANS baseline (B-218).
+    // RETAINED memory cost of 10,000 features — absolute band, NO baseline.
     //
-    // ⚠️ Ce bloc a été `memory: { factor: 1.5 }` — un plafond `committé × 1,5` posé sur
-    // `memory.after10kFeatures_mb` — jusqu'au 10/08/2026, et il gardait le VIDE : la
-    // grandeur qu'il tranchait était `performance.memory.usedJSHeapSize`, que Chrome rend
-    // quantifié ET figé pour la durée de la page (sans `--enable-precise-memory-info`).
-    // Mesuré : `delta = 0` dans 6 runs de suite, puis dans 10 pages fraîches de sonde, à
-    // N = 0, 10 000 ET 30 000 features. Le test n'asserait donc pas le coût des features
-    // mais le heap AMBIANT de la page, dont la dispersion (24,8 → 45,2 Mo, ×1,8) débordait
-    // le ×1,5 toléré : un rouge par construction, sans régression produit.
+    // ⚠️ This block was `memory: { factor: 1.5 }` — a `committed × 1.5` ceiling
+    // set on `memory.after10kFeatures_mb` — until 2026-08-10, and it guarded the
+    // VOID: the quantity it judged was `performance.memory.usedJSHeapSize`,
+    // which Chrome renders quantised AND frozen for the page's lifetime (without
+    // `--enable-precise-memory-info`). Measured: `delta = 0` in 6 consecutive
+    // runs, then in 10 fresh probe pages, at N = 0, 10,000 AND 30,000 features.
+    // The test thus asserted not the features' cost but the page's AMBIENT
+    // heap, whose dispersion (24.8 → 45.2 MB, ×1.8) overflowed the tolerated
+    // ×1.5: a red by construction, with no product regression.
     //
-    // Ce qui le remplace porte sur le DELTA RETENU, lu par CDP `Runtime.getHeapUsage`
-    // après `HeapProfiler.collectGarbage` des deux côtés. Table de la sonde
-    // `scripts/probe-heap-metrics.mjs`, pages fraîches, cible nginx, GL logiciel :
+    // Its replacement bears on the RETAINED DELTA, read via CDP
+    // `Runtime.getHeapUsage` after `HeapProfiler.collectGarbage` on both sides.
+    // Table from the probe `scripts/probe-heap-metrics.mjs`, fresh pages, nginx
+    // target, software GL:
     //
-    //     N = 10 000 (API GeoLeaf) : 1,54 · 1,55 · 1,55 · 1,56 · 1,57 Mo → étendue 0,03
-    //     N = 10 000 (natif)       : 1,48 · 1,50 Mo
-    //     N = 0      (témoin)      : 0,09 · 0,15 Mo
-    //     N = 30 000               : 4,12 Mo          (la grandeur suit sa dose)
-    //     et par le spec lui-même  : 1,51 · 1,54 · 1,54 Mo (3 runs, dont la suite 06 complète)
-    //     → 8 relevés sains au total : 1,51 → 1,57 Mo, étendue 0,06 (±2 %).
+    //     N = 10,000 (GeoLeaf API) : 1.54 · 1.55 · 1.55 · 1.56 · 1.57 MB → spread 0.03
+    //     N = 10,000 (native)      : 1.48 · 1.50 MB
+    //     N = 0      (control)     : 0.09 · 0.15 MB
+    //     N = 30,000               : 4.12 MB          (the quantity follows its dose)
+    //     and by the spec itself   : 1.51 · 1.54 · 1.54 MB (3 runs, incl. the full 06 suite)
+    //     → 8 healthy readings in all: 1.51 → 1.57 MB, spread 0.06 (±2%).
     //
-    // - `floorMb` est l'assertion ANTI-CREUX, et c'est la leçon de B-218 : un delta nul
-    //   doit désormais ROUGIR au lieu de passer. 0,5 Mo est le centre géométrique entre
-    //   le témoin (0,15) et le signal (1,54) — ×3,3 au-dessus, ×3,1 en dessous.
-    // - `ceilMb` n'est PAS calibré sur le bruit (il vaut 100× l'étendue mesurée) mais sur
-    //   la dérive légitime d'une dépendance : il tolère +90 % sur MapLibre/V8 et attrape
-    //   un doublement du coût par feature. Un rouge ici se lit donc comme un CHANGEMENT
-    //   RÉEL en première hypothèse, pas comme un tirage — l'inverse exact de l'ancien.
+    // - `floorMb` is the ANTI-HOLLOW assertion, and it is the frozen
+    //   instrument's lesson: a null delta must now REDDEN instead of passing.
+    //   0.5 MB is the geometric centre between the control (0.15) and the
+    //   signal (1.54) — ×3.3 above, ×3.1 below.
+    // - `ceilMb` is NOT calibrated on the noise (it is 100× the measured
+    //   spread) but on a dependency's legitimate drift: it tolerates +90% on
+    //   MapLibre/V8 and catches a doubling of the per-feature cost. A red here
+    //   thus reads as a REAL CHANGE as first hypothesis, not as a draw — the
+    //   exact inverse of the old gate.
     //
-    // 🛑 Ne pas élargir la bande pour faire verdir : re-mesurer d'abord avec la sonde
-    // (`E2E_TARGET=nginx PROBE_MODE=bande node scripts/probe-heap-metrics.mjs`), et ne
-    // bouger un seuil qu'avec la table qui le justifie, à côté.
+    // 🛑 Do not widen the band to green: re-measure first with the probe
+    // (`E2E_TARGET=nginx PROBE_MODE=bande node scripts/probe-heap-metrics.mjs`),
+    // and only move a threshold with the table justifying it, beside it.
     heapDelta: { features: 10_000, floorMb: 0.5, ceilMb: 3 },
-    // Rétention APRÈS churn add→remove — bande absolue, SANS baseline (B-219).
+    // Retention AFTER add→remove churn — absolute band, NO baseline (retention).
     //
-    // Objet DISTINCT de `heapDelta` ci-dessus, et c'est tout l'intérêt : `heapDelta`
-    // mesure le COÛT d'une couche et ne la retire jamais ; celle-ci mesure ce qui reste
-    // RETENU une fois la couche retirée. B-218 nommait ce trou explicitement (« Les
-    // FUITES. Ce test n'enlève jamais la couche […] Domicile prévu — 6.2.6 — qui est
-    // lui-même aveugle »), et §6.2.6 l'était en effet : il jugeait sur
-    // `performance.memory`, que Chrome fige pour la durée de la page.
+    // A DISTINCT object from `heapDelta` above, and that is the whole point:
+    // `heapDelta` measures a layer's COST and never removes it; this one
+    // measures what stays RETAINED once the layer is removed. The instruction
+    // named this hole explicitly ("The LEAKS. This test never removes the layer
+    // […] Intended home — 6.2.6 — itself blind"), and §6.2.6 indeed was: it
+    // judged on `performance.memory`, which Chrome freezes for the page's
+    // lifetime.
     //
-    // 🛑 LA BANDE EST MESURÉE PAR LE SPEC LUI-MÊME, ET C'EST UNE CORRECTION, PAS UN
-    // DÉTAIL DE MÉTHODE. La sonde et le spec ne rendent PAS la même dispersion sur le
-    // même geste et la même dose : sonde saine −0,07 à +0,36 Mo (n=5), spec sain −0,12 à
-    // +1,22 Mo (n=11) — quatre fois plus large. Une bande posée sur la sonde aurait donné
-    // un plafond à 1,5 Mo, soit ×1,2 de marge sur le pire run sain du spec : le seuil
-    // dans la bande de bruit, la faute exacte de B-217 puis de B-218. **Calibrer avec
-    // l'instrument qui juge, jamais avec son voisin.**
+    // 🛑 THE BAND IS MEASURED BY THE SPEC ITSELF, AND THAT IS A CORRECTION, NOT
+    // A METHOD DETAIL. The probe and the spec do NOT render the same dispersion
+    // on the same gesture and dose: healthy probe −0.07 to +0.36 MB (n=5),
+    // healthy spec −0.12 to +1.22 MB (n=11) — four times wider. A band set on
+    // the probe would have given a 1.5 MB ceiling, i.e. ×1.2 margin over the
+    // spec's worst healthy run: the threshold inside the noise band, the fault
+    // already paid twice. **Calibrate with the instrument that judges, never
+    // with its neighbour.**
     //
-    // Relevés du spec (`06-performance-baseline.spec.js` §6.2.6), cible nginx, GL
-    // logiciel, dose 14 cycles, GC forcé ×2 des deux côtés, n = 11 churns sains :
+    // Spec readings (`06-performance-baseline.spec.js` §6.2.6), nginx target,
+    // software GL, dose 14 cycles, GC forced ×2 on both sides, n = 11 healthy
+    // churns:
     //
-    //     PIC     1,03 · 1,09 · 1,09 · 1,12 · 1,32 · 1,36 · 1,37 · 1,48 · 1,50 · 2,21 · 2,35
-    //     RETENU  −0,12 · −0,05 · 0,24 · 0,34 · 0,36 · 0,44 · 0,77 · 1,02 · 1,05 · 1,09 · 1,22
+    //     PEAK     1.03 · 1.09 · 1.09 · 1.12 · 1.32 · 1.36 · 1.37 · 1.48 · 1.50 · 2.21 · 2.35
+    //     RETAINED −0.12 · −0.05 · 0.24 · 0.34 · 0.36 · 0.44 · 0.77 · 1.02 · 1.05 · 1.09 · 1.22
     //
-    //     FUITE délibérée (les collections restent référencées)
-    //                  PIC 15,25 · 15,36   RETENU 13,78 · 13,85   (spec, n=2)
-    //                                      RETENU 14,81 · 15,07   (sonde, n=2)
-    //     témoin sans churn   PIC 0,03   RETENU 0,04              (sonde, n=1)
+    //     Deliberate LEAK (the collections stay referenced)
+    //                  PEAK 15.25 · 15.36   RETAINED 13.78 · 13.85   (spec, n=2)
+    //                                       RETAINED 14.81 · 15.07   (probe, n=2)
+    //     control without churn   PEAK 0.03   RETAINED 0.04          (probe, n=1)
     //
-    // - `peakFloorMb` est l'assertion ANTI-CREUX. Elle ne peut PAS porter sur la
-    //   rétention — une rétention SAINE vaut zéro, et vaut même parfois moins (−0,12
-    //   mesuré) —, donc elle porte sur le PIC : si la couche tenue ne pèse rien, la
-    //   rétention nulle qui suit ne prouve rien. 0,2 Mo est le centre géométrique entre
-    //   le témoin sans churn (0,03) et le plus faible pic sain (1,03) : ×6,7 au-dessus,
-    //   ×5,2 en dessous.
-    // - `retentionCeilMb` = 4 Mo, centre géométrique entre le pire relevé sain (1,22) et
-    //   la plus petite fuite mesurée (13,78) : ×3,3 au-dessus de l'un, ×3,4 en dessous de
-    //   l'autre. Il attrape une fuite d'environ 4 collections sur 14 — pas une dérive
-    //   plus fine, et c'est nommé dans le spec.
+    // - `peakFloorMb` is the ANTI-HOLLOW assertion. It CANNOT bear on
+    //   retention — a HEALTHY retention is zero, and sometimes even less
+    //   (−0.12 measured) —, so it bears on the PEAK: if the held layer weighs
+    //   nothing, the null retention that follows proves nothing. 0.2 MB is the
+    //   geometric centre between the no-churn control (0.03) and the weakest
+    //   healthy peak (1.03): ×6.7 above, ×5.2 below.
+    // - `retentionCeilMb` = 4 MB, geometric centre between the worst healthy
+    //   reading (1.22) and the smallest measured leak (13.78): ×3.3 above one,
+    //   ×3.4 below the other. It catches a leak of about 4 collections out of
+    //   14 — no finer drift, and that is named in the spec.
     //
-    // 🛑 Ne pas élargir la bande pour faire verdir : re-mesurer d'abord, et avec le SPEC
+    // 🛑 Do not widen the band to green: re-measure first, and with the SPEC
     // (`E2E_TARGET=nginx npx playwright test e2e/06-performance-baseline.spec.js -g "Memory leak"`,
-    // plusieurs fois), la sonde ne servant qu'à produire les scénarios que le spec ne
-    // joue pas (fuite délibérée, témoin sans churn). Ne bouger un seuil qu'avec la table
-    // qui le justifie, à côté.
+    // several times), the probe serving only to produce the scenarios the spec
+    // does not play (deliberate leak, no-churn control). Only move a threshold
+    // with the table justifying it, beside it.
     heapRetention: { cycles: 14, peakFloorMb: 0.2, retentionCeilMb: 4 },
     // initTime.avg — absolute soft ceiling (ms). Network-inclusive on local
     // http-server, NOT baseline-relative. Catches only gross regressions.
     initTimeCeilingMs: 10_000,
-    // ⚠️ PAS de tolérance FPS ici, et c'est un RETRAIT motivé (B-217, 10/08/2026).
-    // `fpsDirectionSlack: 5` portait l'invariant `clustered ≥ plain − 5`. Mesuré sur
-    // 5 runs : l'étendue de la marge qu'il tranchait va de 31 à 52 fps selon le cas —
-    // le seuil valait un dixième du bruit. Ne pas le réintroduire, sous aucune valeur :
-    // l'élargir rendrait l'assertion creuse aux quatre cas au lieu de deux, le rétrécir
-    // la rendrait rouge au hasard. Le raisonnement complet et ce qu'il rend invisible
-    // sont dans le bloc B-217 de e2e/06-performance-baseline.spec.js.
+    // ⚠️ NO FPS tolerance here, and that is a motivated REMOVAL (2026-08-10).
+    // `fpsDirectionSlack: 5` carried the invariant `clustered ≥ plain − 5`.
+    // Measured over 5 runs: the spread of the margin it judged runs from 31 to
+    // 52 fps depending on the case — the threshold was worth a tenth of the
+    // noise. Do not reintroduce it, under any value: widening it would hollow
+    // the assertion in four cases instead of two, narrowing it would redden it
+    // at random. The full reasoning and what it leaves invisible are in the
+    // clustering block of e2e/06-performance-baseline.spec.js.
 };
 
 /**
@@ -156,14 +165,15 @@ function geojsonCeilingMs(committedEntry) {
 }
 
 /**
- * Bande (Mo) du delta de heap RETENU pour `featureCount` features — plancher
- * anti-creux et plafond de régression. Ne lit AUCUN baseline : la bande est absolue,
- * mesurée, et vit dans TOLERANCES avec sa table (B-218).
+ * Band (MB) of the RETAINED heap delta for `featureCount` features —
+ * anti-hollow floor and regression ceiling. Reads NO baseline: the band is
+ * absolute, measured, and lives in TOLERANCES with its table.
  *
- * ⚠️ Jette si l'appelant change la dose : la bande a été mesurée à 10 000 features et
- * la relation n'est pas proportionnelle (≈ 0,1 Mo de coût fixe). Un seuil qui survit
- * en silence à un changement de son objet est exactement le défaut que B-218 solde ;
- * l'erreur pointe la sonde qui sait re-mesurer.
+ * ⚠️ Throws if the caller changes the dose: the band was measured at 10,000
+ * features and the relation is not proportional (≈ 0.1 MB fixed cost). A
+ * threshold silently surviving a change of its object is exactly the defect
+ * the floor settles; the error points to the probe that knows how to
+ * re-measure.
  *
  * @param {number} featureCount
  * @returns {{ floorMb: number, ceilMb: number }}
@@ -181,15 +191,16 @@ function heapDeltaBandMb(featureCount) {
 }
 
 /**
- * Bande (Mo) de la RÉTENTION après `cycles` cycles add→remove de 10 000 features —
- * plancher anti-creux sur le PIC, plafond de fuite sur ce qui reste RETENU après
- * retrait. Ne lit AUCUN baseline : la bande est absolue, mesurée, et vit dans
- * TOLERANCES avec sa table (B-219).
+ * Band (MB) of the RETENTION after `cycles` add→remove cycles of 10,000
+ * features — anti-hollow floor on the PEAK, leak ceiling on what stays
+ * RETAINED after removal. Reads NO baseline: the band is absolute, measured,
+ * and lives in TOLERANCES with its table.
  *
- * ⚠️ Jette si l'appelant change la dose : la fuite délibérée mesurée croît avec le
- * nombre de cycles (9,1 Mo à 8 cycles, 15,0 Mo à 14), donc un plafond mesuré à une
- * dose ne dit rien à une autre. Un seuil qui survit en silence à un changement de son
- * objet est le défaut que B-218 solde ; l'erreur pointe la sonde qui sait re-mesurer.
+ * ⚠️ Throws if the caller changes the dose: the measured deliberate leak grows
+ * with the cycle count (9.1 MB at 8 cycles, 15.0 MB at 14), so a ceiling
+ * measured at one dose says nothing at another. A threshold silently surviving
+ * a change of its object is the defect the floor settles; the error points to
+ * the probe that knows how to re-measure.
  *
  * @param {number} cycles
  * @returns {{ peakFloorMb: number, retentionCeilMb: number }}

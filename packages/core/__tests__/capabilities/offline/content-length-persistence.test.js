@@ -1,12 +1,12 @@
 /**
  * Integration tests — what `contentLength` actually is once persisted (CAPACITÉS B.11).
  *
- * The reported defect: `fetch-manager.ts:97` yields `response.headers.get("Content-Length")`,
+ * The reported defect: `fetch-manager.ts` yields `response.headers.get("Content-Length")`,
  * i.e. `string | null`; `downloader.ts` casts it `as number | undefined`; and `cacheLayer`
  * was said to write it through unchanged, so a string would sit in a field typed `number`
  * and every downstream budget sum would concatenate instead of adding.
  *
- * The first two links are real. The third is NOT: `db/layers.ts:396` coerces with
+ * The first two links are real. The third is NOT: `db/layers.ts` coerces with
  * `Number.parseInt(String(...), 10)` and falls back to the measured size when that is not
  * finite. These tests pin that end-to-end, because a TypeScript cast proves nothing about
  * runtime and the only claim that matters is what lands in the store.
@@ -52,9 +52,8 @@ describe("cacheLayer — contentLength is persisted as a number", () => {
         // `globalThis.indexedDB`. `await import()` preserves that order exactly.
         ({ IndexedDB } = await import("../../../src/capabilities/offline/db/indexeddb.js"));
         ({ DBLayers } = await import("../../../src/capabilities/offline/db/layers.js"));
-        ({ FetchManager } = await import(
-            "../../../src/capabilities/offline/cache/fetch-manager.js"
-        ));
+        ({ FetchManager } =
+            await import("../../../src/capabilities/offline/cache/fetch-manager.js"));
     });
 
     beforeEach(() => {

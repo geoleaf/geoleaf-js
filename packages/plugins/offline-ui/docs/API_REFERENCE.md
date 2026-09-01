@@ -175,8 +175,7 @@ interface LayerMetadata {
 
 ### DB — la file d'écriture (`outbox`) et les entités (`features`)
 
-🛑 **Cette section décrivait `DB.Sync` et le magasin `sync_queue`, retirés à la tâche 4.11**
-(B-124). Elle a survécu à une première passe de nettoyage qui ne retirait que les signatures :
+🛑 **Cette section décrivait `DB.Sync` et le magasin `sync_queue`, retirés depuis.** Elle a survécu à une première passe de nettoyage qui ne retirait que les signatures :
 son `SyncQueueEntry` était **la dernière déclaration du doublon C4** dans tout le dépôt.
 
 Le cycle v4 n'expose plus de file de POI, mais deux magasins génériques :
@@ -197,7 +196,7 @@ getSyncCounts(layerIds: readonly string[]): Promise<Record<string, {
 L'écriture passe par la façade, jamais par le magasin : `GeoLeaf.Storage.applyEdit()` écrit
 l'entité et son entrée d'outbox dans **une** transaction, et `GeoLeaf.Storage.pushOutbox()`
 draine. Une entrée qui échoue `MAX_REPLAY_ATTEMPTS` fois passe en **quarantaine** — écartée du
-rejeu, jamais détruite (B-125).
+rejeu, jamais détruite.
 
 ### DB.Images
 
@@ -247,7 +246,7 @@ interface ImageStats {
 
 ### DB.Backups — RETIRÉE
 
-🛑 **La chaîne de sauvegarde est supprimée à la tâche 4.11** (B-116, fermée **par retrait**).
+🛑 **La chaîne de sauvegarde est supprimée — fermée par retrait.**
 Trois mesures l'ont décidé, et aucune n'était « c'est du code mort » :
 
 1. **Elle n'avait plus de producteur** — aucun appelant de production depuis que 4.4b a

@@ -47,9 +47,7 @@ import { getPluginConfig } from "./config.js";
 import type { ExportFormat, ExportOptions } from "./export.js";
 import type {
     TableBounds,
-    TableConfig,
     TableFeature,
-    TableGeoJSONApi,
     TableGeometry,
     TableInitOptions,
     TableLayerData,
@@ -102,7 +100,7 @@ const TableModule = {
         tableState._map = options.map;
         // Config is read from the `modules.table` namespace via the plugin config
         // reader (defaults merged in), then overridden by any init-time options.
-        tableState._config = Object.assign({}, getPluginConfig(), options.config) as TableConfig;
+        tableState._config = Object.assign({}, getPluginConfig(), options.config);
         if (!tableState._config.enabled) {
             Log.info("[Table] Module disabled via configuration");
             return;
@@ -164,16 +162,18 @@ const TableModule = {
     /**
      * Reports whether the table panel is currently shown.
      *
-     * 🛑 **Sans elle, `GeoLeaf.Table.open()` est inutilisable de façon fiable** : `open` est un
-     * ALIAS de `toggle()` (B-71, documenté sur place dans `public-api.ts`), donc appeler
-     * « ouvrir » sur un panneau déjà ouvert le REFERME. L'intégrateur ne pouvait pas contourner
-     * le défaut faute de pouvoir tester l'état avant d'appeler — c'est ce trou que ceci ferme,
-     * sans changer le comportement de `open` (le changer serait une rupture).
+     * 🛑 **Without it, `GeoLeaf.Table.open()` is not reliably usable**: `open`
+     * is an ALIAS of `toggle()` (documented in place in `public-api.ts`), so
+     * calling "open" on an already-open panel CLOSES it again. The integrator
+     * could not work around the defect for want of testing the state before
+     * calling — that is the hole this closes, without changing `open`'s
+     * behaviour (changing it would be a breaking change).
      *
-     * Lit l'état, ne le dérive pas du DOM : `_isVisible` est la source de vérité et `show`
-     * / `hide` l'écrivent — le panneau peut exister sans classe pendant une reconstruction.
+     * Reads the state, does not derive it from the DOM: `_isVisible` is the
+     * source of truth and `show` / `hide` write it — the panel can exist
+     * without its class during a rebuild.
      *
-     * @returns `true` quand le panneau est visible.
+     * @returns `true` when the panel is visible.
      */
     isOpen(): boolean {
         return tableState._isVisible;
@@ -213,7 +213,7 @@ const TableModule = {
         clearHighlightLayers();
         tableState._highlightActive = false;
         tableState._sortState = { field: null, direction: null };
-        const geojson = _g.GeoLeaf.GeoJSON as TableGeoJSONApi | undefined;
+        const geojson = _g.GeoLeaf.GeoJSON;
         // Faithful to the original direct call: a present GeoJSON module always
         // exposes getLayerData; a missing method would throw here as before.
         const layerData: TableLayerData | null | undefined = geojson

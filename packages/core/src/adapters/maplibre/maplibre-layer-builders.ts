@@ -20,6 +20,7 @@ import {
     safeBeforeId,
     addSubLayers,
     toSubLayerId,
+    withGeometryGuard,
 } from "./maplibre-primitives.js";
 import { addClusterSubLayers, bindGeoJSONClusterEvents } from "./maplibre-cluster-builders.js";
 import {
@@ -142,10 +143,15 @@ export function buildGeoJSONLayer(
     // If clustering enabled: add cluster layers + filter unclustered circle layer
     let extraSubLayerIds: string[] = [];
     if (shouldCluster && geomTypes.has("Point")) {
-        // Patch existing circle layer to only show unclustered points
+        // Patch existing circle layer to only show unclustered points. Composed with the
+        // geometry guard: `setFilter` replaces, so assigning the cluster predicate alone
+        // would drop the guard on every clustered layer.
         const circleLayerId = toSubLayerId(id, "circle");
         if (map.getLayer(circleLayerId)) {
-            map.setFilter(circleLayerId, ["!", ["has", "point_count"]] as MaplibreFilter);
+            map.setFilter(
+                circleLayerId,
+                withGeometryGuard("circle", ["!", ["has", "point_count"]]) as MaplibreFilter
+            );
         }
 
         // Add cluster circle + count label layers — same zoom bounds as the rest

@@ -3,16 +3,16 @@
  *
  * `estimateProfileSize` guesses a per-tile size whenever it has no measurement. It did
  * so with TWO different magic numbers, both introduced by the same commit (f14249056):
- *   - `metrics.ts:484`  25 KB, on the >100k-tiles path where no HEAD is attempted at all
+ *   - `metrics.ts`  25 KB, on the >100k-tiles path where no HEAD is attempted at all
  *     ("based on empirical data" — the only one carrying a justification);
- *   - `metrics.ts:508`  15000, on the sampled path when every HEAD came back without a
+ *   - `metrics.ts`  15000, on the sampled path when every HEAD came back without a
  *     Content-Length, i.e. the SAME epistemic situation: no measurement, guess.
- * A third copy sat in `calculator.ts:45` (`defaults.avgTileSize`, 25 KB).
+ * A third copy sat in `calculator.ts` (`defaults.avgTileSize`, 25 KB).
  *
  * Same quantity, same situation, three literals. They are unified on the exported
  * `AVG_TILE_SIZE_BYTES`, and 25 KB wins because it is the documented one.
  *
- * ⚠️ NOT unified: `cache/tile-math.ts:29` `AVG_PBF_BYTES` (30 KB). That file is
+ * ⚠️ NOT unified: `cache/tile-math.ts` `AVG_PBF_BYTES` (30 KB). That file is
  * delegated to the PLUGINS roadmap and is out of this lot's perimeter — and it sizes
  * VECTOR .pbf tiles, not the raster tiles this estimator walks.
  */

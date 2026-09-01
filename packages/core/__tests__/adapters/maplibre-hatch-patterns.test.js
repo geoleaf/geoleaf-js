@@ -4,7 +4,7 @@
  * Covers: buildHatchPatternId, generateHatchImage (all 6 types),
  * registerHatchPattern (skip / addImage paths), _createCanvas OffscreenCanvas branch.
  *
- * Sprint S5.6 — coverage consolidation for adapters/maplibre.
+ * Coverage consolidation for adapters/maplibre.
  */
 
 import {
@@ -223,7 +223,7 @@ describe("generateHatchImage — OffscreenCanvas branch", () => {
 });
 
 // ─── _createCanvas: OffscreenCanvas present but UNUSABLE ─────────────────────
-// B-258. The symmetric case of the block above: the constructor exists, so a
+// The symmetric case of the block above: the constructor exists, so a
 // `typeof` guard admits it, but getContext("2d") yields null for want of a 2D
 // backend. That is happy-dom >= 20.11 without a canvasAdapter — and this test
 // pins the fallback WHATEVER version of happy-dom the root install resolves,

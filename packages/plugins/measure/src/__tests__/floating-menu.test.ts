@@ -1,5 +1,5 @@
 /**
- * Tests for floating-menu.ts — Sprint 2
+ * Tests for floating-menu.ts
  * Covers: initMenu, toggleMeasureMenu, setActiveTool, setCurrentUnits, destroyMenu, drag.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
@@ -60,7 +60,7 @@ describe("floating-menu", () => {
 
     // -------------------------------------------------------------------------
     // Recap box hosting — PLUGINS S5
-    // The menu has declared itself the "recap-box host" since Sprint 2 but never
+    // The menu has declared itself the "recap-box host" from the start but never
     // called initRecapBox(); these tests pin the hosting so it cannot lapse again.
     // -------------------------------------------------------------------------
 

@@ -7,18 +7,19 @@
 
 /**
  * @file sw-register.ts
- * @description Enregistrement du Service Worker — un seul geste, `register()`.
+ * @description Service Worker registration — one gesture, `register()`.
  *
- * ⚠️ CET EN-TÊTE DÉCRIVAIT TROIS FICTIONS, corrigées à la tâche 3.13 :
- *   · « Handles SW lifecycle: register, update, unregister » — `update()` et
- *     `unregister()` n'avaient aucun appelant de production et sont retirés ; la
- *     désinscription réelle est faite par `capabilities/pwa/lifecycle.ts`
- *     (`_unregisterAll`), qui itère `getRegistrations()` sans lire `_registration` ;
- *   · « The plugin SW (sw.js) replaces it » — il n'existe pas de `sw.js` dans ce dépôt ;
- *   · « storage.enableServiceWorker = true in the profile » — cette clé n'est posée par
- *     AUCUN profil, et elle est retirée par la même tâche.
+ * ⚠️ THIS HEADER DESCRIBED THREE FICTIONS, since corrected:
+ *   · "Handles SW lifecycle: register, update, unregister" — `update()` and
+ *     `unregister()` had no production caller and are removed; real unregistration
+ *     is done by `capabilities/pwa/lifecycle.ts` (`_unregisterAll`), which iterates
+ *     `getRegistrations()` without reading `_registration`;
+ *   · "The plugin SW (sw.js) replaces it" — no `sw.js` exists in this repo;
+ *   · "storage.enableServiceWorker = true in the profile" — that key is set by NO
+ *     profile, and it was removed by the same fix.
  *
- * Il reste : `sw-core.js` est enregistré au démarrage par la capacité `pwa`, un point.
+ * What remains: `sw-core.js` is registered at startup by the `pwa` capability,
+ * full stop.
  *
  * © 2026 Mattieu Pottier
  * Licensed under the MIT License
@@ -30,42 +31,43 @@ import { Log } from "../../utils/log/index.js";
 import { dispatchGeoLeafEvent } from "../events/event-bus.js";
 
 /**
- * Le pont posé ? Un second `register()` ne doit pas empiler un second écouteur.
+ * Bridge in place? A second `register()` must not stack a second listener.
  *
- * ⚠️ Le drapeau est au niveau MODULE et non sur `SWRegister` : `register()` peut être rappelé
- * (re-boot, changement de scope) et `navigator.serviceWorker` est un singleton du document —
- * deux écouteurs feraient deux toasts pour une seule éviction.
+ * ⚠️ The flag is MODULE-level and not on `SWRegister`: `register()` can be called
+ * again (re-boot, scope change) and `navigator.serviceWorker` is a document
+ * singleton — two listeners would make two toasts for one eviction.
  */
 let _evictionBridgeWired = false;
 
 /**
- * Rétablit sur `document` les signaux que le Service Worker ne peut pas émettre lui-même.
+ * Re-establishes on `document` the signals the Service Worker cannot emit itself.
  *
- * 🛑 POURQUOI CE PONT EXISTE. Un worker n'a pas de `document` : il ne peut pas dispatcher
- * `geoleaf:cache:evicted`. Il ne peut pas non plus importer le bus — il est copié tel quel
- * dans chaque variante de déploiement, sans bundler. Il poste donc un message, et ce fichier
- * est le SEUL endroit qui le retransforme en événement. Sans lui, une éviction sous pression
- * du quota d'origine — le moment précis où l'utilisateur a besoin de savoir que la place
- * manque — resterait invisible, dans la console d'un worker que personne n'ouvre.
+ * 🛑 WHY THIS BRIDGE EXISTS. A worker has no `document`: it cannot dispatch
+ * `geoleaf:cache:evicted`. Nor can it import the bus — it is copied as-is into each
+ * deployment variant, no bundler. So it posts a message, and this file is the ONLY
+ * place that turns it back into an event. Without it, an eviction under origin-quota
+ * pressure — the precise moment the user needs to know space is running out — would
+ * stay invisible, in the console of a worker nobody opens.
  *
- * 🛑 **CE COMMENTAIRE A PORTÉ LE DÉFAUT B-163 PENDANT NEUF JOURS.** Il disait :
+ * 🛑 **THIS COMMENT CARRIED A MEASURED DEFECT FOR NINE DAYS.** It said:
  *
- * > ~~Côté page il n'y a ensuite plus rien à écrire : `offline-ui` écoute déjà
- * > `geoleaf:cache:evicted` pour l'éviction IndexedDB, et affiche le même avis.~~
+ * > ~~Page-side there is then nothing left to write: `offline-ui` already listens to
+ * > `geoleaf:cache:evicted` for the IndexedDB eviction, and shows the same notice.~~
  *
- * La phrase était **vraie sur `deploy-full` et fausse sur `deploy-core`** — variante qui
- * n'embarque pas `offline-ui`, et qui part chez un client. Un lecteur venu vérifier la chaîne
- * y trouvait l'assurance qu'elle était complète, et s'arrêtait. C'est le cas d'école du fait
- * exact dans un périmètre, faux dans l'autre, énoncé sans son périmètre.
+ * The sentence was **true on `deploy-full` and false on `deploy-core`** — the
+ * variant that does not embed `offline-ui`, and that ships to a client. A reader
+ * come to verify the chain found assurance it was complete there, and stopped. The
+ * textbook case of a fact exact in one perimeter, false in the other, stated
+ * without its perimeter.
  *
- * ✅ Depuis B-163, l'écouteur est **in-core et inconditionnel** :
- * `kernel/storage/eviction-notice.ts`, câblé par `setupStorage()` — donc présent sur toutes
- * les variantes, et **indépendant de ce pont** (qui, lui, n'existe que si un worker s'est
- * enregistré, alors que `cache-manager` émet aussi hors PWA).
+ * ✅ Since the fix, the listener is **in-core and unconditional**:
+ * `kernel/storage/eviction-notice.ts`, wired by `setupStorage()` — hence present on
+ * every variant, and **independent of this bridge** (which only exists when a
+ * worker registered, while `cache-manager` also emits outside PWA).
  *
- * ⚠️ Le contrôle de `type` n'est pas décoratif. `navigator.serviceWorker` reçoit les messages
- * de TOUT worker du scope ; re-dispatcher sans discriminer ferait de n'importe quel message un
- * signal d'éviction.
+ * ⚠️ The `type` check is not decorative. `navigator.serviceWorker` receives the
+ * messages of EVERY worker in scope; re-dispatching without discriminating would
+ * make any message an eviction signal.
  */
 function _wireEvictionBridge(): void {
     if (_evictionBridgeWired) return;
@@ -76,8 +78,9 @@ function _wireEvictionBridge(): void {
         if (!data || data.type !== "GEOLEAF_CACHE_EVICTED") return;
 
         const detail = data.detail;
-        // Un détail à zéro reste possible ; `offline-ui` sort déjà en tête dessus, mais émettre
-        // un signal vide apprendrait à ses futurs écouteurs à se méfier du signal.
+        // A zero detail stays possible; `offline-ui` already early-exits on it, but
+        // emitting an empty signal would teach its future listeners to distrust the
+        // signal.
         if (!detail || typeof detail.evicted !== "number" || detail.evicted <= 0) return;
 
         Log.info(
@@ -91,14 +94,14 @@ function _wireEvictionBridge(): void {
 /**
  * Service Worker registration helper.
  *
- * 🛑 IL N'EST PAS SUR LE NAMESPACE, et son `@example` prétendait le contraire. `@namespace
- * GeoLeaf._SWRegister` et `await GeoLeaf._SWRegister.register()` décrivaient un membre que
- * **rien ne montait** : la seule affectation de `GeoLeaf._SWRegister` dans tout le dépôt est
- * dans un harnais de test. L'exemple était copiable-collable et faux — la gate
- * `typecheck-docs-examples` l'a fait rougir dès que la déclaration fantôme est tombée de
- * `global.d.ts`.
+ * 🛑 IT IS NOT ON THE NAMESPACE, and its `@example` claimed otherwise.
+ * `@namespace GeoLeaf._SWRegister` and `await GeoLeaf._SWRegister.register()`
+ * described a member **nothing mounted**: the only assignment of
+ * `GeoLeaf._SWRegister` in the whole repo is in a test harness. The example was
+ * copy-pastable and false — the `typecheck-docs-examples` gate turned it red as
+ * soon as the phantom declaration fell out of `global.d.ts`.
  *
- * Le seul appelant réel est `capabilities/pwa/lifecycle.ts`, par import.
+ * The only real caller is `capabilities/pwa/lifecycle.ts`, by import.
  *
  * @example
  * import { SWRegister } from "./kernel/storage/index.js";
@@ -108,7 +111,7 @@ const SWRegister = {
     /** @type {ServiceWorkerRegistration|null} */
     _registration: null as ServiceWorkerRegistration | null,
 
-    /** Chemin du script de worker. Un seul existe dans ce dépôt : `sw-core.js`. */
+    /** Worker script path. Only one exists in this repo: `sw-core.js`. */
     _swPath: "sw-core.js",
 
     /**
@@ -116,9 +119,9 @@ const SWRegister = {
      * No-op in environments that don't support Service Workers.
      *
      * @param {Object}  [options]
-     * @param {string}  [options.path="sw-core.js"] - Chemin du script. ⚠️ Ce paramètre
-     *                  n'a aucun appelant qui le renseigne : il documentait un second worker
-     *                  (`sw.js`) qui n'a jamais existé dans ce dépôt.
+     * @param {string}  [options.path="sw-core.js"] - Script path. ⚠️ No caller sets
+     *                  this parameter: it documented a second worker (`sw.js`) that
+     *                  never existed in this repo.
      * @param {string}  [options.scope="/"]     - SW scope
      * @returns {Promise<ServiceWorkerRegistration|null>}
      * @example
@@ -139,8 +142,8 @@ const SWRegister = {
 
             Log.info(`[SWRegister] Service Worker registered (scope: ${registration.scope})`);
 
-            // Le pont d'éviction (tâche 1.4). Posé APRÈS l'enregistrement, donc jamais sur une
-            // page qui n'a pas de worker — et une seule fois, quel que soit le nombre d'appels.
+            // The eviction bridge. Set AFTER registration, hence never on a page
+            // with no worker — and once, whatever the number of calls.
             _wireEvictionBridge();
 
             // Listen for updates
@@ -164,16 +167,17 @@ const SWRegister = {
         }
     },
 
-    // ⚠️ `update()`, `unregister()` et `getRegistration()` ont été RETIRÉS à la tâche 3.13,
-    // et la mesure vaut d'être écrite : aucun des trois n'avait d'appelant de production.
+    // ⚠️ `update()`, `unregister()` and `getRegistration()` were REMOVED, and the
+    // measurement is worth writing: none of the three had a production caller.
     //
-    // 🛑 CE QUI REND LA SUPPRESSION SÛRE plutôt que optimiste : la désinscription RÉELLE ne
-    // passait pas par ici. `capabilities/pwa/lifecycle.ts` (`_unregisterAll`) itère
-    // `navigator.serviceWorker.getRegistrations()` et désinscrit tout, sans jamais lire
-    // `_registration`. Il y avait donc deux chemins de désinscription, dont un seul
-    // s'exécutait — et celui qui restait ne dépendait en rien de celui qu'on retire.
+    // 🛑 WHAT MAKES THE DELETION SAFE rather than optimistic: REAL unregistration
+    // did not go through here. `capabilities/pwa/lifecycle.ts` (`_unregisterAll`)
+    // iterates `navigator.serviceWorker.getRegistrations()` and unregisters
+    // everything, without ever reading `_registration`. There were thus two
+    // unregistration paths, only one of which ran — and the one that remains
+    // depended in nothing on the one removed.
     //
-    // `_registration` reste renseigné par `register()` : il porte l'écoute de mise à jour.
+    // `_registration` stays set by `register()`: it carries the update listener.
 };
 
 export { SWRegister };

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * GeoLeaf — Vector Tile Generator (Sprint 8)
+ * GeoLeaf — Vector Tile Generator
  *
  * Generates PBF vector tiles from GeoJSON files in a profile's layers.
  * Produces a directory structure: layers/{layerId}/tiles/{z}/{x}/{y}.pbf
@@ -340,7 +340,7 @@ function generateWithNode(layer) {
 
 function main() {
     console.log("═══════════════════════════════════════════════════");
-    console.log("  GeoLeaf — Vector Tile Generator (Sprint 8)");
+    console.log("  GeoLeaf — Vector Tile Generator");
     console.log("═══════════════════════════════════════════════════\n");
 
     // Discover layers

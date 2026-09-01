@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "sonde-guards-uncached",
+    "scope": ["scripts/verify-guards-uncached.cjs"],
+    "verdicts": {
+        "scripts/verify-guards-uncached.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N1",
+            "severity": null,
+            "description": "Sonde statique : une garde dont le sujet est hors de son paquet tourne-t-elle hors du cache turbo",
+            "confidence": "haute",
+            "rationale": "3 assertions (GC-01/02/03), 26 gardes à sujet externe sur 36 scannées, plancher anti-gate-vide à 20. N1 : basename `verify-<sujet>.cjs`, la forme des autres vérificateurs du répertoire. Elle ferme une classe qu'aucune gate ne voyait : les `inputs` de la tâche `test` étant relatives au paquet, le fichier d'une garde invalide le cache mais son SUJET non — mesuré, la garde du JOURNAL est restée verte sur trois runs au-dessus de son plafond. Vue rouge sur les trois mutations (retrait du script d'un paquet, `cache: true`, retrait de l'appel dans `ci-local.cjs`), verte après restauration."
+        }
+    }
+}

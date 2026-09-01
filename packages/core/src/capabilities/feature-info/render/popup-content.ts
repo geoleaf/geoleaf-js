@@ -7,7 +7,7 @@
  * ⚠️ This file used to hold a 17-entry dispatch table of its own. It holds none
  * now — every widget is rendered by `./widget-dispatch.js`, and what remains here
  * is LAYOUT: where the hero image goes, how consecutive badges are grouped, where
- * the "see details" affordance lands. That separation is the point of the Sprint 2
+ * the "see details" affordance lands. That separation is the point of the
  * refactor: a widget renders the same way on every surface, and a surface decides
  * only where the rendered nodes land.
  *
@@ -39,7 +39,7 @@ function createBody(): HTMLElement {
  * Builds the "see details" side-panel link.
  *
  * ⚠️ Its text is hard-coded French, served to all six languages. Known defect,
- * same class as B-70, and it is on the Sprint 2 deletion list (task 2.11) rather
+ * a known class in this repo, and it is on a deletion list rather
  * than fixed in passing here.
  *
  * @returns The link element.

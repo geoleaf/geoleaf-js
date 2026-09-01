@@ -1,10 +1,11 @@
 /**
- * Unit tests — `ui/cache-button/modal-manager.ts`, couverture des branches (R.31).
+ * Unit tests — `ui/cache-button/modal-manager.ts`, branch coverage.
  *
- * Fichier à 61 % de branches : structure du modal, onglets, focus-trap, fermeture. Tout est
- * DOM + mocks (`$create`, `createFocusTrap`, `events` via `GeoLeaf.Utils`). On couvre
- * l'ouverture (création vs réutilisation), la navigation d'onglets (import/export, et le
- * garde `_ExportLogic` absent), la fermeture (overlay, croix, Échap) et `destroy`.
+ * File at 61% branches: modal structure, tabs, focus-trap, closing. Everything
+ * is DOM + mocks (`$create`, `createFocusTrap`, `events` via `GeoLeaf.Utils`).
+ * We cover opening (creation vs reuse), tab navigation (import/export, and the
+ * absent `_ExportLogic` guard), closing (overlay, cross, Escape) and
+ * `destroy`.
  */
 import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
 

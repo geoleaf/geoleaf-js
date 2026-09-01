@@ -14,7 +14,7 @@
  */
 
 /**
- * GeoLeaf UI Module - Main Orchestrator (Sprint 4.4 Refactored)
+ * GeoLeaf UI Module - Main Orchestrator
  * Main UI orchestrator — delegates entirely to the sub-modules
  *
  * @author Assistant
@@ -36,7 +36,7 @@ import { Log } from "../../utils/log/index.js";
 
 // ─── GeoLeaf global namespace shape ──────────────────────────────────────────
 // The namespace shape (incl. the `_UI*` sub-APIs below) is now declared canonically
-// as `GeoLeafGlobal` in `src/global.d.ts` (roadmap_typage-strict.md, S1).
+// as `GeoLeafGlobal` in `src/global.d.ts`.
 
 interface UIInitOptions {
     map?: unknown;
@@ -94,20 +94,21 @@ function checkModuleAvailability(): ModuleAvailabilityStatus {
 }
 
 // ========================================
-//   API DELEGATION — RETIRÉE (B-60)
+//   API DELEGATION — REMOVED
 // ========================================
 //
-// Deux blocs vivaient ici : `UI.initThemeToggle`/`applyTheme`/… derrière
-// `if (_g.GeoLeaf._UITheme)`, et `UI.Notifications` + les six `UI.show*` derrière
-// `if (_g.GeoLeaf._UINotifications)`. Les deux conditions étaient évaluées au CORPS DE MODULE ;
-// leurs deux écrivains (`globals.ui.ts` pour le thème, l'installeur de `toast-renderer` pour les
-// notifications) n'écrivent qu'AU BOOT, strictement après. Les deux conditions étaient donc
-// **toujours fausses**, et les deux blocs n'ont jamais rien monté.
+// Two blocks lived here: `UI.initThemeToggle`/`applyTheme`/… behind
+// `if (_g.GeoLeaf._UITheme)`, and `UI.Notifications` + the six `UI.show*` behind
+// `if (_g.GeoLeaf._UINotifications)`. Both conditions were evaluated at MODULE
+// BODY; their two writers (`globals.ui.ts` for the theme, the `toast-renderer`
+// installer for the notifications) only write AT BOOT, strictly after. Both
+// conditions were therefore **always false**, and neither block ever mounted
+// anything.
 //
-// ⚠️ Le bloc thème avait déjà été rattrapé dans `globals.ui.ts` — et c'est ce rattrapage qui a
-// masqué l'autre pendant des mois : `UI.applyTheme` fonctionnait, donc rien ne suggérait qu'un
-// bloc jumeau restait mort juste en dessous. Les deux surfaces sont désormais câblées au même
-// endroit, en délégation paresseuse.
+// ⚠️ The theme block had already been caught up in `globals.ui.ts` — and that
+// catch-up is what masked the other for months: `UI.applyTheme` worked, so nothing
+// suggested a twin block stayed dead just below. Both surfaces are now wired in
+// the same place, as lazy delegation.
 
 // ========================================
 //   EVENT DELEGATION INTEGRATION
@@ -132,8 +133,8 @@ function initializeEventDelegation(): void {
     // (its stylesheet, feature-info-panel-content.css, was 100 % unreferenced and was
     // removed at S9 along with the PanelBuilder README documenting an API that no
     // longer exists). What remains, `.gl-filter-panel`, is an **id** everywhere else
-    // in the codebase — `#gl-filter-panel` (ui.module.ts:110, desktop-panel.ts:240,
-    // mobile-toolbar-sheet.ts:93) — never a class, so this querySelectorAll returns an
+    // in the codebase — `#gl-filter-panel` (ui.module.ts, desktop-panel.ts,
+    // mobile-toolbar-sheet.ts) — never a class, so this querySelectorAll returns an
     // empty list too. Turning it into `#gl-filter-panel` would ACTIVATE delegation
     // that has been inert for a long time: a behaviour change, out of scope for a CSS
     // sprint. Backlogged rather than silently switched on.
@@ -251,7 +252,7 @@ _g.GeoLeaf.UI.VERSION = "4.4.0";
 _g.GeoLeaf.UI.BUILD = "Sprint-4.4-Modular";
 
 if (Log) {
-    Log.info(`[UI.Orchestrator] Module initialise v${_g.GeoLeaf.UI.VERSION as string}`);
+    Log.info(`[UI.Orchestrator] Module initialise v${_g.GeoLeaf.UI.VERSION}`);
 }
 
 const UI = _g.GeoLeaf.UI;

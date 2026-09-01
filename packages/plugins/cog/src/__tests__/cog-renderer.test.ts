@@ -1,4 +1,4 @@
-﻿/*!
+/*!
  * GeoLeaf COG Plugin â€” Tests: cog-renderer
  */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -218,7 +218,7 @@ describe("rastersToCanvas", () => {
 
 // â”€â”€â”€ canvasToDataUrl â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// B-258. The constructor exists, so a `typeof` guard admits it, but getContext("2d")
+// The constructor exists, so a `typeof` guard admits it, but getContext("2d")
 // yields null for want of a 2D backend — happy-dom >= 20.11 without a canvasAdapter.
 // This pins the fallback WHATEVER version of happy-dom the root install resolves;
 // the suite must not depend on which one it gets.

@@ -1,6 +1,6 @@
 /**
  * Integration — Config.Storage extended
- * Sprint 2 reactivation: deferred/integration/config-storage-integration.test.js
+ * Reactivated from deferred/integration/config-storage-integration.test.js
  * Using ConfigStore directly (current API) instead of GeoLeaf._ConfigStorage (old IIFE).
  */
 

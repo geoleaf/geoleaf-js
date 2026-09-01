@@ -9,9 +9,8 @@ import { afterEach, describe, expect, it } from "vitest";
 
 const { renderFilterPanel } = await import("../../../src/capabilities/filter/panel/render.ts");
 const { readActiveFilter } = await import("../../../src/capabilities/filter/panel/state.ts");
-const { writePanelControls, resetPanelControls } = await import(
-    "../../../src/capabilities/filter/panel/write.ts"
-);
+const { writePanelControls, resetPanelControls } =
+    await import("../../../src/capabilities/filter/panel/write.ts");
 const { serializeActiveFilter } = await import("../../../src/capabilities/filter/serialize.ts");
 
 const CONFIG = {

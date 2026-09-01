@@ -42,7 +42,7 @@ const cases = [
         Module: legendMod.LegendModule,
         // Layer B: 2 internals (ex-globals.ui.ts) + the public facade (ex-globals.api.ts).
         // `_LegendRenderer` was write-only (never read via the global) — removed,
-        // roadmap nettoyage Sprint 3 / PB-14.
+        // as write-only dead state.
         globals: {
             _LegendControl: legendControl.LegendControl,
             _LegendGenerator: legendGenerator.LegendGenerator,

@@ -226,6 +226,11 @@ export function parseDashArray(dashArray: string | undefined): number[] | undefi
 /** Converts a flat GeoLeaf style to MapLibre fill paint properties. */
 export function toFillPaint(style: FlatStyle, layerId?: string): FillPaint {
     const paint: FillPaint = {};
+    // 🛑 Written FIRST so `fillColor` — and the `pattern_only` branch below — overwrite it.
+    // Omitting the key left MapLibre's own default in place, an OPAQUE BLACK that reads as
+    // data rather than as an omission; the styleRules path never had that hole, because
+    // `_getPaintDefault` already answered DEFAULT_FEATURE_COLOR. The two paths now agree.
+    paint["fill-color"] = DEFAULT_FEATURE_COLOR;
     if (style.fillColor) paint["fill-color"] = style.fillColor;
     if (typeof style.fillOpacity === "number") paint["fill-opacity"] = style.fillOpacity;
     if (style.color) paint["fill-outline-color"] = style.color;
@@ -245,6 +250,8 @@ export function toFillPaint(style: FlatStyle, layerId?: string): FillPaint {
 /** Converts a flat GeoLeaf style to MapLibre line paint properties. */
 export function toLinePaint(style: FlatStyle): LinePaint {
     const paint: LinePaint = {};
+    // Same default-closing as `toFillPaint` — see the note there.
+    paint["line-color"] = DEFAULT_FEATURE_COLOR;
     if (style.color) paint["line-color"] = style.color;
     if (typeof style.weight === "number") paint["line-width"] = style.weight;
     if (typeof style.opacity === "number") paint["line-opacity"] = style.opacity;
@@ -259,6 +266,11 @@ export function toLinePaint(style: FlatStyle): LinePaint {
 /** Converts a flat GeoLeaf style to MapLibre circle paint properties. */
 export function toCirclePaint(style: FlatStyle): CirclePaint {
     const paint: CirclePaint = {};
+    // Same default-closing as `toFillPaint` — see the note there. ⚠️ Colour ONLY: the SIZE
+    // defaults (`circle-radius` above all) stay MapLibre's, because most layer styles in the
+    // wild omit `radius` and moving it would resize almost every point layer for a defect
+    // that is not the one being closed.
+    paint["circle-color"] = DEFAULT_FEATURE_COLOR;
     if (style.fillColor) paint["circle-color"] = style.fillColor;
     if (typeof style.fillOpacity === "number") paint["circle-opacity"] = style.fillOpacity;
     if (typeof style.radius === "number") paint["circle-radius"] = style.radius;
@@ -479,7 +491,7 @@ function _buildPaintFromRules(
     for (const key of allKeys) {
         // `allKeys` is built from the keys of `basePaint` and of every rule's `paint`,
         // both of which come from style JSON. The three sibling sinks in this file
-        // were guarded; this one was not (S13.2) — the two writes below are dynamic
+        // were guarded; this one was not — the two writes below are dynamic
         // and would otherwise accept `__proto__` straight from a style rule.
         if (isUnsafeKey(key)) continue;
         const defaultVal = basePaint[key];

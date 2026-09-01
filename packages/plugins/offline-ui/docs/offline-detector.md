@@ -1,4 +1,4 @@
-﻿# GeoLeaf — Offline Detector
+# GeoLeaf — Offline Detector
 
 > **Version** : 2.0.0 — **Date** : 15 février 2026
 > **Plugin** : Storage (`geoleaf-offline-ui.plugin.js`)

@@ -17,11 +17,7 @@
 
 /** Connection lifecycle states. */
 export type TransportState =
-    | "disconnected"
-    | "connecting"
-    | "connected"
-    | "reconnecting"
-    | "failed";
+    "disconnected" | "connecting" | "connected" | "reconnecting" | "failed";
 
 // ─── Handlers ─────────────────────────────────────────────────────────────────
 

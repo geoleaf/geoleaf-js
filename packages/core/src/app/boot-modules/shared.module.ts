@@ -8,7 +8,7 @@
 /**
  * SharedModule — `ICoreModule` wrapper for the shared inter-module state.
  *
- * S1.2: owns pre-map orchestration — i18n init (#1), plugin check (#4), then the
+ * Owns pre-map orchestration — i18n init (#1), plugin check (#4), then the
  * app-global capability lifecycles (#7 pwa → #8 offline).
  *
  * ⚠ **This kernel module must never import a capability.** Until S4 it statically

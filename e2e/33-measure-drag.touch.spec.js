@@ -159,8 +159,9 @@ test("[touch][measure] the anchor is visible while the gesture is still in progr
         midGesture = await srcCount(page, "gl-measure-vertices");
     });
 
-    // The whole point of the report: "on ne sait pas où on a tapé". The anchor must be
-    // painted from the press, before the gesture is large enough to draw anything else.
+    // The whole point of the report: the user could not tell where they had
+    // tapped. The anchor must be painted from the press, before the gesture
+    // is large enough to draw anything else.
     expect(midGesture).toBeGreaterThan(0);
 
     // ...and it must not linger once the gesture is over.

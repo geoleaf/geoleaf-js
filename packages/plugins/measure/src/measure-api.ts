@@ -114,7 +114,7 @@ function _ensureMenu(): void {
     if (savedFeatures?.length) {
         loadCollection(savedFeatures);
         for (const f of savedFeatures) {
-            const kind = f.properties?.annotationKind as "label" | "tooltip" | undefined;
+            const kind = f.properties?.annotationKind;
             if (kind === "label" || kind === "tooltip") createOverlayFromFeature(f);
         }
     }
@@ -132,7 +132,7 @@ function _ensureMenu(): void {
             else if (type === "gps") activateGps(map, () => setActiveTool(null));
             else if (type === "annotation-tooltip") activateAnnotationTooltip(map);
             else if (type !== null) {
-                // Registered tools (B-253). The lookup is what makes `registerMeasureType()`
+                // Registered tools. The lookup is what makes `registerMeasureType()`
                 // more than a write to a map nobody read.
                 // ⚠️ An id that is NOT registered must keep falling through to "deactivate
                 // only" — that behaviour is asserted, and it is what makes a typo silent-safe
@@ -170,7 +170,7 @@ export function openMeasureMenu(btn?: Element): void {
     // On first open: center the submenu on the pill bar, placed to its right
     if (_pillBtn && !_menuPositioned) {
         const map = _getNativeMap();
-        if (map) positionMeasureMenuNear(_pillBtn, map.getContainer() as HTMLElement);
+        if (map) positionMeasureMenuNear(_pillBtn, map.getContainer());
         _menuPositioned = true;
     }
 }
@@ -273,7 +273,7 @@ export function getPrintableAnnotations(): PrintableAnnotation[] {
  * ```
  *
  * ⚠️ **This did nothing at all until 14/08/2026** — it wrote to a registry no code read, while
- * the spec advertised extensibility (B-253).
+ * the spec advertised extensibility.
  *
  * @param type - Unique identifier. Re-registering an id replaces its definition.
  * @param def - Tool definition (cursor, activate/deactivate callbacks). All fields optional.

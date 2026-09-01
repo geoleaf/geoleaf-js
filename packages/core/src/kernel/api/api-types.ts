@@ -13,11 +13,11 @@
  * declares the types specific to plugin registration and boot reporting.
  */
 
-import type {
-    GeoLeafAPINamespace,
-    IControllerHealthStatus,
-    IModuleAccessFn,
-} from "../../contracts/api.contract.ts";
+// ⚠️ `GeoLeafAPINamespace` is no longer imported since 17/08/2026: the TWO types of this
+// file that referenced it are now standalone, and a comment `{@link}` does not count as a
+// use for `no-unused-vars`. Comments NAME it by its path rather than by a link — a
+// reference depending on an import no code uses breaks at the first cleanup.
+import type { IControllerHealthStatus, IModuleAccessFn } from "../../contracts/api.contract.ts";
 
 // ─── Plugin registration ────────────────────────────────────────────────────────
 
@@ -82,6 +82,26 @@ interface PluginUIDescriptor {
 export interface PluginLazyUI {
     mobileIcon?: PluginUIDescriptor;
     desktopTabButton?: PluginUIDescriptor;
+    /**
+     * Hide this slot when `modules.<pluginName>.enabled` is explicitly `false`.
+     *
+     * 🛑 **OPT-IN, AND THAT IS THE POINT: the guard only applies to plugins whose
+     * `entry.ts` already carries it.** Measured on 20/08/2026: of the six lazy-slot
+     * plugins, **only three** wrap their registration in
+     * `if (getXConfig().enabled !== false)` — `print`, `measure`, `editor`. The other
+     * three (`table`, `geocoding`, `position-share`) register unconditionally, and that
+     * is no oversight: their `enabled` does not mean "feature absent".
+     *
+     * ⚠️ **The counter-example that made this an opt-in rather than a uniform rule**:
+     * `profiles/tourism` declares `position-share: { enabled: false, showButton: true }`.
+     * For that plugin, `enabled` governs EMISSION, and the button IS the switch that
+     * turns it on (PS-09). A uniform guard hid a button the profile explicitly asks for —
+     * and removed the only way to activate the feature.
+     *
+     * The flag cannot be evaluated at declaration time: `registerLazyForAction` runs in
+     * `init.js` **before** the profile loads. It is therefore read at RENDER time.
+     */
+    gateOnModuleEnabled?: boolean;
 }
 
 /** A lazy-plugin UI slot stored by action name and surfaced to toolbar renderers. */
@@ -109,12 +129,12 @@ export interface GeoLeafApiController {
     isInitialized: boolean;
     moduleAccessFn?: IModuleAccessFn | null;
     managers?: { factory?: ApiFactorySurface };
-    // ⚠️ API S4.2 — ces quatre signatures étaient toutes en `unknown`, et c'était plus lâche
-    // que le contrôleur qu'elles décrivent : `controller.ts` déclare `geoleafSetTheme(theme:
-    // string): boolean` et `geoleafLoadConfig(input): Promise<unknown>`. L'écart n'était pas
-    // théorique — il faisait diverger les deux implémentations du namespace, celle-ci rendant
-    // `unknown` là où sa jumelle UMD (`globals.api.ts`) rendait `boolean` et `Promise`.
-    // Resserrées sur le runtime : c'est lui qui fait foi, pas la vue la plus permissive.
+    // ⚠️ These four signatures were all `unknown`, which was looser than the controller
+    // they describe: `controller.ts` declares `geoleafSetTheme(theme: string): boolean`
+    // and `geoleafLoadConfig(input): Promise<unknown>`. The gap was not theoretical — it
+    // made the two namespace implementations diverge, this one returning `unknown` where
+    // its UMD twin (`globals.api.ts`) returned `boolean` and `Promise`. Narrowed onto
+    // the runtime: it is the authority, not the most permissive view.
     geoleafInit(options: Record<string, unknown>): unknown;
     geoleafSetTheme(theme: string): boolean;
     geoleafLoadConfig(input: string | Record<string, unknown>): Promise<unknown>;
@@ -125,7 +145,7 @@ export interface GeoLeafApiController {
 /**
  * Shape of the global `GeoLeaf` object as the public API assembler reads it.
  *
- * Standalone (not extending {@link GeoLeafAPINamespace}) because it refines
+ * Standalone (not extending `GeoLeafAPINamespace`, `contracts/api.contract.ts`) because it refines
  * `_APIController` to the concrete controller surface the assembler invokes,
  * which is incompatible with the contract's minimal `{ init(): boolean }` shape.
  * Keeps the permissive index signature for the long tail of namespace members.
@@ -157,10 +177,26 @@ export interface BootInfoOptions {
 /**
  * Subset of the global `GeoLeaf` namespace consumed by boot-info.
  *
- * Reuses {@link GeoLeafAPINamespace} (permissive `[key: string]: unknown`) and
- * narrows the members boot-info actually reads.
+ * Narrows the three members `boot-info` reads structurally, and keeps a permissive
+ * index signature for the six it reaches by name only (`Labels`, `Storage`, `boot`,
+ * `bootInfo`, `_LMRenderer`, `_LayerManagerControl`).
+ *
+ * 🛑 **STANDALONE, AND THAT IS NOT COSMETIC — it is what makes the PUBLIC export
+ * possible** (decided 17/08/2026). This type extended `GeoLeafAPINamespace`, which lives
+ * in `contracts/api.contract.ts` — a module the `exports` map **does not publish**: of
+ * the 8 declared `./contracts/*` subpaths, `api.contract.js` is not one. Exporting
+ * `BootInfoNamespace` while keeping the `extends` would have emitted a public
+ * declaration referencing a type **the consumer cannot resolve** — exactly the `TS2882`
+ * class closed by the CSS-stub work.
+ *
+ * ⚠️ **And the arbitration said "remove the unused `extends`"**: the word is too broad.
+ * What was unused are the parent's three named members (`_APIController`, `API`,
+ * `CONSTANTS`); **its index signature, however, SERVES** — six of the nine members read
+ * by `boot-info.ts` only pass through it. It is therefore reproduced here, not deleted.
  */
-export interface BootInfoNamespace extends GeoLeafAPINamespace {
+export interface BootInfoNamespace {
+    /** Reached by name only — see the note above. */
+    [key: string]: unknown;
     _version?: string;
     plugins?: {
         getLoadedPlugins?: () => string[];

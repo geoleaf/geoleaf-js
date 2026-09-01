@@ -45,15 +45,16 @@ const CacheButton = {
 
 Log?.info?.("[UI.CacheButton] Orchestrator initialized");
 
-// Register with GeoLeaf.UI so core's `app/boot-modules/ui.module.ts:119` can reach it.
+// Register with GeoLeaf.UI so core's `app/boot-modules/ui.module.ts` can reach it.
 //
-// ⚠️ B-202 (09/08/2026) — accesseur canonique de `@geoleaf/host-runtime`, PAS un
-// `globalThis as { GeoLeaf?: { UI?: Record<string, unknown> } }` local. La forme locale a
-// cessé de compiler le jour où `GeoLeafUIFacade` a perdu sa traîne `[key: string]: unknown`
-// (TS2352, « neither type sufficiently overlaps ») : elle ne décrivait pas le namespace, elle
-// en affirmait une vue plus permissive que la vraie. C'est exactement le collatéral B-52, et
-// c'est aussi ce que `shared/storage-contract.ts:34` avait déjà consigné pour le même motif —
-// « c'est exactement ce que ce paquet existe pour remplacer ».
+// ⚠️ 09/08/2026 — `@geoleaf/host-runtime`'s canonical accessor, NOT a local
+// `globalThis as { GeoLeaf?: { UI?: Record<string, unknown> } }`. The local form
+// stopped compiling the day `GeoLeafUIFacade` lost its `[key: string]: unknown`
+// tail (TS2352, "neither type sufficiently overlaps"): it did not describe the
+// namespace, it asserted a more permissive view of it than the real one. Exactly
+// the collateral of an undeclared namespace, and also what
+// `shared/storage-contract.ts` had already recorded for the same motive —
+// "exactly what that package exists to replace".
 const _uiFacade = getGeoLeaf()?.UI;
 if (_uiFacade) {
     _uiFacade.CacheButton = CacheButton;

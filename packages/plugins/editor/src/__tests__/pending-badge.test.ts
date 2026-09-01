@@ -79,13 +79,14 @@ describe("pending-queue-modal", () => {
         expect(rows.length).toBe(2);
     });
 
-    // 🛑 TÂCHE 4.9 — CE TEST N'EXISTAIT PAS, ET SON ABSENCE EST CE QUI A LAISSÉ PASSER LE
-    // DÉFAUT. Le test au-dessus n'assertait qu'un NOMBRE DE LIGNES : il sortait vert quel que
-    // soit le libellé rendu, donc il est resté vert quand `_kindLabel` a cessé de reconnaître
-    // le vocabulaire. Ses fixtures portaient en plus `type:` là où l'entrée porte `kind:`, et
-    // `src/__tests__` est exclu du typecheck (`tsconfig.json`) — rien ne pouvait le dire.
+    // 🛑 THIS TEST DID NOT EXIST, AND ITS ABSENCE IS WHAT LET THE DEFECT
+    // THROUGH. The test above only asserted a ROW COUNT: it came out green
+    // whatever label was rendered, so it stayed green when `_kindLabel`
+    // stopped recognising the vocabulary. Its fixtures moreover carried
+    // `type:` where the entry carries `kind:`, and `src/__tests__` is excluded
+    // from the typecheck (`tsconfig.json`) — nothing could say so.
     //
-    // On asserte donc le LIBELLÉ, pas le décompte : c'est ce que la modale existe pour rendre.
+    // So we assert the LABEL, not the count: what the modal exists to render.
     it("traduit le vocabulaire du contrat, et ne laisse jamais fuiter le kind brut", () => {
         openPendingQueueModal(
             [
@@ -99,8 +100,8 @@ describe("pending-queue-modal", () => {
             document.querySelectorAll(".gl-editor-queue-detail__kind"),
             (n) => n.textContent
         );
-        // Le repli `return kind` rend la chaîne telle quelle : si le dispatch retombe dedans,
-        // c'est le vocabulaire machine qui s'affiche à l'utilisateur, en toutes langues.
+        // The `return kind` fallback returns the string as-is: if the dispatch
+        // falls into it, the machine vocabulary shows to the user, in every language.
         expect(labels).not.toContain("create");
         expect(labels).not.toContain("update");
         expect(labels).not.toContain("delete");

@@ -19,19 +19,19 @@ GeoLeaf-Js (private, monorepo)          ← Single source of truth
 ├── deploy/                              ← Test variants generated (deploy-core, deploy-storage, deploy-storage-addpoi)
 └── scripts/                             ← Build, benchmark, audit tools
 
-GeoLeaf-Core (mirror, FROZEN)            ← Sync deleted, ARCHI S9.0
+GeoLeaf-Core (mirror, FROZEN)            ← Sync deleted
 ├── packages/core/                       ← MIT — core library
 └── packages/connector/                  ← MIT — connector (synced from plugin-connector)
 
-GeoLeaf-Demo (mirror, FROZEN)            ← Sync deleted, ARCHI S9.0
+GeoLeaf-Demo (mirror, FROZEN)            ← Sync deleted
 └── content = deploy/deploy-core/        ← ready-to-use demo + PWA template
 
-GeoLeaf-Plugins-MIT (mirror, FROZEN)     ← Sync deleted, ARCHI S9.0
+GeoLeaf-Plugins-MIT (mirror, FROZEN)     ← Sync deleted
 
 GeoLeaf-Plugins (private, archived)      ← No longer used, replaced by npm publish
 ```
 
-⚠️ **Les 3 miroirs ne sont plus alimentés** depuis le 20/07/2026 (ARCHI S9.0). Les dépôts existent encore, figés sur leur dernier état. La distribution passe **exclusivement par npm**.
+⚠️ **Les 3 miroirs ne sont plus alimentés** depuis le 20/07/2026. Les dépôts existent encore, figés sur leur dernier état. La distribution passe **exclusivement par npm**.
 
 ### Package responsibilities
 
@@ -57,11 +57,11 @@ Sources (packages/core, packages/plugins/*)
     └── npm run publish:core   → npm (public)  ;  npm run publish:plugins → npm (public)
 ```
 
-> Les 3 workflows de miroir sur `push main` ont été supprimés (ARCHI S9.0). npm est le seul canal de publication.
+> Les 3 workflows de miroir sur `push main` ont été supprimés. npm est le seul canal de publication.
 
 - **Build** : Turborepo build → `packages/core/dist`, `packages/plugins/*/dist`.
 - **Déploiement local / test** : `npm run build:deploy` produit en une fois **deploy/deploy-core/**, **deploy/deploy-storage/**, **deploy/deploy-storage-addpoi/** à partir des fichiers du dossier `demo/` (index.html, demo-header.html, init.js, demo.extensions.js). Tester depuis `deploy/` revient au même que tester la démo (même page, bundles de prod). Servir avec `npx serve deploy -p 8765` ou `node scripts/serve-test.cjs` (ports 3001–3003).
-- **Publication** : les 18 packages sur npmjs public. ⚠️ Plus aucune synchronisation vers les dépôts publics — les 3 miroirs sont supprimés (ARCHI S9.0).
+- **Publication** : les 18 packages sur npmjs public. ⚠️ Plus aucune synchronisation vers les dépôts publics — les 3 miroirs sont supprimés.
 - **Docs** : le site se publie par `npm run docs:deploy`, **manuel**, sur `www.geoleaf.dev/docs/`. Voir [DOCS_SOURCE_AND_SYNC.md](DOCS_SOURCE_AND_SYNC.md) §2.
     - ⚠️ **Cette ligne était fausse sur ses trois assertions, corrigée le 11/08/2026.** ① Les sources de `packages/core/docs/` **ne partent plus dans le tarball** : `docs/` a quitté les `files[]` ; un paquet n'emporte que `README.md` + `dist/`. ② **`docs.geoleaf.dev` rend NXDOMAIN** — le sous-domaine n'existe pas. ③ La chaîne n'est pas « coupée » : `scripts/deploy-docs.cjs` est **vivant**, il est simplement manuel et n'a pas été relancé — le rendu publié est à `v2.1.5`. Un site périmé appelle un geste, pas un constat.
 
@@ -128,7 +128,7 @@ git push
 
 The CI pipeline will build and test all packages.
 
-⚠️ **It no longer syncs anything.** The three mirror workflows were deleted in ARCHI S9.0 — they were copying from a private repo to private repos. Distribution now goes through npm only, and `docs.geoleaf.dev` is frozen on its last build.
+⚠️ **It no longer syncs anything.** The three mirror workflows were deleted — they were copying from a private repo to private repos. Distribution now goes through npm only, and `docs.geoleaf.dev` is frozen on its last build.
 
 ---
 
@@ -164,7 +164,7 @@ npm publish -w packages/plugins/addpoi
 npm run publish:plugins
 ```
 
-⚠️ Il n'y a plus d'étape 7 : la synchronisation CI vers `GeoLeaf-Core` est supprimée (ARCHI S9.0). npm est le seul canal de distribution.
+⚠️ Il n'y a plus d'étape 7 : la synchronisation CI vers `GeoLeaf-Core` est supprimée. npm est le seul canal de distribution.
 
 ### Release flow diagram
 
@@ -178,7 +178,7 @@ git push (GeoLeaf-Js private)
      └──→ npm publish plugins    ──→ npmjs.com (public, MIT)
 
      (les 3 synchronisations CI vers GeoLeaf-Core / -Demo / -Plugins-MIT
-      sont supprimées — ARCHI S9.0)
+      sont supprimées)
 ```
 
 ### Documentation release checklist
@@ -211,14 +211,14 @@ Before tagging a release, verify:
 
 Key guarantees:
 
-- **npm est le seul canal de distribution.** Les 3 miroirs GitHub sont supprimés (ARCHI S9.0) : ils recopiaient d'un dépôt privé vers des dépôts privés.
+- **npm est le seul canal de distribution.** Les 3 miroirs GitHub sont supprimés : ils recopiaient d'un dépôt privé vers des dépôts privés.
 - Les 18 packages sont **MIT et publics sur npmjs** : `npm install` suffit.
 - `verify-core-standalone.cjs` garantit que le core ne référence aucun plugin. Il ne dépend pas des miroirs : il tourne dans `ci:local`, `ci.yml` et `.husky/pre-commit` depuis ARCHI S0.
 
 ### Documentation : source et synchronisation
 
 - **Sources documentaires :** la documentation publique (guides, API, modules) est dans **`packages/core/docs/`** (100 % MIT, maintenu manuellement). La documentation interne (CDC, RFC, roadmaps, guides opérationnels) est dans **`_docs_projet/`**. Les conventions partagées sont dans **`_docs_communs/`**.
-- **Sync vers le repo public :** ⚠️ **supprimé (ARCHI S9.0).** `sync-core-public.yml` copiait `packages/core/` (dont `docs/`) vers GeoLeaf-Core à chaque push sur `main` ; ce workflow n'existe plus. La doc de `packages/core/docs/` est publiée **via npm** (elle est dans le tarball du package) et via TypeDoc. Voir [DOCS_SOURCE_AND_SYNC.md](DOCS_SOURCE_AND_SYNC.md).
+- **Sync vers le repo public :** ⚠️ **supprimé.** `sync-core-public.yml` copiait `packages/core/` (dont `docs/`) vers GeoLeaf-Core à chaque push sur `main` ; ce workflow n'existe plus. La doc de `packages/core/docs/` est publiée **via npm** (elle est dans le tarball du package) et via TypeDoc. Voir [DOCS_SOURCE_AND_SYNC.md](DOCS_SOURCE_AND_SYNC.md).
 
 ---
 
@@ -318,7 +318,7 @@ processus, 11 paquets), pas par `turbo run test`. C'est `ci:local` qui lance l'e
 turbo, sur **17 paquets** — un sur-ensemble, vérifié à chaque run par
 `scripts/lib/test-scope.cjs`. Voir l'en-tête de `scripts/ci-local.cjs`.
 
-### ~~`sync-core-public.yml`~~, ~~`sync-demo-public.yml`~~, ~~`sync-plugins-mit-public.yml`~~ — **supprimés (ARCHI S9.0, 20/07/2026)**
+### ~~`sync-core-public.yml`~~, ~~`sync-demo-public.yml`~~, ~~`sync-plugins-mit-public.yml`~~ — **supprimés (20/07/2026)**
 
 Les 3 workflows de miroir n'existent plus. Deux raisons :
 
@@ -327,7 +327,7 @@ Les 3 workflows de miroir n'existent plus. Deux raisons :
 
 Le secret `CORE_SYNC_TOKEN` n'est plus utilisé par aucun workflow ; il peut être révoqué.
 
-Les 3 dépôts satellites subsistent, figés. Leur sort se tranche avec **ARCHI S3.6** (passage public du monorepo).
+Les 3 dépôts satellites subsistent, figés. Leur sort se tranche avec le passage public du monorepo.
 
 ### `deploy-docs.yml` — triggered in `GeoLeaf-Core` on push to `main`
 
@@ -349,7 +349,7 @@ Résultat : `docs.geoleaf.dev` mis à jour automatiquement. `docs-dist/` (racine
 | Élément                        | Rôle actuel / historique                                                                                                                                                                                                                                 | Action recommandée                                                                                                                                                                                                                                                       |
 | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **`src/` à la racine**         | Ancienne arborescence JS dupliquant la logique de `packages/core` (TypeScript). Utilisé par la démo (CSS, assets) et certains tests racine (`__tests__/`).                                                                                               | **Réduction ou suppression** : migrer les tests racine vers `packages/core` (ou apps) en important `@geoleaf/core` ; ne garder sous `src/` que les assets démo (CSS, images) ou déplacer la démo dans `apps/demo` et supprimer le JS dupliqué.                           |
-| **Scripts cités mais absents** | `sync-to-public.ps1` et `sync-core-docs.cjs` étaient mentionnés dans le CDC et les guides mais n’existent plus. Le sync vers GeoLeaf-Core était alors assuré uniquement par le workflow CI `sync-core-public.yml`.                                       | ✅ Résolu — puis **rendu sans objet** : `sync-core-public.yml` est lui-même supprimé (ARCHI S9.0, 20/07/2026). Il n'existe plus aucune synchronisation vers GeoLeaf-Core (voir `DOCS_SOURCE_AND_SYNC.md`).                                                               |
+| **Scripts cités mais absents** | `sync-to-public.ps1` et `sync-core-docs.cjs` étaient mentionnés dans le CDC et les guides mais n’existent plus. Le sync vers GeoLeaf-Core était alors assuré uniquement par le workflow CI `sync-core-public.yml`.                                       | ✅ Résolu — puis **rendu sans objet** : `sync-core-public.yml` est lui-même supprimé (20/07/2026). Il n'existe plus aucune synchronisation vers GeoLeaf-Core (voir `DOCS_SOURCE_AND_SYNC.md`).                                                                           |
 | **`demo/`**                    | Template source pour `build-deploy.cjs` (index.html, demo-header.html, init.js, demo.extensions.js). **Ne pas supprimer** sans déplacer ces fichiers (ex. vers `scripts/templates/deploy/`). Tester depuis `deploy/` revient au même que tester la démo. | Optionnel : déplacer les templates dans `scripts/templates/deploy/`, adapter `build-deploy.cjs`, puis supprimer le dossier `demo/` si on ne veut plus le conserver. Sinon garder `demo/` et documenter que les tests manuels se font depuis `deploy/` ou `test-deploy/`. |
 
 Le dossier **`deploy/`** est la sortie de `npm run build:deploy` (trois sous-dossiers : deploy-core, deploy-storage, deploy-storage-addpoi). **`demo/`** sert de template source pour `build-deploy.cjs`.
@@ -371,7 +371,7 @@ Le dossier **`deploy/`** est la sortie de `npm run build:deploy` (trois sous-dos
 Cette étape peut être planifiée comme une tâche de maintenance (sprint dédié ou critère d’acceptation d’une release). Le suivi vit aux deux registres internes du projet — backlog et dette technique —, qui restent dans le dépôt de travail et ne sont pas atteignables depuis ici.
 
 > ⚠️ **Ce renvoi affichait `AUDIT_COMPLET_APPLICATION.md` et pointait
-> `travail/roadmaps/roadmap_documentation-v3.md`** — deuxième cas de texte et cible divergents
+> un document d'atelier** — deuxième cas de texte et cible divergents
 > trouvé le 01/08/2026, dans le même répertoire que celui de `MONOREPO_STRUCTURE.md`. Le document
 > affiché n'existe nulle part dans le dépôt ; la cible était une roadmap qui n'a jamais porté ce
 > chantier. Un lien vert vers le mauvais document est plus coûteux qu'un lien mort — celui-ci a

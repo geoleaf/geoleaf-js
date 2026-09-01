@@ -1,46 +1,50 @@
 /**
  * @file doc-plugin-manifest.guard.test.js
- * @description Test-garde — le `## Manifeste d'enregistrement` de chaque fiche
- * `docs/specs/plugins/CDC_<id>.md` dit la vérité sur `src/entry.ts` et `package.json`.
+ * @description Guard test — each `docs/specs/plugins/CDC_<id>.md` sheet's
+ * `## Manifeste d'enregistrement` tells the truth about `src/entry.ts` and `package.json`.
  *
- * Pourquoi ce garde existe (refonte documentaire V3, §2.4, 27/07/2026)
+ * Why this guard exists (documentation rework, 27/07/2026)
  * --------------------------------------------------------------------
- * Jumeau de `doc-capability-config.guard.test.js`, pour l'autre moitié du §2.4. Le raisonnement
- * est le même — une fiche que rien ne lit retombe dans le seul régime documentaire qui ait
- * échoué dans ce dépôt — mais la matière falsifiable n'est pas la même.
+ * Twin of `doc-capability-config.guard.test.js`, for the other half of the
+ * batch. The reasoning is the same — a sheet nothing reads falls back into
+ * the only documentation regime that ever failed in this repo — but the
+ * falsifiable matter is not the same.
  *
- * Sur un plugin, le fait le plus falsifiable et le plus coûteux à laisser dériver est son
- * **manifeste d'enregistrement** : `requires` / `optional` déterminent l'ordre de chargement,
- * `label` s'affiche dans les toasts et les rapports, et le namespace monté est l'unique porte
- * d'entrée de l'intégrateur. Les quatre se lisent mécaniquement dans `entry.ts`, dont la forme
- * est **figée** par `PLUGIN_ARCHITECTURE_SPEC.md §4`.
+ * On a plugin, the most falsifiable and most costly fact to let drift is its
+ * **registration manifest**: `requires` / `optional` determine load order,
+ * `label` shows in toasts and reports, and the mounted namespace is the
+ * integrator's only door. All four read mechanically from `entry.ts`, whose
+ * shape is **pinned** by `PLUGIN_ARCHITECTURE_SPEC.md §4`.
  *
- * ## Ce que ce garde N'EST PAS
+ * ## What this guard is NOT
  *
- * Ce n'est pas un doublon de `scripts/verify-plugin-contract.cjs`. Celui-là vérifie que le
- * plugin est **conforme** (PC-01…PC-13) ; celui-ci vérifie que la **fiche** dit ce que le
- * plugin fait. Un plugin peut être parfaitement conforme et documenté de travers.
+ * Not a duplicate of `scripts/verify-plugin-contract.cjs`. That one verifies
+ * the plugin is **conformant** (PC-01…PC-13); this one verifies the **sheet**
+ * says what the plugin does. A plugin can be perfectly conformant and
+ * documented wrong.
  *
- * ## Pourquoi un TEST et non un script de `scripts/`
+ * ## Why a TEST and not a `scripts/` script
  *
- * C'est le choix architecturalement le moins évident de ce fichier, donc il est écrit ici. Un
- * gate transverse aux paquets appartiendrait plutôt à `scripts/`, à côté de
- * `verify-plugin-contract.cjs`. Mais un script neuf y est **refusé tant qu'il n'est pas suivi
- * par git ET inscrit dans `SCRIPTS_ALLOWLIST`** (`verify-repo-hygiene.cjs`,
- * `verify-ci-scripts-tracked.cjs`) — c'est-à-dire que `ci:local` reste rouge jusqu'au commit.
- * Un test sous `__tests__/guards/` entre dans la suite déjà câblée, sans ce préalable. La
- * contrepartie assumée : ce fichier LIT des sources de `packages/plugins/` depuis le paquet
- * `core`.
+ * The architecturally least obvious choice of this file, so it is written
+ * here. A cross-package gate would rather belong to `scripts/`, next to
+ * `verify-plugin-contract.cjs`. But a new script there is **refused until it
+ * is git-tracked AND enrolled in `SCRIPTS_ALLOWLIST`**
+ * (`verify-repo-hygiene.cjs`, `verify-ci-scripts-tracked.cjs`) — i.e.
+ * `ci:local` stays red until the commit. A test under `__tests__/guards/`
+ * enters the already-wired suite, without that prerequisite. The assumed
+ * trade-off: this file READS `packages/plugins/` sources from the `core` package.
  *
- * ⚠️ **Il les lit en TEXTE, jamais par import.** `entry.ts` a des effets de bord à l'évaluation
- * — il monte un namespace global, s'enregistre au registre, branche des écouteurs de document.
- * L'importer ici polluerait l'environnement des autres tests du fichier.
+ * ⚠️ **It reads them as TEXT, never by import.** `entry.ts` has evaluation
+ * side effects — it mounts a global namespace, registers with the registry,
+ * wires document listeners. Importing it here would pollute the other tests'
+ * environment.
  *
- * ## Une garde jamais vue rouge ne garde rien
+ * ## A guard never seen red guards nothing
  *
- * Deux assertions anti-garde-vide (au moins une fiche, au moins une ligne parsée), et **aucun
- * repli silencieux** : quand un motif attendu est introuvable dans `entry.ts`, le garde jette
- * avec le chemin en clair plutôt que de sauter la vérification.
+ * Two anti-empty-guard assertions (at least one sheet, at least one parsed
+ * line), and **no silent fallback**: when an expected pattern is not found in
+ * `entry.ts`, the guard throws with the path in clear rather than skipping
+ * the check.
  */
 import fs from "node:fs";
 import { createRequire } from "node:module";
@@ -51,19 +55,19 @@ import { NO_OWN_NAMESPACE } from "../_helpers/no-own-namespace.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "../../../..");
-// La racine de la doc vient de `scripts/lib/docs-paths.cjs`, jamais d'un littéral : un
-// chemin en dur ne casse pas au déplacement du répertoire, il rend 0 fiche — donc 0 test,
-// donc VERT. Le module JETTE si sa racine est absente.
+// The docs root comes from `scripts/lib/docs-paths.cjs`, never a literal: a
+// hardcoded path does not break when the directory moves, it yields 0 sheets
+// — hence 0 tests, hence GREEN. The module THROWS if its root is absent.
 const docsPaths = createRequire(import.meta.url)(
     path.join(REPO_ROOT, "scripts/lib/docs-paths.cjs")
 );
 const FICHES_DIR = docsPaths.specs("plugins");
 const PLUGINS_DIR = path.join(REPO_ROOT, "packages/plugins");
 
-/** Les champs du manifeste que la fiche doit porter, dans sa table `Champ | Valeur`. */
+/** The manifest fields the sheet must carry, in its `Champ | Valeur` table. */
 const REQUIRED_FIELDS = ["name", "label", "requires", "optional", "namespace", "paquet npm"];
 
-/** Les fiches présentes sur le disque — la liste n'est pas écrite, elle est lue. */
+/** The sheets present on disk — the list is not written, it is read. */
 function readFiches() {
     if (!fs.existsSync(FICHES_DIR)) return [];
     return fs
@@ -78,7 +82,7 @@ function readFiches() {
         }));
 }
 
-/** Valeur d'une clé du frontmatter YAML de tête (lecture volontairement minimale). */
+/** Value of a key from the leading YAML frontmatter (deliberately minimal read). */
 function frontmatterValue(text, key) {
     const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
     if (!fm) return null;
@@ -91,7 +95,7 @@ function frontmatterValue(text, key) {
         : null;
 }
 
-/** Découpe une ligne de tableau markdown en cellules rognées, accents graves retirés. */
+/** Splits a markdown table row into trimmed cells, backticks removed. */
 function cells(row) {
     return row
         .replace(/^\s*\|/, "")
@@ -101,9 +105,9 @@ function cells(row) {
 }
 
 /**
- * Extrait la table GATÉE de la section `## Manifeste d'enregistrement` : celle dont l'en-tête
- * porte `Champ`. Le choix de l'en-tête, et non « la première table de la section », est
- * délibéré — une fiche peut en porter d'autres sous ce titre.
+ * Extracts the GATED table of the `## Manifeste d'enregistrement` section:
+ * the one whose header carries `Champ`. Choosing the header, and not "the
+ * section's first table", is deliberate — a sheet may carry others under that title.
  *
  * @returns {{ rows: Record<string, {value: string, line: number}> }|null}
  */
@@ -122,7 +126,7 @@ function extractManifestTable(text) {
         if (iField === -1 || iValue === -1) continue;
 
         const rows = {};
-        // +2 : la ligne d'en-tête, puis la ligne de séparation `| --- |`.
+        // +2: the header row, then the `| --- |` separator row.
         for (let j = i + 2; j < end; j += 1) {
             if (!/^\s*\|/.test(lines[j])) break;
             const c = cells(lines[j]);
@@ -135,18 +139,19 @@ function extractManifestTable(text) {
 }
 
 /**
- * Extrait l'argument objet de `plugins.register("<id>", { … })` par comptage d'accolades.
+ * Extracts the object argument of `plugins.register("<id>", { … })` by brace counting.
  *
- * Même parti que `verify-plugin-contract.cjs` (PC-03), et même limite connue : un littéral de
- * chaîne contenant une accolade fausserait le comptage. Aucun `entry.ts` n'en porte, et un
- * futur `entry.ts` qui en porterait ferait échouer ce garde de façon VISIBLE plutôt que
- * silencieuse — ce qui est le comportement voulu.
+ * Same stance as `verify-plugin-contract.cjs` (PC-03), and same known limit:
+ * a string literal containing a brace would skew the count. No `entry.ts`
+ * carries one, and a future `entry.ts` that did would fail this guard
+ * VISIBLY rather than silently — the intended behaviour.
  */
 function extractRegisterMeta(entrySource, relEntry) {
-    // Les deux formes d'appel coexistent dans le dépôt, et il a fallu le mesurer : `cog`,
-    // `flatgeobuf` et `file-import` écrivent `plugins.register(`, `geocoding` écrit
-    // `plugins?.register?.(`. Le chaînage optionnel doit donc être toléré sur CHAQUE maillon —
-    // la première version de ce garde ne l'était que sur le premier, et jetait à la collecte.
+    // Both call forms coexist in the repo, and it had to be measured: `cog`,
+    // `flatgeobuf` and `file-import` write `plugins.register(`, `geocoding`
+    // writes `plugins?.register?.(`. Optional chaining must thus be tolerated
+    // on EACH link — this guard's first version only tolerated it on the
+    // first, and threw at collection.
     const m = /plugins\s*(?:\?\.|\.)\s*register\s*(?:\?\.)?\(\s*["']([^"']+)["']\s*,\s*\{/.exec(
         entrySource
     );
@@ -177,20 +182,22 @@ function extractRegisterMeta(entrySource, relEntry) {
     const body = entrySource.slice(openIdx + 1, close);
 
     /**
-     * Lit une valeur de chaîne du méta, en respectant le guillemet OUVRANT.
+     * Reads a string value from the meta, honouring the OPENING quote.
      *
-     * ⚠️ La forme naïve `["']([^"']*)["']` est fausse, et elle l'était ici — mesuré en écrivant
-     * la fiche de `print`, dont le label est `"Print (carte à l'échelle → PDF / JPG)"` : la
-     * classe négative s'arrête à l'apostrophe de « l'échelle » et rend `Print (carte à l`.
+     * ⚠️ The naive form `["']([^"']*)["']` is wrong, and it was here —
+     * measured while writing `print`'s sheet, whose label is
+     * `"Print (carte à l'échelle → PDF / JPG)"`: the negative class stops at
+     * the apostrophe of « l'échelle » and yields `Print (carte à l`.
      *
-     * Le mode d'échec est le pire des deux possibles. Le garde ne jette pas — il **tronque**,
-     * puis compare. Une fiche qui recopierait la valeur tronquée le ferait donc sortir **VERT
-     * sur un label faux**, et le champ que ce garde existe pour protéger cesserait d'être gardé
-     * sans que rien ne rougisse. C'est exactement la classe « une garde jamais vue rouge ne
-     * garde rien », vue ici par l'autre bout : une garde vue VERTE à tort.
+     * The failure mode is the worse of the two possible. The guard does not
+     * throw — it **truncates**, then compares. A sheet copying the truncated
+     * value would thus make it come out **GREEN on a wrong label**, and the
+     * field this guard exists to protect would stop being guarded with
+     * nothing turning red. Exactly the "a guard never seen red guards
+     * nothing" class, seen here from the other end: a guard WRONGLY seen green.
      *
-     * La forme ci-dessous capture le guillemet ouvrant (`\1`), lit jusqu'au **même** guillemet,
-     * et tolère les échappements — donc `"… l'échelle …"` et `'… "cité" …'` se lisent tous deux.
+     * The form below captures the opening quote (`\1`), reads to the **same**
+     * quote, and tolerates escapes — so `"… l'échelle …"` and `'… "cité" …'` both read.
      */
     const str = (key) => {
         const r = new RegExp(`${key}\\s*:\\s*(["'])((?:\\\\.|(?!\\1)[^\\\\])*)\\1`).exec(body);
@@ -206,7 +213,7 @@ function extractRegisterMeta(entrySource, relEntry) {
     return { id: m[1], label: str("label"), requires: arr("requires"), optional: arr("optional") };
 }
 
-/** Extrait le namespace monté — `…\.<Nom> = buildPublicApi()`. */
+/** Extracts the mounted namespace — `…\.<Name> = buildPublicApi()`. */
 function extractMountedNamespace(entrySource, relEntry) {
     const m = /\.([A-Z][A-Za-z0-9]*)\s*=\s*buildPublicApi\s*\(/.exec(entrySource);
     if (!m) {
@@ -247,17 +254,18 @@ describe("test-garde — le manifeste des fiches specs/plugins/ dit vrai", () =>
         ).toBeGreaterThan(0);
     });
 
-    // ── Fermeture de la classe B-66 ────────────────────────────────────────────
-    // `requires` / `optional` désignent des PLUGINS, résolus par `PluginRegistry.isLoaded()`.
-    // Quatre manifestes ont cité `storage` des mois après son renommage en `offline-ui`, et
-    // `print` y nommait en plus `legend`, une capacité IN-CORE qu'aucun `isLoaded()` ne verra
-    // jamais. L'effet à l'exécution est nul — `optional` est stocké et jamais lu —, ce qui est
-    // exactement pourquoi rien ne rougissait : le champ ne sert QU'À documenter, et il était le
-    // seul à n'avoir aucun lecteur pour le contredire.
+    // ── Closing the "renamed plugin" class ──────────────────────────────────────────────────
+    // `requires` / `optional` name PLUGINS, resolved by
+    // `PluginRegistry.isLoaded()`. Four manifests cited `storage` months
+    // after its rename to `offline-ui`, and `print` moreover named `legend`,
+    // an IN-CORE capability no `isLoaded()` will ever see. The runtime effect
+    // is nil — `optional` is stored and never read —, which is exactly why
+    // nothing turned red: the field ONLY documents, and it was the only one
+    // with no reader to contradict it.
     //
-    // Ce test lit les identifiants RÉELLEMENT enregistrés (le 1er argument de `plugins.register`)
-    // et refuse toute citation qui n'en fait pas partie. La liste n'est pas écrite, elle est
-    // dérivée — un 14ᵉ plugin y entre sans qu'on y pense.
+    // This test reads the ids REALLY registered (`plugins.register`'s 1st
+    // argument) and refuses any citation not among them. The list is not
+    // written, it is derived — a 14th plugin enters without a thought.
     it("tout id cité dans `requires`/`optional` désigne un plugin réellement enregistré", () => {
         const dirs = fs
             .readdirSync(PLUGINS_DIR, { withFileTypes: true })
@@ -278,7 +286,7 @@ describe("test-garde — le manifeste des fiches specs/plugins/ dit vrai", () =>
             }
         }
         expect(registered.size, "aucun plugin enregistré lu").toBeGreaterThan(0);
-        // Anti-garde-vide : sans au moins une citation, la boucle ne compare rien.
+        // Anti-empty-guard: without at least one citation, the loop compares nothing.
         expect(declared.length, "aucune citation `requires`/`optional` lue").toBeGreaterThan(0);
 
         const unknown = declared
@@ -310,13 +318,15 @@ describe("test-garde — le manifeste des fiches specs/plugins/ dit vrai", () =>
             const pkg = JSON.parse(fs.readFileSync(path.join(pluginDir, "package.json"), "utf8"));
             const meta = extractRegisterMeta(entrySource, relEntry);
             const table = extractManifestTable(fiche.text);
-            // Exemption PARTAGÉE avec `plugin-namespace-declared.guard.test.js` — une source,
-            // deux lecteurs. Voir le helper pour le motif et pour ce qui rend l'entrée falsifiable.
+            // Exemption SHARED with `plugin-namespace-declared.guard.test.js`
+            // — one source, two readers. See the helper for the motive and
+            // what makes the entry falsifiable.
             const exempt = NO_OWN_NAMESPACE[fiche.id];
-            // ⚠️ `extractMountedNamespace` JETTE quand elle ne trouve rien. L'appeler ICI, dans le
-            // corps du `describe`, en ferait une erreur de COLLECTE : tout le fichier de garde
-            // tomberait à l'arrivée de la première fiche d'un plugin sans façade. Elle est donc
-            // appelée dans le `it` de la branche non exemptée, et nulle part ailleurs.
+            // ⚠️ `extractMountedNamespace` THROWS when it finds nothing.
+            // Calling it HERE, in the `describe` body, would make it a
+            // COLLECTION error: the whole guard file would fall at the first
+            // sheet of a facade-less plugin. It is thus called in the
+            // non-exempt branch's `it`, and nowhere else.
 
             it("porte une table `Champ | Valeur` sous `## Manifeste d'enregistrement`", () => {
                 expect(table, "section `## Manifeste d'enregistrement` absente").not.toBeNull();
@@ -352,7 +362,7 @@ describe("test-garde — le manifeste des fiches specs/plugins/ dit vrai", () =>
                 for (const key of ["requires", "optional"]) {
                     const row = table.rows[key];
                     const actual = meta[key] ?? [];
-                    // La fiche écrit un littéral JSON : `[]` ou `["core"]`.
+                    // The sheet writes a JSON literal: `[]` or `["core"]`.
                     let documented;
                     try {
                         documented = JSON.parse(row.value.replace(/'/g, '"'));
@@ -370,9 +380,10 @@ describe("test-garde — le manifeste des fiches specs/plugins/ dit vrai", () =>
 
             if (exempt) {
                 it("n'a effectivement AUCUNE façade montée (l'exemption est justifiée)", () => {
-                    // Miroir exact de l'assertion `configSchema → toBeUndefined()` de
-                    // NO_CAPABILITY_CONFIG : l'exemption doit rougir le jour où elle cesse d'être
-                    // vraie, sinon elle survit à son motif.
+                    // Exact mirror of NO_CAPABILITY_CONFIG's
+                    // `configSchema → toBeUndefined()` assertion: the
+                    // exemption must turn red the day it stops being true,
+                    // otherwise it outlives its motive.
                     expect(
                         /(?:\.|\[\s*["'])[A-Z][A-Za-z0-9]*(?:["']\s*\])?\s*=\s*buildPublicApi\s*\(/.test(
                             entrySource

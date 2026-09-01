@@ -66,12 +66,15 @@ GeoLeaf uses **MapLibre GL JS ^6.0.0** as its map engine. Key characteristics:
 
 ## 6. Bundle budget
 
-The figure that matters at load time is the **boot payload**: the `geoleaf.esm.js` entry **plus the transitive closure of the chunks it imports statically**. Since `kernel-exports`, the entry itself is only a **shim of about 0.5 KB gzip** — budgeting it alone catches no regression. `check-bundle-size.cjs` therefore measures the closure. **Dynamic** `import()` calls are not tracked (they are genuinely lazy). MapLibre GL is an external peer dependency, outside the bundle.
+The figure that matters at load time is the **boot payload**: the `geoleaf.esm.js` entry **plus the transitive closure of the chunks it imports statically**. Since `kernel-exports`, much of the entry's content lives in those chunks, so budgeting the entry alone catches no regression of the payload. `check-bundle-size.cjs` therefore measures the closure. **Dynamic** `import()` calls are not tracked (they are genuinely lazy). MapLibre GL is an external peer dependency, outside the bundle.
+
+> ⚠️ **Do not call `geoleaf.esm.js` "a shim", and do not copy a size for it here.** The ~1 KB shim is the _granular_ entry (`dist/esm/`); the flat entry is much larger, and conflating the two is how a figure written in this very table drifted by a factor of 150 with every gate green. Every row below carries its **command**, never a value.
 
 | Artefact                                 | Target / status                                           | Verification command |
 | ---------------------------------------- | --------------------------------------------------------- | -------------------- |
-| **Boot payload** (entry + static chunks) | warning > 270 KB gz, **build failure > 300 KB** (~178 KB) | `npm run size`       |
-| `geoleaf.esm.js` alone (gz)              | ~0.5 KB — shim, **informational, NOT a budget**           | `npm run size`       |
+| **Boot payload** (entry + static chunks) | warning > 270 KB gz, **build failure > 300 KB**           | `npm run size`       |
+| `geoleaf.esm.js` alone                   | **informational, NOT a budget** — the closure is budgeted | `npm run size`       |
+| Granular entry (`dist/esm/`)             | the re-export shim — informational                        | `npm run size`       |
 | Sourcemaps (`.map`, published to npm)    | soft limit > 900 KB gz (never fails the build)            | `npm run size`       |
 
 ---

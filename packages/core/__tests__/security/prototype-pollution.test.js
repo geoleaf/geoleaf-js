@@ -2,10 +2,10 @@
  * @file prototype-pollution.test.js
  * @description Prototype-pollution coverage for the config normalization pipeline.
  *
- * ⚠️ Rewritten (Sprint 5, optimisation KERNEL). This file used to test `_safeAssign()`,
+ * ⚠️ Rewritten. This file used to test `_safeAssign()`,
  * a helper in config/normalization.ts that lost its last production caller to a perf
  * change on 2026-02-18 (commit 15cc5cf7 — the per-POI object copy was dropped) and was
- * removed in Sprint 5. Worse, the file MOCKED `ConfigStore.setValueByPath` — the sink
+ * removed with it. Worse, the file MOCKED `ConfigStore.setValueByPath` — the sink
  * the pipeline actually writes through — so it asserted on a function nobody called while
  * the real write path went unguarded. That asymmetry is why the hole survived.
  *

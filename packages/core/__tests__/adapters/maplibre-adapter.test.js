@@ -1,5 +1,5 @@
 /**
- * Unit tests for MaplibreAdapter — Sprint 2.
+ * Unit tests for MaplibreAdapter.
  *
  * Init, view/navigation, events, controls, utilities, getNativeMap.
  * Layers, markers, clusters, popups → maplibre-adapter-layers.test.js
@@ -78,7 +78,7 @@ function createInitedAdapter() {
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
-describe("MaplibreAdapter (Sprint 2)", () => {
+describe("MaplibreAdapter", () => {
     describe("Initialisation", () => {
         it("init creates a maplibregl.Map instance", () => {
             const adapter = createInitedAdapter();
@@ -194,10 +194,10 @@ describe("MaplibreAdapter (Sprint 2)", () => {
         });
     });
 
-    // S5/N-1b — le moteur porte la fenêtre d'échelle. La plage doit atteindre TOUTES les
-    // sous-couches, clusters compris : ils sont enregistrés via `customSubLayerIds` et
-    // n'apparaissent donc pas dans `subLayerTypes` (le piège qui fait que `applyLayerStyle`
-    // ne re-style jamais un cluster).
+    // The engine carries the scale window. The range must reach ALL
+    // sub-layers, clusters included: they are registered via
+    // `customSubLayerIds` and thus do not appear in `subLayerTypes` (the
+    // trap that keeps `applyLayerStyle` from ever re-styling a cluster).
     describe("setLayerZoomRange", () => {
         let adapter;
         beforeEach(() => {
@@ -413,9 +413,9 @@ describe("MaplibreAdapter (Sprint 2)", () => {
     });
 });
 
-// ─── S5.6 — Internal event handler branch coverage ───────────────────────────
+// ─── Internal event handler branch coverage ───────────────────────────
 
-describe("MaplibreAdapter — internal event handlers (S5.6)", () => {
+describe("MaplibreAdapter — internal event handlers", () => {
     let adapter;
 
     beforeEach(() => {
@@ -463,9 +463,9 @@ describe("MaplibreAdapter — internal event handlers (S5.6)", () => {
     });
 });
 
-// ─── S5.6 — on/off lngLat wrapper branch coverage ────────────────────────────
+// ─── on/off lngLat wrapper branch coverage ────────────────────────────
 
-describe("MaplibreAdapter — on/off lngLat wrapper (S5.6)", () => {
+describe("MaplibreAdapter — on/off lngLat wrapper", () => {
     let adapter;
 
     beforeEach(() => {
@@ -513,9 +513,9 @@ describe("MaplibreAdapter — on/off lngLat wrapper (S5.6)", () => {
     });
 });
 
-// ─── S5.6 — Double destroy ───────────────────────────────────────────────────
+// ─── Double destroy ───────────────────────────────────────────────────
 
-describe("MaplibreAdapter — double destroy (S5.6)", () => {
+describe("MaplibreAdapter — double destroy", () => {
     it("second destroy() is a no-op and does not throw", () => {
         const adapter = createInitedAdapter();
         adapter.destroy();

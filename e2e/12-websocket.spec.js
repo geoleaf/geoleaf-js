@@ -1,28 +1,30 @@
 // @ts-check
 // E2E: 12-websocket — @geoleaf-plugins/websocket on deploy-core (port 8766).
 //
-// ⚠️ Ce bloc a dit « EAGER-loaded by deploy-core's index.html » jusqu'au 07/08/2026 : socle-init
-// S4.5 a retiré la balise. `websocket` n'est préchargé que si le profil déclare un flux
-// `source: "websocket"` ; `tourism` fait du polling, donc c'est le helper `boot()` qui le
-// charge — comme le ferait l'application hôte qui s'en sert. init() n'est appelé par AUCUN
-// profil (le config est passé en mémoire par le consommateur), donc tout le cycle de connexion
-// est piloté depuis le test.
+// ⚠️ This block said "EAGER-loaded by deploy-core's index.html" until
+// 2026-08-07. The tag is removed. `websocket` is only preloaded if the
+// profile declares a `source: "websocket"` feed; `tourism` polls, so the
+// `boot()` helper loads it — as the host application using it would. init()
+// is called by NO profile (the config is passed in memory by the consumer),
+// so the whole connection cycle is driven from the test.
 //
 // WebSocket cannot be mocked at the network layer: Playwright's page.route() intercepts
 // HTTP(S) only, never ws://. There is also no live broker in any deployment — and since
 // 27/07/2026 there is no `source:"websocket"` profile at all.
 //
-// ⚠️ Requalifié le 27/07/2026 (B-42) : ce paragraphe citait `world-transport/ports` comme le
-// seul profil déclarant `source:"websocket"` (inerte, `enabled:false`, pointant un endpoint
-// externe que le plugin ne consomme pas — le constat S6 « inert websocket profile »). Ce
-// profil a été retiré avec les 5 autres démos. **Cette spec n'en dépendait pas** : elle ne
-// charge aucun profil et pilote tout depuis un faux WebSocket. B-42 la comptait parmi les
-// specs cassées ; seul son commentaire l'était. Le constat reste vrai a fortiori — il n'y a
-// plus aucun broker à joindre.
+// ⚠️ Requalified on 2026-07-27: this paragraph cited `world-transport/ports`
+// as the only profile declaring `source:"websocket"` (inert,
+// `enabled:false`, pointing at an external endpoint the plugin does not
+// consume — the recorded "inert websocket profile" finding). That profile
+// was removed with the 5 other demos. **This spec did not depend on it**: it
+// loads no profile and drives everything from a fake WebSocket. The purge
+// counted it among the broken specs; only its comment was. The finding stays
+// true a fortiori — there is no broker left to reach.
 //
 // So we inject a controllable fake window.WebSocket
 // via addInitScript BEFORE navigation: the built-in "native-ws" transport then drives the
-// fake deterministically. This mirrors S5's simulated EventSource and S4's page-driven flow.
+// fake deterministically. This mirrors 08-realtime's simulated EventSource and
+// the same page-driven pattern the other plugin suites use.
 //
 // Validates CDC_plugin-websocket.md v1.1.0: §2.1 connection lifecycle, §2.2 backoff
 // reconnection, §2.4 offline send-queue + flush, §2.5 metrics, the realtime-layer coupling
@@ -36,8 +38,9 @@ import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
 
 // serviceWorkers:'block' — deploy-core ships a PWA SW; without blocking it the page can be
-// served stale and our addInitScript-injected globals race the SW-controlled bundle (piège
-// S4/S5). Blocking the SW makes the harness authoritative.
+// served stale and our addInitScript-injected globals race the SW-controlled
+// bundle (the trap the earlier plugin suites hit). Blocking the SW makes the
+// harness authoritative.
 test.use({ baseURL: baseURL("core"), serviceWorkers: "block" });
 
 // wss:// — the fake ignores the scheme (no real TLS), and wss:// sidesteps the plugin's
@@ -147,11 +150,11 @@ async function boot(page) {
     page.on("pageerror", (err) => errors.push(err.message));
     await page.goto("/");
     await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 15000 });
-    // socle-init S4.5 — `websocket` n'est plus eager. Il n'est préchargé par le hook
-    // `beforeBoot` d'`init.js` QUE si le profil déclare un flux `source: "websocket"` ;
-    // `tourism` fait du polling, donc rien ne le charge ici. C'est voulu : 4,3 Ko gz pour
-    // zéro appelant seraient 4,3 Ko de trop. Cette suite pilote l'API à la main, elle le
-    // demande donc à la main — comme le ferait l'application hôte qui s'en sert.
+    // `websocket` is no longer eager. It is only preloaded by `init.js`'s
+    // `beforeBoot` hook IF the profile declares a `source: "websocket"` feed;
+    // `tourism` polls, so nothing loads it here. Intended: 4.3 KB gz for zero
+    // callers would be 4.3 KB too many. This suite drives the API by hand, so
+    // it requests it by hand — as the host application using it would.
     await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.plugins.load("websocket"));
     await page.waitForFunction(() => !!(/** @type {any} */ (window).GeoLeaf?.Ws), null, {
         timeout: 10000,
@@ -384,11 +387,12 @@ test.describe("12-websocket", () => {
     }) => {
         await boot(page);
 
-        // Prérequis de couplage. ⚠️ Les deux plugins ne sont plus eager (S4.5) et arrivent
-        // par des chemins DIFFÉRENTS : `websocket` par le `plugins.load` de `boot()`,
-        // `realtime-layer` par le préchargement `beforeBoot` d'`init.js` (le profil `tourism`
-        // déclare `data.realtime.enabled`). Cette assertion vaut donc aussi contrôle du
-        // préchargement : si le hook cessait de voir le profil, elle rougirait ici.
+        // Coupling prerequisite. ⚠️ The two plugins are no longer eager and
+        // arrive through DIFFERENT paths: `websocket` via `boot()`'s
+        // `plugins.load`, `realtime-layer` via `init.js`'s `beforeBoot`
+        // preload (the `tourism` profile declares `data.realtime.enabled`).
+        // This assertion thus doubles as a preload check: if the hook stopped
+        // seeing the profile, it would redden here.
         const bothPresent = await page.evaluate(() => {
             const g = /** @type {any} */ (window).GeoLeaf;
             return !!g?.Ws && !!g?.RealtimeLayer;

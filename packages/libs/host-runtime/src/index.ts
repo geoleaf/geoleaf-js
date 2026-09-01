@@ -56,20 +56,23 @@ export { wireDrag } from "./ui/drag.js";
 export { wireTouchDrag } from "./ui/touch-drag.js";
 export { wireTooltips, showTooltip, hideTooltip } from "./ui/tooltip.js";
 export { positionMenuNear, type MenuPositionOptions } from "./ui/menu-position.js";
-// ── Décision W3 / A4″ — la plomberie UI appartient à host-runtime (Sprint 6, S6b) ────────
-// Arrivées de `field-renderer` le 06/08/2026. W3 se datait « au commit de fusion » ; ce
-// commit (`ddc08fae`) a eu lieu sans elle, et elle est sortie du Sprint 5 en B-144.
-// ⚠️ Le gain n'est PAS pondéral, et c'est mesuré : `host-runtime` est privé et bundlé chez
-// chaque consommateur, exactement comme `field-renderer` l'était — déplacer d'un inliné vers
-// un autre inliné ne fait gagner aucun octet. Le gain est d'ARCHITECTURE : `offline-ui` perd
-// sa dépendance à `field-renderer`, qui n'est plus inlinée que par `editor`.
+// ── The UI plumbing belongs to host-runtime ──────────────────────────────
+// Arrived from `field-renderer` on 06/08/2026. The decision dated itself "at
+// the merge commit"; that commit (`ddc08fae`) happened without it, and it
+// only arrived afterwards.
+// ⚠️ The gain is NOT weight, and that is measured: `host-runtime` is private
+// and bundled at each consumer, exactly as `field-renderer` was — moving from
+// one inlined package to another gains no byte. The gain is ARCHITECTURE:
+// `offline-ui` loses its dependency on `field-renderer`, now only inlined by `editor`.
 export { createFocusTrap, type FocusTrap } from "./ui/focus-trap.js";
 export { confirmDialog, type ConfirmDialogOptions } from "./ui/confirm-dialog.js";
+export { createModalShell, type ModalShell, type ModalShellOptions } from "./ui/modal-shell.js";
 export {
     jsonHeaders,
     bearer,
     fetchWithTimeout,
     parseJsonBody,
+    isSameOrigin,
     HttpFetchError,
     type JsonHeadersOptions,
     type HttpFetchFailureKind,

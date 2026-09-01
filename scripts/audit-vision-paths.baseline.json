@@ -1,0 +1,33 @@
+{
+    "_comment": "Chemins morts CONNUS dans les renvois de `_docs_projet/vision/`, figés par `audit-report-freshness.cjs --source vision --gate`. Clé = `<fichier citant>→<chemin cité>`. Le gate rougit sur une entrée ABSENTE d'ici (VISION-PATHS-01) ET sur une entrée d'ici qui n'existe plus (VISION-PATHS-02) : la baseline ne peut que RÉTRÉCIR. Régénérer via `--update-baseline` après avoir corrigé un lot.",
+    "generatedCount": 27,
+    "paths": [
+        "_docs_projet/vision/CDC_capacite-volets-reperes.md→CDC_plugin-feature-info.md",
+        "_docs_projet/vision/CDC_capacite-volets-reperes.md→CDC_technique.md",
+        "_docs_projet/vision/CDC_capacite-volets-reperes.md→DOC_TRACKER.md",
+        "_docs_projet/vision/CDC_capacite-volets-reperes.md→built-in/themes/theme-applier/core.ts",
+        "_docs_projet/vision/CDC_plugin-form-builder.md→dist/geoleaf-form-builder.plugin.js",
+        "_docs_projet/vision/CDC_plugin-form-builder.md→travail/roadmaps/roadmap_collecte-terrain-offline.md",
+        "_docs_projet/vision/CDC_plugin-timeline.md→packages/plugins/timeline/package.json",
+        "_docs_projet/vision/CDC_plugin-timeline.md→packages/plugins/timeline/rollup.config.mjs",
+        "_docs_projet/vision/CDC_plugin-timeline.md→packages/plugins/timeline/src/choropleth-manager.ts",
+        "_docs_projet/vision/CDC_plugin-timeline.md→packages/plugins/timeline/src/config.ts",
+        "_docs_projet/vision/CDC_plugin-timeline.md→packages/plugins/timeline/src/cross-fade-manager.ts",
+        "_docs_projet/vision/CDC_plugin-timeline.md→packages/plugins/timeline/src/entry.ts",
+        "_docs_projet/vision/CDC_plugin-timeline.md→packages/plugins/timeline/src/export/gif-exporter.ts",
+        "_docs_projet/vision/CDC_plugin-timeline.md→packages/plugins/timeline/src/export/video-exporter.ts",
+        "_docs_projet/vision/CDC_plugin-timeline.md→packages/plugins/timeline/src/snapshot-loader.ts",
+        "_docs_projet/vision/CDC_plugin-timeline.md→packages/plugins/timeline/src/timeline-controller.ts",
+        "_docs_projet/vision/CDC_plugin-timeline.md→packages/plugins/timeline/src/ui/timeline-control.css",
+        "_docs_projet/vision/CDC_plugin-timeline.md→packages/plugins/timeline/src/ui/timeline-control.ts",
+        "_docs_projet/vision/CDC_plugin-timeline.md→packages/plugins/timeline/tsconfig.json",
+        "_docs_projet/vision/CDC_plugin-timeline.md→roadmap_produit.md",
+        "_docs_projet/vision/CDC_plugin-timeline.md→travail/cdc/CDC_plugin-timeline.md",
+        "_docs_projet/vision/CDC_plugin-timeline.md→vision/specs/TIMELINE_FEATURE_SPEC_v1_0_2.md",
+        "_docs_projet/vision/roadmap_feature-volets.md→CDC_plugin-table.md",
+        "_docs_projet/vision/roadmap_feature-volets.md→CDC_technique.md",
+        "_docs_projet/vision/roadmap_feature-volets.md→map/index.ts",
+        "_docs_projet/vision/websocket-transports.md→CDC_plugin-websocket.md",
+        "_docs_projet/vision/websocket-transports.md→_docs_projet/travail/cdc/CDC_plugin-websocket.md"
+    ]
+}

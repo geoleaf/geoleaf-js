@@ -1,39 +1,40 @@
 #!/usr/bin/env node
 /**
- * Le lanceur des tests unitaires du monorepo — et le seul endroit qui crée un essaim de
- * processus vitest, donc le seul qui puisse le borner (B.48).
+ * The monorepo's unit-test launcher — and the only place that creates a swarm of
+ * vitest processes, hence the only one able to bound it.
  *
- * Usage :
- *   node scripts/run-tests.cjs              # `turbo run test`          (gate unitaire)
- *   node scripts/run-tests.cjs --coverage   # `turbo run test:coverage` (gate couverture)
- *   node scripts/run-tests.cjs --force      # ignore le cache turbo (mesures, contrôles)
- *   node scripts/run-tests.cjs --fanout=2   # essaimage forcé, pour re-mesurer le budget
+ * Usage:
+ *   node scripts/run-tests.cjs              # `turbo run test`          (unit gate)
+ *   node scripts/run-tests.cjs --coverage   # `turbo run test:coverage` (coverage gate)
+ *   node scripts/run-tests.cjs --force      # bypasses the turbo cache (measurements)
+ *   node scripts/run-tests.cjs --fanout=2   # forced swarm, to re-measure the budget
  *
- * ## Le défaut corrigé
+ * ## The fixed defect
  *
- * `npm test` était `turbo run test --filter=…` × 12, **sans `--concurrency`**, et aucune
- * config de package ne déclarait `maxWorkers` : chaque `vitest run` croyait posséder la
- * machine et ouvrait ~23 workers. Mesuré le 22/07/2026 sur l'hôte de référence (24 cœurs,
- * 15 Go) : **81 processus Node, 11,3 Go de RSS cumulée** pour ~11 Go disponibles. D'où un
- * `ci:local` rouge une fois sur deux, toujours en timeout et jamais en assertion.
+ * `npm test` was `turbo run test --filter=…` × 12, **without `--concurrency`**, and no
+ * package config declared `maxWorkers`: each `vitest run` believed it owned the
+ * machine and opened ~23 workers. Measured on 2026-07-22 on the reference host
+ * (24 cores, 15 GB): **81 Node processes, 11.3 GB cumulated RSS** for ~11 GB
+ * available. Hence a `ci:local` red one time out of two, always on timeout and never
+ * on an assertion.
  *
- * Ce script pose les DEUX facteurs du produit depuis une source unique :
- *   - `--concurrency=TEST_FANOUT` côté turbo ;
- *   - `GEOLEAF_TEST_FANOUT` dans l'environnement enfant, que `worker-budget.mjs` lit pour
- *     en déduire `maxWorkers` et `vmMemoryLimit` dans chacune des 18 configs.
+ * This script sets BOTH factors of the product from a single source:
+ *   - `--concurrency=TEST_FANOUT` on the turbo side;
+ *   - `GEOLEAF_TEST_FANOUT` in the child environment, which `worker-budget.mjs`
+ *     reads to derive `maxWorkers` and `vmMemoryLimit` in each of the 18 configs.
  *
- * ⚠️ La variable est posée ici, dans l'environnement du processus fils, et pas en préfixe
- * du script npm (`VAR=x turbo …`) : cette syntaxe est du shell POSIX et casse sous
- * `cmd.exe`, où tourne une partie du poste de développement (cf. la garde `NPM_SHELL` de
- * `ci-local.cjs`, reprise ici).
+ * ⚠️ The variable is set here, in the child process's environment, and not as an npm
+ * script prefix (`VAR=x turbo …`): that syntax is POSIX shell and breaks under
+ * `cmd.exe`, where part of the development happens (cf. `ci-local.cjs`'s `NPM_SHELL`
+ * guard, taken up here).
  *
- * ## La liste de paquets est dérivée, jamais écrite
+ * ## The package list is derived, never written
  *
- * Elle vient de `scripts/lib/test-scope.cjs`. La liste de 12 `--filter` qu'elle remplace
- * était écrite à la main et avait dérivé : elle sautait **5 paquets / 27 fichiers de
- * test**, non par arbitrage mais par accrétion — chaque paquet y avait été ajouté le jour
- * où il recevait des tests, et cinq ne l'avaient jamais été. C'est le mode d'échec que
- * CLAUDE.md décrit : une liste en dur ne casse pas, elle cesse silencieusement de matcher.
+ * It comes from `scripts/lib/test-scope.cjs`. The list of 12 `--filter` it replaces
+ * was hand-written and had drifted: it skipped **5 packages / 27 test files**, not by
+ * arbitration but by accretion — each package had been added the day it received
+ * tests, and five never were. It is the described failure mode: a hard list does not
+ * break, it silently stops matching.
  */
 
 "use strict";
@@ -46,18 +47,18 @@ const testScope = require("./lib/test-scope.cjs");
 const ROOT = path.resolve(__dirname, "..");
 
 /**
- * Nombre de tâches turbo — donc de processus `vitest` — menées de front.
+ * Number of turbo tasks — hence `vitest` processes — run abreast.
  *
- * `4`, pas un réglage de confort : c'est le premier facteur du produit qui a rendu
- * `ci:local` incroyable. La contre-épreuve du 21/07 donnait 34/34 à `--concurrency=2` ;
- * `4` est retenu parce que le second facteur est désormais borné lui aussi
- * (`maxWorkers = cœurs / fanout`), ce qui n'était pas le cas quand `2` a été mesuré.
- * Le gate de couverture portait déjà ce `4` en dur, dans DEUX fichiers — il n'existe plus
- * qu'ici.
+ * `4`, not a comfort setting: it is the first factor of the product that made
+ * `ci:local` unbelievable. The 07-21 counter-proof gave 34/34 at `--concurrency=2`;
+ * `4` is retained because the second factor is now bounded too
+ * (`maxWorkers = cores / fanout`), which was not the case when `2` was measured. The
+ * coverage gate already carried this `4` hard-coded, in TWO files — it now exists
+ * only here.
  *
- * Produit résultant, **mesuré sur 5 exécutions consécutives** : 27 à 31 processus et
- * 4,8 Go de RSS cumulée au pire, contre 81 processus et 11,3 Go avant — en testant 17
- * paquets au lieu de 12, pour une durée quasi inchangée (71 s → 74-84 s).
+ * Resulting product, **measured over 5 consecutive executions**: 27 to 31 processes
+ * and 4.8 GB cumulated RSS at worst, against 81 processes and 11.3 GB before — while
+ * testing 17 packages instead of 12, for a near-unchanged duration (71 s → 74-84 s).
  */
 const DEFAULT_FANOUT = 4;
 
@@ -66,10 +67,10 @@ const WITH_COVERAGE = args.includes("--coverage");
 const FORCE = args.includes("--force");
 
 /**
- * `--fanout=N` — pour MESURER une autre valeur, pas pour en vivre.
+ * `--fanout=N` — to MEASURE another value, not to live on it.
  *
- * Le chiffre retenu ci-dessus doit rester le fruit d'une mesure ; ce drapeau existe pour
- * qu'en refaire une ne demande pas d'éditer ce fichier, donc pour qu'on la refasse.
+ * The number retained above must stay the fruit of a measurement; this flag exists so
+ * redoing one does not require editing this file, hence so it gets redone.
  */
 const fanoutArg = args.find((a) => a.startsWith("--fanout="));
 const parsedFanout = fanoutArg ? Number(fanoutArg.slice("--fanout=".length)) : NaN;
@@ -81,21 +82,21 @@ if (fanoutArg && !(Number.isInteger(parsedFanout) && parsedFanout > 0)) {
 
 const TEST_FANOUT = fanoutArg ? parsedFanout : DEFAULT_FANOUT;
 
-// Sous Windows, `npx` est un .cmd que Node refuse de spawner sans shell (CVE-2024-27980).
+// Under Windows, `npx` is a .cmd Node refuses to spawn without a shell (CVE-2024-27980).
 const NPM_SHELL = process.platform === "win32";
 
 /**
- * L'invariant qui rend vraie la phrase « `ci:local` vert → push sûr ».
+ * The invariant that makes "`ci:local` green → safe push" true.
  *
- * Jette si le gate local testait moins que `ci.yml`. Vérifié à CHAQUE run, et pas dans une
- * gate séparée qu'on oublierait de câbler : le protocole de push de CLAUDE.md fait de
- * `ci:local` le seul critère avant de dépenser du quota GitHub Actions, et un périmètre
- * plus étroit en local viderait cette garantie sans rien afficher.
+ * Throws if the local gate tested less than `ci.yml`. Checked at EVERY run, not in a
+ * separate gate one would forget to wire: the push protocol makes `ci:local` the only
+ * criterion before spending GitHub Actions quota, and a narrower local perimeter
+ * would empty that guarantee while displaying nothing.
  */
 try {
     testScope.assertUnitScopeCoversRoot();
 } catch (err) {
-    // Message sans pile : il est écrit pour être lu et suivi, pas pour être débogué.
+    // Stackless message: written to be read and followed, not debugged.
     console.error(`\n${err.message}\n`);
     process.exit(1);
 }
@@ -111,22 +112,21 @@ if (packages.length === 0) {
 const task = WITH_COVERAGE ? "test:coverage" : "test";
 
 /**
- * Lance turbo avec les deux facteurs du budget posés ensemble.
+ * Launches turbo with both budget factors set together.
  *
- * ⚠️ `worker-budget.mjs` est en ESM et ce script en CJS : le nom de la variable
- * d'environnement est donc **importé**, jamais recopié. Une chaîne écrite en dur des deux
- * côtés dégraderait silencieusement le run vers `fanout = 1` — c'est-à-dire vers l'absence
- * de borne — le jour où l'une des deux serait renommée. Un `import()` coûte 2 ms et
- * supprime la classe entière.
+ * ⚠️ `worker-budget.mjs` is ESM and this script CJS: the environment variable's name
+ * is therefore **imported**, never copied. A string hard-written on both sides would
+ * silently degrade the run toward `fanout = 1` — i.e. toward no bound — the day
+ * either was renamed. An `import()` costs 2 ms and removes the entire class.
  *
- * @returns {Promise<number>} Code de sortie de turbo.
+ * @returns {Promise<number>} Turbo's exit code.
  */
 async function main() {
     const budget = await import("@geoleaf/build-config/vitest/worker-budget.mjs");
 
-    // Posée sur CE processus, puis héritée par turbo et par chaque `vitest run` : le budget
-    // affiché ci-dessous est donc calculé par le même code, et depuis la même valeur, que
-    // celui que les enfants appliqueront. Pas de description qui puisse mentir sur le run.
+    // Set on THIS process, then inherited by turbo and by each `vitest run`: the
+    // budget shown below is thus computed by the same code, and from the same value,
+    // as the one the children will apply. No description able to lie about the run.
     process.env[budget.FANOUT_ENV] = String(TEST_FANOUT);
     const described = budget.describeBudget();
 
@@ -136,8 +136,8 @@ async function main() {
             `${described.peakWorkers} sur ${described.cores} cœurs, ` +
             `plafond mémoire collectif ${described.peakMemoryMb} Mo`
     );
-    // Un budget qu'on ne peut pas tenir doit se dire. N'arrive qu'avec un `--fanout` forcé
-    // au-delà de la moitié des cœurs, où le plancher de 2 workers l'emporte sur l'invariant.
+    // A budget that cannot be held must be said. Only happens with a `--fanout`
+    // forced beyond half the cores, where the 2-worker floor wins over the invariant.
     if (described.oversubscribed) {
         console.log(
             `  ⚠️ SURSOUSCRIT : ${described.peakWorkers} workers pour ${described.cores} cœurs — ` +
@@ -145,8 +145,8 @@ async function main() {
                 `À réserver à une mesure ponctuelle.`
         );
     }
-    // Une gate qui rétrécit son périmètre doit le DIRE : c'est en se taisant que la liste
-    // précédente a perdu 5 paquets sans que personne ne le voie.
+    // A gate that shrinks its perimeter must SAY so: staying silent is how the
+    // previous list lost 5 packages with nobody seeing it.
     for (const [name, reason] of parked) console.log(`  ⏸ au parc : ${name} — ${reason}`);
 
     const result = spawnSync(

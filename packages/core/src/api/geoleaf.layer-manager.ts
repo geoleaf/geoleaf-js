@@ -15,10 +15,10 @@
  * @example
  * ```ts
  * GeoLeaf.LayerManager.init({ map, config: profileConfig });
- * // ⚠️ Cet exemple appelait `toggleLayer(...)`, qui **n'a jamais existé** sur cette façade
- * // (corrigé le 27/07/2026, défaut trouvé par `typecheck-docs-examples`). La surface
- * // publique est `init()` et `refresh()` ; la visibilité d'une couche se pilote par
- * // `GeoLeaf.Legend.setLayerVisibility(...)` ou l'événement `geoleaf:layer:toggle`.
+ * // ⚠️ This example used to call `toggleLayer(...)`, which **never existed** on this facade
+ * // (fixed on 27/07/2026, defect found by `typecheck-docs-examples`). The public surface
+ * // is `init()` and `refresh()`; layer visibility is driven through
+ * // `GeoLeaf.Legend.setLayerVisibility(...)` or the `geoleaf:layer:toggle` event.
  * GeoLeaf.LayerManager.refresh();
  * ```
  */

@@ -1,16 +1,18 @@
 // @ts-check
-// VÉRIFICATION NAVIGATEUR — accessibilité calculée et focus réel. Scénarios B.1 et B.6 de
-// `_docs_projet/travail/rapports/rapport_table-verification-navigateur.md` (backlog R.7b).
+// BROWSER VERIFICATION — computed accessibility and real focus. Scenarios B.1
+// and B.6 of the internal browser-verification table.
 //
-// Ces deux scénarios sont le CŒUR de ce que happy-dom ne peut pas décider :
-//   - B.1 : le **nom accessible calculé** d'une région ne se lit pas dans un `getAttribute` —
-//           il faut l'arbre d'accessibilité, que seul un vrai navigateur construit. On l'atteint
-//           ici via le moteur de rôles de Playwright (`getByRole`), pas via le DOM brut.
-//   - B.6 : le filtre `offsetParent !== null` du piège de focus est INTESTABLE sous happy-dom —
-//           `offsetParent` y vaut `undefined`, donc le filtre garde tout et l'assertion
-//           passerait quoi qu'il arrive. `focus-trap.ts:40-45` le documente noir sur blanc
-//           (« It cannot be covered by a test […] Blocked on the browser verification pass »).
-//           C'est précisément cette passe.
+// These two scenarios are the CORE of what happy-dom cannot decide:
+//   - B.1: a region's **computed accessible name** cannot be read in a
+//          `getAttribute` — it takes the accessibility tree, which only a
+//          real browser builds. Reached here through Playwright's role engine
+//          (`getByRole`), not the raw DOM.
+//   - B.6: the focus trap's `offsetParent !== null` filter is UNTESTABLE
+//          under happy-dom — `offsetParent` is `undefined` there, so the
+//          filter keeps everything and the assertion would pass no matter
+//          what. `focus-trap.ts` documents it in black and white
+//          ("It cannot be covered by a test […] Blocked on the browser
+//          verification pass"). This is precisely that pass.
 
 import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
@@ -26,30 +28,32 @@ test.describe("VN — accessibilité calculée et focus réel (B.1, B.6)", () =>
     });
 
     // ── B.1 🔴 ────────────────────────────────────────────────────────────────────────
-    // Contre-épreuve B.38 : le panneau de filtres sans `modules.filter.title` annonçait
-    // « Filter » (aria-label) alors qu'il affichait « Filtrer » (WCAG 2.5.3, Label in Name).
-    // `render.ts:49-63` fait désormais venir l'`aria-label` de la région ET le `<h2>` visible
-    // de la MÊME source (`_title(config)`).
+    // Counter-proof: the filter panel without `modules.filter.title` announced
+    // "Filter" (aria-label) while displaying « Filtrer » (WCAG 2.5.3, Label in
+    // Name). `render.ts` now derives the region's `aria-label` AND the
+    // visible `<h2>` from the SAME source (`_title(config)`).
     //
-    // ⚠️ Le test lit le titre VISIBLE puis demande la région PAR CE NOM à l'arbre
-    // d'accessibilité (`getByRole`). Si les deux divergeaient — le défaut B.38 — la région ne
-    // serait pas trouvée sous le nom visible. C'est la seule façon de le prouver : `getByRole`
-    // calcule le nom accessible (aria-label l'emporte), ce qu'un `getAttribute` ne fait pas.
+    // ⚠️ The test reads the VISIBLE title then asks the accessibility tree for
+    // the region BY THAT NAME (`getByRole`). If the two diverged — the very
+    // defect — the region would not be found under the visible name. The only
+    // way to prove it: `getByRole` computes the accessible name (aria-label
+    // wins), which a `getAttribute` does not.
     test("B.1 — le nom accessible du panneau de filtres égale son titre visible", async ({
         page,
     }) => {
-        // Le panneau est `visibility: hidden` au boot ; l'ouvrir le fait entrer dans l'arbre.
+        // The panel is `visibility: hidden` at boot; opening it brings it into the tree.
         await page.getByRole("button", { name: "Filtres" }).first().click();
 
         const panel = page.locator(".gl-filter-panel.gl-is-open");
         await expect(panel).toBeVisible({ timeout: 10000 });
 
-        // Le titre tel qu'un voyant le lit.
+        // The title as a sighted user reads it.
         const visibleTitle = (await panel.locator(".gl-filter-panel__title").textContent())?.trim();
         expect(visibleTitle, "titre visible introuvable").toBeTruthy();
 
-        // La région telle qu'un lecteur d'écran la nomme. Si l'aria-label divergeait du titre
-        // (« Filter » ≠ « Filtrer »), ce `getByRole` ne trouverait rien.
+        // The region as a screen reader names it. If the aria-label diverged
+        // from the title ("Filter" ≠ « Filtrer »), this `getByRole` would find
+        // nothing.
         await expect(
             page.getByRole("region", { name: visibleTitle }),
             `le nom accessible de la région ≠ le titre visible "${visibleTitle}" (WCAG 2.5.3)`
@@ -57,15 +61,17 @@ test.describe("VN — accessibilité calculée et focus réel (B.1, B.6)", () =>
     });
 
     // ── B.6 🔴 ────────────────────────────────────────────────────────────────────────
-    // Contre-épreuve S2 : le sélecteur du piège de focus n'écoutait que `button` — un lien
-    // (crédit photo, source) était donc SAUTÉ, et `Tab` sortait de la modale. Le sélecteur
-    // inclut désormais `[href]` (`focus-trap.ts:30-31`). Second volet, invérifiable ailleurs :
-    // le filtre `offsetParent !== null` ne garde que les focusables réellement VISIBLES, ce
-    // qui n'a de sens que dans un moteur de rendu.
+    // Counter-proof: the focus trap's selector only listened for `button` — a
+    // link (photo credit, source) was thus SKIPPED, and `Tab` left the modal.
+    // The selector now includes `[href]` (`focus-trap.ts`). Second half,
+    // unverifiable anywhere else: the `offsetParent !== null` filter keeps
+    // only the focusables really VISIBLE, which only makes sense in a
+    // rendering engine.
     //
-    // On ouvre une galerie forgée (2 images) via l'API publique, on ouvre la lightbox, on y
-    // injecte un lien, et on prouve que `Tab` depuis le lien (dernier focusable) revient au
-    // bouton de fermeture (premier) — le focus reste piégé.
+    // A forged gallery (2 images) is opened through the public API, the
+    // lightbox opened, a link injected into it, and it is proven that `Tab`
+    // from the link (last focusable) comes back to the close button (first) —
+    // the focus stays trapped.
     test("B.6 — Tab dans la lightbox avec un lien reste piégé dans la modale", async ({ page }) => {
         await page.evaluate(() => {
             window.GeoLeaf.FeatureInfo.openSidePanel(
@@ -85,8 +91,8 @@ test.describe("VN — accessibilité calculée et focus réel (B.1, B.6)", () =>
         const lightbox = page.locator(".gl-poi-lightbox-global");
         await expect(lightbox).toBeVisible({ timeout: 5000 });
 
-        // Un lien légitime dans la modale (crédit / source) — exactement le cas que l'ancien
-        // sélecteur `button` seul laissait échapper.
+        // A legitimate link in the modal (credit / source) — exactly the case
+        // the old `button`-only selector let escape.
         await page.evaluate(() => {
             const box = document.querySelector(".gl-poi-lightbox-global");
             const a = document.createElement("a");
@@ -96,7 +102,7 @@ test.describe("VN — accessibilité calculée et focus réel (B.1, B.6)", () =>
             box.appendChild(a);
         });
 
-        // Focus sur le lien (dernier focusable), puis Tab → doit revenir dans la modale.
+        // Focus the link (last focusable), then Tab → must come back into the modal.
         await page.locator("a.gl-vn-credit").focus();
         await page.keyboard.press("Tab");
 
@@ -108,13 +114,13 @@ test.describe("VN — accessibilité calculée et focus réel (B.1, B.6)", () =>
             "Tab depuis le lien s'est échappé de la lightbox (sélecteur tronqué ?)"
         ).toBe(true);
 
-        // Et le point de bouclage précis : Tab depuis le dernier focusable revient au premier
-        // (le bouton de fermeture), pas ailleurs.
+        // And the precise wrap point: Tab from the last focusable returns to
+        // the first (the close button), not elsewhere.
         const focusedClass = await page.evaluate(() => document.activeElement?.className ?? "");
         expect(focusedClass).toContain("gl-poi-lightbox__close");
 
-        // Symétrie : Shift+Tab depuis le bouton de fermeture (premier) part vers le lien
-        // (dernier). Le cycle est fermé aux DEUX bouts, pas seulement à un.
+        // Symmetry: Shift+Tab from the close button (first) goes to the link
+        // (last). The cycle is closed at BOTH ends, not just one.
         await page.locator(".gl-poi-lightbox__close").focus();
         await page.keyboard.press("Shift+Tab");
         const wrappedToLast = await page.evaluate(

@@ -39,9 +39,9 @@ import { walkNamespace, IMPORT_SURFACE_MIN } from "./lib/namespace-surface.mjs";
  * (`packages/core/__tests__/bundle-boot-contract.test.js`). Asserted as a SUPERSET here:
  * `deploy-core/init.js` legitimately mounts plugin namespaces on top before boot.
  */
-// IMPORT_SURFACE_MIN et la marche vivent dans `scripts/lib/namespace-surface.mjs`
-// (API S4.1) — avec les deux autres tiers, et avec la note sur `requireMap` qui
-// racontait la dérive que cette centralisation rend désormais impossible.
+// IMPORT_SURFACE_MIN and the walk live in `scripts/lib/namespace-surface.mjs`
+// — with the two other tiers, and with the `requireMap` note that recounted the
+// drift this centralization now makes impossible.
 
 /** `serviceWorkers: 'block'` makes register() resolve undefined → this log is a TEST ARTEFACT. */
 const KNOWN_NOISE = [/\[SWRegister\] Registration failed/i];
@@ -78,20 +78,21 @@ const run = async () => {
     // Capture the PRE-BOOT surface: runs on every new document, before page scripts.
     // `GeoLeaf.boot()` is called by init.js at the end, so a microtask hop after the bundle
     // evaluates still lands before boot completes.
-    // La marche est transportée par sa SOURCE, pas par une référence : `addInitScript` sérialise
-    // la fonction, elle ne peut donc rien capturer de ce module. C'est ce qui impose à
-    // `walkNamespace` d'être auto-suffisante (assertion dédiée côté tests).
+    // The walk travels by its SOURCE, not a reference: `addInitScript` serializes
+    // the function, so it can capture nothing from this module. That is what forces
+    // `walkNamespace` to be self-sufficient (dedicated assertion on the test side).
     await page.addInitScript((walkSrc) => {
-        // 🖐 B-88 — DÉROGATION MOTIVÉE À `no-new-func`, et le motif est mesurable.
-        // `walkSrc` est la SOURCE de `walkNamespace`, sérialisée depuis ce dépôt à l'appel
-        // ci-dessus — jamais une entrée. `addInitScript` sérialise la fonction et ne
-        // transporte aucune fermeture : la reconstruire dans la page est le seul moyen de
-        // l'y exécuter. C'est le mécanisme que le commentaire au-dessus décrit, pas un
-        // contournement. La règle reste `error` partout ailleurs, `scripts/` compris.
+        // 🖐 MOTIVATED DEROGATION TO `no-new-func`, and the rationale is
+        // measurable. `walkSrc` is `walkNamespace`'s SOURCE, serialized from this
+        // repo at the call above — never an input. `addInitScript` serializes the
+        // function and carries no closure: rebuilding it in the page is the only way
+        // to execute it there. It is the mechanism the comment above describes, not
+        // a bypass. The rule stays `error` everywhere else, `scripts/` included.
         //
-        // ⚠️ La directive doit rester la DERNIÈRE ligne avant le code : `-next-line` porte
-        // sur la ligne suivante, et un commentaire intercalé la rend inopérante — elle sort
-        // alors « directive inutilisée », ce qui est indiscernable d'une dérogation périmée.
+        // ⚠️ The directive must stay the LAST line before the code: `-next-line`
+        // bears on the next line, and an interleaved comment makes it inoperative —
+        // it then comes out "unused directive", indistinguishable from a stale
+        // derogation.
         // eslint-disable-next-line no-new-func
         const walk = new Function("return (" + walkSrc + ")")();
         window.__preBootSurface = null;
@@ -111,7 +112,7 @@ const run = async () => {
     // `map.loaded()` is NOT enough: it flips true once the base style is ready, BEFORE GeoLeaf
     // has loaded the profile → "0 layers". A `gl-*` layer is NOT enough either, twice over:
     //   - the basemap is laid down AFTER the profile layers → false "basemap gone";
-    //   - `gl-sentinel-poi` (maplibre-layer-registry.ts:40) is ITSELF a `gl-*` layer, so a naive
+    //   - `gl-sentinel-poi` (maplibre-layer-registry.ts) is ITSELF a `gl-*` layer, so a naive
     //     `some(id.startsWith('gl-'))` goes GREEN ON AN EMPTY MAP.
     // Correct: profile layers (sentinel excluded) AND the basemap source.
     let painted = true;
@@ -167,7 +168,7 @@ const run = async () => {
             canvases: document.querySelectorAll("canvas").length,
             marks: performance.getEntriesByType("mark").map((m) => m.name),
             // PROBE PITFALL (cost one false "regression"): the loader is NOT left faded at
-            // opacity 0. `init-reveal.ts:69-84` adds `.gl-loader--fade`, then sets
+            // opacity 0. `init-reveal.ts` adds `.gl-loader--fade`, then sets
             // `display = "none"` on `transitionend` (with a timeout fallback). On a
             // display:none element `getComputedStyle().opacity` does NOT report "0", so an
             // opacity check fails on a perfectly revealed app. Assert the END STATE.
@@ -204,7 +205,7 @@ const run = async () => {
         `getLabel('table.toolbar.button') = ${JSON.stringify(state.tableLabel)}`
     );
 
-    // 4 — init.js:33 guards the WHOLE plugin IIFE
+    // 4 — init.js guards the WHOLE plugin IIFE
     check("garde-fou init.js:33 (plugins/registry/I18n)", state.guard === true);
 
     // 5 — the map is actually PAINTED (what no other tier sees)
@@ -229,10 +230,10 @@ const run = async () => {
 
     // 7bis — the mapCreate marks EXIST and bracket map creation.
     //
-    // ⚠️ Added at R.42 (backlog résiduel S5) after a mutation showed assertion 7 could not
-    // see them. `archives/rapport_extraction-core-map-module.md` §2.4 states that these two
-    // marks are "invisibles au golden-master vitest — seul le probe navigateur les asserte", and
-    // makes that the reason the extraction requires a browser run. That was FALSE: check 7
+    // ⚠️ Added after a mutation showed assertion 7 could not see them. An archived
+    // extraction report states that these two marks are "invisible to the vitest
+    // golden master — only the browser probe asserts them", and makes that the
+    // reason the extraction requires a browser run. That was FALSE: check 7
     // only ever named the `boot:loadConfig` / `boot:registry` marks, so deleting
     // `geoleaf:init:mapCreate:end` outright left the probe at 10/10 (it merely printed
     // "17 marks" instead of 18). Nothing anywhere asserted them — the plan's whole

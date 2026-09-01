@@ -57,7 +57,7 @@ GeoLeaf-JS/
 
 ⚠️ **Cet arbre s'arrête volontairement au premier niveau, et ne nomme AUCUN plugin.** Il en listait
 deux — dont un sous son ancien nom `plugin-addpoi`, et un autre dont l'indentation le plaçait
-directement sous `packages/` alors qu'il vit sous `packages/plugins/` (B-33). Un arbre écrit à la
+directement sous `packages/` alors qu'il vit sous `packages/plugins/`. Un arbre écrit à la
 main qui descend au fichier ne suit pas les sprints de structure : celui-ci ne descend plus assez
 bas pour se périmer.
 
@@ -141,13 +141,16 @@ npm run clean        # Remove dist/
 
 ### Bundle budget
 
-| Metric                        | Target / status                            | Current (approx.) |
-| ----------------------------- | ------------------------------------------ | ----------------- |
-| Boot payload (entry + static) | warn > 270 KB gz, **fails build > 300 KB** | ~178 KB gz        |
-| `geoleaf.esm.js` alone (gz)   | ~0.5 KB shim — informational, not a budget | ~0.5 KB           |
+| Metric                        | Target / status                            | Measure        |
+| ----------------------------- | ------------------------------------------ | -------------- |
+| Boot payload (entry + static) | warn > 270 KB gz, **fails build > 300 KB** | `npm run size` |
+| `geoleaf.esm.js` alone        | informational, not a budget                | `npm run size` |
+| Granular entry (`dist/esm/`)  | the re-export shim — informational         | `npm run size` |
 
-The **boot payload** — the entry plus the transitive closure of its static imports — is the hard budget (`check-bundle-size.cjs`). Since `kernel-exports`, `geoleaf.esm.js` itself is a ~0.5 KB shim, so it is not budgeted alone; dynamic `import()` chunks load on demand and are excluded. MapLibre GL JS is an external peer dependency — out of bundle.
-Evaluate bundle impact with `npm run size` before adding dependencies (also run automatically by `npm run build:deploy`).
+The **boot payload** — the entry plus the transitive closure of its static imports — is the hard budget (`check-bundle-size.cjs`). Since `kernel-exports`, much of the entry's content lives in those chunks, so the entry is not budgeted alone; dynamic `import()` chunks load on demand and are excluded. MapLibre GL JS is an external peer dependency — out of bundle.
+
+> ⚠️ **The third column is a command, not a value — deliberately.** It used to carry copied sizes, and it also called the flat entry "a ~0.5 KB shim". That label belongs to the _granular_ entry (`dist/esm/`); on the flat entry it was wrong by a factor of 150, and no gate could see it. `CONTRIBUTING.md` states the rule.
+> Evaluate bundle impact with `npm run size` before adding dependencies (also run automatically by `npm run build:deploy`).
 
 ---
 
@@ -190,7 +193,7 @@ provider V8 ; l'ancien « ≥ 75 % » était un chiffre istanbul d'avant `tsx`.
 
 ⚠️ **La couverture réelle du cœur n'est pas connue à ce jour.** Les chiffres qui
 circulaient ici (82,5 % lignes / 80,3 % statements / ~85,7 % branches) proviennent d'une
-mesure dont l'attribution est fausse à 49 % — voir `roadmap_couverture-tests.md` (archivée le 24/07/2026). Ils sont
+mesure dont l'attribution est fausse à 49 % — mesuré et archivé le 24/07/2026. Ils sont
 retirés plutôt que remplacés : les rechiffrer aujourd'hui reviendrait à substituer un
 chiffre faux à un autre. Le sprint 6 de cette roadmap les rétablira sur une mesure vraie.
 

@@ -4,7 +4,7 @@
  *
  * Fails (exit 1) if a config key declared in a schema (or a known code-only key) for an
  * ACTIVE inventory family has no row in `inventaire_config_parametres.md`. Realises the
- * point-6 garde-fou of roadmap_config-contract.md: "every code/schema key is inventoried".
+ * garde-fou: "every code/schema key is inventoried".
  *
  * Checks BOTH directions (S7):
  *   - schema → inventory  (missing rows)      → blocking
@@ -49,9 +49,9 @@ const FAMILIES = {
             { file: "geoleaf-config.schema.json", excludeTop: ["modules"] },
             {
                 file: "profile.schema.json",
-                // performance → B2 (features) ; modules → B7.
-                // clusteringConfig / poiConfig retirés du schéma (R.45, backlog résiduel S5) :
-                // plus de clé à exclure, l'exclusion serait un vestige silencieux.
+                // performance → B2 (features); modules → B7.
+                // clusteringConfig / poiConfig removed from the schema: no key left to
+                // exclude, the exclusion would be a silent vestige.
                 excludeTop: ["performance", "modules"],
             },
         ],
@@ -64,8 +64,8 @@ const FAMILIES = {
         // Every features.json leaf key is schema-declared: mapOptions lives only here.
         // `performance` is still vestigially declared in profile.schema.json (hence its
         // excludeTop entry in B1); `clusteringConfig` and `poiConfig` no longer are —
-        // both blocks were removed (ANO-033 closed by R.45, backlog résiduel S5).
-        // Geocoding extracted to modules.geocoding (B7) — extraction roadmap geocoding S4.
+        // both blocks were removed since.
+        // Geocoding extracted to modules.geocoding (B7).
         // No code-only keys.
         codeOnly: [],
     },
@@ -73,10 +73,10 @@ const FAMILIES = {
         label: "B3 — ui (config/core/ui.json)",
         sectionHeading: "## B3 —",
         schemas: [{ file: "ui.schema.json", excludeTop: [] }],
-        // ANO-034/036 RÉSOLUS (Archi S3) — showSearch/interactiveShapes ajoutés à ui.schema.json
-        // (désormais feuilles de schéma). ANO-035 (showShareButton) migré → modules.permalink.share.enabled (S13 F7)
-        // (B7 ; capacité in-core, extraction roadmap share S12). ANO-037 (ui.scaleType) : doublon
-        // `ui/scale-control` SUPPRIMÉ. Plus aucune clé code-only en B3.
+        // RESOLVED — showSearch/interactiveShapes added to ui.schema.json (now schema
+        // leaves). showShareButton migrated → modules.permalink.share.enabled (B7;
+        // in-core capability). ui.scaleType: the `ui/scale-control` duplicate was
+        // DELETED. No code-only key left in B3.
         codeOnly: [],
     },
     B4: {
@@ -294,17 +294,18 @@ const FAMILIES = {
         // categoryMapping/subcategoryMapping/gbif.* — `mapping` opaque additionalProperties = 1 leaf).
         schemas: [{ file: "mapping.schema.json", excludeTop: [] }],
         explicitLeaves: [
-            // offline (in-core capability, S14 Phase B) + pwa (in-core capability S14 Phase A ;
-            // `app/init.ts` cité ici jusqu'à B.30 n'existe plus — le gate PWA est
-            // `capabilities/pwa/lifecycle.ts`, appelé par `shared.module` #7).
-            // ⚠ B.30 — `modules.pwa` a DEUX consommateurs, et ces feuilles restent listées ici
-            // (elles doivent être inventoriées) mais ne sont pas toutes runtime :
-            //   runtime + build : `name`, `short_name` (bannière d'installation + manifest)
-            //   build SEUL      : `description`, `theme_color`, `background_color`
-            //                     (`scripts/build-deploy.cjs:678-680` → manifest.json déployé ;
-            //                      0 lecture dans packages/core/src, où elles ne sont que des
-            //                      membres de type). Le split est documenté à la déclaration
-            //                      (`pwa-capability.ts`) et figé par
+            // offline (in-core capability) + pwa (in-core capability; the
+            // `app/init.ts` once cited here no longer exists — the PWA gate is
+            // `capabilities/pwa/lifecycle.ts`, called by `shared.module` #7).
+            // ⚠ `modules.pwa` has TWO consumers, and these leaves stay listed here
+            // (they must be inventoried) but are not all runtime:
+            //   runtime + build : `name`, `short_name` (install banner + manifest)
+            //   build ONLY      : `description`, `theme_color`, `background_color`
+            //                     (`scripts/build-deploy.cjs` → deployed
+            //                      manifest.json; 0 reads in packages/core/src, where
+            //                      they are only type members). The split is
+            //                      documented at the declaration (`pwa-capability.ts`)
+            //                      and pinned by
             //                      `__tests__/capabilities/pwa/manifest-only-keys.test.js`.
             "modules.pwa.enabled",
             "modules.pwa.name",
@@ -314,22 +315,24 @@ const FAMILIES = {
             "modules.pwa.background_color",
             "modules.pwa.installPrompt.enabled",
             "modules.pwa.offlineDetector.enabled",
-            // ⚠️ AJOUTÉE à la clôture de S3c. La tâche 3.9 a posé la clé au `configSchema`,
-            // sa ligne d'inventaire ET son lecteur (`data-origins.ts`, relu par le Service
-            // Worker) — mais pas cette feuille-ci. La gate signalait donc la ligne
-            // d'inventaire comme PÉRIMÉE, c'est-à-dire qu'elle était **aveugle** à une clé
-            // bien vivante : le sens inventaire→schéma ne pouvait pas la voir, et le sens
-            // schéma→inventaire non plus. Une famille code-sourcée ne se déclare qu'ici.
+            // ⚠️ ADDED at closure time. The work laid the key in the `configSchema`,
+            // its inventory row AND its reader (`data-origins.ts`, re-read by the
+            // Service Worker) — but not this leaf. The gate thus flagged the
+            // inventory row as STALE, i.e. it was **blind** to a very alive key: the
+            // inventory→schema direction could not see it, and the schema→inventory
+            // one neither. A code-sourced family only declares itself here.
             "modules.offline.dataOrigins",
             "modules.offline.cache.enableProfileCache",
             "modules.offline.cache.enableTileCache",
-            // maxCacheBytes: lue cache-manager.ts:243 (_enforceCacheQuota), défaut 250 Mo
-            // posé cache-manager.ts:108 — B.34 (clé lue mais non déclarée au configSchema).
+            // maxCacheBytes: read at cache-manager.ts (_enforceCacheQuota),
+            // 250 MB default set at cache-manager.ts — a key read yet undeclared
+            // in the configSchema.
             "modules.offline.cache.maxCacheBytes",
-            // cluster (capabilities/cluster config.ts getClusterConfig — capacité in-core,
-            // clustering natif MapLibre, opt-out ; ex-poiConfig.cluster*). La famille entière
-            // manquait au gate ET à l'inventaire (découvert en traitant B.34, dont seule
-            // clusterStrategies était listée). Défauts radius/max-zoom = constants.ts.
+            // cluster (capabilities/cluster config.ts getClusterConfig — in-core
+            // capability, native MapLibre clustering, opt-out; ex-poiConfig.cluster*).
+            // The whole family was missing from the gate AND the inventory
+            // (discovered while settling the read-but-undeclared keys, of which only
+            // clusterStrategies was listed). radius/max-zoom defaults = constants.ts.
             "modules.cluster.enabled",
             "modules.cluster.clustering",
             "modules.cluster.clusterRadius",
@@ -358,6 +361,59 @@ const FAMILIES = {
             "modules.table.minHeight",
             "modules.table.maxHeight",
             "modules.table.resizable",
+            // position-share (plugin-position-share config.ts getPluginConfig + DEFAULTS ;
+            // showButton = slot profileKey in entry.ts, read by the core registry).
+            // ⚠️ `enabled` AND `mode` both default closed, and the redundancy is deliberate:
+            // what travels here is a person's location, so no half-filled profile can start an
+            // emission. `endpoint` and `channel` have no default — each is required by exactly
+            // one transport, which is a cross-field rule no schema expresses (validateConfig).
+            "modules.position-share.enabled",
+            "modules.position-share.mode",
+            "modules.position-share.transport",
+            "modules.position-share.endpoint",
+            "modules.position-share.channel",
+            "modules.position-share.intervalMs",
+            "modules.position-share.minDistanceM",
+            "modules.position-share.showButton",
+            "modules.position-share.receive.enabled",
+            "modules.position-share.receive.layerId",
+            // routing (plugin-routing config.ts getPluginConfig + DEFAULTS ;
+            // showButton = slot profileKey in entry.ts, read by the core registry).
+            // ⚠️ `labelField` has a constraint NO schema expresses: the property it
+            // names must ALSO appear in the profile's `action` widget `payloadFields`.
+            // Without both, the event arrives without the property and the
+            // destination has no name — a profile valid on both sides that renders a
+            // mute panel.
+            // ⚠️ An empty `endpoint` is NOT a missing default: it selects the
+            // provider's default endpoint. A non-`https://` value is REFUSED and
+            // never downgraded.
+            "modules.routing.enabled",
+            "modules.routing.showButton",
+            "modules.routing.provider",
+            "modules.routing.endpoint",
+            "modules.routing.timeoutMs",
+            "modules.routing.maxWaypoints",
+            "modules.routing.layerId",
+            "modules.routing.labelField",
+
+            // ⚠️ `modules.navigation` had NO entry here before 2026-08-21, while the
+            // plugin already read `enabled` and `showButton`: the gate was green
+            // because nobody had told it. A gate whose corpus is a hand-kept list
+            // goes green on everything omitted from the list.
+            "modules.navigation.enabled",
+            "modules.navigation.showButton",
+            "modules.navigation.arrivalRadiusMetres",
+            "modules.navigation.offRouteThresholdMetres",
+            "modules.navigation.confirmExit",
+            "modules.navigation.confirmReturn",
+            "modules.navigation.retryAfterFixes",
+            "modules.navigation.maxRetryFixes",
+            "modules.navigation.voiceEnabled",
+            "modules.navigation.voiceAnnounceAtMetres",
+            "modules.navigation.keepScreenAwake",
+            "modules.navigation.followZoom",
+            "modules.navigation.followPitch",
+            "modules.navigation.cameraMaxTransitionMs",
             // taxonomy (capabilities/taxonomy — the POINT SYMBOL: icon, iconColor, marker disc,
             // pill badges). `taxonomies` and `layers` are opaque user-data subtrees (named
             // taxonomies / per-layer bindings), 1 leaf each like `mapping` — so `marker` and
@@ -380,51 +436,51 @@ const FAMILIES = {
             "modules.taxonomy.render.sidepanel.showIconCategory",
             "modules.taxonomy.render.sidepanel.showIconSubcategory",
             "modules.taxonomy.render.sidepanel.colorBadges",
-            // feature-info (capabilities/feature-info/config.ts getFeatureInfoConfig — extraction
-            // roadmap capacités S2 ; le nom "plugin-feature-info" et l'accesseur "getPluginConfig"
-            // étaient deux vestiges de l'ancien plugin, renommés en B.29).
+            // feature-info (capabilities/feature-info/config.ts getFeatureInfoConfig;
+            // the "plugin-feature-info" name and the "getPluginConfig" accessor were
+            // two vestiges of the former plugin, renamed since).
             // Per-layer bindings live under capabilities.feature-info in {id}_config.json (opaque, B5).
             "modules.feature-info.enabled",
-            // labels (capabilities/labels config.ts getLabelsConfig — extraction roadmap capacités S4).
+            // labels (capabilities/labels config.ts getLabelsConfig).
             // Capability gate only; per-layer label styling lives in style files (B6, label.*).
             "modules.labels.enabled",
-            // filter (capabilities/filter config.ts getFilterConfig — extraction roadmap capacités S5).
+            // filter (capabilities/filter config.ts getFilterConfig).
             // In-core generic attribute filter; `fields` is an opaque descriptor array (1 leaf, like
-            // taxonomies/layers). Migrated from ui.json searchConfig + ui.showFilterPanel (F4).
-            // B.22 — `searchPlaceholder` RETIRÉ (schéma, type, 9 profils) : 0 site de lecture,
-            // le panneau S5 n'a pas de champ de recherche global ; le placeholder rendu est
-            // celui du descripteur `kind:"text"` (`fields[].placeholder`, panel/render.ts:147).
+            // taxonomies/layers). Migrated from ui.json searchConfig + ui.showFilterPanel.
+            // `searchPlaceholder` REMOVED (schema, type, 9 profiles): 0 read sites,
+            // the panel has no global search field; the rendered placeholder is the
+            // `kind:"text"` descriptor's (`fields[].placeholder`, panel/render.ts).
             "modules.filter.enabled",
             "modules.filter.title",
             "modules.filter.fields",
             "modules.filter.actions.applyLabel",
             "modules.filter.actions.resetLabel",
-            // toast-renderer (capabilities/toast-renderer config.ts getToastRendererConfig — extraction
-            // roadmap capacités S7). Capability gate only; the renderer's layout defaults (position,
+            // toast-renderer (capabilities/toast-renderer config.ts
+            // getToastRendererConfig). Capability gate only; the renderer's layout defaults (position,
             // maxVisible, animations) are code-side, not profile-configurable.
             "modules.toast-renderer.enabled",
             // theme-selector (capabilities/theme-selector — extraction roadmap theme-selector S8/F3).
             // Capability gate only (opt-out); migrated from ui.showThemeSelector. Gated at boot via
             // CapabilityRegistry (full + lite) and late by the selector's _createUI on the merged config.
             "modules.theme-selector.enabled",
-            // branding (capabilities/branding config.ts getBrandingConfig — extraction roadmap
-            // contrôles carte). App-global (base geoleaf.config.json), opt-in; migrated from the
+            // branding (capabilities/branding config.ts getBrandingConfig).
+            // App-global (base geoleaf.config.json), opt-in; migrated from the
             // former root `branding` key. Gate + overlay text + position.
             "modules.branding.enabled",
             "modules.branding.text",
             "modules.branding.position",
-            // coordinates (capabilities/coordinates config.ts getCoordinatesConfig — extraction
-            // roadmap contrôles carte). Profile-level, opt-out; migrated from `ui.showCoordinates`.
+            // coordinates (capabilities/coordinates config.ts getCoordinatesConfig).
+            // Profile-level, opt-out; migrated from `ui.showCoordinates`.
             // Default-on covers profiles that don't set it (no config/plugins/coordinates.json).
             "modules.coordinates.enabled",
             "modules.coordinates.position",
             "modules.coordinates.decimals",
-            // theme-toggle (capabilities/theme-toggle config.ts getThemeToggleConfig — extraction
-            // roadmap contrôles carte). Profile-level, opt-in (default OFF, button gated late);
+            // theme-toggle (capabilities/theme-toggle config.ts getThemeToggleConfig).
+            // Profile-level, opt-in (default OFF, button gated late);
             // migrated from `ui.showThemeToggle` (code-only flag, never in a profile/schema).
             "modules.theme-toggle.enabled",
             "modules.theme-toggle.position",
-            // scale (capabilities/scale config.ts getScaleConfig — extraction roadmap contrôles carte).
+            // scale (capabilities/scale config.ts getScaleConfig).
             // Profile-level, opt-out; migrated from `ui.showScale` + `scaleConfig`. Defaults reproduce
             // the uniform real-profile scaleConfig (all on) → renders by default, no per-profile file.
             "modules.scale.enabled",
@@ -433,48 +489,50 @@ const FAMILIES = {
             "modules.scale.scaleNumericEditable",
             "modules.scale.scaleNivel",
             "modules.scale.position",
-            // geolocation (capabilities/geolocation config.ts getGeolocationConfig — extraction
-            // roadmap contrôles carte). Profile-level, opt-out; migrated from `ui.showGeolocation`
+            // geolocation (capabilities/geolocation config.ts getGeolocationConfig).
+            // Profile-level, opt-out; migrated from `ui.showGeolocation`
             // (default-on covers profiles, no config/plugins/geolocation.json). GPS state seam =
             // GeoLeaf.Geolocation.getState().
             "modules.geolocation.enabled",
             "modules.geolocation.position",
             // legend (capabilities/legend config.ts getLegendConfig — extraction roadmap legend S10/F2).
             // Migrated from ui.showLegend + legendConfig. Gated at boot via CapabilityRegistry (opt-out,
-            // full + lite) and late by LegendLifecycle on the merged config; config réveillée
-            // (title/position/collapsedByDefault désormais actifs — décision option B).
+            // full + lite) and late by LegendLifecycle on the merged config; config
+            // awakened (title/position/collapsedByDefault now active — option B
+            // decision).
             "modules.legend.enabled",
             "modules.legend.title",
             "modules.legend.position",
             "modules.legend.collapsedByDefault",
             "modules.route.enabled",
             "modules.route.layers",
-            // permalink (capabilities/permalink config.ts getPermalinkConfig + permalink-url `mode` ;
-            // capacité in-core S13, opt-out, gate seul migrée de ui.permalink — cluster-model sans
-            // module, pilotée par 2 hooks boot).
+            // permalink (capabilities/permalink config.ts getPermalinkConfig +
+            // permalink-url `mode`; in-core capability, opt-out, gate alone migrated
+            // from ui.permalink — cluster-model without a module, driven by 2 boot
+            // hooks).
             "modules.permalink.enabled",
             "modules.permalink.mode",
-            // fields: lue à 3 sites de prod (permalink-sync.ts:77, permalink-url.ts:146
-            // et :257), défaut = DEFAULT_PERMALINK_FIELDS (constants.ts) — B.34.
+            // fields: read at 3 prod sites (permalink-sync.ts, permalink-url.ts
+            // and :257), default = DEFAULT_PERMALINK_FIELDS (constants.ts).
             "modules.permalink.fields",
-            // share = sous-fonction de permalink (S13 F7 : modules.permalink.share, migrée de
-            // modules.share / ui.showShareButton). Gate opt-out lu au boot + par le bouton desktop
-            // + le pill mobile sur la config mergée.
+            // share = a permalink sub-feature (modules.permalink.share, migrated
+            // from modules.share / ui.showShareButton). Opt-out gate read at boot +
+            // by the desktop button + the mobile pill on the merged config.
             "modules.permalink.share.enabled",
             // editor (plugin-editor config.ts getEditorConfig + EditorConfig/EDITOR_CONFIG_DEFAULTS)
             "modules.editor.enabled",
             "modules.editor.showButton",
-            // 5.1-e — bouton d'export de session. Sous `modules.editor.*` parce que les deux
-            // drapeaux `ui.showPoi*` d'addpoi étaient inatteignables (schéma strict, non
-            // déclarés) : leurs boutons ne pouvaient être ni masqués ni affichés.
+            // Session export button. Under `modules.editor.*` because addpoi's two
+            // `ui.showPoi*` flags were unreachable (strict schema, undeclared): their
+            // buttons could neither be hidden nor shown.
             "modules.editor.showExport",
             "modules.editor.menuPosition",
             "modules.editor.enabledTools",
             "modules.editor.snapPx",
-            // 5.1-a — garde-fou de doublon à la saisie, en MÈTRES (à ne pas confondre avec
-            // snapPx, qui est un confort de tracé en pixels). Absorbé d'addpoi, où il vivait
-            // en `layer.snapTolerance` — clé qu'aucun schéma ne déclare, sur un schéma
-            // `additionalProperties: false` : elle était donc INATTEIGNABLE.
+            // Input-time duplicate guard, in METRES (not to be confused with snapPx,
+            // a drawing comfort in pixels). Absorbed from addpoi, where it lived as
+            // `layer.snapTolerance` — a key no schema declares, on an
+            // `additionalProperties: false` schema: it was therefore UNREACHABLE.
             "modules.editor.poiSnapMeters",
             "modules.editor.vertexHandleSize",
             "modules.editor.midpointHandleSize",
@@ -540,7 +598,7 @@ const FAMILIES = {
             "modules.measure.exportFileName",
         ],
         // mapping.json keys read by code but absent from mapping.schema.json: none (the only
-        // consumed key, `mapping`, IS a schema leaf — normalization.ts:192).
+        // consumed key, `mapping`, IS a schema leaf — normalization.ts).
         codeOnly: [],
     },
 };

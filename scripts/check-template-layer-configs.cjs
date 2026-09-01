@@ -1,25 +1,28 @@
 #!/usr/bin/env node
 /**
- * TPL-CFG — une couche produite par `layerTemplates` ne doit PAS porter de `_config.json`.
+ * TPL-CFG — a layer produced by `layerTemplates` must NOT carry a `_config.json`.
  *
- * 🛑 POURQUOI CETTE GATE EXISTE. `expandLayerTemplates`
- * (`kernel/config/profile-loader-helpers.ts`) construit un `inlineConfig` pour chaque instance
- * de template, et son TSDoc est explicite : « **skips the fetch entirely** ». Un `_config.json`
- * présent à côté d'une instance n'est donc **jamais lu** — ni par le loader, ni par le bundle
- * déployé (`profile-bundle.json` ne porte que les couches de `layers[]`).
+ * 🛑 WHY THIS GATE EXISTS. `expandLayerTemplates`
+ * (`kernel/config/profile-loader-helpers.ts`) builds an `inlineConfig` for each
+ * template instance, and its TSDoc is explicit: "**skips the fetch entirely**".
+ * A `_config.json` present beside an instance is thus **never read** — neither
+ * by the loader, nor by the deployed bundle (`profile-bundle.json` carries only
+ * the `layers[]` layers).
  *
- * Mesuré au 06/08/2026, tâche 7.1b : `tourism` en portait **24**, soit **16 104 octets** de
- * configuration fantôme qui recopiaient mot pour mot les cinq blocs de leur template
- * (`zIndex`, `geometry`, `styles`, `table`, `clustering`). Aucune gate ne les voyait, et
- * `validate:profiles` les validait consciencieusement — ce qui les faisait passer pour vivants.
+ * Measured on 2026-08-06: `tourism` carried **24** of them, i.e. **16,104
+ * bytes** of ghost configuration copying word for word their template's five
+ * blocks (`zIndex`, `geometry`, `styles`, `table`, `clustering`). No gate saw
+ * them, and `validate:profiles` validated them conscientiously — which made them
+ * pass for alive.
  *
- * ⚠️ **Le danger n'est pas l'octet, c'est la DIVERGENCE.** Un fichier mort qui ressemble à un
- * fichier vivant se fait éditer : on y corrige un `zIndex`, rien ne bouge à l'écran, et on
- * cherche le défaut ailleurs. C'est ce que cette gate empêche de revenir.
+ * ⚠️ **The danger is not the byte, it is DIVERGENCE.** A dead file that looks
+ * like a live one gets edited: a `zIndex` is fixed there, nothing moves on
+ * screen, and the defect is hunted elsewhere. That is what this gate keeps from
+ * returning.
  *
- * Ce que la gate ne fait PAS : elle ne juge ni le contenu du template, ni celui des configs
- * directes. Elle vérifie une seule chose — qu'aucun fichier ne prétende configurer une couche
- * dont la configuration vient d'ailleurs.
+ * What the gate does NOT do: it judges neither the template's content, nor the
+ * direct configs'. It verifies one thing — that no file claims to configure a
+ * layer whose configuration comes from elsewhere.
  */
 
 "use strict";
@@ -31,7 +34,7 @@ const ROOT = path.resolve(__dirname, "..");
 const PROFILES = path.join(ROOT, "profiles");
 
 /**
- * Les instances de `layerTemplates`, par profil.
+ * The `layerTemplates` instances, per profile.
  *
  * @returns {{ profile: string, id: string }[]}
  */
@@ -60,10 +63,10 @@ function templateInstances() {
 function main() {
     const instances = templateInstances();
 
-    // 🛑 Assertion anti-gate-vide. Sans sujet, cette gate sortirait verte en n'ayant rien
-    // scanné — exactement la classe que `probe-gate-visibility.cjs` surveille. Si plus aucun
-    // profil n'utilise `layerTemplates`, c'est la gate qu'il faut retirer, pas son silence
-    // qu'il faut accepter.
+    // 🛑 Anti-empty-gate assertion. Without a subject, this gate would go green
+    // having scanned nothing — exactly the class `probe-gate-visibility.cjs`
+    // watches. If no profile uses `layerTemplates` anymore, it is the gate that
+    // must be removed, not its silence that must be accepted.
     if (instances.length === 0) {
         console.error(
             "\n❌ [TPL-CFG] aucune instance de `layerTemplates` trouvée — la gate n'a RIEN scanné.\n" +

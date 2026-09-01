@@ -12,7 +12,7 @@
  * that only exist inside this repository.
  *
  * ⚠ This paragraph said « **the same nine capabilities** » as `minimal`, which embarks **six**.
- * The two lists differ on purpose — see §Ce que cette entrée embarque below — and the count is
+ * The two lists differ on purpose — see §What this entry embarks below — and the count is
  * no longer written here: it is the `caps=` of the generated region, read by the guard.
  *
  * ## Why this file exists (S6)
@@ -32,49 +32,56 @@
  * does not list, and (c) keeps the side-effect modules that `package.json#sideEffects` promises
  * to keep.
  *
- * ## Ce que cette entrée embarque, et pourquoi PAS la même chose que `minimal`
+ * ## What this entry embarks, and why NOT the same thing as `minimal`
  *
- * 🛑 Cette section a dit « **Keep this list in lock-step with `examples/minimal/entry.ts`** —
- * the two entries embark the same capabilities on purpose » jusqu'au 07/08/2026, et la consigne
- * était **périmée d'un jour**. Mesuré : elle a été écrite le **14/07/2026** (S6 presets), et
- * l'exclusion délibérée de `cluster`, `toast-renderer` et `geolocation` dans `minimal` a été
- * écrite le **15/07/2026** (S7), avec son motif. Personne n'a retiré la première.
+ * 🛑 This section said "**Keep this list in lock-step with
+ * `examples/minimal/entry.ts`** — the two entries embark the same capabilities
+ * on purpose" until 2026-08-07, and the instruction was **stale by one day**.
+ * Measured: it was written on **2026-07-14**, and the deliberate exclusion of
+ * `cluster`, `toast-renderer` and `geolocation` in `minimal` was written on
+ * **2026-07-15**, with its motive. Nobody removed the first.
  *
- * Les deux entrées ne prouvent **pas la même chose**, donc elles n'embarquent pas la même liste :
+ * The two entries do **not prove the same thing**, so they do not embark the
+ * same list:
  *
- *   - `minimal` **exclut** `cluster`, `toast-renderer` et `geolocation` — ces trois-là
- *     étaient épinglées par un import statique depuis du code de kernel eager, et leur absence
- *     du bundle est ce qui prouve que le service locator les a bien déliées. C'est le versant
- *     **exclusion**, mesuré par `size:example` sur le graphe de SOURCES.
- *   - `consumer` les **inclut** — parce que ce qu'elle éprouve est la résolution des
- *     sous-chemins npm et le `sideEffects` du **paquet publié**, ce qui demande de traverser
- *     le plus de chemins possible, pas le moins.
+ *   - `minimal` **excludes** `cluster`, `toast-renderer` and `geolocation` —
+ *     those three were pinned by a static import from eager kernel code, and
+ *     their absence from the bundle is what proves the service locator really
+ *     unbound them. That is the **exclusion** side, measured by `size:example`
+ *     on the SOURCE graph.
+ *   - `consumer` **includes** them — because what it proves is npm subpath
+ *     resolution and the **published package's** `sideEffects`, which asks to
+ *     traverse as many paths as possible, not as few.
  *
- * ⚠️ Ces deux puces ont porté un compte — « `minimal` (6) » et « `consumer` (9) » — jusqu'au
- * 08/08/2026, alors que l'en-tête affirme trente lignes plus haut que le compte n'est plus écrit
- * ici mais dérivé du `caps=` de la région générée. Le fichier se contredisait lui-même. B-43 :
- * les deux nombres sont RETIRÉS, pas corrigés — le `caps=` du marqueur est le registre.
+ * ⚠️ These two bullets carried a count — "`minimal` (6)" and "`consumer` (9)" —
+ * until 2026-08-08, while the header asserts thirty lines higher that the count
+ * is no longer written here but derived from the generated region's `caps=`.
+ * The file contradicted itself. So: both numbers are REMOVED, not corrected —
+ * the marker's `caps=` is the register.
  *
- * ⚠️ Ce que 8.3 croyait être une **dérive** (6 contre 9) est donc une divergence **voulue et
- * documentée des deux côtés**. Ce qui manquait n'était pas l'égalité des listes — c'était que
- * chaque entrée soit vraie par construction. C'est ce que la région générée ci-dessous apporte.
+ * ⚠️ What was once believed a **drift** (6 versus 9) is thus a divergence
+ * **wanted and documented on both sides**. What was missing was not list
+ * equality — it was each entry being true by construction. That is what the
+ * generated region below brings.
  *
- * ## La région bornée
+ * ## The bounded region
  *
- * Tout ce qui suit `@geoleaf:gen:start` est **généré** par `scripts/gen-entry.cjs` depuis la
- * liste `caps=` du marqueur : noms de const, ordre de chargement (celui de `FULL.capabilities`),
- * chemins d'import et façades ré-exportables en dérivent. Ne pas l'éditer à la main — le garde
- * `__tests__/guards/generated-entries.guard.test.ts` régénère et compare.
+ * Everything after `@geoleaf:gen:start` is **generated** by
+ * `scripts/gen-entry.cjs` from the marker's `caps=` list: const names, load
+ * order (that of `FULL.capabilities`), import paths and re-exportable facades
+ * derive from it. Do not edit it by hand — the
+ * `__tests__/guards/generated-entries.guard.test.ts` guard regenerates and
+ * compares.
  */
 "use strict";
 
 // @geoleaf:gen:start caps=taxonomy,feature-info,cluster,toast-renderer,legend,coordinates,scale,geolocation,permalink mode=npm id=consumer
 
-// ── 1. Kernel side-effects — les deux que l'entrée livrée importe aussi ──────
+// ── 1. Kernel side-effects — the two the shipped entry imports too ───────────
 import "@geoleaf/core/globals";
 import "@geoleaf/core/helpers";
 
-// ── 2. Le manifeste — les capacités que CE bundle embarque ───────────────────
+// ── 2. The manifest — the capabilities THIS bundle embarks ───────────────────
 import type { PresetManifest } from "@geoleaf/core/contracts/preset.contract.js";
 import { COORDINATES_INSTALLER } from "@geoleaf/core/capabilities/coordinates/install.js";
 import { SCALE_INSTALLER } from "@geoleaf/core/capabilities/scale/install.js";
@@ -101,7 +108,7 @@ const MANIFEST: PresetManifest = {
     ],
 };
 
-// ── 3. Installer le boot, lié à ce manifeste ─────────────────────────────────
+// ── 3. Install the boot, bound to this manifest ──────────────────────────────
 import { installBoot } from "@geoleaf/core/boot";
 
 installBoot(MANIFEST);

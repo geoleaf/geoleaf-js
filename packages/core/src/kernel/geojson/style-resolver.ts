@@ -9,13 +9,22 @@
  * GeoLeaf GeoJSON Module - Style Resolver
  *
  * Engine-agnostic evaluation of conditional style rules (`styleRules[].when`).
- * Exposed to the Themes module through the `GeoLeaf._StyleRules` global.
+ *
+ * ⚠️ **This module is OUTSIDE every shipped graph, and that is a measured execution
+ * verdict, not a guess.** The granular build emits no `dist/esm/kernel/geojson/
+ * style-resolver.js` (no importer survives tree-shaking), the instrumented CDN bundle's
+ * real-boot coverage carries 25 kernel/geojson files and this one is not among them, and
+ * the `_StyleRules` / `_GeoJSONStyleResolver` namespace keys this header used to cite were
+ * removed with zero readers. What keeps the SOURCE alive is its test suites and its
+ * published type surface: `GeoJSONStyleResolver` is in the API golden master, shipped in
+ * `dist/types/`, and a published symbol does not get removed outside a MAJOR version —
+ * removal is recorded as due at the next one, module and tests in a single gesture.
+ * Until then: no new caller should reach for this — the real paint pipeline runs through
+ * `adapters/maplibre/maplibre-style-converter.ts`, which the adapter imports directly.
  *
  * Scope note (S6): this module used to also build Leaflet-era layer options
  * (`buildLayerOptions`) and MapLibre paint specs (`buildMapLibreStyleSpec`).
- * Both were purged — they had no production caller, and the real paint pipeline
- * runs through `adapters/maplibre/maplibre-style-converter.ts`, which the
- * adapter imports directly.
+ * Both were purged — they had no production caller.
  */
 
 import { GeoJSONShared } from "./shared.js";
@@ -36,7 +45,7 @@ function _checkStyleRule(
     STYLE_OPERATORS: Record<string, (a: unknown, b: unknown) => boolean>,
     Log: { warn?: (a: string, b?: unknown) => void }
 ): Record<string, unknown> | null {
-    const when = rule.when as StyleRuleWhen;
+    const when = rule.when;
     if (when.all && Array.isArray(when.all)) {
         const allMet = when.all.every((condition) =>
             GeoJSONStyleResolver.evaluateCondition(feature, condition, STYLE_OPERATORS, Log)
@@ -78,10 +87,7 @@ const GeoJSONStyleResolver = {
     ): boolean {
         const { field, operator, value } = condition;
         if (!field || !operator) return false;
-        const fieldValue = GeoJSONStyleResolver.getNestedValue(
-            feature.properties ?? {},
-            field
-        ) as unknown;
+        const fieldValue = GeoJSONStyleResolver.getNestedValue(feature.properties ?? {}, field);
         if (fieldValue === null || fieldValue === undefined) return false;
         const compareFn = STYLE_OPERATORS[operator];
         if (!compareFn) {
@@ -115,14 +121,14 @@ const GeoJSONStyleResolver = {
     },
 };
 
-// API publique S4.3 — le SECOND écrivain de `GeoLeaf._StyleRules` vivait ici, et il était le
-// plus discutable des deux : exécuté AU NIVEAU RACINE du module, donc au simple import, avant
-// la séquence de boot B1→B11 — et il posait `globalThis.GeoLeaf = {}` s'il ne trouvait rien.
-// Un module feuille du kernel CRÉAIT donc le namespace public, en course avec la chaîne
-// `globals/` qui en est la propriétaire déclarée. La clé n'avait aucun lecteur de production
-// (seuls des tests et un spec e2e la lisaient) ; les deux écritures sont parties ensemble.
+// Public-API review — the SECOND writer of `GeoLeaf._StyleRules` lived here, and it
+// was the more questionable of the two: executed at module ROOT LEVEL, hence at mere
+// import, before the B1→B11 boot sequence — and it set `globalThis.GeoLeaf = {}`
+// when it found nothing. A kernel leaf module thus CREATED the public namespace,
+// racing the `globals/` chain that is its declared owner. The key had no production
+// reader (only tests and an e2e spec read it); both writes left together.
 //
-// `GeoJSONStyleResolver.evaluateStyleRules` et `.getNestedValue` restent atteignables en ESM,
-// et c'est par là que le core les consomme déjà.
+// `GeoJSONStyleResolver.evaluateStyleRules` and `.getNestedValue` stay reachable in
+// ESM, and that is how the core already consumes them.
 
 export { GeoJSONStyleResolver };

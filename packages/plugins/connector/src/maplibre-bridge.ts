@@ -15,6 +15,7 @@
  * https://geoleaf.dev
  */
 
+import { isSameOrigin } from "@geoleaf/host-runtime";
 import type { ConnectorConfig } from "./config.js";
 import { TokenStore } from "./token-store.js";
 
@@ -56,7 +57,9 @@ function _install(m: unknown, config: ConnectorConfig): boolean {
     if (!_isMaplibreMap(m)) return false;
 
     m.setTransformRequest((url: string) => {
-        if (!url.startsWith(config.baseUrl)) return undefined;
+        // Same origin guard shared with the fetch/worker paths — NOT startsWith,
+        // which leaked the bearer to a suffix host (bug no. 4). See isSameOrigin.
+        if (!isSameOrigin(url, config.baseUrl)) return undefined;
 
         const token = TokenStore.getTokenSync(config.baseUrl);
 

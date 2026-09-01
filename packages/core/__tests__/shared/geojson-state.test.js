@@ -1,6 +1,5 @@
 /**
  * @fileoverview Unit tests for shared/geojson-state — re-export of GeoJSONShared
- * @phase Sprint 3 — Lot C
  */
 
 const mockGeoJSONShared = vi.hoisted(() => ({

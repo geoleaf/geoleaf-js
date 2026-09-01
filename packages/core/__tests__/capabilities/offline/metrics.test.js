@@ -92,7 +92,7 @@ describe("CacheMetrics", () => {
         }
 
         test("returns results with contentLength when Content-Length header present", async () => {
-            global.fetch = jest
+            global.fetch = vi
                 .fn()
                 .mockResolvedValue(makeMockHeadResponse({ headers: { "Content-Length": "2048" } }));
             const results = await CacheMetrics._fetchHeadContentLengths([
@@ -112,7 +112,7 @@ describe("CacheMetrics", () => {
         });
 
         test("sets contentLength to null for non-finite Content-Length (e.g. 'NaN')", async () => {
-            global.fetch = jest
+            global.fetch = vi
                 .fn()
                 .mockResolvedValue(
                     makeMockHeadResponse({ headers: { "Content-Length": "not-a-number" } })
@@ -169,11 +169,12 @@ describe("CacheMetrics", () => {
 
     // ----- getStorageQuota() -----
 
-    // ⚠️ LE BLOC `getStorageQuota` EST RETIRÉ (clôture S3c) — la méthode l'est aussi. C'était
-    // l'un de TROIS enveloppements de `navigator.storage.estimate()` dans la même capacité, et
-    // l'un des DEUX sans appelant de production. 🛑 Les trois rendaient des vocabulaires de clés
-    // DIFFÉRENTS (`used` contre `usage`) : se tromper d'exemplaire faisait lire `undefined` en
-    // silence. Le survivant, `CacheManager.getStorageQuota()`, garde ses tests.
+    // ⚠️ THE `getStorageQuota` BLOCK IS REMOVED — so is the method. It was one
+    // of THREE wrappings of `navigator.storage.estimate()` in the same
+    // capability, and one of the TWO without a production caller. 🛑 The three
+    // returned DIFFERENT key vocabularies (`used` vs `usage`): picking the
+    // wrong copy read `undefined` silently. The survivor,
+    // `CacheManager.getStorageQuota()`, keeps its tests.
 
     describe("estimateProfileSize()", () => {
         test("returns estimation with byType and resourceCounts for empty resources", async () => {

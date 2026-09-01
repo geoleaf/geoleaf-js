@@ -96,8 +96,7 @@ function _readStoredLang(): string | null {
  */
 export function initI18n(): void {
     const urlLang = new URLSearchParams(window.location.search).get("lang")?.toLowerCase() ?? null;
-    const configCode =
-        (ConfigGet.get?.<string>("ui.language", "fr") as string | undefined)?.toLowerCase() ?? "fr";
+    const configCode = ConfigGet.get?.<string>("ui.language", "fr")?.toLowerCase() ?? "fr";
     // Order: ?lang= → localStorage → ui.language → fr.
     // The URL parameter stays on TOP on purpose: a shared link must render the same for
     // its recipient as for its author. Were the stored preference to win, the same URL
@@ -112,7 +111,7 @@ export function initI18n(): void {
 }
 
 /**
- * Publishes the resolved language to `<html lang>` (S6.3).
+ * Publishes the resolved language to `<html lang>`.
  *
  * The deployed application shipped `<html lang="en">` hard-coded while serving six languages,
  * so a screen reader announced French content with English phonetics on every profile — and

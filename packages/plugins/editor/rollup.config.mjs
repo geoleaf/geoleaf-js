@@ -17,8 +17,8 @@ export default {
         dir: "dist",
         format: "es",
         sourcemap: true,
-        // 2.10 bis — les sources voyagent déjà dans `src/` (files[]) :
-        // les embarquer une SECONDE fois dans la carte est un doublon pur.
+        // The sources already travel in `src/` (files[]): embedding them a
+        // SECOND time in the map is a pure duplicate.
         sourcemapExcludeSources: true,
         entryFileNames: "geoleaf-editor.plugin.js",
         chunkFileNames: "geoleaf-editor.[name]-[hash].js",
@@ -29,16 +29,18 @@ export default {
     },
     // Core and maplibre-gl loaded separately by the host page.
     // terra-draw and terra-draw-maplibre-gl-adapter are bundled (lazy chunk).
-    // 🛑 B-161 — L'ANCRE `$` EST LOAD-BEARING, ET SON ABSENCE A FAIT ROUGIR ESM-PURITY.
-    // Sans elle, TOUT sous-chemin `@geoleaf/core/...` restait external, donc écrit tel quel
-    // dans le bundle : `import "@geoleaf/core/kernel/config/layer-geometry.js"` — un
-    // spécificateur NU, irrésoluble par un navigateur. Le défaut ne s'était jamais vu parce
-    // que l'unique sous-chemin importé jusqu'ici (`contracts/sync.contract.js`) est un
-    // `import type`, effacé à la compilation.
-    // Ancré, seul le paquet racine reste external (le hôte le charge) et les sous-chemins
-    // sont BUNDLÉS — c'est déjà la forme d'`offline-ui` (`/^@geoleaf\/core$/`), et son motif
-    // vaut ici : ce sont des fonctions PURES et sans import, en embarquer une copie est sans
-    // conséquence. Les singletons, eux, ne passent pas par un import mais par `globalThis`.
+    // 🛑 THE `$` ANCHOR IS LOAD-BEARING, AND ITS ABSENCE TURNED ESM-PURITY RED.
+    // Without it, EVERY `@geoleaf/core/...` subpath stayed external, hence
+    // written as-is into the bundle:
+    // `import "@geoleaf/core/kernel/config/layer-geometry.js"` — a BARE
+    // specifier, unresolvable by a browser. The defect had never shown because
+    // the only subpath imported so far (`contracts/sync.contract.js`) is an
+    // `import type`, erased at compilation.
+    // Anchored, only the root package stays external (the host loads it) and
+    // subpaths are BUNDLED — already `offline-ui`'s form (`/^@geoleaf\/core$/`),
+    // and its motive holds here: these are PURE, import-free functions,
+    // embedding a copy is inconsequential. Singletons do not go through an
+    // import but through `globalThis`.
     external: [/^@geoleaf\/core$/, "maplibre-gl"],
     plugins: pluginStack({
         resolve: { preferBuiltins: false },

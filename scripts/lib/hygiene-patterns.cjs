@@ -1,30 +1,31 @@
 /**
- * hygiene-patterns.cjs — les formes de chemin que `verify-repo-hygiene.cjs` refuse.
+ * hygiene-patterns.cjs — the path shapes `verify-repo-hygiene.cjs` refuses.
  *
- * Une définition, deux lecteurs : le gate (checks 1, 2 et 3) et `probe-gate-visibility.cjs`,
- * qui les évalue sur des témoins à réponse connue. Même patron que `lib/generated-artifacts.cjs`
- * posé au T4.1, et pour la même raison : `verify-repo-hygiene.cjs` s'exécute à l'import — un
- * lecteur tiers ne peut pas le `require()` pour interroger ses tables.
+ * One definition, two readers: the gate (checks 1, 2 and 3) and
+ * `probe-gate-visibility.cjs`, which evaluates them on known-answer witnesses. Same
+ * pattern as `lib/generated-artifacts.cjs`, and for the same reason:
+ * `verify-repo-hygiene.cjs` executes at import — a third-party reader cannot `require()`
+ * it to query its tables.
  *
- * ⚠️ La sonde ne peut PAS prouver ces motifs en plantant une fixture : leur corpus est
- * `getTrackedFiles()`, et la sonde plante délibérément sans indexer (c'est ce qui la rend
- * inoffensive). Sans lecteur tiers, un motif élargi ici serait couvert par la fixture `.cjs`
- * du check 1b et son élargissement resterait NON PROUVÉ — exactement le trou que T3.7 a dû
- * corriger après coup pour la moitié `.mjs`.
+ * ⚠️ The probe CANNOT prove these patterns by planting a fixture: their corpus is
+ * `getTrackedFiles()`, and the probe deliberately plants without indexing (which is what
+ * makes it harmless). With no third-party reader, a pattern widened here would be covered
+ * by check 1b's `.cjs` fixture and its widening would stay UNPROVEN — exactly the hole
+ * that had to be patched after the fact for the `.mjs` half.
  *
- * ⚠️ Les motifs sont testés contre un CHEMIN relatif complet (`scripts/foo.cjs`), jamais
- * contre un basename. D'où l'ancre `\b` sur chacun : sans elle, `fix[-_]` prend
- * `prefix-loader.js`, `hotfix-runner.js` et `postfix-util.js`. Voir T5.7.
+ * ⚠️ Patterns are tested against a full relative PATH (`scripts/foo.cjs`), never a
+ * basename. Hence the `\b` anchor on each: without it, `fix[-_]` takes
+ * `prefix-loader.js`, `hotfix-runner.js` and `postfix-util.js`.
  */
 
 "use strict";
 
 /**
- * Jetables : scripts d'un seul usage qui n'auraient jamais dû entrer dans l'index.
+ * Throwaways: single-use scripts that never should have entered the index.
  *
- * Le signal est porté par le PRÉFIXE, jamais par l'extension. Élargir aux `.js` en général
- * prendrait des centaines de fichiers légitimes ; c'est `fix`/`tmp`/`scratch` qui dit
- * « écrit pour une fois ».
+ * The signal is carried by the PREFIX, never by the extension. Widening to `.js` in
+ * general would take hundreds of legitimate files; it is `fix`/`tmp`/`scratch` that says
+ * "written for one use".
  */
 const THROWAWAY_PATTERNS = [
     { re: /\btmp_/i, label: "tmp_ prefix" },
@@ -39,22 +40,22 @@ const THROWAWAY_PATTERNS = [
     { re: /\bserve-test\.(cjs|py)$/i, label: "serve-test one-shot" },
 ];
 
-/** Sorties d'outils qui n'ont rien à faire dans l'index. */
+/** Tool outputs that have no business in the index. */
 const ARTIFACT_PATTERNS = [
     { re: /coverage[-_]output\.txt$/i, label: "coverage output log" },
     { re: /_cov_run\.txt$/i, label: "vitest coverage run log" },
-    // T6.2 — le répertoire unique des rapports de run (playwright results + report,
-    // coverage vitest racine, coverage-e2e). Ancré : il vit à exactement un endroit.
+    // The single directory for run reports (playwright results + report, root vitest
+    // coverage, coverage-e2e). Anchored: it lives at exactly one place.
     { re: /^artifacts\//i, label: "répertoire d'artefacts de run" },
-    // Gardés bien que ces répertoires aient déménagé sous `artifacts/` : ils gardent
-    // contre une RECRÉATION à la racine par un outil mal configuré.
+    // Kept even though these directories moved under `artifacts/`: they guard against a
+    // RE-CREATION at the root by a misconfigured tool.
     { re: /^coverage-e2e\//i, label: "e2e coverage HTML dir (ancien emplacement)" },
     { re: /^playwright-report\//i, label: "playwright HTML report (ancien emplacement)" },
     { re: /^test-results\//i, label: "playwright results dir (ancien emplacement)" },
     { re: /^\.nyc_output\//i, label: "nyc output dir" },
 ];
 
-/** Bytecode Python — le dépôt n'a pas de `.py`, la règle garde qu'il n'en entre pas. */
+/** Python bytecode — the repo has no `.py`; the rule guards that none enters. */
 const BYTECODE_PATTERNS = [
     { re: /__pycache__\//i, label: "Python bytecode (__pycache__)" },
     { re: /\.pyc$/i, label: "Python .pyc file" },
@@ -62,11 +63,11 @@ const BYTECODE_PATTERNS = [
 ];
 
 /**
- * Témoins à réponse connue, lus par `probe-gate-visibility.cjs`.
+ * Known-answer witnesses, read by `probe-gate-visibility.cjs`.
  *
- * Chaque ligne est un choix de conception qui a coûté une mesure. Les quatre derniers
- * sont la raison d'être de l'ancre `\b` : ce sont des noms ORDINAIRES, et le motif que
- * l'énoncé du T5.7 proposait (sans ancre) les prenait tous les trois.
+ * Each line is a design choice that cost a measurement. The last four are the `\b`
+ * anchor's reason to exist: these are ORDINARY names, and the originally proposed pattern
+ * (unanchored) took all three.
  *
  * @type {{path: string, throwaway: boolean, why: string}[]}
  */
@@ -101,14 +102,14 @@ const THROWAWAY_WITNESSES = [
 ];
 
 /**
- * Témoins des motifs d'ARTEFACT, lus par `probe-gate-visibility.cjs` — T6.2.
+ * ARTIFACT-pattern witnesses, read by `probe-gate-visibility.cjs`.
  *
- * Même exigence que `THROWAWAY_WITNESSES` : un motif ajouté sans témoin est NON PROUVÉ.
- * C'est le trou exact que T5.7 a dû reboucher après coup pour la moitié `.mjs`.
+ * Same requirement as `THROWAWAY_WITNESSES`: a pattern added without a witness is
+ * UNPROVEN. That is the exact hole that had to be re-plugged after the fact for the
+ * `.mjs` half.
  *
- * Les deux derniers sont la raison d'être de l'ancre `^` : `artifacts` et
- * `test-results` sont des noms de répertoire ORDINAIRES, parfaitement légitimes à
- * l'intérieur d'un paquet ou d'une arborescence de sources.
+ * The last two are the `^` anchor's reason to exist: `artifacts` and `test-results` are
+ * ORDINARY directory names, perfectly legitimate inside a package or a source tree.
  *
  * @type {{path: string, artifact: boolean, why: string}[]}
  */

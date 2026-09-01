@@ -14,8 +14,9 @@
  * exist on npm. The duplication is therefore NOT an oversight: it is what the packaging
  * boundary costs, and merging the two would trade a duplicate for a broken install.
  *
- * ⚠️ The two must move together. If the timeout semantics change here, `host-runtime`'s
- * `fetchWithTimeout` is the sibling to check — and vice versa. Compteur **C4**, motif écrit.
+ * ⚠️ The two must move together. If the timeout semantics change here,
+ * `host-runtime`'s `fetchWithTimeout` is the sibling to check — and vice versa.
+ * Duplication risk, motive written down.
  *
  * WHY IT MATTERS AT ALL (task 3.8). Sixteen production `fetch` calls on the offline perimeter
  * had neither an `AbortController` nor a deadline. A slow server does not fail them — it
@@ -32,9 +33,9 @@
 /**
  * Which of the two failure modes {@link fetchBounded} ran into.
  *
- * ⚠️ NON exporté : son seul consommateur est `BoundedFetchError.kind` ci-dessous. L'exporter
- * en ferait un orphelin de `check-orphan-exports` — dont la baseline ne peut que RÉTRÉCIR —
- * pour élargir une surface que personne ne nomme.
+ * ⚠️ NOT exported: its only consumer is `BoundedFetchError.kind` below. Exporting
+ * it would make it a `check-orphan-exports` orphan — whose baseline can only
+ * SHRINK — to widen a surface nobody names.
  */
 type BoundedFetchFailure = "timeout" | "network";
 
@@ -68,8 +69,8 @@ export class BoundedFetchError extends Error {
 /**
  * Deadline applied when a caller does not pick one.
  *
- * ⚠️ NON exporté, même motif : les appelants passent leur propre valeur ou prennent le
- * défaut ; aucun n'a besoin de le NOMMER.
+ * ⚠️ NOT exported, same motive: callers pass their own value or take the default;
+ * none needs to NAME it.
  */
 const DEFAULT_FETCH_TIMEOUT_MS = 15000;
 
@@ -87,7 +88,7 @@ const DEFAULT_FETCH_TIMEOUT_MS = 15000;
  *     const res = await fetchBounded(url, { method: "HEAD" }, 5000);
  * } catch (err) {
  *     if (err instanceof BoundedFetchError && err.kind === "timeout") {
- *         // dire à l'utilisateur que le serveur n'a pas répondu, pas que la ressource manque
+ *         // tell the user the server did not answer, not that the resource is missing
  *     }
  * }
  */

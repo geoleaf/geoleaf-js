@@ -54,30 +54,34 @@ export interface MapLayerHint {
 /**
  * Contract every field-renderer component must implement.
  * The module is intentionally self-contained (no terra-draw, no map imports)
- * so it can be ported to plugin-addpoi without modification.
+ * so it can be consumed by ANY plugin without modification. ⚠️ This line named one target
+ * plugin until the 19/08/2026 — a plugin that no longer exists. A self-containment property
+ * justified by one destination reads as obsolete the day that destination disappears, while
+ * the property itself is exactly what let this module be consumed by its successor instead.
  */
 export interface ComponentDefinition<TValue = unknown> {
     /** Unique component identifier — must match `FieldConfig.type`. */
     id: string;
     /** Default value used when the feature has no value for this field. */
     defaults?: TValue;
-    // ── `sidepanelRender` RETIRÉ — Sprint 6, S6b / B-145 ─────────────────────────────────
+    // ── `sidepanelRender` REMOVED ────────────────────────────────
     //
-    // Ce membre était OBLIGATOIRE, et 23 composants l'implémentaient. Il n'avait **aucun
-    // appelant de production** : mesuré à 0 site d'appel contre 2 pour `formRender`, au
-    // pré-vol du Sprint 2 (01/08), reconfirmé au pré-vol 6.0 (06/08). Le seul point d'entrée
-    // du catalogue, `createFieldRendererBridge`, n'appelle que `formRender`.
+    // This member was MANDATORY, and 23 components implemented it. It had
+    // **no production caller**: measured at 0 call sites against 2 for
+    // `formRender`, at the preflight of 01/08/2026, reconfirmed on 06/08. The
+    // catalogue's only entry point, `createFieldRendererBridge`, calls only
+    // `formRender`.
     //
-    // La lecture attributaire est faite par le core (`feature-info`), qui ne connaît pas ce
-    // paquet — c'est la décision **A4″** : le core possède la LECTURE, `field-renderer` la
-    // SAISIE. Garder ici une surface de lecture morte, obligatoire au contrat et donc
-    // recopiée par tout composant neuf, faisait payer 23 implémentations à un rôle que ce
-    // paquet n'a plus.
+    // Attribute reading is done by the core (`feature-info`), which does not
+    // know this package — the rule: the core owns READING, `field-renderer`
+    // INPUT. Keeping a dead reading surface here, mandatory in the contract
+    // and thus copied by every new component, made 23 implementations pay for
+    // a role this package no longer has.
     //
-    // 🛑 **Retrait CASSANT sur une lib publiée, et assumé comme tel** (A16 : aucun legacy,
-    // aucune migration — l'application n'a pas d'utilisateurs, et `field-renderer` n'a jamais
-    // été publié sur npm). Il se tranche AVANT la publication (B-141) ; après, il aurait
-    // coûté un majeur.
+    // 🛑 **BREAKING removal on a published lib, and owned as such** (no
+    // legacy, no migration — the application has no users, and
+    // `field-renderer` had never been published on npm). It is settled BEFORE
+    // publication; after, it would have cost a major.
     /** Render the form input(s) for editing. */
     formRender(
         value: TValue,

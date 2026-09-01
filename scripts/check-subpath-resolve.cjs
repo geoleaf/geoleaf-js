@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Gate: does every `exports` subpath of every workspace actually resolve? (API S2)
+ * Gate: does every `exports` subpath of every workspace actually resolve?
  *
  * ## Why this exists
  *
@@ -19,7 +19,7 @@
  * a module the bundle does not contain.
  *
  * This is the same "ghost API" class the repo has fought twice before — `GeoLeaf.Events` declared
- * by a root `index.d.ts` nothing ever mounted (S13.7), and the `ValidatorsAPI: void` declarations
+ * by a root `index.d.ts` nothing ever mounted, and the `ValidatorsAPI: void` declarations
  * (S10). Both times the `.d.ts` asserted a surface the bundle did not have. Here it came back
  * through packaging, where no gate was watching.
  *
@@ -31,61 +31,63 @@
  *      condition) are exempt by construction: they declare types and promise no module.
  *   3. **NON-VACUITY** — the gate fails if it scanned zero packages or zero targets.
  *
- * ## ⚠️ Pourquoi « le même ENSEMBLE » et non « le même NOMBRE » (API publique S4.6b)
+ * ## ⚠️ Why "the same SET" and not "the same COUNT"
  *
- * La première version comparait des COMPTES. Elle a tenu jusqu'au jour où l'on a supprimé, sous
- * `capabilities/`, quatre fichiers dont trois portaient du runtime : le décompte a basculé et la
- * gate a annoncé « 1 fantôme ».
+ * The first version compared COUNTS. It held until the day four files were deleted
+ * under `capabilities/`, three of which carried runtime: the tally flipped and the
+ * gate announced "1 ghost".
  *
- * Il y en avait **32**. Le glob `./capabilities/*` porte DEUX asymétries de sens opposé, qui
- * s'annulaient presque :
+ * There were **32**. The `./capabilities/*` glob carries TWO asymmetries of opposite
+ * sign, which almost cancelled out:
  *
- *   • 16 modules **type-only** (`*-types.d.ts`, `types.d.ts`) — un `.d.ts` sans `.js`. C'est
- *     EXACTEMENT le défaut que cette gate existe pour attraper : un import de VALEUR type-checke
- *     puis lève `ERR_MODULE_NOT_FOUND`.
- *   • 17 modules **CSS** — un `.js` sans `.d.ts`, parce qu'une feuille de style transformée en
- *     module ne porte pas de déclarations. Légitime, et désormais reconnu par une RÈGLE
- *     structurelle (le stem finit par `.css`), pas par une exemption nominative.
+ *   • 16 **type-only** modules (`*-types.d.ts`, `types.d.ts`) — a `.d.ts` without a
+ *     `.js`. EXACTLY the defect this gate exists to catch: a VALUE import
+ *     type-checks then throws `ERR_MODULE_NOT_FOUND`.
+ *   • 17 **CSS** modules — a `.js` without a `.d.ts`, because a stylesheet turned
+ *     module carries no declarations. Legitimate, and now recognized by a
+ *     structural RULE (the stem ends in `.css`), not a nominative exemption.
  *
- * Un compteur ne peut pas distinguer ces deux classes : il les additionne avec un signe opposé.
- * La comparaison d'ensembles les nomme. Le prix est que la gate dit maintenant la vérité, et la
- * vérité est plus grande que ce qu'elle annonçait — les 16 fantômes réels sont figés dans
- * `check-subpath-resolve.baseline.json`, un CLIQUET qui ne peut que rétrécir.
+ * A counter cannot tell these two classes apart: it adds them with opposite signs.
+ * The set comparison names them. The price is that the gate now tells the truth, and
+ * the truth is bigger than what it announced — the 16 real ghosts are frozen in
+ * `check-subpath-resolve.baseline.json`, a RATCHET that can only shrink.
  *
  * Rule 3 is not paranoia, it is this gate's own history: the prototype written during the audit
  * used `pkg.dir` (relative) instead of `pkg.absDir`, and when run from another cwd it resolved
  * nothing and reported success — the exact failure mode `probe-gate-visibility.cjs` exists to
  * catch. A gate that can pass without measuring anything is not a gate.
  *
- * ## ⚠️ Règle 0 — FRAÎCHEUR : cette gate refuse de mesurer un `dist/` périmé (B-25)
+ * ## ⚠️ Rule 0 — FRESHNESS: this gate refuses to measure a stale `dist/`
  *
- * Tout ce qui précède se lit dans `dist/`, jamais dans `src/` — c'est correct, puisque la carte
- * `exports` parle de `dist/`. Mais ça rendait la gate **verte DANS LES DEUX SENS** dès qu'un
- * build manquait, et les deux détections tombaient **ensemble** :
+ * Everything above reads from `dist/`, never `src/` — correctly, since the `exports`
+ * map speaks of `dist/`. But that made the gate **green IN BOTH DIRECTIONS** as soon
+ * as a build was missing, and both detections fell **together**:
  *
- *   • elle retrouvait le `.d.ts` PÉRIMÉ, donc marquait l'entrée de baseline « vue » — pas de
- *     cliquet ;
- *   • elle ne voyait pas le fantôme NEUF — pas d'échec.
+ *   • it found the STALE `.d.ts` back, hence marked the baseline entry "seen" — no
+ *     ratchet;
+ *   • it did not see the NEW ghost — no failure.
  *
- * Aucun signal, dans aucune direction. Mesuré le 09/08/2026 : avec une source type-only plantée
- * dans `capabilities/` et zéro trace dans `dist/`, la gate annonçait « 130 cibles résolvent […]
- * aucune asymétrie » et sortait 0, sur un `dist/` de 26 minutes plus vieux que `src/`.
- *
- * **Le geste retenu n'ajoute aucune vérité, il refuse d'en inventer une** : si le fichier le plus
- * récent de `src/` est postérieur au plus récent des sorties, on sort en échec avec « aveugle,
- * pas verte » — le patron que ce fichier emploie déjà en règle 3. Résoudre depuis `src/` avait été
- * envisagé et écarté : ça changerait ce que la gate AFFIRME, puisque `exports` ne parle pas de
+ * No signal, in any direction. Measured on 2026-08-09: with a type-only source
+ * planted in `capabilities/` and zero trace in `dist/`, the gate announced "130
+ * targets resolve […] no asymmetry" and exited 0, on a `dist/` 26 minutes older than
  * `src/`.
  *
- * Les racines de sortie sont **dérivées de la carte `exports` elle-même** (premier segment de
- * chaque cible relative), jamais écrites en dur : un paquet qui émettrait ailleurs que dans
- * `dist/` resterait couvert, et un chemin en dur cesserait silencieusement de matcher — la classe
- * que `probe-gate-visibility.cjs` surveille.
+ * **The retained move adds no truth, it refuses to invent one**: if `src/`'s newest
+ * file postdates the newest of the outputs, we exit failing with "blind, not green" —
+ * the pattern this file already uses in rule 3. Resolving from `src/` was considered
+ * and discarded: it would change what the gate ASSERTS, since `exports` does not
+ * speak of `src/`.
  *
- * 🛑 Cette règle suppose que le build PRÉCÈDE la gate. C'est le cas des deux côtés :
- * `ci-local.cjs` lance « Build (turbo) » bien avant elle, et `ci.yml` fait `turbo run build` en
- * tête du même job. La gate n'est PAS dans le hook `pre-commit`, où `lint-staged` reformate les
- * sources en cours de route (B-27) et ferait rougir sur un artefact de hook.
+ * The output roots are **derived from the `exports` map itself** (first segment of
+ * each relative target), never hard-written: a package emitting elsewhere than
+ * `dist/` would stay covered, and a hard-coded path would silently stop matching —
+ * the class `probe-gate-visibility.cjs` watches.
+ *
+ * 🛑 This rule assumes the build PRECEDES the gate. It does on both sides:
+ * `ci-local.cjs` runs "Build (turbo)" well before it, and `ci.yml` does
+ * `turbo run build` at the head of the same job. The gate is NOT in the `pre-commit`
+ * hook, where `lint-staged` reformats sources mid-flight and would redden on a hook
+ * artifact.
  */
 
 const fs = require("fs");
@@ -127,14 +129,14 @@ function flatten(value, condition, acc = []) {
 }
 
 /**
- * Ce qu'une cible résout, en ENSEMBLE de stems (ce que `*` capture) et non en compte.
+ * What a target resolves, as a SET of stems (what `*` captures) and not a count.
  *
- * Un `*` d'`exports` traverse les `/`, donc le glob est matché contre tout l'arbre publié, pas
- * contre un répertoire plat. Pour une cible sans `*`, le stem est la chaîne vide : deux cibles
- * non-glob se comparent alors sur leur seule existence, ce qui est le comportement voulu.
+ * An `exports` `*` crosses `/`, so the glob is matched against the whole published
+ * tree, not a flat directory. For a `*`-less target, the stem is the empty string:
+ * two non-glob targets then compare on their mere existence, the intended behaviour.
  *
- * @returns {Set<string>|null} les stems, ou `null` pour un specifier externe (hors de notre
- *   ressort : on ne vérifie pas le disque d'autrui).
+ * @returns {Set<string>|null} the stems, or `null` for an external specifier (out of
+ *   our remit: we do not verify someone else's disk).
  */
 function matchStems(target, absDir, treeCache) {
     if (!target.startsWith(".")) return null; // external / bare specifier — not ours to check
@@ -153,23 +155,24 @@ function matchStems(target, absDir, treeCache) {
 }
 
 /**
- * Une feuille de style transformée en module ne porte pas de déclarations : `.js` sans `.d.ts`
- * est sa forme NORMALE, pas une dérive.
+ * A stylesheet turned module carries no declarations: `.js` without `.d.ts` is its
+ * NORMAL shape, not a drift.
  *
- * C'est une règle structurelle et non une liste : elle vaut pour tout `.css` présent et à venir,
- * là où une exemption nominative aurait dû être allongée à chaque nouvelle feuille — et une
- * exemption qu'on allonge par routine cesse d'être lue.
+ * A structural rule and not a list: it holds for every `.css` present and to come,
+ * where a nominative exemption would have had to be lengthened at every new sheet —
+ * and an exemption lengthened by routine stops being read.
  */
 const isStyleModule = (stem) => stem.endsWith(".css");
 
 /**
- * La date du fichier le plus récent sous `dir`, ou `null` si le répertoire est absent ou vide.
+ * The date of the newest file under `dir`, or `null` if the directory is absent or
+ * empty.
  *
- * Les RÉPERTOIRES sont délibérément ignorés : leur mtime bouge à chaque création ou suppression
- * d'entrée, y compris pour un fichier temporaire qui n'a jamais rien changé au code. On ne
- * comparerait plus des états de source mais des traces de passage.
+ * DIRECTORIES are deliberately ignored: their mtime moves at every entry creation or
+ * deletion, including for a temporary file that never changed any code. We would no
+ * longer compare source states but traces of passage.
  *
- * @param {string} dir Répertoire absolu.
+ * @param {string} dir Absolute directory.
  * @returns {{mtime: number, file: string}|null}
  */
 function newestFile(dir) {
@@ -183,15 +186,15 @@ function newestFile(dir) {
 }
 
 /**
- * Les racines de sortie d'un paquet, DÉRIVÉES de sa carte `exports`.
+ * A package's output roots, DERIVED from its `exports` map.
  *
- * Premier segment de chaque cible relative — `./dist/types/x.d.ts` → `dist`. Seuls les segments
- * qui sont des répertoires existants sont retenus, ce qui écarte `./package.json` sans avoir à le
- * nommer.
+ * First segment of each relative target — `./dist/types/x.d.ts` → `dist`. Only
+ * segments that are existing directories are kept, which sets `./package.json` aside
+ * without naming it.
  *
- * @param {object} exportsMap La valeur de `package.json#exports`.
- * @param {string} absDir Répertoire absolu du paquet.
- * @returns {string[]} Noms de répertoires, triés.
+ * @param {object} exportsMap The `package.json#exports` value.
+ * @param {string} absDir The package's absolute directory.
+ * @returns {string[]} Directory names, sorted.
  */
 function outputRoots(exportsMap, absDir) {
     const roots = new Set();
@@ -208,16 +211,16 @@ function outputRoots(exportsMap, absDir) {
 }
 
 /**
- * Règle 0 — refuser de mesurer un `dist/` plus vieux que `src/` (B-25).
+ * Rule 0 — refuse to measure a `dist/` older than `src/`.
  *
- * @param {object[]} pkgs Paquets portant une carte `exports`.
- * @returns {string[]} Un message par paquet périmé ; vide si tout est frais.
+ * @param {object[]} pkgs Packages carrying an `exports` map.
+ * @returns {string[]} One message per stale package; empty if everything is fresh.
  */
 function stalePackages(pkgs) {
     const stale = [];
     for (const pkg of pkgs) {
         const srcDir = path.join(pkg.absDir, "src");
-        if (!fs.existsSync(srcDir)) continue; // paquet sans sources ici — rien à comparer
+        if (!fs.existsSync(srcDir)) continue; // package without sources here — nothing to compare
         const newestSrc = newestFile(srcDir);
         if (newestSrc === null) continue;
 
@@ -250,7 +253,7 @@ function stalePackages(pkgs) {
 
 const BASELINE_PATH = path.join(__dirname, "check-subpath-resolve.baseline.json");
 
-/** Les fantômes connus, figés. Cliquet : cette liste ne peut que RÉTRÉCIR. */
+/** The known ghosts, frozen. Ratchet: this list can only SHRINK. */
 function loadBaseline() {
     try {
         return new Set(JSON.parse(fs.readFileSync(BASELINE_PATH, "utf8")).phantoms ?? []);
@@ -275,9 +278,9 @@ function checkSubpathResolve() {
         .all()
         .filter((p) => p.manifest && p.manifest.exports && typeof p.manifest.exports === "object");
 
-    // 0. FRAÎCHEUR — avant toute mesure. Un `dist/` périmé rend cette gate verte DANS LES DEUX
-    //    SENS (B-25) : elle retrouve le `.d.ts` d'avant, donc marque la baseline « vue », et ne
-    //    voit pas le fantôme neuf. Aucun signal, dans aucune direction.
+    // 0. FRESHNESS — before any measurement. A stale `dist/` makes this gate green
+    //    IN BOTH DIRECTIONS: it finds the previous `.d.ts` back, hence marks the
+    //    baseline "seen", and does not see the new ghost. No signal, either way.
     const staleBuilds = stalePackages(withExports);
     if (staleBuilds.length) {
         err(`${staleBuilds.length} paquet(s) ont un \`dist/\` plus ancien que leurs sources :`);
@@ -317,20 +320,20 @@ function checkSubpathResolve() {
                           ? "runtime"
                           : null;
                 if (!kind) continue;
-                // Plusieurs conditions runtime (`import`, `default`) désignent le même module :
-                // on garde l'union, pas la dernière lue.
+                // Several runtime conditions (`import`, `default`) designate the
+                // same module: we keep the union, not the last read.
                 const acc = stems.get(kind) ?? new Set();
                 for (const s of set) acc.add(s);
                 stems.set(kind, acc);
             }
 
-            // 2. SYMMETRY — ensembles, pas comptes. Deux classes, de gravité différente.
+            // 2. SYMMETRY — sets, not counts. Two classes, of different gravity.
             const T = stems.get("types");
             const R = stems.get("runtime");
             if (T === undefined || R === undefined) continue;
 
-            // (a) FANTÔMES — `.d.ts` sans `.js`. Un import de VALEUR type-checke puis lève
-            //     ERR_MODULE_NOT_FOUND. C'est le défaut qui a fait naître cette gate.
+            // (a) GHOSTS — `.d.ts` without `.js`. A VALUE import type-checks then
+            //     throws ERR_MODULE_NOT_FOUND. The defect this gate was born from.
             for (const stem of [...T].filter((s) => !R.has(s)).sort()) {
                 const key = `${pkg.name}${subpath.slice(1)}${stem}`;
                 if (baseline.has(key)) {
@@ -342,8 +345,8 @@ function checkSubpathResolve() {
                 );
             }
 
-            // (b) NON TYPÉS — `.js` sans `.d.ts`. L'import marche, l'intégrateur récolte un
-            //     TS7016. Une feuille de style est exemptée par RÈGLE, pas par liste.
+            // (b) UNTYPED — `.js` without `.d.ts`. The import works, the integrator
+            //     reaps a TS7016. A stylesheet is exempt by RULE, not by list.
             for (const stem of [...R].filter((s) => !T.has(s) && !isStyleModule(s)).sort()) {
                 failures.push(
                     `${pkg.name}  ${subpath}  ${C.dim}NON TYPÉ — \`${stem}\` a un module, pas de types${C.reset}`
@@ -360,9 +363,9 @@ function checkSubpathResolve() {
         return false;
     }
 
-    // 4. CLIQUET — une entrée de baseline devenue vraie doit SORTIR. Sans ça, la liste
-    //    fossilise : elle décrirait un défaut réparé, et le prochain lecteur croirait qu'il
-    //    reste à réparer. C'est le patron d'EM-02 et de GLB-02.
+    // 4. RATCHET — a baseline entry gone true must LEAVE. Otherwise the list
+    //    fossilizes: it would describe a repaired defect, and the next reader would
+    //    believe it remains to repair. The EM-02 and GLB-02 pattern.
     const stale = [...baseline].filter((k) => !seenBaseline.has(k)).sort();
     if (stale.length) {
         err(`${stale.length} entrée(s) de baseline ne sont plus vraies :`);

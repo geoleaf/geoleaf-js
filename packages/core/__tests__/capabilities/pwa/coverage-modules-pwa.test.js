@@ -114,11 +114,11 @@ describe("Coverage — InstallPrompt (Android/Chrome flow)", () => {
     });
 });
 
-// ── PWAManager.isInstallable (S4 — câblage) ──────────────────────────────────
-// Jusqu'au S4, `isInstallable()` existait sur `InstallPrompt` mais n'était pas
-// exposée : le CDC la documentait sur `GeoLeaf.PWA` où elle n'existait pas. Le
-// piège du câblage est iOS — `beforeinstallprompt` n'y est jamais émis, donc une
-// délégation naïve à `InstallPrompt` répondrait `false` sur toute la plateforme.
+// ── PWAManager.isInstallable (wiring) ────────────────────────────────────────
+// `isInstallable()` used to exist on `InstallPrompt` without being exposed:
+// the CDC documented it on `GeoLeaf.PWA` where it did not exist. The wiring
+// trap is iOS — `beforeinstallprompt` is never emitted there, so a naive
+// delegation to `InstallPrompt` would answer `false` on the whole platform.
 
 describe("PWAManager.isInstallable (S4)", () => {
     const realUA = navigator.userAgent;
@@ -258,11 +258,11 @@ describe("Coverage — IosBanner (iOS install instructions)", () => {
     });
 });
 
-// ── Listener / timer teardown (S7.5 — leak fix) ─────────────────────────────────
+// ── Listener / timer teardown (leak fix) ─────────────────────────────────
 // init() used to register anonymous global listeners (un-removable) with no teardown,
 // and the iOS banner scheduled a setTimeout it could never cancel. These tests prove
 // the leaks are closed, observed through isInstallable() and the fake-timer banner path.
-describe("InstallPrompt — listener teardown (S7.5)", () => {
+describe("InstallPrompt — listener teardown", () => {
     const androidUA = "Mozilla/5.0 (Linux; Android 13) Chrome/113 Mobile";
 
     function setUA(value) {
@@ -303,7 +303,7 @@ describe("InstallPrompt — listener teardown (S7.5)", () => {
     });
 });
 
-describe("IosBanner — timer teardown (S7.5)", () => {
+describe("IosBanner — timer teardown", () => {
     const iosUA = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15";
 
     function setUA(value) {
@@ -333,7 +333,7 @@ describe("IosBanner — timer teardown (S7.5)", () => {
     });
 });
 
-describe("PwaLifecycle._reset() tears down the install sub-flows (S7.5)", () => {
+describe("PwaLifecycle._reset() tears down the install sub-flows", () => {
     const androidUA = "Mozilla/5.0 (Linux; Android 13) Chrome/113 Mobile";
 
     function setUA(value) {
@@ -362,10 +362,10 @@ describe("PwaLifecycle._reset() tears down the install sub-flows (S7.5)", () => 
     });
 });
 
-// ── i18n + configured app name (S7.6 — behaviour change) ────────────────────────
+// ── i18n + configured app name (behaviour change) ────────────────────────
 // Banners used to hardcode "GeoLeaf" and bypass i18n. They now read the configured app
 // name and route every string through getLabel.
-describe("PWA banners — i18n + app name (S7.6)", () => {
+describe("PWA banners — i18n + app name", () => {
     const iosUA = "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15";
     const androidUA = "Mozilla/5.0 (Linux; Android 13) Chrome/113 Mobile";
 

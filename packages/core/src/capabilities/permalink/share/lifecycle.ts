@@ -33,9 +33,10 @@ let _started = false;
 
 function _onToolbarAction(e: Event): void {
     // Typed from the contract instead of a locally guessed `{ action?: string }`. The emitter
-    // always sets both fields (`kernel/ui/toolbar-dispatch.ts:20-27`), so `action` is not
-    // optional — the `?.` below now guards only against a `detail`-less event, which the
-    // addpoi test suite does dispatch.
+    // always sets both fields (`kernel/ui/toolbar-dispatch.ts`), so `action` is not
+    // optional — the `?.` below now guards only against a `detail`-less event, which some
+    // test suites do dispatch. (It named one suite until the 19/08/2026; that suite left with
+    // its plugin, and the guard is still needed — so naming it made the guard look obsolete.)
     const detail = (e as CustomEvent<GeoLeafRawEventMap["geoleaf:toolbar:action"]>).detail;
     if (detail?.action === "share") openShareModal();
 }

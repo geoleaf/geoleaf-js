@@ -11,7 +11,7 @@ const lang_es: Record<string, string> = {
     "measure.menu.close": "Cerrar",
     "measure.tool.distance": "Medir distancia",
     "measure.tool.distance.hint":
-        "Haga clic para añadir vértices. Doble clic o Espacio para terminar.",
+        "Haga clic para añadir vértices. Vuelva a pulsar el último, doble clic o Espacio para terminar.",
     "measure.tool.rect": "Superficie — rectángulo",
     "measure.tool.rect.hint": "Arrastre desde la esquina superior izquierda a la inferior derecha.",
     "measure.tool.circle": "Superficie — círculo",

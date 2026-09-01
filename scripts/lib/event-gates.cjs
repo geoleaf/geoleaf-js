@@ -1,59 +1,60 @@
 /*!
- * GeoLeaf — outillage de gates
+ * GeoLeaf — gate tooling
  * © 2026 Mattieu Pottier · MIT
  */
 
 /**
  * @file event-gates.cjs
- * @description EM-03 — relève les littéraux d'événement qui portent un domaine SANS le préfixe
- * `geoleaf:`. B-207, Sprint 2 de R9 `canaux-coupes`.
+ * @description EM-03 — collects event literals that carry a domain WITHOUT the `geoleaf:`
+ * prefix.
  *
- * ## 🛑 LA CÉCITÉ QUE CE FICHIER FERME
+ * ## 🛑 THE BLINDNESS THIS FILE CLOSES
  *
- * `EVENT_LITERAL_RE` (`lib/event-names.cjs`) est ancré sur `^geoleaf:`. EM-01 ne peut donc ni
- * réclamer ni compter un événement qui ne porte pas le préfixe : un tel nom n'apparaît dans
- * **aucune** mesure — ni comme dette, ni comme manque, ni comme exemption. Ce n'est pas une
- * lacune de la baseline, c'est un angle mort du périmètre.
+ * `EVENT_LITERAL_RE` (`lib/event-names.cjs`) is anchored on `^geoleaf:`. EM-01 can therefore
+ * neither claim nor count an event that lacks the prefix: such a name appears in **no**
+ * measurement — not as debt, not as a gap, not as an exemption. This is not a baseline
+ * lacuna, it is a blind spot of the perimeter.
  *
- * 📌 Et le fait que EM-01 réclame ces noms **dès l'instant où ils entrent dans le domaine**
- * PROUVE la cécité au lieu de la démentir : la gate ne voit que ce qui a déjà accepté d'être vu.
+ * 📌 And the fact that EM-01 claims these names **the instant they enter the domain**
+ * PROVES the blindness rather than refuting it: the gate only sees what has already agreed
+ * to be seen.
  *
- * ## POURQUOI LA RÈGLE PORTE SUR LE DEUX-POINTS, ET NON SUR UNE ALLOWLIST
+ * ## WHY THE RULE HINGES ON THE COLON, AND NOT ON AN ALLOWLIST
  *
- * Une gate ne peut pas exiger « aucun littéral hors préfixe » : le balayage du 16/08/2026 en a
- * relevé **22**, dont **19 sont des événements ÉTRANGERS parfaitement légitimes** — natifs DOM
- * (`click`, `DOMContentLoaded`, `toggle`), cycle de vie du Service Worker (`install`,
- * `activate`, `fetch`), MapLibre (`moveend`, `zoomend`, `idle`, `styledata`, `style.load`),
- * Terra Draw (`finish`, `deselect`). Les interdire n'aurait aucun sens ; les allowlister aurait
- * créé une liste qui grossit à chaque `addEventListener("click")`, donc une liste que personne
- * ne relit.
+ * A gate cannot demand "no literal outside the prefix": the 2026-08-16 sweep found **22**,
+ * of which **19 are perfectly legitimate FOREIGN events** — DOM natives (`click`,
+ * `DOMContentLoaded`, `toggle`), Service Worker lifecycle (`install`, `activate`, `fetch`),
+ * MapLibre (`moveend`, `zoomend`, `idle`, `styledata`, `style.load`), Terra Draw (`finish`,
+ * `deselect`). Forbidding them would make no sense; allowlisting them would have created a
+ * list that grows at every `addEventListener("click")` — a list nobody re-reads.
  *
- * ✅ **La mesure a donné un séparateur qui ne demande aucun entretien : AUCUN des 19 étrangers
- * ne contient de `:`, et LES TROIS du domaine en portaient tous.** Un événement natif n'est
- * jamais namespacé ; un événement de domaine l'est par convention. La règle est donc :
+ * ✅ **The measurement yielded a separator that asks for zero upkeep: NONE of the 19
+ * foreigners contains a `:`, and ALL THREE domain names carried one.** A native event is
+ * never namespaced; a domain event is, by convention. The rule is therefore:
  *
- *   > Un littéral d'événement qui contient un `:` DOIT commencer par `geoleaf:`.
+ *   > An event literal containing a `:` MUST start with `geoleaf:`.
  *
- * Elle rend la classe **structurellement impossible** au lieu de la recenser, ce que la ligne
- * B-207 demandait explicitement — « rendre impossible un événement hors du domaine de nommage,
- * plutôt que de renommer le prochain ».
+ * It makes the class **structurally impossible** instead of cataloguing it — which is what
+ * the requirement explicitly asked for: "make an event outside the naming domain
+ * impossible, rather than renaming the next one".
  *
- * ## ⚠️ CE QUE CETTE GATE NE VOIT PAS, ÉCRIT PLUTÔT QUE TU — le périmètre fait partie du verdict
+ * ## ⚠️ WHAT THIS GATE DOES NOT SEE, WRITTEN RATHER THAN SILENT — the perimeter is part of
+ * the verdict
  *
- * Elle inspecte des **sites d'appel**, là où EM-01 balaie des littéraux nus. C'est nécessaire
- * ici — un balayage de toutes les chaînes du dépôt signalerait chaque chaîne contenant un
- * `:` —, mais cela coûte deux angles morts, tous deux réels dans ce dépôt :
+ * It inspects **call sites**, where EM-01 sweeps bare literals. That is necessary here — a
+ * sweep of every string in the repo would flag every string containing a `:` —, but it
+ * costs two blind spots, both real in this repo:
  *
- *   1. **Un nom composé à l'exécution** (`"geoleaf:" + kind`) n'est pas un littéral. C'est
- *      exactement ce que faisait `fireEvent` avant son retrait ; rien ne garantit que le patron
- *      ne revienne pas.
- *   2. **Un helper local dont le nom n'est pas dans `EVENT_GATES`.** Quatre modules émettent par
- *      un helper qui prend le nom en paramètre (l'en-tête de `check-event-map-coverage.cjs` les
- *      énumère). Ceux qui sont connus sont listés ci-dessous ; un cinquième, écrit demain sous
- *      un autre nom, passerait.
+ *   1. **A name composed at runtime** (`"geoleaf:" + kind`) is not a literal. That is
+ *      exactly what `fireEvent` did before its removal; nothing guarantees the pattern
+ *      will not return.
+ *   2. **A local helper whose name is not in `EVENT_GATES`.** Four modules emit through a
+ *      helper that takes the name as a parameter (the header of
+ *      `check-event-map-coverage.cjs` enumerates them). The known ones are listed below; a
+ *      fifth, written tomorrow under another name, would pass.
  *
- * Le remède n'est pas une allowlist mais l'assertion anti-gate-vide : si le balayage cesse de
- * trouver le moindre site d'appel, la gate **refuse de conclure** au lieu de sortir verte.
+ * The remedy is not an allowlist but the anti-empty-gate assertion: if the sweep stops
+ * finding a single call site, the gate **refuses to conclude** instead of going green.
  */
 "use strict";
 
@@ -61,11 +62,11 @@ const fs = require("node:fs");
 const ts = require("typescript");
 
 /**
- * Les portes d'émission et d'abonnement réellement utilisées dans ce dépôt.
+ * The emit and subscribe gates actually used in this repo.
  *
- * ⚠️ Les cinq dernières sont des **helpers locaux** qui prennent le nom en paramètre. Sans
- * elles, tout ce qui passe par un helper serait invisible — et c'est le patron majoritaire des
- * plugins `editor` et `websocket`.
+ * ⚠️ The last five are **local helpers** that take the name as a parameter. Without them,
+ * everything going through a helper would be invisible — and that is the majority pattern
+ * of the `editor` and `websocket` plugins.
  */
 const EVENT_GATES = new Set([
     "dispatchEvent",
@@ -76,7 +77,7 @@ const EVENT_GATES = new Set([
     "on",
     "off",
     "once",
-    // Helpers locaux qui prennent le nom en paramètre.
+    // Local helpers that take the name as a parameter.
     "emit",
     "_emit",
     "_dispatch",
@@ -84,33 +85,33 @@ const EVENT_GATES = new Set([
     "_firePluginEvent",
 ]);
 
-/** Un littéral d'événement « namespacé » — la forme que la règle gouverne. */
+/** A "namespaced" event literal — the shape the rule governs. */
 const NAMESPACED_RE = /:/;
 
-/** Le domaine, et le seul autorisé pour un événement namespacé. */
+/** The domain — the only one allowed for a namespaced event. */
 const DOMAIN_PREFIX = "geoleaf:";
 
 /**
- * Échappatoire NOMMÉE, vide à dessein.
+ * NAMED escape hatch, empty on purpose.
  *
- * 🛑 Elle existe pour qu'un cas légitime — une bibliothèque tierce qui namespacerait ses
- * événements avec un `:` — ait un endroit où être écrit AVEC SON MOTIF, plutôt que de faire
- * désarmer la règle. Elle est vide aujourd'hui parce que la mesure n'a rien trouvé de tel.
+ * 🛑 It exists so that a legitimate case — a third-party library namespacing its events
+ * with a `:` — has a place to be written down WITH ITS REASON, rather than getting the
+ * rule disarmed. It is empty today because the measurement found no such case.
  *
- * ⚠️ Ne jamais y mettre un événement de GeoLeaf : le verdict du 16/08/2026 est qu'aucun
- * événement du domaine ne vit hors du préfixe. Y ajouter l'un des nôtres, ce serait rouvrir
- * B-207 sous couvert de l'exempter.
+ * ⚠️ Never put a GeoLeaf event here: the 2026-08-16 verdict is that no domain event lives
+ * outside the prefix. Adding one of ours would reopen the rule under the guise of
+ * exempting it.
  *
- * Forme : `"nom:littéral": "motif — qui l'émet, et pourquoi il ne peut pas être préfixé"`.
+ * Shape: `"name:literal": "reason — who emits it, and why it cannot be prefixed"`.
  */
 const FOREIGN_NAMESPACED = Object.freeze({});
 
 /**
- * Relève les sites d'appel dont le 1er argument est un littéral d'événement namespacé.
+ * Collects call sites whose 1st argument is a namespaced event literal.
  *
- * @param {string[]} files - Corpus de sources livrées.
+ * @param {string[]} files - Corpus of shipped sources.
  * @returns {{violations: Array<{name: string, file: string, line: number, gate: string}>, callSites: number}}
- *   `callSites` est la mesure de non-vacuité : à zéro, l'instrument est cassé, pas le code.
+ *   `callSites` is the non-emptiness measure: at zero, the instrument is broken, not the code.
  */
 function collectNamespacedEventLiterals(files) {
     const violations = [];
@@ -128,8 +129,8 @@ function collectNamespacedEventLiterals(files) {
 
                 if (fn && EVENT_GATES.has(fn) && node.arguments.length > 0) {
                     const a0 = node.arguments[0];
-                    // Littéral de chaîne uniquement. Un nom dynamique n'est pas le sujet : la
-                    // règle porte sur ce qui est ÉCRIT, et l'angle mort est déclaré en en-tête.
+                    // String literal only. A dynamic name is not the subject: the rule
+                    // covers what is WRITTEN, and the blind spot is declared in the header.
                     if (ts.isStringLiteral(a0) || ts.isNoSubstitutionTemplateLiteral(a0)) {
                         callSites++;
                         const name = a0.text;

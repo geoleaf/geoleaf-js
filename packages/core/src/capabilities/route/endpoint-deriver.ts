@@ -16,6 +16,56 @@
 /** Endpoint role carried on the derived point features. */
 type EndpointRole = "start" | "end";
 
+/** Every role the rendered marker layer tells apart. */
+export type MarkerRole = EndpointRole | "via";
+
+/**
+ * A published role → the vocabulary the marker layer styles.
+ *
+ * ⚠️ The two vocabularies differ on purpose and the mapping lives HERE, once. A routing plugin
+ * publishes an itinerary in the words of an itinerary — `origin`, `via`, `destination` — while
+ * this capability has styled `start` / `end` since V1 and its existing `role == "end"` style rule
+ * is what keeps working because of this translation. Renaming either side instead would have been
+ * a breaking change to something already shipped, for a synonym.
+ */
+const PUBLISHED_ROLE: Readonly<Record<string, MarkerRole>> = {
+    origin: "start",
+    start: "start",
+    destination: "end",
+    end: "end",
+    via: "via",
+};
+
+/**
+ * The bound layer's OWN marker points, when it carries any.
+ *
+ * 🛑 This is the only way an intermediate stop can exist. Nothing in a `LineString` says which of
+ * its vertices are stops, so a `via` is never derived — it is read from data that already says so.
+ * A layer with no roled points answers an empty list, and the caller derives instead.
+ *
+ * @param features - The bound layer's features.
+ * @returns The roled `Point` features, re-tagged in the marker vocabulary.
+ */
+export function collectRoledPoints(features: readonly GeoJSON.Feature[]): GeoJSON.Feature[] {
+    const out: GeoJSON.Feature[] = [];
+    for (const f of features) {
+        if (f.geometry?.type !== "Point") continue;
+        const props = (f.properties ?? {}) as Record<string, unknown>;
+        const raw = props["role"];
+        if (typeof raw !== "string") continue;
+        const role = PUBLISHED_ROLE[raw];
+        if (!role) continue;
+        out.push({
+            type: "Feature",
+            geometry: f.geometry,
+            // The published properties are carried over — `index` and `step` among them, which is
+            // what an eventual label layer reads. Only `role` is rewritten.
+            properties: { ...props, role },
+        });
+    }
+    return out;
+}
+
 /** First / last positions of a line geometry. */
 interface Ends {
     start: GeoJSON.Position;

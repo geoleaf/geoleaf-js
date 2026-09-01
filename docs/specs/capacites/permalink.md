@@ -187,11 +187,16 @@ façade ESM `src/api/geoleaf.permalink.ts`.
 | `geoleaf:toolbar:action`             | **écouté** (share) | Ouvre la fenêtre quand l'action est la sienne                      |
 | `geoleaf:desktop-panel:tabs-ready`   | **écouté** (share) | Point d'injection du bouton de bureau                              |
 
-⚠️ **Le rendez-vous sur `geoleaf:themes:ready` est un couplage fragile, et il est au registre.**
+⚠️ **Le rendez-vous sur `geoleaf:themes:ready` a un REPLI depuis le 18/08/2026.**
 Cet événement n'a qu'un seul émetteur — [`theme-selector`](theme-selector.md) —, lui-même gaté
-**opt-in**. Quand la barre de thèmes ne monte pas, l'événement ne part jamais et la branche de
-restauration **reste en attente** : ni le thème, ni les couches, ni le filtre du lien ne sont
-restaurés, **sans trace**. C'est **B-61** du registre.
+**opt-in** : quand la barre de thèmes ne monte pas, l'événement ne part jamais. Jusqu'au repli,
+la branche de restauration **restait en attente** : ni le thème, ni les couches, ni le filtre du
+lien n'étaient restaurés, **sans trace**. Désormais un délai de grâce court après
+`geoleaf:app:ready` (qui part toujours — le reveal a son propre filet) : s'il expire sans
+`themes:ready`, les couches et le filtre différés s'appliquent quand même, et **seul le
+changement de thème est abandonné** — rien de monté ne peut changer de thème — avec un
+avertissement journalisé. Un verrou interdit la double application quand l'événement finit par
+partir. Constantes et motif : `permalink-sync.ts`, `THEMES_READY_GRACE_MS`.
 
 ### Stockage écrit
 
@@ -254,7 +259,7 @@ dernier ne « garde » donc plus rien de l'ordre rendu. Reste vrai en revanche :
 (départage du tri topologique, séquence des `sharedLifecycle`). Garde : `packages/core/__tests__/ui/mobile-toolbar-pill-order.test.ts`,
 qui enregistre `share` **avant** `legend` et exige quand même legend→share.
 
-⚠️ **La question de rang de B-57 ne se pose pas ici** :
+⚠️ **La question de rang des dépendances ne se pose pas ici** :
 `permalink` n'a pas de module, et celui de `share` ne déclare **aucune** dépendance.
 
 ### Frontière `capabilities/` → `kernel/` (règle ESLint R.8)
@@ -284,12 +289,12 @@ synchronisation d'URL ne peint rien.
 
 Le CDC `CDC_capacite-permalink.md` a été **consommé** en écrivant cette fiche, puis **supprimé** du
 dossier de tri — ligne au §Journal des décisions de
-`roadmap_documentation-v3.md`.
+la refonte documentaire V3.
 
 | Énoncé du CDC                                                     | Ce que dit le code                                                                                                                                                                                            |
 | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | §1 — « **12 champs** », dont `subCategories`                      | **10** : 3 de vue + 7 facettes. `subCategories` et `gl_subs` n'existent **nulle part** — le §5 du même document acte pourtant leur aplatissement en un seul paramètre. Le document se contredit lui-même      |
-| §2 — « **Full-only**, absent du Lite »                            | **Le build Lite n'existe plus** ; `share/public-api.ts` porte encore la mention. Gisement : **B-07**                                                                                                          |
+| §2 — « **Full-only**, absent du Lite »                            | **Le build Lite n'existe plus** ; `share/public-api.ts` porte encore la mention. Gisement documentaire connu                                                                                                  |
 | §6 — crochet 1 dans `core-map.module.ts:59-68`                    | Il vit dans `packages/core/src/app/boot-modules/core-map-lifecycle.ts`. Le fichier a été scindé depuis ; la plage de lignes ne désigne plus rien                                                              |
 | §2 et §8 — « `PermalinkModule.destroy()` détache les listeners »  | ⚠️ **Il n'y a pas de `PermalinkModule`** — la capacité n'a aucun `ICoreModule`, et le CDC le dit lui-même ailleurs. Le démontage est `stopSync()` / `_reset()`, qui existent bien et font ce qui était promis |
 | §5 — le contrat `Filter` à 8 membres                              | ✅ **Vérifié exact** — les huit sont implémentés (`isEnabled`, `getConfig`, `getActiveFilter`, `applyFilter`, `applyNow`, `reset`, `hasActiveFilters`, `proximity`)                                           |

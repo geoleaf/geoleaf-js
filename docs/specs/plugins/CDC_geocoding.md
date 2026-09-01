@@ -70,7 +70,7 @@ Ce que `src/entry.ts` déclare réellement. **Table gatée** par
 | `paquet npm` | `@geoleaf-plugins/geocoding`      |
 
 ✅ **Le `label` valait `geocoding` — l'identifiant, pas un nom lisible.** Corrigé le 29/07/2026
-(**B-53**), en même temps que celui de [`table`](CDC_table.md), l'autre des deux seuls dans ce cas.
+en même temps que celui de [`table`](CDC_table.md), l'autre des deux seuls dans ce cas.
 Le contrat décrit ce champ comme un « nom lisible (toasts, rapports) », et les trois autres plugins
 du lot en portaient déjà un.
 
@@ -100,11 +100,11 @@ C'est la clé historique du bouton de recherche du core : le créneau de barre d
 capacité du plugin ne se gouvernent donc **pas par la même clé**. Un profil qui active
 `modules.geocoding.enabled` sans `ui.showGeocoding` obtient la barre sans la pastille.
 
-🛑 **CE PLUGIN NE PEUT PAS ÊTRE PUREMENT PARESSEUX, et l'oublier l'a cassé en silence (B-169).**
+🛑 **CE PLUGIN NE PEUT PAS ÊTRE PUREMENT PARESSEUX, et l'oublier l'a cassé en silence.**
 Il s'abonne à `geoleaf:map:ready` **au moment de son import**, et son contrôle ne se monte que
 là. L'application doit donc le **précharger dans `beforeBoot`** quand le profil porte
 `modules.geocoding.enabled: true` — c'est le seul point du cycle qui court après le config et
-avant la création de la carte. Mesuré le 08/08/2026 : rendu paresseux au S4.5 sans cet ajout, il
+avant la création de la carte. Mesuré le 08/08/2026 : rendu paresseux sans cet ajout, il
 n'était chargé par personne, et **GC-01 ne se produisait plus du tout** — sans erreur, avec
 `isEnabled()` qui rendait `true`. Le charger après coup ne répare rien : l'écouteur serait posé
 après l'événement.
@@ -112,7 +112,7 @@ après l'événement.
 ⚠️ Son `init()` porte depuis un **repli** « la carte est peut-être déjà prête », qui rend le
 montage insensible à l'ordre de chargement. Il ne remplace pas le préchargement — sans lui, rien
 ne charge le plugin — mais il ferme le chemin tardif (clic sur le créneau, `plugins.load()`),
-mesuré cassé lui aussi. La classe entière est suivie en **B-170**.
+mesuré cassé lui aussi. La classe entière est instruite pour `editor` et `table`.
 
 ### Les clés i18n sont PLATES et pointées
 
@@ -215,12 +215,12 @@ sans logique (INV-FACADE).
 | `destroy()`             | Démonte le contrôle et relâche les écouteurs                    |
 
 La façade porte **deux `@example`** — une recherche par programme et l'écoute de l'événement de
-sélection. ⚠️ Ces exemples sont **compilés** depuis le 27/07/2026 (B-44) : les `@example` du TSDoc de
+sélection. ⚠️ Ces exemples sont **compilés** depuis le 27/07/2026 : les `@example` du TSDoc de
 toutes les sources entrent dans `typecheck-docs-examples`.
 
 Typage publié : `global.d.ts` déclare `Geocoding?: unknown`. Le namespace **existe donc au niveau des
 types** — une faute de frappe sur son nom ne compile pas — mais **la forme des appels n'est pas
-vérifiée**. C'est la traîne de membre que suit le backlog **B-13**.
+vérifiée**. C'est la traîne de membre encore ouverte.
 
 ### Événements
 
@@ -307,7 +307,7 @@ non-conformité —, mais la forme de `geocoding` est celle vers laquelle les au
 
 Le CDC `CDC_plugin-geocoding.md` a été **consommé** en écrivant cette fiche, puis retiré du dossier
 de tri — trace au §Journal des décisions de
-`roadmap_documentation-v3.md`.
+la refonte documentaire V3.
 
 | Énoncé du CDC                                    | Ce que dit le dépôt                                                                                                            |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |

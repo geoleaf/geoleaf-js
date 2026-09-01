@@ -247,7 +247,7 @@ venir : quel que soit le magasin retenu, il est couvert.
 Il n'y a **ni `module.ts`, ni `createModule`**. L'installeur contribue à la place un
 `sharedLifecycle` et un `sharedTeardown`, appelés à l'**étape #7** de `shared.module`. La capacité
 n'entre donc pas dans le tri topologique du registre, et la question de rang de
-**B-57** **ne se pose pas ici**.
+La question des dépendances **ne se pose pas ici**.
 
 🛑 **Et sa position dans `presets/manifest.full.ts` est LIBRE — cette section affirmait l'inverse
 jusqu'au 08/08/2026, dans les termes les plus forts du dépôt.** Elle disait : « ⚠️ **Mais sa
@@ -314,4 +314,4 @@ du palier S.
 **publiées** : `getCapabilitySchema('pwa')` sert les descriptions du schéma aux intégrateurs et au
 studio sans code. Elles renvoient à `scripts/build-deploy.cjs:676-680` alors que la fusion du
 manifeste vit à présent bien plus bas dans le fichier. Le gisement complet — 25 citations sur
-4 déclarations de capacités, toutes vérifiées — est la ligne **B-63** du registre.
+4 déclarations de capacités, toutes vérifiées — est du gisement des citations mortes.

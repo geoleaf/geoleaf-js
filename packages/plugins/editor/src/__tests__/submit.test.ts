@@ -96,9 +96,10 @@ describe("submitFeature — error mapping", () => {
         expect(notify.error).toHaveBeenCalledWith("editor.error.networkTimeout");
     });
 
-    // 🛑 LA MOITIÉ VISIBLE DE B-199. Réparer la file sans cette branche laisserait la machine
-    // juste et l'utilisateur trompé : `editor.error.server` dit « Veuillez réessayer », la seule
-    // chose qui ne servira à rien face à un serveur qui ne connaît pas le verbe.
+    // 🛑 THE VISIBLE HALF OF THE 501 DEFECT. Fixing the queue without this
+    // branch would leave the machine right and the user misled:
+    // `editor.error.server` says « Veuillez réessayer » ("please retry"), the
+    // one thing that will achieve nothing against a server that does not know the verb.
     it("maps a 501 capability refusal to operationNotSupported, jamais à error.server", async () => {
         const ctx = makeCtx({
             save: vi

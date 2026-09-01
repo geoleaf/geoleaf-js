@@ -1,38 +1,31 @@
 /**
- * Unit tests — capacité `language-switcher` (S2).
+ * Unit tests — `language-switcher` capability.
  *
- * Couvre en priorité les DEUX risques que le CDC désigne comme majeurs :
- *   1. `initI18n()` s'exécute avant tout `getLabel()` — un accès `localStorage` qui
- *      jette (navigation privée) casserait le boot entier ;
- *   2. le `?lang=` de l'URL doit rester PRIORITAIRE sur la préférence enregistrée,
- *      sinon un lien partagé n'est plus reproductible.
+ * Covers in priority the TWO risks the CDC names as major:
+ *   1. `initI18n()` runs before any `getLabel()` — a throwing `localStorage`
+ *      access (private browsing) would break the whole boot;
+ *   2. the URL's `?lang=` must stay PRIORITY over the saved preference,
+ *      otherwise a shared link is no longer reproducible.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { CapabilityRegistry } = await import("../../../src/kernel/api/capability-registry.ts");
-const { LANGUAGE_SWITCHER_CAPABILITY } = await import(
-    "../../../src/capabilities/language-switcher/language-switcher-capability.ts"
-);
+const { LANGUAGE_SWITCHER_CAPABILITY } =
+    await import("../../../src/capabilities/language-switcher/language-switcher-capability.ts");
 const { Config } = await import("../../../src/kernel/config/config-primitives.ts");
-const { getLanguageSwitcherConfig, getOfferedLanguages } = await import(
-    "../../../src/capabilities/language-switcher/config.ts"
-);
-const { switchToLanguage } = await import(
-    "../../../src/capabilities/language-switcher/language-switch.ts"
-);
-const { LanguageSwitcherLifecycle } = await import(
-    "../../../src/capabilities/language-switcher/lifecycle.ts"
-);
-const { LANG_BUTTON_CLASS } = await import(
-    "../../../src/capabilities/language-switcher/language-button.ts"
-);
-const { emitDesktopTabsReady } = await import(
-    "../../../src/kernel/ui/desktop/desktop-tabs-seam.ts"
-);
-const { initI18n, getActiveLang, LANG_STORAGE_KEY } = await import(
-    "../../../src/utils/i18n/i18n.ts"
-);
+const { getLanguageSwitcherConfig, getOfferedLanguages } =
+    await import("../../../src/capabilities/language-switcher/config.ts");
+const { switchToLanguage } =
+    await import("../../../src/capabilities/language-switcher/language-switch.ts");
+const { LanguageSwitcherLifecycle } =
+    await import("../../../src/capabilities/language-switcher/lifecycle.ts");
+const { LANG_BUTTON_CLASS } =
+    await import("../../../src/capabilities/language-switcher/language-button.ts");
+const { emitDesktopTabsReady } =
+    await import("../../../src/kernel/ui/desktop/desktop-tabs-seam.ts");
+const { initI18n, getActiveLang, LANG_STORAGE_KEY } =
+    await import("../../../src/utils/i18n/i18n.ts");
 
 const _originalGet = Config.get;
 function stubConfig(cfg) {
@@ -42,7 +35,7 @@ function stubConfig(cfg) {
     };
 }
 
-/** Réécrit la query string vue par initI18n / switchToLanguage. */
+/** Rewrites the query string initI18n / switchToLanguage see. */
 function setSearch(search) {
     delete window.location;
     window.location = {
@@ -86,7 +79,7 @@ describe("config", () => {
         const cfg = getLanguageSwitcherConfig();
         expect(cfg.enabled).toBe(false);
         expect(cfg.display).toBe("flag");
-        // 6 = les dictionnaires compilés au kernel (`LANGS`, utils/i18n/i18n.ts).
+        // 6 = the dictionaries compiled into the kernel (`LANGS`, utils/i18n/i18n.ts).
         expect(getOfferedLanguages()).toHaveLength(6);
     });
 
@@ -102,7 +95,7 @@ describe("config", () => {
 
     it("falls back to the full list when the filter matches nothing (empty popover)", () => {
         stubConfig({ modules: { "language-switcher": { languages: ["klingon"] } } });
-        // 6 = les dictionnaires compilés au kernel (`LANGS`, utils/i18n/i18n.ts).
+        // 6 = the dictionaries compiled into the kernel (`LANGS`, utils/i18n/i18n.ts).
         expect(getOfferedLanguages()).toHaveLength(6);
     });
 
@@ -114,7 +107,7 @@ describe("config", () => {
 
 describe("initI18n() — ordre de résolution (risque CDC n°2)", () => {
     it("le ?lang= de l'URL PRIME sur la préférence enregistrée", () => {
-        // Sinon un lien partagé afficherait la langue du destinataire, pas celle du lien.
+        // Otherwise a shared link would display the recipient's language, not the link's.
         localStorage.setItem(LANG_STORAGE_KEY, "de");
         setSearch("?lang=es");
         stubConfig({ ui: { language: "fr" } });
@@ -143,8 +136,8 @@ describe("initI18n() — ordre de résolution (risque CDC n°2)", () => {
     });
 
     it("NE JETTE PAS quand localStorage est inaccessible (risque CDC n°1)", () => {
-        // initI18n() tourne avant le premier getLabel() : une exception ici emporterait
-        // tout le boot.
+        // initI18n() runs before the first getLabel(): an exception here
+        // would take the whole boot down.
         const spy = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
             throw new Error("SecurityError: localStorage is not available");
         });
@@ -193,7 +186,7 @@ describe("switchToLanguage()", () => {
 });
 
 describe("LanguageSwitcherLifecycle", () => {
-    /** Construit le bandeau d'onglets desktop tel que le kernel le produit. */
+    /** Builds the desktop tab strip as the kernel produces it. */
     function buildTabs() {
         const tabs = document.createElement("div");
         tabs.className = "gl-rp-tabs";
@@ -234,7 +227,7 @@ describe("LanguageSwitcherLifecycle", () => {
 
     it("rattrape un bandeau déjà construit au moment de l'init", () => {
         stubConfig({ modules: { "language-switcher": { enabled: true } } });
-        buildTabs(); // le seam a déjà été émis avant init()
+        buildTabs(); // the seam was already emitted before init()
         LanguageSwitcherLifecycle.init();
         expect(document.querySelector(`.${LANG_BUTTON_CLASS}`)).not.toBeNull();
     });

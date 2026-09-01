@@ -90,7 +90,7 @@ function _buildVtSpec(
     return {
         tileUrl,
         sourceLayer: vtLayerName,
-        // B-161 — voir `vector-tiles-layer-data.ts` : même consolidation, même repli.
+        // Voir `vector-tiles-layer-data.ts` : même consolidation, même repli.
         geometryType: layerGeometry(def, "polygon"),
         zIndex: typeof def.zIndex === "number" ? def.zIndex : 0,
         source: {

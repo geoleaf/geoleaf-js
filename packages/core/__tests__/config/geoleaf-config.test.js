@@ -118,11 +118,12 @@ describe("GeoLeaf.Config", () => {
             expect(Config.isLoaded()).toBe(true);
         });
 
-        it("should handle error during URL loading", async () => {
+        it("should propagate an error raised during URL loading", async () => {
             global.GeoLeaf._ConfigLoader.loadUrl.mockRejectedValue(new Error("Load failed"));
 
-            // Config.loadUrl catches the error internally and returns existing config
-            await Config.init({ url: "/bad.json" });
+            // 🔻 AMENDED on 19/08/2026 — `Config.loadUrl` no longer catches:
+            // the failure climbs to the caller, who can finally attribute it.
+            await expect(Config.init({ url: "/bad.json" })).rejects.toThrow("Load failed");
 
             expect(global.GeoLeaf.Log.error).toHaveBeenCalled();
         });
@@ -156,20 +157,25 @@ describe("GeoLeaf.Config", () => {
             expect(Config.isLoaded()).toBe(true);
         });
 
-        it("should return existing config on error", async () => {
+        // 🔻 AMENDED on 19/08/2026 — returning the in-place configuration on
+        // a failure was precisely what made a SUCCESS be read where nothing
+        // had been loaded.
+        it("should reject rather than hand back the configuration already in place", async () => {
             global.GeoLeaf._ConfigLoader.loadUrl.mockRejectedValue(new Error("fail"));
             Config._config = { existing: true };
 
-            const result = await Config.loadUrl("/bad.json");
+            await expect(Config.loadUrl("/bad.json")).rejects.toThrow("fail");
 
-            expect(result.existing).toBe(true);
+            // What was in place is not destroyed — it is simply no longer
+            // returned as though it had just been loaded.
+            expect(Config._config.existing).toBe(true);
         });
 
         it("should log error when loader fails", async () => {
             global.GeoLeaf._ConfigLoader.loadUrl.mockRejectedValue(new Error("Network error"));
 
-            // Config.loadUrl catches and returns existing config — error is logged
-            await Config.loadUrl("/config.json");
+            // 🔻 AMENDED on 19/08/2026 — the promise rejects; the cause stays logged.
+            await Config.loadUrl("/config.json").catch(() => undefined);
 
             expect(global.GeoLeaf.Log.error).toHaveBeenCalled();
         });

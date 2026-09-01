@@ -28,17 +28,14 @@ interface RawFeature {
 
 /** JSON payload shape accepted by this decoder. */
 type JsonPayload =
-    | { type: "FeatureCollection"; features: RawFeature[] }
-    | RawFeature[]
-    | RawFeature
-    | string;
+    { type: "FeatureCollection"; features: RawFeature[] } | RawFeature[] | RawFeature | string;
 
 /** Derive a stable string id from a feature (`id` → `properties.id` → `properties._id`). */
 function _deriveId(feature: RawFeature): string {
     const raw = feature.id ?? feature.properties?.["id"] ?? feature.properties?.["_id"];
     if (raw === null || raw === undefined) return "";
     if (typeof raw === "object") return JSON.stringify(raw);
-    return String(raw as string | number | boolean);
+    return String(raw);
 }
 
 /**
@@ -71,7 +68,7 @@ export class JsonDecoder implements IDecoder {
         if (
             typeof payload === "object" &&
             !Array.isArray(payload) &&
-            (payload as { type?: string }).type === "FeatureCollection"
+            payload.type === "FeatureCollection"
         ) {
             const fc = payload as { type: "FeatureCollection"; features: RawFeature[] };
             return (fc.features ?? []).map((f) => this._featureToUpdate(f));
@@ -83,8 +80,8 @@ export class JsonDecoder implements IDecoder {
         }
 
         // Single feature
-        if (typeof payload === "object" && (payload as RawFeature).type === "Feature") {
-            return [this._featureToUpdate(payload as RawFeature)];
+        if (typeof payload === "object" && payload.type === "Feature") {
+            return [this._featureToUpdate(payload)];
         }
 
         return [];

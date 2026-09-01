@@ -1,36 +1,37 @@
 #!/usr/bin/env node
 /**
- * Which packages belong to which test scope — et l'invariant qui les lie (B.48).
+ * Which packages belong to which test scope — and the invariant binding them.
  *
- * Ce dépôt exécute ses tests unitaires de **deux** manières, et il faut les deux :
+ * This repo runs its unit tests in **two** ways, and both are needed:
  *
- *   1. **L'essaimage turbo** — `npm test` → `turbo run test`, un processus `vitest run`
- *      par package, chacun lisant SA config. C'est le gate de `ci:local`.
- *   2. **Le mode `projects`** — `npx vitest run` depuis la racine, un SEUL processus qui
- *      charge les configs des packages comme autant de projets. C'est le gate de `ci.yml`.
+ *   1. **The turbo fan-out** — `npm test` → `turbo run test`, one `vitest run` process
+ *      per package, each reading ITS config. This is `ci:local`'s gate.
+ *   2. **`projects` mode** — `npx vitest run` from the root, ONE process loading the
+ *      package configs as so many projects. This is `ci.yml`'s gate.
  *
- * Chacun avait sa propre liste, écrite à la main, et elles avaient divergé. L'en-tête de
- * `packages.cjs` le notait déjà : « le script `test` racine et `vitest.config.ts#projects`
- * divergeaient sur neuf paquets ». Au 22/07/2026 la liste de `npm test` sautait encore
- * **5 paquets / 27 fichiers de test** (`plugin-cog`, `plugin-file-import`,
- * `plugin-flatgeobuf`, `plugin-realtime-layer`, `host-runtime`) — jamais par arbitrage :
- * `git log -L21,21:package.json` montre une liste **par accrétion**, où chaque paquet
- * était ajouté à la main le jour où il recevait des tests. Les 5 n'ont jamais été ajoutés.
+ * Each had its own hand-written list, and they had diverged. The `packages.cjs` header
+ * already noted it: "the root `test` script and `vitest.config.ts#projects` diverged on
+ * nine packages". As of 2026-07-22 the `npm test` list still skipped **5 packages / 27
+ * test files** (`plugin-cog`, `plugin-file-import`, `plugin-flatgeobuf`,
+ * `plugin-realtime-layer`, `host-runtime`) — never by arbitration:
+ * `git log -L21,21:package.json` shows a list **by accretion**, each package added by
+ * hand the day it received tests. The 5 were simply never added.
  *
- * ## L'invariant : `unitScope() ⊇ rootProjectScope()`
+ * ## The invariant: `unitScope() ⊇ rootProjectScope()`
  *
- * C'est la seule propriété qui rende vraie la phrase du protocole de push — « local vert
- * → push sûr ». Si `ci:local` teste moins que `ci.yml`, un vert local ne dit rien du run
- * distant, et le quota GitHub Actions se dépense sur une inconnue.
+ * It is the only property that makes the push protocol's sentence true — "local green →
+ * safe push". If `ci:local` tests less than `ci.yml`, a local green says nothing about
+ * the remote run, and the GitHub Actions quota gets spent on an unknown.
  *
- * Elle est donc **vérifiée, pas conventionnée** : {@link assertUnitScopeCoversRoot} jette.
+ * It is therefore **verified, not conventioned**: {@link assertUnitScopeCoversRoot}
+ * throws.
  *
- * ## Pourquoi les deux listes sont dérivées, et les exceptions écrites
+ * ## Why both lists are derived, and the exceptions written
  *
- * Même raison que `packages.cjs` : une liste en dur **ne casse pas** au déplacement d'un
- * paquet, elle cesse silencieusement de matcher, et la gate sort verte en n'ayant rien
- * scanné. Ici, un nouveau paquet rejoint les deux périmètres **par défaut** ; l'en sortir
- * exige d'écrire pourquoi, dans {@link PARKED} ou {@link EXCLUDED_FROM_ROOT_RUN}.
+ * Same reason as `packages.cjs`: a hard-coded list **does not break** when a package
+ * moves, it silently stops matching, and the gate goes green having scanned nothing.
+ * Here, a new package joins both perimeters **by default**; taking one out requires
+ * writing why, in {@link PARKED} or {@link EXCLUDED_FROM_ROOT_RUN}.
  */
 
 "use strict";
@@ -43,37 +44,36 @@ const registry = require("./packages.cjs");
 const ROOT = path.resolve(__dirname, "..", "..");
 
 /**
- * Paquets mis au parc, exclus du gate unitaire turbo (`npm test`).
+ * Parked packages, excluded from the turbo unit gate (`npm test`).
  *
- * **Vide au 22/07/2026, et c'est l'état normal.** Ce registre existe pour que la roadmap
- * PLUGINS puisse sortir un paquet du gate le temps d'une réécriture SANS le faire par
- * omission — la raison est obligatoire, et elle est lue à chaque run.
+ * **Empty as of 2026-07-22, and that is the normal state.** This register exists so a
+ * package can be taken out of the gate for the duration of a rewrite WITHOUT doing it by
+ * omission — the reason is mandatory, and it is read at every run.
  *
- * ⚠️ **Parquer cache réellement le paquet, et des DEUX gates locaux** — l'unitaire et
- * celui de couverture passent tous deux par `run-tests.cjs`. C'est assumé : un paquet
- * qu'on parque est un paquet dont on a décidé de ne plus lire les tests pour un temps.
- * Ce qui change par rapport à l'omission silencieuse d'avant, c'est que le fait est
- * **écrit, motivé, et affiché à chaque exécution** au lieu d'être invisible.
+ * ⚠️ **Parking really hides the package, and from BOTH local gates** — the unit one and
+ * the coverage one both go through `run-tests.cjs`. That is accepted: a parked package
+ * is one whose tests we have decided to stop reading for a while. What changes compared
+ * to the silent omission of before is that the fact is **written, motivated, and shown
+ * at every execution** instead of invisible.
  *
- * Le garde-fou est ailleurs : {@link assertUnitScopeCoversRoot} interdit de parquer un
- * paquet que `ci.yml` continue, lui, d'exécuter — sinon un vert local couvrirait un rouge
- * distant.
+ * The guard is elsewhere: {@link assertUnitScopeCoversRoot} forbids parking a package
+ * that `ci.yml` keeps running — otherwise a local green would cover a remote red.
  *
  * @type {Record<string, string>}
  */
 const PARKED = {};
 
 /**
- * Paquets délibérément absents du run `projects` racine (`npx vitest run`) — ARCHI S9.3.
+ * Packages deliberately absent from the root `projects` run (`npx vitest run`).
  *
- * Déplacé ici depuis `vitest.config.ts` (B.48) : c'est une connaissance de **périmètre**,
- * pas de configuration Vitest, et elle doit être lisible par le runner CJS qui vérifie
- * l'invariant. La config racine la lit maintenant depuis ce module.
+ * Moved here from `vitest.config.ts`: this is **perimeter** knowledge, not Vitest
+ * configuration, and it must be readable by the CJS runner that verifies the invariant.
+ * The root config now reads it from this module.
  *
- * La liste était jadis l'inverse — 11 chemins en dur, donc toute exclusion était une
- * exclusion PAR OMISSION : invisible, inexpliquée, et silencieusement fausse le jour où
- * un paquet bougeait. Énoncer les exclusions signifie qu'un nouveau paquet rejoint le run
- * par défaut, et qu'en retirer un demande désormais d'écrire pourquoi.
+ * The list used to be the inverse — 11 hard-coded paths, so every exclusion was an
+ * exclusion BY OMISSION: invisible, unexplained, and silently wrong the day a package
+ * moved. Stating the exclusions means a new package joins the run by default, and taking
+ * one out now requires writing why.
  *
  * @type {Record<string, string>}
  */
@@ -88,13 +88,13 @@ const EXCLUDED_FROM_ROOT_RUN = {
 };
 
 /**
- * Les paquets qui portent une suite Vitest, dérivés — et la cohérence config/script
- * vérifiée au passage.
+ * The packages carrying a Vitest suite, derived — with config/script coherence checked
+ * in passing.
  *
- * Le filtre est **structurel** (`vitest.config.ts` présent), donc un paquet qui perdrait
- * sa config disparaîtrait des deux périmètres sans bruit : exactement le mode d'échec que
- * ce module combat. D'où le contre-contrôle — un `package.json` qui déclare un script
- * `test` sans config, ou l'inverse, **jette**.
+ * The filter is **structural** (`vitest.config.ts` present), so a package losing its
+ * config would vanish from both perimeters noiselessly: exactly the failure mode this
+ * module fights. Hence the counter-check — a `package.json` declaring a `test` script
+ * without a config, or the reverse, **throws**.
  *
  * @returns {{name: string, dir: string, absDir: string}[]}
  */
@@ -130,7 +130,7 @@ function testablePackages() {
 }
 
 /**
- * Périmètre du gate unitaire turbo (`npm test`).
+ * Perimeter of the turbo unit gate (`npm test`).
  * @returns {{name: string, dir: string, absDir: string}[]}
  */
 function unitScope() {
@@ -138,7 +138,7 @@ function unitScope() {
 }
 
 /**
- * Périmètre du run `projects` racine (`npx vitest run`).
+ * Perimeter of the root `projects` run (`npx vitest run`).
  * @returns {{name: string, dir: string, absDir: string}[]}
  */
 function rootProjectScope() {
@@ -146,24 +146,24 @@ function rootProjectScope() {
 }
 
 /**
- * Vérifie que chaque clé de {@link PARKED} et {@link EXCLUDED_FROM_ROOT_RUN} désigne
- * un paquet qui existe. Jette en nommant les clés mortes.
+ * Verifies that every key of {@link PARKED} and {@link EXCLUDED_FROM_ROOT_RUN}
+ * designates a package that exists. Throws naming the dead keys.
  *
- * ⚠️ STRUCT S3 (26/07/2026) — cette vérification MANQUAIT, et c'est ce qui faisait de
- * ces deux tables une panne SILENCIEUSE. Les deux filtres sont des `!(p.name in TABLE)` :
- * une clé qui ne correspond à aucun paquet ne retire rien et n'avertit de rien. Au
- * renommage `@geoleaf-plugins/storage` → `@geoleaf-plugins/offline-ui`, le paquet aurait
- * donc réintégré le run `projects` racine **sans un mot**, avec son infrastructure de mock
- * IndexedDB non portée — un rouge attribué au mauvais coupable, deux sprints plus tard.
+ * ⚠️ 2026-07-26 — this check was MISSING, and that is what made these two tables a
+ * SILENT failure. Both filters are `!(p.name in TABLE)`: a key matching no package
+ * removes nothing and warns of nothing. At the `@geoleaf-plugins/storage` →
+ * `@geoleaf-plugins/offline-ui` rename, the package would thus have rejoined the root
+ * `projects` run **without a word**, its IndexedDB mock infrastructure not ported — a
+ * red pinned on the wrong culprit, two sprints later.
  *
- * L'asymétrie compte : une clé morte est toujours une erreur (on a nommé un paquet qui
- * n'existe pas), alors qu'un paquet absent des deux tables est le cas NORMAL — il tourne.
+ * The asymmetry matters: a dead key is always an error (a non-existent package was
+ * named), whereas a package absent from both tables is the NORMAL case — it runs.
  *
- * ⚠️ Le critère de vivacité est `registry.all()`, PAS `testablePackages()`. Première
- * version écrite sur `testablePackages()` : elle a rougi sur `@geoleaf/build-config`,
- * une exclusion parfaitement légitime — ce paquet n'a aucun test, donc aucune
- * `vitest.config.ts`, donc il n'est pas « testable ». Exclure un paquet sans suite est
- * précisément ce qu'on veut pouvoir écrire ; c'est son ABSENCE DU DÉPÔT qui est l'erreur.
+ * ⚠️ The liveness criterion is `registry.all()`, NOT `testablePackages()`. First version
+ * written on `testablePackages()`: it reddened on `@geoleaf/build-config`, a perfectly
+ * legitimate exclusion — that package has no tests, hence no `vitest.config.ts`, hence
+ * it is not "testable". Excluding a suiteless package is precisely what one wants to be
+ * able to write; its ABSENCE FROM THE REPO is the error.
  *
  * @returns {void}
  */
@@ -193,12 +193,12 @@ function assertExclusionKeysAlive() {
 }
 
 /**
- * Vérifie `unitScope() ⊇ rootProjectScope()` — la propriété qui rend vrai
- * « `ci:local` vert → push sûr ». Jette en nommant les paquets fautifs.
+ * Verifies `unitScope() ⊇ rootProjectScope()` — the property that makes "`ci:local`
+ * green → safe push" true. Throws naming the offending packages.
  *
- * Un paquet ne peut être dans le run racine ET au parc : on l'aurait retiré du gate local
- * tout en le laissant dans le gate distant, soit précisément le cas où un vert local ne
- * dit rien du rouge à venir.
+ * A package cannot be in the root run AND parked: it would have been removed from the
+ * local gate while left in the remote one — precisely the case where a local green says
+ * nothing about the red to come.
  *
  * @returns {void}
  */
@@ -223,10 +223,10 @@ function assertUnitScopeCoversRoot() {
     }
 }
 
-// Surface volontairement réduite à ce qui est consommé : `run-tests.cjs` (les trois
-// premiers) et `vitest.config.ts` (le dernier). `EXCLUDED_FROM_ROOT_RUN` et
-// `testablePackages` restent internes — les exposer sans consommateur ferait de ce module
-// une source d'exports orphelins, que `dead-code` (knip) et `check-orphan-exports` gatent.
+// Surface deliberately reduced to what is consumed: `run-tests.cjs` (the first three)
+// and `vitest.config.ts` (the last). `EXCLUDED_FROM_ROOT_RUN` and `testablePackages`
+// stay internal — exposing them without a consumer would make this module a source of
+// orphan exports, which `dead-code` (knip) and `check-orphan-exports` gate.
 module.exports = {
     PARKED,
     unitScope,

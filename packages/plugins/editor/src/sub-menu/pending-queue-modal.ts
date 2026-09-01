@@ -14,15 +14,16 @@ import type { EditorQueueEntry } from "../persistence/editor-sync-replay.js";
 /**
  * Maps a queue `kind` to its localised operation label.
  *
- * 🛑 **Il dispatchait sur `editor.save` / `editor.update` / `editor.delete` (tâche 4.9).** Ce
- * vocabulaire a perdu son dernier écrivain en 4.4b : l'entrée porte désormais le
- * `SyncOperationKind` du contrat. Aucun test ne rougissait, parce que le `return kind` final
- * rend une chaîne — la modale listait donc `create` / `update` / `delete` bruts, en toutes
- * langues, et un repli qui affiche quelque chose est indiscernable d'un repli qui n'a pas servi.
+ * 🛑 **It dispatched on `editor.save` / `editor.update` / `editor.delete`.**
+ * That vocabulary lost its last writer: the entry now carries the contract's
+ * `SyncOperationKind`. No test turned red, because the final `return kind`
+ * yields a string — the modal thus listed raw `create` / `update` / `delete`,
+ * in every language, and a fallback that displays something is
+ * indistinguishable from a fallback that never served.
  *
- * ⚠️ Les CLÉS i18n gardent leur nom (`editor.sync.kind.save`…) : ce sont des adresses de
- * catalogue, pas le vocabulaire de la file. Les renommer toucherait six fichiers de langue
- * pour ne rien rendre plus vrai.
+ * ⚠️ The i18n KEYS keep their names (`editor.sync.kind.save`…): they are
+ * catalogue addresses, not the queue's vocabulary. Renaming them would touch
+ * six language files to make nothing truer.
  */
 function _kindLabel(kind: string): string {
     if (kind === "create") return _getLabel("editor.sync.kind.save");
@@ -98,7 +99,7 @@ export function openPendingQueueModal(
 }
 
 function _btn(labelKey: string): HTMLButtonElement {
-    const b = _el("button", "gl-form-modal__btn") as HTMLButtonElement;
+    const b = _el("button", "gl-form-modal__btn");
     b.type = "button";
     b.textContent = _getLabel(labelKey);
     return b;

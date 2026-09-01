@@ -59,6 +59,32 @@ function kmzDeclaringSize(declaredBytes: number): Uint8Array {
     return zip;
 }
 
+// ── Forged UNDER-declaring archive ───────────────────────────────────────────
+//
+// The mirror of the forge above, and the only way to reach the SECOND guard. That guard sums the
+// bytes actually inflated, and it exists for one attacker move: an entry that under-reports its
+// `originalSize` to slip past the declared-size gate. No honest archive produces that case, so it
+// cannot be built by writing a big file — it has to be forged.
+//
+// The payload is STORED (`level: 0`) rather than deflated, and that choice is what makes the case
+// affordable. Measured: 103 ms to build and 23 ms to inflate, against the ~6 s of real deflate
+// that the over-declaring fixture used to cost before it was forged. A guard nobody can afford to
+// test is a guard nobody tests.
+
+/** A KMZ carrying `realBytes` of stored payload while its directory declares only 1 KiB. */
+function kmzUnderDeclaring(realBytes: number): Uint8Array {
+    const payload = new Uint8Array(realBytes);
+    payload.fill(0x41); // 'A' — content is irrelevant, only its LENGTH is under test
+    const zip = zipSync({ "doc.kml": payload }, { level: 0 });
+    const at = centralDirectoryOffset(zip) + CDIR_UNCOMPRESSED_SIZE_OFFSET;
+    const declared = 1024;
+    zip[at] = declared & 0xff;
+    zip[at + 1] = (declared >>> 8) & 0xff;
+    zip[at + 2] = (declared >>> 16) & 0xff;
+    zip[at + 3] = (declared >>> 24) & 0xff;
+    return zip;
+}
+
 describe("kmz-extractor", () => {
     it("extracts the inner .kml from a KMZ (doc.kml) archive", () => {
         const kmz = zipSync({ "doc.kml": strToU8(KML) });
@@ -99,6 +125,33 @@ describe("kmz-extractor", () => {
         const { kml, warnings } = extractKmlFromKmz(kmz);
         expect(kml).toBeNull();
         expect(warnings.some((w) => w.includes("maximum decompressed size"))).toBe(true);
+    });
+
+    it("rejects a zip bomb that UNDER-declares its size, after inflating it", () => {
+        // The archive tells the truth to nobody: its directory claims 1 KiB, its payload is just
+        // over the 50 MB cap. The declared-size gate therefore lets it through — which is the
+        // point. Only the post-inflate sum can refuse it.
+        const kmz = kmzUnderDeclaring(50 * 1024 * 1024 + 4096);
+
+        const { kml, warnings } = extractKmlFromKmz(kmz);
+        expect(kml).toBeNull();
+        expect(warnings.some((w) => w.includes("maximum decompressed size"))).toBe(true);
+    });
+
+    it("accepts an under-declaring archive that stays UNDER the cap", () => {
+        // The counter-case, and it is what makes the test above mean something. Both guards emit
+        // the SAME warning string, so a fixture that trips either one satisfies the assertion —
+        // that is exactly how the over-declaring test managed to prove nothing for months. Here
+        // the directory lies in the same way, but the payload is small: nothing should be refused.
+        // If this one ever goes red, the post-inflate guard has started rejecting honest archives.
+        const kmz = kmzUnderDeclaring(64 * 1024);
+
+        const { kml, warnings } = extractKmlFromKmz(kmz);
+        expect(
+            kml,
+            "a small archive was refused — the cap is being applied to the wrong value"
+        ).not.toBeNull();
+        expect(warnings.some((w) => w.includes("maximum decompressed size"))).toBe(false);
     });
 
     it("ignores non-kml entries when locating the KML", () => {

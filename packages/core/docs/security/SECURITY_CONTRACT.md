@@ -119,11 +119,18 @@ The "styles" row above covers the only path where they are copied.
 | -------------------------------------------- | ----------------------------------------------------- |
 | `CSRFToken.init()`                           | Generates a crypto-random token (32 bytes, base64url) |
 | `CSRFToken.getToken()`                       | Returns the current token, regenerating it if expired |
-| `CSRFToken.validateToken(token)`             | Constant-time token validation                        |
+| `CSRFToken.validateToken(token)`             | Validates a token by equality, checks expiry          |
 | `CSRFToken.rotateToken()`                    | Manual rotation plus a `geoleaf:csrf:rotated` event   |
 | `CSRFToken.addTokenToHeaders(opts)`          | Adds `X-CSRF-Token` to the headers                    |
 | `CSRFToken.addTokenToForm(form)`             | Adds `<input type="hidden" name="csrf_token">`        |
-| `CSRFToken.setSecureCookie(name, val, opts)` | Cookie with `Secure`, `SameSite` and `HttpOnly`       |
+| `CSRFToken.setSecureCookie(name, val, opts)` | Cookie with `Secure` and `SameSite` (see note)        |
+
+⚠️ **`validateToken` compares by direct equality, not in constant time**, and
+**`setSecureCookie` cannot set `HttpOnly`** — that flag is server-only (`Set-Cookie`) and
+unreachable from `document.cookie`. Both are deliberate, not oversights: the CSRF token is
+minted and checked in the same browser (no cross-origin timing oracle to exploit), and a
+cookie that must be hidden from JavaScript has to be set by the server. For a JS-inaccessible
+token, use a server-set `HttpOnly` cookie rather than this helper.
 
 ---
 

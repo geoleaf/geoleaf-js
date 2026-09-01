@@ -113,7 +113,7 @@ const lang_it: Record<string, string> = {
     "editor.placement.existingDetected": "Entità esistente rilevata:",
     "editor.placement.markerNew": "Nuovo punto (trascina per regolare)",
     "editor.placement.markerExisting": "Punto esistente (trascina per regolare)",
-    // 5.1-f — le flux « ajouter un POI », descendu du core avec le bouton qu'il sert.
+    // The "add a POI" flow, moved down from the core with the button it serves.
     "editor.toolbar.poi_add": "Aggiungi POI",
     "editor.addform.unavailable": "L'editor non è pronto — riprova tra un istante.",
     "editor.export.session": "Esporta questa sessione",

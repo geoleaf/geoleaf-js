@@ -211,7 +211,7 @@ objet d'authentification. Invisible jusque-là parce que le corpus des gates d'e
 (`scripts/.baselines/event-map-coverage.json`) — le contrat d'événements du core ne les décrit pas.
 C'est cohérent avec leur nature : ce sont des signaux de diagnostic d'un plugin, pas des points
 d'extension du core. Le gisement complet des événements non typés est
-**B-23**.
+Versé au registre.
 
 ⚠️ **L'émission passe par le document, jamais par la façade d'événements du core.** C'est le patron
 du dépôt pour les plugins : `GeoLeaf.events` est une surface d'**abonnement** pour les
@@ -270,12 +270,12 @@ bibliothèque protobuf de ce dernier.
   `GeoLeaf.Ws` au démarrage de sa source. Ce plugin ne connaît pas son consommateur, et son
   manifeste ne le mentionne pas.
 
-### Ce que la fiche a re-mesuré — B-24
+### Ce que la fiche a re-mesuré
 
-**B-24** ouvre sur `HeartbeatConfig`, déclaré **deux fois**
+Le constat ouvre sur `HeartbeatConfig`, déclaré **deux fois**
 dans ce paquet. Le pré-vol confirme la duplication et **requalifie le risque** :
 
-| Ce que B-24 énonce                                                                                       | Ce que la mesure donne                                                                                                                                                |
+| Ce que la ligne énonçait                                                                                 | Ce que la mesure donne                                                                                                                                                |
 | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Deux déclarations divergentes du même nom, dans le même paquet                                           | ✅ **Exact** — la publiée rend deux champs facultatifs, la locale les exige                                                                                           |
 | « Un appelant qui suit la surface publiée satisfait le type exporté et pas celui qu'`attach()` utilise » | ❌ **Ce cas n'existe pas.** `HeartbeatManager` n'est ré-exporté ni par l'entrée ni par la carte d'exports du paquet : `attach()` est **inatteignable de l'extérieur** |
@@ -290,7 +290,7 @@ troisième occurrence du motif dans ce dépôt. C'est un défaut de **maintenanc
 
 Le CDC `CDC_plugin-websocket.md` a été **consommé** en écrivant cette fiche. ⚠️ **Il n'a PAS été
 retiré du dossier de tri** — même motif que les CDC précédents, tracé au §Journal des décisions de
-`roadmap_documentation-v3.md`.
+la refonte documentaire V3.
 
 ⚠️ **Comme celui de [`realtime-layer`](CDC_realtime-layer.md), ce CDC porte sa propre table de
 vérifications croisées** — dix affirmations adossées à un fichier. Neuf tiennent. Voici l'écart, et
@@ -299,7 +299,7 @@ il est **livré aux intégrateurs**.
 | Énoncé du CDC                                                                             | Ce que dit le code                                                                                                                                                                                                                   |
 | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Croisée n° 8 — « `MockTransport` exporté via `./test-utils` dans `package.json#exports` » | ❌ **La sous-voie n'existe plus.** La carte d'exports ne déclare que `.` et `./package.json` — et une carte d'exports **bloque** toute sous-voie non listée. `import … from "@geoleaf-plugins/websocket/test-utils"` échoue          |
-| §2.19 — le double simulé est offert aux consommateurs                                     | Le fichier est **bien livré** (`test-utils/` est dans `files[]`, donc dans l'archive npm) et son propre en-tête documente le chemin d'import qui ne résout pas. Ligne **B-65** du registre                                           |
+| §2.19 — le double simulé est offert aux consommateurs                                     | Le fichier est **bien livré** (`test-utils/` est dans `files[]`, donc dans l'archive npm) et son propre en-tête documente le chemin d'import qui ne résout pas — versé au registre                                                   |
 | Croisée n° 3 — « `init()` sur plugin initialisé → `public-api.ts` »                       | Le **comportement** tient (`wsInit` appelle `wsDestroy` avant de reconstruire) ; **le fichier a changé** : la logique est passée dans `ws-lifecycle.ts`, la façade ne fait plus que déléguer                                         |
 | §2.19 — « 9 suites Vitest »                                                               | ✅ **Vérifié exact** — mais le décompte de tests, lui, ne se recopie pas                                                                                                                                                             |
 | Croisées n° 1, 2, 4, 5, 6, 7, 9, 10                                                       | ✅ **Vérifiées exactes** — validation TLS et battement de cœur, cinq états, remplacement de gestionnaire, file d'envoi, ré-abonnement avant vidage, formule de retrait, et le code de fermeture 1008 traité en échec non réessayable |

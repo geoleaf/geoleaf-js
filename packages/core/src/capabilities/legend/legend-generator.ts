@@ -262,7 +262,7 @@ function _applyIconFromRule(
     if (!shouldUseIcons()) return false;
     const res = resolveRuleIcons(rule, taxonomyData);
     if (!res.useIcon || !res.iconId) return false;
-    const base = (res.iconId as string).startsWith("#")
+    const base = res.iconId.startsWith("#")
         ? res.iconId
         : symbolPrefix
           ? symbolPrefix + res.iconId
@@ -382,7 +382,7 @@ function _applyPolygonDecorations(
  * `attributes.subCategoryId` and stopped there, so `attributes.category` and
  * `attributes.subCategory` were declared by NEITHER channel — channel 1 does not know the
  * prefix, channel 2 did not know the suffix-less form. Measured 15/08/2026 across the 12
- * spellings: 10 resolved, those 2 did not (backlog B-259). The `properties.*` family has
+ * spellings: 10 resolved, those 2 did not. The `properties.*` family has
  * always accepted both forms; there was never a reason for `attributes.*` to accept one.
  *
  * Enumerated in a table rather than re-hard-coded, so the two families stay comparable at
@@ -622,8 +622,7 @@ function _getCategories(
     // F5: taxonomy read from the in-core taxonomy capability (`GeoLeaf.Taxonomy`), the
     // named taxonomy in `modules.taxonomy` — no longer the legacy core taxonomy
     // accessor. The capability carries icons under `svgId`.
-    const cfg = getGeoLeaf()?.Taxonomy?.getCategories?.(LEGEND_TAXONOMY_REF) as
-        Record<string, TaxonomyCategory> | undefined;
+    const cfg = getGeoLeaf()?.Taxonomy?.getCategories?.(LEGEND_TAXONOMY_REF);
     if (!cfg || Object.keys(cfg).length === 0) return null;
     return cfg;
 }

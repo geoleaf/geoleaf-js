@@ -64,16 +64,17 @@ const SEAMS = [
         files: [
             {
                 pkg: "core",
-                // STRUCT S6 — re-pin. Ce seam a rougi sur un déplacement qui ne le VISAIT pas :
-                // `pill-search.ts` est l'un des importeurs de `dom-security.ts`, et son chemin
-                // d'import a changé. Diff normalisé mesuré = UNE chaîne, la ligne d'import
+                // Re-pin after the security-directory move. This seam reddened on a move
+                // that did not TARGET it: `pill-search.ts` is one of `dom-security.ts`'s
+                // importers, and its import path changed. Measured normalized diff = ONE
+                // string, the import line
                 // (`../../utils/general/dom-security.js` → `../security/dom-security.js`).
-                // La copie jumelle n'a rien reçu, et c'est correct : geocoding n'importe pas
-                // `dom-security` — elle INLINE son propre équivalent de `createSVGIcon`
-                // (`geocoding/src/ui/pill-search.ts:80`), ce qui est précisément la raison
-                // d'être d'INV-NS. Il n'y avait donc aucun changement à propager, seulement
-                // un hash à reprendre. Re-pin ciblé, pas `SEAM_PIN=1` global — celui-ci
-                // aurait aussi absorbé une dérive réelle ailleurs sans la montrer.
+                // The twin copy received nothing, and that is correct: geocoding does not
+                // import `dom-security` — it INLINES its own equivalent of `createSVGIcon`
+                // (`geocoding/src/ui/pill-search.ts`), which is precisely INV-NS's
+                // reason to exist. There was thus no change to propagate, only a hash to
+                // re-take. Targeted re-pin, not a global `SEAM_PIN=1` — the latter would
+                // also have absorbed a real drift elsewhere without showing it.
                 rel: "src/kernel/ui/pill-search.ts",
                 hash: "1f5647fb085868302d3f0442b5eed7fa353a84e3b198ca347473902352976932",
             },
@@ -84,20 +85,20 @@ const SEAMS = [
             },
         ],
     },
-    // ── `storage-contract (core ↔ storage)` — seam RETIRÉ à l'API publique S4.4 ──────────
+    // ── `storage-contract (core ↔ storage)` — seam REMOVED ──────────
     //
-    // Il enregistrait une COPIE délibérée : le plugin détenait sa propre vue du contrat, avec
-    // pour justification « the plugin owns its copy of the contract shape ».
+    // It recorded a deliberate COPY: the plugin held its own view of the contract, with
+    // the justification "the plugin owns its copy of the contract shape".
     //
-    // Ce n'était pas une copie de FORME, c'était une seconde INSTANCE. `StorageContract` porte
-    // son état dans un `let` de portée module, initialisé par le core ; un plugin chargé en
-    // `<script type="module">` a son propre graphe et ne peut pas le partager. La copie n'était
-    // donc jamais initialisée — `isAvailable()` rendait `false` pour toujours et `whenReady()`
-    // ne résolvait jamais, dans le bundle publié.
+    // It was not a copy of SHAPE, it was a second INSTANCE. `StorageContract` carries
+    // its state in a module-scoped `let`, initialized by the core; a plugin loaded as
+    // `<script type="module">` has its own graph and cannot share it. The copy was thus
+    // never initialized — `isAvailable()` returned `false` forever and `whenReady()`
+    // never resolved, in the published bundle.
     //
-    // Le plugin ADAPTE désormais `globalThis.GeoLeaf.Storage`, la façade du core : il n'y a
-    // plus deux copies à tenir synchrones, donc plus rien à épingler. Un seam qui survivrait à
-    // la disparition de sa paire épinglerait un fichier contre lui-même.
+    // The plugin now ADAPTS `globalThis.GeoLeaf.Storage`, the core's facade: there are
+    // no longer two copies to keep in sync, hence nothing left to pin. A seam that
+    // outlived its pair's disappearance would pin a file against itself.
     {
         label: "sanitize (core ↔ field-renderer)",
         why: "field-renderer/sanitize.ts is a documented copy of the core sanitizers.",
@@ -109,32 +110,34 @@ const SEAMS = [
             },
             {
                 pkg: "field-renderer",
-                // qualite Q5.4 — re-pin CIBLÉ après que la gate a vu la dérive. La lecture
-                // `url.split(",")[0]` du parseur de MIME `data:` passe en déstructuration avec
-                // défaut des DEUX côtés du seam ; le pendant core est
-                // `kernel/security/validators.ts extractDataUrlMimeType`, corrigé à l'identique
-                // au lot précédent. Les deux copies ne diffèrent toujours que par leur sortie
-                // (l'une rend `null`, l'autre jette), ce qui est la différence documentée.
+                // TARGETED re-pin after the gate saw the drift. The `data:` MIME
+                // parser's `url.split(",")[0]` read moves to destructuring-with-default
+                // on BOTH sides of the seam; the core counterpart is
+                // `kernel/security/validators.ts extractDataUrlMimeType`, fixed
+                // identically in the previous batch. The two copies still differ only in
+                // their output (one returns `null`, the other throws), which is the
+                // documented difference.
                 rel: "src/sanitize.ts",
                 hash: "c158d801e921a12505a66f7795a97212c184a619aa8423769d8821eb78b19bfc",
             },
         ],
     },
 
-    // ── Les 3 seams ajoutés à STRUCT S2 (F9) — la moitié « G2 » du sprint ────────────────
+    // ── The 3 seams added when the shared-fork blind spot was measured ───────────────────
     //
-    // ⚠️ Ils comblent un trou que S2 n'a PAS créé : il préexistait. `verify-plugin-shared-fork`
-    // exempte les DEUX côtés d'une paire core ↔ host-runtime (`CANONICAL_HOME:46` et
-    // `PEER_SOURCE:57`), parce que le core possède ces symboles en propre — il n'est pas un
-    // consommateur de fork. Résultat : rien ne confrontait ces paires, et PSF affichait du vert
-    // dessus. Mesuré à S2 : les 2 premières existaient déjà avant le sprint.
+    // ⚠️ They fill a hole that work did NOT create: it pre-existed.
+    // `verify-plugin-shared-fork` exempts BOTH sides of a core ↔ host-runtime pair
+    // (`CANONICAL_HOME:46` and `PEER_SOURCE:57`), because the core owns those symbols
+    // outright — it is not a fork consumer. Result: nothing confronted these pairs, and
+    // PSF showed green on them. Measured at the time: the first 2 already predated the
+    // work.
     //
-    // ⚠️ Ce que S2 a écarté, et pourquoi : les familles `log`, `i18n`, `download` et
-    // `map-access` n'ont AUCUN jumeau core. Leurs seams sont des ACCESSEURS délégants
-    // (`getGeoLeaf()?.Log?.warn(…)`), pas des copies — `core/src/utils/log/logger.ts` fait
-    // 260 L de moteur là où `log-seam.ts` en fait 4 de délégation. Les épingler ensemble
-    // sonnerait à chaque édition du moteur sans jamais rien avoir à réconcilier. La cible
-    // « 1 famille = 1 seam » de la roadmap était donc inatteignable, et c'est tant mieux.
+    // ⚠️ What was set aside, and why: the `log`, `i18n`, `download` and `map-access`
+    // families have NO core twin. Their seams are delegating ACCESSORS
+    // (`getGeoLeaf()?.Log?.warn(…)`), not copies — `core/src/utils/log/logger.ts` is
+    // 260 L of engine where `log-seam.ts` is 4 L of delegation. Pinning them together
+    // would ring at every engine edit without ever having anything to reconcile. The
+    // "1 family = 1 seam" target was therefore unreachable, and that is for the best.
     {
         label: "core-utils (core ↔ host-runtime)",
         why:
@@ -150,11 +153,12 @@ const SEAMS = [
             },
             {
                 pkg: "core",
-                // STRUCT S6 — ex-`src/utils/general/dom-security.ts` (verdict E3). Le hash change
-                // avec le déplacement : ses 2 lignes d'import ont bougé (`sanitizeHTML` pris sur la
-                // feuille `./sanitizers.js` au lieu du baril, pour ne pas fermer le cycle
-                // `index.ts → dom-security.ts → index.ts`). `createSVGIcon`, le corps que ce seam
-                // existe pour re-confronter à host-runtime, est INCHANGÉ — vérifié au diff.
+                // Formerly `src/utils/general/dom-security.ts`, moved under
+                // `kernel/security/`. The hash changes with the move: its 2 import lines
+                // moved (`sanitizeHTML` taken from the `./sanitizers.js` leaf instead of
+                // the barrel, to avoid closing the `index.ts → dom-security.ts →
+                // index.ts` cycle). `createSVGIcon`, the body this seam exists to
+                // re-confront with host-runtime, is UNCHANGED — verified on the diff.
                 rel: "src/kernel/security/dom-security.ts",
                 hash: "461cba5b577ecc37405097835e8ca2ee9648f589fd1270de2e2dd1422f76c99c",
             },
@@ -190,12 +194,22 @@ const SEAMS = [
             "`coreProfileLayerConfig()` et `coreProfileLayers()` ont QUITTÉ ce fichier pour " +
             "`kernel/shared/edition-permissions.ts` (graphe de boot), parce que la façade " +
             "`GeoLeaf.Storage` doit lire une permission de couche sans que le chunk hors-ligne " +
-            "soit chargé (B-138). Elles restent ré-exportées ici sous leurs noms d'origine, " +
+            "soit chargé. Elles restent ré-exportées ici sous leurs noms d'origine, " +
             "donc les 6 sites appelants du moteur ne bougent pas. RELU avant ré-épinglage, et " +
             "le verdict est le même dans l'autre sens : `host.ts` n'a AUCUN diff, et " +
             "`coreConfigGet` — la seule des trois appariées qui vive dans ce fichier — est " +
             "inchangée, corps compris. Ce qui a bougé est, une fois de plus, du code NON " +
-            "APPARIÉ. Le seam lui-même n'a pas dérivé.",
+            "APPARIÉ. Le seam lui-même n'a pas dérivé. " +
+            "⚠️ 20/08/2026 — QUATRIÈME fois, et pour la première fois sur un TYPE et non sur du " +
+            "code : `GeoLeafHost.registry` gagne `isInitialized?(): boolean`. Sous la traîne " +
+            "`[key: string]: unknown` le membre typait `unknown`, donc l'appeler rendait un " +
+            "TS2349 — le seam décrivait un membre qu'un plugin pouvait lire et pas utiliser, " +
+            "alors que six d'entre eux ont une décision réelle à en tirer (un créneau de barre " +
+            "d'outils est honoré avant `boot()` et inerte après). RELU avant ré-épinglage : " +
+            "aucune des TROIS fonctions appariées n'est touchée, `git diff` ne rend que ce " +
+            "membre et son commentaire. Et le sens est celui que HOST-03 autorise — le core " +
+            "déclare déjà `registry?: IModuleRegistry`, qui porte `isInitialized()` ; l'hôte " +
+            "était plus ÉTROIT et le devient moins, il ne devient pas plus large.",
         files: [
             {
                 pkg: "core",
@@ -210,7 +224,24 @@ const SEAMS = [
             {
                 pkg: "host-runtime",
                 rel: "src/host.ts",
-                hash: "f25a48c94cb43a7bc5763bda0455b15d8db91fbfe42126b0419609f50edef975",
+                // ⚠️ Re-pinned on 2026-08-19, AFTER re-reading the paired copy — fourth
+                // time, and the first where the change touches one of the three paired
+                // functions. `ensureGeoLeaf` lost one type assertion per branch
+                // (`{} as HostCarrier`) that the useless-assertion rule flagged.
+                //
+                // 🔺 The re-read's verdict is that the core copy ALREADY CARRIES the
+                // targeted shape: it asserts once on the whole ternary and leaves the
+                // empty literal bare. The two halves therefore CONVERGE instead of
+                // diverging — the direction this seam exists to preserve, and there was
+                // nothing to carry to the other side. No behaviour changes, on either
+                // side.
+                // ⚠️ 2026-08-20 — re-pinned for a TYPE member, not for code:
+                // `GeoLeafHost.registry` now names `isInitialized?(): boolean`. None of
+                // the three paired functions moved (`git diff` renders only that
+                // member), and the direction is the one HOST-03 allows — the host was
+                // narrower than the core, it now is less so. TARGETED re-pin on this one
+                // hash, never a global `SEAM_PIN=1`.
+                hash: "bd9a10374e3c7f8f10a4308e81c5059a0e51c6547b142a580060d32cf3bb7e1e",
             },
         ],
     },
@@ -232,11 +263,11 @@ const SEAMS = [
             },
             {
                 pkg: "field-renderer",
-                // ⚠️ RÉ-ÉPINGLÉ à la tâche 5.1c (05/08/2026), après relecture de la copie
-                // appariée : le changement porte sur `_getLabel` seul — la résolution
-                // hôte → catalogue intégré → clé — et `dom-seam.ts` n'a AUCUNE occurrence de
-                // `_getLabel`. Les deux copies restent donc appariées sur ce qu'elles
-                // partagent réellement (`_el` / `applyCssText`).
+                // ⚠️ RE-PINNED on 2026-08-05, after re-reading the paired copy: the
+                // change bears on `_getLabel` alone — the host → built-in catalogue →
+                // key resolution — and `dom-seam.ts` has NO occurrence of `_getLabel`.
+                // The two copies thus stay paired on what they really share
+                // (`_el` / `applyCssText`).
                 rel: "src/helpers.ts",
                 hash: "26f8efdd63e914f9cc132b94774ed06d103f95922fa6121e959bc5e1d4f7b7ca",
             },
@@ -254,23 +285,23 @@ const SEAMS = [
  *
  * ⚠️ The success line prints `SEAMS.length` and NOTHING about files. A seam losing one of
  * its `files[]` entries was therefore completely silent, and the historical proof is in
- * this very file: the `storage-contract` seam was REMOVED at S4.4 and the counter simply
+ * this very file: the `storage-contract` seam was REMOVED and the counter simply
  * went from 4 to 3 without a word. That is the class `probe-gate-visibility.cjs` exists to
  * catch, and this gate claimed its protection in its own docblock without ever having it.
  *
- * The floor is DERIVED at STRUCT S2 (F9) from the register as it stood — never a number
- * typed into a comment. `probe-gate-visibility.cjs:541-543` reproaches itself for exactly
- * that mistake ("Compte DÉRIVÉ … il était écrit 4/4 en dur, et a menti").
+ * The floor is DERIVED from the register as it stood when it was laid — never a number
+ * typed into a comment. `probe-gate-visibility.cjs` reproaches itself for exactly that
+ * mistake ('DERIVED count. It was written "4/4" hardcoded, and lied').
  *
  * Raising it is a deliberate act: add seams first, then raise. LOWERING it means a pair
  * genuinely stopped existing — say so in a comment, as the `storage-contract` block does.
  */
-// 5.1-f — ABAISSÉ de 6/15 à 5/13, et le motif est écrit comme ce bloc l'exige : la paire
-// `poi-to-feature (core ↔ addpoi)` a CESSÉ D'EXISTER, son second fichier
-// (`addpoi/src/utils/core-utils.ts`) étant parti avec le paquet fusionné.
-// ⚠️ La moitié CORE, elle, SURVIT : `poi-to-feature.ts` est monté sur `GeoLeaf.Utils`, couvert
-// par 10 tests et appelé par `e2e/18-security.spec.js` sur `deploy-full` — la variante qui
-// n'a jamais eu addpoi. C'est le seam qui disparaît, pas la fonction.
+// LOWERED from 6/15 to 5/13, with the reason written as this block demands: the
+// `poi-to-feature (core ↔ addpoi)` pair CEASED TO EXIST, its second file
+// (`addpoi/src/utils/core-utils.ts`) having left with the merged package.
+// ⚠️ The CORE half SURVIVES: `poi-to-feature.ts` is mounted on `GeoLeaf.Utils`, covered
+// by 10 tests and called by `e2e/18-security.spec.js` on `deploy-full` — the variant
+// that never had addpoi. The seam disappears, not the function.
 const FLOOR = { seams: 5, files: 13 };
 
 /**
@@ -315,9 +346,9 @@ function resolveFile(file) {
 const pinMode = process.env.SEAM_PIN === "1";
 let failed = false;
 
-// ── Plancher du registre, AVANT toute lecture de fichier ──────────────────────────────
-// Vérifié même en mode pin : un registre qui a rétréci ne doit pas pouvoir être re-épinglé
-// silencieusement. C'est la seule panne MUETTE que cette gate avait — tout le reste jette.
+// ── Registry floor, BEFORE any file read ──────────────────────────────────────────────
+// Checked even in pin mode: a registry that has shrunk must not be re-pinnable
+// silently. It is the only MUTE failure this gate had — everything else throws.
 const fileCount = SEAMS.reduce((n, s) => n + s.files.length, 0);
 if (SEAMS.length < FLOOR.seams || fileCount < FLOOR.files) {
     console.error(
@@ -328,7 +359,7 @@ if (SEAMS.length < FLOOR.seams || fileCount < FLOOR.files) {
         `   Retirer un seam, ou un fichier de son \`files[]\`, réduit la couverture SANS ` +
             `qu'aucune ligne ne rougisse : le message de succès ne compte que les seams.\n` +
             `   Si une paire a réellement cessé d'exister, baissez FLOOR en le DISANT — comme le ` +
-            `bloc \`storage-contract\` le fait pour son retrait au S4.4.`
+            `bloc \`storage-contract\` le fait pour son retrait.`
     );
     process.exit(1);
 }
@@ -369,8 +400,8 @@ if (failed) {
     process.exit(1);
 }
 
-// Le compte de FICHIERS est affiché, pas seulement celui des seams : c'est la grandeur que
-// le plancher protège, et un chiffre qu'on ne voit pas est un chiffre qu'on ne relit pas.
+// The FILE count is shown, not only the seam count: it is the quantity the floor
+// protects, and a number one does not see is a number one does not re-read.
 console.log(
     `✅ [seam-drift] ${SEAMS.length} seams / ${fileCount} fichiers épinglés, aucun n'a dérivé ` +
         `(plancher ${FLOOR.seams} / ${FLOOR.files}).`

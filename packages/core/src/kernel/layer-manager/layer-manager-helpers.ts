@@ -7,7 +7,7 @@
 
 /**
  * GeoLeaf LayerManager — Pure Helper Functions
- * Extracted from layer-manager-api.ts — Sprint 1 refactoring.
+ * Extracted from layer-manager-api.ts.
  * Contains stateless helpers used during LayerManager initialization.
  */
 
@@ -159,8 +159,8 @@ export function _applyLayerManagerConfig(lmConfig: LMConfig, options: LMOptions)
         .sort((a, b) => (a.order || 0) - (b.order || 0))
         .map((s) => ({
             id: s.id,
-            // Même idiome que les affectations gardées de `options.title`/`options.collapsed`
-            // quelques lignes plus haut dans ce fichier.
+            // Same idiom as the guarded assignments of
+            // `options.title`/`options.collapsed` a few lines above in this file.
             ...(s.label !== undefined && { label: s.label }),
             ...(s.order !== undefined && { order: s.order }),
             ...(s.collapsedByDefault !== undefined && {
@@ -177,7 +177,7 @@ export function _applyLayerManagerConfig(lmConfig: LMConfig, options: LMOptions)
             options.sections!.push(configSection);
             return;
         }
-        // B-251 — the config is authoritative over a section that
+        // The config is authoritative over a section that
         // `_registerGeoJsonLayer` created implicitly (generic i18n label, hardcoded
         // order 10, no accordion flag) because layers register before init() folds
         // the config in. Guarding on `!existingSection.label` used to make this a

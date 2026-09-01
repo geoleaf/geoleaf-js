@@ -1,25 +1,27 @@
 /**
  * @file b69-popup-action.test.js
- * @description Test de non-régression — un champ `type: "action"` rend un bouton et ÉMET
+ * @description Non-regression test — a `type: "action"` field renders a button and EMITS
  * `geoleaf:popup:action`.
  *
- * Pourquoi ce test existe (B-69, 29/07/2026)
+ * Why this test exists (29/07/2026)
  * ------------------------------------------
- * Le signal était **typé** dans `GeoLeafEventMap`, **enseigné dans trois TSDoc publiés** — le
- * contrat d'événements, les types de configuration de couche, et ceux de la capacité — et doté
- * d'une surface de configuration complète (`actionId`, `confirm`, `icon`, `requiresPlugin`,
- * `payloadFields`). La boucle de rendu, elle, **écartait** ces champs. Un intégrateur qui déclarait
- * un bouton n'obtenait ni bouton, ni événement, ni avertissement : l'échec était silencieux dans
- * les trois directions.
+ * The signal was **typed** in `GeoLeafEventMap`, **taught in three published
+ * TSDoc** — the event contract, the layer configuration types, and the
+ * capability's — and endowed with a complete configuration surface
+ * (`actionId`, `confirm`, `icon`, `requiresPlugin`, `payloadFields`). The
+ * render loop, though, **discarded** those fields. An integrator declaring a
+ * button got no button, no event, no warning: the failure was silent in all
+ * three directions.
  *
- * ⚠️ **Ce n'est pas le rendu qui bloquait, c'était la charge utile.** Le contrat promet `featureId`
- * et `lngLat` ; le contexte de rendu ne portait que `layerId`. C'est cette absence — et non une
- * décision — qui a fait abandonner la fonctionnalité.
+ * ⚠️ **The render was not what blocked, the payload was.** The contract
+ * promises `featureId` and `lngLat`; the render context only carried
+ * `layerId`. That absence — and not a decision — is what made the feature
+ * get abandoned.
  *
- * Le cas de la liste blanche est le plus important des quatre : sans `payloadFields`, **aucune**
- * propriété ne doit partir. Le contrat la documente « perf + privacy », et un défaut « tout
- * envoyer » ferait fuiter le sac complet dans un événement de document que n'importe quel script
- * de la page peut écouter.
+ * The whitelist case is the most important of the four: without
+ * `payloadFields`, **no** property must leave. The contract documents it
+ * "perf + privacy", and a "send everything" default would leak the whole bag
+ * into a document event any script on the page can listen to.
  */
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { buildPopupContent } from "../../../src/capabilities/feature-info/render/popup-content.js";
@@ -32,12 +34,13 @@ function build(field, ctx = CTX) {
     return buildPopupContent([field], PROPS, ctx, { hasSidepanel: false });
 }
 
-// ⚠️ `field: "name"` et non `"x"` : le panneau SAUTE un champ dont la valeur est vide
-// (`sidepanel-content.ts:98`, un `action` n'étant pas « required »), là où le popup rend le
-// bouton inconditionnellement. Un `field` sans valeur ne testerait donc qu'une surface sur deux.
+// ⚠️ `field: "name"` and not `"x"`: the panel SKIPS a field whose value is
+// empty (`sidepanel-content.ts`, an `action` not being "required"), where
+// the popup renders the button unconditionally. A valueless `field` would
+// thus test only one surface out of two.
 const ACTION = { field: "name", type: "action", actionId: "a", label: "R" };
 
-describe("B-69 — le champ `action` rend un bouton et émet", () => {
+describe("le champ `action` rend un bouton et émet", () => {
     let seen;
     const onAction = (e) => seen.push(e.detail);
     beforeEach(() => {
@@ -105,9 +108,10 @@ describe("B-69 — le champ `action` rend un bouton et émet", () => {
     });
 
     it("écarte les clés dangereuses de `payloadFields` (pollution de prototype)", () => {
-        // `payloadFields` vient d'un PROFIL : `__proto__` y est écrivable. Sur un objet littéral,
-        // une écriture par clé dynamique règle le prototype au lieu d'ajouter une propriété — et
-        // `Object.keys()` ne la liste pas, donc la fuite serait invisible à la relecture.
+        // `payloadFields` comes from a PROFILE: `__proto__` is writable
+        // there. On an object literal, a dynamic-key write sets the prototype
+        // instead of adding a property — and `Object.keys()` does not list
+        // it, so the leak would be invisible at reread.
         const root = build({
             field: "x",
             type: "action",
@@ -126,12 +130,13 @@ describe("B-69 — le champ `action` rend un bouton et émet", () => {
         expect(root.querySelector("button.gl-poi-popup__action")).toBeNull();
     });
 
-    // ── S5 — le canal d'action enrichi (contrat inverse, 14/08/2026) ──────────────
+    // ── the enriched action channel (inverse contract, 14/08/2026) ────────────────
     //
-    // ⚠️ MUTATION QUI COMPTE : rétablir `dispatchGeoLeafEvent` à la place du `CustomEvent`
-    // brut de `widget-dispatch.ts`. `button` redevient `{}` et `close`/`setBusy` `undefined`,
-    // en silence — les quatre cas ci-dessous tombent d'un coup. C'est la démonstration
-    // littérale de la raison d'être de `GeoLeafRawEventMap`, et elle a été jouée.
+    // ⚠️ MUTATION THAT MATTERS: restoring `dispatchGeoLeafEvent` in place of
+    // `widget-dispatch.ts`'s raw `CustomEvent`. `button` becomes `{}` again
+    // and `close`/`setBusy` `undefined`, silently — the four cases below fall
+    // at once. The literal demonstration of `GeoLeafRawEventMap`'s reason to
+    // exist, and it was played.
 
     it("`button` est le bouton RÉEL, pas la coquille `{}` de la sanitisation", () => {
         const root = build(ACTION);
@@ -173,8 +178,9 @@ describe("B-69 — le champ `action` rend un bouton et émet", () => {
         });
         body.querySelector("button.gl-poi-popup__action").click();
         seen[0].close();
-        // Le popup n'est PAS fermé : chaque surface injecte SA fermeture. Un import de
-        // `FeatureInfo.close()` aurait rendu ["popup", "sidepanel"] depuis les deux.
+        // The popup is NOT closed: each surface injects ITS closing. An
+        // import of `FeatureInfo.close()` would have yielded
+        // ["popup", "sidepanel"] from both.
         expect(closed).toEqual(["sidepanel"]);
     });
 
@@ -185,9 +191,9 @@ describe("B-69 — le champ `action` rend un bouton et émet", () => {
     });
 
     it("une action émise DEPUIS LE PANNEAU porte `featureId` et `lngLat`", () => {
-        // Régression du 14/08/2026 : `surfaces/sidepanel.ts` ne passait que `layerId`, donc
-        // cette même émission rendait `featureId: null` et aucun `lngLat` — sous un TSDoc qui
-        // déclarait le point réglé depuis B-69. Il ne l'était que côté popup.
+        // Regression of 14/08/2026: `surfaces/sidepanel.ts` only passed
+        // `layerId`, so this same emission yielded `featureId: null` and no
+        // `lngLat` — under a TSDoc declaring the point settled. It only was popup-side.
         const body = buildSidePanelBody([ACTION], PROPS, CTX);
         body.querySelector("button.gl-poi-popup__action").click();
         expect(seen[0].featureId).toBe(42);

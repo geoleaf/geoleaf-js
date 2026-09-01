@@ -1,5 +1,5 @@
 // @ts-check
-// Sprint 8.4 — E2E: 01-core-only — map displays, zoom works, GeoJSON layers load
+// E2E: 01-core-only — map displays, zoom works, GeoJSON layers load
 
 import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";

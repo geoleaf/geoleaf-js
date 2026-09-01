@@ -1,45 +1,59 @@
 // @ts-check
-// S5.3 — E2E table (@geoleaf-plugins/table) sur deploy-coverage (port 8769).
+// E2E table (@geoleaf-plugins/table) on deploy-coverage (port 8769).
 //
-// Garde de bout en bout pour l'extraction de la table core → plugin : prouve que,
-// une fois le plugin chargé, la façade GeoLeaf.Table se monte, le panneau bottom-sheet
-// s'attache au DOM via le cycle de vie du plugin (geoleaf:map:ready), et que
-// l'ouverture/fermeture + le câblage de l'action toolbar (`geoleaf:toolbar:action` →
-// Table.open) tiennent en navigateur.
+// End-to-end guard for the core → plugin table extraction: proves that, once
+// the plugin is loaded, the GeoLeaf.Table facade mounts, the bottom-sheet
+// panel attaches to the DOM through the plugin lifecycle (geoleaf:map:ready),
+// and that open/close + the toolbar-action wiring
+// (`geoleaf:toolbar:action` → Table.open) hold in a browser.
 //
-// 2026-07-02 — table converti en plugin LAZY (registerLazy + registerLazyForAction
-// dans init.js, comme print/measure/editor — cf. 14-print.spec.js). Le bundle
-// `dist/geoleaf-table.plugin.js` n'est plus chargé au boot : le bouton d'onglet
-// apparaît immédiatement (registerLazyForAction), mais GeoLeaf.Table n'existe
-// qu'après chargement (clic réel ou GeoLeaf.plugins.load('table')).
+// 2026-07-02 — table converted to a LAZY plugin (registerLazy +
+// registerLazyForAction in init.js, like print/measure/editor — cf.
+// 14-print.spec.js). The `dist/geoleaf-table.plugin.js` bundle is no longer
+// loaded at boot: the tab button appears immediately (registerLazyForAction),
+// but GeoLeaf.Table only exists after a load (real click or
+// GeoLeaf.plugins.load('table')).
 //
-// DEUX paresses distinctes, ne pas les confondre :
-//   1. le BUNDLE est lazy (registerLazy)                → levé par plugins.load('table')
-//   2. le PANNEAU DOM est lazy (CDC §2.3bis, d2e3187a)  → levé par l'action `table`
-// `defaultVisible: false` ⇒ `geoleaf:map:ready` ne construit rien ;
-// `TableLifecycle.ensureInitialized()` bâtit le DOM au 1er déclenchement de
-// l'action, puis `entry.ts` appelle `GeoLeaf.Table.open()`. Charger le bundle seul
-// ne fait donc PAS apparaître `.gl-table-panel` — voir le helper `fireTableAction`.
+// TWO distinct lazinesses, not to be conflated:
+//   1. the BUNDLE is lazy (registerLazy)             → lifted by plugins.load('table')
+//   2. the DOM PANEL is lazy (TB-01, d2e3187a)       → lifted by the `table` action
+// `defaultVisible: false` ⇒ `geoleaf:map:ready` builds nothing;
+// `TableLifecycle.ensureInitialized()` builds the DOM on the action's 1st
+// trigger, then `entry.ts` calls `GeoLeaf.Table.open()`. Loading the bundle
+// alone thus does NOT make `.gl-table-panel` appear — see the
+// `fireTableAction` helper.
 //
-// Cible : deploy-coverage (roadmap S5.3) — copie de deploy-core (profil actif `tourism`,
-// `modules.table.showButton` non désactivé). Le port 8769 est démarré par le
-// webServer de playwright.config.js ; `npm run build:deploy-coverage` doit avoir peuplé
-// `deploy/deploy-coverage` au préalable (après `build:deploy:all`).
+// Target: deploy-coverage — a copy of deploy-core (active profile `tourism`,
+// `modules.table.showButton` not disabled). Port 8769 is started by
+// playwright.config.js's webServer; `npm run build:deploy-coverage` must have
+// populated `deploy/deploy-coverage` beforehand (after `build:deploy:all`).
 //
-// Périmètre : garde déterministe de l'extraction (montage + façade + ouverture + UI). Le
-// flux riche pilotée par les données (sélection couche → lignes, tri, sélection ligne →
-// surbrillance/zoom carte, export GeoJSON/CSV/KML/GPX/Excel) est volontairement laissé au
-// test MANUEL desktop+mobile de S7.3 : il dépend d'une couche `table.enabled` *visible* au
-// boot et chargée en GeoJSON plein (les couches vectorTiles n'exposent pas `features`), ce
-// qui n'est pas déterministe ici — même posture que 04-core-ui-features / 05-accessibility qui
-// n'assertent que la présence du panneau.
+// Scope: deterministic guard of the extraction (mount + facade + open + UI).
+// The rich data-driven flow (layer selection → rows, sort, row selection →
+// map highlight/zoom, GeoJSON/CSV/KML/GPX/Excel export) is deliberately left
+// to the MANUAL desktop+mobile test: it depends on a `table.enabled` layer
+// *visible* at boot and loaded as full GeoJSON (vectorTiles layers expose no
+// `features`), which is not deterministic here — same posture as
+// 04-core-ui-features / 05-accessibility which only assert the panel's
+// presence.
 //
-// `serviceWorkers: 'block'` : même précaution que les autres specs plugin sur variante PWA.
+// `serviceWorkers: 'block'`: same precaution as the other plugin specs on PWA
+// variants.
 
 import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
+import { registerCoverageCollection } from "./helpers/coverage.js";
+import { bootMapUntilIdle } from "./helpers/boot.js";
 
 test.use({ baseURL: baseURL("coverage"), serviceWorkers: "block" });
+
+// This spec already TARGETED the instrumented variant without ever yielding
+// its coverage: the bundle was measured, the data thrown away at page close.
+// The wiring below pours it in. ⚠️ It only has value since the istanbul
+// `include` covers `src/capabilities/**`: before that, the code exercised
+// here was OUTSIDE the denominator, and three more dumps would have moved
+// nothing.
+registerCoverageCollection(test, "table");
 
 const TABLE_CHUNK = /geoleaf-table\.plugin\.js/;
 
@@ -49,23 +63,6 @@ function resourceLoaded(page, re) {
         (src) => performance.getEntriesByType("resource").some((e) => new RegExp(src).test(e.name)),
         re.source
     );
-}
-
-async function bootMap(page) {
-    await page.goto("/");
-    await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
-    await page.waitForFunction(
-        () => {
-            const native = /** @type {any} */ (window).GeoLeaf?.Core?.getMap?.()?.getNativeMap?.();
-            return !!(native && typeof native.loaded === "function" && native.loaded());
-        },
-        null,
-        { timeout: 20000 }
-    );
-    await page
-        .locator("#gl-loader")
-        .waitFor({ state: "hidden", timeout: 10000 })
-        .catch(() => {});
 }
 
 /** Loads the lazy table plugin (what the toolbar action does) and waits for its API. */
@@ -79,13 +76,14 @@ async function armTable(page) {
 }
 
 /**
- * Déclenche l'action toolbar `table` — le SEUL chemin qui construit le panneau.
+ * Triggers the `table` toolbar action — the ONLY path that builds the panel.
  *
- * CDC_plugin-table §2.3bis (commit `d2e3187a`, 28/06/2026) : avec
- * `modules.table.defaultVisible: false`, `geoleaf:map:ready` ne construit plus le
- * panneau ; `TableLifecycle.ensureInitialized()` le bâtit au PREMIER déclenchement
- * de l'action `"table"`, et `entry.ts` enchaîne sur `GeoLeaf.Table.open()`.
- * Charger le bundle ne suffit donc pas à faire exister `.gl-table-panel`.
+ * TB-01 in docs/specs/plugins/CDC_table.md (commit `d2e3187a`, 2026-06-28):
+ * with `modules.table.defaultVisible: false`, `geoleaf:map:ready` no longer
+ * builds the panel; `TableLifecycle.ensureInitialized()` builds it on the
+ * FIRST trigger of the `"table"` action, and `entry.ts` follows with
+ * `GeoLeaf.Table.open()`. Loading the bundle thus does not suffice to make
+ * `.gl-table-panel` exist.
  */
 async function fireTableAction(page) {
     await expect(page.locator('[data-gl-toolbar-action="table"]').first()).toBeAttached({
@@ -100,14 +98,14 @@ async function fireTableAction(page) {
 
 test.describe("21-table — lazy boundary (registerLazy + registerLazyForAction)", () => {
     test("the namespace and the lazy bundle are both absent at boot", async ({ page }) => {
-        await bootMap(page);
+        await bootMapUntilIdle(page);
         const ns = await page.evaluate(() => typeof (/** @type {any} */ (window).GeoLeaf?.Table));
         expect(ns).toBe("undefined");
         expect(await resourceLoaded(page, TABLE_CHUNK)).toBe(false);
     });
 
     test("the table toolbar button is rendered at boot (lazy action)", async ({ page }) => {
-        await bootMap(page);
+        await bootMapUntilIdle(page);
         // registerLazyForAction shows the tab immediately via getLazyUISlots().
         await expect(page.locator('[data-gl-toolbar-action="table"]').first()).toBeVisible({
             timeout: 10000,
@@ -117,11 +115,11 @@ test.describe("21-table — lazy boundary (registerLazy + registerLazyForAction)
 
 test.describe("21-table — façade + panneau + ouverture (deploy-coverage, tourism)", () => {
     test("le plugin se charge et le panneau se monte (chargement lazy)", async ({ page }) => {
-        await bootMap(page);
+        await bootMapUntilIdle(page);
         await armTable(page);
         expect(await resourceLoaded(page, TABLE_CHUNK)).toBe(true);
 
-        // Le bundle plugin est injecté et la façade est montée sur le namespace public.
+        // The plugin bundle is injected and the facade mounted on the public namespace.
         const api = await page.evaluate(() => {
             const T = /** @type {any} */ (window).GeoLeaf?.Table;
             if (!T) return null;
@@ -146,42 +144,44 @@ test.describe("21-table — façade + panneau + ouverture (deploy-coverage, tour
             "function",
         ]);
 
-        // §2.3bis — `defaultVisible: false` sous sa forme FORTE : charger le bundle ne
-        // construit AUCUN DOM. (Avant d2e3187a, panel.ts attachait le panneau caché au
-        // boot du plugin ; ce n'est plus le contrat — cf. lifecycle.ts `_onMapReady`.)
+        // TB-01 — `defaultVisible: false` in its STRONG form: loading the
+        // bundle builds NO DOM. (Before d2e3187a, panel.ts attached the hidden
+        // panel at plugin boot; no longer the contract — cf. lifecycle.ts
+        // `_onMapReady`.)
         await expect(page.locator(".gl-table-panel")).toHaveCount(0);
 
-        // Le premier déclenchement de l'action construit le panneau (ensureInitialized).
+        // The action's first trigger builds the panel (ensureInitialized).
         await fireTableAction(page);
         await expect(page.locator(".gl-table-panel")).toBeAttached({ timeout: 10000 });
     });
 
     test("open() révèle un panneau fonctionnel, toggle() le referme", async ({ page }) => {
-        await bootMap(page);
+        await bootMapUntilIdle(page);
         await armTable(page);
-        // §2.3bis : le panneau n'existe qu'après le 1er déclenchement de l'action, qui le
-        // construit ET l'ouvre. On le referme par la façade pour retrouver EXACTEMENT la
-        // précondition testée ci-dessous (panneau monté, fermé) avant d'exercer open().
+        // TB-01: the panel only exists after the action's 1st trigger, which
+        // builds AND opens it. It is closed back through the facade to recover
+        // EXACTLY the precondition tested below (panel mounted, closed) before
+        // exercising open().
         await fireTableAction(page);
         const panel = page.locator(".gl-table-panel");
         await expect(panel).toBeAttached({ timeout: 10000 });
         await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.Table.hide());
         await expect(panel).not.toHaveClass(/gl-is-visible/);
 
-        // Ouverture via la façade publique (équivalent au clic du bouton toolbar `action:table`).
+        // Open via the public facade (equivalent to the `action:table` toolbar button click).
         await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.Table.open());
         await expect(panel).toHaveClass(/gl-is-visible/, { timeout: 10000 });
 
-        // La toolbar et ses contrôles sont rendus.
+        // The toolbar and its controls are rendered.
         await expect(page.locator(".gl-table-panel__toolbar")).toBeVisible();
         await expect(page.locator("[data-table-layer-select]")).toBeAttached();
         await expect(page.locator("[data-table-search]")).toBeAttached();
 
-        // Sans sélection, les actions dépendantes de la sélection sont désactivées.
+        // Without a selection, the selection-dependent actions are disabled.
         await expect(page.locator("[data-table-btn='zoom']")).toBeDisabled();
         await expect(page.locator("[data-table-btn='highlight']")).toBeDisabled();
 
-        // Fermeture via la façade.
+        // Close via the facade.
         await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.Table.toggle());
         await expect(panel).not.toHaveClass(/gl-is-visible/);
     });
@@ -189,12 +189,13 @@ test.describe("21-table — façade + panneau + ouverture (deploy-coverage, tour
     test("l'action toolbar `table` déclenche le chargement lazy PUIS l'ouverture", async ({
         page,
     }) => {
-        await bootMap(page);
+        await bootMapUntilIdle(page);
         expect(await resourceLoaded(page, TABLE_CHUNK)).toBe(false);
 
-        // Simule le clic réel : dispatche l'action toolbar sans pré-charger le plugin.
-        // desktop-panel-slots.ts intercepte via plugins.isLazyAction()/ensureLoadedForAction()
-        // avant de redispatcher l'événement une fois le bundle chargé.
+        // Simulates the real click: dispatches the toolbar action without
+        // pre-loading the plugin. desktop-panel-slots.ts intercepts via
+        // plugins.isLazyAction()/ensureLoadedForAction() before re-dispatching
+        // the event once the bundle is loaded.
         await page.evaluate(() => {
             const btn = /** @type {any} */ (document).querySelector(
                 '[data-gl-toolbar-action="table"]'

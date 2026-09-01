@@ -14,19 +14,22 @@
  * **registers** its handler on the in-core `GeoLeaf.Sync` seam
  * (`registerHandler("poi", POISyncHandler)`), and consumers read it back here at call time.
  *
- * 🛑 **La forme du handler N'EST PLUS déclarée ici** (tâche 4.9). Elle l'était, et son jumeau
- * du core (`kernel/shared/sync-handler-seam.ts`) la déclarait aussi : deux déclarations d'un
- * même contrat, qui ont **menti de concert** sur `restoreBackup(backupId: string)` alors que
- * `sync_backups` est un store `autoIncrement`. Le typecheck sortait vert des deux côtés pour
- * un appel qui ne trouvait jamais rien — c'est le mode d'échec propre au doublon : les deux
- * copies ne divergent pas bruyamment, elles s'accordent et se trompent ensemble.
+ * 🛑 **The handler's shape is NO LONGER declared here.** It was, and its core
+ * twin (`kernel/shared/sync-handler-seam.ts`) declared it too: two declarations
+ * of one contract, which **lied in concert** about
+ * `restoreBackup(backupId: string)` while `sync_backups` is an `autoIncrement`
+ * store. The typecheck came out green on both sides for a call that never found
+ * anything — the duplicate's own failure mode: the two copies do not diverge
+ * loudly, they agree and go wrong together.
  *
- * ⚠️ **Le relevé ci-dessus décrit correctement l'état du 02/08 et n'est pas réécrit** — c'est
- * ce qui lui donne sa valeur. Mais son sujet n'existe plus : `restoreBackup` et le magasin
- * `sync_backups` sont retirés à la tâche 4.11, avec toute la chaîne de sauvegarde.
+ * ⚠️ **The account above correctly describes the 02/08 state and is not
+ * rewritten** — that is what gives it its value. But its subject no longer
+ * exists: `restoreBackup` and the `sync_backups` store are removed, with the
+ * whole backup chain.
  *
- * L'import est `type`-only, par le subpath publié sans condition `import` : il est **effacé au
- * build**, ce paquet ne gagne aucune dépendance runtime sur le core, et le bundle ne bouge pas.
+ * The import is `type`-only, through the published subpath with no `import`
+ * condition: it is **erased at build**, this package gains no runtime dependency
+ * on the core, and the bundle does not move.
  */
 import type { SyncHandler } from "@geoleaf/core/contracts/sync.contract.js";
 
@@ -35,8 +38,13 @@ interface GeoLeafSyncGlobal {
 }
 
 /**
- * Runtime accessor for the POI offline sync handler registered by addpoi.
- * @returns the handler, or `undefined` when addpoi is not loaded.
+ * Runtime accessor for the POI offline sync handler, whichever plugin registered it.
+ *
+ * ⚠️ It named one registrant until the 19/08/2026, and that plugin is gone while the seam
+ * still has a registrant. The seam is keyed by handler id precisely so it never needs to
+ * know: documenting it by its current filler is what made it look dead.
+ *
+ * @returns the handler, or `undefined` when no plugin has registered one.
  */
 export function getPoiSyncHandler(): SyncHandler | undefined {
     const g = globalThis as unknown as GeoLeafSyncGlobal;

@@ -1,104 +1,106 @@
 /**
- * Le bandeau de licence — sa forme canonique, en un seul endroit (npm S3, tâche 3.1).
+ * The license banner — its canonical shape, in one place.
  *
- * Trois consommateurs le lisent, et c'est la raison d'être du module :
- *   • `scripts/check-license-headers.cjs`      — la gate LIC-01/02/03/04/05
- *   • `scripts/check-license-headers.cjs --write` — le générateur qui pose le bandeau
- *   • `packages/build-config/rollup.mjs`       — la bannière de SORTIE des bundles
+ * Three consumers read it, and that is the module's reason to exist:
+ *   • `scripts/check-license-headers.cjs`      — the LIC-01/02/03/04/05 gate
+ *   • `scripts/check-license-headers.cjs --write` — the generator that lays the banner
+ *   • `packages/build-config/rollup.mjs`       — the OUTPUT banner of the bundles
  *
- * Une gate et son générateur qui portent chacun leur copie de la règle divergent, et le
- * désaccord se lit comme « la gate est verte sur un fichier que le générateur veut réécrire ».
- * C'est la même doctrine que `lib/source-inventory.cjs`, dont ce module partage le corpus.
+ * A gate and its generator each carrying their own copy of the rule diverge, and the
+ * disagreement reads as "the gate is green on a file the generator wants to rewrite".
+ * Same doctrine as `lib/source-inventory.cjs`, whose corpus this module shares.
  *
- * ## Deux formes, une seule différence : la version
+ * ## Two shapes, a single difference: the version
  *
  * Sources (`.ts`)          → titre nu.
  * Bundles (`output`)       → titre + ` v<version>`.
  *
- * La version ne descend JAMAIS dans les sources : `__GEOLEAF_VERSION__` n'y est pas substitué
- * (le `replace` de rollup ne touche que ce qui entre dans un bundle), et un numéro figé dans
- * 845 fichiers serait faux au premier `npm version`.
+ * The version NEVER descends into the sources: `__GEOLEAF_VERSION__` is not substituted
+ * there (rollup's `replace` only touches what enters a bundle), and a number frozen into
+ * 845 files would be wrong at the first `npm version`.
  *
- * ## Pourquoi `/*!` et jamais `/**`
+ * ## Why `/*!` and never `/**`
  *
- * `source-inventory.cjs:extractHeader` strippe le bloc `/*!` AVANT de chercher un `/**`, sinon
- * tout fichier paraîtrait documenté par son copyright. Poser des `/**` ferait passer 195
- * fichiers de « non documenté » à « documenté » aux yeux de `check-module-headers.cjs`, donc
- * MH-02 sur 195 entrées de baseline — le mode d'échec exact que cette gate existe pour
- * interdire. `/*!` est aussi le marqueur *legal comment* qu'esbuild et terser reconnaissent.
+ * `source-inventory.cjs:extractHeader` strips the `/*!` block BEFORE looking for a `/**`,
+ * otherwise every file would look documented by its copyright. Laying `/**` would flip 195
+ * files from "undocumented" to "documented" in the eyes of `check-module-headers.cjs`,
+ * hence MH-02 on 195 baseline entries — the exact failure mode that gate exists to forbid.
+ * `/*!` is also the *legal comment* marker esbuild and terser recognize.
  *
- * ## Le titre n'est pas imposé, son APPARTENANCE l'est
+ * ## The title is not imposed — its OWNERSHIP is
  *
- * Le générateur écrit `pkg.name`. La gate, elle, laisse le titre libre — les 650 titres
- * existants portent une information réelle (`GeoLeaf Core — Language: French (fr)`) que
- * normaliser détruirait — mais elle refuse qu'un titre nomme un AUTRE paquet du dépôt
- * (LIC-02). Mesuré le 10/08/2026 : 4 fichiers le faisaient, dont deux d'`offline-ui` qui
- * s'annonçaient « GeoLeaf Core ».
+ * The generator writes `pkg.name`. The gate, for its part, leaves the title free — the 650
+ * existing titles carry real information (`GeoLeaf Core — Language: French (fr)`) that
+ * normalizing would destroy — but it refuses a title naming ANOTHER package of the repo
+ * (LIC-02). Measured on 2026-08-10: 4 files did, including two of `offline-ui` announcing
+ * themselves as "GeoLeaf Core".
  *
- * ## `Copyright (c)` / `©` — une PARTITION, pas une divergence (npm S4, tâche 4.3)
+ * ## `Copyright (c)` / `©` — a PARTITION, not a divergence
  *
- * La tâche 4.3 demandait de « trancher la divergence de formulation ». **Il n'y en a aucune
- * à trancher : les deux formes ne se rencontrent nulle part.** Mesuré le 10/08/2026, puis
- * re-mesuré après les 2 fichiers créés en 4.1 :
+ * The task asked to "settle the wording divergence". **There is none to settle: the two
+ * forms meet nowhere.** Measured on 2026-08-10, then re-measured after the 2 files created
+ * since:
  *
- *   • `Copyright (c) 2026 Mattieu Pottier` — dans les **19 fichiers `LICENSE`**, et nulle part
- *     ailleurs (hors mentions méta comme celle-ci, qui parlent de la chaîne sans la porter).
- *   • `© 2026 Mattieu Pottier` — dans les bandeaux `/*!` des sources et des bundles.
- *   • **Intersection vide, dans les deux sens** : aucun `LICENSE` ne contient `©`, aucun
- *     bandeau ne contient `Copyright (c)`.
+ *   • `Copyright (c) 2026 Mattieu Pottier` — in the **19 `LICENSE` files**, and nowhere
+ *     else (meta mentions like this one aside, which talk about the string without
+ *     carrying it).
+ *   • `© 2026 Mattieu Pottier` — in the `/*!` banners of sources and bundles.
+ *   • **Empty intersection, both ways**: no `LICENSE` contains `©`, no banner contains
+ *     `Copyright (c)`.
  *
- * Ce n'est donc pas une divergence tacite, c'est une **partition**, et elle a un motif dans
- * chaque sens. Le `LICENSE` porte le **texte MIT canonique**, celui que SPDX et les scanners
- * de conformité reconnaissent au mot près : `Copyright (c)` y est la forme du gabarit, et la
- * réécrire en `©` ferait diverger 19 fichiers d'un texte de référence pour un gain nul. Le
- * bandeau, lui, n'est pas le texte de la licence mais une **notice** — `©` y est la forme
- * typographique, elle tient sur une ligne courte répétée dans 845 sources et 39 bundles.
+ * So this is not a tacit divergence, it is a **partition**, and it has a rationale in each
+ * direction. The `LICENSE` carries the **canonical MIT text**, the one SPDX and compliance
+ * scanners recognize to the word: `Copyright (c)` is the template's form there, and
+ * rewriting it as `©` would make 19 files diverge from a reference text for zero gain. The
+ * banner, meanwhile, is not the license text but a **notice** — `©` is the typographic
+ * form there, it fits on a short line repeated across 845 sources and 39 bundles.
  *
- * 🛑 **Les deux sens sont GATÉS, et il faut savoir lequel par quoi.** Le sens « aucun bandeau
- * ne porte `(c)` » l'était déjà : `inspect()` classe cette forme `parenthesee`, donc LIC-01 la
- * refuse. Le sens inverse — « aucun `LICENSE` ne porte `©` » — ne l'était par rien, et c'est
- * exactement celui qu'une harmonisation bien intentionnée casserait : quelqu'un qui lit
- * 845 bandeaux en `©` et 19 `LICENSE` en `(c)` conclut à une incohérence et « corrige » le
- * plus petit des deux tas. **C'est LIC-06 qui le tient**, et le paragraphe qu'on lit là est
- * ce que cette personne aurait dû lire avant.
+ * 🛑 **Both directions are GATED, and one must know which by what.** The direction "no
+ * banner carries `(c)`" already was: `inspect()` classifies that form `parenthesee`, so
+ * LIC-01 refuses it. The reverse — "no `LICENSE` carries `©`" — was held by nothing, and
+ * it is exactly the one a well-meaning harmonization would break: someone reading 845
+ * banners in `©` and 19 `LICENSE` files in `(c)` concludes an inconsistency and "fixes"
+ * the smaller of the two piles. **LIC-06 is what holds it**, and the paragraph being read
+ * right here is what that person should have read first.
  */
 
 "use strict";
 
 const registry = require("./packages.cjs");
 
-/** L'année du copyright. Identique aux 17 fichiers `LICENSE` (`Copyright (c) 2026`). */
+/** The copyright year. Identical to the 17 `LICENSE` files (`Copyright (c) 2026`). */
 const COPYRIGHT_YEAR = "2026";
-/** Le détenteur, unique. Aucune autre attribution n'est admise (LIC-02). */
+/** The holder, single. No other attribution is admitted (LIC-02). */
 const HOLDER = "Mattieu Pottier";
-/** La ligne qui rend la notice actionnable quand un `.js` est servi seul depuis un CDN. */
+/** The line that makes the notice actionable when a `.js` is served alone from a CDN. */
 const PROJECT_URL = "https://geoleaf.dev";
-/** La formulation de licence, celle des 617 bandeaux conformes. */
+/** The license wording, the one of the 617 conforming banners. */
 const LICENSE_LINE = "Released under the MIT License";
-/** La seule valeur admise pour `package.json#license` (LIC-05). */
+/** The only value admitted for `package.json#license` (LIC-05). */
 const PUBLISHED_PACKAGE_LICENSE = "MIT";
 
 /**
- * La ligne de copyright d'un fichier `LICENSE` — forme du gabarit MIT, jamais celle du bandeau.
+ * The copyright line of a `LICENSE` file — the MIT template's form, never the banner's.
  *
- * ⚠️ `Copyright (c)` ici, `©` dans `renderBanner()` : c'est une partition VOULUE, motivée au
- * §« `Copyright (c)` / `©` » de l'en-tête. Aligner les deux est le geste qu'il ne faut pas faire.
+ * ⚠️ `Copyright (c)` here, `©` in `renderBanner()`: this is a WANTED partition, motivated
+ * in the header's §"`Copyright (c)` / `©`". Aligning the two is the move not to make.
  */
 const LICENSE_FILE_COPYRIGHT = `Copyright (c) ${COPYRIGHT_YEAR} ${HOLDER}`;
 
 /**
- * Le signe que les bandeaux portent et qu'aucun `LICENSE` ne doit porter (LIC-06).
+ * The sign the banners carry and no `LICENSE` must carry (LIC-06).
  *
- * Nommé plutôt qu'écrit en littéral dans la gate : un `©` perdu au milieu d'une condition est
- * indiscernable d'une coquille, et c'est précisément le caractère qu'on surveille.
+ * Named rather than written as a literal in the gate: a `©` lost in the middle of a
+ * condition is indistinguishable from a typo, and it is precisely the character being
+ * watched.
  */
 const TYPOGRAPHIC_COPYRIGHT = "©";
 
 /**
- * Le bloc `/*!` canonique, prêt à être écrit.
+ * The canonical `/*!` block, ready to write.
  *
- * @param {string} title Première ligne — `pkg.name`, ou `pkg.name v<version>` pour un bundle.
- * @returns {string} Le bloc, SANS saut de ligne final.
+ * @param {string} title First line — `pkg.name`, or `pkg.name v<version>` for a bundle.
+ * @returns {string} The block, WITHOUT a trailing newline.
  */
 function renderBanner(title) {
     return [
@@ -122,21 +124,21 @@ function bundleBanner(pkgName, version) {
 }
 
 /**
- * Le bloc `/*!` de tête d'un fichier, BOM toléré.
+ * A file's leading `/*!` block, BOM tolerated.
  *
- * ⚠️ Le BOM n'est pas un détail cosmétique ici. Mesuré le 10/08/2026 : **17 fichiers en
- * portent un**, dont **8 avec leur bandeau juste derrière**. Un motif ancré en `/^\/\*!/` les
- * compte comme nus — c'est l'écart exact entre le « 203 » du pré-vol et les 195 réels — et un
- * générateur qui les croirait nus leur écrirait un SECOND bandeau.
+ * ⚠️ The BOM is no cosmetic detail here. Measured on 2026-08-10: **17 files carry one**,
+ * including **8 with their banner right behind it**. A pattern anchored as `/^\/\*!/`
+ * counts them as bare — that is the exact gap between the preflight's "203" and the real
+ * 195 — and a generator believing them bare would write them a SECOND banner.
  */
 const BANNER_RE = /^﻿?\/\*!([\s\S]*?)\*\//;
 
 /**
- * Étiquette d'affichage dérivée d'un nom de paquet — sans table à maintenir.
+ * Display label derived from a package name — no table to maintain.
  *
- * `@geoleaf/core` → `GeoLeaf Core`. Sert uniquement à LIC-02, pour reconnaître qu'un titre
- * nomme un autre paquet que le sien : le guide prescrit cette forme et la moitié du dépôt la
- * contredit, donc elle n'est PAS imposée — elle est seulement reconnue.
+ * `@geoleaf/core` → `GeoLeaf Core`. Serves LIC-02 only, to recognize a title naming a
+ * package other than its own: the guide prescribes this form and half the repo
+ * contradicts it, so it is NOT imposed — only recognized.
  *
  * @param {string} pkgName
  * @returns {string}
@@ -156,11 +158,11 @@ function displayLabel(pkgName) {
 let aliasCache = null;
 
 /**
- * Toutes les façons dont un paquet du dépôt peut être nommé, minuscules → nom de paquet.
+ * Every way a package of the repo can be named, lowercase → package name.
  *
- * Dérivée de `packages.cjs`, jamais écrite à la main : un alias en dur cesserait
- * silencieusement de matcher au premier renommage, et LIC-02 sortirait verte en ne
- * reconnaissant plus rien.
+ * Derived from `packages.cjs`, never hand-written: a hard-coded alias would silently stop
+ * matching at the first rename, and LIC-02 would go green while recognizing nothing
+ * anymore.
  *
  * @returns {Map<string, string>}
  */
@@ -175,9 +177,9 @@ function packageAliases() {
 }
 
 /**
- * Ce qu'un fichier porte, et ce qui lui manque.
+ * What a file carries, and what it lacks.
  *
- * @param {string} source Contenu du fichier.
+ * @param {string} source File content.
  * @returns {{present: boolean, body: string, title: string, hasUrl: boolean, hasMit: boolean,
  *            authorForm: "canonique"|"parenthesee"|"nue"|"absente"}}
  */
@@ -202,7 +204,8 @@ function inspect(source) {
     const canonical = new RegExp(`©\\s*\\d{4}(?:\\s*[–-]\\s*\\d{4})?\\s+${HOLDER}`);
     let authorForm;
     if (canonical.test(body)) authorForm = "canonique";
-    else if (new RegExp(`\\(c\\)\\s*\\d{4}\\s+${HOLDER}`, "i").test(body)) authorForm = "parenthesee";
+    else if (new RegExp(`\\(c\\)\\s*\\d{4}\\s+${HOLDER}`, "i").test(body))
+        authorForm = "parenthesee";
     else if (body.includes(HOLDER)) authorForm = "nue";
     else authorForm = "absente";
 
@@ -217,20 +220,20 @@ function inspect(source) {
 }
 
 /**
- * Le nom d'un AUTRE paquet cité par un titre, ou `null`.
+ * The name of ANOTHER package cited by a title, or `null`.
  *
- * @param {string} title Première ligne du bandeau.
- * @param {string} ownPkgName Le paquet auquel le fichier appartient réellement.
- * @returns {string|null} Le paquet usurpé.
+ * @param {string} title First line of the banner.
+ * @param {string} ownPkgName The package the file really belongs to.
+ * @returns {string|null} The usurped package.
  */
 function foreignPackageInTitle(title, ownPkgName) {
     const lower = title.toLowerCase();
     for (const [alias, owner] of packageAliases()) {
         if (owner === ownPkgName) continue;
         if (!lower.startsWith(alias)) continue;
-        // Frontière de mot obligatoire : sans elle, `GeoLeaf Cog` (le plugin) matcherait
-        // n'importe quel titre de core commençant par « GeoLeaf Cognitive… ». Une gate qui
-        // rougit sur un titre légitime se fait relâcher, et c'est la garde entière qui part.
+        // Word boundary mandatory: without it, `GeoLeaf Cog` (the plugin) would match any
+        // core title starting with "GeoLeaf Cognitive…". A gate that reddens on a
+        // legitimate title gets loosened, and the whole guard goes with it.
         const next = lower.charAt(alias.length);
         if (next === "" || !/[a-z0-9]/.test(next)) return owner;
     }
@@ -238,16 +241,16 @@ function foreignPackageInTitle(title, ownPkgName) {
 }
 
 /**
- * Réécrit le bandeau d'une source pour le rendre canonique — le geste de `--write`.
+ * Rewrites a source's banner to make it canonical — the `--write` move.
  *
- * Trois cas, dans cet ordre :
- *   1. aucun bandeau        → on insère le bloc complet, titre = `pkg.name`
- *   2. bandeau qui usurpe   → le titre est remplacé par `pkg.name`, le reste conservé
- *   3. bandeau incomplet    → on complète la ou les lignes manquantes, le TITRE est conservé
+ * Three cases, in this order:
+ *   1. no banner            → insert the full block, title = `pkg.name`
+ *   2. usurping banner      → the title is replaced by `pkg.name`, the rest kept
+ *   3. incomplete banner    → complete the missing line(s), the TITLE is kept
  *
- * Le cas 3 est celui qui compte : conserver le titre est ce qui rend l'opération non
- * destructrice sur 650 fichiers dont le titre porte une information qu'aucun générateur ne
- * saurait reconstruire.
+ * Case 3 is the one that matters: keeping the title is what makes the operation
+ * non-destructive over 650 files whose title carries information no generator could
+ * reconstruct.
  *
  * @param {string} source
  * @param {string} pkgName
@@ -260,8 +263,8 @@ function normalize(source, pkgName) {
     const why = [];
 
     if (!info.present) {
-        // Un fichier nu : bandeau complet, puis une ligne vide avant ce qui suit — sauf si le
-        // fichier commençait déjà par une ligne vide, auquel cas on n'en ajoute pas une seconde.
+        // A bare file: full banner, then one blank line before what follows — unless the
+        // file already started with a blank line, in which case we do not add a second.
         const sep = /^\s*\n/.test(rest) ? "\n" : "\n\n";
         return {
             source: bom + sourceBanner(pkgName) + sep + rest.replace(/^\n+/, ""),
@@ -275,7 +278,7 @@ function normalize(source, pkgName) {
     const lines = block.split("\n");
     // lines[0] === "/*!", lines[last] contient "*/"
 
-    // (2) titre usurpé
+    // (2) usurped title
     const foreign = foreignPackageInTitle(info.title, pkgName);
     if (foreign) {
         const idx = lines.findIndex((l, i) => i > 0 && l.replace(/^\s*\*?\s?/, "").trim() !== "");
@@ -285,12 +288,12 @@ function normalize(source, pkgName) {
         }
     }
 
-    // (3) lignes manquantes — insérées AVANT la ligne de fermeture, dans l'ordre du canon.
+    // (3) missing lines — inserted BEFORE the closing line, in canonical order.
     const closeIdx = lines.length - 1;
     /** @type {string[]} */
     const add = [];
     if (info.authorForm !== "canonique") {
-        // Une forme bâtarde se remplace, elle ne se double pas.
+        // A bastard form gets replaced, not doubled.
         const bad = lines.findIndex((l) => /\(c\)\s*\d{4}|Mattieu Pottier/.test(l));
         if (bad > 0) {
             lines[bad] = ` * © ${COPYRIGHT_YEAR} ${HOLDER}`;

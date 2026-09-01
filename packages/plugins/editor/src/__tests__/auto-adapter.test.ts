@@ -117,14 +117,15 @@ describe("createAutoAdapter — routing", () => {
         expect(queue.update).not.toHaveBeenCalled();
     });
 
-    // 🛑 LE PIÈGE QUE CE SPRINT REFERME (B-199, tâches 3.7/3.8). Le test voisin
-    // « transport failure → fallback » est sa PAIRE : sans lui, une suite qui n'observe jamais
-    // de repli passerait aussi sur un `_route` cassé. Les deux ensemble disent que la frontière
-    // est là et pas ailleurs.
+    // 🛑 THE TRAP CLOSED HERE. The neighbouring test
+    // "transport failure → fallback" is its PAIR: without it, a suite that
+    // never observes a fallback would also pass on a broken `_route`. The two
+    // together say the boundary is here and nowhere else.
     //
-    // MUTATION QUI COMPTE : ajouter `"capability"` à `_isTransportError` rend ce test rouge sur
-    // DEUX axes — la promesse résout au lieu de rejeter, et `queue.save` est appelé. C'est ça
-    // qui garde l'invariant, pas le commentaire posé à côté de la fonction.
+    // MUTATION THAT MATTERS: adding `"capability"` to `_isTransportError`
+    // turns this test red on TWO axes — the promise resolves instead of
+    // rejecting, and `queue.save` is called. That is what guards the
+    // invariant, not the comment set next to the function.
     it("un refus de CAPACITÉ (501) NE retombe PAS dans la file — refus définitif", async () => {
         const rest = stubAdapter("rest");
         (rest.save as any).mockRejectedValueOnce(

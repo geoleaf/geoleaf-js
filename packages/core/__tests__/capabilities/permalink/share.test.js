@@ -1,7 +1,7 @@
 /**
  * @vitest-environment happy-dom
  *
- * Share module — Sprint 2 (A.7).
+ * Share module.
  * Covers: buildShareUrl, openShareModal, copy flow, lazy QR loading.
  *
  * Uses happy-dom instead of jsdom because tsx@4.21.0 + webidl-conversions@8

@@ -38,20 +38,26 @@ const ButtonControl = {
      */
     init(
         map: unknown,
-        cfg: { ui?: { showCacheButton?: boolean }; [key: string]: unknown }
+        // Kept for call-shape compatibility: entry points pass the resolved config through.
+        // Nothing here reads it any more — see the dated note below.
+        _cfg?: { ui?: { showCacheButton?: boolean }; [key: string]: unknown }
     ): unknown {
         if (!map) {
             if (Log) Log.error("[CacheButton.ButtonControl] Map non disponible");
             return null;
         }
 
-        // Mirror the registry slot's profileKey guard (ui.showCacheButton).
-        const showCacheButton = cfg?.ui?.showCacheButton !== false; // Default true
-        if (!showCacheButton) {
-            if (Log) Log.info("[CacheButton.ButtonControl] Disabled by configuration");
-            return null;
-        }
-
+        // The visibility guard that used to sit here was removed on 24/08/2026, as a
+        // DECIDED behaviour change on a published package (3.1.0 wave). Since S2 this
+        // module renders no button — it only CAPTURES the map for the cache modal — yet
+        // it still read `ui.showCacheButton` and returned null on false. The toolbar slot
+        // reads `modules.offline-ui.showButton` first with that same legacy key as
+        // fallback, so the perverse profile `showButton: true` + `showCacheButton: false`
+        // rendered a VISIBLE button over a modal whose sub-modules got `null` from
+        // `getMap()`. Capture is now unconditional; button visibility belongs to the
+        // slot alone (held equal on both declaration sides by the SLOT gate). A profile
+        // that set the legacy key to false loses nothing: it now gets a working modal
+        // behind a button the slot still hides.
         _realMap = map;
         if (Log) Log.info("[CacheButton.ButtonControl] Real map captured for cache modal");
         return map;

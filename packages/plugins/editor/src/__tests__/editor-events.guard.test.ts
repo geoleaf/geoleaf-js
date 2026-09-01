@@ -1,25 +1,27 @@
 /**
- * Le typage des événements publics de l'éditeur est-il OPPOSABLE ? — tâche 7.3.
+ * Is the typing of the editor's public events ENFORCEABLE?
  *
- * 🛑 **Cette garde existe à cause d'un faux vert mesuré, pas d'un principe.** Les neuf
- * `geoleaf:editor:*` ont d'abord été typés en contraignant le `_dispatch` local
- * d'`events.ts`. Une mutation l'a pris en défaut : retirer `pushed` de
- * `GeoLeafEditorSyncFlushedDetail` laissait le typecheck **VERT**. Motif — **trois des neuf
- * émetteurs n'y passaient pas** et construisaient leur `CustomEvent` à la main. Pour ces
- * trois-là, le contrat décrivait une charge que rien n'obligeait à respecter : décoratif.
+ * 🛑 **This guard exists because of a measured false green, not a principle.**
+ * The nine `geoleaf:editor:*` were first typed by constraining `events.ts`'s
+ * local `_dispatch`. A mutation caught it out: removing `pushed` from
+ * `GeoLeafEditorSyncFlushedDetail` left the typecheck **GREEN**. Motive —
+ * **three of the nine emitters did not go through it** and built their
+ * `CustomEvent` by hand. For those three, the contract described a payload
+ * nothing forced to respect: decorative.
  *
- * Ce que cette suite garde, et que le typecheck seul ne garde pas :
+ * What this suite guards, and the typecheck alone does not:
  *
- *  1. Qu'il n'existe **qu'un** point d'émission. Un `new CustomEvent("geoleaf:editor:…")`
- *     écrit ailleurs rouvrirait le trou exactement comme les trois d'origine — et il
- *     sortirait vert au typecheck, puisque `CustomEvent` accepte n'importe quel `detail`.
- *  2. Que les neuf noms du contrat sont bien ceux que le plugin émet, **dans les deux
- *     sens** : un nom typé que personne n'émet est une promesse creuse ; un nom émis
- *     absent du contrat est une API publique invisible à l'intégrateur — c'est
- *     précisément la classe B-142.
+ *  1. That there is only **one** emission point. A
+ *     `new CustomEvent("geoleaf:editor:…")` written elsewhere would reopen the
+ *     hole exactly like the original three — and it would come out green at
+ *     the typecheck, since `CustomEvent` accepts any `detail`.
+ *  2. That the contract's nine names are indeed the ones the plugin emits, **in
+ *     both directions**: a typed name nobody emits is a hollow promise; an
+ *     emitted name absent from the contract is a public API invisible to the
+ *     integrator — precisely that class.
  *
- * Les sujets sont LUS SUR LE DISQUE : un émetteur neuf entre dans le périmètre sans que
- * personne l'inscrive nulle part.
+ * The subjects are READ FROM DISK: a new emitter enters the perimeter without
+ * anyone registering it anywhere.
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
@@ -31,10 +33,10 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(__dirname, "../../../../..");
 const SRC = resolve(REPO, "packages/plugins/editor/src");
 const CONTRACT = resolve(REPO, "packages/core/src/contracts/event-bus.contract.ts");
-/** Le point d'émission unique — le SEUL fichier autorisé à construire l'événement. */
+/** The single emission point — the ONLY file allowed to build the event. */
 const DISPATCH_MODULE = "editor-events.ts";
 
-/** Tous les `.ts` de production du plugin (hors tests et mocks). */
+/** All the plugin's production `.ts` files (excluding tests and mocks). */
 function sourceFiles(dir: string): string[] {
     const out: string[] = [];
     for (const entry of readdirSync(dir)) {
@@ -51,7 +53,7 @@ function sourceFiles(dir: string): string[] {
 
 const FILES = sourceFiles(SRC);
 
-/** Les noms `geoleaf:editor:*` déclarés dans `GeoLeafEventMap`, lus dans le contrat. */
+/** The `geoleaf:editor:*` names declared in `GeoLeafEventMap`, read from the contract. */
 function contractEventNames(): string[] {
     const src = readFileSync(CONTRACT, "utf8");
     const start = src.indexOf("export interface GeoLeafEventMap {");
@@ -59,7 +61,7 @@ function contractEventNames(): string[] {
     return [...body.matchAll(/"(geoleaf:editor:[a-z-]+)"\s*:/g)].map((m) => m[1]).sort();
 }
 
-/** Les noms émis par le plugin, relevés aux sites d'appel du point unique. */
+/** The names the plugin emits, collected at the single point's call sites. */
 function emittedEventNames(): string[] {
     const names = new Set<string>();
     for (const file of FILES) {
@@ -73,8 +75,8 @@ function emittedEventNames(): string[] {
 
 describe("EDITOR-EVENTS — un seul point d'émission", () => {
     it("garde anti-gate-vide : des sources sont bien lues", () => {
-        // Sans cette borne, un `SRC` déplacé ferait sortir tout le reste vert en n'ayant
-        // scanné aucun fichier.
+        // Without this bound, a moved `SRC` would let everything else come out
+        // green having scanned no file.
         expect(FILES.length, "aucune source lue — le périmètre est cassé").toBeGreaterThan(30);
         expect(FILES.some((f) => f.endsWith(DISPATCH_MODULE))).toBe(true);
     });
@@ -106,7 +108,7 @@ describe("EDITOR-EVENTS — contrat ≡ émissions, dans les deux sens", () => {
         expect(
             undeclared,
             `Événement(s) émis et ABSENT(s) de GeoLeafEventMap — une API publique que ` +
-                `l'intégrateur ne peut ni découvrir ni vérifier. C'est la classe B-142.`
+                `l'intégrateur ne peut ni découvrir ni vérifier.`
         ).toEqual([]);
     });
 

@@ -6,7 +6,7 @@
  */
 
 /**
- * @fileoverview EventListnerManager - Gestion centralizede des event listners
+ * @fileoverview EventListenerManager - Centralised event listener management
  */
 
 import { Log } from "../log/index.js";
@@ -67,22 +67,22 @@ export class EventListenerManager {
         options: boolean | AddEventListenerOptions = false,
         label = ""
     ): number | null {
-        if (!target || typeof (target as EventTarget).addEventListener !== "function") {
+        if (!target || typeof target.addEventListener !== "function") {
             Log.warn(`[EventListenerManager.${this.name}] Invalid target for addEventListener`);
             return null;
         }
 
         const id = this._nextId++;
 
-        (target as EventTarget).addEventListener(event, handler, options);
+        target.addEventListener(event, handler, options);
 
         this.listeners.push({
             id,
             target,
             event,
             handler,
-            // `false` et l'absence sont equivalents pour addEventListener : on omet la cle
-            // plutot que de la poser a `undefined`.
+            // `false` and absence are equivalent for addEventListener: the key is
+            // omitted rather than set to `undefined`.
             ...(options !== false && options !== undefined && { options }),
             label,
             createdAt: Date.now(),

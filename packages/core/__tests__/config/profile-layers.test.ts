@@ -1,21 +1,21 @@
 /**
- * `resolveProfileLayers` — la résolution de la liste de couches du chemin HORS-LIGNE.
+ * `resolveProfileLayers` — resolving the OFFLINE path's layer list.
  *
- * 🛑 **Cette fonction n'avait AUCUN test, et c'est exactement pourquoi C.15 a pu vivre.**
- * Elle faisait `json.layers` et ignorait `layerTemplates` : sur `tourism`, 24 couches sur
- * 42 — 57 % du profil de démo — n'apparaissaient pas dans le sélecteur « Télécharger pour
- * hors-ligne » et ne cachaient rien. Le défaut était SILENCIEUX par construction : une
- * couche non résolue n'est pas une couche en erreur.
+ * 🛑 **This function had NO test, and that is exactly why the defect could
+ * live.** It did `json.layers` and ignored `layerTemplates`: on `tourism`,
+ * 24 layers out of 42 — 57% of the demo profile — did not appear in the
+ * "Download for offline" selector and cached nothing. The defect was SILENT
+ * by construction: an unresolved layer is not a failing layer.
  *
- * Ce que cette suite garde :
+ * What this suite guards:
  *
- *  1. Que les templates sont expansés — la cause racine.
- *  2. Que la résolution passe par les MÊMES helpers que le chargeur de production. Deux
- *     chemins de résolution dont un oublie les templates, c'était le défaut lui-même ;
- *     le cas « lu sur le disque » ci-dessous est ce qui les confronte sur des données
- *     réelles plutôt que sur une fixture d'accord avec elle-même.
- *  3. Que les modes dégradés restent silencieux et non jetants — c'est le contrat de la
- *     fonction, et le corriger ne doit pas le changer.
+ *  1. That templates are expanded — the root cause.
+ *  2. That resolution goes through the SAME helpers as the production
+ *     loader. Two resolution paths of which one forgets the templates was
+ *     the defect itself; the "read from disk" case below is what confronts
+ *     them on real data rather than a self-agreeing fixture.
+ *  3. That the degraded modes stay silent and non-throwing — the function's
+ *     contract, and fixing it must not change it.
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { readFileSync } from "node:fs";
@@ -57,15 +57,15 @@ describe("resolveProfileLayers — l'expansion des templates (C.15)", () => {
         const layers = await resolveProfileLayers({ Files: { layersFile: "l.json" } }, "p", "base");
 
         expect(layers.map((l) => l.id)).toEqual(["direct", "a", "b"]);
-        // Les instances portent leur config EN LIGNE et AUCUN `configFile` — c'est cette
-        // asymétrie qui les faisait sauter par quatre sites du chemin hors-ligne.
+        // The instances carry their config INLINE and NO `configFile` — that
+        // asymmetry is what made four offline-path sites skip them.
         expect(layers[1]?.configFile).toBeUndefined();
         expect(layers[1]?.inlineConfig).toMatchObject({
             id: "a",
             label: "A",
             data: { directory: "data", file: "a.geojson" },
         });
-        // Et l'héritage du template traverse bien l'expansion.
+        // And the template's inheritance does cross the expansion.
         expect(layers[1]?.inlineConfig?.["geometry"]).toBe("point");
     });
 
@@ -79,9 +79,10 @@ describe("resolveProfileLayers — l'expansion des templates (C.15)", () => {
     });
 
     it("un tableau NU est accepté — alignement sur le chargeur de production", async () => {
-        // ⚠️ Ce chemin-ci rendait `[]` avant 8.9 : il testait `json.layers` sur un tableau,
-        // qui n'a pas cette clé. `extractRawLayers` porte la tolérance, et l'emprunter
-        // plutôt que la réécrire est ce qui aligne les deux résolutions.
+        // ⚠️ This path returned `[]` before: it tested `json.layers` on an
+        // array, which lacks that key. `extractRawLayers` carries the
+        // tolerance, and borrowing it rather than rewriting it is what
+        // aligns the two resolutions.
         vi.stubGlobal("fetch", vi.fn().mockResolvedValue(okResponse([{ id: "nu" }])));
         const layers = await resolveProfileLayers({ Files: { layersFile: "l.json" } }, "p", "base");
         expect(layers.map((l) => l.id)).toEqual(["nu"]);
@@ -89,19 +90,21 @@ describe("resolveProfileLayers — l'expansion des templates (C.15)", () => {
 });
 
 describe("resolveProfileLayers — confronté au profil RÉEL, lu sur le disque", () => {
-    /** Le vrai `layers.json` d'un profil, jamais une fixture d'accord avec elle-même. */
+    /** A profile's real `layers.json`, never a self-agreeing fixture. */
     const layersFileOf = (profile: string) =>
         JSON.parse(
             readFileSync(resolve(REPO, `profiles/${profile}/config/core/layers.json`), "utf8")
         ) as { layers?: unknown[]; layerTemplates?: Array<{ instances?: unknown[] }> };
 
-    // 🛑 Ne JAMAIS ajouter `_reference` ici pour « remplir » la liste : le commentaire ci-dessus
-    // l'interdit nommément, et une fixture d'accord avec elle-même ne prouve rien. La liste suit
-    // les profils LIVRÉS — ceux que `build-deploy.cjs` récolte, donc hors préfixe `_`.
-    // 📌 `reunion-eclairage` avait quitté cette liste au Sprint 7 du passage public, puis y est
-    // revenu : le retrait laissait un seul profil livré, ce qui privait la démo de son sélecteur
-    // de profil et le dépôt de son seul fond vectoriel hors-ligne (B-213). La forme `it.each`
-    // reste, pour qu'un profil livré neuf entre sans réécriture.
+    // 🛑 NEVER add `_reference` here to "fill" the list: the comment above
+    // forbids it by name, and a self-agreeing fixture proves nothing. The
+    // list follows the SHIPPED profiles — those `build-deploy.cjs` harvests,
+    // hence outside the `_` prefix.
+    // 📌 `reunion-eclairage` had left this list during the public switch,
+    // then came back: the removal left a single shipped profile, which
+    // deprived the demo of its profile selector and the repo of its only
+    // offline vector basemap. The `it.each` form stays, so a new shipped
+    // profile enters without a rewrite.
     it.each(["tourism", "reunion-eclairage"])(
         "%s — toutes ses couches sont résolues, templatées comprises",
         async (profile) => {
@@ -111,7 +114,7 @@ describe("resolveProfileLayers — confronté au profil RÉEL, lu sur le disque"
                 (s, t) => s + (t.instances ?? []).length,
                 0
             );
-            // Garde anti-gate-vide : un profil vide ferait sortir l'assertion verte.
+            // Anti-empty-gate guard: an empty profile would let the assertion out green.
             expect(direct).toBeGreaterThan(0);
 
             vi.stubGlobal("fetch", vi.fn().mockResolvedValue(okResponse(file)));
@@ -129,9 +132,10 @@ describe("resolveProfileLayers — confronté au profil RÉEL, lu sur le disque"
     );
 
     it("tourism porte bien un gisement templaté — sans quoi le cas ci-dessus ne prouve rien", () => {
-        // 🛑 L'assertion qui empêche la précédente de sortir verte à vide : si `tourism`
-        // perdait ses templates, `direct + templated` vaudrait `direct`, et le test
-        // passerait en n'éprouvant plus l'expansion du tout.
+        // 🛑 The assertion that keeps the previous one from coming out green
+        // on empty: if `tourism` lost its templates, `direct + templated`
+        // would equal `direct`, and the test would pass no longer exercising
+        // the expansion at all.
         const file = layersFileOf("tourism");
         const templated = (file.layerTemplates ?? []).reduce(
             (s, t) => s + (t.instances ?? []).length,

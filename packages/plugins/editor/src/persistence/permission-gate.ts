@@ -6,41 +6,45 @@
 
 /**
  * @description
- * La permission de couche, appliquée AVANT le choix du chemin — tâche 8.7 (B-138 / B-139).
+ * The layer permission, applied BEFORE the path choice.
  *
- * ## Ce qui était mesuré, et pourquoi une seule garde suffit
+ * ## What was measured, and why one guard suffices
  *
- * 🛑 **La permission n'était appliquée que HORS LIGNE.** `applyEdit` (core) refuse depuis 5.9
- * sur `edition.{create,update,delete}`, mais on n'y passe que lorsque le réseau est absent.
- * Connecté, `rest-adapter.ts` émet un `DELETE` **inconditionnel** : une couche déclarant
- * `edition.delete: false` restait supprimable dès qu'on avait du réseau (**B-138**).
+ * 🛑 **The permission was only applied OFFLINE.** `applyEdit` (core) refuses on
+ * `edition.{create,update,delete}`, but it is only reached when the network is
+ * absent. Connected, `rest-adapter.ts` emits an **unconditional** `DELETE`: a
+ * layer declaring `edition.delete: false` stayed deletable as soon as there
+ * was network.
  *
- * ⚠️ **Et la placer dans `auto-adapter._route` n'aurait pas suffi.** `createPersistenceAdapter`
- * rend l'adaptateur REST **nu** en `persistence.mode: "online"` — sans jamais construire
- * l'adaptateur automatique. Une garde posée dans le routage aurait donc laissé le mode le plus
- * exposé entièrement ouvert. Elle est ici, en décorateur du seul objet que **tous** les modes
- * traversent.
+ * ⚠️ **And placing it in `auto-adapter._route` would not have sufficed.**
+ * `createPersistenceAdapter` returns the **bare** REST adapter in
+ * `persistence.mode: "online"` — without ever building the auto adapter. A
+ * guard set in the routing would thus have left the most exposed mode entirely
+ * open. It sits here, as a decorator of the only object **all** modes cross.
  *
- * ## Pourquoi ce n'est pas qu'une étiquette (B-139)
+ * ## Why this is not just a label
  *
- * Le refus lève `PersistenceError("forbidden")`, et `_isTransportError` (`auto-adapter.ts`)
- * ne connaît que `"network"` et `"timeout"`. Un refus de permission ne retombe donc **pas**
- * dans la file : c'est la moitié qui compte. Typé `"network"` comme avant, il aurait été
- * présenté comme réessayable et remis en file — une écriture qui ne pourra jamais aboutir,
- * réessayée indéfiniment.
+ * The refusal throws `PersistenceError("forbidden")`, and `_isTransportError`
+ * (`auto-adapter.ts`) only knows `"network"` and `"timeout"`. A permission
+ * refusal therefore does **not** fall back into the queue: the half that
+ * matters. Typed `"network"` as before, it would have been presented as
+ * retryable and requeued — a write that can never succeed, retried
+ * indefinitely.
  *
- * ## Absent vaut REFUSÉ, y compris pour le prédicat lui-même
+ * ## Absent means REFUSED, the predicate itself included
  *
- * ⚠️ Quand la façade ne sait pas répondre (`GeoLeaf.Storage` absent, ou sans `mayEdit`), la
- * garde **refuse**. C'est la règle que `LayerEditionPermissions` pose déjà pour les clés —
- * « déclarer n'est pas accorder, absent vaut refusé » — étendue au cas où l'on ne peut pas
- * lire la déclaration. L'inverse ferait de toute panne d'assemblage une autorisation
- * silencieuse, c'est-à-dire ferait revenir B-138 sans que rien ne rougisse.
+ * ⚠️ When the facade cannot answer (`GeoLeaf.Storage` absent, or without
+ * `mayEdit`), the guard **refuses**. The rule `LayerEditionPermissions` already
+ * sets for the keys — "declaring is not granting, absent means refused" —
+ * extended to the case where the declaration cannot be read. The opposite
+ * would make every assembly failure a silent authorisation, i.e. would bring
+ * the authorisation hole back with nothing turning red.
  *
- * 🛑 **Conséquence assumée pour les doubles de test** : une suite qui monte
- * `GeoLeaf.Storage = { applyEdit }` sans `mayEdit` se voit refuser. C'est voulu — un double
- * incomplet est « un plugin vert contre sa propre fiction du global », la cause racine n° 1
- * de cette roadmap. Les doubles déclarent désormais le prédicat.
+ * 🛑 **Assumed consequence for test doubles**: a suite mounting
+ * `GeoLeaf.Storage = { applyEdit }` without `mayEdit` gets refused. Intended —
+ * an incomplete double is "a plugin green against its own fiction of the
+ * global", this work's root cause no. 1. The doubles now declare the
+ * predicate.
  */
 import { _getLabel } from "../internal.js";
 import { storageFacade } from "./storage-seam.js";
@@ -51,16 +55,16 @@ import {
     type UpdateOptions,
 } from "./adapter-interface.js";
 
-/** L'opération soumise, dans le vocabulaire du contrat de synchronisation. */
+/** The submitted operation, in the sync contract's vocabulary. */
 type EditKind = "create" | "update" | "delete";
 
 /**
- * Refuse l'opération si la couche ne l'accorde pas.
+ * Refuses the operation when the layer does not grant it.
  *
- * @param layerId - Couche hôte visée par l'écriture.
- * @param kind - L'opération soumise.
- * @throws {PersistenceError} `kind: "forbidden"` quand la couche refuse, ou quand la façade
- *   ne peut pas être interrogée.
+ * @param layerId - Host layer targeted by the write.
+ * @param kind - The submitted operation.
+ * @throws {PersistenceError} `kind: "forbidden"` when the layer refuses, or the
+ *   facade cannot be queried.
  */
 function _assertPermitted(layerId: string, kind: EditKind): void {
     const facade = storageFacade();
@@ -71,36 +75,39 @@ function _assertPermitted(layerId: string, kind: EditKind): void {
                 `is unavailable. Refusing rather than assuming the layer grants ${kind}.`
         );
     }
-    // Récepteur conservé — `facade.mayEdit(...)` et NON un appel détaché. La façade du core
-    // n'est pas une fermeture, et c'est la classe de défaut B-128 (cf. `storage-queue-adapter`).
+    // Receiver kept — `facade.mayEdit(...)` and NOT a detached call. The core's
+    // facade is not a closure, and this is the detached-call class (cf.
+    // `storage-queue-adapter`).
     if (!facade.mayEdit(layerId, kind)) {
         throw new PersistenceError("forbidden", _getLabel("editor.error.editionNotPermitted"), {});
     }
 }
 
 /**
- * Enveloppe un adaptateur de persistance d'une garde de permission de couche.
+ * Wraps a persistence adapter in a layer-permission guard.
  *
- * Appliquée par `adapter-factory.ts` à **chaque** mode (`online`, `offline`, `auto`, dialecte
- * `collection`), pour que la permission ne dépende plus du chemin emprunté.
+ * Applied by `adapter-factory.ts` to **every** mode (`online`, `offline`,
+ * `auto`, `collection` dialect), so the permission no longer depends on the
+ * path taken.
  *
- * ⚠️ **N'enveloppe PAS l'adaptateur du rejeu.** `createOnlineAdapter` reste nu pour
- * `editor-sync-replay.ts` : une entrée déjà en file a passé la garde à sa mise en file, et une
- * couche devenue non inscriptible depuis relève de la **quarantaine** du core
- * (`layerNoLongerWritable`), pas d'un refus au vol du drain.
+ * ⚠️ **Does NOT wrap the replay's adapter.** `createOnlineAdapter` stays bare
+ * for `editor-sync-replay.ts`: an already-queued entry passed the guard at
+ * enqueue time, and a layer since become unwritable falls under the core's
+ * **quarantine** (`layerNoLongerWritable`), not an on-the-fly drain refusal.
  *
- * @param inner - L'adaptateur concret à protéger.
- * @returns Le même contrat, refusant ce que la couche n'accorde pas.
+ * @param inner - The concrete adapter to protect.
+ * @returns The same contract, refusing what the layer does not grant.
  */
 export function withEditionPermissions(inner: EditorPersistenceAdapter): EditorPersistenceAdapter {
-    // 🛑 LES TROIS MÉTHODES SONT `async`, ET CE N'EST PAS COSMÉTIQUE.
+    // 🛑 ALL THREE METHODS ARE `async`, AND THAT IS NOT COSMETIC.
     //
-    // `_assertPermitted` jette de façon SYNCHRONE. Sans `async`, le refus remonterait en
-    // exception au lieu d'une promesse rejetée — or le contrat
-    // (`EditorPersistenceAdapter`) dit « Every method rejects with a PersistenceError on
-    // failure », et un appelant qui écrit `adapter.save(…).catch(…)` sans `await` verrait
-    // l'exception traverser son `.catch`. Mesuré : la première rédaction de ce décorateur
-    // faisait exactement ça, et la garde l'a attrapée au premier run.
+    // `_assertPermitted` throws SYNCHRONOUSLY. Without `async`, the refusal
+    // would surface as an exception instead of a rejected promise — yet the
+    // contract (`EditorPersistenceAdapter`) says "Every method rejects with a
+    // PersistenceError on failure", and a caller writing
+    // `adapter.save(…).catch(…)` without `await` would see the exception cross
+    // its `.catch`. Measured: this decorator's first draft did exactly that,
+    // and the guard caught it on the first run.
     return {
         async save(feature: EditorFeature, layerId: string) {
             _assertPermitted(layerId, "create");

@@ -5,22 +5,24 @@
  */
 
 /**
- * La moitié « à état » de la chaîne image, absorbée d'`addpoi` (tâche 5.1-d, décision **D5**).
+ * The "stateful" half of the image chain, absorbed from `addpoi`.
  *
- * La moitié **pure** — compression adaptative et redimensionnement — vit dans
- * `@geoleaf/field-renderer` (`types/image-compress.ts`), qui l'applique avant d'appeler le
- * transport. Ce module est ce transport : il tente le réseau, et **retombe sur le stockage
- * local** quand le réseau manque. Il tire IndexedDB et le jeton CSRF du core, ce qu'une
- * bibliothèque de rendu de champs n'a pas à savoir faire.
+ * The **pure** half — adaptive compression and resizing — lives in
+ * `@geoleaf/field-renderer` (`types/image-compress.ts`), which applies it
+ * before calling the transport. This module is that transport: it tries the
+ * network, and **falls back to local storage** when the network is missing. It
+ * pulls IndexedDB and the core's CSRF token, which a field-rendering library
+ * has no business knowing how to do.
  *
- * 🛑 **IL SE BRANCHE PAR STRATÉGIE, PAS PAR SURCHARGE DE COMPOSANT.** `addpoi` enregistrait un
- * `"addpoi-image"` de **229 lignes pour changer 4 appels**, dont ~225 re-implémentaient un
- * composant que `field-renderer` porte déjà. `setImageUploadStrategy` remplace tout ça.
+ * 🛑 **IT PLUGS IN BY STRATEGY, NOT COMPONENT OVERRIDE.** `addpoi` registered
+ * an `"addpoi-image"` of **229 lines to change 4 calls**, of which ~225
+ * re-implemented a component `field-renderer` already carries.
+ * `setImageUploadStrategy` replaces all of it.
  */
 import { Log } from "@geoleaf/host-runtime";
 import { setImageUploadStrategy } from "@geoleaf/field-renderer";
 
-/** Le magasin d'images du core, lu à l'appel — le plugin ne dépend pas d'`offline-ui`. */
+/** The core's image store, read at call time — the plugin does not depend on `offline-ui`. */
 interface ImagesDb {
     storeImageLocally?(data: unknown): Promise<unknown>;
     getPendingImages?(): Promise<unknown>;
@@ -38,12 +40,11 @@ function _imagesDb(): ImagesDb | null {
 
 function _csrfToken(): string | null {
     const g = Reflect.get(globalThis, "GeoLeaf") as
-        | { Security?: { CSRFToken?: { getToken?(): string | null } } }
-        | undefined;
+        { Security?: { CSRFToken?: { getToken?(): string | null } } } | undefined;
     return g?.Security?.CSRFToken?.getToken?.() ?? null;
 }
 
-/** Une image en attente, telle que `getPendingImages` la rend. */
+/** A pending image, as `getPendingImages` returns it. */
 interface PendingImage {
     id: string;
     blob: Blob;
@@ -52,15 +53,15 @@ interface PendingImage {
 }
 
 /**
- * Téléverse vers le serveur, jeton CSRF compris.
+ * Uploads to the server, CSRF token included.
  *
- * ⚠️ `fetch` et non `XMLHttpRequest` — `addpoi` utilisait XHR pour sa **barre de progression**,
- * que le composant de `field-renderer` n'affiche pas. Porter XHR aurait porté 60 lignes pour un
- * indicateur que rien ne lit.
+ * ⚠️ `fetch` and not `XMLHttpRequest` — `addpoi` used XHR for its **progress
+ * bar**, which `field-renderer`'s component does not display. Porting XHR would
+ * have carried 60 lines for an indicator nothing reads.
  *
- * @param file     - Fichier à envoyer.
- * @param endpoint - Point d'entrée POST.
- * @returns l'URL rendue par le serveur.
+ * @param file     - File to send.
+ * @param endpoint - POST endpoint.
+ * @returns the URL the server returned.
  */
 async function _postToServer(file: File, endpoint: string): Promise<string> {
     const form = new FormData();
@@ -81,8 +82,8 @@ async function _postToServer(file: File, endpoint: string): Promise<string> {
 /**
  * Convertit un fichier en data-URL base64.
  *
- * @param file - Fichier à lire.
- * @returns la data-URL, ou une chaîne vide si la lecture ne rend pas de texte.
+ * @param file - File to read.
+ * @returns the data-URL, or an empty string when the read yields no text.
  */
 function _toDataUrl(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -94,23 +95,24 @@ function _toDataUrl(file: File): Promise<string> {
 }
 
 /**
- * Met l'image de côté localement et rend une URL **immédiatement affichable**.
+ * Sets the image aside locally and returns an **immediately displayable** URL.
  *
- * Écrit deux choses, et les deux comptent : une data-URL rendue à l'appelant, pour que l'aperçu
- * peigne sans relire la base ; et l'enregistrement en base, pour que la reprise puisse la
- * téléverser plus tard.
+ * Writes two things, and both count: a data-URL returned to the caller, so the
+ * preview paints without re-reading the database; and the database record, so
+ * the retry can upload it later.
  *
- * ⚠️ **`uploaded: 0`, JAMAIS `false`** — un booléen n'est pas une clé IndexedDB valide, et le
- * magasin porte un index `uploaded` : un enregistrement écrit avec `false` reste **hors** de cet
- * index, donc invisible à `getPendingImages()`, donc jamais téléversé et jamais nettoyé. C'est
- * le défaut que la tâche 3.6 avait corrigé chez `addpoi` ; il ne se réintroduit pas ici.
+ * ⚠️ **`uploaded: 0`, NEVER `false`** — a boolean is not a valid IndexedDB key,
+ * and the store carries an `uploaded` index: a record written with `false`
+ * stays **out** of that index, hence invisible to `getPendingImages()`, hence
+ * never uploaded and never cleaned. The defect fixed once in `addpoi`; it does
+ * not get reintroduced here.
  *
- * ⚠️ **`crypto.randomUUID()`, jamais `Math.random()`** : cet identifiant est la clé primaire
- * d'une photo de terrain, et une collision écrase une capture.
+ * ⚠️ **`crypto.randomUUID()`, never `Math.random()`**: this identifier is a
+ * field photo's primary key, and a collision overwrites a capture.
  *
- * @param file     - Fichier à conserver.
- * @param endpoint - Point d'entrée à retenter plus tard.
- * @returns la data-URL affichable.
+ * @param file     - File to keep.
+ * @param endpoint - Endpoint to retry later.
+ * @returns the displayable data-URL.
  */
 export async function storeImageLocally(file: File, endpoint: string): Promise<string> {
     const dataUrl = await _toDataUrl(file);
@@ -128,9 +130,9 @@ export async function storeImageLocally(file: File, endpoint: string): Promise<s
                 uploaded: 0,
             });
         } catch (e) {
-            // La base est un CONFORT ici : la data-URL est déjà écrite dans l'entité, donc la
-            // saisie n'est pas perdue. Échouer bruyamment ferait perdre la photo pour préserver
-            // une file de reprise.
+            // The database is a COMFORT here: the data-URL is already written
+            // into the entity, so the capture is not lost. Failing loudly would
+            // lose the photo to preserve a retry queue.
             Log?.warn?.("[editor/image] Local image store failed, preview still available:", e);
         }
     }
@@ -138,11 +140,11 @@ export async function storeImageLocally(file: File, endpoint: string): Promise<s
 }
 
 /**
- * La stratégie de téléversement : réseau d'abord, stockage local en secours.
+ * The upload strategy: network first, local storage as backup.
  *
- * @param file     - Fichier déjà validé et compressé par `field-renderer`.
- * @param endpoint - Point d'entrée POST du champ.
- * @returns l'URL du serveur, ou une data-URL locale quand le réseau n'a pas répondu.
+ * @param file     - File already validated and compressed by `field-renderer`.
+ * @param endpoint - The field's POST endpoint.
+ * @returns the server URL, or a local data-URL when the network did not answer.
  */
 export async function uploadImage(file: File, endpoint: string): Promise<string> {
     if (typeof navigator !== "undefined" && !navigator.onLine) {
@@ -157,7 +159,7 @@ export async function uploadImage(file: File, endpoint: string): Promise<string>
     }
 }
 
-/** Décompte d'une reprise. */
+/** A retry's tally. */
 export interface RetryReport {
     attempted: number;
     uploaded: number;
@@ -167,21 +169,23 @@ export interface RetryReport {
 let _retrying = false;
 
 /**
- * Rend au magasin l'espace des images que le serveur vient d'acquitter.
+ * Gives back to the store the space of images the server just acknowledged.
  *
- * Extraite de {@link retryPendingImages} pour la seule raison que l'y inliner poussait sa
- * complexité de 20 à 25 — la limite du dépôt est 20, et la contourner par un commentaire de
- * désactivation aurait été le geste que ce dépôt interdit sur les règles ESLint : un
- * abaissement sans motif écrit à côté est indiscernable d'un oubli six mois plus tard.
+ * Extracted from {@link retryPendingImages} for the sole reason that inlining
+ * it pushed its complexity from 20 to 25 — the repo's limit is 20, and working
+ * around it with a disable comment would have been the gesture this repo
+ * forbids on ESLint rules: a lowering with no written motive next to it is
+ * indistinguishable from an oversight six months later.
  *
- * 🛑 **Deux invariants, chacun éprouvé par son propre cas de test** (B-190) : la purge n'est
- * tentée que si **au moins une** image a été acquittée — sinon chaque reprise à vide ouvrirait une
- * transaction `readwrite` pour ne rien supprimer —, et **son échec ne remonte pas**. Les octets
- * restent, ils repartiront au prochain acquittement ; perdre la reprise pour un défaut de ménage
- * serait le mauvais arbitrage sur un appareil de terrain.
+ * 🛑 **Two invariants, each proven by its own test case**: the purge is only
+ * attempted when **at least one** image was acknowledged — otherwise every
+ * empty retry would open a `readwrite` transaction to delete nothing — and
+ * **its failure does not bubble up**. The bytes stay, they will go again at the
+ * next acknowledgement; losing the retry over a cleanup defect would be the
+ * wrong arbitration on a field device.
  *
- * @param db - Le magasin d'images du core, tel que {@link _imagesDb} le rend.
- * @param report - Le décompte de la reprise qui vient de s'achever.
+ * @param db - The core's image store, as {@link _imagesDb} returns it.
+ * @param report - The tally of the retry that just finished.
  */
 async function _purgeAcknowledged(db: ImagesDb, report: RetryReport): Promise<void> {
     if (report.uploaded === 0 || !db.cleanUploadedImages) return;
@@ -193,33 +197,35 @@ async function _purgeAcknowledged(db: ImagesDb, report: RetryReport): Promise<vo
 }
 
 /**
- * Re-téléverse les images restées en attente.
+ * Re-uploads the images left pending.
  *
- * 🛑 **CETTE FONCTION EXISTE PARCE QU'`addpoi` EN AVAIT UNE SANS AUCUN APPELANT.** Là-bas,
- * `retryPendingUploads` était documentée comme « morte mais pas jetable » et requalifiée vers la
- * tâche 4.5 — que 4.5 n'a jamais câblée. Résultat mesuré au pré-vol du 05/08 : `storeImageLocally`
- * écrivait des photos de terrain que **plus rien au monde ne téléversait**. La porter telle quelle
- * aurait transporté l'orphelin ; elle reçoit donc son appelant dans {@link initImageUpload}, et
- * c'est une fonctionnalité **neuve**, assumée comme telle.
+ * 🛑 **THIS FUNCTION EXISTS BECAUSE `addpoi` HAD ONE WITH NO CALLER.** There,
+ * `retryPendingUploads` was documented "dead but not disposable" and
+ * requalified towards a task that never wired it. Measured at pre-flight:
+ * `storeImageLocally` wrote field photos that **nothing in the world uploaded
+ * any more**. Porting it as-is would have transported the orphan; it therefore
+ * receives its caller in {@link initImageUpload}, and it is a **new** feature,
+ * owned as such.
  *
- * ⚠️ Ce renvoi a nommé `initImageRetry` jusqu'au 08/08/2026 — **un symbole qui n'a jamais
- * existé**, dans la phrase même qui affirmait que l'orphelin avait reçu son appelant. Le
- * mécanisme, lui, était juste. Aucune gate ne pouvait le voir : `check-tsdoc-conformity.cjs`
- * ne résout pas les `{@link}` (B-153 ③).
+ * ⚠️ This reference named `initImageRetry` until 08/08/2026 — **a symbol that
+ * never existed**, in the very sentence asserting the orphan had received its
+ * caller. The mechanism itself was right. No gate could see it:
+ * `check-tsdoc-conformity.cjs` does not resolve `{@link}`s.
  *
- * ⚠️ Une image sans `endpoint` est **laissée en attente**, pas détruite : on ne sait pas où
- * l'envoyer, et le contrat d'outbox comme celui-ci interdisent de perdre une saisie faute de
- * destination.
+ * ⚠️ An image without an `endpoint` is **left pending**, not destroyed: we do
+ * not know where to send it, and the outbox contract like this one forbids
+ * losing a capture for lack of a destination.
  *
- * 🛑 **LA PURGE EST APPELÉE ICI, ET SEULEMENT SI QUELQUE CHOSE A ÉTÉ ACQUITTÉ.** `local_images`
- * avait un écrivain vivant (`storeImageLocally`) et **aucune purge joignable** :
- * `cleanUploadedImages` n'avait ni appelant, ni relais de façade, ni exposition au namespace —
- * un C1 qui a traversé la clôture des Sprints 4, 5 et 8 (B-190). Sur un appareil de terrain le
- * quota décide de tout. La condition `uploaded > 0` n'est pas cosmétique : sans elle, chaque
- * reprise à vide ouvrirait une transaction `readwrite` pour ne rien supprimer.
+ * 🛑 **THE PURGE IS CALLED HERE, AND ONLY IF SOMETHING WAS ACKNOWLEDGED.**
+ * `local_images` had a live writer (`storeImageLocally`) and **no reachable
+ * purge**: `cleanUploadedImages` had no caller, no facade relay, no namespace
+ * exposure — an orphan that crossed several sprint closures unseen. On a field
+ * device the quota decides everything. The `uploaded > 0` condition is not
+ * cosmetic: without it, every empty retry would open a `readwrite` transaction
+ * to delete nothing.
  *
- * @returns le décompte, ou `null` quand la reprise n'a pas eu lieu (hors réseau, déjà en cours,
- *   ou magasin absent).
+ * @returns the tally, or `null` when the retry did not happen (off-network,
+ *   already running, or store absent).
  */
 export async function retryPendingImages(): Promise<RetryReport | null> {
     if (_retrying) return null;
@@ -242,7 +248,7 @@ export async function retryPendingImages(): Promise<RetryReport | null> {
                 await db.updateImageUploadStatus(img.id, "uploaded");
                 report.uploaded += 1;
             } catch (e) {
-                // L'entrée RESTE en attente — un échec ne détruit rien.
+                // The entry STAYS pending — a failure destroys nothing.
                 report.failed += 1;
                 Log?.debug?.("[editor/image] Retry failed, image stays pending:", img.id, e);
             }
@@ -258,9 +264,9 @@ export async function retryPendingImages(): Promise<RetryReport | null> {
 let _onlineListener: (() => void) | null = null;
 
 /**
- * Branche la stratégie de téléversement et **arme la reprise au retour du réseau**.
+ * Wires the upload strategy and **arms the retry on network return**.
  *
- * Idempotent : un second appel ne empile pas d'écouteur.
+ * Idempotent: a second call does not stack a listener.
  */
 export function initImageUpload(): void {
     setImageUploadStrategy(uploadImage);
@@ -269,11 +275,11 @@ export function initImageUpload(): void {
         void retryPendingImages();
     };
     window.addEventListener("online", _onlineListener);
-    // Reprise opportuniste au démarrage : une session précédente a pu laisser des images.
+    // Opportunistic retry at startup: a previous session may have left images.
     if (typeof navigator === "undefined" || navigator.onLine) void retryPendingImages();
 }
 
-/** Retire l'écouteur et rend la stratégie au `fetch` par défaut de la bibliothèque. */
+/** Removes the listener and returns the strategy to the library's default `fetch`. */
 export function destroyImageUpload(): void {
     if (_onlineListener && typeof window !== "undefined") {
         window.removeEventListener("online", _onlineListener);

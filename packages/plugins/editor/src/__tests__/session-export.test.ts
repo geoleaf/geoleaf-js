@@ -1,9 +1,9 @@
 /*!
- * Tests — tâche 5.1-e : l'export de la session
+ * Tests — the session export
  *
- * ⚠️ Le double de `Layers` REPRODUIT la contrainte : une couche déclarée mais jamais chargée
- * **jette** au lieu de rendre `[]` — c'est ce que fait le core, et l'export ne doit pas devenir
- * aveugle sur les autres couches à cause d'une seule.
+ * ⚠️ The `Layers` double REPRODUCES the constraint: a declared but never-loaded
+ * layer **throws** instead of returning `[]` — what the core does, and the
+ * export must not go blind on the other layers because of one.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
@@ -47,7 +47,7 @@ afterEach(() => {
     delete (globalThis as Record<string, unknown>).GeoLeaf;
 });
 
-// --- le suivi --------------------------------------------------------------------
+// --- tracking --------------------------------------------------------------------
 
 describe("Le suivi de session", () => {
     it("compte les entités créées", () => {
@@ -68,9 +68,10 @@ describe("Le suivi de session", () => {
     });
 
     it("🛑 la réconciliation d'identifiant garde l'entité DANS l'export", () => {
-        // Sans elle, une entité créée hors réseau puis synchronisée serait suivie sous son
-        // identifiant local — que la couche hôte ne porte plus. Elle sortirait de l'export
-        // en silence, au moment précis où l'utilisateur veut la récupérer.
+        // Without it, an entity created off-network then synced would be
+        // tracked under its local identifier — which the host layer no longer
+        // carries. It would drop out of the export silently, at the precise
+        // moment the user wants to retrieve it.
         trackSessionFeature("local-1");
         renameSessionFeature("local-1", "srv-42");
         expect(sessionFeatureCount()).toBe(1);
@@ -85,7 +86,7 @@ describe("Le suivi de session", () => {
     });
 });
 
-// --- la collecte -----------------------------------------------------------------
+// --- collection ------------------------------------------------------------------
 
 describe("collectSessionFeatures — ce qui part dans le fichier", () => {
     it("ne retient QUE les entités de la session", () => {
@@ -129,7 +130,7 @@ describe("collectSessionFeatures — ce qui part dans le fichier", () => {
     });
 });
 
-// --- le téléchargement -----------------------------------------------------------
+// --- the download ----------------------------------------------------------------
 
 describe("exportSessionFeatures — le fichier", () => {
     it("télécharge un GeoJSON nommé et rend le décompte", async () => {

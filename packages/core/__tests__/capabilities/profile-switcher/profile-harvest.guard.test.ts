@@ -1,47 +1,52 @@
 /**
- * Garde B-49 — la RÉCOLTE de profils ne perd rien en silence.
+ * Guard — the profile HARVEST loses nothing in silence.
  *
- * ## Pourquoi cette garde existe, et pourquoi ICI
+ * ## Why this guard exists, and why HERE
  *
- * `profile-switcher` ne se rend qu'à partir de deux profils récoltés (PS-04). C'est une
- * dégradation VOULUE, pas un défaut. Le sujet de B-49 n'a donc jamais été le seuil : c'est
- * son **silence**. Un `profile.json` devenu illisible, ou un répertoire de profil qui cesse
- * d'être récolté, fait disparaître le sélecteur de l'interface — et le seul signal existant
- * était un `log.warn` de `build-deploy.cjs` qu'il fallait être en train de lire.
+ * `profile-switcher` only renders from two harvested profiles (PS-04). An
+ * INTENDED degradation, not a defect. The guard's subject was thus never the
+ * threshold: it is its **silence**. A `profile.json` gone unreadable, or a
+ * profile directory that stops being harvested, makes the selector vanish
+ * from the interface — and the only existing signal was a
+ * `build-deploy.cjs` `log.warn` one had to be reading.
  *
- * 🛑 **La seule gate qui voyait quelque chose était `e2e/24-profile-switcher.spec.js`, et elle
- * n'est sur aucun chemin par défaut** : `ci-local.cjs` réserve l'E2E à `--e2e`, et les étapes
- * E2E de `ci.yml` portent `if: github.event_name == 'workflow_dispatch'`. Un `ci:local` vert et
- * un push vert étaient donc compatibles avec la capacité absente de l'interface. Ce fichier est
- * un **test unitaire**, donc il tombe dans « Unit tests » ET « Coverage gate », les deux dans
- * `STEPS` (chemin par défaut) de `ci-local.cjs` et dans `ci.yml`. C'est toute la différence, et
- * c'est le seul motif de son emplacement.
+ * 🛑 **The only gate that saw anything was `e2e/24-profile-switcher.spec.js`,
+ * and it is on no default path**: `ci-local.cjs` reserves E2E for `--e2e`,
+ * and `ci.yml`'s E2E steps carry `if: github.event_name ==
+ * 'workflow_dispatch'`. A green `ci:local` and a green push were thus
+ * compatible with the capability absent from the interface. This file is a
+ * **unit test**, so it falls into "Unit tests" AND "Coverage gate", both in
+ * `ci-local.cjs`'s `STEPS` (default path) and in `ci.yml`. That is the whole
+ * difference, and the only motive for its location.
  *
- * ## Ce qu'elle affirme, et ce qu'elle N'affirme PAS
+ * ## What it asserts, and what it does NOT
  *
- * Elle affirme que **la récolte est sans perte** : tout répertoire que `build-deploy.cjs`
- * considère comme un profil rend une entrée valide, et cette entrée survit au filtre RUNTIME.
+ * It asserts that **the harvest is lossless**: every directory
+ * `build-deploy.cjs` considers a profile yields a valid entry, and that entry
+ * survives the RUNTIME filter.
  *
- * ⚠️ Elle **n'exige pas deux profils**. Livrer un second profil est une décision produit sur ce
- * que le dépôt public embarque (voie 1 de B-49, voisine de B-213) — elle appartient à Mattieu,
- * pas à une garde. Une garde qui exigerait `>= 2` ne mesurerait pas une dégradation, elle
- * imposerait un arbitrage. Le plancher retenu est **1** : zéro profil récoltable est un état
- * dont aucune lecture ne peut sortir juste, et `build-deploy.cjs` le traite déjà en `log.err`.
+ * ⚠️ It **does not require two profiles**. Shipping a second profile is a
+ * product decision about what the public repo embeds — it belongs to Mattieu,
+ * not to a guard. A guard requiring `>= 2` would not measure a degradation,
+ * it would impose an arbitration. The floor kept is **1**: zero harvestable
+ * profiles is a state no read can come out of right, and `build-deploy.cjs`
+ * already treats it as `log.err`.
  *
- * ⚠️ Elle ne couvre pas non plus l'ÉCRITURE de `data.availableProfiles` dans la variante livrée
- * — c'est `build-deploy.cjs` qui la fait, et la vérifier demanderait un `deploy/` sur le disque,
- * absent d'un clone frais. C'est `e2e/24-profile-switcher.spec.js` qui l'éprouve, quand on le
- * lance. Le partage est délibéré et il est écrit ici pour qu'on ne croie pas cette garde plus
- * large qu'elle n'est.
+ * ⚠️ Nor does it cover the WRITE of `data.availableProfiles` into the shipped
+ * variant — `build-deploy.cjs` does that, and verifying it would need a
+ * `deploy/` on disk, absent from a fresh clone. `e2e/24-profile-switcher.spec.js`
+ * exercises it, when run. The split is deliberate and written here so this
+ * guard is not believed wider than it is.
  *
- * ## Périmètre — dérivé du disque, jamais écrit en dur
+ * ## Perimeter — derived from disk, never hardcoded
  *
- * Même règle que `scripts/build-deploy.cjs` : `schemas/` et tout répertoire préfixé `_` sont
- * écartés (`_reference` est une fixture de test, jamais déployée). ⚠️ **Le prédicat est RECOPIÉ
- * de `build-deploy.cjs` et doit le rester** — même choix, même motif, que
- * `offline-basemap-declared.guard.test.ts`. Écrire la liste des profils en dur ferait cesser la
- * garde de matcher au premier ajout, et elle sortirait verte en n'ayant rien scanné : c'est la
- * raison d'être de PH-01.
+ * Same rule as `scripts/build-deploy.cjs`: `schemas/` and any `_`-prefixed
+ * directory are set aside (`_reference` is a test fixture, never deployed).
+ * ⚠️ **The predicate is COPIED from `build-deploy.cjs` and must stay so** —
+ * same choice, same motive, as `offline-basemap-declared.guard.test.ts`.
+ * Hardcoding the profile list would make the guard stop matching at the
+ * first addition, and it would come out green having scanned nothing: PH-01's
+ * reason to exist.
  */
 
 import { afterEach, describe, expect, it } from "vitest";
@@ -58,32 +63,33 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 
 const { Config } = await import("../../../src/kernel/config/config-primitives.ts");
-const { getAvailableProfiles } = await import(
-    "../../../src/capabilities/profile-switcher/config.ts"
-);
+const { getAvailableProfiles } =
+    await import("../../../src/capabilities/profile-switcher/config.ts");
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../..");
 const PROFILES = join(ROOT, "profiles");
 
-/** Une entrée de `data.availableProfiles`, telle que la récolte la produit. */
+/** A `data.availableProfiles` entry, as the harvest produces it. */
 type ProfileEntry = { id: string; displayLabel: string; icon?: string };
 
-/** Le rendu de `harvestFrom` — les trois listes que la garde confronte. */
+/** `harvestFrom`'s output — the three lists the guard confronts. */
 type Harvest = { dirs: string[]; entries: ProfileEntry[]; lost: string[] };
 
 /**
- * Vue typée du singleton pour le seul membre que ce fichier touche.
+ * Typed view of the singleton for the only member this file touches.
  *
- * ⚠️ `get` est **greffé au boot** par `config-accessors.ts` : il n'existe pas sur l'import nu,
- * donc le type de `Config` ne le porte pas — et c'est correct. Le `?` de cette vue dit
- * exactement cela, et c'est aussi ce qui rend le `delete` du `afterEach` légal.
+ * ⚠️ `get` is **grafted at boot** by `config-accessors.ts`: it does not exist
+ * on the bare import, so `Config`'s type does not carry it — correctly. This
+ * view's `?` says exactly that, and it is also what makes the `afterEach`'s
+ * `delete` legal.
  */
 type ConfigWithGet = { get?: (path: string, def?: unknown) => unknown };
 
 /**
- * Stub de `Config.get` — assigné, jamais espionné : `get` est greffé sur le singleton au boot
- * (`config-accessors.ts`), il n'existe pas sur l'import nu et `vi.spyOn` jetterait.
- * Idiome repris de `profile-switcher-capability.test.js`.
+ * `Config.get` stub — assigned, never spied: `get` is grafted onto the
+ * singleton at boot (`config-accessors.ts`), it does not exist on the bare
+ * import and `vi.spyOn` would throw. Idiom taken from
+ * `profile-switcher-capability.test.js`.
  */
 const _config = Config as unknown as ConfigWithGet;
 const _originalGet = _config.get;
@@ -101,14 +107,14 @@ afterEach(() => {
 });
 
 /**
- * Rejoue la récolte de `scripts/build-deploy.cjs` sur un répertoire de profils.
+ * Replays `scripts/build-deploy.cjs`'s harvest over a profile directory.
  *
- * Pure et paramétrée par le répertoire : c'est ce qui permet de l'éprouver sur un arbre
- * SYNTHÉTIQUE dégradé (PH-04) sans toucher au dépôt. Une garde dont on ne peut pas fabriquer
- * l'entrée rouge ne se voit jamais rougir.
+ * Pure and parameterised by the directory: what allows exercising it on a
+ * degraded SYNTHETIC tree (PH-04) without touching the repo. A guard whose
+ * red input cannot be forged is never seen turning red.
  *
- * @param dir Répertoire jouant le rôle de `profiles/`.
- * @returns Les répertoires vus, les entrées produites, et ceux perdus au `catch`.
+ * @param dir Directory playing the role of `profiles/`.
+ * @returns The directories seen, the entries produced, and those lost at the `catch`.
  */
 function harvestFrom(dir: string): Harvest {
     if (!existsSync(dir)) return { dirs: [], entries: [], lost: [] };
@@ -131,15 +137,15 @@ function harvestFrom(dir: string): Harvest {
                 ...(meta.icon ? { icon: meta.icon } : {}),
             });
         } catch {
-            // Exactement le `catch` de `build-deploy.cjs` : il n'échoue pas le build, il
-            // avertit et poursuit. C'est CE silence-là que la garde transforme en rouge.
+            // Exactly `build-deploy.cjs`'s `catch`: it does not fail the
+            // build, it warns and goes on. THAT silence is what the guard turns red.
             lost.push(id);
         }
     }
     return { dirs, entries, lost };
 }
 
-describe("B-49 — la récolte de profils ne perd rien en silence", () => {
+describe("la récolte de profils ne perd rien en silence", () => {
     it("PH-01 — le périmètre n'est pas vide (sinon la garde passe sans rien scanner)", () => {
         const { dirs } = harvestFrom(PROFILES);
         expect(
@@ -172,10 +178,10 @@ describe("B-49 — la récolte de profils ne perd rien en silence", () => {
     });
 
     it("PH-03 — chaque entrée récoltée survit au filtre RUNTIME réel", () => {
-        // Le lien est établi avec la VRAIE fonction de la capacité, pas une copie : si son
-        // filtre défensif (PS-14) se resserrait, ou si la récolte se mettait à produire une
-        // forme qu'il écarte, le compte annoncé au build cesserait d'être le compte vu par
-        // l'utilisateur — un écart qu'aucun avertissement n'imprime.
+        // The link is made with the capability's REAL function, not a copy:
+        // if its defensive filter (PS-14) tightened, or the harvest started
+        // producing a shape it discards, the count announced at build would
+        // stop being the count the user sees — a gap no warning prints.
         const { entries } = harvestFrom(PROFILES);
         stubConfig({ data: { availableProfiles: entries } });
         const visible = getAvailableProfiles();
@@ -183,17 +189,18 @@ describe("B-49 — la récolte de profils ne perd rien en silence", () => {
     });
 
     it("PH-04 — TÉMOIN INVERSE : sur une récolte dégradée, la garde REFUSE", () => {
-        // ⚠️ Sans ce témoin, PH-02 et PH-03 seraient indiscernables d'assertions creuses : une
-        // garde jamais vue rouge ne garde rien, et une garde vue rouge sur UNE mutation peut
-        // rester creuse pour une autre. Les deux mécanismes sont donc éprouvés séparément, sur
-        // un arbre synthétique — le dépôt réel n'est jamais touché.
+        // ⚠️ Without this witness, PH-02 and PH-03 would be indistinguishable
+        // from hollow assertions: a guard never seen red guards nothing, and
+        // a guard seen red on ONE mutation can stay hollow for another. The
+        // two mechanisms are thus exercised separately, on a synthetic tree —
+        // the real repo is never touched.
         const tmp = mkdtempSync(join(tmpdir(), "gl-b49-"));
         mkdirSync(join(tmp, "bon"));
         writeFileSync(join(tmp, "bon", "profile.json"), '{"displayLabel":"Bon","icon":"🟢"}');
         mkdirSync(join(tmp, "casse"));
         writeFileSync(join(tmp, "casse", "profile.json"), "{ pas du JSON");
         mkdirSync(join(tmp, "sans-json"));
-        // Les deux exclusions doivent rester des exclusions, pas devenir des pertes.
+        // The two exclusions must stay exclusions, not become losses.
         mkdirSync(join(tmp, "schemas"));
         mkdirSync(join(tmp, "_reference"));
 
@@ -201,11 +208,11 @@ describe("B-49 — la récolte de profils ne perd rien en silence", () => {
         expect(dirs.sort()).toEqual(["bon", "casse", "sans-json"]);
         expect(lost.sort()).toEqual(["casse", "sans-json"]);
         expect(entries.map((e) => e.id)).toEqual(["bon"]);
-        // …et c'est bien ce que PH-02 refuserait sur le dépôt réel.
+        // …and that is indeed what PH-02 would refuse on the real repo.
         expect(entries).not.toHaveLength(dirs.length);
 
-        // Second mécanisme, indépendant du premier : le filtre runtime écarte des entrées que
-        // la récolte pourrait produire si sa forme dérivait. PH-03 le verrait.
+        // Second mechanism, independent of the first: the runtime filter
+        // discards entries the harvest could produce if its shape drifted. PH-03 would see it.
         stubConfig({
             data: { availableProfiles: [{ id: "bon" }, { id: "" }, { id: 42 }, null] },
         });

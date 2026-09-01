@@ -12,9 +12,9 @@
 
 import { Log, fetchWithTimeout } from "@geoleaf/host-runtime";
 import { coreConfigGet as configGet } from "@geoleaf/host-runtime";
-// API publique S4.4 — via la carte `exports` publiée du core, plus par un alias vers ses
-// SOURCES. Fonction PURE et sans aucun import : l'embarquer dans le bundle est sûr (aucune
-// identité à partager, contrairement aux singletons qui passent par le namespace).
+// Through the core's published `exports` map, no longer via an alias to its
+// SOURCES. PURE, import-free function: embedding it in the bundle is safe (no
+// identity to share, unlike the singletons that go through the namespace).
 import { resolveProfileLayers } from "@geoleaf/core/kernel/config/profile-layers.js";
 import { DOMSecurity } from "../../utils/core-utils.js";
 import { beginCacheStatusPass, getLayerConfig } from "./config-cache.js";
@@ -83,15 +83,11 @@ Object.assign(LS, {
 
             DOMSecurity.clearElementFast(this._layersContent);
 
-            const table = createElement(
-                "table",
-                "gl-cache-layers__table",
-                this._layersContent
-            ) as HTMLTableElement;
+            const table = createElement("table", "gl-cache-layers__table", this._layersContent);
 
             this._createTableHeader(table);
 
-            const tbody = createElement("tbody", "", table) as HTMLTableSectionElement;
+            const tbody = createElement("tbody", "", table);
 
             // ANO-078: fallback aligned to the cache subsystem default (true/true).
             // The cache engine (cache-manager/downloader/selection-cache + core init)
@@ -111,10 +107,11 @@ Object.assign(LS, {
 
             if (profile.layers && Array.isArray(profile.layers)) {
                 for (const layer of profile.layers) {
-                    // ⚠️ `hasInlineConfig` AJOUTÉ à la trace (B-152) : c'est elle qui a permis
-                    // de diagnostiquer le défaut, et elle ne disait alors QUE `hasConfigFile`.
-                    // Sur une couche templatée elle imprimait donc `false` partout, sans
-                    // distinguer « pas de config » de « config d'une autre provenance ».
+                    // ⚠️ `hasInlineConfig` ADDED to the trace: the trace is what
+                    // allowed diagnosing the defect, and it then said ONLY
+                    // `hasConfigFile`. On a templated layer it printed `false`
+                    // everywhere, without distinguishing "no config" from "config
+                    // of another provenance".
                     Log?.debug(`[LayerSelector] Processing layer ${layer.id}:`, {
                         hasConfigFile: !!layer.configFile,
                         configFile: layer.configFile,
@@ -122,20 +119,22 @@ Object.assign(LS, {
                         hasLayerDir: !!layer.layerDir,
                     });
 
-                    // 🛑 B-152 — DEUX PROVENANCES POUR `layerDir`, PAS UNE.
+                    // 🛑 TWO PROVENANCES FOR `layerDir`, NOT ONE.
                     //
-                    // Ce bloc ne connaissait que `configFile`, dont il tirait le répertoire
-                    // par découpe de chaîne. Une couche templatée n'en a pas : ni `layerDir`
-                    // ni `dataFile` n'étaient posés, `estimateLayerSize` n'avait pas d'URL
-                    // pour son HEAD, et `isLayerCached` (`selection-cache.ts`) se retrouvait
-                    // avec `searchUrls` VIDE — donc « non caché », définitivement et quoi
-                    // qu'on télécharge.
+                    // This block only knew `configFile`, from which it derived the
+                    // directory by string slicing. A templated layer has none:
+                    // neither `layerDir` nor `dataFile` were set,
+                    // `estimateLayerSize` had no URL for its HEAD, and
+                    // `isLayerCached` (`selection-cache.ts`) ended up with an
+                    // EMPTY `searchUrls` — hence "not cached", definitively and
+                    // whatever gets downloaded.
                     //
-                    // Pour une config en ligne le répertoire ne se découpe pas, il se DÉDUIT :
-                    // `layers/<id>`, la convention que `resource-enumerator` applique quand il
-                    // met la couche en cache (`_addInlineConfigResource`). Reprendre sa
-                    // convention plutôt qu'en inventer une est ce qui garantit que l'URL
-                    // cherchée ici et l'URL écrite là-bas sont la même.
+                    // For an inline config the directory is not sliced, it is
+                    // DEDUCED: `layers/<id>`, the convention `resource-enumerator`
+                    // applies when it caches the layer
+                    // (`_addInlineConfigResource`). Reusing its convention rather
+                    // than inventing one is what guarantees the URL looked up here
+                    // and the URL written there are the same.
                     if (!layer.layerDir) {
                         if (layer.configFile) {
                             layer.layerDir = layer.configFile.substring(
@@ -151,10 +150,11 @@ Object.assign(LS, {
 
                             // Side effect kept deliberately: `estimateLayerSize` builds its
                             // HEAD url from `layer.dataFile`, which only this pass fills in.
-                            // ⚠️ `getLayerConfig` sert la config en ligne depuis la mémoire,
-                            // donc ce `dataFile` vient de `expandLayerTemplates`, qui le
-                            // normalise par `layerDataPath` — une seule dérivation dans tout
-                            // le dépôt, et le plugin n'a pas à la refaire.
+                            // ⚠️ `getLayerConfig` serves the inline config from
+                            // memory, so this `dataFile` comes from
+                            // `expandLayerTemplates`, which normalises it via
+                            // `layerDataPath` — one derivation in the whole repo,
+                            // and the plugin does not have to redo it.
                             const layerConfig = await getLayerConfig(layer);
                             if (layerConfig?.dataFile) {
                                 layer.dataFile = layerConfig.dataFile;

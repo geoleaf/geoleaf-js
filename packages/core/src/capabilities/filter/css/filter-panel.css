@@ -193,12 +193,10 @@
             var(--gl-shadow-soft);
     }
 
-    /* Range + valeur visible */
-    .gl-filter-panel__range-wrapper {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
+    /* The `.gl-filter-panel__range-wrapper` rule that lived here was removed on
+       24/08/2026 with its last JS reader: the panel never renders the proximity range
+       (render.ts — "driven by the toolbar button (S5)"), so the wrapper it styled never
+       existed in the DOM. */
 
     .gl-filter-panel__control--range {
         flex: 1;

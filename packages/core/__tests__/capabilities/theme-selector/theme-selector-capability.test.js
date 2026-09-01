@@ -17,12 +17,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 const { CapabilityRegistry } = await import("../../../src/kernel/api/capability-registry.ts");
-const { THEME_SELECTOR_CAPABILITY } = await import(
-    "../../../src/capabilities/theme-selector/theme-selector-capability.ts"
-);
-const { THEME_TOGGLE_CAPABILITY } = await import(
-    "../../../src/capabilities/theme-toggle/theme-toggle-capability.ts"
-);
+const { THEME_SELECTOR_CAPABILITY } =
+    await import("../../../src/capabilities/theme-selector/theme-selector-capability.ts");
+const { THEME_TOGGLE_CAPABILITY } =
+    await import("../../../src/capabilities/theme-toggle/theme-toggle-capability.ts");
 const { Introspection } = await import("../../../src/api/geoleaf.introspection.ts");
 
 /** Mirrors the capConfig adapter created in boot.ts for the theme-selector gate. */
@@ -59,24 +57,25 @@ describe("THEME_SELECTOR_CAPABILITY declaration", () => {
     });
 
     it("configSchema announces the EFFECTIVE default, not the gate's (B.23)", () => {
-        // Le schéma est ce que lisent l'intégrateur et le studio no-code via
-        // `getCapabilitySchema('theme-selector')`. Il doit annoncer ce que le runtime FAIT,
-        // pas ce que vaut le gate de boot.
+        // The schema is what the integrator and the no-code studio read
+        // through `getCapabilitySchema('theme-selector')`. It must announce
+        // what the runtime DOES, not what the boot gate is worth.
         //
-        // Le runtime est opt-IN : `theme-selector.ts:133` teste `enabled === true` et sort
-        // sec si la clé est absente. Annoncer `default: true` promettait donc une barre que
-        // le code ne rend jamais — c'est le défaut B.23.
+        // The runtime is opt-IN: `theme-selector.ts` tests
+        // `enabled === true` and bails when the key is absent. Announcing
+        // `default: true` thus promised a bar the code never renders — the defect.
         //
-        // ⚠️ Le gate reste `enableWhenAbsent: true`, et c'est VOLONTAIRE : il n'enregistre
-        // que le module, avant le merge du profil (piège de timing du boot-gate). Les deux
-        // n'ont pas à s'accorder entre eux — c'est le SCHÉMA qui doit s'accorder au RUNTIME.
+        // ⚠️ The gate stays `enableWhenAbsent: true`, and that is DELIBERATE:
+        // it only registers the module, before the profile merge (the
+        // boot-gate timing trap). The two need not agree with each other —
+        // the SCHEMA must agree with the RUNTIME.
         expect(THEME_SELECTOR_CAPABILITY.configSchema?.enabled?.type).toBe("boolean");
         expect(THEME_SELECTOR_CAPABILITY.configSchema?.enabled?.default).toBe(false);
     });
 
     it("annonce le même contrat que theme-toggle, qui a le même besoin (B.23)", () => {
-        // Garde d'alignement : les deux capacités sont profile-level, gate opt-out pour
-        // survivre au pré-merge, décision opt-in tardive. Si l'une dérive, celle-ci rougit.
+        // Alignment guard: both capabilities are profile-level, opt-out gate
+        // to survive the pre-merge, late opt-in decision. If one drifts, this one turns red.
         expect(THEME_SELECTOR_CAPABILITY.gate?.enableWhenAbsent).toBe(
             THEME_TOGGLE_CAPABILITY.gate?.enableWhenAbsent
         );

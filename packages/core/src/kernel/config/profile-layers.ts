@@ -3,12 +3,12 @@
  * © 2026 Mattieu Pottier — MIT License
  * https://geoleaf.dev
  *
- * ARCHI S7 (7.3, geste 2) — ce fichier vivait sous `capabilities/offline/`, ce qui en
- * faisait une dépendance de `plugin-storage` vers une capacité GATÉE PAR CONFIGURATION :
- * un profil peut désactiver `offline`, et un import statique en faisait de fait une
- * capacité obligatoire. Or il ne traite pas d'offline — il résout la liste de couches
- * d'un profil (`profile.json` → `layers.json`). Sa place est le domaine profil/config,
- * aux côtés de `profile.ts` et `profile-loader.ts`.
+ * This file used to live under `capabilities/offline/`, which made it a
+ * `plugin-storage` dependency on a CONFIGURATION-GATED capability: a profile can
+ * disable `offline`, and a static import made it a de-facto mandatory capability.
+ * Yet it does not deal with offline — it resolves a profile's layer list
+ * (`profile.json` → `layers.json`). Its place is the profile/config domain, next to
+ * `profile.ts` and `profile-loader.ts`.
  */
 
 import { extractRawLayers, expandLayerTemplates } from "./profile-loader-helpers.js";
@@ -25,12 +25,12 @@ export interface LayerLike {
     dataFile?: string;
     url?: string;
     /**
-     * Config posée EN LIGNE dans `layers.json`, pour une instance de `layerTemplates`.
+     * Config set INLINE in `layers.json`, for a `layerTemplates` instance.
      *
-     * ⚠️ Une telle couche n'a PAS de `configFile` — c'est ce qui la faisait disparaître de
-     * tout le chemin hors-ligne, dont quatre sites branchent sur cette clé. Sa config est
-     * déjà là, il n'y a rien à refetcher ; son répertoire vaut `layers/<id>` par convention
-     * (`profile-loader.ts:38`).
+     * ⚠️ Such a layer has NO `configFile` — which is what made it vanish from the
+     * whole offline path, four sites of which branch on that key. Its config is
+     * already there, nothing to refetch; its directory is `layers/<id>` by
+     * convention (`profile-loader.ts`).
      */
     inlineConfig?: Record<string, unknown>;
     [key: string]: unknown;
@@ -104,19 +104,19 @@ export async function resolveProfileLayers(
             opts.onWarn?.(`[ProfileLayers] Failed to load ${url}: ${response.status}`);
             return [];
         }
-        // 🛑 TÂCHE 8.9 / C.15 — CE BLOC FAISAIT `json.layers` ET IGNORAIT `layerTemplates`.
+        // 🛑 THIS BLOCK DID `json.layers` AND IGNORED `layerTemplates`.
         //
-        // Conséquence mesurée : `tourism` déclare **18 couches directes et 24 templatées** ;
-        // les 24 n'apparaissaient PAS dans le sélecteur « Télécharger pour hors-ligne » et
-        // ne cachaient rien — **57 % du profil de démo**, dans la capacité que cette roadmap
-        // existe pour prouver. Et le défaut était silencieux : une couche non énumérée n'est
-        // pas une couche en échec.
+        // Measured consequence: `tourism` declares **18 direct layers and 24
+        // templated ones**; the 24 did NOT appear in the "Download for offline"
+        // selector and cached nothing — **57% of the demo profile**, in the very
+        // capability this work exists to prove. And the defect was silent: a layer
+        // not enumerated is not a layer in failure.
         //
-        // ⚠️ La résolution passe désormais par les MÊMES helpers que le chargeur de
-        // production (`profile-loader.ts`), pas par une seconde lecture écrite ici. C'était
-        // exactement le défaut : deux chemins de résolution, dont un avait oublié les
-        // templates. `extractRawLayers` apporte au passage la tolérance au tableau nu, que
-        // ce chemin-ci n'avait pas.
+        // ⚠️ Resolution now goes through the SAME helpers as the production loader
+        // (`profile-loader.ts`), not a second read written here. That was exactly
+        // the defect: two resolution paths, one of which had forgotten the
+        // templates. `extractRawLayers` brings bare-array tolerance along, which
+        // this path lacked.
         const json = (await response.json()) as Record<string, unknown>;
         const regular = extractRawLayers(json) ?? [];
         return expandLayerTemplates(regular, json) as LayerLike[];

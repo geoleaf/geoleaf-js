@@ -1,4 +1,4 @@
-﻿/*!
+/*!
  * @geoleaf/core
  * © 2026 Mattieu Pottier
  * Released under the MIT License
@@ -56,19 +56,15 @@ export function deactivatePanel(btn: HTMLElement, container: HTMLElement, map: I
 
     cleanupMapElements(map);
 
-    // Reset the slider to its default value
-    const radiusInput = container.querySelector(
-        "[data-filter-proximity-radius]"
-    ) as HTMLInputElement | null;
-    if (radiusInput) {
-        const defaultVal =
-            radiusInput.getAttribute("data-proximity-radius-default") || radiusInput.min || "10";
-        radiusInput.value = defaultVal;
-        const rangeValueSpan = radiusInput
-            .closest(".gl-filter-panel__range-wrapper")
-            ?.querySelector(".gl-filter-panel__range-value") as HTMLElement | null;
-        if (rangeValueSpan) rangeValueSpan.textContent = defaultVal;
-    }
+    // The slider-reset block that lived here was removed on 24/08/2026 as dead by
+    // construction: it selected `[data-filter-proximity-radius]` inside the panel and read
+    // a `data-proximity-radius-default` attribute — but `render.ts` states the panel does
+    // NOT render proximity ("driven by the toolbar button (S5), not rendered in the
+    // panel"), nothing anywhere writes either attribute (measured across packages/,
+    // profiles/, apps/ and the public docs — an integrator has no documented channel to
+    // add them), and the default attribute's only occurrence in the whole repo was this
+    // very reader. The live radius path is the mobile toolbar; the reset it needs is
+    // handled there.
 
     // Drop the data-proximity-* attributes from the wrapper
     const wrapper = container.closest("[data-gl-filter-id='proximity']");

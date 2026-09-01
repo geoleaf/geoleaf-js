@@ -14,38 +14,39 @@
  */
 
 /**
- * Accès aux sous-modules de la base — l'`outbox` est lue par la modale d'attente (4.9).
+ * Access to the database sub-modules — the `outbox` is read by the pending modal.
  *
- * 🛑 **`StorageQueueDb` A ÉTÉ RETIRÉE ICI, et sa mort datait de 4.9.** Elle déclarait les
- * quatre méthodes `sync_queue` de la file v3 — `addToSyncQueue`, `getPendingSyncQueue`,
- * `updateSyncQueueStatus`, `removeSyncQueueEntry` — plus un commentaire expliquant pourquoi la
- * file portait DEUX slots de charge utile (`poiData` pour `addpoi`, `payload` pour l'éditeur).
- * Ce partage a disparu quand l'éditeur est passé par `applyEdit` : les quatre déclarations
- * n'ont plus eu **aucun appelant**, et le seul consommateur de `storageDb()` ne lit que
- * `_ensureModule`.
+ * 🛑 **`StorageQueueDb` WAS REMOVED HERE, and its death dated back a while.** It
+ * declared the v3 queue's four `sync_queue` methods — `addToSyncQueue`,
+ * `getPendingSyncQueue`, `updateSyncQueueStatus`, `removeSyncQueueEntry` — plus
+ * a comment explaining why the queue carried TWO payload slots (`poiData` for
+ * `addpoi`, `payload` for the editor). That sharing vanished when the editor
+ * moved to `applyEdit`: the four declarations had **no caller left**, and
+ * `storageDb()`'s only consumer reads only `_ensureModule`.
  *
- * ⚠️ **Deux « appelants » subsistaient en apparence — c'était de la PROSE, pas du code**
- * (l'en-tête de `storage-queue-adapter.ts` et un commentaire d'`editor-sync-replay.ts`). Un
- * grep qui ne distingue pas les deux compte une surface morte comme vivante ; c'est ce qui a
- * fait survivre ces quatre lignes à la clôture de S4c.
+ * ⚠️ **Two apparent "callers" remained — they were PROSE, not code** (the
+ * header of `storage-queue-adapter.ts` and a comment in
+ * `editor-sync-replay.ts`). A grep that does not distinguish the two counts a
+ * dead surface as live; that is what made these four lines survive a sprint
+ * closure.
  */
 export interface OutboxAccess {
     _ensureModule?: (name: string) => { list?: () => Promise<OutboxRow[]> } | null;
     /**
-     * Les saisies jamais poussées, tous états non-`synced` confondus (`pending`, `inFlight`,
-     * `failed`, `quarantined`).
+     * The never-pushed captures, all non-`synced` states together (`pending`,
+     * `inFlight`, `failed`, `quarantined`).
      *
-     * ⚠️ **C'est la source qu'`addpoi` utilise pour `getSyncSummary`, et le handler de
-     * l'éditeur (5.1-b) doit lire LA MÊME.** Elle n'est pas interchangeable avec
-     * `_ensureModule("Outbox").list()` filtré : le core y **écarte** toute entrée sans
-     * `layerId` ou `localId`, et il joint le magasin `features`. Compter d'un autre côté
-     * ferait diverger le bouton de synchronisation d'`offline-ui` d'un total à l'autre sans
-     * qu'aucune gate ne le voie.
+     * ⚠️ **It is the source `addpoi` used for `getSyncSummary`, and the
+     * editor's handler must read THE SAME.** It is not interchangeable with a
+     * filtered `_ensureModule("Outbox").list()`: the core **discards** any
+     * entry without `layerId` or `localId` there, and it joins the `features`
+     * store. Counting from another side would make `offline-ui`'s sync button
+     * diverge from one total to the other with no gate seeing it.
      */
     listPendingEdits?: () => Promise<PendingEdit[]>;
 }
 
-/** Une saisie en attente, telle que `listPendingEdits` la rend. */
+/** A pending capture, as `listPendingEdits` returns it. */
 export interface PendingEdit {
     entryId: string;
     kind: string;
@@ -56,7 +57,7 @@ export interface PendingEdit {
     feature: unknown;
 }
 
-/** Une entrée d'`outbox`, réduite à ce que la modale d'attente en lit. */
+/** An `outbox` entry, reduced to what the pending modal reads from it. */
 export interface OutboxRow {
     id: string;
     kind: string;
@@ -66,21 +67,22 @@ export interface OutboxRow {
     createdAt?: number;
 }
 
-/** Le cycle d'écriture du core (4.4/4.5), unique écrivain de la file depuis 4.9. */
+/** The core's write cycle, the queue's only writer. */
 export interface StorageWriteFacade {
     /**
-     * La couche accorde-t-elle cette opération ? — tâche 8.7 (**B-138**).
+     * Does the layer grant this operation?
      *
-     * 🛑 **SYNCHRONE, et disponible SANS le moteur hors-ligne.** La permission se lit dans le
-     * profil, pas dans IndexedDB, et `GeoLeaf.Storage` s'auto-monte au boot
-     * (`globals.storage.ts`) : le prédicat répond donc même en `persistence.mode: "online"`,
-     * là où ce plugin tourne sans `offline-ui`. C'était la condition pour que la garde couvre
-     * le chemin CONNECTÉ, le seul où le trou existait.
+     * 🛑 **SYNCHRONOUS, and available WITHOUT the offline engine.** The
+     * permission is read from the profile, not IndexedDB, and `GeoLeaf.Storage`
+     * self-mounts at boot (`globals.storage.ts`): the predicate therefore
+     * answers even in `persistence.mode: "online"`, where this plugin runs
+     * without `offline-ui`. That was the condition for the guard to cover the
+     * CONNECTED path, the only one carrying the hole.
      *
-     * ⚠️ Optionnel dans cette interface parce que **tout** l'est ici : ce plugin redéclare la
-     * surface du global qu'il attend (INV-NS lui interdit d'importer les sources du core).
-     * L'absence de ce membre n'est donc pas une permission — voir `permission-gate.ts`, qui
-     * REFUSE quand il ne peut pas interroger.
+     * ⚠️ Optional in this interface because **everything** is here: this plugin
+     * redeclares the global surface it expects (INV-NS forbids it to import the
+     * core's sources). This member's absence is therefore not a permission —
+     * see `permission-gate.ts`, which REFUSES when it cannot query.
      */
     mayEdit?(layerId: string, kind: "create" | "update" | "delete"): boolean;
     applyEdit?(input: {
@@ -115,9 +117,10 @@ export function storageDb(): OutboxAccess | null {
 /**
  * Resolves the Storage write façade at call time, or null when unavailable.
  *
- * ⚠️ Distinct de {@link storageDb} : celui-ci rend la BASE, celle-là le cycle d'écriture.
- * L'éditeur écrivait la file par la base ; depuis 4.9 il passe par le cycle, seul endroit qui
- * tienne l'atomicité entité + entrée, la coalescence et l'invariant S6.
+ * ⚠️ Distinct from {@link storageDb}: that one returns the DATABASE, this one
+ * the write cycle. The editor used to write the queue through the database; it
+ * now goes through the cycle, the only place holding entity + entry atomicity,
+ * coalescing and the editability invariant.
  */
 export function storageFacade(): StorageWriteFacade | null {
     return _g?.GeoLeaf?.Storage ?? null;

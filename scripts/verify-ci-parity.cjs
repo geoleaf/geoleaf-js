@@ -1,63 +1,65 @@
 #!/usr/bin/env node
 "use strict";
 /**
- * verify-ci-parity.cjs — toute gate de `ci.yml` est lancée par `ci:local`, ou exemptée avec
- * son motif ET son témoin.
+ * verify-ci-parity.cjs — every `ci.yml` gate is run by `ci:local`, or exempted with
+ * its reason AND its witness.
  *
- * ## L'angle mort que cette gate ferme
+ * ## The blind spot this gate closes
  *
- * `ci-local.cjs` déclare tenir `ci:local ⊇ ci.yml`. Cette propriété était vérifiée sur UN
- * axe (le périmètre des tests unitaires, par `lib/test-scope.cjs`) et conventionnée sur
- * l'autre : la liste des gates reposait sur une ligne de commentaire « Keep this list in sync
- * with .github/workflows/ci.yml ». Un geste manuel là où le fichier annonçait une garantie —
- * et le protocole de push de CLAUDE.md fait de ce vert local le SEUL critère avant de dépenser
- * du quota GitHub Actions, qui est rare.
+ * `ci-local.cjs` declares holding `ci:local ⊇ ci.yml`. That property was verified on
+ * ONE axis (the unit-test perimeter, through `lib/test-scope.cjs`) and conventioned
+ * on the other: the gate list rested on a comment line "Keep this list in sync with
+ * .github/workflows/ci.yml". A manual gesture where the file announced a guarantee —
+ * and the push protocol makes that local green the ONLY criterion before spending
+ * GitHub Actions quota, which is scarce.
  *
- * ## Ce qu'elle contrôle, et dans CET ordre
+ * ## What it checks, and in THIS order
  *
- *   PARITY-01  planchers témoins — sous le plancher, REFUSE DE CONCLURE
- *   PARITY-07  accord parseur / comptage brut — le périmètre lu est-il bien le fichier ?
- *   PARITY-02  `npm run` défini nulle part — ci.yml cassé, pas un défaut de parité
- *   PARITY-04  clé morte dans une table — une dispense qui ne dispense plus de rien
- *   PARITY-05  témoin d'exemption en échec — la cause de la dispense est tombée
- *   PARITY-06  action externe non listée — une action n'est pas une exemption automatique
- *   PARITY-08  gate glissée sous `--e2e` sans être déclarée
- *   PARITY-09  `env:` d'étape non recensé
- *   PARITY-03  feuille non couverte et non expliquée — cette catégorie doit rester VIDE
+ *   PARITY-01  witness floors — below the floor, REFUSES TO CONCLUDE
+ *   PARITY-07  parser / raw-count agreement — is the read perimeter really the file?
+ *   PARITY-02  `npm run` defined nowhere — a broken ci.yml, not a parity defect
+ *   PARITY-04  dead key in a table — a dispensation that dispenses nothing anymore
+ *   PARITY-05  failing exemption witness — the dispensation's cause fell
+ *   PARITY-06  unlisted external action — an action is no automatic exemption
+ *   PARITY-08  gate slipped under `--e2e` without being declared
+ *   PARITY-09  unregistered step `env:`
+ *   PARITY-03  uncovered, unexplained leaf — this category must stay EMPTY
  *
- * ⚠️ L'ordre n'est pas cosmétique. Sur un corpus effondré, « 0 feuille non couverte » est vrai
- * PAR ACCIDENT. Les deux premiers codes suspendent donc le rapport de classement au lieu de
- * l'imprimer : un décompte rassurant sur un corpus qu'on n'a pas lu est pire que pas de
- * décompte du tout. Même arbitrage que `verify-ci-scripts-tracked.cjs`.
+ * ⚠️ The order is not cosmetic. On a collapsed corpus, "0 uncovered leaves" is true
+ * BY ACCIDENT. The first two codes therefore suspend the classification report
+ * instead of printing it: a reassuring tally on a corpus one has not read is worse
+ * than no tally at all. Same arbitration as `verify-ci-scripts-tracked.cjs`.
  *
- * ## La voir rougir
+ * ## Seeing it red
  *
- * Le crochet `GEOLEAF_CI_WORKFLOW_DIR` existe pour ça, et pour rien d'autre : sans lui, la
- * seule façon de prouver cette gate serait de modifier le vrai `ci.yml` — donc on ne le
- * ferait qu'une fois, à la pose, et jamais plus. Trois mutations, une par mode d'échec :
+ * The `GEOLEAF_CI_WORKFLOW_DIR` hook exists for that, and nothing else: without it,
+ * the only way to prove this gate would be to modify the real `ci.yml` — so it would
+ * be done once, at landing, and never again. Three mutations, one per failure mode:
  *
- *   # la propriété
+ *   # the property
  *   mkdir -p /tmp/wf && cp .github/workflows/ci.yml /tmp/wf/
  *   printf '\n            - name: Sonde\n              run: node scripts/count-any.cjs\n' >> /tmp/wf/ci.yml
  *   GEOLEAF_CI_WORKFLOW_DIR=/tmp/wf node scripts/verify-ci-parity.cjs   # → PARITY-03
  *
- *   # le pourrissement
+ *   # the rot
  *   grep -v 'run: npm ci' .github/workflows/ci.yml > /tmp/wf/ci.yml
  *   GEOLEAF_CI_WORKFLOW_DIR=/tmp/wf node scripts/verify-ci-parity.cjs   # → PARITY-04
  *
- *   # la cécité — garder l'en-tête, `jobs:` et TROIS étapes : un workflow bien formé dont les
- *   # décomptes passent sous les planchers. ⚠️ La recette a dit `head -40` jusqu'au
- *   # 09/08/2026 ; l'en-tête a grandi, `jobs:` est passé ligne 43, et la coupe rendait
- *   # « corpus illisible » — un AUTRE code. Un rang de ligne en dur dans une recette pourrit
- *   # sans prévenir, et `probe-gate-visibility.cjs` dérive désormais la sienne du fichier.
+ *   # blindness — keep the header, `jobs:` and THREE steps: a well-formed workflow
+ *   # whose tallies fall under the floors. ⚠️ The recipe said `head -40` until
+ *   # 2026-08-09; the header grew, `jobs:` moved to line 43, and the cut rendered
+ *   # "unreadable corpus" — ANOTHER code. A hard-coded line rank in a recipe rots
+ *   # without warning, and `probe-gate-visibility.cjs` now derives its own from the
+ *   # file.
  *   awk '{print} /^ *steps:/{n=1} n && /^ +- /{c++} c>3{exit}' .github/workflows/ci.yml > /tmp/wf/ci.yml
  *   GEOLEAF_CI_WORKFLOW_DIR=/tmp/wf node scripts/verify-ci-parity.cjs   # → PARITY-01
  *
- * Les trois sont figées en `assertThat` dans `probe-gate-visibility.cjs`, donc rejouées à
- * chaque `ci:local` : une garde qu'on ne peut plus voir rougir a cessé d'en être une.
+ * All three are frozen as `assertThat` in `probe-gate-visibility.cjs`, hence
+ * replayed at every `ci:local`: a guard that can no longer be seen red has ceased to
+ * be one.
  *
- * Usage : node scripts/verify-ci-parity.cjs [--verbose]
- * Sortie : 0 si tout est classé et tous les témoins tiennent, 1 sinon.
+ * Usage: node scripts/verify-ci-parity.cjs [--verbose]
+ * Exit: 0 if everything is classified and all witnesses hold, 1 otherwise.
  */
 
 const parity = require("./lib/ci-parity.cjs");
@@ -72,7 +74,7 @@ const C = {
     x: "\x1b[0m",
 };
 
-/** Codes qui invalident le classement : on les rapporte SEULS, sans décompte rassurant. */
+/** Codes that invalidate the classification: reported ALONE, no reassuring tally. */
 const BLINDING = new Set(["PARITY-01", "PARITY-07"]);
 
 function main() {
@@ -83,7 +85,7 @@ function main() {
     try {
         result = parity.classify();
     } catch (err) {
-        // Un corpus illisible n'est pas « 0 problème » : c'est l'absence de mesure.
+        // An unreadable corpus is not "0 problems": it is the absence of measurement.
         console.log(`\n${C.r}✗ CI-PARITY — corpus illisible, REFUSE DE CONCLURE${C.x}`);
         console.log(`  ${err.message}`);
         process.exit(1);
@@ -96,9 +98,10 @@ function main() {
         `  ${corpus.workflows} workflow(s), ${corpus.jobs} job(s), ${corpus.steps} étapes ` +
             `(${corpus.runKeys} run: / ${corpus.usesKeys} uses:), ${corpus.ciLeaves} feuilles CI`
     );
-    // ⚠️ Un workflow SORTI de la comparaison doit se voir. Sans cette ligne, « 2 workflow(s) »
-    // au-dessus laisse croire que les deux sont comparés, et un classement erroné en livraison
-    // — la seule erreur silencieuse de ce découpage — passerait inaperçu.
+    // ⚠️ A workflow TAKEN OUT of the comparison must be seen. Without this line,
+    // "2 workflow(s)" above suggests both are compared, and a wrong
+    // delivery classification — this partition's only silent error — would go
+    // unnoticed.
     if (corpus.deliveryWorkflows?.length) {
         console.log(
             `  ${C.d}hors comparaison (livraison, déclenchés sur tag) : ` +
@@ -139,20 +142,21 @@ function main() {
         }
     }
 
-    // ── PARITY-13 — NOTÉE, jamais bloquante (B-83) ────────────────────────────────────
+    // ── PARITY-13 — NOTED, never blocking ──────────────────────────────────────
     //
-    // 🛑 POURQUOI UNE NOTE ET NON UN ROUGE, et c'est un choix mesuré. Le sens inverse
-    // (`ci:local ⊄ ci.yml`) n'avait jamais été instrumenté : rien ne disait qu'une gate ajoutée
-    // en local restait absente du distant. Il l'est maintenant — mais le rendre BLOQUANT
-    // rougirait sur 13 feuilles dès sa pose, donc en permanence, donc il serait désarmé le
-    // jour même. C'est la même raison que CC-10 sur l'empreinte du manifeste aval.
+    // 🛑 WHY A NOTE AND NOT A RED, and it is a measured choice. The reverse direction
+    // (`ci:local ⊄ ci.yml`) had never been instrumented: nothing said a gate added
+    // locally stayed absent remotely. It is now — but making it BLOCKING would
+    // redden on 13 leaves the day it lands, hence permanently, hence it would be
+    // disarmed the same day. Same reason as CC-10 on the downstream manifest's
+    // fingerprint.
     //
-    // ⚠️ ET ELLE SUR-SIGNALE, DÉLIBÉRÉMENT NON CORRIGÉ ICI. Elle compare des FEUILLES DE
-    // COMMANDE, pas des couvertures : `ci.yml` lance `npx vitest run` là où `ci:local` passe par
-    // `scripts/run-tests.cjs` — même vérification, deux invocations. Une note qui sur-signale
-    // reste lisible ; un rouge qui sur-signale se contourne. Le tri des 13, et la décision de
-    // porter les vraies absences dans `ci.yml`, sont une DÉCISION à coût de CI — versée au
-    // registre, pas prise ici.
+    // ⚠️ AND IT OVER-SIGNALS, DELIBERATELY NOT FIXED HERE. It compares COMMAND
+    // LEAVES, not coverages: `ci.yml` runs `npx vitest run` where `ci:local` goes
+    // through `scripts/run-tests.cjs` — same verification, two invocations. A note
+    // that over-signals stays readable; a red that over-signals gets bypassed.
+    // Triaging the 13, and the decision to port the real absences into `ci.yml`, are
+    // a DECISION with CI cost — recorded, not taken here.
     if (notes.length) {
         console.log(
             `\n${C.y}ℹ CI-PARITY — ${notes.length} feuille(s) locale(s) sans équivalent distant ` +
@@ -161,11 +165,14 @@ function main() {
         for (const n of notes) console.log(`  ${C.d}· ${n.message}${C.x}`);
         console.log(
             `  ${C.d}Compare des COMMANDES, pas des couvertures — une même vérification lancée\n` +
-                `  autrement des deux côtés apparaît ici. Tri et arbitrage : registre.${C.x}`
+                `  autrement des deux côtés apparaît ici. Deux réponses possibles : la porter\n` +
+                `  dans \`ci.yml\`, ou la déclarer dans \`LOCAL_ONLY\` / \`COVERED_REMOTELY\`\n` +
+                `  (\`lib/ci-parity.cjs\`, avec son motif et son témoin). Une note qui reste est\n` +
+                `  une décision de coût — son motif s'écrit à côté des tables.${C.x}`
         );
     }
 
-    // Rapport des problèmes — les codes aveuglants d'abord, seuls s'il y en a.
+    // Problem report — the blinding codes first, alone if there are any.
     const shown = blinding.length ? blinding : problems;
     if (shown.length === 0) {
         console.log(

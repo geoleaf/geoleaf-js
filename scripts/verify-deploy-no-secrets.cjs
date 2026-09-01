@@ -1,66 +1,69 @@
 #!/usr/bin/env node
 "use strict";
 /**
- * verify-deploy-no-secrets.cjs — aucun secret dans ce qu'on LIVRE.
+ * verify-deploy-no-secrets.cjs — no secret in what we SHIP.
  *
- * ## Le trou que cette gate ferme
+ * ## The hole this gate closes
  *
- * Le dépôt avait deux filets à secrets, et un angle mort exactement entre les deux :
+ * The repo had two secret nets, and a blind spot exactly between the two:
  *
- *   • `gitleaks` (`scripts/gitleaks-local.cjs`, `ci.yml`) scanne des **plages de commits**
- *     (`detect --log-opts`). Il ne lit ni l'arbre de travail, ni un fichier non suivi.
- *   • `.gitignore` couvre le canal **git**, et rien d'autre.
+ *   • `gitleaks` (`scripts/gitleaks-local.cjs`, `ci.yml`) scans **commit ranges**
+ *     (`detect --log-opts`). It reads neither the working tree nor an untracked file.
+ *   • `.gitignore` covers the **git** channel, and nothing else.
  *
- * `deploy/` est git-ignoré. Il est donc, structurellement, hors de portée des deux — pendant
- * qu'il est précisément ce qui part chez un client ou sur un serveur de prod. Mesuré le
- * 09/08/2026 : `connector.local.js`, porteur d'un JWT `geoleaf_editor` NON EXPIRÉ contre un
- * hôte joignable depuis Internet, était recopié tel quel à la racine de `deploy-core`, de
- * `deploy-full` et de `deploy-coverage`, **plus** dans leurs `.gz` et `.br`. Quatre gates
- * regardaient `deploy/` — aucune ne regardait son CONTENU, elles pesaient des octets.
+ * `deploy/` is git-ignored. It is thus, structurally, out of both nets' reach — while
+ * being precisely what ships to a client or a prod server. Measured on 2026-08-09:
+ * `connector.local.js`, carrying a NON-EXPIRED `geoleaf_editor` JWT against a host
+ * reachable from the Internet, was copied as-is to the root of `deploy-core`,
+ * `deploy-full` and `deploy-coverage`, **plus** into their `.gz` and `.br`. Four
+ * gates looked at `deploy/` — none looked at its CONTENT, they weighed bytes.
  *
- * ⚠️ **Le raisonnement qui laissait faire ne mesurait que l'exécution.** La garde `localhost`
- * d'`init.js` empêche le bootstrap de s'activer sur une origine déployée. C'est vrai, et sans
- * effet : un secret se LIT. `curl https://<hôte>/connector.local.js` le rendait en clair, garde
- * ou pas. Cette gate mesure l'autre moitié, celle que personne ne mesurait.
+ * ⚠️ **The reasoning that let it happen only measured execution.** `init.js`'s
+ * `localhost` guard prevents the bootstrap from activating on a deployed origin. True,
+ * and without effect: a secret is READ. `curl https://<host>/connector.local.js`
+ * returned it in the clear, guard or not. This gate measures the other half, the one
+ * nobody measured.
  *
- * ## Ce qui est vérifié
+ * ## What is verified
  *
- *   DNS-01  aucune variante LIVRABLE ne contient de motif de secret (JWT, `Bearer` littéral,
- *           clé/mot de passe assignés) — dans le fichier brut ET dans ses formes `.gz`/`.br`,
- *           parce que c'est dans le `.gz` que le jeton a aussi été retrouvé.
- *   DNS-02  une variante livrable ne contient PAS `connector.local.js`, et son `index.html`
- *           ne le NOMME nulle part. Distinct de DNS-01, qui cherche des motifs : un bootstrap
- *           dont le jeton aurait une autre forme y échapperait, pas à une exigence d'absence.
- *           ⚠️ Cet invariant a comparé le fichier à un TALON INERTE jusqu'au 09/08/2026. Le
- *           talon existait parce qu'`init.js` importait le fichier inconditionnellement ; la
- *           balise gatée d'`index.html` a supprimé cette obligation, donc le talon, donc la
- *           comparaison. Exiger une absence est plus fort que vérifier une forme : il n'y a
- *           qu'une façon d'être absent, et mille d'avoir l'air inerte.
- *   DNS-03  aucun fichier d'environnement (`.env*`) n'a été copié dans une variante.
- *   DNS-04  le scan n'est pas vide — au moins une variante, au moins un fichier, au moins un
- *           octet. Sans quoi un renommage de `deploy/` rendrait cette gate verte et muette.
- *   DNS-05  aucune variante livrable ne référence un hôte du BACKEND DE PREUVE
- *           (`lib/dev-backend.cjs`). ⚠️ Ce n'est PAS un secret, et c'est pourquoi DNS-01 ne
- *           pouvait pas le voir : il n'y a aucun motif de jeton, juste une origine. Mesuré le
- *           09/08/2026 — quatre liaisons vers `qgis.geoleaf.dev`, monté par
- *           `docker-compose.dev.yml` et résolu par le seul fichier `hosts` du poste, vivaient
- *           dans les profils de `deploy-core` ET `deploy-full`. Elles ne pouvaient qu'échouer
- *           chez un client, et rien ne le disait avant l'exploitation.
+ *   DNS-01  no DELIVERABLE variant contains a secret pattern (JWT, literal `Bearer`,
+ *           assigned key/password) — in the raw file AND in its `.gz`/`.br` forms,
+ *           because the token was also found in the `.gz`.
+ *   DNS-02  a deliverable variant does NOT contain `connector.local.js`, and its
+ *           `index.html` NAMES it nowhere. Distinct from DNS-01, which looks for
+ *           patterns: a bootstrap whose token took another shape would escape it, not
+ *           an absence requirement.
+ *           ⚠️ This invariant compared the file to an INERT STUB until 2026-08-09.
+ *           The stub existed because `init.js` imported the file unconditionally; the
+ *           gated tag in `index.html` removed that obligation, hence the stub, hence
+ *           the comparison. Requiring an absence is stronger than verifying a shape:
+ *           there is one way to be absent, and a thousand to look inert.
+ *   DNS-03  no environment file (`.env*`) was copied into a variant.
+ *   DNS-04  the scan is not empty — at least one variant, one file, one byte.
+ *           Otherwise a `deploy/` rename would make this gate green and mute.
+ *   DNS-05  no deliverable variant references a PROOF-BACKEND host
+ *           (`lib/dev-backend.cjs`). ⚠️ It is NOT a secret, and that is why DNS-01
+ *           could not see it: no token pattern, just an origin. Measured on
+ *           2026-08-09 — four bindings to `qgis.geoleaf.dev`, mounted by
+ *           `docker-compose.dev.yml` and resolved only by the machine's `hosts`
+ *           file, lived in the profiles of `deploy-core` AND `deploy-full`. At a
+ *           client's they could only fail, and nothing said so before operation.
  *
- * ## `deploy-local` est le seul endroit où un secret a le droit d'être
+ * ## `deploy-local` is the only place a secret is allowed to be
  *
- * La variante de poste (`npm run build:deploy:local`) reçoit le bootstrap réel — c'est sa
- * raison d'être : concentrer en un seul répertoire NOMMÉ, hors livrables, ce qui était
- * auparavant dispersé dans les trois autres. Elle est donc exclue de DNS-01/02, et cette
- * exclusion est le seul endroit du dépôt qui décide ce qui est livrable.
+ * The workstation variant (`npm run build:deploy:local`) receives the real bootstrap
+ * — its reason to exist: concentrating in one NAMED directory, outside deliverables,
+ * what used to be scattered across the three others. It is thus excluded from
+ * DNS-01/02, and that exclusion is the repo's only place deciding what is
+ * deliverable.
  *
- * ⚠️ **L'exclusion se fait par nom, et il n'y a pas mieux à faire.** Un `deploy/` est un
- * répertoire d'artefacts : rien dedans ne porte sa propre destination. Le jour où une variante
- * non livrable s'ajoute, elle s'ajoute ICI, et le défaut par défaut est le bon sens — une
- * variante inconnue est traitée comme LIVRABLE, donc scannée.
+ * ⚠️ **The exclusion goes by name, and there is nothing better to do.** A `deploy/`
+ * is an artifact directory: nothing inside carries its own destination. The day a
+ * non-deliverable variant is added, it is added HERE, and the default is the right
+ * one — an unknown variant is treated as DELIVERABLE, hence scanned.
  *
  * Usage: node scripts/verify-deploy-no-secrets.cjs
- * Sortie: 0 si aucun secret dans les livrables, 1 sinon.
+ * Exit: 0 if no secret in the deliverables, 1 otherwise.
  */
 
 const fs = require("node:fs");
@@ -82,18 +85,18 @@ const C = {
 };
 
 /**
- * Variantes qui ont le DROIT de porter un secret, parce qu'elles ne sont jamais livrées.
+ * Variants ALLOWED to carry a secret, because they are never shipped.
  *
- * `deploy-coverage` n'y est PAS, et c'est délibéré : elle est recopiée depuis `deploy-core`
- * (`build-deploy-coverage.cjs`), donc elle hérite mécaniquement de ce que porte un livrable.
- * L'exclure reviendrait à cesser de surveiller la copie d'un livrable.
+ * `deploy-coverage` is NOT here, deliberately: it is copied from `deploy-core`
+ * (`build-deploy-coverage.cjs`), so it mechanically inherits what a deliverable
+ * carries. Excluding it would mean ceasing to watch a deliverable's copy.
  */
 const NON_DELIVERABLE = new Set(["deploy-local"]);
 
 /**
- * Extensions dont le contenu est binaire : les scanner coûterait sans rien rendre, et un motif
- * base64 tombé au hasard dans une image serait un faux positif qu'on apprendrait à ignorer —
- * le pire résultat possible pour une gate de sécurité.
+ * Extensions whose content is binary: scanning them would cost without returning,
+ * and a base64 pattern landing by chance in an image would be a false positive one
+ * would learn to ignore — the worst possible outcome for a security gate.
  */
 const BINARY_EXT = new Set([
     ".png",
@@ -118,13 +121,13 @@ const BINARY_EXT = new Set([
 ]);
 
 /**
- * Motifs de secret. Chacun porte son nom : un rouge doit dire CE QUI a été reconnu, sinon la
- * première réaction est de suspecter la gate plutôt que l'artefact.
+ * Secret patterns. Each carries its name: a red must say WHAT was recognized,
+ * otherwise the first reaction is to suspect the gate rather than the artifact.
  *
- * ⚠️ Ne pas chercher le mot `token` nu ni `secret` nu : le déployé en contient légitimement
- * (déclarations de mode d'auth `"auth": "bearer"` dans les profils, noms de variables dans les
- * bundles). Une gate qui rougit sur du légitime se fait désactiver — c'est la trajectoire
- * exacte de la règle R.8 consignée au backlog.
+ * ⚠️ Do not look for bare `token` nor bare `secret`: the deploy output legitimately
+ * contains them (auth-mode declarations `"auth": "bearer"` in the profiles, variable
+ * names in the bundles). A gate reddening on the legitimate gets disabled — the exact
+ * trajectory already recorded for an over-broad lint rule.
  */
 const PATTERNS = [
     {
@@ -142,19 +145,20 @@ const PATTERNS = [
 ];
 
 const errors = [];
-/** Décomptes imprimés en fin de run — jamais recopiés en prose ailleurs (doctrine B-43). */
+/** Tallies printed at the end of the run — never copied into prose elsewhere. */
 const stats = { variants: 0, deliverable: 0, files: 0, bytes: 0, skippedBinary: 0 };
 
 /**
- * Rend le contenu texte d'un fichier, en décompressant les formes servies par le serveur.
+ * Returns a file's text content, decompressing the server-served forms.
  *
- * 🛑 LES TROIS FORMES, ET C'EST LE POINT. `build-deploy.cjs` pré-compresse tout artefact texte
- * de plus de 1 Ko, et `nginx.dev.conf` pose `gzip_static on` : le `.gz` est SERVI. Le jeton du
- * 09/08/2026 était dans les trois. Ne scanner que le brut aurait sorti vert sur un `.gz`
- * orphelin — un fichier dont la source a été corrigée mais dont la forme compressée est restée.
+ * 🛑 ALL THREE FORMS, AND THAT IS THE POINT. `build-deploy.cjs` pre-compresses every
+ * text artifact over 1 KB, and `nginx.dev.conf` sets `gzip_static on`: the `.gz` is
+ * SERVED. The 2026-08-09 token was in all three. Scanning only the raw would have
+ * gone green on an orphaned `.gz` — a file whose source was fixed but whose
+ * compressed form remained.
  *
- * @param {string} file chemin absolu
- * @returns {string|null} le texte, ou `null` si le fichier est binaire ou illisible
+ * @param {string} file absolute path
+ * @returns {string|null} the text, or `null` if the file is binary or unreadable
  */
 function readTextual(file) {
     const ext = path.extname(file).toLowerCase();
@@ -168,8 +172,8 @@ function readTextual(file) {
         }
         return raw.toString("utf-8");
     } catch (e) {
-        // Un fichier illisible ou une décompression qui échoue est un DÉFAUT, pas un saut :
-        // c'est le seul chemin par lequel un artefact échapperait au scan en silence.
+        // An unreadable file or a failed decompression is a DEFECT, not a skip: it is
+        // the only path through which an artifact would escape the scan in silence.
         errors.push(
             `${path.relative(ROOT, file)} — illisible ou décompression impossible (${String(e).slice(0, 90)})`
         );
@@ -177,7 +181,7 @@ function readTextual(file) {
     }
 }
 
-/** @param {string} dir @returns {string[]} tous les fichiers, récursivement */
+/** @param {string} dir @returns {string[]} every file, recursively */
 function walk(dir) {
     const out = [];
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -189,8 +193,9 @@ function walk(dir) {
 }
 
 /**
- * Masque une valeur reconnue : la gate NOMME le défaut, elle ne le recopie pas dans un log de
- * CI qui, lui, est conservé et parfois public. Même précaution que `gitleaks --redact`.
+ * Masks a recognized value: the gate NAMES the defect, it does not copy it into a CI
+ * log which, for its part, is kept and sometimes public. Same precaution as
+ * `gitleaks --redact`.
  * @param {string} v @returns {string}
  */
 function redact(v) {
@@ -198,7 +203,7 @@ function redact(v) {
     return `${head}…[${v.length} car. masqués]`;
 }
 
-// ── Le scan ──────────────────────────────────────────────────────────────────
+// ── The scan ─────────────────────────────────────────────────────────────────
 
 if (!fs.existsSync(DEPLOY)) {
     console.error(
@@ -234,7 +239,7 @@ for (const variant of variantDirs) {
         stats.bytes += Buffer.byteLength(text, "utf-8");
         const rel = path.relative(ROOT, file);
 
-        // DNS-01 — les motifs.
+        // DNS-01 — the patterns.
         for (const { name, re } of PATTERNS) {
             re.lastIndex = 0;
             const hit = re.exec(text);
@@ -246,7 +251,7 @@ for (const variant of variantDirs) {
             }
         }
 
-        // DNS-02 — le bootstrap de poste ne doit pas EXISTER, ni être NOMMÉ.
+        // DNS-02 — the workstation bootstrap must not EXIST, nor be NAMED.
         if (path.basename(file) === "connector.local.js") {
             errors.push(
                 `DNS-02 ${rel} — le bootstrap de poste n'a rien à faire dans une variante livrable.\n` +
@@ -260,7 +265,7 @@ for (const variant of variantDirs) {
             );
         }
 
-        // DNS-03 — un `.env` recopié.
+        // DNS-03 — a copied `.env`.
         if (path.basename(file).startsWith(".env")) {
             errors.push(
                 `DNS-03 ${rel} — fichier d'environnement dans un artefact livrable.\n` +
@@ -268,16 +273,16 @@ for (const variant of variantDirs) {
             );
         }
 
-        // DNS-05 — le backend de PREUVE ne part pas chez un client.
+        // DNS-05 — the PROOF backend does not ship to a client.
         //
-        // 🛑 Ce n'est pas un secret, et c'est pour ça que DNS-01 ne pouvait pas le voir : aucun
-        // motif de jeton, juste une origine. Mesuré le 09/08/2026 — quatre liaisons vers
-        // `qgis.geoleaf.dev`, l'hôte de `docker-compose.dev.yml`, vivaient dans les profils de
-        // `deploy-core` ET `deploy-full`. Chez un client, elles ne peuvent qu'échouer.
+        // 🛑 It is not a secret, and that is why DNS-01 could not see it: no token
+        // pattern, just an origin. Measured on 2026-08-09 — four bindings to
+        // `qgis.geoleaf.dev`, `docker-compose.dev.yml`'s host, lived in the profiles
+        // of `deploy-core` AND `deploy-full`. At a client's, they can only fail.
         //
-        // ⚠️ La règle nomme un petit ensemble d'hôtes de dev, JAMAIS une allowlist de
-        // fournisseurs légitimes — voir le motif dans `lib/dev-backend.cjs`. Une allowlist
-        // supprimerait en silence le backend de production d'un profil client.
+        // ⚠️ The rule names a small set of dev hosts, NEVER an allowlist of
+        // legitimate providers — see the rationale in `lib/dev-backend.cjs`. An
+        // allowlist would silently strip a client profile's production backend.
         for (const host of DEV_BACKEND_HOSTS) {
             if (!text.includes(host)) continue;
             errors.push(
@@ -288,13 +293,14 @@ for (const variant of variantDirs) {
     }
 }
 
-// ── DNS-04 — le scan n'est pas vide ──────────────────────────────────────────
+// ── DNS-04 — the scan is not empty ───────────────────────────────────────────
 //
-// 🛑 SANS CE BLOC, CETTE GATE EST DÉCORATIVE. Un `deploy/` vide, un renommage de variante, un
-// `walk()` qui ne descend plus : dans les trois cas, zéro motif trouvé, et un vert. Ce dépôt a
-// déjà payé cette classe deux fois (`PREMIUM_RE` qui ne gardait plus rien, la sonde de boot
-// verte sur un marqueur supprimé) — d'où `probe-gate-visibility.cjs`. Une garde jamais vue
-// rouge ne garde rien ; une garde qui ne peut PAS rougir ne garde rien non plus.
+// 🛑 WITHOUT THIS BLOCK, THIS GATE IS DECORATIVE. An empty `deploy/`, a variant
+// rename, a `walk()` that no longer descends: in all three cases, zero patterns
+// found, and a green. This repo already paid that class twice (`PREMIUM_RE` guarding
+// nothing anymore, the boot probe green on a deleted marker) — hence
+// `probe-gate-visibility.cjs`. A guard never seen red guards nothing; a guard that
+// CANNOT go red guards nothing either.
 if (stats.deliverable === 0) {
     errors.push(
         `DNS-04 — aucune variante livrable trouvée sous ${path.relative(ROOT, DEPLOY)}/ ` +

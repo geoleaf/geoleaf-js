@@ -6,11 +6,11 @@
  *  1. Global `GeoLeaf.Config.get(path)` consumers (clustering, poi,
  *     branding…) — `installConfig(partial)` seeds ConfigStore AND exposes
  *     `globalThis.GeoLeaf.Config.get` bound to it, exactly the path the code
- *     reads (e.g. geojson/clustering.ts:85 → `_g.GeoLeaf.Config.get`).
+ *     reads (e.g. geojson/clustering.ts → `_g.GeoLeaf.Config.get`).
  *
  *  2. `map.*` resolution — observed at the `GeoLeaf.init()` seam in
  *     CoreMapModule/SharedModule/UIModule (formerly orchestrated by the legacy
- *     app/init.ts facade, removed — roadmap nettoyage Sprint 3 / A-1):
+ *     app/init.ts facade, since removed):
  *     each test file mocks globals/feature-modules/map-container (vi.mock must be
  *     file-local because it is hoisted) and reuses `makeFakeMap()` +
  *     `populateInitGeoLeaf()` from here to drive the module sequence directly,

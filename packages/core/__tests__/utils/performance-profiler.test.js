@@ -1,5 +1,5 @@
 /**
- * Tests pour PerformanceProfiler — Phase 7 ≥70%
+ * Tests for PerformanceProfiler
  */
 const mockLog = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 vi.mock("../../src/utils/log/index.js", () => ({ Log: mockLog }));
@@ -186,7 +186,7 @@ describe("utils/performance-profiler", () => {
             expect(report.baseline).not.toEqual({ status: "no_baseline" });
         });
 
-        // Sprint 6: vi.isolateModules shim does not fully re-load module state
+        // vi.isolateModules shim does not fully re-load module state
         // in Jest CJS mode, so performanceData.baseline may already be set from
         // earlier tests. Verify baseline field is present in report.
         it("_compareWithBaseline returns baseline comparison or no_baseline", () => {
@@ -603,19 +603,20 @@ describe("utils/performance-profiler", () => {
     });
 
     // ───────────────────────────────────────────────────────────────────────────
-    // B-219 — analyzeMemoryLeaks() ne doit plus certifier une entrée qui ne varie pas.
+    // analyzeMemoryLeaks() must no longer certify an input that does not vary.
     //
-    // 🛑 CE BLOC EST DÉLIBÉRÉMENT EN FIN DE FICHIER. `performanceData` est un singleton
-    // de module partagé par tous les tests, et `analyzeMemoryLeaks` juge ses 30 derniers
-    // échantillons : un bloc qui pousse 40 valeurs CONSTANTES avant les autres
-    // contaminerait leur fenêtre. Chaque test ci-dessous en pousse 40 pour être
-    // indépendant de ce qui l'a précédé — jamais moins que la fenêtre.
+    // 🛑 THIS BLOCK IS DELIBERATELY AT THE END OF THE FILE.
+    // `performanceData` is a module singleton shared by all tests, and
+    // `analyzeMemoryLeaks` judges its last 30 samples: a block pushing 40
+    // CONSTANT values before the others would contaminate their window.
+    // Each test below pushes 40 to be independent of what preceded it —
+    // never fewer than the window.
     // ───────────────────────────────────────────────────────────────────────────
-    describe("analyzeMemoryLeaks — B-219 : refuse de conclure quand l'entrée ne varie pas", () => {
+    describe("analyzeMemoryLeaks — refuse de conclure quand l'entrée ne varie pas", () => {
         const FENETRE = 30;
-        const POUSSEES = 40; // > FENETRE : la fenêtre analysée est entièrement à nous
+        const POUSSEES = 40; // > FENETRE: the analysed window is entirely ours
 
-        /** La règle d'AVANT B-219, telle quelle — sert de témoin inverse EXÉCUTÉ. */
+        /** The BEFORE-fix rule, verbatim — serves as an EXECUTED inverse witness. */
         const regleAvant = (firstUsed, lastUsed) => {
             const g = (lastUsed - firstUsed) / firstUsed;
             if (g > 0.5) return "critical";
@@ -623,7 +624,7 @@ describe("utils/performance-profiler", () => {
             return "normal";
         };
 
-        /** Pousse `POUSSEES` échantillons dont `used` vient de `suite(i)`. */
+        /** Pushes `POUSSEES` samples whose `used` comes from `suite(i)`. */
         const pousser = (suite) => {
             const p = new PerformanceProfiler({
                 monitoring: { enabled: false, interval: 10, maxDataPoints: 60 },
@@ -642,21 +643,23 @@ describe("utils/performance-profiler", () => {
         };
 
         it("entrée FIGÉE (Chrome) → unavailable/heap-readings-constant, et PAS 'normal'", () => {
-            // 31 570 000 est une valeur réellement relevée sur le vhost : Chrome quantifie
-            // performance.memory et la fige pour la durée de la page (sonde B-218/B-219,
-            // 13 pages fraîches, delta nul à N = 0, 10 000 et 30 000 features).
+            // 31,570,000 is a value really recorded on the vhost: Chrome
+            // quantises performance.memory and freezes it for the page's
+            // duration (measured probe, 13 fresh pages, nil delta at N = 0,
+            // 10,000 and 30,000 features).
             const FIGE = 31_570_000;
             const analysis = pousser(() => FIGE).analyzeMemoryLeaks();
 
             expect(analysis.status).toBe("unavailable");
             expect(analysis.reason).toBe("heap-readings-constant");
-            // Aucun chiffre de croissance ne doit être publié : il n'y en a pas.
+            // No growth figure must be published: there is none.
             expect(analysis.growthRate).toBeUndefined();
             expect(analysis.recommendation).toMatch(/identical/i);
 
-            // TÉMOIN INVERSE, exécuté et non argumenté : sur ces MÊMES échantillons, la
-            // règle d'avant rendait « normal » — c'est ce que 8 runs navigateur sur 8 ont
-            // imprimé, y compris sur une page qui retenait 8,2 Mo de fuite simulée.
+            // INVERSE WITNESS, executed rather than argued: on these SAME
+            // samples, the before rule returned "normal" — what 8 browser
+            // runs out of 8 printed, including on a page retaining 8.2 MB
+            // of simulated leak.
             expect(regleAvant(FIGE, FIGE)).toBe("normal");
         });
 
@@ -667,10 +670,10 @@ describe("utils/performance-profiler", () => {
             expect(analysis.reason).toBe("heap-api-unavailable");
             expect(analysis.growthRate).toBeUndefined();
 
-            // TÉMOIN INVERSE : la règle d'avant divisait par zéro. Le résultat n'est
-            // jamais supérieur à un seuil, donc le verdict retombait sur « normal » — un
-            // « aucune fuite » rendu à tout navigateur non-Chromium, par une division
-            // par zéro que rien ne signalait.
+            // INVERSE WITNESS: the before rule divided by zero. The result
+            // is never above a threshold, so the verdict fell back on
+            // "normal" — a "no leak" rendered to every non-Chromium
+            // browser, by a division by zero nothing flagged.
             const divisionParZero = (0 - 0) / 0;
             expect(Number.isNaN(divisionParZero)).toBe(true);
             expect(divisionParZero > 0.2).toBe(false);
@@ -678,10 +681,11 @@ describe("utils/performance-profiler", () => {
         });
 
         it("entrée qui VARIE et revient à son point de départ → normal avec growthRate 0", () => {
-            // Discrimination centrale du correctif : même growthRate que le cas figé
-            // (exactement 0), verdict opposé — parce que l'entrée, elle, a bougé.
-            // La bosse est au MILIEU de la série pour tomber à coup sûr dans la fenêtre
-            // des 30 derniers, dont le premier élément est l'échantillon n° 10.
+            // The fix's central discrimination: same growthRate as the
+            // frozen case (exactly 0), opposite verdict — because the
+            // input, itself, moved. The bump is in the MIDDLE of the series
+            // to land for sure in the last-30 window, whose first element
+            // is sample no. 10.
             const BASE = 20_000_000;
             const analysis = pousser((i) =>
                 i === Math.floor(POUSSEES / 2) ? BASE + 5_000_000 : BASE
@@ -695,7 +699,7 @@ describe("utils/performance-profiler", () => {
         it("une VRAIE croissance reste vue — le correctif n'aveugle pas le chemin utile", () => {
             const analysis = pousser((i) => 10_000_000 + i * 500_000).analyzeMemoryLeaks();
 
-            // sur la fenêtre de 30 : first = 10M + 10×0,5M, last = 10M + 39×0,5M
+            // over the window of 30: first = 10M + 10×0.5M, last = 10M + 39×0.5M
             const attendu = (39 * 500_000 - 10 * 500_000) / (10_000_000 + 10 * 500_000);
             expect(analysis.status).toBe("critical");
             expect(analysis.growthRate).toBeCloseTo(attendu, 6);
@@ -706,8 +710,8 @@ describe("utils/performance-profiler", () => {
         });
 
         it("la fenêtre analysée fait bien 30 échantillons — le nombre que ces tests débordent", () => {
-            // Verrouille l'hypothèse qui rend les quatre tests ci-dessus indépendants du
-            // singleton partagé. Si la fenêtre s'élargit un jour, POUSSEES doit suivre.
+            // Locks the hypothesis making the four tests above independent
+            // of the shared singleton. If the window ever widens, POUSSEES must follow.
             const p = pousser((i) => 1_000_000 + i);
             const historique = p.generateReport().memory.history;
             expect(historique.length).toBeLessThanOrEqual(FENETRE);

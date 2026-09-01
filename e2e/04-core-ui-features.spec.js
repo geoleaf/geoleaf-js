@@ -72,6 +72,19 @@ test("[basemap-selector] basemap select section is in layer manager DOM", async 
 test("[legend] gl-map-legend control is present in DOM", async ({ page }) => {
     // capability `legend` (via capabilities/legend/install.ts) — profile.ui.showLegend
     // legend-control.ts creates the .gl-map-legend control
+    //
+    // ⚠️ MEASURED UNDER `taskset -c 0,1` on 2026-08-19 — two cores, a harder
+    // floor than the remote runner's 4. The control attaches in
+    // **1,669 · 1,671 · 2,042 ms** over three runs: margin ≈ 2.4× under the
+    // 5,000 ms budget.
+    //
+    // 🔻 This budget had been reported as EXPIRING under this same
+    // constraint, which made this test one of the two named instances of a
+    // "green on 16 cores, red on 4" line. **The symptom no longer
+    // reproduces** — neither here nor on the runner, where it was already
+    // green. The class does exist: it simply has other instances, measured
+    // elsewhere. Do not tighten this budget onto today's margin: it is
+    // measured cold on TWO cores, not on the slowest possible machine.
     await expect(page.locator(".gl-map-legend")).toBeAttached({ timeout: 5000 });
 });
 

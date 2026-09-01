@@ -1,24 +1,24 @@
 /**
- * `types/email.ts`, `types/phone.ts`, `types/url.ts` et `types/date.ts` —
- * couverture des branches (backlog R.2).
+ * `types/email.ts`, `types/phone.ts`, `types/url.ts` and `types/date.ts` —
+ * branch coverage.
  *
- * Les quatre étaient à **37,5 / 37,5 / 37,5 / 42,85 % de branches**, et ce n'est pas un
- * hasard : ils partagent le même squelette — leur formulaire passe par `_renderSimpleField`.
- * Les tester ensemble n'est pas un regroupement de confort — c'est la **paire manquante** de
- * chaque branche partagée : `readOnly`, `computed`, `placeholder` fourni ou par défaut,
- * valeur nulle.
+ * All four sat at **37.5 / 37.5 / 37.5 / 42.85% branches**, and that is no
+ * accident: they share the same skeleton — their form goes through
+ * `_renderSimpleField`. Testing them together is not a convenience grouping —
+ * it is each shared branch's **missing pair**: `readOnly`, `computed`,
+ * `placeholder` provided or defaulted, null value.
  *
- * ⚠️ Cette prose citait aussi `_linkSidepanel`, le rendu de panneau latéral que les trois
- * types « lien » partageaient. Il a été retiré au Sprint 6 (S6b / B-145) avec les 23
- * `sidepanelRender` : la phrase est corrigée plutôt que laissée, une prose démentie par le
- * code étant le compteur **C5** de la clause.
+ * ⚠️ This prose also cited `_linkSidepanel`, the side-panel render the three
+ * "link" types shared. It was removed with the 23 `sidepanelRender`s: the
+ * sentence is corrected rather than left — prose contradicted by the code is
+ * exactly the failure class this repo tracks.
  *
- * `date` rejoint le lot pour `_renderSimpleField` et pour sa garde `min`/`max`, qui teste
- * la **véracité** là où `number` teste `!== undefined` — un écart que `field-base.ts` documente
- * comme délibéré et que rien ne vérifiait.
+ * `date` joins the batch for `_renderSimpleField` and for its `min`/`max`
+ * guard, which tests **truthiness** where `number` tests `!== undefined` — a
+ * gap `field-base.ts` documents as deliberate and nothing verified.
  *
- * ⚠️ Fichier séparé de `field-renderer.test.ts` (2 074 l.) — voir l'en-tête de
- * `types-gallery.test.ts`.
+ * ⚠️ File separate from `field-renderer.test.ts` (2,074 l.) — see the header
+ * of `types-gallery.test.ts`.
  */
 import { describe, it, expect } from "vitest";
 
@@ -37,11 +37,11 @@ function field(overrides: Partial<FieldConfig> = {}): FieldConfig {
 
 const noop = () => {};
 
-// Le bloc `describe.each` qui couvrait `_linkSidepanel` sur les trois types « lien » a été
-// retiré avec lui (S6b / B-145) : `sidepanelRender` n'avait aucun appelant de production, et
-// un test qui survit au code qu'il testait est le compteur C6 de la clause.
+// The `describe.each` block covering `_linkSidepanel` on the three "link"
+// types was removed with it: `sidepanelRender` had no production caller, and
+// a test outliving the code it tested is its own failure class.
 
-// ─── _renderSimpleField — le squelette partagé des quatre ────────────────────────
+// ─── _renderSimpleField — the four's shared skeleton ─────────────────────────────
 
 describe.each([
     ["email", emailComponent, "email", "a@b.co"],
@@ -107,7 +107,7 @@ describe.each([
     }
 );
 
-// ─── applyAttrs — là où les quatre divergent ─────────────────────────────────────
+// ─── applyAttrs — where the four diverge ─────────────────────────────────────────
 
 describe("applyAttrs — placeholders par défaut et surcharges", () => {
     it("email retombe sur email@example.com", () => {
@@ -165,8 +165,8 @@ describe("date.formRender — bornes min/max", () => {
     });
 
     it("ignore une borne vide — garde de VÉRACITÉ, pas de définition", () => {
-        // `field-base.ts` documente l'écart avec `number`, qui teste `!== undefined` : une
-        // chaîne vide n'a pas de sens comme borne de date, donc elle est sautée.
+        // `field-base.ts` documents the gap with `number`, which tests
+        // `!== undefined`: an empty string makes no sense as a date bound, so it is skipped.
         const el = dateComponent.formRender!("", field({ min: "", max: "" }), noop, CTX);
         const input = el.querySelector<HTMLInputElement>("input")!;
 

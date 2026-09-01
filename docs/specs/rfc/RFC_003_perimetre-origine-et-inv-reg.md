@@ -14,7 +14,7 @@ Deux points sans rapport de fond, réunis parce qu'ils exigent la même autorisa
 Partie I figée (§10). Aucun des deux n'ajoute d'obligation à un plugin conforme.
 
 Le pré-vol de cette RFC a **infirmé un tiers de son énoncé d'origine** (tâche 10.5 de
-`roadmap_socle-init.md`), et les écarts sont consignés au §Pré-vol ci-dessous plutôt que corrigés
+le socle d'initialisation), et les écarts sont consignés au §Pré-vol ci-dessous plutôt que corrigés
 en silence.
 
 ---
@@ -76,7 +76,7 @@ conforme, elle nomme ce que le contrat ne couvre pas.
 
 ⚠️ **Ce qui n'est PAS interdit, et doit se lire comme tel** : l'installation d'un plugin tiers
 reste possible — c'est un **acte de build**, servi ensuite depuis `'self'`. C'est la voie que
-décrit la ligne B.1 du backlog de `roadmap_socle-init.md` (CLI `geoleaf plugin add`), avec un
+décrit une ligne de backlog (CLI `geoleaf plugin add`), avec un
 lockfile comme substitut build-time à SRI.
 
 ---
@@ -85,7 +85,7 @@ lockfile comme substitut build-time à SRI.
 
 La sous-section « Bibliothèques partagées internes » liste `@geoleaf/field-renderer` comme
 « consommée par `editor` et `addpoi` ». Le plugin `addpoi` a **fusionné dans `editor`** au
-Sprint 5 (05/08/2026) ; il n'y a plus qu'un consommateur nommé.
+la fusion (05/08/2026) ; il n'y a plus qu'un consommateur nommé.
 
 Trouvé au pré-vol de cette RFC, corrigé ici parce qu'une RFC acceptée est la seule occasion
 d'éditer cette partie — l'annoter aurait ajouté une troisième phrase là où une correction d'un
@@ -159,6 +159,6 @@ encore, dans le **type** qui porte l'argument : `LazyResolver`, déclaré par `p
 
 ## Décision
 
-**Acceptée** le 2026-08-08 (Mattieu Pottier — validation du plan de préparation du Sprint 10, qui
+**Acceptée** le 2026-08-08 (Mattieu Pottier — validation du plan de préparation du regroupement, qui
 porte explicitement ces gestes). **Appliquée** dans le même changement : spec **1.4.1 → 1.5.0**,
 journal §10 mis à jour.

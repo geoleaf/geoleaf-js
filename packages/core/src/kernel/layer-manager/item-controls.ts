@@ -9,7 +9,7 @@
  * LayerManager — Item Controls
  * Renders a section's items and their controls (toggle, label, style selector).
  *
- * Extracted from layer-manager/renderer.ts (Sprint 1 roadmap split).
+ * Extracted from layer-manager/renderer.ts.
  */
 
 import { StyleSelector } from "./style-selector.js";
@@ -70,7 +70,7 @@ function renderItems(section: LMSection, sectionEl: HTMLElement) {
  * Renders an item's toggle controls (label button + toggle button + style selector).
  */
 function renderToggleControls(item: LMItem, mainRow: HTMLElement, itemEl: HTMLElement) {
-    // L.DomUtil guard removed (Sprint 9 — MapLibre only)
+    // L.DomUtil guard removed (MapLibre only)
     const controlsContainer = domCreate("div", "gl-layer-manager__item-controls", mainRow);
 
     // Emit the control seam so capabilities (e.g. labels) can inject their

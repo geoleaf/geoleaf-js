@@ -1,5 +1,5 @@
 /**
- * Tests for Sprint 6 export modules:
+ * Tests for the export modules:
  *  - format-registry (registerExporter / getExporter)
  *  - exporters/image-exporter (JPEG Blob via toBlob)
  *  - exporters/pdf-exporter (PDF Blob via jsPDF lazy import)

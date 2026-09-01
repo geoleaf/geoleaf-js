@@ -87,12 +87,18 @@ export function normalizeTilesArray(definition: BasemapDefinition): string[] {
     let urls: string[];
 
     if (Array.isArray(definition.tiles) && definition.tiles.length > 0) {
-        urls = definition.tiles as string[];
+        urls = definition.tiles;
     } else {
         const url: string | undefined = definition.url;
         if (!url) return [];
 
-        // PMTiles protocol — do not expand; MapLibre handles it natively
+        // PMTiles protocol — do not expand. MapLibre resolves the scheme through the
+        // handler the adapter registers at init (see adapters/maplibre/maplibre-pmtiles.ts);
+        // this line only has to hand the URL over intact.
+        //
+        // ⚠️ "handles it natively" stood here while NOTHING registered the protocol — the
+        // scheme was recognised at three sites and no handler existed, so a valid profile
+        // rendered an empty layer with no error. The registration is what made this line true.
         if (url.startsWith("pmtiles://")) return [url];
 
         if (url.includes("{s}")) {
@@ -101,7 +107,7 @@ export function normalizeTilesArray(definition: BasemapDefinition): string[] {
                 typeof raw === "string"
                     ? raw.split("")
                     : Array.isArray(raw) && raw.length > 0
-                      ? (raw as string[])
+                      ? raw
                       : ["a", "b", "c"];
             urls = subs.map((s) => url.replace("{s}", s));
         } else {

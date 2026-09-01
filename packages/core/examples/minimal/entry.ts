@@ -63,7 +63,7 @@
  * that a consumer serving plain GeoJSON can never use, and that no config key could have
  * removed from the file. (⚠️ This sentence carried a line count — « 744 lines » — until
  * 08/08/2026. It had been true at the S5 relevé and was 217 lines off by then: socle B.1 moved
- * the MapLibre building out. B-43 again — a number in prose next to code that owns it can only
+ * the MapLibre building out. Same doctrine — a number in prose next to code that owns it can only
  * drift, and the argument never needed it.) `cluster`, `toast-renderer` and `geolocation` (S7) prove the same
  * point on smaller edges: each used to be pinned by a single static import from kernel-eager
  * code (the GeoJSON loader, the `ui.notify` adapter, the mobile toolbar) — now resolved
@@ -73,23 +73,24 @@
  * what an embarked capability *does* — but it can never remove its code from the file. Only
  * leaving it out of the manifest does that.
  *
- * ## La région bornée
+ * ## The bounded region
  *
- * Tout ce qui suit `@geoleaf:gen:start` est **généré** par `scripts/gen-entry.cjs` depuis la
- * liste `caps=` du marqueur : noms de const, ordre de chargement, chemins d'import et façades
- * ré-exportables en dérivent. Ne pas l'éditer à la main — le garde
- * `__tests__/guards/generated-entries.guard.test.ts` régénère et compare, et vérifie aussi que
- * la liste **Left out** ci-dessus est exactement le complément de `caps=`.
+ * Everything after `@geoleaf:gen:start` is **generated** by
+ * `scripts/gen-entry.cjs` from the marker's `caps=` list: const names, load
+ * order, import paths and re-exportable facades derive from it. Do not edit it
+ * by hand — the `__tests__/guards/generated-entries.guard.test.ts` guard
+ * regenerates and compares, and also verifies that the **Left out** list above
+ * is exactly the complement of `caps=`.
  */
 "use strict";
 
 // @geoleaf:gen:start caps=taxonomy,feature-info,legend,coordinates,scale,permalink mode=relative id=minimal
 
-// ── 1. Kernel side-effects — les deux que l'entrée livrée importe aussi ──────
+// ── 1. Kernel side-effects — the two the shipped entry imports too ───────────
 import "../../src/globals/globals.js";
 import "../../src/app/app-namespace.js";
 
-// ── 2. Le manifeste — les capacités que CE bundle embarque ───────────────────
+// ── 2. The manifest — the capabilities THIS bundle embarks ───────────────────
 import type { PresetManifest } from "../../src/contracts/preset.contract.js";
 import { COORDINATES_INSTALLER } from "../../src/capabilities/coordinates/install.js";
 import { SCALE_INSTALLER } from "../../src/capabilities/scale/install.js";
@@ -110,7 +111,7 @@ const MANIFEST: PresetManifest = {
     ],
 };
 
-// ── 3. Installer le boot, lié à ce manifeste ─────────────────────────────────
+// ── 3. Install the boot, bound to this manifest ──────────────────────────────
 import { installBoot } from "../../src/app/boot-install.js";
 
 installBoot(MANIFEST);

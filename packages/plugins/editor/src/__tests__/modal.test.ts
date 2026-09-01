@@ -51,13 +51,13 @@ function makeLayers(
                 id: "layer-a",
                 label: "Layer A",
                 edition: { create: true, update: true },
-                editableGeometryTypes: ["point", "polygon"],
+                editableGeometryTypes: ["Point", "Polygon"],
             },
             {
                 id: "layer-b",
                 label: "Layer B",
                 edition: { create: true, update: true },
-                editableGeometryTypes: ["line"],
+                editableGeometryTypes: ["LineString"],
             },
             { id: "layer-c", label: "Layer C", edition: { create: false, update: false } },
         ]
@@ -199,8 +199,16 @@ describe("createLayerDropdown", () => {
         expect(ids).not.toContain("layer-c");
     });
 
+    // ⚠️ The vocabulary here is the CANONICAL GeoJSON one, not the lowercase
+    // domain: it is what `geometryTypeForMode()` returns to the dropdown in
+    // production (drawing/mode-names.ts), and what the schema imposes on
+    // `editableGeometryTypes` (layer-config.schema.json, enum). These fixtures
+    // carried `"line"` / `["point","polygon"]` until 17/08/2026 — they passed
+    // (the field is `string[]`) while describing a pairing PRODUCTION NEVER
+    // PRODUCES. The schema itself names the failure mode: a lowercase value
+    // "matches nothing and drops the layer out of the edition picker with no error".
     it("filters by geometryType when provided", () => {
-        const dd = createLayerDropdown(CFG, "line");
+        const dd = createLayerDropdown(CFG, "LineString");
         const options = Array.from(dd.el.querySelectorAll<HTMLOptionElement>("option"));
         const ids = options.map((o) => o.value);
         expect(ids).toContain("layer-b");
@@ -228,7 +236,7 @@ describe("createLayerDropdown", () => {
             {
                 id: "only",
                 edition: { create: true, update: true },
-                editableGeometryTypes: ["point"],
+                editableGeometryTypes: ["Point"],
             },
         ]);
         const dd = createLayerDropdown(CFG);
@@ -327,14 +335,14 @@ describe("createFieldRendererBridge", () => {
 });
 
 // ---------------------------------------------------------------------------
-// delete-confirm-modal — SUPPRIMÉ à la tâche 5.2
+// delete-confirm-modal — DELETED
 // ---------------------------------------------------------------------------
 //
-// 97 lignes qui réimplémentaient `confirmDialog` de `@geoleaf/field-renderer` — même DOM,
-// mêmes classes, même piège de focus. Ses 7 tests sont PORTÉS dans
-// `packages/libs/field-renderer/src/__tests__/confirm-dialog.test.ts`, où le comportement
-// vit désormais : la fonction partagée n'avait aucun test, donc les supprimer ici sans les
-// porter aurait retiré l'unique couverture d'une action destructive.
+// 97 lines reimplementing `@geoleaf/field-renderer`'s `confirmDialog` — same
+// DOM, same classes, same focus trap. Its 7 tests are PORTED into
+// `packages/libs/field-renderer/src/__tests__/confirm-dialog.test.ts`, where
+// the behaviour now lives: the shared function had no test, so deleting them
+// here without porting would have removed the only coverage of a destructive action.
 
 // ---------------------------------------------------------------------------
 
@@ -505,7 +513,7 @@ describe("createEditorFormModal — getSchemaForLayer", () => {
             {
                 id: "layer-a",
                 edition: { create: true, update: true },
-                editableGeometryTypes: ["point"],
+                editableGeometryTypes: ["Point"],
             },
         ]);
         const modal = createEditorFormModal(optsWithSchema());

@@ -1,7 +1,7 @@
 /**
  * Phase 60 — Step 2.2: src/kernel/api/factory-manager.ts (0% → 60%)
  *
- * S6.3 — the manager no longer owns a `mapInstances` mirror; every accessor reads
+ * The manager no longer owns a `mapInstances` mirror; every accessor reads
  * `Core` through `getModule`. The fake below is therefore a REGISTRY, not a stub
  * returning fixed values: asserting delegation against a `vi.fn()` that always
  * answers the same thing would pass just as happily on a manager that still kept
@@ -47,7 +47,7 @@ describe("api/factory-manager (step 2.2)", () => {
     it("instancie avec isReady et sans registre propre", () => {
         expect(manager.isReady).toBe(true);
         expect(manager.stats.mapsCreated).toBe(0);
-        // The mirror is gone — its absence is the whole point of S6.3.
+        // The mirror is gone — its absence is the whole point of the rewrite.
         expect(manager.mapInstances).toBeUndefined();
     });
 
@@ -96,7 +96,7 @@ describe("api/factory-manager (step 2.2)", () => {
         wire();
         core.init({ target: "posée-ailleurs" });
         // The mirror could never have seen this one: `GeoLeaf.getMap()` returned null
-        // for every map the boot path created. That is B-205, from the reading side.
+        // for every map the boot path created. That is the defect, from the reading side.
         expect(manager.getMapInstance("posée-ailleurs")).not.toBeNull();
         expect(manager.getAllMapInstances()).toHaveLength(1);
     });

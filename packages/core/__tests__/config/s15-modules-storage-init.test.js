@@ -26,7 +26,11 @@ const mocks = vi.hoisted(() => {
         GeoLeaf,
         padBounds: vi.fn((bounds, margin) => ({ __padded: true, margin, src: bounds })),
         initBasemaps: vi.fn(),
-        initPOI: vi.fn(),
+        // ⚠️ An `initPOI: vi.fn()` lived here and the `vi.mock("init-features.js")`
+        // factory below DECLARED it as a module export. `init-features.ts`
+        // only exports `initBasemaps`, `initGeoJSON` and `initUIPanels` — the
+        // POI subsystem is long dissolved. The double attested a nonexistent
+        // export, and nothing asserted it.
         initGeoJSON: vi.fn(),
         initUIPanels: vi.fn(),
         initI18n: vi.fn(),
@@ -39,7 +43,6 @@ vi.mock("../../src/utils/general/geoleaf-global.js", () => ({
 }));
 vi.mock("../../src/app/init-features.js", () => ({
     initBasemaps: mocks.initBasemaps,
-    initPOI: mocks.initPOI,
     initGeoJSON: mocks.initGeoJSON,
     initUIPanels: mocks.initUIPanels,
 }));
@@ -48,7 +51,7 @@ vi.mock("../../src/utils/i18n/i18n.js", () => ({
     initI18n: mocks.initI18n,
     getLabel: vi.fn((key) => key),
 }));
-// S1.2: logic migrated from initApp() → CoreMapModule/SharedModule/UIModule directly
+// Logic migrated from initApp() → CoreMapModule/SharedModule/UIModule directly
 import { CoreMapModule } from "../../src/app/boot-modules/core-map.module.ts";
 import { SharedModule } from "../../src/app/boot-modules/shared.module.ts";
 import { UIModule } from "../../src/app/boot-modules/ui.module.ts";
@@ -128,13 +131,14 @@ describe("config B7 — modules.offline @ OfflineLifecycle seam (@anomaly ANO-07
         return Storage.init.mock.calls[0]?.[0];
     }
 
-    // ⚠️ RÉÉCRITS à la tâche 3.13. Les deux assertions portaient « cache defaults true/true »,
-    // c'est-à-dire qu'elles épinglaient la recopie de `enableTileCache` dans l'argument de
-    // `Storage.init` — un défaut que RIEN dans le core ne lisait. Elles prouvaient donc qu'un
-    // réglage sans effet était bien transmis. Le drapeau a désormais un lecteur unique et
-    // direct (`ResourceEnumerator._tilesRequested`), et il n'a plus à traverser ce seam.
-    // ANO-078 n'est pas relâchée pour autant : ce qu'elle garde — une surcharge partielle ne
-    // doit pas faire tomber les autres défauts — reste éprouvé sur `enableProfileCache`.
+    // ⚠️ REWRITTEN. Both assertions carried "cache defaults true/true", i.e.
+    // they pinned the copy of `enableTileCache` into `Storage.init`'s
+    // argument — a default NOTHING in the core read. They thus proved an
+    // ineffective setting was well transmitted. The flag now has a single,
+    // direct reader (`ResourceEnumerator._tilesRequested`), and no longer
+    // crosses this seam. ANO-078 is not loosened for all that: what it
+    // guards — a partial override must not drop the other defaults — stays
+    // exercised on `enableProfileCache`.
     it("live: no cache override → core applies the profile-cache default", async () => {
         const initArg = await runStorageInit(undefined);
         expect(initArg.cache).toEqual({ enableProfileCache: true });
@@ -148,14 +152,16 @@ describe("config B7 — modules.offline @ OfflineLifecycle seam (@anomaly ANO-07
     });
 
     it("live: `enableTileCache` no longer travels through this seam — it is read directly", async () => {
-        // Garde de non-retour : si quelqu'un remet le drapeau en défaut ici, il redevient une
-        // SECONDE vérité face à celle que lit l'énumérateur, et les deux dérivent en silence.
-        // C'est exactement la forme de la cause racine n° 2 du sprint.
-        // Ce qu'un profil pose traverse le seam tel quel — le core ne le RÉÉCRIT pas…
+        // No-return guard: if someone puts the flag back as a default here,
+        // it becomes a SECOND truth again against the one the enumerator
+        // reads, and the two drift silently. Exactly the shape of root cause
+        // no. 2. What a profile sets crosses the seam as-is — the core does
+        // not REWRITE it…
         const withFlag = await runStorageInit({ enableTileCache: false });
         expect(withFlag.cache.enableTileCache).toBe(false);
-        // …mais quand le profil se tait, le core n'INVENTE plus de valeur. C'est la moitié
-        // qui compte : une clé absente ne peut pas diverger de celle que lit l'énumérateur.
+        // …but when the profile stays silent, the core no longer INVENTS a
+        // value. The half that matters: an absent key cannot diverge from
+        // the one the enumerator reads.
         const withoutFlag = await runStorageInit(undefined);
         expect(withoutFlag.cache).not.toHaveProperty("enableTileCache");
     });

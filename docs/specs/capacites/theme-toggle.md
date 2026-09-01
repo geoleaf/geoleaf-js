@@ -122,7 +122,7 @@ Deux lectures, aucune écriture — voir §Décisions de conception.
 
 Typage publié : `src/global.d.ts`, section des capacités (`ThemeToggle?:` → l'interface
 `ThemeTogglePublicApi`). ⚠️ **Ne pas citer de numéro de ligne pour ce fichier** : il est réécrit
-au fil du typage du namespace (B-13), et la roadmap V3 en citait déjà une plage périmée.
+au fil du typage du namespace, et la roadmap V3 en citait déjà une plage périmée.
 
 ### Événements
 

@@ -12,9 +12,9 @@
 
 import { Log, fetchWithTimeout } from "@geoleaf/host-runtime";
 import { coreConfigGet as configGet } from "@geoleaf/host-runtime";
-// API publique S4.4 — via la carte `exports` publiée du core, plus par un alias vers ses
-// SOURCES. Fonction PURE et sans aucun import : l'embarquer dans le bundle est sûr (aucune
-// identité à partager, contrairement aux singletons qui passent par le namespace).
+// Through the core's published `exports` map, no longer via an alias to its
+// SOURCES. PURE, import-free function: embedding it in the bundle is safe (no
+// identity to share, unlike the singletons that go through the namespace).
 import { resolveProfileLayers } from "@geoleaf/core/kernel/config/profile-layers.js";
 import { DOMSecurity } from "../../utils/core-utils.js";
 import { StorageContract } from "../../shared/storage-contract.js";
@@ -196,8 +196,7 @@ Object.assign(LS, {
             if (vectorZone) {
                 const hasVectorBasemap = selectedBasemaps.some((id) => {
                     const bm = this._basemaps.find((b: BasemapLike) => b.id === id) as
-                        | (BasemapLike & { type?: string; style?: string; url?: string })
-                        | undefined;
+                        (BasemapLike & { type?: string; style?: string; url?: string }) | undefined;
                     return !!bm && (bm.type === "maplibre" || (!!bm.style && !bm.url));
                 });
                 if (hasVectorBasemap) {
@@ -275,26 +274,26 @@ Object.assign(LS, {
             const profilesBasePath = configGet("data.profilesBasePath", "profiles") as string;
             const searchUrls: string[] = [];
 
-            // 🛑 B-152 — CE BLOC N'A PAS BESOIN D'UNE BRANCHE `inlineConfig`, ET C'EST
-            // DÉLIBÉRÉ.
+            // 🛑 THIS BLOCK DOES NOT NEED AN `inlineConfig` BRANCH, AND THAT IS
+            // DELIBERATE.
             //
-            // Il était le TROISIÈME site aveugle aux couches templatées, mais par
-            // conséquence et non par cause : `layerDir` et `dataFile` n'étaient jamais posés
-            // pour elles, donc `searchUrls` restait vide et le `return false` plus bas
-            // s'appliquait à chaque passage — l'utilisateur pouvait télécharger, l'icône ne
-            // passait jamais au vert.
+            // It was the THIRD site blind to templated layers, but by consequence
+            // and not by cause: `layerDir` and `dataFile` were never set for
+            // them, so `searchUrls` stayed empty and the `return false` below
+            // applied on every pass — the user could download, the icon never
+            // turned green.
             //
-            // Depuis que `core.populate()` dérive les deux champs pour les deux provenances,
-            // cette branche-ci les couvre toutes les deux telles quelles. Lui ajouter un
-            // `else if (layer.inlineConfig)` reconstruirait la MÊME URL une seconde fois :
-            // un doublon structurel (compteur C4) et un second endroit libre de diverger de
-            // la convention `layers/<id>` de `resource-enumerator`.
+            // Since `core.populate()` derives both fields for both provenances,
+            // this branch covers both as-is. Adding an
+            // `else if (layer.inlineConfig)` would rebuild the SAME URL a second
+            // time: a structural duplicate and a second place free to diverge
+            // from `resource-enumerator`'s `layers/<id>` convention.
             //
-            // ⚠️ La contrepartie, à savoir avant de toucher à `core.populate()` : ce site
-            // n'a plus de défense propre. Si la dérivation y disparaît, l'état de cache
-            // redevient faux **en silence**. C'est ce que la garde
-            // `templated-layer-selector.guard.test.ts` tient — elle a été vue rouge sur ce
-            // point précis avant le correctif.
+            // ⚠️ The counterpart, to know before touching `core.populate()`: this
+            // site no longer has a defence of its own. If the derivation vanishes
+            // there, the cache state goes false again **silently**. That is what
+            // the `templated-layer-selector.guard.test.ts` guard holds — seen red
+            // on this precise point before the fix.
             if (layer.layerDir && layer.dataFile) {
                 searchUrls.push(
                     `${profilesBasePath}/${profileId}/${layer.layerDir}/${layer.dataFile}`
@@ -456,6 +455,14 @@ Object.assign(LS, {
             const totalSizeGB = (totalSize / 1024 / 1024 / 1024).toFixed(2);
             const totalSizeMB = (totalSize / 1024 / 1024).toFixed(1);
 
+            // Fourth reader of one measurement, and the only one to type it structurally
+            // rather than as `StorageEstimate`. Like `download-handler.ts` it reads raw, for
+            // the same reason: `StorageContract.CacheManager.getStorageQuota()` collapses "the
+            // browser could not answer" into zeros, and the guard below must not treat that as
+            // "no space left". The null case here means "do not claim insufficiency".
+            //
+            // 🛑 ORIGIN-WIDE, as everywhere: `availableSpace` is what the origin has left, not
+            // what this selection could claim.
             let quotaInfo: { quota?: number; usage?: number } | null = null;
             let isInsufficientStorage = false;
 

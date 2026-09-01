@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "hook-gates",
+    "scope": ["scripts/verify-hook-gates.cjs"],
+    "verdicts": {
+        "scripts/verify-hook-gates.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Oracle du hook `pre-commit` — pour chacune de ses 19 commandes : jouée, sautée avec motif, ou SAUTÉE EN SILENCE",
+            "confidence": "haute",
+            "rationale": "Câblé en mode statique dans `ci:local` et `ci.yml` (HOOK-01…03, HOOK-05, instantané) ; `--run` rejoue les 17 gates de verdict et les classe — mode à la demande, délibérément hors des deux runners pour ne pas doubler ce qu'ils lancent déjà. Son existence est justifiée par un manque mesuré : la 19ᵉ commande du hook saute à chaque commit sur ce poste (`GEOLEAF_CONSUMERS` absent de l'environnement du hook) alors que la même gate MORD sous `ci:local`, et AUCUNE commande ne rendait cette différence — un verdict invérifiable se fossilise plutôt que de se périmer. Deux défauts trouvés en l'écrivant, qu'aucune ligne ne nommait : le hook déclare chaque gate DEUX fois (trampoline WSL / natif) sans que rien ne compare les deux, et une gate peut y sortir 0 sans rien imprimer. ⚠️ L'instrument était FAUX à sa première écriture — un marqueur lexical classait « sautée » une gate qui MORD en parlant du saut dans sa note CC-10 —, trouvé par la contre-épreuve à deux sens et invisible à un seul ; le marqueur est devenu structurel et `HOOK-05` l'éprouve sur quatre témoins à réponse connue. VU ROUGE SUR CINQ MUTATIONS, une par assertion, restaurations vérifiées au sha256. Reste hors de son périmètre, à dessein : l'arbitrage `N3-02` — faut-il que la 19ᵉ gate morde au commit —, qui appartient à Mattieu."
+        }
+    }
+}

@@ -28,13 +28,13 @@ describe("capabilities/coordinates", () => {
         document.body.removeChild(scaleWrapper);
     });
 
-    // ─── N-3 : le mousemove est coalescé sur une frame ────────────────────────
-    // MapLibre émet `mousemove` au rythme du pointeur, mais l'affichage ne peut changer
-    // qu'une fois par frame peinte : les écritures intermédiaires sont invisibles par
-    // construction. On garde la DERNIÈRE position de la frame — un throttle leading-edge
-    // aurait figé l'affichage sur une position périmée.
+    // ─── mousemove is coalesced onto one frame ─────────────────────────────────
+    // MapLibre emits `mousemove` at the pointer's pace, but the display can
+    // only change once per painted frame: intermediate writes are invisible
+    // by construction. We keep the frame's LAST position — a leading-edge
+    // throttle would have frozen the display on a stale position.
 
-    /** Le rAF est asynchrone : laisser la frame se peindre avant d'asserter. */
+    /** rAF is asynchronous: let the frame paint before asserting. */
     const nextFrame = () => new Promise((r) => setTimeout(r, 20));
 
     const withWrapper = (fn) => {
@@ -65,11 +65,11 @@ describe("capabilities/coordinates", () => {
             for (const lat of [10.1, 20.2, 30.3, 48.5]) {
                 CoordinatesDisplay._onMouseMove({ latlng: { lat, lng: 2.3 } });
             }
-            // Une seule frame en attente, quel que soit le nombre d'événements.
+            // A single pending frame, whatever the event count.
             expect(CoordinatesDisplay._frameHandle).not.toBeNull();
             await nextFrame();
 
-            // La dernière position gagne — pas la première (piège du leading-edge).
+            // The last position wins — not the first (the leading-edge trap).
             expect(CoordinatesDisplay._coordsElement.textContent).toContain("48.5");
             expect(CoordinatesDisplay._coordsElement.textContent).not.toContain("10.1");
             expect(CoordinatesDisplay._frameHandle).toBeNull();
@@ -83,7 +83,7 @@ describe("capabilities/coordinates", () => {
             const element = CoordinatesDisplay._coordsElement;
 
             CoordinatesDisplay._onMouseMove({ latlng: { lat: 48.5, lng: 2.3 } });
-            CoordinatesDisplay.destroy(); // avant que la frame ne se peigne
+            CoordinatesDisplay.destroy(); // before the frame paints
             await nextFrame();
 
             expect(element.textContent).not.toContain("48.5");
@@ -127,16 +127,16 @@ describe("capabilities/coordinates", () => {
         vi.useRealTimers();
     });
 
-    // ─── Fuites de teardown corrigées en S5/N-3 ───────────────────────────────
+    // ─── Teardown leaks fixed ─────────────────────────────────────────────────
 
     it("destroy annule le timeout d'attente — sinon il ressuscite le contrôle", () => {
-        // Le timeout de 5s testait `!this._coordsElement` pour décider de créer le contrôle
-        // standalone. Or `destroy()` met justement ce champ à null : le timeout se
-        // déclenchait APRÈS destruction, voyait null, et recréait un contrôle sur une
-        // instance morte — en appelant `map.on("mousemove", null)` au passage.
+        // The 5s timeout tested `!this._coordsElement` to decide creating the
+        // standalone control. Yet `destroy()` sets precisely that field to
+        // null: the timeout fired AFTER destruction, saw null, and recreated
+        // a control on a dead instance — calling `map.on("mousemove", null)` in passing.
         vi.useFakeTimers();
         const map = { on: vi.fn(), off: vi.fn(), addControl: vi.fn(() => ({ remove: vi.fn() })) };
-        CoordinatesDisplay.init(map); // pas de wrapper → arme le timeout
+        CoordinatesDisplay.init(map); // no wrapper → arms the timeout
         CoordinatesDisplay.destroy();
         map.addControl.mockClear();
 
@@ -158,5 +158,50 @@ describe("capabilities/coordinates", () => {
         expect(CoordinatesDisplay._wrapperObserver).toBeNull();
         expect(CoordinatesDisplay._wrapperTimeout).toBeNull();
         vi.useRealTimers();
+    });
+    // ── The separator must be REMOVED at teardown ───────────────
+    //
+    // 🛑 The defect: `_attachToScaleWrapper` creates `gl-scale-separator`
+    // through `domCreate` without keeping the reference, and `destroy()` only
+    // removes `_coordsElement`. Each teardown → remount cycle thus left one
+    // more orphan separator, visible on screen (it is a vertical bar), and
+    // nothing counted them.
+    //
+    // ⚠️ This file's 11 tests passed with NO assertion on the separator: the
+    // faulty behaviour was attested by nothing, which is the configuration in
+    // which a defect survives every reread.
+    it("ne laisse aucun séparateur orphelin après deux cycles init/destroy", async () => {
+        await withWrapper(async (scaleWrapper) => {
+            const map = { on: vi.fn(), off: vi.fn(), addControl: vi.fn() };
+
+            CoordinatesDisplay.init(map);
+            CoordinatesDisplay.destroy();
+            CoordinatesDisplay.init(map);
+            CoordinatesDisplay.destroy();
+
+            expect(scaleWrapper.querySelectorAll(".gl-scale-separator").length).toBe(0);
+            expect(scaleWrapper.querySelectorAll(".gl-scale-coordinates").length).toBe(0);
+        });
+    });
+
+    // TWIN leak, same trigger, same `destroy()`: `init()` has NO re-entrance
+    // guard — it does not test `_coordsElement` and does not call `destroy()`.
+    // Two consecutive `init()`s thus stack two separators AND two coordinate
+    // elements, the first becoming unreachable (`_coordsElement` is
+    // overwritten), hence unremovable by `destroy()`.
+    it("deux init() consécutifs n'empilent pas deux contrôles", async () => {
+        await withWrapper(async (scaleWrapper) => {
+            const map = { on: vi.fn(), off: vi.fn(), addControl: vi.fn() };
+
+            CoordinatesDisplay.init(map);
+            CoordinatesDisplay.init(map);
+
+            expect(scaleWrapper.querySelectorAll(".gl-scale-separator").length).toBe(1);
+            expect(scaleWrapper.querySelectorAll(".gl-scale-coordinates").length).toBe(1);
+
+            CoordinatesDisplay.destroy();
+            expect(scaleWrapper.querySelectorAll(".gl-scale-separator").length).toBe(0);
+            expect(scaleWrapper.querySelectorAll(".gl-scale-coordinates").length).toBe(0);
+        });
     });
 });

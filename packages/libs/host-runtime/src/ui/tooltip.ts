@@ -20,9 +20,26 @@
  * HERE rather than in `index.ts`. Measured at F8: the five plugins that never call
  * `wireTooltips` (cog, flatgeobuf, websocket, realtime-layer, file-import) are
  * byte-for-byte unchanged, so the side effect does not leak through the barrel.
+ *
+ * ⚠️ **That measurement was true and NARROWER than it reads**, which is why it held while the
+ * defect grew behind it. It proved the sheet does not reach the five bundles that touch nothing
+ * in this file — it never asked what happens to a bundle that pulls this module for ANOTHER
+ * reason and still never calls a tooltip. Measured on 2026-08-27: nine plugins carried the
+ * stylesheet with none of its JS. A side effect that "does not leak" to the packages you looked
+ * at is not a side effect that does not leak.
+ *
+ * 🛑 The sheet is therefore `.lazy.css` — no module-scope injection at all — and adopted at
+ * CALL time below. See `csp-style-inject.mjs` for why the import form alone would have changed
+ * nothing.
  */
 
-import "../css/tooltip.css";
+import { adoptStylesheet } from "./css-adopt.js";
+import css from "../css/tooltip.lazy.css";
+
+/** Adopts the sheet on first use. Idempotent per key, so every entry point may call it. */
+function ensureStyles(): void {
+    adoptStylesheet(css, "gl-host-tooltip");
+}
 
 /**
  * Positions and reveals the tooltip to the right of `btn`, vertically centred.
@@ -33,6 +50,9 @@ import "../css/tooltip.css";
  */
 export function showTooltip(tooltipEl: HTMLElement | null, btn: HTMLElement): void {
     if (!tooltipEl) return;
+    // Adopted here as well as in `wireTooltips`: a host may position the tooltip itself without
+    // ever wiring the handlers, and an unstyled tooltip is worse than none.
+    ensureStyles();
     const label = btn.dataset.tooltip;
     if (!label) return;
     tooltipEl.textContent = label;
@@ -64,6 +84,9 @@ export function wireTooltips(
 ): void {
     const root = getRoot();
     if (!root) return;
+    // Before the handlers, not inside them: the sheet is then in place well ahead of the first
+    // hover, so nothing flashes unstyled on the way in.
+    ensureStyles();
     for (const btn of root.querySelectorAll<HTMLElement>("[data-tooltip]")) {
         btn.addEventListener("mouseenter", () => showTooltip(getTooltipEl(), btn));
         btn.addEventListener("focusin", () => showTooltip(getTooltipEl(), btn));

@@ -1,21 +1,20 @@
 /**
- * Cycle de vie create → destroy → recreate — livrable clé du filet S0
- * (roadmap boot-di-lifecycle).
+ * create → destroy → recreate lifecycle — key deliverable of the safety net.
  *
- * Documente la FUITE actuelle : `Core.destroy(mapId)` ne nettoie que l'adapter
- * MapLibre + le slot `_instances` ; l'état métier des stores singletons (POI,
- * GeoJSON, LayerManager, Profile) survit → au recreate, doublons + références
- * d'adapter mort. Voir _docs_projet/travail/rapports/rapport_etat-partage-inter-modules.md.
+ * Documents the ORIGINAL leak: `Core.destroy(mapId)` only cleaned the
+ * MapLibre adapter + the `_instances` slot; the singleton stores' business
+ * state (POI, GeoJSON, LayerManager, Profile) survived → on recreate,
+ * duplicates + dead adapter references.
  *
- * Deux niveaux :
- *  - CARACTÉRISATION (vert aujourd'hui) : pin l'état fuyant après destroy.
- *  - CIBLE `it.fails` (rouge aujourd'hui → vert en S3) : après destroy+recreate,
- *    l'état doit être revenu à l'initial. Quand S3 implémente le teardown réel,
- *    ces assertions passeront → RETIRER `.fails` à ce moment-là.
+ * Two levels:
+ *  - CHARACTERISATION (green then): pinned the leaking state after destroy.
+ *  - TARGET `it.fails` (red then → green now): after destroy+recreate, the
+ *    state must be back to initial. When the real teardown landed, these
+ *    assertions passed → `.fails` was REMOVED at that point.
  *
- * Stratégie : mêmes mocks que core-multi-instance (adapter/map-container/theme/log)
- * pour que Core.init/destroy tournent sans vraie carte maplibre, + import des
- * stores réels pour seeder/asserter l'état partagé.
+ * Strategy: same mocks as core-multi-instance (adapter/map-container/theme/log)
+ * so Core.init/destroy run without a real maplibre map, + import of the
+ * real stores to seed/assert the shared state.
  */
 "use strict";
 
@@ -65,7 +64,7 @@ beforeAll(async () => {
     ({ ProfileManager } = await import("../../src/kernel/config/profile.js"));
 });
 
-/** Remet tous les stores à leur état initial (simule un démarrage applicatif neuf). */
+/** Resets all stores to their initial state (simulates a fresh app start). */
 function resetStoresToInitial() {
     GeoJSONShared.reset(); // layers, layerIdCounter, adapter, map, options → initial
 
@@ -76,7 +75,7 @@ function resetStoresToInitial() {
     ProfileManager._activeProfileData = { mapping: null };
 }
 
-/** Seede l'état partagé comme si une carte avait chargé profil + mapping + couches. */
+/** Seeds the shared state as though a map had loaded profile + mapping + layers. */
 function seedLoadedState(adapter) {
     GeoJSONShared.state.layers.set("layer-1", { features: [] });
     GeoJSONShared.state.layers.set("layer-2", { features: [] });
@@ -120,9 +119,9 @@ describe("cycle de vie — teardown de l'état métier (corrigé en S3)", () => 
 
         Core.destroy("map-1");
 
-        // Le slot adapter est libéré…
+        // The adapter slot is freed…
         expect(Core.listMaps()).toEqual([]);
-        // … ET l'état métier est nettoyé (la fuite documentée en S0 est corrigée).
+        // … AND the business state is cleaned (the documented leak is fixed).
         expect(GeoJSONShared.state.layers.size).toBe(0);
         expect(GeoJSONShared.state.adapter).toBeNull();
         expect(ProfileManager._activeProfile).toBeNull();
@@ -131,9 +130,9 @@ describe("cycle de vie — teardown de l'état métier (corrigé en S3)", () => 
 });
 
 describe("cycle de vie — cible S3 (vert depuis S3)", () => {
-    // Livrable clé du chantier : après destroy + recreate, l'état partagé est
-    // revenu à l'initial (aucun résidu). Le `.fails` historique a été retiré en
-    // S3 quand les destroy() réels + le teardown du seam ont été implémentés.
+    // Key deliverable: after destroy + recreate, the shared state is back
+    // to initial (no residue). The historical `.fails` was removed when the
+    // real destroy()s + the seam teardown were implemented.
     it("create → destroy → recreate revient à l'état initial (aucun résidu)", () => {
         const adapter = Core.init({ mapId: "map-1" });
         seedLoadedState(adapter);

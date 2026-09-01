@@ -1,17 +1,19 @@
 /*!
- * Tests — tâche 5.1-a : la façade expose le placement, et elle lui passe le RÉGLAGE
+ * Tests — the facade exposes the placement, and passes it the SETTING
  *
- * 🛑 Ce fichier existe parce que la mesure a trouvé le module ABSORBÉ MAIS INERTE — zéro
- * importeur de production, exactement l'état dans lequel 4.4 et 4.5 avaient été livrées au
- * Sprint 4 (« livrées, prouvées, et inertes »). Un module qu'aucune façade n'expose ne se
- * distingue pas d'un module mort, et aucune gate ne fait la différence.
+ * 🛑 This file exists because measurement found the module ABSORBED BUT INERT —
+ * zero production importers, exactly the state two earlier deliveries had
+ * already shipped in ("delivered, proven, and inert"). A module no facade
+ * exposes is indistinguishable from a dead module, and no gate tells the
+ * difference.
  *
- * Il garde deux propriétés que les tests d'unité de `placement-mode.ts` ne peuvent pas voir,
- * parce qu'elles vivent dans le câblage et non dans le module :
- *   1. la clé `PlacementMode` est présente sur `GeoLeaf.Editor` avec la forme que le seam du
- *      core lit déjà (ce qui fait de 5.1-f un repointage, pas une refonte) ;
- *   2. le rayon du garde-fou vient de `modules.editor.poiSnapMeters` — sans ce fil, le
- *      réglage neuf serait documenté, gaté, et sans effet.
+ * It guards two properties the unit tests of `placement-mode.ts` cannot see,
+ * because they live in the wiring and not in the module:
+ *   1. the `PlacementMode` key is present on `GeoLeaf.Editor` with the shape
+ *      the core's seam already reads (which makes the later hand-over a
+ *      repointing, not a rewrite);
+ *   2. the guard radius comes from `modules.editor.poiSnapMeters` — without
+ *      that wire, the new setting would be documented, gated, and ineffective.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -110,10 +112,11 @@ describe("GeoLeaf.Editor.PlacementMode — le rayon du garde-fou", () => {
     });
 
     it("🛑 un snapMeters EXPLICITEMENT undefined n'écrase pas la config", () => {
-        // Le cas qui sépare un spread d'un assemblage explicite : sous
-        // `exactOptionalPropertyTypes`, `{...options}` injecte `snapMeters: undefined`,
-        // ce qui n'est PAS « absent » et effacerait le réglage. Sans ce test, la mutation
-        // « remplacer l'assemblage par `...options` » sortait VERTE — mesuré.
+        // The case that separates a spread from an explicit assembly: under
+        // `exactOptionalPropertyTypes`, `{...options}` injects
+        // `snapMeters: undefined`, which is NOT "absent" and would erase the
+        // setting. Without this test, the mutation "replace the assembly with
+        // `...options`" came out GREEN — measured.
         _config.poiSnapMeters = 12;
         placement().activate(null, vi.fn(), { snapMeters: undefined });
         expect(_activate.mock.calls[0][2]).toEqual({ snapMeters: 12 });

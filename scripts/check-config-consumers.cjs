@@ -1,53 +1,54 @@
 #!/usr/bin/env node
 /*!
- * GeoLeaf — Vérificateur de dérive des consommateurs de config (file:line)
+ * GeoLeaf — Config-consumer drift checker (file:line)
  * © 2026 Mattieu Pottier — MIT
  *
- * Archi roadmap S5 (5.2 — « amorcer l'automation de l'inventaire »). NON destructif.
+ * Bootstraps the inventory's automation. NON-destructive.
  *
- * La colonne « Consommateur (file:line) » de
- * docs/reference/inventaire_config_parametres.md est tracée À LA MAIN
- * (sémantique : suivi du type de config). Une régénération par grep est impossible
- * (la plupart des clés sont lues en accès propriété typé `cfg.x`, indistinct du code
- * sans rapport — cf. dry-run S5). Ce script ne RÉGÉNÈRE donc pas la colonne : il
- * VÉRIFIE que chaque citation `file:line` déjà inventoriée est toujours valide et
- * signale la dérive (fichier déplacé, ligne hors bornes, ligne ne référençant plus
- * la clé). Objectif roadmap : « réduit la maintenance manuelle de l'inventaire ».
+ * The "Consommateur (file:line)" column of
+ * docs/reference/inventaire_config_parametres.md is HAND-curated (semantics:
+ * tracking the config's type). Regenerating it by grep is impossible (most keys are
+ * read through typed property access `cfg.x`, indistinct from unrelated code —
+ * cf. the dry run). This script therefore does NOT REGENERATE the column: it
+ * VERIFIES that each already-inventoried `file:line` citation is still valid and
+ * flags drift (file moved, line out of bounds, line no longer referencing the
+ * key). Goal: "reduces the inventory's manual maintenance".
  *
- * Sortie : un rapport Markdown + un code de sortie (0 si aucune dérive franche).
- *   - Dérive FRANCHE (exit 1 possible avec --fail) : fichier introuvable, ligne hors
- *     bornes. Ce sont des citations cassées à coup sûr.
- *   - Dérive PROBABLE (avertissement, n'échoue pas) : la ligne citée (±fenêtre) ne
- *     mentionne plus la clé — peut être un faux positif (alias, déstructuration).
+ * Output: a Markdown report + an exit code (0 if no hard drift).
+ *   - HARD drift (exit 1 possible with --fail): file not found, line out of
+ *     bounds. Citations broken for certain.
+ *   - PROBABLE drift (warning, does not fail): the cited line (±window) no longer
+ *     mentions the key — can be a false positive (alias, destructuring).
  *
  * Usage : node scripts/check-config-consumers.cjs [--fail] [--no-report] [--update-baseline]
- * (CONFIG_INVENTORY pointe un inventaire alternatif — tests.)
+ * (CONFIG_INVENTORY points to an alternative inventory — tests.)
  *
- * Câblage — pre-commit + CI + ci-local :
- *   - `--no-report` : n'écrit pas le rapport Markdown. Obligatoire pour un gate — le
- *     rapport a été supprimé volontairement du dépôt (ménage documentaire `2bc7c1e0`)
- *     et sans ce flag chaque commit le ressusciterait en fichier non tracké.
- *   - `--fail` : bloque sur TOUTE dérive franche. Plus de baseline.
+ * Wiring — pre-commit + CI + ci-local:
+ *   - `--no-report`: does not write the Markdown report. Mandatory for a gate — the
+ *     report was deliberately removed from the repo (documentation cleanup
+ *     `2bc7c1e0`) and without this flag every commit would resurrect it as an
+ *     untracked file.
+ *   - `--fail`: blocks on ANY hard drift. No baseline anymore.
  *
- * ⚠️ LA BASELINE A ÉTÉ SUPPRIMÉE (R.43, backlog résiduel S5, 25/07/2026).
- * Elle figeait 62 dérives franches héritées de la campagne de refacto S3→S6 (fichiers
- * cités supprimés : `app/init.ts`, `poi/**`, `geojson/clustering.ts`…) pour éviter
- * l'anti-pattern « gate rouge en permanence ». Le passif a été soldé : les 60 dérives
- * restantes ont été réparées une par une (citations re-résolues dans l'arborescence
- * post-restructuration `kernel/`), et 3 pointaient vers des clés RÉELLEMENT MORTES —
- * elles sont devenues de la prose, pas une citation inventée.
- *   - Avant : 117 valides / 44 fichiers introuvables / 16 lignes hors bornes, exit 0.
- *   - Après : 171 valides / 0 / 0, exit 0 — et le gate BLOQUE désormais.
- * Prouvé par mutation dans les deux catégories (fichier inexistant → rouge ; ligne
- * hors bornes → rouge ; restauration → vert). Une gate dont on vide la baseline sans
- * l'avoir vue rougir n'a rien prouvé — c'est la panne récurrente de ces roadmaps.
+ * ⚠️ THE BASELINE WAS REMOVED (2026-07-25).
+ * It froze 62 hard drifts inherited from the refactoring campaign (cited files
+ * deleted: `app/init.ts`, `poi/**`, `geojson/clustering.ts`…) to avoid the
+ * "permanently red gate" anti-pattern. The liability was settled: the 60 remaining
+ * drifts were repaired one by one (citations re-resolved in the post-restructuring
+ * `kernel/` tree), and 3 pointed to REALLY DEAD keys — they became prose, not an
+ * invented citation.
+ *   - Before: 117 valid / 44 files not found / 16 lines out of bounds, exit 0.
+ *   - After: 171 valid / 0 / 0, exit 0 — and the gate now BLOCKS.
+ * Proven by mutation in both categories (nonexistent file → red; line out of
+ * bounds → red; restoration → green). A gate whose baseline is emptied without
+ * having seen it redden proved nothing — the recurring outage of that work.
  *
- * ⚠️ NON traité, et il faut le savoir : les 312 dérives MOLLES subsistent (209 « la
- * ligne ne cite plus la clé » + 103 suffixes ambigus). Elles n'échouent pas, par
- * conception — ce sont des faux positifs probables (alias, déstructuration). Le taux de
- * validité est passé d'environ 24 % à environ 35 %, PAS à 100 %.
- *   - `--update-baseline` : recrée un instantané. À n'utiliser que si un futur chantier
- *     réintroduit délibérément un passif — pas pour faire taire une régression.
+ * ⚠️ NOT handled, and it must be known: the 312 SOFT drifts remain (209 "the line
+ * no longer cites the key" + 103 ambiguous suffixes). They do not fail, by design —
+ * probable false positives (alias, destructuring). The validity rate went from
+ * about 24 % to about 35 %, NOT to 100 %.
+ *   - `--update-baseline`: recreates a snapshot. To be used only if future work
+ *     deliberately reintroduces a liability — not to silence a regression.
  */
 
 "use strict";
@@ -61,15 +62,16 @@ const ROOT = path.resolve(__dirname, "..");
 const INVENTORY = process.env.CONFIG_INVENTORY
     ? path.resolve(process.env.CONFIG_INVENTORY)
     : docsPaths.reference("inventaire_config_parametres.md");
-// ⚠️ SAUT NOMMÉ — le rapport de cette gate vit dans l'atelier, absent du dépôt public.
+// ⚠️ NAMED SKIP — this gate's report lives in the workshop, absent from the public repo.
 //
-// Même motif et même patron que `audit-report-freshness.cjs` : `_docs_projet/` est retiré du
-// dépôt public par décision (tâche 9.4), donc son absence y est le contrat et non une panne.
-// 🛑 Le saut refuse de se lire comme un vert — patron `CONSUMER-CONTRACT/CC-00`.
+// Same motive and pattern as `audit-report-freshness.cjs`: `_docs_projet/` is
+// removed from the public repo by decision, so its absence there is the contract
+// and not an outage.
+// 🛑 The skip refuses to read as a green — `CONSUMER-CONTRACT/CC-00` pattern.
 //
-// 📌 Il est placé AVANT le calcul de `REPORT` et non autour de son écriture : le chemin se
-// résout au chargement, donc c'est là que la gate meurt. Le déplacer plus bas donnerait un
-// saut qui n'a jamais l'occasion de s'exécuter.
+// 📌 It sits BEFORE the computation of `REPORT` and not around its write: the path
+// resolves at load time, so that is where the gate dies. Moving it lower would give
+// a skip that never gets the chance to execute.
 if (!docsPaths.internalRootExists()) {
     console.log(
         "⏭️  [CONFIG-CONSUMERS] SAUTÉ — la racine INTERNE est absente : " +
@@ -84,9 +86,9 @@ if (!docsPaths.internalRootExists()) {
     process.exit(0);
 }
 
-// ⚠️ Le rapport reste sous la racine INTERNE : c'est une sortie d'atelier, pas de la doc
-// publiée. Les deux racines coïncident avant la scission — les confondre ici publierait
-// un rapport de travail le jour où elles divergent.
+// ⚠️ The report stays under the INTERNAL root: it is workshop output, not published
+// docs. The two roots coincide before the split — confusing them here would publish
+// a working report the day they diverge.
 const REPORT = docsPaths.internal("travail", "rapports", "rapport_consommateurs-config-s5.md");
 const PKG_DIR = path.join(ROOT, "packages");
 const BASELINE = path.join(__dirname, "check-config-consumers.baseline.json");
@@ -157,7 +159,7 @@ function collectScripts(dir, acc) {
 }
 function buildIndex() {
     const files = [];
-    // ARCHI S9.5 — from the workspace registry, not a one-level readdirSync. The old
+    // From the workspace registry, not a one-level readdirSync. The old
     // form would have indexed ZERO sources once ARCHI S10 nests packages, and a
     // citation check over an empty index reports every parameter as uncited.
     for (const pkg of require("./lib/packages.cjs").all()) {
@@ -204,8 +206,8 @@ function makeResolver(byRel) {
         // Prefer a unique core match ONLY when the human gave disambiguating parent dirs;
         // a bare ambiguous basename (no hints) stays ambiguous rather than force-resolving.
         if (!hints.length) return cands;
-        // T5.5 — préfixe dérivé du registre, pas écrit. Ce filtre décide d'une
-        // désambiguïsation : muet, il ne casse pas, il cesse de préférer le core.
+        // Prefix derived from the registry, not written. This filter decides a
+        // disambiguation: mute, it does not break, it stops preferring the core.
         const coreSrcPrefix = `${require("./lib/packages.cjs").requireByDirName("core").dir}/src/`;
         const core = cands.filter((m) => m.startsWith(coreSrcPrefix));
         return core.length === 1 ? core : cands;

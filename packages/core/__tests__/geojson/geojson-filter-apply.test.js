@@ -1,14 +1,14 @@
 /**
- * `_applyFeatureVisibilityForLayer` — le chemin de filtrage VIVANT.
+ * `_applyFeatureVisibilityForLayer` — the LIVE filtering path.
  *
- * Il n'avait aucun test direct (ses deux consommateurs le mockent intégralement), alors
- * que le chemin natif DORMANT, lui, en avait dix. C'est l'asymétrie que S5/N-4 corrige :
- * on purge le dormant, donc le vivant doit d'abord être tenu.
+ * It had no direct test (its two consumers mock it wholesale), while the
+ * DORMANT native path had ten. The asymmetry being corrected: the dormant
+ * gets purged, so the live must first be held.
  *
- * Ce qui se joue ici : le choix entre le filtre GPU par id (`setLayerFilter`, zéro
- * re-tuilage) et le ré-envoi des données (`setData`). Se tromper de branche ne casse
- * aucun test aujourd'hui — ça casse les compteurs de clusters, ou filtre les mauvaises
- * features quand les ids ne sont pas uniques.
+ * What is at stake here: the choice between the GPU filter by id
+ * (`setLayerFilter`, zero re-tiling) and resending the data (`setData`).
+ * Picking the wrong branch breaks no test today — it breaks cluster
+ * counters, or filters the wrong features when ids are not unique.
  */
 const state = { layers: new Map(), adapter: null };
 vi.mock("../../src/kernel/geojson/shared.ts", () => ({
@@ -67,8 +67,8 @@ describe("geojson-filter — _applyFeatureVisibilityForLayer (chemin vivant)", (
     });
 
     describe("garde cluster — une couche clusterisée doit être ré-alimentée", () => {
-        // Un `setFilter` GPU laisserait les compteurs de clusters figés sur le total
-        // AVANT filtrage : la pastille annoncerait 42 pour 3 features affichées.
+        // A GPU `setFilter` would leave the cluster counters frozen on the
+        // BEFORE-filter total: the badge would announce 42 for 3 displayed features.
         const CLUSTER_SIGNALS = [
             ["clusterGroup présent", { clusterGroup: {} }],
             ["config.cluster", { config: { cluster: true } }],
@@ -103,7 +103,7 @@ describe("geojson-filter — _applyFeatureVisibilityForLayer (chemin vivant)", (
         });
 
         it("bascule sur setData quand deux features partagent un id", () => {
-            // Filtrer par id masquerait le doublon en même temps que l'original.
+            // Filtering by id would hide the duplicate along with the original.
             const layer = { geometryType: "point", features: [feat("a"), feat("a")] };
             _applyFeatureVisibilityForLayer(layer, passAll, "lyr", newStats());
             expect(setLayerFilter).not.toHaveBeenCalled();
@@ -125,7 +125,7 @@ describe("geojson-filter — _applyFeatureVisibilityForLayer (chemin vivant)", (
 
             expect(setLayerFilter).not.toHaveBeenCalled();
             expect(updateLayerData).not.toHaveBeenCalled();
-            // Bypass = tout reste visible, quel que soit le prédicat.
+            // Bypass = everything stays visible, whatever the predicate.
             expect(stats.visible).toBe(2);
             expect(stats.filtered).toBe(0);
         });

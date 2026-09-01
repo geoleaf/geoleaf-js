@@ -8,8 +8,7 @@
  * These complement the config-time shapes in {@link ./geojson-types} and the
  * loader DI interfaces in {@link ./loader/loader-types}. They are extracted here
  * so `core.ts` (the aggregator facade) and its sub-modules can share one typed
- * view of the shared state without re-declaring `any` locally
- * (roadmap_typage-strict.md, S3).
+ * view of the shared state without re-declaring `any` locally.
  *
  * All map/adapter surfaces are intentionally minimal & permissive (structural,
  * not the strict `maplibre-gl` types) so the custom GeoLeaf events fired on the

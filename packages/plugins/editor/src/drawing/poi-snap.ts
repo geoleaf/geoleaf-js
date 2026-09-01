@@ -15,7 +15,7 @@
  *
  *   - `snap.ts` configures Terra Draw's snapping. It is a DRAWING COMFORT: radius in
  *     PIXELS (`pointerDistance`), aligns a vertex onto an existing geometry, and it is
- *     wired on the polygon mode ONLY (`modes.ts:120`). The point mode gets none.
+ *     wired on the polygon mode ONLY (`modes.ts`). The point mode gets none.
  *   - this file is a FIELD-CAPTURE GUARD: radius in METRES, restricted to editable point
  *     layers, and it returns the neighbour's IDENTITY. Terra Draw has no equivalent.
  *
@@ -57,19 +57,20 @@ interface SnapCandidateLayer {
  * @returns the eligible layers, or an empty array when no profile is active.
  */
 function _snapCandidateLayers(): SnapCandidateLayer[] {
-    // 5.2 — LECTEUR UNIQUE. Ce filtre reproduisait mot pour mot le critère d'`addpoi`
-    // (`geometryType === "point"` + `enableEditionFull || enableEdition`) pendant que
-    // `config.ts` filtrait sur `editableGeometryTypes[]` : deux réponses possibles à « quelles
-    // couches sont éditables », dans le même paquet. ⚠️ Retirer `addpoi` ne tranchait RIEN —
-    // l'éditeur portait déjà les deux. Mesuré sur les 48 configs : les deux critères rendent
-    // le MÊME ensemble de 4 couches ponctuelles, l'alignement ne change donc aucun
-    // comportement.
+    // SINGLE READER. This filter reproduced `addpoi`'s criterion word for word
+    // (`geometryType === "point"` + `enableEditionFull || enableEdition`) while
+    // `config.ts` filtered on `editableGeometryTypes[]`: two possible answers
+    // to "which layers are editable", in the same package. ⚠️ Removing `addpoi`
+    // settled NOTHING — the editor already carried both. Measured on the 48
+    // configs: both criteria yield the SAME set of 4 point layers, so the
+    // alignment changes no behaviour.
     //
-    // ✅ 5.9 — la rustine qui vivait ici est RETIRÉE. L'alignement de 5.2 avait laissé
-    // `enableEditionFull` sans lecteur, et `getEditableLayers` l'avait donc relu en OU avec
-    // `enableEdition` — ce qui le maintenait vivant sans lui rendre son sens, et faisait même
-    // du droit de SUPPRIMER un élargisseur du sélecteur. La décision V1 a été exécutée : le
-    // critère lit `edition.create || edition.update`, jamais `edition.delete`.
+    // ✅ The patch that lived here is REMOVED. The alignment had left
+    // `enableEditionFull` readerless, and `getEditableLayers` had re-read it
+    // OR'd with `enableEdition` — keeping it alive without restoring its
+    // meaning, and even making the right to DELETE a selector widener. The
+    // per-operation decision was executed: the criterion reads
+    // `edition.create || edition.update`, never `edition.delete`.
     return getEditableLayers("Point").filter((l) => !!l.id) as SnapCandidateLayer[];
 }
 

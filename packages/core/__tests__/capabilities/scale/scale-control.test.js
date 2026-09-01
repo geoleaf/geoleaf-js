@@ -145,12 +145,14 @@ describe("capabilities/scale — ScaleControl", () => {
     });
 
     describe("_formatNumber", () => {
-        // ⚠️ L'assertion d'origine était `toMatch(/\d\s\d/)` sur une seule valeur : elle
-        // passait sur `"2 50000"` comme sur `"250 000"`. Durcie au S10 avant la réécriture
-        // sans regex — un test qui ne distingue pas les deux ne protège pas la bascule.
+        // ⚠️ The original assertion was `toMatch(/\d\s\d/)` on a single
+        // value: it passed on `"2 50000"` as on `"250 000"`. Hardened before
+        // the regex-free rewrite — a test that cannot tell the two apart does
+        // not protect the switch.
         //
-        // Les 6 premières valeurs sont les dénominateurs RÉELLEMENT rendus par le contrôle
-        // (`scaleAtZoom` arrondit à l'entier, scale-utils.ts:56) aux zooms 0/5/10/14/17/22.
+        // The first 6 values are the denominators REALLY rendered by the
+        // control (`scaleAtZoom` rounds to the integer, scale-utils.ts) at
+        // zooms 0/5/10/14/17/22.
         it.each([
             [591658711, "591 658 711"],
             [18489335, "18 489 335"],
@@ -158,7 +160,7 @@ describe("capabilities/scale — ScaleControl", () => {
             [23787, "23 787"],
             [3181, "3 181"],
             [71, "71"],
-            // Bornes de groupement — c'est là qu'une implémentation naïve se trompe.
+            // Grouping bounds — where a naive implementation goes wrong.
             [0, "0"],
             [7, "7"],
             [999, "999"],
@@ -170,22 +172,23 @@ describe("capabilities/scale — ScaleControl", () => {
         });
 
         it("le séparateur reste l'espace ASCII que `_onScaleInputChange` sait re-parser", () => {
-            // Le readout est re-parsé par `input.replace(/\s/g,"") + parseInt` : changer de
-            // séparateur casserait la saisie manuelle d'échelle en silence.
+            // The readout is re-parsed by `input.replace(/\s/g,"") + parseInt`:
+            // changing separator would silently break manual scale entry.
             //
-            // B.26 (localiser le séparateur) a été MESURÉE puis CLOSE (S12) : l'espace est
-            // la recommandation ISO 31-0, et 4 des 6 langues groupent avec « . », ce qui rend
-            // « 1:250.000 » ambigu pour un dénominateur d'échelle. Ce n'est donc pas une
-            // localisation en attente — c'est un choix arrêté. Ne pas rouvrir.
+            // Localising the separator was MEASURED then CLOSED: the space is
+            // the ISO 31-0 recommendation, and 4 of the 6 languages group
+            // with ".", which makes "1:250.000" ambiguous for a scale
+            // denominator. Not a pending localisation — a settled choice. Do not reopen.
             const out = ScaleControl._formatNumber(250000);
             expect(out).toBe("250 000");
             expect(Number.parseInt(out.replace(/\s/g, ""), 10)).toBe(250000);
         });
 
-        // Le garde-fou que la mesure de B.26 a rendu nécessaire : la paire format↔parse doit
-        // rester réversible. C'est elle qui casserait en premier si quelqu'un passait à
-        // `Intl.NumberFormat` sans réécrire la lecture — le mode d'échec est SILENCIEUX
-        // (échelle 1:250 posée à la place de 1:250 000), donc il ne se verrait pas autrement.
+        // The guardrail that measurement made necessary: the format↔parse
+        // pair must stay reversible. It is what would break first if someone
+        // moved to `Intl.NumberFormat` without rewriting the read — the
+        // failure mode is SILENT (scale 1:250 set instead of 1:250 000), so
+        // it would not show otherwise.
         it.each([250000, 1000, 999, 1234567890, 71, 0])(
             "aller-retour format → parse pour %i (réversibilité, cf. B.26 close)",
             (value) => {

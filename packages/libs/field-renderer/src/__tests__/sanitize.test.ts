@@ -1,19 +1,19 @@
 /**
- * `sanitize.ts` — escapeHtml / validateUrl / safeUrl, exercés directement.
+ * `sanitize.ts` — escapeHtml / validateUrl / safeUrl, exercised directly.
  *
- * Backlog R.2 (couverture des branches). Ce module était à **45 % de branches et 66,66 %
- * de fonctions** alors qu'il porte la frontière XSS de la bibliothèque. Il n'était atteint
- * qu'**indirectement**, par les composants (`urlComponent`, `linkComponent`, `imageComponent`,
- * `galleryComponent` dans `field-renderer.test.ts` §S2.2), et uniquement sur le couple
- * « javascript: refusé / https: accepté ».
+ * Branch coverage work. This module sat at **45% branches and 66.66%
+ * functions** while carrying the library's XSS boundary. It was only reached
+ * **indirectly**, through the components (`urlComponent`, `linkComponent`,
+ * `imageComponent`, `galleryComponent` in `field-renderer.test.ts`, security
+ * section), and only on the "javascript: refused / https: accepted" pair.
  *
- * Ce que ce détour laissait entièrement de côté :
- *   · `validateUrl` **jette** — les composants passent tous par `safeUrl`, qui avale ;
- *   · la whitelist de MIME des `data:` URL — 6 types admis, tout le reste refusé ;
- *   · la coercition et les cas nuls d'`escapeHtml`.
+ * What that detour left entirely aside:
+ *   · `validateUrl` **throws** — the components all go through `safeUrl`, which swallows;
+ *   · the `data:` URL MIME whitelist — 6 types admitted, everything else refused;
+ *   · `escapeHtml`'s coercion and null cases.
  *
- * Une frontière de sécurité testée seulement à travers ses appelants est testée sur les
- * cas que ses appelants connaissent. Ce sont les autres qui coûtent cher.
+ * A security boundary tested only through its callers is tested on the cases
+ * its callers know. The others are the ones that cost.
  */
 import { describe, it, expect } from "vitest";
 
@@ -47,7 +47,7 @@ describe("escapeHtml", () => {
     });
 
     it("rend la chaîne vide telle quelle — et non le repli de null", () => {
-        // `str == null` est un `==` volontaire : "" ne doit PAS tomber dans cette branche.
+        // `str == null` is a deliberate `==`: "" must NOT fall into this branch.
         expect(escapeHtml("")).toBe("");
     });
 });
@@ -83,7 +83,7 @@ describe("validateUrl — ce qui passe", () => {
     });
 
     it("accepte un data: sans paramètre ;base64", () => {
-        // Le motif est `data:([^;,]+)` : la virgule borne aussi bien que le point-virgule.
+        // The pattern is `data:([^;,]+)`: the comma bounds as well as the semicolon.
         expect(() => validateUrl("data:image/png,AAAA")).not.toThrow();
     });
 });
@@ -106,8 +106,8 @@ describe("validateUrl — ce qui jette", () => {
     });
 
     it("refuse data:text/html — le protocole passe, le MIME non", () => {
-        // Le cas qui justifie la seconde garde : `data:` est dans la whitelist de
-        // protocoles, donc seul le contrôle de MIME arrête celui-ci.
+        // The case justifying the second guard: `data:` is in the protocol
+        // whitelist, so only the MIME check stops this one.
         expect(() => validateUrl("data:text/html,<script>alert(1)</script>")).toThrow(
             /data: URL type not allowed/
         );
@@ -124,8 +124,8 @@ describe("validateUrl — ce qui jette", () => {
     });
 
     it("le message d'erreur MIME énumère les types admis", () => {
-        // Ce message est ce que voit l'intégrateur qui se trompe de format ; il doit
-        // porter la réponse, pas seulement le refus.
+        // This message is what the integrator who gets the format wrong sees;
+        // it must carry the answer, not just the refusal.
         expect(() => validateUrl("data:application/pdf;base64,AAAA")).toThrow(/image\/png/);
     });
 });
@@ -142,7 +142,7 @@ describe("safeUrl", () => {
     });
 
     it("rend une chaîne vide sur une URL syntaxiquement invalide", () => {
-        // `new URL()` jette ici, et c'est `safeUrl` qui absorbe — pas la whitelist.
+        // `new URL()` throws here, and `safeUrl` is what absorbs — not the whitelist.
         expect(safeUrl("http://[")).toBe("");
         expect(safeUrl("https://exa mple.com")).toBe("");
     });
@@ -161,11 +161,12 @@ describe("safeUrl", () => {
     });
 
     it("« :// » n'est PAS malformé — c'est un chemin relatif, et il est accepté", () => {
-        // Contre-intuitif, et écrit ici parce que la première version de ce test
-        // l'attendait vide : `new URL("://", origin)` résout en `<origin>/://`. Le
-        // protocole résultant est celui de la page (http/https), donc la whitelist
-        // laisse passer. Rien à corriger dans `sanitize.ts` — c'est la sémantique de
-        // la résolution relative, et la garde de protocole s'applique bien au résultat.
+        // Counter-intuitive, and written here because this test's first
+        // version expected it empty: `new URL("://", origin)` resolves to
+        // `<origin>/://`. The resulting protocol is the page's (http/https),
+        // so the whitelist lets it through. Nothing to fix in `sanitize.ts` —
+        // it is the semantics of relative resolution, and the protocol guard
+        // does apply to the result.
         expect(safeUrl("://")).toContain("://");
         expect(safeUrl("://").startsWith("http")).toBe(true);
     });

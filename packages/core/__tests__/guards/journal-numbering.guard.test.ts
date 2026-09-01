@@ -1,46 +1,47 @@
 /**
  * @file journal-numbering.guard.test.ts
- * @description Test-garde — les numéros d'entrée du JOURNAL sont UNIQUES, et le plafond
- * de 15 entrées est tenu.
+ * @description Guard test — the JOURNAL's entry numbers are UNIQUE, and the
+ * 15-entry cap is held.
  *
- * Pourquoi ce garde existe — et pourquoi c'est le JOURNAL lui-même qui le réclame
+ * Why this guard exists — and why the JOURNAL itself asks for it
  * ------------------------------------------------------------------------------------
- * Le numéro d'entrée est un **compteur partagé** entre sessions concurrentes, et il a
- * collisionné **deux fois** :
+ * The entry number is a **counter shared** between concurrent sessions, and
+ * it collided **twice**:
  *
- *   • (42), le 07/08/2026 — deux entrées du même numéro, chacune ayant lu le sommet du
- *     fichier avant que l'autre n'écrive. Réparée par cascade : deux renumérotations.
- *   • (48), quelques jours plus tard — **pendant que l'en-tête du fichier expliquait déjà
- *     le geste qui l'évite**. Réparée par suffixe (`48b`), la cascade coûtant dix entrées.
+ *   • (42), on 07/08/2026 — two entries with the same number, each having
+ *     read the file's top before the other wrote. Repaired by cascade: two renumberings.
+ *   • (48), a few days later — **while the file's header already explained
+ *     the gesture that avoids it**. Repaired by suffix (`48b`), the cascade
+ *     costing ten entries.
  *
- * 🛑 **La seconde est restée invisible plusieurs jours**, et le fichier dit exactement
- * pourquoi : « rien ne compte les numéros, et deux `## 2026-08-07 (48)` à cinquante lignes
- * d'écart ne se voient pas à la lecture ». Elle a été trouvée **en comptant les entrées
- * pour la rotation**, pas en lisant.
+ * 🛑 **The second stayed invisible for several days**, and the file says
+ * exactly why: "nothing counts the numbers, and two `## 2026-08-07 (48)`
+ * fifty lines apart are not seen while reading". It was found **by counting
+ * entries for the rotation**, not by reading.
  *
- * Son en-tête tire lui-même la conclusion : _« si un jour rien ne bloque, préférer une
- * garde qui COMPTE les numéros à un troisième paragraphe qui demande d'y faire
- * attention »_. Rien ne bloquait au 12/08/2026 : ce fichier est cette garde. Deux
- * avertissements en prose n'ont arrêté ni la première collision ni la seconde.
+ * Its header draws the conclusion itself: _"if one day nothing blocks,
+ * prefer a guard that COUNTS the numbers over a third paragraph asking to
+ * pay attention"_. Nothing blocked on 12/08/2026: this file is that guard.
+ * Two prose warnings stopped neither the first collision nor the second.
  *
- * ## Ce qui est gardé, et ce qui ne l'est pas
+ * ## What is guarded, and what is not
  *
- * ✅ **Unicité** — un numéro vu deux fois fait rougir, en nommant les deux dates.
- * ✅ **Plafond** — plus de 15 entrées fait rougir avec le geste (la rotation).
- * 🖐 **PAS l'ordre** : la lecture est antéchronologique et la suite peut être non entière
- *    (`48`, `48b`, `49`), ce qui est le remède retenu et non un défaut. Exiger une
- *    croissance stricte rougirait sur la réparation elle-même.
+ * ✅ **Uniqueness** — a number seen twice turns red, naming both dates.
+ * ✅ **Cap** — more than 15 entries turns red with the gesture (the rotation).
+ * 🖐 **NOT the order**: reading is antechronological and the sequence may be
+ *    non-integer (`48`, `48b`, `49`), which is the retained remedy and not a
+ *    defect. Requiring strict growth would turn red on the repair itself.
  *
- * ## ⚠️ Pourquoi ce garde SAUTE sur le clone public, et pourquoi ce n'est pas un trou
+ * ## ⚠️ Why this guard SKIPS on the public clone, and why that is not a hole
  *
- * `_docs_projet/` est de l'appareil d'atelier : la partition de `port-to-public.cjs` ne le
- * porte jamais dans `geoleaf/geoleaf-js`. Un garde qui exigerait le fichier y serait rouge
- * en permanence — et rendrait la suite publique rouge pour une raison qui ne regarde
- * personne là-bas. Il saute donc **en le disant**, sur le même patron que
- * `docs-paths.internalRootExists()`.
+ * `_docs_projet/` is working apparatus: `port-to-public.cjs`'s partition
+ * never carries it into `geoleaf/geoleaf-js`. A guard requiring the file
+ * would be permanently red there — and make the public suite red for a
+ * reason that concerns nobody there. It therefore skips **saying so**, on
+ * the same pattern as `docs-paths.internalRootExists()`.
  *
- * Le saut est sans risque ici : le JOURNAL n'existe que dans l'atelier, donc l'atelier est
- * le seul endroit où la propriété puisse être fausse.
+ * The skip is riskless here: the JOURNAL only exists in the workshop, so the
+ * workshop is the only place the property can be false.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -51,10 +52,10 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(here, "../../../..");
 const JOURNAL = path.join(REPO_ROOT, "_docs_projet", "JOURNAL.md");
 
-/** Le plafond, tel que l'en-tête du JOURNAL le déclare. */
+/** The cap, as the JOURNAL's header declares it. */
 const CAP = 15;
 
-/** Une entrée : sa date, son numéro (suffixe compris), sa ligne. */
+/** An entry: its date, its number (suffix included), its line. */
 interface Entry {
     date: string;
     num: string;
@@ -62,11 +63,12 @@ interface Entry {
 }
 
 /**
- * Les entrées du JOURNAL, dans l'ordre du fichier (antéchronologique).
+ * The JOURNAL's entries, in file order (antechronological).
  *
- * Aucun repli silencieux sur un tableau vide : un fichier présent mais dont la forme des
- * titres aurait changé rendrait ce garde vert en ne comptant rien — le mode d'échec que
- * ce dépôt traque partout. D'où l'assertion anti-corpus-vide dans le premier test.
+ * No silent fallback to an empty array: a file present but whose title shape
+ * changed would make this guard green counting nothing — the failure mode
+ * this repo hunts everywhere. Hence the anti-empty-corpus assertion in the
+ * first test.
  */
 function readEntries(): Entry[] {
     const lines = fs.readFileSync(JOURNAL, "utf8").split("\n");

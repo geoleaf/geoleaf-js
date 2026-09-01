@@ -1,9 +1,9 @@
 /**
  * Config-contract Phase C / C2 — B3 ui.json anomalies (regression-lock).
  *
- * ANO-034→037 — RÉSOLUS en Archi S3. Trois clés `ui.*` lues par le code sont désormais
- * AJOUTÉES au schéma `ui.json` (live read + schema-accepted) ; la 4ᵉ (ANO-037) était un
- * doublon, supprimée.
+ * ANO-034→037 — RESOLVED. Three `ui.*` keys read by the code are now ADDED
+ * to the `ui.json` schema (live read + schema-accepted); the 4th (ANO-037)
+ * was a duplicate, deleted.
  *
  *   ANO-035 ui.showShareButton   → MIGRÉ modules.share.enabled (capacité in-core share, S12)
  *   ANO-036 ui.interactiveShapes → ajoutée au schéma (live: lecteur geolocation capability)
@@ -39,7 +39,7 @@ describe("config B3 — ui.* flags (live read + schema-accepted ; ANO-034/036 r�
         expect(validateUi({ ui: { theme: "dark" } })).toBe(true);
     });
 
-    // ── ANO-035 ui.showShareButton → modules.permalink.share.enabled (share fusionné dans permalink, S13 F7) ──
+    // ── ANO-035 ui.showShareButton → modules.permalink.share.enabled (share merged into permalink) ──
     describe("@anomaly ANO-035 — ui.showShareButton → modules.permalink.share.enabled (S13 F7)", () => {
         it("live: ShareModule binds its mobile icon to profileKey 'modules.permalink.share.enabled' (default visible)", () => {
             const icon = new ShareModule().ui.mobileIcon;
@@ -76,17 +76,18 @@ describe("config B3 — ui.* flags (live read + schema-accepted ; ANO-034/036 r�
         });
     });
 
-    // ── ui.permalink → migré modules.permalink (capacité in-core permalink, S13) ──
+    // ── ui.permalink → migrated to modules.permalink (in-core permalink capability) ──
     describe("@anomaly — ui.permalink migré → modules.permalink (S13)", () => {
         it("schema: ui.permalink is now REJECTED (migré → modules.permalink, S13)", () => {
             expect(validateUi({ ui: { permalink: { enabled: true, mode: "hash" } } })).toBe(false);
         });
     });
 
-    // ── ANO-037 RÉSOLU (Archi S3) — le doublon `ui/scale-control` (GeoLeaf.UI.ScaleControl,
-    //    lecteur `ui.scaleType`) a été SUPPRIMÉ. Le contrôle d'échelle actif est
-    //    `map/scale-control`, piloté par `scaleConfig` (déjà au schéma). `ui.scaleType`
-    //    n'est plus une clé du contrat (zéro légacy).
+    // ── ANO-037 RESOLVED — the `ui/scale-control` duplicate
+    //    (GeoLeaf.UI.ScaleControl, reader of `ui.scaleType`) was DELETED.
+    //    The active scale control is `map/scale-control`, driven by
+    //    `scaleConfig` (already in the schema). `ui.scaleType` is no longer
+    //    a contract key (zero legacy).
     it("ANO-037 résolu : ui.scaleType n'est plus une clé du contrat (rejetée comme inconnue)", () => {
         expect(validateUi({ ui: { scaleType: "numeric" } })).toBe(false);
     });

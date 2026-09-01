@@ -7,7 +7,7 @@
  * Counts `any` tokens in type position (best-effort: strips comments and string/
  * template literals first) across `packages/<pkg>/src`, excluding test files and
  * generated output. This is the tracking metric for the type-hardening roadmap
- * (`roadmap_typage-strict.md`): it mirrors what `@typescript-eslint/no-explicit-any`
+ *: it mirrors what `@typescript-eslint/no-explicit-any`
  * would flag closely enough to follow progress sprint by sprint.
  *
  * Usage:
@@ -77,7 +77,7 @@ function subdirKey(file, srcDir) {
 
 const result = { packages: {}, totalSource: 0 };
 
-// ARCHI S9.5 — packages come from the workspace registry, not from a one-level
+// Packages come from the workspace registry, not from a one-level
 // `readdirSync(packages/)`. The old form saw only direct children, so once ARCHI S10
 // moves plugins under `packages/plugins/`, it would find a `plugins` directory with
 // no `src/`, hit the `continue` below, and report an `any` count over ZERO plugins

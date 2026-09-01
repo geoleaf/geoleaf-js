@@ -12,9 +12,8 @@ import { describe, expect, it } from "vitest";
 const { LABELS_INSTALLER } = await import("../../../src/capabilities/labels/install.ts");
 const { LABELS_CAPABILITY } = await import("../../../src/capabilities/labels/labels-capability.ts");
 const { LabelsModule } = await import("../../../src/capabilities/labels/module.ts");
-const { LabelButtonManager } = await import(
-    "../../../src/capabilities/labels/label-button-manager.ts"
-);
+const { LabelButtonManager } =
+    await import("../../../src/capabilities/labels/label-button-manager.ts");
 const { LabelRenderer } = await import("../../../src/capabilities/labels/label-renderer.ts");
 const { Labels } = await import("../../../src/api/geoleaf.labels.ts");
 

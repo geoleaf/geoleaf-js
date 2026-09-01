@@ -79,7 +79,7 @@ const BASELINE = {};
  * drops these — a gate scanning for nothing is green and blind, the exact failure the
  * probe exists to catch. Missing anchors THROW rather than pass.
  *
- * The first four were named by the roadmap (S11.1: css-adopt / touch-drag / notify-seam /
+ * The first four were named at wiring (css-adopt / touch-drag / notify-seam /
  * coreConfigGet). STRUCT S2 (F9) adds one anchor per family canonised by that sprint, so
  * the guard grows with the surface it guards instead of staying pinned to the 2026-era
  * subset: a future `export *` must now drop SEVEN known names before it can go unnoticed.
@@ -195,7 +195,7 @@ const targets = registry.all().filter((p) => p.name !== CANONICAL_HOME && p.name
 if (targets.length === 0) {
     throw new Error(
         "verify-plugin-shared-fork: 0 target packages — the registry emptied. This is the " +
-            "silent-blindness class S9.4/S10.2 exist to prevent, not a clean run."
+            "silent-blindness class the registry exists to prevent, not a clean run."
     );
 }
 

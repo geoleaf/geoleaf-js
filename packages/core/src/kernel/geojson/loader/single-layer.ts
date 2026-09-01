@@ -1,4 +1,4 @@
-﻿/*!
+/*!
  * @geoleaf/core
  * © 2026 Mattieu Pottier
  * Released under the MIT License
@@ -8,8 +8,8 @@
 /**
  * GeoLeaf GeoJSON Loader - Single Layer
  * Complete loading pipeline for a single layer
- * Sprint 7 : Web Worker fetch+parse + chunked addData via requestIdleCallback
- * Sprint 8 : Vector tiles — early-exit to VectorTiles module when configured
+ * Web Worker fetch+parse + chunked addData via requestIdleCallback.
+ * Vector tiles: early-exit to the VectorTiles module when configured.
  */
 
 import { GeoJSONShared } from "../shared.js";
@@ -58,17 +58,17 @@ function _isPerfEnabled(): boolean {
 }
 
 /**
- * La couche déclare-t-elle vouloir être servie depuis le magasin hors-ligne ? (tâche 4.3)
+ * Does the layer declare it wants to be served from the offline store?
  *
- * ⚠️ **DÉCLARÉ, jamais deviné.** Lire le store dès qu'il porte des entités — l'option écartée
- * à l'arbitrage — ferait dépendre la source de vérité d'un ACCIDENT DE PEUPLEMENT : une couche
- * partiellement rapatriée servirait du partiel en silence, et l'écriture optimiste de 4.4
- * n'aurait aucun moyen de savoir si sa saisie sera relue.
+ * ⚠️ **DECLARED, never guessed.** Reading the store as soon as it carries entities —
+ * the option set aside at arbitration — would make the source of truth depend on a
+ * POPULATION ACCIDENT: a partially pulled layer would serve partial data silently,
+ * and the optimistic write would have no way to know its capture will be re-read.
  *
- * ⚠️ Et ce drapeau **ne dit rien de l'éditabilité** — invariant S6 du contrat. Il ouvre une
- * LECTURE locale ; ce qui décide d'une outbox est l'éditabilité EN LIGNE, et rien d'autre.
- * Dériver l'une de l'autre ferait du « télécharger » un moyen d'écrire là où le bloc `edition`
- * l'interdit.
+ * ⚠️ And this flag **says nothing about editability** — the contract's standing
+ * invariant. It opens a local READ; what decides an outbox is ONLINE editability, and
+ * nothing else. Deriving one from the other would make "download" a way to write
+ * where the `edition` block forbids it.
  */
 function _readsOffline(def: DefLike): boolean {
     const off = (def as { offline?: { enabled?: unknown } }).offline;
@@ -76,39 +76,41 @@ function _readsOffline(def: DefLike): boolean {
 }
 
 /**
- * Lit la couche depuis le magasin par entité, ou rend `null` pour laisser le réseau faire.
+ * Reads the layer from the per-entity store, or returns `null` to let the network do it.
  *
- * Passe par `StorageContract.DB` et **jamais** par un import de `capabilities/` : le kernel
- * n'en importe aucun, et cette frontière est la raison d'être du seam. La façade est narrowée
- * ici, localement, comme le fait déjà `poi-restore`.
+ * Goes through `StorageContract.DB` and **never** through a `capabilities/` import:
+ * the kernel imports none, and that boundary is the seam's reason to exist. The
+ * facade is narrowed here, locally, as `poi-restore` already does.
  */
 /**
- * Délai au bout duquel on renonce à attendre le moteur hors-ligne et on prend le réseau.
+ * Delay after which we give up waiting for the offline engine and take the network.
  *
- * 🛑 CE NOMBRE EXISTE PARCE QUE `whenReady()` PEUT NE JAMAIS RÉSOUDRE. Son propre TSDoc le
- * dit : « While `modules.offline` is disabled the engine never loads and this never
- * resolves ». Attendre sans borne ferait qu'une couche déclarée `offline` sur une variante
- * SANS moteur ne se chargerait **jamais** — un profil portable rendrait la carte vide selon
- * la variante qui le sert.
+ * 🛑 THIS NUMBER EXISTS BECAUSE `whenReady()` MAY NEVER RESOLVE. Its own TSDoc says
+ * so: "While `modules.offline` is disabled the engine never loads and this never
+ * resolves". Waiting unbounded would mean a layer declared `offline` on a variant
+ * WITHOUT the engine would **never** load — a portable profile would render an empty
+ * map depending on the serving variant.
  *
- * 3 s : le moteur est un chunk différé, mesuré à **157 ms** sur rechargement chaud et
- * **905 ms** au premier boot sur cette machine. La borne laisse donc trois fois la mesure la
- * plus lente, et ne coûte ce délai que sur une variante où le moteur ne viendra pas.
+ * 3 s: the engine is a deferred chunk, measured at **157 ms** on a warm reload and
+ * **905 ms** at first boot on this machine. The bound thus leaves three times the
+ * slowest measurement, and only costs that delay on a variant where the engine will
+ * not come.
  */
 const OFFLINE_ENGINE_WAIT_MS = 3000;
 
 /**
- * Attend que le moteur de stockage soit câblé, sans risquer d'attendre pour rien.
+ * Waits for the storage engine to be wired, without risking waiting for nothing.
  *
- * 🛑 SANS CETTE ATTENTE, LA BRANCHE 4.3 NE TIRAIT JAMAIS — et c'est le défaut qui a coûté le
- * plus long diagnostic du sprint. `globals.storage.ts` l'annonce pourtant : « the engine
- * (DB/CacheManager/Cache) is injected LATER via `Storage.wireModules(...)` ». Le moteur est un
- * chunk **différé**, les couches GeoJSON chargent au boot (premier lot à ~85 ms) :
- * `StorageContract.DB` valait donc `null` à l'instant précis où la lecture le consultait, et
- * le repli réseau s'exécutait **en silence**. Tout était juste — la clé dans le `def`, le code
- * dans le chunk servi, la lecture elle-même — sauf l'ordre.
+ * 🛑 WITHOUT THIS WAIT, THE LOCAL-READ BRANCH NEVER FIRED — and it is the defect
+ * that cost the longest diagnosis. `globals.storage.ts` announces it: "the engine
+ * (DB/CacheManager/Cache) is injected LATER via `Storage.wireModules(...)`". The
+ * engine is a **deferred** chunk, GeoJSON layers load at boot (first batch at
+ * ~85 ms): `StorageContract.DB` was therefore `null` at the precise instant the read
+ * consulted it, and the network fallback ran **silently**. Everything was right —
+ * the key in the `def`, the code in the served chunk, the read itself — except the
+ * order.
  *
- * @returns `true` si le moteur est utilisable, `false` s'il faut prendre le réseau.
+ * @returns `true` when the engine is usable, `false` when the network must be taken.
  */
 async function _awaitOfflineEngine(layerId: string): Promise<boolean> {
     if (StorageContract.DB) return true;
@@ -123,9 +125,9 @@ async function _awaitOfflineEngine(layerId: string): Promise<boolean> {
     if (timer) clearTimeout(timer);
 
     if (!won) {
-        // ⚠️ Le repli se DIT. C'est un repli muet qui a rendu ce défaut si long à trouver :
-        // la couche s'affichait, remplie par le réseau, et rien ne distinguait « le store
-        // était vide » de « le moteur n'était pas là ».
+        // ⚠️ The fallback SAYS SO. A mute fallback is what made this defect so long
+        // to find: the layer displayed, filled by the network, and nothing
+        // distinguished "the store was empty" from "the engine was not there".
         getLog()?.warn?.(
             `[GeoLeaf.GeoJSON] Layer "${layerId}" declares an offline read but the storage ` +
                 `engine did not wire within ${OFFLINE_ENGINE_WAIT_MS} ms — loading from network.`
@@ -138,17 +140,17 @@ async function _awaitOfflineEngine(layerId: string): Promise<boolean> {
 async function _readFromOfflineStore(layerId: string): Promise<unknown | null> {
     try {
         if (!(await _awaitOfflineEngine(layerId))) return null;
-        // `StorageContract.DB` est un getter : il rend `null` tant que `wireModules()` n'a pas
-        // eu lieu, d'où l'attente ci-dessus.
+        // `StorageContract.DB` is a getter: it returns `null` until `wireModules()`
+        // has happened, hence the wait above.
         const db = StorageContract.DB as {
             getLayerFeatureCollection?: (id: string) => Promise<unknown | null>;
         } | null;
         if (!db?.getLayerFeatureCollection) return null;
         return (await db.getLayerFeatureCollection(layerId)) ?? null;
     } catch (err) {
-        // Une lecture locale qui échoue ne doit pas empêcher la couche de se charger : on
-        // retombe sur le réseau. Mais on le DIT — un repli muet rendrait indiscernable
-        // « le store est vide » de « le store est cassé ».
+        // A failing local read must not prevent the layer from loading: we fall
+        // back to the network. But we SAY it — a mute fallback would make "the store
+        // is empty" indistinguishable from "the store is broken".
         getLog()?.warn?.(
             `[GeoLeaf.GeoJSON] Offline read failed for ${layerId}, falling back to network:`,
             err
@@ -166,16 +168,17 @@ function _getDataPromise(
 ): Promise<unknown> {
     if (fromCache) return Promise.resolve(def._cachedData);
 
-    // 🛑 TÂCHE 4.3 — LA LECTURE LOCALE PRÉCÈDE LE RÉSEAU, et c'est tout son sujet.
+    // 🛑 THE LOCAL READ PRECEDES THE NETWORK, and that is its whole subject.
     //
-    // Placée APRÈS le fetch en repli (l'option « réseau d'abord, store ensuite »), elle
-    // n'aurait pas répondu à l'énoncé : en ligne on refetcherait, le store ne serait jamais
-    // la source de vérité, et l'écriture optimiste de 4.4 serait écrasée au chargement
-    // suivant. Une saisie de terrain qui disparaît au rechargement est exactement le défaut
-    // que ce sprint existe pour fermer.
+    // Placed AFTER the fetch as a fallback (the "network first, store second"
+    // option), it would not have answered the brief: online we would refetch, the
+    // store would never be the source of truth, and the optimistic write would be
+    // overwritten at the next load. A field capture that vanishes on reload is
+    // exactly the defect this exists to close.
     //
-    // ⚠️ Le repli réseau reste là quand le store est VIDE — `getLayerFeatureCollection` rend
-    // `null` et non une collection vide, précisément pour que les deux cas se distinguent.
+    // ⚠️ The network fallback stays for an EMPTY store — `getLayerFeatureCollection`
+    // returns `null` and not an empty collection, precisely so the two cases stay
+    // distinguishable.
     if (_readsOffline(def)) {
         return _readFromOfflineStore(layerId).then((local) => {
             if (local) return local;
@@ -193,8 +196,8 @@ function _fetchLayerData(
     layerId: string
 ): Promise<unknown> {
     const dataCfg = def.data as LayerDataConfig | undefined;
-    // Custom per-layer request headers (e.g. content negotiation for a PostgREST/PostGIS
-    // GeoJSON endpoint). The worker fetch path does not forward these headers, so when
+    // Custom per-layer request headers (e.g. content negotiation for a GeoJSON endpoint
+    // that serves several representations). The worker fetch path does not forward these headers, so when
     // they are set we fall back to a direct main-thread fetch. The Connector plugin's
     // global fetch patch still adds Authorization on top for the configured baseUrl.
     const headers = dataCfg?.headers;
@@ -494,7 +497,7 @@ async function _doLoadSingleLayerMapLibre(
         features: features.length,
     });
 
-    // Style — normally already in flight since before the data was requested (S5.3), so this
+    // Style — normally already in flight since before the data was requested, so this
     // await is what is LEFT of a fetch that overlapped the data, not the fetch itself.
     // `stylePromise` is absent only for callers that resolve their data before reaching here.
     const _tStyle = _mark();
@@ -527,7 +530,7 @@ async function _doLoadSingleLayerMapLibre(
     adapter.addGeoJSONLayer(layerId, geojsonData, adapterOptions);
     if (_perf) {
         const _addMs = performance.now() - _tAdd;
-        // ⚠️ `styleWait`, not `styleFetch`. Since S5.3 the style is requested alongside the
+        // ⚠️ `styleWait`, not `styleFetch`. The style is requested alongside the
         // data instead of after it, so this measures the RESIDUAL wait once the data has
         // landed — near zero when the overlap worked. Reading it as the fetch duration would
         // suggest the style became free, when what changed is that it stopped being serial.
@@ -612,15 +615,16 @@ async function _loadFromOgcApi(
     state: GeoJSONState,
     Log: GeoJSONLoaderLog
 ): Promise<{ id: string; label: string; featureCount: number }> {
-    // 🛑 LA LECTURE LOCALE PASSE DEVANT, ICI AUSSI (tâche 4.1).
+    // 🛑 THE LOCAL READ GOES FIRST, HERE TOO.
     //
-    // Cette branche est un early-exit de `_loadSingleLayer` : elle rend la main AVANT
-    // `_getDataPromise`, où vit la lecture locale de 4.3. Une couche déclarant à la fois
-    // `data.ogcApi` et `offline.enabled` voyait donc son store COURT-CIRCUITÉ en silence —
-    // elle refetchait le réseau en se croyant hors-ligne. Aucune couche du dépôt ne portait
-    // les deux au moment où c'est écrit ; 4.1 est la tâche qui rend la combinaison possible,
-    // donc elle la ferme plutôt que de la laisser à découvrir.
-    // S5.3 — same overlap as the main path. This branch is the SECOND caller of
+    // This branch is an early-exit of `_loadSingleLayer`: it hands back BEFORE
+    // `_getDataPromise`, where the local read lives. A layer declaring both
+    // `data.ogcApi` and `offline.enabled` therefore saw its store SHORT-CIRCUITED
+    // silently — it refetched the network believing itself offline. No layer in the
+    // repo carried both when this was written; the pull is what makes the
+    // combination possible, so it closes it rather than leaving it to be
+    // discovered.
+    // Same overlap as the main path. This branch is the SECOND caller of
     // `_doLoadSingleLayerMapLibre`, and treating only the first would have left OGC layers
     // fetching their style strictly after their features, for no reason anyone would find later.
     const stylePromise = _preloadStyle(def, layerId, layerLabel, Log);
@@ -642,9 +646,9 @@ async function _loadFromOgcApi(
     );
 
     // Register autoRefresh listener if requested.
-    // ⚠️ Jamais quand la couche lit hors-ligne : le rafraîchissement au `moveend` refetche le
-    // réseau et écrase la donnée locale — il défairait, au premier déplacement de carte, la
-    // lecture que la garde ci-dessus vient d'établir.
+    // ⚠️ Never when the layer reads offline: the `moveend` refresh refetches the
+    // network and overwrites the local data — it would undo, at the first map move,
+    // the read the guard above just established.
     if (ogcConfig.autoRefresh && !_readsOffline(def)) {
         const adapter = (state.adapter || _deps?.getCore()?.getMap?.()) as {
             getNativeMap?: () => unknown;
@@ -694,10 +698,11 @@ function _dispatchPluginLayer(
     Log: GeoJSONLoaderLog
 ): Promise<{ id: string; label: string; featureCount: number }> {
     const fallback = { id: layerId, label: layerLabel, featureCount: 0 };
-    // S4.5 — la résolution est SYNCHRONE, or un plugin enregistré paresseusement n'a pas encore
-    // exécuté son `registerLayerLoader()`. Sans ce préalable, rendre une couche `plugin:` en
-    // paresseux revient toujours à la sauter à 0 feature. Le seam charge d'abord si un résolveur
-    // existe pour cet id, et ne fait rien sinon — le core continue de ne nommer aucun plugin.
+    // Resolution is SYNCHRONOUS, yet a lazily-registered plugin has not run its
+    // `registerLayerLoader()` yet. Without this prerequisite, rendering a `plugin:`
+    // layer lazily always amounts to skipping it at 0 features. The seam loads first
+    // when a resolver exists for this id, and does nothing otherwise — the core
+    // keeps naming no plugin.
     return Promise.resolve(_deps?.ensurePluginLoaded?.(pluginId))
         .then(() => {
             const loader = _deps?.getPluginLayerLoader?.(pluginId);
@@ -767,7 +772,7 @@ Loader._loadSingleLayer = function (
     const _perf = _isPerfEnabled();
     const _t0 = _perf ? performance.now() : 0;
 
-    // S5.3 — the style and the data are independent resources, and the style used to be
+    // The style and the data are independent resources, and the style used to be
     // fetched only once the data had landed: one extra round-trip per layer, serialised
     // behind a body up to ~1,1 Mo for a file of a few hundred bytes. Start both here.
     //

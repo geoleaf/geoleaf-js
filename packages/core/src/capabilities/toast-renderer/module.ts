@@ -25,7 +25,7 @@
  * `theme:applied`) fire asynchronously after config fetch, so listeners attached
  * during the registry pass are always in place.
  *
- * ⚠️ It declared `["geojson"]` until B-56 (28/07/2026). That was an ORDERING trick,
+ * ⚠️ It declared `["geojson"]` until 28/07/2026. That was an ORDERING trick,
  * not a need — the paragraph above already says the renderer needs no layer data —
  * and it turned into a production defect once `GeoJSONModule.init()` began awaiting
  * phase-1 layer loading (F0/S8). The registry init loop is sequential and awaited
@@ -46,7 +46,7 @@ import { ToastRendererLifecycle } from "./lifecycle.js";
 
 /**
  * Represents the GeoLeaf toast renderer (DOM notifications).
- * Depends on `config` (never `ui` — deadlock; never `geojson` — B-56, see module doc).
+ * Depends on `config` (never `ui` — deadlock; never `geojson` — see module doc).
  */
 export class ToastRendererModule implements ILifecycleModule {
     readonly id = "toast-renderer" as const;

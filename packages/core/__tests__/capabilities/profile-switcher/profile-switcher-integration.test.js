@@ -12,12 +12,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const { FULL } = await import("../../../src/presets/manifest.full.ts");
-const { PROFILE_SWITCHER_INSTALLER } = await import(
-    "../../../src/capabilities/profile-switcher/install.ts"
-);
-const { ProfileSwitcherModule } = await import(
-    "../../../src/capabilities/profile-switcher/module.ts"
-);
+const { PROFILE_SWITCHER_INSTALLER } =
+    await import("../../../src/capabilities/profile-switcher/install.ts");
+const { ProfileSwitcherModule } =
+    await import("../../../src/capabilities/profile-switcher/module.ts");
 const { LMControl } = await import("../../../src/kernel/layer-manager/control.ts");
 
 describe("preset manifest wiring", () => {

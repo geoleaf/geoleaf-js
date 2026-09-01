@@ -163,7 +163,7 @@ export interface LogImplInterface {
      * @example
      * ```js
      * GeoLeaf.Log.setLevel("production");
-     * // Équivalent à : setLevel('warn') + setQuietMode(true)
+     * // Equivalent to: setLevel('warn') + setQuietMode(true)
      * ```
      */
     setLevel(level: string): void;
@@ -236,7 +236,7 @@ export interface LogImplInterface {
      *
      * @example
      * ```js
-     * GeoLeaf.Log.debug("[GeoLeaf.GeoJSON] Chargement des entités…");
+     * GeoLeaf.Log.debug("[GeoLeaf.GeoJSON] Loading features…");
      * ```
      */
     debug(...args: unknown[]): void;
@@ -248,7 +248,7 @@ export interface LogImplInterface {
      *
      * @example
      * ```js
-     * GeoLeaf.Log.info("[GeoLeaf.Core] Carte initialisée.");
+     * GeoLeaf.Log.info("[GeoLeaf.Core] Map initialised.");
      * ```
      */
     info(...args: unknown[]): void;
@@ -260,7 +260,7 @@ export interface LogImplInterface {
      *
      * @example
      * ```js
-     * GeoLeaf.Log.warn("[GeoLeaf.Config] Clé 'basemap.id' manquante, fallback sur 'street'.");
+     * GeoLeaf.Log.warn("[GeoLeaf.Config] Key 'basemap.id' missing, falling back to 'street'.");
      * ```
      */
     warn(...args: unknown[]): void;
@@ -272,7 +272,7 @@ export interface LogImplInterface {
      *
      * @example
      * ```js
-     * GeoLeaf.Log.error("[GeoLeaf.Config] Échec du chargement de la configuration.");
+     * GeoLeaf.Log.error("[GeoLeaf.Config] Configuration loading failed.");
      * ```
      */
     error(...args: unknown[]): void;

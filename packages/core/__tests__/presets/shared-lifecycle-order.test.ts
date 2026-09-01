@@ -1,89 +1,99 @@
 /**
- * SLO — la POSITION de `pwa` et `offline` au manifeste ne décide de rien (socle-init 7.4).
+ * SLO — the POSITION of `pwa` and `offline` in the manifest decides nothing.
  *
- * ## Ce que ce fichier tranche
+ * ## What this file settles
  *
- * Le dépôt affirmait, sur **20 sites répartis dans 13 fichiers**, que l'ordre `pwa` (#7) puis
- * `offline` (#8) dans `presets/manifest.full.ts` est *load-bearing*. Sa formulation la plus forte,
- * `specs/capacites/pwa.md`, allait jusqu'à : « **Inverser les deux empêcherait le moteur
- * hors-ligne de démarrer.** » Aucun test ne l'éprouvait.
+ * The repo asserted, over **20 sites across 13 files**, that the order
+ * `pwa` (#7) then `offline` (#8) in `presets/manifest.full.ts` is
+ * *load-bearing*. Its strongest wording, `specs/capacites/pwa.md`, went as
+ * far as: "**Inverting the two would keep the offline engine from
+ * starting.**" No test exercised it.
  *
- * **C'est faux, et ce fichier le mesure.** Le couplage est CONFIGURATIONNEL, pas ordinal :
+ * **It is false, and this file measures it.» The coupling is
+ * CONFIGURATIONAL, not ordinal:
  *
- *   - `offline/install.ts` lit `config.modules.pwa.enabled` dans le **sac fusionné** que
- *     `SharedModule.init()` lui passe — pas un état posé par `PwaLifecycle` ;
- *   - `GeoLeaf.Storage` et `GeoLeaf._OfflineDetector` sont posés **à l'import**, en phase A par
- *     `globals/globals.storage.ts`, donc bien avant l'un comme l'autre ;
- *   - et le seul effet que `pwa` produirait avant `offline` — l'enregistrement de l'ouvrier de
- *     service — est de toute façon **différé** par `Helpers.lazyExecute` (plafond 3 s). Même dans
- *     l'ordre nominal, il n'a pas eu lieu quand `offline` s'exécute.
+ *   - `offline/install.ts` reads `config.modules.pwa.enabled` from the
+ *     **merged bag** `SharedModule.init()` hands it — not a state set by
+ *     `PwaLifecycle`;
+ *   - `GeoLeaf.Storage` and `GeoLeaf._OfflineDetector` are set **at
+ *     import**, in phase A by `globals/globals.storage.ts`, hence well
+ *     before either;
+ *   - and the only effect `pwa` would produce before `offline` — the
+ *     service worker's registration — is in any case **deferred** by
+ *     `Helpers.lazyExecute` (3 s cap). Even in nominal order, it has not
+ *     happened when `offline` runs.
  *
- * ⚠️ Le fichier incriminé se contredisait déjà lui-même : `manifest.full.ts` annonce la contrainte
- * dans son en-tête, puis écrit « **Position is free** (no module, no mobileIcon) » au-dessus du
- * couple, 90 lignes plus bas.
+ * ⚠️ The incriminated file already contradicted itself: `manifest.full.ts`
+ * announces the constraint in its header, then writes "**Position is
+ * free** (no module, no mobileIcon)" above the pair, 90 lines below.
  *
- * ## Ce qui reste VRAI, et que ce fichier garde aussi
+ * ## What stays TRUE, and this file also guards
  *
- * Il faut deux distinctions, jamais mélangées :
+ * Two distinctions, never mixed:
  *
- *   - **le GATE** — `offline` refuse de démarrer son moteur si `modules.pwa.enabled` est faux.
- *     **VRAI**, conservé, épinglé par **SLO-05** ;
- *   - **le MÉCANISME** — les `sharedLifecycle` tournent dans l'ordre de la liste et les
- *     `sharedTeardown` en ordre inverse. **VRAI**, conservé, épinglé par
- *     `__tests__/config/s15-modules-storage-init.test.js` ;
- *   - **la POSITION** — « l'ordre entre les deux porte ». **RÉFUTÉ**, ici.
+ *   - **the GATE** — `offline` refuses to start its engine if
+ *     `modules.pwa.enabled` is false. **TRUE**, kept, pinned by **SLO-05**;
+ *   - **the MECHANISM** — the `sharedLifecycle`s run in list order and the
+ *     `sharedTeardown`s in reverse. **TRUE**, kept, pinned by
+ *     `__tests__/config/s15-modules-storage-init.test.js`;
+ *   - **the POSITION** — "the order between the two carries". **REFUTED**, here.
  *
- * ## Pourquoi PAS dans `manifest-shuffle.test.ts`
+ * ## Why NOT in `manifest-shuffle.test.ts`
  *
- * Ce fichier-là ne fait tourner que `registerPresetDeclarations` / `registerPresetModules` : il
- * **n'appelle jamais `SharedModule`**. `pwa` et `offline` n'ont ni `createModule` ni `mobileIcon`,
- * donc les y permuter ne change rien d'observable *par construction* — une assertion posée là
- * serait verte quoi qu'il arrive, y compris sous la mutation M-A1 ci-dessous. Une garde
- * décorative, exactement ce que le Sprint 1 a payé deux fois.
+ * That file only runs `registerPresetDeclarations` /
+ * `registerPresetModules`: it **never calls `SharedModule`**. `pwa` and
+ * `offline` have neither `createModule` nor `mobileIcon`, so permuting them
+ * there changes nothing observable *by construction* — an assertion set
+ * there would be green no matter what, including under mutation M-A1 below.
+ * A decorative guard, exactly what has already been paid for twice.
  *
- * ## La comparaison porte sur le CONTENU des effets, pas sur leur ordre
+ * ## The comparison bears on the effects' CONTENT, not their order
  *
- * ⚠️ `[...effects].sort()`, délibérément. L'ordre des effets DIFFÈRE forcément entre les deux runs
- * — c'est trivial et sans conséquence, puisque aucun des deux n'attend l'autre. Ce qui doit être
- * identique est **ce qui a été fait**, pas dans quel ordre. Sans cette phrase, le prochain lecteur
- * croira la garde plus faible qu'elle n'est.
+ * ⚠️ `[...effects].sort()`, deliberately. The effects' order necessarily
+ * DIFFERS between the two runs — trivial and without consequence, since
+ * neither waits for the other. What must be identical is **what was
+ * done**, not in which order. Without this sentence, the next reader will
+ * believe the guard weaker than it is.
  *
- * ## Preuve par mutation — vue le 08/08/2026
+ * ## Proof by mutation — seen on 08/08/2026
  *
- *   M-A1  `offline` refuse de tourner si `pwa` n'a pas posé un drapeau (le couplage que la doc
- *         affirmait, écrit à la main)                                  → 🔴 **SLO-01 et SLO-08**
- *   M-A2  le run B n'est plus inversé                                   → 🔴 SLO-CTRL-1
- *   M-A3  retirer le stub `requestIdleCallback`                         → 🔴 SLO-CTRL-2
- *   M-A4  retirer `&& cfg.pwaEnabled === true` d'`offline/lifecycle.ts` → 🔴 SLO-05
- *   M-A5  `SharedModule.destroy()` itère en AVANT                       → 🟢 **SLO-06 reste vert**,
- *         et `s15-modules-storage-init.test.js` rougit. C'est la mutation la plus instructive du
- *         lot : elle sépare « le mécanisme d'ordre inverse existe » — vrai, gardé ailleurs — de
- *         « cet ordre porte une conséquence » — faux, et c'est ce que 7.4 réfute.
+ *   M-A1  `offline` refuses to run if `pwa` did not set a flag (the coupling
+ *         the doc asserted, written by hand)                            → 🔴 **SLO-01 and SLO-08**
+ *   M-A2  run B is no longer inverted                                   → 🔴 SLO-CTRL-1
+ *   M-A3  removing the `requestIdleCallback` stub                       → 🔴 SLO-CTRL-2
+ *   M-A4  removing `&& cfg.pwaEnabled === true` from `offline/lifecycle.ts` → 🔴 SLO-05
+ *   M-A5  `SharedModule.destroy()` iterates FORWARD                     → 🟢 **SLO-06 stays green**,
+ *         and `s15-modules-storage-init.test.js` turns red. The most
+ *         instructive mutation of the lot: it separates "the reverse-order
+ *         mechanism exists" — true, guarded elsewhere — from "that order
+ *         carries a consequence" — false, and refuted here.
  *
- * ⚠️ M-A1 rougit **SLO-01 et SLO-08, pas les quatre cellules**, et c'est correct : sur les trois
- * autres, `offline` ne produit de toute façon aucun effet (son gate le bloque, ou il est
- * désactivé), donc les deux ordres restent identiques. Seule la cellule où le moteur démarre
- * vraiment peut voir un couplage. Une garde qui rougirait sur les quatre serait suspecte, pas
- * meilleure.
+ * ⚠️ M-A1 turns **SLO-01 and SLO-08 red, not all four cells**, and that is
+ * correct: on the other three, `offline` produces no effect anyway (its
+ * gate blocks it, or it is disabled), so both orders stay identical. Only
+ * the cell where the engine really starts can see a coupling. A guard
+ * turning red on all four would be suspect, not better.
  *
- * ⚠️ Défaut de HARNAIS trouvé en écrivant ce fichier, consigné parce qu'il aurait fait conclure
- * l'inverse de la mesure : `run()` rend des **copies** de ses tableaux. Les stubs de `navigator.*`
- * survivent au retour, et le `reset()` qui sépare les deux runs rappelle `PwaLifecycle._reset()`
- * → `_unregisterAll()` → `getRegistrations()`. Sans la copie, cet appel s'écrivait dans les
- * effets du run **déjà terminé** et la cellule `pwa:off offline:off` comparait 2 contre 1.
+ * ⚠️ HARNESS defect found while writing this file, logged because it would
+ * have led to concluding the inverse of the measure: `run()` returns
+ * **copies** of its arrays. The `navigator.*` stubs survive the return, and
+ * the `reset()` separating the two runs calls `PwaLifecycle._reset()` →
+ * `_unregisterAll()` → `getRegistrations()`. Without the copy, that call
+ * wrote itself into the **already finished** run's effects and the
+ * `pwa:off offline:off` cell compared 2 against 1.
  *
- * @see packages/core/src/presets/manifest.full.ts — l'en-tête requalifié
- * @see docs/specs/capacites/pwa.md — §Décisions, la ligne « Position libre »
- * @see roadmap_socle-init.md 📦 (archivée le 09/08/2026) §Sprint 7, tâche 7.4
+ * @see packages/core/src/presets/manifest.full.ts — the requalified header
+ * @see docs/specs/capacites/pwa.md — §Décisions, the "Position libre" line
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 import { shuffled } from "./_helpers/shuffle.ts";
 
-// ⚠️ `vi.hoisted`, et pas un simple `let` : `offline/install.ts` importe `api/geoleaf.sync.ts`,
-// qui s'AUTO-MONTE sur le namespace à l'import (pour qu'un plugin de données puisse enregistrer
-// son gestionnaire de synchronisation avant la fin du boot). `ensureGeoLeaf()` est donc appelé
-// pendant la résolution des imports ci-dessous — avant qu'un `let` de ce fichier soit initialisé.
+// ⚠️ `vi.hoisted`, not a plain `let`: `offline/install.ts` imports
+// `api/geoleaf.sync.ts`, which SELF-MOUNTS on the namespace at import (so a
+// data plugin can register its sync handler before the boot ends).
+// `ensureGeoLeaf()` is therefore called while the imports below resolve —
+// before any `let` of this file is initialised.
 const H = vi.hoisted(() => ({ GL: {} as Record<string, unknown> }));
 
 vi.mock("../../src/utils/general/geoleaf-global.js", () => ({
@@ -105,26 +115,28 @@ const { SWRegister } = await import("../../src/kernel/storage/index.ts");
 const { OfflineLifecycle } = await import("../../src/capabilities/offline/lifecycle.ts");
 const { PwaLifecycle } = await import("../../src/capabilities/pwa/lifecycle.ts");
 
-/** Un run : la séquence des lifecycles appelés, et les effets observés. */
+/** One run: the sequence of lifecycles called, and the effects observed. */
 interface Run {
     sequence: string[];
     effects: string[];
 }
 
 /**
- * Exécute `SharedModule.init()` sur une liste d'installers et collecte ce qui en sort.
+ * Runs `SharedModule.init()` over a list of installers and collects what comes out.
  *
- * Trois pièges sont désarmés ici, et chacun rendrait la comparaison AVEUGLE s'il ne l'était pas —
- * c'est-à-dire verte pour une raison qui n'a rien à voir avec ce qu'on mesure. Voir SLO-CTRL-*.
+ * Three traps are disarmed here, and each would make the comparison BLIND
+ * if it were not — i.e. green for a reason unrelated to what is measured.
+ * See SLO-CTRL-*.
  */
 async function run(installers: readonly unknown[], cfg: Record<string, unknown>): Promise<Run> {
     const sequence: string[] = [];
     const effects: string[] = [];
     const note = (s: string) => effects.push(s);
 
-    // ── Piège 2 — `navigator.storage` et `navigator.serviceWorker` sont ABSENTS sous happy-dom.
-    // Sans stub, `_requestPersistentStorage()` et `_unregisterAll()` sortent en no-op et les
-    // cellules « pwa off » ne compareraient rien du tout.
+    // ── Trap 2 — `navigator.storage` and `navigator.serviceWorker` are
+    // ABSENT under happy-dom. Without stubs, `_requestPersistentStorage()`
+    // and `_unregisterAll()` exit as no-ops and the "pwa off" cells would
+    // compare nothing at all.
     Object.defineProperty(navigator, "storage", {
         configurable: true,
         value: {
@@ -169,7 +181,7 @@ async function run(installers: readonly unknown[], cfg: Record<string, unknown>)
         _OfflineDetector,
     };
 
-    // Enveloppe : trace QUI a tourné, sans changer ce que fait l'installer.
+    // Wrapper: traces WHO ran, without changing what the installer does.
     const traced = installers.map((inst) => {
         const i = inst as { declaration?: { id?: string }; sharedLifecycle?: (c: unknown) => void };
         return {
@@ -183,20 +195,23 @@ async function run(installers: readonly unknown[], cfg: Record<string, unknown>)
 
     new SharedModule(traced as never).init(null as never, cfg as never);
 
-    // ── Piège 3 — la chaîne d'offline est asynchrone : `Storage.init` vit dans le `.then()` de
-    // `ensureLoaded`. Drainer avant de figer `effects`, sinon la cellule on/on ne verrait rien.
+    // ── Trap 3 — the offline chain is asynchronous: `Storage.init` lives
+    // in `ensureLoaded`'s `.then()`. Drain before freezing `effects`,
+    // otherwise the on/on cell would see nothing.
     await new Promise((r) => setTimeout(r, 20));
 
-    // ⚠️ COPIES, pas les tableaux vivants. Les stubs de `navigator.*` posés ci-dessus restent en
-    // place après le retour, et le `reset()` qui sépare les deux runs rappelle
-    // `PwaLifecycle._reset()` → `_unregisterAll()` → `getRegistrations()`. Sans la copie, cet
-    // appel-là allait s'écrire dans les effets du run DÉJÀ TERMINÉ, et la comparaison voyait
-    // 2 contre 1 sur une cellule où les deux ordres font pourtant la même chose. Défaut du
-    // harnais, pas du sujet — mais il aurait fait conclure l'inverse de la mesure.
+    // ⚠️ COPIES, not the live arrays. The `navigator.*` stubs set above
+    // stay in place after the return, and the `reset()` separating the two
+    // runs calls `PwaLifecycle._reset()` → `_unregisterAll()` →
+    // `getRegistrations()`. Without the copy, that call went and wrote
+    // itself into the ALREADY FINISHED run's effects, and the comparison
+    // saw 2 against 1 on a cell where both orders nonetheless do the same
+    // thing. A harness defect, not the subject's — but it would have led to
+    // concluding the inverse of the measure.
     return { sequence: [...sequence], effects: [...effects] };
 }
 
-/** Les deux ordres à comparer, sur une même configuration. */
+/** The two orders to compare, on one same configuration. */
 async function bothOrders(cfg: Record<string, unknown>) {
     const nominal = await run([PWA_INSTALLER, OFFLINE_INSTALLER], cfg);
     reset();
@@ -210,7 +225,7 @@ function reset() {
     CapabilityRegistry._reset();
 }
 
-/** Les quatre cellules `{pwa on|off} × {offline on|off}`. */
+/** The four cells `{pwa on|off} × {offline on|off}`. */
 const CELLS = [
     { name: "pwa:on offline:on", pwa: true, offline: true },
     { name: "pwa:on offline:off", pwa: true, offline: false },
@@ -229,11 +244,12 @@ const cfgFor = (c: (typeof CELLS)[number]) => ({
 describe("SLO — la position de pwa/offline au manifeste ne décide de rien (7.4)", () => {
     beforeEach(() => {
         vi.clearAllMocks();
-        // ── Piège 1 — happy-dom n'expose PAS `requestIdleCallback`, donc `Helpers.lazyExecute`
-        // retombe sur `setTimeout(cb, 3000)` et l'enregistrement du SW n'a lieu dans AUCUN des
-        // deux ordres. La comparaison serait alors aveugle sur l'axe qui compte le plus. Le stub
-        // synchrone met l'effet DANS le tick, donc dans le champ de la mesure. SLO-CTRL-2 est ce
-        // qui empêche ce piège de se refermer en silence.
+        // ── Trap 1 — happy-dom does NOT expose `requestIdleCallback`, so
+        // `Helpers.lazyExecute` falls back to `setTimeout(cb, 3000)` and the
+        // SW registration happens in NEITHER order. The comparison would
+        // then be blind on the axis that counts most. The synchronous stub
+        // puts the effect IN the tick, hence within the measure's field.
+        // SLO-CTRL-2 is what keeps this trap from closing again silently.
         (window as unknown as Record<string, unknown>).requestIdleCallback = (cb: () => void) => {
             cb();
             return 0;
@@ -248,16 +264,16 @@ describe("SLO — la position de pwa/offline au manifeste ne décide de rien (7.
     });
 
     it("SLO-CTRL-1 — l'inversion a VRAIMENT eu lieu", async () => {
-        // Sans elle, SLO-01..04 seraient vrais par vacuité : deux runs identiques comparés
-        // l'un à l'autre passent toujours.
+        // Without it, SLO-01..04 would be true by vacuity: two identical
+        // runs compared to each other always pass.
         const { nominal, inverse } = await bothOrders(cfgFor(CELLS[0]));
         expect(nominal.sequence).toEqual(["pwa", "offline"]);
         expect(inverse.sequence).toEqual(["offline", "pwa"]);
     });
 
     it("SLO-CTRL-2 — l'enregistrement du SW est bien OBSERVÉ quand pwa est actif", async () => {
-        // Désarme le piège `lazyExecute`. Si cette règle rougit, SLO-01..04 ne mesurent plus
-        // l'axe service-worker et leur vert ne vaut rien.
+        // Disarms the `lazyExecute` trap. If this rule turns red, SLO-01..04
+        // no longer measure the service-worker axis and their green is worthless.
         const { nominal, inverse } = await bothOrders(cfgFor(CELLS[0]));
         for (const r of [nominal, inverse]) {
             expect(r.effects.some((e) => e.startsWith("SWRegister.register("))).toBe(true);
@@ -265,8 +281,8 @@ describe("SLO — la position de pwa/offline au manifeste ne décide de rien (7.
     });
 
     it("SLO-CTRL-3 — le drain asynchrone a bien eu lieu", async () => {
-        // Sans le drain, `Storage.init` n'est jamais observé et la cellule on/on comparerait
-        // deux ensembles également tronqués.
+        // Without the drain, `Storage.init` is never observed and the on/on
+        // cell would compare two equally truncated sets.
         const { nominal } = await bothOrders(cfgFor(CELLS[0]));
         expect(nominal.effects.some((e) => e.startsWith("Storage.init("))).toBe(true);
     });
@@ -284,8 +300,9 @@ describe("SLO — la position de pwa/offline au manifeste ne décide de rien (7.
     }
 
     it("SLO-05 — le GATE tient : pwa désactivé ⟹ aucun moteur hors-ligne, dans LES DEUX ordres", async () => {
-        // La moitié VRAIE de l'énoncé historique, et elle n'est gardée que là. `offline` lit
-        // `modules.pwa.enabled` du sac fusionné : c'est une condition, pas une position.
+        // The TRUE half of the historical claim, and it is only guarded
+        // here. `offline` reads `modules.pwa.enabled` from the merged bag: a
+        // condition, not a position.
         const { nominal, inverse } = await bothOrders(cfgFor(CELLS[2]));
         for (const r of [nominal, inverse]) {
             expect(r.effects.some((e) => e.includes("ensureLoaded"))).toBe(false);
@@ -310,8 +327,9 @@ describe("SLO — la position de pwa/offline au manifeste ne décide de rien (7.
             new SharedModule(traced as never).destroy();
             return seen;
         };
-        // Le MÉCANISME (ordre inverse) est bien là — c'est `s15-modules-storage-init.test.js`
-        // qui l'épingle. Ce qui est asserté ICI est que son inversion n'a aucune conséquence.
+        // The MECHANISM (reverse order) is there — pinned by
+        // `s15-modules-storage-init.test.js`. What is asserted HERE is that
+        // inverting it has no consequence.
         expect((await teardown([PWA_INSTALLER, OFFLINE_INSTALLER])).sort()).toEqual(
             (await teardown([OFFLINE_INSTALLER, PWA_INSTALLER])).sort()
         );
@@ -321,8 +339,8 @@ describe("SLO — la position de pwa/offline au manifeste ne décide de rien (7.
         const contributors = FULL.capabilities.filter(
             (i: { sharedLifecycle?: unknown }) => typeof i.sharedLifecycle === "function"
         );
-        // Anti-gate-vide : avec moins de deux contributeurs il n'y a rien à permuter, et cette
-        // règle sortirait verte en ne gardant plus rien.
+        // Anti-empty-gate: with fewer than two contributors there is
+        // nothing to permute, and this rule would come out green guarding nothing.
         expect(
             contributors.length,
             "moins de deux capacités contribuent un `sharedLifecycle` — SLO-08 n'a plus de sujet"

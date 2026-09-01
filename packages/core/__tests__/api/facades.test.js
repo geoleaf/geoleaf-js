@@ -5,10 +5,13 @@ vi.mock("../../src/kernel/basemaps/facade.js", () => ({ Baselayers: { init: vi.f
 vi.mock("../../src/kernel/ui/ui-api.js", () => ({ UI: { init: vi.fn() } }));
 vi.mock("../../src/kernel/api/geoleaf-api.js", () => ({ GeoLeafAPI: {} }));
 vi.mock("../../src/kernel/layer-manager/layer-manager-api.js", () => ({
-    LayerManager: { getLayerById: vi.fn(), registerLayer: vi.fn() },
+    // `registerLayer` removed on 20/08/2026: absent from `LayerManager`'s
+    // real surface (2 members — `init`, `refresh`) and from every source. Nothing asserted it.
+    LayerManager: { getLayerById: vi.fn() },
 }));
 vi.mock("../../src/capabilities/legend/public-api.js", () => ({
-    Legend: { init: vi.fn(), getSections: vi.fn() },
+    // `getSections` removed on 20/08/2026: the `Legend` facade has no "sections" family.
+    Legend: { init: vi.fn() },
 }));
 import { GeoLeafAPI } from "../../src/api/geoleaf.api.js";
 import { Baselayers } from "../../src/api/geoleaf.baselayers.js";

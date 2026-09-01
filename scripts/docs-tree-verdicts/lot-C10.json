@@ -1,0 +1,35 @@
+{
+    "schemaVersion": 2,
+    "lot": "C10",
+    "scope": ["scripts/check-roadmap-closures.cjs", "scripts/lib/roadmap-closures.cjs"],
+    "verdicts": {
+        "scripts/check-roadmap-closures.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Gate ROADMAP-CLOSURES : la clôture d'une roadmap retirée existe-t-elle dans le dépôt, et l'index l'est-il encore",
+            "confidence": "haute",
+            "rationale": "177 LOC, 0 export (point d'entrée CLI), 2 appelants — scripts/ci-local.cjs et .github/workflows/ci.yml. Nom conforme à la famille des gates `check-*.cjs` (N1 : kebab-case). E8 sans objet : scripts/ est la racine des points d'entrée d'outillage. Le nom dit son objet — les clôtures de roadmap — et le contenu ne fait que cela : générer ou vérifier une table dérivée de git."
+        },
+        "scripts/lib/roadmap-closures.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Ce que git sait encore d'une roadmap retirée : date de retrait, commit, dernière `version:` commitée, et si c'était un déplacement",
+            "confidence": "haute",
+            "rationale": "109 LOC, 3 exports (ROADMAPS_REL, closedRoadmaps, versionAt), 1 importeur — la gate ci-dessus. E1 examiné : un seul importeur AUJOURD'HUI, et il est hors du dossier lib/ — mais lib/ est le domicile déclaré des lecteurs partagés du dépôt, et l'extraction s'est faite au SECOND lecteur (le générateur et la gate sont un seul fichier, ils partagent ce module). N3 sans objet : une responsabilité unique et nommée, pas un fourre-tout."
+        }
+    }
+}

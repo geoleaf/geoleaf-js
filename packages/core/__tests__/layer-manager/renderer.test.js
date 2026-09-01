@@ -99,10 +99,11 @@ describe("layer-manager/renderer (Phase 4.14)", () => {
         );
     });
 
-    // B-251 — le mode de rendu tient au SEUL `typeof collapsedByDefault === "boolean"`.
-    // Le cas positif était couvert, le négatif non : c'est pourtant lui qu'on observait
-    // en production (sections implicites sans le drapeau → titres plats, aucun accordéon).
-    describe("B-251 — collapsedByDefault décide seul de l'accordéon", () => {
+    // The render mode hangs on the SINGLE
+    // `typeof collapsedByDefault === "boolean"`. The positive case was
+    // covered, the negative was not: yet it is the one observed in
+    // production (implicit sections without the flag → flat titles, no accordion).
+    describe("collapsedByDefault décide seul de l'accordéon", () => {
         const withItems = (extra) => [
             {
                 id: "data-tourism",

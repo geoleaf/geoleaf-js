@@ -180,7 +180,7 @@
             "severity": null,
             "description": "Chargement effectif d'un fichier de style : résolution du chemin de profil, `fetch`, analyse JSON, validation de schéma et mise en cache du résultat",
             "confidence": "haute",
-            "rationale": "212 LOC, 1 importeur. Son en-tête documente l'extraction depuis style-loader.ts (Sprint 1) puis la purge KERNEL S11 des 4 fonctions sans appelant de production ; le suffixe `-core` distingue l'implémentation de la façade éponyme du dossier"
+            "rationale": "212 LOC, 1 importeur. Son en-tête documente l'extraction depuis style-loader.ts puis la purge des 4 fonctions sans appelant de production ; le suffixe `-core` distingue l'implémentation de la façade éponyme du dossier"
         },
         "packages/core/src/utils/loaders/style-cache.ts": {
             "kind": "file",
@@ -460,7 +460,7 @@
             "severity": null,
             "description": "Mesure de la performance du runtime : profileur (marques, mesures, fuites), persistance de la baseline, export de trace DevTools et métriques de démarrage",
             "confidence": "haute",
-            "rationale": "STRUCT S6 — bac CRÉÉ et geste E7 exécuté (26/07/2026). Le sous-arbre general/performance/ (2 f.) n'a pas été promu tel quel : il a été APLATI dans utils/performance/ avec ses 2 consommateurs directs, performance-profiler.ts (593 L) et runtime-metrics.ts (152 L) — sinon on obtenait utils/performance/performance/, une profondeur que rien ne motivait. 4 fichiers / 878 LOC. Critère d'entrée POSITIF, exigé avant écriture (S6.1) : « mesure de la performance du runtime — marques, mesures, baseline persistée, trace DevTools, métriques de démarrage ». Il exclut ce qui OBSERVE sans mesurer (log/) et ce qui mesure une géométrie (geo/). X2c reste écarté pour la raison d'origine : 593 + 133 = 726 > 700, INV-700 l'interdit. Deux bacs que le verdict de dossier de general/ proposait — new:utils/dom et new:utils/runtime — n'ont PAS été créés : aucune motivation de fichier ne leur assignait quoi que ce soit, et un bac sans critère d'entrée re-déclenche N3."
+            "rationale": "STRUCT S6 — bac CRÉÉ et geste E7 exécuté (26/07/2026). Le sous-arbre general/performance/ (2 f.) n'a pas été promu tel quel : il a été APLATI dans utils/performance/ avec ses 2 consommateurs directs, performance-profiler.ts (593 L) et runtime-metrics.ts (152 L) — sinon on obtenait utils/performance/performance/, une profondeur que rien ne motivait. 4 fichiers / 878 LOC. Critère d'entrée POSITIF, exigé avant écriture : « mesure de la performance du runtime — marques, mesures, baseline persistée, trace DevTools, métriques de démarrage ». Il exclut ce qui OBSERVE sans mesurer (log/) et ce qui mesure une géométrie (geo/). X2c reste écarté pour la raison d'origine : 593 + 133 = 726 > 700, INV-700 l'interdit. Deux bacs que le verdict de dossier de general/ proposait — new:utils/dom et new:utils/runtime — n'ont PAS été créés : aucune motivation de fichier ne leur assignait quoi que ce soit, et un bac sans critère d'entrée re-déclenche N3."
         },
         "packages/core/src/utils/performance/performance-profiler.ts": {
             "kind": "file",
@@ -544,7 +544,7 @@
             "severity": null,
             "description": "Façade de journalisation typée par cas d'usage — quota, réseau, validation, IndexedDB, performance, mémoire — au-dessus du module Log",
             "confidence": "haute",
-            "rationale": "122 LOC, 1 seul importeur (utils-namespace.ts) mais publié en `GeoLeaf.Utils.ErrorLogger` : X1a ne tire pas, la surface globale le rend atteignable hors graphe d'imports. Sa place naturelle est utils/log/ (à côté de logger.ts, son unique dépendance) ; la redistribution est portée par le verdict de dossier, pas dupliquée ici ⟶ STRUCT S6 : déplacé dans utils/log/, à côté de logger.ts qui est sa seule dépendance, comme cette motivation le demandait. ⚠️ Il n'est PAS inscrit sur le baril utils/log/index.ts, contre l'intention du plan : 151 fichiers de test mockent ce baril et un vi.mock doit déclarer tout export que le module sous test y prend — l'y mettre les taxait tous, pour UN importeur réel (utils-namespace.ts). Le motif de médiation d'ARCHI S12.2 porte sur Log (117 importeurs ici), pas sur un export à importateur unique. Son site frère utils-namespace.ts:43 était lui aussi en relatif court."
+            "rationale": "122 LOC, 1 seul importeur (utils-namespace.ts) mais publié en `GeoLeaf.Utils.ErrorLogger` : X1a ne tire pas, la surface globale le rend atteignable hors graphe d'imports. Sa place naturelle est utils/log/ (à côté de logger.ts, son unique dépendance) ; la redistribution est portée par le verdict de dossier, pas dupliquée ici ⟶ STRUCT S6 : déplacé dans utils/log/, à côté de logger.ts qui est sa seule dépendance, comme cette motivation le demandait. ⚠️ Il n'est PAS inscrit sur le baril utils/log/index.ts, contre l'intention du plan : 151 fichiers de test mockent ce baril et un vi.mock doit déclarer tout export que le module sous test y prend — l'y mettre les taxait tous, pour UN importeur réel (utils-namespace.ts). Le motif de médiation du baril porte sur Log (117 importeurs ici), pas sur un export à importateur unique. Son site frère utils-namespace.ts:43 était lui aussi en relatif court."
         }
     }
 }

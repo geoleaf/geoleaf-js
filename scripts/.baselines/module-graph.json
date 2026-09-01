@@ -1,0 +1,29 @@
+{
+    "_comment": "MG-01 : modules qu'AUCUNE arête n'atteint (imports nommés, nus, ré-exports, `import()` de type ou dynamique, depuis les sources, les tests .ts ET .js, et les .d.ts). Les 6 de la pose sont tous structurels — 2 points d'entrée que la détection ne déclare pas, et 4 fichiers de mise en place chargés par la config vitest. MG-02 : modules dont la PRODUCTION ne les atteint que par un import NU, sans porter `@sideEffectGraft`. Les 15 de la pose sont de vrais modules d'effet de bord d'une forme que `GRAFT` ne couvre pas — il ne voit que la greffe sur un import, ceux-ci écrivent sur `globalThis`. Les deux listes ne peuvent que RÉTRÉCIR.",
+    "_generated": "node scripts/check-module-graph.cjs --update-baseline",
+    "orphelins": [
+        "packages/core/src/bundle-esm-entry.ts",
+        "packages/libs/field-renderer/src/__tests__/canvas-setup.ts",
+        "packages/libs/field-renderer/src/index.ts",
+        "packages/plugins/editor/src/__tests__/canvas-setup.ts",
+        "packages/plugins/measure/src/__tests__/canvas-setup.ts",
+        "packages/plugins/print/src/__tests__/canvas-setup.ts"
+    ],
+    "effetDeBordNonMarques": [
+        "packages/core/src/app/app-namespace.ts",
+        "packages/core/src/app/boot.ts",
+        "packages/core/src/globals/globals.api.ts",
+        "packages/core/src/globals/globals.config.ts",
+        "packages/core/src/globals/globals.core.ts",
+        "packages/core/src/globals/globals.geojson.ts",
+        "packages/core/src/globals/globals.storage.ts",
+        "packages/core/src/globals/globals.ts",
+        "packages/core/src/globals/globals.ui.ts",
+        "packages/core/src/utils/performance/runtime-metrics.ts",
+        "packages/plugins/offline-ui/src/cache/layer-selector/data-fetching.ts",
+        "packages/plugins/offline-ui/src/cache/layer-selector/row-rendering.ts",
+        "packages/plugins/offline-ui/src/cache/layer-selector/selection-cache.ts",
+        "packages/plugins/offline-ui/src/ui/cache-button.ts",
+        "packages/plugins/routing/src/providers/builtins.ts"
+    ]
+}

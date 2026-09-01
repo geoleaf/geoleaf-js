@@ -99,7 +99,7 @@
             "severity": null,
             "description": "Accès typé au namespace global : `getGeoLeaf()` qui peut rendre `undefined` avant le boot, et `ensureGeoLeaf()` qui le crée pour les montages de globals",
             "confidence": "haute",
-            "rationale": "40 LOC pour 54 importeurs — le fichier le plus consommé du lot, réparti sur 24 dossiers, donc aucune concentration E1. Remplacement canonique des blocs `const _g: any = globalThis…` (roadmap_typage-strict S1) ; homonyme de fonction avec host-runtime/src/host.ts, mais T2 §2 qualifie le core de pair et non de fork"
+            "rationale": "40 LOC pour 54 importeurs — le fichier le plus consommé du lot, réparti sur 24 dossiers, donc aucune concentration E1. Remplacement canonique des blocs `const _g: any = globalThis…` ; homonyme de fonction avec host-runtime/src/host.ts, mais T2 §2 qualifie le core de pair et non de fork"
         },
         "packages/core/src/utils/general/object-path-guard.ts": {
             "kind": "file",
@@ -113,7 +113,7 @@
             "severity": null,
             "description": "Liste noire canonique des clés interdites en écriture dynamique — `__proto__`, `constructor`, `prototype` — contre la pollution de prototype",
             "confidence": "haute",
-            "rationale": "95 LOC, 7 importeurs venus de 4 couches (kernel/config ×4, adapters/maplibre, utils/general ×2). L'en-tête motive le zéro-import comme condition d'existence — « Deliberately DEPENDENCY-FREE… Do not add imports here, not even Log » — après 4 copies divergentes soldées au Sprint 13 ; la position en feuille de utils/ est exactement ce que cette contrainte impose"
+            "rationale": "95 LOC, 7 importeurs venus de 4 couches (kernel/config ×4, adapters/maplibre, utils/general ×2). L'en-tête motive le zéro-import comme condition d'existence — « Deliberately DEPENDENCY-FREE… Do not add imports here, not even Log » — après 4 copies divergentes soldées depuis ; la position en feuille de utils/ est exactement ce que cette contrainte impose"
         },
         "packages/core/src/utils/general/object-utils.ts": {
             "kind": "file",

@@ -49,11 +49,11 @@ const CacheStorage = {
         const profileUrl = `${profilesBasePath}/${profileId}/profile.json`;
         validateFetchUrl(profileUrl);
 
-        // ⚠️ « DÉGRADER VISIBLEMENT » — c'est la moitié de la tâche 3.8 que borner ne fait
-        // pas. Un abandon doit se DIRE, et se dire AUTREMENT qu'une ressource manquante :
-        // « le serveur n'a pas répondu en 15 s » appelle un réessai, « profil introuvable »
-        // appelle une correction de configuration. Les confondre envoie l'utilisateur
-        // chercher au mauvais endroit.
+        // ⚠️ "DEGRADE VISIBLY" — the half of the work that bounding does not do. An
+        // abandonment must SAY SO, and say it DIFFERENTLY from a missing resource:
+        // "the server did not answer within 15 s" calls for a retry, "profile not
+        // found" calls for a configuration fix. Confusing them sends the user looking
+        // in the wrong place.
         let response: Response;
         try {
             response = await fetchBounded(profileUrl);
@@ -216,7 +216,7 @@ const CacheStorage = {
         if (!IndexedDB?._db || "_isStub" in IndexedDB._db) {
             throw new Error("StorageDB not initialized");
         }
-        const db = IndexedDB._db as IDBDatabase;
+        const db = IndexedDB._db;
         const transaction = db.transaction(["metadata"], "readwrite");
         const store = transaction.objectStore("metadata");
 
@@ -250,7 +250,7 @@ const CacheStorage = {
         if (!rawDb || "_isStub" in rawDb) return null;
 
         try {
-            const db = rawDb as IDBDatabase;
+            const db = rawDb;
             const transaction = db.transaction(["metadata"], "readonly");
             const store = transaction.objectStore("metadata");
 
@@ -284,7 +284,7 @@ const CacheStorage = {
         const rawDb = IndexedDB?._db;
         if (!rawDb || "_isStub" in rawDb) return;
 
-        const db = rawDb as IDBDatabase;
+        const db = rawDb;
         const transaction = db.transaction(["metadata"], "readwrite");
         const store = transaction.objectStore("metadata");
 
@@ -327,7 +327,7 @@ const CacheStorage = {
         if (!rawDb || "_isStub" in rawDb) return [];
 
         try {
-            const db = rawDb as IDBDatabase;
+            const db = rawDb;
             const transaction = db.transaction(["metadata"], "readonly");
             const store = transaction.objectStore("metadata");
 
@@ -366,7 +366,7 @@ const CacheStorage = {
         if (!rawDb || "_isStub" in rawDb) return cachedUrls;
 
         try {
-            const db = rawDb as IDBDatabase;
+            const db = rawDb;
             const transaction = db.transaction(["layers"], "readonly");
             const store = transaction.objectStore("layers");
 
@@ -425,20 +425,20 @@ const CacheStorage = {
 
             // 3. Drop the Service Worker Cache API buckets, when available.
             //
-            // 🛑 BUG n° 5, REQUALIFIÉ au pré-vol 3.0 — l'effet annoncé était FAUX.
+            // 🛑 A BUG REQUALIFIED at pre-flight — the announced effect was FALSE.
             //
-            // La roadmap disait « vider le cache du profil cesse de marcher au prochain bump,
-            // sans bruit », à cause du littéral `geoleaf-v1.1.0-profile-` codé en dur. Mesuré :
-            // la condition était une DISJONCTION dont le second membre
-            // (`includes("profile-<id>")`) attrapait tous les buckets quelle que soit la
-            // version. Le vidage marchait donc ; le littéral ne décidait JAMAIS rien que la
-            // disjonction ne décidât déjà. Il est retiré comme code inerte (compteur C1/C4),
-            // pas comme correctif de comportement.
+            // The roadmap said "clearing the profile cache stops working at the next
+            // bump, silently", because of the hard-coded `geoleaf-v1.1.0-profile-`
+            // literal. Measured: the condition was a DISJUNCTION whose second member
+            // (`includes("profile-<id>")`) caught every bucket whatever the version.
+            // Clearing therefore worked; the literal NEVER decided anything the
+            // disjunction did not already decide. It is removed as inert code, not as
+            // a behaviour fix.
             //
-            // ⚠️ CE QUI ÉTAIT VRAI, et qui est la moitié sérieuse : le cache de TUILES n'était
-            // jamais visé. Un « vider le cache du profil » laissait le fond de carte en place.
-            // Depuis 3.5 il s'appelle `geoleaf-data-tiles` — un nom stable, donc enfin
-            // ciblable, ce qu'un nom versionné n'avait jamais permis de faire proprement.
+            // ⚠️ WHAT WAS TRUE, and is the serious half: the TILE cache was never
+            // targeted. A "clear the profile cache" left the basemap in place. It is
+            // now called `geoleaf-data-tiles` — a stable name, hence finally
+            // targetable, which a versioned name had never allowed cleanly.
             if ("caches" in window) {
                 const cacheNames = await caches.keys();
 
@@ -478,10 +478,10 @@ const CacheStorage = {
 
     // ==================== Storage Quota ====================
 
-    // ⚠️ `getStorageQuota()` A ÉTÉ RETIRÉ ICI (clôture S3c) — troisième exemplaire du même
-    // enveloppement de `navigator.storage.estimate()`, sans appelant de production, et
-    // portant un TROISIÈME vocabulaire de clés (`used` là où le survivant dit `usage`).
-    // Le seul lecteur vivant est `CacheManager.getStorageQuota()`.
+    // ⚠️ `getStorageQuota()` WAS REMOVED HERE — third copy of the same
+    // `navigator.storage.estimate()` wrapper, with no production caller, and carrying
+    // a THIRD key vocabulary (`used` where the survivor says `usage`). The only live
+    // reader is `CacheManager.getStorageQuota()`.
 };
 
 // Public export

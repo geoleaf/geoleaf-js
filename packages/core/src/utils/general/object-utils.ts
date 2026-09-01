@@ -59,11 +59,11 @@ export function getNestedValue<T = unknown>(
 }
 
 /**
- * Checks if un path de property existe dans an object.
+ * Checks whether a property path exists in an object.
  *
  * @param obj - Object source
  * @param path - Path to the property
- * @returns True si le path existe, false sinon
+ * @returns True when the path exists, false otherwise
  */
 export function hasNestedPath(obj: object | null | undefined, path: string): boolean {
     if (!obj || typeof obj !== "object" || !path) {

@@ -33,7 +33,7 @@ const path = require("node:path");
 const { measureEagerBoot, measureStaticClosure } = require("./check-bundle-size.cjs");
 
 const ROOT = path.resolve(__dirname, "..");
-// T5.5 — par le registre, qui jette si le core est introuvable.
+// Through the registry, which throws if the core cannot be found.
 const CORE_DIR = require("./lib/packages.cjs").requireByDirName("core").absDir;
 const CORE_SRC = path.join(CORE_DIR, "src");
 const CORE_TESTS = path.join(CORE_DIR, "__tests__");

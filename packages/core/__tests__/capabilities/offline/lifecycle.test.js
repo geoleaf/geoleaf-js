@@ -45,13 +45,13 @@ describe("OfflineLifecycle.init — engine gate (modules.offline.enabled ∧ mod
         const arg = init.mock.calls[0][0];
         // This used to assert `indexedDB: { name: "geoleaf-db", version: 2 }` — the
         // assertion PINNED the bug: the hardcoded 2 overwrote `StorageDB._dbVersion`
-        // (`facade.ts:188`) and would have blocked the v3 migration. See the dedicated
+        // (`facade.ts`) and would have blocked the v3 migration. See the dedicated
         // test below.
-        // ⚠️ `enableTileCache` N'EST PLUS ICI (3.13), et c'est le sujet : le cycle de vie
-        // le recopiait en défaut alors que rien dans le core ne le lisait. Son unique
-        // lecteur est désormais `ResourceEnumerator._tilesRequested()`, qui interroge la
-        // config directement. Le laisser ici en aurait fait une seconde vérité — la forme
-        // exacte de la recopie qui a produit la cause racine n° 2.
+        // ⚠️ `enableTileCache` IS NO LONGER HERE, and that is the subject:
+        // the lifecycle copied it as a default while nothing in the core read
+        // it. Its only reader is now `ResourceEnumerator._tilesRequested()`,
+        // which queries the config directly. Leaving it here would have made
+        // a second truth — the exact copy shape that produced root cause no. 2.
         expect(arg.cache).toEqual({ enableProfileCache: true });
         expect(arg.enableOfflineDetector).toBe(false);
     });
@@ -94,7 +94,7 @@ describe("OfflineLifecycle.init — engine gate (modules.offline.enabled ∧ mod
 
     // CAPACITÉS S1 — this pins a schema-versioning trap, not a formatting preference.
     // `Storage.init()` overwrites `StorageDB._dbName`/`._dbVersion` with whatever it is
-    // given (`facade.ts:187-188`). This call used to pass `{ name: "geoleaf-db",
+    // given (`facade.ts`). This call used to pass `{ name: "geoleaf-db",
     // version: 2 }`, so the hardcoded 2 outranked the schema's own declaration — when
     // `indexedDB.ts` went to v3 for the `uploaded` key migration (B.6), the upgrade would
     // never have run in production, while the unit tests stayed green because they open

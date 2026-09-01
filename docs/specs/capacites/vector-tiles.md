@@ -4,14 +4,14 @@ title: vector-tiles — les couches métier en tuiles vectorielles MVT
 capability_id: vector-tiles
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 5535694b
+verifie_contre: 1d51c96b9
 date: 27 juillet 2026
 ---
 
 # vector-tiles — les couches métier en tuiles vectorielles MVT
 
 **Type :** capacité in-core (**de politique**) · **Code :** `packages/core/src/capabilities/vector-tiles/` ·
-**Vérifié contre :** `5535694b` (27/07/2026)
+**Vérifié contre :** `5224e0a27` (18/08/2026)
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -59,6 +59,33 @@ récupère que les tuiles dans le champ de vue, au niveau de généralisation du
   hors du core.
 - **Elle n'est pas obligatoire.** Ses deux consommateurs retombent sur le chemin GeoJSON en son
   absence, sans configuration particulière.
+
+### Quand basculer une couche — la doctrine, pour que la question ne se repose pas
+
+Le mode GeoJSON charge le **jeu entier** côté client : chaque entité est téléchargée, parsée et
+tenue en mémoire, quel que soit le champ de vue. Ce coût croît avec la donnée, pas avec l'usage —
+et c'est le seul facteur : le mécanisme lui-même n'a pas de seuil au-delà duquel il « casse ».
+
+**La sortie structurelle est cette capacité, couche par couche** — pas la simplification des
+données, qui abaisse le coût d'un facteur constant et se refait à chaque croissance. Les tuiles
+inversent la dépendance : le navigateur ne récupère que le champ de vue, au niveau de
+généralisation du zoom courant, et le volume total du jeu cesse d'être ce qui gouverne.
+
+Les signes qui commandent la bascule se **mesurent**, ils ne s'estiment pas :
+
+- le chargement d'une couche pèse visiblement sur le premier affichage — l'attribution du reveal
+  de `scripts/probe-boot-waterfall.mjs` la nomme, avec son poids et son instant de fin ;
+- l'interaction dégrade après chargement (filtres, survol) sur cette couche seule ;
+- la donnée est re-téléchargée entière pour des sessions qui n'en regardent qu'une fraction.
+
+La bascule est **réversible et localisée** : ajouter `data.vectorTiles.enabled: true` et une
+`tilesUrl` **absolue** à la définition de la couche (la recette de réarmement est portée en
+`_comment` par les couches désarmées des profils livrés) ; retirer `enabled` la rend au GeoJSON.
+Aucun autre fichier ne bouge, aucune autre couche n'est affectée.
+
+**Ce que la bascule exige et que le dépôt ne fournit pas** : les tuiles elles-mêmes. Produire les
+`.pbf` est une préparation de données, hors du core — c'est le prix de l'inversion, et il est
+payé une fois par jeu, pas à chaque session.
 
 ---
 
@@ -247,7 +274,7 @@ La capacité lit `GeoLeaf.Config`, `GeoLeaf.Core`, `GeoLeaf._GeoJSONLayerConfig`
 `GeoLeaf._GeoJSONLayerManager` via `getGeoLeaf()`, en accès **défensif** et **typé structurellement**
 (`types.ts` → `LayerConfigModuleLike`, `LayerManagerModuleLike`). Deux de ces membres reposent
 encore sur la traîne `unknown` du namespace — gisement suivi par
-`scripts/check-namespace-typing-coverage.cjs` et le backlog **B-13** ; le typage progresse par
+`scripts/check-namespace-typing-coverage.cjs` ; le typage progresse par
 membre, et **ne s'élargit jamais en arrière vers `any`**.
 
 **Aucune référence à un plugin** — règle `no-plugin-in-core`, vérifiée par

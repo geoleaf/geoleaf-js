@@ -48,18 +48,17 @@ const DETAIL = {
     point: { x: 100, y: 200 },
 };
 /**
- * Déclaration par défaut des suites qui testent la MÉCANIQUE de la bulle — montage,
- * ancrage, remplacement — et non la résolution des champs.
+ * Default declaration for the suites testing the popup's MECHANICS —
+ * mounting, anchoring, replacement — and not field resolution.
  *
- * ⚠️ Ces suites appelaient `stubGeoLeaf()` sans argument et s'appuyaient sur le
- * repli implicite (« pas de binding ⟹ rend toutes les propriétés »). La décision U2
- * retire ce repli : elles déclarent donc explicitement ce qu'elles peignent. Le
- * comportement testé est le même ; ce qui change, c'est qu'il est demandé.
+ * ⚠️ These suites called `stubGeoLeaf()` with no argument and leaned on the
+ * implicit fallback ("no binding ⟹ render all properties"). The decision
+ * removes that fallback: they thus declare explicitly what they paint. The
+ * tested behaviour is the same; what changes is that it is asked for.
  */
-// ⚠️ Le panneau est déclaré, lui aussi. L'affordance « Voir plus » valait
-// auparavant `!binding || binding.sidepanel !== false` — encore le repli implicite,
-// qui menait vers un panneau que rien n'avait décrit. Elle exige maintenant une
-// destination DÉCLARÉE.
+// ⚠️ The panel is declared too. The "See more" affordance used to be
+// `!binding || binding.sidepanel !== false` — the implicit fallback again,
+// leading to a panel nothing had described. It now requires a DECLARED destination.
 const DEFAULT_POPUP = {
     popup: [{ field: "name" }, { field: "altitude" }],
     sidepanel: [{ field: "name" }, { field: "altitude" }],
@@ -106,10 +105,10 @@ describe("handleClick()", () => {
         handleClick(DETAIL);
         expect(popup().textContent).toContain("Col du Tourmalet");
     });
-    // \u26a0\ufe0f RETOURN\u00c9 le 02/08/2026 (U2). Ce cas asseyait \u00ab pas de binding \u27f9 dump de
-    // toutes les propri\u00e9t\u00e9s \u00bb \u2014 un contournement complet du contrat attributaire,
-    // atteignable en ne d\u00e9clarant rien. Il asserte d\u00e9sormais l'inverse, et c'est le
-    // m\u00eame test qui garde la d\u00e9cision.
+    // ⚠️ FLIPPED on 02/08/2026. This case asserted "no binding ⟹ dump of
+    // all properties" — a complete bypass of the attribute contract,
+    // reachable by declaring nothing. It now asserts the opposite, and the
+    // same test guards the decision.
     it("n'ouvre RIEN quand la couche ne d\u00e9clare aucune lecture", () => {
         stubGeoLeaf(null);
         handleClick(DETAIL);
@@ -172,12 +171,13 @@ describe("handleClick()", () => {
         handleClick(DETAIL);
         expect(popup().textContent).toContain("2115 m");
     });
-    // ⚠️ Ce cas ÉPINGLAIT le défaut B-69 : il s'appelait « skips action fields (no button
-    // rendered) » et assertait `querySelector("button")` à `null`. Il décrivait fidèlement ce que
-    // le code faisait — écarter les champs `action` — mais ce comportement contredisait le contrat
-    // d'événements, les types de configuration de couche et les types de la capacité, qui
-    // promettaient tous un bouton et une émission. Un test peut être vert et garder le mauvais
-    // comportement : celui-ci l'a fait pendant toute la vie du type `action`.
+    // ⚠️ This case PINNED the defect: it was called "skips action fields (no
+    // button rendered)" and asserted `querySelector("button")` at `null`. It
+    // faithfully described what the code did — discard `action` fields — but
+    // that behaviour contradicted the event contract, the layer configuration
+    // types and the capability's types, which all promised a button and an
+    // emission. A test can be green and guard the wrong behaviour: this one
+    // did for the `action` type's whole life.
     it("rend un bouton pour un champ `action`, et laisse passer les autres champs", () => {
         stubGeoLeaf({
             popup: [

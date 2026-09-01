@@ -60,16 +60,17 @@ describe("GeoLeaf.events facade", () => {
 
         expect(calls).toHaveLength(1);
     });
-    // ── B-240 — un nom hors du domaine s'abonne DANS LE VIDE, et le disait en silence ──────
-    describe("B-240 — avertissement sur un nom hors du domaine `geoleaf:`", () => {
+    // ── An out-of-domain name subscribes INTO THE VOID, and said so silently ───────
+    describe("avertissement sur un nom hors du domaine `geoleaf:`", () => {
         beforeEach(() => {
             Log.warn.mockClear();
         });
 
         it("avertit, et NOMME le nom qu'on voulait probablement écrire", () => {
-            // 🛑 Le cas réel : l'aval écrit `GL.events.on("popup:action", …)` pour un canal
-            // enrichi exprès pour lui. `on()` ne préfixe pas — l'abonnement ne se déclenchera
-            // jamais, et le DOM accepte la chaîne sans broncher.
+            // 🛑 The real case: downstream writes
+            // `GL.events.on("popup:action", …)` for a channel enriched
+            // expressly for it. `on()` does not prefix — the subscription
+            // will never fire, and the DOM accepts the string without flinching.
             const handler = () => {};
             Events.on("popup:action", handler);
             Events.off("popup:action", handler);
@@ -77,21 +78,23 @@ describe("GeoLeaf.events facade", () => {
             expect(Log.warn).toHaveBeenCalled();
             const message = Log.warn.mock.calls[0][0];
             expect(message).toContain("popup:action");
-            // La suggestion est la moitié utile : sans elle, l'avertissement dit qu'il y a un
-            // problème sans dire lequel des deux noms est le bon.
+            // The suggestion is the useful half: without it, the warning says
+            // there is a problem without saying which of the two names is right.
             expect(message).toContain("geoleaf:popup:action");
         });
 
         it("N'avertit PAS sur un nom du domaine", () => {
-            // ⚠️ Contre-épreuve indispensable : sans elle, un avertissement posé sur TOUS les
-            // appels passerait le cas ci-dessus en noyant la console de faux positifs.
+            // ⚠️ Indispensable counter-proof: without it, a warning set on ALL
+            // calls would pass the case above while drowning the console in
+            // false positives.
             //
-            // 🛑 LE NOM DOIT ÊTRE INÉDIT DANS CE FICHIER, et ce cas a été pris en défaut avant
-            // de l'être. Il utilisait `geoleaf:poi:click` — déjà passé par `on()` en EV-01,
-            // donc déjà dans le `Set` de déduplication au niveau module. La mutation « avertir
-            // sur TOUT, domaine compris » l'a laissé VERT : il ne mesurait pas l'absence
-            // d'avertissement, il mesurait la déduplication. Un état de module partagé entre
-            // cas transforme une contre-épreuve en tautologie.
+            // 🛑 THE NAME MUST BE UNSEEN IN THIS FILE, and this case was
+            // caught out before being so. It used `geoleaf:poi:click` —
+            // already through `on()` in EV-01, hence already in the
+            // module-level dedup `Set`. The "warn on EVERYTHING, domain
+            // included" mutation left it GREEN: it did not measure the
+            // warning's absence, it measured the dedup. Module state shared
+            // between cases turns a counter-proof into a tautology.
             const handler = () => {};
             Events.on("geoleaf:b240:jamais-vu-ailleurs", handler);
             Events.off("geoleaf:b240:jamais-vu-ailleurs", handler);
@@ -100,8 +103,8 @@ describe("GeoLeaf.events facade", () => {
         });
 
         it("n'avertit QU'UNE FOIS par nom, quel que soit le nombre d'appels", () => {
-            // Un intégrateur qui s'abonne dans une boucle de rendu noierait sa console, et une
-            // console noyée n'avertit plus personne.
+            // An integrator subscribing in a render loop would drown their
+            // console, and a drowned console warns nobody any more.
             const handler = () => {};
             Events.on("table:selectionChanged", handler);
             Events.on("table:selectionChanged", handler);
@@ -112,8 +115,8 @@ describe("GeoLeaf.events facade", () => {
         });
 
         it("avertit sur `off` et `once` aussi, pas seulement sur `on`", () => {
-            // Un `off()` mal nommé ne retire rien : le handler reste attaché pour toujours.
-            // Le silence y coûte une fuite, pas seulement un abonnement mort.
+            // A misnamed `off()` removes nothing: the handler stays attached
+            // forever. Silence there costs a leak, not only a dead subscription.
             const handler = () => {};
             Events.off("table:row:dblclick", handler);
             expect(Log.warn).toHaveBeenCalledTimes(1);
@@ -124,9 +127,10 @@ describe("GeoLeaf.events facade", () => {
         });
 
         it("🛑 l'abonnement hors domaine est RÉELLEMENT mort — l'avertissement ne ment pas", () => {
-            // ⚠️ Sans ce cas, les précédents prouveraient qu'on avertit, jamais que
-            // l'avertissement dit VRAI. C'est la classe B-208 : un test dont l'oracle serait sa
-            // propre assertion de log.
+            // ⚠️ Without this case, the previous ones would prove that a
+            // warning fires, never that it tells the TRUTH. The
+            // self-referential oracle: a test whose oracle would be its own
+            // log assertion.
             const calls = [];
             Events.on("selectionChanged", () => calls.push(1));
 

@@ -272,7 +272,7 @@ build, les deux blocs tomberaient. Une sonde le montre : un contenu qui ne cite 
 
 Le CDC `CDC_capacite-theme-palette.md` (v1.0.0, 25/07/2026) a été **consommé** en écrivant cette
 fiche, puis retiré du dossier de tri — trace au §Journal des décisions de
-`roadmap_documentation-v3.md`.
+la refonte documentaire V3.
 
 | Énoncé du CDC                                                        | Ce que dit le code                                                                                                                                 |
 | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |

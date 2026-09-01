@@ -35,7 +35,7 @@ export function toggleEditorMenu(anchorEl?: Element | null): void {
     _toggle(anchorEl);
     // On first open: position the sub-menu to the right of the pill bar.
     if (_pillBtn && !_menuPositioned) {
-        const mapEl = _getNativeMap()?.getContainer() as HTMLElement | undefined;
+        const mapEl = _getNativeMap()?.getContainer();
         if (mapEl) positionEditorMenuNear(_pillBtn, mapEl);
         _menuPositioned = true;
     }

@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "dead-code-scope",
+    "scope": ["scripts/check-dead-code-scope.cjs"],
+    "verdicts": {
+        "scripts/check-dead-code-scope.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "DCS-01…04 — le périmètre des deux instruments de code mort est dérivé, non vide, et il s'IMPRIME",
+            "confidence": "haute",
+            "rationale": "Câblé dans `ci:local` et `ci.yml` à la pose, inscrit dans SCRIPTS_ALLOWLIST. Son existence est justifiée par une mesure : ni `check-dead-code` (knip) ni `check-orphan-exports` n'imprimaient ce qu'ils avaient scanné — « ✓ knip: no unused files » ne dit pas sur combien de paquets, « ✓ aucun NOUVEL export orphelin » ne dit pas sur combien de fichiers. Un périmètre qui rétrécit rend donc le MÊME vert qu'un périmètre intact, ce que `CLAUDE.md` nomme explicitement comme la classe des chemins qui cessent silencieusement de matcher. Le périmètre est dérivé ICI, indépendamment des deux instruments, pour qu'un rétrécissement soit visible sans dépendre de leur propre rapport. Né vert : 50 / 21 / 21 fichiers sur les trois corpus mesurés, chiffres qui recoupent exactement la re-mesure du 19/08/2026. VU ROUGE SUR TROIS MUTATIONS, une par assertion — corpus disparu (DCS-01), paquet sorti du registre donc des clés knip dérivées (DCS-02), et `CORE_SRC` cessant d'être dérivé du registre (DCS-03), cette dernière ancrée au TEXTE du script plutôt que recopiée, parce que deux copies d'un même lecteur dérivent. ⚠️ Imprime à chaque run la réserve qui compte : knip juge l'atteignabilité d'un FICHIER, jamais ce qui est mort à l'intérieur d'un fichier atteignable — et le mort de ce dépôt est intra-fichier. Couvert n'est pas vu, et la gate le dit plutôt que de le laisser dans un registre."
+        }
+    }
+}

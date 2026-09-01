@@ -1,77 +1,83 @@
 #!/usr/bin/env node
 /*!
- * GeoLeaf — Fraîcheur des rapports de `_docs_projet/travail/rapports/` (atelier)
+ * GeoLeaf — Freshness of the `_docs_projet/travail/rapports/` reports (workshop)
  * © 2026 Mattieu Pottier — MIT
  *
- * Répond, pour chaque item d'un rapport, à la seule question qui décide de son
- * archivage : **ce que le document affirme est-il encore vrai sur HEAD ?**
+ * Answers, for each item of a report, the only question that decides its
+ * archiving: **is what the document asserts still true on HEAD?**
  *
- * ## Pourquoi un script et pas un grep
+ * ## Why a script and not a grep
  *
- * Le corpus fait ~1 200 items sourcés (349 dans les 2 annexes JSON du triage S4,
- * 86 anomalies de config, 219 fichiers de capacités, ~130 réfs `fichier:ligne`
- * éparses). À la main, la vérification dériverait vers l'échantillon — et
- * l'échantillon est précisément ce qui a produit les faux ✅ que ce dépôt a déjà
- * payés (`rapport_backlog-code-mort-core.md` v3.0.0 : 5 consignes actives fausses,
- * dont un « ⛔ NE PAS PURGER » sur un module dissous).
+ * The corpus is ~1,200 sourced items (349 in the triage's 2 JSON annexes,
+ * 86 config anomalies, 219 capability files, ~130 scattered `file:line`
+ * refs). By hand, the verification would drift towards sampling — and
+ * sampling is precisely what produced the false ✅ this repo has already
+ * paid for (`rapport_backlog-code-mort-core.md` v3.0.0: 5 false active
+ * instructions, including a "⛔ DO NOT PURGE" on a dissolved module).
  *
- * ## Les trois questions, et l'ordre dans lequel elles se posent
+ * ## The three questions, and the order they are asked in
  *
- *   1. le chemin existe-t-il encore ?
- *   2. sinon, le fichier a-t-il simplement DÉMÉNAGÉ (même basename ailleurs) ?
- *   3. le symbole est-il encore déclaré, et a-t-il un consommateur réel ?
+ *   1. does the path still exist?
+ *   2. if not, did the file simply MOVE (same basename elsewhere)?
+ *   3. is the symbol still declared, and does it have a real consumer?
  *
- * ⚠️ **La question 2 est la raison d'être de ce script.** Sans elle, un chemin
- * absent se lit « purgé », et c'est faux deux fois dans ce dépôt : ARCHI S10.1 a
- * déplacé `packages/plugin-X/` → `packages/plugins/X/`, et le kernel a déplacé
- * `app/modules/` → `app/boot-modules/`. Un audit qui conclut « purgé » sur un
- * fichier déménagé produit un rapport vert en n'ayant rien vérifié — exactement la
- * classe d'erreur que `probe-gate-visibility.cjs` surveille sur les gates.
+ * ⚠️ **Question 2 is this script's reason for being.» Without it, an
+ * absent path reads "purged", and that is false twice in this repo: a
+ * reorganisation moved `packages/plugin-X/` → `packages/plugins/X/`, and
+ * the kernel moved `app/modules/` → `app/boot-modules/`. An audit
+ * concluding "purged" on a moved file produces a green report having
+ * verified nothing — exactly the error class
+ * `probe-gate-visibility.cjs` watches on the gates.
  *
- * ## Ce que ce script N'EST PAS — et l'exception, depuis le 31/07/2026
+ * ## What this script is NOT — and the exception, since 31/07/2026
  *
- * Pour les sources `s4-triage`, `s4-low`, `refs` et `files` : ce n'est pas une gate, elles
- * ne sont pas câblées dans `ci:local`, et elles ne doivent pas l'être — elles mesurent la
- * fraîcheur de DOCUMENTS d'atelier, pas la santé du code livré. Pas d'exit code de
- * régression : 0 si la mesure a pu se faire, 2 sinon (corpus vide, source illisible).
+ * For the `s4-triage`, `s4-low`, `refs` and `files` sources: it is not a
+ * gate, they are not wired into `ci:local`, and they must not be — they
+ * measure the freshness of workshop DOCUMENTS, not the shipped code's
+ * health. No regression exit code: 0 if the measure could be taken, 2
+ * otherwise (empty corpus, unreadable source).
  *
- * ⚠️ **`--source tsdoc --gate` fait exception, et la distinction n'est pas cosmétique** :
- * cette source-là lit la prose des TSDoc **des sources**, c'est-à-dire du code publié sur
- * npm — pas un rapport d'atelier. Elle est câblée dans `ci:local` sous le nom TSDOC-PATHS,
- * avec sa propre baseline décroissante (`audit-tsdoc-paths.baseline.json`) et deux axes
- * d'échec. Le drapeau est **refusé** sur toute autre source plutôt qu'ignoré : `--gate
- * --source refs` sortirait 0, c'est-à-dire « vert », en n'ayant rien gardé.
+ * ⚠️ **`--source tsdoc --gate` is the exception, and the distinction is
+ * not cosmetic**: that source reads the TSDoc prose **of the sources**,
+ * i.e. code published on npm — not a workshop report. It is wired into
+ * `ci:local` under the name TSDOC-PATHS, with its own decreasing baseline
+ * (`audit-tsdoc-paths.baseline.json`) and two failure axes. The flag is
+ * **refused** on any other source rather than ignored: `--gate --source
+ * refs` would exit 0, i.e. "green", having guarded nothing.
  *
- * Limite assumée, héritée de `check-orphan-exports.cjs` : recherche par token,
- * pas résolution de binding TypeScript. Un nom générique redéclaré ailleurs peut
- * produire un faux « vivant ». Le biais est délibéré et va vers la PRUDENCE — on
- * préfère garder un rapport de trop qu'archiver un backlog encore ouvert.
+ * Owned limit, inherited from `check-orphan-exports.cjs`: token search,
+ * not TypeScript binding resolution. A generic name redeclared elsewhere
+ * can produce a false "alive". The bias is deliberate and leans towards
+ * PRUDENCE — better to keep one report too many than archive a still-open
+ * backlog.
  *
  * ## Limites de l'extraction de chemins
  *
- * `sourceRefs()` extrait les chemins par une **alternance d'extensions**
- * (`tsx|mjs|cjs|json|html|css|ts|js`). Deux classes lui échappent donc par
- * construction, et l'en-tête de cette fonction a annoncé « toutes les réfs »
- * jusqu'au 29/07/2026 :
+ * `sourceRefs()` extracts paths through an **extension alternation**
+ * (`tsx|mjs|cjs|json|html|css|ts|js`). Two classes thus escape it by
+ * construction, and this function's header announced "all the refs" until
+ * 29/07/2026:
  *
- *   - **les `.md`** — `md` n'est pas dans l'alternance. Aucun commentaire du script
- *     ne motive cette absence ; elle est constatée, pas justifiée ici.
- *   - **les répertoires** (`docs/specs/rfc/`) — ils n'ont pas d'extension.
+ *   - **`.md` files** — `md` is not in the alternation. No script comment
+ *     motivates that absence; it is observed, not justified here.
+ *   - **directories** (`docs/specs/rfc/`) — they have no extension.
  *
- * En face, `check-dead-links.cjs` ne lit **que les liens markdown**. La classe non
- * couverte est donc étroite et nommable : **un chemin en code inline visant un `.md`
- * ou un répertoire**. Elle a déjà coûté un défaut — `roadmap_socle-init.md` citait
- * `_docs_projet/rfc/` au lieu de `specs/rfc/`, corrigé le 29/07/2026.
+ * Opposite, `check-dead-links.cjs` reads **only markdown links**. The
+ * uncovered class is thus narrow and nameable: **an inline-code path
+ * aiming at a `.md` or a directory**. It has already cost a real defect —
+ * a roadmap cited a workshop path instead of `specs/rfc/`, fixed on
+ * 29/07/2026.
  *
- * ⚠️ **Élargir l'alternance à `md` n'est PAS le correctif, et c'est mesuré.** Sur
- * `roadmap_documentation-v3.md`, une sonde de cette classe rend 10 chemins non
- * résolus dont **8 sont l'usage exact** : ils nomment le chemin *parce qu'il est
- * mort* (table de décisions « supprimé » / « régénéré », énoncés faux cités comme
- * corrigés, `grep` mené SUR le répertoire disparu). **Précision 2/10** — une garde
- * dessus crierait au loup 8 fois sur 10, et la première correction automatique
- * effacerait un registre. Le geste juste est de LIRE : ce script borne où regarder,
- * il ne rend pas de verdict (cf. §Ce que ce script N'EST PAS). Doctrine complète et
- * les 10 verdicts : `roadmap_documentation-v3.md` §Règles d'exécution, règle 6.
+ * ⚠️ **Widening the alternation to `md` is NOT the fix, and it is
+ * measured.» On one workshop document, a probe of that class returns 10
+ * unresolved paths of which **8 are the exact usage**: they name the path
+ * *because it is dead* ("deleted" / "regenerated" decision tables, false
+ * statements cited as corrected, a `grep` run ON the vanished directory).
+ * **Precision 2/10** — a guard on it would cry wolf 8 times out of 10,
+ * and the first automatic correction would erase a register. The right
+ * gesture is to READ: this script bounds where to look, it renders no
+ * verdict (cf. §What this script is NOT). Full doctrine and the 10
+ * verdicts: the original execution rule.
  *
  * Usage :
  *   node scripts/audit-report-freshness.cjs --source s4-triage
@@ -79,16 +85,18 @@
  *   node scripts/audit-report-freshness.cjs --source refs --doc <chemin.md>
  *   node scripts/audit-report-freshness.cjs --source files --doc <chemin.md>
  *   node scripts/audit-report-freshness.cjs --source tsdoc [--gate] [--update-baseline]
+ *   node scripts/audit-report-freshness.cjs --source comments [--gate] [--update-baseline]
  *   node scripts/audit-report-freshness.cjs --source specs [--gate] [--update-baseline]
  *   [--out <chemin.json>] [--quiet]
  *
- * ⚠️ **`--source specs` est la seule qui ne dépend PAS de la racine interne** : son corpus est
- * `docs/specs/`, public. Le saut de tête l'épargne explicitement — sans quoi la gate qui garde
- * les 45 fiches sortirait 0 dans le dépôt public, le seul endroit où elles comptent.
+ * ⚠️ **`--source specs` is the only one NOT depending on the internal
+ * root**: its corpus is `docs/specs/`, public. The head skip explicitly
+ * spares it — otherwise the gate guarding the 45 sheets would exit 0 in
+ * the public repo, the only place where they count.
  *
- * Exit codes — **ils diffèrent selon le mode**, et c'est le seul endroit où c'est vrai :
- *   · mesure (défaut)  : 0 mesuré · 2 impossible de mesurer. Jamais 1.
- *   · `--gate`         : 0 vert · 1 régression (TSDOC-PATHS-01/02) · 2 impossible de mesurer.
+ * Exit codes — **they differ by mode**, and this is the only place where that is true:
+ *   · measure (default): 0 measured · 2 impossible to measure. Never 1.
+ *   · `--gate`         : 0 green · 1 regression (TSDOC-PATHS-01/02) · 2 impossible to measure.
  */
 "use strict";
 
@@ -98,29 +106,38 @@ const ts = require("typescript");
 
 const registry = require("./lib/packages.cjs");
 const docsPaths = require("./lib/docs-paths.cjs");
+const partition = require("./lib/public-partition.cjs");
 const ROOT = registry.ROOT;
 
-// ⚠️ SAUT NOMMÉ — le corpus de cette gate est l'atelier, et le dépôt public ne le porte pas.
+// ⚠️ NAMED SKIP — this gate's corpus is the workshop, and the public repo
+// does not carry it.
 //
-// `_docs_projet/` est retiré du dépôt public par décision (tâche 9.4 du passage public), pas
-// par accident. Jeter ici n'apprendrait rien : ce n'est pas une racine perdue, c'est une
-// racine que ce dépôt-là n'a jamais eue. Mesuré le 10/08/2026 — sans ce saut, cette gate et
-// `check-config-consumers` sont les DEUX seules de `ci:local` qui ne peuvent pas passer sur
-// le clone public, quoi qu'on y écrive.
+// `_docs_projet/` is removed from the public repo by decision, not by
+// accident. Throwing here would teach nothing: it is not a lost root, it
+// is a root that repo never had. Measured on 10/08/2026 — without this
+// skip, this gate and `check-config-consumers` are the ONLY TWO of
+// `ci:local` that cannot pass on the public clone, whatever is written there.
 //
-// 🛑 Le saut est BRUYANT et il refuse de se lire comme un vert — patron
-// `CONSUMER-CONTRACT/CC-00`. Une gate qui se tait en sortant 0 est le mode d'échec que ce
-// dépôt traque ; celle-ci dit ce qu'elle n'a pas lu, et pourquoi.
+// 🛑 The skip is LOUD and refuses to read as a green —
+// `CONSUMER-CONTRACT/CC-00`'s pattern. A gate going quiet exiting 0 is the
+// failure mode this repo hunts; this one says what it did not read, and why.
 //
-// 🛑 **ET IL EST SOURCE-DÉPENDANT depuis le 11/08/2026 — sans quoi il aurait rendu
-// SPECS-PATHS verte et aveugle exactement dans le dépôt qu'elle protège.** `--source specs`
-// lit `docs/specs/`, qui est PUBLIC : il n'a besoin ni de `_docs_projet/`, ni des rapports
-// d'atelier. Un saut inconditionnel aurait fait sortir 0 la seule gate qui garde les 45 fiches,
-// sur le seul clone où elles comptent. Le saut ne vaut donc que pour les sources qui LISENT
-// réellement l'atelier ; `tsdoc` et `specs` n'en sont pas, mais `tsdoc` le garde parce que son
-// corpus dépend de `REPORTS_DIR` par `buildCorpus`/`probeItem` — c'est mesuré, pas supposé.
-// `arg()` est une déclaration de fonction, donc hissée : l'appeler ici est licite.
-const NEEDS_INTERNAL_ROOT = !["specs", "guides"].includes(arg("source"));
+// 🛑 **AND IT IS SOURCE-DEPENDENT since 11/08/2026 — otherwise it would
+// have made SPECS-PATHS green and blind exactly in the repo it protects.**
+// `--source specs` reads `docs/specs/`, which is PUBLIC: it needs neither
+// `_docs_projet/` nor the workshop reports. An unconditional skip would
+// have made the only gate guarding the 45 sheets exit 0, on the only clone
+// where they count. The skip thus only holds for the sources that REALLY
+// read the workshop; `tsdoc` and `specs` are not among them, but `tsdoc`
+// keeps it because its corpus depends on `REPORTS_DIR` through
+// `buildCorpus`/`probeItem` — measured, not assumed.
+// `arg()` is a function declaration, hence hoisted: calling it here is licit.
+// ⚠️ `core-docs` joins `specs` and `guides`: these three corpora are
+// PUBLIC, they exist on the public clone, and excluding them from here is
+// what keeps them from skipping silently over there.
+// 🛑 Do not add a WORKSHOP source to this list "for uniformity" — that is
+// what nearly made `SPECS-PATHS` green and blind (see `sourceVision`'s comment).
+const NEEDS_INTERNAL_ROOT = !["specs", "guides", "core-docs", "comments"].includes(arg("source"));
 if (NEEDS_INTERNAL_ROOT && !docsPaths.internalRootExists()) {
     console.log(
         "⏭️  [TSDOC-PATHS] SAUTÉ — la racine INTERNE est absente : " +
@@ -137,11 +154,12 @@ if (NEEDS_INTERNAL_ROOT && !docsPaths.internalRootExists()) {
 }
 
 /**
- * Racine INTERNE des rapports d'atelier — **résolue à l'appel, pas au chargement**.
+ * INTERNAL root of the workshop reports — **resolved at call, not at load**.
  *
- * `docsPaths.internal()` JETTE quand la racine est absente. En constante de module, elle
- * rendait le fichier inchargeable sur le dépôt public, ce qui obligeait le saut ci-dessus à
- * être inconditionnel. Paresseuse, elle laisse `--source specs` se charger et mesurer.
+ * `docsPaths.internal()` THROWS when the root is absent. As a module
+ * constant, it made the file unloadable on the public repo, which forced
+ * the skip above to be unconditional. Lazy, it lets `--source specs` load
+ * and measure.
  *
  * @returns {string} chemin absolu de `_docs_projet/travail/rapports`.
  */
@@ -149,8 +167,8 @@ function reportsDir() {
     return docsPaths.internal("travail", "rapports");
 }
 
-// `.vitepress` est de l'outillage de documentation, pas du code livré : y trouver
-// un `index.ts` n'apprend rien sur la survie d'un baril du core.
+// `.vitepress` is documentation tooling, not shipped code: finding an
+// `index.ts` there teaches nothing about a core barrel's survival.
 const EXCLUDED_DIRS = new Set([
     "node_modules",
     "dist",
@@ -171,10 +189,10 @@ function arg(name, fallback = null) {
 }
 const QUIET = process.argv.includes("--quiet");
 
-// `--gate` n'a de sens qu'avec `--source tsdoc` : c'est la seule source qui mesure le CODE
-// (la prose des TSDoc des sources) et non la fraîcheur d'un document d'atelier. Les autres
-// restent des instruments de mesure, sans code de sortie de régression — voir l'en-tête,
-// §Ce que ce script N'EST PAS, qui reste vrai pour elles.
+// `--gate` only makes sense with `--source tsdoc`: the only source
+// measuring CODE (the sources' TSDoc prose) and not a workshop document's
+// freshness. The others stay measuring instruments, without a regression
+// exit code — see the header, §What this script is NOT, which stays true for them.
 const GATE = process.argv.includes("--gate");
 const UPDATE_BASELINE = process.argv.includes("--update-baseline");
 
@@ -183,7 +201,7 @@ function die(msg) {
     process.exit(2);
 }
 
-/** Chemin relatif normalisé en `/` — `path.relative` rend `\` sous Windows. */
+/** Relative path normalised to `/` — `path.relative` returns `\` on Windows. */
 function normPath(p) {
     return p.split(path.sep).join("/");
 }
@@ -207,10 +225,10 @@ function collectFiles(dir, acc) {
 }
 
 /**
- * Le corpus vient du REGISTRE des workspaces, jamais d'un `packages/<nom>` en dur.
- * Un chemin en dur ne casse pas au déplacement : il cesse silencieusement de
- * matcher, et l'audit sort vert en n'ayant rien scanné (CLAUDE.md §Arborescence).
- * Un registre en échec doit donc PROPAGER, pas retomber sur un corpus vide.
+ * The corpus comes from the workspace REGISTRY, never a hardcoded
+ * `packages/<name>`. A hardcoded path does not break on a move: it silently
+ * stops matching, and the audit exits green having scanned nothing. A
+ * failing registry must therefore PROPAGATE, not fall back on an empty corpus.
  */
 function buildCorpus() {
     const acc = [];
@@ -236,14 +254,15 @@ function buildCorpus() {
         entries.push({ abs, rel, isTest });
     }
 
-    // ── Témoin à réponse connue ──────────────────────────────────────────────
-    // Un audit de fraîcheur qui conclut « purgé » depuis un corpus amputé est pire
-    // qu'un audit non fait : il est faux ET il a l'air complet. Le corpus doit donc
-    // voir le cœur du dépôt AVANT qu'on lui pose la moindre question. Même esprit
-    // que `verify-coverage-attribution.cjs` (CLAUDE.md §Tests).
-    // T5.5 — le préfixe vient du registre, qui jette. Un témoin dont le chemin de
-    // référence est écrit à la main peut échouer POUR LA MAUVAISE RAISON : le corpus
-    // serait intact et le témoin rouge, ce qui apprend le contraire de ce qu'il mesure.
+    // ── Known-answer witness ─────────────────────────────────────────────────
+    // A freshness audit concluding "purged" from an amputated corpus is
+    // worse than no audit: it is false AND looks complete. The corpus must
+    // therefore see the repo's core BEFORE any question is asked of it.
+    // Same spirit as `verify-coverage-attribution.cjs`.
+    // The prefix comes from the registry, which throws. A witness whose
+    // reference path is hand-written can fail FOR THE WRONG REASON: the
+    // corpus would be intact and the witness red, which teaches the
+    // opposite of what it measures.
     const coreSrcPrefix = `${registry.requireByDirName("core").dir}/src/`;
     const coreSrc = entries.filter((e) => e.rel.startsWith(coreSrcPrefix)).length;
     if (coreSrc < 400) {
@@ -256,7 +275,7 @@ function buildCorpus() {
 }
 
 let _tokenCache = null;
-/** Tokenise le corpus une seule fois — 3 500+ fichiers, relus par item sinon. */
+/** Tokenises the corpus once — 3,500+ files, reread per item otherwise. */
 function tokenize(corpus) {
     if (_tokenCache) return _tokenCache;
     _tokenCache = [];
@@ -268,8 +287,8 @@ function tokenize(corpus) {
         } catch {
             continue;
         }
-        // Retirer les commentaires : sans ça un symbole seulement CITÉ en JSDoc
-        // passe pour vivant. C'est le piège « référencé ≠ vivant ».
+        // Strip the comments: without that, a symbol merely CITED in JSDoc
+        // passes for alive. The "referenced ≠ alive" trap.
         const stripped = raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
         _tokenCache.push({
             rel: e.rel,
@@ -280,17 +299,17 @@ function tokenize(corpus) {
     return _tokenCache;
 }
 
-// ─── Les trois questions ──────────────────────────────────────────────────────
+// ─── The three questions ──────────────────────────────────────────────────────
 
 /**
- * Basenames qu'on ne peut PAS suivre par leur nom.
+ * Basenames that canNOT be followed by their name.
  *
- * `index.ts` existe des dizaines de fois dans ce dépôt. Le suivre par basename a
- * fait passer trois barils **supprimés** (`layer-manager/index.ts`,
- * `utils/general/index.ts`, `filter/panel/index.ts`, purgés au S4) pour des fichiers
- * « déménagés vers `docs/.vitepress/theme/index.ts` » — et l'audit posait alors ses
- * questions au mauvais fichier. Un fichier qu'on ne sait pas suivre doit être
- * déclaré absent, pas rattaché à un homonyme.
+ * `index.ts` exists dozens of times in this repo. Following it by basename
+ * made three **deleted** barrels (`layer-manager/index.ts`,
+ * `utils/general/index.ts`, `filter/panel/index.ts`, since purged) pass
+ * for files "moved to `docs/.vitepress/theme/index.ts`" — and the audit
+ * then asked its questions of the wrong file. A file that cannot be
+ * followed must be declared absent, not attached to a homonym.
  */
 const UNTRACKABLE_BASENAMES = new Set([
     "index.ts",
@@ -306,24 +325,76 @@ const UNTRACKABLE_BASENAMES = new Set([
 ]);
 
 /**
- * Q1/Q2 — le chemin existe, est cité en RACCOURCI, a déménagé, ou a disparu.
+ * Q1/Q2 — the path exists, is cited in SHORTHAND, moved, or vanished.
  *
- * ⚠️ L'étape « raccourci » n'est pas un confort. Les rapports citent massivement des
- * fragments relatifs — `capabilities/route/apply.ts` pour
- * `packages/core/src/capabilities/route/apply.ts`. Résolus depuis la racine seule,
- * **51 fichiers parfaitement vivants** ressortaient « introuvables » dans le seul
- * rapport de code mort. Conclure « le document cite des chemins morts » sur cette
- * base aurait été un faux constat à l'appui d'un archivage.
+ * ⚠️ The "shorthand" step is not a comfort. The reports massively cite
+ * relative fragments — `capabilities/route/apply.ts` for
+ * `packages/core/src/capabilities/route/apply.ts`. Resolved from the root
+ * alone, **51 perfectly alive files** came out "not found" in the dead-code
+ * report alone. Concluding "the document cites dead paths" on that basis
+ * would have been a false finding in support of an archiving.
  */
 function locateFile(relPath, corpus) {
     if (!relPath) return { state: "no-path" };
     const clean = normPath(relPath).replace(/^\.\//, "");
-    if (fs.existsSync(path.join(ROOT, clean))) return { state: "present", at: clean };
+    // 🛑 The TRACKED index, no longer the disk. A path present on this
+    // workstation but untracked by git exists neither in the public clone
+    // nor on the runner: judging it "present" here made the workshop's
+    // verdict diverge from the only place the reader will read it. The
+    // conversion was already half done — `suffixIndex()` below was built
+    // from `git ls-files` and carried the full reasoning; only this first
+    // test, which short-circuits all the others, had stayed on `fs.existsSync`.
+    //
+    // ⚠️ Disk fallback when the index is empty, and only there: outside a
+    // git repo there is no index to consult, and refusing everything would
+    // make a script return "everything is dead" — precisely its most
+    // costly verdict to fabricate.
+    const suivis = trackedPaths();
+    const trouve =
+        suivis.size > 0
+            ? suivis.has(clean.replace(/\/+$/, ""))
+            : fs.existsSync(path.join(ROOT, clean));
+    if (trouve) return { state: "present", at: clean };
 
-    // Raccourci : un seul fichier du corpus dont le chemin se termine par ce fragment.
+    // 🛑 A BUILD OUTPUT KEEPS THE DISK AS ORACLE, and it is the only exception.
+    //
+    // A path under `dist/` is git-tracked in no repo: judging it on the
+    // index would declare it dead everywhere, including when it is
+    // perfectly alive in the tarball the integrator downloads. Judging it
+    // on the disk makes it measurable — after the build, which `ci:local`
+    // and `ci.yml` both launch before these gates.
+    //
+    // ⚠️ **This block's first version removed them from judgement, and
+    // that was FALSE** — measured, not assumed: the 11 baseline entries
+    // the exclusion staled included `dist/maplibre-gl.js`, which MapLibre
+    // v6 **no longer publishes** and any recipe citing it returns a 404.
+    // Declaring the class "unjudgeable" would have blinded the gate to a
+    // real, known defect documented elsewhere in this repo. An exclusion is
+    // measured by what it makes DISAPPEAR, never by what it silences.
+    //
+    // ⚠️ What it costs, to know before relying on it: on a clone where
+    // `dist/` was never built, every build-output citation comes out dead.
+    // That is why these gates run AFTER the build on both sides, and why
+    // this exception extends to nothing else.
+    if (clean.split("/").includes("dist")) {
+        return fs.existsSync(path.join(ROOT, clean))
+            ? { state: "present", at: clean }
+            : { state: "absent" };
+    }
+
+    // Shorthand: a single corpus file whose path ends with this fragment.
+    // ⚠️ The corpus comes from a DISK WALK (`buildCorpus`), not the git
+    // index — the right choice for probing symbols (content is read), and
+    // the wrong one for deciding a path "exists". Without the filter below,
+    // an untracked file resurrected through this shorthand what the first
+    // test had just declared absent — measured by exercising the switch:
+    // the untracked witness came out "present, viaSuffix".
+    const estSuivi = (rel) => suivis.size === 0 || suivis.has(rel);
     if (clean.includes("/")) {
         const suffix = "/" + clean;
-        const hits = corpus.entries.filter((e) => e.rel.endsWith(suffix)).map((e) => e.rel);
+        const hits = corpus.entries
+            .filter((e) => e.rel.endsWith(suffix) && estSuivi(e.rel))
+            .map((e) => e.rel);
         if (hits.length === 1) return { state: "present", at: hits[0], viaSuffix: true };
         if (hits.length > 1) return { state: "present", at: hits[0], viaSuffix: true, all: hits };
     }
@@ -331,13 +402,13 @@ function locateFile(relPath, corpus) {
     const base = path.basename(clean);
     if (UNTRACKABLE_BASENAMES.has(base)) return { state: "absent", ambiguous: true };
 
-    const candidates = corpus.byBasename.get(base) || [];
+    const candidates = (corpus.byBasename.get(base) || []).filter(estSuivi);
     if (candidates.length === 1) return { state: "moved", at: candidates[0], all: candidates };
     if (candidates.length > 1) return { state: "absent", ambiguous: true, all: candidates };
     return { state: "absent" };
 }
 
-/** Q3a — le symbole est-il encore DÉCLARÉ dans ce fichier ? */
+/** Q3a — is the symbol still DECLARED in this file? */
 function isDeclaredIn(relFile, symbol) {
     const abs = path.join(ROOT, relFile);
     let text;
@@ -384,17 +455,17 @@ function isDeclaredIn(relFile, symbol) {
 }
 
 /**
- * Q3a-bis — le symbole est-il encore EXPORTÉ ?
+ * Q3a-bis — is the symbol still EXPORTED?
  *
- * ⚠️ Distinction cardinale, et la seule qui rende le triage S4 lisible : son geste
- * `dead-purge` était le plus souvent « **dé-exporter** », pas « supprimer ». Un type
- * comme `AnyFn` reste déclaré et utilisé localement — c'est son `export` qui était
- * mort, pas lui. Mesurer la présence du symbole répondrait « toujours là » sur un
- * item parfaitement soldé, et rouvrirait 75 lignes qui n'ont jamais été ouvertes.
+ * ⚠️ Cardinal distinction, and the only one making the triage readable:
+ * its `dead-purge` gesture was most often "**de-export**", not "delete". A
+ * type like `AnyFn` stays declared and locally used — its `export` is what
+ * was dead, not it. Measuring the symbol's presence would answer "still
+ * there" on a perfectly settled item, and reopen 75 lines that were never
+ * opened.
  *
- * Même extraction que `check-orphan-exports.cjs` (compilateur TS, statements de
- * module) — délibérément, pour que les deux ne puissent pas diverger sur ce qu'est
- * un export.
+ * Same extraction as `check-orphan-exports.cjs` (TS compiler, module
+ * statements) — deliberately, so the two cannot diverge on what an export is.
  */
 function exportedNames(relFile) {
     const abs = path.join(ROOT, relFile);
@@ -437,13 +508,14 @@ function exportedNames(relFile) {
 }
 
 /**
- * Q3c — usages DANS son propre fichier, déclaration exclue.
+ * Q3c — usages IN its own file, declaration excluded.
  *
- * L'autre angle mort documenté par `check-orphan-exports.baseline.json` : un type
- * consommé uniquement par le module qui le déclare (`CirclePaint` en type de retour
- * de `toCirclePaint`, `LayerRegistryEntry` dans le `Map` de sa propre classe). Sans
- * ce compte, ils ressortent « plus aucun consommateur » — c'est-à-dire morts —
- * alors qu'ils sont la définition même du faux positif que le S4 avait écarté.
+ * The other blind spot documented by `check-orphan-exports.baseline.json`:
+ * a type consumed only by the module declaring it (`CirclePaint` as
+ * `toCirclePaint`'s return type, `LayerRegistryEntry` in its own class's
+ * `Map`). Without this count, they come out "no consumer left" — i.e. dead
+ * — while they are the very definition of the false positive the triage
+ * had set aside.
  */
 function intraFileUses(relFile, symbol) {
     let text;
@@ -455,16 +527,16 @@ function intraFileUses(relFile, symbol) {
     const stripped = text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
     const esc = symbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const hits = stripped.match(new RegExp(`\\b${esc}\\b`, "g")) || [];
-    return Math.max(0, hits.length - 1); // la déclaration elle-même ne compte pas
+    return Math.max(0, hits.length - 1); // the declaration itself does not count
 }
 
 /**
- * L'outillage d'audit n'est pas un consommateur — il est l'inverse.
+ * Audit tooling is not a consumer — it is the inverse.
  *
- * `check-orphan-exports.cjs` NOMME des symboles dans son `ALLOWLIST` précisément
- * pour déclarer qu'ils n'ont **aucun** consommateur et que c'est voulu. Les compter
- * comme consommateurs inverse le sens de la mesure : le gate qui certifie « cet
- * export est intentionnellement orphelin » ferait conclure « il est vivant ».
+ * `check-orphan-exports.cjs` NAMES symbols in its `ALLOWLIST` precisely to
+ * declare that they have **no** consumer and that it is wanted. Counting
+ * them as consumers inverts the measure's meaning: the gate certifying
+ * "this export is intentionally orphan" would lead to concluding "it is alive".
  */
 const TOOLING_FILES = new Set([
     "scripts/check-orphan-exports.cjs",
@@ -472,25 +544,25 @@ const TOOLING_FILES = new Set([
 ]);
 
 /**
- * L'`ALLOWLIST` de `check-orphan-exports.cjs` est le **registre des décisions déjà
- * prises** sur les exports sans consommateur : chaque entrée porte sa raison
- * (surface publique documentée, contrat de duck-typing, type nommé requis pour
- * l'émission des déclarations…). Un item de rapport qui y figure a donc été
- * **tranché après** l'écriture du rapport — il ne peut plus être « ouvert ».
+ * `check-orphan-exports.cjs`'s `ALLOWLIST` is the **register of decisions
+ * already made** on consumer-less exports: each entry carries its reason
+ * (documented public surface, duck-typing contract, named type required
+ * for declaration emission…). A report item appearing there was thus
+ * **settled after** the report was written — it can no longer be "open".
  *
- * Cas d'école rencontré ici : le triage S4 classait `FetchHelperOptions` en
- * `dead-purge`, et l'allowlist explique que le dé-exporter **casserait la
- * déclaration de `GeoLeaf.Utils` (TS4023)`. C'est le verdict du rapport qui est
- * périmé, pas le code.
+ * Textbook case met here: the triage classified `FetchHelperOptions` as
+ * `dead-purge`, and the allowlist explains that de-exporting it **would
+ * break `GeoLeaf.Utils`' declaration (TS4023)`. The report's verdict is
+ * what is stale, not the code.
  */
 let _allowlist = null;
 function allowlistIndex() {
     if (_allowlist) return _allowlist;
     _allowlist = new Map();
-    // ⚠️ Lecture TEXTUELLE, jamais `require()`. `check-orphan-exports.cjs` est une
-    // gate : elle appelle `main()` au chargement et se termine par `process.exit()`.
-    // La requérir ne l'importerait pas, elle l'EXÉCUTERAIT — et tuerait cet audit
-    // au milieu de sa mesure, en affichant le rapport d'une tout autre gate.
+    // ⚠️ TEXTUAL read, never `require()`. `check-orphan-exports.cjs` is a
+    // gate: it calls `main()` at load and ends with `process.exit()`.
+    // Requiring it would not import it, it would EXECUTE it — and kill this
+    // audit mid-measure, displaying a whole other gate's report.
     try {
         const src = fs.readFileSync(path.join(__dirname, "check-orphan-exports.cjs"), "utf8");
         const block = src.slice(src.indexOf("const ALLOWLIST = {"));
@@ -510,7 +582,7 @@ function allowlistIndex() {
     return _allowlist;
 }
 
-/** Le symbole est-il déclaré « orphelin intentionnel » par la gate ? */
+/** Is the symbol declared "intentional orphan" by the gate? */
 function isAllowlisted(relFile, symbol) {
     const idx = allowlistIndex();
     const key = relFile.replace(/^packages\/core\/src\//, "");
@@ -519,7 +591,7 @@ function isAllowlisted(relFile, symbol) {
     return entry === "*" || entry.includes(symbol);
 }
 
-/** Q3b — a-t-il un consommateur hors de son propre fichier ? prod et test séparés. */
+/** Q3b — does it have a consumer outside its own file? prod and test separate. */
 function consumers(symbol, ownerRel, corpus) {
     let prod = 0;
     let test = 0;
@@ -536,10 +608,10 @@ function consumers(symbol, ownerRel, corpus) {
 }
 
 /**
- * Un token trop générique ne prouve rien. `destroy`, `init`, `render` matchent dans
- * des dizaines de fichiers sans aucun rapport avec le symbole visé — le triage S4
- * classait justement `BasemapSelector.destroy` en `uncertain`, et une mesure par
- * token répondrait « 71 consommateurs prod », ce qui est une non-réponse.
+ * An over-generic token proves nothing. `destroy`, `init`, `render` match
+ * in dozens of files with no relation to the targeted symbol — the triage
+ * precisely classified `BasemapSelector.destroy` as `uncertain`, and a
+ * token measure would answer "71 prod consumers", which is a non-answer.
  */
 const GENERIC_TOKENS = new Set([
     "init",
@@ -575,25 +647,25 @@ const GENERIC_TOKENS = new Set([
 // ─── Verdicts ─────────────────────────────────────────────────────────────────
 
 /**
- * Confronte ce que le rapport AFFIRME (`final`) à ce que HEAD montre.
+ * Confronts what the report ASSERTS (`final`) with what HEAD shows.
  *
- * Les 11 classements des deux annexes, et l'attente de chacun :
+ * The two annexes' 11 classifications, and each one's expectation:
  *
- *   dead-purge            → ABSENT. S'il survit : purge incomplète.
- *   false-positive-alive  → PRÉSENT et consommé. Absent : purgé au-delà du périmètre.
- *   public-api-breaking   → idem — API publique conservée sciemment.
- *   test-only-keep        → PRÉSENT, consommé UNIQUEMENT par des tests.
- *   keep-documented       → PRÉSENT — conservé et documenté comme tel.
- *   route-S5              → ABSENT — la capacité `route` a été dissoute au S5.
- *   closed-no-op          → l'item était DÉJÀ résolu au moment du triage (nature
- *                           `already-done`) : rien n'était à faire. Sa survivance
- *                           ne rouvre rien, mais son retour à la vie, si.
- *   fix-in-4.3            → un correctif a été appliqué pendant la tâche 4.3 —
- *                           le code doit donc être PRÉSENT (c'est un fix, pas une purge).
- *   consign-only          → ⚠️ LE CAS QUI DÉCIDE DE L'ARCHIVAGE. Consigné, jamais
- *                           traité. S'il est toujours là, c'est une ligne de backlog
- *                           OUVERTE, à extraire avant de geler le document.
- *   uncertain             → indécis au triage ; la disparition tranche, la survie non.
+ *   dead-purge            → ABSENT. If it survives: incomplete purge.
+ *   false-positive-alive  → PRESENT and consumed. Absent: purged beyond the perimeter.
+ *   public-api-breaking   → same — public API knowingly kept.
+ *   test-only-keep        → PRESENT, consumed ONLY by tests.
+ *   keep-documented       → PRESENT — kept and documented as such.
+ *   route-S5              → ABSENT — the `route` capability was dissolved.
+ *   closed-no-op          → the item was ALREADY resolved at triage time
+ *                           (`already-done` nature): nothing was to do. Its
+ *                           survival reopens nothing, but its return to life does.
+ *   fix-in-4.3            → a fix was applied during that task — the code
+ *                           must thus be PRESENT (a fix, not a purge).
+ *   consign-only          → ⚠️ THE CASE THAT DECIDES THE ARCHIVING. Logged,
+ *                           never treated. If it is still there, it is an
+ *                           OPEN backlog line, to extract before freezing the document.
+ *   uncertain             → undecided at triage; disappearance settles it, survival does not.
  */
 const EXPECT_ABSENT = new Set(["dead-purge", "route-S5"]);
 const EXPECT_PRESENT = new Set([
@@ -620,12 +692,12 @@ function judge(claim, obs) {
         };
     }
     const gone = obs.file === "absent" || (obs.file !== "no-path" && obs.declared === false);
-    // Un symbole vit s'il est utilisé — par un autre fichier OU par le sien.
+    // A symbol lives if it is used — by another file OR by its own.
     const used = obs.prod > 0 || obs.test > 0 || obs.intra > 0;
 
     if (EXPECT_ABSENT.has(claim)) {
         if (gone) return { verdict: "closed", why: "supprimé comme annoncé" };
-        // Le geste attendu était le plus souvent la dé-exportation, pas la suppression.
+        // The expected gesture was most often de-exporting, not deleting.
         if (obs.exported === false) {
             return {
                 verdict: "closed",
@@ -738,14 +810,14 @@ function sourceS4Low() {
 }
 
 /**
- * Les réfs `chemin.ext[:ligne]` d'un markdown dont l'extension est dans `re` ci-dessous
- * — le fichier existe-t-il encore ?
+ * A markdown's `path.ext[:line]` refs whose extension is in `re` below —
+ * does the file still exist?
  *
- * ⚠️ **Pas « toutes » les réfs**, et l'écart est nommé parce qu'il a coûté un défaut réel :
- * cette extraction ne voit **ni les `.md`** (absent de l'alternance ci-dessous) **ni les
- * répertoires** (`docs/specs/rfc/`), qui n'ont pas d'extension. Un chemin de doc
- * cité en code inline lui est donc invisible. Motif et conduite à tenir :
- * §Limites de l'extraction de chemins, en tête de module.
+ * ⚠️ **Not "all" the refs**, and the gap is named because it cost a real
+ * defect: this extraction sees **neither `.md`** (absent from the
+ * alternation below) **nor directories** (`docs/specs/rfc/`), which have
+ * no extension. A doc path cited in inline code is thus invisible to it.
+ * Motive and conduct: §Path-extraction limits, at the top of the module.
  */
 function sourceRefs(docRel) {
     const abs = path.isAbsolute(docRel) ? docRel : path.join(ROOT, docRel);
@@ -755,9 +827,9 @@ function sourceRefs(docRel) {
     } catch (e) {
         die(`document illisible ${docRel} — ${e.message}`);
     }
-    // ⚠️ Extensions les plus LONGUES d'abord. En alternance regex, `js` matcherait
-    // avant `json` et couperait `package.json` en « package.js » — un chemin qui
-    // n'existe nulle part, donc un « fichier introuvable » entièrement fabriqué.
+    // ⚠️ LONGEST extensions first. In a regex alternation, `js` would match
+    // before `json` and cut `package.json` into "package.js" — a path that
+    // exists nowhere, hence an entirely fabricated "file not found".
     const re = /([A-Za-z0-9_@./-]+\.(?:tsx|mjs|cjs|json|html|css|ts|js))(?::(\d+))?/g;
     const seen = new Map();
     let m;
@@ -769,98 +841,146 @@ function sourceRefs(docRel) {
     return [...seen.values()];
 }
 
-/** Les chemins cités en tête de ligne de table (registre CAPACITÉS, inventaire). */
+/** Paths cited at table-row heads (the capability register, the inventory). */
 function sourceFiles(docRel) {
     return sourceRefs(docRel).filter((r) => r.file.includes("/"));
 }
 
 /**
- * Les chemins cités dans la PROSE des blocs TSDoc de toutes les sources.
+ * Paths cited in the PROSE of all sources' TSDoc blocks.
  *
- * Dernier trou de couverture de la règle ⛔ : `@param`, `@throws` et l'arité sont gardés par
- * TSDOC-CONFORMITY, les `@example` sont compilés par `typecheck-docs-examples` — mais la
- * PROSE ne l'était par rien. Une phrase qui renvoie à `kernel/geojson/style-resolver.ts`
- * reste lisible et convaincante longtemps après que le fichier a bougé, et c'est exactement
- * la classe de défaut que la refonte V3 a dû trouver à la main (7 fois, dont 3 API qui
- * n'existaient plus).
+ * The documentation rule's last coverage hole: `@param`, `@throws` and
+ * arity are guarded by TSDOC-CONFORMITY, the `@example`s are compiled by
+ * `typecheck-docs-examples` — but the PROSE was guarded by nothing. A
+ * sentence pointing at `kernel/geojson/style-resolver.ts` stays readable
+ * and convincing long after the file moved, and that is exactly the defect
+ * class the documentation overhaul had to find by hand (7 times, 3 of them
+ * APIs that no longer existed).
  *
- * ⚠️ **Les `@example` sont EXCLUS à dessein** : ils sont déjà compilés contre les `.d.ts`
- * publiés, et un chemin d'import y est vérifié bien mieux qu'ici. Les inclure ferait
- * doublonner deux gardes sur le même défaut, et diverger le jour où l'une changerait.
+ * ⚠️ **The `@example`s are EXCLUDED on purpose**: they are already
+ * compiled against the published `.d.ts`, and an import path is verified
+ * there far better than here. Including them would double two guards on
+ * the same defect, and diverge the day one changed.
  *
- * ## ✅ CÂBLÉE dans `ci:local` depuis le 31/07/2026 — après fermeture de 5 classes de FP
+ * ## ✅ WIRED into `ci:local` since 31/07/2026 — after closing 5 FP classes
  *
- * La condition que cet en-tête posait pour être gaté (« quand son taux de faux positifs aura
- * été mesuré et fermé ») est remplie. Historique des mesures :
+ * The condition this header set for being gated ("when its false-positive
+ * rate has been measured and closed") is met. Measurement history:
  *
- * | Date | Items | Présents | Déplacés | Introuvables |
+ * | Date | Items | Present | Moved | Not found |
  * | --- | --- | --- | --- | --- |
- * | 30/07/2026 (câblage manuel) | 456 | 219 | 88 | **149** |
- * | 31/07/2026 (5 classes fermées) | 443 | 332 | 27 | **84** |
+ * | 30/07/2026 (manual wiring) | 456 | 219 | 88 | **149** |
+ * | 31/07/2026 (5 classes closed) | 443 | 332 | 27 | **84** |
  *
- * **Les cinq classes de faux positifs, dans l'ordre où elles ont été trouvées** — les deux
- * premières pendant l'écriture, les trois suivantes en instruisant le reliquat :
+ * **The five false-positive classes, in the order found** — the first two
+ * while writing, the next three while instructing the remainder:
  *
- *   1. juger le chemin littéral depuis la racine → **427 faux morts sur 456** ;
- *   2. ignorer la convention ESM `.js` ⇄ `.ts` → `app/boot.js` déclaré mort, `app/boot.ts` là ;
- *   3. **le segment omis / le préfixe en trop** — `scale/lifecycle.ts` pour
- *      `capabilities/scale/lifecycle.ts`. **73 occurrences**, résolues par index de suffixe
- *      ambiguë-safe. ⚠️ Cet en-tête annonçait ces deux-là comme des lacunes *distinctes* : ce
- *      sont les mêmes 73 ;
- *   4. **le specifier de paquet** — `@geoleaf/core/…`, `@core/…` : pas des chemins, écartés ;
- *   5. **le chemin à placeholder** — `profiles/<id>/profile.json` capturé comme `/profile.json`.
+ *   1. judging the literal path from the root → **427 false dead out of 456**;
+ *   2. ignoring the ESM `.js` ⇄ `.ts` convention → `app/boot.js` declared dead, `app/boot.ts` there;
+ *   3. **the omitted segment / extra prefix** — `scale/lifecycle.ts` for
+ *      `capabilities/scale/lifecycle.ts`. **73 occurrences**, resolved by
+ *      an ambiguity-safe suffix index. ⚠️ This header announced those two
+ *      as *distinct* gaps: they are the same 73;
+ *   4. **the package specifier** — `@geoleaf/core/…`, `@core/…`: not paths, set aside;
+ *   5. **the placeholder path** — `profiles/<id>/profile.json` captured as `/profile.json`.
  *
- * ⚠️ **Ce que la baseline de 84 est, et ce qu'elle n'est PAS.** Ce n'est **pas** une file de
- * dette à drainer. En instruisant le reliquat, la majorité s'est révélée être de la
- * **provenance délibérée** — « Reclassified from `modules/built-in/ui/…` », « Absorbs the
- * former `app/init-notifications.ts` », « PROMOTED here from … ». Ces TSDoc nomment le chemin
- * **parce qu'il est mort** : c'est la trace de migration, et l'effacer serait une perte. Aucune
- * regex ne les distingue de façon fiable d'une citation périmée — c'est exactement le verdict
- * que le §Limites ci-dessus a déjà rendu pour les `.md` (précision 2/10).
+ * ⚠️ **What the baseline of 84 is, and what it is NOT.» It is **not** a
+ * debt queue to drain. Instructing the remainder, the majority turned out
+ * to be **deliberate provenance** — "Reclassified from
+ * `modules/built-in/ui/…`", "Absorbs the former
+ * `app/init-notifications.ts`", "PROMOTED here from …". These TSDoc name
+ * the path **because it is dead**: it is the migration trace, and erasing
+ * it would be a loss. No regex reliably tells them from a stale citation —
+ * exactly the verdict the §Limits above already rendered for the `.md`
+ * (precision 2/10).
  *
- * **Ce que le gate garde est donc étroit et vrai : aucune citation morte NEUVE ne peut
- * entrer.** C'est le risque réel — quelqu'un déplace un fichier et laisse la référence —,
- * alors qu'une note de provenance s'écrit délibérément et rarement.
+ * **What the gate guards is thus narrow and true: no NEW dead citation
+ * can enter.» That is the real risk — someone moves a file and leaves the
+ * reference —, while a provenance note is written deliberately and rarely.
  *
- * ⚠️ **Hors périmètre, assumé** : les bandeaux `/*!` de tête de fichier ne sont pas lus (seuls
- * les blocs `/** … *\/` le sont). Vérifié en posant la mutation de contrôle : injectée dans le
- * bandeau, la gate reste verte ; dans un bloc TSDoc, elle rougit. Les en-têtes de module ont
- * leur propre garde (`check-module-headers.cjs`).
+ * ⚠️ **Out of scope, owned**: the `/*!` file-head banners are not read
+ * (only `/** … *\/` blocks are). Verified by laying the control mutation:
+ * injected into the banner, the gate stays green; into a TSDoc block, it
+ * turns red. Module headers have their own guard (`check-module-headers.cjs`).
  *
  *     node scripts/audit-report-freshness.cjs --source tsdoc            # mesure
  *     npm run check:tsdoc-paths                                         # gate
  *     npm run check:tsdoc-paths:update-baseline                         # après correction
  */
 /**
- * Index paresseux « suffixe de chemin → fichiers du dépôt qui s'y terminent ».
+ * Lazy "path suffix → repo files ending with it" index.
  *
- * Construit une seule fois, depuis `git ls-files` : c'est la liste des fichiers SUIVIS, donc
- * ni `node_modules/`, ni `dist/`, ni les artefacts — un index bâti par parcours du disque
- * ferait résoudre des citations sur des sorties de build, et un chemin `dist/` doit
- * précisément rester non résolu (il n'existe pas dans un clone frais).
+ * Built once, from `git ls-files`: the list of TRACKED files, hence
+ * neither `node_modules/`, nor `dist/`, nor the artefacts — an index built
+ * by disk walk would resolve citations onto build outputs, and a `dist/`
+ * path must precisely stay unresolved (it does not exist in a fresh clone).
  *
- * @param {string} tail - suffixe de chemin normalisé, contenant au moins un `/`.
- * @returns {string[]} les chemins du dépôt qui se terminent par ce suffixe (0, 1 ou plusieurs).
+ * @param {string} tail - normalised path suffix, containing at least one `/`.
+ * @returns {string[]} the repo paths ending with this suffix (0, 1 or several).
  */
-let _suffixMap = null;
-function suffixIndex(tail) {
-    if (_suffixMap === null) {
-        _suffixMap = new Map();
-        let tracked = [];
+/**
+ * The GIT-TRACKED files, read once.
+ *
+ * Shared by `suffixIndex()` and `locateFile()` — the two places that
+ * decide whether a cited path "exists", and they must decide with the same
+ * corpus. They did not: one read the git index, the other the disk.
+ *
+ * @returns {string[]} Root-relative paths, or an empty array outside a git repo.
+ */
+let _tracked = null;
+function trackedFiles() {
+    if (_tracked === null) {
         try {
-            tracked = require("node:child_process")
+            _tracked = require("node:child_process")
                 .execFileSync("git", ["ls-files"], { cwd: ROOT, encoding: "utf8", maxBuffer: 1e9 })
                 .split("\n")
                 .filter(Boolean);
         } catch {
-            // Hors dépôt git : l'index reste vide, la classe n'est simplement pas fermée.
-            // On ne jette pas — ce script mesure, il ne garde pas (cf. §Ce que ce script N'EST PAS).
-            tracked = [];
+            // Outside a git repo: the index stays empty, the class is
+            // simply not closed. No throw — this script measures, it does
+            // not guard (cf. §What this script is NOT).
+            _tracked = [];
         }
+    }
+    return _tracked;
+}
+
+/**
+ * The paths a fresh clone contains: the tracked files, AND their ancestor directories.
+ *
+ * 🛑 The ancestors are not a refinement, they are what makes the switch
+ * possible. The documents massively cite DIRECTORIES —
+ * `packages/core/src/capabilities/taxonomy/` is the normal shape of a
+ * sheet's reference —, and `git ls-files` only lists files. A set without
+ * the ancestors would make every directory citation come out "not found",
+ * i.e. produce hundreds of false dead on a healthy repo.
+ *
+ * @returns {Set<string>} Chemins suivis, sans barre oblique finale.
+ */
+let _trackedSet = null;
+function trackedPaths() {
+    if (_trackedSet === null) {
+        _trackedSet = new Set();
+        for (const f of trackedFiles()) {
+            const norm = normPath(f);
+            _trackedSet.add(norm);
+            const segs = norm.split("/");
+            for (let i = segs.length - 1; i > 0; i--) _trackedSet.add(segs.slice(0, i).join("/"));
+        }
+    }
+    return _trackedSet;
+}
+
+let _suffixMap = null;
+function suffixIndex(tail) {
+    if (_suffixMap === null) {
+        _suffixMap = new Map();
+        const tracked = trackedFiles();
         for (const p of tracked) {
             const segs = normPath(p).split("/");
-            // N'indexer que les suffixes de 2 segments et plus : un basename seul est trop
-            // ambigu pour trancher, et `sourceTsdoc` écarte déjà les citations sans `/`.
+            // Only index suffixes of 2 segments and more: a lone basename
+            // is too ambiguous to settle, and `sourceTsdoc` already sets
+            // aside citations without a `/`.
             for (let i = segs.length - 2; i >= 0; i--) {
                 const key = segs.slice(i).join("/");
                 let bucket = _suffixMap.get(key);
@@ -872,15 +992,20 @@ function suffixIndex(tail) {
     return _suffixMap.get(tail) || [];
 }
 
-function sourceTsdoc() {
-    const files = [];
-    for (const pkg of registry.all()) {
-        const src = path.join(pkg.absDir, "src");
-        if (fs.existsSync(src)) collectFiles(src, files);
-    }
-
-    // Mêmes extensions que le reste du script, mais les plus LONGUES d'abord — voir le
-    // motif détaillé sur `sourceRefs` : en alternance, `js` couperait `package.json`.
+/**
+ * The shared harvest — one extraction, two complementary corpora.
+ *
+ * `sourceTsdoc` reads the `/** … *\/` blocks, `sourceComments` reads
+ * everything else (`//` lines, `/* … *\/` non-doc blocks). **The two never
+ * see the same character**, which is what lets their baselines be counted
+ * apart without one covering the other's blindness.
+ *
+ * @param {{ files: string[], marker: string | null, blocksOf: (t: string) => string[] }} opts
+ *   `files` absolute; `marker` a cheap pre-filter skipping a file that cannot
+ *   contain the sought form (`null` = read everything); `blocksOf` the prose
+ *   fragments to scan.
+ */
+function harvestCitedPaths({ files, marker, blocksOf }) {
     const refRe = /([A-Za-z0-9_@./-]+\.(?:tsx|mjs|cjs|json|html|css|ts|js))(?::(\d+))?/g;
     const seen = new Map();
 
@@ -893,111 +1018,167 @@ function sourceTsdoc() {
         } catch {
             continue;
         }
-        if (!text.includes("/**")) continue;
+        if (marker && !text.includes(marker)) continue;
 
-        // ⚠️ Les bases de résolution, et l'ORDRE compte. Un TSDoc cite presque toujours
-        // relativement — à son propre répertoire (`./utils/general/dom-helpers.ts`,
-        // `../kernel/map/facade.ts`) ou à la racine `src/` de son paquet
-        // (`kernel/events/facade.ts`). Juger le chemin LITTÉRAL depuis la racine du dépôt
-        // déclarerait morts 427 chemins sur 456, dont la quasi-totalité vivante : c'est la
-        // première version de cette source, et l'échantillonnage l'a prise en défaut avant
-        // qu'elle ne serve. Mesurer, puis regarder ce qu'on a mesuré.
+        // ⚠️ The resolution bases, and the ORDER counts. A TSDoc almost
+        // always cites relatively — to its own directory
+        // (`./utils/general/dom-helpers.ts`, `../kernel/map/facade.ts`) or
+        // to its package's `src/` root (`kernel/events/facade.ts`). Judging
+        // the LITERAL path from the repo root would declare 427 paths out
+        // of 456 dead, nearly all alive: that was this source's first
+        // version, and sampling caught it out before it served. Measure,
+        // then look at what was measured.
         const pkgSrc = (() => {
             const i = rel.indexOf("/src/");
             return i === -1 ? null : rel.slice(0, i + 5);
         })();
         const bases = [normPath(path.dirname(rel)) + "/", pkgSrc, ""].filter((b) => b !== null);
 
-        for (const block of text.match(/\/\*\*[\s\S]*?\*\//g) || []) {
-            // Retirer les `@example` : leur contenu est du CODE, vérifié ailleurs, et ses
-            // chemins d'import y sont résolus par `tsc` plutôt que devinés par une regex.
-            const prose = block.replace(/@example[\s\S]*?(?=\n\s*\*\s*@|\*\/$)/g, "");
+        for (const prose of blocksOf(text)) {
             let m;
             while ((m = refRe.exec(prose)) !== null) {
                 const cited = m[1];
 
-                // 4ᵉ classe de faux positifs, fermée le 31/07/2026 — LE SPECIFIER DE PAQUET.
+                // 6th false-positive class, closed on 26/08/2026 — THE URL.
                 //
-                // `@geoleaf/core/capabilities/offline/cache/tile-math.js`, `@core/utils/…` :
-                // ce ne sont pas des chemins de système de fichiers, ce sont des specifiers
-                // résolus par la carte `exports` du paquet ou par un alias de build. Les juger
-                // comme des chemins revient à les déclarer morts **toujours** — la regex les
-                // capturait, aucune base ne pouvait les résoudre, et ils gonflaient le compte
-                // des « introuvables » sans qu'aucun geste ne puisse les corriger.
+                // `https://unpkg.com/@geoleaf/core/dist/x.js`: the regex
+                // class holds neither `:` nor the scheme, so it restarts
+                // after `://` and captures `unpkg.com/@geoleaf/core/dist/x.js`
+                // — a path no base can resolve and no gesture could fix.
                 //
-                // ⚠️ Cette classe manquait à l'en-tête de cette fonction, qui n'en annonçait
-                // que deux. Elle est écartée plutôt que résolue : vérifier un specifier demande
-                // de dérouler la carte `exports`, ce que `check-subpath-resolve.cjs` fait déjà
-                // et mieux (sur `dist/`, après build). Deux gardes sur le même défaut
-                // divergeraient — c'est le motif qui a déjà exclu les `@example` d'ici.
+                // ⚠️ Only REACHABLE since the corpus took in the `//`
+                // comments: TSDoc prose cites few URLs, line comments cite
+                // many. A class can lie dormant in one corpus and dominate
+                // the next — which is why widening a corpus is never just
+                // widening a corpus.
+                if (/:\/\/$/.test(prose.slice(0, m.index))) continue;
+
+                // 4th false-positive class, closed on 31/07/2026 — THE PACKAGE SPECIFIER.
+                //
+                // `@geoleaf/core/capabilities/offline/cache/tile-math.js`,
+                // `@core/utils/…`: not filesystem paths, but specifiers
+                // resolved by the package's `exports` map or a build alias.
+                // Judging them as paths amounts to declaring them dead
+                // **always** — the regex captured them, no base could
+                // resolve them, and they inflated the "not found" count
+                // with no gesture able to fix them.
+                //
+                // ⚠️ This class was missing from this function's header,
+                // which only announced two. It is set aside rather than
+                // resolved: verifying a specifier requires unrolling the
+                // `exports` map, which `check-subpath-resolve.cjs` already
+                // does, and better (on `dist/`, after build). Two guards on
+                // the same defect would diverge — the motive that already
+                // excluded the `@example` from here.
                 if (cited.startsWith("@")) continue;
 
-                // 5ᵉ classe de faux positifs, fermée le 31/07/2026 — LE CHEMIN À PLACEHOLDER.
+                // 5th false-positive class, closed on 31/07/2026 — THE PLACEHOLDER PATH.
                 //
-                // Un TSDoc décrit très souvent une FAMILLE de fichiers, pas un fichier :
-                // `profiles/<id>/profile.json`, `capabilities/<nom>/install.ts`,
-                // `${baseUrl}/profile.json`. Les caractères `<`, `>`, `$`, `{` ne sont pas dans
-                // la classe de la regex, qui redémarre donc au `/` suivant et capture
-                // `/profile.json` — un chemin **absolu depuis la racine du système**, qui ne
-                // peut évidemment jamais exister.
+                // A TSDoc very often describes a FAMILY of files, not a
+                // file: `profiles/<id>/profile.json`,
+                // `capabilities/<nom>/install.ts`, `${baseUrl}/profile.json`.
+                // The characters `<`, `>`, `$`, `{` are not in the regex's
+                // class, which thus restarts at the next `/` and captures
+                // `/profile.json` — a path **absolute from the system
+                // root**, which obviously can never exist.
                 //
-                // La règle est sûre parce qu'elle est asymétrique : aucun TSDoc de ce dépôt ne
-                // cite légitimement un chemin absolu depuis `/`. Un `cited` qui commence par
-                // `/` est donc toujours un reliquat de découpe, jamais une cible.
+                // The rule is safe because it is asymmetric: no TSDoc in
+                // this repo legitimately cites an absolute path from `/`. A
+                // `cited` starting with `/` is thus always a cutting
+                // remnant, never a target.
                 //
-                // ⚠️ Trouvée en INSTRUISANT le reliquat, pas en le supposant : les 4 premiers
-                // « introuvables » examinés à la main (`/install.ts`, `/profile.json`,
-                // `/basemaps.json`, `/config-primitives.js`) étaient les quatre des
-                // placeholders. Extrapoler aurait donné « 39 vrais morts » ; mesurer en donne
-                // moins. C'est le corollaire « extrapoler n'est pas pré-voler » de `CLAUDE.md`.
+                // ⚠️ Found by INSTRUCTING the remainder, not assuming it:
+                // the first 4 "not found" examined by hand (`/install.ts`,
+                // `/profile.json`, `/basemaps.json`,
+                // `/config-primitives.js`) were the four of the
+                // placeholders. Extrapolating would have given "39 real
+                // dead"; measuring gives fewer. The "extrapolating is not
+                // preflighting" corollary.
                 if (cited.startsWith("/")) continue;
 
-                // Un chemin sans `/` est un simple nom de fichier — trop ambigu pour être
-                // jugé, et `locateFile` le résoudrait par basename au hasard du dépôt.
+                // A path without `/` is a mere file name — too ambiguous to
+                // judge, and `locateFile` would resolve it by basename at
+                // the repo's whim.
                 if (!cited.includes("/")) continue;
 
-                // Résoudre contre chaque base ; la première qui existe gagne. Si aucune ne
-                // donne un fichier réel, on transmet la forme normalisée depuis `src/` du
-                // paquet — c'est celle qui rend le rapport lisible pour un humain.
-                // ⚠️ `.js` → `.ts` : en ESM, une source `.ts` s'importe en `.js`, et les
-                // TSDoc citent la forme d'import. Sans cette variante, `app/boot.js` est
-                // déclaré mort alors que `app/boot.ts` est là — 2ᵉ classe de faux positifs
-                // trouvée à l'échantillonnage, après celle des chemins relatifs.
+                // Resolve against each base; the first that exists wins. If
+                // none gives a real file, the form normalised from the
+                // package's `src/` is passed on — the one that makes the
+                // report human-readable.
+                // ⚠️ `.js` → `.ts`: in ESM, a `.ts` source imports as
+                // `.js`, and TSDoc cite the import form. Without this
+                // variant, `app/boot.js` is declared dead while
+                // `app/boot.ts` is there — 2nd false-positive class found
+                // at sampling, after the relative paths one.
                 const forms = [cited];
                 if (/\.js$/.test(cited)) forms.push(cited.replace(/\.js$/, ".ts"));
                 if (/\.mjs$/.test(cited)) forms.push(cited.replace(/\.mjs$/, ".mts"));
 
                 let resolved = null;
+                // 🛑 The oracle is the TRACKED INDEX, no longer the disk. A
+                // path present on this workstation but untracked exists
+                // neither in the public clone nor on the runner: resolving
+                // it here made the gate green on the workshop and false
+                // everywhere else. Sole exception, the build outputs
+                // (`dist/`): git tracks them in no repo, the disk — after
+                // the build, which both CIs do — is their only possible
+                // oracle, and the index would declare them dead even alive.
+                const tracked = trackedPaths();
+                const resolvable = (cand) =>
+                    cand.split("/").includes("dist")
+                        ? fs.existsSync(path.join(ROOT, cand))
+                        : tracked.size > 0
+                          ? tracked.has(cand.replace(/\/+$/, ""))
+                          : fs.existsSync(path.join(ROOT, cand));
                 outer: for (const form of forms) {
                     for (const b of bases) {
                         const cand = normPath(path.normalize(path.join(b, form)));
-                        if (fs.existsSync(path.join(ROOT, cand))) {
+                        if (resolvable(cand)) {
                             resolved = cand;
                             break outer;
                         }
                     }
                 }
 
-                // 3ᵉ classe de faux positifs, fermée le 31/07/2026 — LE SEGMENT OMIS.
+                // 3rd false-positive class, closed on 31/07/2026 — THE OMITTED SEGMENT.
                 //
-                // Un TSDoc cite très souvent une forme raccourcie qui n'est complète depuis
-                // aucune des trois bases ci-dessus : `scale/lifecycle.ts` pour
-                // `capabilities/scale/lifecycle.ts`, `geojson/core.ts` pour
-                // `kernel/geojson/core.ts`, ou au contraire un `src/` en trop. La citation
-                // désigne un fichier BIEN VIVANT ; seul le chemin est abrégé.
+                // A TSDoc very often cites a shortened form complete from
+                // none of the three bases above: `scale/lifecycle.ts` for
+                // `capabilities/scale/lifecycle.ts`, `geojson/core.ts` for
+                // `kernel/geojson/core.ts`, or conversely an extra `src/`.
+                // The citation designates a WELL-ALIVE file; only the path
+                // is abbreviated.
                 //
-                // ⚠️ **Mesuré avant d'être codé, et c'est ce qui a décidé de la forme** : sur
-                // les 149 « introuvables » du 30/07, **73 occurrences** se résolvent par simple
-                // suffixe. Les déclarer mortes revenait à sur-compter d'un facteur ~2 — et
-                // l'en-tête de cette fonction annonçait « au moins deux lacunes connues » en
-                // décrivant précisément ces deux-là (préfixe `src/`, segment omis) : ce sont
-                // les MÊMES 73, et non deux gisements distincts.
+                // ⚠️ **Measured before being coded, and that decided the
+                // shape**: of the 149 "not found" of 30/07, **73
+                // occurrences** resolve by simple suffix. Declaring them
+                // dead amounted to over-counting by a factor of ~2 — and
+                // this function's header announced "at least two known
+                // gaps" describing precisely those two (`src/` prefix,
+                // omitted segment): they are the SAME 73, not two distinct
+                // deposits.
                 //
-                // La résolution par suffixe est volontairement AMBIGUË-SAFE : si deux fichiers
-                // du dépôt terminent par le même suffixe, on refuse de trancher et le chemin
-                // reste non résolu. Un faux « vivant » silencieux serait pire que le faux
-                // « mort » qu'on corrige — c'est le biais de prudence que revendique l'en-tête
-                // du script.
+                // The suffix resolution is deliberately AMBIGUITY-SAFE: if
+                // two repo files end with the same suffix, we refuse to
+                // settle and the path stays unresolved. A silent false
+                // "alive" would be worse than the false "dead" being
+                // corrected — the prudence bias the script's header claims.
+                //
+                // ⚠️ A citation resolved HERE is one homonym away from breaking, and that is
+                // measured rather than feared: `hits.length === 1` is the whole condition, so
+                // a NEW file anywhere in the repo whose path ends with these same segments
+                // flips it to `length === 2`, the citation falls through unresolved, and it is
+                // reported dead. **The author of the new file is the one who breaks it, and
+                // nothing told them** — the message named neither file until 26/08/2026, in
+                // either direction: not the citation's own file, not the homonym that made it
+                // ambiguous. The defect was invisible to the only person who could act on it.
+                //
+                // Two markers leave this loop for that reason. `viaSuffix` counts the EXPOSED
+                // citations, printed at end of run so the surface stops being invisible.
+                // `ambiguousWith` carries the candidates when the suffix ALREADY matches
+                // several, so the report can name them instead of saying "the path is dead".
+                let viaSuffix = false;
+                let ambiguousWith = null;
                 if (!resolved) {
                     for (const form of forms) {
                         const tail = form.replace(/^(\.\.?\/)+/, "").replace(/^\/+/, "");
@@ -1005,10 +1186,25 @@ function sourceTsdoc() {
                         const hits = suffixIndex(tail);
                         if (hits.length === 1) {
                             resolved = hits[0];
+                            viaSuffix = true;
                             break;
                         }
+                        if (hits.length > 1 && ambiguousWith === null) ambiguousWith = hits;
                     }
                 }
+                // 7th false-positive class, same date — THE DEPENDENCY.
+                //
+                // `istanbul-lib-coverage/lib/percent.js`, `geotiff/dist/…`:
+                // REAL files, in `node_modules/`, tracked by no repo. The
+                // index would call them dead for ever, and "correcting" them
+                // would delete a true statement.
+                //
+                // 🛑 Tested AFTER resolution, never before: a repo directory
+                // could share a name with an installed package, and an early
+                // skip would blind the gate on it. Only what no base could
+                // resolve is offered to this test.
+                if (!resolved && isDependencyPath(cited)) continue;
+
                 const file = resolved ?? normPath(path.normalize(path.join(pkgSrc || "", cited)));
 
                 const key = `${rel}→${cited}`;
@@ -1016,6 +1212,8 @@ function sourceTsdoc() {
                     seen.set(key, {
                         id: key,
                         file,
+                        viaSuffix,
+                        ambiguousWith,
                         line: m[2] ? Number(m[2]) : null,
                         citedIn: rel,
                         cited,
@@ -1027,7 +1225,177 @@ function sourceTsdoc() {
     return [...seen.values()];
 }
 
-/** Chemins cités par les 45 fiches de `docs/specs/` (SPECS-PATHS, B-221). */
+/**
+ * The non-TSDoc comments of a source — `//` lines and `/* … *\/` blocks.
+ *
+ * 🛑 A LEXER, not a regex, and the motive is measured: `https://x/y.js`
+ * inside a string would be read as a comment start by a naive `//` match.
+ * The states are the four that can swallow a `/`: line comment, block
+ * comment, quoted string, template literal.
+ *
+ * ⚠️ `/** … *\/` is EXCLUDED here — it is `TSDOC-PATHS`' corpus. Two gates
+ * on the same characters would diverge, and their two counts would stop
+ * meaning anything separately.
+ */
+function nonDocComments(text) {
+    const out = [];
+    const n = text.length;
+    let i = 0;
+    while (i < n) {
+        const c = text[i];
+        const two = text.slice(i, i + 2);
+        if (two === "//") {
+            let j = text.indexOf("\n", i);
+            if (j === -1) j = n;
+            out.push(text.slice(i, j));
+            i = j;
+        } else if (two === "/*") {
+            let j = text.indexOf("*/", i + 2);
+            j = j === -1 ? n : j + 2;
+            if (text.slice(i, i + 3) !== "/**") out.push(text.slice(i, j));
+            i = j;
+        } else if (c === '"' || c === "'") {
+            const q = c;
+            let j = i + 1;
+            while (j < n) {
+                if (text[j] === "\\") {
+                    j += 2;
+                    continue;
+                }
+                if (text[j] === q || text[j] === "\n") {
+                    j += 1;
+                    break;
+                }
+                j += 1;
+            }
+            i = j;
+        } else if (c === "`") {
+            let j = i + 1;
+            while (j < n) {
+                if (text[j] === "\\") {
+                    j += 2;
+                    continue;
+                }
+                if (text[j] === "`") {
+                    j += 1;
+                    break;
+                }
+                j += 1;
+            }
+            i = j;
+        } else {
+            i += 1;
+        }
+    }
+    return out;
+}
+
+/**
+ * Is this citation rooted in a DECLARED dependency?
+ *
+ * 🛑 The oracle is the `package.json` files, NOT `node_modules/` — and it is
+ * the same arbitration this script already made for paths ("the oracle is the
+ * TRACKED INDEX, no longer the disk"). Reading the installed tree would tie
+ * the verdict to the INSTALL STATE: the same commit would be green after
+ * `npm ci` and red before, and the gate would say something about the
+ * workstation rather than about the repo.
+ *
+ * ⚠️ Owned consequence: a TRANSITIVE dependency, declared nowhere, is not
+ * recognised — its citations land in the baseline like any other unresolvable
+ * path. That is the right way round: frozen and visible beats skipped and
+ * invisible.
+ */
+let _depRoots = null;
+function isDependencyPath(cited) {
+    if (_depRoots === null) {
+        _depRoots = new Set();
+        const manifests = [path.join(ROOT, "package.json")];
+        for (const pkg of registry.all()) manifests.push(path.join(pkg.absDir, "package.json"));
+        for (const abs of manifests) {
+            let json;
+            try {
+                json = JSON.parse(fs.readFileSync(abs, "utf8"));
+            } catch {
+                continue;
+            }
+            for (const field of ["dependencies", "devDependencies", "peerDependencies"]) {
+                for (const name of Object.keys(json[field] || {})) _depRoots.add(name);
+            }
+        }
+    }
+    // ⚠️ Peeled by hand, NOT by `/^(\.\.?\/)+/`: that shape is a nested
+    // quantifier, which `security/detect-unsafe-regex` rightly flags. The rule
+    // stays at `error` on `scripts/` by a written decision, and its 18 legacy
+    // hits live as SUPPRESSIONS — a debt that can only shrink. Adding a 19th
+    // would have grown it to lay a helper, which no convenience justifies.
+    let first = cited;
+    while (first.startsWith("./") || first.startsWith("../")) {
+        first = first.slice(first.startsWith("../") ? 3 : 2);
+    }
+    return _depRoots.has(first.split("/")[0]);
+}
+
+function sourceTsdoc() {
+    const files = [];
+    for (const pkg of registry.all()) {
+        const src = path.join(pkg.absDir, "src");
+        if (fs.existsSync(src)) collectFiles(src, files);
+    }
+
+    // Same extensions as the rest of the script, but LONGEST first — see
+    // the detailed motive on `sourceRefs`: in alternation, `js` would cut `package.json`.
+    return harvestCitedPaths({
+        files,
+        marker: "/**",
+        blocksOf: (text) =>
+            (text.match(/\/\*\*[\s\S]*?\*\//g) || []).map((block) =>
+                // Strip the `@example`: their content is CODE, verified
+                // elsewhere, and its import paths are resolved there by `tsc`
+                // rather than guessed by a regex.
+                block.replace(/@example[\s\S]*?(?=\n\s*\*\s*@|\*\/$)/g, "")
+            ),
+    });
+}
+
+/**
+ * Paths cited by the NON-TSDoc comments of the tracked code (COMMENT-PATHS).
+ *
+ * The 6th source, posed on 26/08/2026, on a decision whose motive is written
+ * here rather than referenced: a citation that cannot be resolved is dead for
+ * its reader, and a line number is dead as soon as a line is inserted above
+ * it. `TSDOC-PATHS` guarded the published prose against the first half; this
+ * one guards everything the repo says to itself — and that corpus is public
+ * too, since the whole repo ships.
+ *
+ * 🛑 **The corpus is the TRACKED INDEX, not `packages/*\/src`.** `sourceTsdoc`
+ * only walks the packages' `src/`: `scripts/`, `e2e/`, the tests and the root
+ * configs were outside ANY path gate. They carry the majority of the repo's
+ * `//` comments — measured, ~2 585 path citations of which 2 121 already
+ * resolve.
+ */
+function sourceComments() {
+    // 🛑 The boundary is DERIVED from `lib/public-partition.cjs`, never spelled
+    // out here — the same authority `check-workshop-refs.cjs` reads. Two reasons,
+    // and the second is the one that bites: the workshop root is overridable by
+    // environment (`docs-paths.cjs`), so a literal would be wrong the day it
+    // moves; and a boundary written twice is a boundary that will diverge once.
+    const { publicFiles } = partition.split(trackedFiles());
+    const files = publicFiles
+        .map((f) => normPath(f))
+        .filter((f) => /\.(ts|tsx|js|mjs|cjs)$/.test(f))
+        .map((f) => path.join(ROOT, f));
+
+    // Anti-empty-gate: a gate that scanned nothing must not read as green.
+    if (files.length === 0) {
+        die(
+            "[COMMENT-PATHS] corpus vide — aucun fichier de code suivi par git. " +
+                "Refus de conclure : ce serait un vert qui n'a rien lu."
+        );
+    }
+    return harvestCitedPaths({ files, marker: null, blocksOf: nonDocComments });
+}
+
+/** Paths cited by the 45 `docs/specs/` sheets (SPECS-PATHS). */
 function sourceSpecs() {
     const files = [];
     collectMd(docsPaths.specs(), files);
@@ -1041,17 +1409,81 @@ function sourceSpecs() {
 }
 
 /**
- * Chemins cités par `docs/guides/` et `docs/reference/` — la 3ᵉ sous-racine publique (B-222).
+ * Paths cited by `docs/guides/` and `docs/reference/` — the 3rd public sub-root.
  *
- * `SPECS-PATHS` gardait `docs/specs/` **et rien d'autre**, alors que les deux autres partent
- * dans le même dépôt public et sont lues par les mêmes gens. Le coût était mesuré, pas
- * supposé : `TESTING_GUIDE.md` a énuméré pendant des mois une suite `poi.test.js` disparue
- * avec la dissolution du module POI, et **aucune gate ne pouvait la voir** —
- * `check-dead-links` n'extrait que la forme markdown `[texte](cible)`, jamais un nom de
- * fichier en backticks.
+ * `SPECS-PATHS` guarded `docs/specs/` **and nothing else**, while the two
+ * others ship in the same public repo and are read by the same people. The
+ * cost was measured, not assumed: `TESTING_GUIDE.md` enumerated for months
+ * a `poi.test.js` suite gone with the POI module's dissolution, and **no
+ * gate could see it** — `check-dead-links` only extracts the markdown
+ * `[text](target)` form, never a backticked file name.
  *
- * @returns {object[]} items, mêmes forme et contrat que `sourceSpecs()`.
+ * @returns {object[]} items, same shape and contract as `sourceSpecs()`.
  */
+/**
+ * Paths cited by the `_docs_projet/vision/` sheets (VISION-PATHS).
+ *
+ * 🛑 **The corpus no gate read, and the most exposed to rot.» These sheets
+ * describe **specified, not developed** features: they cite paths that do
+ * not exist yet, beside paths that existed and moved — and nothing told
+ * the two apart. They are loaded at every "resume work" (~136 KB), so
+ * their errors get reread at every resumption. `check-dead-links`
+ * explicitly removes them from its perimeter, and
+ * `SPECS-PATHS`/`GUIDES-PATHS` only read the public.
+ *
+ * ⚠️ **The baseline is the legitimate home of paths TO COME.» A path cited
+ * by a vision sheet can be dead *because the feature is not written* —
+ * freezing it says "known, expected", and that is exactly what the gate
+ * must allow. What it catches is the OTHER case: a path that existed and
+ * moved without the sheet following.
+ *
+ * 🛑 **This source READS THE WORKSHOP**, so it falls under
+ * `NEEDS_INTERNAL_ROOT`: on the public clone, `_docs_projet/` does not
+ * exist and the gate SKIPS saying so. Do not remove it from that list "for
+ * uniformity" — that is what nearly made `SPECS-PATHS` green and blind.
+ */
+function sourceVision() {
+    const files = [];
+    collectMd(docsPaths.internal("vision"), files);
+    if (files.length === 0) {
+        die(
+            "corpus `_docs_projet/vision/` vide — refus de conclure. Une gate qui ne lit rien " +
+                "sort verte en n'ayant rien gardé."
+        );
+    }
+    return collectCitedPaths(files, visionBases);
+}
+
+/**
+ * Resolution bases specific to `vision/`.
+ *
+ * 🛑 **Without the first two, the instrument would carry the blindness it
+ * measures.» These sheets refer to their workshop neighbours by BARE NAME
+ * — `ETAT.md`, `JOURNAL.md`, `CDC_plugin-navigation_technique.md`.
+ * Resolved on `guidesBases`, which ignores `_docs_projet/`, they were all
+ * counted DEAD while they exist: the first measure returned 46 absent of
+ * which several alive, and freezing that count would have frozen falsehood
+ * into a baseline supposed to hold only the known.
+ *
+ * ⚠️ The corollary applies word for word here — "the preflight can carry
+ * the blindness it measures". Verify the base BEFORE believing the count.
+ */
+function visionBases(rel) {
+    return [
+        normPath(path.dirname(rel)) + "/",
+        docsPaths.rel(docsPaths.INTERNAL_ROOT) + "/",
+        docsPaths.rel(docsPaths.INTERNAL_ROOT) + "/vision/",
+        docsPaths.rel(docsPaths.INTERNAL_ROOT) + "/registres/",
+        "packages/core/src/",
+        "packages/core/",
+        "docs/",
+        "docs/specs/",
+        "docs/reference/",
+        "profiles/_reference/",
+        "",
+    ];
+}
+
 function sourceGuides() {
     const files = [];
     collectMd(docsPaths.guides(), files);
@@ -1067,23 +1499,64 @@ function sourceGuides() {
 }
 
 /**
- * Racines de résolution d'une fiche `docs/specs/`, la plus spécifique d'abord.
+ * Paths cited by `packages/core/docs/` — the 5th source, and the repo's
+ * most NORMATIVE corpus.
  *
- * ⚠️ **Cette fonction EST la 4ᵉ base, et sans elle la source ne mesure rien d'utile.** Une
- * fiche de capacité cite `lifecycle.ts`, `config.ts`, `public-api.ts` — les noms du contrat de
- * module, portés à l'identique par les 21 capacités et les 12 plugins. Résolus globalement ils
- * sont ambigus à 20-30 candidats et `suffixIndex` refuse de trancher (à raison) ; résolus
- * depuis le répertoire SUJET de la fiche, ils sont exacts. Mesuré le 11/08/2026 : la
- * racine-sujet seule résout **51,4 %** des 1592 chemins non-racinés, les bases communes
- * portent le cumul à **73,5 %**.
+ * 🛑 **The hole was measured, and it was the costliest of the four.»
+ * `SPECS-PATHS` guards `docs/specs/`, `GUIDES-PATHS` guards
+ * `docs/guides/` + `docs/reference/`, `VISION-PATHS` guards the workshop —
+ * **none** read `packages/core/docs/`, which nonetheless ships in the npm
+ * tarball AND the public repo, and which `check-dead-links` counts as its
+ * biggest scope (60 files).
  *
- * 🛑 **Ce que ces bases NE font PAS** : elles ne lèvent pas l'ambiguïté pour le LECTEUR. Un
- * `config.ts` cité dans une fiche dont il n'est pas le sujet reste illisible même si la gate
- * le résout. Le racinage rédactionnel est un geste distinct (6.11 lot 3), et cette gate ne
- * prétend pas le porter — elle garde une propriété étroite : aucun chemin mort NEUF.
+ * ⚠️ **And the directory ALREADY appeared in the gate, which led to the
+ * backwards conclusion.» It is listed in `guidesBases()` — but as a
+ * **resolution destination**, never a **scanned source**. A `grep` on its
+ * name in this file returns a hit and lets it be believed guarded. The
+ * failure mode that lesson carries as its title: _referenced ≠ read_.
  *
- * @param {string} rel - chemin de la fiche, relatif à la racine du dépôt.
- * @returns {string[]} préfixes à essayer dans l'ordre, terminés par `/` (sauf la racine, `""`).
+ * **Why `guidesBases` and not its own base**: these documents refer to
+ * each other by bare name (`ARCHITECTURE_GUIDE.md`,
+ * `GeoLeaf_core_README.md`) and cite the core's code by paths relative to
+ * `packages/core/src/` — exactly the bases `guidesBases()` already
+ * carries, whose 4th entry is precisely `packages/core/docs/`. Giving it a
+ * new base would duplicate a list already corrected once for blindness.
+ *
+ * @returns {object[]} items, same shape and contract as `sourceGuides()`.
+ */
+function sourceCoreDocs() {
+    const files = [];
+    // Derived from the registry, never hardcoded: `packages/core` can move.
+    collectMd(path.join(require("./lib/packages.cjs").byName("@geoleaf/core").dir, "docs"), files);
+    if (files.length === 0) {
+        die(
+            "corpus `packages/core/docs/` vide — refus de conclure. Une gate qui ne lit rien " +
+                "sort verte en n'ayant rien gardé."
+        );
+    }
+    return collectCitedPaths(files, guidesBases);
+}
+
+/**
+ * Resolution roots of a `docs/specs/` sheet, most specific first.
+ *
+ * ⚠️ **This function IS the 4th base, and without it the source measures
+ * nothing useful.» A capability sheet cites `lifecycle.ts`, `config.ts`,
+ * `public-api.ts` — the module contract's names, carried identically by
+ * the 21 capabilities and the 12 plugins. Resolved globally they are
+ * ambiguous at 20-30 candidates and `suffixIndex` refuses to settle
+ * (rightly); resolved from the sheet's SUBJECT directory, they are exact.
+ * Measured on 11/08/2026: the subject root alone resolves **51.4%** of the
+ * 1,592 unrooted paths, the common bases bring the total to **73.5%**.
+ *
+ * 🛑 **What these bases do NOT do**: they do not lift the ambiguity for
+ * the READER. A `config.ts` cited in a sheet it is not the subject of
+ * stays unreadable even if the gate resolves it. Editorial rooting is a
+ * distinct gesture, and this gate does not claim to carry it — it guards a
+ * narrow property: no NEW dead path.
+ *
+ * @param {string} rel - the sheet's path, relative to the repo root.
+ * @returns {string[]} prefixes to try in order, `/`-terminated (except the root, `""`).
  */
 function specsBases(rel) {
     const bases = [];
@@ -1095,10 +1568,11 @@ function specsBases(rel) {
     } else if ((m = rel.match(/\/libs\/(.+)\.md$/))) {
         bases.push(`packages/libs/${m[1]}/src/`, `packages/libs/${m[1]}/`);
     }
-    // Bases communes : le core est cité par TOUTES les fiches (kernel, contrats, RFC compris),
-    // puis les racines documentaires — un renvoi `CDC_kernel.md` depuis `capacites/` n'est
-    // résoluble que par `docs/specs/`. La racine du dépôt vient en dernier : elle accepte les
-    // chemins déjà repo-racinés, qui sont la forme cible.
+    // Common bases: the core is cited by ALL the sheets (kernel, contracts,
+    // RFC included), then the documentation roots — a `CDC_kernel.md`
+    // reference from `capacites/` only resolves through `docs/specs/`. The
+    // repo root comes last: it accepts already repo-rooted paths, the
+    // target form.
     bases.push(
         "packages/core/src/",
         "packages/core/",
@@ -1111,44 +1585,48 @@ function specsBases(rel) {
 }
 
 /**
- * Chemins cités par les 45 fiches de `docs/specs/` — le corpus qu'AUCUNE gate ne lisait.
+ * Paths cited by the 45 `docs/specs/` sheets — the corpus NO gate read.
  *
- * ⚠️ **Constat qui motive cette source, mesuré le 11/08/2026 par élimination sur les 78 gates
- * de `ci:local`** : `check-dead-links` n'extrait que `[texte](cible)` (`:321`), TSDOC-PATHS
- * s'arrête aux `src/` des paquets et n'a pas `md` dans son alternance, les corpus `.md` de
- * `validate-docs-examples`/`typecheck-docs-examples` sont pris à profondeur 0 de la racine
- * (`lib/tsdoc-examples.cjs:162`, donc jamais `docs/`), et les 3 guards ne contrôlent que des
- * tables nommées. **546 paires (fiche→chemin) n'étaient gardées par rien** — d'où la classe B
- * de la tâche 6.11, qui « se périme sans jamais rougir ». Ce n'était pas une fatalité, c'était
- * un trou d'outillage.
+ * ⚠️ **Finding that motivates this source, measured on 11/08/2026 by
+ * elimination over `ci:local`'s 78 gates**: `check-dead-links` only
+ * extracts `[text](target)` (`:321`), TSDOC-PATHS stops at the packages'
+ * `src/` and has no `md` in its alternation, the `.md` corpora of
+ * `validate-docs-examples`/`typecheck-docs-examples` are taken at depth 0
+ * of the root (`lib/tsdoc-examples.cjs`, hence never `docs/`), and the
+ * 3 guards only check named tables. **546 (sheet→path) pairs were guarded
+ * by nothing** — hence the class that "expires without ever turning red".
+ * Not a fatality, a tooling hole.
  *
- * Trois écarts assumés avec `sourceTsdoc`, chacun mesuré :
+ * Three owned divergences from `sourceTsdoc`, each measured:
  *
- *   1. **`md` entre dans l'alternance.** Les fiches se citent entre elles — `CDC_kernel.md`
- *      35 fois, `ARBORESCENCE_QUALIFIEE.md` 35 fois. Placé en DERNIER : l'alternance se lit
- *      dans l'ordre, et une extension courte placée trop tôt coupe les longues.
- *   2. **Un nom nu est accepté s'il est `.md`, refusé sinon.** `CDC_kernel.md` désigne un
- *      document réel et se résout par les racines documentaires ; `config.ts` sans répertoire
- *      est porté par 28 fichiers et ne se tranche pas — c'est le geste rédactionnel du lot 3,
- *      pas celui d'un résolveur.
- *   3. **Les URL sont retirées AVANT la regex.** `https://geoleaf.dev/x.json` ferait capturer
- *      `geoleaf.dev/x.json`, éternellement mort et incorrigible — la 4ᵉ classe de faux
- *      positifs de `sourceTsdoc` (le specifier de paquet) sous un autre nom.
+ *   1. **`md` enters the alternation.» The sheets cite one another —
+ *      `CDC_kernel.md` 35 times, `ARBORESCENCE_QUALIFIEE.md` 35 times.
+ *      Placed LAST: the alternation reads in order, and a short extension
+ *      placed too early cuts the long ones.
+ *   2. **A bare name is accepted if `.md`, refused otherwise.»
+ *      `CDC_kernel.md` designates a real document and resolves through the
+ *      documentation roots; `config.ts` without a directory is carried by
+ *      28 files and cannot be settled — the editorial gesture, not a resolver's.
+ *   3. **URLs are removed BEFORE the regex.» `https://geoleaf.dev/x.json`
+ *      would capture `geoleaf.dev/x.json`, eternally dead and
+ *      unfixable — `sourceTsdoc`'s 4th false-positive class (the package
+ *      specifier) under another name.
  *
- * @returns {object[]} items `{ id, file, line, citedIn, cited }`, dédoublonnés par paire.
+ * @returns {object[]} items `{ id, file, line, citedIn, cited }`, deduplicated per pair.
  */
 /**
- * Moteur d'extraction PARTAGÉ par `--source specs` et `--source guides`.
+ * Extraction engine SHARED by `--source specs` and `--source guides`.
  *
- * ⚠️ **Extrait de `sourceSpecs()` le 11/08/2026 (B-222), et pas par goût du facteur commun.**
- * La 3ᵉ source avait besoin de la même boucle à quelques lignes près ; la recopier aurait
- * créé **deux extracteurs libres de diverger** sur un dépôt qui a déjà payé ce défaut deux
- * fois (B-80 : une exclusion dupliquée corrigée d'un seul côté, une gate restée aveugle).
- * Un seul moteur, deux corpus, deux baselines.
+ * ⚠️ **Extracted from `sourceSpecs()` on 11/08/2026, and not for love of
+ * the common factor.» The 3rd source needed the same loop to a few lines;
+ * copying it would have created **two extractors free to diverge** on a
+ * repo that has already paid that defect twice (a duplicated exclusion
+ * fixed on one side only, a gate left blind). One engine, two corpora, two
+ * baselines.
  *
- * @param {string[]} files - documents à lire, chemins absolus.
- * @param {(rel: string) => string[]} basesFor - racines de résolution, par document.
- * @returns {object[]} items `{ id, file, line, citedIn, cited }`, dédoublonnés par paire.
+ * @param {string[]} files - documents to read, absolute paths.
+ * @param {(rel: string) => string[]} basesFor - resolution roots, per document.
+ * @returns {object[]} items `{ id, file, line, citedIn, cited }`, deduplicated per pair.
  */
 function collectCitedPaths(files, basesFor) {
     const refRe =
@@ -1165,21 +1643,25 @@ function collectCitedPaths(files, basesFor) {
         }
         const bases = basesFor(rel);
 
-        // Les blocs clôturés portent du CODE d'exemple, pas des renvois : leurs chemins
-        // d'import sont vérifiés par `typecheck-docs-examples` sur son propre corpus, et les
-        // juger ici produirait deux gardes divergentes sur le même défaut — le motif qui a
-        // déjà exclu les `@example` de `sourceTsdoc`.
+        // Fenced blocks carry example CODE, not references: their import
+        // paths are verified by `typecheck-docs-examples` on its own
+        // corpus, and judging them here would produce two diverging guards
+        // on the same defect — the motive that already excluded the
+        // `@example` from `sourceTsdoc`.
         //
-        // 🛑 **C'EST AUSSI L'ANGLE MORT DE CETTE SOURCE, et il a un coût mesuré.** La relecture
-        // du 11/08/2026 a trouvé `"addpoi": "config/plugins/addpoi.json"` dans DEUX exemples
-        // ```json copiables-collables (`CDC_kernel.md` §Le manifeste `Files`,
-        // `PROFILE_CONTRACT_SPEC.md` §3 et §4) — un plugin fusionné dans `editor` au Sprint 5.
-        // Invisible ici parce que clôturé, et invisible aux guards de profil parce qu'ils
-        // valident la FORME contre `profile.schema.json`, où `Files.modules` a des clés
-        // dynamiques. Deux gates vertes, un exemple mort. **Ne pas « corriger » en levant cette
-        // exclusion** : elle éviterait ce cas au prix de juger tous les chemins d'import des
-        // exemples de code, ce que `typecheck-docs-examples` fait déjà et mieux. Le trou est
-        // réel, il est nommé, et il se ferme par la relecture — pas par cette regex.
+        // 🛑 **IT IS ALSO THIS SOURCE'S BLIND SPOT, and it has a measured
+        // cost.» The 11/08/2026 rereading found
+        // `"addpoi": "config/plugins/addpoi.json"` in TWO copy-pastable
+        // ```json examples (`CDC_kernel.md` §The `Files` manifest,
+        // `PROFILE_CONTRACT_SPEC.md` §3 and §4) — a plugin since merged
+        // into `editor`. Invisible here because fenced, and invisible to
+        // the profile guards because they validate the SHAPE against
+        // `profile.schema.json`, where `Files.modules` has dynamic keys.
+        // Two green gates, one dead example. **Do not "fix" by lifting
+        // this exclusion**: it would avoid this case at the price of
+        // judging all the code examples' import paths, which
+        // `typecheck-docs-examples` already does, and better. The hole is
+        // real, it is named, and it closes by rereading — not by this regex.
         let inFence = false;
         for (const raw of text.split("\n")) {
             if (/^\s*(```|~~~)/.test(raw)) {
@@ -1212,6 +1694,12 @@ function collectCitedPaths(files, basesFor) {
                         }
                     }
                 }
+                // Same exposure as in `harvestCitedPaths` — see the reasoning there. The two
+                // loops are deliberately kept side by side rather than factored: they read
+                // different corpora with different bases, and a shared helper would have to
+                // take both, which is how one of them would quietly stop being exercised.
+                let viaSuffix = false;
+                let ambiguousWith = null;
                 if (!resolved) {
                     for (const form of forms) {
                         const tail = form.replace(/^(\.\.?\/)+/, "").replace(/^\/+/, "");
@@ -1219,8 +1707,10 @@ function collectCitedPaths(files, basesFor) {
                         const hits = suffixIndex(tail);
                         if (hits.length === 1) {
                             resolved = hits[0];
+                            viaSuffix = true;
                             break;
                         }
+                        if (hits.length > 1 && ambiguousWith === null) ambiguousWith = hits;
                     }
                 }
                 const file = resolved ?? normPath(path.normalize(path.join(bases[0], cited)));
@@ -1230,6 +1720,8 @@ function collectCitedPaths(files, basesFor) {
                     seen.set(key, {
                         id: key,
                         file,
+                        viaSuffix,
+                        ambiguousWith,
                         line: m[2] ? Number(m[2]) : null,
                         citedIn: rel,
                         cited,
@@ -1241,30 +1733,33 @@ function collectCitedPaths(files, basesFor) {
     return [...seen.values()];
 }
 
-/** Collecte récursive des `.md` — `collectFiles` filtre sur `SOURCE_EXTS`, qui n'a pas `md`. */
+/** Recursive `.md` collection — `collectFiles` filters on `SOURCE_EXTS`, which lacks `md`. */
 /**
- * Racines de résolution d'un document de `docs/guides/` ou `docs/reference/`.
+ * Resolution roots of a `docs/guides/` or `docs/reference/` document.
  *
- * ⚠️ **Volontairement différentes de `specsBases()`, et B-222 le dit** : celles-là sont
- * taillées pour la structure `capacites/` · `plugins/` · `libs/`, où le nom du fichier
- * désigne le sujet et donne donc une racine (`capabilities/<id>/`). Un guide n'a pas de
- * sujet déductible de son nom : il cite du code depuis n'importe où. Ses bases sont donc
- * génériques, ordonnées du plus spécifique au plus large.
+ * ⚠️ **Deliberately different from `specsBases()`**: those are cut for the
+ * `capacites/` · `plugins/` · `libs/` structure, where the file's name
+ * designates the subject and thus gives a root (`capabilities/<id>/`). A
+ * guide has no subject deducible from its name: it cites code from
+ * anywhere. Its bases are thus generic, ordered most specific to widest.
  *
- * @param {string} rel - chemin du document, relatif à la racine du dépôt.
- * @returns {string[]} préfixes à essayer dans l'ordre.
+ * @param {string} rel - the document's path, relative to the repo root.
+ * @returns {string[]} prefixes to try in order.
  */
 function guidesBases(rel) {
     return [
         normPath(path.dirname(rel)) + "/",
         "packages/core/src/",
         "packages/core/",
-        // La doc du site : ces documents s'y renvoient par leur NOM NU (`ARCHITECTURE_GUIDE.md`,
-        // `GeoLeaf_core_README.md`). Sans cette base, 4 renvois VIVANTS étaient comptés morts —
-        // l'instrument aurait porté la cécité qu'il mesure, et la baseline aurait figé du faux.
+        // The site's doc: these documents refer to each other by BARE NAME
+        // (`ARCHITECTURE_GUIDE.md`, `GeoLeaf_core_README.md`). Without this
+        // base, 4 LIVE references were counted dead — the instrument would
+        // have carried the blindness it measures, and the baseline would
+        // have frozen falsehood.
         "packages/core/docs/",
-        // Les chemins `config/core/*.json` et `layers/<id>/…` sont relatifs à un PROFIL, pas au
-        // dépôt. `_reference` est le profil canonique, celui dont la structure fait foi.
+        // The `config/core/*.json` and `layers/<id>/…` paths are relative
+        // to a PROFILE, not the repo. `_reference` is the canonical
+        // profile, the one whose structure is authoritative.
         "profiles/_reference/",
         "docs/",
         "docs/reference/",
@@ -1274,17 +1769,20 @@ function guidesBases(rel) {
 }
 
 /**
- * Les artefacts GÉNÉRÉS de `docs/reference/`, hors corpus — et le motif n'est pas le confort.
+ * The GENERATED artefacts of `docs/reference/`, out of corpus — and the
+ * motive is not comfort.
  *
- * Ils sont **vrais par construction** : `generate-docs-tree.cjs`, `gen-attributes-report.cjs`
- * et `gen-profile-schema-reference.cjs` les dérivent du disque et des schémas, et chacun
- * porte déjà sa gate `--check` dans `ci:local`. Les inclure ici ferait entrer les ~1 900
- * lignes de l'arborescence — c'est-à-dire **un chemin par fichier du dépôt** — dans une
- * baseline que personne ne pourrait plus lire, pour garder une propriété déjà gardée
- * ailleurs, et mieux.
+ * They are **true by construction**: `generate-docs-tree.cjs`,
+ * `gen-attributes-report.cjs` and `gen-profile-schema-reference.cjs`
+ * derive them from the disk and the schemas, and each already carries its
+ * `--check` gate in `ci:local`. Including them here would bring the tree's
+ * ~1,900 lines — i.e. **one path per repo file** — into a baseline nobody
+ * could read any more, to guard a property already guarded elsewhere, and
+ * better.
  *
- * 🛑 Ne pas y ajouter un fichier RÉDIGÉ : ce serait le soustraire à la seule gate qui le
- * regarde. La liste se justifie fichier par fichier, jamais par un glob.
+ * 🛑 Do not add a HAND-WRITTEN file to it: that would subtract it from the
+ * only gate that looks at it. The list justifies itself file by file,
+ * never by a glob.
  */
 const GUIDES_GENERATED = new Set([
     "docs/reference/ARBORESCENCE_QUALIFIEE.md",
@@ -1312,7 +1810,10 @@ function collectMd(dir, acc) {
 
 function main() {
     const source = arg("source");
-    if (!source) die("--source requis (s4-triage | s4-low | refs | files | tsdoc | specs | guides)");
+    if (!source)
+        die(
+            "--source requis (s4-triage | s4-low | refs | files | tsdoc | comments | specs | guides | vision)"
+        );
 
     const corpus = buildCorpus();
     let items;
@@ -1323,6 +1824,9 @@ function main() {
     else if (source === "tsdoc") items = sourceTsdoc();
     else if (source === "specs") items = sourceSpecs();
     else if (source === "guides") items = sourceGuides();
+    else if (source === "vision") items = sourceVision();
+    else if (source === "core-docs") items = sourceCoreDocs();
+    else if (source === "comments") items = sourceComments();
     else if (source === "refs" || source === "files") {
         const doc = arg("doc");
         if (!doc) die("--doc requis avec --source refs|files");
@@ -1330,10 +1834,11 @@ function main() {
         items = source === "refs" ? sourceRefs(doc) : sourceFiles(doc);
     } else die(`source inconnue « ${source} »`);
 
-    // Refuser explicitement plutôt que d'ignorer le drapeau : `--gate --source refs` sortirait
-    // 0 en silence, c'est-à-dire « vert » — exactement la classe de faux vert que ce script
-    // existe pour éviter. Les deux sources gatées sont celles qui mesurent le DÉPÔT (la prose
-    // des TSDoc, les renvois des fiches) et non la fraîcheur d'un document d'atelier.
+    // Refuse explicitly rather than ignore the flag: `--gate --source refs`
+    // would exit 0 silently, i.e. "green" — exactly the false-green class
+    // this script exists to avoid. The gated sources are those measuring
+    // the REPO (the TSDoc prose, the sheets' references) and not a workshop
+    // document's freshness.
     if (GATE && !GATES[source]) {
         die(`--gate n'est disponible qu'avec --source ${Object.keys(GATES).join(" | ")}`);
     }
@@ -1389,11 +1894,16 @@ function main() {
 // ─── Mode gate — `--source tsdoc|specs --gate` ────────────────────────────────
 
 /**
- * Les deux cliquets, un par source gatée. Mêmes mécanique et contrat, corpus différents :
- * `tsdoc` mesure la prose des TSDoc des `src/` de paquet, `specs` les renvois des 45 fiches
- * de `docs/specs/`. Séparer les baselines est délibéré — une baseline unique mêlerait deux
- * gisements dont les gestes de correction n'ont rien de commun, et son décompte cesserait de
- * vouloir dire quelque chose.
+ * The FOUR ratchets, one per gated source — `tsdoc`, `specs`, `guides`,
+ * `vision`. Same mechanics and contract, different corpora:
+ *
+ * ⚠️ This line said "the TWO ratchets" until 17/08/2026, while
+ * `GUIDES-PATHS` exists since 11/08 and `VISION-PATHS` since 17/08. The
+ * count derives rather than copies: `grep -n 'check:.*-paths' package.json`.
+ * `tsdoc` measures the TSDoc prose of the package `src/`, `specs` the
+ * references of the 45 `docs/specs/` sheets. Separating the baselines is
+ * deliberate — a single baseline would mix two deposits whose correction
+ * gestures have nothing in common, and its count would stop meaning anything.
  */
 const GATES = {
     tsdoc: {
@@ -1404,7 +1914,7 @@ const GATES = {
         hint:
             "    Un TSDoc qui renvoie à un fichier absent reste lisible et convaincant\n" +
             "    longtemps après que le fichier a bougé. Corriger la citation.\n" +
-            "    ⚠️ MAIS LIRE LA PHRASE D'ABORD — B-82. Une part de cette baseline nomme un\n" +
+            "    ⚠️ MAIS LIRE LA PHRASE D'ABORD. Une part de cette baseline nomme un\n" +
             "    chemin PARCE QU'IL EST MORT (« reclassified from… », « the former… »,\n" +
             "    « extracted from… ») : ces citations-là sont JUSTES et ne se réécrivent pas.\n" +
             "    Les corriger effacerait l'histoire que la phrase raconte.\n" +
@@ -1421,7 +1931,7 @@ const GATES = {
             "    Ces 45 fiches partent dans le dépôt public et les tarballs npm sont immuables :\n" +
             "    un renvoi faux y devient définitif. ⚠️ Avant de « corriger », LIRE LA PHRASE —\n" +
             "    une fiche nomme souvent un chemin PARCE QU'IL EST MORT (« ce répertoire n'existe\n" +
-            "    plus », « supprimé au Sprint 5 »). Ceux-là entrent en baseline, ils ne se\n" +
+            "    plus », « supprimé depuis »). Ceux-là entrent en baseline, ils ne se\n" +
             "    réécrivent pas : mesuré 15 sur 20 à la classe A de la tâche 6.11.\n",
     },
     guides: {
@@ -1430,7 +1940,7 @@ const GATES = {
         what: "dans les renvois de `docs/guides/` et `docs/reference/`",
         cmd: "--source guides --gate",
         hint:
-            "    La 3ᵉ sous-racine publique, restée SANS gate jusqu'au 11/08/2026 (B-222) —\n" +
+            "    La 3ᵉ sous-racine publique, restée SANS gate jusqu'au 11/08/2026 —\n" +
             "    `SPECS-PATHS` ne gardait que `docs/specs/`. Ce trou a laissé `TESTING_GUIDE.md`\n" +
             "    enseigner une suite `poi.test.js` disparue avec le module POI.\n" +
             "    ⚠️ Même précaution qu'en `specs` : LIRE LA PHRASE avant de corriger — un guide\n" +
@@ -1438,30 +1948,86 @@ const GATES = {
             "    Les artefacts GÉNÉRÉS de `docs/reference/` sont hors corpus (voir\n" +
             "    `GUIDES_GENERATED`) : vrais par construction, et déjà gatés par leur `--check`.\n",
     },
+    "core-docs": {
+        code: "CORE-DOCS-PATHS",
+        baseline: path.join(__dirname, "audit-core-docs-paths.baseline.json"),
+        what: "dans les renvois de `packages/core/docs/`",
+        cmd: "--source core-docs --gate",
+        hint:
+            "    La 5ᵉ source, posée le 17/08/2026 sur le corpus le plus\n" +
+            "    NORMATIF du dépôt : il part dans le tarball npm ET dans le clone public.\n" +
+            "    🛑 Le répertoire figurait DÉJÀ dans ce fichier — comme destination de\n" +
+            "    résolution (`guidesBases()`), jamais comme source scannée. Un grep sur son nom\n" +
+            "    rendait un résultat et faisait conclure qu'il était gardé : référencé ≠ lu.\n" +
+            "    ⚠️ Même précaution qu'en `specs` et `guides` : LIRE LA PHRASE avant de\n" +
+            "    corriger — un document nomme souvent un chemin PARCE QU'IL A DISPARU.\n" +
+            "    Ce corpus est PUBLIC : la gate ne saute pas sur le clone public, et c'est\n" +
+            "    voulu — c'est là que ses renvois sont lus par des tiers.\n",
+    },
+    comments: {
+        code: "COMMENT-PATHS",
+        baseline: path.join(__dirname, "audit-comment-paths.baseline.json"),
+        what: "dans les commentaires NON-TSDoc du code suivi",
+        cmd: "--source comments --gate",
+        hint:
+            "    La 6ᵉ source, posée le 26/08/2026. `TSDOC-PATHS` gardait la prose\n" +
+            "    PUBLIÉE ; celle-ci garde ce que\n" +
+            "    le dépôt se dit à lui-même — et ce corpus part au public lui aussi.\n" +
+            "    🛑 ELLE COUVRE CE QU'AUCUNE AUTRE NE VOYAIT : `scripts/`, `e2e/`, les tests et\n" +
+            "    les configs racine n'étaient dans le corpus d'AUCUNE gate de chemins, alors\n" +
+            "    qu'ils portent la majorité des `//` du dépôt.\n" +
+            "    ⚠️ LIRE LA PHRASE AVANT DE CORRIGER, et ici plus qu'ailleurs : l'arbitrage a\n" +
+            "    déclaré LÉGITIME la citation dont le POINT est que la chose a disparu\n" +
+            "    (`maplibre-gl-csp.js` « plus publié en v6 », `deploy-addpoi` retiré). Ces\n" +
+            "    citations-là entrent en baseline et ne se réécrivent pas : les corriger\n" +
+            "    détruirait le motif que la phrase porte.\n",
+    },
+    vision: {
+        code: "VISION-PATHS",
+        baseline: path.join(__dirname, "audit-vision-paths.baseline.json"),
+        what: "dans les renvois de `_docs_projet/vision/`",
+        cmd: "--source vision --gate",
+        hint:
+            "    Le corpus des features SPÉCIFIÉES ET NON DÉVELOPPÉES, resté sans gate jusqu'au\n" +
+            "    17/08/2026 (R5 2.1). Il est chargé à chaque « reprends le travail », donc ses\n" +
+            "    erreurs se relisent à chaque reprise — et `check-dead-links` l'exclut de son\n" +
+            "    périmètre.\n" +
+            "    🛑 ICI LA BASELINE N'EST PAS UN AVEU, C'EST LE CAS NORMAL : une fiche de vision\n" +
+            "    cite légitimement des chemins QUI N'EXISTENT PAS ENCORE — c'est ce qu'elle\n" +
+            "    décrit. Les geler dit « attendu, pas oublié ». Ce que la gate attrape est\n" +
+            "    l'AUTRE cas : un chemin qui existait et qui a BOUGÉ sans que la fiche suive.\n" +
+            "    ⚠️ Ne pas « corriger » un absent sans lire la phrase : la distinction entre\n" +
+            "    « à venir » et « périmé » ne se voit que là.\n" +
+            "    Cette source lit l'ATELIER : sur le clone public elle saute, en le disant.\n",
+    },
 };
 
 /**
- * Cliquet DÉCROISSANT sur les chemins morts cités dans la prose des TSDoc.
+ * DECREASING ratchet on the dead paths cited in the TSDoc prose.
  *
- * Sur le patron de TSD-04 (`check-tsdoc-conformity`) et du cliquet posé en B-78(b) : la
- * baseline ne peut que **rétrécir**. Deux échecs, pas un :
+ * On the pattern of TSD-04 (`check-tsdoc-conformity`) and the
+ * already-proven decreasing ratchet: the baseline can only **shrink**. Two
+ * failures, not one:
  *
- *   - **TSDOC-PATHS-01** — un chemin mort NEUF, absent de la baseline. Le défaut normal.
- *   - **TSDOC-PATHS-02** — une entrée de la baseline qui ne correspond plus à rien
- *     (chemin réparé, ou TSDoc supprimé) et qui n'a pas été retirée. Sans ce second axe,
- *     une baseline se fossilise : elle finit par décrire un dépôt qui n'existe plus, et
- *     personne ne s'en aperçoit puisqu'elle sort verte. C'est le mode d'échec n° 5.
+ *   - **TSDOC-PATHS-01** — a NEW dead path, absent from the baseline. The normal defect.
+ *   - **TSDOC-PATHS-02** — a baseline entry matching nothing any more
+ *     (path repaired, or TSDoc deleted) and not removed. Without this
+ *     second axis, a baseline fossilises: it ends up describing a repo
+ *     that no longer exists, and nobody notices since it exits green. The
+ *     fossilising failure mode.
  *
- * ⚠️ **Pourquoi une baseline plutôt qu'un zéro immédiat.** Les 84 occurrences restantes au
- * câblage sont de vrais chemins morts, mais leur correction touche ~40 fichiers et relève de
- * gestes distincts (le répertoire `modules/` dissous, des en-têtes de test d'avant migration,
- * des citations `dist/`). Les geler laisse le gain acquis — **aucune citation morte NEUVE ne
- * peut plus entrer** — et rend la dette visible et décroissante, au lieu de bloquer sur un
- * chantier qui n'a rien à voir avec le prochain commit.
+ * ⚠️ **Why a baseline rather than an immediate zero.» The 84 occurrences
+ * remaining at wiring are real dead paths, but their correction touches
+ * ~40 files and belongs to
+ * distinct gestures (the dissolved `modules/` directory, pre-migration
+ * test headers, `dist/` citations). Freezing them keeps the gain — **no
+ * NEW dead citation can enter any more** — and makes the debt visible and
+ * decreasing, instead of blocking on a work stream unrelated to the next
+ * commit.
  *
- * @param {object[]} results - les items mesurés.
- * @param {object} cfg - l'entrée de `GATES` correspondant à la source (code, baseline, hint…).
- * @returns {number} code de sortie (0 vert, 1 rouge).
+ * @param {object[]} results - the measured items.
+ * @param {object} cfg - the `GATES` entry for the source (code, baseline, hint…).
+ * @returns {number} exit code (0 green, 1 red).
  */
 function runGate(results, cfg) {
     const { code, baseline: BASELINE, what, cmd, hint } = cfg;
@@ -1469,6 +2035,32 @@ function runGate(results, cfg) {
         .filter((r) => r.observed.file === "absent")
         .map((r) => r.id)
         .sort();
+    // Printed at every run, never copied: build-output citations are the
+    // only ones the tracked index cannot settle, hence the only ones whose
+    // verdict still depends on a build. The count stays VISIBLE so that
+    // dependency is not forgotten.
+    const sorties = results.filter(
+        (r) => r.observed.at && String(r.observed.at).split("/").includes("dist")
+    ).length;
+
+    // EXPOSURE — citations alive only because their suffix matches exactly ONE tracked file.
+    //
+    // ⚠️ This is not decoration, it is the number that was missing. Each of these is one
+    // homonym away from being reported dead, and the homonym can arrive in ANOTHER package
+    // entirely — adding a second `lifecycle.ts` two directories away breaks a citation nobody
+    // touched, in a package its author never opened. The count prints at every run so the
+    // surface is a known quantity rather than a surprise, and it is never copied into prose —
+    // it moves with every file added to the repo.
+    const exposees = results.filter((r) => r.viaSuffix).length;
+
+    // Citations whose suffix ALREADY matches several files. They come out "dead" here, which
+    // is the true verdict but the wrong DIAGNOSIS: the path is not gone, it stopped being
+    // decidable. Naming the candidates turns an opaque red into an actionable one.
+    const ambigus = new Map(
+        results
+            .filter((r) => r.ambiguousWith && r.ambiguousWith.length > 1)
+            .map((r) => [r.id, r.ambiguousWith])
+    );
 
     if (UPDATE_BASELINE) {
         fs.writeFileSync(
@@ -1505,7 +2097,7 @@ function runGate(results, cfg) {
     const fresh = dead.filter((k) => !known.has(k));
     const stale = baseline.filter((k) => !current.has(k));
 
-    // Une gate qui ne scanne rien doit crier, pas passer.
+    // A gate scanning nothing must shout, not pass.
     if (results.length === 0) {
         process.stderr.write(
             `\n❌  ${code} — 0 item mesuré. Le corpus a bougé ou l'extracteur est cassé ;\n` +
@@ -1517,14 +2109,36 @@ function runGate(results, cfg) {
     if (fresh.length === 0 && stale.length === 0) {
         process.stdout.write(
             `\n✓ ${code} — aucun chemin mort neuf ; baseline ${baseline.length} ` +
-                `(ne peut que rétrécir).\n`
+                `(ne peut que rétrécir)` +
+                (sorties > 0 ? ` · ${sorties} citation(s) de sortie de build, hors jugement` : "") +
+                (exposees > 0
+                    ? ` · ${exposees} citation(s) résolue(s) par SUFFIXE UNIQUE — un homonyme ` +
+                      `neuf ailleurs dans le dépôt les rendrait ambiguës`
+                    : "") +
+                `.\n`
         );
         return 0;
     }
 
     if (fresh.length) {
         process.stderr.write(`\n❌  ${code}-01 — ${fresh.length} chemin(s) mort(s) NEUF(S) :\n`);
-        for (const k of fresh.slice(0, 40)) process.stderr.write(`      ${k}\n`);
+        for (const k of fresh.slice(0, 40)) {
+            process.stderr.write(`      ${k}\n`);
+            // 🛑 The candidates, when there are any, because "dead path" is the wrong reading
+            // here and it sends the reader to fix a citation that is CORRECT. What happened is
+            // that a file was added elsewhere whose path ends the same way, so the suffix
+            // stopped designating one file. Fixing the citation would break an exact quote;
+            // freezing it in the baseline would record a non-defect. Neither is the gesture:
+            // the citation needs one more segment of prefix, or the new file another name.
+            const cands = ambigus.get(k);
+            if (cands) {
+                process.stderr.write(
+                    `        ↳ AMBIGU, pas absent — ${cands.length} fichiers finissent ainsi :\n`
+                );
+                for (const c of cands.slice(0, 6)) process.stderr.write(`            ${c}\n`);
+                if (cands.length > 6) process.stderr.write(`            … +${cands.length - 6}\n`);
+            }
+        }
         if (fresh.length > 40) process.stderr.write(`      … +${fresh.length - 40}\n`);
         process.stderr.write(`\n${hint}`);
     }

@@ -1,5 +1,5 @@
 /**
- * S5.5.3 — globals.storage.ts branch coverage (B8)
+ * globals.storage.ts branch coverage (B8)
  *
  * Targets:
  *   - GeoLeaf._OfflineDetector registration
@@ -29,7 +29,7 @@ vi.mock("../../src/kernel/storage/sw-register.js", () => ({
 
 // Side-effect import: triggers all B8 assignments
 import "../../src/globals/globals.storage.ts";
-// S1.3: trigger explicitly (ESM import — same module instance as globals.storage.ts).
+// Trigger explicitly (ESM import — same module instance as globals.storage.ts).
 
 const GL = globalThis.GeoLeaf;
 

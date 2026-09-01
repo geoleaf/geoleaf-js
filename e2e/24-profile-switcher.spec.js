@@ -1,47 +1,53 @@
 // @ts-check
-// E2E — capacité `profile-switcher` (S1 de roadmap_feature-selecteurs-ui).
+// E2E — `profile-switcher` capability.
 //
-// Ce que ce spec apporte, et qu'aucun test unitaire ne peut donner :
+// What this spec brings, and that no unit test can give:
 //
-//   • Le sélecteur est réellement injecté dans le VRAI gestionnaire de couches, construit
-//     par le vrai boot — pas dans un DOM de test reconstitué à la main. C'est le seul
-//     endroit où le seam kernel, le lifecycle de la capacité et le panneau se rencontrent.
-//   • `data.availableProfiles` est réellement RÉCOLTÉ par `build-deploy.cjs` et lu au
-//     runtime. Un test unitaire stube cette liste ; ici elle vient du déployé, donc un
-//     défaut de la récolte se voit.
-//   • La bascule recharge effectivement sur le bon profil (sessionStorage + reload +
-//     purge SW), chaîne que happy-dom ne peut pas exécuter.
+//   • The selector is really injected into the REAL layer manager, built by the
+//     real boot — not into a hand-rebuilt test DOM. The only place where the
+//     kernel seam, the capability lifecycle and the panel meet.
+//   • `data.availableProfiles` is really HARVESTED by `build-deploy.cjs` and
+//     read at runtime. A unit test stubs that list; here it comes from the
+//     deploy, so a harvest defect shows.
+//   • The switch really reloads onto the right profile (sessionStorage +
+//     reload + SW purge), a chain happy-dom cannot execute.
 //
-// ⚠️ La capacité est opt-in : elle n'est visible que parce que `profiles/geoleaf.config.json`
-// pose `modules.profile-switcher.enabled: true`. Si ce spec devient rouge après un changement
-// de config, vérifier d'abord ce drapeau — pas le code.
+// ⚠️ The capability is opt-in: it is only visible because
+// `profiles/geoleaf.config.json` sets `modules.profile-switcher.enabled: true`.
+// If this spec turns red after a config change, check that flag first — not
+// the code.
 //
-// ═══ PRÉCONDITION MESURÉE — B-49, 10/08/2026 ═══
+// ═══ MEASURED PRECONDITION — 2026-08-10 ═══
 //
-// 🛑 Ce fichier a été 4/4 ROUGE le 10/08/2026, et il décrivait le PRODUIT CONFORME. Le profil
-// client est sorti du dépôt (`f218691e`) : la récolte est passée de 2 profils à 1, et PS-04 dit
-// qu'à un seul profil le sélecteur **ne se rend pas** — une liste à une option annonce un choix
-// qui n'existe pas. Les quatre assertions ci-dessous supposent toutes qu'un choix existe.
+// 🛑 This file was 4/4 RED on 2026-08-10, and it was describing the CONFORMING
+// PRODUCT. The client profile left the repo (`f218691e`): the harvest went from
+// 2 profiles to 1, and PS-04 says that with a single profile the selector
+// **does not render** — a one-option list announces a choice that does not
+// exist. The four assertions below all assume a choice exists.
 //
-// ⚠️ AUCUNE de ces assertions n'a été relâchée, et c'est le point. Passer `>= 2` à `>= 1`
-// aurait rendu ce spec incapable de voir ce pour quoi il existe. Il garde donc son exigence
-// entière, et c'est sa PRÉCONDITION qui est devenue explicite : elle est **mesurée sur la
-// variante réellement servie**, à chaque run, et le fichier se **réarme tout seul** le jour où
-// un second profil est livré. Rien à décommenter, rien à se rappeler.
+// ⚠️ NONE of these assertions was relaxed, and that is the point. Turning
+// `>= 2` into `>= 1` would have made this spec unable to see what it exists
+// for. It thus keeps its full requirement, and it is its PRECONDITION that
+// became explicit: it is **measured on the variant actually served**, at every
+// run, and the file **re-arms itself** the day a second profile ships. Nothing
+// to uncomment, nothing to remember.
 //
-// 🛑 Et ce spec n'est PLUS l'unique oracle de la récolte : il ne l'a jamais été sur un chemin
-// par défaut (`ci-local.cjs` réserve l'E2E à `--e2e`, `ci.yml` la réserve à
-// `workflow_dispatch`), ce qui est le vrai sujet de B-49. L'œil qui reste ALLUMÉ en
-// permanence est unitaire — `packages/core/__tests__/capabilities/profile-switcher/
-// profile-harvest.guard.test.ts` (PH-01…PH-04) — et il rougit sur toute dégradation
-// SILENCIEUSE de la récolte. Neutraliser ce fichier sans lui aurait refermé le rouge ET l'œil.
+// 🛑 And this spec is NO LONGER the harvest's only oracle: it never was on a
+// default path (`ci-local.cjs` reserves E2E for `--e2e`, `ci.yml` reserves it
+// for `workflow_dispatch`), which is the harvest guard's real subject. The eye
+// that stays LIT permanently is a unit one —
+// `packages/core/__tests__/capabilities/profile-switcher/
+// profile-harvest.guard.test.ts` (PH-01…PH-04) — and it reddens on any SILENT
+// degradation of the harvest. Neutralising this file without it would have
+// closed the red AND the eye.
 
 import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
 
-// Viewport ≥ 1440 px : le sélecteur vit DANS le gestionnaire de couches, et le
-// gestionnaire n'est atteignable que par le panneau latéral desktop. Sous 1440, le
-// contrôle est `display:none` (il passe par la feuille mobile) — mesuré, pas supposé.
+// Viewport ≥ 1440 px: the selector lives INSIDE the layer manager, and the
+// manager is only reachable through the desktop side panel. Below 1440 the
+// control is `display:none` (it goes through the mobile sheet) — measured, not
+// assumed.
 test.use({
     baseURL: baseURL("core"),
     serviceWorkers: "block",
@@ -52,7 +58,7 @@ const SWITCHER = ".gl-profile-switcher";
 const SELECT = ".gl-profile-switcher__select";
 const LAYERS_TAB = '[data-gl-rp-tab="layers"]';
 
-/** Attend le boot complet (carte native chargée) puis les capacités différées. */
+/** Waits for full boot (native map loaded) then the deferred capabilities. */
 async function bootReady(page) {
     await page.waitForFunction(
         () => {
@@ -66,13 +72,13 @@ async function bootReady(page) {
 }
 
 /**
- * Ouvre l'onglet « Couches » du panneau latéral.
+ * Opens the side panel's layers tab (labelled « Couches »).
  *
- * Le gestionnaire de couches est **replié par défaut** (`gl-layer-manager--collapsed`) et
- * son volet reste fermé tant qu'aucun onglet n'est actif : le sélecteur est donc dans le
- * DOM mais de largeur nulle. C'est le comportement voulu — un utilisateur ouvre le
- * gestionnaire avant de choisir son jeu de données — et ce geste fait donc partie du
- * parcours à tester, pas du décor.
+ * The layer manager is **collapsed by default** (`gl-layer-manager--collapsed`)
+ * and its pane stays closed while no tab is active: the selector is thus in
+ * the DOM but zero-width. That is the intended behaviour — a user opens the
+ * manager before choosing their dataset — so this gesture is part of the
+ * journey under test, not scenery.
  */
 async function openLayersPanel(page) {
     const tab = page.locator(LAYERS_TAB);
@@ -81,18 +87,19 @@ async function openLayersPanel(page) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Précondition — mesurée sur la VARIANTE SERVIE, jamais déduite des sources.
+// Precondition — measured on the SERVED VARIANT, never deduced from sources.
 //
-// C'est le patron de `30-sync-cycle.spec.js` : un `beforeAll` qui mesure, un motif nommé, un
-// TÉMOIN hors du `describe` pour qu'un fichier entièrement sauté ne se lise pas comme un
-// fichier entièrement vert. Ici la mesure porte sur `data.availableProfiles` du config racine
-// tel qu'il est SERVI — c'est la seule chose dont la page dispose, `build-deploy.cjs` étant le
-// seul à savoir énumérer `profiles/` (un navigateur ne liste pas un répertoire serveur).
+// The pattern of `30-sync-cycle.spec.js`: a `beforeAll` that measures, a named
+// motive, a WITNESS outside the `describe` so a fully-skipped file does not
+// read as a fully-green one. Here the measurement bears on the root config's
+// `data.availableProfiles` as SERVED — the only thing the page has,
+// `build-deploy.cjs` being the only one able to enumerate `profiles/` (a
+// browser does not list a server directory).
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Nombre de profils récoltés dans la variante servie, ou `null` si la mesure a échoué. */
+/** Number of profiles harvested in the served variant, or `null` if the measurement failed. */
 let harvested = null;
-/** Motif de saut, nommé et daté. `null` ⇒ le fichier joue. */
+/** Skip motive, named and dated. `null` ⇒ the file plays. */
 let skipReason = null;
 
 test.beforeAll(async ({ request }) => {
@@ -118,16 +125,17 @@ test.beforeAll(async ({ request }) => {
         return;
     }
     if (harvested < 2) {
-        // ⚠️ SAUT MOTIVÉ ET DATÉ — B-49 (registre `_docs_projet/registres/backlog_technique.md`).
-        // POURQUOI : la variante servie ne récolte qu'un profil, et PS-04 (fiche
-        // `docs/specs/capacites/profile-switcher.md`) prescrit qu'à moins de deux profils le
-        // sélecteur ne se rend PAS. Les 4 tests décriraient alors un produit conforme comme un
-        // défaut. QUAND il se réactive : tout seul, au premier run où la variante servie
-        // récolte ≥ 2 profils — la condition est re-mesurée à chaque exécution, il n'y a aucun
-        // drapeau à remettre. Livrer ce second profil est une décision produit (voie 1 de
-        // B-49, voisine de B-213) qui appartient à Mattieu, pas à ce fichier.
+        // ⚠️ MOTIVATED AND DATED SKIP.
+        // WHY: the served variant harvests only one profile, and PS-04 (sheet
+        // `docs/specs/capacites/profile-switcher.md`) prescribes that below two
+        // profiles the selector does NOT render. The 4 tests would then
+        // describe a conforming product as a defect. WHEN it re-arms: by
+        // itself, at the first run where the served variant harvests ≥ 2
+        // profiles — the condition is re-measured at every execution, there is
+        // no flag to reset. Shipping that second profile is a product decision
+        // that belongs to Mattieu, not to this file.
         skipReason =
-            `B-49 — la variante servie ne récolte que ${harvested} profil : PS-04 prescrit qu'en ` +
+            `la variante servie ne récolte que ${harvested} profil : PS-04 prescrit qu'en ` +
             "dessous de 2 le sélecteur ne se rende pas, donc ces 4 tests décriraient le produit " +
             "conforme comme un défaut. Réarmé AUTOMATIQUEMENT dès qu'un second profil est livré " +
             "(condition re-mesurée à chaque run). La dégradation SILENCIEUSE de la récolte reste " +
@@ -136,16 +144,18 @@ test.beforeAll(async ({ request }) => {
 });
 
 test("TÉMOIN — si ce fichier se saute, le motif est NOMMÉ et la récolte n'est pas à zéro", async () => {
-    // ⚠️ HORS du `describe`, donc hors de portée de son `beforeEach` : c'est le seul test qui
-    // doit s'exécuter même quand la précondition n'est pas tenue. Sans lui, ce fichier
-    // passerait pour vert dans un rapport lu vite alors qu'il n'a rien joué — exactement ce
-    // que B-49 reproche au silence.
+    // ⚠️ OUTSIDE the `describe`, hence out of reach of its `beforeEach`: the
+    // only test that must run even when the precondition does not hold. Without
+    // it, this file would pass for green in a quickly-read report while having
+    // played nothing — exactly what the annotation requirement blames silence
+    // for.
     if (skipReason) {
         test.info().annotations.push({ type: "skip-reason", description: skipReason });
         expect(skipReason.length, "un saut doit porter un motif lisible").toBeGreaterThan(20);
     }
-    // Une récolte VIDE n'est jamais un état acceptable, sauté ou non : `build-deploy.cjs` sort
-    // déjà en `log.err` dessus. Le saut de B-49 couvre « 1 profil », pas « aucun ».
+    // An EMPTY harvest is never an acceptable state, skipped or not:
+    // `build-deploy.cjs` already exits via `log.err` on it. The skip covers
+    // "1 profile", not "none".
     expect(
         harvested,
         "la variante servie ne récolte AUCUN profil — ce n'est pas la dégradation prévue par " +
@@ -164,8 +174,8 @@ test.describe("profile-switcher — sélecteur de profil", () => {
 
         const profiles = await page.evaluate(() => window.GeoLeaf?.ProfileSwitcher?.list?.() ?? []);
 
-        // La récolte tourne sur les dossiers de profils réellement livrés : au moins les
-        // deux qu'il faut pour que le sélecteur ait un sens.
+        // The harvest runs on the profile folders actually shipped: at least
+        // the two needed for the selector to make sense.
         expect(profiles.length).toBeGreaterThanOrEqual(2);
         expect(profiles.every((p) => typeof p.id === "string" && p.id.length > 0)).toBe(true);
         expect(profiles.every((p) => typeof p.displayLabel === "string")).toBe(true);
@@ -179,8 +189,8 @@ test.describe("profile-switcher — sélecteur de profil", () => {
         const el = page.locator(SWITCHER).first();
         await expect(el).toHaveCount(1);
 
-        // Position structurelle : juste après l'en-tête, donc HORS du corps que
-        // renderSections() vide à chaque rendu.
+        // Structural position: right after the header, hence OUTSIDE the body
+        // that renderSections() empties at every render.
         const placement = await page.evaluate((sel) => {
             const node = document.querySelector(sel);
             return {
@@ -215,13 +225,13 @@ test.describe("profile-switcher — sélecteur de profil", () => {
         });
         expect(target, "il faut au moins 2 profils livrés pour ce scénario").not.toBeNull();
 
-        // Le parcours réel : on ouvre le gestionnaire, PUIS on choisit.
+        // The real journey: open the manager, THEN choose.
         await openLayersPanel(page);
         await expect(page.locator(SELECT).first()).toBeVisible();
 
         await page.locator(SELECT).first().selectOption(String(target));
 
-        // La bascule navigue : attendre le nouveau boot, puis vérifier le profil actif.
+        // The switch navigates: wait for the new boot, then check the active profile.
         await page.waitForURL(new RegExp(`profile=${target}`), { timeout: 25000 });
         await bootReady(page);
 

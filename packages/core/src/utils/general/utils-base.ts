@@ -62,10 +62,10 @@ export function deepMerge<T extends Record<string, unknown>>(
     if (!source || typeof source !== "object") return target;
     if (!target || typeof target !== "object") return source as T;
 
-    const output = Object.assign({}, target) as T;
+    const output = Object.assign({}, target);
 
     Object.keys(source).forEach((key) => {
-        // Canonical blocklist (S13.2). The list used to be declared right here, in
+        // Canonical blocklist. The list used to be declared right here, in
         // the function body — so it was reallocated on every call, recursive ones
         // included, i.e. once per nested object of a merged profile.
         if (isUnsafeKey(key)) return;
@@ -138,7 +138,7 @@ export function mergeOptions<T extends Record<string, unknown>>(
     override: Record<string, unknown> | null | undefined
 ): T {
     if (!override || typeof override !== "object") return defaults;
-    return Object.assign({}, defaults, override) as T;
+    return Object.assign({}, defaults, override);
 }
 
 /**
@@ -237,8 +237,13 @@ export function throttle<T extends (...args: never[]) => unknown>(
  * The two families share the same scalar signature `(lat1, lng1, lat2, lng2) => number`,
  * so TypeScript cannot tell them apart: substituting one for the other type-checks
  * cleanly and shifts every comparison by a factor of 1000. That is exactly what happened
- * in `route-filter` until KERNEL S11. Convert explicitly at the call site, as
- * `plugin-addpoi/poi-placement.ts` does (`snapTolerance / 1000`).
+ * in `route-filter` until KERNEL S11. **Convert explicitly at the call site.**
+ *
+ * ⚠️ This line pointed at a plugin file as the example to imitate, until the 19/08/2026 —
+ * a file that no longer exists, and whose successor does NOT do the conversion. Measured
+ * the same day: **no caller in this repo converts any more**, so there is nothing left to
+ * imitate. That is worth knowing rather than hiding: the trap is guarded by this comment
+ * alone, not by an example a reader could copy.
  *
  * Kept in kilometres because it is published as `GeoLeaf.Utils.getDistance`.
  *
@@ -267,7 +272,7 @@ function _traversePath(obj: Record<string, unknown>, path: string): unknown {
     let value: unknown = obj;
 
     for (const key of keys) {
-        if (value && typeof value === "object" && key in (value as object)) {
+        if (value && typeof value === "object" && key in value) {
             value = (value as Record<string, unknown>)[key];
         } else {
             value = null;

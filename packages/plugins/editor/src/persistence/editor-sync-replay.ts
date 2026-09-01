@@ -19,10 +19,11 @@ import { dispatchEditorEvent } from "../editor-events.js";
 
 /** A pending editor queue entry as read back from Storage. */
 /**
- * Une entrée d'`outbox`, telle que la modale d'attente la lit.
+ * An `outbox` entry, as the pending modal reads it.
  *
- * ⚠️ `type` et `payload` ont disparu avec le vocabulaire v3 : l'entrée porte `kind` et ne
- * référence que `[layerId, localId]` — la charge utile vit dans le magasin `features`.
+ * ⚠️ `type` and `payload` vanished with the v3 vocabulary: the entry carries
+ * `kind` and references only `[layerId, localId]` — the payload lives in the
+ * `features` store.
  */
 export interface EditorQueueEntry {
     id: string;
@@ -46,19 +47,19 @@ let _onlineListener: (() => void) | null = null;
 let _flushing = false;
 
 /**
- * Les entrées en attente, lues dans l'`outbox` du core.
+ * The pending entries, read from the core's `outbox`.
  *
- * 🛑 **TÂCHE 4.9 — IL N'Y A PLUS DE « ENTRÉES DE L'ÉDITEUR ».** Cette fonction filtrait sur le
- * préfixe `editor.` pour ne garder que les siennes, dans une file que deux plugins écrivaient
- * avec deux vocabulaires. L'`outbox` n'en parle qu'un — et un plugin n'a plus à reconnaître
- * « les siennes » : ce sont les entités de l'utilisateur, pas celles d'un producteur.
+ * 🛑 **THERE ARE NO "EDITOR ENTRIES" ANY MORE.** This function filtered on the
+ * `editor.` prefix to keep only its own, in a queue two plugins wrote with two
+ * vocabularies. The `outbox` speaks only one — and a plugin no longer has to
+ * recognise "its own": these are the user's entities, not a producer's.
  *
- * ⚠️ **Conséquence assumée : la modale d'attente liste désormais TOUT ce qui est dû au
- * serveur**, y compris ce qui vient d'`addpoi`. C'est plus juste que l'ancien comportement —
- * un utilisateur qui demande « qu'est-ce qui n'est pas encore parti ? » veut la réponse
- * complète, pas la part d'un plugin qu'il ne sait pas nommer.
+ * ⚠️ **Assumed consequence: the pending modal now lists EVERYTHING owed to the
+ * server**, including what comes from `addpoi`. Fairer than the old behaviour
+ * — a user asking "what has not left yet?" wants the complete answer, not the
+ * share of a plugin they cannot name.
  *
- * @returns Les entrées dues au serveur, dans l'ordre d'insertion.
+ * @returns The entries owed to the server, in insertion order.
  */
 export async function listPendingEditorEntries(): Promise<EditorQueueEntry[]> {
     const outbox = storageDb()?._ensureModule?.("Outbox");
@@ -84,24 +85,25 @@ export async function getPendingCount(): Promise<number> {
  * instead, where they stay visible in the pending badge and can be inspected.
  */
 /**
- * Draine la file vers le serveur.
+ * Drains the queue to the server.
  *
- * 🛑 **TÂCHE 4.9 — CE CORPS EST DEVENU UNE DÉLÉGATION.** Il rejouait lui-même chaque entrée à
- * travers l'adaptateur REST du plugin : lecture de la charge dans `payload`, dispatch sur le
- * vocabulaire `editor.*`, gestion du 409. Les trois vivent désormais dans le core — le drain
- * (4.5) porte l'identité cliente sur le fil et réconcilie `localId → serverId`, et la
- * détection de conflit (4.6) est faite par un filtre sur le marqueur de fraîcheur, pas par un
- * en-tête `X-Force-Update` qu'aucun serveur ne lit.
+ * 🛑 **THIS BODY BECAME A DELEGATION.** It used to replay each entry itself
+ * through the plugin's REST adapter: reading the payload from `payload`,
+ * dispatching on the `editor.*` vocabulary, handling the 409. All three now
+ * live in the core — the drain carries the client identity on the wire and
+ * reconciles `localId → serverId`, and conflict detection is done by a filter
+ * on the freshness marker, not an `X-Force-Update` header no server reads.
  *
- * ⚠️ **La surface est conservée** : `entry.ts` appelle `flushNow` au retour du réseau, et la
- * modale d'attente s'en sert. Changer la signature aurait éteint le rejeu en silence.
+ * ⚠️ **The surface is preserved**: `entry.ts` calls `flushNow` on network
+ * return, and the pending modal uses it. Changing the signature would have
+ * killed the replay silently.
  */
 export async function flushNow(): Promise<void> {
     if (!_deps) return;
     await drainOutbox();
 }
 
-/** Le décompte rendu par le drain du core, tel que les consommateurs le lisent. */
+/** The tally the core's drain returns, as consumers read it. */
 export interface DrainReport {
     attempted: number;
     pushed: number;
@@ -110,27 +112,30 @@ export interface DrainReport {
 }
 
 /**
- * Draine l'outbox et REND le décompte.
+ * Drains the outbox and RETURNS the tally.
  *
- * 🛑 **Ce corps a été extrait de {@link flushNow} à la tâche 5.1-b, et le motif est le
- * verrou.** Le handler `"poi"` du seam `Sync` doit lui aussi drainer, pour le bouton de rejeu
- * d'`offline-ui`. S'il appelait `pushOutbox` de son côté, deux drains pourraient se recouvrir :
- * `_flushing` ne garde que ce qui passe **par ici**. Un seul point d'entrée, un seul verrou.
+ * 🛑 **This body was extracted from {@link flushNow}, and the motive is the
+ * lock.** The `Sync` seam's `"poi"` handler must drain too, for `offline-ui`'s
+ * replay button. If it called `pushOutbox` on its own side, two drains could
+ * overlap: `_flushing` only guards what goes **through here**. One entry
+ * point, one lock.
  *
- * ⚠️ **Le récepteur est obligatoire — B-128.** `pushOutbox` lit `this._modules` sur la façade
- * du core ; l'appeler détaché jette `TypeError … reading '_modules'`. Le même défaut vivait
- * dans `storage-queue-adapter.ts`, où il rendait la sauvegarde hors ligne muette. Aucun
- * typecheck ne l'attrape : ce plugin redéclare la surface qu'il attend, et une méthode
- * redéclarée perd la contrainte de `this` que le core exprime. `facade.pushOutbox()` est un
- * appel de MÉTHODE — le récepteur y est lié par construction, et il doit le rester.
+ * ⚠️ **The receiver is mandatory.** `pushOutbox` reads `this._modules` on the
+ * core's facade; calling it detached throws `TypeError … reading '_modules'`.
+ * The same defect lived in `storage-queue-adapter.ts`, where it made the
+ * offline save mute. No typecheck catches it: this plugin redeclares the
+ * surface it expects, and a redeclared method loses the `this` constraint the
+ * core expresses. `facade.pushOutbox()` is a METHOD call — the receiver is
+ * bound there by construction, and it must stay so.
  *
- * @returns le décompte, ou `null` quand le drain n'a pas eu lieu (hors réseau, drain déjà en
- *   cours, ou façade de stockage absente). ⚠️ `null` n'est PAS `{pushed: 0}` : le premier dit
- *   « rien n'a été tenté », le second « tenté, rien n'est parti ».
+ * @returns the tally, or `null` when the drain did not happen (off-network,
+ *   drain already running, or storage facade absent). ⚠️ `null` is NOT
+ *   `{pushed: 0}`: the first says "nothing was attempted", the second
+ *   "attempted, nothing left".
  */
 export async function drainOutbox(): Promise<DrainReport | null> {
     if (_flushing) return null;
-    // Rejouer hors réseau ferait échouer chaque entrée ; on attend la reconnexion.
+    // Replaying off-network would fail every entry; we wait for reconnection.
     if (typeof navigator !== "undefined" && !navigator.onLine) return null;
     const facade = storageFacade();
     if (!facade?.pushOutbox) return null;
@@ -149,19 +154,19 @@ export async function drainOutbox(): Promise<DrainReport | null> {
 }
 
 /**
- * Émet `geoleaf:editor:feature-sync-flushed` une fois par DRAIN, plus une fois par entrée.
+ * Emits `geoleaf:editor:feature-sync-flushed` once per DRAIN, no longer once per entry.
  *
- * 🛑 **CET ÉVÉNEMENT A UN ÉCOUTEUR, ET J'AI FAILLI LE SUPPRIMER SUR UNE MESURE QUE JE N'AVAIS
- * PAS FAITE.** Une première rédaction le retirait en affirmant « aucun écouteur dans le dépôt,
- * mesuré ». Le grep, lancé APRÈS, a rendu `entry.ts:291` — `_onQueueChanged`, qui rafraîchit le
- * badge d'attente — et un test qui l'asserte. Le retirer aurait figé le badge en silence après
- * chaque rejeu.
+ * 🛑 **THIS EVENT HAS A LISTENER, AND I NEARLY DELETED IT ON A MEASUREMENT I
+ * HAD NOT MADE.** A first draft removed it asserting "no listener in the repo,
+ * measured". The grep, run AFTER, returned `entry.ts` — `_onQueueChanged`,
+ * which refreshes the pending badge — and a test asserting it. Removing it
+ * would have frozen the badge silently after every replay.
  *
- * La granularité change, elle : le drain du core rend un décompte, pas une liste d'entrées. Un
- * événement par drain suffit à ce que l'écouteur fait — il ne lit que le fait qu'il s'est passé
- * quelque chose.
+ * The granularity does change: the core's drain returns a tally, not an entry
+ * list. One event per drain suffices for what the listener does — it only
+ * reads the fact that something happened.
  *
- * @param report - Le décompte rendu par le drain.
+ * @param report - The tally the drain returned.
  */
 function _dispatchFlushed(report: { pushed: number; failed: number }): void {
     dispatchEditorEvent("geoleaf:editor:feature-sync-flushed", {

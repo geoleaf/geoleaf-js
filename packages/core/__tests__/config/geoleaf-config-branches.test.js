@@ -471,14 +471,14 @@ describe("config-loaders / branches", () => {
         expect(mocks.ProfileManager.loadActiveProfileResources).toHaveBeenCalled();
     });
 
-    it("loadUrl error → returns existing config (error swallowed)", async () => {
+    // 🔻 AMENDED on 19/08/2026 — the error is no longer swallowed, it is propagated.
+    it("loadUrl error → rejects, and the cause is logged", async () => {
         mocks.ConfigLoader.loadUrl.mockRejectedValue(new Error("net error"));
-        const result = await Config.loadUrl("/bad.json");
+        await expect(Config.loadUrl("/bad.json")).rejects.toThrow("net error");
         expect(mocks.Log.error).toHaveBeenCalledWith(
             expect.stringContaining("Error loading config"),
             expect.any(Error)
         );
-        expect(result).toBeDefined(); // returns current _config
     });
 });
 

@@ -10,7 +10,8 @@ const lang_en: Record<string, string> = {
     "measure.menu.handle": "Move menu",
     "measure.menu.close": "Close",
     "measure.tool.distance": "Distance",
-    "measure.tool.distance.hint": "Click to add vertices. Double-click or Space to finish.",
+    "measure.tool.distance.hint":
+        "Click to add vertices. Re-click the last one, double-click or Space to finish.",
     "measure.tool.rect": "Surface — rectangle",
     "measure.tool.rect.hint": "Click-drag from top-left to bottom-right corner.",
     "measure.tool.circle": "Surface — circle",

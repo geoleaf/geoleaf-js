@@ -64,7 +64,7 @@ export const DEFAULT_CLUSTER_STRATEGY = "unified";
  * handed to a caller can never be the one the next call starts from.
  *
  * `clustering: false` is not a stylistic choice: `getClusteringStrategy` gates on
- * `!config.clustering` (strategy.ts:110), for which an absent key and `false` are the same
+ * `!config.clustering` (strategy.ts), for which an absent key and `false` are the same
  * thing — GeoJSON point layers are NOT clustered unless the layer opts in or this flag does.
  */
 export function clusterConfigDefaults(): ClusterConfig {

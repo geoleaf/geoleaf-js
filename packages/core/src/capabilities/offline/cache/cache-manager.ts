@@ -115,9 +115,9 @@ const CacheManager = {
     // Profile cache is enabled by default so that a missing/late init() call (plugin
     // registered after core boot) cannot silently disable offline caching. A profile may
     // still opt out explicitly via storage.cache.enableProfileCache:false (merged in init()).
-    // ⚠️ Pas de `enableTileCache` ici (3.13) : ce champ n'était lu par personne — le
-    // gestionnaire le portait et le transmettait sans jamais s'en servir. Son lecteur unique
-    // est `_tilesRequested()` de `resource-enumerator.ts`.
+    // ⚠️ No `enableTileCache` here: the field was read by nobody — the manager carried
+    // and forwarded it without ever using it. Its single reader is `_tilesRequested()`
+    // in `resource-enumerator.ts`.
     _config: {
         enableProfileCache: true,
         maxCacheBytes: DEFAULT_MAX_CACHE_BYTES,
@@ -163,34 +163,33 @@ const CacheManager = {
                 throw new Error(`Profile ${profileId} configuration not found`);
             }
 
-            // ── Pré-contrôle de quota (tâche 3.13) ──────────────────────────────────────
+            // ── Quota pre-check ─────────────────────────────────────────────────────────
             //
-            // 🛑 IL VIENT DE `Storage.downloadProfileForOffline()`, ET IL EST ARRIVÉ AVANT
-            // QUE LA COQUILLE NE PARTE. Cette fonction-là était morte — zéro appelant dans
-            // tout le dépôt — mais son corps portait le SEUL pré-contrôle de quota du
-            // téléchargement, et `cacheProfile()`, le chemin VIVANT, n'en avait aucun. La
-            // supprimer d'abord aurait retiré la garde en croyant retirer du code mort :
-            // c'est le contre-exemple « mort ≠ jetable » de l'inventaire des suppressions.
+            // 🛑 IT COMES FROM `Storage.downloadProfileForOffline()`, AND IT ARRIVED
+            // BEFORE THE SHELL LEFT. That function was dead — zero callers in the whole
+            // repo — but its body carried the download's ONLY quota pre-check, and
+            // `cacheProfile()`, the LIVE path, had none. Deleting it first would have
+            // removed the guard believing it removed dead code: the "dead ≠ disposable"
+            // counter-example of the deletions inventory.
             //
-            // ⚠️ ET LE MOTIF EST PLUS FORT ICI QU'IL NE L'ÉTAIT LÀ-BAS. Le relevé du 02/08
-            // montre l'origine en `bestEffort` sur un profil neuf (~800 Mo, persistance
-            // refusée) : dépasser le quota ne rend pas une erreur, il fait ÉVINCER — et une
-            // éviction d'origine emporte la file de synchronisation avec le cache. Un
-            // téléchargement qu'on sait trop gros ne se tente pas.
+            // ⚠️ AND THE MOTIVE IS STRONGER HERE THAN IT WAS THERE. The 02/08 reading
+            // shows the origin in `bestEffort` on a fresh profile (~800 MB, persistence
+            // refused): exceeding the quota does not return an error, it EVICTS — and
+            // an origin eviction takes the sync queue away with the cache. A download
+            // known to be too big is not attempted.
             const estimated = await this.estimateProfileSize(profileId);
             const quota = await this.getStorageQuota();
-            // ⚠️ `estimated?.` malgré un type de retour qui l'interdit — et ce n'est pas de
-            // la prudence de principe : `estimateProfileSize` REND `undefined` dès que
-            // `CacheMetrics.estimateProfileSize` le fait, parce qu'elle relaie sans vérifier
-            // et que son `try/catch` n'attrape qu'une exception, pas une valeur absente. Le
-            // trou existait déjà dans la façade morte ; il n'était juste exécuté par rien.
+            // ⚠️ `estimated?.` despite a return type that forbids it — and this is not
+            // caution on principle: `estimateProfileSize` RETURNS `undefined` whenever
+            // `CacheMetrics.estimateProfileSize` does, because it relays unchecked and
+            // its `try/catch` only catches an exception, not an absent value. The hole
+            // already existed in the dead facade; it was just executed by nothing.
             const estimatedSize = estimated?.totalSize ?? 0;
             const available = quota?.available ?? 0;
-            // Les deux gardes disent la même chose : on ne refuse JAMAIS sur une mesure
-            // qu'on n'a pas. `available` vaut 0 quand `navigator.storage.estimate` est
-            // absent, `estimatedSize` vaut 0 quand l'estimation a échoué — un navigateur
-            // muet n'est pas un navigateur plein, et une estimation manquante n'est pas
-            // une estimation énorme.
+            // Both guards say the same thing: NEVER refuse on a measurement we do not
+            // have. `available` is 0 when `navigator.storage.estimate` is absent,
+            // `estimatedSize` is 0 when estimation failed — a mute browser is not a
+            // full browser, and a missing estimate is not a huge one.
             if (available > 0 && estimatedSize > 0 && estimatedSize > available) {
                 const mb = (n: number) => (n / 1024 / 1024).toFixed(2);
                 throw new Error(
@@ -247,22 +246,22 @@ const CacheManager = {
     },
 
     /**
-     * Interrompt le téléchargement en cours, **et le DIT**.
+     * Interrupts the download in progress, **and SAYS SO**.
      *
-     * 🛑 L'ÉVÉNEMENT MANQUAIT, ET CE N'ÉTAIT PAS UN ÉCOUTEUR MORT MAIS UN BUG. Mesuré à la
-     * clôture de S3c : `geoleaf:cache:cancelled` avait **deux écouteurs et zéro émetteur**.
-     * Le pré-vol E3.5 avait relevé le même chiffre et en avait tiré « l'interface l'écoute
-     * pour rien » — vrai sur la mesure, **faux sur le geste**.
+     * 🛑 THE EVENT WAS MISSING, AND IT WAS NOT A DEAD LISTENER BUT A BUG. Measured:
+     * `geoleaf:cache:cancelled` had **two listeners and zero emitters**. A pre-flight
+     * had read the same figure and concluded "the UI listens for nothing" — true on
+     * the measurement, **false on the action to take**.
      *
-     * Ce que fait l'écouteur (`handleCancelled`, `offline-ui`) : il remet la barre de
-     * progression à zéro, réactive le bouton et rend la main. Sans émetteur, un utilisateur
-     * qui annule voit « ⏹️ Stopping… » **indéfiniment**, bouton désactivé, sans aucun moyen
-     * de relancer autre chose qu'un rechargement de page. L'écouteur avait raison ; c'est
-     * l'émetteur qui manquait.
+     * What the listener does (`handleCancelled`, `offline-ui`): it resets the progress
+     * bar, re-enables the button and hands control back. Without an emitter, a user
+     * who cancels sees "⏹️ Stopping…" **indefinitely**, button disabled, with no way
+     * to relaunch anything short of a page reload. The listener was right; the
+     * emitter was what was missing.
      *
-     * ⚠️ Émis ici et non dans `Downloader` : c'est l'orchestrateur qui possède le cycle de
-     * vie d'un téléchargement de profil, et `Downloader.cancelDownload()` est aussi appelé
-     * par des chemins internes. Un émetteur par intention, pas par mécanisme.
+     * ⚠️ Emitted here and not in `Downloader`: the orchestrator owns a profile
+     * download's lifecycle, and `Downloader.cancelDownload()` is also called by
+     * internal paths. An emitter per intent, not per mechanism.
      */
     cancelDownload() {
         Downloader.cancelDownload();
@@ -454,6 +453,36 @@ const CacheManager = {
         }
     },
 
+    /**
+     * Origin-wide storage usage, as the browser reports it.
+     *
+     * 🛑 `navigator.storage.estimate()` measures the WHOLE ORIGIN, never one store. Nothing in
+     * the returned numbers is attributable to layer caching, to the tile cache, or to any
+     * single database — everything the page has ever stored is in there, including what other
+     * features wrote. Reading a drop in `usage` as "the eviction worked" is therefore a
+     * mistake the shape of this value invites.
+     *
+     * ## The four readers of that one measurement, and why they do not agree
+     *
+     * This is the reference reader — the only one with a caller outside its own file. Three
+     * others exist, and each names the same numbers differently, which is what makes picking
+     * the wrong one silent: a caller that reads `used` off this object gets `undefined`.
+     *
+     *   • `offline/db/preferences.ts` — `getStats()` says `used` where this one says `usage`,
+     *     and keeps `percentage` as a float where this one rounds.
+     *   • `offline-ui`, `cache/download-handler.ts` — `_checkQuota()` reads the estimate raw.
+     *   • `offline-ui`, `cache/layer-selector/selection-cache.ts` — reads it raw too.
+     *
+     * ⚠️ The two plugin-side readers are NOT a dedup opportunity, and the reason is in this
+     * function's own return: when the browser cannot answer, it returns zeros, which are
+     * indistinguishable from "the origin is empty and the quota is nought". Both plugin
+     * readers depend on telling those apart — an unreadable quota there means "proceed", while
+     * a zero quota means "refuse". Routing them through this reader would turn every
+     * unreadable quota into a refusal. The duplication carries a distinction this signature
+     * cannot express; removing it without changing the signature would introduce a bug.
+     *
+     * @returns Origin usage and quota in bytes, the percentage rounded, and the remainder.
+     */
     async getStorageQuota(): Promise<{
         usage: number;
         quota: number;

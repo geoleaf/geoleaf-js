@@ -4,8 +4,9 @@
     "private": true,
     "type": "module",
     "packageManager": "npm@11.6.2",
+    "_enginesNote": "22.22.1 est la borne RÉELLEMENT exigée par l'outillage, pas une préférence — mesurée le 17/08/2026 sur les 593 paquets de l'arborescence qui déclarent un `engines.node`, disjonctions résolues au minimum de chaque alternative. Deux la portent au-dessus de l'ancien `>=22.13.0` : `lint-staged@17.3.0` (`>=22.22.1`, la contraignante) et `@napi-rs/lzma-linux-x64-gnu@1.5.1` (`^22.20`). ⚠️ NE PAS propager cette borne aux 14 paquets PUBLIÉS : leur `>=22` parle de la bibliothèque, pas de la chaîne d'outils — un consommateur n'exécute pas `lint-staged`. 📌 Et la borne se re-mesure, elle ne se recopie pas : elle monte à chaque montée majeure d'outillage, et c'est exactement ainsi que la précédente est devenue fausse (la montée a été prise, la condition est partie avec la PR fermée).",
     "engines": {
-        "node": ">=22.13.0"
+        "node": ">=22.22.1"
     },
     "description": "GeoLeaf — Monorepo v3. MapLibre GL JS engine. Packages: @geoleaf/core, @geoleaf-plugins/*.",
     "workspaces": [
@@ -16,7 +17,7 @@
         "!packages/_*"
     ],
     "scripts": {
-        "build": "node scripts/purge-dist.cjs --quiet && turbo run build",
+        "build": "node scripts/purge-dist.cjs --quiet && turbo run build && node scripts/emit-css-type-stubs.cjs",
         "build:core": "turbo run build --filter=@geoleaf/core",
         "build:plugins": "turbo run build --filter=@geoleaf-plugins/*",
         "build:all": "turbo run build:all --filter=@geoleaf/core",
@@ -35,6 +36,7 @@
         "benchmark": "node scripts/benchmark.cjs",
         "audit:security": "node scripts/audit-innerhtml.cjs",
         "audit:ci": "node scripts/audit-ci.cjs",
+        "audit:signatures": "node scripts/verify-registry-signatures.cjs",
         "gitleaks:local": "node scripts/gitleaks-local.cjs",
         "ci:local": "node scripts/ci-local.cjs",
         "ci:push": "node scripts/ci-push.cjs",
@@ -50,6 +52,7 @@
         "dup:check": "jscpd packages",
         "verify:purgecss": "node scripts/verify-purgecss.cjs",
         "verify:css-tokens": "node scripts/verify-css-tokens.cjs",
+        "check:boot-subscription": "node scripts/verify-boot-subscription.cjs",
         "size": "node scripts/check-bundle-size.cjs",
         "size:plugins": "node scripts/check-bundle-size.cjs --plugins",
         "size:app": "node scripts/check-app-payload.cjs",
@@ -106,8 +109,15 @@
         "check:tsdoc-paths:update-baseline": "node scripts/audit-report-freshness.cjs --source tsdoc --gate --update-baseline --quiet",
         "check:specs-paths": "node scripts/audit-report-freshness.cjs --source specs --gate --quiet",
         "check:guides-paths": "node scripts/audit-report-freshness.cjs --source guides --gate --quiet",
+        "check:vision-paths": "node scripts/audit-report-freshness.cjs --source vision --gate --quiet",
+        "check:comment-paths": "node scripts/audit-report-freshness.cjs --source comments --gate --quiet",
+        "check:comment-paths:update-baseline": "node scripts/audit-report-freshness.cjs --source comments --gate --update-baseline --quiet",
+        "check:core-docs-paths": "node scripts/audit-report-freshness.cjs --source core-docs --gate --quiet",
+        "check:core-docs-paths:update-baseline": "node scripts/audit-report-freshness.cjs --source core-docs --gate --update-baseline --quiet",
         "check:specs-paths:update-baseline": "node scripts/audit-report-freshness.cjs --source specs --gate --update-baseline --quiet",
         "check:guides-paths:update-baseline": "node scripts/audit-report-freshness.cjs --source guides --gate --update-baseline --quiet",
+        "check:specs-fresh": "node scripts/check-specs-verified-against.cjs",
+        "check:specs-fresh:list": "node scripts/check-specs-verified-against.cjs --list",
         "check:host-sync": "node scripts/verify-host-contract-sync.cjs",
         "check:event-map": "node scripts/check-event-map-coverage.cjs",
         "check:event-map:update-baseline": "node scripts/check-event-map-coverage.cjs --update-baseline",
@@ -133,6 +143,9 @@
         "verify:contract": "node scripts/verify-plugin-contract.cjs --fail",
         "verify:config-coverage": "node scripts/check-config-coverage.cjs",
         "check:config-consumers": "node scripts/check-config-consumers.cjs",
+        "check:plugin-readme-config": "node scripts/check-plugin-readme-config.cjs",
+        "check:published-parity": "node scripts/verify-published-parity.cjs",
+        "check:published-parity:update-baseline": "node scripts/verify-published-parity.cjs --update-baseline",
         "verify:config-consumers": "node scripts/check-config-consumers.cjs --fail --no-report",
         "check:config-consumers:update-baseline": "node scripts/check-config-consumers.cjs --no-report --update-baseline",
         "versions:check": "node scripts/check-versions.cjs",
@@ -163,35 +176,50 @@
         ],
         "*.{json,md}": [
             "prettier --write"
+        ],
+        "scripts/**/*.{cjs,mjs}": [
+            "prettier --write"
+        ],
+        "*.{cjs,mjs,yml,yaml}": [
+            "prettier --write"
+        ],
+        ".*.{json,yml,yaml}": [
+            "prettier --write"
+        ],
+        "{docs,_docs_projet,profiles,packages,apps,e2e}/**/*.{md,json,yml,yaml}": [
+            "prettier --write"
+        ],
+        "{scripts,docs,packages,apps,e2e}/**/*.html": [
+            "prettier --write"
         ]
     },
     "devDependencies": {
-        "@axe-core/playwright": "^4.12.1",
+        "@axe-core/playwright": "^4.13.0",
         "@csstools/css-parser-algorithms": "^4.0.0",
         "@csstools/css-tokenizer": "^4.0.0",
-        "@emnapi/core": "^1.11.2",
-        "@emnapi/runtime": "^1.11.2",
+        "@emnapi/core": "^1.11.3",
+        "@emnapi/runtime": "^1.11.3",
         "@emnapi/wasi-threads": "^1.2.2",
         "@eslint/js": "^10.0.1",
         "@geoleaf/build-config": "*",
         "@playwright/test": "^1.62.1",
         "@typescript-eslint/eslint-plugin": "^8.66.0",
         "@typescript-eslint/parser": "^8.61.0",
-        "@vitest/coverage-istanbul": "^4.1.10",
-        "cssnano": "^8.0.4",
+        "@vitest/coverage-istanbul": "^4.1.11",
+        "cssnano": "^8.0.7",
         "depcheck": "^1.4.7",
-        "eslint": "^10.8.1",
+        "eslint": "^10.9.0",
         "eslint-plugin-security": "^4.0.1",
         "glob": "^13.0.6",
-        "globals": "^17.9.0",
-        "happy-dom": "^20.11.2",
+        "globals": "^17.11.0",
+        "happy-dom": "^20.11.6",
         "http-server": "^14.1.1",
         "husky": "^9.0.11",
-        "jscpd": "^5.0.14",
-        "knip": "^6.32.0",
+        "jscpd": "^5.0.16",
+        "knip": "^6.32.2",
         "lint-staged": "^17.3.0",
         "madge": "^8.0.0",
-        "maplibre-gl": "^6.0.0",
+        "maplibre-gl": "^6.5.0",
         "nyc": "^18.0.0",
         "postcss": "^8.5.6",
         "postcss-import": "^16.1.1",
@@ -199,9 +227,9 @@
         "purgecss": "^8.0.0",
         "rollup-plugin-esbuild": "^6.2.1",
         "serve": "^14.2.4",
-        "turbo": "^2.10.9",
+        "turbo": "^2.10.11",
         "vitest": "^4.1.8",
-        "web-vitals": "^6.1.0"
+        "web-vitals": "^6.1.1"
     },
     "repository": {
         "type": "git",
@@ -213,12 +241,16 @@
     "homepage": "https://geoleaf.dev",
     "author": "Mattieu Pottier",
     "license": "MIT",
+    "_comment_overrides": {
+        "brace-expansion": "Pose le 03/08/2026 sur GHSA-rgw5-rvv9-x895 (DoS). MESURE DU 20/08/2026 : minimatch@10.2.5 declare ^5.0.5 et le registre publie 5.0.9 en latest — l'override ne force plus rien que npm ne resoudrait seul. CONSERVE et non retire : le retirer exige de regenerer le lock, geste documenté comme fragile ici. A retirer au prochain lock regenere pour une autre raison. Sans cette note, un override inerte est indiscernable d'un oubli.",
+        "_pourquoi_ici": "npm REFUSE une cle de commentaire DANS `overrides` — il la lit comme un override sans nom et sort en erreur sur `npm ls`. Mesure du 20/08/2026. Les cles inconnues au niveau racine, elles, sont ignorees."
+    },
     "overrides": {
-        "@csstools/css-parser-algorithms": "^4.0.0",
-        "@csstools/css-tokenizer": "^4.0.0",
-        "@emnapi/core": "^1.11.2",
-        "@emnapi/runtime": "^1.11.2",
-        "@emnapi/wasi-threads": "^1.2.2",
+        "@csstools/css-parser-algorithms": "$@csstools/css-parser-algorithms",
+        "@csstools/css-tokenizer": "$@csstools/css-tokenizer",
+        "@emnapi/core": "$@emnapi/core",
+        "@emnapi/runtime": "$@emnapi/runtime",
+        "@emnapi/wasi-threads": "$@emnapi/wasi-threads",
         "tar": "^7.5.9",
         "qs": "^6.14.1",
         "form-data": "^4.0.0",

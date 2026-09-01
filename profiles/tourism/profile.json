@@ -31,7 +31,10 @@
             "feature-info": "config/plugins/feature-info.json",
             "cluster": "config/plugins/cluster.json",
             "filter": "config/plugins/filter.json",
-            "route": "config/plugins/route.json"
+            "route": "config/plugins/route.json",
+            "position-share": "config/plugins/position-share.json",
+            "routing": "config/plugins/routing.json",
+            "navigation": "config/plugins/navigation.json"
         },
         "mappingFile": "config/core/mapping.json"
     }

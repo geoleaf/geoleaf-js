@@ -1,4 +1,4 @@
-﻿/*!
+/*!
  * GeoLeaf Core — Language: Italian (it)
  * © 2026 Mattieu Pottier — MIT License
  * https://geoleaf.dev
@@ -136,7 +136,7 @@ const lang_it: LangDict = {
     "ui.branding.default_text": "Sviluppato da \u00a9 GeoLeaf with MapLibre",
     "ui.branding.not_configured": "\u26a0 Branding non configurato",
     // \u2500\u2500 UI texts / Cache \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-    // B-163 \u2014 see the note in `lang-fr.ts`: `{0}` is positional (`getLabel`), not `{count}`.
+    // See the note in `lang-fr.ts`: `{0}` is positional (`getLabel`), not `{count}`.
     "storage.notif.cacheEvicted": "{0} elemento/i offline rimossi per liberare spazio",
     // \u2500\u2500 UI texts / Offline \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
     "ui.offline.badge": "\u26a0\ufe0f Non in linea",

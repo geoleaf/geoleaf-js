@@ -128,6 +128,21 @@
                 "display": {
                     "surfaces": ["popup", "sidepanel"]
                 }
+            },
+            {
+                "_comment": "Point d'entrée du plugin `routing` — le bouton n'est posé ni par le cœur ni par le plugin, il se déclare ICI. ⚠️ `payloadFields` est une liste blanche STRICTE : sans le champ du libellé, le panneau reçoit des coordonnées sans nom. Ce champ doit AUSSI figurer dans `modules.routing.labelField`, qui est global au plugin là où celui-ci est par couche — la règle traverse deux fichiers et aucun schéma ne l'exprime. `requiresPlugin` retire le bouton quand le plugin est absent, ce qui est le second sens de la garde.",
+                "field": "properties.NAME",
+                "label": "Itinéraire",
+                "primitive": "string",
+                "widget": "action",
+                "options": {
+                    "actionId": "routing.destination",
+                    "requiresPlugin": "routing",
+                    "payloadFields": ["NAME"]
+                },
+                "display": {
+                    "surfaces": ["popup", "sidepanel"]
+                }
             }
         ]
     }

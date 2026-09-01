@@ -24,13 +24,13 @@
  * constructs onto a second line makes the patch silently miss. The deploy would ship a
  * stale plugin list or an orphaned comment, and exit 0.
  *
- *   APP-01  index.html loads the ESM bundle           (was bundle.test.js:148-152)
- *   APP-02  init.js calls GeoLeaf.boot()              (was bundle.test.js:154-158)
+ *   APP-01  index.html loads the ESM bundle           (was bundle.test.js)
+ *   APP-02  init.js calls GeoLeaf.boot()              (was bundle.test.js)
  *   APP-03  index.html still uses `src/assets/icons/` — else the `→ icons/` rewrite at
- *           build-deploy.cjs:818 is a dead regex and the deployed <link rel="icon">
+ *           build-deploy.cjs is a dead regex and the deployed <link rel="icon">
  *           point outside icons/
  *   APP-04  the `<!-- Optional plugins … -->` comment is on ONE line — removed by
- *           build-deploy.cjs:857-860, `/gm` without `/s`
+ *           build-deploy.cjs, `/gm` without `/s`
  *   APP-05  each variant-gated plugin <script> (offline-ui, cog, editor) is on ONE
  *           line — same reason, the four regexes are `/gm` without `/s`
  *   APP-08  the `<!-- __GEOLEAF_MODULEPRELOAD__ -->` marker exists and is on ONE line —
@@ -39,22 +39,22 @@
  *           matching would ship a deploy that looks fine and has lost its preload block.
  *   APP-06  every module `init.js` imports EAGERLY resolves on a fresh clone — git-tracked,
  *           or covered by a named exemption whose witness proves something still guarantees
- *           the file lands in the deploy. Mesuré le 30/07/2026 : `connector.local.js` était
- *           git-ignoré et importé au boot, donc présent sur le poste de l'auteur et absent
- *           partout ailleurs — 8 specs E2E vertes en local, rouges en CI, pendant des mois.
- *   APP-09  la politique CSP d'index.html est COMPARÉE à une politique attendue, dans les
- *           deux sens, plus une liste de jetons interdits que la constante ne peut pas lever
- *           (B-164). Avant elle, `'unsafe-eval'` injecté sortait VERT.
+ *           the file lands in the deploy. Measured on 2026-07-30: `connector.local.js` was
+ *           git-ignored and imported at boot, hence present on the author's machine and
+ *           absent everywhere else — 8 E2E specs green locally, red in CI, for months.
+ *   APP-09  index.html's CSP policy is COMPARED to an expected policy, in both
+ *           directions, plus a list of forbidden tokens the constant cannot lift.
+ *           Before it, an injected `'unsafe-eval'` came out GREEN.
  *
- * ## Un invariant qui ne porte pas sur le workspace de l'app
+ * ## One invariant that does not bear on the app workspace
  *
- *   NGINX-01 chaque bloc `server` de `docker/nginx.dev.conf` pose `X-Content-Type-Options`
- *           (S6.1). Il est ici, et pas dans un script neuf, pour une raison de PARITÉ : tout
- *           nouveau script doit être câblé dans `ci-local.cjs` ET dans `ci.yml`, et c'est
- *           précisément là que la couverture des deux côtés se perd. Le contrat de sécurité de
- *           l'application couvre ce qu'elle déclare (CSP) et ce que son serveur promet
- *           (en-têtes) : les séparer aurait fait garder la moitié seulement, ce qui est le
- *           défaut même que B-136 avait laissé ouvert.
+ *   NGINX-01 every `server` block of `docker/nginx.dev.conf` sets `X-Content-Type-Options`.
+ *           It is here, and not in a new script, for a PARITY reason: every new
+ *           script must be wired into `ci-local.cjs` AND `ci.yml`, and that is
+ *           precisely where two-sided coverage gets lost. The application's security
+ *           contract covers what it declares (CSP) and what its server promises
+ *           (headers): separating them would have guarded only half, the very
+ *           defect per-variant gating had left open.
  *
  * Paths come from the workspace registry, never as a literal `apps/geoleaf-app`:
  * `requireByDirName` throws on a rename instead of quietly checking nothing.
@@ -68,9 +68,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const registry = require("./lib/packages.cjs");
-// Les marqueurs viennent de leur PRODUCTEUR — un corpus, deux consommateurs. Les recopier ici
-// ferait sortir APP-11 vert le jour d'un renommage côté build, donc le jour où le retrait de la
-// balise cesse de s'appliquer : la gate garderait une paire que plus rien ne cherche.
+// The markers come from their PRODUCER — one corpus, two consumers. Copying them here
+// would let APP-11 go green the day of a build-side rename, i.e. the day the tag
+// removal stops applying: the gate would guard a pair nothing looks for anymore.
 const { DEV_CONNECTOR_MARKERS } = require("./build-deploy.cjs");
 
 const ROOT = path.resolve(__dirname, "..");
@@ -79,19 +79,19 @@ const APP = registry.requireByDirName("geoleaf-app").absDir;
 /**
  * Plugins whose <script> tag build-deploy.cjs strips per variant.
  *
- * ⚠️ STRUCT S3 (26/07/2026) — cette liste était une PANNE SILENCIEUSE. Elle bâtit
- * l'aiguille `geoleaf-<nom>.plugin.js`, et la boucle APP-05 fait `continue` quand
- * l'aiguille ne matche rien — parce que tous les gated ne figurent pas dans toutes
- * les états d'`index.html` (`editor` n'y est pas aujourd'hui). Conséquence : au
- * renommage `storage` → `offline-ui`, APP-05 aurait cessé de contrôler ce plugin
- * **en sortant vert**, et la balise aurait pu se scinder sur deux lignes sans que
- * rien ne le dise — or c'est exactement ce qu'APP-05 existe pour empêcher, les
- * quatre regexes de gating de `build-deploy.cjs` étant `/gm` SANS `/s`.
+ * ⚠️ 2026-07-26 — this list was a SILENT OUTAGE. It builds the
+ * `geoleaf-<name>.plugin.js` needle, and the APP-05 loop does `continue` when the
+ * needle matches nothing — because not all gated plugins appear in every state of
+ * `index.html` (`editor` is not in it today). Consequence: at the
+ * `storage` → `offline-ui` rename, APP-05 would have stopped checking that plugin
+ * **while going green**, and the tag could have split onto two lines with nothing
+ * saying so — the very thing APP-05 exists to prevent, the four gating regexes of
+ * `build-deploy.cjs` being `/gm` WITHOUT `/s`.
  *
- * Le `continue` reste légitime et ne peut pas devenir une erreur. La cécité est
- * fermée en amont : chaque nom est résolu par le registre, qui JETTE sur un
- * répertoire absent. Un renommage échoue ici, bruyamment, au lieu de désarmer
- * la vérification aval.
+ * The `continue` stays legitimate and cannot become an error. The blindness is
+ * closed upstream: each name is resolved by the registry, which THROWS on an
+ * absent directory. A rename fails here, loudly, instead of disarming the
+ * downstream check.
  */
 const GATED_PLUGINS = ["offline-ui", "cog", "editor"].map(
     (dirName) => registry.requireByDirName(dirName).dirName
@@ -122,13 +122,13 @@ if (html !== null) {
         errors.push("APP-01 index.html does not load `dist/geoleaf.esm.js`.");
     }
 
-    // APP-10 — la balise MapLibre. Rien ne gardait sa FORME jusqu'ici, alors qu'elle porte
-    // depuis la v6 une contrainte qui ne se voit pas à la lecture : le moteur est un module
-    // ESM, donc `type="module"` n'est pas un style d'écriture mais la condition pour qu'il
-    // s'exécute. Sans lui, le navigateur refuse le fichier et la carte ne monte pas — sans
-    // qu'aucune autre gate ne le dise, `index.html` n'étant pas exécuté par la suite unitaire.
-    // Les deux moitiés sont nécessaires : la première tient la forme, la seconde interdit le
-    // retour d'un artefact qui n'existe plus sur le registre.
+    // APP-10 — the MapLibre tag. Nothing guarded its SHAPE until now, although since
+    // v6 it carries a constraint that cannot be seen by reading: the engine is an ESM
+    // module, so `type="module"` is not a writing style but the condition for it to
+    // execute. Without it, the browser refuses the file and the map does not mount —
+    // with no other gate saying so, `index.html` never being executed by the unit
+    // suite. Both halves are necessary: the first holds the shape, the second forbids
+    // the return of an artifact that no longer exists on the registry.
     const mlTag = html.split("\n").find((l) => l.includes("vendor/maplibre-gl/global.mjs"));
     if (!mlTag) {
         errors.push(
@@ -201,17 +201,18 @@ if (html !== null) {
         );
     }
 
-    // APP-11 — la paire de marqueurs qui encadre le bootstrap Connector de POSTE.
+    // APP-11 — the marker pair that frames the WORKSTATION Connector bootstrap.
     //
-    // 🛑 CE QUE SON ABSENCE COÛTERAIT. `build-deploy.cjs` retire ce bloc de toute variante
-    // livrable ; c'est ce retrait, et rien d'autre, qui empêche `connector.local.js` — un JWT
-    // à privilège d'écriture — d'entrer dans ce qui part chez un client. Les marqueurs partis,
-    // le retrait jette (c'est voulu), mais la gate qui le dit AVANT le build est ici : un
-    // défaut trouvé à la construction du déployé se découvre plus tard et plus cher.
+    // 🛑 WHAT ITS ABSENCE WOULD COST. `build-deploy.cjs` strips this block from every
+    // shippable variant; that removal, and nothing else, is what keeps
+    // `connector.local.js` — a write-privileged JWT — out of what ships to a client.
+    // Markers gone, the removal throws (deliberate), but the gate that says it BEFORE
+    // the build is here: a defect found while constructing the deploy is discovered
+    // later and at greater cost.
     //
-    // ⚠️ Les littéraux viennent de `build-deploy.cjs`, jamais recopiés — sans quoi renommer
-    // les marqueurs là-bas laisserait cette gate verte sur une paire que plus personne ne
-    // cherche, c'est-à-dire au moment précis où le retrait cesse de fonctionner.
+    // ⚠️ The literals come from `build-deploy.cjs`, never copied — otherwise renaming
+    // the markers there would leave this gate green on a pair nobody looks for
+    // anymore, i.e. at the precise moment the removal stops working.
     for (const [role, needle] of Object.entries(DEV_CONNECTOR_MARKERS)) {
         if (!html.includes(needle)) {
             errors.push(
@@ -232,64 +233,65 @@ if (html !== null) {
 }
 
 // APP-02
-// ⚠️ L'aiguille est `GeoLeaf.boot(`, PAS `GeoLeaf.boot()`. Elle a porté la forme fermée
-// jusqu'au 07/08/2026, ce qui était juste tant qu'aucune option n'était passée — et faux
-// dès que socle-init S4.5 a eu besoin de `boot({ beforeBoot })` pour précharger les plugins
-// que le profil exige. La propriété gardée est « init.js démarre l'application » ; les
-// parenthèses vides en étaient un accident de rédaction, pas le sujet.
+// ⚠️ The needle is `GeoLeaf.boot(`, NOT `GeoLeaf.boot()`. It carried the closed form
+// until 2026-08-07, which was right as long as no option was passed — and wrong as
+// soon as preloading needed `boot({ beforeBoot })` to preload the plugins the
+// profile requires. The guarded property is "init.js starts the application"; the
+// empty parentheses were a drafting accident, not the subject.
 if (init !== null && !init.includes("GeoLeaf.boot(")) {
     errors.push("APP-02 init.js does not call `GeoLeaf.boot(…)` — the app would never start.");
 }
 
 /**
- * APP-06 — tout module que `init.js` importe doit EXISTER sur un clone frais.
+ * APP-06 — every module `init.js` imports must EXIST on a fresh clone.
  *
- * ⚠️ La classe que cette règle ferme a été mesurée le 30/07/2026, et elle est chère parce
- * qu'elle est INVISIBLE de la machine qui l'introduit.
+ * ⚠️ The class this rule closes was measured on 2026-07-30, and it is expensive
+ * because it is INVISIBLE from the machine that introduces it.
  *
- * `init.js` faisait `await import("./connector.local.js")` sur un fichier GIT-IGNORÉ. Sur le
- * poste qui l'avait, tout était vert ; partout ailleurs — un clone frais, un runner — le
- * module manquait, le navigateur journalisait « Failed to load resource: 404 », et les 8
- * specs E2E qui assertent « 0 console error » échouaient. Le `try/catch` autour de l'import
- * n'y peut RIEN : l'erreur console n'est pas une exception JS.
+ * `init.js` did `await import("./connector.local.js")` on a GIT-IGNORED file. On the
+ * machine that had it, all was green; everywhere else — a fresh clone, a runner —
+ * the module was missing, the browser logged "Failed to load resource: 404", and the
+ * 8 E2E specs asserting "0 console errors" failed. The `try/catch` around the import
+ * can do NOTHING about it: the console error is not a JS exception.
  *
- * Le remède n'est pas d'interdire l'import d'un fichier optionnel — c'est d'exiger que
- * quelque chose GARANTISSE sa présence dans le déployé. D'où l'exemption nommée : elle ne
- * dispense pas du contrôle, elle désigne le mécanisme qui tient la promesse, et elle rougit
- * si ce mécanisme disparaît.
+ * The remedy is not to forbid importing an optional file — it is to require that
+ * something GUARANTEES its presence in the deploy. Hence the named exemption: it
+ * does not waive the check, it names the mechanism that keeps the promise, and it
+ * turns red if that mechanism disappears.
  */
 /**
- * 🗑️ VIDE, ET C'EST UN ACQUIS — ne pas y remettre `./connector.local.js`.
+ * 🗑️ EMPTY, AND THAT IS AN ACHIEVEMENT — do not put `./connector.local.js` back.
  *
- * Cette table a porté une seule entrée, du 30/07 au 09/08/2026 : `init.js` importait
- * `./connector.local.js` (git-ignoré) INCONDITIONNELLEMENT, et l'exemption désignait le
- * mécanisme qui garantissait sa présence dans le déployé — un talon inerte émis par
+ * This table carried a single entry, from 07-30 to 2026-08-09: `init.js` imported
+ * `./connector.local.js` (git-ignored) UNCONDITIONALLY, and the exemption named the
+ * mechanism guaranteeing its presence in the deploy — an inert stub emitted by
  * `build-deploy.cjs`.
  *
- * ⚠️ L'exemption était honnête et APP-06 avait raison de sortir verte : le fichier ÉTAIT là.
- * Ce qu'aucune règle ne disait, c'est que dans les variantes livrables il contenait le
- * bootstrap RÉEL — jeton `geoleaf_editor` à privilège d'écriture. Une règle de PRÉSENCE ne dit
- * rien du CONTENU, et personne ne lui demandait de le dire.
+ * ⚠️ The exemption was honest and APP-06 was right to go green: the file WAS there.
+ * What no rule said is that in the shippable variants it contained the REAL
+ * bootstrap — write-privileged `geoleaf_editor` token. A PRESENCE rule says nothing
+ * about CONTENT, and nobody asked it to.
  *
- * La cause est traitée en amont : `init.js` n'importe plus rien, le chargement passe par une
- * balise d'`index.html` que `build-deploy.cjs` retire des variantes livrables (APP-11
- * ci-dessous en tient les marqueurs). Il n'y a donc plus d'import à exempter — et une entrée
- * réintroduite ici signalerait qu'on a refait le nœud qu'on vient de défaire.
+ * The cause is handled upstream: `init.js` no longer imports anything, loading goes
+ * through an `index.html` tag that `build-deploy.cjs` strips from shippable variants
+ * (APP-11 below holds its markers). There is thus no import left to exempt — and an
+ * entry reintroduced here would signal the knot just untied has been retied.
  */
 const IMPORT_EXEMPTIONS = {};
 
 /**
- * `./dist/**` — sorties de build, git-ignorées mais GARANTIES par la construction.
+ * `./dist/**` — build outputs, git-ignored yet GUARANTEED by construction.
  *
- * ⚠️ Le pré-vol de cette règle a d'abord signalé les 4 `./dist/geoleaf-*.plugin.js` comme
- * défauts. C'étaient des faux positifs, et les écarter sans les lire aurait été aussi faux
- * que de les traiter : ils vivent dans des THUNKS `registerLazy(() => import(...))`, donc
- * ils ne s'exécutent JAMAIS au boot et ne peuvent pas produire l'erreur console de boot que
- * cette règle traque. C'est précisément ce qui distingue `connector.local.js`, lui exécuté
- * eagerly à chaque chargement de page sur localhost.
+ * ⚠️ This rule's preflight first flagged the 4 `./dist/geoleaf-*.plugin.js` as
+ * defects. They were false positives, and discarding them unread would have been as
+ * wrong as treating them: they live in `registerLazy(() => import(...))` THUNKS, so
+ * they NEVER execute at boot and cannot produce the boot console error this rule
+ * hunts. That is precisely what distinguishes `connector.local.js`, which executes
+ * eagerly on every localhost page load.
  *
- * L'exemption porte donc son témoin : `build-deploy.cjs` doit continuer d'exiger `dist/` dans
- * le déployé, faute de quoi « garanti par la construction » cesse d'être vrai.
+ * The exemption therefore carries its witness: `build-deploy.cjs` must keep
+ * requiring `dist/` in the deploy, failing which "guaranteed by construction" stops
+ * being true.
  */
 const BUILD_OUTPUT_PREFIX = "./dist/";
 const BUILD_OUTPUT_WITNESS = { file: "scripts/build-deploy.cjs", needle: '"dist/geoleaf.esm.js"' };
@@ -334,8 +336,8 @@ if (init !== null) {
             );
             continue;
         }
-        // Le témoin : le mécanisme cité doit exister VRAIMENT. Une exemption qui désigne un
-        // garant disparu est pire qu'une absence d'exemption — elle rassure.
+        // The witness: the cited mechanism must REALLY exist. An exemption naming a
+        // vanished guarantor is worse than no exemption — it reassures.
         const garant = path.join(ROOT, ex.garantiPar);
         if (!fs.existsSync(garant) || !fs.readFileSync(garant, "utf8").includes(ex.temoin)) {
             errors.push(
@@ -348,42 +350,45 @@ if (init !== null) {
 }
 
 /**
- * APP-07 — tout enregistrement visant un plugin GATÉ vit entre les marqueurs de bloc.
+ * APP-07 — every registration targeting a GATED plugin lives between block markers.
  *
- * ⚠️ La classe fermée ici est celle de **B-136**, et elle est restée ouverte parce que la
- * moitié HTML du gating était gardée (APP-04/05) et la moitié JS ne l'était pas du tout.
+ * ⚠️ The class closed here is the inert button's, and it stayed open because the
+ * HTML half of the gating was guarded (APP-04/05) and the JS half not at all.
  *
- * `build-deploy.cjs` retire le bloc `GEOLEAF-DEPLOY:GATED-BLOCK <nom>` d'`init.js` sur les
- * variantes qui n'embarquent pas ce plugin. Une référence au bundle posée HORS du bloc
- * survivrait au retrait : le résolveur paresseux serait enregistré sur une variante sans
- * bundle, `isLazyAvailable()` rendrait `true` (il ne sonde aucun fichier), le bouton serait
- * peint — et le clic partirait sur un `import()` en 404. C'est l'état mesuré le 05/08/2026
- * sur `deploy-core` : trois boutons `editor` inertes que l'audit d'accessibilité validait,
- * puisqu'ils portent un nom accessible et un rôle valides.
+ * `build-deploy.cjs` strips the `GEOLEAF-DEPLOY:GATED-BLOCK <name>` block from
+ * `init.js` on variants that do not embark that plugin. A bundle reference placed
+ * OUTSIDE the block would survive the removal: the lazy resolver would be
+ * registered on a bundle-less variant, `isLazyAvailable()` would return `true` (it
+ * probes no file), the button would be painted — and the click would leave on a 404
+ * `import()`. That is the state measured on 2026-08-05 on `deploy-core`: three
+ * inert `editor` buttons the accessibility audit validated, since they carry a
+ * valid accessible name and role.
  *
- * ## Pourquoi l'implication va dans ce sens, et pas dans l'autre
+ * ## Why the implication goes this way, and not the other
  *
- * On n'exige PAS qu'un bloc existe pour chaque plugin gaté — `offline-ui` n'est pas enregistré
- * depuis `init.js` (il est eager, et le reste : son `wireEngineSignals()` porte l'alerte
- * d'éviction du Sprint 1), et l'exiger ferait rougir sur une absence légitime. On exige
- * que **si** le bundle est nommé, alors il soit encadré. Ajouter une référence sans marqueur
- * fait rougir ; c'est la direction dangereuse, et c'est celle qui est gardée.
+ * We do NOT require a block to exist for every gated plugin — `offline-ui` is not
+ * registered from `init.js` (it is eager, and stays so: its `wireEngineSignals()`
+ * carries the eviction alert), and requiring it would redden on a legitimate
+ * absence. We require that **if** the bundle is named, then it is framed. Adding an
+ * unmarked reference turns red; that is the dangerous direction, and the one
+ * guarded.
  *
- * La direction inverse — les marqueurs disparaissent alors que le retrait en dépend — est
- * tenue par `stripGatedInitBlock`, qui JETTE quand il ne les trouve pas. Les deux gardes se
- * complètent : aucune des deux ne peut sortir verte en ne contrôlant plus rien.
+ * The reverse direction — markers vanish while the removal depends on them — is
+ * held by `stripGatedInitBlock`, which THROWS when it cannot find them. The two
+ * guards complement each other: neither can go green while checking nothing.
  *
- * ⚠️ Le paragraphe ci-dessus citait `offline-ui` **et `cog`** comme absents d'`init.js` jusqu'au
- * 08/08/2026, et c'était faux depuis le S4.4 : `init.js` porte
- * `gl.plugins.registerLazy("cog", () => import("./dist/geoleaf-cog.plugin.js"))`, soit exactement
- * l'aiguille sur laquelle cette garde boucle. `cog` est donc COUVERT par APP-07 ; le lire ici
- * comme une absence légitime faisait conclure l'inverse de ce que la garde fait réellement.
+ * ⚠️ The paragraph above cited `offline-ui` **and `cog`** as absent from `init.js`
+ * until 2026-08-08, and that was already wrong: `init.js` carries
+ * `gl.plugins.registerLazy("cog", () => import("./dist/geoleaf-cog.plugin.js"))` —
+ * exactly the needle this guard loops on. `cog` is thus COVERED by APP-07; reading
+ * it here as a legitimate absence concluded the opposite of what the guard really
+ * does.
  */
 if (init !== null) {
     const initLines = init.split("\n");
     for (const name of GATED_PLUGINS) {
         const needle = `geoleaf-${name}.plugin.js`;
-        if (!init.includes(needle)) continue; // ce plugin n'est pas enregistré depuis init.js
+        if (!init.includes(needle)) continue; // this plugin is not registered from init.js
 
         const startIdx = initLines.findIndex((l) =>
             l.includes(`GEOLEAF-DEPLOY:GATED-BLOCK ${name} ─── START`)
@@ -397,7 +402,7 @@ if (init !== null) {
                 `APP-07 init.js nomme ${needle} mais ne porte pas la paire de marqueurs ` +
                     `\`GEOLEAF-DEPLOY:GATED-BLOCK ${name}\` START/END. build-deploy.cjs ne peut ` +
                     `donc pas retirer l'enregistrement sur une variante qui n'embarque pas ce ` +
-                    `bundle : le créneau paresseux serait peint et le clic partirait en 404 (B-136).`
+                    `bundle : le créneau paresseux serait peint et le clic partirait en 404.`
             );
             continue;
         }
@@ -417,7 +422,7 @@ if (init !== null) {
             errors.push(
                 `APP-07 init.js nomme ${needle} HORS du bloc gaté (ligne(s) ${outside.join(", ")} ` +
                     `— le bloc va de ${startIdx + 1} à ${endIdx + 1}). Cette référence survivrait ` +
-                    `au retrait par variante et recréerait le bouton inerte de B-136. Déplacer ` +
+                    `au retrait par variante et recréerait le bouton inerte. Déplacer ` +
                     `l'enregistrement entre les marqueurs.`
             );
         }
@@ -425,41 +430,54 @@ if (init !== null) {
 }
 
 /**
- * APP-09 — la politique CSP de l'application est COMPARÉE, pas seulement présente. (B-164)
+ * APP-09 — the application's CSP policy is COMPARED, not merely present.
  *
- * ⚠️ Ce que ferme cette règle, mesuré le 07/08/2026 : on pouvait injecter `'unsafe-eval'` dans
- * la balise CSP d'`index.html` et cette gate sortait **VERTE**. La balise portait pourtant, en
- * commentaire juste au-dessus, l'aveu « aucune gate ne lit cette balise » — la politique de
- * sécurité la plus exposée du livrable était la seule chose du fichier que personne ne relisait.
+ * ⚠️ What this rule closes, measured on 2026-08-07: one could inject `'unsafe-eval'`
+ * into `index.html`'s CSP tag and this gate came out **GREEN**. The tag even
+ * carried, in a comment right above, the admission "no gate reads this tag" — the
+ * deliverable's most exposed security policy was the one thing in the file nobody
+ * re-read.
  *
- * ## Deux couches, et la seconde existe parce que la première est contournable
+ * ## Two layers, and the second exists because the first can be worked around
  *
- * ① `EXPECTED_CSP` est la politique attendue, écrite ici en toutes lettres. Toute dérive rougit
- *    — directive ajoutée, retirée, source ajoutée ou retirée —, **dans les deux sens**. Une
- *    comparaison qui ne regarderait que « les directives attendues sont là » sortirait verte
- *    devant une source ajoutée, or c'est la mutation dangereuse.
+ * ① `EXPECTED_CSP` is the expected policy, spelled out here in full. Any drift turns
+ *    red — directive added, removed, source added or removed —, **in both
+ *    directions**. A comparison looking only at "the expected directives are there"
+ *    would go green before an added source, yet that is the dangerous mutation.
  *
- * ② `FORBIDDEN_TOKENS` interdit un petit ensemble de jetons **quelle que soit** `EXPECTED_CSP`.
- *    Sans cette seconde couche, la gate serait « réparable » en alignant l'attente sur le
- *    mauvais changement — un geste d'une ligne, qui a l'air d'une mise à jour de routine. Le
- *    jour où quelqu'un ajoute `'unsafe-eval'` et met la constante à jour dans la foulée, ① dit
- *    oui et ② dit non. C'est le seul montage où la gate résiste à sa propre maintenance.
+ * ② `FORBIDDEN_TOKENS` forbids a small token set **whatever** `EXPECTED_CSP` says.
+ *    Without this second layer, the gate would be "repairable" by aligning the
+ *    expectation onto the wrong change — a one-line gesture that looks like routine
+ *    maintenance. The day someone adds `'unsafe-eval'` and updates the constant in
+ *    the same breath, ① says yes and ② says no. The only arrangement where the gate
+ *    survives its own maintenance.
  *
- * 🛑 **Elle compare une DÉCLARATION, pas un comportement** — exactement comme `PARITY-11`
- * compare des listes de commandes et non des verdicts. Une CSP juste dans le HTML ne prouve pas
- * que la page ne viole rien : ce versant-là est tenu par les tests de violation d'
- * `e2e/18-security.spec.js` et par `scripts/probe-csp-origins.mjs`. Ne pas attendre de cette
- * règle ce qu'elle ne peut pas porter.
+ * 🛑 **It compares a DECLARATION, not a behaviour** — exactly as `PARITY-11`
+ * compares command lists and not verdicts. A correct CSP in the HTML does not prove
+ * the page violates nothing: that side is held by the violation tests of
+ * `e2e/18-security.spec.js` and by `scripts/probe-csp-origins.mjs`. Do not expect
+ * from this rule what it cannot carry.
  */
 const EXPECTED_CSP = {
     "default-src": ["'self'"],
-    // `blob:` RETIRÉ de `script-src` le 08/08/2026 (B-165), après verdict en navigateur sur
-    // les 2 variantes — pas par raisonnement. Motif : la création d'un worker depuis une URL
-    // `blob:` relève de `worker-src` (conservé ci-dessous), avec `child-src` en repli CSP2
-    // (conservé aussi) ; `script-src` n'était sollicité par aucun chemin mesuré.
+    // `blob:` REMOVED from `script-src` on 2026-08-08, after a browser verdict on
+    // both variants — not by reasoning. Motive: creating a worker from a `blob:` URL
+    // falls under `worker-src` (kept below), with `child-src` as the CSP2 fallback
+    // (kept too); `script-src` was exercised by no measured path.
     "script-src": ["'self'"],
     "style-src": ["'self'"],
-    "img-src": ["'self'", "data:", "https:"],
+    // `blob:` ADDED on 2026-08-18, after a browser verdict on both variants — not by
+    // reasoning, and it is the same protocol as the `blob:` removal from
+    // `script-src` just above. Measured motive: the cog plugin's `createCanvas()`
+    // PREFERS `OffscreenCanvas` when usable (it is), and `canvasToDataUrl()` then
+    // derives a `blob:` URL from it — the normal path, not an edge case. Probed on
+    // the `demo.full` and `demo` vhosts: the `blob:` image is REFUSED naming
+    // `img-src`, while a `data:` witness loads — so the measurement really bears on
+    // the policy and not on a broken image. The failure was MUTE: no E2E spec covers
+    // cog, the tile simply did not display.
+    // ⚠️ The widening is narrow: a `blob:` URL is same-origin by construction and can
+    // only designate what the page itself fabricated. It opens no origin.
+    "img-src": ["'self'", "data:", "blob:", "https:"],
     "connect-src": ["'self'", "https:"],
     "font-src": ["'self'", "data:"],
     "worker-src": ["'self'", "blob:"],
@@ -470,22 +488,23 @@ const EXPECTED_CSP = {
     "upgrade-insecure-requests": [],
 };
 
-/** Jetons interdits partout, indépendamment de EXPECTED_CSP — voir ② ci-dessus. */
+/** Tokens forbidden everywhere, independently of EXPECTED_CSP — see ② above. */
 const FORBIDDEN_TOKENS = ["'unsafe-eval'", "'unsafe-inline'", "*"];
 
 if (html !== null) {
-    // ⚠️ Le capteur ne peut PAS être `content=["']([^"']+)["']`. Une valeur de CSP contient des
-    // apostrophes (`'self'`, `'none'`), donc une classe qui exclut les deux guillemets s'arrête
-    // au premier `'` et ne rend que `default-src `. Écrite ainsi, la règle sortait ROUGE au
-    // repos en annonçant 11 directives disparues qui étaient toutes là — et une garde rouge pour
-    // la mauvaise raison est indiscernable d'une garde qui marche. Le délimiteur se choisit donc
-    // sur le guillemet OUVRANT, et lui seul ferme la capture.
+    // ⚠️ The capture can NOT be `content=["']([^"']+)["']`. A CSP value contains
+    // apostrophes (`'self'`, `'none'`), so a class excluding both quote kinds stops
+    // at the first `'` and yields only `default-src `. Written that way, the rule
+    // came out RED at rest announcing 11 vanished directives that were all there —
+    // and a guard red for the wrong reason is indistinguishable from a working
+    // guard. The delimiter is therefore chosen on the OPENING quote, and it alone
+    // closes the capture.
     const meta =
         html.match(/<meta\s+http-equiv="Content-Security-Policy"\s+content="([^"]*)"/i) ??
         html.match(/<meta\s+http-equiv='Content-Security-Policy'\s+content='([^']*)'/i);
     if (!meta) {
         errors.push(
-            "APP-09 index.html ne porte plus de `<meta http-equiv=\"Content-Security-Policy\">`. " +
+            'APP-09 index.html ne porte plus de `<meta http-equiv="Content-Security-Policy">`. ' +
                 "Le livrable partirait sans politique, et cette règle sortirait verte en ne " +
                 "comparant rien — c'est le mode d'échec qu'elle existe pour éviter."
         );
@@ -526,14 +545,14 @@ if (html !== null) {
             );
         }
 
-        // ⚠️ Les jetons se cherchent dans la structure DÉJÀ ANALYSÉE, jamais dans la chaîne
-        // brute. Écrite en `meta[1].split(/\s+/)`, cette boucle ne mordait pas : la découpe
-        // laisse le point-virgule collé au dernier jeton de chaque directive, donc
-        // `'unsafe-eval';` ne s'égalait jamais à `'unsafe-eval'`. Vérifié le 08/08/2026 — la
-        // couche ② sortait VERTE sur la mutation qu'elle existe pour attraper, pendant que le
-        // commentaire ci-dessus affirmait qu'elle la prenait. La propriété était écrite avant
-        // d'avoir été vue mordre ; c'est le défaut que ce dépôt nomme « une garde jamais vue
-        // rouge ne garde rien », commis dans la garde même qui l'invoque.
+        // ⚠️ Tokens are searched in the ALREADY-PARSED structure, never the raw
+        // string. Written as `meta[1].split(/\s+/)`, this loop did not bite: the
+        // split leaves the semicolon glued to each directive's last token, so
+        // `'unsafe-eval';` never equalled `'unsafe-eval'`. Verified on 2026-08-08 —
+        // layer ② came out GREEN on the very mutation it exists to catch, while the
+        // comment above claimed it caught it. The property was written before being
+        // seen to bite; the defect this repo names "a guard never seen red guards
+        // nothing", committed in the very guard that invokes it.
         for (const [directive, sources] of Object.entries(actual)) {
             for (const token of FORBIDDEN_TOKENS) {
                 if (!sources.includes(token)) continue;
@@ -548,18 +567,21 @@ if (html !== null) {
 }
 
 /**
- * NGINX-01 — l'en-tête `X-Content-Type-Options` est posé sur CHAQUE vhost. (S6.1)
+ * NGINX-01 — the `X-Content-Type-Options` header is set on EVERY vhost.
  *
- * ⚠️ Il vivait en `<meta http-equiv>` dans `index.html`, où **aucun navigateur ne le lit** :
- * cet en-tête n'est honoré qu'en réponse HTTP. La protection était donc absente partout tout en
- * paraissant présente — pire qu'absente, puisqu'elle éteignait la vigilance.
+ * ⚠️ It lived as `<meta http-equiv>` in `index.html`, where **no browser reads it**:
+ * this header is honoured only in an HTTP response. The protection was thus absent
+ * everywhere while appearing present — worse than absent, since it dampened
+ * vigilance.
  *
- * Le décompte de vhosts est **dérivé** du fichier, jamais écrit ici : un quatrième bloc ajouté
- * sans en-tête doit faire rougir, et une constante `3` écrite à côté aurait sorti vert.
- * C'est la doctrine B-43, la même qui a retiré le nombre d'invariants de l'en-tête de ce script.
+ * The vhost count is **derived** from the file, never written here: a fourth block
+ * added without the header must turn red, and a `3` constant written beside would
+ * have come out green. Repo doctrine, the same that removed the invariant count
+ * from this script's header.
  *
- * Le motif du « chaque » : nginx **n'hérite pas** `add_header` dans un bloc qui déclare le sien.
- * Un oubli sur un seul vhost est un trou complet, et parfaitement silencieux.
+ * The motive for "every": nginx **does not inherit** `add_header` into a block that
+ * declares its own. An omission on a single vhost is a complete, perfectly silent
+ * hole.
  */
 const NGINX_CONF = path.join(ROOT, "docker/nginx.dev.conf");
 const NOSNIFF = /add_header\s+X-Content-Type-Options\s+["']?nosniff["']?/i;
@@ -571,7 +593,7 @@ if (!fs.existsSync(NGINX_CONF)) {
     );
 } else {
     const conf = fs.readFileSync(NGINX_CONF, "utf8");
-    // Découpe par bloc `server {` — chaque tranche court jusqu'au `server {` suivant.
+    // Split by `server {` block — each slice runs to the next `server {`.
     const blocks = conf.split(/^server\s*\{/m).slice(1);
     if (blocks.length === 0) {
         errors.push(
@@ -596,6 +618,70 @@ if (!fs.existsSync(NGINX_CONF)) {
     }
 }
 
+/**
+ * APP-12 — descriptor ↔ boot parity: the discovered fleet and `init.js` name each
+ * other, in both directions.
+ *
+ * It is the surviving half of "generate the boot from the descriptors", and the
+ * refusal of the other half is MOTIVATED: the plugins zone of `init.js` is one
+ * third comments encoding paid incidents (the inert button's 404, the `beforeBoot`
+ * mechanism), and a generator would lose or freeze them; and APP-07 verifies
+ * STATIC import paths, which a loop over a manifest would make unverifiable. What
+ * generation was meant to kill is DRIFT — a plugin shipped without a boot
+ * registration, or a registration targeting a bundle no variant ships. That drift
+ * is what is guarded here, without touching `init.js`'s shape.
+ *
+ * ⚠️ Direction 1 (shipped without boot): a plugin whose bundle goes into the deploy
+ * but that no `import()` of init.js names would be shipped dead weight — present on
+ * the client's disk, reachable by nobody. Named exception: `offline-ui`, loaded
+ * EAGER by its gated `<script>` tag of index.html, never registered from init.js
+ * (APP-07 documents it).
+ * Direction 2 (boot without bundle): an `import()` targeting a bundle no
+ * package.json#geoleaf descriptor declares is the deferred 404 — the button paints,
+ * the click breaks.
+ */
+{
+    const { discoverPlugins } = require("./lib/discover-plugins.cjs");
+    const fleet = discoverPlugins();
+    // Loaded by an index.html `<script>` tag, never registered from init.js.
+    // `offline-ui`: its `wireEngineSignals()` surfaces QuotaExceededError and cache
+    // eviction to the user — lazy, the listener would never exist.
+    // `routing`: its entry point is a feature-info `action` widget, whose guard
+    // evaluates on `isLoaded()` ALONE. Lazy, it would mask its own entry point and
+    // nothing would ever trigger the load that would display it.
+    const EAGER_EXCEPTIONS = new Set(["offline-ui", "routing"]);
+    if (init !== null) {
+        const imported = new Set(
+            [
+                ...init.matchAll(
+                    /import\s*\(\s*["']\.\/dist\/(geoleaf-[a-z0-9-]+\.plugin\.js)["']\s*\)/g
+                ),
+            ].map((m) => m[1])
+        );
+        for (const p of fleet) {
+            if (EAGER_EXCEPTIONS.has(p.id)) continue;
+            if (!imported.has(p.bundle)) {
+                errors.push(
+                    `APP-12 le plugin découvert \`${p.id}\` livre \`${p.bundle}\` mais init.js ` +
+                        `ne l'importe nulle part — un bundle livré qu'aucun boot n'atteint est ` +
+                        `un poids mort chez le client. L'enregistrer (registerLazy), ou le ` +
+                        `déclarer eager avec son témoin.`
+                );
+            }
+        }
+        const declared = new Set(fleet.map((p) => p.bundle));
+        for (const b of imported) {
+            if (!declared.has(b)) {
+                errors.push(
+                    `APP-12 init.js importe \`./dist/${b}\` qu'aucun descripteur ` +
+                        `package.json#geoleaf ne déclare — l'import() partira en 404 sur toute ` +
+                        `variante, différé au premier clic.`
+                );
+            }
+        }
+    }
+}
+
 if (errors.length) {
     console.error(`\n✘ APP-TEMPLATE: ${errors.length} violation(s) —\n`);
     for (const e of errors) console.error(`  • ${e}`);
@@ -605,7 +691,7 @@ if (errors.length) {
 
 // ⚠️ The count is DERIVED from this list, never written beside it. It read "7" while APP-08
 // was being added — a written total is a second source of truth that can only diverge, which
-// is the same doctrine (B-43) that took the capability counts out of the core entry headers.
+// is the same doctrine that took the capability counts out of the core entry headers.
 const HELD = [
     "bundle ESM",
     "boot()",
@@ -618,6 +704,7 @@ const HELD = [
     `politique CSP comparée (${Object.keys(EXPECTED_CSP).length} directives)`,
     "nosniff sur chaque vhost",
     "marqueurs du bootstrap de poste + balise mono-ligne",
+    "parité flotte découverte ↔ boot (2 sens)",
 ];
 
 console.log(

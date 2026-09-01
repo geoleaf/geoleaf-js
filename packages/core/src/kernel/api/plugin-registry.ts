@@ -9,9 +9,9 @@
  * Allows integrators to query available capabilities.
  *
  * @example
- * GeoLeaf.plugins.isLoaded('storage')      // → true/false
- * GeoLeaf.plugins.getLoadedPlugins()        // → ['core', 'storage', 'labels']
- * GeoLeaf.plugins.canActivate('addpoi')     // → true if dependencies OK
+ * GeoLeaf.plugins.isLoaded('editor')       // → true/false
+ * GeoLeaf.plugins.getLoadedPlugins()        // → ['core', 'editor', 'measure']
+ * GeoLeaf.plugins.canActivate('offline-ui') // → true if dependencies OK
  */
 
 import type {
@@ -62,7 +62,7 @@ export const PluginRegistry = {
     /**
      * Registers a plugin as loaded.
      * Called automatically by globals.js and plugin files.
-     * @param {string} name - Plugin identifier (e.g. 'storage', 'addpoi', 'labels')
+     * @param {string} name - Plugin identifier (e.g. 'editor', 'measure', 'connector')
      * @param {object} [metadata] - Optional metadata { version, requires, optional }
      */
     register(name: string, metadata: PluginMetadata = {}) {
@@ -354,7 +354,7 @@ function _reportPlugins(entries: PluginEntry[], style: PluginReportStyle): void 
        warn/error/info (see eslint.config.mjs), which covers the two calls outside this
        block; groupCollapsed/log/groupEnd are not in that allowance and are what the
        collapsible plugin listing is made of. Scoped to the report body, not the file —
-       any console call added elsewhere in this module still gets flagged. (S13.3:
+       any console call added elsewhere in this module still gets flagged. (Origin:
        three separate undocumented disables collapsed into this one.) */
     console.groupCollapsed(style.header, style.headerStyle);
     for (const entry of entries) {

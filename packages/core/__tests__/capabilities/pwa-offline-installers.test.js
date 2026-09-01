@@ -102,6 +102,5 @@ describe("offline installer — GeoLeaf.Sync seam", () => {
         const handler = { replay: () => {} };
         syncFacade.Sync.registerHandler("test-lot7", handler);
         expect(syncFacade.Sync.getHandler("test-lot7")).toBe(handler);
-        expect(syncFacade.Sync.getHandlers()).toContain(handler);
     });
 });

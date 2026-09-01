@@ -1,15 +1,15 @@
 /**
  * Lightweight integration tests — cache workflow (config + storage)
- * Sprint 4 : simule paths main sans module cache real
+ * Simule paths main sans module cache real
  *
- * ⚠️ **Conservé délibérément — n'importe aucun module, et c'est assumé** (backlog R.3,
- * 24/07/2026). Ce fichier est une simulation sur maquettes, il l'annonce, et il ne
- * prétend pas couvrir de code de production. Le tri de R.3 a supprimé cinq fichiers qui,
- * eux, redéfinissaient dans le test la fonction qu'ils vérifiaient sans le dire :
- * `constants`, `style-normalization`, `style-format-validation`, `xss-prevention` et
- * `ui/cache-button` (ce dernier reporté chez `plugin-storage`, contre le vrai code).
- * La différence n'est pas l'absence d'import, c'est la **prétention**. Ne pas le
- * re-signaler au prochain tri.
+ * ⚠️ **Kept deliberately — imports no module, and that is owned.** This
+ * file is a simulation on mock-ups, it announces it, and it does not claim
+ * to cover production code. The no-import triage deleted five files that
+ * did redefine in the test the function they verified without saying so:
+ * `constants`, `style-normalization`, `style-format-validation`,
+ * `xss-prevention` and `ui/cache-button` (the last one redone at
+ * `plugin-storage`, against the real code). The difference is not the
+ * missing import, it is the **pretence**. Do not re-flag it at the next triage.
  */
 
 describe("Integration — Cache workflow", () => {

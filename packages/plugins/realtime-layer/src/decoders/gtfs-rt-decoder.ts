@@ -88,7 +88,7 @@ export class GtfsRtDecoder implements IDecoder {
         const bytes =
             data instanceof ArrayBuffer
                 ? new Uint8Array(data)
-                : new Uint8Array(data.buffer as ArrayBuffer, data.byteOffset, data.byteLength);
+                : new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
         return this._decodeFeed(bytes);
     }
 

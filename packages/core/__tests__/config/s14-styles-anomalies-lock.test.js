@@ -12,6 +12,8 @@
  */
 
 import Ajv from "ajv";
+
+import { STYLE_OPERATORS } from "../../src/kernel/geojson/style-operators.ts";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
@@ -60,24 +62,23 @@ describe("config B6 — label oneOf (selector string OR text-config object)", ()
 });
 
 describe("config B6 — styleRules operator enum is hardened", () => {
-    const OPERATORS = [
-        "==",
-        "===",
-        "eq",
-        "!=",
-        "!==",
-        "neq",
-        ">",
-        ">=",
-        "<",
-        "<=",
-        "contains",
-        "startsWith",
-        "endsWith",
-        "in",
-        "notIn",
-        "between",
-    ];
+    // 🛑 DERIVED from the operator table, no longer hand-copied.
+    //
+    // The list was hardcoded here, and the defect was ORIENTED in the unseen
+    // direction: an operator REMOVED from the schema turned red — good —,
+    // but an operator ADDED to the table was simply not tested. The suite
+    // did not turn red, it covered less. A copied test list does not expire
+    // loudly; it expires silently.
+    //
+    // ⚠️ Derived, it no longer guards "these sixteen are accepted" but "EVERY
+    // operator the engine declares is accepted by the schema" — which is the
+    // wanted property, and stays true as the table grows.
+    const OPERATORS = Object.keys(STYLE_OPERATORS);
+
+    it("la table d'opérateurs est non vide — sinon la boucle ci-dessous garde le vide", () => {
+        expect(OPERATORS.length).toBeGreaterThanOrEqual(16);
+    });
+
     OPERATORS.forEach((op) => {
         it(`operator "${op}" is accepted`, () => {
             expect(
@@ -108,7 +109,7 @@ describe("config B6 — styleRules operator enum is hardened", () => {
 });
 
 describe("ANO-060 — layerScale (root) legacy alias REMOVED in S3; still rejected by schema", () => {
-    // live read removed in S3 (roadmap_code) — was visibility.ts currentStyle.layerScale fallback + warn
+    // live read removed — was visibility.ts currentStyle.layerScale fallback + warn
     it("schema: root layerScale rejected → inconfigurable (canonical = scaleConfig)", () => {
         expect(validate(doc({ layerScale: { minScale: 50000, maxScale: 1000 } }))).toBe(false);
     });
@@ -155,7 +156,7 @@ describe("ANO-068 — style.casing.{dashArray,lineCap,lineJoin} read by code AND
     });
 });
 
-describe("ANO-069 — style.sizePx legacy radius alias REMOVED in S3 (roadmap_code)", () => {
+describe("ANO-069 — style.sizePx legacy radius alias REMOVED", () => {
     it("live: normalizeToFlat no longer aliases sizePx → radius (removed)", () => {
         expect(normalizeToFlat({ sizePx: 5 }).radius).toBeUndefined();
     });
@@ -190,11 +191,12 @@ describe("config B6 — schema-ACCEPTED but dead/no-mapping (sanity + it.todo)",
         expect(validate(doc({ style: { lineWidth: 3 } }))).toBe(false);
     });
     it("ANO-063 RÉSOLU — shape restreint à circle ; style.type REJECTED (ANO-071, archi B.3)", () => {
-        // Le schéma déclarait `shape` en texte libre et annonçait « square », que le
-        // moteur n'a jamais rendu : MapLibre ne dessine que des cercles pour un type
-        // `circle`. Backlog B.20 — le rendu carré a été ABANDONNÉ (il exigeait un second
-        // chemin symbol/SDF plus la ré-implémentation de taxonomy/badge/styleRules), et
-        // la clé a été contrainte pour cesser de promettre une capacité inexistante.
+        // The schema declared `shape` as free text and announced "square",
+        // which the engine never rendered: MapLibre only draws circles for a
+        // `circle` type. Square rendering was ABANDONED (it required a
+        // second symbol/SDF path plus reimplementing
+        // taxonomy/badge/styleRules), and the key was constrained to stop
+        // promising a nonexistent capability.
         expect(validate(doc({ style: { shape: "circle" } }))).toBe(true);
         expect(validate(doc({ style: { shape: "square" } }))).toBe(false);
         expect(validate(doc({ style: { type: "anything" } }))).toBe(false);
@@ -206,7 +208,7 @@ describe("config B6 — schema-ACCEPTED but dead/no-mapping (sanity + it.todo)",
         );
     });
 
-    // ANO-063 close (backlog B.20) : ni rendu, ni clé retirée — clé CONTRAINTE à
-    // `circle` et conservée comme point d'extension réservé. L'assertion vit
-    // ci-dessus ; ce `it.todo` n'a plus d'objet.
+    // ANO-063 closed: neither rendered, nor key removed — key CONSTRAINED to
+    // `circle` and kept as a reserved extension point. The assertion lives
+    // above; this `it.todo` is moot.
 });

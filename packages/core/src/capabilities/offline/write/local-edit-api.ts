@@ -5,59 +5,57 @@
  */
 
 /**
- * Optimistic write — the entry point every edit plugin goes through (tâche 4.4).
+ * Optimistic write — the entry point every edit plugin goes through.
  *
- * Une édition faite hors réseau doit **se voir immédiatement** et **survivre au
- * rechargement**. Les deux moitiés sont indissociables : l'entité part dans le store
- * `features` (que la lecture locale de 4.3 relit au chargement) et l'opération part dans
- * l'`outbox` (que le push de 4.5 rejouera), **dans une seule transaction**.
+ * An edit made off-network must **show immediately** and **survive a reload**. The two
+ * halves are inseparable: the entity goes into the `features` store (which the local
+ * read re-reads at load time) and the operation goes into the `outbox` (which the push
+ * will replay), **in a single transaction**.
  *
- * ## Pourquoi ce point est dans le CORE et non dans les plugins d'édition
+ * ## Why this point is in the CORE and not in the edit plugins
  *
- * 🛑 **Deux vocabulaires incompatibles écrivaient la même file v3, et un seul passait par le
- * seam.** `addpoi` empile `add_poi` / `update_poi` / `delete_poi` sous une clé `poiData`, via
- * `GeoLeaf.Sync.registerHandler("poi", …)` ; `editor` empile `editor.save` / `editor.update` /
- * `editor.delete` sous une clé `payload`, **sans enregistrer aucun handler**, avec son propre
- * rejeu. Le contrat de synchronisation refuse les deux, et pour la même raison : « The
- * contract is entity-generic because the store is. »
+ * 🛑 **Two incompatible vocabularies wrote the same v3 queue, and only one went through
+ * the seam.** `addpoi` stacked `add_poi` / `update_poi` / `delete_poi` under a
+ * `poiData` key, via `GeoLeaf.Sync.registerHandler("poi", …)`; `editor` stacked
+ * `editor.save` / `editor.update` / `editor.delete` under a `payload` key, **without
+ * registering any handler**, with its own replay. The sync contract refuses both, for
+ * the same reason: "The contract is entity-generic because the store is."
  *
- * L'`outbox` est un store du **core**, et son `kind` est gelé sur `SyncOperationKind`. Un
- * plugin ne peut donc ni l'écrire directement (`no-plugin-in-core`), ni y écrire son propre
- * vocabulaire. Ce module est l'unique écrivain, les plugins deviennent des appelants minces —
- * et la fusion du Sprint 5 n'aura rien à refaire.
+ * The `outbox` is a **core** store, and its `kind` is frozen on `SyncOperationKind`. A
+ * plugin can therefore neither write it directly (`no-plugin-in-core`) nor write its
+ * own vocabulary into it. This module is the single writer, the plugins become thin
+ * callers — and a plugin merge will have nothing to redo.
  *
- * ## L'invariant S6 se tient ICI, et pas dans la base
+ * ## The editability invariant is held HERE, not in the database
  *
- * ⚠️ **Le rapatriement ne confère JAMAIS l'éditabilité.** Une couche peut être rapatriée pour
- * lecture sans être modifiable ; c'est sa déclaration en ligne qui décide, jamais le fait
- * qu'on ait téléchargé ses données. La garde vit dans cette couche-ci parce que c'est la
- * seule qui lit la déclaration : posée dans `db/local-edit.ts`, elle deviendrait une règle de
- * *stockage*, contournable par tout appelant qui parlerait à la base directement.
+ * ⚠️ **Pulling NEVER confers editability.** A layer can be pulled for reading without
+ * being modifiable; its online declaration decides, never the fact that its data was
+ * downloaded. The guard lives in this layer because it is the only one that reads the
+ * declaration: placed in `db/local-edit.ts` it would become a *storage* rule,
+ * bypassable by any caller speaking to the database directly.
  *
- * ⚠️ **Le gate est PAR OPÉRATION** depuis le 05/08/2026 (Sprint 5, tâche 5.9 — décision V1),
- * sur `LayerEditionPermissions`. Il remplace la paire `enableEdition` / `enableEditionFull`,
- * dont le second nom ne voulait pas dire « édition complète » : il n'était lu qu'une fois
- * utilement, comme `canDelete()`. **Absent vaut refusé pour chaque clé, et aucune n'en
- * implique une autre.** Ce n'est pas iso-comportemental : l'ancien `enableEdition` gouvernait
- * *tout* `kind` d'un seul drapeau, donc les six couches ont migré en
- * `{create, update, delete}` explicites.
+ * ⚠️ **The gate is PER OPERATION** since 05/08/2026, on `LayerEditionPermissions`. It
+ * replaces the `enableEdition` / `enableEditionFull` pair, whose second name did not
+ * mean "full edition": it was only usefully read once, as `canDelete()`. **Absent
+ * means refused for each key, and none implies another.** This is not
+ * iso-behavioural: the old `enableEdition` governed *every* `kind` with one flag, so
+ * the six layers migrated to explicit `{create, update, delete}`.
  *
- * ✅ **CE FICHIER N'EST PLUS LE SEUL ENDROIT OÙ LA PERMISSION EST APPLIQUÉE** — corrigé le
- * 07/08/2026 (tâche 8.7, **B-138**). Il l'était, et il ne couvrait que le chemin HORS LIGNE :
- * le chemin en ligne (`editor/src/persistence/rest-adapter.ts`) émettait un `DELETE`
- * inconditionnel, donc une couche déclarant `edition.delete: false` restait supprimable par
- * un utilisateur **connecté**. La permission n'était appliquée que sur le chemin qu'on
- * emprunte quand le réseau est absent.
+ * ✅ **THIS FILE IS NO LONGER THE ONLY PLACE THE PERMISSION IS APPLIED** — fixed on
+ * 07/08/2026. It was, and it covered only the OFFLINE path: the online path
+ * (`editor/src/persistence/rest-adapter.ts`) emitted an unconditional `DELETE`, so a
+ * layer declaring `edition.delete: false` stayed deletable by a **connected** user.
+ * The permission was applied only on the path taken when the network is absent.
  *
- * La règle a déménagé dans `kernel/shared/edition-permissions.ts` — **le graphe de boot**,
- * parce qu'elle se lit dans le profil et non dans IndexedDB, et parce qu'`editor` déclare
- * `requires: []` et tourne sans ce moteur en `persistence.mode: "online"`. `applyEdit`
- * l'applique toujours, via `grantsEdition` : c'est la MÊME fonction que celle que le plugin
- * consulte, pas une seconde lecture (compteur C4).
+ * The rule moved to `kernel/shared/edition-permissions.ts` — **the boot graph**,
+ * because it reads the profile and not IndexedDB, and because `editor` declares
+ * `requires: []` and runs without this engine in `persistence.mode: "online"`.
+ * `applyEdit` still applies it, via `grantsEdition`: the SAME function the plugin
+ * consults, not a second read.
  *
- * ⚠️ **Ce qui reste vrai** : la barre d'outils de l'éditeur gate son outil de suppression sur
- * son propre `enabledTools`, une config de plugin, jamais sur la couche. Le bouton peut donc
- * être offert sur une couche qui refuse — l'écriture, elle, est refusée.
+ * ⚠️ **What stays true**: the editor toolbar gates its delete tool on its own
+ * `enabledTools`, a plugin config, never on the layer. The button can therefore be
+ * offered on a layer that refuses — the write, however, is refused.
  *
  * @version 1.0.0
  */
@@ -66,42 +64,42 @@ import { Log } from "../../../utils/log/index.js";
 import { StorageContract, grantsEdition } from "../../../kernel/shared/index.js";
 import { coreProfileLayerConfig } from "../config-seam.js";
 import type {
-    // ⚠️ `LayerEditionPermissions` n'est plus importé ici : le type est interprété par
-    // `grantsEdition` (`kernel/shared/edition-permissions.ts`), qui est désormais le seul
-    // endroit qui le lit. Le garder aurait été un import mort que `tsc` signale (TS6196).
+    // ⚠️ `LayerEditionPermissions` is no longer imported here: the type is interpreted
+    // by `grantsEdition` (`kernel/shared/edition-permissions.ts`), now the only place
+    // that reads it. Keeping it would have been a dead import `tsc` flags (TS6196).
     SyncOperationKind,
     VersionMarker,
 } from "../../../contracts/sync.contract.js";
 import type { LocalEditTally } from "../db/local-edit.js";
 
-/** Pourquoi une édition n'a pas été enregistrée. Jamais `null` sans écriture effective. */
+/** Why an edit was not recorded. Never `null` without an effective write. */
 type EditRefusal =
-    /** Aucune couche de ce nom dans le profil actif. */
+    /** No layer of that name in the active profile. */
     | "layerUnknown"
-    /** La couche n'accorde ni `edition.create` ni `edition.update` — invariant S6. */
+    /** The layer grants neither `edition.create` nor `edition.update`. */
     | "layerNotEditable"
-    /** La couche n'accorde pas `edition.delete`. */
+    /** The layer does not grant `edition.delete`. */
     | "deleteNotPermitted"
-    /** Le moteur de stockage n'est pas câblé. */
+    /** The storage engine is not wired. */
     | "engineUnavailable"
-    /** Une création sans entité, ou une modification sans identité. */
+    /** A create without an entity, or a modification without an identity. */
     | "malformedEdit"
-    /** Une création sans position — le seul état que le produit rend inatteignable. */
+    /** A create without a position — the one state the product makes unreachable. */
     | "geometryRequired";
 
-/** Une édition locale, telle qu'un plugin d'édition la soumet. */
+/** A local edit, as an edit plugin submits it. */
 interface EditInput {
     readonly layerId: string;
     readonly kind: SyncOperationKind;
-    /** Requis sauf pour un `create`, où il est frappé ici. */
+    /** Required except for a `create`, where it is minted here. */
     readonly localId?: string;
-    /** L'entité après édition. Inutile pour un `delete`. */
+    /** The entity after the edit. Unneeded for a `delete`. */
     readonly feature?: unknown;
-    /** Marqueur sur lequel l'édition se fonde ; renvoyé au push pour détecter un conflit. */
+    /** Marker the edit is based on; forwarded to the push to detect a conflict. */
     readonly baseVersion?: VersionMarker | null;
 }
 
-/** Ce que l'édition a produit. */
+/** What the edit produced. */
 interface EditReport {
     readonly layerId: string;
     readonly localId: string;
@@ -113,7 +111,7 @@ interface EditReport {
     readonly refused: EditRefusal | null;
 }
 
-/** Le seul membre du seam de stockage que ce module utilise. */
+/** The only member of the storage seam this module uses. */
 interface EditWriter {
     applyLocalEdit?: (input: {
         layerId: string;
@@ -125,17 +123,17 @@ interface EditWriter {
 }
 
 /**
- * Frappe l'identité cliente d'une entité créée hors réseau.
+ * Mints the client identity of an entity created off-network.
  *
- * ⚠️ **Elle est frappée par le CLIENT et jamais réutilisée** (contrat, `LocalId`). C'est elle
- * que le push enverra au serveur, et c'est ce qui rend le rejeu idempotent : une seconde
- * tentative porte la même identité, donc le serveur peut la refuser lui-même — ce que le
- * backend de preuve fait par une contrainte `UNIQUE`, et non par une convention d'appelant.
+ * ⚠️ **It is minted by the CLIENT and never reused** (contract, `LocalId`). It is what
+ * the push will send to the server, and what makes replay idempotent: a second attempt
+ * carries the same identity, so the server can refuse it itself — which the proof
+ * backend does through a `UNIQUE` constraint, not a caller convention.
  *
- * Préfixée `loc:` pour ne jamais collisionner avec `srv:<id>`, la forme que le rapatriement
- * de 4.1 dérive d'une identité serveur.
+ * Prefixed `loc:` to never collide with `srv:<id>`, the form the pull derives from a
+ * server identity.
  *
- * @returns Un identifiant local unique.
+ * @returns A unique local identifier.
  */
 function mintLocalId(): string {
     const random = globalThis.crypto?.randomUUID?.();
@@ -143,14 +141,14 @@ function mintLocalId(): string {
 }
 
 /**
- * Applique une édition localement et la met en file — le point d'entrée des plugins d'édition.
+ * Applies an edit locally and enqueues it — the edit plugins' entry point.
  *
- * Ne jette pas : toute issue est un rapport. Un refus **se nomme**, parce qu'une édition qui
- * disparaît sans motif est indiscernable d'une édition enregistrée, et c'est la perte que le
- * contrat existe pour empêcher.
+ * Does not throw: every outcome is a report. A refusal **names itself**, because an
+ * edit that vanishes without a motive is indistinguishable from a recorded one, and
+ * that is the loss the contract exists to prevent.
  *
- * @param input - L'édition soumise par le plugin.
- * @returns Le rapport de ce qui a été fait.
+ * @param input - The edit submitted by the plugin.
+ * @returns The report of what was done.
  * @example
  * const report = await GeoLeaf?.Storage?.applyEdit?.({
  *     layerId: "sites_rosario", kind: "update", localId: "loc:abc", feature
@@ -171,19 +169,19 @@ export async function applyEdit(input: EditInput): Promise<EditReport> {
 
     if (!localId) return { ...nothing, refused: "malformedEdit" };
 
-    // 🛑 SEULE LA CRÉATION EXIGE UNE ENTITÉ, ET C'EST DÉLIBÉRÉ.
+    // 🛑 ONLY CREATION REQUIRES AN ENTITY, AND THAT IS DELIBERATE.
     //
-    // Une modification est une édition PARTIELLE par nature : renommer un point ne renvoie pas
-    // sa position. Exiger l'entité complète ici refuserait une saisie déjà faite — et une
-    // saisie de terrain refusée est perdue, bruyamment au lieu de silencieusement, ce que la
-    // propriété 1 du contrat interdit tout autant. Le magasin conserve ce que l'édition
-    // n'apporte pas (`db/local-edit.ts`), donc rien ne se perd sans rien refuser.
+    // A modification is a PARTIAL edit by nature: renaming a point does not resend its
+    // position. Requiring the full entity here would refuse a capture already made —
+    // and a refused field capture is lost, loudly instead of silently, which the
+    // contract's property 1 forbids just the same. The store keeps what the edit does
+    // not bring (`db/local-edit.ts`), so nothing is lost without refusing anything.
     if (input.kind === "create") {
         if (input.feature === undefined) return { ...nothing, refused: "malformedEdit" };
-        // ⚠️ Une création SANS POSITION, en revanche, est le seul état que le produit rend
-        // inatteignable : le formulaire porte un champ `latlng`, alimenté par le clic de
-        // placement. La garde est donc posée sur un état impossible — c'est une garde, pas
-        // une perte, et c'est ce qui la distingue d'un refus de mise en file.
+        // ⚠️ A create WITHOUT A POSITION, by contrast, is the one state the product
+        // makes unreachable: the form carries a `latlng` field, fed by the placement
+        // click. The guard is thus set on an impossible state — it is a guard, not a
+        // loss, which is what distinguishes it from an enqueueing refusal.
         const geometry = (input.feature as { geometry?: unknown } | null)?.geometry;
         if (geometry === undefined || geometry === null) {
             return { ...nothing, refused: "geometryRequired" };
@@ -193,14 +191,13 @@ export async function applyEdit(input: EditInput): Promise<EditReport> {
     const config = coreProfileLayerConfig(input.layerId);
     if (!config) return { ...nothing, refused: "layerUnknown" };
 
-    // 🛑 INVARIANT S6. La déclaration de la couche décide, jamais la présence de ses données
-    // dans le magasin local. Une couche rapatriée pour lecture reste en lecture.
+    // 🛑 THE STANDING INVARIANT. The layer's declaration decides, never the presence
+    // of its data in the local store. A layer pulled for reading stays read-only.
     //
-    // ⚠️ Le gate est PAR OPÉRATION depuis 5.9, et ce n'est pas iso-comportemental : l'ancien
-    // `enableEdition` gouvernait *tout* `kind` d'un seul drapeau. Absent vaut REFUSÉ pour
-    // chaque clé, et aucune n'en implique une autre — `update` n'accorde pas `delete`. C'est
-    // exactement ce que la paire précédente ne savait pas dire, et pourquoi son second nom
-    // mentait.
+    // ⚠️ The gate is PER OPERATION, and that is not iso-behavioural: the old
+    // `enableEdition` governed *every* `kind` with one flag. Absent means REFUSED for
+    // each key, and none implies another — `update` does not grant `delete`. That is
+    // exactly what the previous pair could not say, and why its second name lied.
     if (!grantsEdition(config["edition"], input.kind)) {
         return {
             ...nothing,

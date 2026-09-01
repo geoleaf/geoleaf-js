@@ -4,10 +4,14 @@
  * https://geoleaf.dev
  */
 import type { EditorConfig, EditorTool } from "./types.js";
+import {
+    CONFLICT_STRATEGIES,
+    DEFAULT_CONFLICT_STRATEGY,
+} from "./persistence/conflict-strategies.js";
 import type { LayerEditionPermissions } from "@geoleaf/core/contracts/sync.contract.js";
 import { coreConfigGet } from "@geoleaf/host-runtime";
 import { getGeoLeaf } from "@geoleaf/host-runtime";
-// B-161 — sous-chemin publié du core : l'alias `geometry`/`geometryType` a UNE résolution.
+// The core's published subpath: the `geometry`/`geometryType` alias has ONE resolution.
 import { layerGeometry } from "@geoleaf/core/kernel/config/layer-geometry.js";
 
 const ALL_TOOLS: EditorTool[] = [
@@ -22,31 +26,35 @@ const ALL_TOOLS: EditorTool[] = [
 ];
 
 const VALID_PERSIST_MODES = ["online", "offline", "auto"] as const;
-const VALID_CONFLICT_RES = ["client-wins", "server-wins", "prompt"] as const;
+// 🛑 The list that VALIDATES was the vocabulary's third copy, and the most
+// dangerous of the three: it is the one that DECIDES. A strategy added to the
+// type without being added here kept being rejected and reset to the default,
+// with a warning bearing no visible link to the cause. It is now the source
+// itself, imported.
 
 /** Default values for `editorConfig` (mirrors CDC §1.7). */
 export const EDITOR_CONFIG_DEFAULTS: EditorConfig = {
     enabled: true,
     showButton: true,
-    // B-12 (25/07/2026) — `"top-left"` jusqu'ici, et c'était le seul ancrage utilisable
-    // sur les quatre, donc la collision était inévitable : le pill s'y superposait à la
-    // toolbar du core (`.gl-map-toolbar-wrapper`, même colonne, z-index 1000 contre 980),
-    // rendant les boutons d'outils visibles mais inatteignables au clic.
-    // ⚠️ Portée : seulement quand le menu s'ouvre SANS ancre — l'API publique
-    // `GeoLeaf.Editor.toggleMenu()`. Le clic sur le bouton de la toolbar passe une ancre
-    // et `positionEditorMenuNear` écartait déjà le menu (vérifié).
-    // Les quatre ancrages fonctionnent désormais ; le défaut passe à droite.
+    // 25/07/2026 — `"top-left"` until then, and it was the only usable anchor of
+    // the four, so the collision was inevitable: the pill overlapped the core's
+    // toolbar there (`.gl-map-toolbar-wrapper`, same column, z-index 1000 vs
+    // 980), leaving the tool buttons visible but unreachable to clicks.
+    // ⚠️ Scope: only when the menu opens WITHOUT an anchor — the public API
+    // `GeoLeaf.Editor.toggleMenu()`. A click on the toolbar button passes an
+    // anchor and `positionEditorMenuNear` already moved the menu aside
+    // (verified). All four anchors now work; the default moves right.
     menuPosition: "top-right",
-    // 5.1-e — visible par défaut, comme l'était le bouton d'export d'`addpoi` ; mais ce
-    // drapeau-ci est DÉCLARÉ, donc réellement modifiable (R19).
+    // Visible by default, as `addpoi`'s export button was; but this flag is
+    // DECLARED, hence genuinely changeable.
     showExport: true,
-    // 5.1-f — remplace `ui.showAddPoi`. Visible par défaut, comme l'était le bouton
-    // d'`addpoi` ; mais ce drapeau-ci vit sous `modules.editor`, DÉCLARÉ dans le schéma,
-    // là où `ui.showAddPoi` faisait décider au core l'affichage d'un bouton que seul un
-    // plugin pouvait servir.
+    // Replaces `ui.showAddPoi`. Visible by default, as `addpoi`'s button was;
+    // but this flag lives under `modules.editor`, DECLARED in the schema, where
+    // `ui.showAddPoi` made the core decide the display of a button only a
+    // plugin could serve.
     showAddPoi: true,
-    // 5.1-f — absorbé de `modules.addpoi.defaultPosition`, que le CORE lisait
-    // (`init-features.ts:220`) : une clé de config de plugin résolue par le kernel.
+    // Absorbed from `modules.addpoi.defaultPosition`, which the CORE read
+    // (`init-features.ts`): a plugin config key resolved by the kernel.
     poiAddDefaultPosition: "placement-mode",
     enabledTools: [...ALL_TOOLS],
     snapPx: 12,
@@ -69,7 +77,7 @@ export const EDITOR_CONFIG_DEFAULTS: EditorConfig = {
     },
     persistence: {
         mode: "auto",
-        conflictResolution: "prompt",
+        conflictResolution: DEFAULT_CONFLICT_STRATEGY,
         // Backend wire dialect — "rest" envelope by default (ANO-080).
         dialect: "rest",
     },
@@ -95,12 +103,14 @@ function validatePersistence(
     }
     if (
         out.conflictResolution !== undefined &&
-        !(VALID_CONFLICT_RES as readonly string[]).includes(out.conflictResolution)
+        !(CONFLICT_STRATEGIES as readonly string[]).includes(out.conflictResolution)
     ) {
         console.warn(
-            `[editor] Unknown persistence.conflictResolution "${out.conflictResolution}", reset to "prompt".`
+            `[editor] Unknown persistence.conflictResolution "${out.conflictResolution}", ` +
+                `reset to "${DEFAULT_CONFLICT_STRATEGY}". Known strategies: ` +
+                `${CONFLICT_STRATEGIES.join(", ")}.`
         );
-        out.conflictResolution = "prompt";
+        out.conflictResolution = DEFAULT_CONFLICT_STRATEGY;
     }
     return out;
 }
@@ -151,9 +161,7 @@ function _clampNestedBounds(out: EditorConfig): void {
 /** Drops unknown tools; resets to the full set when filtering empties the list. */
 function _filterEnabledTools(out: EditorConfig): void {
     if (out.enabledTools === undefined) return;
-    const filtered = out.enabledTools.filter((t) =>
-        ALL_TOOLS.includes(t as EditorTool)
-    ) as EditorTool[];
+    const filtered = out.enabledTools.filter((t) => ALL_TOOLS.includes(t));
     out.enabledTools = filtered.length > 0 ? filtered : [...ALL_TOOLS];
 }
 
@@ -183,21 +191,22 @@ function _resolveShowButton(raw: EditorConfig): boolean | undefined {
 export function getEditorConfig(): EditorConfig {
     // INV-CONFIG: read from `modules.editor` (Plugin Contract v1).
     //
-    // ⚠️ Cette ligne a promis, jusqu'au 29/07/2026, que « le miroir S0 du core garde la clé
-    // synchronisée avec la racine héritée `editorConfig` pendant la fenêtre de dépréciation, de
-    // sorte que les profils non migrés résolvent encore » (B-72). **La fenêtre est fermée et le
-    // miroir a disparu** — mesuré : `grep -rn "editorConfig" packages/core/src/` rend 0. Un profil
-    // resté sur `editorConfig` est donc ignoré **en silence**, exactement comme ceux restés sur
-    // `printConfig` ou `measureConfig`.
+    // ⚠️ This line promised, until 29/07/2026, that "the core's mirror keeps the
+    // key synchronised with the legacy root `editorConfig` during the
+    // deprecation window, so unmigrated profiles still resolve". **The window
+    // is closed and the mirror is gone** — measured:
+    // `grep -rn "editorConfig" packages/core/src/` yields 0. A profile still on
+    // `editorConfig` is thus ignored **silently**, exactly like those left on
+    // `printConfig` or `measureConfig`.
     //
-    // Ce qui rendait cet énoncé plus coûteux que ses jumeaux : il ne vivait pas dans un vieux CDC
-    // mais **dans le code**, à l'endroit même qui gouverne la lecture — et `src/` est dans
-    // `files[]`, donc dans l'archive npm. Un intégrateur qui lit la source du paquet installé y
-    // trouvait une promesse fausse.
+    // What made this statement costlier than its twins: it did not live in an
+    // old spec but **in the code**, at the very place governing the read — and
+    // `src/` is in `files[]`, hence in the npm archive. An integrator reading
+    // the installed package's source found a false promise there.
     const raw = coreConfigGet<EditorConfig>("modules.editor", {} as EditorConfig);
 
-    // Insertion conditionnelle : cette cle est posee APRES `...EDITOR_CONFIG_DEFAULTS`, donc
-    // un `undefined` explicite y ECRASERAIT le defaut du paquet.
+    // Conditional insertion: this key is set AFTER `...EDITOR_CONFIG_DEFAULTS`,
+    // so an explicit `undefined` would OVERWRITE the package default there.
     const showButton = _resolveShowButton(raw);
     const merged: EditorConfig = {
         ...EDITOR_CONFIG_DEFAULTS,
@@ -237,10 +246,11 @@ interface ProfileLayer {
     /** Profile vocabulary — `"point" | "polyline" | "polygon"` (ANO-007). */
     geometryType?: string;
     /**
-     * Le MÊME champ que `geometryType`, sous son autre orthographe — le schéma pose les deux
-     * comme alias et interdit de migrer (ANO-007). ⚠️ Absente de ce type jusqu'à B-161, donc
-     * `_acceptsGeometry` ne pouvait pas la lire et le typecheck n'avait rien à en dire : c'est
-     * une des raisons pour lesquelles le défaut a vécu. Lire par `layerGeometry`, jamais à la main.
+     * The SAME field as `geometryType`, under its other spelling — the schema
+     * sets both as aliases and forbids migrating (ANO-007). ⚠️ Long absent from
+     * this type, so `_acceptsGeometry` could not read it and the typecheck had
+     * nothing to say: one of the reasons the defect lived. Read through
+     * `layerGeometry`, never by hand.
      */
     geometry?: string;
     /** GeoJSON vocabulary — `"Point" | "LineString" | "Polygon"`. */
@@ -258,32 +268,35 @@ const _GEOJSON_FOR_PROFILE_TYPE: Record<string, string> = {
 /**
  * Decides whether a layer accepts the given GeoJSON geometry.
  *
- * 🛑 **C'EST ICI QUE 5.2 TRANCHE LE CRITÈRE, et il le RÉCONCILIE au lieu d'en jeter un.**
- * Le dépôt en portait deux : celui-ci (`editableGeometryTypes[]`, pluriel, vocabulaire
- * GeoJSON) et celui d'`addpoi`, recopié dans `drawing/poi-snap.ts` (`geometryType`,
- * singulier, vocabulaire de profil). Ils divergeaient — une couche déclarant l'un et pas
- * l'autre était éditable par un chemin et pas par l'autre.
+ * 🛑 **THIS IS WHERE THE CRITERION IS SETTLED, and it RECONCILES rather than
+ * discards one.** The repo carried two: this one (`editableGeometryTypes[]`,
+ * plural, GeoJSON vocabulary) and `addpoi`'s, copied into
+ * `drawing/poi-snap.ts` (`geometryType`, singular, profile vocabulary). They
+ * diverged — a layer declaring one and not the other was editable through one
+ * path and not the other.
  *
- * ⚠️ **Garder le seul `editableGeometryTypes` ÉLARGISSAIT en silence** : son repli
- * (`?.includes(g) !== false` — absent vaut `undefined !== false`, donc `true`) accepte TOUTE
- * géométrie. Une couche polygone sans la clé serait devenue candidate au placement d'un
- * point, et donc au garde-fou de doublon. Mesuré : deux tests de `poi-snap` l'ont attrapé.
+ * ⚠️ **Keeping `editableGeometryTypes` alone WIDENED silently**: its fallback
+ * (`?.includes(g) !== false` — absent means `undefined !== false`, hence
+ * `true`) accepts ANY geometry. A polygon layer without the key would have
+ * become a candidate for point placement, hence for the duplicate guard.
+ * Measured: two `poi-snap` tests caught it.
  *
- * L'ordre est donc : la clé plurielle si elle existe, **sinon** le type déclaré de la couche,
- * **sinon seulement** on accepte. Une couche sans aucun signal reste ouverte — c'est le
- * comportement d'avant, et le restreindre serait un changement de contrat.
+ * The order is thus: the plural key when it exists, **otherwise** the layer's
+ * declared type, **only then** accept. A layer with no signal at all stays
+ * open — the previous behaviour, and narrowing it would be a contract change.
  */
 function _acceptsGeometry(layer: ProfileLayer, geometryType: string): boolean {
     if (Array.isArray(layer.editableGeometryTypes)) {
         return layer.editableGeometryTypes.includes(geometryType);
     }
-    // 🛑 B-161 — CETTE LIGNE NE LISAIT QUE `geometryType`, ET C'EST LE MODE D'ÉCHEC QUE LE
-    // TSDoc CI-DESSUS DÉCRIT COMME DANGEREUX. Le schéma pose `geometryType` comme « alias of
-    // `geometry` » (ANO-007), mais **18 des 24** configs du dépôt ne déclarent que `geometry`
-    // et **aucune** ne déclare `geometryType` seul. Pour toutes celles-là, `own` était falsy
-    // et la fonction retombait sur `return true` — « accepte TOUTE géométrie ». Une couche
-    // polygone qui déclare sa géométrie devenait donc candidate au placement d'un POINT,
-    // exactement ce que l'ordre décrit plus haut existe pour empêcher.
+    // 🛑 THIS LINE READ ONLY `geometryType`, WHICH IS THE FAILURE MODE THE TSDoc
+    // ABOVE DESCRIBES AS DANGEROUS. The schema sets `geometryType` as "alias of
+    // `geometry`" (ANO-007), but **18 of the repo's 24** configs declare only
+    // `geometry` and **none** declares `geometryType` alone. For all of those,
+    // `own` was falsy and the function fell back to `return true` — "accept ANY
+    // geometry". A polygon layer declaring its geometry thus became a candidate
+    // for POINT placement, exactly what the order described above exists to
+    // prevent.
     const declared = layerGeometry(layer);
     const own = declared && _GEOJSON_FOR_PROFILE_TYPE[declared];
     return own ? own === geometryType : true;
@@ -307,17 +320,16 @@ function _acceptsGeometry(layer: ProfileLayer, geometryType: string): boolean {
  */
 export function getEditableLayers(geometryType?: string): ProfileLayer[] {
     const profile = getGeoLeaf()?.Config?.getActiveProfile?.() as
-        | { layers?: ProfileLayer[] }
-        | undefined;
+        { layers?: ProfileLayer[] } | undefined;
     return (profile?.layers ?? []).filter(
         (l) =>
-            // 🛑 `create` OU `update`, JAMAIS `delete` — c'est tout l'objet de la décision V1.
-            // Cette ligne lisait `enableEdition || enableEditionFull`, une rustine posée en
-            // 5.2 pour ne pas laisser le second drapeau sans lecteur. Elle avait un effet que
-            // son nom ne laissait pas deviner : le droit de SUPPRIMER faisait entrer une
-            // couche dans le sélecteur d'édition. Une couche qui n'accorde que `delete` n'a
-            // rien à faire ici — on ne propose pas de créer sur une couche où l'on n'a que le
-            // droit d'effacer.
+            // 🛑 `create` OR `update`, NEVER `delete` — the whole point of the
+            // per-operation decision. This line read
+            // `enableEdition || enableEditionFull`, a patch laid down to not
+            // leave the second flag readerless. It had an effect its name did
+            // not hint at: the right to DELETE brought a layer into the edit
+            // selector. A layer granting only `delete` has no business here —
+            // we do not offer to create on a layer where one may only erase.
             (l.edition?.create === true || l.edition?.update === true) &&
             typeof l.id === "string" &&
             (!geometryType || _acceptsGeometry(l, geometryType))

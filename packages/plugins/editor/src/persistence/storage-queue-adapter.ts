@@ -7,11 +7,12 @@
  * transaction. Replaying on reconnect is owned by {@link ./editor-sync-replay}, which
  * delegates to the core drain — not by addpoi's handler.
  *
- * ⚠️ **Cet en-tête décrivait la file v3 jusqu'au 04/08/2026**, et il était faux depuis 4.9 :
- * « write-through to the shared IndexedDB sync queue (`addToSyncQueue`) […] stores a generic
- * editor envelope under the entry `payload` ». Ni `addToSyncQueue`, ni l'enveloppe `payload`,
- * ni le partage de file avec `addpoi` n'existent plus. La prose survit au code parce qu'aucune
- * gate ne peut la lire : la VÉRACITÉ d'une phrase n'a pas de vérificateur, et n'en aura jamais.
+ * ⚠️ **This header described the v3 queue until 04/08/2026**, and it had been
+ * false for a while: "write-through to the shared IndexedDB sync queue
+ * (`addToSyncQueue`) […] stores a generic editor envelope under the entry
+ * `payload`". Neither `addToSyncQueue`, nor the `payload` envelope, nor the
+ * queue sharing with `addpoi` exist any more. Prose outlives code because no
+ * gate can read it: a sentence's TRUTH has no verifier, and never will.
  *
  * The Storage façade is read at call time (`globalThis.GeoLeaf.Storage`), never
  * imported — importing it would bundle a dead copy with no live `.DB`.
@@ -33,26 +34,26 @@ function _dispatchQueued(kind: string, layerId: string, entryId: string): void {
 }
 
 /**
- * Met UNE opération en file, par le point d'écriture du core.
+ * Enqueues ONE operation, through the core's write point.
  *
- * 🛑 **TÂCHE 4.9 — LE SECOND VOCABULAIRE DISPARAÎT ICI.** Ce plugin empilait
- * `editor.save` / `editor.update` / `editor.delete` sous une clé `payload`, pendant
- * qu'`addpoi` empilait `add_poi*` sous une clé `poiData`, **dans la même file v3**. Deux
- * vocabulaires qui ne se rencontraient jamais : `poi-restore` n'en connaissait qu'un et
- * écartait l'autre comme « foreign » — donc une géométrie tracée hors réseau **n'était jamais
- * réaffichée**. Le contrat gèle `SyncOperationKind` précisément pour ça, entity-generic parce
- * que le magasin l'est.
+ * 🛑 **THE SECOND VOCABULARY DISAPPEARS HERE.** This plugin stacked
+ * `editor.save` / `editor.update` / `editor.delete` under a `payload` key,
+ * while `addpoi` stacked `add_poi*` under a `poiData` key, **in the same v3
+ * queue**. Two vocabularies that never met: `poi-restore` knew only one and
+ * discarded the other as "foreign" — so a geometry drawn off-network **was
+ * never re-displayed**. The contract freezes `SyncOperationKind` precisely for
+ * that, entity-generic because the store is.
  *
- * ⚠️ **Rien n'est refusé ici.** La garde d'éditabilité (invariant S6) et celle de la géométrie
- * vivent dans le core, seul endroit qui lit la déclaration de couche. Refuser une saisie déjà
- * faite serait la perdre.
+ * ⚠️ **Nothing is refused here.** The editability guard and the geometry guard
+ * live in the core, the only place reading the layer declaration. Refusing an
+ * already-made capture would be losing it.
  *
- * @param kind - L'opération, dans le vocabulaire du contrat.
- * @param layerId - Couche hôte.
- * @param localId - Identité de l'entité ; absente pour une création, que le core frappe.
- * @param feature - L'entité éditée. Absente pour une suppression.
- * @returns L'identifiant de l'entrée de file.
- * @throws Quand le moteur de stockage est absent, ou que le core refuse l'édition.
+ * @param kind - The operation, in the contract's vocabulary.
+ * @param layerId - Host layer.
+ * @param localId - Entity identity; absent for a create, which the core mints.
+ * @param feature - The edited entity. Absent for a delete.
+ * @returns The queue entry's identifier.
+ * @throws When the storage engine is absent, or the core refuses the edit.
  */
 async function _enqueue(
     kind: "create" | "update" | "delete",
@@ -60,21 +61,24 @@ async function _enqueue(
     localId: string | undefined,
     feature?: EditorFeature
 ): Promise<string> {
-    // 🛑 LE RÉCEPTEUR EST OBLIGATOIRE, ET SON ABSENCE ÉTAIT B-128.
+    // 🛑 THE RECEIVER IS MANDATORY, AND ITS ABSENCE WAS THE DEFECT.
     //
-    // Ce corps faisait `const applyEdit = facade?.applyEdit` puis `applyEdit({…})` — un appel
-    // DÉTACHÉ. La façade du core n'est pas une fermeture : `applyEdit` y lit `this._modules`
-    // pour joindre le moteur. Sans récepteur, `this` vaut `undefined` et l'appel jette
+    // This body did `const applyEdit = facade?.applyEdit` then `applyEdit({…})` —
+    // a DETACHED call. The core's facade is not a closure: `applyEdit` reads
+    // `this._modules` there to reach the engine. Without a receiver, `this` is
+    // `undefined` and the call throws
     // `TypeError: Cannot read properties of undefined (reading '_modules')`.
     //
-    // ⚠️ Le typecheck ne peut pas l'attraper : ce plugin **redéclare** la surface qu'il attend
-    // (INV-NS lui interdit d'importer les sources du core), et une méthode redéclarée perd la
-    // contrainte de `this` que le core exprime. C'est la même famille que la cause racine n° 1
-    // de cette roadmap — un plugin vert contre sa propre fiction du global.
+    // ⚠️ The typecheck cannot catch it: this plugin **redeclares** the surface it
+    // expects (INV-NS forbids it to import the core's sources), and a redeclared
+    // method loses the `this` constraint the core expresses. Same family as this
+    // work's root cause no. 1 — a plugin green against its own fiction of the
+    // global.
     //
-    // Mesuré : la sauvegarde hors ligne fermait sa modale, n'écrivait RIEN, et n'émettait pas
-    // `geoleaf:editor:feature-sync-queued`. Le rejet partait en `unhandledrejection`, donc sans
-    // notification à l'utilisateur — une saisie de terrain perdue en silence.
+    // Measured: the offline save closed its modal, wrote NOTHING, and did not
+    // emit `geoleaf:editor:feature-sync-queued`. The rejection went to
+    // `unhandledrejection`, hence no user notification — a field capture lost
+    // silently.
     const facade = storageFacade();
     if (!facade?.applyEdit) {
         throw new PersistenceError("network", _getLabel("editor.error.storageUnavailable"));
@@ -92,16 +96,18 @@ async function _enqueue(
         }),
     });
     if (report.refused) {
-        // 🛑 UN REFUS DE PERMISSION N'EST PAS UNE PANNE RÉSEAU — tâche 8.7 (B-139).
+        // 🛑 A PERMISSION REFUSAL IS NOT A NETWORK OUTAGE.
         //
-        // Cette ligne typait TOUT refus en `"network"`, y compris `deleteNotPermitted` et
-        // `layerNotEditable`. Or `auto-adapter._isTransportError` traite `"network"` comme
-        // **réessayable** : le refus était donc présenté comme un problème de connectivité,
-        // c'est-à-dire comme quelque chose qui marchera au prochain essai. Il ne marchera
-        // jamais, et l'écriture repartait en file à chaque tentative.
+        // This line typed EVERY refusal as `"network"`, `deleteNotPermitted` and
+        // `layerNotEditable` included. Yet `auto-adapter._isTransportError`
+        // treats `"network"` as **retryable**: the refusal was presented as a
+        // connectivity problem, i.e. as something that will work at the next
+        // attempt. It never will, and the write went back into the queue on
+        // every try.
         //
-        // ⚠️ Le partage se fait sur ce que le motif DIT, pas sur sa forme : `engineUnavailable`
-        // et `malformedEdit` ne sont pas des refus de permission et gardent leur type.
+        // ⚠️ The split follows what the motive SAYS, not its shape:
+        // `engineUnavailable` and `malformedEdit` are not permission refusals
+        // and keep their type.
         const isPermissionRefusal =
             report.refused === "deleteNotPermitted" ||
             report.refused === "layerNotEditable" ||

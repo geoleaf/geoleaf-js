@@ -1,70 +1,70 @@
 /*!
- * GeoLeaf — outillage de gates
+ * GeoLeaf — gate tooling
  * © 2026 Mattieu Pottier · MIT
  */
 
 /**
  * @file md-fences.cjs
- * @description Suivi d'état des blocs de code Markdown, conforme à CommonMark. B-153 ①.
+ * @description State tracking for Markdown code blocks, CommonMark-conformant.
  *
- * ## 🛑 CE QUE LA BASCULE AVEUGLE SE TROMPAIT À FAIRE
+ * ## 🛑 WHAT THE BLIND TOGGLE GOT WRONG
  *
- * `check-dead-links.cjs` portait, **à deux endroits**, la même ligne :
+ * `check-dead-links.cjs` carried, **in two places**, the same line:
  *
  * ```js
  * if (/^```/.test(ln.trim())) { inCodeBlock = !inCodeBlock; continue; }
  * ```
  *
- * Elle bascule sur **n'importe quelle** ligne commençant par trois backticks — donc aussi sur
- * un fence **imbriqué**. CommonMark dit l'inverse : un bloc ouvert par N backticks ne se ferme
- * que par un marqueur d'**au moins N** backticks, et **sans chaîne d'information**. C'est
- * précisément ce qui autorise un exemple de Markdown à l'intérieur d'un bloc de Markdown.
+ * It toggles on **any** line starting with three backticks — hence also on a **nested**
+ * fence. CommonMark says the opposite: a block opened by N backticks only closes on a
+ * marker of **at least N** backticks, and **with no info string**. That is precisely what
+ * allows a Markdown example inside a Markdown block.
  *
- * ## ⚠️ LE GISEMENT EST NUL AUJOURD'HUI, ET C'EST LE RÉSULTAT DE LA MESURE
+ * ## ⚠️ THE POOL IS ZERO TODAY, AND THAT IS THE MEASUREMENT'S RESULT
  *
- * Balayage du 16/08/2026 sur les **133 fichiers** du corpus gaté, ancien classement contre
- * nouveau : **0 fichier change, 0 ligne change**. Aucun document n'exerce le défaut à ce jour.
+ * 2026-08-16 sweep over the **133 files** of the gated corpus, old classification against
+ * new: **0 files change, 0 lines change**. No document exercises the defect to date.
  *
- * 🛑 **Et une hypothèse a été démentie en chemin, ce qui vaut d'être écrit.**
- * `packages/core/docs/CORE_EXTENSION_GUIDE.md` ouvre bien un bloc à **quatre** backticks
- * contenant une paire à trois — le cas d'école. Il ne mord pourtant ni avant ni après :
- * les fences imbriqués y sont **préfixés par ` * `**, étant à l'intérieur d'un commentaire
- * TSDoc, donc aucun des deux motifs ne les voit. **Un exemple qui ressemble au défaut n'est pas
- * une instance du défaut** ; seul le balayage complet le dit.
+ * 🛑 **And one hypothesis was refuted along the way, which is worth writing down.**
+ * `packages/core/docs/CORE_EXTENSION_GUIDE.md` does open a **four**-backtick block
+ * containing a three-backtick pair — the textbook case. Yet it bites neither before nor
+ * after: the nested fences there are **prefixed with ` * `**, being inside a TSDoc
+ * comment, so neither pattern sees them. **An example that looks like the defect is not an
+ * instance of the defect**; only the full sweep says so.
  *
- * ✅ **La correction reste juste, et sa valeur est double** : la bascule était fausse au regard
- * de CommonMark — donc le premier document qui imbriquera un fence produira un verdict faux sans
- * que rien ne relie la cause à l'effet — et le motif était **dupliqué**, si bien que corriger un
- * site aurait laissé l'autre. Éprouvée sur un cas synthétique : un bloc ```` ouvrant, contenant
- * un ```js et son ``` de fermeture, puis du contenu. L'ancien classe ce contenu en PROSE, le
- * nouveau en CODE.
+ * ✅ **The fix remains right, and its value is double**: the toggle was wrong against
+ * CommonMark — so the first document to nest a fence would produce a wrong verdict with
+ * nothing linking cause to effect — and the pattern was **duplicated**, so fixing one site
+ * would have left the other. Proven on a synthetic case: an opening ```` block, containing
+ * a ```js and its closing ```, then content. The old one classifies that content as PROSE,
+ * the new one as CODE.
  *
- * ## ⚠️ CE QUE CE MODULE NE FAIT PAS
+ * ## ⚠️ WHAT THIS MODULE DOES NOT DO
  *
- * Il ne construit pas un analyseur Markdown. Il ne connaît ni les blocs **indentés** de quatre
- * espaces, ni les fences à l'intérieur d'une citation `>`. Le corpus n'en porte aucun cas
- * mesuré — et le dire ici vaut mieux que de laisser croire à une conformité totale.
+ * It does not build a Markdown parser. It knows neither four-space **indented** blocks nor
+ * fences inside a `>` quote. The corpus carries no measured case of either — and saying so
+ * here beats letting full conformance be assumed.
  */
 "use strict";
 
-/** Ouverture de fence : marqueur (≥3 backticks OU ≥3 tildes) + chaîne d'information libre. */
+/** Fence opening: marker (≥3 backticks OR ≥3 tildes) + free info string. */
 const FENCE_RE = /^(`{3,}|~{3,})(.*)$/;
 
 /**
- * Suivi d'état des blocs de code, à créer une fois par fichier.
+ * Code-block state tracker, to create once per file.
  *
  * @example
  * const fences = createFenceTracker();
  * for (const line of lines) {
- *     if (fences.consume(line)) continue; // ligne de marqueur
- *     if (fences.inCode) continue;        // contenu de bloc
- *     // … ici, on est dans de la PROSE
+ *     if (fences.consume(line)) continue; // marker line
+ *     if (fences.inCode) continue;        // block content
+ *     // … here, we are in PROSE
  * }
  *
  * @returns {{ inCode: boolean, consume(line: string): boolean }}
  */
 function createFenceTracker() {
-    /** Marqueur ayant ouvert le bloc courant — `null` hors bloc. */
+    /** Marker that opened the current block — `null` outside a block. */
     let openMarker = null;
 
     return {
@@ -73,9 +73,9 @@ function createFenceTracker() {
         },
 
         /**
-         * Traite une ligne. Rend `true` si c'est une ligne de MARQUEUR (à sauter par
-         * l'appelant), `false` si c'est une ligne ordinaire — dont il faut alors lire
-         * `inCode` pour savoir si elle est du code ou de la prose.
+         * Processes a line. Returns `true` if it is a MARKER line (for the caller to
+         * skip), `false` if it is an ordinary line — whose `inCode` must then be read to
+         * know whether it is code or prose.
          *
          * @param {string} line
          * @returns {boolean}
@@ -87,16 +87,16 @@ function createFenceTracker() {
             const [, marker, info] = m;
 
             if (openMarker === null) {
-                // Ouverture. La chaîne d'information n'appartient qu'à l'ouverture.
+                // Opening. The info string belongs to the opening only.
                 openMarker = marker;
                 return true;
             }
 
-            // 🛑 FERMETURE CONDITIONNELLE — c'est tout le correctif de B-153 ①.
-            // Même caractère, longueur AU MOINS égale, et aucune chaîne d'information.
-            // Un ``` rencontré dans un bloc ouvert par ```` n'est pas une fermeture :
-            // c'est du contenu, et le traiter comme une fermeture inverse le classement
-            // de tout ce qui suit jusqu'au prochain marqueur.
+            // 🛑 CONDITIONAL CLOSING — this is the entire fix.
+            // Same character, length AT LEAST equal, and no info string.
+            // A ``` met inside a block opened by ```` is not a closing: it is content,
+            // and treating it as a closing inverts the classification of everything that
+            // follows up to the next marker.
             const sameKind = marker[0] === openMarker[0];
             if (sameKind && marker.length >= openMarker.length && info.trim() === "") {
                 openMarker = null;

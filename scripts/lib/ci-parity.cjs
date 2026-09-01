@@ -1,61 +1,66 @@
 "use strict";
 /**
- * ci-parity.cjs — le périmètre de `ci.yml`, comparé FEUILLE À FEUILLE à celui de `ci:local`.
+ * ci-parity.cjs — `ci.yml`'s perimeter, compared LEAF BY LEAF to `ci:local`'s.
  *
- * ## Ce que ce module existe pour rendre vrai
+ * ## What this module exists to make true
  *
- * `ci-local.cjs` déclare en tête la propriété `ci:local ⊇ ci.yml`, et la dit « vérifiée, pas
- * conventionnée ». C'était un sur-énoncé : `lib/test-scope.cjs` vérifie le périmètre des
- * TESTS UNITAIRES, et rien ne vérifiait la LISTE DES GATES. Une seule ligne de commentaire
- * (« Keep this list in sync with .github/workflows/ci.yml ») tenait lieu de garde, c'est-à-dire
- * un geste manuel là où le fichier annonçait une garantie. Le coût est direct : le quota
- * GitHub Actions est rare, et le protocole de push de CLAUDE.md fait du vert local le SEUL
- * critère avant d'en dépenser.
+ * `ci-local.cjs` declares at its head the property `ci:local ⊇ ci.yml`,
+ * and calls it "verified, not conventioned". That was an over-claim:
+ * `lib/test-scope.cjs` verifies the UNIT TESTS' perimeter, and nothing
+ * verified the GATE LIST. A single comment line ("Keep this list in sync
+ * with .github/workflows/ci.yml") stood in for a guard, i.e. a manual
+ * gesture where the file announced a guarantee. The cost is direct: the
+ * GitHub Actions quota is scarce, and the push protocol makes the local
+ * green the ONLY criterion before spending any.
  *
- * ## Pourquoi par FEUILLE et jamais par étape
+ * ## Why by LEAF and never by step
  *
- * Une étape de `ci.yml` peut enchaîner plusieurs commandes, et elles ne tombent pas dans la
- * même catégorie. L'étape E2E en enchaîne quatre :
+ * A `ci.yml` step can chain several commands, and they do not fall into
+ * the same category. The E2E step chains four:
  *
- *     node scripts/build-deploy.cjs           → équivalente à `build:deploy:all` (témoin)
- *     node scripts/build-deploy-coverage.cjs  → couverte, mais sous `--e2e` seulement
- *     playwright install --with-deps chromium → environnement, pas une gate
- *     playwright test                         → couverte, mais sous `--e2e` seulement
+ *     node scripts/build-deploy.cjs           → equivalent to `build:deploy:all` (witness)
+ *     node scripts/build-deploy-coverage.cjs  → covered, but under `--e2e` only
+ *     playwright install --with-deps chromium → environment, not a gate
+ *     playwright test                         → covered, but under `--e2e` only
  *
- * Un classement par étape l'aurait déclarée « couverte » sur deux feuilles sur quatre et
- * perdu les deux autres en silence. Le classement par feuille est la CONDITION pour que la
- * catégorie « non couverte » puisse être vide sans mentir.
+ * A per-step classification would have declared it "covered" on two leaves
+ * out of four and lost the other two silently. The per-leaf classification
+ * is the CONDITION for the "not covered" category to be able to be empty
+ * without lying.
  *
- * ## Pourquoi un parseur maison plutôt que `yaml`
+ * ## Why a homemade parser rather than `yaml`
  *
- * `js-yaml` est absent, et `yaml` ne résout qu'en TRANSITIF (hissé depuis knip/lint-staged).
- * L'utiliser serait une dépendance fantôme : la catégorie « imports non déclarés » de knip la
- * signalerait — cette gate casserait donc la gate `dead-code` qui tourne avant elle — et un
- * `npm install` qui de-hisse `yaml` la tuerait en `MODULE_NOT_FOUND`, c'est-à-dire une gate
- * qui disparaît.
+ * `js-yaml` is absent, and `yaml` only resolves TRANSITIVELY (hoisted from
+ * knip/lint-staged). Using it would be a ghost dependency: knip's
+ * "undeclared imports" category would flag it — this gate would thus break
+ * the `dead-code` gate that runs before it — and an `npm install` that
+ * de-hoists `yaml` would kill it in `MODULE_NOT_FOUND`, i.e. a gate that
+ * disappears.
  *
- * ⚠️ L'objection sérieuse est que c'est exactement le « parseur textuel qui cesse de matcher »
- * que `verify-ci-scripts-tracked.cjs` interdit dans son propre en-tête. La réponse n'est PAS
- * « ce parseur sera bon ». C'est que la propriété n'est pas portée par le parseur, mais par
- * trois instruments autour de lui :
+ * ⚠️ The serious objection is that this is exactly the "textual parser
+ * that stops matching" that `verify-ci-scripts-tracked.cjs` forbids in its
+ * own header. The answer is NOT "this parser will be good". It is that the
+ * property is not carried by the parser, but by three instruments around it:
  *
- *   1. Il est STRICT — il ne saute jamais. Toute ligne du bloc `jobs:` qu'il ne sait pas
- *      classer JETTE. Sauter, c'est devenir aveugle en silence ; jeter, c'est refuser de
- *      conclure.
- *   2. Un CONTRE-INSTRUMENT de nature différente, sur le même corpus : un comptage brut au
- *      grep doit rendre exactement autant de `run:`/`uses:` que le parcours structuré. Un
- *      parseur qui cesse de matcher rend MOINS, le grep rend autant, et l'écart fait rougir.
- *      Un `yaml` déclaré ne dispenserait pas de ce contrôle : il rend un arbre correct, pas
- *      la preuve que l'arbre est bien le fichier entier.
- *   3. Des PLANCHERS TÉMOINS, pour l'effondrement que la strictesse ne voit pas (toute
- *      l'indentation décalée d'un cran, uniformément et validement).
+ *   1. It is STRICT — it never skips. Any line of the `jobs:` block it
+ *      cannot classify THROWS. Skipping is going blind silently; throwing
+ *      is refusing to conclude.
+ *   2. A COUNTER-INSTRUMENT of a different nature, on the same corpus: a
+ *      raw grep count must return exactly as many `run:`/`uses:` as the
+ *      structured walk. A parser that stops matching returns FEWER, the
+ *      grep returns as many, and the gap turns red. A declared `yaml`
+ *      would not excuse this check: it returns a correct tree, not the
+ *      proof that the tree really is the whole file.
+ *   3. WITNESS FLOORS, for the collapse strictness does not see (all the
+ *      indentation shifted one notch, uniformly and validly).
  *
- * ## Ce module n'exécute rien à l'import
+ * ## This module executes nothing at import
  *
- * Même contrainte que `lib/hygiene-patterns.cjs`, extrait de `verify-repo-hygiene.cjs` pour
- * qu'un second lecteur puisse l'interroger : `ci-local.cjs` lit ces données pour son
- * énonciation de fin de run, et ne doit ni spawn, ni risquer un `process.exit` à l'import.
- * Aucune fonction d'ici n'appelle `process.exit` — elles jettent, l'appelant décide.
+ * Same constraint as `lib/hygiene-patterns.cjs`, extracted from
+ * `verify-repo-hygiene.cjs` so a second reader could query it:
+ * `ci-local.cjs` reads this data for its end-of-run statement, and must
+ * neither spawn nor risk a `process.exit` at import. No function here
+ * calls `process.exit` — they throw, the caller decides.
  */
 
 const fs = require("node:fs");
@@ -65,14 +70,15 @@ const registry = require("./packages.cjs");
 const ROOT = path.resolve(__dirname, "..", "..");
 
 /**
- * Répertoire des workflows. Surchargeable pour que la gate soit PROUVABLE : sans ce crochet,
- * la seule façon de la voir rougir serait de modifier le vrai `ci.yml` — donc on ne le ferait
- * qu'une fois, à la pose, et jamais plus. Précédent établi ×3 dans le dépôt
- * (`GEOLEAF_NYC_OUTPUT`, `GEOLEAF_DOCS_SITE_ROOT`, `GEOLEAF_LOAD_AUDIT_DIR`).
+ * Workflow directory. Overridable so the gate is PROVABLE: without this
+ * hook, the only way to see it turn red would be to modify the real
+ * `ci.yml` — so it would be done once, at laying, and never again.
+ * Precedent established ×3 in the repo (`GEOLEAF_NYC_OUTPUT`,
+ * `GEOLEAF_DOCS_SITE_ROOT`, `GEOLEAF_LOAD_AUDIT_DIR`).
  *
- * ⚠️ Le corpus est LU, jamais codé en dur fichier par fichier : un chemin en dur cesse
- * silencieusement de matcher au moindre renommage, et la gate sort verte en n'ayant rien
- * scanné (CLAUDE.md §Pré-vol).
+ * ⚠️ The corpus is READ, never hardcoded file by file: a hardcoded path
+ * silently stops matching at the slightest rename, and the gate exits
+ * green having scanned nothing.
  */
 function workflowDir() {
     const override = process.env.GEOLEAF_CI_WORKFLOW_DIR;
@@ -80,24 +86,26 @@ function workflowDir() {
 }
 
 /**
- * Ce workflow LIVRE-t-il, plutôt qu'il ne VÉRIFIE ?
+ * Does this workflow DELIVER, rather than VERIFY?
  *
- * Critère dérivé du déclencheur, et volontairement étroit : un bloc `on:` qui porte
- * `tags:` (ou un `release:`) **et aucun** `branches:`. Un workflow déclenché sur branche
- * ou sur pull request reste une validation, même s'il livre aussi.
+ * Criterion derived from the trigger, and deliberately narrow: an `on:`
+ * block carrying `tags:` (or a `release:`) **and no** `branches:`. A
+ * workflow triggered on a branch or a pull request stays a validation,
+ * even if it also delivers.
  *
- * ⚠️ **La direction du doute est le sujet.** Classer à tort une validation en livraison la
- * sort de la comparaison **en silence** ; classer à tort une livraison en validation la
- * fait seulement rougir, donc regarder. La seconde erreur se voit, la première non — d'où
- * un critère qui refuse de conclure au moindre `branches:`. Sans cette étroitesse,
- * `ci.yml` deviendrait exemptable en lui ajoutant un `tags:`, c'est-à-dire que la gate
- * serait désarmée par la porte qu'on vient d'ouvrir.
+ * ⚠️ **The doubt's direction is the subject.» Wrongly classifying a
+ * validation as delivery takes it out of the comparison **silently**;
+ * wrongly classifying a delivery as validation only turns it red, hence
+ * gets looked at. The second error is seen, the first is not — hence a
+ * criterion that refuses to conclude at the slightest `branches:`. Without
+ * that narrowness, `ci.yml` would become exemptable by adding a `tags:` to
+ * it, i.e. the gate would be disarmed through the door it just opened.
  *
- * @param {string} text Contenu du fichier de workflow.
- * @returns {boolean} `true` si le workflow livre et sort de la comparaison.
+ * @param {string} text The workflow file's content.
+ * @returns {boolean} `true` if the workflow delivers and leaves the comparison.
  */
 function isDeliveryWorkflow(text) {
-    // Le bloc `on:` seul — jusqu'à la prochaine clé de premier niveau.
+    // The `on:` block alone — up to the next top-level key.
     const onBlock = text.match(/^on:\s*$([\s\S]*?)^[a-z]/m);
     const scope = onBlock ? onBlock[1] : "";
     if (!scope) return false;
@@ -107,14 +115,15 @@ function isDeliveryWorkflow(text) {
 }
 
 /**
- * Planchers témoins — mesure du 30/07/2026 : 1 workflow, 1 job, 55 étapes (48 `run:`,
- * 7 `uses:`), et 56 entrées dans `STEPS`.
+ * Witness floors — 30/07/2026 measure: 1 workflow, 1 job, 55 steps
+ * (48 `run:`, 7 `uses:`), and 56 entries in `STEPS`.
  *
- * ⚠️ Ils portent sur le CORPUS, jamais sur le VERDICT. Un plancher sur « N étapes couvertes »
- * serait un cliquet de couverture : il rougirait au premier gate retiré à bon escient, ce que
- * `MIN_RESOLVED` de `verify-ci-scripts-tracked.cjs` refuse explicitement. Ils sont
- * délibérément SOUS la mesure — ils détectent un effondrement, pas une unité — et ne se
- * recliquettent pas à chaque gate ajoutée : `ci.yml` en a gagné une pendant la rédaction.
+ * ⚠️ They bear on the CORPUS, never the VERDICT. A floor on "N covered
+ * steps" would be a coverage ratchet: it would turn red at the first gate
+ * rightly removed, which `verify-ci-scripts-tracked.cjs`'s `MIN_RESOLVED`
+ * explicitly refuses. They are deliberately UNDER the measure — they
+ * detect a collapse, not a unit — and do not re-ratchet at each gate
+ * added: `ci.yml` gained one during the writing.
  */
 const FLOOR = {
     workflows: 1,
@@ -127,7 +136,7 @@ const FLOOR = {
 
 // ── Parseur strict ───────────────────────────────────────────────────────────
 
-/** Formes YAML que ce parseur ne modélise pas, et sur lesquelles il refuse de deviner. */
+/** YAML shapes this parser does not model, and on which it refuses to guess. */
 const UNMODELLED = [
     [/(^|\s)&[A-Za-z0-9_-]+\s*$/, "ancre YAML (`&nom`)"],
     [/:\s*\*[A-Za-z0-9_-]+\s*$/, "alias YAML (`*nom`)"],
@@ -136,12 +145,12 @@ const UNMODELLED = [
 ];
 
 /**
- * Parse un workflow en `{ jobs: [{ id, steps: [...] }] }`.
+ * Parses a workflow into `{ jobs: [{ id, steps: [...] }] }`.
  *
- * @param {string} text Contenu du fichier.
- * @param {string} file Nom du fichier, pour les messages d'erreur.
- * @returns {{jobs: {id: string, line: number, steps: object[]}[]}} L'arbre des jobs.
- * @throws {Error} Sur toute ligne du bloc `jobs:` que le parseur ne sait pas classer.
+ * @param {string} text The file's content.
+ * @param {string} file The file's name, for error messages.
+ * @returns {{jobs: {id: string, line: number, steps: object[]}[]}} The job tree.
+ * @throws {Error} On any `jobs:` block line the parser cannot classify.
  */
 function parseWorkflow(text, file) {
     const raw = text.split(/\r?\n/);
@@ -149,10 +158,10 @@ function parseWorkflow(text, file) {
         throw new Error(`${file}:${i + 1} — ${msg}`);
     };
 
-    // Les commentaires sont retirés AVANT toute détection de forme : `ci.yml` porte des
-    // commentaires en français avec du **gras** markdown, et un `*mot*` y déclencherait un
-    // faux « alias YAML ». On ne retire que les lignes entièrement commentées ; un `# v4` en
-    // fin de `uses:` est traité par le lecteur de valeur, pas ici.
+    // Comments are stripped BEFORE any shape detection: `ci.yml` carries
+    // French comments with markdown **bold**, and a `*word*` there would
+    // trigger a false "YAML alias". Only fully commented lines are removed;
+    // a `# v4` at the end of a `uses:` is handled by the value reader, not here.
     const lines = raw.map((l) => (/^\s*#/.test(l) ? "" : l));
 
     for (let i = 0; i < lines.length; i++) {
@@ -165,7 +174,7 @@ function parseWorkflow(text, file) {
     const indentOf = (l) => l.match(/^ */)[0].length;
     const isBlank = (l) => !l.trim();
 
-    // `jobs:` à l'indentation racine.
+    // `jobs:` at root indentation.
     let jobsLine = -1;
     for (let i = 0; i < lines.length; i++) {
         if (/^jobs:\s*$/.test(lines[i])) {
@@ -175,7 +184,7 @@ function parseWorkflow(text, file) {
     }
     if (jobsLine === -1) throw new Error(`${file} — aucun bloc \`jobs:\` à l'indentation 0`);
 
-    // Bornes du bloc `jobs:` : jusqu'à la prochaine clé d'indentation 0.
+    // The `jobs:` block's bounds: up to the next indentation-0 key.
     let jobsEnd = lines.length;
     for (let i = jobsLine + 1; i < lines.length; i++) {
         if (!isBlank(lines[i]) && indentOf(lines[i]) === 0) {
@@ -184,7 +193,7 @@ function parseWorkflow(text, file) {
         }
     }
 
-    // Indentation des identifiants de job — DÉRIVÉE, jamais supposée à 4.
+    // The job identifiers' indentation — DERIVED, never assumed to be 4.
     let jobIdIndent = -1;
     for (let i = jobsLine + 1; i < jobsEnd; i++) {
         if (isBlank(lines[i])) continue;
@@ -213,7 +222,7 @@ function parseWorkflow(text, file) {
     return { jobs };
 }
 
-/** Extrait les étapes d'un bloc de job. Un job SANS `steps:` fait rougir plutôt que d'être sauté. */
+/** Extracts a job block's steps. A job WITHOUT `steps:` turns red rather than being skipped. */
 function parseSteps(lines, from, to, file, err) {
     const indentOf = (l) => l.match(/^ */)[0].length;
     const isBlank = (l) => !l.trim();
@@ -226,17 +235,18 @@ function parseSteps(lines, from, to, file, err) {
         }
     }
     if (stepsLine === -1) {
-        // Un job sans `steps:` est un workflow réutilisable (`jobs.<id>.uses:`) : son contenu
-        // est hors de portée de ce parseur. Le sauter en silence mettrait la moitié de la CI
-        // hors du champ tout en affichant « 0 non couverte » — le mode d'échec « périmètre
-        // vide » que tout ce fichier existe pour interdire.
+        // A job without `steps:` is a reusable workflow
+        // (`jobs.<id>.uses:`): its content is beyond this parser's reach.
+        // Skipping it silently would put half the CI out of the field while
+        // displaying "0 not covered" — the "empty perimeter" failure mode
+        // this whole file exists to forbid.
         throw new Error(
             `${file}:${from} — job sans \`steps:\` (workflow réutilisable ?). Ce parseur ne le ` +
                 `modélise pas, et le sauter mettrait ses gates hors du champ sans le dire.`
         );
     }
 
-    // Indentation des éléments de la séquence — DÉRIVÉE du premier tiret rencontré.
+    // The sequence elements' indentation — DERIVED from the first dash met.
     let itemIndent = -1;
     for (let i = stepsLine + 1; i < to; i++) {
         if (isBlank(lines[i])) continue;
@@ -265,10 +275,10 @@ function parseSteps(lines, from, to, file, err) {
     return steps;
 }
 
-/** Une étape : `name`, `run` (commande complète, scalaires de bloc inclus), `uses`, `if`. */
+/** A step: `name`, `run` (full command, block scalars included), `uses`, `if`. */
 function parseStep(lines, start, end, itemIndent, file, err) {
     const indentOf = (l) => l.match(/^ */)[0].length;
-    const keyIndent = itemIndent + 2; // YAML : les clés d'un mapping s'alignent après « - »
+    const keyIndent = itemIndent + 2; // YAML: a mapping's keys align after the "- "
     const step = {
         line: start + 1,
         name: null,
@@ -281,8 +291,8 @@ function parseStep(lines, start, end, itemIndent, file, err) {
     for (let i = start; i < end; i++) {
         if (!lines[i].trim()) continue;
         const ind = i === start ? itemIndent : indentOf(lines[i]);
-        // Le premier `- clé:` et les clés suivantes vivent au même niveau logique.
-        if (i !== start && ind !== keyIndent) continue; // sous-bloc (`with:`, `env:`) — ignoré
+        // The first `- key:` and the following keys live at the same logical level.
+        if (i !== start && ind !== keyIndent) continue; // sub-block (`with:`, `env:`) — ignored
         const body = i === start ? lines[i].replace(/^\s*- /, "") : lines[i].trim();
         const m = body.match(/^([A-Za-z0-9_.-]+):\s*(.*)$/);
         if (!m) err(i, "clé d'étape attendue");
@@ -294,15 +304,16 @@ function parseStep(lines, start, end, itemIndent, file, err) {
             step.name = stripTrailingComment(rest)
                 .trim()
                 .replace(/^["']|["']$/g, "");
-        // ⚠️ La CONDITION est retenue, pas seulement sa présence. `hasIf` seul ne permettait
-        // pas de distinguer `if: always()` de `if: github.event_name == 'workflow_dispatch'`,
-        // et c'est exactement la distinction dont PARITY-11 a besoin pour vérifier que les
-        // étapes E2E restent hors du chemin `push`.
+        // ⚠️ The CONDITION is retained, not only its presence. `hasIf`
+        // alone could not tell `if: always()` from
+        // `if: github.event_name == 'workflow_dispatch'`, and that is
+        // exactly the distinction PARITY-11 needs to verify the E2E steps
+        // stay out of the `push` path.
         else if (key === "if") {
             step.hasIf = true;
             step.ifCond = stripTrailingComment(rest).trim();
         } else if (key === "env") step.hasEnv = true;
-        // `with:`, `id:`, `continue-on-error:`… — sans effet sur le périmètre.
+        // `with:`, `id:`, `continue-on-error:`… — without effect on the perimeter.
     }
 
     if (!step.run && !step.uses) {
@@ -311,7 +322,7 @@ function parseStep(lines, start, end, itemIndent, file, err) {
     return step;
 }
 
-/** Lit une valeur scalaire, en absorbant un scalaire de bloc (`|`, `>`) s'il y en a un. */
+/** Reads a scalar value, absorbing a block scalar (`|`, `>`) if there is one. */
 function readScalar(lines, i, inline, keyIndent) {
     const head = inline.trim();
     if (!/^[|>][-+]?$/.test(head)) return stripTrailingComment(head).trim();
@@ -325,11 +336,11 @@ function readScalar(lines, i, inline, keyIndent) {
 }
 
 /**
- * Retire un commentaire de fin de ligne (` # v4`).
+ * Removes a trailing line comment (` # v4`).
  *
- * ⚠️ Ne coupe que sur un `#` précédé d'un espace ET hors guillemets — sinon `--flag=a#b` ou
- * une chaîne contenant un `#` serait tronquée, et la feuille produite ne serait pas la
- * commande réellement exécutée.
+ * ⚠️ Only cuts on a `#` preceded by a space AND outside quotes — otherwise
+ * `--flag=a#b` or a string containing a `#` would be truncated, and the
+ * produced leaf would not be the command really executed.
  */
 function stripTrailingComment(s) {
     let quote = null;
@@ -347,11 +358,12 @@ function stripTrailingComment(s) {
 }
 
 /**
- * Contre-instrument : comptage BRUT des clés `run:`/`uses:`, sans passer par le parseur.
+ * Counter-instrument: RAW count of the `run:`/`uses:` keys, without going
+ * through the parser.
  *
- * ⚠️ La forme `- run:` (première clé d'un élément de séquence) compte autant que ` run:`.
- * Un `grep '^\s*uses:'` en rate deux sur sept dans le `ci.yml` actuel — c'est très exactement
- * l'erreur de mesure que ce module doit refuser de commettre.
+ * ⚠️ The `- run:` form (first key of a sequence element) counts as much as
+ * ` run:`. A `grep '^\s*uses:'` misses two out of seven in the current
+ * `ci.yml` — exactly the measurement error this module must refuse to commit.
  */
 function rawCounts(text) {
     const body = text
@@ -364,12 +376,12 @@ function rawCounts(text) {
     };
 }
 
-// ── Résolveur de feuilles ────────────────────────────────────────────────────
+// ── Leaf resolver ────────────────────────────────────────────────────────────
 
 const NPM_RUN_RE = /^npm run ([\w:.-]+)(.*)$/;
 const WORKSPACE_RE = /(?:-w|--workspace)[= ]([@\w./-]+)/;
 
-/** Découpe une commande shell sur ses enchaînements de premier niveau. */
+/** Splits a shell command on its top-level chainings. */
 function splitChain(cmd) {
     return cmd
         .split(/&&|\|\||;/)
@@ -378,15 +390,16 @@ function splitChain(cmd) {
 }
 
 /**
- * Normalise un segment de commande vers une forme canonique comparable.
+ * Normalises a command segment to a comparable canonical form.
  *
- * Chaque normalisation a un coût, nommé ici :
- *  • `npx ` retiré — `npx eslint` et `eslint` résolvent le même binaire local. Coût : un
- *    `npx paquet@version` visant un binaire NON installé deviendrait indiscernable du local.
- *    Aucun cas aujourd'hui ; à re-décider s'il en apparaît un.
- *  • `npm test` / `npm t` → `npm run test`, sans quoi le gate unitaire local ne résout pas.
- *  • espaces collapsés. Rien d'autre : l'ORDRE et le CONTENU de l'argv restent significatifs,
- *    et c'est ce qui empêche `--plugins=addpoi` de matcher `--plugins=all`.
+ * Each normalisation has a cost, named here:
+ *  • `npx ` removed — `npx eslint` and `eslint` resolve the same local
+ *    binary. Cost: an `npx package@version` aiming at a NOT-installed
+ *    binary would become indistinguishable from the local one. No case
+ *    today; to re-decide if one appears.
+ *  • `npm test` / `npm t` → `npm run test`, otherwise the local unit gate does not resolve.
+ *  • whitespace collapsed. Nothing else: the argv's ORDER and CONTENT stay
+ *    significant, and that is what keeps `--plugins=addpoi` from matching `--plugins=all`.
  */
 function normalize(seg) {
     let s = seg.replace(/\s+/g, " ").trim();
@@ -402,21 +415,23 @@ function scriptsOf(pkgDir) {
 }
 
 /**
- * Déplie une commande jusqu'à ses commandes FEUILLES canoniques.
+ * Unfolds a command to its canonical LEAF commands.
  *
- * Un `npm run <x>` est remplacé par le corps du script, résolu dans le BON `package.json` :
- * `-w`/`--workspace` déplace la résolution vers le paquet nommé, et sans ce cas
- * `test:bundle --workspace=@geoleaf/core` (CI) et `test:bundle -w @geoleaf/core` (local)
- * seraient deux feuilles différentes — trois faux rouges d'entrée.
+ * An `npm run <x>` is replaced by the script's body, resolved in the RIGHT
+ * `package.json`: `-w`/`--workspace` moves the resolution to the named
+ * package, and without this case `test:bundle --workspace=@geoleaf/core`
+ * (CI) and `test:bundle -w @geoleaf/core` (local) would be two different
+ * leaves — three false reds from the start.
  *
- * Un `npm run` que rien ne définit devient `UNRESOLVED:<nom>` plutôt qu'une feuille ordinaire.
- * La distinction compte : classé « non couvert », on lirait un défaut de parité là où le vrai
- * défaut est un `ci.yml` cassé, qui mourra en « Missing script » sur le runner.
+ * An `npm run` nothing defines becomes `UNRESOLVED:<name>` rather than an
+ * ordinary leaf. The distinction counts: classified "not covered", a
+ * parity defect would be read where the real defect is a broken `ci.yml`,
+ * which will die with "Missing script" on the runner.
  *
- * @param {string} cmd Commande complète, enchaînements compris.
- * @param {string|null} [ws] Paquet de résolution courant.
- * @param {Set<string>} [seen] Garde-fou de récursion sur des scripts npm cycliques.
- * @returns {string[]} Feuilles canoniques, dans l'ordre d'exécution.
+ * @param {string} cmd Full command, chainings included.
+ * @param {string|null} [ws] Current resolution package.
+ * @param {Set<string>} [seen] Recursion guard for cyclic npm scripts.
+ * @returns {string[]} Canonical leaves, in execution order.
  */
 function resolveLeaves(cmd, ws = null, seen = new Set()) {
     const out = [];
@@ -431,7 +446,7 @@ function resolveLeaves(cmd, ws = null, seen = new Set()) {
         const wsMatch = tail.match(WORKSPACE_RE);
         const nextWs = wsMatch ? wsMatch[1] : ws;
         const key = `${name} @${nextWs || ""}`;
-        if (seen.has(key)) continue; // cycle — déjà déplié
+        if (seen.has(key)) continue; // cycle — already unfolded
         seen.add(key);
 
         let dir = ROOT;
@@ -453,7 +468,7 @@ function resolveLeaves(cmd, ws = null, seen = new Set()) {
     return out;
 }
 
-/** Feuilles atteintes par une table d'étapes de `ci-local.cjs`. */
+/** Leaves reached by a `ci-local.cjs` step table. */
 function leavesOfSteps(steps) {
     const set = new Set();
     for (const step of steps) {
@@ -462,23 +477,31 @@ function leavesOfSteps(steps) {
     return set;
 }
 
-// ── Les trois tables ─────────────────────────────────────────────────────────
+// ── The four tables ──────────────────────────────────────────────────────────
 //
-// Une allowlist en dur redeviendrait le « Keep this list in sync » qu'on remplace, avec un
-// nom plus noble. D'où deux propriétés, sur les trois tables :
+// A hardcoded allowlist would become again the "Keep this list in sync"
+// being replaced, under a nobler name. Hence two properties, on all four tables:
 //
-//   • elles sont KEYÉES sur la feuille canonique — une clé qui ne désigne plus rien dans
-//     `ci.yml` fait ROUGIR (même asymétrie que `assertExclusionKeysAlive` de test-scope.cjs :
-//     une clé qui ne dispense plus de rien est toujours une erreur, alors qu'une étape absente
-//     des tables est le cas normal) ;
-//   • chaque entrée porte un TÉMOIN, évalué à chaque run, qui rend `false` quand la CAUSE de
-//     l'exemption tombe. C'est l'inversion du `PENDING` de `probe-gate-visibility.cjs` :
-//     là-bas un item attendu-rouge qui passe au vert fait rougir « pour qu'il ne pourrisse pas
-//     en mensonge » ; ici c'est une dispense dont la raison d'être a disparu.
+//   • they are KEYED on a canonical leaf — a key designating nothing any
+//     more turns RED (same asymmetry as test-scope.cjs's
+//     `assertExclusionKeysAlive`: a key that no longer excuses anything is
+//     always an error, while a step absent from the tables is the normal case);
+//   • each entry carries a WITNESS, evaluated at every run, returning
+//     `false` when the exemption's CAUSE falls. The inversion of
+//     `probe-gate-visibility.cjs`'s `PENDING`: there an expected-red item
+//     turning green turns red "so it does not rot into a lie"; here it is
+//     an excuse whose reason for being vanished.
 //
-// `gateReelle` sépare « incouvrable et inerte » (installer Node, publier un artefact) de
-// « incouvrable mais gate réelle » (gitleaks). L'énonciation de fin de run ne compte que les
-// secondes : y mêler les premières gonflerait le chiffre annoncé, et plus personne ne le lirait.
+// ⚠️ **On WHICH leaf they are keyed is NOT uniform, and writing "all four
+// are keyed on `ci.yml`" would be false.» The first three are, because
+// they all answer "why is this remote leaf not launched locally". The
+// fourth, `LOCAL_ONLY`, is keyed on a `ci:local` leaf: it carries the
+// INVERSE question, and that asymmetry is precisely why it was missing so long.
+//
+// `gateReelle` separates "uncoverable and inert" (installing Node,
+// publishing an artefact) from "uncoverable but a real gate" (gitleaks).
+// The end-of-run statement only counts the latter: mixing in the former
+// would inflate the announced figure, and nobody would read it any more.
 
 /** @type {Record<string, {classe: string, gateReelle: boolean, motif: string, temoin: (ctx: object) => boolean}>} */
 const EXEMPTIONS = {
@@ -486,15 +509,15 @@ const EXEMPTIONS = {
         classe: "ENV",
         gateReelle: false,
         motif: "installation des dépendances — le poste local les a déjà.",
-        // Si `npm ci` cesse d'être la première commande du workflow, l'ordre a changé assez
-        // pour que cette dispense mérite d'être relue plutôt que reconduite.
+        // If `npm ci` stops being the workflow's first command, the order
+        // changed enough for this excuse to deserve rereading rather than renewal.
         temoin: (ctx) => ctx.firstLeaf === "npm ci",
     },
     "playwright install --with-deps chromium": {
         classe: "ENV",
         gateReelle: false,
         motif: "runner neuf à chaque run ; le poste local présuppose les navigateurs installés.",
-        // Sans suite E2E locale, installer des navigateurs ne dispense plus de rien.
+        // Without a local E2E suite, installing browsers no longer excuses anything.
         temoin: (ctx) => ctx.e2eLeaves.has("playwright test"),
     },
     "vitest run --reporter=json --outputFile=test-results.json --reporter=verbose": {
@@ -506,10 +529,10 @@ const EXEMPTIONS = {
             "test-scope.cjs, pas conventionnée.",
         temoin: () => {
             const ts = require("./test-scope.cjs");
-            ts.assertUnitScopeCoversRoot(); // jette si l'inclusion tombe
-            // ⚠️ …et l'inclusion est vraie À VIDE si les deux périmètres rétrécissent de
-            // concert. Un témoin doit vérifier que ce à quoi il délègue n'est pas vide, sinon
-            // la doctrine s'arrête d'un niveau trop tôt.
+            ts.assertUnitScopeCoversRoot(); // throws if the inclusion falls
+            // ⚠️ …and the inclusion is true ON EMPTY if both perimeters
+            // shrink in concert. A witness must verify what it delegates to
+            // is not empty, otherwise the doctrine stops one level too early.
             return ts.rootProjectScope().length >= 8;
         },
     },
@@ -528,9 +551,10 @@ const EXEMPTIONS = {
         motif:
             "PAS un surensemble de `build:deploy:all` — la MÊME exécution. Sans argument, " +
             'resolvePluginMode rend null, et `buildsAllVariants(null) === buildsAllVariants("all")`.',
-        // Le témoin appelle le prédicat que le build utilise LUI-MÊME (build-deploy.cjs
-        // l'exporte et en dérive BUILD_ALL_VARIANTS) : une copie de la formule ici
-        // continuerait de dire « équivalent » après que la règle a changé.
+        // The witness calls the predicate the build ITSELF uses
+        // (build-deploy.cjs exports it and derives BUILD_ALL_VARIANTS from
+        // it): a copy of the formula here would keep saying "equivalent"
+        // after the rule changed.
         temoin: () => {
             const { resolvePluginMode, buildsAllVariants } = require("../build-deploy.cjs");
             return (
@@ -542,15 +566,16 @@ const EXEMPTIONS = {
 };
 
 /**
- * Actions externes. KEYÉES sur `owner/repo`, JAMAIS sur le SHA : épingler le SHA ferait
- * rougir la gate à chaque bump dependabot, et une gate bruyante finit désarmée. Le SHA est
- * imprimé dans le rapport — visible sans être bloquant.
+ * External actions. KEYED on `owner/repo`, NEVER on the SHA: pinning the
+ * SHA would turn the gate red at every dependabot bump, and a noisy gate
+ * ends up disarmed. The SHA is printed in the report — visible without blocking.
  *
- * ⚠️ `uses:` n'est PAS une exemption automatique, et c'est le trou principal de cette
- * conception : migrer `npm run lint` vers un `uses: reviewdog/action-eslint` ferait
- * disparaître une gate RÉELLE dans une catégorie muette. Une action non listée ROUGIT.
- * Résiduel non fermable : quelqu'un qui l'ajoute ici avec un motif faux. Seule une relecture
- * l'attrape — l'écrire plutôt que prétendre l'avoir résolu.
+ * ⚠️ `uses:` is NOT an automatic exemption, and that is this design's main
+ * hole: migrating `npm run lint` to a `uses: reviewdog/action-eslint`
+ * would make a REAL gate disappear into a mute category. An unlisted
+ * action turns RED. Uncloseable residual: someone adding it here with a
+ * false motive. Only a rereading catches that — write it rather than claim
+ * it solved.
  */
 const ACTION_EXEMPTIONS = {
     "actions/checkout": {
@@ -565,38 +590,41 @@ const ACTION_EXEMPTIONS = {
         gateReelle: false,
         motif: "publication de rapports — ne contrôle rien, ne peut pas faire échouer une gate.",
     },
-    // 🗑️ `gitleaks/gitleaks-action` — entrée RETIRÉE le 11/08/2026, avec l'action elle-même.
+    // 🗑️ `gitleaks/gitleaks-action` — entry REMOVED on 11/08/2026, with the action itself.
     //
-    // Elle portait le seul `partialMotif` du fichier : l'action couvrait un chemin
-    // `pull_request` que le local ne pouvait pas rejouer. **Ce partage n'existe plus** — la
-    // gate est désormais `run: node scripts/gitleaks-local.cjs` des DEUX côtés, donc une
-    // étape ordinaire, couverte par PARITY sans exemption.
+    // It carried the file's only `partialMotif`: the action covered a
+    // `pull_request` path the local could not replay. **That split no
+    // longer exists** — the gate is now
+    // `run: node scripts/gitleaks-local.cjs` on BOTH sides, hence an
+    // ordinary step, covered by PARITY without an exemption.
     //
-    // Le motif du retrait n'est pas l'élégance : `gitleaks-action` est **payante en
-    // organisation**, et elle échouait sur 100 % des runs du dépôt public
-    // (`[geoleaf] is an organization. License key is required.`). Le binaire, lui, est libre.
+    // The removal's motive is not elegance: `gitleaks-action` is **paid
+    // for organisations**, and it failed on 100% of the public repo's runs
+    // (`[geoleaf] is an organization. License key is required.`). The
+    // binary, itself, is free.
     //
-    // 📌 C'est PARITY-04 qui a exigé cette suppression, le jour même : une exemption dont
-    // plus aucune étape n'use est périmée, et la gate a rougi dessus. C'est exactement ce
-    // qu'elle existe pour attraper — une énonciation qui survit à son objet.
+    // 📌 PARITY-04 is what required this deletion, the same day: an
+    // exemption no step uses any more is stale, and the gate turned red on
+    // it. Exactly what it exists to catch — a statement surviving its object.
 };
 
 /**
- * Étapes de `ci.yml` que `ci:local` ne couvre QUE sous `--e2e`.
+ * `ci.yml` steps `ci:local` only covers under `--e2e`.
  *
- * L'ensemble est DÉRIVÉ (appartenance à `E2E_STEPS`) ; cette table en est l'AUTORISATION.
- * Les deux écarts rougissent : dérivé ∖ déclaré (une gate a glissé sous `--e2e` sans que ce
- * soit écrit), déclaré ∖ dérivé (entrée périmée).
+ * The set is DERIVED (membership of `E2E_STEPS`); this table is its
+ * AUTHORISATION. Both gaps turn red: derived ∖ declared (a gate slid under
+ * `--e2e` without it being written), declared ∖ derived (stale entry).
  *
- * ⚠️ **Ces trois-là ne sont plus un ÉCART depuis le 01/08/2026, mais une SYMÉTRIE.** Tant que
- * `ci.yml` les lançait à chaque push alors que `ci:local` les réservait à `--e2e`, cette table
- * documentait le seul trou structurel de la promesse « local vert ⟹ push vert » : le drapeau
- * est local, GitHub ne le connaît pas, et aucune discipline ne pouvait combler ça. Les trois
- * étapes portent désormais `if: github.event_name == 'workflow_dispatch'` côté workflow — les
- * deux côtés sont donc manuels, et l'écart est fermé PAR CONSTRUCTION.
+ * ⚠️ **Those three are no longer a GAP since 01/08/2026, but a SYMMETRY.»
+ * While `ci.yml` launched them at every push and `ci:local` reserved them
+ * for `--e2e`, this table documented the only structural hole in the
+ * "local green ⟹ push green" promise: the flag is local, GitHub does not
+ * know it, and no discipline could fill that. The three steps now carry
+ * `if: github.event_name == 'workflow_dispatch'` on the workflow side —
+ * both sides are thus manual, and the gap is closed BY CONSTRUCTION.
  *
- * Le prix est nommé dans `ci.yml` à côté de l'étape : le runner était le seul endroit qui
- * éprouvait la suite sur clone frais ET sur 2-4 cœurs.
+ * The price is named in `ci.yml` beside the step: the runner was the only
+ * place exercising the suite on a fresh clone AND on 2-4 cores.
  */
 const DEFERRED_TO_E2E = {
     "node scripts/build-deploy-coverage.cjs":
@@ -610,20 +638,238 @@ const DEFERRED_TO_E2E = {
         "c'était vrai, ça ne l'est plus. Sans données, elle refuse de conclure.",
 };
 
-/** Étapes portant un `env:` propre, tolérées parce que mesurées et motivées. */
+/**
+ * The FOURTH table — leaves whose lack of a remote counterpart is DELIBERATE.
+ *
+ * 🛑 It is the only one of the four KEYED ON A `ci:local` LEAF, and that
+ * asymmetry IS its object. The other three (`EXEMPTIONS`,
+ * `ACTION_EXEMPTIONS`, `DEFERRED_TO_E2E`) are keyed on `ci.yml` because
+ * they all answer the same question — "why is this REMOTE leaf not
+ * launched locally". None could thus carry the inverse question, and that
+ * is exactly why this one was missing: a local step without a remote
+ * equivalent was possible, and **undeclarable**.
+ *
+ * ⚠️ The defect's "SILENT" half has already fallen: PARITY-13, laid on
+ * 16/08/2026, NOTES each local leaf without a counterpart. What stayed
+ * open is the DECLARATION — without it, a wanted absence and an oversight
+ * render the same note, indistinguishable. An entry here says "wanted",
+ * and removes the leaf from the PARITY-13 notes.
+ *
+ * **An entry's shape**, on `EXEMPTIONS`' pattern:
+ *
+ * ```js
+ * "node scripts/exemple.cjs": {
+ *     motif: "why this check makes no sense on a runner.",
+ *     temoin: (ctx) => ctx.localLeaves.has("…"), // what must stay true
+ * }
+ * ```
+ *
+ * 🛑 **IT IS EMPTY, AND THAT IS A MEASURED CHOICE — not unfinished work.»
+ * As of 17/08/2026 the gate notes 14 local leaves without a remote
+ * equivalent. Deciding a leaf STAYS local is a CI design judgement;
+ * deciding it must join `ci.yml` commits the remote-run quota, which is
+ * scarce on this account. Writing 14 motives without that arbitration
+ * would produce a FALSE perimeter, and drop the 14 notes to zero — the gap
+ * would stop being visible **at the very moment** it is claimed treated.
+ * The mechanism is thus laid and the triage stays open, in the register,
+ * in that order.
+ *
+ * ⚠️ Corollary to know before writing the first entry: each line added
+ * here REMOVES a note. The table is a silence budget, not a shopping list.
+ */
+const LOCAL_ONLY = {
+    // ── The gates that JUDGE the CI itself (arbitrated with Mattieu, 17/08/2026) ──────
+    //
+    // 🛑 The motive is common to all four, and it is STRUCTURAL — not a
+    // preference: these gates have `ci.yml` (or the test harness) as their
+    // SUBJECT. Running them on the runner would amount to verifying the
+    // workflow FROM the workflow: a `ci.yml` broken to the point of no
+    // longer launching its steps would take down with it the gate meant to
+    // flag it. The control must live upstream of the controlled.
+    //
+    // ⚠️ This motive does NOT extend to the other local leaves without a
+    // counterpart: those stay as PARITY-13 notes, visible and untriaged.
+    // The table is a silence budget.
+    "node scripts/verify-ci-parity.cjs": {
+        motif:
+            "juge la parité `ci.yml ⊆ ci:local` — la lancer depuis `ci.yml` la rendrait aveugle " +
+            "au cas qu'elle existe pour voir : un workflow qui ne lance plus ses étapes.",
+        // If `ci.yml` vanished from the corpus, this gate would have no
+        // subject left and its locality no motive.
+        temoin: (ctx) => ctx.ciLeaves.size > 0,
+    },
+    "node scripts/verify-ci-scripts-tracked.cjs": {
+        motif:
+            "vérifie que les scripts appelés par la CI sont SUIVIS PAR GIT. Sur le runner la " +
+            "question ne se pose pas — le clone ne contient que ce que git suit, donc la gate " +
+            "y serait vraie par construction. Elle n'a de sens que là où un fichier non suivi " +
+            "peut exister : le poste de travail.",
+        temoin: (ctx) => ctx.ciLeaves.size > 0,
+    },
+    "node scripts/probe-gate-visibility.cjs": {
+        motif:
+            "sonde méta : vérifie que les gates VOIENT ce qu'elles prétendent scanner (classe " +
+            "des chemins en dur qui cessent de matcher). Son oracle est un paquet imbriqué " +
+            "fabriqué localement ; elle éprouve l'outillage, pas le produit.",
+        temoin: (ctx) => ctx.localLeaves.has("node scripts/probe-gate-visibility.cjs"),
+    },
+    "node scripts/verify-test-load-mode.cjs": {
+        motif:
+            "juge la FORME des suites de test (aucun `require()` de source). Le runner exécute " +
+            "déjà ces suites ; leur mode de chargement est une propriété du dépôt, pas de " +
+            "l'environnement, et un second passage à distance n'ajouterait aucune information.",
+        temoin: (ctx) => ctx.localLeaves.has("node scripts/verify-test-load-mode.cjs"),
+    },
+
+    // ── 24/08/2026 arbitration ───────────────────────────────────────────────────────
+    //
+    // ⚠️ The motive first retained for this entry was THE WRONG
+    // NEIGHBOUR'S — "like `verify-ci-scripts-tracked`: on a fresh clone the
+    // gate would be true by construction". False, and re-measured before
+    // writing: `GUARD-CACHE` does NOT look at the turbo cache's state, it
+    // reads `turbo.json` and `ci-local.cjs`'s text. On a fresh clone it
+    // would render the SAME verdict, not an empty one. The right motive is
+    // `verify-test-load-mode`'s just above: the judged property is the
+    // REPO's, not the environment's.
+    "node scripts/verify-guards-uncached.cjs": {
+        motif:
+            "juge des DÉCLARATIONS et non un état : `GC-01` qu'une garde à sujet hors paquet " +
+            "appartienne à un paquet déclarant `test:guards`, `GC-02` que cette tâche porte " +
+            "`cache: false` dans `turbo.json`, `GC-03` que `ci:local` l'appelle. Les trois " +
+            "lisent des fichiers versionnés, donc le verdict est identique sur tout clone — un " +
+            "second passage à distance n'ajouterait aucune information, il en recopierait une.",
+        // If the leaf left `ci:local`, `GC-03` would have no subject left
+        // and this entry no object — PARITY-04 will say so.
+        temoin: (ctx) => ctx.localLeaves.has("node scripts/verify-guards-uncached.cjs"),
+    },
+};
+
+/**
+ * The FIFTH table — local leaves `ci.yml` covers UNDER ANOTHER INVOCATION.
+ *
+ * 🛑 It answers a third question, which neither `LOCAL_ONLY` nor the three
+ * `ci.yml` tables ask. `LOCAL_ONLY` says "this gate stays local ON
+ * PURPOSE"; this one says "this gate does run remotely, but under a
+ * command the leaf comparison does not recognise". Both remove a PARITY-13
+ * note and they are NOT interchangeable: filing a silence case in the
+ * other's budget makes the triage false both ways — a choice would be
+ * believed where there is coverage, and coverage where there is a choice.
+ *
+ * ⚠️ **PARITY-13 compares COMMANDS, not coverages**, and its own header
+ * says so: its count is an UPPER BOUND. This table is what brings the
+ * bound down towards the measure, case by case and without ever asserting
+ * it in prose.
+ *
+ * 📌 **Measured when laying it**: of 12 notes, **ONE SINGLE** belonged to
+ * this class. The gap between the two counts was thus not made of false
+ * positives — it was made of real absences, and that is what the triage
+ * established. Do not start from the idea that the bound is well above:
+ * here it was by one unit.
+ *
+ * **An entry's shape**:
+ *
+ * ```js
+ * "node scripts/exemple.cjs": {
+ *     couvertePar: "node scripts/exemple.cjs --with-a-flag", // leaf of `ci.yml`
+ *     motif: "how the remote leaf does AT LEAST what the local one does.",
+ * }
+ * ```
+ *
+ * 🛑 **The witness is STRUCTURAL and not written prose, and that is the
+ * property that counts**: the leaf named by `couvertePar` must exist in
+ * `ci.yml`. If it disappears from it, the entry dies and the PARITY-13
+ * note comes back by itself. None of the four other tables can offer that
+ * — their witnesses are functions that must be written right; this one is
+ * the coverage itself.
+ */
+const COVERED_REMOTELY = {
+    // ── 24/08/2026 arbitration ───────────────────────────────────────────────────────
+    //
+    // 🛑 THE WITNESS THE QUESTION ANNOUNCED WAS FALSE, and it was in the
+    // direction that counts — it named `npx vitest run` (`ci.yml:524`) as
+    // a "strict superset". Measured before writing: that run goes through
+    // the root's `projects`, whose perimeter is `rootProjectScope()` —
+    // **13 packages**, which include NEITHER `@geoleaf-plugins/editor` NOR
+    // `@geoleaf-plugins/offline-ui` (`EXCLUDED_FROM_ROOT_RUN`). Yet those
+    // are two of the three packages declaring `test:guards`, and they
+    // carry **3 guard files**: `conflict-strategies`, `editor-events`,
+    // `templated-layer-selector`. The announced witness would thus have
+    // declared covered a leaf a third of whose corpus was not.
+    //
+    // The REAL carrier is `run-tests.cjs --coverage`
+    // (= `npm run test:coverage:all`, `ci.yml`), whose perimeter is
+    // `unitScope()` — **18 packages**, the three included — and whose
+    // per-package task is `vitest run --coverage`, a superset of
+    // `vitest run guard.test`. The same leaf as the one covering
+    // `run-tests.cjs` below; the two entries thus stand or fall together,
+    // which is correct.
+    "turbo run test:guards": {
+        couvertePar: "node scripts/run-tests.cjs --coverage",
+        motif:
+            "`test:guards` lance `vitest run guard.test` dans les 3 paquets qui la déclarent " +
+            "(core, editor, offline-ui). La feuille distante lance `vitest run --coverage` " +
+            "dans les 18 paquets d'`unitScope()` — elle exécute donc les mêmes suites de garde " +
+            "et davantage. ⚠️ Ce n'est PAS `npx vitest run` qui la couvre : son périmètre " +
+            "racine exclut `editor` et `offline-ui`, soit 3 des fichiers de garde.",
+    },
+    "node scripts/run-tests.cjs": {
+        couvertePar: "node scripts/run-tests.cjs --coverage",
+        motif:
+            "même script, même corpus de paquets, un drapeau de plus : la feuille distante " +
+            "exécute les suites ET les instrumente. Elle fait donc strictement plus que la " +
+            "locale, jamais moins. Les deux ne diffèrent que par le coût, qui est précisément " +
+            "la raison pour laquelle le local ne l'instrumente pas à chaque passe.",
+    },
+};
+
+/**
+ * 🛑 **WHAT STAYS AS A PARITY-13 NOTE, AND WHY IT IS NOT AN OVERSIGHT** — 24/08/2026.
+ *
+ * A single local leaf has no remote counterpart:
+ * `node scripts/check-build-determinism.cjs --deploy --reuse-built`. It is
+ * **deliberately** neither carried in `ci.yml` nor declared in the two
+ * tables above, and this sentence's two halves are distinct decisions.
+ *
+ * **Why it is not carried**: its cost is the only real one — **56.4 s**
+ * recorded on one run, against 0.0 to 4.2 s for the three other leaves
+ * triaged the same day. Yet the non-determinism it guards has a **known
+ * cause independent of the environment** (a `Map` serialisation order in a
+ * PostCSS plugin). Paying a remote minute to re-verify, on another
+ * processor, a property the workstation already establishes — and whose
+ * cause does not depend on the workstation — buys little.
+ *
+ * **Why it is not DECLARED `LOCAL_ONLY` either**: writing an entry there
+ * would remove its note, and `LOCAL_ONLY` is a silence budget. A cost
+ * arbitration can reopen — a run's price changes, the root cause can be
+ * fixed — while a structurally local gate does not reopen. Leaving it as a
+ * note keeps it **visible and re-litigable**, which is exactly the
+ * difference between "decided" and "silenced". The note is thus not a
+ * debt: it is the chosen form of rest. **Arbitrated and dated 24/08/2026**
+ * — not a defect by default: the two halves were posed as two distinct
+ * questions, and both received an answer. Reopening it requires a NEW fact
+ * (a run's price changes, or the root cause is fixed), not a rereading.
+ *
+ * ⚠️ Corollary for whoever adds a gate: the count only stays low through a
+ * **laying rule** — wire both sides when writing the gate —, never through
+ * a periodic triage. Measured: between two triages five days apart, the
+ * count climbed from 1 to 4 because three gates had been laid locally only.
+ */
+
+/** Steps carrying their own `env:`, tolerated because measured and motivated. */
 const ENV_ALLOWLIST = new Set(["Secret scan (gitleaks)"]);
 
 // ── Classement ───────────────────────────────────────────────────────────────
 
 /**
- * Lit le corpus, classe chaque feuille, et rend les faits ET les problèmes.
+ * Reads the corpus, classifies each leaf, and returns the facts AND the problems.
  *
- * ⚠️ L'appelant doit traiter les planchers et l'accord parseur/grep AVANT de lire le
- * classement : sur un corpus effondré, « 0 feuille non couverte » est vrai par accident.
- * L'ordre des codes ci-dessous suit cette exigence.
+ * ⚠️ The caller must handle the floors and the parser/grep agreement
+ * BEFORE reading the classification: on a collapsed corpus, "0 uncovered
+ * leaves" is true by accident. The order of the codes below follows that
+ * requirement.
  *
- * @returns {{corpus: object, entries: object[], problems: object[], notes: object[], remoteOnly: object[]}} Le rapport — `notes` porte les constats NON bloquants (PARITY-13).
- * @throws {Error} Si le répertoire de workflows est illisible, ou un fichier non parsable.
+ * @returns {{corpus: object, entries: object[], problems: object[], notes: object[], remoteOnly: object[]}} The report — `notes` carries the NON-blocking findings (PARITY-13).
+ * @throws {Error} If the workflow directory is unreadable, or a file unparsable.
  */
 function classify() {
     const dir = workflowDir();
@@ -643,31 +889,32 @@ function classify() {
         rawUsesKeys: 0,
     };
     const problems = [];
-    /** B-83 — constats NOTÉS et non bloquants. Voir PARITY-13 pour le motif. */
+    /** NOTED, non-blocking findings. See PARITY-13 for the motive. */
     const notes = [];
     const ciSteps = [];
 
     for (const f of files) {
         const txt = fs.readFileSync(path.join(dir, f), "utf8");
 
-        // ── Validation ou livraison ? (passage public S11.1, 12/08/2026) ─────────
+        // ── Validation or delivery? (12/08/2026) ─────────────────────────────────
         //
-        // La propriété gardée ici est « `ci:local` ⊇ CI ». Elle vaut pour ce qui VÉRIFIE :
-        // toute gate qui tourne à distance doit pouvoir tourner en local. Elle n'a aucun
-        // sens pour ce qui LIVRE — `npm publish` n'a rien à faire dans `ci:local`, et
-        // l'exempter commande par commande écrirait six fois « publier n'est pas une
-        // gate » au lieu de le dire une fois.
+        // The property guarded here is "`ci:local` ⊇ CI". It holds for what
+        // VERIFIES: any gate running remotely must be able to run locally.
+        // It makes no sense for what DELIVERS — `npm publish` has no
+        // business in `ci:local`, and exempting it command by command would
+        // write six times "publishing is not a gate" instead of saying it once.
         //
-        // Le classement est DÉRIVÉ du déclencheur, jamais d'une liste de noms : un
-        // workflow déclenché par un tag ou une release livre ; un workflow déclenché par
-        // un push de branche ou une PR valide. Une liste de fichiers exemptés serait le
-        // « Keep this list in sync » que ce module existe pour remplacer.
+        // The classification is DERIVED from the trigger, never a name
+        // list: a workflow triggered by a tag or a release delivers; one
+        // triggered by a branch push or a PR validates. An exempted-file
+        // list would be the "Keep this list in sync" this module exists to
+        // replace.
         //
-        // ⚠️ Le critère est VOLONTAIREMENT strict — `push:` avec `tags:` ET SANS
-        // `branches:`. Un workflow qui se déclenche aussi sur branche reste une
-        // validation : la moindre tolérance ici rendrait `ci.yml` exemptable en lui
-        // ajoutant un `tags:`, c'est-à-dire désarmerait la gate par la porte qu'elle
-        // vient d'ouvrir.
+        // ⚠️ The criterion is DELIBERATELY strict — `push:` with `tags:`
+        // AND WITHOUT `branches:`. A workflow also triggering on a branch
+        // stays a validation: the slightest tolerance here would make
+        // `ci.yml` exemptable by adding a `tags:` to it, i.e. would disarm
+        // the gate through the door it just opened.
         if (isDeliveryWorkflow(txt)) {
             corpus.deliveryWorkflows.push(f);
             continue;
@@ -689,20 +936,22 @@ function classify() {
         }
     }
 
-    // 🛑 PAS DE CODE « aucun workflow de validation » ICI — et son absence est un RÉSULTAT,
-    // pas un oubli. Il en avait été écrit un (PARITY-12) le 12/08/2026, puis retiré le jour
-    // même : la mutation qui devait le faire mordre — `ci.yml` reclassé en livraison — fait
-    // rougir les **planchers PARITY-01** d'abord (`jobs = 0`, `steps = 0`, `runKeys = 0`,
-    // `ciLeaves = 0`), qui refusent de conclure sur un corpus vide. Vider la comparaison par
-    // le classement, c'est vider le corpus ; le cas est donc déjà couvert, et un code qui ne
-    // peut jamais mordre aurait donné l'illusion d'une protection de plus.
+    // 🛑 NO "no validation workflow" CODE HERE — and its absence is a
+    // RESULT, not an oversight. One had been written (PARITY-12) on
+    // 12/08/2026, then removed the same day: the mutation meant to make it
+    // bite — `ci.yml` reclassified as delivery — turns the **PARITY-01
+    // floors** red first (`jobs = 0`, `steps = 0`, `runKeys = 0`,
+    // `ciLeaves = 0`), which refuse to conclude on an empty corpus.
+    // Emptying the comparison through the classification empties the
+    // corpus; the case is thus already covered, and a code that can never
+    // bite would have given the illusion of one more protection.
     //
-    // Ce qui manquait vraiment n'était pas une assertion mais un DIAGNOSTIC : les planchers
-    // disent « jobs = 0 » sans orienter vers le classement. C'est la ligne « hors comparaison »
-    // de `verify-ci-parity.cjs` qui le porte, imprimée AVANT le verdict pour rester lisible
-    // quand les planchers coupent le rapport.
+    // What was really missing was not an assertion but a DIAGNOSIS: the
+    // floors say "jobs = 0" without pointing at the classification.
+    // `verify-ci-parity.cjs`'s "hors comparaison" line carries it, printed
+    // BEFORE the verdict to stay readable when the floors cut the report.
 
-    // PARITY-07 — l'accord des deux instruments, avant tout verdict.
+    // PARITY-07 — the two instruments' agreement, before any verdict.
     if (corpus.runKeys !== corpus.rawRunKeys || corpus.usesKeys !== corpus.rawUsesKeys) {
         problems.push({
             code: "PARITY-07",
@@ -712,9 +961,9 @@ function classify() {
         });
     }
 
-    // Feuilles CI, dans l'ordre, avec les étapes qui les portent.
+    // CI leaves, in order, with the steps carrying them.
     const ciLeaves = new Map();
-    /** @type {Map<string, object[]>} feuille → étapes structurées (pour lire leur `if:`). */
+    /** @type {Map<string, object[]>} leaf → structured steps (to read their `if:`). */
     const ciLeafSteps = new Map();
     let firstLeaf = null;
     for (const s of ciSteps) {
@@ -723,7 +972,7 @@ function classify() {
             if (firstLeaf === null) firstLeaf = leaf;
             if (!ciLeaves.has(leaf)) ciLeaves.set(leaf, []);
             ciLeaves.get(leaf).push(s.name || "(anonyme)");
-            // L'ÉTAPE elle-même, et pas seulement son nom : PARITY-11 doit lire son `if:`.
+            // The STEP itself, and not only its name: PARITY-11 must read its `if:`.
             if (!ciLeafSteps.has(leaf)) ciLeafSteps.set(leaf, []);
             ciLeafSteps.get(leaf).push(s);
         }
@@ -738,7 +987,7 @@ function classify() {
 
     const ctx = { ciLeaves: new Set(ciLeaves.keys()), localLeaves, e2eLeaves, firstLeaf };
 
-    // PARITY-01 — planchers témoins. Sous le plancher, on REFUSE DE CONCLURE.
+    // PARITY-01 — witness floors. Under the floor, we REFUSE TO CONCLUDE.
     for (const [key, min] of Object.entries(FLOOR)) {
         const got = corpus[key];
         if (typeof got === "number" && got < min) {
@@ -824,38 +1073,135 @@ function classify() {
         entries.push({ leaf, category: "ORPHAN", steps, gateReelle: true });
     }
 
-    // ── PARITY-13 — LE SENS INVERSE, jusqu'ici jamais posé (B-83) ──────────────────────
+    // ── PARITY-13 — THE INVERSE DIRECTION, never laid until now ─────────────────
     //
-    // 🛑 CE QUI MANQUAIT. Tout ce qui précède parcourt les feuilles de `ci.yml` et vérifie
-    // que `ci:local` les couvre — donc `ci.yml ⊆ ci:local`. **Rien ne regardait l'autre
-    // sens** : une gate ajoutée à `ci:local` et oubliée dans `ci.yml` passait sans un mot, et
-    // le dépôt croyait à une équivalence dont il n'avait démontré qu'une moitié.
+    // 🛑 WHAT WAS MISSING. Everything above walks `ci.yml`'s leaves and
+    // verifies `ci:local` covers them — hence `ci.yml ⊆ ci:local`.
+    // **Nothing looked the other way**: a gate added to `ci:local` and
+    // forgotten in `ci.yml` passed without a word, and the repo believed
+    // in an equivalence of which it had demonstrated only one half.
     //
-    // ⚠️ Le défaut est ORIENTÉ dans le sens dangereux : le local est le plus facile à
-    // enrichir — c'est là qu'on ajoute une gate en la développant — et le distant est le seul
-    // qui juge un clone frais. Une gate qui ne vit qu'en local ne verra jamais la famille de
-    // défauts que seul le runner rend (clone frais, 2-4 cœurs).
+    // ⚠️ The defect is ORIENTED in the dangerous direction: the local is
+    // the easiest to enrich — that is where a gate is added while
+    // developing it — and the remote is the only one judging a fresh
+    // clone. A gate living only locally will never see the defect family
+    // only the runner renders (fresh clone, 2-4 cores).
     //
-    // 📌 Ce n'est PAS la même question que PARITY-11, qui vérifie que les étapes E2E restent
-    // hors du chemin `push`. Celle-ci porte sur l'EXISTENCE d'une contrepartie, celle-là sur
-    // sa CONDITION de déclenchement.
+    // 📌 NOT the same question as PARITY-11, which verifies the E2E steps
+    // stay out of the `push` path. This one bears on a counterpart's
+    // EXISTENCE, that one on its trigger CONDITION.
     for (const leaf of localLeaves) {
         if (ctx.ciLeaves.has(leaf)) continue;
+        // Declared LOCAL ON PURPOSE: the absence is a written choice, not
+        // an oversight. Its witness is exercised below — a declaration
+        // whose cause fell must turn red, not keep silencing the note.
+        if (LOCAL_ONLY[leaf]) continue;
+        // Declared REMOTELY COVERED under another invocation: not a
+        // locality choice, an instrument limit — it compares commands. The
+        // declaration's check is below — and it bears on the coverage itself.
+        if (COVERED_REMOTELY[leaf]) continue;
         notes.push({
             code: "PARITY-13",
             message: `« ${leaf} » — dans \`ci:local\`, sans feuille équivalente dans \`ci.yml\`.`,
         });
     }
 
-    // PARITY-11 — les étapes différées à `--e2e` doivent rester HORS du chemin `push`.
+    // LOCAL_ONLY — dead key (PARITY-04) and failing witness (PARITY-05),
+    // on the three other tables' pattern. ⚠️ The key compares against
+    // `ci:local`'s leaves, NEVER `ci.yml`'s: the only one of the four
+    // tables whose referential is the local.
+    for (const [leaf, decl] of Object.entries(LOCAL_ONLY)) {
+        if (!localLeaves.has(leaf)) {
+            problems.push({
+                code: "PARITY-04",
+                message:
+                    `LOCAL_ONLY[« ${leaf} »] — PÉRIMÉE : la clé ne désigne plus aucune feuille ` +
+                    `de \`ci:local\`. Elle taisait une note PARITY-13 pour une étape qui ` +
+                    `n'existe plus.`,
+            });
+            continue;
+        }
+        // A declared local-on-purpose leaf THAT GAINED a remote counterpart
+        // no longer needs declaring: keeping it would make the table carry
+        // a dead exception.
+        if (ctx.ciLeaves.has(leaf)) {
+            problems.push({
+                code: "PARITY-04",
+                message:
+                    `LOCAL_ONLY[« ${leaf} »] — SANS OBJET : la feuille a désormais un ` +
+                    `équivalent dans \`ci.yml\`. La déclaration « locale à dessein » est ` +
+                    `devenue fausse.`,
+            });
+            continue;
+        }
+        let alive = false;
+        let why = "";
+        try {
+            alive = decl.temoin(ctx) === true;
+        } catch (err) {
+            why = ` (${err.message})`;
+        }
+        if (!alive) {
+            problems.push({
+                code: "PARITY-05",
+                message:
+                    `LOCAL_ONLY[« ${leaf} »] — TÉMOIN EN ÉCHEC${why}. La cause qui justifiait ` +
+                    `de garder cette gate hors de \`ci.yml\` est tombée : « ${decl.motif} » ` +
+                    `n'est plus vrai, et l'absence de contrepartie distante redevient un ` +
+                    `écart non décidé.`,
+            });
+        }
+    }
+
+    // COVERED_REMOTELY — dead key, vanished coverage, and declaration
+    // become useless. ⚠️ Like LOCAL_ONLY, the key compares against
+    // `ci:local`'s leaves; but `couvertePar` compares against `ci.yml`'s.
+    // The only table reading BOTH sides, and that is what lets it have a
+    // structural witness instead of a written one.
+    for (const [leaf, decl] of Object.entries(COVERED_REMOTELY)) {
+        if (!localLeaves.has(leaf)) {
+            problems.push({
+                code: "PARITY-04",
+                message:
+                    `COVERED_REMOTELY[« ${leaf} »] — PÉRIMÉE : la clé ne désigne plus aucune ` +
+                    `feuille de \`ci:local\`. Elle taisait une note PARITY-13 pour une étape ` +
+                    `qui n'existe plus.`,
+            });
+            continue;
+        }
+        if (ctx.ciLeaves.has(leaf)) {
+            problems.push({
+                code: "PARITY-04",
+                message:
+                    `COVERED_REMOTELY[« ${leaf} »] — SANS OBJET : la feuille a désormais un ` +
+                    `équivalent EXACT dans \`ci.yml\`. La déclaration ne tait plus rien et ` +
+                    `masque désormais la vraie raison de la couverture.`,
+            });
+            continue;
+        }
+        if (!ctx.ciLeaves.has(decl.couvertePar)) {
+            problems.push({
+                code: "PARITY-05",
+                message:
+                    `COVERED_REMOTELY[« ${leaf} »] — COUVERTURE DISPARUE : la feuille ` +
+                    `« ${decl.couvertePar} » n'est plus dans \`ci.yml\`. Le motif « ` +
+                    `${decl.motif} » reposait sur elle ; sans elle la gate n'est plus jouée ` +
+                    `à distance du tout, et l'écart redevient un écart.`,
+            });
+        }
+    }
+
+    // PARITY-11 — the steps deferred to `--e2e` must stay OUT of the `push` path.
     //
-    // ⚠️ C'est le témoin de la promesse « ci:local vert ⟹ push vert », et sans lui cette
-    // promesse serait une phrase. Tant que `ci.yml` lançait l'E2E à chaque push pendant que
-    // `ci:local` la réservait à `--e2e`, l'écart était STRUCTUREL : le drapeau est local,
-    // GitHub ne le connaît pas. Le 01/08/2026 les trois étapes sont passées sous
-    // `workflow_dispatch` — mais retirer ce `if:` rouvrirait le trou en SILENCE, et la table
-    // DEFERRED_TO_E2E continuerait d'annoncer « 3 sous --e2e » comme si de rien n'était.
-    // Une dispense dont la condition n'est pas vérifiée est une dispense qui pourrit.
+    // ⚠️ The witness of the "ci:local green ⟹ push green" promise, and
+    // without it that promise would be a sentence. While `ci.yml` launched
+    // the E2E at every push and `ci:local` reserved it for `--e2e`, the
+    // gap was STRUCTURAL: the flag is local, GitHub does not know it. On
+    // 01/08/2026 the three steps moved under `workflow_dispatch` — but
+    // removing that `if:` would reopen the hole SILENTLY, and the
+    // DEFERRED_TO_E2E table would keep announcing "3 under --e2e" as if
+    // nothing happened. An excuse whose condition is not verified is an
+    // excuse that rots.
     const DISPATCH_RE = /github\.event_name\s*==\s*['"]workflow_dispatch['"]/;
     for (const leaf of Object.keys(DEFERRED_TO_E2E)) {
         for (const s of ciLeafSteps.get(leaf) || []) {
@@ -875,8 +1221,10 @@ function classify() {
         }
     }
 
-    // PARITY-04 — clés mortes, sur les trois tables. Une dispense qui ne dispense plus de
-    // rien est toujours une erreur : personne ne le saurait, et elle survivrait à sa cause.
+    // PARITY-04 — dead keys of the `ci.yml`-keyed tables. An excuse no
+    // longer excusing anything is always an error: nobody would know, and
+    // it would survive its cause. (`LOCAL_ONLY` undergoes the same check
+    // above, against the LOCAL leaves.)
     const seenLeaves = new Set(ciLeaves.keys());
     for (const key of Object.keys(EXEMPTIONS)) {
         if (!seenLeaves.has(key)) {
@@ -895,7 +1243,7 @@ function classify() {
         }
     }
 
-    // Actions externes — PARITY-06 pour toute action non listée, et clé morte pour l'inverse.
+    // External actions — PARITY-06 for any unlisted action, and dead key for the inverse.
     const actions = [];
     const seenActions = new Set();
     for (const s of ciSteps) {
@@ -914,11 +1262,12 @@ function classify() {
         }
         actions.push({ ref, sha: sha || "", step: s.name || "(anonyme)", ...(known || {}) });
 
-        // PARITY-10 — une promesse d'équivalent local doit être TENUE. L'énonciation dit
-        // « → npm run gitleaks:local » ; si cette gate quittait STEPS, la phrase continuerait
-        // de s'afficher en désignant une couverture qui n'existe plus. Une affirmation
-        // affichée sur parole est exactement ce que les témoins d'EXEMPTIONS interdisent
-        // ailleurs dans ce fichier, et il n'y a pas de raison qu'elle soit tolérée ici.
+        // PARITY-10 — a local-equivalent promise must be KEPT. The
+        // statement says "→ npm run gitleaks:local"; if that gate left
+        // STEPS, the sentence would keep displaying while designating a
+        // coverage that no longer exists. An assertion displayed on its
+        // word is exactly what the EXEMPTIONS witnesses forbid elsewhere in
+        // this file, and there is no reason it be tolerated here.
         if (known && known.localLeaf && !localLeaves.has(known.localLeaf)) {
             problems.push({
                 code: "PARITY-10",
@@ -939,9 +1288,9 @@ function classify() {
         }
     }
 
-    // PARITY-09 — un `env:` d'étape rend les feuilles identiques et les exécutions
-    // différentes. La gate ne peut pas comparer les environnements ; elle peut exiger qu'un
-    // nouvel `env:` soit une décision, pas un glissement.
+    // PARITY-09 — a step `env:` makes the leaves identical and the
+    // executions different. The gate cannot compare the environments; it
+    // can require that a new `env:` be a decision, not a drift.
     for (const s of ciSteps) {
         if (s.hasEnv && !ENV_ALLOWLIST.has(s.name)) {
             problems.push({
@@ -954,11 +1303,12 @@ function classify() {
         }
     }
 
-    // Ce que la CI exécutera et qui n'a pas tourné ici. Les ACTIONS en font partie — gitleaks
-    // est la gate distante la plus importante du lot, et la filtrer avec les `run:` l'aurait
-    // laissée hors de l'énonciation, c'est-à-dire hors de vue précisément là où elle compte.
-    // Dédoublonné par LIBELLÉ : une étape qui porte deux feuilles distantes (l'étape E2E en
-    // porte deux) est une seule chose à dire, pas deux.
+    // What the CI will execute that did not run here. The ACTIONS are part
+    // of it — gitleaks is the lot's most important remote gate, and
+    // filtering it out with the `run:`s would have left it out of the
+    // statement, i.e. out of sight precisely where it counts. Deduplicated
+    // by LABEL: a step carrying two remote leaves (the E2E step carries
+    // two) is one thing to say, not two.
     const remoteOnly = [];
     const seenLabel = new Set();
     const push = (label, kind, motif, localEquivalent) => {
@@ -983,18 +1333,18 @@ function classify() {
 }
 
 /**
- * Les lignes de l'énonciation de fin de run de `ci:local`.
+ * The lines of `ci:local`'s end-of-run statement.
  *
- * NARRATION, jamais VERDICT — le verdict appartient à la gate `verify-ci-parity.cjs`. Deux
- * chemins qui peuvent faire échouer la même propriété, c'est un chemin de trop, et c'est
- * celui qu'on oublie de prouver.
+ * NARRATION, never VERDICT — the verdict belongs to the
+ * `verify-ci-parity.cjs` gate. Two paths able to fail the same property is
+ * one path too many, and it is the one people forget to prove.
  *
- * Dérivée de `ci.yml` + des tables, et NON de la liste des gates qui viennent de tourner :
- * elle reste donc vraie sous `--bail`, où la gate de parité n'a peut-être jamais tourné —
- * précisément le run où cette ligne compte le plus.
+ * Derived from `ci.yml` + the tables, and NOT from the list of gates that
+ * just ran: it thus stays true under `--bail`, where the parity gate may
+ * never have run — precisely the run where this line counts most.
  *
- * @param {{withE2E?: boolean}} [options] `withE2E` retire les gates que `--e2e` a couvertes.
- * @returns {string[]} Lignes prêtes à imprimer (vide s'il n'y a rien à dire).
+ * @param {{withE2E?: boolean}} [options] `withE2E` removes the gates `--e2e` covered.
+ * @returns {string[]} Lines ready to print (empty if there is nothing to say).
  */
 function formatRemoteOnly(options = {}) {
     const withE2E = options.withE2E === true;
@@ -1004,15 +1354,16 @@ function formatRemoteOnly(options = {}) {
 
     const C = { y: "\x1b[33m", d: "\x1b[2m", x: "\x1b[0m" };
     const width = Math.max(...shown.map((e) => e.label.length));
-    // « pas ENTIÈREMENT couverte » et non « n'a pas tourné » : gitleaks a bien un équivalent
-    // local pour son chemin `push`. Sur-avertir use un avertissement aussi sûrement que le
-    // taire, et celui-ci doit rester lu.
+    // "not ENTIRELY covered" and not "did not run": gitleaks does have a
+    // local equivalent for its `push` path. Over-warning wears out a
+    // warning as surely as silencing it, and this one must stay read.
     const out = [
         `  ${C.y}⚠ ${shown.length} gate(s) de la CI que ce run ne couvre pas entièrement :${C.x}`,
     ];
     for (const e of shown) {
-        // Un équivalent local est nommé sur place : dire « non couverte » sans dire par quoi
-        // la couvrir laisse le lecteur devant un constat, pas devant un geste.
+        // A local equivalent is named in place: saying "not covered"
+        // without saying what covers it leaves the reader before a finding,
+        // not a gesture.
         const hint = e.localEquivalent ? ` ${C.d}→ ${e.localEquivalent}${C.x}` : "";
         out.push(`      ${C.d}•${C.x} ${e.label.padEnd(width)}  ${C.d}${e.kind}${C.x}${hint}`);
     }
@@ -1040,6 +1391,7 @@ module.exports = {
     EXEMPTIONS,
     ACTION_EXEMPTIONS,
     DEFERRED_TO_E2E,
+    LOCAL_ONLY,
     classify,
     formatRemoteOnly,
 };

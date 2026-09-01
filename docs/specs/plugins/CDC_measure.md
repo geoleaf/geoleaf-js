@@ -94,7 +94,7 @@ programmatique reste vivante.
 dans ce cas : `table`, `print` et `addpoi` déclarent les deux surfaces. Conséquence observable :
 sur un poste de bureau, l'outil de mesure n'est atteignable **que** par la barre mobile si elle est
 rendue, ou par l'API. Rien dans le code ne dit si c'est une décision ou un oubli — c'est un écart de
-surface, relevé ici pour être tranché une fois. Versé en **B-71** du
+surface, relevé ici pour être tranché une fois. Versé au registre du
 registre.
 
 ⚠️ **L'action est la seule des quatre à transporter l'élément déclencheur.** Les trois autres
@@ -221,7 +221,7 @@ mais c'est une asymétrie que la surface publique ne signale pas.
 | **Rejet des sauts GPS**                                    | Une perte de fixation produit un saut de plusieurs centaines de mètres. Sans plafond de vitesse, ce saut entre dans la mesure et la fausse **définitivement**                                                                                                                                                                                                                                                                                                                    | Accepter tous les points                |
 | **Fermeture automatique de la boucle GPS**                 | Mesurer une parcelle en la longeant est le cas d'usage terrain ; exiger un clic de fermeture exact au retour serait impraticable                                                                                                                                                                                                                                                                                                                                                 | Une fermeture manuelle                  |
 | **Le pont vers `print` est une LECTURE, par le namespace** | `measure` ne connaît pas `print`. C'est `print` qui vient chercher, et seulement s'il est là. Aucune des deux directions n'est un import                                                                                                                                                                                                                                                                                                                                         | Une dépendance déclarée                 |
-| **Les types de mesure sont extensibles PAR CODE**          | Les mesures métier (dénivelé, emprise réglementaire) ne peuvent pas être livrées ; un registre les rend possibles sans modifier le paquet. ⚠️ **Cette ligne a annoncé l'extensibilité du 10/06 au 14/08/2026 alors que `registerMeasureType()` écrivait dans un registre qu'AUCUN code ne lisait** (B-253) — le dispatch était une chaîne de `else if` sur les six types codés en dur. L'intégrateur appelait une fonction sans effet, sans le moindre avertissement             | Un jeu figé                             |
+| **Les types de mesure sont extensibles PAR CODE**          | Les mesures métier (dénivelé, emprise réglementaire) ne peuvent pas être livrées ; un registre les rend possibles sans modifier le paquet. ⚠️ **Cette ligne a annoncé l'extensibilité du 10/06 au 14/08/2026 alors que `registerMeasureType()` écrivait dans un registre qu'AUCUN code ne lisait** — le dispatch était une chaîne de `else if` sur les six types codés en dur. L'intégrateur appelait une fonction sans effet, sans le moindre avertissement                     | Un jeu figé                             |
 | **L'enveloppe d'un outil tiers est posée par le PLUGIN**   | Trois invariants font qu'un outil se comporte en outil GeoLeaf — `__geoleafExclusiveMode`, le curseur, et sa garde — et **aucun des trois n'est atteignable depuis `onActivate(map: unknown)`** : `setCursor` et `startCursorGuard` ne sont pas exportés sur le namespace. Un tiers qui les ignorerait se ferait voler son curseur par les gestionnaires de survol du cœur. Le reste — écouteurs, état de dessin, production d'entités — lui appartient (`tools/tool-custom.ts`) | Laisser le tiers tout faire             |
 | **Un outil enregistré n'a PAS de bouton au menu**          | Les boutons viennent d'une table statique portant icône et clés i18n, que `MeasureTypeDef` ne fournit pas ; `enabledTools` **filtre** cette table et ne peut rien y ajouter. Plutôt qu'élargir `MeasureTypeDef` à de l'iconographie — une fonctionnalité, pas une correction —, l'outil tiers s'arme depuis l'interface de l'intégrateur                                                                                                                                         | Élargir `MeasureTypeDef` à l'icône      |
 | **Aucun cycle de vie**                                     | Rien à faire tant que l'utilisateur ne demande rien                                                                                                                                                                                                                                                                                                                                                                                                                              | Un abonnement au démarrage              |
@@ -250,19 +250,19 @@ paquets.
 
 Le CDC `CDC_plugin-measure.md` (v0.9.0, 23/07/2026) a été **consommé** en écrivant cette fiche, puis
 **supprimé** du dossier de tri — ligne au §Journal des décisions de
-`roadmap_documentation-v3.md`.
+la refonte documentaire V3.
 
 | Énoncé du CDC                             | Ce que dit le code                                                                                                      |
 | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | §1.7 — configuration sous `measureConfig` | **Le bloc est `modules.measure`.** La clé racine n'est plus lue, et son abandon est **silencieux**                      |
-| §1.9 — cadrage « Hors périmètre **V1** »  | Le plugin est publié en MIT sur le registre public ; le versionnage annoncé est caduc (**B-07**)                        |
+| §1.9 — cadrage « Hors périmètre **V1** »  | Le plugin est publié en MIT sur le registre public ; le versionnage annoncé est caduc                                   |
 | §1.2, étapes 1 à 10 — le parcours         | ✅ **Vérifié exact** : ouverture, choix d'outil, les cinq mesures, l'annotation, l'export, et le passage à l'impression |
 | §1.1 — « éphémère, pas un éditeur »       | ✅ **Vérifié exact**, et c'est la ligne la plus utile du document — elle nomme la frontière avec `editor`               |
 | §1.7 — les clés et leurs défauts          | ✅ **Vérifiés exacts**, à la racine près                                                                                |
 
 ⚠️ **Ce que le CDC ne dit pas, et que la fiche ajoute** : le créneau est **mobile seul** (aucun onglet
 de bureau, seul cas du lot), `openMeasureMenu` n'est **pas** sur le namespace, et le gate ne commande
-que la surface d'interface. Le premier point est versé en **B-71**.
+que la surface d'interface. Le premier point est versé au registre.
 
 Ce qui a été **retenu** du CDC et ne se lit pas dans le code : le positionnement « outil éphémère,
 pas éditeur », les quatre scénarios d'usage — dont la mesure GPS de terrain, qui explique les deux

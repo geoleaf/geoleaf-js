@@ -48,7 +48,7 @@ Contient les **packages npm** du monorepo.
 
 ---
 
-## Flux vers les dépôts publics — ⚠️ supprimé (ARCHI S9.0, 20/07/2026)
+## Flux vers les dépôts publics — ⚠️ supprimé (20/07/2026)
 
 Les 3 workflows de miroir (`sync-core-public.yml`, `sync-demo-public.yml`, `sync-plugins-mit-public.yml`) **n'existent plus**. Ils alimentaient `GeoLeaf-Core`, `GeoLeaf-Demo` et `GeoLeaf-Plugins-MIT` ; ces 3 dépôts subsistent, **figés** sur leur dernier état synchronisé.
 
@@ -56,9 +56,9 @@ Motif de la suppression : leur justification (« seul canal par lequel le code M
 
 **La distribution passe exclusivement par npm** : `@geoleaf/core` et `@geoleaf-plugins/*`, tous MIT/public.
 
-Le sort des 3 dépôts satellites — suppression ou passage public du monorepo lui-même — se tranche avec **ARCHI S3.6**. Le dossier de préparation de **B-02** est `rapport_passage-public.md` : il vit à l'atelier, **il n'est pas publié**, et le lien qui y menait a été retiré plutôt que repointé — un renvoi qui 404 chez le lecteur public est pire qu'une mention sans lien.
+Le sort des 3 dépôts satellites — suppression ou passage public du monorepo lui-même — s'est tranché au passage public. Le dossier de préparation est `rapport_passage-public.md` : il vit à l'atelier, **il n'est pas publié**, et le lien qui y menait a été retiré plutôt que repointé — un renvoi qui 404 chez le lecteur public est pire qu'une mention sans lien.
 
-> ⚠️ **Ce lien pointait `travail/roadmaps/roadmap_documentation-v3.md`** — un texte et une cible
+> ⚠️ **Ce lien pointait un document d'atelier** — un texte et une cible
 > qui désignaient deux documents différents. `check-dead-links` ne voit pas cette classe : la
 > cible existait, donc le lien était vert **en menant ailleurs que là où il disait**. Repointé le
 > 01/08/2026, à l'archivage de la roadmap qui l'aurait rendu franchement mort.
@@ -71,7 +71,7 @@ Le sort des 3 dépôts satellites — suppression ou passage public du monorepo 
 - **`packages/core/demo/`** : fichiers support démo uniquement — `demo-header.html` (barre header avec sélecteurs) et `demo.extensions.js` (log verbeux, sélecteur de thème CSS, sélecteur de profil). Les deux blocs à retirer pour tout projet réel sont balisés `DEMO ONLY` dans `index.html`.
 - **`deploy/`** : application prête à copier sur un serveur (chemins plats, bundles minifiés). **`npm run build:deploy`** produit les variantes livrables ; `scripts/build-deploy-coverage.cjs` produit en plus **`deploy-coverage/`**, une copie instrumentée qui n'est **pas** un livrable. La liste ne se recopie pas ici — elle se lit sur le disque (`ls deploy/`) ou dans `scripts/build-deploy.cjs`.
 
-    > 🛑 **Cette ligne a décrit TROIS variantes dont `deploy-addpoi` jusqu'au 08/08/2026, et les trois assertions qu'elle portait étaient fausses ensemble.** `addpoi` a fusionné dans `editor` au Sprint 5 (05/08/2026) : le plugin, la variante et le port **8770** ont disparu le même jour. Le motif écrit ici — « AddPOI et Editor sont mutuellement exclusifs, d'où trois variantes et non deux » — est **éteint**, pas seulement périmé : c'est le mode d'échec où la cible est correctement décrite et où la contrainte qui la motivait est tombée. Les ports E2E réels sont dérivés par `e2e/helpers/base-url.js` et déclarés dans `playwright.config.js` — ne pas les recopier non plus.
+    > 🛑 **Cette ligne a décrit TROIS variantes dont `deploy-addpoi` jusqu'au 08/08/2026, et les trois assertions qu'elle portait étaient fausses ensemble.** `addpoi` a fusionné dans `editor` le 05/08/2026 : le plugin, la variante et le port **8770** ont disparu le même jour. Le motif écrit ici — « AddPOI et Editor sont mutuellement exclusifs, d'où trois variantes et non deux » — est **éteint**, pas seulement périmé : c'est le mode d'échec où la cible est correctement décrite et où la contrainte qui la motivait est tombée. Les ports E2E réels sont dérivés par `e2e/helpers/base-url.js` et déclarés dans `playwright.config.js` — ne pas les recopier non plus.
 
 ---
 
@@ -113,7 +113,7 @@ En résumé : **source = `profiles/` à la racine uniquement** — ne pas dupliq
 
 La documentation est répartie en trois zones distinctes :
 
-- **`packages/core/docs/`** : la documentation d’**USAGE** — démarrage, tutoriels, recettes, guides de configuration, README de module. C’est la source du site VitePress rendu sur `www.geoleaf.dev/docs/`. ⚠️ **`docs/api/` et `docs/public/` n’en font PAS partie** : ce sont deux arbres GÉNÉRÉS et gitignorés. `docs-dist/` (racine depuis T4.4) est l’artefact du build VitePress : **jamais commité**. ⚠️ La chaîne « synchronisée vers GeoLeaf-Core par la CI, puis publiée via GitHub Pages » est **caduque** — les 3 workflows de miroir ont été supprimés à ARCHI S9.0. Le seul canal restant est `npm run docs:deploy`, manuel.
+- **`packages/core/docs/`** : la documentation d’**USAGE** — démarrage, tutoriels, recettes, guides de configuration, README de module. C’est la source du site VitePress rendu sur `www.geoleaf.dev/docs/`. ⚠️ **`docs/api/` et `docs/public/` n’en font PAS partie** : ce sont deux arbres GÉNÉRÉS et gitignorés. `docs-dist/` (racine depuis T4.4) est l’artefact du build VitePress : **jamais commité**. ⚠️ La chaîne « synchronisée vers GeoLeaf-Core par la CI, puis publiée via GitHub Pages » est **caduque** — les 3 workflows de miroir ont été supprimés. Le seul canal restant est `npm run docs:deploy`, manuel.
     - ⚠️ **Cette ligne a dit « documentation publique complète » et « 62 `.md` » jusqu’au 11/08/2026, et les deux sont faux** : il y en a **60**, et surtout elle n’est pas la doc publique _complète_ mais **un tiers de celle-ci** — `docs/specs/` porte le contrat, `docs/reference/` la référence dérivée. Le partage fait règle : [`DOCS_SOURCE_AND_SYNC.md`](DOCS_SOURCE_AND_SYNC.md).
     - ⚠️ **Elle disait aussi ce répertoire « exclu du tarball npm par une négation dans `files[]` »** — c’est le répertoire **entier** qui a quitté `files[]` le 11/08/2026 : un tarball n’emporte plus que `README.md` + `dist/`.
 - **`_docs_projet/`** : documentation interne — CDC, guides opérationnels, RFC, roadmaps, audits, docs de travail. Non synchronisée vers le repo public.

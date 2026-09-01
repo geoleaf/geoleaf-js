@@ -105,7 +105,7 @@ export function toSaved(body: unknown, feature: EditorFeature, layerId: string):
  * 🛑 **Single home of the status policy that the two dialects SHARE.** `rest-adapter` and
  * `collection-rest-adapter` carried this tail byte-for-byte — a clone jscpd already measured —
  * and that is exactly how a `501` came to be classified `"network"` on *both* paths at once.
- * B-138 is the registry line for "the fix was true on one path out of two"; keeping one home
+ * "The fix was true on one path out of two" is the failure class here; keeping one home
  * is what makes that impossible here.
  *
  * ⚠️ **What deliberately stays per-adapter**: the `409` conflict flow. It needs the request

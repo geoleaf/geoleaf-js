@@ -1,7 +1,7 @@
 /**
  * Knip configuration — workspace keys DERIVED, per-package options declared.
  *
- * Replaces `knip.json` (ARCHI S9.4). The JSON form spelled out 19 workspace paths
+ * Replaces `knip.json`. The JSON form spelled out 19 workspace paths
  * by hand, and two of them — `packages/plugin-taxonomy` and
  * `packages/plugin-feature-info` — had pointed at directories deleted months
  * earlier (reclassified into `@geoleaf/core`, SR0). Knip silently ignores a
@@ -34,12 +34,13 @@ import registry from "./scripts/lib/packages.cjs";
 /**
  * Options shared by every plugin that only exposes `src/entry.ts`.
  *
- * ⚠️ `ignoreDependencies: ["@geoleaf/core"]` ne vaut QUE pour les plugins qui déclarent le
- * core en dépendance sans rien en importer — ils l'atteignent par le global `window.GeoLeaf`,
- * que knip ne peut pas relier au paquet. Les 7 plugins qui importent désormais un type publié
- * (`GeoLeafRawEventMap`, API publique S3.3) n'en ont plus besoin et le retirent explicitement
- * ci-dessous : `check-dead-code.cjs` échoue sur une entrée de config qui ne matche plus rien,
- * précisément pour qu'une suppression ne survive pas à son motif.
+ * ⚠️ `ignoreDependencies: ["@geoleaf/core"]` holds ONLY for plugins that declare
+ * the core as a dependency without importing anything from it — they reach it
+ * through the `window.GeoLeaf` global, which knip cannot link to the package.
+ * The 7 plugins that now import a published type (`GeoLeafRawEventMap`) no
+ * longer need it and remove it explicitly below: `check-dead-code.cjs` fails on
+ * a config entry that no longer matches, precisely so a suppression does not
+ * outlive its motive.
  */
 const PLUGIN_BASE = {
     // No `entry`. `src/entry.ts` was declared here until the knip 6 bump (26/07/2026),
@@ -63,7 +64,7 @@ const PLUGIN_WITH_API = {
     ignoreDependencies: ["@geoleaf/core"],
 };
 
-/** Même base, pour les plugins qui importent réellement `@geoleaf/core` (S3.3). */
+/** Same base, for plugins that really import `@geoleaf/core`. */
 const PLUGIN_BASE_IMPORTS_CORE = { ...PLUGIN_BASE, ignoreDependencies: [] };
 const PLUGIN_WITH_API_IMPORTS_CORE = { ...PLUGIN_WITH_API, ignoreDependencies: [] };
 
@@ -77,7 +78,7 @@ const PLUGIN_WITH_API_IMPORTS_CORE = { ...PLUGIN_WITH_API, ignoreDependencies: [
  * ⚠️ The exemption `field-renderer` used to carry here is GONE. This comment claimed it
  * needed `entry: ["src/index.ts"]` declared because its `main` is
  * `dist/geoleaf-field-renderer.js`, which maps to no source file by name. Under knip 6
- * (bump du 26/07/2026) that declaration is flagged redundant like all the others, so the
+ * (2026-07-26 bump) that declaration is flagged redundant like all the others, so the
  * derivation evidently no longer depends on the `main` filename. Removed, and re-measured
  * rather than reasoned about — the whole point of the blocking hints.
  */
@@ -92,10 +93,11 @@ const LIB_BASE = {
  */
 const BY_NAME = {
     "@geoleaf/core": {
-        // API S2.4 — sans `entry`, knip retombait sur des défauts qui ne couvraient rien
-        // d'utile ici. Ces six patrons sont les points d'entrée réels du paquet : l'entrée
-        // livrée, la moitié kernel, les trois côtés à effet de bord du boot, et les
-        // installeurs de capacité (chacun est une racine, aucun n'est importé par l'entrée).
+        // Without `entry`, knip fell back on defaults that covered nothing useful
+        // here. These six patterns are the package's real entry points: the
+        // shipped entry, the kernel half, the boot's three side-effect sides, and
+        // the capability installers (each is a root, none is imported by the
+        // entry).
         entry: [
             "src/bundle-esm-entry.ts",
             "src/kernel-exports.ts",
@@ -109,16 +111,17 @@ const BY_NAME = {
     },
 
     // Plugins — entry only.
-    // ⚠️ API publique S4.4c — `paths` déclaré ICI, pour les TESTS seuls.
+    // ⚠️ `paths` declared HERE, for the TESTS alone.
     //
-    // Les alias `@core/*` et `@core-offline/*` vivaient dans le `paths` du tsconfig, d'où knip
-    // les lisait. Ils en ont été retirés : le code LIVRÉ n'en a plus aucun, et les garder
-    // aurait maintenu les sources du core dans le programme, donc interdit le `rootDir` que la
-    // publication des types exige.
+    // The `@core/*` and `@core-offline/*` aliases lived in the tsconfig's
+    // `paths`, where knip read them. They were removed from it: the SHIPPED code
+    // has none left, and keeping them would have kept the core's sources in the
+    // program, hence forbidden the `rootDir` that publishing the types requires.
     //
-    // Les fichiers de TEST en gardent 6 — ils sont résolus par les alias Vite de
-    // `vitest.config.ts`, que knip ne lit pas. Sans cette déclaration il les signale
-    // « unlisted », ce qui est exact et inutile : ils sont résolus, mais ailleurs.
+    // The TEST files keep 6 of them — resolved by the Vite aliases of
+    // `vitest.config.ts`, which knip does not read. Without this declaration it
+    // flags them "unlisted", which is accurate and useless: they are resolved,
+    // just elsewhere.
     "@geoleaf-plugins/offline-ui": {
         ...PLUGIN_BASE_IMPORTS_CORE,
         paths: {
@@ -133,42 +136,47 @@ const BY_NAME = {
         ignoreDependencies: ["@geoleaf/core", "topojson-specification"],
     },
     "@geoleaf-plugins/geocoding": PLUGIN_BASE_IMPORTS_CORE,
-    // `happy-dom` retiré au bump knip 6 : l'exemption ne matchait plus rien. Ironie utile —
-    // c'est knip qui avait DÉTECTÉ cette dépendance non déclarée en premier lieu (cf. CHANGELOG
-    // du 22/07), et c'est knip qui signale maintenant que l'exemption a fait son temps.
+    // `happy-dom` removed at the knip 6 bump: the exemption no longer matched
+    // anything. Useful irony — knip is what DETECTED this undeclared dependency
+    // in the first place (cf. the 07-22 CHANGELOG), and knip is what now flags
+    // that the exemption has served its time.
     "@geoleaf-plugins/connector": PLUGIN_BASE,
 
     // Plugins — entry + public API (+ i18n).
     "@geoleaf-plugins/table": { ...PLUGIN_WITH_API_IMPORTS_CORE, ignore: ["**/__tests__/**"] },
-    // `ignore: __tests__` retiré au bump knip 6 : il ne matchait plus rien (hint bloquant).
-    // Ses homonymes sur `addpoi`, `print` et `table` en matchent encore — donc ce n'est pas
-    // un changement global de knip, c'est que le périmètre de test de measure a bougé.
+    // `ignore: __tests__` removed at the knip 6 bump: it no longer matched
+    // anything (blocking hint). Its namesakes on `addpoi`, `print` and `table`
+    // still match — so this is not a global knip change, it is measure's test
+    // perimeter that moved.
     "@geoleaf-plugins/measure": PLUGIN_WITH_API_IMPORTS_CORE,
     "@geoleaf-plugins/print": {
         ...PLUGIN_WITH_API_IMPORTS_CORE,
         ignore: ["**/__tests__/**"],
     },
-    // `ignoreDependencies: ["geojson"]` retiré le 10/08/2026 : il taisait un signal que
-    // `@types/geojson` produisait tant qu'il n'était pas déclaré. B-212 l'a déclaré en
-    // `dependencies` (six `.d.ts` publiés en dépendent), donc knip ne le signale plus, donc
-    // le silencieux n'a plus rien à taire — et knip le dit lui-même (`knip-hint`). L'entrée
-    // disparaît AVEC SON SUJET, comme l'exemption de SYNC-02 au Sprint 8.
-    // ⚠️ Mesuré des deux côtés avant retrait : réintroduire `@types/geojson` sans cette ligne
-    // → knip VERT ; la retirer du manifeste → knip vert aussi. Seule la combinaison
-    // « déclaré + silencieux » est rouge. Le retrait RESSERRE la gate, il ne la relâche pas.
+    // `ignoreDependencies: ["geojson"]` removed on 2026-08-10: it silenced a
+    // signal `@types/geojson` produced while undeclared. It has been declared in
+    // `dependencies` (six published `.d.ts` depend on it), so knip no longer
+    // flags it, so the silencer has nothing left to silence — and knip says so
+    // itself (`knip-hint`). The entry vanishes WITH ITS SUBJECT, like the
+    // SYNC-02 exemption before it.
+    // ⚠️ Measured on both sides before removal: reintroducing `@types/geojson`
+    // without this line → knip GREEN; removing it from the manifest → knip green
+    // too. Only the "declared + silenced" combination is red. The removal
+    // TIGHTENS the gate, it does not loosen it.
     "@geoleaf-plugins/editor": PLUGIN_WITH_API_IMPORTS_CORE,
     "@geoleaf-plugins/realtime-layer": {
-        // `src/entry.ts` retiré au bump knip 6 — couvert par les patrons par défaut.
+        // `src/entry.ts` removed at the knip 6 bump — covered by the default patterns.
         entry: ["src/public-api.ts"],
         project: ["src/**/*.ts"],
         ignoreDependencies: ["@geoleaf/core"],
     },
     "@geoleaf-plugins/websocket": {
-        // `src/entry.ts` retiré au bump knip 6 — couvert par les patrons par défaut.
+        // `src/entry.ts` removed at the knip 6 bump — covered by the default patterns.
         entry: ["src/public-api.ts"],
         project: ["src/**/*.ts"],
         ignoreDependencies: ["@geoleaf/core"],
     },
+    "@geoleaf-plugins/position-share": PLUGIN_WITH_API,
 
     // The deployable application (T2). Its files are loaded by `index.html` through
     // `<script type="module">`, so nothing in the JS graph ever imports them — without
@@ -273,10 +281,10 @@ for (const name of Object.keys(BY_NAME)) {
 /** @type {Record<string, object>} */
 const workspaces = {
     ".": {
-        // `"knip.js"` retiré au bump knip 6 : couvert par les patrons par défaut (hint
-        // bloquant). Sa présence était de toute façon inerte — CHANGELOG du 25/07 :
-        // un fichier de config racine est structurellement insignalable, puisque
-        // `*.config.{cjs,mjs,js,ts}` en fait déjà un point d'entrée.
+        // `"knip.js"` removed at the knip 6 bump: covered by the default patterns
+        // (blocking hint). Its presence was inert anyway — 07-25 CHANGELOG: a
+        // root config file is structurally unflaggable, since
+        // `*.config.{cjs,mjs,js,ts}` already makes it an entry point.
         entry: ["scripts/**/*.{cjs,mjs,js}", "e2e/**/*.{js,cjs,mjs}", "*.config.{cjs,mjs,js,ts}"],
         project: ["scripts/**/*.{cjs,mjs,js}", "e2e/**/*.{js,cjs,mjs}"],
         ignoreDependencies: [
@@ -292,39 +300,57 @@ const workspaces = {
             "geotiff",
             "fflate",
             "http-server",
-            // `lint-staged` retiré au bump knip 6 : l'exemption ne matchait plus rien.
+            // `lint-staged` removed at the knip 6 bump: the exemption no longer matched anything.
             "madge",
             "serve",
-            // ⚠️ `sharp` est le seul de cette liste à être `unlisted` et non `unused` :
-            // `generate-pwa-icons.cjs` le `require()` alors que RIEN ne le déclare, et c'est
-            // voulu. Sorti des devDependencies le 09/08/2026 parce qu'il faisait échouer
-            // `npm ci` sur TOUTE PR Dependabot (son `@img/sharp-wasm32` tire `@emnapi/*`, que
-            // la régénération de lockfile ne hisse pas — cf. B-192), et qu'il portait un avis
-            // HIGH (`<0.35.0`) pour un script câblé dans aucune gate. Le `require` est derrière
-            // un `try/catch` qui imprime la commande d'installation à la demande.
-            // 🛑 Retirer cette ligne ne « nettoie » rien : elle rendrait la gate rouge, ou
-            // pousserait à re-déclarer `sharp` — ce qui rouvrirait les deux défauts d'un coup.
+            // ⚠️ `typedoc` is `unlisted` like `sharp` below, for the inverse
+            // reason: it IS declared, but at the right owner — a devDependency of
+            // `packages/core`, which `gen-api-surface.cjs` resolves explicitly
+            // (`require.resolve("typedoc", { paths: [CORE.absDir] })`, since
+            // 2026-08-24 — the hard-coded physical path
+            // `packages/core/node_modules/...` broke at the first clean `npm ci`,
+            // which hoists the package to the root). Declaring it AT THE ROOT TOO
+            // would create a second source for the same dependency — the exact
+            // defect class of copied overrides
+            // (cf. overrides-reference-direct.guard).
+            "typedoc",
+            // ⚠️ `sharp` is this list's only `unlisted` rather than `unused`:
+            // `generate-pwa-icons.cjs` `require()`s it while NOTHING declares it,
+            // and that is wanted. Taken out of devDependencies on 2026-08-09
+            // because it made `npm ci` fail on EVERY Dependabot PR (its
+            // `@img/sharp-wasm32` pulls `@emnapi/*`, which lockfile regeneration
+            // does not hoist), and it carried a HIGH advisory (`<0.35.0`) for a
+            // script wired into no gate. The `require` sits behind a `try/catch`
+            // that prints the install command on demand.
+            // 🛑 Removing this line "cleans" nothing: it would turn the gate red,
+            // or push toward re-declaring `sharp` — which would reopen both
+            // defects at once.
             "sharp",
-            // ⚠️ CES CINQ-LÀ NE SONT IMPORTÉES PAR RIEN, ET C'EST TOUT LEUR OBJET (09/08/2026).
+            // ⚠️ THESE FIVE ARE IMPORTED BY NOTHING, AND THAT IS THEIR WHOLE
+            // PURPOSE (2026-08-09).
             //
-            // Elles sont déclarées en devDependencies UNIQUEMENT pour créer une arête NON
-            // OPTIONNELLE depuis la racine. Sans elle, elles n'existent dans l'arbre que par
-            // des chaînes `optional: true` (les bindings `@oxc-*/binding-wasm32-wasi` et
-            // `@napi-rs/wasm-runtime` pour `@emnapi/*` ; `@asamuzakjp/css-color` via happy-dom
-            // pour les `@csstools/*`), et la régénération de lockfile de Dependabot les
-            // RE-HISSE ailleurs — mesuré : `@emnapi/*` déplacés sous
-            // `packages/build-config/node_modules/`. `npm ci` ne les retrouve alors plus depuis
-            // la racine et meurt en EUSAGE avant toute gate. C'est ce qui rendait TOUTE PR
-            // Dependabot rouge, y compris celles qui ne montent qu'un seul paquet (cf. B-192).
+            // They are declared as devDependencies SOLELY to create a
+            // NON-OPTIONAL edge from the root. Without it, they only exist in the
+            // tree through `optional: true` chains (the
+            // `@oxc-*/binding-wasm32-wasi` bindings and `@napi-rs/wasm-runtime`
+            // for `@emnapi/*`; `@asamuzakjp/css-color` via happy-dom for the
+            // `@csstools/*`), and Dependabot's lockfile regeneration RE-HOISTS
+            // them elsewhere — measured: `@emnapi/*` moved under
+            // `packages/build-config/node_modules/`. `npm ci` then no longer
+            // finds them from the root and dies in EUSAGE before any gate. That
+            // is what made EVERY Dependabot PR red, including those bumping a
+            // single package.
             //
-            // ⚠️ CORRECTIF EMPIRIQUE, et il faut le dire : **112 entrées racine sont
-            // `optional: true` et seules CES CINQ échouent**. La classe n'est donc PAS
-            // « entrée racine optionnelle » — `dompurify`, `jsdom`, `undici` le sont aussi et
-            // traversent sans rien casser. Ce qui les distingue n'est pas caractérisé. On
-            // traite les cinq mesurées, on ne prétend pas avoir fermé le mécanisme.
+            // ⚠️ EMPIRICAL FIX, and it must be said: **112 root entries are
+            // `optional: true` and only THESE FIVE fail**. The class is thus NOT
+            // "optional root entry" — `dompurify`, `jsdom`, `undici` are too and
+            // cross without breaking anything. What distinguishes them is not
+            // characterised. The five measured are treated; no claim is made of
+            // having closed the mechanism.
             //
-            // 🛑 Leur retrait ne se décide pas au vu de « personne ne les importe » — c'est
-            // vrai et hors sujet. Il se décide en observant la couleur d'une PR Dependabot.
+            // 🛑 Their removal is not decided from "nobody imports them" — true
+            // and beside the point. It is decided by watching a Dependabot PR's
+            // colour.
             "@csstools/css-parser-algorithms",
             "@csstools/css-tokenizer",
             "@emnapi/core",
@@ -372,7 +398,7 @@ for (const pkg of packages) {
  *
  * Root-level `exclude: ["exports","types"]` was measured too, and rejected: it blinds
  * the 13 plugins and 2 libs as well. They report nothing today because they are clean
- * — silent is not the same as absent, and the API S2.4 probes proved knip DOES see a
+ * — silent is not the same as absent, and the probes proved knip DOES see a
  * dead export in `packages/plugins/table` and `packages/libs/field-renderer`. Scoping
  * by path keeps that watch alive. It also leaves the `__tests__` ignore entries of
  * `measure`/`print`/`table` doing real work; under `exclude` all three went dead and
@@ -393,7 +419,7 @@ for (const pkg of packages) {
  * ⚠️ Only `exports` and `types` are listed. `nsExports`, `nsTypes`, `enumMembers` and
  * `classMembers` produce no signal in this repo, so listing them would raise a config
  * hint. ⚠️ `files` is deliberately absent: the one real find of the whole exercise —
- * `packages/core/src/contracts/sidepanel-renderer.contract.ts`, backlog **B-22** — is a
+ * `packages/core/src/contracts/sidepanel-renderer.contract.ts` — is a
  * file-level signal and must keep being reported. Removing `files` too would turn this
  * gate into a dependency checker and drop the only genuine finding it ever made.
  *
@@ -431,13 +457,13 @@ const IGNORE_ISSUES = {
  * and they are a single structural class — the declaration and its only reference sit in
  * the same file:
  *
- *   - `TableLayerConfig`  declared `table-types.ts:87`      → used `table-types.ts:100`
- *   - `HeartbeatConfig`   declared `config-schema.ts:23`    → used `config-schema.ts:50`
- *   - `JwtAuth`           declared `i-ws-transport.ts:46`   → used `i-ws-transport.ts:40`
+ *   - `TableLayerConfig`  declared `table-types.ts`      → used `table-types.ts`
+ *   - `HeartbeatConfig`   declared `config-schema.ts`    → used `config-schema.ts`
+ *   - `JwtAuth`           declared `i-ws-transport.ts`   → used `i-ws-transport.ts`
  *
  * These are each plugin's published type surface: an integrator consumes them through the
  * shipped `.d.ts`, which no module graph can see. `JwtAuth` is worse still — the one
- * cross-file consumer, `config-schema.ts:45`, reaches it by inline
+ * cross-file consumer, `config-schema.ts`, reaches it by inline
  * `import("./transports/i-ws-transport.js").JwtAuth`, a dynamic type import knip does not
  * resolve to a named import.
  *

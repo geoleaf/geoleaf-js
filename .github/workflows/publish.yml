@@ -70,24 +70,32 @@ jobs:
             # 12 garderaient leur `dist/` d'avant (CLAUDE.md §Points d'attention).
             - run: npx turbo run build
 
+            # 🛑 CETTE ÉTAPE DÉCIDE DU CONTENU DES TARBALLS. Sans elle, les `.d.ts` publiés des
+            # libs et des 6 plugins portent des imports CSS qui ne résolvent pas chez
+            # l'intégrateur — mesuré : 11 des 32 imports, invisibles ici parce que le core, lui,
+            # était couvert. C'est le défaut que les stubs CSS prétendaient avoir fermé et n'avaient fermé
+            # qu'au tiers.
+            - name: Stubs de type CSS (.d.ts publiés)
+              run: node scripts/emit-css-type-stubs.cjs
+
             # Le tarball est immuable : un chunk orphelin publié l'est définitivement.
             - name: Intégrité de dist/ avant tout pack
               run: node scripts/check-dist-integrity.cjs
 
             # ── Publication, dans l'ordre imposé par le graphe de dépendances ──
             #
-            # Le core d'abord : les 12 plugins le déclarent en `^3.0.0`, donc sans lui leurs
+            # Le core d'abord : les 15 plugins le déclarent en `^3.0.0`, donc sans lui leurs
             # installs échouent toutes. `field-renderer` ensuite : `editor` en dépend.
             # 🛑 PAS un `npm publish` NU, et le motif est mesuré. Ces deux étapes l'étaient
             # jusqu'au 15/08/2026 : `core@3.0.0` et `field-renderer@1.0.0` étant au registre
             # depuis le 12/08, npm rendait `E403 You cannot publish over the previously
-            # published versions` et le run mourait ICI — sans jamais atteindre les 12 plugins
+            # published versions` et le run mourait ICI — sans jamais atteindre les plugins
             # qu'il existe pour publier. Un correctif qui ne touche que des plugins était donc
             # INPUBLIABLE par ce workflow.
             #
             # ⚠️ Ce n'est pas une tolérance ajoutée, c'est la promesse du bloc `on:` tenue :
             # « la publication est un acte irréversible, on doit pouvoir la relancer ». Seuls
-            # les 12 plugins l'étaient. `publish-one.cjs` saute ce que le registre porte déjà
+            # les plugins l'étaient. `publish-one.cjs` saute ce que le registre porte déjà
             # EN LE DISANT — sauter n'est pas publier, et la sortie ne laisse pas confondre.
             - name: "@geoleaf/core"
               run: node scripts/publish-one.cjs @geoleaf/core
@@ -95,11 +103,12 @@ jobs:
             - name: "@geoleaf/field-renderer"
               run: node scripts/publish-one.cjs @geoleaf/field-renderer
 
-            # Les 12 plugins. Le script est REJOUABLE : un paquet déjà au registre est sauté
+            # Les 15 plugins (12 jusqu'au 01/09/2026 — élargissement décidé, voir le docblock de
+            # `publish-plugins.cjs`). Le script est REJOUABLE : un paquet déjà au registre est sauté
             # en le disant, et son décompte final sépare publiés et sautés — sans quoi
-            # « 12/12 » se lirait comme douze publications là où il pourrait n'y en avoir eu
-            # que cinq.
-            - name: Les 12 plugins
+            # « 15/15 » se lirait comme quinze publications là où il pourrait n'y en avoir eu
+            # que trois.
+            - name: Les 15 plugins
               run: npm run publish:plugins
 
             # L'épreuve que les liens symboliques npm ne masquent pas — sur ce qui vient

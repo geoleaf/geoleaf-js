@@ -1,8 +1,7 @@
 /**
  * Unit tests for MaplibreAdapter — Sprints 4 + 5.
  *
- * Sprint 4: layers, popups, sentinel, getLayerRegistry.
- * Sprint 5: markers, clusters, filtering.
+ * Layers, popups, sentinel, getLayerRegistry, markers, clusters, filtering.
  *
  * Extracted from maplibre-adapter.test.js to stay under 700 lines.
  *
@@ -161,7 +160,7 @@ function createInitedAdapter() {
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
-describe("MaplibreAdapter — Layers (Sprint 4)", () => {
+describe("MaplibreAdapter — Layers", () => {
     describe("addGeoJSONLayer", () => {
         let adapter;
         beforeEach(() => {
@@ -337,7 +336,17 @@ describe("MaplibreAdapter — Layers (Sprint 4)", () => {
     });
 
     describe("setLayerFilter", () => {
-        it("applies filter to sub-layers", () => {
+        // The guard a point sub-layer carries — see `geometryGuard` in maplibre-primitives.
+        const POINT_GUARD = ["match", ["geometry-type"], ["Point", "MultiPoint"], true, false];
+        const LINE_GUARD = [
+            "match",
+            ["geometry-type"],
+            ["LineString", "MultiLineString", "Polygon", "MultiPolygon"],
+            true,
+            false,
+        ];
+
+        it("composes the caller filter with the sub-layer geometry guard", () => {
             const adapter = createInitedAdapter();
             const data = {
                 type: "FeatureCollection",
@@ -346,17 +355,34 @@ describe("MaplibreAdapter — Layers (Sprint 4)", () => {
             adapter.addGeoJSONLayer("filtered", data);
             const filter = ["==", ["get", "type"], "park"];
             adapter.setLayerFilter("filtered", filter);
-            expect(mockMapInstance.setFilter).toHaveBeenCalledWith("gl-filtered-circle", filter);
+            expect(mockMapInstance.setFilter).toHaveBeenCalledWith("gl-filtered-circle", [
+                "all",
+                POINT_GUARD,
+                filter,
+            ]);
         });
 
-        it("clears filter when null is passed", () => {
+        // 🛑 Clearing must restore the GUARD, never `null`. A bare null would re-open the
+        // defect for exactly as long as no filter is active.
+        it("restores the guard alone when null is passed", () => {
             const adapter = createInitedAdapter();
             adapter.addGeoJSONLayer("f2", {
                 type: "FeatureCollection",
                 features: [{ geometry: { type: "Point" } }],
             });
             adapter.setLayerFilter("f2", null);
-            expect(mockMapInstance.setFilter).toHaveBeenCalledWith("gl-f2-circle", null);
+            expect(mockMapInstance.setFilter).toHaveBeenCalledWith("gl-f2-circle", POINT_GUARD);
+        });
+
+        it("gives each sub-layer of a mixed layer its own guard", () => {
+            const adapter = createInitedAdapter();
+            adapter.addGeoJSONLayer("mixed", {
+                type: "FeatureCollection",
+                features: [{ geometry: { type: "LineString" } }, { geometry: { type: "Point" } }],
+            });
+            adapter.setLayerFilter("mixed", null);
+            expect(mockMapInstance.setFilter).toHaveBeenCalledWith("gl-mixed-line", LINE_GUARD);
+            expect(mockMapInstance.setFilter).toHaveBeenCalledWith("gl-mixed-circle", POINT_GUARD);
         });
     });
 
@@ -375,7 +401,7 @@ describe("MaplibreAdapter — Layers (Sprint 4)", () => {
     });
 });
 
-describe("MaplibreAdapter — Markers (Sprint 5)", () => {
+describe("MaplibreAdapter — Markers", () => {
     describe("createMarker", () => {
         let adapter;
         beforeEach(() => {
@@ -461,7 +487,7 @@ describe("MaplibreAdapter — Markers (Sprint 5)", () => {
     });
 });
 
-describe("MaplibreAdapter — Clusters (Sprint 5)", () => {
+describe("MaplibreAdapter — Clusters", () => {
     describe("createClusterGroup", () => {
         let adapter;
         beforeEach(() => {
@@ -507,7 +533,7 @@ describe("MaplibreAdapter — Clusters (Sprint 5)", () => {
     });
 });
 
-describe("MaplibreAdapter — Popups (Sprint 4)", () => {
+describe("MaplibreAdapter — Popups", () => {
     describe("createPopup", () => {
         it("creates popup with string content via setHTML", () => {
             const adapter = createInitedAdapter();
@@ -640,9 +666,9 @@ describe("MaplibreAdapter — Contract", () => {
     });
 });
 
-// ─── S5.6 — Extended branch coverage ─────────────────────────────────────────
+// ─── Extended branch coverage ─────────────────────────────────────────
 
-describe("MaplibreAdapter — createMarker with title (S5.6)", () => {
+describe("MaplibreAdapter — createMarker with title", () => {
     it("sets aria-label and role=img when title is provided", () => {
         const adapter = createInitedAdapter();
         adapter.createMarker(
@@ -659,7 +685,7 @@ describe("MaplibreAdapter — createMarker with title (S5.6)", () => {
     });
 });
 
-describe("MaplibreAdapter — addControl with native IControl (S5.6)", () => {
+describe("MaplibreAdapter — addControl with native IControl", () => {
     it("passes a non-HTMLElement control directly to map.addControl", () => {
         const adapter = createInitedAdapter();
         const nativeControl = {
@@ -671,7 +697,7 @@ describe("MaplibreAdapter — addControl with native IControl (S5.6)", () => {
     });
 });
 
-describe("MaplibreAdapter — setLayerStyle branches (S5.6)", () => {
+describe("MaplibreAdapter — setLayerStyle branches", () => {
     let adapter;
 
     beforeEach(() => {
@@ -761,7 +787,7 @@ describe("MaplibreAdapter — setLayerStyle branches (S5.6)", () => {
     });
 });
 
-describe("MaplibreAdapter — removeLayer hatch cleanup (S5.6)", () => {
+describe("MaplibreAdapter — removeLayer hatch cleanup", () => {
     it("removes hatch pattern images matching the layer prefix, via listImages()", () => {
         const adapter = createInitedAdapter();
         adapter.addGeoJSONLayer("hatch-layer", {
@@ -797,7 +823,7 @@ describe("MaplibreAdapter — removeLayer hatch cleanup (S5.6)", () => {
     });
 });
 
-describe("MaplibreAdapter — setLayerFilter cluster branch (S5.6)", () => {
+describe("MaplibreAdapter — setLayerFilter cluster branch", () => {
     it("routes filter through applyPoiFilter for registered cluster groups", async () => {
         const adapter = createInitedAdapter();
         await adapter.createClusterGroup("poi-group");
@@ -817,7 +843,7 @@ describe("MaplibreAdapter — setLayerFilter cluster branch (S5.6)", () => {
     });
 });
 
-describe("MaplibreAdapter — _ensureSentinel already created (S5.6)", () => {
+describe("MaplibreAdapter — _ensureSentinel already created", () => {
     it("creates sentinel layer only once across multiple addGeoJSONLayer calls", () => {
         const adapter = createInitedAdapter();
         adapter.addGeoJSONLayer("first-layer", {

@@ -11,7 +11,7 @@ const lang_de: Record<string, string> = {
     "measure.menu.close": "Schließen",
     "measure.tool.distance": "Distanz messen",
     "measure.tool.distance.hint":
-        "Klicken Sie, um Stützpunkte zu setzen. Doppelklick oder Leertaste zum Beenden.",
+        "Klicken Sie, um Stützpunkte zu setzen. Letzten Punkt erneut antippen, Doppelklick oder Leertaste zum Beenden.",
     "measure.tool.rect": "Fläche — Rechteck",
     "measure.tool.rect.hint": "Von der oberen linken zur unteren rechten Ecke ziehen.",
     "measure.tool.circle": "Fläche — Kreis",

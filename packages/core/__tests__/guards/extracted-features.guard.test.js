@@ -225,7 +225,7 @@ const EXTRACTED_FEATURES = [
         // generic GeoJSON layers, endpoints derived by the capability. Tokens are narrow
         // so they never match the live survivors kept in core: `convertRouteArrayToGeoJSON`
         // (data-converter), (`filterRouteList` / `GeoLeaf.Filters` was also listed here until
-        // API S4.5 removed it — it is no longer a survivor, it is gone),
+        // the public-API review removed it — it is no longer a survivor, it is gone),
         // `--gl-color-route-*` (theme tokens), or the new `capabilities/route/` files.
         feature: "route-dissolution",
         paths: [

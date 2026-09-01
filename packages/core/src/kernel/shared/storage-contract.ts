@@ -32,6 +32,35 @@
  * INITIALISATION:
  *   // In geoleaf.storage.js (or the Storage plugin), once assembled:
  *   StorageContract.init(Storage);
+ *
+ * ## Layer data precedence — two stores, one screen, and which one wins
+ *
+ * A layer's offline data can exist in TWO stores at once, written by different flows:
+ *
+ *   - `layers` holds SNAPSHOTS — an HTTP response body with freshness metadata, written by
+ *     the offline downloader (profile caching) and by the theme cache. One row per layer.
+ *   - `features` holds ENTITY RECORDS — one row per feature, carrying sync state, written by
+ *     the bounded pull and by local edits (via the outbox flow).
+ *
+ * These are not competing copies: they are different REPRESENTATIONS with different readers,
+ * and neither can replace the other (a snapshot has no per-feature sync state; records have
+ * no notion of "the whole layer as the server last served it").
+ *
+ * **The precedence rule, when both hold data for the same layer:**
+ *
+ *   1. The SNAPSHOT is the BASE. Offline, the layer renders from it (or from the network
+ *      when reachable) — it is authoritative for every feature it contains that no entity
+ *      record references.
+ *   2. ENTITY RECORDS OVERLAY the base, per feature id. The entity-restore pass runs after
+ *      the host layer has loaded and upserts visible-state records onto it
+ *      (`mergeFeatures`, id-keyed) and removes net-deleted ids. For any feature id present
+ *      in `features`, the RECORD is authoritative — it carries the newest local edit and its
+ *      sync state, which a snapshot can never reflect.
+ *
+ * The rule is enforced by ORDER, not by comparison: the restore pass merges after layer
+ * load, so the record's version is simply the last write onto the map source. Nothing
+ * reconciles the two stores at rest — and nothing should: reconciling would mean editing a
+ * cached HTTP response to mimic a server that never sent it.
  */
 
 /**

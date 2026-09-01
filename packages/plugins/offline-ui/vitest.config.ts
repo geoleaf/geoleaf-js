@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Vitest configuration for @geoleaf-plugins/offline-ui
  *
  * Uses forks pool + tsx loader (mirrors packages/core/vitest.config.ts).
@@ -34,20 +34,22 @@ export default defineConfig({
         environment: "happy-dom",
         globals: true,
 
-        // ⚠️ `.ts` AJOUTÉ le 07/08/2026 (B-152). Il ne l'était pas, et les deux règles du
-        // dépôt se contredisaient sur ce paquet : JTD-01 refuse toute suite `.js` NEUVE
-        // (« un test neuf s'écrit en TypeScript »), pendant que ce glob ne ramassait que
-        // `.js` — un test neuf conforme à JTD-01 n'aurait donc jamais été EXÉCUTÉ, et une
-        // garde qui ne tourne pas ne garde rien. Vu : le fichier de garde de B-152 sortait
-        // « 0 test » avant ce changement.
-        // Les 17 suites `.js` existantes restent en place — D-23 est gelée, pas rouverte ;
-        // ce glob rend seulement possible d'écrire les NEUVES du bon côté.
-        // ⚠️ DEUX motifs, pas une accolade `{js,ts}` : c'est la forme de
-        // `packages/core/vitest.config.ts:51`, et **JTD-04 ne sait pas lire les accolades**.
-        // Écrit d'abord en `{js,ts}`, il a fait rougir la gate sur les **22** suites du
-        // paquet — « vitest NE COLLECTE PAS » — alors qu'elles tournaient toutes (359 tests).
-        // Un faux positif, mais sur exactement la classe que JTD-04 existe pour attraper :
-        // un `include` qui cesse de matcher rend des suites invisibles **en restant vert**.
+        // ⚠️ `.ts` ADDED on 07/08/2026. It was not there, and the repo's two rules
+        // contradicted each other on this package: JTD-01 refuses any NEW `.js`
+        // suite ("a new test is written in TypeScript"), while this glob only
+        // collected `.js` — a new JTD-01-compliant test would therefore never have
+        // RUN, and a guard that does not run guards nothing. Seen: the inline-layer
+        // guard file reported "0 tests" before this change.
+        // The 17 existing `.js` suites stay — the `.js` debt is frozen, not
+        // reopened; this glob only makes it possible to write NEW ones on the right
+        // side.
+        // ⚠️ TWO patterns, not a `{js,ts}` brace: it is the form of
+        // `packages/core/vitest.config.ts`, and **JTD-04 cannot read braces**.
+        // Written first as `{js,ts}`, it turned the gate red on the package's **22**
+        // suites — "vitest DOES NOT COLLECT" — while they all ran (359 tests). A
+        // false positive, but on exactly the class JTD-04 exists to catch: an
+        // `include` that stops matching makes suites invisible **while staying
+        // green**.
         include: ["**/__tests__/**/*.test.js", "**/__tests__/**/*.test.ts"],
         exclude: [
             "**/node_modules/**",
@@ -62,108 +64,117 @@ export default defineConfig({
         pool: "forks",
         execArgv: ["--import", "tsx"],
 
-        // B.48 — budget de processus, dérivé et IDENTIQUE dans les 18 configs (Vitest 4
-        // abat le run `projects` si deux projets divergent sur `maxWorkers`).
+        // Process budget, derived and IDENTICAL across the 18 configs (Vitest 4
+        // kills the `projects` run if two projects diverge on `maxWorkers`).
         maxWorkers: maxWorkers(),
         vmMemoryLimit: vmMemoryLimit(),
 
         coverage: {
-            // Provider istanbul, comme les 17 paquets. Les tests de ce paquet chargeaient jadis
-            // leurs sources en `require()`, que `--import tsx` soustrayait à l'instrumentation
-            // (0 % rapporté pendant que 90/90 tests passaient). La conversion S5 a supprimé
-            // cette branche.
+            // Istanbul provider, like the 17 packages. This package's tests once
+            // loaded their sources via `require()`, which `--import tsx` kept out of
+            // instrumentation (0% reported while 90/90 tests passed). The ESM
+            // conversion removed that branch.
             provider: "istanbul",
             all: false,
             include: ["src/**/*.ts"],
             exclude: ["src/**/*.d.ts"],
             reporter: ["text", "lcov", "html"],
             reportsDirectory: "./coverage",
-            // COUVERTURE S5 — aligné sur packages/core. Un seuil qui tombe ou un test qui
-            // échoue ne doit PAS emporter le relevé : pendant une conversion require() →
-            // import, des rouges sont ATTENDUS, et le lot qu'il faut justement diagnostiquer
-            // serait précisément celui dont on perdrait la mesure.
+            // Aligned with packages/core. A falling threshold or a failing test
+            // must NOT take the reading with it: during a require() → import
+            // conversion, reds are EXPECTED, and the batch that needs diagnosing is
+            // precisely the one whose measurement would be lost.
             reportOnFailure: true,
-            // Recalibré au S6 sur la mesure **istanbul, 4 runs** (22/07/2026). Le seuil S5
-            // (19) était resté ROUGE en statements délibérément, en attendant cette
-            // re-mesure sur les 4 paquets. Ces chiffres sont BAS et c'est l'état réel du
-            // paquet : 90 tests en couvrent environ un cinquième (75 reste la CIBLE — backlog
-            // B.13, à cliqueter vers le haut jamais vers le bas). La mesure est déterministe ;
-            // les 4 runs rendent, à l'identique :
+            // Recalibrated on the **istanbul, 4-run** measurement (22/07/2026). The
+            // earlier threshold (19) had deliberately stayed RED on statements,
+            // awaiting this re-measurement across the 4 packages. These figures are
+            // LOW and that is the package's real state: 90 tests cover about a
+            // fifth of it (75 stays the TARGET — to be ratcheted up, never down).
+            // The measurement is deterministic; the 4 runs yield, identically:
             //
-            //   |            | ancien seuil | mesure vraie (istanbul, S6) | nouveau seuil |
+            //   |            | old threshold | true measure (istanbul) | new threshold |
             //   |------------|--------------|-----------------------------|---------------|
             //   | statements |      19      |            18,91           |      16       |
             //   | lines      |      19      |            19,34           |      17       |
             //   | functions  |      16      |            18,89           |      16       |
             //   | branches   |      10      |            10,10           |       8       |
             //
-            // Seuils ~2 pts sous la mesure — marge contre la charge parallèle de turbo, non
-            // contre le bruit (nul sous istanbul). Le rouge S5 (statements) est levé.
+            // Thresholds ~2 pts under the measure — margin against turbo's parallel
+            // load, not against noise (nil under istanbul). The statements red is
+            // lifted.
             //
-            // ── Re-cliquetés au backlog résiduel R.1 (24/07/2026) ─────────────────────
+            // ── Re-ratcheted (24/07/2026) ─────────────────────────────────────────
             //
-            // La cible 75 n'est PAS atteinte ici, et c'est arbitré : ce paquet pèse 5 654
-            // lignes pour 8 fichiers de test, l'y amener est un chantier à part entière
-            // (~10-14 h), ouvert en ligne dédiée. Ce sprint fait le premier palier.
+            // The 75 target is NOT reached here, and that is arbitrated: this
+            // package weighs 5,654 lines for 8 test files, getting it there is a
+            // work item of its own (~10-14 h), opened as a dedicated line. This pass
+            // does the first step.
             //
-            //   |            | seuil S6 | mesure 24/07 avant R.1 | après R.1 | nouveau seuil |
+            //   |            | prior threshold | measure 24/07 before | after | new threshold |
             //   |------------|----------|------------------------|-----------|---------------|
             //   | statements |    16    |         21,07          |   38,45   |      36       |
             //   | lines      |    17    |         21,30          |   38,87   |      36       |
             //   | branches   |     8    |         12,75          |   23,75   |      21       |
             //   | functions  |    16    |         22,07          |   36,79   |      34       |
             //
-            // Le gain vient d'un seul fichier — `src/__tests__/cache-control-view.test.js`,
-            // portage du `ui/cache-button.test.js` du core (725 l., 30 tests, ZÉRO ligne de
-            // production couverte : il redéfinissait dans le test la fonction qu'il
-            // vérifiait). Rejoué contre le vrai code : `cache-control-dom` 0 → 100 % de
-            // lignes, `cache-control-state` 0 → 87,80, `cache-control-events` 0 → 65,15,
+            // The gain comes from one file — `src/__tests__/cache-control-view.test.js`,
+            // a port of the core's `ui/cache-button.test.js` (725 l., 30 tests, ZERO
+            // production line covered: it redefined in the test the very function it
+            // verified). Replayed against the real code: `cache-control-dom` 0 →
+            // 100% lines, `cache-control-state` 0 → 87.80, `cache-control-events`
+            // 0 → 65.15,
             // `cache-control-zone` 0 → 50,80 par ricochet.
             //
-            // ⚠️ **Cause racine du retard de ce paquet, à instruire avec la ligne dédiée** :
-            // il est le seul EXCLU du run `projects` racine — `scripts/lib/test-scope.cjs`,
-            // `EXCLUDED_FROM_ROOT_RUN` : « infrastructure de test à reprendre (mock
-            // IndexedDB/IDBFactory) — exclusion héritée ». Il n'est mesuré que par turbo.
+            // ⚠️ **Root cause of this package's lag, to instruct with the dedicated
+            // line**: it is the only one EXCLUDED from the root `projects` run —
+            // `scripts/lib/test-scope.cjs`, `EXCLUDED_FROM_ROOT_RUN`: "test
+            // infrastructure to redo (IndexedDB/IDBFactory mock) — inherited
+            // exclusion". It is only measured by turbo.
             //
-            // ⚠️ Cliqueter vers le haut, JAMAIS vers le bas.
+            // ⚠️ Ratchet up, NEVER down.
             //
-            // ── Chantier R.31 : la CIBLE 75 est ATTEINTE (24/07/2026) ─────────────────
+            // ── The 75 TARGET is REACHED (24/07/2026) ─────────────────────────────
             //
-            // 8 fichiers de test ajoutés, exerçant enfin les modules jusque-là à 0-40 % : le
-            // cluster layer-selector (`populate` de bout en bout, ~1 380 l.), download-handler,
-            // sync-manager, cache-control-zone, export-logic, cache-control (la FABRIQUE,
-            // importée SANS extension pour contourner le stub cross-plugin), entry +
-            // orchestrateur, modal-manager, button-control. Mesure istanbul, déterministe :
+            // 8 test files added, finally exercising the modules until then at
+            // 0-40%: the layer-selector cluster (`populate` end to end, ~1,380 l.),
+            // download-handler, sync-manager, cache-control-zone, export-logic,
+            // cache-control (the FACTORY, imported WITHOUT extension to get around
+            // the cross-plugin stub), entry + orchestrator, modal-manager,
+            // button-control. Istanbul measurement, deterministic:
             //
-            //   |            | seuil R.1 | mesure 24/07 après R.31 | nouveau seuil |
+            //   |            | prior threshold | measure 24/07 after | new threshold |
             //   |------------|-----------|-------------------------|---------------|
             //   | statements |    36     |          93,38          |      91       |
             //   | lines      |    36     |          94,03          |      92       |
             //   | branches   |    21     |          75,10          |      73       |
             //   | functions  |    34     |          81,38          |      79       |
             //
-            // Les 4 métriques ≥ 75 : storage n'est plus le paquet retardataire. Seuils ~2 pts
-            // sous la mesure (marge contre la charge parallèle turbo ; bruit nul sous istanbul).
+            // All 4 metrics ≥ 75: storage is no longer the laggard package.
+            // Thresholds ~2 pts under the measure (margin against turbo's parallel
+            // load; noise nil under istanbul).
             //
-            // ⚠️ CLIQUETÉS le 04/08/2026 (tâche 4.11) — 73/79/92/91 → 74/80/93/92. Le retrait
-            // de la chaîne de sauvegarde a fait monter les quatre métriques (mesuré après :
-            // 74,58 / 80,00 / 93,58 / 92,94), parce qu'il emporte du code que la suite ne
-            // couvrait pas. Un seuil qui ne suit pas une hausse cesse de garder quoi que ce
-            // soit : il redevient franchissable par du code neuf non testé.
-            // Cliquetés au Sprint 6 (S6c / B-140), ~2 pts sous la mesure comme le veut la
-            // convention posée au cliquet du 04/08.
+            // ⚠️ RATCHETED on 04/08/2026 — 73/79/92/91 → 74/80/93/92. Removing the
+            // backup chain pushed all four metrics up (measured after: 74.58 /
+            // 80.00 / 93.58 / 92.94), because it takes away code the suite did not
+            // cover. A threshold that does not follow a rise stops guarding
+            // anything: it becomes crossable again by new untested code.
+            // Ratcheted again afterwards, ~2 pts under the measure as the 04/08
+            // convention requires.
             //
-            // 🛑 **B-140 : la marge sur les FONCTIONS était NULLE** — 80,00 % pour un seuil de
-            // 80, alors que le commentaire qui surplombait ces seuils annonçait « ~2 pts sous
-            // la mesure ». Ni abaissable (interdit) ni montable (elle aurait rougi) : la seule
-            // sortie était de **couvrir une fonction de plus**, jamais de toucher au seuil.
+            // 🛑 **The FUNCTIONS margin was NIL** — 80.00% for a threshold of 80,
+            // while the comment above these thresholds announced "~2 pts under the
+            // measure". Neither lowerable (forbidden) nor raisable (it would have
+            // gone red): the only exit was to **cover one more function**, never to
+            // touch the threshold.
             //
-            // Fait : `cache-control-factory.test.js` exerce désormais les sept délégations de
-            // handler de la fabrique (`_handleDownload`… `_toggleCollapsed`), qu'istanbul
-            // comptait chacune comme une fonction non couverte. `cache/cache-control.ts` passe
-            // de **52,38 à 80,95 %** de fonctions, et le paquet de **80,00 à 82,8**.
+            // Done: `cache-control-factory.test.js` now exercises the factory's
+            // seven handler delegations (`_handleDownload`… `_toggleCollapsed`),
+            // each of which istanbul counted as an uncovered function.
+            // `cache/cache-control.ts` goes from **52.38 to 80.95%** functions, and
+            // the package from **80.00 to 82.8**.
             //
-            // Mesure du 06/08 : 93,36 stmts · 74,79 branches · 82,8 fonctions · 93,98 lignes.
+            // Measure of 06/08: 93.36 stmts · 74.79 branches · 82.8 functions ·
+            // 93.98 lines.
             thresholds: {
                 branches: 74,
                 functions: 80,
@@ -178,21 +189,22 @@ export default defineConfig({
 
     resolve: {
         alias: [
-            // COUVERTURE S5 — le specifier que les sources importent réellement n'était routé
-            // vers son mock que par `__tests__/setup.js`, jamais par Vite. Le mock fait
-            // résoudre `confirmDialog` à `true` par défaut et s'override par test ; charger le
-            // vrai paquet ouvrirait une vraie modale. ⚠️ `s1-fixes.test.js` importe déjà
-            // `export-logic.js` en ESM et passe : cela prouve que le paquet réel se CHARGE, pas
-            // que ce chemin se comporte pareil — il n'exerce aucun appel à `confirmDialog`.
+            // The specifier the sources really import was only routed to its mock
+            // by `__tests__/setup.js`, never by Vite. The mock resolves
+            // `confirmDialog` to `true` by default and overrides per test; loading
+            // the real package would open a real modal. ⚠️ `s1-fixes.test.js`
+            // already imports `export-logic.js` in ESM and passes: that proves the
+            // real package LOADS, not that this path behaves the same — it
+            // exercises no `confirmDialog` call.
             //
-            // 🛑 **La cible a changé en S6b (B-144)** : W3 a déplacé `confirmDialog` et
-            // `createFocusTrap` vers `@geoleaf/host-runtime`, donc c'est LUI qu'il faut router.
-            // Laisser l'alias sur `field-renderer` l'aurait rendu inerte en silence — la suite
-            // serait restée verte en ouvrant de vraies modales.
-            // ⚠️ Le mock est désormais PARTIEL : `offline-ui` consomme neuf symboles de
+            // 🛑 **The target changed**: `confirmDialog` and `createFocusTrap` moved
+            // to `@geoleaf/host-runtime`, so IT is what must be routed. Leaving the
+            // alias on `field-renderer` would have made it silently inert — the
+            // suite would have stayed green while opening real modals.
+            // ⚠️ The mock is now PARTIAL: `offline-ui` consumes nine symbols of
             // `host-runtime` (`Log`, `tLabel`, `coreConfigGet`, `getGeoLeaf`,
-            // `getUINotifications`, `fetchWithTimeout`…), pas trois. Il ré-exporte le module
-            // réel et ne surcharge que les deux fonctions d'interface.
+            // `getUINotifications`, `fetchWithTimeout`…), not three. It re-exports
+            // the real module and only overrides the two interface functions.
             {
                 find: /^@geoleaf\/host-runtime$/,
                 replacement: resolve(__dirname, "__mocks__/host-runtime.js"),
@@ -219,26 +231,26 @@ export default defineConfig({
                 find: /^@core\/utils\/general\/dom-security(\.js)?$/,
                 replacement: resolve(__dirname, "__mocks__/dom-security.js"),
             },
-            // ARCHI S7 (7.3, geste 2) — `profile-layers` a quitté `capabilities/offline/`
-            // pour le domaine profil/config. Il lui faut une entrée AVANT le catch-all
-            // ci-dessous, sinon il serait routé vers le mock de `Config`, qui n'a rien à
-            // voir. Mappé vers le source réel, comme `@core/shared/*`.
+            // `profile-layers` left `capabilities/offline/` for the profile/config
+            // domain. It needs an entry BEFORE the catch-all below, otherwise it
+            // would be routed to the `Config` mock, which has nothing to do with
+            // it. Mapped to the real source, like `@core/shared/*`.
             {
                 find: /^@core\/config\/profile-layers(\.js)?$/,
                 replacement: `${coreRoot}/src/kernel/config/profile-layers.ts`,
             },
-            // ─── API publique S4.4 — les sous-chemins PUBLIÉS du core ────────────────
+            // ─── Public-API review — the core's PUBLISHED subpaths ─────────────────
             //
-            // Les sources du plugin importent désormais `@geoleaf/core/kernel/config/…` et
-            // `@geoleaf/core/capabilities/…` au lieu d'alias vers les sources du core : c'est
-            // ce qui lui rend un `rootDir` et donc la publication de ses types. En TEST, Vite
-            // doit résoudre ces specifiers vers les SOURCES (le `dist/` peut être absent ou
-            // périmé pendant un run de test).
+            // The plugin's sources now import `@geoleaf/core/kernel/config/…` and
+            // `@geoleaf/core/capabilities/…` instead of aliases to the core's
+            // sources: that is what gives it back a `rootDir` and hence the
+            // publication of its types. In TEST, Vite must resolve these specifiers
+            // to the SOURCES (`dist/` can be absent or stale during a test run).
             //
-            // ⚠️ Ce sont des fonctions PURES et sans import — leur embarquer une copie est
-            // sans conséquence. Les singletons, eux, ne passent PAS par un import : ils sont
-            // lus sur `globalThis.GeoLeaf`, sans quoi le plugin en obtient une seconde
-            // instance jamais initialisée.
+            // ⚠️ These are PURE, import-free functions — embedding a copy is
+            // inconsequential. Singletons, by contrast, do NOT go through an
+            // import: they are read on `globalThis.GeoLeaf`, otherwise the plugin
+            // gets a second, never-initialised instance.
             {
                 find: /^@geoleaf\/core\/kernel\/(.+)\.js$/,
                 replacement: `${coreRoot}/src/kernel/$1.ts`,
@@ -286,9 +298,9 @@ export default defineConfig({
             // specifier (anchored ^…$): a regex find does string.replace, so an un-anchored
             // suffix match would leave the "../../" prefix and produce a broken path. Any
             // relative depth + .js|.ts (resolveJsToTs rewrites .js→.ts).
-            // ⚠️ STRUCT S8 — `sync/` → `cache/`. Cette entrée a été VUE MORTE avant d'être
-            // corrigée : laissée périmée, 2 tests rougissent et le VRAI `cache-control.ts`
-            // se charge à la place du stub. Elle garde donc quelque chose.
+            // ⚠️ `sync/` → `cache/`. This entry was SEEN DEAD before being fixed:
+            // left stale, 2 tests go red and the REAL `cache-control.ts` loads
+            // instead of the stub. So it does guard something.
             {
                 find: /^(\.\.\/)+cache\/cache-control\.(js|ts)$/,
                 replacement: resolve(__dirname, "__mocks__/empty-module.js"),
@@ -299,11 +311,11 @@ export default defineConfig({
                 find: /^@core\/utils\/general\/formatters(\.js)?$/,
                 replacement: resolve(__dirname, "__mocks__/formatters.js"),
             },
-            // PLUGINS S12 — l'alias `@core/ui/notifications` est retiré : plus AUCUNE
-            // source du dépôt n'importe ce specifier. C'est le dernier reliquat du
-            // doublon `ui/` (racine, mort) vs `src/ui/` (réel) : le répertoire est parti
-            // à ARCHI S5.5/5.6, la paire alias + mock lui a survécu. Un alias qui ne
-            // résout plus rien ne casse pas — il fait croire à un découplage entretenu.
+            // The `@core/ui/notifications` alias is removed: NO source in the repo
+            // imports that specifier any more. It is the last remnant of the `ui/`
+            // (root, dead) vs `src/ui/` (real) duplicate: the directory left and
+            // the alias + mock pair outlived it. An alias that no longer resolves
+            // anything does not break — it fakes a maintained decoupling.
         ],
     },
 });

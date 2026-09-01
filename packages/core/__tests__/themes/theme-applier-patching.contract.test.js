@@ -1,12 +1,13 @@
 /**
- * `ThemeApplierCore` est complété par MONKEY-PATCH à l'import — contrat (API publique S4.3).
+ * `ThemeApplierCore` is completed by MONKEY-PATCH at import — contract.
  *
- * ## Le défaut que ce test existe pour empêcher
+ * ## The defect this test exists to prevent
  *
- * `kernel/themes/theme-applier/core.ts` déclare `applyTheme()`, et `applyTheme()` appelle
- * `this._hideAllLayers()`, `this._applyLayerConfig(cfg)` et `self._syncLegendVisibility()` —
- * **qu'il ne définit pas**. Ces 13 méthodes sont greffées sur le MÊME objet, à l'import, par
- * trois modules frères :
+ * `kernel/themes/theme-applier/core.ts` declares `applyTheme()`, and
+ * `applyTheme()` calls `this._hideAllLayers()`, `this._applyLayerConfig(cfg)`
+ * and `self._syncLegendVisibility()` — **which it does not define**. These
+ * 13 methods are grafted onto the SAME object, at import, by three sibling
+ * modules:
  *
  *   deferred.ts   → _scheduleLayerConfig, _schedulePendingCheck, _checkPendingLayerConfigs,
  *                   _setLayerVisibilityAndStyle, _resolveDataFilePath, _getProfilesBasePath,
@@ -15,40 +16,43 @@
  *                   _syncLegendVisibility
  *   visibility.ts → _hideAllLayers, _applyLayerConfig
  *
- * Aucun de ces trois n'exporte quoi que ce soit qui soit consommé : ce sont des modules
- * d'EFFET DE BORD. Ils n'entraient dans le graphe que parce que `globals.ui.ts` les importait
- * pour composer `GeoLeaf._ThemeApplier` — une clé que personne n'a jamais lue, et que l'API
- * S4.3 a retirée à ce titre.
+ * None of the three exports anything that is consumed: they are
+ * SIDE-EFFECT modules. They only entered the graph because `globals.ui.ts`
+ * imported them to compose `GeoLeaf._ThemeApplier` — a key nobody ever
+ * read, removed by the API review on that ground.
  *
- * Le retrait a failli emporter les patches. Trois instruments ont dit « code mort » de concert :
+ * The removal almost took the patches with it. Three instruments said "dead
+ * code" in concert:
  *
- *   • ESLint — 4 imports `no-unused-vars`, puisque les symboles ne servent effectivement pas ;
- *   • `check-orphan-exports` — les 3 exports sans consommateur ;
- *   • la lecture humaine — « 812 lignes importées par personne ».
+ *   • ESLint — 4 `no-unused-vars` imports, since the symbols effectively serve nothing;
+ *   • `check-orphan-exports` — the 3 consumer-less exports;
+ *   • human reading — "812 lines imported by nobody".
  *
- * Les trois avaient raison sur la LETTRE et tort sur le FOND : un module d'effet de bord n'a
- * pas de consommateur par définition. C'est le mode d'échec « annoncé mort ≠ mort » de
- * `CLAUDE.md`, dans sa forme la plus coûteuse — la suite serait restée VERTE, parce que tout
- * ce qui touche aux thèmes mocke `ThemeApplierCore`. Le symptôme en production aurait été
- * `TypeError: this._hideAllLayers is not a function` au premier changement de thème.
+ * All three were right on the LETTER and wrong on the SUBSTANCE: a
+ * side-effect module has no consumer by definition. The "announced dead ≠
+ * dead" failure mode, in its most costly form — the suite would have
+ * stayed GREEN, because everything touching themes mocks
+ * `ThemeApplierCore`. The production symptom would have been
+ * `TypeError: this._hideAllLayers is not a function` at the first theme change.
  *
- * ## Pourquoi ce test et pas une règle de lint
+ * ## Why this test and not a lint rule
  *
- * Une exemption `eslint-disable` sur les imports dirait « ignore-moi », pas « ces méthodes
- * doivent exister ». Ici on asserte la CONSÉQUENCE : la surface de `ThemeApplierCore` après
- * chargement de la chaîne `globals`. Si un futur nettoyage retire un import, ce test nomme la
- * méthode perdue.
+ * An `eslint-disable` exemption on the imports would say "ignore me", not
+ * "these methods must exist". Here the CONSEQUENCE is asserted:
+ * `ThemeApplierCore`'s surface after loading the `globals` chain. If a
+ * future cleanup removes an import, this test names the lost method.
  */
 "use strict";
 
 import { describe, test, expect } from "vitest";
 
-// La chaîne globals réelle — c'est elle qui ancre les trois patchers. Ne PAS importer les
-// patchers directement ici : ce test doit échouer si `globals.ui.ts` cesse de les tirer.
+// The real globals chain — it is what anchors the three patchers. Do NOT
+// import the patchers directly here: this test must fail if `globals.ui.ts`
+// stops pulling them.
 import "../../src/globals/globals.js";
 import { ThemeApplierCore } from "../../src/kernel/themes/theme-applier/core.js";
 
-/** Les 13 méthodes greffées, par module d'origine. */
+/** The 13 grafted methods, by module of origin. */
 const PATCHED = {
     "theme-applier/deferred.ts": [
         "_checkPendingLayerConfigs",
@@ -68,7 +72,7 @@ const PATCHED = {
     "theme-applier/visibility.ts": ["_applyLayerConfig", "_hideAllLayers"],
 };
 
-/** Celles que `core.ts` appelle sans les définir — le sous-ensemble qui casse la prod. */
+/** Those `core.ts` calls without defining — the subset that breaks production. */
 const APPELEES_PAR_APPLY_THEME = [
     "_applyLayerConfig",
     "_hideAllLayers",
@@ -76,7 +80,7 @@ const APPELEES_PAR_APPLY_THEME = [
     "_syncLegendVisibility",
 ];
 
-describe("ThemeApplierCore — les greffes d'import (API S4.3)", () => {
+describe("ThemeApplierCore — les greffes d'import", () => {
     test("les 13 méthodes greffées sont présentes après chargement de `globals`", () => {
         const manquantes = [];
         for (const [source, methodes] of Object.entries(PATCHED)) {
@@ -92,8 +96,8 @@ describe("ThemeApplierCore — les greffes d'import (API S4.3)", () => {
     });
 
     test("celles qu'`applyTheme()` appelle sans les définir existent", () => {
-        // Sous-ensemble redondant avec le test précédent, et c'est délibéré : si quelqu'un
-        // réduit la liste des 13 en la jugeant trop stricte, ces 4-là restent, avec la raison.
+        // Subset redundant with the previous test, deliberately: if someone
+        // trims the list of 13 judging it too strict, these 4 stay, with the reason.
         for (const m of APPELEES_PAR_APPLY_THEME) {
             expect(
                 typeof ThemeApplierCore[m],
@@ -103,8 +107,8 @@ describe("ThemeApplierCore — les greffes d'import (API S4.3)", () => {
     });
 
     test("`applyTheme` existe et est bien celle qui dépend des greffes", () => {
-        // Garde l'énoncé du test honnête : si `applyTheme` disparaît ou change de nom, les
-        // deux assertions ci-dessus deviendraient vraies pour rien.
+        // Keeps the test's claim honest: if `applyTheme` vanishes or changes
+        // name, the two assertions above would become true for nothing.
         expect(typeof ThemeApplierCore.applyTheme).toBe("function");
     });
 });

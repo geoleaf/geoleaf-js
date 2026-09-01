@@ -195,10 +195,24 @@ autonome (CO-04) après le délai d'attente — comportement correct —, mais s
 séparateur n'a pas de style. Le couplage est **implicite** : rien ne le déclare, aucune gate ne le
 vérifie.
 
-⚠️ **Un séparateur n'est pas retiré au démontage.** `destroy()` retire l'élément de relevé et
-détache tout ce qui est en vol, mais **pas** le `div.gl-scale-separator` inséré par l'amarrage. Un
-cycle démontage → remontage en accumule donc un de plus à chaque passage. Écart mesuré en écrivant
-cette fiche, versé au registre de dette technique du dépôt de travail.
+✅ **Le séparateur est retiré au démontage depuis le 17/08/2026**. `destroy()`
+retire l'élément de relevé, son `div.gl-scale-separator`, et détache tout ce qui est en vol.
+La référence du séparateur est tenue par une variable de **portée module** — pas un champ de
+l'objet, qui ferait bouger la surface publique gelée pour un détail d'implémentation.
+
+⚠️ **Ce paragraphe décrivait le défaut au présent, et il était exact** : `destroy()` ne retirait
+pas le séparateur, et un cycle démontage → remontage en accumulait un de plus à chaque passage.
+
+✅ **Une fuite JUMELLE a été trouvée en corrigeant celle-ci, et elle était pire** : `init()`
+n'avait **aucun garde de ré-entrance**. Deux `init()` consécutifs empilaient deux séparateurs
+**et** deux éléments de coordonnées, dont les premiers devenaient **inatteignables** —
+`_coordsElement` était écrasé, donc `destroy()` ne pouvait plus les retirer du tout. `init()`
+démonte désormais avant de remonter.
+
+📌 **Onze tests de la capacité passaient sans une seule assertion sur le séparateur** : le
+comportement fautif n'était attesté par rien, ce qui est exactement la configuration où un
+défaut survit à toutes les relectures. Deux tests le tiennent maintenant, écrits AVANT le
+correctif et vus rouges (2 séparateurs orphelins, 2 contrôles empilés).
 
 ### Frontière `capabilities/` → `kernel/` (règle ESLint R.8)
 

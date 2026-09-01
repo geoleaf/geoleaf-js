@@ -1,112 +1,114 @@
 "use strict";
 /**
- * server-contract.cjs — ce qu'une variante LIVRABLE exige de son serveur, écrit AVEC elle.
+ * server-contract.cjs — what a DELIVERABLE variant demands of its server, written WITH it.
  *
- * ## Pourquoi ce module existe
+ * ## Why this module exists
  *
- * Le 09/08/2026, un `deploy-full` copié tel quel sur un serveur de production nginx a rendu un
- * spinner infini. La console disait la cause en un mot :
+ * On 2026-08-09, a `deploy-full` copied as-is onto an nginx production server rendered an
+ * infinite spinner. The console said the cause in one word:
  *
  *   Failed to load module script: Expected a JavaScript-or-Wasm module script but the server
  *   responded with a MIME type of "application/octet-stream".
  *
- * La table `mime.types` de nginx ne connaît que `js`. Depuis MapLibre 6, le moteur entier est en
- * `.mjs` — donc rien ne boote. Ce fait était DÉJÀ écrit dans le dépôt, à `docker/nginx.dev.conf`,
- * sous la forme « 🛑 SANS CETTE LIGNE, RIEN NE BOOTE », dans un commentaire qui admettait
- * lui-même le trou : « ⚠️ Cette contrainte VIT HORS DU DÉPÔT pour l'intégrateur — aucune gate ne
- * peut la voir chez lui ».
+ * nginx's `mime.types` table only knows `js`. Since MapLibre 6, the whole engine is in
+ * `.mjs` — so nothing boots. That fact was ALREADY written in the repo, at
+ * `docker/nginx.dev.conf`, as "🛑 WITHOUT THIS LINE, NOTHING BOOTS", in a comment that
+ * itself admitted the hole: "⚠️ This constraint LIVES OUTSIDE THE REPO for the
+ * integrator — no gate can see it on their side".
  *
- * Il n'y avait pas de trou de connaissance, il y avait un trou de DIFFUSION : la connaissance
- * vivait dans un fichier de dev qui ne part pas avec le dossier. Le livrable, lui, ne portait
- * aucun fichier d'accompagnement — ni `.htaccess`, ni `nginx.conf`, ni README —, et le dernier
- * texte imprimé par le build disait « Serve via http », que la CSP livrée rend impossible.
+ * There was no knowledge hole, there was a DISTRIBUTION hole: the knowledge lived in a
+ * dev file that does not ship with the folder. The deliverable, for its part, carried no
+ * companion file — no `.htaccess`, no `nginx.conf`, no README — and the last text the
+ * build printed said "Serve via http", which the shipped CSP makes impossible.
  *
- * ## Un seul corpus, trois consommateurs
+ * ## One corpus, three consumers
  *
- *   • `build-deploy.cjs`                    — émet les trois fichiers dans chaque livrable
- *   • `verify-deploy-server-contract.cjs`   — SC-01/02/03, gate leur présence et leur contenu
- *   • `_docs_projet/guides/DISTRIBUTION_GUIDE_2026.md` — y RENVOIE au lieu de dupliquer
+ *   • `build-deploy.cjs`                    — emits the three files into each deliverable
+ *   • `verify-deploy-server-contract.cjs`   — SC-01/02/03, gates their presence and content
+ *   • the internal distribution guide — POINTS here instead of duplicating
  *
- * C'est le patron de `lib/boot-assets.cjs` et de `productDocsFiles()`, pour la même raison :
- * deux recettes divergent, et celle qui n'est pas maintenue sort verte en décrivant autre chose.
+ * It is the `lib/boot-assets.cjs` and `productDocsFiles()` pattern, for the same reason:
+ * two recipes diverge, and the unmaintained one goes green describing something else.
  *
- * ## ⚠️ La gate ne compare PAS ces chaînes à elles-mêmes
+ * ## ⚠️ The gate does NOT compare these strings to themselves
  *
- * SC-02 relit les fichiers ÉMIS sur le disque et y cherche la déclaration de type. Comparer la
- * sortie du générateur à la constante du générateur serait une tautologie — le mode d'échec que
- * `verify-app-template.cjs` nomme dans son propre en-tête (« une gate réparable en alignant
- * l'attente sur le mauvais changement »). Retirer la ligne `mjs` d'ici fait rougir SC-02 ; c'est
- * la seule propriété qui compte, et elle a été vue rougir sur cette mutation exacte.
+ * SC-02 re-reads the EMITTED files on disk and looks for the type declaration there.
+ * Comparing the generator's output to the generator's constant would be a tautology — the
+ * failure mode `verify-app-template.cjs` names in its own header ("a gate fixable by
+ * aligning the expectation on the wrong change"). Removing the `mjs` line from here makes
+ * SC-02 go red; that is the only property that matters, and it was seen going red on that
+ * exact mutation.
  */
 
 const path = require("node:path");
 
 /**
- * Variantes qui ne sont servies que sur le poste, et n'ont donc rien à faire d'un contrat
- * destiné à l'exploitant d'un serveur distant.
+ * Variants only ever served on the workstation, which therefore have no use for a
+ * contract meant for the operator of a remote server.
  *
- *   • `deploy-local`    — variante de poste, porte le bootstrap dev et son jeton
- *   • `deploy-coverage` — copie instrumentée, sert la mesure de couverture du boot
+ *   • `deploy-local`    — workstation variant, carries the dev bootstrap and its token
+ *   • `deploy-coverage` — instrumented copy, serves the boot-coverage measurement
  *
- * 🛑 **CETTE LISTE N'EST PAS `NON_DELIVERABLE` DE `verify-deploy-no-secrets.cjs`, ET NE DOIT
- * JAMAIS ÊTRE FUSIONNÉE AVEC ELLE.** Les deux répondent à des questions différentes :
+ * 🛑 **THIS LIST IS NOT `NON_DELIVERABLE` FROM `verify-deploy-no-secrets.cjs`, AND MUST
+ * NEVER BE MERGED WITH IT.** The two answer different questions:
  *
- *   • là-bas : « cette variante a-t-elle le DROIT de porter un secret ? » — seule `deploy-local`
- *     est exemptée, et `deploy-coverage` est scannée **exprès**, par prudence : une copie
- *     instrumentée d'un livrable est un livrable pour ce qui est de fuiter.
- *   • ici : « cette variante part-elle chez quelqu'un qui devra la servir ? » — `deploy-coverage`
- *     ne part nulle part, elle n'est servie que par le nginx de dev.
+ *   • there: "is this variant ALLOWED to carry a secret?" — only `deploy-local` is
+ *     exempt, and `deploy-coverage` is scanned **on purpose**, out of caution: an
+ *     instrumented copy of a deliverable is a deliverable as far as leaking goes.
+ *   • here: "does this variant ship to someone who will have to serve it?" —
+ *     `deploy-coverage` ships nowhere, it is only served by the dev nginx.
  *
- * Fusionner les deux ferait cesser le scan de secrets sur `deploy-coverage`, c'est-à-dire élargir
- * un trou de sécurité pour économiser une constante. Le recouvrement partiel des deux listes est
- * une coïncidence, pas une redondance.
+ * Merging the two would stop the secret scan on `deploy-coverage`, i.e. widen a security
+ * hole to save one constant. The partial overlap of the two lists is a coincidence, not a
+ * redundancy.
  *
- * ⚠️ La liste nomme les EXCLUS, jamais les inclus : une variante inconnue reçoit le contrat. Le
- * défaut par excès est bénin (un fichier de trop dans un dossier de travail) ; le défaut par
- * défaut est très exactement la panne du 09/08.
+ * ⚠️ The list names the EXCLUDED, never the included: an unknown variant receives the
+ * contract. The defect by excess is benign (one extra file in a working folder); the
+ * defect by omission is exactly the 08-09 outage.
  */
 const NO_CONTRACT_VARIANTS = new Set(["deploy-local", "deploy-coverage"]);
 
 /**
- * @param {string} variantName Nom du répertoire de variante (`deploy-core`, `deploy-full`…).
- * @returns {boolean} `true` si la variante doit porter le contrat serveur.
+ * @param {string} variantName Variant directory name (`deploy-core`, `deploy-full`…).
+ * @returns {boolean} `true` if the variant must carry the server contract.
  */
 function carriesServerContract(variantName) {
     return !NO_CONTRACT_VARIANTS.has(path.basename(variantName));
 }
 
-/** Les trois fichiers d'accompagnement, dans l'ordre où ils se lisent. */
+/** The three companion files, in reading order. */
 const SERVER_CONTRACT_FILES = ["SERVEUR.md", "nginx.conf.example", ".htaccess"];
 
-/** Le type MIME attendu, seul fragment dont l'absence empêche le boot. */
+/** The expected MIME type — the one fragment whose absence prevents boot. */
 const MJS_MIME_TOKEN = "text/javascript";
 
 /**
- * Une recette déclare-t-elle effectivement le type MIME de `.mjs` ?
+ * Does a recipe actually declare the `.mjs` MIME type?
  *
- * 🛑 **CETTE FONCTION A ÉTÉ ÉCRITE DEUX FOIS, ET LA PREMIÈRE VERSION SORTAIT VERTE SUR LA
- * MUTATION QU'ELLE EXISTE POUR ATTRAPER.** Elle cherchait `"text/javascript"` et `"mjs"`
- * n'importe où dans le fichier. Or les deux recettes émises **commentent abondamment** la
- * directive — « attendu : content-type: text/javascript », « le moteur est livré en .mjs » —,
- * donc les deux chaînes restaient présentes après suppression de la directive elle-même.
- * Mesuré le 09/08/2026 en remplaçant `text/javascript mjs;` par `text/css xyz;` : la gate est
- * sortie **verte**, exit 0.
+ * 🛑 **THIS FUNCTION WAS WRITTEN TWICE, AND THE FIRST VERSION WENT GREEN ON THE VERY
+ * MUTATION IT EXISTS TO CATCH.** It looked for `"text/javascript"` and `"mjs"` anywhere
+ * in the file. Yet both emitted recipes **comment the directive abundantly** —
+ * "expected: content-type: text/javascript", "the engine ships as .mjs" (in French in
+ * the emitted files) — so both
+ * strings stayed present after deleting the directive itself. Measured on 2026-08-09 by
+ * replacing `text/javascript mjs;` with `text/css xyz;`: the gate came out **green**,
+ * exit 0.
  *
- * C'est le défaut que `verify-app-template.cjs` documente sur sa propre couche ② (« la
- * propriété était écrite avant d'avoir été vue mordre »), commis ici dans la gate qui invoque
- * la règle. Deux corrections en découlent, et aucune n'est facultative :
+ * It is the defect `verify-app-template.cjs` documents on its own layer ② ("the property
+ * was written before being seen to bite"), committed here in the gate invoking the rule.
+ * Two corrections follow, neither optional:
  *
- *   ① **Les commentaires sont dépouillés d'abord.** `#` en tête de ligne, seul commentaire des
- *      deux formats. Sans ça, plus la recette est bien documentée, moins la gate mord.
- *   ② **Les deux jetons doivent être sur la MÊME ligne.** Une directive associe un type à une
- *      extension ; deux mentions éloignées ne prouvent rien.
+ *   ① **Comments are stripped first.** `#` at line start, the only comment of both
+ *      formats. Without that, the better documented the recipe, the less the gate bites.
+ *   ② **Both tokens must be on the SAME line.** A directive associates a type with an
+ *      extension; two distant mentions prove nothing.
  *
- * ⚠️ Le lookahead final exclut `.mjs.gz`. Le `.htaccess` porte une seconde ligne
- * `AddType text/javascript .mjs.gz .js.gz`, qui sert les archives pré-compressées : sans cette
- * exclusion, elle satisferait la règle à elle seule et la directive PRINCIPALE pourrait
- * disparaître sans que rien ne rougisse.
+ * ⚠️ The final lookahead excludes `.mjs.gz`. The `.htaccess` carries a second line,
+ * `AddType text/javascript .mjs.gz .js.gz`, serving the pre-compressed archives: without
+ * this exclusion it would satisfy the rule on its own and the MAIN directive could
+ * disappear with nothing turning red.
  *
- * @param {string} body Contenu brut d'un `nginx.conf.example` ou d'un `.htaccess`.
+ * @param {string} body Raw content of an `nginx.conf.example` or a `.htaccess`.
  * @returns {boolean}
  */
 function declaresMjsType(body) {
@@ -114,6 +116,38 @@ function declaresMjsType(body) {
         .split("\n")
         .filter((line) => !/^\s*#/.test(line))
         .some((line) => line.includes(MJS_MIME_TOKEN) && /(?:^|\s)\.?mjs(?![\w.])/.test(line));
+}
+
+/**
+ * The security headers a shipping recipe MUST declare (SC-04). Each is checked by NAME plus
+ * an identifying value token, on an ACTIVE line — never a comment. `Strict-Transport-Security`
+ * is deliberately NOT here: it engages the host into HTTPS for `max-age` and an integrator may
+ * legitimately hold it back until their HTTPS is stable (see the recipe's own note), so
+ * requiring it would punish a correct, cautious deployment.
+ */
+const SECURITY_HEADER_TOKENS = [
+    { name: "X-Content-Type-Options", value: "nosniff" },
+    { name: "X-Frame-Options", value: "DENY" },
+    { name: "Content-Security-Policy", value: "frame-ancestors" },
+];
+
+/**
+ * Which of the three required security headers a recipe FAILS to declare on an active line.
+ *
+ * Same discipline as {@link declaresMjsType}: comments are stripped first (`#` at line start,
+ * the one comment form of both nginx and Apache), and the header name and its identifying
+ * value must sit on the SAME line — two distant mentions prove nothing. Covers both emitted
+ * forms without special-casing: nginx `add_header NAME "VALUE"` and Apache
+ * `Header always set NAME "VALUE"` both put name and value on one line.
+ *
+ * @param {string} body Raw content of an `nginx.conf.example` or a `.htaccess`.
+ * @returns {string[]} The names of the missing headers — empty when all three are declared.
+ */
+function missingSecurityHeaders(body) {
+    const active = body.split("\n").filter((line) => !/^\s*#/.test(line));
+    return SECURITY_HEADER_TOKENS.filter(
+        ({ name, value }) => !active.some((line) => line.includes(name) && line.includes(value))
+    ).map(({ name }) => name);
 }
 
 const SERVEUR_MD = `# Servir ce dossier — contrat serveur
@@ -264,6 +298,7 @@ balise \`<meta>\` ne fonctionne pour aucun des trois.
 | \`X-Content-Type-Options\` | \`nosniff\` |
 | \`X-Frame-Options\` | \`DENY\` |
 | \`Content-Security-Policy\` | \`frame-ancestors 'self'\` |
+| \`Strict-Transport-Security\` | \`max-age=31536000\` — n'a d'effet qu'en HTTPS ; voir la mise en garde ci-dessous |
 
 🛑 **Piège nginx, qui a déjà coûté.** \`add_header\` **ne s'hérite pas** : un bloc \`location\` ou
 \`server\` qui déclare son propre \`add_header\` perd **tous** ceux du bloc parent. Un oubli sur un
@@ -273,6 +308,14 @@ seul bloc est donc un trou complet, et parfaitement silencieux.
 aucune origine tierce. Si vous posez une CSP en en-tête HTTP, elle **s'ajoute** à celle-ci : les
 deux s'appliquent, et c'est l'intersection qui vaut. Une CSP d'en-tête plus étroite peut donc
 casser l'application sans que la page ait changé.
+
+🛑 **HSTS engage — mesurez sa portée avant de servir.** Les recettes posent
+\`Strict-Transport-Security: max-age=31536000\` (un an, **sans** \`includeSubDomains\` ni \`preload\`).
+Une fois reçu, le navigateur refuse tout accès HTTP à cet hôte pendant \`max-age\` : c'est la
+protection recherchée, mais elle est **difficile à défaire** si le certificat expire ou si l'hôte
+doit repasser en HTTP. Ne le servez donc **qu'une fois le HTTPS confirmé stable** — sinon retirez
+la ligne jusque-là. Le renforcement (\`; includeSubDomains\`, qui couvre TOUS les sous-domaines,
+puis \`; preload\`, quasi irréversible) se décide séparément et après coup.
 
 ---
 
@@ -365,6 +408,12 @@ server {
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-Frame-Options "DENY" always;
     add_header Content-Security-Policy "frame-ancestors 'self'" always;
+    # HSTS — engage l'hôte en HTTPS pour \`max-age\` (un an ici). C'est la protection
+    # voulue, mais elle est DIFFICILE À DÉFAIRE si le certificat expire ou si l'hôte doit
+    # repasser en HTTP : RETIREZ cette ligne tant que votre HTTPS n'est pas confirmé stable.
+    # Renforcement à décider SÉPARÉMENT : \`; includeSubDomains\` (touche TOUS les
+    # sous-domaines) puis \`; preload\` (quasi irréversible). Sans effet, et sans risque, en HTTP.
+    add_header Strict-Transport-Security "max-age=31536000" always;
 
     # ⚠️ NE PAS remplacer par \`try_files $uri /index.html\`. Ce n'est pas une application
     # à routes côté client, et un repli global fait RÉUSSIR le pré-cache du service
@@ -381,6 +430,7 @@ server {
         add_header X-Content-Type-Options "nosniff" always;
         add_header X-Frame-Options "DENY" always;
         add_header Content-Security-Policy "frame-ancestors 'self'" always;
+        add_header Strict-Transport-Security "max-age=31536000" always;
     }
 
     # Point d'entrée, bootstrap, manifeste et service worker : toujours revalidés, ils
@@ -390,6 +440,7 @@ server {
         add_header X-Content-Type-Options "nosniff" always;
         add_header X-Frame-Options "DENY" always;
         add_header Content-Security-Policy "frame-ancestors 'self'" always;
+        add_header Strict-Transport-Security "max-age=31536000" always;
     }
 }
 
@@ -458,6 +509,9 @@ AddType application/json .json.gz
     Header always set X-Content-Type-Options "nosniff"
     Header always set X-Frame-Options "DENY"
     Header always set Content-Security-Policy "frame-ancestors 'self'"
+    # HSTS — à activer une fois le HTTPS stable (voir la note de la recette nginx :
+    # difficile à révoquer, renforcer par \`; includeSubDomains\`/\`; preload\` délibérément).
+    Header always set Strict-Transport-Security "max-age=31536000"
 
     <FilesMatch "\\.(mjs|js|css|woff2?|png|svg)$">
         Header set Cache-Control "public, max-age=31536000, immutable"
@@ -474,9 +528,9 @@ AddType application/json .json.gz
 `;
 
 /**
- * Rend les trois fichiers d'accompagnement d'une variante livrable.
+ * Renders the three companion files of a deliverable variant.
  *
- * @returns {Record<string, string>} nom de fichier → contenu, prêt à écrire.
+ * @returns {Record<string, string>} file name → content, ready to write.
  */
 function serverContractFiles() {
     return {
@@ -492,5 +546,7 @@ module.exports = {
     SERVER_CONTRACT_FILES,
     MJS_MIME_TOKEN,
     declaresMjsType,
+    SECURITY_HEADER_TOKENS,
+    missingSecurityHeaders,
     serverContractFiles,
 };

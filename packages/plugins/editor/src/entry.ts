@@ -44,7 +44,7 @@ import {
 } from "./persistence/session-export.js";
 import { initAddForm, destroyAddForm, startPoiCapture } from "./add-form/placement-form.js";
 import type { EditorPersistenceAdapter } from "./persistence/adapter-interface.js";
-import type { ConflictStrategy } from "./persistence/conflict-resolution.js";
+import { DEFAULT_CONFLICT_STRATEGY } from "./persistence/conflict-strategies.js";
 import {
     hideHostFeature,
     showHostFeature,
@@ -80,11 +80,11 @@ import langPt from "./lang/lang-pt.js";
 import langIt from "./lang/lang-it.js";
 import langDe from "./lang/lang-de.js";
 import { registerBuiltinComponents, type FieldConfig } from "@geoleaf/field-renderer";
-// W3 / A4″ (S6b) — la plomberie UI appartient à `host-runtime`, la saisie à `field-renderer`.
+// UI plumbing belongs to `host-runtime`, capture to `field-renderer`.
 import { confirmDialog } from "@geoleaf/host-runtime";
 
-// Forme du seam toolbar importée du contrat publié (API publique S3) au lieu d'une
-// re-déclaration locale : les 7 plugins en portaient 4 formes divergentes.
+// Toolbar seam shape imported from the published contract instead of a local
+// re-declaration: the 7 plugins carried 4 diverging shapes of it.
 import type { GeoLeafRawEventMap } from "@geoleaf/core";
 // Replaced at build time by rollup/replace — must be a plain string literal.
 const _VERSION = "__GEOLEAF_VERSION__";
@@ -144,7 +144,7 @@ function _buildWiring(
 ): EditorWiringContext {
     return {
         adapter,
-        strategy: (cfg.persistence?.conflictResolution ?? "prompt") as ConflictStrategy,
+        strategy: cfg.persistence?.conflictResolution ?? DEFAULT_CONFLICT_STRATEGY,
         hideHost: (layerId, featureId) => {
             if (deps) hideHostFeature(deps, layerId, featureId);
         },
@@ -257,10 +257,11 @@ function _onDelete(): void {
         _doDelete();
         return;
     }
-    // 5.2 — `confirmDialog` de la lib partagée remplace une réimplémentation locale de
-    // 97 lignes au DOM et aux classes identiques. ⚠️ Le contrat change de forme : une
-    // promesse à usage unique au lieu d'une poignée `open/close/destroy`. Il n'y a donc
-    // plus d'instance à détruire au démontage — la modale ne survit pas à sa réponse.
+    // The shared lib's `confirmDialog` replaces a 97-line local reimplementation
+    // with identical DOM and classes. ⚠️ The contract changes shape: a
+    // single-use promise instead of an `open/close/destroy` handle. There is
+    // thus no instance left to destroy at teardown — the modal does not outlive
+    // its answer.
     void confirmDialog({
         title: _getLabel("editor.modal.delete.title"),
         message: _getLabel("editor.modal.delete.body"),
@@ -397,19 +398,19 @@ function _initTerraDraw(): void {
         rest: createOnlineAdapter(_cfg!, { onConflict: dispatchFeatureConflict }),
         onChange: _refreshQueueBadge,
     });
-    // 5.1-b — le handler du seam `Sync`, que le bouton de rejeu d'`offline-ui` lit sous
-    // l'identifiant `"poi"`. ⚠️ 5.1-f l'a rendu INCONDITIONNEL : il cédait la place à
-    // `addpoi`, et la reprise vivait dans le pont, qui est parti avec lui. Motif complet
-    // sur `registerSyncHandler`.
+    // The `Sync` seam handler, which `offline-ui`'s replay button reads under
+    // the `"poi"` identifier. ⚠️ Made UNCONDITIONAL: it used to yield to
+    // `addpoi`, and the takeover lived in the bridge, which left with it. Full
+    // motive on `registerSyncHandler`.
     registerSyncHandler();
-    // 5.1-d — la stratégie de téléversement d'image (réseau, puis stockage local en secours)
-    // et la reprise au retour du réseau. ⚠️ La reprise reçoit ICI son premier appelant : chez
-    // `addpoi` elle n'en avait aucun, donc les photos mises de côté n'étaient jamais renvoyées.
+    // The image upload strategy (network, then local storage as backup) and the
+    // retry on network return. ⚠️ The retry receives its first caller HERE: in
+    // `addpoi` it had none, so photos set aside were never re-sent.
     initImageUpload();
-    // 5.1-f — le flux « ajouter un POI ». ⚠️ Le câblage est passé par un FOURNISSEUR, jamais
-    // par une valeur : il se reconstruit à l'appel depuis `_cfg` / `_persistence` /
-    // `_reconcileDeps`, dont les deux derniers viennent d'être posés ci-dessus. Un instantané
-    // pris ici figerait l'état d'un boot où la carte n'est pas encore là.
+    // The "add a POI" flow. ⚠️ Wiring goes through a PROVIDER, never a value: it
+    // rebuilds at call time from `_cfg` / `_persistence` / `_reconcileDeps`, the
+    // last two just set above. A snapshot taken here would freeze the state of a
+    // boot where the map is not there yet.
     initAddForm({
         openForm: _openEditorForm,
         getWiring: () =>
@@ -487,16 +488,16 @@ const _EDITOR_ICON =
     '<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>' +
     "</svg>";
 
-/** Flèche montante vers un plateau — le pictogramme d'export. */
+/** Upward arrow to a tray — the export pictogram. */
 const _EXPORT_ICON =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"' +
     ' stroke-linecap="round" stroke-linejoin="round">' +
     '<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>' +
     "</svg>";
 
-// 5.1-f — le pictogramme du bouton « ajouter un POI ». Repris trait pour trait de celui que
-// le core dessinait (`mobile-toolbar-pill.ts`) : le bouton change de propriétaire, pas
-// d'apparence, et un utilisateur ne doit pas voir la fusion.
+// The "add a POI" button's pictogram. Taken stroke for stroke from the one the
+// core drew (`mobile-toolbar-pill.ts`): the button changes owner, not
+// appearance, and a user must not see the merge.
 const _POI_ADD_ICON =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"' +
     ' stroke-linecap="round" stroke-linejoin="round">' +
@@ -505,73 +506,91 @@ const _POI_ADD_ICON =
     "</svg>";
 
 // 4 & 5 — Register toolbar slot + wire event listeners (skipped if enabled === false).
+// The three slots below are declared only on the EAGER path — before `boot()`, where these calls
+// are the ONLY declaration (an integrator has no `init.js`). After `init()` the toolbar is already
+// built: they would be stored, never drawn, and each would log a warning whose intended reader has
+// already done what it recommends elsewhere. `!== true` so a host without `isInitialized` still
+// gets its slots.
 if (getEditorConfig().enabled !== false) {
-    getGeoLeaf()?.registry?.register?.({
-        id: "editor",
-        dependencies: [],
-        init: () => {},
-        destroy: () => {},
-        ui: {
-            mobileIcon: {
-                icon: _EDITOR_ICON,
-                labelKey: "editor.toolbar.button",
-                profileKey: "ui.showEditor",
-                requiresPlugin: "editor",
-                action: "editor",
-            },
-        },
-    });
-
-    // 5.1-e — bouton d'export de la session. ⚠️ Son `profileKey` est sous `modules.editor.*`
-    // et non `ui.*` : les deux drapeaux équivalents d'`addpoi` n'étaient déclarés dans AUCUN
-    // schéma, alors que `ui.schema.json` est `additionalProperties: false` — ils étaient donc
-    // inatteignables, et leurs boutons ni masquables ni affichables (R19).
-    //
-    // 🛑 CET ENREGISTREMENT NE SUFFIT PAS À FAIRE APPARAÎTRE LE BOUTON, et c'est mesuré.
-    // La barre d'outils est bâtie AU BOOT ; ce plugin est PARESSEUX et ne s'évalue qu'au
-    // premier clic. Sonde navigateur sur `deploy-full` : module enregistré `true`, boutons
-    // dans le DOM `0`. Le créneau visible est déclaré par `registerLazyForAction` dans
-    // `apps/geoleaf-app/init.js`, AVANT le chargement — c'est là qu'il faut le poser.
-    // Celui-ci reste pour l'hôte qui charge le plugin en EAGER, où il est le seul chemin.
-    if (getEditorConfig().showExport !== false) {
+    // ── The SLOT DECLARATIONS only — guarded since 21/08/2026 (eager path is their only
+    // reader: after init() the toolbar is built and a stored slot is never drawn). `!== true`
+    // so a host without `isInitialized` still gets its slots.
+    // ⚠️ Scope fixed on 25/08/2026: this guard once wrapped the WHOLE block below — listeners
+    // and map-ready wiring included — so on the LAZY path (isInitialized === true) the plugin
+    // mounted its API and never wired its UI: no root, no handler, no error. The guard must
+    // cover the registers alone; everything after it runs on BOTH paths.
+    if (getGeoLeaf()?.registry?.isInitialized?.() !== true) {
         getGeoLeaf()?.registry?.register?.({
-            id: "editor-export-session",
+            id: "editor",
             dependencies: [],
             init: () => {},
             destroy: () => {},
             ui: {
                 mobileIcon: {
-                    icon: _EXPORT_ICON,
-                    labelKey: "editor.export.session",
-                    profileKey: "modules.editor.showExport",
-                    defaultVisible: true,
+                    icon: _EDITOR_ICON,
+                    labelKey: "editor.toolbar.button",
+                    profileKey: "modules.editor.showButton",
+                    legacyProfileKey: "ui.showEditor",
                     requiresPlugin: "editor",
-                    action: "editor-export-session",
+                    action: "editor",
                 },
             },
         });
-    }
 
-    // 5.1-f — le créneau « ajouter un POI », repris du core. Mêmes remarques que ci-dessus :
-    // celui-ci ne sert que l'hôte qui charge le plugin en EAGER ; le créneau visible au boot
-    // est déclaré par `registerLazyForAction` dans `apps/geoleaf-app/init.js`.
-    if (getEditorConfig().showAddPoi !== false) {
-        getGeoLeaf()?.registry?.register?.({
-            id: "poi-add",
-            dependencies: [],
-            init: () => {},
-            destroy: () => {},
-            ui: {
-                mobileIcon: {
-                    icon: _POI_ADD_ICON,
-                    labelKey: "editor.toolbar.poi_add",
-                    profileKey: "modules.editor.showAddPoi",
-                    defaultVisible: true,
-                    requiresPlugin: "editor",
-                    action: "poi-add",
+        // Session export button. ⚠️ Its `profileKey` is under `modules.editor.*`
+        // and not `ui.*`: `addpoi`'s two equivalent flags were declared in NO
+        // schema, while `ui.schema.json` is `additionalProperties: false` — they
+        // were thus unreachable, and their buttons could neither be hidden nor
+        // shown.
+        //
+        // 🛑 THIS REGISTRATION IS NOT ENOUGH TO MAKE THE BUTTON APPEAR, and it is
+        // measured. The toolbar is built AT BOOT; this plugin is LAZY and only
+        // evaluates at the first click. Browser probe on `deploy-full`: module
+        // registered `true`, buttons in the DOM `0`. The visible slot is
+        // declared by `registerLazyForAction` in `apps/geoleaf-app/init.js`,
+        // BEFORE loading — that is where it must be set. This one stays for the
+        // host loading the plugin EAGERLY, where it is the only path.
+        if (getEditorConfig().showExport !== false) {
+            getGeoLeaf()?.registry?.register?.({
+                id: "editor-export-session",
+                dependencies: [],
+                init: () => {},
+                destroy: () => {},
+                ui: {
+                    mobileIcon: {
+                        icon: _EXPORT_ICON,
+                        labelKey: "editor.export.session",
+                        profileKey: "modules.editor.showExport",
+                        defaultVisible: true,
+                        requiresPlugin: "editor",
+                        action: "editor-export-session",
+                    },
                 },
-            },
-        });
+            });
+        }
+
+        // The "add a POI" slot, taken over from the core. Same remarks as above:
+        // this one only serves the host loading the plugin EAGERLY; the slot
+        // visible at boot is declared by `registerLazyForAction` in
+        // `apps/geoleaf-app/init.js`.
+        if (getEditorConfig().showAddPoi !== false) {
+            getGeoLeaf()?.registry?.register?.({
+                id: "poi-add",
+                dependencies: [],
+                init: () => {},
+                destroy: () => {},
+                ui: {
+                    mobileIcon: {
+                        icon: _POI_ADD_ICON,
+                        labelKey: "editor.toolbar.poi_add",
+                        profileKey: "modules.editor.showAddPoi",
+                        defaultVisible: true,
+                        requiresPlugin: "editor",
+                        action: "poi-add",
+                    },
+                },
+            });
+        }
     }
 
     if (typeof document !== "undefined") {
@@ -581,16 +600,18 @@ if (getEditorConfig().enabled !== false) {
                 toggleEditorMenu(ce.detail?.element);
             }
             if (ce.detail?.action === "poi-add") {
-                // ⚠️ L'état visuel du bouton est rendu au flux : `startPoiCapture` ne le
-                // relâche que si la capture se termine SANS ouvrir le formulaire. Le core
-                // faisait la même chose avec `aria-disabled`, mais depuis le kernel.
+                // ⚠️ The button's visual state is handed to the flow:
+                // `startPoiCapture` only releases it when capture ends WITHOUT
+                // opening the form. The core did the same with `aria-disabled`,
+                // but from the kernel.
                 const el = ce.detail?.element as HTMLElement | undefined;
                 el?.classList.add("gl-map-toolbar__btn--active");
                 startPoiCapture(null, () => el?.classList.remove("gl-map-toolbar__btn--active"));
             }
             if (ce.detail?.action === "editor-export-session") {
-                // ⚠️ Le message d'« aucune entité » passe par l'i18n. La source le codait en
-                // dur, en français, dans un plugin publié en six langues.
+                // ⚠️ The "no entity" message goes through i18n. The source
+                // hard-coded it, in French, in a plugin published in six
+                // languages.
                 if (sessionFeatureCount() === 0) {
                     _notify("info", _getLabel("editor.export.empty"));
                     return;

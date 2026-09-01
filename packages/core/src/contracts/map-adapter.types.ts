@@ -104,7 +104,7 @@ export interface MapInitOptions {
      * Keeps the WebGL framebuffer readable after rendering (`canvas.toDataURL` / `toBlob`).
      * Required by the print plugin for off-screen capture and live canvas preview.
      * Incurs a small memory/perf overhead — enable only when needed.
-     * Set automatically when the print plugin is registered (Sprint 2); opt-in here for manual activation.
+     * Set automatically when the print plugin is registered; opt-in here for manual activation.
      */
     preserveDrawingBuffer?: boolean;
     /** Forward-compatibility escape hatch for engine-specific options. */
@@ -130,12 +130,12 @@ export type MapEvent =
     | "zoomstart"
     | "load"
     | "resize";
-// ⚠️ `"unload"` a été retiré ici : il figurait dans ce contrat depuis l'origine SANS EXISTER
-// dans le moteur — ni en MapLibre 5, ni en 6 (`grep` sur les deux `.d.ts` : aucun événement de
-// `Map` de ce nom). Il ne compilait que par la surcharge fourre-tout `on(type: string, …)` de
-// la v5, que la v6 retire en typant les événements. Zéro appelant dans tout le dépôt. Ce n'est
-// donc pas une concession à la v6 mais la purge d'un jeton mort du contrat public : l'exposer
-// promettait un abonnement que l'adaptateur n'aurait jamais pu honorer.
+// ⚠️ `"unload"` was removed here: it sat in this contract from the start WITHOUT EXISTING
+// in the engine — neither in MapLibre 5 nor 6 (`grep` over both `.d.ts`: no `Map` event of
+// that name). It only compiled through v5's catch-all `on(type: string, …)` overload, which
+// v6 removes by typing the events. Zero callers in the whole repo. So this is not a
+// concession to v6 but the purge of a dead token from the public contract: exposing it
+// promised a subscription the adapter could never have honoured.
 
 // ─── Layer & style options ────────────────────────────────────────────────────
 
@@ -239,6 +239,21 @@ export interface GeoLeafMarkerOptions {
      * under a strict CSP (`style-src` without `'unsafe-inline'`, roadmap B.5).
      */
     className?: string;
+    /**
+     * Rotation of the marker icon, in degrees clockwise. Interpreted against
+     * {@link GeoLeafMarkerOptions.rotationAlignment}.
+     */
+    rotation?: number;
+    /**
+     * What the rotation is measured against.
+     *
+     * 🛑 `"map"` is the one that matters, and it buys something no caller can reproduce
+     * cheaply: the engine RE-APPLIES `rotation − mapBearing` on every rendered frame. A caller
+     * computing that angle itself, once per position fix, freezes the icon while the map is
+     * still turning — through a 90° corner it points 90° wrong for the whole turn, which is
+     * precisely when someone is looking at it. `"viewport"` pins the icon to the screen.
+     */
+    rotationAlignment?: "map" | "viewport" | "auto";
     /** Forward-compatibility escape hatch for engine-specific options. */
     [key: string]: unknown;
 }

@@ -113,12 +113,10 @@ const LoaderModule = {
             Log.error(validUrl.message);
             return Promise.reject(validUrl);
         }
-        return _doFetch(validUrl, headers as Record<string, string>, strictContentType, "").catch(
-            (err: Error) => {
-                Log.error("[GeoLeaf.Config.Loader] Error loading JSON:", err);
-                throw err;
-            }
-        );
+        return _doFetch(validUrl, headers, strictContentType, "").catch((err: Error) => {
+            Log.error("[GeoLeaf.Config.Loader] Error loading JSON:", err);
+            throw err;
+        });
     },
 
     /**
@@ -138,12 +136,7 @@ const LoaderModule = {
             Log.error(validUrl.message);
             return Promise.reject(validUrl);
         }
-        return _doFetch(
-            validUrl,
-            headers as Record<string, string>,
-            strictContentType,
-            " dans fetchJson"
-        )
+        return _doFetch(validUrl, headers, strictContentType, " dans fetchJson")
             .then((json) => json as Record<string, unknown> | null)
             .catch((err: Error) => {
                 Log.error("[GeoLeaf.Config.Loader] Error in fetchJson() for " + url + ":", err);

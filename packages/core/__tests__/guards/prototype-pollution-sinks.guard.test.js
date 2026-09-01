@@ -1,31 +1,32 @@
 /**
  * @file prototype-pollution-sinks.guard.test.js
- * @description Test-garde — la blocklist anti-prototype-pollution reste UNIQUE, et les
+ * @description Guard test — the anti-prototype-pollution blocklist stays UNIQUE, and the
  * sinks qui l'appliquent restent identifiés.
  *
- * Pourquoi ce garde existe (S13.2, optimisation KERNEL, 18/07/2026)
+ * Why this guard exists (18/07/2026)
  * -----------------------------------------------------------------
- * La même liste de 3 clés a vécu en **4 copies divergentes** — `built-in/config/storage`
- * (Array + fonction logueuse), `utils/general/object-utils` (Array, silencieuse),
- * `utils/general/general-utils` — aujourd'hui `utils/general/utils-base` (STRUCT S6) — (Array
- * déclarée DANS le corps récursif de `deepMerge`,
- * donc réallouée à chaque nœud) et `adapters/maplibre/maplibre-style-converter` (Set).
- * Trois sur quatre bloquaient en silence.
+ * The same 3-key list lived in **4 divergent copies** —
+ * `built-in/config/storage` (Array + logging function),
+ * `utils/general/object-utils` (Array, silent),
+ * `utils/general/general-utils` — today `utils/general/utils-base` — (Array
+ * declared INSIDE `deepMerge`'s recursive body, hence reallocated at every
+ * node) and `adapters/maplibre/maplibre-style-converter` (Set). Three of
+ * four blocked silently.
  *
- * Le coût de cette dispersion n'est pas théorique : le trou du S5 était un sink qu'une
- * campagne précédente n'avait simplement pas atteint, et le CHANGELOG du S5 annonçait
- * « 4ᵉ copie supprimée » alors qu'il en restait quatre — `maplibre-style-converter`
- * n'avait jamais été comptée. Un décompte à la main ne converge pas ; celui-ci, si.
+ * The dispersion's cost is not theoretical: an earlier hole was a sink a
+ * previous campaign had simply not reached, and the CHANGELOG announced "4th
+ * copy deleted" while four remained — `maplibre-style-converter` had never
+ * been counted. A hand tally does not converge; this one does.
  *
- * Ce que ce fichier verrouille, et pourquoi chaque verrou :
- *  1. **Anti-recopie** — aucune 5ᵉ copie. C'est le verrou de valeur : sans lui, tout le
- *     reste se re-disperse au premier « je ne veux pas créer d'import ici ».
- *  2. **Inventaire des sinks** — la liste des fichiers qui importent le garde est
- *     explicite, donc en ajouter un oblige à y penser.
- *  3. **Contenu de la blocklist** — personne ne retire une clé en silence. C'est le
- *     revers d'avoir une source unique : elle affaiblit tout d'un coup.
- *  4. **Le gate est vert** — `check-dynamic-key-writes.cjs` exécuté en process, pour
- *     qu'un `npm test` suffise à le voir tomber.
+ * What this file locks, and why each lock:
+ *  1. **Anti-recopy** — no 5th copy. The value lock: without it, everything
+ *     else re-disperses at the first "I don't want to create an import here".
+ *  2. **Sink inventory** — the list of files importing the guard is
+ *     explicit, so adding one forces thinking about it.
+ *  3. **Blocklist content** — nobody removes a key silently. The flip side
+ *     of a single source: it weakens everything at once.
+ *  4. **The gate is green** — `check-dynamic-key-writes.cjs` run in-process,
+ *     so a bare `npm test` suffices to see it fall.
  */
 
 import { describe, it, expect } from "vitest";
@@ -44,7 +45,14 @@ const REPO_ROOT = path.resolve(__dirname, "../../../..");
 const SRC = path.join(REPO_ROOT, "packages", "core", "src");
 const GUARD_FILE = path.join(SRC, "utils", "general", "object-path-guard.ts");
 
-/** Files expected to apply the canonical guard. Adding one is a deliberate act. */
+/**
+ * Files expected to apply the canonical guard. Adding one is a deliberate act.
+ *
+ * ⚠️ This list is an INVENTORY, not a sample: the reciprocal assertion below
+ * refuses that a guard importer not appear in it. The grouping comment is
+ * each entry's useful half — it says WHICH untrusted data transits, which a
+ * glob of the importers would not say.
+ */
 const EXPECTED_SINK_FILES = [
     // Untrusted profile JSON lands here — the config write paths.
     "kernel/config/storage.ts",
@@ -56,6 +64,17 @@ const EXPECTED_SINK_FILES = [
     "utils/general/utils-base.ts", // ex-`general-utils.ts`, renommé au STRUCT S6 (N3)
     // Style JSON → MapLibre paint objects.
     "adapters/maplibre/maplibre-style-converter.ts",
+    // Feature properties → DOM widgets: the keys come from the served
+    // GeoJSON, and the copied object leaves in a `CustomEvent`. A `__proto__`
+    // key would be invisible to `Object.keys()` there.
+    "capabilities/feature-info/render/widget-dispatch.ts",
+    // Layer ids from the profile (`JSON.parse`) aggregated into a per-layer report.
+    "capabilities/offline/db/indexeddb.ts",
+    // Same, reread from the LOCAL store — written by several code versions,
+    // and it survives deployments: "local" is not "trusted".
+    "capabilities/offline/report/pull-state.ts",
+    // Profile property names copied into the HTTP body pushed upstream.
+    "capabilities/offline/write/push-engine.ts",
 ];
 
 function walkTs(dir, out = []) {
@@ -101,6 +120,39 @@ describe("@security garde d'inventaire — blocklist anti-prototype-pollution", 
         ).toEqual([]);
     });
 
+    // ⚠️ The RECIPROCAL assertion of the previous one, and it is what makes
+    // the constant an inventory. Without it, `EXPECTED_SINK_FILES` only
+    // guarantees an inclusion: "the 7 listed import the guard" came out
+    // green while 11 files imported it. The gap of 4 stayed visible ten days
+    // — and it only showed when looked for.
+    //
+    // 🛑 Why a HAND-WRITTEN list and not a glob of the importers: deriving
+    // the expected list from the same source as the observed one makes the
+    // assertion tautological — it could NEVER turn red again. The
+    // "structural green" CLAUDE.md forbids. The constant thus keeps its own
+    // value: it says WHY each sink is a sink (the grouping comments), which
+    // a glob does not say.
+    it("recense chaque importateur du garde (réciproque — pas d'ajout silencieux)", () => {
+        // A real import, not a mention: two files cite the module in a
+        // `{@link module:…}` on top of importing it, and a mention alone does
+        // not make a sink.
+        const IMPORTS_GUARD = /from\s+["'][^"']*object-path-guard\.js["']/;
+        const listed = new Set(EXPECTED_SINK_FILES);
+        const unlisted = [];
+        for (const file of walkTs(SRC)) {
+            if (path.resolve(file) === path.resolve(GUARD_FILE)) continue;
+            if (!IMPORTS_GUARD.test(fs.readFileSync(file, "utf8"))) continue;
+            const rel = path.relative(SRC, file).split(path.sep).join("/");
+            if (!listed.has(rel)) unlisted.push(rel);
+        }
+        expect(
+            unlisted,
+            `Ces fichiers importent le garde sans figurer dans EXPECTED_SINK_FILES :\n  ${unlisted.join("\n  ")}\n` +
+                "Les ajouter à la constante, AVEC le commentaire disant quelle donnée non " +
+                "fiable y transite — c'est ce commentaire qui fait la valeur de l'inventaire."
+        ).toEqual([]);
+    });
+
     it("contient exactement les 3 clés dangereuses", () => {
         // Single source ⇒ removing one entry weakens every sink at once, silently.
         expect([...UNSAFE_KEY_LIST].sort()).toEqual(["__proto__", "constructor", "prototype"]);
@@ -121,13 +173,13 @@ describe("@security garde d'inventaire — blocklist anti-prototype-pollution", 
         expect(hasUnsafeSegment([])).toBe(false);
     });
 
-    // ⚠️ Timeout explicite : cette assertion parse ~473 fichiers TypeScript en AST, dans
-    // le process de test. En isolé c'est ~0,4 s ; sous la charge de la suite complète
-    // (18 packages en parallèle) elle dépassait les 10 s par défaut et rendait le
-    // pipeline rouge par intermittence — le motif exact que ce sprint corrige ailleurs.
-    // L'application réelle du gate, elle, passe par ses 3 points de câblage (ci:local,
-    // ci.yml, pre-commit) ; cette assertion n'est qu'une commodité pour qu'un `npm test`
-    // seul le fasse remonter.
+    // ⚠️ Explicit timeout: this assertion parses ~473 TypeScript files as
+    // AST, in the test process. Isolated it is ~0.4 s; under the full
+    // suite's load (18 packages in parallel) it exceeded the default 10 s
+    // and turned the pipeline red intermittently — the exact motive fixed
+    // elsewhere. The gate's real application goes through its 3 wiring
+    // points (ci:local, ci.yml, pre-commit); this assertion is only a
+    // convenience so a bare `npm test` surfaces it.
     it("le gate check-dynamic-key-writes est vert", () => {
         const require_ = createRequire(import.meta.url);
         const { collectFindings } = require_(

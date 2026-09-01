@@ -1,30 +1,30 @@
 /*!
- * GeoLeaf — lecture de déclarations TypeScript sur AST, partagée entre gates.
+ * GeoLeaf — AST-based TypeScript declaration reading, shared between gates.
  * © 2026 Mattieu Pottier — MIT
  *
- * ## Pourquoi ce module existe
+ * ## Why this module exists
  *
- * `verify-host-contract-sync.cjs` (API publique S3.5) portait ces deux lecteurs. À l'API
- * publique S4.2, `check-namespace-typing-coverage.cjs` a eu besoin des DEUX — la même interface
- * `GeoLeafGlobal`, le même `EXPECTED_FACADE_KEYS`. Un second lecteur déclenche l'extraction :
- * c'est la règle du dépôt, et elle a un motif mesuré (`source-inventory.cjs`,
- * `side-effect-modules.cjs`, `test-load-sites.cjs` sont nés du même geste). Deux copies d'un
- * lecteur dérivent, et la dérive est invisible tant que les deux gates sortent vertes.
+ * `verify-host-contract-sync.cjs` used to carry these two readers. Then
+ * `check-namespace-typing-coverage.cjs` needed BOTH — the same `GeoLeafGlobal` interface,
+ * the same `EXPECTED_FACADE_KEYS`. A second reader triggers the extraction: that is this
+ * repo's rule, and it has a measured rationale (`source-inventory.cjs`,
+ * `side-effect-modules.cjs`, `test-load-sites.cjs` were born of the same move). Two
+ * copies of a reader drift, and the drift is invisible as long as both gates come out
+ * green.
  *
- * ## Ce que ces fonctions REFUSENT, et pourquoi c'est le cœur du module
+ * ## What these functions REFUSE, and why that is the module's core
  *
- * Aucune ne rend jamais un résultat vide « par défaut ». Une gate qui compare deux ensembles
- * vides s'accorde parfaitement avec elle-même et ne prouve rien — c'est la classe que
- * `probe-gate-visibility.cjs` traque. Chaque cause d'échec de lecture sort donc en **exit 2**
- * (erreur d'outillage), jamais en 0.
+ * None ever returns an empty result "by default". A gate comparing two empty sets agrees
+ * perfectly with itself and proves nothing — the class `probe-gate-visibility.cjs`
+ * hunts. Every read-failure cause therefore exits **2** (tooling error), never 0.
  *
- * `readExportedStringArray` remplace une regex qui, jusqu'à l'API S4 C0, bornait un
- * `[\s\S]*?` sur `];`. Le tableau qu'elle lisait se ferme sur `].sort();` : le match ne
- * s'arrêtait pas là, il courait jusqu'au `];` SUIVANT du fichier. La gate lisait **104 clés
- * pour un tableau de 103**, et toute chaîne écrite après le tableau — dans un commentaire
- * compris — devenait une clé valide. L'AST rend cette classe de panne structurellement
- * impossible, et refuse en plus sur trois formes que la regex avalait en silence : un spread
- * `...AUTRES`, un littéral gabarit, un initialiseur qui n'est pas un tableau.
+ * `readExportedStringArray` replaces a regex that bounded a `[\s\S]*?` on `];`. The
+ * array it read closes on `].sort();`: the match did not stop there, it ran to the
+ * file's NEXT `];`. The gate read **104 keys for a 103-entry array**, and any string
+ * written after the array — inside a comment included — became a valid key. The AST
+ * makes that failure class structurally impossible, and additionally refuses three
+ * shapes the regex swallowed in silence: a `...OTHERS` spread, a template literal, an
+ * initializer that is not an array.
  *
  * Usage : const { readInterfaceMembers, readExportedStringArray } = require("./lib/ts-decl-read.cjs");
  */
@@ -38,7 +38,7 @@ const registry = require("./packages.cjs");
 
 const ROOT = registry.ROOT;
 
-/** Sortie d'outillage — jamais 0, jamais 1 : lire est un préalable, pas un verdict. */
+/** Tooling exit — never 0, never 1: reading is a precondition, not a verdict. */
 function refuse(tag, message) {
     console.error(`ERROR [${tag}]: ${message}`);
     process.exit(2);
@@ -52,19 +52,19 @@ function parse(tag, file) {
 }
 
 /**
- * Lit les membres de propriété NOMMÉS d'une interface. Les signatures d'index
- * (`[key: string]: unknown`) sont ignorées par construction : elles ne nomment rien.
+ * Reads an interface's NAMED property members. Index signatures
+ * (`[key: string]: unknown`) are ignored by construction: they name nothing.
  *
- * ⚠️ Une clause `extends` fait REFUSER la lecture, et ce n'est pas de la rigidité. Cette
- * fonction n'itère que `node.members` : un membre hérité lui est invisible. Sans ce refus,
- * écrire `interface GeoLeafGlobal extends GeoLeafTopLevelApi` ferait disparaître des membres
- * de la vue de TOUTES les gates qui l'appellent, sans un mot — elles rapporteraient une
- * surface plus étroite que la réalité et se desserreraient d'autant.
+ * ⚠️ An `extends` clause makes the read REFUSE, and that is not rigidity. This function
+ * only iterates `node.members`: an inherited member is invisible to it. Without that
+ * refusal, writing `interface GeoLeafGlobal extends GeoLeafTopLevelApi` would make
+ * members vanish from the view of EVERY gate calling it, without a word — they would
+ * report a narrower surface than reality and loosen by as much.
  *
- * @param {string} file - Chemin absolu du fichier `.ts`/`.d.ts`.
- * @param {string} interfaceName - Nom de l'interface à lire.
- * @param {{ tag?: string, withTypes?: boolean }} [opts] - `tag` préfixe les erreurs ;
- *   `withTypes` rend une `Map<string, string>` (nom → texte du type) au lieu d'un `Set`.
+ * @param {string} file - Absolute path of the `.ts`/`.d.ts` file.
+ * @param {string} interfaceName - Name of the interface to read.
+ * @param {{ tag?: string, withTypes?: boolean }} [opts] - `tag` prefixes the errors;
+ *   `withTypes` returns a `Map<string, string>` (name → type text) instead of a `Set`.
  * @returns {Set<string>|Map<string, string>}
  */
 function readInterfaceMembers(file, interfaceName, opts = {}) {
@@ -106,19 +106,19 @@ function readInterfaceMembers(file, interfaceName, opts = {}) {
 }
 
 /**
- * Lit un `export const X = ["a", "b", …]` de niveau racine et rend l'ensemble de ses valeurs.
+ * Reads a root-level `export const X = ["a", "b", …]` and returns the set of its values.
  *
- * Cinq causes de refus, toutes en exit 2 — les trois dernières sont la moitié « rétrécissement
- * silencieux » du bug de regex décrit en tête de fichier :
+ * Five refusal causes, all exit 2 — the last three are the "silent shrinkage" half of
+ * the regex bug described at the top of the file:
  *
- *   • fichier absent
- *   • symbole absent, renommé ou déplacé hors d'un `export const` racine
- *   • symbole trouvé mais plus exporté
- *   • initialiseur qui n'est pas un tableau littéral
- *   • élément qui n'est pas une chaîne littérale (spread, gabarit, référence)
+ *   • file absent
+ *   • symbol absent, renamed, or moved out of a root `export const`
+ *   • symbol found but no longer exported
+ *   • initializer that is not an array literal
+ *   • element that is not a string literal (spread, template, reference)
  *
- * @param {string} file - Chemin absolu du module.
- * @param {string} symbol - Nom du `export const`.
+ * @param {string} file - Absolute path of the module.
+ * @param {string} symbol - Name of the `export const`.
  * @param {{ tag?: string }} [opts]
  * @returns {Set<string>}
  */

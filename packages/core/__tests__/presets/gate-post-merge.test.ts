@@ -1,40 +1,45 @@
 /**
- * GATE — socle-init 9.2 : un profil doit pouvoir ALLUMER une capacité.
+ * GATE — a profile must be able to TURN ON a capability.
  *
- * ## Le défaut, tel qu'il se mesure
+ * ## The defect, as it measures
  *
- * `bootWithPreset()` évalue la Pass 2 (`registerPresetModules`) sur `toCapConfig(baseCfg)`,
- * c'est-à-dire la config **AVANT** que `loadActiveProfileResources()` ait rendu celle du
- * profil (`boot-core.ts` — Pass 2 puis, plus bas, `effectiveCfg`). Un profil qui écrit
- * `modules.branding.enabled: true` arrive donc trop tard : au moment où le gate est lu, la
- * clé est absente, `enableWhenAbsent` vaut `false`, et le module n'est jamais créé.
+ * `bootWithPreset()` evaluates Pass 2 (`registerPresetModules`) on
+ * `toCapConfig(baseCfg)`, i.e. the config **BEFORE**
+ * `loadActiveProfileResources()` has returned the profile's
+ * (`boot-core.ts` — Pass 2 then, further down, `effectiveCfg`). A profile
+ * writing `modules.branding.enabled: true` thus arrives too late: when the
+ * gate is read, the key is absent, `enableWhenAbsent` is `false`, and the
+ * module is never created.
  *
- * La conséquence est celle qui compte pour un intégrateur : **le profil est la surface de
- * configuration documentée du produit, et elle ne peut pas allumer ce qu'elle décrit.**
+ * The consequence is the one that counts for an integrator: **the profile
+ * is the product's documented configuration surface, and it cannot turn on
+ * what it describes.**
  *
- * ## Pourquoi `branding` et pas une autre
+ * ## Why `branding` and not another
  *
- * Ce n'est pas un exemple choisi pour la démonstration, c'est le seul sujet possible — relevé
- * au pré-vol 9.0 du 07/08/2026 sur les 20 gates du dépôt :
+ * Not an example picked for demonstration, the only possible subject —
+ * surveyed at the 07/08/2026 preflight over the repo's 20 gates:
  *
- *   - 17 capacités sont **opt-out** (`enableWhenAbsent: true`) : absente ⟹ allumée. Le défaut
- *     ne les empêche pas de s'allumer, il les empêche de s'ÉTEINDRE depuis un profil.
- *   - 3 sont **opt-in** : `branding`, `offline`, `pwa`.
- *   - `offline` et `pwa` n'ont **pas** de `createModule` — leur TSDoc le dit en toutes lettres.
- *     Elles sont app-global et gatent déjà **post-merge**, dans `SharedModule.init()`.
+ *   - 17 capabilities are **opt-out** (`enableWhenAbsent: true`): absent ⟹
+ *     on. The defect does not keep them from turning on, it keeps them from
+ *     being turned OFF from a profile.
+ *   - 3 are **opt-in**: `branding`, `offline`, `pwa`.
+ *   - `offline` and `pwa` have **no** `createModule` — their TSDoc says so
+ *     in full. They are app-global and already gate **post-merge**, in
+ *     `SharedModule.init()`.
  *
- * Il reste `branding` : la seule capacité opt-in qui possède un `ICoreModule`, donc le seul
- * endroit du dépôt où « le profil allume » est aujourd'hui sans effet.
+ * `branding` remains: the only opt-in capability owning an `ICoreModule`,
+ * hence the repo's only place where "the profile turns on" was without effect.
  *
- * ## Ce que ce fichier N'AUTORISE PAS
+ * ## What this file does NOT allow
  *
- * ⛔ Il ne demande pas de déplacer la Pass 2 sous `loadActiveProfileResources()`. Le TSDoc de
- * `app/boot-core.ts` porte l'interdiction, et il précise qu'un sprint antérieur a dû reverter
- * cette zone. Le geste de 9.2 est de **retirer une condition** — enregistrer le module dans
- * tous les cas, et laisser un enrobage décider dans son `init()`, qui lui tourne post-merge.
+ * ⛔ It does not ask to move Pass 2 under `loadActiveProfileResources()`.
+ * `app/boot-core.ts`'s TSDoc carries the prohibition, and notes an earlier
+ * sprint had to revert that zone. The gesture is to **remove a condition** —
+ * register the module in all cases, and let a wrapper decide in its
+ * `init()`, which runs post-merge.
  *
- * @see roadmap_socle-init.md 📦 (archivée le 09/08/2026) § Sprint 9
- * @see packages/core/src/app/boot-core.ts — l'ordre des passes, et pourquoi il ne bouge pas
+ * @see packages/core/src/app/boot-core.ts — the pass order, and why it does not move
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
@@ -46,21 +51,22 @@ const { bootWithPreset } = await import("../../src/app/boot-core.ts");
 const { CapabilityRegistry } = await import("../../src/kernel/api/capability-registry.ts");
 
 /**
- * Un installer instrumenté.
+ * An instrumented installer.
  *
- * ⚠️ `initCalls` ne fait pas partie du contrat `ICapabilityInstaller` — c'est le seul canal
- * d'observation de ce fichier, et il est déclaré plutôt qu'attaché à la volée pour que sa
- * disparition soit une erreur de type et non un test silencieusement vide.
+ * ⚠️ `initCalls` is not part of the `ICapabilityInstaller` contract — it is
+ * this file's only observation channel, and it is declared rather than
+ * attached on the fly so its disappearance is a type error and not a
+ * silently empty test.
  */
 interface InstrumentedInstaller {
     declaration: { id: string; gate?: ICapabilityConfigGate };
     registerGlobals: ReturnType<typeof vi.fn>;
     createModule: ReturnType<typeof vi.fn>;
-    /** Les configs reçues par chaque `init()` — vide = le module n'a pas tourné. */
+    /** The configs received by each `init()` — empty = the module did not run. */
     initCalls: unknown[];
 }
 
-/** Le registre de substitution, avec ses ids exposés pour l'assertion. */
+/** The stand-in registry, with its ids exposed for the assertion. */
 interface StandInRegistry {
     modules: ICoreModule[];
     register: ReturnType<typeof vi.fn>;
@@ -73,14 +79,14 @@ interface StandInRegistry {
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 /**
- * Un installer minimal, dont le module ENREGISTRE l'appel de son `init()`.
+ * A minimal installer, whose module RECORDS its `init()` call.
  *
- * `boot-core.test.js` porte le même fixture en plus court ; ici le module doit être
- * observable jusque dans son cycle de vie, parce que la question posée n'est pas seulement
- * « a-t-il été enregistré » mais « a-t-il tourné, et sur quelle config ».
+ * `boot-core.test.js` carries the same fixture in shorter form; here the
+ * module must be observable into its lifecycle, because the question asked
+ * is not only "was it registered" but "did it run, and on which config".
  *
- * @param id Identifiant de capacité.
- * @param gate Gate de déclaration. Omis ⟹ capacité non gatée (toujours active).
+ * @param id Capability identifier.
+ * @param gate Declaration gate. Omitted ⟹ ungated capability (always active).
  */
 function makeInstaller(id: string, gate?: ICapabilityConfigGate): InstrumentedInstaller {
     const initCalls: unknown[] = [];
@@ -99,11 +105,11 @@ function makeInstaller(id: string, gate?: ICapabilityConfigGate): InstrumentedIn
 }
 
 /**
- * Un ModuleRegistry de substitution qui INITIALISE réellement ses modules.
+ * A stand-in ModuleRegistry that really INITIALISES its modules.
  *
- * Le stand-in de `boot-core.test.js` stube `init()` ; il ne pourrait donc pas distinguer
- * « module enregistré » de « module qui a tourné ». Ici les deux doivent être séparables :
- * l'enrobage de 9.2 enregistre TOUJOURS, et c'est `init()` qui tranche.
+ * `boot-core.test.js`'s stand-in stubs `init()`; it could not tell
+ * "registered module" from "module that ran". Here the two must be
+ * separable: the wrapper ALWAYS registers, and `init()` decides.
  */
 function makeRegistry(): StandInRegistry {
     const modules: ICoreModule[] = [];
@@ -117,16 +123,16 @@ function makeRegistry(): StandInRegistry {
             }
         }),
         getAll: vi.fn(() => modules),
-        /** Les ids enregistrés, dans l'ordre. */
+        /** The registered ids, in order. */
         ids: () => modules.map((m) => m.id),
     };
 }
 
 /**
- * Assemble un BootContext séparant explicitement les deux configs.
+ * Assembles a BootContext explicitly separating the two configs.
  *
- * @param cfg Ce que rend `GeoLeaf.loadConfig` — la config **pré-merge** (`baseCfg`).
- * @param profileCfg Ce que rend `Config.loadActiveProfileResources` — le **post-merge**.
+ * @param cfg What `GeoLeaf.loadConfig` returns — the **pre-merge** config (`baseCfg`).
+ * @param profileCfg What `Config.loadActiveProfileResources` returns — the **post-merge**.
  */
 function makeCtx(cfg: Record<string, unknown>, profileCfg: Record<string, unknown> | null) {
     const AppLog = { log: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
@@ -145,11 +151,11 @@ function makeCtx(cfg: Record<string, unknown>, profileCfg: Record<string, unknow
 const preset = (...capabilities: InstrumentedInstaller[]) =>
     ({ id: "gate-post-merge", capabilities }) as unknown as PresetManifest;
 
-/** Le gate réel de `branding` : opt-in, `enableWhenAbsent` omis ⟹ absent = éteint. */
+/** `branding`'s real gate: opt-in, `enableWhenAbsent` omitted ⟹ absent = off. */
 const BRANDING_GATE: ICapabilityConfigGate = { configPath: "modules.branding.enabled" };
 
 beforeEach(() => {
-    // Singleton de module : les déclarations fuiraient d'un test à l'autre.
+    // Module singleton: declarations would leak from one test to the next.
     CapabilityRegistry._reset();
     sessionStorage.clear();
 });
@@ -158,20 +164,21 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
-// ── Le gate ───────────────────────────────────────────────────────────────────
+// ── The gate ──────────────────────────────────────────────────────────────────
 
 describe("GATE 9.2 — le profil décide, et il décide APRÈS la Pass 2", () => {
     it("allume une capacité opt-in que SEUL le profil active", async () => {
         const branding = makeInstaller("branding", BRANDING_GATE);
-        // Pré-merge : rien. Post-merge : le profil l'allume. C'est tout le sujet.
+        // Pre-merge: nothing. Post-merge: the profile turns it on. The whole subject.
         const ctx = makeCtx({}, { modules: { branding: { enabled: true } } });
 
         await bootWithPreset(preset(branding), ctx);
 
         expect(ctx.registry.ids()).toContain("branding");
         expect(branding.initCalls).toHaveLength(1);
-        // Et il a bien reçu la config du PROFIL, pas la pré-merge vide — sans quoi le module
-        // existerait en lisant encore un état antérieur à ce qui l'a allumé.
+        // And it did receive the PROFILE's config, not the empty pre-merge —
+        // otherwise the module would exist still reading a state prior to
+        // what turned it on.
         expect(branding.initCalls[0]).toMatchObject({
             modules: { branding: { enabled: true } },
         });
@@ -187,8 +194,9 @@ describe("GATE 9.2 — le profil décide, et il décide APRÈS la Pass 2", () =>
     });
 
     it("laisse le pré-merge allumer, quand c'est lui qui porte la clé", async () => {
-        // Contre-épreuve : le correctif ne doit pas se contenter de déplacer l'aveuglement.
-        // Une clé présente AVANT le profil reste valable si le profil ne la contredit pas.
+        // Counter-proof: the fix must not merely move the blindness. A key
+        // present BEFORE the profile stays valid if the profile does not
+        // contradict it.
         const branding = makeInstaller("branding", BRANDING_GATE);
         const ctx = makeCtx({ modules: { branding: { enabled: true } } }, null);
 
@@ -198,17 +206,18 @@ describe("GATE 9.2 — le profil décide, et il décide APRÈS la Pass 2", () =>
     });
 });
 
-// ── Caractérisation : le sens INVERSE ─────────────────────────────────────────
+// ── Characterisation: the INVERSE direction ───────────────────────────────────
 //
-// ⚠️ Ce bloc n'est pas une demande, c'est un relevé. Le correctif 9.2 évalue le gate sur la
-// config fusionnée, donc il agit aussi dans l'autre sens : un profil qui écrit `false` sur une
-// capacité opt-out cesserait d'être ignoré. C'est cohérent avec la sémantique déclarée du gate
-// (`value false → disabled`), et c'est un CHANGEMENT DE COMPORTEMENT réel.
+// ⚠️ This block is not a request, it is a record. The fix evaluates the gate
+// on the merged config, so it also acts the other way: a profile writing
+// `false` on an opt-out capability stops being ignored. Consistent with the
+// gate's declared semantics (`value false → disabled`), and a real
+// BEHAVIOUR CHANGE.
 //
-// Il est écrit ici pour qu'il soit visible et daté, plutôt que découvert plus tard comme une
-// régression. `boot-core.ts` met en garde contre la migration de la Pass 2 pour cette raison
-// précise — mais sa mise en garde porte sur le fait de DÉ-ENREGISTRER un module gaté tard,
-// pas sur le fait de ne pas l'initialiser.
+// It is written here to be visible and dated, rather than discovered later
+// as a regression. `boot-core.ts` warns against migrating Pass 2 for this
+// precise reason — but its warning bears on DE-REGISTERING a late-gated
+// module, not on not initialising it.
 
 describe("caractérisation — un profil qui ÉTEINT une capacité opt-out", () => {
     it("relève le comportement courant, quel qu'il soit", async () => {
@@ -220,9 +229,9 @@ describe("caractérisation — un profil qui ÉTEINT une capacité opt-out", () 
 
         await bootWithPreset(preset(legend), ctx);
 
-        // Avant 9.2 : le module est enregistré ET initialisé — le `false` du profil arrive
-        // après la Pass 2, donc il n'est jamais lu par le gate.
-        // Après 9.2 : l'enrobage relit le gate post-merge et n'initialise pas.
+        // Before: the module is registered AND initialised — the profile's
+        // `false` arrives after Pass 2, so the gate never reads it.
+        // After: the wrapper rereads the gate post-merge and does not initialise.
         expect(ctx.registry.ids()).toContain("legend");
         expect(legend.initCalls.length).toBe(0);
     });

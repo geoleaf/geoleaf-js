@@ -94,7 +94,7 @@ export interface FilterConfig {
     // key over, but the S5 panel is entirely field-driven: `renderFilterPanel` builds a
     // title, one control per `fields[]` descriptor and the action footer, and the ONLY
     // search input is the `kind:"text"` control, which takes its own
-    // `FilterFieldDescriptor.placeholder` (panel/render.ts:147). There is no global search
+    // `FilterFieldDescriptor.placeholder` (panel/render.ts). There is no global search
     // box for a global placeholder to fill, so the key had 0 read sites in the whole repo
     // while 8 shipped profiles + the reference fixture wrote it. Use `fields[].placeholder`.
     /** Filterable-field descriptors (was `searchConfig.filters[]`, generalised). */

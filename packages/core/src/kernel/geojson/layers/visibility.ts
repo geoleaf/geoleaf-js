@@ -267,10 +267,7 @@ LayerManager.updateLayerVisibilityByZoom = function () {
         // `zoomConfig.minZoom` name claimed otherwise and profile authors wrote zoom
         // levels into it, which `isScaleInRange` then read as denominators — hiding
         // those layers at every zoom. Absent `scaleConfig` = no constraint.
-        const styleScale = (layerData.currentStyle?.scaleConfig ?? null) as {
-            minScale?: number | null;
-            maxScale?: number | null;
-        } | null;
+        const styleScale = layerData.currentStyle?.scaleConfig ?? null;
 
         const minScale = _normalizeScaleValue(styleScale && styleScale.minScale);
         const maxScale = _normalizeScaleValue(styleScale && styleScale.maxScale);

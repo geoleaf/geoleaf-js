@@ -4,7 +4,7 @@
  * Read path: geojson/vector-tiles.ts VectorTiles exposes the exported seams that read
  * the data.vectorTiles block: shouldUseVectorTiles / _getVTConfig / _resolveTileUrl, and
  * loadVectorTileLayer builds the native MapLibre `vector` source (incl. the `scheme`
- * read at vector-tiles.ts:325). The remaining data.* keys (file/url/dataUrl routing —
+ * read at vector-tiles.ts). The remaining data.* keys (file/url/dataUrl routing —
  * loader/profile.ts:_resolveLayerUrl; headers/autoRefresh/ogcApi — single-layer.ts) are
  * file-local resolvers covered end-to-end by e2e/cfg-c4 and locked schema-side in
  * s13-layers-anomalies-lock (ogcApi ANO-056, scheme ANO-055).

@@ -17,39 +17,48 @@
 
 export { StorageContract } from "./storage-contract.js";
 
-// API publique S4.3e — second export du baril. Il est là parce que la frontière R.8 l'exige :
-// `capabilities/legend/lifecycle.ts` lit cet état, et ESLint interdit à `capabilities/**`
-// d'importer profondément sous `kernel/**` — seuls les barils, les hubs de types et les seams
-// sont atteignables. Élargir ce baril est son usage prévu, pas un contournement ; c'est le
-// geste que la règle DÉSIGNE, et il est explicite par construction.
-// Seul le LECTEUR traverse la frontière : `capabilities/legend/lifecycle.ts` lit l'état,
-// personne ne l'écrit depuis une capacité. L'écrivain (`globals/globals.geojson.ts`) est
-// hors `capabilities/`, donc R.8 ne s'applique pas à lui — il importe le fichier
-// directement. Ré-exporter `setAllLayerConfigs` ici ouvrirait l'écriture à toutes les
-// capacités pour zéro appelant : knip l'a signalé, et il avait raison.
+// Second export of the barrel. It is here because the import boundary requires it:
+// `capabilities/legend/lifecycle.ts` reads this state, and ESLint forbids
+// `capabilities/**` to import deep under `kernel/**` — only barrels, type hubs and
+// seams are reachable. Widening this barrel is its intended use, not a workaround;
+// it is the gesture the rule DESIGNATES, and it is explicit by construction.
+// Only the READER crosses the boundary: `capabilities/legend/lifecycle.ts` reads the
+// state, nobody writes it from a capability. The writer
+// (`globals/globals.geojson.ts`) is outside `capabilities/`, so the rule does not
+// apply to it — it imports the file directly. Re-exporting `setAllLayerConfigs`
+// here would open writing to every capability for zero callers: knip flagged it,
+// and it was right.
 export { getAllLayerConfigs } from "./layer-configs-state.js";
 
-// Tâche 8.7 (B-138) — la règle d'autorisation d'édition ET les deux accesseurs de profil,
-// ré-exportés parce que R.8 l'exige : `capabilities/offline/` les consomme (`local-edit-api.ts`
-// applique la règle, `config-seam.ts` réexporte les accesseurs sous leurs noms d'origine) et ne
-// peut pas importer profondément sous `kernel/**`.
+// The edit-authorisation rule AND the two profile accessors, re-exported because
+// the boundary requires it: `capabilities/offline/` consumes them
+// (`local-edit-api.ts` applies the rule, `config-seam.ts` re-exports the accessors
+// under their original names) and cannot import deep under `kernel/**`.
 //
-// ⚠️ **Élargir ce baril est ici le geste que la règle DÉSIGNE**, pas un contournement — et il
-// a été posé APRÈS coup : la première rédaction n'exportait que `grantsEdition`, en pariant que
-// les accesseurs resteraient internes au kernel. ESLint a refusé l'import profond de
-// `config-seam.ts` et il avait raison, le pari étant faux dès la ligne suivante.
+// ⚠️ **Widening this barrel is here the gesture the rule DESIGNATES**, not a
+// workaround — and it was added AFTER the fact: the first draft exported only
+// `grantsEdition`, betting the accessors would stay internal to the kernel. ESLint
+// refused `config-seam.ts`'s deep import and it was right, the bet being false from
+// the very next line.
 //
-// ⚠️ `mayEditLayer` n'est PAS ici, et c'est délibéré : son seul appelant est la façade
-// `kernel/storage/facade.ts`, du même côté de la frontière, qui importe le module directement.
-// L'exposer n'aurait aucun consommateur de capacité — knip aurait raison de le signaler.
+// ⚠️ `mayEditLayer` is NOT here, deliberately: its only caller is the
+// `kernel/storage/facade.ts` facade, on the same side of the boundary, which
+// imports the module directly. Exposing it would have no capability consumer —
+// knip would be right to flag it.
 export { grantsEdition, profileLayerConfig, profileLayers } from "./edition-permissions.js";
 
-// Curseur d'outil (14/08/2026) — ré-exporté parce que R.8 l'exige : `capabilities/filter/`
-// arme le curseur de la recherche par proximité et ne peut pas importer profondément sous
-// `kernel/**`. Encore le geste que la règle DÉSIGNE.
+// Tool cursor (14/08/2026) — re-exported because the boundary requires it:
+// `capabilities/filter/` arms the proximity-search cursor and cannot import deep
+// under `kernel/**`. Again the gesture the rule DESIGNATES.
 //
-// ⚠️ `isExclusiveMode` et `cursorTarget` ne sont PAS ici, et c'est délibéré : leurs seuls
-// appelants (`adapters/maplibre/maplibre-{poi,cluster}-builders.ts`) sont hors
-// `capabilities/`, donc R.8 ne s'applique pas à eux — ils importent le module directement.
-// Les exposer ici n'aurait aucun consommateur de capacité, et knip aurait raison de le dire.
+// ⚠️ `isExclusiveMode` and `cursorTarget` are NOT here, deliberately: their only
+// callers (`adapters/maplibre/maplibre-{poi,cluster}-builders.ts`) are outside
+// `capabilities/`, so the rule does not apply to them — they import the module
+// directly. Exposing them here would have no capability consumer, and knip would be
+// right to say so.
 export { armToolCursor, disarmToolCursor } from "./map-cursor.js";
+
+// Profile storage keys (18/08/2026) — one declaration for keys that have TWO writers on two
+// sides of the app/capability boundary; a drifting copy would make the boot silently stop
+// seeing the user's choice. Motives in `profile-storage-keys.ts`.
+export { PROFILE_STORAGE_KEY, SELECTED_PROFILE_STORAGE_KEY } from "./profile-storage-keys.js";

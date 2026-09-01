@@ -44,10 +44,11 @@ export function buildPublicApi(): Record<string, unknown> {
          * Opens the attribute form on a new Point (task 5.1-f) — see
          * `add-form/placement-form.ts`.
          *
-         * ⚠️ La SECONDE moitié de l'ancien seam `poi-addform-seam.ts`, et la seule qui
-         * n'existait nulle part ici : `editor` n'ouvrait son formulaire que par le pont
-         * Terra Draw, sur une signature incompatible. Un simple repointage du seam vers
-         * `.Editor` aurait donc rendu `isAddFormAvailable()` faux pour toujours.
+         * ⚠️ The SECOND half of the old `poi-addform-seam.ts` seam, and the only
+         * one that existed nowhere here: `editor` only opened its form through
+         * the Terra Draw bridge, on an incompatible signature. Simply
+         * repointing the seam to `.Editor` would thus have made
+         * `isAddFormAvailable()` false forever.
          */
         get AddForm(): AddFormApi {
             return buildAddFormApi();

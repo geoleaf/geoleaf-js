@@ -27,8 +27,19 @@ vi.mock("../../src/utils/general/utils-base.js", () => ({
 
 // `getLog` moved to di-accessors.js at KERNEL S10 — it must be stubbed at its
 // own module or the subject resolves the real logger and this mock goes silent.
+const __log = vi.hoisted(() => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+}));
 vi.mock("../../src/utils/general/di-accessors.js", () => ({
-    getLog: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
+    // ⚠️ STABLE object, not a new one per call. A `() => ({...})` returns a
+    // different double at each invocation: the module under test logs into
+    // one, the test queries the other, and any message assertion is
+    // true-but-empty. Extended on 20/08/2026 to make messages assertable; no
+    // existing assertion changes.
+    getLog: () => __log,
 }));
 
 // ─── Module under test ────────────────────────────────────────────────────────
@@ -109,10 +120,54 @@ describe("ogc-api-loader — fetchOgcApiFeatures", () => {
             url: "https://api.example.com/items",
             maxFeatures: 3,
         });
-        // maxFeatures was reached but we already loaded the page — all 5 are in
-        expect(result.features.length).toBeGreaterThanOrEqual(3);
+        // 🛑 THIS ASSERTION WAS `toBeGreaterThanOrEqual(3)` AND COULD NOT TELL
+        // THE DEFECT FROM THE FIX: it passed at 5 (the overshoot) as at 3
+        // (the bound). Its comment even documented the overshoot as expected
+        // — "all 5 are in". An assertion accepting both answers guards neither.
+        expect(result.features.length).toBe(3);
         // Crucially, fetch was called only once (no second page)
         expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("SIGNALE la coupe — une collection tronquée n'est pas discernable d'une complète sans ça", async () => {
+        const features = Array.from({ length: 5 }, (_, i) => ({
+            type: "Feature",
+            geometry: null,
+            properties: { i },
+        }));
+        mockFetch([
+            {
+                body: makeFeatureCollection(features, {
+                    links: [{ rel: "next", href: "https://api.example.com/items?offset=5" }],
+                }),
+            },
+        ]);
+
+        const result = await fetchOgcApiFeatures({
+            url: "https://api.example.com/items",
+            maxFeatures: 3,
+        });
+
+        // The member carries BOTH numbers: "it was cut" alone does not say by
+        // how much the source was missed, and that second half is what makes
+        // the signal actionable.
+        expect(result.truncated).toEqual({ limit: 3, fetched: 5 });
+    });
+
+    it("ne signale RIEN quand le plafond n'a pas mordu — le membre est absent, pas faux", async () => {
+        mockFetch([
+            { body: makeFeatureCollection([{ type: "Feature", geometry: null, properties: {} }]) },
+        ]);
+
+        const result = await fetchOgcApiFeatures({
+            url: "https://api.example.com/items",
+            maxFeatures: 10,
+        });
+
+        // Absent rather than `truncated: false`: a consumer serialising the
+        // collection does not carry a field saying nothing, and
+        // `if (fc.truncated)` stays the right read.
+        expect("truncated" in result).toBe(false);
     });
 
     it("applies bbox query parameter", async () => {
@@ -280,5 +335,104 @@ describe("ogc-api-loader — setupAutoRefresh", () => {
 
         // After cleanup, listener should be removed
         expect(handlers["moveend"]).toBeUndefined();
+    });
+});
+
+// ─── Pagination by declared cursor ────────────────────────────────────────────
+//
+// 🛑 THIS BLOCK DOES NOT USE `mockFetch`. That helper replays the LAST page
+// indefinitely (`pages[call++] ?? pages[pages.length - 1]`): served with an
+// envelope always carrying a cursor, it does not yield a red test — it
+// yields a test THAT NEVER ENDS. Overnight, that is a stuck batch, not a red
+// to bisect. The mock below is BOUNDED: it throws at the 4th call, so a loop
+// that does not stop fails saying so.
+describe("pagination par curseur déclaré", () => {
+    /**
+     * Serves exactly the pages provided, then THROWS.
+     *
+     * @param {Array<object>} pages The envelopes to serve, in order.
+     */
+    function boundedFetch(pages) {
+        let call = 0;
+        global.fetch = vi.fn().mockImplementation(async () => {
+            if (call >= pages.length) {
+                throw new Error(
+                    `${call + 1}th page requested — the loop did not stop on a missing cursor`
+                );
+            }
+            const page = pages[call++];
+            return {
+                ok: true,
+                status: 200,
+                headers: { get: () => "application/geo+json" },
+                json: async () => page,
+            };
+        });
+        return () => call;
+    }
+
+    const withCursor = (id, cursor) => ({
+        type: "FeatureCollection",
+        features: [{ type: "Feature", id, geometry: null, properties: {} }],
+        ...(cursor ? { pagination: { next_cursor: cursor } } : {}),
+    });
+
+    it("suit le chemin pointé déclaré, et s'arrête quand il disparaît", async () => {
+        const calls = boundedFetch([
+            withCursor(1, "https://example.test/items?cursor=b"),
+            withCursor(2, "https://example.test/items?cursor=c"),
+            withCursor(3, null),
+        ]);
+
+        const result = await fetchOgcApiFeatures({
+            url: "https://example.test",
+            collectionId: "c",
+            cursorPath: "pagination.next_cursor",
+        });
+
+        expect(result.features).toHaveLength(3);
+        expect(calls()).toBe(3);
+    });
+
+    it("sans `cursorPath`, la relation de lien standard reste seule maîtresse", async () => {
+        const calls = boundedFetch([
+            {
+                type: "FeatureCollection",
+                features: [{ type: "Feature", id: 1, geometry: null, properties: {} }],
+                // A cursor is there, but nothing declares it: it must be IGNORED.
+                pagination: { next_cursor: "https://example.test/items?cursor=b" },
+            },
+        ]);
+
+        const result = await fetchOgcApiFeatures({
+            url: "https://example.test",
+            collectionId: "c",
+        });
+
+        expect(result.features).toHaveLength(1);
+        expect(calls()).toBe(1);
+    });
+
+    it("une valeur qui n'est pas une URL absolue arrête la pagination et le DIT", async () => {
+        // The logging module is mocked at the top of the file: THAT double is
+        // the one to query, not the real one — importing it here returns the
+        // mock, by construction.
+        const warn = __log.warn;
+        warn.mockClear();
+        const calls = boundedFetch([withCursor(1, "eyJvZmZzZXQiOjEwfQ==")]);
+
+        const result = await fetchOgcApiFeatures({
+            url: "https://example.test",
+            collectionId: "c",
+            cursorPath: "pagination.next_cursor",
+        });
+
+        expect(result.features).toHaveLength(1);
+        expect(calls()).toBe(1);
+        // The path AND the value's start must be named: without them, an
+        // integrator who misdeclared their path cannot know which of the two
+        // is at fault.
+        const said = warn.mock.calls.map((c) => c.map(String).join(" ")).join("\n");
+        expect(said).toContain("pagination.next_cursor");
     });
 });

@@ -7,7 +7,7 @@
  * BOTH the informational audit (`scripts/audit-cleanup.cjs`) and the blocking
  * dead-CSS CI gate (`scripts/verify-purgecss.cjs`).
  *
- * S7.2 widened `content` from `core + addpoi + storage` to EVERY workspace plus
+ * `content` widened from `core + addpoi + storage` to EVERY workspace plus
  * the HTML templates / demo scripts, so classes referenced outside
  * `packages/core` are seen and not reported as dead.
  */
@@ -24,7 +24,7 @@ const toFwd = (p) => p.replace(/\\/g, "/");
 // are the project's own prefixes, so they exempted **783 of the 812** classes
 // declared under `packages/*/src/**/*.css` (96.4 %): the gate reported "0 dead CSS
 // selectors" while verifying essentially nothing, and — worse — could not have
-// caught the deletion of a LIVE selector either. Measured at S13.5: dropping the
+// caught the deletion of a LIVE selector either. Measured: dropping the
 // two blanket entries surfaces 425 rejected selectors it had never looked at.
 //
 // What belongs here: ONLY what PurgeCSS cannot see *by construction*, i.e. a class
@@ -36,7 +36,7 @@ const toFwd = (p) => p.replace(/\\/g, "/");
 // ⚠️ "By construction" is the whole test, and it is NOT the same as "PurgeCSS
 // currently rejects it". A runtime-assembled class often survives by accident,
 // because some unrelated line happens to spell it out — `gl-toast--info` is only
-// seen thanks to a `classList.contains()` check at notifications.ts:345, and
+// seen thanks to a `classList.contains()` check at notifications.ts, and
 // `gl-print-btn--pdf` only thanks to a querySelector in a *test* file. Its
 // siblings (`--error`, `--warning`, `--jpg`) have no such twin and were rejected.
 // Basing the safelist on what the tool happens to catch reproduces that lottery;
@@ -47,30 +47,30 @@ const SAFELIST = {
         // Third-party: injected by the mapping libs, never written in our source.
         /^maplibre/,
         /^leaflet/,
-        // `${classPrefix}--collapsed` — kernel/ui/collapsible-toggle.ts:55.
+        // `${classPrefix}--collapsed` — kernel/ui/collapsible-toggle.ts.
         // Currently redundant (all 5 resulting classes happen to appear literally
         // elsewhere) — kept deliberately: the prefix is a parameter, so the day a
         // caller stops spelling its modifier out, the class silently goes dark.
         /--collapsed$/,
-        // `${classPrefix}__toggle` — kernel/ui/collapsible-toggle.ts:33. SAME
+        // `${classPrefix}__toggle` — kernel/ui/collapsible-toggle.ts. SAME
         // helper as `--collapsed` above, and the exact case that entry warns about:
         // this one was missing while its twin was present, so the collapse BUTTON of
         // both controls that use the helper was reported dead and frozen as such in
         // the baseline — 4 entries for `gl-map-legend__toggle` (capabilities/legend/
-        // legend-control.ts:106) and 7 for `gl-layer-manager__toggle` (modules/
+        // legend-control.ts) and 7 for `gl-layer-manager__toggle` (modules/
         // built-in/layer-manager/control.ts). Neither call site spells the name out,
         // so the lottery this file describes came up empty for both. Purging "what
-        // the baseline says" would have deleted a live style. Added S9 (CAPACITÉS).
+        // the baseline says" would have deleted a live style.
         // ⚠️ Matches `*__toggle` only — `gl-filter-panel__toggle-icon` and
         // `__toggle-btn` are literals and stay under the gate.
         /__toggle$/,
-        // `gl-notifications--${config.position}` — toast-renderer/notifications.ts:98.
+        // `gl-notifications--${config.position}` — toast-renderer/notifications.ts.
         /^gl-notifications--/,
-        // `gl-geocoding-ctrl--${position}` — plugin-geocoding/src/control.ts:77.
+        // `gl-geocoding-ctrl--${position}` — plugin-geocoding/src/control.ts.
         /^gl-geocoding-ctrl--/,
-        // `gl-toast gl-toast--${type}` — toast-renderer/notifications.ts:417.
+        // `gl-toast gl-toast--${type}` — toast-renderer/notifications.ts.
         // Enumerated, not `/^gl-toast--/`: `type` is the closed union `NotifyType`
-        // (types.ts:31), so these four are all the site can emit. A bare prefix
+        // (types.ts), so these four are all the site can emit. A bare prefix
         // would also exempt the toast's OTHER modifiers (`--visible`, `--removing`,
         // `--sliding-up/down`), which are applied from literals and must stay under
         // the gate — `--sliding-down` is in fact dead and is baselined as such.
@@ -78,7 +78,18 @@ const SAFELIST = {
         // intended failure mode, and it is why the union is mirrored rather than
         // approximated.
         /^gl-toast--(info|success|warning|error)$/,
-        // `gl-print-btn gl-print-btn--${fmt}` — plugin-print/src/modal-renderer.ts:318.
+        // `gl-nav-banner__icon--${cssToken(step.maneuver)}` and the same for the modifier —
+        // plugins/navigation/src/ui/maneuver-banner.ts:128-129. Both halves come from the
+        // provider's manoeuvre vocabulary (OSRM `maneuver.type` / `maneuver.modifier`), so the
+        // set is open in principle and NOTHING spells any of them out in source. The prefix is
+        // therefore the honest shape here, not an enumeration: an enumeration would silently go
+        // stale the first time a provider emits a token this repository has not met.
+        // ⚠️ These styles were absent altogether until 27/08/2026 — the rule declared
+        // `mask-size`/`repeat`/`position` and never a `mask-image`, so the icon painted a solid
+        // 2rem square of `currentcolor`. Nothing could see it: the classes are assembled, so no
+        // static analysis reached them, and the banner itself was hidden behind the theme bar.
+        /^gl-nav-banner__icon--/,
+        // `gl-print-btn gl-print-btn--${fmt}` — plugin-print/src/modal-renderer.ts.
         // `fmt` comes from `config.exportFormats ?? ["pdf", "jpg"]`, so it is open
         // in principle; only these two defaults have styles, hence the enumeration.
         /^gl-print-btn--(pdf|jpg)$/,
@@ -87,7 +98,7 @@ const SAFELIST = {
     // live `gl-` class with an attribute / pseudo / descendant part (e.g.
     // `.gl-form-label[data-required="true"]::after`,
     // `.gl-cache-modal[style*="display: flex"] .gl-cache-modal__content`).
-    // Reviewed S7.2 — live styles toggled at runtime, not dead CSS.
+    // Reviewed — live styles toggled at runtime, not dead CSS.
     // `gl-poi-form-info` removed at PLUGINS S10: it was frozen here on the
     // assumption it was "live styles toggled at runtime", but nothing built it —
     // it was the legacy DOM-renderer info box, dead since S2 and deleted with
@@ -95,18 +106,17 @@ const SAFELIST = {
     greedy: [/gl-cache-modal/, /gl-form-label/],
 };
 
-// ARCHI S10.1 — les répertoires de packages viennent du REGISTRE, pas d'un glob.
+// Package directories come from the REGISTRY, not from a glob.
 //
-// `packages/*/src/**` cessait simplement de matcher après l'imbrication : un glob
-// périmé ne lève pas d'erreur, et purgecss aurait alors purgé du CSS vivant en le
-// croyant mort. Mais l'élargir en `packages/**/src/**` traverse `node_modules` —
-// mesuré : 13 fichiers `.ts` de dépendances entraient dans le contenu scanné, ce
-// qui masque du CSS réellement mort.
+// `packages/*/src/**` simply stopped matching after the nesting: a stale glob raises
+// no error, and purgecss would then have purged live CSS believing it dead. But
+// widening it to `packages/**/src/**` traverses `node_modules` — measured: 13
+// dependency `.ts` files entered the scanned content, which masks genuinely dead CSS.
 //
-// Le registre donne les répertoires exacts : ni traversée parasite, ni sensibilité
-// à la profondeur. `_plugin-template` est ajouté explicitement — il est hors
-// workspaces (`!packages/_*`) mais son CSS était couvert par l'ancien glob, et le
-// périmètre doit rester identique.
+// The registry gives the exact directories: no stray traversal, no depth
+// sensitivity. `_plugin-template` is added explicitly — it sits outside workspaces
+// (`!packages/_*`) but its CSS was covered by the old glob, and the perimeter must
+// stay identical.
 const REGISTRY = require("./packages.cjs");
 const PKG_DIRS = [
     ...REGISTRY.all().map((p) => p.absDir),

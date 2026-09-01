@@ -1,10 +1,11 @@
 /**
- * Unit tests — `capabilities/offline/offline-engine-entry.ts` (racine de composition, à 0 %).
+ * Unit tests — `capabilities/offline/offline-engine-entry.ts` (composition root, at 0%).
  *
- * Seul module qui assemble statiquement le moteur offline (chargé via le loader dynamique de
- * la capacité). À l'évaluation, s'il trouve `GeoLeaf.Storage`, il y injecte le moteur
- * (`wireModules`) et enregistre la restauration POI. On le charge dynamiquement après avoir
- * préparé (ou non) la façade.
+ * The only module statically assembling the offline engine (loaded through
+ * the capability's dynamic loader). At evaluation, if it finds
+ * `GeoLeaf.Storage`, it injects the engine there (`wireModules`) and
+ * registers the POI restoration. Loaded dynamically after preparing (or not)
+ * the facade.
  */
 import { vi, describe, test, expect, beforeEach } from "vitest";
 
@@ -18,7 +19,7 @@ describe("offline-engine-entry", () => {
         globalThis.GeoLeaf = {
             Log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
             Storage: { wireModules },
-            // registerPoiRestore lit la surface Layers ; un stub neutre suffit.
+            // registerPoiRestore reads the Layers surface; a neutral stub suffices.
             Layers: { onLayerAdded: vi.fn() },
         };
 
@@ -29,8 +30,8 @@ describe("offline-engine-entry", () => {
         expect(wired.db).toBeTruthy();
         expect(wired.cacheManager).toBeTruthy();
         expect(wired.cache?.Storage).toBeTruthy();
-        // Tâche 4.1 — sans cette ligne, « le rapatriement est injecté » resterait AFFIRMÉ :
-        // les trois assertions ci-dessus passent parfaitement avec `pull` absent.
+        // Without this line, "the pull is injected" would stay ASSERTED-ONLY:
+        // the three assertions above pass perfectly with `pull` absent.
         expect(typeof wired.pull?.pullLayer).toBe("function");
     });
 

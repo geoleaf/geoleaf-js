@@ -1,70 +1,79 @@
 #!/usr/bin/env node
 "use strict";
 /**
- * gitleaks-local.cjs — la gate `Secret scan (gitleaks)` de `ci.yml`, rejouée AVANT le push.
+ * gitleaks-local.cjs — `ci.yml`'s `Secret scan (gitleaks)` gate, replayed BEFORE the push.
  *
- * ## Pourquoi elle existe
+ * ## Why it exists
  *
- * `gitleaks` est la seule gate de fond de `ci.yml` portée par une ACTION GitHub, donc la
- * seule que `ci:local` ne pouvait structurellement pas exécuter. Elle a mordu deux fois de
- * suite le 29/07/2026, pour deux causes différentes, et chaque découverte a coûté un run
- * d'un quota rare. Un secret poussé n'était visible qu'à distance — c'est-à-dire trop tard.
+ * `gitleaks` is the only substantive `ci.yml` gate carried by a GitHub ACTION, hence the
+ * only one `ci:local` structurally could not run. It bit twice in a row on 2026-07-29,
+ * for two different causes, and each discovery cost a run of a scarce quota. A pushed
+ * secret was only visible remotely — that is, too late.
  *
- * L'action n'est pas reproductible ; son BINAIRE l'est. Ce script lance la version EXACTE
- * que l'action installe (relevée dans le journal du run : `gitleaks version: 8.24.3`) sur la
- * même plage de commits, via Docker.
+ * The action is not reproducible; its BINARY is. This script runs the EXACT version the
+ * action installs (read off the run log: `gitleaks version: 8.24.3`) on the same commit
+ * range, through Docker.
  *
- * ## Ce qu'il scanne, et pourquoi pas « le dépôt »
+ * ## What it scans, and why not "the repo"
  *
- * Sur un `push`, l'action ne scanne pas l'arbre : elle scanne la PLAGE POUSSÉE. L'équivalent
- * local avant push est donc `origin/main..HEAD` — les commits qu'on s'apprête à envoyer.
- * Scanner l'arbre de travail répondrait à une autre question et laisserait passer un secret
- * introduit puis retiré dans deux commits de la même poussée.
+ * On a `push`, the action does not scan the tree: it scans the PUSHED RANGE. The local
+ * pre-push equivalent is thus `origin/main..HEAD` — the commits about to be sent.
+ * Scanning the working tree would answer a different question and would let through a
+ * secret introduced then removed across two commits of the same push.
  *
- * ⚠️ LE PIÈGE QUE CE SCRIPT FERME PAR CONSTRUCTION — et c'est le défaut de `f15b0575` pris
- * par l'autre bout. Sur une plage vide, gitleaks scanne zéro octet et imprime sereinement
- * « no leaks found ». C'est exactement ce qu'avait affiché la CI juste avant d'échouer :
+ * ⚠️ THE TRAP THIS SCRIPT CLOSES BY CONSTRUCTION — the `f15b0575` defect taken from the
+ * other end. On an empty range, gitleaks scans zero bytes and serenely prints
+ * "no leaks found". That is exactly what the CI displayed right before failing:
  *
  *     WRN scanned ~0 bytes (0)
  *     WRN no leaks found in partial scan
  *
- * Un verdict rassurant sur un scan vide est pire qu'aucun verdict, parce qu'on le croit.
- * Ce script COMPTE donc les commits de la plage avant de lancer quoi que ce soit, et refuse
- * de rendre un verdict s'il n'y en a aucun — il ne sort pas « vert », il sort « sans objet ».
+ * A reassuring verdict on an empty scan is worse than no verdict, because it gets
+ * believed. This script therefore COUNTS the range's commits before launching anything,
+ * and refuses to render a verdict when there are none — it does not come out "green", it
+ * comes out "not applicable".
  *
- * ## Ce qu'il ne couvre pas
+ * ## What it does not cover
  *
- * Le chemin `pull_request` de l'action, qui interroge l'API GitHub pour énumérer les commits
- * de la PR et exige `GITHUB_TOKEN`. Aucun équivalent local n'existe : il n'y a pas
- * d'événement `pull_request` sur un poste. Cette moitié reste vérifiable seulement à distance.
+ * The action's `pull_request` path, which queries the GitHub API to enumerate the PR's
+ * commits and requires `GITHUB_TOKEN`. No local equivalent exists: there is no
+ * `pull_request` event on a workstation. That half stays verifiable remotely only.
  *
- * Usage : node scripts/gitleaks-local.cjs [--all]
- *   (sans argument)  scanne `origin/main..HEAD` — ce qu'on s'apprête à pousser
- *   --all            scanne tout l'historique atteignable depuis HEAD (lent, ponctuel)
+ * Usage: node scripts/gitleaks-local.cjs [--all]
+ *   (no argument)    scans `origin/main..HEAD` — what is about to be pushed
+ *   --all            scans all history reachable from HEAD (slow, occasional)
  *
- * Sortie : 0 si aucune fuite (ou si Docker est absent / la plage est vide, avec le motif
- * imprimé), 1 si une fuite est trouvée ou si le scan n'a pas pu aboutir.
+ * Exit: 0 if no leak (or if Docker is absent / the range is empty, with the reason
+ * printed), 1 if a leak is found or the scan could not complete.
  */
 
 const { spawnSync } = require("node:child_process");
 const path = require("node:path");
 
 /**
- * Dépôt scanné. Surchargeable pour que cette gate soit PROUVABLE : sans ce crochet, la seule
- * façon de la voir rougir serait de committer un vrai faux secret dans le dépôt de travail —
- * donc on ne le ferait pas, et une garde jamais vue rouge ne garde rien (CLAUDE.md §Pré-vol).
- * Même patron que `GEOLEAF_CI_WORKFLOW_DIR` et `GEOLEAF_NYC_OUTPUT`.
+ * Scanned repo. Overridable so this gate is PROVABLE: without this hook, the only way to
+ * see it go red would be committing a real fake secret into the working repo — so nobody
+ * would, and a guard never seen red guards nothing. Same pattern as
+ * `GEOLEAF_CI_WORKFLOW_DIR` and `GEOLEAF_NYC_OUTPUT`.
  */
 const ROOT = process.env.GEOLEAF_GITLEAKS_REPO
     ? path.resolve(process.env.GEOLEAF_GITLEAKS_REPO)
     : path.resolve(__dirname, "..");
 
 /**
- * Épinglée sur la version que l'action installe. Un écart de version est un écart de RÈGLES :
- * deux gitleaks différents ne rendent pas le même verdict, et un vert local obtenu avec des
- * règles plus anciennes ne dirait rien du run à venir — la promesse même qu'on répare ici.
+ * Pinned to the version the action installs, BY DIGEST. A version gap is a RULES gap: two
+ * different gitleaks do not render the same verdict, and a local green obtained with older
+ * rules would say nothing about the run to come — the very promise being repaired here.
+ *
+ * The tag `v8.24.3` is MUTABLE on ghcr; the digest is not. Pinning by digest is what makes
+ * the SAME scanner binary run on every machine and in CI — the same reason the workflow's
+ * `uses:` are SHA-pinned, applied here to the one container image the pipeline pulls. To
+ * bump: pull the new tag, read its digest (`docker images --digests
+ * ghcr.io/gitleaks/gitleaks`), and update BOTH constants below.
  */
-const IMAGE = "ghcr.io/gitleaks/gitleaks:v8.24.3";
+const IMAGE_VERSION = "v8.24.3";
+const IMAGE =
+    "ghcr.io/gitleaks/gitleaks@sha256:e1b35e12a8c6fa8901f060459cfb6b2fc4c484d3afbe3b029733a3bbfab07055";
 
 const C = { r: "\x1b[31m", g: "\x1b[32m", y: "\x1b[33m", d: "\x1b[2m", b: "\x1b[1m", x: "\x1b[0m" };
 
@@ -80,19 +89,19 @@ function dockerAvailable() {
 
 function main() {
     const all = process.argv.includes("--all");
-    console.log(`${C.b}── SECRET SCAN (gitleaks ${IMAGE.split(":").pop()}) ──${C.x}`);
+    console.log(`${C.b}── SECRET SCAN (gitleaks ${IMAGE_VERSION}) ──${C.x}`);
 
-    // 1. Docker. Son absence est une dépendance d'ENVIRONNEMENT manquante, pas une gate en
-    //    échec : faire rougir `ci:local` pour ça pousserait à le contourner, et une gate
-    //    contournée ne garde rien. On l'annonce fort, et on sort 0.
+    // 1. Docker. Its absence is a missing ENVIRONMENT dependency, not a failing gate:
+    //    reddening `ci:local` for it would push people to bypass it, and a bypassed gate
+    //    guards nothing. We announce it loudly, and exit 0.
     //
-    // 🛑 SAUF EN CI, ET LE MOTIF DE L'INDULGENCE EST CE QUI A CHANGÉ. Cette tolérance reposait
-    // sur une phrase — « la gate distante tournera quand même sur le runner » — qui était vraie
-    // tant que le distant lançait `gitleaks-action`. Depuis le 11/08/2026, `ci.yml` lance CE
-    // script : le filet invoqué pour justifier la sortie 0 est devenu le script lui-même. Sans
-    // ce garde-fou, un runner sans Docker rendrait un vert silencieux en s'appuyant sur un
-    // secours qui n'existe plus — exactement la classe de défaut que l'escalade de plage
-    // ci-dessous vient de fermer, réintroduite par l'autre bout.
+    // 🛑 EXCEPT IN CI — AND THE REASON FOR THE LENIENCY IS WHAT CHANGED. That tolerance
+    // rested on one sentence — "the remote gate will run on the runner anyway" — which
+    // was true while the remote side ran `gitleaks-action`. Since 2026-08-11, `ci.yml`
+    // runs THIS script: the net invoked to justify the exit 0 became the script itself.
+    // Without this guard, a Docker-less runner would render a silent green while leaning
+    // on a backstop that no longer exists — exactly the defect class the range
+    // escalation below just closed, reintroduced from the other end.
     if (!dockerAvailable()) {
         const inCI = process.env.CI === "true";
         console.log(`  ${C.y}⚠ Docker ne répond pas — CE SCAN N'A PAS EU LIEU.${C.x}`);
@@ -112,50 +121,54 @@ function main() {
         process.exit(0);
     }
 
-    // 2. La plage. Comptée AVANT le scan, précisément pour ne pas rendre un verdict sur rien.
+    // 2. The range. Counted BEFORE the scan, precisely to not render a verdict on nothing.
     //
-    // 🛑 UNE PLAGE VIDE SORT 0 EN ANNONÇANT QU'ELLE N'A RIEN SCANNÉ — et ce n'est PAS
-    //    satisfaisant. La tentative de le corriger a été faite le 11/08/2026 et RETIRÉE le
-    //    jour même, parce que son remède était pire. L'histoire est écrite ici pour qu'on ne
-    //    la refasse pas à l'identique.
+    // 🛑 AN EMPTY RANGE EXITS 0 WHILE ANNOUNCING IT SCANNED NOTHING — and that is NOT
+    //    satisfying. The attempt to fix it was made on 2026-08-11 and REMOVED the same
+    //    day, because its remedy was worse. The story is written here so it is not
+    //    redone identically.
     //
-    // **Le défaut, réel** : un pas de `ci:local` qui sort 0 se lit VERT dans le tableau, quoi
-    // qu'il imprime. Mesuré sur le clone du dépôt public — un commit, aucun remote — où ce pas
-    // était vert pendant que le `--all` de la tâche 9.8 y trouvait **3 fuites**.
+    // **The defect, real**: a `ci:local` step that exits 0 reads GREEN in the table,
+    // whatever it prints. Measured on the public repo's clone — one commit, no remote —
+    // where this step was green while a full-history `--all` scan found **3 leaks**
+    // there.
     //
-    // **Le remède essayé** : escalader vers l'historique complet quand la plage est vide.
-    // **Pourquoi il a été retiré** : sur un dépôt à long historique, il ressuscite des
-    // trouvailles DÉJÀ REMÉDIÉES. Mesuré à la première poussée — la CI est passée rouge sur
-    // `geoleaf-windows-datas-path` dans `5b8c6c8f`, un commit dont le Sprint 5 a nettoyé le
-    // contenu depuis. Une gate qu'aucun correctif ne peut verdir sans réécrire l'historique
-    // est une gate qu'on finit par contourner.
+    // **The remedy tried**: escalate to full history when the range is empty.
+    // **Why it was removed**: on a long-history repo, it resurrects findings ALREADY
+    // REMEDIATED. Measured at the first push — CI went red on
+    // `geoleaf-windows-datas-path` in `5b8c6c8f`, a commit whose content a later cleanup
+    // has removed since. A gate no fix can turn green without rewriting history is a
+    // gate people end up bypassing.
     //
-    // **Les deux replis alternatifs sont mesurés et écartés eux aussi** :
-    //   • `--log-opts=-1` (le commit de tête) — faux dès le 2ᵉ commit : sur le dépôt public il
-    //     ne verrait plus le commit initial, donc pas les 3 fuites qui motivaient tout ceci ;
-    //   • `gitleaks dir` (l'arbre) — scanne ce que git ignore : **108 trouvailles**, presque
-    //     toutes dans `node_modules/`.
+    // **Both alternative fallbacks are measured and discarded too**:
+    //   • `--log-opts=-1` (the head commit) — wrong from the 2nd commit on: on the
+    //     public repo it would no longer see the initial commit, hence not the 3 leaks
+    //     motivating all of this;
+    //   • `gitleaks dir` (the tree) — scans what git ignores: **108 findings**, almost
+    //     all in `node_modules/`.
     //
-    // **Ce qu'il faudrait** : la plage de l'ÉVÉNEMENT (`github.event.before..sha`), que
-    // `gitleaks-action` obtenait de GitHub et qu'un script local ne peut pas deviner. C'est une
-    // pièce à concevoir — un crochet d'environnement lu ici, posé par `ci.yml` —, pas à
-    // improviser. En attendant, `9.8` (`--all`, sur un dépôt neuf) reste le verdict de fond.
-    // ✅ `GEOLEAF_GITLEAKS_RANGE` — LA PIÈCE QUI MANQUAIT, posée le 11/08/2026.
+    // **What it would take**: the EVENT's range (`github.event.before..sha`), which
+    // `gitleaks-action` got from GitHub and a local script cannot guess. A piece to
+    // design — an environment hook read here, set by `ci.yml` — not to improvise.
+    // Meanwhile, `--all` on a fresh clone remains the background verdict.
+    // ✅ `GEOLEAF_GITLEAKS_RANGE` — THE MISSING PIECE, laid on 2026-08-11.
     //
-    // C'est la réponse au problème décrit au-dessus, et elle vient d'où l'information EXISTE :
-    // l'événement GitHub. `ci.yml` calcule `before..sha` sur un push, `base..head` sur une PR,
-    // et le passe ici. Un script local ne peut pas deviner ces bornes — c'est exactement ce que
-    // `gitleaks-action` recevait de la plateforme, et la seule chose qu'on perdait en la
-    // remplaçant par le binaire.
+    // It is the answer to the problem described above, and it comes from where the
+    // information EXISTS: the GitHub event. `ci.yml` computes `before..sha` on a push,
+    // `base..head` on a PR, and passes it here. A local script cannot guess those
+    // bounds — this is exactly what `gitleaks-action` received from the platform, and
+    // the only thing lost when replacing it with the binary.
     //
-    // 🛑 **Quand la plage vient de l'événement, une plage VIDE est un ÉCHEC, pas un silence.**
-    // La tolérance du repli local se justifie par « il n'y a rien à comparer, c'est normal sur
-    // un poste ». Ici la plomberie a AFFIRMÉ une plage : si elle ne contient rien, c'est que le
-    // calcul est faux, et sortir 0 rendrait la gate muette précisément là où elle est seule.
+    // 🛑 **When the range comes from the event, an EMPTY range is a FAILURE, not
+    // silence.** The local fallback's tolerance is justified by "there is nothing to
+    // compare, normal on a workstation". Here the plumbing ASSERTED a range: if it holds
+    // nothing, the bound computation is wrong, and exiting 0 would mute the gate
+    // precisely where it stands alone.
     //
-    // 📌 Quand la variable est absente — `workflow_dispatch`, premier push d'une branche —, le
-    // comportement local s'applique tel quel, non-verdict compris. C'est assumé : un run manuel
-    // n'a pas de plage naturelle, et inventer une borne serait pire que dire qu'on n'en a pas.
+    // 📌 When the variable is absent — `workflow_dispatch`, first push of a branch —
+    // the local behaviour applies as-is, non-verdict included. Accepted: a manual run
+    // has no natural range, and inventing a bound would be worse than saying there is
+    // none.
     const envRange = (process.env.GEOLEAF_GITLEAKS_RANGE || "").trim();
     const fromEvent = envRange.length > 0;
 
@@ -175,17 +188,23 @@ function main() {
             process.exit(0);
         }
         range = "origin/main..HEAD";
+        // 📌 No `console.log` of the range HERE, and that is measured, not assumed
+        // (2026-08-17). The COUNT line, a few lines below, already prints
+        // `plage : <range> — N commit(s)` in **both** branches — the event's and this
+        // one. Adding a second would say nothing more and say it worse: it would name
+        // the range without its count, yet the count is what answers the question this
+        // file exists to ask — *did it scan anything?*
     }
 
     /**
-     * Nombre de lignes AJOUTÉES par la plage, ou `-1` si le compte n'est pas sûr.
+     * Number of lines ADDED by the range, or `-1` if the count is not safe.
      *
-     * 🛑 Compté PAR COMMIT (`git log --numstat`), jamais sur le diff net (`git diff`). Un
-     * secret ajouté puis retiré dans la même plage rend un diff net vide : s'y fier
-     * laisserait passer exactement ce que cette gate existe pour attraper.
+     * 🛑 Counted PER COMMIT (`git log --numstat`), never on the net diff (`git diff`).
+     * A secret added then removed within the same range makes the net diff empty:
+     * trusting it would let through exactly what this gate exists to catch.
      *
-     * Rend `-1` — donc REFUSE de conclure — sur un fichier binaire (`-` en numstat, contenu
-     * indénombrable) ou sur une sortie git illisible. Dans le doute, la gate rougit.
+     * Returns `-1` — hence REFUSES to conclude — on a binary file (`-` in numstat,
+     * uncountable content) or on unreadable git output. In doubt, the gate goes red.
      */
     function addedLinesIn(r) {
         const st = git("log", "--numstat", "--pretty=format:", r);
@@ -230,36 +249,36 @@ function main() {
         process.exit(1);
     }
 
-    // 3. Le scan. Mêmes drapeaux que l'action : --redact (aucun secret en clair dans le
-    //    journal), --exit-code=2 pour distinguer « fuite trouvée » d'une erreur d'exécution.
+    // 3. The scan. Same flags as the action: --redact (no secret in clear in the log),
+    //    --exit-code=2 to distinguish "leak found" from an execution error.
     //
-    //    ⚠️ Cette ligne a dit « aucun `.gitleaks.toml` dans le dépôt » jusqu'au 10/08/2026.
-    //    Le fichier existe désormais à la racine (Sprint 5, tâche 5.9) et gitleaks le trouve
-    //    tout seul, ICI comme en CI, parce que les deux pointent la même racine : le dépôt
-    //    est monté sur `/repo` et `--source=/repo` en fait le répertoire de recherche de la
-    //    configuration. Il n'y a donc toujours rien à synchroniser à la main — mais pour une
-    //    raison différente, et c'est le genre de phrase qui se recopie sans être relue.
+    //    ⚠️ This line said "no `.gitleaks.toml` in the repo" until 2026-08-10. The file
+    //    now exists at the root and gitleaks finds it on its own, HERE as in CI, because
+    //    both point at the same root: the repo is mounted on `/repo` and `--source=/repo`
+    //    makes it the configuration search directory. There is thus still nothing to
+    //    synchronize by hand — but for a different reason, and that is the kind of
+    //    sentence that gets copied without being re-read.
     //
-    //    🛑 Conséquence à connaître : ce fichier porte `[extend] useDefault = true`. Sans
-    //    cette ligne, un `.gitleaks.toml` REMPLACE les ~150 règles par défaut, et ce script
-    //    sortirait vert en ne gardant plus que quatre chaînes maison. La sonde de la tâche
-    //    5.10 l'éprouve par mutation, sur un dépôt jetable, avec une vraie clé de test.
+    //    🛑 Consequence to know: that file carries `[extend] useDefault = true`. Without
+    //    that line, a `.gitleaks.toml` REPLACES the ~150 default rules, and this script
+    //    would go green while guarding only four home-grown strings. A dedicated probe
+    //    proves it by mutation, on a throwaway repo, with a real test key.
     console.log(`  plage : ${C.b}${range}${C.x} — ${n} commit(s)`);
-    // ⚠️ DEPUIS UN WORKTREE GIT, `.git` est un FICHIER, pas un répertoire — il contient
-    // `gitdir: /chemin/absolu/vers/.git/worktrees/<nom>`. Ce chemin est HORS du volume monté,
-    // donc git dans le conteneur ne le résout pas :
+    // ⚠️ FROM A GIT WORKTREE, `.git` is a FILE, not a directory — it contains
+    // `gitdir: /absolute/path/to/.git/worktrees/<name>`. That path is OUTSIDE the
+    // mounted volume, so git inside the container does not resolve it:
     //
     //     fatal: not a git repository: /…/.git/worktrees/geoleaf-cipush-XXXX
     //     WRN scanned ~0 bytes (0)
     //     WRN no leaks found in partial scan
     //
-    // Mesuré le 01/08/2026 au premier run de `ci:push`, qui travaille précisément dans un
-    // worktree. Le garde-fou de ce script a bien refusé de conclure (l'étape est sortie en
-    // erreur, pas en vert), mais le motif était un défaut de MONTAGE et non de sécurité —
-    // exactement le couple qu'il faut savoir distinguer.
+    // Measured on 2026-08-01 at the first `ci:push` run, which works precisely in a
+    // worktree. This script's guard did refuse to conclude (the step exited in error,
+    // not green), but the reason was a MOUNT defect and not a security one — exactly
+    // the pair one must know how to tell apart.
     //
-    // Le vrai répertoire git est donc monté à SON CHEMIN ABSOLU, pour que le `gitdir:` du
-    // fichier `.git` résolve à l'identique dans le conteneur.
+    // The real git directory is therefore mounted at ITS ABSOLUTE PATH, so the `.git`
+    // file's `gitdir:` resolves identically inside the container.
     const gitCommonDir = git(
         "rev-parse",
         "--path-format=absolute",
@@ -278,13 +297,13 @@ function main() {
             "-v",
             `${ROOT}:/repo:ro`,
             ...extraMounts,
-            // Le conteneur tourne en root sur des fichiers de l'hôte : sans cette
-            // déclaration, git refuse le dépôt en « dubious ownership » et gitleaks sort en
-            // erreur — un rouge qui n'est pas un verdict de sécurité. Posé par variables
-            // plutôt qu'en écrivant un ~/.gitconfig dans l'image.
+            // The container runs as root over host-owned files: without this
+            // declaration, git refuses the repo as "dubious ownership" and gitleaks
+            // errors out — a red that is not a security verdict. Set through variables
+            // rather than by writing a ~/.gitconfig into the image.
             //
-            // Le répertoire git commun, quand il est monté (cas du worktree), doit être
-            // déclaré sûr LUI AUSSI : il appartient au même utilisateur de l'hôte.
+            // The common git directory, when mounted (worktree case), must be declared
+            // safe AS WELL: it belongs to the same host user.
             "-e",
             `GIT_CONFIG_COUNT=${extraMounts.length ? 2 : 1}`,
             "-e",
@@ -312,16 +331,16 @@ function main() {
 
     const out = `${res.stdout || ""}${res.stderr || ""}`;
 
-    // 4. Le contrôle de vacuité, en seconde ligne. Le compte de commits ci-dessus peut être
-    //    non nul alors que gitleaks n'a rien lu (commits sans ajout, plage mal transmise) —
-    //    et c'est précisément l'état dans lequel la CI a annoncé « aucune fuite ».
+    // 4. The emptiness check, as a second line of defence. The commit count above can be
+    //    non-zero while gitleaks read nothing (commits with no additions, badly passed
+    //    range) — and that is precisely the state in which CI announced "no leaks".
     //
-    //    ⚠️ MAIS LES DEUX CAS CITÉS N'ONT PAS LE MÊME STATUT, et les confondre a fait rougir
-    //    la CI le 15/08/2026 sur un commit de 62 suppressions et ZÉRO ajout — la rotation du
-    //    plafond du JOURNAL, c'est-à-dire un geste que le dépôt IMPOSE tous les mois.
-    //    « Plage mal transmise » est un défaut ; « la plage n'ajoute rien » est un état sûr et
-    //    récurrent. gitleaks ne lit que le contenu AJOUTÉ : sur une plage qui n'en a aucun,
-    //    son silence n'est pas une cécité, c'est la vérité.
+    //    ⚠️ BUT THE TWO CITED CASES DO NOT HAVE THE SAME STATUS, and conflating them
+    //    made CI go red on 2026-08-15 on a commit of 62 deletions and ZERO additions —
+    //    the JOURNAL cap rotation, i.e. a move the repo MANDATES every month. "Badly
+    //    passed range" is a defect; "the range adds nothing" is a safe, recurring
+    //    state. gitleaks only reads ADDED content: on a range that has none, its
+    //    silence is not blindness, it is the truth.
     const scanned = out.match(/scanned ~(\d+) bytes/);
     if (res.status === 0 && scanned && Number(scanned[1]) === 0) {
         const added = addedLinesIn(range);

@@ -103,7 +103,13 @@ suivant.
 
 ### Pourquoi `text` n'a pas de défaut de configuration
 
-Ni le `configSchema` ni `brandingConfigDefaults()` ne déclarent `text` — délibérément. Le texte
+Ni le `configSchema` ni `brandingConfigDefaults()` ne déclarent de **défaut** pour `text` —
+délibérément. ⚠️ Cette phrase a écrit « ne déclarent `text` » jusqu'au 19/08/2026, et c'était faux
+de la première moitié : le `configSchema` déclare bien le **champ** `text` (`type: "string"`,
+description), il ne lui donne simplement pas de `default`, là où `enabled` et `position` en ont
+un. La nuance n'est pas cosmétique — un champ absent du schéma et un champ sans défaut ne se
+comportent pas pareil : le premier n'est reconnu par rien, le second est reconnu et laissé vide.
+Le texte
 affiché en l'absence de configuration vient de l'**i18n** (`ui.branding.default_text`), pas de la
 configuration : le mettre dans les défauts figerait une langue.
 
@@ -146,7 +152,7 @@ C'est la différence de forme avec `theme-toggle`, dont l'API publique est un ob
 seule : branding **a** un état à piloter (un conteneur monté), et l'expose.
 
 Typage publié : `src/global.d.ts`, section des capacités (`Branding?:` → `BrandingPublicApi`). Ne
-pas citer de numéro de ligne pour ce fichier — il est réécrit au fil du typage du namespace (B-13).
+pas citer de numéro de ligne pour ce fichier — il est réécrit au fil du typage du namespace.
 
 ### Événements
 

@@ -24,12 +24,12 @@
 // events (mousedown/mousemove/mouseup), which are NOT raised by Playwright's
 // synthetic mouse input in headless — their MOUSE path is covered by unit tests
 // (tool-rect.test.ts / tool-circle.test.ts); the e2e proves a surface measure via
-// the polygon tool (DOM-capture), like distance. See CDC §Validation S7 (finding).
-// ⚠️ « They are covered by unit tests » a valu pour les DEUX chemins jusqu'au
-// 14/08/2026, où ces outils ont reçu un chemin tactile : celui-là est éprouvé en
-// navigateur réel par `e2e/33-measure-drag.touch.spec.js` (projet `chromium-touch`,
-// glissement via CDP `Input.dispatchTouchEvent`). La limite de Playwright porte sur
-// sa souris synthétique, pas sur son entrée tactile.
+// the polygon tool (DOM-capture), like distance — a recorded finding.
+// ⚠️ "They are covered by unit tests" held for BOTH paths until 2026-08-14,
+// when these tools received a touch path: that one is proven in a real
+// browser by `e2e/33-measure-drag.touch.spec.js` (`chromium-touch` project,
+// drag via CDP `Input.dispatchTouchEvent`). Playwright's limit bears on its
+// synthetic mouse, not on its touch input.
 // The public API `startMeasure()` only sets the active-button state; the drawing
 // handlers are wired by the menu's onToolSelect (a tool-button click) — so this
 // spec drives tools through the menu buttons (see CDC §Validation S7, finding).

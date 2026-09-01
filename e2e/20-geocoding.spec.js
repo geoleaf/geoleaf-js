@@ -1,54 +1,72 @@
 // @ts-check
-// S5.3 — E2E géocodage (@geoleaf-plugins/geocoding) sur deploy-coverage (port 8769).
+// E2E geocoding (@geoleaf-plugins/geocoding) on deploy-coverage (port 8769).
 //
-// Garde de bout en bout pour l'extraction du géocodage core → plugin : prouve que,
-// une fois la balise <script> du plugin injectée dans les variantes deploy (S5.2), le
-// pill de recherche d'adresse se monte réellement dans un profil déployé et que la
-// chaîne recherche → résultats → sélection → recentrage + événement tient en navigateur.
+// End-to-end guard for the core → plugin geocoding extraction: proves that,
+// once the plugin's <script> tag is injected into the deploy variants, the
+// address-search pill really mounts in a deployed profile and that the
+// search → results → selection → recentre + event chain holds in a browser.
 //
-// Cible : deploy-coverage (roadmap S5.3) — copie de deploy-core (profil actif `tourism`,
-// `modules.geocoding.enabled: true`, provider nominatim). Le port 8769 est démarré par
-// le webServer de playwright.config.js ; `npm run build:deploy-coverage` doit avoir peuplé
-// `deploy/deploy-coverage` au préalable (après `build:deploy:all`).
+// Target: deploy-coverage — a copy of deploy-core (active profile `tourism`,
+// `modules.geocoding.enabled: true`, nominatim provider). Port 8769 is started
+// by playwright.config.js's webServer; `npm run build:deploy-coverage` must
+// have populated `deploy/deploy-coverage` beforehand (after
+// `build:deploy:all`).
 //
-// Mécanisme de mock (cf. cfg-c2) : monkeypatch `window.fetch` posé en addInitScript —
-// il court-circuite les hôtes des providers géocodage et renvoie un FeatureCollection
-// GeoCodeJSON canné « Rosario » SANS toucher le réseau (déterministe + indépendant de
-// la CSP `connect-src`). Tous les providers (addok/nominatim/photon) parsent ce format.
-// La localité cannée doit rester DANS l'emprise du profil (`positionFixed` → maxBounds
-// MapLibre) sinon le recentrage est clampé — voir le commentaire de ROSARIO_GEOJSON.
+// Mock mechanism (cf. cfg-c2): a `window.fetch` monkeypatch set in
+// addInitScript — it short-circuits the geocoding providers' hosts and
+// returns a canned "Rosario" GeoCodeJSON FeatureCollection WITHOUT touching
+// the network (deterministic + independent of the `connect-src` CSP). All
+// providers (addok/nominatim/photon) parse this format. The canned locality
+// must stay INSIDE the profile's bounds (`positionFixed` → MapLibre
+// maxBounds) or the recentre is clamped — see ROSARIO_GEOJSON's comment.
 //
-// La porte « désactivé ⇒ pill absent » est gérée par le registre côté plugin
-// (`_onMapReady` retourne tôt si `!config.enabled`) et couverte au niveau unitaire ;
-// ici on valide le chemin nominal sur un profil qui active le géocodage.
+// The "disabled ⇒ no pill" gate is handled by the plugin-side registry
+// (`_onMapReady` returns early if `!config.enabled`) and covered at the unit
+// tier; here the nominal path is validated on a profile that enables
+// geocoding.
 //
-// `serviceWorkers: 'block'` : empêche le SW PWA de médier (et donc d'échapper à) le
-// monkeypatch fetch — même précaution que les specs plugin sur variantes PWA.
+// `serviceWorkers: 'block'`: keeps the PWA SW from mediating (and thus
+// escaping) the fetch monkeypatch — same precaution as the plugin specs on
+// PWA variants.
 
 import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
+import { registerCoverageCollection } from "./helpers/coverage.js";
+import { bootMapUntilIdle } from "./helpers/boot.js";
 
 test.use({ baseURL: baseURL("coverage"), serviceWorkers: "block" });
 
-// Hôtes des providers intégrés (provider.ts) — interceptés quel que soit le provider
-// du profil actif, pour que la spec reste verte si le profil bascule addok/photon.
+// This spec already TARGETED the instrumented variant without ever yielding
+// its coverage: the bundle was measured, the data thrown away at page close.
+// The wiring below pours it in. ⚠️ It only has value since the istanbul
+// `include` covers `src/capabilities/**`: before that, the code exercised
+// here was OUTSIDE the denominator, and three more dumps would have moved
+// nothing.
+registerCoverageCollection(test, "geocoding");
+
+// Built-in providers' hosts (provider.ts) — intercepted whatever the active
+// profile's provider, so the spec stays green if the profile switches to
+// addok/photon.
 const PROVIDER_HOSTS = [
     "nominatim.openstreetmap.org",
     "api-adresse.data.gouv.fr",
     "photon.komoot.io",
 ];
 
-// Réponse cannée au format GeoCodeJSON FeatureCollection (parsée par _parseGeoJSON).
-// bbox présent ⇒ la sélection emprunte le chemin fitBounds (recentrage sur la ville).
+// Canned response in GeoCodeJSON FeatureCollection format (parsed by
+// _parseGeoJSON). bbox present ⇒ selection takes the fitBounds path
+// (recentring on the city).
 //
-// ⚠️ La localité DOIT tomber dans l'emprise du profil actif. `tourism` déclare
-// `map.positionFixed: true` + `map.bounds` [[-55,-73.5],[-21.78,-53.5]] (Argentine) ;
-// `core-map.module.ts:135` en fait un `maxBounds` MapLibre (padBounds, boundsMargin 0.7
-// ⇒ lat ≤ 1.47, lng ∈ [-87.5,-39.5]). Un fitBounds hors de cette boîte est CLAMPÉ par
-// MapLibre : la carte ne bouge pas, quel que soit le géocodeur. Rosario (la ville du
-// profil, cf. la couche `sites_rosario`) est dans l'emprise — c'est ce qui rend
-// l'assertion de recentrage vérifiable. Cohérent avec `modules.geocoding.countrycodes:
-// "ar"` du profil, et avec 19-permalink qui n'utilise que des coordonnées in-bounds.
+// ⚠️ The locality MUST fall inside the active profile's bounds. `tourism`
+// declares `map.positionFixed: true` + `map.bounds`
+// [[-55,-73.5],[-21.78,-53.5]] (Argentina); `core-map.module.ts` turns it
+// into a MapLibre `maxBounds` (padBounds, boundsMargin 0.7 ⇒ lat ≤ 1.47,
+// lng ∈ [-87.5,-39.5]). A fitBounds outside that box is CLAMPED by MapLibre:
+// the map does not move, whatever the geocoder. Rosario (the profile's city,
+// cf. the `sites_rosario` layer) is in bounds — which is what makes the
+// recentre assertion verifiable. Consistent with the profile's
+// `modules.geocoding.countrycodes: "ar"`, and with 19-permalink which uses
+// only in-bounds coordinates.
 const ROSARIO_GEOJSON = {
     type: "FeatureCollection",
     features: [
@@ -62,10 +80,11 @@ const ROSARIO_GEOJSON = {
 };
 
 /**
- * Pose le harnais géocodage AVANT tout script de page :
- *  - enregistre les événements `geoleaf:geocoding:result` dans `window.__geocodingEvents`,
- *  - monkeypatche `window.fetch` pour renvoyer `geojson` sur les hôtes providers.
- * Arguments passés explicitement (pas via closure : addInitScript sérialise la fonction).
+ * Sets the geocoding harness BEFORE any page script:
+ *  - records `geoleaf:geocoding:result` events in `window.__geocodingEvents`,
+ *  - monkeypatches `window.fetch` to return `geojson` on the provider hosts.
+ * Arguments passed explicitly (not via closure: addInitScript serialises the
+ * function).
  */
 async function installGeocodingHarness(page, geojson, hosts) {
     await page.addInitScript(
@@ -91,37 +110,20 @@ async function installGeocodingHarness(page, geojson, hosts) {
     );
 }
 
-async function bootMap(page) {
-    await page.goto("/");
-    await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
-    await page.waitForFunction(
-        () => {
-            const native = /** @type {any} */ (window).GeoLeaf?.Core?.getMap?.()?.getNativeMap?.();
-            return !!(native && typeof native.loaded === "function" && native.loaded());
-        },
-        null,
-        { timeout: 20000 }
-    );
-    await page
-        .locator("#gl-loader")
-        .waitFor({ state: "hidden", timeout: 10000 })
-        .catch(() => {});
-}
-
 test.describe("20-geocoding — pill + recherche + événement (deploy-coverage, tourism)", () => {
     test("le plugin se charge et le pill se monte (modules.geocoding.enabled)", async ({
         page,
     }) => {
         await installGeocodingHarness(page, ROSARIO_GEOJSON, PROVIDER_HOSTS);
-        await bootMap(page);
+        await bootMapUntilIdle(page);
 
-        // Le bundle plugin est bien injecté et la façade montée sur le namespace.
+        // The plugin bundle is injected and the facade mounted on the namespace.
         const enabled = await page.evaluate(
             () => /** @type {any} */ (window).GeoLeaf?.Geocoding?.isEnabled?.() === true
         );
         expect(enabled).toBe(true);
 
-        // Desktop (viewport 1280px > breakpoint 768px) : le pill est visible par défaut.
+        // Desktop (viewport 1280px > breakpoint 768px): the pill is visible by default.
         const input = page.locator('.gl-geocoding-ctrl input[role="combobox"]');
         await expect(input).toBeVisible({ timeout: 10000 });
     });
@@ -130,21 +132,21 @@ test.describe("20-geocoding — pill + recherche + événement (deploy-coverage,
         page,
     }) => {
         await installGeocodingHarness(page, ROSARIO_GEOJSON, PROVIDER_HOSTS);
-        await bootMap(page);
+        await bootMapUntilIdle(page);
 
         const input = page.locator('.gl-geocoding-ctrl input[role="combobox"]');
         await expect(input).toBeVisible({ timeout: 10000 });
 
-        // Saisie ≥ minChars (3) ⇒ recherche débouncée ⇒ provider mocké ⇒ dropdown.
+        // Input ≥ minChars (3) ⇒ debounced search ⇒ mocked provider ⇒ dropdown.
         await input.fill("Rosario");
         const items = page.locator(".gl-geocoding-result-item");
         await expect(items.first()).toBeVisible({ timeout: 10000 });
         await expect(items.first()).toContainText("Rosario");
 
-        // Sélection du 1er résultat.
+        // Select the 1st result.
         await items.first().click();
 
-        // 1) L'événement public est émis avec la localité sélectionnée.
+        // 1) The public event is emitted with the selected locality.
         await page.waitForFunction(
             () => /** @type {any} */ (window.__geocodingEvents || []).length > 0,
             null,
@@ -157,9 +159,9 @@ test.describe("20-geocoding — pill + recherche + événement (deploy-coverage,
         expect(ev.lng).toBeGreaterThan(-61);
         expect(ev.lng).toBeLessThan(-60);
 
-        // 2) La carte recentre près de Rosario (fitBounds sur le bbox du résultat).
-        //    3e argument = options : `waitForFunction(fn, arg, options)` — passer le
-        //    timeout en 2e position en fait un `arg` silencieusement ignoré.
+        // 2) The map recentres near Rosario (fitBounds on the result's bbox).
+        //    3rd argument = options: `waitForFunction(fn, arg, options)` —
+        //    passing the timeout 2nd makes it a silently ignored `arg`.
         await page.waitForFunction(
             () => {
                 const c = /** @type {any} */ (window).GeoLeaf?.Core?.getMap?.()
@@ -168,11 +170,12 @@ test.describe("20-geocoding — pill + recherche + événement (deploy-coverage,
                 return !!c && Math.abs(c.lat - -32.935) < 0.6 && Math.abs(c.lng - -60.65) < 0.6;
             },
             null,
-            // ⚠️ B-99 — mesuré : ce test dure **14 109 ms** au total sur une machine à
-            // 24 cœurs. Un budget de 10 s pour une seule de ses attentes n'avait aucune
-            // marge sur un runner ~5× plus lent. L'attente porte sur le bon prédicat (le
-            // centre natif de la carte après `fitBounds`) : rien à mieux synchroniser,
-            // seulement un budget à recalibrer. Généreux ne coûte rien au cas passant.
+            // ⚠️ Measured: this test lasts **14,109 ms** in total on a 24-core
+            // machine. A 10 s budget for a single one of its waits had no
+            // margin on a runner ~5× slower. The wait bears on the right
+            // predicate (the map's native centre after `fitBounds`): nothing
+            // to synchronise better, only a budget to recalibrate. Generous
+            // costs the passing case nothing.
             { timeout: 30000 }
         );
     });

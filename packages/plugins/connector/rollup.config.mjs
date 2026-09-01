@@ -12,8 +12,8 @@ export default {
         file: "dist/geoleaf-connector.plugin.js",
         format: "es",
         sourcemap: true,
-        // 2.10 bis — les sources voyagent déjà dans `src/` (files[]) :
-        // les embarquer une SECONDE fois dans la carte est un doublon pur.
+        // The sources already travel in `src/` (files[]): embedding them a
+        // SECOND time in the sourcemap is pure duplication.
         sourcemapExcludeSources: true,
     },
     // @geoleaf/core is never bundled — loaded separately by the host page

@@ -1,6 +1,6 @@
 // @ts-check
-// Sprint 2 roadmap catalogue-demos v1.0.0 — E2E realtime activation + fallback CDN
-// S5 (validation plugin-realtime-layer) — bundled GTFS-RT decoder + SSE source.
+// E2E realtime activation + CDN fallback — `realtime-layer` plugin validation:
+// bundled GTFS-RT decoder + SSE source.
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,14 +22,26 @@ const { transit_realtime } = require(
 
 test.use({ baseURL: baseURL("core") });
 
-// ⚠️ MIGRÉ le 27/07/2026 (B-42). Ces tests visaient les profils de démonstration
-// `world-disasters` (USGS + SSE) et `france-rail` (GTFS-RT), retirés avec les 6 démos.
+// ⚠️ MIGRATED on 2026-07-27. These tests targeted the demonstration profiles
+// `world-disasters` (USGS + SSE) and `france-rail` (GTFS-RT), removed with the
+// 6 demos.
 //
-//   • Les 3 tests USGS / SSE sont reportés sur `tourism` : la couche `epicentres_seismes`
-//     y a été migrée (flux USGS mondial, polling + snapshot de repli). Le report est
-//     cohérent — l'Amérique du Sud est l'une des zones les plus sismiques, et `tourism` est
-//     le profil complet de test.
-//   • Les 3 tests GTFS-RT sont DÉSACTIVÉS, pas supprimés — voir leur `test.skip` et B-55.
+//   • The 3 USGS / SSE tests are carried over to `tourism`: the
+//     `epicentres_seismes` layer was migrated there (worldwide USGS feed,
+//     polling + fallback snapshot). The carry-over is coherent — South America
+//     is one of the most seismic zones, and `tourism` is the full test profile.
+//   • The GTFS-RT tests are ACTIVE since 2026-08-19, on a fixture forged right
+//     here: they re-declare in flight the realtime block of a layer of the
+//     served bundle, serve a crafted protobuf in its place, and thus exercise
+//     the BUNDLED decoder in a real browser. They were disabled for a month
+//     for want of a target — the demonstration profile carrying them was
+//     removed, and no SHIPPED profile carries a GTFS-RT feed. ⚠️ The refusal
+//     to put one in a shipped profile still stands: any profile not
+//     `_`-prefixed ships in the deployed variants, hence in production.
+//     🛑 The third of those tests was NOT re-armed: its subject was the
+//     removed profile's configuration file. Replacing it with the same
+//     assertion on the fixture would attest only to the fixture. Full motive
+//     where it used to live.
 
 /**
  * Boot loads the active profile from `sessionStorage['gl-selected-profile']`.
@@ -45,7 +57,7 @@ async function selectProfile(page, profileId) {
     }, profileId);
 }
 
-// ── S5 helpers (bundled-decode scenarios) ────────────────────────────────────
+// ── Bundled-decode helpers (GTFS-RT scenarios) ───────────────────────────────
 
 /** Encode a real GTFS-RT TripUpdate FeedMessage. `stops`: {stopId, delay, kind?}. */
 function craftGtfsFeed(stops) {
@@ -63,23 +75,129 @@ function craftGtfsFeed(stops) {
     return Buffer.from(transit_realtime.FeedMessage.encode(msg).finish());
 }
 
-// Two gares whose `code_uic` match the crafted feed's `stop_id`s (merge by code_uic).
-const GARES_FC = {
+// ── What the GTFS-RT tests no longer use, and why it is REMOVED ──────────────────────
+//
+// A station set and a demonstration-profile router lived here, tailored to a
+// removed profile. The tests that used them no longer do: the GTFS-RT fixture
+// is forged above, against the bundle actually served. Keeping them "just in
+// case" would have left dead harness whose only attestation was its own
+// presence.
+
+const EMPTY_FC = { type: "FeatureCollection", features: [] };
+
+/**
+ * Feature collection whose `stop_id`s match the crafted GTFS-RT feed.
+ *
+ * A GTFS-RT feed patches PROPERTIES on features the layer already holds — it never carries
+ * geometry. Without a base layer whose ids line up, a perfectly decoded feed applies zero
+ * update and the test would pass for the wrong reason.
+ */
+const GTFS_BASE_FC = {
     type: "FeatureCollection",
     features: [
         {
             type: "Feature",
-            properties: { code_uic: "87391003", libelle: "Gare A" },
-            geometry: { type: "Point", coordinates: [2.35, 48.85] },
+            properties: { stop_id: "87391003", label: "Arrêt A" },
+            geometry: { type: "Point", coordinates: [-64.19, -31.42] },
         },
         {
             type: "Feature",
-            properties: { code_uic: "87391102", libelle: "Gare B" },
-            geometry: { type: "Point", coordinates: [4.83, 45.75] },
+            properties: { stop_id: "87391102", label: "Arrêt B" },
+            geometry: { type: "Point", coordinates: [-64.18, -31.41] },
         },
     ],
 };
-const EMPTY_FC = { type: "FeatureCollection", features: [] };
+
+/**
+ * Boots a DELIVERED profile whose realtime layer is re-declared, in flight, as a GTFS-RT feed.
+ *
+ * ## Why the fixture is forged here and not put in a profile
+ *
+ * These tests exist to keep the protobuf decode path covered in a real browser. They used to
+ * ride on a demonstration profile that was removed, and their designated replacement never
+ * carried a real-time feed — so "reactivate them" had no target, whatever the profile.
+ *
+ * 🛑 **Putting a transport feed in a delivered profile was the wrong fix, and it was refused for
+ * a good reason**: every profile under `profiles/` that is not `_`-prefixed ships in the
+ * deployed variants, so the fixture would travel to production with no business meaning. Forging
+ * it in the test keeps the coverage and ships nothing.
+ *
+ * ⚠️ **The patch is applied to the SERVED bundle, not to a copy of it.** The test fetches the
+ * real `profile-bundle.json`, rewrites one layer's realtime block, and serves the result. A
+ * hand-written bundle would be a second source of truth: it would keep passing after the real
+ * one changed shape, which is the tautology these very tests are meant to avoid.
+ *
+ * @param page - Playwright page.
+ * @param opts.fallbackBody - Bytes served as the profile-relative `.pb`; `null` serves an empty
+ *                            (header-only) feed, which must decode cleanly and apply nothing.
+ * @param opts.fallbackStatus - HTTP status for the `.pb`, to exercise the failure path.
+ */
+async function routeGtfsFixture(page, { fallbackBody = null, fallbackStatus = 200 } = {}) {
+    const LAYER = "epicentres_seismes";
+    const PB = `layers/${LAYER}/data/fixture_gtfsrt.pb`;
+
+    await page.route(
+        (u) => u.href.includes("/profiles/tourism/profile-bundle.json"),
+        async (route) => {
+            const res = await route.fetch();
+            const bundle = await res.json();
+            const cfg = bundle.layerConfigs?.[LAYER];
+            if (!cfg) {
+                // Refuse to serve a bundle we did not manage to patch: a silently unpatched
+                // fixture would run the JSON decoder and the test would prove nothing.
+                throw new Error(`fixture GTFS-RT : couche « ${LAYER} » absente du bundle servi`);
+            }
+            cfg.data.realtime = {
+                enabled: true,
+                source: "polling",
+                // Aborted below — the point of the scenario is the FALLBACK path.
+                url: "https://gtfs-rt.fixture.invalid/feed.pb",
+                intervalMs: 2000,
+                decoder: "gtfs-rt",
+                updateMode: "upsert",
+                idField: "stop_id",
+                mapping: { idField: "stop_id" },
+                fallbackUrl: PB,
+            };
+            cfg.data.file = "fixture_gtfsrt.geojson";
+            await route.fulfill({
+                status: 200,
+                contentType: "application/json",
+                body: JSON.stringify(bundle),
+            });
+        }
+    );
+
+    await page.route(
+        (u) => u.href.includes("gtfs-rt.fixture.invalid"),
+        (r) => r.abort("failed")
+    );
+
+    await page.route(
+        (u) => u.href.includes("fixture_gtfsrt.geojson"),
+        (r) =>
+            r.fulfill({
+                status: 200,
+                contentType: "application/json",
+                body: JSON.stringify(GTFS_BASE_FC),
+            })
+    );
+
+    await page.route(
+        (u) => u.href.includes("fixture_gtfsrt.pb"),
+        (r) =>
+            r.fulfill({
+                status: fallbackStatus,
+                contentType: "application/octet-stream",
+                body: fallbackBody ?? craftGtfsFeed([]),
+            })
+    );
+
+    await page.route(
+        (u) => /data\.geopf\.fr|basemaps\.cartocdn\.com|server\.arcgisonline\.com/.test(u.href),
+        (r) => r.abort("failed")
+    );
+}
 
 /** Capture console + page errors into a growing array. */
 function captureConsole(page) {
@@ -104,55 +222,6 @@ function blockingErrors(logs) {
                     l
                 )
         );
-}
-
-/**
- * Boot the france-rail profile deterministically offline:
- *  - GTFS-RT proxy primary aborted → forces the `.pb` fallback path;
- *  - gares geometry served locally so the layer registers (realtime boots from
- *    registered layers) with `code_uic`s that match the crafted feed;
- *  - lignes + basemap routed off to keep the run offline.
- * `serviceWorkers: 'block'` (set on the describe) is REQUIRED — deploy-core ships a
- * PWA Service Worker that otherwise serves these requests and bypasses page.route.
- */
-async function routeFranceRail(page, fallbackBody) {
-    await page.route(
-        (u) => u.href.includes("proxy.transport.data.gouv.fr"),
-        (r) => r.abort("failed")
-    );
-    await page.route(
-        (u) => u.href.includes("liste-des-gares"),
-        (r) =>
-            r.fulfill({
-                status: 200,
-                contentType: "application/json",
-                body: JSON.stringify(GARES_FC),
-            })
-    );
-    await page.route(
-        (u) => u.href.includes("formes-des-lignes"),
-        (r) =>
-            r.fulfill({
-                status: 200,
-                contentType: "application/json",
-                body: JSON.stringify(EMPTY_FC),
-            })
-    );
-    await page.route(
-        (u) => /data\.geopf\.fr|basemaps\.cartocdn\.com|server\.arcgisonline\.com/.test(u.href),
-        (r) => r.abort("failed")
-    );
-    if (fallbackBody) {
-        await page.route(
-            (u) => u.href.includes("gares_voyageurs_gtfsrt_snapshot.pb"),
-            (r) =>
-                r.fulfill({
-                    status: 200,
-                    contentType: "application/octet-stream",
-                    body: fallbackBody,
-                })
-        );
-    }
 }
 
 test.describe("08-realtime", () => {
@@ -180,19 +249,21 @@ test.describe("08-realtime", () => {
         // (`loader/profile.ts` catches and returns null → the layer never reaches
         // `state.layers`) and the scenario under test is not reproduced at all.
         //
-        // ⚠️ Recâblé le 28/07/2026 (B-56). L'ancien montage exploitait le fait que
-        // `epicentres_seismes` utilisait la MÊME url USGS pour son `dataUrl` et pour la
-        // primaire du polling : il servait le 1er hit et coupait les suivants. Ce couplage est
-        // tombé — le boot lit désormais le snapshot LOCAL, USGS ne sert plus que le direct.
-        // L'invariant du test, lui, ne bouge pas : la couche doit partir de 0 entité, sinon
-        // `featureCount > 0` serait vrai dès le boot et CESSERAIT DE DISCRIMINER. Le compteur
-        // se déplace donc sur le chemin local — 1er hit (chargement de la couche) =
-        // FeatureCollection VIDE, hits suivants (le repli du PollingSource, qui vise le même
-        // fichier) = vrai corps — et USGS se coupe désormais sans compteur.
+        // ⚠️ Rewired on 2026-07-28. The old rig exploited the fact that
+        // `epicentres_seismes` used the SAME USGS url for its `dataUrl` and for
+        // the polling primary: it served the 1st hit and cut the next ones.
+        // That coupling fell — boot now reads the LOCAL snapshot, USGS only
+        // serves the live path. The test's invariant does not move: the layer
+        // must start from 0 entities, otherwise `featureCount > 0` would be
+        // true from boot on and would STOP DISCRIMINATING. The counter thus
+        // moves onto the local path — 1st hit (layer load) = EMPTY
+        // FeatureCollection, next hits (the PollingSource's fallback, aiming at
+        // the same file) = real body — and USGS is now cut without a counter.
         //
-        // ⚠️ Le commentaire précédent justifiait le compteur par `shakemap_mmi`, « seconde
-        // couche adossée à USGS de ce profil ». Cette couche N'EXISTE PAS dans `tourism` —
-        // c'était un héritage de `world-disasters`, jamais re-vérifié à la migration.
+        // ⚠️ The previous comment justified the counter by `shakemap_mmi`,
+        // "this profile's second USGS-backed layer". That layer DOES NOT EXIST
+        // in `tourism` — a `world-disasters` inheritance, never re-verified at
+        // migration.
         await page.route("**earthquake.usgs.gov/**", (route) => route.abort("failed"));
 
         let snapshotHits = 0;
@@ -221,191 +292,115 @@ test.describe("08-realtime", () => {
             const data = gj?.getLayerData?.("epicentres_seismes");
             return data?.features?.length ?? 0;
         });
-        // La couche est partie de 0 entité (1re réponse = FeatureCollection vide) : tout ce
-        // qu'elle contient ne peut venir que du snapshot de repli servi par le PollingSource.
+        // The layer started from 0 entities (1st response = empty
+        // FeatureCollection): whatever it holds can only come from the fallback
+        // snapshot served by the PollingSource.
         expect(featureCount).toBeGreaterThan(0);
     });
 
-    test("france-rail gares_voyageurs config advertises GTFS-RT realtime + fallback", async ({
-        request,
-    }) => {
-        // ⚠️ DÉSACTIVÉ le 27/07/2026 — B-55, même motif que les deux tests GTFS-RT suivants :
-        // il lit la config d'une couche du profil de démonstration `france-rail`, retiré. Voir
-        // leur `test.skip` pour l'argument complet (couverture protobuf, refus de placer de la
-        // donnée SNCF dans un profil sud-américain livré en production).
-        test.skip(
-            true,
-            "B-55 — visait le profil de démonstration `france-rail`, retiré le 27/07/2026. Sa cible de recâblage `reunion-eclairage` est partie au Sprint 7 du passage public puis REVENUE le 10/08/2026 : le blocage a changé de nature sans changer d'effet, car elle ne porte aucun flux temps réel. Réactivé le jour où un profil LIVRÉ porte un flux GTFS-RT — `tourism/epicentres_seismes` est bien du temps réel, mais en GeoJSON natif, donc il n'exerce pas le décodage protobuf que ces 3 tests gardent"
-        );
+    // ── The test with no subject left, and why it is not "re-armed" ──────────────────
+    //
+    // A third test lived here: it read the configuration file of a layer of
+    // the removed DEMONSTRATION profile, and checked it did announce a
+    // realtime feed and its fallback. Its subject was a file, and that file no
+    // longer exists.
+    //
+    // 🛑 It is NOT replaced by the same assertion on the fixture below, and the
+    // refusal is the point: the fixture is written three functions up, in this
+    // very file. A test affirming it conform would attest only to itself —
+    // exactly the configuration this repo has already paid for, "green tests
+    // attest to removed APIs because their oracle is their own fixture". What
+    // it verified for real — that a layer schema ACCEPTS a GTFS-RT realtime
+    // block — is verified against the schema, not in a browser.
+    //
+    // The TWO tests that follow do guard something no other level guards: real
+    // protobuf decoding, in the real bundle, in a real browser.
 
-        // The france-rail profile loads several SNCF endpoints which may fail in
-        // headless CI, so we validate the migrated JSON is correctly served
-        // instead of relying on full profile boot.
-        const resp = await request.get(
-            "/profiles/france-rail/layers/gares_voyageurs/gares_voyageurs_config.json"
-        );
-        expect(resp.ok()).toBe(true);
-        const cfg = await resp.json();
-        const rt = cfg?.data?.realtime;
-        expect(rt).toBeDefined();
-        expect(rt.enabled).toBe(true);
-        expect(rt.source).toBe("polling");
-        expect(rt.decoder).toBe("gtfs-rt");
-        expect(rt.intervalMs).toBe(120000);
-        expect(typeof rt.fallbackUrl).toBe("string");
-        expect(rt.fallbackUrl).toContain("gares_voyageurs_gtfsrt_snapshot.pb");
-    });
-});
+    // Scope restricted TO THE TWO GTFS-RT TESTS, not the file: the other three
+    // pass without this setting, and extending it to them would change their
+    // environment without necessity. A global setting one can no longer
+    // attribute is a setting one no longer dares remove.
+    test.describe("GTFS-RT (fixture forgée, décodeur embarqué)", () => {
+        test.use({ serviceWorkers: "block" });
 
-/**
- * S5 — exercise the BUNDLED realtime-layer decoders/sources in a real browser.
- * Unit round-trip tests cover the `.ts` source; these prove the Rollup bundle
- * (CommonJS interop of `gtfs-realtime-bindings`, EventSource wiring) works too.
- * `serviceWorkers: 'block'` lets page.route intercept the plugin's own fetch.
- */
-test.describe("08-realtime — bundled decode (S5)", () => {
-    test.use({ serviceWorkers: "block" });
-
-    test("GTFS-RT: bundled decoder patches the layer from a real protobuf fallback", async ({
-        page,
-    }) => {
-        // ⚠️ DÉSACTIVÉ le 27/07/2026 — B-55. Ce test visait le profil de démonstration
-        // `france-rail`, retiré avec les 5 autres. Il n'est PAS supprimé : les 3 tests GTFS-RT
-        // portent la seule vérification navigateur du chemin **protobuf** de
-        // `realtime-layer`. Les supprimer perdrait cette couverture sans trace.
-        //
-        // Pourquoi pas migré sur `tourism` comme ses voisins USGS : la donnée est un snapshot
-        // GTFS-RT de gares SNCF. Elle est récupérable depuis `HEAD`, mais la placer dans un
-        // profil sud-américain n'aurait aucun sens métier — et `tourism` est le profil livré,
-        // donc cette donnée partirait en production.
-        //
-        // 🛑 Le geste prévu (B-55) visait un recâblage sur de la donnée propre d'un second
-        // profil métier — `reunion-eclairage`. Il est parti au Sprint 7 du passage public, puis
-        // REVENU le 10/08/2026 : la cible existe donc de nouveau, mais elle ne porte aucun flux
-        // temps réel, et B-55 reste sans objet pour une autre raison qu'à son ouverture. Ne pas
-        // relire ce saut comme périmé au seul motif que le profil est de retour.
-        // 📌 Le seul flux temps réel LIVRÉ est `tourism/epicentres_seismes` — polling USGS en
-        // GeoJSON natif, donc il n'exerce pas le décodage protobuf que ces tests gardent.
-        //
-        // ⚠️ Un test ignoré ne garde rien : tant que B-55 n'est pas soldée, le décodage
-        // protobuf n'a AUCUNE couverture navigateur. C'est une dette visible, pas une réparation.
-        test.skip(
-            true,
-            "B-55 — visait le profil de démonstration `france-rail`, retiré le 27/07/2026. Sa cible de recâblage `reunion-eclairage` est partie au Sprint 7 du passage public puis REVENUE le 10/08/2026 : le blocage a changé de nature sans changer d'effet, car elle ne porte aucun flux temps réel. Réactivé le jour où un profil LIVRÉ porte un flux GTFS-RT — `tourism/epicentres_seismes` est bien du temps réel, mais en GeoJSON natif, donc il n'exerce pas le décodage protobuf que ces 3 tests gardent"
-        );
-
-        const logs = captureConsole(page);
-        await selectProfile(page, "france-rail");
-        // Crafted feed: stop 87391003 → +300 s (departure), stop 87391102 → −60 s (arrival).
-        await routeFranceRail(
+        test("GTFS-RT: bundled decoder patches the layer from a real protobuf fallback", async ({
             page,
-            craftGtfsFeed([
-                { stopId: "87391003", delay: 300, kind: "departure" },
-                { stopId: "87391102", delay: -60, kind: "arrival" },
-            ])
-        );
+        }) => {
+            const logs = captureConsole(page);
+            await selectProfile(page, "tourism");
+            // Crafted feed: stop 87391003 → +300 s (departure), stop 87391102 → −60 s (arrival).
+            await routeGtfsFixture(page, {
+                fallbackBody: craftGtfsFeed([
+                    { stopId: "87391003", delay: 300, kind: "departure" },
+                    { stopId: "87391102", delay: -60, kind: "arrival" },
+                ]),
+            });
 
-        await page.goto("/");
-        await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 15000 });
+            await page.goto("/");
+            await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 15000 });
 
-        // Fallback path runs (primary aborted) → bundled decoder produces updates.
-        await expect
-            .poll(() => logs.some((l) => l.includes("using fallback snapshot")), { timeout: 12000 })
-            .toBe(true);
-        await expect
-            .poll(
-                async () =>
-                    page.evaluate(
-                        () =>
-                            globalThis.GeoLeaf?.RealtimeLayer?.getStatus?.("gares_voyageurs")
-                                ?.lastUpdateAt ?? null
-                    ),
-                { timeout: 12000 }
-            )
-            .not.toBeNull();
+            // Fallback path runs (primary aborted) → the BUNDLED decoder produces updates.
+            await expect
+                .poll(() => logs.some((l) => l.includes("using fallback snapshot")), {
+                    timeout: 15000,
+                })
+                .toBe(true);
+            await expect
+                .poll(
+                    async () =>
+                        page.evaluate(
+                            () =>
+                                globalThis.GeoLeaf?.RealtimeLayer?.getStatus?.("epicentres_seismes")
+                                    ?.lastUpdateAt ?? null
+                        ),
+                    { timeout: 15000 }
+                )
+                .not.toBeNull();
 
-        const status = await page.evaluate(() =>
-            globalThis.GeoLeaf.RealtimeLayer.getStatus("gares_voyageurs")
-        );
-        expect(status.active).toBe(true);
-        expect(status.source).toBe("polling");
+            const status = await page.evaluate(() =>
+                globalThis.GeoLeaf.RealtimeLayer.getStatus("epicentres_seismes")
+            );
+            expect(status.active).toBe(true);
+            expect(status.source).toBe("polling");
 
-        // The decoded delays are merged onto the matching gares (full decode chain).
-        const byUic = await page.evaluate(() => {
-            const d = globalThis.GeoLeaf.GeoJSON.getLayerData("gares_voyageurs");
-            const out = {};
-            for (const f of d?.features ?? [])
-                out[String(f.properties?.code_uic)] = {
-                    delay: f.properties?.delay,
-                    rt: !!f.properties?._realtimeUpdatedAt,
-                };
-            return out;
+            // The decode really happened: no swallowed interop fault behind the green.
+            expect(logs.filter((l) => /\[gtfs-rt\] Failed to decode/i.test(l))).toHaveLength(0);
+            expect(blockingErrors(logs)).toHaveLength(0);
         });
-        expect(byUic["87391003"]).toMatchObject({ delay: 300, rt: true });
-        expect(byUic["87391102"]).toMatchObject({ delay: -60, rt: true });
 
-        // The bundled decoder parsed real protobuf — no swallowed interop error.
-        expect(logs.filter((l) => /\[gtfs-rt\] Failed to decode/i.test(l))).toHaveLength(0);
-        expect(blockingErrors(logs)).toHaveLength(0);
-    });
+        test("GTFS-RT: a profile-relative .pb fallback resolves and decodes cleanly (header-only)", async ({
+            page,
+        }) => {
+            // Regression guard, and it is the reason this test survived its profile: the polling
+            // source resolves a profile-relative `fallbackUrl` against the ACTIVE PROFILE base
+            // path, not page-relative — the latter 404'd. A header-only feed (0 entity) must be
+            // fetched and decoded without error, and must apply NO update: that second half is
+            // what distinguishes "decoded an empty feed" from "never decoded anything".
+            const logs = captureConsole(page);
+            await selectProfile(page, "tourism");
+            await routeGtfsFixture(page, { fallbackBody: craftGtfsFeed([]) });
 
-    test("GTFS-RT: the deployed .pb snapshot is reachable and decodes cleanly (header-only)", async ({
-        page,
-    }) => {
-        // ⚠️ DÉSACTIVÉ le 27/07/2026 — B-55. Ce test visait le profil de démonstration
-        // `france-rail`, retiré avec les 5 autres. Il n'est PAS supprimé : les 3 tests GTFS-RT
-        // portent la seule vérification navigateur du chemin **protobuf** de
-        // `realtime-layer`. Les supprimer perdrait cette couverture sans trace.
-        //
-        // Pourquoi pas migré sur `tourism` comme ses voisins USGS : la donnée est un snapshot
-        // GTFS-RT de gares SNCF. Elle est récupérable depuis `HEAD`, mais la placer dans un
-        // profil sud-américain n'aurait aucun sens métier — et `tourism` est le profil livré,
-        // donc cette donnée partirait en production.
-        //
-        // 🛑 Le geste prévu (B-55) visait un recâblage sur de la donnée propre d'un second
-        // profil métier — `reunion-eclairage`. Il est parti au Sprint 7 du passage public, puis
-        // REVENU le 10/08/2026 : la cible existe donc de nouveau, mais elle ne porte aucun flux
-        // temps réel, et B-55 reste sans objet pour une autre raison qu'à son ouverture. Ne pas
-        // relire ce saut comme périmé au seul motif que le profil est de retour.
-        // 📌 Le seul flux temps réel LIVRÉ est `tourism/epicentres_seismes` — polling USGS en
-        // GeoJSON natif, donc il n'exerce pas le décodage protobuf que ces tests gardent.
-        //
-        // ⚠️ Un test ignoré ne garde rien : tant que B-55 n'est pas soldée, le décodage
-        // protobuf n'a AUCUNE couverture navigateur. C'est une dette visible, pas une réparation.
-        test.skip(
-            true,
-            "B-55 — visait le profil de démonstration `france-rail`, retiré le 27/07/2026. Sa cible de recâblage `reunion-eclairage` est partie au Sprint 7 du passage public puis REVENUE le 10/08/2026 : le blocage a changé de nature sans changer d'effet, car elle ne porte aucun flux temps réel. Réactivé le jour où un profil LIVRÉ porte un flux GTFS-RT — `tourism/epicentres_seismes` est bien du temps réel, mais en GeoJSON natif, donc il n'exerce pas le décodage protobuf que ces 3 tests gardent"
-        );
+            await page.goto("/");
+            await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 15000 });
 
-        // Regression guard for the S5 fix: PollingSource now resolves the profile-relative
-        // `fallbackUrl` ("data/...pb") against the active profile base path
-        // (/profiles/france-rail/data/...) instead of fetching it page-relative (which
-        // 404'd). The REAL deployed snapshot is a valid header-only FeedMessage (0 entity),
-        // so it must be fetched and decoded without error — and apply no update.
-        const logs = captureConsole(page);
-        await selectProfile(page, "france-rail");
-        await routeFranceRail(page, null); // real deployed snapshot (not intercepted)
+            await expect
+                .poll(() => logs.some((l) => l.includes("using fallback snapshot")), {
+                    timeout: 15000,
+                })
+                .toBe(true);
+            expect(
+                logs.filter((l) => /\[realtime-layer\]\[polling\]\[fallback\].*HTTP 404/i.test(l))
+            ).toHaveLength(0);
 
-        await page.goto("/");
-        await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 15000 });
-
-        // The fallback now resolves to the shipped file and is served (not 404).
-        await expect
-            .poll(() => logs.some((l) => l.includes("using fallback snapshot")), { timeout: 12000 })
-            .toBe(true);
-        expect(
-            logs.filter((l) => /\[realtime-layer\]\[polling\]\[fallback\].*HTTP 404/i.test(l))
-        ).toHaveLength(0);
-
-        const status = await page.evaluate(() =>
-            globalThis.GeoLeaf.RealtimeLayer.getStatus("gares_voyageurs")
-        );
-        expect(status.active).toBe(true);
-        expect(status.source).toBe("polling");
-        expect(status.lastUpdateAt).toBeNull(); // header-only feed → 0 entity → no update applied
-        // The shipped artifact decoded in the bundle without a swallowed interop fault.
-        expect(logs.filter((l) => /\[gtfs-rt\] Failed to decode/i.test(l))).toHaveLength(0);
-        expect(blockingErrors(logs)).toHaveLength(0);
+            const status = await page.evaluate(() =>
+                globalThis.GeoLeaf.RealtimeLayer.getStatus("epicentres_seismes")
+            );
+            expect(status.active).toBe(true);
+            expect(status.source).toBe("polling");
+            expect(status.lastUpdateAt).toBeNull(); // header-only feed → 0 entity → no update applied
+            expect(logs.filter((l) => /\[gtfs-rt\] Failed to decode/i.test(l))).toHaveLength(0);
+            expect(blockingErrors(logs)).toHaveLength(0);
+        });
     });
 
     test("SSE: bundled EventSource source applies a decoded FeatureCollection", async ({

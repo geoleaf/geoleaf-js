@@ -1,10 +1,11 @@
 /**
- * Unit tests — `entry.ts` et `ui/cache-button.ts`, couverture réelle (chantier R.31).
+ * Unit tests — `entry.ts` and `ui/cache-button.ts`, real coverage.
  *
- * Deux modules à EFFET DE BORD, sans export : `entry.ts` enregistre i18n + le plugin + la
- * toolbar sur `globalThis.GeoLeaf` au chargement ; `cache-button.ts` publie l'orchestrateur
- * sur `GeoLeaf.UI.CacheButton`. On les charge dynamiquement (`vi.resetModules()` d'abord)
- * après avoir préparé le namespace global, ce qui rend l'enregistrement observable.
+ * Two SIDE-EFFECT modules, no exports: `entry.ts` registers i18n + the plugin +
+ * the toolbar on `globalThis.GeoLeaf` at load; `cache-button.ts` publishes the
+ * orchestrator on `GeoLeaf.UI.CacheButton`. We load them dynamically
+ * (`vi.resetModules()` first) after preparing the global namespace, which makes
+ * the registration observable.
  */
 import { vi, describe, test, expect, beforeEach } from "vitest";
 
@@ -30,19 +31,20 @@ describe("entry.ts", () => {
         expect(registerDict).toHaveBeenCalledWith("offline-ui", expect.any(Object));
         expect(register).toHaveBeenCalledWith(
             "offline-ui",
-            // 5.1-f — `optional` cite `editor`, pas `addpoi` : le gestionnaire `"poi"` du seam
-            // `Sync` n'a pas changé d'identifiant, il a changé de FOURNISSEUR. L'assertion
-            // reste sur la valeur exacte — la relâcher en `expect.any(Array)` laisserait
-            // passer un `optional` vide, donc un plugin qui ne déclare plus sa dépendance
-            // faible au fournisseur de rejeu.
+            // `optional` cites `editor`, not `addpoi`: the `Sync` seam's `"poi"`
+            // handler did not change identifier, it changed PROVIDER. The
+            // assertion stays on the exact value — loosening it to
+            // `expect.any(Array)` would let an empty `optional` through, hence a
+            // plugin no longer declaring its weak dependency on the replay
+            // provider.
             expect.objectContaining({ label: expect.any(String), optional: ["editor"] })
         );
-        // le healthCheck lit la présence de la façade Storage
+        // the healthCheck reads the Storage facade's presence
         const opts = register.mock.calls[0][1];
         expect(opts.healthCheck()).toBe(false);
         globalThis.GeoLeaf.Storage = {};
         expect(opts.healthCheck()).toBe(true);
-        // toolbar enregistrée sur le registre
+        // toolbar registered on the registry
         expect(registryRegister).toHaveBeenCalled();
     });
 
@@ -68,7 +70,7 @@ describe("cache-button.ts (orchestrateur)", () => {
         expect(CB.Modules.ModalManager).toBeTruthy();
         expect(CB.Modules.ExportLogic).toBeTruthy();
 
-        // Isoler la délégation des internes des sous-modules.
+        // Isolate the delegation from the sub-modules' internals.
         const initSpy = vi.spyOn(CB.Modules.ButtonControl, "init").mockReturnValue("ctrl");
         const openSpy = vi.spyOn(CB.Modules.ModalManager, "openModal").mockReturnValue(undefined);
         const closeSpy = vi.spyOn(CB.Modules.ModalManager, "closeModal").mockReturnValue(undefined);

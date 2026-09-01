@@ -17,11 +17,12 @@ const NYC_OUTPUT = path.resolve(__dirname, "..", "..", ".nyc_output");
 async function collectCoverage(page, name) {
     const coverage = await page.evaluate(() => window.__coverage__);
     if (!coverage) {
-        // T6.1 — c'était un `console.warn` + `return`. Silencieux, et surtout : il
-        // N'ÉCRASAIT PAS le fichier existant. Couplé au fait que `nyc report` sort VERT
-        // sur une donnée vide, cela donnait une chaîne où un run E2E cassé laissait la
-        // mesure de la semaine précédente en place et la gate au vert.
-        // Un helper de collecte qui échoue en silence est la moitié amont de ce défaut.
+        // This used to be a `console.warn` + `return`. Silent, and above all:
+        // it did NOT OVERWRITE the existing file. Coupled with `nyc report`
+        // coming out GREEN on empty data, that gave a chain where a broken
+        // E2E run left the previous week's measurement in place and the gate
+        // green. A collection helper failing silently is the upstream half of
+        // that defect.
         throw new Error(
             `[coverage] window.__coverage__ absent pour « ${name} » — le bundle chargé n'est PAS ` +
                 `instrumenté. Attendu : deploy-coverage (port 8769), construit par ` +
@@ -41,4 +42,47 @@ async function collectCoverage(page, name) {
     );
 }
 
-export { collectCoverage };
+/**
+ * Registers an `afterEach` that collects each test's own coverage into `.nyc_output/`.
+ *
+ * ## Why an `afterEach` and not an `afterAll`
+ *
+ * `window.__coverage__` lives **in the page**, and Playwright gives a fresh
+ * page to each test. The `07-boot-sequence` pattern — an `afterAll` opening a
+ * fresh page — thus yields only the BOOT's coverage, which is exactly what it
+ * wants to measure. For a spec whose interest is what its SCENARIOS exercise,
+ * the same shape would add nothing: the collected page would have played no
+ * scenario.
+ *
+ * ## What the fallback does, and why it is not silent
+ *
+ * If a test fails, its page may be closed or its bundle never loaded —
+ * `collectCoverage` would throw, and **one failure would become two**, the
+ * second masking the first. So the fallback applies ONLY when the test has
+ * already failed. On a passing test, missing data stays a loud error: the
+ * only case where it really signals an uninstrumented bundle.
+ *
+ * @param {import('@playwright/test').TestType<any, any>} test - The spec's `test` object.
+ * @param {string} specName - Short spec identifier, used as the file-name prefix.
+ * @returns {void}
+ */
+function registerCoverageCollection(test, specName) {
+    test.afterEach(async ({ page }, testInfo) => {
+        const slug = testInfo.title
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-|-$/g, "")
+            .slice(0, 60);
+        try {
+            await collectCoverage(page, `${specName}-${slug}`);
+        } catch (err) {
+            if (testInfo.status === "passed") throw err;
+            console.warn(
+                `[coverage] « ${testInfo.title} » a échoué (${testInfo.status}) — collecte ` +
+                    `abandonnée pour ne pas masquer l'échec réel : ${String(err)}`
+            );
+        }
+    });
+}
+
+export { collectCoverage, registerCoverageCollection };

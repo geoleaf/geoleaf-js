@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * GATE-PROBE: are the gates still SIGHTED on a nested package? (ARCHI S10.2)
+ * GATE-PROBE: are the gates still SIGHTED on a nested package?
  *
  * ## The failure this exists to catch
  *
  * ARCHI S10 moves 13 plugins under `packages/plugins/` and 3 libraries under
- * `packages/libs/`. Before S9.5, ten sites across eight gates enumerated
+ * `packages/libs/`. Before the regrouping, ten sites across eight gates enumerated
  * `packages/` one level deep and then did:
  *
  *     if (!fs.existsSync(srcDir)) continue;   // ← silent
@@ -105,17 +105,18 @@ function plantProbe() {
                 version: "3.0.0",
                 private: true,
                 type: "module",
-                // `docs` (T4.3) : embarque le répertoire d'artefact planté plus bas, ce
-                // que le check 2 de PKG-FILES doit refuser. `docs/` existe donc sur
-                // disque, et le défaut d'origine (`THIS-FILE-DOES-NOT-EXIST.md`, check 1)
-                // reste intact — deux défauts, deux checks, un seul manifeste.
+                // `docs`: embarks the artefact directory planted below,
+                // which PKG-FILES' check 2 must refuse. `docs/` thus exists
+                // on disk, and the original defect
+                // (`THIS-FILE-DOES-NOT-EXIST.md`, check 1) stays intact —
+                // two defects, two checks, one manifest.
                 files: ["dist", "THIS-FILE-DOES-NOT-EXIST.md", "docs"],
-                // SHIP-SPEC (passage public S1.6) : le corpus de `check-shipped-specifiers`
-                // est DÉRIVÉ de la carte `exports` — la racine de chaque cible. Sans cette
-                // carte, le paquet de sonde ne contribuerait aucun fichier et l'assertion
-                // ci-dessous passerait au VERT en ne prouvant rien. C'est le mode d'échec
-                // que tout ce fichier traque, et il fallait donc l'écrire ici plutôt que
-                // dans la gate.
+                // SHIP-SPEC: `check-shipped-specifiers`' corpus is DERIVED
+                // from the `exports` map — each target's root. Without this
+                // map, the probe package would contribute no file and the
+                // assertion below would pass GREEN proving nothing. The
+                // failure mode this whole file hunts, so it had to be
+                // written here rather than in the gate.
                 exports: {
                     ".": {
                         types: "./dist/types/index.d.ts",
@@ -140,19 +141,21 @@ function plantProbe() {
         'import { Log } from "../../../core/src/utils/log/index.js";\n\nexport const probeLog = Log;\n'
     );
 
-    // check-exact-optional-debt (EOD-01) : une propriété élargie en `?: T | undefined`, hors
-    // baseline. Le gate dérive son corpus de `registry.all()` ; s'il cesse d'énumérer les
-    // paquets imbriqués, il se tait ici. La forme est choisie pour être invisible à un grep
-    // naïf autrement : c'est bien la VISITE AST qui doit la voir.
+    // check-exact-optional-debt (EOD-01): a property widened to
+    // `?: T | undefined`, outside the baseline. The gate derives its corpus
+    // from `registry.all()`; if it stops enumerating nested packages, it
+    // goes quiet here. The shape is chosen to be otherwise invisible to a
+    // naive grep: the AST VISIT is what must see it.
     fs.writeFileSync(
         path.join(PROBE_DIR, "src", "widened.ts"),
         "export interface ProbeWidened {\n    probeField?: string | undefined;\n}\n"
     );
 
-    // check-nonnull-assertion-debt (NNA-04) : une lecture indexée assertée. Elle n'a PAS de
-    // baseline, donc elle rougit sans qu'il faille la tenir hors d'une liste — mais elle ne
-    // rougit ici que si le gate énumère encore les paquets imbriqués. Même classe que la
-    // précédente, et même raison de la planter dans `__probe__` plutôt que dans le core.
+    // check-nonnull-assertion-debt (NNA-04): an asserted indexed read. It
+    // has NO baseline, so it turns red without needing to be kept off a
+    // list — but it only turns red here if the gate still enumerates nested
+    // packages. Same class as the previous one, and same reason to plant it
+    // in `__probe__` rather than the core.
     fs.writeFileSync(
         path.join(PROBE_DIR, "src", "asserted-index.ts"),
         "export function probeAsserted(xs: string[]): string {\n    return xs[0]!;\n}\n"
@@ -168,13 +171,13 @@ function plantProbe() {
         "export function coreConfigGet(key, fallback) {\n    return fallback;\n}\n"
     );
 
-    // check-event-map-coverage (API publique S3.4) : un nom d'événement `geoleaf:*` absent
-    // des deux maps du contrat ET de la baseline — donc EM-01 doit le NOMMER. La gate est
-    // baseline-tolérante : elle sort 0 tant que rien de NOUVEAU n'apparaît, y compris sur un
-    // corpus vide, où elle annoncerait « aucun nouveau, aucun périmé » en n'ayant rien lu.
-    // C'est exactement la classe que ce fichier traque.
-    // ⚠️ Le littéral est lu sur l'AST, pas au grep : l'écrire en commentaire ne suffirait
-    // pas, il doit être une vraie chaîne dans du code.
+    // check-event-map-coverage: a `geoleaf:*` event name absent from the
+    // contract's two maps AND the baseline — so EM-01 must NAME it. The
+    // gate is baseline-tolerant: it exits 0 as long as nothing NEW appears,
+    // including on an empty corpus, where it would announce "none new, none
+    // stale" having read nothing. Exactly the class this file hunts.
+    // ⚠️ The literal is read from the AST, not grepped: writing it in a
+    // comment would not do, it must be a real string in code.
     fs.writeFileSync(
         path.join(PROBE_DIR, "src", "event.ts"),
         "export function probeEmit() {\n" +
@@ -182,11 +185,11 @@ function plantProbe() {
             "}\n"
     );
 
-    // check-facade-purity (moitié plugin, B.12) : une façade qui IMPLÉMENTE au lieu de
-    // déléguer — état mutable de module + branche. Le gate énumère `registry.all()` en
-    // cherchant `src/public-api.ts` ; s'il cesse de voir un paquet imbriqué, il se tait
-    // ici. Il sort déjà en erreur sur 0 fichier trouvé, mais ça ne dit pas qu'il les voit
-    // TOUS — c'est ce que cette sonde ajoute.
+    // check-facade-purity (plugin half): a facade that IMPLEMENTS instead
+    // of delegating — mutable module state + a branch. The gate enumerates
+    // `registry.all()` looking for `src/public-api.ts`; if it stops seeing
+    // a nested package, it goes quiet here. It already errors on 0 files
+    // found, but that does not say it sees them ALL — what this probe adds.
     fs.writeFileSync(
         path.join(PROBE_DIR, "src", "public-api.ts"),
         "let _probeState = 0;\n\n" +
@@ -209,20 +212,22 @@ function plantProbe() {
         ".gl-probe-marker-class { color: red; }\n"
     );
 
-    // verify-test-load-mode (COUVERTURE S1.3/S1.4) : un module source chargé par
-    // `require()` depuis un test. Le défaut est le COUPLE — un `require()` seul ne
-    // prouve rien s'il ne résout pas vers une vraie source, la gate l'ignorerait.
+    // verify-test-load-mode: a source module loaded through `require()`
+    // from a test. The defect is the PAIR — a `require()` alone proves
+    // nothing if it does not resolve to a real source, the gate would
+    // ignore it.
     //
-    // Ce site est ABSENT de la baseline par construction (la sonde est éphémère), donc
-    // il éprouve exactement le cas qui compte : un `require()` NEUF doit rougir. C'est
-    // la preuve par mutation de la gate, et elle tourne à chaque `ci:local` — là où une
-    // preuve écrite à part n'aurait tourné qu'une fois.
+    // This site is ABSENT from the baseline by construction (the probe is
+    // ephemeral), so it exercises exactly the case that counts: a NEW
+    // `require()` must turn red. The gate's proof by mutation, and it runs
+    // at every `ci:local` — where a proof written apart would have run once.
     fs.mkdirSync(path.join(PROBE_DIR, "__tests__"), { recursive: true });
-    // Le `@module` est PLANTÉ (STRUCT S5) : c'est le seul défaut vivant de MH-03, la règle
-    // tenant à zéro dans tout le dépôt. Sans lui, la gate ne pourrait plus jamais être vue
-    // rougir, et cesserait d'être une garde. Le tag ne rend pas le fichier documenté —
-    // `extractHeader` jette les lignes `@` de la prose —, donc MH-01 continue de le nommer
-    // et l'assertion de famille A qui l'éprouve reste valide.
+    // The `@module` is PLANTED: it is MH-03's only live defect, the rule
+    // holding at zero across the repo. Without it, the gate could never be
+    // seen turning red again, and would stop being a guard. The tag does
+    // not make the file documented — `extractHeader` discards `@` lines
+    // from the prose —, so MH-01 keeps naming it and the family-A assertion
+    // exercising it stays valid.
     fs.writeFileSync(
         path.join(PROBE_DIR, "src", "probe-load.ts"),
         "/**\n * @module sonde/probe-load\n */\nexport function probeLoaded() {\n    return true;\n}\n"
@@ -230,21 +235,22 @@ function plantProbe() {
     fs.writeFileSync(
         path.join(PROBE_DIR, "__tests__", "probe-load.test.js"),
         'const { probeLoaded } = require("../src/probe-load.ts");\n\n' +
-            "// Jamais exécuté : la sonde n'est pas dans le périmètre de `npm test`\n" +
-            "// (le package n'a ni script `test` ni vitest.config.ts).\n" +
+            "// Never executed: the probe is not in `npm test`'s perimeter\n" +
+            "// (the package has neither a `test` script nor a vitest.config.ts).\n" +
             "module.exports = { probeLoaded };\n"
     );
 
-    // ── Variante SPECIFIER NU (COUVERTURE S5.6, backlog B.3) ──────────────────
+    // ── Variante SPECIFIER NU ──────────────────
     //
-    // La gate ne comptait que les specifiers relatifs. Les `require("@core/…")` lui
-    // étaient donc INVISIBLES — mesuré au S5 : 22 sites dans les deux plugins, dont 8
-    // chargeaient de la vraie source du core, et un fichier de test entier
-    // (`cache-workflow-cross.integration.test.js`) n'était dans aucun inventaire.
+    // The gate only counted relative specifiers. `require("@core/…")` was
+    // thus INVISIBLE to it — measured: 22 sites in the two plugins, 8 of
+    // which loaded real core source, and one whole test file
+    // (`cache-workflow-cross.integration.test.js`) was in no inventory.
     //
-    // Cette sonde-ci vit dans son PROPRE fichier : si la détection des specifiers nus
-    // régresse, ce fichier cesse d'être nommé alors que `probe-load.test.js` continue
-    // de l'être — l'échec désigne la cause au lieu de la masquer.
+    // This probe lives in its OWN file: if bare-specifier detection
+    // regresses, this file stops being named while `probe-load.test.js`
+    // keeps being named — the failure designates the cause instead of
+    // masking it.
     fs.writeFileSync(
         path.join(PROBE_DIR, "tsconfig.json"),
         JSON.stringify({ compilerOptions: { paths: { "@probe/*": ["./src/*"] } } }, null, 4) + "\n"
@@ -256,74 +262,80 @@ function plantProbe() {
     fs.writeFileSync(
         path.join(PROBE_DIR, "__tests__", "probe-bare.test.js"),
         'const { probeBare } = require("@probe/probe-bare.js");\n\n' +
-            "// Même statut que probe-load.test.js : jamais exécuté.\n" +
+            "// Same status as probe-load.test.js: never executed.\n" +
             "module.exports = { probeBare };\n"
     );
 
-    // verify-repo-hygiene / check 1b (T3.5) : un `.cjs` non déclaré à la RACINE du
-    // package — la forme exacte de `packages/core/cov-check.cjs`, mort et suivi par git
-    // pendant des mois. Planté hors de `src/` à dessein : le périmètre du check doit être
-    // le package entier, pas son `scripts/` (2 des 4 scripts morts du T3 étaient à la
-    // racine, et `packages/core/scripts/` était le SEUL `scripts/` de package du dépôt —
-    // un check ainsi borné aurait scanné zéro fichier dès sa suppression).
+    // verify-repo-hygiene / check 1b: an undeclared `.cjs` at the package
+    // ROOT — the exact shape of `packages/core/cov-check.cjs`, dead and
+    // git-tracked for months. Planted outside `src/` on purpose: the
+    // check's perimeter must be the whole package, not its `scripts/` (2 of
+    // the 4 dead scripts were at the root, and `packages/core/scripts/` was
+    // the repo's ONLY package `scripts/` — a check so bounded would have
+    // scanned zero files as soon as it was deleted).
     //
-    // Et il n'est DÉLIBÉRÉMENT pas indexé : c'est ce qui prouve que le check lit le
-    // worktree et pas seulement l'index — la seule raison pour laquelle il est sondable.
+    // And it is DELIBERATELY unindexed: which is what proves the check
+    // reads the worktree and not only the index — the only reason it is
+    // probeable.
     fs.writeFileSync(
         path.join(PROBE_DIR, "probe-throwaway.cjs"),
         '"use strict";\n\n// T3.5 probe — throwaway script at a package root.\nmodule.exports = { probe: true };\n'
     );
 
-    // ── T4.1 — artefact GÉNÉRÉ, et producteur qui écrit hors périmètre ────────
+    // ── GENERATED artefact, and a producer writing outside the perimeter ──────
     //
-    // Le check 5 de `verify-repo-hygiene` interdit qu'un répertoire d'artefact soit sous
-    // contrôle de git. Son périmètre est une liste de FORMES relatives
-    // (`lib/generated-artifacts.cjs`), précisément pour qu'un déplacement du core ne le
-    // vide pas : la faute que le T3.5 a commise était de borner une gate au seul
-    // répertoire que le sprint supprimait.
+    // `verify-repo-hygiene`'s check 5 forbids an artefact directory under
+    // git control. Its perimeter is a list of relative FORMS
+    // (`lib/generated-artifacts.cjs`), precisely so a core move does not
+    // empty it: the earlier mistake was bounding a gate to the one
+    // directory the sprint was deleting.
     //
-    // Cette fixture est ce qui rend cette propriété VÉRIFIABLE : elle plante la forme
-    // `docs/api` à un chemin que personne n'a écrit en dur. Une régression vers un chemin
-    // absolu (`packages/core/docs/api`) cesse de la nommer.
+    // This fixture is what makes that property VERIFIABLE: it plants the
+    // `docs/api` form at a path nobody hardcoded. A regression towards an
+    // absolute path (`packages/core/docs/api`) stops naming it.
     //
-    // ⚠️ Sa visibilité DÉPEND de l'ancrage des motifs `.gitignore` du T4.1
-    // (`packages/core/docs/api/`). Un `**/docs/api/` générique avalerait ce fichier : il
-    // sortirait du corpus `--others --exclude-standard`, et cette assertion passerait
-    // VERTE en ne prouvant plus rien. C'est la raison pour laquelle l'ancrage n'est pas
-    // un détail de style — et elle est écrite ici parce que c'est ici qu'on la casserait.
+    // ⚠️ Its visibility DEPENDS on the anchoring of the `.gitignore`
+    // patterns (`packages/core/docs/api/`). A generic `**/docs/api/` would
+    // swallow this file: it would leave the `--others --exclude-standard`
+    // corpus, and this assertion would pass GREEN proving nothing any more.
+    // The reason the anchoring is not a style detail — and it is written
+    // here because here is where it would be broken.
     fs.mkdirSync(path.join(PROBE_DIR, "docs", "api"), { recursive: true });
     fs.writeFileSync(
         path.join(PROBE_DIR, "docs", "api", "index.html"),
         "<!-- T4.1 probe — generated artifact under git control. -->\n"
     );
 
-    // Variante ARMEMENT : un PRODUCTEUR qui déclare écrire hors des formes connues.
-    // Sans elle, renommer le `out` de `typedoc.json` désarmerait le check 5 sans
-    // qu'aucun fichier ne change de statut git — donc en silence, et c'est exactement le
-    // mode d'échec que ce fichier traque. `declaredOutputs()` lit la déclaration au lieu
-    // de recopier le chemin, cette fixture prouve qu'il la lit encore.
+    // ARMING variant: a PRODUCER declaring it writes outside the known
+    // forms. Without it, renaming `typedoc.json`'s `out` would disarm check
+    // 5 with no file changing git status — hence silently, and that is
+    // exactly the failure mode this file hunts. `declaredOutputs()` reads
+    // the declaration instead of copying the path, this fixture proves it
+    // still reads it.
     fs.writeFileSync(
         path.join(PROBE_DIR, "typedoc.json"),
         JSON.stringify({ out: "docs/__probe-api__" }, null, 4) + "\n"
     );
 
-    // ── SHIP-SPEC (passage public S1.6) — une DÉCLARATION PUBLIÉE qui nomme un
-    //    workspace `private`, donc 404 sur npm pour toujours ────────────────────
+    // ── SHIP-SPEC — a PUBLISHED DECLARATION naming a `private`
+    //    workspace, hence 404 on npm forever ─────────────────────────────────────
     //
-    // C'est la classe qui a motivé la gate : six `.d.ts` publiables importaient des paquets
-    // absents du registre, et RIEN ne pouvait le voir — les symlinks de workspace les
-    // résolvent ici, donc `typecheck:consumer` reste vert (il compile depuis
-    // `packages/core/examples/`, soit DANS le monorepo) et PUB-TYPES ne compile pas du tout.
+    // The class that motivated the gate: six publishable `.d.ts` imported
+    // packages absent from the registry, and NOTHING could see it —
+    // workspace symlinks resolve them here, so `typecheck:consumer` stays
+    // green (it compiles from `packages/core/examples/`, i.e. INSIDE the
+    // monorepo) and PUB-TYPES does not compile at all.
     //
-    // La fixture vise `@geoleaf/build-config` et non `@geoleaf/host-runtime` : les deux sont
-    // `private: true`, mais le second était la cible RÉELLE des deux fuites corrigées au
-    // S1.2/S1.3. Choisir la cible corrigée ferait passer l'assertion pour une régression
-    // possible du correctif ; celle-ci ne peut être satisfaite que par la RÈGLE.
+    // The fixture targets `@geoleaf/build-config` and not
+    // `@geoleaf/host-runtime`: both are `private: true`, but the second was
+    // the REAL target of the two already-fixed leaks. Picking the fixed
+    // target would make the assertion look like a possible regression of
+    // the fix; this one can only be satisfied by the RULE.
     //
-    // ⚠️ L'aiguille est `SHIP-SPEC-02`, pas `__probe__` : deux assertions ci-dessus nomment
-    // déjà ce paquet pour d'autres motifs, donc `__probe__` serait satisfait sans que la
-    // règle du workspace privé ait rien vu. C'est le précédent documenté plus haut pour
-    // `MH-03` et pour le check 5.
+    // ⚠️ The needle is `SHIP-SPEC-02`, not `__probe__`: two assertions
+    // above already name this package for other motives, so `__probe__`
+    // would be satisfied without the private-workspace rule having seen
+    // anything. The precedent documented above for `MH-03` and check 5.
     fs.mkdirSync(path.join(PROBE_DIR, "dist", "types"), { recursive: true });
     fs.writeFileSync(
         path.join(PROBE_DIR, "dist", "types", "index.d.ts"),
@@ -337,16 +349,17 @@ function plantProbe() {
 
     // ── Variante .mjs ─────────────────────────────────────────────────────────
     //
-    // Le check 1b ne testait que `.cjs` à sa pose ; l'extension aux `.mjs` a sa PROPRE
-    // assertion, sinon la fixture `.cjs` ci-dessus suffirait à la faire passer alors
-    // que toute la moitié ESM de la règle aurait pu régresser — même patron que le
-    // specifier nu de `verify-test-load-mode` plus haut.
+    // Check 1b only tested `.cjs` when laid; the `.mjs` extension has its
+    // OWN assertion, otherwise the `.cjs` fixture above would suffice to
+    // pass it while the rule's whole ESM half could have regressed — same
+    // pattern as `verify-test-load-mode`'s bare specifier above.
     //
-    // Ce fichier éprouve aussi, en négatif, l'exemption STRUCTURELLE des configs
-    // rollup : il est nommé `probe-throwaway.mjs` et non `rollup-quickfix.mjs`, mais
-    // c'est le même point — l'exemption est indexée sur des basenames EXACTS
-    // (`rollup.config.mjs`, `rollup.consumer.mjs`), pas sur un glob `rollup*.mjs` qui
-    // aurait fait du préfixe une cachette.
+    // This file also exercises, in the negative, the rollup configs'
+    // STRUCTURAL exemption: it is named `probe-throwaway.mjs` and not
+    // `rollup-quickfix.mjs`, but it is the same point — the exemption is
+    // indexed on EXACT basenames (`rollup.config.mjs`,
+    // `rollup.consumer.mjs`), not a `rollup*.mjs` glob that would have made
+    // the prefix a hiding place.
     fs.writeFileSync(
         path.join(PROBE_DIR, "probe-throwaway.mjs"),
         "// T3.5 probe — throwaway ESM script at a package root.\nexport const probe = true;\n"
@@ -372,7 +385,7 @@ function declareNestedGlob() {
  *
  * ⚠️ This function previously did `rmSync("packages/plugins", {recursive:true})`.
  * That was safe exactly as long as `packages/plugins/` did not otherwise exist —
- * and it stopped being safe the moment ARCHI S10.1 made it the home of 13 plugins.
+ * and it stopped being safe the moment the regrouping made it the home of 13 plugins.
  * Running the probe then DELETED all 13 (557 files, recovered from the git index,
  * which held them because the move had been staged with `git mv`).
  *
@@ -431,26 +444,26 @@ function assertThat(label, fn, pending) {
 }
 
 /**
- * Contrôles connus comme rouges, avec l'échéance qui les ferme.
+ * Checks known red, with the deadline that closes them.
  *
- * Ces deux-là sont des GLOBS de configuration (`packages/*​/src/**`) qui doivent
- * changer exactement au moment du déplacement, pas avant : les corriger
- * séparément rendrait le commit du S10.1 incohérent avec l'arborescence. Ils sont
- * donc attendus rouges jusqu'à ce sprint, et la sonde le dit au lieu de se taire.
+ * Those two are configuration GLOBS (`packages/*​/src/**`) that must change
+ * exactly at the move, not before: fixing them separately would make the
+ * regrouping commit inconsistent with the tree. They are thus expected red
+ * until that sprint, and the probe says so instead of going quiet.
  *
- * Même patron que `check-orphan-exports` et `check-config-consumers` : une
- * baseline explicite, plutôt qu'une gate durablement rouge que plus personne ne
- * lit. Un contrôle ici NON listé qui échoue fait sortir la sonde en 1.
+ * Same pattern as `check-orphan-exports` and `check-config-consumers`: an
+ * explicit baseline, rather than a durably red gate nobody reads any more.
+ * A check NOT listed here that fails makes the probe exit 1.
  *
- * ⚠️ Vider cette liste fait partie du critère de sortie du S10.1.
+ * ⚠️ Emptying this list is part of the regrouping's exit criterion.
  */
 const PENDING = {
-    // Vidée par ARCHI S10.1, comme son critère de sortie l'exigeait.
-    //   - lint-staged : `packages/*/src/**` → `packages/**/src/**` (il ne reçoit que
-    //     des fichiers indexés, donc `node_modules` est hors sujet).
-    //   - purgecss : passé au REGISTRE plutôt qu'à un glob élargi — `packages/**`
-    //     traversait `node_modules` (13 `.ts` de dépendances entraient dans le
-    //     contenu scanné, ce qui masque du CSS réellement mort).
+    // Emptied by the regrouping, as its exit criterion required.
+    //   - lint-staged: `packages/*/src/**` → `packages/**/src/**` (it only
+    //     receives indexed files, so `node_modules` is beside the point).
+    //   - purgecss: moved to the REGISTRY rather than a widened glob —
+    //     `packages/**` traversed `node_modules` (13 dependency `.ts`
+    //     entered the scanned content, which masks really dead CSS).
 };
 
 // ─── Run ──────────────────────────────────────────────────────────────────────
@@ -461,33 +474,37 @@ try {
 
     console.log(`${C.c}── Sonde plantée : ${PROBE_REL} ──${C.x}\n`);
 
-    // ── Famille A — visibilité de gate ────────────────────────────────────────
+    // ── Family A — gate visibility ────────────────────────────────────────────
     console.log(`${C.d}Famille A — la gate voit-elle encore un package imbriqué ?${C.x}`);
     assertGateSees("verify-no-leaflet", ["scripts/verify-no-leaflet.cjs"]);
     assertGateSees("check-package-files", ["scripts/check-package-files.cjs"]);
     assertGateSees("check-versions", ["scripts/check-versions.cjs"]);
     assertGateSees("check-i18n-dict-shape", ["scripts/check-i18n-dict-shape.cjs"]);
     assertGateSees("count-any", ["scripts/count-any.cjs"]);
-    // verify-plugin-shared-fork énumère `registry.all()` : la sonde __probe__ porte
-    // `src/fork.ts` (une re-définition de `coreConfigGet`, hors baseline), donc PSF-01
-    // doit la nommer. Si le gate cesse d'énumérer les packages imbriqués, il se tait ici.
+    // verify-plugin-shared-fork enumerates `registry.all()`: the __probe__
+    // probe carries `src/fork.ts` (a `coreConfigGet` re-definition, outside
+    // the baseline), so PSF-01 must name it. If the gate stops enumerating
+    // nested packages, it goes quiet here.
     assertGateSees("verify-plugin-shared-fork", ["scripts/verify-plugin-shared-fork.cjs"]);
-    // check-facade-purity : la sonde porte un `src/public-api.ts` non conforme (état
-    // mutable + ternaire), donc la moitié plugin du gate doit le nommer. Sans elle, le
-    // gate resterait vert en n'énumérant que les paquets qu'il voit encore.
+    // check-facade-purity: the probe carries a non-conformant
+    // `src/public-api.ts` (mutable state + a ternary), so the gate's plugin
+    // half must name it. Without it, the gate would stay green enumerating
+    // only the packages it still sees.
     assertGateSees("check-facade-purity (plugins)", ["scripts/check-facade-purity.cjs"]);
-    // check-exact-optional-debt : la sonde porte `src/widened.ts`, une propriété élargie hors
-    // baseline, donc EOD-01 doit la nommer. Sans cette assertion, un gate qui cesserait
-    // d'énumérer les paquets imbriqués sortirait vert en n'ayant scanné que le core.
+    // check-exact-optional-debt: the probe carries `src/widened.ts`, a
+    // widened property outside the baseline, so EOD-01 must name it.
+    // Without this assertion, a gate that stopped enumerating nested
+    // packages would exit green having scanned only the core.
     assertGateSees("check-exact-optional-debt", ["scripts/check-exact-optional-debt.cjs"]);
-    // check-nonnull-assertion-debt : la sonde porte `src/asserted-index.ts`, un `xs[0]!`, donc
-    // NNA-04 doit le nommer. C'est la règle sans baseline du cliquet Q5 : si le gate cessait
-    // d'énumérer les paquets imbriqués, un plugin pourrait solder ses erreurs
-    // `noUncheckedIndexedAccess` à coups d'assertions sans que rien ne rougisse.
+    // check-nonnull-assertion-debt: the probe carries
+    // `src/asserted-index.ts`, an `xs[0]!`, so NNA-04 must name it. The
+    // ratchet's baseline-less rule: if the gate stopped enumerating nested
+    // packages, a plugin could settle its `noUncheckedIndexedAccess` errors
+    // with assertions and nothing would turn red.
     assertGateSees("check-nonnull-assertion-debt", ["scripts/check-nonnull-assertion-debt.cjs"]);
     assertGateSees("verify-test-load-mode", ["scripts/verify-test-load-mode.cjs"]);
-    // Le specifier NU a sa propre assertion : sans elle, la sonde relative suffirait à
-    // faire passer le contrôle alors que la moitié des formes échapperait à la gate.
+    // The BARE specifier has its own assertion: without it, the relative
+    // probe would suffice to pass the check while half the forms escaped the gate.
     assertGateSees(
         "verify-test-load-mode (specifier nu)",
         ["scripts/verify-test-load-mode.cjs"],
@@ -499,43 +516,47 @@ try {
     // ceasing to see a nested package: it would then report "0 new undocumented files"
     // and exit 0 — green, having scanned nothing, which is the exact class this file hunts.
     assertGateSees("check-module-headers", ["scripts/check-module-headers.cjs"]);
-    // STRUCT S5 — MH-03 interdit `@module`, et la règle tient à ZÉRO dans le dépôt : sans
-    // défaut planté elle ne peut plus jamais rougir. L'aiguille est `MH-03` et non
-    // `__probe__`, sinon l'assertion serait déjà satisfaite par MH-01, qui nomme la sonde
-    // pour un tout autre motif — et MH-03 pourrait cesser de voir un paquet imbriqué sans
-    // que rien ne le signale. Le défaut vit dans `src/probe-load.ts` (cf. plantProbe).
+    // MH-03 forbids `@module`, and the rule holds at ZERO in the repo:
+    // without a planted defect it can never turn red again. The needle is
+    // `MH-03` and not `__probe__`, otherwise the assertion would already be
+    // satisfied by MH-01, which names the probe for a whole other motive —
+    // and MH-03 could stop seeing a nested package with nothing flagging
+    // it. The defect lives in `src/probe-load.ts` (cf. plantProbe).
     assertGateSees("check-module-headers (MH-03)", ["scripts/check-module-headers.cjs"], "MH-03");
-    // API publique S3.4 — même raison, même classe. `check-event-map-coverage` est
-    // baseline-tolérante : elle sort 0 tant qu'aucun nom NOUVEAU n'apparaît, y compris si
-    // son corpus est vide. Le jour où `registry.all()` cesse de voir un paquet, elle
-    // annoncerait « aucun nouveau, aucun périmé » — verte, sur zéro fichier lu. La sonde
-    // plantée dans `packages/plugins/__probe__/` porte un littéral `geoleaf:*` inconnu des
-    // deux maps et absent de la baseline : la gate DOIT le nommer.
+    // Same reason, same class. `check-event-map-coverage` is
+    // baseline-tolerant: it exits 0 as long as no NEW name appears,
+    // including on an empty corpus. The day `registry.all()` stops seeing a
+    // package, it would announce "none new, none stale" — green, over zero
+    // files read. The probe planted in `packages/plugins/__probe__/`
+    // carries a `geoleaf:*` literal unknown to both maps and absent from
+    // the baseline: the gate MUST name it.
     assertGateSees("check-event-map-coverage", ["scripts/check-event-map-coverage.cjs"]);
-    // T3.5 — après le T3.2 le dépôt ne contient plus AUCUN `<pkg>/scripts/`, donc un check
-    // ainsi borné serait resté vide-vert à vie, sans rien à regarder. `probe-throwaway.cjs`
-    // est son seul défaut vivant : absent de `CJS_OUTSIDE_SCRIPTS_ALLOWLIST` par
-    // construction, donc la gate doit le NOMMER. L'aiguille est le nom de fichier plutôt
-    // que `__probe__`, sinon une autre catégorie mentionnant le package de sonde
-    // satisferait l'assertion sans que le check 1b ait rien vu.
+    // The repo no longer contains ANY `<pkg>/scripts/`, so a check bounded
+    // that way would have stayed empty-green for life, with nothing to look
+    // at. `probe-throwaway.cjs` is its only live defect: absent from
+    // `CJS_OUTSIDE_SCRIPTS_ALLOWLIST` by construction, so the gate must
+    // NAME it. The needle is the file name rather than `__probe__`,
+    // otherwise another category mentioning the probe package would satisfy
+    // the assertion without check 1b having seen anything.
     assertGateSees(
         "verify-repo-hygiene (cjs hors scripts/)",
         ["scripts/verify-repo-hygiene.cjs"],
         "probe-throwaway.cjs"
     );
-    // La moitié ESM a sa propre assertion : le check 1b ne testait que `.cjs` à sa pose,
-    // et le registre de `scripts/` disciplinait 64 `.cjs` pour 0 `.mjs` alors que le
-    // nouvel outillage s'écrit en ESM. Sans cette ligne, la fixture `.cjs` ci-dessus
-    // suffirait à faire passer le contrôle.
+    // The ESM half has its own assertion: check 1b only tested `.cjs` when
+    // laid, and the `scripts/` register disciplined 64 `.cjs` for 0 `.mjs`
+    // while new tooling is written in ESM. Without this line, the `.cjs`
+    // fixture above would suffice to pass the check.
     assertGateSees(
         "verify-repo-hygiene (mjs hors scripts/)",
         ["scripts/verify-repo-hygiene.cjs"],
         "probe-throwaway.mjs"
     );
-    // T4.1 — les trois assertions du check 5 et de son pendant npm. Aiguilles = fragments
-    // de CHEMIN, jamais `__probe__` seul : deux assertions ci-dessus nomment déjà ce
-    // package via `probe-throwaway.*`, donc `__probe__` serait satisfait par une autre
-    // catégorie sans que le check 5 ait rien vu (le précédent est documenté plus haut).
+    // The three assertions of check 5 and its npm counterpart. Needles =
+    // PATH fragments, never `__probe__` alone: two assertions above already
+    // name this package via `probe-throwaway.*`, so `__probe__` would be
+    // satisfied by another category without check 5 having seen anything
+    // (the precedent is documented above).
     assertGateSees(
         "verify-repo-hygiene (artefact généré sous contrôle git)",
         ["scripts/verify-repo-hygiene.cjs"],
@@ -551,44 +572,48 @@ try {
         ["scripts/check-package-files.cjs"],
         "__probe__/docs/api"
     );
-    // SHIP-SPEC (passage public S1.6) — la sonde porte `dist/types/index.d.ts` important
-    // `@geoleaf/build-config`, un workspace `private: true`. SHIP-SPEC-02 est SANS baseline,
-    // donc la gate doit le NOMMER, et son corpus se dérive de `registry.all()` : le jour où
-    // le registre cesserait de voir un paquet imbriqué, cette assertion tomberait avant que
-    // la gate n'annonce « 0 fuite » sur un corpus amputé. Aiguille = le code de la règle.
+    // SHIP-SPEC — the probe carries `dist/types/index.d.ts` importing
+    // `@geoleaf/build-config`, a `private: true` workspace. SHIP-SPEC-02 is
+    // WITHOUT a baseline, so the gate must NAME it, and its corpus derives
+    // from `registry.all()`: the day the registry stopped seeing a nested
+    // package, this assertion would fall before the gate announced
+    // "0 leaks" over an amputated corpus. Needle = the rule's code.
     assertGateSees(
         "check-shipped-specifiers (SHIP-SPEC-02)",
         ["scripts/check-shipped-specifiers.cjs"],
         "SHIP-SPEC-02"
     );
 
-    // LIC-HEADERS (passage public S3) — la sonde plante huit `src/*.ts` SANS bandeau `/*!`,
-    // donc LIC-01 doit les nommer. Le corpus vient de `source-inventory.collect()`, qui
-    // dérive de `registry.all()` : si le registre cessait de voir un paquet imbriqué, la
-    // gate annoncerait « bandeau canonique » sur un corpus amputé — et son plancher LIC-03,
-    // posé à 700 fichiers, ne verrait rien puisque le core à lui seul en pèse 530.
-    // C'est exactement la cécité que cette sonde existe pour rendre bruyante.
+    // LIC-HEADERS — the probe plants eight `src/*.ts` WITHOUT the `/*!`
+    // banner, so LIC-01 must name them. The corpus comes from
+    // `source-inventory.collect()`, which derives from `registry.all()`: if
+    // the registry stopped seeing a nested package, the gate would announce
+    // "canonical banner" over an amputated corpus — and its LIC-03 floor,
+    // set at 700 files, would see nothing since the core alone weighs 530.
+    // Exactly the blindness this probe exists to make loud.
     assertGateSees("check-license-headers (LIC-01 voit un paquet imbriqué)", [
         "scripts/check-license-headers.cjs",
     ]);
 
-    // 🛑 **CETTE ASSERTION A ÉTÉ RÉÉCRITE À B-153 ② — et son ancienne forme illustre
-    // exactement ce que cette sonde existe pour attraper.**
+    // 🛑 **THIS ASSERTION WAS REWRITTEN — and its old shape illustrates
+    // exactly what this probe exists to catch.**
     //
-    // Elle disait : « `verify-plugin-core-boundary` n'énumère pas les packages : elle scanne
-    // exactement les **2 clés** de sa BASELINE, et n'imprime qu'un résumé », puis se rabattait
-    // sur la RÉSOLUTION de deux noms codés en dur (`editor`, `offline-ui`) faute de pouvoir
-    // vérifier autre chose. Trois choses y étaient fausses ou périmées :
+    // It said: "`verify-plugin-core-boundary` does not enumerate the
+    // packages: it scans exactly the **2 keys** of its BASELINE, and only
+    // prints a summary", then fell back on the RESOLUTION of two hardcoded
+    // names (`editor`, `offline-ui`) for want of anything else to verify.
+    // Three things in it were false or stale:
     //
-    //   ① « 2 clés » — il n'y en avait plus qu'UNE, donc la gate ouvrait 1 plugin sur 12 ;
-    //   ② `editor` n'était PAS dans la BASELINE, donc la sonde vérifiait la résolution d'une
-    //      cible que la gate ne visitait jamais — elle mesurait à côté ;
-    //   ③ « n'imprime qu'un résumé » a cessé d'être vrai le jour où la gate a été corrigée.
+    //   ① "2 keys" — only ONE remained, so the gate opened 1 plugin out of 12;
+    //   ② `editor` was NOT in the BASELINE, so the probe verified the
+    //      resolution of a target the gate never visited — it measured beside;
+    //   ③ "only prints a summary" stopped being true the day the gate was fixed.
     //
-    // ⚠️ **Une sonde qui se rabat sur une propriété faible parce que la forte est
-    // inobservable doit être relue quand la cible change** — sinon elle certifie une
-    // propriété que plus personne ne lui demande. La gate imprime désormais SON PÉRIMÈTRE ;
-    // c'est la propriété forte, et elle est enfin observable.
+    // ⚠️ **A probe that falls back on a weak property because the strong
+    // one is unobservable must be reread when the target changes** —
+    // otherwise it certifies a property nobody asks of it any more. The
+    // gate now prints ITS PERIMETER; that is the strong property, and it is
+    // finally observable.
     assertThat("verify-plugin-core-boundary : VOIT le deep import planté dans la sonde", () => {
         const res = spawnSync("node", ["scripts/verify-plugin-core-boundary.cjs"], {
             cwd: ROOT,
@@ -596,9 +621,10 @@ try {
         });
         const out = `${res.stdout}${res.stderr}`;
 
-        // 🛑 On attend un ÉCHEC : `deep-import.ts` de la sonde porte
-        // `import { Log } from "../../../core/src/utils/log/index.js"`, un import profond
-        // relatif vers les sources du core. Un exit 0 signifie que la gate ne l'a pas vu.
+        // 🛑 A FAILURE is expected: the probe's `deep-import.ts` carries
+        // `import { Log } from "../../../core/src/utils/log/index.js"`, a
+        // relative deep import into the core's sources. An exit 0 means the
+        // gate did not see it.
         if (res.status === 0) {
             return { ok: false, detail: "exit 0 — le deep import planté est passé INAPERÇU" };
         }
@@ -608,28 +634,28 @@ try {
         return { ok: true, detail: "PCB-01 nomme `__probe__` et son deep import relatif" };
     });
 
-    // ── Famille B — armement de règle ─────────────────────────────────────────
+    // ── Family B — rule arming ────────────────────────────────────────────────
     console.log(`\n${C.d}Famille B — la règle existe-t-elle encore ?${C.x}`);
 
-    // Même classe que verify-plugin-core-boundary, trouvée par balayage après que
-    // la sonde a révélé le motif : des chemins construits en dur sous `packages/`
-    // dans des gates qui n'énumèrent pas. `verify-core-standalone` est le cas le
-    // plus grave — CLAUDE.md qualifie sa règle de non négociable, et SYNC-01b
-    // aurait cessé de scanner le connector sans un mot. `verify-repo-hygiene`
-    // perdait de même son contrôle des 700 lignes.
+    // Same class as verify-plugin-core-boundary, found by sweep after the
+    // probe revealed the pattern: paths hardcoded under `packages/` in
+    // gates that do not enumerate. `verify-core-standalone` is the gravest
+    // case — its rule is non-negotiable, and SYNC-01b would have stopped
+    // scanning the connector without a word. `verify-repo-hygiene` likewise
+    // lost its 700-line check.
     assertThat("gates à chemins durs : cibles mobiles résolues", () => {
         delete require.cache[require.resolve("./lib/packages.cjs")];
         const registry = require("./lib/packages.cjs");
         registry.reset();
-        // T5.5 — `core` ajouté. Il était absent parce que ses chemins étaient LITTÉRAUX
-        // dans une quinzaine de gates, sous la justification écrite que « le core
-        // reste » : rien à résoudre, donc rien à surveiller. Les gates passent
-        // maintenant par le registre, et ce contrôle porte enfin sur le paquet que le
-        // dépôt lit le plus.
-        // STRUCT S2 (F9) — `host-runtime` ajouté. Il était absent alors qu'il est devenu la
-        // cible de 3 des 6 seams de `verify-seam-drift` et la source du symbole dérivé de
-        // `verify-plugin-shared-fork` : deux gates qui cessent de garder quoi que ce soit si
-        // ce paquet devient irrésoluble.
+        // `core` added. It was absent because its paths were LITERAL in
+        // some fifteen gates, under the written justification that "the
+        // core stays": nothing to resolve, hence nothing to watch. The
+        // gates now go through the registry, and this check finally bears
+        // on the package the repo reads most.
+        // `host-runtime` added. It was absent while it had become the
+        // target of 3 of `verify-seam-drift`'s 6 seams and the source of
+        // `verify-plugin-shared-fork`'s derived symbol: two gates that stop
+        // guarding anything if this package becomes unresolvable.
         const targets = ["core", "connector", "offline-ui", "field-renderer", "host-runtime"];
         const missing = [];
         for (const dirName of targets) {
@@ -642,29 +668,32 @@ try {
         }
         return {
             ok: missing.length === 0,
-            // ⚠️ Compte DÉRIVÉ. Il était écrit « 4/4 » en dur, et a menti à la seconde
-            // près où ce sprint a ajouté un 5ᵉ paquet : la sonde annonçait 4 cibles en
-            // en ayant vérifié 5. Un chiffre qui ne peut pas se tromper parce qu'il ne
-            // mesure rien, dans le fichier même qui traque cette forme de défaut.
+            // ⚠️ DERIVED count. It was written "4/4" hardcoded, and lied
+            // the very second a 5th package was added: the probe announced
+            // 4 targets having verified 5. A figure that cannot be wrong
+            // because it measures nothing, in the very file that hunts this
+            // shape of defect.
             detail: missing.length
                 ? `introuvables : ${missing.join(", ")}`
                 : `${targets.length}/${targets.length} résolues`,
         };
     });
 
-    // STRUCT S2 (F9) — `verify-seam-drift` n'avait AUCUNE assertion dans cette sonde, alors
-    // que son propre docblock (`:39-41`) se réclamait de sa protection. Un docblock qui
-    // invoque une gate qui ne le couvre pas est exactement le mode d'échec n°3 que
-    // `verify-host-contract-sync.cjs:46-50` décrit.
+    // `verify-seam-drift` had NO assertion in this probe, while its own
+    // docblock (`:39-41`) claimed its protection. A docblock invoking a
+    // gate that does not cover it is exactly the failure mode
+    // `verify-host-contract-sync.cjs` describes.
     //
-    // Ce qu'on vérifie n'est pas la dérive (la gate le fait, et elle jette) mais le
-    // RÉTRÉCISSEMENT du registre, sa seule panne muette avant S2 : le message de succès ne
-    // comptait que les seams, jamais les fichiers, et un `files[]` amputé passait sans un
-    // mot. Preuve historique dans le fichier lui-même : le seam `storage-contract`, supprimé
-    // au S4.4, a fait passer le compteur de 4 à 3 sans que rien ne l'observe.
+    // What is verified is not the drift (the gate does, and it throws) but
+    // the registry's SHRINKAGE, its only mute failure until then: the
+    // success message only counted the seams, never the files, and an
+    // amputated `files[]` passed without a word. Historical proof in the
+    // file itself: the `storage-contract` seam, since deleted, took the
+    // counter from 4 to 3 with nothing observing it.
     //
-    // Le plancher est lu DEPUIS la gate, jamais recopié ici — un chiffre dupliqué dans une
-    // sonde est un chiffre qui mentira, ce que l'assertion précédente s'est reproché.
+    // The floor is read FROM the gate, never copied here — a figure
+    // duplicated in a probe is a figure that will lie, which the previous
+    // assertion reproached itself for.
     assertThat("verify-seam-drift : plancher de couverture présent et armé", () => {
         const src = fs.readFileSync(path.join(ROOT, "scripts", "verify-seam-drift.cjs"), "utf8");
         const floor = src.match(/const FLOOR = \{ seams: (\d+), files: (\d+) \}/);
@@ -688,26 +717,29 @@ try {
         return { ok: Boolean(hit), detail: hit ? hit.dir : "absente du registre" };
     });
 
-    // Passage public S12.2 — `docs-paths.cjs` est la racine commune de SPECS-PATHS,
-    // GUIDES-PATHS et TSDOC-PATHS, trois gates posées entre le 11 et le 12/08/2026 dont
-    // AUCUNE n'était exercée ici.
+    // `docs-paths.cjs` is the common root of SPECS-PATHS, GUIDES-PATHS and
+    // TSDOC-PATHS, three gates laid between 11 and 12/08/2026 of which NONE
+    // was exercised here.
     //
-    // ⚠️ Le risque est le sien propre, et il est muet : ces gates rendent « N chemins cités,
-    // 0 mort ». Si une sous-racine cesse de résoudre, le corpus tombe à zéro et le verdict
-    // reste **vert** — la forme exacte du « vert qui n'a rien scanné » que cette sonde traque
-    // partout ailleurs. Le module s'en défend par un `throw` dans `requireRoot()` ; ce qui
-    // suit vérifie que cette défense EXISTE ENCORE, et qu'elle porte sur un corpus non vide.
+    // ⚠️ The risk is its own, and it is mute: these gates return "N paths
+    // cited, 0 dead". If a sub-root stops resolving, the corpus falls to
+    // zero and the verdict stays **green** — the exact shape of the "green
+    // that scanned nothing" this probe hunts everywhere else. The module
+    // defends itself with a `throw` in `requireRoot()`; what follows
+    // verifies that defence STILL EXISTS, and that it bears on a non-empty
+    // corpus.
     //
-    // 📌 La racine INTERNE est délibérément hors périmètre : `docs-paths` reporte son
-    // assertion au premier `internal()`, précisément pour que le clone public — qui n'a pas
-    // `_docs_projet/` — ne meure pas à l'import. Exiger ici sa présence rendrait la sonde
-    // rouge là-bas, c'est-à-dire dans le seul dépôt où ces trois gates comptent le plus.
+    // 📌 The INTERNAL root is deliberately out of scope: `docs-paths`
+    // defers its assertion to the first `internal()`, precisely so the
+    // public clone — which has no `_docs_projet/` — does not die at import.
+    // Requiring its presence here would turn the probe red over there, i.e.
+    // in the one repo where these three gates count most.
     assertThat("docs-paths : sous-racines résolues et corpus non vide", () => {
         delete require.cache[require.resolve("./lib/docs-paths.cjs")];
         const dp = require("./lib/docs-paths.cjs");
 
-        // Le garde-fou du module, lu DANS sa source : un `throw` retiré rendrait toutes les
-        // sous-racines silencieusement optionnelles.
+        // The module's guardrail, read IN its source: a removed `throw`
+        // would make all the sub-roots silently optional.
         const src = fs.readFileSync(path.join(ROOT, "scripts", "lib", "docs-paths.cjs"), "utf8");
         if (!/function requireRoot[\s\S]*?throw new Error\(/.test(src)) {
             return {
@@ -716,9 +748,10 @@ try {
             };
         }
 
-        // Compte DÉRIVÉ des sous-racines publiques, jamais une liste recopiée : ajouter une
-        // 4ᵉ sous-racine sans l'exercer ici serait exactement le défaut de l'assertion
-        // voisine, qui annonçait « 4/4 » en en vérifiant 5.
+        // Count DERIVED from the public sub-roots, never a copied list:
+        // adding a 4th sub-root without exercising it here would be exactly
+        // the neighbouring assertion's defect, which announced "4/4" while
+        // verifying 5.
         const roots = ["specs", "reference", "guides"].map((k) => [k, dp[k]()]);
         const missing = roots.filter(([, abs]) => !fs.existsSync(abs)).map(([k]) => k);
         if (missing.length) return { ok: false, detail: `sous-racine(s) absente(s) : ${missing}` };
@@ -738,15 +771,16 @@ try {
         };
     });
 
-    // T5.1bis — `deploy-docs.cjs` est le script le plus destructeur du dépôt (`rmSync`
-    // récursif sur une cible EXTERNE) et il n'est invoqué par AUCUNE CI : ni `ci-local`,
-    // ni `ci.yml`, ni le hook. Sa correction la plus importante — l'ordre
-    // détruire/constater de `syncDir` — n'était donc gardée que par les mutations
-    // manuelles du sprint. Ici elle est exercée à chaque `ci:local`.
+    // `deploy-docs.cjs` is the repo's most destructive script (recursive
+    // `rmSync` on an EXTERNAL target) and it is invoked by NO CI: neither
+    // `ci-local`, nor `ci.yml`, nor the hook. Its most important fix — the
+    // destroy/verify order of `syncDir` — was thus only guarded by the
+    // sprint's manual mutations. Here it is exercised at every `ci:local`.
     //
-    // ⚠️ Le cas qui compte est le NÉGATIF : source absente ⇒ la destination doit être
-    // INTACTE. Avant T5.1, `rmSync(dest)` tournait d'abord et `copyDir` se contentait d'un
-    // `console.warn` — la doc publiée disparaissait et le script sortait 0.
+    // ⚠️ The case that counts is the NEGATIVE: absent source ⇒ the
+    // destination must be INTACT. Before the fix, `rmSync(dest)` ran first
+    // and `copyDir` settled for a `console.warn` — the published doc
+    // vanished and the script exited 0.
     assertThat("deploy-docs : syncDir ne détruit pas avant de constater", () => {
         delete require.cache[require.resolve("./deploy-docs.cjs")];
         const { syncDir, resolveSiteRoot, DeployError } = require("./deploy-docs.cjs");
@@ -766,19 +800,20 @@ try {
             fs.writeFileSync(path.join(dest, "sentinelle.txt"), "DOC EN LIGNE");
             const alive = () => fs.existsSync(path.join(dest, "sentinelle.txt"));
 
-            // 1. Source absente → jette, et la sentinelle survit.
+            // 1. Absent source → throws, and the sentinel survives.
             attend("source absente", () => syncDir(path.join(scratch, "nexiste-pas"), dest));
             if (!alive()) failures.push("source absente : la destination a été DÉTRUITE");
 
-            // 2. Source vide → même exigence. Publier un répertoire vide efface la doc
-            //    tout aussi sûrement qu'une source manquante.
+            // 2. Empty source → same requirement. Publishing an empty
+            //    directory erases the doc just as surely as a missing source.
             const vide = path.join(scratch, "vide");
             fs.mkdirSync(vide, { recursive: true });
             attend("source vide", () => syncDir(vide, dest));
             if (!alive()) failures.push("source vide : la destination a été DÉTRUITE");
 
-            // 3. Source réelle → remplacement effectif. Sans ce cas positif, un `syncDir`
-            //    qui ne ferait PLUS RIEN passerait les deux assertions ci-dessus.
+            // 3. Real source → effective replacement. Without this positive
+            //    case, a `syncDir` doing NOTHING ANY MORE would pass the two
+            //    assertions above.
             const plein = path.join(scratch, "plein");
             fs.mkdirSync(plein, { recursive: true });
             fs.writeFileSync(path.join(plein, "index.html"), "<!doctype html>");
@@ -792,9 +827,9 @@ try {
             }
             if (alive()) failures.push("source réelle : la sentinelle survit — pas remplacé");
 
-            // 4. Les gardes de la cible externe, sur les 3 valeurs qu'aucune ne doit
-            //    laisser passer. `resolveSiteRoot` reçoit ses paramètres explicitement :
-            //    la sonde n'a pas à muter `process.env`.
+            // 4. The external target's guards, on the 3 values none must
+            //    let through. `resolveSiteRoot` receives its parameters
+            //    explicitly: the probe has no business mutating `process.env`.
             attend("racine FS", () => resolveSiteRoot(path.parse(ROOT).root, ROOT));
             attend("racine du dépôt", () => resolveSiteRoot(ROOT, ROOT));
             attend("chemin dans le dépôt", () => resolveSiteRoot(path.join(ROOT, "scripts"), ROOT));
@@ -808,13 +843,15 @@ try {
         };
     });
 
-    // T5.8 — la gate « tout script de ci:local est tracé » résout-elle encore un graphe ?
+    // Does the "every ci:local script is tracked" gate still resolve a
+    // graph?
     //
-    // Son mode de panne n'est pas de rougir à tort, c'est de rétrécir : un `npm run`
-    // renommé, une table restructurée, et le graphe tombe à quelques scripts sans qu'une
-    // seule erreur soit levée. « 0 script non tracé » devient alors vrai et vide de sens.
-    // Elle porte son propre plancher (MIN_RESOLVED) ; ce contrôle-ci vérifie que ce
-    // plancher est LARGEMENT franchi, donc qu'il reste un plancher et pas un plafond.
+    // Its failure mode is not turning red wrongly, it is shrinking: a
+    // renamed `npm run`, a restructured table, and the graph falls to a few
+    // scripts without a single error raised. "0 untracked scripts" then
+    // becomes true and meaningless. It carries its own floor
+    // (MIN_RESOLVED); this check verifies that floor is AMPLY cleared,
+    // hence that it stays a floor and not a ceiling.
     assertThat("ci-scripts-tracked : le graphe d'invocation ne s'est pas effondré", () => {
         const res = spawnSync("node", ["scripts/verify-ci-scripts-tracked.cjs"], {
             cwd: ROOT,
@@ -832,18 +869,20 @@ try {
         };
     });
 
-    // ── CI-PARITY — les trois modes d'échec, rejoués à chaque run ─────────────
+    // ── CI-PARITY — the three failure modes, replayed at every run ────────────
     //
-    // La gate de parité affirme que toute gate de `ci.yml` est lancée par `ci:local` ou
-    // exemptée avec son témoin. Une garde qu'on n'a jamais VUE rougir ne garde rien : ces
-    // trois assertions mutent une COPIE du workflow (crochet `GEOLEAF_CI_WORKFLOW_DIR`) et
-    // exigent le code de diagnostic exact. Le code, pas une aiguille générique — ce fichier
-    // documente déjà deux fois qu'une aiguille trop large se fait satisfaire par une AUTRE
-    // catégorie sans que le contrôle visé ait rien vu.
+    // The parity gate asserts every `ci.yml` gate is launched by `ci:local`
+    // or exempted with its witness. A guard never SEEN turning red guards
+    // nothing: these three assertions mutate a COPY of the workflow (the
+    // `GEOLEAF_CI_WORKFLOW_DIR` hook) and require the exact diagnostic
+    // code. The code, not a generic needle — this file already documents
+    // twice that an over-wide needle gets satisfied by ANOTHER category
+    // without the targeted check having seen anything.
     //
-    // Le crochet existe pour ça et rien d'autre : sans lui, prouver la gate exigerait de
-    // modifier le vrai `ci.yml` — donc on ne le ferait qu'une fois, à la pose, et jamais plus.
-    // Retirer le crochet fait rougir ces trois lignes, ce qui est le but.
+    // The hook exists for that and nothing else: without it, proving the
+    // gate would require modifying the real `ci.yml` — so it would be done
+    // once, at laying, and never again. Removing the hook turns these three
+    // lines red, which is the goal.
     const parityMutation = (label, mutate, expectedCode) =>
         assertThat(`ci-parity : ${label} (${expectedCode})`, () => {
             const dir = fs.mkdtempSync(path.join(os.tmpdir(), "geoleaf-parity-"));
@@ -871,9 +910,9 @@ try {
             }
         });
 
-    // 1. La propriété. `count-any.cjs` est choisi exprès : il existe, il est déclaré, il est
-    //    tracé, `npm run count:any` le définit — il franchit donc tous les contrôles voisins
-    //    et ne peut échouer QUE sur la parité.
+    // 1. The property. `count-any.cjs` is chosen on purpose: it exists, it
+    //    is declared, it is tracked, `npm run count:any` defines it — it
+    //    thus clears all the neighbouring checks and can only fail ON parity.
     parityMutation(
         "une gate de ci.yml absente de STEPS",
         (src) =>
@@ -881,8 +920,8 @@ try {
         "PARITY-03"
     );
 
-    // 2. Le pourrissement. Retirer la CAUSE d'une exemption doit la faire rougir, pas la
-    //    rendre silencieusement inutile.
+    // 2. The rot. Removing an exemption's CAUSE must turn it red, not make
+    //    it silently useless.
     parityMutation(
         "une exemption dont la cause a disparu",
         (src) =>
@@ -893,20 +932,23 @@ try {
         "PARITY-04"
     );
 
-    // 3. La cécité. Sur un corpus tronqué, « 0 feuille non couverte » est VRAI et vide de
-    //    sens : la gate doit refuser de conclure au lieu de rassurer.
-    // ⚠️ LA TRONCATURE EST DÉRIVÉE, ET ELLE L'EST PARCE QU'UN NUMÉRO EN DUR A POURRI.
-    // Cette mutation a été `slice(0, 40)` jusqu'au 09/08/2026. Puis l'en-tête de `ci.yml` a
-    // grandi — un bloc `permissions:` et un paragraphe sur la fin de Node 20 sur les runners —
-    // et `jobs:` est passé à la ligne 43. Les 40 premières lignes ne contenaient donc plus
-    // aucun job : la gate rougissait bien, mais sur « corpus illisible » et non sur PARITY-01.
-    // La sonde échouait ainsi en signalant exactement ce qu'elle existe pour trouver — une
-    // garde qui ne rougit plus pour la bonne raison —, et le défaut n'était pas dans la gate.
+    // 3. The blindness. On a truncated corpus, "0 uncovered leaves" is
+    //    TRUE and meaningless: the gate must refuse to conclude instead of
+    //    reassuring.
+    // ⚠️ THE TRUNCATION IS DERIVED, AND IT IS BECAUSE A HARDCODED NUMBER
+    // ROTTED. This mutation was `slice(0, 40)` until 09/08/2026. Then
+    // `ci.yml`'s header grew — a `permissions:` block and a paragraph on
+    // Node 20's end on the runners — and `jobs:` moved to line 43. The
+    // first 40 lines thus no longer contained any job: the gate did turn
+    // red, but on "unreadable corpus" and not on PARITY-01. The probe thus
+    // failed flagging exactly what it exists to find — a guard no longer
+    // turning red for the right reason — and the defect was not in the gate.
     //
-    // 🛑 Un corpus effondré doit rester LISIBLE. Couper à `steps:` produit « `steps:` sans
-    // aucune étape », encore une erreur de lecture ; il faut un workflow bien formé dont les
-    // décomptes passent sous les planchers de `FLOOR` (`ci-parity.cjs`). Trois étapes le font,
-    // et le nombre est petit devant tous les planchers plutôt qu'ajusté à l'un d'eux.
+    // 🛑 A collapsed corpus must stay READABLE. Cutting at `steps:`
+    // produces "`steps:` with no step", another read error; a well-formed
+    // workflow is needed whose counts pass under `FLOOR`'s floors
+    // (`ci-parity.cjs`). Three steps do, and the number is small before all
+    // the floors rather than tuned to one of them.
     parityMutation(
         "un corpus effondré (refus de conclure)",
         (src) => {
@@ -929,8 +971,9 @@ try {
         "PARITY-01"
     );
 
-    // Contre-épreuve : sans mutation, la même gate doit être VERTE. Sans cette ligne, trois
-    // rouges ne prouveraient qu'une chose — que la gate rougit toujours.
+    // Counter-proof: without a mutation, the same gate must be GREEN.
+    // Without this line, three reds would prove only one thing — that the
+    // gate always turns red.
     assertThat("ci-parity : verte sur le workflow réel (contre-épreuve)", () => {
         const res = spawnSync("node", ["scripts/verify-ci-parity.cjs"], {
             cwd: ROOT,
@@ -942,22 +985,25 @@ try {
         };
     });
 
-    // ── IMPL — « déclaré = exécuté » sur ce que le dépôt charge SANS importer ──
+    // ── IMPL — "declared = executed" on what the repo loads WITHOUT importing ──
     //
-    // 🛑 Cette gate garde une classe qu'aucune autre ne voit, et elle la garde sur un dépôt
-    // dont l'instrument est structurellement aveugle au défaut : `ci.yml` comme `ci:local`
-    // tournent sous le npm de Node 22, et la panne (B-258) n'apparaît qu'à partir de npm 11 —
-    // que seul `publish.yml` installe. Autrement dit, personne ici ne verra jamais IMPL rougir
-    // « pour de vrai ». C'est exactement le cas où une garde jamais vue rouge ne garde rien,
-    // donc les quatre codes sont éprouvés ci-dessous, chacun par sa propre mutation.
+    // 🛑 This gate guards a class no other sees, and it guards it on a repo
+    // whose instrument is structurally blind to the defect: `ci.yml` and
+    // `ci:local` both run under Node 22's npm, and the failure only appears
+    // from npm 11 — which only `publish.yml` installs. In other words,
+    // nobody here will ever see IMPL turn red "for real". Exactly the case
+    // where a guard never seen red guards nothing, so the four codes are
+    // exercised below, each by its own mutation.
     //
-    // ⚠️ Le dessin initial de la gate s'adossait au marqueur `peer + optional` du lockfile ;
-    // il a été écarté sur mesure, ce marqueur n'étant pas stable d'une version de npm à
-    // l'autre (npm 12 ne le pose plus du tout). IMPL-03 le balaie encore, mais en filet — et
-    // c'est IMPL-01/02 que ces sondes doivent tenir en priorité.
-    // ⚠️ `env` peut être une FONCTION, et reçoit ce que `before()` a rendu. Ce n'est pas du
-    // confort : une valeur littérale serait évaluée à l'appel d'`implMutation`, donc AVANT que
-    // `before()` ait créé le répertoire temporaire qu'elle est censée nommer.
+    // ⚠️ The gate's initial design leaned on the lockfile's
+    // `peer + optional` marker; it was set aside on measurement, that
+    // marker not being stable from one npm version to the next (npm 12 no
+    // longer sets it at all). IMPL-03 still sweeps it, but as a net — and
+    // IMPL-01/02 are what these probes must hold first.
+    // ⚠️ `env` can be a FUNCTION, and receives what `before()` returned.
+    // Not comfort: a literal value would be evaluated when `implMutation`
+    // is called, hence BEFORE `before()` created the temporary directory it
+    // is supposed to name.
     const implMutation = (label, expectedCode, opts = {}) =>
         assertThat(`impl : ${label} (${expectedCode})`, () => {
             const undo = opts.before ? opts.before() : null;
@@ -985,17 +1031,18 @@ try {
             }
         });
 
-    // 1. La propriété centrale : un paquet chargé que RIEN ne déclare. Le nom est fantôme
-    //    exprès — un vrai paquet pourrait être déclaré un jour, et la sonde passerait alors
-    //    au vert pour une raison qui n'est pas la sienne.
+    // 1. The central property: a loaded package NOTHING declares. The name
+    //    is a ghost on purpose — a real package could be declared one day,
+    //    and the probe would then turn green for a reason not its own.
     implMutation("un paquet chargé que rien ne déclare", "IMPL-01", {
         env: { GEOLEAF_IMPLICIT_EXTRA: "__probe_undeclared_dep__" },
     });
 
-    // 2. Le défaut qui a coûté B-258 : la copie déclarée n'est PAS celle qui s'exécute.
-    //    14 paquets déclaraient `happy-dom` et recevaient chacun une copie nichée que Vitest
-    //    ne chargeait jamais — deux mineures d'écart, invisibles pendant toute leur vie.
-    //    Reconstitué à l'identique sous le workspace sonde, que `cleanup()` efface en entier.
+    // 2. The defect already paid for: the declared copy is NOT the one
+    //    that executes. 14 packages declared `happy-dom` and each received
+    //    a nested copy Vitest never loaded — two minors apart, invisible
+    //    their whole life. Reconstituted identically under the probe
+    //    workspace, which `cleanup()` erases entirely.
     const probePkgJson = path.join(PROBE_DIR, "package.json");
     implMutation("une copie déclarée que rien ne charge", "IMPL-02", {
         before: () => {
@@ -1017,8 +1064,8 @@ try {
         },
     });
 
-    // 3. Le balayage du lockfile. Une peerDependency optionnelle orpheline à la racine est
-    //    exactement la forme sous laquelle `happy-dom` et `tsx` ont vécu non déclarés.
+    // 3. The lockfile sweep. An orphan optional peerDependency at the root
+    //    is exactly the shape under which `happy-dom` and `tsx` lived undeclared.
     implMutation("une peer optionnelle orpheline dans le lock", "IMPL-03", {
         env: (dir) => ({ GEOLEAF_LOCKFILE: path.join(dir, "package-lock.json") }),
         before: () => {
@@ -1038,8 +1085,9 @@ try {
         },
     });
 
-    // 4. Le refus de conclure. Une gate qui rassure sur un corpus qu'elle n'a pas pu lire est
-    //    pire qu'une gate absente — c'est le mode d'échec que tout ce fichier poursuit.
+    // 4. The refusal to conclude. A gate reassuring over a corpus it could
+    //    not read is worse than an absent gate — the failure mode this
+    //    whole file pursues.
     implMutation("un lockfile illisible (refus de conclure)", "IMPL-04", {
         env: (dir) => ({ GEOLEAF_LOCKFILE: path.join(dir, "package-lock.json") }),
         before: () => {
@@ -1052,8 +1100,8 @@ try {
         },
     });
 
-    // Contre-épreuve : sans mutation, la gate doit être VERTE — sinon les quatre rouges
-    // ci-dessus ne prouvent qu'une chose, c'est qu'elle rougit toujours.
+    // Counter-proof: without a mutation, the gate must be GREEN — otherwise
+    // the four reds above prove only one thing, that it always turns red.
     assertThat("impl : verte sur le dépôt réel (contre-épreuve)", () => {
         const res = spawnSync("node", ["scripts/verify-implicit-deps.cjs"], {
             cwd: ROOT,
@@ -1065,32 +1113,35 @@ try {
         };
     });
 
-    // ── CONSUMER-CONTRACT — la gate qui SAUTE par défaut, donc la plus fragile ──
+    // ── CONSUMER-CONTRACT — the gate that SKIPS by default, hence the most fragile ──
     //
-    // 🛑 **C'est le cas limite de tout ce fichier.** `verify-consumer-contract.cjs` sort 0 en
-    // sautant, avec un motif nommé, dès que `GEOLEAF_CONSUMERS` n'est pas défini — ce qui est
-    // le cas sur le runner CI, sur le clone public, et sur toute machine où l'opérateur n'a
-    // pas exporté le crochet. Son manifeste vit chez le consommateur : il nomme un client, un
-    // contact et des chemins Odoo (décision ④), et aucun chemin par défaut n'est écrit dans
-    // `scripts/`, qui part intégralement dans le clone public.
+    // 🛑 **The limit case of this whole file.» `verify-consumer-contract.cjs`
+    // exits 0 skipping, with a named motive, as soon as `GEOLEAF_CONSUMERS`
+    // is not defined — which is the case on the CI runner, the public
+    // clone, and any machine where the operator has not exported the hook.
+    // Its manifest lives at the consumer's: it names a client, a contact
+    // and downstream-specific paths, and no default path is written in
+    // `scripts/`, which ships entirely in the public clone.
     //
-    // Une gate dont l'état NORMAL est « sautée » est indiscernable d'une gate morte. Ces trois
-    // assertions sont la seule chose qui les distingue : elles plantent un manifeste de
-    // FIXTURE dans un répertoire temporaire, via le crochet, et exigent le code de diagnostic
-    // EXACT. **Elles ne prouvent pas que le vrai manifeste est lu — elles prouvent que la gate
-    // MORD ENCORE**, et le docblock de la gate le dit dans ces termes plutôt que de le
-    // sous-entendre.
+    // A gate whose NORMAL state is "skipped" is indistinguishable from a
+    // dead gate. These three assertions are the only thing telling them
+    // apart: they plant a FIXTURE manifest in a temporary directory, via
+    // the hook, and require the EXACT diagnostic code. **They do not prove
+    // the real manifest is read — they prove the gate STILL BITES**, and
+    // the gate's docblock says it in those terms rather than implying it.
     //
-    // Le crochet existe pour ça et rien d'autre, exactement comme `GEOLEAF_CI_WORKFLOW_DIR`
-    // plus haut : sans lui, prouver la gate exigerait de modifier le manifeste RÉEL, dans un
-    // AUTRE dépôt — donc on ne le ferait qu'une fois, à la pose, et jamais plus.
+    // The hook exists for that and nothing else, exactly like
+    // `GEOLEAF_CI_WORKFLOW_DIR` above: without it, proving the gate would
+    // require modifying the REAL manifest, in ANOTHER repo — so it would be
+    // done once, at laying, and never again.
     const consumerFixture = (label, mutate, expectedNeedle, expectedStatus) =>
         assertThat(`consumer-contract : ${label}`, () => {
             const dir = fs.mkdtempSync(path.join(os.tmpdir(), "geoleaf-consumers-"));
             try {
-                // Le manifeste de fixture est écrit ICI, jamais copié d'un chemin de machine :
-                // une fixture qui dépend d'un fichier présent sur le poste ferait passer la
-                // sonde chez celui qui l'a et rougir chez les autres.
+                // The fixture manifest is written HERE, never copied from a
+                // machine path: a fixture depending on a file present on the
+                // workstation would pass the probe for whoever has it and
+                // turn red for everyone else.
                 const base = {
                     consumer: "sonde-gate-probe",
                     manifest_version: "1.4.0",
@@ -1139,9 +1190,10 @@ try {
             }
         });
 
-    // 1. LA PROPRIÉTÉ — un chemin `required.public` qui ne résout pas doit être NOMMÉ.
-    //    `Core.getMap` est choisi parce qu'il résout aujourd'hui : seul le membre muté doit
-    //    faire la différence, et l'assertion ne peut donc échouer QUE sur CC-01.
+    // 1. THE PROPERTY — a `required.public` path that does not resolve must
+    //    be NAMED. `Core.getMap` is chosen because it resolves today: only
+    //    the mutated member must make the difference, and the assertion can
+    //    thus only fail ON CC-01.
     consumerFixture(
         "un chemin required.public qui ne résout pas",
         (b) => {
@@ -1156,10 +1208,11 @@ try {
         1
     );
 
-    // 2. LE REFUS — une clé de premier niveau inconnue doit faire sortir en 2, pas en 1 : ce
-    //    n'est pas une régression du contrat, c'est un schéma que le lecteur ne sait pas lire.
-    //    Sans ce refus, une clé neuve chez le consommateur ne serait vérifiée par personne et
-    //    la gate resterait verte sur la partie du contrat qu'elle ignore.
+    // 2. THE REFUSAL — an unknown top-level key must exit 2, not 1: it is
+    //    not a contract regression, it is a schema the reader cannot read.
+    //    Without this refusal, a new key at the consumer's would be
+    //    verified by nobody and the gate would stay green on the part of
+    //    the contract it ignores.
     consumerFixture(
         "une clé de premier niveau inconnue (refus de conclure)",
         (b) => ({ ...b, cleQueLeLecteurNeConnaitPas: true }),
@@ -1167,11 +1220,12 @@ try {
         2
     );
 
-    // 3. LA CÉCITÉ AU FICHIER — un manifeste plus ANCIEN que le plancher doit sortir en 2.
-    //    C'est le seul garde-fou contre le mode « la gate a lu autre chose » : le manifeste
-    //    réel vit dans un dépôt tiers, sur une branche, et un `git checkout` là-bas suffirait
-    //    à remettre une version antérieure sous les pieds de la gate. Vert = catastrophe
-    //    silencieuse ; ce contrôle l'interdit.
+    // 3. THE FILE BLINDNESS — a manifest OLDER than the floor must exit 2.
+    //    The only guardrail against the "the gate read something else"
+    //    mode: the real manifest lives in a third-party repo, on a branch,
+    //    and a `git checkout` over there would suffice to put an earlier
+    //    version under the gate's feet. Green = silent catastrophe; this
+    //    check forbids it.
     consumerFixture(
         "un manifeste antérieur au plancher de version (cécité au fichier lu)",
         (b) => ({ ...b, manifest_version: "1.0.0" }),
@@ -1179,22 +1233,24 @@ try {
         2
     );
 
-    // 4 et 5. LE CLIQUET DE DÉPRÉCIATION — un chemin qui QUITTE `required.public`.
+    // 4 and 5. THE DEPRECATION RATCHET — a path LEAVING `required.public`.
     //
-    // 🛑 **Les trois fixtures ci-dessus ne peuvent PAS atteindre CC-10, et une quatrième
-    // écrite naïvement serait sortie VERTE en n'ayant rien exercé.** CC-10 compare le
-    // manifeste à la baseline `positives`, qui est indexée PAR CONSOMMATEUR : avec le
-    // `consumer: "sonde-gate-probe"` du gabarit, il n'y a rien à comparer et le code tombe
-    // sur sa note « aucune liste positive en baseline ». La fixture doit donc emprunter
-    // l'identité ET les chemins de la baseline réelle.
+    // 🛑 **The three fixtures above canNOT reach CC-10, and a naively
+    // written fourth would have exited GREEN having exercised nothing.**
+    // CC-10 compares the manifest to the `positives` baseline, which is
+    // indexed PER CONSUMER: with the template's
+    // `consumer: "sonde-gate-probe"`, there is nothing to compare and the
+    // code falls on its "no positive list in baseline" note. The fixture
+    // must therefore borrow the real baseline's identity AND paths.
     //
-    // ⚠️ **Elle les LIT au lieu de les recopier.** Une sonde qui inscrirait 45 chemins en dur
-    // deviendrait une cinquième description concurrente de la même surface — le mode d'échec
-    // que ce dépôt paie le plus cher, et qu'une garde contre les listes tenues à la main ne
-    // doit pas reproduire en étant elle-même une liste tenue à la main.
+    // ⚠️ **It READS them instead of copying them.» A probe inscribing 45
+    // hardcoded paths would become a fifth competing description of the
+    // same surface — the failure mode this repo pays dearest, and one a
+    // guard against hand-kept lists must not reproduce by being itself a
+    // hand-kept list.
     //
-    // Les DEUX assertions sont indissociables : sans la contre-épreuve, un rouge ne prouve
-    // qu'une chose — que la gate rougit toujours.
+    // BOTH assertions are inseparable: without the counter-proof, a red
+    // proves only one thing — that the gate always turns red.
     {
         const baselineCC10 = JSON.parse(
             fs.readFileSync(path.join(ROOT, "scripts/.baselines/consumer-contract.json"), "utf8")
@@ -1202,9 +1258,10 @@ try {
         const posCC10 = (baselineCC10.positives ?? {})[baselineCC10._consumer];
         const RETIRE = "Config.clearThemesCache";
 
-        // Le gabarit commun : la fixture EST le consommateur de la baseline, moins (ou non)
-        // l'entrée témoin. `provider` est repris de la baseline — le défauter en `core` ferait
-        // rougir `Ws` et `Measure.*` en CC-01, donc rougir la sonde pour un motif étranger.
+        // The common template: the fixture IS the baseline's consumer,
+        // minus (or not) the witness entry. `provider` is taken from the
+        // baseline — defaulting it to `core` would turn `Ws` and
+        // `Measure.*` red in CC-01, hence turn the probe red for a foreign motive.
         const commeLaBaseline = (retirer) => (b) => ({
             ...b,
             consumer: baselineCC10._consumer,
@@ -1218,8 +1275,9 @@ try {
         });
 
         if (!posCC10 || !posCC10.public.some((e) => e.path === RETIRE)) {
-            // Le témoin a disparu de la baseline : l'assertion ne pourrait plus rien montrer,
-            // et une sonde qui ne peut plus prouver doit le DIRE, jamais verdir en silence.
+            // The witness vanished from the baseline: the assertion could no
+            // longer show anything, and a probe that can no longer prove
+            // must SAY so, never green out silently.
             assertThat("consumer-contract : le témoin de CC-10 existe encore en baseline", () => ({
                 ok: false,
                 detail:
@@ -1231,8 +1289,8 @@ try {
             consumerFixture(
                 "un chemin QUITTE required.public sans dépréciation (cliquet CC-10)",
                 commeLaBaseline(true),
-                RETIRE, // l'aiguille est le CHEMIN, pas « CC-10 » : un code générique se fait
-                1 //      satisfaire par une autre catégorie d'erreur portant le même code
+                RETIRE, // the needle is the PATH, not "CC-10": a generic code gets
+                1 //      satisfied by another error category carrying the same code
             );
             consumerFixture(
                 "la même fixture, entrée NON retirée : CC-10 se tait (contre-épreuve)",
@@ -1243,19 +1301,20 @@ try {
         }
     }
 
-    // T5.7 — les motifs de jetables, sur témoins à réponse connue.
+    // The throwaway patterns, on known-answer witnesses.
     //
-    // Pourquoi une assertion STRUCTURELLE et non une fixture, alors que tout le reste de
-    // ce fichier plante des fichiers : le corpus des checks 1/2/3 est `getTrackedFiles()`,
-    // et la sonde plante délibérément SANS indexer — c'est ce qui la rend inoffensive.
-    // Une fixture `fix-*.js` posée sur le disque ne serait donc jamais regardée, et
-    // l'assertion sortirait verte en ne prouvant rien : la forme même du défaut que ce
-    // fichier existe pour attraper.
+    // Why a STRUCTURAL assertion and not a fixture, while everything else
+    // in this file plants files: checks 1/2/3's corpus is
+    // `getTrackedFiles()`, and the probe plants deliberately WITHOUT
+    // indexing — which is what makes it harmless. A `fix-*.js` fixture laid
+    // on disk would thus never be looked at, and the assertion would exit
+    // green proving nothing: the very shape of the defect this file exists
+    // to catch.
     //
-    // Les 4 témoins NÉGATIFS portent le vrai poids. L'énoncé du T5.7 proposait un motif
-    // sans ancre `\b` ; il prend `prefix-loader.js`, `hotfix-runner.js` et
-    // `suffix_map.cjs` — des noms ordinaires. Retirer l'ancre fait rougir cette ligne,
-    // et elle seule.
+    // The 4 NEGATIVE witnesses carry the real weight. The sprint's wording
+    // proposed a pattern without a `\b` anchor; it takes
+    // `prefix-loader.js`, `hotfix-runner.js` and `suffix_map.cjs` —
+    // ordinary names. Removing the anchor turns this line red, and it alone.
     assertThat("hygiène : les motifs de jetables discriminent (7 témoins)", () => {
         delete require.cache[require.resolve("./lib/hygiene-patterns.cjs")];
         const { THROWAWAY_PATTERNS, THROWAWAY_WITNESSES } = require("./lib/hygiene-patterns.cjs");
@@ -1272,10 +1331,10 @@ try {
         };
     });
 
-    // T6.2 — même exigence pour les motifs d'ARTEFACT, qui viennent d'accueillir
-    // `^artifacts/`. Les 2 témoins NÉGATIFS portent le poids : `artifacts` et
-    // `test-results` sont des noms de répertoire ORDINAIRES, légitimes à l'intérieur
-    // d'un paquet. Retirer l'ancre `^` fait rougir cette ligne, et elle seule.
+    // Same requirement for the ARTEFACT patterns, which just welcomed
+    // `^artifacts/`. The 2 NEGATIVE witnesses carry the weight: `artifacts`
+    // and `test-results` are ORDINARY directory names, legitimate inside a
+    // package. Removing the `^` anchor turns this line red, and it alone.
     assertThat("hygiène : les motifs d'artefacts discriminent (7 témoins)", () => {
         delete require.cache[require.resolve("./lib/hygiene-patterns.cjs")];
         const { ARTIFACT_PATTERNS, ARTIFACT_WITNESSES } = require("./lib/hygiene-patterns.cjs");
@@ -1296,7 +1355,7 @@ try {
         // A ratchet glob that matches nothing does not fail — it releases the lock
         // in silence. This is the single cheapest guard against that.
         //
-        // CAPACITÉS S10 — two defects fixed here at once, both of the same shape:
+        // Two defects fixed here at once, both of the same shape:
         //
         //  1. This check used to re-list the 14 plugin NAMES by hand, a copy of
         //     ANY_HARDENED_PLUGIN_PACKAGES. A package added to the ratchet was therefore
@@ -1368,8 +1427,8 @@ try {
         const css = (cfg.CSS_GLOBS || []).flatMap((g) => globSync(g));
         const content = (cfg.CONTENT_GLOBS || []).flatMap((g) => globSync(g));
         const seesProbe = css.some((f) => f.includes("__probe__"));
-        // Les deux moitiés comptent : un glob trop étroit rate du CSS vivant et le
-        // purge ; un glob trop large aspire `node_modules` et masque du CSS mort.
+        // Both halves count: an over-narrow glob misses live CSS and purges
+        // it; an over-wide glob sucks in `node_modules` and masks dead CSS.
         const leaked = [...css, ...content].filter((f) => f.includes("node_modules"));
 
         if (!seesProbe) return { ok: false, detail: "sonde hors périmètre CSS" };
@@ -1381,19 +1440,22 @@ try {
         };
     });
 
-    // T6.1 — la propriété qui JUSTIFIE l'existence de `verify-e2e-coverage.cjs`.
+    // The property that JUSTIFIES `verify-e2e-coverage.cjs`'s existence.
     //
-    // Elle ne peut pas s'observer sur la fixture `__probe__` : le témoin ici est une
-    // DONNÉE DE COUVERTURE VIDE, pas un paquet. On en fabrique une (un répertoire
-    // temporaire sans aucun `.json`) et on vérifie les deux moitiés :
+    // It cannot be observed on the `__probe__` fixture: the witness here is
+    // EMPTY COVERAGE DATA, not a package. One is manufactured (a temporary
+    // directory without a single `.json`) and both halves are verified:
     //
-    //   1. `nyc report` NU y sort VERT — `istanbul-lib-coverage/lib/percent.js` renvoie
-    //      100 quand `total === 0`, `blankSummary()` renvoie `pct: 'Unknown'`, et la
-    //      comparaison `'Unknown' < seuil` vaut `false`. C'est le trou.
-    //   2. le wrapper y sort ROUGE, par son plancher de témoin. C'est la fermeture.
+    //   1. BARE `nyc report` exits GREEN there —
+    //      `istanbul-lib-coverage/lib/percent.js` returns 100 when
+    //      `total === 0`, `blankSummary()` returns `pct: 'Unknown'`, and
+    //      the comparison `'Unknown' < threshold` is `false`. That is the hole.
+    //   2. the wrapper exits RED there, through its witness floor. That is
+    //      the closure.
     //
-    // Si un jour (1) devient rouge — correctif amont de nyc —, cette assertion le dira
-    // au lieu de laisser le plancher devenir du code mort que plus personne ne motive.
+    // If (1) ever turns red — an upstream nyc fix —, this assertion will
+    // say so instead of letting the floor become dead code nobody motivates
+    // any more.
     assertThat("couverture du boot : le plancher rattrape une donnée vide", () => {
         const vide = fs.mkdtempSync(path.join(os.tmpdir(), "geoleaf-nyc-vide-"));
         try {
@@ -1429,18 +1491,20 @@ try {
         }
     });
 
-    // ── Q1.3 — le Service Worker livré est bien DANS le périmètre d'ESLint ──────
+    // ── The shipped Service Worker is really IN ESLint's perimeter ──────────────
     //
-    // `sw-core.js` est livré en production (cache offline, IndexedDB, Background
-    // Sync) et a passé des mois hors des TROIS filets à la fois : `ignores` ESLint,
-    // `tsc` (`allowJs: false`) et `count-any` (qui ne collecte que des `.ts`). Le
-    // Q1.3 a levé l'`ignores`. Rien ne le garde de revenir.
+    // `sw-core.js` ships in production (offline cache, IndexedDB,
+    // Background Sync) and spent months outside all THREE nets at once:
+    // ESLint `ignores`, `tsc` (`allowJs: false`) and `count-any` (which
+    // only collects `.ts`). The `ignores` was lifted. Nothing keeps it from
+    // coming back.
     //
-    // Deux façons de le perdre en silence, et c'est pour ça que le contrôle est ici :
-    //   - re-ajouter `"**/sw-core.js"` aux `ignores` (le motif y est resté ~1 an) ;
-    //   - déplacer ou renommer le fichier — auquel cas `eslint` sort 0 sur un chemin
-    //     inexistant, ce qui RESSEMBLE à un succès.
-    // On vérifie donc les deux : le fichier existe, ET ESLint le lit vraiment.
+    // Two ways to lose it silently, and that is why the check is here:
+    //   - re-adding `"**/sw-core.js"` to the `ignores` (the pattern sat
+    //     there ~1 year);
+    //   - moving or renaming the file — in which case `eslint` exits 0 on a
+    //     nonexistent path, which LOOKS like a success.
+    // Both are thus verified: the file exists, AND ESLint really reads it.
     assertThat("sw-core.js : le SW livré est dans le périmètre d'ESLint", () => {
         const rel = "packages/core/src/kernel/storage/sw-core.js";
         if (!fs.existsSync(path.join(ROOT, rel))) {
@@ -1458,11 +1522,12 @@ try {
         }
         const entry = parsed[0];
         if (!entry) return { ok: false, detail: "ESLint n'a produit aucun rapport" };
-        // Un fichier ignoré produit UN message `null`-ruleId « File ignored… ».
+        // An ignored file produces ONE `null`-ruleId "File ignored…" message.
         const ignored = (entry.messages || []).some((m) => /File ignored/.test(m.message || ""));
         if (ignored) return { ok: false, detail: "ESLint l'IGNORE — l'entrée est revenue" };
-        // Preuve positive qu'il a été LU : sa directive de tête supprime ses console.*.
-        // 0 suppression = soit le fichier a changé de nature, soit il n'est pas analysé.
+        // Positive proof it was READ: its head directive suppresses its
+        // console.*. 0 suppressions = either the file changed nature, or it
+        // is not analysed.
         const suppressed = (entry.suppressedMessages || []).length;
         if (suppressed === 0) {
             return {
@@ -1473,33 +1538,34 @@ try {
         return { ok: true, detail: `analysé, ${suppressed} no-console supprimés par sa directive` };
     });
 
-    // PC-04-WIDE (Q2.4/Q2.5, roadmap_qualite-lint-typage-esm) — la sonde d'ESM pur
-    // élargie à registry.all() × tout le package (tests/mocks compris) + e2e/ + racine.
-    // Réutilise le fixture existant plutôt que d'en planter un nouveau : probe-load.test.js
-    // et probe-bare.test.js portent déjà require()/module.exports dans __probe__/__tests__/
-    // — hors du périmètre de l'ancien PC-04 (qui exclut __tests__), dans celui du nouveau.
-    // Si cette assertion redevient silencieuse, soit le glob registry.all() a cessé de voir
-    // le package imbriqué, soit le scan est redevenu limité à src/.
+    // PC-04-WIDE — the pure-ESM probe widened to registry.all() × the
+    // whole package (tests/mocks included) + e2e/ + root. Reuses the
+    // existing fixture rather than planting a new one: probe-load.test.js
+    // and probe-bare.test.js already carry require()/module.exports in
+    // __probe__/__tests__/ — outside the old PC-04's perimeter (which
+    // excludes __tests__), inside the new one's. If this assertion goes
+    // quiet again, either the registry.all() glob stopped seeing the nested
+    // package, or the scan went back to src/ only.
     assertGateSees("PC-04-WIDE : ESM pur élargi voit un package imbriqué (tests compris)", [
         "scripts/verify-plugin-contract.cjs",
     ]);
 
-    // ── Correctif B-37 — un renommage de plugin qui redevient silencieux ────────
+    // ── Fix — a plugin rename that goes silent again ───────────────────────
     //
-    // STRUCT S3.1 a renommé `plugins/storage` → `plugins/offline-ui` sur quatre axes ;
-    // deux gates ont manqué le renommage sans qu'aucun rouge ne le signale : la clé de
-    // `PLUGIN_BUDGETS_GZ_KB` (retombée sur le budget par défaut, faisant échouer
-    // `build:deploy` sur un plugin qui n'avait pourtant pas grossi) et la regex de
-    // retrait du `<script>` dans `index.html` (restée sur l'ancien nom, laissant un tag
-    // orphelin produire un 404 sur `deploy-core`). Les deux gardes ajoutées ici doivent
-    // rougir sur exactement ce défaut, ou elles ne le gardent pas davantage que les
-    // gates d'origine ne le gardaient.
+    // A `plugins/storage` → `plugins/offline-ui` rename bore on four axes;
+    // two gates missed the rename with no red flagging it: the
+    // `PLUGIN_BUDGETS_GZ_KB` key (fallen back on the default budget,
+    // failing `build:deploy` on a plugin that had not grown) and the
+    // `<script>` removal regex in `index.html` (stuck on the old name,
+    // leaving an orphan tag produce a 404 on `deploy-core`). The two guards
+    // added here must turn red on exactly that defect, or they guard it no
+    // more than the original gates did.
     assertThat("check-bundle-size.cjs : clé de budget morte détectée", () => {
         const { assertBudgetKeysAlive, PLUGIN_BUDGETS_GZ_KB } = require(
             path.join(ROOT, "scripts", "check-bundle-size.cjs")
         );
         const PROBE_KEY = "__probe_dead_plugin__";
-        // Shape kept in sync with the real table (B-107, 02/08/2026 — two budgets per
+        // Shape kept in sync with the real table (02/08/2026 — two budgets per
         // plugin, `boot` and `total`). `assertBudgetKeysAlive()` only reads KEYS, so the
         // old flat `{warn, fail}` still passed — which is exactly why it had to be fixed
         // rather than left: a planted value that no longer matches the real shape is a
@@ -1524,10 +1590,10 @@ try {
     assertThat("build-deploy.cjs : <script> orphelin après retrait détecté", () => {
         const { stripPluginScript } = require(path.join(ROOT, "scripts", "build-deploy.cjs"));
         try {
-            // Reproduit exactement le défaut STRUCT S3.1 : le nom du bundle est présent
-            // dans le HTML mais pas dans la forme `<script ... src="...">` que la regex
-            // retire — la regex ne matche donc rien, tout comme quand elle ciblait
-            // encore l'ancien nom de fichier après un renommage.
+            // Reproduces exactly the rename's defect: the bundle name is
+            // present in the HTML but not in the `<script ... src="...">`
+            // shape the regex removes — the regex thus matches nothing, just
+            // as when it still targeted the old file name after a rename.
             stripPluginScript(
                 '<div data-orphan="dist/geoleaf-offline-ui.plugin.js"></div>',
                 "offline-ui",
@@ -1593,7 +1659,7 @@ console.log(
 );
 if (pendingCount > 0) {
     console.log(
-        `${C.y}  ${pendingCount} en attente du S10.1 — vider PENDING fait partie de son critère de sortie.${C.x}`
+        `${C.y}  ${pendingCount} en attente du regroupement — vider PENDING fait partie de son critère de sortie.${C.x}`
     );
 }
 process.exit(0);

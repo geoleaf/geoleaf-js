@@ -101,6 +101,20 @@
             "confidence": "haute",
             "rationale": "11 fichiers / 1 391 L ; homonyme d'addpoi/src/persistence mais même rôle (N6 exige des rôles distincts) et zéro clone jscpd, hashes tous distincts (T1 §2.7)"
         },
+        "packages/plugins/editor/src/persistence/conflict-strategies.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Source unique du vocabulaire des stratégies de résolution de conflit : le tableau, et le type qui en dérive",
+            "confidence": "haute",
+            "rationale": "Existence justifiée par trois copies du même vocabulaire dans trois formes syntaxiques — un type d'union, la même union réépelée dans la surface de configuration, un tableau littéral dans le validateur — égales par coïncidence et non par construction. 🛑 Le tableau est la SOURCE et le type la dérivée, parce que le type est effacé à la compilation : seul le tableau existe quand le validateur s'exécute, donc le compilateur suit le runtime. Module FEUILLE à dessein : le vocabulaire n'appartient ni à l'UI de résolution, ni à la surface de configuration (qui est une surface de types pure), ni au validateur — et un module qui n'importe rien ne peut pas participer à un cycle. Gardé par une suite qui refuse toute quatrième copie, avec exemption STRUCTURELLE du dispatcher."
+        },
         "packages/plugins/editor/src/selection": {
             "kind": "dir",
             "name": "ok",
@@ -603,7 +617,7 @@
             "severity": null,
             "description": "Feuille de style du plugin : racine positionnée par variables, pilule flottante, boutons d'outils, tooltips, badge de file et modales",
             "confidence": "haute",
-            "rationale": "REQUALIFIÉ à STRUCT S2 (F8) après extraction PARTIELLE, la seule que la mesure justifie. Sur les 382 L (l'énoncé disait 345 — faux), 76 sont strictement identiques à celles de measure, mais un seul bloc était mûr : le tooltip (19 L), extrait vers host-runtime/src/css/tooltip.css. Les 3 autres candidats sont refusés sur mesure : bouton-outil, pilule et handle ne sont que PARTIELLEMENT communs (measure y ajoute max-height/overflow, editor touch-action/user-select), les états divergent (`:hover:not(:disabled)` + `:focus-visible` ici, `:hover` nu là), et surtout `.gl-root` d'editor porte le correctif d'ancrage right/bottom (B-12) que measure n'a PAS — une extraction naïve l'aurait figé dans le mauvais sens. Coût refusé : ~108 occurrences TS + 12 sélecteurs E2E d'unification de préfixes, pour zéro gain runtime (adoptStylesheet dédoublonne par BUNDLE, pas par page)"
+            "rationale": "REQUALIFIÉ à STRUCT S2 (F8) après extraction PARTIELLE, la seule que la mesure justifie. Sur les 382 L (l'énoncé disait 345 — faux), 76 sont strictement identiques à celles de measure, mais un seul bloc était mûr : le tooltip (19 L), extrait vers host-runtime/src/css/tooltip.css. Les 3 autres candidats sont refusés sur mesure : bouton-outil, pilule et handle ne sont que PARTIELLEMENT communs (measure y ajoute max-height/overflow, editor touch-action/user-select), les états divergent (`:hover:not(:disabled)` + `:focus-visible` ici, `:hover` nu là), et surtout `.gl-root` d'editor porte le correctif d'ancrage right/bottom que measure n'a PAS — une extraction naïve l'aurait figé dans le mauvais sens. Coût refusé : ~108 occurrences TS + 12 sélecteurs E2E d'unification de préfixes, pour zéro gain runtime (adoptStylesheet dédoublonne par BUNDLE, pas par page)"
         },
         "packages/plugins/editor/src/lang/lang-de.ts": {
             "kind": "file",

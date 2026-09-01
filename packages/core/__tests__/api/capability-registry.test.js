@@ -1,5 +1,5 @@
 /**
- * Unit tests — kernel/api/capability-registry.ts (S2.1)
+ * Unit tests — kernel/api/capability-registry.ts
  *
  * Strategy: await import() so Istanbul instruments every branch of
  * CapabilityRegistry (register, isEnabled, ensureLoaded, getSchema, getAllSchemas).
@@ -209,5 +209,121 @@ describe("getAllSchemas", () => {
         for (const schema of CapabilityRegistry.getAllSchemas()) {
             expect("loader" in schema).toBe(false);
         }
+    });
+});
+
+// ─── The declaration ↔ received-value confrontation ───────────────────────────
+//
+// It reads through `isEnabled`, its only surface: the helper is not
+// exported, and testing it directly would amount to exercising a door
+// nobody can push.
+
+const { toCapConfig } = await import("../../src/kernel/api/capability-registry.ts");
+
+/**
+ * A declaration shaped like the twenty in-core ones: a gate on `modules.<id>.enabled`
+ * and a schema whose keys are the fields of `modules.<id>`.
+ */
+const declFor = (id, keys) => ({
+    id,
+    gate: { configPath: `modules.${id}.enabled` },
+    configSchema: Object.fromEntries(keys.map((k) => [k, { type: "string" }])),
+});
+
+/** Registers `decl`, evaluates its gate against `cfg`, and returns what was reported. */
+function reportOf(decl, cfg) {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    CapabilityRegistry.register(decl);
+    CapabilityRegistry.isEnabled(decl.id, toCapConfig(cfg));
+    const hits = warn.mock.calls
+        .map((c) => c.map(String).join(" "))
+        .filter((m) => m.includes("[CapabilityRegistry]"));
+    warn.mockRestore();
+    return hits;
+}
+
+describe("config keys outside the declared schema", () => {
+    it("reports a key the schema does not declare", () => {
+        const hits = reportOf(declFor("labels", ["enabled"]), {
+            modules: { labels: { enabled: true, colour: "red" } },
+        });
+        expect(hits).toHaveLength(1);
+        expect(hits[0]).toContain("colour");
+    });
+
+    it("stays silent when every key is declared", () => {
+        expect(
+            reportOf(declFor("labels", ["enabled", "field"]), {
+                modules: { labels: { enabled: true, field: "name" } },
+            })
+        ).toEqual([]);
+    });
+
+    it("ignores `_`-prefixed keys — they are the comment convention, not config", () => {
+        expect(
+            reportOf(declFor("labels", ["enabled"]), {
+                modules: { labels: { enabled: true, _comment: "why" } },
+            })
+        ).toEqual([]);
+    });
+
+    it("stays silent for a capability that declares no schema", () => {
+        const decl = { id: "labels", gate: { configPath: "modules.labels.enabled" } };
+        expect(reportOf(decl, { modules: { labels: { enabled: true, colour: "red" } } })).toEqual(
+            []
+        );
+    });
+
+    it("stays silent for a capability that declares no gate — the block is unknown", () => {
+        const decl = { id: "labels", configSchema: { enabled: { type: "boolean" } } };
+        expect(reportOf(decl, { modules: { labels: { enabled: true, colour: "red" } } })).toEqual(
+            []
+        );
+    });
+
+    it("refuses to guess on a SUB-KEY gate — the block is not derivable from the path", () => {
+        // The shape a preset installer uses: gate one module on one field of the capability's
+        // config. `modules.permalink.share` is not the capability's config block, and treating
+        // it as one would report every sibling of `share` as unknown.
+        const decl = {
+            id: "permalink",
+            gate: { configPath: "modules.permalink.share.enabled" },
+            configSchema: { enabled: { type: "boolean" } },
+        };
+        expect(
+            reportOf(decl, { modules: { permalink: { enabled: true, share: { enabled: true } } } })
+        ).toEqual([]);
+    });
+
+    it("stays silent when the config block is absent or is not an object", () => {
+        expect(reportOf(declFor("a", ["enabled"]), {})).toEqual([]);
+        expect(reportOf(declFor("b", ["enabled"]), { modules: { b: 3 } })).toEqual([]);
+        expect(reportOf(declFor("c", ["enabled"]), { modules: { c: ["x"] } })).toEqual([]);
+    });
+
+    it("reports once, and never changes what the gate returns", () => {
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+        CapabilityRegistry.register(declFor("labels", ["enabled"]));
+        const cfg = toCapConfig({ modules: { labels: { enabled: true, typo: 1 } } });
+
+        expect(CapabilityRegistry.isEnabled("labels", cfg)).toBe(true);
+        expect(CapabilityRegistry.isEnabled("labels", cfg)).toBe(true);
+
+        expect(
+            warn.mock.calls.filter((c) => c.map(String).join(" ").includes("typo"))
+        ).toHaveLength(1);
+        warn.mockRestore();
+    });
+
+    it("never turns a disabled capability on, nor an enabled one off", () => {
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+        CapabilityRegistry.register(declFor("off", ["enabled"]));
+        expect(
+            CapabilityRegistry.isEnabled(
+                "off",
+                toCapConfig({ modules: { off: { enabled: false, typo: 1 } } })
+            )
+        ).toBe(false);
+        warn.mockRestore();
     });
 });

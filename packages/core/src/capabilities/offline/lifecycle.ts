@@ -76,7 +76,7 @@ interface OfflineLifecycleConfig {
     /** `modules.pwa.offlineDetector.enabled` — the connectivity badge toggle. */
     offlineDetectorEnabled?: boolean;
     /**
-     * `modules.offline.dataOrigins` — the origins the profile declares (tâche 3.9).
+     * `modules.offline.dataOrigins` — the origins the profile declares.
      *
      * Typed `unknown` on purpose: it comes straight from a JSON profile, and
      * `parseDataOrigins` is the ONE place allowed to decide what a valid declaration is.
@@ -107,7 +107,7 @@ export const OfflineLifecycle = {
                     const result = storage.init({
                         // ⚠️ No `indexedDB` option on purpose. `Storage.init()` overwrites
                         // `StorageDB._dbName` / `._dbVersion` with whatever is passed
-                        // (`facade.ts:187-188`), so pinning them here duplicated the
+                        // (`facade.ts`), so pinning them here duplicated the
                         // schema's source of truth — and silently outranked it. It read
                         // `version: 2` while `indexedDB.ts` declared 3, which would have
                         // kept the v3 migration from ever running in production even
@@ -115,12 +115,13 @@ export const OfflineLifecycle = {
                         // The module owns its own name and version; let it.
                         cache: {
                             enableProfileCache: true,
-                            // ⚠️ `enableTileCache` N'EST PLUS RECOPIÉ ICI (3.13). Il était
-                            // écrit à quatre endroits du core et lu à aucun ; son seul
-                            // lecteur est désormais `_tilesRequested()` de
-                            // `resource-enumerator.ts`, qui interroge la config directement.
-                            // Le poser en défaut ici en aurait fait une seconde vérité, et
-                            // c'est ce genre de recopie qui a produit la cause racine n° 2.
+                            // ⚠️ `enableTileCache` IS NO LONGER COPIED HERE. It was
+                            // written in four core locations and read in none; its only
+                            // reader is now `_tilesRequested()` in
+                            // `resource-enumerator.ts`, which queries the config
+                            // directly. Defaulting it here would have made a second
+                            // truth, and that kind of copy is what produced root cause
+                            // no. 2.
                             ...(cfg.cache ?? {}),
                         },
                         offline: {},
@@ -135,24 +136,25 @@ export const OfflineLifecycle = {
                             StorageContract._markReady();
                             Log.info("[Offline] Storage engine initialized");
 
-                            // 🛑 PUBLIER LES ORIGINES DÉCLARÉES (tâche 3.9), et ICI parce que
-                            // c'est le premier instant où la base est ouverte — donc le
-                            // premier où le store `preferences` est écrivable.
+                            // 🛑 PUBLISH THE DECLARED ORIGINS, and HERE because this is
+                            // the first instant the database is open — hence the first
+                            // where the `preferences` store is writable.
                             //
-                            // Le Service Worker les relit depuis IndexedDB, et pas d'un
-                            // message : un message meurt avec le worker, or le navigateur le
-                            // redémarre quand il veut — typiquement quand un appareil de
-                            // terrain se réveille hors réseau, c'est-à-dire au pire moment.
+                            // The Service Worker re-reads them from IndexedDB, not from
+                            // a message: a message dies with the worker, and the
+                            // browser restarts it whenever it wants — typically when a
+                            // field device wakes up off-network, i.e. at the worst
+                            // moment.
                             void publishDataOrigins(
                                 (storage as { DB?: Parameters<typeof publishDataOrigins>[0] }).DB,
                                 parseDataOrigins(cfg.dataOrigins)
                             );
 
-                            // Même canal, même instant, même motif : le plafond du cache de
-                            // tuiles OPPORTUNISTE du worker (tâche 1.2). Il ne peut pas non
-                            // plus être importé par `sw-core.js`, et il protège d'une perte de
-                            // données — un cache non borné peut faire évincer l'origine, donc
-                            // `outbox` et `features` avec.
+                            // Same channel, same instant, same motive: the cap of the
+                            // worker's OPPORTUNISTIC tile cache. It cannot be imported
+                            // by `sw-core.js` either, and it protects against data loss
+                            // — an unbounded cache can get the origin evicted, hence
+                            // `outbox` and `features` with it.
                             void publishTileCacheBudget(
                                 (storage as { DB?: Parameters<typeof publishTileCacheBudget>[0] })
                                     .DB,
@@ -183,7 +185,7 @@ export const OfflineLifecycle = {
      * which has zero production callers in `core/src`. The two `window` online/offline
      * listeners `OfflineDetector.init` attaches were therefore never released by a
      * teardown, and a torn-down capability kept reacting to connectivity changes. It
-     * did not ACCUMULATE (a re-`init()` self-heals, `offline-detector.ts:145-148`); it
+     * did not ACCUMULATE (a re-`init()` self-heals, `offline-detector.ts`); it
      * simply never let go. Pinned by
      * `__tests__/capabilities/offline/lifecycle-detector-teardown.test.js`.
      *

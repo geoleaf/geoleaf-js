@@ -12,7 +12,7 @@
  * `ERR_MODULE_NOT_FOUND` on the `.js` → `.ts` convention it used to claim is not
  * what happens: Vite's `resolveJsToTs` plugin handles that case.
  *
- * ## Why this file is .mjs and not .ts — ARCHI S9.3
+ * ## Why this file is .mjs and not .ts
  *
  * A robustness choice, NOT a hard constraint. The claim it replaces ("Vite
  * externalises bare specifiers, so a `.ts` here throws ERR_UNKNOWN_FILE_EXTENSION")
@@ -87,7 +87,7 @@
  * remains the prerequisite, and it is the same rule CLAUDE.md enforces on the two
  * plugins. Until someone re-runs the neutralisation, this stays.
  *
- * ## Measured 15/08/2026 — why the specifier is RESOLVED and no longer bare (B-258)
+ * ## Measured 15/08/2026 — why the specifier is RESOLVED and no longer bare
  *
  * This file used to inject the bare `--import tsx`. Node resolves a bare specifier
  * given to `--import` relative to the process CWD, NOT relative to this file — so

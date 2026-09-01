@@ -1,6 +1,6 @@
 /**
- * Integration tests pour Config.Storage module
- * Teste le module IIFE real avec son API complete
+ * Integration tests for the Config.Storage module
+ * Tests the real IIFE module with its complete API
  */
 
 // Mock the Log module so warn/error assertions work (storage.ts uses direct import)
@@ -319,9 +319,8 @@ describe("Config.Storage Module - Integration Tests", () => {
         test("should warn and do nothing if not initialized", async () => {
             // Use a fresh ConfigStore that has no _config set
             vi.resetModules();
-            const { ConfigStore: freshStorage } = await import(
-                "../../src/kernel/config/storage.js"
-            );
+            const { ConfigStore: freshStorage } =
+                await import("../../src/kernel/config/storage.js");
             const freshLog = (await import("../../src/utils/log/index.js")).Log;
             freshStorage.set("test", "value");
 
@@ -449,9 +448,8 @@ describe("Config.Storage Module - Integration Tests", () => {
         test("should warn and do nothing if not initialized", async () => {
             // Use a fresh ConfigStore that has no _config set
             vi.resetModules();
-            const { ConfigStore: freshStorage } = await import(
-                "../../src/kernel/config/storage.js"
-            );
+            const { ConfigStore: freshStorage } =
+                await import("../../src/kernel/config/storage.js");
             const freshLog = (await import("../../src/utils/log/index.js")).Log;
             freshStorage.merge({ test: "value" });
 

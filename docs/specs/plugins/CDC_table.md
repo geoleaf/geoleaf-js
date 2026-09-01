@@ -64,7 +64,7 @@ Ce que `src/entry.ts` déclare réellement. **Table gatée** par
 | `namespace`  | `GeoLeaf.Table`                     |
 | `paquet npm` | `@geoleaf-plugins/table`            |
 
-✅ **Le `label` valait `table` — l'identifiant recopié.** Corrigé le 29/07/2026 (**B-71**), en même
+✅ **Le `label` valait `table` — l'identifiant recopié.** Corrigé le 29/07/2026, en même
 temps que celui de [`geocoding`](CDC_geocoding.md), l'autre des deux seuls dans ce cas. Le `label`
 est ce qui s'affiche dans les rapports d'état du registre : recopier `name` n'y apportait rien.
 
@@ -158,7 +158,7 @@ grep -rn "pageSize" packages/plugins/table/src/ | grep -v __tests__
 **Deux occurrences : sa déclaration de type et son défaut.** Aucun site de lecture. Le plugin ne
 pagine pas — il défile virtuellement —, donc la clé n'a pas d'objet. Un intégrateur qui la pose
 n'obtient **aucun** effet et **aucun** avertissement. Le CDC source la signalait déjà sous
-`ANO-038` ; elle est toujours là, et elle est désormais **B-71** du
+`ANO-038` ; elle est toujours là, et elle est désormais versée au
 registre.
 
 ### Binding par couche — `layer.config.table.*`
@@ -194,7 +194,7 @@ ouvert, il **ferme**. C'est le membre que câble l'action de barre d'outils, don
 attendu au clic — mais un intégrateur qui appelle `GeoLeaf.Table.open()` pour garantir un état
 ouvert n'obtient pas ce qu'il demande.
 
-✅ **`isOpen()` rend ce défaut CONTOURNABLE** (13/08/2026, Sprint 4 du contrat inverse) :
+✅ **`isOpen()` rend ce défaut CONTOURNABLE** (13/08/2026) :
 `if (!GeoLeaf.Table.isOpen()) GeoLeaf.Table.open()`. Avant elle, l'intégrateur ne pouvait pas
 tester l'état avant d'appeler, donc pas contourner du tout — c'est ce trou-là qui se ferme, et
 non le comportement d'`open()`, qu'on ne corrige pas silencieusement.
@@ -222,7 +222,7 @@ celle-ci expose de quoi le faire.
 | `exportSelection` · `exportLayer` | Les deux chemins d'export             |
 
 ✅ **Les neuf sont TYPÉS** dans `contracts/event-bus.contract.ts` du core (seam `table`), depuis le
-Sprint 4 du contrat inverse — 13/08/2026. L'émission est vérifiée contre la map : `fireEvent`
+Contrat inverse — 13/08/2026. L'émission est vérifiée contre la map : `fireEvent`
 (`src/table-state.ts`) est générique sur `GeoLeafEventMap`, et son union de noms se **dérive** de
 la map au lieu d'en être une seconde copie.
 
@@ -274,7 +274,7 @@ tranché ; il est relevé ici pour qu'il le soit une fois.
 
 Le CDC `CDC_plugin-table.md` (v1.5.0, 23/07/2026) a été **consommé** en écrivant cette fiche, puis
 **supprimé** du dossier de tri — ligne au §Journal des décisions de
-`roadmap_documentation-v3.md`.
+la refonte documentaire V3.
 
 **C'est le CDC le mieux tenu des quatre de ce lot** : sa table de configuration est exacte clé par
 clé, défaut par défaut ; sa table d'événements liste les neuf, correctement attribués ; et sa section
@@ -283,12 +283,12 @@ licence dit **MIT sur le registre public**, ce qui est vrai depuis la bascule.
 | Énoncé du CDC                                                        | Ce que dit le code                                                                                          |
 | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | §2.6 — le rendu vit dans `table-renderer-utils.ts`                   | **Le fichier n'existe pas.** Le rendu est réparti entre `renderer.ts` et `table-renderer-virtual-scroll.ts` |
-| §2.5 — `pageSize` « ⚠️ orphelin runtime (ANO-038) »                  | ✅ **Toujours vrai, et toujours ouvert** — mesuré : deux occurrences, aucune lecture. Versé en **B-71**     |
+| §2.5 — `pageSize` « ⚠️ orphelin runtime (ANO-038) »                  | ✅ **Toujours vrai, et toujours ouvert** — mesuré : deux occurrences, aucune lecture. Versé au registre     |
 | §2.5 — `virtualScrolling` « ne pagine pas par `pageSize` » (ANO-039) | ✅ **Vrai**, et c'est le corollaire du précédent : il n'y a pas de pagination du tout                       |
 | §2.5, §2.9 — configuration, binding de couche, neuf événements       | ✅ **Vérifiés exacts**, clé par clé et ligne par ligne                                                      |
 
 ⚠️ **Ce que le CDC ne dit pas, et que la fiche ajoute** : le `label` du manifeste vaut `table`, et
-`open()` bascule au lieu d'ouvrir. Les deux sont dans **B-71**.
+`open()` bascule au lieu d'ouvrir. Les deux sont au même registre.
 
 Ce qui a été **retenu** du CDC et ne se lit pas dans le code : le motif du passage du core au plugin
 (migration cassante), le parcours utilisateur, et les alternatives écartées de la table §Décisions.

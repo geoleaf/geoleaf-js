@@ -81,30 +81,30 @@ class APIModuleManager {
 
         // API publique S4.3f — catalogue DÉCLARATIF, plus un balayage de préfixe.
         //
-        // L'ancien code faisait `Object.keys(gl).forEach(k => k.startsWith("_") && gl[k])` :
-        // il ne découvrait pas des modules, il copiait tout ce qui commence par un underscore
-        // — dont un accesseur qu'il DÉCLENCHAIT, `_APIController`, en pleine construction de
-        // l'`APIController` qui l'appelle. Voir `controller.ts:331-340` pour le récit de la
-        // récursion que ça produisait en navigateur.
+        // The old code did `Object.keys(gl).forEach(k => k.startsWith("_") && gl[k])`:
+        // it did not discover modules, it copied everything starting with an underscore
+        // — including an accessor it TRIGGERED, `_APIController`, mid-construction of
+        // the very `APIController` calling it. See `controller.ts` for the
+        // account of the recursion this produced in a browser.
         for (const name of MODULE_CATALOG) {
-            // Politique d'accesseur : on enregistre le NOM, on ne lit JAMAIS la valeur.
-            // `getOwnPropertyDescriptor` ne déclenche pas le getter — c'est tout l'intérêt.
-            // Un accesseur reste atteignable par `getModule()`, dont le repli lira `gl[name]`
-            // à un moment où l'objet est construit.
+            // Accessor policy: record the NAME, NEVER read the value.
+            // `getOwnPropertyDescriptor` does not trigger the getter — that is the whole
+            // point. An accessor stays reachable through `getModule()`, whose fallback
+            // reads `gl[name]` at a time when the object is constructed.
             const descriptor = Object.getOwnPropertyDescriptor(gl, name);
             if (!descriptor || typeof descriptor.get === "function") continue;
 
-            // Garde de valeur falsy. ⚠️ Elle ne couvre PAS `POI`, `Route` ni `Constants` :
-            // ces trois-là ne sont pas montés du tout, donc `getOwnPropertyDescriptor` rend
-            // `undefined` et le `!descriptor` ci-dessus les a déjà écartés. (La première
-            // rédaction de ce commentaire affirmait le contraire ; la sonde de rougissement
-            // ne l'a pas confirmé, et c'est comme ça qu'on l'a su.)
+            // Falsy-value guard. ⚠️ It does NOT cover `POI`, `Route` or `Constants`:
+            // those three are not mounted at all, so `getOwnPropertyDescriptor` returns
+            // `undefined` and the `!descriptor` above already discarded them. (The first
+            // draft of this comment claimed the opposite; the reddening probe did not
+            // confirm it, and that is how we learned.)
             //
-            // Ce qu'elle couvre réellement : une clé PRÉSENTE mais falsy — `_gl.X = undefined`
-            // crée bien une propriété propre. C'est le comportement de l'ancien `if (gl[name])`
-            // sur ce cas, conservé à l'identique : une façade qui s'est posée à `undefined`
-            // n'est pas un module utilisable, et la mettre en cache la rendrait indiscernable
-            // d'une façade réelle pour `hasModule`.
+            // What it really covers: a key PRESENT but falsy — `_gl.X = undefined` does
+            // create an own property. This is the old `if (gl[name])` behaviour on that
+            // case, kept identical: a facade that set itself to `undefined` is not a
+            // usable module, and caching it would make it indistinguishable from a real
+            // facade for `hasModule`.
             if (!descriptor.value) continue;
 
             if (!this.modules.has(name)) {
@@ -156,7 +156,7 @@ class APIModuleManager {
             }
 
             // Fallback to direct global access
-            // Recherche par nom calculé — cf. B-13 : `GeoLeafGlobal` n'a plus de traîne.
+            // Recherche par nom calculé — `GeoLeafGlobal` n'a plus de traîne.
             const gl = getGeoLeaf() as unknown as Record<string, unknown> | null;
             if (gl && gl[name]) {
                 // Cache it for subsequent lookups
@@ -208,7 +208,7 @@ class APIModuleManager {
      */
     hasModule(name: string): boolean {
         try {
-            // Recherche par nom calculé — cf. B-13 : `GeoLeafGlobal` n'a plus de traîne.
+            // Recherche par nom calculé — `GeoLeafGlobal` n'a plus de traîne.
             const gl = getGeoLeaf() as unknown as Record<string, unknown> | null;
             return this.modules.has(name) || this.aliases.has(name) || !!gl?.[name];
         } catch (error) {

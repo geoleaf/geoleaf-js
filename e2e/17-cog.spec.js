@@ -1,26 +1,26 @@
 // @ts-check
-// E2E: 17-cog (@geoleaf-plugins/cog) — deploy-full (port 8768), PARESSEUX.
+// E2E: 17-cog (@geoleaf-plugins/cog) — deploy-full (port 8768), LAZY.
 //
-// Sprint S11 (plugin-validation, the last one). ⚠️ Cet en-tête a dit « EAGER … no
-// `plugins.load` needed » jusqu'au 07/08/2026, et socle-init S4.4 l'a rendu faux : la balise
-// `<script>` de cog a quitté `index.html` au profit d'un `registerLazy` gaté dans `init.js`.
-// C'était le plus lourd des plugins — 99,8 Ko gz sur le chemin critique de CHAQUE chargement,
-// pour une API que la plupart des pages n'appellent jamais.
+// Plugin-validation suite. ⚠️ This header said "EAGER … no `plugins.load`
+// needed" until 2026-08-07, and the move to lazy made it false: cog's
+// `<script>` tag left `index.html` for a gated `registerLazy` in `init.js`.
+// It was the heaviest of the plugins — 99.8 KB gz on the critical path of
+// EVERY load, for an API most pages never call.
 //
-// Le plugin n'a aucun config runtime (INV-CONFIG sans objet) et est API pure :
-// GeoLeaf.COG.{addLayer, removeLayer, getInfo}. Rien ne le charge tout seul — pas d'écouteur,
-// pas de créneau de barre d'outils, pas de couche déclarative — donc le consommateur le
-// demande, ici comme dans une application hôte.
+// The plugin has no runtime config (INV-CONFIG not applicable) and is pure
+// API: GeoLeaf.COG.{addLayer, removeLayer, getInfo}. Nothing loads it on its
+// own — no listener, no toolbar slot, no declarative layer — so the consumer
+// requests it, here as in a host application.
 //
 // A tiny real GeoTIFF (e2e/fixtures/sample-cog.tif, 16x16 RGB, EPSG:4326, bbox
 // [-54,3,-53,4]), generated in-repo by fixtures/_gen-cog.cjs via geotiff.writeArrayBuffer,
 // is served through page.route with HTTP Range support so the REAL bundled geotiff.js
-// decodes real bytes (range 206 like S10). No build/profile change required.
+// decodes real bytes (Range 206). No build/profile change required.
 //
 // Coverage:
-//   - chargement à la demande + surface d API + plugin enregistré
+//   - on-demand load + API surface + plugin registered
 //   - getInfo()    → bounds / width / height / bandCount / overviewCount / epsg
-//                    (epsg===4326 LOCKS the S11 fix: extractEpsg via image.getGeoKeys())
+//                    (epsg===4326 LOCKS the epsg fix: extractEpsg via image.getGeoKeys())
 //   - addLayer()   → image source + raster layer injected on the map
 //   - HTTP 206/200 → the .tif is fetched over (intercepted) HTTP, not stubbed in JS
 //   - opacity + handle.update({opacity}) → raster-opacity re-applied
@@ -96,8 +96,8 @@ async function boot(page) {
     const errors = [];
     const consoleErrors = [];
     const tifResponses = [];
-    // Sentinelle du guetteur de stabilité en fin de fonction. `-1` ne peut égaler aucun
-    // décompte réel, donc le premier tour n'est jamais compté comme « stable ».
+    // Sentinel for the stability watcher at the function's end. `-1` can equal
+    // no real count, so the first round is never counted as "stable".
     let lastSourceCount = -1;
     page.on("pageerror", (err) => errors.push(err.message));
     page.on("console", (msg) => {
@@ -122,20 +122,21 @@ async function boot(page) {
         .locator("#gl-loader")
         .waitFor({ state: "hidden", timeout: 10000 })
         .catch(() => {});
-    // socle-init S4.4 — `cog` N'EST PLUS EAGER. Sa balise `<script>` a quitté `index.html`
-    // (99,8 Ko gz, le plus lourd des plugins, sur le chemin critique de chaque chargement)
-    // au profit d'un `registerLazy` dans `init.js`. C'est une API pure : rien ne la charge
-    // toute seule, et c'est correct — sans appelant elle n'a aucun travail à faire. Le
-    // consommateur, ici comme dans une application hôte, la demande explicitement.
+    // `cog` IS NO LONGER EAGER. Its `<script>` tag left `index.html`
+    // (99.8 KB gz, the heaviest of the plugins, on every load's critical path)
+    // for a `registerLazy` in `init.js`. It is a pure API: nothing loads it on
+    // its own, and that is correct — with no caller it has no work to do. The
+    // consumer, here as in a host application, requests it explicitly.
     await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.plugins.load("cog"));
 
-    // 🛑 ATTENDRE QUE LA CARTE SE STABILISE, ET C'EST S4.4 QUI L'A RENDU NÉCESSAIRE.
-    // `addLayer()` plus bas mesure un DELTA de sources avant/après, à travers un `await`.
-    // Tant que 8 balises `<script>` de plugin précédaient le boot, les couches du profil
-    // avaient fini d'arriver quand ce helper rendait la main, et le delta valait 1. Le boot
-    // étant maintenant plus court, deux couches atterrissaient PENDANT l'await : delta 3,
-    // et un rouge qui n'accusait pas le bon coupable. Le test postulait une carte au repos
-    // sans jamais l'exiger ; on l'exige.
+    // 🛑 WAIT FOR THE MAP TO STABILISE, AND THE MOVE TO LAZY IS WHAT MADE IT
+    // NECESSARY. `addLayer()` below measures a before/after source DELTA,
+    // across an `await`. As long as 8 plugin `<script>` tags preceded the
+    // boot, the profile's layers had finished arriving by the time this
+    // helper returned, and the delta was 1. Boot now being shorter, two
+    // layers landed DURING the await: delta 3, and a red accusing the wrong
+    // culprit. The test assumed a map at rest without ever requiring it; now
+    // it requires it.
     await expect
         .poll(
             async () => {
@@ -195,7 +196,7 @@ test("getInfo() reads bounds/dims/bands/epsg from the real .tif (epsg===4326)", 
     expect(info.height).toBe(EXPECTED.height);
     expect(info.bandCount).toBe(EXPECTED.bandCount);
     expect(info.overviewCount).toBe(EXPECTED.overviewCount);
-    // The S11 fix: extractEpsg() now reads image.getGeoKeys() (geotiff 3.x).
+    // The epsg fix: extractEpsg() now reads image.getGeoKeys() (geotiff 3.x).
     expect(info.epsg).toBe(EXPECTED.epsg);
     info.bounds.forEach((v, i) => expect(Math.abs(v - EXPECTED_BOUNDS[i])).toBeLessThan(1e-6));
     expect(errors).toEqual([]);
@@ -241,6 +242,19 @@ test("addLayer() injects an image source + raster layer on the map", async ({ pa
     expect(res.sourceType).toBe("image");
     expect(res.layerType).toBe("raster");
     expect(res.layerSource).toBe(res.id);
+    // ⚠️ MEASURED UNDER `taskset -c 0,1` on 2026-08-19, three runs:
+    // `sourceDelta` and `layerDelta` are **1** every time.
+    //
+    // 🔻 This spec was one of the two named instances of a "green on 16
+    // cores, red on 4" line, with the symptom "expects 1 layer, receives 3 —
+    // a count not isolated from what precedes". **The symptom does not
+    // reproduce, and the diagnosis could no longer apply anyway**: the count
+    // IS isolated — `beforeLayers` is captured in the same `evaluate`, and
+    // has been since 2026-06-16, two months before the symptom was written.
+    // It measures a delta, not a total: what precedes cannot skew it.
+    //
+    // 📌 A symptom stays attached to its line long after the code made it
+    // impossible. Re-reading it in the file costs less than believing it.
     expect(res.sourceDelta).toBe(1);
     expect(res.layerDelta).toBe(1);
     expect(errors).toEqual([]);

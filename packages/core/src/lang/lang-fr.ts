@@ -1,4 +1,4 @@
-﻿/*!
+/*!
  * GeoLeaf Core — Language: French (fr)
  * © 2026 Mattieu Pottier — MIT License
  *
@@ -204,10 +204,11 @@ const lang_fr: LangDict = {
     "ui.branding.not_configured": "\u26a0 Branding non configur\u00e9",
 
     // ── UI texts / Cache ─────────────────────────────────────────────────────
-    // B-163 — l'éviction est un AVERTISSEMENT (des données demandées ne sont plus là).
-    // ⚠️ `{0}` et non `{count}` : `getLabel()` interpole POSITIONNELLEMENT (`i18n.ts:163`).
-    // `offline-ui` porte la même clé avec `{count}` parce qu'il fait un `.replace()` manuel,
-    // ce qui n'est pas la convention du moteur — copier sa graphie afficherait « {count} ».
+    // Eviction is a WARNING (requested data is no longer there).
+    // ⚠️ `{0}` and not `{count}`: `getLabel()` interpolates POSITIONALLY (`i18n.ts`).
+    // `offline-ui` carries the same key with `{count}` because it does a manual
+    // `.replace()`, which is not the engine's convention — copying its spelling would
+    // display "{count}".
     "storage.notif.cacheEvicted": "{0} élément(s) hors ligne supprimé(s) pour libérer de la place",
     // ── UI texts / Offline ───────────────────────────────────────────────────
     "ui.offline.badge": "\u26a0\ufe0f Hors ligne",

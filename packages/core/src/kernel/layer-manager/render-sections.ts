@@ -9,7 +9,7 @@
  * LayerManager — Section Renderer
  * Builds the legend sections' DOM (accordions, titles, basemap/item delegation).
  *
- * Extrait de layer-manager/renderer.ts (split Sprint 1 roadmap).
+ * Extrait de layer-manager/renderer.ts.
  */
 
 import { Log } from "../../utils/log/index.js";

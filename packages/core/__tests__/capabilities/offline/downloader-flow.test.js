@@ -1,10 +1,11 @@
 /**
- * Unit tests — `capabilities/offline/cache/downloader.ts`, le flux de téléchargement (offline).
+ * Unit tests — `capabilities/offline/cache/downloader.ts`, the download flow (offline).
  *
- * Fichier à 48 % : l'orchestrateur qui télécharge un profil (résolution des déjà-en-cache,
- * estimation, pool de workers, tuiles vs autres, résumé + événement). Délégués mockés
- * (RetryHandler, ProgressTracker, FetchManager, CacheStorage, CacheMetrics) — orchestrateur
- * pur ; RetryHandler.retry exécute le vrai `_downloadResource`, qui stocke via le mock IndexedDB.
+ * File at 48%: the orchestrator downloading a profile (already-cached
+ * resolution, estimation, worker pool, tiles vs others, summary + event).
+ * Mocked delegates (RetryHandler, ProgressTracker, FetchManager,
+ * CacheStorage, CacheMetrics) — pure orchestrator; RetryHandler.retry runs
+ * the real `_downloadResource`, which stores through the IndexedDB mock.
  */
 import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
 
@@ -49,11 +50,12 @@ beforeEach(async () => {
     ({ Downloader } = await import("../../../src/capabilities/offline/cache/downloader.js"));
     Downloader._config.enableProfileCache = true;
     Downloader._cachingProfiles.clear();
-    // resetAllMocks (pas clearAllMocks) : réinitialise aussi les IMPLÉMENTATIONS, sinon un
-    // mockImplementation posé dans un test (ex. trackerInit qui jette) fuit vers les suivants.
+    // resetAllMocks (not clearAllMocks): also resets the IMPLEMENTATIONS,
+    // otherwise a mockImplementation set in one test (e.g. a throwing
+    // trackerInit) leaks into the next ones.
     vi.resetAllMocks();
 
-    // Défauts sains : RetryHandler.retry exécute le travail ; fetch réussit.
+    // Sane defaults: RetryHandler.retry runs the work; fetch succeeds.
     retryFn.mockImplementation(async (fn) => await fn());
     fetchFn.mockResolvedValue({ skipped: false, size: 100, data: { x: 1 }, metadata: {} });
     getCachedUrls.mockResolvedValue(new Set());
@@ -80,7 +82,7 @@ describe("cacheProfile — flux nominal", () => {
         );
 
         expect(trackerInit).toHaveBeenCalledWith(expect.objectContaining({ total: 2 }));
-        // fetch appelé pour chaque ressource (via RetryHandler.retry → _downloadResource)
+        // fetch called for each resource (via RetryHandler.retry → _downloadResource)
         expect(fetchFn).toHaveBeenCalledTimes(2);
         expect(recordSuccess).toHaveBeenCalledTimes(2);
         expect(result.cached).toEqual(expect.arrayContaining(["a", "t1"]));
@@ -91,7 +93,7 @@ describe("cacheProfile — flux nominal", () => {
     test("ressources déjà en cache exclues du téléchargement", async () => {
         getCachedUrls.mockResolvedValue(new Set(["a"]));
         await Downloader.cacheProfile("t", {}, [{ url: "a", type: "layer" }], {});
-        // « a » est déjà en cache → aucun fetch
+        // "a" is already cached → no fetch
         expect(fetchFn).not.toHaveBeenCalled();
     });
 });
@@ -135,7 +137,7 @@ describe("_downloadResource", () => {
     test("ressource optionnelle absente (skipped) → pas de stockage", async () => {
         fetchFn.mockResolvedValue({ skipped: true });
         await Downloader._downloadResource({ url: "opt", type: "config" }, "t");
-        // rien à asserter d'autre : le chemin skipped retourne avant cacheLayer, sans jeter
+        // nothing else to assert: the skipped path returns before cacheLayer, without throwing
         expect(fetchFn).toHaveBeenCalled();
     });
 });

@@ -213,191 +213,81 @@ The token survives page reloads but **not** navigation to another origin.
 | ---------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | **Standalone + modal** | `auth: { endpoint, ui: true }`  | Own backend returning `{ token, expiresIn }`; the modal is handled by the plugin                                                 |
 | **Silent standalone**  | `auth: { endpoint, ui: false }` | Token preloaded into IDB during an earlier session — no modal. If no valid token is found at startup, a `ConfigError` is thrown. |
-| **Async callback**     | `getToken: async () => token`   | External SSO (keycloak-js, Auth0 SPA SDK) — the plugin delegates resolution                                                      |
+| **Async callback**     | `getToken: async () => token`   | External SSO through an identity SDK running in the page — the plugin delegates resolution                                       |
 
 ---
 
-### 7.4 Keycloak integration
+### 7.4 Mode callback (`getToken`) — delegating to an identity provider
 
-The native Keycloak endpoint (`/protocol/openid-connect/token`) expects `grant_type=password` as `application/x-www-form-urlencoded` — a format incompatible with the connector. Two approaches are possible.
-
-**Approach A — `getToken()` with `keycloak-js`** (recommended for SSO deployments)
-
-keycloak-js handles the session cycle and the refresh; the connector simply reads the current token.
+Use this mode when an identity SDK already runs in the page and owns the session: it holds the
+token, refreshes it, and the connector merely reads the current value at each request.
 
 ```js
-import Keycloak from "keycloak-js";
-
-const keycloak = new Keycloak({
-    url: "https://keycloak.example.com",
-    realm: "myrealm",
-    clientId: "geoleaf-app",
-});
-
-await keycloak.init({ onLoad: "login-required" });
-
 await GeoLeaf.Connector.configure({
     baseUrl: "https://api.example.com",
     getToken: async () => {
-        // Request a refresh if the token expires in less than 30 s
-        await keycloak.updateToken(30);
-        return keycloak.token ?? null;
+        // Ask the SDK to refresh if the token expires within 30 s, then hand it over.
+        await authClient.refreshIfExpiringWithin(30);
+        return authClient.token ?? null;
     },
 });
 ```
 
-**Approach B — Backend adapter**
+**Returning `null` is meaningful**: it makes the connector emit `connector:auth-error`, the same
+path a `401` takes. Never return an expired token to avoid a `null` — a silent `401` is harder to
+diagnose than an explicit auth error.
 
-An intermediate endpoint translates the connector format into the Keycloak ROPC protocol:
+A JWT signed with RS256 is passed straight into `Authorization: Bearer`, unchanged.
+
+---
+
+### 7.5 Mode `auth.endpoint` — a login endpoint on your server
+
+Use this mode when the server exposes a login route. The connector posts
+`{ login, password }` as **JSON** and expects `{ token, expiresIn }` back. When `ui: true`, the
+plugin renders the modal itself.
+
+```js
+await GeoLeaf.Connector.configure({
+    baseUrl: "https://api.example.com",
+    auth: {
+        endpoint: "https://api.example.com/api/auth/login",
+        ui: true,
+    },
+});
+```
+
+**Refresh is derived, not configured**: the connector reaches `POST {endpoint}/refresh`
+automatically — with the endpoint above, that is `/api/auth/login/refresh`.
+
+⚠️ **`expiresIn` is frequently missing.** Many JWT libraries return only the token, and their
+default success response carries no lifetime. Without it the connector cannot schedule a refresh.
+If your library omits it, add it to the response payload — its own token-TTL setting is the value
+to expose.
+
+---
+
+### 7.6 Three traps that do not depend on which server you run
+
+**① A native OAuth 2.0 password flow is NOT compatible with this contract.** The ROPC grant
+(RFC 6749 §4.3, the `/token` endpoint of most OIDC servers) expects `grant_type=password` encoded
+as `application/x-www-form-urlencoded`. The connector sends **JSON**. Two ways out: use the
+callback mode of §7.4 with the provider's own SDK, or put a thin adapter in front:
 
 ```
-POST /api/auth/login        ← receives { login, password }
-    → POST keycloak /token  ← grant_type=password + form-encoded
+POST /api/auth/login          ← receives { login, password }   (connector format)
+    → POST <provider> /token  ← grant_type=password, form-encoded
     ← { token: access_token, expiresIn: expires_in }
 ```
 
-```js
-await GeoLeaf.Connector.configure({
-    baseUrl: "https://api.example.com",
-    auth: {
-        endpoint: "https://api.example.com/api/auth/login",
-        ui: true,
-    },
-});
-```
+⚠️ Note that ROPC is **deprecated by most modern providers** — prefer §7.4 when the provider
+offers a browser SDK.
 
----
+**② Opaque tokens are accepted, but only in one of the two modes.** Some API-token schemes issue
+opaque strings rather than JWTs. Because they contain no `.`, the plugin emits a `console.warn`
+**in `getToken` mode**. Through `auth.endpoint` that check does not apply and no warning is
+emitted — the mode you choose changes the diagnostics you get, not the validity of the token.
 
-### 7.5 Auth0 integration
-
-Auth0 deprecates the Resource Owner Password flow. The recommended approach is the callback with the Auth0 SPA SDK.
-
-**Via `getToken()` with the Auth0 SPA SDK**
-
-```js
-import { createAuth0Client } from "@auth0/auth0-spa-js";
-
-const auth0 = await createAuth0Client({
-    domain: "your-tenant.auth0.com",
-    clientId: "YOUR_CLIENT_ID",
-    authorizationParams: { audience: "https://api.example.com" },
-});
-
-await GeoLeaf.Connector.configure({
-    baseUrl: "https://api.example.com",
-    getToken: async () => {
-        try {
-            return await auth0.getTokenSilently();
-        } catch {
-            return null; // Triggers connector:auth-error if the request fails (401)
-        }
-    },
-});
-```
-
-The token returned by `getTokenSilently()` is a valid RS256-signed JWT — the connector passes it straight into `Authorization: Bearer`.
-
----
-
-### 7.6 Symfony integration
-
-Symfony with `json_login` is natively compatible with the connector protocol (JSON request `{ login, password }`).
-
-**`config/packages/security.yaml`**
-
-```yaml
-firewalls:
-    api:
-        pattern: ^/api
-        stateless: true
-        json_login:
-            check_path: /api/auth/login
-            username_path: login # maps the "login" field → internal username
-            password_path: password
-            success_handler: lexik_jwt_authentication.handler.authentication_success
-            failure_handler: lexik_jwt_authentication.handler.authentication_failure
-```
-
-The default response of `lexik/jwt-authentication-bundle` does not contain `expiresIn`. Add an event listener to include it:
-
-```php
-// src/EventListener/JwtSuccessListener.php
-use Lexik\Bundle\JWTAuthenticationBundle\Event\AuthenticationSuccessEvent;
-
-class JwtSuccessListener
-{
-    public function __construct(private readonly string $jwtTtl) {}
-
-    public function onAuthenticationSuccess(AuthenticationSuccessEvent $event): void
-    {
-        $data = $event->getData();
-        $data['expiresIn'] = (int) $this->jwtTtl; // lexik_jwt.token_ttl parameter
-        $event->setData($data);
-    }
-}
-```
-
-**Refresh**: `gesdinet/jwt-refresh-token-bundle` exposes `/api/token/refresh` — the connector reaches it automatically through `POST {endpoint}/refresh` when `endpoint` = `/api/auth/login`.
-
-```js
-await GeoLeaf.Connector.configure({
-    baseUrl: "https://api.example.com",
-    auth: {
-        endpoint: "https://api.example.com/api/auth/login",
-        ui: true,
-    },
-});
-```
-
----
-
-### 7.7 Laravel integration
-
-With `laravel/sanctum` (API tokens) or a custom JWT controller.
-
-**`AuthController` controller**
-
-```php
-// routes/api.php
-Route::post('/auth/login', [AuthController::class, 'login']);
-Route::post('/auth/login/refresh', [AuthController::class, 'refresh']); // optional
-
-// app/Http/Controllers/AuthController.php
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-
-class AuthController extends Controller
-{
-    public function login(Request $request): JsonResponse
-    {
-        $credentials = $request->validate([
-            'login'    => 'required|string',   // the connector's "login" field
-            'password' => 'required|string',
-        ]);
-
-        if (!Auth::attempt(['email' => $credentials['login'], 'password' => $credentials['password']])) {
-            return response()->json(['message' => 'Invalid credentials'], 401);
-        }
-
-        $token = $request->user()->createToken('geoleaf')->plainTextToken;
-
-        return response()->json([
-            'token'     => $token,
-            'expiresIn' => 86400, // 24 h in seconds
-        ]);
-    }
-}
-```
-
-```js
-await GeoLeaf.Connector.configure({
-    baseUrl: "https://api.example.com",
-    auth: {
-        endpoint: "https://api.example.com/api/auth/login",
-        ui: true,
-    },
-});
-```
-
-> **Note:** Sanctum tokens are opaque tokens, not JWTs. Using GeoLeaf Connector with Sanctum through the `getToken` callback mode would make the plugin emit a `console.warn`, because they contain no `.`. With the `auth.endpoint` mode used here, that check does not apply — no warning is emitted.
+**③ Field names are part of the contract.** The connector sends `login`, not `username`. Servers
+whose login route reads `username` need an explicit mapping — most authentication layers expose a
+setting for exactly this, and getting it wrong yields a `401` with no other symptom.

@@ -23,10 +23,11 @@ const FETCH_DEFAULTS = {
 };
 
 /**
- * ⚠ Doit rester EXPORTÉ : `FetchHelper.getConfig()` le retourne et `FetchHelper` est
- * ré-exposé par `utils-api.ts` (`GeoLeaf.Utils`). Le dé-exporter casse la déclaration
- * de `Utils` (TS4023 : « has or is using name … but cannot be named »). Le gate B3 le
- * verra orphelin — c'est un faux positif, il est nommé par une signature inférée.
+ * ⚠ Must stay EXPORTED: `FetchHelper.getConfig()` returns it and `FetchHelper` is
+ * re-exposed by `utils-api.ts` (`GeoLeaf.Utils`). Un-exporting it breaks `Utils`'s
+ * declaration (TS4023: "has or is using name … but cannot be named"). The orphan
+ * gate will see it orphaned — a false positive, it is named by an inferred
+ * signature.
  */
 export interface FetchHelperOptions extends RequestInit {
     timeout?: number;

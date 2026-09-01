@@ -13,6 +13,166 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ## [Unreleased]
 
+### Fixed — a mixed-geometry layer no longer paints its features in EVERY sub-layer
+
+One declared GeoJSON layer becomes several MapLibre layers — `fill`, `casing`, `line`, `circle`,
+`symbol` — over a **single** source. Each of them now carries a `geometry-type` filter, so a
+sub-layer only paints the geometry it was built for.
+
+**Why it changed.** MapLibre performs **no geometry-type check** when it fills a bucket: `FillBucket`
+triangulates the rings it is handed — a `LineString` included, which it **closes** into a filled
+polygon — and `CircleBucket` walks every point of every ring, so one line contributes **one circle
+per vertex**. A layer carrying more than one geometry kind therefore rendered each of its features
+in all of its sub-layers. Seen on a computed itinerary: the line drawn correctly, an opaque black
+polygon closing it, and a hundred dots where there were three stops. It also made the fill layer
+intercept clicks over the whole enclosed area.
+
+**Who is affected.** Any layer whose source carries several geometry kinds, and any layer whose data
+ships empty and is written at runtime through `GeoLeaf.Layers.setData()` — such a layer cannot be
+scanned at creation, so all three sub-layer families are built for it. Homogeneous layers are
+unaffected: the filter matches everything they hold.
+
+⚠️ `setLayerFilter()` **composes** with the guard instead of replacing it, and clearing a filter
+(`setLayerFilter(id, null)`) restores the guard rather than removing every filter. A caller reading
+back `map.getFilter()` on a GeoLeaf sub-layer will see the composition, not the expression it
+passed. Vector-tile layers are untouched — a source-layer is homogeneous by construction.
+
+### Changed — a colour a style does not declare falls back to `#cccccc`, no longer to MapLibre's black
+
+`fill-color`, `line-color` and `circle-color` were simply **not emitted** when the style declared no
+`fillColor` / `color`, which left MapLibre's own default in place: an opaque `#000000`. A layer with
+an incomplete style therefore rendered as solid black, which reads as data rather than as an
+omission. The `styleRules` path never had that hole — it already fell back to the same
+`#cccccc` — so the two paths now agree.
+
+⚠️ **Size defaults are deliberately left alone.** `circle-radius`, `line-width` and
+`circle-stroke-width` still fall back to MapLibre's values: most styles in the wild omit `radius`,
+and moving that default would resize nearly every point layer for a defect that is not this one.
+
+### Changed — a layer's declared `geometryType` is finally read, and it ADDS rather than restricts
+
+The adapter's fast path only ever accepted GeoJSON names (`"Polygon"`), while the profile schema
+allows nothing but the lowercase vocabulary (`"polygon"`, `"polyline"`, `"point"`) — so no profile
+ever reached it. Both vocabularies are now understood.
+
+🛑 A declared kind **adds** sub-layers, it never removes any: only the data may say "unknown". A
+layer's declared kind is its _semantic_ kind — the legend and the layer manager read the same field
+— and it can be narrower than its content (a computed itinerary is a `polyline` that also carries
+its stops). Declaring a kind now guarantees a sub-layer exists for what the boot data cannot show;
+it never narrows a layer down to that kind alone.
+
+### Added — `boot({ config })` and `boot({ configUrl })`: the configuration is now INJECTED, not deduced
+
+`GeoLeaf.boot()` accepts two new options. `config` hands the configuration over **in memory**: the
+boot applies it directly and issues **no request** for it. `configUrl` names an explicit URL to
+fetch it from. `config` wins over `configUrl`; without either, the path is still **derived from the
+host page, unchanged** — no existing integration moves.
+
+**Why it changed.** The configuration path was an _implied location_, and an embedding application
+cannot always make the page imply it. Measured against a host router that answers unknown paths
+with its own HTML document in HTTP 200: the derived path returned HTML where JSON was expected, and
+the failure surfaced five errors away from its cause. `config` removes the request; `configUrl`
+removes the deduction. Both make the location a **value the caller states**, which is the only form
+an embedding host can control.
+
+```js
+// The configuration is already in memory — no request is issued for it.
+GeoLeaf.boot({ config: { map: { center: [4.85, 45.75], zoom: 12 } } });
+
+// Served from somewhere the page cannot imply.
+GeoLeaf.boot({ configUrl: "/assets/geoleaf/config.json" });
+```
+
+**Migration — possible, not required.** `_app.getProfilesBasePath` **stays in place, stays called,
+and returns the same string**. What changes is its _status_, not its behaviour: it is no longer the
+only way to say where the configuration lives. An override installed solely to point the
+configuration elsewhere **may** be replaced by `boot({ configUrl })`, or dropped entirely if the
+configuration is held in memory. Doing nothing is a valid choice.
+
+⚠️ **This entry is late, and the lateness left a visible trace.** The entry below on the rejecting
+configuration load referred to `GeoLeaf.boot({ config })` as "new in this same release" while no
+entry described it — a dangling reference in a published changelog, pointing at something a reader
+could not find. Nothing in `ci:local` compares a cross-reference to the entry it names.
+
+### Removed — BREAKING: `GeoLeaf.Sync.getHandlers()` (pre-adoption window)
+
+The plural accessor is gone from the `Sync` façade and from the internal registry seam.
+`registerHandler(id, handler)` and `getHandler(id)` are the whole contract — they are what the
+offline replay path actually uses, one id at a time.
+
+**Why it could go in a minor.** This lands under the pre-adoption window of
+`VERSIONING_POLICY.md`: no consumer follows a semver range today, and the one measured
+consumer manifest never names the member. The accessor was introspection-only — every one of
+its ten call sites lived under `__tests__/` with the member as its own oracle — and keeping it
+pinned a registration-order promise nothing needed.
+
+**If you did adopt it**, enumerate your own registrations instead: you know the ids you
+registered; resolve them with `getHandler(id)`.
+
+### Fixed — the proximity radius slider dropped fractional values
+
+A profile is free to declare fractional radius bounds on its `kind: "proximity"` filter field —
+`radiusStep: 0.1` for 100 m granularity, `radiusDefault: 0.5` for a 500 m starting radius. Those
+bounds reached the `<input type="range">` intact, then two `parseInt` reads truncated them.
+
+**What you saw.** Every radius below 1 km collapsed to **zero**: the circle vanished and the
+filter kept nothing. Above it, values were rounded down — 1.4 km became 1.0 km. With
+`radiusStep: 0.1` over a 0.1–10 km range, the slider offered 99 notches and produced 11 distinct
+radii, the first 9 of them dead. The first click on the map was worst: the toolbar button read
+the slider's default the same way, so proximity armed at a radius of 0 before the slider had been
+touched at all.
+
+**And the label disagreed with the map.** It was written from three different sources — the
+configured number when the bar was built, the truncated integer while dragging, the raw
+`defaultValue` string on reopen. So the pill could read "0.5 km" next to a circle of radius zero,
+then flip to "0 km" on the first movement. The displayed radius and the applied radius are now
+read from one number.
+
+**Also fixed.** `GeoLeaf.Filter.proximity.toggle(map, 0)` used to pass the zero straight through
+to the circle — the `?? 10` default only caught `null` and `undefined`. Any non-finite or
+non-positive radius now falls back to 10 km.
+
+The geometry was never at fault: the drawn polygon and the filter predicate already stood on the
+same `EARTH_RADIUS_M`, and still do.
+
+**No action needed.** Integer bounds behave exactly as before, and the in-core defaults
+(`min: 1, max: 50, step: 1, default: 10`) are unchanged.
+
+### Changed — the proximity radius label goes through the dictionary
+
+The pill's radius label was built from an inline `` `${…} km` `` template in three places, while
+`format.proximity.radius` sat declared in all six language files with no consumer. It is wired
+now, so the unit is overridable like every other label.
+
+### BREAKING — a failed configuration load now REJECTS instead of degrading
+
+`GeoLeaf.Config.loadUrl()` used to swallow its failure: an unreachable URL, invalid JSON, or a
+content type refused by `strictContentType` were logged, and the configuration already in place
+was returned. The promise resolved. It rejects now, and the boot stops.
+
+**Why it changed.** Because the resolution made the failure _unattributable_. Measured in a real
+browser against a host router answering its own HTML document in HTTP 200 on the configuration
+path: the console carried two precise errors — then, because the promise had resolved, the
+initialisation manager announced **"Configuration loaded successfully"**, and five consequence
+errors followed. None of them named the cause. An integrator read a success, then five map
+failures, and went hunting the map. Logging the cause made the failure legible; only rejecting
+makes the contradiction impossible.
+
+**Who this breaks.** Any caller that relied — knowingly or not — on the boot continuing after a
+failed configuration load. There is no silent path any more: the failure surfaces where it
+happens.
+
+**What to do.** If the configuration is already held in memory, `GeoLeaf.boot({ config })` (new
+in this same release) removes the request entirely and the question does not arise. Otherwise,
+handle the rejection where you call `loadUrl`.
+
+⚠️ **This entry is late, and that is worth recording.** The change landed on 20/08/2026; this
+entry was written after a review found that the published `.d.ts` still promised the opposite
+behaviour ("Failure is contained, not thrown"). The deprecation policy added below exists
+because three removals had already shipped under that same silence — this is the first case that
+tested it, and it failed the test until the review caught it. Nothing in `ci:local` can see a
+sentence that stopped being true.
+
 ### Added — a deprecation policy, and the gate that makes it verifiable
 
 `VERSIONING_POLICY.md` gains a **Deprecation** section. Until now the file said a breaking
@@ -109,7 +269,7 @@ failure in place.
 ```ts
 GeoLeaf.Events.on("geoleaf:popup:action", (e) => {
     const d = e.detail;
-    if (d.actionId !== "odoo:create-request") return;
+    if (d.actionId !== "tickets:create-request") return;
     d.setBusy(true);
     void createRequest(d.featureId)
         .then(() => d.close())
@@ -164,7 +324,7 @@ must be renamed; the old names are no longer emitted. The payloads are unchanged
 cancelable events (`signup-requested`, `forgot-password-requested`) keep their contract:
 `preventDefault()` still blocks the link navigation.
 
-⚠️ If you also run the downstream Odoo connector plugin, note that `geoleaf:connector:*` is now
+⚠️ If you also run the downstream connector plugin, note that `geoleaf:connector:*` is now
 a shared namespace. The six names above do not collide with the six it emits (`ready`,
 `bbox-loading`, `bbox-loaded`, `data-version-changed`, `error`, `auth-required`), but nothing
 prevents a future clash — check both lists before adding a name.
@@ -1258,7 +1418,7 @@ an end-to-end authorisation model.
 - **Legend**: the taxonomy is read from the already-loaded active profile instead of being re-downloaded through a hard-coded path (`profiles/{id}/taxonomy.json`) — this removes a redundant fetch and a latent 404 with layout v2 (the fetch fallback is kept for legacy profiles).
 - **Theme selector**: the same fix — themes are read from the active profile instead of a re-fetch of the hard-coded path `profiles/{id}/themes.json`.
 
-- **Popup action buttons**: a new renderer type `type: "action"` in `popup.fields[]` (GeoJSON layers) and `popup.detailPopup[]` (POI markers). A configurable button in the popup can trigger any host-side action — open a back-office record (Odoo…), call an API, emit an event — **without coupling the core to a backend**. Fields: `actionId` (required, opaque), `labelKey`/`label`, `variant` (`primary`/`secondary`/`danger`), `order`, `href` (opened by the core through `validateUrl` if no handler is registered), `confirm`/`confirmKey`, `requiresPlugin` (button disabled if the plugin is absent), `payloadFields` (allow-list of payload properties). Scope for v1: popup only.
+- **Popup action buttons**: a new renderer type `type: "action"` in `popup.fields[]` (GeoJSON layers) and `popup.detailPopup[]` (POI markers). A configurable button in the popup can trigger any host-side action — open a back-office record, call an API, emit an event — **without coupling the core to a backend**. Fields: `actionId` (required, opaque), `labelKey`/`label`, `variant` (`primary`/`secondary`/`danger`), `order`, `href` (opened by the core through `validateUrl` if no handler is registered), `confirm`/`confirmKey`, `requiresPlugin` (button disabled if the plugin is absent), `payloadFields` (allow-list of payload properties). Scope for v1: popup only.
 - **`GeoLeaf.Popup`**: a new public facade exposing `registerActionHandler(actionId | "*", fn)` and `unregisterActionHandler(actionId)`. The `fn(ctx)` handler receives a rich context (`{ actionId, feature?, poi?, layerId, featureId, properties, lngLat?, buttonEl, popup, setBusy, close }`) and may return a `Promise` — the button then goes into a "busy" state until it resolves. Click precedence: exact handler → wildcard handler `"*"` → opening the built-in `href`. CSRF protection is the handler's responsibility (`GeoLeaf.Security.CSRFToken.addTokenToHeaders()`).
 - **`geoleaf:popup:action`**: a new event emitted on `document` at every click on a popup action button (emitted in all cases, whether or not a handler is registered). Payload: `{ actionId, layerId, featureId, properties, lngLat? }` — `properties` bounded by `payloadFields` (default: `id`/`name`/`title`/`label`), functions and DOM references removed.
 - **Per-module configuration — `modules.<id>`**: plugin configuration is declared in a `modules.<id>` block of the profile (e.g. `modules.storage`, `modules.print`). The content of each block belongs to the plugin — the core treats it as opaque. **This is now the only supported form** (the fallback to legacy root keys has been removed, see Removed).

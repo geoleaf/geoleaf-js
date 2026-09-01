@@ -1,19 +1,20 @@
 #!/usr/bin/env node
 /**
- * B-217 — SONDE D'INSTRUCTION (jetable, non gatée) : de quoi un oracle de clustering
- * DÉTERMINISTE dispose-t-il, à l'endroit exact où `06-performance-baseline.spec.js`
- * construisait sa source clusterisée ?
+ * INSTRUCTION PROBE (throwaway, ungated): what does a DETERMINISTIC clustering
+ * oracle have available, at the exact spot where
+ * `06-performance-baseline.spec.js` built its clustered source?
  *
- * Elle reproduit la construction du test (`map.addSource(..., { cluster: true,
- * clusterMaxZoom: 14 })` + deux couches `circle`) pour chaque N, et relève ce qu'un
- * oracle pourrait asserter — nombre de features rendues, features portant `point_count`,
- * somme des `point_count` — AVANT de choisir un seuil. Choisir le seuil d'abord, ce
- * serait le mode d'échec n° 5 : un verdict qu'on ne peut pas re-mesurer.
+ * It reproduces the test's construction (`map.addSource(..., { cluster: true,
+ * clusterMaxZoom: 14 })` + two `circle` layers) for each N, and records what an
+ * oracle could assert — rendered feature count, features carrying `point_count`,
+ * sum of the `point_count` — BEFORE choosing a threshold. Choosing the threshold
+ * first would be the fossilised-verdict failure mode: a verdict that cannot be
+ * re-measured.
  *
- * Elle relève aussi le TÉMOIN INVERSE : la même source avec `cluster: false`. Un oracle
- * qui ne sépare pas les deux colonnes ne garde rien.
+ * It also records the INVERSE WITNESS: the same source with `cluster: false`. An
+ * oracle that does not separate the two columns guards nothing.
  *
- * Usage : node scripts/probe-cluster-oracle.mjs      (vise le vhost nginx, ne démarre rien)
+ * Usage : node scripts/probe-cluster-oracle.mjs      (targets the nginx vhost, starts nothing)
  */
 
 import { chromium } from "@playwright/test";
@@ -95,7 +96,7 @@ const run = async () => {
                 return { rendues: f.length, clusters: cl.length, groupees: somme };
             };
             const auRepos = lire();
-            // Le test mesure PENDANT un zoom +2 : relever aussi après le zoom.
+            // The test measures DURING a +2 zoom: record after the zoom too.
             map.setZoom(zoom0 + 2, { animate: false });
             await sleep(600);
             const apresZoom = lire();

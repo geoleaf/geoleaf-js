@@ -40,6 +40,20 @@ interface WorkerManagerState {
     workerAvailable: boolean;
     pending: Map<string, PendingEntry>;
     idleTimer: ReturnType<typeof setTimeout> | null;
+    /**
+     * Cancellation of the MAIN-THREAD fallbacks, carried by the manager's lifecycle.
+     *
+     * 🛑 `dispose()` already covered the Worker's requests — it rejects every
+     * `pending` entry and `terminate()`s the worker. But **the two main-thread
+     * fallbacks never enter `pending`**: `_mainThreadFetch()` and the text fallback
+     * return a direct `fetch` promise. Their lifecycle owner **existed and ignored
+     * them** — they survived `dispose()` and resolved in a dismantled caller.
+     *
+     * ⚠️ Set back to `null` by `dispose()`: an aborted `AbortController` is aborted
+     * **for life**, and this manager is a **lazy singleton** — a `fetchGeoJSON()` after
+     * `dispose()` recreates its worker and must be able to fall back again.
+     */
+    mainThreadController: AbortController | null;
 }
 
 /** Message payload received from the GeoJSON Worker. */
@@ -84,8 +98,9 @@ function _detectScriptBase() {
 
     // Method 2: scan <script> tags looking for geoleaf*.js
     if (typeof document !== "undefined") {
-        // Index décroissant conservé : `for..of` ne remonte pas, et `[...].reverse()` allouerait
-        // la collection pour rien alors que la boucle sort au premier match (qualite Q5).
+        // Decreasing index kept: `for..of` does not walk backwards, and
+        // `[...].reverse()` would allocate the collection for nothing while the loop
+        // exits at the first match.
         const scripts = document.getElementsByTagName("script");
         for (let i = scripts.length - 1; i >= 0; i--) {
             const src = scripts[i]?.src || "";
@@ -111,7 +126,15 @@ const _state: WorkerManagerState = {
     workerAvailable: true,
     pending: new Map(),
     idleTimer: null,
+    mainThreadController: null,
 };
+
+/** Returns the main-thread fallback signal, creating the controller on first need. */
+function _mainThreadSignal(): AbortSignal | undefined {
+    if (typeof AbortController !== "function") return undefined;
+    _state.mainThreadController ??= new AbortController();
+    return _state.mainThreadController.signal;
+}
 
 // ─── Helpers ────────────────────────────────────────────────────
 
@@ -263,7 +286,8 @@ function _mainThreadFetch(url: string, layerId: string): Promise<unknown> {
     const Log = getLog();
     Log.debug("[WorkerManager] Main-thread fallback for:", layerId);
 
-    return fetch(url)
+    const signal = _mainThreadSignal();
+    return fetch(url, signal ? { signal } : undefined)
         .then(function (response) {
             if (!response.ok) {
                 throw new Error("HTTP " + response.status + " for " + url);
@@ -379,8 +403,10 @@ const WorkerManager = {
         const worker = _createWorker();
 
         if (!worker) {
-            // Fallback main-thread
-            return fetch(absoluteUrl).then(function (response) {
+            // Main-thread fallback — same cancellation as `_mainThreadFetch`: this
+            // path does not enter `_state.pending`, so `dispose()` did not see it.
+            const signal = _mainThreadSignal();
+            return fetch(absoluteUrl, signal ? { signal } : undefined).then(function (response) {
                 if (!response.ok)
                     throw new Error("HTTP " + response.status + " for " + absoluteUrl);
                 return response.text();
@@ -431,6 +457,15 @@ const WorkerManager = {
             entry.reject(new Error("WorkerManager disposed"));
         });
         _state.pending.clear();
+        // 🛑 The MAIN-THREAD fallbacks do not enter `pending`: the loop above does
+        // not reach them. Without this line, a fallback `fetch` survives `dispose()`
+        // and resolves in a dismantled caller. Set back to `null` — an aborted
+        // controller is aborted for life, and this manager is a lazy singleton that
+        // can serve again after `dispose()`.
+        if (_state.mainThreadController) {
+            _state.mainThreadController.abort();
+            _state.mainThreadController = null;
+        }
         if (_state.worker) {
             _state.worker.terminate();
             _state.worker = null;

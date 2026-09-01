@@ -89,22 +89,22 @@ _app.checkPlugins = function (cfg: GeoLeafConfig) {
             );
         }
 
-        // ⚠️ UNE SECONDE GARDE VIVAIT ICI, sur `storageConfig.enableServiceWorker` — retirée
-        // à la tâche 3.13. Elle ne s'est JAMAIS déclenchée : `grep -rl enableServiceWorker
-        // profiles/` rend 0, aucun profil ne pose la clé. Et son message était faux deux fois
-        // — il citait un `sw.js` qui n'existe plus, et promettait un « background sync » que
-        // le worker n'a jamais eu (aucun `registration.sync.register` dans le dépôt, et le
-        // chemin est retiré par cette même tâche).
+        // ⚠️ A SECOND GUARD LIVED HERE, on `storageConfig.enableServiceWorker` —
+        // removed. It NEVER fired: `grep -rl enableServiceWorker profiles/` yields
+        // 0, no profile sets the key. And its message was false twice — it cited a
+        // `sw.js` that no longer exists, and promised a "background sync" the
+        // worker never had (no `registration.sync.register` in the repo, and the
+        // path was removed by the same fix).
     }
 
-    // 5.1-f — la garde `ui.showAddPoi && !GeoLeaf.AddPOI` est retirée avec le drapeau
-    // qu'elle lisait. Elle conseillait d'inclure `geoleaf-addpoi.plugin.js`, un fichier qui
-    // n'existe plus ; et le bouton qu'elle couvrait passe par un créneau paresseux, dont
-    // l'absence de plugin est un état NORMAL jusqu'au premier clic.
+    // The `ui.showAddPoi && !GeoLeaf.AddPOI` guard is removed with the flag it
+    // read. It advised including `geoleaf-addpoi.plugin.js`, a file that no longer
+    // exists; and the button it covered goes through a lazy slot, where a missing
+    // plugin is a NORMAL state until the first click.
 };
 
 // ============================================================
-// Helper : display une notification
+// Helper: display a notification
 // ============================================================
 /**
  * Displays a user-facing notification via the notify primitive.
@@ -118,7 +118,7 @@ _app.showNotification = function (message: string) {
     return true;
 };
 
-// `_app._ensureModule` (Sprint 6 lazy-loading helper) was removed in S5 along with the rest of
+// `_app._ensureModule` (a lazy-loading helper) was removed along with the rest of
 // the lazy machinery. It had zero production callers, and the chunk names its tests passed
 // ("poi", "route") had been deleted two sprints earlier.
 

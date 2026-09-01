@@ -1,5 +1,5 @@
 // @ts-check
-// Perf roadmap Sprint 4 (F-TOOL-3) — Web Vitals capture for e2e.
+// Web Vitals capture for e2e (F-TOOL-3).
 //
 // Injects the `web-vitals` library (IIFE build, global `webVitals`) into the page
 // BEFORE any page script runs, so LCP/INP/CLS observers are armed early enough to
@@ -9,7 +9,7 @@
 // IMPORTANT: web-vitals is a devDependency injected at TEST runtime only — it is
 // NEVER imported into packages/core/src, so the shipped bundle is unaffected
 // (prove it: `npm run size` stays at ~70 KB gz). These metrics share the FPS
-// posture (Sprint 2 finding): captured under E2E_HW_GL=1 but NOT gated — under the
+// posture (mesurée) : captured under E2E_HW_GL=1 but NOT gated — under the
 // WSLg virtualized GPU, paint/interaction timings are not representative.
 
 import fs from "node:fs";

@@ -1,7 +1,7 @@
 /**
  * FILET 2 — the REAL `_getAPIController()`.
  *
- * This getter (`built-in/api/controller.ts:319-339`) is the assembly point of the whole API:
+ * This getter (`built-in/api/controller.ts`) is the assembly point of the whole API:
  * it runs the `security → config → api` setup chain, then builds and initialises the
  * `APIController`. It is also the exact thing that broke in `192c6865` (S4) — the
  * `APIController` was built at import with **0 managers** — and the revert (`eae711fa`) took
@@ -10,15 +10,15 @@
  * WHY NO EXISTING TEST COVERS IT — the reason is structural, not laziness:
  *
  *   `_APIController` is installed via `Object.defineProperty(_gl, "_APIController", { get })`
- *   (`controller.ts:346-350`) with **no setter**. So `GeoLeaf._APIController = mock` THROWS
+ *   (`controller.ts`) with **no setter**. So `GeoLeaf._APIController = mock` THROWS
  *   ("Cannot set property ... which has only a getter"). Every existing test therefore either
  *   `vi.mock`s `controller.js` away — which deletes the `defineProperty` and thus the object
  *   under test — or overwrites the property before the real module loads. Both are blind.
- *   `__tests__/api/controller.test.js:52` even asserts `managersCount === 3`, but on a
+ *   `__tests__/api/controller.test.js` even asserts `managersCount === 3`, but on a
  *   controller wired BY HAND: it plants `GeoLeaf.API` itself, pre-satisfying the very
  *   precondition the getter exists to guarantee. Delete the setup chain and it stays green.
  *
- *   And `boot-golden-master.test.js:88` lists `"_APIController"` among the frozen facade keys,
+ *   And `boot-golden-master.test.js` lists `"_APIController"` among the frozen facade keys,
  *   but `Object.keys()` does NOT invoke getters — it sees the NAME, never the body.
  *
  * So this file does exactly what no other one can: it loads the real globals chain and READS
@@ -65,8 +65,8 @@ describe("APIController — le VRAI getter (l'oracle de S4)", () => {
     });
 
     it("le contrat de boot tient : `GeoLeaf.Config.init` est là avant tout `loadConfig()`", () => {
-        // `boot-core.ts:143` calls `loadConfig()` BEFORE `registry.init()` (:240), and
-        // `initialization-manager.ts:156-161` throws if `Config.init` is not a function.
+        // `boot-core.ts` calls `loadConfig()` BEFORE `registry.init()` (:240), and
+        // `initialization-manager.ts` throws if `Config.init` is not a function.
         // That inversion is why the setup chain runs in the getter at all.
         expect(typeof GeoLeaf.Config?.init).toBe("function");
         expect(typeof GeoLeaf.loadConfig).toBe("function");

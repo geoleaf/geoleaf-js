@@ -1,14 +1,15 @@
 /**
- * Unit tests — surface publique de `CacheManager` (backlog COUVERTURE B.2).
+ * Unit tests — `CacheManager`'s public surface.
  *
- * `cache-manager.ts` est l'orchestrateur du cache hors-ligne. Il était mesuré à **10 %**
- * (15/150 lignes) : le seul test existant couvre la porte de configuration et deux no-ops
- * d'`_enforceCacheQuota`. Tout le reste — estimation de repli, délégations au stockage,
- * quota navigateur, lecture de manifeste — n'était exercé par rien.
+ * `cache-manager.ts` is the offline cache's orchestrator. It measured at
+ * **10%** (15/150 lines): the only existing test covers the configuration
+ * gate and two `_enforceCacheQuota` no-ops. Everything else — fallback
+ * estimation, storage delegations, browser quota, manifest reading — was
+ * exercised by nothing.
  *
- * ⚠️ Les deux dépendances mockées le sont avec le patron **complet par construction**
- * (`...(await importActual())`), et non par une factory qui n'énumère que ce qu'on surcharge :
- * un mock qui omet un export casse le jour où un module du graphe l'importe (backlog B.12).
+ * ⚠️ The two mocked dependencies use the **complete by construction** pattern
+ * (`...(await importActual())`), not a factory enumerating only what is
+ * overridden: a mock omitting an export breaks the day a graph module imports it.
  */
 import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
 

@@ -215,7 +215,7 @@ function formatFieldText(field: RenderField, value: unknown): string {
 /** `{label, color}` — only the label is text. */
 function textOfBadge(value: unknown): string {
     return typeof value === "object" && value !== null && "label" in value
-        ? String((value as { label: unknown }).label ?? "")
+        ? String(value.label ?? "")
         : String(value);
 }
 
@@ -269,10 +269,10 @@ const TEXT_FORMATTERS: Record<string, (value: unknown, field: RenderField) => st
     link: textOfLink,
     url: textOfLink,
     email: textOfLink,
-    // ⚠️ UNE fonction nommée, pas deux flèches identiques. `tags` et `list` portaient
-    // le même corps écrit deux fois — deux objets fonction distincts pour un seul
-    // comportement, donc deux sites à corriger et deux à couvrir. C'est exactement le
-    // doublon structurel que la clause C4 interdit, à l'échelle de deux lignes.
+    // ⚠️ ONE named function, not two identical arrows. `tags` and `list` carried the
+    // same body written twice — two distinct function objects for one behaviour, hence
+    // two sites to fix and two to cover. Exactly the structural duplicate the
+    // duplication rule forbids, at two lines' scale.
     tags: textOfStringList,
     list: textOfStringList,
 };
@@ -298,7 +298,7 @@ export function formatFieldTextEscaped(field: RenderField, value: unknown): stri
  *
  * Three marks, and none is decorative: `disabled` stops a double submit, `aria-busy` is what a
  * screen reader announces, and the BEM modifier is what CSS can hook. The repo had no single
- * pattern to copy — `capabilities/legend/legend-overlay.ts:91` puts `aria-busy` on a *container*,
+ * pattern to copy — `capabilities/legend/legend-overlay.ts` puts `aria-busy` on a *container*,
  * and `libs/field-renderer/.../responsive-modal.ts` toggles `disabled` + a modifier *without*
  * `aria-busy`. This is deliberately the union of the two, decided on 14/08/2026.
  *
@@ -380,20 +380,22 @@ function renderActionButton(
         const properties: Record<string, unknown> = {};
         for (const key of allow) {
             if (typeof key !== "string" || !(key in rawProperties)) continue;
-            // ⚠️ `payloadFields` vient d'un PROFIL, pas du code : `__proto__` y est écrivable.
-            // Une écriture par clé dynamique sur un objet littéral y règle le prototype au lieu
-            // d'ajouter une propriété — et `Object.keys()` ne la liste pas, donc la fuite serait
-            // invisible à la relecture de l'objet émis. Garde canonique du dépôt, exigé par
+            // ⚠️ `payloadFields` comes from a PROFILE, not from code: `__proto__` is
+            // writable there. A dynamic-key write on an object literal sets the
+            // prototype instead of adding a property — and `Object.keys()` does not
+            // list it, so the leak would be invisible when re-reading the emitted
+            // object. The repo's canonical guard, required by
             // `check-dynamic-key-writes.cjs` (SECURITY_CONTRACT §5).
             if (isUnsafeKey(key)) continue;
             properties[key] = rawProperties[key];
         }
 
-        // ⚠️ Émission en `CustomEvent` BRUT, pas par `dispatchGeoLeafEvent` — patron de
-        // `kernel/ui/toolbar-dispatch.ts:27-34`. Le bus assaini fait
-        // `JSON.parse(JSON.stringify(detail))` : `button` y arriverait en `{}` et les deux
-        // fonctions en `undefined`, SANS erreur. Mesuré sur ce chemin avant le geste, pas déduit.
-        // `bubbles: false` comme tous les seams bruts — les abonnés écoutent `document`.
+        // ⚠️ Emitted as a RAW `CustomEvent`, not through `dispatchGeoLeafEvent` —
+        // pattern of `kernel/ui/toolbar-dispatch.ts`. The sanitised bus does
+        // `JSON.parse(JSON.stringify(detail))`: `button` would arrive as `{}` and both
+        // functions as `undefined`, with NO error. Measured on this path before the
+        // change, not deduced. `bubbles: false` like every raw seam — subscribers
+        // listen on `document`.
         const detail: GeoLeafPopupActionDetail = {
             actionId,
             layerId: ctx.layerId ?? "",
@@ -426,12 +428,12 @@ function renderHoursTable(config: RenderField, value: unknown): HTMLElement | nu
     const table = document.createElement("table");
     table.className = "gl-poi-hours";
     for (const day of HOURS_DAYS) {
-        // `?? []` ne garde QUE `null`/`undefined` : une donnée GeoJSON distante qui met une
-        // chaîne (`{"mon": "9h-18h"}`) passait ici, puis `!slots.length` était faux (une
-        // chaîne non vide a une longueur) et `slots[0]?.closed` valait `undefined` — on
-        // tombait dans le `else` et `.filter` n'existe pas sur une chaîne. L'exception
-        // remontait jusqu'à `buildSidePanelBody` et le panneau latéral ne s'ouvrait plus
-        // (CAPACITÉS S11 / B.32). Les tests n'utilisaient que la forme parfaite.
+        // `?? []` only guards `null`/`undefined`: remote GeoJSON data putting a string
+        // (`{"mon": "9h-18h"}`) got through here, then `!slots.length` was false (a
+        // non-empty string has a length) and `slots[0]?.closed` was `undefined` — we
+        // fell into the `else` and `.filter` does not exist on a string. The exception
+        // climbed to `buildSidePanelBody` and the side panel no longer opened. The
+        // tests only used the perfect shape.
         const raw = hours[day];
         const slots: HoursSlot[] = Array.isArray(raw) ? raw : [];
         const tr = document.createElement("tr");

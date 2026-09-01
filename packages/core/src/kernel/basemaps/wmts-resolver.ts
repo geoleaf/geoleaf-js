@@ -8,13 +8,17 @@
  * WMS:  builds a MapLibre-compatible WMS tile URL template from configuration
  *       parameters (no network request required).
  *
- * Grid compatibility (B-151):
+ * Grid compatibility — the whole point of this resolver, and the reason it is not a URL builder:
  *   - The XYZ template maps {TileMatrix}/{TileRow}/{TileCol} onto {z}/{y}/{x}, which is
  *     only correct on a Web Mercator quadtree. The TileMatrixSet DEFINITION is now read
  *     and checked — CRS, top-left corner, 256 px tiles, 2^z matrices — and a grid that
  *     fails is REFUSED instead of silently producing misplaced tiles.
  *   - A TileMatrixSet requested but absent from the layer's links is warned about before
  *     falling back, instead of being substituted silently.
+ *   - When NO TileMatrixSet is requested and the layer offers several, the first is picked by
+ *     document order and that pick is warned about too. With a single link there is no choice to
+ *     report, so the common case stays quiet — a warning nobody can act on is a warning nobody
+ *     reads.
  *   - ⚠️ When the definition is absent from the document, the check reports "unverified"
  *     and lets the resolution proceed with a warning. Failing closed there would reject
  *     services that work today; the guard only refuses grids it has actually read.
@@ -46,9 +50,9 @@ const _wmtsCache = new Map<string, string>();
  * @internal
  */
 function _byLocalName(parent: Element | Document, name: string): Element[] {
-    // `for..of` sur la collection VIVE, pas `[...collection].filter()` : le spread matérialise
-    // tout le document avant de filtrer. Sur un GetCapabilities WMTS, c'est des milliers
-    // d'éléments alloués à chaque appel (qualite Q5, corrigé après coup).
+    // `for..of` over the LIVE collection, not `[...collection].filter()`. The spread would
+    // materialise the whole document before filtering; a WMTS GetCapabilities holds thousands of
+    // elements, and the array is iterated once then discarded.
     const result: Element[] = [];
     for (const el of parent.getElementsByTagName("*")) {
         if (el.localName === name) result.push(el);
@@ -61,10 +65,10 @@ function _byLocalName(parent: Element | Document, name: string): Element[] {
  * @internal
  */
 function _firstByLocalName(parent: Element | Document, name: string): Element | null {
-    // ⚠️ La sortie anticipée est le point de cette fonction. `[...collection].find()` la PERD :
-    // il parcourt et alloue tout le document avant de chercher, et `_findWmtsLayer` appelle
-    // ceci une fois PAR COUCHE. Le `for..of` sur la collection vive rend le `return` immédiat
-    // (qualite Q5, corrigé après coup).
+    // The early exit IS the point of this function, and `[...collection].find()` would lose it:
+    // the spread walks and allocates the whole document before searching. This helper is called
+    // once PER LAYER, so `for..of` over the live collection keeps the `return` immediate and a
+    // document with hundreds of layers is never walked in full for a single lookup.
     for (const el of parent.getElementsByTagName("*")) {
         if (el.localName === name) return el;
     }
@@ -126,21 +130,39 @@ function _findTileMatrixSetId(layer: Element, tileMatrixSet: string | undefined)
     const [firstLink] = fallbackLinks;
     const fallbackId = firstLink ? _getText(firstLink, "TileMatrixSet") : null;
 
-    // B-151 ①: falling back to an unrelated grid used to be SILENT. A caller who asks for
-    // "WGS84G" and is served "PM" gets a map that renders — offset. Say so.
+    const available = () =>
+        fallbackLinks.map((l) => _getText(l, "TileMatrixSet") ?? "?").join(", ");
+
+    // Falling back to an unrelated grid used to be silent. A caller who asks for "WGS84G" and is
+    // served "PM" gets a map that renders — offset by hundreds of metres. Say so.
     if (tileMatrixSet && fallbackId) {
         Log.warn(
             `[GeoLeaf.WMTS] Requested TileMatrixSet "${tileMatrixSet}" not found on this layer; ` +
-                `falling back to "${fallbackId}". Available: ${fallbackLinks
-                    .map((l) => _getText(l, "TileMatrixSet") ?? "?")
-                    .join(", ")}`
+                `falling back to "${fallbackId}". Available: ${available()}`
+        );
+        return fallbackId;
+    }
+
+    // The grid was OMITTED, and this branch is quiet on purpose when there is nothing to choose.
+    //
+    // Taking the first link is documented behaviour, and with a single link it is not a choice at
+    // all — warning there would be noise on the common case, and a warning nobody can act on is a
+    // warning nobody reads. What deserves a word is the ARBITRARY pick: several grids are offered,
+    // the caller expressed no preference, and the first one wins by document order alone. That
+    // order is the provider's, not ours, and it can change between two capability documents
+    // without anything here noticing.
+    if (!tileMatrixSet && fallbackId && fallbackLinks.length > 1) {
+        Log.warn(
+            `[GeoLeaf.WMTS] No TileMatrixSet requested and this layer offers ${fallbackLinks.length}; ` +
+                `picking "${fallbackId}" by document order. Available: ${available()}. ` +
+                `Set the layer's tileMatrixSet to make the choice explicit.`
         );
     }
 
     return fallbackId;
 }
 
-// ─── XYZ grid-compatibility guard (B-151) ────────────────────────────────────
+// ─── XYZ grid-compatibility guard ─────────────────────────────────────────────
 //
 // `_toXyzTemplate` maps {TileMatrix}→{z}, {TileRow}→{y}, {TileCol}→{x}. That mapping is
 // only correct for the Google/Web-Mercator grid: EPSG:3857, top-left origin at the world
@@ -450,7 +472,7 @@ export function parseWmtsCapabilities(
 
     const tmsId = _findTileMatrixSetId(layer, tileMatrixSet);
 
-    // B-151 ②: the {TileMatrix}/{TileRow}/{TileCol} → {z}/{x}/{y} mapping below is only
+    // The {TileMatrix}/{TileRow}/{TileCol} → {z}/{x}/{y} mapping below is only
     // valid on a Web Mercator quadtree. Refuse rather than serve misplaced tiles.
     if (tmsId) {
         const grid = _checkXyzGridCompatibility(doc, tmsId);

@@ -4,7 +4,7 @@
  * Released under the MIT License
  *
  * Helpers shared by poi-filter and route-filter (distance + tag normalisation).
- * Extracted verbatim to remove duplication (roadmap S5.2).
+ * Extracted verbatim to remove duplication.
  * https://geoleaf.dev
  */
 

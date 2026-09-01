@@ -1,21 +1,23 @@
 /**
- * `_allLayerConfigs` — contrat de l'état partagé (API publique S4.3e).
+ * `_allLayerConfigs` — the shared state's contract.
  *
- * Écrit AVANT le déplacement, et c'est le point : **aucune gate ne voit cette clé**. Elle est
- * écrite sur `globalThis.GeoLeaf` (`globals.geojson.ts`) et lue en production à deux endroits,
- * mais elle ne figure dans AUCUN des trois oracles de `scripts/lib/namespace-surface.mjs` —
- * parce qu'elle n'est posée qu'au chargement d'un profil, donc jamais pendant le boot nu que
- * le golden master mesure.
+ * Written BEFORE the move, and that is the point: **no gate sees this key**.
+ * It is written on `globalThis.GeoLeaf` (`globals.geojson.ts`) and read in
+ * production in two places, but it appears in NONE of
+ * `scripts/lib/namespace-surface.mjs`'s three oracles — because it is only
+ * set at profile load, hence never during the bare boot the golden master measures.
  *
- * Conséquence, mesurée : on pouvait renommer la clé chez l'écrivain, ou chez l'un des deux
- * lecteurs, et obtenir une suite **100 % verte sur un core cassé**. Les six fichiers de test
- * qui la mentionnent plantent tous la valeur eux-mêmes sur un faux global, ou réinjectent leur
- * propre setter : aucun ne traverse le chemin réel écrivain → lecteur. Le seul symptôme en
- * production aurait été un `Log.warn` (`integration.ts:406`) et une légende vide.
+ * Consequence, measured: the key could be renamed at the writer, or at one
+ * of the two readers, and yield a **100% green suite on a broken core**. The
+ * six test files mentioning it all plant the value themselves on a fake
+ * global, or reinject their own setter: none crosses the real writer →
+ * reader path. The only production symptom would have been a `Log.warn`
+ * (`integration.ts`) and an empty legend.
  *
- * Ce test-ci traverse le chemin. Il vaut pour l'état AVANT (clé sur le namespace) comme APRÈS
- * (store dans `kernel/shared/`) : il n'asserte pas le CANAL, il asserte que ce que l'écrivain
- * pose est bien ce que les lecteurs obtiennent. C'est ce qui le rend utile au déplacement.
+ * This test crosses the path. It holds for the BEFORE state (key on the
+ * namespace) as for the AFTER (store in `kernel/shared/`): it does not
+ * assert the CHANNEL, it asserts that what the writer sets is what the
+ * readers get. That is what makes it useful to the move.
  */
 "use strict";
 
@@ -42,8 +44,9 @@ describe("layer-configs-state — l'état partagé des configs de couches", () =
     });
 
     test("rend `undefined` avant tout chargement de profil", () => {
-        // C'est l'état nominal au boot nu — et la raison pour laquelle la clé n'a jamais figuré
-        // dans les oracles. Le lecteur `integration.ts:403` DOIT le supporter (il logue et sort).
+        // The nominal state at bare boot — and the reason the key never
+        // appeared in the oracles. The reader `integration.ts` MUST
+        // support it (it logs and exits).
         expect(getAllLayerConfigs()).toBeUndefined();
     });
 
@@ -54,10 +57,10 @@ describe("layer-configs-state — l'état partagé des configs de couches", () =
     });
 
     test("le seam de `globals.geojson.ts` lit et écrit le MÊME store", () => {
-        // L'assertion qui garde le déplacement : le `_loaderDeps` du chargeur doit passer par
-        // ce store et non par une copie. Si quelqu'un repointe l'un des deux côtés sans
-        // l'autre, l'écrivain écrit quelque part que le lecteur ne lit pas — exactement la
-        // panne muette que ce fichier existe pour rendre bruyante.
+        // The assertion guarding the move: the loader's `_loaderDeps` must go
+        // through this store and not a copy. If someone repoints one side
+        // without the other, the writer writes somewhere the reader does not
+        // read — exactly the mute outage this file exists to make loud.
         setAllLayerConfigs(CONFIGS);
         const viaStore = getAllLayerConfigs();
         expect(viaStore).toEqual(CONFIGS);

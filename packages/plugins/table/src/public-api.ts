@@ -26,17 +26,17 @@ export function buildPublicApi() {
         /** Toggles the table panel visibility. */
         toggle: (): void => Table.toggle(),
         /** Opens (toggles) the panel — invoked by the toolbar `"table"` action. */
-        // ⚠️ `open()` BASCULE, il n'ouvre pas (B-71). Sur un panneau déjà ouvert, il ferme.
-        // C'est le comportement voulu pour l'action de barre d'outils, qui est son unique
-        // appelant interne — mais un intégrateur qui appelle `GeoLeaf.Table.open()` pour
-        // GARANTIR un état ouvert obtient l'inverse une fois sur deux. Utiliser `show()` pour
-        // cela. Le nom est conservé parce qu'il est dans la surface publiée ; le corriger
-        // silencieusement changerait le comportement de l'action au clic.
-        // ✅ Depuis le 13/08/2026, `isOpen()` ci-dessous rend le contournement POSSIBLE :
-        // `if (!GeoLeaf.Table.isOpen()) GeoLeaf.Table.open()`. Avant elle, l'intégrateur ne
-        // pouvait pas tester avant d'appeler, donc pas contourner du tout.
+        // ⚠️ `open()` TOGGLES, it does not open. On an already-open panel, it
+        // closes. Intended for the toolbar action, its only internal caller —
+        // but an integrator calling `GeoLeaf.Table.open()` to GUARANTEE an
+        // open state gets the opposite every other time. Use `show()` for
+        // that. The name is kept because it is in the published surface;
+        // fixing it silently would change the click action's behaviour.
+        // ✅ Since 13/08/2026, `isOpen()` below makes the workaround POSSIBLE:
+        // `if (!GeoLeaf.Table.isOpen()) GeoLeaf.Table.open()`. Before it, the
+        // integrator could not test before calling, hence not work around at all.
         open: (): void => Table.toggle(),
-        /** Whether the table panel is currently shown — the test `open()` needs (B-71). */
+        /** Whether the table panel is currently shown — the test `open()` needs. */
         isOpen: (): boolean => Table.isOpen(),
         /** Switches the active layer (pass `null`/`""` to clear). */
         setLayer: (layerId: string | null | undefined): void => Table.setLayer(layerId),

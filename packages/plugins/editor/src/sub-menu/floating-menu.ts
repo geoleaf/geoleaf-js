@@ -231,7 +231,7 @@ function _historyTip(templateKey: string, opType: string): string {
 /**
  * Overrides the floating menu position (viewport-absolute pixels).
  *
- * ⚠️ B-12 — must NEUTRALISE the opposite edges, not just write `top`/`left`. Since
+ * ⚠️ Must NEUTRALISE the opposite edges, not just write `top`/`left`. Since
  * the anchors became real, a right- or bottom-anchored pill carries
  * `--gl-editor-right` / `--gl-editor-bottom`; writing only the two other edges would
  * leave BOTH sides pinned, and the element would stretch or ignore the drag instead
@@ -338,8 +338,9 @@ function _buildDOM(map: EditorMap, cfg: EditorConfig): void {
  */
 function _buildMenuShell(): { handle: HTMLElement; menu: HTMLElement } {
     _tooltipEl = document.createElement("div");
-    // `gl-tooltip` porte la présentation partagée (host-runtime/src/css/tooltip.css,
-    // STRUCT S2 F8) ; `gl-editor-tooltip` reste pour le ciblage et les surcharges.
+    // `gl-tooltip` carries the shared presentation
+    // (host-runtime/src/css/tooltip.lazy.css); `gl-editor-tooltip` stays for
+    // targeting and overrides.
     _tooltipEl.className = "gl-tooltip gl-editor-tooltip";
     _tooltipEl.setAttribute("aria-hidden", "true");
     _root!.appendChild(_tooltipEl);
@@ -358,7 +359,7 @@ function _buildMenuShell(): { handle: HTMLElement; menu: HTMLElement } {
     menu.appendChild(handle);
 
     // Offline pending-queue badge (hidden while the queue is empty).
-    _queueBadge = _el("button", "gl-editor-queue-badge") as HTMLButtonElement;
+    _queueBadge = _el("button", "gl-editor-queue-badge");
     _queueBadge.type = "button";
     _queueBadge.style.display = "none";
     _queueBadge.setAttribute("aria-hidden", "true");
@@ -441,7 +442,7 @@ function _buildModeBtn(tool: ToolDef): HTMLButtonElement {
     btn.setAttribute("aria-label", _getLabel(tool.ak));
     btn.setAttribute("aria-pressed", "false");
     btn.appendChild(_makeIcon(tool.svg));
-    btn.addEventListener("click", () => _handleToolClick(tool.id as EditorTool));
+    btn.addEventListener("click", () => _handleToolClick(tool.id));
     return btn;
 }
 
@@ -463,7 +464,7 @@ function _buildActionBtn(action: ActionDef, handler: (() => void) | undefined): 
 /**
  * The four anchors, expressed by EDGE rather than by top/left with a −1 sentinel.
  *
- * B-12 — the old map stored `{top, left}` and encoded "not this edge" as `-1`, which
+ * The old map stored `{top, left}` and encoded "not this edge" as `-1`, which
  * `_applyPosition` turned into `left: auto`. Since the stylesheet declared no `right`
  * and no `bottom`, three of the four anchors silently collapsed to the top-left
  * corner (measured on deploy-full: `top-right` → left 0, `bottom-left` → top 0,
@@ -480,7 +481,7 @@ const _POSITION_MAP: Record<string, { y: "top" | "bottom"; x: "left" | "right" }
     "bottom-right": { y: "bottom", x: "right" },
 };
 
-/** Marge au bord de la carte, identique sur les quatre ancrages. */
+/** Margin from the map edge, identical on all four anchors. */
 const _ANCHOR_INSET_PX = 10;
 
 /**

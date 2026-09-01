@@ -41,6 +41,15 @@ const langStorageIt: StorageLangDict = {
     "storage.zone.title": "Area offline",
     "storage.zone.useCurrentView": "Usa la vista attuale",
     "storage.zone.useProfileArea": "Area del profilo",
+    "storage.zone.useRouteCorridor": "Corridoio del percorso",
+    "storage.zone.corridorSummary": "Corridoio",
+    "storage.zone.corridor.no-engine": "Il motore offline non è disponibile.",
+    "storage.zone.corridor.no-route": "Nessun percorso preparato.",
+    "storage.zone.corridor.degenerate-line": "Il percorso salvato è troppo breve per un corridoio.",
+    "storage.zone.corridor.over-quota":
+        "Troppo grande per lo spazio rimanente. Riduci uno dei due:",
+    "storage.zone.lever.zoom": "zoom",
+    "storage.zone.lever.buffer": "buffer (m)",
     "storage.zone.zoomCeiling": "Zoom massimo",
     "storage.zone.note": "Più alto = più nitido ma più pesante.",
     "storage.zone.noZone": "Nessuna area selezionata.",
@@ -101,8 +110,8 @@ const langStorageIt: StorageLangDict = {
     "storage.notif.clear.success": "Cache svuotata",
     "storage.notif.clear.error": "Errore di cancellazione",
     "storage.notif.resourcesDeleted": "risorse eliminate",
-    // Signaux du MOTEUR rendus visibles (B-72) — le quota est une ERREUR (une écriture
-    // a été REFUSÉE), l'éviction un AVERTISSEMENT (des données demandées ne sont plus là).
+    // ENGINE signals made visible — the quota is an ERROR (a write was REFUSED),
+    // eviction a WARNING (requested data is no longer there).
     "storage.notif.quotaExceeded": "Spazio esaurito: l'ultimo elemento non è stato salvato",
     "storage.notif.cacheEvicted": "{count} elemento/i offline rimossi per liberare spazio",
     // POI sync section (S7)

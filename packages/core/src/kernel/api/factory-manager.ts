@@ -33,11 +33,11 @@ interface CoreRegistryLike {
 /**
  * Factory manager for multi-map support.
  *
- * ⚠️ It holds NO registry of its own, and that is the point (S6.3). It used to keep a
+ * ⚠️ It holds NO registry of its own, and that is the point. It used to keep a
  * `mapInstances` map alongside the one `Core` already owns, filled only by its own
  * `createMap()` with the very `IMapAdapter` that `Core.getMap()` returns — a mirror,
  * not a second source of truth. `Core.destroy()` purged one of the two, so
- * `GeoLeaf.getMap()` and `GeoLeaf.Core.getMap()` could disagree (B-205).
+ * `GeoLeaf.getMap()` and `GeoLeaf.Core.getMap()` could disagree — measured once.
  *
  * The fix is subtraction: every accessor delegates, so there is nothing left to keep
  * in sync. Measured before removing it — no production caller ever reached
@@ -167,7 +167,7 @@ class APIFactoryManager {
      * Destroys a map instance by id.
      *
      * ⚠️ It now DESTROYS, where it used to drop a mirror entry and leave the real map
-     * running — that discrepancy was half of B-205. No production caller reached it
+     * running — that discrepancy was half of the measured disagreement. No production caller reached it
      * (measured 14/08/2026: definition and unit tests only), so nothing depended on
      * the old, weaker meaning.
      *

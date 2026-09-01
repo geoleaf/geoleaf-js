@@ -1,10 +1,11 @@
 /**
- * S5/N-1b — `scaleConfig` (dénominateurs d'échelle) → `minZoom`/`maxZoom` (niveaux de zoom).
+ * `scaleConfig` (scale denominators) → `minZoom`/`maxZoom` (zoom levels).
  *
- * C'est le maillon qui alimente enfin le pont natif (`maplibre-primitives` `zoomProps`) :
- * il est resté vide depuis toujours parce que `scaleConfig` est un FRÈRE de `defaultStyle`,
- * donc hors des `Object.assign` du builder d'options. Résultat : toute la contrainte
- * tournait en JS, et le commentaire de `visibility.ts` affirmait le contraire.
+ * The link that finally feeds the native bridge (`maplibre-primitives`
+ * `zoomProps`): it stayed empty forever because `scaleConfig` is a SIBLING
+ * of `defaultStyle`, hence outside the options builder's `Object.assign`s.
+ * Result: the whole constraint ran in JS, and `visibility.ts`'s comment
+ * asserted the opposite.
  */
 import { buildSingleLayerAdapterOptions } from "../../src/kernel/geojson/loader/adapter-options.ts";
 
@@ -22,7 +23,7 @@ describe("adapter-options — scaleConfig → zoom natif (N-1b)", () => {
     });
 
     it("préserve l'ordre : minScale (vue large) → minZoom (zoom bas)", () => {
-        // Le piège du sujet : minScale est le PLUS GRAND nombre mais le PLUS PETIT zoom.
+        // The subject's trap: minScale is the LARGEST number but the SMALLEST zoom.
         const opts = build({ scaleConfig: { minScale: 9222148, maxScale: 2252 } }, 4);
         expect(opts.minZoom).toBeLessThan(opts.maxZoom);
     });
@@ -46,7 +47,7 @@ describe("adapter-options — scaleConfig → zoom natif (N-1b)", () => {
     });
 
     it("ne pose rien sans latitude de référence (headless : pas de map)", () => {
-        // Mieux vaut aucune contrainte qu'une contrainte calculée à une latitude devinée.
+        // Better no constraint than one computed at a guessed latitude.
         const opts = buildSingleLayerAdapterOptions(
             {},
             { scaleConfig: { minScale: 9222148, maxScale: 2252 } },

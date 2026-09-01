@@ -1,56 +1,63 @@
 /**
  * @file sync-facade-surface.guard.test.js
- * @description Test-garde — tout ce qu'un plugin DÉCLARE sur `GeoLeaf.Storage.DB` existe
- * vraiment sur la façade, et la façade expose tout ce que son module implémente.
+ * @description Guard test — everything a plugin DECLARES on
+ * `GeoLeaf.Storage.DB` really exists on the facade, and the facade exposes
+ * everything its module implements.
  *
- * Pourquoi ce garde existe (tâche 3.10, 03/08/2026)
+ * Why this guard exists (03/08/2026)
  * ------------------------------------------------
- * Le 03/08, l'E2E `28-offline-queue.spec.js` a rendu deux `TypeError` sur le bundle livré :
- * `db.getSyncQueueEntry is not a function` et `db.getSyncQueueSummary is not a function`.
- * Les deux méthodes étaient **implémentées** par `db/sync.ts`, **déclarées** par
- * `addpoi/sync-handler-types.ts`, **appelées** par `addpoi/sync-handler.ts` — et **absentes**
- * de la façade `db/indexeddb.ts` qui les relaie. Effets mesurés :
+ * On 03/08, the E2E `28-offline-queue.spec.js` rendered two `TypeError`s on
+ * the shipped bundle: `db.getSyncQueueEntry is not a function` and
+ * `db.getSyncQueueSummary is not a function`. Both methods were
+ * **implemented** by `db/sync.ts`, **declared** by
+ * `addpoi/sync-handler-types.ts`, **called** by `addpoi/sync-handler.ts` —
+ * and **absent** from the `db/indexeddb.ts` facade that relays them.
+ * Measured effects:
  *
- *   - `getSyncSummary()` jetait, donc `autoSync()` jetait, donc **la file n'était jamais
- *     rejouée au retour du réseau** — le `.catch` de l'écouteur `geoleaf:online` avalait
- *     l'erreur. Le seul moment pour lequel la chaîne existe est celui où elle échouait ;
- *   - la passe de nettoyage de `processSyncQueue()` jetait **après** avoir marqué les entrées
- *     `synced`, donc rien n'était retiré et un rejeu réussi se rapportait en échec.
+ *   - `getSyncSummary()` threw, so `autoSync()` threw, so **the queue was
+ *     never replayed on network return** — the `geoleaf:online` listener's
+ *     `.catch` swallowed the error. The one moment the chain exists for is
+ *     the one where it failed;
+ *   - `processSyncQueue()`'s cleanup pass threw **after** marking the entries
+ *     `synced`, so nothing was removed and a successful replay reported as failure.
  *
- * 🛑 C'EST LA TROISIÈME FOIS. B.45 avait posé exactement le même diagnostic sur
- * `updateSyncQueueStatus` et `removeSyncQueueEntry`, et l'a corrigé cas par cas. Deux méthodes
- * plus tard, la classe était de retour. Ce garde ferme la CLASSE.
+ * 🛑 IT WAS THE THIRD TIME. The same diagnosis had been made on
+ * `updateSyncQueueStatus` and `removeSyncQueueEntry`, and fixed case by
+ * case. Two methods later, the class was back. This guard closes the CLASS.
  *
- * ## Pourquoi aucun typecheck ne peut l'attraper
+ * ## Why no typecheck can catch it
  *
- * Un plugin **ne peut pas** importer les sources du core (INV-NS, gaté par
- * `verify-plugin-core-boundary.cjs`) : il **redéclare** donc la forme qu'il attend. Les deux
- * déclarations sont alors libres de diverger indéfiniment, chacune verte de son côté. C'est la
- * définition d'un seam, et un seam se garde par confrontation — jamais par relecture.
+ * A plugin **cannot** import the core's sources (INV-NS, gated by
+ * `verify-plugin-core-boundary.cjs`): it therefore **redeclares** the shape
+ * it expects. The two declarations are then free to diverge indefinitely,
+ * each green on its side. That is the definition of a seam, and a seam is
+ * guarded by confrontation — never by rereading.
  *
- * ## Ce qu'il vérifie
+ * ## What it verifies
  *
- * **Plugin → façade** : chaque méthode que les trois plugins déclarent sur `Storage.DB` existe
- * sur la façade. C'est le sens qui a mordu, et c'est celui que le typecheck ne peut pas voir.
+ * **Plugin → facade**: every method the three plugins declare on
+ * `Storage.DB` exists on the facade. The direction that bit, and the one the
+ * typecheck cannot see.
  *
- * ⚠️ **Il vérifiait un second sens jusqu'au 04/08/2026** — « Module → façade : chaque méthode
- * de `SyncDBInstance` (`db/sync.ts`) est relayée ». Ce module est supprimé à la tâche 4.11 avec
- * le magasin `sync_queue`, et le cas est retiré plus bas, avec son motif. Le garde a **jeté**
- * sur le fichier introuvable plutôt que de sortir vert — c'est ce qu'attendait sa dernière
- * section.
+ * ⚠️ **It verified a second direction until 04/08/2026** — "Module → facade:
+ * every `SyncDBInstance` (`db/sync.ts`) method is relayed". That module is
+ * deleted with the `sync_queue` store, and the case is removed below, with
+ * its motive. The guard **threw** on the missing file rather than coming out
+ * green — which is what its last section expected.
  *
- * ## Ce qu'il ne vérifie PAS
+ * ## What it does NOT verify
  *
- * Ni la signature (arité, types) — un plugin déclare volontairement des formes plus étroites
- * que la façade —, ni le sens « la façade expose une méthode que nul ne déclare » : le core a
- * le droit d'exposer plus que ce que ces trois plugins-là consomment.
+ * Neither the signature (arity, types) — a plugin deliberately declares
+ * narrower shapes than the facade —, nor the direction "the facade exposes a
+ * method nobody declares": the core may expose more than these three plugins consume.
  *
- * ## Une garde jamais vue rouge ne garde rien
+ * ## A guard never seen red guards nothing
  *
- * Vue rouge le jour de sa pose, sur les deux méthodes manquantes, **avant** leur ajout. Et
- * trois assertions anti-garde-vide : si une ancre de bloc disparaît, si un fichier de plugin
- * devient introuvable, ou si un relevé rend zéro méthode, le garde **jette** au lieu de sortir
- * vert — un garde qui ne cherche plus rien rend zéro écart.
+ * Seen red the day of its pose, on the two missing methods, **before** their
+ * addition. And three anti-empty-guard assertions: if a block anchor
+ * vanishes, a plugin file becomes unfindable, or a survey yields zero
+ * methods, the guard **throws** instead of coming out green — a guard that
+ * no longer searches yields zero gaps.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -63,12 +70,12 @@ const REPO_ROOT = path.resolve(__dirname, "../../../..");
 const FACADE = path.join(REPO_ROOT, "packages/core/src/capabilities/offline/db/indexeddb.ts");
 
 /**
- * Les surfaces `Storage.DB` que les plugins redéclarent, chacune avec SON ancre.
+ * The `Storage.DB` surfaces the plugins redeclare, each with ITS anchor.
  *
- * ⚠️ Table nommée plutôt qu'un glob : les trois fichiers ont trois formes de déclaration
- * (interface imbriquée, interface plate, propriétés optionnelles), et un extracteur générique
- * qui les manquerait sortirait vert en n'ayant rien lu. Une entrée dont l'ancre disparaît fait
- * JETER ce garde, donc un déplacement se voit.
+ * ⚠️ A named table rather than a glob: the three files have three declaration
+ * shapes (nested interface, flat interface, optional properties), and a
+ * generic extractor missing them would come out green having read nothing.
+ * An entry whose anchor vanishes makes this guard THROW, so a move is seen.
  */
 const PLUGIN_SEAMS = [
     {
@@ -77,24 +84,25 @@ const PLUGIN_SEAMS = [
         anchor: "export interface StorageContractDB {",
     },
     {
-        // ⚠️ RE-POINTÉE le 04/08/2026, à la vérification de clôture du Sprint 4 — l'ancre a
-        // DÉMÉNAGÉ, elle n'a pas disparu. L'éditeur déclarait `StorageQueueDb` : les quatre
-        // méthodes `sync_queue` de la file v3. Depuis 4.9 il écrit par `Storage.applyEdit`,
-        // ces quatre déclarations n'avaient plus aucun appelant, et elles ont été retirées.
-        // Ce qu'il déclare ENCORE sur `Storage.DB` est `_ensureModule`, par où la modale
-        // d'attente lit l'`outbox`.
+        // ⚠️ RE-POINTED on 04/08/2026, at the closure check — the anchor
+        // MOVED, it did not vanish. The editor declared `StorageQueueDb`: the
+        // v3 queue's four `sync_queue` methods. It now writes through
+        // `Storage.applyEdit`, those four declarations had no caller left,
+        // and they were removed. What it STILL declares on `Storage.DB` is
+        // `_ensureModule`, through which the pending modal reads the `outbox`.
         //
-        // 🛑 L'entrée n'est PAS retirée de cette table, et ce garde est précisément ce qui l'a
-        // exigé : il a jeté sur l'ancre introuvable au lieu de sortir vert. Sans lui, l'éditeur
-        // aurait gardé une déclaration sur la façade que plus personne ne confrontait — la
-        // classe B.45, celle de deux méthodes déclarées par un plugin et absentes de la façade.
+        // 🛑 The entry is NOT removed from this table, and this guard is
+        // precisely what demanded it: it threw on the unfindable anchor
+        // instead of coming out green. Without it, the editor would have kept
+        // a declaration on the facade nobody confronted any more — the class
+        // of two methods declared by a plugin and absent from the facade.
         label: "editor/persistence/storage-seam.ts",
         file: "packages/plugins/editor/src/persistence/storage-seam.ts",
         anchor: "export interface OutboxAccess {",
     },
 ];
 
-/** Le corps `{ … }` qui suit `anchor`, accolades équilibrées. */
+/** The `{ … }` body following `anchor`, braces balanced. */
 function blockAfter(src, anchor, where) {
     const start = src.indexOf(anchor);
     if (start === -1) {
@@ -117,10 +125,11 @@ function blockAfter(src, anchor, where) {
 }
 
 /**
- * Noms de méthodes déclarés au PREMIER niveau d'un corps d'interface.
+ * Method names declared at an interface body's FIRST level.
  *
- * Reconnaît les deux formes du dépôt — `nom(args): T;` et `nom?: (args) => T;` — et ignore les
- * lignes de commentaire, qui contiennent des noms de méthode en prose.
+ * Recognises the repo's two forms — `name(args): T;` and
+ * `name?: (args) => T;` — and ignores comment lines, which contain method
+ * names in prose.
  */
 function declaredMethods(body) {
     const names = new Set();
@@ -138,7 +147,7 @@ function declaredMethods(body) {
     return names;
 }
 
-/** Méthodes que l'objet `IndexedDB` de la façade définit (formes `async nom(` et `nom(`). */
+/** Methods the facade's `IndexedDB` object defines (`async name(` and `name(` forms). */
 function facadeMethods() {
     const src = fs.readFileSync(FACADE, "utf8");
     const names = new Set();
@@ -157,17 +166,19 @@ function facadeMethods() {
 describe("garde — la façade `Storage.DB` porte tout ce qu'on lui demande (3.10)", () => {
     const facade = facadeMethods();
 
-    // 🛑 LE CAS `SyncDBInstance` EST RETIRÉ (tâche 4.11) — son sujet n'existe plus.
+    // 🛑 THE `SyncDBInstance` CASE IS REMOVED — its subject no longer exists.
     //
-    // Il confrontait la façade au module `db/sync.ts`, supprimé avec le magasin `sync_queue`
-    // (B-124). ⚠️ **Et il a fait son travail en partant** : plutôt que de sortir vert sur un
-    // relevé vide, il a JETÉ sur `ENOENT` — le garde était écrit pour ça, et c'est ce qui
-    // distingue un retrait constaté d'un retrait silencieux.
+    // It confronted the facade with the `db/sync.ts` module, deleted with the
+    // `sync_queue` store. ⚠️ **And it did its job on the way out**: rather
+    // than come out green on an empty survey, it THREW on `ENOENT` — the
+    // guard was written for that, and it is what distinguishes an observed
+    // removal from a silent one.
     //
-    // ⚠️ **Ce qui reste ci-dessous est la moitié qui garde vraiment.** Les trois seams de
-    // plugin sont la direction dangereuse : un plugin qui déclare une méthode que la façade
-    // ne porte pas est exactement la « fiction du global » de la cause racine n° 1. Le cas
-    // retiré gardait la direction inverse, et le module qu'il surveillait n'a plus de code.
+    // ⚠️ **What remains below is the half that really guards.** The three
+    // plugin seams are the dangerous direction: a plugin declaring a method
+    // the facade does not carry is exactly the "fiction of the global" of
+    // root cause no. 1. The removed case guarded the reverse direction, and
+    // the module it watched has no code left.
 
     it.each(PLUGIN_SEAMS)("honore ce que $label déclare sur Storage.DB", ({ file, anchor }) => {
         const abs = path.join(REPO_ROOT, file);

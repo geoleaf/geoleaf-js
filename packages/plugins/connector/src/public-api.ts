@@ -5,34 +5,38 @@
  */
 
 /**
- * La surface publique du plugin, montée sur `GeoLeaf.Connector`.
+ * The plugin's public surface, mounted on `GeoLeaf.Connector`.
  *
  *
- * ## Pourquoi ce fichier existe (API publique S4.7)
+ * ## Why this file exists
  *
- * Ce n'est pas de l'uniformité cosmétique. `scripts/check-facade-purity.cjs` (INV-FACADE)
- * énumère les façades à contrôler **par existence de fichier** : elle balaie tout paquet
- * portant un `src/public-api.ts`, et ceux qui n'en ont pas lui échappent intégralement. Le
- * connector montait son namespace par un objet littéral dans `entry.ts` — donc hors du champ
- * de la gate, comme `addpoi` et `storage`.
+ * This is not cosmetic uniformity. `scripts/check-facade-purity.cjs`
+ * (INV-FACADE) enumerates the facades to check **by file existence**: it
+ * sweeps every package carrying a `src/public-api.ts`, and those without one
+ * escape it entirely. The connector mounted its namespace through an object
+ * literal in `entry.ts` — hence outside the gate's field — as did, at the
+ * time of that finding, two other packages since removed or renamed. The list
+ * of escapees is not what matters, the CRITERION is: without
+ * `src/public-api.ts`, a package does not enter the check.
  *
- * Créer ce fichier est ce qui fait entrer le paquet dans le contrôle. Rien à ajouter au
- * script : sa seule liste est le système de fichiers, et c'est ce qui la rend incorruptible.
+ * Creating this file is what brings the package into the check. Nothing to
+ * add to the script: its only list is the file system, which is what makes it
+ * incorruptible.
  *
- * ## La grammaire, et pourquoi le corps de `openLoginModal` n'est pas ici
+ * ## The grammar, and why `openLoginModal`'s body is not here
  *
- * La gate n'accepte qu'un **délégué mince** : un raccourci vers un symbole importé, ou une
- * méthode dont le corps est UN appel de transfert. `openLoginModal` porte un `if` et un
- * `throw` — deux instructions — donc son corps vit dans `connector-api.ts`, avec l'état qu'il
- * lit. Ce fichier ne fait que nommer la surface.
+ * The gate only accepts a **thin delegate**: a shortcut to an imported
+ * symbol, or a method whose body is ONE forwarding call. `openLoginModal`
+ * carries an `if` and a `throw` — two statements — so its body lives in
+ * `connector-api.ts`, with the state it reads. This file only names the surface.
  *
- * ⚠️ `buildPublicApi` doit rester la SEULE fonction locale de ce fichier : la gate rejette
- * toute autre déclaration.
+ * ⚠️ `buildPublicApi` must stay this file's ONLY local function: the gate
+ * rejects any other declaration.
  */
 
 import { configure, openLoginModal } from "./connector-api.js";
 
-/** @internal Rend la surface publique du plugin, sous la forme montée sur le namespace. */
+/** @internal Returns the plugin's public surface, in the shape mounted on the namespace. */
 export function buildPublicApi() {
     return { configure, openLoginModal };
 }

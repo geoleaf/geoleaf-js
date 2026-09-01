@@ -427,7 +427,7 @@ const CacheCalculator = {
 
         // Enumerate tiles for each zoom level
         for (let zoom = minZoom; zoom <= maxZoom; zoom++) {
-            const coords = this.getTileCoordsForBounds(bounds!, zoom);
+            const coords = this.getTileCoordsForBounds(bounds, zoom);
 
             if (coords.length === 0) {
                 Log.warn(`[CacheCalculator] Skipping zoom ${zoom}: too many tiles`);

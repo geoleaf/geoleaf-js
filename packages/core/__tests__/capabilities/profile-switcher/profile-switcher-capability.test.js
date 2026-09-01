@@ -8,13 +8,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { CapabilityRegistry } = await import("../../../src/kernel/api/capability-registry.ts");
-const { PROFILE_SWITCHER_CAPABILITY } = await import(
-    "../../../src/capabilities/profile-switcher/profile-switcher-capability.ts"
-);
+const { PROFILE_SWITCHER_CAPABILITY } =
+    await import("../../../src/capabilities/profile-switcher/profile-switcher-capability.ts");
 const { Config } = await import("../../../src/kernel/config/config-primitives.ts");
-const { getProfileSwitcherConfig, getAvailableProfiles } = await import(
-    "../../../src/capabilities/profile-switcher/config.ts"
-);
+const { getProfileSwitcherConfig, getAvailableProfiles } =
+    await import("../../../src/capabilities/profile-switcher/config.ts");
 
 /** Mirrors the capConfig adapter created in boot.ts for the gate. */
 function makeCapConfig(baseCfg) {

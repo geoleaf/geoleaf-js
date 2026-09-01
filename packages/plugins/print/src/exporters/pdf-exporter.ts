@@ -35,5 +35,5 @@ export const pdfExporterFn: ExporterFn = async (
     const dataUrl = canvas.toDataURL("image/jpeg", opts.quality ?? 0.92);
     doc.addImage(dataUrl, "JPEG", 0, 0, widthMm, heightMm);
 
-    return doc.output("blob") as Blob;
+    return doc.output("blob");
 };

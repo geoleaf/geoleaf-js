@@ -92,9 +92,10 @@ describe("config B6 — line leaves → line paint (toLinePaint, fixture alt.jso
     it("lineCap → line-cap", () => expect(paint["line-cap"]).toBe("round"));
     it("lineJoin → line-join", () => expect(paint["line-join"]).toBe("miter"));
 
-    // ANO-062 RÉSOLU (Archi S2) — lineColor/lineOpacity/lineWidth retirés du schéma et migrés
-    // vers color/opacity/weight (calé sur tourism). Les clés mortes n'existent plus → l'ancien
-    // lock @anomaly est supprimé ; le rejet AJV est verrouillé dans s14-styles-anomalies-lock.
+    // ANO-062 RESOLVED — lineColor/lineOpacity/lineWidth removed from the
+    // schema and migrated to color/opacity/weight (aligned on tourism). The
+    // dead keys no longer exist → the old @anomaly lock is deleted; the AJV
+    // rejection is locked in s14-styles-anomalies-lock.
     it("canonical color/opacity/weight drive the line paint (no legacy line* aliases remain)", () => {
         expect(SURFACE.lineColor).toBeUndefined();
         expect(paint["line-color"]).toBe("#283618"); // from `color`

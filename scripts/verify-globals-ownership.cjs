@@ -1,20 +1,21 @@
 #!/usr/bin/env node
 /**
- * Enforces the contract of the 7 `globals/globals.*.ts` — le pont UMD/ESM du boot.
+ * Enforces the contract of the 7 `globals/globals.*.ts` — the boot's UMD/ESM bridge.
  *
- * Ces fichiers ne sont PAS des façades : leur métier est précisément d'écrire sur
- * `globalThis.GeoLeaf`, et leur appliquer `check-facade-purity.cjs` serait faux (constat
- * A-07). Le contrat qui leur convient n'est pas la pureté, c'est la PROPRIÉTÉ : le
- * namespace a un seul propriétaire, et c'est le boot.
+ * These files are NOT facades: their very job is writing onto `globalThis.GeoLeaf`,
+ * and applying `check-facade-purity.cjs` to them would be wrong. The contract that
+ * fits them is not purity, it is OWNERSHIP: the namespace has one owner, and it is
+ * the boot.
  *
- * L'enjeu a changé de nature au S7. Depuis que `plugin-addpoi` et `plugin-storage` lisent
- * le core sur `globalThis.GeoLeaf.*` au lieu de l'importer, cette surface est un CONTRAT
- * PUBLIC entre le core et les plugins. Si n'importe quel fichier peut y écrire, personne
- * ne peut plus dire ce qu'elle contient ni quand — et un plugin lisant une clé jamais
- * montée dégrade en silence. C'est exactement la panne que le S7 a trouvée sur `Config`.
+ * The stake changed nature when the plugins switched over. Since `plugin-addpoi` and
+ * `plugin-storage` read the core on `globalThis.GeoLeaf.*` instead of importing it,
+ * this surface is a PUBLIC CONTRACT between the core and the plugins. If any file can
+ * write to it, nobody can say anymore what it contains nor when — and a plugin
+ * reading a never-mounted key degrades in silence. Exactly the outage found on
+ * `Config`.
  *
- * GLB-01: seuls `globals/globals.*.ts` écrivent sur le namespace, hors baseline.
- * GLB-02: la baseline doit rétrécir — une entrée devenue inutile est signalée.
+ * GLB-01: only `globals/globals.*.ts` write onto the namespace, outside the baseline.
+ * GLB-02: the baseline must shrink — an entry gone useless is flagged.
  *
  * Usage: node scripts/verify-globals-ownership.cjs (from repo root)
  */
@@ -23,49 +24,80 @@ const fs = require("fs");
 const path = require("path");
 
 const ROOT = path.resolve(__dirname, "..");
-// T5.5 — par le registre, qui jette si le core est introuvable.
+// Through the registry, which throws if the core cannot be found.
 const SRC = path.join(require("./lib/packages.cjs").requireByDirName("core").absDir, "src");
 
 /**
- * Auto-montages de façade tolérés (relevé du 19/07/2026).
+ * Tolerated facade self-mounts (census of 2026-07-19).
  *
- * `check-facade-purity.cjs` autorise explicitement le motif « self-mount » pour les
- * façades ; ces trois-là en relèvent. Ils restent listés parce qu'un auto-montage est
- * une écriture sur le namespace comme une autre : le jour où l'un disparaît, GLB-02 le
- * dira au lieu de laisser une permission dormante.
+ * `check-facade-purity.cjs` explicitly allows the "self-mount" pattern for facades;
+ * these three fall under it. They stay listed because a self-mount is a namespace
+ * write like any other: the day one disappears, GLB-02 will say so instead of leaving
+ * a dormant permission.
  */
 const BASELINE = [
     "kernel/ui/ui-api.ts",
     "api/geoleaf.sync.ts",
     "kernel/storage/facade.ts",
-    // ── `kernel/geojson/style-resolver.ts` est SORTI de la baseline à l'API publique S4.3 ──
+    // ── `utils/performance/runtime-metrics.ts` — entered 2026-08-19 with the widening ──
     //
-    // Il montait `GeoLeaf._StyleRules` au niveau racine du module — donc au simple import,
-    // avant la séquence de boot — et posait `globalThis.GeoLeaf = {}` s'il ne trouvait rien :
-    // un module feuille du kernel CRÉAIT le namespace public, en course avec la chaîne
-    // `globals/` qui en est la propriétaire déclarée. La clé n'avait aucun lecteur de
-    // production ; l'écriture est partie avec elle, et l'entrée avec l'écriture.
+    // It mounts three FUNCTIONS at the namespace root, under an `if (_g.GeoLeaf)`
+    // guard, outside `globals/`. They were invisible to this gate because its pattern
+    // demanded an uppercase initial; they also are to the surface oracle, which only
+    // knows what `globals/` mounts.
     //
-    // Ce qu'il faut garder de son histoire : elle n'avait été DÉCOUVERTE qu'en élargissant
-    // `WRITE_RE`. La première version, qui exigeait un `globalThis.GeoLeaf` littéral, ne
-    // voyait pas la forme `(_g as {…}).GeoLeaf.X =` employée là. La gate sortait verte sur
-    // un dépôt qui violait déjà son invariant — c'est le motif pour lequel GLB-02 est un
-    // cliquet, et pour lequel `WRITE_RE` mérite d'être ré-élargie plutôt que crue.
+    // 🛑 **Why they enter HERE and not the surface oracle.** Adding them there would
+    // freeze them into an exact equality — an irreversible commitment on a published
+    // package — for a VISIBILITY defect, not a contract one. What was missing was not
+    // coverage; it was that nobody had written where the oracle stops. A baseline
+    // entry says exactly that: "known, tolerated, and watched".
+    //
+    // ⚠️ What this entry buys, and it is the whole point: a FOURTH mount outside
+    // `globals/` now goes red. Three members today, and nothing left to let the next
+    // one through in silence.
+    "utils/performance/runtime-metrics.ts",
+    // ── `kernel/geojson/style-resolver.ts` LEFT the baseline ──
+    //
+    // It mounted `GeoLeaf._StyleRules` at module root level — hence at mere import,
+    // before the boot sequence — and set `globalThis.GeoLeaf = {}` when it found
+    // nothing: a kernel leaf module CREATED the public namespace, racing the
+    // `globals/` chain that is its declared owner. The key had no production reader;
+    // the write left with it, and the entry with the write.
+    //
+    // What to keep of its story: it had only been DISCOVERED by widening `WRITE_RE`.
+    // The first version, which demanded a literal `globalThis.GeoLeaf`, did not see
+    // the `(_g as {…}).GeoLeaf.X =` form used there. The gate came out green on a
+    // repo already violating its invariant — the reason GLB-02 is a ratchet, and the
+    // reason `WRITE_RE` deserves to be re-widened rather than believed.
 ];
 
 /**
- * Une écriture sur le namespace, sous n'importe quelle forme d'accès.
+ * A write onto the namespace, under any access form.
  *
- * ⚠️ La première version exigeait `globalThis.GeoLeaf` LITTÉRAL, et ratait donc
- * `(globalThis as any).GeoLeaf.X = …` — la forme la plus courante en TypeScript, et
- * celle qu'une violation réelle prendrait. Le gate passait sa propre mutation. Même
- * défaut que le gate de frontière au S0 (`verify-core-standalone`), aveugle à la forme
- * canonique de ce qu'il gardait.
+ * ⚠️ The first version demanded a LITERAL `globalThis.GeoLeaf`, and thus missed
+ * `(globalThis as any).GeoLeaf.X = …` — the most common form in TypeScript, and the
+ * one a real violation would take. The gate passed its own mutation. Same defect as
+ * the boundary gate before it (`verify-core-standalone`), blind to the canonical form
+ * of what it guarded.
  *
- * On matche donc sur le SUFFIXE `.GeoLeaf.<Clé> =`, quel que soit le porteur, plus la
- * variable locale `_gl` que le boot et les façades emploient.
+ * So we match on the SUFFIX `.GeoLeaf.<Key> =`, whatever the carrier, plus the local
+ * `_gl` variable the boot and facades use.
+ *
+ * 🛑 **RE-WIDENED A SECOND TIME on 2026-08-19, and the paragraph above announced it:
+ * "`WRITE_RE` deserves to be re-widened rather than believed".** It demanded an
+ * UPPERCASE INITIAL — `[A-Z_]` — which describes the namespaces (`GeoLeaf.Storage`,
+ * `GeoLeaf.UI`) and misses the FUNCTIONS mounted at the root, which carry a lowercase
+ * initial by convention. Three of them had lived outside `globals/` for months, and
+ * the gate that owns exactly this question came out green on them.
+ *
+ * 📌 **The lesson is the same as the first time, one character apart**: a gate
+ * written against the cases in front of one's eyes inherits their shape. Here the
+ * shape was "it starts with an uppercase", and nobody had laid it down as a rule — it
+ * was an accident of the three founding examples. ⚠️ The widening yields NO
+ * measurable false positive: the other occurrences of the lowercase form are all in
+ * comments, and the comment filter already sets them aside.
  */
-const WRITE_RE = /(?:\.GeoLeaf|\b_gl)\.[A-Z_][A-Za-z0-9_]*\s*=(?!=)/;
+const WRITE_RE = /(?:\.GeoLeaf|\b_gl)\.[A-Za-z_][A-Za-z0-9_]*\s*=(?!=)/;
 
 function collect(dir, out) {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -91,11 +123,11 @@ const violations = [];
 
 for (const file of collect(SRC, [])) {
     const rel = path.relative(SRC, file).split(path.sep).join("/");
-    // Les globals sont les propriétaires légitimes : ils écrivent, c'est leur métier.
-    // ⚠️ R.9 (24/07/2026) — les globals ont quitté `modules/` pour `globals/`. Ce test
-    // est une regex à slashes échappés : aucun balayage textuel sur `modules/` ne
-    // l\'atteint. Laissé tel quel, il aurait cessé de reconnaître les propriétaires
-    // légitimes et GLB-01 aurait rougi sur les 7 fichiers dont c\'est le métier.
+    // The globals are the legitimate owners: they write, it is their job.
+    // ⚠️ 2026-07-24 — the globals left `modules/` for `globals/`. This test is a
+    // regex with escaped slashes: no textual sweep over `modules/` reaches it. Left
+    // as-is, it would have stopped recognizing the legitimate owners and GLB-01
+    // would have reddened on the 7 files whose job this is.
     if (/^globals\/globals(\.[a-z]+)?\.ts$/.test(rel)) continue;
 
     const lines = fs.readFileSync(file, "utf8").split("\n");

@@ -51,10 +51,11 @@ const lang_fr: Record<string, string> = {
     "editor.modal.layer.noLayer": "(Aucune couche disponible)",
     "editor.modal.btn.save": "Enregistrer",
     "editor.modal.btn.cancel": "Annuler",
-    // 5.2 — LUE PAR LA LIB PARTAGÉE, et elle manquait ici : `responsive-modal.ts` la pose
-    // sur le bouton de suppression qu'`editor` arme lui-même, et seul `addpoi` la déclarait.
-    // Dans `deploy-full` (editor sans addpoi) le bouton affichait donc la CLÉ BRUTE. Le
-    // défaut était vivant avant la fusion ; le retrait d'`addpoi` l'aurait rendu universel.
+    // READ BY THE SHARED LIB, and it was missing here: `responsive-modal.ts`
+    // sets it on the delete button `editor` arms itself, and only `addpoi`
+    // declared it. In `deploy-full` (editor without addpoi) the button thus
+    // displayed the RAW KEY. The defect was live before the merge; removing
+    // `addpoi` would have made it universal.
     "editor.modal.btn.delete": "Supprimer",
     "editor.modal.btn.deleteConfirm": "Supprimer définitivement",
     "editor.modal.delete.title": "Confirmation de suppression",
@@ -123,7 +124,7 @@ const lang_fr: Record<string, string> = {
     "editor.placement.existingDetected": "Entité existante détectée :",
     "editor.placement.markerNew": "Nouveau point (glissez pour ajuster)",
     "editor.placement.markerExisting": "Point existant (glissez pour ajuster)",
-    // 5.1-f — le flux « ajouter un POI », descendu du core avec le bouton qu'il sert.
+    // The "add a POI" flow, moved down from the core with the button it serves.
     "editor.toolbar.poi_add": "Ajouter un POI",
     "editor.addform.unavailable": "L'éditeur n'est pas prêt — réessayez dans un instant.",
     "editor.export.session": "Exporter cette session",

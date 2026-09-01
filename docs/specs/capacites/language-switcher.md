@@ -260,7 +260,7 @@ de la pile à rendre **du texte** là où ses voisins rendent un SVG.
 
 Le CDC `CDC_capacite-language-switcher.md` (v1.0.0, 25/07/2026) a été **consommé** en écrivant
 cette fiche, puis retiré du dossier de tri — trace au §Journal des décisions de
-`roadmap_documentation-v3.md`.
+la refonte documentaire V3.
 
 | Énoncé du CDC                                                         | Ce que dit le code                                                                                                                                 |
 | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |

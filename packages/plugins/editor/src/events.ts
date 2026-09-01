@@ -9,8 +9,8 @@
  * https://geoleaf.dev
  */
 import type { Geometry } from "geojson";
-// Point d'émission UNIQUE et typé — voir `editor-events.ts` pour le faux vert qui l'a
-// rendu nécessaire (trois émetteurs sur neuf échappaient au typage).
+// SINGLE, typed emission point — see `editor-events.ts` for the false green
+// that made it necessary (three of nine emitters escaped typing).
 import { dispatchEditorEvent } from "./editor-events.js";
 import type { GeoJSONStoreGeometries } from "terra-draw";
 import type { TerraDrawAdapterInstance } from "./drawing/terra-draw-adapter.js";
@@ -187,11 +187,12 @@ function _handleCreate(
     pushOperation({ type: "create", terradrawId: id, feature, ts: Date.now() });
 
     // Notify host-page listeners.
-    // ⚠️ `id` est inséré CONDITIONNELLEMENT plutôt que passé tel quel. Le moteur de dessin
-    // le déclare `id?: string | number | undefined` ; le transmettre en l'état obligerait le
-    // contrat à élargir sa propre propriété, ce que `check-exact-optional-debt` refuse — une
-    // clé présente valant `undefined` écrase un défaut dans un merge par spread. C'est aussi
-    // ce que le round-trip JSON ferait de toute façon : `JSON.stringify` supprime la clé.
+    // ⚠️ `id` is inserted CONDITIONALLY rather than passed as-is. The drawing
+    // engine declares it `id?: string | number | undefined`; forwarding it
+    // unchanged would force the contract to widen its own property, which
+    // `check-exact-optional-debt` refuses — a key present with `undefined`
+    // overwrites a default in a spread merge. It is also what the JSON
+    // round-trip would do anyway: `JSON.stringify` drops the key.
     const { id: drawnId, ...drawnRest } = feature;
     dispatchEditorEvent("geoleaf:editor:feature-created", {
         feature: { ...drawnRest, ...(drawnId !== undefined && { id: drawnId }) },
@@ -398,7 +399,7 @@ function _dispatchEditEvent(opType: OperationType, snap: SelectionSnapshot, geom
  * way as a Terra Draw create, but it must NOT read this module's `_wiring`: that field is
  * only set by {@link initEventsBridge}, which runs when the drawing engine is lazily
  * loaded on first tool use. A user who taps "add a POI" without ever arming a tool would
- * hit a null wiring and lose the entry in silence — the class B-128 already cost once.
+ * hit a null wiring and lose the entry in silence — a silent-loss class that already cost once.
  * The placement path therefore builds its wiring from `entry.ts`, which has it at boot.
  *
  * @param wiring - The live wiring context.

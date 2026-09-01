@@ -1,42 +1,46 @@
 // @ts-check
 /**
- * 28 — LA FILE HORS-LIGNE REJOUE CE QU'ELLE DOIT (critère de preuve n° 4)
+ * 28 — THE OFFLINE QUEUE REPLAYS WHAT IT MUST (proof criterion no. 4)
  *
- * Deux propriétés, et toutes deux se vérifient sur le BUNDLE LIVRÉ, pas sur la source :
+ * Two properties, and both are verified on the SHIPPED BUNDLE, not the source:
  *
- *   1. **Une entrée `failed` redevient traitable.** Jusqu'au 03/08/2026, la lecture de file
- *      n'interrogeait que l'index `pending` : une saisie qui échouait une fois ne revenait
- *      JAMAIS. Sur un appareil de terrain c'est le mode de perte le plus probable de toute
- *      la chaîne — une capture n'a ni copie serveur ni export, donc une entrée que la file
- *      cesse d'offrir est du travail perdu, en silence. Le contrat le grave : `failed`
- *      **n'est pas terminal**.
- *   2. **L'ordre de rejeu suit l'ordre de saisie** (B-03), y compris à la milliseconde près,
- *      et il le suit APRÈS un boot réel — à travers la façade, le registre de modules et le
- *      vrai IndexedDB du navigateur.
+ *   1. **A `failed` entry becomes processable again.** Until 2026-08-03, the
+ *      queue read queried only the `pending` index: an entry that failed once
+ *      NEVER came back. On a field device that is the most probable loss mode
+ *      of the whole chain — a capture has neither server copy nor export, so
+ *      an entry the queue stops offering is work lost, silently. The contract
+ *      engraves it: `failed` **is not terminal**.
+ *   2. **Replay order follows capture order**, down to the very millisecond,
+ *      and it follows it AFTER a real boot — through the facade, the module
+ *      registry and the browser's real IndexedDB.
  *
- * ## ⚠️ PORTÉ SUR L'OUTBOX (tâche 4.11 / B-127) — ET DEUX CHOSES ONT CHANGÉ DE NATURE
+ * ## ⚠️ PORTED ONTO THE OUTBOX — AND TWO THINGS CHANGED IN NATURE
  *
- * Ce fichier semait un vidage de base **v3** et pilotait `sync_queue` par
- * `getPendingSyncQueue` / `updateSyncQueueStatus`. Le magasin est retiré (B-124), et avec
- * lui ces deux méthodes. Le port n'est donc pas un remplacement de noms :
+ * This file used to seed a **v3** database dump and drive `sync_queue` through
+ * `getPendingSyncQueue` / `updateSyncQueueStatus`. The store is removed, and
+ * those two methods with it. The port is thus not a name swap:
  *
- * - **La graine passe par le MOTEUR, plus par un vidage.** `Storage.applyEdit` est l'unique
- *   écrivain depuis 4.4b, et il **valide la couche** — la file v3 acceptait n'importe quel
- *   identifiant, ce qui laissait ce fichier semer un `poi_tourisme` que le profil ne porte
- *   pas. Semer par le moteur, c'est semer ce que le produit peut réellement écrire.
- * - **L'ordre ne se lit plus au même endroit.** `listPendingEdits()` groupe **par état** ;
- *   c'est le DRAIN qui tient l'ordre global, parce qu'il lit `outbox.list()` (B-126). La
- *   propriété B-03 s'assert donc sur le magasin, dont la clé `seq` EST l'ordre d'insertion.
+ * - **The seed goes through the ENGINE, no longer through a dump.**
+ *   `Storage.applyEdit` has been the single writer since the storage
+ *   unification, and it **validates the layer** — the v3 queue accepted any
+ *   identifier, which let this file seed a `poi_tourisme` the profile does
+ *   not carry. Seeding through the engine means seeding what the product can
+ *   really write.
+ * - **Order is no longer read in the same place.** `listPendingEdits()` groups
+ *   **by state**; the DRAIN holds the global order, because it reads
+ *   `outbox.list()`. The order property is thus asserted on the store, whose
+ *   `seq` key IS the insertion order.
  *
- * 🛑 CE QUI NE PROUVERAIT RIEN :
- *   - un vert sur la seule entrée `failed` : sans contre-épreuve, un requeue qui rendrait
- *     TOUT le magasin passerait aussi. Une entrée `synced` est donc éprouvée comme ne
- *     revenant PAS.
+ * 🛑 WHAT WOULD PROVE NOTHING:
+ *   - a green on the `failed` entry alone: without a counter-proof, a requeue
+ *     returning the WHOLE store would pass too. A `synced` entry is thus
+ *     proven NOT to come back.
  *
- * ⚠️ Le Service Worker n'est ni bloqué ni sollicité. Le sujet est le moteur DE LA PAGE —
- * c'est là que tourne le rejeu (point 5 du contrat de synchronisation : l'authentification
- * du connector patche le `fetch` de la page et n'atteint jamais le worker). On laisse donc
- * l'environnement réel en place plutôt que de le simplifier.
+ * ⚠️ The Service Worker is neither blocked nor involved. The subject is the
+ * PAGE's engine — that is where replay runs (point 5 of the synchronisation
+ * contract: the connector's authentication patches the page's `fetch` and
+ * never reaches the worker). So the real environment is left in place rather
+ * than simplified.
  */
 
 import { test, expect } from "@playwright/test";
@@ -47,36 +51,40 @@ import { GEOLEAF_DB, readStore } from "./helpers/idb.js";
 const ORIGIN = baseURL("core");
 
 /**
- * La couche que la graine emprunte.
+ * The layer the seed borrows.
  *
- * ⚠️ `applyEdit` refuse `layerUnknown` : le profil `tourism` ne porte que quatre couches
- * éditables, et celle-ci est la seule à déclarer un bloc `write` — **dans la SOURCE**.
- * ⚠️ Cette phrase s'arrêtait là, et l'artefact la dément depuis le 09/08/2026 : la variante
- * servie est un LIVRABLE, et `dev-backend.cjs` (DNS-05) y retire `write.endpoint` en passant
- * `write.enabled` à `false`. Voir {@link ensureWriteTarget}, qui est la réponse.
+ * ⚠️ `applyEdit` refuses `layerUnknown`: the `tourism` profile carries only
+ * four editable layers, and this one is the only one declaring a `write`
+ * block — **in the SOURCE**. ⚠️ That sentence used to stop there, and the
+ * artifact has contradicted it since 2026-08-09: the served variant is a
+ * DELIVERABLE, and `dev-backend.cjs` (DNS-05) strips `write.endpoint` from it,
+ * setting `write.enabled` to `false`. See {@link ensureWriteTarget}, which is
+ * the answer.
  */
 const LAYER = "sites_rosario";
 
 /**
- * Repose une cible d'écriture sur la couche, DANS LA PAGE, avant tout drain (B-201).
+ * Re-sets a write target on the layer, IN THE PAGE, before any drain.
  *
- * 🛑 **CE HELPER EXISTE PARCE QUE LE TEST NE DOIT PAS DÉPENDRE DE CE QUE LE LIVRABLE
- * DÉCLARE.** Depuis DNS-05, les variantes livrables n'emportent plus les liaisons vers le
- * backend de preuve : `sites_rosario` y porte `write.enabled: false` et aucun `endpoint`.
- * Le drain écartait donc les trois entrées en `layerNoLongerWritable` **avant tout envoi**,
- * et le test du plafond sortait rouge en n'ayant jamais atteint son sujet — il n'éprouvait
- * plus le budget de rejeu, seulement l'absence de cible. Le durcissement est correct ; c'est
- * le test qui empruntait une propriété que le livrable n'a plus le droit d'avoir.
+ * 🛑 **THIS HELPER EXISTS BECAUSE THE TEST MUST NOT DEPEND ON WHAT THE
+ * DELIVERABLE DECLARES.** Since DNS-05, deliverable variants no longer carry
+ * the bindings to the proof backend: `sites_rosario` there carries
+ * `write.enabled: false` and no `endpoint`. The drain thus discarded the three
+ * entries as `layerNoLongerWritable` **before any send**, and the cap test
+ * came out red having never reached its subject — it no longer proved the
+ * replay budget, only the absence of a target. The hardening is correct; it is
+ * the test that borrowed a property the deliverable is no longer allowed to
+ * have.
  *
- * ⚠️ **L'origine est délibérément INJOIGNABLE** (`.invalid`, réservé par la RFC 2606). Ce
- * fichier éprouve le budget HORS RÉSEAU : ce qu'il lui faut est une cible **déclarée**, pas
- * une cible qui répond. Y mettre le backend de preuve rendrait le test dépendant des
- * conteneurs, ce que `30-sync-cycle.spec.js` doit assumer et que celui-ci n'a aucune raison de
- * partager.
+ * ⚠️ **The origin is deliberately UNREACHABLE** (`.invalid`, reserved by
+ * RFC 2606). This file proves the budget OFF-NETWORK: what it needs is a
+ * **declared** target, not one that answers. Putting the proof backend there
+ * would make the test depend on the containers, which `30-sync-cycle.spec.js`
+ * has to assume and this one has no reason to share.
  *
- * La mutation porte sur le profil ACTIF, dont `getActiveProfile()` rend la référence vivante
- * (`profile.ts` → `this._activeProfile`) ; c'est la même source que celle lue par
- * `resolveWriteTarget` via `profileLayers()`.
+ * The mutation bears on the ACTIVE profile, whose live reference
+ * `getActiveProfile()` returns (`profile.ts` → `this._activeProfile`); the
+ * same source `resolveWriteTarget` reads via `profileLayers()`.
  *
  * @param {import('@playwright/test').Page} page
  */
@@ -95,21 +103,22 @@ async function ensureWriteTarget(page) {
         };
         return true;
     }, LAYER);
-    // Une garde qui ne peut pas rendre faux ne garde rien : si le profil change de forme, ce
-    // test doit le DIRE, pas retomber silencieusement dans le `layerNoLongerWritable` qu'il
-    // vient de quitter.
+    // A guard that cannot return false guards nothing: if the profile changes
+    // shape, this test must SAY so, not silently fall back into the
+    // `layerNoLongerWritable` it just left.
     expect(posed, `la couche "${LAYER}" doit exister dans le profil actif`).toBe(true);
 }
 
-/** Les trois saisies de la graine, dans l'ordre de capture. */
+/** The seed's three captures, in capture order. */
 const CAPTURE_ORDER = ["cap-1", "cap-2", "cap-3"];
 
 /**
- * Boote l'application et attend que le moteur hors-ligne soit CÂBLÉ.
+ * Boots the application and waits for the offline engine to be WIRED.
  *
- * ⚠️ On attend `Storage.DB.<méthode>` et non `Storage.applyEdit` : la façade monte `applyEdit`
- * dès le boot, donc l'attendre rendrait `true` avec `Storage.DB` encore `null`. Mesuré à la
- * tâche 4.11 — le témoin doit prouver le CÂBLAGE, pas l'existence de la façade.
+ * ⚠️ We wait for `Storage.DB.<method>` and not `Storage.applyEdit`: the facade
+ * mounts `applyEdit` at boot, so waiting on it would return `true` with
+ * `Storage.DB` still `null`. Measured at the outbox port — the witness must
+ * prove the WIRING, not the facade's existence.
  *
  * @param {import('@playwright/test').Page} page
  */
@@ -125,11 +134,11 @@ async function boot(page) {
 }
 
 /**
- * Sème trois saisies PAR LE MOTEUR, puis force l'état de l'une d'elles.
+ * Seeds three captures THROUGH THE ENGINE, then forces the state of one.
  *
  * @param {import('@playwright/test').Page} page
- * @param {string} failedLocalId identifiant local dont l'entrée passe `failed`
- * @returns {Promise<string[]>} les identifiants d'entrée, dans l'ordre de capture
+ * @param {string} failedLocalId local id whose entry is set to `failed`
+ * @returns {Promise<string[]>} the entry ids, in capture order
  */
 function seedThroughEngine(page, failedLocalId) {
     return page.evaluate(
@@ -151,8 +160,8 @@ function seedThroughEngine(page, failedLocalId) {
                 if (!res.entryId) throw new Error(`applyEdit refusé : ${res.refused}`);
                 ids.push(res.entryId);
             }
-            // L'état se force par le MODULE, pas par une écriture brute : c'est le chemin que
-            // le drain emprunte lui-même pour marquer un échec.
+            // The state is forced through the MODULE, not a raw write: the very
+            // path the drain itself takes to mark a failure.
             const outbox = gl.Storage.DB._ensureModule("Outbox");
             const rows = await outbox.list();
             const target = rows.find((/** @type {any} */ r) => r.localId === failed);
@@ -164,7 +173,8 @@ function seedThroughEngine(page, failedLocalId) {
 }
 
 /**
- * Ce que le MOTEUR déclare encore dû au serveur — la surface que les plugins appellent.
+ * What the ENGINE still declares owed to the server — the surface the plugins
+ * call.
  *
  * @param {import('@playwright/test').Page} page
  * @returns {Promise<{entryId: string, localId: string, state: string}[]>}
@@ -193,23 +203,23 @@ test.describe("28 — la file hors-ligne rejoue ce qu'elle doit", () => {
     }) => {
         await seedThroughEngine(page, "cap-2");
 
-        // ── ① Le critère : elle est encore due. `failed` n'est pas terminal.
+        // ── ① The criterion: it is still due. `failed` is not terminal.
         const rows = await due(page);
         const failed = rows.find((e) => e.localId === "cap-2");
         expect(failed, "une entrée `failed` doit rester traitable").toBeTruthy();
         expect(failed?.state).toBe("failed");
 
-        // ── ② Son RANG. `listPendingEdits()` groupe par état, donc l'ordre global ne s'y lit
-        // pas — c'est le magasin qui le porte, par sa clé `seq`, et c'est lui que le drain lit
-        // depuis B-126. Une entrée `failed` ne « remonte » ni ne « descend » : elle reste où
-        // la saisie l'a mise.
+        // ── ② Its RANK. `listPendingEdits()` groups by state, so the global
+        // order cannot be read there — the store carries it, through its `seq`
+        // key, and that is what the drain reads since the order fix. A `failed`
+        // entry neither "moves up" nor "down": it stays where capture put it.
         const outbox = await readStore(page, { db: GEOLEAF_DB, store: "outbox" });
         expect(outbox.map((/** @type {any} */ e) => e.localId)).toEqual(CAPTURE_ORDER);
     });
 
     test("CONTRÔLE NÉGATIF — une entrée `synced` ne revient PAS", async ({ page }) => {
-        // Sans ce test, un requeue qui rendrait tout le magasin passerait le précédent. Une
-        // garde qui ne peut pas rendre faux ne garde rien.
+        // Without this test, a requeue returning the whole store would pass the
+        // previous one. A guard that cannot return false guards nothing.
         await seedThroughEngine(page, "cap-2");
 
         await page.evaluate(async () => {
@@ -229,22 +239,25 @@ test.describe("28 — la file hors-ligne rejoue ce qu'elle doit", () => {
         page,
         context,
     }) => {
-        // ⚠️ **CE TEST A ÉTÉ EN `test.fixme` QUELQUES HEURES** (B-125), et le motif mérite
-        // d'être lu : le plafond qu'il garde n'existait PAS. `MAX_REPLAY_ATTEMPTS` était
-        // appliqué à l'écriture dans la file v3 et il est parti avec elle à la tâche 4.11 ;
-        // mesuré alors, `push-engine` n'incrémentait ni ne plafonnait `attempts` — le budget
-        // était déjà absent du chemin v4. Le laisser vert en assouplissant l'assertion aurait
-        // refermé le critère sur une fiction. Il est réactivé parce que le budget existe.
+        // ⚠️ **THIS TEST SPENT A FEW HOURS AS A `test.fixme`**, and the motive
+        // deserves reading: the cap it guards did NOT exist.
+        // `MAX_REPLAY_ATTEMPTS` was enforced at write time in the v3 queue and
+        // left with it at the outbox port; measured then, `push-engine` neither
+        // incremented nor capped `attempts` — the budget was already absent
+        // from the v4 path. Leaving it green by softening the assertion would
+        // have closed the criterion over a fiction. It is re-armed because the
+        // budget exists.
         await seedThroughEngine(page, "cap-2");
 
-        // 🛑 SANS CETTE LIGNE, LE TEST N'ATTEINT PAS SON SUJET (B-201) — les trois entrées
-        // partent en `layerNoLongerWritable` avant tout envoi, et le `setOffline` ci-dessous
-        // n'a plus aucun effet sur l'issue. Vu rouge exactement ainsi le 09/08/2026.
+        // 🛑 WITHOUT THIS LINE, THE TEST DOES NOT REACH ITS SUBJECT — the three
+        // entries leave as `layerNoLongerWritable` before any send, and the
+        // `setOffline` below no longer affects the outcome. Seen red exactly so
+        // on 2026-08-09.
         await ensureWriteTarget(page);
 
-        // Hors réseau, les trois envois échouent en `networkError` : c'est le chemin pour
-        // lequel le budget existe — un échec qui PEUT être transitoire, donc qu'on rejoue,
-        // mais pas indéfiniment.
+        // Off-network, the three sends fail as `networkError`: the path the
+        // budget exists for — a failure that CAN be transient, so it is
+        // replayed, but not forever.
         await context.setOffline(true);
         await page.evaluate(async () => {
             const gl = /** @type {any} */ (globalThis).GeoLeaf;
@@ -252,12 +265,13 @@ test.describe("28 — la file hors-ligne rejoue ce qu'elle doit", () => {
         });
         await context.setOffline(false);
 
-        // Écartée du rejeu…
+        // Excluded from replay…
         const stillDue = (await due(page)).filter((e) => e.state !== "quarantined");
         expect(stillDue, "aucune entrée ne doit rester rejouable").toEqual([]);
 
-        // …mais TOUJOURS EN BASE, et MOTIVÉE. C'est ce qui la distingue d'une disparition :
-        // lecture directe du magasin, parce qu'ici le sujet est bien ce qui est PERSISTÉ.
+        // …but STILL IN THE DATABASE, and MOTIVATED. What distinguishes it from
+        // a disappearance: direct store read, because here the subject is
+        // precisely what is PERSISTED.
         const outbox = await readStore(page, { db: GEOLEAF_DB, store: "outbox" });
         expect(outbox, "le contrat interdit de détruire une entrée").toHaveLength(3);
         for (const row of outbox) {
@@ -267,21 +281,23 @@ test.describe("28 — la file hors-ligne rejoue ce qu'elle doit", () => {
         }
     });
 
-    test("B-03 — trois captures dans la MÊME milliseconde gardent leur ordre", async ({ page }) => {
-        // 🛑 L'HORLOGE EST FIGÉE, ET C'EST LE SUJET. Une première version se contentait de
-        // trois écritures d'affilée en pariant qu'elles tomberaient dans la même
-        // milliseconde : mesuré, elles n'y tombent pas — chaque écriture attend une
-        // transaction IndexedDB réelle, ce qui coûte plus d'une ms. Le test passait donc au
-        // vert sans jamais éprouver la condition de B-03. Figer `Date.now` REPRODUIT la
-        // condition au lieu de l'espérer.
+    test("trois captures dans la MÊME milliseconde gardent leur ordre", async ({ page }) => {
+        // 🛑 THE CLOCK IS FROZEN, AND THAT IS THE SUBJECT. A first version
+        // settled for three writes in a row, betting they would land in the
+        // same millisecond: measured, they do not — each write awaits a real
+        // IndexedDB transaction, which costs more than one ms. The test thus
+        // went green without ever proving the collision condition. Freezing
+        // `Date.now` REPRODUCES the condition instead of hoping for it.
         //
-        // ⚠️ On ne fige que `Date.now`, jamais les minuteries : IndexedDB résout ses requêtes
-        // sur la boucle d'événements, et geler celle-ci pendrait chaque `onsuccess`.
+        // ⚠️ Only `Date.now` is frozen, never the timers: IndexedDB resolves
+        // its requests on the event loop, and freezing it would hang every
+        // `onsuccess`.
         //
-        // ⚠️ **Ce que le port change** : en v3 la clé était `sync_<ms>_<random>` et B-03 était
-        // le défaut d'un TRI sur cette clé. L'outbox mint un `seq` monotone — l'ordre est tenu
-        // **par construction**, pas par un tri. Le test éprouve donc que la construction tient
-        // sur le déployé, ce qu'aucun unitaire ne peut dire.
+        // ⚠️ **What the port changes**: in v3 the key was `sync_<ms>_<random>`
+        // and the collision was the defect of a SORT on that key. The outbox
+        // mints a monotonic `seq` — order is held **by construction**, not by a
+        // sort. The test thus proves the construction holds on the deploy,
+        // which no unit test can say.
         const written = await page.evaluate(async (layer) => {
             const gl = /** @type {any} */ (globalThis).GeoLeaf;
             const realNow = Date.now;
@@ -314,8 +330,8 @@ test.describe("28 — la file hors-ligne rejoue ce qu'elle doit", () => {
 
         const outbox = await readStore(page, { db: GEOLEAF_DB, store: "outbox" });
 
-        // CONTRÔLE DU CONTRÔLE : sans horodatage commun, le vert ci-dessous viendrait de
-        // millisecondes distinctes et ne dirait rien de B-03.
+        // CONTROL OF THE CONTROL: without a shared timestamp, the green below
+        // would come from distinct milliseconds and prove nothing.
         const stamps = new Set(outbox.map((/** @type {any} */ e) => e.createdAt));
         expect(stamps.size, "les 3 écritures doivent partager la milliseconde").toBe(1);
 

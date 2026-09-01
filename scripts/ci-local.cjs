@@ -12,43 +12,49 @@
  * Exit code: 0 if every (required) gate passed, 1 otherwise. Each gate runs even
  * after a previous failure (unless --bail) so you get the full picture in one go.
  *
- * ## La propriété que ce script doit tenir : `ci:local ⊇ ci.yml`
+ * ## The property this script must hold: `ci:local ⊇ ci.yml`
  *
- * Le protocole de push de CLAUDE.md fait de ce script le SEUL critère avant de dépenser du
- * quota GitHub Actions. « Local vert → push sûr » n'est vrai que si le périmètre local
- * couvre celui du distant — sinon un vert local ne dit rien du run à venir.
+ * The push protocol makes this script the ONLY criterion before spending
+ * GitHub Actions quota. "Local green → safe push" is only true if the local
+ * perimeter covers the remote's — otherwise a local green says nothing
+ * about the run to come.
  *
- * Elle est vérifiée, pas conventionnée — sur DEUX axes, et il a fallu les deux :
+ * It is verified, not conventioned — on TWO axes, and both were needed:
  *
- *   • le PÉRIMÈTRE DES TESTS, par `scripts/lib/test-scope.cjs`, qui jette si le gate unitaire
- *     local testait moins que celui de `ci.yml` ;
- *   • la LISTE DES GATES, par `scripts/verify-ci-parity.cjs` (étape « CI parity »), qui classe
- *     chaque commande de `ci.yml` en couverte / sous `--e2e` / exemptée-avec-témoin, et rougit
- *     sur toute quatrième catégorie.
+ *   • the TEST PERIMETER, by `scripts/lib/test-scope.cjs`, which throws if
+ *     the local unit gate tested less than `ci.yml`'s;
+ *   • the GATE LIST, by `scripts/verify-ci-parity.cjs` (the "CI parity"
+ *     step), which classifies each `ci.yml` command as covered / under
+ *     `--e2e` / exempted-with-witness, and turns red on any fourth category.
  *
- * ⚠️ Ce paragraphe a longtemps annoncé la propriété comme vérifiée en ne citant que le premier
- * axe. C'était un SUR-ÉNONCÉ : la liste des gates reposait sur un commentaire « Keep this list
- * in sync with .github/workflows/ci.yml », c'est-à-dire sur un geste manuel là où le fichier
- * annonçait une garde. Le corriger était le vrai objet du 30/07/2026 — pas le rouge du jour.
+ * ⚠️ This paragraph long announced the property as verified while citing
+ * only the first axis. That was an OVER-CLAIM: the gate list rested on a
+ * "Keep this list in sync with .github/workflows/ci.yml" comment, i.e. on a
+ * manual gesture where the file announced a guard. Fixing that was the real
+ * object of 30/07/2026 — not that day's red.
  *
- * ⚠️ Divergence de FORME assumée, sur le gate unitaire : `ci.yml` lance
- * `npx vitest run` (mode `projects`, un seul processus, 11 paquets), ce script lance
- * `npm test` (essaimage turbo, 17 paquets). Mêmes fichiers de test, ordonnanceurs
- * différents. Le sens de l'inclusion est celui qui compte, et il est dans le bon sens.
- * Cette divergence est désormais une entrée d'`EXEMPTIONS` de la gate de parité, avec un
- * témoin qui rougit si `test-scope.cjs` cessait de porter l'inclusion.
+ * ⚠️ Owned SHAPE divergence, on the unit gate: `ci.yml` runs
+ * `npx vitest run` (`projects` mode, one process, 11 packages), this script
+ * runs `npm test` (turbo fan-out, 17 packages). Same test files, different
+ * schedulers. The inclusion's direction is what counts, and it points the
+ * right way. This divergence is now an `EXEMPTIONS` entry of the parity
+ * gate, with a witness that turns red if `test-scope.cjs` stopped carrying
+ * the inclusion.
  *
- * ## Ce que ce script ne couvre TOUJOURS pas, et qu'il ÉNONCE
+ * ## What this script STILL does not cover, and SAYS
  *
- * Trois choses restent hors de portée, et le résumé de fin de run les nomme désormais plutôt
- * que de les taire : les 4 `E2E_STEPS` (opt-in, coût réel), `check-test-failures.cjs` (il parse
- * un `test-results.json` que seul le reporter JSON de `ci.yml` produit), et le chemin
- * `pull_request` de gitleaks (aucun événement de PR n'existe sur un poste). Le chemin `push`
- * de gitleaks, lui, est rejoué par `npm run gitleaks:local`.
+ * Three things stay out of reach, and the end-of-run summary now names them
+ * rather than silencing them: the 4 `E2E_STEPS` (opt-in, real cost),
+ * `check-test-failures.cjs` (it parses a `test-results.json` only `ci.yml`'s
+ * JSON reporter produces), and gitleaks' `pull_request` path (no PR event
+ * exists on a workstation). Gitleaks' `push` path is replayed by
+ * `npm run gitleaks:local`.
  */
 
 const { spawnSync } = require("node:child_process");
+const fs = require("node:fs");
 const path = require("node:path");
+const { findDebris } = require("./lib/workspace-debris.cjs");
 
 const ROOT = path.resolve(__dirname, "..");
 
@@ -60,13 +66,14 @@ const args = process.argv.slice(2);
 const WITH_E2E = args.includes("--e2e");
 const BAIL = args.includes("--bail");
 
-// ⚠️ CE BLOC DOIT RESTER AU-DESSUS DE L'ANNOTATION `@type` qui suit. Posé entre elle et sa
-// déclaration, il la faisait porter sur CE `const` — `TOOLING-TS` a rendu
-// « Type 'number' is not assignable to type '{ name, run }[]' ». Une annotation ne vaut que
-// pour la déclaration IMMÉDIATEMENT suivante, exactement comme `eslint-disable-next-line`.
-// B-85 — dérivé, jamais écrit : le nombre de paquets portant un script `typecheck`.
-// `packages.cjs` jette si le registre est introuvable, donc ce compte ne peut pas devenir
-// zéro en silence.
+// ⚠️ THIS BLOCK MUST STAY ABOVE THE `@type` ANNOTATION THAT FOLLOWS. Set
+// between it and its declaration, it made it bear on THIS `const` —
+// `TOOLING-TS` returned "Type 'number' is not assignable to type
+// '{ name, run }[]'". An annotation only holds for the IMMEDIATELY
+// following declaration, exactly like `eslint-disable-next-line`.
+// Derived, never written: the number of packages carrying a `typecheck`
+// script. `packages.cjs` throws if the registry is unreachable, so this
+// count cannot become zero silently.
 const TYPECHECK_PKGS = (() => {
     const registry = require("./lib/packages.cjs");
     const fsMod = require("node:fs");
@@ -82,6 +89,15 @@ const TYPECHECK_PKGS = (() => {
 /** @type {{name: string, run: string[]}[]} */
 const STEPS = [
     { name: "Build (turbo)", run: ["npx", "turbo", "run", "build"] },
+    // 🛑 AFTER the full build, and that is the whole subject. The call lived
+    // in the CORE's build, which turbo runs before that of the plugins
+    // depending on it: the libs' and 6 plugins' `dist/types/` did not exist
+    // yet, their 11 CSS imports never received a stub, and the script came
+    // out green because the core, itself, was covered.
+    // ⚠️ `ci:local` could NOT see the class: a workshop `dist/` keeps the
+    // stubs of an earlier root `npm run build`. It took a fresh clone — 8
+    // `TS2882` in CI on 18/08/2026. The runner's fifth bite on a green ci:local.
+    { name: "Stubs de type CSS (.d.ts publiés)", run: ["node", "scripts/emit-css-type-stubs.cjs"] },
     {
         name: "Bundle exports validation",
         run: ["npm", "run", "test:bundle", "-w", "@geoleaf/core"],
@@ -124,144 +140,192 @@ const STEPS = [
         name: "Public subpaths resolve (SUBPATH-RESOLVE)",
         run: ["node", "scripts/check-subpath-resolve.cjs"],
     },
-    // Passage public S1 — la troisième question qu'aucune des deux gates ci-dessus ne pose.
-    // PUB-TYPES vérifie qu'une déclaration est ATTEIGNABLE, SUBPATH-RESOLVE que les deux
-    // branches d'un sous-chemin RÉSOLVENT — les deux à l'intérieur du monorepo, où les
-    // symlinks de workspace rendent `@geoleaf/host-runtime` parfaitement résoluble alors
-    // qu'il est `private` et 404 sur le registre POUR TOUJOURS. Six `.d.ts` publiables
-    // importaient des paquets absents de npm sans qu'aucune gate ne puisse le voir.
-    // `typecheck:consumer` non plus : il compile depuis packages/core/examples/, donc dans
-    // le monorepo. Un défaut qui n'existe que chez quelqu'un d'autre ne se compile pas ici.
+    // The third question neither of the two gates above asks. PUB-TYPES
+    // verifies a declaration is REACHABLE, SUBPATH-RESOLVE that a subpath's
+    // two branches RESOLVE — both inside the monorepo, where workspace
+    // symlinks make `@geoleaf/host-runtime` perfectly resolvable while it is
+    // `private` and 404 on the registry FOREVER. Six publishable `.d.ts`
+    // imported packages absent from npm with no gate able to see it.
+    // `typecheck:consumer` neither: it compiles from packages/core/examples/,
+    // hence inside the monorepo. A defect that only exists at someone
+    // else's does not compile here.
     {
         name: "Shipped specifiers resolve off-monorepo (SHIP-SPEC)",
         run: ["node", "scripts/check-shipped-specifiers.cjs"],
     },
-    // Passage public S3 — la licence est-elle portée par ce qui PART ? Le `LICENSE` racine
-    // exige que la notice accompagne « all copies or substantial portions » ; le tarball la
-    // satisfait via `files[]`, un `.js` servi seul depuis un CDN non. Mesuré le 10/08/2026
-    // AVANT correctif : 405 fichiers expédiés sur 540 n'en portaient aucune, et le seul
-    // paquet qui DÉCLARAIT une bannière ne la livrait pas — `legalComments: "none"` la
-    // supprimait. LIC-05 garde en plus la VALEUR du champ `license`, que PC-05 ne regarde
-    // pas (il n'exige qu'une chaîne non vide, donc "UNLICENSED" y sortait vert).
-    // ⚠️ Doit passer APRÈS « Build (turbo) » : LIC-04 lit `dist/`.
+    // Is the licence carried by what SHIPS? The root `LICENSE` requires the
+    // notice to accompany "all copies or substantial portions"; the tarball
+    // satisfies it via `files[]`, a `.js` served alone from a CDN does not.
+    // Measured on 10/08/2026 BEFORE the fix: 405 shipped files out of 540
+    // carried none, and the only package that DECLARED a banner did not
+    // deliver it — `legalComments: "none"` removed it. LIC-05 also guards
+    // the `license` field's VALUE, which PC-05 does not look at (it only
+    // requires a non-empty string, so "UNLICENSED" came out green there).
+    // ⚠️ Must run AFTER "Build (turbo)": LIC-04 reads `dist/`.
     {
         name: "License headers & notice (LIC-HEADERS)",
         run: ["node", "scripts/check-license-headers.cjs"],
     },
     { name: "Lint (0 errors, 0 warnings enforced)", run: ["npm", "run", "lint"] },
-    // ARCHI S5 (5.5, constat A-12) — la tâche `typecheck` existait dans turbo.json et les
-    // packages l'implémentaient, mais RIEN ne l'invoquait. Son premier run a remonté
-    // 45 erreurs, dont 39 introduites la veille par le S7 sans que rien ne les voie :
-    // plugin-storage typecheck via `tsconfig.typecheck.json`, un périmètre que
-    // `tsc -p tsconfig.json` ne couvre pas. C'est le gate qui rend ce script utile.
+    // The `typecheck` task existed in turbo.json and the packages
+    // implemented it, but NOTHING invoked it. Its first run surfaced 45
+    // errors, 39 of them introduced the day before with nothing seeing
+    // them: plugin-storage typechecks via `tsconfig.typecheck.json`, a
+    // perimeter `tsc -p tsconfig.json` does not cover. The gate that makes
+    // this script useful.
     //
-    // 🛑 B-85 — LE COMPTE EST DÉRIVÉ, PLUS ÉCRIT. Ce libellé disait « 18 packages » ; il y
-    // en a **17** au registre, dont **15** portent un script `typecheck`. Deux chiffres faux
-    // dans un seul mot, et le mot était le seul endroit où quiconque pouvait le lire.
+    // 🛑 THE COUNT IS DERIVED, NO LONGER WRITTEN. This label said "18
+    // packages"; there are **17** in the registry, **15** of which carry a
+    // `typecheck` script. Two wrong figures in a single word, and the word
+    // was the only place anyone could read it.
     //
-    // ⚠️ La correction n'est PAS d'écrire « 15 » : un nombre recopié se périme au prochain
-    // paquet ajouté ou retiré, exactement comme celui-ci — et il se périme EN SILENCE,
-    // puisqu'un libellé n'est vérifié par rien. Il se dérive de `packages.cjs`, seul endroit
-    // qui sache combien il y en a.
+    // ⚠️ The fix is NOT to write "15": a copied number expires at the next
+    // package added or removed, exactly like this one — and it expires
+    // SILENTLY, since a label is verified by nothing. It derives from
+    // `packages.cjs`, the only place that knows how many there are.
     {
         name: `Typecheck (turbo, ${TYPECHECK_PKGS} packages)`,
         run: ["npx", "turbo", "run", "typecheck"],
     },
-    // B-93 — `scripts/`, `e2e/` et les configs racine n'étaient couverts par AUCUN tsconfig.
-    // Cliquet décroissant plutôt que vert : le premier run rend 301 erreurs, et exiger zéro
-    // tout de suite reviendrait à ne pas poser la couverture. Le détail est dans l'en-tête du
-    // script, et la dette dans B-260.
+    // `scripts/`, `e2e/` and the root configs were covered by NO tsconfig.
+    // Decreasing ratchet rather than green: the first run returns 301
+    // errors, and requiring zero at once would amount to not laying the
+    // coverage. Details in the script's header.
     {
         name: "Typecheck de l'outillage (TOOLING-TS, cliquet)",
         run: ["node", "scripts/check-tooling-typecheck.cjs"],
     },
-    // B-36 — le balayage T5 avait atteint 100 %, et la dette s'est reformée DEUX fois : rien
-    // n'exigeait qu'un artefact neuf naisse jugé. Ce cliquet remplace la liste par une
-    // structure — il rougit le jour où un artefact arrive sans verdict.
+    // The sweep had reached 100%, and the debt re-formed TWICE: nothing
+    // required a new artefact to be born judged. This ratchet replaces the
+    // list with a structure — it turns red the day an artefact arrives
+    // without a verdict.
     {
         name: "Qualification de l'arborescence (TREE-QUAL, cliquet)",
         run: ["node", "scripts/check-tree-qualification.cjs"],
     },
     { name: "Security audit — prod deps (M7)", run: ["node", "scripts/audit-ci.cjs"] },
     {
+        name: "Signatures registre npm (SIGN)",
+        run: ["node", "scripts/verify-registry-signatures.cjs"],
+    },
+    {
         name: "Security audit — full tree (informational)",
         run: ["node", "scripts/audit-dev-report.cjs"],
     },
-    // La gate `Secret scan (gitleaks)` de ci.yml, rejouée AVANT le push. Elle était la seule
-    // gate de fond portée par une ACTION GitHub, donc la seule que ce script ne pouvait pas
-    // exécuter — et elle a mordu deux fois de suite le 29/07/2026, chaque découverte coûtant
-    // un run d'un quota rare. L'action n'est pas reproductible ; son binaire l'est, à la
-    // version exacte qu'elle installe, sur la même plage (`origin/main..HEAD`).
+    // ci.yml's `Secret scan (gitleaks)` gate, replayed BEFORE the push. It
+    // was the only substantive gate carried by a GitHub ACTION, hence the
+    // only one this script could not run — and it bit twice in a row on
+    // 29/07/2026, each discovery costing a run of a scarce quota. The
+    // action is not reproducible; its binary is, at the exact version it
+    // installs, over the same range (`origin/main..HEAD`).
     //
-    // ⚠️ Ne rougit PAS si Docker est absent : une dépendance d'environnement manquante n'est
-    // pas une gate en échec, et faire rougir ci:local pour ça pousserait à le contourner.
-    // Le script l'annonce alors bruyamment. Il refuse aussi de conclure sur une plage vide,
-    // où gitleaks imprimerait « no leaks found » sur zéro octet — le défaut exact de f15b0575.
+    // ⚠️ Does NOT turn red if Docker is absent: a missing environment
+    // dependency is not a failing gate, and making ci:local red for that
+    // would push people to bypass it. The script then announces it loudly.
+    // It also refuses to conclude on an empty range, where gitleaks would
+    // print "no leaks found" over zero bytes — f15b0575's exact defect.
     { name: "Secret scan (gitleaks, local)", run: ["node", "scripts/gitleaks-local.cjs"] },
-    // ⚠️ Ces deux étapes sont distinctes et doivent le rester — même périmètre de paquets
-    // depuis B.48, mais pas le même rôle, et les confondre a déjà coûté :
-    //   - `npm test`                  → tâche `test`          → sans couverture, sans seuils
-    //   - `npm run test:coverage:all` → tâche `test:coverage` → avec couverture ET seuils
-    // Les deux passent par `scripts/run-tests.cjs` et couvrent les 17 paquets (34 tâches
-    // turbo chacune, build inclus). Jusqu'au 19/07/2026 `ci:local` ne lançait que la
-    // première, sous le nom trompeur
-    // « Unit tests + coverage gate » — alors qu'elle ne mesure aucune couverture. Le gate de
-    // couverture de `ci.yml` (« Coverage gate », gate DUR, sans continue-on-error) n'avait
-    // donc aucun équivalent local, et il est resté ROUGE sur `main` sans que rien ne le
-    // signale : `plugin-runtime` (branches 61,11 %) et `field-renderer` (59,68 %) échouaient
-    // pendant que `ci:local` affichait 100 % vert. Un push aurait brûlé du quota sur un rouge
-    // déjà connu de la CI et invisible en local. Voir backlog ARCHI B.14.
+    // ⚠️ These two steps are distinct and must stay so — same package
+    // perimeter now, but not the same role, and confusing them has already cost:
+    //   - `npm test`                  → `test` task          → no coverage, no thresholds
+    //   - `npm run test:coverage:all` → `test:coverage` task → coverage AND thresholds
+    // Both go through `scripts/run-tests.cjs` and cover the 17 packages (34
+    // turbo tasks each, build included). Until 19/07/2026 `ci:local` only
+    // launched the first, under the misleading name "Unit tests + coverage
+    // gate" — while it measures no coverage. `ci.yml`'s coverage gate
+    // ("Coverage gate", HARD gate, no continue-on-error) thus had no local
+    // equivalent, and it stayed RED on `main` with nothing flagging it:
+    // `plugin-runtime` (branches 61.11%) and `field-renderer` (59.68%)
+    // failed while `ci:local` displayed 100% green. A push would have
+    // burned quota on a red the CI already knew and local could not see.
+    // 🛑 THE GUARDS, OUTSIDE THE CACHE — and this step exists because the
+    // other one lied three times.
+    //
+    // A guard's subject is by nature outside its package (`_docs_projet/`,
+    // `docs/specs/`, `profiles/`, `apps/`, a plugin's `entry.ts`), while the
+    // `test` task's `inputs` are all package-relative. The guard's file
+    // invalidates the cache; what it GUARDS does not. Measured on
+    // 20/08/2026: 21 guards out of 24 are in this case, and
+    // `journal-numbering.guard.test.ts` stayed GREEN over three consecutive
+    // runs above its ceiling, until a `packages/core/src/` modification woke
+    // the task.
+    //
+    // ⚠️ The error's direction is what makes the class dangerous: a gate
+    // that does not run does not return "unknown", it returns GREEN — and
+    // here that green is the oracle authorising the push. Editing a doc, a
+    // profile or a plugin WITHOUT touching the core is a session's most
+    // common case, and it was exactly the one that woke nothing.
+    //
+    // ⚠️ The remote does NOT have this hole: `ci.yml` restores no turbo
+    // cache (neither `actions/cache` on `.turbo`, nor remote cache), so the
+    // guards always run there. The net exists, it is merely unreachable —
+    // the protocol wants a LOCAL green before spending a run.
+    { name: "Gardes (hors cache turbo)", run: ["npx", "turbo", "run", "test:guards"] },
+    // And the probe guarding the device above: a new guard whose subject is
+    // outside the package, in a package not declaring the task, would
+    // arrive ALREADY ASLEEP — and nothing would say so. It also verifies the
+    // task stays `cache: false` and is invoked.
+    {
+        name: "Gardes réveillées par leur sujet (GUARD-CACHE)",
+        run: ["node", "scripts/verify-guards-uncached.cjs"],
+    },
     { name: "Unit tests (npm test)", run: ["npm", "test"] },
-    // B.48 — le `--concurrency=4` qui vivait ICI, en dur, et seulement pour ce gate, a
-    // déménagé dans `scripts/run-tests.cjs` avec le second facteur qui lui manquait.
+    // The `--concurrency=4` that lived HERE, hardcoded, and only for this
+    // gate, moved into `scripts/run-tests.cjs` with the second factor it lacked.
     //
-    // Le diagnostic posé alors était juste — N tâches turbo × leurs pools de workers
-    // sursouscrivent la machine, et ce sont les tests à contrainte temporelle qui cèdent,
-    // un package différent à chaque run — mais le remède ne couvrait que la moitié du
-    // produit, et que ce gate-ci. L'étape « Unit tests » juste au-dessus, elle, n'a jamais
-    // rien porté : `npm test` lançait 12 paquets de front, chacun ouvrant ~23 workers.
-    // Mesuré le 22/07/2026 : **81 processus Node, 11,3 Go de RSS** pour ~11 Go
-    // disponibles. D'où un `ci:local` rouge une fois sur deux — toujours en timeout,
-    // jamais en assertion, sur des paquets non touchés et verts en isolation.
+    // The diagnosis made then was right — N turbo tasks × their worker
+    // pools oversubscribe the machine, and the time-constrained tests are
+    // what gives, a different package each run — but the remedy only
+    // covered half the product, and only this gate. The "Unit tests" step
+    // just above never carried anything: `npm test` launched 12 packages at
+    // once, each opening ~23 workers. Measured on 22/07/2026: **81 Node
+    // processes, 11.3 GB RSS** for ~11 GB available. Hence a ci:local red
+    // every other run — always on timeout, never on assertion, on untouched
+    // packages green in isolation.
     //
-    // Les deux gates passent désormais par le même runner, qui pose ensemble la
-    // concurrence turbo ET le plafond de workers de chaque vitest.
+    // Both gates now go through the same runner, which sets together the
+    // turbo concurrency AND each vitest's worker cap.
     {
         name: "Coverage gate (turbo test:coverage)",
         run: ["npm", "run", "test:coverage:all"],
     },
     { name: "Smoke test", run: ["node", "scripts/smoke-test.cjs"] },
-    // T6.3 — remplace `benchmark.cjs --ci`, dont les 3 assertions étaient inertes (baseline
-    // du 27/02, ère Leaflet ; les 2 autres nommaient un artefact supprimé au S4). Ce gate-ci
-    // n'était étape nulle part : il n'était atteint que transitivement par `build-deploy.cjs`,
-    // donc sous `--e2e` seulement. Le mode par défaut de `ci:local` n'avait aucun budget.
-    // ⚠️ `--plugins` AJOUTÉ le 12/08/2026 (B-220). Sans lui, cette étape ne pesait que le
-    // CORE : les 12 budgets de `PLUGIN_BUDGETS_GZ_KB` — 20 seuils boot + total — n'étaient
-    // évalués par AUCUNE gate, ni ici ni dans `ci.yml`. Ils existaient, ils étaient
-    // maintenus (une clé morte y est même détectée par la sonde de visibilité), et rien ne
-    // les lisait : un plugin pouvait doubler de poids sans qu'une seule ligne rougisse.
+    // Replaces `benchmark.cjs --ci`, whose 3 assertions were inert
+    // (baseline from 27/02, Leaflet era; the other 2 named an artefact
+    // since deleted). This gate was a step nowhere: it was only reached
+    // transitively through `build-deploy.cjs`, hence under `--e2e` only.
+    // ci:local's default mode had no budget at all.
+    // ⚠️ `--plugins` ADDED on 12/08/2026. Without it, this step only
+    // weighed the CORE: the 12 budgets of `PLUGIN_BUDGETS_GZ_KB` — 20 boot
+    // thresholds + total — were evaluated by NO gate, neither here nor in
+    // `ci.yml`. They existed, they were maintained (a dead key there is
+    // even detected by the visibility probe), and nothing read them: a
+    // plugin could double in weight without a single line turning red.
     //
-    // Trouvé en pré-volant B-220, qui annonçait `editor` à 142,3 Ko gz pour un plafond de
-    // 122 — un dépassement que le dépôt aurait donc porté sans le voir. À la mesure du
-    // 12/08 il rend **95,7 / 122**, mais c'est un fait de version, pas une protection.
+    // Found at preflight, which announced `editor` at 142.3 KB gz for a
+    // ceiling of 122 — an overrun the repo would thus have carried unseen.
+    // At the 12/08 measure it returns **95.7 / 122**, but that is a version
+    // fact, not a protection.
     {
         name: "Bundle size (core + 12 plugins, budget dur)",
         run: ["npm", "run", "size", "--", "--plugins"],
     },
-    // ── Le poids de l'APPLICATION (socle-init S4.7) ──────────────────────────
+    // ── The APPLICATION's weight ───────────────────────────
     //
-    // La gate juste au-dessus mesure la clôture des imports statiques du CORE et sort verte à
-    // ~183 / 300 KB gz. C'est 12 % de ce qu'une page charge : les données du profil, les
-    // plugins eager, le CSS et les icônes n'étaient pesés par RIEN. Une favicon de 172,7 Ko gz
-    // — plus lourde que le bundle core entier — a vécu sur le chemin critique sans qu'aucun
-    // instrument ne la voie.
+    // The gate just above measures the CORE's static import closure and
+    // comes out green at ~183 / 300 KB gz. That is 12% of what a page
+    // loads: the profile's data, the eager plugins, the CSS and the icons
+    // were weighed by NOTHING. A 172.7 KB gz favicon — heavier than the
+    // whole core bundle — lived on the critical path with no instrument
+    // seeing it.
     //
-    // ⚠️ Ces deux étapes sont dans le chemin PAR DÉFAUT, pas sous `--e2e`, et c'est le point.
-    // La gate a besoin d'un `deploy/` bâti ; le construire coûte **8 s** (mesuré), contre une
-    // suite qui se compte en minutes. La réserver à `--e2e` l'aurait rendue quasi jamais
-    // exécutée, c'est-à-dire décorative — le défaut même que le Sprint 4 corrige.
-    // Le doublon avec `E2E_STEPS` est assumé : 8 s payées deux fois sous `--e2e`, contre une
-    // gate réelle tous les autres jours.
+    // ⚠️ These two steps are in the DEFAULT path, not under `--e2e`, and
+    // that is the point. The gate needs a built `deploy/`; building it
+    // costs **8 s** (measured), against a suite counted in minutes.
+    // Reserving it for `--e2e` would have made it almost never run, i.e.
+    // decorative — the very defect this wiring fixes. The duplication with
+    // `E2E_STEPS` is owned: 8 s paid twice under `--e2e`, against a real
+    // gate every other day.
     {
         name: "Build deploy variants (sujet du budget applicatif)",
         run: ["npm", "run", "build:deploy:all"],
@@ -270,104 +334,132 @@ const STEPS = [
         name: "App payload (première page par variante, budget dur)",
         run: ["npm", "run", "size:app"],
     },
-    // ── Aucun secret dans ce qu'on LIVRE ─────────────────────────────────────
+    // ── No secret in what SHIPS ──────────────────────────────────────────────
     //
-    // 🛑 CETTE GATE COMBLE UN ANGLE MORT ENTRE DEUX FILETS, pas une négligence. `gitleaks`
-    // scanne des PLAGES DE COMMITS ; `.gitignore` couvre le canal git. `deploy/` est
-    // git-ignoré, donc invisible aux deux — pendant qu'il est exactement ce qui part chez un
-    // client ou en prod. Mesuré le 09/08/2026 : un JWT `geoleaf_editor` NON EXPIRÉ, contre un
-    // hôte joignable depuis Internet, vivait à la racine de `deploy-core` et `deploy-full`,
-    // plus dans leurs `.gz`/`.br`. Quatre gates regardaient `deploy/` — toutes pesaient des
-    // octets, aucune ne lisait le contenu.
+    // 🛑 THIS GATE FILLS A BLIND SPOT BETWEEN TWO NETS, not a negligence.
+    // `gitleaks` scans COMMIT RANGES; `.gitignore` covers the git channel.
+    // `deploy/` is git-ignored, hence invisible to both — while it is
+    // exactly what leaves for a client or production. Measured on
+    // 09/08/2026: an UNEXPIRED `geoleaf_editor` JWT, against a host
+    // reachable from the Internet, lived at the root of `deploy-core` and
+    // `deploy-full`, plus in their `.gz`/`.br`. Four gates looked at
+    // `deploy/` — all weighed bytes, none read the content.
     //
-    // ⚠️ Position couplée à l'étape « Build deploy variants » deux crans plus haut : elle
-    // scanne CET artefact-là. Remontée avant lui, elle rendrait un verdict sur un `deploy/`
-    // d'âge inconnu — ou sur rien, ce que DNS-04 fait rougir plutôt que de laisser passer.
+    // ⚠️ Position coupled to the "Build deploy variants" step two notches
+    // up: it scans THAT artefact. Moved before it, it would render a
+    // verdict on a `deploy/` of unknown age — or on nothing, which DNS-04
+    // turns red rather than letting through.
     {
         name: "Aucun secret dans les livrables (DEPLOY-SECRETS)",
         run: ["node", "scripts/verify-deploy-no-secrets.cjs"],
     },
-    // Le livrable emporte sa recette serveur (SC-01/02/03).
+    // The deliverable carries its server recipe (SC-01/02/03).
     //
-    // 🛑 Même position, même motif que la gate ci-dessus : elle lit l'artefact que l'étape
-    // « Build deploy variants » vient de produire. Remontée avant lui, elle rendrait un verdict
-    // sur un `deploy/` d'âge inconnu — ou sur rien, ce que son SC-03 fait rougir.
+    // 🛑 Same position, same motive as the gate above: it reads the
+    // artefact the "Build deploy variants" step just produced. Moved before
+    // it, it would render a verdict on a `deploy/` of unknown age — or on
+    // nothing, which its SC-03 turns red.
     //
-    // ⚠️ Ce qu'elle ferme n'est PAS un trou de connaissance. Le fait — « sans le type MIME de
-    // `.mjs`, rien ne boote » — était déjà écrit dans `docker/nginx.dev.conf`, avec l'aveu que
-    // personne ne pouvait le vérifier chez l'intégrateur. C'était un trou de DIFFUSION, et il a
-    // coûté une prod muette le 09/08/2026.
+    // ⚠️ What it closes is NOT a knowledge hole. The fact — "without the
+    // `.mjs` MIME type, nothing boots" — was already written in
+    // `docker/nginx.dev.conf`, with the admission that nobody could verify
+    // it at the integrator's. It was a DIFFUSION hole, and it cost a mute
+    // production on 09/08/2026.
     {
         name: "Le livrable emporte son contrat serveur (DEPLOY-SERVER-CONTRACT)",
         run: ["node", "scripts/verify-deploy-server-contract.cjs"],
     },
-    // Déterminisme du DÉPLOYÉ — placé ICI, et la position est la raison d'être du câblage.
+    // DEPLOY determinism — placed HERE, and the position is the wiring's
+    // reason for being.
     //
-    // 🛑 Cette gate a failli rester hors du chemin par défaut « parce qu'elle coûte deux
-    // builds ». C'était accepter une gate décorative : trois sources de non-déterminisme ont
-    // vécu des mois dans ce dépôt (`?v=<Date.now()>`, `CACHE_VERSION` horodaté, `_generatedAt`
-    // d'un profil pré-caché), et aucune n'a jamais fait rougir quoi que ce soit — elles se
-    // payaient en re-téléchargements chez chaque visiteur, ce que personne ne mesure.
+    // 🛑 This gate almost stayed out of the default path "because it costs
+    // two builds". That was accepting a decorative gate: three sources of
+    // non-determinism lived for months in this repo (`?v=<Date.now()>`, a
+    // timestamped `CACHE_VERSION`, a pre-cached profile's `_generatedAt`),
+    // and none ever turned anything red — they were paid in re-downloads by
+    // every visitor, which nobody measures.
     //
-    // Le coût est ramené à **un seul build (~50 s)** par `--reuse-built` : l'étape juste
-    // au-dessus vient de produire `deploy/`, qui sert de premier terme. ⚠️ Déplacer cette
-    // entrée ailleurs dans la liste casse ce couplage sans rien signaler — elle comparerait un
-    // `deploy/` d'âge inconnu à un build neuf, et rougirait en parlant de déterminisme.
+    // The cost is brought down to **a single build (~50 s)** by
+    // `--reuse-built`: the step just above has produced `deploy/`, which
+    // serves as the first term. ⚠️ Moving this entry elsewhere in the list
+    // breaks that coupling with no signal — it would compare a `deploy/` of
+    // unknown age to a fresh build, and turn red while speaking of determinism.
     {
         name: "Déterminisme du déployé (BUILD-DET — deux builds, mêmes octets)",
         run: ["npm", "run", "check:determinism:deploy:ci"],
     },
-    // Deux gates dead-code, désormais DISJOINTES — plus complémentaires, sans recouvrement.
-    // knip (étape suivante) garde les fichiers morts, les dépendances et la config morte
-    // bloquante ; sa baseline vaut 1 signal depuis le 26/07/2026, parce que la catégorie
-    // exports/types est coupée sur `packages/core/src/**` (`ignoreIssues` dans knip.js) :
-    // 157 des 158 signaux y vivaient, et leur triage un par un a donné 116 faux positifs de
-    // baril pour 0 actionnable. Le filet B3 cherche par token dans tout le dépôt, y compris
-    // les VALEURS littérales des const de type chaîne, qu'aucun graphe d'imports ne relie à
-    // leur consommateur. Il couvrait 51 des 74 candidats seul (mesure 25/07/2026) ; il les
-    // couvre maintenant tous les 74 — il est le SEUL gate sur les exports du core, pas un
-    // doublon. Chacun porte sa classe (A/C/D), asservie par CLS-01/CLS-02 (API publique S4.8).
+    // Two dead-code gates, now DISJOINT — complementary, no overlap. knip
+    // (next step) guards dead files, dependencies and blocking dead config;
+    // its baseline has been 1 signal since 26/07/2026, because the
+    // exports/types category is cut on `packages/core/src/**`
+    // (`ignoreIssues` in knip.js): 157 of the 158 signals lived there, and
+    // their one-by-one triage yielded 116 barrel false positives for 0
+    // actionable. The B3 net searches by token across the whole repo,
+    // including the literal VALUES of string consts, which no import graph
+    // links to their consumer. It covered 51 of the 74 candidates alone
+    // (25/07/2026 measure); it now covers all 74 — it is the ONLY gate on
+    // the core's exports, not a duplicate. Each carries its class (A/C/D),
+    // enforced by CLS-01/CLS-02.
     { name: "Dead code (knip)", run: ["npm", "run", "dead-code"] },
     {
         name: "Dead-code filet B3 (core orphan exports)",
         run: ["npm", "run", "check-orphan-exports"],
     },
-    // COUVERTURE S1 — un module source chargé par `require()` depuis un test voit sa
-    // couverture attribuée aux MAUVAISES lignes et aux MAUVAISES fonctions. Rien n'échoue :
-    // la suite est verte et le rapport plausible, ce qui a laissé le défaut vivre un mois.
-    // La baseline gèle les 357 sites connus et ne bloque que sur un site NEUF — elle ne
-    // peut que descendre. Preuve par mutation dans `probe-gate-visibility.cjs`, qui plante
-    // un `require()` de source dans le package sonde et exige que cette gate le nomme.
+    // A source module loaded through `require()` from a test gets its
+    // coverage attributed to the WRONG lines and the WRONG functions.
+    // Nothing fails: the suite is green and the report plausible, which let
+    // the defect live a month. The baseline freezes the 357 known sites and
+    // only blocks on a NEW site — it can only go down. Proof by mutation in
+    // `probe-gate-visibility.cjs`, which plants a source `require()` in the
+    // probe package and requires this gate to name it.
     {
         name: "Mode de chargement des tests (require → couverture fausse)",
         run: ["node", "scripts/verify-test-load-mode.cjs"],
     },
-    // COUVERTURE S1.7 — la SEULE gate qui vérifie l'appareil de mesure plutôt que le code.
-    // Un rapport de couverture faux est bien formé et plausible : aucun test ne peut
-    // l'attraper, et c'est ainsi que le défaut a vécu un mois. Témoin à 4 fonctions, un
-    // test qui n'en appelle qu'une, assertion que le lcov crédite celle-là et pas les
-    // trois autres. Le dépôt mesure en istanbul partout ; la sonde vérifie l'attribution sur
-    // un témoin à réponse connue. ~2 s. Porte sur la branche `import` : la branche `require()`
-    // a été éliminée (S2-S5) et gelée par `verify-test-load-mode.cjs`.
+    // The ONLY gate that verifies the measuring device rather than the
+    // code. A false coverage report is well formed and plausible: no test
+    // can catch it, and that is how the defect lived a month. A 4-function
+    // witness, a test calling only one, assertion that the lcov credits
+    // that one and not the other three. The repo measures in istanbul
+    // everywhere; the probe verifies attribution on a known-answer witness.
+    // ~2 s. Bears on the `import` branch: the `require()` branch was
+    // eliminated and frozen by `verify-test-load-mode.cjs`.
     {
         name: "Étalonnage de la couverture (attribution FNDA/DA)",
         run: ["node", "scripts/verify-coverage-attribution.cjs"],
     },
     // Socle S4 — contracts/ must stay a pure type surface (no runtime value export, no
-    // non-type import, no top-level statement). Green at wiring (Sprint 2 purified the 2
+    // non-type import, no top-level statement). Green at wiring (a sweep purified the 2
     // membranes) ⇒ no baseline. Keep in sync with ci.yml and .husky/pre-commit.
     {
         name: "Contracts purity (type-only)",
         run: ["npm", "run", "check:contracts-pure"],
     },
-    // S13.1 — `api/geoleaf.*.ts` expose the API, they do not implement it. The rule
+    // `api/geoleaf.*.ts` expose the API, they do not implement it. The rule
     // is documented (ARCHITECTURE.md) and was broken twice: geoleaf.config.ts had drifted
     // into self-registration (removed S2), geoleaf.storage.ts held ~430 L of orchestration
-    // (extracted S3). Green at wiring (S13.1 conformed events + introspection) ⇒ no
+    // (extracted S3). Green at wiring (conformed events + introspection) ⇒ no
     // baseline. Keep in sync with ci.yml and .husky/pre-commit.
     {
         name: "Facade purity (geoleaf.*.ts)",
         run: ["npm", "run", "check:facade-purity"],
+    },
+    // PLATFORM-ISO — neighbour of the two above because it defends the same
+    // species of property: an architecture boundary no test can render.
+    // `@geoleaf-plugins/navigation`'s three adapters are the only point of
+    // contact with the browser, and that property is what makes a later
+    // native port possible.
+    // ⚠️ The perimeter is SCOPED to the plugin, never the repo: the repo
+    // carries seven legitimate `navigator.geolocation` outside any
+    // `platform/` — the core's geolocation capability and `measure`'s GPS
+    // tool. Swept repo-wide, it would be BORN RED on code it has no
+    // business judging, and a gate born red gets disarmed.
+    // 🛑 As long as the plugin does not exist, it returns a MOTIVATED SKIP
+    // that SAYS it is not a green — deliberate: a "0 violations" over an
+    // absent corpus is indistinguishable from conformity. Keep in sync with ci.yml.
+    {
+        name: "Platform isolation (PLATFORM-ISO)",
+        run: ["node", "scripts/check-platform-isolation.cjs"],
     },
     // S14 — the npm script existed since the docs sweep but was wired into NOTHING:
     // absent from this list AND from every GitHub workflow. That is how three APIs
@@ -384,17 +476,19 @@ const STEPS = [
         name: "Docs examples (phantom APIs, stale package names)",
         run: ["npm", "run", "check:docs-examples"],
     },
-    // NPM-README (14/08/2026) — la page npm d'un paquet est sa vitrine, et personne ne la relit
-    // depuis ce dépôt. `npmjs.com` ne rend pas les alertes GitHub : `> [!WARNING]` s'affiche en
-    // TEXTE LITTÉRAL, donc le marqueur devient une ligne de bruit AU-DESSUS de l'avertissement
-    // qu'il devait souligner. Mesuré avant correctif : 18 alertes sur 6 des 14 README publiés,
-    // dont 5 dans `@geoleaf/core`.
-    // 🛑 Placée juste après `check:docs-examples` parce que les deux lisent LES MÊMES fichiers et
-    // se partagent le sujet : celle du dessus garde le CODE des blocs clôturés, celle-ci la PROSE
-    // qui les entoure. Elles ne peuvent PAS fusionner pour autant — le corpus de
-    // `check:docs-examples` est plus large (racine du dépôt + `docs/`), et la règle y serait
-    // FAUSSE : GitHub et VitePress rendent les alertes. Une gate qui rougirait sur les deux
-    // surfaces les plus lues du projet se ferait désactiver. Statique, sans build.
+    // NPM-README (14/08/2026) — a package's npm page is its shopfront, and
+    // nobody rereads it from this repo. `npmjs.com` does not render GitHub
+    // alerts: `> [!WARNING]` displays as LITERAL TEXT, so the marker
+    // becomes a noise line ABOVE the warning it was meant to underline.
+    // Measured before the fix: 18 alerts across 6 of the 14 published
+    // READMEs, 5 of them in `@geoleaf/core`.
+    // 🛑 Placed right after `check:docs-examples` because both read THE
+    // SAME files and share the subject: the one above guards the CODE of
+    // fenced blocks, this one the PROSE around them. They still CANNOT
+    // merge — `check:docs-examples`'s corpus is wider (repo root +
+    // `docs/`), and the rule would be FALSE there: GitHub and VitePress do
+    // render alerts. A gate turning red on the project's two most-read
+    // surfaces would get disabled. Static, no build.
     {
         name: "Rendu npm des README publiés (NPM-README)",
         run: ["npm", "run", "check:npm-readme"],
@@ -409,209 +503,346 @@ const STEPS = [
         name: "Module headers (new files must be documented)",
         run: ["npm", "run", "check:module-headers"],
     },
-    // EXACT-OPTIONAL-DEBT (qualite Q4.5, 31/07/2026) — `exactOptionalPropertyTypes` est posé
-    // depuis le Q4.4, et ses 95 erreurs ont été soldées SANS élargir un seul type. Rien, sinon
-    // cette gate, ne distingue ensuite un `?: T | undefined` justifié d'un `?: T | undefined`
-    // posé pour faire taire tsc — et l'élargissement rend à la propriété exactement la
-    // sémantique d'avant l'option. Baseline 0, visite AST (un grep compte 83 faux positifs :
-    // casts et unions de paramètres), périmètre dérivé de `lib/packages.cjs`. Vue rougir sur
-    // ses deux règles avant d'être crue.
+    // EXACT-OPTIONAL-DEBT (31/07/2026) — `exactOptionalPropertyTypes` is
+    // set, and its 95 errors were settled WITHOUT widening a single type.
+    // Nothing, except this gate, then tells a justified `?: T | undefined`
+    // from a `?: T | undefined` set to silence tsc — and the widening gives
+    // the property back exactly its pre-option semantics. Baseline 0, AST
+    // visit (a grep counts 83 false positives: casts and parameter unions),
+    // perimeter derived from `lib/packages.cjs`. Seen red on both its rules
+    // before being believed.
     {
         name: "Exact-optional debt (aucun type élargi pour faire taire tsc)",
         run: ["npm", "run", "check:exact-optional-debt"],
     },
-    // NONNULL-ASSERTION-DEBT (qualite Q5.5) — le pendant de la précédente pour
-    // `noUncheckedIndexedAccess`. NNA-04 est la règle qui compte : zéro `arr[i]!`, SANS
-    // baseline, parce qu'une lecture indexée assertée est une erreur du palier qu'on a tue
-    // — le sweep sort vert PARCE QUE l'assertion est là. Mesuré au Lot 0 : le seul
-    // correctif à coût de complexité nul est justement celui-là, et `complexity: 20` est un
-    // cliquet, donc la pression pousse structurellement vers l'assertion. Les 302 autres
-    // entrées (dette `strictNullChecks`, palier Q3) sont gelées et ne peuvent que rétrécir.
-    // Vue rougir sur ses TROIS règles avant d'être crue.
+    // NONNULL-ASSERTION-DEBT — the previous one's counterpart for
+    // `noUncheckedIndexedAccess`. NNA-04 is the rule that counts: zero
+    // `arr[i]!`, WITHOUT a baseline, because an asserted indexed read is a
+    // silenced error of that tier — the sweep comes out green BECAUSE the
+    // assertion is there. Measured at the start: the only zero-complexity
+    // fix is precisely that one, and `complexity: 20` is a ratchet, so the
+    // pressure structurally pushes towards the assertion. The 302 other
+    // entries (`strictNullChecks` debt) are frozen and can only shrink.
+    // Seen red on its THREE rules before being believed.
     {
         name: "Non-null assertion debt (aucune erreur Q5 soldée par un `!`)",
         run: ["npm", "run", "check:nonnull-debt"],
     },
-    // JS-TEST-DEBT (Sprint 5, S5c/5.3) — le cliquet que `dette_technique.md` § D-23 réclamait
-    // nommément depuis le 31/07/2026 (« le geste qui rendrait ce coût plat est connu […] Il
-    // n'a pas été posé »). Sans lui, D-24 mesurait le core à 431 le 24/07, 447 le 31/07 et
-    // 457 le 05/08 : la dette se creusait pendant qu'on l'instruisait.
-    // 🛑 La règle qui compte n'est PAS le compteur, c'est JTD-04 — zéro suite non collectée,
-    // sans baseline. Un cliquet sur un NOMBRE se retourne contre lui-même ici : les `include`
-    // de vitest portent l'extension dans leur motif (`core/vitest.config.ts:39`,
-    // `offline-ui/vitest.config.ts:37`), donc renommer un `.test.js` en `.test.ts` sans
-    // élargir le motif rend le fichier INVISIBLE au runner — la suite reste verte avec un
-    // test de moins, et la baseline RÉTRÉCIT en applaudissant la perte. JTD-04 est évaluée
-    // AVANT la baseline, précisément pour que ce chemin soit inatteignable.
-    // Vue rougir sur ses QUATRE règles avant d'être crue, et son premier run a trouvé un
-    // défaut vivant : `maplibre-import-validation.test.ts` n'était collecté par aucun vitest
-    // (456 fichiers listés, lui absent) NI compilé par aucun tsconfig — il n'affirmait rien
-    // depuis le 21/03/2026.
+    // JS-TEST-DEBT — the ratchet the debt register demanded by name since
+    // 31/07/2026 ("the gesture that would flatten this cost is known […] It
+    // has not been laid"). Without it, the debt measured the core at 431 on
+    // 24/07, 447 on 31/07 and 457 on 05/08: the debt deepened while being
+    // instructed.
+    // 🛑 The rule that counts is NOT the counter, it is JTD-04 — zero
+    // uncollected suite, no baseline. A ratchet on a NUMBER turns against
+    // itself here: vitest's `include`s carry the extension in their pattern
+    // (`core/vitest.config.ts`, `offline-ui/vitest.config.ts`), so
+    // renaming a `.test.js` to `.test.ts` without widening the pattern
+    // makes the file INVISIBLE to the runner — the suite stays green with
+    // one test fewer, and the baseline SHRINKS applauding the loss. JTD-04
+    // is evaluated BEFORE the baseline, precisely so that path is unreachable.
+    // Seen red on its FOUR rules before being believed, and its first run
+    // found a live defect: `maplibre-import-validation.test.ts` was
+    // collected by no vitest (456 files listed, it absent) NOR compiled by
+    // any tsconfig — it had asserted nothing since 21/03/2026.
     {
-        name: "JS-test debt (D-23/D-24 gelées, et aucune suite invisible au runner)",
+        name: "JS-test debt (dette `.js` gelée, et aucune suite invisible au runner)",
         run: ["npm", "run", "check:js-test-debt"],
     },
-    // DIST-INTEGRITY (Sprint 6, S6a/B-130) — le déployé embarquait DEUX jeux de chunks, et le
-    // registre n'attribuait ça qu'au cache turbo. La mesure a trouvé DEUX causes :
-    //   1. turbo restaure son cache SANS vider `dist/` — prouvé par canari sur turbo 2.9.18 :
-    //      un fichier posé à la main survit à un `cache hit` / `>>> FULL TURBO`. L'issue (a)
-    //      du registre (« déclarer outputs ») est donc écartée : `outputs: ["dist/**"]` est
-    //      déjà déclaré et ne suffit pas.
-    //   2. 🛑 `build-deploy-coverage.cjs` appelait `npx rollup -c` DIRECTEMENT, aux étapes 1
-    //      et 4, court-circuitant le `rimraf dist &&` que porte le script `build` du core.
-    //      Rollup n'efface pas sa sortie : chaque passe superposait son jeu de chunks hashés.
-    //      Mesuré : `core/dist/chunks/` sort PROPRE d'un `turbo run build --force` et redevient
-    //      double après ce seul script. Cette cause-là n'était écrite nulle part.
-    // Correctif mesuré : le déployé passe de 41010 à 40016 Ko. Et un chunk orphelin ne se
-    // contente pas de peser — il PARTIRAIT dans le tarball npm (B-141 ②, 3,5 Mo sur un paquet).
-    // ⚠️ Vue rougir avant d'être crue, et son PREMIER run a produit un FAUX POSITIF :
-    // `maplibre-layer-builders` / `maplibre-layer-registry` rendus comme deux variantes, parce
-    // que `builders` et `registry` font huit caractères comme un hash rollup. Resserrée deux
-    // fois (hash exigeant majuscule + chiffre, et périmètre limité aux répertoires `chunks/`)
-    // — une gate bruyante apprend à être ignorée, ce qui est pire qu'une gate absente.
+    // DIST-INTEGRITY — the deploy embarked TWO sets of chunks, and the
+    // register only attributed that to the turbo cache. Measurement found
+    // TWO causes:
+    //   1. turbo restores its cache WITHOUT emptying `dist/` — proven by
+    //      canary on turbo 2.9.18: a hand-placed file survives a
+    //      `cache hit` / `>>> FULL TURBO`. The register's option (a)
+    //      ("declare outputs") is thus ruled out: `outputs: ["dist/**"]` is
+    //      already declared and does not suffice.
+    //   2. 🛑 `build-deploy-coverage.cjs` called `npx rollup -c` DIRECTLY,
+    //      at steps 1 and 4, short-circuiting the `rimraf dist &&` the
+    //      core's `build` script carries. Rollup does not erase its output:
+    //      each pass stacked its set of hashed chunks. Measured:
+    //      `core/dist/chunks/` comes out CLEAN of a
+    //      `turbo run build --force` and doubles again after this single
+    //      script. That cause was written nowhere.
+    // Fix measured: the deploy goes from 41,010 to 40,016 KB. And an orphan
+    // chunk does not merely weigh — it would SHIP in the npm tarball
+    // (3.5 MB on one package).
+    // ⚠️ Seen red before being believed, and its FIRST run produced a FALSE
+    // POSITIVE: `maplibre-layer-builders` / `maplibre-layer-registry`
+    // rendered as two variants, because `builders` and `registry` are eight
+    // characters like a rollup hash. Tightened twice (hash requiring
+    // uppercase + digit, and perimeter limited to `chunks/` directories) —
+    // a noisy gate learns to be ignored, which is worse than an absent one.
     {
         name: "Intégrité de dist/ (DIST-INTEGRITY — 0 chunk en double, 0 orphelin)",
         run: ["npm", "run", "check:dist-integrity"],
     },
-    // ESM-PURITY (socle-init S2, tâche 2.1′) — un spécificateur NU dans un `dist/` est
-    // irrésoluble en navigateur : sans import map, `from 'gtfs-realtime-bindings'` n'a pas
-    // d'URL. Le module se charge chez l'intégrateur, et il casse. Le témoin historique était
-    // réel et copié dans les 4 variantes de `deploy/` ; `purge-dist.cjs` l'a emporté depuis,
-    // donc la garde a été FABRIQUÉE rouge par mutation, pas trouvée rouge.
-    // ⚠️ La ligne de partage est `peerDependencies`, pas `dependencies` : `maplibre-gl` est un
-    // external VOULU (moteur hors bundle, déclaré aussi en `external:` du rollup), tandis que
-    // le témoin `gtfs-realtime-bindings` était une `dependencies` qui fuyait. L'allowlist en
-    // dérive, paquet par paquet — la tolérer globalement rendrait la déclaration décorative.
-    // ⚠️ Et elle scanne par un SCANNER, pas un grep : le dépôt porte deux faux positifs qu'un
-    // `grep from ['"]` signalerait — un `@example` TSDoc dans `legend.js` et une chaîne
-    // d'erreur dans `geoleaf-print.plugin.js`. Ils vivent sur le disque, donc un vert les
-    // traverse : c'est la non-régression permanente du neutraliseur.
+    // ESM-PURITY — a BARE specifier in a `dist/` is unresolvable in a
+    // browser: without an import map, `from 'gtfs-realtime-bindings'` has
+    // no URL. The module loads at the integrator's, and it breaks. The
+    // historical witness was real and copied into the 4 `deploy/` variants;
+    // `purge-dist.cjs` has since taken it away, so the guard was
+    // MANUFACTURED red by mutation, not found red.
+    // ⚠️ The dividing line is `peerDependencies`, not `dependencies`:
+    // `maplibre-gl` is a WANTED external (engine outside the bundle, also
+    // declared in the rollup's `external:`), while the
+    // `gtfs-realtime-bindings` witness was a leaking `dependencies`. The
+    // allowlist derives from it, package by package — tolerating it
+    // globally would make the declaration decorative.
+    // ⚠️ And it scans with a SCANNER, not a grep: the repo carries two
+    // false positives a `grep from ['"]` would flag — a TSDoc `@example` in
+    // `legend.js` and an error string in `geoleaf-print.plugin.js`. They
+    // live on disk, so a green crosses them: the neutraliser's permanent
+    // non-regression.
     {
         name: "Pureté ESM de dist/ (ESM-PURITY — 0 spécificateur nu hors allowlist)",
         run: ["npm", "run", "check:esm-purity"],
     },
-    // DOC-CONFIG-EXAMPLES (Sprint 5, S5c/5.8) — les deux gates d'exemples de doc regardent du
-    // CODE : `validate-docs-examples` traque les API fantômes, `typecheck-docs-examples` compile
-    // les blocs TS et les `@example`. Un bloc ```json décrivant un profil n'est ni l'un ni
-    // l'autre — personne ne le lisait. Or les schémas de profil sont `additionalProperties:
-    // false` : une clé retirée d'un schéma mais laissée dans un exemple produit un extrait
-    // COPIABLE-COLLABLE qui fait échouer `validate:profiles` chez l'intégrateur.
-    // 🛑 C'est la forme EXACTE du trou comblé le 31/07 (un `GeoLeaf.POI.add()` copiable dans les
-    // deux README les plus lus) — sauf qu'ici le corpus était bon et que c'est le TYPE DE BLOC
-    // qui s'arrêtait avant. Relevé au câblage : 169 clés invalides sur 24 documents produit, dont 46 au PREMIER NIVEAU,
-    // dont 5 du Sprint 5 (corrigées) ; les 164 autres sont antérieures et
-    // gelées en baseline décroissante. Vue rougir sur ses trois règles avant d'être crue.
+    // DOC-CONFIG-EXAMPLES — the two doc-example gates look at CODE:
+    // `validate-docs-examples` hunts ghost APIs, `typecheck-docs-examples`
+    // compiles TS blocks and `@example`s. A ```json block describing a
+    // profile is neither — nobody read it. Yet the profile schemas are
+    // `additionalProperties: false`: a key removed from a schema but left
+    // in an example produces a COPY-PASTABLE extract that fails
+    // `validate:profiles` at the integrator's.
+    // 🛑 The EXACT shape of the hole closed on 31/07 (a copyable
+    // `GeoLeaf.POI.add()` in the two most-read READMEs) — except here the
+    // corpus was right and it is the BLOCK TYPE that stopped short.
+    // Recorded at wiring: 169 invalid keys across 24 product documents, 46
+    // of them at the FIRST LEVEL, 5 of them recent (fixed); the other 164
+    // are older and frozen in a decreasing baseline. Seen red on its three
+    // rules before being believed.
     {
         name: "Exemples de config JSON de la doc produit (DOC-CONFIG-EXAMPLES)",
         run: ["npm", "run", "check:doc-config-examples"],
     },
-    // TSDOC-CONFORMITY (27/07/2026) — le pendant de MOD-HEADERS sur le CONTENU du bloc,
-    // pas sur sa présence. MH-01 garantit qu'un fichier neuf est documenté ; celle-ci
-    // garantit que la documentation décrit la signature qu'elle surplombe. 47 violations
-    // au câblage (15 `@param` fantômes, 31 documentations partielles, 1 `@throws` sans
-    // `throw`), gelées en baseline décroissante — dont 7 où le paramètre documenté est
-    // devenu `_`-préfixé, c'est-à-dire inutilisé, sans que la phrase le dise.
+    // TSDOC-CONFORMITY (27/07/2026) — MOD-HEADERS' counterpart on the
+    // block's CONTENT, not its presence. MH-01 guarantees a new file is
+    // documented; this one guarantees the documentation describes the
+    // signature it overlooks. 47 violations at wiring (15 ghost `@param`s,
+    // 31 partial documentations, 1 `@throws` without a `throw`), frozen in
+    // a decreasing baseline — 7 of them where the documented parameter
+    // became `_`-prefixed, i.e. unused, with the sentence not saying so.
     {
         name: "TSDoc conformity (@param ↔ signature)",
         run: ["npm", "run", "check:tsdoc"],
     },
-    // B-80 / reliquat doc V3 (31/07/2026) — le dernier trou de la règle ⛔ : `@param`,
-    // `@throws` et l'arité sont gardés par TSDOC-CONFORMITY, les `@example` sont compilés par
-    // `typecheck-docs-examples`, mais la PROSE des TSDoc ne l'était par rien. Une phrase qui
-    // renvoie à `kernel/geojson/style-resolver.ts` reste lisible et convaincante longtemps
-    // après que le fichier a bougé.
+    // 31/07/2026 — the documentation rule's last hole: `@param`, `@throws`
+    // and arity are guarded by TSDOC-CONFORMITY, `@example`s are compiled
+    // by `typecheck-docs-examples`, but TSDoc PROSE was guarded by nothing.
+    // A sentence pointing at `kernel/geojson/style-resolver.ts` stays
+    // readable and convincing long after the file has moved.
     //
-    // ⚠️ **La baseline de 84 n'est PAS une file de dette à drainer, et c'est mesuré.** Trois
-    // classes de faux positifs ont été fermées avant le câblage (absents 149 → 84 : segment
-    // omis / préfixe en trop, specifier de paquet, chemin à placeholder) — mais l'instruction
-    // du reliquat a montré que **la majorité des 84 nomme un chemin PARCE QU'il est mort** :
-    // « Reclassified from … », « Absorbs the former … », « PROMOTED here from … ». C'est de la
-    // provenance légitime, pas un défaut, et aucune regex ne l'en distingue de façon fiable —
-    // le même verdict que l'en-tête du script avait déjà rendu pour les `.md` (précision 2/10).
+    // ⚠️ **The baseline of 84 is NOT a debt queue to drain, and that is
+    // measured.** Three false-positive classes were closed before wiring
+    // (absent 149 → 84: omitted segment / extra prefix, package specifier,
+    // placeholder path) — but instructing the remainder showed that **the
+    // majority of the 84 name a path BECAUSE it is dead**: "Reclassified
+    // from …", "Absorbs the former …", "PROMOTED here from …". That is
+    // legitimate provenance, not a defect, and no regex reliably tells them
+    // apart — the same verdict the script's header had already rendered for
+    // `.md` files (precision 2/10).
     //
-    // Ce que ce gate garde est donc précis et étroit : **aucune citation morte NEUVE ne peut
-    // entrer**. C'est le vrai risque (quelqu'un déplace un fichier et laisse la référence),
-    // tandis qu'une note de provenance s'écrit délibérément et rarement. TSDOC-PATHS-02
-    // empêche en plus la baseline de se fossiliser. Vu rouge sur les DEUX axes avant d'être cru.
+    // What this gate guards is thus precise and narrow: **no NEW dead
+    // citation can enter**. That is the real risk (someone moves a file and
+    // leaves the reference), while a provenance note is written
+    // deliberately and rarely. TSDOC-PATHS-02 moreover keeps the baseline
+    // from fossilising. Seen red on BOTH axes before being believed.
     {
         name: "Chemins cités par la prose des TSDoc (TSDOC-PATHS)",
         run: ["npm", "run", "check:tsdoc-paths"],
     },
-    // Même cliquet, autre corpus — les renvois des 45 fiches de `docs/specs/`, posé le
-    // 11/08/2026 (tâche 6.11, classes B et C).
+    // Same ratchet, another corpus — the references of the 45 `docs/specs/`
+    // sheets, laid on 11/08/2026.
     //
-    // 🛑 **Le motif est un TROU MESURÉ, pas une précaution.** Par élimination sur les 78 gates
-    // d'alors : `check-dead-links` n'extrait que `[texte](cible)` — un chemin en backticks lui
-    // est invisible ; TSDOC-PATHS s'arrête aux `src/` de paquet et n'a pas `md` dans son
-    // alternance ; les corpus `.md` de `validate-docs-examples` / `typecheck-docs-examples` se
-    // prennent à profondeur 0 de la racine, donc jamais `docs/`. **546 paires (fiche→chemin)
-    // n'étaient gardées par rien**, et c'est exactement ce que la roadmap constatait de la
-    // classe B : « elle se périme sans jamais rougir ». Le premier run a trouvé 115 chemins
-    // morts et 6 déménagés.
+    // 🛑 **The motive is a MEASURED HOLE, not a precaution.** By elimination
+    // over the 78 gates of the time: `check-dead-links` only extracts
+    // `[text](target)` — a backticked path is invisible to it; TSDOC-PATHS
+    // stops at package `src/` and has no `md` in its alternation; the `.md`
+    // corpora of `validate-docs-examples` / `typecheck-docs-examples` are
+    // taken at depth 0 of the root, hence never `docs/`. **546 (sheet→path)
+    // pairs were guarded by nothing**, and that is exactly what the plan
+    // noted of that class: "it expires without ever turning red". The first
+    // run found 115 dead paths and 6 moved ones.
     //
-    // ⚠️ La baseline est le DOMICILE des chemins nommés parce qu'ils sont morts (« ce
-    // répertoire n'existe plus », les CDC consommés puis supprimés) : 15 sur 20 à la classe A.
-    // Les y geler évite de « corriger » des phrases qui disaient juste.
+    // ⚠️ The baseline is the HOME of paths named because they are dead
+    // ("this directory no longer exists", the CDCs consumed then deleted):
+    // 15 out of 20 in the first class. Freezing them there avoids "fixing"
+    // sentences that spoke true.
     {
         name: "Chemins cités par les fiches docs/specs (SPECS-PATHS)",
         run: ["npm", "run", "check:specs-paths"],
     },
-    // B-222 — la 3ᵉ sous-racine publique. `SPECS-PATHS` ne gardait que `docs/specs/`, alors
-    // que `guides/` et `reference/` partent dans le MÊME dépôt public et sont lues par les
-    // mêmes gens. Le trou était mesuré : `TESTING_GUIDE.md` a enseigné pendant des mois une
-    // suite `poi.test.js` disparue avec le module POI, et aucune gate ne pouvait la voir —
-    // `check-dead-links` n'extrait que `[texte](cible)`, jamais un nom en backticks.
-    // Vue rougir sur ses DEUX axes avant d'être crue (01 chemin neuf, 02 baseline périmée).
+    // The 3rd public sub-root. `SPECS-PATHS` only guarded `docs/specs/`,
+    // while `guides/` and `reference/` ship in the SAME public repo and are
+    // read by the same people. The hole was measured: `TESTING_GUIDE.md`
+    // taught for months a `poi.test.js` suite gone with the POI module, and
+    // no gate could see it — `check-dead-links` only extracts
+    // `[text](target)`, never a backticked name.
+    // Seen red on BOTH its axes before being believed (01 new path, 02 stale baseline).
     {
         name: "Chemins cités par docs/guides et docs/reference (GUIDES-PATHS)",
         run: ["npm", "run", "check:guides-paths"],
     },
-    // API publique S3.4 — même patron de cliquet que MOD-HEADERS, sur un autre objet :
-    // tout nom `geoleaf:*` relevé dans les sources doit exister dans `GeoLeafEventMap` ou
-    // `GeoLeafRawEventMap`, et la baseline des non-typés ne peut que rétrécir. Sans ce gate,
-    // le prochain événement non typé arrive sans que rien ne le dise — ce qui est exactement
-    // comment `geoleaf:toolbar:action`, le seam d'extension canonique, a pu rester hors
-    // typage pendant toute la vie du produit.
-    // ⚠️ Ce commentaire annonçait « 23 typés sur 76 relevés ; les 53 restants » — chiffres du
-    // câblage, jamais re-mesurés, et faux depuis. La gate imprime les siens à chaque run.
+    // The 3rd gate of the same family, on the WORKSHOP corpus that had
+    // none. `_docs_projet/vision/` carries the SPECIFIED, NOT DEVELOPED
+    // features: ~136 KB loaded at every "resume work", so its errors get
+    // reread at every resumption. `check-dead-links` explicitly excludes it
+    // from its perimeter, and SPECS/GUIDES-PATHS only read the public —
+    // this corpus was the only one seen by nobody.
+    // 🛑 Here the baseline is the NORMAL CASE, not an admission: a vision
+    // sheet legitimately cites paths that do not exist yet. What the gate
+    // catches is the other case — a path that existed and MOVED without the
+    // sheet following.
+    // ⚠️ It reads the workshop: on the public clone it SKIPS saying so
+    // (NEEDS_INTERNAL_ROOT). Seen red on BOTH its axes before being
+    // believed: 01 new dead path, 02 stale baseline.
+    {
+        name: "Chemins cités par _docs_projet/vision (VISION-PATHS)",
+        run: ["npm", "run", "check:vision-paths"],
+    },
+    // The 5th source, and the repo's most NORMATIVE corpus:
+    // `packages/core/docs/` ships in the npm tarball AND the public clone,
+    // and `check-dead-links` counts it as its biggest scope (60 files). The
+    // three previous gates guarded `docs/specs/`, `docs/guides/` +
+    // `docs/reference/`, and the workshop — none read it.
+    // 🛑 AND THE DIRECTORY ALREADY APPEARED IN THE GATE, which led to the
+    // backwards conclusion: it is listed in `guidesBases()` as a resolution
+    // DESTINATION, never as a scanned source. A grep on its name returned a
+    // hit. The very title of the lesson — referenced ≠ read.
+    // Deposit at laying: 485 citations, 385 live, 74 dead frozen, 26 moved.
+    // Seen red on BOTH its axes before being believed (01 new path, 02 stale baseline).
+    // ⚠️ PUBLIC corpus: unlike VISION-PATHS, it does NOT skip on the public clone.
+    {
+        name: "Chemins cités par packages/core/docs (CORE-DOCS-PATHS)",
+        run: ["npm", "run", "check:core-docs-paths"],
+    },
+    // The 6th ratchet of the family, laid on 26/08/2026 by the code-autonomy
+    // arbitration — and it closes the corpus, not a corner of it.
+    //
+    // 🛑 **The five above judge PROSE; none read a `//`.** TSDOC-PATHS stops
+    // at the `/** … */` of the package `src/`; the four others read `.md`.
+    // So `scripts/`, `e2e/`, the tests and the root configs — which carry the
+    // majority of this repo's line comments — were in NO path gate's corpus.
+    // Deposit at laying: 817 citations, 632 live, 144 dead frozen, 40 moved.
+    //
+    // ⚠️ Its corpus and TSDOC-PATHS' are COMPLEMENTARY, never overlapping:
+    // `nonDocComments` excludes `/** … */` by construction. Two gates on the
+    // same characters would diverge, and neither count would mean anything
+    // on its own.
+    //
+    // 🛑 Seen red on BOTH axes before being believed — and the first mutation
+    // EARNED its keep: it caught the gate coming out green while reading the
+    // TSDoc blocks instead of the line comments. A gate never seen red is not
+    // a gate; one seen red on the wrong corpus is worse.
+    // ⚠️ PUBLIC corpus, like CORE-DOCS-PATHS: it does NOT skip on the public clone.
+    {
+        name: "Chemins cités par les commentaires non-TSDoc (COMMENT-PATHS)",
+        run: ["npm", "run", "check:comment-paths"],
+    },
+    // Same corpus as SPECS-PATHS, another oracle, and that is the point:
+    // this gate does not judge the PATHS a sheet cites but the FRESHNESS it
+    // attests. Each `docs/specs/` sheet carries `verifie_contre: <sha>`;
+    // nothing read it, so the field certified whatever it wanted — 36
+    // sheets out of 36 were behind their subject at laying, one of which
+    // had certified five false statements for ten days.
+    // 🛑 An inert field costs nothing; a field attesting a freshness it
+    // does not have is FALSE TESTIMONY. That is what ruled out simply
+    // removing the field.
+    // ⚠️ DECREASING freeze, like TSD-04: the 36 lags are frozen, only a NEW
+    // staleness turns red, and a re-verified sheet must LEAVE the baseline.
+    // A gate that turned red at once on the 36 would have been switched off
+    // the day it was laid.
+    // ⚠️ It SKIPS, saying so, where none of the cited commits exists — the
+    // public clone is born from a single commit. Seen red on its SIX axes
+    // before being believed (VC-00 collapsed corpus, VC-01 field removed,
+    // VC-02 subject not found, VC-03 unknown commit, VC-04 new staleness,
+    // VC-05 healed freeze entry), then restored to the byte.
+    {
+        name: "Fraîcheur attestée par les fiches docs/specs (SPECS-FRESH)",
+        run: ["npm", "run", "check:specs-fresh"],
+    },
+    // A workshop document's `version:` must EQUAL the highest version of
+    // its revision table. The closing protocol asks for TWO gestures (bump,
+    // and lay the line) and nothing tied them: the second gets lost.
+    // 🛑 This gate's deposit was MANUFACTURED BY THE CHAIN THAT WROTE IT —
+    // the debt register and one roadmap, bumped without a line, found on
+    // 17/08 by the gate itself, repaired retroactively. A two-gesture
+    // protocol with only one guarded loses the second, including among
+    // those who write it.
+    // ⚠️ It reads the workshop: on the public clone it SKIPS saying so.
+    // Seen red on its FOUR axes before being believed: `fm > max` (the 2
+    // real cases), `fm < max` (witness restored to the byte), root outside
+    // the repo, and empty corpus.
+    {
+        name: "Version d'un doc = sa dernière ligne de révision (DOC-VERSIONS)",
+        run: ["node", "scripts/check-doc-versions.cjs"],
+    },
+    // 🛑 DOC-VERSIONS' REVERSE, and it was guarded by nothing: a closed
+    // roadmap leaves the git index, so it EXITS the corpus of the gate
+    // above — whose silence becomes indistinguishable from agreement.
+    // Measured: over 25 removals, FIVE closures never entered a commit, one
+    // of them the very day the gate was written. It cannot read the
+    // archived copy (outside the repo); what it does is bring back into the
+    // repo what git still knows. Seen red on its three axes: line removed,
+    // marker removed, dead glob.
+    {
+        name: "Clôture des roadmaps retirées (ROADMAP-CLOSURES)",
+        run: ["node", "scripts/check-roadmap-closures.cjs"],
+    },
+    // Same ratchet pattern as MOD-HEADERS, on another object: every
+    // `geoleaf:*` name found in the sources must exist in `GeoLeafEventMap`
+    // or `GeoLeafRawEventMap`, and the untyped baseline can only shrink.
+    // Without this gate, the next untyped event arrives with nothing saying
+    // so — which is exactly how `geoleaf:toolbar:action`, the canonical
+    // extension seam, could stay untyped for the product's whole life.
+    // ⚠️ This comment announced "23 typed out of 76 found; the remaining
+    // 53" — wiring-day figures, never re-measured, and false since. The
+    // gate prints its own at every run.
     {
         name: "Événements dispatchés typés (EVENT-MAP)",
         run: ["npm", "run", "check:event-map"],
     },
-    // API publique S3.5 — les deux descriptions du namespace `GeoLeaf` (`GeoLeafGlobal` côté
-    // core, `GeoLeafHost` côté host-runtime) ne peuvent pas être reliées par le compilateur :
-    // host-runtime est bundlé dans chaque plugin et n'importe rien du core, pas même un type.
-    // Elles ont donc dérivé sans témoin — `POI` est resté au contrat après la dissolution du
-    // sous-système au S9, et `GeoJSON`, le membre le plus appelé des plugins, n'était décrit
-    // ni d'un côté ni de l'autre. Ce gate compare les NOMS contre l'oracle post-boot ; la
-    // conformité des FORMES est asservie par `typecheck:consumer` (extension-contract.ts).
+    // The two descriptions of the `GeoLeaf` namespace (`GeoLeafGlobal` on
+    // the core side, `GeoLeafHost` on the host-runtime side) cannot be
+    // linked by the compiler: host-runtime is bundled into each plugin and
+    // imports nothing from the core, not even a type. They thus drifted
+    // without a witness — `POI` stayed in the contract after the
+    // subsystem's dissolution, and `GeoJSON`, the plugins' most-called
+    // member, was described on neither side. This gate compares the NAMES
+    // against the post-boot oracle; the SHAPES' conformity is enforced by
+    // `typecheck:consumer` (extension-contract.ts).
     {
         name: "Contrats du namespace synchronisés (HOST-SYNC)",
         run: ["npm", "run", "check:host-sync"],
     },
-    // API publique S4.2 — HOST-SYNC ci-dessus tient que tout membre DÉCLARÉ existe au
-    // namespace ; celui-ci tient l'inverse : toute clé du namespace est déclarée. Sans lui,
-    // une clé neuve tombe dans la traîne `[key: string]: unknown` de `GeoLeafGlobal` et rend
-    // `unknown` — le compilateur n'a rien à vérifier sur son affectation. La liste des non
-    // typées est nominative et ne peut que rétrécir ; le pourcentage n'asservit rien, il
-    // MONTE quand on retire une clé (le lot S4.3 l'a fait passer de 27 à 31 % sans écrire une
-    // ligne de type). ⚠️ HOST-06 refuse `unknown`/`any`/`Record<string, unknown>` nu : sans
-    // elle, la baseline se solderait en déclarant 62 membres vides.
+    // HOST-SYNC above holds that every DECLARED member exists on the
+    // namespace; this one holds the inverse: every namespace key is
+    // declared. Without it, a new key falls into `GeoLeafGlobal`'s
+    // `[key: string]: unknown` trail and reads `unknown` — the compiler has
+    // nothing to verify on its assignment. The untyped list is nominative
+    // and can only shrink; the percentage enforces nothing, it RISES when a
+    // key is removed (one removal batch took it from 27 to 31% without
+    // writing a line of type). ⚠️ HOST-06 refuses bare
+    // `unknown`/`any`/`Record<string, unknown>`: without it, the baseline
+    // would settle itself by declaring 62 empty members.
     {
         name: "Namespace GeoLeaf typé sous cliquet (NAMESPACE-TYPING)",
         run: ["npm", "run", "check:namespace-typing"],
     },
-    // Contrat inverse S1.8 — l'invariant que ce dépôt n'avait PAS. Les trois gates ci-dessus
-    // tiennent que ce que nous déclarons existe ; celle-ci tient que ce dont l'aval DÉPEND n'a
-    // pas disparu. Neuf clés sont parties du namespace parce qu'aucun lecteur du monorepo ne
-    // les lisait, et aucun vert d'ici ne pouvait le voir : le lecteur était dehors.
-    // ⚠️ Elle SAUTE quand `GEOLEAF_CONSUMERS` n'est pas défini, ce qui est le cas par défaut —
-    // le manifeste vit chez le consommateur (décision ④) et aucun chemin par défaut n'est écrit
-    // dans `scripts/`, qui part intégralement dans le clone public. Le SKIP imprime le chemin
-    // essayé et son motif ; il n'est jamais silencieux. Ce qui l'empêche de tout avaler est
-    // l'assertion `GATE-PROBE` de `probe-gate-visibility.cjs`, qui plante un manifeste de
-    // FIXTURE et exige de voir la gate rougir dessus — elle ne prouve pas que le vrai manifeste
-    // est lu, elle prouve que la gate MORD ENCORE.
+    // The invariant this repo did NOT have. The three gates above hold that
+    // what we declare exists; this one holds that what downstream DEPENDS
+    // on has not vanished. Nine keys left the namespace because no monorepo
+    // reader read them, and no green from here could see it: the reader was
+    // outside.
+    // ⚠️ It SKIPS when `GEOLEAF_CONSUMERS` is not defined, which is the
+    // default — the manifest lives at the consumer's and no default path is
+    // written in `scripts/`, which ships entirely in the public clone. The
+    // SKIP prints the path tried and its motive; it is never silent. What
+    // keeps it from swallowing everything is `probe-gate-visibility.cjs`'s
+    // `GATE-PROBE` assertion, which plants a FIXTURE manifest and requires
+    // seeing the gate turn red on it — it does not prove the real manifest
+    // is read, it proves the gate STILL BITES.
     {
         name: "Contrat inverse — ce dont l'aval dépend (CONSUMER-CONTRACT)",
         run: ["npm", "run", "check:consumer-contract"],
@@ -620,29 +851,32 @@ const STEPS = [
         name: "Qualified tree is up to date (docs:tree)",
         run: ["npm", "run", "docs:tree:check"],
     },
-    // Refonte documentaire V3 §Étape 3 — la référence d'API dérivée cesse d'être un fossile.
-    // Sa sortie datait du 25/07, le core avait bougé jusqu'au 26/07, et `docs:api` n'était
-    // câblé NULLE PART. Pendant ce temps `API_REFERENCE.md` était édité à la main : voilà
-    // toute la divergence entre les deux références du dépôt.
-    // ⚠️ On gate un MANIFESTE, pas le rendu, et ce n'est pas un raccourci — le rendu grave
-    // `git rev-parse HEAD` (29 fichiers sur 54 mesurés), donc il n'a pas de point fixe : la
-    // gate rougirait au commit même qui vient de régénérer. Et il pèse 1 806 fichiers / 24 Mo
-    // pour le seul core, à une ligne de HTML par fichier. Même leçon que
-    // `generate-docs-tree.cjs`, qui l'a écrite : comparer le RENDU a laissé son `--check` vert
-    // pendant que 31 annotations sur 129 étaient mortes.
+    // The derived API reference stops being a fossil. Its output dated
+    // from 25/07, the core had moved until 26/07, and `docs:api` was wired
+    // NOWHERE. Meanwhile `API_REFERENCE.md` was hand-edited: that is the
+    // whole divergence between the repo's two references.
+    // ⚠️ A MANIFEST is gated, not the render, and that is not a shortcut —
+    // the render engraves `git rev-parse HEAD` (29 files out of 54
+    // measured), so it has no fixed point: the gate would turn red at the
+    // very commit that just regenerated. And it weighs 1,806 files / 24 MB
+    // for the core alone, at one line of HTML per file. Same lesson as
+    // `generate-docs-tree.cjs`, which wrote it: comparing the RENDER left
+    // its `--check` green while 31 annotations out of 129 were dead.
     {
         name: "API surface manifest is up to date (gen:api-surface)",
         run: ["npm", "run", "gen:api-surface:check"],
     },
-    // Refonte documentaire V3 §Étape 3 item 7 — le 2ᵉ générateur. `PROFILE_JSON_REFERENCE.md`
-    // est écrit à la main et publié sur npm ; mesuré, il documente 128 paramètres quand les
-    // 12 schémas en portent 381. Il n'est donc pas seulement exposé à la dérive, il est
-    // INCOMPLET, et rien ne le disait. Cette gate garde la référence dérivée fraîche ;
-    // `npm run gen:profile-schema:audit` imprime l'écart avec le rédigé dans les deux sens.
+    // The 2nd generator. `PROFILE_JSON_REFERENCE.md` is hand-written and
+    // published on npm; measured, it documents 128 parameters when the 12
+    // schemas carry 381. It is thus not only exposed to drift, it is
+    // INCOMPLETE, and nothing said so. This gate keeps the derived
+    // reference fresh; `npm run gen:profile-schema:audit` prints the gap
+    // with the written one in both directions.
     {
-        // ⚠️ Vue DÉRIVÉE, pas fichier concurrent — c'est ce qui distingue ce rapport du
-        // `attributes.json` global que la décision Q1 a écarté : une vue ne peut pas
-        // pointer une couche supprimée, et elle rougit si un profil bouge sans elle.
+        // ⚠️ DERIVED view, not a competing file — what distinguishes this
+        // report from the global `attributes.json` that was ruled out: a
+        // view cannot point at a deleted layer, and it turns red if a
+        // profile moves without it.
         name: "Attribute model report is up to date (gen:attributes-report)",
         run: ["npm", "run", "gen:attributes-report:check"],
     },
@@ -650,59 +884,63 @@ const STEPS = [
         name: "Profile schema reference is up to date (gen:profile-schema)",
         run: ["npm", "run", "gen:profile-schema:check"],
     },
-    // Refonte documentaire V3 §2.3bis — le SECOND maillon de la chaîne config.
-    // `profiles/schemas/*.json` → inventaire → HTML : le premier maillon est gardé dans les
-    // deux sens par `check-config-coverage` (ci-dessous), le second ne l'était PAS. Un
-    // inventaire modifié sans régénération laissait un HTML périmé et commité, en exit 0.
-    // ⚠️ Le préalable a été de rendre la sortie DÉTERMINISTE : elle embarquait `new Date()`,
-    // donc elle divergeait d'elle-même chaque jour et aucune comparaison n'était possible.
-    // La date vient maintenant du bandeau de l'inventaire — même régime que `docs:tree:check`.
+    // The config chain's SECOND link. `profiles/schemas/*.json` →
+    // inventory → HTML: the first link is guarded both ways by
+    // `check-config-coverage` (below), the second was NOT. An inventory
+    // modified without regeneration left a stale, committed HTML, in exit 0.
+    // ⚠️ The prerequisite was making the output DETERMINISTIC: it embarked
+    // `new Date()`, so it diverged from itself every day and no comparison
+    // was possible. The date now comes from the inventory's banner — same
+    // regime as `docs:tree:check`.
     {
         name: "Config reference is up to date (gen:config-reference)",
         run: ["npm", "run", "gen:config-reference:check"],
     },
-    // B.20 — le complément COMPILÉ du gate ci-dessus. La deny-list ne voit que ce qu'on
-    // lui a écrit ; elle a laissé passer deux exemples de la même API qui passaient un
-    // objet d'options en 3ᵉ argument là où la signature lit `duration?: number`, et
-    // affectaient un retour déclaré `void`. Aucune regex ne les décrivait — un compilateur
-    // n'a pas besoin qu'on les lui décrive. Compile les blocs ```ts de la doc contre les
-    // `.d.ts` publiés, d'où sa place APRÈS le build (comme `typecheck:consumer`).
-    // Baseline : ne bloque que sur une erreur NOUVELLE.
+    // The COMPILED complement of the gate above. The deny-list only sees
+    // what was written into it; it let through two examples of the same API
+    // passing an options object as 3rd argument where the signature reads
+    // `duration?: number`, and assigning a return declared `void`. No regex
+    // described them — a compiler does not need them described. Compiles
+    // the doc's ```ts blocks against the published `.d.ts`, hence its place
+    // AFTER the build (like `typecheck:consumer`).
+    // Baseline: only blocks on a NEW error.
     {
         name: "Docs examples typecheck (arité, exports fantômes)",
         run: ["npm", "run", "check:docs-typecheck"],
     },
-    // B-79 (30/07/2026) — le site VitePress se construit ICI, et pas seulement sur la
-    // machine de qui y pense. `ignoreDeadLinks: false` fait ÉCHOUER le build sur un lien
-    // mort ; c'était le second filet posé en S7bis.10, mais il ne protégeait que les runs
-    // manuels. Mesuré : le build a échoué CINQ JOURS (25 → 30/07, `NOTICE.md`) sans que
-    // rien ne le voie — le `docs-dist/` périmé servait encore, Vite refusant de vider un
-    // `outDir` situé hors de sa racine (`emptyOutDir` non configuré).
-    // ⚠️ Se place APRÈS `check:docs-typecheck` : les deux lisent le même corpus, et un
-    // lien mort est moins urgent qu'un exemple qui ne compile pas.
+    // 30/07/2026 — the VitePress site builds HERE, and not only on the
+    // machine of whoever thinks of it. `ignoreDeadLinks: false` makes the
+    // build FAIL on a dead link; that was the second net laid earlier, but
+    // it only protected manual runs. Measured: the build failed for FIVE
+    // DAYS (25 → 30/07, `NOTICE.md`) with nothing seeing it — the stale
+    // `docs-dist/` still served, Vite refusing to empty an `outDir` outside
+    // its root (`emptyOutDir` not configured).
+    // ⚠️ Placed AFTER `check:docs-typecheck`: both read the same corpus,
+    // and a dead link is less urgent than an example that does not compile.
     {
         name: "Docs site build (VitePress — liens morts)",
         run: ["npm", "run", "docs:build", "-w", "@geoleaf/core"],
     },
-    // S13.2 — every `X[k] = …` with a non-literal `k` either calls the canonical
+    // Every `X[k] = …` with a non-literal `k` either calls the canonical
     // blocklist (utils/general/object-path-guard), sits in the script's ALLOWLIST with
     // a justification, or is frozen in the baseline. Blocks only NEW unguarded sinks:
-    // the Sprint 5 hole was a sink an earlier sweep had not reached, and nothing stopped
+    // the original hole was a sink an earlier sweep had not reached, and nothing stopped
     // the next one appearing the same way. Keep in sync with ci.yml and .husky/pre-commit.
     {
         name: "Dynamic-key writes (prototype pollution)",
         run: ["npm", "run", "check:dynamic-key-writes"],
     },
     { name: "Duplicate code (jscpd)", run: ["npm", "run", "dup:check"] },
-    // S8/C-5 — la table i18n du cœur est plate ; un dico de plugin imbriqué rend ses
-    // clés inatteignables SANS rien casser, et le fallback en dur masque la panne.
-    // Le filet i18n existant ne balaie que `src/lang/` du cœur : aucun dico de plugin
-    // n'était vérifié. Vert (50 dicos) au câblage ⇒ pas de baseline.
+    // The core's i18n table is flat; a nested plugin dictionary makes its
+    // keys unreachable WITHOUT breaking anything, and the hardcoded
+    // fallback masks the outage. The existing i18n net only sweeps the
+    // core's `src/lang/`: no plugin dictionary was verified. Green (50
+    // dictionaries) at wiring ⇒ no baseline.
     { name: "i18n dict shape (flat keys)", run: ["npm", "run", "check-i18n-shape"] },
-    // S7bis.10 — le gate existait depuis mars et n'était câblé nulle part : c'est le
-    // trou par lequel MIGRATION_V1_V2.md est sorti (b3d85253, 30/03), laissant 4 liens
-    // 404 en production. Vert (0/64) au câblage ⇒ pas de baseline, il ne mord que sur
-    // une régression neuve.
+    // The gate had existed since March and was wired nowhere: the hole
+    // through which MIGRATION_V1_V2.md left (b3d85253, 30/03), leaving 4
+    // 404 links in production. Green (0/64) at wiring ⇒ no baseline, it
+    // only bites on a new regression.
     { name: "Dead links (public docs)", run: ["npm", "run", "check:links"] },
     { name: "Dead CSS (purgecss)", run: ["npm", "run", "verify:purgecss"] },
     { name: "CSS token vars defined (plugins/libs)", run: ["npm", "run", "verify:css-tokens"] },
@@ -711,56 +949,75 @@ const STEPS = [
     // Architecture boundary (the core stays autonomous and tree-shakeable), NOT a
     // licence one: it survived the all-MIT switch untouched. Until S0 this gate ran
     // ONLY in sync-core-public.yml — the rule CLAUDE.md calls non-negotiable had
-    // exactly one enforcement point, inside a mirror workflow. That workflow is gone
-    // (ARCHI S9.0); this wiring is now the primary one. Keep in sync with ci.yml and
+    // exactly one enforcement point, inside a mirror workflow. That workflow is gone;
+    // this wiring is now the primary one. Keep in sync with ci.yml and
     // .husky/pre-commit.
     { name: "Core is standalone", run: ["node", "scripts/verify-core-standalone.cjs"] },
-    // ARCHI S7 (7.4) — frontière SYMÉTRIQUE de la précédente. `verify-core-standalone`
-    // interdit core → plugins ; celle-ci encadre plugins → core, qui n'était surveillée
-    // par rien : addpoi embarquait 404 Ko de copie du core, et quatre chemins lisaient
-    // une instance que l'hôte n'initialise jamais.
+    // The previous one's SYMMETRIC boundary. `verify-core-standalone`
+    // forbids core → plugins; this one frames plugins → core, which was
+    // watched by nothing: addpoi embarked 404 KB of core copy, and four
+    // paths read an instance the host never initialises.
     {
         name: "Plugin → core boundary",
         run: ["node", "scripts/verify-plugin-core-boundary.cjs"],
     },
-    // PLUGINS S9 — le pendant de la frontière ci-dessus. Cette dernière INTERDIT
-    // d'importer les sources du core ; il reste donc, par nécessité, des COPIES
-    // délibérées (pill-search, storage-contract, field-renderer/sanitize). Une copie
-    // que personne ne relit dérive en silence — c'est exactement ce qui est arrivé à
-    // `coreConfigGet` au S1. Cette gate épingle un hash normalisé de chaque moitié et
-    // force une re-confrontation humaine dès qu'un côté change.
+    // The counterpart of the boundary above. That one FORBIDS importing
+    // the core's sources; there remain, by necessity, deliberate COPIES
+    // (pill-search, storage-contract, field-renderer/sanitize). A copy
+    // nobody rereads drifts silently — exactly what happened to
+    // `coreConfigGet`. This gate pins a normalised hash of each half and
+    // forces a human re-confrontation as soon as one side changes.
     {
         name: "Seam drift (deliberate cross-boundary copies)",
         run: ["node", "scripts/verify-seam-drift.cjs"],
     },
-    // PLUGINS S11.1 — le troisième gate de frontière, qui verrouille le S1. core-boundary
-    // INTERDIT d'importer les sources du core ; seam-drift surveille les COPIES délibérées ;
-    // celui-ci interdit de RE-DÉFINIR un utilitaire qui vit canoniquement dans
-    // @geoleaf/host-runtime au lieu de l'importer — la classe de régression par laquelle
-    // `coreConfigGet` avait dérivé de ses 9 copies au S1. À garder en phase avec ci.yml et
-    // .husky/pre-commit.
+    // The fourth guard of the same family, on an object none of the three
+    // looks at: the MOMENT a lazy plugin subscribes to boot signals.
+    // Subscribing at module body is laying a listener for an event perhaps
+    // already past — and the symptom is entirely silent (available,
+    // activated, no error, the feature absent).
+    // ⚠️ The question is one of SCOPE, not text: the same call is correct
+    // inside a function and broken at module body. The gate therefore reads
+    // the AST. Measured at laying: the two plugins the instruction said "to
+    // instruct" do NOT behave the same — one is outside the class by
+    // construction, the other is in it and gets out through an immediate
+    // fallback, which its exemption verifies STRUCTURALLY instead of
+    // asserting it.
+    // Seen red on its FOUR axes: exemption witness fallen, unexempted
+    // subscription, renamed signal (refusal to conclude), subjectless
+    // exemption. Keep in sync with ci.yml.
+    {
+        name: "Abonnement au boot à l'import (BOOT-SUB)",
+        run: ["npm", "run", "check:boot-subscription"],
+    },
+    // The third boundary gate, locking the whole. core-boundary FORBIDS
+    // importing the core's sources; seam-drift watches the deliberate
+    // COPIES; this one forbids RE-DEFINING a utility that lives canonically
+    // in @geoleaf/host-runtime instead of importing it — the regression
+    // class through which `coreConfigGet` had drifted from its 9 copies.
+    // Keep in phase with ci.yml and .husky/pre-commit.
     {
         name: "Plugin shared-util fork (host-runtime re-copies)",
         run: ["node", "scripts/verify-plugin-shared-fork.cjs"],
     },
-    // ARCHI S10.2 — la méta-gate : les gates ci-dessus VOIENT-ELLES encore ce
-    // qu'elles sont censées scanner ? Elles énuméraient `packages/` sur un seul
-    // niveau, donc le regroupement du S10 les aurait laissées sortir en 0 après
-    // n'avoir rien lu — vertes et aveugles. Une gate verte pour la bonne raison et
-    // une gate verte parce qu'elle n'a rien regardé sont indiscernables de
-    // l'extérieur ; celle-ci fait la différence, en plantant un package imbriqué
-    // porteur de défauts connus et en vérifiant que chacune réagit.
-    // ~0,4 s, sans `npm install` (le registre lit les répertoires). Preuve
-    // bilatérale faite : rétablir l'ancien `readdirSync` à un niveau dans
-    // verify-no-leaflet fait rougir la sonde, et le restaurer la reverdit.
+    // The meta-gate: do the gates above still SEE what they are supposed
+    // to scan? They enumerated `packages/` at a single level, so the
+    // directory regrouping would have let them exit 0 having read nothing —
+    // green and blind. A gate green for the right reason and a gate green
+    // because it looked at nothing are indistinguishable from outside; this
+    // one makes the difference, by planting a nested package carrying known
+    // defects and verifying each reacts.
+    // ~0.4 s, no `npm install` (the registry reads directories). Bilateral
+    // proof done: restoring the old one-level `readdirSync` in
+    // verify-no-leaflet turns the probe red, and restoring it back greens it.
     {
         name: "Gate visibility probe (nested package)",
         run: ["node", "scripts/probe-gate-visibility.cjs"],
     },
-    // ARCHI S5 (5.3, constat A-07) — les 7 `globals.*.ts` échappaient au gate de pureté
-    // des façades, et à juste titre : écrire sur le namespace EST leur métier. Le contrat
-    // qui leur convient n'est pas la pureté mais la PROPRIÉTÉ — depuis le S7, cette
-    // surface est le contrat public que les plugins lisent.
+    // The 7 `globals.*.ts` escaped the facade-purity gate, and rightly so:
+    // writing on the namespace IS their trade. The contract that fits them
+    // is not purity but OWNERSHIP — this surface is the public contract the
+    // plugins read.
     {
         name: "Globals ownership (namespace GeoLeaf)",
         run: ["node", "scripts/verify-globals-ownership.cjs"],
@@ -772,52 +1029,160 @@ const STEPS = [
     // exempt (git-ignored). Keep in sync with ci.yml and .husky/pre-commit.
     { name: "Package files[] exist", run: ["node", "scripts/check-package-files.cjs"] },
     { name: "Repo hygiene", run: ["node", "scripts/verify-repo-hygiene.cjs"] },
-    // T5.8 — le pendant de « Repo hygiene ». Celle-ci empêche un script non DÉCLARÉ
-    // d'entrer ; celle-là empêche un script déclaré et invoqué de rester non TRACÉ, état
-    // dans lequel ci:local est vert ici et mort sur un clone frais.
+    // What the `pre-commit` hook REALLY plays. Its 19th command skips at
+    // every commit on this workstation — `GEOLEAF_CONSUMERS` is not in the
+    // hook's environment —, and it announces it, which is correct; but
+    // nothing rendered the overview, and nothing kept a gate there from
+    // exiting 0 WITHOUT A WORD. Static mode here (instant): list derived
+    // from the hook, symmetry of its TWO branches, anchoring of the skip
+    // vocabulary. The gate-by-gate classification is `--run`, the
+    // on-demand oracle — it replays the 17 gates, which would duplicate the
+    // rest of this file.
+    {
+        name: "Gates du hook pre-commit (HOOK-01…05)",
+        run: ["node", "scripts/verify-hook-gates.cjs"],
+    },
+    // The missing link between TWO corpora. `extracted-features.guard`
+    // proved `getIconsConfig`'s absence by scanning `src/` and SKIPPING
+    // `__tests__` — while two suites wrote it there, for forty days. A
+    // suite doubling a symbol no source carries attests a vanished API: its
+    // oracle is its own fixture, and it stays green.
+    // DECREASING ratchet (8 at laying, five of them real defects, frozen and named).
+    {
+        name: "Symboles morts doublés dans les tests (MDS)",
+        run: ["node", "scripts/check-mocked-dead-symbols.cjs"],
+    },
+    // TTC — JS-TEST-DEBT imposes TypeScript on new tests; this is what
+    // compiles it. Decreasing baseline (271 pairs frozen at laying), ~12 s.
+    {
+        name: "Suites TypeScript type-checkées (TTC, cliquet)",
+        run: ["node", "scripts/check-test-typecheck.cjs"],
+    },
+    // SLOT — a slot declared twice (init.js + entry.ts) must be declared identically.
+    {
+        name: "Déclarations de créneaux alignées (SLOT)",
+        run: ["node", "scripts/check-slot-declarations.cjs"],
+    },
+    // NF — a production fetch carries an abort path (ratchet, 12 frozen at laying).
+    {
+        name: "Fetch de production annulables (NF, cliquet)",
+        run: ["node", "scripts/check-naked-fetch.cjs"],
+    },
+    // LI — every registry entry of the lock carries an integrity hash (ratchet, frozen at laying).
+    {
+        name: "Intégrité du lock (LI, cliquet)",
+        run: ["node", "scripts/check-lock-integrity.cjs"],
+    },
+    // CCO — a cross-package CSS coupling (class written here, defined
+    // elsewhere) is declared with its motive, or it does not exist; the 6
+    // accidental ones are frozen, decreasing list.
+    {
+        name: "Couplages CSS inter-paquets déclarés (CCO)",
+        run: ["node", "scripts/check-css-class-ownership.cjs"],
+    },
+    // WREF — no new workshop reference in anything the public repo ships (code-autonomy
+    // roadmap; ratchet posed BEFORE the triage: 2725 tokens frozen, shrink-only).
+    {
+        name: "Renvois d'atelier gelés décroissants (WREF)",
+        run: ["node", "scripts/check-workshop-refs.cjs"],
+    },
+    // CLANG — no new French comment in shipped code (stop-word detection, never accents;
+    // frozen census at posing, shrink-only).
+    {
+        name: "Commentaires de code en anglais (CLANG)",
+        run: ["node", "scripts/check-comment-lang.cjs"],
+    },
+    // A side-effect module has NO consumer, by definition — three
+    // instruments already declared one dead in concert and all three were
+    // wrong, at the price of a production TypeError no test saw. GRAFT-03
+    // guards what the register entry said nothing guarded: that the
+    // module's BARE anchor still exists.
+    {
+        name: "Modules d'effet de bord et leur ancrage (GRAFT)",
+        run: ["node", "scripts/check-graft-sites.cjs"],
+    },
+    // The two dead-code instruments did NOT print what they had scanned: a
+    // shrinking perimeter returns the same green as an intact one. This
+    // gate derives the perimeter independently of them — so it sees a
+    // shrinkage their own green would mask.
+    {
+        name: "Périmètre des instruments de code mort (DCS)",
+        run: ["node", "scripts/check-dead-code-scope.cjs"],
+    },
+    // "No importer" and "imported for its side effect" are two things, and
+    // nothing told them apart — which is why the obvious route (forbidding
+    // an importer-less module) would turn red on side-effect modules. MG-00
+    // refuses to conclude when resolution breaks: this instrument returned
+    // 914 orphans out of 929 before being right, and nothing would have said so.
+    {
+        name: "Graphe des modules — orphelins et effets de bord (MG)",
+        run: ["node", "scripts/check-module-graph.cjs"],
+    },
+    // "Repo hygiene"'s counterpart. That one keeps an unDECLARED script
+    // from entering; this one keeps a declared, invoked script from staying
+    // unTRACKED, a state in which ci:local is green here and dead on a
+    // fresh clone.
     {
         name: "CI scripts are tracked (CI-SCRIPTS-TRACKED)",
         run: ["node", "scripts/verify-ci-scripts-tracked.cjs"],
     },
-    // Les deux gates gardent la MÊME propriété par les deux bouts, d'où leur voisinage :
-    // celle du dessus vérifie que tout script invoqué ici est tracé, celle-ci que toute gate
-    // de `ci.yml` est bien invoquée ici — ou exemptée avec son motif ET son témoin.
+    // The two gates guard the SAME property from both ends, hence their
+    // neighbourhood: the one above verifies every script invoked here is
+    // tracked, this one that every `ci.yml` gate is indeed invoked here —
+    // or exempted with its motive AND its witness.
     //
-    // C'est ce qui rend enfin vraie la propriété annoncée en tête de ce fichier. Elle était
-    // vérifiée sur un seul axe (le périmètre des tests, par `lib/test-scope.cjs`) et
-    // conventionnée sur l'autre : la liste des gates reposait sur un commentaire « Keep this
-    // list in sync », c'est-à-dire sur un geste manuel là où le fichier annonçait une garde.
+    // This is what finally makes the property announced at the top of this
+    // file true. It was verified on one axis (the test perimeter, by
+    // `lib/test-scope.cjs`) and conventioned on the other: the gate list
+    // rested on a "Keep this list in sync" comment, i.e. on a manual
+    // gesture where the file announced a guard.
     {
         name: "CI parity (ci.yml ⊆ ci:local, ou exempté avec témoin)",
         run: ["node", "scripts/verify-ci-parity.cjs"],
     },
-    // T2.6 — le contrat de l'application (apps/geoleaf-app). Reprend les 2 assertions
-    // retirées de `bundle.test.js`, et plusieurs de ses invariants portent sur les formes que
-    // `build-deploy.cjs` patche par regex `/gm` sans `/s` : un retour à la ligne inséré
-    // dans le commentaire `Optional plugins` ou dans un <script> de plugin gaté faisait
-    // manquer le patch, et le déploiement sortait faux en exit 0. Statique, ~instantané.
-    // ⚠️ Ce commentaire a écrit « ajoute 3 invariants » jusqu'au 08/08/2026 ; il y en avait
-    // dix. Le compte n'est PAS recopié ici — il est dérivé de la liste des noms côté script
-    // (doctrine B-43) et s'imprime en fin de run.
+    // The application's contract (apps/geoleaf-app). Takes over the 2
+    // assertions removed from `bundle.test.js`, and several of its
+    // invariants bear on the shapes `build-deploy.cjs` patches by `/gm`
+    // regex without `/s`: a line break inserted into the `Optional plugins`
+    // comment or a gated plugin <script> made the patch miss, and the
+    // deployment came out wrong in exit 0. Static, ~instant.
+    // ⚠️ This comment wrote "adds 3 invariants" until 08/08/2026; there
+    // were ten. The count is NOT copied here — it derives from the name
+    // list on the script side and prints at end of run.
     {
         name: "App template contract (APP-TEMPLATE)",
         run: ["node", "scripts/verify-app-template.cjs"],
     },
     { name: "Plugin Contract v1", run: ["node", "scripts/verify-plugin-contract.cjs", "--fail"] },
-    // Le gabarit est le seul paquet qu'AUCUNE des gates ci-dessus ne voit : ESLint l'ignore
-    // (ses jetons `__PLUGIN_NAME__` ne sont pas du TS valide) ET il est hors des globs
-    // `workspaces` (`!packages/_*`), donc `registry.all()` ne le rend jamais. Deux exclusions
-    // légitimes qui, ensemble, laissent sans lecteur le fichier dont naît tout plugin futur.
-    // Coût mesuré deux fois : l'accesseur `as any` y a survécu jusqu'au 31/07/2026, et son
-    // `profileKey` violait INV-CONFIG — un invariant GELÉ — jusqu'au 08/08/2026. Cette gate
-    // scaffolde et éprouve la SORTIE, seul canal par lequel un fichier à jetons peut être tenu
-    // à la même barre que le code qu'il engendre. ⚠️ Elle exige `dist/types/` du core, d'où sa
-    // place APRÈS le build.
+    // The README of a published plugin is the integrator's only door, and
+    // several gates already read that corpus — but every one of them checks
+    // what is written is VALID, never that what is declared is written. A
+    // configuration key could be added, shipped, read at runtime and never
+    // documented, with all of them green. Measured before this gate existed:
+    // 133 members across 11 plugins, ONE undocumented (`table.exportFormats`,
+    // live at `panel.ts`). Documented first, gate written second — a gate born
+    // red on a corpus it cannot fix gets disarmed within the week.
+    {
+        name: "Plugin README ↔ config déclarée (PRC)",
+        run: ["node", "scripts/check-plugin-readme-config.cjs"],
+    },
+    // The template is the only package NONE of the gates above sees:
+    // ESLint ignores it (its `__PLUGIN_NAME__` tokens are not valid TS) AND
+    // it is outside the `workspaces` globs (`!packages/_*`), so
+    // `registry.all()` never returns it. Two legitimate exclusions which,
+    // together, leave readerless the file every future plugin is born from.
+    // Cost measured twice: the `as any` accessor survived there until
+    // 31/07/2026, and its `profileKey` violated INV-CONFIG — a FROZEN
+    // invariant — until 08/08/2026. This gate scaffolds and exercises the
+    // OUTPUT, the only channel through which a token file can be held to
+    // the same bar as the code it begets. ⚠️ It requires the core's
+    // `dist/types/`, hence its place AFTER the build.
     { name: "Plugin scaffold (SCAFFOLD)", run: ["node", "scripts/verify-plugin-scaffold.cjs"] },
-    // B-100 — un `waitForFunction` dont le timeout part en 2e position le PERD : il devient
-    // un argument de la fonction de page, et l'attente retombe sur `actionTimeout`. Mesuré :
-    // 41 sites, dont 28 qui demandaient 15 à 30 s et n'obtenaient que 10. Le dépôt connaissait
-    // le piège et l'avait documenté SUR UNE SPEC — une gate est ce qui généralise une leçon.
+    // A `waitForFunction` whose timeout goes in 2nd position LOSES it: it
+    // becomes an argument of the page function, and the wait falls back on
+    // `actionTimeout`. Measured: 41 sites, 28 of which asked 15 to 30 s and
+    // only got 10. The repo knew the trap and had documented it ON ONE SPEC
+    // — a gate is what generalises a lesson.
     {
         name: "E2E wait signature (E2E-WAIT-SIG)",
         run: ["node", "scripts/check-e2e-wait-signature.cjs"],
@@ -827,11 +1192,12 @@ const STEPS = [
     // point is to never burn a run of a scarce free-tier quota: a mirror that omits gates
     // does not validate, it guesses.
     //
-    // ⚠️ Cette ligne disait « Keep this list in sync with .github/workflows/ci.yml ». C'était
-    // la seule chose qui tenait la propriété, et c'était un GESTE MANUEL — exactement ce que
-    // le paragraphe en tête de ce fichier annonçait pourtant comme vérifié. L'étape
-    // « CI parity » le vérifie désormais : une gate ajoutée à `ci.yml` et absente d'ici fait
-    // rougir `ci:local` au lieu d'attendre qu'un run distant le découvre.
+    // ⚠️ This line said "Keep this list in sync with .github/workflows/ci.yml".
+    // It was the only thing holding the property, and it was a MANUAL
+    // GESTURE — exactly what the paragraph at the top of this file
+    // nonetheless announced as verified. The "CI parity" step now verifies
+    // it: a gate added to `ci.yml` and absent from here turns `ci:local`
+    // red instead of waiting for a remote run to discover it.
     {
         name: "Config coverage (schema ↔ inventory)",
         run: ["npm", "run", "verify:config-coverage"],
@@ -841,22 +1207,35 @@ const STEPS = [
         run: ["npm", "run", "verify:config-consumers"],
     },
     {
-        // TPL-CFG — une couche produite par `layerTemplates` ne doit pas porter de
-        // `_config.json` : son `inlineConfig` « skips the fetch entirely », donc le fichier
-        // n'est lu par personne mais se fait éditer. 24 fantômes retirés à la tâche 7.1b.
+        // TPL-CFG — a layer produced by `layerTemplates` must not carry a
+        // `_config.json`: its `inlineConfig` "skips the fetch entirely", so
+        // the file is read by nobody but gets edited. 24 ghosts removed.
         name: "Template layer configs (TPL-CFG — aucune config fantôme)",
         run: ["npm", "run", "check:template-layer-configs"],
     },
     { name: "Profile contract (validate:profiles)", run: ["npm", "run", "validate:profiles"] },
     { name: "Version consistency", run: ["npm", "run", "versions:check"] },
-    // IMPL (B-258) — le pendant de SHIP-SPEC et de knip pour la classe qu'aucun des deux ne
-    // peut voir : un paquet que le dépôt CHARGE sans l'IMPORTER. `happy-dom` est nommé par une
-    // chaîne (`environment: "happy-dom"`), `tsx` est injecté dans NODE_OPTIONS — ni l'un ni
-    // l'autre n'est une arête du graphe de modules. Les deux ne tenaient qu'à une peer
-    // optionnelle auto-installée que npm ≥ 11 ne reconduit pas ; et seul `publish.yml` monte
-    // à npm ≥ 11, donc ni ce fichier ni `ci.yml` ne pouvaient le voir.
-    // ⚠️ Voisine de « Version consistency » à dessein : celle-ci lit les plages ENTRE paquets
-    // internes, celle-là lit ce qui est déclaré vs ce qui s'exécute vraiment.
+    // `versions:check` never contacts the registry — all its invariants are
+    // intra-repo. The doctrine names only the LOUD direction (a version bumped
+    // without a publication); the silent one is the version staying put while
+    // the publishable content moves, and nothing looked at it. Measured the
+    // day this was wired: 13 published packages, 13 diverged, 264 source files.
+    // Hence a ratchet on a baseline, not a red — and an explicit SKIP with no
+    // registry access, so a network hiccup never reddens a local run.
+    {
+        name: "Parité dépôt ↔ registre npm (PUB)",
+        run: ["node", "scripts/verify-published-parity.cjs"],
+    },
+    // IMPL — SHIP-SPEC's and knip's counterpart for the class neither can
+    // see: a package the repo LOADS without IMPORTING it. `happy-dom` is
+    // named by a string (`environment: "happy-dom"`), `tsx` is injected
+    // into NODE_OPTIONS — neither is an edge of the module graph. Both hung
+    // on an auto-installed optional peer that npm ≥ 11 does not carry over;
+    // and only `publish.yml` goes up to npm ≥ 11, so neither this file nor
+    // `ci.yml` could see it.
+    // ⚠️ Neighbour of "Version consistency" on purpose: that one reads the
+    // ranges BETWEEN internal packages, this one reads what is declared vs
+    // what really executes.
     {
         name: "Implicit toolchain deps (IMPL — déclaré = exécuté)",
         run: ["node", "scripts/verify-implicit-deps.cjs"],
@@ -864,45 +1243,52 @@ const STEPS = [
 ];
 
 /**
- * Étapes ajoutées par `--e2e`. Séparées de STEPS, et non plus poussées dedans au chargement.
+ * Steps added by `--e2e`. Separate from STEPS, no longer pushed into it at load.
  *
- * La table doit être LISIBLE sans être exécutée : `verify-ci-scripts-tracked.cjs` (T5.8)
- * l'importe pour vérifier que tout script invoqué ici est suivi par git. Un `STEPS.push()`
- * conditionné à `process.argv` au niveau module aurait donné à ce lecteur une table
- * différente de celle qui tourne — et il aurait manqué les 3 étapes E2E, soit exactement
- * `build-deploy.cjs`, `build-deploy-coverage.cjs` et la suite Playwright.
+ * The table must be READABLE without being executed:
+ * `verify-ci-scripts-tracked.cjs` imports it to verify every script invoked
+ * here is tracked by git. A `STEPS.push()` conditioned on `process.argv` at
+ * module level would have given that reader a table different from the one
+ * that runs — and it would have missed the 3 E2E steps, i.e. exactly
+ * `build-deploy.cjs`, `build-deploy-coverage.cjs` and the Playwright suite.
  */
 const E2E_STEPS = [
-    // B-235 — PRÉAMBULE, et il est en tête pour une raison de coût autant que de lisibilité.
-    // Sans navigateur, la suite met 1,2 min à rendre ~215 rouges IDENTIQUES, qui ressemblent à
-    // une régression catastrophique du produit et non à un répertoire absent. Cette étape
-    // refuse en 2 s, avec le diagnostic et la commande de remède.
-    // ⚠️ Elle sort en 2, pas en 1 : « la suite peut-elle être jouée » est un PRÉALABLE, pas un
-    // verdict. Placée avant les builds, elle évite aussi de payer 4 builds pour rien.
+    // PREAMBLE, and it is first for cost as much as readability. Without a
+    // browser, the suite takes 1.2 min to return ~215 IDENTICAL reds, which
+    // look like a catastrophic product regression and not an absent
+    // directory. This step refuses in 2 s, with the diagnosis and the
+    // remedy command.
+    // ⚠️ It exits 2, not 1: "can the suite be played" is a PREREQUISITE,
+    // not a verdict. Placed before the builds, it also avoids paying 4
+    // builds for nothing.
     {
         name: "Navigateurs Playwright présents (PW-BROWSERS)",
         run: ["node", "scripts/verify-playwright-browsers.cjs"],
     },
-    // Second préambule, même famille et même motif de placement : `Timed out waiting 60000ms
-    // from config.webServer` arrive APRÈS les builds, coûte une minute, et ne nomme aucun port.
-    // ⚠️ Il vérifie que chaque port est LIBRE ou RÉPOND — pas qu'il est libre : la config pose
-    // `reuseExistingServer` en local, donc un serveur déjà là est délibérément réutilisé.
+    // Second preamble, same family and same placement motive: `Timed out
+    // waiting 60000ms from config.webServer` arrives AFTER the builds,
+    // costs a minute, and names no port.
+    // ⚠️ It verifies each port is FREE or ANSWERS — not that it is free:
+    // the config sets `reuseExistingServer` locally, so a server already
+    // there is deliberately reused.
     {
         name: "Ports du harnais E2E utilisables (E2E-PORTS)",
         run: ["node", "scripts/verify-e2e-ports.cjs"],
     },
     { name: "Build deploy variants", run: ["npm", "run", "build:deploy:all"] },
-    // T6.7a — `build:coverage` renommé : il ne construit AUCUN rapport de couverture,
-    // il construit une APPLICATION (deploy-core aux bundles instrumentés Istanbul).
-    // Le nom empruntait le vocabulaire du sens « rapport » pour désigner le sens
-    // « variante de déploiement » — deux des quatre sens que porte le mot ici.
+    // `build:coverage` renamed: it builds NO coverage report, it builds an
+    // APPLICATION (deploy-core with Istanbul-instrumented bundles). The
+    // name borrowed the "report" sense's vocabulary to designate the
+    // "deployment variant" sense — two of the four senses the word carries here.
     { name: "Build deploy-coverage", run: ["npm", "run", "build:deploy-coverage"] },
     { name: "E2E Playwright", run: ["npm", "run", "test:e2e"] },
-    // T6.1 — le seul consommateur de `.nyc_output/` était `report:e2e`, appelé par RIEN
-    // (ni ci.yml, ni ici, ni le hook). La donnée était produite puis jetée à chaque run.
-    // ⚠️ On n'appelle PAS `report:e2e` nu : `nyc report` sort VERT sur un `.nyc_output/`
-    // vide, donc l'étape nue serait verte exactement quand la mesure échoue. Le wrapper
-    // pose d'abord un plancher de témoin. Voir son en-tête.
+    // `.nyc_output/`'s only consumer was `report:e2e`, called by NOTHING
+    // (neither ci.yml, nor here, nor the hook). The data was produced then
+    // thrown away at every run.
+    // ⚠️ Bare `report:e2e` is NOT called: `nyc report` exits GREEN on an
+    // empty `.nyc_output/`, so the bare step would be green exactly when
+    // the measurement fails. The wrapper first sets a witness floor. See
+    // its header.
     {
         name: "Couverture du boot du bundle livré (plancher + seuils nyc)",
         run: ["node", "scripts/verify-e2e-coverage.cjs"],
@@ -926,7 +1312,109 @@ function runStep(step, index) {
     return { name: step.name, ok, ms, code: res.status };
 }
 
+/**
+ * Refuses to LAUNCH when a gate of this run could only skip, on a clone
+ * that has what it takes to feed it.
+ *
+ * 🛑 The real risk is not that a gate skips — the skip is the wanted
+ * behaviour on the public clone, with its motive written. The risk is that
+ * a `ci:local` exits **green believing** it played it: the summary
+ * announces 91/91, and one of the 91 read nothing. Measured: the inverse
+ * contract is this runner's only gate whose subject lives OUTSIDE the
+ * repo, hence the only one that can be silently empty with no repo file
+ * showing it.
+ *
+ * ⚠️ The discriminant is the workshop root, not a variable: on the public
+ * clone `_docs_projet/` is absent by decision, and requiring the export
+ * there would be a permanent red. On a clone that carries it, the export's
+ * absence is a workstation defect, not a repo property.
+ *
+ * ⚠️ And this refusal lives HERE, in the runner, **deliberately not in the
+ * gate**: the same gate is launched by the `pre-commit` hook, where the
+ * skip is still an open arbitration. Making it refusing at the source would
+ * turn every commit red and settle that arbitration by side effect — which
+ * the runner has no business doing.
+ *
+ * @returns {void} Exits 2 (tooling error, not verdict) when the condition is not held.
+ */
+function refuseIfConsumerHookMissing() {
+    const internalRoot = path.join(ROOT, "_docs_projet");
+    if (!fs.existsSync(internalRoot)) return; // public clone — the skip is wanted
+    if (process.env.GEOLEAF_CONSUMERS) return;
+
+    console.error(
+        "\x1b[31m✗ REFUS DE LANCER\x1b[0m — `GEOLEAF_CONSUMERS` n'est pas défini, et ce clone\n" +
+            "  porte `_docs_projet/` : c'est l'atelier, pas le clone public.\n\n" +
+            "  Le contrat inverse SAUTERAIT en sortant 0, et le résumé annoncerait un vert\n" +
+            "  complet sur une gate qui n'a lu aucun consommateur. Un vert qui compte une gate\n" +
+            "  non jouée est pire qu'un rouge : il se cite.\n\n" +
+            "    export GEOLEAF_CONSUMERS=~/dev/projects/geoleaf-maintenance-v2/ci\n\n" +
+            "  ⚠️ Le hook `pre-commit` n'est PAS concerné : il lance la même gate et la laisse\n" +
+            "  sauter, ce qui reste un arbitrage ouvert et non un oubli."
+    );
+    process.exit(2);
+}
+
+/**
+ * Refuses to LAUNCH when a GHOST package survives a previous run.
+ *
+ * 🛑 Two scripts plant a real workspace under `packages/plugins/` and erase
+ * it in a `finally`. A `finally` does NOT survive a SIGKILL — deadline
+ * exceeded, workstation cut, a firm `Ctrl-C`, two concurrent `ci:local`s
+ * one of which is killed. The directory stays, and it matches the
+ * workspaces' `packages/plugins/*` glob: it becomes a repo package.
+ *
+ * ⚠️ **Measured on 19/08/2026: the next run returns 17 red gates, and NONE
+ * names it.** `build:deploy`, knip, `docs:tree`, `purgecss`, TSDoc, the API
+ * surface… all fail because a ghost package entered their corpus, and each
+ * reports its own symptom. The diagnosis costs dear precisely because the
+ * cause appears nowhere in the messages.
+ *
+ * 🛑 **And on 22/08/2026, the same thing with SIX reds — on the other
+ * producer, which this refusal did not watch.» It filtered `zz-scaffold-`
+ * hardcoded; `packages/plugins/__probe__`, left by
+ * `probe-gate-visibility.cjs`, walked past a guard written for it. The
+ * corpus now lives in `lib/workspace-debris.cjs`, derived and anchored to
+ * its producers, with a guard test that turns red if a pattern stops biting.
+ *
+ * A named refusal beats seventeen symptoms.
+ *
+ * @returns {void} Exits 2 (tooling error) when a ghost package lingers.
+ */
+function refuseIfWorkspaceDebris() {
+    const debris = findDebris(ROOT);
+    if (debris.length === 0) return;
+
+    const byProducer = new Map();
+    for (const d of debris) {
+        if (!byProducer.has(d.producer)) byProducer.set(d.producer, { note: d.note, paths: [] });
+        byProducer.get(d.producer).paths.push(d.path);
+    }
+
+    console.error(
+        `\x1b[31m✗ REFUS DE LANCER\x1b[0m — ${debris.length} paquet(s) fantôme(s) survivent à un\n` +
+            "  run précédent :\n\n" +
+            [...byProducer]
+                .map(
+                    ([script, { note, paths }]) =>
+                        paths.map((p) => `    ${p}`).join("\n") +
+                        `\n      ↳ laissé par ${script} — ${note}`
+                )
+                .join("\n\n") +
+            "\n\n  Ils matchent le glob `packages/plugins/*` des workspaces, donc ils sont devenus des\n" +
+            "  paquets du dépôt. Lancer maintenant rendrait DIX-SEPT gates rouges — build du\n" +
+            "  déployé, code mort, arbre, CSS, TSDoc, surface d'API — et aucune ne les nommerait.\n\n" +
+            `    rm -rf ${debris.map((d) => d.path).join(" ")}\n\n` +
+            "  ⚠️ Le nettoyage de ces scripts est dans un `finally`, qui ne survit pas à un SIGKILL :\n" +
+            "  délai dépassé, coupure de poste, interruption. Ce n'est pas un défaut de ces gates."
+    );
+    process.exit(2);
+}
+
 function main() {
+    refuseIfConsumerHookMissing();
+    refuseIfWorkspaceDebris();
+
     console.log(
         `\x1b[1mLocal CI runner\x1b[0m — ${ALL_STEPS.length} gates${WITH_E2E ? " (incl. E2E)" : ""}` +
             `${BAIL ? ", bail on first failure" : ""}`
@@ -951,24 +1439,26 @@ function main() {
     const skipped = ALL_STEPS.length - results.length;
     if (skipped > 0) console.log(`  \x1b[33m… ${skipped} gate(s) non exécuté(s) (--bail)\x1b[0m`);
 
-    // ── Ce que la CI exécutera et qui n'a PAS tourné ici ─────────────────────
+    // ── What the CI will run that did NOT run here ───────────────────────────
     //
-    // NARRATION, jamais VERDICT. Le verdict appartient à la gate « CI parity » ci-dessus :
-    // deux chemins capables de faire échouer la même propriété, c'est un chemin de trop, et
-    // c'est celui qu'on oublie de prouver. Ici on ne fait que rendre le vert HONNÊTE — un
-    // vert qui se sait partiel vaut mieux qu'un vert qui promet trop.
+    // NARRATION, never VERDICT. The verdict belongs to the "CI parity" gate
+    // above: two paths able to fail the same property is one path too many,
+    // and it is the one people forget to prove. Here the green is only made
+    // HONEST — a green that knows itself partial beats a green that
+    // promises too much.
     //
-    // Position : le SEUL point neutre du résumé. Les deux branches terminales ci-dessous
-    // appellent `process.exit` immédiatement, donc c'est le seul endroit qui s'affiche en
-    // succès COMME en échec.
+    // Position: the summary's ONLY neutral point. The two terminal branches
+    // below call `process.exit` immediately, so this is the only place that
+    // displays in success AS in failure.
     //
-    // Calculée depuis `ci.yml` + les tables, et NON depuis `results` : elle reste donc vraie
-    // sous `--bail`, où la gate de parité n'a peut-être jamais tourné — précisément le run où
-    // cette ligne compte le plus.
+    // Computed from `ci.yml` + the tables, and NOT from `results`: it thus
+    // stays true under `--bail`, where the parity gate may never have run —
+    // precisely the run where this line counts most.
     //
-    // ⚠️ Le try/catch est obligatoire et ne touche AUCUN code de sortie. Un `ci.yml` illisible
-    // fait déjà rougir la gate de parité ; laisser une exception remonter ici remplacerait le
-    // résumé qu'on vient de gagner par une trace de pile, à quatre lignes de la fin.
+    // ⚠️ The try/catch is mandatory and touches NO exit code. An unreadable
+    // `ci.yml` already turns the parity gate red; letting an exception
+    // climb here would replace the summary just gained with a stack trace,
+    // four lines from the end.
     try {
         for (const line of require("./lib/ci-parity.cjs").formatRemoteOnly({ withE2E: WITH_E2E })) {
             console.log(line);
@@ -994,26 +1484,30 @@ function main() {
     process.exit(0);
 }
 
-// ── Exécution vs lecture (T5.8) ──────────────────────────────────────────────
+// ── Execution vs reading ─────────────────────────────────────────────────────
 //
-// Ce fichier s'exécutait à l'import. Il est désormais aussi une SOURCE DE DONNÉES :
-// `verify-ci-scripts-tracked.cjs` importe les deux tables pour vérifier que tout script
-// invoqué ici est suivi par git — l'angle mort symétrique de celui que T3.5 a fermé.
+// This file used to execute at import. It is now also a DATA SOURCE:
+// `verify-ci-scripts-tracked.cjs` imports both tables to verify every
+// script invoked here is tracked by git — the symmetric blind spot of the
+// one closed earlier.
 //
-// ⚠️ Cette gate lit la table RÉELLE plutôt que d'analyser ce fichier à la regex. Un
-// parseur textuel qui cesse de matcher après un refactor de STEPS ne rougit pas : il
-// trouve zéro script, les déclare tous suivis, et sort vert — le défaut même que le
-// dépôt traque depuis T3. Un `require` ne peut pas rendre une table vide en silence.
-// ⚠️ L'EXPORT VIENT AVANT L'EXÉCUTION, et l'ordre est un correctif, pas un style.
+// ⚠️ That gate reads the REAL table rather than parsing this file with a
+// regex. A textual parser that stops matching after a STEPS refactor does
+// not turn red: it finds zero scripts, declares them all tracked, and
+// exits green — the very defect the repo has been hunting. A `require`
+// cannot return an empty table silently.
+// ⚠️ THE EXPORT COMES BEFORE THE EXECUTION, and the order is a fix, not a style.
 //
-// `main()` charge `lib/ci-parity.cjs` pour son énonciation de fin de run, et ce module
-// re-`require` CE fichier pour lire les deux tables — un cycle. Avec `module.exports` placé
-// après l'appel, le cycle se referme sur un `exports` encore VIDE : `STEPS` et `E2E_STEPS`
-// arrivaient `undefined`, et l'énonciation mourait sur « Cannot read properties of undefined ».
+// `main()` loads `lib/ci-parity.cjs` for its end-of-run statement, and that
+// module re-`require`s THIS file to read the two tables — a cycle. With
+// `module.exports` placed after the call, the cycle closes on a still
+// EMPTY `exports`: `STEPS` and `E2E_STEPS` arrived `undefined`, and the
+// statement died on "Cannot read properties of undefined".
 //
-// Mesuré le 30/07/2026, et c'est le try/catch de `main()` qui l'a rendu visible sans coûter le
-// résumé — il a imprimé le motif à la place de l'énonciation, exactement ce pour quoi il est là.
-// Exporter d'abord referme le cycle sur des tables complètes.
+// Measured on 30/07/2026, and it is `main()`'s try/catch that made it
+// visible without costing the summary — it printed the motive in place of
+// the statement, exactly what it is there for. Exporting first closes the
+// cycle on complete tables.
 module.exports = { STEPS, E2E_STEPS };
 
 if (require.main === module) {

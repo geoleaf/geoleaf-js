@@ -164,7 +164,7 @@ l'exact contraire :**
 décrivaient une cécité — `EVENT_LITERAL_RE` est ancré sur `^geoleaf:`, donc un nom hors préfixe
 n'apparaît dans **aucune** mesure, ni comme dette ni comme manque — et la présentaient comme une
 propriété de périmètre plutôt que comme un défaut. Un fait juste peut documenter un angle mort
-sans jamais le refermer ; c'est ce qui a fait vivre B-207 après que la ligne l'eut nommé.
+sans jamais le refermer ; c'est ce qui a fait vivre le défaut après que la ligne l'eut nommé.
 Renommé au S2 de R9, il est entré dans le domaine, et **EM-01 l'a réclamé aussitôt** — la
 preuve de la cécité, pas son démenti. La classe est désormais fermée par **EM-03**
 (`scripts/lib/event-gates.cjs`) : un littéral d'événement contenant un `:` doit commencer par
@@ -219,6 +219,25 @@ Le coût est faible **et mesurable** : `state.ts` n'importe qu'un **type** (effa
 donc `filter` tire un singleton de quelques lignes, **pas** les centaines de lignes du contrôle. Tous
 les autres consommateurs — dont la barre d'outils mobile, délibérément — passent par le seam
 `GeoLeaf.Geolocation.getState()` pour éviter précisément un import statique de la capacité.
+
+### Ce que le seam ne rend PAS — et deux consommateurs l'ont contourné plutôt que de l'élargir
+
+> 📌 **Versé le 26/08/2026**, à l'archivage des documents de run qui le portaient. Deux chantiers
+> indépendants ont découvert ce fait séparément : c'est la signature d'un fait qu'on redécouvrira
+> une troisième fois s'il n'a pas de domicile.
+
+Le seam rend **position, précision, horodatage et drapeaux d'état — et rien de plus**. `heading`
+et `speed` en sont **délibérément absents**, alors que la plateforme les expose.
+
+⚠️ **La conséquence n'est pas théorique** : deux consommateurs indépendants ont eu besoin du cap,
+et **aucun des deux n'a élargi le seam** — chacun a monté sa propre veille de position. Le contrat
+de guidage du plugin `navigation` en porte la trace, jusqu'au détail qui compte : il déclare son
+cap `number | null`, `null` et non `0` quand il est inconnu, _« parce que la plateforme le retient
+précisément quand elle ne sait pas »_ — une distinction que le seam n'aurait pas eu à réinventer.
+
+🛑 **Élargir le seam est le geste que cette absence DÉSIGNE, pas un contournement** — mais il est
+explicite, et il se motive sur place : deux contournements valent un besoin, trois valent une
+frontière mal placée.
 
 ### Frontière `capabilities/` → `kernel/` (règle ESLint R.8)
 

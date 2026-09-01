@@ -1,54 +1,57 @@
 #!/usr/bin/env node
 /*!
- * NAMESPACE-TYPING : la surface `GeoLeaf.*` ne peut plus s'élargir sans être typée.
- * © 2026 Mattieu Pottier — MIT — API publique S4.2
+ * NAMESPACE-TYPING: the `GeoLeaf.*` surface can no longer widen without being typed.
+ * © 2026 Mattieu Pottier — MIT
  *
- * ## Le constat
+ * ## The finding
  *
- * `GeoLeafGlobal` (`packages/core/src/global.d.ts`) porte une traîne `[key: string]: unknown`.
- * Toute clé du namespace qu'elle ne déclare pas y tombe et rend `unknown`. À l'ouverture de
- * cette gate : 89 clés au namespace post-boot, **28 déclarées**. Les 61 autres n'étaient pas
- * « à moitié typées », elles n'étaient pas typées du tout — le compilateur n'avait rien à
- * vérifier sur leurs affectations.
+ * `GeoLeafGlobal` (`packages/core/src/global.d.ts`) carries a
+ * `[key: string]: unknown` tail. Every namespace key it does not declare falls into
+ * it and renders `unknown`. When this gate opened: 89 keys on the post-boot
+ * namespace, **28 declared**. The 61 others were not "half typed", they were not
+ * typed at all — the compiler had nothing to verify on their assignments.
  *
- * ## Trois règles, et la troisième est celle qui empêche de tricher
+ * ## Three rules, and the third is the one that prevents cheating
  *
- *   HOST-04  Une clé du corpus absente de `GeoLeafGlobal` ET de la baseline → ERREUR.
- *            Une clé NEUVE ne peut pas naître non typée.
- *   HOST-05  Une entrée de baseline désormais typée, ou sortie du corpus → ERREUR jusqu'à
- *            son retrait. La baseline ne peut que RÉTRÉCIR. Même invariant que EM-02
- *            (`check-event-map-coverage.cjs`), MH-02 et PCB-02 ; la formulation est la leur.
- *   HOST-06  Une déclaration VIDE ne compte pas comme un typage. `unknown`, `any`, `object`,
- *            `{}` et `Record<string, unknown>` nu ne vérifient rien.
+ *   HOST-04  A corpus key absent from `GeoLeafGlobal` AND the baseline → ERROR.
+ *            A NEW key cannot be born untyped.
+ *   HOST-05  A baseline entry now typed, or out of the corpus → ERROR until removed.
+ *            The baseline can only SHRINK. Same invariant as EM-02
+ *            (`check-event-map-coverage.cjs`), MH-02 and PCB-02; the wording is
+ *            theirs.
+ *   HOST-06  An EMPTY declaration does not count as typing. `unknown`, `any`,
+ *            `object`, `{}` and bare `Record<string, unknown>` verify nothing.
  *
- * ⚠️ HOST-06 n'est pas un raffinement, c'est ce qui empêche la gate d'être décorative. Sans
- * elle, la baseline entière se solde en déclarant 61 membres `unknown` : la liste tombe à
- * zéro, le pourcentage affiche 100 %, et pas une seule affectation n'est vérifiée de plus.
- * C'est exactement le défaut du gate de frontière au Sprint 4 (`verify-core-standalone`, dont
- * la regex avait cessé de matcher après un renommage de répertoire) — une garde qui sort verte
- * en ne gardant plus rien. Mesure à l'ouverture : sur les 28 membres déclarés, **9 précis**, **18 objets en
- * ligne portant leur propre traîne**, **1 vide** (`UI?: Record<string, unknown>`).
+ * ⚠️ HOST-06 is no refinement, it is what keeps the gate from being decorative.
+ * Without it, the entire baseline settles by declaring 61 members `unknown`: the list
+ * drops to zero, the percentage shows 100 %, and not a single assignment is verified
+ * more. Exactly the boundary gate's defect (`verify-core-standalone`, whose regex had
+ * stopped matching after a directory rename) — a guard going green while guarding
+ * nothing anymore. Measurement at opening: of the 28 declared members, **9 precise**,
+ * **18 inline objects carrying their own tail**, **1 empty**
+ * (`UI?: Record<string, unknown>`).
  *
- * ## Ce que cette gate NE mesure PAS : un pourcentage
+ * ## What this gate does NOT measure: a percentage
  *
- * Un pourcentage est un cliquet FAUX. Il monte quand on RETIRE une clé non typée — le lot
- * S4.3 l'a fait passer de 27 % à 31 % en sortant 13 clés `_` du namespace, sans qu'une seule
- * ligne de type soit écrite. La gate tient donc une LISTE NOMINATIVE, comme EM-02. Le
- * pourcentage est imprimé en dernière ligne, à titre informatif, et n'asservit rien.
+ * A percentage is a FALSE ratchet. It climbs when an untyped key is REMOVED — one
+ * removal batch took it from 27 % to 31 % by taking 13 `_` keys out of the
+ * namespace, without a single type line being written. The gate thus keeps a
+ * NOMINATIVE LIST, like EM-02. The percentage prints on the last line, for
+ * information, and governs nothing.
  *
- * ## Les deux sources, toutes deux lues sur AST
+ * ## The two sources, both read off the AST
  *
- *   corpus  `EXPECTED_FACADE_KEYS` de `scripts/lib/namespace-surface.mjs` — la description
- *           unique de la surface, posée au S4.1 ; c'est aussi l'oracle de HOST-SYNC.
- *   oracle  les membres nommés de `GeoLeafGlobal`, avec le TEXTE de leur type (HOST-06).
+ *   corpus  `EXPECTED_FACADE_KEYS` from `scripts/lib/namespace-surface.mjs` — the
+ *           surface's single description; also HOST-SYNC's oracle.
+ *   oracle  `GeoLeafGlobal`'s named members, with their type TEXT (HOST-06).
  *
- * Aucune liste recopiée : `lib/ts-decl-read.cjs` refuse de conclure sur cinq formes de
- * lecture impossible, plus la clause `extends` — un membre hérité serait invisible ici.
+ * No copied list: `lib/ts-decl-read.cjs` refuses to conclude on five impossible-read
+ * shapes, plus the `extends` clause — an inherited member would be invisible here.
  *
- * Usage :
+ * Usage:
  *   node scripts/check-namespace-typing-coverage.cjs                  # gate
  *   node scripts/check-namespace-typing-coverage.cjs --update-baseline
- * Exit codes : 0 vert · 1 régression (HOST-04/05/06) · 2 erreur d'outillage.
+ * Exit codes: 0 green · 1 regression (HOST-04/05/06) · 2 tooling error.
  */
 "use strict";
 
@@ -61,8 +64,9 @@ const { readInterfaceMembers, readExportedStringArray } = require("./lib/ts-decl
 const TAG = "NAMESPACE-TYPING";
 const ROOT = registry.ROOT;
 
-// Résolu par le registre — un `packages/core` en dur cesserait de matcher au premier
-// déplacement, et la gate sortirait verte en n'ayant rien lu (cf. probe-gate-visibility.cjs).
+// Resolved through the registry — a hard-coded `packages/core` would stop matching at
+// the first move, and the gate would go green having read nothing
+// (cf. probe-gate-visibility.cjs).
 const CORE_DIR = registry.requireByDirName("core").absDir;
 
 const GLOBAL_DTS = path.join(CORE_DIR, "src", "global.d.ts");
@@ -81,15 +85,15 @@ const C = {
 };
 
 /**
- * Types qui ne typent rien (HOST-06).
+ * Types that type nothing (HOST-06).
  *
- * `Record<string, unknown>` y figure et c'est délibéré : il accepte n'importe quel objet et
- * rend `unknown` sur chaque accès — un membre ainsi déclaré est indiscernable de la traîne
- * qu'on cherche justement à vider.
+ * `Record<string, unknown>` is in it, deliberately: it accepts any object and renders
+ * `unknown` on every access — a member so declared is indistinguishable from the very
+ * tail one seeks to empty.
  */
 const VACUOUS = new Set(["unknown", "any", "object", "{}", "Record<string, unknown>"]);
 
-/** Un membre déclaré par un objet EN LIGNE qui porte sa propre traîne : typé, mais ouvert. */
+/** A member declared by an INLINE object carrying its own tail: typed, but open. */
 const OPEN_TAIL_RE = /\[\s*key\s*:\s*string\s*\]\s*:\s*unknown/;
 
 const normalise = (t) => t.replace(/\s+/g, " ").trim();
@@ -115,21 +119,29 @@ function writeBaseline(keys) {
         JSON.stringify(
             {
                 _comment:
-                    "API publique S4.2 — clés de EXPECTED_FACADE_KEYS que GeoLeafGlobal " +
+                    "Clés de EXPECTED_FACADE_KEYS que GeoLeafGlobal " +
                     "(packages/core/src/global.d.ts) ne type pas, ou type de façon VIDE " +
                     "(unknown/any/object/{}/Record<string, unknown> — HOST-06). Cette liste ne " +
                     "peut que RÉTRÉCIR (HOST-05) : déclarez le membre, puis retirez sa ligne. Ne " +
-                    "jamais y ajouter à la main — une clé neuve doit naître typée (HOST-04). Les " +
-                    "clés `_` restantes relèvent de la dette D-14 (service-locator) et sortent du " +
-                    "namespace, elles ne se typent pas.",
+                    "jamais y ajouter à la main — une clé neuve doit naître typée (HOST-04). " +
+                    "⚠️ Les clés `_` restantes relèvent de la dette service-locator et ont " +
+                    "vocation à SORTIR du namespace — mais c'est un chantier d'architecture qui " +
+                    "touche la séquence de boot B1→B11, pas un préalable au typage. Ce commentaire " +
+                    "a dit « elles ne se typent pas » jusqu'au 23/08/2026, et c'était FAUX : huit " +
+                    "clés `_` portent déjà une forme réelle dans global.d.ts, dont `_VectorTiles` " +
+                    "et `_Cluster`, qui sont précisément deux des clés de cette dette. Un `typeof " +
+                    "import(...)` est type-only, effacé à la compilation : il n'ajoute aucune arête " +
+                    "statique et n'entrave donc pas l'optionalité des capacités. Typer DÉCRIT ce " +
+                    "qui existe, cela ne sanctionne rien — le `@internal` dit déjà que ce n'est pas " +
+                    "une API d'intégrateur —, et cela retire un `unknown` d'un contrat PUBLIÉ.",
                 _generated: "node scripts/check-namespace-typing-coverage.cjs --update-baseline",
                 count: sorted.length,
                 keys: sorted,
             },
             null,
-            // 4, et pas 2 — Prettier possède `scripts/**/*.json` à `tabWidth: 4` et
-            // reformaterait tout le fichier au commit, transformant le retrait d'une ligne
-            // en diff illisible. Même raison que check-event-map-coverage.cjs.
+            // 4, not 2 — Prettier owns `scripts/**/*.json` at `tabWidth: 4` and would
+            // reformat the whole file at commit, turning one line's removal into an
+            // unreadable diff. Same reason as check-event-map-coverage.cjs.
             4
         ) + "\n"
     );
@@ -139,10 +151,10 @@ function writeBaseline(keys) {
 const corpus = readExportedStringArray(SURFACE, "EXPECTED_FACADE_KEYS", { tag: TAG });
 const members = readInterfaceMembers(GLOBAL_DTS, "GeoLeafGlobal", { tag: TAG, withTypes: true });
 
-// ── Non-vacuité ──────────────────────────────────────────────────────────────────────
-// Un corpus vide et une interface vide s'accordent parfaitement et ne prouvent rien. Les
-// planchers sont très en dessous des valeurs du jour (89 / 28) : ils attrapent un instrument
-// effondré, pas une surface qui aurait légitimement maigri.
+// ── Non-emptiness ────────────────────────────────────────────────────────────────────
+// An empty corpus and an empty interface agree perfectly and prove nothing. The
+// floors sit well below today's values (89 / 28): they catch a collapsed instrument,
+// not a surface that legitimately slimmed.
 if (corpus.size < 50) {
     console.error(
         `ERROR [${TAG}]: le corpus ne rend que ${corpus.size} clé(s) (plancher 50). ` +
@@ -159,8 +171,8 @@ if (members.size === 0) {
 
 // ── Mesure ───────────────────────────────────────────────────────────────────────────
 const typed = new Set();
-const vacuous = new Map(); // nom → type vide (HOST-06)
-const openTail = []; // typés mais portant leur propre traîne — informatif
+const vacuous = new Map(); // name → empty type (HOST-06)
+const openTail = []; // typed yet carrying their own tail — informative
 
 for (const [name, type] of members) {
     const t = normalise(type);
@@ -172,7 +184,7 @@ for (const [name, type] of members) {
     if (OPEN_TAIL_RE.test(t)) openTail.push(name);
 }
 
-/** Non typée = absente des membres, OU présente mais déclarée vide (HOST-06). */
+/** Untyped = absent from the members, OR present but declared empty (HOST-06). */
 const untyped = [...corpus].filter((k) => !typed.has(k)).sort();
 
 if (UPDATE_BASELINE) {
@@ -186,20 +198,20 @@ if (UPDATE_BASELINE) {
 
 const baseline = loadBaseline();
 
-// Une clé non typée qui n'est pas en baseline est une régression. Deux formes, deux messages :
-// HOST-04 la clé n'est pas déclarée du tout · HOST-06 elle EST déclarée, mais vide.
-// Le second est le geste de contournement : déclarer `unknown` pour retirer la ligne de
-// baseline solderait la liste sans faire vérifier une seule affectation de plus.
+// An untyped key not in the baseline is a regression. Two shapes, two messages:
+// HOST-04 the key is not declared at all · HOST-06 it IS declared, but empty.
+// The second is the workaround move: declaring `unknown` to remove the baseline line
+// would settle the list without one more assignment getting verified.
 const regressions = untyped.filter((k) => !baseline.has(k));
 const host04 = regressions.filter((k) => !vacuous.has(k));
 const host06 = regressions.filter((k) => vacuous.has(k));
 
-// HOST-05 — entrée de baseline devenue fausse : désormais typée, ou sortie du corpus.
+// HOST-05 — baseline entry gone false: now typed, or out of the corpus.
 const host05 = [...baseline].filter((k) => typed.has(k) || !corpus.has(k)).sort();
 
-// Membres vides DÉJÀ en baseline : de la dette connue, pas une régression. Affichés en clair
-// plutôt que fondus dans le total — sans quoi « 62 non typées » laisserait croire 62 absences,
-// alors que l'une d'elles est une déclaration qui a l'air d'en être une.
+// Empty members ALREADY in the baseline: known debt, not a regression. Shown in the
+// clear rather than melted into the total — otherwise "62 untyped" would suggest 62
+// absences, while one of them is a declaration that looks like one.
 const vacuousKnown = [...vacuous.keys()].filter((k) => baseline.has(k)).sort();
 
 let failed = false;
@@ -264,11 +276,11 @@ if (vacuousKnown.length > 0) {
 if (openTail.length > 0) {
     console.log(
         `${C.y}ℹ${C.x}  ${openTail.length} membre(s) typés portent encore leur propre traîne ` +
-            `\`[key: string]: unknown\` ${C.d}(gisement B-13, non bloquant)${C.x}`
+            `\`[key: string]: unknown\` ${C.d}(gisement des traînes, non bloquant)${C.x}`
     );
 }
-// Informatif, JAMAIS assertif — voir le docblock : un pourcentage monte quand on retire une
-// clé non typée, il ne peut donc pas servir de cliquet.
+// Informative, NEVER assertive — see the docblock: a percentage climbs when an
+// untyped key is removed, so it cannot serve as a ratchet.
 console.log(
     `${C.d}   ${typed.size}/${corpus.size} clés typées — ${pct} % (informatif, n'asservit rien).${C.x}`
 );

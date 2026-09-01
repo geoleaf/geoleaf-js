@@ -1,11 +1,12 @@
 /**
- * Sprint 2, tâche 2.4 — `UI.openPanel` / `closePanel` / `getOpenPanel`.
+ * `UI.openPanel` / `closePanel` / `getOpenPanel`.
  *
- * 🛑 L'assertion qui porte ce fichier est « ouvrir deux fois de suite laisse ouvert ».
- * C'est la SEULE qui distingue `openPanel` d'un clic sur l'onglet, et elle était rouge par
- * construction avant l'extraction de `_activateTab` : `handleTabClick` bascule, donc le
- * second appel refermait le panneau. Un intégrateur qui appelle « ouvrir » et obtient
- * « fermé » est le défaut B-71, reproduit sur une surface publique.
+ * 🛑 The assertion carrying this file is "opening twice in a row leaves it
+ * open". It is the ONLY one that tells `openPanel` from a click on the tab,
+ * and it was red by construction before `_activateTab` was extracted:
+ * `handleTabClick` toggles, so the second call closed the panel back. An
+ * integrator who calls "open" and gets "closed" is the toggle's defect,
+ * reproduced on a public surface.
  */
 
 import { describe, it, expect, vi, afterEach } from "vitest";
@@ -14,7 +15,7 @@ vi.mock("../../src/utils/i18n/i18n.js", () => ({
     getLabel: vi.fn((k: string) => k),
 }));
 
-// ── matchMedia : le panneau ne s'active qu'au-dessus du point de rupture desktop ─────────
+// ── matchMedia: the panel only activates above the desktop breakpoint ────────────────────
 let mqMatches = true;
 const changeListeners: EventListener[] = [];
 const mockMql = {
@@ -67,7 +68,7 @@ describe("UI.openPanel / closePanel / getOpenPanel — surface publique du panne
         expect(openPanel("layers")).toBe(true);
         expect(getOpenPanel()).toBe("layers");
 
-        // Le second appel est tout l'objet du test : `handleTabClick` refermerait ici.
+        // The second call is the test's whole point: `handleTabClick` would close here.
         expect(openPanel("layers")).toBe(true);
         expect(getOpenPanel()).toBe("layers");
     });
@@ -117,7 +118,7 @@ describe("UI.openPanel / closePanel / getOpenPanel — surface publique du panne
         glMain.className = "gl-main";
         document.body.appendChild(glMain);
         initDesktopPanel({ glMain });
-        activateDesktopPanel(); // ne fait rien : `_mql.matches` est faux
+        activateDesktopPanel(); // does nothing: `_mql.matches` is false
 
         expect(openPanel("layers")).toBe(false);
     });
@@ -135,18 +136,19 @@ describe("UI.openPanel / closePanel / getOpenPanel — surface publique du panne
 });
 
 /**
- * Sprint 4, tâche 4.5 — `geoleaf:panel:opened` / `:closed`.
+ * `geoleaf:panel:opened` / `:closed`.
  *
- * 🛑 Ce qui est éprouvé ici n'est pas « l'événement part », c'est **quand il ne part PAS**.
- * `_activateTab` appelle `_closeAllTabs` avant d'ouvrir, et `openPanel()` passe par lui :
- * sans la garde « un onglet était-il ouvert ? », toute ouverture programmatique commencerait
- * par annoncer une fermeture qui n'a pas eu lieu. Les deux premiers cas ci-dessous sont ceux
- * qui rougissent si la garde saute — les autres resteraient verts.
+ * 🛑 What is exercised here is not "the event fires", it is **when it does
+ * NOT fire**. `_activateTab` calls `_closeAllTabs` before opening, and
+ * `openPanel()` goes through it: without the "was a tab open?" guard, every
+ * programmatic opening would start by announcing a closure that did not
+ * happen. The first two cases below are the ones that turn red if the guard
+ * goes — the others would stay green.
  */
 describe("geoleaf:panel:opened / :closed — les deux sens du panneau à onglets", () => {
     type PanelEvt = { type: string; tabId: string };
 
-    /** Enregistre les deux clés dans l'ORDRE d'émission, ce qui est la moitié du contrat. */
+    /** Records both keys in emission ORDER, which is half the contract. */
     function recordPanelEvents(): { seen: PanelEvt[]; stop: () => void } {
         const seen: PanelEvt[] = [];
         const onOpen = (e: Event) => {

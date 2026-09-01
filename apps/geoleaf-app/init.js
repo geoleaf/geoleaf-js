@@ -14,6 +14,25 @@
 // Lazy-load table / print / measure / editor on first use. Bundles are NOT loaded at boot;
 // toolbar buttons appear immediately via registerLazyForAction. Icons are copied from each
 // plugin's entry.ts and are stable across minor versions.
+//
+// 🛑 EVERY SLOT BELOW DECLARES `modules.<id>.showButton` AS `profileKey`, WITH THE `ui.show*`
+// FLAG AS `legacyProfileKey` — NEVER THE LEGACY KEY ALONE. The pair mirrors what the owning
+// package declares in its own `entry.ts`, and the two declarations must not drift: this file
+// draws the button when the plugin is lazy, `entry.ts` draws it when an integrator loads the
+// bundle eagerly, and a profile cannot tell which one it is talking to.
+//
+// ⚠️ Four slots carried the legacy key ALONE until 20/08/2026 — print, measure, editor and
+// geocoding. Measured on a served profile: `modules.print.showButton: false` left the button
+// drawn, because the slot never read that key, while `getPrintConfig()` reads it as its ONLY
+// source. The flag the plugin documents and the flag the button obeys were two different
+// flags. `resolveUISlotVisibility` tries `profileKey` first and falls back to
+// `legacyProfileKey` only when it resolves to undefined, so declaring both honours the
+// canonical key without breaking a profile that still writes the legacy one.
+//
+// 📌 The legacy key is `ui.showPrint`, NOT `showPrint`: `config/core/ui.json` wraps its
+// payload in a `"ui"` object, and `profile-loader.ts` spreads that payload into the profile
+// root — so the flag lands back under `ui.`. A probe that patches one level too high reads
+// `undefined` and makes a live key look dead. It cost a wrong diagnosis on this very line.
 (function () {
     const gl = window.GeoLeaf;
     if (!gl?.plugins || !gl?.registry || !gl?.I18n) return;
@@ -64,16 +83,24 @@
     });
     gl.plugins.registerLazy("print", () => import("./dist/geoleaf-print.plugin.js"));
     gl.plugins.registerLazyForAction("print", "print", {
+        // Gated on `modules.print.enabled` — this plugin's `entry.ts` carries the
+        // SAME `!== false`. Opt-in: `table`, `geocoding` and `position-share` do
+        // not gate, and `profiles/tourism` proves why (`position-share` is
+        // `enabled: false` there with `showButton: true` — the button IS the
+        // emission switch).
+        gateOnModuleEnabled: true,
         mobileIcon: {
             icon: _PRINT_ICON,
             labelKey: "print.toolbar.button",
-            profileKey: "ui.showPrint",
+            profileKey: "modules.print.showButton",
+            legacyProfileKey: "ui.showPrint",
             action: "print",
         },
         desktopTabButton: {
             icon: _PRINT_ICON,
             labelKey: "print.toolbar.button",
-            profileKey: "ui.showPrint",
+            profileKey: "modules.print.showButton",
+            legacyProfileKey: "ui.showPrint",
             action: "print",
         },
     });
@@ -98,10 +125,12 @@
     });
     gl.plugins.registerLazy("measure", () => import("./dist/geoleaf-measure.plugin.js"));
     gl.plugins.registerLazyForAction("measure", "measure", {
+        gateOnModuleEnabled: true,
         mobileIcon: {
             icon: _MEASURE_ICON,
             labelKey: "measure.toolbar.button",
-            profileKey: "ui.showMeasure",
+            profileKey: "modules.measure.showButton",
+            legacyProfileKey: "ui.showMeasure",
             action: "measure",
         },
     });
@@ -156,12 +185,29 @@
             "editor.toolbar.poi_add": "POI hinzufügen",
         },
     });
+    // ── navigation — LAZY, and WITHOUT a toolbar slot ────────────────────────────────────
+    //
+    // 🛑 No `registerLazyForAction` here, deliberately. Guidance has nothing to
+    // follow while no route exists: a toolbar button would be a control that
+    // does nothing most of the time, and `modules.navigation.showButton` is
+    // `false` for exactly that reason. The entry point lives where the route
+    // lives — in `routing`'s panel, which is loaded EAGER and thus always knows
+    // when to offer the button.
+    //
+    // ⚠️ `routing` tests availability with `isLazyAvailable`, NEVER `isLoaded`: a
+    // lazy plugin only enters the registry after its load, and the only gesture
+    // that would load it is precisely this button. Gating on `isLoaded` would
+    // hide the entry point behind the condition it serves to satisfy.
+    gl.plugins.registerLazy("navigation", () => import("./dist/geoleaf-navigation.plugin.js"));
+
     gl.plugins.registerLazy("editor", () => import("./dist/geoleaf-editor.plugin.js"));
     gl.plugins.registerLazyForAction("editor", "editor", {
+        gateOnModuleEnabled: true,
         mobileIcon: {
             icon: _EDITOR_ICON,
             labelKey: "editor.toolbar.button",
-            profileKey: "ui.showEditor",
+            profileKey: "modules.editor.showButton",
+            legacyProfileKey: "ui.showEditor",
             action: "editor",
         },
     });
@@ -174,6 +220,7 @@
         '<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>' +
         "</svg>";
     gl.plugins.registerLazyForAction("editor-export-session", "editor", {
+        gateOnModuleEnabled: true,
         mobileIcon: {
             icon: _EXPORT_ICON,
             labelKey: "editor.export.session",
@@ -191,6 +238,7 @@
         ' C 22 6.5 17.5 2 12 2 M12 8 L12 16 M8 12 L16 12"/>' +
         "</svg>";
     gl.plugins.registerLazyForAction("poi-add", "editor", {
+        gateOnModuleEnabled: true,
         mobileIcon: {
             icon: _POI_ADD_ICON,
             labelKey: "editor.toolbar.poi_add",
@@ -240,8 +288,41 @@
         mobileIcon: {
             icon: _SEARCH_ICON,
             labelKey: "geocoding.toolbar.button",
-            profileKey: "ui.showGeocoding",
+            profileKey: "modules.geocoding.showButton",
+            legacyProfileKey: "ui.showGeocoding",
             action: "geocoding",
+        },
+    });
+
+    // ── Position share ────────────────────────────────────────────────────────
+    const _POSITION_SHARE_ICON =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"' +
+        ' stroke-linecap="round" stroke-linejoin="round">' +
+        '<circle cx="12" cy="12" r="3"/>' +
+        '<path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>' +
+        '<circle cx="12" cy="12" r="8"/>' +
+        "</svg>";
+    gl.I18n.registerDict("position-share", {
+        fr: { "position-share.toolbar.button": "Partager ma position" },
+        en: { "position-share.toolbar.button": "Share my position" },
+    });
+    gl.plugins.registerLazy(
+        "position-share",
+        () => import("./dist/geoleaf-position-share.plugin.js")
+    );
+    gl.plugins.registerLazyForAction("position-share", "position-share", {
+        mobileIcon: {
+            icon: _POSITION_SHARE_ICON,
+            labelKey: "position-share.toolbar.button",
+            profileKey: "modules.position-share.showButton",
+            action: "position-share",
+        },
+        desktopTabButton: {
+            icon: _POSITION_SHARE_ICON,
+            labelKey: "position-share.toolbar.button",
+            profileKey: "modules.position-share.showButton",
+            action: "position-share",
+            variant: "tab",
         },
     });
 
@@ -251,6 +332,13 @@
         () => import("./dist/geoleaf-realtime-layer.plugin.js")
     );
     gl.plugins.registerLazy("connector", () => import("./dist/geoleaf-connector.plugin.js"));
+
+    // navigation is LAZY, and it is the exact counterpart of routing being eager. Guidance is
+    // only ever entered AFTER a route exists — that is, from an interface already drawn by a
+    // plugin already loaded — so the guard that forces routing to load early does not apply,
+    // and this is the heavier of the two. It declares `requires: ["routing"]`, which the eager
+    // tag in index.html satisfies before this resolver is ever called.
+    gl.plugins.registerLazy("navigation", () => import("./dist/geoleaf-navigation.plugin.js"));
 })();
 
 // ── DEV-ONLY — Connector bootstrap (auth) ───────────────────────────────────

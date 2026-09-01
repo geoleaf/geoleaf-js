@@ -1,4 +1,4 @@
-﻿/*!
+/*!
  * GeoLeaf Core – Baselayers / UI
  * © 2026 Mattieu Pottier
  * Released under the MIT License

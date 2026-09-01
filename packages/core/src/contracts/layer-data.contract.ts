@@ -10,9 +10,11 @@
  * feature access & mutation, promoted from the internal `GeoJSONCore` store.
  *
  * `GeoLeaf.Layers` is the single, engine-agnostic surface through which plugins
- * (addpoi CRUD, storage offline replay) and in-core capabilities (filter,
- * search) read and mutate a layer's features by `layerId` — with no knowledge
- * of "POI". Reads are a promotion of the existing per-layer store; the unit
+ * (feature CRUD, offline replay) and in-core capabilities (filter, search) read
+ * and mutate a layer's features by `layerId` — with no knowledge of "POI".
+ * ⚠️ The two use cases were named by their PLUGIN until the 19/08/2026, and both plugins
+ * have since been removed or renamed. A contract described by its callers dates with them;
+ * described by its use cases, it stays true. Reads are a promotion of the existing per-layer store; the unit
  * mutations, ephemeral feature-state and dedup-merge are the seam's additions.
  *
  * TS strict, no `any`.
@@ -60,7 +62,7 @@ export interface LayerDataApi {
     /** Empties a layer (equivalent to `setData(layerId, [])`). */
     clear(layerId: string): void;
 
-    // ── unit mutations (addpoi CRUD) ──
+    // ── unit mutations (per-feature CRUD) ──
 
     /** Appends one feature to the base dataset. */
     addFeature(layerId: string, feature: GeoJSON.Feature): void;
@@ -91,7 +93,7 @@ export interface LayerDataApi {
     /** Restores full visibility (clears any active subset). */
     clearVisibleSubset(layerId: string): void;
 
-    // ── reactive paint (addpoi badge, hover/select) — adapter.setFeatureState passthrough ──
+    // ── reactive paint (sync badge, hover/select) — adapter.setFeatureState passthrough ──
 
     /** Sets ephemeral feature-state on a feature (requires `promoteId` on the source). */
     setFeatureState(layerId: string, id: string | number, state: LayerFeatureState): void;

@@ -95,6 +95,19 @@ packages/core/connector.local.js
 
 # Claude Code harness — fichiers d'état runtime (jamais commités)
 .claude/*.lock
+# Verrou d'exclusion d'un run autonome — éphémère par nature (PID + horodatage).
+# ⚠️ Il a été commité puis désindexé TROIS fois (16/08, 17/08, 19/08), à chaque fois par
+# le même geste : un `git add -A` de fin de lot le happe parce qu'il n'était ignoré nulle
+# part. Deux messages de commit avaient déjà écrit « ne pas le commiter » — un avertissement
+# en prose n'a arrêté ni la deuxième ni la troisième. La règle, elle, le peut.
+#
+# 🛑 MOTIF NON ANCRÉ SUR UN RUN, depuis le 26/08/2026 — et c'est le quatrième épisode de la
+# même classe. La règle ne couvrait QUE `travail/nuit/.lock-nuit`, le verrou du premier
+# dispositif. Un run suivant a posé le sien sous `travail/solde/.lock-solde` : non couvert,
+# donc non ignoré, donc **commité**. Ancrer un motif sur le nom d'un run le fait rater le
+# run d'après. Les verrous vivent désormais sous `_docs_projet/travail/`, à plat.
+_docs_projet/travail/.lock-*
+_docs_projet/travail/*/.lock-*
 # T6.5 — `settings.local.json` était le SEUL fichier TRACÉ-ET-IGNORÉ du dépôt (commité
 # en fa48acfd, 17,9 Ko, portant un chemin absolu et un nom de distro WSL). Et il n'était
 # ignoré QUE par le gitignore GLOBAL de la machine (`~/.config/git/ignore`) : le dépôt
@@ -156,7 +169,7 @@ _docs_projet/travail/rapports/rapport_consommateurs-config-s5.md
 # `git add -A`. C'est le motif de cette ligne, pas la propreté du `git status`.
 *:Zone.Identifier
 
-# ─── Appareil INTERNE — la frontière de ce dépôt (S9.4) ──────────────────────
+# ─── Appareil INTERNE — la frontière de ce dépôt ─────────────────────────────
 #
 # Ce dépôt est dérivé du monorepo de travail, amputé de son appareil interne. La
 # liste n'est jamais recopiée d'un document : elle est DÉRIVÉE à chaque portage

@@ -147,12 +147,13 @@ describe("T10.4.2 — UI & Notifications exports", () => {
     beforeAll(async () => {
         ({ UI } = await import("../../src/api/geoleaf.ui.js"));
         ({ Notifications } = await import("../../src/capabilities/toast-renderer/public-api.js"));
-        // ⚠️ B-60 — cette suite décrit la surface publique APRÈS BOOT, il faut donc la simuler.
-        // `setTheme` / `toggleTheme` / `getCurrentTheme` / `Notifications` ne sont pas posés à
-        // l'import : ils l'étaient auparavant par deux `if` de corps de module de `ui-api.ts`,
-        // dont les conditions étaient **toujours fausses en production** (elles attendaient des
-        // valeurs écrites au boot). Ces assertions passaient donc sur un montage qui n'avait
-        // jamais lieu chez un intégrateur. Le câblage réel est `setupUIKernel()`.
+        // ⚠️ This suite describes the public surface AFTER BOOT, so it must
+        // be simulated. `setTheme` / `toggleTheme` / `getCurrentTheme` /
+        // `Notifications` are not set at import: they used to be, by two
+        // module-body `if`s in `ui-api.ts` whose conditions were **always
+        // false in production** (they waited for values written at boot).
+        // These assertions thus passed on a mounting that never happened for
+        // an integrator. The real wiring is `setupUIKernel()`.
         const { setupUIKernel } = await import("../../src/globals/globals.ui.js");
         setupUIKernel();
     });

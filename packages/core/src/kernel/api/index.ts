@@ -18,5 +18,8 @@ export { BootInfo, showBootInfo } from "./boot-info.js";
 // Mediated route for the `capabilities/ → kernel/` boundary (backlog R.8):
 // capabilities read their own opt-out gate through the registry.
 export { CapabilityRegistry } from "./capability-registry.js";
+// The `GeoLeaf.Capabilities` bus. Same boundary as the registry above: a capability that
+// finds itself absent says so through this, and the host hears it.
+export { Capabilities } from "./unavailable-capabilities.js";
 // Note: GeoLeafAPI is NOT exported from the barl — it is a stateful assembler
 // with load-order dependencies. Import directly from ./geoleaf-api.js when needed.

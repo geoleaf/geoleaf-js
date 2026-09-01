@@ -1,7 +1,6 @@
 /**
  * @file timer-manager.test.js
  * @description Tests for the real TimerManager class (imports actual module)
- * @phase Sprint 3 — Lots A-C branch recovery (0% => 80%+)
  */
 
 const mockLog = {
@@ -15,9 +14,10 @@ vi.mock("../../src/utils/log/index.js", () => ({ Log: mockLog }));
 
 let TimerManager;
 
-// Déféré PORTEUR : le module installe un singleton au chargement
-// (`globalTimerManager = new TimerManager("global")`), donc le MOMENT du chargement compte.
-// `await import()` le préserve tout en faisant passer le module par Vite.
+// LOAD-BEARING deferral: the module installs a singleton at load
+// (`globalTimerManager = new TimerManager("global")`), so the load MOMENT
+// counts. `await import()` preserves it while still running the module
+// through Vite.
 beforeAll(async () => {
     const mod = await import("../../src/utils/general/timer-manager.js");
     TimerManager = mod.TimerManager;

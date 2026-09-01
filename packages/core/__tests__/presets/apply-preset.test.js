@@ -8,16 +8,15 @@
 
 import { describe, expect, it, vi } from "vitest";
 
-const { registerPresetDeclarations, registerPresetModules } = await import(
-    "../../src/presets/apply-preset.ts"
-);
+const { registerPresetDeclarations, registerPresetModules } =
+    await import("../../src/presets/apply-preset.ts");
 
 /**
  * Builds a minimal fake installer matching the CapabilityInstaller surface.
  *
- * Le module porte un `init` espionné depuis socle-init 9.2 : l'enrobage enregistre TOUS les
- * modules et c'est `init()` qui tranche, donc « a-t-il tourné » n'est plus lisible sur
- * l'enregistrement.
+ * The module carries a spied `init` since the gate moved into init(): the
+ * wrapper registers ALL modules and `init()` decides, so "did it run" no
+ * longer reads on registration.
  */
 function makeInstaller(id, { withModule = true } = {}) {
     const inst = {
@@ -38,7 +37,7 @@ function makeInstaller(id, { withModule = true } = {}) {
     return inst;
 }
 
-/** Le dernier module remis au registre, c'est-à-dire l'enrobage de `gatedModule()`. */
+/** The last module handed to the registry, i.e. `gatedModule()`'s wrapper. */
 const lastRegistered = (modReg) => modReg.register.mock.calls.at(-1)[0];
 
 describe("registerPresetDeclarations (presets/apply-preset)", () => {
@@ -59,9 +58,9 @@ describe("registerPresetDeclarations (presets/apply-preset)", () => {
         expect(gl._b).toBe(true);
     });
 
-    // Socle-init 9.4 : la Pass 1 est le seul endroit qui voit TOUS les installeurs, donc le
-    // seul qui puisse dire lesquels contribuent un module. Le fait voyage ici, pas sur la
-    // déclaration — le canal runtime produit des déclarations sans installeur.
+    // Pass 1 is the only place that sees ALL the installers, hence the only
+    // one that can say which contribute a module. The fact travels here, not
+    // on the declaration — the runtime channel produces installer-less declarations.
     it("relève hasModule depuis l'installeur, sans appeler createModule", () => {
         const withMod = makeInstaller("with-mod");
         const policy = makeInstaller("policy", { withModule: false });
@@ -71,8 +70,8 @@ describe("registerPresetDeclarations (presets/apply-preset)", () => {
 
         expect(capReg.noteInstaller).toHaveBeenCalledWith("with-mod", { hasModule: true });
         expect(capReg.noteInstaller).toHaveBeenCalledWith("policy", { hasModule: false });
-        // `createModule` est lu comme un CHAMP : Pass 2 en est le seul appelant, et un second
-        // appel construirait une seconde instance de module.
+        // `createModule` is read as a FIELD: Pass 2 is its only caller, and
+        // a second call would build a second module instance.
         expect(withMod.createModule).not.toHaveBeenCalled();
     });
 
@@ -85,14 +84,14 @@ describe("registerPresetDeclarations (presets/apply-preset)", () => {
 });
 
 describe("registerPresetModules (presets/apply-preset)", () => {
-    // ⚠️ Ce test s'appelait « registers modules only for enabled installers » et exigeait
-    // `registered === ["with-mod"]`. Socle-init 9.2 a retiré la condition d'enregistrement :
-    // ce qui est filtré, c'est l'exécution, et elle l'est plus tard. Le `policy` (sans
-    // createModule) reste, lui, absent — cette moitié-là n'a pas changé.
+    // ⚠️ This test was called "registers modules only for enabled
+    // installers" and required `registered === ["with-mod"]`. The rework
+    // removed the registration condition: what is filtered is execution, and
+    // later. `policy` (no createModule) stays absent — that half has not changed.
     it("registers a module for every installer that declares createModule, gated or not", () => {
         const withMod = makeInstaller("with-mod");
         const policy = makeInstaller("policy", { withModule: false }); // no createModule
-        const disabled = makeInstaller("disabled"); // createModule, mais gate fermé
+        const disabled = makeInstaller("disabled"); // createModule, but gate closed
         const preset = { id: "test", capabilities: [withMod, policy, disabled] };
         const registered = [];
         const modReg = { register: vi.fn((m) => registered.push(m.id)) };
@@ -103,9 +102,9 @@ describe("registerPresetModules (presets/apply-preset)", () => {
         expect(registered).toEqual(["with-mod", "disabled"]);
         expect(withMod.createModule).toHaveBeenCalledTimes(1);
         expect(disabled.createModule).toHaveBeenCalledTimes(1);
-        // Le gate n'est pas consulté à l'enregistrement — c'est tout le geste de 9.2.
+        // The gate is not consulted at registration — the whole point of the change.
         expect(capReg.isEnabled).not.toHaveBeenCalled();
-        // `policy` n'a pas de createModule : il ne contribue rien, avant comme après.
+        // `policy` has no createModule: it contributes nothing, before as after.
         expect(registered).not.toContain("policy");
     });
 
@@ -129,7 +128,7 @@ describe("registerPresetModules (presets/apply-preset)", () => {
         expect(disabled.innerInit).not.toHaveBeenCalled();
         expect(onWrapper.isEnabled()).toBe(true);
         expect(offWrapper.isEnabled()).toBe(false);
-        // Et le registre a bien été interrogé avec un lecteur de la config d'init.
+        // And the registry was indeed queried with a reader of the init config.
         expect(capReg.isEnabled).toHaveBeenCalledTimes(2);
     });
 
@@ -165,9 +164,10 @@ describe("registerPresetModules (presets/apply-preset)", () => {
         expect(capReg.isEnabled).not.toHaveBeenCalled();
     });
 
-    // ⚠️ Ce test exigeait `modReg.register` JAMAIS appelé. Depuis 9.2 le module est bien
-    // enregistré ; ce qui est sauté, c'est son `init()`. La propriété testée — « la sous-clé
-    // l'emporte sur le gate de déclaration, y compris pour ÉTEINDRE » — est inchangée.
+    // ⚠️ This test required `modReg.register` NEVER called. The module is
+    // now registered; what is skipped is its `init()`. The tested property —
+    // "the sub-key wins over the declaration gate, including to TURN OFF" —
+    // is unchanged.
     it("skips the module's init when its moduleGate key is explicitly false", () => {
         const sub = makeInstaller("permalink");
         sub.moduleGate = {
@@ -189,8 +189,8 @@ describe("registerPresetModules (presets/apply-preset)", () => {
         expect(capReg.isEnabled).not.toHaveBeenCalled();
     });
 
-    // Un module éteint ne doit pas non plus être DÉTRUIT : `destroy()` défaisant un `init()`
-    // qui n'a jamais tourné est la moitié silencieuse de l'enrobage.
+    // A gated-off module must not be DESTROYED either: `destroy()` undoing
+    // an `init()` that never ran is the wrapper's silent half.
     it("skips destroy() for a module whose gate never let it run", () => {
         const sub = makeInstaller("branding");
         const modReg = { register: vi.fn() };

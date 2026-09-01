@@ -10,7 +10,7 @@
 
 ## Contexte
 
-La roadmap de remédiation sécurité a retiré `'unsafe-inline'` de la directive CSP `style-src` (B.5, 2026-06-21). La validation navigateur (Sprint 4) a alors révélé un défaut (**B.7**) : la CSS des plugins violait `style-src 'self'` par **deux mécanismes** :
+La roadmap de remédiation sécurité a retiré `'unsafe-inline'` de la directive CSP `style-src` (B.5, 2026-06-21). La validation navigateur a alors révélé un défaut (**B.7**) : la CSS des plugins violait `style-src 'self'` par **deux mécanismes** :
 
 1. **Bundler** — `rollup-plugin-postcss` en `inject: true` génère le helper `styleInject` qui crée un élément `<style>` (et écrit son `textContent`) au chargement du plugin (addpoi, storage, editor, measure, print, form-renderer).
 2. **Codé main** — `document.createElement("style")` + `textContent` directement dans le code du plugin (connector, editor).

@@ -25,7 +25,7 @@ function fakeStorage(overrides = {}) {
 
 /**
  * Log double installed through the `globalThis.GeoLeaf.Log` hook the Log proxy honours
- * (`modules/utils/log/logger.ts:252`).
+ * (`modules/utils/log/logger.ts`).
  *
  * Not decoration: several guards here return the SAME value as the catch block they protect
  * — `setItem` with no localStorage returns false, and so does `setItem` blowing up on
@@ -94,7 +94,7 @@ describe("StorageHelper.setItem — validator and sanitize", () => {
         expect(globalThis.localStorage.getItem("theme")).toBe("dark");
     });
 
-    // ── B.7-D1 — CORRIGÉ : la valeur assainie est revalidée ──
+    // ── FIXED: the sanitised value is revalidated ──
 
     test("a sanitizer that does not sanitize is refused, not stored", () => {
         // Was DEFECT B.7-D1: `sanitize`'s output went straight to storage and the call
@@ -402,7 +402,7 @@ describe("StorageHelper.stringifyJSON", () => {
         expect(StorageHelper.stringifyJSON(hostile, "FALLBACK")).toBe("FALLBACK");
     });
 
-    // ── B.7-D3 — CORRIGÉ : la signature `: string` est tenue ──
+    // ── FIXED: the `: string` signature is held ──
 
     test("falls back for values JSON cannot represent, instead of returning undefined", () => {
         // Was DEFECT B.7-D3. `JSON.stringify` RETURNS `undefined` for these — it does not

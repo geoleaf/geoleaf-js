@@ -1,15 +1,14 @@
 /**
- * Résolution de « ce qu'une surface peint », et le retrait du mode `"all"`.
+ * Resolving "what a surface paints", and the removal of the `"all"` mode.
  *
- * ⚠️ La moitié de ce fichier testait `resolveFields()`, dont cinq cas asseyaient le
- * REPLI IMPLICITE : surface absente, `null` ou `"all"` rendaient toutes les
- * propriétés de la feature en texte brut. La décision U2 (02/08/2026) retire ce
- * mode — c'est un contournement complet du contrat attributaire, atteignable en ne
- * disant rien.
+ * ⚠️ Half this file tested `resolveFields()`, five cases of which asserted the
+ * IMPLICIT FALLBACK: an absent surface, `null` or `"all"` rendered all the
+ * feature's properties as plain text. The decision (02/08/2026) removes that
+ * mode — a complete bypass of the attribute contract, reachable by saying nothing.
  *
- * Les cas ne sont donc pas supprimés : ils sont **retournés**. Chacun asserte
- * désormais que la surface ne déclare RIEN, et nomme la raison. Une garde qui
- * verrouille un défaut doit être re-pointée sur la décision, pas annulée.
+ * The cases are thus not deleted: they are **flipped**. Each now asserts the
+ * surface declares NOTHING, and names the reason. A guard locking a defect in
+ * must be re-pointed at the decision, not cancelled.
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
@@ -28,7 +27,7 @@ const BINDING = {
     sidepanel: "all",
 };
 
-/** Monte le seam `GeoLeaf.GeoJSON` sur une config de couche donnée. */
+/** Mounts the `GeoLeaf.GeoJSON` seam on a given layer config. */
 function stubLayer(config) {
     globalThis.GeoLeaf = {
         GeoJSON: { getLayerConfig: (id) => (id === "test-layer" ? config : null) },
@@ -93,10 +92,10 @@ describe("resolveSurfaceFields() — bloc legacy", () => {
 });
 
 describe("resolveSurfaceFields() — le mode all est RETIRÉ (U2)", () => {
-    // ⚠️ Ces quatre cas rendaient TOUTES les propriétés de la feature avant le
-    // 02/08/2026. Le mode ne distinguait même pas `"all"` d'une surface omise : les
-    // deux passaient par la même branche, donc une couche qui se taisait exposait
-    // ses identifiants techniques et ses colonnes de travail sans l'avoir demandé.
+    // ⚠️ These four cases rendered ALL the feature's properties before
+    // 02/08/2026. The mode did not even tell `"all"` from an omitted surface:
+    // both went through the same branch, so a layer that stayed silent
+    // exposed its technical ids and working columns without asking.
     it.each([
         ["all explicite sur le panneau", { sidepanel: "all" }, "sidepanel"],
         ["all explicite sur l'infobulle", { tooltip: "all" }, "tooltip"],
@@ -111,9 +110,9 @@ describe("resolveSurfaceFields() — le mode all est RETIRÉ (U2)", () => {
 });
 
 describe("resolveSurfaceFields() — les quatre absences sont DISTINCTES", () => {
-    // ⚠️ Elles étaient un seul `null` muet : une couche inconnue et une couche qui
-    // renonce délibérément à une surface produisaient le même silence, donc aucune
-    // des deux n'était diagnosticable (décision Q9).
+    // ⚠️ They were a single mute `null`: an unknown layer and a layer
+    // deliberately renouncing a surface produced the same silence, so neither
+    // was diagnosable.
     it("no-seam quand le seam GeoJSON n'est pas monté", () => {
         expect(resolveSurfaceFields("test-layer", "popup")).toBe("no-seam");
     });

@@ -18,8 +18,8 @@
  * FOURTH list of field names without replacing any of the three that existed then
  * (`attributes.fields[]`, `table.columns[]`, `formSchema`), and two of its five target
  * subsystems name no layer field at all (`modules.filter.fields[]` declares filter
- * CONTROLS; `modules.permalink.fields` is posed by no profile). See decision A3‴ in
- * `_docs_projet/travail/roadmaps/roadmap_collecte-terrain-offline.md`.
+ * CONTROLS; `modules.permalink.fields` is posed by no profile) — an arbitrated
+ * boundary, dated A3‴.
  *
  * ✅ **Two lists, not three, since task 7.2** — `formSchema` is gone, key and all, absorbed
  * into the `edit` projection below. That is what A3‴ said the model was FOR, and it is the
@@ -61,12 +61,7 @@
  * scoped rather than absolute — it was written from the capture components alone.
  */
 export type AttributePrimitive =
-    | "string"
-    | "number"
-    | "boolean"
-    | "string[]"
-    | "object"
-    | "object[]";
+    "string" | "number" | "boolean" | "string[]" | "object" | "object[]";
 
 /**
  * How an attribute value is presented (reading) or captured (edition).
@@ -200,7 +195,7 @@ export type AttributeEmphasis = "title" | "category" | "subcategory";
  * the surface. Pushing them into `AttributeWidgetOptions` would duplicate them across
  * every widget and would let the whitelist confront them, which is meaningless.
  *
- * ⚠️ Added 02/08/2026, at the Sprint 2 pre-flight, because the frozen contract could
+ * ⚠️ Added 02/08/2026, at a pre-flight, because the frozen contract could
  * not express what the profiles on disk already declare — and the descriptor is
  * `additionalProperties: false`, so the migration would have failed validation rather
  * than degrade silently. That is the good failure mode; the gap was still real.
@@ -239,8 +234,8 @@ export interface AttributeDisplay {
  * both its editability and its write target — a schema-level rule, not a property
  * of this object.
  *
- * ⚠️ It carried `required` ALONE until task 7.2, and that made it a stunted twin of
- * {@link AttributeDisplay}, which has overridden its presentation since Sprint 2. The
+ * ⚠️ It long carried `required` ALONE, and that made it a stunted twin of
+ * {@link AttributeDisplay}, which has overridden its presentation for as long. The
  * measurement that reopened it: {@link AttributeWidgetOptions} is indexed BY WIDGET, so
  * one `widget` slot admits exactly one typed options bag. `BadgeOptions` is
  * `{placeholder?}` and has nowhere to hold a choice list; `DropdownOptions` carries
@@ -275,10 +270,7 @@ export type AttributeEdit =
 
 /** Value pre-filled from the drawn geometry rather than typed by the user. */
 export type AttributeComputedSource =
-    | "geometry.length"
-    | "geometry.area"
-    | "geometry.centroid"
-    | "geometry.vertexCount";
+    "geometry.length" | "geometry.area" | "geometry.centroid" | "geometry.vertexCount";
 
 /* -------------------------------------------------------------------------- */
 /* Per-widget options — derived from the keys each component actually reads.   */
@@ -564,8 +556,8 @@ type AttributeCaptureWidget = Exclude<AttributeWidget, AttributeDisplayOnlyWidge
  * ⚠️ A `uses` block of bindings to secondary subsystems lived here from 02/08 to 06/08/2026
  * and was REMOVED: it added a fourth list of field names without replacing any of the three
  * that existed then (`attributes.fields[]`, `table.columns[]`, `formSchema`), and two of the
- * five subsystems it bound to name no layer field at all. See A3‴ in
- * `roadmap_collecte-terrain-offline.md`. `formSchema` itself went at task 7.2 — two lists remain.
+ * five subsystems it bound to name no layer field at all (the arbitrated boundary
+ * dated A3‴). `formSchema` itself is gone — two lists remain.
  *
  * Two per-widget refinements ride on the conditional types below:
  * - a display-only widget cannot carry `edit`;

@@ -25,8 +25,8 @@ diverger de sa source.
 
 | Mesure | Valeur |
 | --- | --- |
-| Couches portant un bloc `attributes` | 18 |
-| Champs déclarés | 87 |
+| Couches portant un bloc `attributes` | 19 |
+| Champs déclarés | 92 |
 | Couches **non migrées** (bloc legacy restant) | 0 |
 | Couches sans aucune déclaration de lecture | 6 |
 
@@ -70,6 +70,7 @@ chemin de rendu, et le retrait du mode `"all"` ne les touche donc pas.
 | tourism | aires_protegees_nationales_sib | `attributes.link_official` | Site officiel | `string` | `link` | `· · S` | rendered | — | — |
 | tourism | aires_protegees_nationales_sib | `attributes.link_wikipedia` | Wikipedia | `string` | `link` | `· · S` | rendered | — | — |
 | tourism | aires_protegees_nationales_sib | `attributes.tags` | Tags | `string[]` | `tags` | `· · S` | rendered | — | — |
+| tourism | aires_protegees_nationales_sib | `properties.Name ★` | Itinéraire | `string` | `action` | `· P S` | rendered | — | — |
 | tourism | cultures | `properties.NAME` | NAME | `string` | `text` | `T · ·` | rendered | — | — |
 | tourism | cultures | `properties.name ★` | Nom | `string` | `text` | `· P S` | rendered | title | — |
 | tourism | cultures | `properties.fclass` | Type | `string` | `text` | `· P ·` | rendered | — | — |
@@ -90,6 +91,7 @@ chemin de rendu, et le retrait du mode `"all"` ne les touche donc pas.
 | tourism | epicentres_seismes | `properties.place ★` | Lieu | `string` | `text` | `T P S` | rendered | — | — |
 | tourism | epicentres_seismes | `properties.mag` | Magnitude | `string` | `text` | `T P S` | rendered | — | — |
 | tourism | epicentres_seismes | `properties.time` | Date | `string` | `text` | `T P S` | rendered | — | — |
+| tourism | epicentres_seismes | `properties.place ★` | Itinéraire | `string` | `action` | `· P S` | rendered | — | — |
 | tourism | hebergements | `properties.name ★` | Nom | `string` | `text` | `T P S` | rendered | title | — |
 | tourism | hebergements | `properties.fclass` | Type | `string` | `text` | `· P S` | rendered | — | — |
 | tourism | hebergements | `properties.categoryId` | Catégorie | `string` | `text` | `· P S` | rendered | — | — |
@@ -98,17 +100,20 @@ chemin de rendu, et le retrait du mode `"all"` ne les touche donc pas.
 | tourism | observations_gbif | `properties.vernacularName` | Nom vernaculaire | `string` | `text` | `T P S` | rendered | — | — |
 | tourism | observations_gbif | `properties.kingdom` | Règne | `string` | `text` | `T P S` | rendered | — | — |
 | tourism | observations_gbif | `properties.eventDate` | Date | `string` | `text` | `T P S` | rendered | — | — |
+| tourism | observations_gbif | `properties.species ★` | Itinéraire | `string` | `action` | `· P S` | rendered | — | — |
 | tourism | parcours | `properties.nom ★` | nom | `string` | `text` | `T P ·` | rendered | title | — |
 | tourism | parcours | `properties.type_parcours` | Type | `string` | `badge` | `· P S` | rendered | — | — |
 | tourism | parcours | `properties.distance_km` | Distance (km) | `string` | `text` | `· P S` | rendered | — | — |
 | tourism | parcours | `properties.difficulte` | Difficulté | `string` | `badge` | `· · S` | rendered | — | — |
 | tourism | parcours | `properties.description` | Description | `string` | `longtext` | `· · S` | rendered | — | — |
+| tourism | routing-route | `properties.step ★` | Étape | `string` | `text` | `T · ·` | rendered | — | — |
 | tourism | sites_de_conservation_wdpa | `properties.NAME ★` | Nom | `string` | `text` | `T P S` | rendered | title | — |
 | tourism | sites_de_conservation_wdpa | `properties.DESIG` | Désignation | `string` | `text` | `· P S` | rendered | — | — |
 | tourism | sites_de_conservation_wdpa | `properties.IUCN_CAT` | Catégorie IUCN | `string` | `text` | `· P S` | rendered | — | — |
 | tourism | sites_de_conservation_wdpa | `properties.STATUS` | Statut | `string` | `text` | `· P S` | rendered | — | — |
 | tourism | sites_de_conservation_wdpa | `properties.STATUS_YR` | Année de désignation | `number` | `number` | `· P S` | rendered | — | — |
 | tourism | sites_de_conservation_wdpa | `properties.REP_AREA` | Superficie | `number` | `metric` | `· P S` | rendered | — | — |
+| tourism | sites_de_conservation_wdpa | `properties.NAME ★` | Itinéraire | `string` | `action` | `· P S` | rendered | — | — |
 | tourism | sites_rosario | `properties.title ★` | title | `string` | `text` | `T P ·` | rendered | title | requis |
 | tourism | sites_rosario | `properties.adresse` | Adresse | `string` | `text` | `· P S` | rendered | — | oui |
 | tourism | sites_rosario | `properties.statut` | Statut | `string` | `badge` | `· P S` | rendered | — | oui |

@@ -1,6 +1,5 @@
 /**
  * Unit tests for plugin-storage — RetryHandler, CacheStorage (with mocked IndexedDB)
- * Sprint 4 — Tests Plugins & Coverage 50%
  */
 
 import { RetryHandler } from "../../../src/capabilities/offline/cache/retry-handler.js";
@@ -21,10 +20,7 @@ describe("plugin-storage", () => {
 
         test("should succeed on second attempt after delay", async () => {
             vi.useFakeTimers();
-            const op = jest
-                .fn()
-                .mockRejectedValueOnce(new Error("fail"))
-                .mockResolvedValueOnce("ok");
+            const op = vi.fn().mockRejectedValueOnce(new Error("fail")).mockResolvedValueOnce("ok");
             const p = RetryHandler.retry(op, { resourceName: "test", maxRetries: 3 });
             await vi.runAllTimersAsync();
             await expect(p).resolves.toBe("ok");
@@ -129,7 +125,7 @@ describe("plugin-storage", () => {
                 backoffMultiplier: null,
             });
             vi.useFakeTimers();
-            const op = jest
+            const op = vi
                 .fn()
                 .mockRejectedValueOnce(new Error("fail"))
                 .mockResolvedValueOnce("recovered");
@@ -148,7 +144,7 @@ describe("plugin-storage", () => {
 
         test("retry logs message when error has no .message property (line 102 ?? fallback)", async () => {
             // Throw a non-Error object so err?.message is undefined → uses ?? error fallback
-            const op = jest
+            const op = vi
                 .fn()
                 .mockRejectedValueOnce({ name: "CustomError" }) // no .message property
                 .mockResolvedValueOnce("ok-after");
@@ -234,10 +230,11 @@ describe("plugin-storage", () => {
         beforeAll(async () => {
             const idb = await import("../../__mocks__/indexeddb.js");
             clearMockStore = idb.clearMockStore;
-            // B.10 soldé — chargé en `import`, l'alias Vite sert enfin le mock d'IndexedDB
-            // (sous `require()`, tsx court-circuitait Vite et c'était le VRAI `core/indexeddb.ts`
-            // de 591 lignes qui était chargé). Le mock a été complété pour couvrir ce que
-            // `storage.ts` en attend — voir `__tests__/__mocks__/indexeddb.js`.
+            // Loaded via `import`, the Vite alias finally serves the
+            // IndexedDB mock (under `require()`, tsx short-circuited Vite and
+            // the REAL 591-line `core/indexeddb.ts` was loaded). The mock was
+            // completed to cover what `storage.ts` expects of it — see
+            // `__tests__/__mocks__/indexeddb.js`.
             ({ CacheStorage } = await import("../../../src/capabilities/offline/cache/storage.js"));
         });
 
@@ -309,11 +306,11 @@ describe("plugin-storage", () => {
             expect(eventDetail).toEqual({ profileId: "p1", deleted: expect.any(Number) });
         });
 
-        // ⚠️ Test retiré (clôture S3c) : `CacheStorage.getStorageQuota` n'existe plus —
-        // troisième exemplaire d'un lecteur de quota sans appelant de production. ⚠️ Il portait
-        // en outre un `if (!CacheStorage?.getStorageQuota) return;` : il se serait tu tout seul
-        // à la suppression, sans jamais rougir. Une garde optionnelle sur son propre sujet ne
-        // garde rien.
+        // ⚠️ Test removed: `CacheStorage.getStorageQuota` no longer exists —
+        // third copy of a quota reader with no production caller. ⚠️ It
+        // moreover carried an `if (!CacheStorage?.getStorageQuota) return;`:
+        // it would have silenced itself at the deletion, never turning red. A
+        // guard optional about its own subject guards nothing.
     });
 
     describe("CacheDownloader", () => {

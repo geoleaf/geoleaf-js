@@ -2,9 +2,8 @@
  * @geoleaf-plugins/measure — Styles
  * © 2026 Mattieu Pottier — MIT License
  *
- * Sprint 2: floating menu, recap box.
- * Sprint 5: GPS status + close modal.
- * Sprint 6: pill layout identical to left toolbar bar; unit cycle buttons; tooltips; theme-aware CSS vars.
+ * Floating menu, recap box, GPS status + close modal, pill layout identical to the
+ * left toolbar bar, unit cycle buttons, tooltips, theme-aware CSS vars.
  */
 
 /* ---------------------------------------------------------------------------
@@ -408,7 +407,7 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Annotation overlays — Sprint 6
+   Annotation overlays
 --------------------------------------------------------------------------- */
 
 .gl-measure-annot-tooltip {

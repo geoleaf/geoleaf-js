@@ -3,48 +3,51 @@
  *
  * ## Ce qu'il reste, et pourquoi
  *
- * 1. **`jest` → `vi`.** Les `__mocks__/*.js` du paquet construisent leurs espions avec
- *    `jest.fn()` à l'évaluation (héritage de l'ère Jest) ; sans cet alias ils jettent au
- *    chargement.
- * 2. **Le seam `globalThis.GeoLeaf.Utils`** (ARCHI S7 7.3, geste 5). Ce n'est PAS de la
- *    résolution de modules : les sources lisent les utilitaires du core sur cette surface,
- *    que le core monte au boot en production (`globals.core.ts` B2). Les tests doivent la
- *    monter aussi, sinon les accesseurs rendent leur repli neutre et les assertions
- *    échouent. Rien dans le sprint 5 ne la rend inutile.
+ * 1. **`jest` → `vi`: removed on 18/08/2026** — no `jest.*` call left in the
+ *    package, the alias only served to make possible what we no longer want to
+ *    write.
+ * 2. **The `globalThis.GeoLeaf.Utils` seam.** This is NOT module resolution: the
+ *    sources read the core's utilities on this surface, which the core mounts at
+ *    boot in production (`globals.core.ts` B2). The tests must mount it too,
+ *    otherwise the accessors return their neutral fallback and assertions fail.
+ *    Nothing makes it unnecessary.
  *
- * ## Ce qui a été retiré au sprint 5 COUVERTURE (22/07/2026), et sur quelle preuve
+ * ## What was removed, and on what proof
  *
- * Ce fichier portait **227 lignes**, dont ~150 de résolution : un patch
- * `Module._resolveFilename` aliasant `@core/*`, `@core-offline/*`,
- * `@geoleaf/field-renderer`, les variantes d'`indexeddb.js` et de `cache-control.js`, plus
- * un repli `.js → .ts`. Son en-tête énonçait sa propre raison d'être : « Vite alias
- * directives are NOT applied to transitive source imports in forks+tsx mode ». Cette
- * prémisse tombe avec la branche `require()`.
+ * This file carried **227 lines**, ~150 of them resolution: a
+ * `Module._resolveFilename` patch aliasing `@core/*`, `@core-offline/*`,
+ * `@geoleaf/field-renderer`, the `indexeddb.js` and `cache-control.js` variants,
+ * plus a `.js → .ts` fallback. Its header stated its own raison d'être: "Vite
+ * alias directives are NOT applied to transitive source imports in forks+tsx
+ * mode". That premise falls with the `require()` branch.
  *
- * **Retiré sur mesure, pas sur raisonnement** : une sonde a comparé, à chaque appel, ce que
- * le patch rendait à ce qu'une résolution pristine aurait rendu. Sur les 7 fichiers et 90
- * tests du paquet, elle s'est installée 7 fois et n'a relevé **aucune redirection**.
+ * **Removed on measurement, not reasoning**: a probe compared, at every call,
+ * what the patch returned to what a pristine resolution would have. Over the
+ * package's 7 files and 90 tests, it installed 7 times and recorded **no
+ * redirection**.
  *
- * ⚠️ Ce que le patch faisait revient à `vitest.config.ts`, et l'équivalence n'était pas
- * acquise : `resolveJsToTs` réécrit `.js` → `.ts` dans les fichiers source, donc un alias
- * déclaré en `.js` seul ne les atteint jamais. Ce paquet l'avait déjà anticipé pour
- * `cache-control.(js|ts)` ; l'entrée `@geoleaf/field-renderer` a dû être ajoutée au S5.
+ * ⚠️ What the patch did falls back to `vitest.config.ts`, and the equivalence
+ * was not a given: `resolveJsToTs` rewrites `.js` → `.ts` in source files, so an
+ * alias declared for `.js` alone never reaches them. This package had already
+ * anticipated it for `cache-control.(js|ts)`; the `@geoleaf/field-renderer`
+ * entry had to be added.
  *
- * ⚠️ **Cette entrée d'alias n'existe plus** : au Sprint 6 (S6b / B-144), `confirmDialog` et
- * `createFocusTrap` ont quitté `field-renderer` pour `host-runtime`, et le paquet a perdu
- * toute dépendance à `field-renderer`. L'alias vise désormais `@geoleaf/host-runtime`, avec
- * un mock **partiel** — neuf symboles y sont consommés, pas trois. Le récit ci-dessus reste
- * vrai *au passé* ; la note évite qu'on aille chercher une entrée disparue.
+ * ⚠️ **That alias entry no longer exists**: `confirmDialog` and
+ * `createFocusTrap` left `field-renderer` for `host-runtime`, and the package
+ * lost any `field-renderer` dependency. The alias now targets
+ * `@geoleaf/host-runtime`, with a **partial** mock — nine symbols are consumed
+ * there, not three. The account above stays true *in the past tense*; the note
+ * avoids a hunt for a vanished entry.
  */
 
-// ── 1. jest → vi alias ────────────────────────────────────────────────────────
-if (typeof jest === "undefined" && typeof vi !== "undefined") {
-    globalThis.jest = vi;
-}
+// ── 1. jest → vi alias : REMOVED (2026-08-18) ─────────────────────────────────
+// The `__mocks__/*.js` spies that needed it were converted to `vi.fn()` long before this
+// removal — measured: zero `jest.*` calls remain in the package. See the core setup for
+// why a caller-less global alias is a liability rather than a harmless leftover.
 
-// ── 2. Seam GeoLeaf.Utils (ARCHI S7 7.3, geste 5) ─────────────────────────────
-// Les implémentations viennent des mêmes `__mocks__/` que les alias Vite, pour que le
-// comportement observé par les tests soit inchangé.
+// ── 2. GeoLeaf.Utils seam ─────────────────────────────────────────────────────
+// The implementations come from the same `__mocks__/` as the Vite aliases, so
+// the behaviour the tests observe is unchanged.
 import * as domSecurity from "../__mocks__/dom-security.js";
 import * as domHelpers from "../__mocks__/dom-helpers.js";
 import * as formatters from "../__mocks__/formatters.js";

@@ -1,80 +1,82 @@
 #!/usr/bin/env node
 /**
- * verify-test-load-mode.cjs — le garde-fou de la roadmap COUVERTURE (S1.1 / S1.2).
+ * verify-test-load-mode.cjs — the guard on how modules load under test.
  *
- * ## Le défaut qu'il gèle
+ * ## The defect it freezes
  *
- * Un module source chargé par `require()` depuis un test voit sa couverture attribuée
- * **aux mauvaises lignes et aux mauvaises fonctions**. Ce n'est pas de l'imprécision :
- * deux sondes ne différant QUE par le mode de chargement, chacune n'appelant que
- * `formatFileSize` dans un module à 4 fonctions, donnent en `import` `FNDA:1` sur la
- * bonne et `FNDA:0` sur les trois autres — et en `require()` exactement l'inverse, faux
- * sur les quatre. Les lignes bougent aussi, et les totaux ne sont pas préservés.
+ * A source module loaded through `require()` from a test gets its coverage attributed
+ * **to the wrong lines and the wrong functions**. This is not imprecision: two probes
+ * differing ONLY by load mode, each calling only `formatFileSize` in a 4-function
+ * module, give under `import` `FNDA:1` on the right one and `FNDA:0` on the other
+ * three — and under `require()` exactly the reverse, wrong on all four. Lines move
+ * too, and totals are not preserved.
  *
- * Rien n'échoue : la suite est verte, le rapport est bien formé, les pourcentages sont
- * plausibles. C'est ce qui a permis au défaut de vivre un mois sans être vu.
+ * Nothing fails: the suite is green, the report is well-formed, the percentages are
+ * plausible. That is what let the defect live a month unseen.
  *
- * ## Pourquoi un gate AVANT de convertir
+ * ## Why a gate BEFORE converting
  *
- * La conversion porte sur **184 fichiers et 357 sites** (mesure de ce gate, 22/07/2026) :
- * plusieurs sessions. Tant que rien n'interdit le 185ᵉ, la dette se recreuse pendant qu'on
- * la comble — et ce n'est pas une hypothèse : entre la rédaction de la roadmap et la fin
- * du sprint 0, `sync-queue-order.test.js` est arrivé avec 2 sites (commit `b4654fa9`, le
- * jour même). **Rien ne l'a signalé.**
+ * The conversion covers **184 files and 357 sites** (this gate's measurement,
+ * 2026-07-22): several sessions. As long as nothing forbids the 185th, the debt
+ * re-digs while being filled — and it is not a hypothesis: between the plan's
+ * writing and the end of the first pass, `sync-queue-order.test.js` arrived with 2
+ * sites (commit `b4654fa9`, the same day). **Nothing flagged it.**
  *
- * La baseline ne fait donc que **descendre** : le gate ne bloque que sur un site ABSENT
- * d'elle. Même cliquet que `verify-purgecss` et `check-orphan-exports`.
+ * The baseline therefore only **descends**: the gate only blocks on a site ABSENT
+ * from it. Same ratchet as `verify-purgecss` and `check-orphan-exports`.
  *
- * ## Ce qui est compté, et ce qui ne l'est PAS
+ * ## What is counted, and what is NOT
  *
- * Seuls les `require()` d'un **module source réel** comptent — le specifier doit résoudre
- * vers un `.ts` existant. Un `require()` de fixture, de mock ou de paquet npm ne charge
- * pas de source mesurée, il est ignoré.
+ * Only `require()`s of a **real source module** count — the specifier must resolve to
+ * an existing `.ts`. A `require()` of a fixture, a mock or an npm package loads no
+ * measured source, it is ignored.
  *
- * **Les deux formes de specifier comptent** — relatif (`../x.js`) ET nu (`@core/…`,
- * `@core-offline/…`), ce dernier résolu par les `paths` du tsconfig du paquet.
+ * **Both specifier shapes count** — relative (`../x.js`) AND bare (`@core/…`,
+ * `@core-offline/…`), the latter resolved through the package tsconfig's `paths`.
  *
- * ⚠️ **La forme nue était invisible à ce gate jusqu'au S5** (22/07/2026). Mesuré alors :
- * 22 sites dans `plugin-addpoi` et `plugin-storage`, dont **8 chargeaient de la vraie
- * source du core** — et un fichier de test entier, `cache-workflow-cross.integration.test.js`,
- * n'employait QUE des specifiers nus, donc n'apparaissait dans aucun inventaire. La
- * baseline sous-comptait sans que rien ne le dise.
+ * ⚠️ **The bare shape was invisible to this gate for a long while** (2026-07-22).
+ * Measured then: 22 sites in `plugin-addpoi` and `plugin-storage`, of which **8
+ * loaded real core source** — and one whole test file,
+ * `cache-workflow-cross.integration.test.js`, used ONLY bare specifiers, hence
+ * appeared in no inventory. The baseline under-counted with nothing saying so.
  *
- * ⚠️ **C'est ce qui explique l'écart avec les chiffres de la roadmap** (186 fichiers /
- * 373 sites, et 188/377 au relevé de fin de S0). Ce gate en trouve moins, et c'est
- * volontaire : le prototype qui a produit ces chiffres comptait TOUS les `require()`
- * relatifs, y compris ceux qui ne chargent aucune source mesurée —
+ * ⚠️ **That is what explains the gap with the plan's numbers** (186 files /
+ * 373 sites, and 188/377 at the first pass's closing census). This gate finds fewer,
+ * and it is deliberate: the prototype that produced those numbers counted ALL
+ * relative `require()`s, including those loading no measured source —
  * `__mocks__/maplibre-gl.cjs`, `helpers/dom-create-double.js`,
- * `scripts/check-bundle-size.cjs`. Les convertir ne changerait rien à l'attribution de
- * couverture. Leur compte est affiché à part, pour que l'écart reste lisible.
+ * `scripts/check-bundle-size.cjs`. Converting them would change nothing to coverage
+ * attribution. Their count is shown separately, so the gap stays readable.
  *
- * Le périmètre vient du registre (`lib/packages.cjs`), donc `packages/_plugin-template/`
- * en est exclu : il est hors `workspaces` (`!packages/_*`).
+ * The perimeter comes from the registry (`lib/packages.cjs`), so
+ * `packages/_plugin-template/` is excluded: it sits outside `workspaces`
+ * (`!packages/_*`).
  *
- * ⚠️ **`vi.mock(...)` est neutralisé avant analyse.** Déclarer un mock ne charge pas le
- * module réel. C'est l'oubli de ce détail qui a fait annoncer « 139 modules » à l'entrée
- * B.46 là où il y en a 79 : le compte incluait les cibles de `vi.mock()`.
+ * ⚠️ **`vi.mock(...)` is neutralized before analysis.** Declaring a mock does not
+ * load the real module. Forgetting that detail is what once made a census announce
+ * "139 modules" where there are 79: the count included the `vi.mock()` targets.
  *
- * ## Limite assumée — et elle n'est plus hypothétique
+ * ## Accepted limit — and it is no longer hypothetical
  *
- * La détection est **syntaxique**, donc aveugle à un `require()` dont le specifier est
- * construit à l'exécution.
+ * Detection is **syntactic**, hence blind to a `require()` whose specifier is built
+ * at runtime.
  *
- * ⚠️ Cette limite portait « aucun site de cette forme n'a été observé ». **C'était faux** :
- * `geojson/geojson-core.test.js` boucle sur **9 modules source du core** par
- * `` require(`../../src/kernel/${subModule}`) ``. Neuf sites de fausse attribution que ni
- * la baseline ni le triage ne nommaient. Ils ne sont toujours pas résolus — il faudrait
- * évaluer la boucle — mais ils sont désormais **comptés et affichés**, ce qui est la seule
- * chose qui les empêche de redevenir invisibles. Leur conversion relève des sprints 3 et 4.
+ * ⚠️ This limit carried "no site of that shape has been observed". **That was
+ * false**: `geojson/geojson-core.test.js` loops over **9 core source modules**
+ * through `` require(`../../src/kernel/${subModule}`) ``. Nine misattribution sites
+ * neither the baseline nor the triage named. They are still unresolved — the loop
+ * would have to be evaluated — but they are now **counted and shown**, the only
+ * thing keeping them from turning invisible again. Their conversion belongs to the
+ * reload-conversion batches.
  *
- * `createRequire()` et `module.require()` : vérifiés repo-wide au S5 (solde du backlog
- * B.3). Un seul site, `guards/prototype-pollution-sinks.guard.test.js`, et il charge un
- * `.cjs` — un module réellement CommonJS, donc aucune attribution faussée.
+ * `createRequire()` and `module.require()`: verified repo-wide since. A single site,
+ * `guards/prototype-pollution-sinks.guard.test.js`, and it loads a `.cjs` — a
+ * genuinely CommonJS module, hence no skewed attribution.
  *
  * Usage :
  *   node scripts/verify-test-load-mode.cjs                    # gate
- *   node scripts/verify-test-load-mode.cjs --update-baseline  # refiger après conversion
- *   node scripts/verify-test-load-mode.cjs --report           # tableau de bord, sans gate
+ *   node scripts/verify-test-load-mode.cjs --update-baseline  # re-freeze after converting
+ *   node scripts/verify-test-load-mode.cjs --report           # dashboard, no gate
  */
 
 "use strict";
@@ -99,14 +101,14 @@ const BASELINE_COMMENT =
     "Régénérer via `--update-baseline` après avoir converti un lot — jamais pour faire " +
     "taire un site neuf, qui doit être converti et non figé.";
 
-/** @param {string} abs @returns {string} Chemin repo-relatif, séparateurs POSIX. */
+/** @param {string} abs @returns {string} Repo-relative path, POSIX separators. */
 const rel = (abs) => path.relative(ROOT, abs).split(path.sep).join("/");
 
-/** Clé stable d'un site : fichier de test + specifier. */
+/** A site's stable key: test file + specifier. */
 const siteKey = (testFile, spec) => `${rel(testFile)}::${spec}`;
 
 /**
- * Analyse l'ensemble des tests du monorepo.
+ * Analyses the whole monorepo's tests.
  *
  * @returns {{sites: {key: string, testFile: string, spec: string}[],
  *   modules: {reqOnly: number, both: number, impOnly: number},
@@ -114,9 +116,9 @@ const siteKey = (testFile, spec) => `${rel(testFile)}::${spec}`;
  *   packagesScanned: number, testFilesScanned: number, nonSourceRequires: number}}
  */
 function analyse() {
-    // Dérivé du registre, jamais d'un glob écrit à la main : un chemin en dur ne casse pas
-    // au déplacement d'un paquet, il cesse silencieusement de matcher et la gate sort verte
-    // en n'ayant rien scanné (cf. `probe-gate-visibility.cjs`).
+    // Derived from the registry, never from a hand-written glob: a hard-coded path
+    // does not break when a package moves, it silently stops matching and the gate
+    // goes green having scanned nothing (cf. `probe-gate-visibility.cjs`).
     const packages = registry.all();
 
     /** module source → { req: Set, imp: Set } */
@@ -127,19 +129,19 @@ function analyse() {
     };
 
     const sites = [];
-    /** fichier de test → { sites, viMock, resetModules } */
+    /** test file → { sites, viMock, resetModules } */
     const perTest = new Map();
     let testFilesScanned = 0;
     let nonSourceRequires = 0;
-    /** Sites `require(`…${x}`)` — visibles, non résolus. */
+    /** `require(`…${x}`)` sites — visible, unresolved. */
     const dynamicRequires = [];
 
     for (const p of packages) {
-        // Les sites (specifiers RELATIFS **et NUS**), leur résolution et le classement en
-        // familles viennent de `lib/test-load-sites.cjs`, partagé avec
-        // `audit-test-load-conversion.cjs`. Chacun en portait sa copie jusqu'au S5, et
-        // elles avaient déjà divergé : au S2 il a fallu corriger le classifieur DANS LES
-        // DEUX (`vi.isolateModules` comptait comme mécanique alors qu'il recharge).
+        // The sites (RELATIVE **and BARE** specifiers), their resolution and the
+        // family classification come from `lib/test-load-sites.cjs`, shared with
+        // `audit-test-load-conversion.cjs`. Each carried its own copy for a long
+        // while, and they had already diverged: the classifier had to be fixed IN
+        // BOTH (`vi.isolateModules` counted as mechanical although it reloads).
         const bySite = shared.collectSites(p);
         const seenTests = new Set();
 
@@ -152,15 +154,16 @@ function analyse() {
             let resolvedReq = 0;
             for (const s of bySite.filter((x) => x.file === relTf)) {
                 if (s.kind === "dynamic") {
-                    // Specifier construit à l'exécution : irrésolvable sans évaluer la
-                    // boucle. Compté À PART plutôt qu'ignoré — c'est la seule façon qu'il
-                    // ne redevienne pas invisible. Conversion : sprints 3 et 4.
+                    // Runtime-built specifier: unresolvable without evaluating the
+                    // loop. Counted SEPARATELY rather than ignored — the only way it
+                    // does not turn invisible again. Conversion: the reload batches.
                     dynamicRequires.push(`${relTf}:${s.line}`);
                     continue;
                 }
                 if (!s.mod) {
-                    // Ne charge aucune source mesurée (mock, helper, script). Hors périmètre
-                    // couverture — compté à part pour que l'écart reste explicable.
+                    // Loads no measured source (mock, helper, script). Outside the
+                    // coverage perimeter — counted separately so the gap stays
+                    // explainable.
                     nonSourceRequires += 1;
                     continue;
                 }
@@ -169,7 +172,7 @@ function analyse() {
                 sites.push({ key: siteKey(tf, s.spec), testFile: relTf, spec: s.spec });
             }
 
-            // Versant `import` du graphe : relatifs ET nus, mêmes règles de résolution.
+            // The graph's `import` side: relative AND bare, same resolution rules.
             const impSpecs = [
                 ...scrubbed.matchAll(/(?:^|\s)import\s[^;]*?from\s*(['"])([^'"]+)\1/g),
                 ...scrubbed.matchAll(/(?:await\s+)?import\(\s*(['"])([^'"]+)\1\s*\)/g),
@@ -186,12 +189,13 @@ function analyse() {
                 perTest.set(tf, {
                     sites: resolvedReq,
                     viMock: family === "mock",
-                    // ⚠️ `isolateModules` compte avec `resetModules` (COUVERTURE S2, lot 4).
-                    // Il en fait le même travail — recharger un module dans un registre
-                    // neuf — et relève donc du sprint 4, pas des conversions mécaniques.
-                    // Sans lui, `api/api-extended.test.js` sortait « mécanique » alors que
-                    // ses 3 sites vivent dans des `vi.isolateModules(() => require(…))` :
-                    // un classement trop optimiste, du côté qui coûte cher.
+                    // ⚠️ `isolateModules` counts with `resetModules`. It does the
+                    // same work — reload a module into a fresh registry — and thus
+                    // belongs to the reload batch, not the mechanical conversions.
+                    // Without it, `api/api-extended.test.js` came out "mechanical"
+                    // while its 3 sites live inside
+                    // `vi.isolateModules(() => require(…))`: an over-optimistic
+                    // classification, on the side that costs dearly.
                     resetModules: family === "reload",
                 });
             }
@@ -265,10 +269,10 @@ function printDashboard(a) {
             "ne chargent aucune source mesurée (question « ESM pur », sprint 5)"
     );
     if (a.dynamicRequires.length) {
-        // ⚠️ Ne JAMAIS taire ce compte. Ces sites chargent bel et bien des sources
-        // mesurées — `geojson-core.test.js` en boucle 9 — mais leur specifier n'existe
-        // qu'à l'exécution, donc ni la baseline ni le triage ne peuvent les nommer. Les
-        // afficher est le seul moyen qu'ils ne repassent pas sous le radar.
+        // ⚠️ NEVER silence this count. These sites do load measured sources —
+        // `geojson-core.test.js` loops 9 of them — but their specifier only exists at
+        // runtime, so neither the baseline nor the triage can name them. Showing them
+        // is the only way they do not slip back under the radar.
         console.log(
             `  ⚠ specifier CONSTRUIT : ${a.dynamicRequires.length} site(s) irrésolvable(s) ` +
                 "statiquement — chargent des sources, sprints 3/4 :"
@@ -277,12 +281,12 @@ function printDashboard(a) {
     }
 }
 
-// ── Exécution ────────────────────────────────────────────────────────────────
+// ── Execution ────────────────────────────────────────────────────────────────
 const a = analyse();
 
-// Un périmètre vide est un échec, pas un succès : c'est la signature d'une gate qui ne
-// voit plus rien. `packages.cjs` jette déjà sur un registre incohérent ; ceci couvre le
-// cas où le registre est bon mais le parcours ne trouve aucun test.
+// An empty perimeter is a failure, not a success: the signature of a gate that no
+// longer sees anything. `packages.cjs` already throws on an incoherent registry; this
+// covers the case where the registry is fine but the walk finds no test.
 if (a.testFilesScanned === 0) {
     console.error(
         "✘ verify-test-load-mode: 0 fichier de test trouvé sur " +
@@ -318,8 +322,8 @@ if (baseline === null) {
 
 const fresh = a.sites.filter((s) => !baseline.has(s.key));
 const known = a.sites.length - fresh.length;
-// Un site en baseline qui n'apparaît plus a été converti — bonne nouvelle, mais la
-// baseline doit rétrécir pour que le cliquet reste serré.
+// A baseline site that no longer appears was converted — good news, but the baseline
+// must shrink for the ratchet to stay tight.
 const present = new Set(a.sites.map((s) => s.key));
 const stale = [...baseline].filter((k) => !present.has(k));
 
@@ -344,7 +348,7 @@ console.error(
 for (const s of fresh) console.error(`  ${s.testFile}  →  require("${s.spec}")`);
 console.error(
     "\n  La couverture de ces modules sera attribuée aux mauvaises lignes et aux mauvaises\n" +
-        "  fonctions. Les charger par `import` — voir _docs_projet/archives/roadmap_couverture-tests.md.\n" +
+        "  fonctions. Les charger par `import`.\n" +
         "  ⚠️ Ne PAS régénérer la baseline pour faire taire un site neuf : elle ne descend que\n" +
         "     sur des conversions réelles."
 );

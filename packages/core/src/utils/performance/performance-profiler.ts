@@ -255,7 +255,7 @@ export class PerformanceProfiler {
         const firstUsed = first.used;
         const lastUsed = last.used;
 
-        // ── B-219 — refuse to certify on an input that carries no information ──────
+        // ── Refuse to certify on an input that carries no information ──────────────
         // Both tests below are arithmetic facts about the window, not heuristics, and
         // neither needs a tolerance. They exist because the verdict used to be a
         // constant: `performance.memory` is frozen for the page's lifetime on stock
@@ -417,8 +417,7 @@ export class PerformanceProfiler {
     private _getNavigationTiming(): Record<string, number> | null {
         try {
             const timing = performance.getEntriesByType("navigation")[0] as
-                | PerformanceNavigationTiming
-                | undefined;
+                PerformanceNavigationTiming | undefined;
             if (!timing) return null;
             return {
                 domContentLoaded:
@@ -466,12 +465,12 @@ export class PerformanceProfiler {
                 totalDuration: 0,
             };
             resources.forEach((resource) => {
-                if (resource.name.includes(".js")) summary.scripts!++;
-                else if (resource.name.includes(".css")) summary.stylesheets!++;
-                else if (_RE_IMAGE_EXT.test(resource.name)) summary.images!++;
+                if (resource.name.includes(".js")) summary.scripts++;
+                else if (resource.name.includes(".css")) summary.stylesheets++;
+                else if (_RE_IMAGE_EXT.test(resource.name)) summary.images++;
                 if ((resource as PerformanceResourceTiming).transferSize)
-                    summary.totalSize! += (resource as PerformanceResourceTiming).transferSize;
-                summary.totalDuration! += resource.duration;
+                    summary.totalSize += (resource as PerformanceResourceTiming).transferSize;
+                summary.totalDuration += resource.duration;
             });
             return summary;
         } catch {
@@ -609,7 +608,7 @@ export class PerformanceProfiler {
                 action: "Immediate investigation required - check for memory leaks",
             });
         } else if (memoryAnalysis.status === "unavailable") {
-            // B-219 — the report must not read as "all clear" when the browser gave
+            // The report must not read as "all clear" when the browser gave
             // nothing to judge. Silence here is what let a blind verdict pass as health.
             recommendations.push({
                 type: "memory",

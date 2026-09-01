@@ -1,5 +1,5 @@
 /**
- * Mock IndexedDB for plugin-storage tests (Sprint 4)
+ * Mock IndexedDB for plugin-storage tests
  * In-memory store for getPreference/setPreference, metadata (manifest), init, cacheLayer, clearProfile
  */
 const store = new Map();

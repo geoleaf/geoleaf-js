@@ -167,7 +167,7 @@ réparé.** Un 🛑 ne se périme pas tout seul : rien ne le rouvre, et il survi
 
 ## Le schéma v4, et ce que le Service Worker en fait
 
-_Posé par la tranche S3b du Sprint 3 (02/08/2026). Tout ce qui suit est gaté par
+_Posé le 02/08/2026. Tout ce qui suit est gaté par
 `__tests__/capabilities/offline/schema-v4.test.js` et `__tests__/storage/sw-core.test.js`._
 
 **Six stores.** Quatre hérités — `layers`, `preferences`, `metadata`, `local_images` — plus les
@@ -188,13 +188,13 @@ travail non synchronisé n'est jamais évincé » — tient donc **sans dépendr
 correctement écrit**, ce qui est la forme la plus solide disponible. Une garde rougit le jour où
 l'éviction apprend un second nom.
 
-🛑 **B-03 est corrigé DANS LA CLÉ, et le correctif est un RETRAIT — sur les DEUX files.** En
+🛑 **La collision d'horodatage est corrigée DANS LA CLÉ, et le correctif est un RETRAIT — sur les DEUX files.** En
 `autoIncrement` (outbox), le générateur vit dans la base et sa monotonie est celle de l'ordre de
 validation des transactions, la seule horloge que deux onglets partagent. L'index `id` y est
 `unique`, ce qui fait _lever_ une collision qui, sur `keyPath: "id"`, faisait disparaître une
 saisie en silence. **Il n'y a donc plus de tri à corriger : il y a un tri supprimé.**
 
-⚠️ **Mais l'outbox n'a AUCUN producteur avant le Sprint 4, et c'est ce qui a fait durer le
+⚠️ **Mais l'outbox n'a longtemps eu AUCUN producteur, et c'est ce qui a fait durer le
 défaut** : `sync_queue` — le chemin vivant — a continué de frapper `sync_<ms>_<random>` jusqu'à
 la tâche **3.10**. À milliseconde égale c'était donc le hasard qui ordonnait, et le tri par
 horodatage — stable depuis ES2019 — ne faisait que **transporter** cet ordre. La clé y est
@@ -210,13 +210,13 @@ désormais `sync_<ms>_<seq zéro-paddé>_<tag de session>` :
 
 🛑 **`sync_queue` EST RETIRÉ (tâche 4.11), et le chemin par lequel il l'a été mérite d'être lu.**
 Cette ligne a dit « il SURVIT à la v4, et pas au titre du legacy : il est encore le chemin vivant »
-— et c'était vrai à la date où elle a été écrite. Le Sprint 4 a déplacé ses quatre usages
+— et c'était vrai à la date où elle a été écrite. Le cycle v4 a déplacé ses quatre usages
 (`addpoi` 4.4b, `editor` 4.9, `poi-restore` 4.7, `offline-ui` 4.10), et il n'est resté que la
 restauration de sauvegarde.
 
 ⚠️ **Elle annonçait aussi « son retrait la tâche 4.9 », et 4.9 ne l'a jamais porté.** Le commentaire
 du schéma le lui attribuait, la ligne de roadmap ne le listait pas : deux documents, deux vérités,
-aucun lecteur commun. C'est **B-124** qui a établi l'écart à la vérification de clôture du Sprint 4,
+aucun lecteur commun. C'est la vérification de clôture qui a établi l'écart,
 et **4.11** qui l'exécute — avec la chaîne de sauvegarde, son dernier usage.
 
 ### Ce que la file offre au rejeu — et ce qu'elle met de côté
@@ -232,7 +232,7 @@ travail perdu, en silence.
 
 ⚠️ **Les deux lectures d'index sont FUSIONNÉES, pas concaténées ni re-triées.** Chacune revient
 déjà en ordre de clé primaire, et la clé est monotone : la fusion n'interleave que. Un tri sur
-un autre champ serait une seconde autorité d'ordre, c'est-à-dire la forme même de B-03.
+un autre champ serait une seconde autorité d'ordre, c'est-à-dire la forme même de la collision.
 
 | Budget                        | Où il vit                                | Ce qui se passe au bout                                                                        |
 | ----------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------- |
@@ -242,16 +242,16 @@ un autre champ serait une seconde autorité d'ordre, c'est-à-dire la forme mêm
 différents.** La première situait le budget dans `db/sync.ts` et son application dans
 `updateSyncQueueStatus` — tous deux partis avec le magasin v3 à la **tâche 4.11**, soit dans le
 paragraphe 🛑 qui ouvre cette même section. La seconde annonçait `rejectedByServer` comme motif
-unique, ce qui n'a plus été vrai dès **B-125** (`retryBudgetExhausted`) puis **B-199**. Deux
+unique, ce qui n'a plus été vrai dès `retryBudgetExhausted` puis la classe des statuts HTTP. Deux
 énoncés dont la cible avait été supprimée ou réécrite sous eux — le mode d'échec n°3 du pré-vol,
 dans une fiche qui décrit le module.
 
 🛑 **Le plafond est appliqué au POINT DE SORTIE D'ÉCHEC** — `markFailure`, dans `packages/core/src/capabilities/offline/write/push-engine.ts`
-(B-125) : les quatre chemins d'échec du drain écrivaient chacun leur `failed` sans toucher
+: les quatre chemins d'échec du drain écrivaient chacun leur `failed` sans toucher
 `attempts`. Un compteur que personne n'incrémente ne plafonne rien, et un plafond réparti sur
 quatre sites se serait désynchronisé au premier cinquième chemin.
 
-#### La classe du statut HTTP décide du sort de la saisie (B-199)
+#### La classe du statut HTTP décide du sort de la saisie
 
 _Gaté par `__tests__/capabilities/offline/push-engine.test.js` §①quater._
 
@@ -275,7 +275,7 @@ base : trois clics d'opérateur pendant une fenêtre de maintenance suffisaient.
 ⚠️ **Ce que la table ne dit pas et qu'aucune gate ne dira** : le statut HTTP n'est **pas
 persisté** sur l'entrée. Après quarantaine, `Log.warn` mis à part, rien ne permet de savoir si
 c'était un 501, un 503 ou un 403 — seul le motif subsiste, et un motif est une classe, pas une
-observation. Suivi au backlog en **B-200** ; le champ toucherait le magasin, donc la décision A16.
+observation. Suivi et traité ; le champ toucherait le magasin, donc la décision A16.
 
 ⚠️ **Coalescence et idempotence ne sont PAS ici, et c'est délibéré.** Elles exigent un `localId`
 **indexé** que `sync_queue` n'a pas ; les poser dessus imposerait d'inférer une identité
@@ -303,6 +303,18 @@ Cette décision se périme au premier déploiement terrain et doit être relue �
 - **Une réponse opaque n'entre pas en cache, et on le DIT** (tâche 3.11). La décision est
   inchangée — une opaque est invérifiable et coûte au quota bien plus que sa taille —, mais une
   origine déclarée `cacheable: true` qui répond en opaque est désormais journalisée.
+- **Une réponse authentifiée n'entre pas dans un cache PARTAGÉ — mais deux signaux seulement le
+  décident** : l'en-tête `Authorization` (ce que pose le connecteur, capté par `carriesCredentials`)
+  et `Cache-Control: private`/`no-store` (honoré par `refusesSharedCache`). ⚠️ **Ce que la requête
+  ne dit PAS** : une API authentifiée par **cookie same-origin** est appelée avec le mode
+  credentials `same-origin` — le DÉFAUT de `fetch()`, indiscernable d'un chargement de données de
+  profil légitimement cachable. Durcir `carriesCredentials` à `credentials !== 'omit'` rejetterait
+  le `same-origin` (les données de profil) ET le `include` (navigations et sous-ressources
+  `<script>`/`<link>`/`<img>` sans `crossorigin`) — presque tout le same-origin : ce serait la fin
+  du hors-ligne, pas un durcissement. **La protection est donc un CONTRAT SERVEUR, à porter par
+  l'intégrateur** : une API authentifiée par cookie same-origin DOIT répondre `Cache-Control: private`
+  (ou `no-store`), ou être déclarée `cacheable: false`. Les deux voies d'application existent déjà ;
+  seul l'écrit du contrat manquait.
 
 ## Configuration
 
@@ -350,16 +362,16 @@ C'est le point le plus important de cette fiche, et le moins évident : la faça
 appelle est montée par `packages/core/src/kernel/storage/facade.ts`, **qui s'auto-monte**. La
 capacité, elle, y **injecte** ses modules quand son moteur arrive.
 
-| Membre                             | Ce que c'est                                                |
-| ---------------------------------- | ----------------------------------------------------------- |
-| `DB`                               | La base locale et ses cinq modules                          |
-| `CacheManager`                     | Téléchargement, état, quota, annulation                     |
-| `Cache`                            | Persistance de la sélection, et le sélecteur de couches     |
-| `isAvailable()`                    | Le moteur est-il injecté                                    |
-| `isPluginLoaded()` · `whenReady()` | **Délégués au contrat partagé** — voir ci-dessous           |
-| `pullLayer(layerId, options?)`     | **Rapatriement borné** (tâche 4.1) — voir ci-dessous        |
-| `getSyncReport()`                  | **Rapport par couche** (tâche 4.8) — voir ci-dessous        |
-| `getStats()`                       | Décomptes agrégés — compte les magasins **v4** depuis B-121 |
+| Membre                             | Ce que c'est                                            |
+| ---------------------------------- | ------------------------------------------------------- |
+| `DB`                               | La base locale et ses cinq modules                      |
+| `CacheManager`                     | Téléchargement, état, quota, annulation                 |
+| `Cache`                            | Persistance de la sélection, et le sélecteur de couches |
+| `isAvailable()`                    | Le moteur est-il injecté                                |
+| `isPluginLoaded()` · `whenReady()` | **Délégués au contrat partagé** — voir ci-dessous       |
+| `pullLayer(layerId, options?)`     | **Rapatriement borné** (tâche 4.1) — voir ci-dessous    |
+| `getSyncReport()`                  | **Rapport par couche** (tâche 4.8) — voir ci-dessous    |
+| `getStats()`                       | Décomptes agrégés — compte les magasins **v4**          |
 
 #### `pullLayer()` — le premier ÉCRIVAIN du store `features`
 
@@ -424,7 +436,7 @@ retomberait sur `declaredNeverPulled`, c'est-à-dire le **même** statut qu'une 
 jamais tentée. « On a essayé et la source a dit non » est actionnable ; « on n'a jamais essayé »
 ne l'est pas.
 
-#### `getStats()` — et ce qu'il ne voyait pas (B-121)
+#### `getStats()` — et ce qu'il ne voyait pas
 
 `db/preferences.ts` ouvrait sa transaction sur `["layers", "sync_queue"]` — les deux magasins
 **v3**. Tant que `features` n'avait aucun écrivain, ce zéro était **vrai** ; il est devenu faux le
@@ -461,7 +473,8 @@ plugin de ne plus importer que le namespace.
 ### `GeoLeaf.Sync` — le seul namespace que l'installeur monte
 
 `install.ts` → `registerGlobals(gl)` ne pose **qu'un** membre : `Sync`. Il expose
-`registerHandler` / `getHandler` / `getHandlers`.
+`registerHandler` / `getHandler` — l'accesseur pluriel `getHandlers` a été retiré le 25/08/2026
+(BREAKING sous la fenêtre de pré-adoption, cf. `packages/core/docs/VERSIONING_POLICY.md` et le CHANGELOG).
 
 ⚠️ **La façade `packages/core/src/api/geoleaf.sync.ts` s'auto-monte AUSSI**, à l'import. L'import statique de l'installeur
 est donc ce qui garde ce module dans la clôture livrée ; la réaffectation est idempotente.
@@ -492,7 +505,7 @@ ce que fait l'écouteur (`handleCancelled`, `offline-ui`) est de remettre la bar
 voyait « ⏹️ Stopping… » **indéfiniment**, bouton désactivé, sans autre issue qu'un rechargement.
 **L'écouteur avait raison ; c'est l'émetteur qui manquait.**
 
-✅ **B-72 EST SOLDÉE le 03/08/2026 — les trois orphelins sont traités, et pas de la même façon.**
+✅ **SOLDÉ le 03/08/2026 — les trois signaux orphelins sont traités, et pas de la même façon.**
 Ce n'était pas du code mort, c'était de l'**observabilité manquante** : ce sont exactement les
 signaux dont 3.4 et 3.13 ont besoin pour être observables.
 
@@ -543,8 +556,8 @@ préférences, file de synchronisation.
 
 ## Arbitrage du stockage — figé le 02/08/2026
 
-Quatre décisions prises avec Mattieu à l'Étape 3 de `roadmap_collecte-terrain-offline`. Elles
-répondent aussi à la ligne **B.3** de `roadmap_socle-init`.
+Quatre décisions prises avec Mattieu à l'Étape 3 du chantier hors-ligne. Elles
+répondent aussi à une ligne du socle d'initialisation.
 
 ### Un seul magasin, et un plafond réparti par CLASSE
 
@@ -557,7 +570,7 @@ l'écart de version. **Réparer → voir l'IndexedDB servir réellement → PUIS
 avant de réparer casserait le seul hors-ligne qui marche ; borner avant d'arbitrer serait un
 correctif sans objet.
 
-#### 🛑 A7 est REQUALIFIÉE au Sprint 4 — mesuré le 03/08/2026, elle n'était pas exécutable
+#### 🛑 A7 est REQUALIFIÉE — mesuré le 03/08/2026, elle n'était pas exécutable
 
 L'ordre ci-dessus a été suivi, et c'est la troisième étape qui a buté. Sonde rejouable, aucun
 serveur lancé :
@@ -579,12 +592,12 @@ ne sont pas du code** :
    ici (voir ci-dessous), c'était la seule des trois qui relevait du code ;
 2. ~~`_addBasemapResources` filtre sur `basemap.offline === true`, et **plus aucun profil livré
    ne le pose**~~ — ✅ **LEVÉE le 10/08/2026, pour la seconde fois, et les trois dates se lisent
-   ensemble.** ① **07/08** : la cause est levée (Sprint 8, tâche 8.1) par
+   ensemble.** ① **07/08** : la cause est levée par
    `reunion-eclairage/ign-plan-3d`, le seul fond **vectoriel** que le dépôt ait jamais porté.
-   ② **10/08 matin** : le Sprint 7 du passage public retire ce profil — il était **client** — et
+   ② **10/08 matin** : le passage public retire ce profil — il était **client** — et
    la cause revient avec lui ; la garde
    `packages/core/__tests__/capabilities/offline/offline-basemap-declared.guard.test.ts` passe à
-   **2/4 en disant vrai** (**B-213**). ③ **10/08 soir** : le profil est **restauré**, neutralisé
+   **2/4 en disant vrai**. ③ **10/08 soir** : le profil est **restauré**, neutralisé
    de toute mention de son exploitant et requalifié en démonstration — décision produit de
    Mattieu, motivée par le sélecteur de profil autant que par le hors-ligne. Garde **4/4**.
 
@@ -627,7 +640,7 @@ qui rend le worker structurellement non-provisionneur, et rouvrirait le **défau
 qui ouvre en écriture retient des connexions, et toute montée de schéma expire puis tombe en
 `_isStub`. C'est le risque n° 1 du sprint, réglé à la tâche 3.1.
 
-**Arbitrage arrêté avec Mattieu le 03/08/2026** : A7 part au **Sprint 4**, où `4.1` (rapatriement
+**Arbitrage arrêté avec Mattieu le 03/08/2026** : A7 part au **cycle v4**, où le rapatriement
 borné) donne au magasin par entité son premier écrivain réel. La branche Cache API **reste**, et
 les deux budgets se posent alors comme un plafond conscient contre le même quota d'origine.
 
@@ -741,10 +754,17 @@ terrain qui ouvre une origine de production pour la première fois démarre en `
 ne doit donc **jamais la supposer** : le plafond par classe reste le défaut, et la valeur se relit
 **par appareil** (`await navigator.storage.persisted()`), elle ne se déduit pas.
 
-💡 **Un levier existe, et il est de configuration** : `modules.pwa.installPrompt.enabled` vaut
-`false`. L'installation est l'un des signaux les plus forts pour Chrome — l'activer est le moyen le
-moins cher de faire passer un appareil de terrain de `bestEffort` à `persistent`. C'est une décision
-**produit**, pas du code.
+💡 **Le levier de configuration est ACTIVÉ — cette fiche a recommandé pendant trois semaines une
+action déjà faite.** `modules.pwa.installPrompt.enabled` est passé à vrai le 02/08/2026, le jour
+même du relevé ci-dessus ; le motif voyage avec la clé, dans son `_comment`, et il tient en deux
+faits qu'aucune mesure du dépôt ne rend : sur iOS, Safari purge le stockage scriptable après
+**7 jours d'inactivité** pour un site absent de l'écran d'accueil — la feuille d'installation est le
+seul chemin qui l'évite ; sur Android, l'installation est le signal d'engagement le moins cher pour
+faire passer `navigator.storage.persisted()` de `bestEffort` à `persistent`. Le coût assumé est une
+bannière visible chez l'intégrateur. ⚠️ **La valeur se relit, elle ne se recopie pas ici** :
+`node -e "console.log(require('./profiles/geoleaf.config.json').modules.pwa.installPrompt)"`. C'est
+une décision **produit**, pas du code — repasser à faux retire la bannière ET rend le stockage
+évinçable.
 
 ### Le routage du Service Worker passe aux ORIGINES DÉCLARÉES
 
@@ -804,9 +824,12 @@ recouvrent**, et c'est pourquoi le corps a été extrait à la tâche 5.1-b. Un 
 un seul verrou.
 
 **Ce qui survit de la section** : le registre de gestionnaires **reste** — c'est l'inversion qui
-tient `no-plugin-in-core`. Et retirer `getHandlers` (le getter **pluriel**, seul symbole sans
-appelant) imposerait de modifier `scripts/lib/namespace-surface.mjs` dans le même commit, sinon la
-gate de surface rougit. Cet arbitrage n'est pas tranché ici : il vit au registre, en **B-156**.
+tient `no-plugin-in-core`. ✅ **L'arbitrage sur `getHandlers` est TRANCHÉ le 25/08/2026** : le
+getter pluriel — seul symbole sans appelant — est retiré de la façade et du seam, dans le même
+commit que `scripts/lib/namespace-surface.mjs` comme cette fiche l'exigeait (la gate de surface
+n'a jamais rougi). Rupture assumée sous la fenêtre de pré-adoption (`packages/core/docs/VERSIONING_POLICY.md`),
+motif au CHANGELOG : introspection pure, dix sites d'appel tous sous `__tests__/` avec le membre
+pour oracle, et une promesse d'ordre d'enregistrement que rien ne demandait.
 
 ---
 
@@ -834,7 +857,7 @@ Trois arêtes, **toutes par un baril de médiation**, aucun import profond :
 | Arête                                        | Baril                     | Ce qu'elle sert                        |
 | -------------------------------------------- | ------------------------- | -------------------------------------- |
 | cycle de vie → `StorageContract`             | `kernel/shared/index.js`  | signaler la disponibilité              |
-| restauration POI → `StorageContract`         | `kernel/shared/index.js`  | lire la base                           |
+| restauration d'entités → `StorageContract`   | `kernel/shared/index.js`  | lire la base                           |
 | `pull/layer-pull.ts` → `fetchOgcApiFeatures` | `kernel/geojson/index.js` | le transport OGC du rapatriement (4.1) |
 
 ⚠️ **La troisième a ÉLARGI `kernel/geojson/index.js`, et c'est le geste que la règle DÉSIGNE** — pas
@@ -871,7 +894,7 @@ décrit est [`CDC_offline-ui.md`](../plugins/CDC_offline-ui.md).
 
 Le CDC `CDC_capacite-offline.md` a été **consommé** en écrivant cette fiche, puis **supprimé** du
 dossier de tri — ligne au §Journal des décisions de
-`roadmap_documentation-v3.md`.
+la refonte documentaire V3.
 
 | Énoncé du CDC                                                 | Ce que dit le code                                                                                                                |
 | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |

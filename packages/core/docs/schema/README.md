@@ -18,20 +18,30 @@ The schemas validate the JSON configuration files of the active profile. They en
 
 ## Available schemas
 
-| Schema                        | Validated JSON file               | Description                                                                                                       |
-| ----------------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `geoleaf-config.schema.json`  | `geoleaf.config.json`             | Root configuration (debug, branding, data, pwa, security, logging, modules)                                       |
-| `profile.schema.json`         | `profile.json`                    | Profile manifest (id, label, version, map, Files, modules)                                                        |
-| `geoleaf-profile.schema.json` | _(out of contract — not applied)_ | **Orphan**: UI block vocabulary for `panels.detail.layout[]`. No profile uses it, and the runtime never reads it. |
-| `basemaps.schema.json`        | `basemaps.json`                   | Raster and vector tile sources                                                                                    |
-| `ui.schema.json`              | `ui.json`                         | UI controls, permalink, scale bar, filters                                                                        |
-| `features.schema.json`        | `config/core/features.json`       | Core features (clustering, geocoding, performance, POI, mapOptions)                                               |
-| `layers.schema.json`          | `layers.json`                     | Layer references of the profile                                                                                   |
-| `layer-config.schema.json`    | `layers/*/[id]_config.json`       | Per-layer configuration (data, styles, popup, sidepanelConfig, clustering)                                        |
-| `style.schema.json`           | `layers/*/styles/*.json`          | Rendering styles (flat format, styleRules, expressionPaint)                                                       |
-| `taxonomy.schema.json`        | `taxonomy.json`                   | POI taxonomy (categories, icons, colors)                                                                          |
-| `themes.schema.json`          | `themes.json`                     | Layer visibility presets                                                                                          |
-| `mapping.schema.json`         | `mapping.json`                    | Normalization of external POI data                                                                                |
+| Schema                       | Validated JSON file         | Description                                                                 |
+| ---------------------------- | --------------------------- | --------------------------------------------------------------------------- |
+| `geoleaf-config.schema.json` | `geoleaf.config.json`       | Root configuration (debug, branding, data, pwa, security, logging, modules) |
+| `profile.schema.json`        | `profile.json`              | Profile manifest (id, label, version, map, Files, modules)                  |
+| `basemaps.schema.json`       | `basemaps.json`             | Raster and vector tile sources                                              |
+| `ui.schema.json`             | `ui.json`                   | UI controls, permalink, scale bar, filters                                  |
+| `features.schema.json`       | `config/core/features.json` | Core features (clustering, geocoding, performance, POI, mapOptions)         |
+| `layers.schema.json`         | `layers.json`               | Layer references of the profile                                             |
+| `layer-config.schema.json`   | `layers/*/[id]_config.json` | Per-layer configuration (data, styles, popup, sidepanelConfig, clustering)  |
+| `style.schema.json`          | `layers/*/styles/*.json`    | Rendering styles (flat format, styleRules, expressionPaint)                 |
+| `themes.schema.json`         | `themes.json`               | Layer visibility presets                                                    |
+| `mapping.schema.json`        | `mapping.json`              | Normalization of external POI data                                          |
+
+> **Two schemas were listed here after their files were deleted, and this table said nothing
+> about it.** `geoleaf-profile.schema.json` (orphan block vocabulary) and `taxonomy.schema.json`
+> (the taxonomy moved to a plugin module) no longer exist on disk. They are removed from the
+> table rather than annotated: this page tells an integrator what to point `$schema` at, and a
+> row for a file that cannot be fetched is worse than no row.
+>
+> **Every schema listed above is applied by the validator** — that has been true of nine of them
+> for a long time, and of `geoleaf-config.schema.json` only since 2026-08-19. Until then this
+> page listed it without reservation while the contract spec recorded, in writing, that it was
+> never loaded: the document an integrator reads and the document that tells the truth disagreed,
+> and only the second one said so.
 
 ---
 

@@ -6,40 +6,41 @@
  */
 
 /**
- * Les DEUX sorties de quarantaine — tâche 8.4 (B-123).
+ * The TWO exits from quarantine.
  *
- * 🛑 **Une entrée en quarantaine n'en avait AUCUNE.** Ni le drain
- * (`REPLAYABLE_STATUSES` = `failed` + `pending`), ni la purge, ni aucun geste d'interface ne
- * pouvait l'en sortir. Elle était comptée (`getSyncCounts().quarantinedCount`), listée
- * (`listPendingEdits`) et exportable — mais l'opérateur de terrain la voyait s'accumuler sans
- * pouvoir rien en faire. « Jamais détruite » protégeait la saisie et condamnait l'opérateur à
- * la porter indéfiniment.
+ * 🛑 **A quarantined entry had NONE.** Neither the drain (`REPLAYABLE_STATUSES` =
+ * `failed` + `pending`), nor the purge, nor any UI gesture could get it out. It was
+ * counted (`getSyncCounts().quarantinedCount`), listed (`listPendingEdits`) and
+ * exportable — but the field operator watched it accumulate with nothing to do about
+ * it. "Never destroyed" protected the capture and condemned the operator to carry it
+ * indefinitely.
  *
- * Deux sorties, arbitrées par Mattieu le 07/08/2026, et **chacune couvre la moitié qui lui
- * correspond** — parce que les cinq motifs ne sont pas de même nature :
+ * Two exits, arbitrated by Mattieu on 07/08/2026, and **each covers the half that
+ * matches it** — because the five motives are not of the same nature:
  *
- * | Motif | La cause peut-elle être constatée levée ? |
+ * | Motive | Can the cause be observed as lifted? |
  * | --- | --- |
- * | `retryBudgetExhausted` | **oui** — le serveur n'a jamais répondu, le réseau peut revenir |
- * | `layerNoLongerWritable` | **oui** — et c'est VÉRIFIABLE : la couche a-t-elle un `write` ? |
- * | `notImplementedByServer` | **oui** — le serveur peut être mis à jour (B-199) |
- * | `deletedOnServer` | non — rejouer recréerait ce que le serveur a supprimé |
- * | `rejectedByServer` | non — le contrat le définit comme « replay cannot fix » |
+ * | `retryBudgetExhausted` | **yes** — the server never answered, the network can return |
+ * | `layerNoLongerWritable` | **yes** — and it is VERIFIABLE: does the layer have a `write`? |
+ * | `notImplementedByServer` | **yes** — the server can be upgraded |
+ * | `deletedOnServer` | no — replaying would recreate what the server deleted |
+ * | `rejectedByServer` | no — the contract defines it as "replay cannot fix" |
  *
- * ⚠️ Un « réessayer » indifférencié aurait donc été faux pour une part des cas, et faux dans
- * le sens qui coûte : il aurait recréé des entités supprimées côté serveur.
+ * ⚠️ An undifferentiated "retry" would therefore have been wrong for part of the
+ * cases, and wrong in the direction that costs: it would have recreated entities
+ * deleted server-side.
  *
- * ⚠️ **Cette table a compté QUATRE motifs jusqu'au 09/08/2026, et sa dernière ligne était plus
- * large que ce qu'elle croyait dire (B-199).** `rejectedByServer` nommait alors tout échec
- * non-409/non-404 — un 503 de maintenance y compris. La ligne « non — replay cannot fix » était
- * donc exacte sur le motif et fausse sur les entrées qui le portaient : une panne serveur
- * transitoire n'avait, en pratique, que la sortie par destruction. Le correctif est en amont,
- * dans la classification de `push-engine.ts` ; ce module n'a gagné qu'une ligne.
+ * ⚠️ **This table counted FOUR motives until 09/08/2026, and its last row was broader
+ * than what it believed it said.** `rejectedByServer` then named every non-409/non-404
+ * failure — a maintenance 503 included. The row "no — replay cannot fix" was thus
+ * exact on the motive and false on the entries carrying it: a transient server outage
+ * had, in practice, only the destruction exit. The fix is upstream, in
+ * `push-engine.ts`'s classification; this module gained only one row.
  *
- * 🛑 **Ce qui reste interdit** : un plafond de rétention, un balayage de purge, ou tout chemin
- * qui retire une entrée sans qu'un humain ait vu exactement ce qui est retiré. C'est ce que
- * `ServerDeletionPolicy` défend, et l'amendement de 8.4 ne l'a pas élargi — il l'a NOMMÉ :
- * ce que le contrat interdit est la perte que l'opérateur n'a pas vue.
+ * 🛑 **What stays forbidden**: a retention cap, a purge sweep, or any path that
+ * removes an entry without a human having seen exactly what is removed. That is what
+ * `ServerDeletionPolicy` defends, and its amendment did not widen it — it NAMED it:
+ * what the contract forbids is the loss the operator did not see.
  *
  * @version 3.0.0
  */
@@ -49,7 +50,7 @@ import { StorageContract } from "../../../kernel/shared/index.js";
 import { coreProfileLayerConfig } from "../config-seam.js";
 import type { QuarantineReason } from "../../../contracts/sync.contract.js";
 
-/** Une entrée de file, réduite à ce que ce module lit. */
+/** A queue entry, reduced to what this module reads. */
 interface QuarantinedEntry {
     id: string;
     layerId?: string;
@@ -59,7 +60,7 @@ interface QuarantinedEntry {
     attempts?: number;
 }
 
-/** Le module de file, réduit à ce que ce module lit et écrit. */
+/** The queue module, reduced to what this module reads and writes. */
 interface OutboxModule {
     list(): Promise<QuarantinedEntry[]>;
     updateState(
@@ -79,10 +80,10 @@ interface QuarantineStore {
 }
 
 /**
- * Les motifs dont la cause peut être CONSTATÉE levée.
+ * The motives whose cause can be OBSERVED as lifted.
  *
- * ⚠️ Dérivée du sens de chaque motif, pas d'une commodité : les deux autres nomment un fait
- * du serveur qu'aucun geste local ne défait.
+ * ⚠️ Derived from each motive's meaning, not from convenience: the other two name a
+ * server fact no local gesture undoes.
  */
 const REQUEUEABLE: readonly QuarantineReason[] = [
     "retryBudgetExhausted",
@@ -91,14 +92,14 @@ const REQUEUEABLE: readonly QuarantineReason[] = [
 ];
 
 /**
- * Ce que le refus d'une sortie rend, pour que l'appelant sache POURQUOI.
+ * What refusing an exit returns, so the caller knows WHY.
  *
- * ⚠️ NON exportés, ces deux types : ils ne sont nommés nulle part ailleurs — la façade
- * déclare sa propre forme structurelle (`StorageQuarantineOutcome`), parce qu'elle vit dans
- * le graphe de boot et l'édition dans le chunk différé. Les exporter aurait ajouté deux noms
- * publics que personne n'appelle, et `check-orphan-exports` les a rendus en deux régressions
- * à la pose. Même arbitrage qu'`AttributeCaptureWidget` (7.2) et que les dix formes de charge
- * d'événement (7.3).
+ * ⚠️ NOT exported, these two types: they are named nowhere else — the facade declares
+ * its own structural shape (`StorageQuarantineOutcome`), because it lives in the boot
+ * graph and editing lives in the deferred chunk. Exporting them would have added two
+ * public names nobody calls, and `check-orphan-exports` reported them as two
+ * regressions when first added. Same arbitration as `AttributeCaptureWidget` and the
+ * ten event-payload shapes.
  */
 type QuarantineRefusal =
     | "engineUnavailable"
@@ -108,25 +109,26 @@ type QuarantineRefusal =
     | "causeStillPresent"
     | "confirmationMismatch";
 
-/** Le compte rendu d'une tentative de sortie. Non exporté — voir {@link QuarantineRefusal}. */
+/** The report of an exit attempt. Not exported — see {@link QuarantineRefusal}. */
 interface QuarantineOutcome {
     ok: boolean;
     refused?: QuarantineRefusal;
 }
 
-/** Résout le module de file, ou `null` si le moteur n'est pas câblé. */
+/** Resolves the queue module, or `null` when the engine is not wired. */
 function _outbox(): OutboxModule | null {
     const db = StorageContract.DB as QuarantineStore | null;
     const mod = db?._ensureModule?.("Outbox") as Partial<OutboxModule> | null | undefined;
-    // ⚠️ `typeof … === "function"` et non la vérité du membre : sous un type non optionnel,
-    // `mod?.list && …` est toujours vrai pour `tsc`, qui le signale (TS2774). Le module vient
-    // d'un registre à clé-string — il PEUT manquer, et c'est ce cas-là qu'on garde.
+    // ⚠️ `typeof … === "function"` and not the member's truthiness: under a
+    // non-optional type, `mod?.list && …` is always true for `tsc`, which flags it
+    // (TS2774). The module comes from a string-keyed registry — it CAN be missing, and
+    // that is the case being guarded.
     return typeof mod?.list === "function" && typeof mod?.updateState === "function"
         ? (mod as OutboxModule)
         : null;
 }
 
-/** Retrouve une entrée EN QUARANTAINE par son identifiant. */
+/** Finds a QUARANTINED entry by its identifier. */
 async function _findQuarantined(
     outbox: OutboxModule,
     id: string
@@ -138,23 +140,24 @@ async function _findQuarantined(
 }
 
 /**
- * La cause d'une quarantaine est-elle levée ?
+ * Is a quarantine's cause lifted?
  *
- * `layerNoLongerWritable` est le seul motif dont la levée est OBSERVABLE ici : la couche
- * a-t-elle retrouvé une cible d'écriture ? On le vérifie plutôt que de le croire — remettre
- * en file une entrée dont la couche n'écrit toujours pas la renverrait en quarantaine au
- * premier drain, en consommant son budget pour rien.
+ * `layerNoLongerWritable` is the only motive whose lifting is OBSERVABLE here: has the
+ * layer found a write target again? We verify it rather than believe it — requeueing
+ * an entry whose layer still does not write would send it back to quarantine at the
+ * first drain, spending its budget for nothing.
  *
- * `retryBudgetExhausted` ne nomme aucun fait vérifiable localement : le serveur n'a jamais
- * répondu. Le geste de l'opérateur EST l'observation — c'est lui qui sait que le réseau est
- * revenu. On le croit, et on remet son budget à zéro.
+ * `retryBudgetExhausted` names no locally verifiable fact: the server never answered.
+ * The operator's gesture IS the observation — they are the one who knows the network
+ * is back. We believe them, and reset their budget to zero.
  *
- * `notImplementedByServer` est du même bord depuis B-199, et pour la même raison : la levée de
- * cause est le déploiement d'une version de serveur qui connaît le verbe. Rien ici ne peut le
- * constater — le seul moyen serait de refaire l'appel, c'est-à-dire le rejeu lui-même.
+ * `notImplementedByServer` is on the same side since the 09/08/2026 narrowing, for
+ * the same reason: the lifting of the cause is the deployment of a server version
+ * that knows the verb. Nothing here can observe that — the only way would be to
+ * remake the call, i.e. the replay itself.
  *
- * @param entry - L'entrée en quarantaine.
- * @returns `true` si la cause est levée (ou invérifiable et donc confiée à l'opérateur).
+ * @param entry - The quarantined entry.
+ * @returns `true` when the cause is lifted (or unverifiable, hence entrusted to the operator).
  */
 function _causeIsLifted(entry: QuarantinedEntry): boolean {
     if (entry.quarantine !== "layerNoLongerWritable") return true;
@@ -163,19 +166,19 @@ function _causeIsLifted(entry: QuarantinedEntry): boolean {
 }
 
 /**
- * Remet une entrée en quarantaine dans la file, quand sa cause est levée.
+ * Puts a quarantined entry back in the queue, when its cause is lifted.
  *
- * L'entrée repasse en `pending` et son compteur d'essais est **remis à zéro** : sans ça, elle
- * retomberait en quarantaine au premier échec, puisque son budget est déjà épuisé — c'est
- * précisément ce qui l'y a mise.
+ * The entry goes back to `pending` and its attempt counter is **reset to zero**:
+ * without that, it would fall back into quarantine at the first failure, since its
+ * budget is already spent — which is precisely what put it there.
  *
- * @param id - Identifiant de contrat de l'entrée.
- * @returns Le compte rendu ; `refused` dit pourquoi quand la sortie n'a pas eu lieu.
+ * @param id - The entry's contract identifier.
+ * @returns The report; `refused` says why when the exit did not happen.
  *
  * @example
  * ```ts
  * const out = await requeueQuarantined("create:sites:loc:abc:1");
- * if (!out.ok) console.warn(out.refused); // "causeStillPresent", par exemple
+ * if (!out.ok) console.warn(out.refused); // "causeStillPresent", for example
  * ```
  */
 export async function requeueQuarantined(id: string): Promise<QuarantineOutcome> {
@@ -187,18 +190,19 @@ export async function requeueQuarantined(id: string): Promise<QuarantineOutcome>
 
     const reason = found.quarantine;
     if (!reason || !REQUEUEABLE.includes(reason)) {
-        // `deletedOnServer` et `rejectedByServer` : rejouer recréerait une entité supprimée,
-        // ou se ferait refuser à l'identique. Leur sortie est `discardQuarantined`.
-        // ⚠️ Ce refus ne vaut que parce que `rejectedByServer` ne nomme QUE des refus définitifs
-        // depuis B-199 — tant qu'il portait aussi les 5xx, il condamnait des pannes passagères.
+        // `deletedOnServer` and `rejectedByServer`: replaying would recreate a deleted
+        // entity, or get refused identically. Their exit is `discardQuarantined`.
+        // ⚠️ This refusal only holds because `rejectedByServer` names ONLY definitive
+        // refusals since 09/08/2026 — while it also carried the 5xx, it condemned
+        // passing outages.
         return { ok: false, refused: "causeNotLiftable" };
     }
     if (!_causeIsLifted(found)) return { ok: false, refused: "causeStillPresent" };
 
-    // 🛑 B-200 — `quarantineStatus` s'efface AVEC le motif, jamais après. Une entrée remise en
-    // file qui garderait « 403 » porterait un diagnostic périmé sur un rejeu qui n'a pas encore
-    // eu lieu — exactement le genre de fait faux que cette ligne existe pour empêcher, et il
-    // serait plus trompeur qu'une absence puisqu'il a l'air d'une mesure.
+    // 🛑 `quarantineStatus` is erased WITH the motive, never after. A requeued entry
+    // keeping "403" would carry a stale diagnosis about a replay that has not yet
+    // happened — exactly the kind of false fact this line exists to prevent, and more
+    // misleading than an absence since it looks like a measurement.
     await outbox.updateState(id, "pending", {
         attempts: 0,
         quarantine: null,
@@ -209,25 +213,26 @@ export async function requeueQuarantined(id: string): Promise<QuarantineOutcome>
 }
 
 /**
- * Détruit une entrée en quarantaine, sur confirmation EXPLICITE de l'opérateur.
+ * Destroys a quarantined entry, on the operator's EXPLICIT confirmation.
  *
- * 🛑 **La confirmation n'est pas un booléen, et c'est le cœur du geste.** L'appelant doit
- * fournir le `localId` de l'entrée — une valeur qu'il ne peut connaître qu'en l'ayant LISTÉE.
- * Un `{ confirmed: true }` se pose depuis n'importe quel code sans que rien n'ait été montré ;
- * cette forme-ci rend structurellement vrai le fait que la saisie a été énumérée avant d'être
- * jetée. C'est ce que `ServerDeletionPolicy` exige depuis son amendement de 8.4 : ce que le
- * contrat interdit est la perte que l'opérateur n'a pas VUE, pas la destruction en elle-même.
+ * 🛑 **The confirmation is not a boolean, and that is the heart of the gesture.** The
+ * caller must provide the entry's `localId` — a value it can only know by having
+ * LISTED it. A `{ confirmed: true }` can be set from any code with nothing having
+ * been shown; this shape makes it structurally true that the capture was enumerated
+ * before being discarded. That is what `ServerDeletionPolicy` requires since its
+ * amendment: what the contract forbids is the loss the operator did not SEE, not
+ * destruction in itself.
  *
- * @param id - Identifiant de contrat de l'entrée.
- * @param confirmedLocalId - Le `localId` de cette entrée, tel que l'appelant l'a lu.
- * @returns Le compte rendu ; `confirmationMismatch` si la confirmation ne correspond pas.
+ * @param id - The entry's contract identifier.
+ * @param confirmedLocalId - This entry's `localId`, as the caller read it.
+ * @returns The report; `confirmationMismatch` when the confirmation does not match.
  *
  * @example
  * ```ts
  * const [entry] = (await GeoLeaf?.Storage?.listPendingEdits?.()) ?? [];
- * // Les gardes ne sont pas décoratives : la façade peut ne pas être montée et la file peut
- * // être vide. Cet exemple est COMPILÉ — c'est la gate `typecheck-docs-examples` qui l'a dit.
- * if (entry) await discardQuarantined(entry.id, entry.localId); // il a vu ce qu'il jette
+ * // The guards are not decorative: the facade may not be mounted and the queue may
+ * // be empty. This example is COMPILED — the `typecheck-docs-examples` gate said so.
+ * if (entry) await discardQuarantined(entry.id, entry.localId); // it saw what it discards
  * ```
  */
 export async function discardQuarantined(

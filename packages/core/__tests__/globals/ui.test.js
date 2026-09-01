@@ -1,5 +1,5 @@
 /**
- * S5.5.2–S5.5.3 — globals.ui.ts branch coverage (B6+B7+B9)
+ * globals.ui.ts branch coverage (B6+B7+B9)
  *
  * Targets (B6):
  *   - _LayerManagerBasemapSelector, _LayerManagerControl,
@@ -38,8 +38,8 @@ const mocks = vi.hoisted(() => {
 
     // B7 — themes
     const ThemeCache = { get: vi.fn() };
-    // `clearCache` : lu par `globals.ui.ts`, qui monte `GeoLeaf.Config.clearThemesCache`
-    // dessus (Sprint 2, tâche 2.6).
+    // `clearCache`: read by `globals.ui.ts`, which mounts
+    // `GeoLeaf.Config.clearThemesCache` on it.
     const ThemeLoader = { load: vi.fn(), clearCache: vi.fn() };
     const ThemeSelector = { select: vi.fn() };
     const ThemeApplierCore = { applyTheme: vi.fn(), setTheme: vi.fn() };
@@ -209,7 +209,7 @@ vi.mock("../../src/kernel/ui/desktop/desktop-panel.js", () => ({
     initDesktopPanel: mocks.initDesktopPanel,
     activateDesktopPanel: mocks.activateDesktopPanel,
     destroyDesktopPanel: mocks.destroyDesktopPanel,
-    // Sprint 2, tâche 2.4 — les trois entrées publiques du panneau.
+    // The panel's three public entries.
     openPanel: mocks.openPanel,
     closePanel: mocks.closePanel,
     getOpenPanel: mocks.getOpenPanel,
@@ -217,7 +217,7 @@ vi.mock("../../src/kernel/ui/desktop/desktop-panel.js", () => ({
 
 // Side-effect import: triggers all B6+B7+B9 assignments
 import "../../src/globals/globals.ui.ts";
-// S1.3: trigger explicitly (ESM import — same module instance as globals.ui.ts).
+// Trigger explicitly (ESM import — same module instance as globals.ui.ts).
 
 const GL = globalThis.GeoLeaf;
 

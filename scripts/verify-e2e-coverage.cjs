@@ -1,47 +1,46 @@
 #!/usr/bin/env node
 /*!
- * GeoLeaf — Gate de couverture du BOOT DU BUNDLE LIVRÉ
+ * GeoLeaf — SHIPPED-BUNDLE BOOT coverage gate
  * © 2026 Mattieu Pottier — MIT
  *
- * T6.1 (25/07/2026) — « la couverture E2E avait un producteur et aucun lecteur ».
+ * 2026-07-25 — "the E2E coverage had a producer and no reader".
  *
- * ## Ce que cette gate mesure — et son nom
+ * ## What this gate measures — and its name
  *
- * Elle NE mesure PAS « la couverture E2E ». Elle mesure ce qu'UN chargement de page
- * exécute du bundle livré minifié, dans un vrai Chromium. Le nom compte : appeler ça
- * « couverture E2E » serait une déclaration fausse de plus, et ce sprint en corrige
- * onze.
+ * It does NOT measure "the E2E coverage". It measures what ONE page load executes of
+ * the shipped, minified bundle, in a real Chromium. The name matters: calling it
+ * "E2E coverage" would be one more false statement, of which that pass fixed eleven.
  *
- *   · producteur   : `e2e/helpers/coverage.js:7` → `.nyc_output/e2e-<name>.json`
- *   · appelant     : `e2e/07-boot-sequence.spec.js` — LE SEUL des 36 specs
- *   · périmètre    : les 226 fichiers instrumentés par
- *                    `packages/core/rollup.config.mjs:166` (`src/{api,globals,kernel,
- *                    utils,app}`). `src/capabilities/**` — 219 fichiers, 44 % de
- *                    `core/src` — n'y est pas, ni au numérateur ni au dénominateur.
+ *   · producer   : `e2e/helpers/coverage.js` → `.nyc_output/e2e-<name>.json`
+ *   · caller     : `e2e/07-boot-sequence.spec.js` — the ONLY one of the 36 specs
+ *   · perimeter  : the 226 files instrumented by
+ *                  `packages/core/rollup.config.mjs` (`src/{api,globals,kernel,
+ *                  utils,app}`). `src/capabilities/**` — 219 files, 44 % of
+ *                  `core/src` — is not in it, neither numerator nor denominator.
  *
- * Trois autres specs visent la variante instrumentée (`20`, `21`, `22`) sans jamais
- * dumper ; les 32 restants tournent contre des deploys non instrumentés où
- * `window.__coverage__` n'existe pas. Écrire de nouveaux scénarios E2E n'augmentera
- * donc PAS ce chiffre — un spec ne compte que s'il vise `baseURL('coverage')` ET
- * appelle `collectCoverage()`. Le levier est le périmètre d'instrumentation.
+ * Three other specs target the instrumented variant (`20`, `21`, `22`) without ever
+ * dumping; the remaining 32 run against non-instrumented deploys where
+ * `window.__coverage__` does not exist. Writing new E2E scenarios will thus NOT
+ * raise this number — a spec only counts if it targets `baseURL('coverage')` AND
+ * calls `collectCoverage()`. The lever is the instrumentation perimeter.
  *
- * Ce qu'elle protège, et que rien d'autre ne protège : qu'un boot de page continue
- * d'exécuter ~4 lignes sur 10 de la clôture kernel+api+utils+app RÉELLEMENT PUBLIÉE.
- * Les 92 % de CLAUDE.md sont la couverture unitaire des SOURCES sous Node — un autre
- * objet, une autre chaîne, jamais à réconcilier avec celui-ci.
+ * What it protects, and nothing else protects: that a page boot keeps executing
+ * ~4 lines out of 10 of the ACTUALLY PUBLISHED kernel+api+utils+app closure. The
+ * repo's 92 % figure is the SOURCES' unit coverage under Node — another object,
+ * another chain, never to reconcile with this one.
  *
- * ## Pourquoi un wrapper, et pas l'étape `npm run report:e2e` nue
+ * ## Why a wrapper, and not the bare `npm run report:e2e` step
  *
- * Parce que `nyc report` sort VERT sur un `.nyc_output/` vide, sur les quatre
- * métriques. Chaîne mesurée :
- *   · `istanbul-lib-coverage/lib/percent.js` : `total === 0` → `return 100`
- *   · sur une carte entièrement vide, `blankSummary()` renvoie `pct: 'Unknown'`
- *   · et la comparaison de `nyc/index.js` est `if (coverage < thresholds[key])`,
- *     or `'Unknown' < 35` vaut `false`.
+ * Because `nyc report` comes out GREEN on an empty `.nyc_output/`, on all four
+ * metrics. Measured chain:
+ *   · `istanbul-lib-coverage/lib/percent.js`: `total === 0` → `return 100`
+ *   · on a fully empty map, `blankSummary()` returns `pct: 'Unknown'`
+ *   · and `nyc/index.js`'s comparison is `if (coverage < thresholds[key])`,
+ *     and `'Unknown' < 35` is `false`.
  *
- * Câbler `report:e2e` tel que l'énoncé du sprint le proposait aurait donc installé une
- * gate verte EXACTEMENT quand la mesure échoue — la classe de défaut que T3, T4 et T6
- * documentent chacun à leur tour. D'où les deux checks qui précèdent la délégation.
+ * Wiring `report:e2e` as originally proposed would thus have installed a gate green
+ * EXACTLY when the measurement fails — the defect class documented over and over
+ * here. Hence the two checks preceding the delegation.
  *
  * Usage :
  *   node scripts/verify-e2e-coverage.cjs
@@ -56,25 +55,25 @@ const { spawnSync } = require("node:child_process");
 
 const ROOT = path.resolve(__dirname, "..");
 
-// Chemins de la RACINE — la règle « jamais de `packages/<nom>` en dur » n'est pas
-// engagée ici : aucun de ces deux chemins n'est un paquet.
+// ROOT paths — the "never a hard-coded `packages/<name>`" rule is not engaged here:
+// neither of these two paths is a package.
 const NYC_OUTPUT = process.env.GEOLEAF_NYC_OUTPUT
     ? path.resolve(process.env.GEOLEAF_NYC_OUTPUT)
     : path.join(ROOT, ".nyc_output");
 const INSTRUMENTED_BUILD = path.join(ROOT, "deploy", "deploy-coverage");
 
 /**
- * Planchers de témoin.
+ * Witness floors.
  *
- * Mesure du 25/07/2026 : 216 fichiers instrumentés présents dans la donnée, 10 362
- * statements. Le périmètre d'instrumentation en déclare 226 — la donnée en couvre donc
- * 95,6 %, et 40 des 216 sont à zéro statement exécuté (le dénominateur n'est pas biaisé
- * « par ce qui a tourné »).
+ * 2026-07-25 measurement: 216 instrumented files present in the data, 10,362
+ * statements. The instrumentation perimeter declares 226 — the data thus covers
+ * 95.6 % of it, and 40 of the 216 are at zero executed statements (the denominator
+ * is not biased "by what ran").
  *
- * Les planchers sont délibérément SOUS la mesure : ils ne sont pas un cliquet de
- * couverture — les seuils de `nyc.config.cjs` jouent ce rôle — mais un détecteur
- * d'EFFONDREMENT. Sous le plancher, la gate refuse de conclure plutôt que de conclure
- * juste par accident. Même patron que `MIN_RESOLVED` dans `verify-ci-scripts-tracked.cjs`.
+ * The floors sit deliberately BELOW the measurement: they are not a coverage
+ * ratchet — `nyc.config.cjs`'s thresholds play that role — but a COLLAPSE detector.
+ * Below the floor, the gate refuses to conclude rather than conclude right by
+ * accident. Same pattern as `MIN_RESOLVED` in `verify-ci-scripts-tracked.cjs`.
  */
 const MIN_INSTRUMENTED_FILES = 180;
 const MIN_STATEMENTS = 8000;
@@ -87,9 +86,9 @@ const C = {
     dim: "\x1b[2m",
 };
 
-// ── Lecture de la donnée ─────────────────────────────────────────────────────
+// ── Reading the data ─────────────────────────────────────────────────────────
 
-/** Le mtime le plus récent d'une arborescence, ou 0 si elle n'existe pas. */
+/** A tree's newest mtime, or 0 if it does not exist. */
 function newestMtime(dir) {
     if (!fs.existsSync(dir)) return 0;
     let newest = 0;
@@ -99,13 +98,13 @@ function newestMtime(dir) {
         try {
             newest = Math.max(newest, fs.statSync(full).mtimeMs);
         } catch {
-            /* fichier disparu en cours de parcours — sans importance ici */
+            /* file vanished mid-walk — irrelevant here */
         }
     }
     return newest;
 }
 
-/** Les fichiers `e2e-*.json` du tempDir, fusionnés en un seul décompte. */
+/** The tempDir's `e2e-*.json` files, merged into a single tally. */
 function readCoverageData() {
     if (!fs.existsSync(NYC_OUTPUT)) return { files: 0, statements: 0, present: false };
 
@@ -117,8 +116,8 @@ function readCoverageData() {
         try {
             parsed = JSON.parse(fs.readFileSync(path.join(NYC_OUTPUT, name), "utf8"));
         } catch {
-            // `nyc` avale la même erreur en silence (`return {}`). Ici on la NOMME :
-            // un JSON illisible dans le tempDir fait rétrécir la mesure sans trace.
+            // `nyc` swallows the same error silently (`return {}`). Here we NAME it:
+            // an unreadable JSON in the tempDir shrinks the measurement tracelessly.
             continue;
         }
         for (const entry of Object.values(parsed)) {
@@ -130,7 +129,7 @@ function readCoverageData() {
     return { files, statements, present: true };
 }
 
-// ── Contrôle ─────────────────────────────────────────────────────────────────
+// ── Check ────────────────────────────────────────────────────────────────────
 
 const errors = [];
 const data = readCoverageData();
@@ -140,11 +139,11 @@ console.log(
     `  ${data.files} fichier(s) instrumenté(s), ${data.statements} statement(s) — ${C.dim}${path.relative(ROOT, NYC_OUTPUT) || NYC_OUTPUT}${C.reset}`
 );
 
-// ── Check 0 — fraîcheur ──────────────────────────────────────────────────────
-// La donnée E2E vient NÉCESSAIREMENT après le build instrumenté qui l'a produite.
-// Une donnée antérieure est un résidu d'un run précédent : la gate le mesurerait
-// comme si c'était le run courant. Ignoré quand le build est absent (poste où l'on
-// n'a pas encore lancé `build:deploy-coverage`) — le check 1 couvre ce cas.
+// ── Check 0 — freshness ──────────────────────────────────────────────────────
+// The E2E data NECESSARILY comes after the instrumented build that produced it.
+// Earlier data is a residue of a previous run: the gate would measure it as if it
+// were the current run. Ignored when the build is absent (a machine where
+// `build:deploy-coverage` has not run yet) — check 1 covers that case.
 const buildMtime = newestMtime(INSTRUMENTED_BUILD);
 const dataMtime = newestMtime(NYC_OUTPUT);
 if (buildMtime > 0 && dataMtime > 0 && dataMtime < buildMtime) {
@@ -156,10 +155,10 @@ if (buildMtime > 0 && dataMtime > 0 && dataMtime < buildMtime) {
     );
 }
 
-// ── Check 1 — plancher de témoin ─────────────────────────────────────────────
-// LE check qui justifie ce fichier. Il passe AVANT la délégation à `nyc`, parce que
-// `nyc report` est vert sur une donnée vide (cf. en-tête) : sans ce plancher, l'étape
-// serait verte précisément quand la mesure a échoué.
+// ── Check 1 — witness floor ──────────────────────────────────────────────────
+// THE check that justifies this file. It runs BEFORE delegating to `nyc`, because
+// `nyc report` is green on empty data (cf. header): without this floor, the step
+// would be green precisely when the measurement failed.
 if (!data.present) {
     errors.push(
         `.nyc_output/ ABSENT — aucune donnée de couverture à évaluer.\n` +
@@ -181,11 +180,11 @@ if (errors.length) {
     process.exit(1);
 }
 
-// ── Check 2 — les seuils, délégués à nyc ─────────────────────────────────────
-// Délégation DÉLIBÉRÉE, et non un recalcul : une seule définition des seuils
-// (`nyc.config.cjs`), un seul jeu de reporters — et surtout `report:e2e` garde un
-// consommateur NOMMÉ, donc la devDependency `nyc` reste atteignable et knip reste vert
-// sans qu'on touche à `ignoreDependencies`.
+// ── Check 2 — the thresholds, delegated to nyc ───────────────────────────────
+// DELIBERATE delegation, not a recomputation: one definition of the thresholds
+// (`nyc.config.cjs`), one set of reporters — and above all `report:e2e` keeps a
+// NAMED consumer, so the `nyc` devDependency stays reachable and knip stays green
+// without touching `ignoreDependencies`.
 console.log(`  ${C.dim}seuils délégués à \`npm run report:e2e\` (nyc.config.cjs)${C.reset}\n`);
 const res = spawnSync("npm", ["run", "report:e2e"], {
     cwd: ROOT,

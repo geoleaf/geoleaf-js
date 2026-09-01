@@ -100,7 +100,7 @@ async function handleFetch(msg: WorkerInMessage) {
         const validatedUrl = validateWorkerUrl(url);
         const response = await fetch(
             validatedUrl,
-            msg.headers ? { headers: msg.headers as Record<string, string> } : undefined
+            msg.headers ? { headers: msg.headers } : undefined
         );
         if (!response.ok) {
             throw new Error("HTTP " + response.status + " for " + url);
@@ -153,7 +153,7 @@ async function handleFetchText(msg: WorkerInMessage) {
         const validatedUrl = validateWorkerUrl(url);
         const response = await fetch(
             validatedUrl,
-            msg.headers ? { headers: msg.headers as Record<string, string> } : undefined
+            msg.headers ? { headers: msg.headers } : undefined
         );
         if (!response.ok) {
             throw new Error("HTTP " + response.status + " for " + url);

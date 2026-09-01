@@ -9,9 +9,10 @@ import { ConfigNormalizer } from "../src/kernel/config/normalization.js";
 vi.mock("../src/utils/log/index.js", () => ({
     Log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
-// B.12 — complet par construction : le baril `security` expose 17 valeurs (escapeHtml,
-// createSafeElement, validateUrl…) et ce mock n'en fournissait qu'une. Le spread garde la
-// surcharge de `Security` tout en laissant les autres exports réels.
+// Complete by construction: the `security` barrel exposes 17 values
+// (escapeHtml, createSafeElement, validateUrl…) and this mock only provided
+// one. The spread keeps the `Security` override while leaving the other
+// exports real.
 vi.mock("../src/kernel/security/index.js", async (importActual) => ({
     ...(await importActual()),
     Security: {

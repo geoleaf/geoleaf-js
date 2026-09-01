@@ -1,6 +1,6 @@
 /**
  * Lightweight integration tests — Config.Storage (storage module)
- * Sprint 4 : couvre init, get, set, getAll, getSection, deepMerge
+ * Couvre init, get, set, getAll, getSection, deepMerge
  */
 
 const mockLog = vi.hoisted(() => ({

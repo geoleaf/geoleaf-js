@@ -54,11 +54,15 @@ describe("config/config-loaders", () => {
             expect(mockConfigInstance._maybeFireLoadedEvent).toHaveBeenCalled();
             expect(out).toBe(mockConfigInstance._config);
         });
-        it("returns _config on fetch error (catch)", async () => {
+        // 🔻 AMENDED on 19/08/2026 — this case pinned `returns _config on
+        // fetch error`, i.e. the SWALLOWING. The `catch` now rejects: a load
+        // failure stops the boot instead of letting it continue on an empty
+        // configuration. Owned breaking change. The cause stays logged — a
+        // rejection without a named cause would only have moved the problem.
+        it("rejects on fetch error, after having logged the cause", async () => {
             loadUrlMock.mockRejectedValue(new Error("Network error"));
-            const out = await Config.loadUrl("/config.json");
+            await expect(Config.loadUrl("/config.json")).rejects.toThrow("Network error");
             expect(mockLog.error).toHaveBeenCalled();
-            expect(out).toBe(mockConfigInstance._config);
         });
     });
 

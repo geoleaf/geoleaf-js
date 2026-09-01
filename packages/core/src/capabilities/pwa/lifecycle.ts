@@ -24,7 +24,7 @@
  * The lifecycle holds no state of its own — `shared.module` calls `init` exactly once per
  * boot (the registry guarantees a single module init), so it needs no idempotency guard.
  * Its install sub-flows (`InstallPrompt` / `IosBanner`) DO hold state (global listeners and
- * a pending timer); `_reset` releases them so repeated `initApp()` calls stay clean (S7.5).
+ * a pending timer); `_reset` releases them so repeated `initApp()` calls stay clean.
  */
 
 import { Log } from "../../utils/log/index.js";
@@ -93,7 +93,7 @@ function _requestPersistentStorage(): void {
 }
 
 /**
- * Ceiling on how long the service-worker registration may wait for an idle moment (S5.7).
+ * Ceiling on how long the service-worker registration may wait for an idle moment.
  *
  * Passed as `requestIdleCallback`'s `timeout`, so it is a GUARANTEE, not a delay: the callback
  * runs at the first idle slice, or at this deadline, whichever comes first. A page that never
@@ -119,7 +119,7 @@ export const PwaLifecycle = {
         }
 
         // Register the unified service worker (scope "./" supports sub-path deploys), OFF the
-        // critical path — but never conditionally on it (S5.7).
+        // critical path — but never conditionally on it.
         //
         // The install fetches every entry of `STATIC_ASSETS` (~257 Ko gz on `deploy-full`),
         // and it used to start the moment this module initialised: in direct competition with
@@ -162,7 +162,7 @@ export const PwaLifecycle = {
 
     /**
      * Registry destroy / test seam: unregisters any active service worker AND tears down
-     * the install sub-flows (S7.5). The SW is stateless per boot, but the install-prompt
+     * the install sub-flows. The SW is stateless per boot, but the install-prompt
      * and iOS banner hold global listeners / a pending timer that must be released.
      */
     _reset(): void {

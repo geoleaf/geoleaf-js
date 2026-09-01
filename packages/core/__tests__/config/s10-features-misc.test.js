@@ -1,10 +1,10 @@
 /**
  * Config-contract Phase C / C1 — B2 features family: mapOptions.preserveDrawingBuffer.
  *
- * Verifies the consumer end of the chain (maplibre-adapter.ts:113): a truthy
+ * Verifies the consumer end of the chain (maplibre-adapter.ts): a truthy
  * MapInitOptions.preserveDrawingBuffer makes the adapter construct the MapLibre
  * map with `preserveDrawingBuffer: true` (needed for canvas capture/print). The
- * upstream mapping is map/facade.ts:98 (`=== true ? true : undefined`).
+ * upstream mapping is map/facade.ts (`=== true ? true : undefined`).
  *
  * Consumer: src/adapters/maplibre/maplibre-adapter.ts. Inventory B2.
  * (MapLibre GL mock pattern mirrors __tests__/adapters/maplibre-adapter.test.js.)

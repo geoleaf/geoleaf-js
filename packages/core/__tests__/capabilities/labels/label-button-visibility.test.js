@@ -44,7 +44,7 @@ describe("Label Button Visibility Integration Tests", () => {
     let mockLayerItem;
 
     beforeEach(() => {
-        // Mock du DOM
+        // DOM mock
         document.body.innerHTML =
             '<div data-layer-id="test-layer"><button class="gl-layer-manager__label-toggle"></button></div>';
         mockLayerItem = document.querySelector('[data-layer-id="test-layer"]');
@@ -105,7 +105,7 @@ describe("Label Button Visibility Integration Tests", () => {
 
     describe("Rule 2: Layer ON + label.enabled: false → Button hidden", () => {
         test("The button should be hidden when label.enabled = false", () => {
-            // Arrange: Layer ON mais pas de labels in the style
+            // Arrange: Layer ON but no labels in the style
             mockLayerData._visibility.current = true;
             mockLayerData.currentStyle.label.enabled = false;
 
@@ -122,7 +122,7 @@ describe("Label Button Visibility Integration Tests", () => {
 
     describe("Rule 3: Layer ON + label.enabled: true → Bouton visible", () => {
         test("Le bouton should be visible avec state inactif", () => {
-            // Arrange: Layer ON + labels available mais non actifs
+            // Arrange: Layer ON + labels available but not active
             mockLayerData._visibility.current = true;
             mockLayerData.currentStyle.label.enabled = true;
             LabelsMock.areLabelsEnabled.mockReturnValue(false);
@@ -162,8 +162,8 @@ describe("Label Button Visibility Integration Tests", () => {
             vi.useRealTimers();
         });
 
-        // Le pendant `sync()` (debounce 300 ms) est purgé (S4) : aucun appelant prod —
-        // les 6 sites réels appellent `syncImmediate`. Seul ce chemin reste testé.
+        // The `sync()` counterpart (300 ms debounce) is purged: no prod
+        // caller — the 6 real sites call `syncImmediate`. Only this path stays tested.
         test("syncImmediate() applique l'état sans attendre", () => {
             // Arrange
             const syncSpy = vi.spyOn(LabelButtonManager, "_doSync");
@@ -191,7 +191,7 @@ describe("Label Button Visibility Integration Tests", () => {
             LabelButtonManager._doSync("test-layer");
             expect(mockButton.disabled).toBe(true);
 
-            // Act 2: Activer la layer
+            // Act 2: Enable the layer
             mockLayerData._visibility.current = true;
             LabelButtonManager._doSync("test-layer");
 
@@ -200,7 +200,7 @@ describe("Label Button Visibility Integration Tests", () => {
         });
 
         test("Scenario: Toggle layer ON → OFF with active labels", () => {
-            // Arrange: Layer ON avec labels actifs
+            // Arrange: Layer ON with active labels
             mockLayerData._visibility.current = true;
             mockLayerData.currentStyle.label.enabled = true;
             LabelsMock.areLabelsEnabled.mockReturnValue(true);
@@ -210,7 +210,7 @@ describe("Label Button Visibility Integration Tests", () => {
             expect(mockButton.disabled).toBe(false);
             expect(mockButton.classList.contains("gl-layer-manager__label-toggle--on")).toBe(true);
 
-            // Act 2: Disable la layer
+            // Act 2: Disable the layer
             mockLayerData._visibility.current = false;
             LabelButtonManager._doSync("test-layer");
 
@@ -219,7 +219,7 @@ describe("Label Button Visibility Integration Tests", () => {
         });
 
         test("Scenario: Style change with label.enabled true → false", () => {
-            // Arrange: Layer ON avec labels
+            // Arrange: Layer ON with labels
             mockLayerData._visibility.current = true;
             mockLayerData.currentStyle.label.enabled = true;
 
@@ -227,7 +227,7 @@ describe("Label Button Visibility Integration Tests", () => {
             LabelButtonManager._doSync("test-layer");
             expect(mockButton.disabled).toBe(false);
 
-            // Act 2: Changer towards style sans labels
+            // Act 2: Change towards a style without labels
             mockLayerData.currentStyle.label.enabled = false;
             LabelButtonManager._doSync("test-layer");
 
@@ -236,7 +236,7 @@ describe("Label Button Visibility Integration Tests", () => {
         });
 
         test("Scenario: Style change with label.enabled false → true", () => {
-            // Arrange: Layer ON sans labels
+            // Arrange: Layer ON without labels
             mockLayerData._visibility.current = true;
             mockLayerData.currentStyle.label.enabled = false;
 
@@ -244,7 +244,7 @@ describe("Label Button Visibility Integration Tests", () => {
             LabelButtonManager._doSync("test-layer");
             expect(mockButton.disabled).toBe(true);
 
-            // Act 2: Changer towards style avec labels
+            // Act 2: Change towards a style with labels
             mockLayerData.currentStyle.label.enabled = true;
             LabelButtonManager._doSync("test-layer");
 
@@ -274,25 +274,25 @@ describe("Label Button Visibility Integration Tests", () => {
             // Act
             LabelButtonManager._doSync("test-layer");
 
-            // Assert: Button hidden (pas de style = pas de labels)
+            // Assert: Button hidden (no style = no labels)
             expect(mockButton.disabled).toBe(true);
         });
 
         test("LayerItem not found should not cause an error", () => {
-            // Arrange: Supprimer le layerItem du DOM
+            // Arrange: Remove the layerItem from the DOM
             document.body.innerHTML = "";
 
-            // Act & Assert: Ne devrait pas throw
+            // Act & Assert: Should not throw
             expect(() => {
                 LabelButtonManager._doSync("test-layer");
             }).not.toThrow();
         });
 
         test("Button not found should not cause an error", () => {
-            // Arrange: Supprimer le bouton
+            // Arrange: Remove the button
             mockButton.remove();
 
-            // Act & Assert: Ne devrait pas throw
+            // Act & Assert: Should not throw
             expect(() => {
                 LabelButtonManager._doSync("test-layer");
             }).not.toThrow();

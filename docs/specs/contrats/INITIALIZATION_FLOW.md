@@ -25,7 +25,7 @@
 > ⚠️ `app/init.ts` et `api/geoleaf.poi.ts`, cités en repères de debug, **n'existent plus** —
 > les points d'arrêt correspondants sont à re-situer dans `app/boot-core.ts`.
 >
-> 🛑 **Passe du 08/08/2026 (S11.4) — `_app.initApp()` N'EXISTE PAS, et ce document le mettait en
+> 🛑 **Passe du 08/08/2026 — `_app.initApp()` N'EXISTE PAS, et ce document le mettait en
 > PHASE 6 de son diagramme.** La façade a été supprimée au S3/A-1 ; le point d'entrée réel est
 > **`_app.startApp`**, lié à **`bootWithPreset(preset, ctx)`** (`app/boot-install.ts:142`,
 > `app/boot-core.ts:159`). Corrigé ici aux quatre sites où il était décrit comme un APPEL.
@@ -456,7 +456,7 @@ GeoLeaf.boot({
    `GeoLeaf._registry`, pose de la façade `GeoLeaf.boot()`
 2. `app/boot-core.ts` → `bootWithPreset(preset, ctx)` — **entrée réelle de la séquence**, liée à
    `_app.startApp`
-3. `app/boot-core.ts` → juste après `_registry.init()` — l'orchestrateur unique depuis S1.2 ;
+3. `app/boot-core.ts` → juste après `_registry.init()` — l'orchestrateur unique ;
    c'est lui qui appelle les `init()` de modules dans l'ordre topologique
 4. `app/boot-modules/core-map-lifecycle.ts` → `CoreMapLifecycle.init()` — **création de la
    carte** (le module `CoreMapModule.init()` n'y délègue qu'en une ligne)
@@ -479,7 +479,7 @@ GeoLeaf.boot({
 > l'autre**. Le premier est déjà donné pour disparu par l'encart de tête de ce document, à
 > quatre cents lignes d'ici — une liste de références n'est pas relue quand on corrige le
 > corps, et c'est exactement ainsi qu'un document reste faux par un bout. `addpoi` a fusionné
-> dans `editor` au Sprint 5._
+> dans `editor` le 05/08/2026._
 
 ---
 

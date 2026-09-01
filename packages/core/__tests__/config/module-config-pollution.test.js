@@ -1,12 +1,12 @@
 /**
  * @file Prototype-pollution guards on the profile-reachable `modules` bag writers.
  *
- * @security Sprint 13.2. These three writers are the sinks closest to the Sprint 5
+ * @security These three writers are the sinks closest to the known
  * bug class: untrusted JSON → `Object.entries` → dynamic-key write. A profile is the
  * least trustworthy input the system has (fetched at runtime, authored outside the
  * repo), and until this sprint none of the three guarded its keys.
  *
- * Written RED on purpose and seen failing before the guards were added — the Sprint 5
+ * Written RED on purpose and seen failing before the guards were added — the earlier
  * post-mortem is explicit that its tests mocked the sink and therefore proved nothing
  * (see docs/security/SECURITY_CONTRACT.md §5). Every test here drives the real
  * exported function, with no mock in the write path.

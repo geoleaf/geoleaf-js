@@ -56,11 +56,7 @@ const _LayerManagerBasemapSelector: BasemapSelectorInstance = {
             sectionEl
         );
 
-        const select = domCreate(
-            "select",
-            "gl-layer-manager__basemap-select__select",
-            container
-        ) as HTMLSelectElement;
+        const select = domCreate("select", "gl-layer-manager__basemap-select__select", container);
         // WCAG 2.1 AA (4.1.2 Name, Role, Value): basemap <select> has no
         // associated <label>; expose an accessible name for screen readers.
         select.setAttribute("aria-label", getLabel("aria.layer.basemap_select"));

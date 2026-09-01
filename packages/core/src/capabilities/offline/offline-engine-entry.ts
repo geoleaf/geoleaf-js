@@ -65,19 +65,20 @@ if (_g.GeoLeaf?.Storage) {
         db: IndexedDB,
         cacheManager: CacheManager,
         cache: { Storage: CacheStorage },
-        // Tâche 4.1 — le rapatriement borné, premier écrivain du store `features`. Injecté
-        // ici et pas importé par la façade : celle-ci vit dans le graphe de boot, le pull
-        // dans le chunk différé.
+        // The bounded pull, first writer of the `features` store. Injected here and
+        // not imported by the facade: the facade lives in the boot graph, the pull in
+        // the deferred chunk.
         pull: { pullLayer },
-        // Tâche 4.8 — le rapport par couche. Même motif que `pull` : il lit le profil ET les
-        // deux magasins, donc il appartient au chunk différé, pas au graphe de boot.
+        // The per-layer report. Same motive as `pull`: it reads the profile AND both
+        // stores, so it belongs to the deferred chunk, not the boot graph.
         report: { buildSyncReport },
-        // Tâche 4.4 — l'écriture optimiste, seul écrivain de l'`outbox`.
-        // ⚠️ `mayEdit` n'est PAS injecté ici, et c'est mesuré (tâche 8.7) : la permission se lit
-        // dans le PROFIL, pas dans IndexedDB, et `editor` déclare `requires: []` — il tourne donc
-        // sans ce moteur en `persistence.mode: "online"`. Passer le prédicat par ce sac l'aurait
-        // rendu inatteignable exactement là où le trou de B-138 se trouvait. Il vit dans le
-        // graphe de boot : `kernel/shared/edition-permissions.ts`.
+        // The optimistic write, sole writer of the `outbox`.
+        // ⚠️ `mayEdit` is NOT injected here, and that is measured: the permission is
+        // read from the PROFILE, not IndexedDB, and `editor` declares `requires: []`
+        // — so it runs without this engine in `persistence.mode: "online"`. Passing
+        // the predicate through this bag would have made it unreachable exactly where
+        // the edit-authorisation hole was. It lives in the boot graph:
+        // `kernel/shared/edition-permissions.ts`.
         edit: { applyEdit, pushOutbox, requeueQuarantined, discardQuarantined },
     });
     // D5 (POI dissolution, inverse merge): push queued offline POIs onto their host

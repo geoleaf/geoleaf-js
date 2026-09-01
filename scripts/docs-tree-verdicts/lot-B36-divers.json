@@ -1,0 +1,38 @@
+{
+    "schemaVersion": 2,
+    "lot": "B36-divers",
+    "scope": [
+        "packages/plugins/measure/src/tools/tool-custom.ts",
+        "packages/plugins/offline-ui/src/core/engine-signals.ts"
+    ],
+    "verdicts": {
+        "packages/plugins/measure/src/tools/tool-custom.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Arms a tool registered through `registerMeasureType()`, wrapping its callbacks in the same envelope the six built-in tools carry.",
+            "confidence": "haute",
+            "rationale": "La description est l'en-tête du module, dérivée par le générateur. RUBRIC §0 : justifié par défaut sur un périmètre sain ; rien ne porte un verdict actionnable."
+        },
+        "packages/plugins/offline-ui/src/core/engine-signals.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Écoute les signaux que le moteur hors-ligne émet et que personne n'entendait.",
+            "confidence": "haute",
+            "rationale": "La description est l'en-tête du module, dérivée par le générateur. RUBRIC §0 : justifié par défaut sur un périmètre sain ; rien ne porte un verdict actionnable."
+        }
+    }
+}

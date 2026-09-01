@@ -23,7 +23,7 @@ import { asObject } from "../utils/general/type-guards.js";
 import type { BasemapConfig, GeoLeafConfig } from "../kernel/config/geoleaf-config/config-types.js";
 
 /**
- * Resolves the native maplibregl.Map from the IMapAdapter (Sprint 3+), falling
+ * Resolves the native maplibregl.Map from the IMapAdapter, falling
  * back to `GeoLeaf.Core.getMap().getNativeMap()` and finally the raw map value.
  * Extracted from `initBasemaps` to keep it within the function-length budget.
  */
@@ -57,7 +57,7 @@ export function initBasemaps({ GeoLeaf, cfg, map, AppLog }: FeatureInitContext) 
         return;
     }
 
-    // Resolve native maplibregl.Map from the IMapAdapter (Sprint 3+).
+    // Resolve native maplibregl.Map from the IMapAdapter.
     // Fallback to the raw map value for legacy paths.
     const nativeMap = _resolveNativeMap(GeoLeaf, map);
 
@@ -130,12 +130,12 @@ export function initGeoJSON({ GeoLeaf, map, AppLog, _app }: GeoJSONInitContext) 
     const mapOn = asFn(member(map, "on"));
     if (mapOn) {
         mapOn.call(map, "geoleaf:geojson:layers-loaded", function (event: unknown) {
-            // B-226 — read `count` at the TOP LEVEL, not under `.detail`.
+            // Read `count` at the TOP LEVEL, not under `.detail`.
             //
-            // `loader/profile.ts:399` emits via `map.fire(type, { count, layers })`, and
+            // `loader/profile.ts` emits via `map.fire(type, { count, layers })`, and
             // MapLibre merges that payload into the event object itself. The adapter does
             // not re-wrap it either: `on()` delegates to `attachWrappedHandler`
-            // (adapters/maplibre/maplibre-event-wrappers.ts:62), whose only job is to
+            // (adapters/maplibre/maplibre-event-wrappers.ts), whose only job is to
             // normalise `lngLat → latlng`. No `detail` envelope is ever created.
             //
             // Reading `event.detail.count` — the DOM CustomEvent shape — therefore never
@@ -231,9 +231,9 @@ function _buildMobileToolbarOptions({ GeoLeaf, cfg, map, glMain }: MobileToolbar
     return {
         glMain,
         map,
-        // 5.1-f — `showAddPoi` et `poiAddDefaultPosition` sont partis avec le bouton. Le
-        // second était une clé de config de PLUGIN (`modules.addpoi.defaultPosition`) lue
-        // par le kernel ; les deux vivent maintenant sous `modules.editor`, chez qui les lit.
+        // `showAddPoi` and `poiAddDefaultPosition` left with the button. The
+        // second was a PLUGIN config key (`modules.addpoi.defaultPosition`) read
+        // by the kernel; both now live under `modules.editor`, with their reader.
         // Toolbar geoloc button follows the in-core `geolocation` capability gate (opt-out),
         // migrated from `ui.showGeolocation`.
         showGeolocation: cfg.modules?.geolocation?.enabled !== false,

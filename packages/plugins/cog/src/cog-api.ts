@@ -50,7 +50,7 @@ async function executeCogPipeline(
     const overviewIdx =
         opts.overview === "auto" || opts.overview === undefined
             ? selectOverview(cachedInfo, resolveViewportWidth())
-            : (opts.overview as number);
+            : opts.overview;
     const rasterData = await loadViewportRasters(url, loadOpts, overviewIdx);
     const canvas = rastersToCanvas(rasterData, opts);
     const dataUrl = await canvasToDataUrl(canvas);

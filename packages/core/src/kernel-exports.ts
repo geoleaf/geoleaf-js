@@ -13,14 +13,14 @@
  * *regardless* of which capabilities it embarks.
  *
  * ⚠️ ARCHI S5 (5.4) — ce bloc annonçait « **8 modules** (map, config, geojson, ui, api,
- * security, shared, theme-engine) ». Le runtime en enregistre **SIX** :
+ * security, shared, theme-engine)". The runtime registers **SIX**:
  * `core-map`, `config`, `shared`, `geojson`, `ui`, `theme-engine`
- * (`app/boot-install.ts:117-128`, identifiants relevés sur les `readonly id`).
+ * (`app/boot-install.ts`, identifiers read off the `readonly id` fields).
  *
- * `api` et `security` n'ont jamais été des modules du registre : ce sont des sous-systèmes
- * **de façade seule**, posés à l'import. `SecurityModule` a d'ailleurs été supprimé au
- * S6 Lot 6 parce qu'il n'était qu'un emballage à `init()`/`destroy()` vides. Et le nom
- * du premier est `core-map`, pas `map`.
+ * `api` and `security` were never registry modules: they are **facade-only**
+ * subsystems, set at import time. `SecurityModule` was in fact deleted because it was
+ * nothing but a wrapper around empty `init()`/`destroy()`. And the first one's name is
+ * `core-map`, not `map`.
  *
  * Extracted from `bundle-esm-entry.ts` (S4) so that a consumer entry can re-export the
  * kernel with one line (`export * from "../kernel-exports.js"`) and then add only the
@@ -36,7 +36,7 @@
  * @see bundle-esm-entry — the shipped entry (kernel + ALL in-core capabilities)
  * @see examples/minimal/entry.ts — a consumer entry (kernel + a chosen subset)
  *
- * ⚠ Neither `@see` carries a count any more (B-43). They said « 17 » and « 9 » against a real
+ * ⚠ Neither `@see` carries a count any more. They said « 17 » and « 9 » against a real
  * 21 and 6 — and the second was worse than stale, it quoted `consumer`'s number next to
  * `minimal`'s name. A number written beside a file name is a second source of truth about
  * THAT file, and it drifts silently. `manifest-full-completeness.guard.test.ts` holds the
@@ -144,6 +144,14 @@ export type {
 // hand-copied as `PluginRegisterOptions`: the duplication the API-publique audit cited as
 // justification for publishing the contracts was in fact about THIS symbol, and publishing
 // `./contracts/*` alone would not have closed it. The two copies have already drifted
-// (`version: string | null` here vs `string` there); `verify-host-contract-sync.cjs` (S3.5)
+// (`version: string | null` here vs `string` there); `verify-host-contract-sync.cjs`
 // is what keeps them from drifting again.
 export type { PluginMetadata } from "./kernel/api/api-types.js";
+// `BootInfoNamespace` typed the first argument of `showBootInfo`, itself exported from here.
+// The member was published yet UNTYPEABLE from outside. Exported on 17/08/2026 — an
+// ADDITION, never a removal.
+// ⚠️ The type had to be made STANDALONE first: it extended `GeoLeafAPINamespace`, which
+// lives in `contracts/api.contract.ts`, absent from the `exports` map. Without that
+// prerequisite, the published declaration would have referenced a type the consumer
+// cannot resolve.
+export type { BootInfoNamespace } from "./kernel/api/api-types.js";

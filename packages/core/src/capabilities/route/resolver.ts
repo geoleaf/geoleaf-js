@@ -37,6 +37,20 @@ const DEFAULT_END: RouteEndpointStyle = {
     weight: 2,
 };
 
+/**
+ * Default intermediate-stop style (grey-blue, one pixel smaller than the endpoints).
+ *
+ * Smaller on purpose: a stop that reads as loud as the destination makes an itinerary look like
+ * a set of equal points, when the whole shape of it is that one of them is where you are going.
+ */
+const DEFAULT_VIA: RouteEndpointStyle = {
+    radius: 5,
+    color: "#ffffff",
+    fillColor: "#7a8ba6",
+    fillOpacity: 1,
+    weight: 2,
+};
+
 /** Returns the layer's binding, or `null` when the layer is not decorated. */
 export function resolveLayerBinding(
     config: RouteConfig,
@@ -50,7 +64,9 @@ export function resolveEndpointConfig(binding: RouteLayerBinding): ResolvedEndpo
     return {
         showStart: typeof binding.showStart === "boolean" ? binding.showStart : true,
         showEnd: typeof binding.showEnd === "boolean" ? binding.showEnd : true,
+        showVia: typeof binding.showVia === "boolean" ? binding.showVia : true,
         startStyle: { ...DEFAULT_START, ...(binding.start ?? {}) },
         endStyle: { ...DEFAULT_END, ...(binding.end ?? {}) },
+        viaStyle: { ...DEFAULT_VIA, ...(binding.via ?? {}) },
     };
 }

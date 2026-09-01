@@ -742,16 +742,17 @@ describe("evictToQuota", () => {
     });
 });
 
-// ─── CacheMetrics.getCompressionStats — RETIRÉ (B.12) ─────────────────────────
+// ─── CacheMetrics.getCompressionStats — REMOVED ───────────────────────────────
 //
-// La méthode a été purgée avec les 7 autres de `cache/metrics.ts` : 0 consommateur de
-// production. Ses tests partent donc avec elle.
+// The method was purged with the 7 others of `cache/metrics.ts`: 0 production
+// consumers. Its tests therefore leave with it.
 //
-// ⚠️ À noter pour qui lira l'historique : le correctif B.9-bis — `getCompressionStats`
-// parcourait l'index `profileId` et ratait donc les enregistrements non indexés, exactement
-// comme `eviction.ts` — a été appliqué à cette méthode quelques heures avant sa purge. Le
-// correctif n'est pas perdu, il est devenu SANS OBJET : le second site du défaut n'existe
-// plus. Le premier site, lui, reste corrigé et couvert (`eviction-unindexed.test.js`).
+// ⚠️ Worth noting for whoever reads the history: the fix —
+// `getCompressionStats` walked the `profileId` index and thus missed
+// unindexed records, exactly like `eviction.ts` — was applied to this method
+// hours before its purge. The fix is not lost, it became MOOT: the defect's
+// second site no longer exists. The first site stays fixed and covered
+// (`eviction-unindexed.test.js`).
 
 // ─── DBImages ────────────────────────────────────────────────────────────────
 
@@ -766,16 +767,16 @@ describe("DBImages", () => {
     });
 
     /**
-     * Relit un enregistrement DIRECTEMENT dans le store.
+     * Re-reads a record DIRECTLY from the store.
      *
-     * ⚠️ Remplace `DBImages.getLocalImage(id)`, RETIRÉ à la tâche 3.13 : il n'avait plus
-     * qu'un consommateur, ces tests-là. Un symbole que seuls ses tests utilisent est mort, et
-     * le garder « parce que les tests s'en servent » est exactement ce que le compteur C6
-     * interdit — c'est le test qui doit changer d'instrument, pas la production qui doit
-     * porter une méthode pour lui.
+     * ⚠️ Replaces `DBImages.getLocalImage(id)`, REMOVED: it had only one
+     * consumer left, those very tests. A symbol only its tests use is dead,
+     * and keeping it "because the tests use it" is exactly what the
+     * test-orphan rule forbids — the test must change instrument, not
+     * production carry a method for it.
      *
-     * Lire le store est d'ailleurs le bon instrument ici : ce qu'on assert est ce qui est
-     * PERSISTÉ, pas ce qu'un accesseur veut bien en dire.
+     * Reading the store is the right instrument here anyway: what is asserted
+     * is what is PERSISTED, not what an accessor cares to say about it.
      */
     const readRaw = (id) =>
         new Promise((resolve, reject) => {
@@ -915,8 +916,8 @@ describe("DBPreferences", () => {
         expect(stats).toHaveProperty("quota");
         expect(stats).toHaveProperty("percentage");
         expect(stats).toHaveProperty("layersCount");
-        // ⚠️ `syncQueueCount` part avec son magasin (4.11). Les deux qui le remplacent
-        // comptent ce que le cycle v4 écrit vraiment — leur absence était B-121.
+        // ⚠️ `syncQueueCount` leaves with its store. The two replacing it
+        // count what the v4 cycle really writes — their absence was the defect.
         expect(stats).toHaveProperty("featuresCount");
         expect(stats).toHaveProperty("outboxCount");
         expect(stats).not.toHaveProperty("syncQueueCount");
@@ -924,7 +925,8 @@ describe("DBPreferences", () => {
     });
 });
 
-// 🛑 Les suites `DBSync` et `DBBackups` sont RETIRÉES (tâche 4.11) — leurs deux modules
-// (`db/sync.ts`, `db/backups.ts`) sont supprimés avec les magasins `sync_queue` et
-// `sync_backups`. Ce ne sont pas des tests affaiblis : leur sujet n'existe plus, et les
-// garder aurait fait échouer le chargement du fichier entier sur un import irrésolu.
+// 🛑 The `DBSync` and `DBBackups` suites are REMOVED — their two modules
+// (`db/sync.ts`, `db/backups.ts`) are deleted with the `sync_queue` and
+// `sync_backups` stores. These are not weakened tests: their subject no
+// longer exists, and keeping them would have failed the whole file's load on
+// an unresolvable import.

@@ -18,12 +18,12 @@ import langPt from "./lang/lang-pt.js";
 import langIt from "./lang/lang-it.js";
 import langDe from "./lang/lang-de.js";
 
-// Forme du seam toolbar importée du contrat publié (API publique S3) au lieu d'une
-// re-déclaration locale : les 7 plugins en portaient 4 formes divergentes.
+// Toolbar seam shape imported from the published contract instead of a local
+// re-declaration: the 7 plugins carried 4 divergent shapes of it.
 import type { GeoLeafRawEventMap } from "@geoleaf/core";
-// Idem pour l'accès au namespace : `getGeoLeaf()` remplace le couple
-// `interface GeoLeafHost` + `globalThis as unknown as …` que les 13 plugins
-// re-déclaraient chacun à sa façon (STRUCT S2, F6).
+// Same for namespace access: `getGeoLeaf()` replaces the
+// `interface GeoLeafHost` + `globalThis as unknown as …` pair the 13 plugins
+// each re-declared their own way.
 import { getGeoLeaf } from "@geoleaf/host-runtime";
 // Replaced at build time by rollup/replace — must be a plain string literal.
 const _VERSION = "__GEOLEAF_VERSION__";
@@ -71,18 +71,26 @@ const _ICON =
 // via CSS (geoleaf-geocoding.css @media min-width:769px) rather than registered as
 // a desktopTabButton. The button thus appears only on tablet/mobile (≤ 768px),
 // where it toggles the search bar — mirroring the historical core "search" button.
-getGeoLeaf()?.registry?.register?.({
-    id: "geocoding",
-    ui: {
-        mobileIcon: {
-            icon: _ICON,
-            labelKey: "geocoding.toolbar.button",
-            profileKey: "ui.showGeocoding",
-            requiresPlugin: "geocoding",
-            action: "geocoding",
+// The slot is declared only on the EAGER path — before `boot()`, where this call is the ONLY
+// declaration (an integrator has no `init.js`). After `init()` the toolbar is already built:
+// the registration would be stored, never drawn, and would log a warning whose intended reader
+// has already done what it recommends elsewhere. `!== true` so a host without `isInitialized`
+// still gets its slot.
+if (getGeoLeaf()?.registry?.isInitialized?.() !== true) {
+    getGeoLeaf()?.registry?.register?.({
+        id: "geocoding",
+        ui: {
+            mobileIcon: {
+                icon: _ICON,
+                labelKey: "geocoding.toolbar.button",
+                profileKey: "modules.geocoding.showButton",
+                legacyProfileKey: "ui.showGeocoding",
+                requiresPlugin: "geocoding",
+                action: "geocoding",
+            },
         },
-    },
-});
+    });
+}
 
 // 6 — Wire the action event listener: reveal the pill on the "geocoding" action.
 if (typeof document !== "undefined") {

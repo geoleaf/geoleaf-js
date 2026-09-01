@@ -51,9 +51,10 @@
 import { MaplibreAdapter } from "../adapters/maplibre/maplibre-adapter.js";
 import { CapabilityRegistry } from "../kernel/api/capability-registry.js";
 import { registerPresetDeclarations, registerPresetModules } from "../presets/apply-preset.js";
+import { PROFILE_STORAGE_KEY, SELECTED_PROFILE_STORAGE_KEY } from "../kernel/shared/index.js";
 import type { PresetManifest } from "../contracts/preset.contract.js";
 import type { ModuleRegistry } from "./module-registry.js";
-import type { AppNamespace } from "./app-types.js";
+import type { AppNamespace, BootOptions } from "./app-types.js";
 import { asFn, member, perfWindow } from "./app-types.js";
 import { asObject } from "../utils/general/type-guards.js";
 import type { IGeoLeafConfig } from "../contracts/config.contract.js";
@@ -103,8 +104,8 @@ function _resolveSelectedProfile(AppLog: ProfileResolutionLog): string | null {
     const isValid = (v: string | null): boolean => !!v && PROFILE_ID_RE.test(v);
 
     try {
-        const raw = sessionStorage.getItem("gl-selected-profile");
-        sessionStorage.removeItem("gl-selected-profile");
+        const raw = sessionStorage.getItem(SELECTED_PROFILE_STORAGE_KEY);
+        sessionStorage.removeItem(SELECTED_PROFILE_STORAGE_KEY);
         if (isValid(raw)) {
             AppLog.log("Profile selected from sessionStorage:", raw);
             return raw;
@@ -117,7 +118,7 @@ function _resolveSelectedProfile(AppLog: ProfileResolutionLog): string | null {
     }
 
     try {
-        const stored = localStorage.getItem("gl-profile");
+        const stored = localStorage.getItem(PROFILE_STORAGE_KEY);
         if (isValid(stored)) {
             AppLog.log("Profile restored from localStorage:", stored);
             return stored;
@@ -135,6 +136,63 @@ function _resolveSelectedProfile(AppLog: ProfileResolutionLog): string | null {
 }
 
 /**
+ * Resolves WHERE the configuration comes from — three ranks.
+ *
+ * ⚠️ NOT to be confused with {@link _resolveSelectedProfile}, which also has three ranks.
+ * That one answers WHICH profile is selected; this one answers WHERE the configuration is.
+ * Two questions, two resolutions, and the shared wording has already caused one confusion —
+ * hence this note.
+ *
+ *   Rank 1 — an object handed over in memory (`options.config`).
+ *   Rank 2 — an explicit URL (`options.configUrl`).
+ *   Rank 3 — UNCHANGED: a path derived from the host page's URL.
+ *
+ * 🛑 Rank 3 keeps the standalone demo working byte for byte. What changes is its STATUS,
+ * not its behaviour: `_app.getProfilesBasePath` stops being the mechanism and becomes the
+ * default. It is still called, still returns the same string, and `app-namespace.test.js`
+ * stays green without a single edit — that is the acceptance criterion for this rank.
+ *
+ * Why rank 1 matters: an application embedding this map already holds its configuration.
+ * Rank 3 makes it request a path derived from the host page, which a single-page router may
+ * answer with its own HTML document in HTTP 200 — JSON was expected, HTML arrives, and
+ * nothing on the wire says anything is wrong.
+ *
+ * @param options - The boot options, when the caller passed any.
+ * @param profilesPath - The base path resolved from the host page (rank 3).
+ * @param AppLog - Logger, used to NAME an option that loses a collision.
+ * @returns Either `{ config }` or `{ url }`, ready to spread into `loadConfig`.
+ */
+function _resolveConfigSource(
+    options: BootOptions | undefined,
+    profilesPath: string,
+    AppLog: AppNamespace["AppLog"]
+): { config: Record<string, unknown> } | { url: string } {
+    const inlineConfig =
+        options?.config && typeof options.config === "object" ? options.config : undefined;
+    const explicitUrl =
+        typeof options?.configUrl === "string" && options.configUrl.length > 0
+            ? options.configUrl
+            : undefined;
+
+    if (inlineConfig && explicitUrl) {
+        // Warn rather than throw. Throwing at the boot of a published core would turn a
+        // caller's redundancy into an outage; and the option that loses is NAMED, because
+        // an option silently dropped is the very defect this path exists to remove.
+        AppLog.warn(
+            "[GeoLeaf.boot] `config` and `configUrl` were both provided — `config` wins, " +
+                "`configUrl` is ignored."
+        );
+    }
+
+    // An empty object is a VALID inline configuration, exactly as `Config.init` treats it.
+    // `boot()` and `loadConfig()` must never diverge on the same value: two boot paths
+    // behaving differently on one input is the risk this whole sprint exists to avoid.
+    return inlineConfig
+        ? { config: inlineConfig }
+        : { url: explicitUrl ?? profilesPath + "geoleaf.config.json" };
+}
+
+/**
  * Loads the configuration, composes the preset's capabilities and hands over to the
  * `ModuleRegistry`. Resolves once every module's `init()` has run (or has failed —
  * a registry failure is logged, not thrown, exactly as before).
@@ -145,6 +203,8 @@ function _resolveSelectedProfile(AppLog: ProfileResolutionLog): string | null {
  *
  * @param preset - The active preset manifest (the capabilities this bundle embarks).
  * @param ctx - The boot collaborators (see {@link BootContext}).
+ * @param options - Caller options. `config` / `configUrl` decide where the configuration
+ *   comes from (see {@link _resolveConfigSource}); absent, the historical path is used.
  */
 /* eslint-disable max-lines-per-function -- boot sequence: ordering IS the contract
    `bootWithPreset` is ~170 linear lines whose VALUE is the order of its steps (B1→B11,
@@ -152,10 +212,15 @@ function _resolveSelectedProfile(AppLog: ProfileResolutionLog): string | null {
    would hide it: each extracted function would still have to be called at exactly one
    position, and the constraint would move from "read the function" to "read the call
    site and hope". The extraction has been reverted twice for that reason.
-   Audited S13.3 and kept: `max-lines-per-function` is `warn` (eslint.config.mjs), so
+   Audited and kept: `max-lines-per-function` is `warn` (eslint.config.mjs), so
    this suppresses no CI error — it exists to hold the repo's "0 warning" invariant.
    Lifting it means splitting the boot sequence, which is a sprint, not a cleanup. */
-export async function bootWithPreset(preset: PresetManifest, ctx: BootContext): Promise<void> {
+
+export async function bootWithPreset(
+    preset: PresetManifest,
+    ctx: BootContext,
+    options?: BootOptions
+): Promise<void> {
     const { GeoLeaf, app: _app, registry: _registry } = ctx;
     const AppLog = _app.AppLog;
     // R4.1.1 — Perf marks, active when window.__GEOLEAF_PERF__ === true
@@ -185,7 +250,7 @@ export async function bootWithPreset(preset: PresetManifest, ctx: BootContext): 
 
     // perf 5 — start bound of `geoleaf:startup-total`. UNCONDITIONAL on purpose, and it
     // must stay that way: the matching `geoleaf:initApp:ready` mark and the `measure()`
-    // that consumes both live in `init-reveal.ts:129-148` and are unconditional too. Only
+    // that consumes both live in `init-reveal.ts` and are unconditional too. Only
     // the granular `geoleaf:boot:*` marks below sit behind the `__GEOLEAF_PERF__` opt-in.
     // This mark was lost at `e5d29034` (orchestration moved into `module.init()`); the
     // `measure()` kept referencing it from inside a `try {}`, so it threw on every boot and
@@ -212,12 +277,14 @@ export async function bootWithPreset(preset: PresetManifest, ctx: BootContext): 
 
     const profilesPath = _app.getProfilesBasePath();
 
+    const configSource = _resolveConfigSource(options, profilesPath, AppLog);
+
     // perf 5.4: wrap loadConfig (callback) in a Promise to enable chaining
     _pm("geoleaf:boot:loadConfig:start");
     const loadConfig = asFn(GeoLeaf.loadConfig);
     const configPromise = new Promise((resolve, reject) => {
         loadConfig?.call(GeoLeaf, {
-            url: profilesPath + "geoleaf.config.json",
+            ...configSource,
             profileId: selectedProfile,
             autoEvent: true,
             onLoaded: resolve,
@@ -263,7 +330,7 @@ export async function bootWithPreset(preset: PresetManifest, ctx: BootContext): 
     }
     // ─────────────────────────────────────────────────────────────────────────
 
-    // ── S1.2: load profile resources BEFORE registry.init so modules receive  ──
+    // ── Load profile resources BEFORE registry.init so modules receive ───────
     // the complete merged config (profile JSON included) at init() time.
     let effectiveCfg: Record<string, unknown> = baseCfg;
     const loadActiveProfileResources = asFn(member(GeoLeaf.Config, "loadActiveProfileResources"));
@@ -273,7 +340,7 @@ export async function bootWithPreset(preset: PresetManifest, ctx: BootContext): 
             const profileCfg = await loadActiveProfileResources.call(GeoLeaf.Config);
             _pm("geoleaf:boot:profileResources:end");
             AppLog.info("Active profile resources loaded.");
-            effectiveCfg = (asObject(profileCfg) || baseCfg) as Record<string, unknown>;
+            effectiveCfg = asObject(profileCfg) || baseCfg;
         } catch (err) {
             AppLog.warn("Error loading profile resources:", err);
         }
@@ -302,7 +369,7 @@ export async function bootWithPreset(preset: PresetManifest, ctx: BootContext): 
     }
     // ─────────────────────────────────────────────────────────────────────────
 
-    // ── S1.2: registry.init() is now the sole runtime orchestrator. ──────────
+    // ── registry.init() is the sole runtime orchestrator. ────────────────────
     // Modules receive the complete merged config; CoreMapModule.init() creates
     // the map, UIModule.init() wires UI + features + fires geoleaf:app:ready.
     const _adapter = new MaplibreAdapter();

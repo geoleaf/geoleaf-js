@@ -74,7 +74,7 @@ _TableRenderer._flushEventCleanups = function () {
             }
         } else if (typeof item === "number") {
             try {
-                _events?.off(item);
+                _events.off(item);
             } catch (_e) {
                 /* ignore */
             }
@@ -195,19 +195,9 @@ function _buildCheckboxTh(): HTMLElement {
     const checkboxAllHandler = (e: Event) => {
         toggleAllRows((e.target as HTMLInputElement).checked);
     };
-    if (_events) {
-        _eventCleanups.push(
-            _events.on(
-                checkboxAll,
-                "change",
-                checkboxAllHandler,
-                false,
-                "TableRenderer.checkboxAll"
-            )
-        );
-    } else {
-        checkboxAll.addEventListener("change", checkboxAllHandler);
-    }
+    _eventCleanups.push(
+        _events.on(checkboxAll, "change", checkboxAllHandler, false, "TableRenderer.checkboxAll")
+    );
     thCheckbox.appendChild(checkboxAll);
     return thCheckbox;
 }
@@ -238,11 +228,7 @@ function _buildSortableTh(col: TableColumnDef, sortState: SortState): HTMLElemen
         const sortHandler = () => {
             TableContract.sortByField(col.field);
         };
-        if (_events) {
-            _eventCleanups.push(_events.on(th, "click", sortHandler, false, "TableRenderer.sort"));
-        } else {
-            th.addEventListener("click", sortHandler);
-        }
+        _eventCleanups.push(_events.on(th, "click", sortHandler, false, "TableRenderer.sort"));
     }
     return th;
 }
@@ -307,13 +293,9 @@ function _buildRowCheckboxTd(featureId: string): HTMLElement {
     const checkboxHandler = (e: Event) => {
         handleRowSelection(featureId, (e.target as HTMLInputElement).checked, false, true, true);
     };
-    if (_events) {
-        _eventCleanups.push(
-            _events.on(checkbox, "change", checkboxHandler, false, "TableRenderer.checkbox")
-        );
-    } else {
-        checkbox.addEventListener("change", checkboxHandler);
-    }
+    _eventCleanups.push(
+        _events.on(checkbox, "change", checkboxHandler, false, "TableRenderer.checkbox")
+    );
     tdCheckbox.appendChild(checkbox);
     return tdCheckbox;
 }
@@ -324,19 +306,9 @@ function _attachRowClickEvent(tr: HTMLElement, featureId: string): void {
         const currentState = tr.classList.contains("gl-is-selected");
         handleRowSelection(featureId, !currentState, e.shiftKey, e.ctrlKey || e.metaKey);
     };
-    if (_events) {
-        _eventCleanups.push(
-            _events.on(
-                tr,
-                "click",
-                rowClickHandler as EventListener,
-                false,
-                "TableRenderer.rowClick"
-            )
-        );
-    } else {
-        tr.addEventListener("click", rowClickHandler);
-    }
+    _eventCleanups.push(
+        _events.on(tr, "click", rowClickHandler as EventListener, false, "TableRenderer.rowClick")
+    );
 }
 
 /**

@@ -1,5 +1,5 @@
 /**
- * @fileoverview Security roadmap — Sprint 1 (Correctifs P1).
+ * @fileoverview Security hardening — Correctifs P1.
  * Integration tests for the wired-at-the-sink hardening:
  *   - H1: POI link/image sinks reject javascript:/unsafe URLs (links.ts, media-renderers.ts).
  *   - M1: the profile sprite fetch is not emitted for an unsafe spriteUrl.
@@ -15,9 +15,14 @@ const mockLog = vi.hoisted(() => ({
 
 vi.mock("../../src/utils/log/index.js", () => ({ Log: mockLog }));
 
-vi.mock("../../src/kernel/config/config-primitives.js", () => ({
-    Config: { getIconsConfig: vi.fn(() => null) },
-}));
+// 🗑️ A `vi.mock` of `kernel/config/config-primitives.js` lived here,
+// setting a single `Config.getIconsConfig` — a member existing in NONE of
+// the repo's 923 sources. Removed on 17/08/2026, and not on the faith of
+// that absence: the counter-proof was taken, this file passes WITHOUT it.
+// Neither `kernel/config/storage.js` nor
+// `utils/loaders/profile-sprite-loader.js` — the only two subjects —
+// imports this module. The mock was thus inert twice: it stubbed a module
+// not loaded, with a member that no longer exists.
 
 import { ConfigStore } from "../../src/kernel/config/storage.js";
 import { ensureProfileSpriteInjectedSync } from "../../src/utils/loaders/profile-sprite-loader.js";
@@ -33,7 +38,7 @@ afterEach(() => {
 // H1 — POI sinks reject unsafe href/src
 // ─────────────────────────────────────────────────────────────────────────────
 
-// H1 (POI link/image sinks) removed S2b Sprint 3 — `poi/renderers/links.ts` and
+// H1 (POI link/image sinks) removed — `poi/renderers/links.ts` and
 // `poi/renderers/media-renderers.ts` were deleted (attribute rendering delegates
 // entirely to `@geoleaf-plugins/feature-info`). Equivalent URL-safety coverage
 // (isUrlSafe / javascript: / vbscript: / data:text/html rejection for image, url,
@@ -178,9 +183,9 @@ describe("S5 — setValueByPath blocks polluting path segments", () => {
     // Object.prototype. Kept as a regression guard on THAT behaviour: it bites if the
     // own-property check is ever relaxed to `in`. Do not read it as proof the blocklist works.
     //
-    // Retitled in S13.2: the comment was accurate but the old title ("refuses
+    // Retitled: the comment was accurate but the old title ("refuses
     // constructor/prototype segments") credited the blocklist for a pass it does not
-    // earn. Re-confirmed by the S13.2 mutation run — neutralising `isUnsafeKey` kills
+    // earn. Re-confirmed by a mutation run — neutralising `isUnsafeKey` kills
     // 13 tests across 4 files, and this is not one of them. The blocklist's own
     // coverage of these two keys is the single-segment case below.
     it("own-property descent never reaches the real Object.prototype (constructor hop)", () => {
@@ -196,7 +201,7 @@ describe("S5 — setValueByPath blocks polluting path segments", () => {
         (key) => {
             // One segment means the descent loop never runs, so the own-property check
             // above cannot stand in for the guard: only the blocklist can refuse this.
-            // Verified to die under the S13.2 mutation — this is the assertion that
+            // Verified to die under mutation — this is the assertion that
             // actually pins `constructor`/`prototype` for setValueByPath.
             const target = {};
             ConfigStore.setValueByPath(target, key, "PWNED");

@@ -1,10 +1,10 @@
 // rollup.config.mjs
 // Official GeoLeaf build pipeline — v2.0.0 (MapLibre GL JS)
-// Sprint 8: ESM-only output (UMD removed).
-// ⚠️ Le motif écrit ici disait « MapLibre GL JS v5 is ESM-native » : c'était FAUX de la v5
-// (elle déclarait `main: dist/maplibre-gl.js`, sans `module` ni `exports` — un script classique),
-// et c'est devenu VRAI avec la v6, réellement ESM-only. La décision était bonne, sa
-// justification ne l'était pas — même cas que l'ADR-03 du CDC kernel.
+// ESM-only output (UMD removed).
+// ⚠️ The motive written here said "MapLibre GL JS v5 is ESM-native": FALSE of v5
+// (it declared `main: dist/maplibre-gl.js`, no `module` nor `exports` — a classic
+// script), and it became TRUE with v6, genuinely ESM-only. The decision was good,
+// its justification was not — same case as the kernel CDC's ADR-03.
 //
 // Outputs:
 //   - geoleaf.esm.js   + dist/chunks/  (chunked ESM — CDN + bundlers) — the SHIPPED bundle
@@ -68,10 +68,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * `postcssImport()` is NOT optional in either: `geoleaf-main.css` is a tree of `@import … layer()`,
  * and `CSSStyleSheet.replaceSync()` rejects `@import` outright. Flatten first, always.
  */
-// `withStableChunkHash` : rollup-plugin-postcss sérialise une Map dans son
-// `augmentChunkHash`, donc dans l'ordre de transformation des modules CSS — qui
-// n'est pas stable. Les 7 chunks du core changeaient de nom à CHAQUE build pour un
-// contenu byte-à-byte identique. Détail dans build-config/rollup.mjs.
+// `withStableChunkHash`: rollup-plugin-postcss serialises a Map in its
+// `augmentChunkHash`, hence in the CSS modules' transformation order — which is
+// not stable. The core's 7 chunks changed name at EVERY build for byte-identical
+// content. Detail in build-config/rollup.mjs.
 const cssExtract = (outFile) =>
     withStableChunkHash(
         postcss({
@@ -148,7 +148,7 @@ const baseConfig = {
                 __SW_DEBUG__: process.env.NODE_ENV !== "production" ? "true" : "false",
             },
         }),
-        // Sprint 5: TypeScript — before resolve/commonjs to process .ts files
+        // TypeScript — before resolve/commonjs to process .ts files
         // noEmit: true — Rollup handles JS output; TS only type-checks (required by allowImportingTsExtensions)
         //
         // declaration/declarationDir MUST be neutralised (S6). Without them this plugin inherits
@@ -173,11 +173,35 @@ const baseConfig = {
         ...(COVERAGE
             ? [
                   istanbul({
-                      // ⚠️ R.9 (24/07/2026) — `src/modules/**` a été éclaté en quatre racines. Laissé en
-                      // l'état, ce glob aurait cessé de matcher **en silence** : l'instrumentation E2E
-                      // aurait couvert `app/` seul et la couverture serait sortie basse sans erreur.
+                      // ⚠️ 2026-07-24 — `src/modules/**` was split into four roots.
+                      // Left as-is, this glob would have stopped matching **in
+                      // silence**: the E2E instrumentation would have covered
+                      // `app/` alone and the coverage would have come out low with
+                      // no error.
+                      // ⚠️ `src/capabilities/**` was ADDED on 2026-08-19, and its
+                      // absence was no earlier oversight: it predated the
+                      // directory's existence. Its effect was measuring the boot
+                      // on a denominator excluding half the code the boot
+                      // executes — a high figure on a narrow perimeter, the most
+                      // flattering form of a false measurement.
+                      // 🛑 The widening MAKES THE PERCENTAGE DROP, and that is no
+                      // regression: the denominator grows before the numerator.
+                      // `nyc.config.cjs`'s thresholds were recalibrated in the
+                      // same gesture, with this motive.
+                      // 🛑 **`**/*.ts` and not `**`, and this is no precaution**:
+                      // the five historical roots contain no `.css`,
+                      // `capabilities/` contains eleven. An extension-less glob
+                      // hands them to Babel for instrumentation, which parses
+                      // them as JavaScript and throws — "Support for the
+                      // experimental syntax 'decorators' isn't currently enabled"
+                      // on a stylesheet's first brace. The build then fails
+                      // ENTIRELY, and `build-deploy-coverage.cjs` gives up
+                      // leaving the PREVIOUS deploy in place: whoever reads the
+                      // figures without reading the exit code measures the old
+                      // bundle believing they measure the new.
                       include: [
                           "src/api/**",
+                          "src/capabilities/**/*.ts",
                           "src/globals/**",
                           "src/kernel/**",
                           "src/utils/**",
@@ -258,7 +282,10 @@ const esmConfig = {
         // dropped in the v2.0.0 MapLibre build rework. Placed before visualizer so
         // dist/stats.html reports the real (minified) sizes. The granular dist/esm/
         // output stays unminified — bundlers minify it themselves.
-        minify({ target: "es2015", legalComments: "none" }),
+        // ⚠️ `es2022` and not `es2015`: see the long motive at
+        // `packages/build-config/rollup.mjs` — the previous target was justified by a
+        // sentence this file and that one handed to each other. Measured, not inferred.
+        minify({ target: "es2022", legalComments: "none" }),
         // Bundle analysis (treemap)
         visualizer({
             filename: "dist/stats.html",
@@ -272,11 +299,12 @@ const esmConfig = {
         // Emit sw-core.js (lite SW) and geojson-worker.js as assets
         swCoreVersionPlugin(pkg.version),
         geojsonWorkerPlugin(pkg.version),
-        // Notice de licence en tête de CHAQUE chunk livré (npm S3, LIC-04). Posée en
-        // `generateBundle`, donc après `minify()` — une `output.banner` serait supprimée par
-        // `legalComments: "none"`, comme elle l'était chez offline-ui. ⚠️ Elle ne touche PAS
-        // les deux assets émis juste au-dessus : `sw-core.js` et `geojson-worker.js` sont des
-        // `type: "asset"`, pas des chunks, et portent leur bandeau depuis leur SOURCE.
+        // Licence notice at the head of EVERY shipped chunk (LIC-04). Set in
+        // `generateBundle`, hence after `minify()` — an `output.banner` would be
+        // deleted by `legalComments: "none"`, as it was at offline-ui's. ⚠️ It
+        // does NOT touch the two assets emitted just above: `sw-core.js` and
+        // `geojson-worker.js` are `type: "asset"`, not chunks, and carry their
+        // banner from their SOURCE.
         licenseBanner(pkg),
     ],
     input: INPUT_FILE_ESM,
@@ -291,8 +319,8 @@ const esmConfig = {
         entryFileNames: "geoleaf.esm.js",
         chunkFileNames: "chunks/geoleaf-[name]-[hash].js",
         sourcemap: true,
-        // 2.10 bis — les sources voyagent déjà dans `src/` (files[]) :
-        // les embarquer une SECONDE fois dans la carte est un doublon pur.
+        // The sources already travel in `src/` (files[]): embedding them a
+        // SECOND time in the map is pure duplication.
         sourcemapExcludeSources: true,
         exports: "named",
         // PERF-01: thematic manualChunks to avoid combinatorial explosion.
@@ -313,7 +341,7 @@ const esmConfig = {
             // into three chunks produced a chunk-level import cycle (rollup "Circular chunk")
             // with NO module-level cycle (madge = 0). Merging matches the real import graph and
             // clears the warnings; the boot payload is unchanged — all three were already in the
-            // eager boot closure. Socle S5.5.
+            // eager boot closure.
             if (
                 norm.includes("/capabilities/legend/") ||
                 norm.includes("/api/geoleaf.legend") ||
@@ -327,31 +355,34 @@ const esmConfig = {
             ) {
                 return "chunk-ui-controls";
             }
-            // 5.2 — `chunk-poi` et `chunk-table` RETIRÉES : elles n'ont jamais été émises, et
-            // la carte du bundle mentait de deux entrées. Mesuré — aucun `chunk-poi*` ni
-            // `chunk-table*` dans `dist/`, et les motifs ne peuvent PAS matcher :
-            // `src/kernel/poi/` et `src/modules/optional/` n'existent pas, il n'y a pas de
-            // `api/geoleaf.table.ts`, et le dernier `contracts/poi*` — le contrat du seam
-            // AddForm — est parti avec 5.1-f. ⚠️ Elles étaient mortes INDÉPENDAMMENT de la
-            // fusion : ce n'est pas elle qui les tue, c'est elle qui a fourni l'occasion.
-            // Labels — FONDUES dans chunk-ui-controls (socle-init S5.6).
+            // `chunk-poi` and `chunk-table` REMOVED: they were never emitted, and
+            // the bundle map lied by two entries. Measured — no `chunk-poi*` nor
+            // `chunk-table*` in `dist/`, and the patterns can NOT match:
+            // `src/kernel/poi/` and `src/modules/optional/` do not exist, there
+            // is no `api/geoleaf.table.ts`, and the last `contracts/poi*` — the
+            // AddForm seam contract — left with the merged package. ⚠️ They were
+            // dead INDEPENDENTLY of the merge: the merge did not kill them, it
+            // provided the occasion.
+            // Labels — MELTED into chunk-ui-controls.
             //
-            // 🛑 Même remède que le trio legend↔layers↔themes ci-dessus, et pour la même raison
-            // mesurée : `chunk-labels -> chunk-ui-controls -> chunk-labels`. Les labels importent
-            // un symbole des contrôles, et les contrôles portent un `import` d'effet de bord vers
-            // les labels — le layer-manager peint les boutons d'étiquette, l'applicateur de thème
-            // les ré-initialise. L'arête existe dans les deux sens parce que le graphe réel est
-            // mutuel ; les séparer nommait un thème, pas une frontière.
+            // 🛑 Same remedy as the legend↔layers↔themes trio above, for the same
+            // measured reason: `chunk-labels -> chunk-ui-controls ->
+            // chunk-labels`. The labels import a symbol from the controls, and
+            // the controls carry a side-effect `import` toward the labels — the
+            // layer-manager paints the label buttons, the theme applier
+            // re-initialises them. The edge exists both ways because the real
+            // graph is mutual; splitting them named a theme, not a boundary.
             //
-            // ⚠️ Le cycle ne se voyait QUE dans le build instrumenté (`COVERAGE=true`) : istanbul
-            // rend chaque module porteur d'effets de bord, donc Rollup conserve l'import nu que la
-            // build normale élague. Il était là depuis un moment, silencieux — Rollup l'imprimait
-            // et sortait 0, exactement comme le cycle que B.12 a coûté à diagnostiquer.
+            // ⚠️ The cycle showed ONLY in the instrumented build
+            // (`COVERAGE=true`): istanbul makes every module a side-effect
+            // carrier, so Rollup keeps the bare import the normal build prunes.
+            // It had been there a while, silent — Rollup printed it and exited 0,
+            // exactly like the cycle that once cost a whole diagnosis.
             //
-            // ⚠️ Le payload ne bouge pas : les deux chunks étaient déjà dans la clôture eager du
-            // boot. Ce qui change est une requête de moins, et un invariant simple — aucun cycle,
-            // dans aucune variante de build.
-            // (Themes + Layer-manager are folded into chunk-ui-controls above — socle S5.5,
+            // ⚠️ The payload does not move: both chunks were already in the
+            // boot's eager closure. What changes is one request fewer, and a
+            // simple invariant — no cycle, in any build variant.
+            // (Themes + Layer-manager are folded into chunk-ui-controls above,
             // to break the legend↔layers↔themes chunk cycle.)
             // 🛑 `style-operators.ts` LIVES WITH `utils/`, NOT WITH ITS DIRECTORY — and the rule
             // must stay ABOVE the `/kernel/geojson/` one below, which would otherwise claim it.
@@ -396,8 +427,8 @@ const esmConfig = {
     },
 };
 
-// UMD builds removed in v2.0.0. (Le motif d'origine invoquait une v5 « ESM-native » qui ne
-// l'était pas ; la v6, elle, l'est — voir l'en-tête de ce fichier.)
+// UMD builds removed in v2.0.0. (The original motive invoked an "ESM-native" v5
+// that was not; v6 is — see this file's header.)
 // CDN usage: <script type="module" src="dist/geoleaf.esm.js"></script>
 
 /**
@@ -429,8 +460,8 @@ function swCoreVersionPlugin(version) {
         // need died with the app's move to apps/geoleaf-app/: dev serving now goes through
         // deploy/, where build-deploy.cjs already places sw-core.js beside index.html.
         //
-        // Nothing in the toolchain read the root copy (measured): build-deploy.cjs:645 reads
-        // DIST/sw-core.js, `sw-register.ts:34` treats "sw-core.js" as an HTTP path, not a
+        // Nothing in the toolchain read the root copy (measured): build-deploy.cjs reads
+        // DIST/sw-core.js, `sw-register.ts` treats "sw-core.js" as an HTTP path, not a
         // disk one, and index.html never referenced it. The SOURCE stays
         // src/kernel/storage/sw-core.js and the published output stays dist/sw-core.js
         // (emitted by generateBundle above) — nothing changes for npm consumers.
@@ -439,7 +470,7 @@ function swCoreVersionPlugin(version) {
 
 /**
  * Custom Rollup plugin — GeoJSON Web Worker asset emission.
- * Emits dist/geojson-worker.js for off-thread GeoJSON parsing (Sprint 7).
+ * Emits dist/geojson-worker.js for off-thread GeoJSON parsing.
  * Attached to the core build so it’s always available.
  */
 function geojsonWorkerPlugin(version) {
@@ -551,10 +582,10 @@ const esmGranularConfig = {
         cssAdopt(),
         resolve({ browser: true, preferBuiltins: false, extensions: [".ts", ".js"] }),
         commonjs(),
-        // Cette sortie n'est PAS minifiée, donc une `output.banner` y survivrait. Le même
-        // plugin est employé quand même : une mécanique unique pour les deux sorties vaut
-        // mieux que deux qui font la même chose de deux façons — et c'est celle-ci qui saute
-        // les chunks 100 % tiers, ce qu'une `output.banner` ne sait pas faire.
+        // This output is NOT minified, so an `output.banner` would survive there.
+        // The same plugin is used anyway: one mechanism for both outputs beats
+        // two doing the same thing two ways — and this one is what skips the
+        // 100 %-third-party chunks, which an `output.banner` cannot do.
         licenseBanner(pkg),
     ],
     // ⚠️ NO `treeshake` override here — it inherits baseConfig's `moduleSideEffects: true`.
@@ -633,7 +664,10 @@ const exampleMinimalConfig = {
         cssExtract("examples/dist/minimal/geoleaf.minimal.css"),
         resolve({ browser: true, preferBuiltins: false, extensions: [".ts", ".js"] }),
         commonjs(),
-        minify({ target: "es2015", legalComments: "none" }),
+        // ⚠️ `es2022` and not `es2015`: see the long motive at
+        // `packages/build-config/rollup.mjs` — the previous target was justified by a
+        // sentence this file and that one handed to each other. Measured, not inferred.
+        minify({ target: "es2022", legalComments: "none" }),
     ],
     output: {
         ...esmConfig.output,
@@ -642,10 +676,57 @@ const exampleMinimalConfig = {
     },
 };
 
+/**
+ * The SECOND composed entry — same pattern, other list.
+ *
+ * 🛑 It exists because a proof on ONE entry proves nothing about another: the
+ * gate was hard-coded on `minimal`, and would have measured `minimal` whatever
+ * was composed beside it. Two entries, two measurements, two floors.
+ *
+ * ⚠️ `sourcemap` must stay on: the gate reads the sourcemap to establish that no
+ * source file of an excluded capability enters the closure. Without it there is
+ * no oracle, just a weight.
+ */
+const exampleSlimConfig = {
+    ...esmConfig,
+    input: "examples/slim/entry.ts",
+    plugins: [
+        replace({
+            preventAssignment: true,
+            values: {
+                __GEOLEAF_VERSION__: JSON.stringify(pkg.version),
+                __SW_DEBUG__: "false",
+            },
+        }),
+        typescript({
+            tsconfig: "./tsconfig.json",
+            compilerOptions: {
+                noEmit: true,
+                declaration: false,
+                declarationDir: undefined,
+                outDir: path.resolve(__dirname, "examples/dist/slim"),
+            },
+        }),
+        cssExtract("examples/dist/slim/geoleaf.slim.css"),
+        resolve({ browser: true, preferBuiltins: false, extensions: [".ts", ".js"] }),
+        commonjs(),
+        // ⚠️ `es2022` and not `es2015`: see the long motive at
+        // `packages/build-config/rollup.mjs` — the previous target was justified by a
+        // sentence this file and that one handed to each other. Measured, not inferred.
+        minify({ target: "es2022", legalComments: "none" }),
+    ],
+    output: {
+        ...esmConfig.output,
+        dir: "examples/dist/slim",
+        entryFileNames: "geoleaf.slim.esm.js",
+    },
+};
+
 // v2.0.0: ESM-only output (UMD removed)
 // esmConfig            — chunked ESM (CDN + bundlers) — the SHIPPED bundle, all capabilities
 // esmGranularConfig    — preserveModules (granular tree-shaking for third-party bundlers)
 // exampleMinimalConfig — the tree-shaking proof (NOT published — examples/dist/)
+// exampleSlimConfig    — a second composed entry, so the proof covers a LIST and not one row
 //
 // The frozen "lite" build (S4, presets chantier) is GONE. It was never served, and a
 // hand-maintained parallel entry/boot/globals triple is exactly the debt the capability
@@ -655,7 +736,7 @@ const exampleMinimalConfig = {
 //
 // The two plugin configs are gone too (see the header): the core's dist is the CORE's product.
 // `__tests__/bundle.test.js` now GATES that — it fails if any geoleaf-*.plugin.js reappears here.
-export default [esmConfig, esmGranularConfig, exampleMinimalConfig];
+export default [esmConfig, esmGranularConfig, exampleMinimalConfig, exampleSlimConfig];
 
 /**
  * Consumed by `rollup.consumer.mjs` (the published-package witness, S6).

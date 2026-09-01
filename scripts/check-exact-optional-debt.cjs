@@ -1,67 +1,66 @@
 #!/usr/bin/env node
 /**
- * @fileoverview EXACT-OPTIONAL-DEBT — le cliquet qui empêche `exactOptionalPropertyTypes`
- * d'être soldé par élargissement de type.
+ * @fileoverview EXACT-OPTIONAL-DEBT — the ratchet that keeps
+ * `exactOptionalPropertyTypes` from being settled by type widening.
  *
- * ## Pourquoi cette gate existe
+ * ## Why this gate exists
  *
- * Le sprint qualité Q4 a activé `exactOptionalPropertyTypes` et soldé **95 erreurs**. Chacune
- * pouvait se corriger de deux façons opposées :
+ * The quality pass enabled `exactOptionalPropertyTypes` and settled **95 errors**.
+ * Each could be fixed in two opposite ways:
  *
- *   1. **Élargir la cible** — `prop?: T` devient `prop?: T | undefined`. Une ligne, le
- *      compilateur se tait… et la propriété retrouve EXACTEMENT la sémantique qu'elle avait
- *      avant l'option. Zéro garantie achetée, deux jours dépensés.
- *   2. **Corriger le site** — insertion conditionnelle, ou défaut appliqué chez le producteur.
- *      La propriété est réellement absente quand elle est absente, donc un
- *      `{...defauts, ...profil}` cesse de pouvoir écraser un défaut avec `undefined`.
+ *   1. **Widen the target** — `prop?: T` becomes `prop?: T | undefined`. One line,
+ *      the compiler goes quiet… and the property regains EXACTLY the semantics it
+ *      had before the option. Zero guarantee bought, two days spent.
+ *   2. **Fix the site** — conditional insertion, or default applied at the
+ *      producer. The property is really absent when absent, so a
+ *      `{...defaults, ...profile}` can no longer crush a default with `undefined`.
  *
- * Les 95 ont été soldées par (2), **sans un seul élargissement**. Rien, ensuite, ne
- * distingue un `?: T | undefined` légitime et commenté d'un `?: T | undefined` posé pour
- * faire taire `tsc` — c'est le mode d'échec n°5 de `CLAUDE.md` : « un chiffre qu'on ne peut
- * pas re-mesurer ne se périme pas, il se fossilise ». D'où ce cliquet, sur le modèle de
- * MH-02 (`check-module-headers.cjs`) et TSD-04 (`check-tsdoc-conformity.cjs`) : *sans quoi
- * une baseline est un permis, pas un registre de dette.*
+ * All 95 were settled by (2), **without a single widening**. Nothing afterwards
+ * distinguishes a legitimate, commented `?: T | undefined` from one placed to
+ * silence `tsc` — the failure mode "a number that cannot be re-measured does not go
+ * stale, it fossilises". Hence this ratchet, on the model of MH-02
+ * (`check-module-headers.cjs`) and TSD-04 (`check-tsdoc-conformity.cjs`): *without
+ * which a baseline is a permit, not a debt register.*
  *
- * ## Les trois règles
+ * ## The three rules
  *
- *   EOD-01  Toute propriété optionnelle dont le type PROPRE contient `undefined`
- *           (`prop?: T | undefined`) doit figurer dans la baseline. Une nouvelle est une
- *           erreur : elle ne peut pas naître en dette.
- *   EOD-02  La baseline ne peut que RÉTRÉCIR. Une entrée dont la propriété a disparu, ou
- *           n'est plus élargie, est une erreur tant qu'elle n'est pas retirée.
- *   EOD-03  Le corpus ne peut pas être vide. Une gate qui sort verte en n'ayant rien
- *           scanné est le pire des résultats (même classe que les modes d'échec listés
- *           dans `typecheck-docs-examples.cjs`).
+ *   EOD-01  Every optional property whose OWN type contains `undefined`
+ *           (`prop?: T | undefined`) must be in the baseline. A new one is an
+ *           error: it cannot be born as debt.
+ *   EOD-02  The baseline can only SHRINK. An entry whose property vanished, or is
+ *           no longer widened, is an error until removed.
+ *   EOD-03  The corpus cannot be empty. A gate going green having scanned nothing
+ *           is the worst outcome (same class as the failure modes listed in
+ *           `typecheck-docs-examples.cjs`).
  *
- * ## Deux décisions de conception, chacune motivée par un défaut MESURÉ
+ * ## Two design decisions, each motivated by a MEASURED defect
  *
- * **AST, jamais grep.** Un `grep` sur `?:` + `| undefined` remonte **83 lignes** sur ce
- * dépôt ; la visite AST en trouve **0**. Les 83 sont des casts (`as {x?: T} | undefined`)
- * et des unions de PARAMÈTRES (`onToggle?: (id: string | undefined) => void`) — le `?` et
- * le `| undefined` y appartiennent à deux constructions différentes. Un plafond fondé sur
- * ce grep aurait autorisé 21 élargissements gratuits, plus que le sprint n'en produisait :
- * le contrôle aurait été inerte de bout en bout.
- * Second défaut, causé par le geste même qu'on surveille : `.prettierrc.json` porte
- * `printWidth: 100` et `lint-staged` lance `prettier --write` à chaque commit. Ajouter
- * ` | undefined` à une déclaration de 92 caractères la casse en multi-lignes — mesuré,
- * **212 propriétés** basculeraient. Un compteur ligne-à-ligne devient donc aveugle
- * exactement quand l'édition qu'il surveille est faite.
+ * **AST, never grep.** A `grep` on `?:` + `| undefined` surfaces **83 lines** on
+ * this repo; the AST visit finds **0**. The 83 are casts (`as {x?: T} | undefined`)
+ * and PARAMETER unions (`onToggle?: (id: string | undefined) => void`) — the `?`
+ * and the `| undefined` there belong to two different constructs. A ceiling built
+ * on that grep would have allowed 21 free widenings, more than the work produced:
+ * the check would have been inert end to end.
+ * Second defect, caused by the very gesture under watch: `.prettierrc.json`
+ * carries `printWidth: 100` and `lint-staged` runs `prettier --write` at every
+ * commit. Adding ` | undefined` to a 92-character declaration breaks it into
+ * multi-line — measured, **212 properties** would flip. A line-by-line counter thus
+ * goes blind exactly when the edit it watches is made.
  *
- * **Périmètre dérivé du registre.** `scripts/lib/packages.cjs`, jamais un glob
- * `packages/<nom>` en dur. Le glob naïf `packages/*\/src` ne matche NI `packages/plugins/*`
- * NI `packages/libs/*` — 15 des 17 paquets, donc la totalité des plugins, seraient hors
- * compteur sans que rien ne rougisse. C'est la classe que `probe-gate-visibility.cjs`
- * surveille.
+ * **Perimeter derived from the registry.** `scripts/lib/packages.cjs`, never a
+ * hard-coded `packages/<name>` glob. The naive `packages/*\/src` glob matches
+ * NEITHER `packages/plugins/*` NOR `packages/libs/*` — 15 of the 17 packages,
+ * hence all the plugins, would sit off the counter with nothing turning red. The
+ * class `probe-gate-visibility.cjs` watches.
  *
  * ## Usage
  *
  *        node scripts/check-exact-optional-debt.cjs
  *        node scripts/check-exact-optional-debt.cjs --update-baseline
  *
- * ⚠️ `--update-baseline` se lance APRÈS avoir corrigé, jamais pour faire taire. Chaque
- * entrée ajoutée doit porter, dans le code, un commentaire nommant le consommateur
- * (`chemin:ligne`) pour lequel « absent » et « présent valant `undefined` » sont vraiment
- * équivalents.
+ * ⚠️ `--update-baseline` is run AFTER fixing, never to silence. Each added entry
+ * must carry, in the code, a comment naming the consumer (`path:line`) for which
+ * "absent" and "present valued `undefined`" really are equivalent.
  */
 
 "use strict";
@@ -79,8 +78,9 @@ const UPDATE = process.argv.includes("--update-baseline");
 const SKIP_DIRS = new Set(["__tests__", "node_modules", "dist", "coverage"]);
 
 /**
- * Les répertoires `src/` de tous les paquets du registre, y compris ceux hors `workspaces`
- * (le scaffold `_plugin-template` hérite du même tsconfig de base, donc de l'option).
+ * The `src/` directories of every registry package, including those outside
+ * `workspaces` (the `_plugin-template` scaffold inherits the same base tsconfig,
+ * hence the option).
  *
  * @returns {string[]} chemins absolus existants
  */
@@ -94,7 +94,7 @@ function sourceRoots() {
 /**
  * @param {string} dir
  * @param {string[]} out
- * @returns {string[]} les `.ts` du sous-arbre, tests et artefacts exclus
+ * @returns {string[]} the subtree's `.ts`, tests and artifacts excluded
  */
 function collectTs(dir, out = []) {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -110,8 +110,8 @@ function collectTs(dir, out = []) {
 }
 
 /**
- * Une propriété est « élargie » quand elle porte À LA FOIS le `?` et un `undefined` dans son
- * PROPRE type. Le type d'un paramètre de callback ne compte pas : c'est un nœud différent.
+ * A property is "widened" when it carries BOTH the `?` and an `undefined` in its
+ * OWN type. A callback parameter's type does not count: it is a different node.
  *
  * @param {import("typescript").Node} node
  * @returns {boolean}
@@ -124,8 +124,8 @@ function isWidenedOptional(node) {
 }
 
 /**
- * Clé stable, SANS numéro de ligne — une insertion en amont ne doit pas périmer l'entrée.
- * Même raisonnement que `diagnosticKey()` dans `typecheck-docs-examples.cjs`.
+ * Stable key, WITHOUT a line number — an upstream insertion must not stale the
+ * entry. Same reasoning as `diagnosticKey()` in `typecheck-docs-examples.cjs`.
  *
  * @param {string} rel
  * @param {string} owner conteneur (interface / classe / `<module>`)
@@ -134,7 +134,7 @@ function isWidenedOptional(node) {
  */
 const entryKey = (rel, owner, prop) => `${rel}::${owner}::${prop}`;
 
-/** @returns {string[]} les sites élargis trouvés dans le corpus */
+/** @returns {string[]} the widened sites found in the corpus */
 function scan() {
     const found = [];
     let scanned = 0;
@@ -166,7 +166,7 @@ function scan() {
 
 const { found, scanned } = scan();
 
-// ── EOD-03 — une gate qui n'a rien scanné n'a rien prouvé ────────────────────────────────
+// ── EOD-03 — a gate that scanned nothing proved nothing ──────────────────────────────────
 if (scanned === 0) {
     console.error("ERROR [EXACT-OPTIONAL-DEBT/EOD-03]: corpus vide — 0 fichier scanné.");
     console.error("  Le registre de paquets ne résout aucun `src/`. La gate ne garde rien.");
@@ -177,8 +177,9 @@ if (UPDATE) {
     fs.mkdirSync(path.dirname(BASELINE), { recursive: true });
     fs.writeFileSync(
         BASELINE,
-        // Indentation 4 : Prettier possède `scripts/**/*.json` en `tabWidth: 4` et
-        // reformaterait tout le fichier au commit, rendant illisible le retrait d'une ligne.
+        // Indentation 4: Prettier owns `scripts/**/*.json` at `tabWidth: 4` and
+        // would reformat the whole file at commit, making one line's removal
+        // unreadable.
         JSON.stringify(
             {
                 _comment:
@@ -200,8 +201,8 @@ if (UPDATE) {
 }
 
 if (!fs.existsSync(BASELINE)) {
-    // Une baseline absente n'est PAS une liste vide : ce serait déclarer propre toute la
-    // surface. Même refus que `check-namespace-typing-coverage.cjs`.
+    // An absent baseline is NOT an empty list: it would declare the whole surface
+    // clean. Same refusal as `check-namespace-typing-coverage.cjs`.
     console.error("ERROR [EXACT-OPTIONAL-DEBT]: baseline absente.");
     console.error("  Run: node scripts/check-exact-optional-debt.cjs --update-baseline");
     process.exit(2);

@@ -1,171 +1,213 @@
 #!/usr/bin/env node
 /**
- * TSDOC-CONFORMITY: le TSDoc doit décrire la signature qu'il surplombe.
+ * TSDOC-CONFORMITY: the TSDoc must describe the signature it sits above.
  *
- * ## Le défaut que cette gate ferme
+ * ## The defect this gate closes
  *
- * Le dépôt a un principe : *tout fait vérifiable porte son vérificateur, ou il n'est pas
- * écrit*. Le TSDoc y échappait entièrement. Un `@param` survit au renommage de son
- * paramètre, un `@throws` survit à la suppression de son `throw` — et rien ne le dit.
+ * The repo has a principle: *every verifiable fact carries its verifier, or it is not
+ * written*. TSDoc escaped it entirely. A `@param` survives its parameter's rename, a
+ * `@throws` survives its `throw`'s deletion — and nothing says so.
  *
- * Ce n'est pas théorique. La refonte documentaire V3 a mesuré, sur le seul `CDC_technique.md`,
- * **287 chemins morts sur 452**. Le TSDoc est exposé à la même dérive, avec une circonstance
- * aggravante : depuis l'étape 3 de cette refonte, il est destiné à devenir **la source de la
- * référence d'API publiée sur npm**. Une phrase fausse dans un `.md` interne trompe un
- * développeur du projet ; la même dans un `@example` est livrée aux intégrateurs.
+ * This is not theoretical. The V3 documentation overhaul measured, on `CDC_technique.md`
+ * alone, **287 dead paths out of 452**. TSDoc is exposed to the same drift, with an
+ * aggravating circumstance: since a later stage of that overhaul, it is destined to
+ * become **the source of the API reference published on npm**. A false sentence in an
+ * internal `.md` misleads a project developer; the same in an `@example` is shipped to
+ * integrators.
  *
- * ## Ce que cette gate PEUT juger, et ce qu'elle ne peut pas
+ * ## What this gate CAN judge, and what it cannot
  *
- * Elle ne lit pas le sens. Elle compare une déclaration à ce qui la documente, et c'est tout.
+ * It does not read meaning. It compares a declaration to what documents it, and that is
+ * all.
  *
- *   TSD-01  Tout `@param <nom>` doit nommer un paramètre réel de la signature.
- *           → attrape le renommage et la suppression de paramètre non répercutés.
- *   TSD-02  Un bloc qui documente AU MOINS un paramètre doit les documenter TOUS.
- *           → attrape le paramètre ajouté sans mise à jour du bloc. Volontairement muet
- *             sur les blocs qui ne documentent aucun paramètre : documenter partiellement
- *             est un défaut, ne pas documenter est un choix que MH-01 traite ailleurs.
- *   TSD-03  Un `@throws` exige un `throw` dans le corps de la fonction.
- *           → attrape l'exception documentée qui n'existe plus.
- *   TSD-04  La baseline doit RÉTRÉCIR. Une entrée dont la violation a disparu est une
- *           ERREUR tant qu'elle n'est pas retirée de la baseline.
- *           → sans quoi une baseline est un permis, pas un registre de dette. Même
- *             raisonnement que MH-02 dans `check-module-headers.cjs`.
- *   TSD-05  Un export de premier niveau doit porter un bloc TSDoc.
- *           → attrape l'export publié SANS un mot de documentation, et interdit d'en
- *             créer de nouveaux. Détail et motif au § suivant.
- *   TSD-06  Un `@example` ne peut pas nommer un symbole qui n'existe nulle part.
- *           → attrape la classe fantôme copiable-collable. Détail au § TSD-06.
+ *   TSD-01  Every `@param <name>` must name a real parameter of the signature.
+ *           → catches the rename and the parameter removal not carried over.
+ *   TSD-02  A block documenting AT LEAST one parameter must document them ALL.
+ *           → catches the parameter added without updating the block. Deliberately mute
+ *             on blocks documenting no parameter: partial documentation is a defect,
+ *             not documenting is a choice MH-01 handles elsewhere.
+ *   TSD-03  A `@throws` requires a `throw` in the function body.
+ *           → catches the documented exception that no longer exists.
+ *   TSD-04  The baseline must SHRINK. An entry whose violation has vanished is an ERROR
+ *           until it is removed from the baseline.
+ *           → otherwise a baseline is a permit, not a debt register. Same reasoning as
+ *             MH-02 in `check-module-headers.cjs`.
+ *   TSD-05  A top-level export must carry a TSDoc block.
+ *           → catches the export published WITHOUT a word of documentation, and forbids
+ *             creating new ones. Detail and rationale in the next §.
+ *   TSD-06  An `@example` cannot name a symbol that exists nowhere.
+ *           → catches the copy-pastable ghost class. Detail in § TSD-06.
+ *   TSD-07  A `{@link …}` cannot designate a target that exists nowhere.
+ *           → same class as TSD-06, on the other half of TSDoc. Detail in § TSD-07.
  *
- * ## TSD-05 — pourquoi une règle ici, et pas un compteur ailleurs
+ * ## TSD-05 — why a rule here, and not a counter elsewhere
  *
- * La roadmap de la refonte V3 chiffrait ce gisement à « ~173 exports manquants, 89-92 % de
- * couverture, 1 582 blocs existants ». **Aucun instrument de ce dépôt ne produisait ces trois
- * chiffres**, et le « ~173 » a servi quatre fois à dimensionner une sous-tâche avant d'être
- * retiré (mode d'échec n° 5 de `CLAUDE.md` : un chiffre qu'on ne peut pas re-mesurer ne se
- * périme pas, il se fossilise — et il fait autorité d'autant plus qu'il est précis). TSD-05
- * est ce qui remplace ces trois chiffres : la liste **nominative**, réimprimée à chaque run.
- * La mesure réelle, au premier run, a donné **199** — ni 173, ni les ~255 qu'une approximation
- * par regex suggérait.
+ * The V3 overhaul's plan priced this pool at "~173 missing exports, 89-92 % coverage,
+ * 1,582 existing blocks". **No instrument in this repo produced those three numbers**,
+ * and the "~173" served four times to size a sub-task before being withdrawn (a number
+ * that cannot be re-measured does not expire, it fossilizes — and it carries authority
+ * in proportion to its precision). TSD-05 is what replaces those three numbers: the
+ * **nominative** list, reprinted at every run. The real measurement, at the first run,
+ * gave **199** — neither 173 nor the ~255 a regex approximation suggested.
  *
- * **Deux populations, et elles ne coûtent pas la même chose.** La distinction est écrite ici
- * parce que le « ~173 » les confondait, ce qui rendait la sous-tâche indécoupable :
+ * **Two populations, and they do not cost the same.** The distinction is written here
+ * because the "~173" conflated them, which made the sub-task uncuttable:
  *
- *   - **surface publiée** — les fichiers que la carte `exports` d'un `package.json` rend
- *     atteignables, **jokers compris** (`"./capabilities/*"` publie TOUT le sous-arbre : un
- *     intégrateur peut importer chacun de ces fichiers). Un TSDoc manquant y est **livré**,
- *     et son lecteur est extérieur au dépôt — il ne peut pas constater la dérive. C'est
- *     l'argument de B-63, un étage plus bas. **15 exports** y sont nus.
- *   - **le reste de `src/`** — un coût interne, réel mais sans lecteur externe.
+ *   - **published surface** — the files a `package.json`'s `exports` map makes
+ *     reachable, **wildcards included** (`"./capabilities/*"` publishes the WHOLE
+ *     subtree: an integrator can import each of those files). A missing TSDoc there is
+ *     **shipped**, and its reader is outside the repo — they cannot notice the drift.
+ *     It is the same argument, one storey down. **15 exports** are bare there.
+ *   - **the rest of `src/`** — an internal cost, real but with no external reader.
  *
- * La sortie sépare les deux et **drague la publiée d'abord**. ⚠️ Le plan initial disait
- * « `utils/` d'abord (52 %, 65 exports) » : cet ordre découlait du chiffre retiré, pas d'une
- * décision. Si `utils/` est sur la surface publiée, il remonte de lui-même.
+ * The output separates the two and **drains the published one first**. ⚠️ The initial
+ * plan said "`utils/` first (52 %, 65 exports)": that order derived from the withdrawn
+ * number, not from a decision. If `utils/` is on the published surface, it rises on its
+ * own.
  *
- * **Pas de pourcentage comme cliquet.** Le motif est celui de
- * `check-namespace-typing-coverage.cjs`, et il est plus fort ici : un pourcentage monte quand
- * on RETIRE une clé, et sur le TSDoc **le dénominateur n'est même pas stable** — supprimer un
- * `export` de baril ferait grimper le taux sans qu'une phrase soit écrite.
+ * **No percentage as a ratchet.** The rationale is that of
+ * `check-namespace-typing-coverage.cjs`, and it is stronger here: a percentage climbs
+ * when a key is REMOVED, and on TSDoc **the denominator is not even stable** — deleting
+ * a barrel `export` would raise the rate without a sentence being written.
  *
- * **Le cliquet est TSD-04, tel quel.** ⚠️ La spécification écrite dans la roadmap annonçait un
- * `TSD-05a` (« un export absent de la baseline doit porter un bloc ») et un `TSD-05b` (« la
- * baseline ne peut que rétrécir »). À l'écriture, les deux se sont révélés **déjà là** :
- * TSD-05a est le mécanisme de baseline lui-même, et TSD-05b **est** TSD-04, qui opère sur
- * l'ensemble des règles sans en connaître aucune. Les dédoubler aurait créé deux autorités
- * pour un seul invariant. Une règle, pas trois — et la roadmap est corrigée dans le même
- * commit, pour que la spécification et le code ne divergent pas dès le premier jour.
+ * **The ratchet is TSD-04, as-is.** ⚠️ The written specification announced a `TSD-05a`
+ * ("an export absent from the baseline must carry a block") and a `TSD-05b` ("the
+ * baseline can only shrink"). At writing time, both turned out to be **already there**:
+ * TSD-05a is the baseline mechanism itself, and TSD-05b **is** TSD-04, which operates
+ * over all rules without knowing any. Doubling them would have created two authorities
+ * for one invariant. One rule, not three — and the written spec was corrected in the
+ * same commit, so specification and code do not diverge from day one.
  *
- * **Ce que TSD-05 ne juge pas** : la PRÉSENCE d'un bloc, pas sa qualité. Un bloc ne contenant
- * qu'un « TODO » satisfait la règle. C'est la même frontière que partout ici.
+ * **What TSD-05 does not judge**: a block's PRESENCE, not its quality. A block holding
+ * only a "TODO" satisfies the rule. Same boundary as everywhere here.
  *
- * ## TSD-06 — la « surface réelle » comme oracle, et pourquoi il en faut DEUX
+ * ## TSD-06 — the "real surface" as oracle, and why it takes TWO
  *
- * L'en-tête de `validate-docs-examples.cjs` dit depuis le S14 que sa deny-list ne voit qu'un
- * fantôme *une fois qu'on lui a écrit la règle*, et que **dériver de la surface réelle vaudrait
- * mieux**. B-75 a montré le coût de ce trou : un `@example` de `core-module.contract.ts`
- * documentait `new POIModule()` — classe dissoute au S9 — sur du code **publié sur npm**.
+ * The header of `validate-docs-examples.cjs` has long said its deny-list only sees a
+ * ghost *once the rule has been written for it*, and that **deriving from the real
+ * surface would be better**. The cost of that hole is measured: an `@example` of
+ * `core-module.contract.ts` documented `new POIModule()` — a class dissolved long
+ * before — on code **published on npm**.
  *
- * ⚠️ **Le premier essai a été REFUSÉ sur mesure, et il avait raison de l'être.** Prendre le
- * manifeste de surface (`API_SURFACE.txt`) comme oracle unique donnait **3 faux positifs pour
- * 0 vrai** : `StorageHelper` et `LayersDB` sont **réels mais NON exportés**, donc absents d'un
- * manifeste qui ne rend que l'exporté ; `MyDecoder` est un **placeholder**. Une gate qu'il faut
- * faire taire trois fois le premier jour n'est pas une gate.
+ * ⚠️ **The first attempt was REFUSED on measurement, and rightly so.** Taking the
+ * surface manifest (`API_SURFACE.txt`) as the sole oracle gave **3 false positives for
+ * 0 true**: `StorageHelper` and `LayersDB` are **real but NOT exported**, hence absent
+ * from a manifest that only renders the exported; `MyDecoder` is a **placeholder**. A
+ * gate that must be silenced three times on day one is not a gate.
  *
- * **Ce qui a changé la décision : un SECOND oracle.** Un symbole déclaré quelque part dans les
- * sources — exporté ou non — est réel. Les deux ensemble discriminent les trois cas :
+ * **What changed the decision: a SECOND oracle.** A symbol declared anywhere in the
+ * sources — exported or not — is real. The two together discriminate the three cases:
  *
- *   | Dans le manifeste | Déclaré à l'AST | Verdict                                  |
- *   | ----------------- | --------------- | ---------------------------------------- |
- *   | oui               | —               | exporté — rien à dire                    |
- *   | non               | oui             | **privé** — légitime dans un doc interne |
- *   | non               | non             | **FANTÔME** — TSD-06                     |
+ *   | In the manifest | Declared in AST | Verdict                                   |
+ *   | --------------- | --------------- | ----------------------------------------- |
+ *   | yes             | —               | exported — nothing to say                 |
+ *   | no              | yes             | **private** — legitimate in internal docs |
+ *   | no              | no              | **GHOST** — TSD-06                        |
  *
- * ⚠️ **Et l'AST SEUL ne suffit pas non plus** — mesuré : **1 571 des 4 233** symboles du
- * manifeste ne sont pas trouvés par cette passe (membres de namespace, ré-exports, propriétés
- * d'objets exportés). L'utiliser seul produisait **7 faux fantômes** dont `COG`, `Geocoding` et
- * `FlatGeobuf`. Les deux oracles se compensent, aucun ne remplace l'autre.
+ * ⚠️ **And the AST ALONE is not enough either** — measured: **1,571 of the 4,233**
+ * manifest symbols are not found by that pass (namespace members, re-exports,
+ * properties of exported objects). Using it alone produced **7 false ghosts**
+ * including `COG`, `Geocoding` and `FlatGeobuf`. The two oracles compensate each
+ * other; neither replaces the other.
  *
- * **Placeholders.** Un exemple a le droit de nommer une classe que le LECTEUR doit écrire
- * (`registerDecoder("my-format", new MyDecoder())`). L'exemption est une **convention de
- * nommage** — préfixe `My` / `Your` / `Custom` / `Sample` / `Example` — et non une liste de
- * symboles : une liste nominative survivrait à son motif, c'est la leçon de B-63.
+ * **Placeholders.** An example is allowed to name a class the READER is meant to write
+ * (`registerDecoder("my-format", new MyDecoder())`). The exemption is a **naming
+ * convention** — `My` / `Your` / `Custom` / `Sample` / `Example` prefix — and not a
+ * symbol list: a nominative list would outlive its rationale; that is the dead-citation
+ * lesson.
  *
- * ⚠️ **La règle vit ICI et pas dans `validate-docs-examples.cjs`**, alors que c'est là que la
- * classe a été trouvée. Motif mesuré : cette gate parcourt **déjà** les 847 fichiers en AST
- * (0,5 s) ; l'autre est une passe regex de 0,06 s. Y greffer un second parcours complet aurait
- * multiplié son coût par dix pour refaire un travail déjà fait.
+ * ⚠️ **The rule lives HERE and not in `validate-docs-examples.cjs`**, even though that
+ * is where the class was found. Measured rationale: this gate **already** walks the 847
+ * files in AST (0.5 s); the other is a 0.06 s regex pass. Grafting a second full walk
+ * onto it would have multiplied its cost tenfold to redo work already done.
  *
- * ## Périmètre de TSD-06 — deux formes, et c'est MESURÉ suffisant
+ * ## TSD-07 — the `{@link}` reference, and why it takes a THIRD oracle
  *
- * Elle ne lit que `new X()` et `X.method()`. Cette borne n'est pas une prudence de principe :
- * un relevé des cinq autres formes que peut prendre un nom PascalCase dans les 106 `@example`
- * rend **0 fantôme**, le 30/07/2026 :
+ * A `{@link X}` is a reference the documentation tool turns into a LINK. When `X` does
+ * not exist, TypeDoc renders the bare text: the reader sees a word, not an error, and
+ * nothing in the chain says the reference is dead. The gate resolved none of these — a
+ * `grep -c '@link'` on this file returned **0**, while the sources carry hundreds.
  *
- *   | Forme                          | Symboles réels | Fantômes |
+ * ⚠️ **TSD-06's two oracles are NOT enough here, and that is measured, not assumed.** A
+ * `{@link}` legitimately designates a **module** —
+ * `{@link module:contracts/preset.contract}`,
+ * `{@link desktop-panel-theme.appendThemeToggleToTabs}` — and a module is neither an
+ * exported symbol nor a declaration. With the two oracles alone, the first measurement
+ * returned **10 unresolved targets of which 8 were perfectly alive modules**: a gate
+ * that would have had to be silenced eight times on day one, i.e. not a gate. The third
+ * oracle is the corpus's module list, derived from the files themselves.
+ *
+ * 🛑 **And the name splitting is the second thing that nearly lied.** A target splits
+ * on `.`, `#` and `(` to isolate its head — except a module of this repo is called
+ * `preset.contract`, and the naive split made it `preset`, hence an unknown module. The
+ * dot is ambiguous: it separates a member from its carrier AND it belongs to the file
+ * name. Resolution therefore tries the WHOLE target before splitting it.
+ *
+ * ✅ **What the first measurement returned, once the three oracles were in place: TWO
+ * real ghosts**, both in the core. `{@link setupUI}` designated a function named
+ * `setupUIKernel`; `{@link EXCLUSIVE_MODE_KEY}` designated a constant that **never
+ * existed** — and the paragraph right above the reference explains why it does not
+ * exist (a named constant would turn every write into a dynamic-key write, which the
+ * prototype-pollution gate rejects). The reference was the vestige of an explicitly
+ * abandoned choice, and it survived in a published `.d.ts`.
+ *
+ * 📌 **The register line said "there is nothing to fix, only something to keep from
+ * coming back": that was false, and only the gate could say so.** The class was
+ * believed purged; it carried two live instances.
+ *
+ * ## TSD-06's perimeter — two shapes, and that is MEASURED sufficient
+ *
+ * It only reads `new X()` and `X.method()`. This bound is not caution on principle: a
+ * census of the five other shapes a PascalCase name can take across the 106 `@example`
+ * blocks returns **0 ghosts**, on 2026-07-30:
+ *
+ *   | Shape                          | Real symbols   | Ghosts   |
  *   | ------------------------------ | -------------- | -------- |
- *   | `new X()`          **couvert** | 3              | **0**    |
- *   | `X.method()`       **couvert** | 32             | **0**    |
- *   | `X.PROPRIÉTÉ`                  | 14             | **0**    |
+ *   | `new X()`          **covered** | 3              | **0**    |
+ *   | `X.method()`       **covered** | 32             | **0**    |
+ *   | `X.PROPERTY`                   | 14             | **0**    |
  *   | `: X` / `as X`                 | 6              | **0**    |
  *   | `import { X }`                 | 3              | **0**    |
  *   | `implements` / `extends X`     | 1              | **0**    |
  *   | `f(X)` (argument)              | 1              | **0**    |
  *
- * **Et la forme non couverte la plus à risque est prise par une AUTRE gate** :
- * `import { X }` nommant un export inexistant, c'est `TS2305` — dans les `DEFECT_CODES` de
- * `typecheck-docs-examples.cjs`, avec `TS2307` pour le chemin de module. Élargir ici
- * dupliquerait un contrôle que le compilateur fait mieux.
+ * **And the riskiest uncovered shape is taken by ANOTHER gate**: `import { X }` naming
+ * a non-existent export is `TS2305` — in the `DEFECT_CODES` of
+ * `typecheck-docs-examples.cjs`, with `TS2307` for the module path. Widening here would
+ * duplicate a check the compiler does better.
  *
- * ⚠️ **Élargir aux positions de type (`: X`) serait un RECUL, et c'est mesuré aussi.** Les types
- * utilitaires de TypeScript — `Partial`, `Record`, `Omit`, `Pick`, `Readonly` — ne sont ni dans
- * le manifeste, ni déclarés dans les sources, ni des globals runtime. Ils tomberaient donc dans
- * les trois filtres et **rougiraient au premier `: Partial<X>` écrit**. La borne actuelle n'est
- * pas ce que la règle n'a pas eu le temps de faire : c'est là où elle cesse d'être juste.
+ * ⚠️ **Widening to type positions (`: X`) would be a REGRESSION, and that is measured
+ * too.** TypeScript's utility types — `Partial`, `Record`, `Omit`, `Pick`, `Readonly` —
+ * are neither in the manifest, nor declared in the sources, nor runtime globals. They
+ * would thus fall through all three filters and **redden at the first `: Partial<X>`
+ * written**. The current bound is not what the rule did not have time to do: it is
+ * where it stops being right.
  *
- * **Ce qui reste hors de portée pour de bon** : un fantôme cité dans la PROSE d'un TSDoc, hors
- * `@example`. C'est un autre corpus et un autre outil — `audit-report-freshness.cjs` sait déjà
- * traiter les chemins et symboles de prose, il n'est simplement pas branché sur le TSDoc.
+ * **What stays out of reach for good**: a ghost cited in a TSDoc's PROSE, outside
+ * `@example`. That is another corpus and another tool — `audit-report-freshness.cjs`
+ * already knows how to handle prose paths and symbols, it is simply not wired to TSDoc.
  *
- * **Ce qu'elle NE juge PAS, et ne jugera jamais : la véracité de la phrase.** « Met en cache
- * 5 minutes » sur une fonction qui en cache 10 est indiscernable, pour tout outil d'ici, d'une
- * phrase juste. C'est la limite structurelle de tout ce qui est « généré » — TypeDoc garantit
- * la **signature**, jamais la **phrase**. Cette moitié-là reste humaine et vit dans
- * `CLAUDE.md` §Fin de session.
+ * **What it does NOT judge, and never will: the sentence's truthfulness.** "Caches for
+ * 5 minutes" on a function that caches 10 is indistinguishable, for any tool here, from
+ * a right sentence. That is the structural limit of everything "generated" — TypeDoc
+ * guarantees the **signature**, never the **sentence**. That half stays human and lives
+ * in the project instructions' end-of-session rule.
  *
- * ## Ce qui n'est PAS couvert aujourd'hui, et pourquoi c'est dit plutôt que tu
+ * ## What is NOT covered today, and why it is said rather than silent
  *
- * - **`@returns` ↔ type de retour** : écarté de cette version. Le dépôt écrit largement
- *   `@returns` sur des fonctions `void` et l'inverse ; en faire une règle produirait un
- *   bruit qui noierait TSD-01, qui est le contrôle à haute valeur. À rouvrir avec une
- *   mesure, pas par principe.
- * - **`@example` qui compile** : c'est le contrôle le plus utile qui manque, et il n'est pas
- *   ici parce qu'il exige les `.d.ts` publiés et le moteur de `typecheck-docs-examples.cjs`.
- *   ⚠️ **137 `@example` vivent dans le code** (109 core, 21 plugins, 7 libs) et **aucun**
- *   n'est vérifié. C'est la suite immédiate de cette gate.
- * - **Chemins cités dans la prose TSDoc** : `audit-report-freshness.cjs` sait déjà le faire,
- *   il n'est simplement pas branché sur le TSDoc.
- * - **Les membres de classe et d'interface** : TSD-05 ne juge que les exports de **premier
- *   niveau**. Une méthode publique non documentée d'une classe exportée passe. Élargir est
- *   possible et multiplierait le gisement ; à faire avec une mesure préalable, comme ici.
+ * - **`@returns` ↔ return type**: set aside from this version. The repo widely writes
+ *   `@returns` on `void` functions and the reverse; making it a rule would produce
+ *   noise that would drown TSD-01, the high-value check. To reopen with a measurement,
+ *   not on principle.
+ * - **`@example` that compiles**: the most useful missing check, and it is not here
+ *   because it requires the published `.d.ts` and the `typecheck-docs-examples.cjs`
+ *   engine. ⚠️ **137 `@example` blocks live in the code** (109 core, 21 plugins,
+ *   7 libs) and **none** is verified. It is this gate's immediate sequel.
+ * - **Paths cited in TSDoc prose**: `audit-report-freshness.cjs` already knows how, it
+ *   is simply not wired to TSDoc.
+ * - **Class and interface members**: TSD-05 only judges **top-level** exports. An
+ *   undocumented public method of an exported class passes. Widening is possible and
+ *   would multiply the pool; to do with a prior measurement, as here.
  *
  * Usage:
  *   node scripts/check-tsdoc-conformity.cjs                  # gate (exit 1 si violation neuve)
@@ -187,14 +229,14 @@ const BASELINE = path.join(ROOT, "scripts", ".baselines", "tsdoc-conformity.json
 const VERBOSE = process.argv.includes("--verbose");
 const UPDATE = process.argv.includes("--update-baseline");
 
-/** Fichiers hors périmètre : les tests documentent leur intention, pas une API. */
+/** Out-of-perimeter files: tests document their intent, not an API. */
 const EXCLUDED = /(\/__tests__\/|\/__mocks__\/|\.test\.ts$|\.spec\.ts$|\.d\.ts$)/;
 
 // ---------------------------------------------------------------------------
-// Collecte des fichiers — par le registre, jamais par un chemin en dur.
+// File collection — through the registry, never a hard-coded path.
 // ---------------------------------------------------------------------------
 
-/** @returns {string[]} chemins absolus des `.ts` de `src/` de tous les paquets. */
+/** @returns {string[]} absolute paths of every package's `src/` `.ts` files. */
 function sourceFiles() {
     const out = [];
     for (const pkg of registry.all()) {
@@ -214,18 +256,19 @@ function walk(dir, out) {
 }
 
 /**
- * Les fichiers `src/` que la carte `exports` rend atteignables par un intégrateur — la
- * population « surface publiée » de TSD-05.
+ * The `src/` files the `exports` map makes reachable by an integrator — TSD-05's
+ * "published surface" population.
  *
- * La carte pointe vers `dist/`, qui n'existe pas sur un checkout propre : on la ramène à
- * `src/` par le layout de build (`dist/{types,esm}/X.{d.ts,js}` → `src/X.ts`). ⚠️ Le mapping
- * est **assertif** : s'il ne résout plus rien, la fonction JETTE au lieu de rendre un Set
- * vide. Une surface publiée vide ferait sortir TSD-05 vert en ayant classé tous les exports
- * « internes » — c'est-à-dire verte en n'ayant plus rien priorisé, la classe de défaut que
- * `probe-gate-visibility.cjs` surveille ailleurs. (Vue jeter par mutation du préfixe.)
+ * The map points at `dist/`, which does not exist on a clean checkout: it is folded back
+ * to `src/` through the build layout (`dist/{types,esm}/X.{d.ts,js}` → `src/X.ts`).
+ * ⚠️ The mapping is **assertive**: if it resolves nothing anymore, the function THROWS
+ * instead of returning an empty Set. An empty published surface would let TSD-05 go
+ * green having classified every export "internal" — i.e. green having prioritized
+ * nothing, the defect class `probe-gate-visibility.cjs` watches elsewhere. (Seen
+ * throwing by prefix mutation.)
  *
- * @returns {Set<string>} chemins absolus.
- * @throws {Error} si la carte `exports` ne résout plus aucun fichier source.
+ * @returns {Set<string>} absolute paths.
+ * @throws {Error} if the `exports` map no longer resolves any source file.
  */
 function publishedSurface() {
     const set = new Set();
@@ -245,9 +288,9 @@ function publishedSurface() {
             if (!rel.startsWith("src/")) continue;
 
             if (rel.includes("*")) {
-                // Un sous-chemin joker publie tout son sous-arbre. `"./capabilities/*"` du
-                // core rend chaque fichier de `src/capabilities/` importable — n'en compter
-                // qu'un serait faux dans l'autre sens.
+                // A wildcard subpath publishes its whole subtree. The core's
+                // `"./capabilities/*"` makes every file of `src/capabilities/` importable
+                // — counting only one would be wrong in the other direction.
                 const dir = path.join(pkg.absDir, rel.slice(0, rel.indexOf("*")));
                 if (fs.existsSync(dir)) {
                     const found = [];
@@ -276,9 +319,9 @@ function publishedSurface() {
 // ---------------------------------------------------------------------------
 
 /**
- * Les noms de paramètres d'une déclaration, en ignorant les patrons de déstructuration :
- * `function f({a, b})` n'a pas de nom à comparer, et le TSDoc le documente alors par
- * `@param options.a`. Les compter produirait un faux positif à chaque fois.
+ * A declaration's parameter names, ignoring destructuring patterns:
+ * `function f({a, b})` has no name to compare, and the TSDoc then documents it as
+ * `@param options.a`. Counting them would produce a false positive every time.
  *
  * @returns {{names: string[], hasBindingPattern: boolean}}
  */
@@ -292,7 +335,7 @@ function paramNames(node) {
     return { names, hasBindingPattern };
 }
 
-/** Vrai si le corps contient un `throw`, y compris dans une closure imbriquée. */
+/** True if the body contains a `throw`, including inside a nested closure. */
 function bodyThrows(node) {
     if (!node.body) return false;
     let found = false;
@@ -308,7 +351,7 @@ function bodyThrows(node) {
     return found;
 }
 
-/** Les déclarations que l'on sait apparier à un bloc TSDoc. */
+/** The declarations we know how to pair with a TSDoc block. */
 function isDocumentable(n) {
     return (
         ts.isFunctionDeclaration(n) ||
@@ -321,10 +364,10 @@ function isDocumentable(n) {
 
 // ── TSD-05 ──────────────────────────────────────────────────────────────────
 //
-// Les natures d'export que TSD-05 juge. `ExportDeclaration` (`export { X } from "…"`) et
-// `export *` en sont ABSENTS à dessein : ils ne déclarent rien, ils réexpédient. Exiger un
-// bloc sur un baril de réexport ferait recopier la documentation à côté de sa source — le
-// doublon exact que la refonte V3 supprime par ailleurs.
+// The export natures TSD-05 judges. `ExportDeclaration` (`export { X } from "…"`) and
+// `export *` are ABSENT on purpose: they declare nothing, they forward. Requiring a
+// block on a re-export barrel would copy documentation next to its source — the exact
+// duplication the V3 overhaul removes elsewhere.
 const EXPORTED_DECL_KINDS = [
     ts.isFunctionDeclaration,
     ts.isClassDeclaration,
@@ -334,21 +377,21 @@ const EXPORTED_DECL_KINDS = [
     ts.isVariableStatement,
 ];
 
-/** Vrai si la déclaration porte un bloc TSDoc — sa PRÉSENCE, jamais sa qualité. */
+/** True if the declaration carries a TSDoc block — its PRESENCE, never its quality. */
 function hasDocBlock(node) {
     return (ts.getJSDocCommentsAndTags(node) || []).some((d) => ts.isJSDoc(d));
 }
 
-/** Vrai si le statement porte le modificateur `export`. */
+/** True if the statement carries the `export` modifier. */
 function isExported(node) {
     if (!ts.canHaveModifiers(node)) return false;
     return (ts.getModifiers(node) || []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
 }
 
 /**
- * Le ou les noms déclarés par un statement exporté. Un `export const a = 1, b = 2;` en
- * déclare deux — les fondre en un seul symbole rendrait la liste nominative incomplète, et
- * une liste nominative incomplète est le défaut qu'elle est censée fermer.
+ * The name(s) declared by an exported statement. An `export const a = 1, b = 2;`
+ * declares two — merging them into one symbol would make the nominative list
+ * incomplete, and an incomplete nominative list is the defect it is meant to close.
  *
  * @returns {string[]}
  */
@@ -366,10 +409,10 @@ function exportedNames(node, sf) {
 
 const MANIFEST = docsPaths.reference("API_SURFACE.txt");
 
-/** Convention de placeholder : un nom que le LECTEUR est censé écrire lui-même. */
+/** Placeholder convention: a name the READER is meant to write themselves. */
 const PLACEHOLDER_RE = /^(My|Your|Custom|Sample|Example)[A-Z]/;
 
-/** Globals JS/DOM — un exemple a le droit de les nommer. */
+/** JS/DOM globals — an example is allowed to name them. */
 const HOST_GLOBALS = new Set([
     ...Object.getOwnPropertyNames(globalThis),
     "CustomEvent",
@@ -398,12 +441,12 @@ const HOST_GLOBALS = new Set([
 ]);
 
 /**
- * Oracle 1 — les symboles que le manifeste de surface rend, donc EXPORTÉS.
+ * Oracle 1 — the symbols the surface manifest renders, hence EXPORTED.
  *
- * Absent = la gate ne peut pas conclure, et elle le dit : sans manifeste, tout symbole privé
- * deviendrait un faux fantôme. Mieux vaut ne pas juger que juger à l'aveugle.
+ * Absent = the gate cannot conclude, and it says so: without the manifest, every private
+ * symbol would become a false ghost. Better not to judge than to judge blind.
  *
- * @returns {Set<string>|null} `null` si le manifeste est absent.
+ * @returns {Set<string>|null} `null` if the manifest is absent.
  */
 function readManifestSymbols() {
     if (!fs.existsSync(MANIFEST)) return null;
@@ -414,7 +457,7 @@ function readManifestSymbols() {
     return out;
 }
 
-/** Collecte les noms déclarés d'un fichier — oracle 2 (le PRIVÉ, que le manifeste ignore). */
+/** Collects a file's declared names — oracle 2 (the PRIVATE, which the manifest ignores). */
 function collectDeclared(sf, into) {
     const visit = (n) => {
         if (
@@ -432,7 +475,103 @@ function collectDeclared(sf, into) {
     visit(sf);
 }
 
-/** Les symboles PascalCase qu'un `@example` emploie comme constructeur ou porteur de méthode. */
+/**
+ * A file's `{@link …}` targets, with their line.
+ *
+ * The recognized shape covers the corpus's three spellings: `{@link X}`,
+ * `{@link X | text}` and `{@link X text}`. The `module:` prefix and the quotes are
+ * removed — writing conventions, not parts of the name.
+ *
+ * @param {string} text Full source of the file.
+ * @returns {{target: string, line: number}[]} One entry per reference.
+ */
+function linkTargets(text) {
+    const out = [];
+    // 🛑 THE LINE CONTINUATION IS PART OF THE PATTERN, and omitting it produced a false
+    // positive at the very first run. Prettier breaks a long TSDoc after `{@link`, and
+    // the target ends up on the next line, behind the border asterisk. A naive `\s+`
+    // crosses the newline and captures that asterisk as if it were the target. Exactly
+    // the class this repo has already paid for twice — a pattern that "silently stops
+    // matching" after a reformat — and it reproduced here, in the very instrument that
+    // guards it.
+    //
+    // ⚠️ The skip is done in CODE and not in the regex. Any regular spelling of "spaces,
+    // then maybe a comment border, then spaces" is ambiguous, hence refused by the rule
+    // hunting combinatorial-blowup regexes — rightly. Advancing by hand is linear by
+    // construction and reads better.
+    for (const m of text.matchAll(/\{@link\b/g)) {
+        let k = m.index + m[0].length;
+        while (k < text.length && (text[k] === " " || text[k] === "\t")) k++;
+        if (text[k] === "\r") k++;
+        if (text[k] === "\n") {
+            k++;
+            while (k < text.length && (text[k] === " " || text[k] === "\t")) k++;
+            if (text[k] === "*") k++;
+            while (k < text.length && (text[k] === " " || text[k] === "\t")) k++;
+        }
+        let end = k;
+        while (end < text.length && !" \t\r\n}|".includes(text[end])) end++;
+        const target = text
+            .slice(k, end)
+            .replace(/^module:/, "")
+            .replace(/^["']|["']$/g, "");
+        if (!target || target.startsWith("http:") || target.startsWith("https:")) continue;
+        out.push({ target, line: text.slice(0, m.index).split("\n").length });
+    }
+    return out;
+}
+
+/**
+ * Is a reference resolved by one of the three oracles?
+ *
+ * The try order is not indifferent: the WHOLE target first (a module can carry a dot in
+ * its name), then its head once split on `.`, `#` and `(`, then the last segment of its
+ * path (`a/b/c` → `c`). Splitting first would make `preset.contract` pass for an
+ * unknown `preset`.
+ *
+ * @param {string} target Cleaned target of the reference.
+ * @param {{exported: Set<string>, declared: Set<string>, modules: Set<string>}} o The oracles.
+ * @returns {boolean} true when the target designates something real.
+ */
+function linkResolves(target, o) {
+    const candidates = [target];
+
+    // A reference to a NEIGHBOURING module is written as a relative path, with its
+    // extension — `./convert.js`, `../kernel/map/facade.ts`. The module name is its last
+    // segment without extension; without this unfolding, ten perfectly alive references
+    // passed for dead.
+    const lastSegment = target
+        .replace(/^\.{1,2}\//, "")
+        .split(/[#(]/)[0]
+        .split("/")
+        .pop()
+        .replace(/\.[cm]?[jt]s$/, "");
+    // ⚠️ The dot is AMBIGUOUS in a last segment: it separates a member from its module
+    // (`data-origins.publishDataOrigins`) AND it belongs to some file names
+    // (`preset.contract`). We therefore offer the WHOLE segment then each of its
+    // prefixes, longest to shortest — the longest wins, which preserves dotted names.
+    if (lastSegment) {
+        const parts = lastSegment.split(".");
+        for (let i = parts.length; i > 0; i--) candidates.push(parts.slice(0, i).join("."));
+    }
+
+    const head = target.split(/[.#(]/)[0];
+    if (head) candidates.push(head);
+    for (const c of [...candidates]) {
+        const last = c.split("/").pop();
+        if (last && last !== c) candidates.push(last);
+    }
+    return candidates.some(
+        (c) =>
+            HOST_GLOBALS.has(c) ||
+            o.exported.has(c) ||
+            o.declared.has(c) ||
+            o.modules.has(c) ||
+            PLACEHOLDER_RE.test(c)
+    );
+}
+
+/** The PascalCase symbols an `@example` uses as constructor or method carrier. */
 function exampleSymbols(code) {
     const out = new Set();
     for (const m of code.matchAll(/\bnew\s+([A-Z][A-Za-z0-9_]*)\s*\(/g)) out.add(m[1]);
@@ -441,7 +580,7 @@ function exampleSymbols(code) {
     return out;
 }
 
-/** Le libellé de nature affiché dans le détail — stable, il entre dans la clé de baseline. */
+/** The nature label shown in the detail — stable, it enters the baseline key. */
 function declLabel(node) {
     if (ts.isFunctionDeclaration(node)) return "fonction";
     if (ts.isClassDeclaration(node)) return "classe";
@@ -453,10 +592,10 @@ function declLabel(node) {
 }
 
 /**
- * Analyse un fichier et rend ses violations.
+ * Analyses a file and returns its violations.
  *
- * @param {string} absFile - Chemin absolu du `.ts` à analyser.
- * @param {Set<string>} published - Surface publiée, pour la population de TSD-05.
+ * @param {string} absFile - Absolute path of the `.ts` to analyse.
+ * @param {Set<string>} published - Published surface, for TSD-05's population.
  * @returns {{rule: string, file: string, line: number, symbol: string, detail: string, published?: boolean}[]}
  */
 function analyse(absFile, published, oracles) {
@@ -466,18 +605,18 @@ function analyse(absFile, published, oracles) {
     const found = [];
     const isPublished = published.has(absFile);
 
-    // TSD-05 — un export de premier niveau sans bloc TSDoc. Passe séparée sur les
-    // statements de tête : le `visit` récursif ci-dessous descend dans les corps de
-    // fonction, où un `export` ne peut pas vivre.
+    // TSD-05 — a top-level export without a TSDoc block. Separate pass over the head
+    // statements: the recursive `visit` below descends into function bodies, where an
+    // `export` cannot live.
     //
-    // ⚠️ Le regroupement par NOM est load-bearing, pas une optimisation. Une fonction
-    // surchargée s'écrit en N signatures + 1 implémentation, toutes `export function f`, et
-    // la convention TypeScript — celle que TypeDoc suit pour son rendu — place le bloc sur
-    // UNE seule d'entre elles. Juger chaque déclaration séparément accusait `domCreate`
-    // (3 déclarations, 1 bloc) de DEUX violations inexistantes, et c'est un doublon de clé
-    // de baseline qui l'a révélé. Même raisonnement pour la fusion de déclarations
-    // d'interface. La règle est donc : pour un nom exporté, AU MOINS une déclaration porte
-    // un bloc.
+    // ⚠️ The grouping by NAME is load-bearing, not an optimization. An overloaded
+    // function is written as N signatures + 1 implementation, all `export function f`,
+    // and the TypeScript convention — the one TypeDoc follows for its rendering — puts
+    // the block on ONE of them only. Judging each declaration separately accused
+    // `domCreate` (3 declarations, 1 block) of TWO non-existent violations, and a
+    // baseline key duplicate is what revealed it. Same reasoning for interface
+    // declaration merging. The rule is therefore: for an exported name, AT LEAST one
+    // declaration carries a block.
     const groups = new Map();
     for (const st of sf.statements) {
         if (!EXPORTED_DECL_KINDS.some((k) => k(st))) continue;
@@ -498,11 +637,11 @@ function analyse(absFile, published, oracles) {
             file: rel,
             line: g.line,
             symbol: name,
-            // La population entre dans le détail, donc dans la clé de baseline : si un
-            // export interne non documenté devient PUBLIÉ (la carte `exports` change), sa
-            // clé change, l'ancienne devient périmée et TSD-04 rougit. C'est voulu — la
-            // promotion d'un export nu au rang de surface livrée est exactement
-            // l'événement qu'on veut voir.
+            // The population enters the detail, hence the baseline key: if an
+            // undocumented internal export becomes PUBLISHED (the `exports` map
+            // changes), its key changes, the old one goes stale and TSD-04 reddens.
+            // Intended — the promotion of a bare export to shipped surface is exactly
+            // the event we want to see.
             detail: `export \`${name}\` (${g.label}) sans bloc TSDoc — ${
                 isPublished ? "surface publiée" : "interne"
             }`,
@@ -510,9 +649,9 @@ function analyse(absFile, published, oracles) {
         });
     }
 
-    // TSD-06 — un `@example` nommant un symbole absent des DEUX oracles.
-    // `oracles` vaut `null` quand le manifeste est introuvable : la règle se tait alors
-    // plutôt que de transformer tout symbole privé en faux fantôme.
+    // TSD-06 — an `@example` naming a symbol absent from BOTH oracles.
+    // `oracles` is `null` when the manifest cannot be found: the rule then stays silent
+    // rather than turning every private symbol into a false ghost.
     if (oracles) {
         for (const ex of extractTsdocExamples(text)) {
             for (const name of exampleSymbols(ex.code)) {
@@ -530,6 +669,22 @@ function analyse(absFile, published, oracles) {
         }
     }
 
+    // TSD-07 — a `{@link}` whose target is neither a symbol, nor a module, nor a
+    // global. Same guard as TSD-06: without the manifest, the rule stays silent rather
+    // than inventing.
+    if (oracles) {
+        for (const link of linkTargets(text)) {
+            if (linkResolves(link.target, oracles)) continue;
+            found.push({
+                rule: "TSD-07",
+                file: rel,
+                line: link.line,
+                symbol: link.target,
+                detail: `{@link ${link.target}} ne désigne ni un symbole exporté, ni une déclaration des sources, ni un module du corpus — renvoi mort`,
+            });
+        }
+    }
+
     const visit = (node) => {
         if (isDocumentable(node)) {
             const tags = ts.getJSDocTags(node) || [];
@@ -541,15 +696,15 @@ function analyse(absFile, published, oracles) {
                 const { names, hasBindingPattern } = paramNames(node);
 
                 const paramTags = tags.filter((t) => t.tagName.text === "param");
-                // Un `@param options.a` documente une propriété, pas un paramètre : on ne
-                // retient que le segment racine, et on ignore les formes pointées quand la
-                // signature porte un patron de déstructuration.
+                // A `@param options.a` documents a property, not a parameter: we keep
+                // only the root segment, and ignore dotted forms when the signature
+                // carries a destructuring pattern.
                 const documented = paramTags
                     .map((t) => (t.name && t.name.getText ? t.name.getText(sf) : null))
                     .filter(Boolean);
                 const rootDocumented = [...new Set(documented.map((d) => d.split(".")[0]))];
 
-                // TSD-01 — un `@param` qui ne nomme aucun paramètre réel.
+                // TSD-01 — a `@param` naming no real parameter.
                 if (!hasBindingPattern) {
                     for (const d of rootDocumented) {
                         if (!names.includes(d)) {
@@ -562,7 +717,7 @@ function analyse(absFile, published, oracles) {
                             });
                         }
                     }
-                    // TSD-02 — documentation partielle des paramètres.
+                    // TSD-02 — partial parameter documentation.
                     if (rootDocumented.length > 0) {
                         const missing = names.filter((n) => !rootDocumented.includes(n));
                         if (missing.length) {
@@ -599,12 +754,12 @@ function analyse(absFile, published, oracles) {
 }
 
 // ---------------------------------------------------------------------------
-// Baseline — la clé ignore le NUMÉRO DE LIGNE, à dessein.
+// Baseline — the key ignores the LINE NUMBER, on purpose.
 //
-// Une clé qui porte la ligne se périme au premier ajout d'import au-dessus, et la gate
-// rougit alors sur une violation qu'elle avait déjà tolérée. La clé est donc
-// `règle|fichier|symbole|détail` : elle survit au déplacement et ne survit pas à la
-// correction, ce qui est exactement ce qu'on veut d'un registre de dette.
+// A key carrying the line goes stale at the first import added above, and the gate then
+// reddens on a violation it had already tolerated. The key is therefore
+// `rule|file|symbol|detail`: it survives a move and does not survive the fix, which is
+// exactly what one wants from a debt register.
 // ---------------------------------------------------------------------------
 
 const keyOf = (v) => `${v.rule}|${v.file}|${v.symbol}|${v.detail}`;
@@ -619,8 +774,8 @@ function readBaseline() {
 function main() {
     const files = sourceFiles();
     const published = publishedSurface();
-    // Oracle 2 (déclarations) : un seul parcours, réutilisé — la passe AST a lieu de toute
-    // façon ci-dessous. Oracle 1 (manifeste) : une lecture de fichier.
+    // Oracle 2 (declarations): a single walk, reused — the AST pass happens below
+    // anyway. Oracle 1 (manifest): one file read.
     const exportedSyms = readManifestSymbols();
     let oracles = null;
     if (exportedSyms) {
@@ -631,9 +786,13 @@ function main() {
                 declared
             );
         }
-        oracles = { exported: exportedSyms, declared };
+        // Oracle 3 (modules) — derived from the corpus files, never from a written
+        // list: a renamed module must bring down the references naming it, not linger
+        // in a list that outlives its subject.
+        const modules = new Set(files.map((f) => path.basename(f).replace(/\.[cm]?ts$/, "")));
+        oracles = { exported: exportedSyms, declared, modules };
     }
-    // `files.flatMap(analyse)` passerait l'INDEX en 2e argument — la lambda est explicite.
+    // `files.flatMap(analyse)` would pass the INDEX as 2nd argument — the lambda is explicit.
     const violations = files.flatMap((f) => analyse(f, published, oracles));
     const seen = new Set(violations.map(keyOf));
 
@@ -667,8 +826,8 @@ function main() {
 
     if (fresh.length) {
         console.log(`❌  [TSDOC] ${fresh.length} violation(s) NEUVE(S) :\n`);
-        // Surface publiée en tête : un TSDoc manquant y est livré à un lecteur qui ne peut
-        // pas constater la dérive. L'ordre de la sortie EST la priorité de drainage.
+        // Published surface first: a missing TSDoc there is shipped to a reader who
+        // cannot notice the drift. The output order IS the drainage priority.
         const ordered = [...fresh].sort((a, b) => (b.published ? 1 : 0) - (a.published ? 1 : 0));
         for (const v of ordered) {
             const tag = v.published ? " ⟨surface publiée⟩" : "";
@@ -697,9 +856,9 @@ function main() {
             `✅  [TSDOC] conformité TSDoc — 0 violation neuve.\n` +
                 `    ${files.length} fichier(s) analysé(s) · ${violations.length} entrée(s) en baseline (décroissantes).`
         );
-        // Anti-gate-vide : on imprime le corpus RÉELLEMENT lu, pas seulement le verdict.
-        // C'est ce décompte qui remplace les « 89-92 % » et « ~173 » retirés de la roadmap —
-        // et il est réimprimé à chaque run, donc il ne peut pas se fossiliser.
+        // Anti-empty-gate: we print the corpus ACTUALLY read, not just the verdict.
+        // This tally is what replaces the withdrawn "89-92 %" and "~173" — and it is
+        // reprinted at every run, so it cannot fossilize.
         console.log(
             `    TSD-05 — ${published.size} fichier(s) sur la surface publiée · ` +
                 `${nu.length} export(s) sans bloc TSDoc, dont ${nuPub} publié(s).`

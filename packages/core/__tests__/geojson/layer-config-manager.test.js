@@ -17,7 +17,7 @@ describe("geojson/layer-config-manager", () => {
 
     afterEach(() => {
         delete g.GeoLeaf;
-        // S5.2 — `loadDefaultStyle` now goes through the shared style cache, which is
+        // `loadDefaultStyle` now goes through the shared style cache, which is
         // module-global and outlives a test. Without this, a case that seeds `p1:lyr1:def`
         // makes the next one pass on the cache instead of on the behaviour it asserts.
         styleCache.clear();
@@ -156,7 +156,7 @@ describe("geojson/layer-config-manager", () => {
         });
 
         it("returns style JSON when fetch succeeds", async () => {
-            // ⚠️ This fixture was `{ color: "#f00", weight: 2 }` until S5.2. That is not a style
+            // ⚠️ This fixture was `{ color: "#f00", weight: 2 }`. That is not a style
             // this codebase can consume: `_applyPreloadedStyle` reads `defaultStyle` or `style`,
             // and would have found neither. The test asserted the pass-through of a shape
             // production cannot use — which is precisely why it never noticed that this path
@@ -193,7 +193,7 @@ describe("geojson/layer-config-manager", () => {
     });
 
     /**
-     * S5.2 — the boot path fetches each style ONCE.
+     * The boot path fetches each style ONCE.
      *
      * Two independent paths ask for the same style file at boot: the loader preloads it
      * (`_preloadStyle` → `loadDefaultStyle`) and the theme engine applies it
@@ -207,7 +207,7 @@ describe("geojson/layer-config-manager", () => {
      * those silently restores the double fetch without failing anything — which is exactly
      * what this test exists to catch.
      */
-    describe("style fetch is shared with the theme path (S5.2)", () => {
+    describe("style fetch is shared with the theme path", () => {
         const styleFile = { style: { color: "#ff0000", weight: 2 } };
         const layerDef = {
             styles: {

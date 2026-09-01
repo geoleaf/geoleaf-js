@@ -17,7 +17,7 @@ describe("basemaps/providers (Phase 5.27)", () => {
         expect(DEFAULT_BASELAYERS.satellite).toBeDefined();
     });
 
-    it("DEFAULT_BASELAYERS entries include a tiles array (Sprint 3)", () => {
+    it("DEFAULT_BASELAYERS entries include a tiles array", () => {
         expect(Array.isArray(DEFAULT_BASELAYERS.street.tiles)).toBe(true);
         expect(DEFAULT_BASELAYERS.street.tiles.length).toBeGreaterThan(0);
         expect(Array.isArray(DEFAULT_BASELAYERS.topo.tiles)).toBe(true);
@@ -77,7 +77,7 @@ describe("basemaps/providers (Phase 5.27)", () => {
     });
 });
 
-describe("normalizeTilesArray (Sprint 3)", () => {
+describe("normalizeTilesArray", () => {
     it("returns tiles array when definition.tiles is present", () => {
         const tiles = ["https://a.tile.example/{z}/{x}/{y}.png"];
         expect(normalizeTilesArray({ tiles })).toEqual(tiles);

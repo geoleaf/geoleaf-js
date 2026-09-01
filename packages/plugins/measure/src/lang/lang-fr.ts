@@ -16,7 +16,7 @@ const lang_fr: Record<string, string> = {
     // Tools
     "measure.tool.distance": "Mesure distance",
     "measure.tool.distance.hint":
-        "Cliquez pour poser des sommets. Double-clic ou Espace pour terminer.",
+        "Cliquez pour poser des sommets. Re-cliquez le dernier, double-clic ou Espace pour terminer.",
     "measure.tool.rect": "Surface — rectangle",
     "measure.tool.rect.hint": "Cliquer-glisser du coin haut-gauche vers le coin bas-droit.",
     "measure.tool.circle": "Surface — cercle",

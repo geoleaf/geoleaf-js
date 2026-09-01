@@ -1,10 +1,10 @@
 {
     "//": [
-        "B-93 — le tsconfig de l'OUTILLAGE : scripts/, e2e/ et les configs racine.",
+        "Le tsconfig de l'OUTILLAGE : scripts/, e2e/ et les configs racine.",
         "",
         "Ces trois corpus — 134 + 56 + 5 fichiers — n'étaient couverts par AUCUN tsconfig.",
         "Ni éditeur, ni compilateur : la seule chose qui les regardait était ESLint, et encore,",
-        "pas `scripts/` avant B-88. Un corpus que rien ne type est un corpus où une faute de",
+        "pas `scripts/` avant. Un corpus que rien ne type est un corpus où une faute de",
         "frappe sur un nom de propriété se découvre à l'exécution, en CI, sur un run rouge dont",
         "la cause est trois niveaux plus bas.",
         "",

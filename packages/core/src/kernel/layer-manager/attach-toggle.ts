@@ -9,7 +9,7 @@
  * LayerManager — Toggle Handler
  * Handles clicks on a layer's toggle button (show/hide, lazy-load, label-btn sync).
  *
- * Extracted from layer-manager/renderer.ts (Sprint 1 roadmap split).
+ * Extracted from layer-manager/renderer.ts.
  */
 
 import { Log } from "../../utils/log/index.js";

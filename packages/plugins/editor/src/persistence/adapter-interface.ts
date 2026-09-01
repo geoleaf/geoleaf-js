@@ -43,36 +43,41 @@ export interface SavedFeature {
 /**
  * Discriminates the failure modes a {@link PersistenceError} can carry.
  *
- * 🛑 **`"forbidden"` n'est pas une étiquette de plus, c'est une DÉCISION DE REJEU** (tâche 8.7,
- * **B-139**). Tout refus rendu par `applyEdit` — `deleteNotPermitted` et `layerNotEditable`
- * compris — était typé `"network"`, et `auto-adapter.ts` traite `"network"` comme
- * **réessayable** : un refus de permission était donc présenté comme une panne de
- * connectivité, c'est-à-dire comme quelque chose qui marchera au prochain essai. Il ne
- * marchera jamais.
+ * 🛑 **`"forbidden"` is not one more label, it is a REPLAY DECISION.** Every
+ * refusal returned by `applyEdit` — `deleteNotPermitted` and
+ * `layerNotEditable` included — was typed `"network"`, and `auto-adapter.ts`
+ * treats `"network"` as **retryable**: a permission refusal was thus presented
+ * as a connectivity outage, i.e. as something that will work at the next
+ * attempt. It never will.
  *
- * ⚠️ **Ne pas ranger `"forbidden"` parmi les transports.** `_isTransportError` décide du repli
- * vers la file ; y ajouter ce cas remettrait en file une écriture que la couche refuse, ce qui
- * est précisément la moitié du défaut qui ne tient pas dans l'étiquette.
+ * ⚠️ **Do not file `"forbidden"` among the transports.** `_isTransportError`
+ * decides the fallback into the queue; adding this case would requeue a write
+ * the layer refuses, which is precisely the half of the defect that does not
+ * fit in the label.
  *
- * ⚠️ Distinct de `"client"`, qui porte un 4xx **du serveur**. `"forbidden"` est une décision
- * LOCALE, prise sur la déclaration de la couche, avant toute requête.
+ * ⚠️ Distinct from `"client"`, which carries a 4xx **from the server**.
+ * `"forbidden"` is a LOCAL decision, taken on the layer's declaration, before
+ * any request.
  *
- * 🛑 **`"capability"` est la MÊME décision prise sur l'autre bord — et le bandeau ci-dessus ne
- * l'a pas empêchée** (tâches 3.5/3.6, **B-199**). Un `501` sortait en `"network"` par la branche
- * fourre-tout des deux adaptateurs, donc **réessayable**, donc **mis en file** : le serveur dit
- * « je ne connais pas ce verbe » et le client promettait de recommencer. Le cœur avait déjà
- * tranché l'inverse pour sa propre file — le 501 y est délibérément EXCLU des statuts
- * transitoires, part en quarantaine immédiate et ne consomme pas le budget de rejeu. L'éditeur
- * s'y aligne ici ; il ne s'agit pas d'une politique neuve, mais de la fin d'une divergence.
+ * 🛑 **`"capability"` is the SAME decision taken on the other edge — and the
+ * banner above did not prevent it.** A `501` came out as `"network"` through
+ * both adapters' catch-all branch, hence **retryable**, hence **queued**: the
+ * server says "I do not know this verb" and the client promised to try again.
+ * The core had already settled the opposite for its own queue — the 501 is
+ * deliberately EXCLUDED from the transient statuses there, goes to immediate
+ * quarantine and does not spend the replay budget. The editor aligns here; not
+ * a new policy, but the end of a divergence.
  *
- * ⚠️ **Ne pas ranger `"capability"` parmi les transports**, exactement comme `"forbidden"` :
- * `_isTransportError` décide du repli vers la file, et l'y ajouter remettrait en file l'écriture
- * que ce cas existe pour en SORTIR. Ce n'est pas cette phrase qui le garde — celle du dessus
- * portait déjà l'interdit et n'a pas empêché le défaut de vivre. C'est un test.
+ * ⚠️ **Do not file `"capability"` among the transports**, exactly like
+ * `"forbidden"`: `_isTransportError` decides the fallback into the queue, and
+ * adding it would requeue the write this case exists to get OUT of it. This
+ * sentence is not what guards it — the one above already carried the ban and
+ * did not stop the defect from living. A test is.
  *
- * ⚠️ Distinct de `"client"` (un 4xx : CETTE requête est refusée, une autre peut passer) et de
- * `"forbidden"` (décision locale, avant requête). `"capability"` porte un refus du **serveur**,
- * définitif, portant sur le **verbe** : il ne redeviendra vrai que si le serveur change.
+ * ⚠️ Distinct from `"client"` (a 4xx: THIS request is refused, another may
+ * pass) and from `"forbidden"` (local decision, before any request).
+ * `"capability"` carries a **server** refusal, definitive, bearing on the
+ * **verb**: it will only become true again if the server changes.
  */
 type PersistenceErrorKind =
     | "network"
@@ -85,10 +90,11 @@ type PersistenceErrorKind =
     | "unknown";
 
 /**
- * Le serveur déclare ne pas implémenter le verbe — HTTP 501.
+ * The server declares it does not implement the verb — HTTP 501.
  *
- * Domicile unique du statut, en regard du {@link PersistenceErrorKind} qu'il produit. Miroir de
- * la constante homonyme du cœur, qui porte la même décision pour la file hors-ligne (B-199).
+ * The status's single home, next to the {@link PersistenceErrorKind} it
+ * produces. Mirror of the core's homonymous constant, which carries the same
+ * decision for the offline queue.
  */
 export const NOT_IMPLEMENTED_STATUS = 501;
 

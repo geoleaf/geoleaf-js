@@ -15,7 +15,7 @@
  * - `IModuleRegistry` — orchestrates module registration, dependency
  *   resolution, initialisation, and teardown
  *
- * These types are the foundation of the `ModuleRegistry` (Sprint 3).
+ * These types are the foundation of the `ModuleRegistry`.
  * They are designed to be implemented by both built-in modules (`poi`,
  * `route`, `search`, …) and by third-party modules registered at runtime.
  */
@@ -132,7 +132,7 @@ export interface IModuleUISlot {
          * edges) » — and BOTH were wrong. `sharedLifecycle` sequencing was refuted by socle-init
          * 7.4 (`__tests__/presets/shared-lifecycle-order.test.ts`), and « dependency edges » was
          * never one of the manifest's stated reasons at all — it was invented here, and copied
-         * from here into `scripts/gen-entry.cjs`. B-43: the count is gone rather than corrected,
+         * from here into `scripts/gen-entry.cjs`. The count is gone rather than corrected,
          * because a second copy of a list can only drift from the list.
          *
          * Modules that omit it keep the previous behaviour: they render after every ordered
@@ -250,6 +250,19 @@ export interface IModuleUISlot {
  * - Circular dependencies are detected at registration time and throw a
  *   `GeoLeafError` with the full dependency cycle path in the message.
  *
+ * ⚠️ **An edge declares a RANK, not only a data read — and the rank is observable.** The
+ * in-core capabilities all declare `["geojson"]` while most of their `init()` bodies read no
+ * geojson state at all (measured, module by module). The edge still does load-bearing work:
+ * it places the capability in the LATE init wave — after `config` has merged the profile,
+ * after `core-map`, after `ui` has mounted its controls, and before `ThemeEngineModule`,
+ * whose `init()` is what dispatches `geoleaf:theme:applied` (and through the reveal,
+ * `geoleaf:app:ready`). Removing an edge moves the module to the FIRST wave, which visibly
+ * reorders map controls (stacking follows insertion), changes introspection ranks, and
+ * re-times every listener armed at init relative to the kernel emitters. Do not delete an
+ * edge because its init "reads nothing" — that was measured true for thirteen of fourteen,
+ * and deleting was still the wrong gesture. Change an edge only with the boot sequence of a
+ * shipped bundle in front of you, and re-verify at execution: no gate guards this order.
+ *
  * ⚠ Classes implement THIS interface, never the {@link ICoreModule} union —
  * TypeScript's `implements` clause rejects union types.
  *
@@ -342,13 +355,13 @@ export interface ILifecycleModule {
  * never calls lifecycle hooks on it.
  *
  * ⚠ This shape is **not** a recent addition — it is what `ModuleRegistry.register()`
- * has always accepted (`app/module-registry.ts:58-81` validates exactly these two
+ * has always accepted (`app/module-registry.ts` validates exactly these two
  * shapes) and what every plugin already passes. It was simply absent from the
  * contract, which declared `dependencies`, `init` and `destroy` as required. The
  * omission was invisible while the contract stayed private; publishing it (API
  * publique S3) is what forced the correction, since the 8 real call sites —
- * `addpoi/src/entry.ts:163,185`, `editor:446`, `geocoding:77`, `measure:57`,
- * `print:55`, `storage/…/toolbar-registration.ts:52` and `_plugin-template:50` —
+ * the `entry.ts` of `addpoi`, `editor`, `geocoding`, `measure` and `print`,
+ * `storage/…/toolbar-registration.ts` and the `_plugin-template` entry —
  * would all have been rejected by the type they are supposed to satisfy.
  *
  * @example
@@ -373,7 +386,7 @@ export interface IUISlotModule {
      *
      * Optional here (unlike {@link ILifecycleModule}) because a UI-only slot has
      * no `init()` to order. The registry reads it as `dependencies ?? []`
-     * (`app/module-registry.ts:210,231,288`).
+     * (`app/module-registry.ts`).
      */
     readonly dependencies?: readonly string[];
 
@@ -393,7 +406,7 @@ export interface IUISlotModule {
  *
  * The registry enforces the same disjunction at runtime: providing one of
  * `init`/`destroy` without the other throws, and providing neither without a
- * `ui` throws too (`app/module-registry.ts:58-81`).
+ * `ui` throws too (`app/module-registry.ts`).
  *
  * ⚠ Classes cannot `implements` a union. Implement {@link ILifecycleModule}
  * directly — the 19 in-core modules all do.
@@ -411,7 +424,7 @@ export type ICoreModule = ILifecycleModule | IUISlotModule;
  *   modules and calls each `module.init()` in the resolved order.
  * - On `destroy()`, modules are torn down in reverse initialisation order.
  *
- * The registry is exposed on the `GeoLeaf` namespace after Sprint 3 to allow
+ * The registry is exposed on the `GeoLeaf` namespace to allow
  * third-party modules to self-register:
  * ```typescript
  * GeoLeaf.registry.register(new MyCustomModule());
@@ -519,8 +532,8 @@ export interface IModuleRegistry {
      * with the given id is registered.
      *
      * The returned object is a lightweight metadata view — it does not expose
-     * internal module state. `IModuleSchema` will be enriched in S2.1 when
-     * capability schemas (config, capabilities, metadata) are defined.
+     * internal module state. `IModuleSchema` is enriched as capability
+     * schemas (config, capabilities, metadata) get defined.
      *
      * @param id - Module id (e.g. `'poi'`, `'route'`, `'search'`).
      */

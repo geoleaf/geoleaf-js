@@ -28,6 +28,7 @@ import { DBLayers } from "./layers.js";
 import { DBLocalEdit } from "./local-edit.js";
 import { DBOutbox } from "./outbox.js";
 import { DBPreferences } from "./preferences.js";
+import { DBRoutes, type RoutesAPI } from "./routes.js";
 import type { FeaturesDBInstance } from "./features.js";
 import type { ImagesDBInstance } from "./images.js";
 import type { LayersDBInstance } from "./layers.js";
@@ -46,7 +47,8 @@ type DBModuleInstance =
     | LayersDBInstance
     | LocalEditDBInstance
     | OutboxDBInstance
-    | PreferencesAPI;
+    | PreferencesAPI
+    | RoutesAPI;
 
 /**
  * Registry of all IndexedDB sub-modules keyed by canonical name.
@@ -59,6 +61,7 @@ const DBModulesRegistry = {
     LocalEdit: DBLocalEdit,
     Outbox: DBOutbox,
     Preferences: DBPreferences,
+    Routes: DBRoutes,
 } satisfies Record<string, { init(db: IDBDatabase): DBModuleInstance }>;
 
 export { DBModulesRegistry };

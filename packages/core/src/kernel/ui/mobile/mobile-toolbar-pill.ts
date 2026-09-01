@@ -1,4 +1,4 @@
-﻿/*!
+/*!
  * @geoleaf/core
  * © 2026 Mattieu Pottier
  * Released under the MIT License
@@ -15,13 +15,19 @@ import { getGeoLeaf } from "../../../utils/general/geoleaf-global.js";
 import { getLabel } from "../../../utils/i18n/i18n.js";
 import { resolveRovingIndex } from "../roving-tabindex.js";
 import { resolveUISlotVisibility, UI_SLOT_SVG_TAGS } from "../ui-slot-builder.js";
-import type { IModuleRegistry, IModuleUISlot } from "../../../contracts/core-module.contract.ts";
+import type { IModuleUISlot } from "../../../contracts/core-module.contract.ts";
 
 type MobileIconDef = NonNullable<IModuleUISlot["mobileIcon"]>;
 
 /** Lazy-plugin UI slot — an `IModuleUISlot` paired with its owning plugin id. */
 interface LazyUISlot extends IModuleUISlot {
     id: string;
+    /** Owning plugin, i.e. the 2nd argument of `registerLazyForAction`. Gates on
+     *  `modules.<pluginName>.enabled` when `gateOnModuleEnabled` is set — the doc comment said "paired with its owning plugin id"
+     *  while the type declared no such field, so nothing could read it. */
+    pluginName: string;
+    /** Opt-in for the `modules.<pluginName>.enabled` guard — see `PluginLazyUI`. */
+    gateOnModuleEnabled?: boolean;
 }
 
 /** Subset of `GeoLeaf.plugins` consumed by the pill / registry-icon builders. */
@@ -117,7 +123,7 @@ function _getNavItems() {
 }
 
 function _getMapToolItems() {
-    // Sprint 4: legend and table are now rendered dynamically via registry.getUISlots()
+    // Legend and table are rendered dynamically via registry.getUISlots()
     return [
         ...(domState.options?.showThemeSelector !== false
             ? [
@@ -144,17 +150,17 @@ function _getMapToolItems() {
 }
 
 function _getToolbarItems() {
-    // Sprint 4: search is now rendered dynamically via registry.getUISlots()
+    // Search is rendered dynamically via registry.getUISlots()
     //
-    // 5.1-f — le bouton « ajouter un POI » a quitté cette liste. Il y était bâti derrière
-    // `showAddPoi && POIAddFormContract.isAddFormAvailable()`, c'est-à-dire une SONDE DU
-    // NAMESPACE d'un plugin, évaluée UNE SEULE FOIS au boot (`_getToolbarItems` n'a qu'un
-    // appelant et il n'existe aucun rebuild). Cela ne tenait que parce qu'`addpoi` était
-    // chargé en balise `<script>` eager ; tout plugin paresseux rendait la sonde fausse
-    // pour toujours et le bouton disparaissait SANS UN MOT — le garde d'erreur qui devait
-    // le signaler vivant lui-même derrière le bouton jamais créé.
-    // Il passe donc par le chemin des créneaux paresseux (`getLazyUISlots`, plus bas), que
-    // `apps/geoleaf-app/init.js` déclare AVANT le chargement du plugin.
+    // The "add a POI" button left this list. It was built here behind
+    // `showAddPoi && POIAddFormContract.isAddFormAvailable()`, i.e. a NAMESPACE
+    // PROBE of a plugin, evaluated ONCE at boot (`_getToolbarItems` has one caller
+    // and no rebuild exists). That only held because `addpoi` was loaded as an eager
+    // `<script>` tag; any lazy plugin made the probe false forever and the button
+    // vanished WITHOUT A WORD — the error guard meant to flag it living itself
+    // behind the never-created button.
+    // It therefore goes through the lazy-slot path (`getLazyUISlots`, below), which
+    // `apps/geoleaf-app/init.js` declares BEFORE the plugin loads.
     return [
         ..._getNavItems(),
         {
@@ -276,7 +282,12 @@ function _buildMobileIconButton(
     scroll: HTMLElement,
     id: string,
     icon: MobileIconDef,
-    opts: { checkRequiresPlugin: boolean; useDefaultVisible: boolean; hasDesktopTabButton: boolean }
+    opts: {
+        checkRequiresPlugin: boolean;
+        useDefaultVisible: boolean;
+        hasDesktopTabButton: boolean;
+        moduleGateId?: string;
+    }
 ): HTMLButtonElement | null {
     // Idempotent — skip if already rendered (e.g. after a re-render call)
     if (scroll.querySelector(`[data-gl-sheet="${id}"]`)) return null;
@@ -315,7 +326,7 @@ function _buildMobileIconButton(
  * Each button gets `data-gl-sheet={moduleId}` for the existing sheet delegation.
  */
 function _appendRegistryIcons(scroll: HTMLElement): void {
-    const registry = getGeoLeaf()?.registry as IModuleRegistry | undefined;
+    const registry = getGeoLeaf()?.registry;
     if (!registry) return;
 
     const showMap: Record<string, boolean> = {
@@ -357,6 +368,16 @@ function _appendRegistryIcons(scroll: HTMLElement): void {
             checkRequiresPlugin: false,
             useDefaultVisible: false,
             hasDesktopTabButton: !!slot.desktopTabButton,
+            // Aligns the lazy path on what THIS PLUGIN's `entry.ts` does — only
+            // three of six gate on `enabled`, hence the opt-in rather than a uniform
+            // rule (detailed motive on `PluginLazyUI.gateOnModuleEnabled`).
+            //
+            // ⚠️ Conditional spread and not `: … : undefined` —
+            // `exactOptionalPropertyTypes` refuses an EXPLICIT `undefined` on an
+            // optional property, and it is right: "absent" and "present at
+            // undefined" are not the same contract. The first draft wrote the
+            // ternary, and the build went red (TS2379).
+            ...(slot.gateOnModuleEnabled ? { moduleGateId: slot.pluginName } : {}),
         });
         if (btn) scroll.appendChild(btn);
     }
@@ -399,7 +420,7 @@ export function createToolbarDom(): HTMLElement {
     const items = _getToolbarItems();
     items.forEach((b, index) => _buildToolbarButton(b, index, filterGroup, scroll));
 
-    // Sprint 4: render module-driven toolbar icons from registry UI slots
+    // Render module-driven toolbar icons from registry UI slots
     _appendRegistryIcons(scroll);
 
     toolbar.appendChild(scroll);

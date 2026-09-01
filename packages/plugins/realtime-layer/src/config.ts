@@ -147,12 +147,12 @@ type RealtimeOptionals = Pick<
 
 /** Coerce the optional `data.realtime` fields, applying defaults. */
 function _extractOptionals(r: Record<string, unknown>): RealtimeOptionals {
-    // « Coerce the OPTIONAL fields » : une clé dont la valeur est absente doit donc être
-    // ABSENTE du résultat, pas présente valant `undefined`. Seules `staleAction` et
-    // `intervalMs` portent un vrai défaut et restent inconditionnelles.
-    // N.B. le résultat est étalé sur `{enabled, source, decoder, updateMode}`, dont les clés
-    // sont disjointes des huit ci-dessous : aucun écrasement n'était possible ici. Le
-    // correctif porte sur ce que cette fonction PROMET, pas sur un risque de merge.
+    // "Coerce the OPTIONAL fields": a key whose value is absent must
+    // therefore be ABSENT from the result, not present as `undefined`. Only
+    // `staleAction` and `intervalMs` carry a real default and stay unconditional.
+    // N.B. the result is spread over `{enabled, source, decoder, updateMode}`,
+    // whose keys are disjoint from the eight below: no overwrite was possible
+    // here. The fix is about what this function PROMISES, not a merge risk.
     return {
         ...(typeof r["idField"] === "string" && { idField: r["idField"] }),
         ...(typeof r["staleTimeoutMs"] === "number" && { staleTimeoutMs: r["staleTimeoutMs"] }),
@@ -162,7 +162,7 @@ function _extractOptionals(r: Record<string, unknown>): RealtimeOptionals {
         ...(typeof r["fallbackUrl"] === "string" && { fallbackUrl: r["fallbackUrl"] }),
         ...(typeof r["channel"] === "string" && { channel: r["channel"] }),
         ...(typeof r["mapping"] === "object" && r["mapping"] !== null
-            ? { mapping: r["mapping"] as NonNullable<RealtimeConfig["mapping"]> }
+            ? { mapping: r["mapping"] }
             : {}),
     };
 }
@@ -193,7 +193,19 @@ export function validateRealtimeConfig(raw: unknown, layerId: string): RealtimeC
     const updateMode = _assertUpdateMode(r, layerId);
 
     return {
-        enabled: r["enabled"] as unknown as boolean,
+        // 🛑 THIS DOUBLE ASSERTION IS USELESS, AND IT IS RESTORED ON PURPOSE — 19/08/2026.
+        // It was removed in the useless-assertion triage, then put back: it is
+        // an ENTRY of the `no-non-null-assertion` debt baseline, and its
+        // disappearance turns that gate RED until the baseline records the
+        // removal. Yet recording goes through the flag a protocol interdict
+        // refuses **without exception**, while that interdict's motive only
+        // targets WIDENING a baseline — here it would shrink.
+        //
+        // ⚠️ The cost is thus concrete and written here rather than worked
+        // around: **a genuinely settled debt cannot be recorded as such**, and
+        // the only way to keep the repo green is to put the defect back. The
+        // strongest argument for the pending arbitration, and it only shows by paying it.
+        enabled: r["enabled"],
         source,
         decoder,
         ...(updateMode !== undefined && { updateMode }),

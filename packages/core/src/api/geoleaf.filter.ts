@@ -14,8 +14,8 @@
  * facade exposes the read surface for integrators / no-code studio; the panel and
  * predicate engine consume the capability internally.
  *
- * The plural `GeoLeaf.Filters` that used to sit beside this facade is gone (API publique
- * S4.5): one method, no caller, and a one-letter distance from this one. Nothing here
+ * The plural `GeoLeaf.Filters` that used to sit beside this facade is gone (public-API
+ * review): one method, no caller, and a one-letter distance from this one. Nothing here
  * changed — the ambiguity did.
  *
  * ## Public API summary

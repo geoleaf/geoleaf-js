@@ -149,12 +149,12 @@ export function mergeModuleBags(
     // itself, but it must not travel on into the config, so it is dropped here rather
     // than relied upon to be inert.
     const merged: Record<string, unknown> = {};
-    for (const [moduleId, block] of Object.entries(fromFiles as Record<string, unknown>)) {
+    for (const [moduleId, block] of Object.entries(fromFiles)) {
         if (isUnsafeKey(moduleId)) continue;
         merged[moduleId] = block;
     }
     if (hasInline) {
-        for (const [moduleId, inlineBlock] of Object.entries(inline as Record<string, unknown>)) {
+        for (const [moduleId, inlineBlock] of Object.entries(inline)) {
             // The inline block IS parsed JSON, so this assignment is the live vector.
             if (isUnsafeKey(moduleId)) continue;
             const fileBlock = merged[moduleId];
@@ -261,28 +261,30 @@ export function expandLayerTemplates(
                     id,
                     label,
                     data,
-                    // 🛑 B-152 — `dataFile` NORMALISÉ ICI, et c'est ce qui rend la config en
-                    // ligne utilisable hors du core.
+                    // 🛑 `dataFile` NORMALISED HERE, and that is what makes the
+                    // inline config usable outside the core.
                     //
-                    // Sans lui, `inlineConfig` était la SEULE forme de config du dépôt dont le
-                    // chemin de données ne se dérivait qu'avec `layerDataPath`, un helper
-                    // interne au core. `offline-ui` — qui appelle `resolveProfileLayers` et
-                    // n'a le droit d'importer aucune source du core (baseline PCB à `[]`) —
-                    // ne pouvait donc PAS le calculer : ses trois sites de sélecteur
-                    // retombaient sur `configFile`, absent ici, et 24 des 42 couches de
-                    // `tourism` s'affichaient sans libellé, sans géométrie et sans état de
-                    // cache.
+                    // Without it, `inlineConfig` was the ONLY config form in the repo
+                    // whose data path derived solely through `layerDataPath`, a
+                    // core-internal helper. `offline-ui` — which calls
+                    // `resolveProfileLayers` and may import no core source (PCB
+                    // baseline at `[]`) — therefore could NOT compute it: its three
+                    // selector sites fell back to `configFile`, absent here, and 24
+                    // of `tourism`'s 42 layers displayed with no label, no geometry
+                    // and no cache state.
                     //
-                    // ⚠️ Les deux autres issues ont été écartées, et pour le même motif :
-                    // publier `layer-data-path.js` au `exports` du core élargirait la surface
-                    // publiée pour un helper, et le redériver dans le plugin rouvrirait
-                    // exactement la divergence que la tâche 4.2 a fermée en extrayant
-                    // `layerDataPath` (« le chemin de cache hors-ligne en avait besoin AUSSI,
-                    // la refaire là-bas aurait fait deux endroits libres de diverger »).
+                    // ⚠️ The two other outcomes were set aside, for the same motive:
+                    // publishing `layer-data-path.js` in the core's `exports` would
+                    // widen the published surface for a helper, and re-deriving it
+                    // in the plugin would reopen exactly the divergence closed by
+                    // extracting `layerDataPath` ("the offline cache path needed it
+                    // TOO, redoing it there would have made two places free to
+                    // diverge").
                     //
-                    // ✅ Sans effet sur `profile-loader.ts:525`, qui dérive déjà par le même
-                    // helper : celui-ci rend `dataFile` tel quel quand il est posé. Idempotent,
-                    // et les deux appelants d'`expandLayerTemplates` voient la même forme.
+                    // ✅ No effect on `profile-loader.ts`, which already derives
+                    // through the same helper: it returns `dataFile` as-is when set.
+                    // Idempotent, and both callers of `expandLayerTemplates` see the
+                    // same shape.
                     ...(normalisedDataFile !== null && { dataFile: normalisedDataFile }),
                 },
             });

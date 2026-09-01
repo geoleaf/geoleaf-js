@@ -68,9 +68,7 @@ function collectMetrics(): RuntimeMetrics {
             : [];
     const entry = mapReadyMark.at(-1);
     if (entry) {
-        timeToMapReadyMs = Math.round(
-            "startTime" in entry ? (entry as PerformanceEntry).startTime : 0
-        );
+        timeToMapReadyMs = Math.round("startTime" in entry ? entry.startTime : 0);
     }
 
     if (navStart) {

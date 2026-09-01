@@ -690,7 +690,7 @@ describe("applyState() — theme branch", () => {
     });
 });
 
-// ── DEFAULT_PERMALINK_FIELDS — single source of truth (S7.1) ────────────────────
+// ── DEFAULT_PERMALINK_FIELDS — single source of truth ────────────────────
 // The default field set used to be inlined byte-identically in _captureState,
 // _parseParams and buildUrl. It now lives once in constants.ts; these tests pin its
 // contents and prove the build path consumes the full set (so the three round-trip
@@ -746,8 +746,8 @@ describe("DEFAULT_PERMALINK_FIELDS — single source of truth", () => {
     });
 });
 
-// ── startSync teardown / idempotence (S7.4 — listener leak fix) ──────────────────
-describe("Permalink — startSync teardown / idempotence (S7.4)", () => {
+// ── startSync teardown / idempotence (listener leak fix) ──────────────────
+describe("Permalink — startSync teardown / idempotence", () => {
     beforeEach(() => {
         Permalink._reset();
     });

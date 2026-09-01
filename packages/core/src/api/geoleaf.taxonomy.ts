@@ -16,7 +16,7 @@
  * POI renderer, the legend and the filter call this facade when they need to resolve a style;
  * nothing pushes paint onto bound layers.
  *
- * ⚠️ Both statements above were the exact opposite until 29/07/2026 (B-63). The header said the
+ * ⚠️ Both statements above were the exact opposite until 29/07/2026. The header said the
  * capability was "inert unless `modules.taxonomy.enabled` is set" — it is opt-out — and that paint
  * was "applied automatically via the capability lifecycle" — this capability has **no lifecycle at
  * all**, which its own `install.ts` states directly above the same code. Both were published to

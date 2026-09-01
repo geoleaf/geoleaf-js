@@ -14,9 +14,9 @@ import { Log, fetchWithTimeout } from "@geoleaf/host-runtime";
 import { coreConfigGet as configGet } from "@geoleaf/host-runtime";
 import { LS } from "./core.js";
 import { getLayerConfig } from "./config-cache.js";
-// B-161 — sous-chemin PUBLIÉ du core, même mécanisme que `profile-layers.js` : le plugin n'a
-// aucun droit d'import profond (baseline PCB à `[]`), et redériver l'alias ici en ferait une
-// 4ᵉ copie libre de diverger.
+// The core's PUBLISHED subpath, same mechanism as `profile-layers.js`: the
+// plugin has no deep-import right (PCB baseline at `[]`), and re-deriving the
+// alias here would make a 4th copy free to diverge.
 import { layerGeometry } from "@geoleaf/core/kernel/config/layer-geometry.js";
 import type {
     LayerLike,
@@ -30,12 +30,12 @@ Object.assign(LS, {
         const layerConfig = await getLayerConfig(layer);
         if (!layerConfig) return null;
 
-        // 🛑 B-161 — CETTE LIGNE NE LISAIT QUE `geometryType`, LA CLÉ MINORITAIRE.
-        // Le schéma pose `geometryType` comme « alias of `geometry` » et interdit de migrer
-        // (ANO-007) ; or **18 des 24** configs du dépôt ne déclarent que `geometry`, et
-        // **aucune** ne déclare `geometryType` seul. Mesuré en navigateur : 38 des 42 lignes
-        // du sélecteur de `tourism` rendaient `-`, dont 14 couches DIRECTES — la symétrie qui
-        // prouve que la cause n'était pas l'`inlineConfig` de B-152.
+        // 🛑 THIS LINE READ ONLY `geometryType`, THE MINORITY KEY.
+        // The schema sets `geometryType` as "alias of `geometry`" and forbids
+        // migrating; yet **18 of the repo's 24** configs declare only `geometry`,
+        // and **none** declares `geometryType` alone. Measured in a browser: 38
+        // of `tourism`'s 42 selector rows rendered `-`, including 14 DIRECT
+        // layers — the symmetry proving the cause was not the `inlineConfig`.
         const geometryType = layerGeometry(layerConfig);
         Log?.debug(`[LayerSelector] Geometry type for ${layer.id}: ${geometryType}`);
         return geometryType;

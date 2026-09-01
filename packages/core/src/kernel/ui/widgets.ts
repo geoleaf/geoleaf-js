@@ -22,7 +22,7 @@
 
 import { domCreate } from "../../utils/general/dom-helpers.js";
 
-// ── Local structural types (S2.1 — ui/components) ───────────────────────────
+// ── Local structural types (ui/components) ───────────────────────────
 // Accordion / toggle configs arrive as loosely-typed bags from legend and
 // layer-manager callers. Narrow to the members read here.
 

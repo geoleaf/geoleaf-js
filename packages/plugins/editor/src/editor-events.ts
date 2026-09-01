@@ -5,43 +5,45 @@
  */
 
 /**
- * Le point d'émission UNIQUE des neuf événements publics de l'éditeur, typé contre
- * `GeoLeafEventMap` — tâche 7.3.
+ * The SINGLE emission point of the editor's nine public events, typed against
+ * `GeoLeafEventMap`.
  *
- * 🛑 **Ce module existe à cause d'un faux vert MESURÉ.** Le typage a d'abord été posé sur
- * le `_dispatch` local d'`events.ts`, et une mutation l'a pris en défaut : retirer un champ
- * de `GeoLeafEditorSyncFlushedDetail` laissait le typecheck VERT. Motif — **trois des neuf
- * émetteurs n'y passaient pas** et construisaient leur `CustomEvent` à la main
- * (`entry.ts` pour `feature-deleted`, `storage-queue-adapter.ts` pour `feature-sync-queued`,
- * `editor-sync-replay.ts` pour `feature-sync-flushed`). Pour ceux-là, le contrat était
- * décoratif : il décrivait une charge que rien n'obligeait à respecter.
+ * 🛑 **This module exists because of a MEASURED false green.** Typing was first
+ * set on `events.ts`'s local `_dispatch`, and a mutation caught it out:
+ * removing a field from `GeoLeafEditorSyncFlushedDetail` left the typecheck
+ * GREEN. Motive — **three of the nine emitters did not go through it** and
+ * built their `CustomEvent` by hand (`entry.ts` for `feature-deleted`,
+ * `storage-queue-adapter.ts` for `feature-sync-queued`,
+ * `editor-sync-replay.ts` for `feature-sync-flushed`). For those, the contract
+ * was decorative: it described a payload nothing forced to respect.
  *
- * Un point d'émission unique est ce qui rend le typage OPPOSABLE plutôt qu'indicatif. Un
- * quatrième émetteur écrit à la main réintroduirait exactement le trou, ce que
- * `editor-events.guard.test.ts` empêche en refusant tout `new CustomEvent("geoleaf:editor:…")`
- * hors de ce fichier.
+ * A single emission point is what makes the typing ENFORCEABLE rather than
+ * indicative. A fourth hand-written emitter would reintroduce exactly the
+ * hole, which `editor-events.guard.test.ts` prevents by refusing any
+ * `new CustomEvent("geoleaf:editor:…")` outside this file.
  *
- * ⚠️ Le canal reste un `CustomEvent` brut : appartenir à `GeoLeafEventMap` dit que la charge
- * est JSON-clonable, PAS qu'elle transite par le bus assainissant du core —
- * `dispatchGeoLeafEvent` n'est exporté à aucun plugin.
+ * ⚠️ The channel stays a raw `CustomEvent`: belonging to `GeoLeafEventMap` says
+ * the payload is JSON-clonable, NOT that it goes through the core's sanitising
+ * bus — `dispatchGeoLeafEvent` is exported to no plugin.
  */
 import type { GeoLeafEventMap } from "@geoleaf/core";
 
-/** Les neuf événements publics de l'éditeur, DÉRIVÉS de la map — jamais retapés. */
+/** The editor's nine public events, DERIVED from the map — never retyped. */
 export type EditorEventName = Extract<keyof GeoLeafEventMap, `geoleaf:editor:${string}`>;
 
 /**
- * Émet un événement public de l'éditeur.
+ * Emits a public editor event.
  *
- * La clé contraint la charge : une divergence entre ce qu'on émet et ce que le contrat
- * promet à l'intégrateur devient une erreur de compilation. C'est ce qui a permis, à la
- * pose, de trouver que `feature-created` transporte une `Feature` GeoJSON complète et non
- * la forme de persistance — le compilateur a refusé la première rédaction du contrat.
+ * The key constrains the payload: a divergence between what we emit and what
+ * the contract promises the integrator becomes a compile error. That is what
+ * allowed finding, when first added, that `feature-created` carries a complete
+ * GeoJSON `Feature` and not the persistence shape — the compiler refused the
+ * contract's first draft.
  *
- * No-op hors DOM (rendu serveur, harnais unitaire sans `document`).
+ * No-op outside the DOM (server rendering, unit harness without `document`).
  *
- * @param eventName - Nom de l'événement, restreint aux clés `geoleaf:editor:*` de la map.
- * @param detail - Charge utile, typée par la clé.
+ * @param eventName - Event name, restricted to the map's `geoleaf:editor:*` keys.
+ * @param detail - Payload, typed by the key.
  *
  * @example
  * ```ts

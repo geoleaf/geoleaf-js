@@ -1,13 +1,12 @@
 /**
- * Phase 60 — Step 1.2: src/utils/general/event-listener-manager.ts (0% → 60%)
- * Vérifie la SURFACE D'EXPORT : EventListenerManager, events, globalEventManager.
+ * Verifies the EXPORT SURFACE: EventListenerManager, events, globalEventManager.
  *
- * ⚠️ DETTE (STRUCT S7) — doublon strict avec `utils/event-listener-manager.test.js`,
- * qui teste le même module sur 325 lignes là où celui-ci tient en un `it` de contrôle
- * d'export. Le doublon était masqué par la séparation `core/` vs `utils/` ; le
- * réalignement du miroir le met à nu. Le suffixe `-shape` est un MARQUEUR, pas une
- * résolution : S7 corrige des noms, il ne fusionne pas de suites (S7.4). Fusion
- * inscrite au backlog technique.
+ * ⚠️ DEBT — strict duplicate of `utils/event-listener-manager.test.js`,
+ * which tests the same module over 325 lines where this one fits in a
+ * single export-check `it`. The duplicate was masked by the `core/` vs
+ * `utils/` split; the mirror realignment lays it bare. The `-shape` suffix
+ * is a MARKER, not a resolution: that pass fixed names, it did not merge
+ * suites. The merge is filed in the technical backlog.
  */
 import {
     EventListenerManager,

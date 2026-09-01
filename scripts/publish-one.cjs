@@ -1,26 +1,29 @@
 #!/usr/bin/env node
 /**
- * publish-one.cjs — publie UN workspace nommé, en sautant ce que le registre porte déjà.
+ * publish-one.cjs — publishes ONE named workspace, skipping what the registry
+ * already carries.
  *
- * Usage : node scripts/publish-one.cjs <nom-npm> [--dry-run]
+ * Usage : node scripts/publish-one.cjs <npm-name> [--dry-run]
  *
- * ## Pourquoi ce script existe, et pourquoi PAS dans `publish-plugins.cjs`
+ * ## Why this script exists, and why NOT inside `publish-plugins.cjs`
  *
- * `publish.yml` publie `@geoleaf/core` puis `@geoleaf/field-renderer` AVANT les 12 plugins —
- * les 12 déclarent le core en `^3.0.0`, et `editor` déclare en plus `field-renderer`. Ces deux
- * étapes étaient des `npm publish` NUS : sur une version déjà au registre, npm rend `E403` et
- * le workflow meurt à sa première étape, sans jamais atteindre ce qu'il existe pour publier.
- * Mesuré le 15/08/2026, avec `core@3.0.0` et `field-renderer@1.0.0` publiés depuis le 12/08.
+ * `publish.yml` publishes `@geoleaf/core` then `@geoleaf/field-renderer` BEFORE
+ * the 12 plugins — the 12 declare the core at `^3.0.0`, and `editor` additionally
+ * declares `field-renderer`. Those two steps were BARE `npm publish`: on a version
+ * already at the registry, npm returns `E403` and the workflow dies at its first
+ * step, never reaching what it exists to publish. Measured on 2026-08-15, with
+ * `core@3.0.0` and `field-renderer@1.0.0` published since 08-12.
  *
- * 🛑 CE N'EST PAS UN ÉLARGISSEMENT DE `publish-plugins.cjs`, et c'est délibéré. Sa liste
- * `PUBLISHED_PLUGINS` est une POLITIQUE écrite à la main, et son en-tête interdit
- * explicitement de l'élargir par effet de bord de refactorisation — « publishing is externally
- * visible and hard to walk back ». Publier le core par un script nommé « publish-plugins »,
- * ou lui ajouter un `--only` capable de viser hors liste, contournerait cette règle au lieu de
- * la respecter. Ce script prend donc son sujet EN ARGUMENT, sans liste à élargir.
+ * 🛑 THIS IS NOT A WIDENING OF `publish-plugins.cjs`, deliberately. Its
+ * `PUBLISHED_PLUGINS` list is a hand-written POLICY, and its header explicitly
+ * forbids widening it as a refactoring side effect — "publishing is externally
+ * visible and hard to walk back". Publishing the core through a script named
+ * "publish-plugins", or adding it an `--only` able to target off-list, would work
+ * around that rule instead of honouring it. This script therefore takes its
+ * subject AS AN ARGUMENT, with no list to widen.
  *
- * ⚠️ Il n'est pas un raccourci pour publier n'importe quoi : il refuse un workspace inconnu de
- * `packages.cjs`, et un workspace `private`.
+ * ⚠️ It is no shortcut to publish anything: it refuses a workspace unknown to
+ * `packages.cjs`, and a `private` workspace.
  */
 "use strict";
 
@@ -40,8 +43,8 @@ function main() {
         process.exit(1);
     }
 
-    // Refus d'un sujet inconnu : `npm publish --workspace=<inconnu>` échouerait de toute façon,
-    // mais bien plus loin et avec un message qui ne nomme pas la cause.
+    // Refusal of an unknown subject: `npm publish --workspace=<unknown>` would fail
+    // anyway, but much further along and with a message that does not name the cause.
     const pkg = registry.byName(name);
     if (!pkg) {
         console.error(`${C.r}✗ \`${name}\` n'est pas un workspace de ce dépôt.${C.x}`);
@@ -54,23 +57,24 @@ function main() {
         process.exit(1);
     }
 
-    // 🛑 `pkg.manifest.version`, PAS `pkg.version` — `byName()` rend
-    // `{name, dir, absDir, dirName, private, manifest}` et n'expose AUCUN `version` à la
-    // racine. Lire `pkg.version` rend `undefined`, `npm view <nom>@undefined` échoue, la
-    // détection conclut « pas publié » et le script publie ce qu'il devait sauter. C'est
-    // exactement le défaut qui vivait dans `publish-plugins.cjs` (voir là-bas).
+    // 🛑 `pkg.manifest.version`, NOT `pkg.version` — `byName()` returns
+    // `{name, dir, absDir, dirName, private, manifest}` and exposes NO root-level
+    // `version`. Reading `pkg.version` yields `undefined`, `npm view <name>@undefined`
+    // fails, detection concludes "not published" and the script publishes what it
+    // was meant to skip. Exactly the defect that lived in `publish-plugins.cjs`
+    // (see there).
     const { version } = pkg.manifest;
 
     if (!dryRun && alreadyPublished(name, version)) {
-        // ⚠️ Sauté, PAS publié — et il faut que la sortie le dise, sinon un run vert se lit
-        // comme une publication qui n'a pas eu lieu.
+        // ⚠️ Skipped, NOT published — and the output must say so, else a green run
+        // reads as a publication that did not happen.
         console.log(`${C.y}↷ ${name}@${version} — DÉJÀ au registre, sauté (reprise de run).${C.x}`);
         process.exit(0);
     }
 
     console.log(`→ Publishing ${name}@${version}${dryRun ? " (dry-run)" : ""}…`);
-    // `--access public` explicite plutôt qu'hérité de `publishConfig` : un paquet scopé part
-    // en `restricted` quand le drapeau est absent.
+    // Explicit `--access public` rather than inherited from `publishConfig`: a
+    // scoped package goes `restricted` when the flag is absent.
     const cmd = `npm publish --workspace=${name} --access public${dryRun ? " --dry-run" : ""}`;
     try {
         execSync(cmd, { stdio: "inherit" });

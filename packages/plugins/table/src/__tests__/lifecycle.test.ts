@@ -1,5 +1,12 @@
 /**
- * Unit coverage for src/lifecycle.ts — TableLifecycle.
+ * Unit coverage for packages/plugins/table/src/lifecycle.ts — TableLifecycle.
+ *
+ * The path is written in full from the repository root on purpose, and this note must not
+ * restate the short form. `TSDOC-PATHS` resolves a root-relative citation through a suffix
+ * index that only accepts a UNIQUE match: the short form stopped resolving the day a second
+ * plugin shipped a file of the same name under its own `src/`. The file had not moved — the
+ * suffix had merely stopped being unique, and a sentence quoting the short form to explain it
+ * would re-create the very citation it describes.
  *
  * `Table.init` is mocked (allowed per the task brief) to isolate the lifecycle
  * wiring: we assert init() is idempotent, that the `geoleaf:map:ready` handler

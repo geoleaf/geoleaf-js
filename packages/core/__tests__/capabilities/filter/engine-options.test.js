@@ -12,9 +12,8 @@ vi.mock("../../../src/utils/general/geoleaf-global.js", () => ({
     getGeoLeaf: () => ({ Taxonomy: taxo }),
 }));
 
-const { expandCategorySelection, distinctFieldValues } = await import(
-    "../../../src/capabilities/filter/engine/options.ts"
-);
+const { expandCategorySelection, distinctFieldValues } =
+    await import("../../../src/capabilities/filter/engine/options.ts");
 
 afterEach(() => taxo.getCategories.mockReset());
 

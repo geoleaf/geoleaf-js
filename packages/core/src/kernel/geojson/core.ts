@@ -60,7 +60,7 @@ interface InitUtils {
 }
 
 // ──────────────────────────────────────────
-//   GETTERS LAZY POUR SOUS-MODULES
+//   LAZY GETTERS FOR SUB-MODULES
 // ──────────────────────────────────────────
 
 const getState = (): GeoJSONSharedState => SharedModule.state;
@@ -187,7 +187,7 @@ const GeoJSONModule = {
         const isMapLibre = nativeMap && typeof nativeMap.addSource === "function";
         if (isMapLibre) {
             state.adapter = adapter;
-            state.map = nativeMap as GeoJSONNativeMap;
+            state.map = nativeMap;
             state.options = _mergeInitOptions(
                 state.options,
                 options as Record<string, unknown>,
@@ -311,7 +311,7 @@ const GeoJSONModule = {
     },
 
     // ──────────────────────────────────────────
-    //   FILTRAGE DES FEATURES
+    //   FEATURE FILTERING
     // ──────────────────────────────────────────
 
     /**
@@ -349,8 +349,9 @@ const GeoJSONModule = {
         );
         dispatchGeoLeafEvent("geoleaf:filter:apply", {
             layerIds: layerIds.map(String),
-            // Detail d'un CustomEvent lu par des handlers tiers, qui peuvent sonder la présence
-            // de la clé — insertion conditionnelle plutôt qu'un `undefined` explicite.
+            // Detail of a CustomEvent read by third-party handlers, which may probe
+            // the key's presence — conditional insertion rather than an explicit
+            // `undefined`.
             ...(options.geometryType !== undefined && { geometryType: options.geometryType }),
             activeCount: stats.filtered,
         });
@@ -373,7 +374,7 @@ const GeoJSONModule = {
 
     /**
      * Returns all loaded features.
-     * Reads directly from state.layers (featureCache removed in Sprint 1).
+     * Reads directly from state.layers (no separate feature cache).
      * @param {Object} [options]
      * @returns {Array<Object>} features GeoJSON enrichies de { _layerId }
      */

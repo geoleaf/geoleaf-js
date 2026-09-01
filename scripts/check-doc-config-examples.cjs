@@ -1,100 +1,102 @@
 #!/usr/bin/env node
 /**
- * @fileoverview DOC-CONFIG-EXAMPLES — les exemples de configuration JSON de la doc PRODUIT
- * sont-ils validables par les schémas de profil ?
+ * @fileoverview DOC-CONFIG-EXAMPLES — are the PRODUCT docs' JSON configuration examples
+ * validatable by the profile schemas?
  *
- * ## Le trou que cette gate ferme
+ * ## The hole this gate closes
  *
- * Le dépôt gate déjà lourdement ses exemples de doc — `validate-docs-examples.cjs` traque les
- * API fantômes, `typecheck-docs-examples.cjs` compile les blocs TypeScript **et** les
- * `@example` du TSDoc. Les deux ont le même angle mort : **ils regardent du CODE**. Un bloc
- * ` ```json ` décrivant un profil n'est ni une API ni du TypeScript — personne ne le lit.
+ * The repo already gates its doc examples heavily — `validate-docs-examples.cjs` hunts
+ * ghost APIs, `typecheck-docs-examples.cjs` compiles the TypeScript blocks **and** the
+ * TSDoc `@example`s. Both share the same blind spot: **they look at CODE**. A
+ * ` ```json ` block describing a profile is neither an API nor TypeScript — nobody
+ * reads it.
  *
- * Or `profiles/schemas/*.json` pose `additionalProperties: false` sur ses objets à forme
- * fixe. Une clé retirée d'un schéma mais laissée dans un exemple de doc produit un extrait
- * **copiable-collable qui fait échouer `npm run validate:profiles` chez l'intégrateur**, dans
- * les deux guides de configuration les plus lus du projet.
+ * Yet `profiles/schemas/*.json` sets `additionalProperties: false` on its fixed-shape
+ * objects. A key removed from a schema but left in a doc example produces a
+ * **copy-pastable snippet that fails `npm run validate:profiles` on the integrator's
+ * side**, in the project's two most-read configuration guides.
  *
- * 🛑 **C'est la forme EXACTE du trou comblé le 31/07/2026** — un `GeoLeaf.POI.add()` copiable
- * vivait dans `README.md` et `packages/core/README.md` alors que la règle qui l'interdit
- * existait et avait été vue mordre. **La règle était bonne, son corpus s'arrêtait avant.**
- * Ici, le corpus était bon et c'est le TYPE DE BLOC qui s'arrêtait avant.
+ * 🛑 **It is the EXACT shape of the hole plugged on 2026-07-31** — a copy-pastable
+ * `GeoLeaf.POI.add()` lived in `README.md` and `packages/core/README.md` while the
+ * rule forbidding it existed and had been seen biting. **The rule was good, its corpus
+ * stopped short.** Here, the corpus was good and the BLOCK TYPE is what stopped short.
  *
- * ## Les trois règles
+ * ## The three rules
  *
- *   CDE-01  Aucune clé invalide NEUVE dans un exemple de config JSON. Une clé absente de la
- *           baseline est une erreur : elle ne peut pas naître en dette.
- *   CDE-02  La baseline ne peut que RÉTRÉCIR. Une entrée corrigée dans la doc doit être
- *           retirée du fichier.
- *   CDE-03  Ni le corpus ni la table de conteneurs ne peuvent être vides. Une gate verte qui
- *           n'a rien scanné, ou qui n'a résolu aucun schéma, est le pire des résultats —
- *           même classe que NNA-03, EOD-03 et JTD-03.
+ *   CDE-01  No NEW invalid key in a JSON config example. A key absent from the
+ *           baseline is an error: it cannot be born as debt.
+ *   CDE-02  The baseline can only SHRINK. An entry fixed in the docs must be removed
+ *           from the file.
+ *   CDE-03  Neither the corpus nor the container table can be empty. A green gate that
+ *           scanned nothing, or resolved no schema, is the worst outcome — same class
+ *           as NNA-03, EOD-03 and JTD-03.
  *
- * ## Deux décisions de conception, chacune motivée par un défaut MESURÉ
+ * ## Two design decisions, each motivated by a MEASURED defect
  *
- * **Les conteneurs sont DÉRIVÉS des schémas, jamais listés ici.** On indexe tout objet à
- * `additionalProperties: false` portant ses propres `properties`, par son nom de propriété.
- * Une liste écrite à la main se périmerait au premier schéma modifié — et elle se périmerait
- * en SILENCE, en cessant de matcher, exactement la classe que `probe-gate-visibility.cjs`
- * surveille.
+ * **Containers are DERIVED from the schemas, never listed here.** Every object at
+ * `additionalProperties: false` carrying its own `properties` is indexed, by its
+ * property name. A hand-written list would go stale at the first modified schema — and
+ * it would go stale IN SILENCE, by ceasing to match, exactly the class
+ * `probe-gate-visibility.cjs` watches.
  *
- * **Le corpus vient de `productDocsFiles()`** (`lib/tsdoc-examples.cjs`), partagé avec les
- * deux autres gates de doc. Un seul corpus, trois consommateurs — jamais un glob
- * `packages/**`, qui capterait `dist/` et `node_modules/`.
+ * **The corpus comes from `productDocsFiles()`** (`lib/tsdoc-examples.cjs`), shared
+ * with the two other doc gates. One corpus, three consumers — never a `packages/**`
+ * glob, which would capture `dist/` and `node_modules/`.
  *
- * ⚠️ **Le premier instrument écrit pour ce relevé était FAUX, et il faut le dire ici** : il
- * comparait les clés `ui.*` des exemples aux propriétés de PREMIER NIVEAU de
- * `ui.schema.json` — or ce schéma décrit le FICHIER `ui.json`, dont la racine est
- * `{_comment, ui, layerManagerConfig}`. Il rendait **75 violations dont l'immense majorité
- * étaient fausses**, contre **44 réelles** une fois l'indexation corrigée. C'est le
- * corollaire « le pré-vol porte la cécité qu'il mesure », rencontré en écrivant la gate qui
- * mesure. D'où l'indexation générique ci-dessous, qui ne suppose aucune profondeur.
+ * ⚠️ **The first instrument written for this census was WRONG, and it must be said
+ * here**: it compared the examples' `ui.*` keys to the TOP-LEVEL properties of
+ * `ui.schema.json` — yet that schema describes the FILE `ui.json`, whose root is
+ * `{_comment, ui, layerManagerConfig}`. It returned **75 violations of which the vast
+ * majority were false**, against **44 real** once the indexing was fixed. It is the
+ * corollary "the preflight carries the blindness it measures", met while writing the
+ * gate that measures. Hence the generic indexing below, which assumes no depth.
  *
- * ## Ce que cette gate NE garde pas
+ * ## What this gate does NOT guard
  *
- * Elle vérifie l'**existence** des clés, pas leurs types ni les `required`. Les exemples de
- * doc sont des FRAGMENTS : valider un fragment contre le schéma complet ferait rougir sur
- * `required` toutes les illustrations partielles, c'est-à-dire presque toutes. La classe
- * traquée est « cette clé n'existe pas / plus », et c'est celle qui casse au copier-coller.
+ * It verifies the keys' **existence**, not their types nor the `required`. Doc
+ * examples are FRAGMENTS: validating a fragment against the full schema would redden
+ * every partial illustration on `required`, i.e. almost all of them. The hunted class
+ * is "this key does not / no longer exist", and it is the one that breaks on
+ * copy-paste.
  *
- * ⚠️ **Limite résiduelle, bornée et assumée : le rapprochement se fait par NOM, donc un bloc
- * JSON qui n'est pas un profil mais qui emploie un nom de conteneur de profil est jugé comme
- * s'il en était un.** Mesuré au câblage : 3 entrées `map.target` viennent d'exemples
- * d'initialisation JavaScript, pas de profils. Le retrait des noms ambigus (ci-dessus) a
- * éliminé la classe massive — 150 → 118 entrées, dont les 24 `data.*` qui étaient toutes
- * fausses — et le reste est absorbé par la baseline. Fermer ce dernier cas demanderait
- * d'identifier le TYPE de document de chaque bloc, ce qu'aucun marqueur du corpus ne donne
- * aujourd'hui. Préférence assumée : un faux positif est bruyant et se corrige ; un faux
- * négatif est silencieux, et c'est exactement la classe que cette gate existe pour fermer.
+ * ⚠️ **Residual limit, bounded and accepted: matching goes by NAME, so a JSON block
+ * that is not a profile but uses a profile container's name is judged as if it were
+ * one.** Measured at wiring: 3 `map.target` entries come from JavaScript
+ * initialization examples, not profiles. Removing the ambiguous names (above)
+ * eliminated the massive class — 150 → 118 entries, including the 24 `data.*` that
+ * were all false — and the rest is absorbed by the baseline. Closing this last case
+ * would require identifying each block's document TYPE, which no corpus marker gives
+ * today. Accepted preference: a false positive is noisy and gets fixed; a false
+ * negative is silent, and it is exactly the class this gate exists to close.
  *
- * ⚠️ **Ce que le correctif du 09/08/2026 a COÛTÉ, mesuré avant d'être écrit.** Relever
- * l'ouverture d'un nœud `additionalProperties: true` sans `properties` (voir `visit()`) fait
- * sortir **un seul** conteneur de l'index : `offline`. Les clés d'un bloc `offline` de NIVEAU
- * COUCHE ne sont donc plus jugées dans les exemples de doc. Perte mesurée le jour même :
- * **0 violation** — 93 → 92, la seule disparue étant le faux positif du CHANGELOG, et **0**
- * entrée de baseline devenue orpheline (elle n'en citait aucune en `offline.*`). C'est la
- * conséquence honnête d'un nom que deux schémas emploient pour deux choses ; la taire aurait
- * demandé de réécrire un exemple JUSTE.
+ * ⚠️ **What the 2026-08-09 fix COST, measured before being written.** Registering the
+ * openness of an `additionalProperties: true` node without `properties` (see
+ * `visit()`) takes **one single** container out of the index: `offline`. The keys of a
+ * LAYER-LEVEL `offline` block are thus no longer judged in doc examples. Loss measured
+ * the same day: **0 violations** — 93 → 92, the only one gone being the CHANGELOG's
+ * false positive, and **0** baseline entries orphaned (it cited none in `offline.*`).
+ * It is the honest consequence of a name two schemas use for two things; silencing it
+ * would have required rewriting a RIGHT example.
  *
- * 🛑 **Et une variante plus large a été mesurée puis ÉCARTÉE** : ne plus juger sous un parent
- * ouvert (`modules`, `data`, `table`…) supprimait 6 violations — dont
- * `defaultSort.direction`, qui est un **VRAI** défaut (`layer-config.schema.json` déclare
- * `{field, order}`, la doc écrit `direction`) aujourd'hui correctement gelé en baseline. Elle
- * achetait la réparation d'un faux positif au prix d'un faux négatif, c'est-à-dire du mauvais
- * côté de l'arbitrage énoncé juste au-dessus.
+ * 🛑 **And a wider variant was measured then DISCARDED**: no longer judging under an
+ * open parent (`modules`, `data`, `table`…) removed 6 violations — including
+ * `defaultSort.direction`, which is a **REAL** defect (`layer-config.schema.json`
+ * declares `{field, order}`, the docs write `direction`) today correctly frozen in the
+ * baseline. It bought the repair of one false positive at the price of a false
+ * negative, i.e. on the wrong side of the arbitration stated just above.
  *
- * ⚠️ **Une trouvaille du câblage, laissée ouverte parce qu'elle sort du périmètre** :
- * `themes.schema.json` déclare **`defautTheme`** (sans le second `l`) là où la doc écrit
- * `defaultTheme`. C'est une faute de frappe DANS LE SCHÉMA, donc un renommage de clé de
- * configuration — cassant pour les profils, à trancher séparément.
+ * ⚠️ **A wiring-time find, left open because it exits the perimeter**:
+ * `themes.schema.json` declares **`defautTheme`** (missing the second `l`) where the
+ * docs write `defaultTheme`. It is a typo IN THE SCHEMA, hence a configuration key
+ * rename — breaking for profiles, to settle separately.
  *
  * ## Usage
  *
  *        node scripts/check-doc-config-examples.cjs
  *        node scripts/check-doc-config-examples.cjs --update-baseline
  *
- * ⚠️ `--update-baseline` se lance APRÈS avoir corrigé la doc, jamais pour faire taire un
- * exemple neuf — qui doit être écrit avec des clés qui existent.
+ * ⚠️ `--update-baseline` runs AFTER fixing the docs, never to silence a new example —
+ * which must be written with keys that exist.
  */
 
 "use strict";
@@ -110,31 +112,31 @@ const BASELINE = path.join(ROOT, "scripts", ".baselines", "doc-config-examples.j
 const UPDATE = process.argv.includes("--update-baseline");
 
 /**
- * Indexe, dans tous les schémas de profil, les objets à forme FERMÉE
- * (`additionalProperties: false`) portant leurs propres `properties`, par leur nom de
- * propriété.
+ * Indexes, across all profile schemas, the CLOSED-shape objects
+ * (`additionalProperties: false`) carrying their own `properties`, by their property
+ * name.
  *
- * ⚠️ La descente est générique et ne suppose AUCUNE profondeur : c'est précisément
- * l'hypothèse de profondeur qui avait faussé le premier relevé (voir l'en-tête). Un
- * conteneur peut vivre sous `properties`, sous `items`, sous `definitions` ou sous un
- * `patternProperties` — tous sont visités.
+ * ⚠️ The descent is generic and assumes NO depth: precisely the depth assumption that
+ * skewed the first census (see the header). A container can live under `properties`,
+ * under `items`, under `definitions` or under a `patternProperties` — all are visited.
  *
- * @returns {Map<string, Set<string>>} nom de conteneur → clés qu'il accepte
+ * @returns {Map<string, Set<string>>} container name → keys it accepts
  */
 function closedContainers() {
     /** @type {Map<string, Set<string>>} */
     const index = new Map();
     /**
-     * Noms qu'AU MOINS UN schéma déclare OUVERT. Ils sont retirés de l'index à la fin.
+     * Names that AT LEAST ONE schema declares OPEN. They are removed from the index
+     * at the end.
      *
-     * 🛑 Sans ce retrait, la gate produit des faux positifs en masse, et c'est MESURÉ : `data`
-     * existe dans trois schémas — fermé à 3 clés dans `geoleaf-config`, **ouvert à 15 dans
-     * `layer-config`**. Indexer le seul fermé faisait juger tout bloc `data` d'exemple de
-     * couche contre le mauvais schéma : `data.file`, `data.url`, `data.directory`… étaient
-     * signalées invalides alors qu'elles sont déclarées. **Juger par NOM n'est sain que si le
-     * nom est fermé PARTOUT** — sinon un bloc légitime de la variante ouverte se fait juger
-     * par la fermée. Une gate bruyante apprend à être ignorée, ce qui est pire qu'une gate
-     * absente.
+     * 🛑 Without this removal, the gate mass-produces false positives, and it is
+     * MEASURED: `data` exists in three schemas — closed at 3 keys in
+     * `geoleaf-config`, **open at 15 in `layer-config`**. Indexing only the closed
+     * one had every layer-example `data` block judged against the wrong schema:
+     * `data.file`, `data.url`, `data.directory`… were flagged invalid while they are
+     * declared. **Judging by NAME is only sound if the name is closed EVERYWHERE** —
+     * otherwise a legitimate block of the open variant gets judged by the closed one.
+     * A noisy gate learns to be ignored, which is worse than an absent one.
      *
      * @type {Set<string>}
      */
@@ -142,23 +144,24 @@ function closedContainers() {
 
     /**
      * @param {unknown} node
-     * @param {string | null} name nom de la propriété qui porte ce nœud, si connu
+     * @param {string | null} name name of the property carrying this node, if known
      * @returns {void}
      */
     const visit = (node, name) => {
         if (!node || typeof node !== "object" || Array.isArray(node)) return;
         const obj = /** @type {Record<string, unknown>} */ (node);
 
-        // 🛑 L'ouverture se relève AVANT le test sur `properties`, et c'est là qu'était le
-        // trou (09/08/2026). La forme la plus OUVERTE qui existe — `{type: "object",
-        // additionalProperties: true}` **sans `properties`** — n'entrait dans aucune des
-        // deux branches ci-dessous : le mécanisme écrit pour voir l'ouverture était aveugle
-        // à son cas le plus franc. Mesuré : `profile.schema.json` déclare `modules.offline`
-        // exactement sous cette forme, à dessein (« opaque au schéma », le contenu
-        // appartient à la capacité). Conséquence, l'exemple JUSTE du CHANGELOG public
-        // `{"modules":{"offline":{"cache":{"maxTileCacheEntries":2000}}}}` se faisait juger
-        // contre le `offline` de NIVEAU COUCHE (`layer-config.schema.json`, fermé à
-        // `enabled|maxFeatures|maxAgeMs|source`) : gate rouge, doc juste.
+        // 🛑 Openness is registered BEFORE the `properties` test, and that is where
+        // the hole was (2026-08-09). The MOST OPEN shape there is — `{type: "object",
+        // additionalProperties: true}` **without `properties`** — entered neither of
+        // the two branches below: the mechanism written to see openness was blind to
+        // its plainest case. Measured: `profile.schema.json` declares
+        // `modules.offline` exactly in that shape, on purpose ("opaque to the
+        // schema", the content belongs to the capability). Consequence: the RIGHT
+        // example of the public CHANGELOG
+        // `{"modules":{"offline":{"cache":{"maxTileCacheEntries":2000}}}}` got judged
+        // against the LAYER-LEVEL `offline` (`layer-config.schema.json`, closed at
+        // `enabled|maxFeatures|maxAgeMs|source`): red gate, right docs.
         if (name && obj["additionalProperties"] === true) openSomewhere.add(name);
 
         const props = obj["properties"];
@@ -166,21 +169,21 @@ function closedContainers() {
             if (obj["additionalProperties"] === false) {
                 const keys = Object.keys(/** @type {Record<string, unknown>} */ (props));
                 const existing = index.get(name);
-                // Deux schémas peuvent décrire le même nom FERMÉ : on UNIT plutôt qu'on
-                // écrase. Écraser rendrait le verdict dépendant de l'ordre de lecture.
+                // Two schemas can describe the same CLOSED name: we UNITE rather than
+                // overwrite. Overwriting would make the verdict depend on read order.
                 if (existing) for (const k of keys) existing.add(k);
                 else index.set(name, new Set(keys));
             } else {
-                // Même nom, forme OUVERTE ailleurs → le nom devient injugeable (voir
-                // `openSomewhere`). On l'enregistre même si un autre schéma l'a fermé :
-                // c'est l'existence d'UNE variante ouverte qui rend le jugement non sûr.
+                // Same name, OPEN shape elsewhere → the name becomes unjudgeable (see
+                // `openSomewhere`). Registered even if another schema closed it: the
+                // existence of ONE open variant is what makes the judgment unsafe.
                 openSomewhere.add(name);
             }
         }
 
         for (const [key, value] of Object.entries(obj)) {
-            // `properties` / `definitions` / `patternProperties` portent des NOMS ; partout
-            // ailleurs (`items`, `allOf`, `then`…) le nom courant se propage.
+            // `properties` / `definitions` / `patternProperties` carry NAMES;
+            // everywhere else (`items`, `allOf`, `then`…) the current name propagates.
             const carriesNames =
                 key === "properties" || key === "definitions" || key === "patternProperties";
             if (carriesNames && value && typeof value === "object" && !Array.isArray(value)) {
@@ -203,12 +206,12 @@ function closedContainers() {
 }
 
 /**
- * Les blocs ```json d'un fichier Markdown, analysés. Les blocs non analysables sont
- * ignorés en silence : un extrait volontairement tronqué (`…`) est une illustration
- * légitime, pas une erreur de configuration.
+ * A Markdown file's ```json blocks, parsed. Unparseable blocks are silently ignored:
+ * a deliberately truncated snippet (`…`) is a legitimate illustration, not a
+ * configuration error.
  *
- * @param {string} src contenu du `.md`
- * @returns {unknown[]} les blocs JSON valides
+ * @param {string} src content of the `.md`
+ * @returns {unknown[]} the valid JSON blocks
  */
 function jsonBlocks(src) {
     const out = [];
@@ -216,32 +219,33 @@ function jsonBlocks(src) {
         try {
             out.push(JSON.parse(m[1]));
         } catch {
-            /* fragment illustratif — non analysable, donc non jugeable */
+            /* illustrative fragment — unparseable, hence unjudgeable */
         }
     }
     return out;
 }
 
 /**
- * Les schémas dont la RACINE est fermée, avec une signature qui permet de reconnaître un
- * bloc de doc SANS ambiguïté.
+ * The schemas whose ROOT is closed, with a signature allowing a doc block to be
+ * recognized WITHOUT ambiguity.
  *
- * 🛑 **Pourquoi cette fonction existe : sans elle la gate est aveugle à la moitié de sa
- * propre cible.** `scan()` ne jugeait que les clés d'un CONTENEUR NOMMÉ (`ui.x`, `edition.y`).
- * Les clés de PREMIER NIVEAU d'un exemple de `profile.json` n'étaient jamais confrontées,
- * alors que les 10 schémas racine sont `additionalProperties: false` — donc la classe la plus
- * directe passait. Mesuré à la pose : **`poiAddConfig` est enseigné comme bloc racine dans
- * trois documents produit** (dont une §17 entière de `PROFILE_JSON_REFERENCE.md`) et n'est
- * déclaré dans AUCUN schéma. La gate sortait verte dessus.
+ * 🛑 **Why this function exists: without it the gate is blind to half its own
+ * target.** `scan()` only judged the keys of a NAMED CONTAINER (`ui.x`,
+ * `edition.y`). The TOP-LEVEL keys of a `profile.json` example were never confronted,
+ * while the 10 root schemas are `additionalProperties: false` — so the most direct
+ * class passed. Measured at landing: **`poiAddConfig` is taught as a root block in
+ * three product documents** (including an entire §17 of `PROFILE_JSON_REFERENCE.md`)
+ * and is declared in NO schema. The gate went green on it.
  *
- * **La signature est DÉRIVÉE, pas écrite.** Un schéma racine n'est utilisable que s'il porte
- * au moins une propriété qu'AUCUN autre schéma racine ne déclare : c'est ce qui rend le
- * rapprochement non ambigu par construction. Sans ce critère, `profile.schema.json` et
- * `layer-config.schema.json` sont indiscernables — les deux ont `required: ["id"]`, et juger
- * un exemple de couche contre le schéma de profil produirait des faux positifs en masse,
- * exactement la classe `data.*` déjà rencontrée sur les conteneurs.
+ * **The signature is DERIVED, not written.** A root schema is only usable if it
+ * carries at least one property NO other root schema declares: that is what makes the
+ * matching unambiguous by construction. Without this criterion, `profile.schema.json`
+ * and `layer-config.schema.json` are indistinguishable — both have
+ * `required: ["id"]`, and judging a layer example against the profile schema would
+ * mass-produce false positives, exactly the `data.*` class already met on the
+ * containers.
  *
- * Un bloc qui ne matche AUCUNE signature est ignoré : on préfère ne pas juger à mal juger.
+ * A block matching NO signature is ignored: not judging beats misjudging.
  *
  * @returns {{ required: string[], unique: Set<string>, keys: Set<string>, name: string }[]}
  */
@@ -285,7 +289,7 @@ function scan() {
         for (const block of jsonBlocks(fs.readFileSync(file, "utf8"))) {
             blocks++;
 
-            // ── Racine : jugée seulement si UNE signature discriminante matche ──────────
+            // ── Root: judged only if ONE discriminating signature matches ───────────────
             if (block && typeof block === "object" && !Array.isArray(block)) {
                 const rootKeys = Object.keys(/** @type {Record<string, unknown>} */ (block));
                 const matched = roots.filter(
@@ -293,7 +297,7 @@ function scan() {
                         r.required.every((k) => rootKeys.includes(k)) &&
                         rootKeys.some((k) => r.unique.has(k))
                 );
-                // Deux signatures qui matchent le même bloc = ambiguïté : on ne juge pas.
+                // Two signatures matching the same block = ambiguity: we do not judge.
                 if (matched.length === 1) {
                     rootsJudged++;
                     const r = matched[0];
@@ -322,7 +326,7 @@ function scan() {
                         for (const child of Object.keys(
                             /** @type {Record<string, unknown>} */ (value)
                         )) {
-                            // `_comment*` est toléré partout par les schémas (PRF-SCHEMA).
+                            // `_comment*` is tolerated everywhere by the schemas (PRF-SCHEMA).
                             if (child.startsWith("_") || child === "$schema") continue;
                             if (!valid.has(child)) violations.push(`${rel} :: ${key}.${child}`);
                         }
@@ -346,7 +350,7 @@ function scan() {
 const { violations, files, blocks, containers, rootsJudged } = scan();
 const bar = "─".repeat(72);
 
-// ── CDE-03 — une gate qui n'a rien scanné, ou rien résolu, n'a rien prouvé ───────────────
+// ── CDE-03 — a gate that scanned nothing, or resolved nothing, proved nothing ────────────
 if (files === 0 || blocks === 0 || containers === 0) {
     console.error("ERROR [DOC-CONFIG-EXAMPLES/CDE-03]: corpus ou table de conteneurs vide.");
     console.error(
@@ -361,7 +365,7 @@ if (UPDATE) {
     fs.mkdirSync(path.dirname(BASELINE), { recursive: true });
     fs.writeFileSync(
         BASELINE,
-        // Indentation 4 : Prettier possède `scripts/**/*.json` en `tabWidth: 4`.
+        // Indentation 4: Prettier owns `scripts/**/*.json` at `tabWidth: 4`.
         JSON.stringify(
             {
                 _comment:
@@ -385,7 +389,7 @@ if (UPDATE) {
 }
 
 if (!fs.existsSync(BASELINE)) {
-    // Une baseline absente n'est PAS une liste vide : ce serait déclarer la doc propre.
+    // An absent baseline is NOT an empty list: it would declare the docs clean.
     console.error("ERROR [DOC-CONFIG-EXAMPLES]: baseline absente.");
     console.error("  Run: node scripts/check-doc-config-examples.cjs --update-baseline");
     process.exit(2);

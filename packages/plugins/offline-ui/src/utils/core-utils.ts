@@ -2,15 +2,14 @@
  * @geoleaf-plugins/offline-ui — Core utilities accessor
  * © 2026 Mattieu Pottier — MIT License
  *
- * ARCHI S7 (7.3, geste 5) — remplace les deep imports vers `@core/utils/**`.
- * Chaque helper est lu sur le namespace du core EN COURS D'EXÉCUTION
- * (`globalThis.GeoLeaf.Utils`), jamais importé : c'est ce qui permet au bundler de
- * cesser d'embarquer une copie du core.
+ * Replaces the deep imports towards `@core/utils/**`. Each helper is read on the
+ * RUNNING core namespace (`globalThis.GeoLeaf.Utils`), never imported: that is
+ * what lets the bundler stop embedding a copy of the core.
  *
- * ⚠️ Contrairement à l'accesseur `Log`, ces fonctions RENDENT des valeurs. Un repli
- * silencieux masquerait une absence de core derrière un résultat plausible — d'où
- * les replis explicites et neutres ci-dessous (chaîne vide, `null`, no-op), qui
- * restent lisibles en test comme en production dégradée.
+ * ⚠️ Unlike the `Log` accessor, these functions RETURN values. A silent fallback
+ * would mask an absent core behind a plausible result — hence the explicit,
+ * neutral fallbacks below (empty string, `null`, no-op), which stay readable in
+ * test as in degraded production.
  * https://geoleaf.dev
  */
 
@@ -35,19 +34,19 @@ interface CoreUtils {
 }
 
 /**
- * La tranche de `GeoLeaf.Utils` que ce plugin lit.
+ * The slice of `GeoLeaf.Utils` this plugin reads.
  *
- * STRUCT S2 (F7) — la recherche du namespace passe par `getGeoLeaf()` de
- * `@geoleaf/host-runtime` (qui teste aussi `window`) au lieu d'un accès direct à
- * `globalThis` : c'était le dernier endroit du plugin à refaire cette recherche. Le
- * NARROW vers {@link CoreUtils} reste local, et le doit : la tranche que lit storage
- * (`Formatters`, `createElement`, `events`) est disjointe de celle d'addpoi.
+ * The namespace lookup goes through `@geoleaf/host-runtime`'s `getGeoLeaf()`
+ * (which also tests `window`) instead of a direct `globalThis` access: this was
+ * the plugin's last place redoing that lookup. The NARROW to {@link CoreUtils}
+ * stays local, and must: the slice storage reads (`Formatters`, `createElement`,
+ * `events`) is disjoint from addpoi's.
  */
 function _utils(): CoreUtils | undefined {
     return getGeoLeaf()?.Utils as CoreUtils | undefined;
 }
 
-/** `GeoLeaf.Utils.DOMSecurity` — sanitisation DOM du core. No-op si le core est absent. */
+/** `GeoLeaf.Utils.DOMSecurity` — the core's DOM sanitisation. No-op when the core is absent. */
 export const DOMSecurity = {
     clearElement: (el: HTMLElement): void => {
         _utils()?.DOMSecurity?.clearElement?.(el);
@@ -58,12 +57,13 @@ export const DOMSecurity = {
 };
 
 /**
- * `GeoLeaf.Utils.createElement` — exposé par le core sous l'alias `$create`.
+ * `GeoLeaf.Utils.createElement` — exposed by the core under the `$create` alias.
  *
- * Rend `HTMLElement`, jamais `null` : le core le garantit (`dom-helpers.ts:125-128`),
- * et un retour nullable propageait `'possibly null'` à 31 sites de `modal-manager.ts`.
- * Le repli local `document.createElement(tag)` est exact pour un core absent — c'est
- * ce que fait le core lui-même, sans ses props/enfants.
+ * Returns `HTMLElement`, never `null`: the core guarantees it
+ * (`dom-helpers.ts`), and a nullable return propagated `'possibly null'`
+ * to 31 sites of `modal-manager.ts`. The local `document.createElement(tag)`
+ * fallback is exact for an absent core — it is what the core itself does, minus
+ * its props/children.
  */
 export function $create(tag: string, ...rest: unknown[]): HTMLElement {
     const create = _utils()?.createElement;
@@ -73,12 +73,13 @@ export function $create(tag: string, ...rest: unknown[]): HTMLElement {
 /**
  * `GeoLeaf.Utils.Formatters.formatFileSize` — human-readable byte size ("1.23 MB").
  *
- * CAPACITÉS S1 — remplace `CacheCalculator.formatBytes`, qui n'était qu'un wrapper sur
- * cette même fonction du core mais imposait un deep import de `calculator.js` (465 l.,
- * porteur de `Log`) dans le bundle de ce plugin.
+ * Replaces `CacheCalculator.formatBytes`, which was only a wrapper over this
+ * same core function but forced a deep import of `calculator.js` (465 l.,
+ * carrying `Log`) into this plugin's bundle.
  *
- * ⚠️ À NE PAS confondre avec le `FormatUtils.formatBytes` local de `download-handler.ts` :
- * celui-ci n'a pas de palier KB et ignore la précision. Les deux rendus diffèrent.
+ * ⚠️ NOT to be confused with `download-handler.ts`'s local
+ * `FormatUtils.formatBytes`: that one has no KB step and ignores precision. The
+ * two renderings differ.
  */
 export function formatFileSize(
     bytes: number | null | undefined,
@@ -97,24 +98,25 @@ export function toGB(bytes: number | null | undefined, precision?: number): stri
     return _utils()?.Formatters?.toGB?.(bytes, precision) ?? "";
 }
 
-/* 🛑 `formatDateTime` est RETIRÉE (tâche 4.11) : son seul consommateur était la liste de
- * sauvegardes du panneau de synchronisation, qui datait chaque entrée. La chaîne de sauvegarde
- * est supprimée, donc cet accesseur est un export sans appelant — compteur C1. */
+/* 🛑 `formatDateTime` is REMOVED: its only consumer was the sync panel's backup
+ * list, which dated each entry. The backup chain is deleted, so this accessor is
+ * a callerless export. */
 
 /**
- * `GeoLeaf.Utils.events` — gestionnaire d'écouteurs du core.
+ * `GeoLeaf.Utils.events` — the core's listener manager.
  *
- * Seul `on` est consommé par ce plugin ; la façade reste volontairement étroite
- * plutôt qu'un `Proxy` non typé, qui rendait des `unknown` au premier usage et
- * faisait échouer le typecheck (TS18046).
+ * Only `on` is consumed by this plugin; the facade stays deliberately narrow
+ * rather than an untyped `Proxy`, which yielded `unknown` at first use and
+ * failed the typecheck (TS18046).
  */
 export const events = {
     /**
-     * Signature calquée sur `event-listener-manager.ts:196-202` du core, RETOUR COMPRIS :
-     * `addEventListener` rend l'identifiant de l'écouteur, que les appelants passent à
-     * `pushId(…)` pour pouvoir le retirer. Un retour `unknown` faisait échouer le
-     * typecheck aux 3 sites (TS2345) — et je ne l'avais pas vu, parce que le script
-     * `typecheck` de ce package utilise `tsconfig.typecheck.json`, pas `tsconfig.json`.
+     * Signature modelled on the core's `event-listener-manager.ts`,
+     * RETURN INCLUDED: `addEventListener` yields the listener's identifier, which
+     * callers pass to `pushId(…)` to be able to remove it. An `unknown` return
+     * failed the typecheck at the 3 sites (TS2345) — and I had not seen it,
+     * because this package's `typecheck` script uses `tsconfig.typecheck.json`,
+     * not `tsconfig.json`.
      */
     on: (
         target: EventTarget | null,
@@ -136,7 +138,7 @@ export const events = {
             | undefined;
         return bus?.on?.(target, event, handler, options, label) ?? null;
     },
-    /** `events.off(id)` — pendant de `on`. Un appelant caste vers cette forme (l.192). */
+    /** `events.off(id)` — `on`'s counterpart. A caller casts to this shape (l.192). */
     off: (id: number): void => {
         const bus = _utils()?.events as { off?: (i: number) => void } | undefined;
         bus?.off?.(id);

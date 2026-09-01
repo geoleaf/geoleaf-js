@@ -7,7 +7,7 @@
 
 /**
  * App init: non-critical UI panels deferred to post-reveal (geoleaf:app:ready).
- * Extracted from app/init.ts (S6.2) — registers a single `{ once: true }` listener;
+ * Extracted from app/init.ts — registers a single `{ once: true }` listener;
  * behavior and ordering are preserved (the panel inits do not affect first render
  * or revealApp timing, so they run after the app reveals).
  */

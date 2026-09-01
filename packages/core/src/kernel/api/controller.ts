@@ -56,7 +56,7 @@ class APIController {
                 return true;
             }
 
-            if (Log) Log.info("[APIController] Initializing API controller (Sprint 4.3 - Robust)");
+            if (Log) Log.info("[APIController] Initializing API controller");
 
             // Initialise the managers in order
             this._initializeManagers();
@@ -70,7 +70,7 @@ class APIController {
             // Hand module access to the factory. It has to happen HERE and not in
             // `_initializeManagers()`: `moduleAccessFn` does not exist until
             // `_setupModuleAccess()` has run. Without this call the factory keeps
-            // `getModule === null` — which is what it did until S6.3, so its accessors
+            // `getModule === null` — which is what it long did, so its accessors
             // now read `Core` through a function nobody had ever given it.
             //
             // Guarded, and not out of politeness: the manager classes are resolved by
@@ -155,7 +155,7 @@ class APIController {
         const className = classNames[type];
         const api = getGeoLeaf()?.API as
             Record<string, (new () => unknown) | undefined> | undefined;
-        return api && api[className] ? (api[className] as new () => unknown) : null;
+        return api && api[className] ? api[className] : null;
     }
 
     /** Configures the module access function using the module manager. */
@@ -186,7 +186,7 @@ class APIController {
                 }
 
                 // Fallback to global access
-                // Recherche par nom calculé — cf. B-13 : `GeoLeafGlobal` n'a plus de traîne.
+                // Recherche par nom calculé — `GeoLeafGlobal` n'a plus de traîne.
                 const nsp = getGeoLeaf() as unknown as Record<string, unknown> | null;
                 if (nsp && nsp[name]) {
                     return nsp[name];
@@ -348,7 +348,7 @@ function _getAPIController(): APIController {
     // S6 Lot 3 — the rustine is gone.
     //
     // This used to run `runModuleSetup("security"/"config"/"api")` before building the
-    // controller: a local compensation for S1.3 (micro-core), which had made those setups
+    // controller: a local compensation for the micro-core split, which had made those setups
     // lazy while `boot-core.ts` still calls `loadConfig()` — which needs `GeoLeaf.Config.init`
     // and the `GeoLeaf.API.*` manager classes — BEFORE `registry.init()`. Phase A (Lot 2) posts
     // every kernel facade at import, so by the time anything reads this accessor the chain it
@@ -365,16 +365,17 @@ function _getAPIController(): APIController {
     // removing this ordering produced an infinite recursion through `_scanExistingModules` in
     // the browser, caught by `scripts/probe-boot-contract.mjs`.)
     //
-    // ⚠️ API publique S4.3f — le balayage de préfixe a été remplacé par un catalogue
-    // déclaratif (`kernel/api/module-catalog.ts`) qui applique une POLITIQUE D'ACCESSEUR :
-    // il lit `getOwnPropertyDescriptor` et saute toute entrée porteuse d'un getter, sans
-    // jamais toucher `.value`. La chaîne de ré-entrance décrite ci-dessus n'existe donc plus,
-    // et ce parking est devenu une CEINTURE plutôt que le seul frein. Il reste : `getModule`
-    // et `hasModule` lisent encore `gl[name]` en repli, hors construction — c'est sûr, mais
-    // c'est ce parking qui le rend sûr. Ne pas le retirer sous prétexte que le scan a changé.
-    // (Le commentaire citait `module-manager.ts:107-112`, une plage périmée — les lignes
-    // avaient glissé en 103-108 avant que le code ne disparaisse. Une citation de ligne dans
-    // un commentaire porteur vieillit sans bruit : celle-ci renvoie désormais au fichier.)
+    // ⚠️ The prefix sweep was replaced by a declarative catalogue
+    // (`kernel/api/module-catalog.ts`) applying an ACCESSOR POLICY: it reads
+    // `getOwnPropertyDescriptor` and skips any getter-carrying entry, never touching
+    // `.value`. The re-entrance chain described above therefore no longer exists, and
+    // this parking became a SEATBELT rather than the only brake. What remains:
+    // `getModule` and `hasModule` still read `gl[name]` as a fallback, outside
+    // construction — that is safe, but this parking is what makes it safe. Do not remove
+    // it on the grounds that the scan changed. (This comment used to cite
+    // `module-manager.ts`, a stale range — the lines had drifted to 103-108
+    // before the code disappeared. A line citation in a load-bearing comment ages
+    // silently: this one now points at the file.)
     _apiControllerInstance = instance;
 
     // …but do not KEEP a dead controller. `init()` catches and returns false (`:75-85`) instead

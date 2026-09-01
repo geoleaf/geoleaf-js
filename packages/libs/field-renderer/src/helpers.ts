@@ -25,23 +25,25 @@ export function _el<K extends keyof HTMLElementTagNameMap>(
 }
 
 /**
- * Résout un libellé, dans cet ordre : dictionnaire de l'hôte, catalogue intégré, clé brute.
+ * Resolves a label, in this order: the host's dictionary, the built-in
+ * catalogue, the raw key.
  *
- * 🛑 **LE CATALOGUE INTÉGRÉ EST L'APPORT DE LA TÂCHE 5.1c (D6).** Avant lui, la bibliothèque
- * utilisait **43 clés `form.*` qu'elle ne déclarait nulle part** : un hôte qui la chargeait
- * **seule** — sans `editor` ni `addpoi` — voyait `form.error.imageSize` s'afficher tel quel.
+ * 🛑 **THE BUILT-IN CATALOGUE IS THE POINT.** Before it, the library used
+ * **43 `form.*` keys it declared nowhere**: a host loading it **alone** —
+ * without `editor` or `addpoi` — saw `form.error.imageSize` shown as-is.
  *
- * ⚠️ **L'hôte garde le dernier mot** : son dictionnaire est consulté en premier, donc un
- * intégrateur peut toujours surcharger un libellé. La lecture reste **opportuniste** — la lib
- * ne dépend pas de GeoLeaf et fonctionne quand il est absent.
+ * ⚠️ **The host keeps the last word**: its dictionary is consulted first, so
+ * an integrator can always override a label. Reading stays **opportunistic**
+ * — the lib does not depend on GeoLeaf and works when it is absent.
  *
- * @param key - Clé de libellé.
- * @returns le libellé résolu, ou la clé quand personne ne la connaît.
+ * @param key - Label key.
+ * @returns the resolved label, or the key when nobody knows it.
  */
 export function _getLabel(key: string): string {
     const hosted = _g?.GeoLeaf?.I18n?.getLabel?.(key);
-    // ⚠️ Un hôte qui ne connaît pas la clé rend LA CLÉ, pas `undefined` — c'est le contrat de
-    // `GeoLeaf.I18n`. Sans ce test, le catalogue intégré ne serait jamais atteint.
+    // ⚠️ A host that does not know the key returns THE KEY, not `undefined` —
+    // `GeoLeaf.I18n`'s contract. Without this test, the built-in catalogue
+    // would never be reached.
     if (typeof hosted === "string" && hosted.length > 0 && hosted !== key) return hosted;
     const lang = _g?.GeoLeaf?.I18n?.getActiveLang?.() ?? FALLBACK_LANG;
     return builtinLabel(key, lang) ?? key;

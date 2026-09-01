@@ -1,20 +1,22 @@
 /**
- * 4.3 — LA LECTURE LOCALE, à travers le VRAI chargeur de couche.
+ * THE LOCAL READ, through the REAL layer loader.
  *
- * Prouve les quatre branches de `_getDataPromise` telles que la tâche 4.3 les laisse :
+ * Proves `_getDataPromise`'s four branches as the work leaves them:
  *
- *   1. couche déclarée hors-ligne + store peuplé  → le store sert, ZÉRO fetch
- *   2. couche déclarée hors-ligne + store VIDE    → repli réseau (le store rend `null`)
- *   3. couche NON déclarée + store peuplé         → le réseau sert, le store est ignoré
- *   4. lecture locale qui JETTE                   → repli réseau, et la couche se charge
+ *   1. layer declared offline + populated store  → the store serves, ZERO fetch
+ *   2. layer declared offline + EMPTY store      → network fallback (the store returns `null`)
+ *   3. layer NOT declared + populated store      → the network serves, the store is ignored
+ *   4. local read that THROWS                    → network fallback, and the layer loads
  *
- * 🛑 LA 3 EST CELLE QUI COMPTE, et elle est la raison de l'arbitrage. L'option écartée
- * — « lire le store dès qu'il porte des entités » — aurait fait dépendre la source de vérité
- * d'un ACCIDENT DE PEUPLEMENT. Ce test échoue si quelqu'un la réintroduit.
+ * 🛑 3 IS THE ONE THAT MATTERS, and it is the arbitration's reason. The
+ * ruled-out option — "read the store as soon as it carries entities" — would
+ * have made the source of truth depend on a POPULATION ACCIDENT. This test
+ * fails if someone reintroduces it.
  *
- * ⚠️ Le store est atteint par `StorageContract.DB`, jamais par un import de `capabilities/` :
- * le kernel n'en importe aucun. C'est donc le CONTRAT qui est moqué ici, pas IndexedDB — un
- * mock d'IndexedDB éprouverait le stockage, quand ce qui est en jeu est le seam.
+ * ⚠️ The store is reached through `StorageContract.DB`, never by a
+ * `capabilities/` import: the kernel imports none. So the CONTRACT is what
+ * is mocked here, not IndexedDB — an IndexedDB mock would exercise the
+ * storage, when what is at stake is the seam.
  */
 import {
     LoaderSingleLayer,
@@ -90,7 +92,7 @@ function makeDeps(gleaf = {}) {
 
 function baseGeoLeaf() {
     return {
-        // `isAvailable: false` — le worker forcerait un fetch hors du seam mesuré ici.
+        // `isAvailable: false` — the worker would force a fetch outside the seam measured here.
         _WorkerManager: { isAvailable: () => false },
         _VectorTiles: null,
         _DataConverter: null,
@@ -111,7 +113,7 @@ function baseGeoLeaf() {
     };
 }
 
-/** Monte une façade de stockage minimale derrière le contrat. */
+/** Mounts a minimal storage facade behind the contract. */
 function mountStorage(getLayerFeatureCollection) {
     StorageContract.init({ DB: getLayerFeatureCollection ? { getLayerFeatureCollection } : null });
 }
@@ -149,7 +151,7 @@ describe("4.3 — lecture locale par le loader de couche", () => {
         await LoaderSingleLayer._loadSingleLayer("sites_rosario", "Sites", OFFLINE_DEF, {});
 
         expect(read).toHaveBeenCalledWith("sites_rosario");
-        // 🛑 L'assertion centrale de 4.3 : « lire `features` AU LIEU de refetcher ».
+        // 🛑 The central assertion: "read `features` INSTEAD of refetching".
         expect(global.fetch).not.toHaveBeenCalled();
 
         const fc = state.adapter.addGeoJSONLayer.mock.calls[0][1];
@@ -158,9 +160,9 @@ describe("4.3 — lecture locale par le loader de couche", () => {
     });
 
     it("② déclarée + store VIDE → repli réseau, parce que `null` ≠ collection vide", async () => {
-        // `getLayerFeatureCollection` rend `null` quand rien n'est stocké. Rendre une
-        // collection vide aurait affiché zéro entité en croyant avoir lu — indiscernable
-        // d'une couche réellement vide.
+        // `getLayerFeatureCollection` returns `null` when nothing is stored.
+        // Returning an empty collection would have displayed zero entities
+        // believing it had read — indistinguishable from a really empty layer.
         const read = vi.fn().mockResolvedValue(null);
         mountStorage(read);
 
@@ -173,9 +175,9 @@ describe("4.3 — lecture locale par le loader de couche", () => {
     });
 
     it("③ NON déclarée + store peuplé → le réseau sert, le store est IGNORÉ", async () => {
-        // 🛑 Le test qui tient l'arbitrage. Si quelqu'un fait décider la présence dans le
-        // store plutôt que la déclaration, celui-ci rougit — et c'est exactement ce qu'on
-        // lui demande.
+        // 🛑 The test holding the arbitration. If someone makes store presence
+        // decide rather than the declaration, this one turns red — exactly
+        // what is asked of it.
         const read = vi.fn().mockResolvedValue(STORED);
         mountStorage(read);
 
@@ -201,10 +203,11 @@ describe("4.3 — lecture locale par le loader de couche", () => {
     });
 
     it("⑤ aucun module de stockage monté → repli réseau, sans erreur", async () => {
-        // Le cas d'une variante de déploiement sans stockage : un profil peut déclarer
-        // `offline` sans que le module soit là, et ça ne doit pas casser le chargement.
-        // ⚠️ Horloge factice : sans elle ce test attend la borne réelle de 3 s. Un test qui
-        // dort est un test qu'on finit par retirer de la boucle rapide.
+        // The case of a storage-less deployment variant: a profile can
+        // declare `offline` without the module being there, and that must
+        // not break loading.
+        // ⚠️ Fake clock: without it this test waits the real 3 s bound. A
+        // sleeping test is a test that ends up removed from the fast loop.
         vi.useFakeTimers();
         mountStorage(null);
         StorageContract._resetReady();
@@ -223,10 +226,11 @@ describe("4.3 — lecture locale par le loader de couche", () => {
     });
 
     it("⑦ moteur câblé APRÈS le début du chargement → la lecture l'attend et le store sert", async () => {
-        // 🛑 LE TEST DU DÉFAUT QUI A COÛTÉ LE PLUS LONG DIAGNOSTIC DU SPRINT. Le moteur de
-        // stockage est un chunk DIFFÉRÉ (`globals.storage.ts` : « injected LATER via
-        // wireModules ») alors que les couches chargent au boot. Sans attente, `StorageContract.DB`
-        // vaut `null` au moment exact de la lecture et le repli réseau s'exécute EN SILENCE.
+        // 🛑 THE TEST OF THE DEFECT THAT COST THE LONGEST DIAGNOSIS. The
+        // storage engine is a DEFERRED chunk (`globals.storage.ts`:
+        // "injected LATER via wireModules") while layers load at boot.
+        // Without waiting, `StorageContract.DB` is `null` at the exact
+        // moment of the read and the network fallback runs SILENTLY.
         const read = vi.fn().mockResolvedValue(STORED);
         StorageContract.init({ DB: null }); // moteur pas encore câblé
         StorageContract._resetReady();
@@ -237,7 +241,7 @@ describe("4.3 — lecture locale par le loader de couche", () => {
             OFFLINE_DEF,
             {}
         );
-        // le moteur arrive APRÈS que le chargement a commencé
+        // the engine arrives AFTER loading has started
         await new Promise((r) => setTimeout(r, 10));
         StorageContract.init({ DB: { getLayerFeatureCollection: read } });
         StorageContract._markReady();
@@ -250,9 +254,10 @@ describe("4.3 — lecture locale par le loader de couche", () => {
     });
 
     it("⑧ moteur qui n'arrive JAMAIS → repli réseau borné, pas une attente infinie", async () => {
-        // ⚠️ `whenReady()` ne résout jamais quand `modules.offline` est désactivé — son propre
-        // TSDoc le dit. Sans borne, une couche déclarée `offline` sur une variante SANS moteur
-        // ne se chargerait jamais : la carte serait vide selon la variante qui sert le profil.
+        // ⚠️ `whenReady()` never resolves when `modules.offline` is disabled
+        // — its own TSDoc says so. Without a bound, a layer declared
+        // `offline` on an engine-less variant would never load: the map
+        // would be empty depending on which variant serves the profile.
         vi.useFakeTimers();
         StorageContract.init({ DB: null });
         StorageContract._resetReady();
@@ -287,13 +292,14 @@ describe("4.3 — lecture locale par le loader de couche", () => {
         expect(global.fetch).toHaveBeenCalledOnce();
     });
 
-    // ── 4.1 — le défaut adjacent que le rapatriement rend atteignable ─────────────────────
+    // ── the adjacent defect the pull makes reachable ─────────────────────────────────────
     it("⑨ `data.ogcApi` + `offline.enabled` → le store passe DEVANT, et rien ne part sur le fil", async () => {
-        // 🛑 La branche `data.ogcApi` est un EARLY-EXIT de `_loadSingleLayer` : elle rend la
-        // main avant `_getDataPromise`, donc avant la lecture locale des cas ① à ⑥. Une
-        // couche portant les deux déclarations voyait son store COURT-CIRCUITÉ en silence et
-        // refetchait le réseau en se croyant hors-ligne. Aucune couche du dépôt ne portait
-        // les deux quand c'est écrit — 4.1 est la tâche qui rend la combinaison possible.
+        // 🛑 The `data.ogcApi` branch is an EARLY-EXIT of `_loadSingleLayer`:
+        // it yields before `_getDataPromise`, hence before cases ① to ⑥'s
+        // local read. A layer carrying both declarations saw its store
+        // SHORT-CIRCUITED silently and refetched the network believing
+        // itself offline. No repo layer carried both when this was written —
+        // the pull is what makes the combination possible.
         const read = vi.fn().mockResolvedValue(STORED);
         mountStorage(read);
 
@@ -313,14 +319,14 @@ describe("4.3 — lecture locale par le loader de couche", () => {
         const fc = state.adapter.addGeoJSONLayer.mock.calls[0][1];
         expect(fc.features[0].properties.id).toBe("local-1");
 
-        // Et `autoRefresh` ne s'arme pas : au premier `moveend` il refetcherait le réseau et
-        // écraserait la lecture locale qu'on vient d'établir.
+        // And `autoRefresh` does not arm: at the first `moveend` it would
+        // refetch the network and overwrite the local read just established.
         expect(state.layers.get("sites_rosario")?._ogcAutoRefreshCleanup).toBeUndefined();
     });
 
     it("⑩ `data.ogcApi` SANS déclaration hors-ligne → le réseau sert, le store est ignoré", async () => {
-        // Le contrôle de référence du ⑨ : la garde ne doit pas détourner la branche OGC
-        // d'une couche qui n'a rien demandé.
+        // ⑨'s reference control: the guard must not divert the OGC branch of
+        // a layer that asked for nothing.
         const read = vi.fn().mockResolvedValue(STORED);
         mountStorage(read);
         global.fetch = vi.fn().mockResolvedValue({

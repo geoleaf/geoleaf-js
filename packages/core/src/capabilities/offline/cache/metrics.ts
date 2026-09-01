@@ -35,12 +35,13 @@ interface HeadResult {
  * possibly-undefined, so `+=` stopped compiling for five buckets that are always present. The
  * key set is closed — declaring it is truer than asserting it (qualite Q5).
  *
- * ⚠️ **`type`, pas `interface`, et exporté — les deux points sont délibérés.** Ce type sort dans
- * la déclaration publiée, via le retour INFÉRÉ de `estimateProfileSize`. Une `interface` ne
- * reçoit pas de signature d'index implicite : `const r: Record<string, number> = estimate.byType`
- * cessait de compiler chez l'intégrateur, alors que c'était valide avant Q5. Un alias de type en
- * reçoit une, donc l'affectation reste possible. Et sans `export`, la déclaration publiait un
- * retour citant un type que personne ne pouvait nommer.
+ * ⚠️ **`type`, not `interface`, and exported — both points are deliberate.** This
+ * type ships in the published declaration, through `estimateProfileSize`'s INFERRED
+ * return. An `interface` gets no implicit index signature:
+ * `const r: Record<string, number> = estimate.byType` stopped compiling on the
+ * integrator's side, although it was valid before. A type alias does get one, so the
+ * assignment stays possible. And without `export`, the declaration published a
+ * return citing a type nobody could name.
  */
 export type SizeByType = {
     tiles: number;
@@ -128,19 +129,19 @@ const CacheMetrics = {
         return 10000;
     },
 
-    // ⚠️ `getStorageQuota()` A ÉTÉ RETIRÉ ICI (clôture S3c) — c'était l'un de TROIS
-    // enveloppements de `navigator.storage.estimate()` dans la même capacité, et l'un des
-    // DEUX qui n'avaient aucun appelant de production : seul son propre `@example` le citait.
+    // ⚠️ `getStorageQuota()` WAS REMOVED HERE — one of THREE wrappers around
+    // `navigator.storage.estimate()` in the same capability, and one of the TWO with
+    // no production caller: only its own `@example` cited it.
     //
-    // 🛑 Ce n'était pas une redondance inoffensive : les trois rendaient des VOCABULAIRES DE
-    // CLÉS DIFFÉRENTS — `usage` ici et là, `used` ailleurs —, donc un appelant qui se trompait
-    // d'exemplaire lisait `undefined` sans que rien ne le dise. Le survivant est
-    // `CacheManager.getStorageQuota()`, le seul appelé (par `offline-ui` et par le
-    // pré-contrôle de quota de `cacheProfile`).
+    // 🛑 This was not harmless redundancy: the three returned DIFFERENT KEY
+    // VOCABULARIES — `usage` here and there, `used` elsewhere — so a caller picking
+    // the wrong copy read `undefined` with nothing saying so. The survivor is
+    // `CacheManager.getStorageQuota()`, the only one called (by `offline-ui` and by
+    // `cacheProfile`'s quota pre-check).
     //
-    // ⚠️ Cela solde aussi ce que la tâche 1.4 de `roadmap_socle-init` venait de découvrir :
-    // « réutiliser LE lecteur de quota » supposait qu'il n'y en ait qu'un. Il y en a un
-    // maintenant, et le choix s'est fait sur la MESURE, pas sur une préférence.
+    // ⚠️ This also settles what an audit had just found: "reuse THE quota reader"
+    // assumed there was only one. There is one now, and the choice was made on the
+    // MEASUREMENT, not a preference.
 
     /**
      * Estimate profile size before download

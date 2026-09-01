@@ -309,15 +309,17 @@ describe("table-branches-deep (T10.2.7)", () => {
     // fireEvent — branch coverage
     // ════════════════════════════════════════════════════════════════════
 
-    // ⚠️ Ces quatre cas utilisaient des noms INVENTÉS (`test-event`, `no-map-event`,
-    // `no-fire-method`, `safe-event`), possibles tant que `fireEvent` prenait un `string` et
-    // composait `"geoleaf:" + eventName`. Depuis le Sprint 4 du contrat inverse il prend le nom
-    // COMPLET, contraint par `TableEventName` — lui-même dérivé de `GeoLeafEventMap` —, et la
-    // charge est vérifiée contre la map. Un nom inventé ne compile plus.
+    // ⚠️ These four cases used INVENTED names (`test-event`, `no-map-event`,
+    // `no-fire-method`, `safe-event`), possible while `fireEvent` took a
+    // `string` and composed `"geoleaf:" + eventName`. It now takes the FULL
+    // name, constrained by `TableEventName` — itself derived from
+    // `GeoLeafEventMap` —, and the payload is checked against the map. An
+    // invented name no longer compiles.
     //
-    // Ce n'est pas une contrainte subie : ces tests éprouvent les trois branches d'aiguillage
-    // de `fireEvent` (carte présente / absente / sans `fire`), pas sa tolérance aux noms
-    // arbitraires. Les jouer sur de vrais noms éprouve la même mécanique sur la vraie surface.
+    // Not a constraint endured: these tests exercise `fireEvent`'s three
+    // routing branches (map present / absent / without `fire`), not its
+    // tolerance to arbitrary names. Playing them on real names exercises the
+    // same mechanics on the real surface.
     describe("fireEvent", () => {
         test("fires both map.fire and DOM CustomEvent when map present", () => {
             const mockFire = vi.fn();

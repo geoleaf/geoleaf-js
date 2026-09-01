@@ -317,17 +317,28 @@ await GeoLeaf.Ws.init({
 
 ## Consumer tests
 
-The package ships a `MockTransport` to make unit testing easier in projects that integrate the
-plugin.
+The package exposes `registerTransport()` so an integrator can plug in a fake transport of their
+own for unit tests.
 
-> **Warning** — `./test-utils` is not a public subpath, so the import below does not resolve as
-> written. The file does travel in the tarball (`files[]` carries `test-utils/`), but the `exports`
-> map does not declare it, so importing that path raises `ERR_PACKAGE_PATH_NOT_EXPORTED`. In the
-> meantime, copy `test-utils/mock-transport.ts` out of the tarball.
+> **Note — `MockTransport` is NOT published, and that is deliberate (decided 17/08/2026).**
+> It lives in the repository at `test-utils/mock-transport.ts` and drives this plugin's own test
+> suites, but it no longer travels in the tarball: `files[]` stopped carrying `test-utils/`.
+>
+> Until then it _was_ shipped while the `exports` map declared no `./test-utils` — so the import
+> below cost download weight and raised `ERR_PACKAGE_PATH_NOT_EXPORTED` for anyone who tried it.
+> The alternative — declaring the subpath — would have pointed at **uncompiled TypeScript**,
+> where every other subpath in this package targets `dist/`; supporting a test helper publicly was
+> judged not worth a second build entry and its type emission.
+>
+> **What to do instead:** implement `IWsTransport` yourself (it is five methods) and register it
+> with `registerTransport()`, exactly as the snippet below does. The interface is exported from
+> the package root and _is_ a supported surface. `test-utils/mock-transport.ts` in the repository
+> is a working reference you may copy from.
 
 ```js
-import { MockTransport } from "@geoleaf-plugins/websocket/test-utils"; // see the warning above
 import { registerTransport } from "@geoleaf-plugins/websocket";
+
+// `MockTransport` here is YOUR implementation of `IWsTransport` — see the note above.
 
 // Register the mock before init()
 registerTransport("mock", () => new MockTransport());

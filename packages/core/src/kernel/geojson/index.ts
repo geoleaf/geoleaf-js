@@ -26,15 +26,16 @@ export { VisibilityManager } from "./visibility-manager.js";
 export { bindFeatureInteractionEvents } from "./feature-interaction.js";
 
 /**
- * OGC API Features transport — médiation ajoutée par la tâche 4.1.
+ * OGC API Features transport — mediation added for the offline pull.
  *
- * Le rapatriement hors-ligne vit sous `capabilities/offline/pull/` et doit atteindre
- * `loader/ogc-api-loader.js`, que R.8 lui interdit d'importer en profondeur. Élargir ce
- * baril est le geste que la règle **désigne** — pas un contournement : la médiation reste
- * visible ici, et elle est motivée.
+ * The offline pull lives under `capabilities/offline/pull/` and must reach
+ * `loader/ogc-api-loader.js`, which the boundary forbids it to import deeply.
+ * Widening this barrel is the gesture the rule **designates** — not a workaround:
+ * the mediation stays visible here, and it is motivated.
  *
- * ⚠️ Coût bundle **nul**, et c'est ce qui rend le geste sûr : `loader/single-layer.ts`
- * importe déjà `fetchOgcApiFeatures` **statiquement**, donc `ogc-api-loader.js` est dans la
- * clôture eager du chunk geojson depuis longtemps. Ce ré-export n'y ajoute aucun module.
+ * ⚠️ Bundle cost **zero**, and that is what makes the gesture safe:
+ * `loader/single-layer.ts` already imports `fetchOgcApiFeatures` **statically**,
+ * so `ogc-api-loader.js` has long been in the geojson chunk's eager closure. This
+ * re-export adds no module to it.
  */
 export { fetchOgcApiFeatures } from "./loader/ogc-api-loader.js";

@@ -12,8 +12,8 @@
  *
  * ## `deploy-coverage` is TOOLING, not a deliverable (T2, arbitrage Q2)
  *
- * The two shipped variants are `deploy-core` and `deploy-full` (5.5 : `deploy-addpoi` est
- * partie avec le plugin fusionné).
+ * The two shipped variants are `deploy-core` and `deploy-full` (`deploy-addpoi` left
+ * with the merged plugin).
  * `deploy-coverage` is a FOURTH folder that is served (port 8769, vhost
  * `demo.coverage.geoleaf.local.test`) but never delivered: it is `deploy-core` with an
  * Istanbul-instrumented bundle and a CSP relaxed to allow `unsafe-eval`. **It does not
@@ -42,27 +42,28 @@ const NPM_SHELL = process.platform === "win32";
 const ROOT = path.resolve(__dirname, "..");
 const DEPLOY_CORE = path.join(ROOT, "deploy", "deploy-core");
 const DEPLOY_COV = path.join(ROOT, "deploy", "deploy-coverage");
-// T5.5 — par le registre, qui jette. `CORE_PKG_DIR` sert aussi de `cwd` aux deux appels
-// rollup (étapes 1 et 4) : un chemin périmé y ferait échouer le build avec un message
-// d'outil, pas de gate — ce script laisserait alors `deploy-coverage` sur ses anciens
-// bundles instrumentés, servis tels quels par le vhost 8769.
+// Through the registry, which throws. `CORE_PKG_DIR` also serves as `cwd` for both
+// rollup calls (steps 1 and 4): a stale path there would fail the build with a tool
+// message, no gate — this script would then leave `deploy-coverage` on its old
+// instrumented bundles, served as-is by the 8769 vhost.
 const CORE_PKG_DIR = require("./lib/packages.cjs").requireByDirName("core").absDir;
 const CORE_DIST = path.join(CORE_PKG_DIR, "dist");
 
 /**
- * Vide `packages/core/dist/` avant un appel direct à rollup.
+ * Empties `packages/core/dist/` before a direct rollup call.
  *
- * Les deux `npx rollup -c` de ce fichier court-circuitent le `rimraf dist &&` que porte le
- * script `build` du core, et rollup n'efface pas son répertoire de sortie : sans cette purge,
- * chaque passe SUPERPOSE son jeu de chunks hashés au précédent. Voir le commentaire de
- * l'étape 1 et `scripts/check-dist-integrity.cjs`, la garde qui rend le défaut visible.
+ * This file's two `npx rollup -c` calls short-circuit the `rimraf dist &&` the core's
+ * `build` script carries, and rollup does not wipe its output directory: without this
+ * purge, each pass LAYERS its set of hashed chunks over the previous one. See step 1's
+ * comment and `scripts/check-dist-integrity.cjs`, the guard that makes the defect
+ * visible.
  *
- * @param {string} phase Libellé de la passe, pour la trace.
+ * @param {string} phase Label of the pass, for the trace.
  */
 function purgeCoreDist(phase) {
     if (fs.existsSync(CORE_DIST)) {
         fs.rmSync(CORE_DIST, { recursive: true, force: true });
-        log.ok(`dist/ vidé avant le build ${phase} (B-130)`);
+        log.ok(`dist/ vidé avant le build ${phase}`);
     }
 }
 
@@ -86,9 +87,9 @@ const log = {
  * @param {string} src
  * @param {string} dest
  * @param {(name: string) => boolean} [keepFile] receives the BASENAME of each regular file;
- *   return `false` to skip it. Omitted ⇒ copy all. Ajouté au S6.6, même motif que son jumeau
- *   de `build-deploy.cjs` : un `copyDir` en bloc réintroduit des sourcemaps sans qu'aucune
- *   ligne du script ne les nomme.
+ *   return `false` to skip it. Omitted ⇒ copy all. Added with the sourcemap purge,
+ *   same rationale as its twin in `build-deploy.cjs`: a wholesale `copyDir`
+ *   reintroduces sourcemaps without any line of the script naming them.
  */
 function copyDirRecursive(src, dest, keepFile) {
     if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
@@ -109,18 +110,19 @@ if (!fs.existsSync(DEPLOY_CORE)) {
 // ── Step 1: Build instrumented core ─────────────────────
 log.section("🔬 Building instrumented core (COVERAGE=true)");
 
-// ⚠️ B-130, SECONDE CAUSE — trouvée en S6a le 06/08/2026, et elle n'est PAS celle que la
-// ligne de registre décrit. B-130 attribue la superposition de chunks au cache turbo, ce qui
-// est vrai et prouvé par canari ; mais elle ne suffit pas à l'expliquer ici.
+// ⚠️ SECOND CAUSE of the chunk layering — found on 2026-08-06, and it is NOT the
+// first: the turbo cache is one, real and canary-proven; but it does not suffice to
+// explain it here.
 //
-// Le script du core fait `rimraf dist && rollup -c` (`package.json`). Ce fichier appelle
-// `npx rollup -c` DIRECTEMENT, aux étapes 1 et 4 — donc SANS le `rimraf`. Rollup écrit ses
-// chunks hashés par-dessus ceux déjà présents au lieu de les remplacer : après l'étape 1,
-// `core/dist/chunks/` porte les chunks instrumentés ET les non-instrumentés, l'étape 3 copie
-// LES DEUX vers `deploy-coverage`, et l'étape 4 en rajoute un troisième jeu.
+// The core's script does `rimraf dist && rollup -c` (`package.json`). This file calls
+// `npx rollup -c` DIRECTLY, at steps 1 and 4 — hence WITHOUT the `rimraf`. Rollup
+// writes its hashed chunks over those already present instead of replacing them: after
+// step 1, `core/dist/chunks/` carries the instrumented AND the non-instrumented
+// chunks, step 3 copies BOTH to `deploy-coverage`, and step 4 adds a third set.
 //
-// Mesuré : `packages/core/dist/chunks/` sort PROPRE d'un `turbo run build --force`, puis
-// redevient double après ce seul script. Purger avant chaque rollup est le geste qui manque.
+// Measured: `packages/core/dist/chunks/` comes out CLEAN of a
+// `turbo run build --force`, then goes double again after this single script. Purging
+// before each rollup is the missing move.
 purgeCoreDist("instrumenté");
 
 const buildResult = spawnSync("npx", ["rollup", "-c"], {
@@ -142,31 +144,33 @@ log.section("📁 Creating deploy/deploy-coverage");
 if (fs.existsSync(DEPLOY_COV)) {
     fs.rmSync(DEPLOY_COV, { recursive: true, force: true });
 }
-// 🛑 B-168 — les PRÉ-COMPRESSÉS de `deploy-core` ne sont PAS copiés, et c'est le correctif
-// central de cette ligne, pas une optimisation.
+// 🛑 `deploy-core`'s PRE-COMPRESSED files are NOT copied, and that is this line's
+// central fix, not an optimization.
 //
-// Ce script copie une variante ENTIÈREMENT BÂTIE puis n'en écrase qu'une partie : les `.js`
-// passent en version instrumentée, les `.gz`/`.br` restaient ceux du build PROPRE. Or le nginx
-// de dev porte `gzip_static on` : il sert le `.gz` de préférence au fichier nommé. Le navigateur
-// recevait donc **l'entrée de `deploy-core`**, non instrumentée, qui importe les chunks de
-// `deploy-core` — absents de cette variante, puisque les chunks instrumentés portent d'autres
-// hachages de contenu. Résultat mesuré le 08/08/2026 : 3 chunks en 404, le module d'entrée
-// n'instancie jamais, `window.GeoLeaf` et `window.__coverage__` restent `undefined`, et les
-// 7 tests de `07-boot-sequence` échouent — **l'instrument qui mesure la couverture du bundle
-// LIVRÉ était mort, sans que rien ne le dise.**
+// This script copies a FULLY BUILT variant then overwrites only part of it: the `.js`
+// switch to the instrumented version, the `.gz`/`.br` stayed those of the CLEAN
+// build. Yet the dev nginx carries `gzip_static on`: it serves the `.gz` in
+// preference to the named file. The browser thus received **`deploy-core`'s entry**,
+// non-instrumented, which imports `deploy-core`'s chunks — absent from this variant,
+// since the instrumented chunks carry other content hashes. Result measured on
+// 2026-08-08: 3 chunks in 404, the entry module never instantiates,
+// `window.GeoLeaf` and `window.__coverage__` stay `undefined`, and the 7
+// `07-boot-sequence` tests fail — **the instrument measuring the SHIPPED bundle's
+// coverage was dead, with nothing saying so.**
 //
-// ⚠️ Le symptôme DÉSIGNAIT LE MAUVAIS COUPABLE. Les trois 404 correspondent aussi, exactement,
-// aux trois `<link rel="modulepreload">` hérités de `deploy-core` — d'où un premier diagnostic
-// qui accusait le bloc de préchargement. Il est bien incohérent, mais un préchargement en échec
-// ne fait qu'avertir : il n'empêche pas un module de s'exécuter. La preuve qui tranche n'est pas
-// la liste des 404, c'est que le `.gz` servi ne contient AUCUN marqueur d'instrumentation.
+// ⚠️ The symptom POINTED AT THE WRONG CULPRIT. The three 404s also match, exactly, the
+// three `<link rel="modulepreload">` inherited from `deploy-core` — hence a first
+// diagnosis accusing the preload block. It is indeed incoherent, but a failed preload
+// only warns: it does not keep a module from executing. The deciding proof is not the
+// 404 list, it is that the served `.gz` contains NO instrumentation marker.
 //
-// Purger plutôt que régénérer : cette variante est un instrument de test servi en local, aucune
-// gate n'attend de compressés chez elle (`check-app-payload` la documente comme non gatée,
-// `check-build-determinism` l'exclut), et un fichier absent ne peut pas diverger de sa source.
+// Purge rather than regenerate: this variant is a test instrument served locally, no
+// gate expects compressed files in it (`check-app-payload` documents it as ungated,
+// `check-build-determinism` excludes it), and an absent file cannot diverge from its
+// source.
 const PRECOMPRESSED = /\.(gz|br)$/;
 copyDirRecursive(DEPLOY_CORE, DEPLOY_COV, (n) => !PRECOMPRESSED.test(n));
-log.ok("Copied deploy-core → deploy-coverage (sans les pré-compressés — B-168)");
+log.ok("Copied deploy-core → deploy-coverage (sans les pré-compressés)");
 
 // ── Step 2b: Relax CSP for Istanbul (needs 'unsafe-eval' for Function()) ──
 const indexPath = path.join(DEPLOY_COV, "index.html");
@@ -188,16 +192,17 @@ if (fs.existsSync(esmSrc)) {
     log.ok("geoleaf.esm.js (instrumented)");
 }
 
-// S6.6 — la copie de `geoleaf.esm.js.map` est RETIRÉE, et la règle vaut ici AUSSI.
+// The `geoleaf.esm.js.map` copy is REMOVED, and the rule holds here TOO.
 //
-// Cette variante est un instrument de test, jamais servi en production : l'argument de
-// divulgation qui motive S6.6 ne s'y applique pas de la même façon, et une exemption aurait
-// été défendable. Vérifié avant de trancher : **rien ne lit cette sourcemap** — la couverture
-// de boot passe par le global istanbul `window.__coverage__`, pas par un remappage.
-// L'exemption aurait donc coûté une asymétrie à documenter et à défendre, pour aucun usage.
-// Une règle uniforme est plus courte à tenir qu'une règle avec un cas particulier justifié.
+// This variant is a test instrument, never served in production: the disclosure
+// argument motivating the purge does not apply the same way, and an exemption would
+// have been defensible. Verified before deciding: **nothing reads this sourcemap** —
+// boot coverage goes through the istanbul global `window.__coverage__`, not through a
+// remapping. The exemption would thus have cost an asymmetry to document and defend,
+// for no use. A uniform rule is shorter to hold than a rule with a justified special
+// case.
 
-// Copy instrumented chunks — sans leurs sourcemaps, même motif.
+// Copy instrumented chunks — without their sourcemaps, same rationale.
 const chunksSrc = path.join(CORE_DIST, "chunks");
 const chunksDest = path.join(DEPLOY_COV, "dist", "chunks");
 if (fs.existsSync(chunksSrc)) {
@@ -209,22 +214,22 @@ if (fs.existsSync(chunksSrc)) {
     log.ok(`${count} chunk(s) copied`);
 }
 
-// ── Step 3b: réaligner les `<link rel="modulepreload">` — B-168, second défaut ──
+// ── Step 3b: realign the `<link rel="modulepreload">` — second defect ──
 //
-// `index.html` est copié de `deploy-core`, donc son bloc de préchargement nomme les chunks du
-// build PROPRE. Les chunks instrumentés portent d'autres hachages de contenu : les trois liens
-// tombaient en 404 à chaque chargement.
+// `index.html` is copied from `deploy-core`, so its preload block names the CLEAN
+// build's chunks. The instrumented chunks carry other content hashes: the three links
+// fell in 404 at every load.
 //
-// ⚠️ Ce défaut est RÉEL mais il n'était PAS la cause de la panne, et les confondre a coûté un
-// premier diagnostic entier. Un préchargement en échec avertit, il n'empêche pas un module de
-// s'exécuter — la panne venait du `.gz` périmé servi par `gzip_static` (voir l'étape 2). Les
-// deux produisent exactement les mêmes trois 404, ce qui rend le symptôme ambigu : c'est le
-// contenu du `.gz`, pas la liste des 404, qui a tranché.
+// ⚠️ This defect is REAL but it was NOT the outage's cause, and conflating the two
+// cost an entire first diagnosis. A failed preload warns, it does not keep a module
+// from executing — the outage came from the stale `.gz` served by `gzip_static` (see
+// step 2). Both produce exactly the same three 404s, which makes the symptom
+// ambiguous: the `.gz`'s content, not the 404 list, is what decided.
 //
-// Corrigé plutôt que supprimé : le préchargement fait partie de la forme de la page que
-// `07-boot-sequence` observe. Le réalignement se fait par PRÉFIXE de nom de chunk — jamais par
-// position dans la liste, qui ne dit rien —, et un préfixe sans correspondance fait ÉCHOUER le
-// build au lieu de laisser un 404 muet revenir.
+// Fixed rather than removed: the preload is part of the page shape `07-boot-sequence`
+// observes. The realignment goes by chunk-name PREFIX — never by list position, which
+// says nothing — and a prefix with no match FAILS the build instead of letting a mute
+// 404 come back.
 if (fs.existsSync(indexPath) && fs.existsSync(chunksDest)) {
     const present = fs.readdirSync(chunksDest).filter((f) => f.endsWith(".js"));
     let html = fs.readFileSync(indexPath, "utf8");
@@ -234,8 +239,8 @@ if (fs.existsSync(indexPath) && fs.existsSync(chunksDest)) {
     html = html.replace(
         /(<link rel="modulepreload" href="dist\/chunks\/)([^"]+)(")/g,
         (whole, head, file, tail) => {
-            if (present.includes(file)) return whole; // déjà juste
-            // `geoleaf-chunk-core-utils-BNNAnI8S.js` → préfixe `geoleaf-chunk-core-utils-`
+            if (present.includes(file)) return whole; // already right
+            // `geoleaf-chunk-core-utils-BNNAnI8S.js` → prefix `geoleaf-chunk-core-utils-`
             const prefix = file.replace(/-[A-Za-z0-9_-]+\.js$/, "-");
             const match = present.find((f) => f.startsWith(prefix));
             if (!match) {
@@ -249,21 +254,22 @@ if (fs.existsSync(indexPath) && fs.existsSync(chunksDest)) {
 
     if (unresolved.length) {
         log.err(
-            `B-168 — ${unresolved.length} modulepreload sans chunk correspondant : ` +
+            `${unresolved.length} modulepreload sans chunk correspondant : ` +
                 `${unresolved.join(", ")}. Ils partiraient en 404 à chaque chargement et ` +
                 `feraient échouer toute spec assertant « 0 erreur console ».`
         );
         process.exit(1);
     }
     fs.writeFileSync(indexPath, html, "utf8");
-    log.ok(`${realigned} modulepreload réaligné(s) sur les chunks instrumentés (B-168)`);
+    log.ok(`${realigned} modulepreload réaligné(s) sur les chunks instrumentés`);
 }
 
 // ── Step 4: Rebuild clean core (restore non-instrumented dist/) ──
 log.section("🔨 Rebuilding clean core (restoring dist/)");
 
-// Même motif qu'à l'étape 1 : sans cette purge, le jeu non-instrumenté s'ajoute au jeu
-// instrumenté que l'étape 1 vient de produire, et `core/dist/` finit avec les deux.
+// Same rationale as at step 1: without this purge, the non-instrumented set adds
+// itself to the instrumented set step 1 just produced, and `core/dist/` ends up with
+// both.
 purgeCoreDist("propre");
 
 const cleanBuild = spawnSync("npx", ["rollup", "-c"], {
@@ -280,14 +286,14 @@ if (cleanBuild.status !== 0) {
     log.ok("Clean dist/ restored");
 }
 
-// S6.6 — purge des `sourceMappingURL` orphelins, et GARDE.
+// Purge of orphaned `sourceMappingURL`s, and GUARD.
 //
-// ⚠️ Cette passe est indispensable ICI et ne peut pas être déléguée à `build-deploy.cjs`, pour
-// une raison d'ORDRE : ce script copie les bundles INSTRUMENTÉS depuis `CORE_DIST` **après**
-// que build-deploy a nettoyé `deploy-core`. Les fichiers arrivent donc frais, avec leur
-// commentaire intact. Mesuré le 08/08/2026 : `deploy-coverage` sortait à 0 sourcemap mais
-// **6 `sourceMappingURL` orphelins**, chacun un 404 en devtools — la moitié du défaut réparée,
-// l'autre reformée juste après, par un script que la première passe ne voyait pas.
+// ⚠️ This pass is indispensable HERE and cannot be delegated to `build-deploy.cjs`,
+// for a reason of ORDER: this script copies the INSTRUMENTED bundles from `CORE_DIST`
+// **after** build-deploy cleaned `deploy-core`. The files thus arrive fresh, comment
+// intact. Measured on 2026-08-08: `deploy-coverage` came out at 0 sourcemaps but
+// **6 orphaned `sourceMappingURL`s**, each a 404 in devtools — half the defect
+// repaired, the other reformed right after, by a script the first pass did not see.
 {
     const stripped = [];
     const sweep = (dir) => {
@@ -326,27 +332,27 @@ if (cleanBuild.status !== 0) {
     if (leaked.length) {
         log.err(
             `${leaked.length} sourcemap(s) dans deploy-coverage : ${leaked.join(", ")}. ` +
-                `Le déployé n'en expédie AUCUNE (S6.6). Filtrer la copie, ne pas retirer la garde.`
+                `Le déployé n'en expédie AUCUNE. Filtrer la copie, ne pas retirer la garde.`
         );
         process.exit(1);
     }
-    log.ok("aucune sourcemap dans deploy-coverage (garde S6.6)");
+    log.ok("aucune sourcemap dans deploy-coverage");
 }
 
 /**
- * GARDE B-168 — aucun pré-compressé, et l'entrée servie EST celle qui est instrumentée.
+ * GUARD — no pre-compressed file, and the served entry IS the instrumented one.
  *
- * Deux contrôles, parce qu'un seul laisserait passer la moitié de la classe :
+ * Two checks, because one alone would let half the class through:
  *
- * ① Aucun `.gz`/`.br` dans la variante. Sous `gzip_static on`, un compressé périmé est servi
- *   À LA PLACE du fichier nommé — le disque peut donc être juste pendant que le navigateur
- *   reçoit autre chose. C'est précisément ce qui a rendu B-168 invisible : toutes mes
- *   vérifications lisaient le `.js`, et nginx servait le `.gz`.
+ * ① No `.gz`/`.br` in the variant. Under `gzip_static on`, a stale compressed file is
+ *   served IN PLACE of the named file — the disk can thus be right while the browser
+ *   receives something else. That is precisely what made the defect invisible: every
+ *   verification read the `.js`, and nginx served the `.gz`.
  *
- * ② L'entrée porte un marqueur d'instrumentation. ① seul sortirait vert sur un
- *   `deploy-coverage` où l'écrasement des `.js` aurait échoué — la variante serait alors
- *   cohérente et parfaitement inutile, ce qui est le pire des états : `verify-e2e-coverage`
- *   mesurerait un bundle NON instrumenté et rendrait 0 % sans qu'aucune erreur ne le dise.
+ * ② The entry carries an instrumentation marker. ① alone would go green on a
+ *   `deploy-coverage` where the `.js` overwrite had failed — the variant would then be
+ *   coherent and perfectly useless, which is the worst state: `verify-e2e-coverage`
+ *   would measure a NON-instrumented bundle and render 0 % with no error saying so.
  */
 {
     const compressed = [];
@@ -361,7 +367,7 @@ if (cleanBuild.status !== 0) {
     findCompressed(DEPLOY_COV);
     if (compressed.length) {
         log.err(
-            `B-168 — ${compressed.length} pré-compressé(s) dans deploy-coverage : ` +
+            `${compressed.length} pré-compressé(s) dans deploy-coverage : ` +
                 `${compressed.slice(0, 5).join(", ")}${compressed.length > 5 ? "…" : ""}. ` +
                 `Le nginx de dev porte \`gzip_static on\` et les servirait À LA PLACE des ` +
                 `fichiers instrumentés — la variante boote alors du code NON instrumenté, ou ` +
@@ -372,18 +378,18 @@ if (cleanBuild.status !== 0) {
 
     const entry = path.join(DEPLOY_COV, "dist", "geoleaf.esm.js");
     if (!fs.existsSync(entry)) {
-        log.err("B-168 — dist/geoleaf.esm.js absent de deploy-coverage.");
+        log.err("dist/geoleaf.esm.js absent de deploy-coverage.");
         process.exit(1);
     }
     if (!fs.readFileSync(entry, "utf8").includes("__coverage__")) {
         log.err(
-            "B-168 — dist/geoleaf.esm.js ne porte AUCUN marqueur d'instrumentation. La " +
+            "dist/geoleaf.esm.js ne porte AUCUN marqueur d'instrumentation. La " +
                 "variante servirait un bundle propre, et `verify-e2e-coverage` rendrait 0 % " +
                 "sans qu'aucune erreur ne le signale."
         );
         process.exit(1);
     }
-    log.ok("aucun pré-compressé, et l'entrée est instrumentée (garde B-168)");
+    log.ok("aucun pré-compressé, et l'entrée est instrumentée");
 }
 
 log.section("✅ deploy/deploy-coverage ready (port 8769)");

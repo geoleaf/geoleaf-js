@@ -6,9 +6,8 @@
  */
 import { describe, expect, it } from "vitest";
 
-const { serializeActiveFilter, deserializeActiveFilter } = await import(
-    "../../../src/capabilities/filter/serialize.ts"
-);
+const { serializeActiveFilter, deserializeActiveFilter } =
+    await import("../../../src/capabilities/filter/serialize.ts");
 
 const CONFIG = {
     enabled: true,

@@ -1,4 +1,4 @@
-﻿/*!
+/*!
  * @geoleaf/core
  * © 2026 Mattieu Pottier
  * Released under the MIT License
@@ -27,12 +27,13 @@ import {
     createProximityBarDom,
     openProximityBar,
     closeProximityBar,
+    proximityDefaultRadiusKm,
 } from "./mobile-toolbar-proximity.js";
-import { createSheetDom, openSheet } from "./mobile-toolbar-sheet.js";
+import { createSheetDom, markPillsWithPane, openSheet } from "./mobile-toolbar-sheet.js";
 
 export type { MobileToolbarOptions };
 
-// ── Local structural types (S2.1) ──────────────────────────────────────────────
+// ── Local structural types ──────────────────────────────────────────────
 
 /**
  * Map members probed by the toolbar. `setView`/`getCenter`/`getZoom` come from
@@ -131,17 +132,15 @@ function _handleProximity(target: HTMLElement): void {
     if (domState.proximityActive) {
         const wrapper = document.getElementById("gl-proximity-toolbar-wrapper");
         const wasFiltering = wrapper?.getAttribute("data-proximity-active") === "true";
-        toggle(map, 10);
+        toggle(map, proximityDefaultRadiusKm());
         domState.proximityActive = false;
         target.classList.remove("gl-map-toolbar__btn--active");
         closeProximityBar(false, !wasFiltering);
         return;
     }
-    domState.proximityActive = toggle(
-        map,
-        Number.parseInt(domState.proximitySlider?.defaultValue || "10", 10),
-        { onPointPlaced: _buildProximityCallback() }
-    );
+    domState.proximityActive = toggle(map, proximityDefaultRadiusKm(), {
+        onPointPlaced: _buildProximityCallback(),
+    });
     target.classList.toggle("gl-map-toolbar__btn--active", domState.proximityActive);
     if (domState.proximityActive) openProximityBar();
 }
@@ -188,10 +187,11 @@ function onToolbarClick(e: Event): void {
         _handleThemes(target);
         return;
     }
-    // 5.1-f — `poi-add` n'a plus de branche ici : il tombe volontairement dans le dispatch
-    // générique ci-dessous, qui charge le plugin paresseux AVANT de dispatcher. La branche
-    // dédiée appelait `_handlePoiAdd`, lequel sondait `GeoLeaf.AddPOI` — le kernel ouvrait
-    // le formulaire d'un plugin qu'il nommait. C'est `editor` qui écoute l'action désormais.
+    // `poi-add` no longer has a branch here: it deliberately falls into the
+    // generic dispatch below, which loads the lazy plugin BEFORE dispatching. The
+    // dedicated branch called `_handlePoiAdd`, which probed `GeoLeaf.AddPOI` — the
+    // kernel opened the form of a plugin it named. `editor` listens to the action
+    // now.
     // Generic dispatch for plugin-registered actions (e.g. "print").
     // For lazy plugins: load the bundle first, then dispatch so the listener is ready.
     if (action) {
@@ -278,6 +278,11 @@ export function initMobileToolbar(options: MobileToolbarOptions): void {
 
     domState.overlay = createSheetDom();
     glMain.appendChild(domState.overlay);
+
+    // A pane may have been registered before this toolbar existed, in which case the registry
+    // marked nothing. Marking here covers that order; `registerPaneHost({ sync })` covers the
+    // other one. ⚠️ Both are needed — neither side controls which runs first.
+    markPillsWithPane();
 
     requestAnimationFrame(() => {
         updateNavVisibility();

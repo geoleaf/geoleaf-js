@@ -196,7 +196,7 @@ describe("Coverage — APIFactoryManager", () => {
             expect(manager.isReady).toBe(true);
         });
 
-        it("holds no registry of its own (S6.3 — the mirror is gone)", () => {
+        it("holds no registry of its own — the mirror is gone", () => {
             expect(manager.mapInstances).toBeUndefined();
             expect(manager.getAllMapInstances()).toEqual([]);
         });
@@ -376,7 +376,7 @@ describe("Coverage — APIController (T10.3.11)", () => {
             expect(controller.healthStatus.lastUpdate).not.toBeNull();
         });
 
-        // S6.3 — the factory reads `Core` through `getModule`, so a factory that never
+        // The factory reads `Core` through `getModule`, so a factory that never
         // receives one reads nothing. That was the state of the world until this call
         // was added: `APIFactoryManager.init()` existed and nobody invoked it.
         it("hands moduleAccessFn to the factory manager", () => {

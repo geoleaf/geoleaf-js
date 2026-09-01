@@ -13,9 +13,9 @@
         "",
         "Le correctif de fond n’est pas de les émettre (un module type-only n’a rien à émettre)",
         "mais de décider ce que le glob doit annoncer. Trois voies, à instruire hors de ce lot :",
-        "  (a) restreindre `./capabilities/*` aux modules réellement émis, comme le S1.1 l’a fait",
+        "  (a) restreindre `./capabilities/*` aux modules réellement émis, comme déjà fait",
         "      pour `./facades/*` (13 fantômes → énumération explicite) ;",
-        "  (b) publier les type-only en entrées `types`-seules, comme `preset.contract` au S1.2 ;",
+        "  (b) publier les type-only en entrées `types`-seules, comme `preset.contract` ;",
         "  (c) retirer le glob et s’en tenir aux ré-exports nommés depuis l’entrée.",
         "",
         "CLIQUET : cette liste ne peut que RÉTRÉCIR. La gate échoue si une entrée cesse d’être vraie."

@@ -60,6 +60,20 @@ Keep **technical SemVer** in:
 | New feature, new module, new named export (non-breaking) | MINOR (3.X.0) |
 | Bug fix, performance patch, security fix                 | PATCH (3.0.X) |
 
+### Pre-adoption window (decided 24/08/2026)
+
+The MAJOR row above protects consumers who follow a semver range: an automatic
+`^3.0.0` upgrade must never break them. While the packages have **no such consumer**
+— no integrator installs from the registry and the only downstream vendors a pinned
+commit, so nobody upgrades automatically — a breaking change that is justified as
+better long-term MAY land in the minor under preparation (currently 3.1.0), with its
+justification recorded in the CHANGELOG entry and in the code at the changed site.
+
+This window closes by observation, not by date: the first consumer that follows a
+semver range restores the table above in full. Every change that used the window is
+labelled BREAKING in the CHANGELOG, so an adopter reading the release notes sees
+exactly what moved.
+
 ---
 
 ## Deprecation

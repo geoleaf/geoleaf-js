@@ -1,7 +1,7 @@
 {
     "_comment": [
         "ARCHI S11 — annotations de répertoire, écrites à la main, lues par",
-        "scripts/generate-docs-tree.cjs pour produire _docs_projet/ref/ARBORESCENCE_QUALIFIEE.md.",
+        "scripts/generate-docs-tree.cjs pour produire docs/reference/ARBORESCENCE_QUALIFIEE.md.",
         "",
         "POURQUOI CE FICHIER EXISTE",
         "Le markdown est 100 % généré : y écrire les annotations les ferait perdre à la première",
@@ -59,7 +59,7 @@
         "packages/plugins/cog/src": "`@geoleaf-plugins/cog` — chargement et rendu de GeoTIFF optimisés pour le cloud en couches image",
         "packages/plugins/connector/src": "`@geoleaf-plugins/connector` — authentification et interception fetch (SSO, jetons), livré dans toutes les variantes de deploy",
         "packages/plugins/connector/src/lang": "Dictionnaires i18n du plugin — 6 locales",
-        "packages/plugins/editor/src": "`@geoleaf-plugins/editor` — édition de géométries ET capture de POI. Plugin d'édition unique depuis la fusion d'`addpoi` (Sprint 5)",
+        "packages/plugins/editor/src": "`@geoleaf-plugins/editor` — édition de géométries ET capture de POI. Plugin d'édition unique depuis la fusion d'`addpoi`",
         "packages/plugins/editor/src/drawing": "Moteur de dessin (adaptateur terra-draw, chargé dynamiquement) : modes, accrochage, styles, calculs géométriques",
         "packages/plugins/editor/src/history": "Annulation/rétablissement : pile d'historique et raccourcis clavier",
         "packages/plugins/editor/src/lang": "Dictionnaires i18n du plugin — 6 locales",

@@ -1,13 +1,13 @@
 /**
- * `types/dropdown.ts` — couverture des branches (backlog R.2).
+ * `types/dropdown.ts` — branch coverage.
  *
- * 40 % de branches et 60 % de fonctions à l'ouverture. `field-renderer.test.ts`
- * n'exerçait que la liste statique ; **tout le chemin `fetchOptions` était mort à la
- * mesure** — la file d'attente désactivée, le remplacement du `<select>` après réponse,
- * l'indicateur de chargement et la branche d'échec réseau (lignes 103-126).
+ * 40% branches and 60% functions at the start. `field-renderer.test.ts` only
+ * exercised the static list; **the whole `fetchOptions` path was dead to the
+ * measure** — the disabled waiting state, the `<select>` replacement after
+ * the response, the loading indicator and the network-failure branch (lines 103-126).
  *
- * ⚠️ Fichier séparé de `field-renderer.test.ts` (2 074 l.) — voir l'en-tête de
- * `types-gallery.test.ts`.
+ * ⚠️ File separate from `field-renderer.test.ts` (2,074 l.) — see the header
+ * of `types-gallery.test.ts`.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
@@ -149,9 +149,9 @@ describe("dropdown.formRender — fetchOptions", () => {
         expect(el.querySelector(".gl-form-dropdown__spinner")).toBeNull();
         const select = el.querySelector<HTMLSelectElement>("select")!;
         expect(select.disabled).toBe(false);
-        // La valeur d'origine est réappliquée sur le select neuf.
+        // The original value is reapplied on the new select.
         expect(select.value).toBe("b");
-        // Et il garde l'identifiant auquel le libellé est lié.
+        // And it keeps the id the label is tied to.
         expect(select.id).toBe("gl-field-kind");
     });
 

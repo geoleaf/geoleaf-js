@@ -73,7 +73,29 @@
     --gl-color-accent-contrast: #020617;
     --gl-color-accent-hover: #ff9d57;
 
-    /* Aliases utilitaires pour harmoniser toutes les couches UI */
+    /* Aliases utilitaires pour harmoniser toutes les couches UI.
+
+       🛑 CES SIX LIGNES NE SUFFISENT PAS, ET C'EST CONTRE-INTUITIF — elles sont REPRISES
+       À L'IDENTIQUE dans `.gl-theme-light` et `.gl-theme-dark` plus bas, et la répétition
+       n'est pas une redondance : c'est ce qui les fait vivre.
+
+       Une propriété personnalisée dont la valeur contient un `var()` est SUBSTITUÉE LÀ OÙ
+       ELLE EST DÉCLARÉE, pas là où elle est lue. Déclarés ici seulement, ces six alias se
+       calculent UNE FOIS contre les défauts de `:root` ; `body.gl-theme-dark` redéfinit
+       ensuite `--gl-color-text-main`, mais l'alias, lui, est déjà figé et les descendants
+       n'héritent que de sa valeur substituée.
+
+       Mesuré dans Chromium le 27/08/2026, avant correction, sous `.gl-theme-dark` :
+       `--gl-color-text-main` = #e5e7eb tandis que `--gl-color-text` = #0f172a ; pire,
+       `--gl-color-surface-elevated` rendait #f9fafb — un blanc cassé — là où le thème
+       sombre veut #121212. 28 sites répartis sur 7 feuilles lisaient ces alias et
+       sortaient donc aux couleurs CLAIRES dans tous les thèmes sombres.
+
+       ⚠️ Le trio `--gl-accordion-*` juste en dessous était déjà repris dans les deux
+       blocs et n'a JAMAIS souffert du défaut — il a servi de témoin pour établir le
+       mécanisme et vérifier le remède. Toute nouvelle ligne de cette forme
+       (`--x: var(--y)` où `--y` dépend du thème) doit être ajoutée AUX TROIS ENDROITS,
+       faute de quoi elle sera gelée sans que rien ne rougisse. */
     --gl-color-text: var(--gl-color-text-main);
     --gl-color-text-secondary: var(--gl-color-text-muted);
     --gl-color-border: var(--gl-color-border-soft);
@@ -177,6 +199,15 @@ body.gl-theme-light,
     /* Focus ring (accessibilité) */
     --gl-color-focus-ring: #2684ff;
 
+    /* Alias utilitaires — REPRIS de `:root` à dessein : voir la note à leur déclaration.
+       Sans cette reprise ils resteraient figés sur les valeurs de `:root`. */
+    --gl-color-text: var(--gl-color-text-main);
+    --gl-color-text-secondary: var(--gl-color-text-muted);
+    --gl-color-border: var(--gl-color-border-soft);
+    --gl-color-border-subtle: var(--gl-color-border-soft);
+    --gl-panel-border: var(--gl-color-border-soft);
+    --gl-color-surface-elevated: var(--gl-color-bg-surface-muted);
+
     /* Accordion shared design tokens */
     --gl-accordion-border-radius: 6px;
     --gl-accordion-border-color: var(--gl-color-border-soft);
@@ -242,6 +273,15 @@ body.gl-theme-dark,
 
     /* Focus ring (accessibilité) - same as light */
     --gl-color-focus-ring: #2684ff;
+
+    /* Alias utilitaires — REPRIS de `:root` à dessein : voir la note à leur déclaration.
+       Sans cette reprise ils resteraient figés sur les valeurs de `:root`. */
+    --gl-color-text: var(--gl-color-text-main);
+    --gl-color-text-secondary: var(--gl-color-text-muted);
+    --gl-color-border: var(--gl-color-border-soft);
+    --gl-color-border-subtle: var(--gl-color-border-soft);
+    --gl-panel-border: var(--gl-color-border-soft);
+    --gl-color-surface-elevated: var(--gl-color-bg-surface-muted);
 
     /* Accordion shared design tokens */
     --gl-accordion-border-radius: 6px;

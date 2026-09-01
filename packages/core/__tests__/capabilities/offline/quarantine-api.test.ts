@@ -1,20 +1,21 @@
 /**
- * Les DEUX sorties de quarantaine — tâche 8.4 (B-123).
+ * The TWO exits from quarantine.
  *
- * 🛑 Ce que cette suite garde, et que rien d'autre ne gardait : qu'une entrée mise de côté
- * puisse **en sortir**. Avant 8.4 elle n'avait aucune sortie — ni le drain, ni la purge, ni
- * aucun geste d'interface —, donc elle s'accumulait sur l'appareil de terrain, visible,
- * comptée, irrésolvable.
+ * 🛑 What this suite guards, and nothing else did: that a set-aside entry can
+ * **get out**. Before this it had no exit — not the drain, not the purge, no
+ * interface gesture —, so it accumulated on the field device, visible,
+ * counted, unresolvable.
  *
- * Les deux sorties ne sont PAS interchangeables, et c'est le cœur de la conception :
+ * The two exits are NOT interchangeable, and that is the design's core:
  *
- *  1. **Remise en file** — réservée aux motifs dont la cause peut être constatée levée.
- *     Rejouer un `deletedOnServer` recréerait ce que le serveur a supprimé ; un
- *     `rejectedByServer` se ferait refuser à l'identique. Un « réessayer » indifférencié
- *     serait faux pour la moitié des cas, et faux dans le sens qui coûte.
- *  2. **Destruction confirmée** — et la confirmation n'est pas un booléen. L'appelant doit
- *     rendre le `localId` de l'entrée, qu'il ne peut connaître qu'en l'ayant LISTÉE. Un
- *     `{confirmed: true}` se pose depuis n'importe quel code sans que rien n'ait été montré.
+ *  1. **Requeue** — reserved for reasons whose cause can be observed lifted.
+ *     Replaying a `deletedOnServer` would recreate what the server deleted; a
+ *     `rejectedByServer` would get refused identically. An undifferentiated
+ *     "retry" would be wrong for half the cases, and wrong in the costly direction.
+ *  2. **Confirmed destruction** — and the confirmation is not a boolean. The
+ *     caller must return the entry's `localId`, which it can only know by
+ *     having LISTED it. A `{confirmed: true}` can be set from any code with
+ *     nothing having been shown.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { StorageContract } from "../../../src/kernel/shared/index.js";
@@ -43,14 +44,14 @@ let entries: Entry[];
 let updates: Array<[string, string, unknown]>;
 let removals: string[];
 
-/** Monte un faux store de file, ou aucun store du tout. */
+/** Mounts a fake queue store, or no store at all. */
 function mountOutbox(list: Entry[] | null): void {
     entries = list ?? [];
     updates = [];
     removals = [];
-    // ⚠️ `StorageContract.DB` est un ACCESSEUR en lecture seule — `init()` est son unique
-    // point d'écriture, et c'est ce que fait `push-engine.test.js`. Écrire la propriété
-    // directement jette « Cannot set property DB ».
+    // ⚠️ `StorageContract.DB` is a read-only ACCESSOR — `init()` is its only
+    // write point, and that is what `push-engine.test.js` does. Writing the
+    // property directly throws "Cannot set property DB".
     const db =
         list === null
             ? null
@@ -91,10 +92,11 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-    // 🛑 `StorageContract.init()` écrit un SINGLETON de module : sans cette remise à zéro, le
-    // faux store de cette suite survit à son fichier et se fait lire par les suivantes.
-    // Trouvé en se trompant — `offline-engine-entry.test.js` passait isolé et cassait en suite
-    // complète, ce qui ressemblait exactement à une régression de mon code.
+    // 🛑 `StorageContract.init()` writes a module SINGLETON: without this
+    // reset, this suite's fake store outlives its file and gets read by the
+    // next ones. Found by getting it wrong — `offline-engine-entry.test.js`
+    // passed in isolation and broke under the full suite, which looked
+    // exactly like a regression of my code.
     (StorageContract as unknown as { init: (m: unknown) => void }).init({
         get DB() {
             return null;
@@ -107,15 +109,16 @@ describe("requeueQuarantined — la cause levée, et seulement elle", () => {
     it("`retryBudgetExhausted` repasse en `pending`, budget REMIS À ZÉRO", async () => {
         const out = await requeueQuarantined("create:sites:loc:abc:1");
         expect(out).toEqual({ ok: true });
-        // 🛑 Sans la remise à zéro, l'entrée retomberait en quarantaine au premier échec :
-        // son budget est déjà épuisé, c'est précisément ce qui l'y a mise.
+        // 🛑 Without the reset, the entry would fall back into quarantine at
+        // the first failure: its budget is already spent, precisely what put it there.
         expect(updates).toEqual([
             [
                 "create:sites:loc:abc:1",
                 "pending",
-                // ⚠️ B-200 — `quarantineStatus` s'efface AVEC le motif. Une entrée remise en file
-                // qui garderait « 403 » porterait un diagnostic périmé sur un rejeu qui n'a pas
-                // encore eu lieu — plus trompeur qu'une absence, puisqu'il a l'air d'une mesure.
+                // ⚠️ `quarantineStatus` clears WITH the reason. A requeued
+                // entry keeping "403" would carry a stale diagnosis about a
+                // replay that has not happened yet — more misleading than an
+                // absence, since it looks like a measurement.
                 { attempts: 0, quarantine: null, quarantineStatus: null },
             ],
         ]);
@@ -129,9 +132,9 @@ describe("requeueQuarantined — la cause levée, et seulement elle", () => {
     });
 
     it("`layerNoLongerWritable` est REFUSÉE tant que la couche n'écrit pas", async () => {
-        // La cause est VÉRIFIABLE : on la constate levée plutôt que de l'espérer. Remettre en
-        // file une couche qui n'écrit toujours pas la renverrait en quarantaine au premier
-        // drain, en consommant son budget pour rien.
+        // The cause is VERIFIABLE: we observe it lifted rather than hope it
+        // is. Requeueing a layer that still does not write would send it back
+        // to quarantine at the first drain, spending its budget for nothing.
         mountOutbox([quarantined({ quarantine: "layerNoLongerWritable", layerId: "sites" })]);
         expect(await requeueQuarantined("create:sites:loc:abc:1")).toEqual({
             ok: false,
@@ -141,21 +144,22 @@ describe("requeueQuarantined — la cause levée, et seulement elle", () => {
     });
 
     it("`notImplementedByServer` est rejouable — le serveur peut avoir été mis à jour", async () => {
-        // B-199. La levée de cause est le déploiement d'une version qui connaît le verbe : rien
-        // ici ne peut la constater — le seul moyen serait de refaire l'appel, c'est-à-dire le
-        // rejeu lui-même. Donc on croit l'opérateur, exactement comme pour un budget épuisé.
-        // ⚠️ Le budget est aussi remis à zéro : l'entrée est arrivée là en QUARANTAINE
-        // IMMÉDIATE, à `attempts: 1` — sans la remise à zéro elle repartirait avec un budget
-        // entamé pour une cause qui ne lui appartient pas.
+        // The cause lifts when a verb-aware version deploys: nothing here can
+        // observe it — the only way would be to redo the call, i.e. the
+        // replay itself. So we believe the operator, exactly as for a spent
+        // budget. ⚠️ The budget is also reset: the entry got there through
+        // IMMEDIATE quarantine, at `attempts: 1` — without the reset it would
+        // leave again with a budget dented for a cause not its own.
         mountOutbox([quarantined({ quarantine: "notImplementedByServer", attempts: 1 })]);
         expect(await requeueQuarantined("create:sites:loc:abc:1")).toEqual({ ok: true });
         expect(updates).toEqual([
             [
                 "create:sites:loc:abc:1",
                 "pending",
-                // ⚠️ B-200 — `quarantineStatus` s'efface AVEC le motif. Une entrée remise en file
-                // qui garderait « 403 » porterait un diagnostic périmé sur un rejeu qui n'a pas
-                // encore eu lieu — plus trompeur qu'une absence, puisqu'il a l'air d'une mesure.
+                // ⚠️ `quarantineStatus` clears WITH the reason. A requeued
+                // entry keeping "403" would carry a stale diagnosis about a
+                // replay that has not happened yet — more misleading than an
+                // absence, since it looks like a measurement.
                 { attempts: 0, quarantine: null, quarantineStatus: null },
             ],
         ]);
@@ -202,9 +206,9 @@ describe("discardQuarantined — la confirmation n'est PAS un booléen", () => {
     });
 
     it("🛑 REFUSE quand la confirmation ne correspond pas", async () => {
-        // C'est ce qui rend structurellement vrai « l'opérateur a vu ce qu'il jette » : le
-        // `localId` ne se connaît qu'en ayant listé l'entrée. Un `{confirmed: true}` se pose
-        // depuis n'importe quel code sans que rien n'ait été montré.
+        // What makes "the operator saw what they discard" structurally true:
+        // the `localId` is only known by having listed the entry. A
+        // `{confirmed: true}` can be set from any code with nothing shown.
         expect(await discardQuarantined("create:sites:loc:abc:1", "loc:autre")).toEqual({
             ok: false,
             refused: "confirmationMismatch",
@@ -221,8 +225,8 @@ describe("discardQuarantined — la confirmation n'est PAS un booléen", () => {
     });
 
     it("ne détruit QUE ce qui est en quarantaine", async () => {
-        // Une entrée `pending` ou `failed` a déjà une sortie : le drain. La détruire ici
-        // serait une perte que rien ne justifie.
+        // A `pending` or `failed` entry already has an exit: the drain.
+        // Destroying it here would be a loss nothing justifies.
         mountOutbox([quarantined({ state: "pending" })]);
         expect(await discardQuarantined("create:sites:loc:abc:1", "loc:abc")).toEqual({
             ok: false,

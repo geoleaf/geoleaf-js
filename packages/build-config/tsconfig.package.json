@@ -1,7 +1,7 @@
 {
     "$schema": "https://json.schemastore.org/tsconfig",
     "_comment": [
-        "Profil standard d'un package du monorepo — ARCHI S9.1.",
+        "Profil standard d'un package du monorepo.",
         "  { \"extends\": \"@geoleaf/build-config/tsconfig.package.json\" }",
         "",
         "= tsconfig.base.json + les 3 chemins d'émission. C'est ce que 15 des 17 packages",

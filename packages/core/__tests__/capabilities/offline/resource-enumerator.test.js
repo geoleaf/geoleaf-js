@@ -19,7 +19,7 @@ vi.mock("../../../src/capabilities/offline/config-seam.js", () => ({
     coreConfigGet: vi.fn((key, fallback) => {
         if (key === "data.profilesBasePath") return "../profiles";
         if (key === "basemaps") return globalThis.__basemaps ?? {};
-        // Le drapeau que `_tilesRequested()` lit depuis la tâche 3.13 — pilotable par test.
+        // The flag `_tilesRequested()` reads — drivable per test.
         if (key === "modules.offline.cache.enableTileCache") return globalThis.__tileFlag ?? true;
         return fallback;
     }),
@@ -37,9 +37,8 @@ vi.mock("../../../src/capabilities/offline/cache/style-resolver.js", () => ({
     StyleResolver: { enumerate: vi.fn(async () => [{ url: "style.json", type: "style" }]) },
 }));
 
-const { ResourceEnumerator } = await import(
-    "../../../src/capabilities/offline/cache/resource-enumerator.js"
-);
+const { ResourceEnumerator } =
+    await import("../../../src/capabilities/offline/cache/resource-enumerator.js");
 const { CacheCalculator } = await import("../../../src/capabilities/offline/cache/calculator.js");
 const { StyleResolver } = await import("../../../src/capabilities/offline/cache/style-resolver.js");
 const { CacheStorage } = await import("../../../src/capabilities/offline/cache/storage.js");
@@ -157,17 +156,18 @@ describe("_addLayerResources — layers are hydrated upstream, NOT a stale reade
         expect(resources[1].type).toBe("geojson");
     });
 
-    // 🛑 LE TEST CI-DESSUS ÉTAIT VERT SUR UNE FICTION, ET C'EST POURQUOI CELUI-CI EXISTE.
+    // 🛑 THE TEST ABOVE WAS GREEN ON A FICTION, AND THAT IS WHY THIS ONE EXISTS.
     //
-    // Il nourrit `{ dataFile: "..." }` — la forme NORMALISÉE, produite par
-    // `profile-loader.ts` en hydratant un profil. **Aucun fichier de config de couche du
-    // dépôt ne la porte** : mesuré à la tâche 4.2, 46 des 48 déclarent `data: { directory,
-    // file }`, et 0 déclare `dataFile`. Or ce chemin-ci refetch la config BRUTE.
+    // It feeds `{ dataFile: "..." }` — the NORMALISED shape, produced by
+    // `profile-loader.ts` when hydrating a profile. **No layer config file in
+    // the repo carries it**: measured, 46 of 48 declare
+    // `data: { directory, file }`, and 0 declare `dataFile`. Yet this path
+    // refetches the RAW config.
     //
-    // Le test décrivait donc une entrée que la production ne voit jamais, et il est resté
-    // vert pendant que la donnée n'était énumérée pour aucune couche. L'instrument portait
-    // le biais qu'il aurait dû mesurer — il est gardé tel quel (la forme normalisée reste
-    // acceptée) et les deux ci-dessous couvrent la forme RÉELLE.
+    // The test thus described an input production never sees, and it stayed
+    // green while the data was enumerated for no layer. The instrument
+    // carried the bias it should have measured — it is kept as-is (the
+    // normalised shape stays accepted) and the two below cover the REAL shape.
     test("4.2 — la forme RÉELLE `data: { directory, file }` est énumérée", async () => {
         globalThis.fetch = vi.fn().mockResolvedValue({
             ok: true,
@@ -208,8 +208,8 @@ describe("_addLayerResources — layers are hydrated upstream, NOT a stale reade
             null
         );
 
-        // Le défaut sournois si le défaut disparaissait : une URL sans répertoire répond 404,
-        // et un 404 sur une ressource optionnelle se tait.
+        // The sneaky failure if the default vanished: a directory-less URL
+        // answers 404, and a 404 on an optional resource stays quiet.
         expect(resources[1].url).toBe(
             "../profiles/tourism/layers/hebergements/data/hebergements.geojson"
         );
@@ -260,14 +260,14 @@ describe("_addLayerResources — layers are hydrated upstream, NOT a stale reade
         expect(resources.every((r) => r.layerId === "hebergements")).toBe(true);
     });
 
-    // ── C.15 / tâche 8.9 ─────────────────────────────────────────────────────────
+    // ── templated layers ─────────────────────────────────────────────────────────
     //
-    // 🛑 Ces trois cas gardent un défaut qui a vécu SILENCIEUSEMENT : une instance de
-    // `layerTemplates` porte sa config EN LIGNE et n'a aucun `configFile`, donc elle
-    // traversait `_addLayerResources` sans produire une seule ressource. Sur `tourism`,
-    // 24 couches sur 42 — 57 % du profil de démo — étaient cochables dans le sélecteur
-    // hors-ligne et ne rapatriaient rien. Une couche non énumérée n'est pas une couche
-    // en échec : rien ne le disait.
+    // 🛑 These three cases guard a defect that lived SILENTLY: a
+    // `layerTemplates` instance carries its config INLINE and has no
+    // `configFile`, so it crossed `_addLayerResources` producing not a single
+    // resource. On `tourism`, 24 layers out of 42 — 57% of the demo profile —
+    // were checkable in the offline selector and pulled nothing. An
+    // unenumerated layer is not a failing layer: nothing said so.
 
     test("une couche à config EN LIGNE énumère sa donnée, sans aucun fetch", async () => {
         globalThis.fetch = vi.fn();
@@ -291,9 +291,10 @@ describe("_addLayerResources — layers are hydrated upstream, NOT a stale reade
             null
         );
 
-        // Le répertoire vaut `layers/<id>` — la convention que `profile-loader.ts:38`
-        // applique aux mêmes couches. La reprendre plutôt que d'en inventer une est ce
-        // qui empêche le chemin hors-ligne et le chemin de boot de diverger.
+        // The directory is `layers/<id>` — the convention
+        // `profile-loader.ts` applies to the same layers. Reusing it
+        // rather than inventing one is what keeps the offline path and the
+        // boot path from diverging.
         expect(resources).toEqual([
             {
                 url: "../profiles/tourism/layers/pluviometrie_janvier/data/pluviometrie_janvier.geojson",
@@ -302,7 +303,7 @@ describe("_addLayerResources — layers are hydrated upstream, NOT a stale reade
                 layerId: "pluviometrie_janvier",
             },
         ]);
-        // La config est déjà dans `layers.json`, énuméré avec le profil : rien à refetcher.
+        // The config is already in `layers.json`, enumerated with the profile: nothing to refetch.
         expect(globalThis.fetch).not.toHaveBeenCalled();
     });
 
@@ -344,7 +345,7 @@ describe("_addLayerResources — layers are hydrated upstream, NOT a stale reade
             null
         );
 
-        // La couche classique produit sa config ET sa donnée ; la templatée sa donnée seule.
+        // The classic layer yields its config AND its data; the templated one its data alone.
         expect(resources.filter((r) => r.layerId === "hebergements")).toHaveLength(2);
         expect(resources.filter((r) => r.layerId === "templatee")).toEqual([
             {
@@ -591,14 +592,14 @@ describe("enumerateAll — the whole shopping list", () => {
         expect(resources.some((r) => r.type === "icon")).toBe(false);
         expect(resources.some((r) => r.url.endsWith("profile.json"))).toBe(true);
     });
-    // ── Tâche 3.13 — `enableTileCache` est LU par le moteur, et c'est un VETO ───────────
+    // ── `enableTileCache` is READ by the engine, and it is a VETO ────────────────────────
     //
-    // 🛑 CE BLOC EXISTE PARCE QUE LE DRAPEAU N'ÉTAIT LU PAR PERSONNE côté core. Il était
-    // écrit à quatre endroits et lu à aucun ; le moteur ne connaissait que
-    // `selection.includeTiles`, une valeur que l'INTERFACE persiste. Mesuré en navigateur le
-    // 03/08 (`scripts/probe-tile-cache-arbitration.mjs`, M3) : sans sélection persistée,
-    // `cacheProfile()` n'énumérait AUCUNE tuile — l'inverse exact de ce que l'inventaire des
-    // suppressions annonçait.
+    // 🛑 THIS BLOCK EXISTS BECAUSE THE FLAG WAS READ BY NOBODY core-side. It
+    // was written in four places and read in none; the engine only knew
+    // `selection.includeTiles`, a value the INTERFACE persists. Measured in
+    // the browser on 03/08 (`scripts/probe-tile-cache-arbitration.mjs`):
+    // without a persisted selection, `cacheProfile()` enumerated NO tile —
+    // the exact opposite of what the removal inventory announced.
 
     describe("enableTileCache — le drapeau atteint enfin le moteur (3.13)", () => {
         beforeEach(() => {
@@ -611,8 +612,8 @@ describe("enumerateAll — the whole shopping list", () => {
         });
 
         test("sans sélection persistée, le drapeau à `true` fait énumérer les tuiles", async () => {
-            // C'est le cas de l'hôte sans interface : il n'a aucun autre moyen d'exprimer
-            // le réglage, et avant 3.13 il n'obtenait jamais de tuiles.
+            // The case of the UI-less host: it has no other way to express
+            // the setting, and before the fix it never got tiles.
             const resources = [];
 
             await ResourceEnumerator._addBasemapResources(resources, "p", null);
@@ -621,8 +622,8 @@ describe("enumerateAll — the whole shopping list", () => {
         });
 
         test("le drapeau à `false` VETO, même sur une sélection qui dit oui", async () => {
-            // Un veto, pas un défaut : une sélection persistée avant que le profil ne change
-            // d'avis ne doit pas pouvoir passer outre.
+            // A veto, not a default: a selection persisted before the profile
+            // changed its mind must not be able to override it.
             globalThis.__tileFlag = false;
             const resources = [];
 
@@ -632,8 +633,8 @@ describe("enumerateAll — the whole shopping list", () => {
         });
 
         test("le drapeau à `true` laisse la sélection refuser", async () => {
-            // Contre-épreuve : sans elle, une lecture qui rendrait toujours `true` passerait
-            // les deux tests précédents.
+            // Counter-proof: without it, a read always returning `true` would
+            // pass the two previous tests.
             const resources = [];
 
             await ResourceEnumerator._addBasemapResources(resources, "p", { includeTiles: false });
@@ -642,8 +643,8 @@ describe("enumerateAll — the whole shopping list", () => {
         });
 
         test("le veto porte AUSSI sur les couches tuilées, pas seulement sur les fonds", async () => {
-            // Les deux sites d'énumération sont distincts ; brancher l'un sans l'autre
-            // laisserait une moitié du drapeau muette.
+            // The two enumeration sites are distinct; wiring one without the
+            // other would leave half the flag mute.
             globalThis.__tileFlag = false;
             const resources = [];
 
@@ -655,10 +656,11 @@ describe("enumerateAll — the whole shopping list", () => {
                 { includeTiles: true }
             );
 
-            // ⚠️ On assert sur l'URL ÉNUMÉRÉE (le mock du calculateur rend `t/1.png`), pas
-            // sur `r.type === "tile"` : la couche elle-même est poussée avec ce type, donc
-            // une assertion sur le type aurait rougi sur l'entrée de couche — mon premier
-            // instrument mesurait autre chose que ce qu'il annonçait.
+            // ⚠️ We assert on the ENUMERATED URL (the calculator mock returns
+            // `t/1.png`), not on `r.type === "tile"`: the layer itself is
+            // pushed with that type, so a type assertion would have turned
+            // red on the layer entry — my first instrument measured something
+            // other than what it announced.
             expect(resources.some((r) => r.url === "t/1.png")).toBe(false);
         });
     });

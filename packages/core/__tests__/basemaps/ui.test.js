@@ -57,7 +57,7 @@ describe("basemaps/ui (Phase 5.28)", () => {
             mockGetActiveKey.mockReturnValue("street");
             refreshUI();
             expect(btn.classList.contains("gl-baselayer-active")).toBe(true);
-            expect(btn.classList.contains("gl-is-active")).toBe(true); // Sprint 2 CSS isolation
+            expect(btn.classList.contains("gl-is-active")).toBe(true); // CSS isolation
             expect(btn.getAttribute("aria-pressed")).toBe("true");
         });
 

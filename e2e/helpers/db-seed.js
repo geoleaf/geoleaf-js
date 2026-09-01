@@ -7,7 +7,7 @@
 // fixture. This file is the counterpart, and it is the only one that runs an upgrade.
 //
 // 🛑 THE FIXTURE CARRIES THE SCHEMA, NOT THIS FILE. A schema mirrored in helper code is a
-// second source of truth that drifts silently the day production changes — and Sprint 3 is
+// second source of truth that drifts silently the day production changes — and the v4 rewrite is
 // about to rewrite this very schema into v4. So `seedDatabase` applies whatever descriptor
 // it is handed, and `e2e/fixtures/offline/db-v3-dump.json` is what says "v3 looks like
 // this". Adding v4 means adding a fixture, not editing this helper.
@@ -193,7 +193,7 @@ function seedDatabase(page, spec) {
 }
 
 /**
- * The Sprint 3 entry point: puts a LEGACY v3 database on the app's origin, before the app
+ * The entry point: puts a LEGACY v3 database on the app's origin, before the app
  * has ever run, so that booting it is an observable migration.
  *
  * ```js

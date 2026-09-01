@@ -237,12 +237,12 @@ function renderPriceObject(data: PriceLike): HTMLElement | null {
  * Renders an array as a `<ul class="gl-poi-list-unordered">`, with a `disc` bullet.
  */
 function renderArrayList(data: unknown[]): HTMLElement {
-    // ⚠️ Un `if`/`else` de cinq lignes vivait ici, et les DEUX branches assignaient la
-    // même valeur. L'inventaire le décrivait comme « inatteignable, seul le `else`
-    // s'exécute » — c'est l'inverse : `config.variant` est le plus souvent absent, donc
-    // le `||` rendait `"disc"` et c'est le `if` qui passait. Peu importe : depuis le
-    // Sprint 2 la déclaration ne peut plus porter `disc`/`circle`/`square`, et le seul
-    // `variant` que la projection émet est `hero`. Une seule assignation reste.
+    // ⚠️ A five-line `if`/`else` lived here, and BOTH branches assigned the same
+    // value. The inventory described it as "unreachable, only the `else` runs" — it
+    // is the reverse: `config.variant` is most often absent, so the `||` yielded
+    // `"disc"` and the `if` is what ran. No matter: the declaration can no longer
+    // carry `disc`/`circle`/`square`, and the only `variant` the projection emits is
+    // `hero`. One assignment remains.
     const ul = el("ul", "gl-poi-list-unordered");
     ul.style.listStyleType = "disc";
     data.forEach((item) => {
@@ -258,7 +258,7 @@ function renderArrayList(data: unknown[]): HTMLElement {
  * price object ({@link renderPriceObject}); an array is rendered as an unordered
  * list ({@link renderArrayList}).
  *
- * @param _config Field configuration — inutilisée depuis que la puce est fixe.
+ * @param _config Field configuration — unused since the bullet became fixed.
  * @param value Already-resolved list value (array or price object).
  * @returns The rendered element, or `null` when the value is empty.
  */

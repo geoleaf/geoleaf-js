@@ -56,10 +56,10 @@ describe("floating-menu", () => {
         expect(menu!.classList.contains("gl-editor-menu--hidden")).toBe(true);
     });
 
-    // B-12 — ce test figeait `top-left`, l'ancrage qui superpose le pill à la toolbar
-    // du core. Il vérifiait deux propriétés sur quatre, donc il ne pouvait pas voir que
-    // les trois autres ancrages ne posaient RIEN et retombaient en haut à gauche.
-    // Les quatre sont désormais assertées, sur les quatre ancrages.
+    // This test froze `top-left`, the anchor that overlays the pill on the
+    // core's toolbar. It checked two properties out of four, so it could not
+    // see that the three other anchors set NOTHING and fell back to top-left.
+    // All four are now asserted, on all four anchors.
     it("initEditorMenu applies the default position (top-right — away from the core toolbar)", () => {
         initEditorMenu(getEditorConfig(), {});
         const root = container.querySelector<HTMLElement>(".gl-editor-root")!;
@@ -91,9 +91,9 @@ describe("floating-menu", () => {
         const root = container.querySelector<HTMLElement>(".gl-editor-root")!;
         expect(root.style.getPropertyValue("--gl-editor-top")).toBe("50px");
         expect(root.style.getPropertyValue("--gl-editor-left")).toBe("80px");
-        // Un objet explicite garde la main : les deux autres bords restent neutres et
-        // aucun `data-gl-anchor-x` n'est posé — un intégrateur qui épinglait des pixels
-        // n'est pas déplacé par le changement de défaut.
+        // An explicit object keeps control: the two other edges stay neutral
+        // and no `data-gl-anchor-x` is set — an integrator who pinned pixels
+        // is not moved by the default change.
         expect(root.style.getPropertyValue("--gl-editor-right")).toBe("auto");
         expect(root.style.getPropertyValue("--gl-editor-bottom")).toBe("auto");
         expect(root.hasAttribute("data-gl-anchor-x")).toBe(false);

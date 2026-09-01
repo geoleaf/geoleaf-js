@@ -6,7 +6,7 @@
 /**
  * The ONE description of the `globalThis.GeoLeaf` surface, and the one walk that measures it.
  *
- * ## Why this file exists (API publique S4.1)
+ * ## Why this file exists
  *
  * The surface used to be described in three hand-written lists that nothing related, plus a
  * fourth consumer that read one of them **by regex**:
@@ -45,11 +45,11 @@
  * page instead of measuring. `namespace-surface.selfcontained.test.js` asserts this.
  *
  * ⚠️ **Accessors are recorded by NAME and never read.** `GeoLeaf._APIController` is defined via
- * `Object.defineProperty(gl, "_APIController", { get })` (`kernel/api/controller.ts:354`), and
+ * `Object.defineProperty(gl, "_APIController", { get })` (`kernel/api/controller.ts`), and
  * reading it constructs an `APIController`, whose `init()` → `_setupModuleAccess()` →
  * `_scanExistingModules()` re-reads `_APIController` **while it is still being built**. That
  * re-entrancy blew the stack in a browser for real; it is held back only by the instance
- * parking of `controller.ts:340`. A walk that touched `.value` — or worse, descended — would
+ * parking of `controller.ts`. A walk that touched `.value` — or worse, descended — would
  * replay it during the very measurement that is supposed to observe the namespace, not change
  * it. `getOwnPropertyDescriptor` does not fire the accessor; that is why it is used.
  *
@@ -143,20 +143,61 @@ export function diffSurface(expected, actual) {
  * whole surface closes it.
  *
  * ── Baseline history ──────────────────────────────────────────────────────────────────────
- * S6 Lot 0: 64 keys — the pre-boot surface as S1.3 left it (only `globals.core.ts` ran its
+ * 64 keys — the pre-boot surface as the lazy phase left it (only `globals.core.ts` ran its
  *           setups at import; the other five were lazy, and the rustine compensated).
  * S6 Lot 2: 88 keys — phase A restored. Measured diff on the built bundle: +24, **-0**.
  *           Nothing was lost — this is the fix, not drift.
  * KERNEL S6: 87 keys — `_StyleUtils` removed (sole member `normalizeStyle`, no production
  *           reader). Internal `_`-prefixed surface → not a breaking change.
- * API S4.1: moved here verbatim from `bundle-boot-contract.test.js`.
- * API S4.3: 78 → 65 — les 13 clés `_` sans lecteur quittent le namespace.
+ * Moved here verbatim from `bundle-boot-contract.test.js`.
+ * 78 → 65 — the 13 readerless `_` keys leave the namespace.
+ *
+ * ── 🛑 WHAT THIS LIST DOES NOT COVER — AND IT IS NOT AN OVERSIGHT ───────────
+ *
+ * Its perimeter is the `globals/` chain, imported directly by the test. A member mounted
+ * **elsewhere** in the graph pulled by `bundle-esm-entry.ts` is therefore INVISIBLE to
+ * this oracle, whatever it does — and the oracle is an **EXACT equality**
+ * (`expect(importSurface).toEqual([...IMPORT_SURFACE].sort())`, `bundle-boot-contract.test.js`),
+ * not an inclusion: such a member cannot enter it without being added HERE, by hand.
+ *
+ * **The complete census, measured on 2026-08-16** — every mount outside `globals/`:
+ *
+ *   ```bash
+ *   grep -rnE "_g\.GeoLeaf\.[A-Za-z_]+\s*=" packages/core/src --include=*.ts | grep -v "/globals/"
+ *   ```
+ *
+ *   | File                                     | Member(s)                                              | In the list?    |
+ *   | ---------------------------------------- | ------------------------------------------------------ | --------------- |
+ *   | `kernel/storage/facade.ts`               | `Storage`                                              | ✅ yes          |
+ *   | `kernel/ui/ui-api.ts`                    | `UI`                                                   | ✅ yes          |
+ *   | `utils/performance/runtime-metrics.ts`   | `getPerformanceMetrics`, `getRuntimeMetrics`, `resetRuntimeMetrics` | ❌ **no** |
+ *
+ * The pool is thus **exactly three members**, and no more — what the founding note
+ * suspected without having established it. `Storage` and `UI` are mounted outside
+ * `globals/` too, but they are in the list: they do not belong to the class.
+ *
+ * ⚠️ **TWO statements of the original note are FALSE, and correcting them changes the move.**
+ *   ① "covered by the artifact tier (`bundle-boot-contract.test.js`, 88 keys)" — no: the
+ *      test names them nowhere, and its oracle is this very list. They are outside BOTH
+ *      tiers.
+ *   ② "mounted **unconditionally**" — no: `runtime-metrics.ts` mounts them under
+ *      `if (_g.GeoLeaf) { … }`. A boot where the namespace does not exist yet does not
+ *      mount them.
+ *
+ * **Decision (2026-08-16): write this perimeter down, do NOT extend the list.** Adding
+ * them would freeze three members into a surface oracle — an irreversible commitment —
+ * for a defect that is one of **visibility**, not of contract. What was missing was not
+ * coverage; it was that nobody had written where the oracle stops.
  */
 export const IMPORT_SURFACE = [
     "API",
     "BaseLayers",
     "Baselayers",
     "CONSTANTS",
+    // `GeoLeaf.Capabilities` is set by `globals.api.ts`, hence at IMPORT time and not at
+    // boot: a host can subscribe before `GeoLeaf.boot()`, which is exactly the case it
+    // must cover — facts declared during boot would otherwise be inaudible to it.
+    "Capabilities",
     "Config",
     "Core",
     "DOMSecurity",
@@ -285,9 +326,9 @@ export const IMPORT_SURFACE_MIN = [
  * and gates HOST-01/HOST-02 of `verify-host-contract-sync.cjs`, which reads this array's AST.
  * Loosen it and all four loosen with it.
  *
- * API S4.5: 103 → 102, `Filters` removed with the plural namespace and its route engine.
- * API S4.3: 102 → 89 — 13 clés `_` retirées. Aucune n'avait de lecteur, et aucune n'était
- *           déclarée dans `GeoLeafGlobal` (HOST-02 indifférent).
+ * 103 → 102, `Filters` removed with the plural namespace and its route engine.
+ * 102 → 89 — 13 `_` keys removed. None had a reader, and none was declared in
+ *           `GeoLeafGlobal` (HOST-02 indifferent).
  */
 export const EXPECTED_FACADE_KEYS = [
     "API",
@@ -295,6 +336,10 @@ export const EXPECTED_FACADE_KEYS = [
     "Baselayers",
     "Branding",
     "CONSTANTS",
+    // 2026-08-24 — `GeoLeaf.Capabilities`, the channel through which a capability's
+    // absence becomes a FACT observable by the host. BRAND-NEW public namespace on a
+    // published `3.0.0`: its shape is frozen from the first publication.
+    "Capabilities",
     "Cluster",
     "Config",
     "Coordinates",
@@ -310,7 +355,7 @@ export const EXPECTED_FACADE_KEYS = [
     "I18n",
     "Introspection",
     "Labels",
-    // S2 de `roadmap_feature-selecteurs-ui` — capacité `language-switcher`.
+    // `language-switcher` capability.
     "LanguageSwitcher",
     "LayerManager",
     "Layers",
@@ -320,7 +365,7 @@ export const EXPECTED_FACADE_KEYS = [
     "Notifications",
     "PWA",
     "Permalink",
-    // S1 de `roadmap_feature-selecteurs-ui` — capacité `profile-switcher`.
+    // `profile-switcher` capability.
     "ProfileSwitcher",
     "Scale",
     "Security",
@@ -329,7 +374,7 @@ export const EXPECTED_FACADE_KEYS = [
     "Sync",
     "Taxonomy",
     "ThemeCache",
-    // S3 de `roadmap_feature-selecteurs-ui` — capacité `theme-palette`.
+    // `theme-palette` capability.
     "ThemePalette",
     "ThemeSelector",
     "ThemeToggle",
@@ -393,68 +438,71 @@ export const EXPECTED_FACADE_KEYS = [
  * Deliberately the intersection with `GeoLeafHost`: those are the members a plugin actually
  * calls, so freezing `Events.on` rather than merely `Events` is where the value is.
  *
- * ## Élargie de 8 à 23 le 10/08/2026 — contrat inverse, tâches 1.4 / 1.5
+ * ## Widened from 8 to 23 on 2026-08-10 — the reverse contract
  *
- * Jusqu'à cette date, `GeoLeaf.UI` (23 membres), `Storage` (25), `Utils` (31), `plugins` (17),
- * `Legend`, `Labels`, `Taxonomy`, `Filter`, `Baselayers`, `ThemeSelector`, `Introspection`,
- * `FeatureInfo`, `LayerManager` et `events` pouvaient perdre leurs membres **un par un** sans
- * qu'aucune gate ne rougisse — exactement le défaut que l'en-tête d'`EXPECTED_FACADE_MEMBERS`
- * raconte pour `Events.on`. Les 14 clés ajoutées ferment ce trou **pour tout le monde**, pas
- * seulement pour le consommateur qui a motivé le sprint.
+ * Until that date, `GeoLeaf.UI` (23 members), `Storage` (25), `Utils` (31), `plugins`
+ * (17), `Legend`, `Labels`, `Taxonomy`, `Filter`, `Baselayers`, `ThemeSelector`,
+ * `Introspection`, `FeatureInfo`, `LayerManager` and `events` could lose their members
+ * **one by one** without any gate turning red — exactly the defect the
+ * `EXPECTED_FACADE_MEMBERS` header recounts for `Events.on`. The 14 added keys close that
+ * hole **for everyone**, not just for the consumer that motivated the work.
  *
- * **Deux vagues, deux motifs, et l'ordre compte pour la relecture** :
- *   ① les 8 façades que la roadmap nomme au titre du gain interne (`UI`, `Legend`, `Labels`,
- *      `Storage`, `Introspection`, `Filter`, `Taxonomy`, `plugins`) ;
- *   ② les 6 que les chemins `required.public` du manifeste de consommation rendent
- *      nécessaires (`events`, `Baselayers`, `LayerManager`, `Utils`, `ThemeSelector`,
- *      `FeatureInfo`) — sans elles, CC-01 sortirait en `exit 2` sur 12 chemins qu'il ne peut
- *      pas lire, ce que CC-06 impose plutôt que de les rendre verts en silence.
+ * **Two waves, two rationales, and the order matters for re-reading**:
+ *   ① the 8 facades named for the internal gain (`UI`, `Legend`, `Labels`, `Storage`,
+ *      `Introspection`, `Filter`, `Taxonomy`, `plugins`);
+ *   ② the 6 the consumer manifest's `required.public` paths make necessary (`events`,
+ *      `Baselayers`, `LayerManager`, `Utils`, `ThemeSelector`, `FeatureInfo`) — without
+ *      them, CC-01 would exit `2` on 12 paths it cannot read, which CC-06 mandates rather
+ *      than greening them in silence.
  *
- * **Critère d'admission, appliqué et non supposé** : une façade n'entre que si `members` et
- * `membersAgain` (30 ms d'écart, `boot-golden-master.test.js`) coïncident. La mesure du
- * 10/08/2026 a porté sur **les 92 clés de l'oracle**, pas seulement sur les 22 candidates —
- * mesurer large est ce qui permet d'affirmer que **zéro** clé est instable, là où une mesure
- * bornée aux candidates n'aurait pu affirmer que « aucune des candidates ». Refus explicite du
- * repli « on la met quand même et on verra » : un test intermittent finit toujours `skip`é.
+ * **Admission criterion, applied and not assumed**: a facade only enters if `members` and
+ * `membersAgain` (30 ms apart, `boot-golden-master.test.js`) coincide. The 2026-08-10
+ * measurement covered **the oracle's 92 keys**, not just the 22 candidates — measuring
+ * wide is what allows stating that **zero** keys are unstable, where a measurement bounded
+ * to the candidates could only have stated "none of the candidates". Explicit refusal of
+ * the fallback "add it anyway and see": an intermittent test always ends up `skip`ped.
  *
- * ⚠️ **`BaseLayers` (casse haute) n'entre PAS, et ce n'est pas un oubli.** Elle et `Baselayers`
- * mesurent les **11 mêmes membres** — c'est le même objet sous deux clés. Geler les deux
- * figerait deux fois la même chose ; c'est `Baselayers` qui est retenue parce que c'est le nom
- * que le manifeste aval appelle. Un chemin `BaseLayers.*` écrit un jour tombera donc dans la
- * portée non couverte, et **CC-06 le nommera** au lieu de le rendre vert.
+ * ⚠️ **`BaseLayers` (upper case) does NOT enter, and it is no oversight.** It and
+ * `Baselayers` measure the **same 11 members** — the same object under two keys. Freezing
+ * both would pin the same thing twice; `Baselayers` is the one kept because it is the name
+ * the downstream manifest calls. A `BaseLayers.*` path written some day will thus fall in
+ * the uncovered scope, and **CC-06 will name it** instead of greening it.
  *
  * ⚠️ `registry`, `_registry` and `_app` are **excluded on purpose**. `GeoLeaf.registry` and
  * `GeoLeaf._registry` are the same `ModuleRegistry` instance, whose `private readonly _modules`,
- * `_initOrder` and `_initialized` (`app/module-registry.ts:48-54`) are `private` only to the
+ * `_initOrder` and `_initialized` (`app/module-registry.ts`) are `private` only to the
  * compiler — at runtime `Object.getOwnPropertyNames` hands them over. Freezing them would make
  * the oracle red on the first internal refactor, and the human reaction to that is to
  * rubber-stamp the baseline, which kills the oracle. (The `_`-prefix filter in `walkNamespace`
  * already drops them; this list is the second lock.)
  *
- * ⚠️ Conséquence assumée de cette exclusion, à ne pas taire : `_app.initApp`, que le manifeste
- * aval porte en `private_tolerated`, **ne sera jamais vérifiable en profondeur 2**. Le code
- * CC-02 de `verify-consumer-contract.cjs` le DIT, avec ce motif, plutôt que de le rendre vert.
+ * ⚠️ Accepted consequence of this exclusion, not to be silenced: `_app.initApp`, which
+ * the downstream manifest carries as `private_tolerated`, **will never be verifiable at
+ * depth 2**. The CC-02 code of `verify-consumer-contract.cjs` SAYS so, with this
+ * rationale, rather than greening it.
  *
- * 🛑 **`_LabelButtonManager` est le SEUL `_` de cette liste, et c'est une décision, pas un
- * accident.** L'objection écrite juste au-dessus vise `registry` / `_registry` / `_app` pour un
- * motif PRÉCIS — ce sont des instances de `ModuleRegistry` dont les champs `private` sont
- * effacés au runtime, donc l'oracle rougirait au premier refactor interne. Ce motif ne
- * s'applique pas ici, et deux mesures le disent : la façade rend **3 membres stables**
- * (`createButton`, `removeButtons`, `syncImmediate`), et **l'aval dépend de l'un d'eux** —
- * `syncImmediate` est appelé par `geoleaf_core/mixin_symbols_labels.js`, entrée
- * `private_tolerated` du manifeste. Un membre dont un consommateur dépend est précisément ce
- * qu'on gèle ; le geler ailleurs serait du zèle, ne pas le geler ici serait le laisser partir
- * comme les neuf clés qui ont produit ce sprint.
+ * 🛑 **`_LabelButtonManager` is the ONLY `_` in this list, and that is a decision, not
+ * an accident.** The objection written just above targets `registry` / `_registry` /
+ * `_app` for a PRECISE reason — those are `ModuleRegistry` instances whose `private`
+ * fields are erased at runtime, so the oracle would redden at the first internal
+ * refactor. That reason does not apply here, and two measurements say so: the facade
+ * returns **3 stable members** (`createButton`, `removeButtons`, `syncImmediate`), and
+ * **the downstream depends on one of them** — `syncImmediate` is called by
+ * `geoleaf_core/mixin_symbols_labels.js`, a `private_tolerated` entry of the manifest. A
+ * member a consumer depends on is precisely what gets frozen; freezing it elsewhere would
+ * be zeal, not freezing it here would be letting it go the way of the nine keys that
+ * produced this work.
  *
- * ⚠️ **Et `_GeoJSONLoader` n'y entre PAS, pour une raison mesurée et non par symétrie.**
- * L'entrée aval est `_GeoJSONLoader._loadSingleLayer`, dont le membre est `_`-préfixé :
- * `walkNamespace` le filtre à la profondeur 2 **par construction**. Mesure du 10/08/2026 —
- * la descente rend `loadAllLayersConfigsForLayerManager` et `loadFromActiveProfile`, pas
- * `_loadSingleLayer`. L'ajouter à cette liste ne rendrait donc rien vérifiable : ce serait
- * du gel qui ne garde rien, et il aurait l'air d'en garder. Les trois autres `_` du manifeste
- * (`_LayerVisibilityManager`, `_GeoJSONLayerConfig`, `_GeoJSONLayerManager`) sont nommés en
- * **profondeur 1** par l'aval, donc l'oracle de tête suffit — descendre y ajouterait du rouge
- * de refactor interne sans ajouter de garde.
+ * ⚠️ **And `_GeoJSONLoader` does NOT enter, for a measured reason and not by symmetry.**
+ * The downstream entry is `_GeoJSONLoader._loadSingleLayer`, whose member is
+ * `_`-prefixed: `walkNamespace` filters it at depth 2 **by construction**. 2026-08-10
+ * measurement — the descent returns `loadAllLayersConfigsForLayerManager` and
+ * `loadFromActiveProfile`, not `_loadSingleLayer`. Adding it to this list would thus make
+ * nothing verifiable: it would be freezing that guards nothing while looking like it
+ * does. The manifest's three other `_` entries (`_LayerVisibilityManager`,
+ * `_GeoJSONLayerConfig`, `_GeoJSONLayerManager`) are named at **depth 1** by the
+ * downstream, so the head oracle suffices — descending would add internal-refactor red
+ * without adding a guard.
  */
 export const DEPTH2_FACADES = [
     "Baselayers",
@@ -485,19 +533,19 @@ export const DEPTH2_FACADES = [
 /**
  * Depth-2 membership of the façades listed in {@link DEPTH2_FACADES} — 258 members.
  *
- * ⚠️ **Ce nombre était 83 jusqu'au 10/08/2026** (8 façades). Il se **dérive**, il ne se
- * recopie pas — et la commande est ci-dessous, parce qu'un compte écrit en prose à côté de
- * la liste qu'il compte est un compte qui divergera :
+ * ⚠️ **This number was 83 until 2026-08-10** (8 facades). It is **derived**, not copied
+ * — and the command is below, because a count written in prose next to the list it counts
+ * is a count that will diverge:
  *
  *     node -e 'import("./scripts/lib/namespace-surface.mjs").then(m => console.log(
  *       Object.values(m.EXPECTED_FACADE_MEMBERS).reduce((a, b) => a + b.length, 0)))'
  *
- * ⚠️ **`Utils.performanceProfiler` est absent de `Utils`, et c'est par construction** : c'est
- * un accesseur **non énumérable**, que `walkNamespace` enregistre par son nom uniquement quand
- * il est atteignable par `getOwnPropertyNames` sur la chaîne de prototypes — ce qui n'est pas
- * le cas ici. La classe `PerformanceProfiler` (majuscule), elle, y est. Les deux ne sont pas
- * le même symbole, et confondre les deux ferait ajouter à la main une ligne que le golden
- * master rendrait immédiatement rouge en `d.missing`.
+ * ⚠️ **`Utils.performanceProfiler` is absent from `Utils`, and that is by construction**:
+ * it is a **non-enumerable** accessor, which `walkNamespace` records by name only when it
+ * is reachable through `getOwnPropertyNames` on the prototype chain — not the case here.
+ * The `PerformanceProfiler` class (capitalized) IS there. The two are not the same
+ * symbol, and conflating them would lead to hand-adding a line the golden master would
+ * immediately turn red as `d.missing`.
  *
  * ## Why depth 2 is where the value is
  *
@@ -623,9 +671,10 @@ export const EXPECTED_FACADE_MEMBERS = {
         "refreshLabels",
         "toggleLabels",
     ],
-    // ⚠️ 2 membres seulement, et c'est la mesure. Une façade courte est le cas où l'on est
-    // tenté de conclure « la descente n'a rien lu » : la distinguer d'une descente vide est
-    // exactement ce que la clé `LayerManager` de `DEPTH2_FACADES` rend vérifiable.
+    // ⚠️ Only 2 members, and that is the measurement. A short facade is the case where
+    // one is tempted to conclude "the descent read nothing": telling it apart from an
+    // empty descent is exactly what the `LayerManager` key of `DEPTH2_FACADES` makes
+    // verifiable.
     LayerManager: ["init", "refresh"],
     Layers: [
         "addFeature",
@@ -667,10 +716,10 @@ export const EXPECTED_FACADE_MEMBERS = {
         "success",
         "warning",
     ],
-    // ⚠️ `Cache` / `cache`, `CacheManager` / `cacheManager`, `DB` / `db` : les paires ne sont
-    // PAS des doublons de relevé, ce sont bien six membres distincts sur la façade — les
-    // formes capitalisées sont les constructeurs, les minuscules les instances. Les écrire
-    // toutes est ce qui fait rougir le retrait de l'une des deux moitiés.
+    // ⚠️ `Cache` / `cache`, `CacheManager` / `cacheManager`, `DB` / `db`: the pairs are
+    // NOT census duplicates, they really are six distinct members on the facade — the
+    // capitalized forms are the constructors, the lowercase ones the instances. Writing
+    // them all is what makes removing either half turn red.
     Storage: [
         "Cache",
         "CacheManager",
@@ -698,7 +747,7 @@ export const EXPECTED_FACADE_MEMBERS = {
         "whenReady",
         "wireModules",
     ],
-    Sync: ["getHandler", "getHandlers", "registerHandler"],
+    Sync: ["getHandler", "registerHandler"],
     Taxonomy: [
         "ensureSprite",
         "getCategories",
@@ -724,9 +773,9 @@ export const EXPECTED_FACADE_MEMBERS = {
         "previousTheme",
         "setTheme",
     ],
-    // ⚠️ `BUILD`, `VERSION` et `Notifications` sont des membres de `UI` au sens de la marche :
-    // ce ne sont pas des méthodes, mais ils sont énumérables et leur disparition serait une
-    // rupture pour qui les lit. La liste gèle une SURFACE, pas un ensemble d'appels.
+    // ⚠️ `BUILD`, `VERSION` and `Notifications` are members of `UI` in the walk's sense:
+    // they are not methods, but they are enumerable and their disappearance would be a
+    // break for whoever reads them. The list freezes a SURFACE, not a set of calls.
     UI: [
         "BUILD",
         "Notifications",
@@ -735,6 +784,7 @@ export const EXPECTED_FACADE_MEMBERS = {
         "applyTheme",
         "cleanup",
         "clearNotifications",
+        "closePane",
         "closePanel",
         "destroyDesktopPanel",
         "getCurrentTheme",
@@ -745,8 +795,12 @@ export const EXPECTED_FACADE_MEMBERS = {
         "initDesktopPanel",
         "initMobileToolbar",
         "initThemeToggle",
+        "isImmersive",
         "notify",
+        "openPane",
         "openPanel",
+        "registerPanelPane",
+        "setImmersive",
         "setTheme",
         "showError",
         "showInfo",
@@ -788,13 +842,14 @@ export const EXPECTED_FACADE_MEMBERS = {
         "validateUrl",
         "wktToGeoJSON",
     ],
-    // Seule façade `_` gelée en profondeur 2 — motif écrit sur `DEPTH2_FACADES` : l'aval
-    // appelle `syncImmediate`, et c'est la seule chose qui justifie de descendre ici.
+    // The only `_` facade frozen at depth 2 — rationale written on `DEPTH2_FACADES`: the
+    // downstream calls `syncImmediate`, and that is the only thing justifying a descent
+    // here.
     _LabelButtonManager: ["createButton", "removeButtons", "syncImmediate"],
-    // `events` et `Events` mesurent les 3 mêmes membres — c'est la même façade sous deux clés,
-    // et les deux sont gelées parce que le manifeste aval appelle `events.on` / `events.off`
-    // tandis que le contrat `GeoLeafHost` nomme `Events`. Geler une seule des deux laisserait
-    // l'autre route se vider sans témoin.
+    // `events` and `Events` measure the same 3 members — the same facade under two keys,
+    // and both are frozen because the downstream manifest calls `events.on` /
+    // `events.off` while the `GeoLeafHost` contract names `Events`. Freezing only one
+    // would let the other route empty out unwitnessed.
     events: ["off", "on", "once"],
     plugins: [
         "canActivate",

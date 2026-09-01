@@ -8,7 +8,7 @@
  *   - `192c6865` (S4): `APIController` built at import with 0 managers. Caught by a browser
  *     E2E two hours later. The revert (`eae711fa`) names the reason: "build/vitest run on
  *     source, never the rollup bundle in a browser".
- *   - `46cd88dc` (S1.3): `GeoLeaf.I18n` no longer existed before `boot()`, so eager plugins
+ *   - `46cd88dc`: `GeoLeaf.I18n` no longer existed before `boot()`, so eager plugins
  *     lost their dictionaries SILENTLY. Caught weeks later by a human looking at the screen.
  *     That commit shipped with "10 446/10 446 green, golden-master byte-identical".
  *
@@ -40,10 +40,11 @@ import { describe, test, expect, beforeAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-// ⚠️ Ce fichier tourne sous `vitest.bundle.config.ts`, dont le `root` est `packages/core` :
-// l'import statique traverse cette frontière. Si `server.fs.allow` venait à le refuser, le
-// repli est l'import dynamique `pathToFileURL(...)` + `/* @vite-ignore */`, patron déjà
-// employé plus bas pour l'artefact lui-même.
+// ⚠️ This file runs under `vitest.bundle.config.ts`, whose `root` is
+// `packages/core`: the static import crosses that boundary. Should
+// `server.fs.allow` ever refuse it, the fallback is the dynamic import
+// `pathToFileURL(...)` + `/* @vite-ignore */`, the pattern already used
+// below for the artefact itself.
 import {
     walkNamespace,
     diffSurface,
@@ -54,18 +55,18 @@ import {
 
 const CORE_DIST = path.join(__dirname, "..", "dist");
 const BUNDLE = path.join(CORE_DIST, "geoleaf.esm.js");
-// ARCHI S10.1 — `../../plugin-table` désignait le voisin direct ; les plugins sont
-// désormais sous `packages/plugins/`. Le chemin est reconstruit explicitement plutôt
-// que dérivé du registre : ce fichier de test s'exécute sous Vite, qui externalise
-// les specifiers nus, et charger un module CJS de `scripts/lib/` ici n'apporterait
-// rien. L'assertion `existsSync` ci-dessous rend de toute façon la rupture bruyante
-// — c'est elle qui a signalé ce chemin après le déplacement.
+// `../../plugin-table` designated the direct neighbour; plugins now live
+// under `packages/plugins/`. The path is rebuilt explicitly rather than
+// derived from the registry: this test file runs under Vite, which
+// externalises bare specifiers, and loading a CJS module from
+// `scripts/lib/` here would bring nothing. The `existsSync` assertion below
+// makes the break loud anyway — it is what flagged this path after the move.
 //
-// ⚠️ R.15 (24/07/2026) — et elle l'a signalé une SECONDE fois, au retrait du préfixe
-// `plugin-` des répertoires (`plugins/plugin-table` → `plugins/table`). Le pari du
-// commentaire ci-dessus tient donc sur deux déplacements successifs : le chemin en
-// dur est acceptable ICI précisément parce qu'un `existsSync` le garde. Sans cette
-// assertion, le test aurait chargé `undefined` et serait passé au vert.
+// ⚠️ And it flagged it a SECOND time, at the removal of the `plugin-`
+// directory prefix (`plugins/plugin-table` → `plugins/table`). The bet in
+// the comment above thus holds over two successive moves: the hardcoded
+// path is acceptable HERE precisely because an `existsSync` guards it.
+// Without that assertion, the test would have loaded `undefined` and gone green.
 const TABLE_PLUGIN = path.join(
     __dirname,
     "..",
@@ -95,11 +96,11 @@ const importArtefact = (p) => import(/* @vite-ignore */ pathToFileURL(p).href);
  * Update by hand, having read the diff.
  *
  * ── Baseline history ────────────────────────────────────────────────────────────────────────
- * S6 Lot 0: 64 keys — the pre-boot surface as S1.3 left it (only `globals.core.ts` ran its
+ * S6 Lot 0: 64 keys — the pre-boot surface as the lazy phase left it (only `globals.core.ts` ran its
  *           setups at import; the other five were lazy, and the rustine compensated).
  * S6 Lot 2: 88 keys — phase A restored. The five remaining globals now post their facades at
  *           import too. Measured diff on the built bundle: +24, **-0**. Every addition is a
- *           kernel facade that S1.3 had made lazy (`GeoJSON`, `ThemeCache`, `_GeoJSONLoader`,
+ *           kernel facade that had been made lazy (`GeoJSON`, `ThemeCache`, `_GeoJSONLoader`,
  *           the `_LayerManager*` / `_UI*` / `_Theme*` families, `_OfflineDetector`, `_SWRegister`,
  *           `_StyleUtils`, `_WorkerManager`…). Nothing was lost — this is the fix, not drift.
  *           This test going red on that lot is the filet working: the contract DID change.
@@ -109,8 +110,8 @@ const importArtefact = (p) => import(/* @vite-ignore */ pathToFileURL(p).href);
  *           read), so `built-in/geojson/style-utils.ts` was deleted outright. Internal
  *           `_`-prefixed surface, absent from the published typings → not a breaking change.
  */
-// IMPORT_SURFACE vit désormais dans `scripts/lib/namespace-surface.mjs` (API S4.1),
-// aux côtés des deux autres tiers — c'est ce qui rend `MIN ⊆ IMPORT ⊆ POST` assertable.
+// IMPORT_SURFACE now lives in `scripts/lib/namespace-surface.mjs`,
+// alongside the two other tiers — which is what makes `MIN ⊆ IMPORT ⊆ POST` assertable.
 
 describe("Bundle boot contract — artefact tier", () => {
     let GeoLeaf;
@@ -150,10 +151,11 @@ describe("Bundle boot contract — artefact tier", () => {
     });
 
     test("MIN ⊆ IMPORT ⊆ POST — les trois tiers ne peuvent plus diverger", () => {
-        // L'assertion qui manquait. `requireMap` est resté dans IMPORT_SURFACE_MIN onze jours
-        // après avoir quitté IMPORT_SURFACE, parce que le seul instrument qui l'aurait vu était
-        // une sonde navigateur que personne ne lançait. Mécanisée ici, dans le tier statique,
-        // elle ne dépend plus de la bonne volonté de quiconque.
+        // The missing assertion. `requireMap` stayed in IMPORT_SURFACE_MIN
+        // eleven days after leaving IMPORT_SURFACE, because the only
+        // instrument that would have seen it was a browser probe nobody
+        // launched. Mechanised here, in the static tier, it no longer
+        // depends on anyone's goodwill.
         const horsImport = IMPORT_SURFACE_MIN.filter((k) => !IMPORT_SURFACE.includes(k));
         expect(horsImport, `dans MIN mais pas dans IMPORT : ${horsImport.join(", ")}`).toEqual([]);
 
@@ -191,11 +193,13 @@ describe("Bundle boot contract — artefact tier", () => {
     });
 
     test("getHealth et getMetrics restent DÉTACHABLES sur le bundle livré (D8)", () => {
-        // socle-init 7.7 — ce tier est le SEUL où le défaut D8 a réellement été observé
-        // (« mesuré dans Chromium sur le bundle livré ») : `getMetrics(){ return this.getHealth(); }`
-        // marchait attaché et jetait détaché. La source, elle, est gardée par
-        // `__tests__/guards/top-level-api-single-writer.guard.test.ts` (TLA-02) — mais elle ne
-        // voit pas qui écrit EN DERNIER dans l'artefact. Ici, si.
+        // This tier is the ONLY one where the detachability defect was
+        // really observed ("measured in Chromium on the shipped bundle"):
+        // `getMetrics(){ return this.getHealth(); }` worked attached and
+        // threw detached. The source is guarded by
+        // `__tests__/guards/top-level-api-single-writer.guard.test.ts`
+        // (TLA-02) — but that one does not see who writes LAST into the
+        // artefact. Here, it shows.
         const { getHealth, getMetrics } = GeoLeaf;
         expect(() => getHealth()).not.toThrow();
         expect(() => getMetrics()).not.toThrow();
@@ -210,7 +214,7 @@ describe("Bundle boot contract — artefact tier", () => {
             `missing ${TABLE_PLUGIN} — run \`turbo run build\` first`
         ).toBe(true);
 
-        // The failure mode being guarded is SILENT: entry.ts:32 uses optional chaining
+        // The failure mode being guarded is SILENT: entry.ts uses optional chaining
         // (`_g.GeoLeaf?.I18n?.registerDict?.(...)`), so a missing anchor throws nothing and
         // still mounts the plugin. Only the labels vanish — getLabel returns the raw key.
         expect(GeoLeaf.Table).toBeDefined();

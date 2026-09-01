@@ -197,14 +197,9 @@ function createLayerSelector() {
         TableContract.setLayer(layerId);
     };
 
-    const events = _events;
-    if (events) {
-        _TablePanel._eventCleanups.push(
-            events.on(select, "change", changeHandler, false, "TablePanel.layerSelect")
-        );
-    } else {
-        select.addEventListener("change", changeHandler);
-    }
+    _TablePanel._eventCleanups.push(
+        _events.on(select, "change", changeHandler, false, "TablePanel.layerSelect")
+    );
 
     wrapper.appendChild(select);
     return wrapper;
@@ -353,13 +348,9 @@ function createButton(
     }
 
     if (onClick) {
-        if (_events) {
-            _TablePanel._eventCleanups.push(
-                _events.on(button, "click", onClick, false, "TablePanel.button")
-            );
-        } else {
-            button.addEventListener("click", onClick);
-        }
+        _TablePanel._eventCleanups.push(
+            _events.on(button, "click", onClick, false, "TablePanel.button")
+        );
     }
 
     return button;
@@ -433,13 +424,9 @@ function createExportDropdown(
             }
             onFormat(fmt);
         };
-        if (_events) {
-            _TablePanel._eventCleanups.push(
-                _events.on(item, "click", itemClick, false, "TablePanel.exportItem")
-            );
-        } else {
-            item.addEventListener("click", itemClick);
-        }
+        _TablePanel._eventCleanups.push(
+            _events.on(item, "click", itemClick, false, "TablePanel.exportItem")
+        );
         dropdown.appendChild(item);
     }
 
@@ -459,13 +446,9 @@ function createExportDropdown(
         }
     };
 
-    if (_events) {
-        _TablePanel._eventCleanups.push(
-            _events.on(trigger, "click", triggerClick, false, "TablePanel.exportTrigger")
-        );
-    } else {
-        trigger.addEventListener("click", triggerClick);
-    }
+    _TablePanel._eventCleanups.push(
+        _events.on(trigger, "click", triggerClick, false, "TablePanel.exportTrigger")
+    );
 
     group.appendChild(trigger);
     group.appendChild(dropdown);
@@ -496,14 +479,9 @@ function createToggleButton() {
     const clickHandler = () => {
         TableContract.toggle();
     };
-    const events = _events;
-    if (events) {
-        _TablePanel._eventCleanups.push(
-            events.on(button, "click", clickHandler, false, "TablePanel.toggleBtn")
-        );
-    } else {
-        button.addEventListener("click", clickHandler);
-    }
+    _TablePanel._eventCleanups.push(
+        _events.on(button, "click", clickHandler, false, "TablePanel.toggleBtn")
+    );
     return button;
 }
 

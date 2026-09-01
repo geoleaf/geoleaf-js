@@ -8,10 +8,10 @@
 /**
  * UIModule — `ICoreModule` wrapper for the UI subsystem.
  *
- * S1.2: owns full UI + feature orchestration (#10→#23) including
+ * Owns full UI + feature orchestration (#10→#23) including
  * initBasemaps, initGeoJSON (kept here to guarantee
  * they precede setupReveal / `geoleaf:app:ready`). To be split into dedicated
- * feature modules once RevealModule is added in S1.3+.
+ * feature modules once RevealModule exists.
  */
 
 import type { ILifecycleModule } from "../../contracts/core-module.contract.ts";
@@ -132,7 +132,7 @@ export class UIModule implements ILifecycleModule {
         _pm("geoleaf:init:basemaps:end");
 
         // #20 — GeoJSON layers + ThemeSelector.
-        // Kept in UIModule (S1.2) — same ordering constraint as #18.
+        // Kept in UIModule — same ordering constraint as #18.
         _pm("geoleaf:init:geojson:start");
         initGeoJSON({ GeoLeaf, cfg, map, AppLog, _app });
         _pm("geoleaf:init:geojson:end");

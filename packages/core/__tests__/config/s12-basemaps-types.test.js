@@ -143,7 +143,7 @@ describe("config B4 — basemaps[].type → layer created (basemaps/registry.ts)
         );
         registerBaseLayer("ign-wmts", BM["ign-wmts"]);
         setBaseLayer("ign-wmts", { silent: true });
-        // _applyWmtsBasemap sets the active key eagerly (registry.ts:285-287).
+        // _applyWmtsBasemap sets the active key eagerly (registry.ts).
         expect(getActiveKey()).toBe("ign-wmts");
         // GetCapabilities is async → no source is injected synchronously.
         expect(map.addSource).not.toHaveBeenCalled();

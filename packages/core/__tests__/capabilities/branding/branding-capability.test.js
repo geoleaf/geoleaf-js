@@ -8,9 +8,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 const { CapabilityRegistry } = await import("../../../src/kernel/api/capability-registry.ts");
-const { BRANDING_CAPABILITY } = await import(
-    "../../../src/capabilities/branding/branding-capability.ts"
-);
+const { BRANDING_CAPABILITY } =
+    await import("../../../src/capabilities/branding/branding-capability.ts");
 const { Introspection } = await import("../../../src/api/geoleaf.introspection.ts");
 
 /** Mirrors the capConfig adapter created in boot.ts for the branding gate. */

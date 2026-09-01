@@ -5,9 +5,8 @@
  */
 import { describe, expect, it } from "vitest";
 
-const { fieldPredicate, featurePasses, fieldAppliesToLayer } = await import(
-    "../../../src/capabilities/filter/engine/predicate.ts"
-);
+const { fieldPredicate, featurePasses, fieldAppliesToLayer } =
+    await import("../../../src/capabilities/filter/engine/predicate.ts");
 
 const af = (descriptor, payload = {}) => ({ descriptor, ...payload });
 

@@ -152,6 +152,8 @@ qu'on cite, jamais le chiffre qu'il a rendu un jour.
 | Clés de config d'un exemple JSON absentes du schéma      | `check-doc-config-examples` — **même corpus**          |
 | Liens markdown morts                                     | `check-dead-links` — 10 scopes, 3 avec plancher        |
 | Chemins cités en backticks par `docs/specs/`             | `SPECS-PATHS`, baseline décroissante                   |
+| Chemins cités en backticks par `docs/guides/`            | `GUIDES-PATHS` (11/08/2026), baseline décroissante     |
+| Chemins cités en backticks par `_docs_projet/vision/`    | `VISION-PATHS` (17/08/2026), baseline décroissante     |
 | Table `## Configuration` d'une fiche ↔ le `configSchema` | `doc-capability-config.guard.test.js`, **deux sens**   |
 | Table `## Manifeste` d'une fiche plugin ↔ `entry.ts`     | `doc-plugin-manifest.guard.test.js`                    |
 | Liens morts du site                                      | `docs:build` (`ignoreDeadLinks: false`)                |
@@ -167,9 +169,14 @@ pas, elle **se tait**.
 
 - **La véracité d'une phrase.** « Met en cache 5 minutes » sur une fonction qui en cache 10 est
   indiscernable, pour tous les outils ci-dessus, d'une phrase juste.
-- **Les chemins cités par `docs/guides/` et `docs/reference/`** — `SPECS-PATHS` ne couvre que
-  `docs/specs/`. C'est par ce trou qu'une suite `poi.test.js` inexistante a survécu dans le guide
-  de test.
+- **Les chemins cités par `packages/core/docs/`** — c'est le corpus qui reste effectivement non
+  gardé, et il n'est celui d'AUCUNE des quatre sources de chemins. L'écart est documenté ici même.
+  ⚠️ La ligne d'origine affirmait que ce §5 le nommait déjà — c'était faux jusqu'au 17/08/2026, et c'est cette
+  ligne-ci qui le rend vrai.
+  📌 Cette puce a dit « les chemins cités par `docs/guides/` et `docs/reference/` » jusqu'au
+  17/08/2026 : **`GUIDES-PATHS` les couvre depuis le 11/08**. L'exemple qui l'illustrait — une
+  suite `poi.test.js` inexistante survivant dans le guide de test — reste vrai À SA DATE, et
+  c'est précisément le trou que `GUIDES-PATHS` a fermé.
 - **Les noms de classes et de modules cités en prose** — aucune gate ne les résout. C'est par là
   que huit modules noyau au lieu de six ont tenu dans quatre documents publics.
 - **Les arbres de fichiers recopiés dans la prose.** `docs:tree:check` garde

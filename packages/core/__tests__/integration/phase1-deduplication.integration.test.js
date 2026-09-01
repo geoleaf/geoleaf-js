@@ -1,6 +1,6 @@
 /**
  * Integration — Phase 1 Deduplication (object utils)
- * Sprint 2 reactivation: deferred/integration/phase1-deduplication.test.js
+ * Reactivated from deferred/integration/phase1-deduplication.test.js
  * Uses direct imports from object-utils.ts instead of window.GeoLeaf.Utils (old global).
  */
 

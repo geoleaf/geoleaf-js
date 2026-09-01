@@ -2,7 +2,7 @@
 // E2E: lifecycle create → destroy → recreate
 //
 // Validates the lifecycle teardown seam (Core.destroy → runLifecycleTeardowns,
-// map/index.ts:209-211) in a real Chromium + MapLibre GL context. The exact
+// map/index.ts) in a real Chromium + MapLibre GL context. The exact
 // shared-store invariants (POIShared/GeoJSONShared/LMShared/ProfileManager reset
 // to empty) are pinned by the unit oracle:
 //   packages/core/__tests__/app/lifecycle-create-destroy-recreate.test.js
@@ -10,7 +10,7 @@
 //   - clean teardown: the MapLibre canvas and POI markers are removed, slot freed;
 //   - clean recreate: exactly one functional map mounts (no visual doubling);
 //   - stability: ten destroy → recreate cycles accumulate no canvas, no marker,
-//     no `#gl-right-panel` orphan and NO LISTENER (S6.2 — the CDC asks for a
+//     no `#gl-right-panel` orphan and NO LISTENER (the CDC asks for a
 //     "tested guarantee that destroy() leaves no listener, reference or residual
 //     state", and counting canvases alone never gave it);
 //   - indicative heap snapshot (Chromium-only, logged — no hard gate).
@@ -94,6 +94,12 @@ async function liveListeners(page) {
 }
 
 /** Boot the page and wait for the GeoLeaf map to be fully initialized. */
+// Local on purpose — what actually differs from `helpers/boot.js#bootMap`, named so the
+// next reader does not have to diff the bodies: ① this one NAVIGATES (page.goto with
+// networkidle) where bootMap assumes the caller already did; ② it accepts a map whose
+// style is not yet resolved (native !== null) where bootMap waits for a live getStyle().
+// Lifecycle scenarios destroy/recreate the map, so "a map object exists" is exactly the
+// signal they need — waiting for a settled style here would hide the window they test.
 async function waitForMap(page) {
     await page.goto("/", { waitUntil: "networkidle" });
     await page.locator(MAP_SELECTOR).waitFor({ state: "visible", timeout: MAP_TIMEOUT });
@@ -137,7 +143,7 @@ async function heapMb(page) {
 test.use({ baseURL: baseURL("core") });
 
 test.describe("10-lifecycle — create → destroy → recreate", () => {
-    // B-205 / S6.3 — the top-level shortcuts and the Core façade read ONE registry.
+    // The top-level shortcuts and the Core façade read ONE registry.
     // Only an E2E can see this: it takes a real boot for the discrepancy to exist at
     // all (the mirror was filled by `GeoLeaf.createMap()`, which the boot never calls),
     // so every unit oracle saw two empty maps agreeing.
@@ -158,7 +164,7 @@ test.describe("10-lifecycle — create → destroy → recreate", () => {
             };
         }, id);
 
-        // Before S6.3 `topLevel` was null and `topCount` 0 for a live, booted map.
+        // Before the fix `topLevel` was null and `topCount` 0 for a live, booted map.
         expect(agree.topLevel, "GeoLeaf.getMap returned nothing for a live map").toBeTruthy();
         expect(agree.core, "GeoLeaf.Core.getMap returned nothing for a live map").toBeTruthy();
         expect(agree.same, "the two registries handed back different objects").toBe(true);
@@ -166,7 +172,7 @@ test.describe("10-lifecycle — create → destroy → recreate", () => {
         expect(agree.coreCount).toBe(1);
     });
 
-    // S6.4/6.5/6.6 — moving a live map instead of destroying and rebuilding it.
+    // Moving a live map instead of destroying and rebuilding it.
     test("reattach() moves the live map and the canvas takes the new parent's size", async ({
         page,
     }) => {

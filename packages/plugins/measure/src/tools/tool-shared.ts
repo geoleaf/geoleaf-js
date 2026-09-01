@@ -71,8 +71,8 @@ interface CursorGuardOptions {
  * Those handlers are now guarded by `__geoleafExclusiveMode` on all three core sites
  * (`feature-interaction`, `maplibre-poi-builders`, `maplibre-cluster-builders`), so this
  * observer is a second line of defence rather than the primary mechanism. It stays because
- * the flag is a convention no gate enforces on plugins — see B-252 for one editor handler
- * that still ignores it.
+ * the flag is a convention no gate enforces on plugins — at least one editor handler
+ * still ignores it.
  */
 export function startCursorGuard(canvas: HTMLCanvasElement, opts: CursorGuardOptions): CursorGuard {
     const observer = new MutationObserver(() => {
@@ -132,25 +132,28 @@ interface DragTool {
  * The `mouseup` listener is bound to `document`, not the map: releasing outside the
  * canvas must still end the drag. Same reason for `touchend` / `touchcancel`.
  *
- * ## §TOUCH — pourquoi le chemin souris ne pouvait pas servir un doigt (14/08/2026)
+ * ## §TOUCH — why the mouse path could not serve a finger (14/08/2026)
  *
- * 🛑 Deux verrous cumulés, et un seul aurait suffi : un glissement du doigt n'émet AUCUN
- * événement souris de compatibilité, et la garde `originalEvent?.button !== 0` rejetait de
- * toute façon tout événement sans bouton (`undefined !== 0` est vrai). Cercle et rectangle
- * étaient donc inutilisables sur téléphone — et le type le disait déjà, sans être lu ainsi.
+ * 🛑 Two stacked locks, and one would have sufficed: a finger drag emits NO
+ * compatibility mouse event, and the `originalEvent?.button !== 0` guard
+ * rejected any buttonless event anyway (`undefined !== 0` is true). Circle
+ * and rectangle were thus unusable on a phone — and the type already said so,
+ * without being read that way.
  *
- * ⚠️ **`preventDefault()` sur le `MapTouchEvent` n'est PAS le levier**, contrairement à ce
- * que suggère son TSDoc côté MapLibre : il ne couvre que la passe `touchstart` et cesse de
- * tenir dès le premier `touchmove`. C'est `disableDragPan()` — que le chemin souris appelait
- * déjà — qui tient sur toute la durée du geste. Le `preventDefault()` du `touchmove` ne sert
- * qu'à bloquer le défilement du NAVIGATEUR (le listener DOM de MapLibre est en
- * `{ passive: false }`, donc il est honoré plutôt que signalé).
+ * ⚠️ **`preventDefault()` on the `MapTouchEvent` is NOT the lever**, contrary
+ * to what its MapLibre-side TSDoc suggests: it only covers the `touchstart`
+ * pass and stops holding at the first `touchmove`. `disableDragPan()` — which
+ * the mouse path already called — is what holds for the gesture's whole
+ * duration. The `touchmove`'s `preventDefault()` only serves to block the
+ * BROWSER's scrolling (MapLibre's DOM listener is `{ passive: false }`, so it
+ * is honoured rather than reported).
  *
- * ⚠️ **Un seul doigt.** Un second signifie pinch, qui doit continuer d'atteindre le handler
- * de zoom/rotation de MapLibre : l'avaler ici casserait la carte pour dessiner un cercle.
+ * ⚠️ **One finger only.** A second means pinch, which must keep reaching
+ * MapLibre's zoom/rotation handler: swallowing it here would break the map to
+ * draw a circle.
  *
- * Éprouvé en navigateur réel par `e2e/33-measure-drag.touch.spec.js` (projet
- * `chromium-touch`), vu rouge avant correctif.
+ * Exercised in a real browser by `e2e/33-measure-drag.touch.spec.js`
+ * (`chromium-touch` project), seen red before the fix.
  */
 export function createDragTool<S>(spec: DragToolSpec<S>): DragTool {
     let map: MeasureMap | null = null;

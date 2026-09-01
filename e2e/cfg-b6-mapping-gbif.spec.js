@@ -1,29 +1,31 @@
 // @ts-check
-// Archi B.6 — E2E : pipeline mapping runtime (ANO-083) sur le bundle DÉPLOYÉ.
+// cfg-b6 — E2E: runtime mapping pipeline on the DEPLOYED bundle.
 //
-// ⚠️ Migré le 27/07/2026 (B-42) : visait guyane-biodiversite, profil de démonstration retiré.
-// La couche `observations_gbif` et le bloc `gbif` de mapping ont été migrés dans `tourism`.
-// Charge le profil tourism sur deploy-core (override `activeProfile`
-// via monkeypatch fetch — deploy-core a un SW PWA, donc serviceWorkers:'block' +
-// pas de page.route).
+// ⚠️ Migrated on 2026-07-27: it targeted guyane-biodiversite, a removed
+// demonstration profile. The `observations_gbif` layer and the `gbif` mapping
+// block were migrated into `tourism`. Loads the tourism profile on
+// deploy-core (`activeProfile` override via fetch monkeypatch — deploy-core
+// has a PWA SW, hence serviceWorkers:'block' + no page.route).
 //
-// ⚠️ Recâblé le 28/07/2026 (B-56). Ce test MOCKAIT `**/api.gbif.org/**` — ce qui rendait le
-// test déterministe, mais laissait la couche interroger l'API pour de vrai au boot de TOUS
-// les autres scénarios, donc dans le chemin de démarrage des 3 variantes livrées. La source
-// de boot est désormais un fichier LOCAL du profil, à la forme d'une réponse GBIF ; le mock
-// et sa `page.route` sont retirés. Conséquence directe : le test vérifie maintenant le
-// LIVRÉ et non un mock — les valeurs assertées ci-dessous sont celles de
-// `profiles/tourism/layers/observations_gbif/data/observations_gbif.json`, et ce couplage
-// est voulu (même posture que `16-flatgeobuf` depuis B-42).
+// ⚠️ Rewired on 2026-07-28. This test used to MOCK `**/api.gbif.org/**` —
+// which made it deterministic, but let the layer query the API for real at
+// the boot of ALL the other scenarios, hence in the startup path of the 3
+// shipped variants. The boot source is now a LOCAL profile file, shaped like
+// a GBIF response; the mock and its `page.route` are removed. Direct
+// consequence: the test now verifies the SHIPPED artifact and not a mock —
+// the values asserted below are those of
+// `profiles/tourism/layers/observations_gbif/data/observations_gbif.json`,
+// and that coupling is intended (same posture as `16-flatgeobuf`).
 //
-// Test DISCRIMINANT du câblage : la donnée est `{ results: [...] }` (objet, pas un
-// tableau). SANS le pipeline mapping, `DataConverter.autoConvert` ne sait pas la
-// convertir → 0 feature. AVEC le pipeline (data.mapping="gbif" +
-// data.itemsPath="results" → normalizePoiWithMapping → autoConvert), elle devient
-// une FeatureCollection de Points. On asserte donc qu'une source porte la feature
-// mappée (title="Jaguar", coords issues de decimalLat/Lng).
+// DISCRIMINATING test of the wiring: the data is `{ results: [...] }` (an
+// object, not an array). WITHOUT the mapping pipeline,
+// `DataConverter.autoConvert` cannot convert it → 0 features. WITH the
+// pipeline (data.mapping="gbif" + data.itemsPath="results" →
+// normalizePoiWithMapping → autoConvert), it becomes a FeatureCollection of
+// Points. So we assert that a source carries the mapped feature
+// (title="Jaguar", coords from decimalLat/Lng).
 //
-// Préfixe `cfg-` (convention roadmap config-contract).
+// The `cfg-` prefix marks the config-contract spec family.
 
 import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
@@ -35,10 +37,11 @@ test.describe("cfg-b6 — pipeline mapping runtime (GBIF, bundle déployé)", ()
         page,
     }) => {
         // page.route (not window.fetch) so the layer's Web Worker fetch is intercepted too.
-        // VÉRIFIÉ empiriquement (21/07/2026, `page.on('request')` + compteur sur le handler) :
-        // Playwright intercepte bien le fetch émis DEPUIS le Web Worker dédié
-        // `geojson-worker.js` — seuls les *Service* Workers échappent à page.route, d'où le
-        // serviceWorkers:'block' (deploy-core embarque un service worker PWA).
+        // VERIFIED empirically (2026-07-21, `page.on('request')` + a counter on
+        // the handler): Playwright does intercept the fetch emitted FROM the
+        // dedicated Web Worker `geojson-worker.js` — only *Service* Workers
+        // escape page.route, hence the serviceWorkers:'block' (deploy-core
+        // ships a PWA service worker).
         await page.route("**/geoleaf.config.json**", async (route) => {
             const res = await route.fetch();
             const cfg = await res.json();
@@ -53,21 +56,23 @@ test.describe("cfg-b6 — pipeline mapping runtime (GBIF, bundle déployé)", ()
         // GBIF `{results}` went through normalizePoiWithMapping → autoConvert in the
         // deployed bundle (id "111" coerced to string, coords from decimalLat/Lng).
         //
-        // ⚠️ La signature est `waitForFunction(fn, arg, options)`. Les 25 s ci-dessous
-        // étaient passées en 2e argument : Playwright les sérialisait comme `arg` (ignoré
-        // par le prédicat) et le wait retombait sur le timeout PAR DÉFAUT — soit
-        // `actionTimeout`, qui valait 10 s à cette date (30 s depuis le 01/08/2026 ;
-        // la valeur courante est dans `playwright.config.js`, pas ici).
+        // ⚠️ The signature is `waitForFunction(fn, arg, options)`. The 25 s
+        // below used to be passed as 2nd argument: Playwright serialised them
+        // as `arg` (ignored by the predicate) and the wait fell back to the
+        // DEFAULT timeout — i.e. `actionTimeout`, worth 10 s at that date
+        // (30 s since 2026-08-01; the current value lives in
+        // `playwright.config.js`, not here).
         //
-        // Ce test a ensuite expiré à 25 s pour une TOUTE AUTRE raison, et c'était un vrai
-        // défaut de production : la couche passait par le Web Worker GeoJSON, dont
-        // `_normalizeFeatures` ne garde que `.features` / un tableau racine. L'enveloppe
-        // `{ results: [...] }` de GBIF était donc DÉTRUITE avant d'atteindre le thread
-        // principal, `applyDataMapping` ne trouvait plus rien à `itemsPath="results"`, et la
-        // couche rendait 0 feature — le pipeline mapping était mort dans le navigateur.
-        // Corrigé dans `loader/single-layer.ts` (`data.mapping` ⇒ fetch main-thread).
-        // Depuis, le prédicat passe en ~1,2 s : les 25 s sont un PLAFOND (boot WebGL logiciel
-        // SwiftShader à froid), pas un délai attendu.
+        // This test then timed out at 25 s for an ENTIRELY OTHER reason, and
+        // it was a real production defect: the layer went through the GeoJSON
+        // Web Worker, whose `_normalizeFeatures` keeps only `.features` / a
+        // root array. GBIF's `{ results: [...] }` envelope was thus DESTROYED
+        // before reaching the main thread, `applyDataMapping` found nothing at
+        // `itemsPath="results"` any more, and the layer rendered 0 features —
+        // the mapping pipeline was dead in the browser. Fixed in
+        // `loader/single-layer.ts` (`data.mapping` ⇒ main-thread fetch). Since
+        // then, the predicate passes in ~1.2 s: the 25 s are a CEILING (cold
+        // SwiftShader software-WebGL boot), not an expected delay.
         const mapped = await page.waitForFunction(
             () => {
                 const m = /** @type {any} */ (window).GeoLeaf;

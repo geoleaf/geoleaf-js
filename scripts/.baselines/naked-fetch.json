@@ -1,0 +1,19 @@
+{
+    "_comment": "NF-01/02 — sites `fetch` de production SANS clé `signal` dans leurs options, gelés à la pose. Liste DÉCROISSANTE : corriger un site (poser le signal + son timeout) puis resserrer via --update-baseline. Clés sans numéro de ligne — les lignes dérivent sans information. Ce que le gel ne prouve PAS : qu'un timeout est attaché au signal (propriété de flux de données) — c'est la revue du site, à chaque descente, qui le vérifie.",
+    "_generated": "node scripts/check-naked-fetch.cjs --update-baseline",
+    "count": 12,
+    "entries": [
+        "packages/core/src/kernel/config/profile-layers.ts::resolveProfileLayers",
+        "packages/core/src/kernel/geojson/geojson-worker.ts::handleFetch",
+        "packages/core/src/kernel/geojson/geojson-worker.ts::handleFetchText",
+        "packages/core/src/kernel/geojson/loader/single-layer.ts::_fetchLayerData",
+        "packages/core/src/utils/general/fetch-helper.ts::_executeRequest",
+        "packages/core/src/utils/loaders/profile-sprite-loader.ts::_fetchAndInjectSprite",
+        "packages/core/src/utils/loaders/style-loader-core.ts::loadAndValidateStyle",
+        "packages/libs/field-renderer/src/types/dropdown.ts::formRender",
+        "packages/libs/field-renderer/src/types/field-media.ts::_uploadFile",
+        "packages/plugins/geocoding/src/provider.ts::_fetchAndParseGeoJSON",
+        "packages/plugins/geocoding/src/provider.ts::search",
+        "packages/plugins/print/src/server-fallback.ts::tryServerFallback"
+    ]
+}

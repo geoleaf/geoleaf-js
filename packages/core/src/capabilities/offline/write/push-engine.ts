@@ -5,39 +5,37 @@
  */
 
 /**
- * Push — le drain de l'`outbox`, et la réconciliation d'identité (tâche 4.5).
+ * Push — the `outbox` drain, and identity reconciliation.
  *
- * 4.4 a donné à l'`outbox` son premier écrivain ; celle-ci lui donne son premier LECTEUR
- * réel. Le cycle est alors fermé : rapatrier (4.1) → lire local (4.3) → éditer hors réseau
- * (4.4) → repousser au retour du réseau (ici).
+ * The `outbox` got its first writer with local edits; this module gives it its first
+ * real READER. The cycle is then closed: pull → read locally → edit off-network →
+ * push back when the network returns (here).
  *
- * ## Ce qui rend le rejeu idempotent, et pourquoi ce n'était pas possible avant
+ * ## What makes replay idempotent, and why it was not possible before
  *
- * 🛑 **L'identité CLIENTE part sur le fil.** Le corps porte `local_id`, hors de la liste
- * blanche de propriétés — les colonnes métier appartiennent au formulaire, celle-ci
- * appartient au protocole. C'est ce qui permet au SERVEUR de refuser un doublon lui-même :
- * mesuré sur le backend de preuve, un rejeu du même `local_id` rend **409** sur une
- * contrainte `UNIQUE`, et non sur une convention d'appelant. `sync_queue` ne portait aucune
- * identité cliente — c'est très exactement pourquoi l'idempotence a été reportée de 3.10
- * jusqu'ici.
+ * 🛑 **The CLIENT identity goes on the wire.** The body carries `local_id`, outside the
+ * property whitelist — business columns belong to the form, this one belongs to the
+ * protocol. It is what lets the SERVER refuse a duplicate itself: measured against the
+ * proof backend, replaying the same `local_id` yields **409** on a `UNIQUE` constraint,
+ * not on a caller convention. `sync_queue` carried no client identity — which is
+ * exactly why idempotence was deferred until here.
  *
- * ⚠️ **Un 409 est donc un SUCCÈS**, pas une erreur : il dit « je l'ai déjà ». Le traiter en
- * échec ferait boucler la file sur une entrée que le serveur a bel et bien acceptée.
+ * ⚠️ **A 409 is therefore a SUCCESS**, not an error: it says "I already have it".
+ * Treating it as failure would make the queue loop on an entry the server did accept.
  *
- * ## La réconciliation
+ * ## Reconciliation
  *
- * Au retour d'un `create`, le serveur rend son identifiant. Il est écrit **dans
- * l'enregistrement lui-même** (`FeatureRecord.serverId`), et non dans l'entrée de file : la
- * file ne référence que `localId` (contrat), et elle disparaît une fois poussée. Sans cette
- * écriture, l'entité serait re-créée au rapatriement suivant au lieu d'être reconnue.
+ * When a `create` returns, the server yields its identifier. It is written **into the
+ * record itself** (`FeatureRecord.serverId`), not into the queue entry: the queue
+ * references only `localId` (contract), and it disappears once pushed. Without that
+ * write, the entity would be re-created on the next pull instead of recognised.
  *
- * ## Le retry appartient à la FILE, pas au transport
+ * ## Retry belongs to the QUEUE, not the transport
  *
- * ⚠️ Le transport est `fetchBounded` et **non** `FetchHelper`, qui réessaie tout seul. Deux
- * autorités de retry — l'une dans le transport, l'autre dans `attempts`/`failed` — se
- * compteraient l'une l'autre et rendraient le nombre de tentatives inexplicable. C'est la
- * forme même du défaut « deux mécanismes qui ne se rencontrent jamais » que ce sprint ferme
- * ailleurs.
+ * ⚠️ The transport is `fetchBounded` and **not** `FetchHelper`, which retries on its
+ * own. Two retry authorities — one in the transport, one in `attempts`/`failed` —
+ * would count each other and make the attempt count inexplicable. That is the very
+ * shape of the "two mechanisms that never meet" defect closed elsewhere.
  *
  * @version 1.0.0
  */
@@ -53,137 +51,138 @@ import type {
     QuarantineReason,
 } from "../../../contracts/sync.contract.js";
 
-/** Propriété portant l'identité cliente sur le fil. Partagée avec le schéma du backend. */
+/** Property carrying the client identity on the wire. Shared with the backend schema. */
 const CLIENT_ID_PROPERTY = "local_id";
 
 /**
- * Budget de rejeu — nombre TOTAL d'essais avant mise en quarantaine, premier inclus.
+ * Replay budget — TOTAL number of attempts before quarantine, first one included.
  *
- * 🛑 **IL N'EXISTAIT PLUS (B-125).** Un `MAX_REPLAY_ATTEMPTS = 3` vivait dans la file v3, où il
- * était appliqué **à l'écriture** ; il est parti avec le magasin à la tâche 4.11. Mesuré alors :
- * l'outbox portait bien un champ `attempts`, mais ce moteur ne l'incrémentait ni ne le
- * plafonnait — le budget était **déjà absent du chemin v4** avant ce retrait, qui n'a fait que
- * le rendre visible.
+ * 🛑 **IT NO LONGER EXISTED.** A `MAX_REPLAY_ATTEMPTS = 3` lived in the v3 queue, where
+ * it was enforced **at write time**; it left with the store. Measured then: the outbox
+ * did carry an `attempts` field, but this engine neither incremented nor capped it —
+ * the budget was **already absent from the v4 path** before that removal, which only
+ * made it visible.
  *
- * Conséquence produit sans lui : une entrée qui échoue est rejouée **indéfiniment**, et l'état
- * `quarantined` que le contrat décrit comme « kept, but not replayable as-is » est atteint
- * par `markFailure` ci-dessous depuis la tâche 4.11d — quatre `QuarantineReason` déclarés,
- * quatre producteurs. ⚠️ Ce commentaire disait « n'est atteint par AUCUN chemin — trois
- * motifs déclarés, zéro producteur » jusqu'à la tâche 8.4, dans le fichier même qui les
- * produit. Et la sortie de cette quarantaine existe désormais : `write/quarantine-api.ts`.
+ * Product consequence without it: a failing entry is replayed **indefinitely**, and the
+ * `quarantined` state the contract describes as "kept, but not replayable as-is" is
+ * reached by `markFailure` below — four declared `QuarantineReason`s, four producers.
+ * ⚠️ This comment said "is reached by NO path — three motives declared, zero producers"
+ * for a while, in the very file that produces them. And the exit from that quarantine
+ * now exists: `write/quarantine-api.ts`.
  *
- * ⚠️ Il compte les essais TOTAUX, pas les reprises : `3` = un envoi initial + deux rejeux.
- * Même convention que `RetryHandler` du téléchargement, pour qu'un lecteur n'ait pas à se
- * demander laquelle des deux s'applique.
+ * ⚠️ It counts TOTAL attempts, not retries: `3` = one initial send + two replays. Same
+ * convention as the download's `RetryHandler`, so a reader does not have to wonder
+ * which of the two applies.
  */
 const MAX_REPLAY_ATTEMPTS = 3;
 
 /**
- * Statuts qui disent « pas MAINTENANT », par opposition à « pas comme ça » (B-199).
+ * Statuses that say "not NOW", as opposed to "not like that".
  *
- * 🛑 **CETTE DISTINCTION N'EXISTAIT PAS, ET SON ABSENCE CONDAMNAIT DES SAISIES.** Jusqu'au
- * 09/08/2026 `pushOne` avait une seule branche pour tout ce qui n'est ni 409 ni 404 : un 503 de
- * maintenance et un 403 définitif en sortaient sous le même `rejectedByServer`. Ce motif étant
- * exclu de `REQUEUEABLE` (`quarantine-api.ts`), une panne serveur transitoire épuisait le budget
- * puis rendait l'entrée NON REJOUABLE — sa seule sortie devenait `discardQuarantined`,
- * c'est-à-dire la destruction de la saisie. Le drain se déclenche au retour du réseau **et sur
- * le bouton « Réessayer »**, et `attempts` est persistant : trois clics pendant une maintenance
- * suffisaient.
+ * 🛑 **THIS DISTINCTION DID NOT EXIST, AND ITS ABSENCE CONDEMNED CAPTURES.** Until
+ * 09/08/2026 `pushOne` had a single branch for everything that is neither 409 nor 404:
+ * a maintenance 503 and a definitive 403 both came out under the same
+ * `rejectedByServer`. That motive being excluded from `REQUEUEABLE`
+ * (`quarantine-api.ts`), a transient server outage exhausted the budget then made the
+ * entry NON-REPLAYABLE — its only exit became `discardQuarantined`, i.e. destroying
+ * the capture. The drain triggers on network return **and on the "Retry" button**, and
+ * `attempts` is persistent: three clicks during a maintenance window sufficed.
  *
- * ⚠️ **Chaque membre est ici pour une raison qui lui est propre, pas parce qu'il est en 5xx** :
- * 500/502/503/504 nomment un serveur ou un intermédiaire hors d'état de répondre, 408 un délai
- * dépassé, 429 un débit refusé. Tous redeviennent vrais sans que l'entrée change. **501 n'y est
- * PAS** : il ne dit pas « pas maintenant » mais « je ne connais pas ce verbe », ce qui appelle
- * une quarantaine immédiate — voir {@link PushFailure}.
+ * ⚠️ **Each member is here for its own reason, not because it is a 5xx**: 500/502/503/
+ * 504 name a server or intermediary unable to answer, 408 a timeout, 429 a refused
+ * rate. All become true again without the entry changing. **501 is NOT here**: it does
+ * not say "not now" but "I do not know this verb", which calls for immediate
+ * quarantine — see {@link PushFailure}.
  */
 const TRANSIENT_SERVER_STATUSES: ReadonlySet<number> = new Set([408, 429, 500, 502, 503, 504]);
 
-/** Le serveur déclare ne pas implémenter le verbe — HTTP 501. */
+/** The server declares it does not implement the verb — HTTP 501. */
 const NOT_IMPLEMENTED_STATUS = 501;
 
 /**
- * Pourquoi un envoi a échoué.
+ * Why a send failed.
  *
- * ⚠️ **Seules les valeurs que ce module PRODUIT sont déclarées.** Une première rédaction en
- * portait trois de plus — `layerUnknown`, `noWriteTarget`, `recordMissing` — qu'aucun chemin
- * ne rendait jamais : ces cas sont traités dans la boucle, avant l'envoi. Un membre
- * d'union que rien ne produit est indiscernable d'une faute de frappe, exactement ce que le
- * contrat reproche à un dialecte pré-déclaré.
+ * ⚠️ **Only the values this module PRODUCES are declared.** A first draft carried three
+ * more — `layerUnknown`, `noWriteTarget`, `recordMissing` — that no path ever returned:
+ * those cases are handled in the loop, before the send. A union member nothing produces
+ * is indistinguishable from a typo, exactly what the contract holds against a
+ * pre-declared dialect.
  */
 type PushFailure =
     /**
-     * Le serveur a refusé pour une raison que le rejeu ne corrigera pas.
+     * The server refused for a reason replay will not fix.
      *
-     * ⚠️ **RESSERRÉ à B-199.** Ce membre a nommé TOUT échec non-409/non-404 jusqu'au
-     * 09/08/2026, pannes serveur comprises. Il ne couvre plus que les refus définitifs — les
-     * 4xx autres que 404 et 501 : requête malformée, droit manquant, verbe non autorisé,
-     * entité non traitable.
+     * ⚠️ **NARROWED on 09/08/2026.** This member named EVERY non-409/non-404 failure
+     * until then, server outages included. It now covers only definitive refusals —
+     * the 4xx other than 404 and 501: malformed request, missing right, disallowed
+     * verb, unprocessable entity.
      */
     | "rejectedByServer"
     /**
-     * Le serveur n'était pas en état de répondre, et le sera peut-être au prochain drain.
+     * The server was in no state to answer, and may be at the next drain.
      *
-     * Il ne porte PAS son propre `QuarantineReason` : au plafond il tombe sur
-     * `retryBudgetExhausted`, qui dit exactement ce qui s'est passé — le budget a été dépensé
-     * sans que le serveur réponde jamais de façon actionnable — et qui est **rejouable**.
+     * It does NOT carry its own `QuarantineReason`: at the cap it falls onto
+     * `retryBudgetExhausted`, which says exactly what happened — the budget was spent
+     * without the server ever answering actionably — and which is **replayable**.
      */
     | "serverUnavailable"
     /**
-     * Le serveur ne connaît pas le verbe — HTTP 501.
+     * The server does not know the verb — HTTP 501.
      *
-     * 🛑 **Quarantaine IMMÉDIATE, et pourtant REJOUABLE.** Les deux moitiés sont dérivées du
-     * sens : rejouer trois fois un verbe non implémenté ne fait qu'attendre trois fois (même
-     * argument que `deletedOnServer`), mais la mise à jour du serveur EST la levée de cause, et
-     * elle n'est pas observable ici — donc confiée à l'opérateur, comme `retryBudgetExhausted`.
+     * 🛑 **IMMEDIATE quarantine, and yet REPLAYABLE.** Both halves derive from the
+     * meaning: replaying an unimplemented verb three times only waits three times
+     * (same argument as `deletedOnServer`), but the server upgrade IS the lifting of
+     * the cause, and it is not observable here — so it is entrusted to the operator,
+     * like `retryBudgetExhausted`.
      *
-     * ⚠️ C'est le miroir du carve-out du dialecte `rest` plus bas, qui traite un « non
-     * implémenté » CÔTÉ CLIENT comme rejouable. Les traiter à l'inverse l'un de l'autre était
-     * l'asymétrie que B-199 a mesurée.
+     * ⚠️ This mirrors the `rest`-dialect carve-out below, which treats a CLIENT-side
+     * "not implemented" as replayable. Treating them as opposites of each other was
+     * the measured asymmetry that commanded the narrowing.
      */
     | "notImplementedByServer"
-    /** Le réseau n'a pas répondu. */
+    /** The network did not answer. */
     | "networkError"
     /**
-     * Le serveur ne connaît plus l'entité — 404 sur un `update` ou un `delete`.
+     * The server no longer knows the entity — 404 on an `update` or a `delete`.
      *
-     * ⚠️ **Le vocabulaire d'opération DÉCIDE**, et c'est ce qui rend ce membre productible :
-     * un 404 sur un `create` dit que l'endpoint est faux, pas que l'entité a disparu. Les
-     * confondre ferait mettre en quarantaine une couche mal configurée sous un motif qui
-     * accuse le serveur.
+     * ⚠️ **The operation vocabulary DECIDES**, and that is what makes this member
+     * producible: a 404 on a `create` says the endpoint is wrong, not that the entity
+     * vanished. Confusing them would quarantine a misconfigured layer under a motive
+     * that accuses the server.
      */
     | "deletedOnServer";
 
-/** Ce qu'un drain complet a fait. */
+/** What a full drain did. */
 interface PushReport {
     readonly attempted: number;
     readonly pushed: number;
     readonly failed: number;
-    /** Entrées déjà connues du serveur — un 409 sur l'identité cliente. */
+    /** Entries the server already knew — a 409 on the client identity. */
     readonly alreadyPresent: number;
-    /** Conflits DÉTECTÉS puis tranchés par `lastWriteWins` (tâche 4.6). */
+    /** Conflicts DETECTED then settled by `lastWriteWins`. */
     readonly conflicts: number;
     readonly refused: "engineUnavailable" | null;
 }
 
-/** Cible d'écriture résolue depuis la déclaration de couche. */
+/** Write target resolved from the layer declaration. */
 interface WriteTarget {
     readonly endpoint: string;
     readonly dialect: "rest" | "collection";
     readonly geometryProperty: string;
     readonly properties: readonly string[] | null;
-    /** Colonne servant de marqueur de fraîcheur — le filtre du conflit (4.6). */
+    /** Column serving as freshness marker — the conflict filter. */
     readonly versionProperty: string;
 }
 
 /**
- * Les deux modules de base que le drain lit et écrit, réduits à ce qu'il en utilise.
+ * The two database modules the drain reads and writes, reduced to what it uses.
  *
- * ⚠️ `list()` remplace `listByState()` ici depuis B-126 : c'est le seul des deux qui rende
- * l'ordre d'insertion GLOBAL. `listByState` le tient à l'intérieur d'un état — ce qui suffit
- * à qui lit un seul état, et jamais à qui en rejoue deux.
+ * ⚠️ `list()` replaces `listByState()` here: it is the only one of the two that
+ * returns GLOBAL insertion order. `listByState` holds it within one state — enough for
+ * whoever reads a single state, never for whoever replays two.
  */
 interface OutboxModule {
-    /** Toutes les entrées, dans l'ordre d'insertion (clé `seq`, `autoIncrement`). */
+    /** Every entry, in insertion order (`seq` key, `autoIncrement`). */
     list(): Promise<OutboxEntry[]>;
     updateState(
         id: string,
@@ -198,28 +197,29 @@ interface FeaturesModule {
     remove(layerId: string, localId: string): Promise<void>;
 }
 
-/** Le seam de stockage, réduit à ce que ce module lit et écrit. */
+/** The storage seam, reduced to what this module reads and writes. */
 interface PushStore {
     _ensureModule?: (name: string) => unknown;
 }
 
 /**
- * Marque un échec : incrémente le budget, et met de côté quand il est épuisé.
+ * Marks a failure: increments the budget, and sets aside when it is exhausted.
  *
- * 🛑 **UN SEUL POINT DE SORTIE POUR L'ÉCHEC (B-125).** Les quatre chemins d'échec du drain
- * faisaient chacun `updateState(id, "failed")` — quatre écritures, aucune ne touchant
- * `attempts`. Un compteur que personne n'incrémente ne plafonne rien, et un plafond réparti
- * sur quatre sites se serait désynchronisé au premier cinquième chemin.
+ * 🛑 **A SINGLE EXIT POINT FOR FAILURE.** The drain's four failure paths each did
+ * `updateState(id, "failed")` — four writes, none touching `attempts`. A counter
+ * nobody increments caps nothing, and a cap spread over four sites would have
+ * desynchronised at the first fifth path.
  *
- * @param outbox - Le module de file.
- * @param entry - L'entrée qui vient d'échouer ; son `attempts` est la base du décompte.
- * @param reason - Motif de quarantaine IMMÉDIATE, quand le rejeu ne peut rien y changer.
- *   Sans lui, l'entrée reste `failed` jusqu'à épuisement du budget.
- * @param lastFailure - Ce qui a fait échouer le dernier envoi, quand il y en a eu un. Il
- *   DÉCIDE du motif au plafond : un refus serveur épuisé n'est pas un réseau muet épuisé.
- * @param httpStatus - Statut du refus, quand il y en a eu un. B-200 : il VOYAGE AVEC L'ENTRÉE
- *   au lieu de rester dans un `Log.warn` que personne n'ouvre sur le terrain.
- * @returns `true` si l'entrée est passée en quarantaine.
+ * @param outbox - The queue module.
+ * @param entry - The entry that just failed; its `attempts` is the tally's base.
+ * @param reason - IMMEDIATE quarantine motive, when replay can change nothing.
+ *   Without it, the entry stays `failed` until the budget is exhausted.
+ * @param lastFailure - What made the last send fail, when there was one. It DECIDES
+ *   the motive at the cap: an exhausted server refusal is not an exhausted mute
+ *   network.
+ * @param httpStatus - Status of the refusal, when there was one. It TRAVELS WITH THE
+ *   ENTRY instead of staying in a `Log.warn` nobody opens in the field.
+ * @returns `true` when the entry went into quarantine.
  */
 async function markFailure(
     outbox: OutboxModule,
@@ -229,21 +229,21 @@ async function markFailure(
     httpStatus?: number
 ): Promise<boolean> {
     const attempts = (entry.attempts ?? 0) + 1;
-    // ⚠️ Une quarantaine IMMÉDIATE ne consomme pas le budget, elle le court-circuite : rejouer
-    // trois fois une couche qui a perdu son bloc `write` ne fait qu'attendre trois fois.
+    // ⚠️ An IMMEDIATE quarantine does not consume the budget, it short-circuits it:
+    // replaying a layer that lost its `write` block three times only waits three times.
     //
-    // 🛑 AU PLAFOND, LE MOTIF SUIT LE DERNIER ÉCHEC. Un serveur qui refuse trois fois a REFUSÉ ;
-    // un réseau muet trois fois n'a rien dit. Écrire `retryBudgetExhausted` dans les deux cas
-    // aurait produit un motif juste et un motif faux sous le même nom — et laissé
-    // `rejectedByServer` déclaré sans producteur, ce que le contrat qualifie lui-même
-    // d'« indiscernable d'une faute de frappe ».
+    // 🛑 AT THE CAP, THE MOTIVE FOLLOWS THE LAST FAILURE. A server that refuses three
+    // times REFUSED; a network mute three times said nothing. Writing
+    // `retryBudgetExhausted` in both cases would have produced one true motive and one
+    // false one under the same name — and left `rejectedByServer` declared without a
+    // producer, which the contract itself calls "indistinguishable from a typo".
     //
-    // ⚠️ **CE RAISONNEMENT ÉTAIT JUSTE, ET SA PRÉMISSE ÉTAIT FAUSSE (B-199).** « Un serveur qui
-    // refuse trois fois a REFUSÉ » suppose que `rejectedByServer` nomme un refus — or il
-    // nommait, jusqu'au 09/08/2026, TOUT échec non-409/non-404, pannes 5xx comprises. La
-    // ligne ci-dessous n'a pas changé : c'est `pushOne` qui ne produit plus `rejectedByServer`
-    // que pour un vrai refus, et un `serverUnavailable` tombe donc du bon côté sans qu'aucun
-    // motif nouveau soit nécessaire ici.
+    // ⚠️ **THIS REASONING WAS RIGHT, AND ITS PREMISE WAS FALSE.** "A server that
+    // refuses three times REFUSED" assumes `rejectedByServer` names a refusal — but it
+    // named, until 09/08/2026, EVERY non-409/non-404 failure, 5xx outages included.
+    // The line below did not change: it is `pushOne` that now produces
+    // `rejectedByServer` only for a real refusal, and a `serverUnavailable` therefore
+    // falls on the right side with no new motive needed here.
     const exhausted: QuarantineReason =
         lastFailure === "rejectedByServer" ? "rejectedByServer" : "retryBudgetExhausted";
     const quarantine = reason ?? (attempts >= MAX_REPLAY_ATTEMPTS ? exhausted : null);
@@ -252,10 +252,11 @@ async function markFailure(
             `[Offline.Push] ${entry.id} — QUARANTAINE (${quarantine}) après ${attempts} essai(s). ` +
                 "L'entrée reste en base : le contrat interdit de la détruire."
         );
-        // B-200 — `quarantineStatus` n'est écrit QUE s'il existe : une quarantaine qui ne vient
-        // pas d'une réponse serveur (`layerNoLongerWritable`, réseau muet au plafond) ne doit
-        // pas se voir attribuer un statut fabriqué. Un champ absent dit « pas de réponse » ;
-        // un `0` dirait « le serveur a répondu 0 », ce qui est faux et indiscernable.
+        // `quarantineStatus` is written ONLY when it exists: a quarantine that does
+        // not come from a server response (`layerNoLongerWritable`, mute network at
+        // the cap) must not be assigned a fabricated status. An absent field says "no
+        // response"; a `0` would say "the server answered 0", which is false and
+        // indistinguishable.
         await outbox.updateState(entry.id, "quarantined", {
             attempts,
             quarantine,
@@ -268,16 +269,16 @@ async function markFailure(
 }
 
 /**
- * Résout la cible d'écriture d'une couche.
+ * Resolves a layer's write target.
  *
- * ⚠️ **Par COUCHE, et jamais par plugin** (point 7 du contrat). Deux mécanismes se
- * disputaient ce rôle sans jamais se rencontrer : un bloc par couche, lu en quatre endroits
- * mais posé par **zéro couche sur 48** avant 4.H, et une URL de base au niveau du plugin qui
- * ignore la couche entièrement. Sur un backend où chaque couche est une collection distincte
- * — Odoo, PostgREST —, seule la première forme peut être juste.
+ * ⚠️ **Per LAYER, and never per plugin** (contract point 7). Two mechanisms disputed
+ * this role without ever meeting: a per-layer block, read in four places but set by
+ * **zero layers out of 48** at first, and a plugin-level base URL that ignores the
+ * layer entirely. On a backend where each layer is a distinct collection, only the
+ * first form can be right.
  *
- * @param layerId - Couche visée.
- * @returns La cible, ou `null` quand la couche n'en déclare aucune d'utilisable.
+ * @param layerId - Targeted layer.
+ * @returns The target, or `null` when the layer declares no usable one.
  */
 function resolveWriteTarget(layerId: string): WriteTarget | null {
     const config = coreProfileLayerConfig(layerId);
@@ -297,8 +298,8 @@ function resolveWriteTarget(layerId: string): WriteTarget | null {
         dialect: write.dialect === "rest" ? "rest" : "collection",
         geometryProperty: write.geometryProperty ?? "geom",
         properties: Array.isArray(write.properties) ? write.properties : null,
-        // La même colonne que celle dont 4.1 relève le `VersionMarker` : les deux moitiés du
-        // cycle doivent nommer la MÊME chose, sinon le conflit se compare à côté.
+        // The same column the pull reads its `VersionMarker` from: both halves of the
+        // cycle must name the SAME thing, or the conflict compares beside the point.
         versionProperty:
             (config.offline as { source?: { versionProperty?: string } } | undefined)?.source
                 ?.versionProperty ?? "updated_at",
@@ -306,15 +307,15 @@ function resolveWriteTarget(layerId: string): WriteTarget | null {
 }
 
 /**
- * Construit le corps envoyé au serveur pour le dialecte `collection` — un objet PLAT.
+ * Builds the body sent to the server for the `collection` dialect — a FLAT object.
  *
- * La liste blanche `properties` est une liste blanche : ce qui n'y figure pas ne part jamais.
- * Deux clés s'y ajoutent parce qu'elles relèvent du protocole et non du formulaire : la
- * géométrie, et l'identité cliente qui rend le rejeu idempotent.
+ * The `properties` whitelist is a whitelist: what is not on it never leaves. Two keys
+ * are added because they belong to the protocol and not the form: the geometry, and
+ * the client identity that makes replay idempotent.
  *
- * @param record - L'enregistrement local à envoyer.
- * @param target - La cible résolue.
- * @returns Le corps prêt à sérialiser.
+ * @param record - The local record to send.
+ * @param target - The resolved target.
+ * @returns The body ready to serialise.
  */
 function buildCollectionBody(record: FeatureRecord, target: WriteTarget): Record<string, unknown> {
     const feature = (record.feature ?? {}) as { geometry?: unknown; properties?: unknown };
@@ -322,10 +323,10 @@ function buildCollectionBody(record: FeatureRecord, target: WriteTarget): Record
         feature.properties && typeof feature.properties === "object" ? feature.properties : {}
     ) as Record<string, unknown>;
 
-    // ⚠️ TOUTE clé écrite ici vient de données : la liste blanche de la couche, ou les
-    // propriétés de l'entité quand la couche n'en déclare pas. Un nom `__proto__` ou
-    // `constructor` polluerait le prototype du corps sérialisé — la garde canonique du dépôt
-    // est ce qui rend le cas inatteignable plutôt qu'improbable.
+    // ⚠️ EVERY key written here comes from data: the layer's whitelist, or the
+    // entity's properties when the layer declares none. A `__proto__` or `constructor`
+    // name would pollute the serialised body's prototype — the repo's canonical guard
+    // is what makes the case unreachable rather than improbable.
     const body: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
     const allowed = target.properties ?? Object.keys(properties);
     for (const name of allowed) {
@@ -339,15 +340,15 @@ function buildCollectionBody(record: FeatureRecord, target: WriteTarget): Record
 }
 
 /**
- * Requête HTTP correspondant à une opération.
+ * HTTP request matching an operation.
  *
- * 🛑 **Le dialecte `collection` seulement, et le refus de l'autre est EXPLICITE.** Le contrat
- * déclare deux dialectes parce que le code des plugins en implémente deux ; côté core, aucune
- * couche du dépôt ne déclare `rest` — `sites_rosario`, seule à porter un bloc `write`, est en
- * `collection`. Construire ici un corps plat et l'envoyer à un endpoint REST « au cas où »
- * enverrait la mauvaise forme **en silence**, ce qui est la classe de défaut que ce sprint
- * ferme. Le drain refuse donc `rest` par son nom, et cette ligne est ce qui dira au prochain
- * lecteur qu'il reste un dialecte à écrire.
+ * 🛑 **The `collection` dialect only, and refusing the other is EXPLICIT.** The
+ * contract declares two dialects because the plugins' code implements two; core-side,
+ * no layer in the repo declares `rest` — `sites_rosario`, the only one carrying a
+ * `write` block, is `collection`. Building a flat body here and sending it to a REST
+ * endpoint "just in case" would send the wrong shape **silently**, which is the defect
+ * class being closed. The drain therefore refuses `rest` by name, and this line is
+ * what will tell the next reader a dialect remains to be written.
  */
 function buildRequest(
     entry: OutboxEntry,
@@ -356,23 +357,24 @@ function buildRequest(
     conditional = true
 ): { url: string; init: RequestInit } {
     const identified = `${target.endpoint}?id=eq.${encodeURIComponent(String(record.serverId))}`;
-    // 🛑 TÂCHE 4.6 — LE MARQUEUR DE BASE DEVIENT UN FILTRE, ET C'EST CE QUI REND LE CONFLIT
-    // DÉTECTABLE. Mesuré contre le vrai PostgREST : un `PATCH` filtré sur un `updated_at`
-    // PÉRIMÉ rend **200 avec un tableau VIDE** — zéro ligne touchée, donc quelqu'un d'autre a
-    // écrit entre-temps. Avec un marqueur à jour, 1 ligne. C'est la seule chose qui manquait :
-    // le contrat dit que le gain n'est pas l'issue mais que le conflit devienne OBSERVABLE.
+    // 🛑 THE BASE MARKER BECOMES A FILTER, AND THAT IS WHAT MAKES THE CONFLICT
+    // DETECTABLE. Measured against real PostgREST: a `PATCH` filtered on a STALE
+    // `updated_at` yields **200 with an EMPTY array** — zero rows touched, so someone
+    // else wrote in between. With a fresh marker, 1 row. That was the only missing
+    // piece: the contract says the gain is not the outcome but that the conflict
+    // becomes OBSERVABLE.
     //
-    // ⚠️ `encodeURIComponent` n'est pas décoratif : le `+` du fuseau horaire d'un timestamp
-    // ISO doit être encodé, sinon PostgREST le lit comme une espace et rend
-    // `400 invalid input syntax for type timestamp`. Mesuré aussi.
+    // ⚠️ `encodeURIComponent` is not decorative: the `+` of an ISO timestamp's
+    // timezone must be encoded, otherwise PostgREST reads it as a space and yields
+    // `400 invalid input syntax for type timestamp`. Also measured.
     const guarded =
         conditional && entry.baseVersion
             ? `${identified}&${target.versionProperty}=eq.${encodeURIComponent(entry.baseVersion.value)}`
             : identified;
     const headers: Record<string, string> = {
         "Content-Type": "application/json",
-        // Le serveur renvoie la ligne créée : c'est de là que vient le `serverId`, et le
-        // demander explicitement évite un second aller-retour pour l'apprendre.
+        // The server returns the created row: that is where the `serverId` comes
+        // from, and asking explicitly avoids a second round-trip to learn it.
         Prefer: "return=representation",
     };
 
@@ -387,15 +389,16 @@ function buildRequest(
 }
 
 /**
- * Pousse une entrée, et rend l'identité serveur quand le serveur en fournit une.
+ * Pushes one entry, and returns the server identity when the server provides one.
  *
- * @param entry - L'entrée de file.
- * @param record - L'entité qu'elle nomme.
- * @param target - La cible d'écriture de la couche.
- * @param conditional - Filtrer sur le marqueur de base, ce qui rend le conflit détectable
- *   (4.6). Mis à `false` pour le SECOND envoi, celui qui tranche par `lastWriteWins` : le
- *   conflit a déjà été observé et journalisé, refiltrer le ferait échouer une seconde fois.
- * @returns L'issue, le `serverId` à réconcilier, et si un conflit a été détecté.
+ * @param entry - The queue entry.
+ * @param record - The entity it names.
+ * @param target - The layer's write target.
+ * @param conditional - Filter on the base marker, which makes the conflict detectable.
+ *   Set to `false` for the SECOND send, the one that settles by `lastWriteWins`: the
+ *   conflict was already observed and logged, re-filtering would fail it a second
+ *   time.
+ * @returns The outcome, the `serverId` to reconcile, and whether a conflict was detected.
  */
 async function pushOne(
     entry: OutboxEntry,
@@ -408,7 +411,7 @@ async function pushOne(
     alreadyPresent?: boolean;
     conflicted?: boolean;
     failure?: PushFailure;
-    /** Statut du refus, quand le serveur a répondu — B-200, il voyage avec l'entrée. */
+    /** Status of the refusal, when the server answered — it travels with the entry. */
     httpStatus?: number;
 }> {
     const { url, init } = buildRequest(entry, record, target, conditional);
@@ -420,21 +423,22 @@ async function pushOne(
         return { ok: false, failure: "networkError" };
     }
 
-    // 🛑 409 = « je l'ai déjà ». La contrainte UNIQUE sur l'identité cliente est ce qui rend
-    // le rejeu sûr ; la traiter en échec ferait boucler la file sur un succès.
+    // 🛑 409 = "I already have it". The UNIQUE constraint on the client identity is
+    // what makes replay safe; treating it as failure would loop the queue on a
+    // success.
     if (response.status === 409) return { ok: true, alreadyPresent: true };
 
     if (!response.ok) {
-        // 404 sur une entité que le serveur devrait connaître : elle a été supprimée là-bas
-        // pendant qu'on l'éditait ici. Le rejeu ne la ressuscitera pas.
+        // 404 on an entity the server should know: it was deleted over there while it
+        // was being edited here. Replay will not resurrect it.
         if (response.status === 404 && entry.kind !== "create") {
             Log.warn(`[Offline.Push] ${entry.id} — l'entité n'existe plus côté serveur (404).`);
             return { ok: false, failure: "deletedOnServer", httpStatus: response.status };
         }
-        // 🛑 LA CLASSE DU STATUT DÉCIDE DU SORT DE LA SAISIE (B-199). Ces trois branches
-        // étaient une seule ligne rendant `rejectedByServer` — donc une entrée non rejouable —
-        // pour un 503 comme pour un 403. Le détail du raisonnement est sur
-        // `TRANSIENT_SERVER_STATUSES` et sur les membres de {@link PushFailure}.
+        // 🛑 THE STATUS CLASS DECIDES THE CAPTURE'S FATE. These three branches used
+        // to be one line returning `rejectedByServer` — hence a non-replayable entry —
+        // for a 503 as for a 403. The detailed reasoning sits on
+        // `TRANSIENT_SERVER_STATUSES` and on the members of {@link PushFailure}.
         if (response.status === NOT_IMPLEMENTED_STATUS) {
             Log.warn(
                 `[Offline.Push] ${entry.id} — le serveur ne connaît pas ce verbe (501) ; quarantaine immédiate.`
@@ -453,10 +457,10 @@ async function pushOne(
 
     const payload = (await response.json().catch(() => null)) as
         { id?: unknown } | Array<{ id?: unknown }> | null;
-    // 🛑 ZÉRO LIGNE TOUCHÉE SUR UNE MISE À JOUR CONDITIONNELLE = CONFLIT (tâche 4.6).
-    // L'entité existe (l'identité serveur est connue) mais son marqueur de fraîcheur ne
-    // correspond plus : quelqu'un a écrit entre la lecture et ce push. Mesuré : PostgREST rend
-    // `200 []`. C'est la seule forme sous laquelle ce serveur sait le dire.
+    // 🛑 ZERO ROWS TOUCHED ON A CONDITIONAL UPDATE = CONFLICT. The entity exists (the
+    // server identity is known) but its freshness marker no longer matches: someone
+    // wrote between the read and this push. Measured: PostgREST yields `200 []`. That
+    // is the only form in which this server knows how to say it.
     if (conditional && entry.baseVersion && entry.kind === "update") {
         const affected = Array.isArray(payload) ? payload.length : payload ? 1 : 0;
         if (affected === 0) return { ok: false, conflicted: true };
@@ -468,13 +472,13 @@ async function pushOne(
 }
 
 /**
- * Draine l'`outbox` : pousse chaque opération en attente et réconcilie les identités.
+ * Drains the `outbox`: pushes each pending operation and reconciles identities.
  *
- * Ne jette pas — chaque entrée a son issue, et une entrée qui échoue reste en file avec son
- * compteur incrémenté. `failed` n'est **pas terminal** (contrat) : c'est la garantie qu'une
- * saisie de terrain revient au prochain drain plutôt que de disparaître.
+ * Does not throw — each entry gets its outcome, and a failing entry stays in the queue
+ * with its counter incremented. `failed` is **not terminal** (contract): that is the
+ * guarantee a field capture comes back at the next drain rather than disappearing.
  *
- * @returns Le décompte réel du drain.
+ * @returns The drain's real tally.
  * @example
  * const report = await GeoLeaf?.Storage?.pushOutbox?.();
  * console.info(`${report?.pushed} poussées, ${report?.failed} à retenter`);
@@ -486,28 +490,30 @@ export async function pushOutbox(): Promise<PushReport> {
     const features = db?._ensureModule?.("Features") as FeaturesModule | null | undefined;
     if (!outbox?.list || !features?.put) return { ...nothing, refused: "engineUnavailable" };
 
-    // 🛑 LECTURE UNIQUE, PUIS FILTRE — ET C'EST L'ORDRE QUI L'EXIGE (B-126, tâche 4.11b).
+    // 🛑 SINGLE READ, THEN FILTER — AND IT IS THE ORDER THAT DEMANDS IT.
     //
-    // Ce bloc faisait `[...listByState("pending"), ...listByState("failed")]`. C'est
-    // **exactement la concaténation que B-03 avait fait corriger** sur la file v3 : deux
-    // lectures d'index, mises bout à bout, donc toutes les `pending` avant toutes les
-    // `failed` quel que soit leur rang de saisie.
+    // This block used to do `[...listByState("pending"), ...listByState("failed")]`.
+    // That is **exactly the concatenation already fixed once** on the v3 queue: two
+    // index reads, put end to end, hence every `pending` before every `failed`
+    // whatever their capture rank.
     //
-    // ⚠️ **La coalescence ne rend PAS le cas impossible**, contrairement à ce qu'on pourrait
-    // croire : `local-edit.ts` absorbe bien une nouvelle édition dans une entrée `failed`
-    // existante (`COALESCIBLE = {pending, failed}`), mais **pas pendant la fenêtre
-    // `inFlight`**, qui n'est délibérément pas fusionnable. Une édition faite pendant qu'un
-    // push est en vol empile donc une seconde entrée, et si le push échoue l'entité porte une
-    // `failed` de rang N et une `pending` de rang N+1 — que la concaténation inversait.
+    // ⚠️ **Coalescing does NOT make the case impossible**, contrary to what one might
+    // believe: `local-edit.ts` does absorb a new edit into an existing `failed` entry
+    // (`COALESCIBLE = {pending, failed}`), but **not during the `inFlight` window**,
+    // which is deliberately not mergeable. An edit made while a push is in flight
+    // therefore stacks a second entry, and if the push fails the entity carries a
+    // `failed` of rank N and a `pending` of rank N+1 — which the concatenation
+    // inverted.
     //
-    // `list()` rend « Every entry, in INSERTION order » : le magasin est `autoIncrement`, donc
-    // `getAll()` sort dans l'ordre des clés, c'est-à-dire des `seq`. L'ordre est tenu **par
-    // construction** et non par un tri — `db/outbox.ts` le dit dans ses propres termes : « A
-    // sort would be a second ordering authority, i.e. the defect's own shape. »
+    // `list()` returns "Every entry, in INSERTION order": the store is
+    // `autoIncrement`, so `getAll()` comes out in key order, i.e. `seq` order. The
+    // order is held **by construction** and not by a sort — `db/outbox.ts` says it in
+    // its own words: "A sort would be a second ordering authority, i.e. the defect's
+    // own shape."
     //
-    // ✅ Et ce drain était le SEUL à concaténer : `poi-restore.ts:135`, l'autre lecteur de
-    // l'outbox, appelle `list()` depuis toujours. La restauration au boot tenait donc l'ordre
-    // que le rejeu perdait — deux lectures du même magasin, deux ordres.
+    // ✅ And this drain was the ONLY one concatenating: `poi-restore.ts`, the
+    // outbox's other reader, has always called `list()`. Boot-time restoration thus
+    // held the order replay was losing — two reads of the same store, two orders.
     const REPLAYABLE = new Set(["pending", "failed"]);
     const pending = (await outbox.list()).filter((entry) => REPLAYABLE.has(entry.state));
 
@@ -522,22 +528,23 @@ export async function pushOutbox(): Promise<PushReport> {
             Log.warn(
                 `[Offline.Push] ${entry.id} — aucune cible d'écriture pour "${entry.layerId}".`
             );
-            // Quarantaine IMMÉDIATE : une couche qui a perdu sa cible d'écriture ne la
-            // retrouvera pas en rejouant. C'est exactement ce que `layerNoLongerWritable`
-            // nomme, et c'est son PREMIER producteur (B-125).
+            // IMMEDIATE quarantine: a layer that lost its write target will not find
+            // it back by replaying. That is exactly what `layerNoLongerWritable`
+            // names, and this is its FIRST producer.
             await markFailure(outbox, entry, "layerNoLongerWritable");
             failed += 1;
             continue;
         }
-        // Refus NOMMÉ plutôt qu'un corps plat envoyé à un endpoint REST : voir `buildRequest`.
+        // NAMED refusal rather than a flat body sent to a REST endpoint: see `buildRequest`.
         if (target.dialect === "rest") {
             Log.warn(
                 `[Offline.Push] ${entry.id} — dialecte "rest" non implémenté côté core ; l'entrée reste en file.`
             );
-            // ⚠️ PAS de quarantaine ici, et c'est délibéré : le dialecte `rest` est un trou
-            // du CORE, pas un défaut de l'entrée. Une version qui l'implémente le rejouera.
-            // L'entrée consomme donc son budget comme les autres — un trou qui dure lui
-            // deviendra visible en quarantaine plutôt que de la faire boucler sans fin.
+            // ⚠️ NO quarantine here, deliberately: the `rest` dialect is a hole in
+            // the CORE, not a defect of the entry. A version implementing it will
+            // replay it. The entry therefore spends its budget like the others — a
+            // lasting hole will become visible to it in quarantine rather than making
+            // it loop forever.
             await markFailure(outbox, entry);
             failed += 1;
             continue;
@@ -551,21 +558,21 @@ export async function pushOutbox(): Promise<PushReport> {
             continue;
         }
 
-        // `inFlight` AVANT l'appel, et c'est ce qui protège la coalescence de 4.4 : une
-        // édition concurrente ne fusionnera pas dans une entrée déjà partie sur le fil.
+        // `inFlight` BEFORE the call, and that is what protects coalescing: a
+        // concurrent edit will not merge into an entry already gone on the wire.
         await outbox.updateState(entry.id, "inFlight");
         let result = await pushOne(entry, record, target);
 
-        // ── `lastWriteWins`, DÉCLARÉ plutôt que subi (tâche 4.6) ────────────────────────
+        // ── `lastWriteWins`, DECLARED rather than suffered ─────────────────────────
         //
-        // L'issue est la même qu'avant : la version locale l'emporte. Ce qui change est que le
-        // conflit a été DÉTECTÉ et JOURNALISÉ avant d'être tranché — jusqu'ici il était
-        // indiscernable d'une écriture normale, et « la stratégie » se réduisait à un en-tête
-        // `X-Force-Update` qu'AUCUN serveur du dépôt ne lit.
+        // The outcome is the same as before: the local version wins. What changes is
+        // that the conflict was DETECTED and LOGGED before being settled — until now
+        // it was indistinguishable from a normal write, and "the strategy" boiled down
+        // to an `X-Force-Update` header that NO server in the repo reads.
         //
-        // Le motif est le terrain, et il est dans le contrat : un opérateur est l'autorité sur
-        // ce qu'il vient d'observer, et une boîte de dialogue levée hors réseau, seul sur site,
-        // se clique au hasard.
+        // The motive is the field, and it is in the contract: an operator is the
+        // authority on what they just observed, and a dialog raised off-network, alone
+        // on site, gets clicked at random.
         if (result.conflicted) {
             conflicts += 1;
             Log.warn(
@@ -575,19 +582,19 @@ export async function pushOutbox(): Promise<PushReport> {
         }
 
         if (!result.ok) {
-            // Le chemin pour lequel le budget existe : réseau muet ou refus serveur. Les deux
-            // PEUVENT être transitoires, donc on rejoue — jusqu'au plafond, pas au-delà. Le
-            // motif écrit au plafond distingue les deux.
+            // The path the budget exists for: mute network or server refusal. Both
+            // CAN be transient, so we replay — up to the cap, not beyond. The motive
+            // written at the cap distinguishes the two.
             //
-            // ⚠️ `deletedOnServer` est l'exception : il ne consomme pas le budget. Rejouer une
-            // entité que le serveur a supprimée ne peut ni la recréer ni la modifier — c'est
-            // une décision de produit, pas un incident de transport, et elle doit remonter à
-            // l'opérateur maintenant plutôt que dans trois drains.
+            // ⚠️ `deletedOnServer` is the exception: it does not spend the budget.
+            // Replaying an entity the server deleted can neither recreate nor modify
+            // it — that is a product decision, not a transport incident, and it must
+            // reach the operator now rather than in three drains.
             //
-            // ✅ `notImplementedByServer` REJOINT L'EXCEPTION à B-199, sur le même argument :
-            // rejouer un verbe que le serveur déclare ne pas connaître ne fait qu'attendre
-            // trois fois. La différence est en aval — celui-ci est REJOUABLE une fois le
-            // serveur mis à jour, là où `deletedOnServer` ne l'est jamais.
+            // ✅ `notImplementedByServer` JOINS THE EXCEPTION at the same narrowing, on
+            // the same argument: replaying a verb the server declares unknown only
+            // waits three times. The difference is downstream — this one is REPLAYABLE
+            // once the server is upgraded, where `deletedOnServer` never is.
             const immediate: QuarantineReason | undefined =
                 result.failure === "deletedOnServer" || result.failure === "notImplementedByServer"
                     ? result.failure
@@ -598,7 +605,7 @@ export async function pushOutbox(): Promise<PushReport> {
         }
 
         if (entry.kind === "delete") {
-            // L'entité a fini son cycle : la file la lâche, et le magasin aussi.
+            // The entity finished its cycle: the queue lets it go, and so does the store.
             await features.remove(entry.layerId, entry.localId);
         } else {
             await features.put({

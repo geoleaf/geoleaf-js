@@ -7,33 +7,35 @@
  * schema rejects it. If a future change adds the key to the schema OR drops the
  * consumer, one half breaks — flagging the registry entry for resolution.
  *
- *   ANO-042 basemaps[].apiKey / apiKeyRequired   → providers.ts:112-127        ❌ ouverte
- *   ANO-043 basemaps[].demUrl/demEncoding/demMaxZoom (top-level) → hillshade.ts:92-98  ❌ ouverte
- *   ANO-044 basemaps[].terrain.demMaxZoom        → terrain.ts:71                ✅ RÉSOLUE
- *   ANO-045 basemaps[].wms.crs / styles / tileSize → wmts-resolver.ts:393,396,398 ✅ RÉSOLUE
+ *   ANO-042 basemaps[].apiKey / apiKeyRequired   → providers.ts        ❌ ouverte
+ *   ANO-043 basemaps[].demUrl/demEncoding/demMaxZoom (top-level) → hillshade.ts  ❌ ouverte
+ *   ANO-044 basemaps[].terrain.demMaxZoom        → terrain.ts                ✅ RÉSOLUE
+ *   ANO-045 basemaps[].wms.crs / styles / tileSize → wmts-resolver.ts ✅ RÉSOLUE
  *
- * ⚠️ **ANO-044 et ANO-045 sont résolues le 30/07/2026, et le verrou a fonctionné comme
- * prévu.** `b7785b56` (B-74) a porté au schéma les 7 clés de sa « classe ④ » — vivantes,
- * bien adressées, non gardées — dont `terrain.demMaxZoom` et `wms.{crs,styles,tileSize}`
- * (397 → 404 propriétés). La moitié `schema:` de ces deux verrous a donc cassé, ce qui est
- * EXACTEMENT ce que le contrat ci-dessus annonce (« one half breaks — flagging the registry
- * entry for resolution »). Leurs assertions sont inversées vers `true` : le no-mapping est
- * refermé, la clé est désormais configurable. ⚠️ **Le rouge n'était pas une régression, et
- * l'inverser dans l'autre sens — durcir à nouveau le schéma — aurait re-cassé une capacité
- * que le code sert déjà.** Les deux moitiés `live:` restent, elles : elles prouvent que le
- * consommateur existe toujours.
+ * ⚠️ **ANO-044 and ANO-045 are resolved on 30/07/2026, and the lock worked
+ * as intended.** `b7785b56` carried into the schema the 7 keys of its
+ * "class ④" — live, well addressed, unguarded — including
+ * `terrain.demMaxZoom` and `wms.{crs,styles,tileSize}` (397 → 404
+ * properties). The `schema:` half of these two locks thus broke, which is
+ * EXACTLY what the contract above announces ("one half breaks — flagging
+ * the registry entry for resolution"). Their assertions are flipped to
+ * `true`: the no-mapping is closed, the key is now configurable. ⚠️ **The
+ * red was not a regression, and flipping it the other way — hardening the
+ * schema again — would have re-broken a capability the code already
+ * serves.** The two `live:` halves stay: they prove the consumer still exists.
  *
- * ANO-043 reste OUVERTE malgré son nom voisin : elle porte les clés de HILLSHADE au premier
- * niveau (`demUrl`/`demEncoding`/`demMaxZoom` sur l'entrée), pas sous `terrain.` — B-74 n'a
- * porté au schéma que `hillshade.{accentColor,illuminationAnchor}`, pas ce trio.
+ * ANO-043 stays OPEN despite its neighbouring name: it carries the
+ * HILLSHADE keys at the first level (`demUrl`/`demEncoding`/`demMaxZoom` on
+ * the entry), not under `terrain.` — the fix only carried
+ * `hillshade.{accentColor,illuminationAnchor}` into the schema, not that trio.
  *
  * Orphans (⚪, declared in schema, 0 consumer) are locked as schema-ACCEPTED +
  * it.todo: ANO-040 fallbackUrl, ANO-041 encoding (top-level).
- * ⚠️ Registre: `_docs_projet/archives/registre_anomalies_config.md` §S6 — **ARCHIVÉ**, donc
- * gelé. Le chemin cité ici jusqu'au 30/07/2026 (`travail/rapports/…`) était MORT : le
- * registre avait été déplacé sans que ce renvoi suive. L'état vivant des quatre anomalies
- * est désormais la table ci-dessus, tenue à jour par les verrous eux-mêmes — un fichier
- * gelé ne peut pas servir de source de vérité à une garde qui, elle, s'exécute.
+ * ⚠️ The original anomaly register is **ARCHIVED**, hence frozen. The path
+ * cited here until 30/07/2026 (`travail/rapports/…`) was DEAD: the register
+ * had moved without this reference following. The four anomalies' live
+ * state is now the table above, kept current by the locks themselves — a
+ * frozen file cannot serve as source of truth to a guard that, itself, runs.
  */
 
 import { readFileSync } from "node:fs";
@@ -125,11 +127,12 @@ describe("config B4 — basemaps @anomaly locks (read by code, rejected by schem
                 expect.objectContaining({ maxzoom: 11 })
             );
         });
-        it("schema: terrain.demMaxZoom is now ACCEPTED — ANO-044 résolue (B-74)", () => {
-            // Ce verrou attendait `false` : la clé était lue par `terrain.ts` et absente du
-            // schéma durci, donc inconfigurable. `b7785b56` (B-74, classe ④ « vivante, bien
-            // adressée, NON GARDÉE ») l'a portée au schéma — 397 → 404 propriétés. Le
-            // no-mapping est refermé, et c'est le verrou qui suit, pas le schéma qui recule.
+        it("schema: terrain.demMaxZoom is now ACCEPTED — ANO-044 résolue", () => {
+            // This lock expected `false`: the key was read by `terrain.ts`
+            // and absent from the hardened schema, hence unconfigurable.
+            // `b7785b56` (class ④ "live, well addressed, UNGUARDED") carried
+            // it into the schema — 397 → 404 properties. The no-mapping is
+            // closed, and the lock is what follows, not the schema that retreats.
             expect(
                 validate(
                     doc({ terrain: { enabled: true, demUrl: "https://d.io/x", demMaxZoom: 11 } })
@@ -154,9 +157,9 @@ describe("config B4 — basemaps @anomaly locks (read by code, rejected by schem
             expect(url).toContain("STYLES=s");
             expect(url).toContain("WIDTH=512");
         });
-        it("schema: wms.crs is now ACCEPTED — ANO-045 résolue (B-74)", () => {
-            // Même bascule que ANO-044 : `wms.{crs,styles,tileSize}` sont lues par
-            // `wmts-resolver.ts` et ont été portées au schéma par `b7785b56`.
+        it("schema: wms.crs is now ACCEPTED — ANO-045 résolue", () => {
+            // Same flip as ANO-044: `wms.{crs,styles,tileSize}` are read by
+            // `wmts-resolver.ts` and were carried into the schema by `b7785b56`.
             expect(validate(doc({ type: "wms", wms: { crs: "EPSG:4326" } }))).toBe(true);
         });
     });

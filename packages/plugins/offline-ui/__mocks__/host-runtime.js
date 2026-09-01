@@ -1,36 +1,36 @@
 /**
- * Mock partiel de `@geoleaf/host-runtime` — routé par l'alias de `vitest.config.ts`.
+ * Partial mock of `@geoleaf/host-runtime` — routed by `vitest.config.ts`'s alias.
  *
- * ## Pourquoi il remplace `__mocks__/field-renderer.js` (Sprint 6, S6b / B-144)
+ * ## Pourquoi il remplace `__mocks__/field-renderer.js`
  *
- * La décision W3 a déplacé `confirmDialog` et `createFocusTrap` de `@geoleaf/field-renderer`
- * vers `@geoleaf/host-runtime`. Les cinq sources d'`offline-ui` qui les importaient ont suivi,
- * donc l'alias devait suivre aussi — sans quoi le VRAI `confirmDialog` serait chargé et
- * **ouvrirait une vraie modale** au milieu de la suite, exactement ce que l'ancien mock
- * empêchait.
+ * `confirmDialog` and `createFocusTrap` moved from `@geoleaf/field-renderer` to
+ * `@geoleaf/host-runtime`. The five `offline-ui` sources importing them
+ * followed, so the alias had to follow too — otherwise the REAL `confirmDialog`
+ * would load and **open a real modal** mid-suite, exactly what the old mock
+ * prevented.
  *
- * ## 🛑 Pourquoi il est PARTIEL, et pourquoi ça compte
+ * ## 🛑 Why it is PARTIAL, and why that matters
  *
- * L'ancien mock pouvait tout remplacer : `offline-ui` n'utilisait que trois symboles de
- * `field-renderer`. De `host-runtime`, il en utilise **neuf** — `Log`, `tLabel`,
- * `coreConfigGet`, `getGeoLeaf`, `getUINotifications`, `fetchWithTimeout` en plus des deux
- * fonctions d'interface. Les remplacer tous par des stubs ferait passer les tests sur une
- * plomberie fictive.
+ * The old mock could replace everything: `offline-ui` used only three
+ * `field-renderer` symbols. Of `host-runtime`, it uses **nine** — `Log`,
+ * `tLabel`, `coreConfigGet`, `getGeoLeaf`, `getUINotifications`,
+ * `fetchWithTimeout` beyond the two interface functions. Stubbing them all
+ * would run the tests on fictional plumbing.
  *
- * D'où la ré-export du module réel, **par un chemin relatif** : le specifier
- * `@geoleaf/host-runtime` est intercepté par l'alias, donc l'importer ici créerait une boucle.
- * Seuls les deux symboles d'interface sont surchargés.
+ * Hence the re-export of the real module, **through a relative path**: the
+ * `@geoleaf/host-runtime` specifier is intercepted by the alias, so importing
+ * it here would create a loop. Only the two interface symbols are overridden.
  *
- * `vi` est un global vitest (`globals: true`). Les tests peuvent surcharger la valeur résolue :
+ * `vi` is a vitest global (`globals: true`). Tests can override the resolved value:
  *   confirmDialog.mockResolvedValueOnce(false)
  */
 export * from "../../../libs/host-runtime/src/index.ts";
 
 const _fn = typeof vi !== "undefined" ? () => vi.fn() : () => () => {};
 
-/** Résout `true` par défaut (l'utilisateur confirme). À surcharger par test. */
+/** Resolves `true` by default (the user confirms). Override per test. */
 export const confirmDialog =
     typeof vi !== "undefined" ? vi.fn(() => Promise.resolve(true)) : () => Promise.resolve(true);
 
-/** Piège de focus : `activate`/`deactivate` sont des no-ops en test. */
+/** Focus trap: `activate`/`deactivate` are no-ops in test. */
 export const createFocusTrap = () => ({ activate: _fn(), deactivate: _fn() });

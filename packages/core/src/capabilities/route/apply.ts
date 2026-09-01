@@ -9,14 +9,15 @@
  * Route capability — applies endpoint markers to a bound layer.
  *
  * Reads the layer's line features (via the generic `GeoLeaf.Layers` seam),
- * derives start / end points and renders them as dedicated point sub-layers
+ * derives start / end points — or reads the layer's own roled points, which is what carries
+ * an intermediate stop — and renders them as ONE dedicated point sub-layer
  * (`addGeoJSONLayer`). Idempotent: existing endpoint layers are removed first.
  * No-op when the layer has no binding or carries no line geometry.
  */
 
 import type { RouteConfig, RouteMapAdapter, RouteEndpointStyle } from "./types.js";
 import { resolveLayerBinding, resolveEndpointConfig } from "./resolver.js";
-import { deriveEndpoints } from "./endpoint-deriver.js";
+import { deriveEndpoints, collectRoledPoints } from "./endpoint-deriver.js";
 import { Layers } from "../../api/geoleaf.layers.js";
 
 /** GeoJSON geometry types the capability decorates. */
@@ -58,6 +59,7 @@ function toLayerStyle(style: RouteEndpointStyle): Record<string, unknown> {
 function toEndpointStyleOptions(cfg: {
     startStyle: RouteEndpointStyle;
     endStyle: RouteEndpointStyle;
+    viaStyle: RouteEndpointStyle;
 }): Record<string, unknown> {
     return {
         ...toLayerStyle(cfg.startStyle),
@@ -65,6 +67,13 @@ function toEndpointStyleOptions(cfg: {
             {
                 when: { field: "role", operator: "==", value: "end" },
                 style: toLayerStyle(cfg.endStyle),
+            },
+            // The third role is ADDITIVE: one more rule on the same sub-layer, not one more
+            // sub-layer. RT-08 survives — and it is the invariant that keeps one MapLibre source
+            // per itinerary rather than one per role.
+            {
+                when: { field: "role", operator: "==", value: "via" },
+                style: toLayerStyle(cfg.viaStyle),
             },
         ],
     };
@@ -100,12 +109,29 @@ export function applyToLayer(
     // Idempotent refresh: drop any previously derived endpoints first.
     clearEndpoints(adapter, layerId);
 
-    // One source, one sub-layer: the two endpoint kinds are merged and told apart by
-    // `properties.role`, which deriveEndpoints() already writes.
-    const endpoints = [
-        ...(cfg.showStart ? deriveEndpoints(features, "start").features : []),
-        ...(cfg.showEnd ? deriveEndpoints(features, "end").features : []),
-    ];
+    // 🛑 TWO SOURCES FOR THE MARKERS, AND NEVER BOTH AT ONCE.
+    //
+    // A layer that already carries roled `Point` features has them used verbatim — that is what a
+    // routing plugin publishes, and the only way an intermediate stop can exist, since nothing in
+    // a `LineString` says which vertices are stops.
+    //
+    // A layer carrying only lines has its start / end derived, exactly as since V1.
+    //
+    // Doing both would render two superposed markers at each end: indistinguishable by eye,
+    // doubled on click, and impossible to explain from the data.
+    const published = collectRoledPoints(features);
+    const endpoints =
+        published.length > 0
+            ? published.filter((f) => {
+                  const role = (f.properties as { role?: string } | null)?.role;
+                  if (role === "start") return cfg.showStart;
+                  if (role === "end") return cfg.showEnd;
+                  return cfg.showVia;
+              })
+            : [
+                  ...(cfg.showStart ? deriveEndpoints(features, "start").features : []),
+                  ...(cfg.showEnd ? deriveEndpoints(features, "end").features : []),
+              ];
     if (endpoints.length === 0) return;
 
     adapter.addGeoJSONLayer(

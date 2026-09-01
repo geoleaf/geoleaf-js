@@ -3,7 +3,7 @@
 
 import { Helpers } from "../../src/api/geoleaf.helpers.js";
 
-// Sprint 1: ensure global.GeoLeaf.Helpers is set so tests can use GeoLeaf.Helpers.
+// Ensure global.GeoLeaf.Helpers is set so tests can use GeoLeaf.Helpers.
 // COUVERTURE S2: the façade is imported directly and a failure to resolve it now throws.
 // The former `else` branch re-required `utils/general/helpers.ts` when `Helpers` was
 // missing — the same fallback that `helpers/index.test.js` documents having removed,

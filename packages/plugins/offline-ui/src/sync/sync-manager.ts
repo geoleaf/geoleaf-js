@@ -6,17 +6,17 @@
  */
 
 /**
- * Panneau « DONNÉES SAISIES » — le statut des éditions encore dues au serveur.
+ * "CAPTURED DATA" panel — the status of edits still owed to the server.
  *
- * Construit la section repliable, la câble, et rend le décompte que
- * `POISyncHandler.getSyncSummary()` produit depuis l'outbox. Le bouton de synchronisation
- * manuelle passe par `processSyncQueue()`, c'est-à-dire par le drain du core.
+ * Builds the collapsible section, wires it, and renders the tally
+ * `POISyncHandler.getSyncSummary()` produces from the outbox. The manual sync
+ * button goes through `processSyncQueue()`, i.e. through the core's drain.
  *
- * ⚠️ **Ce module rendait un SECOND emplacement jusqu'au 04/08/2026** — une liste de
- * sauvegardes avec ses boutons de restauration. Elle est retirée à la tâche 4.11 : son
- * magasin `sync_backups` n'avait plus d'écrivain depuis 4.4b, donc la liste était vide par
- * construction, et le rempart qu'elle prétendait offrir contre une purge d'origine vivait
- * dans la base que cette purge détruit.
+ * ⚠️ **This module rendered a SECOND slot until 04/08/2026** — a backup list
+ * with its restore buttons. It is removed: its `sync_backups` store had no
+ * writer left, so the list was empty by construction, and the rampart it claimed
+ * to offer against an origin purge lived in the very database that purge
+ * destroys.
  */
 
 import { Log } from "@geoleaf/host-runtime";
@@ -80,9 +80,9 @@ const SyncManager = {
      * DOM. Owning the wiring here means the host only has to say WHERE, and cannot
      * end up half-connected.
      *
-     * ⚠️ Cette phrase citait aussi « the backups list » (CDC §1.7). La liste est retirée
-     * avec la chaîne de sauvegarde (tâche 4.11) : son magasin n'avait plus d'écrivain
-     * depuis 4.4b, donc elle n'affichait plus rien à faire remonter au DOM.
+     * ⚠️ This sentence also cited "the backups list" (spec §1.7). The list is
+     * removed with the backup chain: its store had no writer left, so it no
+     * longer displayed anything to lift into the DOM.
      *
      * Safe to call again on a re-render: the previous nodes go away with their
      * container, and the listeners attached to them go with the nodes.
@@ -115,15 +115,9 @@ const SyncManager = {
         this._syncContent = syncContent;
 
         if (syncContent) {
-            this._syncStatusEl = syncContent.querySelector(
-                "#gl-cache-sync-status"
-            ) as HTMLElement | null;
-            this._syncMessageEl = syncContent.querySelector(
-                "#gl-cache-sync-message"
-            ) as HTMLElement | null;
-            this._syncBtn = syncContent.querySelector(
-                "#gl-cache-sync-btn"
-            ) as HTMLButtonElement | null;
+            this._syncStatusEl = syncContent.querySelector("#gl-cache-sync-status");
+            this._syncMessageEl = syncContent.querySelector("#gl-cache-sync-message");
+            this._syncBtn = syncContent.querySelector("#gl-cache-sync-btn");
         }
 
         if (control._syncToggleBtn) {
@@ -217,14 +211,13 @@ const SyncManager = {
     },
 
     /**
-     * Rend le statut des opérations en attente.
+     * Renders the status of pending operations.
      *
-     * ⚠️ **Cette méthode rendait DEUX emplacements jusqu'au 04/08/2026** — le statut, et une
-     * liste de sauvegardes. Le second est retiré avec la chaîne de sauvegarde (tâche 4.11) :
-     * son magasin n'avait plus d'écrivain depuis 4.4b, donc la liste était vide par
-     * construction. Le `finally` qui l'entourait — posé au S7 parce que quatre sorties
-     * laissaient le libellé « chargement… » à l'écran pour de bon — disparaît avec elle : il
-     * n'a plus de second emplacement à sauver.
+     * ⚠️ **This method rendered TWO slots until 04/08/2026** — the status, and a
+     * backup list. The second is removed with the backup chain: its store had no
+     * writer left, so the list was empty by construction. The `finally` around
+     * it — added because four exits left the "loading…" label on screen for good
+     * — disappears with it: it has no second slot left to save.
      */
     async updateStatus(this: SyncManagerThis) {
         await this._renderSyncStatus();

@@ -40,7 +40,7 @@
  * Note the universe comes from the MANIFEST, not from listing `src/capabilities/`: a directory
  * is not the authority on what ships. The historical proof was `capabilities/layers/` — kernel
  * code living under a misleading path, which a directory listing would have classified
- * "excluded", found in the closure, and reddened for no reason. ARCHI S12.3 moved it to
+ * "excluded", found in the closure, and reddened for no reason. A later move sent it to
  * `kernel/geojson/layers-public-api.ts` and the directory now holds exactly the 18
  * declared capabilities, so that particular trap is gone; the rule stands because the next
  * misplaced file would spring it again, silently.
@@ -56,25 +56,56 @@ const path = require("node:path");
 const { measureEagerBootAt, listEagerSources } = require("./check-bundle-size.cjs");
 
 const ROOT = path.resolve(__dirname, "..");
-// T5.5 — par le registre, qui jette si le core est introuvable.
+// Through the registry, which throws if the core cannot be found.
 const CORE = require("./lib/packages.cjs").requireByDirName("core").absDir;
 
 // ── The shipped bundle (every capability) ──
 const SHIPPED_ENTRY = path.join(CORE, "dist", "geoleaf.esm.js");
 const SHIPPED_DIST = path.join(CORE, "dist");
 
-// ── The example bundle (kernel + a subset) ──
-const EXAMPLE_ENTRY = path.join(CORE, "examples", "dist", "minimal", "geoleaf.minimal.esm.js");
-const EXAMPLE_DIST = path.join(CORE, "examples", "dist", "minimal");
-
 // ── The extracted stylesheets (S6 — the CSS now tree-shakes with its capability) ──
 const SHIPPED_CSS = path.join(CORE, "dist", "geoleaf-main.min.css");
-const EXAMPLE_CSS = path.join(CORE, "examples", "dist", "minimal", "geoleaf.minimal.css");
 
-// ── The two files that decide what is shipped and what the example embarks ──
+// ── The file that decides what is shipped ──
 const MANIFEST_SRC = path.join(CORE, "src", "presets", "manifest.full.ts");
-const EXAMPLE_SRC = path.join(CORE, "examples", "minimal", "entry.ts");
 const CAPABILITIES_DIR = path.join(CORE, "src", "capabilities");
+
+/**
+ * The composed entries this gate proves, one row each.
+ *
+ * 🛑 **It used to be a single HARD-CODED entry**, and that is what made the proof
+ * false as soon as a second entry existed: the gate always measured `minimal`, came
+ * out green with correct numbers, and had measured nothing of the work. A gate that
+ * cannot see its subject is worse than an absent one — it reassures.
+ *
+ * `minSavingPct` is the entry's OWN floor, set on its first measurement and
+ * commented in place. `null` ⟹ the global floor {@link MIN_SAVING_PCT}. ⚠️ A
+ * per-entry floor is NOT a ratchet: it detects the collapse of THIS entry's
+ * differential (a kernel edge repatriating the excluded capabilities), it does not
+ * arbitrate between entries.
+ */
+const ENTRIES = [
+    {
+        id: "minimal",
+        srcEntry: path.join(CORE, "examples", "minimal", "entry.ts"),
+        distDir: path.join(CORE, "examples", "dist", "minimal"),
+        bundleFile: path.join(CORE, "examples", "dist", "minimal", "geoleaf.minimal.esm.js"),
+        cssFile: path.join(CORE, "examples", "dist", "minimal", "geoleaf.minimal.css"),
+        minSavingPct: null,
+    },
+    {
+        id: "slim",
+        srcEntry: path.join(CORE, "examples", "slim", "entry.ts"),
+        distDir: path.join(CORE, "examples", "dist", "slim"),
+        bundleFile: path.join(CORE, "examples", "dist", "slim", "geoleaf.slim.esm.js"),
+        cssFile: path.join(CORE, "examples", "dist", "slim", "geoleaf.slim.css"),
+        // Floor set on this entry's FIRST measurement, with margin. It embarks 10
+        // capabilities against 6 for `minimal`, so its differential is mechanically
+        // weaker: applying the global floor to it would have reddened a correct
+        // entry. ⚠️ Not a ratchet — do not raise it to follow the day's measurement.
+        minSavingPct: 8,
+    },
+];
 
 /**
  * Minimum credible saving, in percent of the shipped gzipped boot payload.
@@ -167,30 +198,27 @@ function cssFilesOf(id) {
 const fmt = (kb) => (kb == null ? "—" : `${kb.toFixed(1)} KB`);
 
 /**
- * Runs the tree-shaking proof.
+ * Runs the tree-shaking proof for ONE composed entry.
  *
- * @param {{log?: {ok: Function, err: Function, info: Function, warn: Function, dim: Function}}} [opts]
- * @returns {boolean} true when the promise holds.
+ * ⚠️ This block used to be a stale COPY of `checkExampleBundle`'s TSDoc — it documented an
+ * `opts` parameter this function has never had, which is TS8024 and, more importantly, made
+ * the private helper advertise the public function's contract. The two are not the same:
+ * `checkExampleBundle` fans out over `ENTRIES` and owns the `opts.log` merge; this one is
+ * handed an already-merged logger and judges a single entry.
+ *
+ * @param {(typeof ENTRIES)[number]} entry The composed entry to judge — its type is DERIVED
+ *   from `ENTRIES` rather than restated, so adding a field there cannot leave this stale.
+ * @param {{ok: (m: string) => void, err: (m: string) => void, info: (m: string) => void,
+ *   warn: (m: string) => void, dim: (m: string) => void}} log The already-merged logger.
+ *   Every method is required here: the partial-merge tolerance belongs to the caller.
+ * @param {boolean} showList Print every offending file instead of the first four.
+ * @returns {boolean} `true` when this entry holds its promise. Bails out early on `false` for
+ *   the four conditions that make the proof meaningless rather than merely failed.
  */
-function checkExampleBundle(opts = {}) {
-    // Merge per-method, never wholesale: the caller's logger may implement only part of this
-    // surface (build-deploy.cjs has no `dim`), and a missing method must not crash the gate.
-    const DEFAULT_LOG = {
-        ok: (m) => console.log(`${C.green}✓${C.reset}  ${m}`),
-        err: (m) => console.error(`${C.red}✗${C.reset}  ${m}`),
-        info: (m) => console.log(`${C.cyan}ℹ${C.reset}  ${m}`),
-        warn: (m) => console.log(`${C.yellow}⚠${C.reset}  ${m}`),
-        dim: (m) => console.log(`${C.dim}   ${m}${C.reset}`),
-    };
-    const log = { ...DEFAULT_LOG };
-    for (const k of Object.keys(DEFAULT_LOG)) {
-        if (typeof opts.log?.[k] === "function") log[k] = opts.log[k].bind(opts.log);
-    }
-    const showList = process.argv.includes("--list");
-
+function _checkOneEntry(entry, log, showList) {
     // ── The lists, derived from the code that decides them ──
     const universe = capabilitiesImportedBy(MANIFEST_SRC);
-    const embarked = capabilitiesImportedBy(EXAMPLE_SRC);
+    const embarked = capabilitiesImportedBy(entry.srcEntry);
     const excluded = universe.filter((id) => !embarked.includes(id));
 
     if (universe.length === 0 || embarked.length === 0) {
@@ -217,7 +245,7 @@ function checkExampleBundle(opts = {}) {
 
     // ── Payloads ──
     const shipped = measureEagerBootAt(SHIPPED_ENTRY, SHIPPED_DIST);
-    const example = measureEagerBootAt(EXAMPLE_ENTRY, EXAMPLE_DIST);
+    const example = measureEagerBootAt(entry.bundleFile, entry.distDir);
 
     if (shipped == null || example == null) {
         const missing = shipped == null ? "dist/geoleaf.esm.js" : "examples/dist/minimal/";
@@ -241,7 +269,7 @@ function checkExampleBundle(opts = {}) {
     console.log("");
 
     // ── 1. EXCLUSION — the load-bearing check ──
-    const sources = listEagerSources(EXAMPLE_ENTRY, EXAMPLE_DIST);
+    const sources = listEagerSources(entry.bundleFile, entry.distDir);
     if (!sources || sources.length === 0) {
         log.err(
             "Aucune source récupérée depuis les sourcemaps de l'exemple — la preuve est INVÉRIFIABLE. Vérifier que `sourcemap: true` est bien actif sur exampleMinimalConfig."
@@ -296,7 +324,7 @@ function checkExampleBundle(opts = {}) {
     // JS graph and tree-shakes with the code. The oracle is the CSS sourcemap: it names every
     // stylesheet that contributed, and a capability that was never installed cannot be in it.
     const shippedCss = listCssSources(SHIPPED_CSS);
-    const exampleCss = listCssSources(EXAMPLE_CSS);
+    const exampleCss = listCssSources(entry.cssFile);
 
     if (shippedCss === null || exampleCss === null) {
         allOk = false;
@@ -341,24 +369,66 @@ function checkExampleBundle(opts = {}) {
     }
 
     // ── 2. DIFFERENTIAL ──
-    if (savedPct >= MIN_SAVING_PCT) {
+    const floor = entry.minSavingPct ?? MIN_SAVING_PCT;
+    if (savedPct >= floor) {
         log.ok(
-            `Différentiel : l'exemple pèse ${savedPct.toFixed(1)} % de moins que le bundle livré (plancher ${MIN_SAVING_PCT} %).`
+            `[${entry.id}] Différentiel : l'entrée pèse ${savedPct.toFixed(1)} % de moins que le bundle livré (plancher ${floor} %).`
         );
     } else {
         allOk = false;
         log.err(
-            `Différentiel : ${savedPct.toFixed(1)} % d'économie seulement (plancher ${MIN_SAVING_PCT} %). L'exclusion peut être formellement correcte tout en n'allégeant rien — vérifier que le kernel n'a pas absorbé le code des capacités retirées.`
+            `[${entry.id}] Différentiel : ${savedPct.toFixed(1)} % d'économie seulement (plancher ${floor} %). L'exclusion peut être formellement correcte tout en n'allégeant rien — vérifier que le kernel n'a pas absorbé le code des capacités retirées.`
         );
     }
 
     console.log("");
     if (allOk) {
-        log.ok("Le core est réellement dégraçable — mesuré, pas supposé.");
+        log.ok(`[${entry.id}] Le core est réellement dégraçable — mesuré, pas supposé.`);
     } else {
-        log.err("La promesse de tree-shaking n'est PAS tenue en l'état (voir ci-dessus).");
+        log.err(
+            `[${entry.id}] La promesse de tree-shaking n'est PAS tenue en l'état (voir ci-dessus).`
+        );
     }
     console.log("");
+    return allOk;
+}
+
+/**
+ * Plays the proof on EACH composed entry of the repo.
+ *
+ * ⚠️ All entries are played even after a failure: stopping at the first would
+ * deprive the reader of the others' verdict, and it is precisely when one entry
+ * breaks that one wants to know whether the others hold.
+ *
+ * @param {object} [opts] Options.
+ * @param {object} [opts.log] Partial logger — merged METHOD BY METHOD, never as a
+ *   block: `build-deploy.cjs` does not implement `dim`, and an absent method must
+ *   not crash the gate.
+ * @returns {boolean} `true` if every entry keeps its promise.
+ */
+function checkExampleBundle(opts = {}) {
+    const DEFAULT_LOG = {
+        ok: (m) => console.log(`${C.green}✓${C.reset}  ${m}`),
+        err: (m) => console.error(`${C.red}✗${C.reset}  ${m}`),
+        info: (m) => console.log(`${C.cyan}ℹ${C.reset}  ${m}`),
+        warn: (m) => console.log(`${C.yellow}⚠${C.reset}  ${m}`),
+        dim: (m) => console.log(`${C.dim}   ${m}${C.reset}`),
+    };
+    const log = { ...DEFAULT_LOG };
+    for (const k of Object.keys(DEFAULT_LOG)) {
+        if (typeof opts.log?.[k] === "function") log[k] = opts.log[k].bind(opts.log);
+    }
+    const showList = process.argv.includes("--list");
+
+    if (ENTRIES.length === 0) {
+        log.err("Aucune entrée composée déclarée — la preuve serait vide de sens : ÉCHEC.");
+        return false;
+    }
+
+    let allOk = true;
+    for (const entry of ENTRIES) {
+        if (!_checkOneEntry(entry, log, showList)) allOk = false;
+    }
     return allOk;
 }
 
@@ -370,9 +440,15 @@ if (require.main === module) {
 module.exports = {
     checkExampleBundle,
     capabilitiesImportedBy,
+    // Exported so the GEN-05 guard confronts THIS extractor with the IMPORTED
+    // manifest. Without the path, the guard would have to rewrite it — and
+    // confronting two extractors where one copied the other's subject proves
+    // nothing.
+    MANIFEST_SRC,
     capabilityFiles,
     listCssSources,
     capabilitiesWithCss,
     cssFilesOf,
     MIN_SAVING_PCT,
+    ENTRIES,
 };

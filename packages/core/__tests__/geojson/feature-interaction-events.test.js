@@ -1,11 +1,12 @@
 /**
  * Unit tests — `bindFeatureInteractionEvents` (backlog COUVERTURE B.2).
  *
- * `built-in/geojson/feature-interaction.ts` était mesuré à **26,7 %** (12/45 lignes) : un seul
- * fichier de test le citait. C'est pourtant le liant clic/survol du noyau — il n'affiche rien,
- * il n'émet que des événements, ce qui le rend entièrement observable sans carte réelle.
+ * `built-in/geojson/feature-interaction.ts` measured at **26.7%** (12/45
+ * lines): a single test file cited it. Yet it is the kernel's click/hover
+ * binder — it displays nothing, it only emits events, which makes it fully
+ * observable without a real map.
  *
- * Les deux dépendances sont mockées avec le patron complet par construction (backlog B.12).
+ * Both dependencies are mocked with the complete-by-construction pattern.
  */
 import { vi, describe, test, expect, beforeEach } from "vitest";
 
@@ -19,15 +20,13 @@ vi.mock("../../src/adapters/maplibre/maplibre-event-subscriptions.js", async (im
     trackMapCleanup: vi.fn(),
 }));
 
-const { bindFeatureInteractionEvents } = await import(
-    "../../src/kernel/geojson/feature-interaction.js"
-);
+const { bindFeatureInteractionEvents } =
+    await import("../../src/kernel/geojson/feature-interaction.js");
 const { dispatchGeoLeafEvent } = await import("../../src/kernel/events/event-bus.js");
-const { trackMapCleanup } = await import(
-    "../../src/adapters/maplibre/maplibre-event-subscriptions.js"
-);
+const { trackMapCleanup } =
+    await import("../../src/adapters/maplibre/maplibre-event-subscriptions.js");
 
-/** Fausse carte MapLibre : capture les handlers pour les rejouer à la main. */
+/** Fake MapLibre map: captures the handlers to replay them by hand. */
 function fakeMap({ layers = [], exclusive = false } = {}) {
     const canvas = { style: {} };
     const handlers = {};
@@ -44,7 +43,7 @@ function fakeMap({ layers = [], exclusive = false } = {}) {
     };
 }
 
-/** Un événement d'interaction plausible. */
+/** A plausible interaction event. */
 function evt(feature, over = {}) {
     return {
         features: feature ? [feature] : [],
@@ -72,7 +71,7 @@ describe("bindFeatureInteractionEvents — garde de non-interactivité", () => {
 });
 
 describe("clic → geoleaf:feature:click", () => {
-    /** Branche et rend le handler de clic capturé. */
+    /** Wires and returns the captured click handler. */
     function bindClick(over = {}) {
         const map = fakeMap({ layers: ["a-fill"], ...over });
         bindFeatureInteractionEvents("L", {}, map, ["a-fill"]);
@@ -135,7 +134,7 @@ describe("clic → geoleaf:feature:click", () => {
 });
 
 describe("choix des sous-couches de survol — fill > circle > line > tout", () => {
-    /** Rend les ids sur lesquels un `mousemove` a été branché. */
+    /** Returns the ids a `mousemove` was wired on. */
     function hoveredIds(subIds) {
         const map = fakeMap({ layers: subIds });
         bindFeatureInteractionEvents("L", {}, map, subIds);

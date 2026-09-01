@@ -32,9 +32,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..", "..");
-// T5.5 — par le registre voisin, qui jette. Ce module est la vérité partagée de 2 gates
-// (`check-side-effects`, `check-consumer-bundle`) : un chemin muet ici les rendrait
-// muettes toutes les deux, d'un seul coup et sans un mot.
+// Through the neighbouring registry, which throws. This module is the shared truth of 2
+// gates (`check-side-effects`, `check-consumer-bundle`): a mute path here would mute them
+// both, at once and without a word.
 const CORE = require("./packages.cjs").requireByDirName("core").absDir;
 const SRC = path.join(CORE, "src");
 

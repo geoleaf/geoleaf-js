@@ -162,23 +162,25 @@ describe("bootWithPreset — preset composition", () => {
         expect(ctx.registry.registered).toEqual(["labels"]);
     });
 
-    // ⚠️ Ces deux tests affirmaient l'inverse jusqu'à socle-init 9.2 — « registers the
-    // declaration but NOT the module of a gated-off capability » et « honours an explicit
-    // `false` in the pre-merge config » (par NON-enregistrement). Ils encodaient l'observable
-    // de l'ancien mécanisme, pas la propriété : Pass 2 filtrait, donc un module éteint
-    // n'existait pas. Il existe désormais, et c'est son `init()` qui ne fait rien.
+    // ⚠️ These two tests asserted the opposite until the gate moved into
+    // init() — "registers the declaration but NOT the module of a gated-off
+    // capability" and "honours an explicit `false` in the pre-merge config"
+    // (by NON-registration). They encoded the old mechanism's observable,
+    // not the property: Pass 2 filtered, so a gated-off module did not
+    // exist. It now exists, and its `init()` is what does nothing.
     //
-    // La propriété protégée — « une capacité éteinte ne TOURNE pas » — n'a pas bougé ; elle
-    // s'observe ailleurs, et c'est `__tests__/presets/gate-post-merge.test.js` qui la tient,
-    // avec un registre de substitution qui initialise réellement ses modules (celui d'ici
-    // stube `init()`, il ne pourrait pas la voir).
+    // The protected property — "a gated-off capability does not RUN" — has
+    // not moved; it is observed elsewhere, and
+    // `__tests__/presets/gate-post-merge.test.js` holds it, with a
+    // substitute registry that really initialises its modules (the one here
+    // stubs `init()`, it could not see it).
     it("registers the module of a gated-off capability, gate DEFERRED to init()", async () => {
-        // Pass 1 reste ungated par conception (introspection + façade doivent exister dans
-        // les deux cas). Ce qui change en 9.2, c'est que Pass 2 ne tranche plus non plus.
+        // Pass 1 stays ungated by design (introspection + facade must exist
+        // in both cases). What changed is that Pass 2 no longer decides either.
         const off = makeInstaller("branding", {
             gate: { configPath: "modules.branding.enabled", enableWhenAbsent: false },
         });
-        const ctx = makeCtx({ cfg: {} }); // clé absente en pré-merge
+        const ctx = makeCtx({ cfg: {} }); // key absent pre-merge
 
         await bootWithPreset(preset(off), ctx);
 
@@ -187,8 +189,9 @@ describe("bootWithPreset — preset composition", () => {
         expect(off.createModule).toHaveBeenCalledTimes(1);
         expect(ctx.registry.registered).toEqual(["branding"]);
 
-        // Et le verdict n'est pas rendu : l'enrobage l'expose, et il vaut `false` tant que
-        // `init()` n'a pas tourné. C'est ce report qui permet au profil d'avoir son mot à dire.
+        // And the verdict is not returned: the wrapper exposes it, and it is
+        // `false` until `init()` has run. That deferral is what lets the
+        // profile have its say.
         const [registered] = ctx.registry.register.mock.calls[0];
         expect(typeof registered.isEnabled).toBe("function");
         expect(registered.isEnabled()).toBe(false);
@@ -204,7 +207,7 @@ describe("bootWithPreset — preset composition", () => {
 
         expect(ctx.registry.registered).toEqual(["legend"]);
 
-        // Le `false` est bien lu — mais par l'enrobage, au moment où on l'initialise.
+        // The `false` is indeed read — but by the wrapper, at init time.
         const [registered] = ctx.registry.register.mock.calls[0];
         await registered.init({}, { modules: { legend: { enabled: false } } });
         expect(registered.isEnabled()).toBe(false);
@@ -357,5 +360,86 @@ describe("bootWithPreset — perf marks", () => {
         await bootWithPreset(preset(), makeCtx());
 
         expect(marks.filter((m) => String(m).startsWith("geoleaf:boot:"))).toEqual([]);
+    });
+});
+
+// ── Where the configuration comes from — three ranks ──────────────────────────
+//
+// ⚠️ This harness stubs `GeoLeaf.loadConfig` (see `makeCtx`), so no real `fetch` is
+// reachable from here and a "zero request" assertion written in this file would pass by
+// construction, proving nothing. That property is pinned where it can actually be
+// observed — `boot-injected-config.test.js`, which wires the real chain. What THIS file
+// pins is the resolution itself: which of the three ranks wins, and what is handed to
+// `loadConfig` as a result.
+
+describe("bootWithPreset — where the configuration comes from", () => {
+    /** A `loadConfig` stand-in that records the options bag it was handed. */
+    function recorder() {
+        const seen = [];
+        return {
+            seen,
+            loadConfig: (opts) => {
+                seen.push(opts);
+                setTimeout(() => opts.onLoaded({}), 0);
+            },
+        };
+    }
+
+    it("rank 1 — an inline object is handed over, and no URL is built", async () => {
+        const { seen, loadConfig } = recorder();
+        const ctx = makeCtx({ loadConfig });
+
+        await bootWithPreset(preset(), ctx, { config: { map: { zoom: 12 } } });
+
+        expect(seen[0]).toMatchObject({ config: { map: { zoom: 12 } } });
+        expect(seen[0].url).toBeUndefined();
+    });
+
+    it("rank 2 — an explicit URL is used byte for byte", async () => {
+        const { seen, loadConfig } = recorder();
+        const ctx = makeCtx({ loadConfig });
+
+        await bootWithPreset(preset(), ctx, { configUrl: "/assets/geoleaf/config.json" });
+
+        expect(seen[0].url).toBe("/assets/geoleaf/config.json");
+        expect(seen[0].config).toBeUndefined();
+    });
+
+    it("rank 3 — UNCHANGED: the path derived from the host page", async () => {
+        const { seen, loadConfig } = recorder();
+        const ctx = makeCtx({ loadConfig });
+
+        await bootWithPreset(preset(), ctx);
+
+        expect(seen[0].url).toBe("../profiles/geoleaf.config.json");
+        expect(seen[0].config).toBeUndefined();
+    });
+
+    it("both given — `config` wins, and the option that loses is NAMED", async () => {
+        const { seen, loadConfig } = recorder();
+        const ctx = makeCtx({ loadConfig });
+
+        await bootWithPreset(preset(), ctx, {
+            config: { map: { zoom: 12 } },
+            configUrl: "/assets/geoleaf/config.json",
+        });
+
+        expect(seen[0].config).toBeDefined();
+        expect(seen[0].url).toBeUndefined();
+        // Naming the ignored option is the whole point: an option silently dropped is the
+        // defect this path exists to remove, and it would be one here too.
+        expect(ctx.AppLog.warn).toHaveBeenCalledWith(expect.stringContaining("configUrl"));
+    });
+
+    it("an empty object is a VALID inline configuration — no divergence with loadConfig", async () => {
+        const { seen, loadConfig } = recorder();
+        const ctx = makeCtx({ loadConfig });
+
+        // `Config.init` accepts `{}` as an inline configuration. `boot()` must agree: two
+        // boot paths behaving differently on the same value is the risk this sprint avoids.
+        await bootWithPreset(preset(), ctx, { config: {} });
+
+        expect(seen[0]).toMatchObject({ config: {} });
+        expect(seen[0].url).toBeUndefined();
     });
 });

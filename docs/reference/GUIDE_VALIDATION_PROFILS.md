@@ -395,7 +395,7 @@ npm run validate:profiles
 **Sortie si tout est valide** — forme réelle du script. ⚠️ La liste des profils et les décomptes
 suivent le **disque** : ceux ci-dessous illustrent la forme, ils ne sont pas une cible. Ce bloc a
 nommé cinq profils dont quatre étaient retirés depuis le 27/07/2026, et un cinquième l'a été au
-Sprint 7 du passage public — un exemple recopié vieillit sans que rien ne le dise.
+Un exemple recopié vieillit sans que rien ne le dise.
 
 ```
 GeoLeaf — validation des profils (profile.json + compagnons)

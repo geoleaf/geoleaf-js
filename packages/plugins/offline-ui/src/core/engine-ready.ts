@@ -26,10 +26,10 @@ import { coreConfigGet } from "@geoleaf/host-runtime";
  */
 export async function ensureEngineReady(): Promise<boolean> {
     if (StorageContract.isAvailable()) return true;
-    // ARCHI S5 (5.5) — `<boolean>` explicite : sans lui, TS infère le TYPE LITTÉRAL
-    // `false` depuis la valeur par défaut, et juge `=== true` impossible (TS2367).
-    // La comparaison était donc signalée comme morte alors que la config peut valoir
-    // `true` au runtime.
+    // Explicit `<boolean>`: without it, TS infers the LITERAL TYPE `false` from
+    // the default value, and judges `=== true` impossible (TS2367). The
+    // comparison was thus flagged dead while the config can be `true` at
+    // runtime.
     const offlineOn = coreConfigGet<boolean>("modules.offline.enabled", false) === true;
     const pwaOn = coreConfigGet<boolean>("modules.pwa.enabled", false) === true;
     if (!offlineOn || !pwaOn) return false;

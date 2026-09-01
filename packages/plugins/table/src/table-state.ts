@@ -87,18 +87,20 @@ export type TableEventName = Extract<keyof GeoLeafEventMap, `geoleaf:table:${str
  *
  * Takes the **COMPLETE** event name, and a `detail` checked against `GeoLeafEventMap`.
  *
- * 🛑 **Ceci a pris un suffixe jusqu'au 13/08/2026, et ce n'était pas un détail de style.**
- * L'ancienne forme composait `"geoleaf:" + eventName`, donc aucun littéral complet n'existait
- * en source — or les gates d'événements du dépôt relèvent des littéraux sur l'AST. Les neuf
- * noms étaient structurellement invisibles à `EVENT-MAP`, `CONSUMER-CONTRACT` devait les
- * déclarer hors de portée, et deux d'entre eux ont été classés « cassés » chez le consommateur
- * aval sur la foi de cette cécité — alors qu'ils étaient émis ET écoutés.
+ * 🛑 **This took a suffix until 13/08/2026, and that was not a style detail.**
+ * The old shape composed `"geoleaf:" + eventName`, so no complete literal
+ * existed in source — yet the repo's event gates collect literals off the
+ * AST. The nine names were structurally invisible to `EVENT-MAP`,
+ * `CONSUMER-CONTRACT` had to declare them out of reach, and two of them were
+ * classified "broken" at the downstream consumer on the strength of that
+ * blindness — while they were emitted AND listened to.
  *
- * Accepter un `string` nu ici rouvrirait le trou en silence : c'est pourquoi le paramètre est
- * contraint, et pourquoi la contrainte se DÉRIVE de la map plutôt que de se recopier.
+ * Accepting a bare `string` here would silently reopen the hole: which is why
+ * the parameter is constrained, and why the constraint DERIVES from the map
+ * rather than being re-copied.
  *
- * ⚠️ Les deux bus portent chaque nom — `document` **et** la carte. Un abonné choisit, il ne
- * prend pas les deux, sinon il traite chaque événement en double.
+ * ⚠️ Both buses carry each name — `document` **and** the map. A subscriber
+ * picks one, it does not take both, otherwise it handles every event twice.
  */
 export function fireEvent<K extends TableEventName>(
     eventName: K,

@@ -128,7 +128,18 @@ function copyDir(srcDir, destDir, ctx, flags) {
         const srcPath = path.join(srcDir, entry.name);
         const rel = path.relative(TEMPLATE_DIR, srcPath);
         if (shouldSkip(rel, flags)) continue;
-        const destName = entry.name.split("__PLUGIN_NAME__").join(ctx.name);
+        // `README.plugin.md` is the template OF THE GENERATED PLUGIN's readme, and it lands
+        // as `README.md`. It is a distinct file from `README.template.md`, which documents
+        // the scaffold itself and is skipped above.
+        //
+        // ⚠️ It was missing entirely until 26/08/2026, and nothing said so: a scaffolded
+        // plugin was born WITHOUT a readme, `create-plugin.cjs` exited 0, and the two gates
+        // that would have caught it (`NPMDOC-02`, `PRC-01`) were not in the scaffold's
+        // verification channel. Its npm page would have read "no README".
+        const destName =
+            entry.name === "README.plugin.md"
+                ? "README.md"
+                : entry.name.split("__PLUGIN_NAME__").join(ctx.name);
         const destPath = path.join(destDir, destName);
         if (entry.isDirectory()) {
             copyDir(srcPath, destPath, ctx, flags);
@@ -198,19 +209,20 @@ function main() {
         log.err(`Invalid plugin name "${name}" — use kebab-case (e.g. heatmap, my-layer).`);
         process.exit(1);
     }
-    // ARCHI S10.1 — émettre sous packages/plugins/, sinon le scaffold recrée l'ancienne
-    // arborescence au premier plugin généré.
+    // Emit under packages/plugins/, else the scaffold recreates the old tree at
+    // the first generated plugin.
     //
-    // ⚠️ SANS préfixe `plugin-` (corrigé au T5.5). R.15 a renommé les 13 répertoires
-    // (`plugin-storage` → `storage`), et ce scaffold est resté sur l'ancienne forme : le
-    // prochain plugin généré aurait atterri en `packages/plugins/plugin-<nom>`, seul de son
-    // espèce. Le glob workspace l'aurait quand même capté — donc aucune gate n'aurait
-    // rougi —, mais `registry.requireByDirName("<nom>")` aurait jeté, et c'est la fonction
-    // par laquelle ce sprint fait passer les autres scripts.
+    // ⚠️ WITHOUT the `plugin-` prefix. The 13 directories were renamed
+    // (`plugin-storage` → `storage`), and this scaffold stayed on the old form:
+    // the next generated plugin would have landed in
+    // `packages/plugins/plugin-<name>`, alone of its kind. The workspace glob
+    // would still have caught it — so no gate would have reddened — but
+    // `registry.requireByDirName("<name>")` would have thrown, and that is the
+    // function the other scripts now go through.
     //
-    // Le chemin reste littéral ici, et c'est le seul endroit où c'est juste : le paquet
-    // n'existe pas encore, il n'y a rien à résoudre. Ce que le registre valide, c'est
-    // l'APRÈS — d'où le contrôle de sortie ci-dessous.
+    // The path stays literal here, and it is the only place where that is right:
+    // the package does not exist yet, there is nothing to resolve. What the
+    // registry validates is the AFTER — hence the output check below.
     const destRel = path.posix.join("packages", "plugins", name);
     const destDir = path.join(ROOT, "packages", "plugins", name);
     if (fs.existsSync(destDir)) {
@@ -253,7 +265,7 @@ function main() {
 
     console.log("");
     log.info("Next steps:");
-    // ARCHI S9.4 — steps 3 and 4 used to ask for a manual entry in the PLUGINS list
+    // Steps 3 and 4 used to ask for a manual entry in the PLUGINS list
     // of verify-plugin-contract.cjs and in PLUGIN_BUNDLES of check-bundle-size.cjs.
     // Both are now DERIVED from package.json#workspaces via scripts/lib/packages.cjs,
     // so `npm install` alone enrolls the plugin in every gate. Leaving the old advice

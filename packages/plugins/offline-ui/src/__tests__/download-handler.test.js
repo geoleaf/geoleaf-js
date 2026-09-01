@@ -1,12 +1,13 @@
 /**
- * Unit tests — `cache/download-handler.ts`, couverture réelle (chantier R.31).
+ * Unit tests — `cache/download-handler.ts`, real coverage.
  *
- * Fichier mesuré à 0 % : c'est l'orchestrateur du téléchargement et de la purge du cache,
- * entièrement pilotable sans carte — `ensureEngineReady`, `coreConfigGet`, le singleton
- * `StorageContract`, les notifications (`GeoLeaf._UINotifications`) et `confirmDialog`
- * (mock du field-renderer) sont tous contrôlables. On exerce les deux gros flux
- * (`handleDownload`, `handleClear`) et les auxiliaires (`_checkQuota`, `_updateProgressUI`,
- * `_formatDownloadError`, `_loadSelection`). Les `setTimeout` sont pilotés en horloge feinte.
+ * File measured at 0%: the orchestrator of downloading and cache purging,
+ * entirely drivable without a map — `ensureEngineReady`, `coreConfigGet`, the
+ * `StorageContract` singleton, notifications (`GeoLeaf._UINotifications`) and
+ * `confirmDialog` (field-renderer mock) are all controllable. We exercise the
+ * two big flows (`handleDownload`, `handleClear`) and the helpers
+ * (`_checkQuota`, `_updateProgressUI`, `_formatDownloadError`,
+ * `_loadSelection`). `setTimeout`s are driven with a fake clock.
  */
 import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
 
@@ -14,16 +15,17 @@ import { DownloadHandler } from "../cache/download-handler.js";
 import { StorageContract } from "../shared/storage-contract.js";
 import { confirmDialog } from "@geoleaf/host-runtime";
 
-// API publique S4.4 — les tests plantent `GeoLeaf.Storage` comme le fait la PRODUCTION.
-// Ils pilotaient `StorageContract.init()`, c'est-à-dire une SECONDE instance du singleton
-// que le bundle embarquait et que rien n'initialisait : ils validaient un canal mort.
+// The tests plant `GeoLeaf.Storage` the way PRODUCTION does. They used to drive
+// `StorageContract.init()`, i.e. a SECOND instance of the singleton the bundle
+// embedded and nothing initialised: they validated a dead channel.
 function _installGeoLeafStorage(api) {
     globalThis.GeoLeaf = globalThis.GeoLeaf ?? {};
-    // Le helper reproduit ce que `StorageContract.init()` fournissait, parce que la façade
-    // du core le fournit aussi : `isPluginLoaded()` = « un moteur s'est enregistré », et
-    // `isAvailable()` = « et sa base est ouverte ». L'adaptateur du plugin DÉLÈGUE ces deux
-    // méthodes — il ne les recalcule pas —, donc un objet planté qui ne les porte pas
-    // rendrait `false` là où le test attend `true`. Un appelant qui les fournit garde la main.
+    // The helper reproduces what `StorageContract.init()` provided, because the
+    // core's facade provides it too: `isPluginLoaded()` = "an engine registered",
+    // and `isAvailable()` = "and its database is open". The plugin's adapter
+    // DELEGATES these two methods — it does not recompute them — so a planted
+    // object not carrying them would return `false` where the test expects
+    // `true`. A caller providing them keeps the hand.
     globalThis.GeoLeaf.Storage =
         api === null || api === undefined
             ? null
@@ -47,7 +49,7 @@ function setConfig(overrides = {}) {
     globalThis.GeoLeaf.Config = { get: (k, fb) => (k in cfg ? cfg[k] : fb) };
 }
 
-// ── Notifications injectées ─────────────────────────────────────────────────────────
+// ── Injected notifications ──────────────────────────────────────────────────────────
 let notif;
 function installNotifications() {
     notif = { error: vi.fn(), success: vi.fn(), warning: vi.fn(), info: vi.fn() };
@@ -55,7 +57,7 @@ function installNotifications() {
     return notif;
 }
 
-// ── Stockage injecté (ensureEngineReady lit StorageContract.isAvailable) ─────────────
+// ── Injected storage (ensureEngineReady reads StorageContract.isAvailable) ───────────
 function installStorage({
     available = true,
     selection = { totalEstimatedSize: 1_048_576 },
@@ -82,7 +84,7 @@ function installStorage({
     return { storage, cacheProfile, clearCache, refreshCacheIcons, loadLayerSelection };
 }
 
-// ── Éléments DOM du handler ─────────────────────────────────────────────────────────
+// ── The handler's DOM elements ──────────────────────────────────────────────────────
 function buildElements() {
     const btn = (label) => {
         const b = document.createElement("button");
@@ -110,7 +112,7 @@ beforeEach(() => {
     control = { _updateStatus: vi.fn(async () => {}) };
     elements = buildElements();
     DownloadHandler.init(control, elements);
-    // confirmDialog est un mock de module (singleton) : ré-initialiser calls + impl.
+    // confirmDialog is a module mock (singleton): reset calls + impl.
     confirmDialog.mockReset();
     confirmDialog.mockResolvedValue(true);
 });
@@ -134,14 +136,14 @@ describe("handleDownload", () => {
         await p;
 
         expect(store.cacheProfile).toHaveBeenCalledWith("prof-1", expect.any(Object));
-        // progressText garde le compte de ressources (le nettoyage à 3 s ne le touche pas)
+        // progressText keeps the resource count (the 3 s cleanup does not touch it)
         expect(elements.progressText.textContent).toContain("5");
-        // le nettoyage différé a masqué la barre
+        // the deferred cleanup hid the bar
         expect(elements.progressEl.style.display).toBe("none");
         expect(notif.success).toHaveBeenCalled();
         expect(control._updateStatus).toHaveBeenCalled();
         expect(store.refreshCacheIcons).toHaveBeenCalled();
-        // le bouton est réactivé dans le finally
+        // the button is re-enabled in the finally
         expect(elements.downloadBtn.disabled).toBe(false);
     });
 
@@ -209,7 +211,7 @@ describe("handleDownload", () => {
         _installGeoLeafStorage({
             isAvailable: () => true,
             CacheManager: { cacheProfile, clearCache: vi.fn() },
-            // pas de Cache.LayerSelector → `if (layerSelector)` faux
+            // no Cache.LayerSelector → `if (layerSelector)` false
             Cache: {
                 Storage: { loadLayerSelection: vi.fn(async () => ({ totalEstimatedSize: 1 })) },
             },
@@ -298,7 +300,7 @@ describe("handleClear", () => {
 });
 
 // ════════════════════════════════════════════════════════════════════════════════════
-// Auxiliaires privés
+// Private helpers
 // ════════════════════════════════════════════════════════════════════════════════════
 
 describe("_checkQuota", () => {

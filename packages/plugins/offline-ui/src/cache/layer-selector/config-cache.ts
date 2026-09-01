@@ -62,9 +62,9 @@ const _configCache = new Map<string, Promise<LayerConfigJson | null>>();
  * Resolves the on-disk path of a layer's config file, or `null` when the layer
  * carries no `configFile` (basemaps) or no profile is active.
  *
- * ⚠️ Une couche à `inlineConfig` n'atteint jamais cette fonction — `getLayerConfig`
- * la sert avant, depuis la mémoire (B-152). Ce `null`-ci ne signifie donc plus
- * « couche en ligne », il signifie « rien à résoudre ».
+ * ⚠️ An `inlineConfig` layer never reaches this function — `getLayerConfig`
+ * serves it first, from memory. This `null` therefore no longer means "inline
+ * layer", it means "nothing to resolve".
  */
 function resolveLayerConfigPath(layer: LayerLike): string | null {
     if (!layer.configFile) return null;
@@ -99,18 +99,19 @@ async function _fetchLayerConfig(configPath: string): Promise<LayerConfigJson | 
  * former call sites each did on their own.
  */
 export function getLayerConfig(layer: LayerLike): Promise<LayerConfigJson | null> {
-    // 🛑 B-152 — UNE COUCHE TEMPLATÉE PORTE SA CONFIG EN LIGNE, ET IL N'Y A RIEN À ALLER
-    // CHERCHER. `expandLayerTemplates` pose `inlineConfig` et jamais `configFile` : cette
-    // fonction rendait donc `null` pour elles, et comme les QUATRE lecteurs du sélecteur
-    // passent ici (`getLayerLabel`, `getLayerGeometryType`, `createStyleSelector`,
-    // `core.populate`), les 24 couches templatées de `tourism` se rendaient sans libellé,
-    // sans géométrie et sans sélecteur de style — mesuré en navigateur le 07/08/2026.
+    // 🛑 A TEMPLATED LAYER CARRIES ITS CONFIG INLINE, AND THERE IS NOTHING TO GO
+    // FETCH. `expandLayerTemplates` sets `inlineConfig` and never `configFile`:
+    // this function therefore returned `null` for them, and since the selector's
+    // FOUR readers pass through here (`getLayerLabel`, `getLayerGeometryType`,
+    // `createStyleSelector`, `core.populate`), `tourism`'s 24 templated layers
+    // rendered with no label, no geometry and no style selector — measured in a
+    // browser on 07/08/2026.
     //
-    // ⚠️ Le point de réparation est ICI et nulle part ailleurs : corriger les quatre
-    // lecteurs aurait fait quatre implémentations du même repli (compteur C4). C'est aussi
-    // la raison pour laquelle il n'y a pas de `_configCache` sur ce chemin — la valeur est
-    // déjà en mémoire, la mémoïser ne dédoublonnerait rien et ferait vieillir une donnée
-    // que le core peut ré-émettre.
+    // ⚠️ The repair point is HERE and nowhere else: fixing the four readers would
+    // have made four implementations of the same fallback. It is also why there
+    // is no `_configCache` on this path — the value is already in memory,
+    // memoising it would deduplicate nothing and would age data the core can
+    // re-emit.
     if (layer.inlineConfig && typeof layer.inlineConfig === "object") {
         return Promise.resolve(layer.inlineConfig as LayerConfigJson);
     }

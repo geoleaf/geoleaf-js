@@ -167,12 +167,12 @@ qui ne coûte pas du temps mais des **données de terrain non synchronisées**.
 
 Tout le reste est paresseux, en quatre familles de déclencheur :
 
-| Famille             | Plugins                                            | Ce qui les charge                                              |
-| ------------------- | -------------------------------------------------- | -------------------------------------------------------------- |
-| API pure            | `cog`, `file-import`, `websocket`                  | `plugins.load(id)` explicite par le consommateur               |
-| Couche déclarative  | `flatgeobuf`                                       | la couture `ensurePluginLoaded` du core                        |
-| Créneau de barre    | `geocoding`, `table`, `print`, `measure`, `editor` | `registerLazyForAction`, qui déclare le bouton AVANT le bundle |
-| Dépendant du profil | `realtime-layer`, `connector`, `geocoding`         | le hook `beforeBoot`                                           |
+| Famille             | Plugins                                                              | Ce qui les charge                                              |
+| ------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------- |
+| API pure            | `cog`, `file-import`, `websocket`                                    | `plugins.load(id)` explicite par le consommateur               |
+| Couche déclarative  | `flatgeobuf`                                                         | la couture `ensurePluginLoaded` du core                        |
+| Créneau de barre    | `geocoding`, `table`, `print`, `measure`, `editor`, `position-share` | `registerLazyForAction`, qui déclare le bouton AVANT le bundle |
+| Dépendant du profil | `realtime-layer`, `connector`, `geocoding`                           | le hook `beforeBoot`                                           |
 
 **`beforeBoot` est le seul point du cycle** qui court après le chargement du config de profil et
 avant la création de la carte — donc avant `geoleaf:profile:loaded`, `geoleaf:map:ready` et
@@ -196,6 +196,59 @@ plugin n'est chargé qu'au premier clic — et `I18n.getLabel` rend **la clé br
 connaît pas. Un libellé qui ne vit que dans le paquet produit donc un bouton dont le **nom
 accessible est la clé**. Les valeurs déclarées dans `init.js` sont **dérivées** du catalogue du
 paquet, jamais réécrites.
+
+---
+
+## Les clés de visibilité des créneaux paresseux
+
+Un créneau déclaré par `registerLazyForAction` est dessiné au boot, **avant** que le bundle du
+plugin ne soit chargé. Il ne peut donc pas s'appuyer sur la configuration que le plugin lira
+plus tard : ce qu'il déclare ici est tout ce qui gouverne son bouton.
+
+### `profileKey` + `legacyProfileKey` — toujours les deux
+
+🛑 **Chaque créneau déclare `modules.<id>.showButton` en `profileKey`, avec l'ancien drapeau
+`ui.show<Nom>` en `legacyProfileKey`.** La paire doit être identique à celle que le `entry.ts`
+du paquet déclare de son côté — les deux déclarations gouvernent le même bouton, l'une quand le
+plugin est paresseux, l'autre quand un intégrateur charge le bundle lui-même, et un profil ne
+peut pas savoir à laquelle il s'adresse.
+
+⚠️ **Quatre créneaux ont porté l'ancienne clé SEULE**, sans repli — `print`, `measure`, `editor`,
+`geocoding`. Conséquence mesurée sur un profil servi : `modules.print.showButton: false` laissait
+le bouton dessiné, alors que c'est la seule clé que la configuration du paquet lit. Le drapeau
+que le plugin documente et celui auquel le bouton obéit n'étaient pas le même drapeau.
+
+`resolveUISlotVisibility` essaie la clé canonique et ne consulte l'héritée **que** si la première
+est absente : déclarer les deux rend la clé canonique opérante sans changer le sort d'un profil
+qui écrit encore l'ancienne.
+
+📌 **L'ancienne clé est `ui.showPrint`, pas `showPrint`.** Le fichier `uiFile` d'un profil
+enveloppe sa charge dans un objet `"ui"`, que le chargeur étale ensuite à la racine du profil —
+le drapeau retombe donc sous `ui.`. Une sonde qui écrit un niveau trop haut lit `undefined` et
+fait passer une clé vivante pour une clé morte.
+
+### `gateOnModuleEnabled` — opt-in, jamais uniforme
+
+Ce drapeau masque le créneau quand `modules.<plugin>.enabled` vaut explicitement `false`. Il
+n'est posé que sur les créneaux dont le `entry.ts` porte **déjà** la même condition : `print`,
+`measure`, `editor` — et les trois créneaux du plugin `editor` (`editor`, l'export de session,
+l'ajout de POI), que son `entry.ts` imbrique dans le même test.
+
+🛑 **Ne pas en faire une règle uniforme.** Trois des six plugins à créneau paresseux
+s'enregistrent sans condition — `table`, `geocoding`, `position-share` — et ce n'est pas un
+oubli : leur `enabled` ne veut pas dire « fonctionnalité absente ». Le profil `tourism` déclare
+`position-share: { enabled: false, showButton: true }` : pour ce plugin, `enabled` gouverne
+l'**émission**, et le bouton **est** l'interrupteur qui l'allume. Une garde appliquée à tous
+masque un bouton que le profil demande explicitement, et retire le seul moyen d'activer la
+fonction. Mesuré : le bouton avait disparu des quatre variantes.
+
+⚠️ **La garde est OPT-OUT une fois posée** (`enabled === false`, pas `!== true`) : un profil qui
+ne déclare pas le module garde son bouton. Le profil `tourism` ne déclare ni `print`, ni
+`measure`, ni `editor`, et leurs trois boutons sont légitimes.
+
+📌 **Pourquoi au rendu et non à la déclaration** : `registerLazyForAction` s'exécute avant le
+chargement du profil. `init.js` ne peut pas lire `enabled` au moment de déclarer le créneau —
+la garde est donc évaluée par le renderer, seul moment où la configuration fusionnée existe.
 
 ---
 

@@ -15,7 +15,7 @@
  * ✅ A-27 asked for "5 variants → 2", and it is **2** since task 5.5. It was 3 for one
  * reason only: AddPOI and Editor were mutually exclusive BY DESIGN, so a single variant
  * could never have exercised the AddPOI form — merging them would have DELETED that
- * coverage, not consolidated it. **The merge of Sprint 5 removed the premise, not the
+ * coverage, not consolidated it. **The editor merge removed the premise, not the
  * argument**: there is one editing plugin now, its point-capture path IS the former AddPOI
  * journey, and `deploy-full` exercises it. The audit's target is reached on the merits.
  *
@@ -54,34 +54,54 @@
  *   node scripts/build-deploy.cjs --plugins=none   # single deploy/ (core + connector)
  *   node scripts/build-deploy.cjs --plugins=full   # → deploy/deploy-full/ (offline POI test)
  *   node scripts/build-deploy.cjs --plugins=all    # all 2 variants
- *   node scripts/build-deploy.cjs --plugins=local  # → deploy/deploy-local/ — POSTE DE TRAVAIL,
- *                                                  #   JAMAIS LIVRÉ (voir §Le bootstrap dev)
+ *   node scripts/build-deploy.cjs --plugins=local  # → deploy/deploy-local/ — WORKSTATION,
+ *                                                  #   NEVER SHIPPED (see §The dev bootstrap)
  *   node scripts/build-deploy.cjs --full           # alias of --plugins=all
  *   node scripts/build-deploy.cjs --skip-build
  *
- * ## Le bootstrap dev, et pourquoi une variante entière lui est dédiée
+ * ## The dev bootstrap, and why a whole variant is dedicated to it
  *
- * `connector.local.js` porte un JWT de poste, à privilège d'ÉCRITURE, contre un hôte joignable
- * depuis Internet. Il était copié TEL QUEL dans toute variante, `deploy-core` et `deploy-full`
- * compris — c'est-à-dire dans ce qui part chez un client ou sur un serveur de prod, et dans
- * leurs `.gz`/`.br` par-dessus le marché.
+ * `connector.local.js` carries a workstation JWT, with WRITE privilege,
+ * against a host reachable from the Internet. It was copied AS-IS into
+ * every variant, `deploy-core` and `deploy-full` included — i.e. into what
+ * leaves for a client or a production server, and into their `.gz`/`.br`
+ * on top of it.
  *
- * ⚠️ **Le raisonnement qui l'autorisait ne mesurait que l'EXÉCUTION.** La garde `localhost` de
- * `init.js` empêche le bootstrap de s'activer sur une origine déployée, et c'est vrai ; mais un
- * secret se lit, il ne s'exécute pas. `curl https://<hôte>/connector.local.js` le rendait en
- * clair, garde ou pas. Une gate qui protège d'une chose et qu'on croit protéger de l'autre est
- * pire qu'une absence de gate.
+ * ⚠️ **The reasoning that authorised it only measured EXECUTION.»
+ * `init.js` carried until 09/08/2026 a `localhost` guard keeping the
+ * bootstrap from ACTIVATING on a deployed origin. That was true, and
+ * without effect on the real risk: **a secret is READ, it does not
+ * execute.» `curl https://<host>/connector.local.js` returned it in the
+ * clear, guard or not. A gate that protects from one thing while believed
+ * to protect from the other is worse than no gate.
  *
- * Le partage est donc désormais : **ce fichier** empêche la diffusion (aucune variante livrable
- * ne reçoit autre chose que le talon inerte), **`init.js`** empêche l'activation accidentelle,
- * et **`verify-deploy-no-secrets.cjs`** tient les deux. Le fichier réel ne vit que dans
- * `deploy-local`, hors du build par défaut.
+ * 🛑 **That guard no longer exists, and it must not be restored.» It was
+ * removed with the stub on 09/08/2026, because it bounded the wrong
+ * dimension; `init.js` says it in place ("A hostname guard would only
+ * bound EXECUTION — a secret is READ, not run"). The containment is now
+ * **structural**: the file does not enter a deliverable, so there is
+ * nothing to deactivate in it.
  *
- * @version 3.0.0 — 5.5: 3 variants → 2 (deploy-core, deploy-full). `deploy-addpoi` partie
- *                  avec le plugin fusionné ; sa raison d'être — l'exclusivité mutuelle
- *                  addpoi/editor — n'existe plus.
+ * **The effective split, as of 17/08/2026**: **this file** prevents the
+ * diffusion — a shippable variant receives **neither the file nor the
+ * `<script>` tag loading it**, and *nothing* is written in its place;
+ * **`verify-deploy-no-secrets.cjs`** (DNS-01…04) verifies it; **`APP-11`**
+ * (`verify-app-template.cjs`) guards the marker pair. The real file only
+ * lives in `deploy-local`, outside the default build and outside the deliverables.
+ *
+ * ⚠️ **This paragraph named `init.js` as a second rampart, and an "inert
+ * stub" as what the deliverables received, until 17/08/2026** — two
+ * mechanisms dead since 09/08, asserted in the present tense, on a
+ * SECURITY property, and contradicted by this very file some fifteen
+ * hundred lines below ("The stub no longer exists"). This check's reason
+ * for being: false prose on a security device is not merely stale, it
+ * **designates a rampart that is not there**.
+ *
+ * @version 3.0.0 — 5.5: 3 variants → 2 (deploy-core, deploy-full). `deploy-addpoi` gone
+ *                  with the merged plugin; its reason for being — the
+ *                  addpoi/editor mutual exclusivity — no longer exists.
  *                  ARCHI S8: 5 → 3, `storage` dropped, `addpoi-storage` renamed `addpoi`.
- *                  `deploy-local` s'ajoute hors livrables : elle seule porte le bootstrap dev.
+ *                  `deploy-local` added outside the deliverables: it alone carries the dev bootstrap.
  */
 
 const fs = require("node:fs");
@@ -89,10 +109,11 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 const { spawnSync } = require("node:child_process");
 
-// La dérivation « ce que le premier chargement demande » vit dans `lib/boot-assets.cjs` et
-// non ici, depuis que le Sprint 4 en a eu besoin pour PESER le même ensemble. Un second
-// extracteur aurait divergé, et celui des deux qui n'est pas maintenu sort vert en mesurant
-// autre chose. Un seul corpus, deux consommateurs — patron de `lib/tsdoc-examples.cjs`.
+// The "what the first load requests" derivation lives in
+// `lib/boot-assets.cjs` and not here, since the payload gate needed it to
+// WEIGH the same set. A second extractor would have diverged, and whichever
+// of the two goes unmaintained exits green measuring something else. One
+// corpus, two consumers — `lib/tsdoc-examples.cjs`'s pattern.
 const {
     APP_SHELL_DEPLOY_PATH,
     ROOT_CONFIG_DEPLOY_PATH,
@@ -100,9 +121,9 @@ const {
     deriveBootCriticalAssets,
 } = require("./lib/boot-assets.cjs");
 
-// socle-init S4.1 — allègement des données de profil au moment du déploiement. Le module vit
-// à part parce qu'il est mesurable seul : ses deux réglages sont des CHIFFRES qu'on veut
-// pouvoir ré-éprouver sans rebâtir un déployé entier.
+// Profile-data slimming at deployment time. The module lives apart because
+// it is measurable alone: its two settings are FIGURES one wants to
+// re-exercise without rebuilding a whole deploy.
 const { slimGeoJSON } = require("./lib/geojson-slim.cjs");
 const { serverContractFiles, carriesServerContract } = require("./lib/server-contract.cjs");
 const { stripDevBackendBindings } = require("./lib/dev-backend.cjs");
@@ -120,7 +141,7 @@ const NPM_SHELL = process.platform === "win32";
 // templates live in apps/geoleaf-app/ since T2 (resolved via the registry, see APP).
 const ROOT = path.resolve(__dirname, "..");
 const DEPLOY = path.join(ROOT, "deploy");
-// Dist directories are DERIVED from the workspace registry (ARCHI S9.4) rather than
+// Dist directories are DERIVED from the workspace registry rather than
 // rebuilt from `path.join(ROOT, "packages", "<dir>")`. That literal form was the one
 // no `grep packages/plugin-` ever found — 14 lines here alone — and it is exactly
 // what ARCHI S10 breaks by moving plugins under `packages/plugins/`. Worse, the
@@ -154,7 +175,7 @@ function distOf(pkgName) {
  * variant excludes it. The bundle filename is derived from the registry
  * (`registry.plugins()`, same as `distOf()` above), never hard-coded.
  *
- * ⚠️ A hard-coded filename here is exactly what broke at STRUCT S3.1: the plugin
+ * ⚠️ A hard-coded filename here is exactly what broke once: the plugin
  * directory `storage` renamed to `offline-ui`, 11 sites in this file followed,
  * but this regex — hand-written on the literal `geoleaf-storage.plugin.js` —
  * did not. `.replace()` on a pattern that matches nothing is silent: the tag
@@ -201,45 +222,47 @@ function stripPluginScript(html, pluginDirName, variantLabel) {
     return stripped;
 }
 
-/** Marqueurs encadrant la balise du bootstrap Connector de poste dans `index.html`. */
+/** Markers framing the workstation Connector bootstrap tag in `index.html`. */
 const DEV_CONNECTOR_MARKERS = {
     start: "GEOLEAF-DEPLOY:DEV-CONNECTOR ─── START",
     end: "GEOLEAF-DEPLOY:DEV-CONNECTOR ─── END",
 };
 
 /**
- * Retire d'`index.html` la balise qui charge `connector.local.js`.
+ * Removes from `index.html` the tag that loads `connector.local.js`.
  *
  * ## Pourquoi ce retrait existe
  *
- * `connector.local.js` porte un JWT de POSTE à privilège d'écriture. Il n'a rien à faire dans
- * ce qui part chez un client — ni le fichier, ni une référence à lui. Cette fonction est ce
- * qui rend l'absence STRUCTURELLE plutôt que disciplinaire : une variante livrable ne nomme
- * jamais le fichier, donc `verify-deploy-no-secrets.cjs` peut exiger qu'il n'existe pas, au
- * lieu de vérifier qu'un talon a bien la bonne forme.
+ * `connector.local.js` carries a WORKSTATION JWT with write privilege. It
+ * has no business in what leaves for a client — neither the file nor a
+ * reference to it. This function is what makes the absence STRUCTURAL
+ * rather than disciplinary: a shippable variant never names the file, so
+ * `verify-deploy-no-secrets.cjs` can require that it not exist, instead of
+ * verifying a stub has the right shape.
  *
- * ⚠️ Jusqu'au 09/08/2026 il n'y avait pas de balise : `init.js` faisait un `import()`
- * INCONDITIONNEL du fichier. Un import obligatoire d'un fichier optionnel force le fichier à
- * exister partout — d'où un talon inerte, une entrée `required`, une exemption dans
- * `verify-app-template.cjs`, et le fichier à la racine des livrables. Quatre pièces pour
- * contourner une ligne ; la balise les supprime toutes les quatre.
+ * ⚠️ Until 09/08/2026 there was no tag: `init.js` made an UNCONDITIONAL
+ * `import()` of the file. A mandatory import of an optional file forces the
+ * file to exist everywhere — hence an inert stub, a `required` entry, an
+ * exemption in `verify-app-template.cjs`, and the file at the deliverables'
+ * root. Four pieces to work around one line; the tag removes all four.
  *
  * ## Par MARQUEUR et non par regex
  *
- * 🛑 Même motif que `stripGatedInitBlock` : les regexes de gating de ce fichier sont `/gm`
- * **sans** `/s`, donc incapables de couvrir un bloc multi-ligne — le piège qu'APP-04/05
- * surveillent côté HTML. Un découpage entre deux marqueurs par `indexOf` n'a ni flag ni
- * échappement, et survit à un reformatage.
+ * 🛑 Same motive as `stripGatedInitBlock`: this file's gating regexes are
+ * `/gm` **without** `/s`, hence unable to cover a multi-line block — the
+ * trap APP-04/05 watch on the HTML side. A cut between two markers by
+ * `indexOf` has no flag and no escaping, and survives a reformat.
  *
- * ## Ce qui JETTE
+ * ## What THROWS
  *
- * L'absence d'un marqueur est **toujours** un défaut : `index.html` est la source unique des
- * variantes, le bloc y est inconditionnel. Un marqueur disparu voudrait dire que le retrait ne
- * retire plus rien — il sortirait vert en laissant la balise, donc le fichier, dans un
- * livrable. C'est exactement le faux vert que ce dépôt traque partout ailleurs.
+ * A missing marker is **always** a defect: `index.html` is the variants'
+ * single source, the block is unconditional there. A vanished marker would
+ * mean the removal removes nothing any more — it would exit green leaving
+ * the tag, hence the file, in a deliverable. Exactly the false green this
+ * repo hunts everywhere else.
  *
- * @param {string} html contenu d'`index.html`
- * @param {string} variantLabel pour le message d'erreur, ex. "deploy-core"
+ * @param {string} html `index.html` content
+ * @param {string} variantLabel for the error message, e.g. "deploy-core"
  * @returns {string}
  */
 function stripDevConnectorScript(html, variantLabel) {
@@ -282,34 +305,36 @@ function gatedBlockMarkers(name) {
 /**
  * Strip a variant-gated block from `init.js` when the variant excludes that plugin.
  *
- * ## Pourquoi ce retrait existe (B-136)
+ * ## Pourquoi ce retrait existe
  *
- * `index.html` était patché par variante depuis toujours, `init.js` **jamais** — et c'est
- * `init.js` qui enregistre les créneaux paresseux. Sur une variante sans le bundle, le
- * résolveur était enregistré quand même : `isLazyAvailable()` rend `true` (« enregistré ET
- * pas encore chargé » — il ne sonde aucun fichier), la pilule dessinait le bouton, et le clic
- * partait sur un `import()` en 404. Trois boutons peints, nommés, focusables et inertes sur
- * `deploy-core`, que l'audit d'accessibilité validait sans broncher.
+ * `index.html` had always been patched per variant, `init.js` **never** —
+ * and `init.js` is what registers the lazy slots. On a variant without the
+ * bundle, the resolver was registered anyway: `isLazyAvailable()` returns
+ * `true` ("registered AND not yet loaded" — it probes no file), the pill
+ * drew the button, and the click went to an `import()` in 404. Three
+ * painted, named, focusable, inert buttons on `deploy-core`, which the
+ * accessibility audit validated without flinching.
  *
- * ## Pourquoi par INDEX et non par regex, contrairement à `stripPluginScript`
+ * ## Why by INDEX and not regex, unlike `stripPluginScript`
  *
- * 🛑 Les regexes de gating de ce fichier sont `/gm` **sans** `/s`, ce qui les rend
- * incapables de couvrir un bloc multi-ligne — c'est précisément le piège qu'APP-04 et APP-05
- * existent pour surveiller côté HTML. Plutôt que d'ajouter une sixième regex fragile, on
- * découpe entre deux marqueurs par `indexOf`. Aucun flag, aucun échappement, et un bloc
- * reformaté par Prettier reste coupé au bon endroit.
+ * 🛑 This file's gating regexes are `/gm` **without** `/s`, which makes
+ * them unable to cover a multi-line block — precisely the trap APP-04 and
+ * APP-05 exist to watch on the HTML side. Rather than adding a sixth
+ * fragile regex, we cut between two markers by `indexOf`. No flag, no
+ * escaping, and a Prettier-reformatted block still cuts at the right place.
  *
- * ## Ce qui JETTE, et pourquoi c'est plus strict que `stripPluginScript`
+ * ## What THROWS, and why it is stricter than `stripPluginScript`
  *
- * `stripPluginScript` tolère l'absence de la balise (« tous les gated ne figurent pas dans
- * tous les états d'`index.html` »). Ici l'absence d'un marqueur est **toujours** un défaut :
- * `init.js` est la source unique des variantes, le bloc y est inconditionnel, et un marqueur
- * disparu veut dire que le retrait ne retire plus rien — il sortirait vert en ne coupant
- * rien, ce qui est exactement la classe de faux vert que ce dépôt traque partout ailleurs.
+ * `stripPluginScript` tolerates the tag's absence ("not all gated ones
+ * appear in all states of `index.html`"). Here a missing marker is
+ * **always** a defect: `init.js` is the variants' single source, the block
+ * is unconditional there, and a vanished marker means the removal removes
+ * nothing any more — it would exit green cutting nothing, which is exactly
+ * the false-green class this repo hunts everywhere else.
  *
- * @param {string} js contenu de `init.js`
- * @param {string} pluginDirName nom du répertoire du plugin gaté, ex. "editor"
- * @param {string} variantLabel pour le message d'erreur, ex. "deploy-core"
+ * @param {string} js `init.js` content
+ * @param {string} pluginDirName gated plugin's directory name, e.g. "editor"
+ * @param {string} variantLabel for the error message, e.g. "deploy-core"
  * @returns {string}
  */
 function stripGatedInitBlock(js, pluginDirName, variantLabel) {
@@ -331,7 +356,7 @@ function stripGatedInitBlock(js, pluginDirName, variantLabel) {
             `build-deploy: ${variantLabel} — the GATED-BLOCK markers for "${pluginDirName}" are ` +
                 `missing (or out of order) in apps/geoleaf-app/init.js. Without them nothing is ` +
                 `stripped and the variant would register a lazy slot for a bundle it does not ` +
-                `ship (B-136). Restore the START/END comment pair around the block.`
+                `ship. Restore the START/END comment pair around the block.`
         );
     }
     // Cut whole lines: from the beginning of the START line to the end of the END line.
@@ -362,7 +387,7 @@ function stripGatedInitBlock(js, pluginDirName, variantLabel) {
  * What the silence cost: `init.js` registers a lazy slot for every plugin regardless — only
  * `editor` and `cog` sit inside GATED-BLOCK markers. A variant shipped without, say,
  * `geoleaf-measure.plugin.js` therefore paints the button, names it, makes it focusable, and
- * 404s on the first click. That is B-136's symptom reached by another road: B-136 was about
+ * 404s on the first click. That is the same symptom reached by another road: the fixed defect was about
  * VARIANT gating and is solded, this path is a build that simply did not run.
  *
  * @param {string} bundleFile e.g. `geoleaf-measure.plugin.js`.
@@ -382,21 +407,29 @@ function throwMissingBundle(bundleFile, variant) {
 }
 
 const DIST = distOf("@geoleaf/core");
-const DIST_STORAGE = distOf("@geoleaf-plugins/offline-ui"); // geoleaf-offline-ui.plugin.js + sw.js
-const DIST_CONNECTOR = distOf("@geoleaf-plugins/connector"); // always bundled
-const DIST_WEBSOCKET = distOf("@geoleaf-plugins/websocket"); // always bundled
-const DIST_REALTIME = distOf("@geoleaf-plugins/realtime-layer"); // always bundled
-const DIST_FILEIMPORT = distOf("@geoleaf-plugins/file-import"); // always bundled
-const DIST_FLATGEOBUF = distOf("@geoleaf-plugins/flatgeobuf"); // always bundled
-const DIST_GEOCODING = distOf("@geoleaf-plugins/geocoding"); // always bundled
-const DIST_PRINT = distOf("@geoleaf-plugins/print"); // always bundled
-const DIST_MEASURE = distOf("@geoleaf-plugins/measure"); // always bundled
-const DIST_TABLE = distOf("@geoleaf-plugins/table"); // always bundled
+// The plugin fleet is DISCOVERED, not listed: each plugin's package.json#geoleaf descriptor
+// says how it ships (bundle name, code-split chunks, variant flag), and `discoverPlugins()`
+// throws on a missing or malformed descriptor. Twelve `DIST_*` constants and one copy block
+// per plugin lived here until 2026-08-18 — a hand-maintained list that had to be edited in a
+// file the plugin does not own, and whose staleness would not fail: it would silently stop
+// matching. Adding a plugin is now: write its descriptor, and this file never changes.
+const { discoverPlugins } = require("./lib/discover-plugins.cjs");
+// ⚠️ LAZY, and it has to be: this module is `require()`d by two instruments that never build —
+// the ci-parity witness for its exemption, and the gate-visibility probe (which requires it
+// WHILE a descriptor-less probe package is planted in the workspace). A module-scope
+// discovery call would make the module unrequirable at exactly those moments — measured:
+// PARITY-05 red and one probe assertion red, both from the same top-level call. Discovery
+// runs when a build actually asks for the fleet, memoized for the run.
+let _fleet = null;
+function pluginFleet() {
+    if (_fleet === null) _fleet = discoverPlugins();
+    return _fleet;
+}
 // taxonomy + feature-info reclassified into @geoleaf/core (SR0) — bundled inside geoleaf.esm.js, no separate copy.
 // cog + editor ship only in the `full` variant — a PACKAGING decision (bundle weight:
-// cog alone carries geotiff.js), not a property of the plugins themselves.
-const DIST_COG = distOf("@geoleaf-plugins/cog"); // `full` variant only
-const DIST_EDITOR = distOf("@geoleaf-plugins/editor"); // `full` variant only
+// cog alone carries geotiff.js), not a property of the plugins themselves. Which variant
+// sets which flag stays in the variant matrix below; the plugin only NAMES its flag, in
+// its own descriptor.
 // T2 — the deployable application is a workspace of its own now, no longer a set of
 // files squatting inside the core LIBRARY. Resolved through the registry, never as
 // `path.join(ROOT, "apps", "geoleaf-app")`: `requireByDirName` THROWS when the
@@ -414,22 +447,26 @@ const PROFILES = path.join(ROOT, "profiles");
 // turn that rewrite into a regex matching nothing.
 const SRC_ICONS = path.join(APP, "src", "assets", "icons");
 
-// ⚠️ `ROOT_CONFIG_DEPLOY_PATH` et `APP_SHELL_DEPLOY_PATH` sont importés de
-// `lib/boot-assets.cjs` en tête de fichier. Ils y vivent parce qu'ils ont désormais QUATRE
-// consommateurs et non trois : l'étape 6c les écrit, l'étape 9 les exige, la dérivation
-// critique au boot les liste, et `check-app-payload.cjs` pèse ce qu'ils désignent. La clé du
-// shell reste un contrat entre ce fichier et `sw-core.js` — elle ne s'ajuste pas d'un seul côté.
+// ⚠️ `ROOT_CONFIG_DEPLOY_PATH` and `APP_SHELL_DEPLOY_PATH` are imported
+// from `lib/boot-assets.cjs` at the top of the file. They live there
+// because they now have FOUR consumers and not three: step 6c writes them,
+// step 9 requires them, the boot-critical derivation lists them, and
+// `check-app-payload.cjs` weighs what they designate. The shell's key
+// remains a contract between this file and `sw-core.js` — it does not
+// adjust on one side only.
 
 const SKIP_BUILD = process.argv.includes("--skip-build");
 
-// 🗑️ `CONNECTOR_LOCAL_STUB` a vécu ici du 30/07 au 09/08/2026 — un module vide émis dans toute
-// variante pour que `init.js`, qui importait `./connector.local.js` INCONDITIONNELLEMENT, ne
-// fasse pas journaliser un 404 au navigateur. Il est retiré avec la cause : le chargement passe
-// désormais par une balise d'`index.html` que `stripDevConnectorScript` ôte des variantes
-// livrables. Plus d'import obligatoire, donc plus de fichier à combler.
-// ⚠️ Ne pas le rétablir « par sécurité » : un talon dans un livrable rendrait de nouveau
-// indiscernables « aucun bootstrap » et « un bootstrap qu'on n'a pas su lire », et c'est cette
-// indistinction qui a laissé un jeton partir dans `deploy-core` et `deploy-full`.
+// 🗑️ `CONNECTOR_LOCAL_STUB` lived here from 30/07 to 09/08/2026 — an empty
+// module emitted into every variant so that `init.js`, which imported
+// `./connector.local.js` UNCONDITIONALLY, did not make the browser log a
+// 404. It is removed with the cause: loading now goes through an
+// `index.html` tag that `stripDevConnectorScript` removes from shippable
+// variants. No more mandatory import, hence no more file to fill in.
+// ⚠️ Do not restore it "for safety": a stub in a deliverable would again
+// make "no bootstrap" and "a bootstrap we could not read"
+// indistinguishable, and that indistinction is what let a token leave in
+// `deploy-core` and `deploy-full`.
 
 /**
  * Resolve the plugin-variant mode from an argument list. PURE — reads no `process.argv`,
@@ -445,10 +482,11 @@ const SKIP_BUILD = process.argv.includes("--skip-build");
  * gate imports must not be able to kill the gate's process on a value the gate was
  * deliberately probing — the caller decides what an invalid mode costs.
  *
- * ⚠️ `"local"` n'est PAS un mode de plus dans la même famille : c'est le seul qui produise une
- * variante **non livrable**, et le seul qui recopie le bootstrap dev porteur du jeton. Il ne
- * doit jamais être atteint depuis `BUILD_ALL_VARIANTS` — d'où sa place ici, dans un mode
- * explicite qu'il faut taper, et nulle part dans un script de CI.
+ * ⚠️ `"local"` is NOT one more mode in the same family: it is the only one
+ * producing a **non-shippable** variant, and the only one copying the dev
+ * bootstrap carrying the token. It must never be reached from
+ * `BUILD_ALL_VARIANTS` — hence its place here, in an explicit mode that
+ * must be typed, and nowhere in a CI script.
  *
  * @param {string[]} argv Argument list. Tolerates a full `process.argv` (the node and script
  *   entries simply match nothing) as well as a bare list of flags.
@@ -508,8 +546,9 @@ const PLUGIN_MODE = getPluginMode();
  * equivalence is on what gets BUILT, not on the token, and comparing the tokens is the
  * mistake this function exists to prevent.
  *
- * ⚠️ `"local"` en est exclu, et ce n'est pas un oubli : la variante de poste ne doit jamais
- * sortir d'un build qu'on n'a pas demandé nommément. `buildsAllVariants("local") === false`.
+ * ⚠️ `"local"` is excluded from it, and that is not an oversight: the
+ * workstation variant must never come out of a build not requested by
+ * name. `buildsAllVariants("local") === false`.
  *
  * @param {"none"|"full"|"all"|"local"|null} mode A value from {@link resolvePluginMode}.
  * @returns {boolean} Whether every variant is built.
@@ -519,9 +558,10 @@ function buildsAllVariants(mode) {
 }
 
 const BUILD_ALL_VARIANTS = buildsAllVariants(PLUGIN_MODE);
-// `local` porte le MÊME jeu de plugins que `full` — c'est le déployé de travail, il doit
-// pouvoir éprouver le cycle complet contre le backend distant. Seul le bootstrap dev l'en
-// distingue, et c'est `INCLUDE_DEV_CONNECTOR` ci-dessous qui porte cette différence, seul.
+// `local` carries the SAME plugin set as `full` — it is the working
+// deploy, it must be able to exercise the full cycle against the remote
+// backend. Only the dev bootstrap distinguishes it, and
+// `INCLUDE_DEV_CONNECTOR` below carries that difference, alone.
 const GATED_MODE = PLUGIN_MODE === "full" || PLUGIN_MODE === "local";
 // Storage ships in the only gated variant — that is precisely why the standalone `storage`
 // variant was dropped at S8.
@@ -529,22 +569,33 @@ const INCLUDE_STORAGE = GATED_MODE;
 const INCLUDE_COG = GATED_MODE;
 const INCLUDE_EDITOR = GATED_MODE;
 /**
- * ⚠️ LE SEUL DRAPEAU QUI DÉCIDE SI UN SECRET ENTRE DANS UN ARTEFACT. Vrai pour `local` et pour
- * rien d'autre. `deploy-core`, `deploy-full` et — par recopie — `deploy-coverage` reçoivent
- * toujours le talon inerte, que le fichier réel existe ou non sur le poste qui construit.
+ * ⚠️ THE ONLY FLAG THAT DECIDES WHETHER A SECRET ENTERS AN ARTEFACT. True
+ * for `local` and nothing else. `deploy-core`, `deploy-full` and — by copy
+ * — `deploy-coverage` receive **NOTHING**: neither the file, nor the tag
+ * loading it, nor a substitute. And that, whether or not the real file
+ * exists on the building workstation — a deliverable whose content varied
+ * by build machine would be a defect on its own.
+ *
+ * ⚠️ **This sentence said "always receive the inert stub" until
+ * 17/08/2026, and the stub was deleted on 09/08.» Do not reintroduce it
+ * "for safety": it would again make "no bootstrap" and "a bootstrap we
+ * could not read" indistinguishable — the exact motive of its removal,
+ * written higher in this file.
  */
 const INCLUDE_DEV_CONNECTOR = PLUGIN_MODE === "local";
 /**
- * Origine de backend à écrire dans les profils d'une variante LIVRABLE. Vide par défaut, et c'est
- * le point : sans valeur explicite, les liaisons vers le backend de PREUVE sont retirées de ce
- * qui part chez un client (voir `lib/dev-backend.cjs`).
+ * Backend origin to write into a SHIPPABLE variant's profiles. Empty by
+ * default, and that is the point: without an explicit value, the bindings
+ * to the PROOF backend are removed from what leaves for a client (see
+ * `lib/dev-backend.cjs`).
  *
- * ⚠️ **Ne jamais faire dépendre ce défaut d'un fichier présent sur la machine qui construit.** La
- * tentation est de renseigner l'origine « si le bootstrap dev existe » — ce serait un livrable
- * dont le CONTENU varie selon qui lance le build, c'est-à-dire très exactement le défaut que
- * `connector.local.js` a coûté en juillet (vert chez celui qui l'avait, rouge en CI, 8 specs).
+ * ⚠️ **Never make this default depend on a file present on the building
+ * machine.» The temptation is to fill the origin "if the dev bootstrap
+ * exists" — that would be a deliverable whose CONTENT varies by who runs
+ * the build, i.e. exactly the defect `connector.local.js` cost in July
+ * (green for whoever had it, red in CI, 8 specs).
  *
- * Usage — éprouver le cycle hors-ligne complet sur `deploy-full` :
+ * Usage — exercising the full offline cycle on `deploy-full`:
  *   GEOLEAF_BACKEND_BASE_URL=https://qgis.geoleaf.dev npm run build:deploy
  */
 const BACKEND_BASE_URL = process.env.GEOLEAF_BACKEND_BASE_URL?.trim() || null;
@@ -581,24 +632,27 @@ function ensureDir(p) {
 }
 
 /**
- * Empreinte de contenu courte d'un fichier — le remplaçant de `Date.now()` (S5.8).
+ * Short content fingerprint of a file — `Date.now()`'s replacement.
  *
- * 🛑 **Un horodatage de build n'identifie pas un contenu, il identifie un BUILD.** Le
- * cache-busting portait `?v=<Date.now()>` : à chaque déploiement, l'entrée ESM et les bundles
- * de plugins changeaient d'URL — donc étaient re-téléchargés en entier — alors qu'ils étaient
- * octet pour octet identiques. Mesuré avant correctif : ~101 Ko gz (`deploy-full`) / ~71 Ko
- * (`deploy-core`) redemandés pour rien à chaque mise en ligne.
+ * 🛑 **A build timestamp does not identify a content, it identifies a
+ * BUILD.» Cache-busting carried `?v=<Date.now()>`: at every deployment,
+ * the ESM entry and the plugin bundles changed URL — hence were
+ * re-downloaded whole — while byte-for-byte identical. Measured before the
+ * fix: ~101 KB gz (`deploy-full`) / ~71 KB (`deploy-core`) re-requested
+ * for nothing at every release.
  *
- * Une empreinte de contenu inverse la propriété : l'URL ne change QUE si le fichier change.
- * C'est aussi ce qui rend le build déterministe — deux builds de la même source produisent
- * exactement le même déployé, ce que `check-build-determinism.cjs --deploy` vérifie.
+ * A content fingerprint inverts the property: the URL only changes IF the
+ * file changes. It is also what makes the build deterministic — two builds
+ * of the same source produce exactly the same deploy, which
+ * `check-build-determinism.cjs --deploy` verifies.
  *
- * ⚠️ Tronqué à 8 hexadécimaux, comme `gen-api-surface.cjs` : c'est un cache-buster, pas une
- * garantie d'intégrité. Une collision changerait le contenu sans changer l'URL, ce qui est le
- * risque qu'un `?v=` accepte par nature — 32 bits suffisent devant une poignée d'assets.
+ * ⚠️ Truncated to 8 hex chars, like `gen-api-surface.cjs`: it is a
+ * cache-buster, not an integrity guarantee. A collision would change the
+ * content without changing the URL, which is the risk a `?v=` accepts by
+ * nature — 32 bits suffice for a handful of assets.
  *
- * @param {string} absPath Chemin absolu du fichier à empreindre.
- * @returns {string} 8 caractères hexadécimaux.
+ * @param {string} absPath Absolute path of the file to fingerprint.
+ * @returns {string} 8 hexadecimal characters.
  */
 function contentTag(absPath) {
     return crypto.createHash("sha256").update(fs.readFileSync(absPath)).digest("hex").slice(0, 8);
@@ -612,12 +666,13 @@ function contentTag(absPath) {
  * @param {(name: string) => boolean} [keepFile] receives the BASENAME of each regular file;
  *   return `false` to skip it. Directories are always descended into. Omitted ⇒ copy all.
  *
- * ⚠️ S6.6 — le filtre existe parce que ce `copyDir` était le plus gros porteur de sourcemaps
- * du déployé, et le plus discret : `dist/chunks/` était copié EN BLOC, donc ses 5 `.map`
- * entraient sans qu'aucune ligne du script ne les nomme. Le pré-vol du sprint avait compté
- * 4 sourcemaps par variante en listant `dist/*.map` — non récursif —, et il y en avait 9.
- * C'est le corollaire « le pré-vol peut porter la cécité qu'il mesure », commis deux fois de
- * suite sur le même défaut : le relevé qui a ouvert B-136 était lui aussi un `ls` trop court.
+ * ⚠️ The filter exists because this `copyDir` was the deploy's biggest
+ * sourcemap carrier, and the most discreet: `dist/chunks/` was copied AS A
+ * BLOCK, so its 5 `.map` entered with no script line naming them. The
+ * sprint's preflight had counted 4 sourcemaps per variant by listing
+ * `dist/*.map` — non-recursive —, and there were 9. The corollary "the
+ * preflight can carry the blindness it measures", committed twice in a row
+ * on the same defect: the original survey was also a too-short `ls`.
  */
 function copyDir(src, dest, keepFile) {
     ensureDir(dest);
@@ -630,21 +685,23 @@ function copyDir(src, dest, keepFile) {
 }
 
 /**
- * S6.6 — le déployé n'expédie AUCUNE sourcemap. Arbitré le 08/08/2026 avec Mattieu.
+ * The deploy ships NO sourcemap. Arbitrated on 08/08/2026 with Mattieu.
  *
- * Mesuré avant correctif : **9 fichiers `.map` par variante, 1 309 Ko** (3 435 Ko sur la
- * variante instrumentée), soit ≈ 5,9 Mo sur les trois — dont `geoleaf.esm.js.map` (313 Ko) et
- * `geoleaf-main.min.css.map` (294 Ko), qui exposent l'INTÉGRALITÉ des sources du core.
+ * Measured before the fix: **9 `.map` files per variant, 1,309 KB**
+ * (3,435 KB on the instrumented variant), i.e. ≈ 5.9 MB over the three —
+ * including `geoleaf.esm.js.map` (313 KB) and `geoleaf-main.min.css.map`
+ * (294 KB), which expose the ENTIRETY of the core's sources.
  *
- * Le motif décisif n'est pas le poids : c'est que la règle était **déjà écrite dans ce
- * fichier** et n'était pas appliquée au code maison. La copie de MapLibre refuse délibérément
- * sa sourcemap depuis le S5 en invoquant « les sourcemaps exposées en production », et renvoie
- * nommément à S6.6 pour trancher le reste. Le dépôt n'est par ailleurs pas encore public, et
- * son historique porte un secret réel (B-101).
+ * The decisive motive is not the weight: it is that the rule was **already
+ * written in this file** and not applied to our own code. The MapLibre
+ * copy deliberately refuses its sourcemap, invoking "sourcemaps exposed in
+ * production", and refers by name to this arbitration to settle the rest.
+ * The public repo was moreover born from a single commit — the workshop
+ * history, itself, carries a real secret.
  *
- * ⚠️ Ce prédicat est la SEULE définition de « c'est une sourcemap » du script. Les sites de
- * copie s'y réfèrent tous, pour qu'un futur artefact `.map` ne dépende pas d'avoir pensé à le
- * lister quelque part.
+ * ⚠️ This predicate is the script's ONLY definition of "this is a
+ * sourcemap". The copy sites all refer to it, so a future `.map` artefact
+ * does not depend on having thought of listing it somewhere.
  */
 const isSourceMap = (name) => name.endsWith(".map");
 
@@ -661,55 +718,61 @@ function countFiles(dir) {
     return n;
 }
 
-// ── Allègement des données de profil (roadmap socle-init, S4.1) ──────────
+// ── Profile-data slimming ─────────────────────
 //
-// Les GeoJSON du premier écran pèsent 904 Ko gz sur ~1 174 : 77 % de ce que la page charge.
-// Ces deux nombres sont les SEULS réglages, et ils sont mesurés, pas choisis :
+// The first screen's GeoJSON weigh 904 KB gz out of ~1,174: 77% of what
+// the page loads. These two numbers are the ONLY settings, and they are
+// measured, not chosen:
 //
-//   • 5 décimales ≈ **1,1 m au sol** — trois ordres de grandeur sous le pixel à tout zoom
-//     livré, donc strictement invisible. La donnée source porte jusqu'à 15 décimales, soit
-//     l'échelle du nanomètre : c'est ce gaspillage-là qui pèse, et il rend **26,9 %** à lui
-//     seul, sans retirer un seul sommet.
-//   • **Aucune simplification de géométrie** — `GEOJSON_TOLERANCE_DEG` vaut 0, et ce zéro est
-//     une DÉCISION mesurée, pas un réglage oublié. Voir juste en dessous.
+//   • 5 decimals ≈ **1.1 m on the ground** — three orders of magnitude
+//     below the pixel at any shipped zoom, hence strictly invisible. The
+//     source data carries up to 15 decimals, i.e. nanometre scale: that
+//     waste is what weighs, and it returns **26.9%** on its own, without
+//     removing a single vertex.
+//   • **No geometry simplification** — `GEOJSON_TOLERANCE_DEG` is 0, and
+//     that zero is a measured DECISION, not a forgotten setting. See just below.
 //
-// 🛑 **DOUGLAS-PEUCKER A ÉTÉ IMPLÉMENTÉ, MESURÉ, PUIS DÉSARMÉ.** Le code vit toujours dans
-// `lib/geojson-slim.cjs` et se rallume en montant cette constante ; ce qui suit est le relevé
-// qui a fait renoncer, pour qu'on ne refasse pas le chemin de mémoire :
+// 🛑 **DOUGLAS-PEUCKER WAS IMPLEMENTED, MEASURED, THEN DISARMED.» The code
+// still lives in `lib/geojson-slim.cjs` and re-arms by raising this
+// constant; what follows is the record that led to renouncing, so the path
+// is not redone from memory:
 //
-//   ‣ À 11 m de tolérance, DP ne rend que **24,8 Ko gz sur les 240,8 économisés — 10 %**.
-//     Les 216 autres viennent de l'arrondi seul.
-//   ‣ Et RDP **sature sa tolérance** : sur les 646 chemins effectivement simplifiés, écart
-//     médian **7,2 m**, p99 **11,09 m**, maximal **11,1 m** contre un majorant de 11,1. Le
-//     seuil n'est pas un pire cas rare, c'est le régime courant.
-//   ‣ 11 m valent ~0,3 px au zoom 12 mais **~21 px au zoom 18**, atteignable puisque les fonds
-//     de carte montent à 17-20. Sur une limite d'aire protégée comparée à de l'imagerie, ça se
-//     voit.
+//   ‣ At 11 m tolerance, DP only returns **24.8 KB gz of the 240.8 saved —
+//     10%**. The other 216 come from rounding alone.
+//   ‣ And RDP **saturates its tolerance**: over the 646 paths effectively
+//     simplified, median deviation **7.2 m**, p99 **11.09 m**, max
+//     **11.1 m** against a bound of 11.1. The threshold is not a rare
+//     worst case, it is the usual regime.
+//   ‣ 11 m are ~0.3 px at zoom 12 but **~21 px at zoom 18**, reachable
+//     since the basemaps go up to 17-20. On a protected-area boundary
+//     compared against imagery, it shows.
 //
-//   ⇒ DP portait **10 % du gain et 100 % du risque**. Retiré.
+//   ⇒ DP carried **10% of the gain and 100% of the risk.» Removed.
 //
-// ⚠️ **Si on le rallume un jour, ne pas monter la tolérance sans changer d'outil** : la
-// simplification est par géométrie, sans topologie partagée, donc deux polygones mitoyens
-// peuvent voir leur frontière commune diverger et ouvrir une fente. Il faudrait un
-// simplificateur TOPOLOGIQUE (`mapshaper -simplify`), pas un nombre plus grand ici.
+// ⚠️ **If it is ever re-armed, do not raise the tolerance without changing
+// tools**: the simplification is per geometry, without shared topology, so
+// two adjoining polygons can see their common boundary diverge and open a
+// slit. It would take a TOPOLOGICAL simplifier (`mapshaper -simplify`),
+// not a bigger number here.
 //
-// 🛑 Enfin, le « −60 à −80 % » qu'annonçait la roadmap n'était atteignable à AUCUNE tolérance
-// raisonnable : mesuré sur ces fichiers, −52,5 % seulement à 56 m. C'était l'attente usuelle
-// de l'algorithme sur des données brutes, pas une mesure sur celles-ci.
+// 🛑 Finally, the "−60 to −80%" the plan announced was reachable at NO
+// reasonable tolerance: measured on these files, only −52.5% at 56 m. It
+// was the algorithm's usual expectation on raw data, not a measure on these.
 const GEOJSON_DECIMALS = 5;
 const GEOJSON_TOLERANCE_DEG = 0;
 
 /**
- * Allège en place les `.geojson` d'un profil DÉJÀ COPIÉ dans la variante.
+ * Slims in place the `.geojson` of a profile ALREADY COPIED into the variant.
  *
- * ⚠️ Opère sur la COPIE, jamais sur `profiles/` — la source reste la donnée de référence,
- * à pleine précision, et une tolérance qu'on regretterait se corrige en rebâtissant.
+ * ⚠️ Operates on the COPY, never on `profiles/` — the source stays the
+ * reference data, at full precision, and a regretted tolerance is fixed by
+ * rebuilding.
  *
- * Aucune liste de couches : tous les `.geojson` du profil y passent. Une table nommant les
- * trois couches lourdes aurait divergé au premier ajout de couche, et se serait tue en le
- * faisant — le mode d'échec que ce dépôt mesure partout ailleurs.
+ * No layer list: all the profile's `.geojson` go through. A table naming
+ * the three heavy layers would have diverged at the first layer added, and
+ * gone quiet doing so — the failure mode this repo measures everywhere else.
  *
- * @param {string} profileDest Répertoire du profil dans `outDir`.
+ * @param {string} profileDest The profile's directory in `outDir`.
  * @param {string} profileId
  * @returns {void}
  */
@@ -724,7 +787,7 @@ function slimProfileData(profileDest, profileId) {
     };
     if (!fs.existsSync(profileDest)) return;
     walk(profileDest);
-    if (files.length === 0) return; // profil sans donnée locale — légitime (origines distantes)
+    if (files.length === 0) return; // profile without local data — legitimate (remote origins)
 
     let before = 0;
     let after = 0;
@@ -743,9 +806,9 @@ function slimProfileData(profileDest, profileId) {
             vBefore += r.verticesBefore;
             vAfter += r.verticesAfter;
         } catch (err) {
-            // Un fichier de données illisible doit ARRÊTER le build. Le copier tel quel
-            // produirait un déployé dont une couche est silencieusement vide — et c'est
-            // précisément ce genre de silence que le sprint traque.
+            // An unreadable data file must STOP the build. Copying it as-is
+            // would produce a deploy with a silently empty layer — and
+            // precisely that kind of silence is what is being hunted.
             log.err(
                 `profiles/${profileId}/ — ${path.relative(profileDest, file)} is not valid ` +
                     `GeoJSON: ${err instanceof Error ? err.message : String(err)}`
@@ -753,7 +816,7 @@ function slimProfileData(profileDest, profileId) {
             process.exit(1);
         }
     }
-    // Le décompte est dérivé de ce qui a été traité, jamais écrit à la main (doctrine B-43).
+    // The count is derived from what was processed, never hand-written.
     const pct = before > 0 ? ((1 - after / before) * 100).toFixed(1) : "0.0";
     log.ok(
         `profiles/${profileId}/ — ${files.length} geojson allégés : ` +
@@ -762,34 +825,38 @@ function slimProfileData(profileDest, profileId) {
     );
 }
 
-// ── Pré-compression des artefacts déployés (socle-init S4.2) ─────────────
+// ── Pre-compression of the deployed artefacts ──────────
 //
-// Mesuré au pré-vol : `find deploy -name "*.gz" -o -name "*.br"` rendait VIDE. La compression
-// dépendait donc entièrement du serveur, à la volée, à chaque requête — et sans elle ce sont
-// les octets bruts qui partent.
+// Measured at preflight: `find deploy -name "*.gz" -o -name "*.br"`
+// returned EMPTY. Compression thus depended entirely on the server, on the
+// fly, at every request — and without it the raw bytes are what leaves.
 //
-// 🛑 **ET UN ARTEFACT QUE PERSONNE NE SERT NE SERT À RIEN.** `docker/nginx.dev.conf` ne portait
-// ni `gzip_static` ni `brotli_static` : produire les fichiers sans câbler le serveur aurait
-// fait sortir cette tâche VERTE en n'ayant rien changé pour l'utilisateur — exactement le
-// profil « garde jamais vue rougir » que ce dépôt traque. Le `gzip_static on;` est posé dans
-// le même lot, et la vérification est une requête réelle :
+// 🛑 **AND AN ARTEFACT NOBODY SERVES SERVES NOTHING.»
+// `docker/nginx.dev.conf` carried neither `gzip_static` nor
+// `brotli_static`: producing the files without wiring the server would
+// have let this task exit GREEN having changed nothing for the user —
+// exactly the "guard never seen red" profile this repo hunts. The
+// `gzip_static on;` is set in the same batch, and the verification is a
+// real request:
 //
 //     curl -H 'Accept-Encoding: gzip' -sI https://demo.full.geoleaf.local.test/dist/geoleaf.esm.js
-//     → Content-Encoding: gzip, et un Content-Length égal à celui du .gz sur disque
+//     → Content-Encoding: gzip, and a Content-Length equal to the on-disk .gz's
 //
-// ⚠️ **Le `.br` est produit mais N'EST PAS SERVI EN LOCAL.** `nginx:alpine` n'embarque pas
-// `ngx_brotli` (module tiers, à compiler). Il est émis pour le serveur de production, et ce
-// fait est écrit ici plutôt que tu : croire éprouvé ce qui ne l'est pas est le mode d'échec
-// n° 5. Brotli rend typiquement 15-20 % de plus que gzip sur du texte.
+// ⚠️ **The `.br` is produced but NOT SERVED LOCALLY.» `nginx:alpine` does
+// not embark `ngx_brotli` (third-party module, to compile). It is emitted
+// for the production server, and that fact is written here rather than
+// silenced: believing exercised what is not is the fossilising failure
+// mode. Brotli typically returns 15-20% more than gzip on text.
 //
-// Seuil : en dessous, l'en-tête et le coût de décompression dépassent le gain, et un `.gz`
-// plus gros que son original est un piège que `gzip_static` servirait quand même.
+// Threshold: below it, the header and decompression cost exceed the gain,
+// and a `.gz` bigger than its original is a trap `gzip_static` would serve anyway.
 const PRECOMPRESS_MIN_BYTES = 1024;
-// ⚠️ `.mjs` est aussi listé que `.js`, et son absence aurait été INVISIBLE. Depuis MapLibre 6,
-// les ~273 Ko gz du moteur vendoré sont dans des `.mjs` : sans cette entrée ils partaient
-// NON COMPRESSÉS, soit ~1,06 Mo brut sur le fil. Et rien ne l'aurait dit — `check-app-payload`
-// gzippe en mémoire (`gzipSize()`), il ne lit jamais les `.gz` du disque, donc il aurait
-// continué d'annoncer ~289 Ko gz pendant que nginx en servait 1 060.
+// ⚠️ `.mjs` is listed as well as `.js`, and its absence would have been
+// INVISIBLE. Since MapLibre 6, the vendored engine's ~273 KB gz are in
+// `.mjs` files: without this entry they left UNCOMPRESSED, i.e. ~1.06 MB
+// raw on the wire. And nothing would have said so — `check-app-payload`
+// gzips in memory (`gzipSize()`), it never reads the disk's `.gz`, so it
+// would have kept announcing ~289 KB gz while nginx served 1,060.
 const PRECOMPRESS_EXT = new Set([
     ".js",
     ".mjs",
@@ -803,42 +870,109 @@ const PRECOMPRESS_EXT = new Set([
 ]);
 
 /**
- * Émet un `.gz` et un `.br` à côté de chaque artefact compressible d'une variante.
+ * Emits a `.gz` and a `.br` beside each compressible artefact of a variant.
  *
- * L'allowlist d'extensions écarte **trois** classes, pour trois motifs distincts — et les
- * énumérer toutes est ce qui empêche un lecteur de bonne foi de l'élargir :
+ * The extension allowlist sets aside **three** classes, for three distinct
+ * motives — and enumerating them all is what keeps a good-faith reader
+ * from widening it:
  *
- *   1. **Binaires déjà compressés** (PNG, WebP, tuiles) — les recompresser coûterait du disque
- *      pour un gain nul ou négatif.
- *   2. 🛑 **Formats servis par requêtes HTTP Range — `.fgb`.** NE PAS AJOUTER. `gzip_static on;`
- *      est déclaré au niveau `http` de `docker/nginx.dev.conf`, donc il s'appliquerait à tous
- *      les vhosts : un `.fgb.gz` posé à côté serait servi avec `Content-Encoding: gzip`, et les
- *      Range du mode bbox de FlatGeobuf porteraient sur les octets COMPRESSÉS
- *      (`fgb-bbox-filter.ts`, « it handles Range requests internally »). Le risque est
- *      aujourd'hui LATENT — aucun profil livré ne pose `data.bbox`, donc `fgb-loader.ts` fait
- *      un `fetch()` plein fichier que le navigateur décompresse de façon transparente — et
- *      l'ajouter l'armerait pour le premier profil qui activera le bbox.
- *   3. **Artefacts que le navigateur ne demande jamais** — `.qml`, styles QGIS qui voyagent
- *      dans la copie en bloc des profils. Les compresser n'achète pas un octet de payload.
+ *   1. **Already-compressed binaries** (PNG, WebP, tiles) — recompressing
+ *      them would cost disk for a nil or negative gain.
+ *   2. 🛑 **Formats served by HTTP Range requests — `.fgb`.» DO NOT ADD.
+ *      `gzip_static on;` is declared at `http` level in
+ *      `docker/nginx.dev.conf`, so it would apply to all vhosts: an
+ *      `.fgb.gz` set beside would be served with `Content-Encoding: gzip`,
+ *      and FlatGeobuf's bbox-mode Ranges would bear on the COMPRESSED
+ *      bytes (`fgb-bbox-filter.ts`, "it handles Range requests
+ *      internally"). The risk is LATENT today — no shipped profile sets
+ *      `data.bbox`, so `fgb-loader.ts` does a full-file `fetch()` the
+ *      browser transparently decompresses — and adding it would arm it for
+ *      the first profile that activates bbox.
+ *   3. **Artefacts the browser never requests** — `.qml`, QGIS styles that
+ *      travel in the profiles' block copy. Compressing them buys not one
+ *      payload byte.
  *
- * ⚠️ **Ne pas inverser en denylist.** Une denylist rendrait `.fgb` compressible par défaut,
- * c'est-à-dire exactement le défaut que le motif 2 interdit. Ce commentaire n'a nommé que le
- * motif 1 jusqu'au 08/08/2026 : une allowlist muette sur deux de ses trois raisons se fait
- * élargir par le premier lecteur qui la croit incomplète.
+ * ⚠️ **Do not invert into a denylist.» A denylist would make `.fgb`
+ * compressible by default, i.e. exactly the defect motive 2 forbids. This
+ * comment only named motive 1 until 08/08/2026: an allowlist silent on two
+ * of its three reasons gets widened by the first reader who believes it
+ * incomplete.
  *
- * Un `.gz` plus gros que son original est jeté — `gzip_static` ne compare pas les tailles, il
- * sert le `.gz` s'il existe.
+ * A `.gz` bigger than its original is thrown away — `gzip_static` does not
+ * compare sizes, it serves the `.gz` if it exists.
  *
- * @param {string} outDir Répertoire de la variante.
- * @param {string} variantName Pour le journal.
+ * @param {string} outDir The variant's directory.
+ * @param {string} variantName For the log.
  * @returns {void}
  */
+/**
+ * Rereads a compressed artefact FROM DISK, decompresses it, and compares
+ * byte for byte to the source. Errors out at the first deviation.
+ *
+ * 🛑 WHY REREAD THE DISK RATHER THAN VERIFY THE IN-MEMORY BUFFER.
+ * Verifying `zlib.gunzipSync(g)` against `buf` only proves zlib's symmetry
+ * — a property of the library, not of our deliverable. What leaves for the
+ * client is the FILE: rereading `${p}.gz` additionally catches a truncated
+ * write, a full disk, a path overwritten by a later step.
+ *
+ * 🛑 WHAT THIS REPAIRS. Each variant carries ~150 `.br` twins and as many
+ * `.gz`. **Nothing exercised them**: the dev nginx cannot serve Brotli
+ * (`nginx:alpine` does not embark `ngx_brotli`), the CI does not serve
+ * them either, and no gate opened them. The first server to serve them
+ * would have been a client's. ⚠️ And the original instruction suggested
+ * taking inspiration from a verification that would exist "already for the
+ * `.gz`": **there was none either** — the model to imitate is this one.
+ *
+ * ✅ The verdict is rendered **without a server**: decompressing is a
+ * computation, serving Brotli in CI would be out of proportion with what
+ * we seek to know.
+ *
+ * @param {string} cheminArtefact Path of the `.gz` or `.br` just written.
+ * @param {Buffer} source The original content, as it was compressed.
+ * @param {(b: Buffer) => Buffer} decompresser `gunzipSync` or `brotliDecompressSync`.
+ * @param {string} variantName Variant name, for the message.
+ * @returns {void}
+ */
+function verifierArtefactCompresse(cheminArtefact, source, decompresser, variantName) {
+    const zlib = require("node:zlib");
+    let rendu;
+    try {
+        rendu = decompresser(fs.readFileSync(cheminArtefact));
+    } catch (e) {
+        log.err(
+            `${variantName} — artefact compressé ILLISIBLE : ${path.relative(ROOT, cheminArtefact)}\n` +
+                `  ${e && e.message ? e.message : e}\n` +
+                `  Il serait parti chez un client tel quel : aucun serveur de ce dépôt ne le sert, ` +
+                `donc rien d'autre ne l'aurait ouvert.`
+        );
+        process.exit(1);
+    }
+    // ⚠️ WHAT THIS CHECK DOES NOT SEE, measured on 19/08/2026 by mutating
+    // it: bytes APPENDED at the TAIL of a brotli stream are silently
+    // tolerated by the decoder, which stops at the end-of-stream mark. An
+    // artefact corrupted by appending — a copy interrupted then resumed, a
+    // concatenating transfer — would thus pass here. An INTERNAL
+    // corruption is well caught: the same mutation applied mid-stream
+    // exits as "UNREADABLE", and the build stops. Saying it beats letting
+    // total integrity be believed.
+    if (rendu.length !== source.length || !rendu.equals(source)) {
+        log.err(
+            `${variantName} — artefact compressé DIVERGENT : ${path.relative(ROOT, cheminArtefact)}\n` +
+                `  décompressé ${rendu.length} octets, source ${source.length} octets.\n` +
+                `  Le fichier servi ne rendrait pas la source.`
+        );
+        process.exit(1);
+    }
+    void zlib; // the require above documents the dependency; the function receives its decompressor
+}
+
 function precompress(outDir, variantName) {
     const zlib = require("node:zlib");
     let files = 0;
     let raw = 0;
     let gz = 0;
     let br = 0;
+    let verifies = 0;
     const walk = (dir) => {
         for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
             const p = path.join(dir, e.name);
@@ -858,14 +992,20 @@ function precompress(outDir, variantName) {
             });
             files++;
             raw += buf.length;
+            // ⚠️ The twin is only written IF smaller than the source — so
+            // its absence is legitimate, and only what was really written is verified.
             if (g.length < buf.length) {
                 fs.writeFileSync(`${p}.gz`, g);
+                verifierArtefactCompresse(`${p}.gz`, buf, zlib.gunzipSync, variantName);
+                verifies++;
                 gz += g.length;
             } else {
                 gz += buf.length;
             }
             if (b.length < buf.length) {
                 fs.writeFileSync(`${p}.br`, b);
+                verifierArtefactCompresse(`${p}.br`, buf, zlib.brotliDecompressSync, variantName);
+                verifies++;
                 br += b.length;
             } else {
                 br += buf.length;
@@ -875,29 +1015,43 @@ function precompress(outDir, variantName) {
     if (!fs.existsSync(outDir)) return;
     walk(outDir);
     if (files === 0) {
-        // Anti-gate-vide : une variante bâtie sans un seul fichier compressible signale une
-        // allowlist devenue aveugle, pas un déployé légitime.
+        // Anti-empty-gate: a variant built without a single compressible
+        // file signals an allowlist gone blind, not a legitimate deploy.
         log.err(`${variantName} — precompress found 0 compressible file. The allowlist is blind.`);
+        process.exit(1);
+    }
+    if (verifies === 0) {
+        // Anti-empty-gate, second direction: `files > 0` can hold while NO
+        // twin was written (all bigger than their source). The integrity
+        // check would then have verified nothing, and its silence would be
+        // indistinguishable from a success.
+        log.err(
+            `${variantName} — ${files} fichier(s) compressible(s), mais 0 artefact écrit : ` +
+                `le contrôle d'intégrité n'a rien pu vérifier.`
+        );
         process.exit(1);
     }
     const pct = (n) => ((1 - n / raw) * 100).toFixed(1);
     log.ok(
         `${variantName} — ${files} fichiers pré-compressés : ` +
             `${(raw / 1024 / 1024).toFixed(1)} Mio bruts → ${(gz / 1024 / 1024).toFixed(1)} gz (-${pct(gz)} %) ` +
-            `/ ${(br / 1024 / 1024).toFixed(1)} br (-${pct(br)} %, non servi en local)`
+            `/ ${(br / 1024 / 1024).toFixed(1)} br (-${pct(br)} %, non servi en local) ` +
+            `· ${verifies} artefact(s) relu(s) et décompressé(s), 0 divergence`
     );
 }
 
-// ── Dérivation critique au boot (roadmap socle-init, S3 puis S4) ─────────
+// ── Boot-critical derivation ─────────────────────────────────────────────
 //
-// ⚠️ Les trois extracteurs ont DÉMÉNAGÉ dans `lib/boot-assets.cjs` — `extractEagerChunks`,
-// `extractHtmlAssetRefs` et `deriveBootCriticalAssets`. Ils sont importés en tête de ce
-// fichier. Le motif du déménagement est le Sprint 4 : sa gate de poids a besoin EXACTEMENT du
-// même ensemble, pour le peser au lieu de l'injecter. Recopier les extracteurs aurait produit
-// deux dérivations dont la moins maintenue serait sortie verte en mesurant autre chose.
+// ⚠️ The three extractors MOVED to `lib/boot-assets.cjs` —
+// `extractEagerChunks`, `extractHtmlAssetRefs` and
+// `deriveBootCriticalAssets`. They are imported at the top of this file.
+// The move's motive is the payload gate: it needs EXACTLY the same set, to
+// weigh it instead of injecting it. Copying the extractors would have
+// produced two derivations of which the less maintained would have exited
+// green measuring something else.
 //
-// `buildPreloadTags` reste ici : il rend du MARKUP, ce qui est le métier de ce script et
-// d'aucun autre.
+// `buildPreloadTags` stays here: it renders MARKUP, which is this script's
+// trade and no other's.
 
 /**
  * Renders the `<head>` preload block: one `modulepreload` per eagerly-imported chunk, plus
@@ -1016,20 +1170,22 @@ function main() {
                   includeEditor: false,
                   includeDevConnector: false,
               },
-              // Full bundle. ⚠️ **C'est la SEULE variante portant l'édition ET `offline-ui`**,
-              // donc la seule où le cycle hors-ligne complet — capture de POI, file d'attente,
-              // rejeu — est éprouvable. Les specs E2E qui visaient `deploy-addpoi` pour cette
-              // raison exacte visent celle-ci depuis 5.5 : ce n'est pas un changement de port,
-              // c'est un changement de variante porteuse.
+              // Full bundle. ⚠️ **The ONLY variant carrying editing AND
+              // `offline-ui`**, hence the only one where the full offline
+              // cycle — POI capture, queue, replay — is exercisable. The
+              // E2E specs that targeted `deploy-addpoi` for that exact
+              // reason target this one since the merge: not a port change,
+              // a change of carrying variant.
               {
                   name: "deploy-full",
                   includeStorage: true,
                   includeCog: true,
                   includeEditor: true,
-                  // 🛑 FAUX EN DUR, ET C'EST LE POINT. `deploy-full` est un LIVRABLE. Aucune
-                  // condition, aucune variable d'environnement, aucun drapeau de ligne de
-                  // commande ne doit pouvoir mettre un jeton ici : la seule façon d'en obtenir
-                  // un est de construire `deploy-local`, qui n'est pas dans cette liste.
+                  // 🛑 HARDCODED FALSE, AND THAT IS THE POINT. `deploy-full`
+                  // is a DELIVERABLE. No condition, no environment
+                  // variable, no command-line flag must be able to put a
+                  // token here: the only way to get one is to build
+                  // `deploy-local`, which is not in this list.
                   includeDevConnector: false,
               },
           ]
@@ -1051,7 +1207,7 @@ function main() {
     // that exited 0. A build must not destroy output it does not produce.
     // ⚠️ The two names above are the STATE OF 2026-07-23, kept because the incident is the
     // reason this cleanup is scoped. `deploy-addpoi` and port 8770 both disappeared with the
-    // addpoi→editor merge (Sprint 5, 2026-08-05); do not read them as current.
+    // addpoi→editor merge (2026-08-05); do not read them as current.
     // deploy/ itself is never removed: the dev server (docker-compose.dev.yml)
     // bind-mounts this folder read-only, and a full rmSync would invalidate the mount.
     const isRootDeploy = variants.some((v) => !v.name); // --plugins=none writes into deploy/ directly
@@ -1143,9 +1299,9 @@ function main() {
     let globalOk = true;
     for (const v of variants) {
         const outDir = v.name ? path.join(DEPLOY, v.name) : DEPLOY;
-        // Nommer la variante dans les erreurs de copie de bundle (`throwMissingBundle`).
-        // Même dérivation que le `variantLabel` du patch d'`index.html` plus bas — les deux
-        // désignent la même variante, à deux étapes différentes du même tour de boucle.
+        // Name the variant in the bundle-copy errors (`throwMissingBundle`).
+        // Same derivation as the `index.html` patch's `variantLabel` below —
+        // both designate the same variant, at two steps of the same loop turn.
         const variantName = v.name || PLUGIN_MODE;
         if (v.name) {
             log.section(`📁 Variant: ${v.name}`);
@@ -1156,10 +1312,11 @@ function main() {
         log.section("📦 Copying dist artefacts → dist/");
         ensureDir(path.join(outDir, "dist"));
 
-        // S6.6 — `geoleaf.esm.js.map` (313 Ko) et `geoleaf-main.min.css.map` (294 Ko) sont
-        // RETIRÉS de cette liste : ils portaient à eux deux l'intégralité des sources du core
-        // dans le déployé. C'est ce bloc-ci, et non les copies de plugin, que l'énoncé de la
-        // roadmap ne comptait pas — il annonçait « seuls geocoding et table ».
+        // `geoleaf.esm.js.map` (313 KB) and `geoleaf-main.min.css.map`
+        // (294 KB) are REMOVED from this list: between them they carried
+        // the entirety of the core's sources into the deploy. This block,
+        // and not the plugin copies, is what the plan's wording did not
+        // count — it announced "only geocoding and table".
         const coreDistFiles = ["geoleaf.esm.js", "geoleaf-main.min.css"];
         for (const f of coreDistFiles) {
             const src = path.join(DIST, f);
@@ -1171,12 +1328,12 @@ function main() {
             }
         }
 
-        // 3a — ESM chunks (Sprint 6: code splitting produces dist/chunks/)
+        // 3a — ESM chunks (code splitting produces dist/chunks/)
         const chunksDir = path.join(DIST, "chunks");
         if (fs.existsSync(chunksDir)) {
-            // S6.6 — `(n) => !isSourceMap(n)` : sans ce filtre, ce copyDir en bloc était le
-            // plus GROS porteur de sourcemaps du déployé (5 des 9) et le plus discret, aucune
-            // ligne du script ne les nommant.
+            // `(n) => !isSourceMap(n)`: without this filter, this block
+            // copyDir was the deploy's BIGGEST sourcemap carrier (5 of the
+            // 9) and the most discreet, no script line naming them.
             copyDir(chunksDir, path.join(outDir, "dist", "chunks"), (n) => !isSourceMap(n));
             const nChunks = countFiles(path.join(outDir, "dist", "chunks"));
             log.ok(`dist/chunks/ — ${nChunks} files copied (ESM code splitting)`);
@@ -1184,184 +1341,42 @@ function main() {
             log.warn("dist/chunks/ not found — ESM code splitting not active?");
         }
 
-        // 3b — Connector (always included in every variant)
-        {
-            const connectorSrc = path.join(DIST_CONNECTOR, "geoleaf-connector.plugin.js");
-            if (fs.existsSync(connectorSrc)) {
-                fs.copyFileSync(
-                    connectorSrc,
-                    path.join(outDir, "dist", "geoleaf-connector.plugin.js")
+        // 3b — Plugin bundles, driven by the DISCOVERED fleet (package.json#geoleaf).
+        //
+        // One loop replaces twelve hand-written copy blocks. What each descriptor decides:
+        //   - `includeFlag: null` ships in every variant; otherwise the variant matrix's
+        //     flag of that name opts it in (deploy-core sets all three to false).
+        //   - `lazyChunks: true` also copies the code-split side chunks
+        //     (`geoleaf-<name>.<hash>.js`) that the entry imports on first use — without
+        //     them the dynamic import 404s the first time the feature runs (measured on
+        //     realtime-layer's GTFS-RT decoder, print's jsPDF, editor's terra-draw).
+        //   - A missing bundle THROWS. It used to log.warn: a deploy missing its plugins
+        //     shipped with exit code 0, and step 2 of this script only rebuilds 2 of the
+        //     12 bundles it copies — the other 10 can legitimately be absent after a
+        //     clean, and that absence must stop the build, not decorate its log.
+        //
+        // taxonomy + feature-info are NOT in this loop and never will be: both were
+        // reclassified into @geoleaf/core (SR0) and ship inside dist/geoleaf.esm.js.
+        // ⚠️ Sourcemaps are deliberately NOT copied for any plugin.
+        for (const plugin of pluginFleet()) {
+            if (plugin.includeFlag && !v[plugin.includeFlag]) continue;
+            const src = path.join(plugin.dist, plugin.bundle);
+            if (!fs.existsSync(src)) {
+                throwMissingBundle(plugin.bundle, variantName);
+            }
+            fs.copyFileSync(src, path.join(outDir, "dist", plugin.bundle));
+            log.ok(`dist/${plugin.bundle}  (${sizeKB(src)})`);
+            if (plugin.lazyChunks) {
+                // Side chunks share the bundle's stem: `geoleaf-<name>.<hash>.js`.
+                const stem = plugin.bundle.replace(/\.plugin\.js$/, "");
+                const chunkRe = new RegExp(
+                    `^${stem.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\..+\\.js$`
                 );
-                log.ok(`dist/geoleaf-connector.plugin.js  (${sizeKB(connectorSrc)})`);
-            } else {
-                throwMissingBundle("geoleaf-connector.plugin.js", variantName);
-            }
-        }
-
-        // 3b-ws — WebSocket plugin (always included in every variant)
-        {
-            const wsSrc = path.join(DIST_WEBSOCKET, "geoleaf-websocket.plugin.js");
-            if (fs.existsSync(wsSrc)) {
-                fs.copyFileSync(wsSrc, path.join(outDir, "dist", "geoleaf-websocket.plugin.js"));
-                log.ok(`dist/geoleaf-websocket.plugin.js  (${sizeKB(wsSrc)})`);
-            } else {
-                throwMissingBundle("geoleaf-websocket.plugin.js", variantName);
-            }
-        }
-
-        // 3b-rt — Realtime-layer plugin (always included in every variant)
-        {
-            const rtSrc = path.join(DIST_REALTIME, "geoleaf-realtime-layer.plugin.js");
-            if (fs.existsSync(rtSrc)) {
-                fs.copyFileSync(
-                    rtSrc,
-                    path.join(outDir, "dist", "geoleaf-realtime-layer.plugin.js")
-                );
-                log.ok(`dist/geoleaf-realtime-layer.plugin.js  (${sizeKB(rtSrc)})`);
-                // Lazy chunk emitted by code-splitting (gtfs-realtime-bindings/protobufjs/
-                // long, loaded on first GTFS-RT decode) must ship alongside the entry,
-                // otherwise the dynamic import 404s the first time a GTFS-RT layer runs.
-                for (const f of fs.readdirSync(DIST_REALTIME)) {
-                    if (
-                        /^geoleaf-realtime-layer\..+\.js$/.test(f) &&
-                        f !== "geoleaf-realtime-layer.plugin.js"
-                    ) {
-                        fs.copyFileSync(path.join(DIST_REALTIME, f), path.join(outDir, "dist", f));
-                        log.ok(`dist/${f}  (${sizeKB(path.join(DIST_REALTIME, f))})  [lazy chunk]`);
+                for (const f of fs.readdirSync(plugin.dist)) {
+                    if (chunkRe.test(f) && f !== plugin.bundle) {
+                        fs.copyFileSync(path.join(plugin.dist, f), path.join(outDir, "dist", f));
+                        log.ok(`dist/${f}  (${sizeKB(path.join(plugin.dist, f))})  [lazy chunk]`);
                     }
-                }
-            } else {
-                throwMissingBundle("geoleaf-realtime-layer.plugin.js", variantName);
-            }
-        }
-
-        // 3b-fi — File-import plugin (always included in every variant)
-        {
-            const fiSrc = path.join(DIST_FILEIMPORT, "geoleaf-file-import.plugin.js");
-            if (fs.existsSync(fiSrc)) {
-                fs.copyFileSync(fiSrc, path.join(outDir, "dist", "geoleaf-file-import.plugin.js"));
-                log.ok(`dist/geoleaf-file-import.plugin.js  (${sizeKB(fiSrc)})`);
-            } else {
-                throwMissingBundle("geoleaf-file-import.plugin.js", variantName);
-            }
-        }
-
-        // 3b-fgb — FlatGeobuf plugin (always included in every variant)
-        {
-            const fgbSrc = path.join(DIST_FLATGEOBUF, "geoleaf-flatgeobuf.plugin.js");
-            if (fs.existsSync(fgbSrc)) {
-                fs.copyFileSync(fgbSrc, path.join(outDir, "dist", "geoleaf-flatgeobuf.plugin.js"));
-                log.ok(`dist/geoleaf-flatgeobuf.plugin.js  (${sizeKB(fgbSrc)})`);
-            } else {
-                throwMissingBundle("geoleaf-flatgeobuf.plugin.js", variantName);
-            }
-        }
-
-        // 3b-geo — Geocoding plugin (always included in every variant)
-        {
-            const geoSrc = path.join(DIST_GEOCODING, "geoleaf-geocoding.plugin.js");
-            if (fs.existsSync(geoSrc)) {
-                fs.copyFileSync(geoSrc, path.join(outDir, "dist", "geoleaf-geocoding.plugin.js"));
-                log.ok(`dist/geoleaf-geocoding.plugin.js  (${sizeKB(geoSrc)})`);
-                // S6.6 — la copie de `geoleaf-geocoding.plugin.js.map` est RETIRÉE.
-            } else {
-                throwMissingBundle("geoleaf-geocoding.plugin.js", variantName);
-            }
-        }
-
-        // 3b-table — Table plugin (always included in every variant)
-        // Single-file bundle (rollup inlineDynamicImports: true folds the Excel
-        // lazy chunk in), so there is just the entry to copy. S6.6 — la copie de sa
-        // sourcemap est RETIRÉE ; ce bloc et celui de geocoding étaient les deux SEULS que
-        // l'énoncé de la roadmap comptait, sur neuf.
-        {
-            const tableSrc = path.join(DIST_TABLE, "geoleaf-table.plugin.js");
-            if (fs.existsSync(tableSrc)) {
-                fs.copyFileSync(tableSrc, path.join(outDir, "dist", "geoleaf-table.plugin.js"));
-                log.ok(`dist/geoleaf-table.plugin.js  (${sizeKB(tableSrc)})`);
-            } else {
-                throwMissingBundle("geoleaf-table.plugin.js", variantName);
-            }
-        }
-
-        // 3b-tax / 3b-fi — taxonomy + feature-info reclassified into @geoleaf/core (SR0):
-        // they now ship inside dist/geoleaf.esm.js (in-core capabilities), no separate copy.
-
-        // 3b-print — Print plugin (always included in every variant)
-        {
-            const printSrc = path.join(DIST_PRINT, "geoleaf-print.plugin.js");
-            if (fs.existsSync(printSrc)) {
-                fs.copyFileSync(printSrc, path.join(outDir, "dist", "geoleaf-print.plugin.js"));
-                log.ok(`dist/geoleaf-print.plugin.js  (${sizeKB(printSrc)})`);
-                // Lazy chunks emitted by code-splitting (jsPDF + its optional html2canvas/
-                // dompurify deps, loaded on first PDF export) must ship alongside the entry,
-                // otherwise the dynamic import 404s the first time a PDF is exported.
-                for (const f of fs.readdirSync(DIST_PRINT)) {
-                    if (/^geoleaf-print\..+\.js$/.test(f) && f !== "geoleaf-print.plugin.js") {
-                        fs.copyFileSync(path.join(DIST_PRINT, f), path.join(outDir, "dist", f));
-                        log.ok(`dist/${f}  (${sizeKB(path.join(DIST_PRINT, f))})  [lazy chunk]`);
-                    }
-                }
-            } else {
-                throwMissingBundle("geoleaf-print.plugin.js", variantName);
-            }
-        }
-
-        // 3b-measure — Measure plugin (always included in every variant)
-        {
-            const measureSrc = path.join(DIST_MEASURE, "geoleaf-measure.plugin.js");
-            if (fs.existsSync(measureSrc)) {
-                fs.copyFileSync(measureSrc, path.join(outDir, "dist", "geoleaf-measure.plugin.js"));
-                log.ok(`dist/geoleaf-measure.plugin.js  (${sizeKB(measureSrc)})`);
-            } else {
-                throwMissingBundle("geoleaf-measure.plugin.js", variantName);
-            }
-        }
-
-        // 3c — Plugin bundles (selective mode)
-        {
-            if (v.includeStorage) {
-                const src = path.join(DIST_STORAGE, "geoleaf-offline-ui.plugin.js");
-                if (fs.existsSync(src)) {
-                    fs.copyFileSync(src, path.join(outDir, "dist", "geoleaf-offline-ui.plugin.js"));
-                    log.ok(`dist/geoleaf-offline-ui.plugin.js  (${sizeKB(src)})`);
-                } else {
-                    throwMissingBundle("geoleaf-offline-ui.plugin.js", variantName);
-                }
-            }
-            if (v.includeCog) {
-                const src = path.join(DIST_COG, "geoleaf-cog.plugin.js");
-                if (fs.existsSync(src)) {
-                    fs.copyFileSync(src, path.join(outDir, "dist", "geoleaf-cog.plugin.js"));
-                    log.ok(`dist/geoleaf-cog.plugin.js  (${sizeKB(src)})`);
-                } else {
-                    throwMissingBundle("geoleaf-cog.plugin.js", variantName);
-                }
-            }
-            if (v.includeEditor) {
-                const src = path.join(DIST_EDITOR, "geoleaf-editor.plugin.js");
-                if (fs.existsSync(src)) {
-                    fs.copyFileSync(src, path.join(outDir, "dist", "geoleaf-editor.plugin.js"));
-                    log.ok(`dist/geoleaf-editor.plugin.js  (${sizeKB(src)})`);
-                    // Lazy chunks emitted by code-splitting (e.g. the terra-draw drawing
-                    // engine, loaded on first tool activation) must ship alongside the entry,
-                    // otherwise the dynamic import 404s the first time a tool is selected.
-                    for (const f of fs.readdirSync(DIST_EDITOR)) {
-                        if (
-                            /^geoleaf-editor\..+\.js$/.test(f) &&
-                            f !== "geoleaf-editor.plugin.js"
-                        ) {
-                            fs.copyFileSync(
-                                path.join(DIST_EDITOR, f),
-                                path.join(outDir, "dist", f)
-                            );
-                            log.ok(
-                                `dist/${f}  (${sizeKB(path.join(DIST_EDITOR, f))})  [lazy chunk]`
-                            );
-                        }
-                    }
-                } else {
-                    throwMissingBundle("geoleaf-editor.plugin.js", variantName);
                 }
             }
         }
@@ -1373,25 +1388,26 @@ function main() {
             const swCoreSrc = path.join(DIST, "sw-core.js");
             if (fs.existsSync(swCoreSrc)) {
                 fs.copyFileSync(swCoreSrc, path.join(outDir, "sw-core.js"));
-                // ⚠️ `CACHE_VERSION` N'EST PLUS PATCHÉ ICI (S5.8). Il l'était avec un
-                // `Date.now()`, à un moment où ni `index.html` ni la liste pré-cachée
-                // n'existaient encore — une version de cache qui ne pouvait donc rien dire du
-                // contenu qu'elle versionne. Il est désormais dérivé à l'étape 8b, où les assets
-                // sont connus. Voir le bloc `CACHE_VERSION dérivé` plus bas.
+                // ⚠️ `CACHE_VERSION` IS NO LONGER PATCHED HERE. It was, with
+                // a `Date.now()`, at a moment when neither `index.html` nor
+                // the pre-cached list existed yet — a cache version that
+                // could thus say nothing about the content it versions. It
+                // is now derived at step 8b, where the assets are known.
+                // See the derived `CACHE_VERSION` block below.
                 log.ok(`sw-core.js at deploy root  (${sizeKB(swCoreSrc)})`);
             } else {
                 log.warn("dist/sw-core.js not found — core SW not built?");
             }
         }
 
-        // 3e — GeoJSON Web Worker (both modes — Sprint 7 performance)
+        // 3e — GeoJSON Web Worker (both modes)
         // Must live in dist/ so _detectScriptBase() resolves it relative to geoleaf.esm.js
         const workerSrc = path.join(DIST, "geojson-worker.js");
         if (fs.existsSync(workerSrc)) {
             fs.copyFileSync(workerSrc, path.join(outDir, "dist", "geojson-worker.js"));
             log.ok(`dist/geojson-worker.js  (${sizeKB(workerSrc)})`);
         } else {
-            log.warn("dist/geojson-worker.js not found — Sprint 7 worker not built?");
+            log.warn("dist/geojson-worker.js not found — worker not built?");
         }
 
         // 4 — (removed, T1b) The only CSS ever copied here was the pair of demo theme
@@ -1401,44 +1417,51 @@ function main() {
         //     (`geoleaf-main.css` had already been dropped in S12 — it is the SOURCE
         //     aggregator, and none of its @import targets are deployed.)
 
-        // 4c — Copy MapLibre → vendor/maplibre-gl/  (socle-init S5.4)
+        // 4c — Copy MapLibre → vendor/maplibre-gl/
         //
-        // 🛑 RÉSOLU PAR `require.resolve`, JAMAIS PAR UN CHEMIN EN DUR. Trois déclarations de
-        // version coexistaient et ne coïncidaient que par discipline : `peerDependencies`
-        // `^5.0.0` du core, la version réellement installée dans `node_modules`, et un
-        // `@5.21.0` écrit à la main dans l'URL du document. Rien ne surveillait leur accord —
-        // une montée de peerDep laissait le HTML servir l'ancienne version sans qu'aucune gate
-        // ne rougisse. Résoudre depuis `node_modules` rend l'écart structurellement impossible :
-        // il n'y a plus qu'une version, celle qui est installée.
+        // 🛑 RESOLVED BY `require.resolve`, NEVER A HARDCODED PATH. Three
+        // version declarations coexisted and only coincided by discipline:
+        // the core's `peerDependencies` `^5.0.0`, the version really
+        // installed in `node_modules`, and a hand-written `@5.21.0` in the
+        // document's URL. Nothing watched their agreement — a peerDep bump
+        // left the HTML serving the old version with no gate turning red.
+        // Resolving from `node_modules` makes the gap structurally
+        // impossible: there is only one version left, the installed one.
         //
-        // ⚠️ QUATRE fichiers, nommément — surtout pas `copyDir` sur `dist/`. Ce répertoire porte
-        // aussi les sourcemaps (`maplibre-gl.mjs.map` ~2,5 Mo, et autant pour le chunk partagé)
-        // et les builds `-dev` ; les copier gonflerait le déployé d'un facteur qui dépasse tout
-        // ce que le Sprint 4 a gagné. Les sourcemaps ne sont délibérément pas copiées : elles
-        // valent plusieurs fois le bundle, pour un confort de devtools sur une dépendance
-        // tierce. Le `sourceMappingURL` du fichier produit donc un 404 en devtools, et c'est un
-        // choix (S6.6 traite le sujet des sourcemaps exposées en production).
+        // ⚠️ FOUR files, by name — above all not `copyDir` on `dist/`. That
+        // directory also carries the sourcemaps (`maplibre-gl.mjs.map`
+        // ~2.5 MB, and as much for the shared chunk) and the `-dev` builds;
+        // copying them would inflate the deploy by a factor exceeding
+        // everything the slimming gained. The sourcemaps are deliberately
+        // not copied: they are worth several times the bundle, for devtools
+        // comfort on a third-party dependency. The file's
+        // `sourceMappingURL` thus 404s in devtools, and that is a choice
+        // (the production-sourcemaps arbitration covers the subject).
         //
-        // ⚠️ `build-deploy.cjs` n'avait jamais lu `node_modules` — tous ses autres `copyFileSync`
-        // sourcent un `dist/` de workspace. C'est une classe nouvelle pour ce script, et le
-        // motif est unique : MapLibre est la seule dépendance que le DOCUMENT charge lui-même.
+        // ⚠️ `build-deploy.cjs` had never read `node_modules` — all its
+        // other `copyFileSync` source a workspace `dist/`. A new class for
+        // this script, and the motive is unique: MapLibre is the only
+        // dependency the DOCUMENT loads itself.
         //
-        // ── MapLibre 6 : ce bloc a changé de nature, et pas seulement de noms de fichiers ──
+        // ── MapLibre 6: this block changed nature, not only file names ──
         //
-        // La v6 est ESM-only. `maplibre-gl.js` et `maplibre-gl-csp.js` NE SONT PLUS PUBLIÉS ;
-        // l'entrée est `maplibre-gl.mjs`, qui importe `maplibre-gl-shared.mjs` par chemin
-        // RELATIF et instancie son worker par `new Worker(new URL("./maplibre-gl-worker.mjs",
-        // import.meta.url), {type:"module"})`. Trois conséquences, toutes structurelles :
+        // v6 is ESM-only. `maplibre-gl.js` and `maplibre-gl-csp.js` ARE NO
+        // LONGER PUBLISHED; the entry is `maplibre-gl.mjs`, which imports
+        // `maplibre-gl-shared.mjs` by RELATIVE path and instantiates its
+        // worker with `new Worker(new URL("./maplibre-gl-worker.mjs",
+        // import.meta.url), {type:"module"})`. Three consequences, all structural:
         //
-        //   ① Le répertoire doit rester PLAT ET COMPLET — les trois modules se cherchent entre
-        //     eux à côté. Un vendor amputé d'un seul d'entre eux ne lève pas au build : il
-        //     échoue au premier chargement, dans le navigateur.
-        //   ② Le global `maplibregl` n'existe plus. Les ~20 fichiers de `adapters/maplibre/` et
-        //     trois plugins le lisent pourtant. `global.mjs`, écrit juste en dessous, le repose
-        //     en deux lignes — c'est ce qui permet à la migration de ne toucher aucun d'eux.
-        //   ③ `require.resolve("maplibre-gl/package.json")` JETTE désormais : la carte `exports`
-        //     de la v6 n'expose que `.` et `./dist/*`, pas `./package.json`. Le manifeste se
-        //     dérive donc du chemin du module résolu, et non plus d'une résolution de paquet.
+        //   ① The directory must stay FLAT AND COMPLETE — the three modules
+        //     look for each other side by side. A vendor missing a single
+        //     one does not raise at build: it fails at first load, in the browser.
+        //   ② The `maplibregl` global no longer exists. The ~20 files of
+        //     `adapters/maplibre/` and three plugins nonetheless read it.
+        //     `global.mjs`, written just below, reposes it in two lines —
+        //     which is what lets the migration touch none of them.
+        //   ③ `require.resolve("maplibre-gl/package.json")` now THROWS: the
+        //     v6 `exports` map only exposes `.` and `./dist/*`, not
+        //     `./package.json`. The manifest thus derives from the resolved
+        //     module's path, no longer from a package resolution.
         log.section("🗺️  Copying MapLibre → vendor/maplibre-gl/");
         {
             const vendorDir = path.join(outDir, "vendor", "maplibre-gl");
@@ -1449,30 +1472,36 @@ function main() {
                 "maplibre-gl-worker.mjs",
                 "maplibre-gl.css",
             ];
-            // UNE SEULE résolution de paquet, sur un specifier LITTÉRAL — les autres fichiers
-            // sont ses voisins par construction, et l'anti-cécité ci-dessous le vérifie.
+            // A SINGLE package resolution, on a LITERAL specifier — the
+            // other files are its neighbours by construction, and the
+            // anti-blindness below verifies it.
             //
-            // `paths: [ROOT]` — résoudre depuis la racine du dépôt, pas depuis `scripts/`, pour
-            // que la remontée de `node_modules` parte du même endroit que l'install.
-            // ⚠️ `maplibre-gl` est déclaré en devDependency de la RACINE (et non du core, qui ne
-            // l'a qu'en `peerDependencies`) précisément parce que c'est CE script, à la racine,
-            // qui le consomme pour bâtir le déployé.
-            // 🛑 ET LE SPECIFIER DOIT RESTER LITTÉRAL. Une interpolation (`maplibre-gl/dist/${x}`)
-            // est invisible à l'analyse statique : knip a signalé la devDependency comme
-            // inutilisée à la seconde près où ce bloc a cessé d'en porter une seule en clair —
-            // et la retirer aurait cassé le build au premier clone frais.
+            // `paths: [ROOT]` — resolve from the repo root, not from
+            // `scripts/`, so the `node_modules` climb starts where the
+            // install did.
+            // ⚠️ `maplibre-gl` is declared as a ROOT devDependency (and not
+            // the core's, which only has it in `peerDependencies`)
+            // precisely because THIS script, at the root, consumes it to
+            // build the deploy.
+            // 🛑 AND THE SPECIFIER MUST STAY LITERAL. An interpolation
+            // (`maplibre-gl/dist/${x}`) is invisible to static analysis:
+            // knip flagged the devDependency as unused the very second this
+            // block stopped carrying a single one in the clear — and
+            // removing it would have broken the build at the first fresh clone.
             const mlEntry = require.resolve("maplibre-gl/dist/maplibre-gl.mjs", { paths: [ROOT] });
             const mlDistDir = path.dirname(mlEntry);
             for (const asset of ML_ASSETS) {
                 fs.copyFileSync(path.join(mlDistDir, asset), path.join(vendorDir, asset));
             }
 
-            // ⚠️ ANTI-CÉCITÉ — la liste ci-dessus est écrite à la main, donc elle se périme en
-            // silence. Si une version future scindait un quatrième module de production, il ne
-            // serait pas copié, le vendor serait incomplet, et RIEN ne le dirait : le build
-            // sortirait vert et la carte casserait au chargement. On jette donc dès qu'un `.mjs`
-            // de production du paquet n'est pas dans `ML_ASSETS`. Les `-dev` sont écartés — ce
-            // sont les builds non minifiés, jamais servis.
+            // ⚠️ ANTI-BLINDNESS — the list above is hand-written, so it
+            // expires silently. If a future version split off a fourth
+            // production module, it would not be copied, the vendor would
+            // be incomplete, and NOTHING would say so: the build would exit
+            // green and the map would break at load. We therefore throw as
+            // soon as a production `.mjs` of the package is not in
+            // `ML_ASSETS`. The `-dev` are set aside — the unminified
+            // builds, never served.
             const shippedMjs = fs
                 .readdirSync(mlDistDir)
                 .filter((f) => f.endsWith(".mjs") && !f.includes("-dev"));
@@ -1485,16 +1514,17 @@ function main() {
                 );
             }
 
-            // Le shim qui repose le global. ÉMIS ICI, et pas maintenu comme fichier source :
-            // son contenu est entièrement déterminé par le nom de l'entrée qu'on vient de
-            // copier, donc le dériver interdit qu'ils divergent. Déterministe à l'octet près
-            // (gate BUILD-DET) : aucune date, aucun hachage, aucun ordre d'itération.
+            // The shim that reposes the global. EMITTED HERE, not
+            // maintained as a source file: its content is entirely
+            // determined by the name of the entry just copied, so deriving
+            // it forbids their divergence. Byte-deterministic (BUILD-DET
+            // gate): no date, no hash, no iteration order.
             fs.writeFileSync(
                 path.join(vendorDir, "global.mjs"),
                 [
-                    "// Généré par scripts/build-deploy.cjs — ne pas éditer.",
-                    "// MapLibre 6 est ESM-only et ne publie plus de global ; GeoLeaf le lit sur",
-                    "// `globalThis.maplibregl`. Ces deux lignes sont ce qui relie les deux.",
+                    "// Generated by scripts/build-deploy.cjs — do not edit.",
+                    "// MapLibre 6 is ESM-only and no longer publishes a global; GeoLeaf reads it on",
+                    "// `globalThis.maplibregl`. These two lines are what links the two.",
                     'import * as maplibregl from "./maplibre-gl.mjs";',
                     "globalThis.maplibregl = maplibregl;",
                     "",
@@ -1502,9 +1532,10 @@ function main() {
                 "utf8"
             );
 
-            // ⚠️ PAS `require.resolve("maplibre-gl/package.json")` — voir ③ ci-dessus, la carte
-            // `exports` de la v6 ne l'expose pas et la résolution JETTE. Le manifeste est le
-            // voisin du répertoire `dist/` déjà résolu.
+            // ⚠️ NOT `require.resolve("maplibre-gl/package.json")` — see ③
+            // above, the v6 `exports` map does not expose it and the
+            // resolution THROWS. The manifest is the neighbour of the
+            // already-resolved `dist/` directory.
             const mlVersion = JSON.parse(
                 fs.readFileSync(path.join(mlDistDir, "..", "package.json"), "utf8")
             ).version;
@@ -1701,19 +1732,22 @@ function main() {
         }
         const demoHtml = fs.readFileSync(appHtml, "utf-8");
 
-        // Cache-busting PAR CONTENU (S5.8) — voir `contentTag`. Le `?v=` d'un asset ne change
-        // que si cet asset change, donc un déploiement sans modification ne fait re-télécharger
-        // RIEN. C'était l'inverse : un `Date.now()` unique et partagé bustait tout, à chaque
-        // fois, à contenu identique.
+        // CONTENT-based cache-busting — see `contentTag`. An asset's `?v=`
+        // only changes if that asset changes, so a deployment without
+        // modification re-downloads NOTHING. It was the inverse: a single
+        // shared `Date.now()` busted everything, every time, at identical
+        // content.
         //
-        // ⚠️ Empreinte PAR FICHIER, pas une pour tous. Avec une empreinte partagée, toucher un
-        // seul plugin ferait re-télécharger l'entrée et les onze autres — on aurait remplacé un
-        // horodatage par un hachage sans rien gagner.
+        // ⚠️ Fingerprint PER FILE, not one for all. With a shared
+        // fingerprint, touching a single plugin would re-download the entry
+        // and the eleven others — a timestamp would have been replaced by a
+        // hash with nothing gained.
         //
-        // ⚠️ Si le fichier n'est pas dans `outDir` (variante qui ne l'embarque pas), on laisse
-        // l'URL NUE plutôt que d'inventer une empreinte : `stripPluginScript` retire ensuite la
-        // balise, et une clé `?v=` fantôme dans le pré-cache serait un raté permanent
-        // (`cache.match` est appelé sans `ignoreSearch`).
+        // ⚠️ If the file is not in `outDir` (a variant not embarking it),
+        // the URL is left BARE rather than inventing a fingerprint:
+        // `stripPluginScript` then removes the tag, and a ghost `?v=` key
+        // in the pre-cache would be a permanent miss (`cache.match` is
+        // called without `ignoreSearch`).
         const tagFor = (rel) => {
             const abs = path.join(outDir, rel);
             return fs.existsSync(abs) ? `${rel}?v=${contentTag(abs)}` : rel;
@@ -1748,7 +1782,7 @@ function main() {
         log.ok(`index.html — ${eagerChunks.length} modulepreload + 1 config preload (derived)`);
 
         // Plugin removal after cache-busting: filename derived from the registry, not
-        // hard-coded — see stripPluginScript()'s doc comment for why (STRUCT S3.1).
+        // hard-coded — see stripPluginScript()'s doc comment for why.
         const variantLabel = v.name || PLUGIN_MODE;
         if (!v.includeStorage) {
             patched = stripPluginScript(patched, "offline-ui", variantLabel);
@@ -1759,8 +1793,9 @@ function main() {
         if (!v.includeEditor) {
             patched = stripPluginScript(patched, "editor", variantLabel);
         }
-        // Le bootstrap de POSTE. Retiré partout sauf dans `deploy-local` : c'est ce retrait,
-        // et non une garde d'exécution, qui empêche un jeton d'entrer dans un livrable.
+        // The WORKSTATION bootstrap. Removed everywhere except
+        // `deploy-local`: that removal, and not an execution guard, is what
+        // keeps a token from entering a deliverable.
         if (!v.includeDevConnector) {
             patched = stripDevConnectorScript(patched, variantLabel);
         }
@@ -1793,10 +1828,10 @@ function main() {
 
         // init.js — bootstrap script (GeoLeaf.boot())
         //
-        // ⚠️ IL EST PATCHÉ PAR VARIANTE DEPUIS LE 07/08/2026 (tâche 8.1 du Sprint 8, B-136).
-        // Il ne l'était pas, alors qu'`index.html` l'était : c'est cet écart exact qui laissait
-        // trois créneaux paresseux d'`editor` enregistrés sur `deploy-core`, une variante qui
-        // n'embarque pas leur bundle. Voir `stripGatedInitBlock`.
+        // ⚠️ IT IS PATCHED PER VARIANT SINCE 07/08/2026.
+        // It was not, while `index.html` was: that exact gap is what left
+        // three `editor` lazy slots registered on `deploy-core`, a variant
+        // not embarking their bundle. See `stripGatedInitBlock`.
         const initSrc = path.join(APP, "init.js");
         if (fs.existsSync(initSrc)) {
             let initContent = fs.readFileSync(initSrc, "utf-8");
@@ -1804,11 +1839,11 @@ function main() {
                 initContent = stripGatedInitBlock(initContent, "editor", variantLabel);
                 log.ok("init.js — gated block `editor` stripped (variant ships no editor bundle)");
             }
-            // socle-init S4.4 — `cog` a rejoint `editor` dans `init.js` le 07/08/2026 : sa
-            // balise `<script>` eager (99,8 Ko gz, le plus lourd des plugins) est devenue un
-            // `registerLazy`. Le retrait par variante doit suivre le déménagement, sinon
-            // `deploy-core` enregistre un résolveur paresseux visant un bundle qu'il
-            // n'embarque pas — B-136, à l'identique.
+            // `cog` joined `editor` in `init.js` on 07/08/2026: its eager
+            // `<script>` tag (99.8 KB gz, the heaviest plugin) became a
+            // `registerLazy`. The per-variant removal must follow the move,
+            // otherwise `deploy-core` registers a lazy resolver aiming at a
+            // bundle it does not embark — that defect, identically.
             if (!v.includeCog) {
                 initContent = stripGatedInitBlock(initContent, "cog", variantLabel);
                 log.ok("init.js — gated block `cog` stripped (variant ships no cog bundle)");
@@ -1819,40 +1854,46 @@ function main() {
             log.warn(`${path.relative(ROOT, initSrc)} not found — skipped`);
         }
 
-        // connector.local.js — bootstrap Connector de POSTE (JWT). Git-ignoré à la source.
+        // connector.local.js — WORKSTATION Connector bootstrap (JWT). Git-ignored at the source.
         //
-        // 🛑 COPIÉ DANS UNE SEULE VARIANTE, ET SA BALISE EST RETIRÉE DES AUTRES. Les deux
-        // gestes vont ensemble : `stripDevConnectorScript` a déjà ôté d'`index.html` la balise
-        // qui le charge, ici on n'écrit pas le fichier. Une variante livrable n'a donc ni le
-        // fichier, ni la moindre référence à lui — c'est ce qui permet à
-        // `verify-deploy-no-secrets.cjs` d'exiger une ABSENCE plutôt que de vérifier la forme
-        // d'un talon.
+        // 🛑 COPIED INTO A SINGLE VARIANT, AND ITS TAG REMOVED FROM THE
+        // OTHERS. The two gestures go together: `stripDevConnectorScript`
+        // has already removed from `index.html` the tag loading it, here
+        // the file is not written. A shippable variant thus has neither the
+        // file nor the least reference to it — which is what lets
+        // `verify-deploy-no-secrets.cjs` require an ABSENCE rather than
+        // verify a stub's shape.
         //
-        // ## L'histoire, parce qu'elle explique deux mécanismes disparus
+        // ## The history, because it explains two vanished mechanisms
         //
-        // ① Jusqu'au 30/07/2026 le fichier n'était copié que s'il existait, et `init.js`
-        // l'importait INCONDITIONNELLEMENT. Sur un poste qui l'avait, tout était vert ;
-        // ailleurs, le navigateur journalisait « Failed to load resource: 404 » — une erreur
-        // console qu'aucun `try/catch` ne supprime, puisque ce n'en est pas une au sens JS. Les
-        // suites `15-file-import` et `16-flatgeobuf` étaient VERTES en local et ROUGES en CI,
-        // 8 specs, sur le seul écart d'un fichier que git ne montre pas.
+        // ① Until 30/07/2026 the file was only copied if it existed, and
+        // `init.js` imported it UNCONDITIONALLY. On a workstation that had
+        // it, all was green; elsewhere, the browser logged "Failed to load
+        // resource: 404" — a console error no `try/catch` suppresses, since
+        // it is not one in the JS sense. The `15-file-import` and
+        // `16-flatgeobuf` suites were GREEN locally and RED in CI, 8 specs,
+        // on the single gap of a file git does not show.
         //
-        // ② Le remède d'alors fut un TALON INERTE émis partout, sur la règle « la forme d'un
-        // déploiement ne doit pas dépendre de qui le construit ». La règle est juste, et elle
-        // ne parlait que de la FORME : là où le fichier réel existait, il était recopié tel
-        // quel — jeton `geoleaf_editor` compris, plus ses `.gz`/`.br` — dans `deploy-core` et
-        // `deploy-full`, donc dans ce qui part chez un client. Même forme partout, pas le même
-        // contenu, et c'est le contenu qui portait le secret.
+        // ② The remedy then was an INERT STUB emitted everywhere, on the
+        // rule "a deployment's shape must not depend on who builds it".
+        // The rule is right, and it only spoke of the SHAPE: where the real
+        // file existed, it was copied as-is — `geoleaf_editor` token
+        // included, plus its `.gz`/`.br` — into `deploy-core` and
+        // `deploy-full`, hence into what leaves for a client. Same shape
+        // everywhere, not the same content, and the content is what
+        // carried the secret.
         //
-        // ③ Le vrai défaut était en amont des deux : un import OBLIGATOIRE d'un fichier
-        // OPTIONNEL. Il forçait le fichier à exister partout, donc le talon, donc son entrée
-        // dans `required`, donc une exemption nommée dans `verify-app-template.cjs`. Rendre le
-        // chargement conditionnel — une balise gatée par variante, comme pour les plugins
-        // optionnels — supprime les trois d'un coup. Le talon n'existe plus.
+        // ③ The real defect was upstream of both: a MANDATORY import of an
+        // OPTIONAL file. It forced the file to exist everywhere, hence the
+        // stub, hence its `required` entry, hence a named exemption in
+        // `verify-app-template.cjs`. Making the load conditional — a
+        // variant-gated tag, as for the optional plugins — removes all
+        // three at once. The stub no longer exists.
         //
-        // ⚠️ Ne pas réintroduire de repli silencieux ici. L'absence du fichier est FATALE pour
-        // `deploy-local` (voir plus bas) et sans objet pour les autres : il n'y a pas de
-        // troisième cas, et un `else` qui écrirait « quelque chose » ramènerait le talon.
+        // ⚠️ Do not reintroduce a silent fallback here. The file's absence
+        // is FATAL for `deploy-local` (see below) and moot for the others:
+        // there is no third case, and an `else` writing "something" would
+        // bring the stub back.
         const connectorLocalSrc = path.join(APP, "connector.local.js");
         const connectorLocalOut = path.join(outDir, "connector.local.js");
         if (!v.includeDevConnector) {
@@ -1863,11 +1904,12 @@ function main() {
                 "connector.local.js — VRAI bootstrap de poste copié (jeton). À ne jamais livrer."
             );
         } else {
-            // 🛑 FATAL, et c'est le seul endroit où l'absence de ce fichier est un défaut.
-            // `deploy-local` n'existe QUE pour lui : sa balise est conservée dans `index.html`,
-            // donc sans le fichier le navigateur journaliserait « Failed to load resource: 404 »
-            // — une erreur console qu'aucun `try/catch` ne supprime, puisque ce n'en est pas une
-            // au sens JS. Sortir 0 ici produirait une variante qui ment sur ce qu'elle est.
+            // 🛑 FATAL, and the only place where this file's absence is a
+            // defect. `deploy-local` exists ONLY for it: its tag is kept in
+            // `index.html`, so without the file the browser would log
+            // "Failed to load resource: 404" — a console error no
+            // `try/catch` suppresses, since it is not one in the JS sense.
+            // Exiting 0 here would produce a variant that lies about what it is.
             throw new Error(
                 `build-deploy: ${v.name} — apps/geoleaf-app/connector.local.js est absent, or ` +
                     `cette variante existe précisément pour le porter. La créer depuis le ` +
@@ -1915,27 +1957,33 @@ function main() {
                     process.exit(1);
                 }
 
-                // ── CACHE_VERSION dérivé (S5.8) ──────────────────────────────────────────
+                // ── Derived CACHE_VERSION ─────────────────────────────────────────
                 //
-                // 🛑 LA VERSION DU CACHE EST UNE FONCTION DE CE QUI EST DANS LE CACHE. Elle
-                // portait un `Date.now()`, ce qui la faisait changer à CHAQUE build : `activate`
-                // purgeait toute la famille `geoleaf-v*`, et l'install reconstituait un cache
-                // identique en re-téléchargeant tout. Un déploiement sans changement coûtait
-                // donc un pré-cache complet — et c'est ce qui annulait le bénéfice du `?v=`
-                // haché ci-dessus pour tout client contrôlé par le worker. **Les deux tâches
-                // sont couplées : ni l'une ni l'autre ne rend son gain seule.**
+                // 🛑 THE CACHE VERSION IS A FUNCTION OF WHAT IS IN THE
+                // CACHE. It carried a `Date.now()`, which changed it at
+                // EVERY build: `activate` purged the whole `geoleaf-v*`
+                // family, and the install reconstituted an identical cache
+                // by re-downloading everything. A no-change deployment thus
+                // cost a full pre-cache — and that is what cancelled the
+                // hashed `?v=`'s benefit above for any worker-controlled
+                // client. **The two tasks are coupled: neither returns its
+                // gain alone.**
                 //
-                // Dérivée de la LISTE des assets pré-cachés et de leur contenu : deux builds de
-                // la même source donnent le même nom, donc `activate` ne purge rien et le cache
-                // survit ; un asset qui change donne un nom neuf, donc la purge a lieu. C'est
-                // exactement la sémantique attendue, et elle n'était pas atteignable à l'étape
-                // de copie — ni `index.html` ni `bootAssets` n'existaient encore.
+                // Derived from the LIST of pre-cached assets and their
+                // content: two builds of the same source give the same
+                // name, so `activate` purges nothing and the cache
+                // survives; a changed asset gives a new name, so the purge
+                // happens. Exactly the expected semantics, and it was not
+                // reachable at the copy step — neither `index.html` nor
+                // `bootAssets` existed yet.
                 //
-                // ⚠️ LE PRÉFIXE `geoleaf-v` EST LOAD-BEARING : `activate` filtre les caches à
-                // purger par `cacheName.startsWith("geoleaf-v")`. Un schéma de nom qui le perd
-                // fait cesser la purge en silence, et les vieux caches s'accumulent.
-                // ⚠️ Ne touche PAS `CACHE_TILES`, délibérément non versionné (décision A16) —
-                // il survit précisément parce que son nom ne porte pas de version.
+                // ⚠️ THE `geoleaf-v` PREFIX IS LOAD-BEARING: `activate`
+                // filters the caches to purge by
+                // `cacheName.startsWith("geoleaf-v")`. A naming scheme that
+                // loses it makes the purge stop silently, and old caches
+                // accumulate.
+                // ⚠️ Does NOT touch `CACHE_TILES`, deliberately unversioned —
+                // it survives precisely because its name carries no version.
                 const cacheFingerprint = crypto
                     .createHash("sha256")
                     .update(
@@ -1977,16 +2025,19 @@ function main() {
             }
         }
 
-        // 8b — S6.6 : purge des `sourceMappingURL` orphelins, puis GARDE.
+        // 8b — purge of orphan `sourceMappingURL`s, then GUARD.
         //
-        // Retirer les `.map` sans toucher aux bundles laisserait chaque fichier pointer une
-        // cible absente : un 404 en devtools à chaque ouverture. C'était déjà le cas pour
-        // MapLibre depuis le S5, assumé mais jamais réparé — cette passe le solde aussi.
+        // Removing the `.map` without touching the bundles would leave each
+        // file pointing at an absent target: a devtools 404 at every
+        // opening. Already the case for MapLibre, owned but never repaired
+        // — this pass settles it too.
         //
-        // 🛑 L'ORDRE COMPTE ET N'EST PAS INTERCHANGEABLE. Elle court AVANT `precompress()`
-        // (étape 12), sinon les `.gz`/`.br` porteraient la ligne que le fichier brut n'a plus
-        // — deux représentations du même artefact qui divergent, et c'est la compressée que
-        // nginx sert (`gzip_static on`). Le défaut serait donc invisible en lisant le déployé.
+        // 🛑 THE ORDER COUNTS AND IS NOT INTERCHANGEABLE. It runs BEFORE
+        // `precompress()` (step 12), otherwise the `.gz`/`.br` would carry
+        // the line the raw file no longer has — two diverging
+        // representations of the same artefact, and the compressed one is
+        // what nginx serves (`gzip_static on`). The defect would thus be
+        // invisible reading the deploy.
         {
             const stripped = [];
             const sweep = (dir) => {
@@ -1999,8 +2050,8 @@ function main() {
                     }
                     if (!/\.(js|css)$/.test(e.name)) continue;
                     const before = fs.readFileSync(p, "utf8");
-                    // `//# sourceMappingURL=…` (JS) et `/*# sourceMappingURL=… */` (CSS),
-                    // en fin de fichier, avec ou sans saut de ligne final.
+                    // `//# sourceMappingURL=…` (JS) and `/*# sourceMappingURL=… */` (CSS),
+                    // at end of file, with or without a final newline.
                     const after = before.replace(
                         /\s*(?:\/\/|\/\*)#\s*sourceMappingURL=[^\s*]+\s*(?:\*\/)?\s*$/,
                         "\n"
@@ -2014,10 +2065,11 @@ function main() {
             sweep(outDir);
             log.ok(`sourceMappingURL retirés — ${stripped.length} fichier(s)`);
 
-            // La garde. Elle n'est PAS circulaire avec ce qui précède : rien ici n'a supprimé
-            // de `.map`, les sites de copie les ont filtrés en amont. Elle échoue donc pour de
-            // bon si un futur bloc de copie en réintroduit un — c'est exactement le mode par
-            // lequel les cinq `.map` de `dist/chunks/` étaient entrés sans être nommés.
+            // The guard. It is NOT circular with what precedes: nothing
+            // here deleted a `.map`, the copy sites filtered them upstream.
+            // It thus fails for real if a future copy block reintroduces
+            // one — exactly the mode by which `dist/chunks/`'s five `.map`
+            // had entered unnamed.
             const leakedMaps = [];
             const findMaps = (dir) => {
                 if (!fs.existsSync(dir)) return;
@@ -2030,19 +2082,20 @@ function main() {
             findMaps(outDir);
             if (leakedMaps.length) {
                 throw new Error(
-                    // `v.name` est VIDE sur le chemin mono-variante quand aucun nom de dossier
-                    // n'est dérivé (`SINGLE_VARIANT_NAME` ne vaut que pour `--plugins=full` et
-                    // `--plugins=local` ; `none` déploie à la racine), et un message qui
-                    // commence par « build-deploy:  — » ne dit pas où regarder. Le répertoire,
-                    // lui, est toujours renseigné.
+                    // `v.name` is EMPTY on the single-variant path when no
+                    // folder name is derived (`SINGLE_VARIANT_NAME` only
+                    // holds for `--plugins=full` and `--plugins=local`;
+                    // `none` deploys at the root), and a message starting
+                    // with "build-deploy:  — " does not say where to look.
+                    // The directory is always filled in.
                     `build-deploy: ${v.name || path.relative(ROOT, outDir)} — ` +
                         `${leakedMaps.length} sourcemap(s) dans le ` +
                         `déployé : ${leakedMaps.join(", ")}. Le déployé n'en expédie AUCUNE ` +
-                        `(S6.6) : elles exposent l'intégralité des sources en production. ` +
+                        `: elles exposent l'intégralité des sources en production. ` +
                         `Filtrer la copie avec \`isSourceMap\`, ne pas supprimer cette garde.`
                 );
             }
-            log.ok(`aucune sourcemap dans le déployé (garde S6.6)`);
+            log.ok(`aucune sourcemap dans le déployé`);
         }
 
         // 9 — Validation
@@ -2061,13 +2114,15 @@ function main() {
             "profiles/tourism/config/core/layers.json",
             "profiles/tourism/config/core/themes.json",
             "dist/geoleaf-connector.plugin.js", // always present
-            // 🛑 `connector.local.js` N'EST PLUS ICI, ET SON RETRAIT EST LE CORRECTIF.
-            // Il y a figuré du 30/07 au 09/08/2026, au motif qu'une absence ne se manifeste pas
-            // là où on la produit — elle fait un 404 dans le navigateur, sur l'import
-            // inconditionnel d'`init.js`. Le motif était bon ; c'est l'import inconditionnel qui
-            // ne l'était pas. Depuis qu'une balise gatée le charge, le fichier n'a aucune raison
-            // d'exister dans un livrable, et l'EXIGER l'y ramènerait. Son absence y est
-            // désormais l'invariant, tenu par `verify-deploy-no-secrets.cjs` (DNS-02).
+            // 🛑 `connector.local.js` IS NO LONGER HERE, AND ITS REMOVAL IS
+            // THE FIX. It appeared from 30/07 to 09/08/2026, on the ground
+            // that an absence does not show where it is produced — it 404s
+            // in the browser, on `init.js`'s unconditional import. The
+            // ground was good; the unconditional import was not. Since a
+            // gated tag loads it, the file has no reason to exist in a
+            // deliverable, and REQUIRING it would bring it back. Its
+            // absence there is now the invariant, held by
+            // `verify-deploy-no-secrets.cjs` (DNS-02).
         ];
 
         // sw-core.js, dist/geojson-worker.js, sw.js: optional when sources are .ts or emit path differs
@@ -2108,11 +2163,12 @@ function main() {
         // bundle could land in deploy-core and the guard would have reported nothing. Added.
         // The list must hold exactly the three `include*` flags; the 9 always-bundled plugins
         // belong in every variant and must never appear here.
-        // ⚠️ S6.6 — les quatre entrées `.map` de cette liste sont RETIRÉES parce qu'elles
-        // étaient devenues INATTEIGNABLES : la garde de l'étape 8b jette sur toute sourcemap,
-        // quelle qu'elle soit, donc aucune ne peut plus arriver jusqu'ici. Les garder aurait
-        // fait exactement ce que ce sprint corrige ailleurs — une liste qui décrit un état que
-        // le code ne peut plus produire, et qu'un lecteur croit encore active.
+        // ⚠️ This list's four `.map` entries are REMOVED because they had
+        // become UNREACHABLE: step 8b's guard throws on any sourcemap
+        // whatsoever, so none can reach here any more. Keeping them would
+        // have done exactly what is corrected elsewhere — a list describing
+        // a state the code can no longer produce, which a reader still
+        // believes active.
         if (!hasGatedPlugins) {
             const leaked = [
                 "dist/geoleaf-offline-ui.plugin.js",
@@ -2159,34 +2215,40 @@ function main() {
             }
         }
 
-        // 9a bis — Le TÉLÉCHARGEMENT DE TUILES est coupé dans ce qui s'expose (12/08/2026).
+        // 9a bis — TILE DOWNLOAD is cut in what gets exposed (12/08/2026).
         //
-        // 🛑 Le motif n'est PAS le backend de preuve, et c'est pour ça que ce traitement a sa
-        // propre fonction plutôt qu'une ligne dans `dev-backend.cjs` : les tuiles du profil de
-        // démo viennent de **tiers** — `server.arcgisonline.com`, `opentopomap.org`,
-        // `basemaps.cartocdn.com` —, dont les conditions d'usage interdisent typiquement
-        // l'aspiration en masse. Un bouton « télécharger hors ligne » sur une page publique est
-        // exactement le geste qu'ils bannissent, et la sanction tombe sur l'origine qui émet.
+        // 🛑 The motive is NOT the proof backend, and that is why this
+        // treatment has its own function rather than a line in
+        // `dev-backend.cjs`: the demo profile's tiles come from **third
+        // parties** — `server.arcgisonline.com`, `opentopomap.org`,
+        // `basemaps.cartocdn.com` —, whose terms of use typically forbid
+        // bulk scraping. A "download offline" button on a public page is
+        // exactly the gesture they ban, and the sanction falls on the
+        // emitting origin.
         //
-        // ⚠️ Ce veto ne coupe QUE le téléchargement explicite. Le cache du service worker reste
-        // actif, et il le doit : il n'écrit que des réponses **déjà revenues du réseau**
-        // (`sw-core.js` — « LE SEUL ÉCRIVAIN de CACHE_TILES »), donc il RÉDUIT le trafic vers
-        // ces tiers au lieu de l'augmenter. Le confondre avec l'aspiration ferait retirer une
-        // protection en croyant en poser une.
+        // ⚠️ This veto only cuts the explicit download. The service
+        // worker's cache stays active, and it must: it only writes
+        // responses **already returned from the network** (`sw-core.js` —
+        // "THE ONLY WRITER of CACHE_TILES"), so it REDUCES traffic to
+        // those third parties instead of increasing it. Confusing it with
+        // scraping would remove a protection believing one is being laid.
         //
-        // 🖐 CE QUE ÇA NE PROTÈGE PAS, et il faut le dire : un visiteur maîtrise son navigateur.
-        // Il peut remettre le drapeau à `true` dans la réponse JSON, ou appeler l'API
-        // directement. Ce réglage retire la fonction de l'INTERFACE ; il n'est pas un contrôle
-        // d'accès. La seule protection réelle contre l'aspiration est du côté qui sert les
-        // tuiles (quota, referer, clé) — aucune configuration cliente ne peut la remplacer.
+        // 🖐 WHAT THIS DOES NOT PROTECT, and it must be said: a visitor
+        // controls their browser. They can flip the flag back to `true` in
+        // the JSON response, or call the API directly. This setting removes
+        // the feature from the INTERFACE; it is not an access control. The
+        // only real protection against scraping is on the side serving the
+        // tiles (quota, referer, key) — no client configuration can replace it.
         //
-        // ⚠️ Passe RÉCURSIVE : le drapeau vit à deux profondeurs — `.cache.enableTileCache` dans
-        // `config/plugins/offline.json`, et `.modules.offline.cache.enableTileCache` dans
-        // `profile-bundle.json`. Traiter l'un sans l'autre laisserait le second vivant, et c'est
-        // LUI que le chargeur lit — le même piège que les liaisons ci-dessous.
+        // ⚠️ RECURSIVE pass: the flag lives at two depths —
+        // `.cache.enableTileCache` in `config/plugins/offline.json`, and
+        // `.modules.offline.cache.enableTileCache` in
+        // `profile-bundle.json`. Treating one without the other would leave
+        // the second alive, and IT is what the loader reads — the same trap
+        // as the bindings below.
         //
-        // @param {any} node Racine du JSON de profil (muté en place).
-        // @returns {number} Nombre de drapeaux passés à `false`.
+        // @param {any} node Root of the profile JSON (mutated in place).
+        // @returns {number} Number of flags set to `false`.
         const vetoTileDownload = (node) => {
             let n = 0;
             const walk = (obj) => {
@@ -2203,22 +2265,26 @@ function main() {
             return n;
         };
 
-        // 9a — Le backend de PREUVE ne part pas chez un client.
+        // 9a — The PROOF backend does not leave for a client.
         //
-        // 🛑 Mesuré le 09/08/2026 : `profiles/tourism/.../sites_rosario_config.json` portait
-        // quatre liaisons vers `https://qgis.geoleaf.dev` — l'hôte monté par
-        // `docker-compose.dev.yml`, qui ne résout QUE sur le poste —, recopiées telles quelles
-        // dans `deploy-core` et `deploy-full`. L'affichage n'était pas en cause (la couche a un
-        // `data.file` local) ; ce qui partait mort, c'était le rapatriement et l'écriture.
+        // 🛑 Measured on 09/08/2026:
+        // `profiles/tourism/.../sites_rosario_config.json` carried four
+        // bindings to `https://qgis.geoleaf.dev` — the host mounted by
+        // `docker-compose.dev.yml`, which resolves ONLY on the workstation
+        // —, copied as-is into `deploy-core` and `deploy-full`. Display was
+        // not at stake (the layer has a local `data.file`); what left dead
+        // was the pull and the write.
         //
-        // ⚠️ LE DISCRIMINANT EST `includeDevConnector`, LE MÊME QUE POUR LE JETON, et ce n'est
-        // pas une commodité : la liaison et le jeton sont les deux moitiés d'une même chose —
-        // on n'écrit pas sur ce backend sans le second. Les séparer produirait une variante qui
-        // nomme une cible qu'elle ne peut pas atteindre.
+        // ⚠️ THE DISCRIMINANT IS `includeDevConnector`, THE SAME AS FOR THE
+        // TOKEN, and it is not a convenience: the binding and the token are
+        // two halves of one thing — one does not write to this backend
+        // without the second. Separating them would produce a variant
+        // naming a target it cannot reach.
         //
-        // ⚠️ Passe SUR LE DÉPLOYÉ, pas sur `profiles/` : la source reste le profil de dev, qui
-        // est ce qu'il doit être. Elle court après la copie pour attraper AUSSI
-        // `profile-bundle.json`, l'agrégat — et c'est lui que le chargeur lit.
+        // ⚠️ Pass ON THE DEPLOY, not on `profiles/`: the source stays the
+        // dev profile, which is what it must be. It runs after the copy to
+        // ALSO catch `profile-bundle.json`, the aggregate — and it is what
+        // the loader reads.
         if (!v.includeDevConnector) {
             const profilesOut = path.join(outDir, "profiles");
             let touched = 0;
@@ -2266,22 +2332,26 @@ function main() {
             }
         }
 
-        // 9b — Le contrat serveur part AVEC le dossier.
+        // 9b — The server contract leaves WITH the folder.
         //
-        // 🛑 CE QU'ON LIVRE DOIT DIRE CE QU'IL EXIGE. Le 09/08/2026, un `deploy-full` copié tel
-        // quel sur un serveur nginx de production a rendu un spinner infini : la table
-        // `mime.types` de nginx ne connaît que `js`, les `.mjs` du moteur MapLibre partaient en
-        // `application/octet-stream`, et le navigateur refuse d'exécuter un module sous ce type.
+        // 🛑 WHAT WE SHIP MUST SAY WHAT IT REQUIRES. On 09/08/2026, a
+        // `deploy-full` copied as-is onto a production nginx server
+        // rendered an infinite spinner: nginx's `mime.types` table only
+        // knows `js`, the MapLibre engine's `.mjs` left as
+        // `application/octet-stream`, and the browser refuses to execute a
+        // module under that type.
         //
-        // Le dépôt SAVAIT — `docker/nginx.dev.conf` porte la directive sous « SANS CETTE LIGNE,
-        // RIEN NE BOOTE », et admet dans la foulée : « ⚠️ Cette contrainte VIT HORS DU DÉPÔT
-        // pour l'intégrateur — aucune gate ne peut la voir chez lui ». Ce n'était donc pas un
-        // trou de connaissance mais de DIFFUSION : la recette vivait dans un fichier de dev qui
-        // ne part pas avec le dossier, et le livrable ne portait aucun fichier d'accompagnement.
+        // The repo KNEW — `docker/nginx.dev.conf` carries the directive
+        // under "WITHOUT THIS LINE, NOTHING BOOTS", and admits in the same
+        // breath: "⚠️ This constraint LIVES OUTSIDE THE REPO for the
+        // integrator — no gate can see it at their place". Not a knowledge
+        // hole then, but a DIFFUSION one: the recipe lived in a dev file
+        // that does not leave with the folder, and the deliverable carried
+        // no accompanying file.
         //
-        // ⚠️ Aucun des trois fichiers n'est dans l'allowlist de `precompress()` — ils ne
-        // reçoivent donc pas de jumeau `.gz`/`.br`, ce qui est voulu : ils sont lus par un
-        // humain, une fois, avant que quoi que ce soit ne soit servi.
+        // ⚠️ None of the three files is in `precompress()`'s allowlist —
+        // they thus receive no `.gz`/`.br` twin, which is wanted: they are
+        // read by a human, once, before anything is served.
         if (carriesServerContract(v.name)) {
             for (const [name, body] of Object.entries(serverContractFiles())) {
                 fs.writeFileSync(path.join(outDir, name), body, "utf-8");
@@ -2294,11 +2364,12 @@ function main() {
             log.info(`contrat serveur — non émis (${v.name} n'est servie que sur le poste)`);
         }
 
-        // 10 — Pré-compression (socle-init S4.2). EN DERNIER, et ce n'est pas un détail
-        // d'ordonnancement : tout ce qui précède réécrit des fichiers (patch du markup,
-        // injection de STATIC_ASSETS, allègement des GeoJSON, retrait des artefacts fuités).
-        // Compresser avant, c'est expédier des `.gz` périmés que nginx servirait À LA PLACE
-        // de l'original — un déployé qui sert silencieusement l'avant-dernier build.
+        // 10 — Pre-compression. LAST, and not a scheduling detail:
+        // everything before rewrites files (markup patch, STATIC_ASSETS
+        // injection, GeoJSON slimming, leaked-artefact removal).
+        // Compressing before means shipping stale `.gz` that nginx would
+        // serve IN PLACE of the original — a deploy silently serving the
+        // next-to-last build.
         precompress(outDir, v.name);
 
         if (!allOk) globalOk = false;
@@ -2327,18 +2398,21 @@ function main() {
         log.info(`Path: ${DEPLOY}`);
     }
     log.info("");
-    // 🛑 CE BLOC A DIT « Serve via http » JUSQU'AU 09/08/2026, ET C'ÉTAIT LE DERNIER TEXTE LU
-    // AVANT UN DÉPLOIEMENT. Deux énoncés faux, dans les deux lignes :
+    // 🛑 THIS BLOCK SAID "Serve via http" UNTIL 09/08/2026, AND IT WAS THE
+    // LAST TEXT READ BEFORE A DEPLOYMENT. Two false statements, in both lines:
     //
-    //   ① « via http » — la page déclare `upgrade-insecure-requests` : en HTTP nu, le navigateur
-    //      réécrit toutes les sous-ressources en https:// et chacune échoue. Le conseil décrivait
-    //      exactement la configuration qui ne peut pas fonctionner.
-    //   ② rien sur le type MIME de `.mjs`, seule exigence dont l'absence empêche le boot. Un
-    //      `deploy-full` copié tel quel sur nginx a rendu un spinner infini ce jour-là.
+    //   ① "via http" — the page declares `upgrade-insecure-requests`: on
+    //      bare HTTP, the browser rewrites every sub-resource to https://
+    //      and each fails. The advice described exactly the configuration
+    //      that cannot work.
+    //   ② nothing on the `.mjs` MIME type, the only requirement whose
+    //      absence prevents boot. A `deploy-full` copied as-is onto nginx
+    //      rendered an infinite spinner that day.
     //
-    // Le remède n'est pas d'allonger ce message — personne ne lit un build à l'écran deux fois —
-    // mais de RENVOYER au contrat qui part avec le dossier. C'est `SERVEUR.md`, émis à l'étape
-    // 9b dans chaque variante livrable et gaté par `verify-deploy-server-contract.cjs`.
+    // The remedy is not lengthening this message — nobody reads a build on
+    // screen twice — but REFERRING to the contract that leaves with the
+    // folder. That is `SERVEUR.md`, emitted at step 9b into each shippable
+    // variant and gated by `verify-deploy-server-contract.cjs`.
     log.info("Next steps:");
     log.info("  1. Copier le contenu d'UNE variante (pas de deploy/ entier) sur le serveur");
     log.info("  2. Lire le SERVEUR.md émis à côté — 2 exigences bloquent le boot :");
@@ -2350,10 +2424,11 @@ function main() {
     log.info("  curl -sI https://VOTRE-HOTE/vendor/maplibre-gl/global.mjs | grep -i content-type");
     log.info("  → attendu : text/javascript. Si `application/octet-stream`, rien ne bootera.");
     log.info("");
-    // ⚠️ Ces deux cibles restent nommées, mais SANS promesse : le type MIME de `.mjs` s'y
-    // configure différemment (Netlify : `_headers` ; GitHub Pages : rien à configurer du tout),
-    // et le projet ne les a jamais éprouvées. Le contrôle `curl` ci-dessus vaut pour elles comme
-    // pour un serveur à soi — c'est la seule chose qu'on puisse en dire sans l'avoir mesurée.
+    // ⚠️ These two targets stay named, but WITHOUT a promise: the `.mjs`
+    // MIME type configures differently there (Netlify: `_headers`; GitHub
+    // Pages: nothing to configure at all), and the project has never
+    // exercised them. The `curl` check above holds for them as for one's
+    // own server — the only thing sayable without having measured it.
     log.info("Hébergement statique (GitHub Pages, Netlify…) : non éprouvé par le projet.");
     log.info("  Le contrôle ci-dessus s'y applique tel quel, et tranche avant tout déploiement.");
 
@@ -2393,10 +2468,11 @@ if (require.main === module) {
     main();
 }
 
-// `DEV_CONNECTOR_MARKERS` est exporté pour que `verify-app-template.cjs` tienne la présence de
-// la paire dans `index.html` sans recopier les littéraux — un corpus, deux consommateurs (même
-// doctrine que `boot-assets.cjs`). Une gate qui compare à sa propre copie des marqueurs
-// resterait verte le jour où on les renomme ici, c'est-à-dire le jour où le retrait cesse.
+// `DEV_CONNECTOR_MARKERS` is exported so `verify-app-template.cjs` holds
+// the pair's presence in `index.html` without copying the literals — one
+// corpus, two consumers (same doctrine as `boot-assets.cjs`). A gate
+// comparing to its own copy of the markers would stay green the day they
+// are renamed here, i.e. the day the removal stops.
 module.exports = {
     stripPluginScript,
     resolvePluginMode,

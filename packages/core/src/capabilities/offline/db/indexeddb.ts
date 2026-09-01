@@ -30,10 +30,10 @@ interface DBModuleAPI {
 }
 
 /**
- * Le rapport de stockage tel que `DB.Preferences` le rend — trois magasins comptés.
+ * The storage report as `DB.Preferences` returns it — three stores counted.
  *
- * `featuresCount` et `outboxCount` existent depuis B-121 (tâche 4.8) : sans eux, un
- * rapatriement de 27 entités laissait `getStats()` rapporter 0.
+ * `featuresCount` and `outboxCount` exist since 03/08/2026: without them, a pull of
+ * 27 entities left `getStats()` reporting 0.
  */
 interface StorageStatsReport {
     used: number;
@@ -51,13 +51,13 @@ interface StorageStatsReport {
  * - layers : GeoJSON layer cache (id, profileId, data, timestamp, size)
  * - preferences : User preferences (key, value)
  * - metadata : Cache metadata (key, value, timestamp)
- * - features : one record per entity, keyed `[layerId, localId]` (v4, task 3.4)
- * - outbox : write queue, `seq` autoIncrement (v4, task 3.4)
+ * - features : one record per entity, keyed `[layerId, localId]` (v4)
+ * - outbox : write queue, `seq` autoIncrement (v4)
  * - local_images : images held for deferred upload
  *
- * ⚠️ Cette liste citait `sync_queue` et omettait `features`, `outbox` et `local_images` —
- * elle décrivait le schéma v2. `sync_queue` est retiré à la tâche 4.11 (B-124), `sync_backups`
- * l'est avec la chaîne de sauvegarde.
+ * ⚠️ This list used to cite `sync_queue` and omit `features`, `outbox` and
+ * `local_images` — it described the v2 schema. `sync_queue` has since been removed from
+ * the schema, `sync_backups` goes with the backup chain.
  */
 const StorageDB = {
     /**
@@ -100,14 +100,24 @@ const StorageDB = {
     /**
      * Database version.
      *
-     * ⚠️ Le Service Worker ne la lit PAS et ne doit pas la lire : il ouvre `geoleaf-db` SANS
-     * version depuis la tâche 3.1 (décision T2′). C'est ce qui rend la désynchronisation
-     * inexprimable — il n'y a plus qu'un seul endroit où ce nombre existe, celui-ci.
+     * ⚠️ The Service Worker does NOT read it and must not: it opens `geoleaf-db` with NO
+     * version. That is what makes desynchronisation inexpressible — there is only one
+     * place left where this number exists, this one.
      *
-     * v4 (3.4) : ajoute `features` et `outbox`. Aucune migration de données — décision A16.
+     * v4 adds `features` and `outbox`. No data migration — decided while the app had no
+     * users (see the v4 block below).
      * @private
      */
-    _dbVersion: 4,
+    // ⚠️ 4 → 5: the `routes` store. The bump is ADDITIVE — every creation in
+    // `_upgradeDatabase` is guarded by `objectStoreNames.contains(...)`, so an existing
+    // database gains the store and keeps the rest.
+    //
+    // 🛑 The service worker does NOT have to track this number, and that is what makes
+    // the bump safe: it opens `geoleaf-db` with NO second argument, and
+    // `sw-core.test.js` refuses any call carrying one, witness included. A versioned
+    // worker would refuse to open a database the engine upgraded — that named risk is
+    // ruled out by construction rather than by discipline.
+    _dbVersion: 5,
 
     /**
      * Database instance
@@ -158,17 +168,18 @@ const StorageDB = {
                     this.close();
                 };
 
-                // ⚠️ `geoleaf:storage:ready` A ÉTÉ RETIRÉ ICI (B-72, 03/08/2026). Il partait à
-                // CHAQUE ouverture de base — donc à chaque démarrage — **sans aucune charge
-                // utile**, et n'avait aucun écouteur nulle part. La règle du dépôt est qu'un
-                // émetteur sans écouteur se supprime **ou** se consomme ; lui consacrer un
-                // écouteur aurait fermé le compteur C2 à la lettre sans rien apporter, et une
-                // notification par boot est du bruit qui apprend à ne plus les lire.
+                // ⚠️ `geoleaf:storage:ready` WAS REMOVED HERE (03/08/2026). It fired on
+                // EVERY database open — hence every startup — **with no payload**, and
+                // had no listener anywhere. The repo's rule is that an emitter without a
+                // listener gets removed **or** consumed; dedicating a listener to it
+                // would have closed the counter to the letter while bringing nothing,
+                // and one notification per boot is noise that teaches people to stop
+                // reading them.
                 //
-                // ⚠️ Et il ne disait pas ce qui compte : sur iOS l'état à observer n'est pas
-                // « la base s'ouvre » mais « la base a été PURGÉE » après 7 jours d'inactivité.
-                // Le jour où ce besoin arrivera, ce sera un signal neuf avec sa charge utile,
-                // pas celui-ci rebranché.
+                // ⚠️ And it did not say what matters: on iOS the state to observe is not
+                // "the database opens" but "the database was PURGED" after 7 days of
+                // inactivity. The day that need arrives, it will be a new signal with
+                // its payload, not this one rewired.
 
                 return db;
             })
@@ -237,12 +248,27 @@ const StorageDB = {
             Log.info("[StorageDB] Created 'preferences' object store");
         }
 
-        // 🛑 Le magasin 'sync_queue' N'EST PLUS CRÉÉ (tâche 4.11). C'est ce que la décision
-        // A16 annonçait depuis le 02/08 — « il ne survit pas en v4 » — et que la ligne 4.9
-        // n'a jamais porté, ce qu'a établi B-124. L'`outbox` le remplace intégralement.
+        // Store 'routes': persisted itineraries — the route, its DECODED line, and the
+        // identity of the downloaded corridor.
         //
-        // ⚠️ Une base existante garde son magasin : A16 exclut toute migration, donc on ne le
-        // supprime pas au vol. Il devient orphelin, jamais ouvert, et part avec la base.
+        // ⚠️ The decoded line is stored, not just the polyline: decoding it takes a
+        // codec that lives in a plugin, and a core store keeping only the encoded form
+        // would force every reader to own a decoder — something this repo already has a
+        // gate and a scar for.
+        if (!db.objectStoreNames.contains("routes")) {
+            const routes = db.createObjectStore("routes", { keyPath: "id" });
+            // Sorted at read time to serve "what I prepared last"; the index makes that
+            // sort possible without loading the whole store once it grows.
+            routes.createIndex("timestamp", "timestamp", { unique: false });
+            Log.info("[StorageDB] Created 'routes' object store");
+        }
+
+        // 🛑 The 'sync_queue' store is NO LONGER CREATED. Announced since 02/08 — "it
+        // does not survive into v4" — and the `outbox` replaces it entirely.
+        //
+        // ⚠️ An existing database keeps its store: the no-migration decision rules out
+        // deleting it in flight. It becomes an orphan, never opened, and goes with the
+        // database.
 
         // Store 'metadata': General metadata
         if (!db.objectStoreNames.contains("metadata")) {
@@ -250,13 +276,13 @@ const StorageDB = {
             Log.info("[StorageDB] Created 'metadata' object store");
         }
 
-        // 🛑 Le magasin 'sync_backups' N'EST PLUS CRÉÉ (tâche 4.11). Toute la chaîne de
-        // sauvegarde est retirée : elle n'avait plus d'écrivain depuis 4.4b, et son motif —
-        // survivre à une purge d'origine — était faux, puisqu'elle vivait dans CETTE base.
+        // 🛑 The 'sync_backups' store is NO LONGER CREATED. The whole backup chain is
+        // removed: it had no writer left, and its motive — surviving an origin purge —
+        // was false, since it lived in THIS very database.
         //
-        // ⚠️ Une base existante garde son magasin : la décision A16 exclut toute migration
-        // (aucun appareil de terrain ne porte de données), donc on ne le supprime pas au
-        // vol. Il devient un magasin orphelin, jamais ouvert, et disparaîtra avec la base.
+        // ⚠️ An existing database keeps its store: the no-migration decision (no field
+        // device carries data) rules out deleting it in flight. It becomes an orphan
+        // store, never opened, and will disappear with the database.
 
         // Store 'local_images': Images stored locally for deferred upload (v2)
         if (!db.objectStoreNames.contains("local_images")) {
@@ -266,81 +292,81 @@ const StorageDB = {
             Log.info("[StorageDB] Created 'local_images' object store");
         }
 
-        // ── v4 (tâche 3.4) — le socle par ENTITÉ, et la file qui remplacera `sync_queue` ──
+        // ── v4 — the per-ENTITY foundation, and the queue that replaced `sync_queue` ──
         //
-        // Deux stores neufs, créés VIDES. Aucune migration de données : décision **A16** —
-        // l'application n'a pas d'utilisateurs, donc aucun appareil ne porte de v3 à convertir.
-        // Cette décision se périme au premier déploiement terrain ; elle est à relire à ce
-        // moment-là, pas avant.
+        // Two new stores, created EMPTY. No data migration, by decision: the application
+        // had no users, so no device carried a v3 to convert. That decision expires at
+        // the first field deployment; it is to be reread then, not before.
         //
-        // 🛑 `sync_queue` SURVIT à la v4, et PAS au titre du legacy. Son remplacement par
-        // `outbox` est le Sprint 4 (4.4/4.5).
+        // 🛑 `sync_queue` SURVIVED into v4, and NOT as legacy. Its replacement by
+        // `outbox` has since been completed.
         //
-        // ⚠️ **CETTE LIGNE A ANNONCÉ « son retrait la tâche 4.9 » JUSQU'AU 04/08/2026, ET LE
-        // RETRAIT N'A PAS EU LIEU.** 4.9 a bien soldé ses trois gisements — les deux
-        // vocabulaires, `POI_KINDS`, le doublon C4 des seams — mais la ligne de roadmap ne
-        // portait pas le retrait du magasin, et personne n'a confronté les deux énoncés.
+        // ⚠️ **THIS LINE ANNOUNCED its removal UNTIL 04/08/2026, AND THE REMOVAL HAD NOT
+        // HAPPENED.** The targeted batch had indeed settled its three deposits — the two
+        // vocabularies, `POI_KINDS`, the duplicated seams — but the roadmap line did not
+        // carry the store's removal, and nobody confronted the two statements.
         //
-        // Ce qui a changé, mesuré à la clôture de S4c : `addpoi` et `editor` **n'y écrivent
-        // plus** (4.4b/4.9), `poi-restore` **lit l'outbox** (4.7), et l'export de secours a été
-        // repointé (4.10). **Le seul écrivain de production restant est
-        // `addpoi/sync-handler-backup.ts`**, pour la RESTAURATION DE SAUVEGARDE — une
-        // fonctionnalité vivante, dont le déplacement vers l'`outbox` n'est chiffré nulle part.
+        // What changed, measured at closure: `addpoi` and `editor` **no longer wrote to
+        // it**, `poi-restore` **reads the outbox**, and the rescue export was repointed.
+        // **The one remaining production writer was `addpoi/sync-handler-backup.ts`**,
+        // for BACKUP RESTORATION — a live feature whose move to the `outbox` was costed
+        // nowhere.
         //
-        // Le supprimer ici casserait donc encore l'application. Le retrait est suivi par
-        // **B-124**, avec ce qu'il exige réellement.
+        // Deleting it here would therefore still have broken the application. The
+        // removal has since been executed at the schema, with what it really required.
 
-        // Store 'features' : une ENTITÉ par enregistrement (contrat `FeatureRecord`).
+        // Store 'features': one ENTITY per record (`FeatureRecord` contract).
         //
-        // ⚠️ Il n'est PAS « protégé de l'éviction », il lui est INATTEIGNABLE : `db/eviction.ts`
-        // ne connaît qu'un seul nom de store (`layers`). C'est la forme la plus dure possible
-        // de la règle du contrat — « ce qui porte du travail non synchronisé n'est jamais
-        // évincé » — parce qu'elle ne dépend d'aucun champ correctement écrit.
+        // ⚠️ It is NOT "protected from eviction", it is UNREACHABLE by it:
+        // `db/eviction.ts` knows a single store name (`layers`). That is the hardest
+        // possible form of the contract's rule — "what carries unsynchronised work is
+        // never evicted" — because it depends on no correctly-written field.
         if (!db.objectStoreNames.contains("features")) {
-            // Clé composée : elle donne gratuitement le parcours par couche, via
-            // `IDBKeyRange.bound([layerId], [layerId, []])` — un tableau trie après toute
-            // chaîne. Un index `layerId` en plus serait une seconde vérité pour rien.
+            // Composite key: it gives per-layer traversal for free, via
+            // `IDBKeyRange.bound([layerId], [layerId, []])` — an array sorts after any
+            // string. An extra `layerId` index would be a second truth for nothing.
             const features = db.createObjectStore("features", {
                 keyPath: ["layerId", "localId"],
             });
-            // ⚠️ `null` n'est pas une clé IndexedDB valide : une entité créée hors ligne
-            // (`serverId: null`) N'ENTRE PAS dans cet index. Ce n'est pas un défaut tant que
-            // l'index ne sert qu'à retrouver une entité par son identifiant serveur (4.5) —
-            // mais compter les entités par lui SOUS-COMPTERAIT. Même mécanisme que B.6, où
-            // des booléens restaient hors index.
+            // ⚠️ `null` is not a valid IndexedDB key: an entity created offline
+            // (`serverId: null`) does NOT enter this index. Not a defect as long as the
+            // index only serves to find an entity by its server id — but counting
+            // entities through it would UNDER-COUNT. Same mechanism as the
+            // boolean-`uploaded` bug below, where booleans stayed out of an index.
             features.createIndex("serverId", "serverId", { unique: false });
             features.createIndex("syncState", "syncState", { unique: false });
             features.createIndex("updatedAt", "updatedAt", { unique: false });
             Log.info("[StorageDB] Created 'features' object store (v4)");
         }
 
-        // Store 'outbox' : la file d'écritures, contrat `OutboxEntry`.
+        // Store 'outbox': the write queue, `OutboxEntry` contract.
         //
-        // 🛑 LE CORRECTIF DE B-03 EST DANS LA CLÉ, et c'est pour cela qu'il est ici et pas
-        // plus tard : le poser après coup coûterait une v5.
+        // 🛑 THE KEY-COLLISION FIX IS IN THE KEY, which is why it sits here and not
+        // later: adding it afterwards would cost a v5.
         //
-        // `sync_queue` frappe `sync_<ms>_<random>` en clé primaire. À milliseconde égale c'est
-        // donc le HASARD qui ordonne, et le tri par horodatage — stable depuis ES2019 — ne
-        // fait que TRANSPORTER cet ordre au lieu de le corriger. Trois écritures dans la même
-        // milliseconde se relisent en ordre inverse (reproduit : `e2e/fixtures/offline/
-        // db-v3-dump.json`).
+        // `sync_queue` minted `sync_<ms>_<random>` as its primary key. At equal
+        // milliseconds it is therefore CHANCE that orders, and the timestamp sort —
+        // stable since ES2019 — merely TRANSPORTS that order instead of fixing it.
+        // Three writes within the same millisecond read back in reverse order
+        // (reproduced: `e2e/fixtures/offline/db-v3-dump.json`).
         //
-        // `autoIncrement` met le générateur DANS la base : sa monotonie est celle de l'ordre
-        // de validation des transactions — la seule horloge que deux onglets partagent. Un
-        // compteur JS ne l'a pas, un horodatage ne l'a pas à la milliseconde, un suffixe
-        // aléatoire ne l'a jamais eu. Conséquence : il n'y a plus de tri à corriger, il y a un
-        // tri à SUPPRIMER.
+        // `autoIncrement` puts the generator IN the database: its monotonicity is that
+        // of transaction commit order — the only clock two tabs share. A JS counter
+        // does not have it, a timestamp does not at the millisecond, a random suffix
+        // never did. Consequence: there is no longer a sort to fix, there is a sort to
+        // DELETE.
         if (!db.objectStoreNames.contains("outbox")) {
             const outbox = db.createObjectStore("outbox", {
                 keyPath: "seq",
                 autoIncrement: true,
             });
-            // `id` reste l'adresse du contrat (`OutboxEntry.id`) mais ne porte plus l'ordre.
-            // UNIQUE délibérément : sur un `keyPath: "id"`, deux entrées de même id
-            // s'écrasaient en silence — une saisie disparaissait. Ici la collision LÈVE.
+            // `id` stays the contract's address (`OutboxEntry.id`) but no longer
+            // carries the order. UNIQUE deliberately: on a `keyPath: "id"`, two entries
+            // with the same id overwrote each other silently — a capture vanished. Here
+            // the collision THROWS.
             outbox.createIndex("id", "id", { unique: true });
             outbox.createIndex("state", "state", { unique: false });
-            // Composé : sert la coalescence (3.10) et la jointure vers `features`.
+            // Composite: serves coalescing and the join towards `features`.
             outbox.createIndex("localId", ["layerId", "localId"], { unique: false });
             Log.info("[StorageDB] Created 'outbox' object store (v4)");
         }
@@ -420,22 +446,23 @@ const StorageDB = {
     /**
      * Reads a layer's offline entities back as a GeoJSON FeatureCollection.
      *
-     * 🛑 PREMIER LECTEUR DU STORE `features` (tâche 4.3). Le store existe depuis 3.4 et
-     * n'avait **ni producteur ni consommateur** : `DBFeatures` n'était référencé que par
-     * `db-modules-registry.ts`. Son écrivain est arrivé en 4.1 — voir
-     * {@link IndexedDB.putLayerFeatures} juste en dessous.
+     * 🛑 FIRST READER OF THE `features` STORE. The store existed with **neither
+     * producer nor consumer**: `DBFeatures` was referenced only by
+     * `db-modules-registry.ts`. Its writer came later — see
+     * {@link IndexedDB.putLayerFeatures} just below.
      *
-     * ⚠️ Rend une **FeatureCollection** et non les enregistrements bruts, parce que
-     * l'appelant est le chargeur de couche du kernel : il attend la même forme que celle
-     * qu'un `fetch` lui aurait rendue, et la faire diverger obligerait le seam à distinguer
-     * deux formes — la distinction même que cette lecture existe pour supprimer.
+     * ⚠️ Returns a **FeatureCollection** and not the raw records, because the caller is
+     * the kernel's layer loader: it expects the same shape a `fetch` would have handed
+     * it, and diverging would force the seam to distinguish two shapes — the very
+     * distinction this read exists to remove.
      *
-     * ⚠️ Rend `null` — et non une collection VIDE — quand rien n'est stocké. Une collection
-     * vide est indiscernable d'une couche réellement vide, et l'appelant doit pouvoir
-     * retomber sur le réseau plutôt que d'afficher zéro entité en croyant avoir lu.
+     * ⚠️ Returns `null` — not an EMPTY collection — when nothing is stored. An empty
+     * collection is indistinguishable from a genuinely empty layer, and the caller must
+     * be able to fall back to the network rather than display zero entities believing
+     * it has read.
      *
-     * @param layerId - Identifiant de la couche.
-     * @returns La collection, ou `null` si la couche n'a aucune entité stockée.
+     * @param layerId - Layer identifier.
+     * @returns The collection, or `null` when the layer has no stored entity.
      */
     async getLayerFeatureCollection(
         layerId: string
@@ -449,14 +476,14 @@ const StorageDB = {
         }> | null;
         if (!Array.isArray(records) || records.length === 0) return null;
 
-        // 🛑 UNE SUPPRESSION LOCALE DOIT DISPARAÎTRE DE LA CARTE (tâche 4.4).
+        // 🛑 A LOCAL DELETION MUST DISAPPEAR FROM THE MAP.
         //
-        // L'enregistrement d'une entité supprimée hors ligne SURVIT délibérément : il est le
-        // seul endroit où vit son `serverId`, et le push a besoin de savoir QUOI supprimer —
-        // l'entrée d'outbox ne porte que le `localId`. Il ne doit donc pas être détruit, mais
-        // il ne doit pas non plus être RENDU : l'utilisateur qui supprime hors réseau verrait
-        // son entité rester à l'écran, et « l'édition s'applique localement » serait faux de
-        // moitié. Le seul endroit qui connaît la différence est la file, d'où cette jointure.
+        // The record of an entity deleted offline SURVIVES deliberately: it is the only
+        // place its `serverId` lives, and the push needs to know WHAT to delete — the
+        // outbox entry carries only the `localId`. So it must not be destroyed, but it
+        // must not be RENDERED either: a user deleting off-network would see their
+        // entity stay on screen, and "the edit applies locally" would be half false.
+        // The only place that knows the difference is the queue, hence this join.
         const edits = this._ensureModule("LocalEdit");
         const deleted = edits?.pendingDeletions
             ? ((await edits.pendingDeletions(layerId)) as Set<string>)
@@ -465,26 +492,26 @@ const StorageDB = {
         const visible = records.filter(
             (r) => r.feature !== undefined && !deleted.has(String(r.localId))
         );
-        // Toutes les entités de la couche sont supprimées localement : c'est une couche
-        // VIDE, pas une couche non stockée. Rendre `null` ici relancerait le réseau et
-        // ferait réapparaître ce que l'utilisateur vient de supprimer.
+        // Every entity of the layer is locally deleted: that is an EMPTY layer, not an
+        // unstored one. Returning `null` here would re-trigger the network and make
+        // what the user just deleted reappear.
         return { type: "FeatureCollection", features: visible.map((r) => r.feature) };
     },
 
     /**
-     * Applique une édition locale — l'entité ET sa mise en file, dans UNE transaction (4.4).
+     * Applies a local edit — the entity AND its enqueueing, in ONE transaction.
      *
-     * Miroir d'écriture de {@link IndexedDB.getLayerFeatureCollection} : la façade délègue,
-     * elle n'arbitre pas. La coalescence et l'annulation vivent dans `db/local-edit.ts`, seul
-     * endroit où les deux stores tiennent dans une même transaction.
+     * Write mirror of {@link IndexedDB.getLayerFeatureCollection}: the facade delegates,
+     * it does not arbitrate. Coalescing and cancellation live in `db/local-edit.ts`,
+     * the only place where both stores fit in a single transaction.
      *
-     * ⚠️ **Ne vérifie AUCUN droit d'édition.** L'invariant S6 — le rapatriement ne confère
-     * jamais l'éditabilité — se tient une couche plus haut, là où la déclaration de la couche
-     * est lisible. Le mettre ici en ferait une règle de stockage, donc contournable par tout
-     * appelant qui parlerait à la base directement.
+     * ⚠️ **Checks NO edit right.** The standing invariant — pulling never confers
+     * editability — is held one layer up, where the layer's declaration is readable.
+     * Putting it here would make it a storage rule, hence bypassable by any caller
+     * speaking to the database directly.
      *
-     * @param input - L'édition à appliquer.
-     * @returns Ce qui a été fait (fusion, annulation, entrée neuve), ou `null` sans module.
+     * @param input - The edit to apply.
+     * @returns What was done (merge, cancellation, new entry), or `null` without the module.
      */
     async applyLocalEdit(input: LocalEditInput): Promise<LocalEditTally | null> {
         if (!this._db) await this.init();
@@ -494,19 +521,20 @@ const StorageDB = {
     },
 
     /**
-     * Writes a pulled batch into the `features` store — the store's FIRST writer (tâche 4.1).
+     * Writes a pulled batch into the `features` store — the store's FIRST writer.
      *
-     * Miroir de {@link IndexedDB.getLayerFeatureCollection} : la façade délègue, elle n'arbitre
-     * pas. La règle « ne jamais écraser une saisie non synchronisée » vit dans
-     * `db/features.ts`, seul endroit où lecture et écriture tiennent dans **une** transaction.
+     * Mirror of {@link IndexedDB.getLayerFeatureCollection}: the facade delegates, it
+     * does not arbitrate. The rule "never overwrite an unsynchronised capture" lives in
+     * `db/features.ts`, the only place where read and write fit in **one** transaction.
      *
-     * ⚠️ Chaque enregistrement doit porter un `feature` défini. `getLayerFeatureCollection`
-     * décide son `null` sur `records.length === 0`, **avant** de filtrer les `feature`
-     * indéfinis : un lot écrit sans géométrie lui ferait rendre une collection **vide et non
-     * nulle**, et le chargeur afficherait zéro entité en croyant avoir lu.
+     * ⚠️ Every record must carry a defined `feature`. `getLayerFeatureCollection`
+     * decides its `null` on `records.length === 0`, **before** filtering undefined
+     * `feature`s: a batch written without geometry would make it return a collection
+     * that is **empty rather than null**, and the loader would display zero entities
+     * believing it has read.
      *
-     * @param records - Enregistrements complets, `feature` compris.
-     * @returns Le décompte réel `{ written, preserved }`, ou `null` si le module est absent.
+     * @param records - Complete records, `feature` included.
+     * @returns The real tally `{ written, preserved }`, or `null` when the module is absent.
      */
     async putLayerFeatures(records: readonly FeatureRecord[]): Promise<PreservingPutTally | null> {
         if (!this._db) await this.init();
@@ -518,20 +546,20 @@ const StorageDB = {
     /**
      * Counts what the sync report needs, per layer, in one pass (tâche 4.8).
      *
-     * 🛑 **UNE méthode plutôt que quatre.** La composition du rapport a besoin de trois
-     * décomptes par couche ; les exposer un à un (`countByLayer`, `listByState`…) élargirait la
-     * façade de quatre membres pour un seul consommateur, et déplacerait la connaissance des
-     * magasins hors de la couche qui les possède. La façade délègue, elle n'arbitre pas — mais
-     * ce qu'elle délègue est le décompte, pas les magasins.
+     * 🛑 **ONE method rather than four.** Composing the report needs three per-layer
+     * tallies; exposing them one by one (`countByLayer`, `listByState`…) would widen the
+     * facade by four members for a single consumer, and move knowledge of the stores
+     * out of the layer that owns them. The facade delegates, it does not arbitrate —
+     * but what it delegates is the tally, not the stores.
      *
-     * ⚠️ **`pendingCount` agrège `pending` + `inFlight` + `failed`.** C'est « ce qui est encore
-     * dû au serveur », et `failed` en fait partie : la tâche 3.10 l'a explicitement remis dans
-     * l'ensemble rejouable, précisément parce qu'une entrée en échec est une saisie de terrain
-     * qui n'a pas d'autre copie. `quarantined` est compté à part — le contrat le décrit comme
-     * « gardé, visible, mais non rejouable en l'état », donc ce n'est pas la même dette.
+     * ⚠️ **`pendingCount` aggregates `pending` + `inFlight` + `failed`.** It is "what is
+     * still owed to the server", and `failed` belongs there: it was explicitly put back
+     * into the replayable set, precisely because a failed entry is a field capture with
+     * no other copy. `quarantined` is counted apart — the contract describes it as
+     * "kept, visible, but not replayable as-is", so it is not the same debt.
      *
-     * @param layerIds - Couches à compter. Une couche sans entité rend des zéros, jamais rien.
-     * @returns Les décomptes par identifiant de couche, ou `null` si les modules sont absents.
+     * @param layerIds - Layers to count. A layer with no entity yields zeros, never nothing.
+     * @returns The tallies per layer identifier, or `null` when the modules are absent.
      * @example
      * const counts = await GeoLeaf.Storage.DB.getSyncCounts(["sites_rosario"]);
      * console.info(counts?.["sites_rosario"]?.featureCount);
@@ -545,8 +573,8 @@ const StorageDB = {
         if (!this._db) await this.init();
         const features = this._ensureModule("Features");
         const outbox = this._ensureModule("Outbox");
-        // Capturés en locales : le rétrécissement de type sur `features?.countByLayer` se perd
-        // à la première frontière de fermeture (la boucle plus bas), et `strict` le dit.
+        // Captured as locals: the type narrowing on `features?.countByLayer` is lost at
+        // the first closure boundary (the loop below), and `strict` says so.
         const countByLayer = features?.countByLayer;
         const listByState = outbox?.listByState;
         if (!countByLayer || !listByState) return null;
@@ -556,13 +584,15 @@ const StorageDB = {
             { featureCount: number; pendingCount: number; quarantinedCount: number }
         > = {};
         for (const layerId of layerIds) {
-            // Les identifiants viennent du profil, c'est-à-dire d'un `JSON.parse` : une couche
-            // nommée `__proto__` y est une propriété PROPRE, et `out[k] = …` la routerait sur
-            // le setter de prototype. Une couche ainsi nommée n'est simplement pas rapportée.
+            // The identifiers come from the profile, that is from a `JSON.parse`: a
+            // layer named `__proto__` is an OWN property there, and `out[k] = …` would
+            // route it onto the prototype setter. A layer so named is simply not
+            // reported.
             if (isUnsafeKey(layerId)) continue;
-            // Le seau est tenu en LOCAL puis relu par cette référence : `out[layerId]!` ferait
-            // taire `noUncheckedIndexedAccess` d'une assertion, c'est-à-dire ferait sortir la
-            // sonde verte PARCE QUE l'assertion est là (règle NNA-04, sans baseline).
+            // The bucket is held LOCALLY then re-read through this reference:
+            // `out[layerId]!` would silence `noUncheckedIndexedAccess` with an
+            // assertion, i.e. make the probe come out green BECAUSE the assertion is
+            // there (rule NNA-04, no baseline).
             const bucket = { featureCount: 0, pendingCount: 0, quarantinedCount: 0 };
             out[layerId] = bucket;
             bucket.featureCount = (await countByLayer.call(features, layerId)) as number;
@@ -590,15 +620,16 @@ const StorageDB = {
     /**
      * Lists the edits still owed to the server, each joined to the entity it edits (4.10).
      *
-     * C'est ce que le panneau « POI locaux » exporte : le TRAVAIL, pas le cache. Une entrée
-     * d'outbox ne porte pas la charge utile — elle référence `[layerId, localId]` —, donc la
-     * jointure vers `features` se fait ici, où les deux magasins sont ouverts.
+     * This is what the "local POIs" panel exports: the WORK, not the cache. An outbox
+     * entry does not carry the payload — it references `[layerId, localId]` — so the
+     * join towards `features` happens here, where both stores are open.
      *
-     * ⚠️ Une entrée dont l'entité a disparu du magasin est rendue avec `feature: null` plutôt
-     * qu'écartée. Une saisie qu'on ne sait plus décrire reste une saisie due au serveur ; la
-     * taire dans un export dont c'est précisément le rôle de tout sortir serait la perdre.
+     * ⚠️ An entry whose entity has vanished from the store is returned with
+     * `feature: null` rather than discarded. A capture we can no longer describe is
+     * still a capture owed to the server; silencing it in an export whose very role is
+     * to get everything out would be losing it.
      *
-     * @returns Une entrée par édition en attente, la plus ancienne d'abord ; `[]` sans module.
+     * @returns One entry per pending edit, oldest first; `[]` without the module.
      * @example
      * const pending = await GeoLeaf.Storage.DB.listPendingEdits();
      * console.info(`${pending.length} saisie(s) jamais poussée(s)`);
@@ -652,19 +683,19 @@ const StorageDB = {
     /**
      * Removes the entities that are pure CACHE — synchronised, and re-pullable (4.10).
      *
-     * 🛑 **CE QUI FAIT QUE LE NOM DU BOUTON DEVIENT VRAI.** Depuis 4.1, le magasin `features`
-     * EST le cache : ses enregistrements `synced` se re-rapatrient par `pullLayer()`. L'outbox,
-     * elle, porte du travail de terrain qui n'existe nulle part ailleurs. Une purge qui
-     * annonce « vider le cache » ne doit donc toucher que le premier — vocabulaire de cache,
-     * données re-téléchargeables, et rien d'autre.
+     * 🛑 **WHAT MAKES THE BUTTON'S NAME TRUE.** The `features` store IS the cache: its
+     * `synced` records re-pull through `pullLayer()`. The outbox, by contrast, carries
+     * field work that exists nowhere else. A purge announcing "clear the cache" must
+     * therefore touch only the former — cache vocabulary, re-downloadable data, and
+     * nothing else.
      *
-     * ⚠️ **La garde sur l'outbox est là bien que l'invariant de 4.4 la rende théoriquement
-     * inutile** : `applyEdit` écrit l'entité en `pending` en même temps que l'entrée, donc un
-     * enregistrement `synced` ne devrait avoir aucune entrée en attente. « Ne devrait pas » ne
-     * garde rien — et l'enjeu ici est une destruction irréversible de saisie.
+     * ⚠️ **The outbox guard is here although the single-transaction invariant makes it
+     * theoretically useless**: `applyEdit` writes the entity as `pending` together with
+     * the entry, so a `synced` record should have no pending entry. "Should not"
+     * guards nothing — and the stake here is an irreversible destruction of capture.
      *
-     * @returns `{ removed, preserved }` — `preserved` compte les entités épargnées parce
-     *   qu'une entrée d'outbox les réclame encore. Les deux sont affichables.
+     * @returns `{ removed, preserved }` — `preserved` counts the entities spared
+     *   because an outbox entry still claims them. Both are displayable.
      * @example
      * const { removed, preserved } = await GeoLeaf.Storage.DB.purgeCachedFeatures();
      * console.info(`${removed} supprimée(s), ${preserved} conservée(s)`);
@@ -677,9 +708,9 @@ const StorageDB = {
         const removeOne = features?.remove;
         if (!listByState || !removeOne) return { removed: 0, preserved: 0 };
 
-        // Les entités encore réclamées par une entrée d'outbox, en `layerId\u0000localId`.
-        // ⚠️ `Set` et non un objet : la clé est composée à partir de données, et un objet
-        // exposerait `__proto__` (cf. `check-dynamic-key-writes`).
+        // The entities still claimed by an outbox entry, as `layerId\u0000localId`.
+        // ⚠️ `Set` and not an object: the key is composed from data, and an object
+        // would expose `__proto__` (cf. `check-dynamic-key-writes`).
         const owed = new Set<string>();
         if (outbox?.listByState) {
             for (const state of ["pending", "inFlight", "failed", "quarantined"]) {
@@ -738,43 +769,45 @@ const StorageDB = {
     },
 
     // ========================================
-    // 🛑 LES SEPT RELAIS `sync_queue` SONT RETIRÉS (tâche 4.11)
+    // 🛑 THE SEVEN `sync_queue` RELAYS ARE REMOVED
     // ========================================
     //
-    // `addToSyncQueue`, `getAllFromSyncQueue`, `getPendingSyncQueue`, `updateSyncQueueStatus`,
-    // `getSyncQueueEntry`, `getSyncQueueSummary` et `removeSyncQueueEntry` déléguaient au
-    // module `DB.Sync` (`db/sync.ts`), supprimé avec le magasin `sync_queue`.
+    // `addToSyncQueue`, `getAllFromSyncQueue`, `getPendingSyncQueue`,
+    // `updateSyncQueueStatus`, `getSyncQueueEntry`, `getSyncQueueSummary` and
+    // `removeSyncQueueEntry` delegated to the `DB.Sync` module (`db/sync.ts`), deleted
+    // with the `sync_queue` store.
     //
-    // La décision A16 dit depuis le 02/08 que le magasin « ne survit pas en v4 ». Le
-    // commentaire du schéma attribuait son retrait à la tâche **4.9** ; la ligne 4.9 ne l'a
-    // jamais porté — deux documents, deux vérités, aucun lecteur commun. C'est B-124 qui a
-    // établi l'écart, et 4.11 qui l'exécute.
+    // The decision had said since 02/08 that the store "does not survive into v4". The
+    // schema comment attributed its removal to a batch that never carried it — two
+    // documents, two truths, no common reader. The gap was established by measurement,
+    // then the removal executed.
     //
-    // Ce que le Sprint 4 avait déjà déplacé : `addpoi` (4.4b) et `editor` (4.9) écrivent par
-    // `Storage.applyEdit` → outbox, `poi-restore` lit l'outbox (4.7), `offline-ui` lit
-    // `features` + outbox (4.10). Le seul usage restant était la restauration de sauvegarde,
-    // retirée avec sa chaîne juste au-dessus.
+    // What had already moved: `addpoi` then `editor` write through
+    // `Storage.applyEdit` → outbox, `poi-restore` reads the outbox, `offline-ui` reads
+    // `features` + outbox. The one remaining use was backup restoration, removed with
+    // its chain just above.
     //
-    // ⚠️ **Ce qui part avec, et qu'il faut savoir** : `MAX_REPLAY_ATTEMPTS = 3` était appliqué
-    // ICI, à l'écriture, et c'était le seul plafond de rejeu du dépôt. L'outbox porte bien un
-    // champ `attempts`, mais `write/push-engine.ts` ne l'incrémente ni ne le plafonne — le
-    // budget était donc DÉJÀ absent du chemin v4, et ce retrait le révèle au lieu de le
-    // causer. Suivi en **B-125**.
+    // ⚠️ **What goes with it, and must be known**: `MAX_REPLAY_ATTEMPTS = 3` was
+    // enforced HERE, at write time, and it was the repo's only replay cap. The outbox
+    // does carry an `attempts` field, but `write/push-engine.ts` neither incremented
+    // nor capped it — the budget was therefore ALREADY absent from the v4 path, and
+    // this removal reveals it instead of causing it.
 
     // ========================================
     // PREFERENCES & STATS (Delegated to DB.Preferences)
     // ========================================
 
     /**
-     * Relaie le rapport de stockage de `DB.Preferences`.
+     * Relays the storage report of `DB.Preferences`.
      *
-     * ⚠️ **Ce relais déclarait MOINS que ce que le module rend, et il le déclarait faux.** Sa
-     * forme était `{ used, quota, percentage, layersCount, syncQueueCount }` : elle nommait un
-     * compteur du magasin v3 — retiré à la tâche 4.11 — et **omettait `featuresCount` et
-     * `outboxCount`**, que `preferences.ts` renseigne depuis B-121. Un appelant du chemin
-     * dégradé recevait donc un objet dont deux champs manquaient sans que le type le dise.
+     * ⚠️ **This relay declared LESS than what the module returns, and declared it
+     * wrong.** Its shape was `{ used, quota, percentage, layersCount, syncQueueCount }`:
+     * it named a counter of the v3 store — since removed — and **omitted
+     * `featuresCount` and `outboxCount`**, which `preferences.ts` fills. A caller on
+     * the degraded path thus received an object with two fields missing without the
+     * type saying so.
      *
-     * @returns Le quota, l'usage, et les décomptes des trois magasins qui portent de la donnée.
+     * @returns Quota, usage, and the tallies of the three data-bearing stores.
      */
     async getStorageStats(): Promise<StorageStatsReport> {
         if (!this._db) await this.init();
@@ -816,29 +849,29 @@ const StorageDB = {
     },
 
     // ========================================
-    // 🛑 LES QUATRE RELAIS DE SAUVEGARDE SONT RETIRÉS (tâche 4.11)
+    // 🛑 THE FOUR BACKUP RELAYS ARE REMOVED
     // ========================================
     //
-    // `createBackup`, `getBackups`, `getBackup` et `cleanOldBackups` déléguaient au module
-    // `DB.Backups`, lui-même supprimé avec le magasin `sync_backups`. Le retrait ne repose
-    // pas sur « c'est du code mort » mais sur trois mesures :
+    // `createBackup`, `getBackups`, `getBackup` and `cleanOldBackups` delegated to the
+    // `DB.Backups` module, itself deleted with the `sync_backups` store. The removal
+    // rests not on "it's dead code" but on three measurements:
     //
-    //   1. **Aucun écrivain.** Le seul appelant de `createBackup` était
-    //      `addpoi/sync-handler-backup.ts`, atteignable depuis `_createBackup()`, qui n'avait
-    //      lui-même AUCUN appelant de production depuis que 4.4b a réécrit `processSyncQueue`
-    //      pour déléguer à `pushOutbox`. Le magasin ne recevait plus rien, et le panneau
-    //      d'`offline-ui` affichait « aucune sauvegarde » par construction.
-    //   2. **Le motif était faux sur le mécanisme.** La chaîne était justifiée (B-116) comme
-    //      « le dernier rempart après une purge d'origine » — le cas iOS, WebKit purgeant
-    //      après 7 jours. Or `sync_backups` était un magasin de CETTE base : la purge qu'il
-    //      devait couvrir le détruisait avec le reste.
-    //   3. **Le rôle est couvert deux fois ailleurs.** L'outbox interdit contractuellement de
-    //      détruire une entrée, et l'export JSON d'`offline-ui` sort du navigateur — lui
-    //      survit réellement à une purge d'origine.
+    //   1. **No writer.** The only caller of `createBackup` was
+    //      `addpoi/sync-handler-backup.ts`, reachable from `_createBackup()`, which
+    //      itself had NO production caller since `processSyncQueue` was rewritten to
+    //      delegate to `pushOutbox`. The store received nothing any more, and the
+    //      `offline-ui` panel displayed "no backup" by construction.
+    //   2. **The motive was false on the mechanism.** The chain was justified as "the
+    //      last rampart after an origin purge" — the iOS case, WebKit purging after 7
+    //      days. But `sync_backups` was a store of THIS database: the purge it was
+    //      meant to cover destroyed it with the rest.
+    //   3. **The role is covered twice elsewhere.** The outbox contractually forbids
+    //      destroying an entry, and `offline-ui`'s JSON export leaves the browser — it
+    //      genuinely survives an origin purge.
     //
-    // ⚠️ La note du dessous disait que `cleanOldBackups` « reste appelée à l'init() du
-    // gestionnaire de synchronisation », et c'était vrai. Purger un magasin que personne
-    // n'alimente ne conserve rien : elle part avec ce qu'elle purgeait.
+    // ⚠️ The note below said `cleanOldBackups` "is still called at the sync manager's
+    // init()", and that was true. Purging a store nobody feeds preserves nothing: it
+    // goes with what it purged.
 
     // ========================================
     // IMAGE STORAGE METHODS (Delegated to DB.Images)
@@ -853,16 +886,16 @@ const StorageDB = {
         return undefined;
     },
 
-    // ⚠️ `getLocalImage()` retiré de la façade (3.13) : son unique consommateur était
-    // `addpoi/image-upload.ts` → `getLocalImageUrl()`, redondant avec la data-URL base64 que
-    // le même module écrit dans la donnée du POI. Les deux partent ensemble.
+    // ⚠️ `getLocalImage()` removed from the facade: its sole consumer was
+    // `addpoi/image-upload.ts` → `getLocalImageUrl()`, redundant with the base64
+    // data-URL the same module writes into the POI's data. Both leave together.
     //
-    // ⚠️ `getPendingImages` et `updateImageUploadStatus` RESTENT, et ce n'est plus une réserve :
-    // ils sont CÂBLÉS depuis le Sprint 5 par `editor/persistence/image-store.ts`
-    // (`retryPendingImages`), lui-même armé par `initImageUpload()`. Cette ligne a dit
-    // « ils servent `retryPendingUploads()`, requalifiée vers 4.5 » jusqu'au 08/08/2026 :
-    // 4.5 ne l'a jamais câblée, le Sprint 4 s'est clos sans elle, et c'est le Sprint 5 qui a
-    // rendu la chaîne vivante — sous un autre nom, dans un autre paquet.
+    // ⚠️ `getPendingImages` and `updateImageUploadStatus` STAY, and it is no longer a
+    // reservation: they are WIRED by `editor/persistence/image-store.ts`
+    // (`retryPendingImages`), itself armed by `initImageUpload()`. This line said "they
+    // serve `retryPendingUploads()`" until 08/08/2026: nothing had wired it then, and a
+    // later batch is what made the chain live — under another name, in another
+    // package.
     async getPendingImages(): Promise<unknown> {
         if (!this._db) await this.init();
         const module = this._ensureModule("Images");
@@ -890,11 +923,12 @@ const StorageDB = {
         return undefined;
     },
 
-    // 🛑 RELAIS POSÉ LE 08/08/2026 (B-190) — la purge existait et n'était JOIGNABLE PAR PERSONNE.
-    // `cleanUploadedImages` vivait dans le module `Images` sans relais ici, donc absente de
-    // `GeoLeaf.Storage.DB` et du namespace : 0 appelant possible, pendant que `storeImageLocally`
-    // écrivait des photos de terrain. Le store avait un écrivain et aucune purge — exactement le
-    // dégât que l'en-tête de `db/images.ts` disait vouloir éviter, réalisé par l'autre bout.
+    // 🛑 RELAY ADDED ON 08/08/2026 — the purge existed and was REACHABLE BY NOBODY.
+    // `cleanUploadedImages` lived in the `Images` module with no relay here, hence
+    // absent from `GeoLeaf.Storage.DB` and the namespace: 0 possible callers, while
+    // `storeImageLocally` was writing field photos. The store had a writer and no purge
+    // — exactly the damage the header of `db/images.ts` said it wanted to avoid,
+    // realised from the other end.
     async cleanUploadedImages(): Promise<unknown> {
         if (!this._db) await this.init();
         const module = this._ensureModule("Images");
@@ -917,7 +951,7 @@ const StorageDB = {
     },
 };
 
-// CAPACITÉS S1 — the `if (Log)` guard was dead (Log is a Proxy, always truthy) and it
+// The `if (Log)` guard was dead (Log is a Proxy, always truthy) and it
 // wrapped a module-load introspection dump: key counts, the first ten keys, sample
 // `typeof` probes. Its arguments were built on EVERY load whatever the log level, since
 // `Log.debug` only tests the level once called. Removed; what remains is the one line

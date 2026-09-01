@@ -28,7 +28,6 @@ const DEFAULTS: TableConfig = {
  * core (Plugin Contract v1, INV-CONFIG), merged over the built-in defaults.
  */
 export function getPluginConfig(): TableConfig {
-    const raw = (coreConfigGet<Partial<TableConfig>>("modules.table", {}) ??
-        {}) as Partial<TableConfig>;
+    const raw = coreConfigGet<Partial<TableConfig>>("modules.table", {}) ?? {};
     return { ...DEFAULTS, ...raw };
 }

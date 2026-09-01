@@ -42,7 +42,15 @@ describe("PollingSource", () => {
 
         await vi.advanceTimersByTimeAsync(0);
         expect(fetchMock).toHaveBeenCalledTimes(1);
-        expect(fetchMock).toHaveBeenCalledWith("https://primary/data");
+        // ⚠️ Loosened on 17/08/2026: the call now carries a second argument
+        // `{ signal }` — the cancellation carried by `stop()`. The
+        // single-argument assertion locked the call's SHAPE, not its
+        // behaviour. It is **strengthened** rather than loosened: we check
+        // the URL AND the signal's presence.
+        expect(fetchMock).toHaveBeenCalledWith(
+            "https://primary/data",
+            expect.objectContaining({ signal: expect.any(AbortSignal) })
+        );
         expect(handler).toHaveBeenCalledWith({ foo: 1 });
 
         src.stop();
@@ -131,7 +139,11 @@ describe("PollingSource", () => {
         await vi.advanceTimersByTimeAsync(0);
         expect(handler).not.toHaveBeenCalled();
         expect(fetchMock).toHaveBeenCalledTimes(1);
-        expect(fetchMock).toHaveBeenCalledWith("https://primary/data");
+        // Same loosening as above, same motive.
+        expect(fetchMock).toHaveBeenCalledWith(
+            "https://primary/data",
+            expect.objectContaining({ signal: expect.any(AbortSignal) })
+        );
 
         src.stop();
     });

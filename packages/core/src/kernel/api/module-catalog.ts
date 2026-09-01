@@ -6,56 +6,56 @@
  */
 
 /**
- * Catalogue déclaratif des modules du namespace — API publique S4.3f.
+ * Declarative catalogue of the namespace modules.
  *
  *
  * ## Ce qu'il remplace
  *
- * `APIModuleManager._scanExistingModules()` découvrait ses modules en balayant
- * `Object.keys(gl)` sur le préfixe `_`. Ce n'était pas une découverte, c'était une **copie de
- * tout ce qui commence par un underscore** — et elle promouvait au rang de « module » une
- * chaîne (`_version`), un sac d'état (`_app`), et un ACCESSEUR qu'elle invoquait au passage
+ * `APIModuleManager._scanExistingModules()` used to discover its modules by sweeping
+ * `Object.keys(gl)` on the `_` prefix. That was not discovery, it was a **copy of
+ * everything starting with an underscore** — and it promoted to "module" a string
+ * (`_version`), a state bag (`_app`), and an ACCESSOR it invoked in passing
  * (`_APIController`).
  *
- * Ce dernier point n'est pas théorique : lire `GeoLeaf._APIController` construit un
- * `APIController`, dont `init()` → `_setupModuleAccess()` → `_scanExistingModules()` **relit
- * l'accesseur en pleine construction**. La récursion a réellement fait exploser la pile en
- * navigateur (`controller.ts:331-340` en garde le récit), et elle n'était retenue que par le
- * parking d'instance posé juste avant `init()`. Le catalogue applique une politique
- * d'accesseur — on enregistre le NOM, on ne lit jamais la valeur — ce qui fait du parking une
- * ceinture au lieu du seul frein.
+ * That last point is not theoretical: reading `GeoLeaf._APIController` constructs an
+ * `APIController`, whose `init()` → `_setupModuleAccess()` → `_scanExistingModules()`
+ * **re-reads the accessor mid-construction**. The recursion really blew the stack in a
+ * browser (`controller.ts` keeps the account), and it was only held back by the
+ * instance parking set just before `init()`. The catalogue applies an accessor policy —
+ * record the NAME, never read the value — which turns the parking into a seatbelt
+ * instead of the only brake.
  *
- * ## Ce qu'il ne prétend PAS faire
+ * ## What it does NOT claim to do
  *
- * ⚠️ Il ne préserve pas la sortie de `getModuleList()`. Celle-ci fait l'union avec
- * `Object.keys(gl)` **à chaque appel** : elle suit le namespace par construction, catalogue ou
- * pas. Le plan de sprint annonçait le contraire ; la mesure l'a corrigé (cf. l'en-tête de
- * `__tests__/api/module-discovery.characterisation.test.js`).
+ * ⚠️ It does not preserve the output of `getModuleList()`. That one unions with
+ * `Object.keys(gl)` **on every call**: it tracks the namespace by construction,
+ * catalogue or not. The plan announced otherwise; measurement corrected it (cf. the
+ * header of `__tests__/api/module-discovery.characterisation.test.js`).
  *
- * ## La garde de présence est OBLIGATOIRE
+ * ## The presence guard is MANDATORY
  *
- * Trois noms de `PUBLIC_MODULES` ne sont montés par personne — `POI` (sous-système dissous au
- * S9), `Route` (façade dissoute au S11) et `Constants` (le namespace porte `CONSTANTS`, en
- * capitales). Le `if (gl[name])` de l'ancien code les sautait en silence ; le nouveau les
- * écarte sur `!descriptor`, puisqu'une clé absente n'a pas de descripteur.
+ * Three names of `PUBLIC_MODULES` are mounted by nobody — `POI` (subsystem dissolved),
+ * `Route` (facade dissolved) and `Constants` (the namespace carries `CONSTANTS`, in
+ * capitals). The old code's `if (gl[name])` skipped them silently; the new one discards
+ * them on `!descriptor`, since an absent key has no descriptor.
  *
- * ⚠️ Ce paragraphe affirmait d'abord qu'une « garde de présence » explicite était OBLIGATOIRE
- * pour eux. **La sonde de rougissement ne l'a pas confirmé** : désarmer cette garde ne rendait
- * aucun test rouge, parce que le cas était déjà couvert en amont. Ce qu'elle garde réellement,
- * c'est la clé PRÉSENTE mais falsy (`_gl.X = undefined` crée bien une propriété propre) — une
- * façade posée à `undefined` n'est pas un module, et la mettre en cache la rendrait
- * indiscernable d'une vraie pour `hasModule`. Les trois noms restent déclarés dans
- * {@link CATALOG_EXPECTED_ABSENT}, ce qui est leur vrai filet.
+ * ⚠️ This paragraph first claimed an explicit "presence guard" was MANDATORY for them.
+ * **The reddening probe did not confirm it**: disarming this guard turned no test red,
+ * because the case was already covered upstream. What it really guards is the key
+ * PRESENT but falsy (`_gl.X = undefined` does create an own property) — a facade set to
+ * `undefined` is not a module, and caching it would make it indistinguishable from a
+ * real one for `hasModule`. The three names stay declared in
+ * {@link CATALOG_EXPECTED_ABSENT}, which is their real net.
  */
 
 /**
  * Les modules publics interrogés au boot — liste héritée, conservée telle quelle.
  *
- * ⚠️ Trois entrées ne correspondent à rien au runtime : voir {@link CATALOG_EXPECTED_ABSENT}.
- * Elles restent ici parce que les retirer changerait la sortie de `getModule()` pour un nom
- * qu'un intégrateur pourrait encore interroger — `getModule("POI")` doit rendre `null`, pas
- * `undefined`. C'est le repli sur le namespace qui produit ce `null`, et il n'existe que si le
- * nom traverse la boucle sans être mis en cache.
+ * ⚠️ Three entries match nothing at runtime: see {@link CATALOG_EXPECTED_ABSENT}. They
+ * stay here because removing them would change the output of `getModule()` for a name an
+ * integrator may still query — `getModule("POI")` must return `null`, not `undefined`.
+ * The namespace fallback is what produces that `null`, and it only exists if the name
+ * crosses the loop without being cached.
  */
 const PUBLIC_MODULES: readonly string[] = [
     "Core",
@@ -78,16 +78,16 @@ const PUBLIC_MODULES: readonly string[] = [
 ];
 
 /**
- * Les modules internes du namespace, ÉNUMÉRÉS au lieu d'être balayés au préfixe.
+ * The namespace's internal modules, ENUMERATED instead of prefix-swept.
  *
- * 24 entrées — c'était 37 avant que l'API S4.3 n'en retire 13 sans lecteur.
+ * 24 entries — it was 37 before the public-API review removed 13 with no reader.
  *
- * ⚠️ Cette liste ne contient PAS `_app`, `_registry`, `_version` ni `_APIController` alors
- * qu'ils sont sur le namespace, et c'est délibéré : ce ne sont pas des modules. `_version` est
- * une chaîne, `_app` un sac d'état, `_registry` l'instance du `ModuleRegistry`, et
- * `_APIController` un accesseur qu'on ne veut pas déclencher. Les mettre en cache n'apportait
- * rien — le balayage les prenait parce qu'ils commencent par `_`, pas parce qu'ils sont des
- * modules. Ils restent atteignables par `getModule()`, via le repli sur le namespace.
+ * ⚠️ This list does NOT contain `_app`, `_registry`, `_version` nor `_APIController`
+ * although they sit on the namespace, and that is deliberate: they are not modules.
+ * `_version` is a string, `_app` a state bag, `_registry` the `ModuleRegistry` instance,
+ * and `_APIController` an accessor we do not want to trigger. Caching them brought
+ * nothing — the sweep took them because they start with `_`, not because they are
+ * modules. They stay reachable through `getModule()`, via the namespace fallback.
  */
 const INTERNAL_MODULES: readonly string[] = [
     "_Cluster",
@@ -113,21 +113,22 @@ const INTERNAL_MODULES: readonly string[] = [
 ];
 
 /**
- * L'ordre est porteur : les publics d'abord, comme le faisait le balayage historique.
+ * The order is load-bearing: public ones first, as the historical sweep did.
  *
- * ⚠️ `PUBLIC_MODULES` et `INTERNAL_MODULES` ne sont PAS exportés : ce sont des détails de
- * composition, et les exporter les rendait orphelins au sens de `check-orphan-exports` et de
- * knip — les deux l'ont signalé, et ils avaient raison. La surface du module est ce tableau-ci
- * plus {@link CATALOG_EXPECTED_ABSENT}.
+ * ⚠️ `PUBLIC_MODULES` and `INTERNAL_MODULES` are NOT exported: they are composition
+ * details, and exporting them made them orphans in the `check-orphan-exports` and knip
+ * sense — both flagged it, and both were right. The module's surface is this array plus
+ * {@link CATALOG_EXPECTED_ABSENT}.
  */
 export const MODULE_CATALOG: readonly string[] = [...PUBLIC_MODULES, ...INTERNAL_MODULES];
 
 /**
- * Entrées du catalogue dont l'ABSENCE du namespace est attendue et motivée.
+ * Catalogue entries whose ABSENCE from the namespace is expected and motivated.
  *
- * Le test anti-dérive (`__tests__/api/module-discovery.characterisation.test.js`) exige que
- * toute entrée du catalogue soit montée au runtime, SAUF celles-ci. Une exemption sans motif
- * est indiscernable d'un nom que quelqu'un a cessé de poursuivre — d'où la `Map`.
+ * The anti-drift test (`__tests__/api/module-discovery.characterisation.test.js`)
+ * requires every catalogue entry to be mounted at runtime, EXCEPT these. An exemption
+ * without a motive is indistinguishable from a name someone stopped pursuing — hence
+ * the `Map`.
  */
 export const CATALOG_EXPECTED_ABSENT: ReadonlyMap<string, string> = new Map([
     ["POI", "Sous-système POI dissous au S9 — aucun installeur ne monte cette clé."],

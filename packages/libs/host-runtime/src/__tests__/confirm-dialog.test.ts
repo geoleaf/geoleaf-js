@@ -1,29 +1,33 @@
 // @vitest-environment happy-dom
 /*!
- * Tests — `confirmDialog`, la boîte de confirmation partagée
+ * Tests — `confirmDialog`, the shared confirmation box
  *
- * ⚠️ L'annotation d'environnement ci-dessus est OBLIGATOIRE ici, et elle est arrivée avec le
- * fichier (S6b / B-144) : `field-renderer` a happy-dom par défaut, `host-runtime` a `node`
- * — délibérément, pour que `host.test.ts` puisse constater l'absence réelle de `window`.
- * Sans elle, les 12 cas de cette suite tombent en `ReferenceError: document is not defined`.
- * C'est l'idiome déjà utilisé par `drag.test.ts` et `tooltip.test.ts`.
+ * ⚠️ The environment annotation above is MANDATORY here, and it arrived with
+ * the file: `field-renderer` has happy-dom by default, `host-runtime` has
+ * `node` — deliberately, so `host.test.ts` can observe the real absence of
+ * `window`. Without it, this suite's 12 cases fall into
+ * `ReferenceError: document is not defined`. The idiom already used by
+ * `drag.test.ts` and `tooltip.test.ts`.
  *
- * 🛑 **POURQUOI CE FICHIER NAÎT À LA TÂCHE 5.2, ET PAS AVANT.** `confirmDialog` est exportée
- * par un paquet PUBLIÉ et sert déjà `offline-ui` ; elle n'avait **aucun test**. La bascule de
- * `editor/modal/delete-confirm-modal.ts` (97 lignes, DOM et classes identiques) vers elle
- * supprimait **7 tests** — dont l'unique couverture d'une action **destructive**. Les
- * supprimer sans les porter aurait échangé une réimplémentation testée contre une
- * factorisation qui ne l'est pas : la duplication aurait disparu, la garantie aussi.
+ * 🛑 **WHY THIS FILE IS BORN NOW, AND NOT BEFORE.** `confirmDialog` is
+ * exported by a PUBLISHED package and already serves `offline-ui`; it had
+ * **no test**. Switching `editor/modal/delete-confirm-modal.ts` (97 lines,
+ * identical DOM and classes) over to it deleted **7 tests** — including the
+ * only coverage of a **destructive** action. Deleting them without porting
+ * would have traded a tested reimplementation for an untested factoring: the
+ * duplication would have gone, and the guarantee with it.
  *
- * ⚠️ Les assertions sont **portées**, pas réinventées : la plupart viennent des tests de la
- * modale supprimée. S'y ajoute ce que `confirmDialog` fait **en plus** — `role="alertdialog"`,
- * clic sur le fond, focus initial sur l'action non destructive.
+ * ⚠️ The assertions are **ported**, not reinvented: most come from the
+ * deleted modal's tests. Added on top is what `confirmDialog` does **extra**
+ * — `role="alertdialog"`, backdrop click, initial focus on the
+ * non-destructive action.
  *
- * 🛑 **DEUX DE CES GARDES ONT ÉTÉ VUES VERTES SOUS MUTATION, ET ELLES SONT ANNOTÉES COMME
- * TELLES** plutôt que réécrites pour faire semblant. Le drapeau `settled` n'est pas
- * observable (`resolve()` est idempotent), et le `btnCancel.focus()` explicite est redondant
- * avec `trap.activate()`. Les commentaires en place le disent, et le test de focus a été
- * renforcé sur l'invariant qui, lui, mord : l'ORDRE des deux boutons dans le DOM.
+ * 🛑 **TWO OF THESE GUARDS WERE SEEN GREEN UNDER MUTATION, AND THEY ARE
+ * ANNOTATED AS SUCH** rather than rewritten to pretend. The `settled` flag is
+ * not observable (`resolve()` is idempotent), and the explicit
+ * `btnCancel.focus()` is redundant with `trap.activate()`. The comments in
+ * place say so, and the focus test was strengthened on the invariant that
+ * does bite: the ORDER of the two buttons in the DOM.
  */
 import { describe, it, expect, afterEach } from "vitest";
 import { confirmDialog } from "../ui/confirm-dialog.js";
@@ -68,8 +72,8 @@ describe("confirmDialog — le montage", () => {
     });
 
     it("🛑 annonce une ALERTE modale, pas un simple dialogue", () => {
-        // `alertdialog` est ce que la version locale n'avait pas : un lecteur d'écran
-        // l'interrompt, ce qu'une confirmation destructive doit faire.
+        // `alertdialog` is what the local version lacked: a screen reader
+        // interrupts on it, which a destructive confirmation must do.
         void confirmDialog(OPTS);
         const panel = document.body.querySelector(".gl-form-modal-panel")!;
         expect(panel.getAttribute("role")).toBe("alertdialog");
@@ -115,12 +119,13 @@ describe("confirmDialog — les issues", () => {
         await p;
     });
 
-    // ⚠️ CE TEST NE GARDE PAS LE DRAPEAU `settled`, et le dire vaut mieux que le laisser
-    // croire : `resolve()` est idempotent par construction, donc retirer le drapeau laisse ce
-    // test VERT (mesuré). Ce qu'il tient est le CONTRAT — la première réponse gagne, et un
-    // Échap tardif ne retourne pas une suppression déjà confirmée. Le drapeau, lui, est
-    // défensif : il évite un second `trap.deactivate()` / `overlay.remove()`, tous deux sans
-    // effet observable. Ne pas écrire de garde qui prétendrait le contraire.
+    // ⚠️ THIS TEST DOES NOT GUARD THE `settled` FLAG, and saying so beats
+    // letting it be believed: `resolve()` is idempotent by construction, so
+    // removing the flag leaves this test GREEN (measured). What it holds is
+    // the CONTRACT — the first answer wins, and a late Escape does not
+    // reverse an already-confirmed deletion. The flag itself is defensive: it
+    // avoids a second `trap.deactivate()` / `overlay.remove()`, both without
+    // observable effect. Do not write a guard pretending otherwise.
     it("la première réponse gagne — Échap après un clic ne retourne pas le verdict", async () => {
         const p = confirmDialog(OPTS);
         btn("gl-form-modal__btn-delete").click();
@@ -128,11 +133,12 @@ describe("confirmDialog — les issues", () => {
         await expect(p).resolves.toBe(true);
     });
 
-    // 🛑 L'INVARIANT EST L'ORDRE DU DOM, pas l'appel à `focus()`. Mesuré : `trap.activate()`
-    // fait déjà `focusable[0].focus()`, donc retirer le `btnCancel.focus()` explicite de
-    // `confirm-dialog.ts` laisse ce test vert. Ce qui le ferait rougir — et c'est le vrai
-    // risque — c'est d'INVERSER les deux boutons : le focus tomberait alors sur l'action
-    // destructive. Les deux assertions ensemble séparent les deux formes.
+    // 🛑 THE INVARIANT IS THE DOM ORDER, not the `focus()` call. Measured:
+    // `trap.activate()` already does `focusable[0].focus()`, so removing the
+    // explicit `btnCancel.focus()` from `confirm-dialog.ts` leaves this test
+    // green. What would turn it red — the real risk — is SWAPPING the two
+    // buttons: focus would then land on the destructive action. The two
+    // assertions together separate the two shapes.
     it("🛑 le focus initial va sur l'action NON destructive, qui est la PREMIÈRE du DOM", () => {
         void confirmDialog(OPTS);
         const panel = document.body.querySelector(".gl-form-modal-panel")!;

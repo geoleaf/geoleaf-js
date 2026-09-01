@@ -1,11 +1,12 @@
 /*!
- * Tests — tâche 5.1-a : le garde-fou de doublon à la saisie (`drawing/poi-snap.ts`)
+ * Tests — the duplicate guard at capture time (`drawing/poi-snap.ts`)
  *
- * ⚠️ Le mock REPRODUIT les contraintes de la surface réelle au lieu de les ignorer :
- * `Layers.getFeatures` JETTE pour une couche déclarée mais non chargée — c'est ce que fait
- * le core —, et `Config.getActiveProfile` rend `undefined` quand aucun profil n'est actif.
- * Un mock plus permissif que la surface laisserait passer ce que le navigateur voit tout de
- * suite (piège mesuré au Sprint 4 : 340 tests verts sur un appel détaché de son récepteur).
+ * ⚠️ The mock REPRODUCES the real surface's constraints instead of ignoring
+ * them: `Layers.getFeatures` THROWS for a declared but unloaded layer — what
+ * the core does —, and `Config.getActiveProfile` returns `undefined` when no
+ * profile is active. A mock more permissive than the surface would let through
+ * what the browser sees immediately (measured trap: 340 green tests on a call
+ * detached from its receiver).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -21,7 +22,7 @@ vi.mock("@geoleaf/host-runtime", () => ({
 
 const { findNearbyFeature } = await import("../drawing/poi-snap.js");
 
-/** ~11,1 m par 0,0001° de latitude — sert à placer des voisins à distance connue. */
+/** ~11.1 m per 0.0001° of latitude — used to place neighbours at a known distance. */
 const BASE = { lat: -21.1, lng: 55.5 };
 
 function pointFeature(id: string, lat: number, lng: number, title?: string) {
@@ -68,13 +69,14 @@ describe("findNearbyFeature — le domaine de recherche", () => {
     });
 
     it("ÉCARTE une couche qui n'accorde QUE le droit de supprimer", () => {
-        // 🛑 CE TEST EST L'INVERSION DE SON PRÉDÉCESSEUR, et l'inversion EST la tâche 5.9.
-        // Il s'appelait « accepte une couche point en enableEditionFull » et affirmait que
-        // le droit de SUPPRIMER faisait entrer une couche dans le sélecteur d'édition —
-        // conséquence de la rustine posée en 5.2 pour ne pas laisser ce drapeau sans lecteur.
-        // La décision V1 dit l'inverse : on ne propose pas de créer sur une couche où l'on
-        // n'a que le droit d'effacer. Renommé et retourné, pas supprimé — sinon on perdrait
-        // la trace de ce que le comportement était.
+        // 🛑 THIS TEST IS THE INVERSION OF ITS PREDECESSOR, and the inversion
+        // IS the change. It was called "accepts a point layer in
+        // enableEditionFull" and asserted that the right to DELETE brought a
+        // layer into the edition picker — a consequence of the patch set
+        // earlier so this flag would not go readerless. The V1 decision says
+        // the opposite: we do not offer to create on a layer where one only
+        // has the right to erase. Renamed and flipped, not deleted — otherwise
+        // we would lose the trace of what the behaviour was.
         setProfile([{ id: "sites", geometryType: "point", edition: { delete: true } }]);
         _host.Layers = { getFeatures: () => [pointFeature("a", BASE.lat, BASE.lng)] };
         expect(findNearbyFeature(BASE, 50)).toBeNull();

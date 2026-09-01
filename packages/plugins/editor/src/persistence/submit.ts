@@ -82,10 +82,10 @@ function _onSuccess(
     isUpdate: boolean
 ): void {
     if (isUpdate && feature.id) ctx.commitHost(layerId, feature.id, saved.geometry);
-    // 5.1-e — le suivi de session. À la CRÉATION on retient l'identifiant retenu par le
-    // serveur ; à la MISE À JOUR on réconcilie, sans quoi une entité créée hors réseau puis
-    // synchronisée sortirait de l'export (elle serait suivie sous un identifiant local que la
-    // couche hôte ne porte plus).
+    // Session tracking. At CREATE we keep the identifier the server retained; at
+    // UPDATE we reconcile, otherwise an entity created off-network then
+    // synchronised would drop out of the export (it would be tracked under a
+    // local identifier the host layer no longer carries).
     if (!isUpdate) trackSessionFeature(String(saved.id));
     else if (feature.id && String(feature.id) !== String(saved.id)) {
         renameSessionFeature(String(feature.id), String(saved.id));
@@ -121,21 +121,23 @@ function _notifyError(err: unknown): void {
     let key = "editor.error.server";
     if (err instanceof PersistenceError) {
         if (err.kind === "timeout") key = "editor.error.networkTimeout";
-        // 🛑 LA MOITIÉ VISIBLE DE B-139 (tâche 8.7). Sans cette branche, un refus de PERMISSION
-        // tombait sur `editor.error.server` — « Erreur serveur. Veuillez réessayer. » —, c'est-
-        // à-dire qu'on invitait l'utilisateur à réessayer une opération que la couche refusera
-        // toujours. Le refus se nomme désormais pour ce qu'il est.
+        // 🛑 THE FIX'S VISIBLE HALF. Without this branch, a PERMISSION refusal
+        // fell on `editor.error.server` — "Erreur serveur. Veuillez réessayer."
+        // — i.e. we invited the user to retry an operation the layer will
+        // always refuse. The refusal now names itself for what it is.
         //
-        // ⚠️ Et il ne se confond PAS avec `permissionDenied`, malgré la parenté des mots : ce
-        // dernier porte un 401/403 **du serveur** (c'est VOUS qui êtes refusé, se reconnecter
-        // peut aider), celui-ci porte la déclaration de la couche (l'opération est refusée à
-        // tout le monde, il n'y a rien à tenter). Deux causes, deux gestes, deux libellés.
+        // ⚠️ And it does NOT blur with `permissionDenied`, despite the kinship of
+        // words: that one carries a 401/403 **from the server** (YOU are
+        // refused, reconnecting may help), this one carries the layer's
+        // declaration (the operation is refused to everyone, there is nothing
+        // to try). Two causes, two gestures, two labels.
         else if (err.kind === "forbidden") key = "editor.error.editionNotPermitted";
-        // 🛑 LA MOITIÉ VISIBLE DE B-199 (tâches 3.5/3.6), sur le patron exact de la branche
-        // ci-dessus. Un 501 tombait lui aussi sur « Erreur serveur. Veuillez réessayer. » — la
-        // seule chose qui ne servira à rien, puisque le serveur ne connaît pas le verbe.
-        // Réparer la file SANS cette branche laisserait la machine juste et l'utilisateur
-        // trompé : c'est la moitié du défaut qui ne tient pas dans l'étiquette.
+        // 🛑 THE 501 DEFECT'S VISIBLE HALF, on the exact pattern of the branch
+        // above. A 501 also fell on "Erreur serveur. Veuillez réessayer." — the
+        // one thing that will serve nothing, since the server does not know the
+        // verb. Fixing the queue WITHOUT this branch would leave the machine
+        // right and the user deceived: the half of the defect that does not fit
+        // in the label.
         else if (err.kind === "capability") key = "editor.error.operationNotSupported";
         else if (err.kind === "client" && (err.status === 401 || err.status === 403)) {
             key = "editor.error.permissionDenied";

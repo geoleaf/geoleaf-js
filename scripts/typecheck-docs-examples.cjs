@@ -15,21 +15,21 @@
  * result of a call the facade declared `void`. Both were real, both were copy-pasteable,
  * neither matched any rule. A compiler does not need the rule to be written down.
  *
- * ## Scope — DEUX corpus depuis le 27/07/2026 (B-44)
+ * ## Scope — TWO corpora since 2026-07-27
  *
- * 1. Les blocs ts/typescript des `.md` de `packages/core/docs/`.
- * 2. **Les `@example` du TSDoc de toutes les sources** (tous les `src/` du registre de paquets). Le moteur
- *    existait, il n'était simplement pas branché dessus — c'était l'énoncé de B-44.
+ * 1. The ts/typescript blocks of `packages/core/docs/` `.md` files.
+ * 2. **The TSDoc `@example`s of all sources** (every `src/` of the package registry).
+ *    The engine existed, it simply was not wired to them.
  *
- * ⚠️ **Ce que le corpus 2 NE couvre PAS, et pourquoi ce n'est pas un choix de confort.**
- * Mesuré le 27/07/2026 : **101 `@example` entrent, 49 sont compilés, 52 sont écartés** —
- * ces derniers passent par le namespace ambiant `GeoLeaf.*`, que **le paquet publié ne
- * déclare pas**. `src/global.d.ts` n'est jamais émis dans `dist/types/` (TypeScript ne
- * ré-émet pas un `.d.ts` d'entrée : `emitDeclarationOnly` le saute), et aucun
- * `declare global` ne part dans le tarball. Prouvé par compilation contre les types
- * publiés : `GeoLeaf.Core.setTheme("dark")` rend **TS2304 Cannot find name 'GeoLeaf'**.
- * Les inclure ferait scanner sans rien voir — le mode d'échec (1) ci-dessous. Le compteur
- * les affiche à chaque run plutôt que de les taire.
+ * ⚠️ **What corpus 2 does NOT cover, and why it is not a comfort choice.** Measured on
+ * 2026-07-27: **101 `@example`s enter, 49 are compiled, 52 are set aside** — the latter
+ * go through the ambient `GeoLeaf.*` namespace, which **the published package does not
+ * declare**. `src/global.d.ts` is never emitted into `dist/types/` (TypeScript does not
+ * re-emit an entry `.d.ts`: `emitDeclarationOnly` skips it), and no `declare global`
+ * ships in the tarball. Proven by compiling against the published types:
+ * `GeoLeaf.Core.setTheme("dark")` renders **TS2304 Cannot find name 'GeoLeaf'**.
+ * Including them would mean scanning while seeing nothing — failure mode (1) below. The
+ * counter shows them at every run rather than silencing them.
  *
  * Every ts/typescript block that PARSES. Of the 136 in the docs, 27 do not — they are
  * deliberate fragments (`…`), pseudo-code and partial objects, and they are skipped.
@@ -116,11 +116,12 @@ if (!CORE) {
     );
     process.exit(1);
 }
-// 31/07/2026 — le périmètre `.md` passe de `packages/core/docs/` aux surfaces PRODUIT, et il
-// est dérivé dans `lib/tsdoc-examples.cjs` pour que `validate-docs-examples` lise exactement le
-// même. Le motif est écrit sur `productDocsFiles` ; le résumé tient en une ligne : la règle qui
-// interdit une API fantôme existait, c'est son corpus qui s'arrêtait avant les deux README les
-// plus lus du projet. `DOCS_DIR` reste utilisé pour les chemins de sortie relatifs.
+// 2026-07-31 — the `.md` perimeter goes from `packages/core/docs/` to the PRODUCT
+// surfaces, and it is derived in `lib/tsdoc-examples.cjs` so `validate-docs-examples`
+// reads exactly the same one. The rationale is written on `productDocsFiles`; the
+// summary fits in one line: the rule forbidding a ghost API existed, its corpus is what
+// stopped short of the project's two most-read READMEs. `DOCS_DIR` stays in use for
+// relative output paths.
 const DOCS_DIR = path.join(CORE.absDir, "docs");
 const TYPES_DIR = path.join(CORE.absDir, "dist", "types");
 const TMP_DIR = path.join(CORE.absDir, ".tmp-docs-typecheck");
@@ -129,7 +130,12 @@ const TMP_DIR = path.join(CORE.absDir, ".tmp-docs-typecheck");
 // every guard below reports through `process.exit()`, which skips `finally` entirely.
 process.on("exit", () => fs.rmSync(TMP_DIR, { recursive: true, force: true }));
 
-const ts = require(require.resolve("typescript", { paths: [ROOT] }));
+// The cast is what makes every `ts.is*` guard actually NARROW under checkJs: a dynamic
+// `require(resolve(...))` types as `any`, an `any` predicate narrows nothing, and the
+// JSDoc-typed `Node` parameters below then fail on every member access.
+const ts = /** @type {typeof import("typescript")} */ (
+    require(require.resolve("typescript", { paths: [ROOT] }))
+);
 
 // ---------------------------------------------------------------------------
 // Extraction
@@ -187,23 +193,29 @@ function extractCodeBlocks(content) {
     return blocks;
 }
 
-// Le CORPUS vient de `lib/tsdoc-examples.cjs`, comme l'extracteur.
+// The CORPUS comes from `lib/tsdoc-examples.cjs`, like the extractor.
 //
-// ⚠️ B-80 (31/07/2026) — ce fichier gardait ici son propre `walkSources()`, resté privé quand
-// `extractTsdocExamples` a été mutualisé (B-75). Le commentaire ci-dessous revendiquait « un
-// seul moteur » depuis, mais **seule la moitié l'était** : deux marcheurs coexistaient, et ils
-// avaient déjà divergé sur un point qui comptait — celui-ci excluait les `.d.ts` par un test
-// explicite, ce qui rendait `check:docs-typecheck` aveugle aux `@example` de `global.d.ts`.
+// ⚠️ 2026-07-31 — this file kept its own `walkSources()` here, left private when
+// `extractTsdocExamples` was pooled. The comment below claimed "one engine" since, but
+// **only half of it was**: two walkers coexisted, and they had already diverged on a
+// point that mattered — this one excluded the `.d.ts` through an explicit test, which
+// made `check:docs-typecheck` blind to `global.d.ts`'s `@example`s.
 //
-// Mutualiser le marcheur ferme la classe plutôt que le cas : il n'y a désormais **qu'un seul
-// endroit** où décider ce qui entre dans le corpus des `@example` (la constante `EXCLUDED` de
-// la lib), et `validate-docs-examples` lit exactement le même.
+// Pooling the walker closes the class rather than the case: there is now **only one
+// place** to decide what enters the `@example` corpus (the lib's `EXCLUDED` constant),
+// and `validate-docs-examples` reads exactly the same one.
 const walkSources = sourceFiles;
 
 /** Parses a snippet, or returns null when it has syntax errors. */
 function parseSnippet(code) {
     const sf = ts.createSourceFile("x.ts", code, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
-    return sf.parseDiagnostics.length === 0 ? sf : null;
+    // `parseDiagnostics` is real but not in the public .d.ts — the cast names the internal
+    // field instead of widening `sf` to `any`, so every other member stays checked.
+    const withDiags =
+        /** @type {import("typescript").SourceFile & { parseDiagnostics: readonly unknown[] }} */ (
+            sf
+        );
+    return withDiags.parseDiagnostics.length === 0 ? sf : null;
 }
 
 /**
@@ -225,23 +237,23 @@ const DEFECT_CODES = new Map([
     ["TS2614", "the module has no such named export"],
     ["TS2739", "required properties are missing"],
     ["TS2741", "a required property is missing"],
-    // qualite Q4.4 (31/07/2026) — les quatre codes d'`exactOptionalPropertyTypes`. Le
-    // tsconfig temporaire de cette gate étend `packages/core/tsconfig.json`, donc il HÉRITE
-    // de l'option depuis le Q4. Sans ces quatre entrées, un exemple documenté qui cesse de
-    // compiler chez l'intégrateur passait en `ignoredIdioms` et la gate sortait VERTE :
-    // sur les 95 erreurs du sprint, 94 portaient un code absent de cette liste (seule
-    // TS2345 y figurait). C'est une cécité, pas un rouge — donc elle a été VUE, en plantant
-    // un exemple témoin qui déclenche TS2379, avant d'être refermée.
+    // 2026-07-31 — the four `exactOptionalPropertyTypes` codes. This gate's temporary
+    // tsconfig extends `packages/core/tsconfig.json`, so it INHERITS the option since
+    // it was enabled there. Without these four entries, a documented example that
+    // stops compiling on the integrator's side passed into `ignoredIdioms` and the
+    // gate came out GREEN: of the 95 errors of that pass, 94 carried a code absent
+    // from this list (only TS2345 was in it). It is a blindness, not a red — so it was
+    // SEEN, by planting a witness example that triggers TS2379, before being closed.
     ["TS2375", "an optional property cannot receive an explicit `undefined`"],
     ["TS2379", "an argument passes `undefined` where the property must be absent"],
     ["TS2412", "assigning `undefined` to a property declared optional"],
     ["TS2769", "no overload accepts this argument shape"],
-    // qualite Q5.4 (31/07/2026) — les codes de `noUncheckedIndexedAccess`, posée au même
-    // endroit et donc héritée ici comme la précédente. Même cécité, même remède : sur les
-    // 391 erreurs du sprint Q5, 199 — 52 % — portaient TS18048 ou TS2532, deux codes que
-    // cette liste ne connaissait pas. Un exemple qui lit `arr[0].foo` compile chez nous et
-    // PAS chez l'intégrateur dès que l'option est posée : c'est un défaut copiable-collable,
-    // pas un idiome de documentation. Vue rougir avant d'être refermée.
+    // 2026-07-31 — the `noUncheckedIndexedAccess` codes, enabled at the same place
+    // and hence inherited here like the previous one. Same blindness, same remedy: of
+    // the 391 errors of that pass, 199 — 52 % — carried TS18048 or TS2532, two codes
+    // this list did not know. An example reading `arr[0].foo` compiles on our side and
+    // NOT on the integrator's once the option is set: a copy-pastable defect, not a
+    // documentation idiom. Seen reddening before being closed.
     ["TS18048", "a value read from an index may be `undefined`"],
     ["TS2532", "the object read from an index may be `undefined`"],
     ["TS2538", "`undefined` cannot be used as an index"],
@@ -249,42 +261,42 @@ const DEFECT_CODES = new Map([
 ]);
 
 /**
- * B-202 (09/08/2026) — LES CODES DE L'APPEL SUR `unknown`, ET POURQUOI ILS NE SONT PAS
- * DANS {@link DEFECT_CODES}.
+ * 2026-08-09 — THE CALL-ON-`unknown` CODES, AND WHY THEY ARE NOT IN
+ * {@link DEFECT_CODES}.
  *
- * Ce commentaire existe parce que l'ajout a été tenté, mesuré, et retiré sur la mesure.
- * Sans lui, il sera retenté.
+ * This comment exists because the addition was tried, measured, and removed on the
+ * measurement. Without it, it will be retried.
  *
- * **Le défaut qui motivait l'ajout.** `GeoLeaf.UI.toggleFilterPanel(true)` était enseigné
- * par l'`@example` de `api/geoleaf.ui.ts` alors que cet identifiant n'a JAMAIS existé dans
- * le dépôt. Il ne rendait pas TS2339 (« no such property », qui EST dans la liste) mais
- * TS18046 (« is of type 'unknown' »), qui n'y était pas : la traîne `[key: string]:
- * unknown` de `GeoLeafUIFacade` absorbait le membre inventé.
+ * **The defect motivating the addition.** `GeoLeaf.UI.toggleFilterPanel(true)` was
+ * taught by the `@example` of `api/geoleaf.ui.ts` while that identifier NEVER existed
+ * in the repo. It did not render TS2339 ("no such property", which IS in the list) but
+ * TS18046 ("is of type 'unknown'"), which was not: the `[key: string]: unknown` tail
+ * of `GeoLeafUIFacade` absorbed the invented member.
  *
- * **La mesure qui a fait retirer l'ajout.** Avec `TS18046`/`TS2571`/`TS2722`/`TS2349`
- * ajoutés, la gate rend **152 nouvelles erreurs**, dont :
+ * **The measurement that had the addition removed.** With
+ * `TS18046`/`TS2571`/`TS2722`/`TS2349` added, the gate renders **152 new errors**,
+ * including:
  *
- * | Sujet du TS18046                                    | Nombre | Nature                    |
+ * | TS18046 subject                                     | Count  | Nature                    |
  * | --------------------------------------------------- | ------ | ------------------------- |
- * | un membre `GeoLeaf.*` RÉEL absorbé par une traîne   | 109    | gisement B-13, pas un défaut |
- * | une variable de `catch` (`error`, `err`)            | 4      | idiome de documentation   |
- * | **le fantôme `toggleFilterPanel`**                  | **1**  | **le défaut cherché**     |
+ * | a REAL `GeoLeaf.*` member absorbed by a tail        | 109    | the tails' pool, not a defect |
+ * | a `catch` variable (`error`, `err`)                 | 4      | documentation idiom       |
+ * | **the `toggleFilterPanel` ghost**                   | **1**  | **the defect sought**     |
  *
- * ⚠️ **Le compilateur ne peut PAS distinguer `GeoLeaf.Core.init` (réel, non typé) de
- * `GeoLeaf.UI.toggleFilterPanel` (fantôme) — précisément parce que la traîne absorbe les
- * deux.** Aucun réglage de cette liste ne les sépare. Geler les 152 en baseline y ferait
- * entrer le fantôme avec les 151 autres : ce serait re-creuser le trou qu'on vient de
- * fermer, en le signant.
+ * ⚠️ **The compiler CANNOT tell `GeoLeaf.Core.init` (real, untyped) from
+ * `GeoLeaf.UI.toggleFilterPanel` (ghost) — precisely because the tail absorbs both.**
+ * No tuning of this list separates them. Freezing the 152 into the baseline would let
+ * the ghost in with the 151 others: re-digging the hole just closed, and signing it.
  *
- * **Le seul levier qui discrimine est le RETRAIT DE LA TRAÎNE.** Traîne ôtée, le membre
- * réel est typé (vert) et le fantôme redevient TS2339 (rouge, déjà couvert). C'est
- * exactement la conclusion que B-80 avait écrite le 31/07/2026 sans pouvoir l'appliquer :
- * « le bénéfice réel de B-80 croît avec B-13, et pas autrement ».
+ * **The only lever that discriminates is REMOVING THE TAIL.** Tail gone, the real
+ * member is typed (green) and the ghost becomes TS2339 again (red, already covered).
+ * That is exactly the conclusion written on 2026-07-31 without being applicable then:
+ * "the real benefit grows with the typing of the tails, and not otherwise".
  *
- * **Condition de réouverture** : quand les traînes de façade auront disparu (B-13 — il
- * restait `GeoLeafThemeSelector` au 09/08/2026), re-mesurer. Si le lot résiduel est petit,
- * ajouter `TS18046` **restreint aux sujets `GeoLeaf.*`** — jamais nu : les 4 variables de
- * `catch` ci-dessus sont des idiomes, et le § « Which diagnostics count » les exclut.
+ * **Reopening condition**: when the facade tails are gone (`GeoLeafThemeSelector`
+ * remained as of 2026-08-09), re-measure. If the residual batch is small, add
+ * `TS18046` **restricted to `GeoLeaf.*` subjects** — never bare: the 4 `catch`
+ * variables above are idioms, and the "Which diagnostics count" § excludes them.
  */
 const DEFERRED_UNKNOWN_CODES = Object.freeze(["TS18046", "TS2571", "TS2722", "TS2349"]);
 
@@ -499,21 +511,22 @@ try {
         }
     }
 
-    // ── Second corpus (B-44) : les `@example` du TSDoc ───────────────────────────────
+    // ── Second corpus: the TSDoc `@example`s ─────────────────────────────────
     //
-    // Le moteur existait, il n'était simplement pas branché dessus. Même prélude, même
-    // filtre de diagnostics, même baseline — un seul moteur, deux corpus.
+    // The engine existed, it simply was not wired to them. Same prelude, same
+    // diagnostics filter, same baseline — one engine, two corpora.
     //
-    // ⚠️ **Les exemples qui passent par le namespace ambiant `GeoLeaf.*` sont ÉCARTÉS, et
-    // c'est une mesure, pas une commodité.** Contre les types publiés, `GeoLeaf` n'existe
-    // pas : `src/global.d.ts` n'est **jamais émis** dans `dist/types/` (TypeScript ne
-    // ré-émet pas un `.d.ts` d'entrée, donc `emitDeclarationOnly` le saute), et aucun
-    // `declare global` ne part dans le tarball. Vérifié par compilation : un consommateur
-    // qui écrit `GeoLeaf.Core.setTheme("dark")` obtient **TS2304 Cannot find name**.
-    // Les compiler ici les ferait tous échouer sur un code déjà ignoré comme idiome
-    // (`Cannot find name`), c'est-à-dire scanner sans rien voir — le mode d'échec (1) que
-    // l'en-tête de ce script refuse d'avoir. Ils sont donc COMPTÉS et affichés, pas noyés.
-    // Suivi au backlog ; le préalable est de publier l'ambiant, pas de tordre cette gate.
+    // ⚠️ **Examples going through the ambient `GeoLeaf.*` namespace are SET ASIDE, and
+    // that is a measurement, not a convenience.** Against the published types,
+    // `GeoLeaf` does not exist: `src/global.d.ts` is **never emitted** into
+    // `dist/types/` (TypeScript does not re-emit an entry `.d.ts`, so
+    // `emitDeclarationOnly` skips it), and no `declare global` ships in the tarball.
+    // Verified by compilation: a consumer writing `GeoLeaf.Core.setTheme("dark")` gets
+    // **TS2304 Cannot find name**. Compiling them here would fail them all on a code
+    // already ignored as an idiom (`Cannot find name`), i.e. scanning while seeing
+    // nothing — failure mode (1) this script's header refuses to have. They are thus
+    // COUNTED and shown, not drowned. The prerequisite is publishing the ambient
+    // namespace, not bending this gate.
     for (const srcFile of walkSources()) {
         const relSrc = path.relative(ROOT, srcFile);
         for (const ex of extractTsdocExamples(fs.readFileSync(srcFile, "utf8"))) {
@@ -527,10 +540,10 @@ try {
             }
             const free = freeIdentifiers(sf);
             const missing = [...free].filter((id) => EXPORTS.has(id)).sort();
-            // B-46 (27/07/2026) — les exemples `GeoLeaf.*` ne sont PLUS écartés : le paquet
-            // publie désormais son namespace ambiant (`dist/types/global.d.ts`, référencé
-            // depuis l'entrée), donc ils sont réellement compilables. Le prélude importe le
-            // paquet pour tirer la référence dans le programme.
+            // 2026-07-27 — `GeoLeaf.*` examples are NO LONGER set aside: the package
+            // now publishes its ambient namespace (`dist/types/global.d.ts`,
+            // referenced from the entry), so they are genuinely compilable. The
+            // prelude imports the package to pull the reference into the program.
             if (free.has("GeoLeaf")) stats.tsdocAmbient++;
             let prelude = free.has("GeoLeaf") ? 'import "@geoleaf/core";\n' : "";
             if (missing.length > 0) {
@@ -603,9 +616,9 @@ try {
     const diagnostics = [];
     let ignoredIdioms = 0;
     /**
-     * How many times each ignored code was seen. B-202 (09/08/2026) — le total nu ne
-     * suffisait pas : il chiffrait l'angle mort sans le NOMMER, et un `TS18046` fantôme a
-     * pu s'y cacher des mois. Un histogramme rend visible le code qui monte.
+     * How many times each ignored code was seen. 2026-08-09 — the bare total was not
+     * enough: it quantified the blind spot without NAMING it, and a ghost `TS18046`
+     * could hide there for months. A histogram makes the rising code visible.
      * @type {Map<string, number>}
      */
     const ignoredByCode = new Map();
@@ -627,15 +640,16 @@ try {
         // code inside the source tree, not a broken public path. Only the specifiers this
         // monorepo PUBLISHES are a promise it has to keep.
         //
-        // ⚠️ 31/07/2026 — le motif portait `@geoleaf/` seul, et le `/` juste après `geoleaf`
-        // excluait **`@geoleaf-plugins/*`, c'est-à-dire les 13 paquets publiés sur 15**. Sans
-        // conséquence tant que le corpus s'arrêtait à `packages/core/docs/` ; en l'élargissant
-        // aux README de plugins, la première mesure a trouvé
-        // `@geoleaf-plugins/websocket/test-utils` — un sous-chemin livré dans `files[]` mais
-        // **absent de la carte `exports`**, donc `ERR_PACKAGE_PATH_NOT_EXPORTED` chez
-        // l'intégrateur (vérifié par `require.resolve`, pas déduit). `check:subpath-resolve`
-        // ne pouvait pas le voir : il vérifie que les `exports` DÉCLARÉS résolvent, jamais
-        // qu'un sous-chemin documenté est déclaré — l'asymétrie inverse, même forme que B-83.
+        // ⚠️ 2026-07-31 — the pattern carried `@geoleaf/` alone, and the `/` right
+        // after `geoleaf` excluded **`@geoleaf-plugins/*`, i.e. 13 of the 15
+        // published packages**. Without consequence while the corpus stopped at
+        // `packages/core/docs/`; widening it to the plugin READMEs, the first
+        // measurement found `@geoleaf-plugins/websocket/test-utils` — a subpath
+        // shipped in `files[]` but **absent from the `exports` map**, hence
+        // `ERR_PACKAGE_PATH_NOT_EXPORTED` on the integrator's side (verified by
+        // `require.resolve`, not deduced). `check:subpath-resolve` could not see it:
+        // it verifies that DECLARED `exports` resolve, never that a documented
+        // subpath is declared — the inverse asymmetry, same known shape.
         if (code === "TS2307" && !/Cannot find module '@geoleaf(-plugins)?\//.test(message)) {
             ignore(code);
             continue;
@@ -673,23 +687,23 @@ try {
     const fresh = diagnostics.filter((d) => !baseline.has(diagnosticKey(d)));
     const known = diagnostics.filter((d) => baseline.has(diagnosticKey(d)));
 
-    // B-78 (30/07/2026) — CLIQUET ANTI-PÉRIMÉ, sur le modèle de TSD-04.
-    // Jusqu'ici cette baseline ne pouvait que se taire : une entrée dont le diagnostic avait
-    // disparu y restait indéfiniment, et rien ne le disait. Mesuré le jour où le cliquet a
-    // été posé : sur 9 entrées, **2 étaient déjà mortes** — deux imports `POI` corrigés lors
-    // d'une passe antérieure, dont la ligne dormait là depuis. Une baseline qui ne rougit pas
-    // sur ses entrées périmées n'est plus un registre de dette, c'est un cimetière : elle
-    // grossit du travail déjà fait et masque ce qu'il reste vraiment.
+    // 2026-07-30 — ANTI-STALE RATCHET, on the TSD-04 model.
+    // Until now this baseline could only stay silent: an entry whose diagnostic had
+    // vanished stayed there indefinitely, and nothing said so. Measured the day the
+    // ratchet was laid: of 9 entries, **2 were already dead** — two `POI` imports
+    // fixed in an earlier pass, whose line had been sleeping there since. A baseline
+    // that does not redden on its stale entries is no longer a debt register, it is a
+    // graveyard: it grows with work already done and masks what genuinely remains.
     const seen = new Set(diagnostics.map((d) => diagnosticKey(d)));
     const stale = [...baseline].filter((k) => !seen.has(k));
 
-    // ⚠️ B-202 (09/08/2026) — VENTILATION, et pas seulement un total. Le compteur nu disait
-    // « 594 non-defect diagnostic(s) ignored » : vrai, et inexploitable. Il ne pouvait pas
-    // dire qu'un `TS18046` s'y cachait — celui d'une API fantôme enseignée par un `@example`,
-    // restée invisible des mois. Un total ne se lit pas ; un code qui monte dans un
-    // classement, si. Les codes différés (cf. {@link DEFERRED_UNKNOWN_CODES}) sont marqués
-    // d'un ⌛ : ils sont ignorés PAR DÉCISION DATÉE, pas par oubli, et la distinction doit
-    // se voir à chaque run.
+    // ⚠️ 2026-08-09 — BREAKDOWN, and not only a total. The bare counter said
+    // "594 non-defect diagnostic(s) ignored": true, and unusable. It could not say a
+    // `TS18046` was hiding there — the one of a ghost API taught by an `@example`,
+    // invisible for months. A total does not read; a code climbing a ranking does.
+    // Deferred codes (cf. {@link DEFERRED_UNKNOWN_CODES}) are marked with a ⌛: they
+    // are ignored BY DATED DECISION, not by oversight, and the distinction must show
+    // at every run.
     const histogram = [...ignoredByCode.entries()]
         .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
         .map(([code, n]) => `${DEFERRED_UNKNOWN_CODES.includes(code) ? "⌛" : ""}${code}×${n}`)
@@ -701,12 +715,13 @@ try {
         `${scoped.length} type-checked (${stats.withPrelude} with a rebuilt import), ` +
         `${stats.noParse} skipped as unparseable fragments; ` +
         `${ignoredIdioms} non-defect diagnostic(s) ignored` +
-        // ⚠️ Ce compteur n'est PAS décoratif : il chiffre ce que la gate NE voit pas, et
-        // pourquoi. Une gate qui tait son angle mort se lit « tout est vérifié ».
+        // ⚠️ This counter is NOT decorative: it quantifies what the gate does NOT
+        // see, and why. A gate that silences its blind spot reads "everything is
+        // verified".
         (histogram ? `\n    ↳ ignorés par code : ${histogram}` : "") +
         (stats.tsdocAmbient
             ? `\n    ℹ  ${stats.tsdocAmbient} @example passent par le namespace ambiant \`GeoLeaf.*\` — compilés ` +
-              `depuis que le paquet le publie (B-46).`
+              `depuis que le paquet le publie.`
             : "");
 
     if (fresh.length === 0 && stale.length === 0) {

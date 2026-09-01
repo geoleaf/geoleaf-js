@@ -1,11 +1,11 @@
 /**
- * `fetchBounded` — et la garde de non-régression du périmètre (tâche 3.8).
+ * `fetchBounded` — and the perimeter's non-regression guard.
  *
- * Deux objets distincts ici :
- *  1. le comportement du helper (échéance, chaînage du signal d'annulation, pas de fuite) ;
- *  2. une garde de SOURCE qui compte les `fetch` non bornés du périmètre hors-ligne, avec une
- *     liste d'exceptions NOMMÉES — parce qu'un décompte sans noms se relâche d'une unité à
- *     chaque sprint sans que personne ne le voie.
+ * Two distinct objects here:
+ *  1. the helper's behaviour (deadline, abort-signal chaining, no leak);
+ *  2. a SOURCE guard counting the offline perimeter's unbounded `fetch`es,
+ *     with a list of NAMED exceptions — because a nameless count loosens by
+ *     one unit every sprint with nobody seeing it.
  */
 
 import { fetchBounded, BoundedFetchError } from "../../src/utils/general/fetch-bounded.ts";
@@ -35,8 +35,9 @@ describe("fetchBounded — comportement", () => {
     });
 
     test("l'échéance JETTE une erreur NOMMÉE `timeout` — pas un null silencieux", async () => {
-        // Un abandon qui rend `null` est un échec silencieux déguisé : l'appelant ne peut plus
-        // distinguer « le serveur n'a rien dit » de « le serveur a dit non ».
+        // An abandonment returning `null` is a disguised silent failure: the
+        // caller can no longer tell "the server said nothing" from "the
+        // server said no".
         vi.stubGlobal(
             "fetch",
             vi.fn(
@@ -64,8 +65,8 @@ describe("fetchBounded — comportement", () => {
     });
 
     test("le signal de l'APPELANT reste honoré — les deux sont chaînés", async () => {
-        // Un signal d'annulation utilisateur n'est pas une échéance, et une échéance ne doit
-        // pas remplacer l'annulation : la requête meurt sur le premier des deux qui tombe.
+        // A user abort signal is not a deadline, and a deadline must not
+        // replace the abort: the request dies on whichever of the two falls first.
         const caller = new AbortController();
         vi.stubGlobal(
             "fetch",
@@ -99,8 +100,8 @@ describe("fetchBounded — comportement", () => {
     });
 
     test("le timer est libéré même sur rejet — pas de fuite par requête échouée", async () => {
-        // La fuite que ce dépôt a déjà payée une fois (`offline-detector.ts`) : un timer par
-        // ping raté, qui s'empile aussi longtemps que le réseau reste coupé.
+        // The leak this repo already paid for once (`offline-detector.ts`):
+        // one timer per failed ping, stacking as long as the network stays down.
         const clear = vi.spyOn(globalThis, "clearTimeout");
         vi.stubGlobal(
             "fetch",
@@ -115,7 +116,7 @@ describe("fetchBounded — comportement", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════════════
-// Garde de non-régression du PÉRIMÈTRE (tâche 3.8)
+// PERIMETER non-regression guard
 // ═══════════════════════════════════════════════════════════════════════════════════════
 
 import metricsSrc from "../../src/capabilities/offline/cache/metrics.ts?raw";
@@ -129,11 +130,12 @@ import swSrc from "../../src/kernel/storage/sw-core.js?raw";
 
 describe("3.8 — aucun `fetch` non borné ne revient dans le périmètre", () => {
     /**
-     * Les fichiers scannés, et les EXCEPTIONS NOMMÉES avec leur motif.
+     * The files scanned, and the NAMED EXCEPTIONS with their motive.
      *
-     * 🛑 Nommées, et pas comptées. La roadmap disait « les 14 chemins » ; le détecteur en
-     * rendait 22 le 01/08, 21 le 02/08. Un décompte bouge à chaque commit et se relâche d'une
-     * unité sans que personne ne le voie ; une liste d'exceptions oblige à écrire POURQUOI.
+     * 🛑 Named, not counted. The plan said "the 14 paths"; the detector
+     * returned 22 on 01/08, 21 on 02/08. A count moves at every commit and
+     * loosens by one unit with nobody seeing it; an exception list forces
+     * writing WHY.
      */
     const SCANNED = [
         ["cache/metrics.ts", metricsSrc, []],
@@ -147,10 +149,10 @@ describe("3.8 — aucun `fetch` non borné ne revient dans le périmètre", () =
             "kernel/storage/sw-core.js",
             swSrc,
             [
-                // Le helper LUI-MÊME : c'est lui qui pose le signal.
+                // The helper ITSELF: it is what sets the signal.
                 "return await fetch(request, { signal: controller.signal });",
-                // `syncProfile` — chemin MORT (aucun `registration.sync.register` dans le
-                // dépôt), borné à la main par un AbortController local, retiré par 3.13.
+                // `syncProfile` — DEAD path (no `registration.sync.register`
+                // in the repo), hand-bounded by a local AbortController, since removed.
                 "response = await fetch(item.operation.endpoint, {",
             ],
         ],
@@ -161,17 +163,18 @@ describe("3.8 — aucun `fetch` non borné ne revient dans le périmètre", () =
             const lines = src.split("\n");
             const offenders = [];
             lines.forEach((line, i) => {
-                // ⚠️ L'INSTRUMENT NE DOIT PAS PORTER LE BIAIS QU'IL MESURE. Une première
-                // version cherchait `\bfetch\(` et attrapait `async fetch(` (une DÉFINITION
-                // de méthode) et `this.fetch(` (un appel à cette méthode, pas au fetch global).
-                // Elle rougissait donc sur du code correct. On ne cherche que les appels au
-                // `fetch` GLOBAL : ni précédé d'un point, ni précédé de `async`/`function`.
+                // ⚠️ THE INSTRUMENT MUST NOT CARRY THE BIAS IT MEASURES. A
+                // first version searched `\bfetch\(` and caught
+                // `async fetch(` (a method DEFINITION) and `this.fetch(` (a
+                // call to that method, not the global fetch). It thus turned
+                // red on correct code. Only calls to the GLOBAL `fetch` are
+                // sought: neither dot-preceded, nor preceded by `async`/`function`.
                 if (!/(?<![.\w])fetch\(/.test(line)) return;
                 if (/\b(async|function)\s+fetch\(/.test(line)) return;
                 if (/fetchBounded|fetchWithTimeout/.test(line)) return;
                 if (/^\s*(\*|\/\/)/.test(line)) return; // ni TSDoc ni commentaire de ligne
                 if (allowed.some((a) => line.includes(a))) return;
-                // Un `signal:` peut vivre quelques lignes plus bas, dans l'init.
+                // A `signal:` may live a few lines below, in the init.
                 const window = lines.slice(i, i + 6).join("\n");
                 if (/signal:/.test(window)) return;
                 offenders.push(`${name}:${i + 1} → ${line.trim()}`);
@@ -181,7 +184,7 @@ describe("3.8 — aucun `fetch` non borné ne revient dans le périmètre", () =
     }
 
     it("la garde n'est pas vide — elle voit bien des appels", () => {
-        // Témoin : sans lui, un filtre trop large sortirait vert en ne scannant rien.
+        // Witness: without it, an over-broad filter would come out green scanning nothing.
         const total = SCANNED.reduce(
             (n, [, src]) => n + (src.match(/\bfetch(Bounded|WithTimeout)?\(/g) || []).length,
             0

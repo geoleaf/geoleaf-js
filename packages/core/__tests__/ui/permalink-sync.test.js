@@ -179,6 +179,46 @@ describe("applyState", () => {
         expect(mockSetVisibility).not.toHaveBeenCalled();
     });
 
+    test("fallback: themes:ready never fires → deferred layers still apply after app:ready + grace", () => {
+        // The event has exactly ONE emitter (theme-selector's init) behind three conditions;
+        // a page missing any of them never emits. Before the fallback, everything deferred
+        // under `hasTheme` was silently lost — layers and filter included, not just the theme.
+        vi.useFakeTimers();
+        try {
+            const map = makeMap();
+            applyState({ lat: 48, lng: 2, zoom: 10, theme: "nuit", layers: ["l-hid"] }, map);
+
+            // No themes:ready. The reveal always ends up firing app:ready…
+            document.dispatchEvent(new CustomEvent("geoleaf:app:ready"));
+            expect(mockSetVisibility).not.toHaveBeenCalled(); // grace still running
+
+            vi.advanceTimersByTime(2001);
+            expect(mockSetVisibility).toHaveBeenCalledWith("l-hid", false, "user");
+            // The theme switch itself is dropped — nothing mounted can switch.
+            expect(mockSetTheme).not.toHaveBeenCalled();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    test("fallback does not double-apply when themes:ready DID fire", () => {
+        vi.useFakeTimers();
+        try {
+            const map = makeMap();
+            mockGetCurrentTheme.mockReturnValue("nuit");
+            applyState({ lat: 48, lng: 2, zoom: 10, theme: "nuit", layers: ["l-once"] }, map);
+
+            document.dispatchEvent(new CustomEvent("geoleaf:themes:ready"));
+            expect(mockSetVisibility).toHaveBeenCalledTimes(1);
+
+            document.dispatchEvent(new CustomEvent("geoleaf:app:ready"));
+            vi.advanceTimersByTime(5000);
+            expect(mockSetVisibility).toHaveBeenCalledTimes(1); // latched, no second pass
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     test("hides layers on geoleaf:theme:applied (no theme change)", () => {
         const map = makeMap();
         applyState({ lat: 48, lng: 2, zoom: 10, layers: ["layer-hidden"] }, map);
@@ -637,9 +677,9 @@ describe("edge cases", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  startSync teardown (S7.4 — listener leak fix)
+//  startSync teardown (listener leak fix)
 // ─────────────────────────────────────────────────────────────────────────────
-describe("startSync teardown (S7.4)", () => {
+describe("startSync teardown", () => {
     test("returns a teardown that detaches moveend + every document listener", () => {
         const map = makeMap();
         const addSpy = vi.spyOn(document, "addEventListener");

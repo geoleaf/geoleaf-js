@@ -2,8 +2,8 @@
  * @geoleaf-plugins/measure — Recap box (measurement summary table)
  * © 2026 Mattieu Pottier — MIT License
  *
- * Sprint 2: table rows for each vertex/segment, footer with perimeter + optional area.
- * PLUGINS S5: wired to the engine. The module was complete since Sprint 2 but nothing
+ * Table rows for each vertex/segment, footer with perimeter + optional area —
+ * wired to the engine. The module was long complete but nothing
  * ever called it — the capability is specified in six places of the CDC (overview, the
  * distance-tool flow, the file tree, the `clearAll` contract, `addVertex`, and the §2.8
  * rendering spec) and its eight i18n keys are translated in all six dictionaries, yet

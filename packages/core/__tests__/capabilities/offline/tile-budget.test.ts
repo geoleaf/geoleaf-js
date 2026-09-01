@@ -1,9 +1,10 @@
 /**
- * `capabilities/offline/tile-budget.ts` — la publication du plafond du cache de tuiles.
+ * `capabilities/offline/tile-budget.ts` — publishing the tile cache's ceiling.
  *
- * Le module est minuscule ; ce qu'il porte ne l'est pas. Il est le SEUL lien entre le profil et
- * un Service Worker qui ne peut rien importer, et c'est ce plafond qui empêche un cache de
- * tuiles non borné de faire évincer l'origine — donc `outbox` et `features` avec.
+ * The module is tiny; what it carries is not. It is the ONLY link between the
+ * profile and a Service Worker that can import nothing, and this ceiling is
+ * what keeps an unbounded tile cache from getting the origin evicted — hence
+ * `outbox` and `features` with it.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -26,8 +27,8 @@ describe("parseTileCacheBudget", () => {
     });
 
     it("accepte `0` — c'est une valeur SIGNIFIANTE, pas un rebut", () => {
-        // `0` désactive le bornage. Le filtrer avec les valeurs invalides retirerait à
-        // l'intégrateur le seul moyen de dire « je ne veux pas de plafond ».
+        // `0` disables the bounding. Filtering it with the invalid values
+        // would take from the integrator the only way to say "I want no ceiling".
         expect(parseTileCacheBudget(0)).toBe(0);
         expect(Log.warn).not.toHaveBeenCalled();
     });
@@ -58,17 +59,18 @@ describe("publishTileCacheBudget", () => {
     });
 
     it("écrit AUSSI quand rien n'est déclaré — sinon une valeur périmée survivrait", async () => {
-        // 🛑 Le cas qui compte. Un profil qui déclarait 500 puis retire la clé continuerait
-        // d'être taillé à 500, sans que rien dans sa configuration ne le dise. Publier `null`
-        // énonce « ce profil ne déclare rien » et rend la main au repli du worker.
+        // 🛑 The case that matters. A profile that declared 500 then removes
+        // the key would keep being trimmed at 500, with nothing in its
+        // configuration saying so. Publishing `null` states "this profile
+        // declares nothing" and hands back to the worker's fallback.
         const setPreference = vi.fn().mockResolvedValue(undefined);
         await publishTileCacheBudget({ setPreference }, null);
         expect(setPreference).toHaveBeenCalledWith(TILE_BUDGET_KEY, null);
     });
 
     it("une panne de stockage est journalisée, jamais jetée", async () => {
-        // Un profil doit encore charger quand la persistance est indisponible, et le worker a
-        // son repli de toute façon.
+        // A profile must still load when persistence is unavailable, and the
+        // worker has its fallback anyway.
         const setPreference = vi.fn().mockRejectedValue(new Error("QuotaExceededError"));
         await expect(publishTileCacheBudget({ setPreference }, 10)).resolves.toBeUndefined();
         expect(Log.warn).toHaveBeenCalled();

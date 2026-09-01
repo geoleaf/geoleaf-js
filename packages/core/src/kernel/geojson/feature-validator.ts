@@ -49,7 +49,7 @@ function _validateNumericField(
         });
         return errors;
     }
-    const n = val as number;
+    const n = val;
     if (n < min) {
         errors.push({
             featureId,

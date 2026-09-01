@@ -16,8 +16,9 @@ import { isTitleField } from "../render/dom.js";
 import { buildNormalizedModel, resolvePath } from "../resolve.js";
 import { hasFields, resolveSurfaceFields, toRenderFields } from "../convert.js";
 import { handleFocusTrap } from "../../../utils/controls/focus-trap.js";
-// Par le BARIL, pas par `events/event-bus.js` : la règle R.8 interdit à `capabilities/**`
-// d'importer profondément sous `kernel/**`. Le symbole y est déjà ré-exporté — rien à élargir.
+// Through the BARREL, not `events/event-bus.js`: the deep-import rule forbids
+// `capabilities/**` to import deep under `kernel/**`. The symbol is already
+// re-exported there — nothing to widen.
 import { dispatchGeoLeafEvent } from "../../../kernel/events/index.js";
 import type { GeoLeafFeatureClickDetail, ISidePanelRenderer, SidePanelLayout } from "../types.js";
 
@@ -36,9 +37,9 @@ let _outsideHandler: ((e: Event) => void) | null = null;
 let _keyHandler: ((e: Event) => void) | null = null;
 let _isOpen = false;
 /**
- * POI dont le panneau est ouvert — porté UNIQUEMENT pour que `geoleaf:poi:panel:close`
- * puisse le nommer. `closeSidePanel()` ne reçoit aucun argument, et l'identité de ce qui se
- * ferme n'est déductible de rien d'autre une fois le panneau vidé.
+ * POI whose panel is open — carried ONLY so `geoleaf:poi:panel:close` can name it.
+ * `closeSidePanel()` receives no argument, and the identity of what closes is
+ * deducible from nothing else once the panel is emptied.
  */
 let _openPoiId: string | null = null;
 
@@ -132,11 +133,12 @@ export function openSidePanel(detail: GeoLeafFeatureClickDetail, layout?: SidePa
     const el = ensureContainer();
     const fields = resolveFieldList(detail, layout);
 
-    // ⚠️ Ce contexte ne portait que `layerId` jusqu'au 14/08/2026, alors que le popup passait
-    // déjà les trois champs. Conséquence mesurée : un bouton `type: "action"` cliqué DANS LE
-    // PANNEAU émettait `featureId: null` et aucun `lngLat` — le widget est dans la table de
-    // dispatch partagée, donc il rend ici aussi. `render/dom.ts` et la fiche de la capacité
-    // déclaraient pourtant ce point réglé par B-69 : il ne l'était que côté popup.
+    // ⚠️ This context carried only `layerId` until 14/08/2026, while the popup already
+    // passed all three fields. Measured consequence: a `type: "action"` button clicked
+    // IN THE PANEL emitted `featureId: null` and no `lngLat` — the widget is in the
+    // shared dispatch table, so it renders here too. `render/dom.ts` and the
+    // capability's spec sheet nonetheless declared this point settled: it only was on
+    // the popup side.
     const body = buildSidePanelBody(fields, detail.properties, {
         layerId: detail.layerId,
         featureId: detail.featureId,
@@ -165,21 +167,22 @@ export function openSidePanel(detail: GeoLeafFeatureClickDetail, layout?: SidePa
 }
 
 /**
- * Émet `geoleaf:poi:panel:open`, et rien d'autre — l'ouverture est déjà faite.
+ * Emits `geoleaf:poi:panel:open`, and nothing else — the opening is already done.
  *
- * 🛑 **Cette clé était TYPÉE SANS ÉMETTEUR depuis l'origine** (B-16) : un intégrateur qui s'y
- * abonnait écrivait du code qui compile et ne se déclenche jamais. Le Sprint 4 du contrat
- * inverse a tranché de **brancher l'émetteur** plutôt que de retirer la clé — retirer une
- * interface publiée est un majeur, et ce document ajoute de la surface, il n'en enlève pas.
+ * 🛑 **This key was TYPED WITHOUT AN EMITTER from the start**: an integrator
+ * subscribing to it wrote code that compiles and never fires. The arbitration was to
+ * **wire the emitter** rather than remove the key — removing a published interface is
+ * a major break, and this adds surface, it does not take any away.
  *
- * ⚠️ **On n'émet PAS quand `featureId` est absent.** `poiId` est déclaré `string` dans une
- * interface publiée : élargir sa forme serait précisément la rupture qu'on évite, et forger
- * un identifiant (`""`, un index) serait pire que se taire — l'abonné ne pourrait pas
- * distinguer deux POI sans id. Une couche sans identifiant stable n'émet donc pas.
+ * ⚠️ **We do NOT emit when `featureId` is absent.** `poiId` is declared `string` in a
+ * published interface: widening its shape would be precisely the break being avoided,
+ * and forging an identifier (`""`, an index) would be worse than staying silent — the
+ * subscriber could not tell two id-less POIs apart. A layer without a stable
+ * identifier therefore does not emit.
  *
- * `poiName` se résout par le MÊME chemin que le titre affiché — champ marqué `title` par la
- * liaison de couche, résolu contre le modèle normalisé. Le nom porté par l'événement est
- * ainsi, par construction, celui que l'utilisateur lit.
+ * `poiName` resolves through the SAME path as the displayed title — the field marked
+ * `title` by the layer binding, resolved against the normalised model. The name the
+ * event carries is thus, by construction, the one the user reads.
  */
 function _emitPanelOpened(detail: GeoLeafFeatureClickDetail, fields: readonly RenderField[]): void {
     if (detail.featureId === null || detail.featureId === undefined) {
@@ -213,10 +216,10 @@ export function closeSidePanel(): void {
     document.body.classList.remove("gl-poi-sidepanel-open");
     _detachListeners();
     _isOpen = false;
-    // La garde `!_el || !_isOpen` en tête de fonction fait que ceci ne part JAMAIS sur une
-    // fermeture à vide — les quatre chemins (bouton, clic extérieur, Escape, `FeatureInfo
-    // .close()`) passent tous par elle. `_openPoiId` est nul quand l'ouverture n'avait pas
-    // d'identifiant : on se tait alors aussi, symétriquement.
+    // The `!_el || !_isOpen` guard at the top of the function means this NEVER fires
+    // on an empty close — all four paths (button, outside click, Escape,
+    // `FeatureInfo.close()`) go through it. `_openPoiId` is null when the opening had
+    // no identifier: we stay silent then too, symmetrically.
     if (_openPoiId !== null) {
         const poiId = _openPoiId;
         _openPoiId = null;
@@ -232,13 +235,13 @@ export function isSidePanelOpen(): boolean {
 /**
  * Removes the side-panel element from the DOM. Called on plugin destroy / reset.
  *
- * ⚠️ **N'émet PAS `geoleaf:poi:panel:close`, et c'est délibéré.** C'est un DÉMONTAGE, pas une
- * fermeture : personne n'a fermé le panneau, on retire la capacité sous lui. Émettre ici
- * ferait croire à un geste utilisateur au milieu d'un `Core.destroy()`, et le ferait à un
- * moment où les abonnés sont eux-mêmes en train d'être détachés. Ce que le cycle de vie doit
- * annoncer à la destruction est une question distincte — elle appartient au Sprint 6.
- * `_openPoiId` est quand même remis à zéro : le laisser survivre ferait émettre un `close`
- * sur un POI périmé à la prochaine ouverture-fermeture.
+ * ⚠️ **Does NOT emit `geoleaf:poi:panel:close`, deliberately.** This is a TEARDOWN,
+ * not a close: nobody closed the panel, the capability is being pulled from under it.
+ * Emitting here would fake a user gesture in the middle of a `Core.destroy()`, and do
+ * so at a moment when the subscribers are themselves being detached. What the
+ * lifecycle should announce at destruction is a distinct question, left open on
+ * purpose. `_openPoiId` is still reset: letting it survive would emit a `close` for a
+ * stale POI at the next open-close.
  */
 export function destroySidePanel(): void {
     _detachListeners();
@@ -254,7 +257,7 @@ export function destroySidePanel(): void {
 
 /**
  * Structural check (compile-time only): these three exports collectively satisfy
- * `ISidePanelRenderer` — the contract Sprint 3's core-side delegate relies on
+ * `ISidePanelRenderer` — the contract the core-side delegate relies on
  * structurally, without ever importing this file. Catches signature drift here.
  */
 const _isidePanelRendererContract: ISidePanelRenderer = {

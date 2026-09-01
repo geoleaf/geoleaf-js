@@ -62,9 +62,9 @@ function _profileIdOf(layerConfig: unknown): string | undefined {
 function _resolveConfigUrls(config: RealtimeConfig, profileId: string | undefined): RealtimeConfig {
     const dataCfg = _g.GeoLeaf?.Config?.get?.("data") as { profilesBasePath?: string } | undefined;
     const profilesBasePath = dataCfg?.profilesBasePath ?? "profiles";
-    // Reecriture conditionnelle PAR-DESSUS le spread : ici les cles intersectent bien celles
-    // de la cible, donc reposer `url: config.url` quand elle est absente rajouterait une cle
-    // valant `undefined` la ou `...config` n'en avait mis aucune.
+    // Conditional rewrite ON TOP of the spread: here the keys do intersect
+    // the target's, so re-setting `url: config.url` when absent would add a
+    // key worth `undefined` where `...config` had put none.
     return {
         ...config,
         ...(config.url && { url: resolveProfileUrl(config.url, profileId, profilesBasePath) }),

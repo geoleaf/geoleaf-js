@@ -11,6 +11,23 @@
  * Single self-sufficient anchor: importing THIS file is the only thing a preset does to
  * embark Offline. Carries the layer-B write moved out of `globals.api.ts`.
  *
+ * 🖐 **No `public-api.ts`, and the motive holds — but it was badly written until
+ * 20/08/2026.** The sentence said "mounts no namespace": false to the letter,
+ * `registerGlobals` writes `gl.Sync`. What is true, and is the real motive: the
+ * mounted symbol comes from `api/geoleaf.sync.ts`, hence from the CORE's surface —
+ * this capability **re-assigns a singleton it does not own**. `GeoLeaf.Storage`
+ * likewise, carried by `kernel/storage/facade.ts`. Without a surface of its own, a
+ * `public-api.ts` would be a mere shell, and a gate satisfied by a shell guards
+ * nothing.
+ *
+ * ⚠️ The distinction is not cosmetic: "mounts nothing" is checked with one grep and
+ * found false; "mounts what belongs to another" requires looking at where the symbol
+ * comes from, and that is what decides.
+ *
+ * ⚠️ **What would reopen the question**: the day this capability exposes something
+ * directly on `GeoLeaf.*`. That is what must be re-measured before concluding, not
+ * the file's presence.
+ *
  * **No `createModule`** — `OfflineLifecycle` is app-global and gates post-merge on
  * `modules.offline.enabled` AND `modules.pwa.enabled`. It runs as `shared.module` step #8,
  * expressed here as {@link CapabilityInstaller.sharedLifecycle} (S4). Until then
@@ -56,8 +73,9 @@ export const OFFLINE_INSTALLER: CapabilityInstaller = {
 
     registerGlobals(gl: Record<string, unknown>): void {
         // Layer B — moved verbatim from globals.api.ts (assignApiFacades, B11). `Sync` is the
-        // registry seam data plugins (addpoi) push their offline sync handler into; the engine
-        // reads them back at replay time.
+        // registry seam that a DATA plugin pushes its offline sync handler into; the engine
+        // reads them back at replay time. The seam is keyed by handler id, so it never needs
+        // to know which plugin registered — naming one here would only date the comment.
         gl.Sync = Sync;
     },
 
@@ -79,9 +97,9 @@ export const OFFLINE_INSTALLER: CapabilityInstaller = {
                 pwaEnabled: pwaCfg.enabled === true,
                 ...(cacheCfg && { cache: cacheCfg }),
                 offlineDetectorEnabled: detector.enabled === true,
-                // Transmis BRUT : `parseDataOrigins` est le seul endroit autorisé à décider
-                // ce qu'est une déclaration valide (tâche 3.9). Normaliser ici en ferait une
-                // seconde autorité, et la seconde autorité dérive.
+                // Forwarded RAW: `parseDataOrigins` is the only place allowed to
+                // decide what a valid declaration is. Normalising here would make a
+                // second authority, and the second authority drifts.
                 dataOrigins: offlineCfg.dataOrigins,
             }
         );

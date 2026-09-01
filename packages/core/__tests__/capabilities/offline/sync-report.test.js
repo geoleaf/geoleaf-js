@@ -1,19 +1,20 @@
 /**
- * Tâche 4.8 — le rapport par couche, et le cas qui n'a AUCUN observable jusqu'à la coupure.
+ * The per-layer report, and the case with NO observable until the cutoff.
  *
- * Le contrat déclarait `LayerSyncReport` / `LayerOfflineStatus` depuis l'Étape 1bis et rien ne
- * les implémentait — mesuré au pré-vol du 04/08 : zéro implémenteur hors
- * `contracts/sync.contract.ts`.
+ * The contract had declared `LayerSyncReport` / `LayerOfflineStatus` with
+ * nothing implementing them — measured at the preflight of 04/08: zero
+ * implementers outside `contracts/sync.contract.ts`.
  *
- * 🛑 **CE QUE CES TESTS EXISTENT POUR ÉPROUVER, ET QU'UN DÉCOMPTE NE PEUT PAS DIRE** : une
- * couche déclarée hors-ligne dont le rapatriement a rendu ZÉRO entité est, dans le magasin,
- * strictement indiscernable d'une couche jamais rapatriée. Les deux comptent 0. C'est
- * pourquoi le rapport s'appuie sur un marqueur PERSISTÉ et non sur le contenu du store — et
- * c'est le premier test ci-dessous qui le tient.
+ * 🛑 **WHAT THESE TESTS EXIST TO EXERCISE, AND A TALLY CANNOT SAY**: a layer
+ * declared offline whose pull returned ZERO entities is, in the store,
+ * strictly indistinguishable from a never-pulled layer. Both count 0. That is
+ * why the report leans on a PERSISTED marker and not on the store's content —
+ * and the first test below is what holds it.
  *
- * Tourne contre `fake-indexeddb` et la VRAIE façade : `getSyncCounts` traverse deux magasins
- * v4 (`features`, `outbox`) que le mock maison de `vitest.config.ts` ne porte pas. Un test qui
- * moquerait la façade éprouverait sa propre cohérence, pas le code.
+ * Runs against `fake-indexeddb` and the REAL facade: `getSyncCounts` crosses
+ * two v4 stores (`features`, `outbox`) the home-made mock of
+ * `vitest.config.ts` does not carry. A test mocking the facade would exercise
+ * its own consistency, not the code.
  */
 
 const DB_NAME = "geoleaf-sync-report-test";
@@ -30,29 +31,28 @@ describe("4.8 — rapport de synchronisation par couche", () => {
 
     const byId = (report, layerId) => report.find((r) => r.layerId === layerId);
 
-    // Une création SANS géométrie est refusée (`geometryRequired`) — la garde vit dans le
-    // core, seul endroit qui lit la déclaration de couche. On fournit donc du réel.
+    // A creation WITHOUT geometry is refused (`geometryRequired`) — the guard
+    // lives in the core, the only place reading the layer declaration. So we provide real data.
     const point = { type: "Point", coordinates: [-60.64, -32.94] };
 
     beforeAll(async () => {
         await import("fake-indexeddb/auto");
         ({ IndexedDB } = await import("../../../src/capabilities/offline/db/indexeddb.js"));
         ({ StorageContract } = await import("../../../src/kernel/shared/storage-contract.js"));
-        ({ buildSyncReport, deriveStatus } = await import(
-            "../../../src/capabilities/offline/report/sync-report.js"
-        ));
-        ({ writePullState } = await import(
-            "../../../src/capabilities/offline/report/pull-state.js"
-        ));
+        ({ buildSyncReport, deriveStatus } =
+            await import("../../../src/capabilities/offline/report/sync-report.js"));
+        ({ writePullState } =
+            await import("../../../src/capabilities/offline/report/pull-state.js"));
         ({ applyEdit } = await import("../../../src/capabilities/offline/write/local-edit-api.js"));
     });
 
     beforeEach(async () => {
         open = [];
-        // ⚠️ Le bloc `edition` est INDISPENSABLE sur les deux premières, et son absence a
-        // fait rougir la 1ʳᵉ rédaction de ce fichier : `applyEdit` refuse `layerNotEditable`
-        // au nom de l'invariant S6 (rapatrier n'accorde JAMAIS l'éditabilité). Le test
-        // assertait alors 2 contre 0 — la garde faisait son travail, pas la fixture le sien.
+        // ⚠️ The `edition` block is INDISPENSABLE on the first two, and its
+        // absence turned this file's 1st draft red: `applyEdit` refuses
+        // `layerNotEditable` in the name of the editability invariant (pulling
+        // NEVER grants editability). The test then asserted 2 against 0 — the
+        // guard did its job, the fixture did not do its own.
         layerConfigs = [
             {
                 id: "sites_rosario",
@@ -66,15 +66,15 @@ describe("4.8 — rapport de synchronisation par couche", () => {
             },
             { id: "communes", write: { dialect: "collection" } },
         ];
-        // La surface RÉELLEMENT montée, mesurée en navigateur au cours de 4.1 :
-        // `Config.getActiveProfile()`, et non `Config.Profile.getActiveProfileLayersConfig()`.
+        // The surface REALLY mounted, measured in the browser:
+        // `Config.getActiveProfile()`, and not `Config.Profile.getActiveProfileLayersConfig()`.
         globalThis.GeoLeaf = {
             Config: {
                 get: (key, dflt) => (key === "data.activeProfile" ? dflt : dflt),
                 getActiveProfile: () => ({ layers: layerConfigs }),
             },
         };
-        // `close()` et non `_db = null` : la façade cache ses sous-modules par connexion.
+        // `close()` and not `_db = null`: the facade caches its sub-modules per connection.
         IndexedDB.close();
         IndexedDB._dbName = DB_NAME;
         await IndexedDB.init();
@@ -97,7 +97,7 @@ describe("4.8 — rapport de synchronisation par couche", () => {
         });
     });
 
-    // ── ① LE CAS QUE LA TÂCHE EXISTE POUR RENDRE VISIBLE ──────────────────────────────────
+    // ── ① THE CASE THIS FEATURE EXISTS TO MAKE VISIBLE ───────────────────────────────────
 
     test("une couche déclarée et jamais rapatriée est `declaredNeverPulled`", async () => {
         const report = await buildSyncReport();
@@ -108,10 +108,10 @@ describe("4.8 — rapport de synchronisation par couche", () => {
     });
 
     test("🛑 un rapatriement qui rend ZÉRO entité n'est PAS `declaredNeverPulled`", async () => {
-        // C'est LE test de la tâche. Les deux situations comptent 0 entité dans le magasin :
-        // seul le marqueur persisté les sépare. S'il disparaissait, ce test rougirait et
-        // celui du dessus resterait vert — c'est-à-dire que le rapport se remettrait à
-        // rassurer sur une couche vide qu'on n'a jamais tentée.
+        // THE test of the feature. Both situations count 0 entities in the
+        // store: only the persisted marker separates them. If it vanished,
+        // this test would turn red and the one above would stay green — i.e.
+        // the report would go back to reassuring about an empty layer never attempted.
         await writePullState(IndexedDB, "sites_rosario", {
             at: 1_700_000_000_000,
             outcome: "ok",
@@ -138,7 +138,7 @@ describe("4.8 — rapport de synchronisation par couche", () => {
         expect(byId(await buildSyncReport(), "communes").status).toBe("notDeclared");
     });
 
-    // ── ② LA PÉREMPTION NE SE DEVINE PAS ──────────────────────────────────────────────────
+    // ── ② STALENESS IS NOT GUESSED ───────────────────────────────────────────────────────
 
     test("sans `maxAgeMs` déclaré, un rapatriement ancien reste `pulled` — jamais périmé", () => {
         const ilYAUnAn = Date.now() - 365 * 24 * 3600 * 1000;
@@ -160,7 +160,7 @@ describe("4.8 — rapport de synchronisation par couche", () => {
         expect(deriveStatus(false, state, 1, 1_000_000)).toBe("notDeclared");
     });
 
-    // ── ③ LES DÉCOMPTES TRAVERSENT LES DEUX MAGASINS ──────────────────────────────────────
+    // ── ③ THE TALLIES CROSS BOTH STORES ──────────────────────────────────────────────────
 
     test("`pendingCount` compte la dette réelle, et n'attribue rien à la mauvaise couche", async () => {
         await writePullState(IndexedDB, "sites_rosario", {
@@ -168,9 +168,9 @@ describe("4.8 — rapport de synchronisation par couche", () => {
             outcome: "ok",
             written: 2,
         });
-        // Deux saisies sur une couche, une sur l'autre : si le regroupement par `layerId`
-        // était faux, le total serait juste et la RÉPARTITION fausse — ce qu'un test qui ne
-        // regarde que la somme laisserait passer.
+        // Two captures on one layer, one on the other: if the `layerId`
+        // grouping were wrong, the total would be right and the SPLIT wrong —
+        // what a sum-only test would let through.
         await applyEdit({
             layerId: "sites_rosario",
             kind: "create",
@@ -195,7 +195,7 @@ describe("4.8 — rapport de synchronisation par couche", () => {
         expect(byId(report, "villes_principales").pendingCount).toBe(1);
         expect(byId(report, "communes").pendingCount).toBe(0);
 
-        // Les entités saisies sont dans `features` : le décompte les voit.
+        // The captured entities are in `features`: the tally sees them.
         expect(byId(report, "sites_rosario").featureCount).toBe(2);
     });
 
@@ -208,7 +208,7 @@ describe("4.8 — rapport de synchronisation par couche", () => {
         ]);
     });
 
-    // ── ④ LE REPLI ALERTE, IL NE RASSURE PAS ──────────────────────────────────────────────
+    // ── ④ THE FALLBACK WARNS, IT DOES NOT REASSURE ───────────────────────────────────────
 
     test("sans moteur de stockage, le rapport reste `declaredNeverPulled` — pas `pulled`", async () => {
         StorageContract.init({
@@ -228,20 +228,21 @@ describe("4.8 — rapport de synchronisation par couche", () => {
         await expect(buildSyncReport()).resolves.toEqual([]);
     });
 
-    // ── ⑤ B-121 — `getStorageStats` ne voyait pas les magasins v4 ─────────────────────────
+    // ── ⑤ `getStorageStats` did not see the v4 stores ────────────────────────────
 
-    test("B-121 — `features` et `outbox` sont comptés, pas seulement les magasins v3", async () => {
-        // 🛑 CE TEST EST ICI, ET PAS DANS `db-modules.test.js`, PAR MESURE. Là-bas
-        // `getStorageStats` tourne contre `makeIDB()`, un mock dont `ensureStore` CRÉE tout
-        // magasin qu'on lui demande — il aurait donc rendu vert une transaction sur quatre
-        // magasins même si le schéma réel n'en portait que deux. Son propre commentaire le
-        // dit : `features: null, // composite — not exercised here`. Ici, la base est celle
-        // que `_upgradeDatabase` construit vraiment.
+    test("`features` et `outbox` sont comptés, pas seulement les magasins v3", async () => {
+        // 🛑 THIS TEST IS HERE, AND NOT IN `db-modules.test.js`, BY
+        // MEASUREMENT. There `getStorageStats` runs against `makeIDB()`, a
+        // mock whose `ensureStore` CREATES any store asked of it — it would
+        // thus have greenlit a transaction over four stores even if the real
+        // schema carried only two. Its own comment says so:
+        // `features: null, // composite — not exercised here`. Here, the base
+        // is the one `_upgradeDatabase` really builds.
         //
-        // ⚠️ Et il asserte une VALEUR, pas une forme. Le test de forme qui existait
-        // (`toHaveProperty("layersCount")`) serait resté vert sur un compteur bloqué à 0 —
-        // ce qui était exactement le défaut : après un rapatriement de 27 entités,
-        // `getStats()` rapportait toujours 0.
+        // ⚠️ And it asserts a VALUE, not a shape. The shape test that existed
+        // (`toHaveProperty("layersCount")`) would have stayed green on a
+        // counter stuck at 0 — which was exactly the defect: after a pull of
+        // 27 entities, `getStats()` still reported 0.
         const before = await IndexedDB.getStorageStats();
         expect(before.featuresCount).toBe(0);
         expect(before.outboxCount).toBe(0);
@@ -258,10 +259,10 @@ describe("4.8 — rapport de synchronisation par couche", () => {
         expect(after.outboxCount).toBe(1);
     });
 
-    // ── ⑥ 4.10 — la purge ne touche QUE le cache, et l'export ne rate rien ────────────────
+    // ── ⑥ the purge touches ONLY the cache, and the export misses nothing ───────────────
 
     describe("4.10 — le cache se purge, le travail ne se purge jamais", () => {
-        /** Écrit une entité déjà synchronisée : du CACHE, re-rapatriable par `pullLayer()`. */
+        /** Writes an already-synced entity: CACHE, re-pullable by `pullLayer()`. */
         const seedSynced = (localId, layerId = "sites_rosario") =>
             IndexedDB.putLayerFeatures([
                 {
@@ -296,8 +297,8 @@ describe("4.8 — rapport de synchronisation par couche", () => {
 
             const tally = await IndexedDB.purgeCachedFeatures();
 
-            // Seule l'entité de cache part. La saisie de terrain n'a AUCUNE autre copie :
-            // c'est la propriété 1 du contrat, « une capture ne disparaît jamais ».
+            // Only the cache entity leaves. The field capture has NO other
+            // copy: the contract's property 1, "a capture never disappears".
             expect(tally.removed).toBe(1);
             const stats = await IndexedDB.getStorageStats();
             expect(stats.featuresCount).toBe(1);
@@ -305,23 +306,24 @@ describe("4.8 — rapport de synchronisation par couche", () => {
         });
 
         test("épargne une entité `synced` que l'outbox réclame encore, et le DIT", async () => {
-            // L'invariant de 4.4 rend ce cas théoriquement impossible — `applyEdit` écrit
-            // l'entité en `pending` en même temps que son entrée. On le fabrique donc à la
-            // main : une garde qui ne s'éprouve que sur des états que le code produit déjà
-            // n'éprouve rien. C'est celle-ci qui empêche une destruction irréversible si
-            // l'invariant venait à céder.
+            // The write invariant makes this case theoretically impossible —
+            // `applyEdit` writes the entity as `pending` together with its
+            // entry. So we forge it by hand: a guard exercised only on states
+            // the code already produces exercises nothing. This one is what
+            // prevents an irreversible destruction should the invariant give way.
             await applyEdit({
                 layerId: "sites_rosario",
                 kind: "create",
                 localId: "divergente",
                 feature: { type: "Feature", geometry: point, properties: {} },
             });
-            // ⚠️ ÉCRITURE DIRECTE, et le détour est la preuve que l'invariant tient :
-            // `putLayerFeatures` a REFUSÉ de repasser cet enregistrement en `synced`
-            // (`putManyPreservingLocal` n'écrase jamais une saisie non synchronisée, règle
-            // de 4.1) — la 1ʳᵉ rédaction de ce test échouait exactement là. L'état divergent
-            // n'est donc pas atteignable par l'API ; on le fabrique au niveau du magasin,
-            // sinon la garde de `purgeCachedFeatures` ne serait jamais éprouvée.
+            // ⚠️ DIRECT WRITE, and the detour is the proof the invariant
+            // holds: `putLayerFeatures` REFUSED to flip this record back to
+            // `synced` (`putManyPreservingLocal` never overwrites an unsynced
+            // capture) — this test's 1st draft failed exactly there. The
+            // divergent state is thus unreachable through the API; we forge it
+            // at store level, otherwise `purgeCachedFeatures`'s guard would
+            // never be exercised.
             await new Promise((resolve, reject) => {
                 const tx = IndexedDB._db.transaction(["features"], "readwrite");
                 tx.objectStore("features").put({
@@ -354,8 +356,8 @@ describe("4.8 — rapport de synchronisation par couche", () => {
 
             const pending = await IndexedDB.listPendingEdits();
 
-            // ⚠️ Une entité `synced` sans entrée d'outbox n'est PAS une saisie due : elle est
-            // déjà chez le serveur. L'export ne doit pas la faire passer pour du travail.
+            // ⚠️ A `synced` entity without an outbox entry is NOT owed work:
+            // it is already at the server. The export must not pass it off as work.
             expect(pending).toHaveLength(1);
             expect(pending[0]).toMatchObject({
                 kind: "create",

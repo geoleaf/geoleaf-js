@@ -1,20 +1,21 @@
 // @ts-check
-// Config-contract Phase C / C1 — E2E ciblés (effets visibles) pour B1/B2.
+// Config-contract Phase C / C1 — targeted E2E (visible effects) for the
+// B1/B2 config families.
 //
-// La couverture exhaustive par-valeur est en Vitest (__tests__/config/s10-*).
-// Ici on confirme seulement, en navigateur réel, que la chaîne config → effet
-// visible fonctionne de bout en bout pour des effets robustes au rendu logiciel
-// (DOM, indépendants de WebGL) : le bandeau de branding (geoleaf.config.json).
+// The exhaustive per-value coverage lives in Vitest (__tests__/config/s10-*).
+// Here we only confirm, in a real browser, that the config → visible effect
+// chain works end to end for effects robust under software rendering (DOM,
+// WebGL-independent): the branding banner (geoleaf.config.json).
 //
-// Prefixe `cfg-` (convention roadmap config-contract, anti-collision avec la
-// numérotation 10,11,12… de plugin-validation).
+// The `cfg-` prefix marks the config-contract spec family (collision-proof
+// against the 10,11,12… plugin-validation numbering).
 //
-// PRÉREQUIS D'EXÉCUTION : harnais e2e standard (`npm run build:deploy:all` pour
-// peupler deploy/*, puis Playwright) AVEC rendu logiciel WebGL (flags SwiftShader
-// d'e2e/helpers/launch-options.js — câblés dans playwright.config.js par le
-// chantier boot-di-lifecycle ; sans eux le `new maplibregl.Map()` headless échoue
-// et le branding n'est jamais monté). La couverture par-valeur, elle, est en
-// Vitest (__tests__/config/s10-*) et ne dépend pas du navigateur.
+// EXECUTION PREREQUISITE: standard e2e harness (`npm run build:deploy:all`
+// to populate deploy/*, then Playwright) WITH software WebGL rendering
+// (SwiftShader flags from e2e/helpers/launch-options.js — wired into
+// playwright.config.js; without them the headless `new maplibregl.Map()`
+// fails and the branding is never mounted). The per-value coverage lives in
+// Vitest (__tests__/config/s10-*) and does not depend on the browser.
 
 import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
@@ -29,22 +30,24 @@ test.describe("cfg-c1 — racine/features (effets visibles)", () => {
         await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
         const branding = page.locator(".gl-branding");
         await expect(branding).toBeVisible({ timeout: 10000 });
-        // deploy-core/profiles/geoleaf.config.json → modules.branding.text "Propulsé par © GeoLeaf…"
+        // deploy-core/profiles/geoleaf.config.json → modules.branding.text is "Propulsé par © GeoLeaf…"
         await expect(branding).toContainText("Propulsé par");
     });
 
     test("modules.branding.enabled:false → aucun bandeau (effet du flag)", async ({ page }) => {
         // Patch the geoleaf.config.json response before boot to disable branding.
         //
-        // La clé est `modules.branding.enabled`, PAS la racine `branding` : la capacité a
-        // migré de la clé app-globale racine vers son bloc de capacité
-        // (capabilities/branding/branding-capability.ts → gate.configPath
-        // "modules.branding.enabled", opt-in). Patcher `cfg.branding` n'écrivait plus
-        // que sur une clé morte — le bandeau restait affiché.
+        // The key is `modules.branding.enabled`, NOT the root `branding`: the
+        // capability migrated from the root app-global key to its capability
+        // block (capabilities/branding/branding-capability.ts →
+        // gate.configPath "modules.branding.enabled", opt-in). Patching
+        // `cfg.branding` only wrote to a dead key any more — the banner
+        // stayed displayed.
         //
-        // geoleaf.config.json est bien la cible : le gate est évalué sur le baseCfg
-        // PRÉ-MERGE (app/boot-core.ts:207 `toCapConfig(baseCfg)`), et `modules.branding`
-        // est un bloc app-global déclaré dans ce fichier.
+        // geoleaf.config.json is indeed the target: the gate is evaluated on
+        // the PRE-MERGE baseCfg (app/boot-core.ts `toCapConfig(baseCfg)`),
+        // and `modules.branding` is an app-global block declared in that
+        // file.
         await page.addInitScript(() => {
             const origFetch = window.fetch.bind(window);
             window.fetch = async (input, init) => {

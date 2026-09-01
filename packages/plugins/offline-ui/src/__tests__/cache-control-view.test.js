@@ -1,35 +1,38 @@
 /**
- * CacheControl — couche vue : DOM, état, événements.
+ * CacheControl — view layer: DOM, state, events.
  *
- * ## D'où vient ce fichier
+ * ## Where this file comes from
  *
- * Il remplace `packages/core/__tests__/ui/cache-button.test.js` (725 l., 30 tests),
- * supprimé au R.3 du backlog résiduel. Ce fichier-là vivait dans le **core** et testait
- * un contrôle qui vit dans **ce paquet** ; il n'importait aucun module et redéfinissait
- * dans chaque test la fonction qu'il prétendait vérifier :
+ * It replaces `packages/core/__tests__/ui/cache-button.test.js` (725 l., 30
+ * tests), since deleted. That file lived in the **core** and tested a control
+ * that lives in **this package**; it imported no module and redefined in each
+ * test the function it claimed to verify:
  *
  * ```js
  * const openCacheModal = () => { const m = document.getElementById("gl-cache-modal");
  *                                if (m) m.style.display = "flex"; };
  * openCacheModal();
- * expect(modal.style.display).toBe("flex");   // vérifie les 3 lignes du dessus
+ * expect(modal.style.display).toBe("flex");   // verifies the 3 lines above
  * ```
  *
- * Trente tests verts, zéro ligne de production couverte. Les scénarios, eux, étaient
- * justes — c'est bien le comportement de `CacheControl` qu'ils décrivaient. Ils sont
- * rejoués ici contre le vrai code : `gl-cache-control__header`, `gl-cache-control__body`
- * et `_updateStatus` ne sont plus simulés, ils sont exercés.
+ * Thirty green tests, zero production line covered. The scenarios, however, were
+ * right — it was indeed `CacheControl`'s behaviour they described. They are
+ * replayed here against the real code: `gl-cache-control__header`,
+ * `gl-cache-control__body` and `_updateStatus` are no longer simulated, they are
+ * exercised.
  *
- * ## Ce qui est ciblé, et pourquoi ces trois modules
+ * ## What is targeted, and why these three modules
  *
- * `cache-control-dom.ts`, `cache-control-state.ts` et `cache-control-events.ts` étaient à
- * **0 %** de couverture (~600 l.), alors que `modal-manager.ts` — que le test du core
- * simulait aussi — est déjà à 91,66 % via `cache-button.test.js`. Le trou était ici.
+ * `cache-control-dom.ts`, `cache-control-state.ts` and `cache-control-events.ts`
+ * were at **0%** coverage (~600 l.), while `modal-manager.ts` — which the core's
+ * test also simulated — is already at 91.66% via `cache-button.test.js`. The
+ * hole was here.
  *
- * ⚠️ **On n'importe PAS `../cache/cache-control.js`** : `vitest.config.ts` l'aliase vers
- * `__mocks__/empty-module.js` (`^(\.\.\/)+sync\/cache-control\.(js|ts)$`), et un import
- * depuis `src/__tests__/` matche ce motif. L'assembleur n'est donc pas testable d'ici ;
- * ses trois sous-modules le sont, et ils portent toute la logique.
+ * ⚠️ **We do NOT import `../cache/cache-control.js`**: `vitest.config.ts`
+ * aliases it to `__mocks__/empty-module.js`
+ * (`^(\.\.\/)+sync\/cache-control\.(js|ts)$`), and an import from
+ * `src/__tests__/` matches that pattern. The assembler is thus not testable from
+ * here; its three sub-modules are, and they carry all the logic.
  */
 "use strict";
 
@@ -48,16 +51,17 @@ import {
     cleanup,
 } from "../cache/cache-control-events.js";
 
-// API publique S4.4 — les tests plantent `GeoLeaf.Storage` comme le fait la PRODUCTION.
-// Ils pilotaient `StorageContract.init()`, c'est-à-dire une SECONDE instance du singleton
-// que le bundle embarquait et que rien n'initialisait : ils validaient un canal mort.
+// The tests plant `GeoLeaf.Storage` the way PRODUCTION does. They used to drive
+// `StorageContract.init()`, i.e. a SECOND instance of the singleton the bundle
+// embedded and nothing initialised: they validated a dead channel.
 function _installGeoLeafStorage(api) {
     globalThis.GeoLeaf = globalThis.GeoLeaf ?? {};
-    // Le helper reproduit ce que `StorageContract.init()` fournissait, parce que la façade
-    // du core le fournit aussi : `isPluginLoaded()` = « un moteur s'est enregistré », et
-    // `isAvailable()` = « et sa base est ouverte ». L'adaptateur du plugin DÉLÈGUE ces deux
-    // méthodes — il ne les recalcule pas —, donc un objet planté qui ne les porte pas
-    // rendrait `false` là où le test attend `true`. Un appelant qui les fournit garde la main.
+    // The helper reproduces what `StorageContract.init()` provided, because the
+    // core's facade provides it too: `isPluginLoaded()` = "an engine registered",
+    // and `isAvailable()` = "and its database is open". The plugin's adapter
+    // DELEGATES these two methods — it does not recompute them — so a planted
+    // object not carrying them would return `false` where the test expects
+    // `true`. A caller providing them keeps the hand.
     globalThis.GeoLeaf.Storage =
         api === null || api === undefined
             ? null
@@ -69,11 +73,11 @@ function _installGeoLeafStorage(api) {
     return api;
 }
 
-// ─── Fabrique d'état ────────────────────────────────────────────────────────────
+// ─── State factory ──────────────────────────────────────────────────────────────
 //
-// Reproduit ce que `createCacheControl()` construit dans `cache-control.ts` : les
-// délégations sont des espions, ce qui rend observable QUI appelle QUOI sans charger
-// l'assembleur (inatteignable, cf. l'avertissement d'en-tête).
+// Reproduces what `createCacheControl()` builds in `cache-control.ts`: the
+// delegations are spies, which makes WHO calls WHAT observable without loading
+// the assembler (unreachable, cf. the header warning).
 
 function makeSelf(options = {}) {
     const self = {
@@ -101,7 +105,7 @@ function makeSelf(options = {}) {
     self._updateStatus = vi.fn().mockResolvedValue(undefined);
     self._populateLayerSelection = vi.fn().mockResolvedValue(undefined);
     self._attachEventListeners = vi.fn();
-    // `cache-control-types.ts:78-80` declares _handleDownload and _handleClear as
+    // `cache-control-types.ts` declares _handleDownload and _handleClear as
     // `Promise<void>` and _handleStop as `void`. The doubles must honour that: a bare
     // vi.fn() returns undefined, and the caller attaches .catch() to the two async ones.
     // Faithfulness matters here — an unfaithful double is what let a floating promise
@@ -119,7 +123,7 @@ function makeSelf(options = {}) {
     return self;
 }
 
-/** Monte la structure dans le document — `updateStatus` lit par `getElementById`. */
+/** Mounts the structure in the document — `updateStatus` reads via `getElementById`. */
 function mount(self) {
     document.body.appendChild(self._container);
     buildStructure(self);
@@ -318,15 +322,17 @@ describe("buildStructure — sections et actions", () => {
 
 describe("updateStatus", () => {
     afterEach(() => {
-        // `init(null)` remet le contrat à « plugin non chargé » : c'est sa seule méthode
-        // d'écriture, et la rendre au singleton évite de fuir sur les fichiers suivants.
+        // `init(null)` resets the contract to "plugin not loaded": its only write
+        // method, and returning it to the singleton avoids leaking onto the next
+        // files.
         _installGeoLeafStorage(null);
     });
 
     /**
-     * Branche un CacheManager sur le contrat **par son API réelle**, comme le ferait
-     * `geoleaf.storage.js` au boot — plutôt que d'espionner le getter. Un espion sur
-     * `CacheManager` testerait l'espion ; `init()` exerce la vraie indirection.
+     * Wires a CacheManager onto the contract **through its real API**, as
+     * `geoleaf.storage.js` would at boot — rather than spying on the getter. A
+     * spy on `CacheManager` would test the spy; `init()` exercises the real
+     * indirection.
      */
     function withCacheManager(cacheManager) {
         _installGeoLeafStorage({ CacheManager: cacheManager });
@@ -460,7 +466,7 @@ describe("updateProgress", () => {
             totalSize: 10 * 1024 * 1024,
         });
 
-        // 1/10 fichiers = 10 %, mais 5/10 Mo = 50 % : c'est l'octet qui décide.
+        // 1/10 files = 10%, but 5/10 MB = 50%: the byte is what decides.
         expect(self._progressFill.style.width).toBe("50%");
         expect(self._progressText.textContent).toContain("5.0/10.0 MB");
     });
@@ -555,15 +561,15 @@ describe("handleCancelled", () => {
     });
 });
 
-// ─── Événements et accordéons ───────────────────────────────────────────────────
+// ─── Events and accordions ──────────────────────────────────────────────────────
 
 describe("attachEventListeners", () => {
     test("chaque bouton appelle sa commande", () => {
         const self = mount(makeSelf());
         attachEventListeners(self);
-        // `buildContent` pose Vider en `disabled` ; c'est `updateStatus` qui le libère
-        // quand un cache existe. Sans ce geste le clic ci-dessous ne partirait pas —
-        // voir le test suivant, qui en fait l'objet.
+        // `buildContent` sets Clear as `disabled`; `updateStatus` is what frees
+        // it when a cache exists. Without this gesture the click below would not
+        // fire — see the next test, whose subject it is.
         self._clearBtn.disabled = false;
 
         self._downloadBtn.click();
@@ -583,7 +589,7 @@ describe("attachEventListeners", () => {
         const self = mount(makeSelf());
         attachEventListeners(self);
 
-        // Aucun `disabled = false` ici : c'est l'état de sortie de `buildContent`.
+        // No `disabled = false` here: it is `buildContent`'s exit state.
         expect(self._clearBtn.disabled).toBe(true);
         self._clearBtn.click();
 
@@ -646,19 +652,20 @@ describe("attachEventListeners", () => {
     });
 });
 
-// ─── Chemins d'échec des écouteurs (Q1.4) ───────────────────────────────────────
+// ─── Listener failure paths ─────────────────────────────────────────────────────
 //
-// `attachEventListeners` câble six commandes asynchrones. Avant le Q1.4, leurs rejets
-// n'étaient captés par personne : la promesse flottait, l'erreur était avalée, et sur
-// un socle à boot ordonné c'est un défaut silencieux. Les `.catch()` posés là sont du
-// code livré comme un autre — non exercés, ils ne prouvent rien.
+// `attachEventListeners` wires six asynchronous commands. Before the fix, their
+// rejections were caught by nobody: the promise floated, the error was
+// swallowed, and on an ordered-boot base that is a silent defect. The
+// `.catch()`es placed there are shipped code like any other — unexercised, they
+// prove nothing.
 //
-// Chaque test ci-dessous fait REJETER la commande et vérifie que rien ne s'échappe :
-// c'est la propriété qui compte (l'écouteur ne casse pas la page), et c'est aussi ce
-// qui distingue un `.catch()` réel d'un `void` de complaisance.
+// Each test below makes the command REJECT and verifies nothing escapes: it is
+// the property that matters (the listener does not break the page), and also
+// what distinguishes a real `.catch()` from a complacency `void`.
 
 describe("attachEventListeners — rejets des commandes asynchrones", () => {
-    /** Laisse tourner la microtâche du .catch() avant d'assertionner. */
+    /** Lets the .catch() microtask run before asserting. */
     const flush = () => new Promise((r) => setTimeout(r, 0));
 
     test("un _handleDownload qui rejette n'échappe pas au clic", async () => {
@@ -709,7 +716,7 @@ describe("attachEventListeners — rejets des commandes asynchrones", () => {
         }).not.toThrow();
         await flush();
 
-        // Les deux partent : le rejet de la première ne doit pas court-circuiter la seconde.
+        // Both fire: the first one's rejection must not short-circuit the second.
         expect(self._updateStatus).toHaveBeenCalledTimes(1);
         expect(self._populateLayerSelection).toHaveBeenCalledTimes(1);
     });

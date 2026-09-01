@@ -388,6 +388,32 @@ describe("GeoLeaf.UI.FilterPanel.Proximity", () => {
 
             expect(mockCircle.setRadius).not.toHaveBeenCalled();
         });
+
+        // A profile is free to declare a fractional radius; the mobile bar used to truncate
+        // it before it ever got here, so 0,5 km reached the circle as a radius of zero.
+        // The products below are exact in IEEE-754 — no toBeCloseTo needed.
+        test.each([
+            [0.1, 100],
+            [0.5, 500],
+            [1.4, 1400],
+        ])("should carry %s km to the circle as %s m", (km, metres) => {
+            mockProximityState.mode = true;
+            mockProximityState.circle = mockCircle;
+
+            GeoLeaf._UIFilterPanelProximity.setProximityRadius(km);
+
+            expect(mockCircle.setRadius).toHaveBeenCalledWith(metres);
+        });
+
+        test("should keep a fractional radius on the wrapper the engine reads", () => {
+            document.body.innerHTML = `<div id="gl-proximity-toolbar-wrapper" data-gl-filter-id="proximity"></div>`;
+
+            GeoLeaf._UIFilterPanelProximity.setProximityRadius(0.5);
+
+            expect(mockProximityState.pendingRadius).toBe(0.5);
+            const wrapper = document.getElementById("gl-proximity-toolbar-wrapper");
+            expect(wrapper.getAttribute("data-proximity-radius")).toBe("0.5");
+        });
     });
 
     describe("toggleProximityToolbar()", () => {
@@ -425,6 +451,42 @@ describe("GeoLeaf.UI.FilterPanel.Proximity", () => {
             const wrapper = document.getElementById("gl-proximity-toolbar-wrapper");
             expect(wrapper).not.toBeNull();
             expect(wrapper.getAttribute("data-gl-filter-id")).toBe("proximity");
+        });
+
+        test("should carry a fractional default radius through to placement", () => {
+            mockHasRecentGPS.mockReturnValue(false);
+
+            GeoLeaf._UIFilterPanelProximity.toggleProximityToolbar(mockMap, 0.5);
+
+            const wrapper = document.getElementById("gl-proximity-toolbar-wrapper");
+            expect(wrapper.getAttribute("data-proximity-radius")).toBe("0.5");
+            // Third argument is the getter the manual mode reads at click time.
+            const getRadiusKm = mockActivateManual.mock.calls.at(-1)[2];
+            expect(getRadiusKm()).toBe(0.5);
+        });
+
+        // `?? 10` only caught null/undefined, so a zero handed in by a caller travelled
+        // intact and painted a circle of radius zero — invisible, and filtering nothing.
+        test.each([[0], [-1], [Number.NaN]])(
+            "should fall back to 10 km rather than accept %s",
+            (bad) => {
+                mockHasRecentGPS.mockReturnValue(false);
+
+                GeoLeaf._UIFilterPanelProximity.toggleProximityToolbar(mockMap, bad);
+
+                const wrapper = document.getElementById("gl-proximity-toolbar-wrapper");
+                expect(wrapper.getAttribute("data-proximity-radius")).toBe("10");
+                expect(mockActivateManual.mock.calls.at(-1)[2]()).toBe(10);
+            }
+        );
+
+        test("should still default to 10 km when no radius is given", () => {
+            mockHasRecentGPS.mockReturnValue(false);
+
+            GeoLeaf._UIFilterPanelProximity.toggleProximityToolbar(mockMap);
+
+            const wrapper = document.getElementById("gl-proximity-toolbar-wrapper");
+            expect(wrapper.getAttribute("data-proximity-radius")).toBe("10");
         });
     });
 

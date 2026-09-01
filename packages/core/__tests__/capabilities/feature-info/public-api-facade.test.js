@@ -1,14 +1,15 @@
 /**
- * Unit tests — `capabilities/feature-info/public-api.ts` (façade à 33 %).
+ * Unit tests — `capabilities/feature-info/public-api.ts` (facade at 33%).
  *
- * Façade pure : `buildPublicApi()` rend l'objet monté sur `GeoLeaf.FeatureInfo`, chaque
- * méthode déléguant à un module interne. On mocke les délégués et on vérifie la délégation
- * + les gardes `if (!enabled) return` (popup/side-panel).
+ * Pure facade: `buildPublicApi()` returns the object mounted on
+ * `GeoLeaf.FeatureInfo`, each method delegating to an internal module. The
+ * delegates are mocked and the delegation is verified + the
+ * `if (!enabled) return` guards (popup/side-panel).
  */
 import { vi, test, expect, beforeEach } from "vitest";
 
-// vi.hoisted : la factory de vi.mock est hissée en tête ; les variables qu'elle
-// référence doivent l'être aussi (sinon « Cannot access before initialization »).
+// vi.hoisted: vi.mock's factory is hoisted to the top; the variables it
+// references must be too (otherwise "Cannot access before initialization").
 const {
     getFeatureInfoConfig,
     closePopup,

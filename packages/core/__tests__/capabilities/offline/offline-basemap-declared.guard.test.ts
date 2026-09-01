@@ -1,43 +1,47 @@
 /**
- * Garde 8.1 / A7′ — un fond de carte doit être RÉELLEMENT disponible hors réseau.
+ * Guard — a basemap must be REALLY available off-network.
  *
- * `resource-enumerator.ts` filtre les fonds sur `basemap.offline === true`
- * (`_addBasemapResources`). Tant qu'aucun profil livré ne pose ce drapeau, la branche est
- * gardée par une clé que personne ne déclare : le filtre rend une liste vide, tout le chemin
- * de mise en cache de fond est inatteignable depuis un profil réel, et **aucun test unitaire
- * ne le voit** — ceux de `resource-enumerator.test.js` montent leurs propres `__basemaps`
- * synthétiques, donc ils resteraient verts sur un dépôt où plus aucun profil ne déclare rien.
+ * `resource-enumerator.ts` filters basemaps on `basemap.offline === true`
+ * (`_addBasemapResources`). As long as no shipped profile sets that flag, the
+ * branch is gated by a key nobody declares: the filter returns an empty list,
+ * the whole basemap caching path is unreachable from a real profile, and **no
+ * unit test sees it** — those of `resource-enumerator.test.js` mount their
+ * own synthetic `__basemaps`, so they would stay green on a repo where no
+ * profile declares anything any more.
  *
- * C'est exactement le **compteur C2** de la clause de complétude (« tout chemin gardé par une
- * clé qu'aucun profil ne pose »), et c'est ce que cette garde mesure sur le disque.
+ * Exactly the completeness clause's failure class "any path gated by a key no
+ * profile sets", and what this guard measures on disk.
  *
- * ## Pourquoi la seconde assertion porte sur le VECTORIEL, et pas sur le nombre de fonds
+ * ## Why the second assertion is about VECTOR, and not the basemap count
  *
- * 🛑 **La disponibilité hors réseau d'un fond n'est pas une propriété du serveur, c'est une
- * propriété du FORMAT.** Les quatre stratégies du Service Worker gardent sur `status === 200`
- * et une réponse opaque porte `0` (`sw-core.js`). Un fond **vectoriel** est parsé par MapLibre
- * (PBF) : sa requête est nécessairement en mode `cors`, donc sa réponse n'est jamais opaque —
- * la garantie est structurelle. Un fond **raster** cross-origin n'offre pas cette garantie :
- * la sonde du 06/08/2026 a bien mesuré `Access-Control-Allow-Origin: *` sur les 3 origines
- * réelles, mais **c'est le mode de la requête qui décide**, et il n'est pas établi.
+ * 🛑 **A basemap's off-network availability is not a property of the server,
+ * it is a property of the FORMAT.** The Service Worker's four strategies gate
+ * on `status === 200` and an opaque response carries `0` (`sw-core.js`). A
+ * **vector** basemap is parsed by MapLibre (PBF): its request is necessarily
+ * in `cors` mode, so its response is never opaque — the guarantee is
+ * structural. A cross-origin **raster** basemap offers no such guarantee: the
+ * probe of 06/08/2026 did measure `Access-Control-Allow-Origin: *` on the 3
+ * real origins, but **the request's mode is what decides**, and it is not established.
  *
- * Basculer un raster à `offline: true` ressemblerait donc à un correctif sans en être un.
- * La garde exige qu'au moins **un** fond hors-ligne soit vectoriel, ce qui est la seule forme
- * dont on sache démontrer qu'elle survit.
+ * Flipping a raster to `offline: true` would thus look like a fix without
+ * being one. The guard requires at least **one** offline basemap to be
+ * vector, the only shape known to demonstrably survive.
  *
- * ⚠️ **Elle n'exige PAS que TOUS les fonds hors-ligne soient vectoriels**, et c'est délibéré :
- * ce serait affirmer plus que ce qui est mesuré. Le mode réel des requêtes raster de MapLibre
- * n'a jamais été relevé en navigateur (c'était la moitié ② de la sonde CORS, non exécutée).
- * Une garde qui dépasse sa preuve se fait croire jusqu'au jour où elle coûte un run.
+ * ⚠️ **It does NOT require ALL offline basemaps to be vector**, deliberately:
+ * that would claim more than is measured. The real mode of MapLibre's raster
+ * requests was never surveyed in a browser (that was half ② of the CORS
+ * probe, unexecuted). A guard exceeding its proof gets believed until the day
+ * it costs a run.
  *
- * ## Périmètre — dérivé, jamais écrit en dur
+ * ## Perimeter — derived, never hardcoded
  *
- * Les profils sont filtrés par **la même règle que `scripts/build-deploy.cjs`** : `schemas/` et
- * tout répertoire préfixé `_` sont écartés. `_reference` est une fixture de test qui n'est
- * jamais déployée, et elle porte justement un `street` **raster** en `offline: true` — une
- * combinaison que cette garde ne doit ni valider ni condamner, puisque le rôle d'une fixture
- * est d'exercer les branches du schéma. Écrire la liste des profils en dur ici la ferait
- * cesser de matcher au premier ajout, et la garde sortirait verte en n'ayant rien scanné.
+ * Profiles are filtered by **the same rule as `scripts/build-deploy.cjs`**:
+ * `schemas/` and any `_`-prefixed directory are set aside. `_reference` is a
+ * test fixture never deployed, and it precisely carries a **raster** `street`
+ * at `offline: true` — a combination this guard must neither validate nor
+ * condemn, since a fixture's role is to exercise the schema's branches.
+ * Hardcoding the profile list here would make it stop matching at the first
+ * addition, and the guard would come out green having scanned nothing.
  */
 
 import { describe, it, expect } from "vitest";
@@ -49,12 +53,12 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../..");
 const PROFILES = join(ROOT, "profiles");
 
 /**
- * Une entrée de `basemaps.json`, réduite à ce que cette garde en lit.
+ * A `basemaps.json` entry, reduced to what this guard reads from it.
  *
- * ⚠️ Volontairement LARGE et tout-optionnel : la garde lit des fichiers de profil **réels**,
- * pas une forme déjà validée par le schéma. Un type strict ici ferait échouer la compilation
- * sur un profil mal formé au lieu de faire échouer la GARDE, ce qui déplacerait le rouge hors
- * de l'endroit qui l'explique.
+ * ⚠️ Deliberately WIDE and all-optional: the guard reads **real** profile
+ * files, not a shape already schema-validated. A strict type here would fail
+ * compilation on a malformed profile instead of failing the GUARD, moving the
+ * red away from the place that explains it.
  */
 interface BasemapEntry {
     type?: string;
@@ -64,8 +68,9 @@ interface BasemapEntry {
 }
 
 /**
- * Les profils LIVRÉS, selon la règle de `build-deploy.cjs` (`schemas/` + préfixe `_` écartés).
- * Dérivée du disque, pour que l'ajout d'un profil entre dans le périmètre sans geste.
+ * The SHIPPED profiles, by `build-deploy.cjs`'s rule (`schemas/` + `_` prefix
+ * set aside). Derived from disk, so adding a profile enters the perimeter
+ * with no gesture.
  */
 function deployedProfileIds(): string[] {
     if (!existsSync(PROFILES)) return [];
@@ -74,7 +79,7 @@ function deployedProfileIds(): string[] {
         .map((e) => e.name);
 }
 
-/** Toutes les entrées de fond d'un profil livré, aplaties avec leur profil d'origine. */
+/** Every basemap entry of a shipped profile, flattened with its origin profile. */
 function deployedBasemaps(): Array<{ profileId: string; key: string; entry: BasemapEntry }> {
     const out: Array<{ profileId: string; key: string; entry: BasemapEntry }> = [];
     for (const id of deployedProfileIds()) {
@@ -91,10 +96,11 @@ function deployedBasemaps(): Array<{ profileId: string; key: string; entry: Base
 }
 
 /**
- * Un fond est VECTORIEL au sens de `_addBasemapResources` : `type: "maplibre"`, ou un `style`
- * sans `url`. ⚠️ Le prédicat est RECOPIÉ de `resource-enumerator.ts` et doit le rester —
- * l'ancrer sur l'identifiant d'un fond (`ign-plan-3d`) ferait rougir cette garde au premier
- * renommage correct, alors que l'invariant, lui, n'aurait pas bougé.
+ * A basemap is VECTOR in `_addBasemapResources`'s sense: `type: "maplibre"`,
+ * or a `style` without `url`. ⚠️ The predicate is COPIED from
+ * `resource-enumerator.ts` and must stay so — anchoring it on a basemap's id
+ * (`ign-plan-3d`) would turn this guard red at the first correct rename,
+ * while the invariant itself had not moved.
  */
 function isVector(entry: BasemapEntry): boolean {
     return entry.type === "maplibre" || (!!entry.style && !entry.url);

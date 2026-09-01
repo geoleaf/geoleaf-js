@@ -1,18 +1,18 @@
 // @ts-check
-// E2E — capacité `language-switcher` (S2 de roadmap_feature-selecteurs-ui).
+// E2E — `language-switcher` capability.
 //
-// Apport propre au navigateur :
-//   • le bouton est réellement injecté dans le VRAI bandeau d'onglets, construit par le
-//     vrai boot — le seam, le lifecycle et le panneau ne se rencontrent que là ;
-//   • la bascule recharge la page ET l'UI ressort traduite : la chaîne
-//     `?lang=` → `initI18n()` → libellés résolus à la construction du DOM ne peut être
-//     jouée qu'en conditions réelles ;
-//   • le `?lang=` de l'URL reste prioritaire sur la préférence enregistrée — la
-//     propriété qui garantit qu'un lien partagé est reproductible.
+// Browser-specific contribution:
+//   • the button is really injected into the REAL tab strip, built by the
+//     real boot — the seam, the lifecycle and the panel only meet there;
+//   • the switch reloads the page AND the UI comes out translated: the
+//     `?lang=` → `initI18n()` → labels-resolved-at-DOM-build chain can only
+//     be played in real conditions;
+//   • the URL's `?lang=` stays prioritary over the saved preference — the
+//     property guaranteeing a shared link is reproducible.
 //
-// ⚠️ Opt-in : visible parce que `profiles/geoleaf.config.json` pose
-// `modules.language-switcher.enabled: true`. Rouge après un changement de config →
-// vérifier ce drapeau avant le code.
+// ⚠️ Opt-in: visible because `profiles/geoleaf.config.json` sets
+// `modules.language-switcher.enabled: true`. Red after a config change →
+// check that flag before the code.
 
 import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
@@ -24,31 +24,36 @@ const POPOVER = ".gl-lang-popover";
 const POPOVER_ITEM = ".gl-lang-popover__item";
 
 /**
- * Attend l'état que ce fichier UTILISE — jamais un proxy, jamais un délai.
+ * Waits for the state this file USES — never a proxy, never a delay.
  *
- * ⚠️ La carte chargée seule est un proxy AMONT, pas un « boot terminé ». Elle est créée par le
- * module `core-map`, dont les dépendances DÉCLARÉES sont `["config"]`
- * (`app/boot-modules/core-map.module.ts:36`) ; `initI18n()` est appelé par le module `shared`
- * (`app/boot-modules/shared.module.ts:76`), et le bouton n'existe qu'une fois les panneaux bâtis
- * par `initUIPanels()` (`app/init-features.ts:256-275`), appelé par le module `ui` — le SEUL à
- * déclarer `shared` dans ses dépendances (`app/boot-modules/ui.module.ts:44`). Attendre la carte,
- * c'est donc attendre une étape que le graphe place AVANT tout ce qu'on lit ensuite. Le
- * `waitForTimeout(1200)` qui suivait était la seule chose qui couvrait l'écart : un délai déplace
- * une fenêtre, il ne la supprime pas (B-171), et MapLibre 6 les a toutes déplacées (le moteur est
- * un graphe de 3 modules → deux requêtes sérialisées de plus à chaque boot).
+ * ⚠️ The loaded map alone is an UPSTREAM proxy, not a "boot done". It is
+ * created by the `core-map` module, whose DECLARED dependencies are
+ * `["config"]` (`app/boot-modules/core-map.module.ts`); `initI18n()` is
+ * called by the `shared` module (`app/boot-modules/shared.module.ts`), and
+ * the button only exists once the panels are built by `initUIPanels()`
+ * (`app/init-features.ts`), called by the `ui` module — the ONLY one
+ * declaring `shared` among its dependencies
+ * (`app/boot-modules/ui.module.ts`). Waiting for the map is thus waiting
+ * for a step the graph places BEFORE everything read afterwards. The
+ * `waitForTimeout(1200)` that followed was the only thing covering the gap: a
+ * delay moves a window, it does not remove it, and MapLibre 6 moved them all
+ * (the engine is a graph of 3 modules → two more serialised requests at every
+ * boot).
  *
- * Le bouton présent dans le DOM est l'état AVAL, et il est CAUSAL : ses deux voies d'injection
- * (`capabilities/language-switcher/lifecycle.ts`) partent l'une de la barre d'outils mobile,
- * l'autre du bandeau `.gl-rp-tabs` — toutes deux construites par `initUIPanels()`. Bouton présent
- * ⟹ `ui` a démarré ⟹ `shared` a fini ⟹ `initI18n()` a tourné. C'est exactement la garantie que
- * réclament `GeoLeaf.I18n.getActiveLang()` et `getLabel()` plus bas : sans initialisation,
- * `getActiveLang()` ne LÈVE PAS, il rend `"fr"` (`utils/i18n/i18n.ts:57-60`) — un faux
- * silencieux, le pire des symptômes.
+ * The button present in the DOM is the DOWNSTREAM state, and it is CAUSAL:
+ * its two injection routes (`capabilities/language-switcher/lifecycle.ts`)
+ * start one from the mobile toolbar, the other from the `.gl-rp-tabs` strip —
+ * both built by `initUIPanels()`. Button present ⟹ `ui` started ⟹ `shared`
+ * finished ⟹ `initI18n()` ran. Exactly the guarantee
+ * `GeoLeaf.I18n.getActiveLang()` and `getLabel()` below demand: without
+ * initialisation, `getActiveLang()` does NOT throw, it returns `"fr"`
+ * (`utils/i18n/i18n.ts`) — a silent falsehood, the worst of symptoms.
  *
- * ⚠️ On teste la PRÉSENCE, pas la visibilité : à 1280 px (`playwright.config.js:50`, sous le seuil
- * `(min-width: 1440px)` de `kernel/ui/desktop/desktop-panel.ts:36`) le bandeau desktop est bâti
- * mais non activé, donc un bouton peut légitimement être caché. La visibilité reste l'affaire des
- * vérifications d'actionnabilité de Playwright, qui savent réessayer.
+ * ⚠️ PRESENCE is tested, not visibility: at 1280 px
+ * (`playwright.config.js`, below the `(min-width: 1440px)` threshold of
+ * `kernel/ui/desktop/desktop-panel.ts`) the desktop strip is built but not
+ * activated, so a button can legitimately be hidden. Visibility stays the
+ * business of Playwright's actionability checks, which know how to retry.
  */
 async function bootReady(page) {
     await page.waitForFunction(
@@ -67,8 +72,8 @@ test.describe("language-switcher — sélecteur de langue", () => {
         await page.goto("/");
         await bootReady(page);
 
-        // Le bandeau d'onglets n'existe qu'au-delà de 1440px ; la variante mobile vit
-        // dans la barre d'outils. Au moins une des deux doit être montée.
+        // The tab strip only exists beyond 1440px; the mobile variant lives in
+        // the toolbar. At least one of the two must be mounted.
         await expect(page.locator(LANG_BTN).first()).toBeVisible();
 
         const langs = await page.evaluate(() => window.GeoLeaf?.LanguageSwitcher?.list?.() ?? []);
@@ -85,18 +90,19 @@ test.describe("language-switcher — sélecteur de langue", () => {
 
         const items = page.locator(POPOVER_ITEM);
         expect(await items.count()).toBeGreaterThan(1);
-        // Exactement une entrée porte l'état actif — la marque d'accessibilité et la
-        // marque visuelle sont le même attribut, donc elles ne peuvent pas diverger.
+        // Exactly one entry carries the active state — the accessibility mark
+        // and the visual mark are the same attribute, so they cannot diverge.
         await expect(page.locator(`${POPOVER_ITEM}[aria-current="true"]`)).toHaveCount(1);
     });
 
     test("changer de langue recharge et traduit l'interface", async ({ page }) => {
-        // ⏱ Seul test du fichier à booter DEUX fois, dans le budget de 60 s de
-        // `playwright.config.js:41`. On n'attend donc pas l'événement `load` (toutes les
-        // sous-ressources) de chaque côté pour attendre ENSUITE le vrai état : `bootReady`
-        // porte la garantie, `load` ne portait qu'une facture. Même geste que
-        // `30-sync-cycle.spec.js`, et c'est ce qui rend la marge insensible aux deux requêtes
-        // sérialisées que MapLibre 6 ajoute — ici comptées deux fois, une par boot.
+        // ⏱ The file's only test to boot TWICE, within the 60 s budget of
+        // `playwright.config.js`. So the `load` event (every sub-resource)
+        // is not awaited on each side only to then await the real state:
+        // `bootReady` carries the guarantee, `load` only carried a bill. Same
+        // gesture as `30-sync-cycle.spec.js`, and what makes the margin
+        // insensitive to the two serialised requests MapLibre 6 adds — here
+        // counted twice, once per boot.
         await page.goto("/", { waitUntil: "domcontentloaded" });
         await bootReady(page);
 
@@ -104,16 +110,17 @@ test.describe("language-switcher — sélecteur de langue", () => {
         await page.locator(`${POPOVER_ITEM}[data-gl-lang="en"]`).click();
 
         await page.waitForURL(/lang=en/, { waitUntil: "domcontentloaded", timeout: 25000 });
-        // ⚠️ L'URL portant `?lang=en` ne dit RIEN de l'état i18n : `initI18n()` la lit
-        // (`utils/i18n/i18n.ts:97`) au module `shared`, plusieurs étapes de boot plus loin. Le
-        // rechargement rejoue TOUT le boot, donc c'est ici que la fenêtre est la plus large —
-        // et c'est `bootReady` qui attend l'initialisation réellement lue en dessous.
+        // ⚠️ The URL carrying `?lang=en` says NOTHING about the i18n state:
+        // `initI18n()` reads it (`utils/i18n/i18n.ts`) at the `shared`
+        // module, several boot steps later. The reload replays the WHOLE boot,
+        // so this is where the window is widest — and `bootReady` is what
+        // waits for the initialisation actually read below.
         await bootReady(page);
 
         expect(await page.evaluate(() => window.GeoLeaf?.I18n?.getActiveLang?.())).toBe("en");
 
-        // Preuve que la traduction est APPLIQUÉE, pas seulement sélectionnée : le titre
-        // du gestionnaire de couches est un libellé i18n du core.
+        // Proof the translation is APPLIED, not merely selected: the layer
+        // manager's title is a core i18n label.
         const label = await page.evaluate(
             () => window.GeoLeaf?.I18n?.getLabel?.("ui.layer_manager.title") ?? null
         );
@@ -121,8 +128,8 @@ test.describe("language-switcher — sélecteur de langue", () => {
     });
 
     test("le ?lang= de l'URL prime sur la préférence enregistrée", async ({ page }) => {
-        // La propriété qui rend un lien partagé reproductible : le destinataire voit la
-        // langue DU LIEN, pas la sienne.
+        // The property that makes a shared link reproducible: the recipient
+        // sees the LINK's language, not their own.
         await page.addInitScript(() => {
             try {
                 localStorage.setItem("gl-lang", "de");

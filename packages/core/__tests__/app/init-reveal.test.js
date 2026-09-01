@@ -1,12 +1,13 @@
 /**
  * Unit tests — `setupReveal` (backlog COUVERTURE B.2).
  *
- * `app/init-reveal.ts` était mesuré à **21,4 %** (12/56 lignes). C'est l'orchestration qui
- * dévoile l'application : elle décide QUAND le spinner disparaît. Ses garanties — révéler une
- * seule fois, ne jamais rester bloqué (filet de 5 s), et ne pas révéler prématurément quand le
- * profil est incertain — n'étaient vérifiées par rien.
+ * `app/init-reveal.ts` measured at **21.4%** (12/56 lines). It is the
+ * orchestration that unveils the application: it decides WHEN the spinner
+ * disappears. Its guarantees — reveal only once, never stay stuck (5 s
+ * net), and never reveal prematurely while the profile is uncertain — were
+ * verified by nothing.
  *
- * `dispatchGeoLeafEvent` est mocké avec le patron complet par construction (backlog B.12).
+ * `dispatchGeoLeafEvent` is mocked with the complete-by-construction pattern.
  */
 import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
 
@@ -20,7 +21,7 @@ const { dispatchGeoLeafEvent } = await import("../../src/kernel/events/event-bus
 
 const AppLog = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 
-/** Construit un jeu de dépendances de boot, surchargeable. */
+/** Builds an overridable set of boot dependencies. */
 function deps(over = {}) {
     const nativeMap = { resize: vi.fn() };
     const map = {
@@ -43,7 +44,7 @@ function deps(over = {}) {
     };
 }
 
-/** Nombre de fois où l'application a été déclarée prête. */
+/** Number of times the application was declared ready. */
 const readyCount = () =>
     dispatchGeoLeafEvent.mock.calls.filter((c) => c[0] === "geoleaf:app:ready").length;
 
@@ -54,10 +55,11 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-    // ⚠️ Purge des écouteurs `{once:true}` laissés par un test qui n'a PAS déclenché
-    // `geoleaf:theme:applied` : ils survivent sur `document`, et le test suivant réveillerait
-    // toutes les fermetures accumulées — chacune avec son propre `_appRevealed`, donc chacune
-    // comptant une révélation de plus. Les déclencher ici les consomme (`once`).
+    // ⚠️ Purge of `{once:true}` listeners left by a test that did NOT fire
+    // `geoleaf:theme:applied`: they survive on `document`, and the next test
+    // would wake all the accumulated closures — each with its own
+    // `_appRevealed`, hence each counting one more reveal. Firing them here
+    // consumes them (`once`).
     document.dispatchEvent(new CustomEvent("geoleaf:theme:applied"));
     vi.useRealTimers();
     document.body.innerHTML = "";

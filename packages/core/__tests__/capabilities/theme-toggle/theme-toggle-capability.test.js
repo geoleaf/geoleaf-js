@@ -9,9 +9,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 const { CapabilityRegistry } = await import("../../../src/kernel/api/capability-registry.ts");
-const { THEME_TOGGLE_CAPABILITY } = await import(
-    "../../../src/capabilities/theme-toggle/theme-toggle-capability.ts"
-);
+const { THEME_TOGGLE_CAPABILITY } =
+    await import("../../../src/capabilities/theme-toggle/theme-toggle-capability.ts");
 const { Introspection } = await import("../../../src/api/geoleaf.introspection.ts");
 
 /** Mirrors the capConfig adapter created in boot.ts for the gate. */

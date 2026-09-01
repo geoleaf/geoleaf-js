@@ -75,7 +75,7 @@ Ce que `src/entry.ts` déclare réellement. **Table gatée** par
 | `paquet npm` | `@geoleaf-plugins/connector`         |
 
 ✅ **`"storage"` ne désignait plus aucun plugin** — renommé `offline-ui`. Corrigé le 29/07/2026
-(**B-66**) ici et sur les quatre autres manifestes fautifs. Le champ `optional` reste **stocké et
+ici et sur les quatre autres manifestes fautifs. Le champ `optional` reste **stocké et
 jamais lu** par le registre (seul `requires` gouverne l'activation) : documenter est sa seule
 fonction, ce qui est exactement pourquoi rien ne rougissait. **Une gate le lit désormais** — tout
 identifiant cité doit correspondre à un plugin réellement enregistré.
@@ -160,6 +160,14 @@ sans en-tête, et l'échec serait un 401 par tuile — donc un flot d'erreurs, p
 ⚠️ **Le crochet d'ouvrier est une inversion de dépendance assumée.** Le core ne connaît pas ce
 plugin ; il lit un nom convenu sur l'objet global. C'est le seul moyen de faire traverser une
 politique d'authentification jusque dans un ouvrier, sans que le core n'importe jamais le plugin.
+
+⚠️ **Les trois chemins partagent une SEULE garde d'origine — `isSameOrigin` (`@geoleaf/host-runtime`).**
+Aucun n'attache le jeton sur un simple préfixe : `url.startsWith(baseUrl)` laissait fuir le `Bearer`
+vers un hôte-suffixe (`baseUrl.attaquant.tld`), car un préfixe de chaîne ignore la frontière d'hôte.
+Le pont cartographique (tuiles) a porté ce défaut jusqu'à ce que la garde — déjà appliquée au `fetch`
+et à l'ouvrier — y soit factorisée. **Couvrir les trois chemins ne suffit pas si l'un d'eux valide
+l'URL autrement que les deux autres** : c'est la surface la plus exposée (URLs de tuiles/style) qui
+portait alors le contrôle le plus faible.
 
 ---
 
@@ -326,7 +334,7 @@ publique**, et le commentaire de `entry.ts` le dit sur place.
 ⚠️ **Cette section disait « six, tous hors du préfixe `geoleaf:` » et en tirait la bonne
 conclusion** : ils étaient **invisibles** à la carte d'événements du dépôt, qui n'est ancrée que
 sur ce préfixe — ni typés, ni en liste de référence, ni comptés. Ce n'était pas une exemption
-accordée mais une **cécité que personne n'avait choisie** (B-207). Le Sprint 4 du contrat inverse
+accordée mais une **cécité que personne n'avait choisie**. Le contrat inverse
 les a préfixés : EM-01 en a réclamé **six d'un coup** dans la seconde qui a suivi, ce qui est la
 seule démonstration possible que la cécité était réelle et non supposée.
 
@@ -397,8 +405,9 @@ node scripts/verify-plugin-contract.cjs --plugin=connector
 
 ### Dépendances
 
-**Aucune dépendance externe** : le seul `dependencies` déclaré est le core, et il n'est pas
-empaqueté. La persistance est écrite à la main sur la base indexée du navigateur — pas de
+**Aucune dépendance externe** : le core est la seule dépendance interne, déclarée en
+`peerDependencies` (bascule du 25/08/2026 — un conflit de version échoue bruyamment à
+l'installation au lieu d'installer deux copies du core en silence), et il n'est pas empaqueté. La persistance est écrite à la main sur la base indexée du navigateur — pas de
 bibliothèque d'encapsulation.
 
 Les utilitaires partagés (`bearer`, `jsonHeaders`) viennent de `@geoleaf/host-runtime`, le socle
@@ -438,7 +447,7 @@ conséquences pratiques :
 
 Le CDC `CDC_plugin-connector.md` a été **consommé** en écrivant cette fiche. ⚠️ **Il n'a PAS été
 retiré du dossier de tri** — même motif que les CDC précédents, tracé au §Journal des décisions de
-`roadmap_documentation-v3.md`.
+la refonte documentaire V3.
 
 | Énoncé du CDC                                                                                                | Ce que dit le code                                                                                                                                                                                                                                  |
 | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -447,7 +456,7 @@ retiré du dossier de tri** — même motif que les CDC précédents, tracé au 
 | §24 — les six événements                                                                                     | ✅ **Vérifiés exacts**, y compris les deux annulables                                                                                                                                                                                               |
 | §25 — les huit mitigations de sécurité                                                                       | ✅ **Vérifiées exactes** sur les points lisibles dans le code : effacement du mot de passe, HTTPS en production, zéro `innerHTML`, feuille par `textContent`, jeton non journalisé, avertissement sur jeton non conforme, observateur qui abandonne |
 | §26 — chemin sans interception « à coût nul »                                                                | ✅ **Exact** — une comparaison de préfixe, puis passage direct au `fetch` d'origine                                                                                                                                                                 |
-| Manifeste — `optional: ["storage", "addpoi"]`                                                                | ⚠️ `storage` **ne désigne plus aucun plugin**. Le CDC ne pouvait pas le savoir : le renommage est postérieur. Ligne **B-66**                                                                                                                        |
+| Manifeste — `optional: ["storage", "addpoi"]`                                                                | ⚠️ `storage` **ne désigne plus aucun plugin**. Le CDC ne pouvait pas le savoir : le renommage est postérieur. Constat versé                                                                                                                         |
 
 Ce qui a été **retenu** du CDC et ne se lit pas dans le code : le positionnement produit et les
 publics visés, le parcours utilisateur du premier démarrage, le motif du mode « interface seule »,

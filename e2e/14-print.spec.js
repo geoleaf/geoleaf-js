@@ -1,7 +1,7 @@
 // @ts-check
 // E2E: 14-print (@geoleaf-plugins/print) — deploy-core (port 8766), LAZY.
 //
-// Sprint S8 (plugin-validation). print is registered LAZY in init.js
+// Plugin-validation suite. print is registered LAZY in init.js
 // (`registerLazy('print')` + `registerLazyForAction('print','print')`):
 // `GeoLeaf.Print`, the toolbar action and the lazy bundle only exist once the
 // plugin is loaded (toolbar action, or `GeoLeaf.plugins.load('print')`).
@@ -18,7 +18,7 @@
 //   - scale locked       .gl-print-scale-locked    (🔒 1:n)
 //   - export buttons     .gl-print-btn--pdf | .gl-print-btn--jpg
 //
-// jsPDF lazy chunk (Sprint S8 refactor): pdf-exporter.ts loads jsPDF via a dynamic
+// jsPDF lazy chunk (lazy-chunk refactor): pdf-exporter.ts loads jsPDF via a dynamic
 // `import("jspdf")`, so it lands in a separate chunk `geoleaf-print.jspdf-<hash>.js`
 // (+ its optional html2canvas/dompurify deps as their own chunks) that the browser
 // only fetches on the FIRST PDF export — never at plugin load. This is asserted via
@@ -91,42 +91,45 @@ function resourceLoaded(page, re) {
 /**
  * Runs `fn`, then waits for the print re-render it triggers to finish.
  *
- * ⚠️ B-99 — POURQUOI CE N'EST PAS UN FLAKE, ET POURQUOI UN TIMEOUT PLUS LONG NE SUFFIT PAS.
+ * ⚠️ WHY THIS IS NOT A FLAKE, AND WHY A LONGER TIMEOUT DOES NOT SUFFICE.
  *
- * Changer le format débounce 150 ms, puis lance une capture carte hors-écran + une
- * composition. Sur un runner à 2-4 cœurs ce travail SATURE LE THREAD PRINCIPAL pendant
- * plusieurs secondes, et l'interaction suivante expire sur `actionTimeout` SANS QUE
- * L'ÉLÉMENT AIT BOUGÉ.
+ * Changing the format debounces 150 ms, then launches an off-screen map
+ * capture + a composition. On a 2-4 core runner that work SATURATES THE MAIN
+ * THREAD for several seconds, and the next interaction expires on
+ * `actionTimeout` WITHOUT THE ELEMENT HAVING MOVED.
  *
- * Mesuré le 01/08/2026, et les deux mesures comptent :
- *   • la case ne se déplace PAS après le changement de format (0 déplacement sur 6 s,
- *     échantillonné toutes les 80 ms) — l'hypothèse « décalage de mise en page » est FAUSSE ;
- *   • sous bridage CPU ×8, `uncheck()` échoue à **10 005 ms**, exactement la signature CI ;
- *     avec cette attente, la recomposition se règle en ~7,5 s puis l'interaction passe.
+ * Measured on 2026-08-01, and both measurements count:
+ *   • the checkbox does NOT move after the format change (0 movement over
+ *     6 s, sampled every 80 ms) — the "layout shift" hypothesis is FALSE;
+ *   • under ×8 CPU throttling, `uncheck()` fails at **10,005 ms**, exactly
+ *     the CI signature; with this wait, the recomposition settles in ~7.5 s
+ *     then the interaction passes.
  *
- * ⚠️ À QUEL ÉTAGE ça bloque exactement : cette entrée a d'abord affirmé que le contrôle
- * d'actionnabilité ne pouvait pas confirmer « stable », `requestAnimationFrame` étant affamé.
- * **Cette explication n'a jamais été vérifiée sur un call log, et la preuve la contredit** :
- * les 5 clics tombés en CI le 01/08 (run 30703087739) impriment tous
+ * ⚠️ At WHICH STAGE it blocks exactly: this entry first claimed the
+ * actionability check could not confirm "stable", `requestAnimationFrame`
+ * being starved. **That explanation was never verified on a call log, and
+ * the evidence contradicts it**: the 5 clicks that fell in CI on 08-01 (run
+ * 30703087739) all print
  *
- *     - element is visible, enabled and stable      ← le contrôle de stabilité PASSE
- *     - performing click action                     ← le blocage est ICI
+ *     - element is visible, enabled and stable      ← the stability check PASSES
+ *     - performing click action                     ← the block is HERE
  *
- * — donc la latence est dans l'ack de la DISPATCH par le renderer, pas dans l'actionnabilité.
- * Aucun call log de l'`uncheck` ci-dessus n'a survécu, donc son étage à lui reste **non
- * établi** ; il n'est pas supposé identique. Ce qui est mesuré tient (les deux puces), la
- * mécanique interne, non.
+ * — so the latency is in the renderer's DISPATCH ack, not in actionability.
+ * No call log of the `uncheck` above survived, so its own stage stays **not
+ * established**; it is not assumed identical. What is measured holds (the
+ * two bullets), the internal mechanics do not.
  *
- * ⚠️ Et « UN TIMEOUT PLUS LONG NE SUFFIT PAS » reste vrai pour une raison qui ne dépend pas
- * de l'étage : attendre le signal réel (`geoleaf:print:render:end`) est correct par construction, là
- * où un budget plus large ne fait que parier sur une durée. `actionTimeout` a d'ailleurs été
- * porté à 30 s le même jour — c'est complémentaire, pas redondant.
+ * ⚠️ And "A LONGER TIMEOUT DOES NOT SUFFICE" stays true for a reason
+ * independent of the stage: waiting for the real signal
+ * (`geoleaf:print:render:end`) is correct by construction, where a wider
+ * budget only bets on a duration. `actionTimeout` was moreover raised to
+ * 30 s the same day — complementary, not redundant.
  *
- * L'écouteur est armé AVANT l'action : l'armer après courrait après l'événement, et sur une
- * machine rapide il serait déjà passé.
+ * The listener is armed BEFORE the action: arming it after would run after
+ * the event, and on a fast machine it would already have passed.
  *
  * @param {import('@playwright/test').Page} page
- * @param {() => Promise<unknown>} fn Action déclenchant la recomposition.
+ * @param {() => Promise<unknown>} fn Action triggering the recomposition.
  */
 async function withRenderSettled(page, fn) {
     await page.evaluate(() => {
@@ -141,17 +144,20 @@ async function withRenderSettled(page, fn) {
         );
     });
     await fn();
-    // ⚠️ 240 s, et ce budget DOIT rester STRICTEMENT SUPÉRIEUR à `IDLE_TIMEOUT_MS` du plugin
-    // print (180 s aujourd'hui) — les deux sont EN SÉRIE, ce n'est pas un réglage indépendant.
-    // `geoleaf:print:render:end` est émis depuis un `finally` : il ne part donc qu'APRÈS que le plugin
-    // ait épuisé son propre budget. Les mettre à égalité (les deux à 90 s, le 01/08/2026) rend
-    // l'événement inobservable et fait rendre à la suite un « wait timeout » opaque À LA PLACE
-    // de l'erreur console qui, elle, dit ce qui s'est réellement passé.
+    // ⚠️ 240 s, and this budget MUST stay STRICTLY ABOVE the print plugin's
+    // `IDLE_TIMEOUT_MS` (180 s today) — the two are IN SERIES, not an
+    // independent setting. `geoleaf:print:render:end` is emitted from a
+    // `finally`: it thus only fires AFTER the plugin has exhausted its own
+    // budget. Setting them equal (both at 90 s, 2026-08-01) makes the event
+    // unobservable and has the suite return an opaque "wait timeout" INSTEAD
+    // of the console error which does say what really happened.
     //
-    // ⚠️ Les durées réelles, mesurées sous `taskset -c 0,1`, et la PREMIÈRE bascule domine :
-    //     A4→A3 (1ʳᵉ) 109 280 ms · A3→A4 28 062 ms · A4→A3 (2ᵉ) 34 819 ms
-    // Un budget calé sur un échantillon tiède (~36 s) a déjà été posé ici, puis démenti par la
-    // mesure froide. Caler sur la bascule FROIDE, jamais sur une moyenne.
+    // ⚠️ The real durations, measured under `taskset -c 0,1`, and the FIRST
+    // switch dominates:
+    //     A4→A3 (1st) 109,280 ms · A3→A4 28,062 ms · A4→A3 (2nd) 34,819 ms
+    // A budget set on a warm sample (~36 s) was already laid here, then
+    // disproven by the cold measurement. Calibrate on the COLD switch, never
+    // on an average.
     await page.waitForFunction(() => /** @type {any} */ (window).__glRenderEnded === true, null, {
         timeout: 240000,
     });
@@ -271,20 +277,22 @@ test.describe("[print] emprise → modal (real pointer)", () => {
     test("format A4→A3 switch and checkbox toggles drive the modal without errors", async ({
         page,
     }) => {
-        // ⚠️ Budget PROPRE à ce test, comme celui du parcours PDF plus bas. Ce test fait UNE
-        // bascule A4→A3, c'est-à-dire la FROIDE : 109 280 ms à elle seule sous `taskset -c 0,1`
-        // (mesure au docblock de `withRenderSettled`), auxquels s'ajoutent le boot, l'emprise
-        // et la modale. Les 60 s globales de `playwright.config.js` ne peuvent pas contenir ça,
-        // et les 38 autres specs n'ont pas à payer ce plafond.
+        // ⚠️ Budget SPECIFIC to this test, like the PDF journey's below. This
+        // test does ONE A4→A3 switch, i.e. the COLD one: 109,280 ms on its own
+        // under `taskset -c 0,1` (measurement at `withRenderSettled`'s
+        // docblock), plus boot, extent and modal. The global 60 s of
+        // `playwright.config.js` cannot contain that, and the other 38 specs
+        // need not pay this ceiling.
         test.setTimeout(300000);
 
         const errors = await boot(page);
         await openEmprise(page);
         await drawEmpriseAndOpenModal(page);
 
-        // ⚠️ La recomposition déclenchée par le changement de format doit être ATTENDUE :
-        // elle sature le thread principal, et l'interaction suivante expirerait sans que
-        // l'élément ait bougé. Voir `withRenderSettled` pour la mesure.
+        // ⚠️ The recomposition the format change triggers must be AWAITED: it
+        // saturates the main thread, and the next interaction would expire
+        // without the element having moved. See `withRenderSettled` for the
+        // measurement.
         await withRenderSettled(page, () =>
             page.locator(".gl-print-format-select").selectOption("A3")
         );
@@ -382,12 +390,13 @@ test.describe("[print] jsPDF lazy chunk & export", () => {
     test("the real PDF button (full parcours) produces a .pdf download + loads jsPDF", async ({
         page,
     }) => {
-        // ⚠️ B-99 — celui-ci n'échouait sur AUCUNE action : il dépassait le budget TOTAL du
-        // test (60 s, `playwright.config.js:42`). Il enchaîne un rendu hors-écran en WebGL
-        // logiciel, une composition A4@300dpi et un import dynamique de jsPDF — son propre
-        // commentaire dit déjà « heavy in software rendering ». Sur le runner (~5× plus lent
-        // que ce poste) les 60 s ne suffisent pas. Budget porté au test, pas globalement :
-        // les 38 autres n'ont aucune raison de payer pour celui-ci.
+        // ⚠️ This one failed on NO action: it overran the test's TOTAL budget
+        // (60 s, `playwright.config.js`). It chains an off-screen render in
+        // software WebGL, an A4@300dpi composition and a dynamic jsPDF
+        // import — its own comment already says "heavy in software
+        // rendering". On the runner (~5× slower than this host) 60 s do not
+        // suffice. Budget carried by the test, not globally: the other 38
+        // have no reason to pay for this one.
         test.setTimeout(180000);
         const errors = await boot(page);
         await openEmprise(page);
@@ -439,7 +448,7 @@ test.describe("[print] a11y", () => {
         // on an --gl-color-accent background (here .gl-print-btn--pdf) now use
         // --gl-color-accent-contrast (dark on the light-theme peach accent) instead of
         // --gl-color-text-inverse (near-white). The scan is strict again — any
-        // color-contrast regression on the print surface must fail (CDC §Validation S8).
+        // color-contrast regression on the print surface must fail.
         expect(results.violations).toEqual([]);
         expect(errors.filter((e) => !/favicon|chrome-extension/.test(e))).toHaveLength(0);
     });

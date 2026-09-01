@@ -23,6 +23,7 @@
  */
 
 import { Log } from "../../utils/log/index.js";
+import { styleDocumentStore } from "../../utils/loaders/style-cache.js";
 import { ensureGeoLeaf } from "../../utils/general/geoleaf-global.js";
 import {
     ensureProfileSpriteInjectedSync,
@@ -93,6 +94,35 @@ const _resolveContainer = (): HTMLElement | undefined => _control?._container;
  */
 let _spriteRetryTimer: ReturnType<typeof setTimeout> | null = null;
 const SPRITE_RETRY_MS = 2000;
+
+/**
+ * Cancellation handle for the style `fetch`es in flight (see {@link LegendModule.loadLayerLegend}).
+ *
+ * 🛑 FOURTH THING `_reset()` MUST CANCEL, AND FOR THE SAME MOTIVE AS THE OTHER THREE.
+ * The three timers above are held in a slot because a `destroy` landing in their window
+ * let the callback **rebuild a dismantled module** — or, worse on the recreation path,
+ * rebuild the NEXT instance from the previous one's closure. A style request in flight
+ * is exactly the same object: its continuation calls `_applyStyleToLegend`, **which
+ * writes into the DOM**. The call site's `.catch()` covers network and HTTP failure; it
+ * does not cover the target's disappearance.
+ *
+ * 🛑 ONE CONTROLLER FOR THE WHOLE MODULE, AND THAT IS NOT A SIMPLIFICATION. A
+ * per-call controller would cancel the PREVIOUS request when the next one starts — yet
+ * two different layers each load their style and both are wanted. What we want to
+ * cancel is not "the request before", it is **everything in flight when the module
+ * leaves**. Its scope is therefore the module's, like the three slots above.
+ *
+ * ⚠️ Created LAZILY: building it at import would set an object the first `_reset()`
+ * abandons without any request ever having used it.
+ */
+let _styleFetchController: AbortController | null = null;
+
+/** Returns the style-request signal, creating the controller on first need. */
+function _styleFetchSignal(): AbortSignal | undefined {
+    if (typeof AbortController !== "function") return undefined;
+    _styleFetchController ??= new AbortController();
+    return _styleFetchController.signal;
+}
 
 const _allLayers = new Map<string, LayerInfo>();
 
@@ -234,9 +264,9 @@ function _resolveLayerGeometryType(
     // `||` (not `??`): layerInfo.geometryType is initialised to "" (empty string, not
     // nullish), so `??` would stop there and yield "" → normalised to "point". `||`
     // falls through the empty string to the real geometry / the final "point" default.
-    // ⚠️ La résolution de l'alias `geometry`/`geometryType` vit dans `layerGeometry` depuis
-    // B-161, plus ici : elle était écrite à la main sur 3 sites et ABSENTE sur 4 autres.
-    // Comportement inchangé — le helper rend la même chose, dans le même ordre.
+    // ⚠️ The `geometry`/`geometryType` alias resolution now lives in `layerGeometry`,
+    // no longer here: it was hand-written on 3 sites and ABSENT on 4 others.
+    // Behaviour unchanged — the helper returns the same thing, in the same order.
     const raw = layerGeometry(layerConfig) || layerInfo.geometryType || "point";
     return _normalizeGeometryType(raw);
 }
@@ -288,7 +318,7 @@ const LegendModule = {
      * const map = new maplibregl.Map({ container: "map", style: "..." });
      * GeoLeaf.Legend.init(map);
      *
-     * // Avec options
+     * // With options
      * GeoLeaf.Legend.init(map, {
      *     position: "bottomright",
      *     collapsed: false,
@@ -413,8 +443,8 @@ const LegendModule = {
      *
      * @example
      * ```js
-     * // Normalement appelée en interne par le module GeoJSON.
-     * // Pour usage manuel avancé :
+     * // Normally called internally by the GeoJSON module.
+     * // For advanced manual use:
      * GeoLeaf.Legend.loadLayerLegend("parcs", "default", layerConfig);
      * ```
      */
@@ -452,17 +482,49 @@ const LegendModule = {
             return;
         }
 
+        // Is the document already here? The profile bundle carries them, and this path
+        // is the SECOND load of the same style at boot — the first goes through
+        // `loadAndValidateStyle`. Consulting the store removes the request without
+        // changing the lifecycle at all.
+        //
+        // 🛑 THE `fetch` STAYS, AND THAT IS NOT SOFT CAUTION. Converging onto
+        // `loadAndValidateStyle` would lose two things this path carries and the other
+        // does not: the `AbortSignal` (that signature accepts none) and the micro-task
+        // guard below. The price would be a DOM write after teardown — invisible to
+        // `ci:local`, and already guarded by a test. Converging first requires adding
+        // an optional `signal` to the loader: that is a separate batch.
+        const seededKey = `${profileId}:${layerId}:${styleId}`;
+        if (styleDocumentStore.has(seededKey)) {
+            Log?.debug(`[Legend] Style served from the profile bundle: ${seededKey}`);
+            _applyStyleToLegend(
+                layerId,
+                layerInfo,
+                styleDocumentStore.get(seededKey) as Record<string, unknown>
+            );
+            return;
+        }
+
         Log?.debug(`[Legend] Loading style: ${stylePath}`);
 
-        fetch(stylePath)
+        const signal = _styleFetchSignal();
+        fetch(stylePath, signal ? { signal } : undefined)
             .then((response) => {
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 return response.json();
             })
             .then((styleData: Record<string, unknown>) => {
+                // 🛑 SECOND GUARD, AND IT IS NOT REDUNDANT WITH THE SIGNAL. `abort()`
+                // rejects the request, but a response already received at teardown time
+                // has its continuation ALREADY SCHEDULED: the micro-task will run after
+                // `_reset()`, and write into a DOM that is no longer there. The signal
+                // closes the network window, this test closes the micro-task window.
+                if (signal?.aborted) return;
                 _applyStyleToLegend(layerId, layerInfo, styleData);
             })
             .catch((err: Error) => {
+                // A cancellation is not a load failure: logging it as one would show a
+                // warning on every normal teardown.
+                if (err?.name === "AbortError") return;
                 Log?.warn(`[Legend] Failed to load style: ${err.message}`);
             });
     },
@@ -478,10 +540,10 @@ const LegendModule = {
      *
      * @example
      * ```js
-     * // Cacher la couche "parcs" dans la légende
+     * // Hide the "parcs" layer in the legend
      * GeoLeaf.Legend.setLayerVisibility("parcs", false);
      *
-     * // Afficher la couche "zones" dans la légende
+     * // Show the "zones" layer in the legend
      * GeoLeaf.Legend.setLayerVisibility("zones", true);
      * ```
      */
@@ -586,7 +648,7 @@ const LegendModule = {
      * @example
      * ```js
      * if (GeoLeaf.Legend.isLegendVisible()) {
-     *     console.log("La légende est affichée");
+     *     console.log("The legend is displayed");
      * }
      * ```
      */
@@ -622,8 +684,9 @@ const LegendModule = {
      * Full teardown for module destroy / lifecycle recreate. Unlike the public
      * `removeLegend()` (which only drops the control), this clears the three pending
      * timers (debounced rebuild, sprite retry, and the overlay's auto-hide deadline via
-     * `resetOverlay()`), empties the layer map and releases the map / profile / taxonomy
-     * references so a subsequent `init()` starts from a clean slate.
+     * `resetOverlay()`), **cancels the style requests in flight** (see
+     * {@link _styleFetchController}), empties the layer map and releases the map / profile /
+     * taxonomy references so a subsequent `init()` starts from a clean slate.
      */
     _reset(): void {
         if (_rebuildTimer) {
@@ -633,6 +696,14 @@ const LegendModule = {
         if (_spriteRetryTimer) {
             clearTimeout(_spriteRetryTimer);
             _spriteRetryTimer = null;
+        }
+        // The controller is SET BACK TO NULL, not reused: an already-aborted
+        // `AbortController` stays aborted for life, so keeping it would fail every
+        // request of a later instance outright — the recreation path, the very one the
+        // timer slot above exists to protect.
+        if (_styleFetchController) {
+            _styleFetchController.abort();
+            _styleFetchController = null;
         }
         _resetOverlay();
         if (_control && typeof _control.remove === "function") {
@@ -647,6 +718,21 @@ const LegendModule = {
     },
 };
 
+/**
+ * True once `init()` has bound a map — the seam's real readiness predicate.
+ *
+ * Exported for `legend-seam.ts`, which guards the kernel callers (style selector, theme
+ * UI sync). They fire while the theme engine is applying its layers, i.e. BEFORE the
+ * `geoleaf:app:ready` mount; without this predicate the seam let them through and each
+ * one hit the `!_map` branch of `loadLayerLegend`. Nothing is lost by stopping them:
+ * `LegendLifecycle` loads every configured layer's legend right after `init`.
+ *
+ * @returns `true` between a successful `init()` and the next `_reset()`.
+ */
+function isLegendInitialized(): boolean {
+    return _map !== null;
+}
+
 const Legend = LegendModule;
 
-export { Legend };
+export { Legend, isLegendInitialized };

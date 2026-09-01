@@ -188,6 +188,31 @@ describe("setTransformRequest callback", () => {
         const result = mapMock.callTransformRequest(`${BASE_URL}/tiles/14/100/200.mvt`);
         expect(result).toBeUndefined();
     });
+
+    // Regression — bug no. 4: `url.startsWith(baseUrl)` accepted a suffix host and
+    // leaked the bearer. isSameOrigin must reject it even with the token cached.
+    it("does NOT inject the bearer for a suffix-host URL, even with a cached token", async () => {
+        const mapMock = makeMapMock();
+        mockGeoLeafCore(mapMock);
+        // Token IS available — so a reject here can only come from the origin guard.
+        await TokenStore.save(BASE_URL, TOKEN, Date.now() + 3_600_000);
+        installMapLibreBridge(VALID_CONFIG);
+        // `${BASE_URL}.evil.net` starts with BASE_URL but is a different origin.
+        const result = mapMock.callTransformRequest(`${BASE_URL}.evil.net/tiles/14/100/200.mvt`);
+        expect(result).toBeUndefined();
+    });
+
+    it("still injects the bearer for a legitimate same-origin tile (discrimination)", async () => {
+        const mapMock = makeMapMock();
+        mockGeoLeafCore(mapMock);
+        await TokenStore.save(BASE_URL, TOKEN, Date.now() + 3_600_000);
+        installMapLibreBridge(VALID_CONFIG);
+        const url = `${BASE_URL}/tiles/14/100/200.mvt`;
+        expect(mapMock.callTransformRequest(url)).toEqual({
+            url,
+            headers: { Authorization: `Bearer ${TOKEN}` },
+        });
+    });
 });
 
 // ─── geoleaf:basemap:change re-install ───────────────────────────────────────

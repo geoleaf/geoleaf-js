@@ -1,44 +1,46 @@
 #!/usr/bin/env node
 /**
- * La frontière entre l'ATELIER et ce qui part au public (roadmap `passage-public-npm`, S9.4).
+ * The boundary between the WORKSHOP and what ships to the public.
  *
- * Ce module répond à une seule question — « ce chemin suivi part-il dans le dépôt public ? » —
- * et il porte le texte du `.gitignore` qui empêche la réintroduction côté clone.
+ * This module answers a single question — "does this tracked path ship to the public
+ * repo?" — and it carries the `.gitignore` text that prevents reintroduction on the clone
+ * side.
  *
- * ## Pourquoi les motifs sont une DONNÉE et pas une dérivation
+ * ## Why the patterns are DATA and not a derivation
  *
- * Tout le reste de ce dépôt dérive ses listes (`packages.cjs`, et les sept endroits où la liste
- * des paquets avait divergé). Ici, non : une frontière de publication est une **décision**, et
- * la dériver la rendrait dépendante d'un effet de bord. C'est exactement l'arbitrage écrit dans
- * `publish-plugins.cjs` pour `PUBLISHED_PLUGINS` — élargir une surface externe se décide, ça ne
- * se constate pas. Les quatre motifs ci-dessous sont donc écrits à la main.
+ * Everything else in this repo derives its lists (`packages.cjs`, and the seven places
+ * where the package list had diverged). Not here: a publication boundary is a
+ * **decision**, and deriving it would make it depend on a side effect. It is exactly the
+ * arbitration written in `publish-plugins.cjs` for `PUBLISHED_PLUGINS` — widening an
+ * external surface is decided, not observed. The four patterns below are therefore
+ * written by hand.
  *
- * Ce qui EST dérivé, en revanche, c'est le **contrôle** : un motif qui ne matche plus rien fait
- * JETER (voir {@link assertPartitionSane}). Sans lui, un `_docs_projet/` renommé sortirait vert
- * en ne retirant plus rien, et l'atelier partirait au public — la classe de cécité que
- * `probe-gate-visibility.cjs` surveille partout ailleurs.
+ * What IS derived, however, is the **check**: a pattern that no longer matches anything
+ * THROWS (see {@link assertPartitionSane}). Without it, a renamed `_docs_projet/` would
+ * go green while removing nothing, and the workshop would ship to the public — the
+ * blindness class `probe-gate-visibility.cjs` watches everywhere else.
  *
- * ## Pourquoi ces motifs ne sont PAS ancrés, délibérément
+ * ## Why these patterns are NOT anchored, deliberately
  *
- * `CLAUDE.md` est lu par son harnais dans **n'importe quel** sous-répertoire : un motif ancré
- * (`/CLAUDE.md`) laisserait passer `packages/core/CLAUDE.md`, c'est-à-dire la forme la plus
- * probable de la réintroduction. Mesuré en posant la règle le 10/08/2026, et re-mesuré le
- * 11/08 : 0 autre `CLAUDE.md`, 0 autre `_docs_projet`, 0 autre `.claude` dans l'arbre — le
- * générique n'avale rien aujourd'hui, et il couvre le cas où il y en aurait un demain.
- * Le quatrième est ancré par sa seule barre oblique, et ça suffit : ce fichier n'est lu qu'à
- * la racine.
+ * `CLAUDE.md` is read by its harness in **any** sub-directory: an anchored pattern
+ * (`/CLAUDE.md`) would let `packages/core/CLAUDE.md` through — the most likely shape of
+ * a reintroduction. Measured when laying the rule on 2026-08-10, and re-measured on
+ * 08-11: 0 other `CLAUDE.md`, 0 other `_docs_projet`, 0 other `.claude` in the tree —
+ * the generic form swallows nothing today, and it covers the case where there would be
+ * one tomorrow. The fourth is anchored by its slash alone, and that suffices: that file
+ * is only read at the root.
  *
- * ## Pourquoi ce fichier n'est pas un `.gitignore` du dépôt de travail
+ * ## Why this file is not a `.gitignore` of the working repo
  *
- * Ces motifs sont justes **dans le clone** et nuisibles **ici** : `_docs_projet/` y est suivi,
- * donc la règle serait inerte sur l'existant mais active sur les fichiers neufs — tout nouveau
- * rapport cesserait silencieusement d'être versionné. Le texte vit donc ici comme donnée d'un
- * script, et n'est écrit que dans le clone.
+ * These patterns are right **in the clone** and harmful **here**: `_docs_projet/` is
+ * tracked here, so the rule would be inert on the existing files but active on new ones —
+ * every new report would silently stop being versioned. The text therefore lives here as
+ * a script's data, and is only written into the clone.
  *
- * ⚠️ Il a vécu jusqu'au 11/08/2026 **hors du dépôt**, dans `~/.claude/geoleaf-nuit/`. Un portage
- * qui ne le retrouvait pas réintroduisait 39 fichiers d'atelier sans que rien ne rougisse ; et
- * comme le clone est éphémère, la seule copie du texte était sur un poste. C'est ce rapatriement
- * qui rend le portage reproductible.
+ * ⚠️ Until 2026-08-11 it lived **outside the repo**, in `~/.claude/geoleaf-nuit/`. A port
+ * that failed to find it reintroduced 39 workshop files with nothing turning red; and
+ * since the clone is ephemeral, the only copy of the text was on one machine. That
+ * repatriation is what makes the port reproducible.
  *
  * Usage :
  *   const partition = require("./lib/public-partition.cjs");
@@ -49,11 +51,12 @@
 "use strict";
 
 /**
- * Les quatre motifs d'appareil interne, dans la forme `.gitignore` qu'ils prennent côté clone.
+ * The four internal-apparatus patterns, in the `.gitignore` form they take on the clone
+ * side.
  *
- * `dir: true` désigne un répertoire (le motif matche le préfixe de chemin) ; sinon le motif
- * matche un **nom de fichier** à n'importe quelle profondeur, sauf s'il contient une barre
- * oblique, auquel cas il est ancré à la racine.
+ * `dir: true` designates a directory (the pattern matches the path prefix); otherwise the
+ * pattern matches a **file name** at any depth, unless it contains a slash, in which case
+ * it is anchored at the root.
  */
 const INTERNAL_PATTERNS = [
     {
@@ -75,49 +78,50 @@ const INTERNAL_PATTERNS = [
 ];
 
 /**
- * Plancher de vraisemblance du lot porté.
+ * Plausibility floor of the ported batch.
  *
- * ⚠️ Ce n'est pas une superstition : c'est le seul garde-fou contre un `git ls-files` qui
- * rendrait peu ou rien (mauvais répertoire de travail, dépôt non initialisé, filtre trop
- * large). Sans lui le portage écraserait le clone public avec une poignée de fichiers **en
- * sortant 0** — la forme exacte du « vert qui n'a rien scanné » que `packages.cjs` documente.
- * Mesuré le 11/08/2026 : 2 413 fichiers suivis, dont 39 internes, soit 2 374 portés.
+ * ⚠️ This is not superstition: it is the only guard against a `git ls-files` returning
+ * little or nothing (wrong working directory, uninitialized repo, over-wide filter).
+ * Without it the port would overwrite the public clone with a handful of files **while
+ * exiting 0** — the exact shape of the "green that scanned nothing" `packages.cjs`
+ * documents. Measured on 2026-08-11: 2,413 tracked files, of which 39 internal, hence
+ * 2,374 ported.
  */
 const MIN_PUBLIC_FILES = 2000;
 
 /**
- * Ce chemin suivi appartient-il à l'appareil interne ?
+ * Does this tracked path belong to the internal apparatus?
  *
- * @param {string} relPath Chemin repo-relatif, séparateurs POSIX (forme `git ls-files`).
- * @returns {{internal: boolean, pattern?: string}} Le motif qui a mordu, pour le décompte.
+ * @param {string} relPath Repo-relative path, POSIX separators (`git ls-files` form).
+ * @returns {{internal: boolean, pattern?: string}} The pattern that bit, for the tally.
  */
 function classify(relPath) {
     for (const { pattern, dir } of INTERNAL_PATTERNS) {
         const bare = dir ? pattern.slice(0, -1) : pattern;
 
         if (dir) {
-            // Non ancré : `_docs_projet/` mord aussi `packages/x/_docs_projet/y.md`.
+            // Unanchored: `_docs_projet/` also bites `packages/x/_docs_projet/y.md`.
             if (relPath === bare || relPath.startsWith(`${bare}/`) || relPath.includes(`/${bare}/`))
                 return { internal: true, pattern };
             continue;
         }
 
         if (bare.includes("/")) {
-            // Ancré par sa barre oblique — ce fichier n'est lu qu'à cet emplacement.
+            // Anchored by its slash — that file is only read at this location.
             if (relPath === bare) return { internal: true, pattern };
             continue;
         }
 
-        // Nom de fichier, à n'importe quelle profondeur : c'est le cas `CLAUDE.md`.
+        // File name, at any depth: that is the `CLAUDE.md` case.
         if (relPath === bare || relPath.endsWith(`/${bare}`)) return { internal: true, pattern };
     }
     return { internal: false };
 }
 
 /**
- * Raccourci booléen de {@link classify}.
+ * Boolean shortcut of {@link classify}.
  *
- * @param {string} relPath Chemin repo-relatif, séparateurs POSIX.
+ * @param {string} relPath Repo-relative path, POSIX separators.
  * @returns {boolean}
  */
 function isInternal(relPath) {
@@ -125,9 +129,9 @@ function isInternal(relPath) {
 }
 
 /**
- * Partager une liste de fichiers suivis en « part au public » / « reste à l'atelier ».
+ * Splits a tracked-file list into "ships to the public" / "stays in the workshop".
  *
- * @param {string[]} trackedFiles Sortie de `git ls-files`, chemins repo-relatifs POSIX.
+ * @param {string[]} trackedFiles `git ls-files` output, repo-relative POSIX paths.
  * @returns {{publicFiles: string[], internalFiles: string[], byPattern: Map<string, string[]>}}
  */
 function split(trackedFiles) {
@@ -152,16 +156,17 @@ function split(trackedFiles) {
 }
 
 /**
- * Jeter si la partition n'a pas mordu comme elle le doit.
+ * Throws if the partition did not bite the way it must.
  *
- * Deux échecs distincts, et le second est le dangereux :
- *   1. le lot public est sous le plancher — on s'apprêtait à écraser le clone avec rien ;
- *   2. **un motif n'a rien retiré** — le répertoire a été renommé, ou le `git ls-files` ne
- *      voit pas ce qu'on croit. Une partition qui ne retire rien laisse partir l'atelier
- *      **en sortant vert**, et c'est précisément ce qu'aucune gate en aval ne verra.
+ * Two distinct failures, and the second is the dangerous one:
+ *   1. the public batch is below the floor — we were about to overwrite the clone with
+ *      nothing;
+ *   2. **a pattern removed nothing** — the directory was renamed, or `git ls-files` does
+ *      not see what we think. A partition that removes nothing lets the workshop ship
+ *      **while exiting green**, and that is precisely what no downstream gate will see.
  *
  * @param {{publicFiles: string[], internalFiles: string[], byPattern: Map<string, string[]>}} parts
- * @throws {Error} Sur l'un ou l'autre.
+ * @throws {Error} On either.
  */
 function assertPartitionSane(parts) {
     if (parts.publicFiles.length < MIN_PUBLIC_FILES) {
@@ -185,15 +190,15 @@ function assertPartitionSane(parts) {
 }
 
 /**
- * Le bloc à ajouter au `.gitignore` du clone.
+ * The block to append to the clone's `.gitignore`.
  *
- * Il est **ajouté en queue**, jamais fusionné avec les règles héritées du dépôt de travail :
- * celles-ci décrivent l'hygiène propre de `.claude/` et `_docs_projet/` (état runtime, sorties
- * régénérables), qui reste vraie là où ces répertoires continuent de vivre. Une règle redondante
- * coûte une ligne ; une règle supprimée parce qu'on la croyait sans objet coûte le jour où
- * l'objet revient.
+ * It is **appended at the tail**, never merged with the rules inherited from the working
+ * repo: those describe the proper hygiene of `.claude/` and `_docs_projet/` (runtime
+ * state, regenerable outputs), which stays true where those directories keep living. A
+ * redundant rule costs one line; a rule deleted because it was believed moot costs the
+ * day its object comes back.
  *
- * @returns {string} Fragment `.gitignore`, terminé par un saut de ligne.
+ * @returns {string} `.gitignore` fragment, newline-terminated.
  */
 function gitignoreFragment() {
     const rules = INTERNAL_PATTERNS.map(
@@ -201,7 +206,7 @@ function gitignoreFragment() {
     );
     return [
         "",
-        "# ─── Appareil INTERNE — la frontière de ce dépôt (S9.4) ──────────────────────",
+        "# ─── Appareil INTERNE — la frontière de ce dépôt ─────────────────────────────",
         "#",
         "# Ce dépôt est dérivé du monorepo de travail, amputé de son appareil interne. La",
         "# liste n'est jamais recopiée d'un document : elle est DÉRIVÉE à chaque portage",

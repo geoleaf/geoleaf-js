@@ -1,28 +1,30 @@
 /**
- * Unit tests — `cache/cache-control.ts`, couverture réelle (chantier R.31).
+ * Unit tests — `cache/cache-control.ts`, real coverage.
  *
- * Fichier mesuré à 0 % : la FABRIQUE + la coquille IControl (onAdd/onRemove) du contrôle de
- * cache. Il est stubé (`empty-module`) pour les AUTRES modules par l'alias cross-plugin
- * `(\.\.\/)+cache/cache-control.(js|ts)` — mais l'alias exige l'extension. On l'importe donc
- * SANS extension (`../cache/cache-control`), ce qui ne matche pas le motif et résout le vrai
- * fichier. On couvre `create` (options par défaut vs explicites), `onAdd` (structure,
- * init des sous-modules, tâche différée) et `onRemove` (nettoyage).
+ * File measured at 0%: the FACTORY + the IControl shell (onAdd/onRemove) of the
+ * cache control. It is stubbed (`empty-module`) for the OTHER modules by the
+ * cross-plugin alias `(\.\.\/)+cache/cache-control.(js|ts)` — but the alias
+ * requires the extension. So we import it WITHOUT extension
+ * (`../cache/cache-control`), which does not match the pattern and resolves the
+ * real file. We cover `create` (default vs explicit options), `onAdd`
+ * (structure, sub-module init, deferred task) and `onRemove` (cleanup).
  */
 import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
 
-// ⚠️ SANS extension — contourne l'alias qui stube `../cache/cache-control.js`.
+// ⚠️ WITHOUT extension — bypasses the alias stubbing `../cache/cache-control.js`.
 import { CacheControl } from "../cache/cache-control";
 
-// API publique S4.4 — les tests plantent `GeoLeaf.Storage` comme le fait la PRODUCTION.
-// Ils pilotaient `StorageContract.init()`, c'est-à-dire une SECONDE instance du singleton
-// que le bundle embarquait et que rien n'initialisait : ils validaient un canal mort.
+// The tests plant `GeoLeaf.Storage` the way PRODUCTION does. They used to drive
+// `StorageContract.init()`, i.e. a SECOND instance of the singleton the bundle
+// embedded and nothing initialised: they validated a dead channel.
 function _installGeoLeafStorage(api) {
     globalThis.GeoLeaf = globalThis.GeoLeaf ?? {};
-    // Le helper reproduit ce que `StorageContract.init()` fournissait, parce que la façade
-    // du core le fournit aussi : `isPluginLoaded()` = « un moteur s'est enregistré », et
-    // `isAvailable()` = « et sa base est ouverte ». L'adaptateur du plugin DÉLÈGUE ces deux
-    // méthodes — il ne les recalcule pas —, donc un objet planté qui ne les porte pas
-    // rendrait `false` là où le test attend `true`. Un appelant qui les fournit garde la main.
+    // The helper reproduces what `StorageContract.init()` provided, because the
+    // core's facade provides it too: `isPluginLoaded()` = "an engine registered",
+    // and `isAvailable()` = "and its database is open". The plugin's adapter
+    // DELEGATES these two methods — it does not recompute them — so a planted
+    // object not carrying them would return `false` where the test expects
+    // `true`. A caller providing them keeps the hand.
     globalThis.GeoLeaf.Storage =
         api === null || api === undefined
             ? null
@@ -36,7 +38,7 @@ function _installGeoLeafStorage(api) {
 
 beforeEach(() => {
     globalThis.GeoLeaf = globalThis.GeoLeaf || {};
-    // profil vide → la tâche différée (populate) sort tôt sans fetch
+    // empty profile → the deferred task (populate) exits early without fetch
     globalThis.GeoLeaf.Config = { get: (_k, fb) => fb };
     _installGeoLeafStorage(null);
 });
@@ -71,11 +73,11 @@ describe("onAdd / onRemove", () => {
 
         expect(container).toBeTruthy();
         expect(container.className).toContain("gl-cache-control");
-        // la structure a été bâtie (corps + boutons)
+        // the structure was built (body + buttons)
         expect(container.querySelector(".gl-cache-control__body")).toBeTruthy();
 
-        // la tâche différée (populate + updateStatus) est protégée par un try/catch :
-        // l'avancer couvre son corps quel qu'en soit l'aboutissement.
+        // the deferred task (populate + updateStatus) is protected by a
+        // try/catch: advancing it covers its body whatever the outcome.
         await vi.runAllTimersAsync();
     });
 
@@ -84,7 +86,7 @@ describe("onAdd / onRemove", () => {
         const ctrl = CacheControl.create();
         const container = ctrl.onAdd({ id: "map" });
         const ev = new Event("wheel", { bubbles: true, cancelable: true });
-        // ne doit pas jeter ; le handler appelle stopPropagation
+        // must not throw; the handler calls stopPropagation
         expect(() => container.dispatchEvent(ev)).not.toThrow();
     });
 
@@ -95,38 +97,38 @@ describe("onAdd / onRemove", () => {
         expect(() => ctrl.onRemove({ id: "map" })).not.toThrow();
     });
 
-    // ── B-140 (Sprint 6, S6c) — les DÉLÉGATIONS de la fabrique ────────────────────────
+    // ── The factory's DELEGATIONS ─────────────────────────────
     //
-    // `createCacheControl` monte un état dont **dix-sept membres sont des flèches de
-    // délégation** (`_handleDownload: () => DownloadHandler.handleDownload()`, etc.).
-    // Istanbul les compte chacune comme une fonction : sept d'entre elles — les handlers,
-    // lignes 75-81 — n'étaient exercées par aucun test, et c'est ce qui tenait le fichier à
-    // **52,38 % de fonctions** et le paquet à **80,00 % pour un seuil de 80**.
+    // `createCacheControl` mounts a state of which **seventeen members are
+    // delegation arrows** (`_handleDownload: () => DownloadHandler.handleDownload()`,
+    // etc.). Istanbul counts each as a function: seven of them — the handlers,
+    // lines 75-81 — were exercised by no test, which is what held the file at
+    // **52.38% functions** and the package at **80.00% for a threshold of 80**.
     //
-    // 🛑 **La marge était NULLE, et B-140 dit comment on la répare** : « le seul geste
-    // légitime est de couvrir une fonction de plus » — jamais en abaissant le seuil.
+    // 🛑 **The margin was NIL, and the repair is known**: "the only legitimate
+    // gesture is to cover one more function" — never by lowering the threshold.
     //
-    // Les handlers sont câblés par `attachEventListeners`, appelé depuis `buildStructure`
-    // (`cache-control-dom.ts:66`), donc ils s'exercent par le DOM. On clique sur TOUS les
-    // boutons du conteneur plutôt que sur des classes nommées : une classe renommée ferait
-    // passer ce test à côté de sa cible **en restant vert**, ce qui est le mode d'échec que
-    // ce dépôt traque partout ailleurs.
-    test("cliquer chaque bouton exerce les délégations de handler (B-140)", async () => {
+    // The handlers are wired by `attachEventListeners`, called from
+    // `buildStructure` (`cache-control-dom.ts`), so they exercise through the
+    // DOM. We click ALL the container's buttons rather than named classes: a
+    // renamed class would make this test miss its target **while staying
+    // green**, the failure mode this repo hunts everywhere else.
+    test("cliquer chaque bouton exerce les délégations de handler", async () => {
         vi.useFakeTimers();
         const ctrl = CacheControl.create();
         const container = ctrl.onAdd({ id: "map" });
 
         const buttons = Array.from(container.querySelectorAll("button"));
-        // Anti-test-vide : si la structure cesse de produire des boutons, ce test doit
-        // ROUGIR au lieu de couvrir zéro délégation en silence.
+        // Anti-empty-test: if the structure stops producing buttons, this test
+        // must turn RED instead of covering zero delegations silently.
         expect(buttons.length).toBeGreaterThan(0);
 
         for (const btn of buttons) {
             expect(() => btn.click()).not.toThrow();
         }
 
-        // `_handleCancelled` n'a pas de bouton : il est branché sur un événement de document
-        // (`cache-control-events.ts:125`).
+        // `_handleCancelled` has no button: it is wired on a document event
+        // (`cache-control-events.ts`).
         expect(() =>
             document.dispatchEvent(new Event("geoleaf:cache:cancelled", { bubbles: true }))
         ).not.toThrow();

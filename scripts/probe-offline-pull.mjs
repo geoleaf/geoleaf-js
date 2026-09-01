@@ -1,28 +1,30 @@
 /**
- * Sonde — le rapatriement borné écrit-il RÉELLEMENT dans le store `features` ? (tâche 4.1)
+ * Probe — does the bounded pull REALLY write into the `features` store?
  *
- * Quatre mesures, dans un vrai Chromium, contre le bundle livré et le backend pygeoapi :
+ * Four measurements, in a real Chromium, against the shipped bundle and the
+ * pygeoapi backend:
  *
- *   M1 — le store `features` est-il vide au départ ? (sans quoi M2 ne prouve rien)
- *   M2 — après `GeoLeaf.Storage.pullLayer()`, que porte-t-il, et sous quelle forme ?
- *   M3 — l'emprise BORNE-t-elle le rapatriement ? (contrôle discriminant, pas décoratif)
- *   M4 — le plafond `maxFeatures` tronque-t-il DUREMENT ?
+ *   M1 — is the `features` store empty at start? (else M2 proves nothing)
+ *   M2 — after `GeoLeaf.Storage.pullLayer()`, what does it carry, in what shape?
+ *   M3 — does the extent BOUND the pull? (discriminating check, not decorative)
+ *   M4 — does the `maxFeatures` cap truncate HARD?
  *
- * 🛑 POURQUOI CETTE SONDE EST VERSIONNÉE. La tâche 4.3 a prouvé sa lecture locale avec une
- * sonde ad hoc, jamais committée : sa mesure ne peut plus être rejouée, donc plus être
- * contredite. C'est le mode d'échec n° 5 du pré-vol — un chiffre qu'on ne peut pas
- * re-mesurer ne se périme pas, il se fossilise.
+ * 🛑 WHY THIS PROBE IS VERSIONED. An earlier local-read proof used an ad hoc,
+ * never-committed probe: its measurement can no longer be replayed, hence no longer
+ * contradicted. A number that cannot be re-measured does not go stale, it
+ * fossilises.
  *
- * ⚠️ Cible `full` par défaut, comme `e2e/30-sync-cycle.spec.js` : depuis la fusion du Sprint 5
- * c'est la SEULE variante portant l'édition et `offline-ui`, donc la seule où le
- * moteur offline et le connector cohabitent. `sites_rosario` n'est chargée par AUCUN thème —
- * sans importance ici, le rapatriement ne passe pas par le chargeur de couche.
+ * ⚠️ Targets `full` by default, like `e2e/30-sync-cycle.spec.js`: since the
+ * `addpoi` merge it is the ONLY variant carrying editing and `offline-ui`, hence
+ * the only one where the offline engine and the connector cohabit. `sites_rosario`
+ * is loaded by NO theme — irrelevant here, the pull does not go through the layer
+ * loader.
  *
- * Prérequis : le backend doit tourner.
+ * Prerequisite: the backend must be running.
  *   docker compose -f docker-compose.dev.yml up -d geoleaf-postgrest geoleaf-featureserv
  *
  * Usage : E2E_TARGET=nginx node scripts/probe-offline-pull.mjs
- * Exit  : 0 = les quatre mesures sont prises · 2 = erreur de sonde
+ * Exit  : 0 = the four measurements are taken · 2 = probe error
  */
 
 import { chromium } from "@playwright/test";
@@ -33,7 +35,7 @@ const VARIANT = process.env.PROBE_VARIANT || "full";
 const TARGET_URL = `${baseURL(VARIANT)}/`;
 const LAYER = "sites_rosario";
 
-/** Une mesure qui pend ne mesure rien : tout appel au navigateur est borné. */
+/** A hanging measurement measures nothing: every browser call is bounded. */
 const withTimeout = (promise, ms, label) =>
     Promise.race([
         Promise.resolve(promise).catch((e) => `__ERR__ ${e.message}`),
@@ -43,11 +45,12 @@ const withTimeout = (promise, ms, label) =>
 const say = (label, detail) => console.log(`▸ ${label}\n     → ${detail}\n`);
 
 /**
- * Lit le store `features` depuis la page.
+ * Reads the `features` store from the page.
  *
- * Garde `objectStoreNames.contains` avant toute transaction (une base v3 lèverait
- * `NotFoundError`), `onerror` sur chaque requête (sans quoi la promesse ne résout JAMAIS et
- * le symptôme est un timeout illisible), et `db.close()` avant de rendre la main.
+ * Guards `objectStoreNames.contains` before any transaction (a v3 database would
+ * throw `NotFoundError`), `onerror` on each request (without which the promise
+ * NEVER resolves and the symptom is an unreadable timeout), and `db.close()`
+ * before handing back.
  */
 const readFeatures = () =>
     new Promise((resolve) => {
@@ -83,7 +86,7 @@ const readFeatures = () =>
         };
     });
 
-/** Vide le store entre deux mesures — sinon M3 compterait ce que M2 a laissé. */
+/** Empties the store between measurements — else M3 would count what M2 left. */
 const wipeFeatures = () =>
     new Promise((resolve) => {
         const req = indexedDB.open("geoleaf-db");
@@ -122,15 +125,15 @@ const run = async () => {
 
     await page.goto(TARGET_URL, { waitUntil: "domcontentloaded", timeout: 30000 });
     await page.waitForSelector("#geoleaf-map", { timeout: 25000 });
-    // Le moteur de stockage est un chunk DIFFÉRÉ : sans cette attente, `pullLayer` mesurerait
-    // l'attente bornée de la façade et non le rapatriement.
+    // The storage engine is a DEFERRED chunk: without this wait, `pullLayer` would
+    // measure the facade's bounded wait and not the pull.
     await page.waitForFunction(() => !!globalThis.GeoLeaf?.Storage?.DB, null, { timeout: 25000 });
 
-    // ── M1 — l'état de départ, sans quoi M2 ne prouve rien ──────────────────────────────
+    // ── M1 — the starting state, without which M2 proves nothing ────────────────────────
     const before = await withTimeout(page.evaluate(readFeatures), 20000, "M1");
     say("M1 — store `features` AVANT tout rapatriement", JSON.stringify(before));
 
-    // ── M2 — le rapatriement complet ────────────────────────────────────────────────────
+    // ── M2 — the full pull ──────────────────────────────────────────────────────────────
     const full = await withTimeout(
         page.evaluate((layer) => globalThis.GeoLeaf.Storage.pullLayer(layer), LAYER),
         90000,
@@ -140,9 +143,9 @@ const run = async () => {
     say("M2 — rapport du rapatriement", JSON.stringify(full));
     say("M2 — store `features` APRÈS", JSON.stringify(after));
 
-    // ── M3 — l'emprise borne-t-elle ? ───────────────────────────────────────────────────
-    // bbox mesurée au pré-vol : 11 des 27 entités. Une emprise qui rendrait les 27 ne
-    // prouverait rien — c'est le contrôle discriminant qui fait la mesure.
+    // ── M3 — does the extent bound? ─────────────────────────────────────────────────────
+    // bbox measured at preflight: 11 of the 27 features. An extent returning all 27
+    // would prove nothing — the discriminating check is what makes the measurement.
     await withTimeout(page.evaluate(wipeFeatures), 20000, "M3-wipe");
     const bounded = await withTimeout(
         page.evaluate(
@@ -161,9 +164,10 @@ const run = async () => {
         `rapport ${JSON.stringify(bounded)} · store ${JSON.stringify(boundedStore)}`
     );
 
-    // ── M4 — le plafond tronque-t-il durement ? ─────────────────────────────────────────
-    // Le serveur pagine à 10 : `ogc-api-loader` coupe APRÈS une page entière et ne tronque
-    // pas. Un plafond de 15 lui fait rendre 20 ; seul l'orchestrateur ramène à 15.
+    // ── M4 — does the cap truncate hard? ────────────────────────────────────────────────
+    // The server paginates at 10: `ogc-api-loader` cuts AFTER a whole page and does
+    // not truncate. A cap of 15 makes it return 20; only the orchestrator brings it
+    // back to 15.
     await withTimeout(page.evaluate(wipeFeatures), 20000, "M4-wipe");
     const capped = await withTimeout(
         page.evaluate((layer) => {

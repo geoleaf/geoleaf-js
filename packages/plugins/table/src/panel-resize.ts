@@ -58,7 +58,7 @@ function attachResizeEvents(
         const minHeightPx = parseHeight(config.minHeight || "20%", viewportHeight);
         const maxHeightPx = parseHeight(config.maxHeight || "80%", viewportHeight);
         newHeight = Math.max(minHeightPx, Math.min(maxHeightPx, newHeight));
-        (container as HTMLElement).style.height = newHeight + "px";
+        container.style.height = newHeight + "px";
     };
 
     const onPointerEnd = () => {
@@ -72,58 +72,51 @@ function attachResizeEvents(
     };
 
     const onPointerDown = (e: PointerEvent) => {
-        // Un seul geste à la fois, et bouton gauche seulement. ⚠️ Ne PAS garder sur
-        // `e.isPrimary` : happy-dom le laisse à `false` par défaut, donc la garde serait
-        // vraie sous test et fausse en navigateur — l'inverse de ce qu'on veut d'une garde.
+        // One gesture at a time, and left button only. ⚠️ Do NOT guard on
+        // `e.isPrimary`: happy-dom leaves it `false` by default, so the guard
+        // would be true under test and false in the browser — the opposite of
+        // what a guard is for.
         if (isResizing || e.button !== 0) return;
         isResizing = true;
         startY = e.clientY;
         startHeight = container.offsetHeight;
         document.body.style.cursor = "ns-resize";
         document.body.style.userSelect = "none";
-        // Supprime la sélection de texte pendant le glissement. ⚠️ Ce n'est PAS ce qui
-        // empêche le défilement au doigt — c'est `touch-action: none` sur la poignée, côté
-        // CSS, et sans cette règle la conversion serait cosmétique.
+        // Suppresses text selection during the drag. ⚠️ It is NOT what
+        // prevents finger scrolling — that is `touch-action: none` on the
+        // handle, CSS-side, and without that rule the conversion would be cosmetic.
         e.preventDefault();
         try {
             handle.setPointerCapture(e.pointerId);
         } catch {
             /* not all envs support this */
         }
-        // Posés ICI et non à l'inscription : avant, deux écouteurs `document` permanents
-        // vivaient toute la durée du panneau et se déclenchaient à chaque mouvement de
-        // souris de l'application, gardés par un simple `if (!isResizing) return`.
+        // Set HERE and not at registration: before, two permanent `document`
+        // listeners lived for the panel's whole lifetime and fired on every
+        // mouse move in the application, guarded by a mere `if (!isResizing) return`.
         handle.addEventListener("pointermove", onPointerMove as EventListener);
         handle.addEventListener("pointerup", onPointerEnd);
-        // Un geste tactile s'annule (revendication de défilement, interruption OS) ; un
-        // geste souris non. Sans ceci, `document.body` garderait `ns-resize` et
-        // `user-select: none` posés sur toute la page.
+        // A touch gesture cancels (scroll claim, OS interruption); a mouse
+        // gesture does not. Without this, `document.body` would keep
+        // `ns-resize` and `user-select: none` set on the whole page.
         handle.addEventListener("pointercancel", onPointerEnd);
     };
-    // 🛑 NE PAS « SIMPLIFIER » CE `if` EN LE SUPPRIMANT — mesuré le 14/08/2026, et
-    // l'apparence trompe dans le sens dangereux. `events` est un objet CONSTANT de module
-    // (`utils/events.ts`), donc en PRODUCTION la condition est toujours vraie et le repli
-    // ne sert jamais. Mais `table-panel.test.ts` fait
-    // `vi.mock("../utils/events.js", () => ({ events: null }))` : sous test, `events` EST
-    // nul et c'est le repli qui s'exécute.
-    //
-    // Conséquence à connaître avant de s'y fier : la branche jamais couverte est celle du
-    // HAUT, c'est-à-dire **celle que la production prend**. Retirer le repli fait tomber
-    // trois tests avec un `Cannot read properties of null`. Le sens inverse — retirer le
-    // mock — est un chantier de test, pas un geste de ce lot ; il est versé au backlog.
-    if (events) {
-        cleanups.push(
-            events.on(
-                handle,
-                "pointerdown",
-                onPointerDown as EventListener,
-                false,
-                "TablePanel.resizePointerDown"
-            )
-        );
-    } else {
-        handle.addEventListener("pointerdown", onPointerDown as EventListener);
-    }
+    // The `events` seam is a constant module export (`utils/events.ts`): it can never be
+    // null in production, a property proven and pinned by
+    // `__tests__/events-seam-never-null.guard.test.ts`. The `else { addEventListener }`
+    // fallback that used to sit here — and its eleven twins across the package — rested on
+    // the opposite premise and was covered by nothing once the test suites started mocking
+    // the seam faithfully; all twelve were removed on 25/08/2026. Do not reintroduce one:
+    // the guard reddens on any new fallback, in either spelling of the import.
+    cleanups.push(
+        events.on(
+            handle,
+            "pointerdown",
+            onPointerDown as EventListener,
+            false,
+            "TablePanel.resizePointerDown"
+        )
+    );
 }
 
 /**

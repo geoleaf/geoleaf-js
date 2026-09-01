@@ -1,6 +1,6 @@
 /**
  * Targeted tests to increase coverage (target 50%)
- * Importe et exerce des modules peu ou pas couverts by the autres suites.
+ * Imports and exercises modules poorly covered by the other suites.
  */
 
 import { formatDateTime, formatFileSize, toGB, toMB } from "../src/utils/general/formatters.js";

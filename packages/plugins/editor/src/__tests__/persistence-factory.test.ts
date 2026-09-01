@@ -23,17 +23,17 @@ let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
     Object.defineProperty(navigator, "onLine", { configurable: true, value: true });
-    // 4.9 — le mode `offline` écrit par le point d'écriture du core, plus par la base.
+    // The `offline` mode writes through the core's write point, no longer the database.
     applyEdit = vi.fn().mockResolvedValue({ entryId: "op-1", refused: null });
-    // ⚠️ `mayEdit` FAIT PARTIE DU DOUBLE DEPUIS LA TÂCHE 8.7, et son absence n'était pas
-    // neutre. La fabrique enveloppe désormais chaque mode d'une garde de permission
-    // (`permission-gate.ts`) qui REFUSE quand elle ne peut pas interroger la façade — « absent
-    // vaut refusé », la règle même de `LayerEditionPermissions`. Un double qui omet le membre
-    // n'est donc pas un double allégé : c'est une fiction du global, la cause racine n° 1 de
-    // cette roadmap, et ces 4 cas sont sortis rouges tant qu'il l'était.
+    // ⚠️ `mayEdit` IS PART OF THE DOUBLE, and its absence was not neutral. The
+    // factory now wraps every mode in a permission guard (`permission-gate.ts`)
+    // that REFUSES when it cannot query the facade — "absent means refused",
+    // the very rule of `LayerEditionPermissions`. A double omitting the member
+    // is thus not a lightweight double: it is a fiction of the global, this
+    // work's root cause no. 1, and these 4 cases came out red while it was one.
     //
-    // Il accorde TOUT ici volontairement : ces cas éprouvent le ROUTAGE par mode, pas la
-    // permission — celle-ci a sa suite dédiée (`permission-gate.test.ts`).
+    // It grants EVERYTHING here on purpose: these cases exercise the per-mode
+    // ROUTING, not the permission — that has its own suite (`permission-gate.test.ts`).
     mayEdit = vi.fn(() => true);
     (globalThis as any).GeoLeaf.Storage = { applyEdit, mayEdit };
     (globalThis as any).GeoLeaf.Config = { getActiveProfile: vi.fn(() => ({ id: "p" })) };

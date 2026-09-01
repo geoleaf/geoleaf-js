@@ -1,71 +1,66 @@
 // @ts-check
-// VÉRIFICATION NAVIGATEUR — matrice de boot des profils livrés, scénario F.3 de
-// `_docs_projet/travail/rapports/rapport_table-verification-navigateur.md` (backlog R.7b).
+// BROWSER VERIFICATION — boot matrix of the shipped profiles, scenario F.3
+// of the internal browser-verification table.
 //
-// F.3 est le seul scénario qui exige de booter CHAQUE profil livré avec sa vraie config
-// embarquée — ce qu'aucun test unitaire ne fait, et que happy-dom ne peut pas faire (pas de
-// moteur, pas de boot MapLibre réel).
+// F.3 is the only scenario requiring EACH shipped profile to boot with its
+// real embedded config — which no unit test does, and happy-dom cannot do
+// (no engine, no real MapLibre boot).
 //
-// Contre-épreuve S11/E2E : `pwa` et `offline` étaient **morts sur tous les profils livrés**.
+// Counter-proof: `pwa` and `offline` were **dead on every shipped profile**.
 //
-// ⚠️ CE QUE CE TEST VÉRIFIE, ET CE QU'IL NE VÉRIFIE PAS — arbitré au pré-vol 24/07, R.21 :
+// ⚠️ WHAT THIS TEST VERIFIES, AND WHAT IT DOES NOT — arbitrated at the
+// 2026-07-24 pre-flight:
 //
-//   • **Vérifié (browser-only, per-profil, discriminant)** : chaque profil livré BOOTE
-//     réellement — carte native chargée, bon profil actif, aucune erreur de boot. Aucun test
-//     unitaire ne fait ça ; c'est le vrai apport navigateur de F.3.
+//   • **Verified (browser-only, per-profile, discriminating)**: each shipped
+//     profile really BOOTS — native map loaded, right profile active, no
+//     boot error. No unit test does that; F.3's real browser contribution.
 //
-//   • **PAS vérifié ici** : l'activation FONCTIONNELLE de pwa/offline. Deux raisons, toutes
-//     deux mesurées. (1) `registerGlobals` monte `gl.PWA` et `gl._OfflineDetector`
-//     INCONDITIONNELLEMENT (`pwa/install.ts:47`) — asserter leur présence serait une garde
-//     auto-réalisatrice (R.21), vraie que la capacité soit vivante ou morte. (2) L'activation
-//     réelle de la PWA, c'est l'enregistrement du service worker, et la suite tourne en
-//     `serviceWorkers: 'block'` : `navigator.serviceWorker.controller` est `false` par
-//     construction. Le vérifier exige un run SW-autorisé — hors de cette passe, comme le
-//     passage E2E d'origine (territoire Mattieu).
+//   • **NOT verified here**: the FUNCTIONAL activation of pwa/offline. Two
+//     reasons, both measured. (1) `registerGlobals` mounts `gl.PWA` and
+//     `gl._OfflineDetector` UNCONDITIONALLY (`pwa/install.ts`) —
+//     asserting their presence would be a self-fulfilling guard, true
+//     whether the capability is alive or dead. (2) The PWA's real
+//     activation is the service worker's registration, and the suite runs
+//     with `serviceWorkers: 'block'`:
+//     `navigator.serviceWorker.controller` is `false` by construction.
+//     Verifying it takes an SW-enabled run — outside this pass, like the
+//     original E2E pass (Mattieu's call).
 //
-// ⚠️ Pourquoi PAS « aucune erreur console » brute : plusieurs profils référencent des données
-// EXTERNES (couches sur serveurs distants, `qgis.geoleaf.dev`) injoignables depuis le déployé
-// local → `Failed to load layer` / CORS. Ces erreurs sont ENVIRONNEMENTALES ; les compter
-// rendrait le test tributaire de serveurs tiers. On ne retient que les erreurs de boot qui n'en
-// sont PAS — celles qui trahiraient une vraie régression du boot d'un profil.
+// ⚠️ Why NOT a raw "no console error": several profiles reference EXTERNAL
+// data (layers on remote servers, `qgis.geoleaf.dev`) unreachable from the
+// local deploy → `Failed to load layer` / CORS. Those errors are
+// ENVIRONMENTAL; counting them would make the test hostage to third-party
+// servers. Only the boot errors that are NOT environmental are kept — the
+// ones that would betray a real regression of a profile's boot.
 
-import fs from "node:fs";
+import { deliverableProfiles } from "./helpers/profiles.js";
 import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
 
 test.use({ baseURL: baseURL("core"), serviceWorkers: "block" });
 
 /**
- * Les profils réellement livrés — LUS SUR LE DISQUE, jamais écrits ici.
+ * The profiles really shipped — READ FROM DISK, never written here.
  *
- * ⚠️ Cette liste était en dur (8 noms, pré-vol du 24/07). Le 27/07, Mattieu a ramené
- * `profiles/` à 2 profils métier : les 6 autres étaient des démos, et ce test les a tous
- * cherchés dans un déployé qui ne les contenait plus (B-42). Un test qui énumère en dur ce
- * qu'un répertoire contient ne casse pas quand le répertoire change — il casse **plus tard**,
- * et il accuse le mauvais coupable.
+ * ⚠️ This list used to be hard-coded (8 names, 2026-07-24 pre-flight). On
+ * 07-27, Mattieu brought `profiles/` down to 2 business profiles: the other
+ * 6 were demos, and this test looked for them all in a deploy that no
+ * longer contained them. A test that hard-codes what a directory contains
+ * does not break when the directory changes — it breaks **later**, and it
+ * blames the wrong culprit.
  *
- * Le filtre reproduit EXACTEMENT celui de `scripts/build-deploy.cjs` : ni `schemas/`, ni les
- * répertoires préfixés `_` (`_reference` est l'échantillon exhaustif des formes de config, pas
- * une démo livrable). Si les deux filtres divergeaient, ce test chercherait un profil absent du
- * déployé — la panne d'aujourd'hui, sous un autre nom.
+ * The filter reproduces EXACTLY `scripts/build-deploy.cjs`'s: neither
+ * `schemas/` nor the `_`-prefixed directories (`_reference` is the
+ * exhaustive sample of config shapes, not a shippable demo). If the two
+ * filters diverged, this test would look for a profile absent from the
+ * deploy — today's breakdown, under another name.
  */
-const PROFILES = fs
-    .readdirSync(new URL("../profiles/", import.meta.url), { withFileTypes: true })
-    .filter((e) => e.isDirectory() && e.name !== "schemas" && !e.name.startsWith("_"))
-    .map((e) => e.name)
-    .sort();
+// Derivation + anti-empty guard now live in `helpers/profiles.js` — this file proved the
+// pattern and the suite shares it instead of re-spelling the build filter per spec.
+const PROFILES = deliverableProfiles();
 
-// Anti-test-vide : sans profil, la boucle ci-dessous ne déclare AUCUN test et la suite sort
-// verte en n'ayant rien vérifié — exactement le mode d'échec que ce fichier existe pour couvrir.
-if (PROFILES.length === 0) {
-    throw new Error(
-        "vn-profiles-boot : aucun profil livrable trouvé sous `profiles/`. " +
-            "Un répertoire vide ferait passer ce test en ne bootant rien."
-    );
-}
-
-// Erreurs environnementales attendues sur le déployé local (données externes absentes) —
-// à distinguer d'une régression de boot/capacité.
+// Environmental errors expected on the local deploy (external data absent) —
+// to distinguish from a boot/capability regression.
 const DATA_LOAD_NOISE = [
     /\[GeoLeaf\.GeoJSON\] Failed to load layer/i,
     /Access to fetch at .* has been blocked by CORS/i,
@@ -85,7 +80,7 @@ test.describe("VN — boot de chaque profil livré (F.3)", () => {
             page.on("console", (m) => m.type() === "error" && record(m.text()));
             page.on("pageerror", (e) => record(String(e)));
 
-            // Sélection du profil AVANT le boot, comme le sélecteur de la démo.
+            // Profile selection BEFORE boot, like the demo's selector does.
             await page.addInitScript((id) => {
                 try {
                     sessionStorage.setItem("gl-selected-profile", id);
@@ -96,7 +91,7 @@ test.describe("VN — boot de chaque profil livré (F.3)", () => {
 
             await page.goto("/");
 
-            // 1 — boot complet : la carte native est chargée.
+            // 1 — full boot: the native map is loaded.
             await page.waitForFunction(
                 () => {
                     const n = window.GeoLeaf?.Core?.getMap?.()?.getNativeMap?.();
@@ -105,17 +100,18 @@ test.describe("VN — boot de chaque profil livré (F.3)", () => {
                 null,
                 { timeout: 25000 }
             );
-            await page.waitForTimeout(1200); // laisser les capacités différées s'installer
+            await page.waitForTimeout(1200); // let the deferred capabilities install
 
-            // 2 — le bon profil a bien été chargé (le sélecteur a pris effet).
+            // 2 — the right profile was loaded (the selector took effect).
             const active = await page.evaluate(() =>
                 window.GeoLeaf?.Config?.getActiveProfileId?.()
             );
             expect(active, "profil actif inattendu").toBe(profile);
 
-            // 3 — aucune erreur de BOOT (les échecs de données externes sont exclus, voir en-tête).
-            // Une capacité qui jetterait à l'installation — la forme qu'aurait un profil « mort » —
-            // surfacerait ici ; un no-op silencieux, non, et ce dernier reste au run SW-autorisé.
+            // 3 — no BOOT error (external-data failures excluded, see header).
+            // A capability throwing at install — the shape a "dead" profile
+            // would take — would surface here; a silent no-op would not, and
+            // that one stays with the SW-enabled run.
             expect(
                 bootErrors,
                 `erreurs de boot non environnementales sur ${profile} : ${bootErrors.join(" | ")}`

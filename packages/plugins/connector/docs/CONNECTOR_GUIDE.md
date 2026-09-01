@@ -98,7 +98,7 @@ En CDN :
 | **S1** — Token statique    | `getToken: () => 'static'`                  | Dev / smoke test sans serveur          |
 | **S2** — Login modal + JWT | `auth: { endpoint, ui: true }`              | Login modal + JWT + refresh auto (IDB) |
 | **S3** — SSO externe       | `getToken: () => localStorage.getItem(...)` | Token existant géré par une autre lib  |
-| **S4** — Provider async    | `getToken: async () => await myAuth.get()`  | Keycloak, Auth0, ou provider custom    |
+| **S4** — Provider async    | `getToken: async () => await myAuth.get()`  | N'importe quel SDK d'identité          |
 | **S5** — Token silencieux  | `auth: { endpoint, ui: false }`             | Token pré-chargé en IDB — pas de modal |
 | **S6** — Données publiques | `getToken: () => 'STATIC_DEV_TOKEN'`        | Démo publique, données non sensibles   |
 
@@ -127,14 +127,15 @@ await GeoLeaf.Connector.configure({
 
 Le connector vérifie d'abord IndexedDB. Si aucun token valide n'est trouvé, la modal de connexion s'affiche. Le token obtenu est persisté en IDB et rafraîchi automatiquement avant expiration.
 
-### S4 — Provider async (Keycloak, Auth0)
+### S4 — Provider async (SDK d'identité tiers)
 
 ```js
 await GeoLeaf.Connector.configure({
     baseUrl: "https://api.example.com",
     getToken: async () => {
-        const token = await keycloak.updateToken(30);
-        return keycloak.token;
+        // Demande un rafraîchissement si le token expire dans moins de 30 s.
+        await authClient.refreshIfExpiringWithin(30);
+        return authClient.token;
     },
 });
 ```

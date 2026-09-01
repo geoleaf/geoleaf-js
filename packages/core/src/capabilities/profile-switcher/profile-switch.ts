@@ -19,8 +19,13 @@ import { Log } from "../../utils/log/index.js";
 /** Same guard the boot applies — a forged id must never reach a fetch path. */
 const PROFILE_ID_RE = /^[a-zA-Z0-9_-]{1,50}$/;
 
-/** localStorage key holding the user's standing profile choice (read by `boot-core`). */
-export const PROFILE_STORAGE_KEY = "gl-profile";
+/**
+ * localStorage key of the standing profile choice — DECLARED in `kernel/shared` (one
+ * declaration, two writers across the app/capability boundary) and re-exported here because
+ * this module's consumers already import it from this path.
+ */
+export { PROFILE_STORAGE_KEY } from "../../kernel/shared/index.js";
+import { PROFILE_STORAGE_KEY, SELECTED_PROFILE_STORAGE_KEY } from "../../kernel/shared/index.js";
 
 /**
  * Asks the service worker to drop its caches, so the reload refetches the new
@@ -58,7 +63,7 @@ export function switchToProfile(profileId: string): void {
     }
 
     try {
-        sessionStorage.setItem("gl-selected-profile", profileId);
+        sessionStorage.setItem(SELECTED_PROFILE_STORAGE_KEY, profileId);
     } catch (e) {
         Log?.warn?.("[ProfileSwitcher] Unable to write sessionStorage:", e);
     }

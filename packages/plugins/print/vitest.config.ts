@@ -10,12 +10,12 @@ export default packageConfig({
         // Entry point (no logic, just re-exports)
         "src/entry.ts",
         "src/lang/**",
-        // Sprint 3 modules — tested in Sprint 5
+        // Modules excluded before they had suites
         "src/emprise-selector.ts",
         "src/flow.ts",
         // Facade wrappers — delegates covered by module-level tests
         "src/public-api.ts",
-        // Cross-sprint utilities — covered via public-api tests (Sprint 5)
+        // Utilities — covered via public-api tests
         "src/internal.ts",
         // Test helpers — not counted in production coverage
         "src/__tests__/**",

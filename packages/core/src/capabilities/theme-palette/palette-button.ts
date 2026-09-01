@@ -57,7 +57,7 @@ function _buildPopover(anchor: HTMLElement): HTMLElement {
 
     for (const palette of getPalettes()) {
         const item = domCreate("button", PALETTE_ITEM_CLASS, popover);
-        (item as HTMLButtonElement).type = "button";
+        item.type = "button";
         item.setAttribute("role", "menuitem");
         item.dataset.glPalette = palette.id;
 
@@ -113,7 +113,7 @@ const SVG_PALETTE =
 
 /** Builds the palette button (desktop tab strip or mobile toolbar variant). */
 export function buildPaletteButton(variant: "desktop" | "mobile"): HTMLButtonElement {
-    const btn = domCreate("button", `gl-rp-tab-btn ${PALETTE_BUTTON_CLASS}`) as HTMLButtonElement;
+    const btn = domCreate("button", `gl-rp-tab-btn ${PALETTE_BUTTON_CLASS}`);
     btn.type = "button";
     btn.dataset.variant = variant;
 

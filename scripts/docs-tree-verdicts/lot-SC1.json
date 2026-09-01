@@ -127,7 +127,7 @@
             "severity": null,
             "description": "Harnais d'atelier qui vérifie item par item si ce qu'affirment les rapports de travail/rapports/ est encore vrai sur HEAD : chemin, déménagement, consommateur",
             "confidence": "haute",
-            "rationale": "665 LOC, aucun appelant exécutable hors l'allowlist d'hygiène — attendu et documenté : son en-tête dit « Ce n'est pas une gate, il n'est pas câblé dans ci:local, et il ne doit pas l'être », et le commentaire d'allowlist le range en « atelier, hors ci:local ». Emploi réel et récent attesté : roadmap_backlog-residuel.md (roadmap ACTIVE) le nomme comme le harnais du Sprint 5, ~1 200 items sondés."
+            "rationale": "665 LOC, aucun appelant exécutable hors l'allowlist d'hygiène — attendu et documenté : son en-tête dit « Ce n'est pas une gate, il n'est pas câblé dans ci:local, et il ne doit pas l'être », et le commentaire d'allowlist le range en « atelier, hors ci:local ». Emploi réel et récent attesté : un chantier actif l'a employé comme harnais, ~1 200 items sondés."
         },
         "scripts/audit-test-load-conversion.cjs": {
             "kind": "file",
@@ -141,7 +141,7 @@
             "severity": null,
             "description": "Instrument de la campagne COUVERTURE : trie les sites require() à convertir et prouve par mutation que la conversion n'a éteint ni un mock ni un rechargement",
             "confidence": "moyenne",
-            "rationale": "1 736 lignes, le plus gros fichier du dépôt, et aucun appelant exécutable hors l'allowlist. Candidat supprimer de premier abord, écarté sur deux mesures : (1) son en-tête déclare la non-câblage comme une décision (« Il n'est volontairement PAS câblé dans ci:local ») ; (2) la roadmap ACTIVE roadmap_backlog-residuel.md, tâche R.32, prescrit sa ré-exécution avec la commande exacte --prove-mocks. Réserve honnête : la dette qu'il servait à rembourser est soldée — verify-test-load-mode.baseline.json est à generatedCount 0, sites [] —, donc son mode --triage n'a plus rien à trier ; seuls les deux harnais de preuve gardent un emploi, et il faudra retrancher ce verdict le jour où R.32 sera close. T4.6 (25/07/2026) : son chemin de sortie n’est plus `tmp_load-conversion/` en dur à la racine — il vient de `GEOLEAF_LOAD_AUDIT_DIR`, défaut `_archive_local/load-conversion/`, et une garde ÉCHOUE si la destination n’est pas gitignorée. Le dossier d’origine pesait 126,8 Mo dont 99,94 % sans producteur : les `run-*` étaient écrits par `--snapshot`, supprimée au commit 3285f48e."
+            "rationale": "1 736 lignes, le plus gros fichier du dépôt, et aucun appelant exécutable hors l'allowlist. Candidat supprimer de premier abord, écarté sur deux mesures : (1) son en-tête déclare la non-câblage comme une décision (« Il n'est volontairement PAS câblé dans ci:local ») ; (2) une tâche ouverte (R.32) prescrit sa ré-exécution avec la commande exacte --prove-mocks. Réserve honnête : la dette qu'il servait à rembourser est soldée — verify-test-load-mode.baseline.json est à generatedCount 0, sites [] —, donc son mode --triage n'a plus rien à trier ; seuls les deux harnais de preuve gardent un emploi, et il faudra retrancher ce verdict le jour où R.32 sera close. T4.6 (25/07/2026) : son chemin de sortie n’est plus `tmp_load-conversion/` en dur à la racine — il vient de `GEOLEAF_LOAD_AUDIT_DIR`, défaut `_archive_local/load-conversion/`, et une garde ÉCHOUE si la destination n’est pas gitignorée. Le dossier d’origine pesait 126,8 Mo dont 99,94 % sans producteur : les `run-*` étaient écrits par `--snapshot`, supprimée au commit 3285f48e."
         },
         "scripts/build-deploy-coverage.cjs": {
             "kind": "file",
@@ -337,7 +337,7 @@
             "severity": null,
             "description": "Outil manuel : lit l'en-tête d'un fichier FlatGeobuf et dit s'il porte un index R-tree, condition du filtrage par bbox et par HTTP-Range",
             "confidence": "haute",
-            "rationale": "34 lignes, zéro appelant exécutable — attendu pour un outil de préparation de données, et documenté comme tel dans scripts/FGB_DATA_PREP.md, _docs_projet/ARCHITECTURE.md et CDC_plugin-flatgeobuf.md. L'extension .mjs est imposée par ses imports ESM (flatbuffers, flatgeobuf/lib/mjs), pas une divergence de convention."
+            "rationale": "34 lignes, zéro appelant exécutable — attendu pour un outil de préparation de données, et documenté comme tel dans scripts/FGB_DATA_PREP.md et CDC_plugin-flatgeobuf.md. L'extension .mjs est imposée par ses imports ESM (flatbuffers, flatgeobuf/lib/mjs), pas une divergence de convention."
         },
         "scripts/check-i18n-dict-shape.cjs": {
             "kind": "file",
@@ -519,7 +519,7 @@
             "severity": null,
             "description": "Génère `docs/reference/API_SURFACE.txt` — le manifeste de la surface dérivée par TypeDoc sur les 14 paquets — et le gate en fraîcheur (`--check`)",
             "confidence": "haute",
-            "rationale": "Doc V3 Étape 3 item 3, câblé dans ci:local ET ci.yml. Ferme le fossile : la sortie TypeDoc datait du 25/07 pour un core modifié jusqu'au 26/07, et `docs:api` n'était câblé nulle part pendant qu'API_REFERENCE.md était édité à la main. ⚠️ Il gate le MODÈLE et non le rendu, et ce n'est pas un raccourci : le rendu grave `git rev-parse HEAD` (29 fichiers sur 54 mesurés), donc il n'a aucun point fixe — la gate rougirait au commit même qui vient de régénérer — et il pèse 1 806 fichiers / 24 Mo pour le seul core, à une ligne de HTML par fichier. Même leçon que generate-docs-tree.cjs, qui l'a écrite : comparer le RENDU a laissé son --check vert pendant que 31 annotations sur 129 étaient mortes. Trois choix de forme, chacun contre un mode d'échec : sortie en `.txt` (un `.md` sous reference/ entrerait dans le scope de check-dead-links ET serait réécrit par le glob `*.{json,md}` de lint-staged, donc gate rouge permanente) ; empreinte de commentaire normalisée en blancs (prettier re-wrappe les TSDoc pendant le hook — hacher le texte brut aurait créé une instance neuve de B-27) ; manifeste hors des GENERATED_DIR_FORMS, ce qui permet de gater la fraîcheur sans rouvrir l'arbitrage 4.8. Assertions anti-gate-vide : jette si TypeDoc ne convertit rien, si le manifeste est vide, ou si le nombre de paquets convertis diffère du nombre demandé (périmètre amputé)."
+            "rationale": "Doc V3 Étape 3 item 3, câblé dans ci:local ET ci.yml. Ferme le fossile : la sortie TypeDoc datait du 25/07 pour un core modifié jusqu'au 26/07, et `docs:api` n'était câblé nulle part pendant qu'API_REFERENCE.md était édité à la main. ⚠️ Il gate le MODÈLE et non le rendu, et ce n'est pas un raccourci : le rendu grave `git rev-parse HEAD` (29 fichiers sur 54 mesurés), donc il n'a aucun point fixe — la gate rougirait au commit même qui vient de régénérer — et il pèse 1 806 fichiers / 24 Mo pour le seul core, à une ligne de HTML par fichier. Même leçon que generate-docs-tree.cjs, qui l'a écrite : comparer le RENDU a laissé son --check vert pendant que 31 annotations sur 129 étaient mortes. Trois choix de forme, chacun contre un mode d'échec : sortie en `.txt` (un `.md` sous reference/ entrerait dans le scope de check-dead-links ET serait réécrit par le glob `*.{json,md}` de lint-staged, donc gate rouge permanente) ; empreinte de commentaire normalisée en blancs (prettier re-wrappe les TSDoc pendant le hook — hacher le texte brut aurait créé une instance neuve du défaut de re-wrap) ; manifeste hors des GENERATED_DIR_FORMS, ce qui permet de gater la fraîcheur sans rouvrir l'arbitrage 4.8. Assertions anti-gate-vide : jette si TypeDoc ne convertit rien, si le manifeste est vide, ou si le nombre de paquets convertis diffère du nombre demandé (périmètre amputé)."
         },
         "scripts/gen-profile-schema-reference.cjs": {
             "kind": "file",
@@ -547,7 +547,7 @@
             "severity": null,
             "description": "Génère depuis l'inventaire des paramètres un tableau HTML autonome de référence, filtrable par famille, fichier et statut",
             "confidence": "haute",
-            "rationale": "369 LOC, npm run gen:config-reference, source unique déclarée dans l'en-tête (inventaire_config_parametres.md) et sortie unique (_docs_projet/ref/reference_parametres_config.html)."
+            "rationale": "369 LOC, npm run gen:config-reference, source unique déclarée dans l'en-tête (inventaire_config_parametres.md) et sortie unique, interne à l'atelier."
         },
         "scripts/generate-docs-tree.cjs": {
             "kind": "file",
@@ -744,6 +744,20 @@
             "description": "Valide chaque profil et ses fichiers de configuration compagnons contre les schémas JSON de profiles/schemas/",
             "confidence": "haute",
             "rationale": "181 LOC, npm run validate:profiles, câblé en pre-commit et dans ci-local. L'en-tête déclare l'exclusion des configs de plugin comme un choix de périmètre (contrat de config B7), pas un oubli."
+        },
+        "scripts/verify-boot-subscription.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Gate du MOMENT où un plugin paresseux s'abonne aux signaux de boot : un abonnement au corps de module attend un événement peut-être déjà passé",
+            "confidence": "haute",
+            "rationale": "355 LOC, câblée dans ci-local et ci.yml. Existence justifiée par une classe qui s'est refermée DEUX fois sur des plugins différents alors que la prose qui l'interdit était déjà écrite dans le fichier de boot — le second cas est tombé le lendemain du premier, au même endroit. Lecture par AST et non par grep : la question est de PORTÉE (le même appel est correct dans une fonction, cassé au corps de module), et les deux plugins que le registre disait « à instruire » se départagent précisément là. Son unique exemption porte un TÉMOIN STRUCTUREL — le repli immédiat doit rester dans la même portée — donc elle tombe si sa cause tombe, ce qu'aucune exemption en prose ne fait."
         },
         "scripts/verify-core-standalone.cjs": {
             "kind": "file",
@@ -995,7 +1009,7 @@
             "severity": null,
             "description": "Moteur PARTAGE d'extraction des `@example` du TSDoc — consomme par typecheck-docs-examples.cjs et validate-docs-examples.cjs",
             "confidence": "haute",
-            "rationale": "Ecrit pour B-44 dans typecheck-docs-examples.cjs, extrait ici le 30/07/2026 quand validate-docs-examples a eu besoin du meme corpus (B-75) : le recopier aurait cree deux extracteurs a faire diverger, exactement le defaut que la refonte V3 combat un etage plus bas. Traite les deux formes mesurees dans ce depot (37 blocs cloture par une fence, 81 bruts). Son perimetre vient du REGISTRE de paquets, jamais d'un chemin en dur, et il JETTE si le registre ne rend aucune source — sans quoi le consommateur sortirait vert en n'ayant rien lu (assertion vue jeter par mutation).",
+            "rationale": "Ecrit dans typecheck-docs-examples.cjs, extrait ici le 30/07/2026 quand validate-docs-examples a eu besoin du meme corpus : le recopier aurait cree deux extracteurs a faire diverger, exactement le defaut que la refonte V3 combat un etage plus bas. Traite les deux formes mesurees dans ce depot (37 blocs cloture par une fence, 81 bruts). Son perimetre vient du REGISTRE de paquets, jamais d'un chemin en dur, et il JETTE si le registre ne rend aucune source — sans quoi le consommateur sortirait vert en n'ayant rien lu (assertion vue jeter par mutation).",
             "recommendation": null
         },
         "scripts/lib/source-inventory.cjs": {
@@ -1106,7 +1120,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Gate T2.6 : les invariants du gabarit d'application apps/geoleaf-app/ — le compte est DÉRIVÉ de la liste des noms et imprimé en fin de run (doctrine B-43), jamais recopié ici ; plusieurs protègent des formes MONO-LIGNE que build-deploy patche en /gm sans /s, APP-06 exige que tout import eager d'init.js résolve sur un clone frais, et APP-09 compare la CSP déclarée à une politique attendue",
+            "description": "Gate T2.6 : les invariants du gabarit d'application apps/geoleaf-app/ — le compte est DÉRIVÉ de la liste des noms et imprimé en fin de run, jamais recopié ici ; plusieurs protègent des formes MONO-LIGNE que build-deploy patche en /gm sans /s, APP-06 exige que tout import eager d'init.js résolve sur un clone frais, et APP-09 compare la CSP déclarée à une politique attendue",
             "confidence": "haute",
             "rationale": "Câblé dans ci:local. Trois de ses 5 invariants gardent des formes mono-ligne que build-deploy.cjs patche par regex /gm SANS flag /s : un simple retour à la ligne faisait manquer le patch et le déploiement sortait FAUX en exit 0 — rien ne le gardait avant T2. D'où l'interdiction, consignée dans CLAUDE.md, d'ajouter apps/**/*.html à lint-staged : Prettier reformaterait index.html et casserait à la fois le bit-à-bit des 3 variantes et le contrat mono-ligne. ⚠️ Verdict ajouté au T5 : ce fichier était resté NON QUALIFIÉ depuis sa création au T2 — troisième occurrence de la défaillance que le dépôt consigne déjà pour verify-seam-drift.cjs, test-load-sites.cjs et knip-hints-reporter.mjs. Elle est silencieuse ici : docs:tree --check ne vérifie que la FRAÎCHEUR de l'arborescence, jamais son taux de couverture, donc un fichier non qualifié ne fait rougir aucune gate."
         },
@@ -1136,7 +1150,7 @@
             "severity": null,
             "description": "Gate EVENT-MAP : tout nom d'événement `geoleaf:*` relevé dans les sources doit être typé dans GeoLeafEventMap ou GeoLeafRawEventMap, et la baseline ne peut que rétrécir",
             "confidence": "haute",
-            "rationale": "API publique S3.4. Corpus via registry.all() (jamais de chemin en dur) + _plugin-template, hors workspaces mais scaffold de tout futur plugin. Clés lues sur l'AST du contrat, jamais recopiées. Baseline de 53 dans scripts/.baselines/event-map-coverage.json, invariants EM-01/EM-02 (cliquet MH-02). Trois exclusions motivées : 18 marques performance.mark (ce ne sont pas des événements — c'est d'elles que venait le « 89 dispatchés » de l'audit), le bus map.fire, et geoleaf:table:* construit par concaténation donc invisible au relevé. npm run check:event-map + ci-local + ci.yml, surveillé par probe-gate-visibility. Vu rouge sur EM-01, EM-02 (deux sens) et le plancher de non-vacuité."
+            "rationale": "Corpus via registry.all() (jamais de chemin en dur) + _plugin-template, hors workspaces mais scaffold de tout futur plugin. Clés lues sur l'AST du contrat, jamais recopiées. Baseline de 53 dans scripts/.baselines/event-map-coverage.json, invariants EM-01/EM-02 (cliquet MH-02). Trois exclusions motivées : 18 marques performance.mark (ce ne sont pas des événements — c'est d'elles que venait le « 89 dispatchés » de l'audit), le bus map.fire, et geoleaf:table:* construit par concaténation donc invisible au relevé. npm run check:event-map + ci-local + ci.yml, surveillé par probe-gate-visibility. Vu rouge sur EM-01, EM-02 (deux sens) et le plancher de non-vacuité."
         },
         "scripts/verify-host-contract-sync.cjs": {
             "kind": "file",
@@ -1150,7 +1164,7 @@
             "severity": null,
             "description": "Gate HOST-SYNC : GeoLeafHost ⊆ GeoLeafGlobal ⊆ oracle post-boot — les deux descriptions du namespace GeoLeaf ne peuvent pas dériver",
             "confidence": "haute",
-            "rationale": "API publique S3.5. Les deux contrats décrivent le même objet sans lien de compilation possible : host-runtime est bundlé dans chaque plugin et n'importe rien du core, pas même un type. La dérive était mesurée — POI est resté au contrat après la dissolution du sous-système au S9, et GeoJSON (87 appels plugins) n'était décrit nulle part. Compare les NOMS contre EXPECTED_FACADE_KEYS (104 clés) ; la conformité des FORMES est asservie séparément par typecheck:consumer sur examples/consumer/extension-contract.ts — doctrine des deux instruments, celle de verify-published-types + published-types.ts. Planchers de non-vacuité 50/5/10. npm run check:host-sync + ci-local + ci.yml. Vu rouge sur HOST-01 (POI ressuscité), HOST-02, HOST-03 et le plancher."
+            "rationale": "Les deux contrats décrivent le même objet sans lien de compilation possible : host-runtime est bundlé dans chaque plugin et n'importe rien du core, pas même un type. La dérive était mesurée — POI est resté au contrat après la dissolution du sous-système au S9, et GeoJSON (87 appels plugins) n'était décrit nulle part. Compare les NOMS contre EXPECTED_FACADE_KEYS (104 clés) ; la conformité des FORMES est asservie séparément par typecheck:consumer sur examples/consumer/extension-contract.ts — doctrine des deux instruments, celle de verify-published-types + published-types.ts. Planchers de non-vacuité 50/5/10. npm run check:host-sync + ci-local + ci.yml. Vu rouge sur HOST-01 (POI ressuscité), HOST-02, HOST-03 et le plancher."
         },
         "scripts/lib/namespace-surface.mjs": {
             "kind": "file",
@@ -1164,7 +1178,7 @@
             "severity": null,
             "description": "Description unique de la surface `globalThis.GeoLeaf` (les 3 tiers) et marche accesseur-sûre qui la mesure",
             "confidence": "haute",
-            "rationale": "428 LOC, 4 consommateurs — les deux tests de surface, la sonde Chromium et la gate HOST-SYNC. Créé à l'API publique S4.1 pour supprimer une classe de dérive mesurée deux fois : `requireMap` est resté 11 jours dans la liste de la sonde après avoir quitté celle de l'artefact (personne ne lançait la sonde), et `verify-host-contract-sync.cjs` lisait la 3ᵉ liste PAR REGEX en franchissant la fin du tableau — 104 clés lues pour 103, toute chaîne écrite ensuite devenant une clé d'oracle valide. Même patron que `packages.cjs` et `test-scope.cjs` : une définition, N lecteurs, et la gate lit l'AST. L'inclusion `MIN ⊆ IMPORT ⊆ POST` cesse d'être une consigne en commentaire pour devenir une assertion. `walkNamespace` est AUTO-SUFFISANTE par contrat (la sonde la transporte par sa source jusque dans la page) et n'invoque jamais un accesseur — lire `_APIController` déclenche une ré-entrance qui a réellement fait exploser la pile."
+            "rationale": "428 LOC, 4 consommateurs — les deux tests de surface, la sonde Chromium et la gate HOST-SYNC. Créé pour supprimer une classe de dérive mesurée deux fois : `requireMap` est resté 11 jours dans la liste de la sonde après avoir quitté celle de l'artefact (personne ne lançait la sonde), et `verify-host-contract-sync.cjs` lisait la 3ᵉ liste PAR REGEX en franchissant la fin du tableau — 104 clés lues pour 103, toute chaîne écrite ensuite devenant une clé d'oracle valide. Même patron que `packages.cjs` et `test-scope.cjs` : une définition, N lecteurs, et la gate lit l'AST. L'inclusion `MIN ⊆ IMPORT ⊆ POST` cesse d'être une consigne en commentaire pour devenir une assertion. `walkNamespace` est AUTO-SUFFISANTE par contrat (la sonde la transporte par sa source jusque dans la page) et n'invoque jamais un accesseur — lire `_APIController` déclenche une ré-entrance qui a réellement fait exploser la pile."
         },
         "packages/core/src/kernel/shared/layer-configs-state.ts": {
             "kind": "file",
@@ -1206,7 +1220,7 @@
             "severity": null,
             "description": "TOOLING-TS - cliquet decroissant sur le typage de scripts/, e2e/ et des configs racine, contre tsconfig.tooling.json",
             "confidence": "haute",
-            "rationale": "Ne à B-93 (R1, Sprint 2) : ces trois corpus n'etaient couverts par AUCUN tsconfig. Un tsconfig sans checkJs aurait donne la resolution aux editeurs et rien d'autre - une couverture qui ne verifie rien, le defaut meme que R1 supprime. Avec checkJs le premier run rend 301 erreurs, donc un vert etait impossible : le cliquet est la troisieme voie, et l'idiome du depot. Il garde une ENVELOPPE et non une liste, ce qui est ecrit dans son en-tete : une erreur corrigee et une introduite se compensent. Une liste d'erreurs tsc s'ancrerait sur des numeros de ligne qui derivent au premier reformatage."
+            "rationale": "Ne d'un constat simple : ces trois corpus n'etaient couverts par AUCUN tsconfig. Un tsconfig sans checkJs aurait donne la resolution aux editeurs et rien d'autre - une couverture qui ne verifie rien, le defaut meme que R1 supprime. Avec checkJs le premier run rend 301 erreurs, donc un vert etait impossible : le cliquet est la troisieme voie, et l'idiome du depot. Il garde une ENVELOPPE et non une liste, ce qui est ecrit dans son en-tete : une erreur corrigee et une introduite se compensent. Une liste d'erreurs tsc s'ancrerait sur des numeros de ligne qui derivent au premier reformatage."
         },
         "scripts/check-tree-qualification.cjs": {
             "kind": "file",
@@ -1220,7 +1234,7 @@
             "severity": null,
             "description": "TREE-QUAL - cliquet decroissant sur les artefacts SANS verdict d'existence dans l'arborescence qualifiee",
             "confidence": "haute",
-            "rationale": "Ne à B-36 (R1, Sprint 4) apres reouverture de l'arbitrage T5. Le balayage T5 avait atteint 1112/1112 - 100 % - et la dette s'est reformee DEUX fois (96,3 % puis 88,2 %) : rien n'exigeait qu'un artefact neuf naisse juge. Un troisieme balayage aurait produit un troisieme 100 % suivi d'une troisieme erosion. Le cliquet remplace la liste par une structure. Il LIT la sortie du generateur au lieu de recompter, deliberement : 'qualifie' a une seule definition et elle vit dans generate-docs-tree.cjs - la recompter creerait la divergence que source-inventory.cjs a ete extrait pour empecher. Le prix est une dependance au format de la ligne imprimee, paye par un plancher qui REFUSE DE CONCLURE si elle manque."
+            "rationale": "Ne apres reouverture de l'arbitrage T5. Le balayage T5 avait atteint 1112/1112 - 100 % - et la dette s'est reformee DEUX fois (96,3 % puis 88,2 %) : rien n'exigeait qu'un artefact neuf naisse juge. Un troisieme balayage aurait produit un troisieme 100 % suivi d'une troisieme erosion. Le cliquet remplace la liste par une structure. Il LIT la sortie du generateur au lieu de recompter, deliberement : 'qualifie' a une seule definition et elle vit dans generate-docs-tree.cjs - la recompter creerait la divergence que source-inventory.cjs a ete extrait pour empecher. Le prix est une dependance au format de la ligne imprimee, paye par un plancher qui REFUSE DE CONCLURE si elle manque."
         },
         "scripts/probe-eviction-notice.mjs": {
             "kind": "file",
@@ -1234,7 +1248,7 @@
             "severity": null,
             "description": "Sonde manuelle Chromium - l'avis d'eviction de cache parvient-il a l'ecran, et sur quelle variante",
             "confidence": "haute",
-            "rationale": "Seul oracle de B-163 (R9). Les 10 tests unitaires de eviction-notice.ts eprouvent la logique de l'ecouteur ; aucun ne dit qu'il est CABLE dans le bundle livre - et c'est exactement le defaut d'origine vu depuis l'autre bout, un ecouteur correct et teste dans un plugin absent de deploy-core. Elle vise les DEUX variantes, un doublon plugin/core sur deploy-full etant la regression symetrique. Elle porte aussi ses deux propres mensonges, documentes sur place : un selecteur faux l'a rendue rouge partout Y COMPRIS sur le temoin, et un oracle par TOTAL de toasts la rendait rouge sur un avis parfait."
+            "rationale": "Seul oracle du cablage d'eviction. Les 10 tests unitaires de eviction-notice.ts eprouvent la logique de l'ecouteur ; aucun ne dit qu'il est CABLE dans le bundle livre - et c'est exactement le defaut d'origine vu depuis l'autre bout, un ecouteur correct et teste dans un plugin absent de deploy-core. Elle vise les DEUX variantes, un doublon plugin/core sur deploy-full etant la regression symetrique. Elle porte aussi ses deux propres mensonges, documentes sur place : un selecteur faux l'a rendue rouge partout Y COMPRIS sur le temoin, et un oracle par TOTAL de toasts la rendait rouge sur un avis parfait."
         },
         "scripts/lib/md-fences.cjs": {
             "kind": "file",
@@ -1248,7 +1262,7 @@
             "severity": null,
             "description": "Suivi d'etat des blocs de code Markdown, conforme a CommonMark - partage par les deux extracteurs de check-dead-links",
             "confidence": "haute",
-            "rationale": "Ne à B-153 (R1, Sprint 3). La bascule inCodeBlock = !inCodeBlock sur tout ``` est fausse : un bloc ouvert par N backticks ne se ferme que par un marqueur d'au moins N, sans chaine d'information. Le motif etait DUPLIQUE - extraction des liens ET des ancres - donc corriger un site aurait laisse l'autre, ce que l'enonce de la ligne annoncait. L'extraction en module partage est la reponse a cette duplication autant qu'au defaut. Gisement mesure NUL au 16/08 sur les 133 fichiers gates : la correction previent un verdict faux futur, elle n'en corrige aucun present."
+            "rationale": "Ne d'un defaut de lexer. La bascule inCodeBlock = !inCodeBlock sur tout ``` est fausse : un bloc ouvert par N backticks ne se ferme que par un marqueur d'au moins N, sans chaine d'information. Le motif etait DUPLIQUE - extraction des liens ET des ancres - donc corriger un site aurait laisse l'autre, ce que l'enonce de la ligne annoncait. L'extraction en module partage est la reponse a cette duplication autant qu'au defaut. Gisement mesure NUL au 16/08 sur les 133 fichiers gates : la correction previent un verdict faux futur, elle n'en corrige aucun present."
         },
         "scripts/lib/event-gates.cjs": {
             "kind": "file",
@@ -1262,7 +1276,77 @@
             "severity": null,
             "description": "EM-03 - un litteral d'evenement contenant un deux-points doit commencer par geoleaf:",
             "confidence": "haute",
-            "rationale": "Ne à B-207 (R9, Sprint 2). EVENT_LITERAL_RE est ancre sur ^geoleaf: donc EM-01 ne peut ni reclamer ni compter un evenement hors prefixe : un tel nom n'apparait dans AUCUNE mesure. La regle porte sur le deux-points et non sur une allowlist parce que la mesure l'a rendue possible - aucun des 19 evenements ETRANGERS releves (DOM, Service Worker, MapLibre, Terra Draw) n'en contient, et les 3 du domaine en portaient tous. Elle rend la classe impossible au lieu de la recenser. Son perimetre est ecrit dans son en-tete : elle inspecte des sites d'appel, donc elle ne voit ni un nom compose a l'execution ni un helper local absent d'EVENT_GATES."
+            "rationale": "Ne d'un defaut de domaine. EVENT_LITERAL_RE est ancre sur ^geoleaf: donc EM-01 ne peut ni reclamer ni compter un evenement hors prefixe : un tel nom n'apparait dans AUCUNE mesure. La regle porte sur le deux-points et non sur une allowlist parce que la mesure l'a rendue possible - aucun des 19 evenements ETRANGERS releves (DOM, Service Worker, MapLibre, Terra Draw) n'en contient, et les 3 du domaine en portaient tous. Elle rend la classe impossible au lieu de la recenser. Son perimetre est ecrit dans son en-tete : elle inspecte des sites d'appel, donc elle ne voit ni un nom compose a l'execution ni un helper local absent d'EVENT_GATES."
+        },
+        "scripts/emit-css-type-stubs.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Émet un stub `<nom>.css.d.ts` à côté de chaque import CSS des `.d.ts` PUBLIÉS, pour que la résolution de types tienne chez un intégrateur en `skipLibCheck: false`",
+            "confidence": "haute",
+            "rationale": "Ouverte et soldée le 17/08/2026. `tsc` recopie les `import \"./css/x.css\"` du source dans le `.d.ts` émis et aucun `.d.ts` ne déclare ces modules : mesuré 23 `TS2882` sur le témoin, et 3 sur un `npm install` depuis npmjs dans un répertoire vierge — le défaut est dans le TARBALL PUBLIÉ, pas dans l'atelier. Le stub est RELATIF et volontairement vide (`export {};`) : un `declare module \"*.css\"` ambiant tiendrait en une ligne mais FUIRAIT chez l'intégrateur, où il silencerait ses propres imports CSS — on échangerait un défaut visible chez nous contre un défaut invisible chez lui. Un export par défaut est refusé pour la même raison inverse : il autoriserait un `import css from` que le build ne sait pas honorer. Câblé dans DEUX builds — celui du core et celui de la racine — parce que le premier ne bâtit ni les libs ni 10 des 12 plugins. Idempotent, ne supprime rien. ⚠️ Assertion anti-gate-vide sur `scanned === 0`, et elle a MORDU SON AUTEUR : la première version utilisait `pkg.dir` (relatif à la racine) alors que turbo l'appelle aussi depuis `packages/core/`, donc elle scannait zéro fichier ; sans l'assertion elle serait sortie VERTE en n'écrivant aucun stub, et les 23 erreurs seraient revenues chez le premier intégrateur — un défaut réintroduit par le correctif censé le fermer. Corrigé en `pkg.absDir`, vérifié depuis les deux répertoires courants. Ce qu'il ne garde PAS : rien ne vérifie que les stubs sont dans le tarball ; ils vivent sous `dist/`, git-ignoré, donc la garantie est le câblage et non un fichier suivi."
+        },
+        "scripts/check-doc-versions.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Gate DOC-VERSIONS : le `version:` du frontmatter d'un document d'atelier doit être égal à la plus haute version citée par son tableau de révisions",
+            "confidence": "haute",
+            "rationale": "~190 LOC, câblée dans ci-local (DOC-VERSIONS). Ferme le défaut d'un protocole de clôture en DEUX gestes dont rien ne liait les moitiés — bumper `version:` sans poser la ligne de révision. Oracle `max()` et non positionnel : 4 documents du corpus ont un tableau NON MONOTONE. Préfixe `v` obligatoire, sans quoi un tableau de versions de Node est lu comme des révisions. Corpus dérivé de `git ls-files`, saut motivé sur clone public, assertion anti-corpus-vide."
+        },
+        "scripts/check-specs-verified-against.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Gate SPECS-FRESH : le `verifie_contre:` d'une fiche `docs/specs/` doit nommer un commit après lequel son répertoire `**Code :**` n'a plus bougé",
+            "confidence": "haute",
+            "rationale": "Née le 08/08/2026 et tranchée le 18/08/2026. Le champ `verifie_contre` était porté par 36 fiches et lu par ZÉRO script : il certifiait donc ce qu'il voulait, et une fiche a certifié cinq énoncés faux pendant dix jours. 🛑 Un champ inerte ne coûte rien ; un champ qui atteste une fraîcheur qu'il n'a pas est un FAUX TÉMOIGNAGE — c'est ce qui a fait écarter le simple retrait du champ, pourtant recommandé par l'instruction. La voie retenue n'était dans aucune des trois que la ligne énumérait : c'est la baseline DÉCROISSANTE du patron TSD-04, les retards existants gelés, toute péremption NEUVE en rouge, et un compteur qui ne peut que descendre. Une gate qui aurait rougi d'emblée sur les 36 aurait été éteinte le jour de sa pose. ⚠️ Ce qu'elle ne garde PAS : elle mesure une distance en commits, jamais la véracité d'une phrase — un sha bumpé sans relecture la satisfait pleinement. Ce qu'elle retire est l'autre défaut, celui qu'aucun humain ne peut voir sans re-mesurer. Elle SAUTE en le disant là où aucun commit cité n'existe (le clone public naît d'un commit unique), et le discriminant est mesuré : si CERTAINS résolvent et d'autres non, les seconds sont des coquilles et rougissent. Vue rougir sur ses six axes avant d'être crue, puis restaurée au sha256 — et la sonde a trouvé un défaut dans la gate elle-même, le saut passant AVANT le plancher de corpus, ce qui faisait sauter un glob cassé au lieu de refuser."
+        },
+        "scripts/lib/discover-plugins.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Découverte de la flotte de plugins depuis package.json#geoleaf — consommée par build-deploy.cjs (boucle de copie) et verify-app-template.cjs (parité APP-12)",
+            "confidence": "haute",
+            "rationale": "Ajouter un plugin exigeait d'éditer build-deploy.cjs — 12 constantes DIST_* et un bloc de copie de ~15 lignes par plugin, dans un fichier qui a grossi de 449 lignes en sept jours et que le plugin ne possède pas. La source unique est désormais le package.json du plugin lui-même, champ `geoleaf` : bundle, lazyChunks, includeFlag. TOUS les champs sont OBLIGATOIRES et la découverte JETTE sur descripteur absent ou malformé — un défaut ne peut pas distinguer « décidé » d'« oublié », et pour un manifeste qui décide ce qui part chez un client, cette distinction est le point entier : un includeFlag oublié livrerait un plugin optionnel partout, un lazyChunks oublié amputerait les chunks d'un plugin découpé et le premier clic partirait en 404, en sortant 0. Plancher de flotte à 10 (anti-boucle-verte-sur-vide). ⚠️ Ce que le module ne décide PAS, et c'est écrit : la matrice des variantes reste dans build-deploy.cjs (propriété des LIVRABLES), et init.js n'est PAS généré depuis les descripteurs — sa zone plugins est au tiers des commentaires encodant des incidents payés, qu'un générateur perdrait ; la dérive descripteur↔boot est fermée par la parité APP-12 à la place. Éprouvé : parité BYTE-IDENTIQUE de l'ensemble livré avant/après le remplacement des 12 blocs (diff vide sur les deux variantes), throw vu rougir sur bundle manquant en nommant bundle et variante, APP-12 vue rougir dans les DEUX sens."
+        },
+        "packages/core/src/kernel/shared/profile-storage-keys.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Clés web-storage du choix de profil — déclaration unique pour deux écrivains de part et d'autre de la frontière app/capacité",
+            "confidence": "haute",
+            "rationale": "Ferme une dérive mesurée : `gl-profile` existait comme constante exportée dans la capacité profile-switcher ET comme littéral nu dans boot-core, `gl-selected-profile` comme TROIS littéraux nus. Une clé de stockage qui dérive ne casse pas — elle fait cesser le boot de voir le choix de l'utilisateur, en silence. Domicile : kernel/shared/, ré-exportée par le baril de médiation (le geste que la règle R.8 désigne) ; profile-switch.ts ré-exporte PROFILE_STORAGE_KEY pour ses consommateurs existants. SELECTED_PROFILE_STORAGE_KEY documente le contrat one-shot (lue PUIS supprimée par boot-core)."
         }
     }
 }

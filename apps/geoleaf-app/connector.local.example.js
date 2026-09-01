@@ -5,7 +5,7 @@
  * test authenticated reads (private features) and `editor` writes against a backend
  * that requires a Bearer token — the dev PostGIS/PostgREST stack of
  * `docker-compose.dev.yml`.
- * ⚠️ Said "addpoi / editor" until 09/08/2026; `addpoi` was merged into `editor` at Sprint 5.
+ * ⚠️ Said "addpoi / editor" until 09/08/2026; `addpoi` was merged into `editor` on 05/08/2026.
  *
  * `init.js` dynamically imports `connector.local.js` (if present) BEFORE GeoLeaf.boot()
  * and calls `GeoLeaf.Connector.configure(window.GEOLEAF_DEV_CONNECTOR)`. The Connector

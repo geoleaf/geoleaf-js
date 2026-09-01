@@ -1,9 +1,9 @@
 /**
- * Unit tests — `ui/cache-button/button-control.ts`, couverture réelle (R.31).
+ * Unit tests — `ui/cache-button/button-control.ts`, real coverage.
  *
- * Depuis S2, ce module ne fait plus que CAPTURER la vraie carte à `map:ready`. On couvre
- * les trois issues d'`init` (carte absente, bouton désactivé par config, capture nominale)
- * et `getMap`.
+ * This module now only CAPTURES the real map at `map:ready`. We cover `init`'s
+ * three outcomes (map absent, button disabled by config, nominal capture) and
+ * `getMap`.
  */
 import { describe, test, expect } from "vitest";
 
@@ -14,8 +14,12 @@ describe("ButtonControl.init", () => {
         expect(ButtonControl.init(null, {})).toBeNull();
     });
 
-    test("bouton désactivé par config (showCacheButton:false) → null", () => {
-        expect(ButtonControl.init({ id: "map" }, { ui: { showCacheButton: false } })).toBeNull();
+    // Contract change of 24/08/2026: the key no longer cuts the CAPTURE — the
+    // coupling made the modal mute behind a visible button. Capture is
+    // unconditional; button visibility belongs to the slot alone.
+    test("la clé ne coupe plus la capture (showCacheButton:false capture quand même)", () => {
+        const map = { id: "map" };
+        expect(ButtonControl.init(map, { ui: { showCacheButton: false } })).toBe(map);
     });
 
     test("carte présente + config par défaut → capture et rend la carte", () => {

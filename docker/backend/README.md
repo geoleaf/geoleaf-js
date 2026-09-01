@@ -1,6 +1,6 @@
 # Backend de preuve — dev uniquement (tâche 4.H)
 
-Le critère de preuve du Sprint 4 dit : _coupure réseau → édition d'une entité **rapatriée** →
+Le critère de preuve du cycle hors-ligne dit : _coupure réseau → édition d'une entité **rapatriée** →
 rechargement → **l'édition est toujours visible** → retour du réseau → push → **l'entité porte son
 identifiant serveur**, et une seconde synchronisation ne produit **aucune** requête._
 
@@ -96,12 +96,16 @@ Prérequis, tous déjà en place sur la machine de dev :
 
 ### Base et graine
 
+Les deux commandes ci-dessous prennent le rôle Postgres en variable : `PGROLE` est le rôle
+propriétaire de **votre** conteneur PostGIS partagé, et il n'est pas déduit du dépôt. Posez-le
+d'abord — `docker exec shared-postgis-1 psql -U postgres -c '\du'` le liste si vous l'ignorez.
+
 ```bash
-docker exec -i -e PGOPTIONS="-c geoleaf.auth_password=$(grep -oP '(?<=^GEOLEAF_PG_PASSWORD=).*' .env)" shared-postgis-1 psql -U odoo -d geoleaf -v ON_ERROR_STOP=1 < docker/backend/01-schema.sql
+docker exec -i -e PGOPTIONS="-c geoleaf.auth_password=$(grep -oP '(?<=^GEOLEAF_PG_PASSWORD=).*' .env)" shared-postgis-1 psql -U "$PGROLE" -d geoleaf -v ON_ERROR_STOP=1 < docker/backend/01-schema.sql
 ```
 
 ```bash
-docker exec -i shared-postgis-1 psql -U odoo -d geoleaf -v ON_ERROR_STOP=1 < docker/backend/02-seed.sql
+docker exec -i shared-postgis-1 psql -U "$PGROLE" -d geoleaf -v ON_ERROR_STOP=1 < docker/backend/02-seed.sql
 ```
 
 La graine est **idempotente** (elle tronque d'abord) et remet l'état reproductible : 27 lignes,
@@ -138,7 +142,7 @@ vrai — un test qui casse le test d'à côté.
 
 ---
 
-## Les quatre propriétés que le Sprint 4 exige, et comment les re-mesurer
+## Les quatre propriétés que le cycle exige, et comment les re-mesurer
 
 Toutes vérifiées au montage. `$CA` vaut `~/dev/infra/traefik/certs/rootCA.pem` — curl ne connaît pas
 la CA mkcert, seul le navigateur la connaît ; sans `--cacert` toute commande ci-dessous rend
@@ -212,10 +216,12 @@ print((h+b'.'+p+b'.'+base64.urlsafe_b64encode(hmac.new(s.encode(),h+b'.'+p,hashl
 
 ## Ce que ce montage ne fait PAS
 
-- **Il ne parle pas Odoo.** La cible réelle est Odoo via OGC ou API ; ceci en est un substitut
-  fidèle au **dialecte** (`collection`, corps plat, bearer) et au **cycle**, pas au serveur. Un
-  défaut propre à Odoo — le `write_date` comme marqueur, ses collections par modèle — ne se verra
-  pas ici.
+- **Il ne parle à aucun backend métier réel.** La cible en production est un backend métier SIG
+  atteint via OGC ou par son API ; ceci en est un substitut fidèle au **dialecte** (`collection`,
+  corps plat, bearer) et au **cycle**, pas au serveur. Un défaut propre à ce backend-là — le champ
+  d'horodatage qu'il expose comme marqueur de synchronisation, sa façon de découper les
+  collections par modèle métier — ne se verra pas ici. **C'est la limite qui compte le plus de ce
+  montage** : il prouve que le cycle tient, jamais que l'intégration tient.
 - **Il ne sert aucune tuile.** A7′ reste un sujet de cache, sans rapport avec ce backend.
 - **Il n'est pas dans la CI.** Les conteneurs vivent sur la machine de dev. Un E2E qui en dépend ne
   tourne pas sur un runner GitHub — c'est à peser en écrivant `e2e/30-sync-cycle.spec.js`, et c'est

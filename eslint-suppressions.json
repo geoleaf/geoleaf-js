@@ -11,9 +11,6 @@
         }
     },
     "scripts/audit-report-freshness.cjs": {
-        "no-useless-assignment": {
-            "count": 1
-        },
         "security/detect-unsafe-regex": {
             "count": 5
         }

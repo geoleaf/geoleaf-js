@@ -27,12 +27,7 @@ import { getSelection, setSelection, clearSelection } from "../selection/selecti
  * form-save / persistence flow.
  */
 export type OperationType =
-    | "create"
-    | "move"
-    | "vertex-add"
-    | "vertex-del"
-    | "attr-change"
-    | "delete";
+    "create" | "move" | "vertex-add" | "vertex-del" | "attr-change" | "delete";
 
 /**
  * A single undoable operation. The inverse is derived per-type at apply time

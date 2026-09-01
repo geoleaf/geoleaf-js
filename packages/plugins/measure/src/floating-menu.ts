@@ -2,9 +2,9 @@
  * @geoleaf-plugins/measure — Floating measure sub-menu
  * © 2026 Mattieu Pottier — MIT License
  *
- * Sprint 2: draggable sub-menu, tool buttons, recap-box host.
- * Sprint 6: pill layout matching the left toolbar bar; unit cycle buttons (m↔km, m²→ha→km²);
- *   icon-only tool/action buttons; onToggle callback for pill active state.
+ * Draggable sub-menu — tool buttons, recap-box host, pill layout matching the left
+ * toolbar bar, unit cycle buttons (m↔km, m²→ha→km²), icon-only tool/action buttons,
+ * onToggle callback for pill active state.
  * https://geoleaf.dev
  */
 import type { MeasureConfig, MeasureMap, MeasureType, MeasureToolId, Units } from "./types.js";
@@ -343,8 +343,9 @@ function _buildDOM(map: MeasureMap, cfg: MeasureConfig): void {
     _applyPosition(cfg.menuPosition);
 
     _tooltipEl = document.createElement("div");
-    // `gl-tooltip` porte la présentation partagée (host-runtime/src/css/tooltip.css,
-    // STRUCT S2 F8) ; `gl-measure-tooltip` reste pour le ciblage et les surcharges.
+    // `gl-tooltip` carries the shared presentation
+    // (host-runtime/src/css/tooltip.lazy.css); `gl-measure-tooltip` stays for
+    // targeting and overrides.
     _tooltipEl.className = "gl-tooltip gl-measure-tooltip";
     _tooltipEl.setAttribute("aria-hidden", "true");
     _root.appendChild(_tooltipEl);

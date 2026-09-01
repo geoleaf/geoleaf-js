@@ -38,13 +38,14 @@ import { Log } from "../../utils/log/index.js";
 /**
  * Key under which the ceiling is stored, in the `preferences` store.
  *
- * ⚠️ Le préfixe n'est PAS `geoleaf:` — la gate EVENT-MAP scanne les littéraux `geoleaf:*` et
- * prendrait une clé de stockage pour un ÉVÉNEMENT non typé. Même motif que `DATA_ORIGINS_KEY`.
+ * ⚠️ The prefix is NOT `geoleaf:` — the EVENT-MAP gate scans `geoleaf:*` literals
+ * and would take a storage key for an untyped EVENT. Same motive as
+ * `DATA_ORIGINS_KEY`.
  *
- * Littéral PARTAGÉ : `sw-core.js` le code en dur, faute de pouvoir importer. La garde de source
- * de `__tests__/storage/sw-core-tile-budget.test.ts` vérifie que les deux disent la même chose ;
- * sans elle, une divergence sortirait silencieusement verte — c'est exactement ce que la version
- * de base du worker a fait pendant des mois (cause racine n° 2 de la roadmap hors-ligne).
+ * SHARED literal: `sw-core.js` hard-codes it, unable to import. The source guard in
+ * `__tests__/storage/sw-core-tile-budget.test.ts` checks both say the same thing;
+ * without it, a divergence would come out silently green — exactly what the worker's
+ * base version did for months (root cause no. 2 of the offline work).
  */
 export const TILE_BUDGET_KEY = "offline.tileCacheMaxEntries";
 

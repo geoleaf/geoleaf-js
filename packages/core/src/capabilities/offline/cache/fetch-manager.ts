@@ -54,16 +54,16 @@ const FetchManager = {
         Log.debug(`[FetchManager] Fetching: ${resource.url}`);
         validateFetchUrl(resource.url);
 
-        // 🛑 UN SIGNAL D'ANNULATION N'EST PAS UNE ÉCHÉANCE (tâche 3.8).
+        // 🛑 A CANCELLATION SIGNAL IS NOT A DEADLINE.
         //
-        // Ce site passait pour « déjà borné » parce qu'il honore `options.signal`. Mais ce
-        // signal est celui de l'ANNULATION UTILISATEUR (le bouton « annuler » du
-        // téléchargement), il est passé CONDITIONNELLEMENT par `downloader.ts`, et il n'existe
-        // pas quand personne n'annule. Autrement dit : la requête restait sans délai dans le
-        // cas nominal, c'est-à-dire exactement quand un serveur lent fait mal.
+        // This site passed for "already bounded" because it honours `options.signal`.
+        // But that signal is the USER-CANCELLATION one (the download's "cancel"
+        // button), it is passed CONDITIONALLY by `downloader.ts`, and it does not
+        // exist when nobody cancels. In other words: the request stayed deadline-less
+        // in the nominal case, i.e. exactly when a slow server hurts.
         //
-        // `fetchBounded` CHAÎNE les deux : la requête meurt sur le premier des deux qui tombe.
-        // L'annulation reste immédiate, et l'échéance existe même sans annulation.
+        // `fetchBounded` CHAINS the two: the request dies on whichever falls first.
+        // Cancellation stays immediate, and the deadline exists even without one.
         const response = await fetchBounded(resource.url, {
             // `RequestInit.signal` is `AbortSignal | null` in lib.dom — a target we cannot widen.
             // Coerce to the sentinel it already admits rather than thread `undefined` through.
@@ -323,7 +323,7 @@ const FetchManager = {
     ): Promise<boolean> {
         validateFetchUrl(url);
         try {
-            // Même raison qu'au-dessus : le signal d'annulation ne borne rien s'il est absent.
+            // Same reason as above: the cancellation signal bounds nothing when absent.
             const response = await fetchBounded(
                 url,
                 { method: "HEAD", signal: options.signal ?? null },

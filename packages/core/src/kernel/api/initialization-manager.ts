@@ -269,10 +269,10 @@ class APIInitializationManager {
         } else if (input && typeof input === "object") {
             // Configuration object
             return {
-                source: (input.url ? "url" : "data") as "url" | "data",
-                // Insertion conditionnelle : cet objet NORMALISÉ est lui-même étalé plus bas
-                // (`...input`) et relu par ses consommateurs — une clé `url` présente valant
-                // `undefined` n'y est pas équivalente à son absence.
+                source: input.url ? "url" : "data",
+                // Conditional insertion: this NORMALISED object is itself spread further
+                // down (`...input`) and re-read by its consumers — a `url` key present
+                // with value `undefined` is not equivalent there to its absence.
                 ...(input.url !== undefined && { url: input.url as string }),
                 data: input.data,
                 profileId: input.profileId,

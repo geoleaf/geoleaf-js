@@ -9,7 +9,7 @@ Plugins reach the host application through the runtime global `GeoLeaf` (assembl
 boot by `@geoleaf/core`). Before this package, each plugin did
 `const _g = globalThis as any` and re-declared its own partial namespace shape —
 reintroducing `any` and drifting. This package provides **one** typed accessor and
-**one** shared shape (`roadmap_typage-plugins.md`, S0).
+**one** shared shape.
 
 PLUGINS S1 widened the charter: the same plugins had also forked a handful of small UI
 utilities (stylesheet adoption, menu drag, tooltips) into 2 packages each. Those live

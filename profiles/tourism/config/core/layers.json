@@ -11,6 +11,11 @@
             "layerManagerId": "data-tourism"
         },
         {
+            "id": "routing-route",
+            "configFile": "layers/routing-route/routing-route_config.json",
+            "layerManagerId": "data-tourism"
+        },
+        {
             "id": "zones",
             "configFile": "layers/zones/zones_config.json",
             "layerManagerId": "data-tourism"
@@ -81,13 +86,13 @@
             "layerManagerId": "data-conservation"
         },
         {
-            "_comment": "Couche temps réel USGS — migrée depuis le profil de démonstration world-disasters le 27/07/2026 (B-42). Elle porte la SEULE couverture navigateur du plugin realtime-layer sur le chemin polling + snapshot de repli : sans elle, e2e/08-realtime perd cette vérification. Cohérente ici — l Amérique du Sud est l une des zones les plus sismiques, et tourism est le profil complet de test.",
+            "_comment": "Couche temps réel USGS — migrée depuis le profil de démonstration world-disasters le 27/07/2026. Elle porte la SEULE couverture navigateur du plugin realtime-layer sur le chemin polling + snapshot de repli : sans elle, e2e/08-realtime perd cette vérification. Cohérente ici — l Amérique du Sud est l une des zones les plus sismiques, et tourism est le profil complet de test.",
             "id": "epicentres_seismes",
             "configFile": "layers/epicentres_seismes/epicentres_seismes_config.json",
             "layerManagerId": "data-tourism"
         },
         {
-            "_comment": "Couche GBIF — migrée depuis le profil de démonstration guyane-biodiversite le 27/07/2026 (B-42). Elle porte la SEULE couverture navigateur du pipeline de mapping runtime (famille B6 : data.mapping + itemsPath). Cohérente ici : tourism porte déjà eco_regions, pays et pluviometrie, et le bloc gbif normalise l Occurrence API vers des POI.",
+            "_comment": "Couche GBIF — migrée depuis le profil de démonstration guyane-biodiversite le 27/07/2026. Elle porte la SEULE couverture navigateur du pipeline de mapping runtime (famille B6 : data.mapping + itemsPath). Cohérente ici : tourism porte déjà eco_regions, pays et pluviometrie, et le bloc gbif normalise l Occurrence API vers des POI.",
             "id": "observations_gbif",
             "configFile": "layers/observations_gbif/observations_gbif_config.json",
             "layerManagerId": "data-tourism"

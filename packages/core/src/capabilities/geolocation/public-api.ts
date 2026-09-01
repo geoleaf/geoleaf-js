@@ -9,8 +9,10 @@
  * Geolocation capability — public API surface.
  *
  * Exposes capability read helpers (`isEnabled` / `getConfig`) plus `getState()` — the
- * public seam for the GPS state singleton (read by external plugins such as
- * `plugin-addpoi`; in-core consumers import the state module directly). Mounted on
+ * public seam for the GPS state singleton, for EXTERNAL readers only — in-core consumers
+ * import the state module directly. ⚠️ It named its first consumer by package until the
+ * 19/08/2026; that package is gone, and naming a dead reader made the seam look orphaned
+ * when what justifies it is the BOUNDARY, not the identity of who crosses it. Mounted on
  * `GeoLeaf.Geolocation` via `geoleaf.geolocation.ts`.
  */
 
@@ -39,6 +41,6 @@ export function buildPublicApi(): GeolocationPublicApi {
     return {
         isEnabled: (): boolean => getGeolocationConfig().enabled !== false,
         getConfig: (): GeolocationCapabilityConfig => getGeolocationConfig(),
-        getState: (): GeolocationStateSnapshot => GeoLocationState as GeolocationStateSnapshot,
+        getState: (): GeolocationStateSnapshot => GeoLocationState,
     };
 }

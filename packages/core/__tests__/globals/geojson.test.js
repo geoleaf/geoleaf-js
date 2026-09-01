@@ -1,5 +1,5 @@
 /**
- * S5.5.2 — globals.geojson.ts branch coverage (B5 — full build)
+ * globals.geojson.ts branch coverage (B5 — full build)
  *
  * Targets:
  *   - All _g.GeoLeaf.* assignments: _GeoJSONShared, GeoJSON,
@@ -33,8 +33,22 @@ const mocks = vi.hoisted(() => {
     const LayerManagerVisibility = { show: vi.fn() };
     const LayerManagerStyle = { apply: vi.fn() };
     const LayerManagerIntegration = { wire: vi.fn() };
-    const LoaderProfile = { loadProfile: vi.fn() };
-    const LoaderSingleLayer = { loadLayer: vi.fn() };
+    // ⚠️ These two doubles carried `loadProfile` and `loadLayer` — two names
+    // no facade carries. `LoaderProfile` (= `Loader`, profile.ts)
+    // exposes `loadFromActiveProfile`, `_loadLayersByBatch`,
+    // `_getDefaultThemeLayerIds`, `_loadLayersInIdle` and
+    // `loadAllLayersConfigsForLayerManager`; `LoaderSingleLayer` exposes
+    // `_loadSingleLayer`. The merge assertion thus compared the fixture to
+    // itself, on BOTH sides of the `toBe`.
+    // 🛑 `loadLayer` escaped the MDS detector while `loadProfile` fell into
+    // it: the name does exist in source, but as a LOCAL VARIABLE
+    // (`profile.ts`,
+    // `const loadLayer = _deps?.getLoader()?._loadSingleLayer`). The floor
+    // the guard documents — "the name appears somewhere" is not "the
+    // carrier carries it" — seen here on the twin of a flagged symbol, in
+    // the same assertion.
+    const LoaderProfile = { loadFromActiveProfile: vi.fn() };
+    const LoaderSingleLayer = { _loadSingleLayer: vi.fn() };
     const GeoJSONCore = class GeoJSONCore {};
     const captured = { loaderDeps: null };
     const setupProfileDeps = vi.fn((d) => {
@@ -117,7 +131,7 @@ import {
     getAllLayerConfigs,
     setAllLayerConfigs,
 } from "../../src/kernel/shared/layer-configs-state.js";
-// S1.3: trigger explicitly (ESM import — same module instance as globals.geojson.ts).
+// Trigger explicitly (ESM import — same module instance as globals.geojson.ts).
 
 const GL = globalThis.GeoLeaf;
 
@@ -160,8 +174,10 @@ describe("globals.geojson.ts — B5 registrations (full build)", () => {
 
     it("registers GeoLeaf._GeoJSONLoader with all loader sub-module properties merged", () => {
         expect(GL._GeoJSONLoader).toBeDefined();
-        expect(GL._GeoJSONLoader.loadProfile).toBe(mocks.LoaderProfile.loadProfile);
-        expect(GL._GeoJSONLoader.loadLayer).toBe(mocks.LoaderSingleLayer.loadLayer);
+        expect(GL._GeoJSONLoader.loadFromActiveProfile).toBe(
+            mocks.LoaderProfile.loadFromActiveProfile
+        );
+        expect(GL._GeoJSONLoader._loadSingleLayer).toBe(mocks.LoaderSingleLayer._loadSingleLayer);
     });
 
     it("registers GeoLeaf._GeoJSONLoader._resolveDataFilePath delegating to LayerConfigManager", () => {
@@ -253,10 +269,11 @@ describe("globals.geojson.ts — Phase 10-F _loaderDeps service locator", () => 
         delete GL._DataConverter;
     });
 
-    // API S4.3e — le seam ne passe plus par `_g.GeoLeaf._allLayerConfigs` mais par le store
-    // `kernel/shared/layer-configs-state`. L'état n'était pas une façade : rien de public ne
-    // l'exposait, aucun plugin ne le lisait, et il était HORS des trois oracles — donc
-    // renommable sans qu'aucune gate ne bronche. Ces deux tests suivent le seam, pas le canal.
+    // The seam no longer goes through `_g.GeoLeaf._allLayerConfigs` but
+    // through the `kernel/shared/layer-configs-state` store. The state was
+    // not a facade: nothing public exposed it, no plugin read it, and it was
+    // OUTSIDE the three oracles — hence renameable with no gate flinching.
+    // These two tests follow the seam, not the channel.
     it("getAllLayerConfigs lit le store partagé", () => {
         const configs = [{ id: "layer1" }];
         setAllLayerConfigs(configs);

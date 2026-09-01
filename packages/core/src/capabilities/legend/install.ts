@@ -50,7 +50,7 @@ export const LEGEND_INSTALLER: CapabilityInstaller = {
         gl._LegendControl = LegendControl;
         gl._LegendGenerator = LegendGenerator;
         // `_LegendRenderer` was write-only (never read via the global — legend-control.ts
-        // imports LegendRenderer statically) — removed, roadmap nettoyage Sprint 3 / PB-14.
+        // imports LegendRenderer statically) — removed.
         // …and from globals.api.ts (assignApiFacades, B11).
         gl.Legend = Legend;
     },

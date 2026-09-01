@@ -1,7 +1,7 @@
 /**
  * Unit tests — FAMILY guard: the `default` a capability ADVERTISES in its
  * `configSchema` must be the value its config READER hands the runtime when the
- * profile carries no `modules.<id>` block (roadmap_optimisation-capacites B.24).
+ * profile carries no `modules.<id>` block.
  *
  * Sibling of `config-schema-coverage.test.js`, which guards the same seam for
  * COVERAGE (a read key must be declared). This one guards VALUES:
@@ -36,36 +36,28 @@ vi.mock("../../src/kernel/config/config-primitives.js", () => ({
 const { CapabilityRegistry } = await import("../../src/kernel/api/capability-registry.ts");
 const { Introspection } = await import("../../src/api/geoleaf.introspection.ts");
 
-const { BRANDING_CAPABILITY } = await import(
-    "../../src/capabilities/branding/branding-capability.ts"
-);
+const { BRANDING_CAPABILITY } =
+    await import("../../src/capabilities/branding/branding-capability.ts");
 const { CLUSTER_CAPABILITY } = await import("../../src/capabilities/cluster/cluster-capability.ts");
-const { COORDINATES_CAPABILITY } = await import(
-    "../../src/capabilities/coordinates/coordinates-capability.ts"
-);
-const { FEATURE_INFO_CAPABILITY } = await import(
-    "../../src/capabilities/feature-info/feature-info-capability.ts"
-);
+const { COORDINATES_CAPABILITY } =
+    await import("../../src/capabilities/coordinates/coordinates-capability.ts");
+const { FEATURE_INFO_CAPABILITY } =
+    await import("../../src/capabilities/feature-info/feature-info-capability.ts");
 const { FILTER_CAPABILITY } = await import("../../src/capabilities/filter/filter-capability.ts");
-const { GEOLOCATION_CAPABILITY } = await import(
-    "../../src/capabilities/geolocation/geolocation-capability.ts"
-);
+const { GEOLOCATION_CAPABILITY } =
+    await import("../../src/capabilities/geolocation/geolocation-capability.ts");
 const { LABELS_CAPABILITY } = await import("../../src/capabilities/labels/labels-capability.ts");
 const { LEGEND_CAPABILITY } = await import("../../src/capabilities/legend/legend-capability.ts");
-const { PERMALINK_CAPABILITY } = await import(
-    "../../src/capabilities/permalink/permalink-capability.ts"
-);
+const { PERMALINK_CAPABILITY } =
+    await import("../../src/capabilities/permalink/permalink-capability.ts");
 const { ROUTE_CAPABILITY } = await import("../../src/capabilities/route/route-capability.ts");
 const { SCALE_CAPABILITY } = await import("../../src/capabilities/scale/scale-capability.ts");
-const { TAXONOMY_CAPABILITY } = await import(
-    "../../src/capabilities/taxonomy/taxonomy-capability.ts"
-);
-const { THEME_TOGGLE_CAPABILITY } = await import(
-    "../../src/capabilities/theme-toggle/theme-toggle-capability.ts"
-);
-const { TOAST_RENDERER_CAPABILITY } = await import(
-    "../../src/capabilities/toast-renderer/toast-renderer-capability.ts"
-);
+const { TAXONOMY_CAPABILITY } =
+    await import("../../src/capabilities/taxonomy/taxonomy-capability.ts");
+const { THEME_TOGGLE_CAPABILITY } =
+    await import("../../src/capabilities/theme-toggle/theme-toggle-capability.ts");
+const { TOAST_RENDERER_CAPABILITY } =
+    await import("../../src/capabilities/toast-renderer/toast-renderer-capability.ts");
 
 const { getBrandingConfig } = await import("../../src/capabilities/branding/config.ts");
 const { getClusterConfig } = await import("../../src/capabilities/cluster/config.ts");

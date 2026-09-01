@@ -1,48 +1,48 @@
 "use strict";
 /**
- * geojson-slim.cjs — allège un GeoJSON au moment du DÉPLOIEMENT, sans toucher à la source.
+ * geojson-slim.cjs — slims a GeoJSON at DEPLOY time, without touching the source.
  *
- * ## Ce que la mesure a dit, et que l'énoncé du sprint ne disait pas
+ * ## What the measurement said, and the task statement did not
  *
- * La tâche 4.1 de `roadmap_socle-init` demandait de « simplifier les géométries
- * (Douglas-Peucker) » des trois couches lourdes, en annonçant « −60 à −80 % ». Les deux
- * moitiés de cette phrase ont été prises en défaut par le pré-vol du 07/08/2026 :
+ * The deploy-time slimming asked to "simplify the geometries (Douglas-Peucker)" of the
+ * three heavy layers, announcing "−60 to −80 %". Both halves of that sentence were
+ * disproved by the 2026-08-07 preflight:
  *
- * **① Le levier dominant n'est PAS le nombre de sommets, c'est la PRÉCISION.** Les trois
- * fichiers portent jusqu'à **15 décimales** (moyenne 9,6 sur `aires_protegees_nationales_sib`),
- * soit l'échelle du nanomètre pour une carte web. Arrondir à 5 décimales — **≈1,1 m au sol**,
- * trois ordres de grandeur sous le pixel à n'importe quel zoom livré — retire **26,9 %** à lui
- * seul, sans supprimer un seul sommet.
+ * **① The dominant lever is NOT the vertex count, it is PRECISION.** The three files carry
+ * up to **15 decimals** (average 9.6 on `aires_protegees_nationales_sib`) — nanometre
+ * scale for a web map. Rounding to 5 decimals — **≈1.1 m on the ground**, three orders of
+ * magnitude below the pixel at any shipped zoom — removes **26.9 %** on its own, without
+ * dropping a single vertex.
  *
- * **② Le « −60 à −80 % » n'est atteignable à aucune tolérance raisonnable.** Mesuré sur ces
- * fichiers précis, arrondi compris : −29,1 % à 6 m, −30,0 % à 11 m, −38,7 % à 22 m, et
- * **−52,5 % seulement à 56 m** — une tolérance à laquelle les contours côtiers se voient
- * perdre du détail. Le chiffre annoncé était l'attente usuelle de l'algorithme sur des données
- * brutes, pas une mesure sur celles-ci.
+ * **② The "−60 to −80 %" is unreachable at any reasonable tolerance.** Measured on these
+ * exact files, rounding included: −29.1 % at 6 m, −30.0 % at 11 m, −38.7 % at 22 m, and
+ * **only −52.5 % at 56 m** — a tolerance at which coastal outlines visibly lose detail.
+ * The announced figure was the algorithm's usual expectation on raw data, not a
+ * measurement on this data.
  *
- * Le réglage retenu — **5 décimales + 11 m** — est le point où la courbe s'aplatit : passer à
- * 22 m rapporte 8 points de plus et commence à se voir.
+ * The chosen setting — **5 decimals + 11 m** — is where the curve flattens: going to 22 m
+ * buys 8 more points and starts to show.
  *
- * ## ⚠️ Ce que ce module ne fait PAS, et qu'il faut savoir avant d'élever la tolérance
+ * ## ⚠️ What this module does NOT do — to know before raising the tolerance
  *
- * La simplification est **par géométrie, sans topologie partagée**. Deux polygones adjacents
- * (deux aires protégées mitoyennes) sont simplifiés indépendamment, donc leur frontière
- * commune peut diverger et ouvrir une fente. À 11 m cette fente est sous le pixel à tous les
- * zooms livrés — c'est ce qui rend le réglage sûr, pas une propriété de l'algorithme. **Au-delà,
- * il faut un simplificateur TOPOLOGIQUE** (`mapshaper -simplify`), pas une tolérance plus haute
- * ici. Ne pas monter ce nombre sans changer d'outil.
+ * The simplification is **per geometry, with no shared topology**. Two adjacent polygons
+ * (two abutting protected areas) are simplified independently, so their common border can
+ * diverge and open a sliver. At 11 m that sliver is below the pixel at every shipped zoom
+ * — that is what makes the setting safe, not a property of the algorithm. **Beyond that, a
+ * TOPOLOGICAL simplifier is needed** (`mapshaper -simplify`), not a higher tolerance here.
+ * Do not raise this number without changing tools.
  *
  * @module scripts/lib/geojson-slim
  */
 
 /**
- * Distance perpendiculaire d'un point au segment [a, b], en degrés.
+ * Perpendicular distance of a point to segment [a, b], in degrees.
  *
- * ⚠️ Le calcul est PLANAIRE, sur des degrés bruts. C'est légitime ici et seulement ici :
- * la tolérance sert de seuil de rejet, pas de mesure métrique publiée, et l'erreur d'un
- * planaire en longitude (cos φ) ne fait que rendre le filtre plus CONSERVATEUR loin de
- * l'équateur — il retire moins, jamais plus. Un jour où ce module servirait à mesurer, et
- * non à filtrer, ce raccourci ne tiendrait plus.
+ * ⚠️ The computation is PLANAR, on raw degrees. That is legitimate here and only here:
+ * the tolerance serves as a rejection threshold, not a published metric measurement, and
+ * a planar's longitude error (cos φ) only makes the filter more CONSERVATIVE away from
+ * the equator — it removes less, never more. The day this module served to measure rather
+ * than filter, this shortcut would no longer hold.
  *
  * @param {number[]} p
  * @param {number[]} a
@@ -58,16 +58,16 @@ function perpendicularDistance(p, a, b) {
 }
 
 /**
- * Ramer–Douglas–Peucker, **itératif**.
+ * Ramer–Douglas–Peucker, **iterative**.
  *
- * ⚠️ La forme récursive naturelle empile un cadre par sommet retenu dans le pire cas. Une
- * couche de ce dépôt porte 46 941 sommets et une seule `LineString` peut en concentrer
- * plusieurs milliers : la version récursive dépasse la pile sur les données réelles, pas sur
- * un cas limite théorique. La pile explicite ci-dessous n'est pas une préférence de style.
+ * ⚠️ The natural recursive form stacks one frame per kept vertex in the worst case. One
+ * layer in this repo carries 46,941 vertices and a single `LineString` can concentrate
+ * several thousand: the recursive version blows the stack on real data, not on a
+ * theoretical edge case. The explicit stack below is not a style preference.
  *
  * @param {number[][]} points
- * @param {number} epsilon Tolérance en degrés.
- * @returns {number[][]} Sous-ensemble des points d'entrée, extrémités toujours conservées.
+ * @param {number} epsilon Tolerance in degrees.
+ * @returns {number[][]} Subset of the input points, endpoints always kept.
  */
 function simplifyPath(points, epsilon) {
     if (points.length < 3) return points;
@@ -97,11 +97,11 @@ function simplifyPath(points, epsilon) {
 }
 
 /**
- * Arrondit toutes les coordonnées d'une géométrie imbriquée.
+ * Rounds every coordinate of a nested geometry.
  *
- * `Number(v.toFixed(d))` plutôt qu'un `Math.round(v * 10**d) / 10**d` : le second garde des
- * traînées binaires (`-53.60000000000001`) qui repartent en JSON à leur longueur d'origine,
- * donc ne font économiser aucun octet — ce qui est tout l'objet de l'opération.
+ * `Number(v.toFixed(d))` rather than `Math.round(v * 10**d) / 10**d`: the latter keeps
+ * binary tails (`-53.60000000000001`) that go back into JSON at their original length,
+ * saving zero bytes — which is the whole point of the operation.
  *
  * @param {unknown} coords
  * @param {number} decimals
@@ -116,21 +116,21 @@ function roundCoords(coords, decimals) {
 }
 
 /**
- * Simplifie une géométrie imbriquée, en respectant les invariants de chaque type.
+ * Simplifies a nested geometry, honouring each type's invariants.
  *
- * 🛑 DEUX INVARIANTS QU'UN RDP NU CASSE, ET QUI NE SE VOIENT PAS À L'ŒIL DANS LE JSON :
+ * 🛑 TWO INVARIANTS A BARE RDP BREAKS, INVISIBLE TO THE EYE IN THE JSON:
  *
- *   • **Un anneau doit rester FERMÉ** — premier sommet identique au dernier. RDP conserve
- *     toujours les extrémités, donc la fermeture survit ; c'est vrai par construction et non
- *     par précaution, mais ça cesserait de l'être si on changeait d'algorithme.
- *   • **Un anneau a besoin d'au moins 4 positions** (3 distinctes + la fermeture). En dessous,
- *     le polygone est dégénéré : MapLibre ne le dessine pas et ne dit rien. On garde alors
- *     l'anneau d'ORIGINE plutôt que d'émettre une géométrie invalide — perdre l'économie sur
- *     une poignée d'anneaux minuscules coûte moins qu'une forme qui disparaît en silence.
+ *   • **A ring must stay CLOSED** — first vertex identical to the last. RDP always keeps
+ *     the endpoints, so closure survives; that is true by construction, not by caution,
+ *     and it would stop being true under a different algorithm.
+ *   • **A ring needs at least 4 positions** (3 distinct + the closure). Below that, the
+ *     polygon is degenerate: MapLibre does not draw it and says nothing. We then keep the
+ *     ORIGINAL ring rather than emit invalid geometry — losing the savings on a handful
+ *     of tiny rings costs less than a shape vanishing in silence.
  *
  * @param {unknown} coords
  * @param {number} epsilon
- * @param {boolean} isRing True dès qu'on descend dans un (Multi)Polygon.
+ * @param {boolean} isRing True as soon as we descend into a (Multi)Polygon.
  * @returns {unknown}
  */
 function simplifyCoords(coords, epsilon, isRing) {
@@ -144,23 +144,23 @@ function simplifyCoords(coords, epsilon, isRing) {
 }
 
 /**
- * Allège un document GeoJSON : simplification puis arrondi, dans cet ordre.
+ * Slims a GeoJSON document: simplification then rounding, in that order.
  *
- * ⚠️ **L'ordre n'est pas indifférent.** Arrondir d'abord crée des sommets colinéaires exacts
- * que RDP retire ensuite — le résultat serait le même en taille, mais la tolérance ne
- * porterait plus sur la géométrie SOURCE, donc le seuil de 11 m ne voudrait plus dire 11 m.
- * On simplifie sur la donnée d'origine, puis on arrondit ce qui reste.
+ * ⚠️ **The order is not indifferent.** Rounding first creates exactly collinear vertices
+ * that RDP then removes — the result would be the same in size, but the tolerance would
+ * no longer apply to the SOURCE geometry, so the 11 m threshold would no longer mean
+ * 11 m. We simplify on the original data, then round what remains.
  *
- * Les entités sans géométrie (`null`, `GeometryCollection` vide) traversent intactes : un
- * GeoJSON valide peut en porter, et les écarter changerait le décompte d'entités.
+ * Features without geometry (`null`, empty `GeometryCollection`) pass through intact: a
+ * valid GeoJSON may carry them, and dropping them would change the feature count.
  *
- * @param {Buffer|string} input Le document source.
+ * @param {Buffer|string} input The source document.
  * @param {object} opts
- * @param {number} opts.decimals Décimales conservées (5 ≈ 1,1 m).
- * @param {number} opts.toleranceDeg Tolérance RDP en degrés (0 pour n'arrondir que).
+ * @param {number} opts.decimals Decimals kept (5 ≈ 1.1 m).
+ * @param {number} opts.toleranceDeg RDP tolerance in degrees (0 to only round).
  * @returns {{ json: string, verticesBefore: number, verticesAfter: number }}
- * @throws {SyntaxError} Si l'entrée n'est pas du JSON — remonté tel quel, un fichier de
- *   données illisible doit faire échouer le build, pas être copié en silence.
+ * @throws {SyntaxError} If the input is not JSON — rethrown as-is: an unreadable data file
+ *   must fail the build, not get copied in silence.
  */
 function slimGeoJSON(input, { decimals, toleranceDeg }) {
     const doc = JSON.parse(typeof input === "string" ? input : input.toString("utf-8"));
@@ -192,9 +192,9 @@ function slimGeoJSON(input, { decimals, toleranceDeg }) {
     for (const geom of geometries) {
         verticesBefore += count(geom.coordinates);
         const isRing = /Polygon$/.test(String(geom.type));
-        // Un (Multi)Point n'a pas de chemin à simplifier — RDP y serait sans objet, et
-        // `simplifyCoords` le laisserait passer, mais l'écarter ici évite un parcours inutile
-        // sur les couches de POI, qui sont les plus nombreuses en features.
+        // A (Multi)Point has no path to simplify — RDP would be pointless there, and
+        // `simplifyCoords` would let it through, but skipping it here avoids a useless
+        // walk over the POI layers, which have the most features.
         if (toleranceDeg > 0 && !/Point$/.test(String(geom.type))) {
             geom.coordinates = simplifyCoords(geom.coordinates, toleranceDeg, isRing);
         }

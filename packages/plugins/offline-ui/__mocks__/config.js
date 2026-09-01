@@ -1,5 +1,5 @@
 /**
- * Mock Config for plugin-storage tests (Sprint 4)
+ * Mock Config for plugin-storage tests
  */
 const Config = {
     get(key, defaultValue) {

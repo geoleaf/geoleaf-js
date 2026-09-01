@@ -119,15 +119,15 @@ describe("app/app-namespace (R5)", () => {
                 expect.stringContaining("Storage plugin is not loaded")
             );
         });
-        // ⚠️ LE TEST DE LA GARDE `enableServiceWorker` EST RETIRÉ (tâche 3.13), et pas
-        // relâché : la garde elle-même l'est. Elle ne s'est jamais déclenchée en production —
-        // `grep -rl enableServiceWorker profiles/` rend 0, aucun profil ne pose la clé — et
-        // son message était faux deux fois : il citait un `sw.js` disparu et promettait un
-        // « background sync » que le worker n'a jamais eu. Un test qui n'atteint son sujet
-        // qu'en fabriquant une config qu'aucun profil n'écrit ne garde pas un comportement,
-        // il garde une branche.
+        // ⚠️ THE `enableServiceWorker` GUARD TEST IS REMOVED, not loosened: the
+        // guard itself is. It never fired in production —
+        // `grep -rl enableServiceWorker profiles/` returns 0, no profile sets
+        // the key — and its message was wrong twice: it cited a vanished
+        // `sw.js` and promised a "background sync" the worker never had. A
+        // test that only reaches its subject by crafting a config no profile
+        // writes does not guard a behaviour, it guards a branch.
         //
-        // Ce qui reste gardé au-dessus est la vraie garde : `modules.storage` sans le plugin.
+        // What stays guarded above is the real guard: `modules.storage` without the plugin.
         it("un `modules.storage` sans clé connue ne fait plus qu'UN seul avertissement", () => {
             _app.checkPlugins({ modules: { storage: { enableServiceWorker: true } } });
             expect(warnSpy).toHaveBeenCalledTimes(1);
@@ -143,7 +143,7 @@ describe("app/app-namespace (R5)", () => {
     });
 
     // ── showNotification ───────────────────────────────────────────────────
-    // S1.4: showNotification now delegates to notifyPrimitive.notify() and always
+    // showNotification now delegates to notifyPrimitive.notify() and always
     // returns true. The guard-chain (UI.Notifications → _UINotifications → Log.debug)
     // has been replaced by the buffering primitive.
     describe("showNotification", () => {
@@ -160,9 +160,8 @@ describe("app/app-namespace (R5)", () => {
             spy.mockRestore();
         });
         it("délègue au renderer si enregistré", async () => {
-            const { createNotifyPrimitive } = await import(
-                "../../src/utils/notify/notify.primitive.js"
-            );
+            const { createNotifyPrimitive } =
+                await import("../../src/utils/notify/notify.primitive.js");
             const p = createNotifyPrimitive();
             const renderer = vi.fn();
             p.registerRenderer(renderer);
@@ -171,10 +170,10 @@ describe("app/app-namespace (R5)", () => {
         });
     });
 
-    // ── _ensureModule (supprimé en S5) ─────────────────────────────────────
-    // Le helper avait 0 appelant de production, et les chunks que ces tests lui passaient
-    // ("poi", "route") n'existaient déjà plus. Garde anti-résurrection : il ne doit pas
-    // revenir par mégarde avec un `GeoLeaf._loadModule` reconstruit à côté.
+    // ── _ensureModule (removed) ────────────────────────────────────────────
+    // The helper had 0 production callers, and the chunks these tests fed it
+    // ("poi", "route") no longer existed. Anti-resurrection guard: it must
+    // not come back inadvertently with a rebuilt `GeoLeaf._loadModule` beside it.
     it("n'expose plus _app._ensureModule (machinerie lazy purgée en S5)", () => {
         expect(_app._ensureModule).toBeUndefined();
     });

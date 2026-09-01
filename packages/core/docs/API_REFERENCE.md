@@ -777,11 +777,11 @@ Action buttons (field renderer `type: "action"` in `popup.fields[]`, rendered by
 Since 14/08/2026 the payload is **no longer JSON-only**: alongside the data fields it carries `button` (the clicked node), `setBusy(busy)` and `close()`. `JSON.stringify(e.detail)` therefore throws — copy the fields you need. And `properties` is **empty unless the button declares `payloadFields`**; both points are detailed in `EVENTS_API.md`.
 
 ```ts
-// Example — open an Odoo form when a popup action button is clicked
+// Example — open a host form when a popup action button is clicked
 GeoLeaf.Events.on("geoleaf:popup:action", async (e) => {
     const { actionId, layerId, featureId, properties } = e.detail;
-    if (actionId !== "odoo:open-form") return;
-    await fetch("/odoo/poi/open", {
+    if (actionId !== "host:open-form") return;
+    await fetch("/api/poi/open", {
         method: "POST",
         headers: GeoLeaf.Security.CSRFToken.addTokenToHeaders({
             "Content-Type": "application/json",

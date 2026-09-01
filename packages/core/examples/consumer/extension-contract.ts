@@ -167,25 +167,28 @@ import type { PluginRegisterOptions } from "@geoleaf/host-runtime";
 type AssertAssignable<T extends U, U> = T;
 
 /*
- * ⚠️ `GeoLeafGlobal` → `GeoLeafHost` n'est PAS asserté ici, et c'est une limite mesurée,
- * pas un oubli.
+ * ⚠️ `GeoLeafGlobal` → `GeoLeafHost` is NOT asserted here, and that is a
+ * measured limit, not an oversight.
  *
- * `GeoLeafGlobal` est une déclaration AMBIANTE (`declare global` dans
- * `packages/core/src/global.d.ts`). Un type ambiant n'existe que si son fichier est dans le
- * programme, et aucun sous-chemin publié n'y mène : `types` pointe
- * `dist/types/bundle-esm-entry.d.ts`, qui ne le référence pas, et `"./dist/*"` — qui l'aurait
- * rendu atteignable — a été retiré du `exports` au S2.4b parce que c'était une fuite d'API.
- * Écrit tel quel, `typeof globalThis.GeoLeaf` compile en `any` implicite (TS7017) : une
- * assertion qui ne vérifie rien tout en ayant l'air de vérifier.
+ * `GeoLeafGlobal` is an AMBIENT declaration (`declare global` in
+ * `packages/core/src/global.d.ts`). An ambient type only exists if its file is
+ * in the program, and no published subpath leads there: `types` points at
+ * `dist/types/bundle-esm-entry.d.ts`, which does not reference it, and
+ * `"./dist/*"` — which would have made it reachable — was removed from
+ * `exports` because it was an API leak. Written as-is,
+ * `typeof globalThis.GeoLeaf` compiles to an implicit `any` (TS7017): an
+ * assertion that verifies nothing while looking like it verifies.
  *
- * Le geste qui l'ouvrirait — publier un sous-chemin `./global` vers `dist/types/global.d.ts` —
- * n'est délibérément pas fait ici : il engagerait publiquement une forme que S4.2 prévoit de
- * refondre (promotion des membres, puis retrait de la traîne `[key: string]: unknown`, qui
- * est breaking). Publier maintenant reviendrait à geler ce qu'on s'apprête à casser.
+ * The gesture that would open it — publishing a `./global` subpath toward
+ * `dist/types/global.d.ts` — is deliberately not made here: it would publicly
+ * commit a shape the API review plans to rework (member promotion, then removal
+ * of the `[key: string]: unknown` trailer, which is breaking). Publishing now
+ * would amount to freezing what is about to be broken.
  *
- * En attendant, la comparaison des deux contrats est tenue par les NOMS
- * (`scripts/verify-host-contract-sync.cjs`, HOST-01/02/03), pas par les formes. Le trou est
- * réel et nommé : deux membres homonymes aux formes divergentes passent les deux gates.
+ * Meanwhile, the two contracts' comparison is held by NAMES
+ * (`scripts/verify-host-contract-sync.cjs`, HOST-01/02/03), not by shapes. The
+ * hole is real and named: two homonym members with divergent shapes pass both
+ * gates.
  */
 
 /**

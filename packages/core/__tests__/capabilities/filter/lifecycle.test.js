@@ -137,7 +137,7 @@ describe("FilterLifecycle — reset", () => {
         expect(document.getElementById("gl-filter-panel")).toBeNull();
     });
 
-    // CAPACITÉS S3.3 — `initProximityFilter` attaches two DOCUMENT-level listeners whose
+    // `initProximityFilter` attaches two DOCUMENT-level listeners whose
     // cleanups live in `ProximityState.eventCleanups`, and `FilterPanelProximity.destroy()`
     // is the only code that releases them. `_reset()` used to purge the panel and toggle
     // listeners only, so the proximity listeners, circle and draggable marker survived

@@ -76,10 +76,11 @@ describe("shared/storage-contract", () => {
         });
     });
 
-    // ⚠️ LE BLOC `downloadProfileForOffline` A ÉTÉ RETIRÉ (tâche 3.13) : la délégation
-    // n'existe plus, parce que la méthode qu'elle déléguait était morte — zéro appelant dans
-    // tout le dépôt. Le comportement qui comptait, le pré-contrôle de quota, a été DÉPLACÉ
-    // dans `CacheManager.cacheProfile()` avant la suppression, et ses tests avec lui
+    // ⚠️ THE `downloadProfileForOffline` BLOCK WAS REMOVED: the delegation
+    // no longer exists, because the method it delegated was dead — zero
+    // callers in the whole repo. The behaviour that mattered, the quota
+    // pre-check, was MOVED into `CacheManager.cacheProfile()` before the
+    // deletion, and its tests with it
     // (`__tests__/capabilities/offline/cache-manager-orchestration.test.js`).
 
     describe("whenReady / _markReady / _resetReady (B5)", () => {

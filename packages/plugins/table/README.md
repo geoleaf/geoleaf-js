@@ -77,19 +77,20 @@ You can also drive the table programmatically:
 
 ## Configuration (`modules.table.*`)
 
-| Key                  | Type      | Default | Description                                                      |
-| -------------------- | --------- | ------- | ---------------------------------------------------------------- |
-| `enabled`            | `boolean` | `true`  | Mounts the module on `geoleaf:map:ready` when `true`.            |
-| `showButton`         | `boolean` | `true`  | Shows the desktop tab + mobile icon (read by the core registry). |
-| `defaultVisible`     | `boolean` | `false` | Opens the panel at boot.                                         |
-| `pageSize`           | `number`  | `50`    | Page size. Currently inert at runtime.                           |
-| `maxRowsPerLayer`    | `number`  | `1000`  | Caps the number of rendered rows.                                |
-| `enableExportButton` | `boolean` | `true`  | Shows the export buttons.                                        |
-| `virtualScrolling`   | `boolean` | `true`  | Renders only visible rows. Does not paginate by `pageSize`.      |
-| `defaultHeight`      | `string`  | `"40%"` | Initial bottom-sheet height.                                     |
-| `minHeight`          | `string`  | `"20%"` | Minimum height (resize).                                         |
-| `maxHeight`          | `string`  | `"60%"` | Maximum height (resize).                                         |
-| `resizable`          | `boolean` | `true`  | Allows resizing via the drag handle.                             |
+| Key                  | Type       | Default                                     | Description                                                      |
+| -------------------- | ---------- | ------------------------------------------- | ---------------------------------------------------------------- |
+| `enabled`            | `boolean`  | `true`                                      | Mounts the module on `geoleaf:map:ready` when `true`.            |
+| `showButton`         | `boolean`  | `true`                                      | Shows the desktop tab + mobile icon (read by the core registry). |
+| `defaultVisible`     | `boolean`  | `false`                                     | Opens the panel at boot.                                         |
+| `pageSize`           | `number`   | `50`                                        | Page size. Currently inert at runtime.                           |
+| `maxRowsPerLayer`    | `number`   | `1000`                                      | Caps the number of rendered rows.                                |
+| `enableExportButton` | `boolean`  | `true`                                      | Shows the export buttons.                                        |
+| `exportFormats`      | `string[]` | `["geojson", "csv", "kml", "gpx", "excel"]` | Export buttons offered, in this order (`panel.ts`).              |
+| `virtualScrolling`   | `boolean`  | `true`                                      | Renders only visible rows. Does not paginate by `pageSize`.      |
+| `defaultHeight`      | `string`   | `"40%"`                                     | Initial bottom-sheet height.                                     |
+| `minHeight`          | `string`   | `"20%"`                                     | Minimum height (resize).                                         |
+| `maxHeight`          | `string`   | `"60%"`                                     | Maximum height (resize).                                         |
+| `resizable`          | `boolean`  | `true`                                      | Allows resizing via the drag handle.                             |
 
 **Per-layer** (`layer.config.table`, stays on the layer): `enabled`, `title`, `columns` (`field`, `label`, `width`, `sortable`, `type`), `defaultSort` (`field`, `direction`).
 

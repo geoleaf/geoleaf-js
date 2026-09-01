@@ -10,9 +10,11 @@
  * {@link SyncHandlerContract} registry seam.
  *
  * Data plugins that own an offline sync flow register their handler here at their own
- * `entry.ts` (e.g. addpoi: `GeoLeaf.Sync.registerHandler("poi", POISyncHandler)`); the
- * offline engine reads them back (`getHandler`/`getHandlers`) at replay time. This
- * inverts the former build-time coupling engine→addpoi so the engine can live in-core
+ * `entry.ts` (e.g. editor: `GeoLeaf.Sync.registerHandler("poi", EditorSyncHandler)`); the
+ * offline engine reads them back (`getHandler`, one id at a time) at replay time. This
+ * inverts the former build-time coupling engine→`addpoi` (historical: that plugin merged
+ * into `editor` at the S5 — the name is kept because the coupling really was with it) so
+ * the engine can live in-core
  * (B3) without breaching `no-plugin-in-core`.
  *
  * Self-mounts on `globalThis.GeoLeaf.Sync` at import so a plugin can register at its own
@@ -32,10 +34,12 @@ export const Sync = {
     getHandler(id: string): SyncHandler | undefined {
         return SyncHandlerContract.getHandler(id);
     },
-    /** @returns every registered handler (registration order). */
-    getHandlers(): SyncHandler[] {
-        return SyncHandlerContract.getHandlers();
-    },
+    // BREAKING (3.1.0, 25/08/2026, pre-adoption window of VERSIONING_POLICY.md): the
+    // plural accessor `getHandlers()` was removed from this façade and from the seam. It was
+    // introspection-only — the replay path resolves handlers one at a time via `getHandler` —
+    // its ten call sites all lived under __tests__/ with the member as their own oracle, the
+    // one measured consumer manifest never named it, and keeping it pinned a registration-
+    // order promise nothing needed. Registration and by-id lookup are the whole contract.
 };
 
 // Self-mount at import (present at boot, before any plugin evaluates). No cast: `Sync` is

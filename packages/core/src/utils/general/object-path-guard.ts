@@ -9,11 +9,11 @@
  * @description Canonical prototype-pollution blocklist for dynamic-key writes.
  *
  * @security This is the SINGLE SOURCE for "which keys must never be a write target".
- * Until Sprint 13 the same three-key list lived in four divergent copies — the config
+ * The same three-key list long lived in four divergent copies — the config
  * store, `object-utils`, `general-utils` and the MapLibre style converter — as an
  * Array, a second Array declared *inside* a recursive function body, a third Array,
  * and a Set. Three of the four blocked silently. Divergence is the one thing a
- * blocklist cannot afford: the Sprint 5 hole was a single sink an earlier sweep had
+ * blocklist cannot afford: a measured hole was a single sink an earlier sweep had
  * simply not reached, and a fifth copy is how that happens again.
  *
  * Deliberately DEPENDENCY-FREE, and that is not incidental. Having zero imports is
@@ -70,7 +70,7 @@ export function isUnsafeKey(key: string): boolean {
  * @returns `true` when the whole write must be refused.
  *
  * @remarks
- * The "last one included" is the whole point and was the Sprint 5 bug: a
+ * The "last one included" is the whole point and was the measured bug: a
  * single-segment path (`"__proto__"`) skips the descent loop entirely and lands
  * straight on the final assignment, so a guard that only covers the loop leaves the
  * shortest possible attack open. Callers must refuse the entire write rather than

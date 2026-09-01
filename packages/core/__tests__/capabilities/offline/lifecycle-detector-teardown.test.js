@@ -2,18 +2,18 @@
  * Unit tests — the offline teardown must release the connectivity listeners (CAPACITÉS B.21).
  *
  * `OfflineDetector.init` attaches two `window` listeners (`online` / `offline`,
- * `offline-detector.ts:230-248`). `OfflineLifecycle._reset()` — the capability's
- * `sharedTeardown` (`install.ts:83`) — only re-armed the storage-ready deferred and
+ * `offline-detector.ts`). `OfflineLifecycle._reset()` — the capability's
+ * `sharedTeardown` (`install.ts`) — only re-armed the storage-ready deferred and
  * left them attached, delegating them IN A COMMENT to `Storage.close()`.
  *
  * ⚠️ This is NOT a cumulative leak, and nothing here pretends it is: `init()` tears the
- * previous instance down before re-attaching (`offline-detector.ts:145-148`), so a
+ * previous instance down before re-attaching (`offline-detector.ts`), so a
  * re-boot does not stack listeners. The defect is the other direction — a teardown
  * WITHOUT a re-init never releases them, because `Storage.close()`, the delegate named
  * in that comment, has ZERO production callers in `core/src`:
  *
  *     $ grep -rn "Storage.close" packages/core/src
- *     packages/core/src/capabilities/offline/lifecycle.ts:125:  … owned by `Storage.close()` …
+ *     packages/core/src/capabilities/offline/lifecycle.ts:  … owned by `Storage.close()` …
  *
  * i.e. the only hit is the comment doing the delegating. After a teardown the badge
  * therefore kept reacting to connectivity changes on a torn-down capability.

@@ -30,11 +30,12 @@ export default defineConfig({
         // Glob, NOT a single-file literal: `bundle.test.js` was the only bundle test for a
         // long time, and the literal that named it would have silently ignored every new
         // sibling. Any `__tests__/bundle-*.test.js` is picked up from now on.
-        // ⚠️ `.ts` ajouté le 07/08/2026, et ce n'est pas cosmétique : `check-js-test-debt`
-        // (JTD-01) refuse toute suite `.js` NEUVE, donc tout test de bundle écrit désormais
-        // est en TypeScript. Un motif limité à `.js` les aurait rendus invisibles ICI — donc
-        // collectés par aucune config, et verts pour n'avoir rien exécuté. Le motif jumeau
-        // vit dans l'`exclude` de `vitest.config.ts` : les deux se lisent ensemble.
+        // ⚠️ `.ts` added on 2026-08-07, and it is not cosmetic:
+        // `check-js-test-debt` (JTD-01) refuses any NEW `.js` suite, so every
+        // bundle test written from now on is TypeScript. A `.js`-only pattern
+        // would have made them invisible HERE — hence collected by no config,
+        // and green for having run nothing. The twin pattern lives in
+        // `vitest.config.ts`'s `exclude`: the two read together.
         include: [
             "__tests__/bundle.test.js",
             "__tests__/bundle-*.test.js",

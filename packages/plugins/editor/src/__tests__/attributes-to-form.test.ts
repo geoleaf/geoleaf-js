@@ -1,21 +1,22 @@
 /**
- * La projection de CAPTURE — tâche 7.2 de `roadmap_collecte-terrain-offline`.
+ * The CAPTURE projection — the form schema derived from the attributes.
  *
- * Ce que cette suite prouve, et que rien d'autre ne prouve :
+ * What this suite proves, and nothing else proves:
  *
- *  1. Qu'un champ sans `edit` n'est PAS capturé — c'est le sens de la projection, et ce
- *     qui remplace l'appartenance à `formSchema`.
- *  2. Que `edit.widget` surcharge le widget de lecture, sans quoi `sites_rosario.statut`
- *     serait saisi avec le composant `badge`, qui émet `{label, color}` dans une colonne
- *     scalaire que `write.properties` expédie à plat.
- *  3. Que le sac d'options est APLATI là où les composants le lisent. ⚠️ Cette moitié-là
- *     n'est pas affirmée, elle est CONFRONTÉE : les clés attendues sont dérivées de la
- *     source de `field-renderer`, pas recopiées ici. Une clé nichée au lieu d'être à
- *     plat produirait un composant silencieusement dégradé — `list` sans `maxItems`,
- *     `image` sans `uploadEndpoint` —, exactement le mode d'échec qu'aucun test
- *     d'apparence ne voit.
- *  4. Que le préfixe `properties.` tombe, ce qui garde `#gl-field-title` adressable et
- *     aligne les clés du `values` map sur `write.properties`.
+ *  1. That a field without `edit` is NOT captured — the meaning of the
+ *     projection, and what replaces `formSchema` membership.
+ *  2. That `edit.widget` overrides the read widget, without which
+ *     `sites_rosario.statut` would be captured with the `badge` component,
+ *     which emits `{label, color}` into a scalar column `write.properties`
+ *     ships flat.
+ *  3. That the options bag is FLATTENED where the components read it. ⚠️ That
+ *     half is not asserted, it is CONFRONTED: the expected keys are derived
+ *     from `field-renderer`'s source, not copied here. A key nested instead of
+ *     flat would produce a silently degraded component — `list` without
+ *     `maxItems`, `image` without `uploadEndpoint` —, exactly the failure mode
+ *     no appearance test sees.
+ *  4. That the `properties.` prefix drops, which keeps `#gl-field-title`
+ *     addressable and aligns the `values` map keys with `write.properties`.
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
@@ -27,7 +28,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // __tests__ → src → editor → plugins → packages → <racine>
 const REPO = resolve(__dirname, "../../../../..");
 
-/** Un champ attributaire complet, en lecture seule par défaut. */
+/** A complete attribute field, read-only by default. */
 const field = (extra: Record<string, unknown> = {}) => ({
     field: "properties.x",
     label: "X",
@@ -95,18 +96,18 @@ describe("attributesToFormSchema — l'adressage", () => {
         const out = attributesToFormSchema({
             fields: [field({ field: "properties.title", edit: {} })],
         });
-        // C'est ce qui garde `#gl-field-title` et aligne `write.properties`.
+        // This is what keeps `#gl-field-title` and aligns `write.properties`.
         expect(out[0]?.id).toBe("title");
     });
 
     it("un champ sans préfixe traverse inchangé (_reference)", () => {
-        // ⚠️ L'adressage n'est pas uniforme entre profils. Une seule règle couvre les
-        // deux : sans préfixe, le retrait est un no-op.
+        // ⚠️ Addressing is not uniform across profiles. One rule covers both:
+        // without a prefix, the removal is a no-op.
         const out = attributesToFormSchema({ fields: [field({ field: "name", edit: {} })] });
         expect(out[0]?.id).toBe("name");
     });
 
-    it("seul le préfixe de TÊTE tombe — l'imbriqué reste entier (B-132)", () => {
+    it("seul le préfixe de TÊTE tombe — l'imbriqué reste entier", () => {
         const out = attributesToFormSchema({
             fields: [field({ field: "properties.a.b", edit: {} })],
         });
@@ -142,9 +143,9 @@ describe("attributesToFormSchema — les deux projections", () => {
             ],
         });
         expect(out[0]?.type).toBe("dropdown");
-        // 🛑 `edit.options` REMPLACE le sac de lecture, il ne fusionne pas : les deux
-        // sont typés par des widgets différents, donc `placeholder` de `badge` n'a
-        // rien à faire dans la config d'un `dropdown`.
+        // 🛑 `edit.options` REPLACES the read bag, it does not merge: the two
+        // are typed by different widgets, so `badge`'s `placeholder` has no
+        // business in a `dropdown`'s config.
         expect(out[0]?.options).toEqual([{ value: "Ouvert", label: "Ouvert" }]);
         expect(out[0]).not.toHaveProperty("placeholder");
     });
@@ -162,8 +163,8 @@ describe("attributesToFormSchema — les deux projections", () => {
                 field({
                     field: "properties.a",
                     label: "Vrai label",
-                    // Un sac hostile : ces clés ne sont pas des options légales, mais
-                    // rien dans le type ne les empêche d'arriver ici.
+                    // A hostile bag: these keys are not legal options, but
+                    // nothing in the type stops them from arriving here.
                     options: { id: "usurpé", type: "usurpé", label: "usurpé" },
                     edit: {},
                 }),
@@ -174,15 +175,16 @@ describe("attributesToFormSchema — les deux projections", () => {
 });
 
 /**
- * La confrontation : le sac est-il aplati LÀ OÙ les composants le lisent ?
+ * The confrontation: is the bag flattened WHERE the components read it?
  *
- * ⚠️ Les clés attendues sont DÉRIVÉES de la source de `field-renderer`, jamais recopiées
- * — sans quoi cette suite affirmerait ce qu'elle est censée vérifier. `attributes` niche
- * les options sous `options`, `field-renderer` les attend à plat sur `fieldConfig` : la
- * traduction est dans l'adaptateur, et c'est ici qu'elle est opposable.
+ * ⚠️ The expected keys are DERIVED from `field-renderer`'s source, never copied
+ * — otherwise this suite would assert what it is supposed to verify.
+ * `attributes` nests the options under `options`, `field-renderer` expects
+ * them flat on `fieldConfig`: the translation lives in the adapter, and here
+ * is where it is enforceable.
  */
 describe("attributesToFormSchema — le sac d'options atteint son composant", () => {
-    /** Les clés qu'un composant lit sur son `fieldConfig`, lues dans sa source. */
+    /** The keys a component reads on its `fieldConfig`, read from its source. */
     function keysReadBy(widget: string): string[] {
         const src = readFileSync(
             resolve(REPO, `packages/libs/field-renderer/src/types/${widget}.ts`),
@@ -191,11 +193,11 @@ describe("attributesToFormSchema — le sac d'options atteint son composant", ()
         return [...new Set([...src.matchAll(/fieldConfig\.([a-zA-Z]+)/g)].map((m) => m[1]))];
     }
 
-    /** Les clés du contrat de champ, qui ne sont pas des options. */
+    /** The field contract's keys, which are not options. */
     const CONTRACT_KEYS = ["id", "type", "label", "required", "computed"];
 
-    // Les widgets réellement portés par les deux profils migrés, chacun avec un sac
-    // d'options que son composant consomme.
+    // The widgets actually carried by the two migrated profiles, each with an
+    // options bag its component consumes.
     const CASES: Array<[string, Record<string, unknown>]> = [
         ["dropdown", { options: [{ value: "a", label: "A" }], emptyLabel: "—" }],
         ["longtext", { rows: 6, maxLength: 400 }],
@@ -225,12 +227,13 @@ describe("attributesToFormSchema — le sac d'options atteint son composant", ()
         const read = keysReadBy(widget);
 
         for (const key of Object.keys(bag)) {
-            // À plat sur le descripteur, et non sous `options` — sauf `options` lui-même,
-            // qui EST une clé de premier niveau pour `dropdown` et `tags`.
+            // Flat on the descriptor, not under `options` — except `options`
+            // itself, which IS a top-level key for `dropdown` and `tags`.
             expect(produced, `${widget}.${key} absent du descripteur`).toHaveProperty(key);
             expect(produced[key]).toEqual(bag[key]);
-            // Et le composant la lit vraiment : une option qu'aucun composant ne consulte
-            // serait un contrat mort, du genre de ceux que 7.1b a retirés par 24.
+            // And the component really reads it: an option no component ever
+            // consults would be a dead contract, of the kind an earlier sweep
+            // removed two dozen of.
             expect(read, `${widget} ne lit jamais fieldConfig.${key}`).toContain(key);
         }
     });

@@ -1,4 +1,4 @@
-﻿/*!
+/*!
  * @geoleaf/core
  * © 2026 Mattieu Pottier
  * Released under the MIT License
@@ -24,6 +24,13 @@ import { emitDesktopTabsReady } from "./desktop-tabs-seam.js";
 import { appendRegistryTabButtons as _appendRegistryTabButtons } from "./desktop-panel-slots.js";
 import { resolveRovingIndex } from "../roving-tabindex.js";
 import { registerLifecycleTeardown } from "../../shared/lifecycle.js";
+import {
+    getPanelPane,
+    listPanelPanes,
+    preparePane,
+    registerPaneHost,
+    type PanelPane,
+} from "../panel-panes.js";
 
 interface DesktopPanelOptions {
     glMain: HTMLElement;
@@ -64,6 +71,16 @@ let _mobileThemeToggle: HTMLButtonElement | null = null;
 
 let _themeObserver: MutationObserver | null = null;
 
+/**
+ * One observer per registered pane whose element is not in the document yet.
+ *
+ * A list, and not two named fields like the built-ins above: how many panes are
+ * registered is not known at authoring time. Every one of them is disconnected in
+ * deactivatePanel — an observer left connected watches the body for the rest of the
+ * session, which is the leak registerLifecycleTeardown was added to end.
+ */
+let _paneObservers: MutationObserver[] = [];
+
 function _injectMobileThemeToggle(): void {
     const scroll =
         document.querySelector<HTMLElement>(".gl-map-toolbar__scroll") ??
@@ -87,6 +104,55 @@ function _tryInjectMobile(): void {
 
 // DOM Builders
 
+/**
+ * Builds one vertical tab button, wired to the panel it belongs to.
+ *
+ * Extracted so a registered pane gets a tab byte-identical to a built-in one: the ARIA
+ * wiring here is five attributes that have to agree with `buildContentDom`, and a second
+ * hand-written copy would drift from this one without anything comparing them.
+ *
+ * @param panel - The side-panel root the click handler drives.
+ * @param id - Pane identifier; yields `gl-rp-tab-<id>` and `aria-controls=gl-rp-pane-<id>`.
+ * @param label - Visible text, already resolved in the interface language.
+ * @param isFirst - Whether this tab is the keyboard entry point (B4: roving tabindex).
+ * @returns The button, not yet mounted.
+ */
+function makeTabButton(
+    panel: HTMLElement,
+    id: string,
+    label: string,
+    isFirst: boolean
+): HTMLButtonElement {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "gl-rp-tab";
+    btn.id = "gl-rp-tab-" + id; // B2: tab id for aria-labelledby
+    btn.dataset.glRpTab = id;
+    btn.setAttribute("role", "tab");
+    btn.setAttribute("aria-controls", "gl-rp-pane-" + id);
+    btn.setAttribute("aria-selected", "false");
+    btn.setAttribute("tabindex", isFirst ? "0" : "-1"); // B4: roving tabindex
+    btn.textContent = label;
+    btn.addEventListener("click", () => handleTabClick(panel, id));
+    return btn;
+}
+
+/**
+ * Builds one tab panel.
+ *
+ * @param id - Pane identifier; yields `gl-rp-pane-<id>`.
+ * @returns The pane element, not yet mounted.
+ */
+function makePane(id: string): HTMLElement {
+    const pane = document.createElement("div");
+    pane.className = "gl-rp-pane";
+    pane.id = "gl-rp-pane-" + id;
+    pane.setAttribute("role", "tabpanel");
+    pane.setAttribute("aria-labelledby", "gl-rp-tab-" + id); // B5
+    pane.setAttribute("tabindex", "0"); // B5
+    return pane;
+}
+
 function buildTabsDom(
     panel: HTMLElement,
     titles: { filters: string; layers: string; legend: string },
@@ -103,18 +169,12 @@ function buildTabsDom(
     ];
     const defs = allDefs.filter((d) => d.visible);
     for (const [i, def] of defs.entries()) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "gl-rp-tab";
-        btn.id = "gl-rp-tab-" + def.id; // B2: tab id for aria-labelledby
-        btn.dataset.glRpTab = def.id;
-        btn.setAttribute("role", "tab");
-        btn.setAttribute("aria-controls", "gl-rp-pane-" + def.id);
-        btn.setAttribute("aria-selected", "false");
-        btn.setAttribute("tabindex", i === 0 ? "0" : "-1"); // B4: roving tabindex
-        btn.textContent = def.label;
-        btn.addEventListener("click", () => handleTabClick(panel, def.id));
-        tabs.appendChild(btn);
+        tabs.appendChild(makeTabButton(panel, def.id, def.label, i === 0));
+    }
+    // Registered panes come after the built-ins and before the theme separator, which
+    // carries `margin-top: auto` and pushes the icon stack to the bottom of the strip.
+    for (const pane of listPanelPanes()) {
+        tabs.appendChild(makeTabButton(panel, pane.id, getLabel(pane.labelKey), false));
     }
     // B3: arrow key navigation (roving focus, no auto-select)
     tabs.addEventListener("keydown", (e: KeyboardEvent) => {
@@ -142,13 +202,10 @@ function buildContentDom(panel: HTMLElement): void {
     content.className = "gl-rp-content";
     const ids = ["filters", "layers", "legend"];
     for (const id of ids) {
-        const pane = document.createElement("div");
-        pane.className = "gl-rp-pane";
-        pane.id = "gl-rp-pane-" + id;
-        pane.setAttribute("role", "tabpanel");
-        pane.setAttribute("aria-labelledby", "gl-rp-tab-" + id); // B5
-        pane.setAttribute("tabindex", "0"); // B5
-        content.appendChild(pane);
+        content.appendChild(makePane(id));
+    }
+    for (const pane of listPanelPanes()) {
+        content.appendChild(makePane(pane.id));
     }
     // Content inserted BEFORE the tab strip (flex row order: content | tabs)
     panel.insertBefore(content, panel.firstChild);
@@ -160,7 +217,11 @@ function buildPanelDom(
     show: { filters: boolean; layers: boolean; legend: boolean }
 ): HTMLElement | null {
     // If no tabs are enabled, don't create the panel.
-    if (!show.filters && !show.layers && !show.legend) return null;
+    // A registered pane counts: a profile may disable all three built-ins and still load a
+    // plugin that owns one, and returning null there would drop its tab with no diagnostic.
+    if (!show.filters && !show.layers && !show.legend && listPanelPanes().length === 0) {
+        return null;
+    }
     const panel = document.createElement("div");
     panel.id = PANEL_ID;
     panel.setAttribute("aria-label", getLabel("aria.panel.lateral"));
@@ -199,17 +260,18 @@ function _refreshFilterTabIndicator(): void {
 /**
  * Closes every tab, and emits `geoleaf:panel:closed` **only if one was actually open**.
  *
- * 🛑 C'est ICI que l'émission vit, et pas dans `closePanel()` — parce que ce n'est pas le
- * seul chemin de fermeture. Les trois appelants sont `closePanel()`, le re-clic sur l'onglet
- * actif (`handleTabClick`) et **`_activateTab` lui-même**, qui ferme avant d'ouvrir. Émettre
- * depuis `closePanel()` seul n'aurait décrit qu'un tiers des fermetures réelles.
+ * 🛑 The emission lives HERE, not in `closePanel()` — because that is not the only
+ * closing path. The three callers are `closePanel()`, the re-click on the active tab
+ * (`handleTabClick`) and **`_activateTab` itself**, which closes before opening.
+ * Emitting from `closePanel()` alone would have described a third of real closes.
  *
- * ⚠️ Et c'est pour la même raison que la garde est nécessaire : `openPanel()` passe par
- * `_activateTab`, donc par ici. Sans le test « un onglet était-il ouvert ? », tout
- * `openPanel()` programmatique commencerait par annoncer une fermeture qui n'a pas eu lieu.
+ * ⚠️ And the guard is necessary for the same reason: `openPanel()` goes through
+ * `_activateTab`, hence through here. Without the "was a tab open?" test, every
+ * programmatic `openPanel()` would start by announcing a close that did not happen.
  *
- * L'identifiant se lit AVANT le nettoyage : l'état d'ouverture n'a pas de variable dédiée,
- * il vit dans le DOM (cf. `getOpenPanel`), donc la classe retirée il est irrécupérable.
+ * The identifier is read BEFORE cleanup: the open state has no dedicated variable,
+ * it lives in the DOM (cf. `getOpenPanel`), so once the class is removed it is
+ * unrecoverable.
  */
 function _closeAllTabs(panel: HTMLElement): void {
     const closingTabId =
@@ -239,7 +301,7 @@ function _closeAllTabs(panel: HTMLElement): void {
  * Extracted from `handleTabClick` so that the public `openPanel()` can reuse the activation
  * without inheriting the toggle. ⚠️ **Do not fold the toggle back in here**: an integrator
  * calling `openPanel(id)` twice must find the panel open both times, and a toggling
- * "open" is defect B-71 reproduced on a public surface.
+ * "open" is the old toggle defect reproduced on a public surface.
  *
  * @param panel - The side-panel root.
  * @param tabId - Tab to activate.
@@ -249,14 +311,26 @@ function _activateTab(panel: HTMLElement, tabId: string): boolean {
     const targetTab = panel.querySelector<HTMLElement>("[data-gl-rp-tab='" + tabId + "']");
     const targetPane = document.getElementById("gl-rp-pane-" + tabId);
     if (!targetTab || !targetPane) return false;
+    // A registered pane may only have built its element just now — a plugin that constructs
+    // its panel on first use is the normal case, not an edge one. `adoptPane` is idempotent,
+    // and doing it here rather than leaving it to the observer is what stops the tab from
+    // showing empty for the microtask the callback takes to fire.
+    const registered = getPanelPane(tabId);
+    if (registered && _isActive) {
+        // The owner builds on demand — see `PanelPane.onOpen`. Without this the tab activates
+        // on an empty pane, which is what a browser run showed before the hook existed.
+        preparePane(tabId);
+        adoptPane(registered);
+    }
     _closeAllTabs(panel);
     targetTab.classList.add("gl-is-active");
     targetTab.setAttribute("aria-selected", "true");
     targetTab.setAttribute("tabindex", "0"); // B4: active tab in tab order
     targetPane.classList.add("gl-is-active");
     panel.classList.add("gl-has-active");
-    // Après `_closeAllTabs` ci-dessus : un changement d'onglet rend donc `closed(ancien)`
-    // PUIS `opened(nouveau)`, dans cet ordre, et une ouverture depuis rien ne rend qu'`opened`.
+    // After `_closeAllTabs` above: a tab change therefore yields `closed(old)` THEN
+    // `opened(new)`, in that order, and an opening from nothing yields only
+    // `opened`.
     dispatchGeoLeafEvent("geoleaf:panel:opened", { tabId });
     return true;
 }
@@ -277,11 +351,41 @@ function handleTabClick(panel: HTMLElement, tabId: string): void {
 
 // Move / Restore
 
+/**
+ * Moves a registered pane's element into its tab panel, now or as soon as it appears.
+ *
+ * ⚠️ The two branches are not a convenience. The built-in legend and filter panel already
+ * needed this — both mount asynchronously, and both grew a hand-written observer here. A
+ * plugin pane is worse: its bundle may not even have run yet. Registering a pane whose
+ * element never arrives leaves an empty tab, which is a visible defect; adopting it late is
+ * the only behaviour that is correct in both orders.
+ *
+ * @param pane - The registered pane to adopt.
+ */
+function adoptPane(pane: PanelPane): void {
+    const target = document.getElementById("gl-rp-pane-" + pane.id);
+    if (!target) return;
+    const el = document.querySelector<HTMLElement>(pane.selector);
+    if (el) {
+        if (!target.contains(el)) storeAndMove(el, target);
+        return;
+    }
+    const observer = new MutationObserver(() => {
+        const found = document.querySelector<HTMLElement>(pane.selector);
+        if (!found || target.contains(found)) return;
+        storeAndMove(found, target);
+        observer.disconnect();
+        _paneObservers = _paneObservers.filter((o) => o !== observer);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    _paneObservers.push(observer);
+}
+
 function storeAndMove(node: HTMLElement, targetBody: HTMLElement): void {
     _restoreEntries.push({
         node,
         parent: node.parentElement as Element,
-        nextSibling: node.nextSibling as ChildNode | null,
+        nextSibling: node.nextSibling,
     });
     targetBody.appendChild(node);
 }
@@ -295,7 +399,7 @@ function activatePanel(): void {
     const pLayers = document.getElementById("gl-rp-pane-layers");
     const pLegend = document.getElementById("gl-rp-pane-legend");
     if (!pFilters || !pLayers || !pLegend) return;
-    const filterPanel = document.getElementById("gl-filter-panel") as HTMLElement | null;
+    const filterPanel = document.getElementById("gl-filter-panel");
     if (filterPanel) {
         storeAndMove(filterPanel, pFilters);
     } else {
@@ -303,7 +407,7 @@ function activatePanel(): void {
         // `geoleaf:app:ready`, so watch the DOM and move it across as soon as it
         // appears (same pattern as the legend, which is built after a styles fetch).
         _filterObserver = new MutationObserver(() => {
-            const el = document.getElementById("gl-filter-panel") as HTMLElement | null;
+            const el = document.getElementById("gl-filter-panel");
             if (el && !pFilters.contains(el)) {
                 storeAndMove(el, pFilters);
                 _filterObserver!.disconnect();
@@ -332,6 +436,9 @@ function activatePanel(): void {
         });
         _legendObserver.observe(document.body, { childList: true, subtree: true });
     }
+    for (const pane of listPanelPanes()) {
+        adoptPane(pane);
+    }
     // Inject theme toggle into mobile toolbar
     _tryInjectMobile();
     if (!_mobileThemeToggle) {
@@ -354,6 +461,10 @@ function deactivatePanel(): void {
         _filterObserver.disconnect();
         _filterObserver = null;
     }
+    for (const observer of _paneObservers) {
+        observer.disconnect();
+    }
+    _paneObservers = [];
     // Reversed copy rather than a descending index: the restore order is what matters, and a
     // copy is immune to the mutation of `_restoreEntries` that follows (qualite Q5).
     for (const { node, parent, nextSibling } of [..._restoreEntries].reverse()) {
@@ -424,7 +535,7 @@ export function initDesktopPanel(options: DesktopPanelOptions): void {
     _mql = window.matchMedia(BREAKPOINT);
     _mql.addEventListener("change", onMQChange);
     document.addEventListener("geoleaf:filters:applied", _refreshFilterTabIndicator);
-    // NE PAS appeler activatePanel() ici :
+    // Do NOT call activatePanel() here:
     // the elements (legend, layer-manager) do not exist in the DOM yet.
     // init.ts calls activateDesktopPanel() after all secondary modules are loaded.
 }
@@ -456,7 +567,7 @@ export function activateDesktopPanel(): void {
  * @example
  * ```js
  * GeoLeaf?.UI?.openPanel("layers"); // true
- * GeoLeaf?.UI?.openPanel("layers"); // true — toujours ouvert, jamais bascule
+ * GeoLeaf?.UI?.openPanel("layers"); // true — still open, never a toggle
  * ```
  */
 export function openPanel(tabId: string): boolean {
@@ -519,15 +630,58 @@ export function destroyDesktopPanel(): void {
 // Self-register the teardown so `Core.destroy()` actually tears the panel down. Mirrors
 // `basemap-selector.ts` and `shared.ts`.
 //
-// 🛑 Le défaut n'était PAS dans `destroyDesktopPanel` — elle déconnecte bien ses trois
-// `MutationObserver` et restaure les nœuds déplacés. Il était que **personne ne l'appelait** :
-// elle est montée sur `GeoLeaf.UI` depuis toujours, et aucun des inscrits de
-// `kernel/shared/lifecycle.ts` ne la déclenchait. Après `Core.destroy()`, `#gl-right-panel`
-// restait dans le DOM, `_mql` gardait son écouteur, et les trois observers continuaient
-// d'observer `document.body` — un cycle create/destroy de plus en laissait trois de plus.
+// 🛑 The defect was NOT in `destroyDesktopPanel` — it does disconnect its three
+// `MutationObserver`s and restore the moved nodes. It was that **nobody called
+// it**: it has been mounted on `GeoLeaf.UI` forever, and none of the
+// `kernel/shared/lifecycle.ts` registrants triggered it. After `Core.destroy()`,
+// `#gl-right-panel` stayed in the DOM, `_mql` kept its listener, and the three
+// observers kept observing `document.body` — one more create/destroy cycle left
+// three more.
 //
-// ⚠️ Un test qui appelle `destroyDesktopPanel()` en direct sort VERT sans rien prouver : il
-// éprouve la fonction, pas son appelant. La preuve est
-// `__tests__/app/desktop-panel-teardown.test.js`, qui passe par `Core.destroy()` — vu rouge
-// 4/4 avant cette ligne.
+// ⚠️ A test calling `destroyDesktopPanel()` directly comes out GREEN proving
+// nothing: it exercises the function, not its caller. The proof is
+// `__tests__/app/desktop-panel-teardown.test.js`, which goes through
+// `Core.destroy()` — seen red 4/4 before this line.
 registerLifecycleTeardown(destroyDesktopPanel);
+
+/**
+ * Adds a tab and a pane for every registered pane that has neither yet.
+ *
+ * Called when a pane registers, because bundle load order is not something either side
+ * controls: a plugin whose script runs after `initDesktopPanel` would otherwise hold a
+ * registration that nothing ever renders.
+ */
+function syncRegisteredPanes(): void {
+    if (!_panel) return;
+    const tabs = _panel.querySelector<HTMLElement>(".gl-rp-tabs");
+    const content = _panel.querySelector<HTMLElement>(".gl-rp-content");
+    if (!tabs || !content) return;
+    for (const pane of listPanelPanes()) {
+        if (_panel.querySelector("[data-gl-rp-tab='" + pane.id + "']")) continue;
+        const btn = makeTabButton(_panel, pane.id, getLabel(pane.labelKey), false);
+        // Before the separator, which carries `margin-top: auto`: appending past it would
+        // drop the tab into the bottom icon stack, among buttons of a different shape.
+        const separator = tabs.querySelector(".gl-rp-theme-separator");
+        if (separator) tabs.insertBefore(btn, separator);
+        else tabs.appendChild(btn);
+        content.appendChild(makePane(pane.id));
+        if (_isActive) adoptPane(pane);
+    }
+}
+
+// The desktop panel offers itself as a pane host, at the HIGHEST priority.
+//
+// 🛑 Explicit, and not left to registration order. Above 1440px both hosts are live — the
+// mobile pill is only hidden by CSS, it is still built — so which one answers decides whether
+// the user gets a docked panel or a full-screen sheet over their map. Registration order looked
+// like it settled that, and it does not: hosts register when their module is imported, and
+// `globals.ui.ts` imports the mobile toolbar first. Measured at 1600px before this field
+// existed: `openPane` answered true, `getOpenPanel()` answered null, and the sheet had opened.
+registerPaneHost({
+    id: "desktop-panel",
+    priority: 0,
+    isActive: () => _isActive && _panel !== null,
+    open: (paneId) => openPanel(paneId),
+    close: () => closePanel(),
+    sync: () => syncRegisteredPanes(),
+});

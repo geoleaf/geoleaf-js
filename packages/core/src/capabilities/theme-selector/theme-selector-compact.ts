@@ -45,9 +45,7 @@ export function updatePrimaryNavButtons(): void {
  */
 export function ensurePrimaryThemeVisible(themeId: string): void {
     if (!_state.primaryScrollEl) return;
-    const btn = _state.primaryScrollEl.querySelector(
-        `[data-theme-id="${themeId}"]`
-    ) as HTMLElement | null;
+    const btn = _state.primaryScrollEl.querySelector(`[data-theme-id="${themeId}"]`);
     if (!btn) return;
     btn.scrollIntoView?.({ behavior: "smooth", block: "nearest", inline: "nearest" });
     // Recalculate nav button state after scrolling

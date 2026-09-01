@@ -103,7 +103,7 @@ export interface ResponsiveModal {
 }
 
 function getCurrentLang(): string {
-    return (_g?.GeoLeaf?.I18n?.lang as string | undefined) ?? "fr";
+    return _g?.GeoLeaf?.I18n?.lang ?? "fr";
 }
 
 function label(key: string, labelKeys?: Record<string, string>): string {

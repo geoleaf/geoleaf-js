@@ -1,0 +1,46 @@
+/* @geoleaf-plugins/position-share — styles (loaded via rollup-plugin-postcss, injected at runtime) */
+
+/* The "sharing my position" badge. It sits above the map chrome on purpose: the whole point is
+   that it cannot be missed while location data is leaving the browser. */
+.gl-position-share-badge {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 900;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 16px;
+    background: rgba(20, 20, 20, 0.82);
+    color: #fff;
+    font-size: 13px;
+    line-height: 1.2;
+    pointer-events: none;
+}
+
+.gl-position-share-badge-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #4ade80;
+    animation: gl-position-share-pulse 2s ease-in-out infinite;
+}
+
+@keyframes gl-position-share-pulse {
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.3;
+    }
+}
+
+/* Respect the user's motion preference — a pulsing dot is decoration, not information. */
+@media (prefers-reduced-motion: reduce) {
+    .gl-position-share-badge-dot {
+        animation: none;
+    }
+}

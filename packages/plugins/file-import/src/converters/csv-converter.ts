@@ -54,7 +54,7 @@ function _detectGeoColumns(headers: string[]): GeoColumns | null {
  * Only supports POINT (no multi-geometry for CSV rows).
  */
 function _parseWktPoint(wkt: string): Point | null {
-    // PLUGINS S11.3 — justified suppression, not an unexamined one.
+    // Justified suppression, not an unexamined one.
     //
     // `safe-regex` (behind this rule) is a STRUCTURAL heuristic: it raises the star height
     // for the optional third-coordinate group `(?:\s+([\d.eE+-]+))?` wrapping a `+`, and

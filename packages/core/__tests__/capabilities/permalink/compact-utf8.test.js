@@ -4,7 +4,7 @@
  * The compact payload was `btoa(JSON.stringify(state))`. `btoa` THROWS on any code point
  * above 255, so a text filter in CJK or Cyrillic — or a single typographic ellipsis —
  * made the encoding fail. The failure was silent where it matters: `startSync._doWrite`
- * catches it (permalink-sync.ts:346), so the URL simply stopped tracking the map with
+ * catches it (permalink-sync.ts), so the URL simply stopped tracking the map with
  * nothing logged and nothing broken on screen.
  *
  * It was reachable WITHOUT asking for it: `shouldCompact` flips automatically past

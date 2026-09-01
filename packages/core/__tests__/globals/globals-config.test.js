@@ -29,7 +29,7 @@ describe("globals/globals.config (step 1.5)", () => {
         expect(globalThis.GeoLeaf.Helpers).toBeDefined();
         expect(globalThis.GeoLeaf._Validators).toBeDefined();
         expect(globalThis.GeoLeaf.Config).toBeDefined();
-        // `_StyleValidator` a quitté le namespace à l'API S4.3 (aucun lecteur).
+        // `_StyleValidator` a quitté le namespace (aucun lecteur).
         expect(globalThis.GeoLeaf._StyleValidator).toBeUndefined();
     });
 });

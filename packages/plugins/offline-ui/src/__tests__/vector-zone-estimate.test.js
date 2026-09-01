@@ -1,23 +1,23 @@
 /**
- * Estimation d'une zone vecteur — déplacée du core à l'API publique S4.4.
+ * Vector zone estimation — moved from the core during the public-API review.
  *
- * ⚠️ Elle vivait dans `packages/core/__tests__/capabilities/offline/tile-math.test.js`, mais
- * la fonction qu'elle couvre était du code MORT côté core : zéro appelant, et le build du core
- * l'élaguait de son propre artefact publié. Storage en était le seul consommateur — la
- * fonction et son test l'ont donc suivi.
+ * ⚠️ It lived in `packages/core/__tests__/capabilities/offline/tile-math.test.js`,
+ * but the function it covers was DEAD code on the core side: zero callers, and
+ * the core's build pruned it from its own published artifact. Storage was its
+ * only consumer — the function and its test therefore followed.
  *
- * Ce qu'elle garde reste le même : `estimateVectorZone` ne doit pas SOUS-estimer au-delà de
- * 30 000 tuiles par zoom, défaut corrigé au CAPACITÉS S1 (l'ancienne voie énumérait les
- * coordonnées et rendait une liste vide passé son plafond de sécurité).
+ * What it guards stays the same: `estimateVectorZone` must not UNDER-estimate
+ * beyond 30,000 tiles per zoom, a fixed defect (the old path enumerated the
+ * coordinates and returned an empty list past its safety cap).
  */
 "use strict";
 
 import { describe, expect } from "vitest";
 import { estimateVectorZone } from "../sync/vector-zone-estimate.js";
-// Contre-épreuve : l'énumération du core, pour vérifier que le comptage arithmétique lui est
-// fidèle SOUS son plafond de sécurité. Les deux implémentations vivent désormais dans deux
-// paquets — c'est précisément ce que ce test croise, et il n'avait pas de raison de disparaître
-// avec le déplacement.
+// Counter-proof: the core's enumeration, to verify the arithmetic count stays
+// faithful to it UNDER its safety cap. The two implementations now live in two
+// packages — precisely what this test crosses, and it had no reason to
+// disappear with the move.
 import { CacheCalculator } from "@core-offline/cache/calculator.js";
 
 /**

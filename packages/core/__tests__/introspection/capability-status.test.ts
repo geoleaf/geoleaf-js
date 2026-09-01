@@ -1,70 +1,72 @@
 /**
- * GATE — socle-init 9.4 : « qu'est-ce qui est allumé, et pourquoi ».
+ * GATE — "what is on, and why".
  *
- * ## La question à laquelle cette surface répond, et les deux qu'elle NE remplace PAS
+ * ## The question this surface answers, and the two it does NOT replace
  *
- * Trois méthodes voisines, trois objets distincts — et c'est la raison d'être du fichier :
+ * Three neighbouring methods, three distinct objects — the file's reason for being:
  *
- *   - `getAllCapabilities()` rend ce qui est **déclaré** (le schéma) ;
- *   - `getActiveModules()` rend ce qui **tourne** (les modules dont l'`init()` a été appelé) ;
- *   - `getCapabilityStatus()` rend le **verdict de config** : embarquée ? activée ? par quel gate ?
+ *   - `getAllCapabilities()` returns what is **declared** (the schema);
+ *   - `getActiveModules()` returns what **runs** (the modules whose `init()` was called);
+ *   - `getCapabilityStatus()` returns the **config verdict**: embarked? enabled? through which gate?
  *
- * ## Les fixtures sont RÉELLES, et c'est délibéré
+ * ## The fixtures are REAL, deliberately
  *
- * `PERMALINK_INSTALLER`, `CLUSTER_INSTALLER` et `BRANDING_INSTALLER` sont importés du code
- * livré, pas simulés. Trois des cinq assertions ci-dessous ne peuvent rougir que sur les vrais
- * objets :
+ * `PERMALINK_INSTALLER`, `CLUSTER_INSTALLER` and `BRANDING_INSTALLER` are
+ * imported from shipped code, not simulated. Three of the five assertions
+ * below can only turn red on the real objects:
  *
- *   - `permalink` est **le seul** installeur du dépôt dont le module porte un AUTRE id que sa
- *     capacité (`share`) — il est le contre-exemple qui interdit de dériver `hasModule` du
- *     `ModuleRegistry` ;
- *   - `permalink` est aussi le seul à déclarer un `moduleGate`, donc le seul endroit où
- *     « le gate qui décide du module » et « le gate de la capacité » diffèrent ;
- *   - `cluster` est l'un des 5 installeurs (sur 21) sans `createModule` — sans lui,
- *     `hasModule` serait vrai partout et l'assertion ne discriminerait rien.
+ *   - `permalink` is **the only** installer in the repo whose module
+ *     carries an id OTHER than its capability (`share`) — the
+ *     counter-example forbidding deriving `hasModule` from the `ModuleRegistry`;
+ *   - `permalink` is also the only one declaring a `moduleGate`, hence the
+ *     only place where "the gate deciding the module" and "the
+ *     capability's gate" differ;
+ *   - `cluster` is one of the 5 installers (out of 21) without
+ *     `createModule` — without it, `hasModule` would be true everywhere and
+ *     the assertion would discriminate nothing.
  *
- * ## Ce que la première exécution prouve, et ce qu'elle ne prouve pas
+ * ## What the first run proves, and what it does not
  *
- * ⚠️ Écrit avant le code, ce fichier rougit par **absence de symbole**
- * (`CapabilityRegistry.getAllStatuses is not a function`). C'est un rouge plus faible que
- * celui du gate 9.2, qui rougissait sur un comportement. Il faut le dire plutôt que le
- * maquiller : ce qui rend ces cinq règles crédibles est la **contre-épreuve** — chaque `it`
- * ci-dessous nomme la mutation d'UNE ligne du code livré qui doit le faire rougir. Sans elle
- * le fichier ne garderait rien.
+ * ⚠️ Written before the code, this file turns red by **symbol absence**
+ * (`CapabilityRegistry.getAllStatuses is not a function`). A weaker red
+ * than the profile gate's, which turned red on a behaviour. Better said
+ * than disguised: what makes these five rules credible is the
+ * **counter-proof** — each `it` below names the one-line mutation of
+ * shipped code that must turn it red. Without it the file would guard nothing.
  *
- * **Relevé de la contre-épreuve, jouée le 08/08/2026** — 7 verts au départ, une mutation à la
- * fois, restauration entre chaque :
+ * **Counter-proof record, played on 08/08/2026** — 7 green at start, one
+ * mutation at a time, restore between each:
  *
- * | Mutation | Verts | Règles rouges |
+ * | Mutation | Green | Red rules |
  * |---|---|---|
- * | `hasModule: false` dans la Pass 1 | 6 | CS-01 |
- * | gate évalué sur `toCapConfig({})` (verdict figé) | 5 | CS-02 **et** CS-05 |
- * | `embarked: true` en dur | 6 | CS-03 |
- * | `gate` inventé (celui de `share`) | 5 | CS-04 (ses deux `it`) |
- * | `gate: decl.gate` sans spread conditionnel | 6 | CS-04 (second `it`) |
- * | la façade passe `_NO_CONFIG` au lieu de `_config()` | 6 | CS-05 |
+ * | `hasModule: false` in Pass 1 | 6 | CS-01 |
+ * | gate evaluated on `toCapConfig({})` (frozen verdict) | 5 | CS-02 **and** CS-05 |
+ * | `embarked: true` hardcoded | 6 | CS-03 |
+ * | invented `gate` (`share`'s) | 5 | CS-04 (both its `it`s) |
+ * | `gate: decl.gate` without conditional spread | 6 | CS-04 (second `it`) |
+ * | the facade passes `_NO_CONFIG` instead of `_config()` | 6 | CS-05 |
  *
- * ⚠️ **La deuxième mutation en rougit DEUX, et c'est correct** : CS-02 et CS-05 gardent la
- * même propriété — « le verdict est relu, jamais figé » — à deux niveaux, le registre et la
- * façade. Prétendre à une isolation parfaite aurait demandé d'affaiblir l'une des deux.
+ * ⚠️ **The second mutation turns TWO red, and that is correct**: CS-02 and
+ * CS-05 guard the same property — "the verdict is reread, never frozen" —
+ * at two levels, the registry and the facade. Claiming perfect isolation
+ * would have required weakening one of the two.
  *
- * 🛑 **Une mutation est structurellement IMPOSSIBLE, et c'est la meilleure garantie du lot** :
- * on ne peut pas faire restituer le `moduleGate` par `getAllStatuses()`, parce que l'information
- * n'est pas transportée jusque-là — les faits d'installation ne portent que `hasModule`. CS-04
- * garde donc un choix de conception que le code rend indémentable, et sa première assertion ne
- * peut être mise en défaut qu'en inventant un gate de toutes pièces (mutation 4 ci-dessus).
+ * 🛑 **One mutation is structurally IMPOSSIBLE, and it is the lot's best
+ * guarantee**: `getAllStatuses()` cannot be made to restitute the
+ * `moduleGate`, because the information is not transported that far — the
+ * installation facts only carry `hasModule`. CS-04 thus guards a design
+ * choice the code makes undeniable, and its first assertion can only be
+ * defeated by inventing a gate from whole cloth (mutation 4 above).
  *
- * @see roadmap_socle-init.md 📦 (archivée le 09/08/2026) § Sprint 9
- * @see packages/core/src/presets/apply-preset.ts — la Pass 1, qui relève les faits d'installation
+ * @see packages/core/src/presets/apply-preset.ts — Pass 1, which records the installation facts
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 
 import type { CapabilityInstaller, PresetManifest } from "../../src/contracts/preset.contract.js";
 import type { ICapabilityStatus } from "../../src/contracts/capability.contract.js";
 
-const { CapabilityRegistry, toCapConfig } = await import(
-    "../../src/kernel/api/capability-registry.ts"
-);
+const { CapabilityRegistry, toCapConfig } =
+    await import("../../src/kernel/api/capability-registry.ts");
 const { registerPresetDeclarations } = await import("../../src/presets/apply-preset.ts");
 const { Introspection } = await import("../../src/kernel/introspection/facade.ts");
 const { PERMALINK_INSTALLER } = await import("../../src/capabilities/permalink/install.ts");
@@ -73,7 +75,7 @@ const { BRANDING_INSTALLER } = await import("../../src/capabilities/branding/ins
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Joue la Pass 1 sur les installeurs donnés — le canal « embarqué par le build ». */
+/** Plays Pass 1 on the given installers — the "embarked by the build" channel. */
 function embark(...capabilities: CapabilityInstaller[]): void {
     registerPresetDeclarations(
         { id: "capability-status", capabilities } as unknown as PresetManifest,
@@ -82,7 +84,7 @@ function embark(...capabilities: CapabilityInstaller[]): void {
     );
 }
 
-/** Le statut d'un id, ou `undefined` — l'absence est une réponse, pas une erreur. */
+/** An id's status, or `undefined` — absence is an answer, not an error. */
 function statusOf(
     statuses: readonly ICapabilityStatus[],
     id: string
@@ -91,7 +93,7 @@ function statusOf(
 }
 
 beforeEach(() => {
-    // Singleton de module : déclarations ET faits d'installation fuiraient d'un test à l'autre.
+    // Module singleton: declarations AND installation facts would leak between tests.
     CapabilityRegistry._reset();
 });
 
@@ -109,23 +111,24 @@ describe("CS-01 — `hasModule` est un fait de l'INSTALLEUR, jamais du registre 
 
         expect(statusOf(statuses, "permalink")?.hasModule).toBe(true);
         expect(statusOf(statuses, "cluster")?.hasModule).toBe(false);
-        // Le module de `permalink` s'appelle `share`. Le dériver du ModuleRegistry rendrait
-        // `hasModule: false` pour permalink ET ferait apparaître une capacité qui n'existe pas.
+        // `permalink`'s module is called `share`. Deriving it from the
+        // ModuleRegistry would return `hasModule: false` for permalink AND
+        // make a nonexistent capability appear.
         expect(statuses.map((s) => s.id)).not.toContain("share");
-        // Anti-gate-vide : deux capacités embarquées, deux statuts.
+        // Anti-empty-gate: two embarked capabilities, two statuses.
         expect(statuses).toHaveLength(2);
     });
 
-    // MUTATION : dans `getAllStatuses`, remplacer `facts?.hasModule ?? false` par une lecture
-    // du ModuleRegistry → `permalink` bascule à `false`.
+    // MUTATION: in `getAllStatuses`, replace `facts?.hasModule ?? false`
+    // with a ModuleRegistry read → `permalink` flips to `false`.
 });
 
 // ── CS-02 ─────────────────────────────────────────────────────────────────────
 
 describe("CS-02 — `enabled` est relu à l'appel, jamais figé à l'enregistrement", () => {
     it("rend deux verdicts opposés pour deux configs, sur un registre inchangé", () => {
-        // `branding` est la seule capacité opt-in du dépôt qui possède un `ICoreModule` —
-        // le sujet même du Sprint 9 (cf. le pré-vol 9.0).
+        // `branding` is the repo's only opt-in capability owning an
+        // `ICoreModule` — this work's very subject.
         embark(BRANDING_INSTALLER);
 
         const off = CapabilityRegistry.getAllStatuses(toCapConfig({}));
@@ -137,8 +140,8 @@ describe("CS-02 — `enabled` est relu à l'appel, jamais figé à l'enregistrem
         expect(statusOf(on, "branding")?.enabled).toBe(true);
     });
 
-    // MUTATION : calculer `enabled` dans `register()` et le restituer → les deux lectures
-    // deviennent identiques. C'est exactement le verdict pré-merge que 9.2 a supprimé.
+    // MUTATION: compute `enabled` in `register()` and restitute it → the two
+    // reads become identical. Exactly the pre-merge verdict the rework deleted.
 });
 
 // ── CS-03 ─────────────────────────────────────────────────────────────────────
@@ -146,20 +149,22 @@ describe("CS-02 — `enabled` est relu à l'appel, jamais figé à l'enregistrem
 describe("CS-03 — `embarked` distingue le canal d'enregistrement", () => {
     it("sépare ce que le build a embarqué de ce que le runtime a déclaré", () => {
         embark(CLUSTER_INSTALLER);
-        // Le canal runtime : `GeoLeaf.plugins.registerCapability` aboutit ici. Aucun installeur,
-        // donc aucun fait d'installation — et c'est CE fait qui vaut `embarked: false`.
+        // The runtime channel: `GeoLeaf.plugins.registerCapability` lands
+        // here. No installer, hence no installation fact — and THAT fact is
+        // what yields `embarked: false`.
         CapabilityRegistry.register({ id: "table", gate: { configPath: "modules.table.enabled" } });
 
         const statuses = CapabilityRegistry.getAllStatuses(toCapConfig({}));
 
         expect(statusOf(statuses, "cluster")?.embarked).toBe(true);
         expect(statusOf(statuses, "table")?.embarked).toBe(false);
-        // Une déclaration runtime ne peut rien affirmer sur un module : elle n'en porte pas.
+        // A runtime declaration can assert nothing about a module: it carries none.
         expect(statusOf(statuses, "table")?.hasModule).toBe(false);
     });
 
-    // MUTATION : `embarked: true` en dur → la seconde assertion rougit. Le champ deviendrait
-    // décoratif, ce qui est le mode d'échec n°5 de CLAUDE.md (verdict infalsifiable).
+    // MUTATION: `embarked: true` hardcoded → the second assertion turns
+    // red. The field would become decorative — the unfalsifiable-verdict
+    // failure mode.
 });
 
 // ── CS-04 ─────────────────────────────────────────────────────────────────────
@@ -170,9 +175,10 @@ describe("CS-04 — `gate` est la CAUSE de `enabled`, et les deux se corresponde
 
         const status = statusOf(CapabilityRegistry.getAllStatuses(toCapConfig({})), "permalink");
 
-        // `permalink` porte les deux : `modules.permalink.enabled` sur sa déclaration, et
-        // `modules.permalink.share.enabled` sur son installeur. Rendre le second sous l'id de
-        // la capacité accolerait une cause et un effet qui ne se correspondent pas.
+        // `permalink` carries both: `modules.permalink.enabled` on its
+        // declaration, and `modules.permalink.share.enabled` on its
+        // installer. Returning the second under the capability's id would
+        // join a cause and an effect that do not correspond.
         expect(status?.gate?.configPath).toBe("modules.permalink.enabled");
         expect(status?.gate?.enableWhenAbsent).toBe(true);
     });
@@ -186,14 +192,15 @@ describe("CS-04 — `gate` est la CAUSE de `enabled`, et les deux se corresponde
 
         const status = statusOf(CapabilityRegistry.getAllStatuses(toCapConfig({})), "ungated");
 
-        // Pas de gate ⟹ toujours activée (`evaluateGate` rend `true`), et la clé `gate` est
-        // ABSENTE, pas présente à `undefined` — le lecteur peut faire la différence.
+        // No gate ⟹ always enabled (`evaluateGate` returns `true`), and the
+        // `gate` key is ABSENT, not present at `undefined` — the reader can
+        // tell the difference.
         expect(status?.gate).toBeUndefined();
         expect(status && "gate" in status).toBe(false);
         expect(status?.enabled).toBe(true);
     });
 
-    // MUTATION : `gate: inst.moduleGate ?? decl.gate` → `permalink` restitue la clé de `share`.
+    // MUTATION: `gate: inst.moduleGate ?? decl.gate` → `permalink` restitutes `share`'s key.
 });
 
 // ── CS-05 ─────────────────────────────────────────────────────────────────────
@@ -201,9 +208,10 @@ describe("CS-04 — `gate` est la CAUSE de `enabled`, et les deux se corresponde
 describe("CS-05 — la façade lit la config VIVANTE, elle ne la capture pas", () => {
     it("change de verdict quand la config change, sans re-boot", () => {
         embark(BRANDING_INSTALLER);
-        // `loadActiveProfileResources()` enrichit l'objet de config EN PLACE (il rend le même
-        // objet, jamais un remplacement). Une façade qui capturerait son lecteur au premier
-        // appel resterait sur le verdict pré-merge — le mensonge que 9.4 doit éviter.
+        // `loadActiveProfileResources()` enriches the config object IN PLACE
+        // (it returns the same object, never a replacement). A facade
+        // capturing its reader at the first call would stay on the pre-merge
+        // verdict — the lie this surface must avoid.
         const cfg: Record<string, unknown> = { modules: {} };
         (globalThis as { GeoLeaf?: unknown }).GeoLeaf = { Config: toCapConfig(cfg) };
 
@@ -216,9 +224,9 @@ describe("CS-05 — la façade lit la config VIVANTE, elle ne la capture pas", (
 
     it("dégrade sans jeter quand aucune config n'est chargée", () => {
         embark(BRANDING_INSTALLER, CLUSTER_INSTALLER);
-        // Avant boot il n'y a pas de `GeoLeaf.Config`. La réponse attendue n'est pas une
-        // exception ni un tableau vide, mais le verdict exact de « rien n'est configuré » :
-        // chaque gate répond son `enableWhenAbsent`.
+        // Before boot there is no `GeoLeaf.Config`. The expected answer is
+        // neither an exception nor an empty array, but the exact verdict of
+        // "nothing is configured": each gate answers its `enableWhenAbsent`.
         const statuses = Introspection.getCapabilityStatus();
 
         expect(statuses).toHaveLength(2);
@@ -226,6 +234,6 @@ describe("CS-05 — la façade lit la config VIVANTE, elle ne la capture pas", (
         expect(statusOf(statuses, "cluster")?.enabled).toBe(true); // opt-out
     });
 
-    // MUTATION : capturer le lecteur dans une constante de module au premier appel → la
-    // première assertion rougit sur le second `expect`.
+    // MUTATION: capture the reader in a module constant at the first call →
+    // the first assertion turns red on the second `expect`.
 });

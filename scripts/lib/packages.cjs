@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * The derived truth about which packages this monorepo contains (ARCHI S9.4).
+ * The derived truth about which packages this monorepo contains.
  *
  * Shared by every gate and tool that needs to enumerate packages:
  *   - `scripts/verify-plugin-contract.cjs`  — was a hand-typed 13-entry PLUGINS list
  *   - `scripts/check-bundle-size.cjs`       — was a hand-typed 13-name list
  *   - `scripts/publish-plugins.cjs`         — was 2 hard-coded workspace paths
  *   - `scripts/build-deploy.cjs`            — was 13 hard-coded DIST_* constants
- *   - the 8 gates that used to call `readdirSync(packages)` at one level (S9.5)
+ *   - the 8 gates that used to call `readdirSync(packages)` at one level
  *
  * ## Why derive instead of listing
  *
@@ -209,7 +209,7 @@ function build() {
     if (packages.length === 0) {
         throw new Error(
             "packages.cjs: no workspace package found. The workspaces globs in package.json " +
-                "no longer match anything — this is the silent-blindness failure S9.4 exists to prevent."
+                "no longer match anything — this is the silent-blindness failure this registry exists to prevent."
         );
     }
 
@@ -242,18 +242,17 @@ function byName(name) {
 /**
  * The packages that ship a runtime plugin bundle.
  *
- * Un plugin s'identifie à son scope publié : `@geoleaf-plugins/*`. Sans exception.
+ * A plugin is identified by its published scope: `@geoleaf-plugins/*`. No exception.
  *
- * ⚠️ Il y en avait une, et sa disparition est le vrai gain de l'API publique S4.6 : le
- * connector précédait le scope et gardait `@geoleaf/connector`, ce qui obligeait cette règle
- * à s'écrire sur deux branches. Une règle d'appartenance à deux branches se recopie mal — le
- * `package.json` racine filtrait `build:plugins` sur `--filter=@geoleaf-plugins/*`, donc SANS
- * le connector, et personne ne l'avait relevé. Une seule branche, et la question ne peut plus
- * se poser.
+ * ⚠️ There was one, and its disappearance is the rename's real gain: the connector
+ * predated the scope and kept `@geoleaf/connector`, which forced this rule to be written
+ * on two branches. A two-branch membership rule copies badly — the root `package.json`
+ * filtered `build:plugins` on `--filter=@geoleaf-plugins/*`, hence WITHOUT the connector,
+ * and nobody had noticed. One branch, and the question can no longer arise.
  *
- * Les bibliothèques internes partagées (`field-renderer`, `http-helpers`, le host runtime) ne
- * sont PAS des plugins : elles n'appellent jamais `register()` et n'enrichissent jamais
- * `GeoLeaf.*` — cf. Plugin Contract spec §0.
+ * Shared internal libraries (`field-renderer`, `http-helpers`, the host runtime) are NOT
+ * plugins: they never call `register()` and never enrich `GeoLeaf.*` — cf. Plugin
+ * Contract spec §0.
  *
  * Each entry gains `pluginName` (registry id, e.g. "table") and `bundleFile`
  * (e.g. "geoleaf-table.plugin.js").

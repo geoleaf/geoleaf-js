@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "lock-integrity",
+    "scope": ["scripts/check-lock-integrity.cjs"],
+    "verdicts": {
+        "scripts/check-lock-integrity.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "LI-01…03 — chaque entrée de registre du lock porte un `integrity`, cliquet décroissant",
+            "confidence": "haute",
+            "rationale": "Câblé dans ci:local et ci.yml à la pose (parité tenue). Tient l'invariant : une entrée de registre du lock sans `integrity` est installée par name@version sans empreinte épinglée dans le dépôt — `npm ci` la pose sans avertir, et une re-publication à version égale ne serait pas détectée. Baseline gèle les 809 existantes (LI-01 refuse toute NOUVELLE, LI-02 force le resserrement, LI-03 refuse un lock sous le plancher de 500 entrées). Clé = chemin du lock, stable au patch de version. Mesuré structurel le 31/08/2026 : ni npm 10.9.8, ni npm 11 `--package-lock-only`, ni une réinstallation propre ne peuplent l'intégrité (sous-arbre @algolia/*→docsearch→vitepress, DEV) — la gate empêche la CROISSANCE de l'écart, le peuplement est une étape amont/mainteneur. VU ROUGE SUR DEUX MUTATIONS (entrée retirée de la baseline → LI-01 ; entrée fantôme ajoutée → LI-02), restaurations OK."
+        }
+    }
+}

@@ -102,6 +102,106 @@ donc n'est pas recopié ici :
 for d in packages/core/src/kernel/*/; do echo -n "${d} "; find "$d" -name '*.ts' | wc -l; done
 ```
 
+### K-06 — le style porté par le bundle, promu en contrat
+
+Promu le 20/08/2026, cible **3.1.0**. L'engagement existait déjà dans le code depuis le même
+jour ; ce qui change est qu'il cesse d'être **révocable par un refactor**.
+
+**Style présent dans le bundle ⟹ AUCUNE requête HTTP de style.** Quand `profile-bundle.json`
+porte le document d'un style sous `layerStyleDocuments[layerId][styleId]`, le chargement de ce
+style résout depuis lui et **n'émet aucun `fetch`**. L'ordre de résolution est fixé :
+**cache mémoire → magasin de documents (sans fetch) → HTTP, et seulement là.**
+
+🛑 **Réintroduire une requête sur ce chemin est une rupture** (`major`), pas une optimisation
+qu'on annule. C'est le même engagement que K-07 ① pour les thèmes, sur le même motif : il
+dispense un intégrateur de faire coïncider sa disposition d'assets avec la convention de chemin
+du chargeur.
+
+⚠️ **Le repli HTTP reste OBLIGATOIRE, et le contrat ne porte pas dessus.** Il dit « présent dans
+le bundle », jamais « jamais de requête » : `debug: true` ignore délibérément le bundle et prend
+la cascade. Un contrat qui interdirait la requête tout court casserait ce mode.
+
+⚠️ **Deux sites, et un troisième serait hors garde.** `loadAndValidateStyle`
+(`utils/loaders/style-loader-core.ts`) et `loadLayerLegend` (`capabilities/legend/legend.ts`)
+consultent tous deux le magasin. Le second garde son `fetch` et son `AbortSignal` : la
+convergence vers le premier perdrait le signal et la garde micro-tâche, dont le prix serait une
+écriture DOM après démontage. **Un troisième site de chargement ajouté plus tard devrait
+consulter le magasin lui aussi, et rien ne le lui rappellerait** — voir les limites ci-dessous.
+
+**Vérificateurs** — et ils sont STRUCTURELS, pas comportementaux :
+
+- `packages/core/__tests__/loaders/style-document-store.test.ts` — l'ordre des trois branches,
+  et l'égalité **structurelle** des deux enveloppes. C'est cette seconde assertion qui compte :
+  rendre le document brut satisferait tout consommateur qui ne lit que `styleData`, et casserait
+  le générateur de légende, qui lit `styleData.id`.
+- `packages/core/__tests__/config/bundle-style-documents.test.ts` — le compilateur porte le
+  document de **chaque** couche, instances de `layerTemplates` comprises, sur un compte **dérivé
+  des sources** et jamais écrit en dur.
+
+🛑 **Ce que ces vérificateurs NE gardent PAS, et il faut le savoir avant de s'y fier.** K-07 tient
+parce qu'un membre de **façade publique** le porte (`EXPECTED_FACADE_MEMBERS.Config`) : un golden
+master voit ce membre bouger. `StyleLoader` n'a **aucune façade publique** — il n'est ni dans
+`kernel-exports.ts` ni dans `globals.*.ts` —, donc aucun équivalent n'existe. Les deux tests
+ci-dessus gardent les chemins **qu'ils appellent** ; ils ne verraient pas un quatrième site de
+chargement apparaître ailleurs.
+
+⚠️ **Un compteur de requêtes en E2E aurait fermé ce trou, et il est délibérément ÉCARTÉ.** La
+suite navigateur est mesurée instable sous charge (trois passes du 20/08, trois specs rouges
+différents, tous verts en isolation) et n'est jouée que deux fois par run : une assertion qui
+rougit au hasard et ne tourne presque jamais produit du bruit, pas une garde. Le trou est donc
+**connu, nommé et non couvert** — ce qui vaut mieux qu'un vert qui ne prouve rien.
+
+📌 **Deux chemins frères existent et ne sont PAS contractuels** : `boot({config})` et
+`data.profileBundle` suppriment eux aussi des requêtes, par le même mécanisme. Ils ont été
+livrés le même jour et n'ont pas été promus — les promouvoir se décide, et ne s'infère pas
+d'ici.
+
+---
+
+### K-06 — chaque sous-couche ne peint que SA géométrie
+
+Posé le 27/08/2026. Une couche GeoJSON déclarée devient plusieurs couches MapLibre — `fill`,
+`casing`, `line`, `circle`, `symbol` — sur **une seule source**. Elles portent désormais chacune
+un filtre `geometry-type` (`geometryGuard()`, `adapters/maplibre/maplibre-primitives.ts`).
+
+🛑 **Le motif : MapLibre ne contrôle AUCUN type de géométrie au remplissage de ses buckets.**
+`FillBucket` triangule les anneaux qu'on lui donne — une `LineString` comprise, qu'il **referme**
+en polygone plein — et `CircleBucket` parcourt tous les points de tous les anneaux, donc une ligne
+y contribue **un cercle par sommet**. Une source portant plus d'une famille de géométrie peignait
+donc chacune de ses entités dans **toutes** ses sous-couches. Constaté sur la couche d'itinéraire
+calculé : un tracé correct, un polygone noir qui le referme, et une centaine de nœuds là où il n'y
+avait que trois étapes.
+
+⚠️ **La garde doit survivre à tout filtre reposé, et deux chemins la remplaçaient.**
+`adapter.setLayerFilter()` — la couture unique qu'empruntent le filtre GPU par ids, la capacité
+`filter` et le plugin `editor` — écrasait le filtre de chaque sous-couche ; le rustinage
+`point_count` du chemin cluster faisait de même. Les deux composent maintenant
+(`withGeometryGuard()`). **Vider un filtre restaure la garde, jamais `null`** : sinon le défaut
+rouvrirait exactement pendant qu'aucun filtre n'est actif.
+
+✅ **Et c'est la garde qui rend CORRECT le repli « je ne sais pas ».** Une couche dont les données
+d'amorce sont **vides** — celle de l'itinéraire l'est délibérément, elle est écrite à l'exécution —
+ne dit rien de sa géométrie, donc les trois familles de sous-couches sont construites. Le jeu de
+sous-couches est décidé **une seule fois, à la création** : `updateLayerData()` ne fait que
+`source.setData()` et ne le rejoue jamais. Le sur-rendu est donc la seule option sûre, et il ne
+coûte plus rien puisque chaque sous-couche est confinée.
+
+📌 **Corollaire sur la déclaration de géométrie du profil : elle AJOUTE, elle ne restreint pas.**
+`geometryType` est un genre **sémantique**, une chaîne minuscule unique que lisent aussi la
+légende, le menu de l'éditeur et l'applicateur de thèmes — et le genre d'une couche peut être plus
+étroit que son contenu (un itinéraire calculé est une `polyline` qui porte aussi ses étapes).
+**Seules les DONNÉES peuvent dire « inconnu »** : le repli aux trois familles est indexé sur un
+scan vide, jamais sur l'absence de déclaration. ⚠️ Ce chemin n'acceptait que le vocabulaire
+GeoJSON alors que le schéma de profil n'autorise que le minuscule — **0 configuration de couche
+sur 25 l'atteignait**. Les deux vocabulaires se rejoignent maintenant en un seul endroit,
+`geometryKindToGeoJSONTypes()` dans `kernel/config/layer-geometry.ts`.
+
+⚠️ **Hors périmètre, et pour un motif** : les couches de tuiles vectorielles et le chemin POI
+clusterisé ne portent pas de garde — une source-layer vectorielle est homogène par construction,
+et le second a son propre `applyPoiFilter`.
+
+---
+
 ### K-07 — deux engagements du moteur de thèmes, promus en contrat
 
 Promus le 13/08/2026, cible **3.1.0**. Les deux existaient déjà dans le code ; ce qui change est
@@ -218,7 +318,7 @@ peut donc pas se monter avant que ces couches aient résolu**, et une couche dé
 que le mapping doit lire).
 
 ⚠️ **Cette phrase a dit « par lots de 3, 200 ms entre lots » jusqu'au 07/08/2026** — les deux
-nombres sont tombés avec S5.1 (lots de 6, délai désarmé), et le second coûtait **400 ms** sur ce
+nombres sont tombés depuis (lots de 6, délai désarmé), et le second coûtait **400 ms** sur ce
 chemin, pas 200 : le thème par défaut du profil actif porte **8** couches, donc le minuteur
 partait deux fois. Les valeurs vivent en un seul endroit (`loader/profile.ts`, `PHASE1_BATCH_SIZE`
 et `PHASE1_BATCH_DELAY_MS`) et **ne se recopient pas ici** — c'est précisément en les recopiant
@@ -229,8 +329,8 @@ C'est un piège d'ordonnancement, pas une lenteur : déclarer `dependencies = ["
 seule raison d'être trié **après** quelque chose place la capacité derrière une attente réseau
 non bornée. `toast-renderer` le faisait, et le symptôme était qu'**aucune notification n'était
 rendue pendant tout le chargement initial** — la fenêtre même où surviennent les erreurs de
-chargement (B-56, 28/07/2026 ; `dependencies` ramenée à `["config"]`). **La très large majorité
-des capacités à module portent encore cette déclaration** (B-57) — ⚠️ la leur retirer demande de
+chargement (28/07/2026 ; `dependencies` ramenée à `["config"]`). **La très large majorité
+des capacités à module portent encore cette déclaration** — ⚠️ la leur retirer demande de
 vérifier d'abord que leur `init()` ne lit réellement aucun état GeoJSON, ce que rien n'atteste
 aujourd'hui. Le gisement se dérive, il ne se recopie pas :
 
@@ -240,7 +340,7 @@ grep -rn 'readonly dependencies' packages/core/src/capabilities/
 
 > 🛑 **Relecture du 11/08/2026 — cette phrase nommait TROIS capacités (`labels`, `feature-info`,
 > `filter`) ; elles sont QUATORZE.** C'est le mode d'échec n° 1 du pré-vol — le gisement
-> sous-estimé —, ici d'un facteur **4,7**, et sur la ligne de registre **B-57** elle-même : qui
+> sous-estimé —, ici d'un facteur **4,7**, et sur la ligne de registre elle-même : qui
 > aurait chiffré ce travail sur cette phrase l'aurait sous-évalué d'autant. Seules
 > `toast-renderer` (`["config"]`) et `permalink` (`[]`) ne la portent pas. ⚠️ Ne pas raccrocher un
 > compte ici : c'est en en écrivant un que la phrase s'est périmée.
@@ -336,7 +436,7 @@ clés, pas une de plus — `themesFile`, `layersFile`, `basemapsFile`, `uiFile`,
 ```
 
 > 🛑 **Relecture du 11/08/2026 — cet exemple déclarait `"addpoi": "config/plugins/addpoi.json"`,
-> et il est COPIABLE-COLLABLE.** Le plugin a fusionné dans `editor` au Sprint 5 : `addpoi` n'existe
+> et il est COPIABLE-COLLABLE.** Le plugin a fusionné dans `editor` : `addpoi` n'existe
 > plus, et **aucun profil du dépôt ne déclare ce module**. Remplacé par `table`, qui existe et dont
 > les trois profils portent la configuration. ⚠️ **Le garde de cette section est resté VERT tout du
 > long**, et c'est la leçon : `doc-profile-examples.guard.test.js` valide le bloc contre
@@ -411,7 +511,7 @@ avec des valeurs de remplissage — libellé i18n générique, `order: 10`, **pa
 **Ne pas rendre cette fusion « non destructive ».** Elle l'a été jusqu'au 14/08/2026 : sa garde
 `else if (… && !existingSection.label)` était fausse par construction sur une section déjà remplie,
 et `order` / `collapsedByDefault` n'étaient recopiés par aucune branche. Conséquence : tous les
-titres configurés, tout l'ordre et **tous les accordéons** étaient perdus en silence (B-251).
+titres configurés, tout l'ordre et **tous les accordéons** étaient perdus en silence.
 
 ⚠️ **Le mode de rendu tient au seul `typeof section.collapsedByDefault === "boolean"`**
 (`render-sections.ts`). Une section sans ce drapeau n'est pas « un accordéon déplié » : c'est un
@@ -421,6 +521,87 @@ titre plat, sans flèche ni handler. `false` et `undefined` ne sont donc **pas**
 repli, pas une erreur. Et le panneau COUCHES (`.gl-layer-manager`, kernel) n'est **pas** la
 capacité `legend` (`.gl-map-legend`, un accordéon par couche visible) : les deux sont voisins dans
 les onglets du panneau droit, et les confondre a déjà coûté une attribution de bug erronée.
+
+### Le registre de panes — héberger un panneau que le kernel ne nomme pas
+
+Les deux hôtes de panneau du cœur — le **panneau latéral droit** (≥ 1440 px) et le **sheet
+mobile** (en dessous) — acceptent des panes déclarés de l'extérieur, par
+`kernel/ui/panel-panes.ts`, exposé en `GeoLeaf.UI.registerPanelPane` / `openPane` / `closePane`.
+
+| Membre                | Rôle                                                                        |
+| --------------------- | --------------------------------------------------------------------------- |
+| `registerPanelPane()` | déclare `{ id, labelKey, selector, order?, onOpen? }` ; idempotent par `id` |
+| `openPane(id)`        | montre le pane sur **l'hôte vivant**, quel qu'il soit                       |
+| `closePane()`         | referme sur tous les hôtes vivants                                          |
+| `registerPaneHost()`  | côté cœur — une surface qui sait afficher un pane                           |
+
+L'hôte **déplace** le nœud désigné par `selector` — un seul nœud, un seul jeu d'écouteurs — et le
+remet où il était à la fermeture. C'est exactement le geste déjà appliqué à `.gl-map-legend` et
+`.gl-layer-manager`.
+
+🛑 **Les trois panes natifs — `filters`, `layers`, `legend` — n'y sont PAS**, délibérément. Ils
+sont configurés différemment de chaque côté (le desktop lit `showFilters`/`showLayers`/
+`showLegend` et trois titres, le sheet lit `getDefaultSheetTitles()`), et fondre deux formes dans
+un registre unique aurait demandé de réécrire les deux hôtes pour prouver une symétrie dont aucun
+n'a besoin. Les hôtes **concatènent** : leurs natifs, puis les panes déclarés. Les deux ensembles
+sont disjoints par construction — il n'y a donc pas deux sources de vérité pour un même pane.
+
+⚠️ **`priority` est explicite sur un hôte, et ne se déduit PAS de l'ordre d'enregistrement.** Un
+hôte s'enregistre à l'import de son module, et `globals.ui.ts` importe la barre mobile **avant**
+le panneau desktop. Au-dessus de 1440 px les deux sont vivants — la pill n'est masquée que par
+CSS — de sorte que l'ordre décide si l'utilisateur reçoit un panneau ancré ou un sheet plein
+écran par-dessus sa carte. Mesuré à 1600 px avant que le champ existe : `openPane` répondait
+`true`, `getOpenPanel()` répondait `null`, et le sheet s'était ouvert. Le desktop est à `0`, le
+sheet à `10`.
+
+⚠️ **`onOpen` est ce qui rend le registre utilisable.** Un propriétaire construit son panneau à la
+première demande — bâtir du DOM que personne n'a réclamé est du gaspillage —, or le clic sur
+l'onglet va au **cœur**, jamais au propriétaire. Sans ce crochet l'onglet s'activait sur un pane
+vide ; mesuré dans un navigateur, pas déduit. Il doit être idempotent : il part à chaque ouverture.
+
+📌 **Le cœur ne nomme aucun plugin** — c'est le plugin qui s'enregistre, donc
+`verify-core-standalone.cjs` reste vert. `plugins/table` avait déjà buté sur l'absence de ce
+registre et posait `id = "gl-rp-pane-table"` sur un panneau à lui, uniquement pour satisfaire un
+`aria-controls` qui pointait vers un pane inexistant.
+
+### Le mode immersif — retirer le chrome sans nommer qui le demande
+
+`kernel/ui/immersive.ts` → `setImmersive(on, { fullscreen })` et `isImmersive()`, montés sur
+`GeoLeaf.UI`. Livré le 27/08/2026. **Même geste que le registre de panes ci-dessus** : le kernel
+offre un mécanisme, et n'apprend jamais qui s'en sert — donc `verify-core-standalone.cjs` reste
+vert et `no-plugin-in-core` tient.
+
+Le mode pose `gl-immersive` sur `<body>` ; `css/geoleaf-ui-base.css` y masque le chrome que **le
+kernel possède** : les deux conteneurs de thèmes, le panneau de droite, la barre de proximité, et
+le point d'entrée du filtre par son **rôle** (`[data-gl-role="filter-toggle"]`).
+
+⚠️ **Pas par `#gl-filter-toggle`** : cet id n'est créé nulle part dans le cœur, il est écrit en
+dur dans la page hôte, et le cœur ne fait que le lire. Une règle du cœur sur un id qu'il ne
+possède pas est morte, en silence, chez tout intégrateur qui nomme son bouton autrement.
+
+🛑 **Le `!important` de ces règles tient à l'INVERSION DES COUCHES, pas à la spécificité.**
+`geoleaf-ui-base.css` entre en `layer(gl.kernel)` et le CSS des capacités en `gl.capabilities`,
+déclarées dans cet ordre. Pour les déclarations **normales**, la couche la plus tardive gagne —
+`gl.capabilities` battrait le kernel. Pour les `!important`, **l'ordre s'inverse** et le kernel
+l'emporte. Or `theme-selector.css` porte `display: block !important` sous 768 px : sans
+`!important`, le masquage échouerait **en mobile seulement**. 📌 Conséquence assumée — ces règles
+battent aussi `gl.overrides`, le point d'entrée de l'intégrateur, qui ne peut les reprendre que
+depuis une feuille **hors couche**. Acceptable pour un mode ; pas pour un style.
+
+🛑 **Le plein écran vise `document.documentElement`, jamais `.gl-main`.** Le bouton de la barre
+pilule, lui, vise `.gl-main` — c'est un autre geste (« que la carte remplisse l'écran ») et il
+n'est pas recâblé. La différence n'est pas cosmétique : **un élément hors du sous-arbre plein
+écran n'est pas mal placé, il n'est PAS rendu.** Le conteneur de notifications est ajouté à
+`document.body`, comme le panneau POI, le panneau d'itinéraire, la modale de partage et les
+bannières PWA. Un plein écran sur `.gl-main` **éteindrait les toasts** — au moment précis où un
+guidage se met à signaler une perte de GPS ou un recalcul impossible.
+
+⚠️ **La revendication du plein écran est SUIVIE**, parce que le DOM ne la porte pas :
+`document.fullscreenElement` dit que la page l'est, jamais qui l'a demandé. Deux appelants peuvent
+désormais le faire — ce module et le bouton de la barre —, donc on ne sort que si l'on est entré.
+Un `Échap` de l'utilisateur relâche la revendication **sans** annuler le mode : quitter le plein
+écran ne met pas fin à ce qui a demandé le mode, et rendre le chrome en pleine session serait une
+seconde surprise par-dessus la première.
 
 ### Profils présents dans le dépôt
 
@@ -438,7 +619,7 @@ profil livré éteint les deux, silencieusement pour le premier.
 
 ⚠️ **Aucun compte n'est écrit dans cette section, et c'est délibéré.** Elle a annoncé « deux
 profils métier » du 27/07/2026 au 10/08/2026, en les nommant ; `reunion-eclairage` est ensuite
-parti au Sprint 7 du passage public — comme profil **client** — puis **revenu le 10/08/2026**,
+parti au passage public — comme profil **client** — puis **revenu le 10/08/2026**,
 neutralisé de toute mention de son exploitant et requalifié en profil de démonstration. Un compte
 en dur ne se serait vu vieillir ni à l'aller ni au retour. Le compte fait foi à la commande :
 
@@ -507,7 +688,7 @@ Deux cartes, et la distinction est porteuse :
   sérialisation. Les placer dans la première carte aurait rendu `dispatchGeoLeafEvent` type-légal
   et **runtime-faux**.
   ⚠️ Cette ligne disait « `geoleaf:toolbar:action` y vit **seul** » jusqu'au 14/08/2026, et elle
-  était **déjà fausse à deux clés** avant que le Sprint 5 n'en ajoute une troisième — le critère
+  était **déjà fausse à deux clés** avant qu'une fusion n'en ajoute une troisième — le critère
   d'admission n'est d'ailleurs pas « le payload n'est pas clonable » mais « **au moins un champ**
   ne l'est pas », `popup:action` en portant cinq qui le sont.
 
@@ -685,8 +866,10 @@ modules**, dont deux ne sont nommés dans aucun markup (d'où la clôture de `sc
 qui les fait entrer au pré-cache du service worker).
 
 Le budget du kernel est la **clôture transitive des imports statiques** depuis l'entrée, pas
-l'entrée seule qui n'est qu'un shim. Échec de build au-delà de 300 KB gz, alerte au-delà de
-270 KB gz :
+l'entrée seule. ⚠️ **Ne pas appeler `geoleaf.esm.js` « un shim »** — c'est l'entrée _granulaire_
+(`dist/esm/`) qui en est un ; sur l'entrée plate, l'étiquette a accompagné un chiffre faux d'un
+facteur ~150 sans qu'aucune gate ne le voie. Échec de build au-delà de 300 KB gz, alerte au-delà
+de 270 KB gz :
 
 ```bash
 npm run size
@@ -721,7 +904,7 @@ npm run size
 
 | Version   | Date            | Auteur        | Modifications                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | --------- | --------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **4.2.0** | 14 août 2026    | Claude Opus 5 | **ADR-15 posé, et K-04 gagne le cycle de vie du registre — Sprint 6 du contrat inverse.** ① **ADR-15** — `Core.reattach()` déplace le **conteneur** et rien d'autre : le moteur mémorise l'élément de construction (déplacer les enfants importerait le bug de `getContainer()` que l'aval avait dû écrire), et les panneaux vivant dans `glMain`, les faire suivre coupleraient l'API au DOM de la coquille. La décision ne vivait que dans le TSDoc de la façade ; **une décision d'architecture avec alternative écartée appartient au §Décisions**, sinon elle se refait de mémoire à la prochaine cible — c'est le motif qui a déjà fait verser la doctrine de placement en 4.1.0. ② **K-04** nomme désormais le cycle de vie du registre (`init`/`destroy`/`hasMap`/`listMaps`, plus `isAttached`/`reattach`) et le fait qu'il n'y en a **qu'un** : `GeoLeaf.getMap`/`getAllMaps` y délèguent depuis la 3.1.0. Avant, ces raccourcis lisaient un miroir que personne n'alimentait et rendaient `null` pour toute carte vivante (B-205). ③ ⚠️ **`Vérifié contre` n'est PAS avancé** : ces deux gestes sont vérifiés contre `c5164edd`, le document dans son ensemble ne l'est pas. Avancer la ligne ferait passer une vérification ponctuelle pour un balayage complet — exactement la classe d'énoncé que le bandeau ci-dessus interdit. ④ Aucune signature recopiée : le §Contrat exposé continue de renvoyer à TypeDoc.                                                                                                                                                                                                                                                                                                                                                 |
+| **4.2.0** | 14 août 2026    | Claude Opus 5 | **ADR-15 posé, et K-04 gagne le cycle de vie du registre.** ① **ADR-15** — `Core.reattach()` déplace le **conteneur** et rien d'autre : le moteur mémorise l'élément de construction (déplacer les enfants importerait le bug de `getContainer()` que l'aval avait dû écrire), et les panneaux vivant dans `glMain`, les faire suivre coupleraient l'API au DOM de la coquille. La décision ne vivait que dans le TSDoc de la façade ; **une décision d'architecture avec alternative écartée appartient au §Décisions**, sinon elle se refait de mémoire à la prochaine cible — c'est le motif qui a déjà fait verser la doctrine de placement en 4.1.0. ② **K-04** nomme désormais le cycle de vie du registre (`init`/`destroy`/`hasMap`/`listMaps`, plus `isAttached`/`reattach`) et le fait qu'il n'y en a **qu'un** : `GeoLeaf.getMap`/`getAllMaps` y délèguent depuis la 3.1.0. Avant, ces raccourcis lisaient un miroir que personne n'alimentait et rendaient `null` pour toute carte vivante. ③ ⚠️ **`Vérifié contre` n'est PAS avancé** : ces deux gestes sont vérifiés contre `c5164edd`, le document dans son ensemble ne l'est pas. Avancer la ligne ferait passer une vérification ponctuelle pour un balayage complet — exactement la classe d'énoncé que le bandeau ci-dessus interdit. ④ Aucune signature recopiée : le §Contrat exposé continue de renvoyer à TypeDoc.                                                                                                                                                                                                                                                                                                                                                                                       |
 | **4.1.0** | 1er août 2026   | Claude Opus 5 | **§Dépendances et frontières reçoit la doctrine de placement** — « Où va une fonctionnalité neuve : kernel, capacité ou plugin ». Les deux axes (lien au noyau · moment de livraison), la table des 3 couches, la grille ordonnée à 5 questions et le principe natif-dessous/déclaratif-dessus, versés depuis `rapport_decisions-architecture.md` (session d'idéation du 04/07/2026) à l'archivage de la zone `travail/`. ⚠️ **Motif du versement** : aucun fichier de `specs/` ne portait ce classement, et `/feature` ne couvre pas le placement — la seule frontière que les trois sections suivantes ne disaient pas était celle qui décide **de quel côté** on atterrit. Les trois autres frontières sont inchangées                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | **4.0.0** | 27 juillet 2026 | Claude Opus 5 | **Réécriture complète contre le code, refonte documentaire V3 §2.3 + §2.4.** Le document précédent (`CDC_technique.md`, 2 572 lignes) citait **452 chemins dont 287 ne résolvaient plus**, annonçait « 18 capacités » ×4 (réel **21**), « 11 plugins » / « 9 plugins » (réel **13**), « 369+ fichiers TypeScript » (réel **518**), « 8 profils » (réel **2** + `_reference`), et **deux comptes d'exports ESM contradictoires** à 700 lignes d'écart. Il portait aussi trois versions incompatibles de lui-même — frontmatter `v3.34.0`, bandeau `v3.23.0`, corps « version 2.1.5 » — alors que `packages/core/package.json` vaut **3.0.0**. Réécrit au squelette `specs/` : Périmètre / Fonctionnalités / Séquence de boot / 13 sous-systèmes / Configuration / Contrat exposé / Décisions / Frontières. **Trois sections deviennent des renvois** au lieu d'être recopiées : l'arborescence des sources (→ `reference/ARBORESCENCE_QUALIFIEE.md`, généré et gaté), la liste des signatures d'API (→ TypeDoc) et la structure d'un profil (→ `specs/contrats/PROFILE_CONTRACT_SPEC.md` + `reference/GUIDE_VALIDATION_PROFILS.md`) — c'est la frontière `specs/` ↔ dérivé, et la recréer ici annulerait le travail qui la supprime ailleurs. **Les 14 ADR sont conservés**, condensés en table décision / pourquoi / alternative écartée, avec leurs révisions et leurs corrections de prémisse — un ADR périmé s'annote, il ne s'efface pas. Péremptions balayées : `src/modules/**` et `modules/optional/` (n'existent plus), `plugin-storage` → `offline-ui` (10 sites), `GeoLeaf-Core` décrit comme dépôt public, `src/lazy/` (19 mentions d'un répertoire absent). L'exemple `Files` est repris du profil `reunion-eclairage` réel et validé contre `profile.schema.json`. |
 

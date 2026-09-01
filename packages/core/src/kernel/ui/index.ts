@@ -23,10 +23,10 @@ export { _UIComponents } from "./components.js";
 export { createPillSearchInput } from "./pill-search.js";
 export { _UITheme } from "./theme.js";
 
-// STRUCT S8 — `collapsible-toggle.ts` arrive de `utils/controls/` (E2 : il lit l'i18n du
-// core et construit du DOM `gl-*`, il n'est pas publiable hors GeoLeaf). Son unique
-// consommateur est `capabilities/legend/legend-control.ts`, et la règle R.8 lui interdit
-// d'y plonger directement. Élargir le baril est le geste que la règle DÉSIGNE, pas un
-// contournement — et c'est ici qu'il se motive : un accordéon est un composant partagé,
-// exactement la catégorie que ce baril revendique.
+// `collapsible-toggle.ts` comes from `utils/controls/` (it reads the core's i18n
+// and builds `gl-*` DOM, it is not publishable outside GeoLeaf). Its sole consumer
+// is `capabilities/legend/legend-control.ts`, and the boundary rule forbids it to
+// dive there directly. Widening the barrel is the gesture the rule DESIGNATES, not
+// a workaround — and this is where it is motivated: an accordion is a shared
+// component, exactly the category this barrel claims.
 export { createCollapsibleToggle, applyToggleCollapsed } from "./collapsible-toggle.js";

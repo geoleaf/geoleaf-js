@@ -4,6 +4,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import { launchOptions } from "./e2e/helpers/launch-options.js";
 import { baseURL, isNginxTarget, hostResolverArgs } from "./e2e/helpers/base-url.js";
+import { e2eWorkers } from "./e2e/helpers/worker-budget.js";
 
 export default defineConfig({
     // Deploy variants only (e2e/)
@@ -17,25 +18,37 @@ export default defineConfig({
     fullyParallel: false,
     forbidOnly: !!process.env.CI,
     retries: process.env.CI ? 2 : 0,
-    workers: 1,
-    // T6.2 — chemins EXPLICITES. Deux défauts, tous deux fermés ici :
-    //   1. `playwright.coverage.config.js` déclarait le MÊME `outputFolder` que ce
-    //      fichier : lancer la variante coverage après la suite complète écrasait
-    //      silencieusement son rapport. Cette config a été SUPPRIMÉE au même commit
-    //      (son `testMatch` était un sous-ensemble strict de celui-ci, et le spec 07 pose
-    //      lui-même son `baseURL`) — la collision se résout par soustraction.
-    //   2. aucun `outputDir` n'était déclaré, donc les résultats tombaient dans le
-    //      `test-results/` par défaut de Playwright — homonyme du FICHIER
-    //      `test-results.json` du reporter Vitest (ci.yml:112, lu par
-    //      check-test-failures.cjs:20), qui n'a rien à voir et ne bouge pas.
+    // Derived from the host rather than pinned, on the pattern this repository already
+    // applies to Vitest (`packages/build-config/vitest/worker-budget.mjs`). The motive lives
+    // in `e2e/helpers/worker-budget.js`, with the measurement that supports it — and the
+    // point of deriving is precisely that the motive can no longer be a value nobody wrote
+    // down: a constant imposes the slowest machine's answer on every machine.
     //
-    // ⚠️ `outputDir` et `outputFolder` doivent rester FRÈRES, jamais imbriqués :
-    // le reporter HTML vide son dossier avant génération et Playwright refuse la
-    // configuration si l'un contient l'autre.
+    // ⚠️ This line read `workers: 1` with nothing beside it. What justified the 1 was assumed
+    // to be shared browser state; measured, service workers, Cache Storage and IndexedDB are
+    // per BrowserContext and therefore isolated between workers by construction. The only
+    // genuinely shared resource is the backend, and the helper REFUSES a parallel run while
+    // its bindings are present rather than leaving the collision to chance.
+    workers: e2eWorkers(),
+    // EXPLICIT paths. Two defects, both closed here:
+    //   1. `playwright.coverage.config.js` declared the SAME `outputFolder` as
+    //      this file: running the coverage variant after the full suite silently
+    //      overwrote its report. That config was DELETED in the same commit (its
+    //      `testMatch` was a strict subset of this one's, and spec 07 sets its
+    //      own `baseURL`) — the collision resolves by subtraction.
+    //   2. no `outputDir` was declared, so results fell into Playwright's default
+    //      `test-results/` — namesake of the Vitest reporter's
+    //      `test-results.json` FILE (ci.yml:112, read by
+    //      check-test-failures.cjs), which is unrelated and does not move.
+    //
+    // ⚠️ `outputDir` and `outputFolder` must stay SIBLINGS, never nested: the
+    // HTML reporter empties its folder before generating and Playwright refuses
+    // the configuration if one contains the other.
     outputDir: "artifacts/playwright/results",
     reporter: [
-        // ⚠️ `open: 'never'` — le défaut `'on-failure'` DÉMARRE un serveur HTTP pour servir
-        // le rapport, ce que CLAUDE.md interdit en session. Risque préexistant, fermé ici.
+        // ⚠️ `open: 'never'` — the `'on-failure'` default STARTS an HTTP server to
+        // serve the report, which is forbidden in a session. Pre-existing risk,
+        // closed here.
         ["html", { outputFolder: "artifacts/playwright/report", open: "never" }],
         ["list"],
     ],
@@ -49,34 +62,40 @@ export default defineConfig({
         video: "retain-on-failure",
         viewport: { width: 1280, height: 720 },
         ignoreHTTPSErrors: true,
-        // ⚠️ 30 s, et NON 10 s — porté le 01/08/2026. Le run CI 30703087739 a produit
-        // 5 `locator.click: Timeout 10000ms` (4 comptés en échec, 1 en flaky car repassé au
-        // retry) qu'aucun run local n'a jamais vus. `retries: 2` étant actif en CI, chacun des
-        // 4 a échoué TROIS fois : ce ne sont pas des flakes. Leur call log est explicite, et il
-        // dit l'inverse de ce qu'on croit en le lisant vite :
+        // ⚠️ 30 s, and NOT 10 s — raised on 2026-08-01. CI run 30703087739
+        // produced 5 `locator.click: Timeout 10000ms` (4 counted failed, 1 flaky
+        // as it passed on retry) that no local run ever saw. `retries: 2` being
+        // active in CI, each of the 4 failed THREE times: these are not flakes.
+        // Their call log is explicit, and it says the opposite of what a quick
+        // read suggests:
         //
-        //     - element is visible, enabled and stable      ← la stabilité PASSE
+        //     - element is visible, enabled and stable      ← stability PASSES
         //     - scrolling into view if needed / done scrolling
-        //     - performing click action                     ← ÇA BLOQUE ICI
+        //     - performing click action                     ← IT BLOCKS HERE
         //
-        // Ce n'est donc ni un élément instable, ni un recouvrement : c'est la DISPATCH de
-        // l'événement dont le renderer ne renvoie pas l'ack, parce que son thread principal
-        // est occupé. Le budget d'action mesure une latence d'ack, pas une durée d'animation.
+        // So neither an unstable element nor an overlay: it is the event
+        // DISPATCH whose ack the renderer does not return, because its main
+        // thread is busy. The action budget measures an ack latency, not an
+        // animation duration.
         //
-        // Mesure de la même action (`.gl-emprise-ok`) en dégradant ce poste vers le runner :
+        // Measurement of the same action (`.gl-emprise-ok`) degrading this
+        // machine toward the runner:
         //
-        //     24 cœurs, bridage CPU ×8   → 1 887 ms
-        //      2 cœurs, sans bridage     → 4 641 ms
-        //      2 cœurs + bridage ×4      → 8 093 ms   ← 81 % du budget, sur une machine
-        //                                               MOINS dégradée que le runner
+        //     24 cores, CPU throttle ×8   → 1,887 ms
+        //      2 cores, no throttle       → 4,641 ms
+        //      2 cores + throttle ×4      → 8,093 ms   ← 81 % of the budget, on a
+        //                                                machine LESS degraded
+        //                                                than the runner
         //
-        // ⚠️ Le facteur qui compte est le NOMBRE DE CŒURS, pas `setCPUThrottlingRate` :
-        // celui-ci ne bride que le thread JS, alors que SwiftShader rastérise en parallèle.
-        // Une repro par bridage seul reste optimiste — il faut `taskset -c 0,1`.
-        // (`E2E_HW_GL` non défini ici ⇒ ce poste tourne DÉJÀ sous SwiftShader comme la CI ;
-        // le GL n'est pas la variable, contrairement à la perf-baseline.)
+        // ⚠️ The factor that counts is the CORE COUNT, not
+        // `setCPUThrottlingRate`: the latter only throttles the JS thread, while
+        // SwiftShader rasterises in parallel. A throttle-only repro stays
+        // optimistic — `taskset -c 0,1` is needed. (`E2E_HW_GL` undefined here ⇒
+        // this machine ALREADY runs under SwiftShader like CI; GL is not the
+        // variable, unlike the perf-baseline.)
         //
-        // La valeur est alignée sur `navigationTimeout` : les deux attendent le même thread.
+        // The value is aligned on `navigationTimeout`: both wait on the same
+        // thread.
         actionTimeout: 30 * 1000,
         navigationTimeout: 30 * 1000,
         // Force software WebGL on GPU-less hosts (CI/WSL); opt out with E2E_HW_GL=1.
@@ -91,48 +110,52 @@ export default defineConfig({
         {
             name: "chromium",
             use: { ...devices["Desktop Chrome"] },
-            // 🛑 UN `testIgnore` DE PROJET ÉCRASE CELUI DU NIVEAU CONFIG — il ne s'y ajoute
-            // PAS (`playwright/lib/common/index.js`, `takeFirst`). Le `**/.claude/**` de la
-            // ligne 15 disparaît donc pour ce projet dès qu'on déclare la clé ici, et les
-            // copies de worktree reviennent avec le crash de double chargement que le
-            // commentaire ci-dessus décrit. Il est RECOPIÉ, ce n'est pas une redondance.
+            // 🛑 A PROJECT-level `testIgnore` OVERWRITES the config-level one — it
+            // does NOT add to it (`playwright/lib/common/index.js`, `takeFirst`).
+            // The `**/.claude/**` of line 15 thus vanishes for this project as
+            // soon as the key is declared here, and the worktree copies return
+            // with the double-load crash the comment above describes. It is
+            // COPIED, not a redundancy.
             testIgnore: ["**/.claude/**", "e2e/**/*.touch.spec.js"],
         },
         {
-            // Deux défauts mobiles que la souris synthétique ne peut pas voir, par
-            // construction et non par accident :
-            //   · editor  — au 1er tap, Terra Draw pose une LineString [c, c] et RIEN
-            //     d'autre. Sur desktop le survol déplace le 2e sommet et masque le défaut ;
-            //     au doigt il n'y a pas de survol.
-            //   · measure — `createDragTool` filtre sur `originalEvent.button !== 0`, qu'un
-            //     TouchEvent ne peut pas satisfaire.
+            // Two mobile defects the synthetic mouse cannot see, by construction
+            // and not by accident:
+            //   · editor  — at the 1st tap, Terra Draw lays a LineString [c, c]
+            //     and NOTHING else. On desktop the hover moves the 2nd vertex and
+            //     masks the defect; with a finger there is no hover.
+            //   · measure — `createDragTool` filters on
+            //     `originalEvent.button !== 0`, which a TouchEvent cannot
+            //     satisfy.
             //
-            // ⚠️ Ce projet NE REJOUE PAS la suite au doigt : `testMatch` le borne aux seuls
-            // specs écrits pour lui. Un `grep:` par tag aurait CHARGÉ les 40+ fichiers pour
-            // n'en garder que deux.
+            // ⚠️ This project does NOT REPLAY the suite by finger: `testMatch`
+            // bounds it to the specs written for it. A tag `grep:` would have
+            // LOADED the 40+ files to keep only two.
             //
-            // ⚠️ Les specs tactiles restent À PLAT dans `e2e/` — d'où le suffixe plutôt
-            // qu'un sous-répertoire. `scripts/check-e2e-wait-signature.cjs` lit `e2e/` par
-            // un `readdirSync` NON RÉCURSIF : un `e2e/touch/` échapperait à la gate EN
-            // SILENCE.
+            // ⚠️ The touch specs stay FLAT in `e2e/` — hence the suffix rather
+            // than a subdirectory. `scripts/check-e2e-wait-signature.cjs` reads
+            // `e2e/` through a NON-RECURSIVE `readdirSync`: an `e2e/touch/` would
+            // escape the gate IN SILENCE.
             name: "chromium-touch",
             testMatch: ["e2e/**/*.touch.spec.js"],
             testIgnore: ["**/.claude/**"],
             use: {
                 ...devices["Desktop Chrome"],
-                // Le créneau des deux plugins est mobile, et 390×844 est la valeur déjà
-                // retenue par `09-editor.spec.js`.
+                // Both plugins' niche is mobile, and 390×844 is the value already
+                // retained by `09-editor.spec.js`.
                 viewport: { width: 390, height: 844 },
                 hasTouch: true,
-                // Sûr ici, et vérifié plutôt que supposé : `isMobile` fait prendre en compte
-                // le `<meta name="viewport">`, que les deux variantes servies déclarent bien
-                // en `width=device-width`. Sans ce meta, Chromium retomberait à 980 px CSS et
-                // la mise en page mobile ne serait PAS exercée.
+                // Safe here, and verified rather than assumed: `isMobile` makes
+                // the `<meta name="viewport">` count, which both served variants
+                // do declare as `width=device-width`. Without that meta, Chromium
+                // would fall back to 980 CSS px and the mobile layout would NOT
+                // be exercised.
                 isMobile: true,
-                // ⚠️ NE PAS reprendre `devices["Pixel 7"]` en bloc : il emporte un
-                // `deviceScaleFactor: 2.625` — qui triple la surface à rastériser sous le
-                // SwiftShader logiciel des `launchOptions` — et un UA Android, or du code
-                // produit branche déjà sur l'UA (cf. `23-pwa-install-banner.spec.js`).
+                // ⚠️ Do NOT take `devices["Pixel 7"]` wholesale: it carries a
+                // `deviceScaleFactor: 2.625` — which triples the surface to
+                // rasterise under the `launchOptions`' software SwiftShader — and
+                // an Android UA, yet product code already branches on the UA
+                // (cf. `23-pwa-install-banner.spec.js`).
                 deviceScaleFactor: 1,
             },
         },

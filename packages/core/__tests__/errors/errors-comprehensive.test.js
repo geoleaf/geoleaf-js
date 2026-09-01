@@ -1,6 +1,6 @@
 /**
  * @file errors-comprehensive.test.js
- * Sprint 3.2 — Comprehensive tests for the Errors module
+ * Comprehensive tests for the Errors module
  */
 
 import {

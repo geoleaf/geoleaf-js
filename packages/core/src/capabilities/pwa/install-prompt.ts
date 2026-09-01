@@ -205,7 +205,7 @@ export const InstallPrompt = {
 
     /**
      * Registry destroy / test seam: detaches the global listeners, hides the banner and
-     * clears the deferred prompt so a re-init starts clean (S7.5 — no listener leak).
+     * clears the deferred prompt so a re-init starts clean (no listener leak).
      */
     _reset(): void {
         removeEventListener("beforeinstallprompt", _onBeforeInstallPrompt);

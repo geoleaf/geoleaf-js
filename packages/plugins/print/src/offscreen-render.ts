@@ -4,8 +4,8 @@
  * Creates a hidden MapLibre instance sized in print pixels (mm × DPI),
  * waits for the 'idle' event, copies the canvas, and cleans up.
  *
- * Sprint 4: one-shot instances for captureExtent() / captureViewport().
- * Sprint 5: session-mode (single instance reused during the modal lifecycle).
+ * One-shot instances for captureExtent() / captureViewport(), plus a session mode
+ * (single instance reused during the modal lifecycle).
  *
  * © 2026 Mattieu Pottier — MIT License
  * https://geoleaf.dev
@@ -35,7 +35,7 @@ const SCREEN_DPI = 96;
 /**
  * Default off-screen render timeout (ms) — the backstop for a MapLibre `idle` that never comes.
  *
- * ⚠️ 180 s, and NOT 30 s — raised on 01/08/2026 (B-105). The old budget did not sit above the
+ * ⚠️ 180 s, and NOT 30 s — raised on 01/08/2026. The old budget did not sit above the
  * legitimate render time, it sat INSIDE it, so the nominal path reached it and the export died
  * on hardware that merely needed to wait. A backstop the happy path can hit is not a backstop:
  * it is an intermittent failure. And this rejection does not degrade the export, it KILLS it —
@@ -65,7 +65,7 @@ const SCREEN_DPI = 96;
  * what actually happened. That mistake was made here on 01/08/2026, with both set to 90 s.
  *
  * Discovered only once two E2E budgets above it were lifted — it had been masked by an
- * `actionTimeout` that failed the click first (B-103).
+ * `actionTimeout` that failed the click first.
  */
 const IDLE_TIMEOUT_MS = 180_000;
 
@@ -152,8 +152,11 @@ async function _scaleSymbolTextSizes(map: MaplibreGL.Map, dpi: number): Promise<
     if (changed) {
         await new Promise<void>((resolve) => {
             // `once(type, listener)` returns the map, not a promise — MapLibre unions
-            // both in one signature (maplibre-gl.d.ts:12010).
-            void map.once("idle", resolve);
+            // both in one signature. And the listener RECEIVES the event: passing
+            // `resolve` directly typed until maplibre-gl 6.5, whose types now refuse a
+            // `void`-parameter callback where an event is handed over. The wrapper drops
+            // the event on purpose — resolving with it would leak it into the promise.
+            void map.once("idle", () => resolve());
             setTimeout(resolve, 200);
         });
     }
@@ -183,7 +186,7 @@ function _copyCanvas(src: HTMLCanvasElement): HTMLCanvasElement {
     return dest;
 }
 
-/** Dispatches a CustomEvent on document (drives the modal spinner in Sprint 5). */
+/** Dispatches a CustomEvent on document (drives the modal spinner). */
 function _emit(name: "geoleaf:print:render:start" | "geoleaf:print:render:end"): void {
     document.dispatchEvent(new CustomEvent(name));
 }
@@ -331,7 +334,7 @@ function _resolveRenderParams(
 
     const requestedDpi = opts.dpi ?? config.dpi;
 
-    // Compute zones (no overlays at this stage — Sprint 5 modal will configure them)
+    // Compute zones (no overlays at this stage — the modal configures them)
     const zones = computeZones(formatName, orientation, ZONE_OPTS_MAP_ONLY);
     const mapZone = zones.map;
 
@@ -372,7 +375,7 @@ function _resolveRenderParams(
 }
 
 // ---------------------------------------------------------------------------
-// Session mode — reused during the preview modal lifecycle (Sprint 5)
+// Session mode — reused during the preview modal lifecycle
 // ---------------------------------------------------------------------------
 
 /**
@@ -503,7 +506,7 @@ export async function captureViewport(opts: CaptureOptions = {}): Promise<Captur
     const bounds = nativeMap.getBounds?.();
     if (!bounds) throw new Error("[GeoLeaf.Print] captureViewport: could not get map bounds.");
 
-    // API publique `LngLatBounds` (avec repli legacy _sw/_ne)
+    // Public `LngLatBounds` API (with legacy _sw/_ne fallback)
     const bbox = _bboxFromBounds(bounds);
 
     // Lock the current map scale for the viewport capture

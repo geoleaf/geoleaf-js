@@ -294,9 +294,10 @@ describe("geojson/layers/visibility", () => {
         state.layers.clear();
     });
 
-    // N-1b : la fenêtre d'échelle fait loi. Cocher une couche ne l'outrepasse plus —
-    // le `userForcedVisible` d'avant produisait exactement le symptôme qui a masqué N-1
-    // pendant ~3 mois : couche cochée visible à tous les zooms, plus aucun seuil respecté.
+    // The scale window rules. Ticking a layer no longer overrides it — the
+    // old `userForcedVisible` produced exactly the symptom that masked the
+    // original defect for ~3 months: ticked layer visible at every zoom, no
+    // threshold respected any more.
     it("updateLayerVisibilityByZoom masque une couche cochée hors de sa plage", () => {
         state.map = {};
         const setVisibility = vi.fn();

@@ -65,7 +65,7 @@ interface MapLibreLike {
  * result was `undefined` at `new Marker(...)`. Same trap as the connector's `healthCheck`.
  *
  * ⚠️ `Reflect.get` rather than `globalThis as unknown as {…}`: since `@geoleaf/core` publishes
- * its ambient namespace (B-46), `globalThis` carries a known shape and a direct cast is
+ * its ambient namespace, `globalThis` carries a known shape and a direct cast is
  * refused (TS2352), which pushes toward a DOUBLE cast through `unknown` — and NNA-01 refuses
  * to let one be born. `Reflect.get` returns `any`, so one assertion is enough.
  */

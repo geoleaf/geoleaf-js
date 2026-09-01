@@ -1,10 +1,11 @@
 /**
  * Unit tests — `BrandingLifecycle` (backlog COUVERTURE B.2).
  *
- * `capabilities/branding/lifecycle.ts` était mesuré à **28,6 %** (2/7 lignes). Le module est
- * minuscule mais porte une garantie qui compte : le montage est **idempotent** — `BrandingModule`
- * peut l'appeler plusieurs fois sans empiler deux overlays. Cette garantie n'était vérifiée
- * par rien, et un `_started` mal remis à zéro la casserait en silence.
+ * `capabilities/branding/lifecycle.ts` measured at **28.6%** (2/7 lines). The
+ * module is tiny but carries a guarantee that matters: mounting is
+ * **idempotent** — `BrandingModule` can call it several times without
+ * stacking two overlays. That guarantee was verified by nothing, and a badly
+ * reset `_started` would break it silently.
  */
 import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
 

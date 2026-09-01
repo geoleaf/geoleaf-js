@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Roadmap nettoyage — Sprint 1 (tâche 1.5, S-4) — visibility-only audit gate.
+ * Visibility-only audit gate.
  *
  * Runs `npm audit --json` on the FULL dependency tree (prod + dev) and logs
  * every High/Critical advisory found, WITHOUT failing the build. The blocking
@@ -27,24 +27,25 @@ function runAudit() {
         maxBuffer: 32 * 1024 * 1024,
     });
 
-    // ⚠️ UN INCIDENT D'INFRASTRUCTURE N'EST PAS UN VERDICT, et cette gate est INFORMATIVE.
+    // ⚠️ AN INFRASTRUCTURE INCIDENT IS NOT A VERDICT, and this gate is INFORMATIVE.
     //
-    // Ces deux chemins sortaient en 1. Or l'étape qui les lance s'appelle « Security audit —
-    // full dependency tree (informational, non-blocking) » et n'a AUCUN `continue-on-error`
-    // (mesuré le 01/08/2026 : 0 occurrence dans tout `ci.yml`). Un hoquet de
-    // `registry.npmjs.org` — réseau, proxy, timeout — transformait donc une étape déclarée
-    // informative en ÉCHEC DUR du job, pendant que le poste, servi par son `~/.npm/_cacache`,
-    // sortait 0. Vert local, rouge distant, sans qu'une ligne de code ait bougé.
+    // These two paths exited 1. Yet the step launching them is named "Security audit —
+    // full dependency tree (informational, non-blocking)" and has NO
+    // `continue-on-error` (measured on 2026-08-01: 0 occurrences in all of `ci.yml`).
+    // A `registry.npmjs.org` hiccup — network, proxy, timeout — thus turned a step
+    // declared informative into a HARD job FAILURE, while the workstation, served by
+    // its `~/.npm/_cacache`, exited 0. Green locally, red remotely, without a line of
+    // code moving.
     //
-    // Le libellé disait la vérité sur l'INTENTION et le code disait l'inverse. On aligne le
-    // code : cette gate ne rend un verdict que lorsqu'elle a pu MESURER quelque chose. Elle
-    // n'a jamais bloqué sur une vulnérabilité (`process.exit(0)` en fin de fichier) — elle ne
-    // doit pas davantage bloquer sur son propre outillage.
+    // The label told the truth about the INTENT and the code said the opposite. We
+    // align the code: this gate only renders a verdict when it could MEASURE
+    // something. It never blocked on a vulnerability (`process.exit(0)` at file end) —
+    // it must not block on its own tooling either.
     //
-    // ⚠️ Ce qu'on accepte en échange, et c'est le vrai coût : un `npm audit` qui échoue
-    // silencieusement N'AVERTIT PLUS DE RIEN. D'où le message en ERROR, bruyant, et le fait
-    // que la gate BLOQUANTE de sécurité — `audit-ci.cjs`, prod-only, High/Critical — garde
-    // son `exit 1`. Celle-ci est un rapport ; celle-là est la garde.
+    // ⚠️ What is accepted in exchange, and it is the real cost: an `npm audit` that
+    // fails silently WARNS OF NOTHING ANYMORE. Hence the loud ERROR message, and the
+    // fact that the BLOCKING security gate — `audit-ci.cjs`, prod-only,
+    // High/Critical — keeps its `exit 1`. This one is a report; that one is the guard.
     const bail = (msg, detail) => {
         console.error(`ERROR [audit-dev-report]: ${msg}`);
         if (detail) console.error(detail);
@@ -70,10 +71,10 @@ function runAudit() {
 
 const report = runAudit();
 
-// Même mesure vide que dans `audit-ci.cjs` (voir son commentaire pour la démonstration),
-// traitée à l'INVERSE parce que cette gate-ci est un RAPPORT et non une garde : elle le dit
-// fort et sort 0. Ce qui compte est qu'elle ne prétende plus « aucune advisory » alors
-// qu'elle n'a rien pu mesurer.
+// Same empty measurement as in `audit-ci.cjs` (see its comment for the
+// demonstration), handled the OPPOSITE way because this gate is a REPORT and not a
+// guard: it says it loudly and exits 0. What matters is that it no longer claims "no
+// advisories" when it could measure nothing.
 if (!report || !report.metadata || !report.metadata.vulnerabilities) {
     console.error("ERROR [audit-dev-report]: le rapport npm audit ne porte AUCUN décompte.");
     if (report && report.message) console.error(`  motif npm : ${report.message}`);
@@ -83,7 +84,7 @@ if (!report || !report.metadata || !report.metadata.vulnerabilities) {
     );
     process.exit(0);
 }
-const counts = report.metadata.vulnerabilities; // garanti non nul par la garde ci-dessus
+const counts = report.metadata.vulnerabilities; // guaranteed non-null by the guard above
 const high = counts.high || 0;
 const critical = counts.critical || 0;
 const moderate = counts.moderate || 0;

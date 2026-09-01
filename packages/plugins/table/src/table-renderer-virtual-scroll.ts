@@ -15,15 +15,15 @@ import { clearElementFast } from "@geoleaf/host-runtime";
 import { events as _events } from "./utils/events.js";
 import { _eventCleanups } from "./event-cleanups.js";
 
-// STRUCT S8 — les 3 constantes de scroll virtuel vivaient dans `table-renderer-utils.ts`,
-// dont le nom fourre-tout couvrait quatre sujets. Elles sont ici, à leur seul lieu d'emploi
-// réel : `VIRTUAL_THRESHOLD` est lu par `renderer.ts:102` pour décider d'activer ce mode,
-// les deux autres ne servent qu'à ce fichier.
-/** Hauteur d'une ligne, en pixels — pilote le calcul de fenêtre et les cales haut/bas. */
+// The 3 virtual-scroll constants lived in `table-renderer-utils.ts`, whose
+// catch-all name covered four subjects. They are here, at their only real
+// place of use: `VIRTUAL_THRESHOLD` is read by `renderer.ts` to decide
+// whether to enable this mode, the other two serve only this file.
+/** Row height, in pixels — drives the window computation and the top/bottom spacers. */
 const VIRTUAL_ROW_HEIGHT = 32;
-/** Lignes rendues en plus de part et d'autre de la fenêtre visible. */
+/** Extra rows rendered on either side of the visible window. */
 const VIRTUAL_BUFFER = 20;
-/** Au-delà de ce nombre de lignes, le rendu bascule en scroll virtuel. */
+/** Beyond this row count, rendering switches to virtual scrolling. */
 export const VIRTUAL_THRESHOLD = 150;
 import type { TableColumnDef, TableFeature, TableLayerTableConfig } from "./types.js";
 
@@ -164,17 +164,7 @@ export function setupVirtualScroll(container: HTMLElement): void {
         );
     };
 
-    if (_events) {
-        _eventCleanups.push(
-            _events.on(
-                wrapper,
-                "scroll",
-                onScroll,
-                { passive: true },
-                "TableRenderer.virtualScroll"
-            )
-        );
-    } else {
-        wrapper.addEventListener("scroll", onScroll, { passive: true });
-    }
+    _eventCleanups.push(
+        _events.on(wrapper, "scroll", onScroll, { passive: true }, "TableRenderer.virtualScroll")
+    );
 }

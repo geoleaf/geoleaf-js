@@ -28,6 +28,20 @@
  * morts. S'ils cessaient d'être atteints, rien ne rougirait. Et si purgecss devenait
  * un jour une étape de build, ils tomberaient : la sonde le montre, un contenu qui
  * ne cite pas littéralement `data-gl-palette="blue"` les fait purger.
+ *
+ * DECIDED on 18/08/2026 — ASSUME the exposure, do not safelist. This records the choice, not
+ * just the fact, so that it is not re-opened every time someone reads the paragraph above.
+ *
+ * The safelist is the WRONG instrument here, and the doctrine that says so is written in
+ * `scripts/lib/purgecss-config.cjs`: every entry must cite the line that ASSEMBLES the class
+ * name, and an entry that cannot cite one has no place there. Nothing assembles a name here —
+ * these are attribute selectors, not classes — so a safelist entry would be unjustifiable, and
+ * an unjustifiable entry weakens the rule for every other entry that depends on it.
+ *
+ * What that leaves is an exposure, stated rather than hidden: should purgecss ever move from
+ * report gate to build step, these blocks fall, and nothing warns first. The trade is deliberate
+ * — a documented gap over a silent exemption — and the geste that would close it is to make the
+ * palette reachable by content the scanner reads, not to exempt it from being scanned.
  */
 
     /* =======================================================================

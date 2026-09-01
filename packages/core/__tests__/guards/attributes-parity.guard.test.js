@@ -1,30 +1,30 @@
 /**
- * Garde de parité du contrat attributaire — tâche 2.6 de `roadmap_collecte-terrain-offline`.
+ * Parity guard of the attribute contract.
  *
- * Le contrat attributaire est déclaré à TROIS endroits, et chacun a une raison
- * d'exister séparément :
+ * The attribute contract is declared in THREE places, each with a reason to
+ * exist separately:
  *
- *   1. `contracts/attributes.contract.ts` — les types, ce que TypeScript refuse ;
- *   2. `profiles/schemas/layer-config.schema.json` — ce que `validate:profiles`
- *      refuse au build, y compris pour un profil écrit à la main hors du dépôt ;
- *   3. `capabilities/feature-info/render/widget-dispatch.ts` — ce que le moteur
- *      sait réellement peindre.
+ *   1. `contracts/attributes.contract.ts` — the types, what TypeScript refuses;
+ *   2. `profiles/schemas/layer-config.schema.json` — what `validate:profiles`
+ *      refuses at build, including for a profile hand-written outside the repo;
+ *   3. `capabilities/feature-info/render/widget-dispatch.ts` — what the
+ *      engine really knows how to paint.
  *
- * ⚠️ Rien ne les confrontait. Mesuré au pré-vol du Sprint 2 : 33 clés d'options
- * d'un côté, 33 de l'autre, **zéro écart** — et aucune gate pour l'empêcher de
- * dériver. Les « quatre gardes vues rougir » du Sprint 1 étaient des vérifications
- * MANUELLES faites pendant l'implémentation, pas des tests permanents.
+ * ⚠️ Nothing confronted them. Measured before the guard: 33 option keys on
+ * one side, 33 on the other, **zero gap** — and no gate to keep it from
+ * drifting. The "four guards seen turning red" of before were MANUAL checks
+ * done during implementation, not permanent tests.
  *
- * ⚠️ C'est un TEST et non un script de `scripts/` : `verify-repo-hygiene` impose une
- * liste blanche à tout `.cjs`/`.mjs` de ce répertoire, et cette confrontation n'a
- * aucune raison d'y entrer.
+ * ⚠️ It is a TEST and not a `scripts/` script: `verify-repo-hygiene` imposes
+ * a whitelist on every `.cjs`/`.mjs` of that directory, and this
+ * confrontation has no reason to enter it.
  *
- * 🛑 **Et c'est cette gate qui porte la décision A11′**, pas la liste décroissante de
- * `check-orphan-exports`. Celle-ci recense des EXPORTS : `AttributeWidget` y est une
- * seule entrée pour l'union entière, donc un widget déclaré que rien ne rend n'y
- * apparaît jamais. Les trois widgets muets (`date`, `url`, `email`) lui étaient
- * invisibles depuis sa pose. La liste d'exemptions ci-dessous est VIDE, et une
- * entrée ne s'y ouvre qu'avec un motif nommé.
+ * 🛑 **And this gate is what carries the decision**, not
+ * `check-orphan-exports`'s shrinking list. That one inventories EXPORTS:
+ * `AttributeWidget` is a single entry there for the whole union, so a
+ * declared widget nothing renders never shows up. The three mute widgets
+ * (`date`, `url`, `email`) were invisible to it since its pose. The
+ * exemption list below is EMPTY, and an entry only opens with a named motive.
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
@@ -38,14 +38,14 @@ const CONTRACT = resolve(REPO, "packages/core/src/contracts/attributes.contract.
 const SCHEMA = resolve(REPO, "profiles/schemas/layer-config.schema.json");
 
 /**
- * Widgets déclarés au contrat que le moteur ne rend PAS encore.
+ * Widgets declared in the contract the engine does NOT render yet.
  *
- * ⚠️ Doit rester vide. Une entrée s'écrit avec son motif et la tâche qui la retire —
- * jamais « en attendant ». Décision A11′.
+ * ⚠️ Must stay empty. An entry is written with its motive and the work that
+ * removes it — never "for now".
  */
 const UNRENDERED_EXEMPTIONS = Object.freeze([]);
 
-/** Lit les membres d'une union de littéraux de chaîne du contrat. */
+/** Reads the members of a string-literal union from the contract. */
 function unionMembers(source, typeName) {
     const start = source.indexOf(`export type ${typeName} =`);
     if (start === -1) throw new Error(`Type introuvable dans le contrat : ${typeName}`);
@@ -53,7 +53,7 @@ function unionMembers(source, typeName) {
     return [...source.slice(start, end).matchAll(/"([a-zA-Z[\]-]+)"/g)].map((m) => m[1]).sort();
 }
 
-/** Lit les clés d'une interface du contrat, à plat. */
+/** Reads an interface's keys from the contract, flat. */
 function interfaceKeys(source, interfaceName) {
     const start = source.indexOf(`export interface ${interfaceName} {`);
     if (start === -1) throw new Error(`Interface introuvable : ${interfaceName}`);
@@ -109,15 +109,16 @@ describe("Parité du contrat attributaire (ATTR-PARITY)", () => {
     });
 
     it("ATTR-06 — l'union des clés d'options (TS) ≡ attributeOptions du schéma", () => {
-        // Chaque interface `*Options` du contrat, aplatie — c'est l'ensemble que le
-        // schéma déclare à plat de son côté.
+        // Each `*Options` interface of the contract, flattened — the set the
+        // schema declares flat on its side.
         //
-        // ⚠️ `AttributeWidgetOptions` est exclue, et l'oubli n'était pas théorique :
-        // c'est la table widget → options, donc ses clés sont les 24 WIDGETS, pas des
-        // clés d'options. Sans l'exclusion, cette assertion comparait 60 entrées à 36
-        // et rougissait sur son propre biais. 7ᵉ biais d'instrument de la session, et
-        // le corollaire « le pré-vol peut porter la cécité qu'il mesure » vaut aussi
-        // pour la gate qui mesure la parité.
+        // ⚠️ `AttributeWidgetOptions` is excluded, and the omission was not
+        // theoretical: it is the widget → options table, so its keys are the
+        // 24 WIDGETS, not option keys. Without the exclusion, this assertion
+        // compared 60 entries to 36 and turned red on its own bias. The 7th
+        // instrument bias of the session, and the corollary "the preflight
+        // may carry the blindness it measures" also holds for the gate
+        // measuring parity.
         const optionInterfaces = [
             ...contractSource.matchAll(/export interface ([A-Za-z]*Options) \{/g),
         ]
@@ -158,17 +159,18 @@ describe("Parité du contrat attributaire (ATTR-PARITY)", () => {
     });
 
     it("ATTR-09 — la liste d'exemptions ne peut que rétrécir (A11′)", () => {
-        // Une exemption dont le widget est rendu depuis est un fantôme : elle
-        // laisserait croire qu'un trou subsiste et masquerait le prochain.
+        // An exemption whose widget has since been rendered is a ghost: it
+        // would suggest a hole remains and mask the next one.
         const ghosts = UNRENDERED_EXEMPTIONS.filter((w) => RENDERED_WIDGETS.includes(w));
         expect(ghosts, "Exemption(s) fantôme(s) — le widget est rendu, l'entrée sort").toEqual([]);
     });
 
     it("ATTR-10 — AttributeCaptureWidget (TS) ≡ l'enum edit.widget du schéma (7.2)", () => {
-        // Depuis 7.2 le schéma porte DEUX vocabulaires de widget : celui de lecture
-        // (ATTR-01 ci-dessus) et celui de capture. Sans cette assertion, le second
-        // pourrait dériver du premier sans que rien ne le voie — et c'est le vocabulaire
-        // qui décide quel composant `field-renderer` reçoit la saisie.
+        // The schema carries TWO widget vocabularies: the reading one
+        // (ATTR-01 above) and the capture one. Without this assertion, the
+        // second could drift from the first with nothing seeing it — and that
+        // vocabulary is what decides which `field-renderer` component
+        // receives the input.
         const contractWidgets = unionMembers(contractSource, "AttributeWidget");
         const displayOnly = unionMembers(contractSource, "AttributeDisplayOnlyWidget");
         const captureWidgets = contractWidgets.filter((w) => !displayOnly.includes(w)).sort();
@@ -184,16 +186,15 @@ describe("Parité du contrat attributaire (ATTR-PARITY)", () => {
     });
 
     it("ATTR-11 — tout widget de capture a un composant field-renderer enregistré", () => {
-        // 🛑 C'est l'assertion qui règle `reviews` pour de bon. Le contrat a porté
-        // pendant tout le Sprint 6 un commentaire affirmant que Q6 nommait `reviews`
-        // « display-only » alors que `field-renderer` l'enregistre — une contradiction
-        // qui a survécu parce que RIEN ne confrontait les deux listes. Elle est tranchée
-        // à 7.2 en faveur du code ; cette garde est ce qui empêche la prochaine de durer
-        // aussi longtemps.
+        // 🛑 The assertion that settles `reviews` for good. The contract long
+        // carried a comment claiming `reviews` was "display-only" while
+        // `field-renderer` registers it — a contradiction that survived
+        // because NOTHING confronted the two lists. It is settled in the
+        // code's favour; this guard is what keeps the next one from lasting as long.
         //
-        // ⚠️ Le catalogue est lu dans la SOURCE plutôt qu'importé : `field-renderer` est
-        // une lib publiée, et la garde doit rougir sur l'état du dépôt, pas sur celui
-        // d'un `dist/` éventuellement périmé.
+        // ⚠️ The catalogue is read from the SOURCE rather than imported:
+        // `field-renderer` is a published lib, and the guard must turn red on
+        // the repo's state, not that of a possibly stale `dist/`.
         const builtins = readFileSync(
             resolve(REPO, "packages/libs/field-renderer/src/builtins.ts"),
             "utf8"
@@ -204,7 +205,7 @@ describe("Parité du contrat attributaire (ATTR-PARITY)", () => {
         const contractWidgets = unionMembers(contractSource, "AttributeWidget");
         const displayOnly = unionMembers(contractSource, "AttributeDisplayOnlyWidget");
 
-        // Anti-gate-vide : une extraction cassée sortirait verte en ne comparant rien.
+        // Anti-empty-gate: a broken extraction would come out green comparing nothing.
         expect(registered.length).toBeGreaterThan(20);
 
         const uncapturable = contractWidgets

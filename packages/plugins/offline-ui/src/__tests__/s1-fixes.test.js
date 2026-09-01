@@ -4,10 +4,10 @@
  * Covers:
  *  - ExportLogic.getPendingPOIs: lists the edits still owed to the server, read from
  *    the core outbox via `listPendingEdits()` (no legacy fallback).
- *    ⚠️ TÂCHE 4.10 — ce test filtrait `add_poi`/`update_poi` sur `sync_queue`. Son SUJET
- *    a déménagé, il n'a pas disparu : depuis 4.4b les deux plugins d'écriture passent par
- *    `Storage.applyEdit()` → outbox, et plus personne n'écrit ces types. Le test est donc
- *    re-pointé sur le magasin réel, pas supprimé.
+ *    ⚠️ This test filtered `add_poi`/`update_poi` on `sync_queue`. Its SUBJECT
+ *    moved, it did not disappear: both writing plugins go through
+ *    `Storage.applyEdit()` → outbox, and nobody writes those types any more.
+ *    The test is thus re-pointed at the real store, not deleted.
  *  - SyncManager.updateBackupsList: keys off getBackups (the real DB method),
  *    not the non-existent listBackups.
  *
@@ -17,11 +17,11 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ExportLogic } from "../ui/cache-button/export-logic.js";
 
-// API publique S4.4 — ce fichier teste du code DU PLUGIN (`ExportLogic`, `SyncManager`), qui
-// lit desormais `GeoLeaf.Storage`. Il pilotait le contrat du CORE : le plugin ne lisait donc
-// plus ce qu'il plantait, et les deux espions n'etaient jamais appeles. Seul
-// `integration/storage-core-contract.integration.test.js` garde le cycle `init()` du core —
-// son sujet EST le singleton lui-meme.
+// This file tests PLUGIN code (`ExportLogic`, `SyncManager`), which now reads
+// `GeoLeaf.Storage`. It drove the CORE's contract: the plugin no longer read
+// what it planted, and the two spies were never called. Only
+// `integration/storage-core-contract.integration.test.js` keeps the core's
+// `init()` cycle — its subject IS the singleton itself.
 function _installGeoLeafStorage(api) {
     globalThis.GeoLeaf = globalThis.GeoLeaf ?? {};
     globalThis.GeoLeaf.Storage =
@@ -42,9 +42,10 @@ describe("S1 — ExportLogic.getPendingPOIs", () => {
     });
 
     it("rend les saisies dues, avec leurs attributs et leur géométrie", async () => {
-        // Le core ne rend QUE ce qui est encore dû : il n'y a plus de tri par statut à faire
-        // ici, parce qu'une entrée d'outbox résolue n'existe plus. Le filtrage a changé de
-        // propriétaire, ce que le test dit en n'en portant plus.
+        // The core returns ONLY what is still owed: there is no status sorting
+        // left to do here, because a resolved outbox entry no longer exists.
+        // Filtering changed owner, which the test says by no longer carrying
+        // any.
         const listPendingEdits = vi.fn().mockResolvedValue([
             {
                 entryId: "e1",
@@ -84,10 +85,10 @@ describe("S1 — ExportLogic.getPendingPOIs", () => {
             _layerId: "sites",
             _localId: "a",
         });
-        // ⚠️ La géométrie DOIT partir avec : un export de saisies de terrain qui les rendrait
-        // sans position ne serait pas une sauvegarde.
+        // ⚠️ The geometry MUST go along: an export of field captures rendering
+        // them position-less would not be a backup.
         expect(result[0]._geometry).toEqual({ type: "Point", coordinates: [1, 2] });
-        // Une suppression est due au serveur comme le reste, et son entité n'existe plus.
+        // A deletion is owed to the server like the rest, and its entity no longer exists.
         expect(result[1]).toMatchObject({ _syncOperation: "delete", _geometry: null });
     });
 

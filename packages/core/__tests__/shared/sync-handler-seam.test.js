@@ -19,12 +19,13 @@ describe("SyncHandlerContract", () => {
         expect(SyncHandlerContract.getHandler("poi")).toBe(h);
     });
 
-    it("getHandlers returns every registered handler in registration order", () => {
+    it("stores handlers independently per id", () => {
         const a = {};
         const b = {};
         SyncHandlerContract.registerHandler("poi", a);
         SyncHandlerContract.registerHandler("other", b);
-        expect(SyncHandlerContract.getHandlers()).toEqual([a, b]);
+        expect(SyncHandlerContract.getHandler("poi")).toBe(a);
+        expect(SyncHandlerContract.getHandler("other")).toBe(b);
     });
 
     it("re-registering the same id replaces the handler (no duplicate)", () => {
@@ -33,13 +34,13 @@ describe("SyncHandlerContract", () => {
         SyncHandlerContract.registerHandler("poi", a);
         SyncHandlerContract.registerHandler("poi", b);
         expect(SyncHandlerContract.getHandler("poi")).toBe(b);
-        expect(SyncHandlerContract.getHandlers()).toEqual([b]);
     });
 
     it("ignores a falsy id or handler", () => {
         SyncHandlerContract.registerHandler("", {});
         SyncHandlerContract.registerHandler("x", null);
-        expect(SyncHandlerContract.getHandlers()).toEqual([]);
+        expect(SyncHandlerContract.getHandler("")).toBeUndefined();
+        expect(SyncHandlerContract.getHandler("x")).toBeUndefined();
     });
 
     it("getHandler returns undefined for an unknown id", () => {
@@ -49,7 +50,7 @@ describe("SyncHandlerContract", () => {
     it("_reset clears all handlers", () => {
         SyncHandlerContract.registerHandler("poi", {});
         SyncHandlerContract._reset();
-        expect(SyncHandlerContract.getHandlers()).toEqual([]);
+        expect(SyncHandlerContract.getHandler("poi")).toBeUndefined();
     });
 });
 
@@ -64,11 +65,5 @@ describe("GeoLeaf.Sync façade", () => {
         Sync.registerHandler("poi", h);
         expect(SyncHandlerContract.getHandler("poi")).toBe(h);
         expect(Sync.getHandler("poi")).toBe(h);
-    });
-
-    it("getHandlers delegates to the contract", () => {
-        const h = {};
-        SyncHandlerContract.registerHandler("poi", h);
-        expect(Sync.getHandlers()).toEqual([h]);
     });
 });

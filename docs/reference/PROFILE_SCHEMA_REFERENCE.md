@@ -106,7 +106,12 @@ geoleaf.config.json — root configuration file loaded at application startup. H
 | `$schema` | string | — | — | — | — |
 | `data` | object | — | — | — | Profile and data configuration. |
 | `data.activeProfile` | string | — | — | — | Name of the active profile to load (must match a directory in profiles/). |
+| `data.availableProfiles` | array | — | — | — | INJECTÉE PAR LE BUILD, jamais écrite à la main : inventaire des profils réellement embarqués dans la variante, récolté au moment de la copie et lu par le sélecteur de profil. ⚠️ Elle n'a de sens que dans un artefact déployé — la source ne sait pas ce qu'une variante embarquera. Déclarée ici parce que le bloc est `additionalProperties: false` et que la configuration déployée doit valider. |
+| `data.availableProfiles[].displayLabel` | string | oui | — | — | Libellé court du sélecteur. Le build le dérive de `displayLabel`, à défaut `label`, à défaut l'identifiant — il est donc toujours présent. |
+| `data.availableProfiles[].icon` | string | — | — | — | Emoji facultatif rendu devant le libellé. Omis, et non vide, quand le profil n'en déclare pas. |
+| `data.availableProfiles[].id` | string | oui | — | — | Identifiant du profil, égal au nom de son répertoire sous `profiles/`. |
 | `data.enableProfilePoiMapping` | boolean | — | `false` | — | Enable POI data normalization via mapping.json. |
+| `data.profileBundle` | object | — | — | — | The active profile handed over in memory instead of being fetched. Carries both on-disk artefacts: `profile` (profile.json) and `bundle` (profile-bundle.json). Present, no HTTP request is issued for the profile configuration; absent, the cascade stays the default path. |
 | `data.profilesBasePath` | string | — | `"profiles"` | — | Base path to the profiles directory. |
 | `debug` | boolean | — | `false` | — | Enable verbose debug logging and cache-bust (?t=timestamp) on config requests. |
 | `logging` | object | — | — | — | Logging verbosity. |
@@ -249,6 +254,7 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `data.ogcApi.autoRefreshDebounce` | number | — | — | — | Debounce (ms) for moveend refreshes. Default 300. |
 | `data.ogcApi.bbox` | array | — | — | — | BBox filter [minLon, minLat, maxLon, maxLat] (WGS-84). |
 | `data.ogcApi.collectionId` | string | — | — | — | Collection id appended as /collections/{id}/items when `url` lacks the items path. |
+| `data.ogcApi.cursorPath` | string | — | — | — | Dot-path to the next-page cursor in the response envelope (e.g. "pagination.next_cursor"). Consulted before the standard links[rel=next] relation; when absent, that relation drives pagination alone. The resolved value must be an absolute http(s) URL — anything else stops pagination with a warning. |
 | `data.ogcApi.headers` | object | — | — | — | Additional HTTP request headers (e.g. Authorization). |
 | `data.ogcApi.limit` | number | — | — | — | Features per page (limit query param). Default 1000. |
 | `data.ogcApi.maxFeatures` | number | — | — | — | Max features accumulated across pages (anti-DoS). Default 10000. |
@@ -266,7 +272,7 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `data.vectorTiles.tilesDirectory` | string | — | — | — | — |
 | `data.vectorTiles.tilesUrl` | string | — | — | — | Remote tile URL — MVT template ({z}/{x}/{y}) or .pmtiles file. |
 | `editableGeometryTypes` | array | — | — | — | Allowed geometry types for edition, in CANONICAL GeoJSON casing. ⚠️ This is NOT the same vocabulary as `geometry`/`geometryType`, which are domain lowercase — the two are deliberately kept apart (contracts/attributes.contract.ts: GeometryCanonicalType vs GeometryDomainName). The editor maps a drawing mode back to this casing (editor mode-names.ts geometryTypeForMode), so a lowercase value here matches nothing and drops the layer out of the edition picker with no error. The enum is what makes that failure loud. |
-| `edition` | object | — | — | — | What this layer permits, PER OPERATION. Replaces the pair `enableEdition`/`enableEditionFull` (Sprint 5 task 5.9, decision V1): the second name did not mean what it said — it was read once usefully, as `canDelete()`, so "full edition" was in fact the right to DELETE. ⚠️ ABSENT MEANS REFUSED, and so does an empty object: declaring the block grants nothing. Each key is independent — `update` does not imply `delete`, `create` does not imply `update`. Deriving one from another is the exact mechanism by which the old pair acquired a name that lied. ✅ Since 07/08/2026 (Sprint 8 task 8.7, B-138) the permission is enforced on EVERY write path, online included: the editor's persistence factory wraps all four of its outputs with a gate that consults `GeoLeaf.Storage.mayEdit()` before choosing a route, so `online`, `offline`, `auto` and the `collection` dialect are all covered. It was previously enforced on the offline path only, and a connected user could delete from a layer declaring `delete: false`. ⚠️ Still true: the editor toolbar gates its delete TOOL on its own `enabledTools`, never on the layer — the button may be offered where the write is refused. |
+| `edition` | object | — | — | — | What this layer permits, PER OPERATION. Replaces the pair `enableEdition`/`enableEditionFull`: the second name did not mean what it said — it was read once usefully, as `canDelete()`, so "full edition" was in fact the right to DELETE. ⚠️ ABSENT MEANS REFUSED, and so does an empty object: declaring the block grants nothing. Each key is independent — `update` does not imply `delete`, `create` does not imply `update`. Deriving one from another is the exact mechanism by which the old pair acquired a name that lied. ✅ Since 07/08/2026 the permission is enforced on EVERY write path, online included: the editor's persistence factory wraps all four of its outputs with a gate that consults `GeoLeaf.Storage.mayEdit()` before choosing a route, so `online`, `offline`, `auto` and the `collection` dialect are all covered. It was previously enforced on the offline path only, and a connected user could delete from a layer declaring `delete: false`. ⚠️ Still true: the editor toolbar gates its delete TOOL on its own `enabledTools`, never on the layer — the button may be offered where the write is refused. |
 | `edition.create` | boolean | — | — | — | Right to create a feature. Absent or false = refused. |
 | `edition.delete` | boolean | — | — | — | Right to delete a feature — what `enableEditionFull` actually gated. |
 | `edition.update` | boolean | — | — | — | Right to modify an existing feature. Absent or false = refused. |
@@ -285,7 +291,7 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `offline.source` | object | — | — | — | Where `GeoLeaf.Storage.pullLayer()` fetches this layer's entities — an OGC API Features collection. 🛑 Deliberately NOT `data.ogcApi`, and the reason is measured: `data.*` is the DISPLAY source, and the loader's `data.ogcApi` early exit returns before the local-read branch of task 4.3, silently bypassing the very store this pull fills. `loader/profile.ts` also drops a layer whose only source is `ogcApi`. After a pull, the display source IS the local store — the two are different by nature. |
 | `offline.source.collectionId` | string | — | — | — | Collection to pull. Defaults to the layer id when absent. |
 | `offline.source.url` | string | oui | — | — | Landing URL of the OGC API Features service (e.g. https://host/ogc). The collection path is appended from `collectionId`. |
-| `offline.source.versionProperty` | string | — | — | — | Feature property carrying the per-entity freshness marker recorded as VersionMarker (kind `timestamp`), which task 4.6 compares. Defaults to `updated_at`. Declarable because it varies by backend — the sync contract names `write_date` on Odoo. |
+| `offline.source.versionProperty` | string | — | — | — | Feature property carrying the per-entity freshness marker recorded as VersionMarker (kind `timestamp`), which task 4.6 compares. Defaults to `updated_at`. Declarable because it varies by backend — the sync contract names `updated_at` and `write_date` among the forms it has seen. |
 | `plugin` | string | — | — | — | Optional plugin tag associated with this layer. |
 | `realtimeLayer` | object | — | — | — | Per-layer realtime plugin block (realtime-layer/websocket) — plugin-owned, kept permissive. Architectural question (per-layer block vs modules.<id>) tracked in B7. |
 | `showIconsOnMap` | boolean | — | — | — | Show custom icons on the map (requires taxonomy icon config). |
@@ -308,11 +314,11 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `table.enabled` | boolean | — | — | — | — |
 | `table.searchFields` | array | — | — | — | — |
 | `type` | string | — | — | — | Optional layer type tag (semantics under inventory — see anomaly registry). |
-| `write` | object | — | — | — | Per-layer write target: where this layer's edits are pushed. Declared per layer because on a backend like Odoo each layer is a distinct collection. ⚠️ Was `additionalProperties: true` and set by 0 layers on 48 until 02/08/2026 — a block with no shape that nobody filled. Shape mirrors contracts/sync.contract.ts (LayerWriteTarget) and what the persistence adapters actually read. |
+| `write` | object | — | — | — | Per-layer write target: where this layer's edits are pushed. Declared per layer because on many backends each layer is a distinct collection. ⚠️ Was `additionalProperties: true` and set by 0 layers on 48 until 02/08/2026 — a block with no shape that nobody filled. Shape mirrors contracts/sync.contract.ts (LayerWriteTarget) and what the persistence adapters actually read. |
 | `write.auth` | string | — | — | "csrf" \| "bearer" \| "none" | How the endpoint is authenticated. |
-| `write.dialect` | string | — | `"rest"` | "rest" \| "collection" | `rest`: POST {poi, timestamp} envelope, CSRF header. `collection`: flat {...properties, geom} body (OGC/PostgREST), auth delegated to the connector. Exactly the two the code dispatches on — a third value would be indistinguishable from a typo. |
+| `write.dialect` | string | — | `"rest"` | "rest" \| "collection" | `rest`: POST {poi, timestamp} envelope, CSRF header. `collection`: flat {...properties, geom} body (OGC API Features style), auth delegated to the connector. Exactly the two the code dispatches on — a third value would be indistinguishable from a typo. |
 | `write.enabled` | boolean | oui | — | — | Gate. A layer whose write target is disabled has no outbox. |
-| `write.endpoint` | string | oui | — | — | URL edits are pushed to. |
+| `write.endpoint` | string | — | — | — | URL edits are pushed to. |
 | `write.geometryProperty` | string | — | `"geom"` | — | Property key carrying the geometry in a `collection` body. |
 | `write.properties` | array | — | — | — | Whitelist of property keys sent in a `collection` body. |
 | `zIndex` | number | — | — | — | Rendering z-order. Higher values render on top. |
@@ -375,6 +381,7 @@ profile.json — core profile metadata and configuration. UI, basemaps, search a
 | Chemin | Type | Requis | Défaut | Valeurs | Description |
 | ------ | ---- | ------ | ------ | ------- | ----------- |
 | `$schema` | string | — | — | — | — |
+| `bundleFile` | string | — | — | — | INJECTÉE PAR LE BUILD, jamais écrite à la main : nom du bundle de configuration agrégé, déposé à côté de ce fichier par l'étape de groupage. ⚠️ Elle n'existe que dans les profils DÉPLOYÉS ; un profil de `profiles/` qui la porte est le signe qu'un artefact a été recopié vers la source. Déclarée ici parce que le schéma est `additionalProperties: false` et que le profil déployé doit valider — sans quoi le build produit, à chaque exécution, un artefact que le schéma du dépôt interdit. |
 | `description` | string | — | — | — | Profile description. |
 | `displayLabel` | string | — | — | — | Short label shown in the profile switcher (capability `profile-switcher`). Optional — falls back to `label`, then to the profile id. Kept separate from `label` because the latter is descriptive ('Réseau ferroviaire France') where a selector needs to be terse ('France Rail'). |
 | `Files` | object | — | — | — | Relative paths to companion config files loaded at startup (profile layout v2: config/core/*.json + config/plugins/<moduleId>.json). |
@@ -414,6 +421,7 @@ profile.json — core profile metadata and configuration. UI, basemaps, search a
 | `modules.offline` | object | — | — | — | In-core offline capability (S14 Phase B) — modules.offline.{enabled,cache}. Kept additionalProperties:true (opaque to the schema). |
 | `modules.print` | object | — | — | — | Owned by @geoleaf-plugins/print — keys validated by the plugin, not the core. |
 | `modules.realtimeLayer` | object | — | — | — | Owned by @geoleaf-plugins/realtime-layer — keys validated by the plugin, not the core. |
+| `modules.routing` | object | — | — | — | Owned by @geoleaf-plugins/routing — keys validated by the plugin, not the core. ⚠️ `labelField` names a feature property that must ALSO appear in the `payloadFields` of the `action` widget declaring the entry-point button: the two are a cross-file rule no schema expresses, and a profile valid on both sides can still render a panel with no destination name. |
 | `modules.websocket` | object | — | — | — | Owned by @geoleaf-plugins/websocket — keys validated by the plugin, not the core. |
 | `version` | string | — | — | — | Profile version (SemVer). |
 
@@ -451,7 +459,7 @@ Style definition for a GeoLeaf layer (flat format). Used in layers/*/styles/*.js
 | `labelScale.minScale` | number \| null | — | — | — | — |
 | `legend` | object | — | — | — | Legend entry for this style. |
 | `legend.label` | string | — | — | — | — |
-| `scaleConfig` | object | — | — | — | Layer visibility by scale range. Bounds are SCALE DENOMINATORS (the X in 1:X), NOT MapLibre zoom levels — a denominator grows as you zoom OUT, so minScale is the widest view allowed and must be the LARGER number. Optional: omit for no constraint. Consumed by updateLayerVisibilityByZoom via isScaleInRange (scale-utils.ts). Replaces the retired `zoomConfig`, whose minZoom/maxZoom naming led authors to write zoom levels that the engine read as denominators — hiding those layers at every zoom (roadmap_nettoyage S5, N-1). |
+| `scaleConfig` | object | — | — | — | Layer visibility by scale range. Bounds are SCALE DENOMINATORS (the X in 1:X), NOT MapLibre zoom levels — a denominator grows as you zoom OUT, so minScale is the widest view allowed and must be the LARGER number. Optional: omit for no constraint. Consumed by updateLayerVisibilityByZoom via isScaleInRange (scale-utils.ts). Replaces the retired `zoomConfig`, whose minZoom/maxZoom naming led authors to write zoom levels that the engine read as denominators — hiding those layers at every zoom (measured before the rename). |
 | `scaleConfig.maxScale` | number \| null | — | — | — | Closest view allowed, as a scale denominator (e.g. 2252 for 1:2 252 ≈ zoom 18 at lat 4°). Hidden when zoomed in past it. null or 0 = no upper bound. |
 | `scaleConfig.minScale` | number \| null | — | — | — | Widest view allowed, as a scale denominator (e.g. 9222148 for 1:9 222 148 ≈ zoom 6 at lat 4°). Hidden when zoomed out past it. null or 0 = no lower bound. |
 | `style` | `flatStyle` | — | — | — | — |

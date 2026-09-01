@@ -88,11 +88,11 @@ export const OFFLINE_CAPABILITY: ICapabilityDeclaration = {
                 },
                 maxTileCacheEntries: {
                     type: "number",
-                    // Miroir du repli `TILE_CACHE_MAX_ENTRIES` de `kernel/storage/sw-core.js`.
-                    // Le worker est copié tel quel, sans bundler : il ne peut pas importer
-                    // cette valeur, il la re-déclare. `config-schema-coverage.test.js` vérifie
-                    // que les deux disent le même nombre — c'est la seule chose qui verrait
-                    // les deux diverger.
+                    // Mirror of `kernel/storage/sw-core.js`'s `TILE_CACHE_MAX_ENTRIES`
+                    // fallback. The worker is copied as-is, no bundler: it cannot
+                    // import this value, it re-declares it.
+                    // `config-schema-coverage.test.js` checks both say the same number
+                    // — the only thing that would see them diverge.
                     default: 2000,
                     minimum: 0,
                     description:

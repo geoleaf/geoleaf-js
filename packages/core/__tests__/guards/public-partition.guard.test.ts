@@ -1,47 +1,50 @@
 /**
  * @file public-partition.guard.test.ts
- * @description Test-garde — la frontière atelier/public mord dans les DEUX sens, et refuse
- * de laisser passer un lot qu'elle n'a pas su lire.
+ * @description Guard test — the workshop/public boundary bites BOTH ways, and
+ * refuses to let through a batch it could not read.
  *
- * Pourquoi ce garde existe (11/08/2026)
+ * Why this guard exists (11/08/2026)
  * --------------------------------------
- * `scripts/lib/public-partition.cjs` décide ce qui part dans `geoleaf/geoleaf-js`. C'est une
- * décision **irréversible par diffusion** : un fichier d'atelier poussé sur un dépôt public a
- * été cloné, forké et indexé avant qu'on s'en aperçoive, et le repasser en privé ne rappelle
- * rien.
+ * `scripts/lib/public-partition.cjs` decides what leaves for
+ * `geoleaf/geoleaf-js`. A decision **irreversible by diffusion**: a workshop
+ * file pushed to a public repo has been cloned, forked and indexed before
+ * anyone notices, and making it private again recalls nothing.
  *
- * Or cette frontière a exactement la forme que ce dépôt sait défaillante : une garde qui, en
- * cessant de mordre, **sort verte**. Un `_docs_projet/` renommé, un `git ls-files` lancé au
- * mauvais endroit, un motif ancré par erreur — dans les trois cas la partition ne retire rien,
- * le portage réussit, et l'atelier part. Rien en aval ne le verrait : le clone est éphémère,
- * et aucune gate ne tourne sur lui avant le push.
+ * Yet this boundary has exactly the shape this repo knows to be failing: a
+ * guard that, by ceasing to bite, **comes out green**. A renamed
+ * `_docs_projet/`, a `git ls-files` launched in the wrong place, a pattern
+ * anchored by mistake — in all three cases the partition removes nothing,
+ * the port succeeds, and the workshop leaves. Nothing downstream would see
+ * it: the clone is ephemeral, and no gate runs on it before the push.
  *
- * ## Ce qui est gardé, et pourquoi chaque cas est là
+ * ## What is guarded, and why each case is there
  *
- * ① **Les formes que la réintroduction prendrait.** `CLAUDE.md` est lu par son harnais dans
- *    n'importe quel sous-répertoire : `packages/core/CLAUDE.md` est la forme la plus probable
- *    du retour, et un motif ancré (`/CLAUDE.md`) la laisserait passer. C'est la raison pour
- *    laquelle trois motifs sur quatre sont NON ancrés, et ce test est ce qui empêche qu'on les
- *    « corrige » en les ancrant.
+ * ① **The shapes reintroduction would take.** `CLAUDE.md` is read by its
+ *    harness in any subdirectory: `packages/core/CLAUDE.md` is the return's
+ *    most likely shape, and an anchored pattern (`/CLAUDE.md`) would let it
+ *    through. The reason three patterns out of four are UN-anchored, and
+ *    this test is what keeps them from being "fixed" by anchoring.
  *
- * ② **Les faux positifs.** Un motif trop large qui happerait `docs/CLAUDE_GUIDE.md` retirerait
- *    de la doc publique sans que rien ne le dise — l'échec symétrique, silencieux lui aussi.
+ * ② **The false positives.** A too-wide pattern grabbing
+ *    `docs/CLAUDE_GUIDE.md` would remove public docs with nothing saying so
+ *    — the symmetric failure, silent too.
  *
- * ③ **Les trois refus.** Plancher de vraisemblance, motif stérile, et partition entièrement
- *    aveugle. Chacun a été vu mordre le jour où il a été posé ; ce test est ce qui garantit
- *    qu'il mord encore.
+ * ③ **The three refusals.** Plausibility floor, sterile pattern, and a fully
+ *    blind partition. Each was seen biting the day it was set; this test is
+ *    what guarantees it still bites.
  *
- * ## Une garde jamais vue rouge ne garde rien
+ * ## A guard never seen red guards nothing
  *
- * Assertion anti-garde-vide : les quatre motifs déclarés doivent tous être exercés par au moins
- * un cas. Sans elle, retirer un motif du module rendrait ce garde vert en ne testant plus rien.
+ * Anti-empty-guard assertion: the four declared patterns must all be
+ * exercised by at least one case. Without it, removing a pattern from the
+ * module would make this guard green testing nothing any more.
  */
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-/** La forme du module CommonJS sous test, décrite ici parce qu'il n'émet pas de types. */
+/** The shape of the CommonJS module under test, described here because it emits no types. */
 interface PublicPartition {
     INTERNAL_PATTERNS: ReadonlyArray<{ pattern: string; dir: boolean; why: string }>;
     MIN_PUBLIC_FILES: number;
@@ -65,9 +68,9 @@ const partition: PublicPartition = requireCjs(
 ) as PublicPartition;
 
 /**
- * Cas de classification : `[chemin, retenu à l'atelier ?, motif du cas]`.
- * Les sept premiers exercent les quatre motifs ; les six suivants sont les faux positifs
- * qu'un motif trop large produirait.
+ * Classification cases: `[path, kept in the workshop?, case motive]`.
+ * The first seven exercise the four patterns; the next six are the false
+ * positives a too-wide pattern would produce.
  */
 const CASES: ReadonlyArray<[string, boolean, string]> = [
     ["CLAUDE.md", true, "racine"],
@@ -85,7 +88,7 @@ const CASES: ReadonlyArray<[string, boolean, string]> = [
     ["packages/core/docs/claude.md", false, "casse différente — le harnais ne le lit pas"],
 ];
 
-/** Un lot de taille plausible, portant les quatre motifs. */
+/** A plausibly sized batch, carrying the four patterns. */
 function plausibleLot(): string[] {
     const files: string[] = [];
     for (let i = 0; i < partition.MIN_PUBLIC_FILES + 400; i++) {
@@ -113,7 +116,7 @@ describe("public-partition — la frontière atelier/public", () => {
         }
         const declared = partition.INTERNAL_PATTERNS.map((p) => p.pattern);
         expect(declared.length).toBeGreaterThan(0);
-        // Un motif ajouté au module sans cas ici serait un motif que rien n'éprouve.
+        // A pattern added to the module without a case here would be a pattern nothing exercises.
         expect([...exercised].sort()).toEqual([...declared].sort());
     });
 

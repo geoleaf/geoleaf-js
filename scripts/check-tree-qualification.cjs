@@ -6,31 +6,35 @@
 
 /**
  * @file check-tree-qualification.cjs
- * @description TREE-QUAL — cliquet décroissant sur les artefacts NON JUGÉS. B-36.
+ * @description TREE-QUAL — decreasing ratchet on UNJUDGED artifacts.
  *
- * ## 🛑 POURQUOI UN CLIQUET, ET POURQUOI PAS UN TROISIÈME BALAYAGE
+ * ## 🛑 WHY A RATCHET, AND WHY NOT A THIRD SWEEP
  *
- * Le T5 a qualifié **1112 artefacts sur 1112 — 100 %**, et la dette s'est reformée **deux fois**
- * depuis : 96,3 % au 26/07, puis 88,3 % au 16/08. Ce n'est pas un échec d'exécution, c'est la
- * démonstration qu'un balayage ne tient pas : **rien n'exige qu'un artefact neuf naisse jugé**,
- * donc chaque capacité ajoutée rouvre l'écart. Un troisième balayage produirait un troisième
- * 100 % suivi d'une troisième érosion.
+ * A full pass qualified **1112 artifacts of 1112 — 100 %**, and the debt
+ * reformed **twice** since: 96.3 % on 07-26, then 88.3 % on 08-16. Not an
+ * execution failure — the demonstration that a sweep does not hold: **nothing
+ * requires a new artifact to be born judged**, so each added capability reopens
+ * the gap. A third sweep would produce a third 100 % followed by a third
+ * erosion.
  *
- * 📌 C'est le constat que le Sprint 1 de cette roadmap a fait sur la `BASELINE` de PCB-01, mot
- * pour mot : **une parade appliquée à la main sur chaque membre n'est pas une parade, c'est une
- * liste — et une liste oublie.** Le cliquet la remplace par une structure : le compte gèle, il
- * ne peut que descendre, et un artefact neuf non jugé rougit le jour où il arrive.
+ * 📌 The observation already made on PCB-01's `BASELINE`, word for word: **a
+ * counter-measure applied by hand to each member is not a counter-measure, it is
+ * a list — and a list forgets.** The ratchet replaces it with a structure: the
+ * count freezes, it can only descend, and a new unjudged artifact reddens the
+ * day it arrives.
  *
- * ## ⚠️ POURQUOI CETTE GATE LIT LA SORTIE DU GÉNÉRATEUR AU LIEU DE RECOMPTER
+ * ## ⚠️ WHY THIS GATE READS THE GENERATOR'S OUTPUT INSTEAD OF RECOUNTING
  *
- * « Qualifié » a **une** définition, et elle vit dans `generate-docs-tree.cjs` : un artefact dont
- * le verdict d'existence n'est pas `?`. La recompter ici créerait une seconde définition — et une
- * gate qui diverge de son générateur est exactement le défaut que `source-inventory.cjs` a été
- * extrait pour empêcher (« quand un générateur et sa gate portent chacun leur copie de la règle,
- * la gate sort verte sur un fichier que le générateur déclare manquant »).
+ * "Qualified" has **one** definition, and it lives in `generate-docs-tree.cjs`:
+ * an artifact whose existence verdict is not `?`. Recounting it here would
+ * create a second definition — and a gate diverging from its generator is
+ * exactly the defect `source-inventory.cjs` was extracted to prevent ("when a
+ * generator and its gate each carry their copy of the rule, the gate goes green
+ * on a file the generator declares missing").
  *
- * Le prix est une dépendance au FORMAT de la ligne imprimée. Il est payé explicitement : si la
- * ligne n'est pas trouvée, la gate **refuse de conclure** au lieu de supposer zéro.
+ * The price is a dependency on the printed line's FORMAT. It is paid
+ * explicitly: if the line is not found, the gate **refuses to conclude**
+ * instead of assuming zero.
  *
  * Usage :
  *   node scripts/check-tree-qualification.cjs
@@ -52,8 +56,9 @@ const res = spawnSync("node", ["scripts/generate-docs-tree.cjs", "--check"], {
 });
 const out = `${res.stdout || ""}${res.stderr || ""}`;
 
-// 🛑 PLANCHER ANTI-GATE-VIDE. Une sortie sans ce motif signifie que le générateur a changé de
-// format, échoué, ou n'a rien scanné — trois causes qu'un `0` unique confondrait.
+// 🛑 ANTI-EMPTY-GATE FLOOR. An output without this pattern means the generator
+// changed format, failed, or scanned nothing — three causes a single `0` would
+// conflate.
 const m = out.match(/(\d+)\/(\d+) qualifiés/);
 if (!m) {
     console.error(
@@ -80,7 +85,7 @@ if (UPDATE) {
         JSON.stringify(
             {
                 _comment:
-                    "B-36 — nombre d'artefacts SANS verdict d'existence. Ne peut que DÉCROÎTRE " +
+                    "Nombre d'artefacts SANS verdict d'existence. Ne peut que DÉCROÎTRE " +
                     "(TREE-QUAL). Un artefact neuf naît non jugé : c'est CE compte qui l'attrape, " +
                     "et c'est pourquoi il ne se remonte pas à la main. Qualifier, puis resserrer.",
                 _generated: "node scripts/check-tree-qualification.cjs --update-baseline",

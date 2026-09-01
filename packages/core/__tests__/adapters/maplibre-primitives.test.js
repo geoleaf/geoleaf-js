@@ -297,51 +297,50 @@ describe("detectGeometryTypes", () => {
     });
 });
 
-// ─── resolveGeometryTypes (dormant fast-path) ────────────────────────────────
+// ─── resolveGeometryTypes (declared kind UNIONS with the scan) ───────────────
 
 describe("resolveGeometryTypes", () => {
-    // A FeatureCollection whose actual content differs from the declared type,
-    // so we can prove the declaration short-circuits the scan.
+    // A FeatureCollection whose actual content differs from what a caller may declare,
+    // so we can tell the union apart from a substitution.
     const pointsFC = {
         type: "FeatureCollection",
         features: [{ geometry: { type: "Point" } }, { geometry: { type: "Point" } }],
     };
+    const emptyFC = { type: "FeatureCollection", features: [] };
 
-    it("uses a declared GeoJSON type and skips the scan", () => {
-        const types = resolveGeometryTypes(pointsFC, "Polygon");
-        expect(types).toBeInstanceOf(Set);
-        expect(types.has("Polygon")).toBe(true);
-        // Declaration wins over the actual Point content → no Point in the set.
-        expect(types.has("Point")).toBe(false);
-        expect(types.size).toBe(1);
+    // 🛑 A declared kind ADDS, it never restricts. It cannot: a profile declares ONE
+    // lowercase kind — the layer's semantic kind, read by the legend, the editor and the
+    // theme applier — and a layer whose kind is narrower than its content (a computed
+    // itinerary is a "polyline" that also carries its stops) would lose the sub-layers the
+    // declaration leaves out, permanently.
+    it("adds the declared kind to what the scan found, never replacing it", () => {
+        const types = resolveGeometryTypes(pointsFC, "polygon");
+        expect(types.has("Point")).toBe(true); // from the scan
+        expect(types.has("Polygon")).toBe(true); // from the declaration
     });
 
-    it("accepts an array of declared GeoJSON types", () => {
-        const types = resolveGeometryTypes(pointsFC, ["Point", "LineString"]);
-        expect(types.size).toBe(2);
+    // The profile schema allows ONLY the lowercase vocabulary. Reading it was the whole
+    // point of the fast path, and it read the other one — so no profile ever reached it.
+    it("understands the lowercase vocabulary the profile schema actually allows", () => {
+        const types = resolveGeometryTypes(pointsFC, "polyline");
+        expect(types.has("LineString")).toBe(true);
+        expect(types.has("MultiLineString")).toBe(true);
+    });
+
+    it("accepts a list of declared types", () => {
+        const types = resolveGeometryTypes(pointsFC, ["LineString", "Polygon"]);
         expect(types.has("Point")).toBe(true);
         expect(types.has("LineString")).toBe(true);
-    });
-
-    it("filters out invalid entries, keeping valid GeoJSON types", () => {
-        const types = resolveGeometryTypes(pointsFC, ["Polygon", "nope", 42, null]);
-        expect(types.size).toBe(1);
         expect(types.has("Polygon")).toBe(true);
     });
 
-    it("falls back to scanning for lowercase render hints", () => {
-        // "point"/"line"/"polygon" are render hints, not GeoJSON vocabulary.
-        const types = resolveGeometryTypes(pointsFC, "point");
+    it("ignores a declared value that names no geometry", () => {
+        const types = resolveGeometryTypes(pointsFC, "hexagon");
         expect(types.size).toBe(1);
-        expect(types.has("Point")).toBe(true); // from the scan, not the hint
-    });
-
-    it("falls back to scanning for an unknown declared value", () => {
-        const types = resolveGeometryTypes(pointsFC, "fill-extrusion");
         expect(types.has("Point")).toBe(true);
     });
 
-    it("falls back to scanning when nothing is declared", () => {
+    it("returns the scan alone when nothing is declared", () => {
         for (const declared of [undefined, null, [], ""]) {
             const types = resolveGeometryTypes(pointsFC, declared);
             expect(types.has("Point")).toBe(true);
@@ -351,7 +350,18 @@ describe("resolveGeometryTypes", () => {
 
     it("falls back to scan defaults when undeclared data is empty", () => {
         const types = resolveGeometryTypes(null, undefined);
-        expect(types.size).toBe(3); // detectGeometryTypes defaults
+        expect(types.size).toBe(3);
+    });
+
+    // 🛑 The half that is easy to get wrong, and the itinerary layer is exactly it:
+    // declared "polyline", data empty at boot, stops written at runtime. Only the DATA may
+    // say "unknown" — keying the fallback on the absence of a DECLARATION would narrow this
+    // layer to lines alone and stop its stops from ever being drawn.
+    it("keeps the three-type fallback for a layer declared polyline but shipped empty", () => {
+        const types = resolveGeometryTypes(emptyFC, "polyline");
+        expect(types.has("LineString")).toBe(true);
+        expect(types.has("Point")).toBe(true);
+        expect(types.has("Polygon")).toBe(true);
     });
 });
 
@@ -575,7 +585,7 @@ describe("addSubLayers", () => {
     });
 });
 
-// ─── bindGeoJSONClusterEvents (S5.6) ───────────────────────────────────────
+// ─── bindGeoJSONClusterEvents ───────────────────────────────────────
 
 describe("bindGeoJSONClusterEvents", () => {
     let map;
@@ -703,9 +713,9 @@ describe("bindGeoJSONClusterEvents", () => {
     });
 });
 
-// ─── addSubLayers — showIconsOnMap (S5.6) ──────────────────────────────────
+// ─── addSubLayers — showIconsOnMap ──────────────────────────────────
 
-describe("addSubLayers — showIconsOnMap (S5.6)", () => {
+describe("addSubLayers — showIconsOnMap", () => {
     let map;
 
     beforeEach(() => {
@@ -740,9 +750,9 @@ describe("addSubLayers — showIconsOnMap (S5.6)", () => {
     });
 });
 
-// ─── addSubLayers — casing (S5.6) ──────────────────────────────────────────
+// ─── addSubLayers — casing ──────────────────────────────────────────
 
-describe("addSubLayers — casing (S5.6)", () => {
+describe("addSubLayers — casing", () => {
     let map;
 
     beforeEach(() => {
@@ -786,9 +796,9 @@ describe("addSubLayers — casing (S5.6)", () => {
     });
 });
 
-// ─── addSubLayers — minZoom / maxZoom (S5.6) ───────────────────────────────
+// ─── addSubLayers — minZoom / maxZoom ───────────────────────────────
 
-describe("addSubLayers — minZoom / maxZoom (S5.6)", () => {
+describe("addSubLayers — minZoom / maxZoom", () => {
     let map;
 
     beforeEach(() => {
@@ -818,9 +828,9 @@ describe("addSubLayers — minZoom / maxZoom (S5.6)", () => {
     });
 });
 
-// ─── addClusterSubLayers — minZoom / maxZoom (S5/N-1b) ─────────────────────────
-// C'était le SEUL builder sans zoomProps : les 6 autres les posaient. Une couche
-// clusterisée gardait donc ses pastilles hors de sa fenêtre d'échelle.
+// ─── addClusterSubLayers — minZoom / maxZoom ───────────────────────────────────
+// It was the ONLY builder without zoomProps: the 6 others set them. A
+// clustered layer thus kept its badges outside its scale window.
 
 describe("addClusterSubLayers — minZoom / maxZoom (N-1b)", () => {
     let map;
@@ -843,5 +853,89 @@ describe("addClusterSubLayers — minZoom / maxZoom (N-1b)", () => {
         const cercles = map.addLayer.mock.calls[0][0];
         expect(cercles.minzoom).toBeUndefined();
         expect(cercles.maxzoom).toBeUndefined();
+    });
+});
+
+// ─── addSubLayers — geometry guards ─────────────────────────────────
+
+describe("addSubLayers — geometry guards", () => {
+    let map;
+
+    const POLY_GUARD = ["match", ["geometry-type"], ["Polygon", "MultiPolygon"], true, false];
+    const LINE_GUARD = [
+        "match",
+        ["geometry-type"],
+        ["LineString", "MultiLineString", "Polygon", "MultiPolygon"],
+        true,
+        false,
+    ];
+    const POINT_GUARD = ["match", ["geometry-type"], ["Point", "MultiPoint"], true, false];
+
+    /** The spec passed to map.addLayer for a given sub-layer id. */
+    const specOf = (id) => map.addLayer.mock.calls.find((c) => c[0]?.id === id)?.[0];
+
+    beforeEach(() => {
+        map = maplibregl.__createMockMap();
+    });
+
+    it("guards the fill sub-layer to polygon geometry", () => {
+        addSubLayers(map, "g", "src-g", new Set(["Polygon"]), { fillColor: "#f00" }, {}, undefined);
+        expect(specOf("gl-g-fill").filter).toEqual(POLY_GUARD);
+    });
+
+    it("guards the fill-extrusion sub-layer to polygon geometry", () => {
+        addSubLayers(map, "g", "src-g", new Set(["Polygon"]), {}, {}, undefined, {
+            configGeometry: "fill-extrusion",
+        });
+        expect(specOf("gl-g-fill-extrusion").filter).toEqual(POLY_GUARD);
+    });
+
+    it("guards line and casing to line + polygon outline geometry", () => {
+        addSubLayers(
+            map,
+            "g",
+            "src-g",
+            new Set(["LineString"]),
+            { color: "#00f", weight: 2, casing: { enabled: true, color: "#000" } },
+            {},
+            undefined
+        );
+        expect(specOf("gl-g-line").filter).toEqual(LINE_GUARD);
+        expect(specOf("gl-g-casing").filter).toEqual(LINE_GUARD);
+    });
+
+    it("guards the circle sub-layer to point geometry", () => {
+        addSubLayers(map, "g", "src-g", new Set(["Point"]), {}, {}, undefined);
+        expect(specOf("gl-g-circle").filter).toEqual(POINT_GUARD);
+    });
+
+    it("composes the symbol guard with the existing symbolId filter", () => {
+        addSubLayers(map, "g", "src-g", new Set(["Point"]), {}, {}, undefined, {
+            showIconsOnMap: true,
+        });
+        expect(specOf("gl-g-symbol").filter).toEqual(["all", POINT_GUARD, ["has", "symbolId"]]);
+    });
+
+    // 🛑 The regression itself. A layer whose profile data ships EMPTY (the routing
+    // route layer is written at runtime) resolves to all three geometry types, so all
+    // four sub-layers are built. Without the guards, the `fill` bucket closes the
+    // published LineString into an opaque black polygon and the `circle` bucket paints
+    // one circle per line vertex — MapLibre checks no geometry type when populating.
+    it("keeps an empty-at-boot layer from painting a line as a polygon or as vertices", () => {
+        const emptyFC = { type: "FeatureCollection", features: [] };
+        const geomTypes = resolveGeometryTypes(emptyFC, "polyline");
+        addSubLayers(
+            map,
+            "routing-route",
+            "src-routing-route",
+            geomTypes,
+            { color: "#9333ea", weight: 4, casing: { enabled: true, color: "#581c87" } },
+            {},
+            undefined
+        );
+
+        expect(specOf("gl-routing-route-fill").filter).toEqual(POLY_GUARD);
+        expect(specOf("gl-routing-route-line").filter).toEqual(LINE_GUARD);
+        expect(specOf("gl-routing-route-circle").filter).toEqual(POINT_GUARD);
     });
 });

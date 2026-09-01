@@ -24,6 +24,7 @@
             "inputs": [
                 "src/**",
                 "examples/minimal/**",
+                "examples/slim/**",
                 "rollup.config.mjs",
                 "$TURBO_ROOT$/postcss.config.mjs",
                 "package.json",
@@ -37,6 +38,7 @@
             "inputs": [
                 "src/**",
                 "examples/minimal/**",
+                "examples/slim/**",
                 "examples/consumer/**",
                 "rollup.config.mjs",
                 "rollup.consumer.mjs",
@@ -61,6 +63,7 @@
             "inputs": [
                 "src/**",
                 "examples/minimal/**",
+                "examples/slim/**",
                 "examples/consumer/**",
                 "rollup.config.mjs",
                 "rollup.consumer.mjs",
@@ -104,6 +107,30 @@
                 "package.json",
                 "$TURBO_ROOT$/packages/build-config/**"
             ]
+        },
+        // Les GARDES, et elles sont délibérément HORS CACHE.
+        //
+        // 🛑 Le sujet d'une garde est par nature HORS de son paquet : elle lit `_docs_projet/`,
+        // `docs/specs/`, `profiles/`, `apps/geoleaf-app/`, l'`entry.ts` d'un plugin. Or les
+        // `inputs` de `test` sont toutes relatives au paquet. Le fichier de la garde invalide
+        // donc le cache ; CE QU'ELLE GARDE, non. Mesuré le 20/08/2026 : 21 gardes sur 24 sont
+        // dans ce cas, et la garde du JOURNAL est restée VERTE sur trois `ci:local` consécutifs
+        // alors que son plafond était dépassé — elle n'a rougi qu'au run où `packages/core/src/`
+        // avait bougé. Une gate qui ne tourne pas ne rend pas « inconnu », elle rend VERT, et ce
+        // vert autorise un push.
+        //
+        // ⚠️ L'autre issue — élargir les `inputs` de `test` à `$TURBO_ROOT$/_docs_projet/**`,
+        // `docs/**`, `profiles/**`… — a été MESURÉE et écartée : elle rend le cache correct mais
+        // presque toujours froid, soit +65,7 s sur chaque `ci:local` dès qu'une doc change,
+        // contre 2,8 s ici. Elle demanderait en plus de maintenir la liste de ce que les gardes
+        // lisent, c'est-à-dire une nouvelle classe d'oubli. `cache: false` n'a pas de liste.
+        //
+        // ⚠️ Les gardes restent AUSSI dans `test` — un `npm test` dans le paquet doit rester
+        // complet. Le doublon coûte les mêmes 2,8 s quand le cache de `test` est froid.
+        "test:guards": {
+            "dependsOn": ["build"],
+            "cache": false,
+            "passThroughEnv": ["GEOLEAF_TEST_FANOUT"]
         },
         "test:coverage": {
             "dependsOn": ["build"],
@@ -151,7 +178,7 @@
         "typecheck": {
             "dependsOn": ["^build"],
             "outputs": [],
-            // ── B-84 — `examples/**` AJOUTÉ aux inputs le 16/08/2026 ──────────────────
+            // ── `examples/**` AJOUTÉ aux inputs le 16/08/2026 ─────────────────────────
             //
             // Le tsconfig du core porte `include: ["src/**/*", "examples/**/*"]` et compile
             // donc `examples/minimal/entry.ts` — la recette documentée du bundle allégé, dont

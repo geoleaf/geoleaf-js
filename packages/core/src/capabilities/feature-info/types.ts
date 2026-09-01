@@ -13,8 +13,8 @@
  *
  * ⚠️ This file used to declare TWO parallel type vocabularies of its own — a
  * `FieldType` union of 17 members against the 24 the engine renders, and a
- * `FieldStyle` union of 29 values of which 3 were branched. Both are gone at the
- * Sprint 2 deletion pass: the descriptor now points at the contract, which is the
+ * `FieldStyle` union of 29 values of which 3 were branched. Both are gone since
+ * the deletion pass: the descriptor now points at the contract, which is the
  * one list a schema and a gate can confront. Five parallel vocabularies were
  * measured at the pre-flight; this removes two of them.
  */
@@ -122,10 +122,40 @@ export interface SidePanelLayout {
 }
 
 /**
- * Injection contract consumed by core's thin side-panel delegate
- * (`core/src/contracts/sidepanel-renderer.contract.ts`, Sprint 3). The plugin's
- * public API is itself this contract — no import relationship across the
- * plugin/core boundary, only a structurally-compatible shape on each side.
+ * Injection contract consumed by core's thin side-panel delegate. The plugin's public API is
+ * itself this contract — no import relationship across the plugin/core boundary, only a
+ * structurally-compatible shape on each side.
+ *
+ * 🛑 **This interface had an INERT HOMONYM for months, which is what makes this paragraph
+ * useful rather than anecdotal.** A same-named file under `contracts/` declared the same
+ * three members, better documented, and was implemented by nothing. That is the most
+ * misleading configuration there is: a reader looking for "the contract" opens the file
+ * that bears its name first, finds it commented, and codes against a signature nobody
+ * satisfies.
+ *
+ * ⚠️ **The written instruction prescribed the opposite — pointing THIS file at the contract
+ * — and applying it would have produced two regressions**, on the only two points where the
+ * copies had actually diverged:
+ *
+ * ① The contract declared `coordinates` **required** where the runtime emits it
+ *    **optional** (`event-bus.contract.ts`) — a type narrower than the runtime, exactly
+ *    the failure mode the instruction itself warned against reproducing.
+ * ② It typed `type`/`style` as free `string` where this file imports the CLOSED
+ *    vocabulary `AttributeWidget`/`AttributeEmphasis` from `attributes.contract.ts` —
+ *    adopting it would have UNDONE the consolidation that removed five parallel
+ *    vocabularies. The contract admitted as much itself: that vocabulary "now lives in
+ *    `contracts/attributes.contract.ts`".
+ *
+ * ✅ **The duplicate was REMOVED on 19/08/2026.** It was not reachable through the
+ * package's `exports` map (36 entries, no wildcard covered it), so no integrator could
+ * name it despite its shipped `.d.ts`; and it had no importer. The removal therefore takes
+ * nothing nameable away. **Three homonym-free interfaces leave with it** —
+ * `SidePanelFeatureDetail`, `SidePanelFeatureGeometry`, `SidePanelLayoutField` — all at
+ * zero importers: they described the payload under names the runtime never uses.
+ *
+ * 📌 The lesson carries beyond this file: **a file's name does not establish its
+ * authority.** What is authoritative is what the runtime emits and what callers import,
+ * and both are measurable.
  */
 export interface ISidePanelRenderer {
     readonly openSidePanel: (detail: GeoLeafFeatureClickDetail, layout?: SidePanelLayout) => void;
@@ -154,7 +184,7 @@ export interface FeatureInfoPublicApi {
     /**
      * Opens the popup at the click point. `layout` overrides the auto-resolved
      * layer binding — used by callers with no `layers.<id>.capabilities.feature-info`
-     * config of their own (POI injection, Sprint 3). "Voir plus" reuses the
+     * config of their own (POI injection). "Voir plus" reuses the
      * same override when opening the side-panel, so an overridden popup never
      * falls back to a generic auto-resolved side-panel.
      */

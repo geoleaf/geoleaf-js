@@ -6,7 +6,7 @@
  */
 "use strict";
 
-// ── Mocks (frontières externes uniquement) ────────────────────────────────────
+// ── Mocks (external boundaries only) ──────────────────────────────────────────
 vi.mock("../../src/utils/log/index.js", () => ({
     Log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
@@ -644,6 +644,46 @@ describe("notifications — NotificationSystem (T10.3.2)", () => {
             sys.show("P2", { type: "info", persistent: true });
             // Second persistent toast should be queued (not shown)
             expect(sys._queue.length).toBeGreaterThanOrEqual(1);
+        });
+
+        // ── what is emitted BEFORE init() must come out AFTER ────────────────────
+        //
+        // 🛑 The defect, and why it is silent: `show()` before `init()` fills
+        // `_queue`, and `_processQueue()` exits early on `!this.container`.
+        // Nothing called it back after a successful `init()` — the queue was
+        // only drained at the NEXT `show()`. A message emitted during boot
+        // ("profile not found", "layer failed") thus stayed invisible until
+        // another message came, and if none came, forever.
+        //
+        // ⚠️ This test lives HERE and not in `notifications.test.js`: there
+        // the file's idiom would make it red BEFORE the fix for a reason
+        // other than the one under test — a red for the wrong reason reads
+        // as "the fix did not work" and gets a correct fix undone.
+        it("draine la file remplie AVANT init() dès que init() réussit", () => {
+            const sys = new NotificationSystem();
+
+            // Emitted without a container: the queue fills, nothing displays.
+            sys.show("avant-boot", { type: "info" });
+            expect(sys._queue.length).toBe(1);
+            expect(document.querySelectorAll(".gl-toast").length).toBe(0);
+
+            const ok = sys.init({ container: "#gl-notifications", animations: false });
+            expect(ok).toBe(true);
+
+            // Without the drain, the queue stays full and the screen empty until the next show().
+            expect(sys._queue.length).toBe(0);
+            expect(document.querySelectorAll(".gl-toast").length).toBe(1);
+        });
+
+        it("un init() qui ÉCHOUE ne draine rien — la file survit pour le prochain init()", () => {
+            const sys = new NotificationSystem();
+            sys.show("avant-boot", { type: "info" });
+
+            // Container absent → init() returns false, and above all must
+            // not EMPTY the queue: losing it here would be worse than the
+            // original defect, since the message could never come out again.
+            expect(sys.init({ container: "#absent-du-dom" })).toBe(false);
+            expect(sys._queue.length).toBe(1);
         });
     });
 

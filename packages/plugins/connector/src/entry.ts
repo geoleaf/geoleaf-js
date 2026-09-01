@@ -13,9 +13,10 @@ import { isConfigured } from "./connector-api.js";
 import { buildPublicApi } from "./public-api.js";
 import type { GeoLeafHost } from "@geoleaf/host-runtime";
 
-// API publique S4.7 — `createConnector` et `ConnectorInstance` sont ré-exportés depuis leur
-// nouveau module. Ils sont documentés pour l'intégrateur avancé (README §83) et publiés par
-// `types: dist/types/entry.d.ts` : les laisser tomber serait une purge d'API publique.
+// Public API review — `createConnector` and `ConnectorInstance` are
+// re-exported from their new module. They are documented for the advanced
+// integrator (README §83) and published through `types: dist/types/entry.d.ts`:
+// dropping them would be a public-API purge.
 export { createConnector } from "./connector-api.js";
 export type { ConnectorInstance } from "./connector-api.js";
 
@@ -73,7 +74,7 @@ function _readUiShowCredentialButtonFlag(): boolean {
 
 function _autoBootstrapUiOnly(): void {
     if (_uiOnlyBooted) return;
-    // API S4.7 — lu par l accesseur, pas par la variable : l état vit dans connector-api.ts.
+    // Read through the accessor, not the variable: the state lives in connector-api.ts.
     if (isConfigured()) return; // explicit configure() already ran
     if (_readUiShowCredentialButtonFlag()) {
         _uiOnlyBooted = true;

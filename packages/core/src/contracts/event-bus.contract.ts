@@ -14,10 +14,40 @@
 
 // ── Detail payload types ─────────────────────────────────────────────────────
 
-/** Detail payload for `geoleaf:poi:click` */
+/**
+ * Detail payload for `geoleaf:poi:click`.
+ *
+ * 🛑 **DECLARED, NEVER EMITTED — the only key of the map in that state.** Measured on
+ * 17/08/2026: of the 49 events in `GeoLeafEventMap`, 48 are named by emitting code;
+ * this one is named by none. Subscribing to `geoleaf:poi:click` therefore triggers
+ * nothing today, whatever the interaction.
+ *
+ * ⚠️ **The `source` field has no referent anymore.** Its two values used to distinguish a
+ * click coming from a popup from a direct click on the marker; the POI subsystem was
+ * dissolved and nobody computes that distinction anymore. **It is not removed** — the
+ * interface has been published on npm since 12/08/2026, and removal would break any
+ * consumer reading `e.detail.source`. It is **documented as referent-less**, which is
+ * reversible where deletion is not.
+ *
+ * 📌 To react to a POI click today, the event that actually fires is
+ * `geoleaf:poi:panel:open` (see {@link GeoLeafPoiPanelOpenDetail}).
+ *
+ * Re-measure rather than copy — this sentence becomes false the day an emitter is
+ * wired. The command, written WITHOUT a directory glob on purpose:
+ *
+ * ```bash
+ * grep -rn --include=*.ts "geoleaf:poi:click" packages
+ * ```
+ *
+ * ⚠️ Do not reintroduce a path like `packages/<star>/src` here: the star-slash
+ * sequence **closes the block comment**, and the file stops compiling. Measured in this
+ * very file on 17/08/2026 — 14 gates fell at once, all cascading from `Build`, because
+ * a sentence documenting a re-measure command had terminated itself.
+ */
 export interface GeoLeafPoiClickDetail {
     poiId: string;
     layerId: string;
+    /** ⚠️ Referent-less since the POI subsystem was dissolved. See the header above. */
     source: "popup" | "direct";
 }
 
@@ -35,15 +65,15 @@ export interface GeoLeafPoiPanelCloseDetail {
 /**
  * Detail payload for `geoleaf:panel:opened` and `geoleaf:panel:closed`.
  *
- * 🛑 **Ce n'est PAS le même panneau que `geoleaf:poi:panel:*` ci-dessus, et les deux paires
- * se ressemblent assez pour être confondues.** Celle-ci décrit le **panneau latéral à
- * onglets** du bureau (`kernel/ui/desktop/desktop-panel.ts` — couches, filtres, thèmes) ;
- * celle-là décrit le panneau d'**information d'une entité**, ouvert par un clic sur un POI.
- * L'une est identifiée par un onglet, l'autre par un POI — d'où deux charges distinctes
- * plutôt qu'une charge commune qui aurait rendu l'amalgame indolore.
+ * 🛑 **This is NOT the same panel as `geoleaf:poi:panel:*` above, and the two pairs
+ * look alike enough to be confused.** This one describes the desktop **tabbed side
+ * panel** (`kernel/ui/desktop/desktop-panel.ts` — layers, filters, themes); that one
+ * describes the **feature-information** panel, opened by clicking a POI. One is
+ * identified by a tab, the other by a POI — hence two distinct payloads rather than a
+ * shared payload that would have made the confusion painless.
  */
 export interface GeoLeafPanelToggleDetail {
-    /** Identifiant de l'onglet — `"layers"`, `"filter"`, `"themes"`… selon le profil. */
+    /** Tab identifier — `"layers"`, `"filter"`, `"themes"`… depending on the profile. */
     tabId: string;
 }
 
@@ -177,13 +207,13 @@ export interface GeoLeafPluginFailedDetail {
 
 // ── Editor seam (plugin-emitted, task 7.3) ───────────────────────────────────
 //
-// ⚠️ Ces dix formes ne sont PAS exportées, contrairement aux `*Detail` du dessus — et
-// l'asymétrie est mesurée, pas stylistique. Les leurs ont de vrais consommateurs nommés ;
-// celles-ci n'en auraient aucun : le plugin les atteint par `GeoLeafEventMap[K]`, et un
-// intégrateur en fait autant (`GeoLeafEventMap["geoleaf:editor:feature-saved"]`), un
-// accès indexé qui ne peut pas diverger de la map. Les exporter aurait ajouté dix noms
-// publics que personne n'appelle — `check-orphan-exports` les a d'ailleurs rendus en dix
-// régressions à la pose. Même arbitrage qu'`AttributeCaptureWidget` à la tâche 7.2.
+// ⚠️ These ten shapes are NOT exported, unlike the `*Detail` types above — and the
+// asymmetry is measured, not stylistic. Those have real, named consumers; these would
+// have none: the plugin reaches them through `GeoLeafEventMap[K]`, and an integrator
+// does the same (`GeoLeafEventMap["geoleaf:editor:feature-saved"]`), an indexed access
+// that cannot diverge from the map. Exporting them would have added ten public names
+// nobody calls — `check-orphan-exports` indeed reported them as ten regressions when
+// tried. Same arbitration as `AttributeCaptureWidget` in the capture contract.
 
 /**
  * Minimal structural view of a feature as the editor plugin hands it around.
@@ -218,13 +248,13 @@ interface GeoLeafEditorDrawnFeature {
     /**
      * Drawing-engine identifier — NOT the host-layer feature id.
      *
-     * ⚠️ Optionnel STRICT, pas `| undefined`. `@types/geojson` déclare bien
-     * `id?: string | number | undefined` sur `Feature`, et le mirer ici compilait — mais
-     * `check-exact-optional-debt` (EOD-01) l'a refusé avec le bon argument : la clé
-     * pourrait alors être PRÉSENTE en valant `undefined`, et écraser un défaut dans un
-     * merge par spread. Le site d'émission insère donc `id` conditionnellement
-     * (`editor/src/events.ts`), ce qui rend aussi la charge fidèle à ce que le round-trip
-     * JSON en ferait — `JSON.stringify` supprime un `undefined`, il ne le transporte pas.
+     * ⚠️ STRICT optional, not `| undefined`. `@types/geojson` does declare
+     * `id?: string | number | undefined` on `Feature`, and mirroring that compiled — but
+     * `check-exact-optional-debt` (EOD-01) refused it with the right argument: the key
+     * could then be PRESENT while holding `undefined`, and overwrite a default in a
+     * spread merge. The emission site therefore inserts `id` conditionally
+     * (`editor/src/events.ts`), which also keeps the payload faithful to what a JSON
+     * round-trip would do — `JSON.stringify` drops an `undefined`, it does not carry it.
      */
     id?: string | number;
     geometry: GeoLeafFeatureGeometry;
@@ -309,58 +339,58 @@ interface GeoLeafEditorSyncFlushedDetail {
 }
 
 /**
- * Charge de `geoleaf:geolocation:statechange` — la veille de position a démarré ou s'est arrêtée.
+ * Payload of `geoleaf:geolocation:statechange` — the position watch started or stopped.
  *
- * ⚠️ **Émis sur le CONTENEUR DE CARTE, pas par le bus** (`capabilities/geolocation/geolocation.ts`),
- * avec `bubbles: true` — il remonte donc jusqu'à `document`, et s'écoute des deux façons.
+ * ⚠️ **Emitted on the MAP CONTAINER, not through the bus** (`capabilities/geolocation/geolocation.ts`),
+ * with `bubbles: true` — it therefore bubbles up to `document` and can be listened to both ways.
  *
- * 🛑 Il s'est appelé `gl:geoloc:statechange` jusqu'au 16/08/2026, et ce nom le rendait
- * **invisible à EM-01**, dont la reconnaissance est ancrée sur `^geoleaf:`. Ce n'était pas une
- * dette enregistrée quelque part : c'était un angle mort qui ne se comptait nulle part. La
- * fiche `docs/specs/capacites/geolocation.md` le documentait pourtant comme délibéré — un fait
- * exact peut décrire une cécité sans la corriger.
+ * 🛑 It was named `gl:geoloc:statechange` until 16/08/2026, and that name made it
+ * **invisible to EM-01**, whose recognition is anchored on `^geoleaf:`. This was not a
+ * debt recorded anywhere: it was a blind spot that showed up in no count. The
+ * `docs/specs/capacites/geolocation.md` sheet even documented it as deliberate — an
+ * accurate fact can describe a blindness without fixing it.
  */
 export interface GeoLeafGeolocationStateChangeDetail {
-    /** `true` quand la veille démarre, `false` quand elle s'arrête. */
+    /** `true` when the watch starts, `false` when it stops. */
     active: boolean;
 }
 
 /**
  * Detail payload for `geoleaf:cache:evicted` — a cache made room for itself.
  *
- * 🛑 IL Y A **DEUX** PRODUCTEURS, ET C'EST DÉLIBÉRÉ. Le patron que B-155 recommande — un point
- * d'émission unique gardé par un test, précédent `editor-events.ts` — n'est pas atteignable
- * ici : les deux magasins évincent depuis des contextes différents, et aucun code ne peut être
- * partagé entre eux.
+ * 🛑 THERE ARE **TWO** PRODUCERS, AND THAT IS DELIBERATE. The pattern recommended
+ * elsewhere — a single emission point guarded by a test, precedent `editor-events.ts` —
+ * is not reachable here: the two stores evict from different contexts, and no code can
+ * be shared between them.
  *
- * | Producteur | Magasin | Ce qui déclenche |
+ * | Producer | Store | What triggers it |
  * |---|---|---|
- * | `capabilities/offline/cache/cache-manager.ts` (`_enforceCacheQuota`) | IndexedDB | fin de téléchargement de profil, budget `maxCacheBytes` dépassé |
- * | `kernel/storage/sw-core.js` → `kernel/storage/sw-register.ts` | Cache API | pression du quota d'origine, ou refus d'écriture pour quota |
+ * | `capabilities/offline/cache/cache-manager.ts` (`_enforceCacheQuota`) | IndexedDB | end of a profile download, `maxCacheBytes` budget exceeded |
+ * | `kernel/storage/sw-core.js` → `kernel/storage/sw-register.ts` | Cache API | origin-quota pressure, or a write refused for quota |
  *
- * Le second passe par un `postMessage` : un Service Worker n'a pas de `document`, et il est
- * copié tel quel dans les variantes de déploiement — il ne peut importer ni ce contrat ni le
- * bus. `sw-register.ts` est le seul endroit qui rétablit le signal sur `document`.
+ * The second goes through a `postMessage`: a Service Worker has no `document`, and it is
+ * copied verbatim into the deploy variants — it can import neither this contract nor the
+ * bus. `sw-register.ts` is the only place that re-establishes the signal on `document`.
  *
- * ⚠️ `freedBytes` est **absent côté Cache API**, et ce n'est pas un oubli : la Cache API
- * n'expose la taille d'aucune entrée. `offline-ui` omet déjà la taille quand elle manque —
- * fabriquer un nombre serait pire que se taire.
+ * ⚠️ `freedBytes` is **absent on the Cache API side**, and that is not an oversight: the
+ * Cache API exposes no entry size. `offline-ui` already omits the size when missing —
+ * fabricating a number would be worse than staying silent.
  */
 export interface GeoLeafCacheEvictedDetail {
-    /** Nombre d'enregistrements RÉELLEMENT retirés. */
+    /** Number of records ACTUALLY removed. */
     evicted: number;
-    /** Octets récupérés — connu du seul côté IndexedDB. */
+    /** Bytes reclaimed — known on the IndexedDB side only. */
     freedBytes?: number;
-    /** Taille du magasin avant éviction (octets côté IndexedDB, entrées côté Cache API). */
+    /** Store size before eviction (bytes on IndexedDB, entry count on Cache API). */
     totalBefore?: number;
-    /** Taille du magasin après éviction, même unité que {@link totalBefore}. */
+    /** Store size after eviction, same unit as {@link totalBefore}. */
     totalAfter?: number;
-    /** Quel magasin a évincé. Absent = IndexedDB, la forme historique. */
+    /** Which store evicted. Absent = IndexedDB, the historical shape. */
     store?: "indexeddb" | "cache-api";
     /**
-     * Pourquoi. `pressure` = le quota d'ORIGINE est proche de la saturation ; `quota` = une
-     * écriture a été refusée. Le trim de routine du worker n'émet pas — il tourne à chaque
-     * panoramique, et un toast par déplacement de carte apprend à ne plus les lire.
+     * Why. `pressure` = the ORIGIN quota is close to saturation; `quota` = a write was
+     * refused. The worker's routine trim does not emit — it runs on every pan, and one
+     * toast per map move teaches users to stop reading them.
      */
     reason?: "pressure" | "quota";
 }
@@ -394,7 +424,7 @@ export interface GeoLeafCacheEvictedDetail {
  * `GeoLeaf.Events.on("geoleaf:popup:action", (e) => onPopupAction(e.detail))`.
  * ```ts
  * function onPopupAction(d: GeoLeafPopupActionDetail): void {
- *     if (d.actionId !== "odoo:create-request") return;
+ *     if (d.actionId !== "tickets:create-request") return;
  *     d.setBusy(true);
  *     void createRequest(d.featureId)
  *         .then(() => d.close())
@@ -450,27 +480,28 @@ export interface GeoLeafPopupActionDetail {
     close(): void;
 }
 
-// ── Table seam (plugin-emitted, Sprint 4 du contrat inverse) ─────────────────
+// ── Table seam (plugin-emitted) ──────────────────────────────────────────────
 //
-// Même arbitrage d'export que le seam éditeur ci-dessus : ces formes ne sont PAS exportées.
-// Le plugin les atteint par `GeoLeafEventMap[K]` — son `fireEvent` est générique sur la map,
-// donc chaque site d'émission est vérifié contre elle — et un intégrateur en fait autant.
+// Same export arbitration as the editor seam above: these shapes are NOT exported.
+// The plugin reaches them through `GeoLeafEventMap[K]` — its `fireEvent` is generic over
+// the map, so every emission site is checked against it — and an integrator does the same.
 //
-// 🛑 **Ces neuf noms sont un cas à part dans ce fichier, et il faut le savoir pour les lire.**
-// Jusqu'au 13/08/2026 ils étaient INVISIBLES à toutes les gates d'événements du dépôt :
-// `fireEvent` composait le nom à l'exécution (`map.fire("geoleaf:" + eventName)`), donc aucun
-// littéral complet n'existait en source, donc `EVENT-MAP` ne pouvait rien exiger et
-// `CONSUMER-CONTRACT` devait les déclarer hors de portée de la mesure. Deux d'entre eux
-// (`opened`, `closed`) ont même été classés « cassés » dans le manifeste aval sur la foi de
-// cette cécité, alors qu'ils étaient émis ET écoutés. Le typage ci-dessous n'est donc pas
-// l'objet du geste : il en est la CONSÉQUENCE. L'objet était de rendre la gate voyante.
+// 🛑 **These nine names are a special case in this file, and you need to know it to read
+// them.** Until 13/08/2026 they were INVISIBLE to every event gate of the repo:
+// `fireEvent` composed the name at runtime (`map.fire("geoleaf:" + eventName)`), so no
+// complete literal existed in source, so `EVENT-MAP` could demand nothing and
+// `CONSUMER-CONTRACT` had to declare them out of measurement reach. Two of them
+// (`opened`, `closed`) were even classified "broken" in the downstream manifest on the
+// strength of that blindness, while they were emitted AND listened to. The typing below
+// is therefore not the point of the change: it is its CONSEQUENCE. The point was to make
+// the gate seeing.
 //
-// ⚠️ **Les neuf partent sur les DEUX bus** — `document.dispatchEvent` ET `map.fire`
-// (`plugins/table/src/table-state.ts`). Un abonné doit en choisir un ; s'abonner aux deux
-// livre chaque événement en double. C'est écrit sur chaque clé, parce que c'est le piège que
-// l'intégrateur rencontrera, pas celui que le mainteneur rencontre.
+// ⚠️ **All nine go out on BOTH buses** — `document.dispatchEvent` AND `map.fire`
+// (`plugins/table/src/table-state.ts`). A subscriber must pick one; subscribing to both
+// delivers every event twice. This is written on each key because it is the trap the
+// integrator will hit, not the one the maintainer hits.
 
-/** Vue structurelle minimale d'une entité telle que le plugin `table` la transporte. */
+/** Minimal structural view of a feature as the `table` plugin carries it around. */
 interface GeoLeafTableFeature {
     id?: string | number;
     properties?: Record<string, unknown>;
@@ -478,16 +509,16 @@ interface GeoLeafTableFeature {
 }
 
 /**
- * Formats d'export du plugin `table`.
+ * Export formats of the `table` plugin.
  *
- * ⚠️ Miroir structurel de son `ExportFormat` (`plugins/table/src/export.ts`), pas un import :
- * `packages/core/src/` ne référence jamais `@geoleaf-plugins/*`. Le miroir ne peut pas dériver
- * en silence — le plugin émet contre `GeoLeafEventMap[K]`, donc un format ajouté là-bas sans
- * l'être ici ne compile pas.
+ * ⚠️ Structural mirror of its `ExportFormat` (`plugins/table/src/export.ts`), not an import:
+ * `packages/core/src/` never references `@geoleaf-plugins/*`. The mirror cannot drift
+ * silently — the plugin emits against `GeoLeafEventMap[K]`, so a format added there
+ * without being added here does not compile.
  */
 type GeoLeafTableExportFormat = "geojson" | "csv" | "kml" | "gpx" | "excel";
 
-/** Detail payload for `geoleaf:table:layerChanged`. `null` = plus aucune couche affichée. */
+/** Detail payload for `geoleaf:table:layerChanged`. `null` = no layer displayed anymore. */
 interface GeoLeafTableLayerChangedDetail {
     layerId: string | null;
 }
@@ -495,17 +526,17 @@ interface GeoLeafTableLayerChangedDetail {
 /**
  * Detail payload for `geoleaf:table:sortChanged`.
  *
- * ⚠️ `direction` est `string | null` et non `"asc" | "desc" | null` : le `SortState` du plugin
- * la déclare ainsi, et la charge est émise telle quelle. Resserrer ici mentirait sur ce qui
- * arrive réellement à l'abonné — `defaultSort.order` d'un profil y verse une valeur non
- * validée. Le resserrement est un geste de plugin, à faire là-bas d'abord.
+ * ⚠️ `direction` is `string | null`, not `"asc" | "desc" | null`: the plugin's `SortState`
+ * declares it that way and the payload is emitted as-is. Narrowing here would lie about
+ * what actually reaches the subscriber — a profile's `defaultSort.order` pours an
+ * unvalidated value into it. Narrowing is a plugin-side change, to be made there first.
  */
 interface GeoLeafTableSortChangedDetail {
     field: string | null;
     direction: string | null;
 }
 
-/** Detail payload for `geoleaf:table:selectionChanged` et `geoleaf:table:zoomToSelection`. */
+/** Detail payload for `geoleaf:table:selectionChanged` and `geoleaf:table:zoomToSelection`. */
 interface GeoLeafTableSelectionDetail {
     layerId: string | null;
     selectedIds: string[];
@@ -515,17 +546,17 @@ interface GeoLeafTableSelectionDetail {
 interface GeoLeafTableHighlightDetail {
     layerId: string | null;
     selectedIds: string[];
-    /** `false` = la surbrillance vient d'être retirée. */
+    /** `false` = the highlight was just removed. */
     active: boolean;
 }
 
 /** Detail payload for `geoleaf:table:exportSelection`. */
 interface GeoLeafTableExportSelectionDetail {
-    /** `""` quand aucune couche n'est courante — le plugin replie sur la chaîne vide. */
+    /** `""` when no layer is current — the plugin falls back to the empty string. */
     layerId: string;
     format: GeoLeafTableExportFormat;
     selectedIds: string[];
-    /** Les entités exportées, telles qu'elles partent au téléchargement. */
+    /** The exported features, exactly as they go to the download. */
     rows: GeoLeafTableFeature[];
 }
 
@@ -533,64 +564,65 @@ interface GeoLeafTableExportSelectionDetail {
 interface GeoLeafTableExportLayerDetail {
     layerId: string;
     format: GeoLeafTableExportFormat;
-    /** Nombre d'entités exportées — la couche entière, pas la sélection. */
+    /** Number of exported features — the whole layer, not the selection. */
     count: number;
 }
 
-// ── Connector seam (plugin-emitted, Sprint 4 du contrat inverse) ─────────────
+// ── Connector seam (plugin-emitted) ──────────────────────────────────────────
 //
-// Même arbitrage d'export que les seams `editor` et `table` : formes non exportées, atteintes
-// par `GeoLeafEventMap[K]`.
+// Same export arbitration as the `editor` and `table` seams: shapes not exported,
+// reached through `GeoLeafEventMap[K]`.
 //
-// 🛑 **Ces six noms ont vécu HORS du domaine de nommage jusqu'au 13/08/2026** — ils
-// s'appelaient `connector:*`, sans le préfixe `geoleaf:`. Le relevé d'événements du dépôt est
-// ancré sur `^geoleaf:`, donc les six étaient **structurellement invisibles** à EM-01 : pas
-// une exemption qu'on aurait accordée, une cécité que personne n'avait choisie (B-207). Les
-// préfixer les a fait entrer dans le champ de mesure, et EM-01 les a réclamés tous les six du
-// même coup — ce qui est la seule démonstration possible que la cécité était réelle.
+// 🛑 **These six names lived OUTSIDE the naming domain until 13/08/2026** — they were
+// called `connector:*`, without the `geoleaf:` prefix. The repo's event survey is
+// anchored on `^geoleaf:`, so all six were **structurally invisible** to EM-01: not an
+// exemption anyone granted, a blindness nobody chose. Prefixing them brought them into
+// the measured field, and EM-01 claimed all six at once — which is the only possible
+// demonstration that the blindness was real.
 //
-// ⚠️ **Ils ne transitent PAS par `dispatchGeoLeafEvent`**, et deux d'entre eux ne le peuvent
-// pas : `signup-requested` et `forgot-password-requested` sont `cancelable`, leurs émetteurs
-// lisent le retour de `dispatchEvent` pour appeler `preventDefault()` sur le lien. Le bus
-// assaini construit ses événements sans `cancelable` et rend `void` — les y faire passer
-// tuerait l'annulation en silence. Ils gardent donc un `CustomEvent` brut, et ce contrat les
-// type sans prétendre les porter (cf. l'avertissement de `GeoLeafEventMap` : ce qui décide de
-// l'appartenance est la CHARGE, pas le transporteur).
+// ⚠️ **They do NOT go through `dispatchGeoLeafEvent`**, and two of them cannot:
+// `signup-requested` and `forgot-password-requested` are `cancelable`; their emitters
+// read the return of `dispatchEvent` to call `preventDefault()` on the link. The
+// sanitising bus builds its events without `cancelable` and returns `void` — routing
+// them through it would kill cancellation silently. They therefore keep a raw
+// `CustomEvent`, and this contract types them without claiming to carry them (cf. the
+// `GeoLeafEventMap` warning: what decides membership is the PAYLOAD, not the carrier).
 //
-// ⚠️ **Le namespace `geoleaf:connector:*` est désormais PARTAGÉ.** Le consommateur aval
-// maintient un plugin propriétaire qui émet six autres noms sous ce même préfixe (`ready`,
-// `bbox-loading`, `bbox-loaded`, `data-version-changed`, `error`, `auth-required`). Vérifié le
-// 13/08/2026 : aucun recouvrement avec les six ci-dessous. Mais rien, d'aucun côté, n'empêche
-// une collision future — un nom ajouté ici doit être confronté à cette liste.
+// ⚠️ **The `geoleaf:connector:*` namespace is now SHARED.** The downstream consumer
+// maintains a proprietary plugin emitting six other names under this same prefix
+// (`ready`, `bbox-loading`, `bbox-loaded`, `data-version-changed`, `error`,
+// `auth-required`). Verified on 13/08/2026: no overlap with the six below. But nothing,
+// on either side, prevents a future collision — a name added here must be checked
+// against that list.
 
-/** Detail payload for `geoleaf:connector:token-refreshed` et `:authenticated`. */
+/** Detail payload for `geoleaf:connector:token-refreshed` and `:authenticated`. */
 interface GeoLeafConnectorBaseUrlDetail {
-    /** Racine du backend concerné — plusieurs connecteurs peuvent coexister. */
+    /** Root of the backend concerned — several connectors can coexist. */
     baseUrl: string;
 }
 
 /** Detail payload for `geoleaf:connector:auth-error`. */
 interface GeoLeafConnectorAuthErrorDetail {
     baseUrl: string;
-    /** Message d'erreur, déjà aplati en chaîne par l'émetteur. */
+    /** Error message, already flattened to a string by the emitter. */
     error: string;
 }
 
 /** Detail payload for `geoleaf:connector:credential-button-clicked`. */
 interface GeoLeafConnectorCredentialClickDetail {
     baseUrl: string;
-    /** État au moment du clic — `true` = un jeton valide était déjà présent. */
+    /** State at click time — `true` = a valid token was already present. */
     authenticated: boolean;
 }
 
 /**
- * Detail payload for `geoleaf:connector:signup-requested` et `:forgot-password-requested`.
+ * Detail payload for `geoleaf:connector:signup-requested` and `:forgot-password-requested`.
  *
- * ⚠️ Ces deux événements sont **annulables** : `preventDefault()` sur eux empêche la
- * navigation vers `url`, ce qui est le moyen prévu pour qu'un hôte ouvre sa propre page.
+ * ⚠️ Both events are **cancelable**: calling `preventDefault()` on them prevents the
+ * navigation to `url`, which is the intended way for a host to open its own page.
  */
 interface GeoLeafConnectorLinkRequestDetail {
-    /** Cible configurée (`auth.signupUrl` / `auth.forgotPasswordUrl`). */
+    /** Configured target (`auth.signupUrl` / `auth.forgotPasswordUrl`). */
     url: string;
 }
 
@@ -601,7 +633,7 @@ interface GeoLeafConnectorLinkRequestDetail {
  *
  * The membership criterion is the PAYLOAD, not the carrier — that is what makes this map's
  * boundary a real one and not a stylistic split. `dispatchGeoLeafEvent` deep-clones every
- * payload through `JSON.parse(JSON.stringify(detail))` (`kernel/events/event-bus.ts:48-68`);
+ * payload through `JSON.parse(JSON.stringify(detail))` (`kernel/events/event-bus.ts`);
  * a detail holding a DOM node, a function or a `Map` does not survive that round-trip, and
  * belongs in {@link GeoLeafRawEventMap} instead. The two maps state one rule from both ends.
  *
@@ -636,11 +668,11 @@ export interface GeoLeafEventMap {
     "geoleaf:poi:click": GeoLeafPoiClickDetail;
     "geoleaf:poi:panel:open": GeoLeafPoiPanelOpenDetail;
     "geoleaf:poi:panel:close": GeoLeafPoiPanelCloseDetail;
-    // ⚠️ `geoleaf:popup:action` vivait ICI jusqu'au 14/08/2026. Il est passé dans
-    // {@link GeoLeafRawEventMap} quand son detail a reçu `button` / `setBusy` / `close` : la
-    // sanitisation les aurait rendus, respectivement, `{}` et `undefined`. Les ABONNÉS ne
-    // voient pas la différence (la façade `Events` accepte les clés des deux maps) ; ce qui
-    // change est que l'émettre par `dispatchGeoLeafEvent` est désormais type-illégal.
+    // ⚠️ `geoleaf:popup:action` lived HERE until 14/08/2026. It moved to
+    // {@link GeoLeafRawEventMap} when its detail gained `button` / `setBusy` / `close`:
+    // sanitisation would have delivered them as `{}` and `undefined` respectively.
+    // SUBSCRIBERS see no difference (the `Events` facade accepts keys of both maps);
+    // what changes is that emitting it through `dispatchGeoLeafEvent` is now type-illegal.
     "geoleaf:layer:toggle": GeoLeafLayerToggleDetail;
     "geoleaf:layer:added": GeoLeafLayerAddedDetail;
     "geoleaf:feature:click": GeoLeafFeatureClickDetail;
@@ -650,66 +682,66 @@ export interface GeoLeafEventMap {
     "geoleaf:map:move": GeoLeafMapMoveDetail;
     "geoleaf:map:zoom": GeoLeafMapZoomDetail;
     /**
-     * Une couche a changé de visibilité — **forme HISTORIQUE**.
+     * A layer's visibility changed — **HISTORICAL form**.
      *
-     * ⚠️ **`geoleaf:layer:toggle` est l'événement CANONIQUE**, et il porte la même charge.
-     * Celui-ci lui préexiste, il a des abonnés internes (`permalink-sync.ts`, le plugin
-     * `table`) et un consommateur aval déclaré — il est donc typé pour ce qu'il est, pas
-     * promu. Un intégrateur qui écrit du neuf prend `geoleaf:layer:toggle`.
+     * ⚠️ **`geoleaf:layer:toggle` is the CANONICAL event**, and it carries the same payload.
+     * This one predates it, has internal subscribers (`permalink-sync.ts`, the `table`
+     * plugin) and a declared downstream consumer — so it is typed for what it is, not
+     * promoted. An integrator writing new code takes `geoleaf:layer:toggle`.
      *
-     * 🛑 **Les deux bus ne portent pas la même chose, et c'est mesuré, pas supposé.**
-     * `visibility-manager.ts` émet sur la carte à CHAQUE changement, mais ne le redispatche
-     * sur `document` que si `source !== "zoom"` — filtre délibéré, pour ne pas noyer les
-     * abonnés pendant un recalcul de zoom. Un abonné via `Events.on` (donc `document`) ne
-     * verra donc **jamais** `source: "zoom"`, là où `map.on` le voit.
+     * 🛑 **The two buses do not carry the same thing, and that is measured, not assumed.**
+     * `visibility-manager.ts` fires on the map on EVERY change, but re-dispatches on
+     * `document` only when `source !== "zoom"` — a deliberate filter, to avoid flooding
+     * subscribers during a zoom recalculation. A subscriber via `Events.on` (thus
+     * `document`) will therefore **never** see `source: "zoom"`, where `map.on` does.
      *
-     * Le type garde quand même l'union complète : elle est exacte sur la carte, et seulement
-     * trop large sur le document. L'inverse — resserrer à trois valeurs — deviendrait FAUX au
-     * premier assouplissement du filtre, et le ferait silencieusement, un `switch` exhaustif
-     * de l'intégrateur cessant de couvrir un cas qu'il reçoit.
+     * The type still keeps the full union: it is exact on the map, and only too wide on
+     * the document. The opposite — narrowing to three values — would become FALSE at the
+     * first loosening of the filter, and silently so, an integrator's exhaustive `switch`
+     * ceasing to cover a case it receives.
      */
     "geoleaf:geojson:visibility-changed": GeoLeafLayerToggleDetail;
     /**
-     * Le panneau latéral à onglets vient d'ouvrir un onglet.
+     * The tabbed side panel just opened a tab.
      *
-     * Émis par les DEUX chemins — le clic sur un onglet et l'appel programmatique
-     * `GeoLeaf.UI.openPanel(tabId)` —, parce qu'un événement qui ne décrirait que la voie
-     * programmatique serait un demi-contrat : l'utilisateur ouvre à la souris.
+     * Emitted on BOTH paths — the tab click and the programmatic call
+     * `GeoLeaf.UI.openPanel(tabId)` — because an event describing only the programmatic
+     * path would be half a contract: users open with the mouse.
      */
     "geoleaf:panel:opened": GeoLeafPanelToggleDetail;
     /**
-     * Le panneau latéral à onglets vient de fermer un onglet.
+     * The tabbed side panel just closed a tab.
      *
-     * ⚠️ **Un changement d'onglet rend `closed` PUIS `opened`**, dans cet ordre : l'ancien
-     * est bien fermé. Une ouverture alors que rien n'était ouvert ne rend qu'`opened` — il
-     * n'y a pas de `closed` à vide.
+     * ⚠️ **A tab switch yields `closed` THEN `opened`**, in that order: the old tab is
+     * really closed. Opening while nothing was open yields only `opened` — there is no
+     * empty `closed`.
      */
     "geoleaf:panel:closed": GeoLeafPanelToggleDetail;
     // Filters (applied state change, no structured payload)
     "geoleaf:filters:applied": Record<string, never>;
     // Service worker
     "geoleaf:sw:updated": Record<string, never>;
-    // Stockage — un cache a fait de la place. DEUX producteurs, voir le type (tâche 1.4).
-    // Typé ici plutôt que laissé dans la baseline `event-map-coverage` : un intégrateur ne
-    // peut ni découvrir ni contrôler la charge utile d'un événement non typé, et celui-ci
-    // devient un signal d'INTERFACE le jour où il déclenche un toast. Ferme une des 39 lignes
-    // de B-155 (baseline 39 → 38).
+    // Storage — a cache made room for itself. TWO producers, see the type.
+    // Typed here rather than left in the `event-map-coverage` baseline: an integrator can
+    // neither discover nor check the payload of an untyped event, and this one becomes an
+    // INTERFACE signal the day it triggers a toast. One fewer entry in the untyped
+    // baseline (39 → 38).
     "geoleaf:cache:evicted": GeoLeafCacheEvictedDetail;
-    // ── Entrés dans le domaine au S2 de R9 (B-207) — ils s'appelaient `gl:` et `print:` ────
+    // ── Entered the domain after renaming — they were called `gl:` and `print:` ──────────
     //
-    // 🛑 Ces trois-là n'étaient pas « non typés » : ils étaient **structurellement invisibles**.
-    // `EVENT_LITERAL_RE` est ancré sur `^geoleaf:`, donc EM-01 ne pouvait ni les réclamer ni
-    // les compter — un nom hors préfixe n'apparaissait dans aucune mesure, ni comme dette, ni
-    // comme manque. Les renommer les fait ENTRER dans le dispositif ; c'est le geste qui les
-    // type, pas cette table.
+    // 🛑 These three were not "untyped": they were **structurally invisible**.
+    // `EVENT_LITERAL_RE` is anchored on `^geoleaf:`, so EM-01 could neither claim nor
+    // count them — an off-prefix name appeared in no measure, neither as debt nor as a
+    // gap. Renaming them brings them INTO the apparatus; that move is what types them,
+    // not this table.
     //
-    // ⚠️ `geoleaf:geolocation:statechange` est émis sur le **conteneur de carte** avec
-    // `bubbles: true`, et non par le bus — il remonte donc jusqu'à `document`. Ses consommateurs
-    // sont `kernel/ui/mobile/mobile-toolbar.ts` (teinte de la pastille) et
-    // `plugins/measure/src/tools/tool-gps.ts` : **il franchit la frontière core → plugin**,
-    // donc c'est un contrat public, quel que soit le nom qu'il portait.
+    // ⚠️ `geoleaf:geolocation:statechange` is emitted on the **map container** with
+    // `bubbles: true`, not through the bus — so it bubbles up to `document`. Its consumers
+    // are `kernel/ui/mobile/mobile-toolbar.ts` (pill tint) and
+    // `plugins/measure/src/tools/tool-gps.ts`: **it crosses the core → plugin boundary**,
+    // so it is a public contract, whatever name it used to carry.
     "geoleaf:geolocation:statechange": GeoLeafGeolocationStateChangeDetail;
-    // Impression — encadrent un rendu hors écran, et pilotent le spinner de la modale.
+    // Print — bracket an off-screen render, and drive the modal's spinner.
     "geoleaf:print:render:start": Record<string, never>;
     "geoleaf:print:render:end": Record<string, never>;
     // Plugins
@@ -718,8 +750,8 @@ export interface GeoLeafEventMap {
     "geoleaf:plugin:failed": GeoLeafPluginFailedDetail;
     // Editor seam (task 7.3) — the FIRST plugin-emitted events typed here, and the
     // precedent for the 39 that remain in `event-map-coverage`'s baseline. Seven of the
-    // nine have no listener in this repo, which is exactly what made them a C2 reserve
-    // (B-142): an emitter without a listener is legitimate ONLY as public API, and an
+    // nine have no listener in this repo, which is exactly what put them on reserve:
+    // an emitter without a listener is legitimate ONLY as public API, and an
     // untyped event is not public API — the integrator can neither discover it nor check
     // its payload. Typing them is what turns that defence from an intention into a fact.
     "geoleaf:editor:feature-created": GeoLeafEditorFeatureCreatedDetail;
@@ -731,11 +763,10 @@ export interface GeoLeafEventMap {
     "geoleaf:editor:vertex-deleted": GeoLeafEditorVertexChangedDetail;
     "geoleaf:editor:feature-sync-queued": GeoLeafEditorSyncQueuedDetail;
     "geoleaf:editor:feature-sync-flushed": GeoLeafEditorSyncFlushedDetail;
-    // Table seam (Sprint 4 du contrat inverse) — les neuf noms que la composition à
-    // l'exécution rendait invisibles à toutes les gates. Voir le bloc de formes ci-dessus
-    // pour ce que le typage a coûté et ce qu'il a découvert.
+    // Table seam — the nine names that runtime composition kept invisible to every
+    // gate. See the shape block above for what typing them cost and what it uncovered.
     //
-    // ⚠️ Les neuf sont émis sur `document` ET sur le bus MapLibre — ne pas s'abonner deux fois.
+    // ⚠️ All nine are emitted on `document` AND on the MapLibre bus — do not subscribe twice.
     "geoleaf:table:opened": Record<string, never>;
     "geoleaf:table:closed": Record<string, never>;
     "geoleaf:table:layerChanged": GeoLeafTableLayerChangedDetail;
@@ -745,16 +776,16 @@ export interface GeoLeafEventMap {
     "geoleaf:table:highlightSelection": GeoLeafTableHighlightDetail;
     "geoleaf:table:exportSelection": GeoLeafTableExportSelectionDetail;
     "geoleaf:table:exportLayer": GeoLeafTableExportLayerDetail;
-    // Connector seam (Sprint 4 du contrat inverse) — six noms qui vivaient hors du préfixe
-    // `geoleaf:`, donc hors du champ de mesure d'EM-01. Voir le bloc de formes ci-dessus :
-    // ils sont émis en `CustomEvent` BRUT, et deux d'entre eux ne peuvent pas faire autrement.
+    // Connector seam — six names that lived outside the `geoleaf:` prefix, thus outside
+    // EM-01's measured field. See the shape block above: they are emitted as RAW
+    // `CustomEvent`s, and two of them cannot do otherwise.
     "geoleaf:connector:token-refreshed": GeoLeafConnectorBaseUrlDetail;
     "geoleaf:connector:authenticated": GeoLeafConnectorBaseUrlDetail;
     "geoleaf:connector:auth-error": GeoLeafConnectorAuthErrorDetail;
     "geoleaf:connector:credential-button-clicked": GeoLeafConnectorCredentialClickDetail;
-    /** ⚠️ **Annulable** — `preventDefault()` empêche la navigation vers `url`. */
+    /** ⚠️ **Cancelable** — `preventDefault()` prevents the navigation to `url`. */
     "geoleaf:connector:signup-requested": GeoLeafConnectorLinkRequestDetail;
-    /** ⚠️ **Annulable** — `preventDefault()` empêche la navigation vers `url`. */
+    /** ⚠️ **Cancelable** — `preventDefault()` prevents the navigation to `url`. */
     "geoleaf:connector:forgot-password-requested": GeoLeafConnectorLinkRequestDetail;
 }
 
@@ -770,8 +801,8 @@ export interface GeoLeafEventMap {
  * `geoleaf:toolbar:action` in the sanitised map and `dispatchGeoLeafEvent("geoleaf:toolbar:action",
  * { action, element })` becomes **type-legal and runtime-wrong**: `element` arrives at every
  * listener as `{}`. The type system would be actively inviting the bug that two files in this
- * repo already go out of their way to warn about — `kernel/ui/desktop/desktop-tabs-seam.ts:17-19`
- * and `kernel/layer-manager/item-controls-seam.ts:19` both describe themselves as *mirroring the
+ * repo already go out of their way to warn about — `kernel/ui/desktop/desktop-tabs-seam.ts`
+ * and `kernel/layer-manager/item-controls-seam.ts` both describe themselves as *mirroring the
  * existing `geoleaf:toolbar:action` seam* for precisely this reason.
  *
  * Splitting the map keeps both halves honest: listening is typed for everyone (the `Events`
@@ -807,7 +838,7 @@ export interface GeoLeafRawEventMap {
         headerWrapper: HTMLElement;
     };
     /**
-     * The plugin ↔ toolbar seam. Emitted by `kernel/ui/toolbar-dispatch.ts:20-27` (mobile pill,
+     * The plugin ↔ toolbar seam. Emitted by `kernel/ui/toolbar-dispatch.ts` (mobile pill,
      * desktop tab strip).
      *
      * ⚠️ **This seam is one-way, and the direction matters.** Plugins and capabilities LISTEN;
@@ -817,8 +848,8 @@ export interface GeoLeafRawEventMap {
      * every published `exports` subpath. Reaching it from `capabilities/**` is refused by the
      * R.8 boundary (`eslint.config.mjs`), and widening the barrel to reach it would drag
      * `components.js` + `pill-search.js` + `theme.js` into the importer's bundle closure. That
-     * trade was measured, then declined, and the decision is written up as **D-18** in
-     * `_docs_projet/registres/dette_technique.md` — do not re-litigate it from this line.
+     * trade was measured, then declined, and the decision is recorded as accepted debt in
+     * the workshop's debt register — do not re-litigate it from this line.
      *
      * ⚠️ This comment called that helper "the canonical entry point" until 09/08/2026, with no
      * qualifier. The sentence was true for the kernel and false for every other reader of this
@@ -850,25 +881,25 @@ export interface GeoLeafRawEventMap {
 }
 
 /*
- * ⚠️ Deux autres seams bruts existent et ne sont **délibérément pas** listés ci-dessus —
- * `geoleaf:desktop-panel:tabs-ready` (`kernel/ui/desktop/desktop-tabs-seam.ts`) et
- * `geoleaf:layer-item:controls` (`kernel/layer-manager/item-controls-seam.ts`). Ils portent
- * bien un `HTMLElement` vivant et se décrivent eux-mêmes comme calqués sur `toolbar:action`,
- * mais deux mesures les distinguent :
+ * ⚠️ Two other raw seams exist and are **deliberately not** listed above —
+ * `geoleaf:desktop-panel:tabs-ready` (`kernel/ui/desktop/desktop-tabs-seam.ts`) and
+ * `geoleaf:layer-item:controls` (`kernel/layer-manager/item-controls-seam.ts`). They do
+ * carry a live `HTMLElement` and describe themselves as modelled on `toolbar:action`,
+ * but two measurements set them apart:
  *
- *   1. Ils sont **core-internes** — leurs seuls abonnés en production sont les capacités
- *      `share` et `labels`. Aucun plugin ne les écoute, là où `toolbar:action` est le seam
- *      que `_plugin-template` impose à TOUT nouveau plugin.
- *   2. Ils sont **déjà typés à l'émetteur** : `DesktopTabsReadyDetail` et
- *      `LayerItemControlsDetail` sont exportés à côté de leur `dispatchEvent`, et leurs
- *      formes réelles (`{ tabs }` · `{ layerId, controlsContainer, toggleable }`) ne sont pas
- *      celles qu'on devinerait.
+ *   1. They are **core-internal** — their only production subscribers are the `share`
+ *      and `labels` capabilities. No plugin listens to them, whereas `toolbar:action` is
+ *      the seam `_plugin-template` imposes on EVERY new plugin.
+ *   2. They are **already typed at the emitter**: `DesktopTabsReadyDetail` and
+ *      `LayerItemControlsDetail` are exported next to their `dispatchEvent`, and their
+ *      real shapes (`{ tabs }` · `{ layerId, controlsContainer, toggleable }`) are not
+ *      the ones you would guess.
  *
- * Les recopier ici en créerait une seconde description à tenir à la main — précisément la
- * classe de défaut que l'API publique S3 corrige. Les faire pointer sur les modules d'origine
- * inverserait la couche (`contracts/` est une feuille : il n'importe que `contracts/`). Le
- * geste correct est de déplacer ces deux interfaces DANS le contrat et de les ré-exporter
- * depuis les seams — décision de couche à part entière, versée au backlog, pas à 3.3.
+ * Copying them here would create a second hand-maintained description — precisely the
+ * defect class the public-API work fixes. Pointing at the origin modules would invert
+ * the layering (`contracts/` is a leaf: it imports only `contracts/`). The correct move
+ * is to relocate both interfaces INTO the contract and re-export them from the seams — a
+ * layering decision in its own right, recorded separately.
  */
 
 // ── IEventBus interface ──────────────────────────────────────────────────────

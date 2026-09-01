@@ -1,19 +1,21 @@
 /**
- * Schéma v4 — `features` et `outbox` (tâche 3.4).
+ * Schema v4 — `features` and `outbox`.
  *
- * Trois choses sont éprouvées ici, et une seule est structurelle :
- *  1. la forme du schéma (stores, clés, index) ;
- *  2. **B-03 corrigé DANS LA CLÉ** — c'est la garde qui compte, et elle a été vue rougir ;
- *  3. l'inatteignabilité par l'éviction, qui est un fait de NOM DE STORE et non de champ.
+ * Three things are exercised here, and only one is structural:
+ *  1. the schema's shape (stores, keys, indexes);
+ *  2. **the collision fixed IN THE KEY** — the guard that matters, and it was seen turning red;
+ *  3. unreachability by eviction, which is a fact of STORE NAME and not of field.
  *
- * ⚠️ `fake-indexeddb`, comme `storage-helper-open-database.test.js` : le mock maison du reste
- * de la suite offline ne sait produire ni `versionchange`, ni index composé, ni `autoIncrement`.
+ * ⚠️ `fake-indexeddb`, like `storage-helper-open-database.test.js`: the rest
+ * of the offline suite's home-made mock can produce neither `versionchange`,
+ * nor composite indexes, nor `autoIncrement`.
  */
 
 import "fake-indexeddb/auto";
-// ⚠️ `?raw` et non `readFileSync(new URL(..., import.meta.url))` : sous vitest,
-// `import.meta.url` n'est PAS un URL `file:` et la lecture jette `ERR_INVALID_URL_SCHEME`.
-// Mesuré deux fois dans ce dépôt ; la résolution vite est la forme qui marche.
+// ⚠️ `?raw` and not `readFileSync(new URL(..., import.meta.url))`: under
+// vitest, `import.meta.url` is NOT a `file:` URL and the read throws
+// `ERR_INVALID_URL_SCHEME`. Measured twice in this repo; the vite resolution
+// is the form that works.
 import evictionSource from "../../../src/capabilities/offline/db/eviction.ts?raw";
 import { IndexedDB } from "../../../src/capabilities/offline/db/indexeddb.ts";
 
@@ -30,10 +32,16 @@ afterEach(async () => {
     });
 });
 
-describe("v4 — la forme du schéma", () => {
-    test("la base s'ouvre en v4 avec les six stores", async () => {
+// ⚠️ The FILE keeps its `schema-v4` name although the base moved to v5, and
+// that is not an oversight: it is cited by `docs/specs/capacites/offline.md`
+// (twice) and frozen in `scripts/.baselines/js-test-debt.json`. Renaming
+// would make three references diverge for a readability gain this comment
+// makes unnecessary. What the file guards is not ONE version, it is the
+// schema's SHAPE — and what must not come back into it.
+describe("la forme du schéma — v5", () => {
+    test("la base s'ouvre en v5 avec les sept stores", async () => {
         const db = await IndexedDB.init();
-        expect(db.version).toBe(4);
+        expect(db.version).toBe(5);
         expect(Array.from(db.objectStoreNames).sort()).toEqual([
             "features",
             "layers",
@@ -41,22 +49,24 @@ describe("v4 — la forme du schéma", () => {
             "metadata",
             "outbox",
             "preferences",
+            "routes",
         ]);
     });
 
     test("🛑 `sync_queue` et `sync_backups` ne sont PLUS créés (4.11)", async () => {
-        // Ce fichier portait le test inverse — « `sync_queue` SURVIT à la v4, ce n'est pas du
-        // legacy, c'est le chemin vivant » — et il était VRAI quand il a été écrit : `addpoi`
-        // et `editor` y écrivaient, `poi-restore` et l'export de secours le lisaient.
+        // This file carried the opposite test — "`sync_queue` SURVIVES v4,
+        // this is not legacy, it is the live path" — and it was TRUE when
+        // written: `addpoi` and `editor` wrote there, `poi-restore` and the
+        // rescue export read it.
         //
-        // Le Sprint 4 a déplacé les quatre : 4.4b, 4.9, 4.7 et 4.10. Il n'est resté que la
-        // restauration de sauvegarde, retirée ici avec sa chaîne — dont le magasin
-        // `sync_backups`, qui prétendait protéger d'une purge d'origine tout en vivant DANS la
-        // base que cette purge détruit.
+        // All four have since moved. Only the backup restoration remained,
+        // removed here with its chain — including the `sync_backups` store,
+        // which claimed to protect against an origin purge while living
+        // INSIDE the base that purge destroys.
         //
-        // ⚠️ Le test est retourné plutôt que supprimé : c'est la seule forme qui rougit si
-        // quelqu'un recrée l'un des deux magasins. Un simple retrait aurait laissé la
-        // recréation passer en silence.
+        // ⚠️ The test is flipped rather than deleted: the only shape that
+        // turns red if someone recreates either store. A plain removal would
+        // have let the recreation pass silently.
         const db = await IndexedDB.init();
         const created = new Set(Array.from(db.objectStoreNames));
         expect(created.has("sync_queue")).toBe(false);
@@ -68,8 +78,8 @@ describe("v4 — la forme du schéma", () => {
         const store = db.transaction("features", "readonly").objectStore("features");
         expect(store.keyPath).toEqual(["layerId", "localId"]);
         expect(Array.from(store.indexNames).sort()).toEqual(["serverId", "syncState", "updatedAt"]);
-        // Pas d'index `layerId` : la clé composée donne le parcours par couche gratuitement.
-        // Un index de plus serait une seconde vérité pour la même question.
+        // No `layerId` index: the composite key gives the per-layer walk for
+        // free. One more index would be a second truth for the same question.
         expect(store.indexNames.contains("layerId")).toBe(false);
     });
 
@@ -83,7 +93,7 @@ describe("v4 — la forme du schéma", () => {
     });
 });
 
-describe("v4 — B-03 est corrigé DANS LA CLÉ", () => {
+describe("v4 — la collision est corrigée DANS LA CLÉ", () => {
     const entry = (id, n) => ({
         id,
         kind: "create",
@@ -92,9 +102,9 @@ describe("v4 — B-03 est corrigé DANS LA CLÉ", () => {
         baseVersion: null,
         state: "pending",
         attempts: 0,
-        // MÊME horodatage pour les trois : c'est la condition exacte de B-03. Sur
-        // `sync_queue` le hasard du suffixe de clé décide alors de l'ordre, et le tri par
-        // horodatage — stable — ne fait que le transporter.
+        // SAME timestamp for all three: the collision's exact condition. On
+        // `sync_queue` the key suffix's luck then decides the order, and the
+        // — stable — timestamp sort merely carries it along.
         createdAt: 1785600000000,
     });
 
@@ -106,9 +116,10 @@ describe("v4 — B-03 est corrigé DANS LA CLÉ", () => {
         await outbox.append(entry("op-mmm", 2));
         await outbox.append(entry("op-aaa", 3));
 
-        // ⚠️ Les identifiants sont choisis pour que l'ordre LEXICOGRAPHIQUE soit l'inverse de
-        // l'ordre d'écriture. Sur l'ancienne clé (`keyPath: "id"`), `getAll()` aurait rendu
-        // aaa, mmm, zzz — soit 3, 2, 1. Ici la clé est `seq`, mintée par la base.
+        // ⚠️ The ids are chosen so LEXICOGRAPHIC order is the reverse of the
+        // write order. On the old key (`keyPath: "id"`), `getAll()` would
+        // have returned aaa, mmm, zzz — i.e. 3, 2, 1. Here the key is `seq`,
+        // minted by the base.
         const all = await outbox.list();
         expect(all.map((e) => e.localId)).toEqual(["l1", "l2", "l3"]);
         expect(all.map((e) => e.seq)).toEqual([1, 2, 3]);
@@ -126,8 +137,8 @@ describe("v4 — B-03 est corrigé DANS LA CLÉ", () => {
     });
 
     test("changer d'état ne DÉPLACE PAS l'entrée dans la file", async () => {
-        // Une `failed` qui redevient traitable (critère 4) doit garder sa place : elle a été
-        // saisie avant les suivantes, elle se rejoue avant elles.
+        // A `failed` that becomes processable again must keep its place: it
+        // was captured before the next ones, it replays before them.
         await IndexedDB.init();
         const outbox = IndexedDB._ensureModule("Outbox");
         await outbox.append(entry("op-1", 1));
@@ -148,22 +159,22 @@ describe("v4 — B-03 est corrigé DANS LA CLÉ", () => {
         await outbox.append({ ...entry("op-2", 1), kind: "update" });
         await outbox.append(entry("op-3", 9));
 
-        // `id` est l'ADRESSE du contrat, même s'il ne porte plus l'ordre.
+        // `id` is the contract's ADDRESS, even though it no longer carries the order.
         const found = await outbox.getById("op-2");
         expect(found).toMatchObject({ id: "op-2", kind: "update", seq: 2 });
         expect(await outbox.getById("op-inexistant")).toBeNull();
 
-        // L'index composé sert la coalescence (3.10) : toutes les opérations d'UNE entité.
+        // The composite index serves coalescing: all of ONE entity's operations.
         const surL1 = await outbox.listByEntity("poi", "l1");
         expect(surL1.map((e) => e.id)).toEqual(["op-1", "op-2"]);
         expect(await outbox.listByEntity("poi", "inconnue")).toEqual([]);
 
-        // `remove` passe par l'index `id` puis supprime par `seq` — l'ordre des autres
-        // entrées n'en est pas affecté.
+        // `remove` goes through the `id` index then deletes by `seq` — the
+        // other entries' order is unaffected.
         await outbox.remove("op-1");
         expect(await outbox.count()).toBe(2);
         expect((await outbox.list()).map((e) => e.id)).toEqual(["op-2", "op-3"]);
-        // Retirer un id absent ne jette pas : c'est un no-op, pas une erreur.
+        // Removing an absent id does not throw: a no-op, not an error.
         await expect(outbox.remove("op-inexistant")).resolves.toBeUndefined();
     });
 
@@ -184,8 +195,8 @@ describe("v4 — B-03 est corrigé DANS LA CLÉ", () => {
     });
 
     test("deux entrées de même `id` LÈVENT au lieu de s'écraser en silence", async () => {
-        // Sur `keyPath: "id"` la seconde écrasait la première — une saisie disparaissait sans
-        // bruit. L'index unique transforme la disparition en échec.
+        // On `keyPath: "id"` the second overwrote the first — a capture
+        // vanished without a sound. The unique index turns the vanishing into a failure.
         await IndexedDB.init();
         const outbox = IndexedDB._ensureModule("Outbox");
         await outbox.append(entry("op-doublon", 1));
@@ -196,9 +207,9 @@ describe("v4 — B-03 est corrigé DANS LA CLÉ", () => {
 
 describe("v4 — `features` est INATTEIGNABLE par l'éviction", () => {
     test("`eviction.ts` ne nomme qu'un seul store, et ce n'est ni `features` ni `outbox`", () => {
-        // 🛑 C'est la garde qui rend la règle du contrat vraie sans dépendre d'un champ.
-        // Le jour où l'éviction apprend un second nom de store, elle rougit — et c'est
-        // exactement le jour où il faut relire `EvictionClass`.
+        // 🛑 The guard that makes the contract's rule true without depending
+        // on a field. The day eviction learns a second store name, it turns
+        // red — exactly the day `EvictionClass` must be reread.
         const src = evictionSource;
         const stores = [...src.matchAll(/transaction\(\s*\[?\s*["']([a-z_]+)["']/g)].map(
             (m) => m[1]
@@ -234,7 +245,7 @@ describe("v4 — `features` est INATTEIGNABLE par l'éviction", () => {
         expect((await features.get("poi", "a")).feature.properties.nom).toBe("a");
         expect(await features.get("poi", "inexistant")).toBeNull();
 
-        // Le parcours par couche vient de la clé composée, sans index dédié.
+        // The per-layer walk comes from the composite key, no dedicated index.
         expect((await features.listByLayer("poi")).map((r) => r.localId).sort()).toEqual([
             "a",
             "b",
@@ -252,11 +263,11 @@ describe("v4 — `features` est INATTEIGNABLE par l'éviction", () => {
     });
 
     test("⚠️ `serverId: null` n'entre PAS dans l'index — une entité créée hors ligne y est invisible", async () => {
-        // `null` n'est pas une clé IndexedDB valide. Ce n'est pas un défaut tant que l'index
-        // ne sert qu'à retrouver une entité PAR son identifiant serveur (4.5) — mais compter
-        // les entités par lui SOUS-COMPTERAIT. Même mécanisme que B.6 (booléens hors index).
-        // Le comportement est ASSERTÉ ici pour que personne ne le redécouvre en le prenant
-        // pour une perte de données.
+        // `null` is not a valid IndexedDB key. Not a defect as long as the
+        // index only serves to find an entity BY its server id — but counting
+        // entities through it would UNDERCOUNT. Same mechanism as the
+        // booleans-outside-the-index bug. The behaviour is ASSERTED here so
+        // nobody rediscovers it and mistakes it for data loss.
         await IndexedDB.init();
         const features = IndexedDB._ensureModule("Features");
         await features.put({

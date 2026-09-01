@@ -165,7 +165,6 @@ LayerManager.removeLayer = function (layerId: string) {
 
     // Remove from the Map
     state.layers.delete(layerId);
-    // featureCache removed (Sprint 1)
 
     Log.debug("[GeoLeaf.GeoJSON] Layer removed:", layerId);
 };

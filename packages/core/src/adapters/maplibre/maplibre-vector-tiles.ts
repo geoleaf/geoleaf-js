@@ -161,7 +161,7 @@ function resolveVtSubLayerPaint(
     if (subId.endsWith("-casing")) {
         const vtCas = mergedFlat.casing as CasingConfig | undefined;
         if (!vtCas?.enabled) return null;
-        const mw = typeof mergedFlat.weight === "number" ? (mergedFlat.weight as number) : 1;
+        const mw = typeof mergedFlat.weight === "number" ? mergedFlat.weight : 1;
         return toCasingPaint(vtCas, mw) as Record<string, unknown>;
     }
     if (subId.endsWith("-line")) {

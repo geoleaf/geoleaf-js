@@ -182,8 +182,8 @@ export class MaplibreLayerRegistry {
             zIndex,
             visible: true,
             subLayerTypes: new Set(subLayerTypes),
-            // L'entrée est conservée dans `this._entries` et relue par clé : une clé présente
-            // valant `undefined` n'y est pas équivalente à une clé absente.
+            // The entry is kept in `this._entries` and re-read by key: a key present with
+            // value `undefined` is not equivalent there to an absent key.
             ...(options?.geometryTypes !== undefined && { geometryTypes: options.geometryTypes }),
             isVectorTile: options?.isVectorTile ?? false,
             ...(options?.sourceLayer !== undefined && { sourceLayer: options.sourceLayer }),

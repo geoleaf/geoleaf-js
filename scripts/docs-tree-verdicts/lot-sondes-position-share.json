@@ -1,0 +1,35 @@
+{
+    "schemaVersion": 2,
+    "lot": "sondes-position-share",
+    "scope": ["scripts/probe-position-share.mjs", "scripts/probe-slot-timing.mjs"],
+    "verdicts": {
+        "scripts/probe-position-share.mjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N1",
+            "severity": null,
+            "description": "Sonde Chromium des deux transports de position-share : veille GPS réelle, charge POST, garde de distance, trois états WebSocket",
+            "confidence": "haute",
+            "rationale": "29 assertions, exécutée contre le bundle servi par nginx. N1 : basename `probe-<sujet>.mjs`, la forme des 6 autres sondes de ce répertoire. Elle n'est pas redondante avec les 78 tests du paquet : ceux-ci tournent sous happy-dom contre des seams mockés, et ne peuvent voir ni la veille GPS réelle alimentant l'émetteur, ni le fait que `Ws.init()` n'est jamais appelé sur le chemin nominal. Vue rouge sur mutation de `ws-transport.ts`, verte après restauration (sha256 vérifié)."
+        },
+        "scripts/probe-slot-timing.mjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N1",
+            "severity": null,
+            "description": "Sonde Chromium du moment de déclaration d'un créneau : dessiné sur le chemin eager, sauté sur le paresseux",
+            "confidence": "haute",
+            "rationale": "12 assertions. N1 : basename `probe-<sujet>.mjs`. Elle couvre ce qu'aucun test unitaire ne peut : le RENDU. Les tests assertent la DÉCISION contre un registre mocké ; le chemin eager — `geocoding`, préchargé par `beforeBoot`, dont l'enregistrement d'`entry.ts` est la seule déclaration — n'était éprouvé par rien, et c'est ce trou qui rendait tentant de supprimer l'appel plutôt que de le conditionner. Vue rouge sur mutation de `table` (condition inversée), verte après restauration."
+        }
+    }
+}

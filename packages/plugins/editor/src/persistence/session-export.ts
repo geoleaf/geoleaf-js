@@ -5,34 +5,37 @@
  */
 
 /**
- * Suit les entités **créées pendant la session de navigation courante** et les exporte en
- * GeoJSON. Absorbé d'`addpoi/src/session-export.ts` (tâche 5.1-e).
+ * Tracks entities **created during the current browsing session** and exports
+ * them as GeoJSON. Absorbed from `addpoi/src/session-export.ts`.
  *
- * ⚠️ **« Session » veut dire : jusqu'au rechargement.** Le suivi est un `Set` en mémoire, donc
- * un F5 vide la liste. C'est le comportement de la source, conservé tel quel — mais il faut le
- * dire, parce que le mot « export » invite à croire le contraire. **Ce n'est PAS un filet de
- * sécurité** : celui-là, c'est l'export de l'outbox par `offline-ui`, qui lit IndexedDB et
- * survit au rechargement comme à une purge d'origine.
+ * ⚠️ **"Session" means: until reload.** Tracking is an in-memory `Set`, so an
+ * F5 empties the list. The source's behaviour, kept as-is — but it must be
+ * said, because the word "export" invites believing otherwise. **This is NOT a
+ * safety net**: that one is `offline-ui`'s outbox export, which reads IndexedDB
+ * and survives reload as well as an origin purge.
  *
- * 🛑 **CE QUI N'EST PAS ABSORBÉ, ET POURQUOI — R19.** La source portait un second geste,
- * `submitSessionToServer()`, avec son bouton de barre d'outils. Il est **inatteignable de deux
- * façons indépendantes** :
+ * 🛑 **WHAT IS NOT ABSORBED, AND WHY.** The source carried a second gesture,
+ * `submitSessionToServer()`, with its toolbar button. It is **unreachable in
+ * two independent ways**:
  *
- *   1. son bouton déclare `profileKey: "ui.showPoiSubmit"` avec `defaultVisible: false`, et
- *      `ui.showPoiSubmit` n'est déclaré dans **aucun schéma** alors que `ui.schema.json` est
- *      `additionalProperties: false` — l'écrire ferait échouer `validate:profiles`. Le bouton
- *      est donc **caché par défaut et ne peut pas être montré** ;
- *   2. il exige `modules.addpoi.submitEndpoint`, que **seul le profil de test** renseigne.
+ *   1. its button declares `profileKey: "ui.showPoiSubmit"` with
+ *      `defaultVisible: false`, and `ui.showPoiSubmit` is declared in **no
+ *      schema** while `ui.schema.json` is `additionalProperties: false` —
+ *      writing it would fail `validate:profiles`. The button is thus **hidden
+ *      by default and cannot be shown**;
+ *   2. it requires `modules.addpoi.submitEndpoint`, which **only the test
+ *      profile** sets.
  *
- * Le porter aurait transporté une capacité que personne ne peut atteindre — le troisième
- * orphelin de cette absorption, après `retryPendingUploads` et `createFileInput` (5.1-d).
+ * Porting it would have transported a capability nobody can reach — the third
+ * orphan of this absorption, after `retryPendingUploads` and
+ * `createFileInput`.
  */
 import { Log, downloadBlob } from "@geoleaf/host-runtime";
 
-/** Identifiants des entités créées depuis le chargement de la page. */
+/** Identifiers of the entities created since the page loaded. */
 const _sessionIds = new Set<string>();
 
-/** Les propriétés internes, retirées avant export. */
+/** The internal properties, removed before export. */
 const _STRIP = new Set([
     "_layerConfig",
     "_popupConfig",
@@ -42,22 +45,23 @@ const _STRIP = new Set([
 ]);
 
 /**
- * Enregistre une entité comme créée pendant cette session.
+ * Records an entity as created during this session.
  *
- * @param id - Identifiant de l'entité, tel que l'hôte le porte.
+ * @param id - The entity's identifier, as the host carries it.
  */
 export function trackSessionFeature(id: string): void {
     if (id) _sessionIds.add(id);
 }
 
 /**
- * Remplace un identifiant local par celui que le serveur a attribué.
+ * Replaces a local identifier with the one the server assigned.
  *
- * Sans cela, une entité créée hors réseau puis synchronisée **sortirait** de l'export : elle
- * serait suivie sous son identifiant local, que la couche hôte ne porte plus.
+ * Without this, an entity created off-network then synchronised would **drop
+ * out** of the export: it would be tracked under its local identifier, which
+ * the host layer no longer carries.
  *
- * @param oldId - Identifiant local, tel qu'il a été suivi.
- * @param newId - Identifiant serveur.
+ * @param oldId - Local identifier, as tracked.
+ * @param newId - Server identifier.
  */
 export function renameSessionFeature(oldId: string, newId: string): void {
     if (!_sessionIds.has(oldId)) return;
@@ -65,17 +69,17 @@ export function renameSessionFeature(oldId: string, newId: string): void {
     _sessionIds.add(newId);
 }
 
-/** @returns le nombre d'entités créées pendant cette session. */
+/** @returns the number of entities created during this session. */
 export function sessionFeatureCount(): number {
     return _sessionIds.size;
 }
 
-/** Vide le suivi — utilisé au démontage du plugin et par les tests. */
+/** Clears the tracking — used at plugin teardown and by the tests. */
 export function resetSessionTracking(): void {
     _sessionIds.clear();
 }
 
-/** L'accès aux données de couche du core, lu à l'appel. */
+/** Access to the core's layer data, read at call time. */
 interface LayerData {
     listLayerIds?(): string[];
     getFeatures?(layerId: string): unknown[];
@@ -88,10 +92,10 @@ function _layers(): LayerData | null {
 }
 
 /**
- * Retire les propriétés internes d'une entité.
+ * Removes an entity's internal properties.
  *
- * @param feature - Entité telle que la couche hôte la porte.
- * @returns une copie exportable.
+ * @param feature - Entity as the host layer carries it.
+ * @returns an exportable copy.
  */
 function _strip(feature: {
     id?: unknown;
@@ -107,9 +111,9 @@ function _strip(feature: {
 }
 
 /**
- * Rassemble les entités de la session depuis leurs couches hôtes.
+ * Gathers the session's entities from their host layers.
  *
- * @returns les entités suivies, nettoyées de leurs propriétés internes.
+ * @returns the tracked entities, cleaned of their internal properties.
  */
 export function collectSessionFeatures(): Record<string, unknown>[] {
     const layers = _layers();
@@ -120,8 +124,8 @@ export function collectSessionFeatures(): Record<string, unknown>[] {
         try {
             features = layers.getFeatures(layerId) ?? [];
         } catch (e) {
-            // Une couche déclarée mais jamais chargée jette ; elle ne doit pas aveugler
-            // l'export sur les autres — même garde que `drawing/poi-snap.ts`.
+            // A declared but never-loaded layer throws; it must not blind the
+            // export to the others — same guard as `drawing/poi-snap.ts`.
             Log?.debug?.("[editor/session-export] Layer unreadable, skipped:", layerId, e);
             continue;
         }
@@ -136,18 +140,19 @@ export function collectSessionFeatures(): Record<string, unknown>[] {
     return out;
 }
 
-/** Date du jour au format `AAAA-MM-JJ`, pour le nom de fichier. */
+/** Today's date as `YYYY-MM-DD`, for the file name. */
 function _today(): string {
     return new Date().toISOString().slice(0, 10);
 }
 
 /**
- * Télécharge un GeoJSON des entités créées pendant cette session.
+ * Downloads a GeoJSON of the entities created during this session.
  *
- * ⚠️ `downloadBlob` de `@geoleaf/host-runtime` plutôt qu'une fabrique d'ancre locale : la
- * source en portait une copie de 12 lignes (`_download`), alors que le seam existait déjà.
+ * ⚠️ `@geoleaf/host-runtime`'s `downloadBlob` rather than a local anchor
+ * factory: the source carried a 12-line copy of it (`_download`), while the
+ * seam already existed.
  *
- * @returns le nombre d'entités exportées — `0` quand il n'y a rien à exporter.
+ * @returns the number of exported entities — `0` when there is nothing to export.
  */
 export async function exportSessionFeatures(): Promise<number> {
     const features = collectSessionFeatures();

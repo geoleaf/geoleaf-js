@@ -49,7 +49,7 @@ logging:
 metadata:
     identification:
         title: GeoLeaf dev proof backend
-        description: OGC API Features over the shared PostGIS — read side of the Sprint 4 cycle
+        description: OGC API Features over the shared PostGIS — read side of the offline cycle
         keywords:
             - geoleaf
             - offline

@@ -37,12 +37,12 @@ interface DownloaderResource {
 interface DownloaderConfig {
     enableProfileCache: boolean;
     /**
-     * ⚠️ `enableTileCache` N'EST PAS ICI (retiré à la tâche 3.13), et son absence est le
-     * sujet : il était déclaré, défauté et transmis par ce module sans qu'aucune ligne ne le
-     * LISE. Le téléchargeur reçoit une liste de ressources déjà énumérée — la décision
-     * « des tuiles, ou pas » se prend en amont, chez `ResourceEnumerator._tilesRequested()`,
-     * qui est désormais son unique lecteur. Un réglage porté par un module qui ne s'en sert
-     * pas se lit comme un bouton, et n'en est pas un.
+     * ⚠️ `enableTileCache` IS NOT HERE (removed), and its absence is the subject: it
+     * was declared, defaulted and forwarded by this module without a single line
+     * READING it. The downloader receives an already-enumerated resource list — the
+     * "tiles, or not" decision is made upstream, in
+     * `ResourceEnumerator._tilesRequested()`, now its single reader. A setting carried
+     * by a module that does not use it reads like a switch, and is not one.
      */
     concurrentDownloads: number;
     concurrentTileDownloads: number;
@@ -72,7 +72,7 @@ const CacheDownloader = {
             ...(rest.maxAttempts === undefined && maxRetries !== undefined
                 ? { maxAttempts: maxRetries }
                 : {}),
-        } as typeof this._config;
+        };
 
         // Initialize sub-modules
         RetryHandler.init({
@@ -305,19 +305,19 @@ const CacheDownloader = {
         const StorageDB = IndexedDB;
         Log.debug("[Downloader] Storing in IndexedDB:", resource.url);
 
-        // ⚠️ LE `ttl` A ÉTÉ RETIRÉ D'ICI (tâche 3.13) — défaut (C) du pré-vol du sprint.
+        // ⚠️ THE `ttl` WAS REMOVED FROM HERE — a pre-flight finding.
         //
-        // 🛑 Il n'était pas seulement inutilisé : il était **jeté à l'écriture**. Cette
-        // fonction le calculait (`Date.now() + 7 jours`) et le passait à `cacheLayer`, mais
-        // `LayerMetadata` ne le DÉCLARE pas et `layerObject` ne l'écrit pas — la valeur
-        // tombait dans le vide. Et `tsc` ne pouvait pas le voir, la façade retypant en
-        // `Record<string, unknown>`.
+        // 🛑 It was not merely unused: it was **discarded at write time**. This
+        // function computed it (`Date.now() + 7 days`) and passed it to `cacheLayer`,
+        // but `LayerMetadata` does not DECLARE it and `layerObject` does not write it
+        // — the value fell into the void. And `tsc` could not see it, the facade
+        // retyping as `Record<string, unknown>`.
         //
-        // Il ne se « garde » donc pas en attendant un lecteur : il n'a jamais été écrit, donc
-        // aucune donnée en base n'en porte. Le remettre un jour, ce sera l'écrire pour de bon,
-        // pas rebrancher un champ. ⚠️ Et l'affirmation d'immutabilité d'un an que le worker
-        // posait sur les réponses reconstruites a déjà été retirée pour ce motif (tâche 3.7) :
-        // la fraîcheur n'était garantie par rien.
+        // So it is not "kept" awaiting a reader: it was never written, hence no data
+        // in the database carries it. Bringing it back one day means writing it for
+        // real, not rewiring a field. ⚠️ And the one-year immutability claim the
+        // worker put on rebuilt responses was already removed for this motive:
+        // freshness was guaranteed by nothing.
         await StorageDB.cacheLayer(resource.url, fetchResult.data, profileId, {
             etag: fetchResult.metadata?.etag as string | undefined,
             lastModified: fetchResult.metadata?.lastModified as string | undefined,

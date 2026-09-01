@@ -25,10 +25,11 @@ for (const [name, url] of targets) {
     await page.waitForFunction(() => !!window.maplibregl, null, { timeout: 20000 }).catch(() => {});
     await page.waitForTimeout(6000);
     violations.push(...(await page.evaluate(() => window.__csp || [])));
-    // ⚠️ Le critère est celui de S11.1 : les TROIS origines de BOOT, pas « tout ce qui n'est
-    // pas same-origin ». Les tuiles et les jeux de données distants (OpenTopoMap, USGS, S3)
-    // sont des fetchs de runtime légitimes, régis par `img-src`/`connect-src 'self' https:` —
-    // une première version de cette sonde les comptait et rendait un rouge parfaitement faux.
+    // ⚠️ The criterion: the THREE BOOT origins, not "everything not
+    // same-origin". Tiles and remote datasets (OpenTopoMap, USGS, S3) are
+    // legitimate runtime fetches, governed by `img-src`/`connect-src 'self'
+    // https:` — a first version of this probe counted them and rendered a
+    // perfectly false red.
     const BOOT_ORIGINS = ["unpkg.com", "fonts.googleapis.com", "fonts.gstatic.com"];
     const third = reqs.filter((u) => BOOT_ORIGINS.some((o) => u.includes(o)));
     const runtimeHosts = [

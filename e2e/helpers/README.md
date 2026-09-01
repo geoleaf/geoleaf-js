@@ -132,13 +132,13 @@ npm run build:deploy:all && npm run build:deploy-coverage
 E2E_HW_GL=1 npx playwright test e2e/06-performance-baseline.spec.js
 ```
 
-La spec lit le baseline existant, met à jour `runtime.{initTime,geojsonRender,fps,memory,webVitals}` et réécrit le fichier. ⚠️ **`runtime.memory` est depuis B-218 un ENREGISTREMENT, pas un contrat** — aucune garde ne le lit, il documente l'environnement d'une capture ; sa forme a changé (`heapDelta10k_mb` + `_instrument`), et le `after10kFeatures_mb` encore commité décrit l'instrument retiré jusqu'à la prochaine capture. Les autres sections (`bundle`, `_notes`, `version`, snapshots historiques `*_pre_r4`) sont **préservées** : finaliser à la main après coup — `runtime._status` → `captured`, puis `capturedAt`, `environment` (hôte GPU) et bump de `version`.
+La spec lit le baseline existant, met à jour `runtime.{initTime,geojsonRender,fps,memory,webVitals}` et réécrit le fichier. ⚠️ **`runtime.memory` est depuis le 10/08 un ENREGISTREMENT, pas un contrat** — aucune garde ne le lit, il documente l'environnement d'une capture ; sa forme a changé (`heapDelta10k_mb` + `_instrument`), et le `after10kFeatures_mb` encore commité décrit l'instrument retiré jusqu'à la prochaine capture. Les autres sections (`bundle`, `_notes`, `version`, snapshots historiques `*_pre_r4`) sont **préservées** : finaliser à la main après coup — `runtime._status` → `captured`, puis `capturedAt`, `environment` (hôte GPU) et bump de `version`.
 
 **Valider :** lire les logs `[perf] …` du run (init, FPS plain/clustered, mémoire), puis vérifier le diff — `git diff perf-baseline.json` ne doit toucher que `runtime` + métadonnées, **jamais** `bundle` (gardé séparément par `scripts/benchmark.cjs`).
 
 > ⚠️ **Ne jamais committer** un baseline généré sous rendu logiciel. La garde d'écriture le bloque par défaut ; vérifier malgré tout que les valeurs FPS diffèrent d'un run soft-GL (où elles seraient nulles ou aberrantes).
 
-### `perf-gate.js` — gate de régression runtime (Sprint 3)
+### `perf-gate.js` — gate de régression runtime
 
 Compagnon de `perf-baseline.json` : définit de combien une capture e2e live peut s'écarter du baseline commité avant que le run n'échoue. Le gate est **bimodal**, piloté par le flag `useHardwareGl` existant :
 
@@ -149,18 +149,18 @@ Compagnon de `perf-baseline.json` : définit de combien une capture e2e live peu
 
 **Que gate-t-on ?** Seules les métriques **GL-indépendantes** échouent le run :
 
-| Métrique        | Gate                                                         | Pourquoi                                                                                                   |
-| --------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| `geojsonRender` | **dur** — plafond `max(commité.max × 3, 5 ms)`               | timing JS `addSource`/`addLayer`, indépendant du GPU                                                       |
-| `memory` (heap) | **dur** — bande absolue `0,5 → 3 Mo` sur le **delta retenu** | heap JS, indépendant du GPU — mais **pas sous n'importe quel instrument** (B-218)                          |
-| `initTime`      | souple — plafond absolu `< 10 s`                             | réseau-inclus sur http-server local (spread 1,6–3,3 s), trop bruité                                        |
-| `fps`           | **AUCUN** — informatif, comme les Web Vitals                 | non-représentatifs sous GL logiciel (S2), et **bruités bien au-delà du seuil qu'on leur opposait** (B-217) |
-| clustering      | **dur** — ≥ 1 cluster, et compression `> 1` à n ≥ 1000       | oracle déterministe, indépendant du GL (B-217)                                                             |
-| fuite mémoire   | ⚠️ **AUCUN en pratique** — vert par construction             | 6.2.6 lit `performance.memory`, **figée** : `growthRate = 0` toujours. Smoke, pas garde (**B-219**)        |
+| Métrique        | Gate                                                         | Pourquoi                                                                                      |
+| --------------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| `geojsonRender` | **dur** — plafond `max(commité.max × 3, 5 ms)`               | timing JS `addSource`/`addLayer`, indépendant du GPU                                          |
+| `memory` (heap) | **dur** — bande absolue `0,5 → 3 Mo` sur le **delta retenu** | heap JS, indépendant du GPU — mais **pas sous n'importe quel instrument**                     |
+| `initTime`      | souple — plafond absolu `< 10 s`                             | réseau-inclus sur http-server local (spread 1,6–3,3 s), trop bruité                           |
+| `fps`           | **AUCUN** — informatif, comme les Web Vitals                 | non-représentatifs sous GL logiciel, et **bruités bien au-delà du seuil qu'on leur opposait** |
+| clustering      | **dur** — ≥ 1 cluster, et compression `> 1` à n ≥ 1000       | oracle déterministe, indépendant du GL                                                        |
+| fuite mémoire   | ⚠️ **AUCUN en pratique** — vert par construction             | 6.2.6 lit `performance.memory`, **figée** : `growthRate = 0` toujours. Smoke, pas garde       |
 
-> Garde anti-faux-échec : si `runtime._status !== "captured"` (baseline fraîche/vide), le gate est **skippé** (informatif), jamais en échec. ⚠️ **Il ne couvre plus la ligne `memory` depuis B-218** : sa bande est absolue et ne lit aucun baseline, précisément pour que l'instrument neuf ne soit pas jugé contre un contrat capturé avec l'ancien.
+> Garde anti-faux-échec : si `runtime._status !== "captured"` (baseline fraîche/vide), le gate est **skippé** (informatif), jamais en échec. ⚠️ **Il ne couvre plus la ligne `memory`** : sa bande est absolue et ne lit aucun baseline, précisément pour que l'instrument neuf ne soit pas jugé contre un contrat capturé avec l'ancien.
 
-> 🛑 **La ligne `memory` a dit « plafond `commité × 1,5` » jusqu'au 10/08/2026, et elle gardait le VIDE.** La grandeur tranchée était `performance.memory.usedJSHeapSize`, que Chrome quantifie **et fige pour la durée de la page** hors `--enable-precise-memory-info` : mesuré à **0,00 Mo de delta** aux cinq instants d'une page et aux doses **0, 10 000 et 30 000** features, sur 10 pages fraîches. Le test assérait donc le heap **ambiant**, dont la dispersion (24,8 → 45,2 Mo, ×1,8) débordait le ×1,5 toléré — un rouge par construction, sans régression produit. **Ce qui gate désormais** : le **delta retenu** lu par CDP `Runtime.getHeapUsage` après `HeapProfiler.collectGarbage` ×2 **des deux côtés** (sans le GC, le delta brut mesuré est **négatif**), sur un ajout par **`adapter.addGeoJSONLayer`** — l'API GeoLeaf — et non plus par `map.addSource` natif. Bande mesurée **1,51–1,57 Mo** sur 8 relevés, témoin à 0,09–0,15 : d'où `floorMb: 0,5` (anti-creux — un delta nul **rougit**) et `ceilMb: 3` (dérive de dépendance, pas bruit). Table complète, mutations éprouvées et **angles morts** (heap du worker, fuites, empreinte de boot) : à l'assertion, dans `06-performance-baseline.spec.js`, et au registre **B-218**.
+> 🛑 **La ligne `memory` a dit « plafond `commité × 1,5` » jusqu'au 10/08/2026, et elle gardait le VIDE.** La grandeur tranchée était `performance.memory.usedJSHeapSize`, que Chrome quantifie **et fige pour la durée de la page** hors `--enable-precise-memory-info` : mesuré à **0,00 Mo de delta** aux cinq instants d'une page et aux doses **0, 10 000 et 30 000** features, sur 10 pages fraîches. Le test assérait donc le heap **ambiant**, dont la dispersion (24,8 → 45,2 Mo, ×1,8) débordait le ×1,5 toléré — un rouge par construction, sans régression produit. **Ce qui gate désormais** : le **delta retenu** lu par CDP `Runtime.getHeapUsage` après `HeapProfiler.collectGarbage` ×2 **des deux côtés** (sans le GC, le delta brut mesuré est **négatif**), sur un ajout par **`adapter.addGeoJSONLayer`** — l'API GeoLeaf — et non plus par `map.addSource` natif. Bande mesurée **1,51–1,57 Mo** sur 8 relevés, témoin à 0,09–0,15 : d'où `floorMb: 0,5` (anti-creux — un delta nul **rougit**) et `ceilMb: 3` (dérive de dépendance, pas bruit). Table complète, mutations éprouvées et **angles morts** (heap du worker, fuites, empreinte de boot) : à l'assertion, dans `06-performance-baseline.spec.js`.
 >
 > ⚠️ **Ne pas « réparer » un rouge en élargissant la bande, ni en recapturant le baseline** : le seul geste légitime est de **re-mesurer** — `E2E_TARGET=nginx PROBE_MODE=bande node scripts/probe-heap-metrics.mjs` — et de bouger un seuil **avec la table qui le justifie, à côté**. `heapDeltaBandMb()` jette si on l'appelle pour une autre dose que 10 000 features.
 
@@ -188,7 +188,7 @@ Prérequis identiques à la recapture (`build:deploy:all` + `build:deploy-covera
 
 Le gate s'exécute sous GL logiciel (runners sans GPU) et n'échoue que sur les métriques GL-indépendantes — les FPS y restent informatifs. Le baseline n'est jamais réécrit en CI (garde `E2E_HW_GL`).
 
-### `web-vitals.js` — Web Vitals e2e (Sprint 4, bloc 6.2.7)
+### `web-vitals.js` — Web Vitals e2e
 
 Mesure **LCP / INP / CLS** dans la spec 06 via la librairie [`web-vitals`](https://github.com/GoogleChrome/web-vitals) — une **devDependency injectée au runtime du test, jamais bundlée** dans le produit (preuve : `npm run size` reste à ~70 KB gz). Helper exposant deux fonctions :
 
@@ -201,7 +201,7 @@ Mesure **LCP / INP / CLS** dans la spec 06 via la librairie [`web-vitals`](https
 
 **Posture — informational / non-gating** (comme les FPS, finding S2) : sous GPU virtualisé WSLg, les timings paint/interaction ne sont pas représentatifs. Le bloc 6.2.7 ne pose **aucun seuil dur** (assertion de sanité : les 3 clés existent) ; les valeurs sont écrites dans `runtime.webVitals` **uniquement en capture** (`E2E_HW_GL=1`). Un vrai contrat Web Vitals exigerait une capture Windows natif + écran réel. Hook RUM prod optionnel = Backlog B.3.
 
-> **Budget sourcemaps (`npm run size`, hors e2e).** En parallèle du Sprint 4, `scripts/check-bundle-size.cjs` suit désormais la taille des `.map` du core (entry + `dist/chunks/*.map`) — **warn soft uniquement** (publiées npm mais non chargées au boot), jamais de hard-fail. Détail dans l'en-tête du script.
+> **Budget sourcemaps (`npm run size`, hors e2e).** En parallèle, `scripts/check-bundle-size.cjs` suit désormais la taille des `.map` du core (entry + `dist/chunks/*.map`) — **warn soft uniquement** (publiées npm mais non chargées au boot), jamais de hard-fail. Détail dans l'en-tête du script.
 
 ### `touch.js` — gestes tactiles (14/08/2026)
 
@@ -237,9 +237,9 @@ Bloc supprimé par **RM-P1b(c)** : le rebuild instrumenté qu'il mesurait n'exis
 
 ---
 
-### `offline.js` · `idb.js` · `db-seed.js` — le harnais hors-ligne (Sprint 3, tranche S3a)
+### `offline.js` · `idb.js` · `db-seed.js` — le harnais hors-ligne
 
-Les trois primitives sans lesquelles **cinq des six critères de preuve** du Sprint 3 n'ont pas
+Les trois primitives sans lesquelles **cinq des six critères de preuve** hors-ligne n'ont pas
 d'instrument. Elles existent parce que les défauts hors-ligne ont tous survécu de la même
 façon : un spec assertait qu'une chose s'était **produite** (un événement, un drapeau) et
 jamais que les bons octets avaient **atterri**.
@@ -280,12 +280,12 @@ await page.goto(`${baseURL("core")}/`); // ← l'app démarre SUR cette base
 ```
 
 > 🛑 **Le schéma vit dans la fixture, pas dans `db-seed.js`.** Un mirroir en code dérive en
-> silence le jour où la production change — et le Sprint 3 va justement réécrire ce schéma en
+> silence le jour où la production change — et le passage en v4 va justement réécrire ce schéma en
 > v4. Ajouter la v4 = ajouter `db-v4-dump.json`, pas éditer le helper.
 
 `e2e/fixtures/offline/db-v3-dump.json` porte le schéma v3 **et** de quoi éprouver chaque
 critère : trois entrées à la **même milliseconde** dont l'ordre de relecture est inversé
-(reproduction de **B-03**, vérifiée), une entrée `failed` invisible à l'index `pending`, deux
+(reproduction de la collision d'horodatage, vérifiée), une entrée `failed` invisible à l'index `pending`, deux
 sauvegardes à clés **numériques** (bug 2), et la **même** image sous ses deux formes — un vrai
 `Blob` et une chaîne `data:` (bug 3). Chaque enregistrement porte un `_comment` disant ce
 qu'il sert à prouver ; le seeder les retire avant écriture.

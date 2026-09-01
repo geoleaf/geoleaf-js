@@ -107,3 +107,36 @@ export async function parseJsonBody(res: Response): Promise<unknown> {
     if (!text) return {};
     return JSON.parse(text);
 }
+
+/**
+ * Does `url` really belong to the same origin as `baseUrl`, under its base path?
+ * The single guard every credential-injection point must pass before a token is
+ * attached (bug no. 4, fixed on 02/08/2026).
+ *
+ * 🛑 WHY NOT `url.startsWith(baseUrl)`. For `baseUrl = "https://api.exemple.fr"`,
+ * the string `"https://api.exemple.fr.attaquant.tld/vol"` DOES start with it — a
+ * credential (bearer token, worker header, tile request) would thus leave for a
+ * **suffix host**. A string prefix knows nothing of hostname boundaries; only an
+ * ORIGIN comparison does.
+ *
+ * ⚠️ The path is then compared on top of the origin, with a segment boundary:
+ * otherwise `https://api.exemple.fr/v1` would allow `https://api.exemple.fr/v1betrayal`.
+ *
+ * @param url - The candidate URL, absolute or relative (resolved against the document).
+ * @param baseUrl - The connector's configured, trusted base.
+ * @returns `true` when `url` is on the same origin as `baseUrl` AND under its base path.
+ */
+export function isSameOrigin(url: string, baseUrl: string): boolean {
+    try {
+        const target = new URL(url, globalThis.location?.href);
+        const base = new URL(baseUrl, globalThis.location?.href);
+        if (target.origin !== base.origin) return false;
+        // Base path normalised without a trailing `/`, then an explicit segment boundary.
+        const basePath = base.pathname.replace(/\/+$/, "");
+        if (basePath === "") return true;
+        return target.pathname === basePath || target.pathname.startsWith(`${basePath}/`);
+    } catch {
+        // An unreadable URL belongs to nobody — no credential is sent there.
+        return false;
+    }
+}

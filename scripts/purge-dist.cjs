@@ -1,32 +1,32 @@
 #!/usr/bin/env node
 /**
- * @fileoverview Purge les `dist/` de tous les workspaces AVANT un build — le versant
- * préventif de B-130.
+ * @fileoverview Purges every workspace's `dist/` BEFORE a build — the layered
+ * chunks' preventive side.
  *
- * ## Pourquoi ce script existe
+ * ## Why this script exists
  *
- * `turbo run build` restaure son cache **sans vider `dist/` d'abord** (mesuré sur turbo
- * 2.9.18 au pré-vol de S6a : un canari posé à la main survit à un `FULL TURBO`). Deux jeux
- * de chunks capturés à des états d'entrée différents cohabitent alors, et le déployé
- * embarque les deux.
+ * `turbo run build` restores its cache **without emptying `dist/` first**
+ * (measured on turbo 2.9.18: a hand-placed canary survives a `FULL TURBO`). Two
+ * chunk sets captured at different input states then cohabit, and the deploy
+ * embarks both.
  *
- * ## Ce que ce script NE coûte PAS
+ * ## What this script does NOT cost
  *
- * Purger `dist/` ne force **pas** un rebuild : turbo reste en cache HIT et restaure ses
- * artefacts dans un répertoire vide — donc en un seul exemplaire. Le coût est celui d'un
- * `rm -rf`, pas celui d'une compilation. C'est ce qui rend l'issue (b) du registre
- * acceptable en tête de chaque build plutôt que réservée au déploiement.
+ * Purging `dist/` does **not** force a rebuild: turbo stays cache-HIT and
+ * restores its artifacts into an empty directory — hence in a single copy. The
+ * cost is an `rm -rf`'s, not a compilation's. That is what makes the founding
+ * note's option (b) acceptable at the head of every build rather than reserved
+ * for deployment.
  *
- * ## Périmètre
+ * ## Perimeter
  *
- * Dérivé de `scripts/lib/packages.cjs`, jamais d'un glob `packages/*​/dist` — qui ne matche
- * ni `packages/plugins/*` ni `packages/libs/*`. Un chemin en dur ne casse pas au
- * déplacement : il cesse silencieusement de matcher, et la purge sortirait en 0 sans avoir
- * rien purgé. `deploy/` n'est PAS purgé ici : il a son propre cycle
- * (`scripts/build-deploy.cjs` le nettoie par variante produite).
+ * Derived from `scripts/lib/packages.cjs`, never a `packages/*​/dist` glob —
+ * which matches neither `packages/plugins/*` nor `packages/libs/*`. A hard path
+ * does not break on a move: it silently stops matching, and the purge would exit
+ * 0 having purged nothing. `deploy/` is NOT purged here: it has its own cycle
+ * (`scripts/build-deploy.cjs` cleans it per produced variant).
  *
- * @see _docs_projet/registres/backlog_technique.md § B-130
- * @see scripts/check-dist-integrity.cjs — le versant garde, qui rend le défaut visible
+ * @see scripts/check-dist-integrity.cjs — the guard side, which makes the defect visible
  */
 
 const fs = require("node:fs");
@@ -43,10 +43,11 @@ for (const p of packages.all()) {
     removed.push(p.name);
 }
 
-// Anti-purge-vide : si le registre ne rend aucun paquet, le glob a cessé de matcher et la
-// purge sort en 0 sans avoir rien fait — exactement le mode d'échec que `packages.cjs`
-// existe pour empêcher. Un dépôt jamais buildé n'a légitimement aucun `dist/`, en revanche,
-// donc c'est le REGISTRE qu'on vérifie, pas le nombre de suppressions.
+// Anti-empty-purge: if the registry returns no package, the glob stopped
+// matching and the purge exits 0 having done nothing — exactly the failure mode
+// `packages.cjs` exists to prevent. A never-built repo legitimately has no
+// `dist/`, however, so it is the REGISTRY that is checked, not the deletion
+// count.
 if (packages.all().length === 0) {
     console.error("❌ [PURGE-DIST] le registre de paquets est VIDE — rien n'a été scanné.");
     process.exit(1);

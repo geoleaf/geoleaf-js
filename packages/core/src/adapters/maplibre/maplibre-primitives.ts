@@ -15,7 +15,12 @@ import type {
     GeoLeafBounds,
     GeoLeafControlPosition,
 } from "../../contracts/map-adapter.contract.ts";
-import type { MaplibreMap, MaplibreLayerSpec, LngLatBounds } from "./maplibre-adapter-types.js";
+import type {
+    MaplibreMap,
+    MaplibreLayerSpec,
+    MaplibreFilter,
+    LngLatBounds,
+} from "./maplibre-adapter-types.js";
 
 // ─── Paint helpers ────────────────────────────────────────────────────────────
 
@@ -115,38 +120,21 @@ import { applyPendingBadgePaint } from "./maplibre-sync-badge.js";
 import { applyTaxonomyMarkerPaint, resolveIconSize } from "./maplibre-taxonomy-paint.js";
 import { registerHatchPattern } from "./maplibre-hatch-patterns.js";
 import type { GeoJSONStyleRule } from "../../kernel/geojson/geojson-types.js";
-
-/** Canonical GeoJSON geometry-type names accepted as a config-declared override. */
-const _GEOJSON_TYPES = new Set([
-    "Point",
-    "MultiPoint",
-    "LineString",
-    "MultiLineString",
-    "Polygon",
-    "MultiPolygon",
-    "GeometryCollection",
-]);
+import { geometryKindToGeoJSONTypes } from "../../kernel/config/layer-geometry.js";
 
 /**
- * Resolves the geometry-type set for a layer, preferring a config-declared type
- * (GeoJSON vocabulary, e.g. `"Polygon"` or `["Point", "LineString"]`) to skip
- * the per-feature scan. Falls back to {@link detectGeometryTypes} when no valid
- * GeoJSON type is declared — so lowercase render hints (`"point"`/`"line"`/
- * `"polygon"`) and unknown values are ignored and behaviour is unchanged for
- * profiles that don't declare a type.
+ * What a source of unknown content is assumed to hold.
  *
- * A declared type is a caller promise: a genuinely mixed-geometry layer must not
- * declare a single type (it would be under-rendered). Leaving it undeclared
- * keeps the robust scan.
+ * A layer whose data ships empty and is written at runtime says nothing about its geometry,
+ * so every sub-layer is built. That over-rendering is HARMLESS — and only harmless — because
+ * each sub-layer carries its own geometry guard: see {@link geometryGuard}. Narrowing this
+ * would silently drop the sub-layer a later `setData` needs, since the sub-layer set is
+ * decided once, at creation, and `updateLayerData` never revisits it.
  */
-export function resolveGeometryTypes(data: unknown, declared: unknown): Set<string> {
-    const decl = Array.isArray(declared) ? declared : declared != null ? [declared] : [];
-    const valid = decl.filter((t): t is string => typeof t === "string" && _GEOJSON_TYPES.has(t));
-    return valid.length > 0 ? new Set(valid) : detectGeometryTypes(data);
-}
+const _UNKNOWN_GEOMETRY = ["Point", "LineString", "Polygon"] as const;
 
-/** Scans GeoJSON data and returns the set of geometry types present. */
-export function detectGeometryTypes(data: unknown): Set<string> {
+/** Reads the geometry types actually present in the data. Empty when there are none. */
+function _scanGeometryTypes(data: unknown): Set<string> {
     const types = new Set<string>();
     const d = data as
         | {
@@ -163,12 +151,49 @@ export function detectGeometryTypes(data: unknown): Set<string> {
     } else if (d?.type === "Feature" && d.geometry?.type) {
         types.add(d.geometry.type);
     }
-    if (types.size === 0) {
-        types.add("Point");
-        types.add("LineString");
-        types.add("Polygon");
-    }
     return types;
+}
+
+/**
+ * Resolves the geometry-type set a layer's sub-layers are built for: what the data shows,
+ * UNION what the config declares.
+ *
+ * 🛑 A declared kind ADDS, it never restricts — and this is not a convenience. A profile
+ * declares ONE lowercase kind, which is the layer's SEMANTIC kind (the legend, the editor's
+ * dropdown and the theme applier all read the same field). A layer whose kind is narrower
+ * than its content — a computed itinerary is a `polyline` that also carries its stops —
+ * would lose the sub-layers a restrictive reading leaves out, and lose them permanently,
+ * since the set is decided at creation and `updateLayerData` never revisits it.
+ *
+ * 🛑 Corollary, and it is the half that is easy to get wrong: **only the DATA may say
+ * "unknown".** The three-type fallback is keyed on an empty SCAN, never on the absence of a
+ * declaration — otherwise declaring `polyline` on a layer that ships empty would narrow it
+ * to lines alone, which is precisely how the itinerary's stops would stop being drawn. The
+ * declaration's whole effect is to guarantee a sub-layer for what the boot data cannot show.
+ *
+ * ⚠️ This function accepted GeoJSON names ONLY until 27/08/2026, while the profile schema
+ * allows nothing but the lowercase vocabulary — so no profile ever reached it. Both
+ * vocabularies are now understood, in {@link geometryKindToGeoJSONTypes}.
+ *
+ * @param data - The layer's GeoJSON, possibly empty.
+ * @param declared - The config-declared kind, in either vocabulary. A list is accepted.
+ * @returns The geometry types to build sub-layers for. Never empty.
+ */
+export function resolveGeometryTypes(data: unknown, declared: unknown): Set<string> {
+    const types = _scanGeometryTypes(data);
+    if (types.size === 0) for (const t of _UNKNOWN_GEOMETRY) types.add(t);
+    for (const t of geometryKindToGeoJSONTypes(declared)) types.add(t);
+    return types;
+}
+
+/**
+ * Scans GeoJSON data and returns the set of geometry types present.
+ *
+ * @param data - The GeoJSON to scan.
+ * @returns The types found, or {@link _UNKNOWN_GEOMETRY} when the data shows none.
+ */
+export function detectGeometryTypes(data: unknown): Set<string> {
+    return resolveGeometryTypes(data, undefined);
 }
 
 /** Returns `beforeId` if the layer exists, otherwise `undefined`. */
@@ -194,9 +219,9 @@ interface SubLayerCtx {
     layoutBase: Record<string, string>;
     beforeId: string | undefined;
     zoomProps: Record<string, number>;
-    // Présent portant `undefined`, comme `beforeId` ci-dessus — et non `options?:` : le seul
-    // constructeur de ce contexte (`addSubLayers`) le renseigne toujours, la valeur pouvant être
-    // absente de contenu mais jamais la clé. Interface interne, non exportée.
+    // Present carrying `undefined`, like `beforeId` above — not `options?:`: the only
+    // constructor of this context (`addSubLayers`) always sets it; the value may be empty
+    // but the key never is. Internal interface, not exported.
     options: AddSubLayersOptions | undefined;
 }
 
@@ -231,6 +256,76 @@ export function applyLayerZoomRange(
     for (const subId of subLayerIds) {
         if (map.getLayer(subId)) map.setLayerZoomRange(subId, minZoom ?? 0, maxZoom ?? 24);
     }
+}
+
+/**
+ * GeoJSON geometry types each sub-layer family is allowed to paint.
+ *
+ * 🛑 MapLibre checks NO geometry type when it populates a bucket. `FillBucket` triangulates
+ * whatever rings it is handed — a `LineString` included, which it closes into a filled polygon —
+ * and `CircleBucket` walks every point of every ring, so a line contributes one circle per
+ * vertex. A source carrying more than one geometry kind, or one that ships EMPTY and is written
+ * at runtime, therefore renders each of its features in every sub-layer it owns. The filter is
+ * what confines a sub-layer to the geometry it was built for.
+ *
+ * `Multi*` names are listed although a bucket only ever sees the singular form (the tile encoder
+ * collapses them): `queryRenderedFeatures` re-evaluates the same filter against raw GeoJSON,
+ * where the multi names DO appear, and a picker that disagrees with the renderer is worse than
+ * no picker.
+ */
+const _GUARDED_GEOMETRY: Readonly<Partial<Record<SubLayerType, readonly string[]>>> = {
+    fill: ["Polygon", "MultiPolygon"],
+    "fill-extrusion": ["Polygon", "MultiPolygon"],
+    // Lines also draw polygon OUTLINES — the same widening the geometry test below applies.
+    line: ["LineString", "MultiLineString", "Polygon", "MultiPolygon"],
+    casing: ["LineString", "MultiLineString", "Polygon", "MultiPolygon"],
+    circle: ["Point", "MultiPoint"],
+    symbol: ["Point", "MultiPoint"],
+};
+
+/**
+ * The geometry filter a sub-layer must carry, or `null` when it needs none.
+ *
+ * `clusters` / `cluster-count` answer `null`: a clustered source is point-only by construction,
+ * and the `point_count` filters are the ones that matter there.
+ *
+ * ⚠️ NOT exported, and it should stay that way: every caller outside this module goes
+ * through {@link withGeometryGuard}, which is what keeps a re-set filter from silently
+ * REPLACING the guard instead of composing with it. Exporting the bare guard would offer
+ * the wrong door.
+ *
+ * @param type - The sub-layer family.
+ * @returns A MapLibre filter expression, or `null`.
+ */
+function geometryGuard(type: SubLayerType): MaplibreFilter | null {
+    const allowed = _GUARDED_GEOMETRY[type];
+    return allowed
+        ? (["match", ["geometry-type"], [...allowed], true, false] as MaplibreFilter)
+        : null;
+}
+
+/**
+ * Combines a sub-layer's geometry guard with a caller-supplied filter.
+ *
+ * ⚠️ Every path that (re-)sets a filter must go through this. `setLayerFilter` and the cluster
+ * patch both REPLACE a layer's filter wholesale; either one dropping the guard would bring the
+ * defect back for exactly as long as a filter is active.
+ *
+ * @param type - The sub-layer family.
+ * @param filter - The caller's filter, or `null` / `undefined` for none.
+ * @returns The composed filter, one of the two alone, or `null` when neither exists.
+ */
+export function withGeometryGuard(type: SubLayerType, filter: unknown): MaplibreFilter | null {
+    const guard = geometryGuard(type);
+    if (filter === null || filter === undefined) return guard;
+    if (!guard) return filter as MaplibreFilter;
+    // Built as `unknown[]` on purpose. MapLibre's filter type is a union of an expression
+    // form and a legacy form, and an `["all", …]` whose members straddle the two fits
+    // neither branch — although MapLibre itself evaluates exactly that. Every branch of
+    // the union IS an array, so `unknown[]` overlaps it and ONE conversion suffices; the
+    // inline literal needed two, and an assertion must never be born as debt.
+    const composed: unknown[] = ["all", guard, filter];
+    return composed as MaplibreFilter;
 }
 
 /** Creates fill/line/circle sub-layers for detected geometry types. */
@@ -279,6 +374,7 @@ function _addPolygonSubLayers(ctx: SubLayerCtx, cfgGeom: string | undefined): Su
                 id: toSubLayerId(id, "fill-extrusion"),
                 type: "fill-extrusion",
                 source: sourceId,
+                filter: geometryGuard("fill-extrusion"),
                 paint: extPaint,
                 layout: { ...layoutBase },
                 ...zoomProps,
@@ -302,6 +398,7 @@ function _addPolygonSubLayers(ctx: SubLayerCtx, cfgGeom: string | undefined): Su
             id: toSubLayerId(id, "fill"),
             type: "fill",
             source: sourceId,
+            filter: geometryGuard("fill"),
             paint: fillPaint,
             layout: { ...layoutBase },
             ...zoomProps,
@@ -319,12 +416,13 @@ function _addLineSubLayers(ctx: SubLayerCtx): SubLayerType[] {
     // Casing: thicker line behind the main stroke for outline effect
     const casing = flat.casing as CasingConfig | undefined;
     if (casing?.enabled) {
-        const mainWeight = typeof flat.weight === "number" ? (flat.weight as number) : 1;
+        const mainWeight = typeof flat.weight === "number" ? flat.weight : 1;
         map.addLayer(
             {
                 id: toSubLayerId(id, "casing"),
                 type: "line",
                 source: sourceId,
+                filter: geometryGuard("casing"),
                 paint: toCasingPaint(casing, mainWeight),
                 layout: { ...layoutBase },
                 ...zoomProps,
@@ -342,6 +440,7 @@ function _addLineSubLayers(ctx: SubLayerCtx): SubLayerType[] {
             id: toSubLayerId(id, "line"),
             type: "line",
             source: sourceId,
+            filter: geometryGuard("line"),
             paint: linePaint,
             layout: { ...layoutBase },
             ...zoomProps,
@@ -396,6 +495,7 @@ function _addPointSubLayers(ctx: SubLayerCtx): SubLayerType[] {
             id: toSubLayerId(id, "circle"),
             type: "circle",
             source: sourceId,
+            filter: geometryGuard("circle"),
             paint: circlePaint,
             layout: { ...layoutBase },
             ...zoomProps,
@@ -413,7 +513,7 @@ function _addPointSubLayers(ctx: SubLayerCtx): SubLayerType[] {
                 // Only features the symbol injector actually tagged carry an icon;
                 // without this filter MapLibre allocates a symbol bucket for every
                 // feature in the layer and evaluates `icon-image` to null on most.
-                filter: ["has", "symbolId"],
+                filter: withGeometryGuard("symbol", ["has", "symbolId"]),
                 layout: {
                     ...layoutBase,
                     "icon-image": ["get", "symbolId"],

@@ -59,6 +59,30 @@ wsl_run() {
     fi
 }
 
+# ── What this commit is actually about to carry ─────────────────────────────────────────
+#
+# Printed FIRST, before any gate, and it is not a courtesy: this hook regenerates
+# `ARBORESCENCE_QUALIFIEE.md` from the INDEX and then stages it. When another session is
+# working in the same worktree, the regenerated tree reflects THEIR files too, and the
+# `git add` below sweeps that into a commit whose message says nothing about it.
+#
+# The palliative was to run `git diff --cached --name-only` by hand before every commit. It
+# worked five times in a row under real concurrent work — and that is the measurement that
+# decided the shape of this block. Five successes with ZERO false positives to arbitrate is
+# an argument for a WARNING, not for a guard: a guard would have had to decide, five times,
+# what "a file this session did not touch" means, and it would have been wrong the first time
+# a legitimate cross-cutting change came through. What was missing was never a decision — it
+# was seeing the list without having to remember to ask for it.
+#
+# 🛑 It deliberately does not fail. A gate that blocks on this would be argued with, then
+# bypassed with `--no-verify`, and `--no-verify` disarms the ten real gates below with it.
+_staged="$(git diff --cached --name-only)"
+_staged_n="$(printf '%s\n' "$_staged" | grep -c . || true)"
+printf '\n\033[36m── %s fichier(s) dans ce commit ──\033[0m\n' "$_staged_n"
+printf '%s\n' "$_staged" | sed 's/^/   /'
+printf '\033[2m   ⚠️  Ce hook va AJOUTER l arbre qualifié régénéré. Sous session concurrente,\n'
+printf '       il porte aussi les fichiers des autres — relire la liste ci-dessus avant de valider.\033[0m\n\n'
+
 npx lint-staged
 
 # Arbre qualifié — RÉGÉNÉRÉ ici, pas seulement vérifié ailleurs.
@@ -317,7 +341,7 @@ fi
 # parties parce qu'aucun lecteur du monorepo ne les lisait — le lecteur était dehors, et
 # aucun vert d'ici ne pouvait le voir.
 # ⚠️ Elle SAUTE (exit 0, motif nommé, chemin imprimé) tant que `GEOLEAF_CONSUMERS` n'est pas
-# exporté : le manifeste vit chez le consommateur, il nomme un client et des chemins Odoo, et
+# exporté : le manifeste vit chez le consommateur, il nomme un client et ses propres chemins, et
 # aucun chemin par défaut n'est écrit dans `scripts/`, qui part intégralement dans le clone
 # public. Sur le poste de Mattieu, l'exporter fait mordre le hook ; sans lui il ne coûte rien.
 # Ce qui empêche ce SKIP de tout avaler est `probe-gate-visibility.cjs`, qui plante un

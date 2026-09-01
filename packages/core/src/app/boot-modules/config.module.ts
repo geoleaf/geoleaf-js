@@ -12,7 +12,7 @@
  * `GeoLeaf.Renderers` (abstract + simple-text), `GeoLeaf.Data`.
  * Underlying globals: `globals.config.ts` (B3 + B4).
  *
- * Sprint 3: stub wrapper — initialization already performed as a side-effect
+ * Stub wrapper — initialization already performed as a side-effect
  * of the `globals.ts` import in the bundle entry point.
  */
 

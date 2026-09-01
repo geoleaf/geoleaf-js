@@ -1,70 +1,73 @@
 #!/usr/bin/env node
 /**
- * @fileoverview GEN-ENTRY — compose une entrée GeoLeaf à partir d'une liste de capacités,
- * en DÉRIVANT tout ce qui peut l'être du disque plutôt qu'en le recopiant.
+ * @fileoverview GEN-ENTRY — composes a GeoLeaf entry from a capability list,
+ * DERIVING everything that can be from the disk rather than copying it.
  *
- * ## Ce que ce script existe pour empêcher
+ * ## What this script exists to prevent
  *
- * Écrire une entrée à la main, c'est recopier quatre choses qui vivent déjà ailleurs : le nom
- * du const installer, l'ordre de chargement, le chemin d'import, et la liste des façades
- * ré-exportables. Les quatre dérivent — donc les quatre peuvent diverger, et **l'ont fait** :
- * `kernel-exports.ts` annonçait « 9 capacités » à côté du nom de `examples/minimal`, qui en
- * embarque 6 (socle-init 7.1).
+ * Writing an entry by hand means copying four things that already live elsewhere: the
+ * installer const's name, the load order, the import path, and the list of
+ * re-exportable facades. All four derive — so all four can diverge, and **have**:
+ * `kernel-exports.ts` announced "9 capabilities" next to the name of
+ * `examples/minimal`, which embarks 6.
  *
- * ## Les cinq dérivations, et leur source unique
+ * ## The five derivations, and their single source
  *
- *   1. **Le const installer** — `export const <X>` de `capabilities/<id>/install.ts`.
- *   2. **L'ordre** — celui de `FULL.capabilities` dans `presets/manifest.full.ts`. ⚠️ Il est
- *      LOAD-BEARING, et ce fichier-là est le registre des raisons : ne pas les recopier ici.
- *      Les entrées écrites à la main portaient un commentaire « permalink last » expliquant
- *      l'une d'elles ; le dériver rend le commentaire structurellement vrai au lieu de le
- *      laisser à la vigilance.
- *      🛑 Cette puce a énuméré « **trois** raisons sans rapport entre elles (départage de Kahn,
- *      séquence des `sharedLifecycle`, **arêtes de dépendance**) » jusqu'au 08/08/2026, et les
- *      trois termes portaient deux défauts : la séquence des `sharedLifecycle` a été **réfutée**
- *      par socle-init 7.4 (`__tests__/presets/shared-lifecycle-order.test.ts`), et les « arêtes
- *      de dépendance » n'ont **jamais** figuré parmi les raisons du manifeste — elles ont été
- *      inventées dans `contracts/core-module.contract.ts` et recopiées ici. Deux copies d'une
- *      liste, deux dérives : B-43, l'énumération est retirée, pas corrigée.
- *   3. **Les façades ré-exportables** — l'INTERSECTION de deux ensembles dérivés : les
- *      symboles que `bundle-esm-entry.ts` ré-exporte, et ceux que le `registerGlobals()` de
- *      la capacité monte (hors `_privés`). C'est ce qui reproduit le sous-ensemble curé —
- *      `Legend`, `Permalink`, `Share`, `Notifications`, `PWA` — sans table à la main.
- *   4. **Les sous-chemins npm** — la carte `exports` de `packages/core/package.json`, INVERSÉE
- *      sur `./dist/esm/<rel>.js`. Un chemin npm écrit en dur ici serait la 5ᵉ copie.
- *   5. **Les dépendances** — `dependencies` de `capabilities/<id>/<id>-capability.ts`.
+ *   1. **The installer const** — `export const <X>` of `capabilities/<id>/install.ts`.
+ *   2. **The order** — that of `FULL.capabilities` in `presets/manifest.full.ts`. ⚠️
+ *      It is LOAD-BEARING, and that file is the register of reasons: do not copy them
+ *      here. The hand-written entries carried a "permalink last" comment explaining
+ *      one of them; deriving it makes the comment structurally true instead of
+ *      leaving it to vigilance.
+ *      🛑 This bullet enumerated "**three** unrelated reasons (Kahn tie-breaking, the
+ *      `sharedLifecycle` sequence, **dependency edges**)" until 2026-08-08, and the
+ *      three terms carried two defects: the `sharedLifecycle` sequence was
+ *      **refuted** (`__tests__/presets/shared-lifecycle-order.test.ts`), and the
+ *      "dependency edges" were **never** among the manifest's reasons — they were
+ *      invented in `contracts/core-module.contract.ts` and copied here. Two copies of
+ *      a list, two drifts: the enumeration is removed, not corrected.
+ *   3. **The re-exportable facades** — the INTERSECTION of two derived sets: the
+ *      symbols `bundle-esm-entry.ts` re-exports, and those the capability's
+ *      `registerGlobals()` mounts (excluding `_privates`). That is what reproduces
+ *      the curated subset — `Legend`, `Permalink`, `Share`, `Notifications`, `PWA` —
+ *      without a hand table.
+ *   4. **The npm subpaths** — `packages/core/package.json`'s `exports` map, INVERTED
+ *      on `./dist/esm/<rel>.js`. An npm path hard-written here would be the 5th copy.
+ *   5. **The dependencies** — `dependencies` of
+ *      `capabilities/<id>/<id>-capability.ts`.
  *
- * ## Deux modes, et pourquoi les deux
+ * ## Two modes, and why both
  *
- *   `--mode=relative` — imports `../../src/…`. C'est ce que compile `size:example`, qui prouve
- *                       le tree-shaking **sur le graphe de sources**.
- *   `--mode=npm`      — imports `@geoleaf/core/…`. C'est ce que compile `check-consumer-bundle`,
- *                       qui prouve que le **paquet publié** résout et secoue. Deux défauts
- *                       invisibles depuis le dépôt n'ont été vus que par là.
+ *   `--mode=relative` — `../../src/…` imports. What `size:example` compiles, proving
+ *                       tree-shaking **on the source graph**.
+ *   `--mode=npm`      — `@geoleaf/core/…` imports. What `check-consumer-bundle`
+ *                       compiles, proving the **published package** resolves and
+ *                       shakes. Two defects invisible from the repo were only seen
+ *                       through it.
  *
- * ## Région bornée, pas fichier écrasé
+ * ## Bounded region, not overwritten file
  *
- * Le script ne réécrit qu'entre `@geoleaf:gen:start` et `@geoleaf:gen:end`. L'en-tête de
- * chaque exemple reste **écrit à la main** : il porte le raisonnement (pourquoi ces
- * capacités-là, ce que l'exclusion prouve, quels défauts l'exemple a attrapés), et un
- * générateur ne sait pas l'écrire. Générer le fichier entier l'aurait détruit.
+ * The script only rewrites between `@geoleaf:gen:start` and `@geoleaf:gen:end`. Each
+ * example's header stays **hand-written**: it carries the reasoning (why those
+ * capabilities, what the exclusion proves, which defects the example caught), and a
+ * generator cannot write it. Generating the whole file would have destroyed it.
  *
  * ## Usage
  *
  * ```bash
  * node scripts/gen-entry.cjs --caps=legend,filter --mode=relative      # → stdout
- * node scripts/gen-entry.cjs --file=packages/core/examples/minimal/entry.ts        # régénère
- * node scripts/gen-entry.cjs --file=… --check                          # 0 si à jour, 1 sinon
- * node scripts/gen-entry.cjs --caps=offline --check-deps               # échoue en nommant pwa
+ * node scripts/gen-entry.cjs --file=packages/core/examples/minimal/entry.ts        # regenerates
+ * node scripts/gen-entry.cjs --file=… --check                          # 0 if current, 1 otherwise
+ * node scripts/gen-entry.cjs --caps=offline --check-deps               # fails naming pwa
  * ```
  *
- * @see roadmap_socle-init.md 📦 (archivée le 09/08/2026) §Sprint 8
- * @see scripts/check-example-bundle.cjs — ⚠️ ce `@see` a dit « `capabilitiesImportedBy`,
- *      réutilisé ici » jusqu'au 08/08/2026, et c'était faux : ce script ne `require()` que
- *      `node:fs` et `node:path`. Le dépôt porte donc **trois** extracteurs indépendants du
- *      même tableau — celui-ci, `capabilitiesImportedBy` (bundle-check), et l'import de
- *      `manifest-full-completeness.guard.test.ts`. GEN-04 tient le premier contre le troisième ;
- *      le second reste non recoupé (backlog).
+ * @see scripts/check-example-bundle.cjs — ⚠️ this `@see` said "`capabilitiesImportedBy`,
+ *      reused here" until 2026-08-08, and it was false: this script only `require()`s
+ *      `node:fs` and `node:path`. The repo thus carries **three** independent
+ *      extractors of the same array — this one, `capabilitiesImportedBy`
+ *      (bundle-check), and the import of `manifest-full-completeness.guard.test.ts`.
+ *      GEN-04 holds the first against the third; the second remains uncrossed (a
+ *      known follow-up).
  */
 "use strict";
 
@@ -84,9 +87,9 @@ const END = "// @geoleaf:gen:end";
 
 const C = { reset: "\x1b[0m", green: "\x1b[32m", red: "\x1b[31m", dim: "\x1b[2m" };
 
-// ─── Dérivations ──────────────────────────────────────────────────────────────
+// ─── Derivations ──────────────────────────────────────────────────────────────
 
-/** Répertoires de `src/capabilities/` portant un `install.ts`. */
+/** `src/capabilities/` directories carrying an `install.ts`. */
 function capabilityDirs() {
     return fs
         .readdirSync(CAPS_DIR, { withFileTypes: true })
@@ -95,7 +98,7 @@ function capabilityDirs() {
         .sort();
 }
 
-/** Le const installer exporté par `capabilities/<id>/install.ts`. */
+/** The installer const exported by `capabilities/<id>/install.ts`. */
 function installerName(id) {
     const src = fs.readFileSync(path.join(CAPS_DIR, id, "install.ts"), "utf8");
     const m = src.match(/export const (\w+)\s*:\s*CapabilityInstaller/);
@@ -103,38 +106,41 @@ function installerName(id) {
     return m[1];
 }
 
-/** Ancre du tableau de `manifest.full.ts`. Une seule autorité — l'erreur la cite si elle bouge. */
+/** Anchor of `manifest.full.ts`'s array. One authority — the error cites it if it moves. */
 const MANIFEST_ANCHOR = "capabilities: [";
 
 /**
- * L'ordre de `FULL.capabilities`, sous forme de liste de noms de const.
+ * The order of `FULL.capabilities`, as a list of const names.
  *
- * Lu dans le littéral plutôt qu'importé : ce script est CJS et le manifeste est du TypeScript
- * à imports `.js`. L'importer demanderait tsx/jiti et exécuterait les 21 `install.ts` — dont
- * `offline/install.ts`, qui traîne `geoleaf.sync.ts` et son auto-montage sur le global. Un
- * script de build qui ne touche aucun code runtime en exécuterait la moitié.
+ * Read from the literal rather than imported: this script is CJS and the manifest is
+ * TypeScript with `.js` imports. Importing it would require tsx/jiti and would execute
+ * the 21 `install.ts` — including `offline/install.ts`, which drags `geoleaf.sync.ts`
+ * and its self-mount on the global. A build script touching no runtime code would
+ * execute half of it.
  *
- * ## Les commentaires sont retirés AVANT le calcul de la borne — et « avant » est tout le sujet
+ * ## Comments are removed BEFORE computing the bound — and "before" is the whole point
  *
- * 🛑 **Jusqu'au 08/08/2026 ils l'étaient APRÈS**, et la borne se prenait sur le texte BRUT par
- * un `indexOf("],")`. Or le tableau porte un commentaire qui cite `(deps ["geojson"], like
- * legend and filter)` : son `],` était le premier rencontré, la borne y tombait, et le tableau
- * était coupé à **16 entrées sur 21**. Le script refusait alors de composer `theme-selector`,
- * `vector-tiles`, `profile-switcher`, `language-switcher` et `theme-palette` en affirmant
- * qu'ils sont « absents de FULL.capabilities » — une affirmation FAUSSE, produite par
- * l'extracteur lui-même. L'en-tête promettait pourtant déjà le bon geste : il décrivait
- * l'intention, pas ce que le code faisait.
+ * 🛑 **Until 2026-08-08 they were removed AFTER**, and the bound was taken on the RAW
+ * text by an `indexOf("],")`. Yet the array carries a comment citing
+ * `(deps ["geojson"], like legend and filter)`: its `],` was the first met, the bound
+ * fell there, and the array was cut to **16 entries out of 21**. The script then
+ * refused to compose `theme-selector`, `vector-tiles`, `profile-switcher`,
+ * `language-switcher` and `theme-palette`, asserting they are "absent from
+ * FULL.capabilities" — a FALSE assertion, produced by the extractor itself. The
+ * header already promised the right move: it described the intent, not what the code
+ * did.
  *
- * ⚠️ La regex de ligne écarte `://` (le `[^:]` devant), sinon un `https://…` en commentaire
- * ferait manger la fin de sa ligne. Elle diffère donc délibérément de celles de
- * `mountedSymbols()` et `declaredDeps()`, restées larges parce qu'elles opèrent sur des régions
- * sans URL — divergence assumée, versée au backlog. ⚠️ Et la forme simplement ANCRÉE en début
- * de ligne (`/^\s*\/\/…$/gm`) ne suffit PAS : mesuré le 08/08, elle laisse passer un commentaire
- * de FIN de ligne, où un nom d'installer cité serait compté deux fois (22 au lieu de 21).
+ * ⚠️ The line regex excludes `://` (the `[^:]` in front), otherwise an `https://…` in
+ * a comment would eat the rest of its line. It thus deliberately differs from
+ * `mountedSymbols()`'s and `declaredDeps()`'s, left wide because they operate on
+ * URL-free regions — accepted divergence, recorded as a follow-up. ⚠️ And the merely
+ * line-ANCHORED form (`/^\s*\/\/…$/gm`) is NOT enough: measured on 08-08, it lets
+ * an END-of-line comment through, where a cited installer name would be counted twice
+ * (22 instead of 21).
  *
- * La borne se prend ensuite par PROFONDEUR DE CROCHETS, jamais par `indexOf` : un tableau
- * imbriqué ou un objet en ligne ne peut plus la déplacer. Gardé par **GEN-04**, qui compare
- * cette liste à `FULL.capabilities` IMPORTÉ — les deux extracteurs du dépôt, face à face.
+ * The bound is then taken by BRACKET DEPTH, never by `indexOf`: a nested array or an
+ * inline object can no longer move it. Guarded by **GEN-04**, which compares this
+ * list to the IMPORTED `FULL.capabilities` — the repo's two extractors, face to face.
  */
 function manifestOrder() {
     const src = fs.readFileSync(MANIFEST_FULL, "utf8");
@@ -166,8 +172,8 @@ function manifestOrder() {
     const out = [...code.slice(from, end).matchAll(/\b([A-Z][A-Z0-9_]*_INSTALLER)\b/g)].map(
         (m) => m[1]
     );
-    // Anti-gate-vide — même classe que MFC-03 et GEN-03 : un extracteur qui rend `[]` fait
-    // sortir VERTE toute garde bâtie dessus, ce qui est pire qu'un extracteur qui en rend 16.
+    // Anti-empty-gate — same class as MFC-03 and GEN-03: an extractor returning `[]`
+    // turns every guard built on it GREEN, which is worse than one returning 16.
     if (!out.length) {
         throw new Error(
             `[GEN-ENTRY] \`${MANIFEST_ANCHOR}\` lu VIDE — l'extracteur ne voit plus rien. ` +
@@ -177,7 +183,7 @@ function manifestOrder() {
     return out;
 }
 
-/** Symboles ré-exportés par l'entrée livrée → chemin source relatif à `src/`. */
+/** Symbols re-exported by the shipped entry → source path relative to `src/`. */
 function shippedFacades() {
     const src = fs.readFileSync(SHIPPED_ENTRY, "utf8");
     const out = new Map();
@@ -187,7 +193,7 @@ function shippedFacades() {
     return out;
 }
 
-/** Symboles publics montés par le `registerGlobals()` d'une capacité (hors `_privés`). */
+/** Public symbols mounted by a capability's `registerGlobals()` (excluding `_privates`). */
 function mountedSymbols(id) {
     const src = fs.readFileSync(path.join(CAPS_DIR, id, "install.ts"), "utf8");
     const from = src.indexOf("registerGlobals(");
@@ -197,7 +203,7 @@ function mountedSymbols(id) {
     return [...code.matchAll(/\bgl\.([A-Za-z]\w*)\s*=/g)].map((m) => m[1]);
 }
 
-/** `dependencies` déclarées par `capabilities/<id>/<id>-capability.ts`. */
+/** `dependencies` declared by `capabilities/<id>/<id>-capability.ts`. */
 function declaredDeps(id) {
     const file = path.join(CAPS_DIR, id, `${id}-capability.ts`);
     if (!fs.existsSync(file)) return [];
@@ -208,10 +214,11 @@ function declaredDeps(id) {
 }
 
 /**
- * Carte INVERSE de `package.json#exports` : `dist/esm/<rel>.js` → sous-chemin npm.
+ * INVERSE map of `package.json#exports`: `dist/esm/<rel>.js` → npm subpath.
  *
- * Les entrées globées (`./capabilities/*`) sont converties en préfixes. Sans cette inversion,
- * le mode npm écrirait ses chemins en dur — la copie que ce script existe pour supprimer.
+ * Globbed entries (`./capabilities/*`) are converted to prefixes. Without this
+ * inversion, npm mode would hard-write its paths — the copy this script exists to
+ * remove.
  */
 function npmSubpathResolver() {
     const exp = JSON.parse(fs.readFileSync(CORE_PKG, "utf8")).exports;
@@ -238,13 +245,13 @@ function npmSubpathResolver() {
     };
 }
 
-// ─── Génération ───────────────────────────────────────────────────────────────
+// ─── Generation ───────────────────────────────────────────────────────────────
 
 /**
- * Construit la région générée d'une entrée.
+ * Builds an entry's generated region.
  *
  * @param {{caps: string[], mode: "relative"|"npm", id: string}} spec
- * @returns {string} le corps, sans les marqueurs
+ * @returns {string} the body, without the markers
  */
 function buildRegion({ caps, mode, id }) {
     const npm = npmSubpathResolver();
@@ -272,7 +279,7 @@ function buildRegion({ caps, mode, id }) {
     const bootPath = mode === "npm" ? "@geoleaf/core/boot" : "../../src/app/boot-install.js";
     const kernelPath = mode === "npm" ? "@geoleaf/core/kernel" : "../../src/kernel-exports.js";
 
-    // L'ordre du manifeste livré, restreint aux capacités demandées.
+    // The shipped manifest's order, restricted to the requested capabilities.
     const order = manifestOrder();
     const byInstaller = new Map(caps.map((c) => [installerName(c), c]));
     const ordered = order.filter((n) => byInstaller.has(n)).map((n) => byInstaller.get(n));
@@ -284,15 +291,15 @@ function buildRegion({ caps, mode, id }) {
         );
     }
 
-    // Le graphe de dépendances est contrôlé ICI, sur le chemin d'ÉMISSION, et pas seulement
-    // dans `main()`.
+    // The dependency graph is checked HERE, on the EMISSION path, and not only in
+    // `main()`.
     //
-    // 🛑 L'en-tête de `main()` a affirmé « le contrôle tourne TOUJOURS, pas seulement sous
-    // `--check-deps` » jusqu'au 08/08/2026, alors qu'il ne vivait que dans le CLI. La garde
-    // Vitest, elle, appelle `buildRegion` — donc la seule arête réelle du dépôt
-    // (`offline → pwa`) n'était traversée par AUCUNE exécution automatique. Émettre une entrée
-    // au graphe incomplet, c'est produire le défaut au lieu de le signaler : le contrôle
-    // appartient au point d'émission, et `main()` n'en garde que le verdict vert.
+    // 🛑 `main()`'s header asserted "the check ALWAYS runs, not only under
+    // `--check-deps`" until 2026-08-08, while it only lived in the CLI. The Vitest
+    // guard, for its part, calls `buildRegion` — so the repo's only real edge
+    // (`offline → pwa`) was traversed by NO automatic execution. Emitting an entry
+    // with an incomplete graph means producing the defect instead of flagging it: the
+    // check belongs to the emission point, and `main()` only keeps its green verdict.
     const missingDeps = checkDeps(caps);
     if (missingDeps.length) {
         throw new Error(
@@ -306,16 +313,16 @@ function buildRegion({ caps, mode, id }) {
     const facadeLines = [];
     for (const cap of ordered) {
         for (const sym of mountedSymbols(cap)) {
-            if (!shipped.has(sym)) continue; // façade non ré-exportable — montée sur GeoLeaf.* seulement
+            if (!shipped.has(sym)) continue; // non-re-exportable facade — mounted on GeoLeaf.* only
             facadeLines.push(`export { ${sym} } from "${rel(shipped.get(sym))}";`);
         }
     }
 
     const L = [];
-    L.push("// ── 1. Kernel side-effects — les deux que l'entrée livrée importe aussi ──────");
+    L.push("// ── 1. Kernel side-effects — the two the shipped entry imports too ───────────");
     L.push(...kernelSideEffects);
     L.push("");
-    L.push("// ── 2. Le manifeste — les capacités que CE bundle embarque ───────────────────");
+    L.push("// ── 2. The manifest — the capabilities THIS bundle embarks ───────────────────");
     L.push(`import type { PresetManifest } from "${contractPath}";`);
     for (const cap of ordered) {
         L.push(`import { ${installerName(cap)} } from "${rel(`capabilities/${cap}/install.ts`)}";`);
@@ -328,7 +335,7 @@ function buildRegion({ caps, mode, id }) {
     L.push(`    ],`);
     L.push(`};`);
     L.push("");
-    L.push("// ── 3. Installer le boot, lié à ce manifeste ─────────────────────────────────");
+    L.push("// ── 3. Install the boot, bound to this manifest ──────────────────────────────");
     L.push(`import { installBoot } from "${bootPath}";`);
     L.push("");
     L.push("installBoot(MANIFEST);");
@@ -346,7 +353,7 @@ function buildRegion({ caps, mode, id }) {
     return L.join("\n");
 }
 
-/** `--check-deps` : toute dépendance déclarée d'une capacité embarquée doit l'être aussi. */
+/** `--check-deps`: every declared dependency of an embarked capability must be too. */
 function checkDeps(caps) {
     const missing = [];
     for (const cap of caps) {
@@ -357,7 +364,7 @@ function checkDeps(caps) {
     return missing;
 }
 
-/** Lit la directive `@geoleaf:gen:start caps=… mode=… id=…` d'un fichier d'entrée. */
+/** Reads an entry file's `@geoleaf:gen:start caps=… mode=… id=…` directive. */
 function readSpec(file) {
     const src = fs.readFileSync(file, "utf8");
     const line = src.split("\n").find((l) => l.trimStart().startsWith(START));
@@ -368,7 +375,7 @@ function readSpec(file) {
     return { caps, mode: get("mode") ?? "relative", id: get("id") ?? "custom", src, line };
 }
 
-/** Remplace la région bornée d'un fichier, sans toucher à ce qui l'entoure. */
+/** Replaces a file's bounded region, without touching what surrounds it. */
 function spliceRegion(src, startLine, region) {
     const i = src.indexOf(startLine);
     const j = src.indexOf(END, i);
@@ -407,10 +414,11 @@ function main(argv) {
         return 1;
     }
 
-    // Le contrôle de fond vit dans `buildRegion` (voir la note sur place) — c'est le point
-    // d'ÉMISSION, donc le seul endroit qui le rende inévitable, y compris pour la garde Vitest.
-    // Ce qui reste ici est le versant CLI : un message coloré, et le verdict vert de
-    // `--check-deps`, qui n'émet rien et n'aurait donc jamais atteint `buildRegion`.
+    // The substantive check lives in `buildRegion` (see the note in place) — the
+    // EMISSION point, hence the only place making it inevitable, Vitest guard
+    // included. What remains here is the CLI side: a coloured message, and
+    // `--check-deps`'s green verdict, which emits nothing and would thus never have
+    // reached `buildRegion`.
     const missing = checkDeps(spec.caps);
     if (missing.length) {
         console.error(

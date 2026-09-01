@@ -7,7 +7,7 @@
 
 /**
  * App init: loader reveal + permalink apply + reveal triggers.
- * Extracted from app/init.ts (S6.2) — the reveal idempotence guard (`_appRevealed`)
+ * Extracted from app/init.ts — the reveal idempotence guard (`_appRevealed`)
  * is private to this module; behavior, performance marks and listener-registration
  * order are preserved (the reveal `theme:applied` listener is registered AFTER the
  * notification one, exactly as before).
@@ -117,7 +117,7 @@ export function setupReveal({
         dispatchGeoLeafEvent("geoleaf:map:ready", undefined);
         // Emit the application initialisation end event
         // (used by boot.js to display the boot toast via GeoLeaf.bootInfo)
-        const bootVersion = GeoLeaf._version as string | undefined;
+        const bootVersion = GeoLeaf._version;
         dispatchGeoLeafEvent("geoleaf:app:ready", {
             ...(bootVersion !== undefined && { version: bootVersion }),
             timestamp: Date.now(),

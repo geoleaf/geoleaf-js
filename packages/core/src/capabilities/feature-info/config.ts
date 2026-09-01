@@ -23,7 +23,6 @@ const DEFAULTS = { enabled: true } as const;
 
 /** Reads `modules.feature-info` from the typed core Config (INV-CONFIG canonical form). */
 export function getFeatureInfoConfig(): FeatureInfoConfig {
-    const raw = (_Config.get?.<Partial<FeatureInfoConfig>>("modules.feature-info", {}) ??
-        {}) as Partial<FeatureInfoConfig>;
+    const raw = _Config.get?.<Partial<FeatureInfoConfig>>("modules.feature-info", {}) ?? {};
     return { ...DEFAULTS, ...raw };
 }

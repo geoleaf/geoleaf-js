@@ -38,7 +38,7 @@ export interface PluginRegisterOptions {
  *
  * All members are optional (the namespace is assembled incrementally at boot and
  * varies by bundle) and every member tolerates extra keys. Cross-plugin façades
- * (`Measure`, `Print`, `Editor`, `AddPOI`, …) live in the `[key: string]: unknown`
+ * (`Measure`, `Print`, `Editor`, …) live in the `[key: string]: unknown`
  * tail and are narrowed locally by their consumers.
  *
  * @remarks Kept in sync (loosely) with the core source of truth `GeoLeafGlobal`
@@ -81,7 +81,16 @@ export interface GeoLeafHost {
         [key: string]: unknown;
     };
     /** Legacy registration entry point (`GeoLeaf.registry`). */
-    registry?: { register?(...args: unknown[]): unknown; [key: string]: unknown };
+    // `isInitialized` is named rather than left to the trailing `[key: string]: unknown`, because
+    // a plugin has a real decision to make with it: declaring a toolbar slot is honoured before
+    // `boot()` and inert after it, and nothing else in the page tells the two paths apart. Under
+    // the tail it typed as `unknown`, so calling it was a TS2349 — the seam described a member
+    // that could be read and not used.
+    registry?: {
+        register?(...args: unknown[]): unknown;
+        isInitialized?(): boolean;
+        [key: string]: unknown;
+    };
     /** Internationalization façade (`GeoLeaf.I18n`). */
     I18n?: {
         registerDict?(...args: unknown[]): unknown;
@@ -102,26 +111,26 @@ export interface GeoLeafHost {
     /** Legend façade (`GeoLeaf.Legend`). */
     Legend?: Record<string, unknown>;
 
-    // ── API publique S3.5 — les 6 membres que les plugins appellent le plus ──────────
+    // ── Public API review — the 6 members plugins call the most ─────────────────────────
     //
-    // Ils tombaient tous dans la traîne `[key: string]: unknown` ci-dessous, donc
-    // `GeoLeaf.GeoJSON.getLayerById(id)` rendait `unknown` chez chaque consommateur.
-    // L'audit API publique a mesuré l'écart : `GeoJSON` est le membre le PLUS sollicité
-    // du host (87 appels dans les plugins) et n'était pas au contrat, tandis que `POI`,
-    // dissous au S9, y figurait encore — retiré au S1. La dérive était par construction
-    // (host-runtime ne doit rien importer du core), et rien ne la surveillait ; c'est
-    // désormais `scripts/verify-host-contract-sync.cjs`.
+    // They all fell into the `[key: string]: unknown` tail below, so
+    // `GeoLeaf.GeoJSON.getLayerById(id)` returned `unknown` at every
+    // consumer. The public-API audit measured the gap: `GeoJSON` is the
+    // host's MOST called member (87 calls across the plugins) and was not in
+    // the contract, while `POI`, long dissolved, still sat there — since
+    // removed. The drift was by construction (host-runtime must import
+    // nothing from the core), and nothing watched it; that is now
+    // `scripts/verify-host-contract-sync.cjs`.
     //
-    // Ajouts purement ADDITIFS : la traîne les absorbait déjà, aucun consommateur ne
-    // casse. Les signatures sont relevées sur les appels réels, pas devinées ; chaque
-    // membre garde sa propre traîne pour que les méthodes non relevées restent
-    // atteignables.
+    // Purely ADDITIVE additions: the tail already absorbed them, no consumer
+    // breaks. The signatures are collected from the real calls, not guessed;
+    // each member keeps its own tail so uncollected methods stay reachable.
 
     /**
-     * GeoJSON layer façade (`GeoLeaf.GeoJSON`) — le membre le plus appelé du host.
+     * GeoJSON layer façade (`GeoLeaf.GeoJSON`) — the host's most called member.
      *
-     * ⚠️ Distinct de `Layers` : celui-ci est la façade historique du sous-système
-     * GeoJSON, `Layers` est le seam de données par couche (`LayerDataApi`).
+     * ⚠️ Distinct from `Layers`: this one is the GeoJSON subsystem's historic
+     * facade, `Layers` is the per-layer data seam (`LayerDataApi`).
      */
     GeoJSON?: {
         getLayerById?(id: string): unknown;
@@ -158,7 +167,7 @@ export interface GeoLeafHost {
 
     /**
      * Offline sync-handler registry (`GeoLeaf.Sync`) — a public API of fact: it is how a
-     * data plugin pushes its offline sync handler into the core (`addpoi` calls
+     * data plugin pushes its offline sync handler into the core (`editor` calls
      * `GeoLeaf.Sync.registerHandler("poi", …)` in its own `entry.ts`).
      *
      * `handler` stays `unknown` here rather than mirroring the core's `SyncHandler`:
@@ -187,7 +196,7 @@ export interface GeoLeafHost {
     };
 
     /**
-     * Long tail — plugin façades (`Measure`, `Print`, `Editor`, `AddPOI`, …) and
+     * Long tail — plugin façades (`Measure`, `Print`, `Editor`, …) and
      * other boot-assembled members, not (yet) precisely typed. Consumers narrow.
      */
     [key: string]: unknown;
@@ -205,9 +214,9 @@ type HostCarrier = { GeoLeaf?: GeoLeafHost };
  * `scripts/verify-seam-drift.cjs` under `host-global (core ↔ host-runtime)`, because
  * `verify-plugin-shared-fork` exempts both sides and confronted neither.
  *
- * ⚠️ Ce chemin annonçait `packages/core/src/modules/utils/general/…` jusqu'à STRUCT S2 —
- * `src/modules/` a été supprimé à ARCHI S10.1. Un chemin faux dans un commentaire ne fait
- * rougir aucune gate ; celui-ci désignait le fichier même que ce module recopie.
+ * ⚠️ This path used to announce `packages/core/src/modules/utils/general/…`
+ * — `src/modules/` has since been deleted. A wrong path in a comment turns no
+ * gate red; this one pointed at the very file this module copies.
  */
 export function getGeoLeaf(): GeoLeafHost | undefined {
     if (typeof globalThis !== "undefined") {
@@ -231,7 +240,10 @@ export function ensureGeoLeaf(): GeoLeafHost {
             ? (globalThis as HostCarrier)
             : typeof window !== "undefined"
               ? (window as unknown as HostCarrier)
-              : ({} as HostCarrier);
+              : // No assertion: the destination is already declared
+                // `HostCarrier`, so the empty literal contextualises there.
+                // The assertion typed nothing more.
+                {};
     carrier.GeoLeaf = carrier.GeoLeaf ?? {};
     return carrier.GeoLeaf;
 }
@@ -241,9 +253,9 @@ export function ensureGeoLeaf(): GeoLeafHost {
  * `fallback` when the namespace or `Config` is not (yet) available.
  *
  * Consolidates the `coreConfigGet` helper previously duplicated in each plugin's
- * `src/utils/core-config.ts` (PLUGINS S1) — plus aucun plugin ne porte ce fichier.
- * La copie du core vit dans `src/capabilities/offline/config-seam.ts`, épinglée avec ce
- * fichier dans le seam `host-global`.
+ * `src/utils/core-config.ts` — no plugin carries that file any more. The
+ * core's copy lives in `src/capabilities/offline/config-seam.ts`, pinned with
+ * this file in the `host-global` seam.
  *
  * @typeParam T - Expected value type (caller-asserted; the namespace is untyped).
  */

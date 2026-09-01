@@ -1,21 +1,20 @@
 /**
- * `types/gallery.ts` — couverture des branches (backlog R.2).
+ * `types/gallery.ts` — branch coverage.
  *
- * Le composant le plus creux de la bibliothèque à l'ouverture de R.2 : **41,18 % de
- * branches, 36,84 % de fonctions**, pour 210 lignes. `field-renderer.test.ts` ne
- * l'exerçait que sur un seul scénario — les vignettes `javascript:` écartées au
- * side-panel (§S2.2 sécurité).
+ * The library's hollowest component at the start: **41.18% branches, 36.84%
+ * functions**, over 210 lines. `field-renderer.test.ts` only exercised it on
+ * one scenario — `javascript:` thumbnails discarded at the side panel
+ * (security section).
  *
- * Tout `formRender` était hors couverture : la grille d'édition, le réordonnancement
- * par glisser-déposer, la suppression, le plafond `maxCount`, le mode lecture seule et
- * les trois chemins d'ajout de fichier (rejet de validation, upload distant, URL
- * d'objet locale). Ce sont des fonctions imbriquées — c'est ce qui explique l'écart
- * entre les fonctions (36,84 %) et les lignes (68,80 %) : le module se charge, ses
- * gestionnaires ne s'exécutent pas.
+ * All of `formRender` was uncovered: the edit grid, drag-and-drop
+ * reordering, deletion, the `maxCount` ceiling, read-only mode and the three
+ * file-add paths (validation rejection, remote upload, local object URL).
+ * They are nested functions — which explains the gap between functions
+ * (36.84%) and lines (68.80%): the module loads, its handlers do not run.
  *
- * ⚠️ Fichier séparé **délibérément** : `field-renderer.test.ts` pèse 2 074 lignes pour
- * une limite projet de 700. Le plafond n'est pas gaté sur ce paquet (backlog R.16), ce
- * qui est une raison de ne pas l'aggraver, pas une permission.
+ * ⚠️ File separate **deliberately**: `field-renderer.test.ts` weighs 2,074
+ * lines against a 700-line project limit. The ceiling is not gated on this
+ * package, which is a reason not to worsen it, not a permission.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
@@ -29,15 +28,15 @@ function field(overrides: Partial<FieldConfig> = {}): FieldConfig {
     return { id: "photos", type: "gallery", label: "Photos", ...overrides };
 }
 
-/** Un fichier image acceptable au sens de `_validateFile` (MIME dans la whitelist). */
+/** An image file acceptable to `_validateFile` (MIME in the whitelist). */
 function imageFile(name = "a.png", type = "image/png", size = 1024): File {
     const f = new File([new Uint8Array(1)], name, { type });
-    // `File` ne laisse pas fixer `size` ; on le redéfinit pour piloter la garde de taille.
+    // `File` does not let you set `size`; we redefine it to drive the size guard.
     Object.defineProperty(f, "size", { value: size });
     return f;
 }
 
-/** Déclenche l'ajout de fichiers par le canal réel : l'événement `change` de l'input. */
+/** Triggers the file add through the real channel: the input's `change` event. */
 function dropFiles(root: HTMLElement, files: File[]): void {
     const input = root.querySelector<HTMLInputElement>("input[type=file]")!;
     Object.defineProperty(input, "files", { value: files, configurable: true });
@@ -46,8 +45,8 @@ function dropFiles(root: HTMLElement, files: File[]): void {
 
 beforeEach(() => {
     document.body.innerHTML = "";
-    // happy-dom n'implémente pas createObjectURL ; le composant s'en sert pour la
-    // prévisualisation locale (branche « pas d'endpoint »).
+    // happy-dom does not implement createObjectURL; the component uses it
+    // for the local preview (the "no endpoint" branch).
     if (!URL.createObjectURL) {
         Object.defineProperty(URL, "createObjectURL", { value: vi.fn(), configurable: true });
     }
@@ -58,7 +57,7 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
-// ─── formRender — grille et lecture seule ────────────────────────────────────────
+// ─── formRender — grid and read-only ─────────────────────────────────────────────
 
 describe("gallery.formRender — grille", () => {
     it("traite une valeur non-tableau comme une galerie vide", () => {
@@ -176,16 +175,17 @@ describe("gallery.formRender — suppression", () => {
         const first = onChange.mock.calls[0][0] as string[];
         el.querySelectorAll<HTMLButtonElement>(".gl-form-gallery__remove")[0].click();
 
-        // Si la même référence était rendue deux fois, `first` aurait été vidé par le
-        // second splice — l'appelant qui garde la valeur verrait son état muter sous lui.
+        // If the same reference were returned twice, `first` would have been
+        // emptied by the second splice — a caller keeping the value would see
+        // its state mutate under it.
         expect(first).toEqual(["https://example.com/b.jpg"]);
     });
 });
 
-// ─── formRender — réordonnancement ───────────────────────────────────────────────
+// ─── formRender — reordering ─────────────────────────────────────────────────────
 
 describe("gallery.formRender — glisser-déposer", () => {
-    /** Rend la grille et retourne ses items, la liste d'origine étant à 3 entrées. */
+    /** Renders the grid and returns its items, the original list holding 3 entries. */
     function threeItems(onChange = vi.fn()) {
         const el = galleryComponent.formRender!(
             ["https://example.com/a.jpg", "https://example.com/b.jpg", "https://example.com/c.jpg"],
@@ -257,7 +257,7 @@ describe("gallery.formRender — glisser-déposer", () => {
     });
 });
 
-// ─── formRender — ajout de fichiers ──────────────────────────────────────────────
+// ─── formRender — adding files ───────────────────────────────────────────────────
 
 describe("gallery.formRender — ajout de fichiers", () => {
     it("sans endpoint : crée une URL d'objet locale et notifie", () => {
@@ -281,9 +281,9 @@ describe("gallery.formRender — ajout de fichiers", () => {
         expect(onChange).not.toHaveBeenCalled();
     });
 
-    // 🛑 RÉÉCRIT À LA TÂCHE 5.1-d, PAS ANNULÉ — même bascule que le composant `image` :
-    // `maxSizeMb` est la taille visée APRÈS compression, et le refus porte sur un plafond
-    // AVANT compression (`× PRECOMPRESSION_FACTOR`).
+    // 🛑 REWRITTEN, NOT CANCELLED — same switch as the `image` component:
+    // `maxSizeMb` is the size aimed for AFTER compression, and the refusal
+    // bears on a ceiling BEFORE compression (`× PRECOMPRESSION_FACTOR`).
     it("refuse un fichier au-dessus du plafond AVANT compression (maxSizeMb × 5)", () => {
         const onChange = vi.fn();
         const el = galleryComponent.formRender!([], field({ maxSizeMb: 1 }), onChange, CTX);
@@ -300,7 +300,7 @@ describe("gallery.formRender — ajout de fichiers", () => {
 
         dropFiles(el, [imageFile("gros.png", "image/png", 2 * 1024 * 1024)]);
 
-        // Le refus n'est PAS immédiat — c'est ce qui distingue le nouveau contrat de l'ancien.
+        // The refusal is NOT immediate — what tells the new contract from the old.
         expect(el.querySelector<HTMLElement>(".gl-form-error")!.hidden).toBe(true);
     });
 
@@ -310,7 +310,7 @@ describe("gallery.formRender — ajout de fichiers", () => {
 
         dropFiles(el, [imageFile("doc.pdf", "application/pdf"), imageFile("ok.png")]);
 
-        // `continue`, pas `break` : la boucle poursuit après un rejet de validation.
+        // `continue`, not `break`: the loop goes on after a validation rejection.
         expect(onChange).toHaveBeenCalledWith(["blob:local/preview"]);
     });
 
@@ -416,13 +416,14 @@ describe("gallery.formRender — ajout de fichiers", () => {
         const el = galleryComponent.formRender!([], field(), vi.fn(), CTX);
         const input = el.querySelector<HTMLInputElement>("input[type=file]")!;
 
-        // ⚠️ On NEUTRALISE `click()` au lieu de l'observer. L'input est un ENFANT de
-        // l'emplacement : le clic relayé remonte au parent, dont le gestionnaire rappelle
-        // `click()`. En navigateur cela s'arrête au premier tour — HTML pose un
-        // « click in progress flag » qui fait sortir un `click()` ré-entrant. happy-dom
-        // ne l'implémente pas, et la version observante de ce test tombait en
-        // « Maximum call stack size exceeded ». C'est une limite d'ENVIRONNEMENT, pas un
-        // défaut du composant ; le stub coupe la boucle et laisse le câblage vérifiable.
+        // ⚠️ We NEUTRALISE `click()` instead of observing it. The input is a
+        // CHILD of the slot: the relayed click bubbles to the parent, whose
+        // handler calls `click()` again. In a browser this stops after one
+        // round — HTML sets a "click in progress flag" that bails a
+        // re-entrant `click()`. happy-dom does not implement it, and the
+        // observing version of this test fell into "Maximum call stack size
+        // exceeded". An ENVIRONMENT limit, not a component defect; the stub
+        // cuts the loop and keeps the wiring verifiable.
         const clickSpy = vi.spyOn(input, "click").mockImplementation(() => {});
 
         el.querySelector<HTMLElement>(".gl-form-gallery__add-slot")!.dispatchEvent(

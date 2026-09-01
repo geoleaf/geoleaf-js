@@ -1,67 +1,69 @@
 /**
- * HARNAIS DE MÉLANGE — socle-init 9.1 : ce que l'ordre de `FULL.capabilities` doit CESSER
- * de décider.
+ * SHUFFLE HARNESS — what the order of `FULL.capabilities` must STOP deciding.
  *
- * ## Le problème que ce fichier garde
+ * ## The problem this file guards
  *
- * `presets/manifest.full.ts` est une liste, et son ordre a longtemps décidé de choses sans
- * rapport les unes avec les autres. Réordonner pour l'une déplaçait silencieusement les
- * autres. Socle-init 7.5 en a coupé une — la disposition de la toolbar mobile — en la rendant
- * explicite (`mobileIcon.order`) au lieu d'émergente. Ce harnais est ce qui empêche le
- * couplage de revenir sans qu'on le voie.
+ * `presets/manifest.full.ts` is a list, and its order long decided things
+ * unrelated to one another. Reordering for one silently moved the others.
+ * One coupling was already cut — the mobile toolbar's layout — by making it
+ * explicit (`mobileIcon.order`) instead of emergent. This harness is what
+ * keeps the coupling from returning unseen.
  *
- * ## Ce qui n'est PAS asserté ici, et pourquoi
+ * ## What is NOT asserted here, and why
  *
- * ⚠️ Le tour d'horizon initial de 9.1 demandait « surface post-boot et effets d'`app:ready`
- * IDENTIQUES » sous permutation. **Le pré-vol 9.0 du 07/08/2026 a mesuré que c'est faux**, et
- * l'exiger ferait rougir ce fichier sur les propriétés suivantes, qui sont voulues :
+ * ⚠️ The initial survey asked for "post-boot surface and `app:ready` effects
+ * IDENTICAL" under permutation. **The 07/08/2026 preflight measured that
+ * this is false**, and requiring it would turn this file red on the
+ * following properties, which are wanted:
  *
- *   - `route` avant `filter` — le tri topologique de Kahn départage à égalité sur l'ordre
- *     d'enregistrement (les deux dépendent de `geojson`) ;
- *   - `theme-selector` en dernier — même départage de Kahn, qui fixe l'ordre des auditeurs
- *     de `geoleaf:app:ready`.
+ *   - `route` before `filter` — Kahn's topological sort tie-breaks on
+ *     registration order (both depend on `geojson`);
+ *   - `theme-selector` last — same Kahn tie-break, which fixes the order of
+ *     `geoleaf:app:ready` listeners.
  *
- * Une garde qui rougirait là-dessus serait bruyante, et une gate bruyante apprend à être
- * ignorée. Ce fichier asserte donc l'invariance de ce qui DOIT l'être — l'ensemble composé et
- * la toolbar — et laisse l'ordre d'init tranquille, en le nommant plutôt qu'en le taisant.
+ * A guard turning red on that would be noisy, and a noisy gate learns to be
+ * ignored. This file thus asserts the invariance of what MUST be invariant —
+ * the composed set and the toolbar — and leaves the init order alone,
+ * naming it rather than silencing it.
  *
- * 🛑 **Une TROISIÈME propriété figurait dans cette liste jusqu'au 08/08/2026 : « `pwa` avant
- * `offline` — leurs `sharedLifecycle` tournent dans cet ordre (#7 → #8), et `offline` lit
- * `modules.pwa.enabled` ».** Socle-init **7.4** l'a réfutée. Elle est retirée d'ici parce que ce
- * fichier la citait comme *voulue*, c'est-à-dire comme une raison de ne pas la tester — et elle
- * n'était ni voulue ni vraie.
+ * 🛑 **A THIRD property sat in this list until 08/08/2026: "`pwa` before
+ * `offline` — their `sharedLifecycle` run in that order (#7 → #8), and
+ * `offline` reads `modules.pwa.enabled`".** It was REFUTED. It is removed
+ * from here because this file cited it as *wanted*, i.e. as a reason not to
+ * test it — and it was neither wanted nor true.
  *
- * ⚠️ **Et l'assertion correspondante n'a PAS été ajoutée ici, délibérément.** Ce harnais ne fait
- * tourner que `registerPresetDeclarations` / `registerPresetModules` : il **n'appelle jamais
- * `SharedModule`**, donc il est structurellement incapable de voir un couplage de
- * `sharedLifecycle`. `pwa` et `offline` n'ayant ni `createModule` ni `mobileIcon`, les y permuter
- * ne change rien *par construction* — une règle posée là serait verte quoi qu'il arrive, y compris
- * sous la mutation qui compte. C'est `shared-lifecycle-order.test.ts` qui la porte, avec le seul
- * harnais qui exécute les lifecycles.
+ * ⚠️ **And the corresponding assertion was NOT added here, deliberately.**
+ * This harness only runs `registerPresetDeclarations` /
+ * `registerPresetModules`: it **never calls `SharedModule`**, so it is
+ * structurally unable to see a `sharedLifecycle` coupling. `pwa` and
+ * `offline` having neither `createModule` nor `mobileIcon`, permuting them
+ * here changes nothing *by construction* — a rule set there would be green
+ * no matter what, including under the mutation that counts.
+ * `shared-lifecycle-order.test.ts` carries it, with the only harness that
+ * executes the lifecycles.
  *
- * @see packages/core/src/presets/manifest.full.ts — les contraintes restantes, et les DEUX qui
- *   ont été retirées parce qu'elles avaient cessé d'être vraies (ou ne l'avaient jamais été)
- * @see packages/core/__tests__/presets/shared-lifecycle-order.test.ts — la réfutation de 7.4
+ * @see packages/core/src/presets/manifest.full.ts — the remaining constraints, and the TWO
+ *   removed because they had stopped being true (or never were)
+ * @see packages/core/__tests__/presets/shared-lifecycle-order.test.ts — the refutation
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
 import type { ICoreModule } from "../../src/contracts/core-module.contract.js";
 import type { PresetManifest } from "../../src/contracts/preset.contract.js";
-// Extrait le 08/08/2026, quand `shared-lifecycle-order.test.ts` en a eu besoin aussi : deux
-// copies d'un générateur congruentiel sont deux suites de graines qui divergeront.
+// Extracted on 08/08/2026, when `shared-lifecycle-order.test.ts` needed it
+// too: two copies of a congruential generator are two diverging seed sequences.
 import { shuffled } from "./_helpers/shuffle.ts";
 
 const { FULL } = await import("../../src/presets/manifest.full.ts");
-const { registerPresetDeclarations, registerPresetModules } = await import(
-    "../../src/presets/apply-preset.ts"
-);
+const { registerPresetDeclarations, registerPresetModules } =
+    await import("../../src/presets/apply-preset.ts");
 const { CapabilityRegistry } = await import("../../src/kernel/api/capability-registry.ts");
 const { ModuleRegistry } = await import("../../src/app/module-registry.ts");
 
-/** Les installers d'un manifeste — le seul type dont ce fichier a besoin. */
+/** A manifest's installers — the only type this file needs. */
 type Capabilities = PresetManifest["capabilities"];
 
-/** Compose un manifeste et rend ce qui en est sorti, sans rien initialiser. */
+/** Composes a manifest and returns what came out of it, initialising nothing. */
 function compose(capabilities: Capabilities): { declared: string[]; modules: ICoreModule[] } {
     CapabilityRegistry._reset();
     const declared: string[] = [];
@@ -71,8 +73,8 @@ function compose(capabilities: Capabilities): { declared: string[]; modules: ICo
             declared.push(d.id);
             CapabilityRegistry.register(d as Parameters<typeof CapabilityRegistry.register>[0]);
         },
-        // Socle-init 9.4 : la Pass 1 relève les faits d'installation. Ce harnais ne les lit
-        // pas, mais le collaborateur est requis — un bouchon absent serait un `TypeError`.
+        // Pass 1 records the installation facts. This harness does not read
+        // them, but the collaborator is required — an absent stub would be a `TypeError`.
         noteInstaller: () => {},
         isEnabled: () => true,
     };
@@ -85,12 +87,13 @@ function compose(capabilities: Capabilities): { declared: string[]; modules: ICo
 }
 
 /**
- * Reproduit le comparateur de `_appendRegistryIcons` (`kernel/ui/mobile/mobile-toolbar-pill.ts`).
+ * Reproduces `_appendRegistryIcons`'s comparator (`kernel/ui/mobile/mobile-toolbar-pill.ts`).
  *
- * ⚠️ Il est inline dans une fonction qui touche le DOM, donc non importable. Le dupliquer
- * serait tester la copie ; ce n'est pas ce qui est fait ici — l'assertion qui compte est
- * `SEEDS`-invariante ET adossée à `PILLS_CARRY_EXPLICIT_ORDER` ci-dessous, qui est la vraie
- * condition de son indépendance à l'ordre du manifeste.
+ * ⚠️ It is inline in a DOM-touching function, hence not importable.
+ * Duplicating it would test the copy; that is not what is done here — the
+ * assertion that counts is `SEEDS`-invariant AND backed by
+ * `PILLS_CARRY_EXPLICIT_ORDER` below, which is the real condition of its
+ * independence from the manifest order.
  */
 function pillOrder(modules: readonly ICoreModule[]): string[] {
     return [...modules]
@@ -107,36 +110,40 @@ function pillOrder(modules: readonly ICoreModule[]): string[] {
 }
 
 /**
- * Fait tourner le VRAI tri topologique sur le graphe composé, et rend l'ordre observé.
+ * Runs the REAL topological sort on the composed graph, and returns the observed order.
  *
- * ## Pourquoi ce second harnais existe (socle-init 9.1, complété le 08/08/2026)
+ * ## Why this second harness exists (completed on 08/08/2026)
  *
- * `compose()` s'arrête à l'enregistrement : il ne voit ni le tri de Kahn ni le parcours qui en
- * découle. Or c'est le tri qui décide l'ordre des `init()`, donc celui des auditeurs de
- * `geoleaf:app:ready` — la propriété même que l'énoncé initial de 9.1 visait. La vérification
- * du 08/08 a relevé ce trou : le fichier composait là où sa ligne de roadmap disait « booter ».
+ * `compose()` stops at registration: it sees neither Kahn's sort nor the
+ * traversal following from it. Yet the sort decides the `init()` order,
+ * hence that of `geoleaf:app:ready` listeners — the very property the
+ * initial wording aimed at. The 08/08 check found that hole: the file
+ * composed where its plan line said "boot".
  *
- * ## Pourquoi des sondes plutôt que les modules réels
+ * ## Why probes rather than the real modules
  *
- * Chaque enrobage est remplacé par une sonde qui **conserve `id` et `dependencies`** — donc le
- * graphe trié est le vrai — mais n'appelle jamais l'`init()` du module réel. Faire tourner les
- * 16 `init()` livrés demanderait un adaptateur MapLibre et un DOM complet, et éprouverait le
- * comportement des capacités, pas l'invariance du tri. Ici le sujet est le tri.
+ * Each wrapper is replaced by a probe that **keeps `id` and
+ * `dependencies`** — so the sorted graph is the real one — but never calls
+ * the real module's `init()`. Running the 16 shipped `init()`s would demand
+ * a MapLibre adapter and a full DOM, and would exercise the capabilities'
+ * behaviour, not the sort's invariance. The subject here is the sort.
  *
- * Les deux modules kernel dont les capacités dépendent (`geojson`, `config`) sont enregistrés
- * **en DERNIER**, et c'est délibéré : `ModuleRegistry` jette sur dépendance manquante, donc ils
- * doivent être là — mais s'ils étaient en tête, l'ordre d'insertion satisferait déjà le graphe
- * *par accident*, et la règle « chacun après ses dépendances » resterait verte même si le tri
- * était supprimé. Les mettre à la fin fait que seul un vrai tri peut la satisfaire. Vu rougir
- * en remplaçant `_topoSort()` par l'ordre d'enregistrement brut.
+ * The two kernel modules the capabilities depend on (`geojson`, `config`)
+ * are registered **LAST**, deliberately: `ModuleRegistry` throws on a
+ * missing dependency, so they must be there — but at the head, insertion
+ * order would already satisfy the graph *by accident*, and the "each after
+ * its dependencies" rule would stay green even with the sort deleted.
+ * Putting them at the end means only a real sort can satisfy it. Seen red
+ * by replacing `_topoSort()` with raw registration order.
  *
- * @param capabilities Les installeurs, dans l'ordre à éprouver.
- * @returns Les ids dans l'ordre où le registre les a initialisés.
+ * @param capabilities The installers, in the order to exercise.
+ * @returns The ids in the order the registry initialised them.
  */
 async function bootOrder(capabilities: Capabilities): Promise<string[]> {
     const seen: string[] = [];
-    // `init` et `destroy` vont ensemble — `ModuleRegistry.register()` valide la disjonction et
-    // jette. Une sonde qui n'aurait que l'un des deux ne serait pas un module.
+    // `init` and `destroy` go together — `ModuleRegistry.register()`
+    // validates the disjunction and throws. A probe with only one of the two
+    // would not be a module.
     const probe = (id: string, dependencies: readonly string[]): ICoreModule =>
         ({
             id,
@@ -190,7 +197,7 @@ describe("mélange du manifeste — ce qui doit rester invariant", () => {
         }
     });
 
-    // C'EST L'ASSERTION DE 7.5, et la raison d'être de ce fichier.
+    // THE toolbar-order ASSERTION, and this file's reason for being.
     it("rend les pastilles de la toolbar dans le MÊME ordre, quel que soit l'ordre du manifeste", () => {
         const reference = pillOrder(compose(FULL.capabilities).modules);
         expect(reference.length).toBeGreaterThan(0); // anti-gate-vide
@@ -202,15 +209,16 @@ describe("mélange du manifeste — ce qui doit rester invariant", () => {
     });
 
     /**
-     * La condition qui rend l'assertion précédente VRAIE — et la seule qui puisse la trahir.
+     * The condition making the previous assertion TRUE — and the only one able to betray it.
      *
-     * Le comparateur range les modules sans `order` **après** tous ceux qui en ont, en gardant
-     * leur ordre d'enregistrement relatif (tri stable). Donc dès qu'une DEUXIÈME pastille sans
-     * `order` apparaît, leur ordre redevient celui du manifeste — et le couplage que 7.5 a
-     * coupé revient, silencieusement, sans qu'aucune des assertions ci-dessus ne bouge tant que
-     * les graines testées ne les inversent pas.
+     * The comparator ranks modules without `order` **after** all those with
+     * one, keeping their relative registration order (stable sort). So as
+     * soon as a SECOND `order`-less badge appears, their order becomes the
+     * manifest's again — and the cut coupling returns, silently, with none
+     * of the assertions above moving as long as the tested seeds do not
+     * invert them.
      *
-     * Cette garde-ci ne dépend d'aucune graine : elle interdit la condition elle-même.
+     * This guard depends on no seed: it forbids the condition itself.
      */
     it("PILLS_CARRY_EXPLICIT_ORDER — toute pastille déclare son ordre", () => {
         const pills = compose(FULL.capabilities).modules.filter((m) => m.ui?.mobileIcon);
@@ -228,7 +236,7 @@ describe("mélange du manifeste — ce qui doit rester invariant", () => {
     });
 });
 
-// ── Le tri, sous permutation ──────────────────────────────────────────────────
+// ── The sort, under permutation ───────────────────────────────────────────────
 
 describe("tri topologique — ce qu'un vrai registre décide, sous permutation", () => {
     it("initialise le MÊME ensemble de modules, quel que soit l'ordre du manifeste", async () => {
@@ -242,16 +250,18 @@ describe("tri topologique — ce qu'un vrai registre décide, sous permutation",
     });
 
     /**
-     * ⚠️ **L'ordre exact n'est PAS asserté, et ce n'est pas un renoncement — c'est la mesure.**
+     * ⚠️ **The exact order is NOT asserted, and that is not a renouncement — it is the measure.**
      *
-     * Le pré-vol 9.0 a relevé deux contraintes d'ordre réelles (`route` avant `filter`,
-     * `theme-selector` en dernier) qui sortent du départage de Kahn à égalité, lequel suit
-     * l'ordre d'enregistrement. Elles se DÉPLACENT sous permutation, légitimement. Exiger
-     * l'invariance d'ordre ferait rougir ce fichier sur un comportement voulu.
+     * The preflight recorded two real order constraints (`route` before
+     * `filter`, `theme-selector` last) that come out of Kahn's tie-break at
+     * equality, which follows registration order. They MOVE under
+     * permutation, legitimately. Requiring order invariance would turn this
+     * file red on wanted behaviour.
      *
-     * Ce qui doit être vrai en revanche, sous toute permutation, c'est que le tri **honore le
-     * graphe** : aucun module ne s'initialise avant une de ses dépendances. C'est la propriété
-     * que le tri existe pour produire, et la seule qu'une permutation ne doit jamais entamer.
+     * What must be true, though, under every permutation, is that the sort
+     * **honours the graph**: no module initialises before one of its
+     * dependencies. The property the sort exists to produce, and the only
+     * one a permutation must never dent.
      */
     it("place toujours chaque module APRÈS ses dépendances", async () => {
         for (const seed of SEEDS) {

@@ -1,0 +1,50 @@
+{
+    "_comment": "Divergences GELÉES entre le dépôt et le tarball publié, à version ÉGALE. Cette liste ne peut que RÉTRÉCIR : y ajouter une entrée à la main est le geste qui désarme la gate. Le remède d'une entrée est de bumper la version et de publier — pas de la re-geler.",
+    "_generated": "node scripts/verify-published-parity.cjs --update-baseline",
+    "packages": {
+        "@geoleaf/field-renderer": {
+            "version": "1.0.0",
+            "source": 31
+        },
+        "@geoleaf-plugins/cog": {
+            "version": "1.0.2",
+            "source": 4
+        },
+        "@geoleaf-plugins/editor": {
+            "version": "1.2.0",
+            "source": 60
+        },
+        "@geoleaf-plugins/flatgeobuf": {
+            "version": "1.0.2",
+            "source": 2
+        },
+        "@geoleaf-plugins/geocoding": {
+            "version": "1.0.0",
+            "source": 4
+        },
+        "@geoleaf-plugins/measure": {
+            "version": "1.0.3",
+            "source": 27
+        },
+        "@geoleaf-plugins/offline-ui": {
+            "version": "1.4.0",
+            "source": 54
+        },
+        "@geoleaf-plugins/print": {
+            "version": "1.2.2",
+            "source": 18
+        },
+        "@geoleaf-plugins/realtime-layer": {
+            "version": "1.0.3",
+            "source": 9
+        },
+        "@geoleaf-plugins/table": {
+            "version": "1.0.1",
+            "source": 29
+        },
+        "@geoleaf-plugins/websocket": {
+            "version": "1.0.1",
+            "source": 4
+        }
+    }
+}

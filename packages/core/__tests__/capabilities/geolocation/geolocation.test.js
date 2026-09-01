@@ -285,29 +285,31 @@ describe("capabilities/geolocation — control branch coverage", () => {
             expect(GeoLocationState.active).toBe(false);
         });
 
-        // ⚠️ R.7b / scénario navigateur E.7 — aucune souscription GPS ne fuit sur un cycle
-        // erreur → re-clic.
+        // ⚠️ Browser scenario — no GPS subscription leaks on an error →
+        // re-click cycle.
         //
-        // Contre-épreuve B.33 (CAPACITÉS S11) : `_onGeoPositionError` ne faisait qu'un teardown
-        // PARTIEL (classes + `active=false` + toast), laissant `watchPosition` courir et
-        // `watchId` renseigné. Comme `active` repassait à `false`, un SECOND clic repartait dans
-        // la branche « démarrage » et ÉCRASAIT `watchId` SANS `clearWatch` — une souscription
-        // GPS fuyait à chaque cycle. Le correctif emprunte `_stopGeolocation` (teardown complet).
+        // Counter-proof: `_onGeoPositionError` only did a PARTIAL teardown
+        // (classes + `active=false` + toast), leaving `watchPosition` running
+        // and `watchId` set. Since `active` went back to `false`, a SECOND
+        // click re-entered the "start" branch and OVERWROTE `watchId` WITHOUT
+        // `clearWatch` — one GPS subscription leaked per cycle. The fix
+        // borrows `_stopGeolocation` (complete teardown).
         //
-        // Ce scénario est classé 🔴 « navigateur », mais son défaut est une comptabilité
-        // `watchId`/`clearWatch` — happy-dom, avec `navigator.geolocation` mocké (déjà en place
-        // ici), le décide aussi bien qu'un vrai navigateur. Couvert au tier de ses pairs.
+        // The scenario is classed 🔴 "browser", but its defect is
+        // `watchId`/`clearWatch` bookkeeping — happy-dom, with
+        // `navigator.geolocation` mocked (already in place here), decides it
+        // as well as a real browser. Covered at its peers' tier.
         it("un cycle erreur → re-clic ne laisse pas fuiter de watch (E.7)", () => {
             const map = makeMockMap();
             initGeolocationControl(map);
             const link = map.addControl.mock.calls[0][0].querySelector("a");
 
-            // 1er clic → démarrage : watchPosition armé.
+            // 1st click → start: watchPosition armed.
             link.click();
             expect(navigator.geolocation.watchPosition).toHaveBeenCalledTimes(1);
             const firstWatchId = navigator.geolocation.watchPosition.mock.results[0].value;
 
-            // La géoloc échoue (permission refusée) → l'erreur DOIT relâcher la souscription.
+            // Geolocation fails (permission denied) → the error MUST release the subscription.
             const errorCb = navigator.geolocation.watchPosition.mock.calls[0][1];
             errorCb({ code: 1, PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 });
             expect(
@@ -316,11 +318,11 @@ describe("capabilities/geolocation — control branch coverage", () => {
             ).toHaveBeenCalledWith(firstWatchId);
             expect(GeoLocationState.active).toBe(false);
 
-            // 2e clic → nouveau démarrage. La 1ʳᵉ souscription ayant été relâchée, il n'y a pas
-            // de watch orphelin : autant de clearWatch que de watches supersédés.
+            // 2nd click → new start. The 1st subscription having been
+            // released, there is no orphan watch: as many clearWatch as superseded watches.
             link.click();
             expect(navigator.geolocation.watchPosition).toHaveBeenCalledTimes(2);
-            const supersededWatches = navigator.geolocation.watchPosition.mock.calls.length - 1; // le dernier est vivant
+            const supersededWatches = navigator.geolocation.watchPosition.mock.calls.length - 1; // the last one is live
             expect(
                 navigator.geolocation.clearWatch.mock.calls.length,
                 "un watch a été écrasé sans clearWatch — fuite E.7"
@@ -364,7 +366,7 @@ describe("capabilities/geolocation — control branch coverage", () => {
     });
 
     describe("chemin d'erreur — remise à plat (B.33)", () => {
-        /** Erreur de géolocalisation conforme au type du navigateur. */
+        /** Geolocation error conforming to the browser's type. */
         const geoError = (code) => ({
             code,
             PERMISSION_DENIED: 1,
@@ -373,7 +375,7 @@ describe("capabilities/geolocation — control branch coverage", () => {
             message: "denied",
         });
 
-        /** Démarre la géoloc et rend le callback d'erreur capturé (appelé plus tard, comme un vrai navigateur). */
+        /** Starts geolocation and returns the captured error callback (called later, like a real browser). */
         function startAndCaptureError(map) {
             let errCb = null;
             navigator.geolocation.watchPosition = vi.fn((_ok, err) => {
@@ -389,7 +391,7 @@ describe("capabilities/geolocation — control branch coverage", () => {
         it("refus de permission : annule le watch au lieu de le laisser courir", () => {
             const map = makeMockMap();
             const { errCb } = startAndCaptureError(map);
-            // Le watch est bien armé avant l'erreur — c'est ce qui rend la fuite possible.
+            // The watch is indeed armed before the error — what makes the leak possible.
             expect(GeoLocationState.watchId).toBe(42);
 
             errCb(geoError(1));
@@ -399,9 +401,10 @@ describe("capabilities/geolocation — control branch coverage", () => {
         });
 
         it("un second clic après erreur ne laisse pas fuir la souscription précédente", () => {
-            // Le vrai coût du défaut : `active` repasse à `false` sans nettoyage, donc un
-            // second clic repart dans la branche « démarrage » et ÉCRASE `watchId` sans
-            // `clearWatch`. Chaque cycle erreur→re-clic fuit une souscription GPS.
+            // The defect's real cost: `active` goes back to `false` without
+            // cleanup, so a second click re-enters the "start" branch and
+            // OVERWRITES `watchId` without `clearWatch`. Each error→re-click
+            // cycle leaks one GPS subscription.
             const map = makeMockMap();
             const { errCb, link } = startAndCaptureError(map);
             errCb(geoError(3)); // TIMEOUT
@@ -410,7 +413,7 @@ describe("capabilities/geolocation — control branch coverage", () => {
             link.click();
 
             expect(GeoLocationState.watchId).toBe(43);
-            // La souscription 42 doit avoir été relâchée — sinon elle tourne pour toujours.
+            // Subscription 42 must have been released — otherwise it runs forever.
             expect(navigator.geolocation.clearWatch).toHaveBeenCalledWith(42);
         });
 

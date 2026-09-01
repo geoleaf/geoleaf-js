@@ -68,7 +68,16 @@ function _onContainerClick(e: MouseEvent): void {
     if (e.target !== _canvas) return;
     e.stopImmediatePropagation();
     const coord = _containerCoord(e);
-    if (isLastVertex(getSession()?.vertices, coord)) return;
+    if (isLastVertex(getSession()?.vertices, coord)) {
+        // Re-clicking the LAST vertex CLOSES the measure (>= 2 vertices). This used to be a
+        // silent swallow (duplicate-click guard before dblclick), which left touch with no
+        // way to finish at all: a double-tap never synthesises `dblclick` here, so its taps
+        // landed in this branch and died. Measured by the touch spec written to check
+        // exactly that. Desktop double-click still works — its own `click` closes first and
+        // `_justFinished` absorbs the `dblclick` that follows.
+        if ((getSession()?.vertices.length ?? 0) >= 2) _triggerFinish();
+        return;
+    }
     addVertex(coord);
 }
 
@@ -89,7 +98,12 @@ function _onContainerDblClick(e: MouseEvent): void {
 function _onClick(e: MeasureMapMouseEvent): void {
     if (!_active || _justFinished) return;
     const coord = e.lngLat.toArray();
-    if (isLastVertex(getSession()?.vertices, coord)) return;
+    if (isLastVertex(getSession()?.vertices, coord)) {
+        // Same closing gesture as the container handler above — kept in both paths so the
+        // unit suites (which drive MapLibre events) and production (container capture) agree.
+        if ((getSession()?.vertices.length ?? 0) >= 2) _triggerFinish();
+        return;
+    }
     addVertex(coord);
 }
 

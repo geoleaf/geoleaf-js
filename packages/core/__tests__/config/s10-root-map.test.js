@@ -28,7 +28,11 @@ const mocks = vi.hoisted(() => {
         // maxBounds === padBounds(profileBounds, boundsMargin) by reference.
         padBounds: vi.fn((bounds, margin) => ({ __padded: true, margin, src: bounds })),
         initBasemaps: vi.fn(),
-        initPOI: vi.fn(),
+        // ⚠️ An `initPOI: vi.fn()` lived here and the `vi.mock("init-features.js")`
+        // factory below DECLARED it as a module export. `init-features.ts`
+        // only exports `initBasemaps`, `initGeoJSON` and `initUIPanels` — the
+        // POI subsystem is long dissolved. The double attested a nonexistent
+        // export, and nothing asserted it.
         initGeoJSON: vi.fn(),
         initUIPanels: vi.fn(),
         initI18n: vi.fn(),
@@ -41,7 +45,6 @@ vi.mock("../../src/utils/general/geoleaf-global.js", () => ({
 }));
 vi.mock("../../src/app/init-features.js", () => ({
     initBasemaps: mocks.initBasemaps,
-    initPOI: mocks.initPOI,
     initGeoJSON: mocks.initGeoJSON,
     initUIPanels: mocks.initUIPanels,
 }));
@@ -54,7 +57,7 @@ vi.mock("../../src/utils/i18n/i18n.js", () => ({
 }));
 vi.mock("../../src/utils/performance/runtime-metrics.js", () => ({}));
 
-// S1.2: logic migrated from initApp() → CoreMapModule.init()
+// Logic migrated from initApp() → CoreMapModule.init()
 import { CoreMapModule } from "../../src/app/boot-modules/core-map.module.ts";
 
 const GeoLeaf = mocks.GeoLeaf;

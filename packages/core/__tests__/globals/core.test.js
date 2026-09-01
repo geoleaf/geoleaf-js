@@ -1,5 +1,5 @@
 /**
- * S5.5.2 — globals.core.ts branch coverage (B1+B2)
+ * globals.core.ts branch coverage (B1+B2)
  *
  * Targets:
  *   - All _g.GeoLeaf.* assignments in globals.core.ts
@@ -17,9 +17,9 @@ const mocks = vi.hoisted(() => {
     const Errors = { GeoLeafError: class GeoLeafError extends Error {} };
     const CONSTANTS = { VERSION: "test" };
     const CSRFToken = { generate: vi.fn() };
-    // B.16 — `CSRFToken` fait partie du baril `security/index.js` depuis le S14 ;
-    // il n'est plus greffé séparément par `globals.core.ts`. Le mock du baril doit
-    // donc le porter, sinon on teste une forme que la prod n'a plus.
+    // `CSRFToken` is part of the `security/index.js` barrel; it is no
+    // longer grafted separately by `globals.core.ts`. The barrel's mock must
+    // therefore carry it, otherwise a shape production no longer has is tested.
     const Security = { sanitize: vi.fn(), CSRFToken };
 
     const perfProfilerInst = {
@@ -79,10 +79,11 @@ const mocks = vi.hoisted(() => {
 });
 
 vi.mock("../../src/utils/log/index.js", () => ({ Log: mocks.Log }));
-// B.12 — complet par construction : le baril `errors` expose 20 valeurs (les classes
-// GeoLeafError, ValidationError, …) et ce mock n'en fournissait qu'UNE. Le jour où un module
-// du graphe importe une de ces classes, le mocker natif refuse de servir un export non déclaré
-// et jette à l'import. `...(await importActual())` ferme définitivement ce trou.
+// Complete by construction: the `errors` barrel exposes 20 values (the
+// GeoLeafError, ValidationError, … classes) and this mock only provided
+// ONE. The day a module of the graph imports one of those classes, the
+// native mocker refuses to serve an undeclared export and throws at import.
+// `...(await importActual())` closes this hole for good.
 vi.mock("../../src/utils/errors/errors.js", async (importActual) => ({
     ...(await importActual()),
     Errors: mocks.Errors,
@@ -91,7 +92,7 @@ vi.mock("../../src/utils/constants/constants.js", () => ({
     CONSTANTS: mocks.CONSTANTS,
     VERSION_FALLBACK: "3.0.0-dev",
 }));
-// B.12 — complet par construction (voir le mock `errors` ci-dessus).
+// Complete by construction (see the `errors` mock above).
 vi.mock("../../src/kernel/security/index.js", async (importActual) => ({
     ...(await importActual()),
     Security: mocks.Security,
@@ -103,8 +104,8 @@ vi.mock("../../src/kernel/security/csrf-token.js", () => ({
 vi.mock("../../src/utils/general/utils-base.js", () => ({ Utils: mocks.Utils }));
 vi.mock("../../src/utils/general/dom-helpers.js", () => ({
     createElement: mocks.createElement,
-    // ARCHI S7 (7.3) — `applyCssText` rejoint le namespace Utils ; le mock doit suivre,
-    // sinon `utils-namespace.ts` importe un export que ce mock ne fournit pas.
+    // `applyCssText` joins the Utils namespace; the mock must follow,
+    // otherwise `utils-namespace.ts` imports an export this mock does not provide.
     applyCssText: mocks.applyCssText,
 }));
 vi.mock("../../src/kernel/security/dom-security.js", () => ({
@@ -142,7 +143,7 @@ vi.mock("../../src/utils/general/scale-utils.js", () => ({
 
 // Side-effect import: triggers the _g.GeoLeaf assignments
 import "../../src/globals/globals.core.ts";
-// S1.3: trigger explicitly (ESM import — same module instance as globals.core.ts).
+// Trigger explicitly (ESM import — same module instance as globals.core.ts).
 
 const GL = globalThis.GeoLeaf;
 
@@ -187,9 +188,9 @@ describe("globals.core.ts — B1+B2 registrations", () => {
     });
 
     it("registers GeoLeaf.Utils.applyCssText", () => {
-        // ARCHI S7 (7.3, geste 1) — le symbole était exporté par `kernel-exports.ts`
-        // sans avoir de foyer runtime : les plugins qui l'utilisaient n'avaient pas de
-        // cible sur `GeoLeaf.*`. Ce test verrouille le foyer.
+        // The symbol was exported by `kernel-exports.ts` without a runtime
+        // home: plugins using it had no target on `GeoLeaf.*`. This test
+        // locks the home.
         expect(GL.Utils.applyCssText).toBe(mocks.applyCssText);
     });
 

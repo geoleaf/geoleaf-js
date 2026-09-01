@@ -1,39 +1,41 @@
 // @ts-check
-// E2E: 23-pwa — bannières d'installation PWA (deploy-core, port 8766).
+// E2E: 23-pwa — PWA install banners (deploy-core, port 8766).
 //
-// Ce fichier décharge le scénario **S7** de la table de vérification navigateur de
-// `roadmap_optimisation-capacites.md`, qui disait pourquoi il ne pouvait PAS être couvert
-// en unitaire : « le rendu réel est derrière un `setTimeout(1500)` et `getLabel` résout
-// selon la langue active du runtime ; happy-dom n'exerce ni la minuterie réelle ni le
-// rendu DOM complet (les tests avancent des fake timers, pas le vrai délai) ».
+// This file discharges scenario **S7** of the internal browser-verification
+// table, which said why it could NOT be covered at the unit tier: "the real
+// rendering is behind a `setTimeout(1500)` and `getLabel` resolves against the
+// runtime's active language; happy-dom exercises neither the real timer nor
+// full DOM rendering (the tests advance fake timers, not the real delay)".
 //
-// ⚠️ Contexte indispensable pour lire ces tests : jusqu'au 21/07/2026, la capacité `pwa`
-// était **morte en production**. `_applyModularEnrichedProfile` retournait l'objet profil
-// au lieu de la config fusionnée, si bien que `capabilities/pwa/install.ts:55` recevait
-// `undefined` pour `modules.pwa`, partait en branche « gate off » et appelait
-// `_unregisterAll()`. Aucune de ces bannières n'avait donc JAMAIS pu s'afficher, sur aucun
-// profil. Ces tests sont la première vérification réelle de ce chemin.
+// ⚠️ Context indispensable to read these tests: until 2026-07-21, the `pwa`
+// capability was **dead in production**. `_applyModularEnrichedProfile`
+// returned the profile object instead of the merged config, so
+// `capabilities/pwa/install.ts` received `undefined` for `modules.pwa`,
+// took the "gate off" branch and called `_unregisterAll()`. None of these
+// banners had thus EVER been able to display, on any profile. These tests are
+// the first real verification of that path.
 //
-// Les 3 sous-scénarios de S7 :
-//   1. `installPrompt.enabled:true` + `short_name` posé, en langue NON-FR
-//      → bannière traduite portant le nom d'app configuré (et pas « GeoLeaf »)
-//   2. iOS Safari non installé → bannière iOS (celle derrière le `setTimeout(1500)`)
-//   3. profil sans `installPrompt.enabled` → AUCUNE bannière
+// S7's 3 sub-scenarios:
+//   1. `installPrompt.enabled:true` + `short_name` set, in a NON-FR language
+//      → translated banner carrying the configured app name (and not "GeoLeaf")
+//   2. iOS Safari not installed → iOS banner (the one behind the `setTimeout(1500)`)
+//   3. profile without `installPrompt.enabled` → NO banner
 
 import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
 
 test.use({ baseURL: baseURL("core") });
 
-// Volontairement distinct de « GeoLeaf » : c'est ce qui rend le test discriminant.
-// Si la lecture de `modules.pwa.short_name` régresse, le repli est « GeoLeaf » et
-// l'assertion tombe — au lieu de passer sur une valeur identique par coïncidence.
+// Deliberately distinct from "GeoLeaf": that is what makes the test
+// discriminating. If the `modules.pwa.short_name` read regresses, the fallback
+// is "GeoLeaf" and the assertion fails — instead of passing on a value
+// identical by coincidence.
 const APP_NAME = "Atlas Rosario";
 
 /**
- * Réécrit `modules.pwa` dans la réponse de `geoleaf.config.json` avant le boot.
- * Même véhicule que `cfg-c1-root-features.spec.js` : `modules.pwa` est un bloc
- * app-global déclaré dans ce fichier, pas dans le bundle de profil.
+ * Rewrites `modules.pwa` in the `geoleaf.config.json` response before boot.
+ * Same vehicle as `cfg-c1-root-features.spec.js`: `modules.pwa` is an
+ * app-global block declared in that file, not in the profile bundle.
  */
 async function patchPwa(page, patch) {
     await page.addInitScript((p) => {
@@ -59,7 +61,7 @@ async function patchPwa(page, patch) {
     }, patch);
 }
 
-/** Émet un `beforeinstallprompt` synthétique — Chromium ne le déclenche pas en headless. */
+/** Fires a synthetic `beforeinstallprompt` — headless Chromium never does. */
 async function fireBeforeInstallPrompt(page) {
     await page.evaluate(() => {
         const evt = /** @type {any} */ (new Event("beforeinstallprompt"));
@@ -79,54 +81,58 @@ test.describe("23-pwa — bannière d'installation (S7)", () => {
             name: "Atlas Cartographique Rosario",
             installPrompt: { enabled: true },
         });
-        // `?lang=en` prime sur `ui.language` (i18n.ts:62) — le plus court chemin vers une
-        // langue non-FR sans toucher au profil.
+        // `?lang=en` takes precedence over `ui.language` (i18n.ts) — the
+        // shortest path to a non-FR language without touching the profile.
         await page.goto("/?lang=en");
         await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
 
-        // Ré-émission bornée : `beforeinstallprompt` est edge-triggered et son écouteur est
-        // posé par `PwaLifecycle` dans la passe `sharedLifecycle`, dont l'ordre vis-à-vis de
-        // l'apparition du conteneur de carte n'est pas garanti. Un dispatch unique peut donc
-        // tomber avant l'armement et être perdu sans trace. Même motif que le seam
-        // `geoleaf:feature:hover` de `22-feature-info`.
+        // Bounded re-emission: `beforeinstallprompt` is edge-triggered and its
+        // listener is set by `PwaLifecycle` in the `sharedLifecycle` pass,
+        // whose order relative to the map container's appearance is not
+        // guaranteed. A single dispatch can thus land before the arming and be
+        // lost without a trace. Same motive as `22-feature-info`'s
+        // `geoleaf:feature:hover` seam.
         const banner = page.locator("#gl-install-banner");
         await expect(async () => {
             await fireBeforeInstallPrompt(page);
             await expect(banner).toBeVisible({ timeout: 1000 });
         }).toPass({ timeout: 15000 });
 
-        // Les DEUX moitiés du scénario, assertées séparément pour qu'un échec dise laquelle.
-        // (a) le libellé est bien en anglais — `pwa.install.title` vaut « Install the {0} app »
-        //     en `en` contre « Installer l'application {0} » en `fr`.
+        // The scenario's TWO halves, asserted separately so a failure says
+        // which. (a) the label is in English — `pwa.install.title` is
+        // "Install the {0} app" in `en` vs « Installer l'application {0} » in `fr`.
         await expect(banner).toContainText("Install the");
         await expect(banner).not.toContainText("Installer l'application");
-        // (b) le nom vient de la config, pas du repli de la bibliothèque.
+        // (b) the name comes from the config, not the library's fallback.
         await expect(banner).toContainText(APP_NAME);
         await expect(banner).not.toContainText("GeoLeaf");
 
-        // Le bouton d'action est traduit lui aussi (`pwa.install.button`).
+        // The action button is translated too (`pwa.install.button`).
         await expect(banner).toContainText("Install");
     });
 
     test("profil SANS installPrompt.enabled → aucune bannière, même sur beforeinstallprompt", async ({
         page,
     }) => {
-        // ⚠️ CE TEST PATCHE DÉSORMAIS LA CONFIG, et le motif mérite d'être lu.
+        // ⚠️ THIS TEST NOW PATCHES THE CONFIG, and the motive deserves reading.
         //
-        // Il disait « la config livrée porte `installPrompt.enabled: false` — on ne patche donc
-        // RIEN, ce test éprouve l'état par défaut du déploiement réel ». C'était vrai jusqu'à
-        // **B-113**, qui a activé l'invite d'installation : sur une flotte iOS c'est la
-        // condition de survie du stockage hors-ligne, sur Android le signal d'engagement le
-        // moins cher.
+        // It used to say "the shipped config carries
+        // `installPrompt.enabled: false` — so we patch NOTHING, this test
+        // proves the real deployment's default state". That was true until the
+        // fix that enabled the install prompt: on an iOS fleet it is the
+        // offline storage's survival condition, on Android the cheapest
+        // engagement signal.
         //
-        // 🛑 Le test n'était donc plus vert que parce que le DÉPLOYÉ était périmé. La première
-        // reconstruction honnête l'a fait rougir — mesuré le 02/08/2026 — et le rouge aurait
-        // été attribué au Sprint 3 alors qu'il venait d'un changement de configuration.
+        // 🛑 The test was thus only green because the DEPLOY was stale. The
+        // first honest rebuild reddened it — measured 2026-08-02 — and the red
+        // would have been attributed to the wrong batch when it came from a
+        // configuration change.
         //
-        // Ce qu'il garde reste EXACTEMENT le même : un profil qui n'active pas l'invite
-        // n'affiche aucune bannière. Ce qui change, c'est qu'il faut désormais poser cet état
-        // explicitement au lieu de l'hériter du déployé — ce qui est plus honnête : un test
-        // qui dépend d'un défaut de configuration ambiant ne dit pas ce qu'il croit dire.
+        // What it guards stays EXACTLY the same: a profile that does not
+        // enable the prompt displays no banner. What changes is that this
+        // state must now be set explicitly instead of inherited from the
+        // deploy — which is more honest: a test depending on an ambient
+        // configuration default does not say what it thinks it says.
         await patchPwa(page, {
             enabled: true,
             short_name: APP_NAME,
@@ -136,8 +142,8 @@ test.describe("23-pwa — bannière d'installation (S7)", () => {
         await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
 
         await fireBeforeInstallPrompt(page);
-        // Laisser passer largement le délai de la bannière iOS (1500 ms) : si une bannière
-        // devait apparaître par erreur, elle en a le temps.
+        // Let the iOS banner's delay (1500 ms) pass by a wide margin: if a
+        // banner were to appear in error, it has the time.
         await page.waitForTimeout(2500);
 
         await expect(page.locator("#gl-install-banner")).toHaveCount(0);
@@ -146,9 +152,10 @@ test.describe("23-pwa — bannière d'installation (S7)", () => {
 });
 
 test.describe("23-pwa — bannière iOS (S7)", () => {
-    // `isIOSInstallable()` teste `/iPhone|iPad|iPod/i` sur l'UA puis `navigator.standalone
-    // !== true` (platform.ts:23-40). Un UA iPhone suffit donc à emprunter ce chemin ;
-    // `standalone` est absent sous Chromium, ce qui correspond bien à « pas encore installé ».
+    // `isIOSInstallable()` tests `/iPhone|iPad|iPod/i` on the UA then
+    // `navigator.standalone !== true` (platform.ts). An iPhone UA thus
+    // suffices to take this path; `standalone` is absent under Chromium, which
+    // matches "not installed yet".
     test.use({
         userAgent:
             "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
@@ -166,15 +173,15 @@ test.describe("23-pwa — bannière iOS (S7)", () => {
         await page.goto("/?lang=en");
         await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
 
-        // Pas de `beforeinstallprompt` ici : iOS ne l'émet pas, c'est toute la raison d'être
-        // de cette seconde bannière. Elle arrive seule, derrière `setTimeout(1500)` — le
-        // délai réel que happy-dom ne pouvait pas exercer.
+        // No `beforeinstallprompt` here: iOS does not emit it, which is this
+        // second banner's whole reason to exist. It arrives on its own, behind
+        // `setTimeout(1500)` — the real delay happy-dom could not exercise.
         const banner = page.locator("#gl-ios-install-banner");
         await expect(banner).toBeVisible({ timeout: 15000 });
 
         await expect(banner).toContainText(APP_NAME);
         await expect(banner).not.toContainText("GeoLeaf");
-        // `pwa.ios.title` = « Install {0} » en anglais, « Installer {0} » en français.
+        // `pwa.ios.title` = "Install {0}" in English, « Installer {0} » in French.
         await expect(banner).toContainText("Install");
     });
 });

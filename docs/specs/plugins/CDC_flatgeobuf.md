@@ -171,10 +171,10 @@ Les types sont **ré-exportés depuis `entry.ts`** — `FgbBbox`, `FgbLoadOption
 `FgbLayerOptions`, `FgbLoadResult`, `FgbLayerJsonConfig`.
 
 ⚠️ **Le namespace est déclaré mais non typé.** `global.d.ts` porte `FlatGeobuf?: unknown` — comme
-les six autres namespaces de plugins déclarés au passage de B-13. Conséquence exacte : une **faute
-de frappe sur le nom du namespace** ne compile plus (c'est le gain de B-13), mais **l'arité et la
+les six autres namespaces de plugins déclarés au typage strict. Conséquence exacte : une **faute
+de frappe sur le nom du namespace** ne compile plus (c'est le gain du typage), mais **l'arité et la
 forme des appels ne sont pas vérifiées**. Gisement suivi par
-`scripts/check-namespace-typing-coverage.cjs` et le backlog **B-13**.
+`scripts/check-namespace-typing-coverage.cjs`.
 
 ### Le seam de rendu, et ce qu'il n'atteint pas
 
@@ -246,7 +246,7 @@ qu'une vue **structurelle** locale. PC-10 ne s'applique pas.
 
 Le CDC `CDC_plugin-flatgeobuf.md` a été **consommé** en écrivant cette fiche, puis retiré du dossier
 de tri — trace au §Journal des décisions de
-`roadmap_documentation-v3.md`.
+la refonte documentaire V3.
 
 | Énoncé du CDC                                              | Ce que dit le dépôt                                                                                                      |
 | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |

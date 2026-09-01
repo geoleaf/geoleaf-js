@@ -1,5 +1,5 @@
 /**
- * Tests unitaires — Sprint 4 optional ICoreModule wrappers
+ * Tests unitaires — optional ICoreModule wrappers
  *
  * Covers: RouteModule, LabelsModule, LegendModule.
  * Each module is verified for correct id, dependencies, init/destroy behavior,

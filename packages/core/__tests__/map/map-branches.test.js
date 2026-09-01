@@ -1,5 +1,5 @@
 /**
- * S5.2 — kernel/map (0% branches → cible 60%)
+ * kernel/map (0% branches → cible 60%)
  *
  * Uses static imports so Istanbul instruments the source files.
  * (require() bypasses Vite/Istanbul transform → 0% coverage)
@@ -298,11 +298,12 @@ describe("Core (index.ts) — isolated module per test", () => {
 
     it("init() omits center entirely when center is not an array", () => {
         FreshCore.init({ mapId: "test-map", center: "bad" });
-        // Assertion RENFORCÉE (qualite Q4) : la clé doit être ABSENTE, et non présente valant
-        // `undefined`. C'est la distinction que `exactOptionalPropertyTypes` rend observable —
-        // une clé présente à `undefined` écrase un défaut dans un merge par spread, une clé
-        // absente le laisse intact. `"center" in opts === false` implique l'ancienne assertion ;
-        // la réciproque est fausse.
+        // STRENGTHENED assertion: the key must be ABSENT, not present at
+        // `undefined`. The distinction `exactOptionalPropertyTypes` makes
+        // observable — a key present at `undefined` overwrites a default in
+        // a spread merge, an absent key leaves it intact.
+        // `"center" in opts === false` implies the old assertion; the
+        // converse is false.
         const opts = freshAdapter.init.mock.calls[0][0];
         expect("center" in opts).toBe(false);
     });

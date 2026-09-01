@@ -1,75 +1,79 @@
 #!/usr/bin/env node
 /**
- * @fileoverview NONNULL-ASSERTION-DEBT — le cliquet qui empêche `noUncheckedIndexedAccess`
- * d'être soldé par des assertions de complaisance.
+ * @fileoverview NONNULL-ASSERTION-DEBT — the ratchet that keeps
+ * `noUncheckedIndexedAccess` from being settled with complacency assertions.
  *
- * ## Pourquoi cette gate existe
+ * ## Why this gate exists
  *
- * Le sprint qualité Q5 a activé `noUncheckedIndexedAccess` et soldé **391 erreurs**. Le Lot 0
- * a mesuré, à la sonde (`eslint --stdin --rule '{"complexity":["warn",0]}'`), le coût en
- * complexité cyclomatique de chaque forme de correctif :
+ * The quality pass enabled `noUncheckedIndexedAccess` and settled **391 errors**. A
+ * preliminary batch measured, by probe
+ * (`eslint --stdin --rule '{"complexity":["warn",0]}'`), the cyclomatic-complexity
+ * cost of each fix shape:
  *
- *        arr[i]!                        +0     ← INTERDIT
- *        garde `if`                     +1
+ *        arr[i]!                        +0     ← FORBIDDEN
+ *        `if` guard                     +1
  *        `??`                           +1
  *        `?.`                           +1
- *        ternaire                       +1
- *        déstructuration avec défaut    +1 par liaison
- *        `for..of` remplaçant une boucle indexée   0 net
+ *        ternary                        +1
+ *        destructuring with default     +1 per binding
+ *        `for..of` replacing an indexed loop   0 net
  *
- * **Le seul correctif à coût nul est celui qu'il faut proscrire**, et `complexity:
- * ["error", 20]` (`eslint.config.mjs`) est un cliquet à sens unique : la pression pousse
- * structurellement vers l'assertion. Ce n'est pas une hypothèse — Q4 l'a vérifié sur pièce,
- * `offline/install.ts:72` a été corrigé une première fois par un `asObject(...)!`, retiré
- * avant commit. D'où ce cliquet, sur le modèle de EOD-02 (`check-exact-optional-debt.cjs`),
- * MH-02 et TSD-04 : *sans quoi une baseline est un permis, pas un registre de dette.*
+ * **The only zero-cost fix is the one that must be proscribed**, and `complexity:
+ * ["error", 20]` (`eslint.config.mjs`) is a one-way ratchet: the pressure pushes
+ * structurally toward the assertion. Not a hypothesis — verified on the spot:
+ * `offline/install.ts` was first fixed with an `asObject(...)!`, removed before
+ * commit. Hence this ratchet, on the EOD-02 model
+ * (`check-exact-optional-debt.cjs`), MH-02 and TSD-04: *without which a baseline is
+ * a permit, not a debt register.*
  *
- * ## Les quatre règles
+ * ## The four rules
  *
- *   NNA-04  **Zéro `!` sur une lecture indexée** (`arr[i]!`, `obj[k]!`) — sans baseline et
- *           sans exception. Une lecture indexée assertée EST une erreur
- *           `noUncheckedIndexedAccess` qu'on a fait taire : le sweep sort vert parce que le
- *           `!` est là. C'est la règle qui rend le palier vrai, et la seule sans échappatoire.
- *   NNA-01  Toute AUTRE assertion `!` ou `as unknown` doit figurer dans la baseline. Une
- *           nouvelle est une erreur : elle ne peut pas naître en dette.
- *   NNA-02  La baseline ne peut que RÉTRÉCIR. Une entrée qui a disparu du code est une
- *           erreur tant qu'elle n'est pas retirée du fichier.
- *   NNA-03  Le corpus ne peut pas être vide. Une gate verte qui n'a rien scanné est le pire
- *           des résultats (même classe que EOD-03 et que les modes d'échec de
- *           `typecheck-docs-examples.cjs`).
+ *   NNA-04  **Zero `!` on an indexed read** (`arr[i]!`, `obj[k]!`) — no baseline, no
+ *           exception. An asserted indexed read IS a silenced
+ *           `noUncheckedIndexedAccess` error: the sweep goes green because the `!`
+ *           is there. The rule that makes the tier true, and the only one without an
+ *           escape.
+ *   NNA-01  Any OTHER `!` or `as unknown` assertion must be in the baseline. A new
+ *           one is an error: it cannot be born as debt.
+ *   NNA-02  The baseline can only SHRINK. An entry gone from the code is an error
+ *           until removed from the file.
+ *   NNA-03  The corpus cannot be empty. A green gate that scanned nothing is the
+ *           worst outcome (same class as EOD-03 and
+ *           `typecheck-docs-examples.cjs`'s failure modes).
  *
- * ## Trois décisions de conception, chacune motivée par un défaut MESURÉ
+ * ## Three design decisions, each motivated by a MEASURED defect
  *
- * **AST, jamais grep.** Le pré-vol de Q5.4 annonçait « 130 assertions `!` », mesurées par
- * une lecture de texte. La visite AST en trouve **192**, soit 47 % de plus — et surtout,
- * elle seule sait CLASSER : sur ces 192, exactement **10** portaient sur une lecture
- * indexée, les 182 autres échappant à `strictNullChecks` (palier Q3), pas à celui-ci. Un
- * compteur qui ne distingue pas les deux natures aurait fait passer une purge de dette Q3
- * pour un travail Q5, ou l'inverse.
+ * **AST, never grep.** The preflight announced "130 `!` assertions", measured by a
+ * text read. The AST visit finds **192**, i.e. 47 % more — and above all, it alone
+ * can CLASSIFY: of those 192, exactly **10** bore on an indexed read, the 182 others
+ * escaping `strictNullChecks` (the earlier tier), not this one. A counter that
+ * cannot tell the two natures apart would have passed an earlier-tier debt purge for
+ * this tier's work, or the reverse.
  *
- * **La distinction se fait sur la FORME de l'expression assertée**, pas sur le fichier ni
- * sur un commentaire : `ts.isElementAccessExpression(node.expression)` sépare `arr[i]!` de
- * `o.p!`, `x!` et `map.get(k)!` sans qu'aucune convention humaine ait à être respectée.
+ * **The distinction goes by the asserted expression's SHAPE**, not the file nor a
+ * comment: `ts.isElementAccessExpression(node.expression)` separates `arr[i]!` from
+ * `o.p!`, `x!` and `map.get(k)!` with no human convention to honour.
  *
- * **Périmètre dérivé du registre.** `scripts/lib/packages.cjs`, jamais un glob
- * `packages/<nom>` en dur. Le glob naïf `packages/*​/src` ne matche NI `packages/plugins/*`
- * NI `packages/libs/*` — la totalité des plugins serait hors compteur sans que rien ne
- * rougisse. C'est la classe que `probe-gate-visibility.cjs` surveille.
+ * **Perimeter derived from the registry.** `scripts/lib/packages.cjs`, never a
+ * hard-coded `packages/<name>` glob. The naive `packages/*​/src` glob matches NEITHER
+ * `packages/plugins/*` NOR `packages/libs/*` — the entirety of the plugins would sit
+ * off the counter with nothing turning red. The class
+ * `probe-gate-visibility.cjs` watches.
  *
- * ## Ce que cette gate NE garde pas
+ * ## What this gate does NOT guard
  *
- * Les 180 assertions résiduelles sont de la dette **Q3** (`strictNullChecks`), gelée et
- * nommée dans `_docs_projet/registres/dette_technique.md`. Leur décrue est un sprint à
- * part : la mêler à Q5 ferait un diff où l'on ne distingue plus ce que le palier a prouvé
- * de ce qu'on a nettoyé au passage.
+ * The 180 residual assertions are `strictNullChecks` debt, frozen and named in the
+ * internal debt register. Their decrease is separate work: mixing it in would make a
+ * diff where what the tier proved can no longer be told from what was cleaned in
+ * passing.
  *
  * ## Usage
  *
  *        node scripts/check-nonnull-assertion-debt.cjs
  *        node scripts/check-nonnull-assertion-debt.cjs --update-baseline
  *
- * ⚠️ `--update-baseline` se lance APRÈS avoir corrigé, jamais pour faire taire. Et il ne
- * peut RIEN faire pour NNA-04, qui n'a pas de baseline.
+ * ⚠️ `--update-baseline` is run AFTER fixing, never to silence. And it can do
+ * NOTHING for NNA-04, which has no baseline.
  */
 
 "use strict";
@@ -87,7 +91,7 @@ const UPDATE = process.argv.includes("--update-baseline");
 const SKIP_DIRS = new Set(["__tests__", "__mocks__", "node_modules", "dist", "coverage"]);
 
 /**
- * Les répertoires `src/` de tous les paquets du registre.
+ * The `src/` directories of every registry package.
  *
  * @returns {string[]} chemins absolus existants
  */
@@ -101,7 +105,7 @@ function sourceRoots() {
 /**
  * @param {string} dir
  * @param {string[]} out
- * @returns {string[]} les `.ts` du sous-arbre, tests et déclarations exclus
+ * @returns {string[]} the subtree's `.ts`, tests and declarations excluded
  */
 function collectTs(dir, out = []) {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -121,8 +125,8 @@ function collectTs(dir, out = []) {
 }
 
 /**
- * Nom de la fonction ou du membre englobant — sert de coordonnée stable dans la clé, à la
- * place du numéro de ligne, qu'une insertion en amont périmerait.
+ * Name of the enclosing function or member — serves as the key's stable
+ * coordinate, in place of the line number, which an upstream insertion would stale.
  *
  * @param {import("typescript").Node} node
  * @param {import("typescript").SourceFile} sf
@@ -147,20 +151,22 @@ function enclosingName(node, sf) {
 }
 
 /**
- * Clé stable, SANS numéro de ligne. Même raisonnement que `entryKey()` dans
- * `check-exact-optional-debt.cjs` et `diagnosticKey()` dans `typecheck-docs-examples.cjs`.
+ * Stable key, WITHOUT a line number. Same reasoning as `entryKey()` in
+ * `check-exact-optional-debt.cjs` and `diagnosticKey()` in
+ * `typecheck-docs-examples.cjs`.
  *
  * @param {string} rel
  * @param {string} owner
- * @param {string} kind `!` ou `as-unknown`
- * @param {string} text expression assertée, tronquée
+ * @param {string} kind `!` or `as-unknown`
+ * @param {string} text asserted expression, truncated
  * @returns {string}
  */
 const entryKey = (rel, owner, kind, text) => `${rel}::${owner}::${kind}::${text}`;
 
 /**
- * @returns {{ debt: string[], indexed: string[], scanned: number }} `debt` = les assertions
- *   gelables (NNA-01/02) ; `indexed` = les `arr[i]!`, qui n'ont pas de baseline (NNA-04)
+ * @returns {{ debt: string[], indexed: string[], scanned: number }} `debt` = the
+ *   freezable assertions (NNA-01/02); `indexed` = the `arr[i]!`, which have no
+ *   baseline (NNA-04)
  */
 function scan() {
     const debt = [];
@@ -183,7 +189,7 @@ function scan() {
                     const owner = enclosingName(node, sf);
                     const text = node.expression.getText(sf).replace(/\s+/g, " ").slice(0, 60);
                     if (ts.isElementAccessExpression(node.expression)) {
-                        // NNA-04 : la ligne EST utile ici, l'entrée n'est jamais gelée.
+                        // NNA-04: the line IS useful here, the entry is never frozen.
                         const line = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1;
                         indexed.push(`${rel}:${line} — ${text}!`);
                     } else {
@@ -206,7 +212,7 @@ function scan() {
 const { debt, indexed, scanned } = scan();
 const bar = "─".repeat(72);
 
-// ── NNA-03 — une gate qui n'a rien scanné n'a rien prouvé ────────────────────────────────
+// ── NNA-03 — a gate that scanned nothing proved nothing ─────────────────────────────────
 if (scanned === 0) {
     console.error("ERROR [NONNULL-ASSERTION-DEBT/NNA-03]: corpus vide — 0 fichier scanné.");
     console.error("  Le registre de paquets ne résout aucun `src/`. La gate ne garde rien.");
@@ -217,8 +223,9 @@ if (UPDATE) {
     fs.mkdirSync(path.dirname(BASELINE), { recursive: true });
     fs.writeFileSync(
         BASELINE,
-        // Indentation 4 : Prettier possède `scripts/**/*.json` en `tabWidth: 4` et
-        // reformaterait tout le fichier au commit, rendant illisible le retrait d'une ligne.
+        // Indentation 4: Prettier owns `scripts/**/*.json` at `tabWidth: 4` and
+        // would reformat the whole file at commit, making one line's removal
+        // unreadable.
         JSON.stringify(
             {
                 _comment:
@@ -227,7 +234,7 @@ if (UPDATE) {
                     "ceux-là sont interdits sans exception (NNA-04), parce qu'une lecture " +
                     "indexée assertée est une erreur `noUncheckedIndexedAccess` qu'on a tue. " +
                     "Le reste est de la dette `strictNullChecks` (palier Q3), instruite dans " +
-                    "_docs_projet/registres/dette_technique.md. Régénérer avec " +
+                    "le registre de dette interne. Régénérer avec " +
                     "--update-baseline UNIQUEMENT après avoir corrigé, jamais pour faire taire.",
                 _generated: "node scripts/check-nonnull-assertion-debt.cjs --update-baseline",
                 count: debt.length,
@@ -241,7 +248,7 @@ if (UPDATE) {
     process.exit(0);
 }
 
-// ── NNA-04 — pas de baseline, pas d'exception ────────────────────────────────────────────
+// ── NNA-04 — no baseline, no exception ───────────────────────────────────────────────────
 if (indexed.length > 0) {
     console.log(bar);
     console.error(
@@ -259,8 +266,8 @@ if (indexed.length > 0) {
 }
 
 if (!fs.existsSync(BASELINE)) {
-    // Une baseline absente n'est PAS une liste vide : ce serait déclarer propre toute la
-    // surface. Même refus que `check-exact-optional-debt.cjs`.
+    // An absent baseline is NOT an empty list: it would declare the whole surface
+    // clean. Same refusal as `check-exact-optional-debt.cjs`.
     console.error("ERROR [NONNULL-ASSERTION-DEBT]: baseline absente.");
     console.error("  Run: node scripts/check-nonnull-assertion-debt.cjs --update-baseline");
     process.exit(2);

@@ -310,7 +310,7 @@ describe("adapters/maplibre-vector-tiles — stale sub-layer cleanup (B.44)", ()
             const style = {
                 casing: { enabled: true, color: "#000", weight: 6 },
                 // `fillExtrusionHeight`/`Color` are mandatory for the fill-extrusion
-                // geometry (maplibre-extrusion-validator.ts:39,45) and are read off the
+                // geometry (maplibre-extrusion-validator.ts) and are read off the
                 // FLATTENED style, i.e. from `defaultStyle` — not from a sibling key.
                 defaultStyle: {
                     fillColor: "#f00",

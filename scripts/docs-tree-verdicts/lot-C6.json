@@ -130,9 +130,9 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Wrapper `ICoreModule` du renderer, déclaré dépendant de `config` seul — jamais de `ui` (interblocage), plus de `geojson` depuis B-56",
+            "description": "Wrapper `ICoreModule` du renderer, déclaré dépendant de `config` seul — jamais de `ui` (interblocage), plus de `geojson` non plus",
             "confidence": "haute",
-            "rationale": "64 LOC, exporte `ToastRendererModule`. INV-CAPABILITY-MODULE (T6 §3.2) : les 13 wrappers de boot vivent en `capabilities/<id>/module.ts` depuis R.10, zéro exception — proposer un retour dans `app/boot-modules/` contredirait la gate eslint. ⚠️ Sa dépendance a été `geojson` jusqu'au 28/07/2026 : astuce d'ordonnancement, pas besoin, et elle plaçait le montage du renderer derrière l'attente de la phase 1 de chargement des couches (B-56)."
+            "rationale": "64 LOC, exporte `ToastRendererModule`. INV-CAPABILITY-MODULE (T6 §3.2) : les 13 wrappers de boot vivent en `capabilities/<id>/module.ts` depuis R.10, zéro exception — proposer un retour dans `app/boot-modules/` contredirait la gate eslint. ⚠️ Sa dépendance a été `geojson` jusqu'au 28/07/2026 : astuce d'ordonnancement, pas besoin, et elle plaçait le montage du renderer derrière l'attente de la phase 1 de chargement des couches."
         },
         "packages/core/src/capabilities/toast-renderer/public-api.ts": {
             "kind": "file",

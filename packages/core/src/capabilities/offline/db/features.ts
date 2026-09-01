@@ -154,14 +154,15 @@ function init(db: IDBDatabase): FeaturesDBInstance {
 }
 
 /**
- * Écrit un lot en préservant les saisies locales — la règle du contrat, dans UNE transaction.
+ * Writes a batch while preserving local captures — the contract's rule, in ONE
+ * transaction.
  *
- * Hors de `init` pour rester sous le plafond de longueur de fonction, et parce qu'elle ne
- * capture rien de la fermeture au-delà de la connexion : elle la reçoit en paramètre.
+ * Outside `init` to stay under the function-length ceiling, and because it captures
+ * nothing from the closure beyond the connection: it receives it as a parameter.
  *
- * @param db - Connexion IndexedDB ouverte.
- * @param records - Le lot rapatrié, dans l'ordre où la source l'a rendu.
- * @returns Le décompte réel — jamais estimé depuis la taille du lot.
+ * @param db - Open IndexedDB connection.
+ * @param records - The pulled batch, in the order the source returned it.
+ * @returns The real tally — never estimated from the batch size.
  */
 function putPreserving(
     db: IDBDatabase,

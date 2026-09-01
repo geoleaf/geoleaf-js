@@ -244,9 +244,15 @@ header records the standard and the proof used for each entry.
 
 The metric that matters at load time is the **boot payload**: the
 `packages/core/dist/geoleaf.esm.js` entry **plus the transitive closure of the chunks it
-imports statically**. ⚠️ Do **not** call the flat entry "a shim": `npm run size` measures it at ~69 KB gz. The ~1 KB shim is the _granular_ entry (`dist/esm/`), and conflating the two is how a documented figure once drifted by a factor of 100. Budgeting the entry alone
-— budgeting it catches no regression. Only dynamic `import()` chunks are genuinely lazy and
-therefore excluded.
+imports statically**. ⚠️ Do **not** call the flat entry "a shim": the ~1 KB shim is the
+_granular_ entry (`dist/esm/`), and conflating the two is how a documented figure once drifted
+by a factor of 100. Budgeting the entry alone catches no regression. Only dynamic `import()`
+chunks are genuinely lazy and therefore excluded.
+
+> ⚠️ **This paragraph carried the very defect it forbids until 26/08/2026.** It claimed the
+> command measured the flat entry at "~69 KB gz", and the measurement had already moved. A size
+> copied into prose is stale the moment a chunk boundary shifts — including in the sentence that
+> forbids copying it. **Neither entry has a size written here. Run the command.**
 
 Hard budget: the build **fails above 300 KB gz**, warns above 270 KB gz.
 `scripts/check-bundle-size.cjs` measures the closure; the current figure is what

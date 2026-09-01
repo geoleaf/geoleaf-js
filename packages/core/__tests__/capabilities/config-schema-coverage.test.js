@@ -1,6 +1,6 @@
 /**
  * Unit tests — FAMILY guard: a config key READ by the runtime must be DECLARED in
- * its capability's `configSchema` (roadmap_optimisation-capacites B.34).
+ * its capability's `configSchema`.
  *
  * Mirror family of "declared but never read" (B.22 / B.30), and the costlier one:
  * `GeoLeaf.Introspection.getCapabilitySchema('<id>')` is what an integrator and the
@@ -42,26 +42,21 @@ const { CapabilityRegistry } = await import("../../src/kernel/api/capability-reg
 const { Introspection } = await import("../../src/api/geoleaf.introspection.ts");
 
 const { CLUSTER_CAPABILITY } = await import("../../src/capabilities/cluster/cluster-capability.ts");
-const { FEATURE_INFO_CAPABILITY } = await import(
-    "../../src/capabilities/feature-info/feature-info-capability.ts"
-);
+const { FEATURE_INFO_CAPABILITY } =
+    await import("../../src/capabilities/feature-info/feature-info-capability.ts");
 const { FILTER_CAPABILITY } = await import("../../src/capabilities/filter/filter-capability.ts");
 const { LABELS_CAPABILITY } = await import("../../src/capabilities/labels/labels-capability.ts");
 const { LEGEND_CAPABILITY } = await import("../../src/capabilities/legend/legend-capability.ts");
 const { OFFLINE_CAPABILITY } = await import("../../src/capabilities/offline/offline-capability.ts");
-const { PERMALINK_CAPABILITY } = await import(
-    "../../src/capabilities/permalink/permalink-capability.ts"
-);
+const { PERMALINK_CAPABILITY } =
+    await import("../../src/capabilities/permalink/permalink-capability.ts");
 const { ROUTE_CAPABILITY } = await import("../../src/capabilities/route/route-capability.ts");
-const { TAXONOMY_CAPABILITY } = await import(
-    "../../src/capabilities/taxonomy/taxonomy-capability.ts"
-);
-const { THEME_SELECTOR_CAPABILITY } = await import(
-    "../../src/capabilities/theme-selector/theme-selector-capability.ts"
-);
-const { TOAST_RENDERER_CAPABILITY } = await import(
-    "../../src/capabilities/toast-renderer/toast-renderer-capability.ts"
-);
+const { TAXONOMY_CAPABILITY } =
+    await import("../../src/capabilities/taxonomy/taxonomy-capability.ts");
+const { THEME_SELECTOR_CAPABILITY } =
+    await import("../../src/capabilities/theme-selector/theme-selector-capability.ts");
+const { TOAST_RENDERER_CAPABILITY } =
+    await import("../../src/capabilities/toast-renderer/toast-renderer-capability.ts");
 
 // Runtime sources of the two importable defaults (assert against the code, not a literal).
 const { DEFAULT_PERMALINK_FIELDS } = await import("../../src/capabilities/permalink/constants.ts");
@@ -70,9 +65,8 @@ const { resolveLayerBinding } = await import("../../src/capabilities/route/resol
 
 // B.41 — the runtime that APPLIES the taxonomy defaults, so each declared value is
 // checked against behaviour rather than against a plausible literal.
-const { resolvePoiIcon, resolveTitleIcon } = await import(
-    "../../src/capabilities/taxonomy/resolver.ts"
-);
+const { resolvePoiIcon, resolveTitleIcon } =
+    await import("../../src/capabilities/taxonomy/resolver.ts");
 const { resolveBadgeStyle } = await import("../../src/capabilities/taxonomy/badge.ts");
 const { resolveIconSize } = await import("../../src/adapters/maplibre/maplibre-taxonomy-paint.ts");
 // B.41 residue — `icons.showOnMap`'s ONLY reader is `shouldUseIcons()`, a private
@@ -227,7 +221,7 @@ describe("configSchema coverage — B.34, the four instances", () => {
         );
         expect(field?.type).toBe("array");
         // The three read sites all fall back to DEFAULT_PERMALINK_FIELDS
-        // (permalink-sync.ts:77, permalink-url.ts:146 and :257).
+        // (permalink-sync.ts, permalink-url.ts and :257).
         expect(field?.default).toEqual([...DEFAULT_PERMALINK_FIELDS]);
         expect(field?.items?.enum).toEqual([...DEFAULT_PERMALINK_FIELDS]);
         // A copy, not the shared constant: getSchema() hands the declaration to studio
@@ -242,22 +236,23 @@ describe("configSchema coverage — B.34, the four instances", () => {
             "cache.maxCacheBytes"
         );
         expect(field?.type).toBe("number");
-        // The runtime default lives in CacheManager._config (cache-manager.ts:108) and
+        // The runtime default lives in CacheManager._config (cache-manager.ts) and
         // survives the OfflineLifecycle spread + init() merge when a profile omits the key.
         expect(field?.default).toBe(CacheManager._config.maxCacheBytes);
     });
 
     it("modules.offline.cache.maxTileCacheEntries — default = le repli codé dans le worker", () => {
-        // 🛑 LE WORKER NE PEUT PAS IMPORTER CE SCHÉMA. `sw-core.js` est copié tel quel dans
-        // chaque variante de déploiement, sans bundler : il re-déclare le plafond de repli en
-        // dur. Deux littéraux, aucun lien de compilation — et c'est exactement la forme de la
-        // cause racine n° 2 de la roadmap hors-ligne, où le worker ouvrait la base en v2
-        // pendant que le moteur la déclarait en v3, pendant des mois, sans que rien ne rougisse.
+        // 🛑 THE WORKER CANNOT IMPORT THIS SCHEMA. `sw-core.js` is copied
+        // as-is into each deployment variant, unbundled: it re-declares the
+        // fallback ceiling hardcoded. Two literals, no compilation link — and
+        // exactly the shape of the offline roadmap's root cause no. 2, where
+        // the worker opened the base at v2 while the engine declared it v3,
+        // for months, with nothing turning red.
         //
-        // Cette assertion est le SEUL endroit qui verrait les deux diverger. Sa conséquence si
-        // elle manquait : un profil qui omet la clé recevrait le défaut du schéma, le worker
-        // appliquerait le sien, et le plafond effectif ne serait celui d'aucun des deux
-        // documents qui le décrivent.
+        // This assertion is the ONLY place that would see the two diverge.
+        // Its consequence if missing: a profile omitting the key would get
+        // the schema's default, the worker would apply its own, and the
+        // effective ceiling would be that of neither document describing it.
         const swSource = readFileSync(
             resolve(dirname(fileURLToPath(import.meta.url)), "../../src/kernel/storage/sw-core.js"),
             "utf8"
@@ -307,7 +302,7 @@ describe("configSchema coverage — B.41, taxonomy's four subtrees", () => {
 
     it("icons.symbolPrefix — default '' IS what an absent prefix produces", () => {
         expect(taxonomyField("icons.symbolPrefix")?.default).toBe("");
-        // resolvePoiIcon prefixes with `config.icons?.symbolPrefix ?? ""` (resolver.ts:203):
+        // resolvePoiIcon prefixes with `config.icons?.symbolPrefix ?? ""` (resolver.ts):
         // no `icons` block and an explicit "" are observationally the same symbol id.
         const bare = resolvePoiIcon(CONFIG, FEATURE);
         const empty = resolvePoiIcon({ ...CONFIG, icons: { symbolPrefix: "" } }, FEATURE);
@@ -316,7 +311,7 @@ describe("configSchema coverage — B.41, taxonomy's four subtrees", () => {
     });
 
     it("icons.iconSize — default IS the size the paint seam applies with no config", () => {
-        // The literal lives in the MapLibre adapter (maplibre-taxonomy-paint.ts:34) and is
+        // The literal lives in the MapLibre adapter (maplibre-taxonomy-paint.ts) and is
         // not exported; `resolveIconSize()` with no `GeoLeaf.Taxonomy` seam renders it.
         expect(taxonomyField("icons.iconSize")?.default).toBe(resolveIconSize());
     });
@@ -325,7 +320,7 @@ describe("configSchema coverage — B.41, taxonomy's four subtrees", () => {
         for (const surface of ["popup", "tooltip", "sidepanel"]) {
             expect(taxonomyField(`render.${surface}.showIconCategory`)?.default).toBe(false);
             expect(taxonomyField(`render.${surface}.showIconSubcategory`)?.default).toBe(false);
-            // resolveTitleIcon bails unless a flag is `=== true` (resolver.ts:231), so an
+            // resolveTitleIcon bails unless a flag is `=== true` (resolver.ts), so an
             // absent `render` block and both flags at false are the same: no title icon.
             expect(resolveTitleIcon(CONFIG, "pois", FEATURE, surface)).toBeNull();
             const off = {
@@ -342,7 +337,7 @@ describe("configSchema coverage — B.41, taxonomy's four subtrees", () => {
     it("render.<surface>.colorBadges — default false IS the uncoloured behaviour", () => {
         for (const surface of ["popup", "tooltip", "sidepanel"]) {
             expect(taxonomyField(`render.${surface}.colorBadges`)?.default).toBe(false);
-            // resolveBadgeStyle returns null unless `colorBadges === true` (badge.ts:117).
+            // resolveBadgeStyle returns null unless `colorBadges === true` (badge.ts).
             expect(resolveBadgeStyle(CONFIG, "pois", FEATURE, surface, "categoryId")).toBeNull();
             const off = { ...CONFIG, render: { [surface]: { colorBadges: false } } };
             expect(resolveBadgeStyle(off, "pois", FEATURE, surface, "categoryId")).toBeNull();
@@ -355,7 +350,7 @@ describe("configSchema coverage — B.41, taxonomy's four subtrees", () => {
 
     /**
      * B.41 residue — `icons.showOnMap` was declared `default: true` on CITATION alone
-     * (`legend-generator.ts:428`), because its only reader is `shouldUseIcons()`, a
+     * (`legend-generator.ts`), because its only reader is `shouldUseIcons()`, a
      * private function of a capability outside the declaring lot's perimeter. Pinned
      * here by the same observational rule as its four siblings above.
      *
@@ -420,7 +415,7 @@ describe("configSchema coverage — B.41, taxonomy's four subtrees", () => {
 
         it("an ABSENT icons block is off — the default never applies outside it", () => {
             // `getIcons()` returns null when `modules.taxonomy.icons` is absent
-            // (taxonomy/public-api.ts:72), and `iconsConfig != null` fails first.
+            // (taxonomy/public-api.ts), and `iconsConfig != null` fails first.
             expect(iconOf(null)).toBeUndefined();
         });
     });

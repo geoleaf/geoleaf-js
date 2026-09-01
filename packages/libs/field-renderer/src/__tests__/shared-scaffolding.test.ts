@@ -8,12 +8,12 @@
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
 import type { FieldConfig } from "../contract.js";
-// ⚠️ `_linkSidepanel` et `_readonlyPair` ont été retirés de cette liste au Sprint 6
-// (S6c / 6.6) : ils n'existent plus depuis B-145, et leurs blocs de test étaient partis avec
-// eux — mais **l'import était resté**. La suite passait quand même, vite résolvant le
-// specifier manquant en `undefined` sans lever : un import mort qu'aucun test n'exerce est
-// silencieux. C'est le compteur **C1** de la clause, et il ne s'est vu qu'au relevé manuel —
-// ni `tsc`, ni vitest, ni le typecheck du paquet ne l'avaient signalé.
+// ⚠️ `_linkSidepanel` and `_readonlyPair` were removed from this list: they
+// no longer exist, and their test blocks had gone with them — but **the
+// import had stayed**. The suite still passed, vite resolving the missing
+// specifier to `undefined` without throwing: a dead import no test exercises
+// is silent. It only showed at the manual survey — neither `tsc`, nor
+// vitest, nor the package typecheck had flagged it.
 import {
     _errorSlot,
     _fieldWrap,

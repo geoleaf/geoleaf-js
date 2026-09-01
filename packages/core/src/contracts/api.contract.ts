@@ -65,7 +65,7 @@ export interface IAPIManagerRecord {
         /**
          * Wires module access into the factory.
          *
-         * ⚠️ Declared here since S6.3 because the controller now CALLS it. It existed on
+         * ⚠️ Declared here because the controller now CALLS it. It existed on
          * `APIFactoryManager` from the start and nobody ever invoked it, so the factory
          * ran with `getModule === null` for its whole life — invisible while its only
          * job was to fill a map of its own, fatal the moment its accessors had to reach
@@ -120,6 +120,25 @@ export interface IGeoLeafAPIConstructors {
  * Intentionally permissive ([key: string]: unknown) — the full namespace is
  * assembled progressively at boot and only the keys used by this cluster are
  * declared explicitly.
+ *
+ * ## ✅ This contract HAS a type witness since 25/08/2026
+ *
+ * It had none from the day the type that extended it became standalone (to be publishable):
+ * nothing confronted this shape with the object it describes, and the contract had gone from
+ * constraint to prose. The witness is
+ * `__tests__/guards/api-namespace-contract.witness.test.ts` — member-wise assignability
+ * (`import type` only, zero bytes in any bundle), enforced by the test type-check gate: a
+ * drifting member reddens as TS2322, proven by mutation on `_APIController.init()`. Member-wise
+ * rather than whole-shape on purpose: this contract is a narrow view, and `global.d.ts` types
+ * `_APIController` as `unknown` — a whole-shape witness would be red in both directions by
+ * construction.
+ *
+ * ⚠️ **An `@example` cannot serve as that witness here, and this was MEASURED rather than
+ * assumed.** The example type-checker classifies assignability errors as non-defect
+ * diagnostics, so an example asserting a FALSE type relation compiles green — tried, and
+ * deliberately broken to check. That refutation is why the witness lives in a type-checked
+ * test file instead. The extending type stays standalone: the witness imports types, it never
+ * re-couples them.
  */
 export interface GeoLeafAPINamespace {
     _APIController?: { init(): boolean } | null;

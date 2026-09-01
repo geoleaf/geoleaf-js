@@ -8,19 +8,19 @@
 /**
  * Dotted-path read for the filter engine.
  *
- * API publique S4.5 — this file used to hold two more exports, both dead once
+ * Public-API review — this file used to hold two more exports, both dead once
  * `GeoLeaf.Filters` and its route engine were removed:
  *
  *   - `extractRouteCoords` — only caller was the proximity predicate of `route-filter.ts` ;
  *   - `getSearchFieldsFromProfile` (+ its 3 private helpers) — only caller was the same file.
  *     It derived search fields from the profile LAYOUT (`panels.detail.layout[].search:true`,
  *     then the legacy `panels.search.filters`). That is the pre-S5 mechanism: the current
- *     engine reads them from the filter DESCRIPTOR instead (`engine/predicate.ts:95`,
+ *     engine reads them from the filter DESCRIPTOR instead (`engine/predicate.ts`,
  *     `active.descriptor.searchFields`). It was superseded, not merely unused — which is why
  *     it is deleted rather than kept wired to nothing.
  *
  * Their removal emptied `filter-types.ts`, deleted in the same commit. The one export left
- * has a single consumer: `capabilities/filter/engine/field-access.ts:20`.
+ * has a single consumer: `capabilities/filter/engine/field-access.ts`.
  */
 
 /**

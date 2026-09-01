@@ -1,7 +1,7 @@
 /**
  * Config-contract Phase C / C2 — B3 ui.json: ui.* flags resolved by
  * CoreMapModule/SharedModule/UIModule (formerly orchestrated by app/init.ts,
- * removed — roadmap nettoyage Sprint 3 / A-1: it was a legacy test-only facade
+ * since removed: it was a legacy test-only facade
  * that just delegated to these same module classes).
  *
  * Observed at the GeoLeaf.init() seam + the populated GeoLeaf module stubs:
@@ -29,7 +29,11 @@ const mocks = vi.hoisted(() => {
         GeoLeaf,
         padBounds: vi.fn((bounds, margin) => ({ __padded: true, margin, src: bounds })),
         initBasemaps: vi.fn(),
-        initPOI: vi.fn(),
+        // ⚠️ An `initPOI: vi.fn()` lived here and the `vi.mock("init-features.js")`
+        // factory below DECLARED it as a module export. `init-features.ts`
+        // only exports `initBasemaps`, `initGeoJSON` and `initUIPanels` — the
+        // POI subsystem is long dissolved. The double attested a nonexistent
+        // export, and nothing asserted it.
         initGeoJSON: vi.fn(),
         initUIPanels: vi.fn(),
         initI18n: vi.fn(),
@@ -42,7 +46,6 @@ vi.mock("../../src/utils/general/geoleaf-global.js", () => ({
 }));
 vi.mock("../../src/app/init-features.js", () => ({
     initBasemaps: mocks.initBasemaps,
-    initPOI: mocks.initPOI,
     initGeoJSON: mocks.initGeoJSON,
     initUIPanels: mocks.initUIPanels,
 }));
@@ -53,7 +56,7 @@ vi.mock("../../src/utils/i18n/i18n.js", () => ({
     initI18n: mocks.initI18n,
     getLabel: vi.fn((key) => key),
 }));
-// S1.2: logic migrated from initApp() → CoreMapModule/SharedModule/UIModule directly
+// Logic migrated from initApp() → CoreMapModule/SharedModule/UIModule directly
 import { CoreMapModule } from "../../src/app/boot-modules/core-map.module.ts";
 import { SharedModule } from "../../src/app/boot-modules/shared.module.ts";
 import { UIModule } from "../../src/app/boot-modules/ui.module.ts";
@@ -119,7 +122,7 @@ describe("config B3 — ui.* flags (boot module sequence seam)", () => {
         });
     });
 
-    // ── modules.permalink.{enabled,mode} (migré de ui.permalink en S13 — opt-out) ──
+    // ── modules.permalink.{enabled,mode} (migrated from ui.permalink — opt-out) ──
     describe("modules.permalink", () => {
         it("enabled → Permalink.init called with the config (incl. mode)", async () => {
             const Permalink = { init: vi.fn(), readAndStore: vi.fn() };

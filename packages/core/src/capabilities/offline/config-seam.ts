@@ -5,11 +5,12 @@
  */
 
 import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";
-// 🛑 LES DEUX ACCESSEURS DE PROFIL ONT DÉMÉNAGÉ DANS LE GRAPHE DE BOOT (tâche 8.7).
-// Ils sont ré-exportés ici sous leurs noms d'origine — les 6 sites appelants du moteur ne
-// bougent pas — mais ils ne sont plus DÉFINIS ici : la façade `GeoLeaf.Storage` doit pouvoir
-// lire une permission de couche sans que le chunk hors-ligne soit chargé, ce que `editor`
-// exige puisqu'il déclare `requires: []`. Deux copies auraient divergé (compteur C4).
+// 🛑 BOTH PROFILE ACCESSORS MOVED INTO THE BOOT GRAPH.
+// They are re-exported here under their original names — the engine's 6 call sites
+// do not move — but they are no longer DEFINED here: the `GeoLeaf.Storage` facade
+// must be able to read a layer permission without the offline chunk being loaded,
+// which `editor` requires since it declares `requires: []`. Two copies would have
+// diverged.
 import { profileLayerConfig, profileLayers } from "../../kernel/shared/index.js";
 
 /**
@@ -40,30 +41,31 @@ export function coreConfigGet<T = unknown>(key: string, defaultValue?: T): T {
 }
 
 /**
- * Alias moteur de {@link profileLayerConfig} — lit UNE couche du profil actif.
+ * Engine alias of {@link profileLayerConfig} — reads ONE layer of the active profile.
  *
- * ⚠️ **La documentation de fond vit dans `kernel/shared/edition-permissions.ts`, et elle n'est
- * PAS recopiée ici** (tâche 8.7). Elle porte les deux pièges qui ont coûté cher — la
- * projection en liste blanche de `getAllLayerConfigs()`, qui n'expose ni `edition` ni
- * `offline`, et `Config.Profile.getActiveProfileLayersConfig()`, non monté sur le namespace.
- * Dupliquer ces avertissements en ferait deux versions à tenir, et la seconde à diverger
- * serait celle que personne ne relit (compteur C4).
+ * ⚠️ **The substantive documentation lives in
+ * `kernel/shared/edition-permissions.ts`, and it is NOT copied here.** It carries the
+ * two traps that cost dearly — `getAllLayerConfigs()`'s whitelist projection, which
+ * exposes neither `edition` nor `offline`, and
+ * `Config.Profile.getActiveProfileLayersConfig()`, not mounted on the namespace.
+ * Duplicating those warnings would make two versions to keep, and the second to
+ * diverge would be the one nobody re-reads.
  *
- * L'alias existe pour que les 6 sites appelants du moteur gardent leur nom d'import.
+ * The alias exists so the engine's 6 call sites keep their import name.
  *
- * @param layerId - Identifiant de la couche.
- * @returns La configuration complète, ou `null` si le profil ou la couche est absent.
+ * @param layerId - Layer identifier.
+ * @returns The full configuration, or `null` when the profile or the layer is absent.
  */
 export const coreProfileLayerConfig = profileLayerConfig;
 
 /**
- * Alias moteur de {@link profileLayers} — lit TOUTES les couches déclarées du profil actif.
+ * Engine alias of {@link profileLayers} — reads ALL declared layers of the active profile.
  *
- * ⚠️ Mêmes sources, mêmes pièges et même remarque de non-duplication que
- * {@link coreProfileLayerConfig} : la documentation de fond est dans
+ * ⚠️ Same sources, same traps and same no-duplication note as
+ * {@link coreProfileLayerConfig}: the substantive documentation is in
  * `kernel/shared/edition-permissions.ts`.
  *
- * @returns Les déclarations de couche, ou `[]` si aucun profil n'est chargé.
+ * @returns The layer declarations, or `[]` when no profile is loaded.
  * @example
  * const declarees = coreProfileLayers().filter((l) => l.offline);
  * console.info(`${declarees.length} couche(s) déclarée(s) hors-ligne`);

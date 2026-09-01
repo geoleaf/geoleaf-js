@@ -61,10 +61,10 @@ function _defaultTitle(): string {
  * **Single accessor (B.29).** This module used to export a second, boolean one —
  * `isLegendEnabled()`, `getLegendConfig().enabled !== false` under another name.
  * Legend was the ONLY capability doing so: every sibling late-gate reads its own
- * `getXConfig()` inline (`scale/lifecycle.ts:30`, `coordinates/lifecycle.ts:35`,
- * `geolocation/lifecycle.ts:33`, `theme-toggle/lifecycle.ts:33`,
- * `toast-renderer/lifecycle.ts:179`, `filter/lifecycle.ts:48`,
- * `route/lifecycle.ts:56,65`, `feature-info/lifecycle.ts:17,25`). The late re-gate
+ * `getXConfig()` inline (`scale/lifecycle.ts`, `coordinates/lifecycle.ts`,
+ * `geolocation/lifecycle.ts`, `theme-toggle/lifecycle.ts`,
+ * `toast-renderer/lifecycle.ts`, `filter/lifecycle.ts`,
+ * `route/lifecycle.ts`, `feature-info/lifecycle.ts`). The late re-gate
  * legend needs is real — the boot gate runs on the pre-merge `baseCfg` — but it is
  * not specific to legend, and naming it bought a second spelling of one predicate for two
  * call sites, both inside this capability.

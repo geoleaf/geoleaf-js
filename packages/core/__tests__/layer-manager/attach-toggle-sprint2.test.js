@@ -1,14 +1,15 @@
 /**
  * Tests for src/kernel/layer-manager/attach-toggle.ts
- * Sprint 2 — branch coverage: attachToggleHandler, all toggle/lazy paths
+ * Branch coverage: attachToggleHandler, all toggle/lazy paths
  *
- * ⚠️ Nommé `-sprint2` au STRUCT S7 : arrivé de `__tests__/layers/`, il entrait en
- * collision de FICHIER avec `layer-manager/attach-toggle.test.js` — deux suites de
- * couverture de branches sur le même module, sous deux dossiers dont l'un ne nommait
- * rien (`layers/`). Contrairement aux deux doublons stricts du sprint, ces deux-là
- * couvrent des axes réellement distincts (Sprint 2 vs T3.3) : rien à fusionner ici,
- * seulement un nom à désambiguïser. Le jeton vient de l'en-tête ci-dessus, pas d'un
- * compteur — même patron que `basemaps/registry-sprint2.test.js`.
+ * ⚠️ Named `-sprint2` at the mirror realignment: arriving from
+ * `__tests__/layers/`, it collided as a FILE with
+ * `layer-manager/attach-toggle.test.js` — two branch-coverage suites on the
+ * same module, under two folders of which one named nothing (`layers/`).
+ * Unlike the two strict duplicates of that pass, these two cover really
+ * distinct axes: nothing to merge here, only a name to disambiguate. The
+ * name's suffix is historical, not a counter — same pattern as
+ * `basemaps/registry-sprint2.test.js`.
  */
 
 const mockGeoJSONCore = vi.hoisted(() => ({
@@ -71,7 +72,7 @@ function getClickHandler(btn) {
 
 // ─── tests ──────────────────────────────────────────────────────────────────
 
-describe("layer-manager/attach-toggle — Sprint 2 branch coverage", () => {
+describe("layer-manager/attach-toggle — branch coverage", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         delete mockThemeApplierCore._loadLayerFromProfile;

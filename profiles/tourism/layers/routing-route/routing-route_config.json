@@ -1,0 +1,38 @@
+{
+    "_comment": "The computed-route layer the routing plugin publishes into (its DEFAULT_LAYER_ID). It ships EMPTY on purpose: publishRoute() writes here at runtime. Until 25/08/2026 the demo profile had no such layer, so the routing button — deliberately visible since 23/08 — ended every computation on panel.showFailure('no-layer'): the showcase demonstrated a failure. Declaring the layer is what fixes the demo AND unblocks the two delivered-bundle proofs (ODbL credit, step labels) of e2e/35-routing-entry-point.spec.js.",
+    "id": "routing-route",
+    "label": "Itinéraire calculé",
+    "zIndex": 97,
+    "geometry": "polyline",
+    "geometryType": "polyline",
+    "interactiveShape": false,
+    "data": {
+        "directory": "data",
+        "file": "routing-route.geojson"
+    },
+    "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+            {
+                "id": "defaut",
+                "label": "défaut",
+                "file": "defaut.json"
+            }
+        ]
+    },
+    "attributes": {
+        "titleField": "properties.step",
+        "fields": [
+            {
+                "field": "properties.step",
+                "label": "Étape",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip"]
+                }
+            }
+        ]
+    }
+}

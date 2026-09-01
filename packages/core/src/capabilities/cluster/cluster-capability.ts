@@ -52,8 +52,8 @@ export const CLUSTER_CAPABILITY: ICapabilityDeclaration = {
             description:
                 "Default clustering on/off for GeoJSON point layers when absent from " +
                 "modules.cluster. A per-layer clustering:{enabled:true} override still " +
-                "clusters regardless of this default (roadmap nettoyage Sprint 3, PA-3 — " +
-                "the runtime default was already false; this schema/type doc was wrong).",
+                "clusters regardless of this default (the runtime default was always false; " +
+                "this schema/type doc once said true and was wrong).",
         },
         clusterRadius: {
             type: "number",

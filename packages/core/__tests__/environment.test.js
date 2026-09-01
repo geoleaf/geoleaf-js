@@ -1,11 +1,11 @@
 /**
- * Vérification de l'environnement de test lui-même.
+ * Verification of the test environment itself.
  *
- * ⚠️ **Conservé délibérément — n'importe aucun module du projet, et c'est sa nature**
- * (backlog R.3, 24/07/2026). Son sujet EST le harnais : `setup.js` monte-t-il bien
- * `global.testHelpers`, le DOM et le mock de `fetch` ? Un fichier qui teste le harnais
- * n'a pas de module sous test — ce n'est pas le défaut que R.3 chassait. Ne pas le
- * re-signaler au prochain tri.
+ * ⚠️ **Kept deliberately — imports no project module, and that is its
+ * nature.** Its subject IS the harness: does `setup.js` mount
+ * `global.testHelpers`, the DOM and the `fetch` mock? A file testing the
+ * harness has no module under test — not the defect the no-import triage
+ * chased. Do not re-flag it at the next triage.
  */
 
 describe("Environment Setup", () => {
@@ -20,7 +20,7 @@ describe("Environment Setup", () => {
     });
 
     test("Leaflet mock is no longer required (MapLibre)", () => {
-        // global.L was removed during the Leaflet purge (Sprint 9)
+        // global.L was removed during the Leaflet purge
         expect(true).toBe(true);
     });
 

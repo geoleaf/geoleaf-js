@@ -14,8 +14,9 @@ const mockGetRandomValues = vi.fn(() => {
 describe("security/csrf-token", () => {
     let CSRFToken;
 
-    // Déféré PORTEUR : le hook redéfinit `globalThis.crypto` avant de charger. Cible inerte
-    // ou non, la séquence est voulue — `await import()` la préserve (1ʳᵉ limite du triage).
+    // LOAD-BEARING deferral: the hook redefines `globalThis.crypto` before
+    // loading. Inert target or not, the sequence is wanted —
+    // `await import()` preserves it (the triage's first limit).
     beforeAll(async () => {
         Object.defineProperty(globalThis, "crypto", {
             value: { getRandomValues: mockGetRandomValues },

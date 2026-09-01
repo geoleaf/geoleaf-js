@@ -13,8 +13,14 @@
  * `geoleaf:feature:click` and `geoleaf:feature:hover` events. This is the
  * kernel-side seam that lets the `feature-info` capability render attribute
  * surfaces (tooltip / popup / side-panel) without the kernel knowing how
- * rendering is done. POI markers keep their own `geoleaf:poi:click` path;
- * cluster aggregates are skipped here.
+ * rendering is done. Cluster aggregates are skipped here.
+ *
+ * ⚠️ This sentence said "POI markers keep their own `geoleaf:poi:click` path"
+ * until 17/08/2026, and **that path does not exist**: measured,
+ * `geoleaf:poi:click` is the only one of the 49 declared events no code emits. The
+ * sentence pointed at nothing, and it served as justification NOT to cover POI
+ * markers here — a false reference costs more than no reference, because it closes
+ * the question instead of opening it.
  */
 
 import { dispatchGeoLeafEvent } from "../events/event-bus.js";

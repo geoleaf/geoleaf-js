@@ -11,10 +11,10 @@ import { RetryHandler } from "@core-offline/cache/retry-handler.js";
 import { StorageHelperModule as StorageHelper } from "@core-offline/db/storage-helper.js";
 import { CacheStorage } from "@core-offline/cache/storage.js";
 
-// API publique S4.4 — ce fichier importe le contrat du CORE (`@core/shared/…`), pas
-// l'adaptateur du plugin : son sujet EST le singleton et son cycle `init()`. Il garde
-// donc `StorageContract.init()`. Les autres fichiers de test, eux, pilotent désormais
-// `GeoLeaf.Storage` — le canal que la production emprunte.
+// This file imports the CORE's contract (`@core/shared/…`), not the plugin's
+// adapter: its subject IS the singleton and its `init()` cycle. So it keeps
+// `StorageContract.init()`. The other test files now drive `GeoLeaf.Storage` —
+// the channel production takes.
 
 describe("Integration core ↔ storage — StorageContract", () => {
     beforeEach(() => {
@@ -47,10 +47,11 @@ describe("Integration core ↔ storage — StorageContract", () => {
             );
         });
 
-        // ⚠️ L'ASSERTION SUR `downloadProfileForOffline` EST RETIRÉE (tâche 3.13). Le membre
-        // n'existe plus : il était mort dans tout le dépôt, et son SEUL contenu utile — le
-        // pré-contrôle de quota — a été déplacé dans `CacheManager.cacheProfile()` AVANT la
-        // suppression. Ce contrat-ci déclarait donc une méthode que ce plugin n'appelait pas.
+        // ⚠️ THE `downloadProfileForOffline` ASSERTION IS REMOVED. The member no
+        // longer exists: it was dead across the repo, and its ONLY useful
+        // content — the quota pre-check — was moved into
+        // `CacheManager.cacheProfile()` BEFORE the deletion. This contract thus
+        // declared a method this plugin did not call.
     });
 
     describe("contract init lifecycle", () => {
@@ -133,12 +134,13 @@ describe("Integration core ↔ storage — StorageContract", () => {
         });
 
         test("assembled LayerSelector (LS) exposes refreshCacheIcons used after download", async () => {
-            // ⚠️ Chargement DÉFÉRÉ, et c'est le sujet même du test : les trois modules
-            // ci-dessous montent leurs méthodes sur `LS` par `Object.assign` AU CHARGEMENT.
-            // Hissés en `import` de tête, l'assertion passerait encore — mais elle ne
-            // démontrerait plus que ce sont eux qui apportent `refreshCacheIcons`, puisque
-            // n'importe quel autre fichier de la suite aurait pu les charger avant.
-            // `await import()` préserve la séquence à la lettre (patron C de l'ADR).
+            // ⚠️ DEFERRED loading, and it is the test's very subject: the three
+            // modules below mount their methods on `LS` via `Object.assign` AT
+            // LOAD. Hoisted to top-level `import`s, the assertion would still
+            // pass — but it would no longer demonstrate that THEY bring
+            // `refreshCacheIcons`, since any other file of the suite could have
+            // loaded them first. `await import()` preserves the sequence to the
+            // letter.
             await import("../../cache/layer-selector/data-fetching.js");
             await import("../../cache/layer-selector/row-rendering.js");
             await import("../../cache/layer-selector/selection-cache.js");

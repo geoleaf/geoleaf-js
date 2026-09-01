@@ -10,7 +10,7 @@ import { createRequire } from "node:module";
 // loaded through createRequire rather than converted — see scripts/lib/packages.cjs.
 const registry = createRequire(import.meta.url)("./scripts/lib/packages.cjs");
 
-// ── Type-hardening ratchet (roadmap_typage-strict.md) ───────────────────────
+// ── Type-hardening ratchet ──────────────────────────────────────────────────
 // Globs where `@typescript-eslint/no-explicit-any` is elevated to "error".
 // EXTEND at the end of each sprint once a directory is cleaned AND green.
 // NEVER remove an entry — this is a one-way ratchet (no regression).
@@ -20,14 +20,14 @@ const ANY_HARDENED = [
     // does not loosen enforcement on any line of code; do not read it as a precedent.
     "packages/core/src/app/module-registry.ts", // pre-existing (S0 baseline)
     // ↓ add cleaned directories here as each sprint clears them (one-way ratchet).
-    "packages/core/src/kernel/ui/**/*.ts", // S2.1 — 0 any, tsc+tests green
-    "packages/core/src/kernel/themes/**/*.ts", // S2.2 — 0 any, tsc+tests green
-    "packages/core/src/kernel/map/**/*.ts", // S2.3 — 0 any, tsc+tests green
-    "packages/core/src/kernel/geojson/**/*.ts", // S3.1 — 0 any, tsc+tests green
-    "packages/core/src/kernel/layer-manager/**/*.ts", // S3.2 — 0 any, tsc+tests green
-    "packages/core/src/utils/loaders/**/*.ts", // S3.2 — 0 any, tsc+tests green
+    "packages/core/src/kernel/ui/**/*.ts", // 0 any, tsc+tests green
+    "packages/core/src/kernel/themes/**/*.ts", // 0 any, tsc+tests green
+    "packages/core/src/kernel/map/**/*.ts", // 0 any, tsc+tests green
+    "packages/core/src/kernel/geojson/**/*.ts", // 0 any, tsc+tests green
+    "packages/core/src/kernel/layer-manager/**/*.ts", // 0 any, tsc+tests green
+    "packages/core/src/utils/loaders/**/*.ts", // 0 any, tsc+tests green
     // CAPACITÉS S10 — 4 entries removed here, under the precedent recorded above:
-    // `utils/renderers/**` (S2.3), `built-in/poi/**` (S4.1), `built-in/filters/**` (S4.2)
+    // `utils/renderers/**`, `built-in/poi/**`, `built-in/filters/**`
     // and `modules/optional/**` (S5). Their directories were emptied by later sprints and
     // the globs had been matching ZERO files since — dead weight, not enforcement. Removing
     // a ratchet entry whose target no longer exists does not loosen enforcement on any line
@@ -41,13 +41,13 @@ const ANY_HARDENED = [
     "packages/core/src/**/*.ts", // S6 — whole core hardened (basemaps/api/permalink/data/contracts/app/adapters/globals + tail); __tests__ excluded by block ignores. 2 documented irreducibles (storage-contract DB, notifications overload). Covers capabilities/taxonomy + capabilities/feature-info (reclassified in-core, SR0).
 ];
 
-// ── Type-hardening ratchet — PLUGINS (roadmap_typage-plugins.md) ────────────
+// ── Type-hardening ratchet — PLUGINS ────────────────────────────────────────
 // Globs where `@typescript-eslint/no-explicit-any` is elevated to "error", for
 // the PLUGIN packages. Deliberately a SEPARATE constant + block (6quater below)
 // from the core ANY_HARDENED: each list lives in its own file zone so parallel
 // branches (e.g. feature/capacites-extraction, which also extends the core
 // ratchet) never share a git hunk with this one. Same one-way rule: never remove.
-// ARCHI S9.5 — the ratchet now names PACKAGES and derives their globs, instead of
+// The ratchet now names PACKAGES and derives their globs, instead of
 // writing 14 `packages/<dir>/src/**/*.ts` paths by hand.
 //
 // This entry was in no task of ARCHI S9 or S10, and it is the most dangerous
@@ -78,7 +78,7 @@ const ANY_HARDENED_PLUGIN_PACKAGES = [
     "@geoleaf-plugins/editor", // S2 — 15 any → 0 (EditorMap frontier; terra-draw generic adapter)
     "@geoleaf-plugins/flatgeobuf", // S3a — 4 any → 0 (namespace + FGB iterator header via structural casts)
     "@geoleaf/field-renderer", // S3a — 2 any → 0 (globalThis structural cast for I18n)
-    // PLUGINS S11.2 — free lock (0 any, 8/8 files). Locks the utilities consolidated into
+    // Free lock (0 any, 8/8 files). Locks the utilities consolidated into
     // host-runtime at S1 (css-adopt/touch-drag/notify-seam/host). A lib in a
     // `*_PLUGIN_PACKAGES` list is already established — `@geoleaf/field-renderer` above is
     // one; the constant is effectively "hardened non-core packages". pkgGlob() resolves the
@@ -89,7 +89,7 @@ const ANY_HARDENED_PLUGIN_PACKAGES = [
 /**
  * Repo-relative path inside a workspace package, resolved by npm NAME.
  *
- * ARCHI S10.1 — every `files:`/`ignores:` glob naming a package must go through
+ * Every `files:`/`ignores:` glob naming a package must go through
  * here. A glob that stops matching does NOT fail: it silently changes which rules
  * apply to a file. The move proved both directions of that — the two exemption
  * blocks below detached and lint suddenly reported complexity errors (visible),
@@ -147,15 +147,15 @@ export default [
             "**/node_modules/",
             "**/dist/",
             "**/coverage/",
-            // Q1.7 — `"**/*.min.js"` retiré : 0 fichier dans le dépôt (mesuré
-            // `git ls-files | grep '\.min\.js$'`). Le projet ne minifie que dans `dist/`
-            // et `deploy/`, tous deux déjà ignorés ci-dessus et au-dessous, et sans
-            // suffixe `.min`. Une exemption qui ne matche rien est bénigne dans CE sens
-            // (elle rend la règle plus stricte, pas moins) mais elle se lit comme une
-            // contrainte réelle, et personne ne saurait plus dire ce qu'elle protège.
+            // `"**/*.min.js"` removed: 0 files in the repo (measured with
+            // `git ls-files | grep '\.min\.js$'`). The project only minifies into
+            // `dist/` and `deploy/`, both already ignored above and below, and
+            // without a `.min` suffix. An exemption matching nothing is benign in
+            // THIS direction (it makes the rule stricter, not looser) but it reads
+            // as a real constraint, and nobody could say anymore what it protects.
             // Hand-authored toolchain config files (build / test-runner / coverage).
             // Out of runtime scope and infra-only; some are CommonJS (nyc.config.cjs)
-            // which the module-mode base block cannot parse. Audited & kept ignored (S3.5).
+            // which the module-mode base block cannot parse. Audited & kept ignored.
             // NB: jest.config.js was removed here — the project runs on Vitest, no Jest config exists.
             "**/rollup.config.mjs",
             "**/postcss.config.mjs",
@@ -165,40 +165,43 @@ export default [
             "nyc.config.cjs",
             // Generated artifact directories — never lint
             "deploy/",
-            // T6.2 — le répertoire unique des rapports de run. Il porte du JS de
-            // FOURNISSEUR : `prettify.js`, `sorter.js`, `block-navigation.js` (rapport
-            // HTML istanbul), qu'aucun autre `ignores` ne couvre — `**/coverage/` ne
-            // matche pas le composant `coverage-e2e`, et rien ne couvre
+            // The single run-reports directory. It carries VENDOR JS:
+            // `prettify.js`, `sorter.js`, `block-navigation.js` (istanbul HTML
+            // report), which no other `ignores` covers — `**/coverage/` does not
+            // match the `coverage-e2e` component, and nothing covers
             // `artifacts/playwright/report`.
             //
-            // ⚠️ Entrée DÉFENSIVE, pas load-bearing — et c'est une mesure, pas une
-            // supposition. Le plan de sprint l'annonçait « obligatoire, sans quoi
-            // `npm run lint` passe au rouge au premier rapport istanbul ». Vérifié :
-            // la retirer laisse `npx eslint .` en exit 0, ces fichiers-là ne déclenchant
-            // aucune règle de ce config. En revanche ESLint les LINTE bien — témoin
-            // synthétique `var x = 1; y = 2;` déposé sous `artifacts/`, ignore retiré :
-            // 2 erreurs. La ligne protège donc d'un futur JS de rapport moins docile,
-            // pas d'un rouge actuel. Le flat config ne saute pas un répertoire gitignoré.
+            // ⚠️ DEFENSIVE entry, not load-bearing — and that is a measurement, not
+            // an assumption. The plan announced it "mandatory, without which
+            // `npm run lint` goes red at the first istanbul report". Verified:
+            // removing it leaves `npx eslint .` at exit 0, those files triggering
+            // no rule of this config. ESLint DOES lint them though — synthetic
+            // witness `var x = 1; y = 2;` dropped under `artifacts/`, ignore
+            // removed: 2 errors. The line thus protects against a future,
+            // less docile report JS, not a current red. Flat config does not skip
+            // a gitignored directory.
             "artifacts/",
-            // T4.4 — sorti de `packages/`. ⚠️ Édition OBLIGATOIRE et non évidente : ce
-            // répertoire porte 129 fichiers `.js` (chunks VitePress hashés) qu'aucun autre
-            // `ignores` ne couvre — `**/dist/` ne matche pas le composant `docs-dist`, et
-            // les chunks ne s'appellent pas `*.min.js`. Sans cette ligne, `npm run lint`
-            // (gate `ci:local` + étape `ci.yml`) passe au rouge au premier `docs:build`.
+            // Moved out of `packages/`. ⚠️ MANDATORY, non-obvious edit: this
+            // directory carries 129 `.js` files (hashed VitePress chunks) that no
+            // other `ignores` covers — `**/dist/` does not match the `docs-dist`
+            // component, and the chunks are not named `*.min.js`. Without this
+            // line, `npm run lint` (a `ci:local` gate + `ci.yml` step) goes red at
+            // the first `docs:build`.
             "docs-dist/",
-            // T4.1 — l'entrée était `packages/core/docs/` EN ENTIER, ce qui silençait
-            // trois SOURCES rédigées : `.vitepress/config.ts` (179 L), `theme/index.ts`
-            // et `theme/custom.css`. Seuls les deux arbres générés sont des artefacts.
-            // Alignement dans le bon sens : on RESTREINT l'ignore ESLint, on n'élargit
-            // pas `.gitignore` — sinon on gitignorerait du TypeScript écrit à la main.
-            // Même liste de formes que `scripts/lib/generated-artifacts.cjs`.
+            // The entry used to be `packages/core/docs/` IN FULL, which silenced
+            // three hand-written SOURCES: `.vitepress/config.ts` (179 L),
+            // `theme/index.ts` and `theme/custom.css`. Only the two generated
+            // trees are artifacts. Alignment in the right direction: the ESLint
+            // ignore is NARROWED, `.gitignore` is not widened — that would
+            // gitignore hand-written TypeScript. Same shape list as
+            // `scripts/lib/generated-artifacts.cjs`.
             "packages/core/docs/api/",
             "packages/core/docs/public/",
             // Plugin scaffold template — placeholder __PLUGIN_*__ tokens are not
             // valid TS/identifiers; consumed by scripts/create-plugin.cjs, never built.
             "packages/_plugin-template/",
             // Local archive — git-untracked one-shot scripts (py/cjs), experimental
-            // churn. Confirmed out of scope (S3.5).
+            // churn. Confirmed out of scope.
             "_archive_local/",
             // Agent worktrees — full copies of the repo at some past commit. They are
             // git-excluded (.git/info/exclude) but that says nothing to ESLint, so a stale
@@ -207,56 +210,58 @@ export default [
             // predates the ratchet. Their paths also dodge the ANY_HARDENED globs (anchored
             // at the repo root), so a worktree can never be hardened — only ignored. (S7)
             ".claude/",
-            // Operator-run build/CI/deploy scripts (CommonJS, ~24.5k LOC over 75 files —
-            // mesuré au Q1.7 ; le commentaire annonçait « ~5.6k LOC », sous-estimé d'un
-            // facteur 4,4, et la ligne B.1 du backlog dit 20 206 / 66, à recaler aussi).
+            // Operator-run build/CI/deploy scripts (CommonJS, ~24.5k LOC over 75
+            // files — measured; the comment used to announce "~5.6k LOC",
+            // underestimated by a factor of 4.4).
             // Out of runtime
             // scope, not attacker-reachable: console.* output is their contract, and fs/regex
             // paths derive from __dirname literals + operator CLI args, so eslint-plugin-security
             // would only emit noise. Linting them needs a dedicated sourceType:"commonjs" +
-            // heavily-relaxed override yielding ~0 real findings. Kept ignored (S3.5) — re-evaluate
+            // heavily-relaxed override yielding ~0 real findings. Kept ignored — re-evaluate
             // only if a script ever handles untrusted input.
             //
-            // T3.5 — le glob était `**/scripts/**/*.{cjs,js}`, et son commentaire nommait
-            // « the stray plain-CJS .js maintenance scripts under packages/core/scripts/ ».
-            // Le T3.2 a supprimé ce répertoire — le SEUL `scripts/` de package du dépôt —,
-            // donc la moitié « package » du glob ne matchait plus rien et le commentaire
-            // était devenu faux. Réduit à la racine.
+            // The glob used to be `**/scripts/**/*.{cjs,js}`, and its comment named
+            // "the stray plain-CJS .js maintenance scripts under
+            // packages/core/scripts/". That directory was deleted — the repo's ONLY
+            // package-level `scripts/` — so the glob's "package" half matched
+            // nothing anymore and the comment had become false. Reduced to the
+            // root.
             //
-            // Q1.7 — le doublon `"scripts/**/*.{cjs,js}"` est retiré à son tour. Le T3.5
-            // l'avait gardé « pour les fichiers », en supposant que `"scripts/"` ne couvrait
-            // que les répertoires. MESURÉ : `npx eslint scripts/ci-local.cjs` → « File ignored
-            // because of a matching ignore pattern » avec la seule entrée `"scripts/"`.
-            // Le second motif ne changeait donc rien, et sa justification décrivait un
-            // comportement d'ESLint qui n'est pas le sien.
+            // The `"scripts/**/*.{cjs,js}"` duplicate was removed in turn. It had
+            // been kept "for the files", assuming `"scripts/"` only covered
+            // directories. MEASURED: `npx eslint scripts/ci-local.cjs` → "File
+            // ignored because of a matching ignore pattern" with the single
+            // `"scripts/"` entry. The second pattern thus changed nothing, and its
+            // justification described an ESLint behaviour that is not its own.
             // Demo extensions — explicitly non-production code
             // ("must NOT be deployed" / "browser-side scratch, NOT a production module").
-            // Confirmed out of scope (S3.5).
+            // Confirmed out of scope after audit.
             //
-            // Q1.7 — `"**/poc/"` retiré du même geste : 0 répertoire `poc/` dans le dépôt.
-            // Le commentaire couvrait les deux motifs, ce qui rendait le mort indiscernable
-            // du vivant — `**/demo/` matche bien, lui (`packages/plugins/connector/demo`).
+            // `"**/poc/"` removed in the same gesture: 0 `poc/` directories in the
+            // repo. The comment covered both patterns, which made the dead one
+            // indistinguishable from the live one — `**/demo/` does match
+            // (`packages/plugins/connector/demo`).
             "**/demo/",
-            // Q1.3 — `**/sw-core.js` RETIRÉ d'ici. Le motif datait d'une époque à deux
-            // copies trackées, dont une supprimée au T2.8 (`1502ea18`) après mesure :
-            // elle était byte-identique à `dist/`. Il n'en reste qu'UNE, la source
-            // `packages/core/src/kernel/storage/sw-core.js` (662 l.), livrée en
-            // production (cache offline, IndexedDB, Background Sync) et jusqu'ici hors
-            // d'ESLint, hors de `tsc` (`allowJs: false`) ET hors de `count-any`
-            // (`count-any.cjs:27` ne collecte que des `.ts`) — trois filets, aucun ne
-            // la couvrait.
+            // `**/sw-core.js` REMOVED from here. The pattern dated from a
+            // two-tracked-copies era, one deleted (`1502ea18`) after measurement:
+            // it was byte-identical to `dist/`. Only ONE remains, the source
+            // `packages/core/src/kernel/storage/sw-core.js` (662 l.), shipped in
+            // production (offline cache, IndexedDB, Background Sync) and until now
+            // outside ESLint, outside `tsc` (`allowJs: false`) AND outside
+            // `count-any` (`count-any.cjs` only collects `.ts`) — three nets,
+            // none covered it.
             //
-            // Mesuré avant de lever l'ignore : 0 erreur, 0 warning, 11 suppressions.
-            // Les globals `browser` + `node` du bloc 2 suffisent (`no-undef` = 0) ;
-            // `globals.serviceworker` est inutile.
+            // Measured before lifting the ignore: 0 errors, 0 warnings, 11
+            // suppressions. Block 2's `browser` + `node` globals suffice
+            // (`no-undef` = 0); `globals.serviceworker` is useless.
             //
-            // ⚠️ Son `/* eslint-disable no-console */` de tête N'EST PAS une directive
-            // morte à purger : c'est lui qui supprime les 11 hits. Il était inerte
-            // faute d'être lu, il devient porteur. `reportUnusedDisableDirectives`
-            // (bloc 9) le voit désormais, et le voit UTILISÉ.
+            // ⚠️ Its head `/* eslint-disable no-console */` is NOT a dead directive
+            // to purge: it is what suppresses the 11 hits. It was inert for lack
+            // of being read, it becomes load-bearing. `reportUnusedDisableDirectives`
+            // (block 9) now sees it, and sees it USED.
             //
-            // Les 5 copies d'artefact (`dist/`, les 4 `deploy/*/`) restent couvertes
-            // par `**/dist/` et `deploy/` ci-dessus — rien à ré-ancrer.
+            // The 5 artifact copies (`dist/`, the 4 `deploy/*/`) stay covered by
+            // `**/dist/` and `deploy/` above — nothing to re-anchor.
             // Vitest/Jest mock files — intentionally loose
             "**/__mocks__/**",
         ],
@@ -313,6 +318,26 @@ export default [
             "no-implied-eval": "error",
             "no-new-func": "error",
             "no-script-url": "error",
+            // 🛑 MOTIVE REQUIRED by the standing guard-rail — "never take a
+            // `security/*` rule to `warn`/`off` without a written justification
+            // BESIDE the rule". This line was the repo's ONLY known breach of that
+            // rule; the deliverable was this comment, not a fix.
+            //
+            // Two facts justify it, and neither is a preference:
+            //   ① the rule is notoriously noisy on **configuration-object
+            //      indexing** — the `config[key]` pattern is everywhere in this
+            //      repo, and each legitimate occurrence would produce a
+            //      suppression, hence noise that would end up masking a real
+            //      signal;
+            //   ② the class it targets is **already guarded elsewhere, and
+            //      better**: `scripts/check-dynamic-key-writes.cjs` (wired into
+            //      `ci:local` and the `pre-commit` hook) watches dynamic-key
+            //      WRITES — prototype pollution — on a decreasing baseline.
+            //
+            // 🖐 The decision to TURN IT BACK ON belongs to Mattieu: it would first
+            // require measuring what it reports today, then arbitrating
+            // suppression by suppression. Writing the motive does not prejudge
+            // that decision.
             "security/detect-object-injection": "off",
             "security/detect-non-literal-regexp": "warn",
             "security/detect-unsafe-regex": "error",
@@ -347,13 +372,14 @@ export default [
                 "warn",
                 { max: 100, skipBlankLines: true, skipComments: true },
             ],
-            // `skipComments` aligné sur `max-lines-per-function` ci-dessus (30/07/2026).
-            // La limite borne la COMPLEXITÉ du code, pas le volume de documentation — or la
-            // règle ⛔ de CLAUDE.md IMPOSE le TSDoc, et sans ce drapeau la seule façon de
-            // satisfaire les deux règles à la fois était de scinder un fichier dont le code
-            // fait 240 lignes. Mesuré au moment du changement : 1 seul fichier du dépôt
-            // dépassait 700 lignes brutes, et 0 fichier ne dépasse 700 lignes de code réel —
-            // la garde garde donc exactement ce qu'elle gardait, et rien de moins.
+            // `skipComments` aligned on `max-lines-per-function` above (2026-07-30).
+            // The limit bounds the code's COMPLEXITY, not the documentation
+            // volume — yet the ⛔ rule IMPOSES TSDoc, and without this flag the
+            // only way to satisfy both rules at once was to split a file whose
+            // code is 240 lines. Measured at the time of the change: 1 single
+            // file of the repo exceeded 700 raw lines, and 0 files exceed 700
+            // lines of real code — the guard thus guards exactly what it guarded,
+            // and nothing less.
             "max-lines": ["error", { max: 700, skipComments: true, skipBlankLines: true }],
         },
     },
@@ -402,7 +428,7 @@ export default [
             // landed OUTSIDE the ratchet and could reintroduce `any` silently. Defaulting to
             // error closes that hole: new code is hardened unless someone opts out on purpose.
             // Tests keep their exemption (block 4bis) — a deliberate, documented decision
-            // (roadmap_typage-strict.md), not an oversight.
+            // (typing ratchet decision), not an oversight.
             "@typescript-eslint/no-explicit-any": "error",
         },
     },
@@ -415,7 +441,7 @@ export default [
     // `index.d.ts` was removed at ARCHI S6 — the published type contract is the
     // GENERATED `dist/types/`, which is not linted (it is an artifact) but IS
     // compiled by `typecheck:consumer` and checked by `verify-published-types.cjs`.
-    // Audited & brought into scope (S3.5): guards the type surface against orphan
+    // Audited & brought into scope: guards the type surface against orphan
     // declarations at near-zero noise. Size/complexity limits are meaningless for
     // declarations; unused-vars stays at warn (declared-but-unused ambient names are
     // expected) and honours the `^_` convention.
@@ -466,24 +492,27 @@ export default [
         },
     },
 
-    // ── 3ter bis. `sw-core.js` — le SEUL fichier du dépôt qui ne PEUT PAS être scindé ──
+    // ── 3ter bis. `sw-core.js` — the ONLY file of the repo that CANNOT be split ──
     //
-    // 🛑 CE N'EST PAS UN ASSOUPLISSEMENT DE CONFORT, ET LE MOTIF EST VÉRIFIABLE. Le Service
-    // Worker n'est pas bundlé : `packages/core/rollup.config.mjs` (`swCoreVersionPlugin`) le
-    // lit en `readFileSync`, y remplace trois jetons, et l'émet en ASSET. Aucun import n'y est
-    // résolu, ni au build ni au runtime — un `import` dans ce fichier serait servi tel quel au
-    // navigateur, dans un contexte sans résolution de spécificateur nu. La seule façon de
-    // respecter `max-lines: 700` y serait donc de SUPPRIMER du comportement, pas de le ranger
-    // ailleurs. C'est exactement le cas que la limite n'est pas faite pour arbitrer.
+    // 🛑 THIS IS NOT A COMFORT RELAXATION, AND THE MOTIVE IS VERIFIABLE. The
+    // Service Worker is not bundled: `packages/core/rollup.config.mjs`
+    // (`swCoreVersionPlugin`) reads it with `readFileSync`, replaces three tokens
+    // in it, and emits it as an ASSET. No import is resolved in it, neither at
+    // build nor at runtime — an `import` in this file would be served as-is to
+    // the browser, in a context without bare-specifier resolution. The only way
+    // to honour `max-lines: 700` there would thus be to DELETE behaviour, not
+    // file it elsewhere. Exactly the case the limit is not made to arbitrate.
     //
-    // Le plafond est RELEVÉ, pas retiré : la pression reste, et elle rougira de nouveau. Passé
-    // à 800 le 07/08/2026 (tâche 1.2, bornage du cache de tuiles) — mesuré à 701 lignes de code
-    // réel juste après, donc ~99 lignes de marge et une prochaine conversation garantie.
+    // The ceiling is RAISED, not removed: the pressure stays, and it will redden
+    // again. Moved to 800 on 2026-08-07 (tile-cache bounding) — measured at 701
+    // lines of real code right after, hence ~99 lines of margin and a guaranteed
+    // next conversation.
     //
-    // ⏳ CE QUI LÈVERAIT CETTE EXEMPTION : donner au worker une vraie étape de bundling (un
-    // second point d'entrée Rollup plutôt qu'un `emitFile` d'asset). Ce jour-là, les littéraux
-    // partagés — `DATA_ORIGINS_KEY`, `TILE_BUDGET_KEY`, le plafond de tuiles — cessent d'être
-    // écrits deux fois, et leurs gardes de source deviennent sans objet avec cette ligne.
+    // ⏳ WHAT WOULD LIFT THIS EXEMPTION: giving the worker a real bundling step (a
+    // second Rollup entry point rather than an asset `emitFile`). That day, the
+    // shared literals — `DATA_ORIGINS_KEY`, `TILE_BUDGET_KEY`, the tile ceiling —
+    // stop being written twice, and their source guards become moot along with
+    // this line.
     {
         files: ["packages/core/src/kernel/storage/sw-core.js"],
         rules: {
@@ -494,7 +523,7 @@ export default [
     // ── 3quater. Vitest globals for JS test files (Q1.1) ───────────────────────
     // Same mechanic as 3ter: `languageOptions.globals` merges cumulatively across
     // matching blocks. Required by the restored `no-undef` — the suites run under
-    // `globals: true` (packages/core/vitest.config.ts:36), so `describe`/`it`/
+    // `globals: true` (packages/core/vitest.config.ts), so `describe`/`it`/
     // `expect`/`beforeEach`… are ambient and would otherwise score 22 348 hits.
     // Block 2 declared `vi` by hand; `globals.vitest` supersedes that entry.
     //
@@ -504,13 +533,13 @@ export default [
     // where the one genuine hit lives (`maplibregl`, 06-performance-baseline).
     //
     // `jest` is not a Vitest global. It is ambient only because two setup files alias
-    // it (`packages/core/__tests__/setup.js:21-22` and
-    // `packages/plugins/offline-ui/__tests__/setup.js:36` do `globalThis.jest = vi`).
+    // it (`packages/core/__tests__/setup.js` and
+    // `packages/plugins/offline-ui/__tests__/setup.js` do `globalThis.jest = vi`).
     // The call sites and `__mocks__` depend on that shim, so the global is declared
     // here to match reality. Removing the shim is a separate chantier (backlog).
-    // ⚠️ Ce commentaire citait un troisième site, `addpoi/__tests__/setup.js`, et le
-    // contre-exemple d'un mock qui donnait la MAUVAISE raison du shim. Les deux sont
-    // partis avec le paquet fusionné (5.1-f) — le motif de la règle, lui, tient.
+    // ⚠️ This comment used to cite a third site, `addpoi/__tests__/setup.js`, and
+    // the counter-example of a mock that gave the WRONG reason for the shim. Both
+    // left with the merged package — the rule's motive holds.
     {
         files: ["packages/**/__tests__/**/*.js", "packages/**/src/__tests__/**/*.js"],
         languageOptions: {
@@ -524,10 +553,10 @@ export default [
     // ── 4. Test files (JS) override ────────────────────────────────────────────
     {
         files: [
-            // Q1.7 — `"__tests__/**/*.js"` (racine) retiré : STRUCT S7 a descendu tous les
-            // répertoires de tests sous `packages/`, il n'existe plus aucun `__tests__/` à
-            // la racine du dépôt. Un glob `files:` mort est plus dangereux qu'un `ignores:`
-            // mort — il cesse d'appliquer des règles au lieu d'en appliquer trop.
+            // Root `"__tests__/**/*.js"` removed: every test directory moved under
+            // `packages/`, no `__tests__/` exists at the repo root anymore. A dead
+            // `files:` glob is more dangerous than a dead `ignores:` one — it
+            // stops applying rules instead of applying too many.
             "packages/**/__tests__/**/*.js",
             // Canonical test location (Plugin Contract v1 PC-09): tests under src/__tests__/.
             "packages/**/src/__tests__/**/*.js",
@@ -562,12 +591,12 @@ export default [
     // such as `(e: unknown) => void`. `@typescript-eslint/no-unused-vars` (block 3,
     // error) still flags genuinely dead test imports and variables.
     {
-        // Q1.7 — `"e2e/**/*.ts"` retiré : `e2e/` porte 46 `.js` et 0 `.ts`.
-        // ⚠️ `**/*.spec.ts` reste ABSENT de ce glob alors que les blocs 6/6bis/6quater/
-        // 6quinquies l'excluent explicitement — asymétrie réelle mais inerte (0 `.spec.ts`
-        // dans le dépôt). C'est la ligne B.6 du backlog, laissée en place à dessein : la
-        // corriger sans fichier témoin poserait un glob invérifiable, exactement le défaut
-        // que ce nettoyage solde.
+        // `"e2e/**/*.ts"` removed: `e2e/` carries 46 `.js` and 0 `.ts`.
+        // ⚠️ `**/*.spec.ts` stays ABSENT from this glob while blocks 6/6bis/
+        // 6quater/6quinquies exclude it explicitly — a real but inert asymmetry
+        // (0 `.spec.ts` in the repo). Left in place on purpose: fixing it without
+        // a witness file would lay an unverifiable glob, exactly the defect this
+        // cleanup settles.
         files: ["**/__tests__/**/*.ts", "**/*.test.ts"],
         rules: {
             "no-eval": "off",
@@ -581,7 +610,7 @@ export default [
             "max-lines": "off",
             "max-depth": "off",
             complexity: "off",
-            // Tests stay outside the hardened zone (roadmap_typage-strict.md). Blocks 6 and
+            // Tests stay outside the hardened zone by decision. Blocks 6 and
             // 6quater already ignore them; since S7 made block 3 default to "error", the
             // exemption has to be restated HERE — this block runs after block 3, so it wins.
             // Test doubles legitimately type mock objects as `any`; forcing them into the
@@ -590,35 +619,37 @@ export default [
         },
     },
 
-    // ── 5. (supprimé — CAPACITÉS S10) ──────────────────────────────────────────
-    // Bloc `max-lines: "off"` retiré : ses 5 entrées étaient TOUTES périmées.
-    //   - `app/init.ts`, `geojson/popup-tooltip.ts` : n'existent plus (init scindé en
-    //     init-deferred-ui / init-feature-modules / init-reveal) ;
-    //   - `built-in/permalink/permalink-manager.ts` : déplacé en `capabilities/permalink/`
-    //     par le S13 — le glob ne matchait donc plus rien, et le fichier fait 362 l. ;
-    //   - `geojson/core.ts` (413 l.) et `**/security/index.ts` (72 l.) : très en dessous
-    //     de la limite, l'exemption ne les protégeait de rien.
-    // Aucun fichier de `packages/core/src` n'atteint 700 lignes — la CONCLUSION tient,
-    // les deux termes qui la portaient étaient faux : le max mesuré au Q1.7 est **673**
-    // (`capabilities/toast-renderer/notifications.ts`), et le fichier cité ci-dessous en
-    // fait **665**. Ancienne rédaction : (max 667,
-    // `adapters/maplibre/maplibre-style-converter.ts`). Supprimer ce bloc RESSERRE donc la
-    // limite dure du bloc 2 au lieu de la relâcher : plus aucun fichier n'y échappe.
+    // ── 5. (removed) ───────────────────────────────────────────────────────────
+    // `max-lines: "off"` block removed: its 5 entries were ALL stale.
+    //   - `app/init.ts`, `geojson/popup-tooltip.ts`: no longer exist (init split
+    //     into init-deferred-ui / init-feature-modules / init-reveal);
+    //   - `built-in/permalink/permalink-manager.ts`: moved to
+    //     `capabilities/permalink/` — the glob thus matched nothing anymore, and
+    //     the file is 362 l.;
+    //   - `geojson/core.ts` (413 l.) and `**/security/index.ts` (72 l.): far
+    //     below the limit, the exemption protected them from nothing.
+    // No file of `packages/core/src` reaches 700 lines — the CONCLUSION holds,
+    // the two terms carrying it were false: the measured max is **673**
+    // (`capabilities/toast-renderer/notifications.ts`), and the file previously
+    // cited is **665**. Old wording: (max 667,
+    // `adapters/maplibre/maplibre-style-converter.ts`). Deleting this block thus
+    // TIGHTENS block 2's hard limit instead of loosening it: no file escapes it
+    // anymore.
     //
-    // Même classe que les 4 globs de cliquet purgés en tête de fichier, mais bénigne dans
-    // ce sens-ci : une exemption qui cesse de matcher rend la règle PLUS stricte. C'est
-    // l'inverse — une RESTRICTION qui cesse de matcher — qui est dangereuse, et c'est
-    // pourquoi `probe-gate-visibility.cjs` existe.
+    // Same class as the 4 ratchet globs purged at the top of the file, but benign
+    // in this direction: an exemption that stops matching makes the rule
+    // STRICTER. It is the inverse — a RESTRICTION that stops matching — that is
+    // dangerous, and that is why `probe-gate-visibility.cjs` exists.
 
     // ── 6. Type-hardening ratchet — no-explicit-any elevated to error ─────────
     // Driven by ANY_HARDENED (top of file). MUST come after block 3 so it wins
     // over block 3's global "off" for no-explicit-any. The S7 type-aware block
     // (6bis) that follows only ADDS the no-unsafe-* family — it never touches
     // no-explicit-any, so this block stays authoritative for it.
-    // See roadmap_typage-strict.md.
+    // A ratchet decision, recorded at lock time.
     {
         files: ANY_HARDENED,
-        // Tests stay out of the hardened zone (roadmap_typage-strict.md). Core tests
+        // Tests stay out of the hardened zone by decision. Core tests
         // live under packages/core/__tests__/ (outside src/), so these globs already
         // miss them; the ignores are a defensive guard for any future co-located test.
         ignores: ["**/__tests__/**", "**/*.test.ts", "**/*.spec.ts"],
@@ -636,7 +667,7 @@ export default [
     // the type-checking cost stays confined and plugins/tests remain
     // non-type-aware. Placed after block 6: it only adds the no-unsafe-* family,
     // never altering no-explicit-any. Ratchet phase (warn → error) tracked in
-    // roadmap_typage-strict.md S7.
+    // a recorded ratchet decision.
     {
         files: ["packages/core/src/**/*.ts"],
         ignores: ["**/__tests__/**", "**/*.test.ts", "**/*.spec.ts", "**/*.d.ts"],
@@ -670,9 +701,9 @@ export default [
     // See KERNEL_APP_BOUNDARY above for the rationale and the flat-config caveat.
     {
         files: [
-            // ⚠️ R.9 (24/07/2026) — `modules/**` a été éclaté en quatre racines.
-            // Laissé tel quel, ce glob aurait couvert **zéro fichier** et la frontière
-            // serait tombée EN SILENCE, sans qu'aucune gate ne rougisse.
+            // ⚠️ 2026-07-24 — `modules/**` was split into four roots. Left as-is,
+            // this glob would have covered **zero files** and the boundary would
+            // have fallen IN SILENCE, with no gate turning red.
             "packages/core/src/api/**/*.ts",
             "packages/core/src/globals/**/*.ts",
             "packages/core/src/kernel/**/*.ts",
@@ -739,9 +770,9 @@ export default [
     // Uses the @typescript-eslint extension for its `allowTypeImports` option; the
     // base no-restricted-imports rule is also posed in blocks 6ter (a) and 6ter ter,
     // on unrelated specifiers, so there is no conflict / double-report.
-    // (Q1.7 — la rédaction disait « ONLY active in block 6ter » : faux, elle est posée
-    // à trois endroits. La conclusion — pas de double-report — tient, elle repose sur
-    // le fait que les specifiers sont disjoints, pas sur l'unicité du bloc.)
+    // (The wording used to say "ONLY active in block 6ter": false, it is set in
+    // three places. The conclusion — no double-report — holds, resting on the
+    // specifiers being disjoint, not on the block's uniqueness.)
     {
         files: ["packages/core/src/**/*.ts"],
         ignores: ["packages/core/src/adapters/maplibre/**"],
@@ -782,65 +813,73 @@ export default [
                             message:
                                 "capabilities/ must not import adapters/maplibre/* — go through IMapAdapter (contracts/map-adapter.contract) or a neutral util. The engine boundary is one-way (socle B.1).",
                         },
-                        // ── ARCHI S5 (5.1) — miroir de KERNEL_APP_BOUNDARY ──────────────
-                        // `modules/ ⊄ app/` est gardé depuis le S14 ; `capabilities/ ⊄ app/`
-                        // ne l'était pas. La dépendance court app/ → capabilities/, jamais
-                        // l'inverse.
+                        // ── Mirror of KERNEL_APP_BOUNDARY ───────────────────────────────
+                        // `modules/ ⊄ app/` has been guarded for a while;
+                        // `capabilities/ ⊄ app/` was not. The dependency runs
+                        // app/ → capabilities/, never the reverse.
                         //
-                        // ⚠️ Cette règle est AJOUTÉE AU BLOC EXISTANT, pas posée dans un
-                        // nouveau bloc `capabilities/**`. En flat config, un second bloc
-                        // portant `no-restricted-imports` sur les mêmes fichiers ÉCRASE le
-                        // premier au lieu de fusionner (piège vérifié au S14 kernel, cf.
-                        // l.55-68) : la frontière moteur ci-dessus aurait disparu en silence.
+                        // ⚠️ This rule is ADDED TO THE EXISTING BLOCK, not laid in a
+                        // new `capabilities/**` block. In flat config, a second
+                        // block carrying `no-restricted-imports` on the same files
+                        // OVERWRITES the first instead of merging (trap verified on
+                        // the kernel, cf. the KERNEL_APP_BOUNDARY note): the engine
+                        // boundary above would have vanished in silence.
                         //
-                        // ✅ **L'exception a été soldée au backlog R.10 (24/07/2026).** Elle
-                        // couvrait 13 `install.ts` de capacité qui importaient leur wrapper de
-                        // boot depuis `app/boot-modules/`. Les 13 wrappers ont été déplacés dans
-                        // leur capacité (`capabilities/<id>/module.ts`), donc l'exception est
-                        // tombée **par construction** — c'est exactement ce que l'arbitrage 5.2
-                        // avait écarté au profit du gate, et le critère de complétude qu'il
-                        // s'était fixé. Il ne reste dans `app/boot-modules/` que les **6 wrappers
-                        // kernel** (config, core-map, geojson, shared, theme-engine, ui), qu'aucune
-                        // capacité n'importe. **Zéro `eslint-disable` sur cette règle.**
+                        // ✅ **The exception was settled on 2026-07-24.** It covered
+                        // 13 capability `install.ts` importing their boot wrapper
+                        // from `app/boot-modules/`. The 13 wrappers moved into
+                        // their capability (`capabilities/<id>/module.ts`), so the
+                        // exception fell **by construction** — exactly what the
+                        // arbitration had ruled out in favour of the gate, and the
+                        // completeness criterion it had set itself. Only the **6
+                        // kernel wrappers** remain in `app/boot-modules/` (config,
+                        // core-map, geojson, shared, theme-engine, ui), which no
+                        // capability imports. **Zero `eslint-disable` on this
+                        // rule.**
                         //
-                        // ⚠️ Ne pas ré-ouvrir d'exception ici : une capacité qui a besoin d'un
-                        // cycle de vie `ICoreModule` le pose chez elle, pas dans `app/`.
+                        // ⚠️ Do not reopen an exception here: a capability that
+                        // needs an `ICoreModule` lifecycle declares it at home, not
+                        // in `app/`.
                         {
                             group: ["**/app/**"],
                             message:
                                 "capabilities/ must not import app/ — the dependency runs app/ → capabilities/, never the reverse. Since R.10 there is NO exception: a capability that needs an ICoreModule lifecycle declares it in its own directory (capabilities/<id>/module.ts). Anything else must move to modules/ or go through a seam.",
                         },
-                        // ── Backlog résiduel R.8 — `capabilities/ → built-in/` médiatisée ──
-                        // 55 arêtes mesurées le 24/07. L'énoncé d'origine disait « 55 contournent
-                        // tout baril, 0 passe par une façade » : faux pour 17 d'entre elles, qui
-                        // passaient déjà par `config/config-primitives.js`, un ré-export de 15
-                        // lignes dont le TSDoc dit `RECOMMENDED USAGE`. Le gisement réel était de
-                        // 38, dont 25 imports de valeur — désormais routés par baril.
+                        // ── `capabilities/ → built-in/` goes through a mediator ────────────
+                        // 55 edges measured on 07-24. The original statement said
+                        // "55 bypass every barrel, 0 go through a facade": false
+                        // for 17 of them, which already went through
+                        // `config/config-primitives.js`, a 15-line re-export whose
+                        // TSDoc says `RECOMMENDED USAGE`. The real deposit was 38,
+                        // 25 of them value imports — now routed through a barrel.
                         //
-                        // ⚠️ Ce groupe est AJOUTÉ AU BLOC EXISTANT, comme la frontière `app/`
-                        // ci-dessus et pour la même raison : en flat config, un second bloc
-                        // portant `no-restricted-imports` sur les mêmes fichiers ÉCRASE le
-                        // premier au lieu de fusionner. Les trois frontières (moteur, app,
-                        // built-in) doivent tenir dans ce bloc unique.
+                        // ⚠️ This group is ADDED TO THE EXISTING BLOCK, like the
+                        // `app/` boundary above and for the same reason: in flat
+                        // config, a second block carrying `no-restricted-imports`
+                        // on the same files OVERWRITES the first instead of
+                        // merging. The three boundaries (engine, app, built-in)
+                        // must hold in this single block.
                         //
-                        // Trois routes restent ouvertes, toutes des catégories DÉJÀ nommées par
-                        // l'architecture — aucune n'est une échappatoire inventée pour ce gate :
-                        //   • `*/index.js`           — les barils (patron `security/index.ts`)
-                        //   • `*-types.js`           — les hubs de types (ARCHITECTURE.md §Hubs)
-                        //   • `*-seam.js`            — les seams (item-controls, desktop-tabs)
-                        //   • `config-primitives.js` — le médiateur historique, 17 arêtes
+                        // Three routes stay open, all categories ALREADY named by
+                        // the architecture — none is an escape invented for this
+                        // gate:
+                        //   • `*/index.js`           — the barrels (`security/index.ts` pattern)
+                        //   • `*-types.js`           — the type hubs (ARCHITECTURE.md §Hubs)
+                        //   • `*-seam.js`            — the seams (item-controls, desktop-tabs)
+                        //   • `config-primitives.js` — the historical mediator, 17 edges
                         //
-                        // ⚠️ Écrit en `regex` et NON en `group` de globs — ce n'est pas une
-                        // préférence de style, c'est une correction. Mesuré le 24/07 : dans un
-                        // `group`, une négation à segment simple mord
-                        // (`!**/kernel/*/index.js`) mais la même à profondeur 2 NON
-                        // (`!**/kernel/*/*/*-types.js`). Le gate sortait rouge sur 8
-                        // imports parfaitement légitimes — les 3 hubs et seams imbriqués d'un
-                        // cran (`config/geoleaf-config/config-types.js`,
-                        // `geojson/loader/loader-types.js`, `ui/desktop/desktop-tabs-seam.js`).
-                        // Un glob qui ne mord pas où on le croit est exactement la classe de
-                        // panne que ces roadmaps ont documentée : la règle a l'air posée, et elle
-                        // ne garde pas ce qu'elle annonce.
+                        // ⚠️ Written as `regex` and NOT as a glob `group` — not a
+                        // style preference, a correction. Measured on 07-24: in a
+                        // `group`, a single-segment negation bites
+                        // (`!**/kernel/*/index.js`) but the same at depth 2 does
+                        // NOT (`!**/kernel/*/*/*-types.js`). The gate came out red
+                        // on 8 perfectly legitimate imports — the 3 hubs and seams
+                        // nested one level down (`config/geoleaf-config/config-types.js`,
+                        // `geojson/loader/loader-types.js`,
+                        // `ui/desktop/desktop-tabs-seam.js`). A glob that does not
+                        // bite where believed is exactly the documented outage
+                        // class: the rule looks laid, and it does not guard what it
+                        // announces.
                         {
                             regex: String.raw`kernel/[^/]+/(?!index\.js$)(?!.*-types\.js$)(?!.*-seam\.js$)(?!config-primitives\.js$).+`,
                             message:
@@ -852,38 +891,41 @@ export default [
         },
     },
 
-    // ── 6ter quater. Constantes physiques possédées par le kernel (CAPACITÉS S10.2) ──
-    // Trois capacités ont été re-routées vers une primitive du kernel plutôt que de
-    // réimplémenter sa formule — legend → `taxonomy/resolver` (S4), scale → `scale-utils`
-    // (S6), vector-tiles → l'adaptateur (socle B.1) — et une quatrième au S10 (proximity →
-    // `utils/geo/haversine`). Rien ne les tenait : `check-orphan-exports` et knip cherchent
-    // un export SANS consommateur, or `scaleAtZoom` et `resolveCategoryKey` ont aussi des
-    // appelants internes à leur propre module. Un re-fork les laisserait verts.
+    // ── 6ter quater. Physical constants owned by the kernel ────────────────────────
+    // Three capabilities were re-routed onto a kernel primitive rather than
+    // reimplementing its formula — legend → `taxonomy/resolver`, scale →
+    // `scale-utils`, vector-tiles → the adapter — and a fourth later (proximity →
+    // `utils/geo/haversine`). Nothing held them: `check-orphan-exports` and knip
+    // look for an export WITHOUT a consumer, yet `scaleAtZoom` and
+    // `resolveCategoryKey` also have callers internal to their own module. A
+    // re-fork would leave them green.
     //
-    // Le vrai garde-fou est le jeu de tests `__tests__/capabilities/kernel-reuse.test.js`,
-    // qui calcule chaque attendu AVEC la primitive du kernel : il attrape toute dérive
-    // numérique, quelle que soit la façon dont elle est écrite. Ce bloc-ci ne couvre que le
-    // cas grossier — le copier-coller littéral de la constante — mais il le signale AU
-    // MOMENT de l'écrire, avec le nom du symbole à importer, ce qu'un test ne fait pas.
+    // The real guard-rail is the `__tests__/capabilities/kernel-reuse.test.js`
+    // test set, which computes each expected value WITH the kernel primitive: it
+    // catches any numeric drift, however it is written. This block covers only
+    // the crude case — the constant's literal copy-paste — but it flags it AT
+    // WRITE TIME, with the name of the symbol to import, which a test does not.
     //
-    // Précédent qui justifie de le poser : `print` PORTAIT quatre copies de la constante
-    // Web Mercator, sous sa forme ARRONDIE `156543.04` — celle dont le core s'est
-    // débarrassé au S6. ⚠️ Ce n'est plus vrai (mesuré au STRUCT S4) : elles sont
-    // consolidées en un export unique, `page-format.ts:32 METERS_PER_PIXEL_AT_ZOOM_0`,
-    // et les `file:ligne` cités ici étaient périmés d'un facteur 1,3 (`modal-renderer.ts`
-    // n'a jamais eu 548 lignes). Le précédent reste valide comme HISTOIRE — le re-fork
-    // s'est produit — mais il ne décrit plus l'état du dépôt. Le bloc reste scopé au CORE.
+    // Precedent that justifies laying it: `print` USED TO CARRY four copies of
+    // the Web Mercator constant, in its ROUNDED form `156543.04` — the one the
+    // core got rid of. ⚠️ No longer true (measured since): they are consolidated
+    // into a single export, `page-format.ts METERS_PER_PIXEL_AT_ZOOM_0`, and
+    // the `file:line` cited here were stale by a factor of 1.3
+    // (`modal-renderer.ts` never had 548 lines). The precedent stays valid as
+    // HISTORY — the re-fork happened — but it no longer describes the repo's
+    // state. The block stays scoped to the CORE.
     //
-    // ⚠️ Bloc SÉPARÉ, et c'est délibéré : il ne porte que `no-restricted-syntax`, une clé de
-    // règle qu'aucun autre bloc n'utilise. Le piège flat-config documenté en 6ter ter joue
-    // PAR CLÉ DE RÈGLE, pas par bloc — vérifié à `--print-config`, où `no-restricted-imports`
-    // (6ter ter) et `@typescript-eslint/no-restricted-imports` (6ter bis) coexistent déjà sur
-    // le même fichier. Poser ces sélecteurs DANS 6ter ter serait le vrai risque : on y
-    // toucherait aux frontières d'import pour une raison sans rapport.
+    // ⚠️ SEPARATE block, deliberately: it carries only `no-restricted-syntax`, a
+    // rule key no other block uses. The flat-config trap documented in 6ter ter
+    // plays PER RULE KEY, not per block — verified with `--print-config`, where
+    // `no-restricted-imports` (6ter ter) and
+    // `@typescript-eslint/no-restricted-imports` (6ter bis) already coexist on
+    // the same file. Laying these selectors INSIDE 6ter ter would be the real
+    // risk: the import boundaries would be touched for an unrelated reason.
     {
         files: ["packages/core/src/**/*.ts"],
         ignores: [
-            // Les deux propriétaires légitimes — c'est ici que les constantes vivent.
+            // The two legitimate owners — this is where the constants live.
             "packages/core/src/utils/general/scale-utils.ts",
             "packages/core/src/utils/geo/haversine.ts",
         ],
@@ -921,7 +963,7 @@ export default [
     // each list independently. Must come after block 3 (global no-explicit-any
     // "off") to win, and before block 7 (which only relaxes stylistic rules, never
     // no-explicit-any). Type-aware no-unsafe-* for plugins is deferred to S4.
-    // See roadmap_typage-plugins.md.
+    // A recorded plugin-ratchet decision.
     {
         files: ANY_HARDENED_PLUGINS,
         ignores: ["**/__tests__/**", "**/*.test.ts", "**/*.spec.ts"],
@@ -942,17 +984,17 @@ export default [
     // 6quater) so it never shares a git hunk with the core gate. Phase: `error` for
     // EVERY hardened plugin, sans exception.
     //
-    // ⚠️ Q1.7 — cette phrase annonçait « EXCEPT plugin-storage, whose 68-violation
-    // residual is deferred to roadmap_capacites-extraction S14 (see the 6sexies
-    // carve-out just below) ». TROIS énoncés faux dans une seule phrase :
-    //   1. le bloc « 6sexies » n'a jamais existé (grep `no-unsafe` → 6bis et
-    //      6quinquies, et rien d'autre) ;
-    //   2. `plugin-storage` n'existe plus non plus — renommé `offline-ui` au STRUCT S3 ;
-    //   3. les 68 violations sont soldées : `--print-config` sur
-    //      `plugins/offline-ui/src/entry.ts` résout les 5 `no-unsafe-*` à `error`, et
-    //      le lint est vert.
-    // La dette a été payée, le commentaire qui la portait est resté — et il décrivait
-    // une exemption que le config n'accordait plus. See roadmap_typage-plugins.md S4.
+    // ⚠️ This sentence used to announce "EXCEPT plugin-storage, whose
+    // 68-violation residual is deferred (see the 6sexies carve-out just below)".
+    // THREE false statements in a single sentence:
+    //   1. the "6sexies" block never existed (grep `no-unsafe` → 6bis and
+    //      6quinquies, and nothing else);
+    //   2. `plugin-storage` no longer exists either — renamed `offline-ui`;
+    //   3. the 68 violations are settled: `--print-config` on
+    //      `plugins/offline-ui/src/entry.ts` resolves the 5 `no-unsafe-*` to
+    //      `error`, and the lint is green.
+    // The debt was paid, the comment carrying it stayed — and it described an
+    // exemption the config no longer granted.
     {
         files: ANY_HARDENED_PLUGINS,
         ignores: ["**/__tests__/**", "**/*.test.ts", "**/*.spec.ts", "**/*.d.ts"],
@@ -980,12 +1022,12 @@ export default [
     },
 
     // ── 7. Offline UI / AddPOI — relax stylistic rules (accepted patterns) ────
-    // L'exemption tient à la DENSITÉ de la logique métier de ces deux paquets, et à
-    // rien d'autre : elle ne les distingue pas des 11 autres plugins par nature, elle
-    // constate qu'ils portent plus d'état et plus de branches. Deux garde-fous à
-    // garder en tête avant de l'élargir : elle est nominative (elle ne suit pas un
-    // paquet qui grossit), et elle est stylistique (aucune règle de correction n'y
-    // est désactivée).
+    // The exemption rests on the business logic's DENSITY in these two packages,
+    // and nothing else: it does not distinguish them from the 11 other plugins by
+    // nature, it observes that they carry more state and more branches. Two
+    // guard-rails to keep in mind before widening it: it is nominative (it does
+    // not follow a package that grows), and it is stylistic (no correctness rule
+    // is disabled in it).
     {
         files: [pkgGlob("@geoleaf-plugins/offline-ui", "src/**")],
         rules: {
@@ -994,11 +1036,11 @@ export default [
             "max-lines-per-function": "off",
             "max-depth": "off",
             "no-console": "off",
-            // Q1.7 — le motif cité désignait un `sync-handler.ts` de « 900 lignes » qui
-            // n'existait pas ; le seul du dépôt en faisait 444, et il est parti avec
-            // `addpoi` (5.1-f). ⚠️ **L'exemption reste, et son PÉRIMÈTRE A RÉTRÉCI** : elle
-            // ne couvre plus qu'`offline-ui`, dont `cache/` et `sync-manager.ts` la
-            // motivent seuls désormais. À re-mesurer avant de la reconduire.
+            // The cited motive named a "900-line" `sync-handler.ts` that did not
+            // exist; the repo's only one was 444, and it left with the merged
+            // `addpoi`. ⚠️ **The exemption stays, and its PERIMETER SHRANK**: it
+            // now covers only `offline-ui`, whose `cache/` and `sync-manager.ts`
+            // alone motivate it. Re-measure before renewing it.
             "max-lines": "off",
         },
     },
@@ -1019,25 +1061,25 @@ export default [
             pkgGlob("@geoleaf-plugins/connector", "src/login-ui.ts"),
             pkgGlob("@geoleaf-plugins/geocoding", "src/control.ts"),
             pkgGlob("@geoleaf-plugins/print", "src/emprise-selector.ts"),
-            // `print/src/modal-renderer.ts` retiré au STRUCT S4 : le fichier est renommé
-            // `modal-open.ts`, mais l'exemption était DÉJÀ inerte — `openModal` fait 75
-            // lignes pour un plafond de 100. La re-cibler aurait figé un glob qui ne
-            // désarme rien ; un glob `files` qui ne matche plus rien ne fait d'ailleurs
-            // rougir aucune gate (ESLint n'avertit pas dessus).
+            // `print/src/modal-renderer.ts` removed: the file is renamed
+            // `modal-open.ts`, but the exemption was ALREADY inert — `openModal`
+            // is 75 lines for a 100 ceiling. Re-targeting it would have frozen a
+            // glob that disarms nothing; a `files` glob that no longer matches
+            // reddens no gate anyway (ESLint does not warn on it).
         ],
         rules: {
             "max-lines-per-function": "off",
         },
     },
 
-    // ── 9. Orphan disable directives are an error (kernel S13.3) ───────────────
+    // ── 9. Orphan disable directives are an error ──────────────────────────────
     // Renumbered 7 → 9 (CAPACITÉS B.31): this block shipped as a second "7",
     // straddling block 8, and the file is navigated by these ordinals. Blocks 7
     // (storage/addpoi relaxations) and 8 (view-construction) keep their numbers —
-    // both are referenced as such from CHANGELOG.md and roadmap_typage-plugins.md.
+    // both are referenced as such from CHANGELOG.md.
     // A `eslint-disable` whose rule no longer fires is worse than noise: it reads as
     // "this code needs an exemption" long after it stopped being true, and the next
-    // reader either trusts it or has to re-derive why it is there. The S13.3 audit
+    // reader either trusts it or has to re-derive why it is there. The audit
     // found 0 orphans across the 15 disables of packages/core/src — this pins that.
     //
     // ESLint 9+/10 already defaults this to "warn" in flat config, which is why the
@@ -1068,31 +1110,34 @@ export default [
     // matching, and the rule reports success having scanned nothing (the failure mode
     // `probe-gate-visibility.cjs` exists to catch).
     //
-    // 🛑 **B-95 — LE CORE ÉTAIT EXCLU, ET C'EST CE QUI A FAIT MONTER LE GISEMENT À 301.**
-    // Le filtre disait `.filter((p) => p.name !== "@geoleaf/core")`, **sans motif écrit**.
-    // La règle purgeait donc 16 paquets sur 17, en épargnant précisément celui qui porte le
-    // plus de fichiers. Résultat mesuré au 16/08 : **301** `"use strict"` sous
-    // `packages/core/src`, contre une poignée ailleurs.
+    // 🛑 **THE CORE WAS EXCLUDED, AND THAT IS WHAT DROVE THE DEPOSIT TO 301.**
+    // The filter said `.filter((p) => p.name !== "@geoleaf/core")`, **without a
+    // written motive**. The rule thus purged 16 packages of 17, sparing precisely
+    // the one carrying the most files. Result measured on 08-16: **301**
+    // `"use strict"` under `packages/core/src`, against a handful elsewhere.
     //
-    // ⚠️ Et le mécanisme s'auto-entretenait : **tout fichier neuf du core héritait de la
-    // directive par imitation de ses voisins**, y compris écrit le matin même en soldant une
-    // autre ligne (`kernel/storage/eviction-notice.ts`, R9). Un gisement qui croît par simple
-    // conformité au voisinage ne se réduit pas en attendant — il monte à chaque lot.
+    // ⚠️ And the mechanism sustained itself: **every new core file inherited the
+    // directive by imitating its neighbours**, including one written that very
+    // morning while settling another line
+    // (`kernel/storage/eviction-notice.ts`). A deposit growing through mere
+    // conformity to the neighbourhood does not shrink by waiting — it rises with
+    // each batch.
     //
-    // Le glob ne vise que `**/*.ts` : `kernel/storage/sw-core.js`, copié tel quel dans les
-    // variantes de déploiement et donc PAS un module ES, garde légitimement la sienne.
+    // The glob targets only `**/*.ts`: `kernel/storage/sw-core.js`, copied as-is
+    // into the deploy variants and therefore NOT an ES module, legitimately keeps
+    // its own.
     //
-    // 🛑 **ET `geojson-worker.ts` EST LE MÊME CAS, malgré son extension.** Il est `.ts`, donc
-    // le glob l'attrapait — mais il n'est jamais consommé comme module : `rollup.config.mjs`
-    // l'émet en SCRIPT CLASSIQUE pour un Web Worker. Sa directive n'est pas du poids mort,
-    // elle est porteuse.
+    // 🛑 **AND `geojson-worker.ts` IS THE SAME CASE, despite its extension.** It
+    // is `.ts`, so the glob caught it — but it is never consumed as a module:
+    // `rollup.config.mjs` emits it as a CLASSIC SCRIPT for a Web Worker. Its
+    // directive is not dead weight, it is load-bearing.
     //
-    // ⚠️ **Le retrait est sorti VERT au lint, au typecheck et sur 10 854 tests** — c'est
-    // `LIC-HEADERS/LIC-04` qui l'a attrapé, et par un symptôme sans rapport apparent : privé
-    // de la directive du source, le transpileur en réinjecte une **avant** la bannière de
-    // licence, qui cesse d'être en tête du fichier expédié. Un fichier dont la nature diffère
-    // de son extension ne se voit ni au type, ni au test — seulement à ce qu'il devient une
-    // fois construit.
+    // ⚠️ **The removal came out GREEN at lint, typecheck and across 10,854
+    // tests** — `LIC-HEADERS/LIC-04` is what caught it, and through a seemingly
+    // unrelated symptom: deprived of the source's directive, the transpiler
+    // re-injects one **before** the licence banner, which stops being at the head
+    // of the shipped file. A file whose nature differs from its extension shows
+    // neither at type nor at test — only in what it becomes once built.
     {
         files: registry.all().map((p) => `${p.dir}/src/**/*.ts`),
         ignores: ["**/geojson-worker.ts"],
@@ -1100,43 +1145,48 @@ export default [
             strict: ["error", "never"],
         },
     },
-    // ── Outillage CommonJS de `scripts/` — B-88 ────────────────────────────────
+    // ── `scripts/` CommonJS tooling ────────────────────────────────────────────
     //
-    // 🛑 CE RÉPERTOIRE N'A JAMAIS ÉTÉ LINTÉ. `"scripts/"` figurait dans les `ignores`
-    // globaux : `isPathIgnored()` rendait `true` pour les 134 fichiers, soit ~50 000 LOC —
-    // dont TOUTES LES GATES DU DÉPÔT. L'outillage qui garde le code était le seul corpus
-    // que rien ne gardait.
+    // 🛑 THIS DIRECTORY WAS NEVER LINTED. `"scripts/"` sat in the global
+    // `ignores`: `isPathIgnored()` returned `true` for the 134 files, ~50,000
+    // LOC — including EVERY GATE OF THE REPO. The tooling guarding the code was
+    // the only corpus nothing guarded.
     //
-    // ⚠️ Placé EN FIN DE TABLEAU, et ce n'est pas cosmétique : en flat config, le dernier
-    // bloc qui matche l'emporte. Posé plus haut, ses assouplissements étaient écrasés par
-    // le bloc de base — mesuré, 836 avertissements `no-console` de pur bruit.
+    // ⚠️ Placed AT THE END OF THE ARRAY, and that is not cosmetic: in flat
+    // config, the last matching block wins. Laid higher, its relaxations were
+    // overwritten by the base block — measured, 836 `no-console` warnings of pure
+    // noise.
     //
-    // Les assouplissements, et leur motif — chacun mesuré, aucun de précaution :
-    //   · `no-console` — la sortie console EST le contrat de ces scripts, pas un oubli ;
-    //   · les limites de TAILLE (`max-lines`, `complexity`, `max-depth`,
-    //     `max-lines-per-function`) — une gate est un balayage linéaire avec ses
-    //     branches ; les fragmenter pour satisfaire un seuil rendrait le périmètre plus
-    //     dur à lire, ce qui est précisément le défaut que ces gates existent pour trouver ;
-    //   · `security/detect-non-literal-fs-filename` et `detect-non-literal-regexp` — leurs
-    //     chemins dérivent de littéraux `__dirname` et d'arguments CLI d'opérateur, jamais
-    //     d'une entrée non fiable.
+    // The relaxations, and their motive — each measured, none precautionary:
+    //   · `no-console` — console output IS these scripts' contract, not an
+    //     oversight;
+    //   · the SIZE limits (`max-lines`, `complexity`, `max-depth`,
+    //     `max-lines-per-function`) — a gate is a linear sweep with its branches;
+    //     fragmenting them to satisfy a threshold would make the perimeter harder
+    //     to read, precisely the defect these gates exist to find;
+    //   · `security/detect-non-literal-fs-filename` and
+    //     `detect-non-literal-regexp` — their paths derive from `__dirname`
+    //     literals and operator CLI arguments, never untrusted input.
     //
-    // 🛑 CE QUI N'EST PAS ASSOUPLI, DÉLIBÉRÉMENT : `no-eval`, `no-implied-eval`,
-    // `no-new-func`, `no-script-url` et `security/detect-unsafe-regex` restent en `error`.
-    // `CLAUDE.md` interdit de les abaisser sans motif écrit à côté de la règle.
+    // 🛑 WHAT IS NOT RELAXED, DELIBERATELY: `no-eval`, `no-implied-eval`,
+    // `no-new-func`, `no-script-url` and `security/detect-unsafe-regex` stay at
+    // `error`. The standing guard-rail forbids lowering them without a written
+    // motive beside the rule.
     //
-    // ⚠️ Le premier run en a trouvé **19** (18 `detect-unsafe-regex`, 1 `no-new-func`), et la
-    // tentation était de les faire taire ici — le commentaire d'exclusion d'origine plaidait
-    // déjà que ces scripts « ne sont pas atteignables par un attaquant ». **C'est vrai
-    // aujourd'hui et ce n'est pas une propriété stable** : leurs regex mordent sur des noms de
-    // fichiers du dépôt, et le dépôt est public depuis le 12/08 — une PR suffit à en proposer
-    // un. Les 18 partent donc en SUPPRESSIONS, qui est une dette qui ne peut que rétrécir,
-    // et non en `off`, qui serait une permission permanente. Le seul `no-new-func` est traité
-    // par une dérogation LOCALE avec son motif écrit (`probe-boot-contract.mjs`).
-    // ⚠️ DEUX blocs et non un : `scripts/` porte 119 fichiers CommonJS et 15 ESM
-    // (`.mjs`, l'outillage récent). Un `sourceType` unique ferait échouer le parseur sur
-    // l'une des deux moitiés — et un fichier qui ne parse pas n'est pas linté, il est
-    // SAUTÉ. Les assouplissements sont identiques ; seul le mode de module change.
+    // ⚠️ The first run found **19** (18 `detect-unsafe-regex`, 1 `no-new-func`),
+    // and the temptation was to silence them here — the original exclusion
+    // comment already pleaded that these scripts "are not attacker-reachable".
+    // **True today and not a stable property**: their regexes bite on repo file
+    // names, and the repo has been public since 08-12 — a PR suffices to propose
+    // one. The 18 thus go as SUPPRESSIONS, a debt that can only shrink, and not
+    // as `off`, which would be a permanent permission. The single `no-new-func`
+    // is handled by a LOCAL derogation with its written motive
+    // (`probe-boot-contract.mjs`).
+    // ⚠️ TWO blocks and not one: `scripts/` carries 119 CommonJS files and 15 ESM
+    // (`.mjs`, the recent tooling). A single `sourceType` would make the parser
+    // fail on one of the two halves — and a file that does not parse is not
+    // linted, it is SKIPPED. The relaxations are identical; only the module mode
+    // changes.
     {
         files: ["scripts/**/*.{cjs,js}"],
         languageOptions: {
@@ -1152,6 +1202,9 @@ export default [
             complexity: "off",
             "security/detect-non-literal-fs-filename": "off",
             "security/detect-non-literal-regexp": "off",
+            // Motive: see the main security-rules block, higher in this file —
+            // same reason (the rule is noisy on configuration-object indexing, and
+            // the targeted class is guarded elsewhere and better), same decision.
             "security/detect-object-injection": "off",
         },
     },
@@ -1170,6 +1223,9 @@ export default [
             complexity: "off",
             "security/detect-non-literal-fs-filename": "off",
             "security/detect-non-literal-regexp": "off",
+            // Motive: see the main security-rules block, higher in this file —
+            // same reason (the rule is noisy on configuration-object indexing, and
+            // the targeted class is guarded elsewhere and better), same decision.
             "security/detect-object-injection": "off",
         },
     },

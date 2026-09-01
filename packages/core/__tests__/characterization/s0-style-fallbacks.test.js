@@ -1,5 +1,5 @@
 /**
- * S0 characterization — format fallbacks REMOVED in Sprint S3 (roadmap_code).
+ * S0 characterization — format fallbacks, since REMOVED.
  *
  * These tests originally pinned two legacy format fallbacks; S3 removed them.
  * They now pin the canonical-only behaviour (the breaking removal landed):

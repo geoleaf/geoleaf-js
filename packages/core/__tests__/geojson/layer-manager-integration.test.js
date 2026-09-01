@@ -5,10 +5,10 @@ const logMock = { info: vi.fn(), warn: vi.fn(), debug: vi.fn() };
 vi.mock("../../src/kernel/geojson/shared.js", () => ({ GeoJSONShared: { state } }));
 vi.mock("../../src/utils/general/di-accessors.js", () => ({ getLog: () => logMock }));
 import { LayerManagerIntegration } from "../../src/kernel/geojson/layers/integration.js";
-// API S4.3e — `_allLayerConfigs` a quitté le namespace pour `kernel/shared/`. Ces tests
-// plantaient la clé sur un faux global : ils testaient leur propre fixture, jamais le
-// chemin écrivain → lecteur. Le littéral est gardé (il dit l'intention) et le store est
-// synchronisé juste après, pour que la lecture sous test soit la vraie.
+// `_allLayerConfigs` left the namespace for `kernel/shared/`. These tests
+// planted the key on a fake global: they tested their own fixture, never the
+// writer → reader path. The literal is kept (it states the intent) and the
+// store is synchronised right after, so the read under test is the real one.
 import { setAllLayerConfigs } from "../../src/kernel/shared/layer-configs-state.js";
 
 const _g = globalThis;
@@ -196,16 +196,16 @@ describe("geojson/layers/integration — T22 branch coverage", () => {
         logMock.warn.mockClear();
     });
 
-    // B-228 — les blocs `_resolveLegendType` / `_resolveLayerColor` ont été retirés le
-    // 11/08/2026 AVEC les fonctions qu'ils nommaient. Elles alimentaient `SectionItem.type`
-    // et `.color`, deux champs que la charge utile d'enregistrement ne déclare pas et que
-    // personne ne relisait. 🛑 Leur suppression n'a fait rougir AUCUN test : ces cas
-    // exerçaient les lignes pour la couverture sans jamais asserter leur résultat.
+    // The `_resolveLegendType` / `_resolveLayerColor` blocks were removed on
+    // 11/08/2026 WITH the functions they named. They fed `SectionItem.type`
+    // and `.color`, two fields the registration payload does not declare and
+    // nobody reread. 🛑 Their deletion turned NO test red: these cases
+    // exercised the lines for coverage without ever asserting their result.
 
-    // B-225 — `pointStyle` a été RETIRÉ du résolveur au S3 (`e17e41a6`, « retrait des
-    // fallbacks de format legacy », BREAKING v3.0.0). Les deux cas nommés « uses
-    // pointStyle.fillColor » exerçaient une branche disparue et n'assertaient que
-    // « la fonction a été appelée » : ils passaient quoi qu'il arrive.
+    // `pointStyle` was REMOVED from the resolver (`e17e41a6`, "legacy format
+    // fallbacks removal", BREAKING v3.0.0). The two cases named "uses
+    // pointStyle.fillColor" exercised a vanished branch and only asserted
+    // "the function was called": they passed no matter what.
     it("ignore une clé de style héritée (`pointStyle`, retirée en 3.0.0) sans casser l'enregistrement", () => {
         LayerManagerIntegration.detectLayerType = () => "fill";
         const _registerGeoJsonLayer = vi.fn();

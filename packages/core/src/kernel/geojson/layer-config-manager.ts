@@ -92,7 +92,7 @@ function _resolveProfileBasePath(profile: ProfileLike): {
  * `styles.default` names a FILE (`"defaut.json"`) while the theme engine addresses styles by
  * ID (`"defaut"`), and the shared style cache is keyed `profileId:layerId:styleId`. Resolving
  * one to the other is what lets the boot preload and the theme apply hit the same cache entry
- * instead of fetching the same URL twice — measured at 16 fetches for 8 layers before S5.2.
+ * instead of fetching the same URL twice — measured at 16 fetches for 8 layers before the dedup.
  *
  * ⚠️ The `available` lookup is the authority; the extension-stripped filename is only a
  * fallback for layers that declare no `available` block. All 24 layers shipped in `profiles/`
@@ -250,7 +250,7 @@ function _invokeLegendModule(
  *
  * @example
  * ```js
- * GeoLeaf._GeoJSONLayerConfig.loadLayerLegend(
+ * GeoLeaf._GeoJSONLayerConfig?.loadLayerLegend(
  *     { id: "tourism", basePath: "../profiles/tourism" },
  *     { id: "poi_all", style: "par_categorie", legends: { directory: "legends" } }
  * );
@@ -286,7 +286,7 @@ LayerConfigManager.loadLayerLegend = function (
 /**
  * Loads the default style for a layer from its `styles/*.json` file.
  *
- * Since S5.2 this delegates to {@link loadAndValidateStyle} rather than issuing its own
+ * This delegates to {@link loadAndValidateStyle} rather than issuing its own
  * `fetch()`. Two consequences, both intended:
  *
  * - **One request per style instead of two.** The theme engine asks for the same file over
@@ -311,9 +311,9 @@ LayerConfigManager.loadLayerLegend = function (
  * @throws {Error} When `styles.default` is missing, metadata is absent, the fetch fails, or
  *   the file does not match the GeoLeaf style schema.
  * @example
- * const style = await GeoLeaf._GeoJSONLayerConfig.loadDefaultStyle(
+ * const style = await GeoLeaf._GeoJSONLayerConfig?.loadDefaultStyle(
  *   'provincia_ar',
- *   { styles: { default: 'default.json' }, _profileId: 'tourism', _layerDirectory: 'layers/provincia_ar' }
+ *   { id: 'provincia_ar', styles: { default: 'default.json' }, _profileId: 'tourism', _layerDirectory: 'layers/provincia_ar' }
  * );
  */
 LayerConfigManager.loadDefaultStyle = async function (layerId: string, layerDef: LayerDefLike) {

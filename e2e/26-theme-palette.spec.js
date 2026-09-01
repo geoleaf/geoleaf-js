@@ -1,14 +1,15 @@
 // @ts-check
-// E2E — capacité `theme-palette` (S3 de roadmap_feature-selecteurs-ui).
+// E2E — `theme-palette` capability.
 //
-// C'EST LE SPEC QUI COMPTE LE PLUS DES TROIS, et pour une raison précise : le risque n°1
-// du CDC ne peut être attrapé qu'ici. purgecss ne voit pas un attribut posé en
-// JavaScript ; si les blocs `:root[data-gl-palette=…]` étaient purgés du CSS de
-// PRODUCTION, le bouton fonctionnerait, l'attribut se poserait, tous les tests unitaires
-// resteraient verts — et l'écran ne changerait pas. On vérifie donc la COULEUR CALCULÉE
-// sur le déployé, pas la présence de l'attribut.
+// THE SPEC THAT MATTERS MOST OF THE THREE, and for a precise reason: the
+// CDC's risk no. 1 can only be caught here. purgecss does not see an
+// attribute set in JavaScript; if the `:root[data-gl-palette=…]` blocks were
+// purged from the PRODUCTION CSS, the button would work, the attribute would
+// be set, every unit test would stay green — and the screen would not change.
+// So the COMPUTED COLOUR is verified on the deploy, not the attribute's
+// presence.
 //
-// ⚠️ Opt-in : visible parce que `profiles/geoleaf.config.json` pose
+// ⚠️ Opt-in: visible because `profiles/geoleaf.config.json` sets
 // `modules.theme-palette.enabled: true`.
 
 import { test, expect } from "@playwright/test";
@@ -20,10 +21,10 @@ const PALETTE_BTN = ".gl-rp-palette-btn";
 const POPOVER = ".gl-palette-popover";
 const ITEM = ".gl-palette-popover__item";
 
-/** Vert de la palette « green », tel que défini par la feuille récupérée de git. */
+/** The "green" palette's green, as defined by the sheet recovered from git. */
 const GREEN_ACCENT = "#16a34a";
 
-/** rgb(22, 163, 74) — ce que `getComputedStyle` renvoie pour #16a34a. */
+/** rgb(22, 163, 74) — what `getComputedStyle` returns for #16a34a. */
 const GREEN_RGB = "rgb(22, 163, 74)";
 
 async function bootReady(page) {
@@ -38,7 +39,7 @@ async function bootReady(page) {
     await page.waitForTimeout(1200);
 }
 
-/** Valeur calculée du token d'accent, telle que le navigateur la résout. */
+/** Computed value of the accent token, as the browser resolves it. */
 function readAccent(page) {
     return page.evaluate(() =>
         getComputedStyle(document.documentElement).getPropertyValue("--gl-color-accent").trim()
@@ -62,15 +63,16 @@ test.describe("theme-palette — palette de couleur d'accent", () => {
 
         const before = await readAccent(page);
 
-        // Témoin de non-rechargement : un rechargement recrée `window` et l'efface.
+        // No-reload witness: a reload recreates `window` and erases it.
         //
-        // ⚠️ Ce test comparait `page.url()` avant/après, et c'était le mauvais instrument :
-        // l'app synchronise l'état carte dans le HASH (`#gl_lat=…&gl_zoom=…&gl_theme=…`),
-        // de façon asynchrone après le boot. Sur un runner lent, le hash s'écrit APRÈS la
-        // capture de l'URL, et l'assertion rougissait sur une navigation QUI N'A PAS EU LIEU
-        // (CI 30703087739 du 01/08/2026, échoué aux 3 tentatives — ce n'était pas un flake,
-        // c'était un test qui mesurait autre chose que son intention). Ici, on mesure
-        // exactement ce que la phrase de la ligne suivante affirme.
+        // ⚠️ This test used to compare `page.url()` before/after, and that was
+        // the wrong instrument: the app syncs map state into the HASH
+        // (`#gl_lat=…&gl_zoom=…&gl_theme=…`), asynchronously after boot. On a
+        // slow runner the hash gets written AFTER the URL capture, and the
+        // assertion reddened on a navigation THAT NEVER HAPPENED (CI run
+        // 30703087739 of 2026-08-01, failed on all 3 attempts — not a flake,
+        // a test measuring something other than its intention). Here, exactly
+        // what the next line's sentence claims is measured.
         await page.evaluate(() => {
             /** @type {any} */ (window).__glReloadWitness = "alive";
         });
@@ -79,16 +81,17 @@ test.describe("theme-palette — palette de couleur d'accent", () => {
         await expect(page.locator(POPOVER)).toBeVisible();
         await page.locator(`${ITEM}[data-gl-palette="green"]`).click();
 
-        // 1 — l'attribut est posé
+        // 1 — the attribute is set
         await expect(page.locator("html")).toHaveAttribute("data-gl-palette", "green");
 
-        // 2 — et le CSS SUIT : c'est la vérification que purgecss n'a pas purgé le bloc.
-        //     Sans elle, ce test passerait sur une page où rien n'a changé visuellement.
+        // 2 — and the CSS FOLLOWS: the check that purgecss did not purge the
+        //     block. Without it, this test would pass on a page where nothing
+        //     visually changed.
         const after = await readAccent(page);
         expect(after).not.toBe(before);
         expect([GREEN_ACCENT, GREEN_RGB]).toContain(after);
 
-        // 3 — aucun rechargement : la bascule est à chaud.
+        // 3 — no reload: the switch is hot.
         const witness = await page.evaluate(
             () => /** @type {any} */ (window).__glReloadWitness ?? null
         );
@@ -96,20 +99,23 @@ test.describe("theme-palette — palette de couleur d'accent", () => {
     });
 
     test("les 3 palettes sont DISTINCTES, et « default » rend bien l'orange", async ({ page }) => {
-        // ⚠️ LE TEST QUI MANQUAIT, et l'absence a laissé passer un vrai défaut.
+        // ⚠️ THE TEST THAT WAS MISSING, and the absence let a real defect
+        // through.
         //
-        // La suite ne vérifiait que le vert. Or les feuilles récupérées portent des listes
-        // de sélecteurs MULTI-LIGNES (`body.gl-theme-light,\n.gl-theme-light {`) : la
-        // transformation n'avait scopé que la seconde ligne, laissant `body.gl-theme-*`
-        // GLOBAL. Les deux palettes repeignaient donc toutes les pages, et la dernière
-        // importée — le bleu — gagnait : « default » et « blue » affichaient tous deux du
-        // bleu. Le vert passait, lui, parce qu'il porte aussi une règle `:root` scopée.
+        // The suite only checked the green. Yet the recovered sheets carry
+        // MULTI-LINE selector lists (`body.gl-theme-light,\n.gl-theme-light {`):
+        // the transformation had scoped only the second line, leaving
+        // `body.gl-theme-*` GLOBAL. Both palettes thus repainted every page,
+        // and the last one imported — blue — won: "default" and "blue" both
+        // displayed blue. The green passed because it also carries a scoped
+        // `:root` rule.
         //
-        // Vérifier UNE palette ne prouve rien sur les autres : il faut les comparer.
+        // Checking ONE palette proves nothing about the others: they must be
+        // compared.
         await page.goto("/");
         await bootReady(page);
 
-        /** Accent lu sur <html> (règle `:root`) ET sur <body> (règle `gl-theme-*`). */
+        /** Accent read on <html> (`:root` rule) AND on <body> (`gl-theme-*` rule). */
         const accents = (id) =>
             page.evaluate((palette) => {
                 window.GeoLeaf.ThemePalette.set(palette);
@@ -127,17 +133,17 @@ test.describe("theme-palette — palette de couleur d'accent", () => {
         const green = await accents("green");
         const blue = await accents("blue");
 
-        // Chaque palette rend SA couleur, au niveau `:root`.
-        expect(def.html.toLowerCase()).toBe("#f97316"); // orange GeoLeaf
+        // Each palette renders ITS colour, at the `:root` level.
+        expect(def.html.toLowerCase()).toBe("#f97316"); // GeoLeaf orange
         expect(green.html.toLowerCase()).toBe("#16a34a");
         expect(blue.html.toLowerCase()).toBe("#2563eb");
 
-        // Et les valeurs vues par l'UI (niveau <body>) sont elles aussi distinctes —
-        // c'est CE niveau que le défaut contaminait.
+        // And the values the UI sees (<body> level) are distinct too — THIS
+        // level is the one the defect contaminated.
         expect(new Set([def.body, green.body, blue.body]).size).toBe(3);
 
-        // Revenir à « default » restaure l'orange : l'absence d'attribut ne doit rien
-        // hériter de la dernière palette appliquée.
+        // Coming back to "default" restores the orange: the attribute's
+        // absence must inherit nothing from the last applied palette.
         const back = await accents("default");
         expect(back.html.toLowerCase()).toBe("#f97316");
         expect(back.body).toBe(def.body);
@@ -166,12 +172,12 @@ test.describe("theme-palette — palette de couleur d'accent", () => {
         await page.locator(PALETTE_BTN).first().click();
         await page.locator(`${ITEM}[data-gl-palette="green"]`).click();
 
-        // Bascule du mode via l'API du thème (le toggle est une autre capacité).
+        // Mode switch via the theme API (the toggle is another capability).
         const modeBefore = await page.evaluate(() => document.body.className);
         await page.evaluate(() => window.GeoLeaf?.UI?.applyTheme?.("dark"));
         await page.waitForTimeout(300);
 
-        // La palette n'a pas bougé, et l'accent reste celui du vert en mode sombre.
+        // The palette did not move, and the accent stays the green one in dark mode.
         await expect(page.locator("html")).toHaveAttribute("data-gl-palette", "green");
         expect(await page.evaluate(() => document.body.className)).not.toBe(modeBefore);
         expect(await readAccent(page)).toBeTruthy();

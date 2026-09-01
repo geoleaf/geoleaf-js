@@ -1,6 +1,6 @@
 /**
  * @file config-loader.test.js
- * Sprint 3.5 — Tests for Config Loader (ConfigLoader / LoaderModule)
+ * Tests for Config Loader (ConfigLoader / LoaderModule)
  */
 
 import { ConfigLoader } from "../../src/kernel/config/loader.js";

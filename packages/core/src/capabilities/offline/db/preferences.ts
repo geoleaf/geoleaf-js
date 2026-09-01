@@ -30,19 +30,19 @@ export interface PreferencesAPI {
 }
 
 /**
- * Décomptes rendus par {@link PreferencesAPI.getStorageStats}.
+ * Tallies returned by {@link PreferencesAPI.getStorageStats}.
  *
- * 🛑 **`featuresCount` et `outboxCount` sont là parce que leur absence était B-121.** Cette
- * fonction ne comptait que `layers` et `sync_queue` — les deux magasins v3. Tant que `features`
- * n'avait aucun écrivain, ce zéro était VRAI ; il est devenu faux le jour où 4.1 a écrit 27
- * entités et où `getStats()` a continué de rapporter 0.
+ * 🛑 **`featuresCount` and `outboxCount` are here because their absence was a
+ * measured defect.** This function counted only `layers` and `sync_queue` — the two
+ * v3 stores. As long as `features` had no writer, that zero was TRUE; it became
+ * false the day the pull wrote 27 entities and `getStats()` kept reporting 0.
  *
- * ⚠️ **`layersCount` RESTE** — le défaut était l'omission, pas sa présence.
+ * ⚠️ **`layersCount` STAYS** — the defect was the omission, not its presence.
  *
- * 🛑 **`syncQueueCount` part avec le magasin (tâche 4.11).** La phrase du dessus disait qu'il
- * restait parce que `sync_queue` « porte encore la restauration de sauvegarde », côté module
- * de sauvegarde d'`addpoi` : c'était son dernier usage, et ce module est
- * supprimé avec toute la chaîne. Un compteur de magasin retiré ne compte plus rien.
+ * 🛑 **`syncQueueCount` leaves with the store.** The sentence above said it stayed
+ * because `sync_queue` "still carries backup restoration", in `addpoi`'s backup
+ * module: that was its last use, and that module is deleted with the whole chain. A
+ * counter for a removed store counts nothing.
  */
 interface StorageStats {
     used: number;
@@ -79,7 +79,16 @@ function init(db: IDBDatabase): PreferencesAPI {
             };
 
             try {
-                // Get browser quota
+                // Browser quota — ORIGIN-WIDE, never this database alone. The counts gathered
+                // just below are per store; these two numbers are not, and putting them in one
+                // object is what makes them easy to read as if they were.
+                //
+                // ⚠️ `used` here is the same number that `CacheManager.getStorageQuota()` calls
+                // `usage`, and `percentage` is kept as a float where that one rounds. Two names
+                // and two shapes for one measurement: a caller that picks the wrong reader gets
+                // `undefined` rather than an error. Kept as-is because this shape is what
+                // `getStats()` has always returned to its callers; the divergence is recorded
+                // rather than silently repaired.
                 if (navigator.storage && navigator.storage.estimate) {
                     const estimate = await navigator.storage.estimate();
                     stats.used = estimate.usage || 0;
@@ -87,11 +96,11 @@ function init(db: IDBDatabase): PreferencesAPI {
                     stats.percentage = stats.quota > 0 ? (stats.used / stats.quota) * 100 : 0;
                 }
 
-                // Compte les trois magasins qui portent de la donnée : le cache de couches, et
-                // les deux magasins v4. B-121 : les deux derniers manquaient, donc un
-                // rapatriement de 27 entités laissait `getStats()` rapporter 0.
-                // ⚠️ `sync_queue` en faisait partie jusqu'à la tâche 4.11 — le magasin est
-                // retiré, et le compter ici jetterait sur une base neuve.
+                // Counts the three data-bearing stores: the layer cache, and the two
+                // v4 stores. The last two were missing, so a pull of 27 entities left
+                // `getStats()` reporting 0.
+                // ⚠️ `sync_queue` used to be among them — the store is removed, and
+                // counting it here would throw on a fresh database.
                 const transaction = db.transaction(["layers", "features", "outbox"], "readonly");
 
                 const layersStore = transaction.objectStore("layers");

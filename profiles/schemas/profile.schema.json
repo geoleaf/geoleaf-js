@@ -33,6 +33,10 @@
             "type": "string",
             "description": "Profile description."
         },
+        "bundleFile": {
+            "type": "string",
+            "description": "INJECTÉE PAR LE BUILD, jamais écrite à la main : nom du bundle de configuration agrégé, déposé à côté de ce fichier par l'étape de groupage. ⚠️ Elle n'existe que dans les profils DÉPLOYÉS ; un profil de `profiles/` qui la porte est le signe qu'un artefact a été recopié vers la source. Déclarée ici parce que le schéma est `additionalProperties: false` et que le profil déployé doit valider — sans quoi le build produit, à chaque exécution, un artefact que le schéma du dépôt interdit."
+        },
         "version": {
             "type": "string",
             "description": "Profile version (SemVer).",
@@ -186,6 +190,11 @@
                     "type": "object",
                     "additionalProperties": true,
                     "description": "Owned by @geoleaf-plugins/geocoding — keys validated by the plugin, not the core."
+                },
+                "routing": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Owned by @geoleaf-plugins/routing — keys validated by the plugin, not the core. ⚠️ `labelField` names a feature property that must ALSO appear in the `payloadFields` of the `action` widget declaring the entry-point button: the two are a cross-file rule no schema expresses, and a profile valid on both sides can still render a panel with no destination name."
                 },
                 "print": {
                     "type": "object",

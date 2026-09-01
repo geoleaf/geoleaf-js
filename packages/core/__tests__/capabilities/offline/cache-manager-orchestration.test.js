@@ -1,10 +1,11 @@
 /**
- * Unit tests — `capabilities/offline/cache/cache-manager.ts`, le flux d'orchestration (offline).
+ * Unit tests — `capabilities/offline/cache/cache-manager.ts`, the orchestration flow (offline).
  *
- * Les tests existants couvrent la SURFACE (init, gate, getCacheStatus, quota). Le trou : le
- * flux `cacheProfile` (énumération → téléchargement → manifeste → éviction), `estimateProfileSize`
- * et `_fallbackEstimation`. On mocke les délégués (CacheStorage, ResourceEnumerator, Downloader,
- * CacheMetrics, evictToQuota) — orchestrateur pur, aucune IndexedDB réelle requise.
+ * The existing tests cover the SURFACE (init, gate, getCacheStatus, quota).
+ * The hole: the `cacheProfile` flow (enumeration → download → manifest →
+ * eviction), `estimateProfileSize` and `_fallbackEstimation`. The delegates
+ * are mocked (CacheStorage, ResourceEnumerator, Downloader, CacheMetrics,
+ * evictToQuota) — pure orchestrator, no real IndexedDB required.
  */
 import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
 
@@ -42,8 +43,8 @@ beforeEach(async () => {
         Log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
     };
     ({ CacheManager } = await import("../../../src/capabilities/offline/cache/cache-manager.js"));
-    // Le mock IndexedDB (redirect setup.js) fournit un `_db` non-stub par défaut, donc
-    // `_enforceCacheQuota` entre dans sa branche d'éviction sans setup supplémentaire.
+    // The IndexedDB mock (setup.js redirect) provides a non-stub `_db` by
+    // default, so `_enforceCacheQuota` enters its eviction branch with no extra setup.
     CacheManager._config = {
         enableProfileCache: true,
         maxCacheBytes: 250 * 1024 * 1024,
@@ -54,16 +55,19 @@ beforeEach(async () => {
 
 afterEach(() => vi.restoreAllMocks());
 
-// ── Tâche 3.13 — le pré-contrôle de quota a DÉMÉNAGÉ ICI ────────────────────────────────
+// ── the quota pre-check MOVED HERE ──────────────────────────────────────────────────────
 //
-// 🛑 CES TESTS VIENNENT DE `__tests__/storage/storage-facade.test.js`, ET ILS N'Y SONT PLUS.
-// Ils y éprouvaient `Storage.downloadProfileForOffline()` — une fonction MORTE (zéro appelant
-// dans tout le dépôt) qui portait pourtant le SEUL pré-contrôle de quota du téléchargement,
-// pendant que `cacheProfile()`, le chemin vivant, n'en avait aucun. Supprimer la coquille sans
-// déplacer la garde d'abord aurait retiré une protection en croyant retirer du code mort.
+// 🛑 THESE TESTS COME FROM `__tests__/storage/storage-facade.test.js`, AND
+// THEY ARE NO LONGER THERE. There they exercised
+// `Storage.downloadProfileForOffline()` — a DEAD function (zero callers in
+// the whole repo) which yet carried the download's ONLY quota pre-check,
+// while `cacheProfile()`, the live path, had none. Deleting the shell without
+// moving the guard first would have removed a protection believing it removed
+// dead code.
 //
-// Le comportement se DÉPLACE, donc ses tests se déplacent avec lui. Les jeter aurait laissé la
-// nouvelle garde sans épreuve, et les laisser là aurait été un test orphelin (compteur C6).
+// The behaviour MOVES, so its tests move with it. Discarding them would have
+// left the new guard untested, and leaving them there would have made an
+// orphan test.
 describe("cacheProfile — le pré-contrôle de quota (déplacé de la façade, 3.13)", () => {
     beforeEach(() => {
         loadProfileConfig.mockResolvedValue({ id: "t" });
@@ -86,7 +90,7 @@ describe("cacheProfile — le pré-contrôle de quota (déplacé de la façade, 
         });
 
         await expect(CacheManager.cacheProfile("t")).rejects.toThrow(/Not enough storage/);
-        // La garde doit mordre AVANT le téléchargement : refuser après coup ne protège rien.
+        // The guard must bite BEFORE the download: refusing after the fact protects nothing.
         expect(downloaderCacheProfile).not.toHaveBeenCalled();
     });
 
@@ -107,9 +111,9 @@ describe("cacheProfile — le pré-contrôle de quota (déplacé de la façade, 
     });
 
     test("un navigateur MUET sur le quota ne fait pas refuser", async () => {
-        // `navigator.storage.estimate` absent → `getStorageQuota` rend `available: undefined`.
-        // Refuser là-dessus reviendrait à traiter « je ne sais pas » comme « c'est plein », et
-        // à casser le téléchargement sur tout navigateur qui n'expose pas l'API.
+        // `navigator.storage.estimate` absent → `getStorageQuota` returns
+        // `available: undefined`. Refusing on that would treat "I don't know"
+        // as "it's full", and break the download on any browser not exposing the API.
         vi.spyOn(CacheManager, "estimateProfileSize").mockResolvedValue({
             totalSize: 500 * 1024 * 1024,
             totalSizeFormatted: "500 MB",
@@ -143,11 +147,12 @@ describe("cacheProfile — le pré-contrôle de quota (déplacé de la façade, 
 });
 
 describe("cancelDownload — l'annulation se DIT (C2, clôture S3c)", () => {
-    // 🛑 CE N'ÉTAIT PAS UN ÉCOUTEUR MORT, C'ÉTAIT UN ÉMETTEUR MANQUANT. Mesuré à la clôture
-    // de S3c : `geoleaf:cache:cancelled` avait 2 écouteurs et 0 émetteur. Le pré-vol E3.5
-    // avait relevé le même chiffre et conclu « l'interface l'écoute pour rien » — vrai sur la
-    // mesure, faux sur le geste : l'écouteur d'`offline-ui` remet la barre à zéro et réactive
-    // le bouton. Sans émetteur, annuler laissait le panneau bloqué sur « Stopping… ».
+    // 🛑 IT WAS NOT A DEAD LISTENER, IT WAS A MISSING EMITTER. Measured at a
+    // sprint closure: `geoleaf:cache:cancelled` had 2 listeners and 0
+    // emitters. An earlier preflight had noted the same figure and concluded
+    // "the interface listens for nothing" — true on the measure, wrong on the
+    // move: `offline-ui`'s listener resets the bar and re-enables the button.
+    // Without an emitter, cancelling left the panel stuck on "Stopping…".
     test("émet `geoleaf:cache:cancelled` en plus d'abandonner le téléchargement", () => {
         const seen = [];
         const onCancel = (e) => seen.push(e.type);
@@ -177,7 +182,7 @@ describe("cacheProfile — flux nominal", () => {
         expect(downloaderCacheProfile).toHaveBeenCalled();
         expect(saveManifest).toHaveBeenCalledWith("t", expect.objectContaining({ totalSize: 100 }));
         expect(result.cached).toEqual(["a", "b"]);
-        // le profil est retiré du set en cours (finally)
+        // the profile is removed from the in-progress set (finally)
         expect(CacheManager._cachingProfiles.has("t")).toBe(false);
     });
 

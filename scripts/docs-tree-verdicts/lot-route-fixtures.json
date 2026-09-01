@@ -1,0 +1,22 @@
+{
+    "schemaVersion": 2,
+    "lot": "route-fixtures",
+    "scope": ["scripts/capture-route-fixtures.cjs"],
+    "verdicts": {
+        "scripts/capture-route-fixtures.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Capture le corpus de fixtures de routing chez Valhalla et OSRM — lancé À LA MAIN, jamais en CI",
+            "confidence": "haute",
+            "rationale": "SEUL code du dépôt qui touche le réseau, et délibérément absent de `ci-local.cjs` comme de `ci.yml` : un test appelant une instance publique est soumis à un quota d'usage équitable et rend le run non reproductible — son rouge dirait « internet a bougé ». Capture le MÊME trajet à 3 étapes chez les deux fournisseurs, condition pour que les deux résultats normalisés soient comparables. Géométrie en polyline des DEUX côtés : Valhalla n'émet que ça, donc demander du GeoJSON à OSRM achèterait une seconde voie de décodage pour le seul fournisseur qui n'en a pas besoin (mesuré sur ce trajet : 95 780 octets contre 34 137). REFUSE d'écrire une réponse inexploitable — moins de 2 tronçons, un tronçon sans manœuvre, ou un narratif qui n'est pas revenu en `fr-FR` : une fixture qui ne porte pas ce contre quoi le contrat est gelé rendrait toute assertion vide."
+        }
+    },
+    "_comment": "Le corpus lui-même — `packages/plugins/routing/fixtures/` et ses deux `.json` — n'a AUCUN verdict, et ce n'est pas un oubli : le générateur d'arbre ne le voit pas (il ne compte ni les `.json` de données ni un répertoire qui n'en contient que), et une clé qui ne désigne rien le fait REFUSER de conclure. Le motif du corpus se lit donc dans l'en-tête de `capture-route-fixtures.cjs`, qui est le seul artefact des deux que l'arbre qualifie."
+}

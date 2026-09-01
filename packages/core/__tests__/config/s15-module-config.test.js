@@ -1,7 +1,7 @@
 /**
  * Config-contract Phase C / C6 — B7 plugins modules.<id> (config read path).
  *
- * Scope: CONFIG ONLY (plugin behaviour is roadmap_feature-plugin-validation.md).
+ * Scope: CONFIG ONLY (plugin behaviour is a separate concern).
  *
  * The generic read MECHANISM is already covered elsewhere:
  *   - getModuleConfig (façade)            → config-accessors.test.js
@@ -28,7 +28,7 @@ import {
 import { ConfigStore } from "../../src/kernel/config/storage.ts";
 import { installConfig, resetConfig, REFERENCE_MODULE_OFFLINE } from "./_helpers/config-harness.js";
 
-// ─── resolveModuleConfig — canonical read path (module-config.ts:28) ──────────
+// ─── resolveModuleConfig — canonical read path (module-config.ts) ──────────
 
 describe("config B7 — resolveModuleConfig(reader, id, key?, default?)", () => {
     afterEach(() => resetConfig());
@@ -106,8 +106,8 @@ describe("config B7 — mergeModulesBag(target, incoming) guards", () => {
 // ─── Plugin-owned defaults — deferred to the plugin packages (registre B7) ────
 
 describe("config B7 — plugin-owned anomalies (deferred to plugin-validation)", () => {
-    // ANO-076 CLOSE par 5.1-f : le drapeau orphelin `modules.addpoi.enabled` disparaît
-    // avec le bloc de config qui le portait. Il n'y a plus de gisement à suivre.
+    // ANO-076 CLOSED: the orphan flag `modules.addpoi.enabled` vanishes with
+    // the config block that carried it. No deposit left to track.
     // ANO-079/080 RÉSOLU (Archi S3) — explicit defaults api.geometryProperty:"geom" +
     // persistence.dialect:"rest" added to EDITOR_CONFIG_DEFAULTS (config.ts) ; asserted in the
     // plugin-editor suite (config-only, plugin-owned): packages/plugin-editor/src/__tests__/config.test.ts.

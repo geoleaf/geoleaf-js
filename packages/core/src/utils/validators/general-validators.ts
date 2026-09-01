@@ -96,7 +96,7 @@ export interface ValidateBatchItem {
  *
  * @example
  * ```js
- * // Coordonnées valides
+ * // Valid coordinates
  * const result = GeoLeaf.Validators.validateCoordinates(45.5017, -73.5673);
  * // Returns: { valid: true, error: null }
  *
@@ -164,7 +164,7 @@ function _validateDataUrl(url: string, allowDataImages: boolean): void {
  * const result = GeoLeaf.Validators.validateUrl("https://example.com/data.json");
  * // Returns: { valid: true, error: null, url: 'https://example.com/data.json' }
  *
- * // Protocole non autorisé
+ * // Disallowed protocol
  * const result2 = GeoLeaf.Validators.validateUrl("ftp://example.com/file");
  * // Returns: { valid: false, error: 'Protocol "ftp:" not allowed', url: null }
  *
@@ -246,7 +246,7 @@ function validateUrl(
  * GeoLeaf.Validators.validateEmail("not-an-email");
  * // Returns: { valid: false, error: 'Invalid email format' }
  *
- * // Formats supportés
+ * // Supported formats
  * GeoLeaf.Validators.validateEmail("user+tag@sub.example.com"); // valide
  * GeoLeaf.Validators.validateEmail("user@domain.co.uk"); // valide
  * ```
@@ -358,7 +358,7 @@ function validatePhone(
  * GeoLeaf.Validators.validateZoom(25);
  * // Returns: { valid: false, error: 'Zoom must be between 0 and 20' }
  *
- * // Plage personnalisée
+ * // Custom range
  * GeoLeaf.Validators.validateZoom(15, { min: 5, max: 18 });
  * // Returns: { valid: true, error: null }
  * ```
@@ -475,7 +475,7 @@ function _geoJSONCheck(
     if (!condition) return null;
     const err = new ErrorClass(message, ctx);
     if (throwOnError) throw err;
-    return { valid: false, error: (err as Error).message };
+    return { valid: false, error: err.message };
 }
 
 /**
@@ -621,7 +621,7 @@ function validateColor(
     // and #RRGGBB, nothing else), but it drops the optional-group-after-quantifier
     // shape that `safe-regex` flags. The warning was a false positive — the pattern is
     // anchored and every quantifier bounded — so the fix here is the disable comment
-    // going away, not the risk (S13.3).
+    // going away, not the risk.
     const hexRegex = /^#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
     const rgbRegex = /^rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)$/;
     const rgbaRegex = /^rgba\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*,\s*[\d.]+\s*\)$/;
@@ -658,8 +658,8 @@ function validateColor(
  * const result = GeoLeaf.Validators.validateBatch([
  *     {
  *         value: 45.5017,
- *         // `value` est typé `unknown` : un adaptateur doit re-narrower avant d'appeler
- *         // un validateur qui attend un type précis.
+ *         // `value` is typed `unknown`: an adapter must re-narrow before calling
+ *         // a validator expecting a precise type.
  *         validator: (v, opts) => GeoLeaf.Validators.validateCoordinates(Number(v), 0, opts),
  *         label: "latitude",
  *     },
@@ -689,10 +689,7 @@ function validateBatch(validations: ValidateBatchItem[]): ValidationResult {
             continue;
         }
 
-        const result = validator(value, { ...options, throwOnError: false }) as {
-            valid: boolean;
-            error?: string | null;
-        };
+        const result = validator(value, { ...options, throwOnError: false });
         if (!result.valid) {
             errors.push(`${label}: ${result.error ?? "validation failed"}`);
         }

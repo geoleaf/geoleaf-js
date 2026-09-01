@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "labels-seam",
+    "scope": ["packages/plugins/routing/src/labels-seam.ts"],
+    "verdicts": {
+        "packages/plugins/routing/src/labels-seam.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Numérote les étapes du tracé en demandant à la capacité `labels` du cœur de rendre `properties.step`",
+            "confidence": "haute",
+            "rationale": "94 LOC, 2 exports (showStepLabels, hideStepLabels), 1 importeur — publish.ts, qui les appelle par paire depuis publishRoute et clearRoute. Même patron que geocode-seam.ts d'à côté : la capacité est lue sur globalThis.GeoLeaf à l'appel, jamais importée, parce qu'un profil peut la désactiver — sans elle le tracé s'affiche, sans numéros, ce que ce paquet faisait déjà. 🛑 Ce fichier atteste une prémisse infirmée : la fonctionnalité est restée bloquée trois jours sur un arbitrage — élargir le contrat de l'adaptateur de carte, ou ouvrir une couture publique sur la capacité `labels` — au motif que cette dernière n'exportait rien de son moteur de rendu. Mesuré, elle l'exportait déjà : enableLabels vient de LabelsApi, avec lequel LabelsPublicApi est composé ; le rendu fait [\"get\", labelConfig.labelId] ; et _hasConfigLabel n'exige que deux clés. L'erreur était d'avoir lu public-api.ts SEUL, qui n'ajoute qu'isEnabled et getConfig — une couture ouverte peut paraître fermée à qui s'arrête à la façade, et une API se mesure en l'appelant plutôt qu'en lisant le fichier qui la monte. AUCUN changement du cœur n'a été nécessaire. STEP_PROPERTY est nommé en constante et non inliné parce qu'il est une moitié de paire : l'autre est `step: i + 1` dans publish.ts, et rien ne verrait ces deux littéraux diverger. Cinq mutations vues rouges, dont le retrait de la clé `enabled`, sans laquelle _hasConfigLabel refuse et rien ne s'affiche SANS erreur. Le raisonnement complet est dans docs/specs/plugins/CDC_routing.md."
+        }
+    }
+}

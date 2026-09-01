@@ -1,6 +1,6 @@
 {
     "_comment": "Chemins morts CONNUS dans la prose des blocs TSDoc, figés par `audit-report-freshness.cjs --source tsdoc --gate`. Clé = `<fichier citant>→<chemin cité>`. Le gate rougit sur une entrée ABSENTE d'ici (TSDOC-PATHS-01) ET sur une entrée d'ici qui n'existe plus (TSDOC-PATHS-02) : la baseline ne peut que RÉTRÉCIR. Régénérer via `--update-baseline` après avoir corrigé un lot.",
-    "generatedCount": 76,
+    "generatedCount": 73,
     "paths": [
         "packages/core/src/api/geoleaf.coordinates.ts→modules/built-in/ui/coordinates-display.ts",
         "packages/core/src/api/geoleaf.geolocation.ts→modules/built-in/ui/control-geolocation.ts",
@@ -30,9 +30,7 @@
         "packages/core/src/capabilities/toast-renderer/notifications.ts→../constants.js",
         "packages/core/src/capabilities/toast-renderer/public-api.ts→modules/geoleaf.notifications.ts",
         "packages/core/src/capabilities/toast-renderer/types.ts→contracts/notification.contract.ts",
-        "packages/core/src/contracts/core-module.contract.ts→addpoi/src/entry.ts",
         "packages/core/src/contracts/preset.contract.ts→dist/geoleaf.esm.js",
-        "packages/core/src/contracts/sidepanel-renderer.contract.ts→app/boot-modules/feature-info.module.ts",
         "packages/core/src/css.d.ts→dist/geoleaf-main.min.css",
         "packages/core/src/global.d.ts→capabilities/permalink/permalink-types.ts",
         "packages/core/src/global.d.ts→modules/utils/general/dom-helpers.ts",
@@ -46,7 +44,6 @@
         "packages/core/src/presets/manifest.full.ts→dist/geoleaf.esm.js",
         "packages/core/src/utils/general/dom-helpers.ts→helpers/dom-helpers.ts",
         "packages/core/src/utils/general/helpers-namespace.ts→utils/helpers/dom-helpers.ts",
-        "packages/core/src/utils/general/utils-base.ts→plugin-addpoi/poi-placement.ts",
         "packages/core/src/utils/loaders/profile-sprite-loader.ts→adapters/maplibre/maplibre-sprite-loader.ts",
         "packages/libs/host-runtime/src/host.ts→src/utils/core-config.ts",
         "packages/plugins/connector/src/connector-api.ts→src/public-api.ts",

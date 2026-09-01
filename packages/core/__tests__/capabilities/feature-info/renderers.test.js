@@ -151,10 +151,10 @@ describe("field renderers", () => {
         expect(
             renderTags(F({ field: "t" }), "a, b; c")?.querySelectorAll(".gl-poi-tag").length
         ).toBe(3);
-        // ⚠️ Cette assertion appelait `normalizeTagsInput` DIRECTEMENT. Le symbole est
-        // dé-exporté à la tâche 2.11 : son seul appelant de production est `renderTags`,
-        // dans le même fichier. La garantie est conservée, elle passe simplement par le
-        // chemin public — une chaîne JSON rend bien deux étiquettes.
+        // ⚠️ This assertion called `normalizeTagsInput` DIRECTLY. The symbol
+        // is un-exported: its only production caller is `renderTags`, in the
+        // same file. The guarantee is kept, it simply goes through the public
+        // path — a JSON string does yield two tags.
         expect(
             renderTags(F({ field: "t" }), '["j","k"]')?.querySelectorAll(".gl-poi-tag").length
         ).toBe(2);
@@ -252,11 +252,12 @@ describe("LightboxManager", () => {
 });
 describe("buildSidePanelBody — horaires de forme inattendue (B.32)", () => {
     it("ne lève pas quand hours[jour] est une chaîne au lieu d'un tableau", () => {
-        // `renderHoursTable` faisait `const slots = hours[day] ?? []` puis `slots.filter(...)`.
-        // Une CHAÎNE non vide a bien `.length`, et `slots[0]?.closed` vaut `undefined` — on
-        // tombe donc dans la branche `else` et `.filter is not a function`. L'exception
-        // remonte jusqu'à `buildSidePanelBody` : le panneau latéral ne s'ouvre pas.
-        // Le seul test d'horaires existant n'utilise que la forme parfaite.
+        // `renderHoursTable` did `const slots = hours[day] ?? []` then
+        // `slots.filter(...)`. A non-empty STRING does have `.length`, and
+        // `slots[0]?.closed` is `undefined` — so we fall into the `else`
+        // branch and `.filter is not a function`. The exception climbs to
+        // `buildSidePanelBody`: the side panel does not open. The only
+        // existing hours test uses only the perfect shape.
         const fields = [F({ field: "hr", type: "hours" })];
         expect(() =>
             buildSidePanelBody(fields, { hr: { mon: "9h-18h" } }, { layerId: "l1" })
@@ -271,7 +272,7 @@ describe("buildSidePanelBody — horaires de forme inattendue (B.32)", () => {
     });
 
     it("rend toujours correctement la forme canonique", () => {
-        // Garde de non-régression : le correctif ne doit pas avaler les données valides.
+        // Non-regression guard: the fix must not swallow valid data.
         const fields = [F({ field: "hr", type: "hours" })];
         const body = buildSidePanelBody(
             fields,
@@ -285,12 +286,13 @@ describe("buildSidePanelBody — horaires de forme inattendue (B.32)", () => {
 });
 describe("attachGalleryEvents — données distantes hostiles (B.32)", () => {
     it("ne lève pas quand une vignette n'a pas d'<img> (URL refusée par safeUrl)", () => {
-        // `media.ts:108-109` produit DÉLIBÉRÉMENT une vignette sans <img> quand `safeUrl`
-        // refuse l'URL : « an unsafe URL yields an empty (non-interactive) thumbnail rather
-        // than an unsafe img.src sink ». `attachGalleryEvents` faisait pourtant
-        // `thumb.querySelector("img").src` sans garde — deux intentions délibérées qui se
-        // contredisent. Une galerie distante dont UNE seule URL est refusée faisait lever un
-        // TypeError DANS `buildSidePanelBody`, et le panneau latéral ne s'ouvrait pas du tout.
+        // `media.ts` DELIBERATELY produces an <img>-less thumbnail
+        // when `safeUrl` refuses the URL: "an unsafe URL yields an empty
+        // (non-interactive) thumbnail rather than an unsafe img.src sink".
+        // `attachGalleryEvents` yet did `thumb.querySelector("img").src`
+        // unguarded — two deliberate intentions contradicting each other. A
+        // remote gallery with ONE refused URL raised a TypeError INSIDE
+        // `buildSidePanelBody`, and the side panel did not open at all.
         const g = renderGallery(F({ field: "g" }), [
             "https://e.com/1.jpg",
             "javascript:alert(1)", // refusée → vignette sans <img>
@@ -547,19 +549,20 @@ describe("category title icon (taxonomy render → feature-info)", () => {
     });
 });
 
-// Un titre peut être écrit de deux façons dans le modèle de RENDU — `variant: "title"`
-// ou `style: "title"` — et rien n'empêchait un auteur d'employer l'une ou l'autre sur
-// n'importe quelle surface. La bulle honorait les deux ; le panneau n'honorait que
-// `style`, ce qui dégradait silencieusement un titre écrit en `variant` : plus traité
-// comme champ requis (donc évanoui quand vide) et rendu sans son glyphe de taxonomie.
+// A title can be written two ways in the RENDER model — `variant: "title"` or
+// `style: "title"` — and nothing kept an author from using either on any
+// surface. The popup honoured both; the panel honoured only `style`, which
+// silently degraded a title written as `variant`: no longer treated as a
+// required field (hence vanished when empty) and rendered without its
+// taxonomy glyph.
 //
-// ⚠️ Le commentaire d'origine attribuait cette liberté à `detail-blocks.schema.json`,
-// « qui garde les deux en chaînes libres ». Ce schéma était un ORPHELIN qu'aucun `$ref`
-// ne visait — il ne gardait rien du tout, et il est supprimé à la tâche 2.11. La
-// liberté venait du modèle de rendu interne, dont `variant` et `style` sont des
-// `string`. Depuis le Sprint 2 la DÉCLARATION n'a plus qu'une orthographe,
-// `display.presentation.emphasis`, contrainte à trois valeurs — mais le modèle de
-// rendu garde les deux, donc ces tests gardent toujours quelque chose.
+// ⚠️ The original comment attributed this freedom to
+// `detail-blocks.schema.json`, "which keeps both as free strings". That
+// schema was an ORPHAN no `$ref` pointed at — it guarded nothing at all, and
+// it is deleted. The freedom came from the internal render model, whose
+// `variant` and `style` are `string`s. The DECLARATION now has one spelling,
+// `display.presentation.emphasis`, constrained to three values — but the
+// render model keeps both, so these tests still guard something.
 describe("title predicate — `variant` and `style` are equivalent on both surfaces", () => {
     function stubTaxonomy({ icon = null } = {}) {
         globalThis.GeoLeaf = {

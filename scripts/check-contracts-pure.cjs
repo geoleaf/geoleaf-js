@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /*!
- * GeoLeaf — Gate: contracts/ is a PURE type surface (socle S4 / roadmap_optimisation-socle 4.3)
+ * GeoLeaf — Gate: contracts/ is a PURE type surface
  * © 2026 Mattieu Pottier — MIT
  *
  * ## Why this exists
  *
  * `packages/core/src/contracts/*.contract.ts` declares the seams between core and its
  * modules/plugins. The directory's promise is "pure type/interface surface": every file
- * is erased at build time — no runtime value, no side effect. Sprint 2 had to *undo* two
+ * is erased at build time — no runtime value, no side effect. The wiring had to *undo* two
  * breaches of that promise: `LegendContract` and `POIAddFormContract`, singletons doing
  * globalThis lookups, had drifted into contracts/. They were moved to capabilities/ and
  * modules/. This gate stops the drift from recurring — it fails if any contract file gains
@@ -23,7 +23,7 @@
  * Anything else — `export const/function/class/enum`, `export default`, a value import,
  * a bare `import "./x"`, a top-level statement — is a runtime leak and fails the gate.
  *
- * GREEN on wiring (contracts/ was purified in Sprint 2), so it ships with NO baseline: the
+ * GREEN on wiring (contracts/ was purified at wiring), so it ships with NO baseline: the
  * repo's "no permanently-red gate" rule holds — a green gate needs no baseline
  * (cf. check-orphan-exports.cjs).
  *
@@ -37,9 +37,9 @@ const path = require("node:path");
 const ts = require("typescript");
 
 const ROOT = path.resolve(__dirname, "..");
-// T5.5 — par le registre, qui jette. Ce gate a déjà sa garde « aucun .ts dans contracts →
-// chemin cassé ? » (plus bas) : la résolution par registre la rend inatteignable pour la
-// cause qu'elle soupçonnait, ce qui est le but.
+// Through the registry, which throws. This gate already has its "no .ts in
+// contracts → broken path?" guard (below): registry resolution makes it
+// unreachable for the cause it suspected, which is the goal.
 const CONTRACTS_DIR = path.join(
     require("./lib/packages.cjs").requireByDirName("core").absDir,
     "src",
@@ -175,7 +175,7 @@ function checkContractsPure() {
     );
     for (const l of leaks) dim(`${l.file}:${l.line}  ${l.reason}`);
     console.error(
-        "\nUn contrat qui porte de la logique runtime est une « membrane » (cf. Sprint 2 :\n" +
+        "\nUn contrat qui porte de la logique runtime est une « membrane » (cf. les deux purifiées :\n" +
             "LegendContract / POIAddFormContract déplacés hors de contracts/). Déplacer l'impl\n" +
             "vers capabilities/ ou modules/, ne laisser ici que les interfaces et les types."
     );

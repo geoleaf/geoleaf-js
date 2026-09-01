@@ -1,38 +1,44 @@
 /**
- * Les onze méthodes de haut niveau — COMPORTEMENT, contre l'implémentation qui survit.
+ * The eleven top-level methods — BEHAVIOUR, against the surviving implementation.
  *
  * ## Ce fichier remplace `api/geoleaf-api.test.js` (socle-init 7.7)
  *
- * L'ancien portait « Delegates to `_APIController` ; teste `_getAPIController` et API public » et
- * chargeait `kernel/api/geoleaf-api.js` **seul**. Ce module assignait alors les onze méthodes par
- * un `Object.assign`, en doublon de `globals/globals.api.ts` — et il gagnait, parce qu'il était
- * évalué en dernier. 7.7 a retiré ce doublon ; l'ancien fichier n'avait donc plus de sujet.
+ * The old one carried "Delegates to `_APIController`; tests
+ * `_getAPIController` and public API" and loaded `kernel/api/geoleaf-api.js`
+ * **alone**. That module then assigned the eleven methods through an
+ * `Object.assign`, duplicating `globals/globals.api.ts` — and it won,
+ * because it was evaluated last. The dedup removed that duplicate; the old
+ * file thus no longer had a subject.
  *
- * 🛑 **Et le pré-vol de 7.7 s'était trompé sur ce point** : il annonçait que huit de ces dix tests
- * étaient « couverts ailleurs, par `api.test.js` et `api-extended.test.js` ». **Faux** — ces deux
- * fichiers chargeaient eux aussi `geoleaf-api.js` (via `api/geoleaf.api.js`), jamais la chaîne
- * `globals/`. Les trois fichiers éprouvaient donc la MÊME implémentation, celle qu'on supprimait,
- * et l'implémentation survivante n'avait **aucun test de comportement**. Les trois ont été
- * repointés plutôt que supprimés.
+ * 🛑 **And the preflight got this point wrong**: it announced that eight of
+ * these ten tests were "covered elsewhere, by `api.test.js` and
+ * `api-extended.test.js`". **False** — those two files also loaded
+ * `geoleaf-api.js` (via `api/geoleaf.api.js`), never the `globals/` chain.
+ * The three files thus exercised the SAME implementation, the one being
+ * deleted, and the surviving implementation had **no behaviour test**. The
+ * three were repointed rather than deleted.
  *
- * ## Le faux contrôleur est un ACCESSEUR, et ce n'est pas un détail
+ * ## The fake controller is an ACCESSOR, and that is not a detail
  *
- * `kernel/api/controller.ts` n'installe le sien que s'il n'en trouve pas déjà un —
- * `getOwnPropertyDescriptor(gl, "_APIController")?.get`. Un faux posé en valeur simple ne le
- * retient pas et se fait écraser dès que la chaîne `globals/` est chargée. La forme accesseur est
- * aussi la forme RÉELLE en production : le harnais y gagne en fidélité, il ne contourne rien.
+ * `kernel/api/controller.ts` only installs its own if it does not already
+ * find one — `getOwnPropertyDescriptor(gl, "_APIController")?.get`. A fake
+ * set as a plain value does not hold it back and gets overwritten as soon
+ * as the `globals/` chain loads. The accessor shape is also the REAL
+ * production shape: the harness gains fidelity, it works around nothing.
  *
- * ## Les deux tests qui n'existent NULLE PART ailleurs
+ * ## The two tests that exist NOWHERE else
  *
- * « `APIController` manquant » et « `APIController` en échec » éprouvent `requireController()` de
- * `globals/globals.api.ts`. Sans ces deux refus, un contrôleur en échec ne fait pas échouer le
- * boot : `geoleafLoadConfig()` rend `Promise.resolve(null)`, donc ni `onLoaded` ni `onError` ne
- * sont appelés, donc le `await` de `boot-core.ts` **ne se règle jamais**. `controller.ts` le dit
- * lui-même là où il libère le parking — il désigne l'accesseur validé comme ce qui transforme ce
- * silence en échec bruyant. C'est la garantie que 7.7 a portée d'un fichier à l'autre, et ces deux
- * tests sont son unique témoin.
+ * "`APIController` missing" and "`APIController` in failed state" exercise
+ * `globals/globals.api.ts`'s `requireController()`. Without these two
+ * refusals, a failed controller does not fail the boot:
+ * `geoleafLoadConfig()` returns `Promise.resolve(null)`, so neither
+ * `onLoaded` nor `onError` is called, so `boot-core.ts`'s `await` **never
+ * settles**. `controller.ts` says it itself where it releases the parking —
+ * it designates the validated accessor as what turns that silence into a
+ * loud failure. That is the guarantee carried from one file to the other,
+ * and these two tests are its only witness.
  *
- * @see packages/core/src/globals/globals.api.ts — `requireController`, écrivain unique des onze
+ * @see packages/core/src/globals/globals.api.ts — `requireController`, single writer of the eleven
  * @see packages/core/__tests__/guards/top-level-api-single-writer.guard.test.ts — TLA-01/02
  */
 import { describe, it, expect, beforeAll, beforeEach, vi } from "vitest";
@@ -51,7 +57,7 @@ const mockGetAllMapInstances = vi.fn().mockReturnValue([]);
 const mockRemoveMapInstance = vi.fn().mockReturnValue(false);
 const mockGeoleafCreateMap = vi.fn().mockReturnValue(null);
 
-/** Le namespace global, sans le typage ambiant — ce fichier manipule des faux. */
+/** The global namespace, without the ambient typing — this file handles fakes. */
 const GL = globalThis as unknown as Record<string, any>;
 
 GL.GeoLeaf = GL.GeoLeaf || {};
@@ -73,7 +79,7 @@ const realController = {
     },
 };
 
-/** Le contrôleur que l'accesseur rend — échangeable par les deux tests de refus. */
+/** The controller the accessor returns — swappable by the two refusal tests. */
 let current: unknown = realController;
 
 Object.defineProperty(GL.GeoLeaf, "_APIController", {
@@ -82,8 +88,8 @@ Object.defineProperty(GL.GeoLeaf, "_APIController", {
     enumerable: true,
 });
 
-// Le déféré est PORTEUR : la chaîne `globals/` lit `_APIController` au chargement, et un `import`
-// statique se hisserait au-dessus de l'accesseur posé juste ci-dessus.
+// The deferral is LOAD-BEARING: the `globals/` chain reads `_APIController`
+// at load, and a static `import` would hoist above the accessor set just above.
 beforeAll(async () => {
     await import("../../src/globals/globals.api.js");
 });
@@ -118,7 +124,7 @@ describe("GeoLeafTopLevelApi — les onze, contre `globals/globals.api.ts` (7.7)
         expect(mockGeoleafLoadConfig).toHaveBeenCalledWith({ center: [0, 0] });
     });
 
-    // ── Les deux refus. Uniques dans tout le dépôt — voir l'en-tête. ──────────────────────────
+    // ── The two refusals. Unique in the whole repo — see the header. ──────────────────────────
     it("GeoLeaf.init JETTE si _APIController est absent", () => {
         current = undefined;
         expect(() => GL.GeoLeaf.init({})).toThrow(/APIController missing/);

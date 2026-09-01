@@ -36,7 +36,7 @@
  * imports would flag the S3 storage conformation itself, i.e. the gate would contradict
  * the architecture it defends.
  *
- * GREEN on wiring (S13.1 conformed `events` and `introspection`), so it ships with NO
+ * GREEN on wiring (`events` and `introspection` were conformed first), so it ships with NO
  * baseline and NO allowlist: the grammar encodes the documented PATTERNS, not a list of
  * blessed files. An allowlist would have been shorter and would have said "sync is an
  * exception" — which the architecture document explicitly denies.
@@ -51,8 +51,8 @@ const path = require("node:path");
 const ts = require("typescript");
 
 const ROOT = path.resolve(__dirname, "..");
-// T5.5 — par le registre. Un littéral périmé ne ferait pas rougir FP-01 : il lui ferait
-// scanner zéro façade et annoncer que toutes sont pures.
+// Through the registry. A stale literal would not redden FP-01: it would make it
+// scan zero facades and announce them all pure.
 const MODULES_DIR = path.join(
     require("./lib/packages.cjs").requireByDirName("core").absDir,
     "src",
@@ -195,7 +195,13 @@ function thinDelegate(prop, imported) {
     // contract is "no logic here", not "no accessors". Its body is checked identically.
     const isGetter = ts.isGetAccessorDeclaration(prop) && prop.parameters.length === 0;
     if (!ts.isMethodDeclaration(prop) && !isFnProp && !isGetter) return "not a method";
-    const fn = isFnProp ? prop.initializer : prop;
+    // The cast states what the control flow above already proved and TS cannot follow:
+    // when `isFnProp`, the initializer is an arrow/function expression; otherwise the
+    // "not a method" return has already excluded everything but method/get-accessor.
+    const fn =
+        /** @type {import("typescript").MethodDeclaration | import("typescript").GetAccessorDeclaration | import("typescript").FunctionExpression | import("typescript").ArrowFunction} */ (
+            isFnProp ? prop.initializer : prop
+        );
     if (!fn.body) return "no body";
     // `get: () => X.y` — a concise arrow body is a single expression by construction.
     const expr = ts.isBlock(fn.body)
@@ -370,9 +376,7 @@ function checkPluginFacadePurity() {
     // A registry that stops matching would make this gate pass by scanning nothing —
     // the failure mode `probe-gate-visibility.cjs` exists for. Assert it found some.
     if (files.length === 0) {
-        console.error(
-            `${C.red}✖${C.reset}  aucun \`src/public-api.ts\` trouvé — registre cassé ?`
-        );
+        console.error(`${C.red}✖${C.reset}  aucun \`src/public-api.ts\` trouvé — registre cassé ?`);
         return 2;
     }
 
@@ -484,7 +488,7 @@ function checkFacadePurity() {
             `    C  self-mount           const _gl = ensureGeoLeaf(); _gl.X = X;\n\n` +
             `  Déplacer la logique vers \`built-in/<domaine>/facade.ts\` et ne laisser ici que\n` +
             `  le ré-export — c'est la conformation qu'ont reçue \`storage\` (S3) puis\n` +
-            `  \`events\` et \`introspection\` (S13.1).\n`
+            `  \`events\` et \`introspection\`.\n`
     );
     return 1;
 }

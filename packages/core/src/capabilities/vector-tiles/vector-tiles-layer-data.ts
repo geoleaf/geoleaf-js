@@ -9,9 +9,9 @@
  * Vector-tiles capability — layer-data assembly.
  *
  * Builds the shared-state layer-data record for a loaded VT layer. Originally extracted
- * from `vector-tiles.ts` to keep it under the 700-line limit (roadmap_typage-strict.md,
- * S3); the orchestrator is now well below it (socle B.1 moved the MapLibre building to
- * the adapter), and this stays split as a self-contained pure builder.
+ * from `vector-tiles.ts` to keep it under the 700-line limit; the orchestrator is now
+ * well below it (a later refactor moved the MapLibre building to the adapter), and this
+ * stays split as a self-contained pure builder.
  */
 
 import type { GeoJSONCurrentStyle, GeoJSONLayerEntry } from "../../kernel/geojson/core-types.js";
@@ -50,9 +50,10 @@ export function buildVtLayerData(args: {
         basePath: layerBasePath,
         useSharedCluster: false,
         features: [],
-        // B-161 — l'alias se résout par `layerGeometry`. ⚠️ L'ordre s'inverse
-        // (`geometryType` d'abord) : sans effet, aucune des 6 configs qui déclarent les deux
-        // ne les déclare DIFFÉRENTS. Le repli reste "polygon", propre à ce sous-système.
+        // The alias resolves through `layerGeometry`. ⚠️ The order inverts
+        // (`geometryType` first): no effect, none of the 6 configs declaring both
+        // declares them DIFFERENT. The fallback stays "polygon", local to this
+        // subsystem.
         geometryType: layerGeometry(def, "polygon"),
         isVectorTile: true,
         vtLayerName,

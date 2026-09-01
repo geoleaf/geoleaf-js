@@ -247,24 +247,25 @@ describe("table/table-layer.ts — branch coverage", () => {
             const onFn = vi.fn();
             tableState._map = { on: onFn };
             attachMapEvents(vi.fn(), vi.fn());
-            // ⚠️ 2 et non 3 depuis B-204 : les filtres sont passés sur `document`, parce que
-            // c'est là que leur émetteur dispatche. Le bus carte ne garde que ce que
-            // `kernel/geojson/` y `fire()` réellement.
+            // ⚠️ 2 and not 3: the filters moved to `document`, because that is
+            // where their emitter dispatches. The map bus only keeps what
+            // `kernel/geojson/` really `fire()`s on it.
             expect(onFn).toHaveBeenCalledTimes(2);
         });
 
-        // 🛑 B-204 — CES TROIS CAS ONT ÉTÉ RÉÉCRITS, ET LEUR ANCIENNE FORME EST LA RAISON POUR
-        // LAQUELLE LE DÉFAUT A SURVÉCU.
+        // 🛑 THESE THREE CASES WERE REWRITTEN, AND THEIR OLD SHAPE IS WHY THE
+        // DEFECT SURVIVED.
         //
-        // Ils récupéraient le handler sur `onFn.mock.calls` puis l'appelaient à la main. Un tel
-        // test est **son propre oracle** : il prouve que la fonction passée à `map.on()` fait ce
-        // qu'elle dit, jamais qu'elle est branchée sur un canal où quelqu'un parle. Les trois
-        // sont restés VERTS pendant que l'abonnement était mort **deux fois** — nom inexistant,
-        // et bus MapLibre là où l'émetteur dispatche sur `document`.
+        // They fetched the handler off `onFn.mock.calls` then called it by
+        // hand. Such a test is **its own oracle**: it proves the function
+        // passed to `map.on()` does what it says, never that it is wired to a
+        // channel where anyone speaks. All three stayed GREEN while the
+        // subscription was dead **twice over** — nonexistent name, and the
+        // MapLibre bus where the emitter dispatches on `document`.
         //
-        // ✅ Ils émettent désormais un VRAI événement. Un test qui dispatche ne peut pas se
-        // tromper de canal sans rougir : c'est la seule forme qui distingue « le handler est
-        // correct » de « le handler est atteignable ».
+        // ✅ They now emit a REAL event. A test that dispatches cannot pick the
+        // wrong channel without turning red: the only shape that tells "the
+        // handler is correct" from "the handler is reachable".
         it("filters:applied déclenche refresh quand le panneau est visible et une couche choisie", () => {
             tableState._map = { on: vi.fn() };
             tableState._isVisible = true;
@@ -301,8 +302,9 @@ describe("table/table-layer.ts — branch coverage", () => {
         });
 
         it("l'ancien nom `geoleaf:filters:changed` ne déclenche RIEN", () => {
-            // ⚠️ Sans ce cas, les trois précédents ne distingueraient pas « on écoute le bon
-            // nom » de « on écoute les deux ». Le nom mort ne doit pas revivre par mégarde.
+            // ⚠️ Without this case, the previous three could not tell "we
+            // listen to the right name" from "we listen to both". The dead
+            // name must not come back by accident.
             tableState._map = { on: vi.fn() };
             tableState._isVisible = true;
             tableState._currentLayerId = "layer1";

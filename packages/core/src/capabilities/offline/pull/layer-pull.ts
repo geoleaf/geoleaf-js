@@ -5,32 +5,39 @@
  */
 
 /**
- * Bounded pull — the FIRST writer of the `features` store (tâche 4.1).
+ * Bounded pull — the FIRST writer of the `features` store.
  *
- * Le store existe depuis 3.4 et a reçu son lecteur en 4.3
- * (`IndexedDB.getLayerFeatureCollection`). Il n'avait aucun écrivain : `DBFeatures.put`
- * comptait zéro appelant en `src/`. Ce module le lui donne.
+ * The store existed and had received its reader (`IndexedDB.getLayerFeatureCollection`).
+ * It had no writer: `DBFeatures.put` counted zero callers in `src/`. This module gives
+ * it one.
  *
- * Il applique `PullGranularity = "bboxCapped"` du contrat de synchronisation — emprise plus
- * plafond dur — et **n'écrit aucun code de transport** : `fetchOgcApiFeatures` porte déjà la
- * pagination par lien `next`, le `bbox`, `maxFeatures` et l'`AbortSignal`.
+ * It applies the sync contract's `PullGranularity = "bboxCapped"` — extent plus hard cap
+ * — and **writes no transport code**: `fetchOgcApiFeatures` already carries `next`-link
+ * pagination, `bbox`, `maxFeatures` and the `AbortSignal`.
  *
- * Trois propriétés que ce module existe pour tenir :
+ * Three properties this module exists to hold:
  *
- * 1. **Le plafond est DUR.** `ogc-api-loader` coupe *après* avoir accumulé une page entière
- *    et ne tronque jamais : mesuré, `maxFeatures: 15` avec `limit: 10` rend **20** entités.
- *    Un « rapatriement borné » qui rend plus que sa borne n'est pas borné — la troncature
- *    est ici, et `capped` la rend observable.
- * 2. **Une saisie locale n'est jamais écrasée.** La décision vit dans
- *    `db/features.ts#putManyPreservingLocal`, dans **une** transaction ; ici on ne fait que
- *    rapporter son décompte.
- * 3. **Le rapatriement ne confère JAMAIS l'éditabilité** (invariant S6). Les enregistrements
- *    sortent en `syncState: "synced"`, et ce module ne touche pas à l'`outbox`.
+ * 1. **The cap is HARD.** ⚠️ **This clause said "`ogc-api-loader` […] never truncates"
+ *    until 19/08/2026, and that is no longer true**: the loader now cuts at the exact
+ *    bound and signals the cut through a `truncated` member on the collection. The
+ *    original finding was right — `maxFeatures: 15` with `limit: 10` yielded **20**
+ *    entities — and this module compensated, **alone**. The DISPLAY path, meanwhile,
+ *    received the overflow unknowingly: the fix moved to the source to serve both. The
+ *    cut below therefore becomes **redundant, not wrong** — cutting an already-cut list
+ *    has no effect — and it is kept deliberately: it also bounds the case where the
+ *    source is reached through another path, and `capped` remains the indicator the
+ *    pull report exposes.
+ * 2. **A local capture is never overwritten.** The decision lives in
+ *    `db/features.ts#putManyPreservingLocal`, in **one** transaction; here we only
+ *    report its tally.
+ * 3. **Pulling NEVER confers editability** (standing invariant). Records come out
+ *    `syncState: "synced"`, and this module does not touch the `outbox`.
  *
- * ⚠️ **N'importe pas `../db/indexeddb.js`.** `packages/core/vitest.config.ts` aliase
- * `^\.\./db/indexeddb\.(js|ts)$` vers le mock maison, qui n'a ni `_ensureModule` ni le store
- * `features` : le test serait vert contre une fiction. L'écriture passe par
- * `StorageContract.DB`, comme le fait déjà la lecture de 4.3 dans `loader/single-layer.ts`.
+ * ⚠️ **Does not import `../db/indexeddb.js`.** `packages/core/vitest.config.ts` aliases
+ * `^\.\./db/indexeddb\.(js|ts)$` to the in-house mock, which has neither
+ * `_ensureModule` nor the `features` store: the test would be green against a fiction.
+ * Writing goes through `StorageContract.DB`, as the local read already does in
+ * `loader/single-layer.ts`.
  *
  * @version 1.0.0
  */
@@ -41,48 +48,48 @@ import { coreProfileLayerConfig } from "../config-seam.js";
 import { writePullState } from "../report/pull-state.js";
 import type { FeatureRecord } from "../../../contracts/sync.contract.js";
 
-/** Nom de propriété portant l'horodatage de fraîcheur, quand la couche n'en déclare pas. */
+/** Property name carrying the freshness timestamp, when the layer declares none. */
 const DEFAULT_VERSION_PROPERTY = "updated_at";
 
-/** Pourquoi un rapatriement n'a pas eu lieu. Jamais `null` sans écriture tentée. */
+/** Why a pull did not happen. Never `null` without an attempted write. */
 type PullRefusal =
-    /** Aucune couche de ce nom dans le profil actif. */
+    /** No layer of that name in the active profile. */
     | "layerUnknown"
-    /** La couche ne déclare pas `offline.source` — elle n'est pas rapatriable. */
+    /** The layer declares no `offline.source` — it is not pullable. */
     | "noSource"
-    /** Le moteur de stockage n'est pas câblé (`modules.offline` désactivé, ou pas encore prêt). */
+    /** The storage engine is not wired (`modules.offline` disabled, or not ready yet). */
     | "engineUnavailable"
-    /** La source a répondu par une erreur, ou n'a pas répondu. */
+    /** The source answered with an error, or did not answer. */
     | "sourceUnreachable";
 
-/** Ce qu'un appelant peut borner au moment de l'appel. */
+/** What a caller can bound at call time. */
 interface LayerPullOptions {
-    /** Emprise `[ouest, sud, est, nord]`. Une zone de terrain n'est pas une constante de profil. */
+    /** Extent `[west, south, east, north]`. A field zone is not a profile constant. */
     readonly bbox?: [number, number, number, number];
-    /** Abandon coopératif. Le lot déjà reçu est écrit, et `aborted` le dit. */
+    /** Cooperative abort. The batch already received is written, and `aborted` says so. */
     readonly signal?: AbortSignal;
 }
 
-/** Ce que le rapatriement a réellement fait — chaque champ est assertable. */
+/** What the pull really did — every field is assertable. */
 interface LayerPullReport {
     readonly layerId: string;
-    /** Entités rendues par la source, **avant** le plafond. */
+    /** Entities the source returned, **before** the cap. */
     readonly fetched: number;
-    /** Entités insérées ou rafraîchies. */
+    /** Entities inserted or refreshed. */
     readonly written: number;
-    /** Entités laissées intactes parce qu'elles portent une saisie non synchronisée. */
+    /** Entities left intact because they carry an unsynchronised capture. */
     readonly preserved: number;
-    /** Entités sans identité serveur exploitable — écartées, jamais en silence. */
+    /** Entities without a usable server identity — discarded, never silently. */
     readonly skipped: number;
-    /** Vrai quand le plafond a tronqué le lot. */
+    /** True when the cap truncated the batch. */
     readonly capped: boolean;
-    /** Vrai quand le signal de l'appelant a été levé : le lot est PARTIEL. */
+    /** True when the caller's signal was raised: the batch is PARTIAL. */
     readonly aborted: boolean;
-    /** `null` quand le rapatriement a eu lieu. */
+    /** `null` when the pull happened. */
     readonly refused: PullRefusal | null;
 }
 
-/** Forme minimale du bloc `offline` d'une configuration de couche. */
+/** Minimal shape of a layer configuration's `offline` block. */
 interface OfflineDeclaration {
     readonly maxFeatures?: number;
     readonly source?: {
@@ -93,12 +100,12 @@ interface OfflineDeclaration {
 }
 
 /**
- * Les seuls membres du seam de stockage que ce module utilise.
+ * The only members of the storage seam this module uses.
  *
- * `putLayerFeatures` écrit le lot ; les deux accesseurs de préférence portent le marqueur de
- * rapatriement de la tâche 4.8. ⚠️ Le refus `engineUnavailable` ne teste que `putLayerFeatures` :
- * un moteur qui écrirait les entités sans pouvoir écrire son marqueur doit rapatrier quand même
- * — perdre le rapport est ennuyeux, perdre le rapatriement ne l'est pas du tout.
+ * `putLayerFeatures` writes the batch; the two preference accessors carry the pull
+ * marker. ⚠️ The `engineUnavailable` refusal tests only `putLayerFeatures`: an engine
+ * that could write the entities but not its marker must still pull — losing the report
+ * is annoying, losing the pull is not annoying at all.
  */
 interface FeatureWriter {
     putLayerFeatures?: (
@@ -109,26 +116,26 @@ interface FeatureWriter {
 }
 
 /**
- * Convertit une entité OGC en enregistrement du store.
+ * Converts an OGC feature into a store record.
  *
- * Trois règles, chacune mesurée sur le backend de preuve (`docker/backend/README.md`) :
+ * Three rules, each measured against the proof backend (`docker/backend/README.md`):
  *
- * - **`serverId`** vient de `feature.id`, avec `properties.id` en second — pygeoapi sert les
- *   deux, et un serveur qui n'en sert qu'un reste lisible.
- * - **`localId`** reprend `properties.local_id` quand le serveur en porte un, sinon il est
- *   dérivé du `serverId`. Les lignes semées ont `local_id: null` ; celles que 4.5 poussera
- *   porteront l'identité cliente, et la reprendre est ce qui fera qu'un re-rapatriement
- *   retrouve le MÊME enregistrement au lieu d'en créer un second.
- * - **`updatedAt` reste local.** Le contrat le documente comme « Local modification time » :
- *   y écrire l'horodatage serveur ferait signifier deux choses à l'index selon l'écrivain.
- *   Le marqueur serveur va dans `version`, et nulle part ailleurs — c'est lui que 4.6
- *   comparera.
+ * - **`serverId`** comes from `feature.id`, with `properties.id` second — pygeoapi
+ *   serves both, and a server serving only one stays readable.
+ * - **`localId`** reuses `properties.local_id` when the server carries one, otherwise
+ *   it derives from the `serverId`. Seeded rows have `local_id: null`; the ones the
+ *   push will send carry the client identity, and reusing it is what makes a re-pull
+ *   find the SAME record instead of creating a second one.
+ * - **`updatedAt` stays local.** The contract documents it as "Local modification
+ *   time": writing the server timestamp there would make the index mean two things
+ *   depending on the writer. The server marker goes into `version`, and nowhere else —
+ *   it is what the conflict filter will compare.
  *
- * @param layerId - Couche de destination.
- * @param feature - L'entité GeoJSON telle que la source l'a rendue.
- * @param versionProperty - Propriété portant l'horodatage de fraîcheur.
- * @param now - Horodatage local appliqué à tout le lot.
- * @returns L'enregistrement, ou `null` si l'entité n'a aucune identité serveur.
+ * @param layerId - Destination layer.
+ * @param feature - The GeoJSON feature as the source returned it.
+ * @param versionProperty - Property carrying the freshness timestamp.
+ * @param now - Local timestamp applied to the whole batch.
+ * @returns The record, or `null` when the feature has no server identity.
  */
 function toFeatureRecord(
     layerId: string,
@@ -167,7 +174,7 @@ function toFeatureRecord(
     };
 }
 
-/** Ce qu'il faut réunir avant de solliciter la source — ou le motif de ne pas le faire. */
+/** What must be gathered before hitting the source — or the motive not to. */
 interface PullPlan {
     readonly refused: PullRefusal | null;
     readonly ogcConfig: { url: string; collectionId: string; maxFeatures?: number };
@@ -177,14 +184,14 @@ interface PullPlan {
 }
 
 /**
- * Réunit la déclaration de la couche et le seam d'écriture, ou nomme ce qui manque.
+ * Gathers the layer declaration and the write seam, or names what is missing.
  *
- * Extrait de {@link pullLayer} pour une raison mécanique — la fonction dépassait le plafond de
- * complexité —, mais la découpe est aussi la bonne : tout ce qui peut refuser AVANT la première
- * requête réseau tient ici, et rien d'autre.
+ * Extracted from {@link pullLayer} for a mechanical reason — the function exceeded the
+ * complexity ceiling — but the cut is also the right one: everything that can refuse
+ * BEFORE the first network request fits here, and nothing else.
  *
- * @param layerId - Identifiant de la couche à rapatrier.
- * @returns Le plan, ou un plan dont `refused` est renseigné (les autres champs sont alors inertes).
+ * @param layerId - Identifier of the layer to pull.
+ * @returns The plan, or a plan whose `refused` is set (its other fields are then inert).
  */
 function resolvePullPlan(layerId: string): PullPlan {
     const inert = {
@@ -206,11 +213,11 @@ function resolvePullPlan(layerId: string): PullPlan {
 
     const maxFeatures = typeof offline?.maxFeatures === "number" ? offline.maxFeatures : undefined;
 
-    // `collectionId` défaut = l'identifiant de couche : c'est la correspondance réelle sur le
-    // backend de preuve, et elle évite de redire deux fois le même nom dans le profil. Une
-    // `url` qui pointe déjà sur `/items` reste servie telle quelle par `_buildItemsUrl`.
-    // Construit sans clés à `undefined` : `exactOptionalPropertyTypes` distingue « absent »
-    // de « présent et indéfini ».
+    // `collectionId` default = the layer identifier: that is the real mapping on the
+    // proof backend, and it avoids saying the same name twice in the profile. A `url`
+    // already pointing at `/items` is served as-is by `_buildItemsUrl`.
+    // Built with no `undefined` keys: `exactOptionalPropertyTypes` distinguishes
+    // "absent" from "present and undefined".
     return {
         refused: null,
         ogcConfig: {
@@ -225,16 +232,16 @@ function resolvePullPlan(layerId: string): PullPlan {
 }
 
 /**
- * Rapatrie une couche déclarée, bornée par emprise et par plafond, dans le store `features`.
+ * Pulls a declared layer, bounded by extent and cap, into the `features` store.
  *
- * Ne jette pas : toute issue est un rapport. Une source injoignable, une couche inconnue ou
- * un moteur absent rendent un `refused` nommé — un rapatriement qui échoue en rendant zéro
- * sans motif est indiscernable d'une couche réellement vide, et c'est cette confusion que le
- * sprint ferme.
+ * Does not throw: every outcome is a report. An unreachable source, an unknown layer
+ * or an absent engine yield a named `refused` — a pull failing with zero and no motive
+ * is indistinguishable from a genuinely empty layer, and that confusion is what this
+ * closes.
  *
- * @param layerId - Identifiant de la couche à rapatrier.
- * @param options - Emprise et signal d'abandon.
- * @returns Le rapport de ce qui a été fait.
+ * @param layerId - Identifier of the layer to pull.
+ * @param options - Extent and abort signal.
+ * @returns The report of what was done.
  * @example
  * const report = await GeoLeaf?.Storage?.pullLayer?.("sites_rosario");
  * if (report?.refused) console.warn("pas de rapatriement :", report.refused);
@@ -261,12 +268,12 @@ export async function pullLayer(
 
     let collection;
     try {
-        // 🛑 IMPORT DYNAMIQUE, et ce n'est pas de la coquetterie. Le baril
-        // `kernel/geojson/index.js` est la seule route que R.8 ouvre vers le transport OGC,
-        // mais il tire tout le sous-système geojson : en statique, il entrait dans le graphe
-        // d'import de `offline-engine-entry.ts` et faisait dépasser les 10 s de timeout au
-        // test de câblage sous la suite parallèle (24 workers). Le transport n'est nécessaire
-        // qu'au moment d'un rapatriement — le charger là est aussi ce qui allège le chunk.
+        // 🛑 DYNAMIC IMPORT, and it is not cosmetic. The `kernel/geojson/index.js`
+        // barrel is the only route the deep-import rule opens towards the OGC
+        // transport, but it pulls the whole geojson subsystem: statically, it entered
+        // the import graph of `offline-engine-entry.ts` and pushed the wiring test past
+        // its 10 s timeout under the parallel suite (24 workers). The transport is only
+        // needed at pull time — loading it there is also what lightens the chunk.
         const { fetchOgcApiFeatures } = await import("../../../kernel/geojson/index.js");
         collection = await fetchOgcApiFeatures(ogcConfig, options.signal, options.bbox);
     } catch (error) {
@@ -274,19 +281,40 @@ export async function pullLayer(
             `[Offline.Pull] "${layerId}" — source injoignable :`,
             error instanceof Error ? error.message : String(error)
         );
-        // 🛑 L'ÉCHEC SE PERSISTE, et c'est la moitié utile du marqueur (tâche 4.8). Sans lui,
-        // une couche dont la source est tombée retomberait sur `declaredNeverPulled` — le même
-        // statut qu'une couche qu'on n'a jamais tenté de rapatrier. `pullFailed` dit qu'on a
-        // essayé et que la source a répondu non : c'est actionnable, l'autre ne l'est pas.
+        // 🛑 THE FAILURE IS PERSISTED, and that is the marker's useful half. Without
+        // it, a layer whose source went down would fall back to `declaredNeverPulled` —
+        // the same status as a layer never attempted. `pullFailed` says we tried and
+        // the source said no: that is actionable, the other is not.
         await writePullState(db, layerId, { at: Date.now(), outcome: "failed", written: 0 });
         return { ...nothing, refused: "sourceUnreachable" };
     }
 
     const fetched = collection?.features ?? [];
-    // Le plafond DUR. `ogc-api-loader` s'arrête après une page entière et ne tronque pas :
-    // sans cette coupe, `maxFeatures: 15` écrit 20 enregistrements et sort vert.
-    const capped = maxFeatures !== undefined && fetched.length > maxFeatures;
-    const bounded = capped ? fetched.slice(0, maxFeatures) : fetched;
+    // The HARD cap. ⚠️ Since 19/08/2026 the loader cuts at the exact bound itself, so
+    // this line is REDUNDANT, not wrong: it no longer removes anything on this path.
+    // Kept on purpose — it bounds the case where the collection comes from elsewhere,
+    // and it feeds `capped`, the indicator the pull report exposes.
+    // 🛑 `capped` IS NOW READ FROM BOTH SIDES, and forgetting that would have killed
+    // the signal.
+    //
+    // Since the loader cuts at the exact bound itself, the local comparison can NO
+    // LONGER be true: this module already receives 15 for a cap of 15. A `capped`
+    // deduced from that comparison alone would therefore have become **definitively
+    // false** — the report would have stopped saying a pull was partial, precisely the
+    // day the cut became reliable. That is the failure mode where one thing is fixed
+    // and its witness is extinguished.
+    //
+    // The loader sets `truncated` when it cuts; the local comparison stays, for the
+    // case where the collection comes through another path. One OR the other
+    // suffices.
+    const loaderTruncated = collection?.truncated;
+    const capped =
+        loaderTruncated !== undefined ||
+        (maxFeatures !== undefined && fetched.length > maxFeatures);
+    const bounded =
+        maxFeatures !== undefined && fetched.length > maxFeatures
+            ? fetched.slice(0, maxFeatures)
+            : fetched;
 
     const now = Date.now();
     const records: FeatureRecord[] = [];
@@ -297,23 +325,27 @@ export async function pullLayer(
 
     const tally = (await db.putLayerFeatures?.(records)) ?? { written: 0, preserved: 0 };
 
-    // ⚠️ `outcome: "ok"` même quand `written` vaut 0 — c'est exactement le cas que 4.8 existe
-    // pour rendre distinguable. Une source qui répond « aucune entité dans cette emprise » a
-    // bien été jointe ; la confondre avec « jamais rapatriée » est la confusion que le contrat
-    // nomme « le cas qui n'a aucun observable jusqu'à la coupure ».
+    // ⚠️ `outcome: "ok"` even when `written` is 0 — that is exactly the case the sync
+    // report exists to make distinguishable. A source answering "no entity in this
+    // extent" WAS reached; confusing it with "never pulled" is the confusion the
+    // contract names "the case with no observable until the outage".
     await writePullState(db, layerId, {
         at: now,
         outcome: "ok",
         written: tally.written,
     });
 
-    // ⚠️ Relu sur le signal, pas sur le retour : `fetchOgcApiFeatures` rend une collection
-    // partielle par le MÊME chemin qu'un succès, sans marqueur. Un lot partiel est écrit —
-    // en terrain, des entités valent mieux que rien — mais il ne doit pas se faire passer
-    // pour complet.
+    // ⚠️ Re-read on the signal, not on the return: `fetchOgcApiFeatures` returns a
+    // partial collection through the SAME path as a success, with no marker. A partial
+    // batch is written — in the field, entities beat nothing — but it must not pass
+    // itself off as complete.
     return {
         layerId,
-        fetched: fetched.length,
+        // What the SOURCE returned before the cut, not what survived: the loader
+        // carries it in `truncated.fetched`. Reporting the post-cut length would make
+        // the report say the source fit exactly within the bound — the opposite of
+        // what it observed.
+        fetched: loaderTruncated?.fetched ?? fetched.length,
         written: tally.written,
         preserved: tally.preserved,
         skipped: bounded.length - records.length,

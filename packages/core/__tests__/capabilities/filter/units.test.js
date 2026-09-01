@@ -1,5 +1,5 @@
 /**
- * Unit tests — capabilities/filter/units.ts (CAPACITÉS S3.7)
+ * Unit tests — capabilities/filter/units.ts
  *
  * The proximity radius crosses a km/metre boundary on seven call sites. These helpers
  * exist because the direction, left implicit as a bare `* 1000`, once got inverted

@@ -2,45 +2,44 @@
 /*!
  * probe-typedoc-surface.mjs
  *
- * Sonde de la surface que TypeDoc rendrait si on l'élargissait — l'instrument de la
- * sous-tâche 1 de l'Étape 3 (`_docs_projet/travail/roadmaps/roadmap_documentation-v3.md`).
+ * Probe of the surface TypeDoc would render if widened — the instrument of the
+ * documentation overhaul's sizing step.
  *
- * ## Pourquoi elle est VERSIONNÉE alors qu'elle ne garde rien
+ * ## Why it is VERSIONED although it guards nothing
  *
- * Elle n'est pas une gate et n'a rien à gater : elle ne juge pas, elle **mesure**. Elle est
- * ici parce que la roadmap porte désormais ses chiffres — 2 829 pages pour les 14 paquets,
- * 75 des 92 clés de façade rendues, 132 membres sous `Helpers` et 0 sous `CONSTANTS` — et
- * qu'un chiffre sans commande qui le réimprime est précisément ce que cette refonte traque.
- * `CLAUDE.md` : « tout fait vérifiable porte son vérificateur, ou il n'est pas écrit », et le
- * mode d'échec n° 5 : « un chiffre qu'on ne peut pas re-mesurer ne se périme pas : il se
- * fossilise ». La passe 21 a retiré trois chiffres de la roadmap pour cette raison exacte
- * (« 89-92 % », « ~173 exports », « 1 582 TSDoc ») — elle ne peut pas en écrire quatre
- * nouveaux du même régime.
+ * It is not a gate and has nothing to gate: it does not judge, it **measures**. It is
+ * here because the plan now carries its numbers — 2,829 pages for the 14 packages, 75
+ * of the 92 facade keys rendered, 132 members under `Helpers` and 0 under `CONSTANTS` —
+ * and a number without a command that reprints it is precisely what this overhaul
+ * hunts. The repo's principle: "every verifiable fact carries its verifier, or it is
+ * not written" — a number that cannot be re-measured does not expire: it fossilizes. An
+ * earlier pass removed three numbers for that exact reason ("89-92 %", "~173 exports",
+ * "1,582 TSDoc") — it cannot write four new ones of the same regime.
  *
- * DÉLIBÉRÉMENT hors `ci:local` : convertir les 14 paquets prend quelques secondes et ne
- * protège de rien. La propriété durable, quand elle existera, sera le manifeste de surface
- * committé et sa gate de fraîcheur (§Fraîcheur de la roadmap) — pas cette sonde.
+ * DELIBERATELY outside `ci:local`: converting the 14 packages takes a few seconds and
+ * protects nothing. The durable property, when it exists, will be the committed
+ * surface manifest and its freshness gate — not this probe.
  *
- * ## Ce qu'elle mesure, et à quelle question chacun répond
+ * ## What it measures, and which question each answers
  *
- *   - VOLUME (modules, réflexions, pages) → « peut-on committer le rendu ? » La réponse est
- *     non, et elle est chiffrée ici : voir aussi le déterminisme ci-dessous.
- *   - Les 4 familles de `validation` de TypeDoc → les critères falsifiables qui remplacent
- *     « la sortie est-elle exploitable ? », qui n'est pas un critère.
- *   - C6, la couverture des `EXPECTED_FACADE_KEYS` → le seul chiffre qui dise si la surface
- *     RUNTIME (celle qu'`API_REFERENCE.md` documente, et que l'entrée ESM ne rend pas) est
- *     dérivable. C'est le critère qui décide de toute l'étape.
- *   - Le compte de membres PAR CLÉ → ⚠️ sans lui, un « 75/92 » global aurait fait supprimer
- *     deux documents dont la façade ne rend AUCUN membre (`CONSTANTS`, `Log`). La moyenne
- *     cachait le défaut ; c'est la ventilation qui l'a montré.
- *   - Le déterminisme du manifeste → la propriété que le rendu HTML échoue : TypeDoc y grave
- *     `git rev-parse HEAD` (29 fichiers sur 54 de la sortie actuelle), donc un point fixe y
- *     est impossible.
+ *   - VOLUME (modules, reflections, pages) → "can the rendering be committed?" The
+ *     answer is no, and it is quantified here: see also determinism below.
+ *   - TypeDoc's 4 `validation` families → the falsifiable criteria replacing "is the
+ *     output usable?", which is not a criterion.
+ *   - C6, the `EXPECTED_FACADE_KEYS` coverage → the only number saying whether the
+ *     RUNTIME surface (the one `API_REFERENCE.md` documents, and the ESM entry does
+ *     not render) is derivable. The criterion that decides the whole step.
+ *   - The member count PER KEY → ⚠️ without it, a global "75/92" would have had two
+ *     documents deleted whose facade renders NO members (`CONSTANTS`, `Log`). The
+ *     average hid the defect; the breakdown is what showed it.
+ *   - The manifest's determinism → the property the HTML rendering fails: TypeDoc
+ *     engraves `git rev-parse HEAD` into it (29 files out of 54 of the current
+ *     output), so a fixed point is impossible there.
  *
- * ## Ce qu'elle n'écrit jamais
+ * ## What it never writes
  *
- * Rien dans le dépôt. Le rendu n'est pas produit du tout (on s'arrête après `convert()`),
- * et les manifestes partent sous `PROBE_OUT`, hors arborescence par défaut.
+ * Nothing in the repo. The rendering is not produced at all (we stop after
+ * `convert()`), and the manifests go under `PROBE_OUT`, outside the default tree.
  *
  * Usage : node scripts/probe-typedoc-surface.mjs
  *         PROBE_OUT=/tmp/ma-sonde node scripts/probe-typedoc-surface.mjs
@@ -54,13 +53,13 @@ import os from "node:os";
 const require_ = createRequire(import.meta.url);
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 
-// Le registre, jamais un `packages/core` en dur : un chemin en dur ne casse pas au
-// déplacement, il cesse silencieusement de matcher et la sonde sortirait « verte » en
-// n'ayant rien converti. `requireByDirName` jette si le paquet est introuvable.
+// The registry, never a hard-coded `packages/core`: a hard-coded path does not break
+// on a move, it silently stops matching and the probe would come out "green" having
+// converted nothing. `requireByDirName` throws if the package cannot be found.
 const registry = require_(path.join(ROOT, "scripts/lib/packages.cjs"));
 const CORE = registry.requireByDirName("core");
 
-// TypeDoc n'est installé que dans le core — résolu depuis le registre, pour la même raison.
+// TypeDoc is only installed in the core — resolved from the registry, same reason.
 const TYPEDOC = path.join(CORE.absDir, "node_modules/typedoc/dist/index.js");
 if (!fs.existsSync(TYPEDOC)) {
     console.error(
@@ -73,7 +72,7 @@ const { Application, TSConfigReader, TypeDocReader, ReflectionKind } = await imp
 const OUT = process.env.PROBE_OUT || path.join(os.tmpdir(), "geoleaf-probe-typedoc");
 fs.mkdirSync(OUT, { recursive: true });
 
-/** Range un avertissement de TypeDoc dans une famille — on compte, on ne lit pas. */
+/** Files a TypeDoc warning into a family — we count, we do not read. */
 function classify(message) {
     const s = String(message);
     if (/not included in the documentation/.test(s)) return "NOT_EXPORTED";
@@ -88,7 +87,7 @@ const COMMON = {
     skipErrorChecking: true,
     logLevel: "Warn",
     readme: "none",
-    excludeExternals: true, // sans lui, `Window` amène ~220 membres de lib.dom
+    excludeExternals: true, // without it, `Window` drags in ~220 lib.dom members
     excludePrivate: true,
     excludeInternal: true,
     exclude: ["**/__tests__/**", "**/__mocks__/**", "**/*.test.ts", "**/*.spec.ts"],
@@ -120,14 +119,14 @@ async function probe(label, options) {
     }
     app.validate(project);
 
-    // Le routeur `kind` est celui du rendu HTML par défaut : buildPages donne le nombre
-    // EXACT de fichiers que TypeDoc écrirait, sans en écrire un seul.
+    // The `kind` router is the default HTML rendering's: buildPages gives the EXACT
+    // number of files TypeDoc would write, without writing a single one.
     const Router = app.renderer.routers.get("kind");
     const pages = new Router(app).buildPages(project).length;
 
-    // Le manifeste : une ligne par réflexion, trié. C'est la forme que la roadmap retient
-    // pour la gate de fraîcheur — pas de SHA, pas de date, pas de chemin absolu, donc une
-    // fonction pure de la source. Assertée plus bas, pas supposée.
+    // The manifest: one line per reflection, sorted. The shape retained for the
+    // freshness gate — no SHA, no date, no absolute path, hence a pure function of the
+    // source. Asserted below, not assumed.
     const lines = [];
     project.traverse(function walk(r) {
         lines.push(`${ReflectionKind[r.kind]} | ${r.getFullName()}`);
@@ -140,7 +139,9 @@ async function probe(label, options) {
     const dups = [...new Set(modules.filter((x, i) => modules.indexOf(x) !== i))];
 
     console.log(`\n── ${label} ${"─".repeat(Math.max(0, 56 - label.length))}`);
-    console.log(`   modules    : ${modules.length}${dups.length ? `   ⚠️ DUPLIQUÉS : ${dups.join(", ")}` : ""}`);
+    console.log(
+        `   modules    : ${modules.length}${dups.length ? `   ⚠️ DUPLIQUÉS : ${dups.join(", ")}` : ""}`
+    );
     console.log(`   réflexions : ${lines.length}`);
     console.log(`   pages HTML : ${pages}`);
     for (const [k, v] of Object.entries(buckets).sort((a, b) => b[1] - a[1])) {
@@ -159,8 +160,8 @@ console.log("═".repeat(72));
 
 const coreTs = path.join(CORE.absDir, "tsconfig.json");
 
-// A. L'état actuel — `resolve` sur l'entrée ESM. Le point de comparaison, et la mesure de
-//    la cause : c'est cette stratégie qui rend 0 clé de façade.
+// A. The current state — `resolve` on the ESM entry. The comparison point, and the
+//    measurement of the cause: this strategy is what renders 0 facade keys.
 const actuel = await probe("A-actuel-resolve", {
     ...COMMON,
     entryPoints: [path.join(CORE.absDir, "src/bundle-esm-entry.ts")],
@@ -168,9 +169,9 @@ const actuel = await probe("A-actuel-resolve", {
     tsconfig: coreTs,
 });
 
-// B. Élargi — `expand` sur src/. ⚠️ `global.d.ts` y entre TOUT SEUL : le filtre de TypeDoc
-//    accepte `.ts`, donc `.d.ts`. La roadmap demandait de l'ajouter en entryPoint ; le
-//    contre-essai C montre ce que ça produit.
+// B. Widened — `expand` on src/. ⚠️ `global.d.ts` enters ON ITS OWN: TypeDoc's filter
+//    accepts `.ts`, hence `.d.ts`. The plan asked to add it as an entryPoint; the
+//    counter-trial C shows what that produces.
 const elargi = await probe("B-elargi-expand-src", {
     ...COMMON,
     entryPoints: [path.join(CORE.absDir, "src")],
@@ -178,8 +179,8 @@ const elargi = await probe("B-elargi-expand-src", {
     tsconfig: coreTs,
 });
 
-// C. Contre-essai du piège. Doit produire un module DUPLIQUÉ nommé `global` — c'est
-//    l'assertion qui justifie la correction apportée à l'ordre d'exécution.
+// C. Counter-trial of the trap. Must produce a DUPLICATED module named `global` — the
+//    assertion that justifies the fix brought to the execution order.
 const piege = await probe("C-piege-global-en-entryPoint", {
     ...COMMON,
     entryPoints: [path.join(CORE.absDir, "src"), path.join(CORE.absDir, "src/global.d.ts")],
@@ -187,8 +188,9 @@ const piege = await probe("C-piege-global-en-entryPoint", {
     tsconfig: coreTs,
 });
 
-// D. Les 13 plugins en `packages`, SANS aucun typedoc.json de plugin — ce qui compte, car
-//    `lib/generated-artifacts.cjs` JETTE pour tout typedoc.json de paquet sans `out`.
+// D. The 13 plugins in `packages` mode, WITHOUT any plugin typedoc.json — which
+//    matters, since `lib/generated-artifacts.cjs` THROWS for any package typedoc.json
+//    lacking `out`.
 const pluginDirs = registry
     .all()
     .filter((p) => p.dir.replace(/\\/g, "/").includes("packages/plugins/"))
@@ -201,10 +203,8 @@ const plugins = await probe("D-plugins-packages", {
     name: "GeoLeaf Plugins",
 });
 
-// ── C6 — la surface runtime est-elle dérivable ? ────────────────────────────────────────
-const { EXPECTED_FACADE_KEYS } = await import(
-    path.join(ROOT, "scripts/lib/namespace-surface.mjs")
-);
+// ── C6 — is the runtime surface derivable? ──────────────────────────────────────────────
+const { EXPECTED_FACADE_KEYS } = await import(path.join(ROOT, "scripts/lib/namespace-surface.mjs"));
 
 console.log("\n" + "═".repeat(72));
 console.log("C6 — couverture des EXPECTED_FACADE_KEYS dans la surface rendue");
@@ -218,33 +218,37 @@ const seenIn = (r) => {
 };
 for (const r of [actuel, elargi].filter(Boolean)) {
     const seen = seenIn(r);
-    console.log(`   ${r.label.padEnd(24)} ${seen.length}/${EXPECTED_FACADE_KEYS.length} clés rendues`);
+    console.log(
+        `   ${r.label.padEnd(24)} ${seen.length}/${EXPECTED_FACADE_KEYS.length} clés rendues`
+    );
 }
 
-// ⚠️ La ventilation PAR CLÉ, et non le seul total. Et elle doit distinguer DEUX cas que
-// « 0 membre sous la façade » confond — la première version de cette sonde les a confondus,
-// et le chiffre faux est parti dans la roadmap avant d'être rattrapé :
+// ⚠️ The breakdown PER KEY, and not the total alone. And it must distinguish TWO cases
+// that "0 members under the facade" conflates — this probe's first version conflated
+// them, and the wrong number left for the plan before being caught up:
 //
-//   (i)  la clé est déclarée par un TYPE NOMMÉ (`Layers?: LayerDataApi`) : TypeDoc rend les
-//        membres au SITE DE DÉCLARATION, pas sous la façade. Le document est dérivable — le
-//        lecteur suit une référence cliquable. Ce n'est pas un défaut.
-//   (ii) la clé n'a de membres NULLE PART (`CONSTANTS = Object.freeze({…})`,
-//        `Cluster = buildPublicApi()`) : le type inféré est opaque pour TypeDoc. Là, un
-//        document qui décrit cette façade n'a PAS de remplaçant, et le supprimer perdrait
-//        son contenu.
+//   (i)  the key is declared through a NAMED TYPE (`Layers?: LayerDataApi`): TypeDoc
+//        renders the members at the DECLARATION SITE, not under the facade. The
+//        document is derivable — the reader follows a clickable reference. Not a
+//        defect.
+//   (ii) the key has members NOWHERE (`CONSTANTS = Object.freeze({…})`,
+//        `Cluster = buildPublicApi()`): the inferred type is opaque to TypeDoc. There,
+//        a document describing that facade has NO replacement, and deleting it would
+//        lose its content.
 //
-// Seul (ii) bloque. Confondre les deux sur-compte le blocage d'un facteur ~3.
+// Only (ii) blocks. Conflating the two over-counts the blockage by a factor of ~3.
 if (elargi) {
     const blob = elargi.lines.join("\n");
     const decl = fs.readFileSync(path.join(CORE.absDir, "src/global.d.ts"), "utf8");
 
-    /** Le nom de type par lequel une clé de façade est déclarée, s'il y en a un. */
+    /** The type name through which a facade key is declared, if there is one. */
     function declaredTypeName(key) {
         const m = decl.match(new RegExp(`^\\s+${key}\\??\\s*:\\s*([^;]+);`, "m"));
         if (!m) return null;
         const t = m[1].trim();
-        // `typeof import("…").X` / `import("…").X` → X ; `Foo` → Foo. Un `{ … }` inline n'a
-        // pas de nom, et c'est justement le cas qui rend ses membres sous la façade.
+        // `typeof import("…").X` / `import("…").X` → X; `Foo` → Foo. An inline `{ … }`
+        // has no name, and that is precisely the case that renders its members under
+        // the facade.
         const viaImport = t.match(/import\([^)]*\)\.([A-Za-z_]\w*)/);
         if (viaImport) return viaImport[1];
         const bare = t.match(/^([A-Za-z_]\w*)$/);
@@ -257,10 +261,10 @@ if (elargi) {
         const direct = (blob.match(new RegExp(`GeoLeafGlobal\\.${k}\\.`, "g")) || []).length;
         if (direct > 0) continue;
         const t = declaredTypeName(k);
-        const ailleurs = t
-            ? (blob.match(new RegExp(`\\b${t}\\.[A-Za-z_]`, "g")) || []).length
-            : 0;
-        (ailleurs > 0 ? routees : opaques).push(`${k}${t ? `→${t}` : ""}${ailleurs ? ` (${ailleurs})` : ""}`);
+        const ailleurs = t ? (blob.match(new RegExp(`\\b${t}\\.[A-Za-z_]`, "g")) || []).length : 0;
+        (ailleurs > 0 ? routees : opaques).push(
+            `${k}${t ? `→${t}` : ""}${ailleurs ? ` (${ailleurs})` : ""}`
+        );
     }
 
     console.log(
@@ -277,7 +281,7 @@ if (elargi) {
     const abs = EXPECTED_FACADE_KEYS.filter((k) => !seenIn(elargi).includes(k));
     console.log(
         `\n   ℹ ${abs.length} clé(s) absente(s), dont ${abs.filter((k) => k.startsWith("_")).length} ` +
-            `préfixée(s) \`_\` (dette D-14, hors namespace par décision)`
+            `préfixée(s) \`_\` (dette service-locator, hors namespace par décision)`
     );
     console.log(
         `   ℹ Table/Geocoding/Popup dans EXPECTED_FACADE_KEYS ? ` +
@@ -287,7 +291,7 @@ if (elargi) {
     );
 }
 
-// ── Déterminisme — la propriété que le RENDU échoue et que le manifeste tient ───────────
+// ── Determinism — the property the RENDERING fails and the manifest holds ───────────────
 console.log("\n" + "═".repeat(72));
 console.log("DÉTERMINISME du manifeste (le rendu HTML, lui, grave le SHA de HEAD)");
 console.log("═".repeat(72));

@@ -87,11 +87,12 @@ describe("geojson/visibility-manager", () => {
         expect(showLayer).toHaveBeenCalledWith("lyr1");
     });
 
-    // ─── N-1b : le moteur est seul maître du rendu de la fenêtre d'échelle ────
-    // Depuis S5, chaque sous-couche porte `minzoom`/`maxzoom` dérivés de `scaleConfig` :
-    // MapLibre masque en continu pendant le zoom, au lieu d'attendre `zoomend`. Écrire
-    // aussi `visibility: none` ici donnerait DEUX maîtres à la même décision — et ils
-    // divergent dès qu'ils évaluent à des latitudes différentes.
+    // ─── the engine is sole master of the scale window's rendering ────────────
+    // Each sub-layer carries `minzoom`/`maxzoom` derived from `scaleConfig`:
+    // MapLibre masks continuously during zoom, instead of waiting for
+    // `zoomend`. Also writing `visibility: none` here would give TWO masters
+    // to the same decision — and they diverge as soon as they evaluate at
+    // different latitudes.
     it("_applyVisibilityChange ne touche PAS la carte pour la source ZOOM", () => {
         const showLayer = vi.fn();
         const hideLayer = vi.fn();
@@ -102,7 +103,7 @@ describe("geojson/visibility-manager", () => {
         const result = VisibilityManager._applyVisibilityChange("lyr1", layerData, false, "zoom");
 
         expect(result).toBe(true); // l'état rapporté change bien
-        expect(hideLayer).not.toHaveBeenCalled(); // mais le rendu reste au moteur
+        expect(hideLayer).not.toHaveBeenCalled(); // but rendering stays with the engine
         expect(showLayer).not.toHaveBeenCalled();
     });
 
@@ -397,7 +398,7 @@ describe("geojson/visibility-manager — T22 branch coverage", () => {
 
     // ── _reFilterChildLayers: inner callback branches (22-27) ────────────────
 
-    // _reFilterChildLayers removed in Sprint 9 — MapLibre handles filtering natively
+    // _reFilterChildLayers removed — MapLibre handles filtering natively
     it("_applyVisibilityChange delegates to adapter.showLayer (replaces eachLayer filter path)", () => {
         getState().adapter = { showLayer: vi.fn(), hideLayer: vi.fn() };
         const layer = {};

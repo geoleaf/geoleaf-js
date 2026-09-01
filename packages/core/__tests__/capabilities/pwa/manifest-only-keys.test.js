@@ -1,10 +1,9 @@
 /**
- * Unit tests — `modules.pwa` spans TWO consumers, and only one of them is this bundle
- * (roadmap_optimisation-capacites B.30).
+ * Unit tests — `modules.pwa` spans TWO consumers, and only one of them is this bundle.
  *
  * `description` / `theme_color` / `background_color` exist in `packages/core/src` as TYPE
- * members alone (`PWAConfig`, pwa-manager.ts:85-89): grep finds no runtime read. They are
- * NOT dead keys — `scripts/build-deploy.cjs:678-680` merges each into the deployed
+ * members alone (`PWAConfig`, pwa-manager.ts): grep finds no runtime read. They are
+ * NOT dead keys — `scripts/build-deploy.cjs` merges each into the deployed
  * `manifest.json` — but a reader of the capability had no way to tell that apart from the
  * "declared and never read" family (B.22), because the declaration said nothing.
  *
@@ -20,10 +19,10 @@ const { PwaLifecycle } = await import("../../../src/capabilities/pwa/lifecycle.t
 const { PWAManager } = await import("../../../src/capabilities/pwa/pwa-manager.ts");
 const { PWA_CAPABILITY } = await import("../../../src/capabilities/pwa/pwa-capability.ts");
 
-/** Keys the deployed manifest takes from `modules.pwa` (build-deploy.cjs:676-680). */
+/** Keys the deployed manifest takes from `modules.pwa` (build-deploy.cjs). */
 const MANIFEST_KEYS = ["name", "short_name", "description", "theme_color", "background_color"];
 
-/** Of those, the ones the RUNTIME also reads (pwa-manager.ts:117, via lifecycle.ts:72-73). */
+/** Of those, the ones the RUNTIME also reads (pwa-manager.ts, via lifecycle.ts). */
 const RUNTIME_AND_MANIFEST = ["name", "short_name"];
 
 /** A block setting every manifest key to a distinguishable value. */
@@ -79,7 +78,7 @@ describe("modules.pwa — the runtime / build split", () => {
     });
 
     it("the install banner's app name comes from short_name, then name", () => {
-        // The single runtime effect of the two-sided keys (pwa-manager.ts:117) — the reason
+        // The single runtime effect of the two-sided keys (pwa-manager.ts) — the reason
         // they are not "build-time only" like their three neighbours.
         const initPrompt = vi.spyOn(PWAManager, "init");
         PwaLifecycle.init(FULL_BLOCK);

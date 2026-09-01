@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "test-typecheck",
+    "scope": ["scripts/check-test-typecheck.cjs"],
+    "verdicts": {
+        "scripts/check-test-typecheck.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "TTC-00…02 — les suites TypeScript sont type-checkées sous baseline décroissante ; ferme la contradiction JS-TEST-DEBT",
+            "confidence": "haute",
+            "rationale": "Câblé dans `ci:local` et `ci.yml` à la pose. Son existence répond à une contradiction mesurée entre deux gates du même dépôt : `JS-TEST-DEBT` impose TypeScript aux tests neufs, et aucun tsconfig de paquet n'inclut son répertoire de tests — 263 suites .ts jamais compilées, 271 paires fichier:code d'erreurs dormantes au premier relevé (distribution saine : TS2532/TS2345/TS2339 dominent, dont 2 TS2554 d'arité — la classe des oracles-fixtures). Compile avec les options du paquet PLUS `moduleResolution: bundler` (la résolution sous laquelle Vitest exécute réellement — les réglages node des paquets ne résolvent même pas les types de vitest, mesuré), `allowImportingTsExtensions` (les suites importent en `.ts` nu) et `skipLibCheck` (le verdict porte sur NOS suites). Baseline gelée à la pose (B-D1) : naître rouge sur 271 entrées ferait désarmer la gate dans la semaine. Clés sans numéro de ligne, délibérément — les lignes dérivent sans information. VU ROUGE SUR TROIS MUTATIONS (erreur neuve, guérison non resserrée, effondrement du corpus sous le plancher), restaurations vérifiées au sha256."
+        }
+    }
+}

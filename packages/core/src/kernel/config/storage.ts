@@ -71,7 +71,7 @@ const StorageModule: {
      * bypasses the prototype-pollution guards; prefer `set()`.
      */
     getAll(): GeoLeafConfig {
-        return (this._config || {}) as GeoLeafConfig;
+        return this._config || {};
     },
 
     /**

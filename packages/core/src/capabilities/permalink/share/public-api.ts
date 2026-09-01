@@ -7,8 +7,11 @@
 /**
  * Share capability — public API surface.
  *
- * Builds the object mounted on `GeoLeaf.Share` (Full build only — Share is excluded
- * from the Lite build, so this facade is never pulled into the Lite graph). Exposes
+ * Builds the object mounted on `GeoLeaf.Share`.
+ *
+ * ⚠️ This header named the « Lite build » until 2026-08-19. **That build no longer exists** — its removal is motivated where it happened, in the bundle configuration, and the alternate mounting site these headers implied does not exist either. A build distinction that is gone does not read as stale: it reads as a live constraint, and a reader plans around it. Here it announced an EXCLUSION — a reader would look for the graph it names.
+ *
+ * Exposes
  * the modal controls (`openShareDialog` / `closeShareDialog` / `isOpen` / `getShareUrl`)
  * plus capability read helpers (`isEnabled` / `getConfig`) for integrators / no-code
  * studio.

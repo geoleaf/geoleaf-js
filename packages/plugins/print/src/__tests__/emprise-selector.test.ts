@@ -1,17 +1,18 @@
 /**
  * Tests for `emprise-selector.ts` — the print-area overlay.
  *
- * 🛑 CE FICHIER EST UN FILET, ÉCRIT AVANT LE REFACTO QU'IL PROTÈGE.
+ * 🛑 THIS FILE IS A NET, WRITTEN BEFORE THE REFACTOR IT PROTECTS.
  *
- * `emprise-selector.ts` n'avait AUCUN test et figure dans le `coverageExclude` du paquet
- * (motif « Sprint 3 modules — tested in Sprint 5 », périmé). Réécrire à l'aveugle un chemin
- * souris qui fonctionne pour lui ajouter du tactile était le mauvais pari : les cas souris
- * ci-dessous sont donc posés D'ABORD, et le refacto ne doit pas les faire bouger d'un iota.
+ * `emprise-selector.ts` had NO test and sits in the package's
+ * `coverageExclude` (stale motive). Blindly rewriting a working mouse path to
+ * add touch to it was the wrong bet: the mouse cases below are therefore laid
+ * down FIRST, and the refactor must not move them an inch.
  *
- * L'exclusion de couverture n'est pas retirée dans ce lot : le fichier pèse ~130 lignes
- * exécutables et ~60 branches, et l'intégrer sans une suite complète ferait passer le
- * paquet SOUS son seuil de branches. Ces tests assertent le comportement même hors
- * comptabilité — le retrait de l'exclusion est un geste séparé, une fois la suite étoffée.
+ * The coverage exclusion is not removed here: the file weighs ~130
+ * executable lines and ~60 branches, and counting it without a complete suite
+ * would drop the package BELOW its branch threshold. These tests assert the
+ * behaviour even off the books — removing the exclusion is a separate act,
+ * once the suite is fleshed out.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { createEmpriseSelector } from "../emprise-selector.js";
@@ -151,7 +152,7 @@ describe("emprise-selector — mouse (non-regression net)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Touch — le tracé marchait déjà ; tout le reste était INERTE
+// Touch — drawing already worked; everything else was INERT
 // ---------------------------------------------------------------------------
 
 /** Fires a TouchEvent with a single finger at (cx, cy). */
@@ -187,8 +188,8 @@ describe("emprise-selector — touch", () => {
         drawWithTouch(overlay);
         const br = container.querySelector(".gl-emprise-handle--br") as HTMLElement;
 
-        // Avant le correctif, `_onTouchStart` sortait sur `phase !== "drawn"` et
-        // `_onTouchMove` sur `phase === "drawing"` : ces deux lignes ne faisaient RIEN.
+        // Before the fix, `_onTouchStart` bailed on `phase !== "drawn"` and
+        // `_onTouchMove` on `phase === "drawing"`: these two lines did NOTHING.
         touch("touchstart", br, 250, 200);
         touch("touchmove", overlay, 300, 250);
         touch("touchend", overlay, 300, 250);
@@ -236,7 +237,7 @@ describe("emprise-selector — touch", () => {
         touch("touchstart", br, 250, 200);
         overlay.dispatchEvent(new TouchEvent("touchcancel", { touches: [], bubbles: true }));
 
-        // Le geste est relâché : un mouvement ultérieur ne redimensionne plus rien.
+        // The gesture is released: a later movement no longer resizes anything.
         mouse("mousemove", document, 350, 290);
         expect(readRect()).toEqual({ x: 50, y: 50, w: 200, h: 150 });
     });

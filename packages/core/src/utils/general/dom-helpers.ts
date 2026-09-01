@@ -6,22 +6,23 @@
  */
 
 /**
- * Helpers pour création et manipulation d'éléments DOM
+ * Helpers for creating and manipulating DOM elements
  *
  * @version 1.2.0
- * @requires GeoLeaf.Security (pour sanitization)
+ * @requires GeoLeaf.Security (for sanitization)
  */
 
 import { Log } from "../log/index.js";
-// STRUCT S6 — `dom-security.ts` a rejoint `kernel/security/` (verdict E3). ⚠️ Ce site était
-// EXTENSIONLESS (`"./dom-security"`), donc invisible à tout grep sur `dom-security.js` — y
-// compris celui du pré-vol du sprint et celui de l'audit, qui a de ce fait sous-compté les
-// arêtes E3 de `utils/general/`. Passe par le baril : c'est la forme documentée de l'accès
-// inter-répertoires, et elle n'épingle pas un chemin de fichier.
+// `dom-security.ts` joined `kernel/security/`. ⚠️ This site was EXTENSIONLESS
+// (`"./dom-security"`), hence invisible to any grep on `dom-security.js` —
+// including the sprint pre-flight's and the audit's, which therefore
+// under-counted `utils/general/`'s cross-directory edges. Goes through the
+// barrel: the documented form of cross-directory access, and it does not pin a
+// file path.
 import { DOMSecurity } from "../../kernel/security/index.js";
 
 // `GeoLeafGlobal`, `GeoLeafUtilsEvents` and the ambient `GeoLeaf` binding are now
-// declared canonically in `src/global.d.ts` (roadmap_typage-strict.md, S1).
+// declared canonically in `src/global.d.ts`.
 
 /**
  * Properties accepted by the DOM element factory.
@@ -44,7 +45,7 @@ export interface CreateElementProps {
 }
 
 /**
- * Cr\u00e9e un \u00e9l\u00e9ment DOM avec propri\u00e9t\u00e9s et enfants de mani\u00e8re d\u00e9clarative
+ * Creates a DOM element with properties and children, declaratively
  */
 function _applyDataset(element: HTMLElement, dataAttrs: Record<string, string> | undefined): void {
     if (!(dataAttrs && typeof dataAttrs === "object")) return;
@@ -119,7 +120,7 @@ function _applyContent(
         }
         const domSec = typeof GeoLeaf !== "undefined" ? GeoLeaf?.DOMSecurity : undefined;
         if (domSec?.setSafeHTML) {
-            domSec.setSafeHTML(element as HTMLElement, String(innerHTML));
+            domSec.setSafeHTML(element, String(innerHTML));
         } else {
             element.textContent = String(innerHTML);
         }
@@ -163,18 +164,12 @@ export function createElement(
 }
 
 /**
- * Adds des enfants à un élément parent
+ * Adds children to a parent element
  */
 export function appendChild(
     parent: HTMLElement,
     ...children: (
-        | Node
-        | string
-        | number
-        | boolean
-        | null
-        | undefined
-        | (Node | string | number)[]
+        Node | string | number | boolean | null | undefined | (Node | string | number)[]
     )[]
 ): HTMLElement {
     for (const child of children) {
@@ -193,7 +188,7 @@ export function appendChild(
 }
 
 /**
- * Empty un élément de tous ses enfants
+ * Empties an element of all its children
  */
 export function clearElement(
     element: HTMLElement | null | undefined
@@ -226,7 +221,7 @@ export function clearElement(
  * `createElement` only when you need its declarative props bag (dataset,
  * attributes, `on*` handlers, sanitized `innerHTML`).
  *
- * @see ADR-10 in `_docs_projet/travail/cdc/CDC_technique.md` for the migration
+ * @see the migration notes below for
  * pitfalls between the two factories.
  */
 

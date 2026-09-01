@@ -6,7 +6,7 @@
  */
 
 /**
- * ModuleRegistry — Sprint 3 implementation of `IModuleRegistry`.
+ * ModuleRegistry — the production implementation of `IModuleRegistry`.
  *
  * Manages the GeoLeaf module lifecycle:
  * - Validates uniqueness and registration order.
@@ -244,7 +244,7 @@ export class ModuleRegistry implements IModuleRegistry {
         this._initialized = false;
 
         // `_modules` is deliberately NOT cleared: the 6 kernel modules are registered once, at
-        // bundle eval (`boot-install.ts:115-128`). Purging them would leave an empty registry
+        // bundle eval (`boot-install.ts`). Purging them would leave an empty registry
         // and make any recreate impossible. `register()` is idempotent, so replaying the preset
         // Pass 2 over a re-armed registry is safe.
     }

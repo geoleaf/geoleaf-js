@@ -200,20 +200,33 @@ if (res.status === 1 && lines.length === 0) {
 // ~27 % correct. The signals were not hidden; the category was retired, on the core
 // only, with `check-orphan-exports.cjs` left as sole gate on that angle.
 //
-// What remains is 1 row, and it is REAL debt, deliberately out of scope for this lot:
-// `packages/core/src/contracts/sidepanel-renderer.contract.ts` — its interfaces are
-// redeclared in `capabilities/feature-info/types.ts` and the two copies have already
-// diverged (`SidePanelFeatureDetail` vs `GeoLeafFeatureClickDetail`). It is tracked as
-// **B-22** in `_docs_projet/registres/backlog_technique.md`.
+// What remained was 1 row, and it is now ZERO: `contracts/sidepanel-renderer.contract.ts`
+// was removed on 19/08/2026. It redeclared the three members of `ISidePanelRenderer` that
+// live in `capabilities/feature-info/types.ts`, better documented and implemented by
+// nothing.
 //
-// ⚠️ It is NOT blocked. An earlier draft of this comment said "which copy is canonical
-// depends on Q1 of the API audit §8" — Q1 was decided on 25/07/2026 (yes, extension
-// contracts are public), and B-22 records the answer: THIS file is the canonical one,
-// and `feature-info/types.ts` must point at it instead of keeping a second copy. What
-// remains is the work, not the decision — and it carries its own pre-flight, because
-// two copies that have drifted do not reunify by deleting the one presumed obsolete.
+// 🛑 THE PRESCRIPTION IN THIS FILE WAS REVERSED ON 17/08/2026, BY MEASUREMENT, and the
+// history is kept so that what was believed stays legible.
 //
-// A baseline of one entry, naming its backlog item, is the whole point of the mechanism.
+// It said: "the contract file is the canonical one, and `feature-info/types.ts` must point
+// at it instead of keeping a second copy."
+//
+// ⚠️ Applying that would have produced TWO regressions, on the only two points where the
+// copies had actually diverged: the contract declared `coordinates` REQUIRED where the
+// runtime emits it optional (`event-bus.contract.ts`), and it typed `type`/`style` as a
+// free `string` where `feature-info` imports the CLOSED vocabulary of
+// `attributes.contract.ts`. On both points, `feature-info` was the correct one.
+//
+// The direction predated `attributes.contract.ts`: the target was there and the statement
+// described it correctly, but its REASON had fallen. A false instruction inside a wired
+// gate costs more than an absent one — it steers before anyone re-reads.
+//
+// ✅ What settled it: the file was NOT reachable through the package's `exports` map (36
+// entries, no wildcard covering it), so no integrator could name it despite its shipped
+// `.d.ts`, and it had zero importers. Removing it took nothing nameable away.
+//
+// 📌 An empty baseline is the healthy state of this mechanism, not a disarmed one: a new
+// unused file makes it red immediately.
 
 const BASELINE_PATH = path.join(__dirname, "check-dead-code.baseline.json");
 

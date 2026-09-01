@@ -5,28 +5,29 @@
  */
 
 /**
- * Le droit d'éditer une couche — la règle, et l'accès à la déclaration qui la porte.
+ * The right to edit a layer — the rule, and access to the declaration carrying it.
  *
- * ## Pourquoi ce module est dans le GRAPHE DE BOOT et pas dans le moteur hors-ligne
+ * ## Why this module is in the BOOT GRAPH and not in the offline engine
  *
- * 🛑 **Parce que la permission se lit dans le PROFIL, pas dans IndexedDB.** La règle a vécu
- * jusqu'au 07/08/2026 en fonction privée de `capabilities/offline/write/local-edit-api.ts`
- * (`_grants`), donc dans le chunk différé, donc atteignable seulement par le chemin qu'on
- * emprunte quand le réseau est absent. Conséquence mesurée (**B-138**) : un utilisateur
- * **connecté** passait par `editor/src/persistence/rest-adapter.ts`, qui émet un `DELETE`
- * inconditionnel, et une couche déclarant `edition.delete: false` restait supprimable.
- * **La permission n'était appliquée que sur le chemin où elle était atteignable.**
+ * 🛑 **Because the permission is read from the PROFILE, not IndexedDB.** The rule
+ * lived until 07/08/2026 as a private function of
+ * `capabilities/offline/write/local-edit-api.ts` (`_grants`), hence in the deferred
+ * chunk, hence reachable only through the path taken when the network is absent.
+ * Measured consequence: a **connected** user went through
+ * `editor/src/persistence/rest-adapter.ts`, which emits an unconditional `DELETE`,
+ * and a layer declaring `edition.delete: false` stayed deletable. **The permission
+ * was applied only on the path where it was reachable.**
  *
- * ⚠️ Et l'y laisser en la routant par le sac `edit` de la façade n'aurait rien réparé :
- * `@geoleaf-plugins/editor` déclare `requires: []` et tourne en `persistence.mode: "online"`
- * sans aucun moteur hors-ligne. Le prédicat aurait été indisponible **exactement** dans le
- * cas qui portait le trou.
+ * ⚠️ And leaving it there while routing it through the facade's `edit` bag would
+ * have repaired nothing: `@geoleaf-plugins/editor` declares `requires: []` and runs
+ * in `persistence.mode: "online"` with no offline engine at all. The predicate
+ * would have been unavailable **exactly** in the case carrying the hole.
  *
- * ## Une seule implémentation, et c'est le compteur C4
+ * ## One implementation, and that is the duplication counter
  *
- * `applyEdit` et la façade appellent {@link grantsEdition} — la même fonction, pas deux
- * lectures d'une même règle. Deux implémentations d'une autorisation divergent, et celle qui
- * diverge en dernier est celle que personne ne relit.
+ * `applyEdit` and the facade call {@link grantsEdition} — the same function, not
+ * two reads of one rule. Two implementations of an authorisation diverge, and the
+ * one that diverges last is the one nobody re-reads.
  *
  * @version 1.0.0
  */
@@ -35,28 +36,30 @@ import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";
 import type { LayerEditionPermissions, SyncOperationKind } from "../../contracts/sync.contract.js";
 
 /**
- * Lit TOUTES les déclarations de couche du profil actif, dans l'ordre du profil.
+ * Reads ALL layer declarations of the active profile, in profile order.
  *
- * 🛑 **N'utilise PAS `getAllLayerConfigs()`, et c'est mesuré.** Le baril voisin expose bien
- * cet accesseur, mais `kernel/geojson/loader/profile.ts` le remplit avec une **projection en
- * liste blanche** — `id, label, layerManagerId, configFile, zIndex, themes, geometry,
- * geometryType, styles, labels`. Ni `edition`, ni `offline`, ni `data`, ni `write`. Un
- * lecteur de permission qui passerait par là verrait `edition === undefined` pour **toute**
- * couche et refuserait tout, en silence.
+ * 🛑 **Does NOT use `getAllLayerConfigs()`, and that is measured.** The neighbouring
+ * barrel does expose that accessor, but `kernel/geojson/loader/profile.ts` fills it
+ * with a **whitelist projection** — `id, label, layerManagerId, configFile, zIndex,
+ * themes, geometry, geometryType, styles, labels`. Neither `edition`, nor
+ * `offline`, nor `data`, nor `write`. A permission reader going through it would
+ * see `edition === undefined` for **every** layer and refuse everything, silently.
  *
- * ⚠️ **Et ce n'est PAS `Config.Profile.getActiveProfileLayersConfig()`** : le sous-objet
- * `Profile` n'est pas monté sur `globalThis.GeoLeaf.Config`, et l'appel lève. Mesuré en
- * navigateur à la tâche 4.1, après un test unitaire vert qui moquait la forme espérée.
+ * ⚠️ **And it is NOT `Config.Profile.getActiveProfileLayersConfig()`**: the
+ * `Profile` sub-object is not mounted on `globalThis.GeoLeaf.Config`, and the call
+ * throws. Measured in a browser, after a green unit test that mocked the hoped-for
+ * shape.
  *
- * @returns Les déclarations de couche, ou `[]` si aucun profil n'est chargé.
+ * @returns The layer declarations, or `[]` when no profile is loaded.
  */
 export function profileLayers(): Array<Record<string, unknown>> {
     const profile: unknown = getGeoLeaf()?.Config?.getActiveProfile?.();
     if (!profile || typeof profile !== "object") return [];
     const raw = (profile as { layers?: unknown }).layers;
     if (!Array.isArray(raw)) return [];
-    // `Array.isArray` sur un `unknown` narrow en `any[]` : re-typer explicitement, sinon
-    // `find` rend `any` et la valeur traverse la frontière de typage sans être vérifiée.
+    // `Array.isArray` on an `unknown` narrows to `any[]`: re-type explicitly,
+    // otherwise `find` yields `any` and the value crosses the typing boundary
+    // unchecked.
     const layers = raw as unknown[];
     return layers.filter(
         (layer): layer is Record<string, unknown> => !!layer && typeof layer === "object"
@@ -64,12 +67,13 @@ export function profileLayers(): Array<Record<string, unknown>> {
 }
 
 /**
- * Lit UNE couche — l'intégralité de son `<id>_config.json`, tel que fusionné au profil actif.
+ * Reads ONE layer — its entire `<id>_config.json`, as merged into the active profile.
  *
- * Mêmes sources et mêmes pièges que {@link profileLayers}, dont c'est la projection unitaire.
+ * Same sources and same traps as {@link profileLayers}, of which this is the
+ * unitary projection.
  *
- * @param layerId - Identifiant de la couche.
- * @returns La configuration complète, ou `null` si le profil ou la couche est absent.
+ * @param layerId - Layer identifier.
+ * @returns The full configuration, or `null` when the profile or the layer is absent.
  */
 export function profileLayerConfig(layerId: string): Record<string, unknown> | null {
     const found = profileLayers().find((layer) => (layer as { id?: unknown }).id === layerId);
@@ -77,20 +81,21 @@ export function profileLayerConfig(layerId: string): Record<string, unknown> | n
 }
 
 /**
- * La déclaration accorde-t-elle cette opération ? — le gate par opération de la décision V1.
+ * Does the declaration grant this operation? — the per-operation gate.
  *
- * ⚠️ **Absent vaut REFUSÉ**, et un bloc `edition` présent mais vide n'accorde rien non plus :
- * déclarer n'est pas accorder. Aucune clé n'en implique une autre — `update` n'accorde pas
- * `delete`. Dériver l'une de l'autre est le mécanisme exact par lequel `enableEditionFull`
- * avait acquis un nom qui mentait.
+ * ⚠️ **Absent means REFUSED**, and a present-but-empty `edition` block grants
+ * nothing either: declaring is not granting. No key implies another — `update` does
+ * not grant `delete`. Deriving one from the other is the exact mechanism by which
+ * `enableEditionFull` had acquired a lying name.
  *
- * Un `edition` mal formé (chaîne, tableau, `null`) ne vaut pas mieux qu'absent : il n'accorde
- * rien. On ne jette pas — le schéma de profil refuse déjà la forme à la validation, et cette
- * branche ne couvre qu'un profil monté à la main, par un test ou par un hôte.
+ * A malformed `edition` (string, array, `null`) is no better than absent: it grants
+ * nothing. We do not throw — the profile schema already refuses the shape at
+ * validation, and this branch only covers a profile mounted by hand, by a test or a
+ * host.
  *
- * @param declared - La valeur brute de la clé `edition` de la couche, non validée.
- * @param kind - L'opération soumise.
- * @returns `true` seulement si la clé correspondante vaut littéralement `true`.
+ * @param declared - The raw value of the layer's `edition` key, unvalidated.
+ * @param kind - The submitted operation.
+ * @returns `true` only when the matching key is literally `true`.
  */
 export function grantsEdition(declared: unknown, kind: SyncOperationKind): boolean {
     if (declared === null || typeof declared !== "object" || Array.isArray(declared)) return false;
@@ -98,17 +103,18 @@ export function grantsEdition(declared: unknown, kind: SyncOperationKind): boole
 }
 
 /**
- * La couche accorde-t-elle cette opération ? — le prédicat, rendu INTERROGEABLE avant écriture.
+ * Does the layer grant this operation? — the predicate, made QUERYABLE before writing.
  *
- * C'est ce que `applyEdit` applique hors ligne, et ce que le plugin d'édition consulte
- * désormais **avant de choisir son chemin**, donc y compris quand il est connecté (B-138).
+ * It is what `applyEdit` applies offline, and what the edit plugin now consults
+ * **before choosing its path**, hence including when connected.
  *
- * ⚠️ Une couche inconnue rend `false`. Refuser l'inconnu est le même choix qu'`applyEdit`
- * (`layerUnknown`), et l'inverse ferait d'une faute de frappe une autorisation.
+ * ⚠️ An unknown layer yields `false`. Refusing the unknown is the same choice as
+ * `applyEdit` (`layerUnknown`), and the opposite would make a typo an
+ * authorisation.
  *
- * @param layerId - L'identifiant de couche du profil actif.
- * @param kind - L'opération soumise.
- * @returns `true` seulement si la couche accorde littéralement cette opération.
+ * @param layerId - The layer identifier from the active profile.
+ * @param kind - The submitted operation.
+ * @returns `true` only when the layer literally grants this operation.
  */
 export function mayEditLayer(layerId: string, kind: SyncOperationKind): boolean {
     const config = profileLayerConfig(layerId);

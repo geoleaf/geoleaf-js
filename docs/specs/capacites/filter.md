@@ -128,10 +128,22 @@ Le trou est donc **côté introspection**, pas côté documentation : c'est un c
 — un studio de configuration, typiquement — qui ne verrait pas de quoi construire un curseur de plage
 ni un rayon de proximité.
 
+⚠️ **Les quatre `radius*` sont en km et acceptent des décimales**, et la barre de proximité est
+la **seule** surface qui les consomme : `panel/render.ts` saute `kind: "proximity"` (« driven by
+the toolbar button, not rendered in the panel »). Jusqu'au 20/08/2026 elle lisait son curseur au
+`parseInt` — un `radiusStep` fractionnaire perdait tous ses crans sous le kilomètre, et le
+libellé, écrit depuis **trois sources différentes** (le nombre de config, l'entier tronqué, la
+chaîne brute de `defaultValue`), affichait la valeur demandée à côté d'un cercle qui ne la
+respectait pas. Le libellé passe désormais par `format.proximity.radius`, clé déclarée dans les
+six dictionnaires et assertée par `i18n.test.js` — mais qui **n'avait aucun consommateur** : les
+trois gabarits `${…} km` la court-circuitaient. Gardé par
+`packages/core/__tests__/ui/mobile-toolbar-proximity.test.ts`, dont le cas central verrouille l'invariant
+« le libellé affiché et le rayon appliqué sont le même nombre ».
+
 ⚠️ **Et ce même §12 enseigne un prédicat « natif GPU » pour trois des six genres.** C'est **faux** :
 la capacité ne construit **aucune** expression MapLibre, les six genres passent par le même prédicat
 JavaScript, et le filtre GPU par identifiants du seam s'applique **identiquement aux six**. La
-distinction que la table publie n'existe nulle part dans le code. C'est **B-68** du
+distinction que la table publie n'existe nulle part dans le code. C'est un constat versé du
 registre, qui porte les deux constats.
 
 ### Le gate est opt-out, et il a deux étages
@@ -246,7 +258,7 @@ Sa position dans `presets/manifest.full.ts` est **porteuse** et documentée sur 
 enregistrée **avant** `filter`, et comme les deux déclarent la même dépendance, c'est l'ordre
 d'enregistrement qui départage le tri topologique. Le numéro d'ordre ne se recopie pas ici.
 
-⚠️ **La question de rang de B-57 se pose ici aussi** :
+⚠️ **La question de rang des dépendances se pose ici aussi** :
 `dependencies = ["geojson"]` exprime un besoin réel — le panneau lit les données au montage pour
 déduire les options `"auto"` — **et** un besoin d'ordre. Contrairement à [`legend`](legend.md), le
 besoin de données est authentique ; c'est le cas le plus favorable des quatorze.
@@ -297,7 +309,7 @@ les embarquer.
 
 Le CDC `CDC_capacite-filter.md` (v1.2.0, 21/07/2026) a été **consommé** en écrivant cette fiche, puis
 **supprimé** du dossier de tri — ligne au §Journal des décisions de
-`roadmap_documentation-v3.md`.
+la refonte documentaire V3.
 
 | Énoncé du CDC                                                                                      | Ce que dit le code                                                                                                                                                                                                                          |
 | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -305,12 +317,12 @@ Le CDC `CDC_capacite-filter.md` (v1.2.0, 21/07/2026) a été **consommé** en é
 | §Statut — options de taxonomie via le seam **transitoire** `taxonomy-source.ts`                    | **Le fichier n'existe plus** et l'échéance annoncée a été tenue : la lecture passe par `GeoLeaf.Taxonomy.getCategories(ref)`                                                                                                                |
 | §Ce que la refonte change — « ajoute les kinds `range`/`boolean`/**`enum`** »                      | **Il n'y a pas de genre `enum`.** Ils sont **six**, et la table du §3.2 du même document les liste correctement. Contradiction interne                                                                                                      |
 | §Statut, §9 — `_UIFilterPanel*` « conservés en shims lazy (`compat.ts`) »                          | **Supprimés**, et `compat.ts` n'existe pas. Les lecteurs passent par `GeoLeaf.Filter` et par l'API d'interface du kernel                                                                                                                    |
-| §7, §9 — `GeoLeaf.Filters` (pluriel) « conservée »                                                 | **Supprimée** (S4.5), avec le moteur de filtre de route et son seam de contribution — elle en était l'unique appelant atteignable                                                                                                           |
-| §7 — sous-dossier `filters/` conservé pour l'alias Lite                                            | **Le build Lite n'existe plus** (B-07), et `capabilities/filter/filters/` **n'existe pas** : les répertoires réels sont `engine/` et `panel/`. ⚠️ Un en-tête du code porte encore ce chemin mort — mesuré : **une** occurrence              |
+| §7, §9 — `GeoLeaf.Filters` (pluriel) « conservée »                                                 | **Supprimée**, avec le moteur de filtre de route et son seam de contribution — elle en était l'unique appelant atteignable                                                                                                                  |
+| §7 — sous-dossier `filters/` conservé pour l'alias Lite                                            | **Le build Lite n'existe plus**, et `capabilities/filter/filters/` **n'existe pas** : les répertoires réels sont `engine/` et `panel/`. ⚠️ Un en-tête du code porte encore ce chemin mort — mesuré : **une** occurrence                     |
 | §7 — façade `modules/geoleaf.filter.ts`, montée dans `globals.ui(.lite).ts`                        | La façade est `api/geoleaf.filter.ts` et le montage se fait dans l'installeur de la capacité                                                                                                                                                |
 | §8 — la façade a **5** méthodes                                                                    | **8 membres.** Manquent à la liste `applyNow`, `hasActiveFilters` et le sous-ensemble `proximity` — les trois consommés par la barre d'outils mobile                                                                                        |
 | §Résumé — « un contrat d'events stable (`geoleaf:filter:apply/reset`, `geoleaf:filters:applied`) » | Les deux premiers sont émis par le **kernel**, pas par la capacité — la table du §8 du même document l'écrit correctement. Le résumé se contredit                                                                                           |
-| §3.2 — les attributs spécifiques par genre                                                         | ✅ **Vrais** dans le type… et **absents du `configSchema`**, donc non publiés à l'introspection. C'est **B-68**                                                                                                                             |
+| §3.2 — les attributs spécifiques par genre                                                         | ✅ **Vrais** dans le type… et **absents du `configSchema`**, donc non publiés à l'introspection. C'est le même constat                                                                                                                      |
 | §Statut — le cycle de vie n'applique **aucun** filtre initial                                      | ✅ **Vérifié exact**                                                                                                                                                                                                                        |
 | §3.1, B.22 — `searchPlaceholder` retiré, aucun champ de recherche global                           | ✅ **Vérifié exact** — le seul champ de saisie est celui d'un descripteur `text`                                                                                                                                                            |
 | §Portée par couche opt-in                                                                          | ✅ **Vérifié exact**, corollaire compris                                                                                                                                                                                                    |

@@ -56,7 +56,7 @@ function getModal(): HTMLElement | null {
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-describe("showLoginModal (Sprint 2)", () => {
+describe("showLoginModal", () => {
     let promise: Promise<void> | undefined;
 
     afterEach(async () => {

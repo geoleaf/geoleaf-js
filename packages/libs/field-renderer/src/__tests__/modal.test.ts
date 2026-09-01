@@ -744,29 +744,29 @@ describe("createResponsiveModal — computeValues", () => {
     });
 });
 
-describe("B-132 — le pont adresse un champ IMBRIQUÉ, pas seulement une clé plate", () => {
+describe("le pont adresse un champ IMBRIQUÉ, pas seulement une clé plate", () => {
     /**
-     * 🛑 `values[field.id]` est un accès PLAT, sur les quatre sites du pont (lecture,
-     * écriture, remise à zéro d'un dépendant, validation). Un `id` pointé comme
-     * `attributes.short_desc` y cherche une propriété LITTÉRALEMENT nommée
-     * « attributes.short_desc », jamais le chemin.
+     * 🛑 `values[field.id]` is a FLAT access, on the bridge's four sites
+     * (read, write, dependent reset, validation). A dotted `id` like
+     * `attributes.short_desc` looks there for a property LITERALLY named
+     * "attributes.short_desc", never the path.
      *
-     * ⚠️ Le sujet vivant a disparu entre-temps — `candelabres`, la couche que la ligne
-     * citait, n'est plus éditable depuis la tâche 7.2, et la seule couche éditable
-     * (`sites_rosario`) n'utilise que des chemins `properties.*`, aplatis en amont par
-     * `attributesToFormSchema`. Le défaut est LATENT : il mord au premier profil qui
-     * déclare un champ capturable sous un autre objet.
+     * ⚠️ The live subject vanished in the meantime — `candelabres`, the layer
+     * the line cited, is no longer editable, and the only editable layer
+     * (`sites_rosario`) uses only `properties.*` paths, flattened upstream by
+     * `attributesToFormSchema`. The defect is LATENT: it bites at the first
+     * profile declaring a capturable field under another object.
      *
-     * 🛑 UNE PREMIÈRE VERSION DE CETTE GARDE PASSAIT AVANT LE CORRECTIF. Elle assertait
-     * sur `getValues()`, qui recopie `initialValues` en bloc — la forme imbriquée y était
-     * donc présente sans que le pont ait résolu quoi que ce soit. Elle porte désormais sur
-     * ce que le COMPOSANT reçoit et sur l'endroit où la saisie ATTERRIT, les deux seuls
-     * points que `values[field.id]` gouverne.
+     * 🛑 A FIRST VERSION OF THIS GUARD PASSED BEFORE THE FIX. It asserted on
+     * `getValues()`, which copies `initialValues` wholesale — the nested
+     * shape was thus present there with the bridge having resolved nothing.
+     * It now bears on what the COMPONENT receives and where the input LANDS,
+     * the only two points `values[field.id]` governs.
      */
     let seen: unknown;
     let emit: ((v: unknown) => void) | null;
 
-    /** Composant sonde : capture l'initial reçu et expose son `onChange`. */
+    /** Probe component: captures the received initial and exposes its `onChange`. */
     const probe = {
         id: "b132probe",
         defaults: undefined as unknown,
@@ -822,8 +822,8 @@ describe("B-132 — le pont adresse un champ IMBRIQUÉ, pas seulement une clé p
     });
 
     it("une clé LITTÉRALE pointée l'emporte — le changement reste purement additif", () => {
-        // Ce qui marchait avant doit continuer : un consommateur qui range réellement sa
-        // valeur sous la clé "a.b" ne doit pas la voir déménager dans un objet imbriqué.
+        // What worked before must keep working: a consumer really storing
+        // their value under the key "a.b" must not see it move into a nested object.
         createFieldRendererBridge(schema("a.b"), { "a.b": "littérale" }, {} as never);
         expect(seen).toBe("littérale");
     });

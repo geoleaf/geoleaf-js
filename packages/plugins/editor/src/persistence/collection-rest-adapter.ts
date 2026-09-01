@@ -67,7 +67,7 @@ function _createOnly(): never {
 export function createCollectionRestAdapter(
     opts: CollectionRestAdapterOptions
 ): EditorPersistenceAdapter {
-    const doFetch = opts.fetchImpl ?? (globalThis.fetch as typeof fetch);
+    const doFetch = opts.fetchImpl ?? globalThis.fetch;
     const geomKey = opts.geometryProperty || "geom";
 
     return {

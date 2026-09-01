@@ -12,7 +12,7 @@ vi.mock("../../src/utils/general/geoleaf-global.js", () => ({
     getGeoLeaf: () => mockGeoLeaf,
 }));
 
-// Charger helpers pour peupler _app
+// Load helpers to populate _app
 import "../../src/app/app-namespace.js";
 import * as bootModule from "../../src/app/boot.js";
 const _app = bootModule._app;
@@ -54,7 +54,7 @@ describe("app/boot (R5)", () => {
             expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("loadConfig"));
             errorSpy.mockRestore();
         });
-        it("loads config et calls registry.init avec baseCfg (S1.2)", async () => {
+        it("loads config et calls registry.init avec baseCfg", async () => {
             const cfg = {
                 map: {
                     bounds: [
@@ -82,7 +82,7 @@ describe("app/boot (R5)", () => {
                 })
             );
         });
-        it("uses loadActiveProfileResources if Config is present (S1.2 → registry.init avec profileCfg)", async () => {
+        it("uses loadActiveProfileResources if Config is present (registry.init avec profileCfg)", async () => {
             const profileCfg = {
                 map: {
                     bounds: [
@@ -190,7 +190,7 @@ describe("app/boot (R5)", () => {
             );
             errorSpy.mockRestore();
         });
-        it("warn si loadActiveProfileResources throw → registry.init appelé avec baseCfg (S1.2)", async () => {
+        it("warn si loadActiveProfileResources throw → registry.init appelé avec baseCfg", async () => {
             GeoLeaf.loadConfig = vi.fn((opts) => setTimeout(() => opts.onLoaded({}), 0));
             GeoLeaf.Config = {
                 loadActiveProfileResources: vi.fn().mockRejectedValue(new Error("profile error")),
@@ -217,7 +217,7 @@ describe("app/boot (R5)", () => {
             });
             const cb = vi.fn();
             const origStartApp = _app.startApp;
-            // `app-types.ts:48` declares startApp as `() => Promise<void>` — the double must
+            // `app-types.ts` declares startApp as `() => Promise<void>` — the double must
             // honour it: GeoLeaf.boot() attaches .catch() to the returned promise (Q1.4).
             _app.startApp = vi.fn(() => Promise.resolve());
             GeoLeaf.boot({ onPerformanceMetrics: cb });
@@ -231,7 +231,7 @@ describe("app/boot (R5)", () => {
             });
             const hook = vi.fn();
             const origStartApp = _app.startApp;
-            // `app-types.ts:48` declares startApp as `() => Promise<void>` — the double must
+            // `app-types.ts` declares startApp as `() => Promise<void>` — the double must
             // honour it: GeoLeaf.boot() attaches .catch() to the returned promise (Q1.4).
             _app.startApp = vi.fn(() => Promise.resolve());
             GeoLeaf.boot({ beforeBoot: hook });
@@ -250,17 +250,17 @@ describe("app/boot (R5)", () => {
 
             GeoLeaf.boot();
 
-            // Q1.4 — cette assertion portait sur l'IDENTITÉ du listener
-            // (`toHaveBeenCalledWith("DOMContentLoaded", _app.startApp)`). Depuis que
-            // `boot()` attache un gestionnaire de rejet, le listener est un wrapper
-            // synchrone et l'identité ne tient plus. Ce qu'elle garantissait vraiment,
-            // c'est le REPORT — et il est vérifié ici directement, ce qui est plus
-            // fort : l'identité n'impliquait le report que par déduction.
+            // This assertion bore on the listener's IDENTITY
+            // (`toHaveBeenCalledWith("DOMContentLoaded", _app.startApp)`).
+            // Since `boot()` attaches a rejection handler, the listener is a
+            // synchronous wrapper and the identity no longer holds. What it
+            // really guaranteed is the DEFERRAL — verified here directly,
+            // which is stronger: the identity only implied the deferral by deduction.
             const call = addEventSpy.mock.calls.find(([type]) => type === "DOMContentLoaded");
             expect(call).toBeDefined();
             expect(_app.startApp).not.toHaveBeenCalled();
 
-            // Et le listener posé déclenche bien la séquence quand l'événement arrive.
+            // And the listener set does trigger the sequence when the event arrives.
             call[1]();
             expect(_app.startApp).toHaveBeenCalledTimes(1);
 

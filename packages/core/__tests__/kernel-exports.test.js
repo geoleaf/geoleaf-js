@@ -1,8 +1,9 @@
 /**
- * Unit tests — `kernel-exports.ts` (barrel de la surface kernel, à 0 %).
+ * Unit tests — `kernel-exports.ts` (kernel surface barrel, at 0%).
  *
- * Fichier de ré-exports (façades + utilitaires) + un seul évalué : `Utils = createUtilsNamespace()`.
- * L'importer suffit à couvrir les lignes ; on vérifie que la surface annoncée est bien exposée.
+ * A re-export file (facades + utilities) + one evaluated:
+ * `Utils = createUtilsNamespace()`. Importing it covers the lines; what is
+ * verified is that the announced surface is really exposed.
  */
 import { describe, test, expect } from "vitest";
 
@@ -16,11 +17,12 @@ describe("kernel-exports — surface publique", () => {
     });
 
     test("GeoLeafAPI EST le namespace vivant, pas un objet quelconque", () => {
-        // ⚠️ socle-init 7.7 — `toBeTruthy()` ci-dessus ne dit presque rien de `GeoLeafAPI` :
-        // `{}` est truthy. C'était sans conséquence tant que `kernel/api/geoleaf-api.ts`
-        // assemblait l'API ; depuis qu'il ne fait plus que ré-exporter le namespace, c'est
-        // l'IDENTITÉ qui porte le contrat — ce qui est ré-exporté doit être l'objet global
-        // lui-même, pour que tout ce qu'un autre module y monte plus tard soit visible ici.
+        // ⚠️ `toBeTruthy()` above says almost nothing about `GeoLeafAPI`:
+        // `{}` is truthy. That was without consequence while
+        // `kernel/api/geoleaf-api.ts` assembled the API; since it only
+        // re-exports the namespace, the IDENTITY carries the contract — what
+        // is re-exported must be the global object itself, so anything
+        // another module mounts on it later is visible here.
         expect(kx.GeoLeafAPI).toBe(globalThis.GeoLeaf);
     });
 
@@ -37,16 +39,19 @@ describe("kernel-exports — surface publique", () => {
         expect(typeof kx.showBootInfo).toBe("function");
     });
 
-    // API publique S3.2 — `CapabilityRegistry` était exporté par le barrel `kernel/api/index.ts`
-    // et atteignable par AUCUN canal public : ni ici, ni sur le global. Un plugin ne pouvait
-    // déclarer une capacité que par `GeoLeaf.plugins.registerCapability(decl)`, sans type.
-    // Le test porte sur les méthodes du contrat `ICapabilityRegistry`, pas sur la seule
-    // présence de l'objet : c'est la surface annoncée qui doit être là, pas un symbole vide.
+    // Public API review — `CapabilityRegistry` was exported by the
+    // `kernel/api/index.ts` barrel and reachable by NO public channel:
+    // neither here, nor on the global. A plugin could only declare a
+    // capability through `GeoLeaf.plugins.registerCapability(decl)`,
+    // untyped. The test bears on the `ICapabilityRegistry` contract's
+    // methods, not the object's mere presence: the announced surface must be
+    // there, not an empty symbol.
     //
-    // ⚠️ 6 → 8 (socle-init 9.4 : `noteInstaller` + `getAllStatuses`). Le décompte est dans le
-    // NOM du test parce que la boucle, elle, est additive : elle serait restée verte en
-    // décrivant une surface périmée. Aucune gate ne peut voir ça — c'est la ligne « 🖐 à toi »
-    // de CLAUDE.md §⛔, et la raison pour laquelle le chiffre est écrit ici plutôt que déduit.
+    // ⚠️ 6 → 8 (`noteInstaller` + `getAllStatuses`). The count is in the
+    // test's NAME because the loop is additive: it would have stayed green
+    // describing a stale surface. No gate can see that — it is the "up to
+    // you" line of the documentation rule, and why the number is written
+    // here rather than derived.
     test("expose CapabilityRegistry avec les 8 méthodes de ICapabilityRegistry", () => {
         expect(kx.CapabilityRegistry).toBeTruthy();
         const methods = [
@@ -59,8 +64,8 @@ describe("kernel-exports — surface publique", () => {
             "noteInstaller",
             "getAllStatuses",
         ];
-        // Le décompte est asserté, pas seulement les noms : c'est ce qui rend la liste
-        // ci-dessus falsifiable si le contrat grandit sans que ce test le sache.
+        // The count is asserted, not only the names: that is what makes the
+        // list above falsifiable if the contract grows without this test knowing.
         expect(methods).toHaveLength(8);
         for (const method of methods) {
             expect(typeof kx.CapabilityRegistry[method], method).toBe("function");

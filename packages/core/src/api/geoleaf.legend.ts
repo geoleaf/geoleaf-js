@@ -32,9 +32,9 @@
  *
  * @example — Toggle visibility from an external layer switch
  * ```ts
- * // ⚠️ `addEventListener` type le paramètre en `Event`, qui ne porte pas `detail` :
- * // il faut le déclarer `CustomEvent` pour que l'exemple compile chez l'intégrateur
- * // (corrigé le 27/07/2026, défaut trouvé par `typecheck-docs-examples`).
+ * // ⚠️ `addEventListener` types the parameter as `Event`, which has no `detail`:
+ * // it must be declared `CustomEvent` for the example to compile on the integrator's side
+ * // (fixed on 27/07/2026, defect found by `typecheck-docs-examples`).
  * document.addEventListener("geoleaf:layer:toggle", (e: Event) => {
  *   const { layerId, visible } = (e as CustomEvent).detail;
  *   GeoLeaf.Legend.setLayerVisibility(layerId, visible);

@@ -27,19 +27,11 @@ import { renderCacheCell } from "./cache-cell.js";
 
 Object.assign(LS, {
     _createTableHeader(this: LayerSelectorAPI, table: HTMLTableElement) {
-        const thead = createElement("thead", "", table) as HTMLTableSectionElement;
-        const headerRow = createElement("tr", "", thead) as HTMLTableRowElement;
+        const thead = createElement("thead", "", table);
+        const headerRow = createElement("tr", "", thead);
 
-        const th1 = createElement(
-            "th",
-            "gl-cache-layers__th-checkbox",
-            headerRow
-        ) as HTMLTableCellElement;
-        this._selectAllCheckbox = createElement(
-            "input",
-            "gl-cache-layers__select-all",
-            th1
-        ) as HTMLInputElement;
+        const th1 = createElement("th", "gl-cache-layers__th-checkbox", headerRow);
+        this._selectAllCheckbox = createElement("input", "gl-cache-layers__select-all", th1);
         this._selectAllCheckbox.type = "checkbox";
         this._selectAllCheckbox.id = "geoleaf-cache-select-all";
         this._selectAllCheckbox.name = "geoleaf-cache-select-all";
@@ -60,43 +52,23 @@ Object.assign(LS, {
             handler: selectAllHandler,
         });
 
-        const th2 = createElement(
-            "th",
-            "gl-cache-layers__th-name",
-            headerRow
-        ) as HTMLTableCellElement;
+        const th2 = createElement("th", "gl-cache-layers__th-name", headerRow);
         th2.textContent = t("storage.layers.col.name");
 
-        const th3 = createElement(
-            "th",
-            "gl-cache-layers__th-geometry",
-            headerRow
-        ) as HTMLTableCellElement;
+        const th3 = createElement("th", "gl-cache-layers__th-geometry", headerRow);
         th3.textContent = t("storage.layers.col.geometry");
         th3.style.textAlign = "center";
         th3.style.width = "90px";
 
-        const th4 = createElement(
-            "th",
-            "gl-cache-layers__th-style",
-            headerRow
-        ) as HTMLTableCellElement;
+        const th4 = createElement("th", "gl-cache-layers__th-style", headerRow);
         th4.textContent = t("storage.layers.col.style");
 
-        const th5 = createElement(
-            "th",
-            "gl-cache-layers__th-size",
-            headerRow
-        ) as HTMLTableCellElement;
+        const th5 = createElement("th", "gl-cache-layers__th-size", headerRow);
         th5.textContent = t("storage.layers.col.size");
         th5.style.textAlign = "right";
         th5.style.width = "80px";
 
-        const th6 = createElement(
-            "th",
-            "gl-cache-layers__th-cache",
-            headerRow
-        ) as HTMLTableCellElement;
+        const th6 = createElement("th", "gl-cache-layers__th-cache", headerRow);
         th6.textContent = t("storage.layers.col.cache");
         th6.style.textAlign = "center";
         th6.style.width = "60px";
@@ -109,7 +81,7 @@ Object.assign(LS, {
         savedSelection: SavedSelection | null,
         profileCacheEnabled = true
     ) {
-        const row = createElement("tr", "gl-cache-layers__row", tbody) as HTMLTableRowElement;
+        const row = createElement("tr", "gl-cache-layers__row", tbody);
         const layerId = layer.id ?? "";
 
         if (!profileCacheEnabled) {
@@ -117,12 +89,8 @@ Object.assign(LS, {
             row.title = t("storage.layers.profileCacheOff");
         }
 
-        const td1 = createElement(
-            "td",
-            "gl-cache-layers__td-checkbox",
-            row
-        ) as HTMLTableCellElement;
-        const checkbox = createElement("input", "", td1) as HTMLInputElement;
+        const td1 = createElement("td", "gl-cache-layers__td-checkbox", row);
+        const checkbox = createElement("input", "", td1);
         checkbox.type = "checkbox";
         checkbox.id = `geoleaf-cache-layer-${layerId}`;
         checkbox.name = `geoleaf-cache-layer-${layerId}`;
@@ -161,8 +129,8 @@ Object.assign(LS, {
             });
         }
 
-        const td2 = createElement("td", "gl-cache-layers__td-name", row) as HTMLTableCellElement;
-        const nameSpan = createElement("span", "gl-cache-layers__name", td2) as HTMLSpanElement;
+        const td2 = createElement("td", "gl-cache-layers__td-name", row);
+        const nameSpan = createElement("span", "gl-cache-layers__name", td2);
         nameSpan.textContent = "~";
 
         this.getLayerLabel(layer)
@@ -173,27 +141,24 @@ Object.assign(LS, {
                 nameSpan.textContent = layerId;
             });
 
-        const td3 = createElement(
-            "td",
-            "gl-cache-layers__td-geometry",
-            row
-        ) as HTMLTableCellElement;
+        const td3 = createElement("td", "gl-cache-layers__td-geometry", row);
         td3.style.textAlign = "center";
         td3.style.color = "#94a3b8";
-        // 🛑 B-161 — CETTE TABLE ÉTAIT KEYÉE SUR LE MAUVAIS VOCABULAIRE, DONC MORTE.
+        // 🛑 THIS TABLE WAS KEYED ON THE WRONG VOCABULARY, HENCE DEAD.
         //
-        // Ses 7 clés étaient celles de **GeoJSON** (`Point`, `LineString`, `MultiPolygon`…),
-        // capitalisées. Or une config de couche déclare le vocabulaire **PROFIL** —
-        // `point`, `polyline`, `polygon`… en minuscules, et `polyline` n'existe même pas en
-        // GeoJSON. Aucune valeur réelle ne matchait : le repli `|| geometryType` rendait la
-        // valeur BRUTE, non traduite, pour **toutes** les couches. Vérifié en navigateur
-        // avant correctif — la colonne affichait `point` et `polyline`, jamais « Point » ni
-        // « Ligne ». Une table de traduction que rien n'atteint est indiscernable d'une table
-        // juste : c'est le même angle mort que les deux clés que B-161 corrige au-dessus.
+        // Its 7 keys were **GeoJSON**'s (`Point`, `LineString`, `MultiPolygon`…),
+        // capitalised. Yet a layer config declares the **PROFILE** vocabulary —
+        // `point`, `polyline`, `polygon`… lowercase, and `polyline` does not even
+        // exist in GeoJSON. No real value matched: the `|| geometryType` fallback
+        // returned the RAW, untranslated value for **every** layer. Verified in a
+        // browser before the fix — the column displayed `point` and `polyline`,
+        // never "Point" nor "Ligne". A translation table nothing reaches is
+        // indistinguishable from a correct one: the same blind spot as the two
+        // keys fixed above.
         //
-        // La normalisation en minuscules couvre les DEUX vocabulaires d'un seul index, ce qui
-        // évite d'avoir à trancher lequel est canonique ici — cet arbitrage est celui du
-        // schéma (ANO-007 : ce sont des alias), pas celui d'une cellule de tableau.
+        // Lowercase normalisation covers BOTH vocabularies with one index, which
+        // avoids deciding here which is canonical — that arbitration is the
+        // schema's (they are aliases), not a table cell's.
         const GEOMETRY_LABEL_KEY: Record<string, string> = {
             point: "storage.geometry.point",
             multipoint: "storage.geometry.point",
@@ -213,8 +178,9 @@ Object.assign(LS, {
             .then((geometryType) => {
                 if (geometryType) {
                     const key = GEOMETRY_LABEL_KEY[geometryType.toLowerCase()];
-                    // Repli sur la valeur brute conservé : une géométrie hors des deux
-                    // vocabulaires reste LISIBLE plutôt que de disparaître en `-`.
+                    // Raw-value fallback kept: a geometry outside both
+                    // vocabularies stays READABLE rather than vanishing into
+                    // `-`.
                     td3.textContent = key ? t(key) : geometryType;
                 } else {
                     td3.textContent = "-";
@@ -224,10 +190,10 @@ Object.assign(LS, {
                 td3.textContent = "-";
             });
 
-        const td4 = createElement("td", "gl-cache-layers__td-style", row) as HTMLTableCellElement;
+        const td4 = createElement("td", "gl-cache-layers__td-style", row);
         await this.createStyleSelector(td4, layer, savedSelection);
 
-        const td5 = createElement("td", "gl-cache-layers__td-size", row) as HTMLTableCellElement;
+        const td5 = createElement("td", "gl-cache-layers__td-size", row);
         td5.style.textAlign = "right";
         td5.style.color = "#94a3b8";
         td5.textContent = "~";
@@ -243,7 +209,7 @@ Object.assign(LS, {
             // getLayerLabel() chain earlier in this file.
             .catch((e: unknown) => Log?.debug("[LayerSelector] Layer size estimation failed:", e));
 
-        const td6 = createElement("td", "gl-cache-layers__td-cache", row) as HTMLTableCellElement;
+        const td6 = createElement("td", "gl-cache-layers__td-cache", row);
         td6.style.textAlign = "center";
         const isCached = await this.isLayerCached(layer);
         renderCacheCell(
@@ -262,7 +228,7 @@ Object.assign(LS, {
         savedSelection: SavedSelection | null,
         tileCacheEnabled = true
     ) {
-        const row = createElement("tr", "gl-cache-layers__row", tbody) as HTMLTableRowElement;
+        const row = createElement("tr", "gl-cache-layers__row", tbody);
         const basemapId = basemap.id ?? "";
 
         if (!tileCacheEnabled) {
@@ -270,12 +236,8 @@ Object.assign(LS, {
             row.title = t("storage.layers.tileCacheOff");
         }
 
-        const td1 = createElement(
-            "td",
-            "gl-cache-layers__td-checkbox",
-            row
-        ) as HTMLTableCellElement;
-        const checkbox = createElement("input", "", td1) as HTMLInputElement;
+        const td1 = createElement("td", "gl-cache-layers__td-checkbox", row);
+        const checkbox = createElement("input", "", td1);
         checkbox.type = "checkbox";
         checkbox.id = `geoleaf-cache-basemap-${basemapId}`;
         checkbox.name = `geoleaf-cache-basemap-${basemapId}`;
@@ -311,23 +273,19 @@ Object.assign(LS, {
             });
         }
 
-        const td2 = createElement("td", "gl-cache-layers__td-name", row) as HTMLTableCellElement;
-        const nameSpan = createElement("span", "gl-cache-layers__name", td2) as HTMLSpanElement;
+        const td2 = createElement("td", "gl-cache-layers__td-name", row);
+        const nameSpan = createElement("span", "gl-cache-layers__name", td2);
         nameSpan.textContent = basemap.label || basemapId;
 
-        const td3 = createElement(
-            "td",
-            "gl-cache-layers__td-geometry",
-            row
-        ) as HTMLTableCellElement;
+        const td3 = createElement("td", "gl-cache-layers__td-geometry", row);
         td3.style.textAlign = "center";
         td3.style.color = "#94a3b8";
         td3.textContent = t("storage.layers.raster");
 
-        const td4 = createElement("td", "gl-cache-layers__td-style", row) as HTMLTableCellElement;
+        const td4 = createElement("td", "gl-cache-layers__td-style", row);
         td4.textContent = "-";
 
-        const td5 = createElement("td", "gl-cache-layers__td-size", row) as HTMLTableCellElement;
+        const td5 = createElement("td", "gl-cache-layers__td-size", row);
         td5.style.textAlign = "right";
         td5.style.color = "#94a3b8";
         td5.textContent = "~";
@@ -362,7 +320,7 @@ Object.assign(LS, {
             td5.textContent = "-";
         }
 
-        const td6 = createElement("td", "gl-cache-layers__td-cache", row) as HTMLTableCellElement;
+        const td6 = createElement("td", "gl-cache-layers__td-cache", row);
         td6.style.textAlign = "center";
 
         const hasOfflineConfig = basemap.offline || basemap.offlineBounds;
@@ -404,11 +362,7 @@ Object.assign(LS, {
 
             if (Log) Log.debug(`[LayerSelector] Available styles for ${layer.id}:`, styles);
 
-            const select = createElement(
-                "select",
-                "gl-cache-layers__style-select",
-                parentEl
-            ) as HTMLSelectElement;
+            const select = createElement("select", "gl-cache-layers__style-select", parentEl);
 
             const savedStyleId =
                 (layer.id && savedSelection?.styles?.[layer.id]) ||

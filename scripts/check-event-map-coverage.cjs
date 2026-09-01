@@ -1,24 +1,24 @@
 #!/usr/bin/env node
 /**
  * EVENT-MAP: every GeoLeaf DOM event name that appears in shipped source must be typed
- * in `contracts/event-bus.contract.ts` (API publique S3.4).
+ * in `contracts/event-bus.contract.ts`.
  *
  * ## The gap this closes
  *
- * Un nom relevé et non typé est inatteignable par la façade `Events` : le consommateur qui
- * le veut doit replier sur un `document.addEventListener` nu avec un `CustomEvent<{…}>`
- * écrit à la main — c'est exactement ainsi que le dépôt s'est retrouvé avec QUATRE
- * déclarations divergentes de la charge de `geoleaf:toolbar:action` avant que S3 ne les
- * unifie. Rien n'empêche le suivant d'arriver. C'est à cela que sert cette gate.
+ * A collected, untyped name is unreachable through the `Events` facade: the consumer
+ * who wants it must fall back on a bare `document.addEventListener` with a hand-written
+ * `CustomEvent<{…}>` — exactly how the repo ended up with FOUR divergent declarations
+ * of `geoleaf:toolbar:action`'s payload before they were unified. Nothing prevents the
+ * next one from arriving. That is what this gate is for.
  *
- * ⚠️ **Ce paragraphe portait trois chiffres en dur — « 22 typés », « 79 relevés », « les 57
- * restants » — et les trois étaient faux.** Ils dataient du câblage (API publique S3.4) et
- * n'ont jamais été re-mesurés, alors que la gate IMPRIME les siens à chaque run, deux lignes
- * plus bas. Un exemple périmé dans le commentaire d'une gate d'événements est précisément le
- * défaut que cette gate existe pour attraper (voir l'avertissement en fin de fichier, qui
- * raconte la même chose à propos de `geoleaf:popup:action`) — et il a survécu pour la même
- * raison : aucune règle ne lit les commentaires. **Les chiffres ne sont donc plus écrits
- * ici** ; ils se lisent dans la sortie du run, ou par `npm run check:event-map`.
+ * ⚠️ **This paragraph carried three hard numbers — "22 typed", "79 collected", "the 57
+ * remaining" — and all three were wrong.** They dated from the wiring and were never
+ * re-measured, while the gate PRINTS its own at every run, two lines below. A stale
+ * example in an event gate's comment is precisely the defect this gate exists to catch
+ * (see the warning at the end of the file, which tells the same story about
+ * `geoleaf:popup:action`) — and it survived for the same reason: no rule reads
+ * comments. **The numbers are therefore no longer written here**; they are read in the
+ * run's output, or through `npm run check:event-map`.
  *
  *   EM-01  An event name found in source, absent from the maps AND absent from the
  *          baseline → ERROR. A NEW event cannot arrive untyped.
@@ -34,10 +34,10 @@
  * says why. Four modules emit through a local helper that takes the name as a
  * parameter:
  *
- *   `kernel/themes/theme-applier/core.ts:162`   `_dispatchCustomEvent(name, detail)`
- *   `kernel/api/plugin-registry.ts:44`          `_firePluginEvent(name, detail)`
- *   `plugins/editor/src/events.ts:364`          `_dispatch(eventName, detail)`
- *   `plugins/websocket/…/event-bus-bridge.ts:61` `emit(name, detail)`  ← 12 `ws:*` names
+ *   `kernel/themes/theme-applier/core.ts`   `_dispatchCustomEvent(name, detail)`
+ *   `kernel/api/plugin-registry.ts`          `_firePluginEvent(name, detail)`
+ *   `plugins/editor/src/events.ts`          `_dispatch(eventName, detail)`
+ *   `plugins/websocket/…/event-bus-bridge.ts` `emit(name, detail)`  ← 12 `ws:*` names
  *
  * An argument-inspecting gate sees four `dispatchEvent(name, …)` calls and reports four
  * unknown dynamic names; a literal sweep sees the 23 literals at the call sites. The
@@ -60,11 +60,11 @@ const path = require("node:path");
 const ts = require("typescript");
 
 const registry = require("./lib/packages.cjs");
-// Contrat inverse S1.7 — le relevé de littéraux et les TROIS familles d'exclusion sont sortis
-// d'ici vers `lib/` le jour où `verify-consumer-contract.cjs` (CC-07) en a eu besoin. Deux
-// copies d'un relevé dérivent, et la dérive reste invisible tant que les deux gates sortent
-// vertes. Les motifs de chaque exclusion sont partis AVEC les exclusions : ils n'ont de sens
-// qu'à côté de ce qu'ils expliquent.
+// The literal census and the THREE exclusion families left this file for `lib/` the
+// day `verify-consumer-contract.cjs` (CC-07) needed them. Two copies of a census
+// drift, and the drift stays invisible as long as both gates come out green. Each
+// exclusion's rationale left WITH the exclusions: they only make sense next to what
+// they explain.
 const { isExcluded, shippedSources, collectEventLiterals } = require("./lib/event-names.cjs");
 
 const ROOT = registry.ROOT;
@@ -85,11 +85,11 @@ const CONTRACT = path.join(
 /** The two maps that make an event name "typed". Both are public API since S3. */
 const MAP_NAMES = ["GeoLeafEventMap", "GeoLeafRawEventMap"];
 
-// ⚠️ `EVENT_LITERAL_RE`, `PERF_MARK_RE`, `MAP_BUS` et `DYNAMIC_PREFIXES` vivent désormais dans
-// `lib/event-names.cjs` — avec leurs motifs, qui n'ont de sens qu'à côté de ce qu'ils
-// expliquent. Cette gate n'importe que `isExcluded`, leur COMPOSITION : importer les trois
-// constantes « pour la lisibilité » les laisserait inutilisées ici, et un import inutilisé est
-// une dépendance que rien ne prouve. Pour lire une exclusion, on ouvre la lib.
+// ⚠️ `EVENT_LITERAL_RE`, `PERF_MARK_RE`, `MAP_BUS` and `DYNAMIC_PREFIXES` now live in
+// `lib/event-names.cjs` — with their rationales, which only make sense next to what
+// they explain. This gate only imports `isExcluded`, their COMPOSITION: importing the
+// three constants "for readability" would leave them unused here, and an unused
+// import is a dependency nothing proves. To read an exclusion, open the lib.
 
 // ── 1. Source of truth: the map keys, parsed from the contract ───────────────────────
 
@@ -133,9 +133,9 @@ function readTypedEventNames() {
 
 // ── 2. Corpus: every shipped source of every workspace ───────────────────────────────
 //
-// `collectSources`, `shippedSources` et `collectEventLiterals` vivent dans
-// `lib/event-names.cjs` depuis le contrat inverse S1.7 — y compris la raison pour laquelle le
-// corpus ajoute `_plugin-template`, hors `workspaces` et donc invisible à `registry.all()`.
+// `collectSources`, `shippedSources` and `collectEventLiterals` live in
+// `lib/event-names.cjs` — including the reason the corpus adds `_plugin-template`,
+// outside `workspaces` and hence invisible to `registry.all()`.
 
 // ── 3. Run ───────────────────────────────────────────────────────────────────────────
 
@@ -175,7 +175,7 @@ if (UPDATE) {
         JSON.stringify(
             {
                 _comment:
-                    "API publique S3.4 — GeoLeaf DOM event names present in source and absent " +
+                    "GeoLeaf DOM event names present in source and absent " +
                     "from GeoLeafEventMap / GeoLeafRawEventMap. This list may only SHRINK " +
                     "(EM-02): type an event in contracts/event-bus.contract.ts, then remove " +
                     "its line. Never add to it by hand — a new event must be born typed (EM-01).",
@@ -243,34 +243,35 @@ if (staleEntries.length > 0) {
 
 if (failed) process.exit(1);
 
-// Le ratio porte sur les noms RELEVÉS DANS LES SOURCES, pas sur les clés déclarées :
-// `typed.size` compte aussi les clés sans émetteur (`geoleaf:poi:click`… — typées, jamais
-// émises), et les mêler donnerait un pourcentage qui monte quand on ajoute une clé morte.
-// Ce qu'on veut savoir est : « parmi ce que le code utilise réellement, quelle part est
-// typée ? »
+// The ratio bears on the names COLLECTED IN THE SOURCES, not the declared keys:
+// `typed.size` also counts emitterless keys (`geoleaf:poi:click`… — typed, never
+// emitted), and mixing them would give a percentage that climbs when a dead key is
+// added. What we want to know is: "of what the code actually uses, what share is
+// typed?"
 //
-// ⚠️ Ce commentaire citait AUSSI `geoleaf:popup:action` comme « typée, jamais émise », et
-// c'était faux depuis onze jours au 09/08/2026 : B-69 l'a rendue émettrice le 29/07, dans
-// `capabilities/feature-info/render/widget-dispatch.ts`. Un exemple périmé dans le commentaire
-// d'une gate d'événements est précisément le défaut que cette gate existe pour attraper —
-// et il a survécu parce qu'aucune règle ne lit les commentaires. Relever un exemple **dans**
-// le code, jamais de mémoire.
+// ⚠️ This comment ALSO cited `geoleaf:popup:action` as "typed, never emitted", and
+// that had been false for eleven days as of 2026-08-09: it became an emitter on
+// 07-29, in `capabilities/feature-info/render/widget-dispatch.ts`. A stale example in
+// an event gate's comment is precisely the defect this gate exists to catch — and it
+// survived because no rule reads comments. Take an example **from** the code, never
+// from memory.
 //
-// ⚠️ La correction du 09/08 citait `widget-dispatch.ts:365` et
-// `dispatchGeoLeafEvent("geoleaf:popup:action", …)`. Les DEUX sont périmées depuis le
-// 14/08/2026 : la clé est passée dans `GeoLeafRawEventMap` et s'émet en `CustomEvent` nu, la
-// ligne ayant bougé au passage. Une citation de ligne posée POUR corriger une citation périmée
-// s'est périmée à son tour en cinq jours — d'où le nom de fichier seul ci-dessus.
-// ── EM-03 — un événement NAMESPACÉ hors du domaine ───────────────────────────────────
+// ⚠️ The 08-09 correction cited `widget-dispatch.ts` and
+// `dispatchGeoLeafEvent("geoleaf:popup:action", …)`. BOTH are stale since
+// 2026-08-14: the key moved into `GeoLeafRawEventMap` and is emitted as a bare
+// `CustomEvent`, the line having moved in passing. A line citation laid TO fix a
+// stale citation went stale in turn within five days — hence the bare file name
+// above.
+// ── EM-03 — a NAMESPACED event outside the domain ────────────────────────────────────
 //
-// 🛑 Les règles ci-dessus sont ancrées sur `^geoleaf:` : elles ne peuvent pas voir un
-// événement qui ne porte pas le préfixe. EM-03 ferme cet angle mort — le motif complet, et
-// le périmètre que cette règle N'A PAS, sont dans `lib/event-gates.cjs`.
+// 🛑 The rules above are anchored on `^geoleaf:`: they cannot see an event that lacks
+// the prefix. EM-03 closes that blind spot — the full rationale, and the perimeter
+// this rule does NOT have, are in `lib/event-gates.cjs`.
 const { collectNamespacedEventLiterals, DOMAIN_PREFIX } = require("./lib/event-gates.cjs");
 const { violations: nsViolations, callSites } = collectNamespacedEventLiterals(sourceFiles);
 
-// Anti-gate-vide : EM-03 inspecte des SITES D'APPEL, pas des littéraux nus. Si le balayage
-// n'en trouve aucun, c'est l'instrument qui est cassé — ce dépôt en porte des centaines.
+// Anti-empty-gate: EM-03 inspects CALL SITES, not bare literals. If the sweep finds
+// none, the instrument is broken — this repo carries hundreds.
 if (callSites === 0) {
     console.error(
         `ERROR [EVENT-MAP/EM-03]: 0 site d'appel d'événement sur ${sourceFiles.length} fichiers. ` +
@@ -307,8 +308,8 @@ console.log(
         `sont typés (${pct} %) ; ${sourceFiles.length} fichiers scannés, ${typed.size} clés ` +
         `déclarées, ${baseline.size} en baseline, aucun nouveau, aucun périmé.`
 );
-// Le périmètre d'EM-03 s'imprime, il ne se recopie pas : c'est le seul moyen de voir qu'elle
-// a réellement scanné quelque chose le jour où un refactor lui retire ses sites d'appel.
+// EM-03's perimeter prints, it is not copied: the only way to see it really scanned
+// something the day a refactor takes its call sites away.
 console.log(
     `   [EM-03] ${callSites} site(s) d'appel d'événement à littéral inspecté(s) ; ` +
         `aucun nom namespacé hors \`${DOMAIN_PREFIX}\`.`

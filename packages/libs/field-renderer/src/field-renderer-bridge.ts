@@ -27,17 +27,19 @@ export interface FieldRendererBridge {
 }
 
 /**
- * Lit la valeur qu'un `id` de champ désigne, plate ou au bout d'un chemin pointé.
+ * Reads the value a field `id` designates, flat or at the end of a dotted path.
  *
- * 🛑 B-132 — les quatre accès de ce module faisaient `values[field.id]`, un accès PLAT.
- * Un `id` comme `attributes.short_desc` y cherchait une propriété **littéralement nommée**
- * « attributes.short_desc », donc un champ rangé sous un objet imbriqué s'affichait
- * correctement (le moteur de lecture, lui, sait descendre) mais **ne pouvait pas être saisi**.
+ * 🛑 This module's four accesses did `values[field.id]`, a FLAT access. An
+ * `id` like `attributes.short_desc` looked there for a property **literally
+ * named** "attributes.short_desc", so a field stored under a nested object
+ * displayed correctly (the reading engine does know how to descend) but
+ * **could not be edited**.
  *
- * ⚠️ **La clé littérale l'emporte, et ce n'est pas une commodité** : c'est ce qui rend le
- * changement purement ADDITIF. Un consommateur qui range réellement sa valeur sous la clé
- * `"a.b"` continue de la trouver ; sans cette précédence, on déplacerait sa donnée dans un
- * objet imbriqué au premier rendu. Ce paquet est publié — rien de ce qui marchait ne bouge.
+ * ⚠️ **The literal key wins, and that is not a convenience**: it is what
+ * makes the change purely ADDITIVE. A consumer really storing their value
+ * under the key `"a.b"` keeps finding it; without that precedence, their data
+ * would move into a nested object at the first render. This package is
+ * published — nothing that worked moves.
  */
 function readAt(values: Record<string, unknown>, id: string): unknown {
     if (id in values || !id.includes(".")) return values[id];
@@ -50,13 +52,14 @@ function readAt(values: Record<string, unknown>, id: string): unknown {
 }
 
 /**
- * Écrit au même endroit que {@link readAt} lit, en créant les niveaux manquants.
+ * Writes where {@link readAt} reads, creating the missing levels.
  *
- * ⚠️ Symétrie stricte avec la lecture : la clé littérale l'emporte là aussi, sinon une valeur
- * lue à plat serait réécrite imbriquée et le champ se dédoublerait au rendu suivant.
- * ⚠️ Un niveau intermédiaire qui existe mais n'est pas un objet est REMPLACÉ — écraser un
- * scalaire est le seul moyen d'honorer le chemin, et l'alternative (abandonner en silence)
- * est précisément le défaut que cette fonction corrige.
+ * ⚠️ Strict symmetry with reading: the literal key wins there too, otherwise
+ * a value read flat would be rewritten nested and the field would split at
+ * the next render.
+ * ⚠️ An intermediate level that exists but is not an object is REPLACED —
+ * overwriting a scalar is the only way to honour the path, and the
+ * alternative (giving up silently) is precisely the defect this function fixes.
  */
 function writeAt(values: Record<string, unknown>, id: string, v: unknown): void {
     if (id in values || !id.includes(".")) {
@@ -80,8 +83,9 @@ function writeAt(values: Record<string, unknown>, id: string, v: unknown): void 
  * Fields with a `computed` key are rendered read-only (geo-compute values set externally via `setValues`).
  * Fields with `dependsOn` + `optionsByCategory` get their select options filtered when the parent changes.
  *
- * ⚠️ Les valeurs sont adressées par {@link readAt} / {@link writeAt}, donc un `id` pointé
- * désigne un chemin dans l'objet et non une clé littérale — sauf si cette clé existe (B-132).
+ * ⚠️ Values are addressed through {@link readAt} / {@link writeAt}, so a
+ * dotted `id` designates a path in the object and not a literal key — unless
+ * that key exists.
  */
 export function createFieldRendererBridge(
     schema: FieldConfig[],

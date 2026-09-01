@@ -449,7 +449,7 @@ describe("measure-api", () => {
         });
     });
 
-    // ── Registered tools (B-253) ────────────────────────────────────────────
+    // ── Registered tools ────────────────────────────────────────────
     //
     // ⚠️ The test above asserts a NON-THROW and nothing else — it passed unchanged while
     // `registerMeasureType()` wrote to a registry no code ever read. It is kept as the

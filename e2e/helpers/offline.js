@@ -3,7 +3,7 @@
 //
 // WHY THIS EXISTS. Before 02/08/2026 exactly one spec in the suite cut the network
 // (`09-editor.spec.js`) and it asserted a `window.__edQueued` flag, never the data. That is
-// how the offline defects of Sprint 3 stayed alive: an event fires just as happily when the
+// how the early offline defects stayed alive: an event fires just as happily when the
 // payload it carries is empty. These primitives exist so a scenario can assert the ABSENCE
 // of network traffic and the PRESENCE of stored bytes, which is what the sprint's proof
 // criteria actually demand.
@@ -181,53 +181,62 @@ async function settleNetwork(target, opts = {}) {
 }
 
 /**
- * Exécute `fn` et ÉCHOUE si le moindre appel réseau a été tenté, en NOMMANT les coupables.
+ * Runs `fn` and FAILS if the slightest network call was attempted, NAMING
+ * the culprits.
  *
- * C'est l'instrument du critère de preuve n° 3. Il nomme les URLs parce qu'un simple
- * décompte dit que le scénario est cassé sans dire où regarder.
+ * The instrument of proof criterion no. 3. It names the URLs because a bare
+ * count says the scenario is broken without saying where to look.
  *
- * 🛑 LE SCOPER, TOUJOURS — un appel non scopé sur une page de carte NE PEUT PAS passer au
- * vert. Mesuré : même après `settleNetwork`, les tuiles raster du fond continuent d'arriver.
- * Une carte vivante ne cesse jamais de parler au réseau, donc « zéro requête » n'est jamais
- * qu'un énoncé sur un PÉRIMÈTRE. Passer `allow` en nommant ce qui est du bruit de fond.
+ * 🛑 SCOPE IT, ALWAYS — an unscoped call on a map page CANNOT come out
+ * green. Measured: even after `settleNetwork`, the basemap's raster tiles
+ * keep arriving. A live map never stops talking to the network, so "zero
+ * requests" is only ever a statement about a PERIMETER. Pass `allow` naming
+ * what is background noise.
  *
- * ⚠️ Il n'y a délibérément AUCUNE liste d'exclusion par défaut : elle excuserait en silence
- * le trafic qu'un futur scénario doit précisément attraper.
+ * ⚠️ There is deliberately NO default exclusion list: it would silently
+ * excuse the very traffic a future scenario must catch.
  *
- * ⚠️ Et appeler `settleNetwork` d'abord, dans tous les cas : le seul trafic de boot compte
- * ~47 URLs distinctes.
+ * ⚠️ And call `settleNetwork` first, in every case: boot traffic alone
+ * counts ~47 distinct URLs.
  *
- * 🛑 CE QU'IL COMPTE EXACTEMENT : des INITIATIONS de requête, PAS de la sortie réseau.
- * Mesuré le 02/08/2026 — un `fetch()` servi ENTIÈREMENT par le Service Worker depuis
- * IndexedDB, sans que le moindre octet parte sur le fil, émet quand même un événement
- * `request`. Une assertion « zéro requête » posée autour d'un tel appel rougit donc sur la
- * réponse qu'on vient de servir localement.
+ * 🛑 WHAT IT COUNTS EXACTLY: request INITIATIONS, NOT network egress.
+ * Measured on 2026-08-02 — a `fetch()` served ENTIRELY by the Service
+ * Worker from IndexedDB, without a single byte leaving on the wire, still
+ * emits a `request` event. A "zero requests" assertion set around such a
+ * call thus reddens on the very response just served locally.
  *
- * ✅ LA LIMITE A ÉTÉ INSTRUITE le 03/08/2026, avant d'écrire le scénario du critère 3
- * (`e2e/29-offline-proof.spec.js`), enregistreur ouvert et SANS assertion. Trois faits :
+ * ✅ THE LIMIT WAS SCHOOLED on 2026-08-03, before writing criterion 3's
+ * scenario (`e2e/29-offline-proof.spec.js`), recorder open and WITHOUT
+ * assertions. Three facts:
  *
- *   1. **Elle ne concerne que les LECTURES que le worker intercepte.** Le geste du critère 3
- *      est une mise en FILE : deux mises en file hors ligne produisent **0** événement, ni
- *      page ni worker. _(Mesuré sur `addToSyncQueue`, retiré à la tâche 4.11 ; le geste passe
- *      par `Storage.applyEdit` et le fait mesuré ne change pas.)_ Aucun discriminateur n'a donc eu à être construit — en écrire un « au
- *      cas où » aurait été du code sans objet.
- *   2. **`request.serviceWorker()` DISCRIMINE, le jour où il le faudra.** Sur une lecture que
- *      le worker relaie, l'enregistreur voit DEUX événements pour une seule URL : celui de la
- *      page (`serviceWorker() === null`) et celui du worker. Une requête portant un worker est
- *      une preuve SUFFISANTE que le fil a été sollicité — le `fetch` du worker n'est pas
- *      ré-interceptable. C'est ce que `Response.fromServiceWorker()` ne sait pas dire.
- *   3. **Le trafic de boot se calme en ~2 s**, pas en 300 ms : `settleNetwork` avant toute
- *      assertion de zéro n'est pas une précaution, c'est la condition. Vu rouge en le retirant.
+ *   1. **It only concerns the READS the worker intercepts.** Criterion 3's
+ *      gesture is an ENQUEUE: two offline enqueues produce **0** events,
+ *      neither page nor worker. _(Measured on `addToSyncQueue`, removed at
+ *      the outbox port; the gesture goes through `Storage.applyEdit` and
+ *      the measured fact does not change.)_ So no discriminator had to be
+ *      built — writing one "just in case" would have been subject-less
+ *      code.
+ *   2. **`request.serviceWorker()` DISCRIMINATES, the day it is needed.**
+ *      On a read the worker relays, the recorder sees TWO events for one
+ *      URL: the page's (`serviceWorker() === null`) and the worker's. A
+ *      request carrying a worker is SUFFICIENT proof the wire was
+ *      solicited — the worker's `fetch` is not re-interceptable. That is
+ *      what `Response.fromServiceWorker()` cannot say.
+ *   3. **Boot traffic settles in ~2 s**, not 300 ms: `settleNetwork` before
+ *      any zero assertion is not a precaution, it is the condition. Seen
+ *      red by removing it.
  *
- * ⚠️ ET UN PIÈGE PAYÉ AU PASSAGE : l'instruction a d'abord été jouée sur la variante `full`,
- * où la carte s'était calmée, d'où la conclusion « zéro requête tout court ». Appliquée telle
- * quelle sur `addpoi`, l'assertion a rendu **28 URL** — les tuiles du fond continuent d'arriver
- * bien après le calme. **Mesurer sur une variante et conclure sur une autre** est la même faute
- * que recopier un chiffre. Le périmètre se dérive de l'origine, il ne se devine pas.
+ * ⚠️ AND A TRAP PAID ALONG THE WAY: the schooling was first played on the
+ * `full` variant, where the map had settled, hence the conclusion "zero
+ * requests, period". Applied as-is to `addpoi`, the assertion returned
+ * **28 URLs** — the basemap tiles keep arriving well after the calm.
+ * **Measuring on one variant and concluding on another** is the same fault
+ * as copying a number. The perimeter derives from the origin, it is not
+ * guessed.
  *
- * ⚠️ Un jumeau `expectZeroNetwork` a existé quelques heures, avec le MÊME corps et un contrat
- * de retour différent. Retiré à la clôture de S3a — deux fonctions pour un rôle, c'est le
- * compteur C4, et aucune des deux n'avait de consommateur.
+ * ⚠️ A twin `expectZeroNetwork` existed for a few hours, with the SAME body
+ * and a different return contract. Removed as soon as it was spotted — two
+ * functions for one role, and neither had a consumer.
  * @param {import('@playwright/test').Page | import('@playwright/test').BrowserContext} target
  * @param {() => Promise<unknown>} fn
  * @param {{ allow?: RegExp[] }} [opts]

@@ -1,71 +1,79 @@
 #!/usr/bin/env node
 "use strict";
 /**
- * verify-npm-readme-render.cjs — les README PUBLIÉS rendent sur npmjs.com.
+ * verify-npm-readme-render.cjs — the PUBLISHED READMEs render on npmjs.com.
  *
- * ## Le trou que cette gate ferme
+ * ## The hole this gate closes
  *
- * `npmjs.com` ne rend PAS les alertes GitHub (`> [!NOTE]`, `> [!WARNING]`, `> [!IMPORTANT]`,
- * `> [!TIP]`, `> [!CAUTION]`) : la syntaxe est une extension propre à GitHub, et le moteur
- * Markdown du registre la traite comme une citation ordinaire. Le marqueur s'affiche en TEXTE
- * LITTÉRAL, sans icône ni couleur — donc l'encadré promis devient une ligne de bruit AU-DESSUS
- * de l'avertissement qu'il devait souligner. Mesuré le 14/08/2026, avant correctif : 18 alertes
- * sur 6 des 14 README publiés, dont 5 dans `@geoleaf/core`, la page npm la plus lue du projet.
+ * `npmjs.com` does NOT render GitHub alerts (`> [!NOTE]`, `> [!WARNING]`,
+ * `> [!IMPORTANT]`, `> [!TIP]`, `> [!CAUTION]`): the syntax is a GitHub-specific
+ * extension, and the registry's Markdown engine treats it as an ordinary quote.
+ * The marker displays as LITERAL TEXT, without icon or colour — so the promised
+ * callout becomes a noise line ABOVE the warning it was meant to underline.
+ * Measured on 2026-08-14, before the fix: 18 alerts across 6 of the 14 published
+ * READMEs, 5 of them in `@geoleaf/core`, the project's most-read npm page.
  *
- * La forme retenue est celle qui rend à l'identique des deux côtés : `> **Warning** — …`.
+ * The retained form is the one rendering identically on both sides:
+ * `> **Warning** — …`.
  *
- * ⚠️ **Aucune gate ne pouvait le voir, et deux le frôlaient.** `check-dead-links` n'extrait que
- * les liens (`[texte](cible)`). `validate-docs-examples` LIT bien ces fichiers — même corpus,
- * via `lib/tsdoc-examples.cjs#productDocsFiles` — mais son sujet est le CODE des blocs clôturés.
- * La faute vit dans la PROSE, sur une surface dont le rendu ne s'observe pas depuis ce dépôt :
- * c'est la définition d'un angle mort. Un défaut y reste invisible jusqu'à ce qu'un lecteur
- * ouvre la page du registre, ce que personne ne fait dans une boucle de développement.
+ * ⚠️ **No gate could see it, and two grazed it.** `check-dead-links` extracts only
+ * links (`[text](target)`). `validate-docs-examples` DOES read these files — same
+ * corpus, via `lib/tsdoc-examples.cjs#productDocsFiles` — but its subject is the
+ * CODE of fenced blocks. The fault lives in the PROSE, on a surface whose
+ * rendering cannot be observed from this repo: the definition of a blind spot. A
+ * defect there stays invisible until a reader opens the registry page, which
+ * nobody does in a development loop.
  *
- * ## Pourquoi le périmètre s'arrête aux README PUBLIÉS
+ * ## Why the perimeter stops at PUBLISHED READMEs
  *
- * 🛑 La règle est INVERSE ailleurs, et l'élargir la rendrait FAUSSE :
- *   • `README.md` racine  → vitrine GitHub (paquet `private`), qui rend les alertes. 7 y vivent,
- *                           légitimement, et elles doivent y rester.
- *   • `docs/`             → rendu par VitePress, qui les rend aussi.
- *   • le `docs/` d'un    → part parfois dans le tarball, mais npmjs.com ne rend QUE le
- *     paquet               `README.md` racine du paquet. Téléchargé, jamais rendu — hors sujet.
- * Une gate qui rougirait sur ces trois surfaces rougirait sur du légitime, et une gate qui
- * rougit sur du légitime se fait désactiver. Elle a donc besoin d'un périmètre à elle.
+ * 🛑 The rule is INVERSE elsewhere, and widening it would make it FALSE:
+ *   • root `README.md`    → GitHub showcase (`private` package), which renders
+ *                           alerts. 7 live there, legitimately, and must stay.
+ *   • `docs/`             → rendered by VitePress, which renders them too.
+ *   • a package's `docs/` → sometimes ships in the tarball, but npmjs.com renders
+ *                           ONLY the package's root `README.md`. Downloaded,
+ *                           never rendered — out of scope.
+ * A gate reddening on those three surfaces would redden on the legitimate, and a
+ * gate reddening on the legitimate gets disabled. It thus needs its own perimeter.
  *
- * ## Ce qui est vérifié
+ * ## What is verified
  *
- *   NPMDOC-01  aucune alerte GitHub dans un README de paquet publié, ni dans le README du
- *              scaffold — HORS blocs clôturés : un extrait de code ENSEIGNE la syntaxe, il ne
- *              la rend pas. Insensible à la casse et à l'espace (`>[!Warning]` est tout aussi
- *              cassé sur npm), et non ancré sur le `>` : la faute la plus probable d'une
- *              correction est de retirer le chevron en laissant le marqueur, et une règle qui
- *              ne prendrait que la forme canonique laisserait passer la forme mal réparée.
- *   NPMDOC-02  chaque paquet de `registry.publishable()` porte un README, et il a été LU. Un
- *              paquet publié sans README affiche « no README » sur sa page — défaut en soi ; et
- *              un corpus rétréci (registre qui rend moins, `private` posé par erreur, fichier
- *              déplacé) est le mode d'échec par lequel cette gate sortirait VERTE en n'ayant
- *              rien lu. Sortie 2 : refus de conclure, pas verdict.
- *   NPMDOC-03  le scaffold `_plugin-template/README.template.md` a été lu. C'est le SEUL chemin
- *              en dur du fichier, et il l'est pour la raison déjà écrite dans
- *              `lib/tsdoc-examples.cjs#productDocsFiles` : hors des globs `workspaces`
- *              (`!packages/_*`), donc invisible au registre. `create-plugin.cjs` ne l'émet
- *              jamais — il sert de MODÈLE recopié à la main, ce qui en fait le canal de
- *              contagion, pas son absence. Sortie 2 s'il a pourri.
+ *   NPMDOC-01  no GitHub alert in a published package's README, nor in the
+ *              scaffold's — OUTSIDE fenced blocks: a code extract TEACHES the
+ *              syntax, it does not render it. Case- and space-insensitive
+ *              (`>[!Warning]` is just as broken on npm), and not anchored on the
+ *              `>`: a fix's most probable fault is removing the chevron while
+ *              leaving the marker, and a rule taking only the canonical form
+ *              would let the badly-repaired form through.
+ *   NPMDOC-02  each `registry.publishable()` package carries a README, and it was
+ *              READ. A published package without a README shows "no README" on
+ *              its page — a defect in itself; and a shrunken corpus (registry
+ *              returning less, `private` set by mistake, file moved) is the
+ *              failure mode through which this gate would go GREEN having read
+ *              nothing. Exit 2: refusal to conclude, not a verdict.
+ *   NPMDOC-03  the `_plugin-template/README.template.md` scaffold was read. It is
+ *              the file's ONLY hard-coded path, for the reason already written in
+ *              `lib/tsdoc-examples.cjs#productDocsFiles`: outside the
+ *              `workspaces` globs (`!packages/_*`), hence invisible to the
+ *              registry. `create-plugin.cjs` never emits it — it serves as a
+ *              MODEL copied by hand, which makes it the contagion channel, not
+ *              its absence. Exit 2 if it rotted.
  *
- * ⚠️ **La frontière est `private`, pas une liste.** Le jour où un paquet privé devient
- * publiable, son README entre dans le périmètre le même jour — c'est voulu, et
- * `packages/libs/host-runtime/README.md` en porte une aujourd'hui, hors périmètre. Si cette
- * gate rougit soudain sur des lignes qu'aucun commit n'a touchées, chercher un `private`
- * retiré avant de suspecter la gate.
+ * ⚠️ **The boundary is `private`, not a list.** The day a private package becomes
+ * publishable, its README enters the perimeter the same day — wanted, and
+ * `packages/libs/host-runtime/README.md` carries one today, out of perimeter. If
+ * this gate suddenly reddens on lines no commit touched, look for a removed
+ * `private` before suspecting the gate.
  *
- * 🛑 **Ne PAS câbler cette gate dans `probe-gate-visibility.cjs`.** La sonde plante son paquet
- * témoin avec `private: true` : une gate à périmètre `publishable()` y est STRUCTURELLEMENT
- * invisible, et la sonde ne pourrait que rapporter un faux « aveugle ». Rendre le témoin
- * publiable pour la satisfaire le ferait entrer dans le périmètre des gates de licence et de
- * publication — un remède pire que le mal. L'anti-cécité vit donc ICI, en NPMDOC-02/03.
+ * 🛑 **Do NOT wire this gate into `probe-gate-visibility.cjs`.** The probe plants
+ * its witness package with `private: true`: a `publishable()`-perimeter gate is
+ * STRUCTURALLY invisible there, and the probe could only report a false "blind".
+ * Making the witness publishable to satisfy it would pull it into the licence and
+ * publication gates' perimeter — a remedy worse than the ill. The anti-blindness
+ * thus lives HERE, in NPMDOC-02/03.
  *
  * Usage : node scripts/verify-npm-readme-render.cjs
- * Sortie : 0 propre · 1 alerte trouvée · 2 périmètre non concluant.
+ * Exit : 0 clean · 1 alert found · 2 perimeter inconclusive.
  */
 
 const fs = require("node:fs");
@@ -76,23 +84,23 @@ const registry = require("./lib/packages.cjs");
 const ROOT = path.resolve(__dirname, "..");
 const C = { red: "\x1b[31m", green: "\x1b[32m", dim: "\x1b[2m", bold: "\x1b[1m", x: "\x1b[0m" };
 
-/** Voir NPMDOC-03 pour le motif de ce littéral — le seul du fichier. */
+/** See NPMDOC-03 for this literal's motive — the file's only one. */
 const SCAFFOLD_README = path.join(ROOT, "packages", "_plugin-template", "README.template.md");
 
-/** Le marqueur d'alerte, sous toutes les formes que npm rend en texte littéral. */
+/** The alert marker, in every form npm renders as literal text. */
 const ALERT_RE = /\[!\s*(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\s*\]/i;
 
-/** Ouverture / fermeture d'un bloc clôturé (CommonMark : au plus 3 espaces d'indentation). */
+/** Fenced-block open/close (CommonMark: at most 3 spaces of indentation). */
 const FENCE_RE = /^ {0,3}(`{3,}|~{3,})/;
 
-/** @param {string} abs @returns {string} chemin relatif à la racine, en séparateurs POSIX */
+/** @param {string} abs @returns {string} root-relative path, POSIX separators */
 const rel = (abs) => path.relative(ROOT, abs).split(path.sep).join("/");
 
 /**
- * Relève les alertes GitHub d'un `.md`, en sautant les blocs clôturés.
- * Un marqueur de fermeture doit être du même caractère et au moins aussi long que l'ouvrant.
+ * Collects a `.md`'s GitHub alerts, skipping fenced blocks.
+ * A closing marker must be the same character and at least as long as the opener.
  *
- * @param {string} abs Chemin absolu du fichier.
+ * @param {string} abs Absolute file path.
  * @returns {{ line: number, type: string, text: string }[]}
  */
 function scanReadme(abs) {
@@ -122,9 +130,9 @@ function scanReadme(abs) {
     return found;
 }
 
-// ── Le corpus ────────────────────────────────────────────────────────────────
+// ── The corpus ───────────────────────────────────────────────────────────────
 
-/** @type {string[]} NPMDOC-02 / NPMDOC-03 — refus de conclure. */
+/** @type {string[]} NPMDOC-02 / NPMDOC-03 — refusal to conclude. */
 const blind = [];
 /** @type {{ abs: string, rel: string, owner: string }[]} */
 const corpus = [];
@@ -160,11 +168,12 @@ if (!fs.existsSync(SCAFFOLD_README)) {
     });
 }
 
-// ── NPMDOC-02 — le scan n'est pas vide ───────────────────────────────────────
+// ── NPMDOC-02 — the scan is not empty ────────────────────────────────────────
 //
-// 🛑 SANS CE BLOC, CETTE GATE EST DÉCORATIVE. Un registre qui rend moins de paquets, un README
-// déplacé, un `private` posé par erreur : dans les trois cas, zéro alerte trouvée, et un vert.
-// Une garde jamais vue rouge ne garde rien ; une garde qui ne PEUT pas rougir non plus.
+// 🛑 WITHOUT THIS BLOCK, THIS GATE IS DECORATIVE. A registry returning fewer
+// packages, a moved README, a `private` set by mistake: in all three cases, zero
+// alerts found, and a green. A guard never seen red guards nothing; one that
+// CANNOT redden neither.
 if (publishable.length === 0) {
     blind.push(
         `NPMDOC-02 — \`registry.publishable()\` n'a rendu AUCUN paquet. Le registre ne voit ` +
@@ -198,7 +207,7 @@ for (const file of corpus) {
     }
 }
 
-// ── Verdict — décomptes DÉRIVÉS, jamais recopiés en prose ────────────────────
+// ── Verdict — DERIVED tallies, never copied into prose ───────────────────────
 
 const scanned = `${corpus.length} README (${publishable.length} paquets publiés + le scaffold)`;
 

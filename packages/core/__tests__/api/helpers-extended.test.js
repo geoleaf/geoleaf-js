@@ -1,20 +1,21 @@
 /**
  * Tests for src/api/geoleaf.helpers.ts (ESM)
  * DOM utilities, performance optimization, and async helpers
- * Sprint 1: import from modules directly to avoid src/helpers/index.ts resolution chain in Jest
+ * Import from modules directly to avoid src/helpers/index.ts resolution chain in Jest
  *
- * ⚠️ Nommé `-extended` au STRUCT S7 : arrivé de `__tests__/helpers/index.test.js`, il
- * entrait en collision avec `api/index.test.js` (SUT `kernel/api/index.ts`). Le nom nu
- * revient à `api/helpers.test.js`, dont le basename porte déjà le nom du SUT ; celui-ci
- * est la suite la plus large des deux sur le même module, d'où `-extended` — l'idiome
- * que le dossier emploie déjà (`api/api.test.js` / `api/api-extended.test.js`).
+ * ⚠️ Named `-extended` at the mirror realignment: arriving from
+ * `__tests__/helpers/index.test.js`, it collided with `api/index.test.js`
+ * (SUT `kernel/api/index.ts`). The bare name goes to `api/helpers.test.js`,
+ * whose basename already carries the SUT's name; this one is the wider of
+ * the two suites on the same module, hence `-extended` — the idiom the
+ * folder already uses (`api/api.test.js` / `api/api-extended.test.js`).
  */
 
 // KERNEL S11 — this file used to be self-fulfilling, by two separate mechanisms:
 //   1. It imported `debounce`/`throttle` from `general-utils` and DEFINED local
 //      `fetchWithTimeout`/`batchDomOperations`, then spread all four into the object under
 //      test — so `expect(Helpers.debounce).toBe(debounce)` asserted nothing. None of the four
-//      has ever existed on the runtime façade; they were undeclared at S11.
+//      has ever existed on the runtime façade; they were never declared either.
 //   2. A cascading try/catch fell back to `HelpersFromModule = {}`, so a broken import made
 //      the whole suite run green against an object built entirely by the test.
 // Both are gone: the façade is imported directly, and a failure to resolve it now throws.
@@ -700,9 +701,9 @@ describe("Helpers - Namespace Export", () => {
     // `debounce`/`throttle`/`fetchWithTimeout`/`batchDomOperations` defect) or exist
     // without being declared.
     // ⚠️ The oracle is this list, NOT a `.d.ts` file — the comment used to say the guard
-    // locked against the root `index.d.ts`, which it never read (and which ARCHI S6 removed
-    // as never-published and drifted). Editing the façade means editing this list on
-    // purpose; that deliberate edit IS the review checkpoint.
+    // locked against the root `index.d.ts`, which it never read (and which
+    // was removed as never-published and drifted). Editing the façade means
+    // editing this list on purpose; that deliberate edit IS the review checkpoint.
     it("exposes exactly the documented surface — no phantoms, no undeclared members", () => {
         const DECLARED = [
             "getElementById",

@@ -6,26 +6,27 @@
 
 /**
  * @file check-tooling-typecheck.cjs
- * @description TOOLING-TS — cliquet décroissant sur le typage de `scripts/`, `e2e/` et les
- * configs racine. B-93.
+ * @description TOOLING-TS — decreasing ratchet on the typing of `scripts/`,
+ * `e2e/` and the root configs.
  *
- * ## 🛑 POURQUOI UN CLIQUET ET NON UN VERT
+ * ## 🛑 WHY A RATCHET AND NOT A GREEN
  *
- * Ces trois corpus n'étaient couverts par **aucun** tsconfig — ni éditeur, ni compilateur.
- * `tsconfig.tooling.json` les couvre désormais avec `checkJs: true`, et le premier run rend
- * **301 erreurs**. Exiger zéro tout de suite reviendrait à ne pas poser la couverture du tout ;
- * accepter un tsconfig sans `checkJs` reviendrait à poser un périmètre **décoratif**, c'est-à-dire
- * le défaut exact que la roadmap R1 supprime.
+ * These three corpora were covered by **no** tsconfig — neither editor nor
+ * compiler. `tsconfig.tooling.json` now covers them with `checkJs: true`, and
+ * the first run renders **301 errors**. Requiring zero right away would amount
+ * to not laying the coverage at all; accepting a tsconfig without `checkJs`
+ * would amount to laying a **decorative** perimeter — the exact defect being
+ * removed.
  *
- * Le cliquet est la troisième voie, et c'est l'idiome de ce dépôt : la dette est **chiffrée**,
- * elle ne peut que **rétrécir**, et toute régression rougit le jour même.
+ * The ratchet is the third way, and it is this repo's idiom: the debt is
+ * **numbered**, it can only **shrink**, and any regression reddens the same day.
  *
- * ## ⚠️ CE QUE CETTE GATE NE DIT PAS
+ * ## ⚠️ WHAT THIS GATE DOES NOT SAY
  *
- * Un compte qui ne monte pas ne prouve pas qu'aucune erreur n'est apparue : une corrigée et une
- * introduite se compensent. Le cliquet garde une **enveloppe**, pas une liste. C'est un choix —
- * une liste d'erreurs `tsc` s'ancre sur des numéros de ligne, et ceux-là dérivent au premier
- * reformatage, ce qui produirait des rouges qui ne désignent rien.
+ * A count that does not rise does not prove no error appeared: one fixed and one
+ * introduced cancel out. The ratchet guards an **envelope**, not a list. A
+ * choice — a `tsc` error list anchors on line numbers, and those drift at the
+ * first reformat, producing reds that designate nothing.
  *
  * Usage :
  *   node scripts/check-tooling-typecheck.cjs
@@ -46,9 +47,10 @@ const res = spawnSync("npx", ["tsc", "-p", PROJECT], { cwd: ROOT, encoding: "utf
 const out = `${res.stdout || ""}${res.stderr || ""}`;
 const lines = out.split("\n").filter((l) => /error TS\d+/.test(l));
 
-// 🛑 PLANCHER ANTI-GATE-VIDE. `tsc` qui ne rend RIEN peut vouloir dire « zéro erreur » ou
-// « le projet n'a compilé aucun fichier » — un `include` qui ne matche plus produit les deux
-// fois un silence. On distingue les deux en comptant les fichiers réellement vus.
+// 🛑 ANTI-EMPTY-GATE FLOOR. A `tsc` that renders NOTHING can mean "zero errors"
+// or "the project compiled no file" — an `include` that no longer matches
+// produces silence both times. The two are told apart by counting the files
+// actually seen.
 const listed = spawnSync("npx", ["tsc", "-p", PROJECT, "--listFiles"], {
     cwd: ROOT,
     encoding: "utf8",
@@ -75,7 +77,7 @@ if (UPDATE) {
         JSON.stringify(
             {
                 _comment:
-                    "B-93 — nombre d'erreurs `tsc --checkJs` sur scripts/, e2e/ et les configs " +
+                    "Nombre d'erreurs `tsc --checkJs` sur scripts/, e2e/ et les configs " +
                     "racine. Ce nombre ne peut que DÉCROÎTRE (TOOLING-TS). Ne jamais le remonter " +
                     "à la main : corrigez, ou expliquez pourquoi la hausse est légitime dans le " +
                     "commit qui la porte.",

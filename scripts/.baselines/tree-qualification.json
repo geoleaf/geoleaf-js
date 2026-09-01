@@ -1,6 +1,6 @@
 {
-    "_comment": "B-36 — nombre d'artefacts SANS verdict d'existence. Ne peut que DÉCROÎTRE (TREE-QUAL). Un artefact neuf naît non jugé : c'est CE compte qui l'attrape, et c'est pourquoi il ne se remonte pas à la main. Qualifier, puis resserrer.",
+    "_comment": "Nombre d'artefacts SANS verdict d'existence. Ne peut que DÉCROÎTRE (TREE-QUAL). Un artefact neuf naît non jugé : c'est CE compte qui l'attrape, et c'est pourquoi il ne se remonte pas à la main. Qualifier, puis resserrer.",
     "_generated": "node scripts/check-tree-qualification.cjs --update-baseline",
-    "maxUnqualified": 133,
-    "measuredTotal": 1203
+    "maxUnqualified": 0,
+    "measuredTotal": 1327
 }

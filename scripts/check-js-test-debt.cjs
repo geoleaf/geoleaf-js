@@ -1,77 +1,81 @@
 #!/usr/bin/env node
 /**
- * @fileoverview JS-TEST-DEBT — le cliquet qui empêche la dette D-23 / D-24 de grossir, et
- * la garde qui empêche sa conversion de perdre un test EN SILENCE.
+ * @fileoverview JS-TEST-DEBT — the ratchet that keeps the `.js` test debt from
+ * growing, and the guard that keeps its conversion from losing a test IN SILENCE.
  *
- * ## Pourquoi cette gate existe, et pourquoi elle n'existait pas
+ * ## Why this gate exists, and why it did not
  *
- * `dette_technique.md` § D-23 l'écrit noir sur blanc depuis le 31/07/2026 :
+ * The debt register spelled it out since 2026-07-31:
  *
- *     « Ce qui empêche la dette de grossir : RIEN, et c'est assumé. […] Le geste qui
- *       rendrait ce coût réellement plat est connu — un cliquet à baseline décroissante
- *       sur le nombre de fichiers de test `.js`, sur le patron de NONNULL-ASSERTION-DEBT /
- *       EXACT-OPTIONAL-DEBT, vu rougir avant d'être cru. Il n'a pas été posé. »
+ *     "What keeps the debt from growing: NOTHING, and that is assumed. […] The
+ *       gesture that would make this cost truly flat is known — a
+ *       decreasing-baseline ratchet on the number of `.js` test files, on the
+ *       NONNULL-ASSERTION-DEBT / EXACT-OPTIONAL-DEBT pattern, seen red before
+ *       being believed. It has not been set."
  *
- * Il l'est ici. Et la dérive qu'il gèle n'est pas hypothétique : D-24 mesure le core à
- * **431 le 24/07**, **447 le 31/07**, et le pré-vol de S5c à **457 le 05/08** — soit
- * +10 en cinq jours, pendant que la ligne de registre disait « ~2 fichiers par jour ».
+ * It is here. And the drift it freezes is not hypothetical: the core's
+ * measurement gives **431 on 07-24**, **447 on 07-31**, and a preflight **457 on
+ * 08-05** — i.e. +10 in five days, while the register line said "~2 files a day".
  *
- * ## 🛑 La règle qui compte n'est PAS le compteur — c'est JTD-04
+ * ## 🛑 The rule that counts is NOT the counter — it is JTD-04
  *
- * Un cliquet sur un nombre de fichiers a un mode d'échec qui le retourne contre lui-même,
- * et il est **mesuré** dans ce dépôt :
+ * A ratchet on a file count has a failure mode that turns it against itself, and
+ * it is **measured** in this repo:
  *
- *     `packages/plugins/offline-ui/vitest.config.ts:37` déclare
- *     `include: ["**​/__tests__/**​/*.test.js"]` — l'extension est dans le motif.
+ *     `packages/plugins/offline-ui/vitest.config.ts` declares
+ *     `include: ["**​/__tests__/**​/*.test.js"]` — the extension is in the pattern.
  *
- * Renommer `a.test.js` en `a.test.ts` sans toucher au config rend le fichier **invisible à
- * vitest**. La suite reste **verte avec un test de moins**, la baseline **rétrécit**, et le
- * cliquet applaudit une régression. C'est exactement la classe « une garde jamais vue rouge
- * ne garde rien », appliquée à la garde elle-même.
+ * Renaming `a.test.js` to `a.test.ts` without touching the config makes the file
+ * **invisible to vitest**. The suite stays **green with one test fewer**, the
+ * baseline **shrinks**, and the ratchet applauds a regression. Exactly the class
+ * "a guard never seen red guards nothing", applied to the guard itself.
  *
- * D'où **JTD-04**, sans baseline et sans exception : tout fichier de test présent sur le
- * disque doit être **collecté par au moins un config vitest de son paquet**. C'est la seule
- * règle d'ici qui protège la conversion ; les trois autres ne protègent que son rythme.
+ * Hence **JTD-04**, no baseline and no exception: every test file present on
+ * disk must be **collected by at least one vitest config of its package**. The
+ * only rule here that protects the conversion; the other three protect only its
+ * pace.
  *
- * ## Les quatre règles
+ * ## The four rules
  *
- *   JTD-04  **Zéro test orphelin de collecte** — chaque `*.test.*` / `*.spec.*` doit être
- *           matché par le `include` d'un config vitest du paquet, et non retiré par son
- *           `exclude`. Pas de baseline, par construction : un test non collecté ne prouve
- *           rien, et rien d'autre dans le dépôt ne le voit.
- *   JTD-01  Un fichier de test `.js` ne peut pas NAÎTRE en dette. Absent de la baseline
- *           ⟹ erreur.
- *   JTD-02  La baseline ne peut que RÉTRÉCIR. Une entrée sans fichier sur le disque est une
- *           erreur tant qu'elle n'est pas retirée.
- *   JTD-03  Le corpus ne peut pas être vide. Une gate verte qui n'a rien scanné est le pire
- *           des résultats (même classe que NNA-03 et EOD-03).
+ *   JTD-04  **Zero collection-orphan tests** — each `*.test.*` / `*.spec.*` must
+ *           be matched by a package vitest config's `include`, and not removed by
+ *           its `exclude`. No baseline, by construction: an uncollected test
+ *           proves nothing, and nothing else in the repo sees it.
+ *   JTD-01  A `.js` test file cannot be BORN as debt. Absent from the baseline
+ *           ⟹ error.
+ *   JTD-02  The baseline can only SHRINK. An entry without a file on disk is an
+ *           error until removed.
+ *   JTD-03  The corpus cannot be empty. A green gate that scanned nothing is the
+ *           worst outcome (same class as NNA-03 and EOD-03).
  *
- * ## Trois décisions de conception
+ * ## Three design decisions
  *
- * **Le périmètre vient du registre** (`scripts/lib/packages.cjs`), jamais d'un glob
- * `packages/<nom>` en dur ni de `packages/*​/src` — qui ne matche NI `packages/plugins/*` NI
- * `packages/libs/*`, donc mettrait la totalité des plugins hors compteur sans que rien ne
- * rougisse. Classe surveillée par `probe-gate-visibility.cjs`.
+ * **The perimeter comes from the registry** (`scripts/lib/packages.cjs`), never a
+ * hard-coded `packages/<name>` glob nor `packages/*​/src` — which matches NEITHER
+ * `packages/plugins/*` NOR `packages/libs/*`, hence would put all the plugins off
+ * the counter with nothing turning red. Class watched by
+ * `probe-gate-visibility.cjs`.
  *
- * **Le motif par défaut est DÉRIVÉ de `build-config/vitest/base.mjs`, pas recopié ici.**
- * Onze paquets sur seize n'ont aucun `include` local et héritent de la fabrique commune.
- * Recopier `"**​/__tests__/**​/*.test.ts"` dans ce fichier en ferait une valeur à deux
- * domiciles, donc une divergence qui attend son heure.
+ * **The default pattern is DERIVED from `build-config/vitest/base.mjs`, not
+ * copied here.** Eleven packages of sixteen have no local `include` and inherit
+ * the shared factory. Copying `"**​/__tests__/**​/*.test.ts"` into this file would
+ * make it a two-home value, hence a divergence biding its time.
  *
- * **La dette compte les SUITES, pas les fichiers de support.** `*.test.js` et `*.spec.js`
- * seuls, pour que le chiffre reste comparable à D-23 et D-24, qui comptent la même chose.
- * Les `__mocks__/` et helpers `.js` sont **imprimés à part** : ils font partie du coût réel
- * d'une conversion — le précédent `3125e0f6` a dû remplacer `config-harness.js` — mais les
- * additionner rendrait le compteur incomparable aux deux lignes de registre qu'il sert.
+ * **The debt counts SUITES, not support files.** `*.test.js` and `*.spec.js`
+ * only, so the figure stays comparable to the debt register, which counts the
+ * same. The `__mocks__/` and `.js` helpers are **printed separately**: they are
+ * part of a conversion's real cost — the `3125e0f6` precedent had to replace
+ * `config-harness.js` — but adding them in would make the counter incomparable to
+ * the two register lines it serves.
  *
  * ## Usage
  *
  *        node scripts/check-js-test-debt.cjs
  *        node scripts/check-js-test-debt.cjs --update-baseline
  *
- * ⚠️ `--update-baseline` se lance APRÈS avoir converti un lot, jamais pour faire taire un
- * fichier neuf — qui doit être écrit en TypeScript, pas gelé. Et il ne peut RIEN pour
- * JTD-04, qui n'a pas de baseline.
+ * ⚠️ `--update-baseline` is run AFTER converting a batch, never to silence a new
+ * file — which must be written in TypeScript, not frozen. And it can do NOTHING
+ * for JTD-04, which has no baseline.
  */
 
 "use strict";
@@ -92,18 +96,20 @@ const SUITE_RE = /\.(test|spec)\.(js|mjs|cjs|ts|mts|cts|tsx)$/;
 const JS_SUITE_RE = /\.(test|spec)\.(js|mjs|cjs)$/;
 
 /**
- * Convertit un glob vitest en expression régulière ancrée.
+ * Converts a vitest glob into an anchored regular expression.
  *
- * Les motifs manipulés ici sont ceux des `include` / `exclude` de vitest, relatifs à la
- * racine du paquet : `**​/__tests__/**​/*.test.js`, `**​/node_modules/**`, `**​/__tests__/bundle.test.js`.
+ * The patterns handled here are vitest `include` / `exclude` ones, relative to
+ * the package root: `**​/__tests__/**​/*.test.js`, `**​/node_modules/**`,
+ * `**​/__tests__/bundle.test.js`.
  *
- * ⚠️ Le globstar suivi d'un séparateur se traduit en groupe OPTIONNEL, pas en
- * « au moins un répertoire » : le segment doit pouvoir matcher **zéro** répertoire, sans
- * quoi `__tests__/foo.test.js` échapperait au motif du core — c'est-à-dire que la gate
- * déclarerait orphelins ses 457 fichiers, qui sont précisément à cette profondeur.
+ * ⚠️ A globstar followed by a separator translates into an OPTIONAL group, not
+ * "at least one directory": the segment must be able to match **zero**
+ * directories, without which `__tests__/foo.test.js` would escape the core's
+ * pattern — i.e. the gate would declare its 457 files orphans, which sit
+ * precisely at that depth.
  *
- * @param {string} glob motif vitest
- * @returns {RegExp} ancrée sur la chaîne entière
+ * @param {string} glob vitest pattern
+ * @returns {RegExp} anchored on the whole string
  */
 function globToRegExp(glob) {
     let out = "";
@@ -131,15 +137,16 @@ function globToRegExp(glob) {
 }
 
 /**
- * Lit les tableaux `include` / `exclude` **directs** de l'objet `test` d'un config vitest.
+ * Reads the **direct** `include` / `exclude` arrays of a vitest config's `test` object.
  *
- * ⚠️ La visite s'arrête aux propriétés directes de `test`. `test.coverage.include` porte le
- * même nom et désigne tout autre chose — les sources mesurées, pas les suites collectées.
- * Les confondre ferait juger la collecte d'un test sur le périmètre de couverture.
+ * ⚠️ The visit stops at `test`'s direct properties. `test.coverage.include`
+ * carries the same name and designates something else entirely — the measured
+ * sources, not the collected suites. Confusing them would judge a test's
+ * collection on the coverage perimeter.
  *
- * @param {string} file chemin absolu d'un config vitest
- * @returns {{ include: string[] | null, exclude: string[] | null }} `null` = non déclaré,
- *   ce qui signifie « hérité de la fabrique », et se distingue d'un tableau vide
+ * @param {string} file absolute path of a vitest config
+ * @returns {{ include: string[] | null, exclude: string[] | null }} `null` = not
+ *   declared, meaning "inherited from the factory", distinct from an empty array
  */
 function readTestGlobs(file) {
     const sf = ts.createSourceFile(
@@ -177,7 +184,7 @@ function readTestGlobs(file) {
             ts.isObjectLiteralExpression(node.initializer)
         ) {
             readDirect(node.initializer);
-            return; // ne pas redescendre : `coverage.include` vit en dessous
+            return; // do not descend: `coverage.include` lives below
         }
         ts.forEachChild(node, visit);
     };
@@ -187,11 +194,11 @@ function readTestGlobs(file) {
 }
 
 /**
- * Le motif de collecte par défaut, **lu dans la fabrique partagée** plutôt que recopié.
+ * The default collection pattern, **read in the shared factory** rather than copied.
  *
  * @returns {{ include: string[], exclude: string[] }}
- * @throws {Error} si la fabrique ne déclare plus de `include` — auquel cas ce serait cette
- *   gate qui deviendrait fausse en silence, et il vaut mieux qu'elle s'arrête.
+ * @throws {Error} if the factory no longer declares an `include` — in which case
+ *   this gate is what would become silently false, and it is better it stops.
  */
 function inheritedGlobs() {
     const globs = readTestGlobs(BASE_CONFIG);
@@ -208,7 +215,7 @@ function inheritedGlobs() {
 /**
  * @param {string} dir
  * @param {string[]} out
- * @returns {string[]} tous les fichiers du sous-arbre, artefacts exclus
+ * @returns {string[]} all the subtree's files, artifacts excluded
  */
 function collectFiles(dir, out = []) {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -224,7 +231,7 @@ function collectFiles(dir, out = []) {
 
 /**
  * @param {import("./lib/packages.cjs")} pkg
- * @returns {{ include: RegExp[], exclude: RegExp[] }[]} un jeu de motifs par config vitest
+ * @returns {{ include: RegExp[], exclude: RegExp[] }[]} one pattern set per vitest config
  */
 function collectConfigs(pkgDirAbs, fallback) {
     const configs = fs
@@ -272,7 +279,7 @@ function scan() {
             if (SUITE_RE.test(base)) {
                 scanned++;
 
-                // JTD-04 — collectée par au moins un config du paquet ?
+                // JTD-04 — collected by at least one package config?
                 const collected = configs.some(
                     (c) =>
                         c.include.some((re) => re.test(relPkg)) &&
@@ -303,7 +310,7 @@ function scan() {
 const { debt, orphans, support, scanned, packages } = scan();
 const bar = "─".repeat(72);
 
-// ── JTD-03 — une gate qui n'a rien scanné n'a rien prouvé ────────────────────────────────
+// ── JTD-03 — a gate that scanned nothing proved nothing ──────────────────────────────────
 if (scanned === 0) {
     console.error("ERROR [JS-TEST-DEBT/JTD-03]: corpus vide — 0 suite de test scannée.");
     console.error(
@@ -317,17 +324,18 @@ if (UPDATE) {
     fs.mkdirSync(path.dirname(BASELINE), { recursive: true });
     fs.writeFileSync(
         BASELINE,
-        // Indentation 4 : Prettier possède `scripts/**/*.json` en `tabWidth: 4` et
-        // reformaterait tout le fichier au commit, rendant illisible le retrait d'une ligne.
+        // Indentation 4: Prettier owns `scripts/**/*.json` at `tabWidth: 4` and
+        // would reformat the whole file at commit, making one line's removal
+        // unreadable.
         JSON.stringify(
             {
                 _comment:
-                    "JS-TEST-DEBT — suites de test encore en JavaScript (dettes D-23 et " +
-                    "D-24). Cette liste ne peut que RÉTRÉCIR (JTD-02) et aucune entrée ne " +
+                    "JS-TEST-DEBT — suites de test encore en JavaScript (dette gelée " +
+                    "au registre). Cette liste ne peut que RÉTRÉCIR (JTD-02) et aucune entrée ne " +
                     "peut y NAÎTRE (JTD-01) : un test neuf s'écrit en TypeScript. Elle ne " +
                     "contient PAS les fichiers de support (`__mocks__/`, helpers) — ils " +
                     "sont imprimés à part par la gate, pour que ce compteur reste " +
-                    "comparable à D-23 et D-24, qui comptent les suites. ⚠️ Elle ne dit " +
+                    "comparable au registre de dette, qui compte les suites. ⚠️ Elle ne dit " +
                     "rien de JTD-04, qui n'a pas de baseline : convertir un fichier sans " +
                     "élargir le `include` de son vitest.config le rend INVISIBLE, et " +
                     "rétrécit cette liste en perdant un test. Régénérer avec " +
@@ -344,7 +352,7 @@ if (UPDATE) {
     process.exit(0);
 }
 
-// ── JTD-04 — pas de baseline, pas d'exception ────────────────────────────────────────────
+// ── JTD-04 — no baseline, no exception ───────────────────────────────────────────────────
 if (orphans.length > 0) {
     console.log(bar);
     console.error(
@@ -362,8 +370,8 @@ if (orphans.length > 0) {
 }
 
 if (!fs.existsSync(BASELINE)) {
-    // Une baseline absente n'est PAS une liste vide : ce serait déclarer la dette soldée.
-    // Même refus que `check-nonnull-assertion-debt.cjs`.
+    // An absent baseline is NOT an empty list: it would declare the debt settled.
+    // Same refusal as `check-nonnull-assertion-debt.cjs`.
     console.error("ERROR [JS-TEST-DEBT]: baseline absente.");
     console.error("  Run: node scripts/check-js-test-debt.cjs --update-baseline");
     process.exit(2);
@@ -386,7 +394,7 @@ if (fresh.length === 0 && stale.length === 0) {
         `   ℹ ${support.length} fichier(s) de support \`.js\` sous \`__tests__\`/\`__mocks__\` —`
     );
     console.log(
-        "     hors compteur (D-23/D-24 comptent les suites), mais dans le coût d'une conversion."
+        "     hors compteur (la dette compte les suites), mais dans le coût d'une conversion."
     );
     console.log(bar);
     process.exit(0);
@@ -396,7 +404,7 @@ if (fresh.length > 0) {
     console.error(`❌ [JS-TEST-DEBT/JTD-01] ${fresh.length} suite(s) JS NOUVELLE(S) :`);
     for (const k of fresh) console.error(`     + ${k}`);
     console.error(
-        "\n  Un test neuf s'écrit en TypeScript. La dette D-23/D-24 est gelée, pas ouverte :\n" +
+        "\n  Un test neuf s'écrit en TypeScript. La dette `.js` est gelée, pas ouverte :\n" +
             "  elle a dérivé de +10 fichiers en 5 jours faute de ce cliquet. Convertir le\n" +
             "  fichier, ou motiver le gel sur place avec --update-baseline."
     );

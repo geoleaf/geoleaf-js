@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * verify-purgecss.cjs — Dead-CSS CI gate (S7, réparé S13.5).
+ * verify-purgecss.cjs — Dead-CSS CI gate.
  *
  * Runs PurgeCSS over the shared config (scripts/lib/purgecss-config.cjs — the
  * same inputs as the audit) and fails on any selector that is not referenced by
  * scanned content, not covered by the safelist, AND not already frozen in the
  * baseline.
  *
- * ── Why a baseline (S13.5) ───────────────────────────────────────────────────
+ * ── Why a baseline ───────────────────────────────────────────────────
  * The gate used to safelist `/^gl-/` and `/^geoleaf/` — the project's own
  * prefixes — which exempted 149 of the 165 GeoLeaf classes. It printed
  * "0 dead CSS selectors across 49 stylesheets" while checking almost nothing,

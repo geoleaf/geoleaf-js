@@ -15,7 +15,7 @@ GeoLeaf uses **Vitest** for unit testing. This guide documents testing patterns,
 
 **Test Coverage:** non connue à ce jour. Les chiffres affichés ici (82,5 % lignes /
 80,3 % statements / ~85,7 % branches) proviennent d'une mesure dont l'attribution est
-fausse à 49 % — voir `roadmap_couverture-tests.md` (archivée le 24/07/2026). Ils sont retirés plutôt que remplacés :
+fausse à 49 % — mesuré et archivé le 24/07/2026. Ils sont retirés plutôt que remplacés :
 les rechiffrer maintenant substituerait un chiffre faux à un autre. Rétablissement au
 sprint 6 de cette roadmap.
 
@@ -297,7 +297,7 @@ test("should escape XSS in description", () => {
 Located in `__tests__/__mocks__/maplibre-gl.cjs`. Provides comprehensive MapLibre GL JS API mocking:
 
 ```javascript
-// Sprint 7 — single source of truth for all maplibregl.* mocks.
+// Single source of truth for all maplibregl.* mocks.
 // Covers the full surface used by MaplibreAdapter, maplibre-poi-builders,
 // maplibre-helpers, and all MapLibre-dependent test files.
 
@@ -356,7 +356,7 @@ npm test -- --verbose
   lines ≥ 66, statements ≥ 66 — recalibrés le 15/06/2026 pour le provider V8. L'ancien
   « branches ≥ 75 %, le reste ≥ 70 % » venait de `jest.config.cjs`, supprimé avec Jest en
   mars 2026. ⚠️ Les chiffres de couverture ci-dessus proviennent d'une mesure dont
-  l'attribution est fausse à 49 % (`roadmap_couverture-tests.md`, archivée) — à rétablir au sprint 6,
+  l'attribution est fausse à 49 % (mesure archivée) — à rétablir plus tard,
   pas à rechiffrer maintenant
 - **Deferred suites:** `__tests__/deferred/` — excluded from default run, pending reactivation
 
@@ -454,5 +454,5 @@ The test suite reflects key architectural decisions:
 - Updated to GeoLeaf Platform V2 (MapLibre GL JS engine)
 - Replaced Leaflet mock with MapLibre GL JS mock (`__tests__/__mocks__/maplibre-gl.cjs`)
 - Updated coverage metrics: 82.5% lines / 80.3% statements / ~85.7% branches
-- Sprint 7: centralized MapLibre mock (single source of truth)
-- Sprint 9: Leaflet mock fully removed
+- Centralized MapLibre mock (single source of truth)
+- Leaflet mock fully removed

@@ -1,77 +1,84 @@
 #!/usr/bin/env node
 /*!
- * GeoLeaf — CONSUMER-CONTRACT : le contrat INVERSE.
+ * GeoLeaf — CONSUMER-CONTRACT: the INVERSE contract.
  * © 2026 Mattieu Pottier — MIT
  *
- * ## Le défaut que cette gate existe pour attraper
+ * ## The defect this gate exists to catch
  *
- * Les autres gates du dépôt tiennent que **ce que nous déclarons existe**. Celle-ci tient
- * l'inverse : **ce dont quelqu'un dépend n'a pas disparu**. Neuf clés sont parties du namespace
- * `GeoLeaf` parce qu'aucun lecteur du monorepo ne les lisait — le lecteur était **dehors**, et
- * aucun vert d'ici ne pouvait le voir. Un retrait doit rougir.
+ * The repo's other gates hold that **what we declare exists**. This one
+ * holds the inverse: **what someone depends on has not vanished**. Nine
+ * keys left the `GeoLeaf` namespace because no monorepo reader read them —
+ * the reader was **outside**, and no green from here could see it. A
+ * removal must turn red.
  *
- * Le geste n'est pas neuf : `verify-host-contract-sync.cjs` fait déjà cette vérification
- * d'inclusion, par lecture d'AST et **sans booter** — *« this gate inherits a measurement
- * instead of taking one, and stays a sub-second static check »*. Le contrat inverse est **une
- * liste de plus, pas un mécanisme** ; l'écrire autrement serait la cinquième description
- * concurrente de la même surface, ce que l'en-tête de `lib/namespace-surface.mjs` documente
- * comme ayant déjà coûté onze jours de dérive invisible.
+ * The gesture is not new: `verify-host-contract-sync.cjs` already does this
+ * inclusion check, by AST reading and **without booting** — *"this gate
+ * inherits a measurement instead of taking one, and stays a sub-second
+ * static check"*. The inverse contract is **one more list, not a
+ * mechanism**; writing it otherwise would be the fifth competing
+ * description of the same surface, which `lib/namespace-surface.mjs`'s
+ * header documents as having already cost eleven days of invisible drift.
  *
- * ## Trois résolveurs, parce qu'un seul serait vert sur ce qu'il n'a pas lu
+ * ## Three resolvers, because one alone would be green on what it did not read
  *
  *   • `provider: "core"`        → l'oracle post-boot (`EXPECTED_FACADE_KEYS` en profondeur 1,
- *                                 `EXPECTED_FACADE_MEMBERS` en profondeur 2)
- *   • `provider: "plugin:<pkg>"` → l'objet rendu par `buildPublicApi()` du paquet, lu à l'AST ;
- *                                 le paquet est résolu par `requireByDirName`, qui **jette**
- *   • `dom_contract`             → un littéral de sélecteur dans les sources du cœur
+ *                                 `EXPECTED_FACADE_MEMBERS` at depth 2)
+ *   • `provider: "plugin:<pkg>"` → the object returned by the package's `buildPublicApi()`, read at the AST;
+ *                                 the package is resolved by `requireByDirName`, which **throws**
+ *   • `dom_contract`             → a selector literal in the core's sources
  *
- * ⚠️ **Le troisième résolveur n'est pas un confort, c'est la seule voie** pour `Ws` et
- * `Measure.*` : `namespace-surface.contract.test.js` exige `DEPTH2_FACADES ⊆
- * EXPECTED_FACADE_KEYS`, or ces deux-là sont montés par des plugins et l'oracle du cœur est
- * mesuré après un `startApp()` sans eux. Ils ne pourront **jamais** entrer dans l'oracle du
- * cœur. Une gate écrite sur un oracle unique sortirait **verte sur un tiers du contrat sans
- * l'avoir lu** — le mode d'échec exact que ce dépôt a déjà payé.
+ * ⚠️ **The third resolver is not a comfort, it is the only route** for `Ws`
+ * and `Measure.*`: `namespace-surface.contract.test.js` requires
+ * `DEPTH2_FACADES ⊆ EXPECTED_FACADE_KEYS`, yet those two are mounted by
+ * plugins and the core's oracle is measured after a `startApp()` without
+ * them. They can **never** enter the core's oracle. A gate written on a
+ * single oracle would exit **green on a third of the contract without
+ * having read it** — the exact failure mode this repo has already paid.
  *
- * ## Les treize codes
+ * ## The thirteen codes
  *
- *   CC-00  plancher de non-vacuité, issue du SKIP, et ce que la gate a réellement lu
- *   CC-01  tout `required.public` de fournisseur `core` résout
- *   CC-02  tout `private_tolerated` résout — message distinct, limites structurelles NOMMÉES
- *   CC-03  tout `provider: "plugin:<pkg>"` résout dans `buildPublicApi()`
- *   CC-04  cliquet ENTRANT — une liste négative ne s'élargit pas unilatéralement
- *   CC-05  cliquet SORTANT — une entrée `broken` devenue fausse est une erreur jusqu'à retrait
- *   CC-06  portée MESURÉE — un chemin hors de portée sort en exit 2, jamais en vert
- *   CC-07  tout `required.events` est typé, émis en littéral, et sur le bus DOM
- *   CC-08  `dom_contract` — `library` a son littéral en source, `host` est une obligation d'hôte
- *   CC-09  anti-tautologie — l'oracle lu ici est encore confronté à un vrai boot
- *   CC-10  cliquet de DÉPRÉCIATION — une entrée ne quitte `required.public` / `required.events`
- *          que sous annonce, et une balise `@deprecated` ne vit pas sans être datée
- *   CC-11  `installed_by_host` — ce que l'hôte ÉCRIT ne résout PAS ici (symétrique de CC-01)
- *   CC-12  `geoleaf:connector:*` est partagé — aucun nom émis des deux côtés
+ *   CC-00  non-vacuity floor, the SKIP outcome, and what the gate really read
+ *   CC-01  every `required.public` with provider `core` resolves
+ *   CC-02  every `private_tolerated` resolves — distinct message, structural limits NAMED
+ *   CC-03  every `provider: "plugin:<pkg>"` resolves in `buildPublicApi()`
+ *   CC-04  INBOUND ratchet — a negative list does not widen unilaterally
+ *   CC-05  OUTBOUND ratchet — a `broken` entry become false is an error until removed
+ *   CC-06  MEASURED scope — an out-of-scope path exits 2, never green
+ *   CC-07  every `required.events` is typed, emitted as a literal, and on the DOM bus
+ *   CC-08  `dom_contract` — `library` has its literal in source, `host` is a host obligation
+ *   CC-09  anti-tautology — the oracle read here is still confronted with a real boot
+ *   CC-10  DEPRECATION ratchet — an entry only leaves `required.public` / `required.events`
+ *          under an announcement, and a `@deprecated` tag does not live undated
+ *   CC-11  `installed_by_host` — what the host WRITES does NOT resolve here (CC-01's symmetric)
+ *   CC-12  `geoleaf:connector:*` is shared — no name emitted on both sides
+ *   CC-13  `requested_events` is READ — a NOTE per entry, never a red
  *
- * Codes de sortie : **0** vert · **1** régression · **2** refus de conclure.
+ * Exit codes: **0** green · **1** regression · **2** refusal to conclude.
  *
- * ## Ce que CC-10 ne vérifie PAS de la politique, et il faut le savoir
+ * ## What CC-10 does NOT verify of the policy, and it must be known
  *
- * Le bloc `policy` du manifeste — *« aucune entrée de `public` ni de `events` ne peut être
- * retirée sans dépréciation annoncée »* — a été **lu et IGNORÉ** de S1 jusqu'au Sprint 7 : les
- * codes gardaient la **PRÉSENCE**, rien ne gardait le **RETRAIT**, or c'est un retrait qui a
- * produit ce document, deux fois. CC-10 ferme ce trou. Mais il n'en ferme pas toute la
- * largeur, et **un gardien qui saute une clé doit dire qu'il la saute** (tâche 1.11) :
+ * The manifest's `policy` block — *"no `public` or `events` entry can be
+ * removed without an announced deprecation"* — was **read and IGNORED** for
+ * a long time: the codes guarded PRESENCE, nothing guarded REMOVAL, yet a
+ * removal is what produced this document, twice. CC-10 closes that hole.
+ * But it does not close its whole width, and **a guardian that skips a key
+ * must say it skips it**:
  *
- *   • **L'entrée CHANGELOG** n'est pas confrontée. La forme d'annonce du §Deprecation de
- *     `VERSIONING_POLICY.md` a TROIS membres ; CC-10 en tient deux — la balise en source (par
- *     `symbol`) et la datation (`since` / `removeIn`). Le troisième est mécanisable — chercher
- *     le chemin sous le titre de version dans `packages/core/docs/CHANGELOG.md` — et c'est un
- *     refus CONDITIONNÉ, dont la condition de réouverture est la première annonce dont le
- *     `since` désigne une version publiée.
- *   • **« survivre à au moins un `minor` publié »** exige de connaître les versions PUBLIÉES,
- *     que ce dépôt ne lit nulle part. `removeIn` = prochain MAJEUR est la moitié vérifiable de
- *     cette durée, et c'est celle qui est tenue.
- *   • **`deprecated_since` au manifeste** est un accusé de réception de l'AVAL. L'exiger
- *     rendrait la gate rouge pour un geste que l'amont ne peut pas faire.
+ *   • **The CHANGELOG entry** is not confronted. The announcement form of
+ *     `VERSIONING_POLICY.md`'s §Deprecation has THREE members; CC-10 holds
+ *     two — the tag in source (through `symbol`) and the dating
+ *     (`since` / `removeIn`). The third is mechanisable — searching the
+ *     path under the version title in `packages/core/docs/CHANGELOG.md` —
+ *     and it is a CONDITIONED refusal, whose reopening condition is the
+ *     first announcement whose `since` designates a published version.
+ *   • **"surviving at least one published `minor`"** requires knowing the
+ *     PUBLISHED versions, which this repo reads nowhere. `removeIn` = next
+ *     MAJOR is that duration's verifiable half, and it is the one held.
+ *   • **`deprecated_since` in the manifest** is a DOWNSTREAM
+ *     acknowledgement. Requiring it would turn the gate red for a gesture
+ *     upstream cannot make.
  *
- * Usage : GEOLEAF_CONSUMERS=<répertoire> node scripts/verify-consumer-contract.cjs
+ * Usage: GEOLEAF_CONSUMERS=<directory> node scripts/verify-consumer-contract.cjs
  */
 
 "use strict";
@@ -92,15 +99,16 @@ const BASELINE = path.join(ROOT, "scripts", ".baselines", "consumer-contract.jso
 const UPDATE = process.argv.includes("--update-baseline");
 
 /**
- * L'oracle de CC-10 — les dépréciations que l'AMONT annonce.
+ * CC-10's oracle — the deprecations UPSTREAM announces.
  *
- * PUBLIC parce qu'il nomme des **symboles** et pas un client : l'aval déclare ce dont il
- * dépend dans son `*.consumer.json`, l'amont déclare ce qu'il s'autorise à retirer ici, et
- * les deux fichiers ne sont pas écrits par la même main.
+ * PUBLIC because it names **symbols** and not a client: downstream declares
+ * what it depends on in its `*.consumer.json`, upstream declares what it
+ * allows itself to remove here, and the two files are not written by the
+ * same hand.
  *
- * ⚠️ Dérivé par `docsPaths.reference()` et **jamais écrit en dur** — un chemin recopié
- * cesse silencieusement de matcher au premier déménagement de racine documentaire, et la
- * gate refuserait alors de conclure pour un motif qui n'a rien à voir avec son sujet.
+ * ⚠️ Derived by `docsPaths.reference()` and **never hardcoded** — a copied
+ * path silently stops matching at the first documentation-root move, and
+ * the gate would then refuse to conclude for a motive unrelated to its subject.
  */
 const DEPRECATIONS = docsPaths.reference("consumers", "DEPRECATIONS.json");
 
@@ -114,59 +122,63 @@ const C = {
 };
 
 /**
- * Planchers de CC-00, délibérément très en dessous des valeurs du jour (92 / 258).
+ * CC-00's floors, deliberately well below the day's values (92 / 258).
  *
- * ⚠️ **`members: 150` est la dépendance la plus coûteuse du sprint, et elle n'était écrite
- * nulle part.** `EXPECTED_FACADE_MEMBERS` valait **83** avant la tâche 1.5 : écrire cette gate
- * avant d'élargir l'oracle aurait produit une gate qui **refuse de conclure à son premier
- * lancement**, ce qui se solde en pratique par l'abaissement du plancher — donc par une gate
- * qui ne garde plus rien. Le plancher se re-mesure :
+ * ⚠️ **`members: 150` was the sprint's most costly dependency, and it was
+ * written nowhere.» `EXPECTED_FACADE_MEMBERS` was **83** before the oracle
+ * widening: writing this gate before widening the oracle would have
+ * produced a gate that **refuses to conclude at its first launch**, which
+ * in practice settles into lowering the floor — hence a gate that guards
+ * nothing any more. The floor re-measures:
  *
- *     git show <ref>:scripts/lib/namespace-surface.mjs   → l'oracle à cette date
+ *     git show <ref>:scripts/lib/namespace-surface.mjs   → the oracle at that date
  *
- * Ils attrapent un INSTRUMENT effondré, pas une surface qui rétrécit légitimement — même
- * partition que le `FLOOR` de `verify-host-contract-sync.cjs`, et même motif.
+ * They catch a COLLAPSED instrument, not a legitimately shrinking surface —
+ * same partition as `verify-host-contract-sync.cjs`'s `FLOOR`, and same motive.
  */
 const FLOOR = { keys: 50, members: 150 };
 
-// ⚠️ `SCOPE_EXEMPT` a été RETIRÉ le 13/08/2026 (Sprint 4, tâches 4.2/4.3), et le retrait est
-// l'événement, pas la disparition.
+// ⚠️ `SCOPE_EXEMPT` was REMOVED on 13/08/2026, and the removal is the
+// event, not the disappearance.
 //
-// La carte portait une seule entrée, `geoleaf:table:`, avec son motif et l'échéance qui la
-// fermait : *« FERMÉ PAR : Sprint 4 tâche 4.2 […] (`fireEvent` prend le nom complet) »*.
-// Le refactor a eu lieu, les 9 noms existent désormais en littéraux complets
-// (`table-state.ts`, type `TableEventName`), et son propre en-tête exigeait ceci :
-// *« une exemption qui a perdu sa cause est une ERREUR, pas un silence »*. CC-06 l'a
-// effectivement exigée retirée — vu rouge sur `geoleaf:table:opened` et `:closed` avant
-// ce retrait, ce qui est la preuve que le dispositif fonctionnait dans les deux sens.
+// The map carried a single entry, `geoleaf:table:`, with its motive and the
+// deadline closing it: *"CLOSED BY: the `fireEvent` refactor (full name)"*.
+// The refactor happened, the 9 names now exist as full literals
+// (`table-state.ts`, type `TableEventName`), and its own header required
+// this: *"an exemption that lost its cause is an ERROR, not a silence"*.
+// CC-06 effectively required it removed — seen red on
+// `geoleaf:table:opened` and `:closed` before that removal, which is the
+// proof the device worked in both directions.
 //
-// 🛑 **Ce qui n'est PAS couvert après ce retrait, et il faut le savoir avant d'écrire un
-// émetteur** : `DYNAMIC_PREFIXES` partant avec elle (`lib/event-names.cjs`), plus rien ne
-// distingue « nom composé à l'exécution » de « nom absent des sources ». Un futur
-// `dispatchEvent("geoleaf:" + x)` ferait donc conclure CC-07 à « non émis » — un rouge FAUX,
-// exactement l'erreur que le manifeste aval a faite jusqu'à sa v1.4.0. Le dépôt n'en porte
-// aujourd'hui aucun, et poser une machinerie pour un cas qui n'existe pas serait spéculatif.
-// Suivi comme refus CONDITIONNÉ au backlog, avec sa condition de réouverture : la première
-// concaténation qui revient. Elle se mesure, elle ne se suppose pas —
+// 🛑 **What is NOT covered after this removal, to know before writing an
+// emitter**: `DYNAMIC_PREFIXES` leaving with it (`lib/event-names.cjs`),
+// nothing distinguishes "name composed at runtime" from "name absent from
+// the sources" any more. A future `dispatchEvent("geoleaf:" + x)` would
+// thus make CC-07 conclude "not emitted" — a FALSE red, exactly the error
+// the downstream manifest made until its v1.4.0. The repo carries none
+// today, and laying machinery for a case that does not exist would be
+// speculative. Tracked as a CONDITIONED refusal in the backlog, with its
+// reopening condition: the first concatenation that returns. It measures,
+// it is not assumed —
 //
 //   grep -rnE '"geoleaf:"\s*\+|`geoleaf:\$\{' packages/*/src packages/plugins/*/src \
 //     packages/libs/*/src | grep -v __tests__
 //
-// rend aujourd'hui la SEULE ligne du TSDoc de `table-state.ts` qui raconte ce passé.
+// today returns the ONLY line of `table-state.ts`'s TSDoc that tells that past.
 
-// ─── Résolveurs ──────────────────────────────────────────────────────────────────────
+// ─── Resolvers ───────────────────────────────────────────────────────────────────────
 //
-// ⚠️ L'oracle est chargé par `import()` dynamique dans `main()` : `namespace-surface.mjs` est
-// ESM, cette gate est CJS, et le `require()` d'un `.mjs` jette. C'est aussi la raison pour
-// laquelle `main()` est `async` — pas un choix de style.
+// ⚠️ The oracle is loaded by dynamic `import()` in `main()`:
+// `namespace-surface.mjs` is ESM, this gate is CJS, and `require()` of an
+// `.mjs` throws. Also the reason `main()` is `async` — not a style choice.
 
-/** Verdicts de résolution. `OUT_OF_SCOPE` n'est JAMAIS un vert : il alimente CC-06. */
+/** Resolution verdicts. `OUT_OF_SCOPE` is NEVER a green: it feeds CC-06. */
 const OK = "OK";
 const ABSENT = "ABSENT";
 const OUT_OF_SCOPE = "OUT_OF_SCOPE";
 
 /**
- * Résout un chemin contre l'oracle post-boot du cœur.
+ * Resolves a path against the core's post-boot oracle.
  *
  * @returns {{ verdict: string, why: string }}
  */
@@ -206,22 +218,23 @@ function resolveCore(p, surf) {
 }
 
 /**
- * Lit les clés de l'objet rendu par `buildPublicApi()` d'un paquet, à l'AST.
+ * Reads the keys of the object returned by a package's `buildPublicApi()`, at the AST.
  *
- * ⚠️ **Quatre formes, pas une.** Un littéral d'objet TypeScript porte des
- * `PropertyAssignment` (`foo: () => …`), des `ShorthandPropertyAssignment` (`foo,` — c'est
- * la forme de `measure`), des `MethodDeclaration` (`foo() {}`) et des
- * `GetAccessorDeclaration` (`get state() {}` — c'est la forme de `websocket`). Ne lire que la
- * première rendrait la gate verte sur trois plugins qu'elle n'aurait pas lus, et le dépôt en
- * porte au moins un de chaque.
+ * ⚠️ **Four shapes, not one.» A TypeScript object literal carries
+ * `PropertyAssignment` (`foo: () => …`), `ShorthandPropertyAssignment`
+ * (`foo,` — `measure`'s shape), `MethodDeclaration` (`foo() {}`) and
+ * `GetAccessorDeclaration` (`get state() {}` — `websocket`'s shape).
+ * Reading only the first would make the gate green on three plugins it had
+ * not read, and the repo carries at least one of each.
  */
 const pluginApiCache = new Map();
 function pluginApiMembers(pkgDirName) {
     if (pluginApiCache.has(pkgDirName)) return pluginApiCache.get(pkgDirName);
 
-    // `requireByDirName` JETTE si le paquet est introuvable — un chemin en dur cesserait
-    // silencieusement de matcher et la gate sortirait verte en n'ayant rien scanné. C'est ce
-    // qui a fait sortir la v1.3.0 du manifeste en exit 2 sur `plugin:storage`, qui n'existe pas.
+    // `requireByDirName` THROWS if the package is unreachable — a hardcoded
+    // path would silently stop matching and the gate would exit green
+    // having scanned nothing. That is what made the manifest's v1.3.0 exit
+    // 2 on `plugin:storage`, which does not exist.
     const pkg = registry.requireByDirName(pkgDirName);
     const file = path.join(pkg.absDir, "src", "public-api.ts");
     if (!fs.existsSync(file)) {
@@ -285,13 +298,13 @@ function pluginApiMembers(pkgDirName) {
     return members;
 }
 
-/** Résout un chemin contre la façade d'un plugin. `provider: "plugin:<dirName>"`. */
+/** Resolves a path against a plugin's facade. `provider: "plugin:<dirName>"`. */
 function resolvePlugin(p, provider) {
     const pkgDirName = provider.slice("plugin:".length);
     const members = pluginApiMembers(pkgDirName);
     const parts = p.split(".");
     if (parts.length === 1) {
-        // Le namespace lui-même : il existe dès lors que le paquet a une façade non vide.
+        // The namespace itself: it exists as soon as the package has a non-empty facade.
         return { verdict: OK, why: `\`${pkgDirName}\` expose ${members.length} membres` };
     }
     if (parts.length > 2) {
@@ -302,7 +315,7 @@ function resolvePlugin(p, provider) {
         : { verdict: ABSENT, why: `absent de buildPublicApi() de \`${pkgDirName}\`` };
 }
 
-/** Aiguille de résolution : cœur ou plugin, selon le `provider`. */
+/** Resolution switch: core or plugin, depending on the `provider`. */
 function resolve(entry, surf) {
     const provider = entry.provider || "core";
     if (provider === "core") return resolveCore(entry.path, surf);
@@ -315,38 +328,40 @@ function resolve(entry, surf) {
     return null;
 }
 
-// ─── CC-10 : la dépréciation, et ce qui la rend vérifiable ───────────────────────────
+// ─── CC-10: deprecation, and what makes it verifiable ────────────────────────────────
 
-/** Les QUATRE champs d'une annonce. Tous portants : une annonce à trois champs n'annonce pas. */
+/** An announcement's FOUR fields. All load-bearing: a three-field announcement announces nothing. */
 const CHAMPS_ANNONCE = ["since", "removeIn", "replacement", "symbol"];
 
 /**
- * Les `@deprecated` ANTÉRIEURS à la politique, exemptés NOMMÉMENT.
+ * The `@deprecated` PRIOR to the policy, exempted BY NAME.
  *
- * ⚠️ **Une exemption nommée est auditable, une exemption implicite est un trou.** Ces balises
- * vivaient en source publiée avant que le §Deprecation de `VERSIONING_POLICY.md` existe :
- * leur réclamer une entrée de registre ferait rougir la gate **à sa pose**, et une gate rouge
- * au premier lancement se solde en pratique par l'élargissement de sa liste d'exemptions,
- * jamais par la réparation du défaut.
+ * ⚠️ **A named exemption is auditable, an implicit exemption is a hole.»
+ * These tags lived in published source before `VERSIONING_POLICY.md`'s
+ * §Deprecation existed: demanding a register entry from them would turn the
+ * gate red **at its laying**, and a gate red at first launch settles in
+ * practice into widening its exemption list, never into repairing the defect.
  *
- * 🛑 **La clé est `fichier#Propriétaire.membre`, PAS `fichier:ligne`, et c'est mesuré :**
- *   ① Les lignes dérivent. La roadmap qui a commandé ce code citait `retry-handler.ts:27` et
- *      `:44` ; le fichier portait `:34` et `:51`, et l'AST rend `:38` et `:52` — trois paires
- *      de nombres pour deux faits.
- *   ② `retry-handler.ts` porte **deux** membres `maxRetries`, dans `RetryConfig` et dans
- *      `RetryOptions`. Une clé `fichier#membre` en exempterait deux d'un seul geste.
+ * 🛑 **The key is `file#Owner.member`, NOT `file:line`, and it is measured:**
+ *   ① Lines drift. The plan that commissioned this code cited
+ *      `retry-handler.ts` and `:44`; the file carried `:34` and `:51`,
+ *      and the AST returns `:38` and `:52` — three pairs of numbers for two facts.
+ *   ② `retry-handler.ts` carries **two** `maxRetries` members, in
+ *      `RetryConfig` and in `RetryOptions`. A `file#member` key would
+ *      exempt two in one gesture.
  *
- * ⚠️ **La liste se DÉRIVE par le scan, elle ne se recopie pas d'un document.** Au 14/08/2026,
- * `annoncesEnSource()` rend **une** balise sur 862 fichiers expédiés : les trois alias
- * `maxRetries` ont été reclassés par la tâche 7.2 — ce sont des alias CONSERVÉS, rien ne
- * programme leur retrait, et leur tag promettait une disparition qui n'aura pas lieu.
+ * ⚠️ **The list DERIVES from the scan, it is not copied from a document.»
+ * As of 14/08/2026, `annoncesEnSource()` returns **one** tag over 862
+ * shipped files: the three `maxRetries` aliases were reclassified — they
+ * are KEPT aliases, nothing schedules their removal, and their tag promised
+ * a disappearance that will not happen.
  *
- * FERMÉ PAR : le retrait de ces clés, ou leur entrée dans `DEPRECATIONS.json`.
+ * CLOSED BY: removing these keys, or their entry into `DEPRECATIONS.json`.
  */
 const ANNONCES_GRAND_PERAGE = new Map([
     [
         "packages/plugins/table/src/types.ts#TableConfig.pageSize",
-        "B-71 — clé SANS EFFET (le panneau défile en virtuel), marquée plutôt que retirée pour " +
+        "Clé SANS EFFET (le panneau défile en virtuel), marquée plutôt que retirée pour " +
             "ne pas casser la compilation d'un intégrateur qui l'a écrite. Elle n'a pas sa place " +
             "au registre : une option sans effet n'a aucun `replacement`, donc ce n'est pas une " +
             "dépréciation au sens de la politique mais un défaut à réparer ou un champ à retirer",
@@ -354,24 +369,24 @@ const ANNONCES_GRAND_PERAGE = new Map([
 ]);
 
 /**
- * Énumère les `@deprecated` des sources EXPÉDIÉES → `fichier#Propriétaire.membre`.
+ * Enumerates the SHIPPED sources' `@deprecated` → `file#Owner.member`.
  *
- * Même corpus que CC-07 (`ev.shippedSources()`), délibérément : « source expédiée » doit
- * vouloir dire **une** chose dans cette gate. Lu à l'AST et non au grep — un `@deprecated`
- * écrit dans la prose d'un docblock n'est pas une balise, et ces sources sont denses en
- * prose qui parle de dépréciation.
+ * Same corpus as CC-07 (`ev.shippedSources()`), deliberately: "shipped
+ * source" must mean **one** thing in this gate. Read at the AST and not by
+ * grep — a `@deprecated` written in a docblock's prose is not a tag, and
+ * these sources are dense in prose that talks about deprecation.
  *
- * ⚠️ La pile de propriétaires descend aussi dans les **littéraux de type** (`Config?: { … }`),
- * sans quoi deux façades portant le même nom de membre s'écraseraient dans la Map et une
- * exemption en couvrirait deux.
+ * ⚠️ The owner stack also descends into **type literals** (`Config?: { … }`),
+ * otherwise two facades carrying the same member name would overwrite each
+ * other in the Map and one exemption would cover two.
  *
- * @returns {Map<string, {rel: string, lignes: number[]}>} clé qualifiée → où elle vit.
+ * @returns {Map<string, {rel: string, lignes: number[]}>} qualified key → where it lives.
  */
 function annoncesEnSource() {
     const found = new Map();
     for (const file of ev.shippedSources()) {
         const text = fs.readFileSync(file, "utf8");
-        if (!text.includes("@deprecated")) continue; // même pré-filtre que collectEventLiterals
+        if (!text.includes("@deprecated")) continue; // same pre-filter as collectEventLiterals
         const sf = ts.createSourceFile(file, text, ts.ScriptTarget.ES2022, true);
         const rel = path.relative(ROOT, file).split(path.sep).join("/");
         const nomDe = (n) =>
@@ -402,9 +417,10 @@ function annoncesEnSource() {
         };
         ts.forEachChild(sf, visit);
     }
-    // Une clé qui désigne DEUX déclarations est une clé qui ment : l'exemption de l'une
-    // couvrirait l'autre, et la citation `symbol` d'une annonce serait satisfaite par un
-    // symbole que personne n'a voulu déprécier. Ambiguë = refusée, jamais devinée.
+    // A key designating TWO declarations is a lying key: one's exemption
+    // would cover the other, and an announcement's `symbol` citation would
+    // be satisfied by a symbol nobody meant to deprecate. Ambiguous =
+    // refused, never guessed.
     for (const [cle, o] of found) {
         if (o.lignes.length > 1) {
             cm.refuse(
@@ -421,14 +437,15 @@ function annoncesEnSource() {
 /**
  * Lit `DEPRECATIONS.json`. Absent → REFUS : c'est l'oracle de CC-10.
  *
- * ⚠️ **Un objet `deprecations` VIDE n'est PAS un refus**, et la nuance mérite d'être écrite
- * parce que ce dépôt pose partout la règle inverse (« aucune fonction ne rend un résultat
- * vide par défaut »). Elle ne s'applique pas ici : la comparaison de CC-10 est
- * baseline ↔ manifeste, jamais annonces ↔ quelque chose. Un registre vide ne rend pas CC-10
- * creux — il le rend **maximalement strict** : aucun retrait n'est autorisé. C'est l'état du
- * jour, et c'est un état correct.
+ * ⚠️ **An EMPTY `deprecations` object is NOT a refusal**, and the nuance
+ * deserves writing because this repo everywhere sets the inverse rule ("no
+ * function returns an empty result by default"). It does not apply here:
+ * CC-10's comparison is baseline ↔ manifest, never announcements ↔
+ * something. An empty register does not make CC-10 hollow — it makes it
+ * **maximally strict**: no removal is authorised. That is the day's state,
+ * and it is a correct state.
  *
- * @returns {Record<string, object>} les annonces, indexées par chemin de surface consommée.
+ * @returns {Record<string, object>} the announcements, indexed by consumed-surface path.
  */
 function lireAnnonces() {
     if (!fs.existsSync(DEPRECATIONS)) {
@@ -456,15 +473,15 @@ function lireAnnonces() {
 }
 
 /**
- * Juge UNE annonce. Rend un tableau d'erreurs — vide si l'annonce tient.
+ * Judges ONE announcement. Returns an array of errors — empty if the announcement holds.
  *
- * Les quatre champs sont portants, et chacun ferme une porte différente :
- *   • `since`       — sans lui, l'annonce n'a pas d'âge et sa durée est indécidable
- *   • `removeIn`    — sans lui, « déprécié » veut dire « retiré quand ça m'arrange »
- *   • `replacement` — on ne déprécie pas vers rien
- *   • `symbol`      — sans lui, le registre serait un SECOND endroit où écrire « c'est
- *                     déprécié », donc une description concurrente de plus : le mode d'échec
- *                     que ce dépôt paie le plus cher
+ * The four fields are load-bearing, and each closes a different door:
+ *   • `since`       — without it, the announcement has no age and its duration is undecidable
+ *   • `removeIn`    — without it, "deprecated" means "removed whenever it suits me"
+ *   • `replacement` — one does not deprecate towards nothing
+ *   • `symbol`      — without it, the register would be a SECOND place to
+ *                     write "this is deprecated", hence one more competing
+ *                     description: the failure mode this repo pays dearest
  */
 function jugerAnnonce(chemin, a, ctx) {
     const out = [];
@@ -484,8 +501,9 @@ function jugerAnnonce(chemin, a, ctx) {
         return out;
     }
 
-    // `removeIn` — un MAJEUR strictement supérieur au courant. Une annonce datée du PRÉSENT
-    // n'est pas une annonce : c'est un retrait dont on prévient après coup.
+    // `removeIn` — a MAJOR strictly above the current one. An announcement
+    // dated in the PRESENT is not an announcement: it is a removal warned
+    // about after the fact.
     const courant = registry.requireByDirName("core").manifest.version;
     const majCourant = Number(String(courant).split(".")[0]);
     const mr = /^(\d+)\.0\.0$/.exec(String(a.removeIn));
@@ -496,7 +514,7 @@ function jugerAnnonce(chemin, a, ctx) {
                 "n'est pas une annonce."
         );
     }
-    // `since` — dans la ligne majeure courante, et jamais au niveau ou après le retrait.
+    // `since` — in the current major line, and never at or after the removal.
     if (!semver(a.since)) {
         push(`porte \`since: "${a.since}"\`, illisible — attendu \`x.y.z\`.`);
     } else if (Number(String(a.since).split(".")[0]) !== majCourant) {
@@ -511,7 +529,7 @@ function jugerAnnonce(chemin, a, ctx) {
         );
     }
 
-    // `replacement` — TROIS formes reconnues, une quatrième REFUSÉE plutôt que devinée.
+    // `replacement` — THREE recognised shapes, a fourth REFUSED rather than guessed.
     const r = String(a.replacement);
     let ou = null;
     if (r.startsWith("plugin:")) {
@@ -520,8 +538,9 @@ function jugerAnnonce(chemin, a, ctx) {
             ou = `façade de \`${r.slice(0, i)}\``;
         }
     } else if (ev.EVENT_LITERAL_RE.test(r)) {
-        // Un événement ÉMIS mais NON TYPÉ n'est pas un remplaçant : l'aval devrait le caster
-        // à la main. Déprécier vers ça déplace la dette au lieu de la solder.
+        // An EMITTED but UNTYPED event is not a replacement: downstream
+        // would have to cast it by hand. Deprecating towards that moves the
+        // debt instead of settling it.
         if (ctx.literals.has(r) && ctx.typedNames.has(r)) ou = "événement émis ET typé";
     } else if (resolveCore(r, ctx.surf).verdict === OK) {
         ou = "surface du cœur";
@@ -535,7 +554,7 @@ function jugerAnnonce(chemin, a, ctx) {
         );
     }
 
-    // `symbol` — et c'est ici que l'annonce cesse d'être une déclaration.
+    // `symbol` — and here is where the announcement stops being a mere declaration.
     if (!ctx.tags.has(String(a.symbol))) {
         push(
             `cite \`symbol: "${a.symbol}"\`, qui ne désigne AUCUNE déclaration portant ` +
@@ -549,8 +568,8 @@ function jugerAnnonce(chemin, a, ctx) {
 }
 
 /**
- * Le SENS SORTANT — une entrée a quitté une liste POSITIVE. Écrit une fois, appelé DEUX
- * fois : par le corps de vérification, et par `--update-baseline` (voir son bloc).
+ * The OUTBOUND direction — an entry left a POSITIVE list. Written once,
+ * called TWICE: by the verification body, and by `--update-baseline` (see its block).
  *
  * @returns {{erreurs: object[], notes: string[]}}
  */
@@ -559,9 +578,10 @@ function sortiesInjustifiees({ connues, aujourdhui, d, annonces, ctx, liste }) {
     const notes = [];
     const vivants = new Set(aujourdhui.map((e) => e.path));
 
-    // Les TROIS façons dont l'aval écrit « je n'en dépends plus ». Toutes trois laissent une
-    // trace DANS le fichier dont cette gate imprime le sha256 ; effacer la ligne n'en laisse
-    // aucune, et c'est exactement la différence que ce code mesure.
+    // The THREE ways downstream writes "I no longer depend on it". All
+    // three leave a trace IN the file whose sha256 this gate prints;
+    // erasing the line leaves none, and that is exactly the difference this
+    // code measures.
     const declasse = new Map();
     for (const [nom, valeur] of [
         ["not_required", d.not_required],
@@ -617,10 +637,10 @@ function sortiesInjustifiees({ connues, aujourdhui, d, annonces, ctx, liste }) {
 }
 
 /**
- * Le SENS INVERSE — une balise que RIEN ne date.
+ * The INVERSE direction — a tag NOTHING dates.
  *
- * Même politique vue de l'autre bout, donc **même code** : poser un CC-13 mettrait deux
- * cliquets sur un même objet, et deux cliquets sur un objet divergent.
+ * Same policy seen from the other end, hence **same code**: adding another
+ * code would put two ratchets on one object, and two ratchets on an object diverge.
  */
 function annoncesOrphelines(tags, annonces) {
     const erreurs = [];
@@ -640,9 +660,9 @@ function annoncesOrphelines(tags, annonces) {
         });
     }
 
-    // 🛑 Une exemption qui a perdu sa cause est une ERREUR, pas un silence — même dispositif
-    // et même sévérité que l'ancien `SCOPE_EXEMPT`, dont le retrait a été exigé par CC-06 le
-    // jour où sa cause est tombée.
+    // 🛑 An exemption that lost its cause is an ERROR, not a silence — same
+    // device and same severity as the old `SCOPE_EXEMPT`, whose removal
+    // CC-06 required the day its cause fell.
     for (const [cle, motif] of ANNONCES_GRAND_PERAGE) {
         if (!tags.has(cle)) {
             cm.refuse(
@@ -660,30 +680,32 @@ function annoncesOrphelines(tags, annonces) {
 // ─── CC-09 : anti-tautologie ─────────────────────────────────────────────────────────
 
 /**
- * Le verrou anti-tautologie, et pourquoi il est TRIPLE.
+ * The anti-tautology lock, and why it is TRIPLE.
  *
- * `EXPECTED_FACADE_MEMBERS` est un tableau **écrit à la main**. Le geste qui rend CC-01 vert
- * sans rien réparer est : *ajouter la ligne à la main*. Ce qui l'interdit n'est pas cette
- * gate — c'est le golden master, qui confronte la liste à un vrai `startApp()`. **La gate n'a
- * donc le droit de croire cette liste que tant que cette confrontation existe.**
+ * `EXPECTED_FACADE_MEMBERS` is a **hand-written** array. The gesture that
+ * makes CC-01 green without repairing anything is: *add the line by hand*.
+ * What forbids it is not this gate — it is the golden master, which
+ * confronts the list with a real `startApp()`. **The gate is thus only
+ * entitled to believe this list as long as that confrontation exists.**
  *
- * Formulation directement issue de `verify-deploy-server-contract.cjs` : *« SC-02 relit le
- * disque, il ne compare pas le générateur à lui-même. Vérifier que `serverContractFiles()`
- * contient ce que `serverContractFiles()` contient serait une tautologie. »*
+ * Wording taken directly from `verify-deploy-server-contract.cjs`: *"SC-02
+ * rereads the disk, it does not compare the generator to itself. Verifying
+ * that `serverContractFiles()` contains what `serverContractFiles()`
+ * contains would be a tautology."*
  *
- * ⚠️ **Les trois assertions, et pourquoi aucune ne suffit :**
- *   • `d.missing` — un membre qui DISPARAÎT du runtime alors qu'il est dans la liste
- *   • `d.extra`   — un membre qui APPARAÎT sans être dans la liste
- *   • `membersAgain === members` — la stabilité entre deux lectures à 30 ms
+ * ⚠️ **The three assertions, and why none suffices:**
+ *   • `d.missing` — a member that VANISHES from the runtime while in the list
+ *   • `d.extra`   — a member that APPEARS without being in the list
+ *   • `membersAgain === members` — stability between two reads 30 ms apart
  *
- * Retirer la troisième seule rendrait la liste **tamponnable** sans que les deux premières
- * bougent : il suffirait d'une surface intermittente pour que quiconque « stabilise » en
- * ajoutant des lignes. C'est pour ça que CC-09 lit les trois.
+ * Removing the third alone would make the list **stampable** without the
+ * first two moving: an intermittent surface would suffice for anyone to
+ * "stabilise" by adding lines. That is why CC-09 reads all three.
  *
- * ⚠️ **Et il les lit à l'AST, pas au grep.** Un `grep 'd.missing'` se contourne en renommant
- * `d` en `diff` — le fichier resterait correct, la gate deviendrait aveugle. La lecture porte
- * donc sur le NOM DE PROPRIÉTÉ accédé dans le premier argument d'`expect(…)`, quel que soit le
- * nom de la variable qui le porte.
+ * ⚠️ **And it reads them at the AST, not by grep.» A `grep 'd.missing'` is
+ * bypassed by renaming `d` to `diff` — the file would stay correct, the
+ * gate would go blind. The read thus bears on the PROPERTY NAME accessed in
+ * `expect(…)`'s first argument, whatever the name of the variable carrying it.
  */
 function checkAntiTautology() {
     const file = path.join(
@@ -703,7 +725,7 @@ function checkAntiTautology() {
     const text = fs.readFileSync(file, "utf8");
     const sf = ts.createSourceFile(file, text, ts.ScriptTarget.ES2022, true);
 
-    /** Noms de propriété passés en 1er argument d'un `expect(...)`, COMPTÉS. */
+    /** Property names passed as 1st argument of an `expect(...)`, COUNTED. */
     const seen = new Map();
     const bump = (n) => seen.set(n, (seen.get(n) ?? 0) + 1);
     const visit = (node) => {
@@ -721,21 +743,24 @@ function checkAntiTautology() {
     };
     ts.forEachChild(sf, visit);
 
-    // 🛑 **Les MULTIPLICITÉS sont load-bearing, et c'est une mutation qui l'a établi.**
+    // 🛑 **The MULTIPLICITIES are load-bearing, and a mutation established it.**
     //
-    // La première version de CC-09 exigeait la simple PRÉSENCE des trois noms. Mutation jouée
-    // le 10/08/2026 : renommer `expect(d.extra, …)` dans la boucle sur `DEPTH2_FACADES` — donc
-    // désarmer le contrôle « un membre APPARAÎT » à la profondeur 2, celle que cette gate
-    // croit. **CC-09 est resté VERT**, parce que le second `expect(d.extra, …)`, celui de la
-    // profondeur 1 (les clés), suffisait à satisfaire la présence.
+    // CC-09's first version required the mere PRESENCE of the three names.
+    // Mutation played on 10/08/2026: rename `expect(d.extra, …)` in the
+    // loop over `DEPTH2_FACADES` — hence disarm the "a member APPEARS"
+    // check at depth 2, the one this gate believes. **CC-09 stayed GREEN**,
+    // because the second `expect(d.extra, …)`, depth 1's (the keys),
+    // sufficed to satisfy the presence.
     //
-    // Autrement dit : le verrou couvrait les clés et croyait couvrir les membres. C'est
-    // exactement le mode que ce dépôt appelle « une garde jamais vue rouge ne garde rien » —
-    // sauf qu'ici la garde EXISTAIT, et que seul le fait de la muter l'a montrée creuse.
+    // In other words: the lock covered the keys and believed it covered the
+    // members. Exactly the mode this repo calls "a guard never seen red
+    // guards nothing" — except here the guard EXISTED, and only mutating it
+    // showed it hollow.
     //
-    // D'où des seuils, pas des booléens : **2** pour `missing` et `extra` (un par profondeur),
-    // **1** pour `membersAgain`. Ils se re-mesurent en lisant le fichier, et le message dit le
-    // compte trouvé — pas seulement qu'il manque quelque chose.
+    // Hence thresholds, not booleans: **2** for `missing` and `extra` (one
+    // per depth), **1** for `membersAgain`. They re-measure by reading the
+    // file, and the message says the count found — not merely that
+    // something is missing.
     const REQUIRED = [
         [
             "missing",
@@ -775,7 +800,7 @@ function checkAntiTautology() {
         cm.refuse("le verrou anti-tautologie du golden master est incomplet", "CC-09");
     }
 
-    // Le golden master doit AUSSI lire la même source que nous — sinon il confronte autre chose.
+    // The golden master must ALSO read the same source as us — otherwise it confronts something else.
     if (!/namespace-surface\.mjs/.test(text) || !/DEPTH2_FACADES/.test(text)) {
         cm.refuse(
             "le golden master ne lit plus `lib/namespace-surface.mjs` / `DEPTH2_FACADES` — " +
@@ -783,8 +808,9 @@ function checkAntiTautology() {
             "CC-09"
         );
     }
-    // CC-09 ne « régresse » jamais en 1 : ou bien le verrou est là, ou bien la gate refuse de
-    // conclure. Il n'y a pas d'état intermédiaire où l'on croirait à demi une liste manuelle.
+    // CC-09 never "regresses" to 1: either the lock is there, or the gate
+    // refuses to conclude. There is no intermediate state where a manual
+    // list would be half believed.
     return { assertions: REQUIRED.reduce((a, [, min]) => a + min, 0) };
 }
 
@@ -801,14 +827,15 @@ async function main() {
     cm.describe(read);
 
     if (read.status === "skip") {
-        // Issue ② : exit 0, motif nommé, chemin imprimé. Ce qui empêche ce SKIP de tout avaler
-        // est `probe-gate-visibility.cjs`, qui plante un manifeste de FIXTURE et exige de voir
-        // cette gate rougir dessus. Il ne prouve pas que le vrai manifeste est lu — il prouve
-        // que la gate MORD ENCORE.
+        // Outcome ②: exit 0, named motive, path printed. What keeps this
+        // SKIP from swallowing everything is `probe-gate-visibility.cjs`,
+        // which plants a FIXTURE manifest and requires seeing this gate turn
+        // red on it. It does not prove the real manifest is read — it proves
+        // the gate STILL BITES.
         process.exit(0);
     }
 
-    // ── CC-00 — planchers de non-vacuité ─────────────────────────────────────────────
+    // ── CC-00 — non-vacuity floors ───────────────────────────────────────────────────
     const memberTotal = Object.values(surf.EXPECTED_FACADE_MEMBERS).reduce(
         (a, b) => a + b.length,
         0
@@ -840,12 +867,13 @@ async function main() {
     let checked = 0;
     let pluginResolved = 0;
 
-    // ── Les oracles du DÉPÔT — construits une fois, hors de la boucle sur les manifestes ──
+    // ── The REPO's oracles — built once, outside the loop over the manifests ──
     //
-    // Ils décrivent nos sources, pas un consommateur : les recalculer par manifeste ne
-    // changeait aucun verdict et coûtait un parcours d'AST complet par entrée lue. Le hoist
-    // est surtout ce qui rend CC-10 possible côté `--update-baseline` : le writer sort avant
-    // le corps de vérification, et il doit rendre le MÊME jugement que lui (§CC-10).
+    // They describe our sources, not a consumer: recomputing them per
+    // manifest changed no verdict and cost a full AST walk per entry read.
+    // The hoist is above all what makes CC-10 possible on the
+    // `--update-baseline` side: the writer exits before the verification
+    // body, and it must render the SAME judgement as it (§CC-10).
     const literals = ev.collectEventLiterals(ev.shippedSources());
     const contract = path.join(
         registry.requireByDirName("core").absDir,
@@ -866,8 +894,8 @@ async function main() {
         );
     }
 
-    // La baseline d'EVENT-MAP, lue et non recopiée : c'est elle qui dit si une dette de
-    // typage est DÉJÀ suivie par un cliquet (voir le partage de sévérité de CC-07).
+    // The EVENT-MAP baseline, read and not copied: it is what says whether
+    // a typing debt is ALREADY tracked by a ratchet (see CC-07's severity split).
     const emBaselinePath = path.join(ROOT, "scripts", ".baselines", "event-map-coverage.json");
     if (!fs.existsSync(emBaselinePath)) {
         cm.refuse(
@@ -883,14 +911,15 @@ async function main() {
         const d = m.data;
         const req = d.required;
 
-        // ── CC-00 (suite) — une entrée présente dans DEUX listes ─────────────────────
+        // ── CC-00 (continued) — an entry present in TWO lists ────────────────────────
         //
-        // Constat consigné par le contrôle du Sprint 0 et non tranché par lui :
-        // `GeoJSON.addData` figure dans `not_required` ET dans `broken_since_v3`. Les deux
-        // énoncés sont vrais séparément, mais un lecteur doit dire lequel il applique — sans
-        // quoi CC-05 « choisit » en silence. **Précédence écrite : `broken_since_v3` gagne**,
-        // parce que c'est la liste sous CLIQUET (CC-05), donc celle dont l'oubli coûte ;
-        // `not_required` est de la documentation d'arbitrage, que rien ne vérifie.
+        // An observation recorded by the opening check and not settled by
+        // it: `GeoJSON.addData` appears in `not_required` AND in
+        // `broken_since_v3`. Both statements are true separately, but a
+        // reader must say which one it applies — otherwise CC-05 "chooses"
+        // silently. **Written precedence: `broken_since_v3` wins**, because
+        // it is the RATCHETED list (CC-05), hence the one whose oversight
+        // costs; `not_required` is arbitration documentation, which nothing verifies.
         const dansDeuxListes = [];
         const notReq = Object.keys(d.not_required ?? {}).filter((k) => !cm.isMeta(k));
         for (const k of notReq) {
@@ -921,11 +950,12 @@ async function main() {
 
         // ── CC-02 — private_tolerated ────────────────────────────────────────────────
         //
-        // Message DISTINCT de CC-01, et ce n'est pas cosmétique : *« sa disparition n'est pas
-        // un bug, c'est une rupture de séquence — cf. D-14 »*. Ces chemins sont `_`-préfixés :
-        // l'aval SAIT qu'il s'appuie sur de l'interne, et la séquence écrite au manifeste dit
-        // qu'ils partiront quand un équivalent public existera. Les confondre avec le contrat
-        // public ferait traiter une dette planifiée comme une régression.
+        // Message DISTINCT from CC-01's, and it is not cosmetic: *"its
+        // disappearance is not a bug, it is a sequence break"*. These paths
+        // are `_`-prefixed: downstream KNOWS it leans on internals, and the
+        // sequence written in the manifest says they will leave when a
+        // public equivalent exists. Confusing them with the public contract
+        // would treat a planned debt as a regression.
         for (const e of cm.entriesOf(req.private_tolerated, "required.private_tolerated")) {
             checked++;
             const r = resolve(e, surf);
@@ -934,15 +964,17 @@ async function main() {
                     code: "CC-02",
                     msg:
                         `\`${e.path}\` ne résout plus — ${r.why}. Sa disparition n'est pas un ` +
-                        "bug, c'est une RUPTURE DE SÉQUENCE : cf. D-14 et le bloc `sequence` " +
+                        "bug, c'est une RUPTURE DE SÉQUENCE : cf. le bloc `sequence` " +
                         "du manifeste.",
                 });
             } else if (r.verdict === OUT_OF_SCOPE) {
-                // ⚠️ **Nommé, pas tu.** 2 entrées sur 6 sont structurellement invisibles, et
-                // les taire rendrait vert ce que la gate n'a pas lu. `_app` est exclu de
-                // `DEPTH2_FACADES` à dessein (motif écrit dans `namespace-surface.mjs`), et un
-                // membre `_`-préfixé est filtré par `walkNamespace` par construction. Ce n'est
-                // donc pas un manque à combler : c'est une limite à déclarer.
+                // ⚠️ **Named, not silenced.» 2 entries out of 6 are
+                // structurally invisible, and silencing them would green
+                // what the gate did not read. `_app` is excluded from
+                // `DEPTH2_FACADES` on purpose (motive written in
+                // `namespace-surface.mjs`), and a `_`-prefixed member is
+                // filtered by `walkNamespace` by construction. Not a gap to
+                // fill: a limit to declare.
                 notes.push(
                     `[CC-02] \`${e.path}\` est STRUCTURELLEMENT INVÉRIFIABLE en profondeur 2 — ` +
                         `${r.why}. Cette entrée n'est ni verte ni rouge : elle n'est pas lue.`
@@ -950,45 +982,62 @@ async function main() {
             }
         }
 
-        // ── CC-03 — façades de plugin ────────────────────────────────────────────────
+        // ── CC-03 — plugin facades ───────────────────────────────────────────────────
         //
-        // Déjà exécuté par `resolve()` ci-dessus. On COMPTE ici ce que le troisième oracle a
-        // réellement lu, et on l'imprime : sans ce décompte, un manifeste qui perdrait ses
-        // entrées `plugin:*` laisserait la gate annoncer un vert « trois oracles » alors que
-        // le troisième n'aurait rien ouvert. Un oracle qui ne sert plus doit se voir.
+        // Already executed by `resolve()` above. What is COUNTED here is
+        // what the third oracle really read, and it is printed: without
+        // that count, a manifest losing its `plugin:*` entries would let
+        // the gate announce a "three oracles" green while the third had
+        // opened nothing. An oracle that no longer serves must be seen.
         pluginResolved += cm
             .entriesOf(req.public, "required.public")
             .filter((e) => String(e.provider).startsWith("plugin:")).length;
 
         // ── CC-04 — cliquet ENTRANT ──────────────────────────────────────────────────
+        //
+        // ⚠️ `ratchetKey`, and NOT `e.path`, since 26/08/2026. These three lists are written
+        // into the baseline, and `public-partition.cjs` classes `scripts/.baselines/` as
+        // NON-internal: whatever lands there is published. `requested` is FREE PROSE authored
+        // downstream, and copying it verbatim carried a business backend's name into the
+        // published corpus — which this repo's golden rule forbids anywhere.
+        //
+        // The fix cannot be "strip the offending word": that closes the instance, and the next
+        // import brings the next word. What closes the CLASS is to stop copying sentences we
+        // did not write. A short entry with no whitespace stays verbatim — it is an API path,
+        // and a reader must see it.
+        //
+        // 🛑 BOTH sides of the ratchet go through this one function: the write below, and the
+        // CC-04 comparison. Never let them drift apart — the baseline would then read "new
+        // entry" on every long entry, on every run.
         const negatives = {
             private_tolerated: cm
                 .entriesOf(req.private_tolerated, "private_tolerated")
-                .map((e) => e.path)
+                .map((e) => cm.ratchetKey(e.path))
                 .sort(),
             requested: cm
                 .entriesOf(d.requested, "requested")
-                .map((e) => e.path)
+                .map((e) => cm.ratchetKey(e.path))
                 .sort(),
             broken_since_v3: cm
                 .entriesOf(d.broken_since_v3, "broken_since_v3")
-                .map((e) => e.path)
+                .map((e) => cm.ratchetKey(e.path))
                 .sort(),
         };
 
-        // ── CC-10 (préalable) — les listes POSITIVES ─────────────────────────────────
+        // ── CC-10 (prerequisite) — the POSITIVE lists ────────────────────────────────
         //
-        // ⚠️ **Elles n'étaient suivies par RIEN avant le Sprint 7, et c'est là qu'était le
-        // trou.** La baseline S1.8 ne portait que les trois listes négatives ; `required.public`
-        // et `required.events` — c'est-à-dire LE CONTRAT — n'avaient aucune mémoire, alors
-        // qu'elles sont écrites par l'AVAL, relues à neuf à chaque run, et jamais confrontées
-        // à hier.
+        // ⚠️ **They were tracked by NOTHING, and that is where the hole
+        // was.» The original baseline only carried the three negative
+        // lists; `required.public` and `required.events` — i.e. THE
+        // CONTRACT — had no memory, while they are written by DOWNSTREAM,
+        // reread fresh at every run, and never confronted with yesterday.
         //
-        // Le `provider` entre dans la baseline mais **PAS dans la clé du cliquet** : le cliquet
-        // compare des chemins, et un changement de fournisseur n'est pas un retrait. Il y entre
-        // parce que la sonde `GATE-PROBE` reconstruit un manifeste depuis cette liste — défauter
-        // `Ws` et `Measure.*` en `core` les ferait rougir en CC-01, donc rougir la sonde pour un
-        // motif qui n'est pas le sien.
+        // The `provider` enters the baseline but **NOT the ratchet's key**:
+        // the ratchet compares paths, and a provider change is not a
+        // removal. It enters because the `GATE-PROBE` probe rebuilds a
+        // manifest from this list — defaulting `Ws` and `Measure.*` to
+        // `core` would turn them red in CC-01, hence turn the probe red for
+        // a motive not its own.
         const parChemin = (a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
         const positives = {
             public: cm
@@ -1002,21 +1051,24 @@ async function main() {
         };
 
         if (UPDATE) {
-            // 🛑 **La régénération est SOUMISE au cliquet ; elle ne le contourne pas.**
+            // 🛑 **Regeneration is SUBJECT to the ratchet; it does not bypass it.**
             //
-            // Le `_comment` avertit depuis S1.8 qu'« ajouter une entrée à la main ici est le
-            // geste qui désarme la gate » — en PROSE, et c'est vrai des listes NÉGATIVES. Sur
-            // les POSITIVES, le geste qui désarme n'est pas d'éditer le fichier : c'est de le
-            // RÉGÉNÉRER après un retrait, ce qui transforme une disparition en état de fait,
-            // avec une commande documentée et l'air de la propreté.
+            // The `_comment` warns that "adding an entry by hand here is
+            // the gesture that disarms the gate" — in PROSE, and it is true
+            // of the NEGATIVE lists. On the POSITIVE ones, the disarming
+            // gesture is not editing the file: it is REGENERATING it after
+            // a removal, which turns a disappearance into a fait accompli,
+            // with a documented command and the air of cleanliness.
             //
-            // La prose ne peut rien contre ça. Ce dépôt a mesuré qu'« un avertissement en prose
-            // n'a arrêté ni la première ni la seconde » collision de numéro, et sa leçon écrite
-            // est de préférer une garde qui COMPTE à un paragraphe de plus.
+            // Prose can do nothing against that. This repo measured that "a
+            // prose warning stopped neither the first nor the second"
+            // number collision, and its written lesson is to prefer a guard
+            // that COUNTS to one more paragraph.
             //
-            // Conséquence, et c'est très exactement ce qu'une politique de dépréciation est :
-            // **l'annonce précède le retrait, mécaniquement.** Pour enregistrer une sortie, il
-            // faut d'abord écrire l'annonce (amont) ou le déclassement (aval).
+            // Consequence, and it is exactly what a deprecation policy is:
+            // **the announcement precedes the removal, mechanically.» To
+            // record an exit, one must first write the announcement
+            // (upstream) or the downgrade (downstream).
             if (read.manifests.length > 1) {
                 cm.refuse(
                     `${read.manifests.length} manifestes lus, et ce writer n'a JAMAIS su en ` +
@@ -1029,7 +1081,7 @@ async function main() {
             const ancienne = fs.existsSync(BASELINE)
                 ? JSON.parse(fs.readFileSync(BASELINE, "utf8"))
                 : {};
-            const connuesP = (ancienne.positives ?? {})[m.consumer];
+            const connuesP = (ancienne.positives ?? {})[cm.consumerKey(m.consumer)];
             if (connuesP) {
                 const annonces = lireAnnonces();
                 const ctxU = { surf, literals, typedNames, tags: annoncesEnSource() };
@@ -1068,9 +1120,9 @@ async function main() {
                 JSON.stringify(
                     {
                         _comment:
-                            "Contrat inverse — S1.8 pour les TROIS listes NÉGATIVES (`lists`, " +
+                            "Contrat inverse — les TROIS listes NÉGATIVES (`lists`, " +
                             "cliquets CC-04 entrant / CC-05 sortant : elles ne peuvent que " +
-                            "RÉTRÉCIR) et S7.4 pour les DEUX listes POSITIVES (`positives`, " +
+                            "RÉTRÉCIR) et les DEUX listes POSITIVES (`positives`, " +
                             "cliquet CC-10 : `required.public` et `required.events` ne peuvent " +
                             "pas rétrécir sans annonce). ⚠️ Les deux moitiés se désarment " +
                             "DIFFÉREMMENT. Une négative se désarme en ajoutant une ligne à la " +
@@ -1082,11 +1134,32 @@ async function main() {
                             "plus en prose.",
                         _generated:
                             "GEOLEAF_CONSUMERS=<dir> node scripts/verify-consumer-contract.cjs --update-baseline",
-                        _consumer: m.consumer,
+                        _consumer: cm.consumerKey(m.consumer),
                         _manifest_version: m.version,
                         _manifest_sha: m.sha,
                         lists: negatives,
-                        positives: { ...(ancienne.positives ?? {}), [m.consumer]: positives },
+                        positives: {
+                            // ⚠️ Only DIGEST keys survive the merge (26/08/2026).
+                            //
+                            // The spread exists to preserve OTHER consumers' positive lists,
+                            // and it did its job too well at the migration: the previous
+                            // baseline keyed this map by the consumer's NAME, so the spread
+                            // carried that name back in as a stale alias of the very entry
+                            // being rewritten — the whole point of the change, undone by one
+                            // line, and silently.
+                            //
+                            // The filter is safe by construction rather than by care: every
+                            // key now IS `consumer-<hex>`, so a key that fails this
+                            // shape can only be a pre-migration residue. It can never drop a
+                            // legitimate consumer. Drop the filter and the name comes back on
+                            // the next regeneration.
+                            ...Object.fromEntries(
+                                Object.entries(ancienne.positives ?? {}).filter(([k]) =>
+                                    /^consumer-[0-9a-f]{12}$/.test(k)
+                                )
+                            ),
+                            [cm.consumerKey(m.consumer)]: positives,
+                        },
                     },
                     null,
                     4
@@ -1127,10 +1200,11 @@ async function main() {
 
         // ── CC-05 — cliquet SORTANT ──────────────────────────────────────────────────
         //
-        // Une entrée `broken` qui RÉSOUT de nouveau n'est pas une bonne nouvelle silencieuse :
-        // c'est une entrée fausse, et une liste négative qui contient du faux se fait ignorer
-        // en bloc. Elle reste une erreur JUSQU'À SON RETRAIT (ou son reclassement) — même
-        // invariant que EM-02 et MH-02, et la formulation est la leur à dessein.
+        // A `broken` entry that RESOLVES again is not silent good news: it
+        // is a false entry, and a negative list containing falsehood gets
+        // ignored wholesale. It stays an error UNTIL ITS REMOVAL (or
+        // reclassification) — same invariant as EM-02 and MH-02, and the
+        // wording is theirs on purpose.
         for (const e of cm.entriesOf(d.broken_since_v3, "broken_since_v3")) {
             const r = resolveCore(e.path, surf);
             if (r.verdict === OK) {
@@ -1144,29 +1218,33 @@ async function main() {
             }
         }
 
-        // ── CC-07 — les événements ───────────────────────────────────────────────────
+        // ── CC-07 — the events ───────────────────────────────────────────────────────
         //
-        // Trois propriétés, et un événement doit les avoir toutes : TYPÉ dans l'une des deux
-        // maps du contrat, ÉMIS en littéral dans une source expédiée, et sur le BUS DOM. La
-        // troisième est celle qu'on oublie : `Events.on` délègue à `addEventListener`, donc un
-        // nom qui ne transite que par le bus MapLibre est une promesse que la façade ne peut
-        // pas tenir — c'est le cas de `geoleaf:filters:changed`, que le CDC amont recommandait
-        // à l'aval de migrer... vers un nom que rien n'émet sur ce bus.
+        // Three properties, and an event must have them all: TYPED in one
+        // of the contract's two maps, EMITTED as a literal in a shipped
+        // source, and on the DOM BUS. The third is the one people forget:
+        // `Events.on` delegates to `addEventListener`, so a name that only
+        // transits the MapLibre bus is a promise the facade cannot keep —
+        // the case of `geoleaf:filters:changed`, which the upstream CDC
+        // recommended downstream migrate to... a name nothing emits on that bus.
         //
-        // ⚠️ Les trois oracles que CC-07 consomme (`literals`, `typedNames`, `emBaseline`) sont
-        // construits AVANT cette boucle depuis le Sprint 7 : ce sont des propriétés du DÉPÔT,
-        // pas du manifeste, et le writer de `--update-baseline` en a besoin alors qu'il sort
-        // avant d'arriver ici. Les recalculer par manifeste n'apportait rien.
+        // ⚠️ The three oracles CC-07 consumes (`literals`, `typedNames`,
+        // `emBaseline`) are built BEFORE this loop: they are properties of
+        // the REPO, not the manifest, and the `--update-baseline` writer
+        // needs them while it exits before reaching here. Recomputing them
+        // per manifest brought nothing.
 
         for (const e of cm.entriesOf(req.events, "required.events")) {
             checked++;
             const name = e.path;
-            // ⚠️ La branche « préfixe composé » vivait ICI, et elle est retirée avec
-            // `SCOPE_EXEMPT` et `DYNAMIC_PREFIXES` (Sprint 4, 4.2/4.3). Elle existait pour un
-            // seul producteur — `fireEvent` du plugin `table` — qui prend désormais le nom
-            // complet. La garder vide aurait produit un test toujours faux : une branche que
-            // rien ne peut plus emprunter est indiscernable d'une branche qui ne garde rien.
-            // Le motif du retrait, et ce qu'il découvre, sont au bloc `SCOPE_EXEMPT` ci-dessus.
+            // ⚠️ The "composed prefix" branch lived HERE, and it is removed
+            // with `SCOPE_EXEMPT` and `DYNAMIC_PREFIXES`. It existed for a
+            // single producer — the `table` plugin's `fireEvent` — which
+            // now takes the full name. Keeping it empty would have produced
+            // an always-false test: a branch nothing can take any more is
+            // indistinguishable from a branch guarding nothing. The
+            // removal's motive, and what it uncovers, are at the
+            // `SCOPE_EXEMPT` block above.
             if (ev.MAP_BUS.has(name)) {
                 errors.push({
                     code: "CC-07",
@@ -1185,28 +1263,31 @@ async function main() {
                 continue;
             }
             if (!typedNames.has(name)) {
-                // 🛑 **Les trois propriétés de CC-07 n'ont PAS la même sévérité, et le partage
-                // est mesuré plutôt que choisi.** « Non émis » et « mauvais bus » sont des
-                // ruptures : l'aval attend un événement qui ne viendra pas. « Non typé » est
-                // une DETTE — l'événement arrive, l'aval l'écoute par un cast à la main.
+                // 🛑 **CC-07's three properties do NOT have the same
+                // severity, and the split is measured rather than chosen.»
+                // "Not emitted" and "wrong bus" are breaks: downstream
+                // waits for an event that will not come. "Untyped" is a
+                // DEBT — the event arrives, downstream listens through a
+                // hand cast.
                 //
-                // Or cette dette est **déjà sous cliquet**, celui d'EM-02, dont la baseline ne
-                // peut que rétrécir. La re-porter ici en rouge poserait un SECOND cliquet sur
-                // le même objet, et deux cliquets sur un objet divergent — c'est la règle que
-                // `lib/ts-decl-read.cjs` formule pour les lecteurs et qui vaut pour les
-                // registres. Pire : `ci:local` resterait rouge en permanence pour une dette
-                // dont le propriétaire écrit est le Sprint 4, ⏸ jusqu'à la 3.1.0. Une gate
-                // durablement rouge se fait désarmer.
+                // Yet that debt is **already ratcheted**, by EM-02, whose
+                // baseline can only shrink. Re-carrying it here as red
+                // would put a SECOND ratchet on the same object, and two
+                // ratchets on an object diverge — the rule
+                // `lib/ts-decl-read.cjs` states for readers and which holds
+                // for registers. Worse: `ci:local` would stay permanently
+                // red for a debt whose treatment is ⏸ until 3.1.0. A
+                // durably red gate gets disarmed.
                 //
-                // ⚠️ Ce que CC-07 ajoute et qu'EM-02 ne peut pas dire : **QUI en dépend**.
-                // La baseline EVENT-MAP est une liste de noms ; celle-ci nomme le consommateur.
+                // ⚠️ What CC-07 adds that EM-02 cannot say: **WHO depends
+                // on it**. The EVENT-MAP baseline is a list of names; this
+                // one names the consumer.
                 const suivi = emBaseline.has(name);
                 if (suivi) {
                     notes.push(
                         `[CC-07] \`${name}\` est ÉMIS mais NON TYPÉ — dette déjà sous cliquet ` +
                             "EM-02 (`scripts/.baselines/event-map-coverage.json`, décroissante), " +
-                            "propriétaire écrit : Sprint 4 de `roadmap_contrat-inverse-api-" +
-                            "publique.md`. Ce que cette ligne ajoute à EM-02 : un consommateur " +
+                            "traitement différé à la 3.1.0. Ce que cette ligne ajoute à EM-02 : un consommateur " +
                             `AVAL en dépend (${JSON.stringify(e.raw?.listenedBy ?? [])}).`
                     );
                 } else {
@@ -1221,16 +1302,17 @@ async function main() {
             }
         }
 
-        // ── CC-08 — le contrat DOM ───────────────────────────────────────────────────
+        // ── CC-08 — the DOM contract ─────────────────────────────────────────────────
         //
-        // Deux propriétaires, deux vérifications DIFFÉRENTES, et les confondre serait rendre
-        // vert ce qu'on n'a pas lu :
-        //   • `owner: "library"` → c'est NOUS qui posons le nœud : un littéral doit exister
-        //     dans les sources du cœur, à la citation `literal`.
-        //   • `owner: "host"`    → c'est l'HÔTE qui le pose (Odoo dans son XML, l'app de démo
-        //     dans son `index.html`). Il n'y a rien à chercher dans nos sources ; ce qui est
-        //     vérifiable est que la citation `readBy` existe, et elle est aval, donc non
-        //     mesurable ici. L'entrée est alors une OBLIGATION déclarée, pas une assertion.
+        // Two owners, two DIFFERENT verifications, and confusing them would
+        // green what was not read:
+        //   • `owner: "library"` → WE set the node: a literal must exist in
+        //     the core's sources, at the `literal` citation.
+        //   • `owner: "host"`    → the HOST sets it (in its own template,
+        //     the demo app in its `index.html`). There is nothing to search
+        //     in our sources; what is verifiable is that the `readBy`
+        //     citation exists, and it is downstream, hence not measurable
+        //     here. The entry is then a declared OBLIGATION, not an assertion.
         const coreSrc = path.join(registry.requireByDirName("core").absDir, "src");
         for (const entry of req.dom_contract ?? []) {
             if (typeof entry === "string") {
@@ -1263,8 +1345,9 @@ async function main() {
                 });
                 continue;
             }
-            // Le sélecteur porte `#` ou `[data-…]` ; le littéral en source est l'id ou
-            // l'attribut, sans le `#`. On cherche la forme NUE, qui est ce qui est écrit.
+            // The selector carries `#` or `[data-…]`; the literal in source
+            // is the id or the attribute, without the `#`. The BARE form is
+            // searched, which is what is written.
             const needle = entry.selector.replace(/^#/, "").replace(/^\[|\]$/g, "");
             if (!grepSources(coreSrc, needle)) {
                 errors.push({
@@ -1278,49 +1361,53 @@ async function main() {
             }
         }
 
-        // ── CC-10 — cliquet de DÉPRÉCIATION ──────────────────────────────────────────
+        // ── CC-10 — DEPRECATION ratchet ──────────────────────────────────────────────
         //
-        // **Ce que ce code attrape, et que CC-01 ne peut pas voir.** CC-01 énonce : tout
-        // `required.public` résout. Son corpus EST le manifeste — écrit par l'aval, relu à
-        // neuf à chaque run, jamais confronté à hier. Sa force est donc une fonction de la
-        // taille d'un corpus que personne ici ne contrôle :
+        // **What this code catches, and CC-01 cannot see.» CC-01 states:
+        // every `required.public` resolves. Its corpus IS the manifest —
+        // written by downstream, reread fresh at every run, never
+        // confronted with yesterday. Its strength is thus a function of the
+        // size of a corpus nobody here controls:
         //
-        //   ① je veux retirer `X.y`        → CC-01 est ROUGE (le manifeste l'exige)
-        //   ② l'entrée quitte le manifeste → gate VERTE, « 66 engagements » au lieu de 67
-        //   ③ je retire le symbole         → gate VERTE. L'aval casse à la vendorisation.
+        //   ① I want to remove `X.y`        → CC-01 is RED (the manifest requires it)
+        //   ② the entry leaves the manifest → gate GREEN, "66 commitments" instead of 67
+        //   ③ I remove the symbol           → gate GREEN. Downstream breaks at vendoring.
         //
-        // **La sortie de la liste EST le désarmement de CC-01**, et le geste ② est
-        // structurellement invisible d'ici : le manifeste n'est pas commité dans ce dépôt, et
-        // le compteur d'engagements baisse LÉGITIMEMENT dans les deux sens — il ne peut pas
-        // servir d'alarme. CC-10 est la mémoire qui manque, et elle vit de NOTRE côté, dans un
-        // fichier commité et sous revue : c'est ce qui la rend inattaquable depuis l'autre dépôt.
+        // **Leaving the list IS CC-01's disarming**, and gesture ② is
+        // structurally invisible from here: the manifest is not committed
+        // in this repo, and the commitment counter goes down LEGITIMATELY
+        // in both directions — it cannot serve as an alarm. CC-10 is the
+        // missing memory, and it lives on OUR side, in a committed,
+        // reviewed file: which is what makes it unassailable from the other repo.
         //
-        // ⚠️ **Et l'attaque n'a pas besoin d'attaquant.** L'aval réécrit périodiquement son
-        // manifeste, retire ce qu'il croit ne plus consommer, et l'amont lit ce retrait comme
-        // une permission.
+        // ⚠️ **And the attack needs no attacker.» Downstream periodically
+        // rewrites its manifest, removes what it believes it no longer
+        // consumes, and upstream reads that removal as permission.
         //
-        // **Le geste LÉGITIME existe, et il est nommé dans le message d'erreur** : l'aval
-        // DÉCLASSE vers `not_required` / `withdrawn` / `broken_since_v3` au lieu d'effacer la
-        // ligne. `not_required` est une porte de sortie qu'il peut s'ouvrir seul — c'est voulu,
-        // c'est SON contrat qu'il abandonne. **CC-10 ne supprime pas la sortie : il supprime la
-        // sortie MUETTE.**
+        // **The LEGITIMATE gesture exists, and it is named in the error
+        // message**: downstream DOWNGRADES to `not_required` / `withdrawn` /
+        // `broken_since_v3` instead of erasing the line. `not_required` is
+        // an exit it can open alone — wanted, it is ITS contract it
+        // abandons. **CC-10 does not remove the exit: it removes the MUTE exit.**
         //
-        // Symétrie à retenir : **CC-04 interdit qu'une liste NÉGATIVE grandisse unilatéralement ;
-        // CC-10 interdit qu'une liste POSITIVE rétrécisse unilatéralement.** Chaque partie ne
-        // peut déplacer le manifeste que dans la direction qui lui coûte.
+        // Symmetry to remember: **CC-04 forbids a NEGATIVE list growing
+        // unilaterally; CC-10 forbids a POSITIVE list shrinking
+        // unilaterally.» Each party can only move the manifest in the
+        // direction that costs it.
         //
-        // 📌 Hors périmètre, et ce n'est pas un oubli : `installed_by_host` n'est pas sous ce
-        // cliquet. La clause `policy` du manifeste ne nomme que `public` et `events`.
+        // 📌 Out of scope, and not an oversight: `installed_by_host` is not
+        // under this ratchet. The manifest's `policy` clause only names
+        // `public` and `events`.
         {
             const annonces = lireAnnonces();
             const ctx = { surf, literals, typedNames, tags: annoncesEnSource() };
-            const connuesP = (baseline.positives ?? {})[m.consumer];
+            const connuesP = (baseline.positives ?? {})[cm.consumerKey(m.consumer)];
 
             if (!connuesP) {
-                // Plancher de non-vacuité, même fonction que ceux de CC-00, CC-03 et CC-11 :
-                // distinguer « rien à cliqueter par ce chemin » de « ce chemin ne cliquette
-                // plus rien ». Un consommateur neuf n'a pas d'hier ; le dire vaut mieux que
-                // le taire.
+                // Non-vacuity floor, same function as CC-00's, CC-03's and
+                // CC-11's: distinguish "nothing to ratchet through this
+                // path" from "this path ratchets nothing any more". A new
+                // consumer has no yesterday; saying it beats silencing it.
                 notes.push(
                     `[CC-10] \`${m.consumer}\` n'a aucune liste positive en baseline — aucune ` +
                         "sortie n'est détectable pour lui. Ce n'est pas un vert de sa part : " +
@@ -1343,12 +1430,14 @@ async function main() {
                     notes.push(...v.notes);
                 }
 
-                // Les ARRIVÉES ne sont pas cliquetées — une liste positive qui grandit est le
-                // bon sens (S6 y a fait entrer `Core.isAttached` et `Core.reattach` depuis
-                // `requested`), et CC-01 les vérifie déjà. Poser un cliquet entrant rendrait la
-                // gate rouge à chaque promotion, donc durablement rouge, donc désarmée —
-                // l'argument est déjà écrit au bloc CC-07. Mais une arrivée non ENREGISTRÉE
-                // n'est pas encore PROTÉGÉE : elle repartirait demain sans un mot.
+                // ARRIVALS are not ratcheted — a positive list growing is
+                // common sense (`Core.isAttached` and `Core.reattach`
+                // entered from `requested`), and CC-01 already verifies
+                // them. An inbound ratchet would turn the gate red at every
+                // promotion, hence durably red, hence disarmed — the
+                // argument is already written at the CC-07 block. But an
+                // arrival not RECORDED is not yet PROTECTED: it would leave
+                // again tomorrow without a word.
                 const connus = new Set(
                     [...(connuesP.public ?? []), ...(connuesP.events ?? [])].map((e) => e.path)
                 );
@@ -1363,11 +1452,12 @@ async function main() {
                     );
                 }
 
-                // La baseline décrit un fichier plus ancien que celui qu'on vient de lire. Ce
-                // n'est pas une régression — c'est le seul signal disponible qu'une part du
-                // contrat n'est pas encore mémorisée, et il manquait. ⚠️ NOTE et non rouge :
-                // un rouge sur divergence rendrait la gate rouge à chaque édition légitime de
-                // l'aval, donc rouge en permanence, donc désarmée.
+                // The baseline describes a file older than the one just
+                // read. Not a regression — the only available signal that a
+                // part of the contract is not yet memorised, and it was
+                // missing. ⚠️ NOTE and not red: a red on divergence would
+                // turn the gate red at every legitimate downstream edit,
+                // hence permanently red, hence disarmed.
                 if (baseline._manifest_sha && baseline._manifest_sha !== m.sha) {
                     notes.push(
                         `[CC-10] la baseline a été enregistrée sur le manifeste ` +
@@ -1383,19 +1473,21 @@ async function main() {
             errors.push(...annoncesOrphelines(ctx.tags, annonces).erreurs);
         }
 
-        // ── CC-11 — `installed_by_host` : ce que l'hôte ÉCRIT doit rester libre ──────
+        // ── CC-11 — `installed_by_host`: what the host WRITES must stay free ──────
         //
-        // Symétrique exact de CC-01, et c'est la raison d'être du code. CC-01 vérifie qu'un
-        // chemin LU par l'aval existe bien ici. Celui-ci vérifie qu'un chemin ÉCRIT par
-        // l'aval n'existe PAS ici — parce que deux écrivains sur une même clé du namespace,
-        // c'est le dernier qui gagne, en silence, à un ordre de boot près. Le symptôme se
-        // lit chez le consommateur, des mois plus tard, et jamais comme une erreur.
+        // CC-01's exact symmetric, and the code's reason for being. CC-01
+        // verifies a path READ by downstream really exists here. This one
+        // verifies a path WRITTEN by downstream does NOT exist here —
+        // because two writers on one namespace key means the last one wins,
+        // silently, one boot order away. The symptom reads at the
+        // consumer's, months later, and never as an error.
         //
-        // ⚠️ **Cette clé a d'abord été refusée par CC-00, et le motif du refus disait déjà
-        // ce qu'il fallait faire** : « une clé que ce lecteur ne connaît pas est une clé
-        // qu'aucun code CC ne vérifie ». La déclarer dans `KNOWN_TOP_LEVEL` sans lui donner
-        // de code aurait satisfait la lettre de ce refus en manquant sa raison — la gate
-        // serait redevenue verte sur une part du contrat qu'elle ne lit toujours pas.
+        // ⚠️ **This key was first refused by CC-00, and the refusal's
+        // motive already said what to do**: "a key this reader does not
+        // know is a key no CC code verifies". Declaring it in
+        // `KNOWN_TOP_LEVEL` without giving it a code would have satisfied
+        // that refusal's letter while missing its reason — the gate would
+        // have gone green again on a part of the contract it still does not read.
         for (const e of cm.entriesOf(d.installed_by_host, "installed_by_host")) {
             if (resolveCore(e.path, surf).verdict === OK) {
                 errors.push({
@@ -1409,10 +1501,10 @@ async function main() {
                 });
             }
         }
-        // Plancher de non-vacuité, même fonction que ceux de CC-00 et CC-03 : distinguer
-        // « rien à vérifier par ce chemin » de « ce chemin ne vérifie plus rien ». Un
-        // manifeste antérieur à la v1.7.0 n'a pas la clé, et CC-11 s'accorderait alors
-        // parfaitement avec un ensemble vide.
+        // Non-vacuity floor, same function as CC-00's and CC-03's:
+        // distinguish "nothing to verify through this path" from "this path
+        // verifies nothing any more". A manifest older than v1.7.0 lacks
+        // the key, and CC-11 would then agree perfectly with an empty set.
         if (cm.entriesOf(d.installed_by_host, "installed_by_host").length === 0) {
             notes.push(
                 `[CC-11] \`${m.consumer}\` ne déclare aucun \`installed_by_host\` — rien à ` +
@@ -1420,17 +1512,58 @@ async function main() {
             );
         }
 
-        // ── CC-12 — le namespace `geoleaf:connector:*` est PARTAGÉ ───────────────────
+        // ── CC-13 — `requested_events` is READ, and rendered as a NOTE ──────────────
         //
-        // Depuis S4.7, six événements du plugin `connector` sont entrés dans le domaine de
-        // nommage `geoleaf:`. Le consommateur aval maintient un plugin propriétaire qui en
-        // émet six autres sous ce même préfixe. La non-collision a été vérifiée À LA MAIN
-        // le 13/08/2026 et écrite dans `event-bus.contract.ts` — avec, dans la même phrase,
-        // l'aveu que « rien, d'aucun côté, n'empêche une collision future ».
+        // 🛑 THIS KEY WAS ACCEPTED WITHOUT EVER BEING READ, and the irony is
+        // written in place: `requested_events` appears in `KNOWN_TOP_LEVEL`
+        // (`consumer-manifest.cjs`) — so the schema validates it — but
+        // no CC rule looked at its content. The comment justifying that
+        // closed list says it wants to avoid "an entry nobody ever
+        // verified": being made ACCEPTABLE had excused this block from
+        // being VERIFIED.
         //
-        // Ce code est ce quelque chose. Il ne coûte rien : l'aval déclare déjà ses six noms
-        // dans `out_of_scope.emitted_by_suite_connector`, et `literals` est l'oracle que
-        // CC-07 utilise déjà. Une note écrite dans un contrat ne rougit pas ; ceci rougit.
+        // What it cost concretely: `geoleaf:layer:updated` is not emitted,
+        // DELIBERATELY ("no speculative event without a listener"), and the
+        // refusal had given itself a falsifiable reopening condition — "a
+        // subscriber exists […] in a manifest read by
+        // verify-consumer-contract". The condition was good; the gate did
+        // not read the block where the refutation was to arrive. A refusal
+        // whose reopening condition is unobservable is not refutable: it is
+        // an opinion.
+        //
+        // ⚠️ NOTE AND NOT RED, deliberately — same reasoning as CC-10. A
+        // REQUEST is not a subscriber: downstream can wish for an event the
+        // repo refuses to emit, and that is a legitimate state, not a
+        // regression. Turning red here would make the gate a channel
+        // through which downstream imposed emissions, which neither party wants.
+        const demandes = cm.entriesOf(d.requested_events, "requested_events");
+        for (const e of demandes) {
+            const nom = e.path;
+            const emis = literals.has(nom);
+            notes.push(
+                `[CC-13] \`${nom}\` est demandé par \`${m.consumer}\` et ` +
+                    (emis
+                        ? "IL EST ÉMIS ici — la demande est satisfaite, rien à faire."
+                        : "n'est PAS émis ici. Une demande n'est pas un abonné : le refus " +
+                          "tient tant qu'aucun code aval ne s'y abonne. Mais l'état n'est " +
+                          "plus « personne ne l'a demandé ».")
+            );
+        }
+
+        // ── CC-12 — the `geoleaf:connector:*` namespace is SHARED ────────────────────
+        //
+        // Six events of the `connector` plugin entered the `geoleaf:`
+        // naming domain. The downstream consumer maintains a proprietary
+        // plugin emitting six others under that same prefix. Non-collision
+        // was verified BY HAND on 13/08/2026 and written into
+        // `event-bus.contract.ts` — with, in the same sentence, the
+        // admission that "nothing, on either side, prevents a future collision".
+        //
+        // This code is that something. It costs nothing: downstream already
+        // declares its six names in
+        // `out_of_scope.emitted_by_suite_connector`, and `literals` is the
+        // oracle CC-07 already uses. A note written in a contract does not
+        // turn red; this does.
         const emitsAval = d.out_of_scope?.emitted_by_suite_connector;
         if (!Array.isArray(emitsAval) || emitsAval.length === 0) {
             notes.push(
@@ -1459,8 +1592,9 @@ async function main() {
     // ── CC-09 ────────────────────────────────────────────────────────────────────────
     const tauto = checkAntiTautology();
 
-    // Plancher du TROISIÈME oracle. Il a la même fonction que les deux planchers de CC-00 :
-    // distinguer « rien à résoudre par ce chemin » de « ce chemin ne résout plus rien ».
+    // The THIRD oracle's floor. Same function as CC-00's two floors:
+    // distinguish "nothing to resolve through this path" from "this path
+    // resolves nothing any more".
     if (pluginResolved === 0) {
         notes.push(
             '[CC-03] aucune entrée `provider: "plugin:*"` dans les manifestes lus — le ' +
@@ -1468,12 +1602,13 @@ async function main() {
         );
     }
 
-    // ── CC-06 — la portée, et pourquoi elle sort en 2 et non en 1 ────────────────────
+    // ── CC-06 — the scope, and why it exits 2 and not 1 ──────────────────────────────
     //
-    // Un chemin hors de portée n'est PAS une régression : le code va peut-être très bien. Mais
-    // il n'est pas vert non plus, parce que la gate ne l'a pas lu. Le rendre vert serait
-    // exactement la classe qu'elle existe pour attraper — « 0 violation » sur un corpus
-    // qu'on n'a pas ouvert. Exit 2 : refus de conclure, avec les chemins NOMMÉS.
+    // An out-of-scope path is NOT a regression: the code may be perfectly
+    // fine. But it is not green either, because the gate did not read it.
+    // Greening it would be exactly the class it exists to catch — "0
+    // violations" over a corpus never opened. Exit 2: refusal to conclude,
+    // with the paths NAMED.
     if (outOfScope.length > 0) {
         console.error(
             `${C.y}⚠${C.x}  [${TAG}/CC-06] ${outOfScope.length} chemin(s) HORS DE PORTÉE de la ` +
@@ -1514,7 +1649,7 @@ async function main() {
     process.exit(0);
 }
 
-/** Cherche un littéral dans les sources `.ts` d'un répertoire. Rend `true` au premier hit. */
+/** Searches a literal in a directory's `.ts` sources. Returns `true` at the first hit. */
 function grepSources(dir, needle) {
     const stack = [dir];
     while (stack.length > 0) {
@@ -1533,6 +1668,6 @@ function grepSources(dir, needle) {
 }
 
 main().catch((err) => {
-    // Un plantage de la gate n'est PAS un vert, et pas non plus une régression du contrat.
+    // A gate crash is NOT a green, and not a contract regression either.
     cm.refuse(`la gate a levé — ${err && err.stack ? err.stack : err}`, "CC-00");
 });

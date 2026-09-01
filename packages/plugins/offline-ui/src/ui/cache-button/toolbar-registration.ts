@@ -16,9 +16,9 @@
  * @version 1.0.0
  */
 
-// Forme du seam toolbar importée du contrat publié (API publique S3) au lieu d'une
-// re-déclaration locale : les 7 plugins en portaient 4 formes divergentes. Celle d'ici
-// (`{ action?: string }`) était la plus laxiste — l'émetteur pose toujours `action`.
+// Toolbar seam shape imported from the published contract instead of a local
+// re-declaration: the 7 plugins carried 4 diverging shapes of it. This one's
+// (`{ action?: string }`) was the laxest — the emitter always sets `action`.
 import type { GeoLeafRawEventMap } from "@geoleaf/core";
 
 /** Minimal shape of the global GeoLeaf surface used here. */
@@ -40,12 +40,13 @@ const CACHE_ICON =
 /**
  * Toolbar action id shared between the slot definition and the listener.
  *
- * ⚠️ STRUCT S3.2 — c'est l'id qui sort dans le DOM (`data-gl-toolbar-action`) et que
- * deux specs E2E ciblent. Il suit le renommage du plugin, contrairement au préfixe des
- * clés i18n (`storage.*`), qui reste : celui-là est une surface d'OVERRIDE DE PROFIL
- * (`_overrides[key]` dans `utils/i18n/i18n.ts`), donc un contrat public plus large que
- * l'identité du plugin. Les deux namespaces sont indépendants — `registerDict` ne fait
- * que ranger dans un seau, la résolution passe par la clé plate.
+ * ⚠️ Plugin rename — this is the id that goes into the DOM
+ * (`data-gl-toolbar-action`) and that two E2E specs target. It follows the
+ * plugin rename, unlike the i18n key prefix (`storage.*`), which stays: that one
+ * is a PROFILE OVERRIDE surface (`_overrides[key]` in `utils/i18n/i18n.ts`),
+ * hence a public contract wider than the plugin's identity. The two namespaces
+ * are independent — `registerDict` only files into a bucket, resolution goes
+ * through the flat key.
  */
 const CACHE_TOOLBAR_ACTION = "offline-ui";
 
@@ -62,9 +63,16 @@ export function registerCacheToolbar(
     const slot = {
         icon: CACHE_ICON,
         labelKey: "storage.toolbar.button",
-        profileKey: "ui.showCacheButton",
-        // Opt-in: hidden unless the profile sets ui.showCacheButton:true
-        // (matches ui.showAddPoi; documented default false in the config guide).
+        profileKey: "modules.offline-ui.showButton",
+        legacyProfileKey: "ui.showCacheButton",
+        // Opt-in: hidden unless the profile turns it on — canonical
+        // `modules.offline-ui.showButton`, or the legacy `ui.showCacheButton` when the
+        // canonical key is absent. Documented default false in the config guide.
+        //
+        // ⚠️ This comment used to justify the convention with "matches ui.showAddPoi".
+        // The `addpoi` capability was removed in S5, so it aligned on an example that no
+        // longer exists — the convention now stands on INV-CONFIG and its gate `PC-14`,
+        // which is a rule rather than a precedent.
         defaultVisible: false,
         requiresPlugin: "offline-ui",
         action: CACHE_TOOLBAR_ACTION,

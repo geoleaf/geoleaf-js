@@ -14,13 +14,13 @@ const BASE = {
     point: { x: 0, y: 0 },
 };
 /**
- * Déclaration par défaut des cas qui testent la MÉCANIQUE du panneau — ouverture,
- * fermeture, focus, accessibilité — et non la résolution des champs.
+ * Default declaration for the cases testing the panel's MECHANICS — opening,
+ * closing, focus, accessibility — and not field resolution.
  *
- * ⚠️ Ces cas appelaient `stubGeoLeaf()` sans argument. Le repli implicite listait
- * alors toutes les propriétés puis les écartait TOUTES plus bas (un champ sans
- * widget était sauté avant le dispatch), ce qui rendait un corps vide. La décision
- * U2 retire les deux moitiés.
+ * ⚠️ These cases called `stubGeoLeaf()` with no argument. The implicit
+ * fallback then listed all properties and discarded them ALL further down (a
+ * widgetless field was skipped before the dispatch), yielding an empty body.
+ * The decision removes both halves.
  */
 const DEFAULT_SIDEPANEL = { sidepanel: [{ field: "name" }] };
 
@@ -200,11 +200,11 @@ describe("openSidePanel() \u2014 content", () => {
         openSidePanel({ ...BASE, properties: {} });
         expect(body().children.length).toBe(0);
     });
-    // \u26a0\ufe0f RETOURN\u00c9 le 02/08/2026 (U2). Ce cas asseyait qu'un repli implicite rendait
-    // un corps VIDE \u2014 deux d\u00e9fauts qui s'annulaient : la liste synth\u00e9tis\u00e9e n'avait
-    // pas de widget, et un champ sans widget \u00e9tait saut\u00e9 avant le dispatch. C'est ce
-    // qui faisait que le seul profil du d\u00e9p\u00f4t \u00e9crivant \u00ab all \u00bb sur cette surface
-    // n'affichait rien. Les deux moiti\u00e9s sont retir\u00e9es.
+    // ⚠️ FLIPPED on 02/08/2026. This case asserted that an implicit
+    // fallback yielded an EMPTY body — two defects cancelling out: the
+    // synthesised list had no widget, and a widgetless field was skipped
+    // before the dispatch. That is what made the repo's only profile writing
+    // "all" on this surface display nothing. Both halves are removed.
     it("ne peint RIEN quand la couche ne d\u00e9clare aucune lecture", () => {
         stubGeoLeaf(null);
         openSidePanel(BASE);
@@ -229,27 +229,30 @@ describe("openSidePanel() \u2014 content", () => {
             .querySelector(".gl-poi-lightbox__close")
             .dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
-    // ⚠️ R.7b / scénario navigateur E.5 — une URL d'image REFUSÉE par safeUrl ne doit pas
-    // empêcher le panneau de s'ouvrir, et la galerie doit rester navigable sur les images
-    // survivantes, dans l'ordre.
+    // ⚠️ Browser scenario — an image URL REFUSED by safeUrl must not keep the
+    // panel from opening, and the gallery must stay navigable over the
+    // surviving images, in order.
     //
-    // Contre-épreuve B.32 (CAPACITÉS S11) : une vignette dont l'URL est rejetée par `safeUrl`
-    // ne porte PAS de `<img>` (media.ts:108-109, choix délibéré anti-sink). `attachGalleryEvents`
-    // faisait `thumb.querySelector("img").src` sans garde → `TypeError` sur toute galerie
-    // distante avec une seule mauvaise URL, et comme ce code tourne DANS `buildSidePanelBody`,
-    // **tout le panneau échouait à s'ouvrir**. Le correctif exclut les vignettes vides de
-    // l'ensemble navigable et remappe `data-index` dessus (lightbox.ts:314-323).
+    // Counter-proof: a thumbnail whose URL `safeUrl` rejects carries NO
+    // `<img>` (media.ts, deliberate anti-sink choice).
+    // `attachGalleryEvents` yet did `thumb.querySelector("img").src`
+    // unguarded → `TypeError` on any remote gallery with a single bad URL,
+    // and since this code runs INSIDE `buildSidePanelBody`, **the whole panel
+    // failed to open**. The fix excludes empty thumbnails from the navigable
+    // set and remaps `data-index` over it (lightbox.ts).
     //
-    // Ce scénario est classé 🔴 « navigateur » dans la table, mais son défaut est un CRASH JS
-    // (`TypeError`), que happy-dom décide aussi bien qu'un vrai navigateur — les tests de
-    // navigation lightbox voisins tournent déjà sous happy-dom. Il est donc couvert ici, au
-    // tier de ses pairs, plutôt qu'en E2E où il faudrait injecter une donnée forgée.
+    // The scenario is classed 🔴 "browser" in the table, but its defect is a
+    // JS CRASH (`TypeError`), which happy-dom decides as well as a real
+    // browser — the neighbouring lightbox navigation tests already run under
+    // happy-dom. So it is covered here, at its peers' tier, rather than in
+    // E2E where forged data would have to be injected.
     it("une URL de galerie refusée n'empêche pas l'ouverture, et la navigation saute la vignette morte (E.5)", () => {
         stubGeoLeaf({ sidepanel: [{ field: "gal", type: "gallery" }] });
 
-        // 2 URLs valides encadrant une refusée (schéma javascript:) — la refusée est au milieu
-        // pour que le remap de `data-index` soit discriminant : sans remap, la 3ᵉ garderait
-        // l'index 2 et la navigation viserait la mauvaise image.
+        // 2 valid URLs framing a refused one (javascript: scheme) — the
+        // refused one sits in the middle so the `data-index` remap is
+        // discriminating: without it, the 3rd would keep index 2 and
+        // navigation would aim at the wrong image.
         openSidePanel({
             ...BASE,
             properties: {
@@ -257,18 +260,18 @@ describe("openSidePanel() \u2014 content", () => {
             },
         });
 
-        // 1 — le panneau s'ouvre (c'est ce que le TypeError bloquait).
+        // 1 — the panel opens (what the TypeError blocked).
         expect(isSidePanelOpen()).toBe(true);
         const main = body().querySelector(".gl-poi-gallery__main img");
         expect(main, "le panneau de galerie ne s'est pas construit").not.toBeNull();
 
-        // 2 — trois vignettes rendues, mais la refusée est vide (aucun <img>).
+        // 2 — three thumbnails rendered, but the refused one is empty (no <img>).
         const thumbs = body().querySelectorAll(".gl-poi-gallery__thumb");
         expect(thumbs.length).toBe(3);
         const withImg = [...thumbs].filter((t) => t.querySelector("img"));
         expect(withImg.length, "la vignette refusée n'aurait pas dû porter d'img").toBe(2);
 
-        // 3 — ouvrir la lightbox : elle navigue l'ensemble SURVIVANT (2 images), pas 3.
+        // 3 — open the lightbox: it navigates the SURVIVING set (2 images), not 3.
         main.dispatchEvent(new MouseEvent("click", { bubbles: true }));
         expect(document.querySelector(".gl-poi-lightbox-global")).not.toBeNull();
         expect(document.querySelector(".gl-poi-lightbox__counter")?.textContent).toBe("1 / 2");
@@ -285,20 +288,21 @@ describe("openSidePanel() \u2014 content", () => {
 });
 
 /**
- * Sprint 4, tâche 4.6 — `geoleaf:poi:panel:open` / `:close`.
+ * `geoleaf:poi:panel:open` / `:close`.
  *
- * 🛑 **Ces deux clés étaient TYPÉES SANS ÉMETTEUR depuis l'origine** (B-16) : un intégrateur
- * qui s'y abonnait écrivait du code qui compile et ne se déclenche jamais. Le sprint a tranché
- * de brancher l'émetteur plutôt que de retirer la clé.
+ * 🛑 **These two keys were TYPED WITHOUT AN EMITTER from the start**: an
+ * integrator subscribing to them wrote code that compiles and never fires. It
+ * was settled to wire the emitter rather than remove the key.
  *
- * ⚠️ **Aucune gate du dépôt ne peut voir ce lot.** Les clés étaient déjà typées, donc
- * `EVENT-MAP` ne bouge pas d'un chiffre, et `CONSUMER-CONTRACT` ne pose aucun invariant
- * « toute clé a un émetteur » — c'est justement le corps de B-16. Ces cas sont la SEULE
- * preuve que l'émission existe, et leur absence serait indiscernable de leur succès.
+ * ⚠️ **No gate in the repo can see this batch.** The keys were already typed,
+ * so `EVENT-MAP` does not move a digit, and `CONSUMER-CONTRACT` poses no
+ * "every key has an emitter" invariant — precisely the original defect. These
+ * cases are the ONLY proof the emission exists, and their absence would be
+ * indistinguishable from their success.
  */
 const TITLED = { sidepanel: [{ field: "name", type: "text", style: "title" }] };
 
-describe("geoleaf:poi:panel:open / :close — les clés fantômes de B-16, branchées", () => {
+describe("geoleaf:poi:panel:open / :close — les clés fantômes, branchées", () => {
     function record() {
         const seen = [];
         const onOpen = (e) => seen.push({ type: "open", ...e.detail });
@@ -342,8 +346,9 @@ describe("geoleaf:poi:panel:open / :close — les clés fantômes de B-16, branc
         openSidePanel({ ...BASE, featureId: null });
         closeSidePanel();
 
-        // `poiId` est déclaré `string` dans une interface PUBLIÉE : forger un id
-        // (`""`, un index) rendrait deux POI sans id indiscernables chez l'abonné.
+        // `poiId` is declared `string` in a PUBLISHED interface: forging an
+        // id (`""`, an index) would make two id-less POIs indistinguishable at
+        // the subscriber.
         expect(rec.seen).toEqual([]);
         rec.stop();
     });

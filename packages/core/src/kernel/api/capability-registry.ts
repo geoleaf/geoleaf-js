@@ -55,6 +55,8 @@
  * ```
  */
 
+import { Log } from "../../utils/log/index.js";
+
 import type {
     ICapabilityConfigGate,
     ICapabilityDeclaration,
@@ -63,6 +65,7 @@ import type {
     ICapabilitySchema,
     ICapabilityStatus,
 } from "../../contracts/capability.contract.ts";
+import { Capabilities, declareUnavailable } from "./unavailable-capabilities.js";
 
 // ─── Gate semantics (single source of truth) ──────────────────────────────────
 
@@ -91,6 +94,72 @@ export function evaluateGate(
     return val !== false;
 }
 
+/**
+ * Confronts a capability's config block with the schema that capability declares, and returns
+ * the keys the schema does not know about.
+ *
+ * ## Why this exists
+ *
+ * `configSchema` is declared by twenty in-core capabilities and reads like a validation
+ * contract. It was not one: nothing in the runtime ever compared a declared schema with the
+ * values it received, so a profile key outside the schema — a typo, a renamed option, a key
+ * copied from another capability — was silently ignored. The declaration had every appearance
+ * of a validation chain without being one, which is worse than having none: a reader trusts it.
+ *
+ * The surrounding machinery reinforced the illusion. A documentation guard already compares
+ * each capability's `## Configuration` table with its `configSchema`, in both directions — but
+ * that guards **documentation against declaration**, never **declaration against the value
+ * actually received**.
+ *
+ * ## What it does NOT do, deliberately
+ *
+ * It never throws and never changes what is enabled. An unknown key is a diagnostic, not a
+ * failure: this package is published, and turning a silently-ignored key into a boot failure
+ * would break integrators whose profiles are working today. Types are not checked either —
+ * only the presence of a key the schema does not declare. Type checking would need a decision
+ * about coercion (a numeric string, an array where an object is expected) that no caller has
+ * asked for yet, and a half-checked type reads as a full one.
+ *
+ * ## What it refuses to guess
+ *
+ * The config block is the parent of the gate path, which is `modules.<id>` for every
+ * declaration. A gate aimed at a **sub-key** — the shape a preset installer uses to gate a
+ * module on one field of its capability's config — does not tell us where the block starts, so
+ * such a declaration is skipped rather than confronted against a block that may not be its own.
+ * Keys starting with `_` are comment conventions and are never reported.
+ *
+ * ## Why it is not exported
+ *
+ * `isEnabled` is its only caller, and no consumer has asked for the report on its own. An
+ * exported helper that nothing outside imports would enter the published surface — where a
+ * name, once there, cannot be taken back without a breaking change — and would read as an
+ * offer that was never made. Its behaviour is covered through `isEnabled`, which is the
+ * surface that actually exists.
+ *
+ * @param decl - The capability declaration, with its gate and its declared schema.
+ * @param config - Dotted-path config reader (see {@link toCapConfig}).
+ * @returns The config keys absent from the declared schema, in config order. Empty when the
+ *          capability declares no schema, no gate, a sub-key gate, or no config block at all.
+ */
+function unknownConfigKeys(
+    decl: ICapabilityDeclaration,
+    config: { get(key: string, defaultValue?: unknown): unknown }
+): string[] {
+    if (!decl.configSchema || !decl.gate) return [];
+
+    const parts = decl.gate.configPath.split(".");
+    const block = parts.slice(0, -1).join(".");
+    if (block !== `modules.${decl.id}`) return [];
+
+    const value = config.get(block, undefined);
+    if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+
+    const known = new Set(Object.keys(decl.configSchema));
+    return Object.keys(value as Record<string, unknown>).filter(
+        (key) => !known.has(key) && !key.startsWith("_")
+    );
+}
+
 // ─── Private state ────────────────────────────────────────────────────────────
 
 /** Registered declarations, keyed by capability id. Preserves insertion order. */
@@ -100,7 +169,17 @@ const _declarations = new Map<string, ICapabilityDeclaration>();
 const _loaded = new Set<string>();
 
 /**
- * Build-time facts of the preset installers, keyed by capability id (S9.4).
+ * IDs whose config block has already been confronted with its schema.
+ *
+ * The gate is evaluated more than once per session — a capability can be asked about again
+ * after a profile switch — and a diagnostic repeated on every read stops being read. Cleared
+ * by `_reset()` along with the declarations, so a test that re-registers gets the report again
+ * rather than inheriting the silence of the previous one.
+ */
+const _configConfronted = new Set<string>();
+
+/**
+ * Build-time facts of the preset installers, keyed by capability id.
  *
  * Kept beside the declarations rather than merged into them: the runtime channel produces
  * declarations too, and it has no installer. **Absence from this map is the fact** that makes
@@ -126,6 +205,22 @@ export const CapabilityRegistry: ICapabilityRegistry & { _reset(): void } = {
     isEnabled(id: string, config: { get(key: string, defaultValue?: unknown): unknown }): boolean {
         const decl = _declarations.get(id);
         if (!decl) return false;
+
+        // The one point where a declaration meets the config it was written for. Reporting
+        // here rather than at registration is what makes the report possible at all: at
+        // registration there is no config to compare against.
+        if (!_configConfronted.has(id)) {
+            _configConfronted.add(id);
+            const unknown = unknownConfigKeys(decl, config);
+            if (unknown.length > 0) {
+                Log.warn(
+                    `[CapabilityRegistry] ${id}: ${unknown.length} config key(s) outside the ` +
+                        `declared schema — ${unknown.join(", ")}. They are read by nothing and ` +
+                        `have no effect. Check for a typo, or for an option that moved.`
+                );
+            }
+        }
+
         return evaluateGate(decl.gate, config);
     },
 
@@ -136,7 +231,26 @@ export const CapabilityRegistry: ICapabilityRegistry & { _reset(): void } = {
     async ensureLoaded(id: string): Promise<void> {
         if (_loaded.has(id)) return;
         const decl = _declarations.get(id);
-        if (decl?.loader) await decl.loader();
+
+        // 🛑 An id nobody declared used to resolve in silence AND be recorded as loaded, so
+        // `isLoaded(id)` then affirmed the opposite of the truth. That is the one shape a
+        // caller cannot recover from: it is not "no answer", it is a wrong answer. Both
+        // halves are fixed here — the fact is declared, and the lie is not written.
+        //
+        // The live case is a REDUCED BUNDLE: `capabilities/offline/lifecycle.ts` calls
+        // `ensureLoaded("offline")` from shared module #8 whenever the profile enables
+        // `pwa` + `offline`. An entry that does not embark the offline capability loads
+        // nothing, and `Storage.init()` then ran against an engine that was never there.
+        if (!decl) {
+            declareUnavailable(
+                id,
+                "no capability with this id is registered — the bundle does not embark it, " +
+                    "or the plugin that provides it never loaded"
+            );
+            return;
+        }
+
+        if (decl.loader) await decl.loader();
         _loaded.add(id);
     },
 
@@ -179,10 +293,15 @@ export const CapabilityRegistry: ICapabilityRegistry & { _reset(): void } = {
     _reset(): void {
         _declarations.clear();
         _loaded.clear();
+        // The unavailable-facts bus is reset with the rest: a fact declared by one suite
+        // would otherwise survive into the next and be REPLAYED to its subscribers, making
+        // a listener assertion depend on suite order — i.e. intermittent, i.e. skipped.
+        Capabilities._reset();
         // Must be cleared with the rest: install facts surviving a reset would make `embarked`
         // depend on suite execution order, i.e. intermittent — and an intermittent test ends up
         // skipped.
         _installFacts.clear();
+        _configConfronted.clear();
     },
 };
 

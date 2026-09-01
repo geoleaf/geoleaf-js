@@ -2,7 +2,7 @@
  * T17.2.3 — geojson/loader/single-layer.ts branch coverage
  * Focus: uncovered branches — VectorTiles, GPX, worker paths, preloadStyle,
  *         clustering (shared/pending/independent), zIndex, fitBounds, labels, postProcess.
- * Static imports for Istanbul instrumentation (S5.3).
+ * Static imports for Istanbul instrumentation.
  */
 import {
     LoaderSingleLayer,
@@ -33,11 +33,12 @@ vi.mock("../../src/utils/general/di-accessors.js", () => ({
     }),
 }));
 
-// S5.3 — le chemin OGC est le SECOND appelant de `_doLoadSingleLayerMapLibre`, et il n'était
-// éprouvé par aucun test d'overlap : les trois cas d'origine passent tous par `url:`, `plugin:`
-// ou `vectorTiles`. `_loadFromOgcApi` sort AVANT eux (early-exit de `_loadSingleLayer`), donc
-// ramener son `_preloadStyle` sous les `await` serait sorti VERT. Ce mock tient sa donnée
-// ouverte, comme `withHeldData()` le fait pour `fetch`.
+// The OGC path is `_doLoadSingleLayerMapLibre`'s SECOND caller, and it was
+// exercised by no overlap test: the three original cases all enter through
+// `url:`, `plugin:` or `vectorTiles`. `_loadFromOgcApi` exits BEFORE them
+// (`_loadSingleLayer`'s early-exit), so pulling its `_preloadStyle` under
+// the `await`s would have come out GREEN. This mock holds its data open, as
+// `withHeldData()` does for `fetch`.
 const ogcGate = vi.hoisted(() => ({ release: null, promise: null }));
 vi.mock("../../src/kernel/geojson/loader/ogc-api-loader.js", () => ({
     fetchOgcApiFeatures: vi.fn(
@@ -326,7 +327,7 @@ describe("geojson/loader/single-layer — T17.2.3 branch coverage", () => {
     });
 
     // ── SVG renderer no longer used — MapLibre handles rendering natively ──
-    // (L.svg removed in Sprint 9 — these tests now verify adapter is called)
+    // (L.svg removed — these tests now verify adapter is called)
 
     it("registers layer via adapter when defaultStyle has hatch.enabled=true", async () => {
         globalThis.GeoLeaf = baseGeoLeaf({
@@ -912,7 +913,7 @@ describe("geojson/loader/single-layer — OGC autoRefresh (RM-P2 #1)", () => {
     });
 });
 
-// ── S5.3 — the style is fetched ALONGSIDE the data, not after it ─────────────
+// ── The style is fetched ALONGSIDE the data, not after it ─────────────
 //
 // `_preloadStyle` used to run only once the data had landed: one extra round-trip per layer,
 // serialised behind a body reaching ~1,1 Mo for a style file of a few hundred bytes. The two
@@ -921,7 +922,7 @@ describe("geojson/loader/single-layer — OGC autoRefresh (RM-P2 #1)", () => {
 // ⚠️ These assert the OVERLAP, not a duration. A timing assertion would be flaky on a loaded
 // runner and would still pass if the calls were merely fast; what has to hold is that the
 // style request is issued while the data promise is still pending.
-describe("geojson/loader/single-layer — style/data overlap (S5.3)", () => {
+describe("geojson/loader/single-layer — style/data overlap", () => {
     afterEach(() => {
         delete globalThis.GeoLeaf;
         state.layers.clear();
@@ -1018,19 +1019,20 @@ describe("geojson/loader/single-layer — style/data overlap (S5.3)", () => {
         expect(loadDefaultStyle).not.toHaveBeenCalled();
     });
 
-    // ── Le SECOND appelant — `_loadFromOgcApi` ──────────────────────────────
+    // ── The SECOND caller — `_loadFromOgcApi` ───────────────────────────────
     //
-    // 🛑 Ce cas comble un angle mort mesuré le 08/08/2026 : le geste de S5.3 couvre bien les
-    // DEUX appelants dans le code (`single-layer.ts`, sites `_loadFromOgcApi` et chemin
-    // principal), mais aucun test ne traversait le premier. Les trois cas ci-dessus entrent
-    // tous par `url:` / `plugin:` / `vectorTiles`, et les deux tests OGC existants
-    // (`loader-offline-read.test.js`) ne déclarent pas de `styles`, donc `_preloadStyle` sort
-    // sur sa garde d'entrée sans rien prouver. Déplacer l'appel sous les `await` de la branche
-    // OGC serait donc sorti VERT sur toute la suite.
+    // 🛑 This case fills a blind spot measured on 08/08/2026: the gesture
+    // does cover BOTH callers in the code (`single-layer.ts`,
+    // `_loadFromOgcApi` sites and main path), but no test crossed the
+    // first. The three cases above all enter through `url:` / `plugin:` /
+    // `vectorTiles`, and the two existing OGC tests
+    // (`loader-offline-read.test.js`) declare no `styles`, so `_preloadStyle`
+    // exits on its entry guard proving nothing. Moving the call under the
+    // OGC branch's `await`s would thus have come out GREEN on the whole suite.
     //
-    // ⚠️ L'exposition est nulle aujourd'hui — `loader/profile.ts` écarte toute couche dont la
-    // seule source est `data.ogcApi`. C'est précisément pourquoi la régression serait passée
-    // inaperçue : personne ne la verrait à l'usage non plus.
+    // ⚠️ The exposure is nil today — `loader/profile.ts` sets aside any layer
+    // whose only source is `data.ogcApi`. Precisely why the regression would
+    // have gone unnoticed: nobody would see it in use either.
     it("requests the style while the OGC features are still pending", async () => {
         const { loadDefaultStyle } = withHeldData();
         let releaseOgc;
@@ -1049,7 +1051,7 @@ describe("geojson/loader/single-layer — style/data overlap (S5.3)", () => {
         );
         await Promise.resolve();
 
-        // Les features n'ont PAS atterri — si le style attendait encore la donnée, ce serait 0.
+        // The features have NOT landed — if the style still waited for the data, this would be 0.
         expect(loadDefaultStyle).toHaveBeenCalledTimes(1);
 
         releaseOgc();

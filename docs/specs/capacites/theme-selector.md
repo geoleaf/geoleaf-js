@@ -134,8 +134,8 @@ différentes ; c'est le SCHÉMA qui doit s'aligner sur le runtime, pas sur le ga
 ⚠️ **Deux en-têtes de cette capacité disent encore le contraire.** `module.ts` et `lifecycle.ts`
 qualifient le gate d'« opt-out — S8/F3 ». C'est **faux** : la déclaration du même répertoire et le
 test `=== true` de `_createUI` disent tous deux opt-in. Relevé ici plutôt que recopié — c'est
-exactement la classe de défaut qui a coûté une journée à B-56 (« relire le fichier plutôt que son
-commentaire »). Ligne **B-61** du registre.
+exactement la classe de défaut qui a déjà coûté une journée (« relire le fichier plutôt que son
+commentaire »).
 
 ### La vraie configuration de la barre est dans `themes.json`
 
@@ -199,7 +199,7 @@ fichier.
 l'attend pour restaurer un thème d'URL. Quand la barre ne monte pas (gate opt-in à `false`, ou l'un
 des deux conteneurs absent), l'événement **ne part jamais**, et le permalien reste en attente : ni
 le thème, ni les couches, ni le filtre du lien ne sont restaurés, sans trace. Mesuré, ligne
-**B-62** du registre.
+Versé au registre à l'époque.
 
 ⚠️ **Les deux événements n'ont pas le même statut de typage** : `geoleaf:app:ready` est **typé**
 dans `contracts/event-bus.contract.ts` ; `geoleaf:themes:ready` — celui que cette capacité **émet**
@@ -236,11 +236,11 @@ lit `getCurrentTheme()` — pas par cette capacité.
 
 ## Dépendances et frontières
 
-### Dépendance de cycle de vie — et le cas particulier de B-57
+### Dépendance de cycle de vie — et son cas particulier
 
 `module.ts` → `ThemeSelectorModule` : `id = "theme-selector"`, `dependencies = ["geojson"]`.
 
-C'est le cas que **B-57** désigne comme « à traiter
+C'est le cas désigné comme « à traiter
 séparément », au motif que retirer `geojson` **changerait le rang relatif** vis-à-vis de
 `ThemeEngineModule`. Le pré-vol confirme le fait et **requalifie le risque** — ce n'est pas celui
 qui était écrit.
@@ -280,7 +280,7 @@ strictement avant. Ramener la dépendance à `["config"]` ferait passer `theme-s
 `legend` et `filter`, qui déclarent la même dépendance et sont départagées par l'ordre
 d'enregistrement.
 
-**Verdict pour B-57** : sous-classe **« l'`init()` ne lit rien, mais la position est
+**Verdict** : sous-classe **« l'`init()` ne lit rien, mais la position est
 observable »**. Le geste reste possible ; il exige un observable sur l'**ordre des écouteurs
 `app:ready`**, pas sur la date de montage. Il n'est pas exécuté ici.
 
@@ -306,7 +306,7 @@ l'installeur, comme pour toutes les capacités.
 
 ⚠️ **L'en-tête de `install.ts` annonce que « le bundle Lite garde sa propre assignation
 (`globals.ui-lite.ts`) ».** Ce fichier **n'existe pas** et le build Lite **non plus** — son retrait
-est motivé sur place dans `packages/core/rollup.config.mjs`. Gisement complet : ligne **B-61** du
+est motivé sur place dans `packages/core/rollup.config.mjs`. Gisement complet versé au
 registre.
 
 ---
@@ -316,7 +316,7 @@ registre.
 Le CDC `CDC_capacite-theme-selector.md` (v1.0.7, 10/07/2026) a été **consommé** en écrivant cette
 fiche. ⚠️ **Il n'a PAS été retiré du dossier de tri** : celui-ci appartient à une session
 concurrente au moment de cette passe — trace et conséquence sur le compteur au §Journal des
-décisions de `roadmap_documentation-v3.md`.
+décisions de la refonte documentaire V3.
 
 | Énoncé du CDC                                                                                  | Ce que dit le code                                                                                                                                                               |
 | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -325,9 +325,9 @@ décisions de `roadmap_documentation-v3.md`.
 | `public-api.ts` → `buildPublicApi()` → façade `ThemeSelector`                                  | **Ce fichier n'existe pas non plus.** L'installeur monte l'orchestrateur directement, et il n'y a pas de façade ESM                                                              |
 | Garde d'acceptation « activée **ET `themes.length > 0`** »                                     | La garde mesurée est **profil actif + les deux conteneurs**. Le cas « aucun thème » est couvert par le **rejet du chargement**, pas par un test de longueur                      |
 | Accès au moteur par **seams** `_ThemeApplier` / `_ThemeLoader`                                 | **Import direct** du baril `kernel/themes/`. Le CDC l'a lui-même requalifié en v1.0.4 : le namespace ne porte qu'une copie superficielle divergente de l'applier                 |
-| `ThemeEngineModule` deps `["geojson"]` (§5)                                                    | `["geojson", "ui"]` — déjà requalifié en v1.0.4 du CDC, et c'est ce qui rend l'invariant d'ordre robuste au retrait discuté en B-57                                              |
+| `ThemeEngineModule` deps `["geojson"]` (§5)                                                    | `["geojson", "ui"]` — déjà requalifié en v1.0.4 du CDC, et c'est ce qui rend l'invariant d'ordre robuste au retrait discuté ailleurs                                             |
 | Façade montée dans `packages/core/src/globals/globals.ui.ts` **et** `globals.ui-lite.ts`       | Montée par `install.ts` → `registerGlobals`. `globals.ui-lite.ts` **n'existe pas**                                                                                               |
-| §10 « Le sélecteur est présent en **Lite** », `boot-lite.ts`                                   | **Le build Lite n'a plus d'existence** — ni entrée, ni manifeste, ni fichier `*-lite`. Ligne **B-61**                                                                            |
+| §10 « Le sélecteur est présent en **Lite** », `boot-lite.ts`                                   | **Le build Lite n'a plus d'existence** — ni entrée, ni manifeste, ni fichier `*-lite`. Versé au registre                                                                         |
 | Enregistrement inline dans `app/boot.ts`                                                       | Passe par l'installeur du manifeste de preset ; le module de cycle de vie vit **dans** la capacité                                                                               |
 | CSS `css/components/_theme-selector.css` importée par `packages/core/src/css/geoleaf-main.css` | La capacité possède sa feuille et l'importe depuis `install.ts`                                                                                                                  |
 

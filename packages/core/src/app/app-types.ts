@@ -12,7 +12,7 @@
  * `init-deferred-ui.ts`) all receive the same dependency-injection
  * "context bag" assembled by the caller of `CoreMapModule`/`SharedModule`/`UIModule`
  * (production: `ModuleRegistry`, see `boot-core.ts`). These interfaces type that bag
- * once, replacing the per-file `: any` parameter objects (roadmap_typage-strict S6).
+ * once, replacing the per-file `: any` parameter objects.
  *
  * The shapes are intentionally permissive: the live `GeoLeaf` namespace is assembled
  * incrementally across the B1→B11 boot phases (see `global.d.ts`), and the active
@@ -32,6 +32,34 @@ import type {
 import type { IGeoLeafConfig } from "../contracts/config.contract.js";
 
 /**
+ * Options a caller hands to `GeoLeaf.boot()`, forwarded whole to the boot sequence.
+ *
+ * `config` and `configUrl` answer the same question — where does the configuration come
+ * from? — at two levels: an object already held in memory, or an explicit URL. Both are
+ * optional; with neither, the boot falls back to a path derived from the host page, which
+ * is the historical behaviour and is unchanged.
+ *
+ * ⚠️ No index signature on purpose. `AppNamespace` below carries one, and it masks any
+ * misspelt member: `startApp` would accept `{ confgUrl }` without a word. Declaring every
+ * option explicitly is what makes a typo a compile error rather than a silent no-op.
+ */
+export interface BootOptions {
+    /** A configuration object handed over in memory. Wins over `configUrl`. */
+    config?: Record<string, unknown>;
+    /** An explicit URL to fetch the configuration from. Used when `config` is absent. */
+    configUrl?: string;
+    /** Runs after the configuration loads, before the map. Throwing aborts the boot. */
+    beforeBoot?: (context: { config: Readonly<Record<string, unknown>> }) => Promise<void> | void;
+    /** Receives startup metrics once `geoleaf:app:ready` has fired. */
+    onPerformanceMetrics?: (metrics: {
+        timeToMapReadyMs: number | null;
+        timeToAppReadyMs: number | null;
+        startupTotalMs: number | null;
+        capturedAt: string;
+    }) => void;
+}
+
+/**
  * The `GeoLeaf._app` namespace as consumed by the boot initializers.
  * Members are wired in `app/app-namespace.ts`, `app/init.ts` and `app/boot.ts`.
  */
@@ -45,7 +73,7 @@ export interface AppNamespace {
     /** Verifies that the plugins referenced by the config are loaded. */
     checkPlugins: (cfg: GeoLeafConfig) => void;
     /** Boot entry point — loads config then runs `ModuleRegistry.init()` (wired in boot-install.ts). */
-    startApp: () => Promise<void>;
+    startApp: (options?: BootOptions) => Promise<void>;
     /** Double-boot guard flag (wired in boot.ts). */
     _appStarted: boolean;
     /** Lazily-assigned boot members and the long tail. */
@@ -173,8 +201,7 @@ export interface RevealDeps {
  * object form built by `CoreMapModule` or the raw config value forwarded as-is.
  */
 export type RevealPadding =
-    | { top: number; bottom: number; left: number; right: number }
-    | Record<string, unknown>;
+    { top: number; bottom: number; left: number; right: number } | Record<string, unknown>;
 
 /** Options object accepted by `IMapAdapter.fitBounds`. */
 export interface FitBoundsOptions {
@@ -192,8 +219,8 @@ export interface FitBoundsOptions {
  */
 export function buildFitBoundsOptions(padding: RevealPadding | null): FitBoundsOptions {
     return {
-        // `FitBoundsOptions` est declare hors du depot : on ne peut pas l'elargir. Insertion
-        // conditionnelle plutot qu'un `undefined` explicite.
+        // `FitBoundsOptions` is declared outside the repo: we cannot widen it.
+        // Conditional insertion rather than an explicit `undefined`.
         ...(padding != null && { padding: padding as unknown as GeoLeafPoint }),
         animate: false,
     };

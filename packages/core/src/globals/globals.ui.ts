@@ -22,14 +22,14 @@
  *   - **B9** — UI components (`Branding`, `CoordinatesDisplay`, `NotificationSystem`),
  *     filter panel sub-modules, mobile/desktop toolbar
  *
- * Sprint S2 (boot-di-lifecycle): the imperative body is extracted into the
- * re-callable {@link setupUI} and registered under the `ui` id. It runs once at
+ * Lifecycle extraction: the imperative body is extracted into the
+ * re-callable {@link setupUIKernel} and registered under the `ui` id. It runs once at
  * import time (golden master unchanged); `UIModule.init()` re-invokes it via the
  * registry (guarded no-op until S3/S4).
  *
- * Presets build (S2 Lot 6): the share block is gone — `GeoLeaf.Share` is assigned by
+ * Presets build: the share block is gone — `GeoLeaf.Share` is assigned by
  * the permalink installer and `ShareLifecycle.init()` is called by `ShareModule.init()`
- * alone. The old eager call here predated S1.3 (when this body ran at import time); it
+ * alone. The old eager call here predated the extraction (this body ran at import time); it
  * now runs *inside* `UIModule.init()`, i.e. AFTER `ShareModule.init()` (share has no
  * dependencies → it is dequeued 2nd, six modules before UI builds the panels), so it
  * was pure redundancy.
@@ -49,29 +49,30 @@ import { StyleSelector } from "../kernel/layer-manager/style-selector.js";
 // B7 : theme ENGINE (kernel) — the theme-selector BAR migrated to its installer (S2 Lot 8)
 import { ThemeCache } from "../kernel/themes/theme-cache.js";
 // `ThemeLoader` is imported for ONE public entry point: `GeoLeaf.Config.clearThemesCache`
-// (Sprint 2 task 2.6). ⚠️ It is mounted from HERE, and not from `globals.config.ts`, on a
+// ⚠️ It is mounted from HERE, and not from `globals.config.ts`, on a
 // measured constraint: `kernel/themes/**` already imports `kernel/config/**` (three sites in
 // `theme-applier/*`), so wiring the reverse edge would close a directory cycle. This file
 // already depends on `kernel/themes/**` — the mount costs no new edge.
 import { ThemeLoader } from "../kernel/themes/theme-loader.js";
 
-// ⚠️ IMPORTS D'EFFET DE BORD — NE PAS RETIRER, ET NE PAS LES CROIRE MORTS.
+// ⚠️ SIDE-EFFECT IMPORTS — DO NOT REMOVE, AND DO NOT BELIEVE THEM DEAD.
 //
-// Ces trois modules n'exportent rien qui soit consommé ici : ils MONKEY-PATCHENT
-// `ThemeApplierCore` à l'import (`TA._hideAllLayers = function …`, `TA._applyLayerConfig`,
-// `TA._syncLegendVisibility`, `TA._scheduleLayerConfig`, `TA._updateStyleSelector`,
-// `TA._fitBoundsOnAllLayers` — 13 méthodes au total). `core.ts` les APPELLE dans
-// `applyTheme()` (`this._hideAllLayers()`, `this._applyLayerConfig(cfg)`,
-// `self._syncLegendVisibility()`), sans les définir.
+// These three modules export nothing consumed here: they MONKEY-PATCH
+// `ThemeApplierCore` at import (`TA._hideAllLayers = function …`,
+// `TA._applyLayerConfig`, `TA._syncLegendVisibility`, `TA._scheduleLayerConfig`,
+// `TA._updateStyleSelector`, `TA._fitBoundsOnAllLayers` — 13 methods in total).
+// `core.ts` CALLS them in `applyTheme()` (`this._hideAllLayers()`,
+// `this._applyLayerConfig(cfg)`, `self._syncLegendVisibility()`), without defining
+// them.
 //
-// Ils étaient jusqu'ici tirés dans le graphe par l'`Object.assign` qui composait
-// `GeoLeaf._ThemeApplier`. Cette clé est partie à l'API S4.3 (aucun lecteur) — mais son
-// retrait a failli emporter les patches avec elle : `applyTheme()` aurait levé
-// `TypeError: this._hideAllLayers is not a function`, EN SILENCE côté tests, qui mockent
-// `ThemeApplierCore`. La forme `import "…"` rend l'ancrage explicite au lieu de le laisser
-// dépendre d'une écriture globale sans lecteur.
+// They used to be pulled into the graph by the `Object.assign` composing
+// `GeoLeaf._ThemeApplier`. That key left the namespace (no reader) — but its
+// removal nearly took the patches with it: `applyTheme()` would have thrown
+// `TypeError: this._hideAllLayers is not a function`, SILENTLY on the test side,
+// which mocks `ThemeApplierCore`. The `import "…"` form makes the anchoring
+// explicit instead of leaving it to depend on a readerless global write.
 //
-// Gardé par `__tests__/themes/theme-applier-patching.contract.test.js`.
+// Guarded by `__tests__/themes/theme-applier-patching.contract.test.js`.
 import "../kernel/themes/theme-applier/deferred.js";
 import "../kernel/themes/theme-applier/ui-sync.js";
 import "../kernel/themes/theme-applier/visibility.js";
@@ -90,6 +91,8 @@ import { _UITheme } from "../kernel/ui/theme.js";
 // `GeoLeaf.Filter` contract (S13 — the former `_UIFilterPanel*` shims + the
 // `ui/filter-panel/**` builder were removed).
 import { initMobileToolbar } from "../kernel/ui/mobile/mobile-toolbar.js";
+import { registerPanelPane, openPane, closePane } from "../kernel/ui/panel-panes.js";
+import { setImmersive, isImmersive } from "../kernel/ui/immersive.js";
 import {
     initDesktopPanel,
     activateDesktopPanel,
@@ -110,11 +113,12 @@ interface NotificationRendererLike {
     error?: (msg: string, opts?: number | NotifyOptions) => unknown;
     success?: (msg: string, opts?: number | NotifyOptions) => unknown;
     dismiss?: (id: HTMLElement) => unknown;
-    // B-60 — les cinq membres que `UI.Notifications` publie en plus des quatre niveaux.
-    // Cette vue était plus ÉTROITE que la classe qu'elle décrit (`NotificationSystem` en expose
-    // treize), ce qui n'avait aucune conséquence tant que rien ne les appelait — précisément le
-    // cas tant que le bloc de `ui-api.ts` restait mort. Élargie à ce qui est réellement délégué,
-    // et pas au-delà : ce type dit ce que le kernel CONSOMME, pas ce que la capacité offre.
+    // The five members `UI.Notifications` publishes beyond the four levels. This
+    // view was NARROWER than the class it describes (`NotificationSystem` exposes
+    // thirteen), which had no consequence as long as nothing called them —
+    // precisely the case while `ui-api.ts`'s block stayed dead. Widened to what is
+    // really delegated, and no further: this type says what the kernel CONSUMES,
+    // not what the capability offers.
     show?: (...args: unknown[]) => unknown;
     clearAll?: () => unknown;
     enable?: () => unknown;
@@ -143,24 +147,25 @@ export function setupUIKernel(): void {
     //  The engine below stays kernel: ThemeEngineModule applies the profile's default
     //  theme unconditionally, and the selector's facade consumes it.)
     _gl.ThemeCache = ThemeCache;
-    // API publique S4.3 — quatre clés `_` ont quitté le namespace ici :
-    // `_LayerManagerBasemapSelector`, `_LayerManagerRenderer`, `_ThemeLoader` et
-    // `_ThemeApplier`. Aucune n'avait de lecteur. `_ThemeApplier` composait un objet
-    // (`Object.assign` de quatre modules) exprès pour le poser sur le global : personne ne
-    // l'a jamais lu, donc la composition elle-même n'existait que pour cette écriture.
+    // Four `_` keys left the namespace here: `_LayerManagerBasemapSelector`,
+    // `_LayerManagerRenderer`, `_ThemeLoader` and `_ThemeApplier`. None had a
+    // reader. `_ThemeApplier` composed an object (`Object.assign` of four modules)
+    // expressly to set it on the global: nobody ever read it, so the composition
+    // itself existed only for that write.
     //
-    // S4.3 a donc laissé le cache du loader SANS AUCUNE porte publique : le corps de
-    // `ThemeLoader.clearCache` existait, et plus rien ne pouvait l'appeler depuis
-    // l'extérieur. C'est ce trou que la ligne suivante ferme (Sprint 2, tâches 2.5/2.6).
+    // The removal therefore left the loader's cache with NO public door: the body
+    // of `ThemeLoader.clearCache` existed, and nothing could call it from outside
+    // any more. That is the hole the next line closes.
     //
-    // Pourquoi sur `Config` et pas ailleurs — les quatre refus sont mesurés :
-    //   • `GeoLeaf.Themes` n'existe pas — la façade a été retirée, motif au CHANGELOG.
-    //   • `GeoLeaf.ThemeCache` est un homonyme piégeux : c'est le cache IndexedDB des
-    //     DONNÉES DE COUCHE, pas celui de `themes.json`.
-    //   • `GeoLeaf.ThemeSelector` est l'UI ; le moteur reste kernel (S8/F2).
-    //   • une clé RACINE ne se déplace jamais sans rupture, là où une méthode se déprécie.
-    // Et `Config` est l'une des 23 façades de `DEPTH2_FACADES` : le symbole NAÎT GELÉ,
-    // là où toute autre accroche naîtrait dans l'angle mort de la dette D-29.
+    // Why on `Config` and nowhere else — the four refusals are measured:
+    //   • `GeoLeaf.Themes` does not exist — the facade was removed, motive in the
+    //     CHANGELOG.
+    //   • `GeoLeaf.ThemeCache` is a trap homonym: it is the IndexedDB cache of
+    //     LAYER DATA, not of `themes.json`.
+    //   • `GeoLeaf.ThemeSelector` is the UI; the engine stays kernel.
+    //   • a ROOT key never moves without a break, where a method can deprecate.
+    // And `Config` is one of the 23 `DEPTH2_FACADES`: the symbol is BORN FROZEN,
+    // where any other anchor would be born in the surface freeze's blind spot.
     if (!_gl.Config) _gl.Config = {};
     (_gl.Config as Record<string, unknown>).clearThemesCache = (profileId?: string): void =>
         ThemeLoader.clearCache(profileId);
@@ -201,22 +206,23 @@ export function setupUIKernel(): void {
     ui.initAutoTheme = _UITheme.initAutoTheme;
     ui.getCurrentTheme = _UITheme.getCurrentTheme;
 
-    // ── B-60 — le MÊME piège de calendrier, sur le bloc voisin ─────────────────
+    // ── The SAME calendar trap, on the neighbouring block ─────────────────────
     //
-    // `ui-api.ts` construisait aussi `UI.Notifications` et six raccourcis `UI.show*`, derrière un
-    // `if (_g.GeoLeaf._UINotifications)` de CORPS DE MODULE. L'unique écrivain de `_UINotifications`
-    // est l'installeur de `toast-renderer`, appelé par `registerGlobals()` AU BOOT — donc
-    // strictement après l'évaluation de tous les corps de modules. La condition était **toujours
-    // fausse**, et les sept membres n'ont jamais existé.
+    // `ui-api.ts` also built `UI.Notifications` and six `UI.show*` shortcuts,
+    // behind a MODULE-BODY `if (_g.GeoLeaf._UINotifications)`. The only writer of
+    // `_UINotifications` is the `toast-renderer` installer, called by
+    // `registerGlobals()` AT BOOT — hence strictly after every module body has
+    // evaluated. The condition was **always false**, and the seven members never
+    // existed.
     //
-    // ⚠️ Le bloc THÈME juste au-dessus souffrait exactement du même défaut ; il a été rattrapé ici
-    // (voir son commentaire), et c'est ce rattrapage qui a masqué le second : `UI.applyTheme`
-    // fonctionnait, donc rien ne suggérait qu'un bloc jumeau restait mort. Les deux blocs de
-    // `ui-api.ts` sont désormais retirés — ils ne pouvaient rien faire.
+    // ⚠️ The THEME block just above suffered exactly the same defect; it was caught
+    // up here (see its comment), and that catch-up is what masked the second one:
+    // `UI.applyTheme` worked, so nothing suggested a twin block stayed dead just
+    // below. Both `ui-api.ts` blocks are now removed — they could do nothing.
     //
-    // Délégation PARESSEUSE, comme `ui.notify` ci-dessus et pour la même raison : un build qui
-    // laisse la capacité de côté n'a pas d'écrivain, et chaque appel dégrade en no-op silencieux
-    // (`?.`) au lieu de jeter à l'assignation.
+    // LAZY delegation, like `ui.notify` above and for the same reason: a build
+    // that leaves the capability out has no writer, and each call degrades to a
+    // silent no-op (`?.`) instead of throwing at assignment.
     ui.Notifications = {
         show: (...a: unknown[]) => getNotifications()?.show?.(...(a as [string])),
         success: (...a: unknown[]) => getNotifications()?.success?.(...(a as [string])),
@@ -240,12 +246,24 @@ export function setupUIKernel(): void {
     ui.initDesktopPanel = initDesktopPanel;
     ui.activateDesktopPanel = activateDesktopPanel;
     ui.destroyDesktopPanel = destroyDesktopPanel;
-    // Sprint 2, tâche 2.4 — piloter le panneau depuis l'hôte. ⚠️ `openPanel` NE BASCULE PAS,
-    // là où un clic sur l'onglet ouvert le referme : c'est la seule différence entre les deux,
-    // et c'est elle qui évite de reproduire B-71 sur une surface publique.
+    // Driving the panel from the host. ⚠️ `openPanel` does NOT toggle, where a
+    // click on the open tab closes it: that is the only difference between the
+    // two, and it is what avoids reproducing the toggle trap on a public
+    // surface.
     ui.openPanel = openPanel;
     ui.closePanel = closePanel;
     ui.getOpenPanel = getOpenPanel;
+    // Hosting a panel surface the kernel does not name. ⚠️ `openPane` is NOT a synonym of
+    // `openPanel`: the latter drives the desktop panel and answers false below 1440px, where
+    // the same content belongs in the mobile sheet. A plugin reacting to a click on a feature
+    // has no business knowing which surface the current width implies — so it calls this one.
+    ui.registerPanelPane = registerPanelPane;
+    ui.openPane = openPane;
+    ui.closePane = closePane;
+    // Stripping the chrome for one task. ⚠️ The kernel never learns WHO asked — that is what
+    // keeps `no-plugin-in-core` intact while a plugin drives an application-wide UI mode.
+    ui.setImmersive = setImmersive;
+    ui.isImmersive = isImmersive;
     // Share (`GeoLeaf.Share` + ShareLifecycle wiring) migrated to
     // capabilities/permalink/install.ts + ShareModule.init() — S2 Lot 6.
 }

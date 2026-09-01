@@ -1,13 +1,13 @@
 /**
- * `types/image.ts` — couverture des branches (backlog R.2).
+ * `types/image.ts` — branch coverage.
  *
- * **31,25 % de fonctions** à l'ouverture — la valeur la plus basse du paquet. L'écart
- * avec les lignes (74,38 %) dit ce qui manquait : le module se chargeait, mais ses
- * fonctions imbriquées (`renderPreview`, `handleFile`, `showError` et les huit
- * gestionnaires de la zone de dépôt) ne s'exécutaient jamais.
+ * **31.25% of functions** at the start — the package's lowest value. The gap
+ * with lines (74.38%) says what was missing: the module loaded, but its
+ * nested functions (`renderPreview`, `handleFile`, `showError` and the drop
+ * zone's eight handlers) never ran.
  *
- * ⚠️ Fichier séparé de `field-renderer.test.ts` (2 074 l.) — voir l'en-tête de
- * `types-gallery.test.ts`.
+ * ⚠️ File separate from `field-renderer.test.ts` (2,074 l.) — see the header
+ * of `types-gallery.test.ts`.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
@@ -27,7 +27,7 @@ function imageFile(name = "a.png", type = "image/png", size = 1024): File {
     return f;
 }
 
-/** Passe par le canal réel : l'événement `change` de l'input de fichier. */
+/** Goes through the real channel: the file input's `change` event. */
 function pickFile(root: HTMLElement, file: File): void {
     const input = root.querySelector<HTMLInputElement>("input[type=file]")!;
     Object.defineProperty(input, "files", { value: [file], configurable: true });
@@ -47,7 +47,7 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
-// ─── formRender — aperçu ─────────────────────────────────────────────────────────
+// ─── formRender — preview ────────────────────────────────────────────────────────
 
 describe("image.formRender — aperçu", () => {
     it("ne rend pas d'aperçu sans valeur", () => {
@@ -95,7 +95,7 @@ describe("image.formRender — aperçu", () => {
     });
 });
 
-// ─── formRender — zone de dépôt ──────────────────────────────────────────────────
+// ─── formRender — drop zone ──────────────────────────────────────────────────────
 
 describe("image.formRender — zone de dépôt", () => {
     it("est accessible au clavier", () => {
@@ -109,9 +109,10 @@ describe("image.formRender — zone de dépôt", () => {
     it("Entrée et Espace relaient vers l'input de fichier", () => {
         const el = imageComponent.formRender!("", field(), vi.fn(), CTX);
         const input = el.querySelector<HTMLInputElement>("input[type=file]")!;
-        // Même précaution qu'en galerie : l'input est un enfant de la zone, donc le clic
-        // relayé remonte et rappellerait le relais. happy-dom n'a pas le
-        // « click in progress flag » du spec HTML qui coupe la ré-entrance en navigateur.
+        // Same precaution as in the gallery: the input is a child of the
+        // zone, so the relayed click bubbles up and would call the relay
+        // again. happy-dom lacks the HTML spec's "click in progress flag"
+        // that cuts re-entrance in a browser.
         const clickSpy = vi.spyOn(input, "click").mockImplementation(() => {});
         const zone = el.querySelector<HTMLElement>(".gl-form-image__drop-zone")!;
 
@@ -193,7 +194,7 @@ describe("image.formRender — zone de dépôt", () => {
     });
 });
 
-// ─── formRender — chargement du fichier ──────────────────────────────────────────
+// ─── formRender — file loading ───────────────────────────────────────────────────
 
 describe("image.formRender — chargement", () => {
     it("sans endpoint : crée une URL d'objet et rend l'aperçu", () => {
@@ -216,20 +217,21 @@ describe("image.formRender — chargement", () => {
         expect(onChange).not.toHaveBeenCalled();
     });
 
-    // 🛑 RÉÉCRIT À LA TÂCHE 5.1-d, PAS ANNULÉ. Ce test assertait « au-dessus de maxSizeMb →
-    // refus ». Ce n'est plus le contrat : `maxSizeMb` est la taille visée APRÈS compression,
-    // et le refus se fait sur un plafond AVANT compression (`maxSizeMb × PRECOMPRESSION_FACTOR`).
-    // Le motif du changement est mesuré : une photo de téléphone pèse 4 à 12 Mo, donc le
-    // plafond par défaut de 5 Mo refusait la saisie la plus ordinaire, sans recours.
-    // Ce qui est asserté ici est la borne qui SUBSISTE, et elle ne dépend pas de la
-    // disponibilité d'un canvas dans l'environnement de test.
+    // 🛑 REWRITTEN, NOT CANCELLED. This test asserted "above maxSizeMb →
+    // refusal". That is no longer the contract: `maxSizeMb` is the size aimed
+    // for AFTER compression, and the refusal happens on a ceiling BEFORE
+    // compression (`maxSizeMb × PRECOMPRESSION_FACTOR`). The change's motive
+    // is measured: a phone photo weighs 4 to 12 MB, so the default 5 MB
+    // ceiling refused the most ordinary capture, with no recourse. What is
+    // asserted here is the bound that REMAINS, and it does not depend on a
+    // canvas being available in the test environment.
     it("refuse un fichier au-dessus du plafond AVANT compression (maxSizeMb × 5)", () => {
         const onChange = vi.fn();
         const el = imageComponent.formRender!("", field({ maxSizeMb: 1 }), onChange, CTX);
 
         pickFile(el, imageFile("enorme.png", "image/png", 6 * 1024 * 1024));
 
-        // Synchrone : le refus ne doit pas attendre la compression.
+        // Synchronous: the refusal must not wait for the compression.
         expect(el.querySelector<HTMLElement>(".gl-form-error")!.hidden).toBe(false);
         expect(onChange).not.toHaveBeenCalled();
     });
@@ -238,10 +240,10 @@ describe("image.formRender — chargement", () => {
         const onChange = vi.fn();
         const el = imageComponent.formRender!("", field({ maxSizeMb: 1 }), onChange, CTX);
 
-        // 2 Mo avec maxSizeMb=1 : au-dessus de la cible, SOUS le plafond de 5 Mo. L'ancien
-        // contrat refusait ici ; le nouveau engage la compression. On assert donc que le
-        // refus n'est PAS immédiat — ce qui distingue les deux contrats sans dépendre du
-        // canvas.
+        // 2 MB with maxSizeMb=1: above the target, UNDER the 5 MB ceiling.
+        // The old contract refused here; the new one starts compression. We
+        // therefore assert the refusal is NOT immediate — which tells the two
+        // contracts apart without depending on the canvas.
         pickFile(el, imageFile("gros.png", "image/png", 2 * 1024 * 1024));
 
         expect(el.querySelector<HTMLElement>(".gl-form-error")!.hidden).toBe(true);
@@ -251,11 +253,11 @@ describe("image.formRender — chargement", () => {
         const onChange = vi.fn();
         const el = imageComponent.formRender!("", field(), onChange, CTX);
 
-        // 6 Mo : au-dessus de la cible par défaut, mais sous le plafond — plus de refus sec.
+        // 6 MB: above the default target, but under the ceiling — no more outright refusal.
         pickFile(el, imageFile("photo.png", "image/png", 6 * 1024 * 1024));
         expect(el.querySelector<HTMLElement>(".gl-form-error")!.hidden).toBe(true);
 
-        // 26 Mo : au-delà du plafond, refus immédiat.
+        // 26 MB: beyond the ceiling, immediate refusal.
         const el2 = imageComponent.formRender!("", field(), onChange, CTX);
         pickFile(el2, imageFile("enorme.png", "image/png", 26 * 1024 * 1024));
         expect(el2.querySelector<HTMLElement>(".gl-form-error")!.hidden).toBe(false);
@@ -301,8 +303,8 @@ describe("image.formRender — chargement", () => {
             expect(el.querySelector<HTMLElement>(".gl-form-error")!.hidden).toBe(false)
         );
 
-        // Le `finally` doit passer même sur le chemin d'erreur : sans lui la zone
-        // resterait bloquée en « envoi en cours » après le premier échec.
+        // The `finally` must run even on the error path: without it the zone
+        // would stay stuck on "sending" after the first failure.
         expect(
             el.querySelector(".gl-form-image__drop-zone")!.classList.contains("is-uploading")
         ).toBe(false);
@@ -324,9 +326,9 @@ describe("image.formRender — chargement", () => {
 // ─── formRender — repli champ texte ──────────────────────────────────────────────
 
 describe("image.formRender — repli sur saisie d'URL", () => {
-    // La condition est `endpoint || !ctx.readOnly` : le repli n'est atteint que
-    // **sans endpoint ET en lecture seule**. Les trois autres combinaisons rendent la
-    // zone de dépôt — c'est ce que vérifient les deux derniers cas.
+    // The condition is `endpoint || !ctx.readOnly`: the fallback is only
+    // reached **with no endpoint AND read-only**. The other three
+    // combinations render the drop zone — what the last two cases verify.
 
     it("rend un input url en lecture seule sans endpoint", () => {
         const el = imageComponent.formRender!(
@@ -370,7 +372,7 @@ describe("image.formRender — repli sur saisie d'URL", () => {
         );
 
         expect(el.querySelector(".gl-form-image__drop-zone")).not.toBeNull();
-        // …mais l'input y est neutralisé, et le retrait aussi.
+        // …but the input is neutralised there, and so is removal.
         expect(el.querySelector<HTMLInputElement>("input[type=file]")!.disabled).toBe(true);
     });
 

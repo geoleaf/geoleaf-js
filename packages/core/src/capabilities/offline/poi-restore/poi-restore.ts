@@ -5,13 +5,13 @@
  */
 
 /**
- * Offline POI restore — pushes queued POIs onto their host GeoJSON layer.
+ * Offline entity restore — pushes queued offline edits onto their host GeoJSON layer.
  *
  * S9 D5 (dissolution POI, merge inversé). Historically the CORE pulled the
  * offline sync-queue and merged it into an aggregate layer source. D5
- * inverts the flow: this capability PUSHES its pending POIs onto the host
- * layer `gl-src-<layerId>` via `GeoLeaf.Layers.mergeFeatures`, so restored POIs
- * render identically to addpoi's runtime POIs (D4) and to static features.
+ * inverts the flow: this capability PUSHES pending entities onto the host
+ * layer `gl-src-<layerId>` via `GeoLeaf.Layers.mergeFeatures`, so restored
+ * entities render identically to features created at runtime and to static features.
  *
  * The pass is READ-ONLY over the queue (no status mutation, no network) and
  * IDEMPOTENT (`mergeFeatures` dedups by id, `removeFeature` no-ops when absent),
@@ -19,40 +19,45 @@
  * replay (`POISyncHandler`/sync-manager), which pushes to the server and prunes
  * synced entries — that pruning naturally shrinks what this pass re-displays.
  *
- * ═══ TÂCHE 4.7 — IL LIT L'`outbox`, ET IL N'EST PLUS « POI » ═══
+ * ═══ IT READS THE `outbox`, AND IT IS NO LONGER "POI" ═══
  *
- * 🛑 **Le filtre par vocabulaire de PRODUCTEUR a disparu, et c'était un DÉFAUT.** Ce module ne
- * gardait que `add_poi` / `update_poi` / `delete_poi` et écartait `editor.*` comme
- * « foreign » : une géométrie tracée hors réseau avec l'éditeur n'était **jamais réaffichée**
- * au rechargement. L'`outbox` ne parle qu'un vocabulaire — `SyncOperationKind`, entity-generic
- * parce que le magasin l'est — donc il n'y a plus rien à filtrer, ni personne à écarter.
+ * 🛑 **The PRODUCER-vocabulary filter is gone, and it was a DEFECT.** This module kept
+ * only `add_poi` / `update_poi` / `delete_poi` and discarded `editor.*` as "foreign":
+ * a geometry drawn off-network with the editor was **never re-displayed** on reload.
+ * The `outbox` speaks one vocabulary — `SyncOperationKind`, entity-generic because
+ * the store is — so there is nothing left to filter, and nobody to discard.
  *
- * ⚠️ **La charge utile vient du magasin `features`, plus de l'entrée.** Celle-ci ne référence
- * que `[layerId, localId]` (contrat) ; l'état courant vit dans l'enregistrement, tenu par
- * l'écriture optimiste de 4.4. `poiToFeature` devient donc inutile ici — le magasin stocke
- * déjà du GeoJSON.
+ * ⚠️ **The payload comes from the `features` store, no longer from the entry.** The
+ * entry references only `[layerId, localId]` (contract); the current state lives in
+ * the record, held by the optimistic write. `poiToFeature` therefore becomes useless
+ * here — the store already holds GeoJSON.
  *
- * ⚠️ **Le nom `poi-restore` est un abus depuis 4.7** : il restaure des ENTITÉS, quel que soit
- * le plugin qui les a saisies. Le renommage touche `ENGINE_DIRS`, les annotations d'arbre et
- * ses importeurs — groupé avec la tâche 4.9, qui reprend ce répertoire.
+ * ⚠️ **The name `poi-restore` is historical: this module restores ENTITIES**, whatever plugin
+ * captured them, ever since the producer-vocabulary filter above was removed. The name is KEPT
+ * deliberately, not by neglect: `registerPoiRestore`, `restorePendingPois`, `PoiRestoreDeps`
+ * and `PoiRestoreResult` are part of the published API surface of a package released as a
+ * stable major version, and renaming a published symbol is a removal followed by an addition —
+ * a breaking change. The rename is therefore due at the NEXT MAJOR version, all at once
+ * (directory, identifiers, tree annotations, importers), never piecemeal. Until then the prose
+ * around these names says "entities", and only the identifiers keep the old word.
  */
 import { Log } from "../../../utils/log/index.js";
 import { StorageContract } from "../../../kernel/shared/index.js";
 
 /**
- * États d'entrée qui restent à l'écran.
+ * Entry states that stay on screen.
  *
- * `synced` sort : le serveur l'a, la couche la sert déjà. `quarantined` RESTE — le contrat dit
- * qu'une entrée mise de côté « reste visible », et la faire disparaître de la carte serait la
- * perte silencieuse contre laquelle elle a précisément été mise de côté.
+ * `synced` leaves: the server has it, the layer already serves it. `quarantined`
+ * STAYS — the contract says a set-aside entry "stays visible", and making it vanish
+ * from the map would be the silent loss it was set aside against in the first place.
  */
 const VISIBLE_STATES = new Set(["pending", "inFlight", "failed", "quarantined"]);
 const DELETE_KIND = "delete";
 
 /**
- * Sync status baked on restored POIs before merge. `"pending"` lights the badge
- * (a queued POI is not yet REST-replayed → parity with the D4 badge, which would
- * otherwise vanish on reload); `null` bakes nothing (strict no-badge parity).
+ * Sync status baked on restored entities before merge. `"pending"` lights the badge
+ * (a queued entity is not yet REST-replayed → parity with the runtime badge, which
+ * would otherwise vanish on reload); `null` bakes nothing (strict no-badge parity).
  * Single switch — the paint reads `coalesce(feature-state, property _syncStatus)`.
  */
 const RESTORED_SYNC_STATUS: "pending" | null = "pending";
@@ -64,7 +69,7 @@ interface LayerLike {
     removeFeature(layerId: string, id: string | number): boolean;
 }
 
-/** Une entrée d'outbox, réduite à ce que la restauration en lit. */
+/** An outbox entry, reduced to what restoration reads from it. */
 interface QueueRow {
     [key: string]: unknown;
     kind?: unknown;
@@ -74,7 +79,7 @@ interface QueueRow {
     createdAt?: unknown;
 }
 
-/** Les deux sous-modules lus ici, réduits à leur usage. */
+/** The two sub-modules read here, reduced to their use. */
 interface OutboxReader {
     list(): Promise<QueueRow[]>;
 }
@@ -82,7 +87,7 @@ interface FeaturesReader {
     get(layerId: string, localId: string): Promise<{ feature?: unknown } | null>;
 }
 
-/** Opération nette pour une entité d'une couche (dernière écriture gagnante). */
+/** Net operation for one entity of one layer (last write wins). */
 interface NetOp {
     kind: string;
     localId: string;
@@ -121,26 +126,26 @@ function _resolveLayers(): LayerLike | undefined {
     return g.GeoLeaf?.Layers;
 }
 
-/** Accès aux sous-modules de la base, par le contrat — jamais par un import de `db/`. */
+/** Access to the database sub-modules, through the contract — never a `db/` import. */
 function _module<T>(name: string): T | null {
     const db = StorageContract.DB as { _ensureModule?: (n: string) => unknown } | null;
     if (!StorageContract.isAvailable() || typeof db?._ensureModule !== "function") return null;
     return (db._ensureModule(name) as T | null) ?? null;
 }
 
-/** Lit toute l'`outbox` via le contrat ; `[]` quand le moteur est absent. */
+/** Reads the whole `outbox` through the contract; `[]` when the engine is absent. */
 function _readOutbox(): Promise<QueueRow[]> {
     const outbox = _module<OutboxReader>("Outbox");
     if (!outbox?.list) return Promise.resolve([]);
     return outbox.list();
 }
 
-/** Identifiant de couche hôte — porté par l'entrée elle-même depuis 4.4. */
+/** Host layer identifier — carried by the entry itself. */
 function _resolveLayerId(rec: QueueRow): string | null {
     return typeof rec.layerId === "string" && rec.layerId ? rec.layerId : null;
 }
 
-/** Identité locale — clé de dédup et cible de `removeFeature`. Portée par l'entrée. */
+/** Local identity — dedup key and `removeFeature` target. Carried by the entry. */
 function _entityId(rec: QueueRow): string | null {
     return typeof rec.localId === "string" && rec.localId ? rec.localId : null;
 }
@@ -172,8 +177,8 @@ function _reduceNetOps(
     for (const entry of entries) {
         const rec = entry as QueueRow;
         const kind = typeof rec.kind === "string" ? rec.kind : "";
-        // ⚠️ AUCUN filtre par producteur : c'est ce qui fait qu'une géométrie tracée par
-        // l'éditeur revient enfin à l'écran.
+        // ⚠️ NO producer filter: this is what finally brings a geometry drawn with
+        // the editor back on screen.
         if (!VISIBLE_STATES.has(String(rec.state))) continue;
         const layerId = _resolveLayerId(rec);
         const id = _entityId(rec);
@@ -225,8 +230,9 @@ async function _applyNetOps(
                 result.deleted++;
                 continue;
             }
-            // 🛑 La charge vient du MAGASIN : l'entrée ne référence que `[layerId, localId]`,
-            // et l'état courant est tenu par l'écriture optimiste de 4.4.
+            // 🛑 The payload comes from the STORE: the entry references only
+            // `[layerId, localId]`, and the current state is held by the optimistic
+            // write.
             const record = await readFeature(layerId, op.localId);
             const feature = record?.feature as GeoJSON.Feature | undefined;
             if (!feature || typeof feature !== "object") {
@@ -246,7 +252,7 @@ async function _applyNetOps(
 /**
  * Runs one idempotent restore pass: sync-queue → host layers via `GeoLeaf.Layers`.
  *
- * Reads every pending/failed POI op, resolves its host layer, drops rows without
+ * Reads every pending/failed entity op, resolves its host layer, drops rows without
  * a host layer (logged, never silent), collapses multiple ops per id to their net
  * state, then upserts (`mergeFeatures`) or removes (`removeFeature`). Safe to call
  * repeatedly — dedup by id makes replays no-ops for already-present features.

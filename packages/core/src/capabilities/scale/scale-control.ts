@@ -411,7 +411,7 @@ const ScaleControl: ScaleControlModule = {
      * pass the denominator from `scaleAtZoom`, an integer of at most 9 digits — but it rests
      * on a TYPE that a later edit could widen to `string` without any gate noticing: the
      * disable would stay green and its justification would quietly become false. The loop
-     * removes the question instead of documenting it (CAPACITÉS S10.3).
+     * removes the question instead of documenting it.
      *
      * Byte-identical to the regex it replaces: verified over 200 008 values plus the
      * boundaries (0, 999, 1000, 10⁶, 591 657 528, 1 234 567 890), 0 divergence.

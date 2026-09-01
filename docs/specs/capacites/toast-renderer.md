@@ -28,7 +28,7 @@ date: 28 juillet 2026
 > Le CDC source affirmait que les toasts de boot étaient « bufferisés puis rendus ». L'énoncé est
 > vrai **à l'infini** et faux **dans toute fenêtre d'observation** : il ne dit ni quand le tampon
 > se vide, ni ce que deviennent les messages émis par les deux autres surfaces, qui n'ont pas de
-> tampon du tout. C'est précisément le trou dans lequel **B-56** est tombée — un défaut de
+> tampon du tout. C'est précisément le trou du défaut d'ordre de montage — un défaut de
 > production où aucune notification n'était visible pendant tout le chargement initial des
 > couches, la fenêtre même où surviennent les erreurs de chargement.
 >
@@ -54,10 +54,15 @@ profil chargé, thème appliqué).
 - **Elle n'expose pas ses réglages de rendu à un profil.** `position`, `maxVisible`,
   `maxPersistent`, `durations`, `animations` sont des **constantes de code** (`constants.ts`), pas
   des paramètres de profil — voir §Configuration.
-- **Elle ne rejoue pas sa propre file au montage.** Le tampon de la **primitive** est vidé au
-  montage ; la file interne du renderer, elle, ne l'est pas — c'est
-  **B-59**, et §Le tableau des trois surfaces le dit
-  précisément.
+- ✅ **Elle rejoue sa propre file au montage, depuis le 17/08/2026.** Les DEUX tampons sont
+  désormais vidés : celui de la **primitive**, et la file interne du renderer, drainée par
+  `init()` dès qu'il réussit (soldé).
+  ⚠️ **Cette puce affirmait l'inverse**, et c'était vrai jusqu'à cette date : `_processQueue()`
+  sort tôt faute de conteneur, et **rien ne le rappelait après l'initialisation** — la file
+  attendait le _prochain_ `show()`. Les messages émis au boot (« profil introuvable », « couche
+  en échec ») sont précisément ceux qui n'ont pas de suivant : ils étaient perdus sans trace.
+  📌 Un `init()` qui **échoue** ne draine rien **et ne vide rien** : la file survit pour le
+  prochain essai — la perdre là serait pire que le défaut d'origine.
 - **Elle n'insère jamais de HTML.** Le message passe par `textContent` ; la surface XSS est nulle
   par construction.
 
@@ -68,7 +73,7 @@ profil chargé, thème appliqué).
 | ID    | Fonctionnalité                                  | Entrée                                               | Sortie observable                                                                                                              | Code                                                                 |
 | ----- | ----------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- |
 | TR-01 | Montage du conteneur                            | `ToastRendererModule.init()`                         | `#gl-notifications` créé et appendu à `<body>` s'il n'existe pas ; **emprunté** s'il existe déjà                               | `lifecycle.ts` → `init`                                              |
-| TR-02 | Montage **avant** le chargement des couches     | `dependencies = ["config"]`                          | Le renderer est prêt pendant que les couches du thème par défaut chargent — c'est le correctif de B-56                         | `module.ts`                                                          |
+| TR-02 | Montage **avant** le chargement des couches     | `dependencies = ["config"]`                          | Le renderer est prêt pendant que les couches du thème par défaut chargent — c'est le correctif d'ordre                         | `module.ts`                                                          |
 | TR-03 | Enregistrement comme renderer de la primitive   | Conteneur trouvé                                     | `notifyPrimitive.registerRenderer(...)`, qui **vide le tampon de la primitive immédiatement**                                  | `lifecycle.ts`, `packages/core/src/utils/notify/notify.primitive.ts` |
 | TR-04 | Gate tardif                                     | `modules.toast-renderer.enabled === false`           | `init()` sort avant tout : ni conteneur, ni renderer enregistré. `notify()` reste sur son repli console                        | `lifecycle.ts` → `init`                                              |
 | TR-05 | File prioritaire                                | Émissions concurrentes                               | `error` (3) > `warning` (2) > `success`/`info` (1) ; à priorité égale, **FIFO par horodatage**                                 | `notifications.ts` → `_enqueue`                                      |
@@ -92,9 +97,9 @@ profil chargé, thème appliqué).
 | TR-23 | Instantané d'état                               | `Notifications.getStatus()`                          | `initialized` (conteneur présent), compteurs visibles/en file, budgets, position                                               | `notifications.ts` → `getStatus`                                     |
 | TR-24 | Déclaration introspectable                      | —                                                    | `getAllCapabilities()` la liste, `getCapabilitySchema("toast-renderer")` rend son schéma                                       | `toast-renderer-capability.ts`                                       |
 
-⚠️ **TR-23 porte le piège que B-56 a payé.** `getStatus().maxVisible` rend `3` sur un renderer
+⚠️ **TR-23 porte le piège déjà payé.** `getStatus().maxVisible` rend `3` sur un renderer
 **jamais monté** : c'est une constante lue sur l'instance, pas une preuve de montage. Le seul champ
-qui atteste le montage est **`initialized`**, ajouté et **vu rougir** en soldant B-56. Un test qui
+qui atteste le montage est **`initialized`**, ajouté et **vu rougir** au correctif. Un test qui
 lit un budget pour conclure « le renderer est là » est aveugle par construction.
 
 Les tests qui couvrent ces lignes : `packages/core/__tests__/capabilities/toast-renderer/`, et
@@ -149,21 +154,28 @@ avant de l'implémenter est exactement ce qui a produit le `maxPersistent` fant�
 C'est le cœur de cette fiche. Trois chemins mènent au même renderer, avec **trois comportements
 différents** avant son montage :
 
-| Surface               | Montée par                                                     | Avant le montage du renderer                        | Trace laissée     |
-| --------------------- | -------------------------------------------------------------- | --------------------------------------------------- | ----------------- |
-| `GeoLeaf.notify()`    | kernel, à l'import (ancre B2)                                  | **Mise en tampon** dans la primitive, puis rejouée  | oui — `console.*` |
-| `Notifications.*`     | `install.ts` → `registerGlobals`                               | Empilée dans la file du renderer, **jamais rendue** | **aucune** — B-59 |
-| `GeoLeaf.UI.notify.*` | kernel (`packages/core/src/globals/globals.ui.ts`), à l'import | Idem, ou no-op muet si la capacité n'est pas montée | **aucune** — B-59 |
+| Surface               | Montée par                                                     | Avant le montage du renderer                                                           | Trace laissée                  |
+| --------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------ |
+| `GeoLeaf.notify()`    | kernel, à l'import (ancre B2)                                  | **Mise en tampon** dans la primitive, puis rejouée                                     | oui — `console.*`              |
+| `Notifications.*`     | `install.ts` → `registerGlobals`                               | Empilée dans la file du renderer, **drainée par `init()`**                             | oui, depuis le 17/08/2026      |
+| `GeoLeaf.UI.notify.*` | kernel (`packages/core/src/globals/globals.ui.ts`), à l'import | Idem — drainée aussi ; reste un no-op muet si la capacité n'est **pas montée du tout** | oui, si la capacité est montée |
 
-⚠️ **« Bufferisés puis rendus » n'est vrai que de la première ligne.** Le tampon de la primitive est
-vidé par `registerRenderer()`, au montage. Les deux autres surfaces tapent directement le singleton :
-leur message entre dans `_queue`, `_processQueue()` sort immédiatement faute de conteneur, et
-**`init()` ne rappelle jamais `_processQueue()`** — seuls `enable()` et le retrait d'un toast
-relancent le drainage. Un message émis par ces deux chemins avant le montage y reste
+✅ **« Bufferisés puis rendus » vaut désormais pour les TROIS lignes** (17/08/2026). Le tampon de la
+primitive est vidé par `registerRenderer()` ; la file du renderer est drainée par `init()` dès qu'il
+réussit.
+
+⚠️ **Ce paragraphe a dit l'inverse jusqu'au 17/08/2026, et il était exact** : les deux dernières
+surfaces tapent directement le singleton, leur message entrait dans `_queue`, `_processQueue()`
+sortait faute de conteneur, et **`init()` ne le rappelait jamais** — seuls `enable()` et le retrait
+d'un toast relançaient le drainage. Un message émis par ces chemins avant le montage y restait
 **définitivement**, sans repli console.
 
-C'est **B-59**. B-56 a **réduit** la fenêtre — le renderer
-se monte désormais avant le chargement des couches — elle ne l'a pas fermée.
+C'était le second défaut, soldé. Le premier avait **réduit** la fenêtre — le renderer se monte avant le
+chargement des couches — sans la fermer ; c'est le drain qui la ferme.
+
+🖐 **Ce qui subsiste, et qui n'est PAS ce défaut** : si la capacité `toast-renderer` n'est pas montée du
+tout, `GeoLeaf.UI.notify.*` reste un no-op muet. Le drain ne peut rien pour un renderer qui n'existe
+pas — c'est une autre question, celle du repli console de la troisième surface.
 
 ### API publique
 
@@ -199,7 +211,7 @@ runtime.** `kernel/ui/ui-api.ts` les monte derrière un `if (GeoLeaf._UINotifica
 module**, évalué à l'import — alors que l'unique écrivain de `_UINotifications` est le
 `registerGlobals` de cette capacité, appelé au **boot**. Mesuré sur le bundle livré, avec
 contre-épreuve : écrire `_UINotifications` après coup ne les fait pas apparaître. Ligne ouverte au
-registre — **B-60**. Les plugins ne sont pas touchés : ils passent par
+registre. Les plugins ne sont pas touchés : ils passent par
 `GeoLeaf._UINotifications` via `getUINotifications()` de `@geoleaf/host-runtime`, qui, lui, résout.
 
 ### Trois autres clés montées par l'installeur
@@ -229,24 +241,24 @@ Aucun. Cette capacité n'écrit ni `localStorage`, ni `sessionStorage`, ni param
 
 ## Décisions de conception
 
-| Décision                                                          | Pourquoi                                                                                                                                                                                                                        | Alternative écartée                                                      |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| **La primitive reste au kernel, la capacité n'est que le rendu**  | Un plugin chargé avant `boot()` appelle `GeoLeaf.notify()` à son niveau supérieur : l'ancre doit exister à l'import, donc sans dépendance au DOM. Enrichir la primitive la coupleraient à `HTMLElement` et `duration`           | Une primitive riche — c'est ce que la migration existait pour défaire    |
-| **`dependencies = ["config"]`**                                   | La boucle d'init du registry est **séquentielle et awaitée**, et `GeoJSONModule.init()` attend le chargement des couches. Dépendre de `geojson` séquençait le renderer **derrière le réseau**, là où les erreurs arrivent       | `["geojson"]` — c'était le cas jusqu'à B-56, par astuce d'ordonnancement |
-| **Jamais `["ui"]`**                                               | `UIModule.init()` pilote la mise en place des features avec avidité : en dépendre produirait un interblocage, exactement comme documenté sur `route`                                                                            | `["ui"]`, sémantiquement tentant puisque c'est de l'interface            |
-| **Deux budgets comptés séparément**                               | Un toast de progression persistant qui occupe un créneau ferait famine sur le retour transitoire. Les compter ensemble rend l'un tributaire de l'autre                                                                          | Un budget unique                                                         |
-| **Seule une erreur peut évincer**                                 | L'éviction est une dégradation de l'expérience : elle ne se justifie que pour un message qu'on ne peut pas se permettre de retarder                                                                                             | Éviction par ancienneté, quel que soit le niveau                         |
-| **Compteurs vivants pendant la passe de drainage**                | Le retrait d'un toast est **différé** par l'animation de sortie. Re-interroger le DOM ferait re-cibler le même toast à chaque tour et dépasser `maxVisible` sur une rafale d'erreurs                                            | Re-requêter le DOM à chaque itération                                    |
-| **`init()` re-initialise, il ne fusionne pas**                    | La forme fusionnante remettait deux budgets à leur défaut tout en conservant trois autres réglages, et ne restaurait jamais `enabled` — que `destroy()` avait éteint. Tout chemin de recréation revenait **muet**               | La fusion sur l'état courant                                             |
-| **Le conteneur emprunté n'est pas repris**                        | Une page hôte a le droit de fournir son propre `#gl-notifications`. Le démontage peut reprendre ce qu'il a **ajouté**, jamais ce qu'il a **emprunté**                                                                           | Retirer le conteneur inconditionnellement                                |
-| **Désenregistrer le renderer au démontage**                       | Ce n'est pas de la propreté : `destroy()` laisse le singleton sans conteneur, où tout ce qu'on lui donne est perdu. Une primitive qui pointerait encore dessus **croirait avoir un renderer** et n'aurait plus de repli console | Laisser la primitive pointer le singleton mort                           |
-| **Désenregistrement vérifié par identité**                        | Une capacité démontée **après** qu'une autre s'est enregistrée ne doit pas aveugler le renderer vivant                                                                                                                          | Un `unregisterRenderer()` inconditionnel                                 |
-| **L'écouteur du bouton passe par le gestionnaire de la capacité** | La propriété `onClick` des utilitaires DOM route vers le gestionnaire **global** dès qu'il existe — et en production il existe toujours. Chaque toast y laissait une entrée permanente pointant un bouton détaché aussitôt      | `createElement({ onClick })`, la forme courte                            |
-| **L'écouteur est libéré au détachement, pas au `destroy()`**      | Une session qui affiche des toasts pendant des heures ne doit pas accumuler une entrée par toast affiché                                                                                                                        | Tout libérer au `destroy()`                                              |
-| **`textContent`, jamais `innerHTML`**                             | Le message peut venir d'une source non fiable (erreur réseau, réponse de service). C'est une frontière de sécurité, pas un style d'écriture                                                                                     | Un gabarit HTML pour enrichir la présentation                            |
-| **Les réglages de rendu restent des constantes**                  | Les exposer sans les brancher a déjà produit un `maxPersistent` documenté que rien ne lisait. Un fichier unique de constantes rend les quatre sites identiques **par construction**                                             | Les déclarer dans le `configSchema` avant de les brancher                |
-| **Mesure de performance derrière un drapeau**                     | La mesure du chargement des données est utile en diagnostic et inutile en production : conditionnée à `__GEOLEAF_PERF__`, elle ne coûte rien quand personne ne regarde                                                          | Mesurer systématiquement                                                 |
-| Pas de `loader`                                                   | Le renderer est présent dans les deux entrées et sert au boot lui-même : le charger paresseusement le rendrait indisponible exactement quand il sert                                                                            | Un `import()` paresseux                                                  |
+| Décision                                                          | Pourquoi                                                                                                                                                                                                                        | Alternative écartée                                                   |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| **La primitive reste au kernel, la capacité n'est que le rendu**  | Un plugin chargé avant `boot()` appelle `GeoLeaf.notify()` à son niveau supérieur : l'ancre doit exister à l'import, donc sans dépendance au DOM. Enrichir la primitive la coupleraient à `HTMLElement` et `duration`           | Une primitive riche — c'est ce que la migration existait pour défaire |
+| **`dependencies = ["config"]`**                                   | La boucle d'init du registry est **séquentielle et awaitée**, et `GeoJSONModule.init()` attend le chargement des couches. Dépendre de `geojson` séquençait le renderer **derrière le réseau**, là où les erreurs arrivent       | `["geojson"]` — c'était le cas avant, par astuce d'ordonnancement     |
+| **Jamais `["ui"]`**                                               | `UIModule.init()` pilote la mise en place des features avec avidité : en dépendre produirait un interblocage, exactement comme documenté sur `route`                                                                            | `["ui"]`, sémantiquement tentant puisque c'est de l'interface         |
+| **Deux budgets comptés séparément**                               | Un toast de progression persistant qui occupe un créneau ferait famine sur le retour transitoire. Les compter ensemble rend l'un tributaire de l'autre                                                                          | Un budget unique                                                      |
+| **Seule une erreur peut évincer**                                 | L'éviction est une dégradation de l'expérience : elle ne se justifie que pour un message qu'on ne peut pas se permettre de retarder                                                                                             | Éviction par ancienneté, quel que soit le niveau                      |
+| **Compteurs vivants pendant la passe de drainage**                | Le retrait d'un toast est **différé** par l'animation de sortie. Re-interroger le DOM ferait re-cibler le même toast à chaque tour et dépasser `maxVisible` sur une rafale d'erreurs                                            | Re-requêter le DOM à chaque itération                                 |
+| **`init()` re-initialise, il ne fusionne pas**                    | La forme fusionnante remettait deux budgets à leur défaut tout en conservant trois autres réglages, et ne restaurait jamais `enabled` — que `destroy()` avait éteint. Tout chemin de recréation revenait **muet**               | La fusion sur l'état courant                                          |
+| **Le conteneur emprunté n'est pas repris**                        | Une page hôte a le droit de fournir son propre `#gl-notifications`. Le démontage peut reprendre ce qu'il a **ajouté**, jamais ce qu'il a **emprunté**                                                                           | Retirer le conteneur inconditionnellement                             |
+| **Désenregistrer le renderer au démontage**                       | Ce n'est pas de la propreté : `destroy()` laisse le singleton sans conteneur, où tout ce qu'on lui donne est perdu. Une primitive qui pointerait encore dessus **croirait avoir un renderer** et n'aurait plus de repli console | Laisser la primitive pointer le singleton mort                        |
+| **Désenregistrement vérifié par identité**                        | Une capacité démontée **après** qu'une autre s'est enregistrée ne doit pas aveugler le renderer vivant                                                                                                                          | Un `unregisterRenderer()` inconditionnel                              |
+| **L'écouteur du bouton passe par le gestionnaire de la capacité** | La propriété `onClick` des utilitaires DOM route vers le gestionnaire **global** dès qu'il existe — et en production il existe toujours. Chaque toast y laissait une entrée permanente pointant un bouton détaché aussitôt      | `createElement({ onClick })`, la forme courte                         |
+| **L'écouteur est libéré au détachement, pas au `destroy()`**      | Une session qui affiche des toasts pendant des heures ne doit pas accumuler une entrée par toast affiché                                                                                                                        | Tout libérer au `destroy()`                                           |
+| **`textContent`, jamais `innerHTML`**                             | Le message peut venir d'une source non fiable (erreur réseau, réponse de service). C'est une frontière de sécurité, pas un style d'écriture                                                                                     | Un gabarit HTML pour enrichir la présentation                         |
+| **Les réglages de rendu restent des constantes**                  | Les exposer sans les brancher a déjà produit un `maxPersistent` documenté que rien ne lisait. Un fichier unique de constantes rend les quatre sites identiques **par construction**                                             | Les déclarer dans le `configSchema` avant de les brancher             |
+| **Mesure de performance derrière un drapeau**                     | La mesure du chargement des données est utile en diagnostic et inutile en production : conditionnée à `__GEOLEAF_PERF__`, elle ne coûte rien quand personne ne regarde                                                          | Mesurer systématiquement                                              |
+| Pas de `loader`                                                   | Le renderer est présent dans les deux entrées et sert au boot lui-même : le charger paresseusement le rendrait indisponible exactement quand il sert                                                                            | Un `import()` paresseux                                               |
 
 ---
 
@@ -261,7 +273,7 @@ primitive, rien d'autre.
 ⚠️ **Cette capacité ne déclare pas `["geojson"]` mais `["config"]`, et c'est délibéré.** La
 **large majorité** des capacités qui portent un module de cycle de vie déclarent `["geojson"]`
 comme **astuce d'ordonnancement** — forcer le tri topologique sans passer par `ui`. La conséquence
-mesurée est que leur `init()` attend la résolution des couches du thème par défaut ; c'est **B-57**.
+mesurée est que leur `init()` attend la résolution des couches du thème par défaut ; c'est la question des dépendances.
 
 > 🛑 **Relecture du 11/08/2026 — cette phrase disait « Sur les **15** capacités […] c'est **la
 > seule** à ne pas déclarer `["geojson"]` », et elle était fausse deux fois.** Mesuré : **16**
@@ -325,18 +337,18 @@ l'installeur, donc une entrée qui l'omet ne livre ni le code ni le style.
 Le CDC `CDC_capacite-toast-renderer.md` (v1.1.0, 09/07/2026) a été **consommé** en écrivant cette
 fiche. ⚠️ **Il n'a PAS été retiré du dossier de tri** : celui-ci appartient à une session
 concurrente au moment de cette passe — trace et conséquence sur le compteur au §Journal des
-décisions de `roadmap_documentation-v3.md`.
+décisions de la refonte documentaire V3.
 
-| Énoncé du CDC                                                                                       | Ce que dit le code                                                                                                                                                           |
-| --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| « Toasts profil/thème : via la primitive, **bufferisés puis rendus** »                              | Vrai **de la primitive seule**, et sans borne temporelle. Les deux autres surfaces perdent leur message sans trace (B-59). C'est le trou d'où B-56 est sortie                |
-| `dependencies=["geojson"]` (§5 et §12, présenté comme une protection d'ordre)                       | **Faux depuis B-56** : `["config"]`. L'énoncé était même contredit par le TSDoc du fichier qu'il décrivait — « the renderer only needs the DOM + i18n + the primitive »      |
-| `renderer/notifications.ts` · `css/notifications.css`                                               | Les deux chemins sont **faux** : `notifications.ts` est à la racine de la capacité, la feuille s'appelle `css/toast-renderer.css`                                            |
-| `app/boot-modules/toast-renderer.module.ts` + enregistrement inline `packages/core/src/app/boot.ts` | Le module vit **dans** la capacité (`module.ts`) et l'enregistrement passe par l'installeur du manifeste de preset, plus par un bloc gaté de `packages/core/src/app/boot.ts` |
-| `@import` de la feuille depuis `packages/core/src/css/geoleaf-main.css`                             | La feuille entre par `install.ts`, pas par un `@import` de la feuille agrégée                                                                                                |
-| « rendu **byte-identique**, `maxPersistent: 2` »                                                    | La valeur est la bonne, mais elle n'était **pas appliquée** : déclarée, documentée, jamais lue par `init()`. Corrigé depuis, avec les constantes partagées                   |
-| `GeoLeaf.UI.Notifications` + les raccourcis `UI.show*` listés comme API                             | **Ils n'existent pas au runtime** — mesuré sur le bundle livré, avec contre-épreuve. Ligne **B-60** ouverte au registre                                                      |
-| « exposition de `position`/`maxVisible`/`animations` = enrichissement futur »                       | Toujours vrai, et le motif s'est renforcé : `constants.ts` documente pourquoi les déclarer avant de les brancher est précisément ce qui a produit un paramètre fantôme       |
+| Énoncé du CDC                                                                                       | Ce que dit le code                                                                                                                                                                                 |
+| --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| « Toasts profil/thème : via la primitive, **bufferisés puis rendus** »                              | ✅ Vrai des **trois** surfaces depuis le 17/08/2026. Ce l'était **de la primitive seule** jusque-là — les deux autres perdaient leur message sans trace, et c'est le trou d'où le défaut est sorti |
+| `dependencies=["geojson"]` (§5 et §12, présenté comme une protection d'ordre)                       | **Faux depuis le 28/07** : `["config"]`. L'énoncé était même contredit par le TSDoc du fichier qu'il décrivait — « the renderer only needs the DOM + i18n + the primitive »                        |
+| `renderer/notifications.ts` · `css/notifications.css`                                               | Les deux chemins sont **faux** : `notifications.ts` est à la racine de la capacité, la feuille s'appelle `css/toast-renderer.css`                                                                  |
+| `app/boot-modules/toast-renderer.module.ts` + enregistrement inline `packages/core/src/app/boot.ts` | Le module vit **dans** la capacité (`module.ts`) et l'enregistrement passe par l'installeur du manifeste de preset, plus par un bloc gaté de `packages/core/src/app/boot.ts`                       |
+| `@import` de la feuille depuis `packages/core/src/css/geoleaf-main.css`                             | La feuille entre par `install.ts`, pas par un `@import` de la feuille agrégée                                                                                                                      |
+| « rendu **byte-identique**, `maxPersistent: 2` »                                                    | La valeur est la bonne, mais elle n'était **pas appliquée** : déclarée, documentée, jamais lue par `init()`. Corrigé depuis, avec les constantes partagées                                         |
+| `GeoLeaf.UI.Notifications` + les raccourcis `UI.show*` listés comme API                             | **Ils n'existent pas au runtime** — mesuré sur le bundle livré, avec contre-épreuve — versé au registre                                                                                            |
+| « exposition de `position`/`maxVisible`/`animations` = enrichissement futur »                       | Toujours vrai, et le motif s'est renforcé : `constants.ts` documente pourquoi les déclarer avant de les brancher est précisément ce qui a produit un paramètre fantôme                             |
 
 Ce qui a été **retenu** du CDC et ne se lit pas dans le code : la frontière primitive/renderer et son
 motif (les plugins appellent `notify()` avant `boot()`), la raison du choix in-core plutôt que

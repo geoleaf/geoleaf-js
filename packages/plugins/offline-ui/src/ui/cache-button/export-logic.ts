@@ -285,19 +285,21 @@ const ExportLogic = {
      * @returns {Promise<Array>} List of POIs
      */
     async getPendingPOIs() {
-        // 🛑 TÂCHE 4.10 — CE FILTRE LISAIT UN VOCABULAIRE QUE PLUS PERSONNE N'ÉCRIT, ET
-        // L'EXPORT NE RENDAIT DONC RIEN. Il gardait `entry.type === "add_poi" ||
-        // "update_poi"` sur `getPendingSyncQueue()`. Depuis 4.4b/4.7, `addpoi` et `editor`
-        // passent tous deux par `Storage.applyEdit()` → outbox, et plus rien n'écrit ces
-        // types dans `sync_queue` : l'export sortait donc une liste vide, en silence,
-        // pendant que les vraies saisies dormaient dans l'outbox.
+        // 🛑 THIS FILTER READ A VOCABULARY NOBODY WRITES ANY MORE, SO THE EXPORT
+        // RETURNED NOTHING. It kept `entry.type === "add_poi" || "update_poi"` on
+        // `getPendingSyncQueue()`. Since the writers moved, `addpoi` and `editor`
+        // both go through `Storage.applyEdit()` → outbox, and nothing writes those
+        // types into `sync_queue` any more: the export produced an empty list,
+        // silently, while the real captures slept in the outbox.
         //
-        // ⚠️ Le second filtre (`status !== "synced"`) était bien là et il était JUSTE — mais
-        // il venait APRÈS un filtre de type qui avait déjà tout écarté. Un prédicat correct
-        // placé derrière un prédicat mort ne s'exécute jamais, et rien ne le signale.
+        // ⚠️ The second filter (`status !== "synced"`) was there and it was RIGHT —
+        // but it came AFTER a type filter that had already discarded everything. A
+        // correct predicate placed behind a dead one never runs, and nothing flags
+        // it.
         //
-        // La question de l'export n'est plus « quels POI » mais « quel TRAVAIL est encore dû
-        // au serveur » — l'outbox le sait, et le core la joint à son entité.
+        // The export's question is no longer "which POIs" but "what WORK is still
+        // owed to the server" — the outbox knows, and the core joins it to its
+        // entity.
         if (!(await ensureEngineReady())) return [];
         try {
             const pending = await StorageContract.DB.listPendingEdits();
@@ -311,9 +313,9 @@ const ExportLogic = {
                 _syncTimestamp: edit.createdAt,
                 _layerId: edit.layerId,
                 _localId: edit.localId,
-                // La géométrie part avec : un export de saisies de terrain qui les rendrait
-                // sans position ne serait pas une sauvegarde, ce que S3 avait déjà corrigé
-                // une fois sur la charge attributaire.
+                // The geometry goes along: an export of field captures rendering
+                // them position-less would not be a backup — already fixed once for
+                // the attribute payload.
                 _geometry: (edit.feature as { geometry?: unknown } | null)?.geometry ?? null,
             }));
         } catch (error) {
@@ -387,18 +389,20 @@ const ExportLogic = {
      * Clear local POI cache
      */
     async clearLocalPOIs() {
-        // 🛑 TÂCHE 4.10 / B-115 — CE GESTE A CHANGÉ DE CIBLE, ET C'EST LE FOND DE LA
-        // CORRECTION. Il supprimait des entrées de `sync_queue` filtrées sur `entry.type`,
-        // SANS jamais lire `entry.status` : une saisie jamais poussée était détruite au même
-        // titre qu'une entrée synchronisée. Puis 4.4b a déplacé les écrivains vers l'outbox,
-        // et le même filtre s'est mis à ne plus rien supprimer du tout — le défaut est passé
-        // de « il détruit trop » à « il ne fait plus rien », sans que rien ne rougisse.
+        // 🛑 THIS GESTURE CHANGED TARGET, AND THAT IS THE HEART OF THE FIX. It
+        // deleted `sync_queue` entries filtered on `entry.type`, WITHOUT ever
+        // reading `entry.status`: a never-pushed capture was destroyed on the same
+        // footing as a synchronised entry. Then the writers moved to the outbox,
+        // and the same filter started deleting nothing at all — the defect went
+        // from "it destroys too much" to "it does nothing any more", with nothing
+        // turning red.
         //
-        // Depuis 4.1, le partage est net : le magasin `features` EST le cache (chaque entité
-        // `synced` se re-rapatrie par `pullLayer()`), et l'outbox EST le travail, qui n'a
-        // aucune autre copie. Un bouton qui annonce « vider le cache » ne touche donc que le
-        // premier — et il ANNONCE ce qu'il préserve, parce qu'un décompte affiché est une
-        // assertion testable là où un filtre silencieux se re-supprime au prochain refactor.
+        // The split is now clean: the `features` store IS the cache (every
+        // `synced` entity re-pulls via `pullLayer()`), and the outbox IS the work,
+        // which has no other copy. A button announcing "clear the cache" thus
+        // touches only the former — and it ANNOUNCES what it preserves, because a
+        // displayed tally is a testable assertion where a silent filter
+        // re-deletes itself at the next refactor.
         if (!(await ensureEngineReady())) return;
 
         let cached = 0;
@@ -412,10 +416,10 @@ const ExportLogic = {
         }
 
         const ok = await confirmDialog({
-            // ⚠️ La confirmation d'origine parlait de « vider le cache des POI locaux » sans
-            // dire ce qu'elle détruisait — vocabulaire de CACHE, c'est-à-dire de données
-            // re-téléchargeables, appliqué à du travail de terrain. Le décompte lève
-            // exactement cette ambiguïté, et la cible mesurée le rend enfin vrai.
+            // ⚠️ The original confirmation spoke of "clearing the local POI cache"
+            // without saying what it destroyed — CACHE vocabulary, i.e.
+            // re-downloadable data, applied to field work. The tally lifts exactly
+            // that ambiguity, and the measured target finally makes it true.
             message: `${t("storage.confirm.clearPois.message")}\n\n${t(
                 "storage.confirm.clearPois.detail"
             )

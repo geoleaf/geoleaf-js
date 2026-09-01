@@ -1,12 +1,12 @@
 /**
- * S1.4 — notify.primitive.ts unit tests.
+ * notify.primitive.ts unit tests.
  * Tests: file before renderer, flush, console fallback, registerRenderer idempotency.
  */
 "use strict";
 
 import { createNotifyPrimitive } from "../../src/utils/notify/notify.primitive.js";
 
-describe("notify.primitive (S1.4)", () => {
+describe("notify.primitive", () => {
     let primitive;
 
     beforeEach(() => {
@@ -127,7 +127,7 @@ describe("notify.primitive (S1.4)", () => {
         expect(() => primitive.flush()).not.toThrow();
     });
 
-    // ── Renderer qui lève une exception ─────────────────────────────────────
+    // ── Renderer that throws an exception ───────────────────────────────────
 
     it("renderer qui lève une exception → fallback console (notify direct)", () => {
         const faultyRenderer = vi.fn().mockImplementation(() => {

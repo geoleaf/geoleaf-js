@@ -25,7 +25,7 @@ const GeoLocationState = vi.hoisted(() => ({
 vi.mock("../../src/capabilities/geolocation/state.js", () => ({ GeoLocationState }));
 
 const mockRemoveLayer = vi.fn();
-// CAPACITÉS S3.4 — the former `mockCircle` / `mockMarker` doubles lived here. They were
+// The former `mockCircle` / `mockMarker` doubles lived here. They were
 // `vi.fn()`s never passed to any `vi.mock()`, left over from the Leaflet era (`addTo`,
 // `getLatLng`), so nothing could ever call them: every `expect(mockCircle).not
 // .toHaveBeenCalled()` was true by construction. The circle and marker now go through the
@@ -404,7 +404,7 @@ describe("ui/filter-panel/proximity", () => {
         expect(map.addGeoJSONLayer).not.toHaveBeenCalled();
     });
 
-    // CAPACITÉS S3.4 — this case used to assert nothing. Its `markerInstance` was reached
+    // This case used to assert nothing. Its `markerInstance` was reached
     // through `mockMarker`, a `vi.fn()` never wired to any `vi.mock`, and the map double
     // exposed no way to resolve a native marker — so `_resolveNativeMarker` always returned
     // null, `dragendCb` stayed undefined and the three assertions sat behind an

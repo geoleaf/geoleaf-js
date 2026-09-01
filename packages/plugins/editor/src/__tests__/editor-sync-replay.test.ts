@@ -1,22 +1,23 @@
 /**
- * `editor-sync-replay` — APRÈS la migration vers l'`outbox` du core (tâche 4.9).
+ * `editor-sync-replay` — AFTER the migration to the core's `outbox`.
  *
- * 🛑 CE FICHIER A CHANGÉ DE SUJET, ET C'EST LÉGITIME PARCE QUE SON SUJET A DÉMÉNAGÉ.
- * Il éprouvait le rejeu PAR ENTRÉE : lecture de la charge dans `payload`, dispatch sur le
- * vocabulaire `editor.*`, marquage `failed` sans perte, erreurs de parsing. Ces comportements
- * vivent maintenant dans le drain du core, où ils sont couverts par
- * `packages/core/__tests__/capabilities/offline/push-engine.test.js` — 14 tests, 8 mutations
- * vues rouges, dont « un 500 laisse l'entrée en file, en `failed` — qui n'est pas terminal ».
+ * 🛑 THIS FILE CHANGED SUBJECT, AND THAT IS LEGITIMATE BECAUSE ITS SUBJECT MOVED.
+ * It exercised the PER-ENTRY replay: reading the payload from `payload`,
+ * dispatching on the `editor.*` vocabulary, lossless `failed` marking, parsing
+ * errors. Those behaviours now live in the core's drain, where they are
+ * covered by `packages/core/__tests__/capabilities/offline/push-engine.test.js`
+ * — 14 tests, 8 mutations seen red, including "a 500 leaves the entry queued,
+ * in `failed` — which is not terminal".
  *
- * ⚠️ La distinction avec `addpoi` mérite d'être écrite, parce qu'elle a décidé du traitement.
- * Là-bas, les tests pilotaient des adaptateurs ENCORE VIVANTS via `syncDirect` : ils ont été
- * re-pointés, pas supprimés. Ici la fonction `_replayEntry` a disparu, et l'adaptateur REST
- * qu'elle utilisait garde ses propres tests (`rest-adapter.test.ts`,
- * `collection-rest-adapter.test.ts`) plus son chemin vivant en ligne (`auto-adapter`). Rien
- * n'est découvert.
+ * ⚠️ The distinction with `addpoi` deserves writing down, because it decided
+ * the treatment. There, the tests drove STILL-LIVE adapters via `syncDirect`:
+ * they were re-pointed, not deleted. Here the `_replayEntry` function is gone,
+ * and the REST adapter it used keeps its own tests (`rest-adapter.test.ts`,
+ * `collection-rest-adapter.test.ts`) plus its live online path
+ * (`auto-adapter`). Nothing is left uncovered.
  *
- * Ce qui est éprouvé ici, c'est ce que ce module fait ENCORE : lire l'outbox, déléguer le
- * drain, et prévenir l'interface.
+ * What is exercised here is what this module STILL does: read the outbox,
+ * delegate the drain, and notify the interface.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
@@ -29,7 +30,7 @@ import {
     destroySyncReplay,
 } from "../persistence/editor-sync-replay.js";
 
-/** Façade de stockage sous contrôle du test : l'outbox en lecture, le drain en écriture. */
+/** Storage facade under test control: the outbox for reads, the drain for writes. */
 function mountStorage(entries: unknown[], report = { attempted: 0, pushed: 0, failed: 0 }) {
     const pushOutbox = vi.fn().mockResolvedValue({ ...report, conflicts: 0, refused: null });
     (globalThis as Record<string, unknown>).GeoLeaf = {
@@ -51,10 +52,10 @@ describe("editor-sync-replay — lecture de l'outbox", () => {
     });
 
     it("liste TOUT ce qui est dû au serveur, sans filtrer par producteur", async () => {
-        // 🛑 L'INVERSE DE CE QUE CE MODULE FAISAIT. Il gardait les entrées `editor.*` et
-        // écartait les autres — un plugin qui ne reconnaissait que « les siennes » dans une
-        // file que deux plugins écrivaient. L'`outbox` ne parle qu'un vocabulaire, et un
-        // utilisateur qui demande « qu'est-ce qui n'est pas parti ? » veut la réponse complète.
+        // 🛑 THE OPPOSITE OF WHAT THIS MODULE DID. It kept the `editor.*`
+        // entries and discarded the rest — a plugin recognising only "its own"
+        // in a queue two plugins wrote. The `outbox` speaks one vocabulary,
+        // and a user asking "what has not left yet?" wants the complete answer.
         mountStorage([
             { id: "a", kind: "create", layerId: "l1", localId: "x", state: "pending" },
             { id: "b", kind: "update", layerId: "l2", localId: "y", state: "failed" },
@@ -98,9 +99,10 @@ describe("editor-sync-replay — le drain est délégué au core", () => {
 
         expect(pushOutbox).toHaveBeenCalled();
         expect(onChange).toHaveBeenCalled();
-        // ⚠️ Cet événement a un ÉCOUTEUR (`entry.ts` → `_onQueueChanged`, le badge d'attente).
-        // Une première rédaction de 4.9 le supprimait en affirmant qu'il n'en avait aucun —
-        // affirmation faite AVANT le grep qui l'a démentie. Le badge serait resté figé.
+        // ⚠️ This event has a LISTENER (`entry.ts` → `_onQueueChanged`, the
+        // pending badge). A first draft deleted it asserting it had none — an
+        // assertion made BEFORE the grep that disproved it. The badge would
+        // have stayed frozen.
         expect(flushed).toHaveBeenCalled();
         document.removeEventListener("geoleaf:editor:feature-sync-flushed", flushed);
     });
@@ -121,10 +123,11 @@ describe("editor-sync-replay — le drain est délégué au core", () => {
 });
 
 /**
- * 🛑 `drainOutbox` a été EXTRAIT de `flushNow` à la tâche 5.1-b, et le motif est le VERROU.
- * Le handler `"poi"` du seam `Sync` draine lui aussi, pour le bouton d'`offline-ui`. S'il
- * appelait `pushOutbox` de son côté, `_flushing` — qui ne garde que ce qui passe par ici —
- * ne verrait pas ses appels, et deux drains pourraient se recouvrir sur la même outbox.
+ * 🛑 `drainOutbox` was EXTRACTED from `flushNow`, and the motive is the LOCK.
+ * The `Sync` seam's `"poi"` handler drains too, for `offline-ui`'s button. If
+ * it called `pushOutbox` on its own side, `_flushing` — which only guards what
+ * goes through here — would not see its calls, and two drains could overlap
+ * on the same outbox.
  */
 describe("drainOutbox — le point d'entrée unique du drain (5.1-b)", () => {
     beforeEach(() => {
@@ -173,18 +176,18 @@ describe("drainOutbox — le point d'entrée unique du drain (5.1-b)", () => {
         };
 
         const first = drainOutbox();
-        const second = drainOutbox(); // pendant que le premier est en vol
+        const second = drainOutbox(); // while the first is in flight
         release(null);
         const [a, b] = await Promise.all([first, second]);
 
         expect(pushOutbox).toHaveBeenCalledTimes(1);
-        // Le second est refusé, et il le dit — il ne rend pas un faux succès.
+        // The second is refused, and says so — it does not return a fake success.
         expect([a, b].filter((r) => r === null)).toHaveLength(1);
     });
 
     it("🛑 le drain relâche son verrou même si pushOutbox JETTE", async () => {
-        // Sans le `finally`, un échec réseau bloquerait tout rejeu ultérieur jusqu'au
-        // rechargement de la page — une saisie de terrain resterait en file sans recours.
+        // Without the `finally`, a network failure would block any later replay
+        // until the page reloads — a field capture would sit queued with no recourse.
         const pushOutbox = vi
             .fn()
             .mockRejectedValueOnce(new Error("boom"))

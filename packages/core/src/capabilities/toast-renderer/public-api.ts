@@ -38,7 +38,7 @@ import type { NotifyType, NotifyOptions, NotifyStatus } from "./types.js";
  *
  * The union is written inline on each signature rather than exported as a named alias —
  * a public type with no consumer would be a contract invented for its own sake
- * (same rule as ARCHI S12.2; the `check-orphan-exports` gate enforces it).
+ * (the `check-orphan-exports` gate enforces it).
  */
 
 /**

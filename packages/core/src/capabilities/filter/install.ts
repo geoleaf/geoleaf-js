@@ -13,7 +13,7 @@
  * (`assignApiFacades`, B11): `Filter` — the capability facade (generic panel, permalink
  * contract).
  *
- * API publique S4.5 — `Filters` (plural) is GONE. It carried one method,
+ * Public-API review — `Filters` (plural) is GONE. It carried one method,
  * `filterRouteList`, which had zero caller anywhere in the repo outside its own
  * definition, and its one-letter distance from `Filter` (8 members, 5 runtime readers,
  * a permalink serialisation contract) was an integration trap: the typed one was not on

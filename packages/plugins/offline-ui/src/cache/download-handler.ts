@@ -261,6 +261,15 @@ const DownloadHandler = {
      * @private
      */
     async _checkQuota(totalSize: number): Promise<boolean> {
+        // ⚠️ Read RAW rather than through `StorageContract.CacheManager.getStorageQuota()`,
+        // which this package already uses elsewhere — and the reason is the `null` below, not
+        // an oversight. That reader returns zeros when the browser cannot answer, which is
+        // indistinguishable from "quota nought". Here the two must stay apart: an unreadable
+        // quota proceeds, a quota of zero refuses. Routing this through it would turn every
+        // unreadable quota into a refused download.
+        //
+        // 🛑 And the measurement is ORIGIN-WIDE in every one of these readers: `availableSpace`
+        // below is what the whole origin has left, not what this cache may claim.
         let quotaInfo: StorageEstimate | null = null;
         try {
             if (navigator.storage && navigator.storage.estimate) {

@@ -126,12 +126,12 @@ describe("utils/dom-helpers.ts — createElement / $create", () => {
 
 // ── config.ts ───────────────────────────────────────────────────
 
-// ⚠️ Ces trois cas prennent une clé pour TÉMOIN du mécanisme de fusion — ils ne testent pas la
-// clé elle-même. Le témoin était `pageSize` jusqu'au 29/07/2026 ; c'était le plus mauvais choix
-// possible, puisque cette clé n'a **aucun site de lecture** (B-71) : la suite prouvait donc que la
-// fusion matérialise correctement une valeur que rien ne consomme. Témoin remplacé par
-// `defaultHeight`, qui est lu par le panneau — un test de fusion doit s'appuyer sur une clé dont la
-// disparition se verrait ailleurs.
+// ⚠️ These three cases take one key as a WITNESS of the merge mechanism —
+// they do not test the key itself. The witness was `pageSize` until
+// 29/07/2026; the worst possible choice, since that key has **no read site**:
+// the suite thus proved the merge correctly materialises a value nothing
+// consumes. Witness replaced by `defaultHeight`, which the panel reads — a
+// merge test must lean on a key whose disappearance would show elsewhere.
 describe("config.ts — getPluginConfig", () => {
     it("returns the defaults when no override is configured (Config.get → {})", () => {
         // No Config wired → coreConfigGet returns its default {} → ?? {} branch.

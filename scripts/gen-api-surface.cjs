@@ -1,79 +1,84 @@
 #!/usr/bin/env node
 /*!
- * API-SURFACE : le manifeste de la surface publique dérivée, et sa gate de fraîcheur.
+ * API-SURFACE: the manifest of the derived public surface, and its freshness gate.
  *
- * ## Le défaut que cette gate ferme
+ * ## The defect this gate closes
  *
- * La référence d'API TypeDoc était un **fossile** : sa sortie datait du 25/07, le core avait
- * bougé jusqu'au 26/07, et `docs:api` n'était câblé **nulle part** — ni `package.json` racine,
- * ni `ci.yml`, ni `ci-local.cjs`. Pendant ce temps `API_REFERENCE.md` continuait d'être édité à
- * la main. Voilà toute la divergence entre les deux références du dépôt, et rien ne la disait.
+ * The TypeDoc API reference was a **fossil**: its output dated from 07-25, the core
+ * had moved until 07-26, and `docs:api` was wired **nowhere** — not the root
+ * `package.json`, not `ci.yml`, not `ci-local.cjs`. Meanwhile `API_REFERENCE.md` kept
+ * being edited by hand. That was the whole divergence between the repo's two
+ * references, and nothing said so.
  *
- * ## Pourquoi un MANIFESTE, et pas le rendu committé
+ * ## Why a MANIFEST, and not the committed rendering
  *
- * L'Étape 3 de la refonte V3 avait décidé « la sortie est committée, une gate échoue si elle
- * diverge » — sur le modèle de `docs:tree:check`, le seul régime qui ait tenu ici. **Mesuré, ce
- * geste est infaisable sur le rendu**, pour deux raisons indépendantes :
+ * The V3 overhaul had decided "the output is committed, a gate fails if it diverges" —
+ * on the `docs:tree:check` model, the only regime that has held here. **Measured, that
+ * move is infeasible on the rendering**, for two independent reasons:
  *
- *   1. **Le rendu n'a pas de point fixe.** `typedoc/…/converter/utils/repository.js` fait
- *      `git rev-parse HEAD` et grave le SHA dans la sortie — relevé **29 fichiers sur 54**. Le
- *      SHA du commit n'existe pas quand on écrit la sortie qu'on veut y mettre : la gate
- *      sortirait rouge **au commit même qui vient de régénérer**.
- *   2. **Le volume.** `expand` sur le seul core produit **1 806 fichiers / 24 Mo**, à **une
- *      ligne de HTML par fichier**. Un diff inrevuable par construction.
+ *   1. **The rendering has no fixed point.** `typedoc/…/converter/utils/repository.js`
+ *      runs `git rev-parse HEAD` and engraves the SHA in the output — census: **29
+ *      files out of 54**. The commit's SHA does not exist when writing the output one
+ *      wants to put in it: the gate would come out red **at the very commit that just
+ *      regenerated**.
+ *   2. **The volume.** `expand` on the core alone produces **1,806 files / 24 MB**, at
+ *      **one line of HTML per file**. A diff unreviewable by construction.
  *
- * Donc on gate le **modèle**, pas le rendu — et c'est la leçon que
- * `generate-docs-tree.cjs` porte déjà par écrit : comparer le RENDU a laissé son `--check` vert
- * pendant que **31 annotations sur 129** étaient mortes, parce qu'il comparait ce qui est
- * affiché au lieu de ce qui est décrit.
+ * So we gate the **model**, not the rendering — and it is the lesson
+ * `generate-docs-tree.cjs` already carries in writing: comparing the RENDERING left
+ * its `--check` green while **31 annotations out of 129** were dead, because it
+ * compared what is displayed instead of what is described.
  *
- * Le manifeste satisfait les trois propriétés du régime `docs:tree` :
- *   - **fonction pure de la source** — ni SHA, ni date, ni chemin absolu (assertés au run) ;
- *   - **revuable** — une ligne par réflexion, triée : un `@param` renommé, un export ajouté ou
- *     un TSDoc réécrit produisent **une ligne de diff** ;
- *   - **soustrait aux formateurs** — voir le choix de l'extension ci-dessous.
+ * The manifest satisfies the `docs:tree` regime's three properties:
+ *   - **pure function of the source** — no SHA, no date, no absolute path (asserted
+ *     at run time);
+ *   - **reviewable** — one line per reflection, sorted: a renamed `@param`, an added
+ *     export or a rewritten TSDoc produce **one diff line**;
+ *   - **out of the formatters' reach** — see the extension choice below.
  *
- * ## Trois choix de forme, chacun contre un mode d'échec précis
+ * ## Three shape choices, each against a precise failure mode
  *
- * **`.txt` et non `.md`.** Un `.md` sous `docs/reference/` entrerait dans le scope
- * `reference/` de `check-dead-links.cjs` **et** serait réécrit par le glob `"*.{json,md}"` de
- * `lint-staged` à chaque commit — donc gate rouge en permanence, sans qu'une source ait bougé.
- * C'est exactement le défaut que `.prettierignore` documente pour `ARBORESCENCE_QUALIFIEE.md`.
- * `.txt` évite les deux sans ajouter une ligne d'exception.
+ * **`.txt` and not `.md`.** A `.md` under `docs/reference/` would enter
+ * `check-dead-links.cjs`'s `reference/` scope **and** be rewritten by `lint-staged`'s
+ * `"*.{json,md}"` glob at every commit — hence a permanently red gate, without a
+ * source moving. Exactly the defect `.prettierignore` documents for
+ * `ARBORESCENCE_QUALIFIEE.md`. `.txt` avoids both without adding an exception line.
  *
- * **Le hash de commentaire est NORMALISÉ en blancs.** `lint-staged` fait tourner
- * `prettier --write` sur `packages/**\/src/**\/*.{js,ts}` : il **re-wrappe** les blocs TSDoc
- * pendant le hook. Hacher le texte brut aurait donc créé une nouvelle instance de **B-27** — la
- * gate périmée par le commit qui la satisfait. En écrasant les suites de blancs, un re-wrap ne
- * change rien et une **réécriture** change tout : c'est précisément la discrimination voulue.
+ * **The comment hash is whitespace-NORMALIZED.** `lint-staged` runs
+ * `prettier --write` on `packages/**\/src/**\/*.{js,ts}`: it **re-wraps** TSDoc
+ * blocks during the hook. Hashing the raw text would thus have created a new instance
+ * of the re-wrap defect — the gate staled by the commit that satisfies it. By
+ * collapsing whitespace runs, a re-wrap changes nothing and a **rewrite** changes
+ * everything: precisely the wanted discrimination.
  *
- * **Le manifeste vit hors des formes d'artefact généré.** `docs/reference/` ne matche
- * aucune entrée de `GENERATED_DIR_FORMS` (`docs/api`, `docs/public`, `docs-dist`) — donc
- * `.gitignore`, les checks 4/5/5c de `verify-repo-hygiene` et `check-package-files` restent
- * **intacts**. C'est ce qui permet de gater la fraîcheur SANS rouvrir l'arbitrage 4.8 (le
- * `!docs/api/` du `files[]` reste, purge refusée — ligne au §Journal des décisions de la
- * roadmap).
+ * **The manifest lives outside the generated-artifact shapes.** `docs/reference/`
+ * matches no `GENERATED_DIR_FORMS` entry (`docs/api`, `docs/public`, `docs-dist`) —
+ * so `.gitignore`, `verify-repo-hygiene`'s checks 4/5/5c and `check-package-files`
+ * stay **intact**. That is what allows gating freshness WITHOUT reopening the settled
+ * arbitration (the `files[]`'s `!docs/api/` stays, purge refused — a recorded
+ * decision).
  *
- * ## Ce que cette gate protège, en plus de la fraîcheur
+ * ## What this gate protects, besides freshness
  *
- * Le périmètre du core vient de `packages/core/typedoc.json`, que TypeDoc lit lui-même pour ce
- * paquet (une config de paquet gagne sur `packageOptions`). **Conséquence utile : rétrécir ce
- * fichier fait rougir cette gate.** Si quelqu'un ramenait `entryPoints` à
- * `["src/bundle-esm-entry.ts"]` en `resolve`, le manifeste s'effondrerait de ~11 600 réflexions
- * à ~1 100 et `--check` le dirait. La configuration élargie n'est donc pas protégée par un
- * commentaire — elle est protégée par une mesure. ⚠️ Et elle ne peut PAS porter de commentaire :
- * TypeDoc refuse les clés inconnues (`_comment` → *Unknown option*), et
- * `generated-artifacts.cjs` fait un `JSON.parse` strict, donc pas de JSONC non plus.
+ * The core's perimeter comes from `packages/core/typedoc.json`, which TypeDoc itself
+ * reads for that package (a package config wins over `packageOptions`). **Useful
+ * consequence: shrinking that file makes this gate go red.** If someone brought
+ * `entryPoints` back to `["src/bundle-esm-entry.ts"]` in `resolve`, the manifest
+ * would collapse from ~11,600 reflections to ~1,100 and `--check` would say so. The
+ * widened configuration is thus not protected by a comment — it is protected by a
+ * measurement. ⚠️ And it CANNOT carry a comment: TypeDoc refuses unknown keys
+ * (`_comment` → *Unknown option*), and `generated-artifacts.cjs` does a strict
+ * `JSON.parse`, so no JSONC either.
  *
- * ## Ce qu'elle NE juge PAS
+ * ## What it does NOT judge
  *
- * La véracité des phrases, comme partout ici. Un TSDoc peut mentir : le manifeste dira
- * seulement que le mensonge n'a pas changé depuis le dernier commit. Et il ne juge pas la
- * COMPLÉTUDE de la documentation — c'est TSD-05, dans `check-tsdoc-conformity.cjs`.
+ * The truthfulness of sentences, as everywhere here. A TSDoc can lie: the manifest
+ * will only say the lie has not changed since the last commit. And it does not judge
+ * the documentation's COMPLETENESS — that is TSD-05, in `check-tsdoc-conformity.cjs`.
  *
  * Usage:
- *   node scripts/gen-api-surface.cjs            # (re)génère le manifeste
- *   node scripts/gen-api-surface.cjs --check     # gate : exit 1 si le manifeste est périmé
+ *   node scripts/gen-api-surface.cjs            # (re)generates the manifest
+ *   node scripts/gen-api-surface.cjs --check     # gate: exit 1 if the manifest is stale
  *   node scripts/gen-api-surface.cjs --verbose
  */
 
@@ -90,32 +95,43 @@ const OUT_FILE = docsPaths.reference("API_SURFACE.txt");
 const CHECK = process.argv.includes("--check");
 const VERBOSE = process.argv.includes("--verbose");
 
-// TypeDoc n'est installé que sous le core — résolu par le registre, jamais par un
-// `packages/core` en dur : un chemin en dur ne casse pas au déplacement, il cesse
-// silencieusement de matcher, et cette gate sortirait verte en n'ayant rien converti.
+// TypeDoc is a core devDependency — resolved as Node would FROM the core
+// (`require.resolve` with `paths`), never by a physical path. ⚠️ This constant joined
+// `node_modules/typedoc/dist/index.js` under the core's directory until 2026-08-24:
+// the comment claimed "never a hard-coded path", but the suffix remained an
+// assumption about npm's LAYOUT — true while incremental installs left a nested copy,
+// false at the first clean `npm ci`, which hoists typedoc to the root. The gate then
+// threw "not found" on an installed package. The resolution below walks the ancestor
+// node_modules, like a core `import`.
 const CORE = registry.requireByDirName("core");
-const TYPEDOC_ENTRY = path.join(CORE.absDir, "node_modules", "typedoc", "dist", "index.js");
+const TYPEDOC_ENTRY = (() => {
+    try {
+        return require.resolve("typedoc", { paths: [CORE.absDir] });
+    } catch {
+        return null;
+    }
+})();
 
 /**
- * Les répertoires de paquet à couvrir — **dérivés, jamais listés**.
+ * The package directories to cover — **derived, never listed**.
  *
- * Le critère est *ce qui est publié avec une surface d'API* : un paquet non `private`, qui
- * déclare une carte `exports`, et qui a un `src/`. Il rend aujourd'hui le core, les 13
- * plugins et `@geoleaf/field-renderer` — **15 paquets**.
+ * The criterion is *what is published with an API surface*: a non-`private` package
+ * that declares an `exports` map and has a `src/`. It renders today the core, the 13
+ * plugins and `@geoleaf/field-renderer` — **15 packages**.
  *
- * ⚠️ **Le premier jet filtrait sur `dir.includes("packages/plugins/")` plus le core, et il
- * OUBLIAIT `field-renderer`** — un paquet publié dont la surface (391 lignes de manifeste)
- * n'était donc gatée par rien. C'est exactement la classe que `CLAUDE.md` décrit : un filtre de
- * chemin ne casse pas au déplacement, il **cesse silencieusement de matcher**, et la gate sort
- * verte en n'ayant pas scanné. Le défaut a été trouvé en amputant délibérément le périmètre
- * pour voir la gate rougir : elle a rendu le bon verdict pour la mauvaise raison, ce qui a fait
- * relire le prédicat. **Une mutation utile n'est pas seulement celle qui rougit.**
+ * ⚠️ **The first draft filtered on `dir.includes("packages/plugins/")` plus the core,
+ * and it FORGOT `field-renderer`** — a published package whose surface (391 manifest
+ * lines) was thus gated by nothing. Exactly the described class: a path filter does
+ * not break on a move, it **silently stops matching**, and the gate goes green having
+ * not scanned. The defect was found by deliberately amputating the perimeter to see
+ * the gate go red: it rendered the right verdict for the wrong reason, which had the
+ * predicate re-read. **A useful mutation is not only the one that reddens.**
  *
- * `host-runtime` est `private: true` — consommé par les plugins, jamais publié sur npm, donc
- * hors surface livrée. `geoleaf-app` et `build-config` de même.
+ * `host-runtime` is `private: true` — consumed by the plugins, never published on
+ * npm, hence outside the shipped surface. `geoleaf-app` and `build-config` likewise.
  *
- * @returns {string[]} chemins absolus, triés — le tri rend le manifeste stable.
- * @throws {Error} si le prédicat ne rend plus rien, ou ne rend plus le core.
+ * @returns {string[]} absolute paths, sorted — sorting keeps the manifest stable.
+ * @throws {Error} if the predicate renders nothing anymore, or no longer the core.
  */
 function targets() {
     const dirs = [];
@@ -129,9 +145,10 @@ function targets() {
         dirs.push(pkg.absDir);
     }
     dirs.sort();
-    // Anti-périmètre-amputé : un prédicat qui ne rend plus rien produirait un manifeste vide
-    // se comparant à lui-même ; s'il ne rend plus le core, il ne rend plus l'essentiel. Dans
-    // les deux cas la gate refuse de conclure. (Les deux branches vues jeter par mutation.)
+    // Anti-amputated-perimeter: a predicate rendering nothing would produce an empty
+    // manifest comparing to itself; if it no longer renders the core, it no longer
+    // renders the essential. In both cases the gate refuses to conclude. (Both
+    // branches seen throwing by mutation.)
     if (dirs.length === 0 || !dirs.includes(CORE.absDir)) {
         throw new Error(
             `[API-SURFACE] le prédicat de périmètre rend ${dirs.length} paquet(s) et ` +
@@ -144,10 +161,10 @@ function targets() {
 }
 
 /**
- * Le texte documentaire d'une réflexion, normalisé en blancs.
+ * A reflection's documentary text, whitespace-normalized.
  *
- * @param {object} reflection - La réflexion TypeDoc.
- * @returns {string} texte concaténé, suites de blancs écrasées ; `""` si aucun commentaire.
+ * @param {object} reflection - The TypeDoc reflection.
+ * @returns {string} concatenated text, whitespace runs collapsed; `""` if no comment.
  */
 function commentText(reflection) {
     const c = reflection.comment;
@@ -158,18 +175,18 @@ function commentText(reflection) {
         parts.push(t.tag || "");
         for (const p of t.content || []) if (p.text) parts.push(p.text);
     }
-    // ⚠️ L'écrasement des blancs est load-bearing : voir le § du haut sur `lint-staged`.
+    // ⚠️ The whitespace collapse is load-bearing: see the top § on `lint-staged`.
     return parts.join(" ").replace(/\s+/g, " ").trim();
 }
 
-/** Empreinte courte et stable du texte documentaire, ou `-` s'il n'y en a pas. */
+/** Short, stable fingerprint of the documentary text, or `-` if there is none. */
 function docFingerprint(reflection) {
     const t = commentText(reflection);
     if (!t) return "-";
     return crypto.createHash("sha256").update(t).digest("hex").slice(0, 12);
 }
 
-/** L'en-tête du manifeste — STATIQUE, jamais de date ni de compteur. */
+/** The manifest's header — STATIC, never a date nor a counter. */
 const BANNER = [
     "# API_SURFACE — manifeste de la surface publique dérivée par TypeDoc.",
     "#",
@@ -187,16 +204,17 @@ const BANNER = [
 ].join("\n");
 
 /**
- * Construit le contenu du manifeste.
+ * Builds the manifest content.
  *
  * @returns {Promise<{content: string, stats: object}>}
- * @throws {Error} si TypeDoc est absent, si un paquet ne convertit pas, ou si le manifeste
- *   sort vide — dans les trois cas la gate refuse de conclure plutôt que de sortir verte.
+ * @throws {Error} if TypeDoc is absent, if a package fails to convert, or if the
+ *   manifest comes out empty — in all three cases the gate refuses to conclude rather
+ *   than come out green.
  */
 async function build() {
-    if (!fs.existsSync(TYPEDOC_ENTRY)) {
+    if (TYPEDOC_ENTRY === null || !fs.existsSync(TYPEDOC_ENTRY)) {
         throw new Error(
-            `[API-SURFACE] TypeDoc introuvable sous ${path.relative(ROOT, TYPEDOC_ENTRY)} — ` +
+            "[API-SURFACE] TypeDoc irrésoluble depuis packages/core (require.resolve) — " +
                 "lancer `npm install`. La gate refuse de conclure sans son convertisseur."
         );
     }
@@ -209,7 +227,7 @@ async function build() {
         skipErrorChecking: true,
         logLevel: "Error",
         readme: "none",
-        excludeExternals: true, // sans lui, `Window` amène ~220 membres de lib.dom
+        excludeExternals: true, // without it, `Window` drags in ~220 lib.dom members
         excludePrivate: true,
         excludeInternal: true,
         exclude: ["**/__tests__/**", "**/__mocks__/**", "**/*.test.ts", "**/*.spec.ts"],
@@ -219,11 +237,12 @@ async function build() {
         {
             entryPoints: dirs,
             entryPointStrategy: "packages",
-            // Les 13 plugins n'ont AUCUN `typedoc.json`, et c'est voulu :
-            // `generated-artifacts.cjs#declaredOutputs()` JETTE pour tout `typedoc.json` de
-            // paquet sans `out`. En créer 13 créerait 13 erreurs au check 5c de l'hygiène.
-            // `packageOptions` les couvre sans un octet de config par plugin. Le core, lui,
-            // a sa config — TypeDoc la lit et elle GAGNE sur ces options.
+            // The 13 plugins have NO `typedoc.json`, and it is intended:
+            // `generated-artifacts.cjs#declaredOutputs()` THROWS for any package
+            // typedoc.json lacking `out`. Creating 13 would create 13 errors at the
+            // hygiene check 5c. `packageOptions` covers them without a byte of
+            // per-plugin config. The core, for its part, has its config — TypeDoc
+            // reads it and it WINS over these options.
             packageOptions: { ...shared, entryPoints: ["src"], entryPointStrategy: "expand" },
             name: "GeoLeaf API surface",
             ...shared,
@@ -251,10 +270,11 @@ async function build() {
     if (lines.length === 0) {
         throw new Error("[API-SURFACE] manifeste vide — voir ci-dessus, même motif.");
     }
-    // Anti-périmètre-rétréci : `packages` peut convertir MOINS de paquets qu'on lui en donne
-    // sans que ce soit une erreur de TypeDoc. Un périmètre amputé produirait un manifeste
-    // plus court, cohérent avec lui-même, et la gate resterait verte sur ce qu'elle ne
-    // regarde plus. C'est le mode d'échec que `probe-gate-visibility.cjs` traque ailleurs.
+    // Anti-shrunken-perimeter: `packages` mode can convert FEWER packages than given
+    // without it being a TypeDoc error. An amputated perimeter would produce a
+    // shorter manifest, coherent with itself, and the gate would stay green on what
+    // it no longer looks at. The failure mode `probe-gate-visibility.cjs` hunts
+    // elsewhere.
     if (modules.length !== dirs.length) {
         throw new Error(
             `[API-SURFACE] ${modules.length} paquet(s) converti(s) pour ${dirs.length} ` +
@@ -294,8 +314,8 @@ async function main() {
         console.log("─".repeat(width));
         return 1;
     }
-    // Comparaison d'OCTETS sur le contenu construit en mémoire, jamais un re-parse : même
-    // patron que `generate-docs-tree.cjs` et `gen-config-reference.cjs`.
+    // BYTE comparison on the in-memory built content, never a re-parse: same pattern
+    // as `generate-docs-tree.cjs` and `gen-config-reference.cjs`.
     const onDisk = fs.readFileSync(OUT_FILE, "utf8");
     if (onDisk !== content) {
         const a = onDisk.split("\n");

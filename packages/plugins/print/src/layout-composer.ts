@@ -313,8 +313,7 @@ function _drawAnnotationsOverlay(
     const annotations =
         (
             getGeoLeaf()?.Measure as
-                | { getPrintableAnnotations?(): PrintableAnnotation[] }
-                | undefined
+                { getPrintableAnnotations?(): PrintableAnnotation[] } | undefined
         )?.getPrintableAnnotations?.() ?? [];
     if (annotations.length > 0) {
         drawAnnotations(ctx, mapPx, opts.bbox, annotations, dpi);

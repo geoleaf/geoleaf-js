@@ -101,10 +101,10 @@ function _makeFeature(lngLat: [number, number]): MeasureFeature {
 // ---------------------------------------------------------------------------
 
 function _buildEl(feature: MeasureFeature): HTMLDivElement {
-    const el = _el("div", "gl-measure-annot-tooltip") as HTMLDivElement;
+    const el = _el("div", "gl-measure-annot-tooltip");
     el.style.position = "absolute";
-    el.style.width = `${(feature.properties.widthPx as number | undefined) ?? 160}px`;
-    el.style.height = `${(feature.properties.heightPx as number | undefined) ?? 80}px`;
+    el.style.width = `${feature.properties.widthPx ?? 160}px`;
+    el.style.height = `${feature.properties.heightPx ?? 80}px`;
     const textEl = _el("div");
     textEl.textContent = (feature.properties.label as string) ?? "";
     el.appendChild(textEl);
@@ -124,8 +124,8 @@ function _enterEditMode(id: string): void {
     // got us here is also the only "selection" gesture a finger has.
     entry._syncDel?.();
 
-    entry.el.style.width = `${(entry.feature.properties.widthPx as number | undefined) ?? 160}px`;
-    entry.el.style.height = `${(entry.feature.properties.heightPx as number | undefined) ?? 80}px`;
+    entry.el.style.width = `${entry.feature.properties.widthPx ?? 160}px`;
+    entry.el.style.height = `${entry.feature.properties.heightPx ?? 80}px`;
     const ta = _el("textarea");
     ta.value = (entry.feature.properties.label as string) ?? "";
     ta.placeholder = _getLabel("measure.annotation.tooltipPlaceholder");
@@ -174,7 +174,7 @@ function _commitEdit(id: string): void {
         delete entry._ro;
     }
 
-    const ta = entry.el.querySelector("textarea") as HTMLTextAreaElement | null;
+    const ta = entry.el.querySelector("textarea");
     entry.feature.properties.label = ta?.value ?? "";
 
     // Remove content nodes only — preserve button children (delete button)
@@ -182,7 +182,7 @@ function _commitEdit(id: string): void {
         .filter((n) => !(n instanceof HTMLButtonElement))
         .forEach((n) => n.remove());
     const textEl = _el("div");
-    textEl.textContent = (entry.feature.properties.label as string) ?? "";
+    textEl.textContent = entry.feature.properties.label ?? "";
     const delBtn = entry.el.querySelector("button");
     if (delBtn) entry.el.insertBefore(textEl, delBtn);
     else entry.el.appendChild(textEl);
@@ -255,7 +255,7 @@ function _attachInteraction(id: string): void {
             if (Math.abs(em.clientX - startX) > 3 || Math.abs(em.clientY - startY) > 3)
                 _dragged = true;
             if (!_dragged || !_map) return;
-            const rect = (_map.getContainer() as HTMLElement).getBoundingClientRect();
+            const rect = _map.getContainer().getBoundingClientRect();
             const ll = _map.unproject([em.clientX - rect.left, em.clientY - rect.top]);
             entry.lngLat = [ll.lng, ll.lat];
             (entry.feature.geometry as GeoJSON.Point).coordinates = [ll.lng, ll.lat];
@@ -383,16 +383,16 @@ export function clearAllOverlays(): void {
 export function getPrintableAnnotations(): PrintableAnnotation[] {
     const result: PrintableAnnotation[] = [];
     for (const entry of _overlays.values()) {
-        const widthPx = entry.feature.properties.widthPx as number | undefined;
-        const heightPx = entry.feature.properties.heightPx as number | undefined;
+        const widthPx = entry.feature.properties.widthPx;
+        const heightPx = entry.feature.properties.heightPx;
         result.push({
             kind: "tooltip",
             lngLat: [entry.lngLat[0], entry.lngLat[1]],
             text: (entry.feature.properties.label as string) ?? "",
             anchor: "bottom",
-            // Le defaut de ces deux dimensions (`?? 160`) appartient au plugin PRINT, pas a
-            // measure : le hisser ici ferait traverser une constante de mise en page a une
-            // frontiere de paquet. Insertion conditionnelle.
+            // The default of these two dimensions (`?? 160`) belongs to the
+            // PRINT plugin, not measure: hoisting it here would carry a layout
+            // constant across a package boundary. Conditional insertion.
             ...(widthPx !== undefined && { widthPx }),
             ...(heightPx !== undefined && { heightPx }),
         });

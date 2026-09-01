@@ -99,7 +99,7 @@ export interface MeasureConfig {
  * default crosshair and does nothing of its own. The plugin owns the envelope around these
  * callbacks — exclusive mode, cursor, and the cursor guard — because none of those three
  * primitives is reachable from `onActivate`, and a tool that skipped them would have its
- * cursor stolen by the core's hover handlers (B-253).
+ * cursor stolen by the core's hover handlers.
  */
 export interface MeasureTypeDef {
     /** CSS cursor shown while the tool is armed. Defaults to `"crosshair"`. */

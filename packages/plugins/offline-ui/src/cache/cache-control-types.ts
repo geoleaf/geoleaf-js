@@ -1,6 +1,6 @@
 /*!
  * GeoLeaf Storage - Cache Control Types
- * Shared contract + event vocabulary for the cache-control hub (S6.6).
+ * Shared contract + event vocabulary for the cache-control hub.
  * Leaf module: imports NOTHING from the cache-control sub-modules — the sub-modules
  * import their shared types from here instead of from the assembler, which is what
  * turns cache-control.ts into a plain assembler/view.

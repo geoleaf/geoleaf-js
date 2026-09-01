@@ -28,16 +28,23 @@
 
 import type {
     GeoLeafNormalizedMapEvent,
-    MaplibreEventListener,
+    MaplibreEventArg,
     MaplibreMap,
 } from "./maplibre-adapter-types.ts";
 import type { MapEvent } from "../../contracts/map-adapter.contract.ts";
 import { fromMapLibreLngLat } from "./maplibre-primitives.js";
 
-/** Caller handler → the events it is bound to → the wrapper actually attached. */
+/**
+ * Caller handler → the events it is bound to → the wrapper actually attached.
+ *
+ * ⚠️ The wrapper is typed on {@link MaplibreEventArg} — what MapLibre hands a listener —
+ * and NOT on `GeoLeafNormalizedMapEvent`, which is what it hands the CALLER. The two differ,
+ * and stating the engine's side here is what lets `map.on/off` take the wrapper without a
+ * cast. Normalisation happens inside the wrapper, where it belongs.
+ */
 export type EventWrapperMap = Map<
     (e: unknown) => void,
-    Map<MapEvent, (e: GeoLeafNormalizedMapEvent) => void>
+    Map<MapEvent, (e: MaplibreEventArg) => void>
 >;
 
 /** Creates an empty wrapper registry. One per adapter instance. */
@@ -59,10 +66,25 @@ export function attachWrappedHandler(
     event: MapEvent,
     handler: (e: unknown) => void
 ): void {
-    const wrapped = (e: GeoLeafNormalizedMapEvent) => {
-        if (e?.lngLat && !e.latlng) {
-            e.latlng = fromMapLibreLngLat(e.lngLat);
+    // The wrapper does NOT convert the event into the GeoLeaf shape — it names only the two
+    // fields it reads and writes. That distinction is what keeps the conversion honest AND
+    // free of `as unknown as`: since maplibre-gl 6.3.0 the native event is `Event`, a CLASS,
+    // and a class has no index signature, so it relates to `GeoLeafNormalizedMapEvent`
+    // (`[key: string]: unknown`) in neither direction — a two-step conversion would be the
+    // only way, and `check-nonnull-assertion-debt` rightly refuses one born here. Narrowing
+    // to `Pick<…>` drops the index signature from the target, and the cast becomes ordinary.
+    //
+    // ⚠️ Do NOT "fix" this by having `GeoLeafNormalizedMapEvent` extend the engine type: that
+    // contract describes what the ADAPTER hands GeoLeaf modules, and tying it to MapLibre
+    // would put the engine back into a type every consumer sees.
+    type PointerFields = Pick<GeoLeafNormalizedMapEvent, "lngLat" | "latlng">;
+
+    const wrapped = (e: MaplibreEventArg) => {
+        const ev = e as PointerFields;
+        if (ev?.lngLat && !ev.latlng) {
+            ev.latlng = fromMapLibreLngLat(ev.lngLat);
         }
+        // `e` and `ev` are the same object — the caller gets the native event, enriched.
         handler(e);
     };
 
@@ -73,7 +95,7 @@ export function attachWrappedHandler(
     }
     byEvent.set(event, wrapped);
 
-    map.on(event, wrapped as MaplibreEventListener);
+    map.on(event, wrapped);
 }
 
 /**
@@ -99,7 +121,7 @@ export function detachWrappedHandler(
     const byEvent = wrappers.get(handler);
     const wrapped = byEvent?.get(event) ?? handler;
 
-    map.off(event, wrapped as MaplibreEventListener);
+    map.off(event, wrapped);
 
     if (byEvent) {
         byEvent.delete(event);

@@ -1,14 +1,14 @@
 /**
- * `types/list.ts` et `types/longtext.ts` — couverture des branches (backlog R.2).
+ * `types/list.ts` and `types/longtext.ts` — branch coverage.
  *
- * `list` était à **46,15 % de branches / 61,53 % de fonctions** : tout le
- * réordonnancement par glisser-déposer, le plafond `maxItems` et le mode lecture seule
- * étaient hors couverture. `longtext` à **53,33 %** : le compteur de caractères — posé
- * conditionnellement entre l'input et le slot d'erreur, et le seul motif pour lequel ce
- * type ne passe PAS par `_renderSimpleField` — n'était jamais exercé.
+ * `list` sat at **46.15% branches / 61.53% functions**: all the
+ * drag-and-drop reordering, the `maxItems` ceiling and read-only mode were
+ * uncovered. `longtext` at **53.33%**: the character counter — set
+ * conditionally between the input and the error slot, and the only reason
+ * this type does NOT go through `_renderSimpleField` — was never exercised.
  *
- * ⚠️ Fichier séparé de `field-renderer.test.ts` (2 074 l.) — voir l'en-tête de
- * `types-gallery.test.ts`.
+ * ⚠️ File separate from `field-renderer.test.ts` (2,074 l.) — see the header
+ * of `types-gallery.test.ts`.
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
@@ -27,7 +27,7 @@ beforeEach(() => {
     document.body.innerHTML = "";
 });
 
-// ─── list.formRender — édition ───────────────────────────────────────────────────
+// ─── list.formRender — editing ───────────────────────────────────────────────────
 
 describe("list.formRender — édition", () => {
     it("traite une valeur non-tableau comme une liste vide", () => {
@@ -134,7 +134,7 @@ describe("list.formRender — édition", () => {
     });
 });
 
-// ─── list.formRender — réordonnancement ──────────────────────────────────────────
+// ─── list.formRender — reordering ────────────────────────────────────────────────
 
 describe("list.formRender — glisser-déposer", () => {
     function threeItems(onChange = vi.fn()) {
@@ -219,8 +219,8 @@ describe("list.validator", () => {
     });
 
     it("le contrôle de minItems s'applique même sans required", () => {
-        // Les deux gardes sont indépendantes : `required` sort en premier, `minItems`
-        // s'évalue ensuite — et un champ facultatif mais borné doit rester borné.
+        // The two guards are independent: `required` exits first, `minItems`
+        // evaluates next — and an optional but bounded field must stay bounded.
         expect(listComponent.validator!(["a"], field({ minItems: 3 }))).not.toBeNull();
     });
 });
@@ -232,10 +232,10 @@ function ltField(overrides: Partial<FieldConfig> = {}): FieldConfig {
 }
 
 describe("longtext.formRender", () => {
-    // ⚠️ `rows` est comparé après `Number()` : la spec HTML en fait un attribut IDL
-    // `unsigned long`, et un navigateur rend bien un nombre — happy-dom rend la chaîne
-    // "4". Coercer ici plutôt que d'assouplir l'assertion garde le test juste dans les
-    // deux environnements.
+    // ⚠️ `rows` is compared after `Number()`: the HTML spec makes it an
+    // `unsigned long` IDL attribute, and a browser does return a number —
+    // happy-dom returns the string "4". Coercing here rather than loosening
+    // the assertion keeps the test right in both environments.
     it("rend un textarea de 4 lignes par défaut", () => {
         const el = longtextComponent.formRender!("", ltField(), vi.fn(), CTX);
 
@@ -365,9 +365,9 @@ describe("longtext.validator", () => {
     });
 
     it("maxLength à 0 est contrôlé — garde `!== undefined`, pas de véracité", () => {
-        // Le validateur teste `!== undefined` là où le rendu teste la véracité : un
-        // `maxLength: 0` ne pose pas de compteur mais REFUSE toute saisie. L'écart est
-        // dans le code ; il est épinglé ici plutôt que découvert en production.
+        // The validator tests `!== undefined` where the render tests
+        // truthiness: a `maxLength: 0` sets no counter but REFUSES any input.
+        // The gap is in the code; it is pinned here rather than found in production.
         expect(longtextComponent.validator!("a", ltField({ maxLength: 0 }))).not.toBeNull();
     });
 });

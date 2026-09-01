@@ -103,7 +103,7 @@
         },
         "scaleConfig": {
             "type": "object",
-            "description": "Layer visibility by scale range. Bounds are SCALE DENOMINATORS (the X in 1:X), NOT MapLibre zoom levels — a denominator grows as you zoom OUT, so minScale is the widest view allowed and must be the LARGER number. Optional: omit for no constraint. Consumed by updateLayerVisibilityByZoom via isScaleInRange (scale-utils.ts). Replaces the retired `zoomConfig`, whose minZoom/maxZoom naming led authors to write zoom levels that the engine read as denominators — hiding those layers at every zoom (roadmap_nettoyage S5, N-1).",
+            "description": "Layer visibility by scale range. Bounds are SCALE DENOMINATORS (the X in 1:X), NOT MapLibre zoom levels — a denominator grows as you zoom OUT, so minScale is the widest view allowed and must be the LARGER number. Optional: omit for no constraint. Consumed by updateLayerVisibilityByZoom via isScaleInRange (scale-utils.ts). Replaces the retired `zoomConfig`, whose minZoom/maxZoom naming led authors to write zoom levels that the engine read as denominators — hiding those layers at every zoom (measured before the rename).",
             "additionalProperties": false,
             "patternProperties": { "^_comment": {} },
             "properties": {

@@ -49,17 +49,17 @@ const StorageHelper = {
      * @returns {boolean} Success status
      *
      * @example
-     * // Avec validateur — un objet `{ validate?, sanitize? }`, fourni par l'appelant.
-     * // ⚠️ Il n'existe PAS de validateur pré-fabriqué sur `GeoLeaf.Validators` pour ce
-     * // rôle : cet exemple citait `GeoLeaf.Validators.Theme`, qui n'a jamais existé
-     * // (corrigé le 27/07/2026, défaut trouvé par `typecheck-docs-examples`).
+     * // With a validator — a `{ validate?, sanitize? }` object, provided by the caller.
+     * // ⚠️ There is NO pre-built validator on `GeoLeaf.Validators` for this role:
+     * // this example used to cite `GeoLeaf.Validators.Theme`, which never existed
+     * // (fixed on 27/07/2026, defect found by `typecheck-docs-examples`).
      * const themeValidator = {
      *     validate: (v: unknown) => v === "light" || v === "dark",
      *     sanitize: () => "light",
      * };
      * StorageHelper.setItem("theme", "dark", themeValidator);
      *
-     * // Sans validateur
+     * // Without a validator
      * StorageHelper.setItem("config", JSON.stringify({ zoom: 12 }));
      */
     setItem(key: string, value: unknown, validator?: ValidatorLike): boolean {
@@ -125,7 +125,7 @@ const StorageHelper = {
      * @returns {*} Retrieved value or defaultValue
      *
      * @example
-     * // Avec validateur et valeur par défaut — même contrat `{ validate?, sanitize? }`.
+     * // With a validator and default value — same `{ validate?, sanitize? }` contract.
      * const themeValidator = { validate: (v: unknown) => v === "light" || v === "dark" };
      * const theme = StorageHelper.getItem("theme", "dark", themeValidator);
      *
@@ -422,7 +422,7 @@ const StorageHelper = {
 
         // Validate each field in schema. The per-field logic is extracted to
         // `_validateField` to keep this method's cyclomatic complexity ≤ 20 (core budget).
-        for (const [key, rules] of Object.entries(schema) as [string, SchemaRules][]) {
+        for (const [key, rules] of Object.entries(schema)) {
             this._validateField(key, rules, data, errors);
         }
 

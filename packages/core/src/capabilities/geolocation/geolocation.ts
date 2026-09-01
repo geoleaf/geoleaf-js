@@ -138,7 +138,7 @@ function _stopGeolocation(
 
 function _createRecenterButton(map: IMapAdapter, geoState: IGeoLocationState): void {
     if (geoState.recenterBtn) return;
-    const btn = document.createElement("button") as HTMLButtonElement;
+    const btn = document.createElement("button");
     btn.id = "gl-recenter-btn";
     btn.type = "button";
     btn.setAttribute("aria-label", getLabel("aria.geoloc.recenter"));
@@ -261,15 +261,15 @@ function _onGeoPositionError(
     geoState: IGeoLocationState,
     onMoveEnd: () => void
 ): void {
-    // Teardown COMPLET, pas partiel (CAPACITÉS S11 / B.33). Cette fonction ne faisait que
-    // retirer les classes, repasser `active` à `false` et fermer le toast — elle laissait
-    // donc courir le `watchPosition`, gardait `watchId` renseigné, laissait le bouton de
-    // recentrage dans le DOM et `moveend` attaché. Comme `active` repassait à `false`, un
-    // SECOND clic repartait dans la branche « démarrage » et ÉCRASAIT `watchId` sans
-    // `clearWatch` : une souscription GPS fuyait à chaque cycle erreur→re-clic. Et après une
-    // erreur survenue en cours de veille, `moveend` recentrait encore sur une position morte.
-    // `_stopGeolocation` fait déjà exactement le bon nettoyage (dont le toast en attente) —
-    // il suffisait de l'emprunter au lieu d'en réécrire une moitié.
+    // FULL teardown, not partial. This function only removed the classes, set
+    // `active` back to `false` and closed the toast — so it left `watchPosition`
+    // running, kept `watchId` set, left the recenter button in the DOM and `moveend`
+    // attached. Since `active` went back to `false`, a SECOND click re-entered the
+    // "start" branch and OVERWROTE `watchId` without `clearWatch`: a GPS subscription
+    // leaked on every error→re-click cycle. And after an error during watch,
+    // `moveend` still recentred on a dead position. `_stopGeolocation` already does
+    // exactly the right cleanup (pending toast included) — borrowing it beat
+    // rewriting half of it.
     _stopGeolocation(map, link, geoState, onMoveEnd);
     let errorMessage = getLabel("toast.geoloc.error.default");
     switch (error.code) {

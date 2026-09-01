@@ -1,6 +1,6 @@
 /**
  * @file validators-comprehensive.test.js
- * Sprint 3.4 — Comprehensive tests for general-validators
+ * Comprehensive tests for general-validators
  */
 
 import {

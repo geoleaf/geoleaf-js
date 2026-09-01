@@ -225,7 +225,7 @@
             "severity": null,
             "description": "Tableau récapitulatif de la mesure en cours : une ligne par sommet, pied de tableau périmètre et surface optionnelle",
             "confidence": "haute",
-            "rationale": "217 LOC, 2 importeurs (floating-menu.ts, measure-engine.ts). X1a explicitement levé par l'en-tête, qui date le branchement : « PLUGINS S5: wired to the engine. The module was complete since Sprint 2 but nothing ever called it »."
+            "rationale": "217 LOC, 2 importeurs (floating-menu.ts, measure-engine.ts). X1a explicitement levé par l'en-tête : « wired to the engine. The module was long complete but nothing ever called it »."
         },
         "packages/plugins/measure/src/persistence.ts": {
             "kind": "file",
@@ -365,7 +365,7 @@
             "severity": null,
             "description": "Feuille de style du plugin : menu flottant, boutons d'outils, boîte récapitulative, statut GPS et info-bulles",
             "confidence": "haute",
-            "rationale": "REQUALIFIÉ à STRUCT S2 (F8), même arbitrage que la feuille d'editor. Le bloc tooltip (19 L, strictement identique) est extrait vers host-runtime/src/css/tooltip.css ; les 469 L restantes sont à 30 sélecteurs exclusifs (menu__scroll, unit-btn, recap*, gps-modal*, annot-tooltip*, prefers-reduced-motion) et les blocs « communs » ne le sont que partiellement. ⚠️ Constat de dette au passage, hors périmètre : `.gl-measure-root` n'a que top/left là où editor a aussi right/bottom — le défaut d'ancrage à 4 positions corrigé chez editor (B-12) est probablement encore ouvert ici"
+            "rationale": "REQUALIFIÉ à STRUCT S2 (F8), même arbitrage que la feuille d'editor. Le bloc tooltip (19 L, strictement identique) est extrait vers host-runtime/src/css/tooltip.css ; les 469 L restantes sont à 30 sélecteurs exclusifs (menu__scroll, unit-btn, recap*, gps-modal*, annot-tooltip*, prefers-reduced-motion) et les blocs « communs » ne le sont que partiellement. ⚠️ Constat de dette au passage, hors périmètre : `.gl-measure-root` n'a que top/left là où editor a aussi right/bottom — le défaut d'ancrage à 4 positions corrigé chez editor est probablement encore ouvert ici"
         },
         "packages/plugins/measure/src/lang/lang-fr.ts": {
             "kind": "file",

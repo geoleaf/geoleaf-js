@@ -1,45 +1,46 @@
 #!/usr/bin/env node
 /**
- * test-load-sites.cjs — l'inventaire des `require()` de source dans les tests.
+ * test-load-sites.cjs — the inventory of source-loading `require()`s in the tests.
  *
- * ## Pourquoi ce module existe
+ * ## Why this module exists
  *
- * `verify-test-load-mode.cjs` (le gate du S1) et `audit-test-load-conversion.cjs`
- * (l'instrument des S2 à S5) posent la MÊME question — quels tests chargent une source
- * par `require()` — et en portaient chacun leur réponse. Elles ont divergé : au S2, le
- * classifieur qui range un fichier en « mécanique » a dû être corrigé **dans les deux
- * scripts** (`vi.isolateModules` comptait comme mécanique alors qu'il recharge un module).
+ * `verify-test-load-mode.cjs` (the original gate) and `audit-test-load-conversion.cjs`
+ * (the conversion instrument) ask the SAME question — which tests load a source through
+ * `require()` — and each carried its own answer. They diverged: the classifier that files
+ * a test as "mechanical" had to be fixed **in both scripts** (`vi.isolateModules` counted
+ * as mechanical although it reloads a module).
  *
- * Une seconde divergence de ce genre n'est pas hypothétique, elle est déjà arrivée. La
- * définition vit donc ici, en un seul endroit.
+ * A second divergence of that kind is not hypothetical, it already happened. The
+ * definition therefore lives here, in one place.
  *
- * ## Ce qui compte comme un site, et ce qui n'en est pas un
+ * ## What counts as a site, and what does not
  *
- * Un site est un `require()` dont le specifier résout vers un **module source `.ts` réel**.
- * Un `require()` de fixture, de mock ou de paquet npm ne charge aucune source mesurée : il
- * ne peut pas fausser d'attribution de couverture, et il est rapporté à part.
+ * A site is a `require()` whose specifier resolves to a **real `.ts` source module**. A
+ * `require()` of a fixture, a mock or an npm package loads no measured source: it cannot
+ * skew coverage attribution, and it is reported separately.
  *
- * Deux formes de specifier :
- *   - **relatif** (`./x.js`, `../x.ts`) — résolu depuis le fichier qui le porte ;
- *   - **nu** (`@core/…`, `@core-offline/…`) — résolu par les `paths` du tsconfig du paquet.
+ * Two specifier shapes:
+ *   - **relative** (`./x.js`, `../x.ts`) — resolved from the file carrying it;
+ *   - **bare** (`@core/…`, `@core-offline/…`) — resolved through the package tsconfig's
+ *     `paths`.
  *
- * ⚠️ **La forme nue était invisible aux deux scripts jusqu'au S5.** Mesuré le 22/07 :
- * 22 sites nus dans `plugin-addpoi` et `plugin-storage`, dont **7 chargent de la vraie
- * source du core** — donc 7 sites de fausse attribution que la baseline ne comptait pas, et
- * un fichier de test entier (`cache-workflow-cross.integration.test.js`) absent de
- * l'inventaire parce qu'il n'emploie QUE des specifiers nus.
+ * ⚠️ **The bare shape was invisible to both scripts for a long while.** Measured on
+ * 07-22: 22 bare sites in `plugin-addpoi` and `plugin-storage`, of which **7 load real
+ * core source** — hence 7 misattribution sites the baseline did not count, and one whole
+ * test file (`cache-workflow-cross.integration.test.js`) absent from the inventory
+ * because it uses ONLY bare specifiers.
  *
- * ## Limite assumée
+ * ## Accepted limit
  *
- * La détection est **syntaxique**. Un `require()` dont le specifier est construit à
- * l'exécution (`require(base + name)`), ainsi que `createRequire()` et `module.require()`,
- * lui échappent. Aucun site de cette forme n'est connu ; le backlog B.3 le vérifie
- * repo-wide. Une limite écrite vaut mieux qu'une exhaustivité affirmée.
+ * Detection is **syntactic**. A `require()` whose specifier is built at runtime
+ * (`require(base + name)`), as well as `createRequire()` and `module.require()`, escape
+ * it. No site of that shape is known; a register line tracks verifying it repo-wide. A
+ * written limit beats an asserted exhaustiveness.
  *
- * Elle ne distingue pas non plus un `require()` de code d'un `require()` cité **dans un
- * commentaire** — `storage-helper-validation.test.js:12` en contient un. Comportement repris
- * tel quel du gate du S1, dont il reproduit le compte à l'unité (276 sites relatifs) : le
- * corriger changerait la baseline, ce qui est une décision, pas un détail d'implémentation.
+ * Nor does it distinguish a code `require()` from a `require()` quoted **in a comment**
+ * — `storage-helper-validation.test.js` contains one. Behaviour carried over verbatim
+ * from the original gate, whose count it reproduces to the unit (276 relative sites):
+ * fixing it would move the baseline, which is a decision, not an implementation detail.
  */
 
 "use strict";
@@ -50,22 +51,22 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..", "..");
 
 /**
- * Un fichier de test, au sens des configs Vitest du dépôt.
+ * A test file, in the sense of the repo's Vitest configs.
  *
- * ⚠️ `setup.js` et les helpers n'en sont PAS : ils ne sont pas collectés par Vitest comme
- * suites, et les compter mêlerait deux questions distinctes (l'attribution de couverture,
- * et la règle « ESM pur » de `CLAUDE.md`).
+ * ⚠️ `setup.js` and the helpers are NOT: Vitest does not collect them as suites, and
+ * counting them would mix two distinct questions (coverage attribution, and the
+ * "pure ESM" rule of the project instructions).
  */
 const TEST_FILE_RE = /\.test\.(js|ts)$/;
 
-/** Répertoires jamais parcourus. */
+/** Directories never walked. */
 const SKIP_DIRS = new Set(["node_modules", "dist", ".git", "coverage"]);
 
 /**
- * Tous les fichiers de test d'un répertoire, récursivement.
+ * Every test file of a directory, recursively.
  *
- * @param {string} dir Répertoire de départ.
- * @param {string[]} [out] Accumulateur.
+ * @param {string} dir Starting directory.
+ * @param {string[]} [out] Accumulator.
  * @returns {string[]} Chemins absolus.
  */
 function walkTests(dir, out = []) {
@@ -88,15 +89,15 @@ function walkTests(dir, out = []) {
 }
 
 /**
- * Lit un `tsconfig.json` tolérant aux commentaires, au BOM et aux virgules traînantes.
+ * Reads a `tsconfig.json` tolerant of comments, BOM and trailing commas.
  *
- * ⚠️ Les tsconfig du dépôt ne sont PAS du JSON strict : ils portent des commentaires (et
- * `plugin-addpoi/tsconfig.json` un tableau `_comment` de 20 lignes). Un `require()` direct
- * casse dessus. Le stripping ignore ce qui se trouve dans une chaîne, sans quoi un chemin
- * contenant `//` serait mutilé.
+ * ⚠️ The repo's tsconfigs are NOT strict JSON: they carry comments (and
+ * `plugin-addpoi/tsconfig.json` a 20-line `_comment` array). A direct `require()` breaks
+ * on them. The stripping ignores what sits inside a string, otherwise a path containing
+ * `//` would be mangled.
  *
- * @param {string} file Chemin absolu du tsconfig.
- * @returns {object} Le tsconfig analysé.
+ * @param {string} file Absolute path of the tsconfig.
+ * @returns {object} The parsed tsconfig.
  */
 function readJsonc(file) {
     const raw = fs.readFileSync(file, "utf8").replace(/^﻿/, "");
@@ -135,7 +136,7 @@ function readJsonc(file) {
         }
         out += c;
     }
-    // Virgules traînantes : légales en tsconfig, refusées par JSON.parse.
+    // Trailing commas: legal in tsconfig, refused by JSON.parse.
     out = out.replace(/,(\s*[}\]])/g, "$1");
     try {
         return JSON.parse(out);
@@ -144,18 +145,18 @@ function readJsonc(file) {
     }
 }
 
-/** Mémoïsation des `paths` par paquet : le tsconfig ne bouge pas pendant un run. */
+/** Per-package memoization of `paths`: the tsconfig does not move during a run. */
 const pathsCache = new Map();
 
 /**
- * Les `compilerOptions.paths` d'un paquet, aplatis en couples préfixe → répertoires.
+ * A package's `compilerOptions.paths`, flattened into prefix → directories pairs.
  *
- * L'héritage (`extends`) est suivi, parce que les `paths` peuvent venir de
- * `@geoleaf/build-config/tsconfig.base.json`. Un `extends` irrésolu n'est pas une erreur :
- * il signifie seulement qu'il n'y a rien de plus à hériter.
+ * Inheritance (`extends`) is followed, because the `paths` can come from
+ * `@geoleaf/build-config/tsconfig.base.json`. An unresolved `extends` is not an error: it
+ * only means there is nothing more to inherit.
  *
- * @param {object} pkg Entrée de registre (`lib/packages.cjs`).
- * @returns {{prefix: string, targets: string[], wildcard: boolean}[]} Règles, plus spécifiques d'abord.
+ * @param {object} pkg Registry entry (`lib/packages.cjs`).
+ * @returns {{prefix: string, targets: string[], wildcard: boolean}[]} Rules, most specific first.
  */
 function tsconfigPaths(pkg) {
     if (pathsCache.has(pkg.absDir)) return pathsCache.get(pkg.absDir);
@@ -170,7 +171,7 @@ function tsconfigPaths(pkg) {
         const cfg = readJsonc(file);
         const dir = path.dirname(file);
         for (const [k, v] of Object.entries(cfg.compilerOptions?.paths ?? {})) {
-            // Le plus proche gagne : un parent ne réécrit pas une règle déjà posée.
+            // Closest wins: a parent does not rewrite an already-set rule.
             if (!merged.has(k)) merged.set(k, { targets: v, base: dir });
         }
         const ext = cfg.extends;
@@ -190,7 +191,7 @@ function tsconfigPaths(pkg) {
             wildcard: prefix.includes("*"),
             targets: targets.map((t) => path.resolve(base, t)),
         }))
-        // Le plus long préfixe d'abord : `@core/utils/general/*` doit battre `@core/utils/*`.
+        // Longest prefix first: `@core/utils/general/*` must beat `@core/utils/*`.
         .sort((a, b) => b.prefix.replace("*", "").length - a.prefix.replace("*", "").length);
 
     pathsCache.set(pkg.absDir, rules);
@@ -198,13 +199,13 @@ function tsconfigPaths(pkg) {
 }
 
 /**
- * Un chemin candidat désigne-t-il un module source `.ts` réel ?
+ * Does a candidate path designate a real `.ts` source module?
  *
- * ⚠️ **`.ts` seulement.** Un `.js` d'un `src/` (il en existe un : `sw-core.js`) n'est pas
- * instrumenté comme source TypeScript et ne relève pas du défaut d'attribution. L'inclure
- * gonflerait la dette d'un site qu'aucune conversion ne réparerait.
+ * ⚠️ **`.ts` only.** A `.js` in a `src/` (one exists: `sw-core.js`) is not instrumented
+ * as TypeScript source and does not fall under the attribution defect. Including it would
+ * inflate the debt with a site no conversion would repair.
  *
- * @param {string} base Chemin absolu sans extension garantie.
+ * @param {string} base Absolute path with no guaranteed extension.
  * @returns {string|null}
  */
 function asSourceTs(base) {
@@ -220,12 +221,12 @@ function asSourceTs(base) {
 }
 
 /**
- * Résout un specifier de test vers un module source `.ts` réel.
+ * Resolves a test specifier to a real `.ts` source module.
  *
- * @param {string} fromFile Fichier qui porte le specifier (absolu).
- * @param {string} spec Specifier, tel qu'écrit.
- * @param {object} [pkg] Paquet propriétaire — requis pour résoudre un specifier NU.
- * @returns {{abs: string, kind: "relative"|"bare"}|null} `null` si ce n'est pas une source.
+ * @param {string} fromFile File carrying the specifier (absolute).
+ * @param {string} spec Specifier, as written.
+ * @param {object} [pkg] Owning package — required to resolve a BARE specifier.
+ * @returns {{abs: string, kind: "relative"|"bare"}|null} `null` if it is not a source.
  */
 function resolveSource(fromFile, spec, pkg) {
     if (spec.startsWith(".")) {
@@ -254,13 +255,13 @@ function resolveSource(fromFile, spec, pkg) {
 }
 
 /**
- * Neutralise les `vi.mock("…")` avant analyse.
+ * Neutralizes the `vi.mock("…")` calls before analysis.
  *
- * **Déclarer un mock ne charge pas le module réel.** C'est l'oubli de ce détail qui a fait
- * annoncer « 139 modules » à l'entrée B.46 là où il y en a 79 : le compte incluait les
- * cibles de `vi.mock()`.
+ * **Declaring a mock does not load the real module.** Forgetting that detail is what once
+ * made a census announce "139 modules" where there are 79: the count included the
+ * `vi.mock()` targets.
  *
- * @param {string} src Source du fichier de test.
+ * @param {string} src Source of the test file.
  * @returns {string}
  */
 function scrubMocks(src) {
@@ -268,12 +269,12 @@ function scrubMocks(src) {
 }
 
 /**
- * Retire commentaires et contenu de chaînes, en scannant plutôt qu'en regexant.
+ * Removes comments and string contents, by scanning rather than regexing.
  *
- * Une regex ne sait pas distinguer `// commentaire` de `"https://…"`, ni un `/*` cité dans
- * une chaîne d'un vrai bloc. Le scanner suit l'état du source (chaîne simple / double /
- * gabarit / commentaire) et rend un texte de **même longueur**, les zones neutralisées
- * remplacées par des espaces — les numéros de ligne et les décalages restent valides.
+ * A regex cannot tell `// comment` from `"https://…"`, nor a `/*` quoted in a string
+ * from a real block. The scanner follows the source's state (single / double / template
+ * string / comment) and returns a text of the **same length**, neutralized zones
+ * replaced with spaces — line numbers and offsets stay valid.
  *
  * @param {string} src
  * @returns {string}
@@ -314,27 +315,26 @@ function stripComments(src) {
 }
 
 /**
- * La famille de conversion d'un fichier de test — c'est elle qui range un fichier dans un
- * sprint plutôt qu'un autre, et elle doit rester UNE seule définition.
+ * A test file's conversion family — this is what files a test under one conversion
+ * batch rather than another, and it must stay ONE single definition.
  *
- * ⚠️ `vi.isolateModules` compte avec `resetModules` : même geste, recharger dans un
- * registre neuf. Les ranger en « mécanique » a été une erreur du gate du S1, corrigée au
- * S2 (2.5) — dans deux scripts à la fois, ce que ce module existe pour empêcher.
+ * ⚠️ `vi.isolateModules` counts with `resetModules`: same move, reload into a fresh
+ * registry. Filing them as "mechanical" was an error of the original gate, later fixed —
+ * in two scripts at once, which this module exists to prevent.
  *
- * ⚠️ **Le classement se fait sur le source SANS commentaires**, et c'est une correction du
- * S4. `app/helpers.test.js` portait « Re-require in each describe via vi.isolateModules() »
- * dans un commentaire, sans un seul appel : il était rangé « reload », compté au périmètre
- * du sprint 4, et le harnais `--prove-reload` lui a fabriqué une sonde qui ne neutralisait
- * rien. Retirer ce commentaire en convertissant a fait rougir le contrôle — sur un fichier
- * parfaitement converti. Trois fichiers du dépôt changent de famille une fois les
- * commentaires retirés.
+ * ⚠️ **Classification runs on the source WITHOUT comments**, a later correction.
+ * `app/helpers.test.js` carried "Re-require in each describe via vi.isolateModules()" in
+ * a comment, without a single call: it was filed "reload", counted into a conversion
+ * batch, and the `--prove-reload` harness built it a probe that neutralized nothing.
+ * Removing that comment while converting made the check go red — on a perfectly
+ * converted file. Three files of the repo change family once comments are stripped.
  *
- * ⚠️ La limite écrite en tête de module — « elle ne distingue pas un `require()` cité dans
- * un commentaire » — reste vraie pour {@link collectSites}, et **volontairement** : le
- * corriger déplacerait la baseline du S1, ce qui est une décision et non un détail. Ici, le
- * classement ne nourrit aucune baseline : il ne décide que du sprint propriétaire.
+ * ⚠️ The limit written at the top of the module — "it does not distinguish a `require()`
+ * quoted in a comment" — stays true for {@link collectSites}, and **on purpose**: fixing
+ * it would move the original baseline, which is a decision and not a detail. Here, the
+ * classification feeds no baseline: it only decides ownership.
  *
- * @param {string} src Source du fichier de test.
+ * @param {string} src Source of the test file.
  * @returns {"reload"|"mock"|"mechanical"}
  */
 function classify(src) {
@@ -344,30 +344,30 @@ function classify(src) {
     return "mechanical";
 }
 
-/** Capture un `require("…")` et son specifier, quelle qu'en soit la forme. */
+/** Captures a `require("…")` and its specifier, whatever its shape. */
 const REQUIRE_RE = /require\(\s*(['"])([^'"]+)\1\s*\)/;
 
 /**
- * Capture un `require(`…${x}…`)` — specifier CONSTRUIT à l'exécution.
+ * Captures a `require(`…${x}…`)` — a specifier BUILT at runtime.
  *
- * ⚠️ Cette forme était déclarée « limite connue, aucun site observé ». **C'était faux** :
- * `geojson/geojson-core.test.js` boucle sur 9 modules source du core par
- * `` require(`../../src/kernel/${subModule}`) ``. Neuf sites de fausse attribution qu'aucun
- * inventaire ne comptait — ni la baseline, ni le triage.
+ * ⚠️ This shape was declared "known limit, no site observed". **That was false**:
+ * `geojson/geojson-core.test.js` loops over 9 core source modules through
+ * `` require(`../../src/kernel/${subModule}`) ``. Nine misattribution sites no inventory
+ * counted — neither the baseline nor the triage.
  *
- * On ne cherche PAS à les résoudre : il faudrait évaluer la boucle. On les rend
- * **visibles**, pour qu'ils cessent d'être hors de tout compte et qu'un site neuf de cette
- * forme ne passe pas inaperçu. Leur conversion relève des sprints 3 et 4.
+ * We do NOT try to resolve them: that would mean evaluating the loop. We make them
+ * **visible**, so they stop being outside every count and a new site of this shape does
+ * not slip by. Their conversion belongs to the reload-conversion batches.
  */
 const REQUIRE_TEMPLATE_RE = /require\(\s*`([^`]*)`\s*\)/;
 
-/** Modules du cœur de Node : jamais des sources du dépôt. */
+/** Node core modules: never sources of the repo. */
 const NODE_BUILTINS = /^(node:)?(module|fs|path|url|util|os|crypto|child_process|assert)$/;
 
 /**
- * Tous les sites `require()` des tests d'un paquet.
+ * Every `require()` site of a package's tests.
  *
- * @param {object} pkg Entrée de registre.
+ * @param {object} pkg Registry entry.
  * @returns {{file: string, spec: string, mod: string|null, kind: string, line: number,
  *            deferred: boolean, family: string}[]}
  */
@@ -403,8 +403,9 @@ function collectSites(pkg) {
                     mod: hit ? path.relative(ROOT, hit.abs).split(path.sep).join("/") : null,
                     kind: hit ? hit.kind : spec.startsWith(".") ? "relative" : "bare",
                     line: i + 1,
-                    // Indentation = le `require` est dans un hook, un `describe` ou un `it`,
-                    // donc DIFFÉRÉ. Heuristique, mais dérivée du source et non d'une lecture.
+                    // Indentation = the `require` sits in a hook, a `describe` or an
+                    // `it`, hence DEFERRED. A heuristic, but derived from the source and
+                    // not from a reading.
                     deferred: /^\s/.test(line),
                     family,
                 });

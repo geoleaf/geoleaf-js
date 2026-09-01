@@ -1,0 +1,635 @@
+{
+  "trip": {
+    "locations": [
+      {
+        "type": "break",
+        "lat": -20.8823,
+        "lon": 55.4504,
+        "side_of_street": "left",
+        "original_index": 0
+      },
+      {
+        "type": "break",
+        "lat": -21.0096,
+        "lon": 55.2708,
+        "side_of_street": "left",
+        "original_index": 1
+      },
+      {
+        "type": "break",
+        "lat": -21.3393,
+        "lon": 55.4781,
+        "side_of_street": "left",
+        "original_index": 2
+      }
+    ],
+    "legs": [
+      {
+        "maneuvers": [
+          {
+            "type": 3,
+            "instruction": "Conduisez vers le nord.",
+            "verbal_succinct_transition_instruction": "Conduisez vers le nord. Ensuite, dans 40 mètres, Tournez à gauche dans Rue Sainte-Anne.",
+            "verbal_pre_transition_instruction": "Conduisez vers le nord. Ensuite, dans 40 mètres, Tournez à gauche dans Rue Sainte-Anne.",
+            "verbal_post_transition_instruction": "Continuez pendant 40 mètres.",
+            "bearing_after": 342,
+            "time": 44.772,
+            "length": 0.036,
+            "cost": 351.6,
+            "begin_shape_index": 0,
+            "end_shape_index": 4,
+            "verbal_multi_cue": true,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 15,
+            "instruction": "Tournez à gauche dans Rue Sainte-Anne.",
+            "verbal_transition_alert_instruction": "Tournez à gauche dans Rue Sainte-Anne.",
+            "verbal_succinct_transition_instruction": "Tournez à gauche. Ensuite, Tournez à droite dans Rue de Paris.",
+            "verbal_pre_transition_instruction": "Tournez à gauche dans Rue Sainte-Anne. Ensuite, Tournez à droite dans Rue de Paris.",
+            "verbal_post_transition_instruction": "Continuez pendant 70 mètres.",
+            "street_names": [
+              "Rue Sainte-Anne"
+            ],
+            "bearing_before": 343,
+            "bearing_after": 253,
+            "time": 17.454,
+            "length": 0.067,
+            "cost": 28.162,
+            "begin_shape_index": 4,
+            "end_shape_index": 7,
+            "verbal_multi_cue": true,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 10,
+            "instruction": "Tournez à droite dans Rue de Paris.",
+            "verbal_transition_alert_instruction": "Tournez à droite dans Rue de Paris.",
+            "verbal_succinct_transition_instruction": "Tournez à droite.",
+            "verbal_pre_transition_instruction": "Tournez à droite dans Rue de Paris.",
+            "verbal_post_transition_instruction": "Continuez pendant 900 mètres.",
+            "street_names": [
+              "Rue de Paris"
+            ],
+            "bearing_before": 253,
+            "bearing_after": 341,
+            "time": 129.595,
+            "length": 0.92,
+            "cost": 178.919,
+            "begin_shape_index": 7,
+            "end_shape_index": 62,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 15,
+            "instruction": "Tournez à gauche dans Place Général de Gaulle.",
+            "verbal_transition_alert_instruction": "Tournez à gauche dans Place Général de Gaulle.",
+            "verbal_succinct_transition_instruction": "Tournez à gauche.",
+            "verbal_pre_transition_instruction": "Tournez à gauche dans Place Général de Gaulle.",
+            "verbal_post_transition_instruction": "Continuez pendant 500 mètres.",
+            "street_names": [
+              "Place Général de Gaulle"
+            ],
+            "bearing_before": 336,
+            "bearing_after": 253,
+            "time": 74.637,
+            "length": 0.506,
+            "cost": 91.684,
+            "begin_shape_index": 62,
+            "end_shape_index": 82,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 9,
+            "instruction": "Serrez à droite.",
+            "verbal_transition_alert_instruction": "Serrez à droite.",
+            "verbal_succinct_transition_instruction": "Serrez à droite. Ensuite, Entrez dans le rond-point et prenez la 2e sortie dans Boulevard Gabriel Macé.",
+            "verbal_pre_transition_instruction": "Serrez à droite. Ensuite, Entrez dans le rond-point et prenez la 2e sortie dans Boulevard Gabriel Macé.",
+            "verbal_post_transition_instruction": "Continuez pendant 40 mètres.",
+            "bearing_before": 245,
+            "bearing_after": 260,
+            "time": 5.28,
+            "length": 0.038,
+            "cost": 7.961,
+            "begin_shape_index": 82,
+            "end_shape_index": 86,
+            "verbal_multi_cue": true,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 26,
+            "instruction": "Entrez dans le rond-point et prenez la 2e sortie dans Boulevard Gabriel Macé/N 1.",
+            "verbal_transition_alert_instruction": "Entrez dans le rond-point et prenez la 2e sortie dans Boulevard Gabriel Macé.",
+            "verbal_succinct_transition_instruction": "Entrez dans le rond-point et prenez la 2e sortie.",
+            "verbal_pre_transition_instruction": "Entrez dans le rond-point et prenez la 2e sortie dans Boulevard Gabriel Macé, N 1.",
+            "bearing_before": 271,
+            "bearing_after": 321,
+            "time": 8.399,
+            "length": 0.051,
+            "cost": 10.049,
+            "begin_shape_index": 86,
+            "end_shape_index": 93,
+            "roundabout_exit_count": 2,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 27,
+            "instruction": "Quittez le rond-point dans Boulevard Gabriel Macé/N 1. Continuez sur N 1.",
+            "verbal_succinct_transition_instruction": "Quittez le rond-point.",
+            "verbal_pre_transition_instruction": "Quittez le rond-point pour Boulevard Gabriel Macé, N 1.",
+            "verbal_post_transition_instruction": "Continuez vers N 1 pendant 24 kilomètres.",
+            "street_names": [
+              "N 1"
+            ],
+            "begin_street_names": [
+              "Boulevard Gabriel Macé",
+              "N 1"
+            ],
+            "bearing_before": 238,
+            "bearing_after": 263,
+            "time": 2108.003,
+            "length": 24.189,
+            "cost": 2025.004,
+            "begin_shape_index": 93,
+            "end_shape_index": 450,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 20,
+            "instruction": "Prenez la sortie 10 dans N 1ᴬ vers Saint Paul-Centre/Bellemène/Grande Fontaine.",
+            "verbal_transition_alert_instruction": "Prenez la sortie 10.",
+            "verbal_pre_transition_instruction": "Prenez la sortie 10 dans N 1ᴬ vers Saint Paul-Centre, Bellemène.",
+            "bearing_before": 214,
+            "bearing_after": 222,
+            "time": 38.701,
+            "length": 0.358,
+            "cost": 52.207,
+            "begin_shape_index": 450,
+            "end_shape_index": 460,
+            "sign": {
+              "exit_number_elements": [
+                {
+                  "text": "10"
+                }
+              ],
+              "exit_branch_elements": [
+                {
+                  "text": "N 1ᴬ"
+                }
+              ],
+              "exit_toward_elements": [
+                {
+                  "text": "Saint Paul-Centre"
+                },
+                {
+                  "text": "Bellemène"
+                },
+                {
+                  "text": "Grande Fontaine"
+                }
+              ]
+            },
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 15,
+            "instruction": "Tournez à gauche dans Chaussée Royale/N 1A.",
+            "verbal_transition_alert_instruction": "Tournez à gauche dans Chaussée Royale.",
+            "verbal_succinct_transition_instruction": "Tournez à gauche.",
+            "verbal_pre_transition_instruction": "Tournez à gauche dans Chaussée Royale, N 1A.",
+            "verbal_post_transition_instruction": "Continuez pendant 900 mètres.",
+            "street_names": [
+              "Chaussée Royale",
+              "N 1A"
+            ],
+            "bearing_before": 294,
+            "bearing_after": 215,
+            "time": 103.491,
+            "length": 0.869,
+            "cost": 144.561,
+            "begin_shape_index": 460,
+            "end_shape_index": 497,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 10,
+            "instruction": "Tournez à droite dans Rue Poivre.",
+            "verbal_transition_alert_instruction": "Tournez à droite dans Rue Poivre.",
+            "verbal_succinct_transition_instruction": "Tournez à droite.",
+            "verbal_pre_transition_instruction": "Tournez à droite dans Rue Poivre.",
+            "verbal_post_transition_instruction": "Continuez pendant 200 mètres.",
+            "street_names": [
+              "Rue Poivre"
+            ],
+            "bearing_before": 233,
+            "bearing_after": 326,
+            "time": 27.801,
+            "length": 0.168,
+            "cost": 32.027,
+            "begin_shape_index": 497,
+            "end_shape_index": 500,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 10,
+            "instruction": "Tournez à droite dans Rue du Commerce.",
+            "verbal_transition_alert_instruction": "Tournez à droite dans Rue du Commerce.",
+            "verbal_succinct_transition_instruction": "Tournez à droite. Ensuite, Tournez à gauche dans Rue Rhin et Danube.",
+            "verbal_pre_transition_instruction": "Tournez à droite dans Rue du Commerce. Ensuite, Tournez à gauche dans Rue Rhin et Danube.",
+            "verbal_post_transition_instruction": "Continuez pendant 30 mètres.",
+            "street_names": [
+              "Rue du Commerce"
+            ],
+            "bearing_before": 329,
+            "bearing_after": 47,
+            "time": 5.1,
+            "length": 0.027,
+            "cost": 11.148,
+            "begin_shape_index": 500,
+            "end_shape_index": 501,
+            "verbal_multi_cue": true,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 15,
+            "instruction": "Tournez à gauche dans Rue Rhin et Danube.",
+            "verbal_transition_alert_instruction": "Tournez à gauche dans Rue Rhin et Danube.",
+            "verbal_succinct_transition_instruction": "Tournez à gauche.",
+            "verbal_pre_transition_instruction": "Tournez à gauche dans Rue Rhin et Danube.",
+            "verbal_post_transition_instruction": "Continuez pendant 100 mètres.",
+            "street_names": [
+              "Rue Rhin et Danube"
+            ],
+            "bearing_before": 47,
+            "bearing_after": 329,
+            "time": 25.041,
+            "length": 0.141,
+            "cost": 33.416,
+            "begin_shape_index": 501,
+            "end_shape_index": 505,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 6,
+            "instruction": "Votre destination est sur la gauche.",
+            "verbal_transition_alert_instruction": "Votre destination sera sur la gauche.",
+            "verbal_pre_transition_instruction": "Votre destination est sur la gauche.",
+            "bearing_before": 328,
+            "time": 0,
+            "length": 0,
+            "cost": 0,
+            "begin_shape_index": 505,
+            "end_shape_index": 505,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          }
+        ],
+        "summary": {
+          "has_time_restrictions": false,
+          "has_toll": false,
+          "has_highway": false,
+          "has_ferry": false,
+          "min_lat": -21.011938,
+          "min_lon": 55.271083,
+          "max_lat": -20.873313,
+          "max_lon": 55.450467,
+          "time": 2588.282,
+          "length": 27.371,
+          "cost": 2966.745
+        },
+        "shape": "lupyf@gulwhBsEjA{C_@qBd@eCj@|Gv^X~Ab@zBkBh@oAZuO~DmNbDiLjCkAX_B^mBd@aAVyn@rOeAV{@TaATy@PkRbFqAZgFpAkBb@uPdEs@PyA`@{Ab@sA\\{JfCyBj@aDv@kAXa@JmBd@mPvDmDn@{EnAwXfHaVhGqCr@uL|C{J`CuAZmW~GsA^_Cl@{a@hK{Ab@mBf@qDdA}JnCmFzAcCx@sJnCkVjHcLfDcBd@sHxBiBh@}EfB|@~E`@~AxBfH`BnEjBlCvFpEjElEtB`DlN|QbGtK`GdMjBhF|HtTpMdZvYxp@hG~PdBdHvAxFtDdO~BvGv@jFFjEGpCAlCcCpAyAjBaAjD?bD`@|BJ^lAxBp@vCGjC?lAHpAjHvd@|Dff@dAzW?pOIrRaA~UwCr\\sEt\\}E`T}HbVmKhWsKjSoL~TaP~Z}KrT}KvXqIdYeG`\\kClSoA~PeAnQa@zPkArp@uAts@s@dUmBlX_CxUsFxa@_Ixj@_Nv~@iJvq@qDr\\gFhn@{C|n@oA|r@Czf@|@jq@zArg@vDdo@zEph@nFxb@~Grd@~Ozz@pWnnApc@jwBxR~_ArQx{@`_@boBl`@xsBbNlt@p]jpBhK~m@jQtaAfGba@~`@f`Che@doCfSblAdUrtAhEbTfL|d@hLra@bObc@~HpTnH`RjRla@~^pr@n[bg@vX~^~jAfwA|wAffBbi@jq@bi@zs@fXdd@vQr\\rTvc@bYrq@ty@bsB`Nd\\xHnPlR~_@pQz[`Sz\\xZpc@Xl@pLjOjIpKzSdWhQtQrXdYxVlUnXzVld@xa@fg@~b@fUhTnNbQ~HbK`JzLrJjOdI|NrNnY~FtMfMf\\pHtThEbPlKtf@xGld@fFp_@nEn[jFxWzFrVpIhZbL`XnGtLhHbK~PxRzTnQnKnG~HbE~RxHxZlLhKtFdKzGtWxSdSzMlg@`Y|YtSxZhX|VtXtXfYdZnWde@l_@tf@vc@|^v^z\\bb@xl@hz@vh@hw@fc@~x@``@js@`^nz@r[raAl\\`nAjR~l@rg@~pAx^~mA~E`P|GzNzGnLlI|JxKtKjOpJvOdGjOzEtVtGtWzHbO|FxNnHjQ|JnYrRxNzIrOnIrGrCxIxDzKrD~ZtI|GvAvf@xLpd@rNd^zPp[jT~XlYfm@`u@bIbJxPtRlXlUpBpAtGjEfRzMpPvMrG`GrOvOtNbPjK~MdMpTnPzYvJjSbOn\\hD~LnB`HvFxVpJvb@dBjJvh@zcCtMnm@vJhYjMnVfJdQdGrMpCdGfIbX~WxjAxF~UnOto@`DfNhDbM~DhMzIhSfLfWvJ|Nj@|@fBnCd[h]b]hWlNzInUvKhUrHpHdB|H`B|SvD|hCbSfkJjq@vMrAlf@rGfRxD`UbG|OhErQdGv[xLrMbGrO|HpOrIzShNzNpKtIrHvK`Kri@li@vThVtvBj{BzvBx}BpzBp_CdNvNlPrRzdA~qA`Wh^vMrPzSxZfTf\\vYtd@jYve@do@tiAjMjUjMlUxHdNr_@vq@|I|OnIrOpKrRdQ`[nJzP~JjQxJzOhEnG~BfDnCpDzCxDnDjExHvI`IfI~NfNbKpI`J~GhNzJtKhH~PpLzgEhtCpW|SnJbKrGtIbHpK`HpNjFdMbElNnC~KzC|NrCjQbMdw@fFv\\dCtNpEzTjDrNfEdO|FxObHvOdGhKdJ`P~UrZjMdMxPdNvRrMrObIdIhDdHrChOdFxR`F~NnCfNhB|QxApSv@zn@hBtoBjEvdAxCp[v@fb@fBtYbCda@vGfLpBlOlDzVtG`YdI`k@~SpP|Hxh@rWrz@bc@h}@vc@~s@h_@tl@rY~aAfh@jf@dWxvAzt@dkBtaAh_@jRpWjL|lBts@`PfFzgAta@hd@xO~OtEln@~Srm@lTlh@|Qla@lPtb@tQrY~Md`Ab`@`|Alq@xqAfk@tsAjk@b~@tb@xp@l^tLhHrMlIjqA`|@d~Bt|A|UxO`LlKd|@rq@v~@|n@~DvDhAdCPzCWxAYp@y@nBe@xA`DvBhMrIhRbLl@b@xI|FxDfCbYhR~IdI`@`@zHhIdDhFdNrTxZ~f@\\h@hBzC`ClDdBlCpFhInHlLfQlXnDrF|BhDtDlFlEfGtOdUl@|@~AdClBxC|Sb\\bBpC~AdCpE|GtLhRfGpJhOnUd@p@lChE_CzAsgAts@q@DmI_K}f@vXgEdCoF~CgMpH"
+      },
+      {
+        "maneuvers": [
+          {
+            "type": 3,
+            "instruction": "Conduisez vers le nord-ouest sur Rue Rhin et Danube.",
+            "verbal_succinct_transition_instruction": "Conduisez vers le nord-ouest. Ensuite, Tournez à droite dans Rue Évariste de Parny.",
+            "verbal_pre_transition_instruction": "Conduisez vers le nord-ouest sur Rue Rhin et Danube. Ensuite, Tournez à droite dans Rue Évariste de Parny.",
+            "verbal_post_transition_instruction": "Continuez pendant 100 mètres.",
+            "street_names": [
+              "Rue Rhin et Danube"
+            ],
+            "bearing_after": 328,
+            "time": 17.009,
+            "length": 0.113,
+            "cost": 23.176,
+            "begin_shape_index": 0,
+            "end_shape_index": 3,
+            "verbal_multi_cue": true,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 10,
+            "instruction": "Tournez à droite dans Rue Évariste de Parny.",
+            "verbal_transition_alert_instruction": "Tournez à droite dans Rue Évariste de Parny.",
+            "verbal_succinct_transition_instruction": "Tournez à droite.",
+            "verbal_pre_transition_instruction": "Tournez à droite dans Rue Évariste de Parny.",
+            "verbal_post_transition_instruction": "Continuez pendant 200 mètres.",
+            "street_names": [
+              "Rue Évariste de Parny"
+            ],
+            "bearing_before": 329,
+            "bearing_after": 52,
+            "time": 26.539,
+            "length": 0.166,
+            "cost": 33.823,
+            "begin_shape_index": 3,
+            "end_shape_index": 5,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 10,
+            "instruction": "Tournez à droite dans Rue Suffren.",
+            "verbal_transition_alert_instruction": "Tournez à droite dans Rue Suffren.",
+            "verbal_succinct_transition_instruction": "Tournez à droite.",
+            "verbal_pre_transition_instruction": "Tournez à droite dans Rue Suffren.",
+            "verbal_post_transition_instruction": "Continuez pendant 500 mètres.",
+            "street_names": [
+              "Rue Suffren"
+            ],
+            "bearing_before": 50,
+            "bearing_after": 142,
+            "time": 70.8,
+            "length": 0.453,
+            "cost": 99.624,
+            "begin_shape_index": 5,
+            "end_shape_index": 21,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 15,
+            "instruction": "Tournez à gauche dans N 1A.",
+            "verbal_transition_alert_instruction": "Tournez à gauche dans N 1A.",
+            "verbal_succinct_transition_instruction": "Tournez à gauche.",
+            "verbal_pre_transition_instruction": "Tournez à gauche dans N 1A.",
+            "verbal_post_transition_instruction": "Continuez pendant 200 mètres.",
+            "street_names": [
+              "N 1A"
+            ],
+            "bearing_before": 141,
+            "bearing_after": 52,
+            "time": 35.703,
+            "length": 0.236,
+            "cost": 60.542,
+            "begin_shape_index": 21,
+            "end_shape_index": 31,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 10,
+            "instruction": "Tournez à droite.",
+            "verbal_transition_alert_instruction": "Tournez à droite.",
+            "verbal_succinct_transition_instruction": "Tournez à droite. Ensuite, Tournez à droite pour prendre la bretelle N 1.",
+            "verbal_pre_transition_instruction": "Tournez à droite. Ensuite, Tournez à droite pour prendre la bretelle N 1.",
+            "verbal_post_transition_instruction": "Continuez pendant 20 mètres.",
+            "bearing_before": 52,
+            "bearing_after": 140,
+            "time": 4.256,
+            "length": 0.019,
+            "cost": 11.042,
+            "begin_shape_index": 31,
+            "end_shape_index": 33,
+            "verbal_multi_cue": true,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 18,
+            "instruction": "Tournez à droite pour prendre la bretelle N 1.",
+            "verbal_transition_alert_instruction": "Tournez à droite pour prendre la bretelle N 1.",
+            "verbal_pre_transition_instruction": "Tournez à droite pour prendre la bretelle N 1.",
+            "verbal_post_transition_instruction": "Continuez pendant 50 kilomètres.",
+            "street_names": [
+              "N 1"
+            ],
+            "bearing_before": 140,
+            "bearing_after": 200,
+            "time": 3696.542,
+            "length": 49.512,
+            "cost": 3557.253,
+            "begin_shape_index": 33,
+            "end_shape_index": 916,
+            "sign": {
+              "exit_branch_elements": [
+                {
+                  "text": "N 1",
+                  "consecutive_count": 1
+                }
+              ]
+            },
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 24,
+            "instruction": "Gardez la gauche pour prendre N 3.",
+            "verbal_transition_alert_instruction": "Gardez la gauche pour prendre N 3.",
+            "verbal_pre_transition_instruction": "Gardez la gauche pour prendre N 3.",
+            "verbal_post_transition_instruction": "Continuez pendant 500 mètres.",
+            "street_names": [
+              "N 3"
+            ],
+            "bearing_before": 124,
+            "bearing_after": 120,
+            "time": 39.959,
+            "length": 0.54,
+            "cost": 44.057,
+            "begin_shape_index": 916,
+            "end_shape_index": 925,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 20,
+            "instruction": "Prenez la sortie 30 vers Saint Pierre-Centre.",
+            "verbal_transition_alert_instruction": "Prenez la sortie 30.",
+            "verbal_pre_transition_instruction": "Prenez la sortie 30 vers Saint Pierre-Centre.",
+            "street_names": [
+              "N 3"
+            ],
+            "bearing_before": 117,
+            "bearing_after": 126,
+            "time": 23.763,
+            "length": 0.159,
+            "cost": 23.679,
+            "begin_shape_index": 925,
+            "end_shape_index": 940,
+            "sign": {
+              "exit_number_elements": [
+                {
+                  "text": "30"
+                }
+              ],
+              "exit_toward_elements": [
+                {
+                  "text": "Saint Pierre-Centre"
+                }
+              ]
+            },
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 26,
+            "instruction": "Entrez dans le rond-point et prenez la 3ème sortie dans Rue Marius et Ary Leblond.",
+            "verbal_transition_alert_instruction": "Entrez dans le rond-point et prenez la 3ème sortie dans Rue Marius et Ary Leblond.",
+            "verbal_succinct_transition_instruction": "Entrez dans le rond-point et prenez la 3ème sortie.",
+            "verbal_pre_transition_instruction": "Entrez dans le rond-point et prenez la 3ème sortie dans Rue Marius et Ary Leblond.",
+            "bearing_before": 216,
+            "bearing_after": 244,
+            "time": 14.712,
+            "length": 0.07,
+            "cost": 24.863,
+            "begin_shape_index": 940,
+            "end_shape_index": 953,
+            "roundabout_exit_count": 3,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 27,
+            "instruction": "Quittez le rond-point dans Rue Marius et Ary Leblond.",
+            "verbal_succinct_transition_instruction": "Quittez le rond-point.",
+            "verbal_pre_transition_instruction": "Quittez le rond-point dans Rue Marius et Ary Leblond.",
+            "verbal_post_transition_instruction": "Continuez pendant 2 kilomètres.",
+            "street_names": [
+              "Rue Marius et Ary Leblond"
+            ],
+            "bearing_before": 68,
+            "bearing_after": 90,
+            "time": 290.357,
+            "length": 1.812,
+            "cost": 391.131,
+            "begin_shape_index": 953,
+            "end_shape_index": 1027,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 10,
+            "instruction": "Tournez à droite dans Rue Désiré Barquisseau.",
+            "verbal_transition_alert_instruction": "Tournez à droite dans Rue Désiré Barquisseau.",
+            "verbal_succinct_transition_instruction": "Tournez à droite.",
+            "verbal_pre_transition_instruction": "Tournez à droite dans Rue Désiré Barquisseau.",
+            "verbal_post_transition_instruction": "Continuez pendant 100 mètres.",
+            "street_names": [
+              "Rue Désiré Barquisseau"
+            ],
+            "bearing_before": 108,
+            "bearing_after": 198,
+            "time": 28.424,
+            "length": 0.135,
+            "cost": 33.737,
+            "begin_shape_index": 1027,
+            "end_shape_index": 1030,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 15,
+            "instruction": "Tournez à gauche dans Ruelle Lislet Geoffroy.",
+            "verbal_transition_alert_instruction": "Tournez à gauche dans Ruelle Lislet Geoffroy.",
+            "verbal_succinct_transition_instruction": "Tournez à gauche.",
+            "verbal_pre_transition_instruction": "Tournez à gauche dans Ruelle Lislet Geoffroy.",
+            "verbal_post_transition_instruction": "Continuez pendant 100 mètres.",
+            "street_names": [
+              "Ruelle Lislet Geoffroy"
+            ],
+            "bearing_before": 197,
+            "bearing_after": 107,
+            "time": 27.174,
+            "length": 0.121,
+            "cost": 38.369,
+            "begin_shape_index": 1030,
+            "end_shape_index": 1031,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 15,
+            "instruction": "Tournez à gauche dans Rue Augustin Archambaud.",
+            "verbal_transition_alert_instruction": "Tournez à gauche dans Rue Augustin Archambaud.",
+            "verbal_succinct_transition_instruction": "Tournez à gauche. Ensuite, dans 70 mètres, Votre destination sera sur la gauche.",
+            "verbal_pre_transition_instruction": "Tournez à gauche dans Rue Augustin Archambaud. Ensuite, dans 70 mètres, Votre destination sera sur la gauche.",
+            "verbal_post_transition_instruction": "Continuez pendant 70 mètres.",
+            "street_names": [
+              "Rue Augustin Archambaud"
+            ],
+            "bearing_before": 107,
+            "bearing_after": 17,
+            "time": 17.872,
+            "length": 0.069,
+            "cost": 32.805,
+            "begin_shape_index": 1031,
+            "end_shape_index": 1033,
+            "verbal_multi_cue": true,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          },
+          {
+            "type": 6,
+            "instruction": "Votre destination est sur la gauche.",
+            "verbal_transition_alert_instruction": "Votre destination sera sur la gauche.",
+            "verbal_pre_transition_instruction": "Votre destination est sur la gauche.",
+            "bearing_before": 17,
+            "time": 0,
+            "length": 0,
+            "cost": 0,
+            "begin_shape_index": 1033,
+            "end_shape_index": 1033,
+            "travel_mode": "drive",
+            "travel_type": "car"
+          }
+        ],
+        "summary": {
+          "has_time_restrictions": false,
+          "has_toll": false,
+          "has_highway": false,
+          "has_ferry": false,
+          "min_lat": -21.339914,
+          "min_lon": 55.247758,
+          "max_lat": -21.007631,
+          "max_lon": 55.478159,
+          "time": 4293.117,
+          "length": 53.407,
+          "cost": 4374.108
+        },
+        "shape": "p`iag@winlhBqXfP_Ah@qYdPia@sn@eWc^bEaD~VuRzAoAnUkR~V}S|YwUtGwFnVeRbl@qd@nCiBpA}@ZSzB_BNI\\YdBwAeBkCoXqb@[k@y@iAe@o@oBiC}BoDc@s@{a@go@wD}Fj@k@xE}DnBj@`Bf@tBt@zR`SdPxPzVnVdSzQnPlLpo@~p@ne@|g@hLzKdc@fe@dBpB`]`a@hInLtInNpGlMpFbM~IbXdB|GhDlO`BpInDzS~AvL^zE`@rG|@xT`@tXFlm@AnW@`GDnI^jZPpGJhCh@lIpB|UrBdP~AhK~DlTjAdFhAjEz@pCzB`HdS|j@`G~M`F~JpJrQ|GjLlIxMdSd[lPtWlE|HxC|FdGrLhC`FhD~IrAbE|DvNjJf_@|F`UlFtS~CzK|HfVzErL|MhX`P|T|GdIxL~MjUlTpIzHdKjIhIxFlLpGv_@`PdRzFvLfDrLvC|ObD~MrBhEd@jFj@r_@hCtUv@hX|@`U~@j|AhIdFNbFNxC`@dQlBxQjCnK`BhKtBhSjEvXtHtRxGxg@lTl\\`OjMzGhJpF|L`IrUfTnUvUlJdJzmAx~AxKbNxMdObRtQlS~PxOxLrS`PvNfL~LjJ|PlMhYhQbPdIpJhEzKpEp^tK`PnBhKzAlMpAhRnA~GTrNTzMFjICpLWfFS~Jm@xGo@hM{AnKaBbPoDnN{C`[cJhrAyh@~NsDjMcCpLiBdNyAbE[~Ku@`Pq@~FCfINzQj@hI\\tGf@vLlAlNdBvKzAxKlBzNxD|^zLng@rPxS|GfSnFtT`FzUhEjJlAlQnBjNpAbQhAfZ~@`NNtKCfOQfMYvHYhNq@zJm@pc@{En{@{KntAkRpL{Atn@kI|S_CzV}BfQuArMy@xG]rOk@~KSdTWnOA`UVhQ^hTr@jJl@nRxAtRjBxOjBbQfCtOlCvL~BvRrExt@dRhz@~TxWxEz^rFza@rDdc@~A|MZrKHrSEhS[fJ_@jNy@xMeArUgCzZoD~HoA`MaCb\\uH~_@gLh\\gKjk@uRrfC_y@lcEyrAx^{LvyB{t@hOuFpW}K`SkJfV{MfP_Kp`@_YdUuQjRqN|UkPzPaKlM}GrQuItNmG`HkClMuEfT_HnHqBhM{C~IiB|VcEpQgChXeDlNo@hU}@l[o@jYNpa@Flu@G|Z{@v`@sBpb@yDnXwDrVaEnZgGxQsEpYaInYqJzT_JxVsKdZaOh^qSv_@uWnVqRvUsTzNoNvO{OzTyUdk@an@`uCoaD|x@k}@f`@cc@rq@sx@|v@u`Ajc@eg@tM_PfHsJlzAcdBtSoUnOmOhMuKrUeRlQeNxtB}tAv_@aWbXgQnWyP`QaKxIyEzMoGjScJhQsHxKkErScH~J_DfQ}EfKkCpUsF`s@uOzZaH`tA}ZrWsFt]_IlSoEfVuFbTiF~SsFpNcEbOyEzRcHjIgDhPgHlT{Kr_@iR|c@sTz|@{e@fSmJvEkBzO_GnJ_DdLiD|P_F|VyGfbBsb@bjA}YhO}DnMqDrKgDtPcGrKeEpL}EtNoGxUmLjc@mVpXsNrMaG`MmFvOyFvJiDnNyElGqB`JmCvCs@fLeC|HmAtPeCxYiEnXqD~RaDlJqBjLqCpUqGvIaC`JkCfFmBvLmFzBmAxD{BnJ{Fxd@yZzWuPdFsCdO{HbHgDjVyIvJaDhMsDfOkDlMwBhNgBnMkArFY~Ro@|g@}@`r@?j_Bo@n_@GnTKrY[lMYxLY~Og@~h@_Ed]oFh[eG|NyD`UcGhTeH~U}IhUwJv\\_PpgCk_B`_@kV|SuM`PgJ~RkK`^qOvl@}T|wBkt@lVsL`VaM~[_RhM}Ib`@aZj]o\\lx@g|@le@gc@hXsRrYqOhUiJbH}CxJ}CxReFhReErTcDjl@oGdp@wK~ZqIfZ{KvPeIlY{Ovk@gZtUyJvTqGz\\oI`r@iK`x@sJbu@sIna@eFjdAaMpYiCjg@cCtf@e@~`@t@j_@pA|f@xCr~@rGp`AvGjw@hGzgAhNlUjDpFx@rjA~Pzq@jKdaAvMlMlBf\\~Ep`@|Fbl@fHfg@~Czg@v@|g@u@`f@sCta@iDrGi@~_BiMp_AmG~ZaCpSeAjb@oAtq@c@xp@fCvn@zEt^tEjg@zH~x@hL|NlApl@lCbWt@xb@H`j@sAzi@m@bKF~i@tBzb@jFj\\~G~[~Jjj@tWfp@bb@z_Afk@x^hUb_@jRvP~HpNrFdU`I~\\~LbPfD|ZzFnT|CbP`BbSbBjW~AnRv@~OTlJ@|LIlSc@fL_@`Lg@lJo@`OoAnKmAdOkB|YeEjV}Ebi@wM|xCq}@vkDcmApAg@n]}Mt_Bal@b_@mNh\\aOp^{RdUmM|ToNlUkPxa@sY|_@i\\di@sj@jn@_t@p\\m`@~b@{e@`[u[pb@q^`b@m\\hPaLtgBenAzIyGfWuRtKcKpLwKhKeKpTiVfNsPlb@om@r\\oe@vTs]td@er@x[wd@vWs\\te@me@x\\{Ytl@ub@ri@aZdc@yR`q@gWx`Bio@hKaExf@sRhLsD`wBuy@hnAqf@tY}LpYsMdf@aW`GwCtHiE`P_KjJsGd^{Wn`@o\\p[s[jKcK|JaLlRaUtSeXxYoc@`Vib@nRi^|CoFxUw`@zH_NvV}c@fEcHfXmb@vYqa@pVc[pUyVhYiZhMoLp_@i[xo@ae@xkAsz@rm@ec@nk@ya@lVoS~UiTp]y]v\\__@tr@ov@zrA{xAry@c}@hi@wh@|s@cq@|fC}}Bjg@of@jZwXtSsRbNwKxJiHve@eZ~^iRnZuMbSyGbXsHvl@gKfT_DpPkBzPcAvp@mDplAiGl{BeKv_CqK`k@qCng@aE~U{ClTwD`^mIh_@kLzRoH~QaIlTuKbOqIhLoHtKuHvMeKzMkKhMwLnSaTrX_]`HyJzHwLrIqNtIePdNiZ|KoX~Ji\\jG}UjIu_@~Hch@tEqd@dB_Zf@_TTo^Y_Ze@cTwAee@yAsg@qAcj@qAcd@eA}TaAkNwA}PmCcValAy{JyFed@aCsWcA_S]gNIoRNwSjAk[nCaZnCiRbDeQjHmY~J_Z`HoOzGeNjI}NtIqM~JuMfsAecBnU{ZdJaOdHwMdHgObGuObFkOxE{PbEoQjMun@tQc|@pGaZ`D}SfCoThA{RXwPOaQq@qQ_CkWiDqSwDmPyFwQoIoSmIwO{IkMmMmPsHqHuHuG}I}GmOqKkR_Lii@kVsEoBsLkFoRyJeNqIcPyLeJyI}FsGqHcJ{HmLyH{MuFuMkGcTeHqXqCgPwB{TaAoVS}\\hAqSjDyYtCwNjFmSfFgP|JaVtSwd@rf@gfA`DeHfdC}mFd\\ys@z\\ev@`K_X~Tqq@hDgObCyKnEyRnDkQfIqf@bKuo@nDuSzJom@fC}NjDuPdIk[jGoSnHgSpM}YbImP|LeTtO_U`O_RtJwK|WcWhRaOtV}P~EyC|YoOjc@iTzMsGrWiMlSyJhX_OlOyJxLkJfL_K~I_KhLwO`KkR~FuMdFcNzEgPbFeVhCuRxAiQj@_MTuM]w\\cAm\\oD_eAaCeu@yIcnCk@gSe@}OIeTQ{RfA_X|BcShEoS~E{NnDmI|DeIpIsNvImKfKgKtQ{O`r@gk@hcC{oB|f@ia@bIwGrP_NtOeP`MeObNmShHeNvHeQdGaShGcVfMmr@dFiW~Ia]r]efAzHmRtFsLbFqJjGqJhH_JvGsHzUeVftAorAtsAcrAllA}gApiAakA~]{^pnAmrAdQqQ`T}Vjr@k_Azj@{u@`zA_oBzp@m|@fcEkgG~HwMjHkNzG}NxGeOdHaOvHyNxTg]`LgPf@y@zg@sv@|`@im@lWcZ~J}HrLgJxNaItMcHxKaE`N}ElNkErQ_DpRsBvMw@`K[zV?vn@x@rYEfOa@jQiA|RiCfPaDrJkC|NeFnR}IxPoJ`MsI`Y}VjT}UlD{EpO{VlQuZ|dB{cDhIkNjIyMnIcLv}A_tBbUq\\dGeLrPa`@pKkXxh@awAfKoYrCgIl`@abA`DgItFuN|DqKjF_JfCoFdG{SjAkEjA_DfAmBhAyAxB}ArBu@rB[jCEzAN\\Ln@X|CbCd@rAfAtA~Az@hBVjAChAUbAe@rAuAt@mBNyBI}Aa@wAs@iA?}GGsAXaAbBwIfAyF|FmZhAaGbAoGp@yDv@oFlAkHpBmLnHsb@f@wC^{B`AsFbA_GHe@RuAdAaFTmAfC}M|DuSlAiH|Imh@r@aErQc`A`AoFH]jGie@~@{FtBuO\\aFv@uLh@oJTaERiCbAmNDm@`@}E\\}BP{@Jk@`BsHXwAbW{pAlG_\\BO~@yEzAoHNw@bHg^jAcGbAgF|DiSfR{`Af@gCdAmFf@gCpBgKdEoTlDoQLu@d@aCl@aDlPe{@h@oCj@qCxI}c@|EgWh@uC^mBvP_}@h@mC|A^|d@lKt^lIfSydAqEeAw]aI"
+      }
+    ],
+    "summary": {
+      "has_time_restrictions": false,
+      "has_toll": false,
+      "has_highway": false,
+      "has_ferry": false,
+      "min_lat": -21.339914,
+      "min_lon": 55.247758,
+      "max_lat": -20.873313,
+      "max_lon": 55.478159,
+      "time": 6881.4,
+      "length": 80.778,
+      "cost": 7340.854
+    },
+    "status_message": "Found route between points",
+    "status": 0,
+    "units": "kilometers",
+    "language": "fr-FR"
+  }
+}

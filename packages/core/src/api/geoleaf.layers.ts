@@ -9,8 +9,10 @@
  *
  * Public `GeoLeaf.Layers` facade — generic per-layer feature access & mutation,
  * promoted from the internal `GeoJSONCore` store. The single engine-agnostic
- * seam through which plugins (addpoi, storage) and in-core capabilities (filter,
- * search) read/mutate a layer's features by `layerId` — with no notion of "POI".
+ * seam through which OUT-OF-CORE plugins and in-core capabilities (filter, search)
+ * read/mutate a layer's features by `layerId` — with no notion of "POI". ⚠️ It listed two
+ * plugins by name until the 19/08/2026, and BOTH had since disappeared or been renamed: a
+ * seam documented by its callers ages exactly as fast as they do.
  * Universal kernel seam: mounted in Full AND Lite.
  *
  * ## Public API summary

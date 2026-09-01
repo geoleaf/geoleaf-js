@@ -102,7 +102,7 @@ describe("Core multi-instance — init / registry", () => {
     });
 });
 
-describe("Core — isAttached (S6.4)", () => {
+describe("Core — isAttached", () => {
     it("false for an unknown id", () => {
         expect(Core.isAttached("nope")).toBe(false);
     });
@@ -134,7 +134,7 @@ describe("Core — isAttached (S6.4)", () => {
     });
 });
 
-describe("Core — reattach (S6.5)", () => {
+describe("Core — reattach", () => {
     it("false for an unknown id, and for a missing parent", () => {
         expect(Core.reattach("nope", document.createElement("div"))).toBe(false);
         Core.init({ mapId: "m" });

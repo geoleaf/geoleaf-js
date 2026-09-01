@@ -1,5 +1,5 @@
 {
-    "_comment": "Base geoleaf-db en v3 COMPLÈTE — schéma + données. Le schéma vit ICI et non dans e2e/helpers/db-seed.js : un mirroir en code dérive en silence le jour où la production change, et le Sprint 3 va justement réécrire ce schéma en v4. Ajouter la v4 = ajouter db-v4-dump.json, pas éditer le helper. Re-dériver le schéma : sed -n '/_upgradeDatabase(/,/^    },$/p' packages/core/src/capabilities/offline/db/indexeddb.ts | grep -E 'createObjectStore|createIndex'",
+    "_comment": "Base geoleaf-db en v3 COMPLÈTE — schéma + données. Le schéma vit ICI et non dans e2e/helpers/db-seed.js : un mirroir en code dérive en silence le jour où la production change, et le passage en v4 va justement réécrire ce schéma. Ajouter la v4 = ajouter db-v4-dump.json, pas éditer le helper. Re-dériver le schéma : sed -n '/_upgradeDatabase(/,/^    },$/p' packages/core/src/capabilities/offline/db/indexeddb.ts | grep -E 'createObjectStore|createIndex'",
     "version": 3,
     "stores": [
         {
@@ -42,7 +42,7 @@
     "data": {
         "sync_queue": [
             {
-                "_comment": "LES TROIS SUIVANTES PORTENT L'ORDRE DE SAISIE, à la milliseconde près. Elles portaient jusqu'à la tâche 3.10 des suffixes ALÉATOIRES choisis pour que l'ordre lexicographique soit l'INVERSE de la saisie (zzz > mmm > aaa) — c'était la reproduction de B-03. La clé porte désormais un compteur monotone (`_mintKey`, db/sync.ts) et ces trois entrées sont écrites au format courant : relues, elles doivent rendre 1,2,3. ⚠️ La REPRODUCTION du défaut vit désormais dans l'unitaire (`sync-queue-order.test.js`), qui pilote Math.random et a été vu rouge par mutation ; ici on éprouve que l'ordre traverse un boot réel.",
+                "_comment": "LES TROIS SUIVANTES PORTENT L'ORDRE DE SAISIE, à la milliseconde près. Elles portaient jusqu'à la tâche 3.10 des suffixes ALÉATOIRES choisis pour que l'ordre lexicographique soit l'INVERSE de la saisie (zzz > mmm > aaa) — c'était la reproduction de la collision. La clé porte désormais un compteur monotone (`_mintKey`, db/sync.ts) et ces trois entrées sont écrites au format courant : relues, elles doivent rendre 1,2,3. ⚠️ La REPRODUCTION du défaut vit désormais dans l'unitaire (`sync-queue-order.test.js`), qui pilote Math.random et a été vu rouge par mutation ; ici on éprouve que l'ordre traverse un boot réel.",
                 "id": "sync_1785600000000_000001_fixt01",
                 "profileId": "tourism",
                 "type": "add_poi",

@@ -25,13 +25,15 @@
  * are the ones `playwright.config.js` starts, the hosts the ones `docker/nginx.dev.conf`
  * serves. Both columns must stay in sync with those two files.
  *
- * ⚠️ `deploy-local` est SERVIE PAR NGINX ET DÉLIBÉRÉMENT ABSENTE D'ICI — ne pas « corriger »
- * l'asymétrie. C'est la variante de poste (`npm run build:deploy:local`), la seule à embarquer
- * le bootstrap dev porteur d'un jeton ; aucun spec ne la vise, et l'ajouter obligerait
- * `playwright.config.js` à démarrer un quatrième http-server pour une cible que personne
- * n'éprouve. Les specs qui ont besoin du jeton le lisent côté Node dans la source et appellent
- * `configure()` eux-mêmes (cf. `readDevConnector()` dans `30-sync-cycle.spec.js`) — c'est ce
- * qui les rend indépendantes de ce qui traîne sur le poste.
+ * ⚠️ `deploy-local` IS SERVED BY NGINX AND DELIBERATELY ABSENT FROM HERE —
+ * do not "fix" the asymmetry. It is the workstation variant
+ * (`npm run build:deploy:local`), the only one embedding the token-carrying
+ * dev bootstrap; no spec targets it, and adding it would force
+ * `playwright.config.js` to start a fourth http-server for a target nobody
+ * proves. The specs that need the token read it Node-side from the source
+ * and call `configure()` themselves (cf. `readDevConnector()` in
+ * `30-sync-cycle.spec.js`) — which is what makes them independent of
+ * whatever lies on the workstation.
  */
 const TARGETS = {
     ports: {

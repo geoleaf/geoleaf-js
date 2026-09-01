@@ -1,5 +1,5 @@
 /*!
- * GeoLeaf Connector — Credential Button (Sprint 2 / v1.1.0)
+ * GeoLeaf Connector — Credential Button
  * Auto-injects a credential/login icon button into the desktop panel
  * (.gl-rp-tabs) and mobile toolbar (.gl-map-toolbar).
  * Uses MutationObserver to handle deferred DOM creation by the core.

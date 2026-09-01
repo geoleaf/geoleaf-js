@@ -1,0 +1,11 @@
+{
+    "enabled": true,
+    "showButton": false,
+    "provider": "valhalla",
+    "endpoint": "",
+    "timeoutMs": 10000,
+    "profile": "car",
+    "maxWaypoints": 10,
+    "layerId": "routing-route",
+    "labelField": "name"
+}

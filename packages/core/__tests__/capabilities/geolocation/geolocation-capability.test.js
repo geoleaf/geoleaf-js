@@ -8,9 +8,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 const { CapabilityRegistry } = await import("../../../src/kernel/api/capability-registry.ts");
-const { GEOLOCATION_CAPABILITY } = await import(
-    "../../../src/capabilities/geolocation/geolocation-capability.ts"
-);
+const { GEOLOCATION_CAPABILITY } =
+    await import("../../../src/capabilities/geolocation/geolocation-capability.ts");
 const { Introspection } = await import("../../../src/api/geoleaf.introspection.ts");
 
 function makeCapConfig(baseCfg) {

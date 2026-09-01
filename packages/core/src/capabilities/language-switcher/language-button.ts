@@ -13,7 +13,7 @@
  *
  * ⚠️ Class names are string LITERALS, never composed: purgecss scans statically, and a
  * name it cannot read is stripped from the production CSS — the control would render
- * unstyled with every test still green (the trap Sprint 1 walked into).
+ * unstyled with every test still green (a trap walked into once already).
  */
 
 import { domCreate } from "../../utils/general/dom-helpers.js";
@@ -57,7 +57,7 @@ function _buildPopover(anchor: HTMLElement, display: "flag" | "code"): HTMLEleme
 
     for (const lang of getOfferedLanguages()) {
         const item = domCreate("button", LANG_POPOVER_ITEM_CLASS, popover);
-        (item as HTMLButtonElement).type = "button";
+        item.type = "button";
         item.setAttribute("role", "menuitem");
         item.setAttribute("data-gl-lang", lang.code);
         // textContent, never innerHTML — the label is data, and the glyph is an emoji.
@@ -102,7 +102,7 @@ function _openFor(btn: HTMLElement, display: "flag" | "code"): void {
 /** Builds the language button (desktop tab strip or mobile toolbar variant). */
 export function buildLanguageButton(variant: "desktop" | "mobile"): HTMLButtonElement {
     const { display } = getLanguageSwitcherConfig();
-    const btn = domCreate("button", `gl-rp-tab-btn ${LANG_BUTTON_CLASS}`) as HTMLButtonElement;
+    const btn = domCreate("button", `gl-rp-tab-btn ${LANG_BUTTON_CLASS}`);
     btn.type = "button";
     btn.dataset.variant = variant;
 

@@ -3,14 +3,15 @@
 /* Phase 3.5 — src/kernel/api/plugin-registry.ts */
 
 /*
- * ⚠️ DETTE (STRUCT S7) — doublon strict avec `api/plugin-registry.test.js`.
- * Ses 7 describe (register, isLoaded, getLoadedPlugins, canActivate, getInfo,
- * getAvailableModules, registerLazy/load) sont TOUS inclus dans les 11 de l'autre
- * fichier, sur le même SUT et le même import. Le doublon était invisible tant que
- * les deux vivaient sous des dossiers différents (`modules/` vs `api/`) ; le
- * réalignement du miroir le met à nu, et c'est bien tout ce qu'on lui demande.
- * Le suffixe `-phase35` est un MARQUEUR, pas une résolution : S7 corrige des noms,
- * il ne fusionne pas de suites (S7.4). Fusion inscrite au backlog technique.
+ * ⚠️ DEBT — strict duplicate of `api/plugin-registry.test.js`.
+ * Its 7 describes (register, isLoaded, getLoadedPlugins, canActivate,
+ * getInfo, getAvailableModules, registerLazy/load) are ALL included in the
+ * other file's 11, on the same SUT and the same import. The duplicate was
+ * invisible while the two lived under different folders (`modules/` vs
+ * `api/`); the mirror realignment lays it bare, which is all that was asked
+ * of it. The `-phase35` suffix is a MARKER, not a resolution: that pass
+ * fixed names, it did not merge suites. The merge is filed in the technical
+ * backlog.
  */
 vi.mock("../../src/utils/log/index.js", () => ({
     Log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },

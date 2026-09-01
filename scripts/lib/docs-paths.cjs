@@ -1,77 +1,77 @@
 #!/usr/bin/env node
 /**
- * Racines de la DOCUMENTATION — définition unique, quinze lecteurs.
+ * DOCUMENTATION roots — one definition, fifteen readers.
  *
- * Lecteurs : les 11 scripts qui écrivent ou lisent un artefact de `reference/`
+ * Readers: the 11 scripts that write or read a `reference/` artifact
  * (`generate-docs-tree`, `gen-api-surface`, `gen-attributes-report`,
  * `gen-profile-schema-reference`, `gen-config-reference`, `check-tsdoc-conformity`,
  * `check-config-coverage`, `check-config-consumers`, `check-dead-links`,
- * `audit-report-freshness`, `audit-cleanup`) et les 3 guards de `packages/core/__tests__/guards/`
- * qui lisent `specs/`. Une seconde liste divergerait — même motif que `lib/packages.cjs`,
- * `lib/source-inventory.cjs` et `lib/generated-artifacts.cjs`.
+ * `audit-report-freshness`, `audit-cleanup`) and the 3 guards under
+ * `packages/core/__tests__/guards/` that read `specs/`. A second list would diverge — same
+ * rationale as `lib/packages.cjs`, `lib/source-inventory.cjs` and
+ * `lib/generated-artifacts.cjs`.
  *
- * ## Deux racines, parce que la documentation se SCINDE
+ * ## Two roots, because the documentation SPLITS
  *
- * Le passage du dépôt en public partage `_docs_projet/` en deux :
+ * Taking the repo public splits `_docs_projet/` in two:
  *
- *   `docs/`           PUBLIC   — `specs/`, `reference/`, `guides/`
- *   `_docs_projet/`   INTERNE  — `ETAT`, `JOURNAL`, `INDEX`, les 2 checklists,
- *                                `registres/`, `travail/`, `vision/`
+ *   `docs/`           PUBLIC    — `specs/`, `reference/`, `guides/`
+ *   `_docs_projet/`   INTERNAL  — `ETAT`, `JOURNAL`, `INDEX`, the 2 checklists,
+ *                                 `registres/`, `travail/`, `vision/`
  *
- * Les deux racines coïncident avant le déplacement et divergent après : c'est le seul
- * endroit du dépôt qui le sait, et c'est pour ça que la bascule tient en une ligne.
- * ⚠️ **Ne jamais dériver l'une de l'autre** — `internal("specs")` doit rester faux, pas
- * devenir un synonyme. Un helper permissif rendrait la scission invisible aux lecteurs.
+ * The two roots coincide before the move and diverge after it: this is the only place in
+ * the repo that knows it, and that is why the switch fits in one line.
+ * ⚠️ **Never derive one from the other** — `internal("specs")` must stay wrong, not become
+ * a synonym. A permissive helper would make the split invisible to readers.
  *
- * ## Pourquoi ce module JETTE — et pourquoi les deux racines ne jettent pas au même moment
+ * ## Why this module THROWS — and why the two roots do not throw at the same moment
  *
- * Les onze scripts partageaient une seule forme :
+ * The eleven scripts shared a single shape:
  *
  *     const OUT = path.join(ROOT, "_docs_projet", "reference", "X.md");
  *
- * Déplacer le répertoire ne les casse pas : il les rend **muets**. Un générateur écrit
- * alors son artefact à un chemin que plus personne ne lit, et une gate qui marche un
- * répertoire absent rend `[]` — donc « 0 lien mort sur 0 fichier », **exit 0**. C'est le
- * mode d'échec mesuré sur les 7 scopes `_docs_projet` de `check-dead-links.cjs`, dont
- * aucun ne portait `mustNotBeEmpty`.
+ * Moving the directory does not break them: it makes them **mute**. A generator then
+ * writes its artifact to a path nobody reads anymore, and a gate walking an absent
+ * directory returns `[]` — hence "0 dead links across 0 files", **exit 0**. That is the
+ * failure mode measured on the 7 `_docs_projet` scopes of `check-dead-links.cjs`, none of
+ * which carried `mustNotBeEmpty`.
  *
- * Jeter transforme la disparition silencieuse en panne bruyante. Un lecteur qui ne trouve
- * plus sa racine doit s'arrêter, pas continuer en ne regardant rien — c'est la doctrine
- * `packages.cjs` (« a registry that silently returns fewer packages than it should is worse
- * than no registry »), appliquée aux docs.
+ * Throwing turns the silent disappearance into a loud failure. A reader that no longer
+ * finds its root must stop, not carry on looking at nothing — that is the `packages.cjs`
+ * doctrine ("a registry that silently returns fewer packages than it should is worse than
+ * no registry"), applied to the docs.
  *
- * ⚠️ **Mais les deux racines n'ont pas la même existence, et depuis le 10/08/2026 elles ne
- * s'assertissent plus au même instant.** `DOCS_ROOT` est vérifiée **au chargement** : elle
- * existe partout, y compris dans le dépôt public, donc l'exiger tôt est gratuit.
- * `INTERNAL_ROOT` est vérifiée **au premier appel d'`internal()`**, parce qu'elle
- * **n'existe légitimement pas** dans le clone public — la tâche 9.4 du passage public l'y
- * retire, délibérément.
+ * ⚠️ **But the two roots do not have the same existence, and since 2026-08-10 they no
+ * longer assert at the same instant.** `DOCS_ROOT` is checked **at load time**: it exists
+ * everywhere, public repo included, so demanding it early is free. `INTERNAL_ROOT` is
+ * checked **at the first `internal()` call**, because it **legitimately does not exist**
+ * in the public clone — the public split removes it there, deliberately.
  *
- * 🛑 **Le motif, et il vaut d'être lu avant de « rétablir la symétrie ».** L'assertion au
- * chargement était juste au Sprint 6, où le danger était un déplacement **silencieux** ;
- * au Sprint 9 le retrait est **voulu**, et la même ligne devenait un arrêt. Mesuré sur le
- * clone réel : les **16** fichiers qui requièrent ce module jetaient, dont **11 gates de
- * `ci:local`**, alors que **3 seulement** appellent `internal()`. Treize lecteurs publics
- * étaient arrêtés par une assertion qui ne les concerne pas — et `ci:local` sur le clone,
- * « la seule mesure qui compte » du passage public, ne pouvait pas démarrer.
+ * 🛑 **The rationale — worth reading before "restoring the symmetry".** The load-time
+ * assertion was right as long as the danger was a **silent** move; once the removal was
+ * **intended**, the same line became a full stop. Measured on the real clone: the **16**
+ * files requiring this module threw, including **11 `ci:local` gates**, while **only 3**
+ * ever call `internal()`. Thirteen public readers were halted by an assertion that does
+ * not concern them — and `ci:local` on the clone, "the only measurement that counts" of
+ * the public split, could not even start.
  *
- * 📌 **Ce report ne coûte RIEN aux trois vrais lecteurs, et c'est vérifiable** :
- * `audit-cleanup.cjs`, `audit-report-freshness.cjs` et `check-config-consumers.cjs`
- * appellent `internal()` en **portée de module**, pas dans une fonction. Le jet se déplace
- * donc de la ligne de ce module à leur propre première ligne — **même instant d'exécution,
- * même message**. Il change qui meurt, pas quand.
+ * 📌 **This deferral costs the three real readers NOTHING, and that is verifiable**:
+ * `audit-cleanup.cjs`, `audit-report-freshness.cjs` and `check-config-consumers.cjs` call
+ * `internal()` at **module scope**, not inside a function. The throw thus moves from this
+ * module's line to their own first line — **same execution instant, same message**. It
+ * changes who dies, not when.
  *
- * ## Les deux surcharges d'environnement, et à quoi elles servent vraiment
+ * ## The two environment overrides, and what they are really for
  *
- * `GEOLEAF_DOCS_ROOT` et `GEOLEAF_INTERNAL_DOCS_ROOT` ne sont pas là pour la souplesse :
- * elles existent pour **mettre les quinze lecteurs à l'épreuve pendant qu'on a encore le
- * filet**, avant tout déplacement. Deux injections distinctes, deux pannes distinctes :
+ * `GEOLEAF_DOCS_ROOT` and `GEOLEAF_INTERNAL_DOCS_ROOT` are not there for flexibility: they
+ * exist to **put the fifteen readers to the test while the net is still up**, before any
+ * move. Two distinct injections, two distinct failures:
  *
- *   racine INEXISTANTE → ce module jette         (le lecteur meurt bruyamment)
- *   racine VIDE mais existante → il ne jette pas (c'est `mustNotBeEmpty` qui doit mordre)
+ *   NON-EXISTENT root → this module throws        (the reader dies loudly)
+ *   EMPTY but existing root → it does not throw   (`mustNotBeEmpty` is what must bite)
  *
- * Confondre les deux ferait croire qu'une assertion anti-gate-vide est éprouvée alors que
- * c'est le garde de racine qui a parlé.
+ * Conflating the two would make an anti-empty-gate assertion look proven when it was the
+ * root guard that spoke.
  *
  * Usage :
  *   const docsPaths = require("./lib/docs-paths.cjs");
@@ -88,46 +88,43 @@ const path = require("node:path");
 const REPO_ROOT = path.resolve(__dirname, "..", "..");
 
 /**
- * Résout une racine : la surcharge d'environnement si elle est posée, sinon le défaut.
+ * Resolves a root: the environment override if set, otherwise the default.
  *
- * Une surcharge relative est résolue depuis la racine du dépôt et non depuis
- * `process.cwd()` — les gates s'invoquent depuis n'importe où, et un chemin qui dépend du
- * répertoire courant redonnerait exactement l'instabilité que ce module retire.
+ * A relative override is resolved from the repo root and not from `process.cwd()` — gates
+ * get invoked from anywhere, and a path depending on the current directory would bring
+ * back exactly the instability this module removes.
  *
- * @param {string} envName Nom de la variable d'environnement.
- * @param {string} fallbackRel Chemin par défaut, relatif au dépôt.
- * @returns {string} Chemin absolu.
+ * @param {string} envName Name of the environment variable.
+ * @param {string} fallbackRel Default path, repo-relative.
+ * @returns {string} Absolute path.
  */
 function resolveRoot(envName, fallbackRel) {
     const raw = process.env[envName];
-    return raw && raw.length > 0
-        ? path.resolve(REPO_ROOT, raw)
-        : path.join(REPO_ROOT, fallbackRel);
+    return raw && raw.length > 0 ? path.resolve(REPO_ROOT, raw) : path.join(REPO_ROOT, fallbackRel);
 }
 
 /**
- * Racine de la doc PUBLIQUE — `specs/`, `reference/`, `guides/`.
+ * Root of the PUBLIC docs — `specs/`, `reference/`, `guides/`.
  *
- * ⚠️ C'est LA ligne que le déplacement du 10/08/2026 a basculée, et la seule : les quinze
- * lecteurs ont suivi sans qu'aucun ne soit retouché. Avant elle, les quatorze qui peuvent
- * jeter ont été VUS jeter sur une racine inexistante — pendant que `_docs_projet/` était
- * encore là, donc pendant qu'un vert avait encore un sens.
+ * ⚠️ This is THE line the 2026-08-10 move flipped, and the only one: all fifteen readers
+ * followed without any being touched. Before it, the fourteen that can throw were SEEN
+ * throwing on a non-existent root — while `_docs_projet/` was still there, hence while a
+ * green still meant something.
  */
 const DOCS_ROOT = resolveRoot("GEOLEAF_DOCS_ROOT", "docs");
 
-/** Racine de la doc INTERNE — `registres/`, `travail/`, `vision/`, et les 5 fichiers de tête. */
+/** Root of the INTERNAL docs — `registres/`, `travail/`, `vision/`, and the 5 head files. */
 const INTERNAL_ROOT = resolveRoot("GEOLEAF_INTERNAL_DOCS_ROOT", "_docs_projet");
 
 /**
- * Jette si la racine est absente ou n'est pas un répertoire.
+ * Throws if the root is absent or not a directory.
  *
- * Le message nomme la surcharge : sans elle, un opérateur qui vient de déplacer un
- * répertoire lit « introuvable » et cherche une faute de frappe, alors que la réponse est
- * une ligne de ce fichier.
+ * The message names the override: without it, an operator who just moved a directory reads
+ * "not found" and hunts for a typo, when the answer is one line of this file.
  *
- * @param {string} abs Chemin absolu à vérifier.
- * @param {string} label Nom lisible de la racine.
- * @param {string} envName Variable d'environnement qui la surcharge.
+ * @param {string} abs Absolute path to check.
+ * @param {string} label Readable name of the root.
+ * @param {string} envName Environment variable that overrides it.
  */
 function requireRoot(abs, label, envName) {
     let ok = false;
@@ -148,35 +145,35 @@ function requireRoot(abs, label, envName) {
 requireRoot(DOCS_ROOT, "PUBLIQUE", "GEOLEAF_DOCS_ROOT");
 
 /**
- * L'assertion de la racine INTERNE n'a été passée qu'une fois — voir le §« Pourquoi ce
- * module JETTE » : elle est reportée au premier `internal()` parce que le clone public
- * n'a légitimement pas ce répertoire, et que 13 des 16 lecteurs n'y touchent jamais.
+ * The INTERNAL root's assertion is run only once — see §"Why this module THROWS": it is
+ * deferred to the first `internal()` because the public clone legitimately lacks that
+ * directory, and 13 of the 16 readers never touch it.
  */
 let internalRootChecked = false;
 
-/** Un chemin sous la racine PUBLIQUE. */
+/** A path under the PUBLIC root. */
 const docs = (...seg) => path.join(DOCS_ROOT, ...seg);
 
-/** Un chemin sous `docs/reference/` — le généré et le lu-par-un-programme. */
+/** A path under `docs/reference/` — the generated and the machine-read. */
 const reference = (...seg) => docs("reference", ...seg);
 
-/** Un chemin sous `docs/specs/` — les 45 fiches gelées. */
+/** A path under `docs/specs/` — the 45 frozen spec sheets. */
 const specs = (...seg) => docs("specs", ...seg);
 
-/** Un chemin sous `docs/guides/` — les procédures. */
+/** A path under `docs/guides/` — the procedures. */
 const guides = (...seg) => docs("guides", ...seg);
 
 /**
- * Un chemin sous la racine INTERNE — ce qui ne part pas dans le dépôt public.
+ * A path under the INTERNAL root — what does not ship to the public repo.
  *
- * ⚠️ **C'est ICI que la racine interne est assertie**, au premier appel et pas au
- * chargement du module : un lecteur qui n'appelle jamais `internal()` n'a aucune raison de
- * mourir parce que `_docs_projet/` est absent, et il l'est **par construction** dans le
- * clone public. La panne bruyante est intégralement conservée pour qui s'en sert.
+ * ⚠️ **THIS is where the internal root is asserted**, at first call and not at module
+ * load: a reader that never calls `internal()` has no reason to die because
+ * `_docs_projet/` is absent, and it is absent **by construction** in the public clone.
+ * The loud failure is fully preserved for whoever uses it.
  *
- * @param {...string} seg Segments de chemin sous la racine interne.
- * @returns {string} Chemin absolu.
- * @throws {Error} Si la racine interne est absente ou n'est pas un répertoire.
+ * @param {...string} seg Path segments under the internal root.
+ * @returns {string} Absolute path.
+ * @throws {Error} If the internal root is absent or not a directory.
  */
 const internal = (...seg) => {
     if (!internalRootChecked) {
@@ -187,25 +184,25 @@ const internal = (...seg) => {
 };
 
 /**
- * La racine INTERNE existe-t-elle ? Prédicat qui **ne jette jamais**.
+ * Does the INTERNAL root exist? A predicate that **never throws**.
  *
- * ⚠️ **Il n'existe que pour un cas, et l'élargir serait le dénaturer** : un lecteur du corpus
- * interne qui tourne sur le **dépôt public**, où `_docs_projet/` est absent **par décision**
- * (tâche 9.4 du passage public). Là, jeter n'apprend rien — l'absence est le contrat. Un tel
- * lecteur doit **SAUTER en le disant**, patron `CONSUMER-CONTRACT/CC-00`, jamais verdir en
- * silence.
+ * ⚠️ **It exists for one case only, and widening it would denature it**: a reader of the
+ * internal corpus running on the **public repo**, where `_docs_projet/` is absent **by
+ * decision** (the public split removes it). There, throwing teaches nothing — the absence
+ * is the contract. Such a reader must **SKIP while saying so**, the
+ * `CONSUMER-CONTRACT/CC-00` pattern, never green out in silence.
  *
- * 🛑 **Ne pas s'en servir pour éviter un jet dans l'atelier.** Ici, une racine interne absente
- * est un défaut, et `internal()` doit continuer de mourir bruyamment : c'est toute la doctrine
- * du §« Pourquoi ce module JETTE ». Le prédicat distingue « absente parce que ce dépôt ne la
- * porte pas » de « absente parce que quelque chose est cassé » — les deux se ressemblent à
- * l'octet, et seul l'appelant sait dans lequel des deux mondes il tourne.
+ * 🛑 **Do not use it to dodge a throw in the workshop.** Here, an absent internal root is
+ * a defect, and `internal()` must keep dying loudly: that is the whole doctrine of §"Why
+ * this module THROWS". The predicate separates "absent because this repo does not carry
+ * it" from "absent because something is broken" — the two are byte-identical, and only
+ * the caller knows which of the two worlds it runs in.
  *
- * 📌 Il répond `false` **uniquement** sur une racine inexistante ou non-répertoire. Une racine
- * présente mais **VIDE** rend `true` : c'est à `mustNotBeEmpty` de mordre là, distinction que
- * le §« Les deux surcharges d'environnement » pose déjà et qu'il ne faut pas confondre.
+ * 📌 It answers `false` **only** on a non-existent or non-directory root. A present but
+ * **EMPTY** root returns `true`: `mustNotBeEmpty` is what must bite there, a distinction
+ * §"The two environment overrides" already draws and that must not be blurred.
  *
- * @returns {boolean} `true` si la racine interne est un répertoire existant.
+ * @returns {boolean} `true` if the internal root is an existing directory.
  */
 function internalRootExists() {
     try {
@@ -216,10 +213,10 @@ function internalRootExists() {
 }
 
 /**
- * Chemin relatif au dépôt, en séparateurs POSIX — pour les messages de gate.
+ * Repo-relative path, POSIX separators — for gate messages.
  *
- * Les gates impriment des chemins que l'on recopie dans un éditeur ; un antislash y
- * survit mal, et un chemin absolu de poste n'a rien à faire dans une sortie partagée.
+ * Gates print paths people paste into an editor; a backslash survives that badly, and a
+ * machine-local absolute path has no place in shared output.
  *
  * @param {string} abs
  * @returns {string}

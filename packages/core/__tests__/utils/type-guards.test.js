@@ -1,6 +1,6 @@
 /**
  * Tests for GeoLeaf.Utils type guards (utils/general/type-guards.ts)
- * Sprint S1 — roadmap_typage-strict.md (feature-data narrowing helpers).
+ * Feature-data narrowing helpers.
  */
 
 import * as G from "../../src/utils/general/type-guards.js";

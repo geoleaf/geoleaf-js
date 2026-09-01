@@ -1,0 +1,495 @@
+/* @geoleaf-plugins/routing — styles (loaded via rollup-plugin-postcss, injected at runtime) */
+
+/* The itinerary panel — a REGION the kernel adopts into whichever host is live: the desktop
+   side panel above 1440px, the mobile sheet below it. Same arrangement as the legend and the
+   layer manager, and the rules below are deliberately shaped after theirs.
+
+   🛑 Every colour here comes from a core token with a fallback. A plugin that hard-codes one
+   renders correctly in the default theme and wrongly in every other — and the palettes are an
+   orthogonal axis on top of that, so "it looked right" proves nothing about the other seven.
+
+   🛑 …AND READING A TOKEN IS NOT ENOUGH — it has to be a token that MOVES. `--gl-color-text`
+   and `--gl-color-border` look like the right ones and are not: `geoleaf-theme.css` declares
+   them on `:root` as `var(--gl-color-text-main)` / `var(--gl-color-border-soft)`, and a custom
+   property that contains a `var()` is SUBSTITUTED where it is DECLARED. Each therefore computes
+   once, against the `:root` defaults, and the per-theme blocks that redefine `-main` and
+   `-soft` on `body` never reach it. Measured in a real Chromium under `.gl-theme-dark`:
+   `--gl-color-text-main` = `#e5e7eb` while `--gl-color-text` = `#0f172a` — near-black, on a
+   near-black panel. This file read the frozen pair at five sites and drew its field, its four
+   secondary buttons and its result rows unreadable in every dark theme; they now read the
+   per-theme tokens. ⚠️ The freeze itself is in the CORE theme sheet and 11 sites elsewhere in
+   the repository still read the two aliases — that is a wider repair than this panel.
+
+   ⚠️ Until 26/08/2026 this file styled the CONTENT ONLY, because the panel was built on
+   `createModalShell`, whose `.gl-form-modal-overlay` / `.gl-form-modal-panel` rules live in
+   field-renderer — a package this bundle does not embed. The panel therefore rendered
+   unstyled and off screen, and ten of the classes it emits had no rule at all: the buttons
+   were the browser's. */
+
+/* ==========================================================================
+   Hidden by default, revealed by whichever host adopts it
+   --------------------------------------------------------------------------
+   ⚠️ NO media query, and that is deliberate — it is the trap the legend's stylesheet
+   documents next door. A media query here would leave whichever width it excludes with a
+   panel floating loose over the map, because nothing else hides it.
+   ========================================================================== */
+.gl-routing-panel {
+    display: none;
+
+    /* 🛑 A SCALE OF ITS OWN, and its absence was the whole of "the text is too big". The panel
+       is adopted into a 320 px column and set no `font-size`, so every row inherited the
+       document's 16 px while the layer manager and the legend — its two neighbours in that
+       same column — run at 0.8rem. Nothing looked broken in isolation; it only read as
+       oversized beside them, which is exactly the defect a plugin stylesheet cannot see from
+       inside its own package. The token is the one the shared form controls already use; the
+       panel is not the place to invent a third figure. */
+    font-size: var(--gl-font-size-sm, 0.78rem);
+    line-height: 1.45;
+}
+
+.gl-routing-panel__wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.gl-routing-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.65rem 0.75rem;
+    border-bottom: 1px solid var(--gl-color-border-soft, #e2e8f0);
+    background: var(--gl-color-bg-surface, #fff);
+}
+
+.gl-routing-panel__title {
+    margin: 0;
+    text-transform: uppercase;
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    color: var(--gl-color-text-main, #0f172a);
+}
+
+.gl-routing-panel__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    border-radius: var(--gl-border-radius, 6px);
+    background: transparent;
+    color: var(--gl-color-text-muted, #64748b);
+    font-size: 1.25rem;
+    line-height: 1;
+    cursor: pointer;
+    transition:
+        background 0.15s ease,
+        color 0.15s ease;
+}
+
+.gl-routing-panel__close:hover {
+    background: color-mix(in srgb, var(--gl-color-accent, #f97316) 15%, transparent);
+    color: var(--gl-color-accent, #f97316);
+}
+
+.gl-routing-panel__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.75rem;
+    min-height: 0;
+}
+
+.gl-routing-panel__list {
+    min-height: 0;
+}
+
+/* ==========================================================================
+   Buttons — two shapes, and the split is the one the panel's module already makes:
+   one primary verb, and a row of secondary actions. Sharing a single class would
+   have them end up looking alike by accident.
+   ========================================================================== */
+
+/* ⚠️ `color` is the per-theme contrast token, never #fff: white on the default accent
+   (#f97316) measures ~2.6:1, under the 4.5:1 of WCAG AA. Every accent surface in this
+   repository reads this token, and each theme sets it to whatever is readable on ITS accent. */
+.gl-routing-panel__compute,
+.gl-routing-panel__guide {
+    padding: 0.45rem 0.75rem;
+    border: 1px solid var(--gl-color-accent, #f97316);
+    border-radius: var(--gl-border-radius, 6px);
+    background: var(--gl-color-accent, #f97316);
+    color: var(--gl-color-accent-contrast, #020617);
+    font-size: var(--gl-font-size-base, 0.875rem);
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+}
+
+.gl-routing-panel__compute:hover:not(:disabled),
+.gl-routing-panel__guide:hover:not(:disabled) {
+    opacity: 0.88;
+}
+
+.gl-routing-panel__compute:disabled,
+.gl-routing-panel__guide:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.gl-routing-panel__my-position,
+.gl-routing-panel__clear,
+.gl-routing-add__submit,
+.gl-routing-add__pick {
+    padding: 0.35rem 0.6rem;
+    border: 1px solid var(--gl-color-border-strong, rgba(15, 23, 42, 0.22));
+    border-radius: var(--gl-border-radius, 6px);
+    background: var(--gl-color-bg-surface, #fff);
+    color: var(--gl-color-text-main, #0f172a);
+    font-size: inherit;
+    font-family: inherit;
+    cursor: pointer;
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease;
+}
+
+.gl-routing-panel__my-position:hover:not(:disabled),
+.gl-routing-panel__clear:hover:not(:disabled),
+.gl-routing-add__submit:hover:not(:disabled),
+.gl-routing-add__pick:hover:not(:disabled) {
+    background: var(--gl-color-bg-surface-muted, #f3f4f6);
+    border-color: var(--gl-color-accent, #f97316);
+}
+
+.gl-routing-panel__my-position:disabled,
+.gl-routing-panel__clear:disabled,
+.gl-routing-add__submit:disabled,
+.gl-routing-add__pick:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.gl-routing-panel__compute:focus-visible,
+.gl-routing-panel__guide:focus-visible,
+.gl-routing-panel__my-position:focus-visible,
+.gl-routing-panel__clear:focus-visible,
+.gl-routing-panel__close:focus-visible,
+.gl-routing-add__submit:focus-visible,
+.gl-routing-add__pick:focus-visible,
+.gl-routing-add__result:focus-visible,
+.gl-routing-steps__remove:focus-visible,
+.gl-routing-steps__move:focus-visible {
+    outline: 2px solid var(--gl-color-accent, #f97316);
+    outline-offset: 2px;
+}
+
+/* ==========================================================================
+   Step list
+   ========================================================================== */
+
+/* ⚠️ The `<ol>` markers are NOT what numbers these rows, and believing they were is how the
+   numbering was lost without anyone touching it: `display: grid` on an `<li>` — `display: flex`
+   before it — REPLACES `display: list-item`, so the marker box stops being generated at all.
+   The list stays an `<ol>` because that is what a screen reader counts; the visible numeral is
+   drawn by a counter instead. Without one, every intermediate stop reads "Étape" and nothing
+   tells two of them apart. */
+.gl-routing-steps {
+    counter-reset: gl-routing-step;
+    margin: 0;
+    padding-left: 0;
+    list-style: none;
+}
+
+/* One stop, on as many lines as its name needs.
+   ⚠️ The rows are declared EXPLICITLY: `grid-row: 1 / -1` on the control cluster counts lines
+   of the EXPLICIT grid only, so with auto-placed rows `-1` would resolve back to line 1 and the
+   cluster would sit beside the first line alone — which is the layout being repaired. */
+.gl-routing-steps__item {
+    counter-increment: gl-routing-step;
+    display: grid;
+    grid-template-columns: 1.15rem minmax(0, 1fr) auto;
+    grid-template-rows: auto auto auto;
+    align-items: center;
+    column-gap: 0.4rem;
+    padding: 0.35rem 0;
+    border-top: 1px solid var(--gl-color-border-soft, #e2e8f0);
+}
+
+.gl-routing-steps__item:first-child {
+    border-top: 0;
+}
+
+.gl-routing-steps__item::before {
+    content: counter(gl-routing-step);
+    grid-column: 1;
+    grid-row: 1 / -1;
+    align-self: center;
+    color: var(--gl-color-text-muted, #64748b);
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.gl-routing-steps__role {
+    grid-column: 2;
+    grid-row: 1;
+    font-weight: 600;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    line-height: 1.3;
+    color: var(--gl-color-text-muted, #64748b);
+}
+
+.gl-routing-steps__name {
+    grid-column: 2;
+    grid-row: 2;
+    min-width: 0;
+
+    /* 🛑 `anywhere`, not `break-word`: the names here are coordinate pairs and street
+       addresses, and a single unbroken token wider than the column overflows it silently —
+       the column has no scrollbar to reveal what was lost. */
+    overflow-wrap: anywhere;
+    font-variant-numeric: tabular-nums;
+}
+
+.gl-routing-steps__leg {
+    grid-column: 2;
+    grid-row: 3;
+    color: var(--gl-color-text-muted, #64748b);
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+}
+
+/* The cluster spans the whole stop, however many lines the stop takes. */
+.gl-routing-steps__controls {
+    display: flex;
+    grid-column: 3;
+    grid-row: 1 / -1;
+    align-items: center;
+    align-self: center;
+    gap: 0.1rem;
+}
+
+.gl-routing-steps__empty {
+    margin: 0;
+    padding: 0.5rem 0;
+    color: var(--gl-color-text-muted, #64748b);
+    font-size: var(--gl-font-size-sm, 0.78rem);
+}
+
+/* Square icon targets rather than text buttons — 24 px is the smallest a pointer target may be
+   and still be aimed at, and three of them side by side leave the stop's own name the width it
+   needs. Their names live in `aria-label`; see `step-list.ts`. */
+.gl-routing-steps__remove,
+.gl-routing-steps__move {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    border-radius: var(--gl-border-radius, 6px);
+    background: transparent;
+    color: var(--gl-color-text-muted, #64748b);
+    font-size: 0.85rem;
+    line-height: 1;
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.gl-routing-steps__remove:hover:not(:disabled),
+.gl-routing-steps__move:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--gl-color-accent, #f97316) 15%, transparent);
+    color: var(--gl-color-accent, #f97316);
+}
+
+/* ⚠️ Kept in the flow rather than hidden when disabled: a control that disappears at the ends of
+   the list changes the number of tab stops per row, and a keyboard user loses their place. */
+.gl-routing-steps__move[disabled] {
+    opacity: 0.35;
+    cursor: default;
+}
+
+/* The whole-route total, and the sentence for every refusal. ⚠️ `min-height` is kept: the area
+   is `aria-live`, and a box that collapses when empty makes the buttons under it jump by a line
+   every time a message comes and goes. */
+.gl-routing-panel__message {
+    margin: 0.5rem 0 0.25rem;
+    min-height: 1.25rem;
+    color: var(--gl-color-text-muted, #64748b);
+    font-size: inherit;
+}
+
+/* L'attribution des données de routage. 🛑 C'est une obligation de licence, pas un élément
+   d'interface : ODbL exige de citer partout où l'œuvre dérivée est montrée. Elle vit donc dans le
+   conteneur de la carte, aussi longtemps que le tracé, et non dans le panneau — qui se ferme. */
+.gl-routing-attribution {
+    position: absolute;
+    right: 0.25rem;
+    bottom: 0.25rem;
+    padding: 0.1rem 0.4rem;
+    background: var(--gl-color-bg-surface, #fff);
+    color: var(--gl-color-text-muted, #555);
+    border-radius: var(--gl-border-radius, 6px);
+    font-size: 0.7rem;
+    line-height: 1.4;
+
+    /* Elle ne doit pas intercepter le glissé de la carte : c'est une mention, pas un contrôle. */
+    pointer-events: none;
+
+    /* Au-dessus du tracé, sous le bandeau de guidage (500) et sous les modales de plugin. */
+    z-index: 400;
+}
+
+/* Le champ d'ajout d'étape — la SOURCE qui manquait au modèle. */
+.gl-routing-add {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+    margin: 0.5rem 0;
+}
+
+.gl-routing-add__field {
+    flex: 1 1 12rem;
+    min-width: 0;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid var(--gl-color-border-strong, rgba(15, 23, 42, 0.22));
+    border-radius: var(--gl-border-radius, 6px);
+    background: var(--gl-color-bg-surface, #fff);
+    color: var(--gl-color-text-main, #0f172a);
+
+    /* `inherit`, not a figure: a form control does NOT inherit the page's font, so leaving this
+       out gives the field the browser's 13.33px default — a third scale in a panel that already
+       has one. */
+    font-family: inherit;
+    font-size: inherit;
+}
+
+/* It wraps onto its own line at this width whatever we do — so it takes the FULL line, and
+   reads as a deliberate second way of adding a stop rather than a button that fell off the row. */
+.gl-routing-add__pick {
+    flex: 1 0 100%;
+}
+
+.gl-routing-add__field:focus {
+    outline: none;
+    border-color: var(--gl-color-accent, #f97316);
+    box-shadow: 0 0 0 3px var(--gl-color-accent-soft, rgba(249, 115, 22, 0.14));
+}
+
+/* ⚠️ Le mode actif se signale sur le BOUTON, pas seulement par son libellé : un libellé change
+   sans que rien n'attire l'œil, et l'utilisateur cherche alors où cliquer. */
+.gl-routing-add--picking .gl-routing-add__pick {
+    outline: 2px solid var(--gl-color-focus-ring, #2a7);
+    outline-offset: 1px;
+}
+
+.gl-routing-add__results {
+    flex: 1 0 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    max-height: 10rem;
+    overflow-y: auto;
+}
+
+.gl-routing-add__result {
+    display: block;
+    width: 100%;
+    padding: 0.3rem 0.5rem;
+    border: 0;
+    background: transparent;
+    color: var(--gl-color-text-main, #0f172a);
+    text-align: left;
+    font-size: inherit;
+    cursor: pointer;
+}
+
+.gl-routing-add__result:hover,
+.gl-routing-add__result:focus-visible {
+    background: var(--gl-color-bg-surface-muted, #eee);
+}
+
+.gl-routing-add__message {
+    flex: 1 0 100%;
+    margin: 0;
+    color: var(--gl-color-text-muted, #555);
+    font-size: 0.7rem;
+}
+
+/* Un message vide ne doit pas réserver une ligne : le panneau sauterait à chaque saisie. */
+.gl-routing-add__message:empty {
+    display: none;
+}
+
+/* ==========================================================================
+   Hosted in the desktop side panel (>= 1440px)
+   --------------------------------------------------------------------------
+   The kernel defines the CONTAINER; this plugin says how it sits inside it. The kernel names
+   no plugin — that is what lets a bundle without `routing` ship none of this CSS.
+   ========================================================================== */
+
+#gl-right-panel .gl-routing-panel {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 100% !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    pointer-events: auto !important;
+}
+
+#gl-right-panel .gl-routing-panel__wrapper {
+    height: 100% !important;
+    min-height: 0 !important;
+}
+
+/* The pane scrolls, not the body — same division of labour as the legend. */
+#gl-right-panel .gl-routing-panel__body {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    min-height: 0 !important;
+}
+
+/* The host supplies dismissal: a second click on the tab closes it. A close button inside
+   would be a second, differently-shaped way of doing the one thing. */
+#gl-right-panel .gl-routing-panel__close {
+    display: none !important;
+}
+
+/* ==========================================================================
+   Hosted in the mobile sheet (< 1440px)
+   --------------------------------------------------------------------------
+   The sheet brings its own header and its own close control, so this panel's header is
+   redundant there — hidden whole, not merely its button.
+   ========================================================================== */
+
+.gl-sheet-panel__body .gl-routing-panel {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    pointer-events: auto !important;
+}
+
+.gl-sheet-panel__body .gl-routing-panel__header {
+    display: none !important;
+}
+
+.gl-sheet-panel__body .gl-routing-panel__body {
+    padding: 0 !important;
+}

@@ -40,10 +40,10 @@ const registry = require("./lib/packages.cjs");
 const docsPaths = require("./lib/docs-paths.cjs");
 
 const ROOT = registry.ROOT;
-// Destination = `reference/` : « régénéré ou lu par un programme » (refonte documentaire V3,
-// §2.2 — un répertoire = un régime de maintenance). L'ancien `ref/` n'existe plus.
-// La RACINE, elle, vient de `lib/docs-paths.cjs` : écrite en dur, elle cesserait de matcher
-// à la scission de la doc et ce générateur écrirait où plus personne ne lit, en sortant 0.
+// Destination = `reference/`: "regenerated or read by a program" (one directory
+// = one maintenance regime). The old `ref/` no longer exists.
+// The ROOT comes from `lib/docs-paths.cjs`: hard-coded, it would stop matching
+// at the docs split and this generator would write where nobody reads, exiting 0.
 const OUT_MD = docsPaths.reference("ARBORESCENCE_QUALIFIEE.md");
 const OUT_HTML = docsPaths.reference("ARBORESCENCE_QUALIFIEE.html");
 const VERDICT_DIR = path.join(ROOT, "scripts", "docs-tree-verdicts");
@@ -277,19 +277,19 @@ function assertAnchorsResolve(md) {
 /* --------------------------------------------------------------- tree build */
 
 function buildModel() {
-    // ⚠️ `fromIndex` — B-102, et c'est la condition pour que `--check` soit tenable.
+    // ⚠️ `fromIndex` — the condition for `--check` to be tenable.
     //
-    // Ce générateur produit un artefact que `--check` compare ensuite AU FICHIER COMMITÉ,
-    // octet à octet. Tant que l'inventaire lisait le DISQUE, l'artefact reflétait le worktree
-    // au moment de sa génération — modifications non commitées comprises — donc il ne pouvait
-    // pas correspondre à un clone frais de HEAD. Mesuré le 01/08/2026 : **+251 lignes**
-    // d'écart sur 6 fichiers modifiés par des sessions concurrentes, ce qui faisait rougir
-    // `docs:tree:check` dans la chambre de `ci:push` sans qu'aucune régénération n'y change
-    // quoi que ce soit.
+    // This generator produces an artifact `--check` then compares TO THE
+    // COMMITTED FILE, byte for byte. As long as the inventory read the DISK, the
+    // artifact reflected the worktree at generation time — uncommitted changes
+    // included — so it could not match a fresh clone of HEAD. Measured on
+    // 2026-08-01: **+251 lines** of gap over 6 files modified by concurrent
+    // sessions, which reddened `docs:tree:check` in `ci:push`'s chamber with no
+    // regeneration changing anything.
     //
-    // L'index est la référence juste : il est « ce qui va être commité ». On stage, on
-    // régénère, on commite les deux. Les GATES qui lisent le même inventaire gardent le
-    // disque, elles — voir le bandeau de `lib/source-inventory.cjs`.
+    // The index is the right reference: it is "what is going to be committed".
+    // Stage, regenerate, commit both. The GATES reading the same inventory guard
+    // the disk, they do — see `lib/source-inventory.cjs`'s banner.
     const { files } = inventory.collect({
         extensions: [".ts", ".css"],
         includeScripts: true,
@@ -458,15 +458,16 @@ function renderBlock(rows) {
 }
 
 /**
- * Extrait les lignes d'entité d'un rendu Markdown, en `nom → [métriques]`.
+ * Extracts a Markdown rendering's entity lines, as `name → [metrics]`.
  *
- * Une ligne d'entité ressemble à `├── sync.contract.ts | 357 | ok | ok | justifié | prose…`,
- * la métrique étant un nombre de lignes pour un fichier ou `553f` pour un répertoire. Le même
- * nom de base pouvant vivre dans plusieurs répertoires, la valeur est une LISTE : on compare
- * des multiensembles, jamais une position.
+ * An entity line looks like
+ * `├── sync.contract.ts | 357 | ok | ok | justifié | prose…`, the metric being a
+ * line count for a file or `553f` for a directory. The same base name can live
+ * in several directories, so the value is a LIST: multisets are compared, never
+ * a position.
  *
- * @param {string} md Le rendu Markdown.
- * @returns {Map<string, string[]>} Nom → métriques, dans l'ordre de rencontre.
+ * @param {string} md The Markdown rendering.
+ * @returns {Map<string, string[]>} Name → metrics, in encounter order.
  */
 function entityRows(md) {
     const out = new Map();
@@ -481,23 +482,24 @@ function entityRows(md) {
 }
 
 /**
- * Dit CE QUI a bougé entre l'artefact commité et le rendu courant.
+ * Says WHAT moved between the committed artifact and the current rendering.
  *
- * ⚠️ Pourquoi cette fonction existe. Le message d'échec disait « Le code source ou les verdicts
- * ont bougé depuis la dernière génération » — vrai, et inutilisable. Le 02/08/2026 le run CI
- * 30749750097 est tombé dessus ; il a fallu un `git log` sur chaque source pour découvrir que
- * `sync.contract.ts` avait pris 11 lignes dans un commit étiqueté `docs(offline)`. Une gate qui
- * sait exactement ce qui diffère et n'en dit rien fait payer ce travail à chaque échec.
+ * ⚠️ Why this function exists. The failure message said "The source code or the
+ * verdicts moved since the last generation" — true, and unusable. On 2026-08-02
+ * CI run 30749750097 hit it; a `git log` on each source was needed to discover
+ * that `sync.contract.ts` had gained 11 lines in a commit labelled
+ * `docs(offline)`. A gate that knows exactly what differs and says nothing makes
+ * that work be paid at every failure.
  *
- * ⚠️ Elle REFUSE de conclure plutôt que de deviner. Une différence peut porter sur la prose d'un
- * verdict ou sur une ligne de synthèse, pas sur un décompte : dans ce cas elle le dit et montre
- * la première ligne divergente, au lieu d'inventer un coupable. Un diagnostic faux coûterait
- * plus cher que pas de diagnostic — c'est exactement ce qui vient de se produire à l'échelle
- * de la session.
+ * ⚠️ It REFUSES to conclude rather than guess. A difference can bear on a
+ * verdict's prose or a synthesis line, not a tally: in that case it says so and
+ * shows the first divergent line, instead of inventing a culprit. A false
+ * diagnosis would cost more than no diagnosis — exactly what had just happened
+ * at the session's scale.
  *
- * @param {string} committed Contenu du fichier sur le disque.
- * @param {string} fresh Contenu régénéré.
- * @returns {string[]} Lignes explicatives, prêtes à imprimer.
+ * @param {string} committed File content on disk.
+ * @param {string} fresh Regenerated content.
+ * @returns {string[]} Explanatory lines, ready to print.
  */
 function explainStale(committed, fresh) {
     const before = entityRows(committed);
@@ -518,8 +520,8 @@ function explainStale(committed, fresh) {
 
     if (out.length) return out;
 
-    // Aucune entité ne diffère : la cause est ailleurs (prose d'un verdict, ligne de synthèse).
-    // On montre la première ligne divergente PLUTÔT que d'affirmer une cause qu'on n'a pas.
+    // No entity differs: the cause is elsewhere (a verdict's prose, a synthesis
+    // line). Show the first divergent line RATHER than assert a cause we lack.
     const a = committed.split("\n");
     const b = fresh.split("\n");
     for (let i = 0; i < Math.max(a.length, b.length); i++) {
@@ -537,24 +539,25 @@ function explainStale(committed, fresh) {
 }
 
 /**
- * Groupe les milliers avec une espace fine insécable (U+202F), SANS passer par ICU.
+ * Groups thousands with a narrow no-break space (U+202F), WITHOUT going through ICU.
  *
- * ⚠️ Ceci était `stats.loc.toLocaleString("fr-FR")`, et c'était un « vert local / rouge CI »
- * armé — mesuré le 01/08/2026. Le mode `--check` de ce générateur compare le fichier
- * **octet à octet** (`readFileSync(file) !== content`), et le séparateur de groupe du
- * français a changé de U+00A0 à U+202F au fil des versions d'ICU. Or les données ICU sont
- * embarquées dans le binaire Node, et `.nvmrc` ne pin qu'une **majeure** (`22`) : GitHub
- * résout vers le dernier 22.x de son tool cache, qui n'est pas forcément celui du poste.
+ * ⚠️ This used to be `stats.loc.toLocaleString("fr-FR")`, and it was an armed
+ * "green local / red CI" — measured on 2026-08-01. This generator's `--check`
+ * mode compares the file **byte for byte** (`readFileSync(file) !== content`),
+ * and French's group separator changed from U+00A0 to U+202F across ICU
+ * versions. Yet ICU data is embedded in the Node binary, and `.nvmrc` pins only
+ * a **major** (`22`): GitHub resolves to the latest 22.x of its tool cache,
+ * which is not necessarily the machine's.
  *
- * Deux mineures de Node = deux octets = `docs:tree:check` ROUGE en CI et VERT en local,
- * sans qu'une seule ligne de code ait bougé, et sans rien à quoi rattacher l'échec.
+ * Two Node minors = two bytes = `docs:tree:check` RED in CI and GREEN locally,
+ * without a single code line moving, and with nothing to attach the failure to.
  *
- * Le séparateur est donc figé ici. Il reste typographiquement juste pour le français, et il
- * produit les mêmes octets sur toute machine — ce qui est la seule propriété qui compte pour
- * un artefact comparé à l'octet.
+ * The separator is therefore frozen here. It stays typographically right for
+ * French, and it produces the same bytes on every machine — the only property
+ * that counts for a byte-compared artifact.
  *
- * @param {number} n Entier positif.
- * @returns {string} Le nombre, milliers groupés par U+202F.
+ * @param {number} n Positive integer.
+ * @returns {string} The number, thousands grouped by U+202F.
  */
 function groupThousands(n) {
     return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ");

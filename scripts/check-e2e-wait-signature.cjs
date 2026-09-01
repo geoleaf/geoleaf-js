@@ -1,57 +1,58 @@
 #!/usr/bin/env node
 "use strict";
 /**
- * E2E-WAIT-SIG — un `waitForFunction` dont le timeout part en 2ᵉ position est IGNORÉ.
+ * E2E-WAIT-SIG — a `waitForFunction` whose timeout goes in 2nd position is IGNORED.
  *
- * ## La classe que cette gate ferme, et pourquoi elle valait 41 sites
+ * ## The class this gate closes, and why it was worth 41 sites
  *
- * La signature Playwright est `waitForFunction(pageFunction, arg, options)`. Il n'existe
- * AUCUNE surcharge à deux arguments où le second serait les options — vérifié dans
- * `node_modules/playwright-core/types/types.d.ts`. Écrire :
+ * The Playwright signature is `waitForFunction(pageFunction, arg, options)`.
+ * There is NO two-argument overload where the second would be the options —
+ * verified in `node_modules/playwright-core/types/types.d.ts`. Writing:
  *
  *     await page.waitForFunction(() => window.__x === true, { timeout: 30000 });
  *
- * passe donc `{ timeout: 30000 }` comme ARGUMENT de la fonction de page. Le timeout demandé
- * est silencieusement perdu, et l'attente retombe sur `actionTimeout`
- * (`playwright.config.js` — cette gate LIT la valeur et l'imprime, elle ne la recopie pas :
- * elle a valu 10 s jusqu'au 01/08/2026, puis 30 s, et le chiffre avait déjà divergé
- * dans neuf commentaires du dépôt le jour où il a bougé).
+ * thus passes `{ timeout: 30000 }` as an ARGUMENT of the page function. The
+ * requested timeout is silently lost, and the wait falls back on `actionTimeout`
+ * (`playwright.config.js` — this gate READS the value and prints it, it does not
+ * copy it: it was 10 s until 2026-08-01, then 30 s, and the figure had already
+ * diverged in nine comments of the repo the day it moved).
  *
- * ⚠️ CE N'EST PAS COSMÉTIQUE — mesuré le 01/08/2026 sur les 41 sites du dépôt, **quand
- * `actionTimeout` valait encore 10 s** (chiffres figés à cette date, ne pas réactualiser) :
+ * ⚠️ THIS IS NOT COSMETIC — measured on 2026-08-01 over the repo's 41 sites,
+ * **when `actionTimeout` was still 10 s** (figures frozen at that date, do not
+ * refresh):
  *
- *     28 sites déclaraient 15, 20, 25 ou 30 s  →  ils recevaient 10 s
- *      6 sites déclaraient 5 ou 8 s            →  ils recevaient 10 s
- *      5 sites déclaraient exactement 10 s     →  sans effet
+ *     28 sites declared 15, 20, 25 or 30 s  →  they received 10 s
+ *      6 sites declared 5 or 8 s            →  they received 10 s
+ *      5 sites declared exactly 10 s        →  no effect
  *
- * Vingt-huit attentes tronquées à un tiers de ce que leur auteur avait demandé, sur une
- * suite dont la CI met 1 h là où ce poste met 12 min. C'est une cause directe de rouges
- * distants, et elle était invisible : le code se lit juste.
+ * Twenty-eight waits truncated to a third of what their author asked, on a suite
+ * whose CI takes 1 h where this machine takes 12 min. A direct cause of remote
+ * reds, and it was invisible: the code reads fine.
  *
- * ⚠️ ET LE DÉPÔT CONNAISSAIT LE PIÈGE. `e2e/20-geocoding.spec.js` porte depuis longtemps le
- * commentaire qui l'explique. La leçon avait été apprise SUR UNE SPEC et jamais généralisée —
- * c'est très exactement ce qu'une gate empêche, et ce qu'un commentaire ne peut pas.
+ * ⚠️ AND THE REPO KNEW THE TRAP. `e2e/20-geocoding.spec.js` has long carried the
+ * comment explaining it. The lesson had been learned ON ONE SPEC and never
+ * generalised — that is exactly what a gate prevents, and what a comment cannot.
  *
- * ⚠️ Corollaire à connaître avant de « réparer » un site isolé : rétablir la signature
- * REND le budget déclaré. Sur un site qui déclarait MOINS que `actionTimeout`, cela
- * RACCOURCIT le budget effectif et rend l'échec plus fréquent. Signature et budget se
- * corrigent ensemble (voir B-99 / B-100).
+ * ⚠️ Corollary to know before "repairing" an isolated site: restoring the
+ * signature RESTORES the declared budget. On a site declaring LESS than
+ * `actionTimeout`, this SHORTENS the effective budget and makes failure more
+ * frequent. Signature and budget get fixed together.
  *
- * ## Pourquoi un découpage d'arguments et pas une regex
+ * ## Why argument splitting and not a regex
  *
- * Ma première mesure, par regex sur les 500 caractères suivants, a compté **49** sites
- * piégés là où il y en avait **42**. Sept faux positifs sur une classe de quarante : le
- * chiffre était inutilisable pour décider. Cette gate découpe donc les arguments de PREMIER
- * NIVEAU en suivant les parenthèses, accolades et chaînes — un `{` dans un littéral de
- * chaîne ou une accolade imbriquée ne la trompe pas.
+ * My first measurement, by regex over the next 500 characters, counted **49**
+ * trapped sites where there were **42**. Seven false positives on a class of
+ * forty: the figure was unusable for deciding. This gate thus splits TOP-LEVEL
+ * arguments following parentheses, braces and strings — a `{` in a string
+ * literal or a nested brace does not fool it.
  *
- * ## La voir rougir
+ * ## Seeing it red
  *
  *     printf '\nawait page.waitForFunction(() => true, { timeout: 5000 });\n' >> e2e/07-boot-sequence.spec.js
  *     node scripts/check-e2e-wait-signature.cjs   # → E2E-WAIT-SIG, exit 1
  *
  * Usage : node scripts/check-e2e-wait-signature.cjs
- * Sortie : 0 si aucun site piégé, 1 sinon.
+ * Exit : 0 if no trapped site, 1 otherwise.
  */
 
 const fs = require("node:fs");
@@ -61,20 +62,21 @@ const ROOT = path.resolve(__dirname, "..");
 const DIRS = ["e2e", "e2e/helpers"];
 
 /**
- * ⚠️ Plancher témoin. Une gate qui ne trouve AUCUN `waitForFunction` à inspecter sortirait
- * verte en n'ayant rien lu — le mode d'échec que ce dépôt traque partout. Délibérément sous
- * la mesure du jour (83 appels) : il détecte un effondrement du corpus, pas une unité.
+ * ⚠️ Witness floor. A gate finding NO `waitForFunction` to inspect would go green
+ * having read nothing — the failure mode this repo hunts everywhere. Deliberately
+ * below the day's measurement (83 calls): it detects a corpus collapse, not a
+ * unit.
  */
 const MIN_CALLS = 40;
 
 const C = { r: "\x1b[31m", g: "\x1b[32m", d: "\x1b[2m", b: "\x1b[1m", x: "\x1b[0m" };
 
 /**
- * Découpe les arguments de premier niveau d'un appel, en suivant les délimiteurs.
+ * Splits a call's top-level arguments, following the delimiters.
  *
- * @param {string} src Source complète.
- * @param {number} open Index de la parenthèse ouvrante.
- * @returns {string[]} Les arguments, tels quels.
+ * @param {string} src Full source.
+ * @param {number} open Index of the opening parenthesis.
+ * @returns {string[]} The arguments, as-is.
  */
 function callArgs(src, open) {
     let depth = 0;
@@ -107,14 +109,14 @@ function callArgs(src, open) {
 }
 
 /**
- * Lit `actionTimeout` dans `playwright.config.js` — le budget sur lequel retombe un site piégé.
+ * Reads `actionTimeout` in `playwright.config.js` — the budget a trapped site falls back on.
  *
- * ⚠️ Lu, jamais recopié. Le 01/08/2026 cette valeur est passée de 10 s à 30 s et **neuf**
- * commentaires du dépôt affirmaient encore « 10 s » — dans un dépôt dont la règle est qu'un
- * chiffre qu'une commande imprime ne se recopie pas en prose. Les lignes `//` sont retirées
- * avant lecture : le docblock voisin cite les deux valeurs en texte.
+ * ⚠️ Read, never copied. On 2026-08-01 this value went from 10 s to 30 s and
+ * **nine** comments of the repo still claimed "10 s" — in a repo whose rule is
+ * that a figure a command prints is not copied into prose. `//` lines are removed
+ * before reading: the neighbouring docblock cites both values in text.
  *
- * @returns {number|null} Le budget en ms, ou `null` si la config ne se lit pas.
+ * @returns {number|null} The budget in ms, or `null` if the config cannot be read.
  */
 function readActionTimeout() {
     try {

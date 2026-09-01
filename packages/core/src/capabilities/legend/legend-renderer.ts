@@ -136,12 +136,12 @@ function renderFooter(container: HTMLElement, footer: LegendFooter | null | unde
  * Renders an accordion for a layer.
  */
 function renderAccordion(container: HTMLElement, accordionData: LegendAccordionData): void {
-    // API publique S4.3 — ce site relisait `globalThis.GeoLeaf._UIComponents` avec un type
-    // réécrit à la main, dans un fichier qui IMPORTE déjà le symbole (l.14) et s'en sert
-    // 25 lignes plus haut (l.88). Deux canaux pour le même objet, dont un qui recopiait sa
-    // forme : la duplication de type était la vraie dette, pas la lecture.
-    // Le service-locator n'était pas nécessaire ici — la frontière R.8 autorise le baril
-    // `kernel/ui/index.js`, que l'import de la l.14 emprunte déjà.
+    // Public-API review — this site re-read `globalThis.GeoLeaf._UIComponents` with a
+    // hand-rewritten type, in a file that already IMPORTS the symbol (l.14) and uses
+    // it 25 lines above (l.88). Two channels for the same object, one copying its
+    // shape: the type duplication was the real debt, not the read. The
+    // service-locator was not needed here — the import boundary allows the
+    // `kernel/ui/index.js` barrel, which the l.14 import already takes.
     if (!_UIComponents || typeof _UIComponents.createAccordion !== "function") {
         if (Log) Log.error("[LegendRenderer] Module _UIComponents not available");
         return;

@@ -9,9 +9,10 @@
 import { Log } from "@geoleaf/host-runtime";
 import { coreConfigGet as configGet } from "@geoleaf/host-runtime";
 import { StorageContract } from "../shared/storage-contract.js";
-// API publique S4.4 — module LOCAL : le symbole était élagué du bundle publié du core,
-// qui ne l'appelle nulle part. Voir l'en-tête de `sync/vector-zone-estimate.ts`.
+// LOCAL module: the symbol was pruned from the core's published bundle, which
+// calls it nowhere. See the header of `sync/vector-zone-estimate.ts`.
 import { estimateVectorZone } from "../sync/vector-zone-estimate.js";
+import { proposeCorridor } from "./corridor-selection.js";
 import { formatFileSize } from "../utils/core-utils.js";
 import { createElement } from "../utils/dom-helpers.js";
 import { tLabel as t } from "@geoleaf/host-runtime";
@@ -105,6 +106,18 @@ export function buildZoneSelectionSection(self: CacheControlState, parentEl: HTM
     profileBtn.textContent = t("storage.zone.useProfileArea");
     profileBtn.addEventListener("click", () => void applyZone(self, "profile"));
 
+    // Third mode — the corridor of the last prepared itinerary.
+    //
+    // ⛔ It ADDS to the other two, it does not replace them: on an axis-aligned
+    // line, the bbox stays cheaper at ALL zooms (measured,
+    // `scripts/probe-corridor-cost.mjs`). Offering the corridor alone would make
+    // coastal roads, valleys and motorways pay more — a whole swath of ordinary
+    // trips.
+    const corridorBtn = createElement("button", "gl-btn gl-btn--secondary", buttons);
+    corridorBtn.type = "button";
+    corridorBtn.textContent = t("storage.zone.useRouteCorridor");
+    corridorBtn.addEventListener("click", () => void applyCorridor(self, corridorBtn));
+
     // Zoom ceiling selector.
     const zoomRow = createElement("div", "gl-cache-zone__row", content);
     const zoomLabel = document.createElement("label");
@@ -188,6 +201,80 @@ async function applyZone(self: CacheControlState, source: "view" | "profile"): P
     refreshSelectionTotals();
 }
 
+/** Default corridor buffer radius, in metres. The only "width" lever offered. */
+const CORRIDOR_BUFFER_M = 500;
+
+/** Corridor zoom floor: below it, the bbox path is cheaper. */
+const CORRIDOR_MIN_ZOOM = 12;
+
+/**
+ * Proposes the last itinerary's corridor, and makes the verdict READABLE in the button.
+ *
+ * ⚠️ The refusal is written where the user just clicked, not in the console. A
+ * mode failing silently reads as a broken button — and there is nothing else to
+ * click to understand.
+ *
+ * @param self The control.
+ * @param btn  The button, whose label carries the refusal if any.
+ */
+async function applyCorridor(self: CacheControlState, btn: HTMLButtonElement): Promise<void> {
+    const ceiling = currentCeiling(self);
+    const quota = await remainingQuota();
+    const outcome = await proposeCorridor(
+        CORRIDOR_BUFFER_M,
+        Math.min(CORRIDOR_MIN_ZOOM, ceiling),
+        ceiling,
+        quota
+    );
+
+    if (!outcome.ok) {
+        // 🛑 The refusal NAMES its levers with their weight. "Too large" without
+        // saying what to lower shows a wall, not a dial — the step-cap refusal's
+        // lesson, and it holds here word for word.
+        const levers = (outcome.levers ?? [])
+            .map((l) => `${t(`storage.zone.lever.${l.kind}`)} ${l.to} → ${formatFileSize(l.bytes)}`)
+            .join(" · ");
+        if (self._zoneEstimateEl) {
+            self._zoneEstimateEl.textContent =
+                t(`storage.zone.corridor.${outcome.reason}`) + (levers ? ` — ${levers}` : "");
+        }
+        return;
+    }
+
+    const { selection } = outcome;
+    if (self._zoneSummaryEl) {
+        self._zoneSummaryEl.textContent =
+            `${t("storage.zone.corridorSummary")}: ${selection.routeId} · ` +
+            `${selection.bufferMetres} m · z${selection.minZoom}–${selection.maxZoom}`;
+    }
+    if (self._zoneEstimateEl) {
+        self._zoneEstimateEl.textContent =
+            `${t("storage.zone.estimate")}: ~${formatFileSize(selection.bytes)} ` +
+            `(${selection.tiles} ${t("storage.zone.tiles")})`;
+    }
+    btn.blur();
+}
+
+/**
+ * What the browser still grants, in bytes.
+ *
+ * @returns The remaining bytes, or `Infinity` when unknown. ⚠️ **Never 0 by
+ *          default**: refusing for lack of knowing would block a download that
+ *          would have fit.
+ */
+async function remainingQuota(): Promise<number> {
+    try {
+        const manager = StorageContract.CacheManager;
+        const q = await manager?.getStorageQuota?.();
+        if (!q || !Number.isFinite(q.quota) || !Number.isFinite(q.usage)) {
+            return Number.POSITIVE_INFINITY;
+        }
+        return Math.max(0, q.quota - q.usage);
+    } catch {
+        return Number.POSITIVE_INFINITY;
+    }
+}
+
 /** Re-applies the current bbox with the newly chosen zoom ceiling. */
 async function onCeilingChange(self: CacheControlState): Promise<void> {
     const selection = await loadSelection();
@@ -266,8 +353,7 @@ async function persistZone(zone: VectorZone): Promise<void> {
 /** Triggers the layer-selector to recompute totals + warnings after a zone change. */
 function refreshSelectionTotals(): void {
     const LayerSelector = StorageContract.Cache?.LayerSelector as
-        | { saveSelection?: () => Promise<void>; updateWarning?: () => Promise<void> }
-        | undefined;
+        { saveSelection?: () => Promise<void>; updateWarning?: () => Promise<void> } | undefined;
     LayerSelector?.saveSelection?.().catch(() => {
         /* best-effort */
     });

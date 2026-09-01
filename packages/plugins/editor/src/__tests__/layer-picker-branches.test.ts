@@ -1,11 +1,12 @@
 /*!
- * Tests — `selection/layer-picker.ts`, couverture des branches (backlog COUVERTURE).
+ * Tests — `selection/layer-picker.ts`, branch coverage.
  *
- * Le fichier était à ~59 % de branches : `selection.test.ts` couvre le câblage
- * (`initLayerPicker` / `destroyLayerPicker`) mais aucun des CHEMINS de `_handleClick` et
- * `_handleMove` — outil non-select, géométrie non supportée, feature Terra Draw ignorée,
- * feature rejetée par l'adaptateur, survol dedans/dehors, résolution d'id brute vs préfixée.
- * On rejoue ces handlers en les capturant sur une fausse carte.
+ * The file sat at ~59% branches: `selection.test.ts` covers the wiring
+ * (`initLayerPicker` / `destroyLayerPicker`) but none of the PATHS of
+ * `_handleClick` and `_handleMove` — non-select tool, unsupported geometry,
+ * ignored Terra Draw feature, feature rejected by the adapter, hover in/out,
+ * raw vs prefixed id resolution. We replay these handlers by capturing them
+ * on a fake map.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
@@ -18,7 +19,7 @@ vi.mock("terra-draw", () => ({
 }));
 vi.mock("terra-draw-maplibre-gl-adapter", () => ({ TerraDrawMapLibreGLAdapter: vi.fn() }));
 
-// Contrôle des couches éditables — le picker les lit via getEditableLayers().
+// Control of the editable layers — the picker reads them via getEditableLayers().
 vi.mock("../config.js", async (importActual) => ({
     ...(await importActual()),
     getEditableLayers: vi.fn(() => [{ id: "roads" }]),
@@ -42,7 +43,7 @@ function adapter(over: Partial<TerraDrawAdapterInstance> = {}): TerraDrawAdapter
     } as unknown as TerraDrawAdapterInstance;
 }
 
-/** Fausse carte qui CAPTURE les handlers `on(type, fn)` pour les rejouer. */
+/** Fake map that CAPTURES the `on(type, fn)` handlers to replay them. */
 function mapCapture(features: unknown[] = []) {
     const canvas = document.createElement("canvas");
     const h: Record<string, (e: unknown) => void> = {};
@@ -138,7 +139,7 @@ describe("_handleClick — le chemin nominal", () => {
         expect(onHostFeatureSelected).toHaveBeenCalledWith("roads", "f1");
         const snap = getSelection();
         expect(snap).toMatchObject({ terradrawId: "td-new", featureId: "f1", layerId: "roads" });
-        // les coordonnées ont été arrondies à 9 décimales
+        // the coordinates were rounded to 9 decimal places
         expect(
             (a.addFeature as ReturnType<typeof vi.fn>).mock.calls[0][0].geometry.coordinates
         ).toEqual([2.352, 48.857]);
@@ -207,9 +208,9 @@ describe("_handleMove — le curseur", () => {
         expect(map._canvas.style.cursor).toBe("crosshair");
     });
 
-    // B-252 — la garde ci-dessus ne voyait que les outils Terra Draw de l'éditeur LUI-MÊME.
-    // Un outil d'un autre plugin (measure, recherche par proximité) annonce sa prise de contrôle
-    // par `__geoleafExclusiveMode`, et se faisait écraser la croix à chaque mousemove.
+    // The guard above only saw the editor's OWN Terra Draw tools. A tool from
+    // another plugin (measure, proximity search) announces its takeover via
+    // `__geoleafExclusiveMode`, and had its crosshair overwritten on every mousemove.
     it("ne touche pas au curseur quand un AUTRE plugin a pris la main (mode exclusif)", () => {
         const a = adapter({ getActiveTool: vi.fn((): EditorTool | null => null) });
         const map = mapCapture([feat()]);

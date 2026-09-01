@@ -17,7 +17,22 @@ vi.mock("@geoleaf/host-runtime", async (importActual) => ({
     ...(await importActual<typeof import("@geoleaf/host-runtime")>()),
     Log: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
 }));
-vi.mock("../utils/events.js", () => ({ events: null }));
+vi.mock("../utils/events.js", () => ({
+    // 🛑 DO NOT RE-NEUTRALISE THIS SEAM — measured on 17/08/2026.
+    // Neutralising the seam forces `panel-resize.ts`'s FALLBACK, while `events`
+    // is a constant module object: in production the condition is always true.
+    // Seven suites in the package neutralised it, so that none exercised the
+    // path production takes. This mock reproduces `utils/events.ts` exactly, `off` included.
+    events: {
+        on: vi.fn((target, type, handler, options) => {
+            target.addEventListener(type, handler, options);
+            return () => target.removeEventListener(type, handler, options);
+        }),
+        off: vi.fn((cleanup) => {
+            if (typeof cleanup === "function") cleanup();
+        }),
+    },
+}));
 // vi.mock factories are hoisted above declarations; lift the shared handles with vi.hoisted.
 const { setLayer, updateToolbarButtons, highlightSelection } = vi.hoisted(() => ({
     setLayer: vi.fn(),
@@ -119,18 +134,18 @@ describe("modules/table/panel (Phase 4.11)", () => {
         handle.querySelector(".gl-table-panel__resize-bar");
         (result as any).getBoundingClientRect = () => ({ height: 400 });
         Object.defineProperty(result, "offsetHeight", { value: 400, configurable: true });
-        // ⚠️ Les écouteurs de mouvement/relâchement vivent désormais sur la POIGNÉE, posés
-        // au `pointerdown` et retirés à la fin — plus sur `document` en permanence.
+        // ⚠️ The move/release listeners now live on the HANDLE, set at
+        // `pointerdown` and removed at the end — no longer permanently on `document`.
         handle.dispatchEvent(
             new PointerEvent("pointerdown", { clientY: 500, button: 0, bubbles: true })
         );
         handle.dispatchEvent(new PointerEvent("pointermove", { clientY: 300, bubbles: true }));
         handle.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
-        // ⚠️ C'était `expect(result.style.height).toBeDefined()` — une assertion TOUJOURS
-        // vraie (`style.height` rend `""` quand rien n'est posé, et `""` est defined). Elle
-        // serait passée sur un handler qui ne fait rien du tout. La valeur est calculable :
-        // hauteur de départ 400, curseur de 500 à 300 → delta 200 → 600, dans les bornes
-        // [300px, 80 % du viewport].
+        // ⚠️ This was `expect(result.style.height).toBeDefined()` — an ALWAYS
+        // true assertion (`style.height` returns `""` when nothing is set, and
+        // `""` is defined). It would have passed on a handler doing nothing at
+        // all. The value is computable: starting height 400, cursor from 500
+        // to 300 → delta 200 → 600, within the [300px, 80% of viewport] bounds.
         expect(result.style.height).toBe("600px");
     });
 
@@ -145,8 +160,8 @@ describe("modules/table/panel (Phase 4.11)", () => {
         handle.dispatchEvent(
             new PointerEvent("pointerdown", { clientY: 500, button: 0, bubbles: true })
         );
-        // Deuxième doigt : s'il réarmait le geste, `startY` repartirait de 400 et le
-        // mouvement suivant rendrait une hauteur fausse.
+        // Second finger: if it rearmed the gesture, `startY` would restart
+        // from 400 and the next movement would yield a wrong height.
         handle.dispatchEvent(
             new PointerEvent("pointerdown", { clientY: 400, button: 0, bubbles: true })
         );
@@ -163,8 +178,8 @@ describe("modules/table/panel (Phase 4.11)", () => {
         );
         const handle = result.querySelector(".gl-table-panel__resize-handle") as HTMLElement;
         Object.defineProperty(result, "offsetHeight", { value: 400, configurable: true });
-        // Le panneau naît avec `defaultHeight` posé : l'assertion porte sur l'ABSENCE de
-        // changement, pas sur une valeur vide.
+        // The panel is born with `defaultHeight` set: the assertion is about
+        // the ABSENCE of change, not an empty value.
         const before = result.style.height;
 
         handle.dispatchEvent(
@@ -188,8 +203,8 @@ describe("modules/table/panel (Phase 4.11)", () => {
         );
         expect(document.body.style.cursor).toBe("ns-resize");
 
-        // Un geste tactile peut être confisqué ; un geste souris, non. Sans cette branche,
-        // `ns-resize` et `user-select: none` restaient sur la page entière.
+        // A touch gesture can be claimed away; a mouse gesture cannot. Without
+        // this branch, `ns-resize` and `user-select: none` stayed on the whole page.
         handle.dispatchEvent(new PointerEvent("pointercancel", { bubbles: true }));
         expect(document.body.style.cursor).toBe("");
         expect(document.body.style.userSelect).toBe("");

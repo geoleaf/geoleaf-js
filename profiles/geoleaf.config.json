@@ -39,7 +39,7 @@
             "theme_color": "#2d6a4f",
             "background_color": "#ffffff",
             "installPrompt": {
-                "_comment": "ACTIVÉ le 02/08/2026 (B-113) — ce n'est pas un confort, c'est la condition de SURVIE du stockage hors-ligne sur une flotte MIXTE iOS + Android. Sur iOS, Safari purge le stockage scriptable après 7 jours d'inactivité pour un site absent de l'écran d'accueil : la feuille d'installation est le seul chemin qui l'évite. Sur Android, l'installation est le signal d'engagement le moins cher pour faire passer navigator.storage.persisted() de bestEffort à persistent — mesuré refusé en headless, accordé sur un Chrome réel. Le coût assumé est une bannière visible chez l'intégrateur ; repasser à false la retire ET rend le stockage évinçable.",
+                "_comment": "ACTIVÉ le 02/08/2026 — ce n'est pas un confort, c'est la condition de SURVIE du stockage hors-ligne sur une flotte MIXTE iOS + Android. Sur iOS, Safari purge le stockage scriptable après 7 jours d'inactivité pour un site absent de l'écran d'accueil : la feuille d'installation est le seul chemin qui l'évite. Sur Android, l'installation est le signal d'engagement le moins cher pour faire passer navigator.storage.persisted() de bestEffort à persistent — mesuré refusé en headless, accordé sur un Chrome réel. Le coût assumé est une bannière visible chez l'intégrateur ; repasser à false la retire ET rend le stockage évinçable.",
                 "enabled": true
             },
             "offlineDetector": {

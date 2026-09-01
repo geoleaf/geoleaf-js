@@ -22,7 +22,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
  *
  * A blocked URL is NOT a network failure, but both call sites already degrade
  * gracefully on failure and the enumeration must not abort on one poisoned entry, so
- * the block is logged and skipped — the pattern `cache/metrics.ts:50` already uses.
+ * the block is logged and skipped — the pattern `cache/metrics.ts` already uses.
  * What is asserted here is the security property: `fetch` is never reached.
  *
  * ⚠️ Two further fetch sites are deliberately NOT guarded — see the last describe.
@@ -87,8 +87,8 @@ describe("B.10 — scheme guard on the remaining fetch sites", () => {
 
             // Only the style itself was fetched — the TileJSON reference was refused.
             expect(global.fetch).toHaveBeenCalledTimes(1);
-            // L'init porte un `signal` depuis 3.8 : ce test vérifie l'URL qui ATTEINT
-            // `fetch` (garde de schéma B.10), pas la forme de l'init.
+            // The init carries a `signal`: this test verifies the URL that
+            // REACHES `fetch` (the scheme guard), not the init's shape.
             expect(global.fetch).toHaveBeenCalledWith(
                 "https://tiles.test/style.json",
                 expect.anything()
@@ -124,8 +124,8 @@ describe("B.10 — scheme guard on the remaining fetch sites", () => {
             ]);
 
             expect(global.fetch).toHaveBeenCalledTimes(1);
-            // L'init porte un `signal` depuis 3.8 : ce test vérifie l'URL qui ATTEINT
-            // `fetch` (garde de schéma B.10), pas la forme de l'init.
+            // The init carries a `signal`: this test verifies the URL that
+            // REACHES `fetch` (the scheme guard), not the init's shape.
             expect(global.fetch).toHaveBeenCalledWith(
                 "https://ok.test/layer.geojson",
                 expect.anything()
@@ -140,9 +140,8 @@ describe("B.10 — scheme guard on the remaining fetch sites", () => {
      */
     describe("deliberately NOT guarded", () => {
         test("ResourceEnumerator's config fetch cannot carry a scheme at all", async () => {
-            const { ResourceEnumerator } = await import(
-                "../../../src/capabilities/offline/cache/resource-enumerator.js"
-            );
+            const { ResourceEnumerator } =
+                await import("../../../src/capabilities/offline/cache/resource-enumerator.js");
             global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
 
             const resources = [];
@@ -159,8 +158,8 @@ describe("B.10 — scheme guard on the remaining fetch sites", () => {
             // only rejects schemes: a guard here could never fire. The one prefix that
             // could (`basePath`) is validated upstream, on this very code path, by
             // CacheStorage.loadProfileConfig — which builds the same string.
-            // L'init porte un `signal` depuis 3.8 : ce test vérifie l'URL qui ATTEINT
-            // `fetch` (garde de schéma B.10), pas la forme de l'init.
+            // The init carries a `signal`: this test verifies the URL that
+            // REACHES `fetch` (the scheme guard), not the init's shape.
             expect(global.fetch).toHaveBeenCalledWith(
                 "../profiles/tourism/javascript:alert(1)",
                 expect.anything()

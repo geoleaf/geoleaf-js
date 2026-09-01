@@ -1,10 +1,10 @@
 /**
- * `capabilities/filter/apply` — le pipeline de filtrage VIVANT.
+ * `capabilities/filter/apply` — the LIVE filtering pipeline.
  *
- * Aucun test direct jusqu'ici : ses deux seuls consommateurs (`contract.test.js`,
- * `lifecycle.test.js`) le `vi.mock` intégralement. Le chemin natif dormant
- * (`taxonomy-options.ts` + `engine/native.ts`), lui, avait 10 tests — c'est ce déséquilibre que
- * S5/N-4 solde : le dormant part, le vivant se fait tenir.
+ * No direct test until now: its only two consumers (`contract.test.js`,
+ * `lifecycle.test.js`) `vi.mock` it wholesale. The dormant native path
+ * (`taxonomy-options.ts` + `engine/native.ts`) had 10 tests — that imbalance
+ * is what gets settled: the dormant leaves, the live gets held.
  */
 import { vi } from "vitest";
 
@@ -42,8 +42,8 @@ describe("capabilities/filter/apply — applyActiveFilterToSources", () => {
     });
 
     it("passe un prédicat qui reçoit (feature, layerId) — le scope `layers` en dépend", () => {
-        // `featurePasses` honore le scope par couche : sans le layerId, un champ scopé
-        // s'appliquerait à toutes les couches.
+        // `featurePasses` honours the per-layer scope: without the layerId, a
+        // scoped field would apply to every layer.
         applyActiveFilterToSources([
             {
                 descriptor: { id: "f1", kind: "boolean", field: "actif", layers: ["lyr-a"] },
@@ -52,9 +52,9 @@ describe("capabilities/filter/apply — applyActiveFilterToSources", () => {
         ]);
         const predicate = filterFeatures.mock.calls[0][0];
         const refuse = { type: "Feature", properties: { actif: false } };
-        // Dans le scope : le champ contraint → la feature est rejetée.
+        // In scope: the field constrains → the feature is rejected.
         expect(predicate(refuse, "lyr-a")).toBe(false);
-        // Hors scope : le champ ne s'applique pas → la feature passe malgré tout.
+        // Out of scope: the field does not apply → the feature passes regardless.
         expect(predicate(refuse, "lyr-b")).toBe(true);
     });
 
@@ -95,9 +95,10 @@ describe("capabilities/filter/apply — applyFilterFromPanel", () => {
     });
 
     it("fait passer la sélection par expandActiveFilter — la moitié VIVANTE de taxonomy-options.ts", () => {
-        // Cocher une catégorie doit filtrer dessus. (L'expansion parent → enfants exige la
-        // capacité taxonomy montée ; sans elle, la sélection passe telle quelle — ce qui
-        // suffit à prouver que le pipeline traverse bien `expandActiveFilter`.)
+        // Ticking a category must filter on it. (The parent → children
+        // expansion requires the taxonomy capability mounted; without it, the
+        // selection passes as-is — enough to prove the pipeline does cross
+        // `expandActiveFilter`.)
         readActiveFilter.mockReturnValue([
             {
                 descriptor: { id: "cat", kind: "taxonomy", field: "categorie" },

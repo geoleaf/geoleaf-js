@@ -89,7 +89,7 @@ export const Permalink = {
      */
     startSync(map: IMapAdapter): void {
         // Idempotent: tear down any previous session first so a re-init (SPA / new map)
-        // never leaves the old map + document listeners attached (S7.4).
+        // never leaves the old map + document listeners attached.
         if (_stopSync) _stopSync();
         _stopSync = _startSync(map, _config);
     },
@@ -140,7 +140,7 @@ export const Permalink = {
      *
      * @example
      * ```js
-     * // Un lien partageable complet — le fragment seul ne suffit pas.
+     * // A complete shareable link — the fragment alone is not enough.
      * const permalinkUrl =
      *     window.location.origin + window.location.pathname + GeoLeaf.Permalink.buildUrl();
      * ```

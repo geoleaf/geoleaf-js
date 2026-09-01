@@ -109,6 +109,77 @@ function _readLayerConfigs(staticLayers, profileDir) {
 }
 
 /**
+ * Reads every style DOCUMENT a profile's layers can request, and returns the bag
+ * `{ [layerId]: { [styleId]: <style JSON> } }`.
+ *
+ * 🛑 **Covers BOTH families, and that is the whole point.** `_readLayerConfigs` above filters
+ * on `typeof l.configFile === "string"`, which excludes every `layerTemplates` INSTANCE by
+ * construction — they carry only `{id, label, dataFile}` and inherit their styles from the
+ * template. Following that patron here would aggregate the static layers only, produce a
+ * plausible weight, and SUCCEED at aggregating a bit more than half the styles. Measured on
+ * `tourism` at the time of writing: 20 static + 24 templated = 44 documents; the naive
+ * version returns 20 and looks right.
+ *
+ * ⚠️ **Both key levels are sorted explicitly.** `BUILD-DET` compares two builds on the SAME
+ * machine, so it can never see a `readdirSync` ordering that differs between machines — the
+ * determinism has to be built in rather than checked. This is the same class of defect that
+ * removing `_generatedAt` fixed: a bundle that differs at identical content.
+ *
+ * @param {Array<object>} staticLayers - Layers carrying a `configFile`.
+ * @param {object|null} layersFileData - The layers file, for its `layerTemplates`.
+ * @param {object} layerConfigs - Already-read configs of the static layers.
+ * @param {string} profileDir - Absolute path to the profile directory.
+ * @returns {object} The `{layerId: {styleId: document}}` bag; empty when nothing was read.
+ */
+function _readLayerStyleDocuments(staticLayers, layersFileData, layerConfigs, profileDir) {
+    const out = {};
+
+    const add = (layerId, styles) => {
+        if (!layerId || !styles || typeof styles !== "object") return;
+        const dir = typeof styles.directory === "string" ? styles.directory : "styles";
+        /** styleId → file name. `available` first, then `default` if it names another file. */
+        const wanted = new Map();
+        for (const entry of Array.isArray(styles.available) ? styles.available : []) {
+            if (!entry || typeof entry.file !== "string") continue;
+            const id = typeof entry.id === "string" ? entry.id : entry.file.replace(/\.json$/, "");
+            wanted.set(id, entry.file);
+        }
+        if (typeof styles.default === "string" && ![...wanted.values()].includes(styles.default)) {
+            wanted.set(styles.default.replace(/\.json$/, ""), styles.default);
+        }
+        const bag = {};
+        for (const [styleId, file] of wanted) {
+            const doc = _readJson(path.join(profileDir, "layers", layerId, dir, file));
+            if (doc !== null) bag[styleId] = doc;
+        }
+        if (Object.keys(bag).length === 0) return;
+        out[layerId] = Object.fromEntries(
+            Object.keys(bag)
+                .sort()
+                .map((k) => [k, bag[k]])
+        );
+    };
+
+    for (const layer of staticLayers) add(layer.id, layerConfigs[layer.id]?.styles);
+
+    const templates = Array.isArray(layersFileData?.layerTemplates)
+        ? layersFileData.layerTemplates
+        : [];
+    for (const tpl of templates) {
+        const styles = tpl?.template?.styles;
+        for (const inst of Array.isArray(tpl?.instances) ? tpl.instances : []) {
+            add(inst?.id, styles);
+        }
+    }
+
+    return Object.fromEntries(
+        Object.keys(out)
+            .sort()
+            .map((k) => [k, out[k]])
+    );
+}
+
+/**
  * Generates profile-bundle.json for a single modular profile directory.
  * Patches profile.json to add `"bundleFile"`.
  *
@@ -137,19 +208,32 @@ function bundleProfile(profileDir, profileId) {
     const { layersFileData, staticLayers } = _readLayersFile(profile, profileDir);
     const layerConfigs = _readLayerConfigs(staticLayers, profileDir);
 
-    // 🛑 `_generatedAt: Date.now()` RETIRÉ (S5.8) — écrit ici, lu NULLE PART.
+    // 🛑 `_generatedAt: Date.now()` REMOVED — written here, read NOWHERE.
     //
-    // Zéro consommateur mesuré dans `packages/*/src`, `apps/` et `scripts/` : c'était un champ
-    // purement informatif, et son seul effet observable était de rendre le bundle DIFFÉRENT à
-    // chaque build. Ce n'est pas anodin : `profile-bundle.json` est pré-caché par le service
-    // worker (il est dans `STATIC_ASSETS`) et c'est le fichier qui effondre 32 requêtes en une
-    // seule. Un horodatage le faisait re-télécharger à chaque déploiement, à contenu identique.
+    // Zero consumers measured across `packages/*/src`, `apps/` and `scripts/`: it was a
+    // purely informative field, and its only observable effect was making the bundle
+    // DIFFERENT on every build. That is not benign: this is the file that collapses 32
+    // requests into one, and a timestamp made it re-download on every deployment, at
+    // identical content.
     //
-    // ⚠️ Trouvé par `check-build-determinism.cjs --deploy`, pas par l'énoncé de la tâche : la
-    // roadmap ne nommait que les deux `Date.now()` de `build-deploy.cjs`. Une gate qui compare
-    // le déployé entier voit ce qu'une gate qui compare les `?v=` ne peut pas voir.
+    // 🔻 CORRECTED on 2026-08-19 — this line claimed the bundle "is pre-cached by the
+    // service worker (it is in `STATIC_ASSETS`)". **It is not**: it is fetched after the
+    // root config, hence never referenced by the markup the pre-cache derives from. The
+    // offline hole is real, but it closes through ENUMERATION, never through the pre-cache.
     //
-    // `_bundleVersion` reste : c'est une version de FORMAT, déterministe, et elle est lue.
+    // ⚠️ Found by `check-build-determinism.cjs --deploy`, not by the task statement: that
+    // statement only named the two `Date.now()` of `build-deploy.cjs`. A gate that compares
+    // the whole deploy output sees what a gate that compares the `?v=` strings cannot.
+    //
+    // `_bundleVersion` stays: it is a FORMAT version, deterministic.
+    //
+    // ⚠️ This line used to claim "and it IS read" — that was FALSE for months: the field
+    // had no reader, here or anywhere. The claim let the field survive the purge that
+    // removed its neighbour above, for exactly the reason that should have taken it too.
+    // The reader exists since 2026-08-19 (`profile-loader.ts`, `_BUNDLE_FORMAT`): it
+    // compares and WARNS on mismatch, without refusing — a bundle held by the service
+    // worker of an earlier deployment is the real-world case, and refusing it would render
+    // an empty map where a warning makes the defect visible.
     const bundle = {
         _bundleVersion: BUNDLE_VERSION,
         _profileId: profileId,
@@ -162,6 +246,19 @@ function bundleProfile(profileDir, profileId) {
     if (modules) bundle.modules = modules;
     if (layersFileData) bundle.layersFile = layersFileData;
     if (Object.keys(layerConfigs).length > 0) bundle.layerConfigs = layerConfigs;
+    const layerStyleDocuments = _readLayerStyleDocuments(
+        staticLayers,
+        layersFileData,
+        layerConfigs,
+        profileDir
+    );
+    // `layerStyleDocuments`, NEVER `layerStyles`: that name is already taken in the offline
+    // subsystem (`capabilities/offline/cache/storage.ts`), where it maps a layer to its
+    // SELECTED style id. Two same-named keys of incompatible shape in one subsystem is a
+    // confusion waiting for the next reader.
+    if (Object.keys(layerStyleDocuments).length > 0) {
+        bundle.layerStyleDocuments = layerStyleDocuments;
+    }
 
     const bundlePath = path.join(profileDir, BUNDLE_FILENAME);
     const bundleJson = JSON.stringify(bundle, null, 2);

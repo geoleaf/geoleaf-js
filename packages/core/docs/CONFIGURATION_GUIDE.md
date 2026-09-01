@@ -151,10 +151,10 @@ Branding overlay displayed on the map.
 
 Data loading configuration.
 
-| Field              | Type   | Default        | Description                                                             |
-| ------------------ | ------ | -------------- | ----------------------------------------------------------------------- |
-| `activeProfile`    | string | `"default"`    | Profile name to load. Must match a directory in `profilesBasePath`      |
-| `profilesBasePath` | string | `"/profiles/"` | Base path to profiles directory (relative to HTML page or absolute URL) |
+| Field              | Type   | Default      | Description                                                             |
+| ------------------ | ------ | ------------ | ----------------------------------------------------------------------- |
+| `activeProfile`    | string | `"default"`  | Profile name to load. Must match a directory in `profilesBasePath`      |
+| `profilesBasePath` | string | `"profiles"` | Base path to profiles directory (relative to HTML page or absolute URL) |
 
 **Example:**
 

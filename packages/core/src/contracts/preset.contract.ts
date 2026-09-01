@@ -9,10 +9,10 @@
  * GeoLeaf Contract — Build Preset (composition boundary)
  *
  * A **preset** is the set of in-core capabilities a bundle entry embarks on top of
- * le noyau fixe (**6 modules** enregistrés par `app/boot-install.ts` : `core-map`, `config`,
- * `shared`, `geojson`, `ui`, `theme-engine` — ARCHI S5 (5.4) : ce bloc annonçait « 8 »,
- * en y comptant `api` et `security`, qui sont des sous-systèmes de façade seule et non
- * des modules du registre). It replaced the frozen `lite` build (removed in S4):
+ * the fixed kernel (**6 modules** registered by `app/boot-install.ts`: `core-map`, `config`,
+ * `shared`, `geojson`, `ui`, `theme-engine` — this block used to say "8", counting
+ * `api` and `security`, which are facade-only subsystems and not registry modules).
+ * It replaced the frozen `lite` build (since removed):
  * instead of a hand-maintained parallel entry/boot/globals triple, each capability
  * exposes ONE self-sufficient installer, and an entry is a curated list of them.
  *

@@ -53,7 +53,7 @@ function _buildSelect(
 
 function _setLoading(wrap: HTMLElement, loading: boolean): void {
     const select = wrap.querySelector("select");
-    if (select) (select as HTMLSelectElement).disabled = loading;
+    if (select) select.disabled = loading;
     let spinner = wrap.querySelector<HTMLSpanElement>(".gl-form-dropdown__spinner");
     if (loading && !spinner) {
         spinner = _el("span");

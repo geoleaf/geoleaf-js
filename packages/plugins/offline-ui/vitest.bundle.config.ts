@@ -12,9 +12,9 @@
  *
  * Usage: npm run test:bundle --workspace=@geoleaf-plugins/offline-ui
  */
-import { defineConfig } from 'vitest/config';
-import { fileURLToPath } from 'node:url';
-import { dirname } from 'node:path';
+import { defineConfig } from "vitest/config";
+import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -22,19 +22,19 @@ export default defineConfig({
     root: __dirname,
 
     test: {
-        name: '@geoleaf-plugins/offline-ui:bundle',
-        environment: 'node',
+        name: "@geoleaf-plugins/offline-ui:bundle",
+        environment: "node",
         globals: true,
 
-        include: ['__tests__/bundle.test.js'],
-        exclude: ['**/node_modules/**', '**/dist/**'],
+        include: ["__tests__/bundle.test.js"],
+        exclude: ["**/node_modules/**", "**/dist/**"],
 
         // Vitest 4 removed `poolOptions`; `singleFork: true` is now maxWorkers:1 + isolate:false.
-        pool: 'forks',
+        pool: "forks",
         maxWorkers: 1,
         isolate: false,
 
         testTimeout: 30000,
-        reporters: ['verbose'],
+        reporters: ["verbose"],
     },
 });

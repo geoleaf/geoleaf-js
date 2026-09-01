@@ -3,7 +3,7 @@
  * © 2026 Mattieu Pottier
  * Released under the MIT License
  *
- * Sprint 3: rewritten to use the native MapLibre GL API.
+ * Rewritten to use the native MapLibre GL API.
  * The map instance stored here is a raw `maplibregl.Map`,
  * not an IMapAdapter wrapper.
  * https://geoleaf.dev
@@ -103,7 +103,7 @@ export function _acquireNativeMap(explicitMap?: unknown) {
  * Caches the map the basemap registry operates on.
  *
  * Accepts either a raw `maplibregl.Map` or an `IMapAdapter`, which is unwrapped through
- * `getNativeMap()` — the registry works against the native API since Sprint 3. `null` clears
+ * `getNativeMap()` — the registry works against the native API. `null` clears
  * the cache, which is what destroy flows and tests use.
  *
  * ⚠️ A value that is neither a native map nor an adapter yielding one is **silently

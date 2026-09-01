@@ -1,4 +1,4 @@
-﻿/*!
+/*!
  * @geoleaf/core
  * © 2026 Mattieu Pottier
  * Released under the MIT License
@@ -16,7 +16,7 @@ import { domState, _g } from "./mobile-toolbar-state.js";
 import { createSvgIcon, refreshFilterButtonState } from "./mobile-toolbar-pill.js";
 import { getLabel } from "../../../utils/i18n/i18n.js";
 
-// ── Local structural types (S2.1) ──────────────────────────────────────────────
+// ── Local structural types ──────────────────────────────────────────────
 
 /** One `modules.filter` field descriptor whose radius bounds are read dynamically. */
 type FilterFieldLike = Record<string, unknown>;
@@ -47,6 +47,29 @@ interface FilterLike {
 
 const Config = _Config as ConfigLike;
 
+/** In-core fallback radius, in km, when the profile declares no proximity bounds. */
+const DEFAULT_RADIUS_KM = 10;
+
+/**
+ * The bar's default radius, in km, read back from the slider that carries it.
+ *
+ * Single reader for that default: the label, the toolbar button and the deactivation
+ * path all resolve it here, so they can no longer disagree. Parsed as a float — the
+ * profile is free to declare a fractional `radiusDefault`, and truncating it silently
+ * moved the painted circle away from the value shown next to it.
+ *
+ * @returns The slider default when it is a usable radius, else {@link DEFAULT_RADIUS_KM}.
+ */
+export function proximityDefaultRadiusKm(): number {
+    const km = Number.parseFloat(domState.proximitySlider?.defaultValue ?? "");
+    return Number.isFinite(km) && km > 0 ? km : DEFAULT_RADIUS_KM;
+}
+
+/** Renders a radius, in km, through the dictionary rather than an inline template. */
+function _formatRadiusLabel(km: number): string {
+    return getLabel("format.proximity.radius", String(km));
+}
+
 function _applyRadiusConfig(
     field: FilterFieldLike,
     out: { min: number; max: number; step: number; def: number }
@@ -58,14 +81,13 @@ function _applyRadiusConfig(
         ["def", "radiusDefault"],
     ];
     for (const [k, prop] of props) {
-        if (typeof field[prop] === "number" && (field[prop] as number) > 0)
-            out[k] = field[prop] as number;
+        if (typeof field[prop] === "number" && field[prop] > 0) out[k] = field[prop];
     }
     out.def = Math.max(out.min, Math.min(out.def, out.max));
 }
 
 function _readProximityRadius(): { min: number; max: number; step: number; def: number } {
-    const out = { min: 1, max: 50, step: 1, def: 10 };
+    const out = { min: 1, max: 50, step: 1, def: DEFAULT_RADIUS_KM };
     try {
         // Radius bounds live on the `proximity` field of `modules.filter` (migrated
         // from the legacy `searchConfig.radius*` in S5/F5).
@@ -126,7 +148,7 @@ export function createProximityBarDom(): HTMLElement {
     bar.appendChild(slider);
     const radiusLabel = document.createElement("span");
     radiusLabel.className = "gl-proximity-bar__radius-label";
-    radiusLabel.textContent = `${_defaultRadius} km`;
+    radiusLabel.textContent = _formatRadiusLabel(_defaultRadius);
     domState.proximityRadiusLabel = radiusLabel;
     bar.appendChild(radiusLabel);
     const validateBtn = document.createElement("button");
@@ -146,8 +168,12 @@ export function createProximityBarDom(): HTMLElement {
     cancelBtn.addEventListener("click", () => closeProximityBar(true));
     bar.appendChild(cancelBtn);
     slider.addEventListener("input", () => {
-        const km = Number.parseInt(slider.value, 10);
-        if (domState.proximityRadiusLabel) domState.proximityRadiusLabel.textContent = `${km} km`;
+        // parseFloat, not parseInt: a profile may declare a fractional `radiusStep`, and
+        // truncating here collapsed every sub-kilometre notch onto a zero-radius circle.
+        // No NaN guard: a range input coerces its value, so this always parses.
+        const km = Number.parseFloat(slider.value);
+        if (domState.proximityRadiusLabel)
+            domState.proximityRadiusLabel.textContent = _formatRadiusLabel(km);
         const filter = _g.GeoLeaf?.Filter as FilterLike | undefined;
         filter?.proximity?.setRadius?.(km);
     });
@@ -167,7 +193,7 @@ export function openProximityBar(): void {
     if (domState.proximitySlider)
         domState.proximitySlider.value = domState.proximitySlider.defaultValue;
     if (domState.proximityRadiusLabel)
-        domState.proximityRadiusLabel.textContent = `${domState.proximitySlider?.defaultValue ?? 10} km`;
+        domState.proximityRadiusLabel.textContent = _formatRadiusLabel(proximityDefaultRadiusKm());
     domState.proximityBar.style.display = "flex";
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
@@ -212,7 +238,7 @@ export function closeProximityBar(cancel: boolean, skipFilter = false): void {
         const filter = _g.GeoLeaf?.Filter as FilterLike | undefined;
         const map = domState.options?.map;
         if (filter?.proximity?.toggle && map && domState.proximityActive) {
-            filter.proximity.toggle(map, 10);
+            filter.proximity.toggle(map, proximityDefaultRadiusKm());
         }
         domState.proximityActive = false;
         const proximityBtn = domState.toolbar?.querySelector('[data-gl-sheet="proximity"]');

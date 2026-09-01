@@ -41,6 +41,7 @@ import type { PermalinkConfig } from "../../kernel/config/geoleaf-config/config-
 import { readUrl, buildUrl, MAX_TEXT_LEN } from "./permalink-url.js";
 import type { PermalinkState } from "./permalink-url.js";
 import { getPermalinkGeoLeaf } from "./types.js";
+import { getLog } from "../../utils/general/di-accessors.js";
 import type { PermalinkFilterField } from "./types.js";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.js";
 import { applyPermalinkLayerVisibility } from "./permalink-restore.js";
@@ -51,6 +52,14 @@ export { readUrl, buildUrl };
 
 /** Debounce delay in ms for map move/zoom events. */
 const SYNC_DEBOUNCE_MS = 400;
+
+/**
+ * Grace period after `geoleaf:app:ready` before concluding `geoleaf:themes:ready` will never
+ * fire. The selector mounts ON app:ready and emits in the same burst, so anything beyond a
+ * couple of seconds is not lateness — it is absence (unregistered capability, or missing
+ * theme containers). Kept well above one macrotask so a slow device never false-positives.
+ */
+const THEMES_READY_GRACE_MS = 2000;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -185,7 +194,7 @@ function _captureThemeField(state: PermalinkState, fields: readonly string[]): v
  * when this runs: the caller is deferred to `geoleaf:theme:applied`, and the panel is
  * mounted by `capabilities/filter/lifecycle.ts` on `geoleaf:app:ready`, which
  * `revealApp()` dispatches from a LATER listener of that same `theme:applied`
- * (`app/init-reveal.ts:165` is registered after `applyState`'s own listener).
+ * (`app/init-reveal.ts` is registered after `applyState`'s own listener).
  * Applying against a null panel silently dropped the write, and the panel mounted a
  * moment later came up blank while the sources stayed filtered — a deep link like
  * `#gl_filter=montagne` filtered the data but left the search box empty, and the next
@@ -279,28 +288,57 @@ export function applyState(state: PermalinkState, map: IMapAdapter): void {
     if (hasTheme) {
         // Wait for ThemeSelector to finish its initial load, then switch theme if needed.
         // geoleaf:themes:ready fires once, after the default theme:applied.
+        //
+        // ⚠️ WITH A FALLBACK, because that event has exactly ONE emitter and three conditions:
+        // `theme-selector` must be registered, a profile active, and both theme containers
+        // present in the page. A page that misses any of them never emits — and without the
+        // fallback below, everything deferred here (layer visibility, filter, shown-layers)
+        // was silently LOST, not just the theme switch. `geoleaf:app:ready` always fires (the
+        // reveal has its own safety timeout), and themes:ready normally follows it in the
+        // same mount burst: a grace period after app:ready is therefore a reliable "the
+        // emitter is not coming" signal. The theme switch itself is dropped in that case —
+        // with no selector mounted there is nothing that can switch — but dropped LOUDLY,
+        // and the rest of the deferred state still applies.
+        let _handled = false;
+        const _onThemesReady = function (): void {
+            const themeSelector = getPermalinkGeoLeaf()?.ThemeSelector;
+            const currentTheme = themeSelector?.getCurrentTheme?.();
+            if (state.theme && currentTheme !== state.theme && themeSelector?.setTheme) {
+                // Register layers/filter restore to fire after the next theme:applied
+                document.addEventListener("geoleaf:theme:applied", _applyLayersAndFilter, {
+                    once: true,
+                });
+                themeSelector.setTheme(state.theme).catch(() => {
+                    // setTheme() failed — theme:applied may never fire; apply directly
+                    document.removeEventListener("geoleaf:theme:applied", _applyLayersAndFilter);
+                    _applyLayersAndFilter();
+                });
+            } else {
+                // Correct theme already active — layers are loaded, apply immediately
+                _applyLayersAndFilter();
+            }
+        };
         document.addEventListener(
             "geoleaf:themes:ready",
-            function () {
-                const themeSelector = getPermalinkGeoLeaf()?.ThemeSelector;
-                const currentTheme = themeSelector?.getCurrentTheme?.();
-                if (state.theme && currentTheme !== state.theme && themeSelector?.setTheme) {
-                    // Register layers/filter restore to fire after the next theme:applied
-                    document.addEventListener("geoleaf:theme:applied", _applyLayersAndFilter, {
-                        once: true,
-                    });
-                    themeSelector.setTheme(state.theme).catch(() => {
-                        // setTheme() failed — theme:applied may never fire; apply directly
-                        document.removeEventListener(
-                            "geoleaf:theme:applied",
-                            _applyLayersAndFilter
-                        );
-                        _applyLayersAndFilter();
-                    });
-                } else {
-                    // Correct theme already active — layers are loaded, apply immediately
+            function (): void {
+                if (_handled) return;
+                _handled = true;
+                _onThemesReady();
+            },
+            { once: true }
+        );
+        document.addEventListener(
+            "geoleaf:app:ready",
+            function (): void {
+                setTimeout(function (): void {
+                    if (_handled) return;
+                    _handled = true;
+                    getLog()?.warn?.(
+                        "[Permalink] geoleaf:themes:ready never fired — theme restore dropped, " +
+                            "applying deferred layers/filter without it."
+                    );
                     _applyLayersAndFilter();
-                }
+                }, THEMES_READY_GRACE_MS);
             },
             { once: true }
         );
@@ -372,7 +410,7 @@ export function startSync(map: IMapAdapter, config: PermalinkConfig): () => void
     }
 
     // Teardown — symmetric with the registration above. Returned so the facade can stop
-    // syncing on re-init / reset and never leak the map + document listeners (S7.4).
+    // syncing on re-init / reset and never leak the map + document listeners.
     return function stopSync(): void {
         map.off("moveend", writeOnMove);
         for (const [event, handler] of docListeners) {

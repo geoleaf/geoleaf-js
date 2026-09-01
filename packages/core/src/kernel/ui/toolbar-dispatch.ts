@@ -50,7 +50,7 @@ function _emit(action: string, element: HTMLElement): void {
 export function dispatchToolbarAction(action: string, element: HTMLElement): void {
     const plugins = getGeoLeaf()?.plugins as DispatchPluginsLike | undefined;
     if (plugins?.isLazyAction?.(action)) {
-        (plugins.ensureLoadedForAction!(action) as Promise<void>)
+        plugins.ensureLoadedForAction!(action)
             .then(() => _emit(action, element))
             .catch((err: unknown) => Log.error("[GeoLeaf] lazy plugin load failed:", err));
         return;

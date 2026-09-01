@@ -13,14 +13,14 @@
  * - `ICapabilityConfigGate` — how a capability is enabled/disabled by config
  * - `ICapabilitySchema` — introspectable view of a capability (no loader)
  * - `ICapabilityDeclaration` — what a module passes to `register()`
- * - `ICapabilityInstallFacts` — what an installer knows and a declaration cannot (S9.4)
- * - `ICapabilityStatus` — the activation verdict: embarked? enabled? by which gate? (S9.4)
+ * - `ICapabilityInstallFacts` — what an installer knows and a declaration cannot
+ * - `ICapabilityStatus` — the activation verdict: embarked? enabled? by which gate?
  * - `ICapabilityRegistry` — the registry interface
  *
- * Design intent (S2.1): a unified declaration surface that generalises
+ * Design intent: a unified declaration surface that generalises
  * `PluginRegistry.registerLazy()` (bundle-level) and `registerLayerLoader()`
  * (per-layer dispatch) into a single config-gated, schema-exposing contract.
- * Actual capability migrations happen in S2.4 (pilot) and Phase 3.
+ * Actual capability migrations happened capability by capability, pilot first.
  *
  * Gate semantics:
  *   - No `gate`                    → always enabled (not yet config-gated)
@@ -300,4 +300,57 @@ export interface ICapabilityRegistry {
     getAllStatuses(config: {
         get(key: string, defaultValue?: unknown): unknown;
     }): readonly ICapabilityStatus[];
+}
+
+// ─── ICapabilitiesAPI — le namespace public `GeoLeaf.Capabilities` ───────────
+
+/**
+ * One capability that a caller asked for and did not get.
+ *
+ * @remarks
+ * `motif` is displayed by the host, so it is a sentence and not a code: the host has no
+ * table to look an enum up in, and inventing one would make the contract wider than it
+ * needs to be.
+ */
+export interface ICapabilityUnavailableFact {
+    /** Capability id, as it would have been passed to {@link ICapabilityRegistry.register}. */
+    readonly id: string;
+    /** Why it is unavailable, in one sentence. */
+    readonly motif: string;
+}
+
+/**
+ * The public `GeoLeaf.Capabilities` namespace — how a host learns that a capability it
+ * needed was not there.
+ *
+ * ## Why a subscription and not a query
+ *
+ * Plugins register capabilities lazily and into the same registry as the preset, so a
+ * capability may register long after boot — or never. **"Is X absent?" therefore has no
+ * defined answer at any instant**, and a synchronous verdict would accuse every lazy
+ * capability that had not yet loaded. What can be stated is narrower: *this caller asked
+ * for X and nothing provided it*. Hence: declare the fact, subscribe to the facts.
+ *
+ * ⚠️ Two members, and the shape is **frozen** — public API on a published major, which
+ * `I4` forbids removing or deprecating. The implementation lives in
+ * `kernel/api/unavailable-capabilities.ts`; the facade is `api/geoleaf.capabilities.ts`.
+ */
+export interface ICapabilitiesAPI {
+    /**
+     * Records that `id` was asked for and is not available, and notifies subscribers.
+     * Idempotent per `id` — the first motif wins.
+     *
+     * @param id - Capability id.
+     * @param motif - Why it is unavailable, in one sentence.
+     */
+    declareUnavailable(id: string, motif: string): void;
+
+    /**
+     * Subscribes to capability-unavailable facts. Fires immediately for every fact already
+     * recorded, then for each new one — a host that subscribes after boot loses nothing.
+     *
+     * @param cb - Called once per distinct unavailable capability.
+     * @returns An unsubscribe function.
+     */
+    onUnavailable(cb: (fact: ICapabilityUnavailableFact) => void): () => void;
 }

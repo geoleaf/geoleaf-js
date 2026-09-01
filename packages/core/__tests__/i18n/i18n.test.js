@@ -1,6 +1,6 @@
 /**
  * Test suite: i18n module + lang files
- * T6 — Sprint 5 GeoLeaf-JS Roadmap 2026-03-13
+ * 2026-03-13
  *
  * Coverage:
  *  - All 6 lang files contain every required key (including T5 new keys)
@@ -102,7 +102,7 @@ describe("lang files — key completeness", () => {
         expect(fr["ui.filter.disable"]).toBe("D\u00e9sactiver");
     });
 
-    // franglais guards (SOCLE Sprint 3): aria labels FR must not contain 'hide'/'layer'
+    // franglais guards: aria labels FR must not contain 'hide'/'layer'
     it("lang-fr: aria.layer.toggle is idiomatic French (no 'hide'/'layer' anglicism)", async () => {
         const fr = (await import("../../src/lang/lang-fr.ts")).default;
         expect(fr["aria.layer.toggle"]).toBe("Afficher / masquer la couche");
@@ -373,18 +373,20 @@ describe("t() — i18n seam (RM-P2 #7)", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// S6.3 — `<html lang>` suit la langue RÉSOLUE
+// `<html lang>` follows the RESOLVED language
 //
-// L'application déployée expédiait `<html lang="en">` en dur en servant six langues :
-// l'attribut était faux pour cinq profils sur six, dont le défaut français, et un lecteur
-// d'écran annonçait du français avec une phonétique anglaise.
+// The deployed application shipped `<html lang="en">` hardcoded while
+// serving six languages: the attribute was wrong for five profiles out of
+// six, including the French default, and a screen reader announced French
+// with English phonetics.
 //
-// La propriété gardée ici est « une seule source de vérité » : l'attribut est écrit par la
-// fonction qui RÉSOUT la langue, donc il ne peut pas diverger de `?lang=`, du préféré stocké
-// ni de `ui.language`. Un test qui se contenterait de vérifier « lang n'est plus en » passerait
-// sur une implémentation qui écrit une constante — d'où les bascules successives.
+// The property guarded here is "a single source of truth": the attribute is
+// written by the function that RESOLVES the language, so it cannot diverge
+// from `?lang=`, the stored preference or `ui.language`. A test settling
+// for "lang is no longer en" would pass on an implementation writing a
+// constant — hence the successive switches.
 // ─────────────────────────────────────────────────────────────────────────────
-describe("initI18n() — <html lang> suit la langue résolue (S6.3)", () => {
+describe("initI18n() — <html lang> suit la langue résolue", () => {
     let initI18n, getActiveLang;
 
     beforeAll(async () => {
@@ -392,7 +394,7 @@ describe("initI18n() — <html lang> suit la langue résolue (S6.3)", () => {
     });
 
     it("pose le français par défaut, pas la valeur écrite dans le HTML", () => {
-        document.documentElement.lang = "en"; // la valeur de départ du livrable
+        document.documentElement.lang = "en"; // the deliverable's starting value
         mockConfigGet.mockImplementation((key, def) => def);
         initI18n();
         expect(document.documentElement.lang).toBe("fr");
@@ -410,10 +412,11 @@ describe("initI18n() — <html lang> suit la langue résolue (S6.3)", () => {
         expect(document.documentElement.lang).toBe(expected);
     });
 
-    // 🛑 Le cas qui justifie de passer par `getActiveLang()` plutôt que par le code résolu.
-    // `al` est un raccourci français pour l'allemand que LANGS accepte — mais ce n'est PAS
-    // une sous-étiquette de langue. L'écrire dans `lang=` produirait un attribut qu'aucun
-    // agent utilisateur ne sait interpréter, donc PIRE que le `en` codé en dur qu'on remplace.
+    // 🛑 The case justifying going through `getActiveLang()` rather than the
+    // resolved code. `al` is a French shorthand for German that LANGS
+    // accepts — but it is NOT a language subtag. Writing it into `lang=`
+    // would produce an attribute no user agent can interpret, hence WORSE
+    // than the hardcoded `en` being replaced.
     it("normalise l'alias 'al' vers la forme canonique 'de'", () => {
         mockConfigGet.mockImplementation((key, def) => (key === "ui.language" ? "al" : def));
         initI18n();
@@ -421,9 +424,9 @@ describe("initI18n() — <html lang> suit la langue résolue (S6.3)", () => {
         expect(document.documentElement.lang).toBe("de");
     });
 
-    // Une langue inconnue retombe sur le dictionnaire français : l'attribut doit suivre le
-    // dictionnaire RÉELLEMENT actif, pas le code demandé, sans quoi il annoncerait une langue
-    // que la page n'affiche pas.
+    // An unknown language falls back on the French dictionary: the
+    // attribute must follow the REALLY active dictionary, not the requested
+    // code, otherwise it would announce a language the page does not display.
     it("retombe sur 'fr' quand le code demandé n'existe pas", () => {
         mockConfigGet.mockImplementation((key, def) => (key === "ui.language" ? "xx" : def));
         initI18n();

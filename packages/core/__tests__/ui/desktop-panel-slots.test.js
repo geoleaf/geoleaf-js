@@ -30,9 +30,8 @@ afterEach(() => {
 describe("appendRegistryTabButtons() — label resolution", () => {
     it("resolves the translated label when registerDict ran before the button was built", async () => {
         const i18n = await import("../../src/utils/i18n/i18n.ts");
-        const { appendRegistryTabButtons } = await import(
-            "../../src/kernel/ui/desktop/desktop-panel-slots.ts"
-        );
+        const { appendRegistryTabButtons } =
+            await import("../../src/kernel/ui/desktop/desktop-panel-slots.ts");
         i18n.registerDict("table", {
             fr: { "table.toolbar.button": "Tableau" },
             en: { "table.toolbar.button": "Table" },
@@ -59,9 +58,8 @@ describe("appendRegistryTabButtons() — label resolution", () => {
 
     it("self-heals the label on geoleaf:app:ready when registerDict races the button build", async () => {
         const i18n = await import("../../src/utils/i18n/i18n.ts");
-        const { appendRegistryTabButtons } = await import(
-            "../../src/kernel/ui/desktop/desktop-panel-slots.ts"
-        );
+        const { appendRegistryTabButtons } =
+            await import("../../src/kernel/ui/desktop/desktop-panel-slots.ts");
         // registerDict has NOT run yet — getLabel() falls back to the raw key.
         const tabs = makeTabsWithModule({
             id: "table",
@@ -90,9 +88,8 @@ describe("appendRegistryTabButtons() — label resolution", () => {
 
     it("does not touch an already-correct label on geoleaf:app:ready", async () => {
         const i18n = await import("../../src/utils/i18n/i18n.ts");
-        const { appendRegistryTabButtons } = await import(
-            "../../src/kernel/ui/desktop/desktop-panel-slots.ts"
-        );
+        const { appendRegistryTabButtons } =
+            await import("../../src/kernel/ui/desktop/desktop-panel-slots.ts");
         i18n.registerDict("table", { fr: { "table.toolbar.button": "Tableau" } });
         const tabs = makeTabsWithModule({
             id: "table",

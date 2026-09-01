@@ -3,10 +3,10 @@
  *
  * ## Why this exists
  *
- * Sprint 5 closed a prototype-pollution hole in `setValueByPath`. It was not a new
+ * An earlier fix closed a prototype-pollution hole in `setValueByPath`. It was not a new
  * bug: it was a sink an earlier hardening sweep had simply not reached. Nothing
  * prevented the next one from appearing the same way — a reviewer has to notice, by
- * eye, that `bag[k] = v` takes `k` from parsed JSON. Sprint 13.2 found three more,
+ * eye, that `bag[k] = v` takes `k` from parsed JSON. A later sweep found three more,
  * all reachable from a profile.
  *
  * This gate mechanises the question `docs/security/SECURITY_CONTRACT.md §5` asks a
@@ -23,7 +23,7 @@
  *   1. CANONICAL GUARD — the enclosing function imports and calls `isUnsafeKey` /
  *      `hasUnsafeSegment` from `utils/general/object-path-guard.ts`. This is a
  *      syntactic property, checkable without dataflow analysis, and it is the reason
- *      Sprint 13.2 consolidated four divergent private blocklists into one module:
+ *      That sweep consolidated four divergent private blocklists into one module:
  *      before it, a gate could only recognise four ad-hoc spellings and would have
  *      gone blind on the fifth.
  *   2. ALLOWLIST — protected by something *stricter* than the blocklist (a kebab-case
@@ -57,9 +57,17 @@ const path = require("node:path");
 const ts = require("typescript");
 
 const ROOT = path.resolve(__dirname, "..");
-// T5.5 — par le registre. Gate de surface XSS : un périmètre muet la ferait annoncer
-// « aucune écriture à clé dynamique » sans avoir ouvert un fichier.
-const SRC_DIR = path.join(require("./lib/packages.cjs").requireByDirName("core").absDir, "src");
+// Through the registry, never a hardcoded path. XSS-surface gate: a mute perimeter would make
+// it announce "no dynamic-key writes" without opening a file. Scope is core PLUS every plugin
+// and shared lib under `packages/` — the file-import converters (kml/csv/gpx) write dynamic
+// keys taken from a parsed profile, exactly the sink this gate exists to catch, and they lived
+// outside its old core-only perimeter. `apps/` is excluded: it ships no parser.
+const SCAN_ROOTS = require("./lib/packages.cjs")
+    .all()
+    .filter((p) => p.dir.startsWith("packages/"))
+    .map((p) => path.join(p.absDir, "src"))
+    .filter((d) => fs.existsSync(d))
+    .sort();
 const BASELINE_FILE = path.join(__dirname, "check-dynamic-key-writes.baseline.json");
 const GUARD_MODULE = "object-path-guard.js";
 const GUARD_FNS = new Set(["isUnsafeKey", "hasUnsafeSegment"]);
@@ -256,7 +264,7 @@ function enclosingFunctionName(node) {
  *
  * Any *reference* counts, not just a direct call: `setValueByPath` guards with
  * `parts.some(_isUnsafeKey)`, where the guard is an argument and the callee is
- * `parts.some`. Requiring a direct call would report the sink Sprint 5 was written to
+ * `parts.some`. Requiring a direct call would report the original sink it was written to
  * close as unguarded — the exact inversion this gate exists to prevent.
  *
  * This is the gate's honest ceiling: it proves the guard is in scope and used in this
@@ -268,7 +276,10 @@ function isGuardedHere(node, guardNames) {
     const fn = enclosingFunction(node);
     if (!fn) return false;
     let found = false;
-    (function scan(n) {
+    // The parameter is annotated: without it, `n` inherits the type of `fn` by contextual
+    // inference, `Identifier` is not in that union, and every `ts.is*` narrowing collapses
+    // to `never` — the visitor walks ALL descendants, so its honest type is `Node`.
+    (function scan(/** @type {import("typescript").Node} */ n) {
         if (found) return;
         if (ts.isIdentifier(n) && guardNames.has(n.text)) {
             found = true;
@@ -282,8 +293,15 @@ function isGuardedHere(node, guardNames) {
 function walkTsFiles(dir, out = []) {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         const full = path.join(dir, entry.name);
-        if (entry.isDirectory()) walkTsFiles(full, out);
-        else if (entry.name.endsWith(".ts") && !entry.name.endsWith(".d.ts")) out.push(full);
+        if (entry.isDirectory()) {
+            // Test and mock trees are not a runtime XSS surface — a dynamic-key write in a
+            // fixture is not reachable from a profile, and flagging it would push the fix
+            // into the tests. (core/src carries none; plugin `src/` do.)
+            if (entry.name === "__tests__" || entry.name === "__mocks__") continue;
+            walkTsFiles(full, out);
+        } else if (entry.name.endsWith(".ts") && !entry.name.endsWith(".d.ts")) {
+            out.push(full);
+        }
     }
     return out;
 }
@@ -291,7 +309,7 @@ function walkTsFiles(dir, out = []) {
 /** Collects every unguarded dynamic-key write in the tree. */
 function collectFindings() {
     const findings = [];
-    for (const file of walkTsFiles(SRC_DIR)) {
+    for (const file of SCAN_ROOTS.flatMap((root) => walkTsFiles(root))) {
         const rel = normPath(path.relative(ROOT, file));
         const sf = ts.createSourceFile(
             file,
@@ -301,7 +319,8 @@ function collectFindings() {
         );
         const guardNames = collectGuardBindings(sf);
 
-        (function visit(node) {
+        // Same annotation, same reason as `scan` above: the visitor's parameter is `Node`.
+        (function visit(/** @type {import("typescript").Node} */ node) {
             if (
                 ts.isBinaryExpression(node) &&
                 node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
@@ -352,7 +371,7 @@ function writeBaseline(findings) {
             "L'identité d'une entrée est fichier|fonction|expression-de-clé, PAS le numéro de " +
             "ligne : une baseline indexée par ligne se périme au premier refactor. Corollaire " +
             "assumé : deux écritures identiques dans la même fonction ne comptent que pour une.",
-        generated: "S13.2",
+        generated: "2026-07-18",
         count: keys.length,
         sinks: keys,
     };

@@ -15,10 +15,7 @@ import type {
     GeoLeafMarkerHandle,
     GeoLeafMarkerOptions,
 } from "../../../../contracts/map-adapter.contract.js";
-import type {
-    IProximityCircle,
-    IProximityMarker,
-} from "../../../../contracts/ui-controls.contract.js";
+import type { IProximityMarker } from "../../../../contracts/ui-controls.contract.js";
 import { ProximityState } from "./proximity-state.js";
 import { EARTH_RADIUS_M } from "../../../../utils/geo/haversine.js";
 
@@ -161,7 +158,7 @@ export function createProximityCircle(
         getLatLng() {
             return _center;
         },
-    } as IProximityCircle;
+    };
 }
 
 /**

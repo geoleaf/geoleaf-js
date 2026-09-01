@@ -7,7 +7,7 @@
 
 /**
  * Module Theme Loader
- * Loads et met en cache le file themes.json
+ * Loads and caches the themes.json file
  *
  * DEPENDENCIES:
  * - GeoLeaf.Log (optional)
@@ -15,12 +15,12 @@
  *
  * EXPOSE:
  * - `ThemeLoader`, ESM export only — consumed through `kernel/themes/index.js`.
- *   ⚠️ NOT a namespace key. `GeoLeaf._ThemeLoader` was removed at API S4.3 (see
+ *   ⚠️ NOT a namespace key. `GeoLeaf._ThemeLoader` was removed from the namespace (see
  *   `globals/globals.ui.ts`, the B7 block) and this header kept announcing it for a
  *   month: no gate reads an `EXPOSE:` block, so nothing could contradict it.
  * - `GeoLeaf.Config.clearThemesCache` — the single public entry point onto this
  *   module's cache, mounted by `setupUIKernel()` in `globals/globals.ui.ts`
- *   (Sprint 2, task 2.6). ⚠️ There is no geoleaf.config façade file under `api/`: unlike
+ *   ⚠️ There is no geoleaf.config façade file under `api/`: unlike
  *   the other façades, `Config` is assigned directly by `globals/globals.config.ts`.
  *
  * @private
@@ -180,7 +180,7 @@ const _ThemeLoader = {
      * to intercept `window.fetch` to serve `themes.json`, and never needs the loader's path
      * convention to match their asset layout.
      *
-     * ⚠️ **This guarantee is promoted to a contract by Sprint 2 (task 2.7) and must not be
+     * ⚠️ **This guarantee is promoted to a contract and must not be
      * reverted silently.** Until then it was only an implementation comment, so it was
      * revocable by any refactor — and the host-side workaround it replaces (patching
      * `window.fetch`) is precisely the kind of coupling this project exists to remove.
@@ -255,8 +255,8 @@ const _ThemeLoader = {
     },
 
     /**
-     * Valide et normalise la configuration des themes
-     * @param {Object} config - Configuration brute
+     * Validates and normalises the themes configuration
+     * @param {Object} config - Raw configuration
      * @returns {Object} Configuration validated
      * @private
      */
@@ -267,7 +267,7 @@ const _ThemeLoader = {
 
         const rawConfig = config as RawThemesConfig;
 
-        // Values by default pour config
+        // Default values for the config
         const primaryThemes: ThemeConfigSection = {
             enabled: true,
             position: "top-map",
@@ -305,7 +305,7 @@ const _ThemeLoader = {
             throw new Error("Aucun theme valide found dans la configuration");
         }
 
-        // Check que le defaultTheme existe
+        // Check that the defaultTheme exists
         _resolveDefaultTheme(validatedConfig);
 
         Log?.debug(
@@ -318,7 +318,7 @@ const _ThemeLoader = {
     },
 
     /**
-     * Empty le cache (pour tests ou reloading)
+     * Empties the cache (for tests or reloading)
      * @param {string} [profileId] - Profile ID (optional, empties all if not specified)
      */
     clearCache(profileId?: string) {

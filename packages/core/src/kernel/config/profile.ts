@@ -93,8 +93,7 @@ function _buildFetchOptions(options: {
 }
 
 type ProfileFetchResult =
-    | GeoLeafConfig
-    | [Record<string, unknown> | null, Record<string, unknown> | null];
+    GeoLeafConfig | [Record<string, unknown> | null, Record<string, unknown> | null];
 
 function _resolveProfileStep1(
     profile: Record<string, unknown> | null,
@@ -116,10 +115,10 @@ function _resolveProfileStep1(
         );
     }
     let requiresMapping = false;
-    if (profile && Array.isArray((profile as Record<string, unknown>).layers)) {
-        requiresMapping = (
-            (profile as Record<string, unknown>).layers as { normalized?: boolean }[]
-        ).some((layer) => layer.normalized === false);
+    if (profile && Array.isArray(profile.layers)) {
+        requiresMapping = (profile.layers as { normalized?: boolean }[]).some(
+            (layer) => layer.normalized === false
+        );
     }
     const mappingPromise =
         isPoiMappingEnabled && requiresMapping
@@ -141,7 +140,7 @@ function _resolveProfileStep2(
     profileId: string,
     self: typeof ProfileModule
 ): GeoLeafConfig {
-    if (result && !Array.isArray(result)) return result as GeoLeafConfig;
+    if (result && !Array.isArray(result)) return result;
     const [profile, mapping] = result as unknown as [
         Record<string, unknown>,
         Record<string, unknown> | null,
@@ -201,7 +200,7 @@ function _fetchAndResolveProfile(
                 self
             );
         })
-        .then((result) => _resolveProfileStep2(result as ProfileFetchResult, profileId, self))
+        .then((result) => _resolveProfileStep2(result, profileId, self))
         .catch((err) => {
             Log.error("[GeoLeaf.Config.Profile] Error loading active profile resources:", err);
             return self._config!;
@@ -217,7 +216,7 @@ function _applyModularEnrichedProfile(
     self._activeProfile = enrichedProfile;
     Log.info("[GeoLeaf.Config.Profile] Modular profile loaded successfully", {
         profileId,
-        hasThemes: !!(enrichedProfile as Record<string, unknown>).themes,
+        hasThemes: !!enrichedProfile.themes,
         layersCount: (enrichedProfile.layers as unknown[] | undefined)?.length ?? 0,
     });
     self._activeProfileData = {
@@ -266,7 +265,11 @@ function _buildProfileDispatchArgs(
     options: { headers?: Record<string, string>; strictContentType?: boolean }
 ) {
     const profileId = dataCfg.activeProfile as string;
-    const basePath = (dataCfg.profilesBasePath as string) ?? "data/profiles";
+    // Aligned on 25/08/2026: this fallback read "data/profiles" while every other reader of
+    // the same key falls back to "profiles" (offline cache excepted, deliberately) — so with
+    // no explicit config the profile loaded from one directory and its layers resolved from
+    // another. The allowed default set is pinned by profiles-base-path-defaults.guard.test.js.
+    const basePath = (dataCfg.profilesBasePath as string) ?? "profiles";
     const baseUrl = `${basePath}/${profileId}`;
     Log.info("[GeoLeaf.Config.Profile] Starting profile load:", {
         profileId,
@@ -328,6 +331,35 @@ const ProfileModule = {
             return Promise.resolve(this._config!);
         }
         const { profileId, baseUrl, fetchOptions } = _buildProfileDispatchArgs(dataCfg, options);
+
+        // ── The profile handed over in the configuration ──────────────────────────────
+        //
+        // Same doctrine as themes (K-07): declared in the profile ⟹ NO HTTP request. It is
+        // the CONFIGURATION that carries the payload, never a call parameter — which is what
+        // lets an embedding application hand everything over at once, without reaching into
+        // this module.
+        //
+        // ⚠️ The key carries TWO payloads, and that is not a convenience. `profile-bundle.json`
+        // does not contain `profile.json`: the bundle compiler writes `_bundleVersion` plus the
+        // sections, and `_processBundle` takes the profile as a separate second argument.
+        // Injecting the bundle alone would leave the `profile.json` request in place — the very
+        // request this path removes.
+        //
+        // `baseUrl` is still needed: `_buildEnrichedProfile` writes it as `basePath` and derives
+        // each layer's `dataFile` from it. This removes the CONFIGURATION requests, not the
+        // resolution of DATA paths.
+        const injected = dataCfg.profileBundle as
+            { profile?: Record<string, unknown>; bundle?: Record<string, unknown> } | undefined;
+        if (injected?.profile && injected.bundle && ModularProfileLoader) {
+            const enriched = ModularProfileLoader._processBundle(
+                injected.bundle,
+                injected.profile as never,
+                baseUrl,
+                profileId
+            );
+            return Promise.resolve(_applyModularEnrichedProfile(enriched, profileId, this));
+        }
+
         const Loader = ConfigLoader;
         if (!Loader) {
             Log.error("[GeoLeaf.Config.Profile] Loader module not available.");

@@ -40,7 +40,7 @@ function facade(): I18nFacade | undefined {
  *
  * A key is UNRESOLVED when the core is absent, when `I18n` is not mounted yet, or when
  * `getLabel` echoes the key back — which is exactly how the core signals a miss
- * (`i18n.ts:130-143`). Passing no `fallback` therefore reproduces the core's own
+ * (`i18n.ts`). Passing no `fallback` therefore reproduces the core's own
  * `t()` contract, and passing one reproduces the connector/geocoding contract.
  *
  * @param key Dotted i18n key, e.g. `"ui.table.layer_placeholder"`.

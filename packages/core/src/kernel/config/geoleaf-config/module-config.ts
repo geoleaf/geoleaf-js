@@ -22,7 +22,7 @@ interface ConfigReader {
  * removed in S14 — the contract is frozen, `modules.<id>` is the only form.
  *
  * @param reader - Config storage exposing `get(path, defaultValue)`.
- * @param moduleId - Plugin module id (e.g. `"storage"`, `"addpoi"`).
+ * @param moduleId - Plugin module id (e.g. `"editor"`, `"connector"`).
  * @param key - Optional dot-notation key inside the module block; omit to
  *   read the whole block.
  * @param defaultValue - Returned when the block (or key) does not resolve.

@@ -7,109 +7,113 @@
  *
  * ## Pourquoi ce contrat existe : il y avait DEUX implémentations, et aucun lien
  *
- * ✅ **Il n'y en a plus qu'une depuis socle-init 7.7** : `globals/globals.api.ts`
- * (`defineApiMethods`), qui affecte les onze une à une sur le namespace.
+ * ✅ **There is only one left**: `globals/globals.api.ts` (`defineApiMethods`), which
+ * assigns the eleven one by one onto the namespace.
  *
- * Jusque-là, `kernel/api/geoleaf-api.ts` les reposait via un `Object.assign` sur le même objet, et
- * **rien ne les reliait** : `verify-host-contract-sync.cjs` compare des NOMS, les deux portaient
- * les mêmes, et deux membres homonymes aux formes divergentes passaient donc toutes les gates.
- * C'est le trou nommé par le backlog **B-13**, ouvert au S3.5 et refermé en deux temps — ce
- * contrat d'abord (API S4.2), qui a lié les deux formes ; puis 7.7, qui a supprimé l'une des deux.
+ * Until then, `kernel/api/geoleaf-api.ts` re-set them via an `Object.assign` on the same
+ * object, and **nothing linked them**: `verify-host-contract-sync.cjs` compares NAMES,
+ * both carried the same ones, and two homonymous members with diverging shapes therefore
+ * passed every gate. A long-open hole, closed in two steps — this contract first, which
+ * tied the two shapes together; then the removal of one of the two.
  *
- * ⚠️ **Ce contrat reste nécessaire après la suppression**, et pour une raison qui a changé : il
- * n'arbitre plus entre deux écrivains, il énonce ce que chaque méthode DOIT rendre — et c'est de
- * là que vient l'asymétrie ci-dessous (trois refusent un contrôleur mort, huit rendent une valeur
- * vide). Il est référencé par `global.d.ts`, donc le compilateur vérifie les affectations
- * (`_gl` y est typé `GeoLeafGlobal`).
+ * ⚠️ **This contract stays necessary after the removal**, and for a reason that changed:
+ * it no longer arbitrates between two writers, it states what each method MUST return —
+ * which is where the asymmetry below comes from (three refuse a dead controller, eight
+ * return an empty value). It is referenced by `global.d.ts`, so the compiler checks the
+ * assignments (`_gl` is typed `GeoLeafGlobal` there).
  *
- * ✅ Et l'unicité de l'écrivain est désormais **gardée**, pas seulement obtenue :
- * `__tests__/guards/top-level-api-single-writer.guard.test.ts` lit ces onze noms ici même, à
- * l'AST, et refuse qu'un second module les réécrive.
+ * ✅ And writer uniqueness is now **guarded**, not merely achieved:
+ * `__tests__/guards/top-level-api-single-writer.guard.test.ts` reads these eleven names
+ * right here, at the AST, and refuses a second module rewriting them.
  *
- * ## Ce que la mesure a établi avant d'écrire ces signatures (API S4.2)
+ * ## What measurement established before writing these signatures
  *
- * La duplication était réputée INERTE : `globals.api.ts:119-122` affirmait, depuis PHASE11,
- * que `geoleaf-api.js` est éliminé par la DCE de Rollup dans le build ESM. **C'était faux.**
- * Le marqueur `get BaseLayers`, déclaré nulle part ailleurs, est présent dans le bundle livré,
- * et son offset d'émission montre que ce module s'exécute EN DERNIER.
+ * The duplication was believed INERT: `globals.api.ts` had long claimed that
+ * `geoleaf-api.js` is eliminated by Rollup's DCE in the ESM build. **That was false.**
+ * The `get BaseLayers` marker, declared nowhere else, is present in the shipped bundle,
+ * and its emission offset shows this module runs LAST.
  *
- * La croyance a coûté deux défauts de production, mesurés dans Chromium sur le bundle livré :
+ * The belief cost two production defects, measured in Chromium on the shipped bundle:
  *
- *   1. `GeoLeaf.BaseLayers === undefined`. `Object.assign` invoque le getter de la source avec
- *      `this` lié au littéral, qui ne déclare pas `Baselayers` — l'alias rétro-compatible
- *      écrivait donc `undefined` par-dessus la valeur correcte posée juste avant.
- *   2. `GeoLeaf.getMetrics` jetait dès qu'on la détachait (`const { getMetrics } = GeoLeaf`),
- *      sa forme ESM étant `this.getHealth()` là où sa jumelle UMD ne dépendait pas de `this`.
+ *   1. `GeoLeaf.BaseLayers === undefined`. `Object.assign` invokes the source getter with
+ *      `this` bound to the literal, which does not declare `Baselayers` — the
+ *      backward-compatible alias therefore wrote `undefined` over the correct value set
+ *      just before.
+ *   2. `GeoLeaf.getMetrics` threw as soon as it was detached
+ *      (`const { getMetrics } = GeoLeaf`), its ESM form being `this.getHealth()` where
+ *      its UMD twin did not depend on `this`.
  *
- * Aucune gate ne pouvait les voir : elles comparent des noms, et les deux clés existaient.
+ * No gate could see either: they compare names, and both keys existed.
  *
- * ## La posture des signatures : la plus PRÉCISE, pas la plus accommodante
+ * ## The signatures' posture: the most PRECISE, not the most accommodating
  *
- * Là où les deux versants divergeaient, c'est le runtime qui a tranché, pas la vue la plus
- * permissive. `kernel/api/api-types.ts` déclarait quatre méthodes du contrôleur en `unknown`
- * alors que `kernel/api/controller.ts` les écrit `(theme: string): boolean` et
- * `(input): Promise<unknown>` : l'interface a été resserrée sur l'implémentation, et les
- * enveloppes ESM avec elle. Un `unknown` ne subsiste ici que là où le contrôleur en rend un.
+ * Where the two sides diverged, the runtime decided, not the most permissive view.
+ * `kernel/api/api-types.ts` declared four controller methods as `unknown` while
+ * `kernel/api/controller.ts` writes them `(theme: string): boolean` and
+ * `(input): Promise<unknown>`: the interface was narrowed onto the implementation, and
+ * the ESM wrappers with it. An `unknown` only survives here where the controller
+ * returns one.
  */
 
 // ─── Les onze méthodes de premier niveau ─────────────────────────────────────────────
 
 /**
- * Les méthodes raccourcies montées directement sur `globalThis.GeoLeaf`.
+ * The shortcut methods mounted directly on `globalThis.GeoLeaf`.
  *
- * Tous les membres sont optionnels : le namespace est assemblé au boot (chaîne B1→B11), et un
- * consommateur qui le lit trop tôt voit un objet partiel. C'est la même posture que
- * `GeoLeafGlobal`, qui référence ce contrat membre par membre — **en ligne, jamais par
- * `extends`** : les lecteurs d'AST du dépôt (`scripts/lib/ts-decl-read.cjs`) n'itèrent que les
- * membres déclarés, et un membre hérité leur serait invisible.
+ * All members are optional: the namespace is assembled at boot (B1→B11 chain), and a
+ * consumer reading it too early sees a partial object. Same posture as `GeoLeafGlobal`,
+ * which references this contract member by member — **inline, never via `extends`**: the
+ * repo's AST readers (`scripts/lib/ts-decl-read.cjs`) iterate declared members only, and
+ * an inherited member would be invisible to them.
  */
 export interface GeoLeafTopLevelApi {
     /**
-     * Initialise GeoLeaf et crée la carte.
+     * Initialises GeoLeaf and creates the map.
      *
-     * ⚠️ `map.target` — ou son raccourci `target`/`mapId` — est **obligatoire** :
-     * `APIInitializationManager._normalizeInitOptions` jette sans lui. La forme attendue est
-     * `{ map: { target }, data: { activeProfile, profilesBasePath } }`.
+     * ⚠️ `map.target` — or its shorthand `target`/`mapId` — is **required**:
+     * `APIInitializationManager._normalizeInitOptions` throws without it. The expected
+     * shape is `{ map: { target }, data: { activeProfile, profilesBasePath } }`.
      *
-     * ⚠️ Distinct de {@link GeoLeafTopLevelApi.boot} : `boot()` lance l'application pilotée par
-     * profil (chargement de config puis `registry.init()`), `init()` est l'enveloppe manuelle
-     * de `GeoLeaf.Core.init()`. Le `init` du chemin de boot est celui du ModuleRegistry, pas
-     * celui-ci.
+     * ⚠️ Distinct from {@link GeoLeafTopLevelApi.boot}: `boot()` launches the
+     * profile-driven application (config load then `registry.init()`), `init()` is the
+     * manual wrapper around `GeoLeaf.Core.init()`. The `init` of the boot path is the
+     * ModuleRegistry's, not this one.
      */
     init?: (options: Record<string, unknown>) => unknown;
 
-    /** Applique un thème par identifiant. Rend `true` si le thème a été appliqué. */
+    /** Applies a theme by identifier. Returns `true` when the theme was applied. */
     setTheme?: (theme: string) => boolean;
 
-    /** Charge une configuration depuis une URL ou un objet. Jette (`TypeError`) sur autre chose. */
+    /** Loads a configuration from a URL or an object. Throws (`TypeError`) on anything else. */
     loadConfig?: (input: string | Record<string, unknown>) => Promise<unknown>;
 
-    /** Crée une instance de carte gérée par GeoLeaf. Rend `null` si le contrôleur est absent. */
+    /** Creates a GeoLeaf-managed map instance. Returns `null` when the controller is absent. */
     createMap?: (id: string, options?: Record<string, unknown>) => unknown;
 
-    /** Rend l'instance de carte enregistrée sous cet identifiant, ou `null`. */
+    /** Returns the map instance registered under this identifier, or `null`. */
     getMap?: (id: string) => unknown;
 
-    /** Rend toutes les instances de carte enregistrées — tableau vide si aucune. */
+    /** Returns every registered map instance — empty array when there is none. */
     getAllMaps?: () => unknown[];
 
-    /** Rend un module enregistré par son nom, ou `null`. */
+    /** Returns a registered module by name, or `null`. */
     getModule?: (name: string) => unknown;
 
-    /** `true` si un module de ce nom est enregistré. */
+    /** `true` when a module of that name is registered. */
     hasModule?: (name: string) => boolean;
 
-    /** Rend un namespace de premier niveau (`GeoLeaf[name]`), ou `null`. */
+    /** Returns a top-level namespace (`GeoLeaf[name]`), or `null`. */
     getNamespace?: (name: string) => unknown;
 
-    /** Rapport de santé de l'`APIController`, ou `null` s'il est indisponible. */
+    /** Health report of the `APIController`, or `null` when it is unavailable. */
     getHealth?: () => unknown;
 
     /**
-     * Alias de {@link GeoLeafTopLevelApi.getHealth}.
+     * Alias of {@link GeoLeafTopLevelApi.getHealth}.
      *
-     * ⚠️ Les deux implémentations doivent pointer une fonction qui ne dépend pas de `this` —
-     * la forme `this.getHealth()` jetait dès que la méthode était détachée du namespace.
+     * ⚠️ Both implementations must point at a function that does not depend on `this` —
+     * the `this.getHealth()` form threw as soon as the method was detached from the
+     * namespace.
      */
     getMetrics?: () => unknown;
 }

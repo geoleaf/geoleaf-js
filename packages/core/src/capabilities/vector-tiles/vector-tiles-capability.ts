@@ -41,7 +41,7 @@
  * accordingly.)
  *
  * ⚠️ Two live counts stood here until 08/08/2026 — « ~500 lines » for the capability and « ~265 »
- * for the orchestrator — and BOTH had drifted (527 and 292, measured). B-43: a number describing
+ * for the orchestrator — and BOTH had drifted (527 and 292, measured). A number describing
  * a LIVING state is a second source of truth. The 744 survives because it is explicitly a dated
  * past measurement, which is what makes the shrink traceable at all.
  */

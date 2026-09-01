@@ -104,7 +104,7 @@ describe("ShareLifecycle — desktop-tabs button seam", () => {
         );
         const btn = tabs.querySelector(".gl-rp-share-btn");
         expect(btn).toBeTruthy();
-        // Icon comes from the shared registry (DOMSecurity.SVG_ICONS.share), not a local literal (S7.3).
+        // Icon comes from the shared registry (DOMSecurity.SVG_ICONS.share), not a local literal.
         expect(btn.querySelector("path")?.getAttribute("d")).toContain("M12 2v14");
     });
 

@@ -97,10 +97,22 @@ class NotificationSystem {
      * Per-field overrides (`durations: { success: 4000 }`) keep working: the config is
      * layered over the defaults, not over the previous call.
      *
+     * **A successful `init()` DRAINS the queue** (17/08/2026). `show()` called before
+     * initialisation fills `_queue` while rendering nothing — `_processQueue()` exits
+     * early for lack of a container. Until now nothing called it back afterwards:
+     * the queue waited for the **next** `show()`, and if none came, the message was
+     * lost. Yet the messages emitted at boot ("profile not found", "layer failed")
+     * are exactly the ones with no successor.
+     *
+     * ⚠️ An `init()` that FAILS drains nothing and empties nothing: the queue
+     * survives for the next attempt. Losing it there would be worse than the
+     * original defect.
+     *
      * @param config - Renderer configuration; every field falls back to its built-in
      *   default (see `constants.ts`).
      * @returns `true` when the container was found and the system is ready, `false`
-     *   otherwise — nothing is rendered until a successful `init()`.
+     *   otherwise — nothing is rendered until a successful `init()`. A successful one
+     *   also flushes whatever piled up before it.
      */
     init(config: INotificationInitConfig = {}): boolean {
         this.config = {
@@ -129,6 +141,18 @@ class NotificationSystem {
         // Managers owning the listeners / timers released by destroy().
         this._eventManager = events ? events.createManager("notifications") : null;
         this._timerManager = new TimerManager("notifications");
+
+        // Anything emitted BEFORE this init() is drained now — `_processQueue()` bails on
+        // `!this.container`, so a `show()` during boot only filled `_queue` and rendered
+        // nothing. Nothing called it back afterwards: the queue waited for the NEXT
+        // `show()`, and if none came the message was lost for good. Boot-time warnings
+        // ("profile not found", "layer failed") are precisely the ones with no follow-up.
+        //
+        // 🛑 It must sit HERE, after both managers, not next to the container check. In
+        // every case where the queue has content those two are still `null` (the
+        // constructor leaves them so), and `_showImmediate` would then fall back to a bare
+        // `setTimeout` that `destroy()` cannot cancel — a leak traded for a fix.
+        this._processQueue();
 
         return true;
     }
@@ -295,7 +319,7 @@ class NotificationSystem {
         message: string,
         options: Partial<INotificationQueueEntry["options"]> & { type?: string }
     ): HTMLElement | null | undefined {
-        const type = (options.type ?? "info") as NotifyType;
+        const type = options.type ?? "info";
         const priority = PRIORITY[type.toUpperCase() as keyof typeof PRIORITY] ?? PRIORITY.INFO;
 
         const item: INotificationQueueEntry = {
@@ -509,8 +533,7 @@ class NotificationSystem {
      * that global exists — and in production it always does, pointing at the GLOBAL
      * manager. Every toast therefore left a permanent entry there, holding a strong
      * reference to a button detached seconds later, while `_eventManager` (created by
-     * `init()` for precisely this, destroyed by `destroy()`) stayed empty
-     * (CAPACITÉS backlog B.35d).
+     * `init()` for precisely this, destroyed by `destroy()`) stayed empty.
      */
     _appendCloseButton(toast: HTMLElement): void {
         const closeBtn = createElement("button", {

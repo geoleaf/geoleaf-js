@@ -74,9 +74,10 @@ function _applyLoggingConfig(
 
 function _resolveLoadOptions(options: ConfigInitOptions) {
     return {
-        // Insertion conditionnelle, PAS `headers: options.headers`. Ces en-têtes finissent
-        // itérés par clé pour construire une requête : là, un `undefined` explicite ne se perd
-        // pas comme dans un `JSON.stringify`, il se transforme en la chaîne `"undefined"`.
+        // Conditional insertion, NOT `headers: options.headers`. These headers end
+        // up iterated by key to build a request: there, an explicit `undefined`
+        // does not vanish as in a `JSON.stringify`, it turns into the string
+        // `"undefined"`.
         ...(options.headers !== undefined && { headers: options.headers }),
         strictContentType:
             typeof options.strictContentType === "boolean" ? options.strictContentType : true,

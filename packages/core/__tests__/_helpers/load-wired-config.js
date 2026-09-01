@@ -5,7 +5,7 @@
 
 /**
  * Test-only replacement for the former `src/modules/geoleaf.config.ts` facade
- * (removed in Sprint 2 — it was dead in production and carried impure
+ * (removed — it was dead in production and carried impure
  * self-registration, violating the "facade = API only" rule).
  *
  * It loads the bare `Config` singleton from `config-core` plus the three

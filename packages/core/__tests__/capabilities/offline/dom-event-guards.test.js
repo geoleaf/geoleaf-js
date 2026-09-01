@@ -21,8 +21,9 @@ describe("offline engine — DOM event emission is guarded on `document`", () =>
     let realDocument;
 
     beforeAll(async () => {
-        // B.10 soldé — chargé en `import` : l'alias Vite sert le mock d'IndexedDB, complété
-        // pour couvrir ce que `storage.ts` en attend (voir `__tests__/__mocks__/indexeddb.js`).
+        // Loaded via `import`: the Vite alias serves the IndexedDB mock,
+        // completed to cover what `storage.ts` expects of it (see
+        // `__tests__/__mocks__/indexeddb.js`).
         ({ CacheStorage } = await import("../../../src/capabilities/offline/cache/storage.js"));
         realDocument = globalThis.document;
     });

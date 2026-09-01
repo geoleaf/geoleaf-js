@@ -1,90 +1,92 @@
 #!/usr/bin/env node
 "use strict";
 /**
- * check-app-payload.cjs — le poids de l'APPLICATION, pas celui du seul core.
+ * check-app-payload.cjs — the APPLICATION's weight, not the core's alone.
  *
- * ## Le trou que cette gate ferme
+ * ## The hole this gate closes
  *
- * `check-bundle-size.cjs` mesure la clôture des imports STATIQUES du core et sort vert à
- * ~183 / 300 KB gz. C'est juste, et c'est 12 % de ce qu'une page charge. Les 88 % restants —
- * les données du profil, les plugins eager, le CSS, les icônes — n'étaient pesés par RIEN.
+ * `check-bundle-size.cjs` measures the closure of the core's STATIC imports and goes
+ * green at ~183 / 300 KB gz. That is right, and it is 12 % of what a page loads. The
+ * remaining 88 % — profile data, eager plugins, CSS, icons — were weighed by NOTHING.
  *
- * La conséquence n'est pas théorique : au moment où cette gate est écrite, `icons/fav.png`
- * pesait 172,7 Ko gz, soit plus que le bundle core entier, sur un `<link rel="icon">` — et
- * personne ne l'avait vu, parce qu'aucun instrument ne regardait là. Une réduction de poids
- * qu'aucune gate ne tient se re-dégrade ; c'est le motif entier du Sprint 4.
+ * The consequence is not theoretical: at the time this gate was written, `icons/fav.png`
+ * weighed 172.7 KB gz — more than the entire core bundle — on a `<link rel="icon">`,
+ * and nobody had seen it, because no instrument looked there. A weight reduction no
+ * gate holds re-degrades; that is the gate's entire rationale.
  *
- * ⚠️ **Cette gate ne remplace pas `check-bundle-size.cjs` et ne s'y compare jamais.** Les deux
- * mesurent deux objets : l'un ce qu'un INTÉGRATEUR embarque en important le paquet, l'autre ce
- * qu'un UTILISATEUR télécharge en ouvrant la page. Les fusionner reviendrait à perdre celui
- * des deux qui n'est pas en cause le jour où l'un des deux rougit.
+ * ⚠️ **This gate does not replace `check-bundle-size.cjs` and never compares to it.**
+ * The two measure two objects: one what an INTEGRATOR embarks by importing the package,
+ * the other what a USER downloads by opening the page. Merging them would mean losing
+ * whichever of the two is not at fault the day one of them goes red.
  *
- * ## Ce qui est pesé, et d'où ça vient
+ * ## What is weighed, and where it comes from
  *
- * Aucune liste n'est écrite ici. Tout est dérivé par `lib/boot-assets.cjs`, LE MÊME module
- * que `build-deploy.cjs` utilise pour injecter `STATIC_ASSETS` et les `modulepreload` — un
- * corpus, deux consommateurs. Deux postes :
+ * No list is written here. Everything is derived by `lib/boot-assets.cjs`, THE SAME
+ * module `build-deploy.cjs` uses to inject `STATIC_ASSETS` and the `modulepreload`s —
+ * one corpus, two consumers. Two line items:
  *
- *   • **le shell** — `deriveBootCriticalAssets()` : ce que le markup patché référence, ce que
- *     l'entrée importe statiquement, et le config racine ;
- *   • **les données** — `deriveFirstScreenData()` : le bundle de profil, plus le fichier de
- *     chaque couche que le thème par défaut allume.
+ *   • **the shell** — `deriveBootCriticalAssets()`: what the patched markup references,
+ *     what the entry imports statically, and the root config;
+ *   • **the data** — `deriveFirstScreenData()`: the profile bundle, plus the file of
+ *     each layer the default theme lights up.
  *
- * ## ⚠️ L'angle mort, nommé plutôt que tu
+ * ## ⚠️ The blind spot, named rather than silent
  *
- * Depuis S4.5, `init.js` précharge dans son hook `beforeBoot` les plugins que LE PROFIL exige
- * (`realtime-layer` quand une couche déclare `data.realtime.enabled`, `connector` quand
- * `showCredentialButton` est vrai, et `geocoding` depuis **B-169**). Ces `import()` sont
- * invisibles au markup, donc invisibles ici. Le chiffre reste JUSTE pour ce qu'il mesure — ce
- * que le document demande — mais il n'est pas le total réseau.
+ * `init.js` preloads in its `beforeBoot` hook the plugins THE PROFILE demands
+ * (`realtime-layer` when a layer declares `data.realtime.enabled`, `connector` when
+ * `showCredentialButton` is true, and now `geocoding`). Those `import()`s are invisible
+ * to the markup, hence invisible here. The number stays RIGHT for what it measures —
+ * what the document requests — but it is not the network total.
  *
- * ⚠️ **Ne pas écrire ici le total de cet angle mort.** Ce paragraphe a chiffré « ~14 Ko gz » sur
- * DEUX plugins jusqu'au 08/08/2026 ; l'entrée de `geocoding` l'a périmé sans que rien ne le
- * dise, et la liste rallongera encore — **B-170** instruit `editor` et `table`, mêmes
- * conditions. Un total en prose sur une liste qui bouge est une seconde source de vérité
- * (doctrine B-43) : la mesure se fait en lisant le hook `beforeBoot` d'`init.js`, qui est la
- * liste elle-même.
+ * ⚠️ **Do not write that blind spot's total here.** This paragraph priced "~14 KB gz"
+ * over TWO plugins until 2026-08-08; `geocoding`'s entry made it stale without anything
+ * saying so, and the list will grow again — the same treatment is planned for `editor`
+ * and `table`, same conditions. A prose total over a moving list is a second source of
+ * truth (the count derives): the measurement is made by reading `init.js`'s
+ * `beforeBoot` hook, which is the list itself.
  *
- * Le rattraper exigerait de rejouer la logique d'activation de `init.js` dans un script de
- * build, c'est-à-dire une seconde copie à faire diverger — le défaut exact que ce module
- * évite par ailleurs. On préfère un chiffre honnête sur un périmètre nommé à un chiffre
- * complet sur un périmètre qui ment. Le total réseau se mesure au navigateur, et c'est la
- * tâche 11.1 (« waterfall à l'appui ») qui le fera.
+ * Catching it would require replaying `init.js`'s activation logic in a build script,
+ * i.e. a second copy free to diverge — the exact defect this module avoids elsewhere.
+ * We prefer an honest number over a named perimeter to a complete number over a lying
+ * one. The network total is measured in the browser, and a waterfall-backed browser
+ * measurement will do it.
  *
- * ## Pourquoi `deploy-coverage` n'est pas gaté
+ * ## Why `deploy-coverage` is not gated
  *
- * C'est une variante INSTRUMENTÉE : son bundle porte les compteurs de couverture de
- * `packages/core/rollup.config.mjs` et pèse davantage par construction. La gater exigerait un
- * second seuil qui ne dirait rien du produit, et le premier écart de version de l'instrument
- * le ferait rougir sans qu'aucun octet livré n'ait bougé. Elle est nommée ici plutôt
- * qu'omise : une variante absente sans motif est indiscernable d'une variante oubliée.
+ * It is an INSTRUMENTED variant: its bundle carries the coverage counters of
+ * `packages/core/rollup.config.mjs` and weighs more by construction. Gating it would
+ * require a second threshold that says nothing about the product, and the instrument's
+ * first version bump would redden it without a shipped byte moving. It is named here
+ * rather than omitted: a variant absent without a reason is indistinguishable from a
+ * forgotten one.
  *
- * ## L'ancrage des seuils
+ * ## Threshold anchoring
  *
- * `warn = ⌈mesuré × 1,02⌉`, `fail = ⌈mesuré × 1,05⌉`.
+ * `warn = ⌈measured × 1.02⌉`, `fail = ⌈measured × 1.05⌉`.
  *
- * 🛑 **Ce paragraphe a énoncé la règle de B-107 — `×1,15` / `×1,30` — « et elle n'est pas
- * réinventée » jusqu'au 08/08/2026, alors que le bloc BUDGETS la réfute 40 lignes plus bas.**
- * Les deux calibrages issus de B-107 ont été essayés ici et pris en défaut, chaque fois par une
- * mutation qui PASSAIT : `×1,30` laissait revenir la favicon de 172,7 Ko gz (+12,9 %), et
- * `×1,10` ne rendait qu'une ALERTE sur le retour de `cog` en eager (+8,5 %) — or `ci:local` ne
- * rougit pas sur une alerte. Le relevé des deux se lit au bloc BUDGETS, et il fait foi.
+ * 🛑 **This paragraph stated the inherited rule — `×1.15` / `×1.30` — "and it is not
+ * reinvented" until 2026-08-08, while the BUDGETS block refutes it 40 lines below.**
+ * Both inherited calibrations were tried here and caught out, each time by a mutation
+ * that PASSED: `×1.30` let the 172.7 KB gz favicon come back (+12.9 %), and `×1.10`
+ * only rendered a WARNING on `cog` returning eager (+8.5 %) — and `ci:local` does not
+ * redden on a warning. The record of both reads in the BUDGETS block, and it is
+ * authoritative.
  *
- * ⚠️ **Ce que la contradiction coûtait** : un lecteur venant calibrer un budget NEUF lisait ici
- * une marge de 30 % que la mesure a démontrée incapable de rougir sur le retour du défaut même
- * qui a fait écrire la gate. Ce qui reste vrai de B-107, et qui est le fond : une marge posée
- * au jugé est une garde décorative — l'ancienne table par plugin allait de +1,5 % à +217 %, et
- * celle à +217 % ne pouvait rien attraper. C'est la RÈGLE qui diffère, pas le motif : le poids
- * d'un bundle de plugin dérive lentement par ajout de code, un payload de page se déplace d'un
- * seul asset qui y pèse couramment 10 %.
+ * ⚠️ **What the contradiction cost**: a reader coming to calibrate a NEW budget read
+ * here a 30 % margin the measurement proved incapable of reddening on the return of the
+ * very defect that had the gate written. What stays true of it, and is the substance: a
+ * margin set by feel is a decorative guard — the old per-plugin table ranged from
+ * +1.5 % to +217 %, and the one at +217 % could catch nothing. It is the RULE that
+ * differs, not the rationale: a plugin bundle's weight drifts slowly by code accretion,
+ * a page payload moves by one single asset that commonly weighs 10 % of it.
  *
- * 🔻 **Les seuils se cliquettent vers le BAS.** Après tout allègement, ré-ancrer. Un budget
- * laissé au-dessus de la mesure rend la marge à celui qui la re-dépensera.
+ * 🔻 **Thresholds ratchet DOWNWARD.** After any slimming, re-anchor. A budget left
+ * above the measurement hands the margin to whoever will re-spend it.
  *
  * ## Usage
  *
  *     node scripts/check-app-payload.cjs            # gate
- *     node scripts/check-app-payload.cjs --detail   # + le détail par asset
+ *     node scripts/check-app-payload.cjs --detail   # + the per-asset detail
  *
  * @module scripts/check-app-payload
  */
@@ -103,96 +105,99 @@ const ROOT = path.resolve(__dirname, "..");
 const DEPLOY = path.join(ROOT, "deploy");
 const DETAIL = process.argv.includes("--detail");
 
-// ── Budgets par variante (gz, Ko) ────────────────────────────────────────
+// ── Per-variant budgets (gz, KB) ─────────────────────────────────────────
 //
-// Les valeurs actives sont celles de la DERNIÈRE ligne d'historique ci-dessous, jamais une date
-// figée dans cet en-tête. ⚠️ Ce commentaire a dit « mesurés le 07/08 […] reste à venir : la
-// simplification des géométries (4.1) » jusqu'au 08/08/2026, alors que 4.1 était soldée et
-// inscrite trois lignes plus bas : l'en-tête annonçait comme à venir un palier que son propre
-// historique attestait. C'est l'historique qui fait foi.
+// The active values are those of the LAST history line below, never a date frozen in
+// this header. ⚠️ This comment said "measured on 07/08 […] still to come: geometry
+// simplification" until 2026-08-08, while that step was settled and recorded three
+// lines lower: the header announced as upcoming a plateau its own history attested.
+// The history is authoritative.
 //
-// 🛑 **LA RÈGLE D'ANCRAGE DE B-107 A ÉTÉ ESSAYÉE ICI, ET ELLE NE PEUT PAS ROUGIR.**
+// 🛑 **THE INHERITED ANCHORING RULE WAS TRIED HERE, AND IT CANNOT GO RED.**
 //
-// `warn = ⌈mesuré × 1,15⌉`, `fail = ⌈mesuré × 1,30⌉` est juste pour un BUNDLE DE PLUGIN, dont
-// le poids dérive lentement, par ajout de code. Un payload de page ne dérive pas ainsi : un
-// SEUL asset y pèse couramment 10 %. Mesuré sur place — restaurer la favicon de 172,7 Ko gz
-// que la tâche 4.8 venait de retirer coûte **+12,9 %** sur `deploy-full`, donc la gate serait
-// restée VERTE sur le retour exact du défaut qui l'a fait écrire. Une marge de 30 % rend
-// d'avance les 30 % suivants.
+// `warn = ⌈measured × 1.15⌉`, `fail = ⌈measured × 1.30⌉` is right for a PLUGIN BUNDLE,
+// whose weight drifts slowly, by code accretion. A page payload does not drift that
+// way: a SINGLE asset commonly weighs 10 % of it. Measured in place — restoring the
+// 172.7 KB gz favicon that had just been removed costs **+12.9 %** on `deploy-full`,
+// so the gate would have stayed GREEN on the exact return of the defect that had it
+// written. A 30 % margin hands out the next 30 % in advance.
 //
-// ⚠️ ET `×1,10` NON PLUS — deuxième calibrage pris en défaut, par la même méthode.
-// Remettre `cog` (99,8 Ko gz, le plus lourd des plugins) en balise eager ne coûte que
-// **+8,5 %** une fois la base descendue à 1 173 : la gate sortait en ALERTE, et `ci:local`
-// ne rougit pas sur une alerte. Le retour du défaut exact que 4.4 vient de retirer serait
-// passé. Un seuil ne se calibre pas sur ce qu'on trouve raisonnable, mais sur la plus petite
-// régression qu'on refuse de laisser passer — ici, un plugin remis en eager.
+// ⚠️ AND `×1.10` NEITHER — second calibration caught out, by the same method.
+// Putting `cog` (99.8 KB gz, the heaviest plugin) back as an eager tag only costs
+// **+8.5 %** once the base is down to 1,173: the gate came out as a WARNING, and
+// `ci:local` does not redden on a warning. The exact return of the defect just removed
+// would have passed. A threshold is not calibrated on what feels reasonable, but on
+// the smallest regression one refuses to let through — here, a plugin put back eager.
 //
-// Règle retenue — `warn = ⌈mesuré × 1,02⌉`, `fail = ⌈mesuré × 1,05⌉`. Ce que ça tolère est
-// mesurable : à source identique, deux builds ne varient que par les noms de chunks hachés,
-// soit quelques centaines d'octets. 5 % valent ~58 Ko — personne n'y arrive sans l'avoir
-// voulu. Le budget se modifie alors À LA MAIN, avec la ligne d'historique qui va avec.
+// Retained rule — `warn = ⌈measured × 1.02⌉`, `fail = ⌈measured × 1.05⌉`. What it
+// tolerates is measurable: at identical source, two builds only vary by hashed chunk
+// names, i.e. a few hundred bytes. 5 % is ~58 KB — nobody gets there without meaning
+// to. The budget is then edited BY HAND, with the matching history line.
 //
-//   deploy-core : 1 192,5 mesuré → warn 1 217, fail 1 253
-//   deploy-full : 1 223,9 mesuré → warn 1 249, fail 1 286
+//   deploy-core : 1,192.5 measured → warn 1,217, fail 1,253
+//   deploy-full : 1,223.9 measured → warn 1,249, fail 1,286
 //
-// 📉 Historique du cliquet, pour que la descente soit lisible et qu'une remontée se voie :
-//   07/08 — 1 195,2 / 1 326,4  (après 4.8, la favicon : −171,6 Ko gz)
-//   07/08 — 1 142,2 / 1 173,4  (après 4.4/4.5, 7 plugins paresseux : −153,0 Ko gz sur `full`)
-//   07/08 —   914,6 /   946,0  (après 4.1, arrondi des coordonnées : −227,9 Ko gz)
-//   ⇒ départ 1 367 / 1 497 → arrivée 914,6 / 946,0, soit −36,8 % sur `deploy-full`.
-//   08/08 — 1 193,5 / 1 224,9  (après 5.4, MapLibre auto-hébergé : +278,9 Ko gz) 🔺 REMONTÉE
-//   08/08 — 1 192,5 / 1 223,9  (après 5.6, fusion chunk-labels : −1,0 Ko gz, une requête de moins)
-//   08/08 — 1 199,9 / 1 231,2  (MapLibre 5.21.0 → 6.2.0 : +4,9 Ko gz) 🔺 remontée, motif ci-dessous
+// 📉 Ratchet history, so the descent is readable and a climb shows:
+//   07/08 — 1,195.2 / 1,326.4  (after the favicon removal: −171.6 KB gz)
+//   07/08 — 1,142.2 / 1,173.4  (after 7 plugins made lazy: −153.0 KB gz on `full`)
+//   07/08 —   914.6 /   946.0  (after coordinate rounding: −227.9 KB gz)
+//   ⇒ start 1,367 / 1,497 → arrival 914.6 / 946.0, i.e. −36.8 % on `deploy-full`.
+//   08/08 — 1,193.5 / 1,224.9  (after self-hosting MapLibre: +278.9 KB gz) 🔺 CLIMB
+//   08/08 — 1,192.5 / 1,223.9  (after the chunk-labels merge: −1.0 KB gz, one request fewer)
+//   08/08 — 1,199.9 / 1,231.2  (MapLibre 5.21.0 → 6.2.0: +4.9 KB gz) 🔺 climb, rationale below
 //
-// 🔺 Seconde remontée, et de loin la plus petite — mais c'est son SENS qui compte ici.
+// 🔺 Second climb, by far the smallest — but its MEANING is what matters here.
 //
-// La v6 est ESM-only : le moteur passe d'un fichier (274,4 Ko gz) à trois modules plus un shim
-// (139,1 + 133,6 + 6,0 + ~0), soit **+4,9 Ko gz** pour le même moteur. Le shell passe de 14 à
-// 17 assets : ce sont exactement les trois modules que la clôture de `boot-assets.cjs` fait
-// entrer au pré-cache, et qu'aucune dérivation ne voyait avant elle.
+// v6 is ESM-only: the engine goes from one file (274.4 KB gz) to three modules plus a
+// shim (139.1 + 133.6 + 6.0 + ~0), i.e. **+4.9 KB gz** for the same engine. The shell
+// goes from 14 to 17 assets: exactly the three modules `boot-assets.cjs`'s closure
+// brings into the pre-cache, and that no derivation saw before it.
 //
-// 🛑 **SUR CE POSTE, UNE BAISSE EST UN SYMPTÔME, PAS UN GAIN.** Les modules du moteur ne sont
-// nommés dans AUCUN markup : ils n'entrent dans la mesure que par la clôture. Si celle-ci
-// cesse de matcher (minifieur différent, chunk renommé), ce total **descend d'environ 140 Ko**
-// et la gate félicite — en mesurant une application qui ne peut plus peindre de carte hors
-// ligne. Lire le détail ligne par ligne (`--detail`), jamais le total seul : les cinq entrées
-// `vendor/maplibre-gl/*` doivent y être.
+// 🛑 **ON THIS LINE ITEM, A DROP IS A SYMPTOM, NOT A GAIN.** The engine's modules are
+// named in NO markup: they only enter the measurement through the closure. If it stops
+// matching (different minifier, renamed chunk), this total **drops by about 140 KB**
+// and the gate congratulates — while measuring an application that can no longer paint
+// a map offline. Read the detail line by line (`--detail`), never the total alone: the
+// five `vendor/maplibre-gl/*` entries must be there.
 //
-// 🔺 **LA PREMIÈRE REMONTÉE DU CLIQUET, ET ELLE NE DÉPENSE AUCUNE MARGE.**
+// 🔺 **THE RATCHET'S FIRST CLIMB, AND IT SPENDS NO MARGIN.**
 //
-// La doctrine 🔻 ci-dessus reste entière : un budget laissé au-dessus de la mesure rend la
-// marge à celui qui la re-dépensera. Ce n'est pas ce qui se passe ici, et le motif doit être
-// lu avant d'être cru.
+// The 🔻 doctrine above stays whole: a budget left above the measurement hands the
+// margin to whoever will re-spend it. That is not what happens here, and the rationale
+// must be read before being believed.
 //
-// Ces 278,9 Ko gz sont MapLibre. **L'utilisateur les téléchargeait déjà** — depuis
-// `unpkg.com`, à chaque premier chargement. Ils échappaient à cette gate pour une raison qui
-// n'a rien à voir avec le poids : `extractHtmlAssetRefs` (`lib/boot-assets.cjs`) écarte les
-// URL cross-origin, parce que `cache.addAll()` rejetterait le lot de pré-cache sur l'une
-// d'elles. **Cette gate ne mesurait donc pas le payload, elle mesurait le payload
-// same-origin** — et l'écart entre les deux était de 278,9 Ko, soit 23 % de la page, invisible.
+// These 278.9 KB gz are MapLibre. **The user was already downloading them** — from
+// `unpkg.com`, at every first load. They escaped this gate for a reason that has
+// nothing to do with weight: `extractHtmlAssetRefs` (`lib/boot-assets.cjs`) sets aside
+// cross-origin URLs, because `cache.addAll()` would reject the pre-cache batch on any
+// of them. **This gate was thus not measuring the payload, it was measuring the
+// same-origin payload** — and the gap between the two was 278.9 KB, i.e. 23 % of the
+// page, invisible.
 //
-// Auto-héberger ne rend pas la page plus lourde d'un octet : il fait entrer dans la mesure ce
-// qui s'y dérobait. Ce que le chiffre gagne au passage est de l'honnêteté, pas du gras — et ce
-// que le déployé gagne est une origine de moins (un DNS + TCP + TLS), une dérive de version
-// rendue impossible (`require.resolve`), et MapLibre au pré-cache du worker, donc une carte
-// qui fonctionne au second chargement hors ligne.
+// Self-hosting does not make the page one byte heavier: it brings into the measurement
+// what was slipping out of it. What the number gains in passing is honesty, not fat —
+// and what the deploy output gains is one origin fewer (a DNS + TCP + TLS), a version
+// drift made impossible (`require.resolve`), and MapLibre in the worker's pre-cache,
+// hence a map that works on the second load offline.
 //
-// ⚠️ **La conséquence pour la suite : le prochain qui lit « 1 224,9 » ne doit pas le comparer
-// aux « 946,0 » de la ligne du dessus.** Les deux ne mesurent pas le même périmètre. La
-// comparaison honnête est 946,0 + 278,9 = 1 224,9 — soit exactement zéro régression. Le
-// cliquet reprend sa descente à partir d'ici, sur un périmètre enfin complet.
+// ⚠️ **The consequence going forward: the next person reading "1,224.9" must not
+// compare it to the "946.0" of the line above.** The two do not measure the same
+// perimeter. The honest comparison is 946.0 + 278.9 = 1,224.9 — exactly zero
+// regression. The ratchet resumes its descent from here, on a perimeter finally
+// complete.
 //
-// ⚠️ Un palier intermédiaire a existé à 889,6 / 921,1, Douglas-Peucker activé à 11 m. Il a été
-// ABANDONNÉ : DP ne rendait que 24,8 Ko gz de plus (10 % du gain) pour un écart géométrique
-// atteignant 11 m, soit ~21 px au zoom 18. Le motif complet est dans `build-deploy.cjs`, au
-// commentaire de `GEOJSON_TOLERANCE_DEG`. Ne pas « récupérer » ces 25 Ko sans relire ce relevé.
+// ⚠️ An intermediate plateau existed at 889.6 / 921.1, Douglas-Peucker enabled at
+// 11 m. It was ABANDONED: DP only returned 24.8 KB gz more (10 % of the gain) for a
+// geometric deviation reaching 11 m, i.e. ~21 px at zoom 18. The full record is in
+// `build-deploy.cjs`, at the `GEOJSON_TOLERANCE_DEG` comment. Do not "reclaim" those
+// 25 KB without re-reading that record.
 const BUDGETS = {
     "deploy-core": { warn: 1217, fail: 1253 },
     "deploy-full": { warn: 1249, fail: 1286 },
 };
 
-// Variantes délibérément hors budget, avec leur motif. ⚠️ Le motif n'est pas décoratif : sans
-// lui, l'exclusion se relit six mois plus tard comme un oubli.
+// Variants deliberately out of budget, with their reason. ⚠️ The reason is not
+// decorative: without it, the exclusion re-reads six months later as an oversight.
 const NOT_BUDGETED = {
     "deploy-coverage":
         "variante instrumentée (compteurs de couverture) — pèse plus par construction",
@@ -209,13 +214,13 @@ const c = {
 const kb = (bytes) => (bytes / 1024).toFixed(1);
 
 /**
- * Pèse une variante déployée : le shell dérivé plus les données du premier écran.
+ * Weighs a deployed variant: the derived shell plus the first-screen data.
  *
- * @param {string} variant Nom du répertoire de variante (ex. `deploy-full`).
+ * @param {string} variant Variant directory name (e.g. `deploy-full`).
  * @returns {{ shell: number, data: number, total: number, assets: string[], files: string[],
  *   remote: string[], themeId: string, detail: Array<{ url: string, gz: number, kind: string }> }}
- * @throws {Error} Propagé depuis les dérivations — entrée illisible, extracteur devenu aveugle,
- *   URL dérivée sans fichier derrière, thème qui n'allume aucune couche.
+ * @throws {Error} Propagated from the derivations — unreadable entry, extractor gone
+ *   blind, derived URL with no file behind it, theme that lights up no layer.
  */
 function weighVariant(variant) {
     const dir = path.join(DEPLOY, variant);
@@ -255,9 +260,9 @@ function main() {
         .filter((d) => d.isDirectory())
         .map((d) => d.name);
 
-    // Anti-gate-vide. Une gate qui ne trouve aucun sujet doit ROUGIR, pas féliciter : c'est la
-    // classe que `probe-gate-visibility.cjs` surveille dans tout le dépôt, et celle qui a fait
-    // sortir verte une sonde de boot dont le marqueur avait été supprimé.
+    // Anti-empty-gate. A gate that finds no subject must GO RED, not congratulate:
+    // it is the class `probe-gate-visibility.cjs` watches across the repo, and the one
+    // that let a boot probe come out green with its marker deleted.
     const budgeted = Object.keys(BUDGETS).filter((v) => present.includes(v));
     if (budgeted.length === 0) {
         console.error(
@@ -319,9 +324,9 @@ function main() {
         }
     }
 
-    // Le décompte est DÉRIVÉ de la liste, jamais écrit à la main — doctrine B-43, après le
-    // « 7 invariants tenus » que `verify-app-template.cjs` imprimait pendant qu'on lui en
-    // ajoutait un huitième.
+    // The tally is DERIVED from the list, never hand-written, after the
+    // "7 invariants held" that `verify-app-template.cjs` kept printing while an eighth
+    // was being added to it.
     console.log(
         `\n${c.dim}${budgeted.length} variante(s) pesée(s). ` +
             `⚠️ Objet distinct de \`npm run size\`, qui mesure la clôture statique du CORE.${c.reset}`

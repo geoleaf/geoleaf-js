@@ -25,3 +25,18 @@
 # dans le même commit pour que le formatage ne rediverge pas — c'est ce couple, et non
 # le reformatage seul, qui ferme l'angle mort ouvert par T2.
 7c98836c66bc6dd27bee9786db4b407eb6bc76ff
+
+# Formatage prettier des 34 sources de `scripts/` (+ postcss.config.mjs) et des six
+# fichiers isolés, 26/08/2026 — dernier lot du soldage du backlog.
+# 🛑 PREUVE, et elle ne peut PAS être un `ci:local` vert : ces fichiers SONT les gates,
+# et ce dépôt a mesuré trois fois qu'un retour à la ligne de Prettier casse un oracle
+# regex dans le sens qui sort vert. Les verdicts ont donc été capturés FEUILLE PAR
+# FEUILLE avant et après — les 108 rendent le même, et le sens dangereux (FAIL → PASS,
+# une gate qui cesse de mordre) a été contrôlé séparément et sort vide.
+# ⚠️ Un run intermédiaire a rendu 2 feuilles PASS → FAIL : le générateur d'arbre
+# enregistre des comptes de LIGNES, que le reformatage déplace. C'est la comparaison qui
+# l'a qualifié d'artefact dérivé, jamais le code de sortie.
+# Cinq motifs `lint-staged` ajoutés DANS LE MÊME COMMIT — dont `.*.{json,yml,yaml}`,
+# les dotfiles n'étant matchés par aucun motif, y compris les neufs : c'est ce couple,
+# et non le reformatage seul, qui ferme l'angle mort.
+f8dc631be740a2474f48f355baa33e1b323a77d3

@@ -1,27 +1,29 @@
 /**
- * Unit tests — `cache/cache-control-zone.ts`, couverture des branches (chantier R.31).
+ * Unit tests — `cache/cache-control-zone.ts`, branch coverage.
  *
- * Fichier mesuré à 50 % de lignes mais 12,8 % de BRANCHES : l'accordéon « zone » (bbox vue
- * ou zone du profil + plafond de zoom, persisté en `vectorZone`). Tout est pilotable sans
- * carte réelle : `buildZoneSelectionSection` câble les boutons, on les clique et on observe
- * la persistance via `StorageContract.Cache.Storage`. On couvre les deux formes de bornes
- * (`LngLatBounds` à méthodes vs `{north,…}` plat), les deux sources (vue/profil), le
- * changement de plafond, l'hydratation d'une zone sauvegardée et les gardes sans profil.
+ * File measured at 50% lines but 12.8% BRANCHES: the "zone" accordion (view
+ * bbox or profile zone + zoom ceiling, persisted as `vectorZone`). Everything
+ * drives without a real map: `buildZoneSelectionSection` wires the buttons, we
+ * click them and observe persistence via `StorageContract.Cache.Storage`. We
+ * cover both bound shapes (`LngLatBounds` with methods vs flat `{north,…}`),
+ * both sources (view/profile), the ceiling change, hydrating a saved zone and
+ * the no-profile guards.
  */
 import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
 
 import { buildZoneSelectionSection } from "../cache/cache-control-zone.js";
 
-// API publique S4.4 — les tests plantent `GeoLeaf.Storage` comme le fait la PRODUCTION.
-// Ils pilotaient `StorageContract.init()`, c'est-à-dire une SECONDE instance du singleton
-// que le bundle embarquait et que rien n'initialisait : ils validaient un canal mort.
+// The tests plant `GeoLeaf.Storage` the way PRODUCTION does. They used to drive
+// `StorageContract.init()`, i.e. a SECOND instance of the singleton the bundle
+// embedded and nothing initialised: they validated a dead channel.
 function _installGeoLeafStorage(api) {
     globalThis.GeoLeaf = globalThis.GeoLeaf ?? {};
-    // Le helper reproduit ce que `StorageContract.init()` fournissait, parce que la façade
-    // du core le fournit aussi : `isPluginLoaded()` = « un moteur s'est enregistré », et
-    // `isAvailable()` = « et sa base est ouverte ». L'adaptateur du plugin DÉLÈGUE ces deux
-    // méthodes — il ne les recalcule pas —, donc un objet planté qui ne les porte pas
-    // rendrait `false` là où le test attend `true`. Un appelant qui les fournit garde la main.
+    // The helper reproduces what `StorageContract.init()` provided, because the
+    // core's facade provides it too: `isPluginLoaded()` = "an engine registered",
+    // and `isAvailable()` = "and its database is open". The plugin's adapter
+    // DELEGATES these two methods — it does not recompute them — so a planted
+    // object not carrying them would return `false` where the test expects
+    // `true`. A caller providing them keeps the hand.
     globalThis.GeoLeaf.Storage =
         api === null || api === undefined
             ? null
@@ -58,7 +60,7 @@ function installStorage({ selection = null, withLayerSelector = true, loadThrows
     return { saveLayerSelection, loadLayerSelection, saveSelection, updateWarning };
 }
 
-/** Carte à bornes « méthode » (LngLatBounds). */
+/** Map with "method" bounds (LngLatBounds). */
 function methodMap() {
     return {
         getBounds: () => ({
@@ -72,7 +74,7 @@ function methodMap() {
     };
 }
 
-/** Carte à bornes « plates » et une zone max de profil. */
+/** Map with "flat" bounds and a profile max zone. */
 function plainMap() {
     return {
         getBounds: () => ({ north: 1, south: 0, east: 1, west: 0 }),
@@ -103,16 +105,24 @@ function zoneButtons() {
 }
 
 describe("buildZoneSelectionSection", () => {
-    test("bâtit l'accordéon : en-tête, 2 boutons bbox, sélecteur de zoom, résumé, estimation", async () => {
+    test("bâtit l'accordéon : en-tête, 3 boutons de zone, sélecteur de zoom, résumé, estimation", async () => {
+        // ⚠️ TWO before the itinerary corridor. The assertion stays EXACT rather
+        // than "at least two": it is what would catch a fourth button appearing
+        // by accident, and loosening it would make invisible exactly what it
+        // guards.
+        //
+        // ⛔ The three COEXIST: the corridor adds, it does not replace the bbox.
+        // On an axis-aligned line, the bbox stays cheaper at all zooms
+        // (measured).
         installStorage();
         buildZoneSelectionSection(self, parent);
         await flush();
 
         expect(parent.querySelector(".gl-cache-zone")).toBeTruthy();
-        expect(zoneButtons().length).toBe(2);
+        expect(zoneButtons().length).toBe(3);
         const select = parent.querySelector(".gl-cache-zone__zoom-select");
         expect(select.querySelectorAll("option").length).toBe(5); // 12..16
-        // le sélecteur est câblé sur l'état (self._zoomCeilingSelect)
+        // the selector is wired on the state (self._zoomCeilingSelect)
         expect(self._zoomCeilingSelect).toBe(select);
         expect(self._zoneSummaryEl.textContent).toContain(""); // "noZone" au départ
         expect(self._zoneEstimateEl).toBeTruthy();
@@ -149,7 +159,7 @@ describe("applyZone — capture bbox", () => {
         expect(saved.vectorZone.bounds.north).toBeCloseTo(48.9);
         expect(self._zoneSummaryEl.textContent).toContain("z");
         expect(self._zoneEstimateEl.textContent).toContain("tiles");
-        // totaux rafraîchis
+        // totals refreshed
         expect(store.saveSelection).toHaveBeenCalled();
         expect(store.updateWarning).toHaveBeenCalled();
     });
@@ -281,7 +291,7 @@ describe("hydrateZone — restauration au montage", () => {
         installStorage({ loadThrows: true });
         buildZoneSelectionSection(self, parent);
         await flush();
-        // le résumé reste sur son texte initial, aucun crash
+        // the summary stays on its initial text, no crash
         expect(self._zoneSummaryEl).toBeTruthy();
     });
 });

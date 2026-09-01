@@ -1,144 +1,189 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>@geoleaf-plugins/connector — Smoke Test (S6 token statique)</title>
-  <style>
-    body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; padding: 0 1rem; }
-    pre  { background: #f3f4f6; padding: 1rem; border-radius: 6px; overflow: auto; font-size: 0.875rem; }
-    .ok  { color: #16a34a; font-weight: 600; }
-    .err { color: #dc2626; font-weight: 600; }
-    .info { color: #2563eb; }
-    button { padding: 0.5rem 1rem; border: none; border-radius: 6px; background: #3b82f6; color: #fff; cursor: pointer; font-size: 1rem; }
-    button:hover { background: #2563eb; }
-    #log { white-space: pre; }
-  </style>
-</head>
-<body>
-  <h1>@geoleaf-plugins/connector — Smoke Test</h1>
-  <p>
-    Scénario S6 : token statique via <code>getToken: () =&gt; 'STATIC_DEV_TOKEN'</code>.
-    Aucun serveur requis. Ouvrir la console DevTools pour voir les warnings attendus.
-  </p>
-  <button id="run">Lancer le test</button>
-  <pre id="log">En attente…</pre>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>@geoleaf-plugins/connector — Smoke Test (S6 token statique)</title>
+        <style>
+            body {
+                font-family: system-ui, sans-serif;
+                max-width: 800px;
+                margin: 2rem auto;
+                padding: 0 1rem;
+            }
+            pre {
+                background: #f3f4f6;
+                padding: 1rem;
+                border-radius: 6px;
+                overflow: auto;
+                font-size: 0.875rem;
+            }
+            .ok {
+                color: #16a34a;
+                font-weight: 600;
+            }
+            .err {
+                color: #dc2626;
+                font-weight: 600;
+            }
+            .info {
+                color: #2563eb;
+            }
+            button {
+                padding: 0.5rem 1rem;
+                border: none;
+                border-radius: 6px;
+                background: #3b82f6;
+                color: #fff;
+                cursor: pointer;
+                font-size: 1rem;
+            }
+            button:hover {
+                background: #2563eb;
+            }
+            #log {
+                white-space: pre;
+            }
+        </style>
+    </head>
+    <body>
+        <h1>@geoleaf-plugins/connector — Smoke Test</h1>
+        <p>
+            Scénario S6 : token statique via <code>getToken: () =&gt; 'STATIC_DEV_TOKEN'</code>.
+            Aucun serveur requis. Ouvrir la console DevTools pour voir les warnings attendus.
+        </p>
+        <button id="run">Lancer le test</button>
+        <pre id="log">En attente…</pre>
 
-  <!--
+        <!--
     En production, importer depuis dist/ :
     <script type="module" src="../dist/geoleaf-connector.plugin.js"></script>
 
     Pour ce smoke test, on simule GeoLeaf.Connector directement
     en important le module depuis les sources compilées.
   -->
-  <script type="module">
-    const log = document.getElementById('log');
-    const results = [];
+        <script type="module">
+            const log = document.getElementById("log");
+            const results = [];
 
-    function line(cls, msg) {
-      results.push(`<span class="${cls}">${msg}</span>`);
-      log.innerHTML = results.join('\n');
-    }
+            function line(cls, msg) {
+                results.push(`<span class="${cls}">${msg}</span>`);
+                log.innerHTML = results.join("\n");
+            }
 
-    document.getElementById('run').addEventListener('click', async () => {
-      results.length = 0;
-      line('info', '=== @geoleaf-plugins/connector smoke test ===');
+            document.getElementById("run").addEventListener("click", async () => {
+                results.length = 0;
+                line("info", "=== @geoleaf-plugins/connector smoke test ===");
 
-      // ── Simuler GeoLeaf global minimum ─────────────────────────────────────
-      window.GeoLeaf = {
-        _version: 'smoke-test',
-        plugins: {
-          register(name, opts) {
-            line('info', `[plugins.register] "${name}" v${opts.version || '?'} — healthCheck: ${opts.healthCheck?.() ?? '—'}`);
-          }
-        }
-      };
+                // ── Simuler GeoLeaf global minimum ─────────────────────────────────────
+                window.GeoLeaf = {
+                    _version: "smoke-test",
+                    plugins: {
+                        register(name, opts) {
+                            line(
+                                "info",
+                                `[plugins.register] "${name}" v${opts.version || "?"} — healthCheck: ${opts.healthCheck?.() ?? "—"}`
+                            );
+                        },
+                    },
+                };
 
-      // ── Charger le plugin ───────────────────────────────────────────────────
-      let connector;
-      try {
-        // Adjust path if your dev server serves from a different location
-        const mod = await import('../dist/geoleaf-connector.plugin.js');
-        connector = mod;
-        line('ok', '✓ Module chargé');
-      } catch (err) {
-        line('err', '✗ Erreur de chargement du module : ' + err.message);
-        line('info', '  → Exécutez "npm run build:connector" d\'abord.');
-        return;
-      }
+                // ── Charger le plugin ───────────────────────────────────────────────────
+                let connector;
+                try {
+                    // Adjust path if your dev server serves from a different location
+                    const mod = await import("../dist/geoleaf-connector.plugin.js");
+                    connector = mod;
+                    line("ok", "✓ Module chargé");
+                } catch (err) {
+                    line("err", "✗ Erreur de chargement du module : " + err.message);
+                    line("info", '  → Exécutez "npm run build:connector" d\'abord.');
+                    return;
+                }
 
-      // ── configure() — scénario S6 token statique ─────────────────────────
-      try {
-        await window.GeoLeaf.Connector.configure({
-          baseUrl: 'http://localhost:3000',   // localhost → pas d'erreur HTTPS
-          getToken: () => 'STATIC_DEV_TOKEN', // non-JWT → warning console attendu
-        });
-        line('ok', '✓ configure() résolu sans erreur');
-      } catch (err) {
-        line('err', '✗ configure() a échoué : ' + err.message);
-        return;
-      }
+                // ── configure() — scénario S6 token statique ─────────────────────────
+                try {
+                    await window.GeoLeaf.Connector.configure({
+                        baseUrl: "http://localhost:3000", // localhost → pas d'erreur HTTPS
+                        getToken: () => "STATIC_DEV_TOKEN", // non-JWT → warning console attendu
+                    });
+                    line("ok", "✓ configure() résolu sans erreur");
+                } catch (err) {
+                    line("err", "✗ configure() a échoué : " + err.message);
+                    return;
+                }
 
-      // ── Vérifier que window.fetch est monkey-patchée ──────────────────────
-      const intercepted = window.fetch !== window.fetch; // always false, just structural
-      // Real check: try a fetch to the baseUrl and see if the header appears
-      const originalFetch = window.fetch;
-      let headerInjected = false;
-      window._testFetch = async function(url) {
-        // Intercept the real patched fetch for inspection
-        const req = new Request(url);
-        const clone = req.clone();
-        // The patched fetch should inject Authorization header on baseUrl
-        return { ok: true, status: 200, headers: new Headers() };
-      };
+                // ── Vérifier que window.fetch est monkey-patchée ──────────────────────
+                const intercepted = window.fetch !== window.fetch; // always false, just structural
+                // Real check: try a fetch to the baseUrl and see if the header appears
+                const originalFetch = window.fetch;
+                let headerInjected = false;
+                window._testFetch = async function (url) {
+                    // Intercept the real patched fetch for inspection
+                    const req = new Request(url);
+                    const clone = req.clone();
+                    // The patched fetch should inject Authorization header on baseUrl
+                    return { ok: true, status: 200, headers: new Headers() };
+                };
 
-      // Simple structural check: fetch interceptor installed
-      line('ok', '✓ window.fetch monkey-patched par install()');
+                // Simple structural check: fetch interceptor installed
+                line("ok", "✓ window.fetch monkey-patched par install()");
 
-      // ── Worker headers hook ────────────────────────────────────────────────
-      const hook = globalThis.__GEOLEAF_WORKER_HEADERS_HOOK__;
-      if (typeof hook === 'function') {
-        line('ok', '✓ __GEOLEAF_WORKER_HEADERS_HOOK__ installé sur globalThis');
-        // Static token is in-memory only (not JWT → no IDB)
-        const headers = hook('http://localhost:3000/api/geojson');
-        if (headers === undefined) {
-          // Expected for static non-JWT token since getTokenSync returns the value but
-          // it's stored in RAM cache only after the interceptor is called
-          line('info', '  ℹ Headers hook retourne undefined (token non-JWT non mis en cache IDB — attendu)');
-        } else if (headers?.Authorization) {
-          line('ok', '  ✓ Authorization header présent : ' + headers.Authorization.substring(0, 20) + '…');
-        }
-      } else {
-        line('err', '✗ __GEOLEAF_WORKER_HEADERS_HOOK__ absent de globalThis');
-      }
+                // ── Worker headers hook ────────────────────────────────────────────────
+                const hook = globalThis.__GEOLEAF_WORKER_HEADERS_HOOK__;
+                if (typeof hook === "function") {
+                    line("ok", "✓ __GEOLEAF_WORKER_HEADERS_HOOK__ installé sur globalThis");
+                    // Static token is in-memory only (not JWT → no IDB)
+                    const headers = hook("http://localhost:3000/api/geojson");
+                    if (headers === undefined) {
+                        // Expected for static non-JWT token since getTokenSync returns the value but
+                        // it's stored in RAM cache only after the interceptor is called
+                        line(
+                            "info",
+                            "  ℹ Headers hook retourne undefined (token non-JWT non mis en cache IDB — attendu)"
+                        );
+                    } else if (headers?.Authorization) {
+                        line(
+                            "ok",
+                            "  ✓ Authorization header présent : " +
+                                headers.Authorization.substring(0, 20) +
+                                "…"
+                        );
+                    }
+                } else {
+                    line("err", "✗ __GEOLEAF_WORKER_HEADERS_HOOK__ absent de globalThis");
+                }
 
-      // ── createConnector() ESM export ───────────────────────────────────────
-      if (typeof connector.createConnector === 'function') {
-        line('ok', '✓ Export ESM createConnector() disponible');
-        const inst = connector.createConnector({
-          baseUrl: 'http://localhost:3000',
-          getToken: () => 'STATIC_DEV_TOKEN_2',
-        });
-        const sync = inst.getTokenSync();
-        line(sync !== null ? 'ok' : 'info', `  getTokenSync() = ${sync}`);
-        const async_ = await inst.getTokenAsync();
-        line(async_ !== null ? 'ok' : 'err', `  getTokenAsync() = ${async_}`);
-        inst.destroy();
-        line('ok', '  ✓ destroy() appelé');
-      } else {
-        line('err', '✗ createConnector() absent des exports');
-      }
+                // ── createConnector() ESM export ───────────────────────────────────────
+                if (typeof connector.createConnector === "function") {
+                    line("ok", "✓ Export ESM createConnector() disponible");
+                    const inst = connector.createConnector({
+                        baseUrl: "http://localhost:3000",
+                        getToken: () => "STATIC_DEV_TOKEN_2",
+                    });
+                    const sync = inst.getTokenSync();
+                    line(sync !== null ? "ok" : "info", `  getTokenSync() = ${sync}`);
+                    const async_ = await inst.getTokenAsync();
+                    line(async_ !== null ? "ok" : "err", `  getTokenAsync() = ${async_}`);
+                    inst.destroy();
+                    line("ok", "  ✓ destroy() appelé");
+                } else {
+                    line("err", "✗ createConnector() absent des exports");
+                }
 
-      // ── Events ────────────────────────────────────────────────────────────
-      line('info', '');
-      line('info', 'Événements disponibles :');
-      line('info', '  geoleaf:connector:authenticated   — après login modal réussi');
-      line('info', '  geoleaf:connector:token-refreshed — après refresh automatique');
-      line('info', '  geoleaf:connector:auth-error      — après échec 401');
+                // ── Events ────────────────────────────────────────────────────────────
+                line("info", "");
+                line("info", "Événements disponibles :");
+                line("info", "  geoleaf:connector:authenticated   — après login modal réussi");
+                line("info", "  geoleaf:connector:token-refreshed — après refresh automatique");
+                line("info", "  geoleaf:connector:auth-error      — après échec 401");
 
-      line('info', '');
-      line('ok', '=== Smoke test terminé — vérifier console DevTools pour les warnings attendus ===');
-    });
-  </script>
-</body>
+                line("info", "");
+                line(
+                    "ok",
+                    "=== Smoke test terminé — vérifier console DevTools pour les warnings attendus ==="
+                );
+            });
+        </script>
+    </body>
 </html>

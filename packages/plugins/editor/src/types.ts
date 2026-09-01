@@ -4,24 +4,28 @@
  * https://geoleaf.dev
  */
 
+/**
+ * Public type surface of the editor plugin: the shape of `editorConfig` as an integrator writes
+ * it, plus the vocabularies the sub-menu and the floating menu accept.
+ *
+ * ⚠️ **Pure types — no runtime export, and that constraint is load-bearing.** It is why the
+ * conflict vocabulary is imported from a leaf module rather than declared here: a value
+ * declared in this file would put runtime code on the configuration path.
+ *
+ * 📌 This block is new on 2026-08-19, and its absence had been invisible: the checker read the
+ * first symbol's own TSDoc as the module header, so moving that symbol one line down was enough
+ * to make the file "undocumented". It was never documented — it was borrowing.
+ */
+
+import type { ConflictStrategy } from "./persistence/conflict-strategies.js";
+
 /** Allowed tool identifiers in the editor sub-menu. */
 export type EditorTool =
-    | "point"
-    | "line"
-    | "polyline"
-    | "polygon"
-    | "select"
-    | "undo"
-    | "redo"
-    | "delete";
+    "point" | "line" | "polyline" | "polygon" | "select" | "undo" | "redo" | "delete";
 
 /** Initial position preset or pixel coordinates for the floating sub-menu. */
 export type MenuPosition =
-    | "top-left"
-    | "top-right"
-    | "bottom-left"
-    | "bottom-right"
-    | { top: number; left: number };
+    "top-left" | "top-right" | "bottom-left" | "bottom-right" | { top: number; left: number };
 
 /**
  * Configuration object for `@geoleaf-plugins/editor`.
@@ -37,26 +41,27 @@ export interface EditorConfig {
     /**
      * Show the "export this session" toolbar button. Default: `true`.
      *
-     * ⚠️ Sous `modules.editor.*` et non `ui.*`, à dessein : les deux drapeaux équivalents
-     * d'`addpoi` (`ui.showPoiExport`, `ui.showPoiSubmit`) n'étaient déclarés dans AUCUN schéma
-     * alors que `ui.schema.json` est `additionalProperties: false` — ils étaient donc
-     * inatteignables, et leurs boutons ni masquables ni affichables (R19).
+     * ⚠️ Under `modules.editor.*` and not `ui.*`, on purpose: `addpoi`'s two
+     * equivalent flags (`ui.showPoiExport`, `ui.showPoiSubmit`) were declared
+     * in NO schema while `ui.schema.json` is `additionalProperties: false` —
+     * they were thus unreachable, and their buttons could neither be hidden
+     * nor shown.
      */
     showExport?: boolean;
     /**
      * Show the "add a POI" button in the core's mobile toolbar. Default: `true`.
      *
-     * ⚠️ 5.1-f — remplace `ui.showAddPoi`, qui était lu par le CORE (`init-features.ts`) pour
-     * décider d'un bouton que seul un PLUGIN pouvait servir. Le drapeau descend ici avec le
-     * comportement qu'il gouverne : le core n'a plus à connaître le nom d'un plugin pour
-     * savoir s'il doit dessiner un bouton.
+     * ⚠️ Replaces `ui.showAddPoi`, which the CORE read (`init-features.ts`) to
+     * decide a button only a PLUGIN could serve. The flag moves down here with
+     * the behaviour it governs: the core no longer needs to know a plugin's
+     * name to know whether to draw a button.
      */
     showAddPoi?: boolean;
     /**
      * Where the "add a POI" flow takes its initial position. Default: `"placement-mode"`.
      *
      * `"geolocation"` uses the current GPS fix when one is available, and falls back to
-     * placement mode when it is not. Absorbé de `modules.addpoi.defaultPosition` (5.1-f).
+     * placement mode when it is not. Absorbed from `modules.addpoi.defaultPosition`.
      */
     poiAddDefaultPosition?: "placement-mode" | "geolocation";
     /** Initial anchor position of the floating sub-menu. Default: `"top-left"`. */
@@ -111,8 +116,14 @@ export interface EditorConfig {
          *   (OGC API Features / PostgREST-style collection). Create-only for now.
          */
         dialect?: "rest" | "collection";
-        /** Conflict resolution when the server returns HTTP 409. Default: `"prompt"`. */
-        conflictResolution?: "client-wins" | "server-wins" | "prompt";
+        /**
+         * Conflict resolution when the server returns HTTP 409. Default: `"prompt"`.
+         *
+         * ⚠️ The vocabulary was RE-SPELLED here until 19/08/2026, identical to
+         * two other places. It now derives from its single source — a TYPE
+         * import, so this file stays a pure type surface, no runtime code.
+         */
+        conflictResolution?: ConflictStrategy;
     };
     /** Maximum depth of the undo/redo stack per session. Default: `100`. */
     undoStackSize?: number;

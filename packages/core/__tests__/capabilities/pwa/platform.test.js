@@ -1,5 +1,5 @@
 /**
- * Tests for modules/utils/general/platform — shared iOS / UA detection (S7.2).
+ * Tests for modules/utils/general/platform — shared iOS / UA detection.
  *
  * The iOS sniff used to be duplicated (bare regex in pwa-manager, UA + standalone in
  * ios-banner). It now lives here once; these tests pin both helpers so the two PWA

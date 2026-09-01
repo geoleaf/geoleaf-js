@@ -15,7 +15,7 @@
  * vocabulary across 49 call sites, and because `_getNativeMap` still owns the cast to
  * {@link MeasureMap} — the caller's assertion, which the generic seam cannot make.
  *
- * ⚠️ SHIP-SPEC (passage public S1.2): the three renames below are LOCAL WRAPPERS with
+ * ⚠️ SHIP-SPEC: the three renames below are LOCAL WRAPPERS with
  * written signatures, and they must stay that way. They were
  * `export { createEl as _el, applyStyleText as applyCssText, tLabel as _getLabel }`, which
  * is one line shorter and re-exports the IMPORTED bindings — so `tsc` emitted

@@ -1,42 +1,44 @@
 /*!
- * GeoLeaf Connector — API du singleton
+ * GeoLeaf Connector — the singleton's API
  * © 2026 Mattieu Pottier — MIT License
  * https://geoleaf.dev
  */
 
 /**
- * L'état du singleton connector et les deux opérations que le namespace public expose.
+ * The connector singleton's state and the two operations the public namespace exposes.
  *
  *
- * ## Pourquoi ce module existe (API publique S4.7)
+ * ## Why this module exists
  *
- * `GeoLeaf.Connector` était monté par un objet littéral dans `entry.ts`, avec le corps de
- * `openLoginModal` écrit sur place. `check-facade-purity` (INV-FACADE) ne balaie que les
- * paquets portant un `src/public-api.ts` : le connector échappait donc entièrement à la gate,
- * et un `public-api.ts` créé par simple copie du littéral l'aurait fait rougir — sa grammaire
- * n'accepte qu'un délégué mince (un appel unique vers un symbole importé), pas un corps à deux
- * instructions.
+ * `GeoLeaf.Connector` was mounted by an object literal in `entry.ts`, with
+ * `openLoginModal`'s body written in place. `check-facade-purity` (INV-FACADE)
+ * only sweeps packages carrying a `src/public-api.ts`: the connector thus
+ * escaped the gate entirely, and a `public-api.ts` created by simply copying
+ * the literal would have turned it red — its grammar only accepts a thin
+ * delegate (a single call to an imported symbol), not a two-statement body.
  *
- * ## ⚠️ L'état DOIT vivre ici, avec ses lecteurs
+ * ## ⚠️ The state MUST live here, with its readers
  *
- * `_currentConfig` est lu par trois choses à des instants différents :
+ * `_currentConfig` is read by three things at different moments:
  *
- *   1. `openLoginModal()`, à l'appel ;
- *   2. le hook `__GEOLEAF_WORKER_HEADERS_HOOK__` posé par `configure()` — que le
- *      worker-manager du CORE lit sans jamais importer ce plugin ;
- *   3. `isConfigured()`, invoqué par le `healthCheck` du registre de plugins.
+ *   1. `openLoginModal()`, at call time;
+ *   2. the `__GEOLEAF_WORKER_HEADERS_HOOK__` hook set by `configure()` —
+ *      which the CORE's worker-manager reads without ever importing this plugin;
+ *   3. `isConfigured()`, invoked by the plugin registry's `healthCheck`.
  *
- * Séparer l'écrivain de l'un de ces lecteurs produit une panne SILENCIEUSE : le hook fermerait
- * sur un `_currentConfig` que plus personne n'écrit, et les Workers de tuiles perdraient leurs
- * en-têtes d'authentification sans erreur ni test rouge (le hook n'est vérifié que par sa
- * PRÉSENCE). C'est pour cela que `configure`, l'état et le hook sont dans le même fichier.
+ * Separating the writer from any of these readers produces a SILENT outage:
+ * the hook would close over a `_currentConfig` nobody writes any more, and
+ * the tile Workers would lose their authentication headers with no error and
+ * no red test (the hook is only checked for PRESENCE). That is why
+ * `configure`, the state and the hook are in the same file.
  *
- * ## `isConfigured()` est une fonction, jamais une valeur
+ * ## `isConfigured()` is a function, never a value
  *
- * `entry.ts` déclare `healthCheck: isConfigured`. Écrire `healthCheck: () => hasInstance` avec
- * une valeur capturée rendrait `false` à jamais, et la panne serait invisible : `register()` ne
- * fait que STOCKER la clôture, elle n'est invoquée qu'au rapport de boot — dans un
- * `console.groupCollapsed`, sans test qui la couvre.
+ * `entry.ts` declares `healthCheck: isConfigured`. Writing
+ * `healthCheck: () => hasInstance` with a captured value would return `false`
+ * forever, and the outage would be invisible: `register()` only STORES the
+ * closure, it is only invoked at the boot report — inside a
+ * `console.groupCollapsed`, with no test covering it.
  */
 
 import { validateConfig, ConfigError } from "./config.js";
@@ -206,19 +208,19 @@ export async function configure(config: ConnectorConfig): Promise<void> {
         }
     }
 
-    // Install credential button (Sprint 2 — idempotent, no-op if not enabled)
+    // Install credential button (idempotent, no-op if not enabled)
     installCredentialButton(config);
 
     _currentInstance = createConnector(config);
 }
 
-// ─── Surface consommée par le namespace public ───────────────────────────────
+// ─── Surface consumed by the public namespace ────────────────────────────────
 
 /**
- * Ouvre la fenêtre de connexion à la demande.
+ * Opens the login window on demand.
  *
- * Résout une fois authentifié, rejette si l'utilisateur ferme la fenêtre. Exige un
- * `configure()` préalable portant une configuration `auth`.
+ * Resolves once authenticated, rejects if the user closes the window.
+ * Requires a prior `configure()` carrying an `auth` configuration.
  */
 export async function openLoginModal(): Promise<void> {
     if (!_currentConfig?.auth) {
@@ -231,11 +233,11 @@ export async function openLoginModal(): Promise<void> {
 }
 
 /**
- * `true` dès qu'un `configure()` a réussi. Lu par le `healthCheck` du registre de plugins.
+ * `true` as soon as a `configure()` succeeded. Read by the plugin registry's `healthCheck`.
  *
- * ⚠️ Exporté comme FONCTION et non comme valeur : le registre stocke la clôture et ne
- * l'invoque qu'au rapport de boot. Une valeur capturée resterait `false` pour toujours, sans
- * qu'aucun test ne le voie.
+ * ⚠️ Exported as a FUNCTION and not a value: the registry stores the closure
+ * and only invokes it at the boot report. A captured value would stay `false`
+ * forever, with no test seeing it.
  */
 export function isConfigured(): boolean {
     return _currentInstance !== null;

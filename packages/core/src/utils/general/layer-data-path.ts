@@ -17,11 +17,10 @@
  * The offline cache path never goes through that normalisation: `CacheStorage.loadProfileConfig`
  * fetches `profile.json` raw and `ResourceEnumerator` refetches each layer config raw, so it saw
  * the on-disk shape while reading the normalised key. The data file was therefore never
- * enumerated, and never cached — the layer that a user asked to take offline came back empty
- * (task 4.2 of `roadmap_collecte-terrain-offline.md`).
+ * enumerated, and never cached — the layer that a user asked to take offline came back empty.
  *
  * ⚠️ Deriving it a second time inside the enumerator would have closed the bug and opened the
- * defect this roadmap exists to remove: two places deciding the same thing, free to drift. One
+ * defect this fix exists to remove: two places deciding the same thing, free to drift. One
  * function, two callers.
  */
 

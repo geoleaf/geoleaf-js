@@ -27,7 +27,7 @@ import type {
 } from "../../contracts/map-adapter.contract.ts";
 
 import { dispatchGeoLeafEvent } from "../../kernel/events/event-bus.js";
-import { MaplibreLayerRegistry, SENTINEL_POI } from "./maplibre-layer-registry.js";
+import { MaplibreLayerRegistry, SENTINEL_POI, toSubLayerId } from "./maplibre-layer-registry.js";
 import { applyLayerStyle } from "./maplibre-style-applier.js";
 import { applyPoiFilter, type ClusterLayerIds } from "./maplibre-poi-builders.js";
 import {
@@ -37,6 +37,7 @@ import {
 } from "./maplibre-poi-icons.js";
 import { buildGeoLeafStyleTransform, type StyleTransform } from "./maplibre-style-transform.js";
 import { flushMapCleanups } from "./maplibre-event-subscriptions.js";
+import { registerPmtilesProtocol } from "./maplibre-pmtiles.js";
 import {
     attachWrappedHandler,
     createEventWrapperMap,
@@ -50,9 +51,10 @@ import {
     fromMapLibreBounds,
     POSITION_MAP,
     applyLayerZoomRange,
+    withGeometryGuard,
 } from "./maplibre-primitives.js";
 import { buildGeoJSONLayer, buildClusterGroup } from "./maplibre-layer-builders.js";
-import { buildMarker, dropMarker, moveMarker } from "./maplibre-markers.js";
+import { buildMarker, dropMarker, moveMarker, turnMarker } from "./maplibre-markers.js";
 import {
     buildVectorTileLayer,
     updateVectorTileLayerStyle as applyVectorTileLayerStyle,
@@ -120,6 +122,10 @@ export class MaplibreAdapter implements IMapAdapter {
 
     init(options: MapInitOptions): void {
         if (this._ready) throw new Error("MaplibreAdapter: init() has already been called.");
+        // pmtiles:// — registered BEFORE the map exists: MapLibre resolves protocols at
+        // source load, and a basemap declared in the initial style would race a later
+        // registration. The library itself loads lazily, on the first pmtiles:// request.
+        registerPmtilesProtocol();
         const maxBoundsRaw = options["maxBounds"] as GeoLeafBounds | undefined;
         // Auto-activate preserveDrawingBuffer when the print plugin is registered before map init.
         // Also honoured via explicit opt-in `mapOptions.preserveDrawingBuffer`.
@@ -130,9 +136,9 @@ export class MaplibreAdapter implements IMapAdapter {
             style: { version: 8 as const, sources: {}, layers: [] },
             center: options.center ? toMapLibreLngLat(options.center) : [0, 0],
             zoom: options.zoom ?? 5,
-            // `MapOptions` est déclaré hors du dépôt : on ne peut pas l'élargir, donc on
-            // construit par insertion conditionnelle — l'idiome que ce littéral emploie déjà
-            // trois lignes plus bas pour `preserveDrawingBuffer`.
+            // `MapOptions` is declared outside this repo: we cannot widen it, so we build
+            // by conditional insertion — the idiom this literal already uses three lines
+            // below for `preserveDrawingBuffer`.
             ...(options.minZoom !== undefined && { minZoom: options.minZoom }),
             ...(options.maxZoom !== undefined && { maxZoom: options.maxZoom }),
             maxPitch: options.maxPitch ?? 80,
@@ -258,7 +264,7 @@ export class MaplibreAdapter implements IMapAdapter {
     once(event: MapEvent, handler: (e: unknown) => void): void {
         const map = this._requireMap();
         // MapLibre types `once` as a SINGLE signature returning `this | Promise<any>`
-        // (maplibre-gl.d.ts:12010), not as overloads. The promise branch only exists
+        // (maplibre-gl.d.ts), not as overloads. The promise branch only exists
         // when `listener` is omitted; passing one returns `this` at runtime. `void` is
         // therefore accurate here — there is no promise to await, only an imprecise
         // upstream type.
@@ -399,6 +405,13 @@ export class MaplibreAdapter implements IMapAdapter {
      * Applies a filter expression to a registered layer's sub-layers.
      * For cluster groups, filters the unclustered-point layer specifically.
      * Pass `null` to clear the filter.
+     *
+     * 🛑 The caller's filter is COMPOSED with each sub-layer's geometry guard, never
+     * substituted for it. `setFilter` replaces a layer's filter wholesale, so a plain
+     * assignment here would strip the guard for exactly as long as a filter is active —
+     * and clearing it would strip the guard for good. The guard is derived per sub-layer
+     * from its registered TYPE (`toSubLayerId`), not by parsing the id's suffix: a layer
+     * id may itself contain a dash.
      */
     setLayerFilter(id: string, filter: unknown): void {
         const map = this._requireMap();
@@ -410,11 +423,25 @@ export class MaplibreAdapter implements IMapAdapter {
         }
 
         // Regular GeoJSON layer — apply filter to all sub-layers
-        const subLayerIds = this._layerRegistry.getSubLayerIds(id);
-        for (const subId of subLayerIds) {
-            if (map.getLayer(subId)) {
-                map.setFilter(subId, (filter ?? null) as MaplibreFilter);
+        const entry = this._layerRegistry.get(id);
+        // ⚠️ Vector-tile layers are left alone: their sub-layers are built WITHOUT a guard
+        // (a source-layer is homogeneous by construction, so there is nothing to confine),
+        // and injecting one here would make a re-set filter differ from the creation-time
+        // one — the very inconsistency this method exists to prevent.
+        const guarded = new Map<string, MaplibreFilter | null>();
+        if (!entry?.isVectorTile) {
+            for (const type of entry?.subLayerTypes ?? []) {
+                guarded.set(toSubLayerId(id, type), withGeometryGuard(type, filter));
             }
+        }
+        for (const subId of this._layerRegistry.getSubLayerIds(id)) {
+            if (!map.getLayer(subId)) continue;
+            // Sub-layers registered under `customSubLayerIds` alone (the cluster pair) carry
+            // no type here; they keep the caller's filter verbatim, as they always did.
+            const next = guarded.has(subId)
+                ? guarded.get(subId)
+                : ((filter ?? null) as MaplibreFilter);
+            map.setFilter(subId, (next ?? null) as MaplibreFilter);
         }
     }
 
@@ -443,6 +470,11 @@ export class MaplibreAdapter implements IMapAdapter {
 
     updateMarkerPosition(id: string, position: GeoLeafLatLng): void {
         moveMarker(this._markers, id, position);
+    }
+
+    /** Rotates an existing marker's icon. See the contract for why alignment matters. */
+    setMarkerRotation(id: string, degrees: number): void {
+        turnMarker(this._markers, id, degrees);
     }
 
     /**

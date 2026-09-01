@@ -43,7 +43,7 @@ valide pas le contenu de ces fichiers : chaque bloc appartient au plugin (INV-CO
 2. `profile.json` est chargé.
 3. **Déploiement** : si `profile.json` déclare `bundleFile`, le runtime charge
    `profile-bundle.json` en un seul fetch (sections core + features + modules + configs
-   couches, fusionnées au build par `scripts/bundle-profiles.cjs`).
+   couches, fusionnées au build par `scripts/lib/bundle-profiles.cjs`).
 4. **Sinon (cascade)** : les fichiers du manifeste `Files` sont chargés en parallèle,
    puis les configs de couches.
 

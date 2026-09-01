@@ -1,24 +1,25 @@
 /**
  * @file doc-profile-examples.guard.test.js
- * @description Test-garde — les exemples de profil des docs NORMATIVES valident contre
- * `profiles/schemas/profile.schema.json`.
+ * @description Guard test — the NORMATIVE docs' profile examples validate
+ * against `profiles/schemas/profile.schema.json`.
  *
- * Pourquoi ce garde existe (S5, optimisation KERNEL, 18/07/2026)
+ * Why this guard exists (18/07/2026)
  * ---------------------------------------------------------------
- * `Files.taxonomyFile` a été retiré du contrat au Lot 2 (11/07) : purgé du schéma, des 9
- * profils et du loader, et son token est banni de `packages/core/src` par
- * `extracted-features.guard.test.js`. Mais **la doc normative, elle, n'était gardée par
- * rien** — `PROFILE_CONTRACT_SPEC.md` et `GUIDE_VALIDATION_PROFILS.md` ont continué à
- * prescrire `taxonomyFile` dans leurs exemples et leur whitelist. Le bloc `Files` étant en
- * `additionalProperties: false`, un intégrateur qui suivait la doc écrivait un profil que
- * `npm run validate:profiles` REJETAIT.
+ * `Files.taxonomyFile` was removed from the contract: purged from the
+ * schema, the 9 profiles and the loader, and its token is banned from
+ * `packages/core/src` by `extracted-features.guard.test.js`. But **the
+ * normative docs were guarded by nothing** — `PROFILE_CONTRACT_SPEC.md` and
+ * `GUIDE_VALIDATION_PROFILS.md` kept prescribing `taxonomyFile` in their
+ * examples and their whitelist. The `Files` block being
+ * `additionalProperties: false`, an integrator following the docs wrote a
+ * profile `npm run validate:profiles` REJECTED.
  *
- * Le token-ban ne pouvait pas couvrir ce cas : les docs mentionnent légitimement
- * `taxonomyFile` en prose historique (« la clé a été retirée »). On valide donc les
- * EXEMPLES contre le schéma — précis, et insensible à la prose.
+ * The token ban could not cover this case: the docs legitimately mention
+ * `taxonomyFile` in historical prose ("the key was removed"). The EXAMPLES
+ * are therefore validated against the schema — precise, and insensitive to prose.
  *
- * Portée volontairement étroite : uniquement les docs qui font autorité sur le contrat de
- * profil. Les archives (`_docs_projet/archives/**`) sont hors périmètre par construction.
+ * Deliberately narrow scope: only the docs authoritative on the profile
+ * contract. Archives (`_docs_projet/archives/**`) are out of perimeter by construction.
  */
 
 import fs from "node:fs";
@@ -30,17 +31,17 @@ import Ajv from "ajv";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "../../../..");
 
-// La racine de la doc vient de `scripts/lib/docs-paths.cjs`, jamais d'un littéral :
-// écrits en dur, ces trois chemins survivraient au déplacement du répertoire en ne
-// matchant plus rien, et `existsSync` les ferait rougir sans dire pourquoi. Le module
-// JETTE si sa racine est absente — la panne nomme alors sa cause.
+// The docs root comes from `scripts/lib/docs-paths.cjs`, never a literal:
+// hardcoded, these three paths would survive the directory's move by
+// matching nothing any more, and `existsSync` would turn them red without
+// saying why. The module THROWS if its root is absent — the failure then names its cause.
 const docsPaths = createRequire(import.meta.url)(
     path.join(REPO_ROOT, "scripts/lib/docs-paths.cjs")
 );
 
 /**
- * Docs faisant autorité sur la structure d'un profil. Ajouter ici toute nouvelle doc
- * normative. Chemins ABSOLUS, dérivés de la racine publique.
+ * Docs authoritative on a profile's structure. Add any new normative doc
+ * here. ABSOLUTE paths, derived from the public root.
  */
 const NORMATIVE_DOCS = [
     docsPaths.specs("contrats", "PROFILE_CONTRACT_SPEC.md"),
@@ -140,7 +141,7 @@ describe("test-garde — les exemples `Files` des docs normatives valident contr
     it("le schéma expose bien un bloc Files fermé (sinon ce garde ne garde rien)", () => {
         expect(schema.properties.Files).toBeDefined();
         expect(schema.properties.Files.additionalProperties).toBe(false);
-        // La clé retirée au Lot 2 ne doit pas être réintroduite dans le schéma.
+        // The removed key must not be reintroduced into the schema.
         expect(Object.keys(schema.properties.Files.properties)).not.toContain("taxonomyFile");
     });
 
@@ -162,9 +163,9 @@ describe("test-garde — les exemples `Files` des docs normatives valident contr
                 try {
                     parsed = JSON.parse(stripJsonAnnotations(source));
                 } catch (err) {
-                    // Un bloc qui PARLE de `Files` mais ne parse pas doit crier, pas être
-                    // sauté : un skip silencieux se lit « tout va bien » alors que l'exemple
-                    // le plus normatif du fichier n'a jamais été vérifié.
+                    // A block that SPEAKS of `Files` but does not parse must
+                    // shout, not be skipped: a silent skip reads "all is
+                    // well" while the file's most normative example was never verified.
                     if (/"Files"\s*:/.test(source)) {
                         unparseable.push({ line, message: err.message });
                     }
@@ -180,8 +181,9 @@ describe("test-garde — les exemples `Files` des docs normatives valident contr
                 ).toHaveLength(0);
             });
 
-            // Sans cette assertion le garde serait VIDE dès qu'une doc change de forme
-            // (fence renommée, exemple déplacé) — et un garde vide passe au vert.
+            // Without this assertion the guard would be EMPTY as soon as a
+            // doc changes shape (renamed fence, moved example) — and an empty
+            // guard goes green.
             it("expose au moins un exemple `Files` à valider", () => {
                 expect(
                     candidates.length,

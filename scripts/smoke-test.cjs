@@ -52,16 +52,22 @@ const esmText = readText(esmPath);
 // imports statically — not the entry file alone.
 //
 // It used to assert `esmText.length > 100_000`, and that assertion silently stopped meaning
-// anything when `kernel-exports.ts` (S4) moved the entry's content into chunks: the entry is now
-// a ~1 KB re-export shim, so the check was failing on a perfectly healthy build. Same disease as
-// the old BUNDLE_WARN_GZ_KB (removed in S5): a threshold pointed at an artifact that had ceased
-// to be the payload. Measure the closure instead — that is what the browser actually downloads.
+// anything when `kernel-exports.ts` (S4) moved much of the entry's content into chunks: the
+// threshold pointed at an artifact that had ceased to be the payload. Same disease as the old
+// BUNDLE_WARN_GZ_KB (removed in S5). Measure the closure instead — that is what the browser
+// actually downloads.
+//
+// ⚠️ Do NOT re-describe the flat entry by a size, nor call it "a shim" — `CONTRIBUTING.md` and
+// `CLAUDE.md` both forbid it. The ~1 KB shim is the GRANULAR entry (`dist/esm/`); conflating
+// the two is how a documented figure drifted by a factor of 150 without any gate seeing it.
+// The current split is printed by `npm run size`. Read it there, never from a comment.
 const { measureEagerBootAt } = require("./check-bundle-size.cjs");
 const boot = measureEagerBootAt(esmPath, distDir);
 assert(boot != null, "Could not measure the boot closure from dist/geoleaf.esm.js.");
 assert(
     boot.chunks > 0,
-    "dist/geoleaf.esm.js imports no static chunk — the entry is a shim, so the payload would be empty."
+    "dist/geoleaf.esm.js imports no static chunk — the manualChunks split did not run, so " +
+        "the closure measured below would collapse to the entry alone."
 );
 assert(
     boot.raw > 100,

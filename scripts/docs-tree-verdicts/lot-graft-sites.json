@@ -1,0 +1,35 @@
+{
+    "schemaVersion": 2,
+    "lot": "graft-sites",
+    "scope": ["scripts/check-graft-sites.cjs", "scripts/lib/graft-sites.cjs"],
+    "verdicts": {
+        "scripts/check-graft-sites.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "GRAFT-01…03 — un module d'effet de bord porte sa marque, et son ancrage par import NU tient encore",
+            "confidence": "haute",
+            "rationale": "Câblé dans `ci:local` et `ci.yml` à la pose, inscrit dans SCRIPTS_ALLOWLIST. Son existence retire une phrase du registre : « aucune gate ne détecte un module d'effet de bord dont l'ancrage disparaît ». C'est exactement la régression de juillet 2026 — 812 lignes greffant 13 méthodes sur `ThemeApplierCore`, sorties du graphe avec la clé globale qui les amenait, suite de tests VERTE, TypeError en production. Né vert : 6 modules, 6 marqués, 6 ancres vivantes, donc aucune baseline. VU ROUGE SUR TROIS MUTATIONS, une par assertion — dont la première reproduit la régression de juillet à l'identique (retrait de l'import nu) et la troisième rétrograde l'instrument en version ①, ce qui fait retomber le témoin sur les trois fichiers exacts qu'elle ratait à l'époque. Ne juge PAS si la greffe est légitime : cette question est réservée au registre, et la gate le dit."
+        },
+        "scripts/lib/graft-sites.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Le tri PARTAGÉ des greffes — `X.membre = …` à la racine où `X` est un import — avec son témoin à réponse connue",
+            "confidence": "haute",
+            "rationale": "Deux lecteurs : la gate GRAFT et son témoin. Extrait parce que le tri précédent (18/08/2026) vivait dans une instruction et non dans `scripts/` : son verdict de 118 sites / 19 fichiers n'était plus rejouable — mode d'échec n° 5, un chiffre qu'on ne peut pas re-mesurer se fossilise. Résout la base `X` par l'AST TypeScript et non au grep : le motif brut rend 1 510 correspondances pour 26 sites réels. La résolution traverse les alias d'import ET les ré-liaisons locales annotées, parce que les versions ① et ② de l'instrument d'origine rataient précisément les trois fichiers `theme-applier` — en rendant un chiffre crédible. Trois seaux distincts (`greffe`, `local`, `autre`) : fondre le second dans le premier est le faux positif qui multiplie le relevé par douze."
+        }
+    }
+}

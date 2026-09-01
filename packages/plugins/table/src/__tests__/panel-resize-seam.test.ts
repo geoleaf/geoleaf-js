@@ -1,19 +1,35 @@
 /**
  * Tests for `panel-resize.ts` THROUGH THE REAL EVENT SEAM.
  *
- * 🛑 POURQUOI UN FICHIER À PART, ET POURQUOI IL NE FAUT PAS Y AJOUTER DE `vi.mock`.
+ * 🛑 WHY A SEPARATE FILE, AND WHY NO `vi.mock` MUST BE ADDED TO IT.
  *
- * `table-panel.test.ts` ET `table-panel-branches.test.ts` font tous deux
- * `vi.mock("../utils/events.js", () => ({ events: null }))`. C'est légitime chez eux, mais
- * l'effet cumulé est qu'AUCUN test du paquet n'exerçait le chemin `if (events)` — donc
- * aucun n'exerçait celui que la production prend, puisque `events` est un objet constant de
- * module et n'est jamais nul hors test.
+ * STATE ON 14/08/2026, at this file's creation — `table-panel.test.ts` AND
+ * `table-panel-branches.test.ts` both neutralised the seam for their whole
+ * duration (a `vi.mock` of the events module returning a null object).
+ * Legitimate for them, but the cumulative effect was that NO test in the
+ * package exercised the `if (events)` path — hence none exercised the one
+ * production takes, since `events` is a constant module object and is never
+ * null outside tests. The uncovered branch of `panel-resize.ts` was the TOP
+ * one. An lcov report easily reads the other way — and trusting it led to
+ * "simplifying" the fallback, which broke three tests at once.
  *
- * Mesuré le 14/08/2026 : la branche non couverte de `panel-resize.ts` était celle du HAUT.
- * On lit facilement l'inverse dans un rapport lcov — et s'y fier conduit à « simplifier »
- * le repli, ce qui casse trois tests d'un coup.
+ * ✅ UPDATE OF 17/08/2026 — **the deposit was SEVEN suites, not two**, and all
+ * seven now set a mock FAITHFUL to the seam instead of nulling it. The
+ * sentence above is thus no longer true of the present: the `if (events)`
+ * path is now widely exercised. **It is kept as-is, dated, because it is what
+ * explains why this file exists** — not erased, without which the next
+ * reread would see only a duplicate of the other suites.
  *
- * Ce fichier n'a donc aucun mock du seam, délibérément.
+ * 🛑 WHAT DOES NOT CHANGE, AND IS THE FILE'S REASON TO EXIST: it is the ONLY
+ * one exercising `panel-resize.ts` with no mock of the seam. The seven others
+ * go through a faithful mock — faithful today, and nothing guarantees it
+ * stays so. This file is what would turn red on a divergence between the mock
+ * and `utils/events.ts`. Do not add a mock to it, and do not delete it on the
+ * grounds that the others cover the same branch.
+ *
+ * ⚠️ The neutralisation token is no longer spelled out here, deliberately:
+ * citing it made this file indistinguishable from a real neutralisation for
+ * any completeness grep — it showed up as a false positive in that sweep.
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createResizeHandle } from "../panel-resize.js";
@@ -43,8 +59,8 @@ describe("panel-resize — through the real `events` seam", () => {
         const handle = createResizeHandle(container, CONFIG, cleanups);
         container.appendChild(handle);
 
-        // Le seam rend une fonction de démontage par écouteur posé : en obtenir une prouve
-        // que c'est bien la branche `if (events)` qui a tourné, et pas le repli.
+        // The seam returns one teardown function per listener set: getting one
+        // proves the `if (events)` branch ran, and not the fallback.
         expect(cleanups).toHaveLength(1);
         expect(typeof cleanups[0]).toBe("function");
 
@@ -54,7 +70,7 @@ describe("panel-resize — through the real `events` seam", () => {
         handle.dispatchEvent(new PointerEvent("pointermove", { clientY: 300, bubbles: true }));
         handle.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
 
-        // 400 de départ, curseur de 500 à 300 → delta 200 → 600, dans [300px, 80 % viewport].
+        // 400 to start, cursor from 500 to 300 → delta 200 → 600, within [300px, 80% viewport].
         expect(container.style.height).toBe("600px");
     });
 
@@ -69,8 +85,8 @@ describe("panel-resize — through the real `events` seam", () => {
         );
         handle.dispatchEvent(new PointerEvent("pointermove", { clientY: 300, bubbles: true }));
 
-        // Rien ne doit avoir bougé : un démontage qui ne démonte pas est indiscernable d'un
-        // démontage qui marche tant qu'on ne rejoue pas le geste après.
+        // Nothing must have moved: a teardown that does not tear down is
+        // indistinguishable from one that works until the gesture is replayed after.
         expect(container.style.height).toBe("");
     });
 
@@ -85,9 +101,10 @@ describe("panel-resize — through the real `events` seam", () => {
         handle.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }));
         expect(container.style.height).toBe("600px");
 
-        // Un mouvement de plus, sans nouvelle pression. Avant la conversion, deux écouteurs
-        // `document` permanents vivaient toute la durée du panneau ; seul un drapeau les
-        // empêchait d'agir. Ils n'existent plus du tout entre deux gestes.
+        // One more movement, with no new press. Before the conversion, two
+        // permanent `document` listeners lived for the panel's whole lifetime;
+        // only a flag kept them from acting. They no longer exist at all
+        // between two gestures.
         handle.dispatchEvent(new PointerEvent("pointermove", { clientY: 100, bubbles: true }));
         expect(container.style.height).toBe("600px");
     });

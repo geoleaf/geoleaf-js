@@ -1,5 +1,5 @@
 /*!
- * @geoleaf-plugins/print — Emprise selector (Sprint 3)
+ * @geoleaf-plugins/print — Emprise selector
  *
  * Overlay-based rectangle selection over the MapLibre container.
  *   Phase 1 — draw  : mousedown → mousemove → mouseup
@@ -230,12 +230,12 @@ export function createEmpriseSelector(
     }
 
     // --- Pointer-agnostic primitives -------------------------------------------------
-    // Extraites des trois handlers souris pour que le chemin tactile les alimente au lieu
-    // de recopier leur corps — le bloc de redimensionnement fait à lui seul une vingtaine
-    // de lignes, et `jscpd` (seuil 3 %) le verrait passer. Elles prennent des `clientX/Y`
-    // bruts, comme `_beginDraw`/`_progressDraw` juste au-dessus : c'est l'idiome du fichier.
+    // Extracted from the three mouse handlers so the touch path feeds them
+    // instead of copying their bodies — the resize block alone runs some
+    // twenty lines, and `jscpd` (3% threshold) would see it go by. They take
+    // raw `clientX/Y`, like `_beginDraw`/`_progressDraw` just above: the file's idiom.
 
-    /** Ce qu'une pression déclenche, sans décider quoi que ce soit du `preventDefault`. */
+    /** What a press triggers, deciding nothing about `preventDefault`. */
     type PressKind = "handle" | "ok" | "move" | "draw";
 
     function _pressAt(t: HTMLElement, cx: number, cy: number): PressKind {
@@ -246,7 +246,7 @@ export function createEmpriseSelector(
                     return "handle";
                 }
             }
-            // Bouton OK — on laisse le clic remonter jusqu'à lui.
+            // OK button — we let the click bubble up to it.
             if (t === okBtn || okBtn.contains(t)) return "ok";
             if (t === rectEl || rectEl.contains(t)) {
                 moving = true;
@@ -255,7 +255,7 @@ export function createEmpriseSelector(
                 moveAnchorY = cy;
                 return "move";
             }
-            // Pression hors du rectangle tracé → on repart sur un tracé.
+            // Press outside the drawn rectangle → we start a new draw.
         }
         _beginDraw(cx, cy);
         return "draw";
@@ -314,10 +314,10 @@ export function createEmpriseSelector(
     function _onMouseDown(e: MouseEvent) {
         if (e.button !== 0) return;
         const kind = _pressAt(e.target as HTMLElement, e.clientX, e.clientY);
-        // ⚠️ NE PAS généraliser le `preventDefault` aux quatre cas : la branche `draw` n'en
-        // appelait pas, et `ok` ne doit surtout pas en appeler — le clic doit atteindre le
-        // bouton. Uniformiser ici changerait le comportement souris, c'est-à-dire
-        // exactement ce que cette extraction doit garantir de ne pas faire.
+        // ⚠️ Do NOT generalise `preventDefault` to all four cases: the `draw`
+        // branch did not call it, and `ok` must above all not call it — the
+        // click must reach the button. Uniformising here would change the
+        // mouse behaviour, i.e. exactly what this extraction must guarantee not to do.
         if (kind === "handle" || kind === "move") e.preventDefault();
     }
 
@@ -341,28 +341,28 @@ export function createEmpriseSelector(
 
     // --- Touch ---
     //
-    // ⚠️ Ces trois handlers ne couvraient que le TRACÉ : `phase !== "drawn"` au départ et
-    // `phase === "drawing"` au mouvement les rendaient INERTES dès que le rectangle
-    // existait. Au doigt, on pouvait donc dessiner une emprise et plus jamais la
-    // redimensionner ni la déplacer — seul le bouton OK répondait, par le `click`
-    // synthétisé. Ce sont ces deux conditions qui sautent, pas la logique, qui est
-    // désormais celle des primitives partagées.
+    // ⚠️ These three handlers only covered the DRAW: `phase !== "drawn"` at
+    // start and `phase === "drawing"` on move made them INERT as soon as the
+    // rectangle existed. By finger you could thus draw an extent and never
+    // again resize or move it — only the OK button responded, through the
+    // synthesised `click`. Those two conditions are what goes, not the logic,
+    // which is now the shared primitives'.
     //
-    // ⚠️ Garde mono-doigt conservée : un second doigt signifie pinch, et l'avaler ici
-    // casserait le zoom de la carte pour tracer un rectangle.
+    // ⚠️ Single-finger guard kept: a second finger means pinch, and swallowing
+    // it here would break the map's zoom to draw a rectangle.
     function _onTouchStart(e: TouchEvent) {
         if (e.touches.length !== 1) return;
         const t = e.touches[0];
         if (!t) return;
         const kind = _pressAt(e.target as HTMLElement, t.clientX, t.clientY);
-        // Même règle que la souris : surtout pas sur `ok`, dont le `click` synthétisé doit
-        // atteindre le bouton.
+        // Same rule as the mouse: above all not on `ok`, whose synthesised
+        // `click` must reach the button.
         if (kind === "handle" || kind === "move") e.preventDefault();
     }
     function _onTouchMove(e: TouchEvent) {
         if (e.touches.length !== 1) return;
-        // Inconditionnel, et volontairement avant le test d'état : c'est ce qui empêche le
-        // navigateur de défiler pendant le geste, quelle que soit la phase.
+        // Unconditional, and deliberately before the state test: it is what
+        // keeps the browser from scrolling during the gesture, whatever the phase.
         e.preventDefault();
         const t = e.touches[0];
         if (!t) return;
@@ -391,17 +391,17 @@ export function createEmpriseSelector(
         document.addEventListener("mousemove", _onMouseMove);
         document.addEventListener("mouseup", _onMouseUp);
         document.addEventListener("keydown", _onKeyDown);
-        // ⚠️ `{ passive: false }` sur `touchstart`, et ce n'est PAS un défaut qu'on rétablit :
-        // `touchstart` n'est passif d'office que sur `window` / `document` / `document.body`.
-        // Ici l'écouteur est sur `overlay`, donc `{ passive: true }` était un CHOIX — qui
-        // rendait le `preventDefault()` des branches poignée/déplacement inopérant, avec un
-        // avertissement Chrome par-dessus.
+        // ⚠️ `{ passive: false }` on `touchstart`, and it is NOT a default
+        // being restored: `touchstart` is only passive by default on `window`
+        // / `document` / `document.body`. Here the listener is on `overlay`,
+        // so `{ passive: true }` was a CHOICE — one that made the handle/move
+        // branches' `preventDefault()` inoperative, with a Chrome warning on top.
         overlay.addEventListener("touchstart", _onTouchStart, { passive: false });
         overlay.addEventListener("touchmove", _onTouchMove, { passive: false });
         overlay.addEventListener("touchend", _onTouchEnd);
-        // Un geste confisqué (défilement revendiqué, interruption OS) n'émet jamais
-        // `touchend` : sans ceci, `activeHandle` et `moving` restaient posés indéfiniment et
-        // le `mousemove` document continuait de redimensionner sans bouton enfoncé.
+        // A claimed-away gesture (scroll takeover, OS interruption) never
+        // emits `touchend`: without this, `activeHandle` and `moving` stayed
+        // set indefinitely and the document `mousemove` kept resizing with no button down.
         overlay.addEventListener("touchcancel", _onTouchEnd);
         _disableDrag();
     }

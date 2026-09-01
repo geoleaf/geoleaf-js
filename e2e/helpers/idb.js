@@ -1,7 +1,7 @@
 // @ts-check
 // IndexedDB primitives — reading the ENTRY, not the event.
 //
-// WHY THIS EXISTS. The offline defects of Sprint 3 all survived the same way: a spec
+// WHY THIS EXISTS. The early offline defects all survived the same way: a spec
 // asserted that something *happened* (an event fired, a flag flipped) and never that the
 // right bytes *landed*. `e2e/10-addpoi.spec.js` waits on `window.__poiQueued` and never
 // opens the database; `e2e/09-editor.spec.js` does the same. Both stayed green while the

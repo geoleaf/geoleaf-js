@@ -78,11 +78,11 @@ core n'y est pas adressable. Le plugin exprime donc cette dépendance là où el
 dans son `healthCheck`, qui interroge `GeoLeaf.Storage`.
 
 ⚠️ **`optional: ["editor"]` est EXACT**, et il était le **seul** juste des cinq manifestes qui en
-déclarent un. ⚠️ Il citait `addpoi` jusqu'à la fusion du Sprint 5 : le gestionnaire `"poi"` n'a pas
+déclarent un. ⚠️ Il citait `addpoi` jusqu'à la fusion : le gestionnaire `"poi"` n'a pas
 changé d'identifiant, il a changé de **fournisseur**. Le plugin va bien chercher le gestionnaire
 `poi` déposé par `editor`, et se passe de
 lui quand il est absent. Les quatre autres pointaient vers `storage` — c'est-à-dire vers **ce
-plugin-ci**, qu'ils désignaient tous du mauvais nom. Corrigés le 29/07/2026 (**B-66**), et la classe
+plugin-ci**, qu'ils désignaient tous du mauvais nom. Corrigés le 29/07/2026, et la classe
 est **fermée par une gate** : tout identifiant cité doit désigner un plugin réellement enregistré.
 
 ---
@@ -172,7 +172,7 @@ Une couche déclare sa configuration de **deux** façons : par un fichier (`conf
 `src/__tests__/templated-layer-selector.guard.test.ts`, qui compare systématiquement une couche
 en ligne à une couche à fichier servant de témoin.
 
-🛑 **Elle ne l'était pas, et le défaut a vécu jusqu'au 07/08/2026 (B-152).** Les trois sites du
+🛑 **Elle ne l'était pas, et le défaut a vécu jusqu'au 07/08/2026.** Les trois sites du
 sélecteur branchaient sur `configFile` seul : mesuré en navigateur sur `tourism`, les 42 couches
 apparaissaient mais les **24 templatées** se rendaient avec leur identifiant technique à la place
 du libellé, sans style et **sans sélecteur de style** — et leur état de cache était **toujours
@@ -183,7 +183,7 @@ dont le chemin de données ne se dérivait qu'avec `layerDataPath`, helper inter
 plugin n'a pas le droit d'importer. C'est `expandLayerTemplates` qui normalise désormais `dataFile`.
 Un correctif purement local aurait dû redériver ce chemin ici — deuxième endroit libre de diverger.
 
-✅ **Et la colonne géométrie est réparée du même jour (B-161), pour une cause DISTINCTE** — elle
+✅ **Et la colonne géométrie est réparée du même jour, pour une cause DISTINCTE** — elle
 affichait `-` sur 38 des 42 lignes, **dont 14 des 18 couches directes**, ce qui prouvait que
 l'`inlineConfig` n'y était pour rien. Deux défauts empilés : `getLayerGeometryType` lisait
 `geometryType` seul, alors que le schéma en fait un **alias de `geometry`** (ANO-007) que 18 des
@@ -269,15 +269,15 @@ double appel si le signal existait.
 **Le geste** : l'annulation existe et fonctionne (`cancelDownload()` traverse bien la chaîne
 jusqu'au `Downloader`), c'est sa **notification** qui manque. Soit le moteur émet le signal, soit
 les deux écouteurs partent — mais l'état actuel, où l'on paie deux abonnements pour un silence,
-n'est pas tenable. Tranché au Sprint 3, avec les autres signaux sans écouteur.
+n'est pas tenable. Tranché avec les autres signaux sans écouteur.
 
 ⚠️ **Les trois signaux du sens inverse restent ouverts** — disponibilité de la base, dépassement de
 quota, éviction par budget : la capacité les émet, ce plugin ne les écoute pas. Le troisième est le
 plus notable, et c'est un défaut **produit** : un utilisateur dont les couches sont évincées faute
 de place n'en est **pas informé**, alors que le moteur le signale.
 
-Les quatre constats sont **de la même famille que B-69** — un vocabulaire déclaré d'un côté et non
-honoré de l'autre — et versés en **B-72** du
+Les quatre constats sont **de la même famille que le bouton d'action** — un vocabulaire déclaré d'un côté et non
+honoré de l'autre — et versés au registre du
 registre.
 
 ---
@@ -328,15 +328,15 @@ expose. C'est l'inversion qui permet à trois paquets de coopérer sans se conna
 
 Le CDC `CDC_plugin-offline-ui.md` a été **consommé** en écrivant cette fiche, puis **supprimé** du
 dossier de tri — ligne au §Journal des décisions de
-`roadmap_documentation-v3.md`.
+la refonte documentaire V3.
 
-| Énoncé du CDC                                      | Ce que dit le code                                                                                                                                                                                            |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Le paquet s'appelle `storage`                      | **Renommé `offline-ui`.** Le nom d'origine survit dans quatre manifestes de plugins qui le déclarent en dépendance optionnelle (**B-66**) — et dans le préfixe de ses propres clés i18n, lui **délibérément** |
-| Le build Lite                                      | **Caduc** — ce build n'existe plus, et la documentation le décrit encore par endroits (**B-07**)                                                                                                              |
-| Le plugin monte un namespace                       | **Il n'en monte aucun.** L'exemption est nommée, motivée, et **vérifiée** par deux gardes                                                                                                                     |
-| Le contrat de stockage est importé du core         | **Remplacé par un adaptateur** — l'import créait une seconde copie jamais initialisée, qui rendait l'interface morte dans le paquet livré                                                                     |
-| Les surfaces (bouton, fenêtre, sélecteur, synchro) | ✅ **Vérifiées exactes**                                                                                                                                                                                      |
+| Énoncé du CDC                                      | Ce que dit le code                                                                                                                                                                                 |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Le paquet s'appelle `storage`                      | **Renommé `offline-ui`.** Le nom d'origine survit dans quatre manifestes de plugins qui le déclarent en dépendance optionnelle — et dans le préfixe de ses propres clés i18n, lui **délibérément** |
+| Le build Lite                                      | **Caduc** — ce build n'existe plus, et la documentation le décrit encore par endroits                                                                                                              |
+| Le plugin monte un namespace                       | **Il n'en monte aucun.** L'exemption est nommée, motivée, et **vérifiée** par deux gardes                                                                                                          |
+| Le contrat de stockage est importé du core         | **Remplacé par un adaptateur** — l'import créait une seconde copie jamais initialisée, qui rendait l'interface morte dans le paquet livré                                                          |
+| Les surfaces (bouton, fenêtre, sélecteur, synchro) | ✅ **Vérifiées exactes**                                                                                                                                                                           |
 
 Ce qui a été **retenu** du CDC et ne se lit pas dans le code : le motif du découpage moteur / interface
 en deux paquets, l'historique du renommage, et les alternatives écartées de la table §Décisions.

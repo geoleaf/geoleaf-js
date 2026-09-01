@@ -284,9 +284,8 @@ describe("layer-manager/attach-toggle — T3.3 branch coverage", () => {
     // ── addEventListener path — MapLibre (no L.DomEvent needed) ──────────
     it("uses L.DomEvent.on when L.DomEvent is available", async () => {
         vi.resetModules();
-        const { attachToggleHandler: ath } = await import(
-            "../../src/kernel/layer-manager/attach-toggle.js"
-        );
+        const { attachToggleHandler: ath } =
+            await import("../../src/kernel/layer-manager/attach-toggle.js");
         const btn = makeToggleBtn();
         const addEventSpy = vi.spyOn(btn, "addEventListener");
         ath(btn, "lyrL", vi.fn().mockReturnValue(false));

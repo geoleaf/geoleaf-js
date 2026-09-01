@@ -63,19 +63,19 @@ describe("app/init-features (R5)", () => {
                 expect.any(Function)
             );
             const handler = onFn.mock.calls[0][1];
-            // B-226 — la forme RÉELLEMENT émise. `loader/profile.ts:399` fait
-            // `map.fire(type, { count, layers })`, et MapLibre fusionne la charge utile au
-            // premier niveau de l'objet d'événement ; l'adaptateur ne la ré-enveloppe pas.
+            // The shape REALLY emitted. `loader/profile.ts` does
+            // `map.fire(type, { count, layers })`, and MapLibre merges the
+            // payload at the event object's first level; the adapter does not re-wrap it.
             handler({ count: 2, layers: ["a", "b"] });
             expect(showNotification).toHaveBeenCalledWith("2 GeoJSON layers loaded", 3000);
         });
 
-        // 🛑 Ce cas est la RAISON de B-226, et il vaut d'être gardé explicitement.
-        // Le test ci-dessus nourrissait le handler avec `{ detail: { count } }` — la forme
-        // DOM `CustomEvent`, que rien dans cette chaîne ne produit. Il passait donc en vert
-        // pendant que le toast de boot ne s'affichait jamais en production : un test qui
-        // encode la croyance de son auteur plutôt que le contrat de l'émetteur.
-        it("n'affiche RIEN sur une enveloppe `detail` — la forme que personne n'émet (B-226)", () => {
+        // 🛑 This case is the fix's REASON, and worth guarding explicitly.
+        // The test above fed the handler `{ detail: { count } }` — the DOM
+        // `CustomEvent` shape, which nothing in this chain produces. It thus
+        // passed green while the boot toast never showed in production: a
+        // test encoding its author's belief rather than the emitter's contract.
+        it("n'affiche RIEN sur une enveloppe `detail` — la forme que personne n'émet", () => {
             const onFn = vi.fn();
             const showNotification = vi.fn();
             initGeoJSON({
@@ -165,7 +165,7 @@ describe("app/init-features (R5)", () => {
             const GeoLeaf = { GeoJSON: { init: vi.fn() } };
             initGeoJSON({ GeoLeaf, _cfg: {}, map: mapWithOn, AppLog, _app: { showNotification } });
             const handler = onFn.mock.calls[0][1];
-            handler({ count: 1 }); // B-226 — forme réellement émise, pas `detail`
+            handler({ count: 1 }); // shape really emitted, not `detail`
             expect(showNotification).toHaveBeenCalledWith("1 GeoJSON layer loaded", 3000);
         });
         it("handler sans count valide — showNotification pas appelé", () => {
@@ -175,7 +175,7 @@ describe("app/init-features (R5)", () => {
             const GeoLeaf = { GeoJSON: { init: vi.fn() } };
             initGeoJSON({ GeoLeaf, _cfg: {}, map: mapWithOn, AppLog, _app: { showNotification } });
             const handler = onFn.mock.calls[0][1];
-            handler({}); // B-226 — `{ detail: {} }` passait pour la mauvaise raison
+            handler({}); // `{ detail: {} }` passed for the wrong reason
             expect(showNotification).not.toHaveBeenCalled();
         });
         // F2/S8: the ThemeSelector.init pipeline (warn-if-absent, containers guard, init

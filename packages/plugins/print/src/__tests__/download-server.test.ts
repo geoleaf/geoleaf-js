@@ -1,5 +1,5 @@
 /**
- * Tests for the Sprint 6 server-fallback module:
+ * Tests for the server-fallback module:
  *  - server-fallback (buildServerPayload, tryServerFallback — binary, {url}, error, invalid URL)
  *
  * Format-registry and exporter tests (JPG, PDF) live in export.test.ts.

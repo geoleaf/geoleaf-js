@@ -51,7 +51,7 @@ const {
 } = require("./lib/side-effect-modules.cjs");
 
 const ROOT = path.resolve(__dirname, "..");
-// T5.5 — par le registre, qui jette si le core est introuvable.
+// Through the registry, which throws if the core cannot be found.
 const CORE = require("./lib/packages.cjs").requireByDirName("core").absDir;
 
 const SHIPPED_ENTRY = path.join(CORE, "dist", "geoleaf.esm.js");

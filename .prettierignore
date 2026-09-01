@@ -14,6 +14,12 @@ package-lock.json
 # Un artefact généré n'a pas à être formaté — il a à être reproductible.
 docs/reference/ARBORESCENCE_QUALIFIEE.md
 docs/reference/ARBORESCENCE_QUALIFIEE.html
+# 19/08/2026 — même régime, avec une nuance qui vaut d'être écrite : ce fichier n'est
+# généré qu'en PARTIE (la table, entre deux marqueurs ; la section « Écarts relevés » est
+# écrite à la main). L'ignorer en entier laisse donc la moitié humaine non formatée — c'est
+# le prix, et il est plus faible que l'inverse : prettier réaligne les colonnes de la table
+# générée, ce qui rend `RC-01` rouge en permanence sans qu'aucune source ait bougé.
+_docs_projet/travail/roadmaps/ARCHIVEES.md
 # Doc V3 Étape 3 item 7 — même régime, même motif : GÉNÉRÉ par
 # `npm run gen:profile-schema` depuis `profiles/schemas/*.json`, vérifié à l'octet près par
 # `gen:profile-schema:check`. Prettier réaligne les colonnes de tableau, ce qui suffirait à
@@ -25,3 +31,34 @@ docs/reference/PROFILE_SCHEMA_REFERENCE.md
 # gate est sortie ROUGE au premier `ci:local` post-commit, uniquement parce que Prettier
 # avait réaligné ses colonnes de tableau — aucune source n'avait bougé.
 docs/reference/MODELE_ATTRIBUTAIRE.md
+# 26/08/2026 — même régime, même motif, et il a bien failli manquer : GÉNÉRÉ par
+# `npm run gen:config-reference` et vérifié à l'octet près par `gen:config-reference:check`.
+# ⚠️ Le passage sous Prettier a été TENTÉ avant d'être écarté, et il rendait **8779 lignes de
+# diff** sur un artefact dont personne n'écrit une ligne à la main — la gate serait devenue
+# rouge en permanence sans qu'aucune source ait bougé. C'est la cinquième fois que ce dépôt
+# rencontre exactement cette classe ; elle se reconnaît à une question, pas à une relecture :
+# **qui écrit ce fichier ?**
+docs/reference/reference_parametres_config.html
+
+# Corpus de fixtures capturé chez un fournisseur externe — le seul formateur est le script
+# de capture (`scripts/capture-route-fixtures.cjs`), et il faut qu'il reste le seul.
+# ⚠️ Le motif n'est PAS esthétique : ces fichiers existent pour qu'une RE-CAPTURE rende un
+# diff qu'on puisse lire — « le fournisseur a-t-il changé sa réponse ? ». Prettier au milieu
+# rendrait tout diff illisible dès la première divergence de format, et la question deviendrait
+# sans réponse. Même classe que les générés ci-dessus : le contenu vient d'ailleurs.
+packages/plugins/*/fixtures/
+
+# 26/08/2026 — DONNÉE MÉTIER, et l'ignorer n'est pas un renoncement de formatage :
+# c'est le seul geste qui ne la corrompt pas. Prettier NORMALISE les littéraux numériques
+# d'un JSON (`55.4380` → `55.438`), or ces fichiers sont des coordonnées lues telles quelles
+# par `build-deploy.cjs` et servies au client. La précision écrite y est une donnée, pas un
+# style — la reformater réécrit le contenu sous couvert de mise en forme.
+# ⚠️ Le motif porte sur la CLASSE, pas sur les 44 fichiers qui échouaient au relevé : un
+# `.geojson` neuf sous `profiles/` a exactement la même nature, et une liste d'instances
+# aurait laissé le suivant hors du filet.
+profiles/**/*.geojson
+profiles/**/*.topojson
+e2e/fixtures/**/*.geojson
+# ⚠️ `.topojson` aussi sous `e2e/fixtures/` — le motif d'à côté ne le couvrait pas et le
+# relevé l'a montré, pas une relecture. Deux extensions, une seule nature.
+e2e/fixtures/**/*.topojson

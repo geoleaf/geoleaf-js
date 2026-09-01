@@ -120,20 +120,22 @@ describe("FetchManager", () => {
                 { url: "https://a.com/data.json", type: "config" },
                 { signal: controller.signal }
             );
-            // ⚠️ Ce n'est PLUS le signal de l'appelant qui atteint `fetch` (tâche 3.8) : la
-            // requête est bornée, donc `fetchBounded` passe le sien et CHAÎNE celui-ci
-            // dessus. L'annulation de l'appelant reste effective — c'est ce qui est vérifié
-            // juste après — mais asserter l'IDENTITÉ de l'objet reviendrait à interdire le
-            // bornage. On assert qu'un signal est passé, puis que l'annulation propage.
+            // ⚠️ It is NO LONGER the caller's signal that reaches `fetch`:
+            // the request is bounded, so `fetchBounded` passes its own and
+            // CHAINS this one onto it. The caller's cancellation stays
+            // effective — verified just after — but asserting the object's
+            // IDENTITY would amount to forbidding the bounding. We assert a
+            // signal is passed, then that cancellation propagates.
             expect(fetchSpy).toHaveBeenCalledWith(
                 "https://a.com/data.json",
                 expect.objectContaining({ signal: expect.any(AbortSignal) })
             );
-            // ⚠️ On n'assert PAS ici que `controller.abort()` propage après coup : la requête
-            // est déjà terminée, et `fetchBounded` a retiré son écouteur dans son `finally`.
-            // Exiger la propagation post-mortem reviendrait à exiger une FUITE d'écouteur —
-            // exactement ce que le `finally` existe pour éviter. Le chaînage est éprouvé,
-            // pendant la requête, par `__tests__/utils/fetch-bounded.test.js`.
+            // ⚠️ We do NOT assert here that `controller.abort()` propagates
+            // after the fact: the request is already done, and `fetchBounded`
+            // removed its listener in its `finally`. Demanding post-mortem
+            // propagation would amount to demanding a listener LEAK — exactly
+            // what the `finally` exists to avoid. The chaining is exercised,
+            // during the request, by `__tests__/utils/fetch-bounded.test.js`.
             expect(fetchSpy.mock.calls[0][1].signal).toBeInstanceOf(AbortSignal);
         });
     });
@@ -451,8 +453,8 @@ describe("FetchManager", () => {
                     signal: controller.signal,
                 }
             );
-            // Même raison qu'au-dessus : le signal passé est celui de l'échéance, sur lequel
-            // celui de l'appelant est chaîné.
+            // Same reason as above: the signal passed is the deadline's, onto
+            // which the caller's is chained.
             expect(fetchSpy).toHaveBeenCalledWith(
                 "https://a.com/data.json",
                 expect.objectContaining({ method: "HEAD", signal: expect.any(AbortSignal) })

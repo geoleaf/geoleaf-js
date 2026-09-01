@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "registry-signatures",
+    "scope": ["scripts/verify-registry-signatures.cjs"],
+    "verdicts": {
+        "scripts/verify-registry-signatures.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "SIGN-01/02 — l'arbre de dépendances installé porte des signatures de registre VALIDES (npm audit signatures)",
+            "confidence": "haute",
+            "rationale": "Câblé dans ci:local (après audit-ci/M7) et ci.yml — parité tenue. Complète audit-ci.cjs : celui-ci juge les AVIS connus, celui-ci vérifie que les tarballs installés sont bien ceux que le registre a signés (miroir compromis, paquet détourné, tarball altéré). 🛑 Lit la sortie HUMAINE et non `--json` : le JSON ne rend que {invalid,missing} sans compteur, donc un registre injoignable serait INDISCERNABLE de « tout vérifié » — SIGN-02 refuse de conclure sur une mesure vide (N absent ou 0), même classe que le refus déjà codé dans audit-ci.cjs pour npm audit. SIGN-01 échoue si npm audit signatures sort non-zéro (signature invalide/manquante). Mesuré vert à la pose : 1110/1110 vérifiées, 303 attestations. VU ROUGE prévu sur mutation de la regex du compteur (SIGN-02) et sur signature manquante (SIGN-01)."
+        }
+    }
+}

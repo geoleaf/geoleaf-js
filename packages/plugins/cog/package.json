@@ -4,6 +4,11 @@
     "type": "module",
     "license": "MIT",
     "description": "GeoLeaf COG Plugin — Load and render Cloud Optimized GeoTIFF files as MapLibre image layers",
+    "geoleaf": {
+        "bundle": "geoleaf-cog.plugin.js",
+        "lazyChunks": false,
+        "includeFlag": "includeCog"
+    },
     "homepage": "https://geoleaf.dev",
     "repository": {
         "type": "git",
@@ -42,17 +47,20 @@
         "prepublishOnly": "npm run build"
     },
     "dependencies": {
-        "@geoleaf/core": "^3.0.0",
         "geotiff": "^3.0.5"
     },
+    "peerDependencies": {
+        "@geoleaf/core": "^3.0.0"
+    },
     "devDependencies": {
+        "@geoleaf/core": "^3.0.0",
         "@geoleaf/build-config": "*",
         "@geoleaf/host-runtime": "*",
-        "@vitest/coverage-istanbul": "^4.1.10",
-        "happy-dom": "^20.11.2",
+        "@vitest/coverage-istanbul": "^4.1.11",
+        "happy-dom": "^20.11.6",
         "rimraf": "^6.1.3",
-        "rollup": "^4.12.0",
-        "typescript": "^6.0.3",
+        "rollup": "^4.62.5",
+        "typescript": "^5.9.3",
         "vitest": "^4.1.8"
     },
     "publishConfig": {

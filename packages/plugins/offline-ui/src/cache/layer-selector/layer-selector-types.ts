@@ -18,10 +18,10 @@ export interface LayerLike {
      * Config carried IN LINE, as `expandLayerTemplates` produces it for every instance of
      * a `layerTemplates` block. Mutually exclusive with `configFile`.
      *
-     * ⚠️ Déclarée explicitement depuis B-152 (07/08/2026). Elle tombait dans la traîne
-     * `[key: string]: unknown`, donc les trois sites du sélecteur pouvaient l'ignorer sans
-     * que le typecheck n'ait rien à en dire — c'est une des raisons pour lesquelles le défaut
-     * a vécu. Ne pas la ré-élargir vers la traîne (backlog **B-13**).
+     * ⚠️ Explicitly declared since 07/08/2026. It fell into the
+     * `[key: string]: unknown` tail, so the selector's three sites could ignore
+     * it with the typecheck having nothing to say — one of the reasons the
+     * defect lived. Do not widen it back into the tail.
      */
     inlineConfig?: Record<string, unknown>;
     layerDir?: string;
@@ -88,8 +88,8 @@ export interface SavedSelection {
  *
  * The panel is rebuilt on each open; untracked listeners would accumulate one set per open.
  */
-// ⚠️ Non exportée depuis la tâche 8.8 (compteur C1) : le type n'est nommé qu'ici, par le champ
-// `_eventListeners` ci-dessous. L'`export` n'avait aucun consommateur — classe A.
+// ⚠️ No longer exported: the type is only named here, by the `_eventListeners`
+// field below. The `export` had no consumer.
 interface EventListenerEntry {
     element: EventTarget;
     event: string;

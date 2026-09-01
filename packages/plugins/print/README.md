@@ -48,7 +48,7 @@ Opens the interactive flow (extent selection → modal → export).
 function openPrintFlow(opts?: PrintFlowOptions): Promise<Blob | null>;
 
 interface PrintFlowOptions {
-    defaultFormat?: string; // "A4" | "A3" | … (default: from printConfig)
+    defaultFormat?: string; // "A4" | "A3" | … (default: from `modules.print`)
     includeLegend?: boolean;
     includeScale?: boolean;
     includeNorthArrow?: boolean;
@@ -140,7 +140,7 @@ function exportPDF(opts: ExportOptions): Promise<Blob>;
 
 ### `GeoLeaf.Print.registerExporter(format, fn)`
 
-Adds a custom export format (e.g. PNG). The format name appears as a button in the modal if listed in `printConfig.exportFormats`.
+Adds a custom export format (e.g. PNG). The format name appears as a button in the modal if listed in `modules.print.exportFormats`.
 
 ```typescript
 function registerExporter(format: string, fn: ExporterFn): void;
@@ -181,24 +181,31 @@ GeoLeaf.Print.registerPageFormat("A2", {
 
 ---
 
-## Configuration (`printConfig`)
+## Configuration (`modules.print`)
 
-Add a `printConfig` key to your GeoLeaf profile JSON. All fields are optional.
+Add a `modules.print` block to your GeoLeaf profile JSON. All fields are optional.
+
+> **Note** — plugin settings live under `modules.print` (Plugin Contract v1, INV-CONFIG).
+> The legacy root key `printConfig` is **no longer read**: `@geoleaf/core` 3.0.0 (2026-08-12)
+> removed the root-level plugin keys as a breaking change, so a profile that still carries
+> `printConfig` silently falls back to the defaults below.
 
 ```json
 {
-    "printConfig": {
-        "enabled": true,
-        "showButton": true,
-        "defaultFormat": "A4",
-        "availableFormats": ["A4", "A3"],
-        "dpi": 300,
-        "margins": { "top": 10, "right": 10, "bottom": 10, "left": 10 },
-        "includeLegend": false,
-        "includeScale": true,
-        "includeNorthArrow": true,
-        "exportFormats": ["pdf", "jpg"],
-        "jpgQuality": 0.92
+    "modules": {
+        "print": {
+            "enabled": true,
+            "showButton": true,
+            "defaultFormat": "A4",
+            "availableFormats": ["A4", "A3"],
+            "dpi": 300,
+            "margins": { "top": 10, "right": 10, "bottom": 10, "left": 10 },
+            "includeLegend": false,
+            "includeScale": true,
+            "includeNorthArrow": true,
+            "exportFormats": ["pdf", "jpg"],
+            "jpgQuality": 0.92
+        }
     }
 }
 ```
@@ -206,7 +213,7 @@ Add a `printConfig` key to your GeoLeaf profile JSON. All fields are optional.
 | Field                         | Type     | Default              | Description                                                                                                                                                                 |
 | ----------------------------- | -------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `enabled`                     | boolean  | `true`               | Enables / disables the plugin entirely. When `false`, the toolbar button and event listener are not registered; the programmatic API (`GeoLeaf.Print.*`) remains available. |
-| `showButton` / `ui.showPrint` | boolean  | `true`               | Shows / hides the printer button in the left toolbar.                                                                                                                       |
+| `showButton` / `ui.showPrint` | boolean  | `true`               | Shows / hides the printer button in the left toolbar. `ui.showPrint` is the legacy fallback and only speaks when `modules.print.showButton` is absent.                      |
 | `position`                    | string   | `"left"`             | Toolbar position (future use).                                                                                                                                              |
 | `defaultFormat`               | string   | `"A4"`               | Paper format pre-selected in the modal.                                                                                                                                     |
 | `availableFormats`            | string[] | `["A4","A3"]`        | Formats shown in the modal drop-down. Add custom formats via `registerPageFormat`.                                                                                          |
@@ -268,7 +275,7 @@ The plugin automatically falls back to the server if the client canvas is tainte
 
 ### Client-side protocol
 
-The plugin POSTs the following JSON payload to `printConfig.serverEndpoint`:
+The plugin POSTs the following JSON payload to `modules.print.serverEndpoint`:
 
 ```json
 {
@@ -318,7 +325,7 @@ createServer((req, res) => {
 }).listen(3001, () => console.log("Stub server on :3001"));
 ```
 
-Set `serverEndpoint: "http://localhost:3001"` in `printConfig` for local smoke testing.
+Set `serverEndpoint: "http://localhost:3001"` in `modules.print` for local smoke testing.
 
 ---
 

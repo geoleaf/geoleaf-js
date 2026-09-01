@@ -97,7 +97,7 @@ export interface FilterLike {
  * enough to belong with the other typed members of `GeoLeafGlobal`, and keeping a
  * second copy here is how the two drifted: this one declared
  * `getCurrentTheme?: () => string | undefined` while the selector returns
- * `_state.currentTheme`, typed `string | null` (theme-selector-state.ts:28). Alias, so
+ * `_state.currentTheme`, typed `string | null` (theme-selector-state.ts). Alias, so
  * every existing use site keeps its name.
  */
 export type ThemeSelectorLike = GeoLeafThemeSelector;

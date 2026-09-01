@@ -56,10 +56,11 @@ import { urlComponent } from "./types/url.js";
  * declared as a METHOD, and method parameters stay bivariant even under
  * `strictFunctionTypes`. `unknown` therefore satisfies both, with no cast.
  *
- * ⚠️ Ce paragraphe citait `sidepanelRender` comme exemple contravariant jusqu'au 06/08/2026 :
- * il a été retiré du contrat au Sprint 6 (S6b / B-145). Le raisonnement est **inchangé** —
- * `formRender` porte exactement la même position —, seul l'exemple a dû suivre. Trouvé à la
- * vérification de clôture du sprint, pas au retrait lui-même.
+ * ⚠️ This paragraph cited `sidepanelRender` as the contravariant example
+ * until 06/08/2026: it has since been removed from the contract. The
+ * reasoning is **unchanged** — `formRender` holds exactly the same position
+ * —, only the example had to follow. Found at the closure check, not at the
+ * removal itself.
  */
 const BUILTIN_COMPONENTS: ComponentDefinition<unknown>[] = [
     badgeComponent,

@@ -1,6 +1,6 @@
 /**
  * StorageHelper.openDatabase — the one method of this module with a production caller
- * (`core/indexeddb.ts:103`). CAPACITÉS B.7.
+ * (`core/indexeddb.ts`). CAPACITÉS B.7.
  *
  * Runs against `fake-indexeddb`, like `images-idb-keys.test.js` and
  * `sync-queue-compat-surface.test.js`: the hand-rolled DB mock used by the rest of the
@@ -177,12 +177,13 @@ describe("openDatabase — failure paths", () => {
         );
     });
 
-    // ⚠️ RÉÉCRIT le 02/08/2026 (hygiène de connexion, préalable de 3.1). Ce test s'appelait
-    // « warns instead of failing when the upgrade is blocked » et VERROUILLAIT le défaut :
-    // un `onblocked` qui se contentait de journaliser laissait la requête pendre jusqu'au
-    // timeout de 15 s, après quoi l'appelant installait le repli `_isStub` — une condition
-    // RÉCUPÉRABLE (« ferme l'autre onglet ») transformée en « pas de stockage sur cet
-    // appareil », en silence et 15 s trop tard. Il n'a pas été relâché, il a été retourné.
+    // ⚠️ REWRITTEN on 02/08/2026 (connection hygiene). This test was called
+    // "warns instead of failing when the upgrade is blocked" and LOCKED the
+    // defect in: an `onblocked` that merely logged left the request hanging
+    // until the 15 s timeout, after which the caller installed the `_isStub`
+    // fallback — a RECOVERABLE condition ("close the other tab") turned into
+    // "no storage on this device", silently and 15 s too late. It was not
+    // loosened, it was flipped.
     test("REJECTS with a named error when another connection blocks the upgrade", async () => {
         const name = freshName();
         const holder = await openTracked(name, 1);

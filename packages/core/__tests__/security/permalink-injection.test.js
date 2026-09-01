@@ -1,5 +1,5 @@
 /**
- * @fileoverview Sprint 5 — Permalink URL parameter injection tests.
+ * @fileoverview Permalink URL parameter injection tests.
  * Validates that XSS payloads, prototype pollution, and DoS via URL params
  * are properly rejected by the permalink parsing system.
  */
@@ -16,8 +16,8 @@ const mockLog = vi.hoisted(() => ({
 vi.mock("../../src/utils/log/index.js", () => ({ Log: mockLog }));
 
 // Use real security functions (we are testing that they actually protect)
-// B.12 — complet par construction : la réplique de `validateCoordinates` reste la surcharge,
-// les 16 autres exports du baril redeviennent réels.
+// Complete by construction: the `validateCoordinates` replica stays the
+// override, the barrel's 16 other exports become real again.
 vi.mock("../../src/kernel/security/index.js", async (importActual) => ({
     ...(await importActual()),
     validateCoordinates(lat, lng) {
@@ -34,14 +34,15 @@ vi.mock("../../src/kernel/security/index.js", async (importActual) => ({
     },
 }));
 
-// ⚠️ R.32 (25/07/2026) — deux `vi.mock()` visant `kernel/geojson/visibility-manager.js`
-// et `kernel/geojson/shared.js` vivaient ici. Ils étaient MORTS : le seul module sous test,
-// `capabilities/permalink/permalink-url.ts`, n'importe que `kernel/security/index.js`, des
-// types de config et ses propres voisins — aucune arête vers `geojson/`. Ce sont des
-// vestiges du découplage S13 (permalink ↔ filtre DOM : scraping et ghost-injection retirés,
-// `permalink-restore` réduit à la visibilité des couches). Retirés plutôt que recâblés :
-// contrairement aux mocks de `coverage-modules-themes` — même campagne, chemin faux vers
-// une cible RÉELLEMENT importée —, il n'y a ici rien à isoler.
+// ⚠️ Two `vi.mock()`s aiming at `kernel/geojson/visibility-manager.js` and
+// `kernel/geojson/shared.js` lived here. They were DEAD: the only module
+// under test, `capabilities/permalink/permalink-url.ts`, imports only
+// `kernel/security/index.js`, config types and its own neighbours — no
+// edge towards `geojson/`. Remnants of the permalink ↔ DOM-filter
+// decoupling (scraping and ghost-injection removed, `permalink-restore`
+// reduced to layer visibility). Removed rather than rewired: unlike the
+// `coverage-modules-themes` mocks — same campaign, wrong path towards a
+// REALLY imported target —, there is nothing to isolate here.
 
 import { readUrl, MAX_TEXT_LEN } from "../../src/capabilities/permalink/permalink-url.js";
 
@@ -62,7 +63,7 @@ function setHash(hash) {
     });
 }
 
-describe("Permalink Injection Tests — Sprint 5 Security Audit", () => {
+describe("Permalink Injection Tests — Security Audit", () => {
     afterEach(() => {
         vi.clearAllMocks();
         // Reset location

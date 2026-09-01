@@ -17,9 +17,8 @@
 import { describe, expect, it } from "vitest";
 
 const install = await import("../../../src/capabilities/vector-tiles/install.ts");
-const capability = await import(
-    "../../../src/capabilities/vector-tiles/vector-tiles-capability.ts"
-);
+const capability =
+    await import("../../../src/capabilities/vector-tiles/vector-tiles-capability.ts");
 const vectorTiles = await import("../../../src/capabilities/vector-tiles/vector-tiles.ts");
 
 const { VECTOR_TILES_INSTALLER } = install;

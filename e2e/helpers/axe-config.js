@@ -21,28 +21,31 @@ const DISABLED_RULES = ["svg-img-alt"];
 /**
  * Waits until no CSS animation or transition is still RUNNING in the scanned scope.
  *
- * ⚠️ POURQUOI CETTE ATTENTE EXISTE — diagnostic du 24/07/2026 (backlog R.7b).
- * `10-addpoi.spec.js:172` ([a11y] add form modal) échouait **3 fois sur 4**, sur des
- * violations `color-contrast` *serious*. Ce n'était pas un défaut de contraste :
+ * ⚠️ WHY THIS WAIT EXISTS — diagnosis of 2026-07-24.
+ * `10-addpoi.spec.js` ([a11y] add form modal) failed **3 times out of
+ * 4**, on *serious* `color-contrast` violations. It was not a contrast
+ * defect:
  *
- *   | Moment du scan            | opacity du panneau | violations |
+ *   | Scan moment               | panel opacity      | violations |
  *   | ------------------------- | ------------------ | ---------- |
- *   | dès `toBeVisible()`       | **0**              | 3/5 sales  |
- *   | après stabilisation       | 1                  | **0/5**    |
+ *   | at `toBeVisible()`        | **0**              | 3/5 dirty  |
+ *   | after stabilisation       | 1                  | **0/5**    |
  *
- * `expect(locator).toBeVisible()` est satisfait dès que l'élément a une boîte non vide :
- * **l'opacité n'entre pas dans ce critère**. Le scan tombait donc au milieu du fondu
- * d'ouverture, et `axe` mesurait des couleurs INTERPOLÉES — d'où des ratios différents à
- * chaque exécution (2,84 · 2,12 · 4,35) et des couleurs (`#8a909b` sur `#f1f1f1`) qui ne
- * sont l'état final de rien. Stabilisé : `rgb(15,23,42)` sur blanc, ~16:1.
+ * `expect(locator).toBeVisible()` is satisfied as soon as the element has a
+ * non-empty box: **opacity is not part of that criterion**. The scan thus
+ * landed mid-fade, and `axe` measured INTERPOLATED colours — hence ratios
+ * differing at every run (2.84 · 2.12 · 4.35) and colours (`#8a909b` on
+ * `#f1f1f1`) that are the final state of nothing. Stabilised:
+ * `rgb(15,23,42)` on white, ~16:1.
  *
- * Le prédicat porte sur les ANIMATIONS, pas sur une valeur d'opacité cible : un élément
- * peut légitimement finir à `opacity: 0.5` (contrôle désactivé), et exiger `1` ferait
- * attendre pour rien. **Best-effort et borné** : une animation infinie (spinner) ne doit
- * pas bloquer le scan, donc l'expiration est avalée et le scan a lieu quand même.
+ * The predicate bears on ANIMATIONS, not on a target opacity value: an
+ * element can legitimately end at `opacity: 0.5` (disabled control), and
+ * demanding `1` would wait for nothing. **Best-effort and bounded**: an
+ * endless animation (spinner) must not block the scan, so the expiry is
+ * swallowed and the scan happens anyway.
  *
  * @param {import('@playwright/test').Page} page
- * @param {string} [selector] scope; toute la page si omis
+ * @param {string} [selector] scope; the whole page if omitted
  */
 async function waitAnimationsSettled(page, selector) {
     await page
@@ -64,7 +67,7 @@ async function waitAnimationsSettled(page, selector) {
             { timeout: 2000 }
         )
         .catch(() => {
-            /* animation sans fin, ou sélecteur absent : on scanne l'état courant */
+            /* endless animation, or absent selector: scan the current state */
         });
 }
 
@@ -86,8 +89,9 @@ async function scanPage(page) {
 
 /**
  * Runs a WCAG 2.1 AA axe scan scoped to a single component by CSS selector.
- * Useful for modal dialogs, panels, or toolbars in isolation — c'est-à-dire précisément
- * les surfaces qui s'ouvrent en fondu, d'où l'attente de stabilisation.
+ * Useful for modal dialogs, panels, or toolbars in isolation — i.e.
+ * precisely the surfaces that open with a fade, hence the stabilisation
+ * wait.
  *
  * @param {import('@playwright/test').Page} page
  * @param {string} selector CSS selector to scope the scan to

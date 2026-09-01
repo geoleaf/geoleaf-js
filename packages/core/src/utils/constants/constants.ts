@@ -27,7 +27,7 @@
  * removal at least breaks compilation on the consumer side.
  */
 export const CONSTANTS = Object.freeze({
-    // Carte — vue neutre, le fitBounds positionne after loading des layers
+    // Map — neutral view, fitBounds positions after the layers load
     DEFAULT_ZOOM: 3,
     DEFAULT_CENTER: [0, 0] as [number, number],
     MAX_ZOOM_ON_FIT: 15,

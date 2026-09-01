@@ -1,24 +1,25 @@
 /**
- * Tâche 4.1 — le rapatriement borné, PREMIER ÉCRIVAIN du store `features`.
+ * The bounded pull, FIRST WRITER of the `features` store.
  *
- * Le store existe depuis 3.4 et a reçu son lecteur en 4.3. `DBFeatures.put` comptait zéro
- * appelant en `src/` : ces tests éprouvent l'écrivain, et surtout les trois propriétés qui ne
- * se voient pas en lisant le code.
+ * The store existed and had received its reader. `DBFeatures.put` counted
+ * zero callers in `src/`: these tests exercise the writer, and above all the
+ * three properties that cannot be seen by reading the code.
  *
- * Tourne contre `fake-indexeddb` — la clé composée `[layerId, localId]`, `IDBKeyRange` et
- * l'index `serverId` sont exactement ce que le mock maison ne sait pas rendre, et
- * `putManyPreservingLocal` ne tient QUE sur ces sémantiques. Import différé pour la même
- * raison que `sync-entry-id.test.js` : les modules doivent charger APRÈS l'installation de
- * `globalThis.indexedDB`.
+ * Runs against `fake-indexeddb` — the composite key `[layerId, localId]`,
+ * `IDBKeyRange` and the `serverId` index are exactly what the home-made mock
+ * cannot render, and `putManyPreservingLocal` holds ONLY on those semantics.
+ * Deferred import for the same reason as `sync-entry-id.test.js`: the modules
+ * must load AFTER `globalThis.indexedDB` is installed.
  *
- * ⚠️ `layer-pull.ts` n'importe volontairement pas `../db/indexeddb.js` : `vitest.config.ts`
- * aliase ce spécificateur vers le mock maison, et l'orchestrateur y aurait écrit dans une
- * fiction. Il passe par `StorageContract.DB`, qu'on câble ici sur la vraie façade.
+ * ⚠️ `layer-pull.ts` deliberately does not import `../db/indexeddb.js`:
+ * `vitest.config.ts` aliases that specifier to the home-made mock, and the
+ * orchestrator would have written into a fiction. It goes through
+ * `StorageContract.DB`, wired here onto the real facade.
  */
 
 const DB_NAME = "geoleaf-pull-test";
 
-/** Une entité telle que pygeoapi la sert — mesurée sur le backend de preuve. */
+/** An entity as pygeoapi serves it — measured on the reference backend. */
 function ogcFeature(id, overrides = {}) {
     return {
         type: "Feature",
@@ -58,7 +59,7 @@ describe("4.1 — rapatriement borné vers le store `features`", () => {
     const countOutbox = () =>
         request(IndexedDB._db.transaction(["outbox"], "readonly").objectStore("outbox").count());
 
-    /** Sert `n` entités, paginées comme pygeoapi (`limit` fixé à 10 côté serveur). */
+    /** Serves `n` entities, paginated like pygeoapi (`limit` fixed at 10 server-side). */
     function serveFeatures(features, pageSize = 10) {
         fetchSpy = vi.fn(async (url) => {
             const parsed = new URL(String(url));
@@ -88,11 +89,10 @@ describe("4.1 — rapatriement borné vers le store `features`", () => {
         ({ IndexedDB } = await import("../../../src/capabilities/offline/db/indexeddb.js"));
         ({ StorageContract } = await import("../../../src/kernel/shared/storage-contract.js"));
         ({ pullLayer } = await import("../../../src/capabilities/offline/pull/layer-pull.js"));
-        // La CLÉ vient du module, elle n'est pas recopiée : un littéral en double ici
-        // laisserait le test vert si la clé de production changeait.
-        ({ PULL_STATE_KEY } = await import(
-            "../../../src/capabilities/offline/report/pull-state.js"
-        ));
+        // The KEY comes from the module, it is not copied: a duplicate
+        // literal here would leave the test green if the production key changed.
+        ({ PULL_STATE_KEY } =
+            await import("../../../src/capabilities/offline/report/pull-state.js"));
     });
 
     beforeEach(async () => {
@@ -108,20 +108,22 @@ describe("4.1 — rapatriement borné vers le store `features`", () => {
             },
             { id: "villes_principales", offline: { enabled: true, maxFeatures: 5000 } },
         ];
-        // ⚠️ LA FORME EST CELLE QU'ON A MESURÉE EN NAVIGATEUR, pas celle qu'on espérait.
-        // La 1ʳᵉ rédaction moquait `Config.Profile.getActiveProfileLayersConfig()` : le
-        // module `Config` porte bien cette méthode, mais le sous-objet `Profile` n'est PAS
-        // monté sur `globalThis.GeoLeaf.Config` — et ce test était vert pendant que la sonde
-        // navigateur rendait `refused: "layerUnknown"`. Un mock choisi par l'auteur du code
-        // qu'il éprouve ne prouve rien de plus que sa propre cohérence.
+        // ⚠️ THE SHAPE IS THE ONE MEASURED IN THE BROWSER, not the hoped-for
+        // one. The 1st draft mocked `Config.Profile.getActiveProfileLayersConfig()`:
+        // the `Config` module does carry that method, but the `Profile`
+        // sub-object is NOT mounted on `globalThis.GeoLeaf.Config` — and this
+        // test was green while the browser probe returned
+        // `refused: "layerUnknown"`. A mock chosen by the author of the code
+        // it exercises proves nothing beyond its own consistency.
         globalThis.GeoLeaf = {
             Config: { getActiveProfile: () => ({ layers: layerConfigs }) },
         };
-        // ⚠️ `close()` et non `_db = null` : la façade CACHE les instances de sous-modules
-        // dans `_modules`, liées à la connexion qui les a créées. Remettre `_db` à la main
-        // laisse ce cache en place, et un autre fichier de test qui ouvre sa propre base
-        // écrit alors dans la connexion PRÉCÉDENTE. `close()` vide les deux — c'est
-        // l'invariant que la façade tient déjà, et le contourner l'a fait mentir.
+        // ⚠️ `close()` and not `_db = null`: the facade CACHES the sub-module
+        // instances in `_modules`, bound to the connection that created them.
+        // Resetting `_db` by hand leaves that cache in place, and another test
+        // file opening its own base then writes into the PREVIOUS connection.
+        // `close()` clears both — the invariant the facade already holds, and
+        // bypassing it made it lie.
         IndexedDB.close();
         IndexedDB._dbName = DB_NAME;
         await IndexedDB.init();
@@ -144,7 +146,7 @@ describe("4.1 — rapatriement borné vers le store `features`", () => {
         });
     });
 
-    // ── ① la forme de ce qui est écrit ────────────────────────────────────────────────────
+    // ── ① the shape of what is written ───────────────────────────────────────────────────
     test("écrit un enregistrement par entité, clé composée, `synced`, `serverId` et `version`", async () => {
         serveFeatures([ogcFeature(1), ogcFeature(2), ogcFeature(3)]);
 
@@ -160,27 +162,28 @@ describe("4.1 — rapatriement borné vers le store `features`", () => {
             expect(record.layerId).toBe("sites_rosario");
             expect(record.syncState).toBe("synced");
             expect(record.serverId).toBeTruthy();
-            // ⚠️ `feature` DOIT être peuplé : `getLayerFeatureCollection` décide son `null`
-            // sur `records.length === 0`, AVANT de filtrer les `feature` indéfinis. Un lot
-            // écrit sans géométrie lui ferait rendre une collection vide et NON nulle, et le
-            // chargeur afficherait zéro entité en croyant avoir lu.
+            // ⚠️ `feature` MUST be populated: `getLayerFeatureCollection`
+            // decides its `null` on `records.length === 0`, BEFORE filtering
+            // undefined `feature`s. A batch written without geometry would
+            // make it return an empty, NON-null collection, and the loader
+            // would display zero entities believing it had read.
             expect(record.feature).toBeTruthy();
             expect(record.version).toEqual({
                 kind: "timestamp",
                 value: "2026-08-03T20:41:05.130076+00:00",
             });
-            // Le marqueur serveur va dans `version`, JAMAIS dans `updatedAt` — que le
-            // contrat documente comme un horodatage LOCAL.
+            // The server marker goes into `version`, NEVER into `updatedAt`
+            // — which the contract documents as a LOCAL timestamp.
             expect(typeof record.updatedAt).toBe("number");
         }
 
-        // Et le lecteur de 4.3 les relit par le même chemin.
+        // And the reader re-reads them through the same path.
         const collection = await IndexedDB.getLayerFeatureCollection("sites_rosario");
         expect(collection.features).toHaveLength(3);
     });
 
-    // ── ② le plafond est DUR ──────────────────────────────────────────────────────────────
-    test("plafond DUR : le loader rend 20, `maxFeatures: 15` en écrit 15 et le dit", async () => {
+    // ── ② the cap is HARD ────────────────────────────────────────────────────────────────
+    test("plafond DUR : la source rend 20, `maxFeatures: 15` en écrit 15 et le DIT encore", async () => {
         layerConfigs[0].offline.maxFeatures = 15;
         serveFeatures(
             Array.from({ length: 40 }, (_, i) => ogcFeature(i + 1)),
@@ -189,16 +192,24 @@ describe("4.1 — rapatriement borné vers le store `features`", () => {
 
         const report = await pullLayer("sites_rosario");
 
-        // `ogc-api-loader` coupe APRÈS avoir accumulé une page entière et ne tronque jamais :
-        // il rend 20 pour un plafond de 15. Sans la troncature de l'orchestrateur, le store
-        // porterait 20 enregistrements et le rapport sortirait vert.
+        // ⚠️ THIS COMMENT WAS FLIPPED ON 19/08/2026 — its previous version
+        // said the loader "never truncates" and returns 20 for a cap of 15.
+        // It now truncates, at the exact bound, and signals the cut.
+        //
+        // 🛑 The three expectations below did not move, and that is the point:
+        // `fetched` stays 20 because the report says what the SOURCE returned
+        // before the cut, and `capped` stays true because it is now read from
+        // the loader's signal. Without that second read, the local comparison
+        // would have become permanently false — this module already receiving
+        // 15 for a cap of 15 — and the report would have stopped saying a
+        // pull is partial, precisely the day the cut became reliable.
         expect(report.fetched).toBe(20);
         expect(report.written).toBe(15);
         expect(report.capped).toBe(true);
         expect(await readFeatures()).toHaveLength(15);
     });
 
-    // ── ③ une saisie non synchronisée n'est JAMAIS écrasée ────────────────────────────────
+    // ── ③ an unsynced capture is NEVER overwritten ───────────────────────────────────────
     test("un enregistrement `pending` survit au rapatriement et est compté `preserved`", async () => {
         const features = IndexedDB._ensureModule("Features");
         await features.put({
@@ -222,23 +233,23 @@ describe("4.1 — rapatriement borné vers le store `features`", () => {
         expect(kept.feature.properties.title).toBe("SAISIE DE TERRAIN");
     });
 
-    // ── ④ invariant S6 — le rapatriement ne confère pas l'éditabilité ─────────────────────
+    // ── ④ editability invariant — pulling does not confer editability ────────────────────
     test("l'`outbox` reste vide après un rapatriement (invariant S6)", async () => {
         serveFeatures([ogcFeature(1), ogcFeature(2)]);
         await pullLayer("sites_rosario");
         expect(await countOutbox()).toBe(0);
     });
 
-    // ── ⑤ identité et idempotence ─────────────────────────────────────────────────────────
+    // ── ⑤ identity and idempotence ───────────────────────────────────────────────────────
     test("re-rapatrier ne duplique rien, et l'identité cliente du serveur l'emporte", async () => {
         serveFeatures([ogcFeature(1), ogcFeature(2)]);
         await pullLayer("sites_rosario");
         await pullLayer("sites_rosario");
         expect(await readFeatures()).toHaveLength(2);
 
-        // La ligne 1 GAGNE un `local_id` côté serveur (ce que fera le push de 4.5). Sans le
-        // départage par `serverId`, la dérivation `srv:1` produirait un SECOND enregistrement
-        // pour la même entité.
+        // Row 1 GAINS a `local_id` server-side (what the push will do).
+        // Without the `serverId` tie-break, the `srv:1` derivation would
+        // produce a SECOND record for the same entity.
         serveFeatures([ogcFeature(1, { local_id: "client-abc" }), ogcFeature(2)]);
         await pullLayer("sites_rosario");
 
@@ -247,7 +258,7 @@ describe("4.1 — rapatriement borné vers le store `features`", () => {
         expect(stored.map((r) => r.localId).sort()).toEqual(["srv:1", "srv:2"]);
     });
 
-    // ── ⑥ un refus se DIT ─────────────────────────────────────────────────────────────────
+    // ── ⑥ a refusal is SAID ──────────────────────────────────────────────────────────────
     test("une couche sans `offline.source` refuse en nommant son motif, sans requête", async () => {
         serveFeatures([ogcFeature(1)]);
         const report = await pullLayer("villes_principales");
@@ -270,7 +281,7 @@ describe("4.1 — rapatriement borné vers le store `features`", () => {
         expect(await readFeatures()).toHaveLength(0);
     });
 
-    // ── ⑦ le moteur absent se DIT aussi, et ne pend pas ───────────────────────────────────
+    // ── ⑦ the absent engine is SAID too, and does not hang ──────────────────────────────
     test("sans moteur de stockage, le rapport dit `engineUnavailable`", async () => {
         StorageContract.init({
             get DB() {
@@ -285,7 +296,7 @@ describe("4.1 — rapatriement borné vers le store `features`", () => {
         expect(fetchSpy).not.toHaveBeenCalled();
     });
 
-    // ── ⑧ une entité sans identité serveur est ÉCARTÉE, jamais en silence ─────────────────
+    // ── ⑧ an entity without server identity is SET ASIDE, never silently ─────────────────
     test("une entité sans identité serveur est comptée `skipped`", async () => {
         const orphan = ogcFeature(2);
         delete orphan.id;
@@ -297,14 +308,14 @@ describe("4.1 — rapatriement borné vers le store `features`", () => {
         expect(report.written).toBe(1);
     });
 
-    // ── ⑨ l'emprise et le plafond partent bien sur le fil ─────────────────────────────────
+    // ── ⑨ the extent and the cap do go on the wire ───────────────────────────────────────
     test("l'emprise de l'appel est posée sur la requête", async () => {
         serveFeatures([ogcFeature(1)]);
         await pullLayer("sites_rosario", { bbox: [-60.66, -32.95, -60.62, -32.93] });
 
         const url = new URL(String(fetchSpy.mock.calls[0][0]));
         expect(url.searchParams.get("bbox")).toBe("-60.66,-32.95,-60.62,-32.93");
-        // `collectionId` absent du profil ⇒ l'identifiant de couche.
+        // `collectionId` absent from the profile ⇒ the layer id.
         expect(url.pathname).toContain("/collections/sites_rosario/items");
     });
 
@@ -323,20 +334,22 @@ describe("4.1 — rapatriement borné vers le store `features`", () => {
 
         const report = await pullLayer("sites_rosario", { signal: controller.signal });
 
-        // `fetchOgcApiFeatures` rend une collection partielle par le MÊME chemin qu'un succès,
-        // sans marqueur : `aborted` est relu sur le signal, jamais dérivé du retour.
+        // `fetchOgcApiFeatures` returns a partial collection through the SAME
+        // path as a success, unmarked: `aborted` is re-read from the signal,
+        // never derived from the return.
         expect(report.aborted).toBe(true);
         expect(report.fetched).toBe(10);
         expect(report.written).toBe(10);
     });
 
-    // ── le marqueur de rapatriement (tâche 4.8) ───────────────────────────────────────────
+    // ── the pull marker ──────────────────────────────────────────────────────────────────
     //
-    // 🛑 CES DEUX TESTS SONT ICI ET PAS DANS `sync-report.test.js`, ET C'EST LE POINT. Là-bas,
-    // le marqueur est écrit à la main par `writePullState` : ces tests-là éprouvent la
-    // DÉRIVATION du statut, et resteraient tous verts si `pullLayer` cessait complètement
-    // d'écrire son marqueur. Le lien entre le rapatriement et le rapport ne s'éprouve qu'ici,
-    // où le vrai `pullLayer` tourne contre une vraie source.
+    // 🛑 THESE TWO TESTS ARE HERE AND NOT IN `sync-report.test.js`, AND THAT
+    // IS THE POINT. There, the marker is written by hand by `writePullState`:
+    // those tests exercise the status DERIVATION, and would all stay green if
+    // `pullLayer` completely stopped writing its marker. The link between the
+    // pull and the report is only exercised here, where the real `pullLayer`
+    // runs against a real source.
 
     test("un rapatriement réussi PERSISTE son marqueur — sinon 4.8 ne peut rien distinguer", async () => {
         serveFeatures([ogcFeature(1), ogcFeature(2)]);
@@ -356,10 +369,11 @@ describe("4.1 — rapatriement borné vers le store `features`", () => {
         const report = await pullLayer("sites_rosario");
         expect(report.refused).toBe("sourceUnreachable");
 
-        // Sans cette écriture, la couche retomberait sur `declaredNeverPulled` : le MÊME
-        // statut qu'une couche jamais tentée. « On a essayé et la source a dit non » est
-        // actionnable ; « on n'a jamais essayé » ne l'est pas. Les confondre efface la
-        // différence que la tâche 4.8 existe pour rendre visible.
+        // Without this write, the layer would fall back to
+        // `declaredNeverPulled`: the SAME status as a never-attempted layer.
+        // "We tried and the source said no" is actionable; "we never tried"
+        // is not. Confusing them erases the very difference this feature
+        // exists to make visible.
         const state = await IndexedDB.getPreference(PULL_STATE_KEY, null);
         expect(state?.sites_rosario).toMatchObject({ outcome: "failed", written: 0 });
     });

@@ -2,8 +2,8 @@
  * @geoleaf-plugins/measure — Measure engine
  * © 2026 Mattieu Pottier — MIT License
  *
- * Shared step-based drawing engine used by tool-distance (Sprint 3) and
- * tool-gps (Sprint 5). Singleton module — state held in module variables.
+ * Shared step-based drawing engine used by tool-distance and
+ * tool-gps. Singleton module — state held in module variables.
  * https://geoleaf.dev
  */
 import type { MeasureConfig, MeasureFeature, MeasureSession, Units } from "./types.js";
@@ -83,14 +83,14 @@ function _buildLabels(units: Units, segLengths: number[]): LabelEntry[] {
     const verts = _session.vertices;
 
     // Third copy of the same pairwise loop in this package — now the shared one (qualite Q5).
-    labels.push(..._segmentLabels(verts, segLengths, units, _cfg!.decimals.distance));
+    labels.push(..._segmentLabels(verts, segLengths, units, _cfg.decimals.distance));
 
     if (_session.closed && verts.length >= 3) {
         const c = centroid(verts);
         const areaM2 = area([verts]);
         labels.push({
             coord: c,
-            text: formatArea(areaM2, units.area, _cfg!.decimals.area),
+            text: formatArea(areaM2, units.area, _cfg.decimals.area),
             bearing: 0,
         });
     }
@@ -181,12 +181,12 @@ function _finishedLabels(units: Units): LabelEntry[] {
     for (const feat of _collection) {
         if (!feat.properties) continue;
         if (feat.geometry.type === "Polygon" && feat.properties.areaM2 != null) {
-            const ring = (feat.geometry as GeoJSON.Polygon).coordinates[0] as [number, number][];
+            const ring = feat.geometry.coordinates[0] as [number, number][];
             if (ring.length >= 3) {
                 const c = centroid(ring);
                 labels.push({
                     coord: c,
-                    text: formatArea(feat.properties.areaM2, units.area, _cfg!.decimals.area),
+                    text: formatArea(feat.properties.areaM2, units.area, _cfg.decimals.area),
                     bearing: 0,
                 });
                 // Red perimeter label below the area label
@@ -195,7 +195,7 @@ function _finishedLabels(units: Units): LabelEntry[] {
                     text: formatDistance(
                         feat.properties.perimeterM as number,
                         units.distance,
-                        _cfg!.decimals.distance
+                        _cfg.decimals.distance
                     ),
                     bearing: 0,
                     color: "#E53935",
@@ -213,16 +213,16 @@ function _finishedLabels(units: Units): LabelEntry[] {
                             closed,
                             segmentLengths(closed),
                             units,
-                            _cfg!.decimals.distance
+                            _cfg.decimals.distance
                         )
                     );
                 }
             }
         }
         if (feat.geometry.type === "LineString") {
-            const coords = (feat.geometry as GeoJSON.LineString).coordinates as [number, number][];
+            const coords = feat.geometry.coordinates as [number, number][];
             labels.push(
-                ..._segmentLabels(coords, segmentLengths(coords), units, _cfg!.decimals.distance)
+                ..._segmentLabels(coords, segmentLengths(coords), units, _cfg.decimals.distance)
             );
             // Red total distance label at last vertex, below
             const lastCoord = coords[coords.length - 1];
@@ -232,7 +232,7 @@ function _finishedLabels(units: Units): LabelEntry[] {
                 text: formatDistance(
                     feat.properties.lengthM as number,
                     units.distance,
-                    _cfg!.decimals.distance
+                    _cfg.decimals.distance
                 ),
                 bearing: 0,
                 color: "#E53935",

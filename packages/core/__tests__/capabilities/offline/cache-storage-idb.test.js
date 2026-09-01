@@ -1,20 +1,22 @@
 /**
  * Unit tests — `capabilities/offline/cache/storage.ts` (CacheStorage), gisement moteur offline.
  *
- * Fichier à 58 % : la couche IndexedDB du cache (manifeste, sélection de couches, purge,
- * quota, chargement de profil). Sous `capabilities/offline`, `../core/indexeddb.js` est
- * redirigé par `__tests__/setup.js` vers le mock en mémoire `__mocks__/indexeddb.js` (store
- * « metadata » + préférences). On importe le MÊME singleton mock pour le réinitialiser entre
- * tests (`clearMockStore`) et on pilote CacheStorage, qui écrit/lit à travers lui.
+ * File at 58%: the cache's IndexedDB layer (manifest, layer selection, purge,
+ * quota, profile loading). Under `capabilities/offline`, `../core/indexeddb.js`
+ * is redirected by `__tests__/setup.js` to the in-memory mock
+ * `__mocks__/indexeddb.js` ("metadata" store + preferences). We import the
+ * SAME mock singleton to reset it between tests (`clearMockStore`) and drive
+ * CacheStorage, which writes/reads through it.
  *
- * ⚠️ `getCachedUrls` n'est PAS couvert ici : il lit le store « layers » par CURSEUR, que ce
- * mock minimal (metadata seul, `openCursor` absent) ne peut pas produire — il faudrait
- * `fake-indexeddb`, ce que le redirect de setup empêche pour les importeurs offline.
+ * ⚠️ `getCachedUrls` is NOT covered here: it reads the "layers" store by
+ * CURSOR, which this minimal mock (metadata only, no `openCursor`) cannot
+ * produce — it would take `fake-indexeddb`, which the setup redirect prevents
+ * for offline importers.
  */
 import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
 
 import { CacheStorage } from "../../../src/capabilities/offline/cache/storage.js";
-// Même instance que celle que storage.ts reçoit via le redirect de setup.js.
+// Same instance storage.ts receives through the setup.js redirect.
 import { IndexedDB, clearMockStore } from "../../__mocks__/indexeddb.js";
 
 let seq = 0;
@@ -118,7 +120,7 @@ describe("clearCache", () => {
     });
 });
 
-// ── getCachedUrls (curseur sur le store « layers ») ──────────────────────────────────
+// ── getCachedUrls (cursor over the "layers" store) ───────────────────────────────────
 
 describe("getCachedUrls", () => {
     test("liste les URLs des couches du profil, ignore les autres", async () => {
@@ -139,8 +141,8 @@ describe("getCachedUrls", () => {
 
 // ── Storage quota ───────────────────────────────────────────────────────────────────
 
-// ⚠️ LE BLOC `getStorageQuota` EST RETIRÉ (clôture S3c) — troisième exemplaire du même
-// lecteur de quota, sans appelant de production. Voir `CacheManager.getStorageQuota()`.
+// ⚠️ THE `getStorageQuota` BLOCK IS REMOVED — third copy of the same quota
+// reader, with no production caller. See `CacheManager.getStorageQuota()`.
 
 // ── loadProfileConfig ────────────────────────────────────────────────────────────────
 

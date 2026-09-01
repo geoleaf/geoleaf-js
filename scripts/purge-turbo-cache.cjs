@@ -1,60 +1,60 @@
 #!/usr/bin/env node
 /**
- * Ramène le cache local de Turborepo sous un budget de taille (T4.5).
+ * Brings Turborepo's local cache under a size budget.
  *
- * ## Pourquoi un budget, et pas un âge
+ * ## Why a budget, and not an age
  *
- * Mesure du 25/07/2026, avant la première purge : **8 779 entrées / 5,13 Gio / 26 320
- * fichiers**, jamais purgées depuis le 16/06 — **68 % du répertoire de travail**. Turbo 2
- * n'expose aucun TTL ni GC de cache local (`turbo prune` extrait un sous-ensemble du
- * monorepo pour Docker, ce n'est pas un purgeur), et `turbo.json` ne déclarait ni
- * `cacheDir` ni limite.
+ * 2026-07-25 measurement, before the first purge: **8,779 entries / 5.13 GiB /
+ * 26,320 files**, never purged since 06-16 — **68 % of the working directory**.
+ * Turbo 2 exposes no TTL nor local-cache GC (`turbo prune` extracts a monorepo
+ * subset for Docker, it is no purger), and `turbo.json` declared neither `cacheDir`
+ * nor a limit.
  *
- * Trois politiques ont été mesurées sur ce cache, et deux sont rejetées par les chiffres :
+ * Three policies were measured on this cache, and two are rejected by the numbers:
  *
- *   - **âge seul** : 14 jours auraient gardé **4,11 Gio sur 5,13**. Les 5 Go se sont
- *     accumulés en trois semaines — une règle d'âge n'aurait pas évité ce sprint ;
- *   - **nombre d'entrées** : taille médiane d'une entrée **0,07 Mio**, moyenne **0,60 Mio**
- *     — un facteur 8. « Garder N entrées » vaut 10 Mo ou 2 Go selon les tâches qui ont
- *     tourné. Rejeté sur mesure, pas par principe ;
- *   - **budget de taille** : le seul qui borne réellement. C'est le critère PRIMAIRE.
+ *   - **age alone**: 14 days would have kept **4.11 GiB of 5.13**. The 5 GB
+ *     accumulated in three weeks — an age rule would not have avoided that work;
+ *   - **entry count**: median entry size **0.07 MiB**, mean **0.60 MiB** — a factor
+ *     of 8. "Keep N entries" is worth 10 MB or 2 GB depending on which tasks ran.
+ *     Rejected on measurement, not principle;
+ *   - **size budget**: the only one that really bounds. It is the PRIMARY criterion.
  *
- * L'âge reste **secondaire**, comme filet des semaines calmes : sous budget, plus rien ne
- * s'évince, alors que des entrées froides continuent d'occuper le disque et de référencer
- * un arbre disparu. Témoin : sur un échantillon de 418 manifestes, **168 (40 %)**
- * référencent l'ancien layout `packages/plugin-storage/` (renommé par ARCHI S10 le 20/07).
- * Le hash de tâche inclut le chemin du paquet : ces entrées ne peuvent plus **jamais**
- * faire hit.
+ * Age stays **secondary**, as the quiet weeks' net: under budget, nothing evicts
+ * anymore, while cold entries keep occupying the disk and referencing a vanished
+ * tree. Witness: on a 418-manifest sample, **168 (40 %)** reference the old
+ * `packages/plugin-storage/` layout (renamed on 07-20). The task hash includes the
+ * package path: those entries can **never** hit again.
  *
- * ## Ce que la politique est, et ce qu'elle n'est pas
+ * ## What the policy is, and what it is not
  *
- * ⚠️ Turbo **ne rafraîchit pas le `mtime` sur un HIT**. La politique est donc « garder les
- * entrées les plus récemment ÉCRITES », et **pas** un LRU : une entrée touchée tous les
- * jours mais écrite il y a trois semaines peut être évincée. Le coût est une
- * re-exécution de tâche, qui la réécrit — c'est auto-réparant. Toucher les `mtime`
- * nous-mêmes détruirait le seul signal d'âge disponible.
+ * ⚠️ Turbo **does not refresh the `mtime` on a HIT**. The policy is therefore "keep
+ * the most recently WRITTEN entries", and **not** an LRU: an entry touched daily but
+ * written three weeks ago can be evicted. The cost is a task re-execution, which
+ * rewrites it — self-repairing. Touching the `mtime`s ourselves would destroy the
+ * only age signal available.
  *
- * ## Délibérément hors de `ci:local`
+ * ## Deliberately outside `ci:local`
  *
- * Trois raisons, dont deux catégoriques :
- *   1. le cache EST ce qui rend tenables `turbo run build`, `typecheck` et les 34 tâches
- *      de test. Un purgeur en tête de séquence garantit le miss sur ce qu'il vient
- *      d'évincer : il ferait payer deux fois la mesure et n'assérerait rien ;
- *   2. erreur de catégorie — `ci:local` est une suite de gates qui rendent vrai/faux sur
- *      le CODE. Une purge ne peut pas échouer utilement, et ce serait la seule étape de
- *      la liste à MUTER l'état de la machine du développeur ;
- *   3. `ci-local.cjs` pose `ci:local ⊇ ci.yml` comme raison d'être, et `ci.yml` n'a
- *      aucune étape de purge.
+ * Three reasons, two of them categorical:
+ *   1. the cache IS what makes `turbo run build`, `typecheck` and the 34 test tasks
+ *      tenable. A purger at the head of the sequence guarantees a miss on what it
+ *      just evicted: it would make the measurement pay twice and would assert
+ *      nothing;
+ *   2. category error — `ci:local` is a suite of gates rendering true/false on the
+ *      CODE. A purge cannot fail usefully, and it would be the list's only step to
+ *      MUTATE the developer machine's state;
+ *   3. `ci-local.cjs` sets `ci:local ⊇ ci.yml` as its reason to exist, and `ci.yml`
+ *      has no purge step.
  *
- * La cadence vit dans `_docs_projet/HYGIENE_CHECKLIST.md`, en fin de sprint.
+ * The cadence lives in `_docs_projet/HYGIENE_CHECKLIST.md`, at sprint end.
  *
- * Usage :
- *   node scripts/purge-turbo-cache.cjs                  # ramène sous le budget
- *   node scripts/purge-turbo-cache.cjs --dry-run        # calcule, ne supprime rien
- *   node scripts/purge-turbo-cache.cjs --check          # verdict seul, exit 1 si hors budget
- *   node scripts/purge-turbo-cache.cjs --max-size 3     # budget en Gio (0 = tout vider)
- *   node scripts/purge-turbo-cache.cjs --max-age 30     # âge en jours
- *   node scripts/purge-turbo-cache.cjs --cache-dir <p>  # miroir du flag turbo
+ * Usage:
+ *   node scripts/purge-turbo-cache.cjs                  # brings under budget
+ *   node scripts/purge-turbo-cache.cjs --dry-run        # computes, deletes nothing
+ *   node scripts/purge-turbo-cache.cjs --check          # verdict only, exit 1 if over
+ *   node scripts/purge-turbo-cache.cjs --max-size 3     # budget in GiB (0 = wipe all)
+ *   node scripts/purge-turbo-cache.cjs --max-age 30     # age in days
+ *   node scripts/purge-turbo-cache.cjs --cache-dir <p>  # mirror of the turbo flag
  */
 
 "use strict";
@@ -86,19 +86,19 @@ function numericFlag(name, fallback) {
     return n;
 }
 
-/** Budget PRIMAIRE, en Gio. `0` vide tout — pas de mode `--reset` de plus. */
+/** PRIMARY budget, in GiB. `0` wipes everything — no extra `--reset` mode. */
 const MAX_SIZE_GIB = numericFlag("--max-size", 2);
 /** Filet SECONDAIRE, en jours. */
 const MAX_AGE_DAYS = numericFlag("--max-age", 14);
 
-// ─── Résolution du répertoire de cache ───────────────────────────────────────
+// ─── Cache directory resolution ──────────────────────────────────────────────
 
 /**
- * Dans l'ordre de turbo lui-même, jamais en dur.
+ * In turbo's own order, never hard-coded.
  *
- * `turbo.json#cacheDir` est absent aujourd'hui : le lire coûte trois lignes et empêche de
- * purger le mauvais endroit le jour où quelqu'un l'ajoute — c'est exactement la classe
- * « un chemin en dur cesse silencieusement de matcher » que ce dépôt traque.
+ * `turbo.json#cacheDir` is absent today: reading it costs three lines and prevents
+ * purging the wrong place the day someone adds it — exactly the "a hard-coded path
+ * silently stops matching" class this repo hunts.
  */
 function resolveCacheDir() {
     const fromFlag = flagValue("--cache-dir");
@@ -109,12 +109,12 @@ function resolveCacheDir() {
     const turboJson = path.join(ROOT, "turbo.json");
     if (fs.existsSync(turboJson)) {
         try {
-            // turbo.json autorise les commentaires (JSONC) — on ne parse que pour `cacheDir`,
-            // donc une extraction ciblée vaut mieux qu'un JSON.parse qui jetterait dessus.
+            // turbo.json allows comments (JSONC) — we only parse for `cacheDir`, so a
+            // targeted extraction beats a JSON.parse that would throw on it.
             const m = fs.readFileSync(turboJson, "utf8").match(/"cacheDir"\s*:\s*"([^"]+)"/);
             if (m) return { abs: path.resolve(ROOT, m[1]), source: "turbo.json#cacheDir" };
         } catch {
-            /* illisible → on retombe sur le défaut, qui est annoncé */
+            /* unreadable → fall back to the default, which is announced */
         }
     }
     return { abs: path.join(ROOT, ".turbo", "cache"), source: "défaut turbo 2" };
@@ -123,9 +123,9 @@ function resolveCacheDir() {
 const { abs: CACHE_DIR, source: CACHE_SOURCE } = resolveCacheDir();
 const shownDir = path.relative(ROOT, CACHE_DIR) || CACHE_DIR;
 
-// G1 — la cible doit être DANS le dépôt. Un `rmSync` de masse sur un chemin résolu hors
-// ROOT est précisément le risque que T5.1 documente sur `deploy-docs.cjs` et ses quatre
-// `..` en dur. On échoue plutôt que de deviner.
+// G1 — the target must be INSIDE the repo. A mass `rmSync` on a path resolved
+// outside ROOT is precisely the documented risk on `deploy-docs.cjs` and its four
+// hard-coded `..`. We fail rather than guess.
 const rel = path.relative(ROOT, CACHE_DIR);
 if (rel.startsWith("..") || path.isAbsolute(rel)) {
     console.error(
@@ -138,8 +138,8 @@ if (rel.startsWith("..") || path.isAbsolute(rel)) {
 }
 
 if (!fs.existsSync(CACHE_DIR)) {
-    // Jamais un exit 0 muet : dire QUOI a été cherché et OÙ, sinon « rien à purger » est
-    // indiscernable de « j'ai regardé au mauvais endroit ».
+    // Never a mute exit 0: say WHAT was looked for and WHERE, otherwise "nothing to
+    // purge" is indistinguishable from "I looked in the wrong place".
     console.log(`ℹ purge-turbo-cache — ${shownDir} n'existe pas (source : ${CACHE_SOURCE}).`);
     console.log("  Rien à purger. Si `cacheDir` est posé dans la config GLOBALE de turbo,");
     console.log("  passer explicitement --cache-dir <chemin>.");
@@ -148,17 +148,17 @@ if (!fs.existsSync(CACHE_DIR)) {
 
 // ─── Inventaire ──────────────────────────────────────────────────────────────
 
-/** `<hash>-manifest.json`, `<hash>-meta.json`, `<hash>.tar.zst` — le schéma de turbo 2. */
+/** `<hash>-manifest.json`, `<hash>-meta.json`, `<hash>.tar.zst` — turbo 2's schema. */
 const ENTRY_RE = /^([0-9a-f]+)(-manifest\.json|-meta\.json|\.tar\.zst)$/;
 
-/** Ordre de suppression dans un groupe : la charge d'abord. */
+/** Deletion order within a group: the payload first. */
 const SUFFIX_ORDER = [".tar.zst", "-manifest.json", "-meta.json"];
 
 const dirents = fs.readdirSync(CACHE_DIR, { withFileTypes: true });
 
-// G2 — le cache de turbo est PLAT (mesuré : 0 sous-répertoire pour 26 320 fichiers). Un
-// sous-répertoire signifie « ce n'est pas un cache turbo » — on s'arrête sans rien toucher
-// plutôt que de descendre dans un arbre dont on ignore la nature.
+// G2 — turbo's cache is FLAT (measured: 0 subdirectories for 26,320 files). A
+// subdirectory means "this is not a turbo cache" — we stop touching nothing rather
+// than descend into a tree whose nature we ignore.
 const subdirs = dirents.filter((e) => e.isDirectory()).map((e) => e.name);
 if (subdirs.length > 0) {
     console.error(
@@ -171,7 +171,7 @@ if (subdirs.length > 0) {
 
 /** @type {Map<string, {size: number, mtime: number, names: string[]}>} */
 const groups = new Map();
-/** G3 — jamais supprimés : comptés et nommés. */
+/** G3 — never deleted: counted and named. */
 const unknown = [];
 
 for (const e of dirents) {
@@ -195,7 +195,7 @@ const NOW = Date.now();
 const MAX_SIZE = MAX_SIZE_GIB * 1024 ** 3;
 const MAX_AGE_MS = MAX_AGE_DAYS * 86400000;
 
-// Du plus récent au plus ancien : on garde par la tête jusqu'au budget.
+// Newest to oldest: we keep from the head down to the budget.
 const sorted = [...groups.entries()].sort((a, b) => b[1].mtime - a[1].mtime);
 
 const doomed = [];
@@ -210,8 +210,8 @@ for (const [hash, g] of sorted) {
     const overBudget = keptSize + g.size > MAX_SIZE;
     if (tooOld || overBudget) {
         doomed.push({ hash, ...g });
-        // Attribution du motif : l'âge est annoncé comme secondaire, donc il prime dans le
-        // rapport quand les deux s'appliquent — sinon le budget masquerait son utilité.
+        // Reason attribution: age is announced as secondary, so it wins in the
+        // report when both apply — otherwise the budget would mask its usefulness.
         if (tooOld) {
             byAge.n++;
             byAge.size += g.size;
@@ -286,8 +286,8 @@ if (DRY_RUN) {
 
 let removed = 0;
 for (const d of doomed) {
-    // La charge d'abord : un état déchiré ne présente jamais un manifeste qui promet une
-    // archive disparue.
+    // The payload first: a torn state never presents a manifest promising a
+    // vanished archive.
     const ordered = [...d.names].sort(
         (a, b) =>
             SUFFIX_ORDER.findIndex((s) => a.endsWith(s)) -

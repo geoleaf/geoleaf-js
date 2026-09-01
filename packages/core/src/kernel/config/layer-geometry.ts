@@ -8,40 +8,112 @@
 /**
  * @fileoverview Resolves the geometry a layer configuration declares, in either spelling.
  *
- * 🛑 POURQUOI CE FICHIER EXISTE — `geometry` et `geometryType` sont LE MÊME CHAMP.
+ * 🛑 WHY THIS FILE EXISTS — `geometry` and `geometryType` are THE SAME FIELD.
  *
- * Le schéma le dit explicitement (`profiles/schemas/layer-config.schema.json:42`) :
- * « Root-level **alias of `geometry`**. Canonical form READ BY THE CODE — do NOT migrate
- * (ANO-007) ». Les deux portent le même `enum`. L'arbitrage est donc **déjà pris** : on ne
- * migre pas les profils, et le code lit les deux.
+ * The schema says it explicitly (`profiles/schemas/layer-config.schema.json:42`):
+ * "Root-level **alias of `geometry`**. Canonical form READ BY THE CODE — do NOT
+ * migrate (ANO-007)". Both carry the same `enum`. The arbitration is thus
+ * **already taken**: profiles are not migrated, and the code reads both.
  *
- * Il ne le faisait pas. Mesuré le 07/08/2026 sur les **24** configs de couche des 3 profils :
+ * It did not. Measured on 07/08/2026 over the **24** layer configs of the 3
+ * profiles:
  *
- * | Ce que la config déclare | Nombre |
+ * | What the config declares | Count |
  * |---|---|
- * | `geometry` seul | **18** |
- * | les deux | 6 |
- * | `geometryType` seul | **0** |
+ * | `geometry` alone | **18** |
+ * | both | 6 |
+ * | `geometryType` alone | **0** |
  *
- * Et sur les **7** sites qui lisent ce champ, **3** résolvaient l'alias à la main
- * (`legend.ts`, les deux `vector-tiles`) et **4** lisaient `geometryType` seul — c'est-à-dire
- * la clé qu'**aucune** config ne porte sans l'autre. Conséquences mesurées : 38 des 42 lignes
- * du sélecteur hors-ligne rendaient `-` (**B-161**), et `_acceptsGeometry` de l'éditeur
- * retombait sur « accepte TOUTE géométrie » pour une couche qui déclare la sienne — le mode
- * d'échec que son propre TSDoc décrit comme dangereux.
+ * And of the **7** sites reading this field, **3** resolved the alias by hand
+ * (`legend.ts`, the two `vector-tiles`) and **4** read `geometryType` alone — i.e.
+ * the key **no** config carries without the other. Measured consequences: 38 of
+ * the offline selector's 42 rows rendered `-`, and the editor's
+ * `_acceptsGeometry` fell back to "accepts ANY geometry" for a layer declaring its
+ * own — the failure mode its own TSDoc describes as dangerous.
  *
- * ⚠️ **Les trois résolutions à la main divergeaient déjà sur leur REPLI** : `"point"` pour la
- * légende, `"polygon"` pour les tuiles vectorielles. C'est pourquoi le repli est un
- * **paramètre** ici — les collapser sur une valeur unique aurait changé le comportement de
- * deux sous-systèmes sans que rien ne le demande.
+ * ⚠️ **The three hand-rolled resolutions already diverged on their FALLBACK**:
+ * `"point"` for the legend, `"polygon"` for vector tiles. That is why the fallback
+ * is a **parameter** here — collapsing them onto a single value would have changed
+ * two subsystems' behaviour with nothing asking for it.
  */
 
 /**
- * La forme minimale que ce helper lit — n'importe quelle config de couche la satisfait.
+ * Every geometry family, in the two vocabularies that name it.
  *
- * ⚠️ NON exportée : elle n'a aucun consommateur nommé, les appelants passant leur config
- * telle quelle. L'exporter sortait en régression de `check-orphan-exports` à la pose, et la
- * mettre en ALLOWLIST aurait été s'exempter d'une gate plutôt que de l'écouter.
+ * 🛑 THERE ARE TWO, and they had never been reconciled. A profile declares its layer's kind
+ * in LOWERCASE — `profiles/schemas/layer-config.schema.json` allows nothing else — while the
+ * MapLibre adapter's fast path only ever accepted GeoJSON names. Measured on 27/08/2026:
+ * **0 of the 25 layer configs in the repo reached that fast path**. A declaration nobody can
+ * spell is not a fast path, it is a silently ignored field.
+ *
+ * The lowercase kinds expand to BOTH the singular and the `Multi` form: a kind names a
+ * family, not one encoding, and a consumer testing for `MultiLineString` must not miss a
+ * layer that calls itself `polyline`.
+ */
+const _GEOMETRY_FAMILIES: ReadonlyArray<readonly [readonly string[], readonly string[]]> = [
+    [
+        ["point", "multipoint"],
+        ["Point", "MultiPoint"],
+    ],
+    [
+        ["line", "polyline", "multiline", "linestring", "multilinestring"],
+        ["LineString", "MultiLineString"],
+    ],
+    [
+        ["polygon", "multipolygon", "fill-extrusion"],
+        ["Polygon", "MultiPolygon"],
+    ],
+];
+
+/** GeoJSON names accepted verbatim, so an exact declaration stays exact. */
+const _GEOJSON_TYPES: ReadonlySet<string> = new Set([
+    "Point",
+    "MultiPoint",
+    "LineString",
+    "MultiLineString",
+    "Polygon",
+    "MultiPolygon",
+    "GeometryCollection",
+]);
+
+/**
+ * The GeoJSON geometry types a declared kind names, in either vocabulary.
+ *
+ * A GeoJSON name is kept verbatim; a lowercase kind expands to its family; anything else
+ * answers an EMPTY set. Empty is the honest answer for a token nobody defined — a guess
+ * would render a layer as something it never said it was, and no caller could tell.
+ *
+ * @param kind - One declared value, or a list of them. Any other type answers empty.
+ * @returns The GeoJSON type names, possibly empty. Never `null`.
+ * @example
+ * geometryKindToGeoJSONTypes("polyline");  // Set { "LineString", "MultiLineString" }
+ * geometryKindToGeoJSONTypes("Point");     // Set { "Point" }
+ * geometryKindToGeoJSONTypes("hexagon");   // Set {}
+ */
+export function geometryKindToGeoJSONTypes(kind: unknown): Set<string> {
+    const out = new Set<string>();
+    const list = Array.isArray(kind) ? kind : kind != null ? [kind] : [];
+    for (const raw of list) {
+        if (typeof raw !== "string" || raw.length === 0) continue;
+        if (_GEOJSON_TYPES.has(raw)) {
+            out.add(raw);
+            continue;
+        }
+        const lower = raw.toLowerCase();
+        for (const [kinds, types] of _GEOMETRY_FAMILIES) {
+            if (kinds.includes(lower)) for (const t of types) out.add(t);
+        }
+    }
+    return out;
+}
+
+/**
+ * The minimal shape this helper reads — any layer config satisfies it.
+ *
+ * ⚠️ NOT exported: it has no named consumer, callers passing their config as-is.
+ * Exporting it came out as a `check-orphan-exports` regression when first added,
+ * and ALLOWLISTING it would have been exempting ourselves from a gate rather than
+ * listening to it.
  */
 interface LayerGeometryShape {
     geometry?: unknown;

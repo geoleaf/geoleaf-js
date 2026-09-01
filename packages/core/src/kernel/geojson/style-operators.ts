@@ -15,11 +15,16 @@
  * operators, and the duplication was a real hazard: adding an operator to one silently
  * gave different behaviour depending on which one a call site resolved.
  *
- * The fallback itself is kept — `style-resolver.ts` still reads
+ * The fallback itself is kept — `style-resolver.ts` reads
  * `GeoJSONShared?.STYLE_OPERATORS ?? STYLE_OPERATORS` — but both branches now point at
  * THIS object. The optional chain guards against a test that mocks `GeoJSONShared` with a
  * partial object, not against a load-order problem (style-resolver.ts imports shared.ts
  * statically, so it is always evaluated first).
+ *
+ * ⚠️ Weigh that sentence correctly: `style-resolver.ts` is outside every shipped graph
+ * (its own header carries the measured verdict), so the reader described above exists in
+ * the repository and its tests, never in a deliverable. THIS table, by contrast, is alive
+ * in the bundle — the style schema's operator enum is checked against it.
  *
  * This module deliberately imports nothing: it is depended on by both sides, so any import
  * here could reintroduce a cycle.

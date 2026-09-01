@@ -1,5 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
-import { jsonHeaders, bearer, fetchWithTimeout, parseJsonBody, HttpFetchError } from "../http.js";
+import {
+    jsonHeaders,
+    bearer,
+    fetchWithTimeout,
+    parseJsonBody,
+    isSameOrigin,
+    HttpFetchError,
+} from "../http.js";
 
 describe("jsonHeaders", () => {
     it("defaults to Content-Type only", () => {
@@ -100,5 +107,41 @@ describe("parseJsonBody", () => {
 
     it("propagates a SyntaxError on malformed JSON", async () => {
         await expect(parseJsonBody(new Response("{not json"))).rejects.toBeInstanceOf(SyntaxError);
+    });
+});
+
+describe("isSameOrigin", () => {
+    const BASE = "https://api.exemple.fr";
+
+    it("accepts the same origin when the base has no path", () => {
+        expect(isSameOrigin(`${BASE}/tiles/1/2/3.mvt`, BASE)).toBe(true);
+    });
+
+    it("accepts a URL under the base path (and the base path itself)", () => {
+        expect(
+            isSameOrigin("https://api.exemple.fr/v1/tiles/1.pbf", "https://api.exemple.fr/v1")
+        ).toBe(true);
+        expect(isSameOrigin("https://api.exemple.fr/v1", "https://api.exemple.fr/v1")).toBe(true);
+    });
+
+    it("rejects a path that only shares a prefix segment", () => {
+        // /v1betrayal must NOT pass for base /v1 — the segment boundary matters.
+        expect(isSameOrigin("https://api.exemple.fr/v1betrayal", "https://api.exemple.fr/v1")).toBe(
+            false
+        );
+    });
+
+    it("rejects a suffix host — the bug no. 4 credential leak", () => {
+        // startsWith(base) returned true here and leaked the bearer; isSameOrigin must not.
+        expect(isSameOrigin("https://api.exemple.fr.attaquant.tld/vol", BASE)).toBe(false);
+    });
+
+    it("rejects a different origin and a scheme downgrade", () => {
+        expect(isSameOrigin("https://autre.tld/x", BASE)).toBe(false);
+        expect(isSameOrigin("http://api.exemple.fr/x", BASE)).toBe(false);
+    });
+
+    it("rejects an unreadable URL — it belongs to nobody", () => {
+        expect(isSameOrigin("http://", BASE)).toBe(false);
     });
 });

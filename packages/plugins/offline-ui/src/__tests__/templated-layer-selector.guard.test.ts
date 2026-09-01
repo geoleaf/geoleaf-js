@@ -1,24 +1,26 @@
 /**
- * GARDE B-152 — une couche à `inlineConfig` doit valoir une couche à `configFile`.
+ * GUARD — an `inlineConfig` layer must be worth a `configFile` layer.
  *
- * 🛑 CE QUE CETTE GARDE EXISTE POUR EMPÊCHER. La tâche 8.9 a réparé le RAPATRIEMENT des
- * couches templatées : `resolveProfileLayers` passe par `expandLayerTemplates`, et
- * `resource-enumerator` a gagné sa branche `inlineConfig`. Mais `expandLayerTemplates` pose
- * `inlineConfig` et **jamais `configFile`**, alors que les trois sites du sélecteur
- * branchaient tous sur `configFile` seul. Mesuré en navigateur sur `tourism` le 07/08/2026 :
- * les 42 couches apparaissaient bien, mais les **24 templatées** s'y rendaient en identifiant
- * brut, géométrie `-`, style `-`, sans sélecteur de style — et leur état de cache était
- * **toujours faux**, parce que `searchUrls` restait vide.
+ * 🛑 WHAT THIS GUARD EXISTS TO PREVENT. The PULL of templated layers was
+ * repaired: `resolveProfileLayers` goes through `expandLayerTemplates`, and
+ * `resource-enumerator` gained its `inlineConfig` branch. But
+ * `expandLayerTemplates` sets `inlineConfig` and **never `configFile`**, while
+ * the selector's three sites all branched on `configFile` alone. Measured in a
+ * browser on `tourism` on 07/08/2026: all 42 layers did appear, but the **24
+ * templated ones** rendered as raw identifiers, geometry `-`, style `-`, no
+ * style selector — and their cache state was **always false**, because
+ * `searchUrls` stayed empty.
  *
- * ⚠️ ANCRÉE SUR LE MÉCANISME, PAS SUR `tourism`. Aucune assertion ne cite `pluviometrie_*`
- * ni le profil de démo : la propriété gardée est « porter sa config en ligne plutôt qu'en
- * fichier ne change RIEN à ce que le sélecteur sait faire de la couche ». Un test qui
- * nommerait les 24 couches se périmerait au premier profil réécrit (c'est B-154), et
- * n'affirmerait rien du mécanisme.
+ * ⚠️ ANCHORED ON THE MECHANISM, NOT ON `tourism`. No assertion cites
+ * `pluviometrie_*` nor the demo profile: the guarded property is "carrying its
+ * config inline rather than in a file changes NOTHING about what the selector
+ * can do with the layer". A test naming the 24 layers would expire at the first
+ * rewritten profile, and would assert nothing about the mechanism.
  *
- * ⚠️ CHAQUE ASSERTION A SON TÉMOIN DIRECT. Les deux couches sont déclarées avec la MÊME
- * config utile — l'une par fichier, l'autre en ligne. Sans ce témoin, la garde passerait
- * en rendant `null` des deux côtés : c'est exactement l'état d'avant le correctif.
+ * ⚠️ EACH ASSERTION HAS ITS DIRECT WITNESS. Both layers are declared with the
+ * SAME useful config — one by file, the other inline. Without that witness, the
+ * guard would pass by returning `null` on both sides: exactly the pre-fix
+ * state.
  */
 import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
 
@@ -29,23 +31,24 @@ import "../cache/layer-selector/selection-cache.js";
 import { getLayerConfig, beginCacheStatusPass } from "../cache/layer-selector/config-cache.js";
 import type { LayerLike } from "../cache/layer-selector/layer-selector-types.js";
 
-// La config utile, IDENTIQUE des deux côtés — c'est ce qui rend la comparaison probante.
+// The useful config, IDENTICAL on both sides — what makes the comparison probing.
 const SHARED_CONFIG = {
     label: "Pluviométrie – Janvier",
     geometryType: "Polygon",
     styles: { available: [{ id: "defaut", label: "Défaut" }], default: "defaut" },
 };
 
-/** Couche TÉMOIN : sa config vit dans un fichier, comme les 18 couches directes. */
+/** WITNESS layer: its config lives in a file, like the 18 direct layers. */
 const DIRECT_LAYER: LayerLike = {
     id: "direct_layer",
     configFile: "layers/direct_layer/direct_layer_config.json",
 };
 
 /**
- * Couche SUJET de B-161 : elle déclare `geometry` **seul**, la forme majoritaire du dépôt
- * (18 configs sur 24 ; **aucune** ne déclare `geometryType` seul). Le schéma pose les deux
- * comme alias — `layer-config.schema.json:42` : « Root-level alias of `geometry` ».
+ * SUBJECT layer of the `geometry`/`geometryType` alias: it declares `geometry`
+ * **alone**, the repo's majority form (18 configs out of 24; **none** declares
+ * `geometryType` alone). The schema sets both as aliases —
+ * `layer-config.schema.json:42`: "Root-level alias of `geometry`".
  */
 const ALIAS_LAYER: LayerLike = {
     id: "alias_layer",
@@ -53,19 +56,20 @@ const ALIAS_LAYER: LayerLike = {
 };
 const ALIAS_CONFIG = {
     label: "Couche à clé alias",
-    geometry: "point", // ← et PAS `geometryType` ; différente du témoin, exprès
+    geometry: "point", // ← and NOT `geometryType`; differs from the witness, on purpose
     styles: { available: [{ id: "defaut", label: "Défaut" }], default: "defaut" },
 };
 
 /**
- * Le fichier de couches servi au sélecteur — DIRECTE + alias + un `layerTemplates`.
+ * The layers file served to the selector — DIRECT + alias + one `layerTemplates`.
  *
- * ⚠️ LA COUCHE TEMPLATÉE N'EST PAS ÉCRITE À LA MAIN, ET C'EST LE POINT LE PLUS IMPORTANT DE
- * CE HARNAIS. Une première version de cette garde posait un `inlineConfig` en dur ; elle
- * serait restée VERTE si le core cessait de normaliser `dataFile`, puisque le fixture
- * portait déjà la forme normalisée. Ici c'est le VRAI `expandLayerTemplates` qui la produit,
- * appelé par le vrai `resolveProfileLayers` que `populate()` emprunte : la garde tient donc
- * les deux moitiés du seam — ce que le core émet, et ce que le plugin en fait.
+ * ⚠️ THE TEMPLATED LAYER IS NOT HAND-WRITTEN, AND IT IS THIS HARNESS'S MOST
+ * IMPORTANT POINT. A first version of this guard set a hard-coded
+ * `inlineConfig`; it would have stayed GREEN if the core stopped normalising
+ * `dataFile`, since the fixture already carried the normalised form. Here the
+ * REAL `expandLayerTemplates` produces it, called by the real
+ * `resolveProfileLayers` that `populate()` takes: the guard thus holds both
+ * halves of the seam — what the core emits, and what the plugin does with it.
  */
 const LAYERS_FILE = {
     layers: [DIRECT_LAYER, ALIAS_LAYER],
@@ -85,10 +89,10 @@ const LAYERS_FILE = {
     ],
 };
 
-/** Le profil ne porte PAS `layers` : il pointe son fichier, comme les profils réels. */
+/** The profile does NOT carry `layers`: it points at its file, like real profiles. */
 const PROFILE = { Files: { layersFile: "config/core/layers.json" } };
 
-/** Le chemin que `resource-enumerator` met RÉELLEMENT en cache pour une couche en ligne. */
+/** The path `resource-enumerator` REALLY caches for an inline layer. */
 const CACHED_URL = (profileId: string): string =>
     `profiles/${profileId}/layers/templated_layer/data/templated_layer.geojson`;
 
@@ -152,7 +156,7 @@ function installFetch(): void {
     }) as unknown as typeof fetch;
 }
 
-/** La couche templatée telle que le CORE la produit — jamais construite ici. */
+/** The templated layer as the CORE produces it — never built here. */
 async function templatedLayerFromCore(): Promise<LayerLike> {
     await LS.populate();
     await flush();
@@ -165,7 +169,7 @@ const flush = (): Promise<void> => new Promise((r) => setTimeout(() => r(), 0));
 
 beforeEach(() => {
     seq += 1;
-    // Profil distinct par test : `_configCache` est un memo de MODULE, il survit au test.
+    // Distinct profile per test: `_configCache` is a MODULE memo, it outlives the test.
     profileId = `guard-b152-${seq}`;
     setConfig();
     beginCacheStatusPass();
@@ -188,12 +192,12 @@ afterEach(() => {
     vi.restoreAllMocks();
 });
 
-describe("B-152 — site 1 : la config d'une couche en ligne est RÉSOLUE", () => {
+describe("couche en ligne — site 1 : la config est RÉSOLUE", () => {
     test("getLayerConfig rend la config d'une couche `inlineConfig`, comme pour un `configFile`", async () => {
         const layer = await templatedLayerFromCore();
 
-        // Témoin : le chemin `configFile` marche, donc un `null` côté sujet est bien un défaut
-        // du sujet et non du harnais.
+        // Witness: the `configFile` path works, so a `null` on the subject side
+        // really is the subject's defect and not the harness's.
         const direct = await getLayerConfig({ ...DIRECT_LAYER });
         expect(direct?.label).toBe(SHARED_CONFIG.label);
 
@@ -215,12 +219,12 @@ describe("B-152 — site 1 : la config d'une couche en ligne est RÉSOLUE", () =
     });
 });
 
-describe("B-152 — site 2 : `layerDir` et `dataFile` sont DÉRIVÉS", () => {
+describe("couche en ligne — site 2 : `layerDir` et `dataFile` sont DÉRIVÉS", () => {
     test("populate() dérive les deux champs sur une couche en ligne", async () => {
         const templated = await templatedLayerFromCore();
-        // La convention du core : `layers/<id>` (`resource-enumerator._addInlineConfigResource`).
+        // The core's convention: `layers/<id>` (`resource-enumerator._addInlineConfigResource`).
         expect(templated.layerDir).toBe("layers/templated_layer");
-        // Normalisé par `expandLayerTemplates` via `layerDataPath` — pas dérivé ici.
+        // Normalised by `expandLayerTemplates` via `layerDataPath` — not derived here.
         expect(templated.dataFile).toBe("data/templated_layer.geojson");
     });
 
@@ -234,7 +238,7 @@ describe("B-152 — site 2 : `layerDir` et `dataFile` sont DÉRIVÉS", () => {
         const cellsOf = (tr: Element): string[] =>
             [...tr.querySelectorAll("td")].map((td) => (td.textContent ?? "").trim());
 
-        // Les lignes sortent dans l'ordre de `LS._layers` — c'est la même boucle.
+        // Rows come out in `LS._layers` order — it is the same loop.
         const idx = (id: string): number => LS._layers.findIndex((l) => l.id === id);
         const directCells = cellsOf(rows[idx("direct_layer")]!);
         const templatedCells = cellsOf(rows[idx("templated_layer")]!);
@@ -254,10 +258,10 @@ describe("B-152 — site 2 : `layerDir` et `dataFile` sont DÉRIVÉS", () => {
     });
 });
 
-describe("B-152 — site 3 : l'état de cache est OBSERVABLE", () => {
+describe("couche en ligne — site 3 : l'état de cache est OBSERVABLE", () => {
     test("isLayerCached reconnaît l'URL que le core met réellement en cache", async () => {
-        // Le manifeste porte exactement ce que `resource-enumerator` écrit pour une couche
-        // en ligne — pas une URL fabriquée pour l'occasion.
+        // The manifest carries exactly what `resource-enumerator` writes for an
+        // inline layer — not a URL fabricated for the occasion.
         installStorage([{ url: CACHED_URL(profileId) }]);
         beginCacheStatusPass();
 
@@ -274,14 +278,15 @@ describe("B-152 — site 3 : l'état de cache est OBSERVABLE", () => {
     });
 });
 
-describe("B-161 — la géométrie se lit sur `geometry` COMME sur `geometryType`", () => {
+describe("la géométrie se lit sur `geometry` COMME sur `geometryType`", () => {
     /**
-     * 🛑 Le schéma pose les deux comme le MÊME champ — `layer-config.schema.json:42` :
-     * « Root-level alias of `geometry`. Canonical form READ BY THE CODE (…) — do NOT migrate
-     * (ANO-007) ». Le code lisait pourtant `geometryType` **seul**, la clé que **0 config sur
-     * 24** déclare sans l'autre, pendant que **18** ne déclarent que `geometry`. Mesuré en
-     * navigateur : 38 des 42 lignes du sélecteur de `tourism` rendaient `-`, dont 14 couches
-     * DIRECTES — c'est cette symétrie qui prouve que la cause n'est pas l'`inlineConfig`.
+     * 🛑 The schema sets both as the SAME field — `layer-config.schema.json:42`:
+     * "Root-level alias of `geometry`. Canonical form READ BY THE CODE (…) — do
+     * NOT migrate (ANO-007)". The code nonetheless read `geometryType` **alone**,
+     * the key **0 configs out of 24** declare without the other, while **18**
+     * declare only `geometry`. Measured in a browser: 38 of `tourism`'s 42
+     * selector rows rendered `-`, including 14 DIRECT layers — that symmetry is
+     * what proves the cause is not the `inlineConfig`.
      */
     test("une couche qui ne déclare que `geometry` rend sa géométrie, pas `-`", async () => {
         await LS.populate();
@@ -303,10 +308,10 @@ describe("B-161 — la géométrie se lit sur `geometry` COMME sur `geometryType
             const i = LS._layers.findIndex((l) => l.id === id);
             return ([...rows[i]!.querySelectorAll("td")][2]?.textContent ?? "").trim();
         };
-        // La cellule porte la clé i18n de la géométrie, pas la valeur brute — on compare
-        // donc au niveau où le rendu opère. Les deux géométries DIFFÈRENT : une ligne qui
-        // rendrait celle de l'autre ne passerait pas.
-        // Témoin : la couche à `geometryType` affiche déjà la sienne.
+        // The cell carries the geometry's i18n key, not the raw value — so we
+        // compare at the level where rendering operates. The two geometries
+        // DIFFER: a row rendering the other's would not pass.
+        // Witness: the `geometryType` layer already displays its own.
         expect(cell("direct_layer")).toBe("storage.geometry.polygon");
         expect(cell("alias_layer")).toBe("storage.geometry.point");
         expect(cell("alias_layer")).not.toBe("-");

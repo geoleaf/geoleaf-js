@@ -24,7 +24,7 @@
 import { Log } from "../../utils/log/index.js";
 import { domCreate } from "../../utils/general/dom-helpers.js";
 
-// ── Local structural types (S2.1 — ui/components) ───────────────────────────
+// ── Local structural types (ui/components) ───────────────────────────
 // Symbol configs arrive as loosely-typed bags from taxonomy, legend and
 // layer-manager callers. Narrow to the members read here.
 
@@ -278,7 +278,7 @@ function _buildPolygonSvgEl(
         if (fillOpacity !== 1) rect.setAttribute("fill-opacity", String(fillOpacity));
     } else {
         rect.setAttribute("fill", "none");
-        if (config.dashArray) rect.setAttribute("stroke-dasharray", config.dashArray as string);
+        if (config.dashArray) rect.setAttribute("stroke-dasharray", config.dashArray);
     }
     svg.appendChild(rect);
     return svg;
@@ -291,7 +291,7 @@ function _renderIconSymbol(
 ): HTMLElement {
     if (symbolConfig.iconUrl) {
         const imgEl = domCreate("img", "gl-legend__icon-img", container);
-        imgEl.src = symbolConfig.iconUrl as string;
+        imgEl.src = symbolConfig.iconUrl;
         if (symbolConfig.size) {
             imgEl.style.width = symbolConfig.size + "px";
             imgEl.style.height = symbolConfig.size + "px";
@@ -346,7 +346,7 @@ const _LegendSymbols = {
         // (the former `style.opacity` dimmed the whole swatch, border included).
         circleEl.style.backgroundColor =
             config.fillOpacity !== undefined
-                ? _hexToRgba(fillColor, config.fillOpacity as number)
+                ? _hexToRgba(fillColor, config.fillOpacity)
                 : fillColor;
         circleEl.style.borderRadius = "50%";
         circleEl.style.border = strokeWidth + "px solid " + strokeColor;

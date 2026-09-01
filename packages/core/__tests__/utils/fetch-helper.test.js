@@ -1,6 +1,6 @@
 /**
  * @file fetch-helper.test.js
- * Sprint 3.3 — Tests for FetchHelper and rate limiter
+ * Tests for FetchHelper and rate limiter
  */
 
 import { FetchHelper } from "../../src/utils/general/fetch-helper.js";

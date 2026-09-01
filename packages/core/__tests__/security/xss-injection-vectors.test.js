@@ -1,5 +1,5 @@
 /**
- * @fileoverview Sprint 5 — Comprehensive XSS injection vector tests.
+ * @fileoverview Comprehensive XSS injection vector tests.
  * Tests each security function against OWASP XSS attack payloads.
  */
 
@@ -38,7 +38,7 @@ const XSS_PAYLOADS = [
     "vbscript:alert(1)",
 ];
 
-describe("XSS Injection Vectors — Sprint 5 Security Audit", () => {
+describe("XSS Injection Vectors — Security Audit", () => {
     beforeEach(() => vi.clearAllMocks());
 
     // ── 1. escapeHtml ──

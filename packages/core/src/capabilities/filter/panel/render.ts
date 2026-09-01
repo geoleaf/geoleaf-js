@@ -273,7 +273,7 @@ function _wireTaxonomyTree(root: HTMLElement): void {
         if (arrow) toggleArrow(arrow);
     });
     root.addEventListener("keydown", (e) => {
-        const ke = e as KeyboardEvent;
+        const ke = e;
         if (ke.key !== "Enter" && ke.key !== " ") return;
         const arrow = (ke.target as HTMLElement | null)?.closest?.(".gl-filter-tree__arrow");
         if (arrow) {

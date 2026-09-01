@@ -16,11 +16,11 @@ vi.mock("../../src/kernel/config/storage.js", () => ({
 vi.mock("../../src/kernel/config/profile.js", () => ({
     ProfileManager: { init: vi.fn() },
 }));
-// ⚠️ R.21 (24/07/2026) — un `vi.mock(".../config/normalization.js")` vivait ici. Les
-// deux mocks au-dessus sont légitimes (`config-core.ts` importe bien `storage.js` et
-// `profile.js`), celui-ci ne l'était pas : `normalization.ts` n'est importé que par
-// `globals.config.ts` et `geojson/loader/data-mapping.ts`, dont aucun n'est chargé par
-// ce test. Décoratif, retiré après preuve que la suite est inchangée sans lui.
+// ⚠️ A `vi.mock(".../config/normalization.js")` lived here. The two mocks
+// above are legitimate (`config-core.ts` does import `storage.js` and
+// `profile.js`), this one was not: `normalization.ts` is only imported by
+// `globals.config.ts` and `geojson/loader/data-mapping.ts`, neither loaded
+// by this test. Decorative, removed after proving the suite is unchanged without it.
 
 import { Config } from "../../src/kernel/config/config-primitives.js";
 import { Config as CoreConfig } from "../../src/kernel/config/geoleaf-config/config-core.js";

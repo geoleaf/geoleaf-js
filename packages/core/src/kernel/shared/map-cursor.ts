@@ -53,7 +53,7 @@ interface CursorCapableMap {
     getCanvas?(): HTMLCanvasElement;
     /** Root container. Fallback only: see the module header for why it is not equivalent. */
     getContainer(): HTMLElement;
-    /** Escape hatch to the engine map, where {@link EXCLUSIVE_MODE_KEY} is read. */
+    /** Escape hatch to the engine map — the object that carries {@link ExclusiveModeHost}'s flag. */
     getNativeMap?(): unknown;
 }
 

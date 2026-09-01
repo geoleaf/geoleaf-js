@@ -307,6 +307,21 @@ export interface IMapAdapter {
     updateMarkerPosition(id: string, position: GeoLeafLatLng): void;
 
     /**
+     * Rotates an existing marker's icon.
+     *
+     * Pair it with `rotationAlignment: "map"` at creation: the engine then re-derives the
+     * on-screen angle from the map bearing on every frame, so a caller updating this once per
+     * position fix still gets a continuously correct icon during an animated camera move.
+     *
+     * Optional: an adapter whose engine has no marker-rotation model may omit it, and callers
+     * must handle `undefined` as they do for the other optional members.
+     *
+     * @param id - The marker identifier used in `createMarker()`.
+     * @param degrees - Rotation clockwise, in degrees.
+     */
+    setMarkerRotation?(id: string, degrees: number): void;
+
+    /**
      * Returns a handle on an existing marker, or `null` when no marker carries that id.
      *
      * The id-based surface above covers the common cases; this exists for the two things
@@ -344,7 +359,9 @@ export interface IMapAdapter {
      * @param content - HTML string or DOM element to display inside the popup.
      * @precondition When `content` is a string, it **must** be sanitised by the
      * caller before being passed here. The adapter does not sanitise content.
-     * Use `GeoLeaf.Security.sanitize()` or an equivalent helper.
+     * Use `GeoLeaf.Security.sanitizeHTML()` (allowlist) or `stripHtml()`, or pass an
+     * already-built `HTMLElement` — the internal renderers use `setDOMContent`, never a
+     * raw string.
      */
     createPopup(content: string | HTMLElement, options?: GeoLeafPopupOptions): unknown;
 

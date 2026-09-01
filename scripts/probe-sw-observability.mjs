@@ -5,7 +5,7 @@
  * WHY THIS EXISTS. Until 02/08/2026 no spec in this repository had ever asserted anything
  * through a *running* Service Worker: all 26 specs that touch it set `serviceWorkers:
  * "block"`, and the two that do not only assert that buttons exist. That made five of the
- * six proof criteria of Sprint 3 (`roadmap_collecte-terrain-offline.md`) uninstrumentable,
+ * six proof criteria of the offline groundwork uninstrumentable,
  * so this probe was written as the blocking spike that opens the sprint.
  *
  * 🛑 THE FINDING IT EXISTS TO CARRY, because it costs a day to rediscover:

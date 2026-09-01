@@ -26,13 +26,13 @@ import type { ClusterConfig } from "./types.js";
  * ⚠️ **Named on purpose, and it was the LAST capability without a name.** `global.d.ts`
  * declared `Cluster?: typeof import("./public-api.js").Cluster` — a member this module has
  * never exported. The declaration compiled everywhere `skipLibCheck` is on (the common case)
- * and rendered `TS2694` the moment an integrator turned it off. Trouvé par la tâche 10.8 du
- * passage public, l'épreuve hors monorepo, **avant** la publication : `npm` grave un `.d.ts`
- * par version, et le corriger après aurait coûté un 3.0.1.
+ * and rendered `TS2694` the moment an integrator turned it off. Found by the
+ * out-of-monorepo trial of the public release, **before** publication: `npm`
+ * engraves one `.d.ts` per version, and fixing it after would have cost a 3.0.1.
  *
- * 📌 Les 20 autres capacités suivent déjà ce patron (`BrandingPublicApi`,
- * `CoordinatesPublicApi`…). Celle-ci était la 21ᵉ, et la seule dont le commentaire admettait
- * l'écart — « Pas de type public nommé » — tout en référençant un nom.
+ * 📌 The 20 other capabilities already follow this pattern (`BrandingPublicApi`,
+ * `CoordinatesPublicApi`…). This one was the 21st, and the only one whose comment
+ * admitted the gap — "No named public type" — while referencing a name.
  */
 export type ClusterPublicApi = {
     /** Returns `true` when clustering is enabled (`modules.cluster.enabled !== false`). */

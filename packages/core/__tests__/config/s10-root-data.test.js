@@ -94,13 +94,17 @@ describe("config B1 — data.* (config/profile.ts)", () => {
             expect(fetchJsonMock).not.toHaveBeenCalled();
         });
 
-        it("profilesBasePath defaults to 'data/profiles' in the baseUrl (ANO-022)", async () => {
+        it("profilesBasePath defaults to 'profiles' in the baseUrl (ANO-022, aligned 25/08/2026)", async () => {
+            // The historic default here was "data/profiles" while every other reader of the
+            // key fell back to "profiles" — profile fetched from one directory, layers
+            // resolved from another. The set of allowed defaults is pinned by
+            // guards/profiles-base-path-defaults.guard.test.ts.
             ProfileManager.init({ data: { activeProfile: "p1" } });
             fetchJsonMock.mockResolvedValue({ layers: [] });
             await ProfileManager.loadActiveProfileResources({});
             expect(mockLog.info).toHaveBeenCalledWith(
                 "[GeoLeaf.Config.Profile] Starting profile load:",
-                expect.objectContaining({ baseUrl: "data/profiles/p1" })
+                expect.objectContaining({ baseUrl: "profiles/p1" })
             );
         });
 

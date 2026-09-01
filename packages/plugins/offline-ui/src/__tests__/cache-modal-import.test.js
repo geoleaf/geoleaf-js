@@ -16,7 +16,7 @@ import { ButtonControl } from "../ui/cache-button/button-control.js";
 import { createElement } from "../utils/dom-helpers.js";
 import { resolveProfileLayers } from "@core/config/profile-layers.js";
 // `export-logic.js` imports `CacheControl` from `../../cache/cache-control.js`,
-// which `vitest.config.ts:252` aliases to `__mocks__/empty-module.js` (an empty
+// which `vitest.config.ts` aliases to `__mocks__/empty-module.js` (an empty
 // stub). We need to inject a working CacheControl into what export-logic resolves.
 //
 // This used to be done by importing the stub as a namespace and assigning onto it.

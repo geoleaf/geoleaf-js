@@ -1,5 +1,5 @@
 /**
- * S5.5.2 — globals.config.ts branch coverage (B3+B4)
+ * globals.config.ts branch coverage (B3+B4)
  *
  * Targets:
  *   - All _g.GeoLeaf.* assignments in globals.config.ts
@@ -72,7 +72,7 @@ vi.mock("../../src/kernel/config/geoleaf-config/config-validation.js", () => ({}
 
 // Side-effect import: triggers B3+B4 assignments
 import "../../src/globals/globals.config.ts";
-// S1.3: trigger explicitly (ESM import — same module instance as globals.config.ts).
+// Trigger explicitly (ESM import — same module instance as globals.config.ts).
 
 const GL = globalThis.GeoLeaf;
 

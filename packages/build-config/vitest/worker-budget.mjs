@@ -1,95 +1,101 @@
 /**
  * @description
- * Le budget de processus des runs Vitest — source unique, dérivée (B.48).
+ * The Vitest runs' process budget — single, derived source.
  *
- * ## Le défaut que ce module corrige
+ * ## The defect this module fixes
  *
- * Un run de tests de ce dépôt coûte `processus_vitest_concurrents × workers_par_processus`
- * processus Node. Les deux facteurs vivaient à des endroits différents, et **le produit
- * n'était borné nulle part** :
+ * A test run of this repo costs
+ * `concurrent_vitest_processes × workers_per_process` Node processes. The two
+ * factors lived in different places, and **the product was bounded nowhere**:
  *
- * - `npm test` lançait `turbo run test` **sans `--concurrency`** ;
- * - aucune config de package ne déclarait `maxWorkers`, si bien que chaque `vitest run`
- *   retombait sur le défaut de Vitest 4 — `Math.max(numCpus - 1, 1)`, soit **23** sur
- *   une machine à 24 cœurs (`resolveMaxWorkers`, `vitest/dist/chunks/cli-api.*.js`).
+ * - `npm test` launched `turbo run test` **without `--concurrency`**;
+ * - no package config declared `maxWorkers`, so each `vitest run` fell back on
+ *   Vitest 4's default — `Math.max(numCpus - 1, 1)`, i.e. **23** on a 24-core
+ *   machine (`resolveMaxWorkers`, `vitest/dist/chunks/cli-api.*.js`).
  *
- * Chaque processus croyait donc posséder la machine seul. **Mesuré le 22/07/2026** sur
- * l'hôte WSL de référence (24 cœurs, 15 Go de RAM) : pic à **81 processus Node et 11,3 Go
- * de RSS cumulée**, pour ~11 Go réellement disponibles. Le run passait *au bord* — d'où
- * un `ci:local` rouge une fois sur deux, toujours en **timeout** et jamais en assertion,
- * sur des paquets non touchés et verts en isolation.
+ * Each process thus believed it owned the machine alone. **Measured on
+ * 2026-07-22** on the reference WSL host (24 cores, 15 GB of RAM): peak of **81
+ * Node processes and 11.3 GB of cumulated RSS**, for ~11 GB really available.
+ * The run passed *at the edge* — hence a `ci:local` red one time out of two,
+ * always on **timeout** and never on an assertion, on untouched packages green
+ * in isolation.
  *
- * ⚠️ Le facteur qui cède n'est pas le CPU mais la **mémoire** : sous pression, les workers
- * `vmForks` atteignent leur seuil de recyclage, et un recyclage = contexte VM neuf =
- * ré-import et re-transpilation complets. C'est ainsi qu'un fichier de 72 lignes **sans
- * le moindre minuteur** (`plugin-websocket/src/__tests__/entry.test.ts`) dépasse 10 s.
+ * ⚠️ The factor that gives is not the CPU but the **memory**: under pressure,
+ * `vmForks` workers reach their recycling threshold, and a recycle = fresh VM
+ * context = full re-import and re-transpilation. That is how a 72-line file
+ * **with no timer whatsoever** (`plugin-websocket/src/__tests__/entry.test.ts`)
+ * exceeds 10 s.
  *
- * ## Les invariants
+ * ## The invariants
  *
  *     fanout × maxWorkers()                    ≤ availableParallelism()
- *     fanout × maxWorkers() × vmMemoryLimit()  ≤ MEMORY_HEADROOM   (de la RAM totale)
+ *     fanout × maxWorkers() × vmMemoryLimit()  ≤ MEMORY_HEADROOM   (of total RAM)
  *
- * ⚠️ Le premier invariant a **une exception assumée** : `maxWorkers()` ne descend jamais
- * sous 2, pour qu'un runner CI à 4 cœurs garde du parallélisme intra-paquet. Quand ce
- * plancher mord, le total plafonne à `2 × fanout` — donc au pire à **2 × cœurs**, atteint
- * quand `fanout = cœurs`. C'est le pire cas LÉGITIME, et il reste meilleur que l'état
- * d'avant B.48 (un runner 4 cœurs ouvrait 4 × 3 = 12 workers, il en ouvre 8).
+ * ⚠️ The first invariant has **one assumed exception**: `maxWorkers()` never
+ * goes below 2, so a 4-core CI runner keeps intra-package parallelism. When that
+ * floor bites, the total caps at `2 × fanout` — hence at worst **2 × cores**,
+ * reached when `fanout = cores`. That is the LEGITIMATE worst case, and it stays
+ * better than the prior state (a 4-core runner opened 4 × 3 = 12 workers, it
+ * opens 8).
  *
- * `oversubscribed` ne se déclenche donc qu'**au-delà** de ce pire cas légitime, c'est-à-dire
- * pour un `--fanout` forcé à une valeur que la machine ne peut pas tenir. Le seuil n'est pas
- * arbitraire : c'est la frontière exacte entre « le plancher me protège » et « j'ai demandé
- * l'impossible ». Une alerte qui se déclencherait à chaque run CI ne serait plus lue —
- * précisément le défaut que ce module corrige.
+ * `oversubscribed` thus only fires **beyond** that legitimate worst case, i.e.
+ * for a `--fanout` forced to a value the machine cannot hold. The threshold is
+ * not arbitrary: it is the exact boundary between "the floor protects me" and
+ * "I asked the impossible". An alert firing at every CI run would no longer be
+ * read — precisely the defect this module fixes.
  *
- * Le premier borne les processus, le second borne la mémoire qu'ils peuvent atteindre
- * avant recyclage. Les deux se déduisent d'**une seule** entrée : `GEOLEAF_TEST_FANOUT`,
- * le nombre de processus `vitest` concurrents, posé par `scripts/run-tests.cjs` (qui le
- * passe aussi à `turbo --concurrency`). Absente, elle vaut `1` : un run solitaire.
+ * The first bounds the processes, the second bounds the memory they can reach
+ * before recycling. Both derive from **one** input: `GEOLEAF_TEST_FANOUT`, the
+ * number of concurrent `vitest` processes, set by `scripts/run-tests.cjs` (which
+ * also passes it to `turbo --concurrency`). Absent, it is `1`: a solitary run.
  *
- * ## Deux règles héritées de ce répertoire
+ * ## Two rules inherited from this directory
  *
- * **`.mjs`, jamais `.ts`** — comme tout ce dossier : ne dépendre d'aucun transpileur pour
- * lire des modules dont l'un installe précisément ce transpileur (cf. `base.mjs`).
+ * **`.mjs`, never `.ts`** — like this whole folder: depend on no transpiler to
+ * read modules one of which installs precisely that transpiler (cf. `base.mjs`).
  *
- * **Une valeur identique partout** — Vitest 4 abat le run `projects` AVANT tout test si
- * deux projets déclarent des `maxWorkers` différents sous le même `sequence.groupOrder`
- * (`cli-api.*.js`, « Projects X and Y have different 'maxWorkers'… »). Il ne refuse que la
- * **divergence**, pas le cap lui-même — d'où ce module, appelé par les 18 configs, qui
- * rend l'uniformité structurelle plutôt que disciplinaire.
+ * **One identical value everywhere** — Vitest 4 kills the `projects` run BEFORE
+ * any test if two projects declare different `maxWorkers` under the same
+ * `sequence.groupOrder` (`cli-api.*.js`, "Projects X and Y have different
+ * 'maxWorkers'…"). It refuses only the **divergence**, not the cap itself —
+ * hence this module, called by the 18 configs, which makes uniformity
+ * structural rather than disciplinary.
  */
 
 import { availableParallelism, totalmem } from "node:os";
 
-/** Nom de la variable d'environnement portant le nombre de processus vitest concurrents. */
+/** Name of the environment variable carrying the concurrent vitest process count. */
 export const FANOUT_ENV = "GEOLEAF_TEST_FANOUT";
 
 /**
- * Part de la RAM **totale** que l'ensemble des workers peut atteindre avant recyclage.
+ * Share of **total** RAM the worker set can reach before recycling.
  *
- * Ce n'est pas une réservation : le seuil déclenche un recyclage, il ne préalloue rien.
- * Mais s'il vaut 1, le « plafond » est une tautologie — il autorise les workers à occuper
- * toute la machine, ce qui n'est pas un filet. Le reste paie ce que la mesure du 22/07
- * montre autour des workers : les processus principaux (un par tâche turbo), le cache de
- * pages, et le simple fait que sur 15 Go de RAM cet hôte n'en avait que ~11 de libres.
+ * Not a reservation: the threshold triggers a recycle, it preallocates nothing.
+ * But at 1, the "ceiling" is a tautology — it allows the workers to occupy the
+ * whole machine, which is no net. The rest pays for what the 07-22 measurement
+ * shows around the workers: the main processes (one per turbo task), the page
+ * cache, and the simple fact that of 15 GB of RAM this host had only ~11 free.
  *
- * `0.5` place le seuil par worker à ~650 Mo en solo et ~325 Mo en essaim, quand la RSS
- * moyenne mesurée par worker était de ~140 Mo. Le recyclage reste donc l'exception qu'il
- * doit être : c'est la RÉDUCTION DU NOMBRE de workers qui fait le travail, pas ce seuil.
+ * `0.5` puts the per-worker threshold at ~650 MB solo and ~325 MB in a swarm,
+ * when the measured mean RSS per worker was ~140 MB. Recycling thus stays the
+ * exception it must be: REDUCING THE NUMBER of workers does the work, not this
+ * threshold.
  */
 const MEMORY_HEADROOM = 0.5;
 
 /**
- * Nombre de processus `vitest` qui tournent en parallèle sur cette machine.
+ * Number of `vitest` processes running in parallel on this machine.
  *
- * `1` par défaut — un `npx vitest run` racine, ou un `npm test -w <paquet>` isolé, est
- * seul et peut prendre la machine. Seul `scripts/run-tests.cjs` pose autre chose, parce
- * que c'est lui qui crée l'essaimage.
+ * `1` by default — a root `npx vitest run`, or an isolated
+ * `npm test -w <package>`, is alone and can take the machine. Only
+ * `scripts/run-tests.cjs` sets something else, because it is what creates the
+ * swarm.
  *
- * Interne : les trois fonctions publiques ci-dessous en dérivent tout ce dont les configs
- * ont besoin. L'exposer sans consommateur en ferait un export orphelin, que le gate
- * `dead-code` (knip) refuse — à juste titre.
+ * Internal: the three public functions below derive from it everything the
+ * configs need. Exposing it without a consumer would make it an orphan export,
+ * which the `dead-code` gate (knip) refuses — rightly.
  *
- * @returns {number} Entier ≥ 1.
+ * @returns {number} Integer ≥ 1.
  */
 function fanout() {
     const n = Number(process.env[FANOUT_ENV]);
@@ -97,21 +103,21 @@ function fanout() {
 }
 
 /**
- * Plafond de workers pour CE processus vitest.
+ * Worker ceiling for THIS vitest process.
  *
- * - **Seul** (`fanout === 1`) : la formule adaptative historique de la config racine —
- *   jamais sous 4 (runners CI à 2-4 cœurs), jamais au-dessus de 12 (au-delà, Vitest
- *   note lui-même que le thread principal s'étrangle ; un hôte à 24 cœurs tournait
- *   83 % à vide avec l'ancien 4 fixe).
- * - **En essaim** : la part de la machine qui revient à ce processus, plancher à 2 pour
- *   qu'un runner CI à 4 cœurs garde du parallélisme intra-paquet.
+ * - **Alone** (`fanout === 1`): the root config's historical adaptive formula —
+ *   never under 4 (2-4-core CI runners), never above 12 (beyond, Vitest itself
+ *   notes the main thread chokes; a 24-core host ran 83 % idle with the old
+ *   fixed 4).
+ * - **In a swarm**: this process's share of the machine, floored at 2 so a
+ *   4-core CI runner keeps intra-package parallelism.
  *
- * ⚠️ Changement assumé : un `npm test -w <paquet>` isolé passe de 23 workers (défaut
- * Vitest non plafonné) à 12 — c'est le plafond que le run racine appliquait déjà, étendu
- * au cas solitaire qui, lui, n'en avait aucun. **Mesuré sur `@geoleaf/core` seul** (423
- * fichiers de test) : 29 → 16 processus, 3 494 → 1 496 Mo, 52 → 55 s. Moitié moins de
- * processus et 57 % de mémoire en moins pour 3 s — le parallélisme excédentaire ne
- * payait pas.
+ * ⚠️ Assumed change: an isolated `npm test -w <package>` goes from 23 workers
+ * (uncapped Vitest default) to 12 — the ceiling the root run already applied,
+ * extended to the solitary case which had none. **Measured on `@geoleaf/core`
+ * alone** (423 test files): 29 → 16 processes, 3,494 → 1,496 MB, 52 → 55 s.
+ * Half the processes and 57 % less memory for 3 s — the excess parallelism did
+ * not pay.
  *
  * @returns {number} Entier ≥ 2.
  */
@@ -123,33 +129,33 @@ export function maxWorkers() {
 }
 
 /**
- * Seuil de recyclage d'un worker `vmForks`, en **fraction de la RAM totale**.
+ * A `vmForks` worker's recycling threshold, as a **fraction of total RAM**.
  *
- * Vitest le lit sous la clé **`vmMemoryLimit`** et n'accepte qu'un nombre dans `]0, 1]`
- * (fraction), un pourcentage (`"50%"`) ou une taille (`"512MB"`).
+ * Vitest reads it under the **`vmMemoryLimit`** key and only accepts a number in
+ * `]0, 1]` (fraction), a percentage (`"50%"`) or a size (`"512MB"`).
  *
- * ⚠️ Ne jamais réécrire ceci en `"1/2"` : `stringToBytes` parse cette chaîne via
- * `parseFloat` → **1** → `Math.floor(1 × totalmem)`, soit **100 % de la RAM** et plus
- * aucun recyclage. C'est exactement le piège dans lequel la config précédente était
- * tombée — sous une clé (`memoryLimit`) que Vitest 4 ne lit même pas, ce qui masquait
- * l'erreur en la rendant inoffensive.
+ * ⚠️ Never rewrite this as `"1/2"`: `stringToBytes` parses that string via
+ * `parseFloat` → **1** → `Math.floor(1 × totalmem)`, i.e. **100 % of the RAM**
+ * and no recycling at all. Exactly the trap the previous config had fallen
+ * into — under a key (`memoryLimit`) Vitest 4 does not even read, which masked
+ * the error by making it harmless.
  *
- * Sans effet sur les pools `forks` (core, addpoi, storage) : Vitest ne consulte cette
- * valeur que pour `vmForks` / `vmThreads`.
+ * No effect on the `forks` pools (core, addpoi, storage): Vitest only consults
+ * this value for `vmForks` / `vmThreads`.
  *
- * @returns {number} Fraction dans `]0, 1]`.
+ * @returns {number} Fraction in `]0, 1]`.
  */
 export function vmMemoryLimit() {
     return MEMORY_HEADROOM / (fanout() * maxWorkers());
 }
 
 /**
- * Le budget résolu, pour journalisation. Aucun consommateur de production — sert à
- * afficher ce que le run va coûter avant qu'il le coûte.
+ * The resolved budget, for logging. No production consumer — serves to display
+ * what the run will cost before it costs it.
  *
- * `oversubscribed` signale un budget au-delà du pire cas légitime (`2 × cœurs`) — voir
- * l'exception du plancher, en tête de module. Faux dans tout usage normal, y compris sur
- * un runner CI à 4 cœurs.
+ * `oversubscribed` flags a budget beyond the legitimate worst case
+ * (`2 × cores`) — see the floor exception, at the head of the module. False in
+ * all normal use, including on a 4-core CI runner.
  *
  * @returns {{fanout: number, maxWorkers: number, vmMemoryLimit: number, cores: number,
  *   peakWorkers: number, peakMemoryMb: number, oversubscribed: boolean}}

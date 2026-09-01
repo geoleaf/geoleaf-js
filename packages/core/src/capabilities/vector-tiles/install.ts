@@ -38,6 +38,13 @@ export const VECTOR_TILES_INSTALLER: CapabilityInstaller = {
         // Layer B — moved verbatim from globals.geojson.ts (setupGeoJSONKernel, B5).
         // The loader reads it back lazily through `_loaderDeps.getVectorTiles()`, so the
         // write order relative to the geojson kernel setup does not matter.
+        //
+        // Re-measured 24/08/2026 — this capability DOES mount a namespace (`_VectorTiles`,
+        // declared and typed in `global.d.ts`), so the earlier "empty shell" premise for
+        // skipping a `public-api.ts` was false. The decision to skip it is KEPT on its real
+        // ground: the mount is an underscore seam read back by the geojson loader, not a
+        // public facade a re-export file would clarify, and conforming a stable shipped
+        // file to an internal pattern would change no observable byte.
         gl._VectorTiles = VectorTiles;
     },
 };

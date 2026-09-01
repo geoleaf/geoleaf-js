@@ -9,7 +9,7 @@
  * Extracted so the 14 table sub-modules share one typed view of the mutable
  * shared state (`tableState`), the layer/feature data they read from the GeoJSON
  * module, the minimal map handle they call, and the render context — without
- * re-declaring `any` locally (roadmap_typage-strict.md, S5 — mirrors
+ * re-declaring `any` locally (mirrors
  * `search/search-types.ts` and `poi/core-types.ts`).
  *
  * Feature/layer/config shapes are intentionally permissive
@@ -121,13 +121,14 @@ export interface TableConfig {
     showButton?: boolean;
     defaultVisible?: boolean;
     /**
-     * @deprecated Sans effet — le panneau défile en VIRTUEL et ne pagine pas (B-71).
+     * @deprecated No effect — the panel scrolls VIRTUALLY and does not paginate.
      *
-     * La clé était déclarée et portait un défaut (`50`) sans avoir **aucun site de lecture** :
-     * `grep -rn "pageSize" src/` ne rendait que sa déclaration et son défaut. Un profil qui la
-     * posait n'obtenait ni effet ni avertissement. Le champ reste ici, marqué, plutôt que retiré :
-     * le type est publié, et le supprimer casserait la compilation d'un intégrateur qui l'a écrit —
-     * le déprécier le lui **dit**, ce que son silence précédent ne faisait pas.
+     * The key was declared and carried a default (`50`) with **no read
+     * site**: `grep -rn "pageSize" src/` returned only its declaration and
+     * its default. A profile setting it got neither effect nor warning. The
+     * field stays here, marked, rather than removed: the type is published,
+     * and deleting it would break the compilation of an integrator who wrote
+     * it — deprecating it **tells** them, which its previous silence did not.
      */
     pageSize?: number;
     maxRowsPerLayer?: number;

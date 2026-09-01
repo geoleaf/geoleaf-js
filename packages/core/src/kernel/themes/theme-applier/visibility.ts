@@ -7,9 +7,30 @@
 
 /**
  * GeoLeaf Theme Applier - Visibility
- * Gestion de la visibility des layers et application des styles
+ * Layer visibility management and style application
  */
 
+/**
+ * @sideEffectGraft packages/core/src/globals/globals.ui.ts
+ *
+ * ✅ ASSUMED as a module-level state, decided 24-25/08/2026 — not a side effect awaiting
+ * conversion. Converting the graft to plain exports would force the anchor to know every
+ * member it re-exports, for nothing measurable: the graft is declared (this mark), anchored
+ * (the bare import the mark names), and guarded (the graft gate reddens if either
+ * disappears). What would REOPEN the decision is a second writer grafting onto the same
+ * base — not a re-reading of this file.
+ *
+ * ⚠️ **SIDE-EFFECT module**: grafts 3 members onto `ThemeApplierCore` at import;
+ * `core.ts` CALLS them without defining them. It exports nothing that is consumed, so
+ * no dead-code instrument can see it live — ESLint, `check-orphan-exports` and a
+ * human read all declared it dead **in concert, and all three were wrong**. A
+ * side-effect module has no consumer, by definition.
+ *
+ * **Its only anchor is a BARE import in `globals.ui.ts`.** Removing it drops
+ * this file from the graph **silently**: the test suite stays green, and the
+ * symptom is a production `TypeError`. It happened (July 2026, caught within the
+ * hour). `GRAFT-03` now guards that the anchor still imports it.
+ */
 import { Log } from "../../../utils/log/index.js";
 import { Config } from "../../config/config-primitives.js";
 import { ThemeApplierCore as _TA } from "./core.js";
@@ -93,7 +114,7 @@ TA._hideAllLayers = function () {
         return;
     }
 
-    // Reset tous les overrides user for theisser the theme prendre the control
+    // Reset all user overrides to let the theme take control
     VisibilityManager.resetAllUserOverrides();
 
     // Iterate over all registered layers
@@ -143,7 +164,7 @@ TA._applyLayerConfig = function (layerConfig: ThemeLayerConfig) {
             }
         });
     } else {
-        // The layer existe already, appliquer directly la visibility
+        // The layer already exists, apply the visibility directly
         _result = TA._setLayerVisibilityAndStyle(layerId, visible, styleId);
     }
 
@@ -206,7 +227,7 @@ function _onStyleLoaded(
         ...(styleConfig?.style ?? styleConfig),
     };
     if (Array.isArray(styleConfig?.styleRules)) {
-        paintForStyle.styleRules = styleConfig!.styleRules;
+        paintForStyle.styleRules = styleConfig.styleRules;
     }
     (LayerManagerStyle as unknown as LayerManagerStyleLike).setLayerStyle(layerId, paintForStyle);
     const layerDataForStyle = GeoJSONShared.state.layers?.get(layerId);
@@ -264,10 +285,10 @@ function _applyLayerVisible(
 }
 
 /**
- * Sets the visibility et le style d'a layer
- * @param {string} layerId - ID de the layer
+ * Sets a layer's visibility and style
+ * @param {string} layerId - Layer ID
  * @param {boolean} visible - Desired visibility
- * @param {string} styleId - ID du style to appliquer
+ * @param {string} styleId - Style ID to apply
  * @returns {Promise<void>}
  * @private
  */

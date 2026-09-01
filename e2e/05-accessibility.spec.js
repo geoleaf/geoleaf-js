@@ -1,21 +1,21 @@
 // @ts-check
-// Tâche 1.5.9 — Tests WCAG automatisés via @axe-core/playwright
+// Automated WCAG tests via @axe-core/playwright
 //
-// Suite dédiée accessibilité : scans axe approfondis sur les 3 variantes de
-// déploiement + tests comportementaux (focus trap, keyboard nav, ARIA).
+// Dedicated accessibility suite: deep axe scans over the deploy variants, plus
+// behavioural tests (focus trap, keyboard nav, ARIA).
 //
-// Références :
-//   - RGAA 4.1 / WCAG 2.1 AA (obligatoire organismes publics)
-//   - packages/core/docs/ACCESSIBILITY.md — patterns ARIA implémentés
-//   - Décision : scans page entière, exclusion canvas MapLibre, runOnly wcag2aa
+// References:
+//   - RGAA 4.1 / WCAG 2.1 AA (mandatory for public-sector bodies)
+//   - packages/core/docs/ACCESSIBILITY.md — implemented ARIA patterns
+//   - Decision: full-page scans, MapLibre canvas excluded, runOnly wcag2aa
 
 import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
 import { scanPage, scanComponent } from "./helpers/axe-config.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Groupe 1 — Baseline axe scans sur les 2 variantes de déploiement
-// Vérifie qu'aucun plugin tiers n'introduit de régression WCAG.
+// Group 1 — Baseline axe scans over the 2 deploy variants
+// Checks that no third-party plugin introduces a WCAG regression.
 // ─────────────────────────────────────────────────────────────────────────────
 
 test.describe("[a11y][baseline] axe scans — 2 deploy variants", () => {
@@ -29,14 +29,14 @@ test.describe("[a11y][baseline] axe scans — 2 deploy variants", () => {
         expect(results.violations).toEqual([]);
     });
 
-    // ⚠️ 5.5 — UN SCAN A DISPARU, ET C'EST UNE SUPPRESSION, PAS UN REPOINTAGE.
-    // Il visait `deploy-addpoi`, avec ce motif : « cette variante n'avait AUCUN scan a11y, et
-    // c'est la seule où le bouton et le formulaire d'ajout de POI sont rendus ». Le motif est
-    // tombé avec la variante — le bouton `poi-add` et son formulaire vivent maintenant sur
-    // `deploy-full`, que le scan ci-dessous couvre déjà. Le repointer aurait produit un
-    // DOUBLON à l'octet près, exactement ce que le commentaire d'ARCHI S8 refusait de faire
-    // pour `deploy-storage`. La surface a11y du parcours POI n'est donc pas perdue : elle est
-    // dans le scan `full`, et `09-editor.spec.js` porte son propre scan de l'éditeur.
+    // ⚠️ A SCAN DISAPPEARED HERE, AND IT IS A DELETION, NOT A REPOINT.
+    // It targeted `deploy-addpoi`, with this motive: "that variant had NO a11y scan, and it
+    // is the only one where the add-POI button and form are rendered". The motive fell with
+    // the variant — the `poi-add` button and its form now live on `deploy-full`, which the
+    // scan below already covers. Repointing it would have produced a byte-for-byte
+    // DUPLICATE, exactly what an earlier architecture note refused to do for another
+    // retired variant. The POI journey's a11y surface is therefore not lost: it sits in the
+    // `full` scan, and `09-editor.spec.js` carries its own editor scan.
 
     test("full (deploy-full) passes WCAG 2.1 AA", async ({ page }) => {
         page.context().setDefaultTimeout(30000);
@@ -49,8 +49,8 @@ test.describe("[a11y][baseline] axe scans — 2 deploy variants", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Groupe 2 — Composants UI : layer manager, légende, table, zoom controls
-// Tests ciblés sur les composants toujours présents dans le profil tourism.
+// Group 2 — UI components: layer manager, legend, table, zoom controls
+// Targeted tests on the components always present in the tourism profile.
 // ─────────────────────────────────────────────────────────────────────────────
 
 test.describe("[a11y][ui-components] ARIA sur composants UI actifs", () => {
@@ -92,13 +92,12 @@ test.describe("[a11y][ui-components] ARIA sur composants UI actifs", () => {
     });
 
     test("tableau (.gl-table-panel) passe axe scan quand présent", async ({ page }) => {
-        // DEUX paresses à lever (cf. 21-table.spec.js) :
-        //  1. le BUNDLE est lazy (registerLazy)  → plugins.load('table')
-        //  2. le PANNEAU DOM est lazy : CDC_plugin-table §2.3bis (commit d2e3187a) —
-        //     avec `modules.table.defaultVisible: false` (profil tourism),
-        //     `geoleaf:map:ready` ne construit rien ; `TableLifecycle.ensureInitialized()`
-        //     bâtit le DOM au 1er déclenchement de l'action toolbar `table`.
-        // Charger le bundle seul laisse donc `.gl-table-panel` absent du DOM.
+        // TWO lazinesses to lift (cf. 21-table.spec.js):
+        //  1. the BUNDLE is lazy (registerLazy)  → plugins.load('table')
+        //  2. the DOM PANEL is lazy: with `modules.table.defaultVisible: false` (tourism
+        //     profile), `geoleaf:map:ready` builds nothing; `TableLifecycle.ensureInitialized()`
+        //     builds the DOM on the first `table` toolbar action.
+        // Loading the bundle alone therefore leaves `.gl-table-panel` out of the DOM.
         await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.plugins.load("table"));
         await page.waitForFunction(
             () => typeof (/** @type {any} */ (window).GeoLeaf?.Table) === "object",
@@ -121,8 +120,8 @@ test.describe("[a11y][ui-components] ARIA sur composants UI actifs", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Groupe 3 — Focus management et navigation clavier
-// Tests comportementaux : Escape, Tab, focus trap, retour focus.
+// Group 3 — Focus management and keyboard navigation
+// Behavioural tests: Escape, Tab, focus trap, focus return.
 // ─────────────────────────────────────────────────────────────────────────────
 
 test.describe("[a11y][keyboard] navigation clavier / focus management", () => {
@@ -144,11 +143,11 @@ test.describe("[a11y][keyboard] navigation clavier / focus management", () => {
     });
 
     test("side panel s'ouvre programmatiquement et ariahidden=false", async ({ page }) => {
-        // Le conteneur `.gl-poi-sidepanel` est créé PARESSEUSEMENT à la première ouverture
-        // (capabilities/feature-info/surfaces/sidepanel.ts:47 — `if (_el && _content) return _el;`) :
-        // il n'existe pas dans le DOM au boot. On l'ouvre donc par la façade publique
-        // `GeoLeaf.FeatureInfo.openSidePanel(detail, layout)` (feature-info/public-api.ts:32),
-        // ce que dit le titre du test. `modules.feature-info.enabled: true` dans tourism.
+        // The `.gl-poi-sidepanel` container is created LAZILY on first open
+        // (capabilities/feature-info/surfaces/sidepanel.ts — `if (_el && _content) return _el;`):
+        // it does not exist in the DOM at boot. So we open it through the public façade
+        // `GeoLeaf.FeatureInfo.openSidePanel(detail, layout)` (feature-info/public-api.ts),
+        // which is what the test title says. `modules.feature-info.enabled: true` in tourism.
         await page.evaluate(() => {
             /** @type {any} */ (window).GeoLeaf.FeatureInfo.openSidePanel(
                 {
@@ -167,26 +166,27 @@ test.describe("[a11y][keyboard] navigation clavier / focus management", () => {
         await expect(sidepanel).toBeAttached({ timeout: 10000 });
         await expect(sidepanel).toHaveClass(/(^|\s)open(\s|$)/);
 
-        // Exposition aux technologies d'assistance une fois OUVERT — ce que dit le titre.
-        // Le shell est un landmark nommé, et `openSidePanel` repasse `aria-hidden` à
-        // "false" + retire `inert` (sidepanel.ts) : fermé, le tiroir reste dans le DOM,
-        // masqué par un simple `transform: translateX(100%)`, donc hors écran ≠ masqué —
-        // c'est la paire aria-hidden/inert qui le sort de l'arbre a11y et du tab order.
+        // Exposure to assistive technologies once OPEN — which is what the title says.
+        // The shell is a named landmark, and `openSidePanel` flips `aria-hidden`
+        // back to "false" + removes `inert` (sidepanel.ts): closed, the drawer
+        // stays in the DOM, hidden by a mere `transform: translateX(100%)`, so
+        // off-screen ≠ hidden — the aria-hidden/inert pair is what takes it out
+        // of the a11y tree and the tab order.
         expect(await sidepanel.getAttribute("role")).toBe("complementary");
         expect(await sidepanel.getAttribute("aria-label")).toBeTruthy();
         expect(await sidepanel.getAttribute("aria-hidden")).toBe("false");
         expect(await sidepanel.getAttribute("inert")).toBeNull();
 
-        // Focus management (objet de ce groupe) : l'ouverture déplace le focus sur
-        // « Fermer » (sidepanel.ts), donc les utilisateurs clavier/lecteur d'écran
-        // atterrissent DANS le panneau — impossible si le sous-arbre était resté inert.
+        // Focus management (this group's subject): opening moves focus onto
+        // the close button (sidepanel.ts), so keyboard/screen-reader users land
+        // INSIDE the panel — impossible had the subtree stayed inert.
         await expect(sidepanel.locator("[data-action='close']")).toBeFocused();
     });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Groupe 4 — Mobile viewport (375×667)
-// Vérifie WCAG sur les composants spécifiquement mobiles.
+// Group 4 — Mobile viewport (375×667)
+// Checks WCAG on the specifically mobile components.
 // ─────────────────────────────────────────────────────────────────────────────
 
 test.describe("[a11y][mobile] viewport 375×667", () => {
@@ -235,35 +235,75 @@ test.describe("[a11y][mobile] viewport 375×667", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Groupe 5 — Lightbox
-// Conditionnel : profil tourism ne contient pas de POI avec images.
-// Ce test est un placeholder ; il sera activé quand des données images
-// seront présentes dans un profil de déploiement.
+// Group 5 — Lightbox
+//
+// 🔻 THIS GROUP WAS A PERMANENT `skip`, on a premise proven FALSE twice over.
+// The written motive was: "the shipped profile contains no POI with images;
+// this test will be enabled when image data is present". Verified 2026-08-19:
+//
+//   ① The shipped profile DOES contain some. The `sites_rosario` layer
+//      declares an `image` widget field and its TWO features carry a photo
+//      and a filled gallery. Three other layers declare the same widget. The
+//      missing data was not missing.
+//   ② And above all, it was NOT NECESSARY. The lightbox opens through the
+//      public API on a forged gallery — the pattern already existed in
+//      `vn-a11y-focus.spec.js`, written for another scenario. Waiting for
+//      shipped data was waiting for something the test did not need.
+//
+// 🛑 The lesson goes beyond this file: a data-conditioned `skip` is verified
+// by nobody. Its condition never gets re-tested — it gets re-read, and a
+// re-read confirms what it reads. This one survived the appearance of the
+// very data that lifted it.
+//
+// What this test covers and the unit guard cannot: the FULL `axe` scan on the
+// real rendering — computed contrast, tab order, accessibility tree.
+// `axe-core` is only available via `@axe-core/playwright`, hence only here.
 // ─────────────────────────────────────────────────────────────────────────────
 
-test.describe("[a11y][lightbox] dialog ARIA (conditionnel)", () => {
-    test.use({ baseURL: baseURL("core") });
+test.describe("[a11y][lightbox] dialog ARIA", () => {
+    test.use({ baseURL: baseURL("core"), serviceWorkers: "block" });
 
-    test("lightbox passe axe scan si déclenchable", async () => {
-        // Skip: the tourism profile (deploy-core) has no POI with image galleries.
-        // To enable: use a deploy profile where poiConfig.enabled=true and a POI
-        // has at least one image in its content → click the image thumbnail to open
-        // the lightbox, then run axe on [role="dialog"].gl-poi-lightbox-global.
-        //
-        // 🎫 B-188 (`_docs_projet/registres/backlog_technique.md`) — POURQUOI et QUAND.
-        // ⚠️ Cette référence manquait, et ce `skip` était le SEUL du corpus e2e à violer la
-        // règle de `CLAUDE.md` : « aucun .skip / .todo committé sans un commentaire pointant
-        // un ticket, une ligne de registre ou une ligne de roadmap ». Les cinq autres citent
-        // B-55 (08-realtime), B-04 (vn-toasts) ou la garde complémentaire NGINX-01
-        // (18-security). Mesuré au pré-vol du Sprint 11 (S11.2, 08/08/2026).
-        // ⚠️ Ce qui reste ouvert n'est PAS « ajouter ce commentaire » : c'est de décider s'il
-        // faut fournir un profil de test portant un POI avec image. Sans lui la lightbox n'a
-        // AUCUNE couverture a11y, et elle ouvre un `role="dialog"`.
-        test.skip(
-            true,
-            "Lightbox skipped: no POI with images in the tourism profile. " +
-                "Enable poiConfig and add image data to a POI to activate this test. " +
-                "Tracked as B-188."
-        );
+    test("la lightbox ouverte passe le scan axe", async ({ page }) => {
+        page.context().setDefaultTimeout(30000);
+        await page.goto("/");
+        await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 15000 });
+
+        // Gallery FORGED through the public API — same pattern as
+        // `vn-a11y-focus.spec.js` B.6. ⚠️ Deliberately forged rather than
+        // clicked in the profile: the test's subject is the MODAL, not the
+        // path to it, and depending on a named feature of the shipped profile
+        // would tie this test to demonstration data. The profile does carry
+        // images — verified at the group's head, and what obsoleted the old
+        // skip.
+        await page.evaluate(() => {
+            window.GeoLeaf.FeatureInfo.openSidePanel(
+                {
+                    layerId: "a11y-lightbox",
+                    featureId: "f1",
+                    properties: {
+                        gal: ["https://example.invalid/one.jpg", "https://example.invalid/two.jpg"],
+                    },
+                    geometry: null,
+                    lngLat: { lat: -48, lng: -58 },
+                    point: { x: 10, y: 10 },
+                },
+                { layerId: "a11y-lightbox", fields: [{ field: "gal", type: "gallery" }] }
+            );
+        });
+
+        await page.locator(".gl-poi-gallery__main img").click();
+        const lightbox = page.locator(".gl-poi-lightbox-global");
+        await expect(lightbox).toBeVisible({ timeout: 5000 });
+
+        // The selector carries the role: if `role="dialog"` disappeared, this
+        // test would no longer find its target and would redden — intended.
+        // The old skip ALREADY aimed at this selector at a time when the role
+        // was not set: it would have failed on its target even with the data
+        // it was waiting for.
+        const dialog = page.locator('[role="dialog"].gl-poi-lightbox-global');
+        await expect(dialog).toBeVisible();
+
+        const results = await scanComponent(page, '[role="dialog"].gl-poi-lightbox-global');
+        expect(results.violations).toEqual([]);
     });
 });

@@ -18,7 +18,7 @@
  * dead Node 24 `--no-experimental-require-module` branch; engines require Node ≥ 22.)
  */
 // Side effect — MUST run before workers spawn. Shared with the 17 package configs
-// since ARCHI S9.3; this file used to carry its own copy of the same four lines.
+// since the shared factory; this file used to carry its own copy of the same four lines.
 import "@geoleaf/build-config/vitest/ensure-tsx-node-options.mjs";
 
 import { defineConfig } from "vitest/config";
@@ -27,55 +27,59 @@ import { createRequire } from "node:module";
 import { maxWorkers } from "@geoleaf/build-config/vitest/worker-budget.mjs";
 
 /**
- * Le périmètre de ce run vient de `scripts/lib/test-scope.cjs` — B.48.
+ * This run's perimeter comes from `scripts/lib/test-scope.cjs`.
  *
- * La liste d'exclusions (`EXCLUDED_FROM_ROOT_RUN`) y a déménagé, avec sa justification :
- * c'est une connaissance de PÉRIMÈTRE, pas de configuration Vitest, et le runner qui
- * vérifie l'invariant `ci:local ⊇ ci.yml` doit pouvoir la lire depuis CJS. La garder ici
- * aurait imposé d'en écrire une seconde copie côté runner — soit exactement la dérive que
- * `packages.cjs` et ce module existent pour tuer.
+ * The exclusion list (`EXCLUDED_FROM_ROOT_RUN`) moved there, with its
+ * justification: it is PERIMETER knowledge, not Vitest configuration, and the
+ * runner that verifies the `ci:local ⊇ ci.yml` invariant must be able to read
+ * it from CJS. Keeping it here would have imposed writing a second copy on the
+ * runner side — exactly the drift `packages.cjs` and that module exist to kill.
  */
 const testScope = createRequire(import.meta.url)("./scripts/lib/test-scope.cjs");
 
 export default defineConfig({
     test: {
-        // Plafond de workers du run. Dérivé, et surtout IDENTIQUE à celui que déclarent
-        // les 18 configs de package : Vitest 4 abat le run `projects` avant tout test si
-        // deux projets d'un même `sequence.groupOrder` divergent sur cette valeur.
-        // Ici `GEOLEAF_TEST_FANOUT` est absente (un seul processus vitest) → le run prend
-        // la machine, comme avant B.48.
+        // The run's worker ceiling. Derived, and above all IDENTICAL to the one
+        // the 18 package configs declare: Vitest 4 kills the `projects` run
+        // before any test if two projects of one `sequence.groupOrder` diverge
+        // on this value. Here `GEOLEAF_TEST_FANOUT` is absent (a single vitest
+        // process) → the run takes the machine, as before the budget work.
         maxWorkers: maxWorkers(),
         projects: testScope
             .rootProjectScope()
             .map((p: { dir: string }) => `${p.dir}/vitest.config.ts`),
         // Vitest 4 resolves the coverage provider from the ROOT config when running
-        // `--coverage` across projects — il faut donc le déclarer ici. Standard du monorepo :
-        // istanbul (chaque config de projet le pose aussi).
+        // `--coverage` across projects — so it must be declared here. Monorepo
+        // standard: istanbul (each project config sets it too).
         coverage: {
             provider: "istanbul",
-            // ⚠️ PAS de `reportsDirectory` ici, et c'est un résultat de mesure (T6.2).
+            // ⚠️ NO `reportsDirectory` here, and that is a measurement's result.
             //
-            // Le relevé du sprint attribuait les 23 Mo de `coverage/` à la racine à
-            // « `vitest run --coverage`, chemin implicite ». **Faux, vérifié.** En mode
-            // `projects`, chaque projet applique SON `reportsDirectory` — et les 19 le
-            // déclarent tous à `"./coverage"`, relatif à leur propre racine
-            // (`packages/build-config/vitest/base.mjs:139` + 4 surcharges). Mesure :
-            // après `rm -rf coverage`, `npm run test:vitest:coverage` écrit dans
-            // `packages/core/coverage/` et NE recrée PAS `coverage/` à la racine.
+            // The survey attributed the root's 23 MB `coverage/` to
+            // "`vitest run --coverage`, implicit path". **False, verified.** In
+            // `projects` mode, each project applies ITS `reportsDirectory` — and
+            // the 19 all declare it at `"./coverage"`, relative to their own root
+            // (`packages/build-config/vitest/base.mjs` + 4 overrides).
+            // Measurement: after `rm -rf coverage`,
+            // `npm run test:vitest:coverage` writes into
+            // `packages/core/coverage/` and does NOT recreate `coverage/` at the
+            // root.
             //
-            // Ce `coverage/` racine était donc un RÉSIDU d'une invocation d'une autre
-            // époque, sans producteur actuel — supprimé, il ne revient pas. Déclarer un
-            // `reportsDirectory` ici pour le « relocaliser » créait un `artifacts/`
-            // vide : une déclaration qui prétend déplacer ce que rien ne produit, soit
-            // exactement la classe de défaut que ce sprint retire. Elle a été écrite,
-            // mesurée sans effet, puis retirée.
+            // That root `coverage/` was thus a RESIDUE of an invocation from
+            // another era, with no current producer — deleted, it does not come
+            // back. Declaring a `reportsDirectory` here to "relocate" it created
+            // an empty `artifacts/`: a declaration claiming to move what nothing
+            // produces, exactly the defect class that work removed. It was
+            // written, measured without effect, then removed.
             //
-            // Ne pas la remettre sans avoir d'abord mesuré qu'un rapport RACINE existe.
+            // Do not put it back without first measuring that a ROOT report
+            // exists.
             //
-            // Les SIX objets nommés « coverage » dans ce dépôt (et leurs quatre sens) :
-            // voir `docs/reference/ARCHITECTURE.md`, section « coverage — six objets,
-            // quatre sens ». Ce fichier-ci n'en gouverne qu'un. (Le renvoi disait
-            // `_docs_projet/ARCHITECTURE.md`, chemin mort AVANT la scission.)
+            // The SIX objects named "coverage" in this repo (and their four
+            // meanings): see `docs/reference/ARCHITECTURE.md`, section
+            // « coverage — six objets, quatre sens ». This file governs only
+            // one. (The pointer used to say a workshop path, dead BEFORE the
+            // split.)
         },
     },
 });

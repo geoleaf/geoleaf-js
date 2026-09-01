@@ -19,7 +19,7 @@ import { getGeoLeaf } from "../../../utils/general/geoleaf-global.js";
 import type { LayerAttributes } from "../../../contracts/attributes.contract.js";
 import type { LayerWriteTarget } from "../../../contracts/sync.contract.js";
 
-// ── Shared structural types (S2.2 — theme-applier) ──────────────────────────
+// ── Shared structural types (theme-applier) ─────────────────────────────────
 // Loose JSON shapes for theme configuration, shared across the theme-applier
 // files (deferred.ts / visibility.ts / ui-sync.ts import these). Only fields
 // actually read across the cluster are declared — no index signature.
@@ -151,7 +151,7 @@ export interface ProfileLayerConfig {
     /**
      * Where this layer's edits are pushed — see `contracts/sync.contract.ts`.
      *
-     * Declared per layer because on a backend such as Odoo each layer is a distinct
+     * Declared per layer because on many backends each layer is a distinct
      * collection. Its absence is what makes a layer read-only offline: pulling a layer
      * for offline use never grants write access on its own.
      */
@@ -265,7 +265,7 @@ const _ThemeApplier = {
     /** @type {string|null} Currently active theme */
     _currentThemeId: null as string | null,
 
-    /** @type {boolean} Flag pour savoir si c'est le premier loading */
+    /** @type {boolean} Flag saying whether this is the first load */
     _isFirstLoad: true,
 
     /**
@@ -278,7 +278,7 @@ const _ThemeApplier = {
     },
 
     /**
-     * Nettoie les ressources
+     * Cleans up resources
      * @private
      */
     _cleanup(this: ThemeApplierModule) {
@@ -296,8 +296,8 @@ const _ThemeApplier = {
      * @param this - The theme-applier module. The method is invoked bound to it, so the
      *   receiver is part of the signature — and TSD-02 counts it as a parameter.
      * @param {Object} theme - Configuration of the theme
-     * @param {Object} [options] - Options d'application
-     * @param {boolean} [options.fitBounds] - Force le fitBounds
+     * @param {Object} [options] - Application options
+     * @param {boolean} [options.fitBounds] - Forces fitBounds
      * @returns {Promise<void>}
      */
     applyTheme(
@@ -337,7 +337,7 @@ const _ThemeApplier = {
         const perfConfig: { themeBatchSize?: number } = profileConfig?.performance || {};
         const enableFitBounds = false;
         const visibleLayers = layerConfigs.filter((cfg: ThemeLayerConfig) => cfg.visible !== false);
-        // 🔻 Default raised from 3 to 6 on 07/08/2026 (S5.1), to match the loader's Phase 1 cap
+        // 🔻 Default raised from 3 to 6 on 07/08/2026, to match the loader's Phase 1 cap
         // (`PHASE1_BATCH_SIZE`). ⚠️ This is the SECOND cap on the reveal path and the roadmap
         // counted only the first: `_loadLayersInBatches` re-serialises the very same layers the
         // loader just finished, immediately before `geoleaf:theme:applied` fires. Leaving this

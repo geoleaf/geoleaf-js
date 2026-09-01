@@ -78,11 +78,11 @@ function formRender(
     }
 
     async function handleFile(file: File): Promise<void> {
-        // 5.1-d — LE REFUS RESTE SYNCHRONE, et ce n'est pas un détail de style : une première
-        // rédaction attendait la compression avant d'afficher la moindre erreur, ce qui
-        // repoussait le refus d'un tick. Quatre tests l'ont vu tout de suite (`errorEl.hidden`
-        // encore `true`), et un utilisateur l'aurait vu aussi — un fichier refusé sans
-        // message immédiat se lit comme une interface qui ne répond pas.
+        // THE REFUSAL STAYS SYNCHRONOUS, and that is not a style detail: a
+        // first draft waited for the compression before showing any error,
+        // pushing the refusal back a tick. Four tests saw it at once
+        // (`errorEl.hidden` still `true`), and a user would have seen it too
+        // — a file refused with no immediate message reads as an unresponsive interface.
         const preErr = _validateFile(file, maxSizeMb * PRECOMPRESSION_FACTOR);
         if (preErr) {
             showError(preErr);
@@ -90,9 +90,9 @@ function formRender(
         }
         errorEl.hidden = true;
 
-        // On ne paie l'attente QUE si la compression est réellement nécessaire.
-        // ⚠️ `maxSizeMb` est désormais la taille visée APRÈS compression : une photo de
-        // téléphone de 8 Mo, jusqu'ici refusée sans recours, passe maintenant.
+        // The wait is only paid when compression is really needed.
+        // ⚠️ `maxSizeMb` is now the size aimed for AFTER compression: an 8 MB
+        // phone photo, until now refused with no recourse, now passes.
         let toSend = file;
         if (file.size > maxSizeMb * 1024 * 1024) {
             dropZone.classList.add("is-uploading");

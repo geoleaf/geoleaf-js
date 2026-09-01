@@ -33,12 +33,10 @@ vi.mock("../../../src/capabilities/offline/db/indexeddb.js", () => ({
     },
 }));
 
-const { resolveProfileIcons } = await import(
-    "../../../src/capabilities/offline/cache/profile-icons.js"
-);
-const { ResourceEnumerator } = await import(
-    "../../../src/capabilities/offline/cache/resource-enumerator.js"
-);
+const { resolveProfileIcons } =
+    await import("../../../src/capabilities/offline/cache/profile-icons.js");
+const { ResourceEnumerator } =
+    await import("../../../src/capabilities/offline/cache/resource-enumerator.js");
 
 /** The real shape of profiles/tourism/profile.json (v2 layout): pointers, no data. */
 const V2_PROFILE = Object.freeze({
@@ -80,7 +78,7 @@ describe("resolveProfileIcons — reconciles the v2 layout", () => {
 
         expect(icons).not.toBeNull();
         expect(icons.spriteUrl).toBe("../profiles/tourism/icons/sprite_tourism.svg");
-        // Second argument depuis 3.8 : la requête est bornée.
+        // Second argument: the request is bounded.
         expect(globalThis.fetch).toHaveBeenCalledWith(
             "../profiles/tourism/config/plugins/taxonomy.json",
             expect.anything()

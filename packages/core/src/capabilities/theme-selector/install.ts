@@ -8,6 +8,26 @@
 /**
  * Capability installer for the in-core `theme-selector` capability — presets build (S2 Lot 8).
  *
+ * 🖐 **No `public-api.ts` — and the motive written here was FALSE until
+ * 20/08/2026.** It said "this capability mounts no namespace". It mounts one:
+ * `registerGlobals` writes `gl.ThemeSelector`, and the symbol comes from this
+ * directory — so it is indeed an OWN surface, declared moreover in `global.d.ts`. A
+ * `public-api.ts` would have something to re-export, which removes the "shell"
+ * argument.
+ *
+ * ⚠️ The question is therefore REOPENED, not settled: adding a `public-api.ts` puts
+ * a name into a published surface, and that gets decided. What is fixed here is only
+ * the sentence — a false motive engraved in code is harder to contradict than in a
+ * register, because it reads as a decision already taken.
+ *
+ * 📌 `route` is the ONLY one of the four facade-less capabilities that mounts
+ * nothing at all.
+ *
+ * ⚠️ **Not to be confused with `api/geoleaf.theme-toggle.ts`**, a very real public
+ * facade that does not live here. 🔗 This capability also remains the sole emitter
+ * of `geoleaf:themes:ready`, which the permalink awaits **with no fallback** — a
+ * distinct fact, independent of this arbitration.
+ *
  * The **last** of the 17 in-core capabilities to migrate: it was pulled out of Lot 2 because
  * its DOM facade spans 6 files and its coverage came from a fragile, incidental full-boot
  * path. `__tests__/capabilities/theme-selector/mount.test.js` (S2 Lot 8) now mounts the bar
@@ -43,6 +63,15 @@ export const THEME_SELECTOR_INSTALLER: CapabilityInstaller = {
     registerGlobals(gl: Record<string, unknown>): void {
         // Layer B — moved verbatim from globals.ui.ts (setupUI, B7 block). The neighbouring
         // theme-engine writes (ThemeCache / _ThemeLoader / _ThemeApplier) stay there.
+        //
+        // Re-measured 24/08/2026 — this capability DOES mount a namespace of its own, so the
+        // earlier "empty shell" premise for skipping a `public-api.ts` was false. The
+        // decision to skip it is KEPT anyway, on its real ground: this direct mount is
+        // functionally identical to a re-export file, `GeoLeaf.ThemeSelector` is already
+        // declared in `global.d.ts` and frozen by the surface oracles, and conforming a
+        // stable shipped file to an internal pattern would change no observable byte. If a
+        // second consumer of this surface ever appears inside the package, that is the
+        // moment a `public-api.ts` earns its place.
         gl.ThemeSelector = ThemeSelector;
     },
 

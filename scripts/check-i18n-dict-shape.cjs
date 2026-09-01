@@ -1,30 +1,33 @@
 #!/usr/bin/env node
 /*!
- * GeoLeaf — Filet de forme des dictionnaires i18n (roadmap nettoyage, Sprint 8 / C-5)
+ * GeoLeaf — i18n dictionary shape net (C-5)
  * © 2026 Mattieu Pottier — MIT
  *
- * La table i18n du cœur est PLATE : `getLabel` (utils/i18n/i18n.ts) indexe
- * directement la table fusionnée (`_pluginActive[key]`) et ne découpe JAMAIS sur ".".
- * `registerDict` le documente ("Keys are namespaced (e.g. \"print.toolbar.button\")"),
- * et `_rebuildPluginFlat` se contente d'un `Object.assign`.
+ * The core's i18n table is FLAT: `getLabel` (utils/i18n/i18n.ts) indexes the
+ * merged table directly (`_pluginActive[key]`) and NEVER splits on ".".
+ * `registerDict` documents it ("Keys are namespaced (e.g.
+ * \"print.toolbar.button\")"), and `_rebuildPluginFlat` settles for an
+ * `Object.assign`.
  *
- * Un dictionnaire IMBRIQUÉ (`{ geocoding: { toolbar: { button: "…" } } }`) enregistre
- * donc la clé "geocoding" — dont la valeur est un objet — et laisse
- * `getLabel("geocoding.toolbar.button")` retomber jusqu'à la clé brute. Rien n'échoue :
- * la traduction est simplement inatteignable, et le libellé français en dur du
- * `t(key, fallback)` du plugin masque la panne dans TOUTES les locales.
+ * A NESTED dictionary (`{ geocoding: { toolbar: { button: "…" } } }`) thus
+ * registers the key "geocoding" — whose value is an object — and lets
+ * `getLabel("geocoding.toolbar.button")` fall through to the raw key. Nothing
+ * fails: the translation is simply unreachable, and the plugin's hard-coded
+ * French label in `t(key, fallback)` masks the outage in ALL locales.
  *
- * C'est le bug C-5 : `plugin-geocoding` livrait un dictionnaire `en` correct et complet,
- * jamais lu, hérité de `_plugin-template` au scaffolding. Symptôme réellement subi :
- * `geocoding.toolbar.button` n'a AUCUN fallback (`mobile-toolbar-pill.ts` appelle
- * `getLabel` nu) ⇒ le bouton mobile portait `aria-label="geocoding.toolbar.button"`.
+ * That is bug C-5: `plugin-geocoding` shipped a correct, complete `en`
+ * dictionary, never read, inherited from `_plugin-template` at scaffolding.
+ * Actually-suffered symptom: `geocoding.toolbar.button` has NO fallback
+ * (`mobile-toolbar-pill.ts` calls `getLabel` bare) ⇒ the mobile button carried
+ * `aria-label="geocoding.toolbar.button"`.
  *
- * Le filet i18n existant (`packages/core/__tests__/i18n/i18n.test.js`) ne balaie que
- * `src/lang/` du cœur : aucun dictionnaire de plugin n'était vérifié. C'est le trou par
- * lequel geocoding est passé, et par lequel tout plugin scaffoldé serait repassé.
+ * The existing i18n net (`packages/core/__tests__/i18n/i18n.test.js`) only
+ * sweeps the core's `src/lang/`: no plugin dictionary was verified. That is the
+ * hole geocoding went through, and any scaffolded plugin would have gone through
+ * again.
  *
- * Ce gate balaie `packages/<pkg>/src/lang/lang-*.ts` de TOUS les workspaces (cœur,
- * plugins et gabarit) et refuse toute valeur qui n'est pas un littéral chaîne.
+ * This gate sweeps `packages/<pkg>/src/lang/lang-*.ts` of ALL workspaces (core,
+ * plugins and template) and refuses any value that is not a string literal.
  *
  * Usage :
  *   node scripts/check-i18n-dict-shape.cjs           # gate
@@ -41,18 +44,18 @@ const ROOT = path.resolve(__dirname, "..");
 const PKG_DIR = path.join(ROOT, "packages");
 const JSON_OUT = process.argv.includes("--json");
 
-/** Chemin relatif normalisé en `/` — `path.relative` rend `\` sous Windows. */
+/** Relative path normalised to `/` — `path.relative` returns `\` on Windows. */
 function normPath(p) {
     return path.relative(ROOT, p).split(path.sep).join("/");
 }
 
 /**
- * Tous les `<package>/src/lang/lang-*.ts` du monorepo.
+ * All the monorepo's `<package>/src/lang/lang-*.ts`.
  *
- * ARCHI S9.5 — packages issus du registre de workspaces, plus d'un `readdirSync`
- * à un seul niveau sur `packages/`. Avec l'ancienne forme, le déplacement des
- * packages sous `packages/plugins/` (ARCHI S10) n'aurait renvoyé aucun dictionnaire
- * — et un contrôle de forme sur zéro fichier passe au vert.
+ * Packages come from the workspace registry, no longer a single-level
+ * `readdirSync` on `packages/`. With the old form, the packages' move under
+ * `packages/plugins/` would have returned no dictionary — and a shape check on
+ * zero files passes green.
  */
 function collectDictFiles() {
     const out = [];
@@ -65,7 +68,7 @@ function collectDictFiles() {
     }
     for (const pkg of pkgs) {
         const langDir = path.join(pkg.absDir, "src", "lang");
-        // Tous les packages n'ont pas de dictionnaire — absence normale, pas une anomalie.
+        // Not every package has a dictionary — normal absence, not an anomaly.
         if (!fs.existsSync(langDir)) continue;
         for (const f of fs.readdirSync(langDir)) {
             if (/^lang-.*\.ts$/.test(f)) out.push(path.join(langDir, f));
@@ -75,8 +78,8 @@ function collectDictFiles() {
 }
 
 /**
- * Relève les propriétés dont la valeur n'est pas un littéral chaîne.
- * Un dictionnaire imbriqué est exactement ce cas : la valeur est un objet.
+ * Collects the properties whose value is not a string literal.
+ * A nested dictionary is exactly that case: the value is an object.
  */
 function findNonFlatEntries(file) {
     const src = ts.createSourceFile(

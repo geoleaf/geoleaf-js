@@ -48,9 +48,10 @@ vi.mock("../../src/utils/general/geoleaf-global.js", () => ({
         Labels: labelsMocks.Labels,
         _LabelButtonManager: labelsMocks.LabelButtonManager,
     }),
-    // ⚠️ Mock PARTIEL : `capabilities/legend/legend.ts` importe aussi `ensureGeoLeaf`, que
-    // le shim `require()` rendait `undefined` en silence. Le mocker natif refuse un export
-    // non déclaré. Déclaré avec sa valeur de fait — aucun test du fichier ne l'appelle.
+    // ⚠️ PARTIAL mock: `capabilities/legend/legend.ts` also imports
+    // `ensureGeoLeaf`, which the `require()` shim returned `undefined`
+    // silently. The native mocker refuses an undeclared export. Declared
+    // with its de-facto value — no test in the file calls it.
     ensureGeoLeaf: undefined,
 }));
 vi.mock("../../src/api/geoleaf.layer-manager.js", () => ({

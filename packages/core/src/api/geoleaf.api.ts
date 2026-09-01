@@ -13,6 +13,14 @@
  * only module that does. What travels through here is the namespace REFERENCE, and the methods
  * are on it whenever the `globals/` chain has run.
  *
+ * ⚠️ The module-head comments across `api/` — this one included — are orientation text for
+ * SOURCE readers, and that is their whole audience: TypeDoc renders none of them (measured on
+ * the generated pages: the generator runs in expand mode and attaches no doc comment to these
+ * modules), and this is deliberate — attaching them would mean a TypeDoc investigation of
+ * unknown cost for pages nobody asked for. Their `@example` blocks are still COMPILED by the
+ * docs gate, so the code they show cannot drift into phantom APIs. Do not "fix" the
+ * non-rendering by re-tagging: read this paragraph first.
+ *
  * @see {@link GeoLeafAPI}
  * @see globals/globals.api — `defineApiMethods`, the single writer of the eleven
  */

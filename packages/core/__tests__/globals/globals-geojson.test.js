@@ -22,10 +22,10 @@ vi.mock("../../src/kernel/geojson/popup-tooltip.ts", () => ({
     PopupTooltip: stub,
     setupPopupTooltipDeps: vi.fn(),
 }));
-// ⚠️ `LayerManagerStore` est importé par le module sous test. Le mock vide rendait
-// `undefined` via le shim `require()` de `setup.js` ; le mocker natif refuse un export non
-// déclaré. Déclaré avec sa valeur de fait : l'intention du mock vide est de neutraliser,
-// pas de fournir un double.
+// ⚠️ `LayerManagerStore` is imported by the module under test. The empty
+// mock returned `undefined` through `setup.js`'s `require()` shim; the
+// native mocker refuses an undeclared export. Declared with its de-facto
+// value: the empty mock's intent is to neutralise, not to provide a double.
 vi.mock("../../src/kernel/geojson/layers/store.ts", () => ({
     LayerManagerStore: undefined,
 }));
@@ -38,9 +38,10 @@ vi.mock("../../src/kernel/geojson/layers/style.ts", () => ({
 vi.mock("../../src/kernel/geojson/layers/integration.ts", () => ({
     LayerManagerIntegration: undefined,
 }));
-// ⚠️ Mocks PARTIELS : ils déclaraient le `setup*Deps` dont le test se sert, mais pas les
-// autres exports que le module sous test importe. Le shim `require()` les rendait
-// `undefined` sans rien dire ; le mocker natif jette. Complétés avec leur valeur de fait.
+// ⚠️ PARTIAL mocks: they declared the `setup*Deps` the test uses, but not
+// the other exports the module under test imports. The `require()` shim
+// returned them `undefined` without a word; the native mocker throws.
+// Completed with their de-facto value.
 vi.mock("../../src/kernel/geojson/loader/profile.ts", () => ({
     setupProfileDeps: vi.fn(),
     LoaderProfile: undefined,
@@ -59,7 +60,7 @@ describe("globals/globals.geojson (step 1.7)", () => {
         expect(globalThis.GeoLeaf).toBeDefined();
         expect(globalThis.GeoLeaf.GeoJSON).toBe(stub);
         expect(globalThis.GeoLeaf._GeoJSONLayerManager).toBeDefined();
-        // `_GeoJSONShared` a quitté le namespace à l'API S4.3 (aucun lecteur).
+        // `_GeoJSONShared` left the namespace (no reader).
         expect(globalThis.GeoLeaf._GeoJSONShared).toBeUndefined();
     });
 });

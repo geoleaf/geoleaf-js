@@ -74,25 +74,39 @@ const _ICON =
 // two branches of the profile. Filling the profile the way `config.ts` documents left the
 // button INVISIBLE, with nothing in the output to say why. `selfValidate()` now rejects any
 // `profileKey` outside `modules.<id>.`. Reference shape: `packages/plugins/table/src/entry.ts`.
-getGeoLeaf()?.registry?.register?.({
-    id: "__PLUGIN_NAME__",
-    ui: {
-        mobileIcon: {
-            icon: _ICON,
-            labelKey: "__PLUGIN_NAME__.toolbar.button",
-            profileKey: "modules.__PLUGIN_NAME__.showButton",
-            requiresPlugin: "__PLUGIN_NAME__",
-            action: "__PLUGIN_NAME__",
+// The slot is declared only on the EAGER path — when the integrator loads this bundle before
+// `GeoLeaf.boot()`, as the package README prescribes. There is no `init.js` on that path, so
+// THIS call is the ONLY declaration of the slot and it is honoured.
+//
+// After `init()` — the LAZY path, where a host declares the slot itself with
+// `registerLazyForAction()` and loads the bundle on demand — the toolbar is already built: the
+// registration would be stored, never drawn, and would log a warning whose intended reader has
+// already done what it recommends elsewhere.
+//
+// ⚠️ `!== true`, not `=== false`: a host without `isInitialized` yields `undefined`, and the
+// slot IS declared. Failing open is the right way round — a spurious warning costs a console
+// line, a missing declaration costs the button.
+if (getGeoLeaf()?.registry?.isInitialized?.() !== true) {
+    getGeoLeaf()?.registry?.register?.({
+        id: "__PLUGIN_NAME__",
+        ui: {
+            mobileIcon: {
+                icon: _ICON,
+                labelKey: "__PLUGIN_NAME__.toolbar.button",
+                profileKey: "modules.__PLUGIN_NAME__.showButton",
+                requiresPlugin: "__PLUGIN_NAME__",
+                action: "__PLUGIN_NAME__",
+            },
+            desktopTabButton: {
+                icon: _ICON,
+                labelKey: "__PLUGIN_NAME__.toolbar.button",
+                profileKey: "modules.__PLUGIN_NAME__.showButton",
+                requiresPlugin: "__PLUGIN_NAME__",
+                action: "__PLUGIN_NAME__",
+            },
         },
-        desktopTabButton: {
-            icon: _ICON,
-            labelKey: "__PLUGIN_NAME__.toolbar.button",
-            profileKey: "modules.__PLUGIN_NAME__.showButton",
-            requiresPlugin: "__PLUGIN_NAME__",
-            action: "__PLUGIN_NAME__",
-        },
-    },
-});
+    });
+}
 
 if (typeof document !== "undefined") {
     document.addEventListener("geoleaf:toolbar:action", (e: Event) => {

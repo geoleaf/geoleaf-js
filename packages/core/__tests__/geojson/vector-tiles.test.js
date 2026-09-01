@@ -29,7 +29,7 @@ describe("geojson/vector-tiles", () => {
     });
 
     describe("shouldUseVectorTiles", () => {
-        // Sprint 4: no longer checks L.vectorGrid — requires an absolute tile URL.
+        // No longer checks L.vectorGrid — requires an absolute tile URL.
         it("returns false when no vectorTiles config", () => {
             expect(VectorTiles.shouldUseVectorTiles({})).toBe(false);
             expect(VectorTiles.shouldUseVectorTiles({ id: "x" })).toBe(false);
@@ -143,7 +143,7 @@ describe("geojson/vector-tiles — branches T18", () => {
     let adapterMock;
 
     beforeEach(() => {
-        // Sprint 4: MapLibre native API — no Leaflet/VectorGrid dependency.
+        // MapLibre native API — no Leaflet/VectorGrid dependency.
         mockMap = {
             addLayer: vi.fn(),
             removeLayer: vi.fn(),

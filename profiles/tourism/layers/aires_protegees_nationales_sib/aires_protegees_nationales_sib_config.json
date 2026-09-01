@@ -176,6 +176,21 @@
                 "display": {
                     "surfaces": ["sidepanel"]
                 }
+            },
+            {
+                "_comment": "Point d'entrée du plugin `routing` — le bouton n'est posé ni par le cœur ni par le plugin, il se déclare ICI. ⚠️ Déclaré sur CETTE couche et non sur `hebergements`, qui serait sémantiquement plus naturelle : mesuré le 21/08/2026, `hebergements` n'est PAS enregistrée par le profil servi (`Layers.listLayerIds()` en rend cinq, sans elle), donc son popup ne s'ouvre jamais et le bouton serait invisible — une déclaration valide, gatée verte, et que personne ne peut atteindre. ⚠️ `payloadFields` est une liste blanche STRICTE : sans le champ du libellé, le panneau reçoit des coordonnées sans nom. Et `requiresPlugin` fait que le bouton n'est PAS rendu quand le plugin est absent — c'est le second sens de la garde, celui sans lequel on ne prouve rien.",
+                "field": "properties.Name",
+                "label": "Itinéraire",
+                "primitive": "string",
+                "widget": "action",
+                "options": {
+                    "actionId": "routing.destination",
+                    "requiresPlugin": "routing",
+                    "payloadFields": ["Name"]
+                },
+                "display": {
+                    "surfaces": ["popup", "sidepanel"]
+                }
             }
         ]
     }

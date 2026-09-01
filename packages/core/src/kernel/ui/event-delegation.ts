@@ -18,7 +18,7 @@ import { Log } from "../../utils/log/index.js";
 //   CONSTANTES & STATE
 // ========================================
 
-// ── Local structural types (S2.1 — ui/event-delegation) ─────────────────────
+// ── Local structural types (ui/event-delegation) ─────────────────────
 
 /** Entry stored per tracked listener, used for later removal. */
 interface TrackedListener {

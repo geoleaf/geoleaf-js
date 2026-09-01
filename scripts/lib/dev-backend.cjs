@@ -1,47 +1,48 @@
 "use strict";
 /**
- * dev-backend.cjs — le backend de PREUVE ne part pas chez un client.
+ * dev-backend.cjs — the PROOF backend does not ship to a client.
  *
- * ## Le fait
+ * ## The fact
  *
- * `profiles/tourism/layers/sites_rosario/` est la couche de preuve du cycle hors-ligne : elle est
- * la première du dépôt à déclarer une lecture hors-ligne, une source de rapatriement et un bloc
- * d'écriture. Ses trois liaisons visent le backend monté par `docker-compose.dev.yml`
- * (pygeoapi + PostgREST derrière Traefik), qui **ne résout que sur le poste de développement**.
+ * `profiles/tourism/layers/sites_rosario/` is the proof layer of the offline cycle: it is
+ * the repo's first layer to declare an offline read, a pull source and a write block. Its
+ * three bindings target the backend mounted by `docker-compose.dev.yml` (pygeoapi +
+ * PostgREST behind Traefik), which **only resolves on the development machine**.
  *
- * Ces liaisons étaient recopiées telles quelles dans `deploy-core` et `deploy-full`, donc dans ce
- * qui part chez un client — où elles ne peuvent qu'échouer. L'affichage, lui, n'était pas en
- * cause : la couche porte un `data.file` local, elle se peint sans réseau. Ce qui partait mort,
- * c'était le rapatriement et l'écriture.
+ * Those bindings used to be copied verbatim into `deploy-core` and `deploy-full`, hence
+ * into what ships to a client — where they can only fail. Display was never at stake: the
+ * layer carries a local `data.file`, it paints without network. What shipped dead was the
+ * pull and the write.
  *
- * ## Pourquoi une liste d'hôtes NOMMÉS, et surtout pas une allowlist
+ * ## Why a list of NAMED hosts, and emphatically not an allowlist
  *
- * Le premier réflexe est d'autoriser les fournisseurs connus (tuiles IGN, ArcGIS, GBIF…) et de
- * retirer le reste. **C'est le mauvais sens, et il est dangereux** : le jour où un profil client
- * déclare un backend de production légitime, une allowlist le supprimerait **silencieusement**
- * d'un livrable, et le défaut ne se verrait qu'en exploitation.
+ * The first reflex is to allow the known providers (IGN tiles, ArcGIS, GBIF…) and strip the
+ * rest. **That is the wrong direction, and a dangerous one**: the day a client profile
+ * declares a legitimate production backend, an allowlist would **silently** remove it from
+ * a deliverable, and the defect would only show in operation.
  *
- * La règle est donc inversée : on nomme le petit ensemble d'hôtes qui n'ont rien à faire dehors,
- * et **tout le reste passe**. Un faux négatif (un hôte de dev oublié ici) se voit au premier
- * essai chez le client ; un faux positif aurait cassé un profil légitime sans un mot.
+ * The rule is therefore inverted: we name the small set of hosts that have no business
+ * outside, and **everything else passes**. A false negative (a dev host forgotten here)
+ * shows at the first try on the client's side; a false positive would have broken a
+ * legitimate profile without a word.
  *
- * ⚠️ Le retrait est scopé aux CLÉS DE LIAISON — `offline.source`, `write.endpoint`,
- * `options.uploadEndpoint`. Il ne touche jamais `data.*` ni les fonds de carte : un fournisseur
- * de tuiles n'est pas un backend, et les confondre viderait les profils.
+ * ⚠️ The removal is scoped to the BINDING KEYS — `offline.source`, `write.endpoint`,
+ * `options.uploadEndpoint`. It never touches `data.*` nor the basemaps: a tile provider is
+ * not a backend, and conflating the two would empty the profiles.
  */
 
 /**
- * Hôtes du backend de preuve — montés par `docker-compose.dev.yml`, routés par Traefik, et
- * résolus par le seul fichier `hosts` du poste. Injoignables partout ailleurs.
+ * Proof-backend hosts — mounted by `docker-compose.dev.yml`, routed by Traefik, and
+ * resolved only by the machine's `hosts` file. Unreachable anywhere else.
  *
- * ⚠️ Ajouter un hôte ici est un geste de SÉCURITÉ DE LIVRAISON, pas de configuration : tout ce
- * qui y figure est retiré de ce qui part chez un client.
+ * ⚠️ Adding a host here is a DELIVERY-SAFETY move, not configuration: everything listed
+ * here is stripped from what ships to a client.
  */
 const DEV_BACKEND_HOSTS = ["qgis.geoleaf.dev"];
 
 /**
  * @param {unknown} value
- * @returns {boolean} `true` si la valeur est une URL absolue vers un backend de preuve.
+ * @returns {boolean} `true` if the value is an absolute URL to a proof backend.
  */
 function isDevBackendUrl(value) {
     if (typeof value !== "string") return false;
@@ -49,37 +50,39 @@ function isDevBackendUrl(value) {
     try {
         host = new URL(value).hostname;
     } catch {
-        return false; // chemin relatif ou valeur non-URL : hors sujet
+        return false; // relative path or non-URL value: out of scope
     }
     return DEV_BACKEND_HOSTS.includes(host);
 }
 
 /**
- * Retire d'un profil les liaisons vers le backend de preuve, ou les repointe vers un backend
- * fourni au build.
+ * Strips a profile's bindings to the proof backend, or repoints them to a backend
+ * supplied at build time.
  *
- * Le parcours est récursif parce que la même forme apparaît à deux profondeurs : dans le fichier
- * de couche (`layers/<id>/<id>_config.json`) et dans le bundle agrégé (`profile-bundle.json`),
- * qui en est une copie. Traiter l'un sans l'autre laisserait la liaison vivante dans le second —
- * et c'est le second que le chargeur lit.
+ * The walk is recursive because the same shape appears at two depths: in the layer file
+ * (`layers/<id>/<id>_config.json`) and in the aggregated bundle (`profile-bundle.json`),
+ * which is a copy of it. Handling one without the other would leave the binding alive in
+ * the second — and the second is what the loader reads.
  *
- * ## Ce que « retirer » veut dire, précisément
+ * ## What "strip" means, precisely
  *
- *   • `offline.source`        → SUPPRIMÉ. `offline.enabled` reste vrai : le chargeur retombe alors
- *                               sur `data.file`, et un rapatriement demandé refuse proprement avec
- *                               un motif nommé au lieu d'aller frapper un hôte mort.
- *   • `write.endpoint`        → SUPPRIMÉ, et `write.enabled` passe à `false`.
- *                               🛑 Les deux ensemble, jamais l'un sans l'autre : un `enabled: true`
- *                               sans cible promet une écriture impossible, ce qui est pire que
- *                               l'absence de la fonction — l'utilisateur perd sa saisie.
- *   • `options.uploadEndpoint` → SUPPRIMÉ dans le MÊME objet-couche, parce que l'upload est servi
- *                               par le backend qu'on vient de retirer. Il valait `/api/upload`,
- *                               racine-absolu, donc faux deux fois : il vise l'origine servante et
- *                               non le backend, et il casse en sous-répertoire.
+ *   • `offline.source`        → REMOVED. `offline.enabled` stays true: the loader then falls
+ *                               back on `data.file`, and a requested pull refuses cleanly
+ *                               with a named reason instead of knocking on a dead host.
+ *   • `write.endpoint`        → REMOVED, and `write.enabled` flips to `false`.
+ *                               🛑 Both together, never one without the other: an
+ *                               `enabled: true` with no target promises an impossible
+ *                               write, which is worse than the feature's absence — the
+ *                               user loses their input.
+ *   • `options.uploadEndpoint` → REMOVED in the SAME layer object, because the upload is
+ *                               served by the backend we just stripped. It was
+ *                               `/api/upload`, root-absolute, hence wrong twice: it targets
+ *                               the serving origin and not the backend, and it breaks under
+ *                               a sub-directory.
  *
- * @param {any} node Racine du JSON de profil (muté en place).
- * @param {string | null} backendBaseUrl Origine de remplacement, ou `null` pour retirer.
- * @returns {number} Nombre de liaisons traitées.
+ * @param {any} node Root of the profile JSON (mutated in place).
+ * @param {string | null} backendBaseUrl Replacement origin, or `null` to strip.
+ * @returns {number} Number of bindings handled.
  */
 function stripDevBackendBindings(node, backendBaseUrl = null) {
     let touched = 0;
@@ -92,9 +95,10 @@ function stripDevBackendBindings(node, backendBaseUrl = null) {
         }
         if (!obj || typeof obj !== "object") return;
 
-        // Un objet-couche est dev-lié si l'une de ses deux liaisons vise un hôte de preuve.
-        // C'est CE prédicat, et non la présence d'un `uploadEndpoint`, qui autorise le retrait
-        // du troisième : sinon on supprimerait l'upload d'un profil client sans motif.
+        // A layer object is dev-bound if either of its two bindings targets a proof host.
+        // THIS predicate, and not the presence of an `uploadEndpoint`, is what authorizes
+        // removing the third: otherwise we would strip a client profile's upload with no
+        // reason.
         const sourceUrl = obj.offline?.source?.url;
         const writeUrl = obj.write?.endpoint;
         const devBound = isDevBackendUrl(sourceUrl) || isDevBackendUrl(writeUrl);
@@ -120,12 +124,13 @@ function stripDevBackendBindings(node, backendBaseUrl = null) {
                     touched += 1;
                 }
             }
-            // 🛑 LES DEUX BRANCHES, ET LA PREMIÈRE VERSION NE L'APPELAIT QUE DANS LA SECONDE.
-            // Mesuré le 09/08/2026 : repointé vers un backend explicite, le profil sortait avec
-            // `uploadEndpoint: "/api/upload"` intact — racine-absolu, donc visant l'origine
-            // servante et non le backend qu'on venait de nommer. La porte de sortie documentée
-            // reconduisait le défaut qu'elle est censée contourner, et rien ne l'aurait dit :
-            // l'upload n'échoue qu'au moment où quelqu'un joint une photo.
+            // 🛑 BOTH BRANCHES — AND THE FIRST VERSION ONLY CALLED IT IN THE SECOND.
+            // Measured on 2026-08-09: repointed to an explicit backend, the profile came
+            // out with `uploadEndpoint: "/api/upload"` intact — root-absolute, hence
+            // targeting the serving origin and not the backend just named. The documented
+            // escape hatch reproduced the very defect it exists to work around, and
+            // nothing would have said so: the upload only fails the moment someone
+            // attaches a photo.
             touched += stripUploadEndpoints(obj, backendBaseUrl);
         }
 
@@ -137,7 +142,7 @@ function stripDevBackendBindings(node, backendBaseUrl = null) {
 }
 
 /**
- * Retire tous les `options.uploadEndpoint` sous un objet-couche déjà reconnu dev-lié.
+ * Strips every `options.uploadEndpoint` under a layer object already known dev-bound.
  * @param {any} node
  * @param {string | null} backendBaseUrl
  * @returns {number}
@@ -163,7 +168,7 @@ function stripUploadEndpoints(node, backendBaseUrl) {
 }
 
 /**
- * Remplace l'origine d'une URL absolue en conservant chemin et requête.
+ * Replaces the origin of an absolute URL while keeping path and query.
  * @param {string} url
  * @param {string} baseUrl
  * @returns {string}

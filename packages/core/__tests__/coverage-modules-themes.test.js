@@ -21,11 +21,11 @@ vi.mock("../src/kernel/config/config-primitives.js", () => ({
     },
 }));
 
-// ⚠️ R.32 (25/07/2026) — le chemin était `../src/geoleaf.legend.js`, qui N'EXISTE PAS.
-// `theme-applier/core.ts:10` importe la façade depuis `api/`, donc ce mock ne s'appliquait
-// jamais : le test exerçait la VRAIE `Legend` en croyant l'avoir isolée. Prouvé par mutation
-// dans les deux sens — factory qui jette : inerte sur l'ancien chemin (13/13 vert),
-// 3 tests rouges sur le nouveau.
+// ⚠️ The path was `../src/geoleaf.legend.js`, which DOES NOT EXIST.
+// `theme-applier/core.ts` imports the facade from `api/`, so this mock
+// never applied: the test exercised the REAL `Legend` believing it had
+// isolated it. Proven by mutation both ways — throwing factory: inert on
+// the old path (13/13 green), 3 red tests on the new one.
 vi.mock("../src/api/geoleaf.legend.js", () => ({
     Legend: {
         showLoadingOverlay: vi.fn(),
@@ -33,7 +33,7 @@ vi.mock("../src/api/geoleaf.legend.js", () => ({
     },
 }));
 
-// ⚠️ R.32 — même défaut, même cause (`theme-applier/core.ts:11`).
+// ⚠️ Same defect, same cause (`theme-applier/core.ts`).
 vi.mock("../src/api/geoleaf.layer-manager.js", () => ({
     LayerManager: {
         refresh: vi.fn(),

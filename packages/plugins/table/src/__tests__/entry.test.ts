@@ -1,21 +1,22 @@
 /**
- * @geoleaf-plugins/table — surface publique de `buildPublicApi()`.
+ * @geoleaf-plugins/table — public surface of `buildPublicApi()`.
  *
- * 🛑 **Ce fichier est le SEUL filet de cette surface, et c'est une propriété mesurée.**
- * `Table` n'est pas dans `EXPECTED_FACADE_KEYS` (`scripts/lib/namespace-surface.mjs`) — c'est
- * un plugin, absent d'un boot cœur, donc le golden master post-boot ne le voit pas. Et
- * `CONSUMER-CONTRACT/CC-03`, qui saurait le lire, dérive son périmètre d'un manifeste qui vit
- * HORS de ce dépôt : sur un clone sans `GEOLEAF_CONSUMERS` il saute en exit 0.
+ * 🛑 **This file is this surface's ONLY net, and that is a measured property.**
+ * `Table` is not in `EXPECTED_FACADE_KEYS` (`scripts/lib/namespace-surface.mjs`)
+ * — it is a plugin, absent from a core boot, so the post-boot golden master
+ * does not see it. And `CONSUMER-CONTRACT/CC-03`, which could read it,
+ * derives its perimeter from a manifest living OUTSIDE this repo: on a clone
+ * without `GEOLEAF_CONSUMERS` it skips with exit 0.
  *
- * ⚠️ Il n'assertait qu'`api.open` — un membre pouvait disparaître sans que rien ne rougisse.
- * La liste ci-dessous est écrite à la MAIN, délibérément : ce n'est pas un instantané, donc
- * `vitest -u` ne peut pas tamponner une régression de surface.
+ * ⚠️ It only asserted `api.open` — a member could vanish with nothing turning
+ * red. The list below is written by HAND, deliberately: it is not a snapshot,
+ * so `vitest -u` cannot rubber-stamp a surface regression.
  */
 import { describe, it, expect, afterEach } from "vitest";
 import { buildPublicApi } from "../public-api.js";
 import { tableState } from "../table-state.js";
 
-/** Les 15 membres publiés. Retirer une ligne d'ici est un acte, pas un effet de bord. */
+/** The 15 published members. Removing a line here is an act, not a side effect. */
 const EXPECTED_MEMBERS = [
     "show",
     "hide",
@@ -61,17 +62,17 @@ describe("@geoleaf-plugins/table public API", () => {
         expect(api.isOpen()).toBe(false);
     });
 
-    it("🛑 isOpen() rend le contournement de B-71 possible — `open()` BASCULE", () => {
+    it("🛑 isOpen() rend le contournement possible — `open()` BASCULE", () => {
         const api = buildPublicApi();
         tableState._container = document.createElement("div");
 
-        // Le défaut lui-même, éprouvé plutôt que cité : deux `open()` referment.
+        // The defect itself, exercised rather than cited: two `open()` calls close again.
         api.open();
         expect(api.isOpen()).toBe(true);
         api.open();
-        expect(api.isOpen(), "B-71 : `open()` est un alias de `toggle()`").toBe(false);
+        expect(api.isOpen(), "`open()` est un alias de `toggle()`").toBe(false);
 
-        // Le contournement que `isOpen()` rend possible, et qui n'existait pas avant elle.
+        // The workaround `isOpen()` makes possible, which did not exist before it.
         if (!api.isOpen()) api.open();
         if (!api.isOpen()) api.open();
         expect(api.isOpen()).toBe(true);

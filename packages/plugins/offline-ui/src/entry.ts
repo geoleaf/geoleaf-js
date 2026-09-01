@@ -5,24 +5,28 @@
  * ESM only — no UMD, no CommonJS. Loaded AFTER @geoleaf/core, BEFORE GeoLeaf.boot().
  * © 2026 Mattieu Pottier — MIT License
  *
- * ## ⚠️ Pas de `public-api.ts` ici, et c'est un CONSTAT, pas un oubli (API publique S4.7c)
+ * ## ⚠️ No `public-api.ts` here, and it is a FINDING, not an oversight
  *
- * La tâche 4.7 a aligné `connector` et l'ancien `addpoi` sur le patron `buildPublicApi()`, ce qui les
- * fait entrer dans le champ de `check-facade-purity.cjs` — une gate qui énumère les façades
- * par EXISTENCE DE FICHIER. On pourrait croire storage laissé de côté. Il ne l'est pas :
- * **il ne monte aucun namespace propre.**
+ * `connector` and the former `addpoi` were aligned on the `buildPublicApi()`
+ * pattern, which brings them into the scope of `check-facade-purity.cjs` — a gate
+ * that enumerates facades by FILE EXISTENCE. One might believe storage was left
+ * aside. It is not: **it mounts no namespace of its own.**
  *
- * `GeoLeaf.Storage` est une façade du CORE (capacité `offline`, `kernel/storage/facade.ts`).
- * Ce plugin la PILOTE — il enregistre l'UI hors-ligne, les dictionnaires i18n et la barre
- * d'outils — et son `healthCheck` le dit en toutes lettres : `typeof _g.GeoLeaf?.Storage ===
- * "object"` interroge une surface qu'il n'a pas posée.
+ * `GeoLeaf.Storage` is a CORE facade (the `offline` capability,
+ * `kernel/storage/facade.ts`). This plugin DRIVES it — it registers the offline
+ * UI, the i18n dictionaries and the toolbar — and its `healthCheck` says so in as
+ * many words: `typeof _g.GeoLeaf?.Storage === "object"` queries a surface it did
+ * not set.
  *
- * Créer un `public-api.ts` vide pour « entrer dans la gate » serait un mensonge de structure :
- * le fichier annoncerait une façade là où il n'y a rien à exposer, et la gate le validerait.
- * Une gate satisfaite par une coquille ne garde rien.
+ * Creating an empty `public-api.ts` to "enter the gate" would be a structural
+ * lie: the file would announce a facade where there is nothing to expose, and the
+ * gate would validate it. A gate satisfied by a shell guards nothing.
  *
- * Le même constat vaut pour deux capacités du core, `route` et `vector-tiles` — également sans
- * `public-api.ts`, et pour la même raison. Consigné au backlog technique.
+ * ⚠️ **This paragraph extended the finding to `route` AND `vector-tiles` "for the
+ * same reason". Measured on 20/08/2026: true of `route`, false of
+ * `vector-tiles`**, which mounts `gl._VectorTiles` from its own directory — hence
+ * an own surface, declared moreover in `global.d.ts`. THIS file's finding stays
+ * right; its extension was not.
  * https://geoleaf.dev
  */
 import "./css/cache-modal.css";
@@ -60,12 +64,13 @@ const _g = (typeof globalThis !== "undefined" ? globalThis : {}) as { GeoLeaf?: 
 
 // Register i18n dictionaries FIRST so the toolbar label resolves during boot.
 //
-// ⚠️ STRUCT S3.2 — le namespace passe à `offline-ui`, PAS le préfixe des clés, qui reste
-// `storage.*`. Les deux sont indépendants : `registerDict(ns, dicts)` range dans
-// `_pluginDicts[ns]` puis aplatit tout, et `getLabel` résout sur la clé plate seule — le
-// namespace n'est qu'un seau. Renommer le préfixe serait un geste distinct et bien plus
-// large : 105 clés × 6 locales, 121 sites d'appel, et surtout une surface d'OVERRIDE DE
-// PROFIL (`_overrides[key]`), donc un contrat public que le renommage du paquet n'engage pas.
+// ⚠️ Plugin rename — the namespace becomes `offline-ui`, NOT the key prefix,
+// which stays `storage.*`. The two are independent: `registerDict(ns, dicts)`
+// files under `_pluginDicts[ns]` then flattens everything, and `getLabel`
+// resolves on the flat key alone — the namespace is just a bucket. Renaming the
+// prefix would be a distinct and far larger gesture: 105 keys × 6 locales, 121
+// call sites, and above all a PROFILE OVERRIDE surface (`_overrides[key]`), hence
+// a public contract the package rename does not commit.
 _g.GeoLeaf?.I18n?.registerDict?.("offline-ui", {
     fr: langFr,
     en: langEn,
@@ -93,26 +98,28 @@ if (_g.GeoLeaf?.plugins?.register) {
 // top-left MapLibre control, and wire the open-modal listener.
 registerCacheToolbar(_g);
 
-// Rendre audibles les signaux que le MOTEUR émettait sans que personne n'écoute (B-72) :
-// dépassement de quota et éviction par budget. Ce sont exactement les deux dont les tâches
-// 3.4 et 3.13 ont besoin pour être observables — un moteur qui gère le quota sans jamais le
-// dire ne se distingue pas, de l'extérieur, d'un moteur qui ne le gère pas.
+// Make audible the signals the ENGINE emitted with nobody listening: quota
+// overflow and budget eviction. Exactly the two that the non-evictable store and
+// the tile-cache arbitration need to be observable — an engine managing the quota
+// without ever saying so is indistinguishable, from outside, from one that does
+// not.
 //
-// ⚠️ Câblé ICI, à l'import de l'entrée, et non dans le cycle de vie de la modale : ces
-// signaux partent au TÉLÉCHARGEMENT et à l'ÉCRITURE, c'est-à-dire quand l'interface de cache
-// est fermée. Les brancher à l'ouverture du panneau les aurait manqués précisément quand ils
-// se produisent.
+// ⚠️ Wired HERE, at entry import, and not in the modal's lifecycle: these signals
+// fire at DOWNLOAD and WRITE time, i.e. while the cache UI is closed. Wiring them
+// at panel opening would have missed them precisely when they happen.
 wireEngineSignals();
 
-// ─── Surface de TYPES publiée — API publique S4.4c ───────────────────────────
+// ─── Published TYPE surface ──────────────────────────────────────────────────
 //
-// ⚠️ Sans ce bloc, `dist/types/entry.d.ts` ne contient que des imports d'effet de bord, et la
-// gate PUB-TYPES sort VERTE sur une surface VIDE : elle vérifie que la cible de la condition
-// `types` existe, pas qu'elle déclare quoi que ce soit. `typeof import("@geoleaf-plugins/…")`
-// vaudrait `{}`, l'intégrateur croirait le paquet typé, et la tâche n'aurait rien livré.
+// ⚠️ Without this block, `dist/types/entry.d.ts` contains only side-effect
+// imports, and the PUB-TYPES gate comes out GREEN on an EMPTY surface: it checks
+// that the `types` condition's target exists, not that it declares anything.
+// `typeof import("@geoleaf-plugins/…")` would be `{}`, the integrator would
+// believe the package typed, and the work would have delivered nothing.
 //
-// C'est le patron de `cog`, `measure` et `print` : l'entrée ré-exporte les types que le paquet
-// assume publiquement. Ce qui n'est pas ici n'est PAS publié — c'est la décision, pas un oubli.
+// It is the pattern of `cog`, `measure` and `print`: the entry re-exports the
+// types the package publicly assumes. What is not here is NOT published — the
+// decision, not an oversight.
 export type {
     StorageContractShape,
     StorageContractDB,

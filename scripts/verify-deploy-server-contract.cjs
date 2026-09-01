@@ -1,50 +1,62 @@
 #!/usr/bin/env node
 "use strict";
 /**
- * verify-deploy-server-contract.cjs — ce qu'on livre DIT ce qu'il exige.
+ * verify-deploy-server-contract.cjs — what we ship SAYS what it requires.
  *
- * ## Le trou que cette gate ferme
+ * ## The hole this gate closes
  *
- * Le 09/08/2026, `deploy-full` a été copié tel quel sur un serveur de production nginx. Le
- * spinner a tourné indéfiniment. Cause unique, rendue en clair par la première ligne de console :
- * le serveur servait les `.mjs` du moteur MapLibre en `application/octet-stream`, et le
- * navigateur refuse d'exécuter un module sous ce type.
+ * On 2026-08-09, `deploy-full` was copied as-is onto an nginx production server.
+ * The spinner spun indefinitely. Single cause, spelled out by the first console
+ * line: the server served the MapLibre engine's `.mjs` as
+ * `application/octet-stream`, and the browser refuses to execute a module under
+ * that type.
  *
- * 🛑 **Le dépôt SAVAIT.** `docker/nginx.dev.conf` porte la directive, précédée de « SANS CETTE
- * LIGNE, RIEN NE BOOTE » et d'un aveu qui décrit exactement ce qui allait arriver : « ⚠️ Cette
- * contrainte VIT HORS DU DÉPÔT pour l'intégrateur — aucune gate ne peut la voir chez lui ».
+ * 🛑 **The repo KNEW.** `docker/nginx.dev.conf` carries the directive, preceded by
+ * "WITHOUT THIS LINE, NOTHING BOOTS" and an admission describing exactly what was
+ * going to happen: "⚠️ This constraint LIVES OUTSIDE THE REPO for the integrator —
+ * no gate can see it at their place".
  *
- * Ce n'était donc pas un trou de connaissance mais un trou de **diffusion**. La connaissance
- * vivait dans un fichier de développement qui ne part pas avec le dossier ; le livrable, lui, ne
- * portait aucun fichier d'accompagnement, et le dernier texte imprimé par le build conseillait
- * « Serve via http » — que la CSP de la page rend impossible.
+ * It was thus not a knowledge hole but a **diffusion** hole. The knowledge lived in
+ * a development file that does not travel with the folder; the deliverable carried
+ * no companion file, and the build's last printed text advised "Serve via http" —
+ * which the page's CSP makes impossible.
  *
- * ## Ce que cette gate peut, et ce qu'elle ne peut pas
+ * ## What this gate can do, and what it cannot
  *
- * Elle vérifie que la recette **part avec le dossier** et **dit la seule chose sans laquelle rien
- * ne démarre**. Elle ne peut évidemment pas vérifier le serveur du client : ce versant-là
- * n'appartient à personne ici, et c'est précisément pourquoi la recette doit voyager.
+ * It verifies that the recipe **travels with the folder** and **says the one thing
+ * without which nothing starts**. It obviously cannot verify the client's server:
+ * that side belongs to nobody here, and that is precisely why the recipe must
+ * travel.
  *
- *   SC-01  chaque variante qui part porte les 3 fichiers d'accompagnement.
- *   SC-02  les 2 recettes serveur déclarent effectivement le type MIME de `.mjs`.
- *          → un fichier présent mais muet est le mode d'échec que cette gate existe pour
- *            éviter, pas un demi-succès.
- *   SC-03  assertion anti-gate-vide, à deux étages : au moins une variante scannée, et la
- *          variante contient au moins un `.mjs`.
- *          → sans le second, le jour où MapLibre cesserait d'être ESM-only, cette gate
- *            continuerait d'exiger — en sortant verte — une recette devenue sans objet. Une
- *            garde qui ne peut plus rougir ne garde rien (cf. `probe-gate-visibility.cjs`).
+ *   SC-01  each shipping variant carries the 3 companion files.
+ *   SC-02  the 2 server recipes actually declare the `.mjs` MIME type.
+ *          → a present-but-mute file is the failure mode this gate exists to
+ *            avoid, not a half success.
+ *   SC-03  anti-empty-gate assertion, two-storey: at least one variant scanned,
+ *          and the variant contains at least one `.mjs`.
+ *          → without the second, the day MapLibre stopped being ESM-only, this
+ *            gate would keep requiring — while going green — a recipe grown
+ *            pointless. A guard that can no longer redden guards nothing
+ *            (cf. `probe-gate-visibility.cjs`).
+ *   SC-04  the 2 server recipes declare the security-header triad
+ *          (X-Content-Type-Options / X-Frame-Options / CSP `frame-ancestors`).
+ *          → SC-02 proved the recipe travels and boots; nothing proved it still
+ *            carried the headers it ships FOR, so a silent removal went green.
+ *            HSTS is excluded on purpose — a cautious integrator may hold it back
+ *            until their HTTPS is stable (see the recipe's own note).
  *
- * ⚠️ **SC-02 relit le disque, il ne compare pas le générateur à lui-même.** Vérifier que
- * `serverContractFiles()` contient ce que `serverContractFiles()` contient serait une
- * tautologie — le mode d'échec que `verify-app-template.cjs` nomme dans son propre en-tête. Ce
- * qui est mesuré est le fichier ÉMIS, donc la chaîne complète générateur → build → disque.
+ * ⚠️ **SC-02 re-reads the disk, it does not compare the generator to itself.**
+ * Verifying that `serverContractFiles()` contains what `serverContractFiles()`
+ * contains would be a tautology — the failure mode `verify-app-template.cjs` names
+ * in its own header. What is measured is the EMITTED file, hence the full chain
+ * generator → build → disk.
  *
- * ## Vu rougir avant d'être cru (09/08/2026)
+ * ## Seen red before being believed (2026-08-09)
  *
- *   • un des 3 fichiers supprimé du livrable            → SC-01 rouge
- *   • ligne `mjs` retirée du `nginx.conf.example` émis  → SC-02 rouge
- *   • gate pointée sur une variante sans `.mjs`         → SC-03 rouge
+ *   • one of the 3 files removed from the deliverable   → SC-01 red
+ *   • `mjs` line removed from the emitted `nginx.conf.example` → SC-02 red
+ *   • gate pointed at a variant without `.mjs`          → SC-03 red
+ *   • a security header removed from the emitted recipe → SC-04 red
  */
 
 const fs = require("node:fs");
@@ -54,6 +66,7 @@ const {
     SERVER_CONTRACT_FILES,
     MJS_MIME_TOKEN,
     declaresMjsType,
+    missingSecurityHeaders,
     carriesServerContract,
 } = require("./lib/server-contract.cjs");
 
@@ -69,7 +82,7 @@ const C = {
     x: "\x1b[0m",
 };
 
-/** Les deux fichiers qui portent une recette serveur — `SERVEUR.md` est de la prose. */
+/** The two files carrying a server recipe — `SERVEUR.md` is prose. */
 const RECIPE_FILES = ["nginx.conf.example", ".htaccess"];
 
 /** @type {string[]} */
@@ -77,7 +90,7 @@ const errors = [];
 const stats = { variants: 0, covered: 0, files: 0, mjs: 0 };
 
 /**
- * Compte les `.mjs` d'un arbre, sans descendre dans ce qui n'est pas servi.
+ * Counts a tree's `.mjs`, without descending into what is not served.
  * @param {string} dir
  * @returns {number}
  */
@@ -119,7 +132,7 @@ for (const variant of variantDirs) {
     }
     stats.covered += 1;
 
-    // ── SC-01 — les 3 fichiers sont là ───────────────────────────────────────
+    // ── SC-01 — the 3 files are there ────────────────────────────────────────
     /** @type {string[]} */
     const present = [];
     for (const name of SERVER_CONTRACT_FILES) {
@@ -137,9 +150,9 @@ for (const variant of variantDirs) {
         stats.files += 1;
     }
 
-    // ── SC-02 — les recettes disent la seule chose qui bloque ────────────────
+    // ── SC-02 — the recipes say the one thing that blocks ────────────────────
     for (const name of RECIPE_FILES) {
-        if (!present.includes(name)) continue; // déjà signalé par SC-01
+        if (!present.includes(name)) continue; // already flagged by SC-01
         const body = fs.readFileSync(path.join(dir, name), "utf-8");
         if (!declaresMjsType(body)) {
             errors.push(
@@ -153,9 +166,21 @@ for (const variant of variantDirs) {
                     `être sur la même ligne — voir \`declaresMjsType()\` et le motif du dépouillement.`
             );
         }
+
+        // ── SC-04 — the recipes carry the security-header triad ──────────────
+        const missing = missingSecurityHeaders(body);
+        if (missing.length) {
+            errors.push(
+                `SC-04 ${variant}/${name} — en-tête(s) de sécurité de la recette absent(s) : ` +
+                    `${missing.join(", ")}. La triade X-Content-Type-Options / X-Frame-Options / ` +
+                    `CSP \`frame-ancestors\` voyage avec le livrable pour son serveur ; sans cette ` +
+                    `gate, un retrait sortait vert — SC-02 ne juge que le type MIME. Émission : ` +
+                    `scripts/lib/server-contract.cjs.`
+            );
+        }
     }
 
-    // ── SC-03 (2/2) — la recette a encore un objet ───────────────────────────
+    // ── SC-03 (2/2) — the recipe still has a subject ─────────────────────────
     const mjs = countMjs(dir);
     stats.mjs += mjs;
     if (mjs === 0) {
@@ -168,12 +193,12 @@ for (const variant of variantDirs) {
     }
 }
 
-// ── SC-03 (1/2) — le scan n'est pas vide ─────────────────────────────────────
+// ── SC-03 (1/2) — the scan is not empty ──────────────────────────────────────
 //
-// 🛑 SANS CE BLOC, CETTE GATE EST DÉCORATIVE. Un `deploy/` sans variante, un renommage, une
-// exclusion élargie par erreur : dans les trois cas zéro fichier manquant, donc vert. Même
-// raisonnement que DNS-04 dans `verify-deploy-no-secrets.cjs`, et même motif — ce dépôt a déjà
-// payé cette classe deux fois.
+// 🛑 WITHOUT THIS BLOCK, THIS GATE IS DECORATIVE. A variant-less `deploy/`, a
+// rename, an exclusion widened by mistake: in all three cases zero missing files,
+// hence green. Same reasoning as DNS-04 in `verify-deploy-no-secrets.cjs`, and same
+// motive — this repo has already paid this class twice.
 if (stats.covered === 0) {
     errors.push(
         `SC-03 — aucune variante attendue porteuse de contrat sous ${path.relative(ROOT, DEPLOY)}/ ` +
@@ -199,6 +224,6 @@ if (errors.length) {
 
 console.log(
     `${C.green}✔ DEPLOY-SERVER-CONTRACT${C.x} : chaque livrable emporte sa recette serveur — ` +
-        `3 invariants tenus (présence, type MIME .mjs déclaré, scan non vide).\n` +
-        `  ${C.dim}Scanné : ${scanned}${C.x}`
+        `4 invariants tenus (présence, type MIME .mjs déclaré, triade d'en-têtes de sécurité, ` +
+        `scan non vide).\n  ${C.dim}Scanné : ${scanned}${C.x}`
 );

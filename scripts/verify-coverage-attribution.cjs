@@ -1,40 +1,43 @@
 #!/usr/bin/env node
 /**
- * verify-coverage-attribution.cjs — la gate qui vérifie l'APPAREIL DE MESURE (S1.7).
+ * verify-coverage-attribution.cjs — the gate that verifies the MEASURING DEVICE.
  *
- * ## Le défaut qu'aucun test ne peut attraper
+ * ## The defect no test can catch
  *
- * Toutes les autres gates de ce dépôt vérifient le code. Celle-ci vérifie l'instrument qui
- * mesure le code. C'est le seul défaut qu'une suite verte ne peut pas révéler : un rapport
- * de couverture faux est **bien formé**, ses pourcentages sont **plausibles**, et rien ne
- * rougit. C'est exactement ainsi que le défaut de la roadmap COUVERTURE a vécu un mois.
+ * Every other gate of this repo verifies the code. This one verifies the
+ * instrument that measures the code. It is the only defect a green suite cannot
+ * reveal: a false coverage report is **well-formed**, its percentages are
+ * **plausible**, and nothing reddens. That is exactly how the coverage rework's
+ * defect lived for a month.
  *
- * Le protocole est celui qui l'a révélé : un module témoin à **4 fonctions**, un test qui
- * n'en appelle **qu'une**, et l'assertion que le `lcov` crédite **celle-là et pas les trois
- * autres**. Une question dont on connaît déjà la réponse — un **oracle externe** — posée à
- * l'instrument. C'est ce qui rend le contrôle concluant avec un SEUL provider : on ne demande
- * pas à istanbul de se vérifier lui-même, on le confronte à une vérité qu'on tient d'avance.
+ * The protocol is the one that revealed it: a witness module with **4 functions**,
+ * a test that calls **only one**, and the assertion that the `lcov` credits **that
+ * one and not the other three**. A question whose answer is already known — an
+ * **external oracle** — put to the instrument. That is what makes the check
+ * conclusive with a SINGLE provider: istanbul is not asked to verify itself, it is
+ * confronted with a truth held in advance.
  *
- * ## Pourquoi une gate et pas une contre-épreuve ponctuelle
+ * ## Why a gate and not a one-off counter-proof
  *
- * L'histoire du dépôt tranche : une vérification non câblée n'a pas lieu. Le gate de
- * couverture lui-même était absent de `ci:local` jusqu'au 19/07 et **il est resté ROUGE sur
- * `main`** sans que rien ne le signale (ARCHI B.14). Une contre-épreuve « à faire de temps
- * en temps » subirait le même sort.
+ * The repo's history settles it: an unwired verification does not happen. The
+ * coverage gate itself was absent from `ci:local` until 07-19 and **stayed RED on
+ * `main`** with nothing flagging it. A "do it from time to time" counter-proof
+ * would suffer the same fate.
  *
- * ## Un seul provider : istanbul
+ * ## A single provider: istanbul
  *
- * Le dépôt mesure sa couverture avec **istanbul, partout, et rien d'autre**. La classe de
- * défauts qui avait motivé cette gate — un module chargé par `require()` que l'instrumentation
- * ne voit pas sous `--import tsx` — a été éliminée aux sprints 2 à 5 et est désormais gardée à
- * la source par `verify-test-load-mode.cjs` (baseline qui ne peut que descendre). Ici, on
- * vérifie l'attribution : `charlie` appelée une fois doit être créditée `FNDA:1`, les trois
- * autres `FNDA:0`. La sonde ne certifie que le **témoin** — un fichier, un worker, sur la
- * branche `import` — pas l'agrégat en suite complète.
+ * The repo measures its coverage with **istanbul, everywhere, and nothing else**.
+ * The defect class that had motivated this gate — a `require()`-loaded module the
+ * instrumentation does not see under `--import tsx` — was eliminated and is now
+ * guarded at the source by `verify-test-load-mode.cjs` (a baseline that can only
+ * descend). Here, attribution is verified: `charlie` called once must be credited
+ * `FNDA:1`, the other three `FNDA:0`. The probe certifies only the **witness** —
+ * one file, one worker, on the `import` branch — not the aggregate in a full
+ * suite.
  *
  * Usage :
  *   node scripts/verify-coverage-attribution.cjs           # gate
- *   node scripts/verify-coverage-attribution.cjs --verbose # affiche le lcov produit
+ *   node scripts/verify-coverage-attribution.cjs --verbose # prints the produced lcov
  */
 
 "use strict";
@@ -47,19 +50,19 @@ const ROOT = path.resolve(__dirname, "..");
 const TMP_DIR = path.join(ROOT, ".tmp-coverage-probe");
 const VERBOSE = process.argv.includes("--verbose");
 
-// Le répertoire de travail ne doit pas survivre au processus, et un `finally` ne suffit
-// pas : chaque garde ci-dessous sort par `process.exit()`, qui saute les `finally`.
+// The working directory must not outlive the process, and a `finally` does not
+// suffice: each guard below exits through `process.exit()`, which skips `finally`.
 process.on("exit", () => fs.rmSync(TMP_DIR, { recursive: true, force: true }));
 
-/** La fonction que le test appelle — les trois autres ne doivent JAMAIS être créditées. */
+/** The function the test calls — the other three must NEVER be credited. */
 const CALLED = "charlie";
 const NEVER_CALLED = ["alpha", "bravo", "delta"];
 
 /**
- * Écrit le témoin, son test et la config de couverture.
+ * Writes the witness, its test and the coverage config.
  *
- * Les 4 fonctions ont des corps distincts sur des lignes distinctes : une attribution
- * décalée devient visible sur les `DA:` autant que sur les `FNDA:`.
+ * The 4 functions have distinct bodies on distinct lines: a shifted attribution
+ * becomes visible on the `DA:` as much as on the `FNDA:`.
  */
 function plantWitness() {
     fs.rmSync(TMP_DIR, { recursive: true, force: true });
@@ -87,7 +90,7 @@ function plantWitness() {
         ].join("\n")
     );
 
-    // Charge par `import` — la branche que l'instrument mesure juste.
+    // Loads through `import` — the branch the instrument measures correctly.
     fs.writeFileSync(
         path.join(TMP_DIR, "witness.test.ts"),
         [
@@ -127,9 +130,9 @@ function plantWitness() {
 }
 
 /**
- * Lance vitest avec couverture (istanbul) et rend les compteurs `FNDA` du témoin.
+ * Runs vitest with coverage (istanbul) and returns the witness's `FNDA` counters.
  *
- * @returns {Record<string, number>} nom de fonction → nombre d'appels crédités.
+ * @returns {Record<string, number>} function name → credited call count.
  */
 function measure() {
     const res = spawnSync(
@@ -158,7 +161,7 @@ function measure() {
 }
 
 /**
- * Vérifie qu'un relevé crédite la bonne fonction et elle seule.
+ * Verifies a reading credits the right function and it alone.
  *
  * @param {Record<string, number>} fnda
  * @returns {string[]} Anomalies, vide si conforme.
@@ -186,7 +189,7 @@ function checkAttribution(fnda) {
     return bad;
 }
 
-// ── Exécution ────────────────────────────────────────────────────────────────
+// ── Execution ────────────────────────────────────────────────────────────────
 plantWitness();
 
 const problems = checkAttribution(measure());
@@ -196,7 +199,7 @@ if (problems.length > 0) {
     for (const p of problems) console.error(`  - ${p}`);
     console.error(
         "\n  Un rapport de couverture faux est bien formé et plausible : aucun test ne\n" +
-            "  peut l'attraper. Voir _docs_projet/archives/roadmap_couverture-tests.md"
+            "  peut l'attraper."
     );
     process.exit(1);
 }

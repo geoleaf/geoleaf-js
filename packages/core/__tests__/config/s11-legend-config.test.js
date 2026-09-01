@@ -69,9 +69,10 @@ describe("config B7 — modules.legend (public-api.ts)", () => {
             expect(resolveLegendOptions({ title: "Légende" }).title).toBe("Légende");
         });
         it("absent → défaut localisé (ex-'Legend', B.24/B.38)", () => {
-            // Épinglait la chaîne ANGLAISE "Legend", servie aux six langues dans une
-            // interface française. Le défaut vient désormais de `ui.legend.title` ; i18n
-            // n'étant pas initialisé ici, le dictionnaire retombe sur fr.
+            // Pinned the ENGLISH string "Legend", served to all six
+            // languages in a French interface. The default now comes from
+            // `ui.legend.title`; i18n not being initialised here, the
+            // dictionary falls back to fr.
             expect(resolveLegendOptions({}).title).toBe("Légende");
         });
     });

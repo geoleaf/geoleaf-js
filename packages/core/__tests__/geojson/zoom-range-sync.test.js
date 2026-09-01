@@ -1,15 +1,16 @@
 /**
- * S5/N-1b — re-poussée des `minzoom`/`maxzoom` natifs quand la latitude dérive.
+ * Re-pushing native `minzoom`/`maxzoom` when latitude drifts.
  *
- * Une borne d'échelle ne devient un niveau de zoom qu'À TRAVERS la latitude : le même
- * 1:X vaut ~1 zoom de moins à 60°N qu'à l'équateur. Une plage posée au chargement dérive
- * donc quand la carte voyage nord/sud — et le moteur (qui rend) se désaccorderait de la
- * légende (qui rapporte). Le zoom, lui, ne change RIEN à la conversion : d'où `moveend`
- * et non `zoomend`.
+ * A scale bound only becomes a zoom level THROUGH latitude: the same 1:X is
+ * worth ~1 zoom less at 60°N than at the equator. A range set at load thus
+ * drifts as the map travels north/south — and the engine (which renders)
+ * would fall out of tune with the legend (which reports). Zoom itself
+ * changes NOTHING in the conversion: hence `moveend` and not `zoomend`.
  *
- * Tout passe par `bindZoomRangeSync` : c'est la seule surface publique du module, et
- * c'est le chemin réel. Exporter la fonction interne juste pour la tester aurait créé un
- * export sans consommateur — ce que le gate B3 refuse, à raison.
+ * Everything goes through `bindZoomRangeSync`: the module's only public
+ * surface, and the real path. Exporting the internal function just to test
+ * it would have created a consumer-less export — which the orphan gate
+ * refuses, rightly.
  */
 const state = { layers: new Map(), adapter: null };
 vi.mock("../../src/kernel/geojson/shared.js", () => ({
@@ -31,7 +32,7 @@ describe("geojson/zoom-range-sync", () => {
     let handlers;
     let lat;
 
-    /** Carte factice dont on pilote la latitude. */
+    /** Fake map whose latitude is driven. */
     const makeMap = () => ({
         on: (evt, fn) => (handlers[evt] = fn),
         getCenter: () => ({ lat, lng: 0 }),
@@ -90,7 +91,7 @@ describe("geojson/zoom-range-sync", () => {
 
         moveTo(50);
         expect(setLayerZoomRange).toHaveBeenCalledTimes(1);
-        // Plus au nord, le même dénominateur tombe à un zoom plus bas.
+        // Further north, the same denominator lands at a lower zoom.
         expect(setLayerZoomRange.mock.calls[0][1]).toBeLessThan(premierMin);
     });
 
@@ -129,8 +130,8 @@ describe("geojson/zoom-range-sync", () => {
         moveTo(4);
         setLayerZoomRange.mockClear();
 
-        // Nouvelle carte à la même latitude : sans reset, la dérive serait jugée nulle
-        // et la plage ne serait jamais posée sur la carte recréée.
+        // A new map at the same latitude: without a reset, the drift would
+        // be judged nil and the range never set on the recreated map.
         bindZoomRangeSync(makeMap());
         moveTo(4);
         expect(setLayerZoomRange).toHaveBeenCalled();

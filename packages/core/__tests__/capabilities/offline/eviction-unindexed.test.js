@@ -7,7 +7,7 @@
  * enters the index. Such a record was therefore invisible to the budget total AND
  * un-evictable: pure, silent growth that no amount of cache-capping could reclaim.
  *
- * This is not hypothetical. `kernel/themes/theme-cache.ts:116` calls
+ * This is not hypothetical. `kernel/themes/theme-cache.ts` calls
  * `StorageDB.cacheLayer(layerId, data, profileId || null, metadata)` — it writes
  * `profileId: null` by design whenever a theme is cached outside a profile.
  *
@@ -99,7 +99,7 @@ describe("evictToQuota — records with no indexable profileId", () => {
         const db = await openAt(3);
         DBLayers.init(db);
 
-        // Exactly what themes/theme-cache.ts:116 does for a profile-less theme.
+        // Exactly what themes/theme-cache.ts does for a profile-less theme.
         await DBLayers.cacheLayer("theme-dark", { a: 1 }, null);
 
         const record = await request(layersStore(db).get("theme-dark"));
@@ -180,8 +180,8 @@ describe("evictToQuota — records with no indexable profileId", () => {
         expect(await allIds(db)).toEqual(["a"]);
     });
 
-    // ⚠️ Le second site de ce défaut (`CacheMetrics.getCompressionStats`, qui parcourait
-    // le même index et ratait donc les mêmes enregistrements) a été PURGÉ en B.12 — 0
-    // consommateur de production. Son correctif n'est pas perdu, il est devenu SANS OBJET :
-    // le second site n'existe plus. Le premier, lui, reste corrigé et couvert ci-dessus.
+    // ⚠️ This defect's second site (`CacheMetrics.getCompressionStats`, which
+    // walked the same index and thus missed the same records) was PURGED — 0
+    // production consumers. Its fix is not lost, it became MOOT: the second
+    // site no longer exists. The first stays fixed and covered above.
 });

@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "slot-declarations",
+    "scope": ["scripts/check-slot-declarations.cjs"],
+    "verdicts": {
+        "scripts/check-slot-declarations.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "SLOT-01…03 — un créneau de barre d'outils déclaré deux fois (init.js + entry.ts) doit l'être à l'identique sur les champs de visibilité",
+            "confidence": "haute",
+            "rationale": "Câblé dans ci:local et ci.yml à la pose. Ferme la dérive des créneaux : les deux déclarations d'un créneau ont divergé sur 4 sur 8 sans qu'aucune gate ne bronche — print, measure et editor livrés avec leur clé canonique inerte. Extraction à l'AST des deux côtés (les blocs sont des littéraux multi-lignes qu'un grep ligne à ligne lit mal — le mode d'échec du premier pré-vol de la ligne). Compare UNIQUEMENT les champs de visibilité (profileKey, legacyProfileKey, variant) — jamais les icônes ni les libellés, présentation légitime de l'app — et par PAIRE appariée, jamais en règle uniforme : C-D1 a mesuré qu'une règle uniforme a fait disparaître le bouton position-share des quatre variantes. Plancher de non-vacuité à 5 paires (un extracteur cassé ne passe pas pour un dépôt aligné). VU ROUGE SUR TROIS MUTATIONS (clé désalignée, extracteur cassé, variant retiré — la reproduction exacte du cas position-share), et son PREMIER run a mordu sur ce cas réel, corrigé dans le même lot."
+        }
+    }
+}

@@ -4,7 +4,7 @@
  *
  * Runs `npm audit --omit=dev` and FAILS the build on any High or Critical
  * vulnerability in the PRODUCTION dependency tree. Dev-only advisories
- * (vitepress/esbuild, nyc/depcheck — documented in roadmap S2.5) are excluded
+ * (vitepress/esbuild, nyc/depcheck — documented) are excluded
  * via `--omit=dev` and never block the gate.
  *
  * Usage: node scripts/audit-ci.cjs (from repo root)
@@ -49,26 +49,27 @@ function runAudit() {
 
 const report = runAudit();
 
-// ⚠️ REFUS DE CONCLURE SUR UNE MESURE VIDE — mesuré le 01/08/2026, et c'est la classe
-// gitleaks prise par l'autre bout.
+// ⚠️ REFUSAL TO CONCLUDE ON AN EMPTY MEASUREMENT — measured on 2026-08-01, and it
+// is the gitleaks class taken from the other end.
 //
-// Quand le registre est injoignable (réseau, proxy, runner sans sortie), `npm audit --json`
-// ne CASSE PAS : il rend un objet d'erreur et sort **0** —
+// When the registry is unreachable (network, proxy, runner without egress),
+// `npm audit --json` does NOT BREAK: it returns an error object and exits **0** —
 //
 //     $ npm_config_registry=http://127.0.0.1:9 npm audit --json ; echo $?
 //     { "message": "request to …/security/audits/quick failed, reason: ECONNREFUSED",
 //       "error": { "summary": "", "detail": "" } }
 //     0
 //
-// Cet objet n'a pas de `metadata.vulnerabilities`. Le `|| {}` qui suivait le transformait
-// donc en « 0 high, 0 critical », et CETTE GATE BLOQUANTE DE SÉCURITÉ annonçait
-// « ✅ No High/Critical production vulnerabilities » SANS AVOIR RIEN MESURÉ. Vérifié
-// empiriquement avant correction : sortie verte, exit 0.
+// That object has no `metadata.vulnerabilities`. The `|| {}` that followed thus
+// turned it into "0 high, 0 critical", and THIS BLOCKING SECURITY GATE announced
+// "✅ No High/Critical production vulnerabilities" HAVING MEASURED NOTHING. Verified
+// empirically before the fix: green output, exit 0.
 //
-// Un verdict de sécurité rassurant sur zéro mesure est pire qu'aucun verdict, parce qu'on le
-// croit. Cette gate est la GARDE (production, High/Critical) : elle doit refuser de conclure,
-// pas rassurer. Son pendant informatif (`audit-dev-report.cjs`) fait l'inverse, et c'est
-// délibéré — un rapport qui n'a rien à rapporter ne bloque personne.
+// A reassuring security verdict on zero measurement is worse than no verdict,
+// because it gets believed. This gate is the GUARD (production, High/Critical): it
+// must refuse to conclude, not reassure. Its informative counterpart
+// (`audit-dev-report.cjs`) does the opposite, deliberately — a report with nothing
+// to report blocks nobody.
 if (!report.metadata || !report.metadata.vulnerabilities) {
     console.error("ERROR [audit-ci]: le rapport npm audit ne porte AUCUN décompte.");
     if (report.message) console.error(`  motif npm : ${report.message}`);

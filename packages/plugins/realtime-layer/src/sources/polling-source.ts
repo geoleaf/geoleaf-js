@@ -43,6 +43,29 @@ export class PollingSource implements IRealtimeSource {
      */
     private _fallbackServed = false;
 
+    /**
+     * Cancellation of in-flight requests, carried by THIS source's lifecycle.
+     *
+     * 🛑 `stop()` did `clearInterval` + `removeEventListener` and **nothing
+     * else**. It closed the front door — no more ticks, no more wake-ups on
+     * `visibilitychange` — but not the request **already gone**: its
+     * continuation calls `this._handler` back, which pushes data into a layer
+     * the caller just stopped.
+     *
+     * 🛑 ONE CONTROLLER PER INSTANCE, AND THAT IS THE DIFFERENCE WITH
+     * `legend.ts`. There the lifecycle owner is the **module** (one
+     * controller, aborted by `_reset()`). Here it is the **instance**: two
+     * `PollingSource`s on two different layers stop independently, and one
+     * must not cancel the other's requests. The pattern is the same — *one
+     * controller per lifecycle owner* — the owner is what changes.
+     *
+     * ⚠️ Recreated at first need after each `stop()`: an aborted
+     * `AbortController` is aborted **for life**, so reusing it would fail any
+     * request of a later `start()` outright — and `start()` after `stop()` is
+     * a NORMAL cycle here (resume on `visibilitychange`).
+     */
+    private _controller: AbortController | null = null;
+
     constructor(url: string, intervalMs: number, decoder: string, fallbackUrl?: string) {
         this._url = url;
         this._intervalMs = intervalMs;
@@ -81,6 +104,11 @@ export class PollingSource implements IRealtimeSource {
             document.removeEventListener("visibilitychange", this._visibilityHandler);
             this._visibilityHandler = null;
         }
+        // The request already gone: the one `clearInterval` could not reach.
+        if (this._controller) {
+            this._controller.abort();
+            this._controller = null;
+        }
     }
 
     private async _fetch(): Promise<void> {
@@ -103,20 +131,36 @@ export class PollingSource implements IRealtimeSource {
      */
     private async _fetchOne(url: string, isFallback: boolean): Promise<boolean> {
         const tag = isFallback ? "[fallback]" : "";
+        if (typeof AbortController === "function") {
+            this._controller ??= new AbortController();
+        }
+        const signal = this._controller?.signal;
         try {
-            const resp = await fetch(url);
+            const resp = await fetch(url, signal ? { signal } : undefined);
             if (!resp.ok) {
                 console.warn(`[realtime-layer][polling]${tag} ${url} — HTTP ${resp.status}`);
                 return false;
             }
             const data: unknown =
                 this._decoder === "gtfs-rt" ? await resp.arrayBuffer() : await resp.json();
+            // 🛑 SECOND GUARD, AND IT IS NOT REDUNDANT WITH THE SIGNAL. Between
+            // the response and this line there are TWO `await`s — reading the
+            // body is itself asynchronous. `stop()` can land in that gap, and
+            // `abort()` can no longer do anything: the request is done.
+            // Without this test, `this._handler` would push data into a
+            // stopped layer. ⚠️ Testing `this._handler` is NOT enough —
+            // `stop()` does not reset it to `null`, and nulling it would break
+            // the `stop()` → `start()` cycle.
+            if (signal?.aborted) return false;
             this._handler!(data);
             if (isFallback) {
                 console.info(`[realtime-layer][polling] using fallback snapshot ${url}`);
             }
             return true;
         } catch (err) {
+            // A cancellation is not a transport error: logging it as one
+            // would surface a warning at every normal `stop()`.
+            if ((err as Error | undefined)?.name === "AbortError") return false;
             console.warn(`[realtime-layer][polling]${tag} fetch error for ${url}:`, err);
             return false;
         }

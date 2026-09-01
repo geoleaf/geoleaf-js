@@ -1,38 +1,41 @@
 /**
  * @file b60-notifications-mounted.test.js
- * @description Test de non-régression — `GeoLeaf.UI.Notifications` et les six raccourcis
- * `UI.show*` sont RÉELLEMENT montés après le boot.
+ * @description Non-regression test — `GeoLeaf.UI.Notifications` and the six
+ * `UI.show*` shortcuts are REALLY mounted after the boot.
  *
- * Pourquoi ce test existe (B-60, 29/07/2026)
+ * Why this test exists (29/07/2026)
  * ------------------------------------------
- * Ces sept membres étaient **déclarés dans `global.d.ts`** — donc visibles de tout intégrateur
- * compilant contre les types publiés — **enseignés dans deux documents du tarball npm**, et
- * **jamais montés**. Le code qui les construisait existait pourtant, complet, dans
- * `kernel/ui/ui-api.ts` : il vivait derrière un `if (_g.GeoLeaf._UINotifications)` évalué au
- * **corps de module**, alors que l'unique écrivain de `_UINotifications` est l'installeur de
- * `toast-renderer`, appelé **au boot**. La condition était donc toujours fausse.
+ * These seven members were **declared in `global.d.ts`** — hence visible to
+ * any integrator compiling against the published types — **taught in two npm
+ * tarball documents**, and **never mounted**. The code building them
+ * nonetheless existed, complete, in `kernel/ui/ui-api.ts`: it lived behind
+ * an `if (_g.GeoLeaf._UINotifications)` evaluated at **module body**, while
+ * `_UINotifications`'s only writer is `toast-renderer`'s installer, called
+ * **at boot**. The condition was therefore always false.
  *
- * ⚠️ **Ce qui a rendu le défaut invisible si longtemps est le bloc VOISIN.** `ui-api.ts` portait le
- * même piège sur les méthodes de thème — et celui-là avait été rattrapé dans `globals.ui.ts`, avec
- * un commentaire qui diagnostiquait précisément le mécanisme. `UI.applyTheme` fonctionnait donc,
- * ce qui ne laissait rien soupçonner du jumeau resté mort douze lignes plus bas.
+ * ⚠️ **What made the defect invisible for so long is the NEIGHBOURING
+ * block.** `ui-api.ts` carried the same trap on the theme methods — and that
+ * one had been caught in `globals.ui.ts`, with a comment precisely
+ * diagnosing the mechanism. `UI.applyTheme` therefore worked, which left
+ * nothing to suspect about the twin still dead twelve lines below.
  *
- * ## Ce que ce test vérifie, et pourquoi dans cet ordre
+ * ## What this test verifies, and why in this order
  *
- *  1. l'état de départ (rien monté) — sans lui, un test qui passerait sur un namespace déjà
- *     peuplé par un autre fichier ne prouverait rien ;
- *  2. le montage APRÈS `setupUIKernel()`, **sans écrivain de `_UINotifications`** — c'est le cas
- *     qui distingue un montage réel d'une simple ré-exposition de la capacité : la délégation est
- *     paresseuse, donc les membres doivent exister même quand la capacité est absente du build,
- *     et dégrader en no-op plutôt que jeter ;
- *  3. la délégation effective quand la capacité est là.
+ *  1. the starting state (nothing mounted) — without it, a test passing on a
+ *     namespace already populated by another file would prove nothing;
+ *  2. the mounting AFTER `setupUIKernel()`, **without a `_UINotifications`
+ *     writer** — the case that tells a real mounting from a mere re-exposure
+ *     of the capability: delegation is lazy, so the members must exist even
+ *     when the capability is absent from the build, and degrade to no-op
+ *     rather than throw;
+ *  3. the effective delegation when the capability is there.
  *
- * Le point 2 est le cœur : c'est lui qui échouait, et c'est lui qu'un futur refactor casserait.
+ * Point 2 is the heart: it is what failed, and what a future refactor would break.
  */
 import { describe, expect, it, beforeEach } from "vitest";
 import { setupUIKernel } from "../../src/globals/globals.ui.js";
 
-describe("B-60 — les 7 membres de notification existent après le boot", () => {
+describe("les 7 membres de notification existent après le boot", () => {
     beforeEach(() => {
         globalThis.GeoLeaf = { UI: {} };
     });
@@ -55,7 +58,7 @@ describe("B-60 — les 7 membres de notification existent après le boot", () =>
         ]) {
             expect(ui[k], `GeoLeaf.UI.${k} absent`).toBeDefined();
         }
-        // Délégation paresseuse : sans capacité, l'appel dégrade en no-op au lieu de jeter.
+        // Lazy delegation: without the capability, the call degrades to no-op instead of throwing.
         expect(() => ui.showInfo("x")).not.toThrow();
         expect(ui.showInfo("x")).toBeUndefined();
     });

@@ -161,13 +161,7 @@ export function validateLabel(
     const label = styleData.label as string | Record<string, unknown> | undefined;
     if (typeof label === "string") return;
     if (typeof label === "object" && label !== null) {
-        _validateLabelObject(
-            label as Record<string, unknown>,
-            label as Record<string, unknown>,
-            errors,
-            warnings,
-            context
-        );
+        _validateLabelObject(label, label, errors, warnings, context);
         return;
     }
     errors.push({

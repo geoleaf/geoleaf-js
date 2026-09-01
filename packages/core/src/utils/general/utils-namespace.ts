@@ -54,8 +54,8 @@ import { TimerManager } from "./timer-manager.js";
 import { getNestedValue, hasNestedPath, setNestedValue } from "./object-utils.js";
 import { calculateMapScale, isScaleInRange, clearScaleCache } from "./scale-utils.js";
 import { wktToGeoJSON } from "../geo/wkt-parser.js";
-// ARCHI S7 (7.3, geste 3) — promus depuis des modules internes que les plugins
-// atteignaient en deep import. Tous deux purs et sans dépendance.
+// Promoted from internal modules the plugins reached via deep import. Both pure
+// and dependency-free.
 import { formatDateTime, formatFileSize, toMB, toGB } from "./formatters.js";
 import { poiToFeature } from "./poi-to-feature.js";
 
@@ -68,10 +68,10 @@ import { poiToFeature } from "./poi-to-feature.js";
  */
 export type UtilsNamespace = typeof UtilsBase & {
     createElement: typeof createElement;
-    // ARCHI S7 (7.3, geste 1) — `applyCssText` était exporté par `kernel-exports.ts` mais
-    // n'avait AUCUN foyer runtime : les plugins qui l'utilisaient n'avaient donc pas de
-    // cible sur `GeoLeaf.*`. Monté ici plutôt qu'en raccourci de premier niveau, par
-    // cohérence avec `createElement`, qui vient du même `dom-helpers.ts`.
+    // `applyCssText` was exported by `kernel-exports.ts` but had NO runtime home:
+    // the plugins using it therefore had no target on `GeoLeaf.*`. Mounted here
+    // rather than as a top-level shortcut, for consistency with `createElement`,
+    // which comes from the same `dom-helpers.ts`.
     applyCssText: typeof applyCssText;
     DOMSecurity: typeof DOMSecurity;
     ErrorLogger: typeof ErrorLogger;
@@ -97,14 +97,14 @@ export type UtilsNamespace = typeof UtilsBase & {
         clearScaleCache: typeof clearScaleCache;
     };
     wktToGeoJSON: typeof wktToGeoJSON;
-    // ARCHI S7 (7.3, geste 3) — sous-namespace cohérent avec `ObjectUtils` / `ScaleUtils`.
+    // Sub-namespace consistent with `ObjectUtils` / `ScaleUtils`.
     Formatters: {
         formatDateTime: typeof formatDateTime;
         formatFileSize: typeof formatFileSize;
         toMB: typeof toMB;
         toGB: typeof toGB;
     };
-    // Helper géo pur, au premier niveau comme son voisin `wktToGeoJSON`.
+    // Pure geo helper, top-level like its neighbour `wktToGeoJSON`.
     poiToFeature: typeof poiToFeature;
 };
 
@@ -144,8 +144,8 @@ export function applyUtilsNamespace(target: Record<string, unknown>): void {
     // `GeoLeaf.Utils` (README + 2 changelogs) but never actually mounted at runtime,
     // because its only entry point died with the UMD builds in v2.0.0.
     target.wktToGeoJSON = wktToGeoJSON;
-    // ARCHI S7 (7.3, geste 3) — promus pour que les plugins cessent d'atteindre
-    // `utils/general/formatters.js` et `utils/general/poi-to-feature.js` en deep import.
+    // Promoted so the plugins stop reaching `utils/general/formatters.js` and
+    // `utils/general/poi-to-feature.js` via deep import.
     target.Formatters = { formatDateTime, formatFileSize, toMB, toGB };
     target.poiToFeature = poiToFeature;
 }

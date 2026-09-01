@@ -125,9 +125,10 @@ function _processLayerForSection(
     _logLayerPreparation(id, layerData, Log);
     section.items.push({
         id: id,
-        // Le défaut appartient au PRODUCTEUR : l'identité d'une couche. Trois consommateurs
-        // en aval le ré-appliquaient (`options.label || layerId`, `layer.label || layer.id`) —
-        // le hisser ici évite de propager `undefined` dans un objet qui part en registre.
+        // The default belongs to the PRODUCER: a layer's identity. Three downstream
+        // consumers re-applied it (`options.label || layerId`,
+        // `layer.label || layer.id`) — hoisting it here avoids propagating
+        // `undefined` in an object that goes into a registry.
         label: layerData.label ?? id,
         zIndex: layerData.config.zIndex || 0,
         themes: layerData.config.themes || null,
@@ -356,9 +357,9 @@ LayerManager.populateLayerManagerWithAllConfigs = function (activeThemeConfig) {
         return;
     }
 
-    // API S4.3e — lu au store partagé, plus sur le namespace. Ce module est sous `kernel/`,
-    // il importe donc le fichier directement (la médiation par le baril ne s'impose qu'aux
-    // `capabilities/`, cf. R.8).
+    // Read from the shared store, no longer from the namespace. This module is
+    // under `kernel/`, so it imports the file directly (barrel mediation only
+    // binds `capabilities/`).
     const allLayerConfigs = getAllLayerConfigs();
     if (!GeoLeaf || !allLayerConfigs || !Array.isArray(allLayerConfigs)) {
         Log.warn(
@@ -379,13 +380,13 @@ LayerManager.populateLayerManagerWithAllConfigs = function (activeThemeConfig) {
 
     _registerPopulateSectionMap(sectionMap, LMgr, Log);
 
-    // Load legend data for layers active (visible) in the current theme
-    if (typeof LayerManager._loadLayerLegend === "function") {
-        configs.forEach((config) => {
-            if (!activeThemeLayers.includes(config.id)) return;
-            LayerManager._loadLayerLegend(config.id, { config });
-        });
-    }
+    // ⚠️ NO legend loading here, and that is deliberate. A block loading the legend of
+    // every layer "active in the current theme" sat here from V2.1.0 to 26/08/2026 and
+    // never ran ONCE: both call sites of this function (`app/init-features.ts`, at boot
+    // and on `geoleaf:theme:applied`) pass `activeThemeConfig = null`, so
+    // `_getActiveThemeLayers` returns `[]` and the membership test rejected every layer.
+    // Legends are loaded by `LegendLifecycle` on `geoleaf:app:ready`, over ALL configured
+    // layers — a superset of what the dead block aimed at.
 
     Log.info(`[GeoLeaf.GeoJSON] LayerManager populated successfully`);
 

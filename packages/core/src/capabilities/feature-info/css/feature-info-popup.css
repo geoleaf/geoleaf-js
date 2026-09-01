@@ -211,7 +211,7 @@
    Action button (`type: "action"`) — emits `geoleaf:popup:action`.
 
    ⚠️ These rules did not exist until 14/08/2026. The button had been rendered
-   since B-69 (29/07) with `class="gl-poi-popup__action"` and NO rule matching it
+   since 29/07/2026 with `class="gl-poi-popup__action"` and NO rule matching it
    anywhere in the repo — so it inherited the host page's bare `<button>` styling,
    silently, on both the popup and the side panel. Nothing could catch that: a class
    with no stylesheet is indistinguishable from a class whose stylesheet is elsewhere.

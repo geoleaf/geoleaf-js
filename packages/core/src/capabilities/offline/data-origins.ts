@@ -37,18 +37,18 @@ import type { DataOriginDeclaration, DataOriginRole } from "../../contracts/sync
 /**
  * Key under which the declarations are stored, in the `preferences` store.
  *
- * ⚠️ `preferences` and NOT `metadata`, bien que `metadata` colle mieux au sens. Mesuré :
- * `metadata` n'a AUCUN écrivain — un lecteur dans `cache-manager.ts`, un `clear` dans la
- * façade, et rien d'autre. Lui en ajouter un ouvrirait une surface d'API pour un seul
- * usage, alors que `setPreference` / `getPreference` existent, sont exposés sur la façade et
- * sont testés. Le worker lit le même store, par la même clé.
+ * ⚠️ `preferences` and NOT `metadata`, although `metadata` fits the meaning better.
+ * Measured: `metadata` has NO writer — one reader in `cache-manager.ts`, one `clear`
+ * in the facade, and nothing else. Adding one would open an API surface for a single
+ * use, while `setPreference` / `getPreference` exist, are exposed on the facade and
+ * are tested. The worker reads the same store, through the same key.
  *
- * ⚠️ Le préfixe n'est PAS `geoleaf:` : la gate EVENT-MAP scanne les littéraux `geoleaf:*` et
- * prenait cette clé de stockage pour un ÉVÉNEMENT non typé. Un nom qui se fait passer pour ce
- * qu'il n'est pas trompe l'outillage avant de tromper un lecteur.
+ * ⚠️ The prefix is NOT `geoleaf:`: the EVENT-MAP gate scans `geoleaf:*` literals and
+ * took this storage key for an untyped EVENT. A name posing as what it is not fools
+ * the tooling before it fools a reader.
  *
- * Littéral PARTAGÉ : `sw-core.js` le code en dur, faute de pouvoir importer. La garde de
- * source de `__tests__/storage/sw-core.test.js` vérifie que les deux disent la même chose.
+ * SHARED literal: `sw-core.js` hard-codes it, unable to import. The source guard in
+ * `__tests__/storage/sw-core.test.js` checks that both say the same thing.
  */
 export const DATA_ORIGINS_KEY = "offline.dataOrigins";
 
@@ -120,10 +120,10 @@ export function parseDataOrigins(declared: unknown): DataOriginDeclaration[] {
 /**
  * Does `url` belong to a declared origin, and may it be cached?
  *
- * ⚠️ NON exporté (compteur C1). Il n'a aujourd'hui qu'un consommateur — la détection de
- * doublons ci-dessous — et exporter pour un appelant du Sprint 4 qui n'existe pas encore est
- * exactement la posture que ce sprint reproche ailleurs. `4.1` et `4.5` l'exporteront le jour
- * où ils en auront besoin. Son comportement reste ÉPROUVÉ, à travers `publishDataOrigins`.
+ * ⚠️ NOT exported. It has one consumer today — the duplicate detection below — and
+ * exporting for a caller that does not yet exist is exactly the posture criticised
+ * elsewhere. It will be exported the day a consumer needs it. Its behaviour stays
+ * PROVEN, through `publishDataOrigins`.
  *
  * @param url - Absolute URL of the request.
  * @param origins - Normalised declarations.
@@ -172,9 +172,10 @@ export async function publishDataOrigins(
     db: { setPreference?: (key: string, value: unknown) => Promise<unknown> } | null | undefined,
     origins: readonly DataOriginDeclaration[]
 ): Promise<void> {
-    // Deux déclarations pour la MÊME origine sont une erreur de configuration silencieuse :
-    // `matchDataOrigin` rend la première, la seconde ne s'applique jamais, et l'intégrateur
-    // croit avoir déclaré ce qu'il a écrit. On le DIT plutôt que de le laisser découvrir.
+    // Two declarations for the SAME origin are a silent configuration error:
+    // `matchDataOrigin` returns the first, the second never applies, and the
+    // integrator believes they declared what they wrote. We SAY it rather than let
+    // them find out.
     const seen: DataOriginDeclaration[] = [];
     for (const d of origins) {
         if (matchDataOrigin(d.origin, seen)) {
@@ -187,9 +188,7 @@ export async function publishDataOrigins(
         seen.push(d);
     }
 
-    const safe = seen.map((d) =>
-        d.authenticated ? { ...d, cacheable: false } : d
-    ) as DataOriginDeclaration[];
+    const safe = seen.map((d) => (d.authenticated ? { ...d, cacheable: false } : d));
     try {
         await db?.setPreference?.(DATA_ORIGINS_KEY, safe);
         Log.debug(`[DataOrigins] Published ${safe.length} declaration(s) for the worker`);

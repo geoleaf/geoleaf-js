@@ -9,35 +9,38 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const pkg = readPackageJson(import.meta.url);
 
-// ── Bascule sur `pluginStack` — Sprint 6, S6a / 6.3′ (06/08/2026) ────────────────────────
+// ── Switch to `pluginStack` (06/08/2026) ────────────────────────
 //
-// Ce fichier portait une pile ARTISANALE : le seul des quinze paquets à ne pas passer par la
-// fabrique commune, et donc le seul à ne pouvoir recevoir `minify` par un drapeau. Il n'y
-// avait aucun motif écrit à cette exception — juste l'histoire de ses réparations.
+// This file carried an ARTISANAL stack: the only one of the fifteen packages not
+// going through the common factory, hence the only one unable to receive `minify`
+// via a flag. No written motive backed that exception — just the history of its
+// repairs.
 //
-// La pile reconstruite est équivalente plugin pour plugin (`nodeResolve` → `commonjs` →
-// `replace` → `postcss` → `typescript` → `minify`), à deux nuances documentées ci-dessous.
+// The rebuilt stack is plugin-for-plugin equivalent (`nodeResolve` → `commonjs` →
+// `replace` → `postcss` → `typescript` → `minify`), with two nuances documented
+// below.
 //
-// ── Ce qui a été SUPPRIMÉ, et qui ne doit pas revenir ────────────────────────────────────
+// ── What was DELETED, and must not come back ─────────────────────────────────────
 //
-// `coreSourceRedirectPlugin` (API publique S4.4c) faisait deux choses, toutes deux devenues
-// sans objet :
+// `coreSourceRedirectPlugin` did two things, both now moot:
 //
-//   1. `resolveId` résolvait `@core-offline/*` vers les SOURCES du core. Le plugin n'a plus
-//      aucun import `@core*` : les singletons passent par `globalThis.GeoLeaf`,
-//      `resolveProfileLayers` par le sous-chemin publié, `estimateVectorZone` a été déplacée
-//      ici. (Son `modulesRoot` pointait par ailleurs un répertoire disparu depuis longtemps.)
+//   1. `resolveId` resolved `@core-offline/*` to the core's SOURCES. The plugin
+//      has no `@core*` import left: singletons go through `globalThis.GeoLeaf`,
+//      `resolveProfileLayers` through the published subpath, `estimateVectorZone`
+//      was moved here. (Its `modulesRoot` moreover pointed at a long-gone
+//      directory.)
 //
-//   2. 🛑 `load()` transpilait TOUT `.ts` avec `ts.transpileModule`. C'est ce hook qui
-//      EMPÊCHAIT l'émission des déclarations : en rendant lui-même le code transpilé, il
-//      faisait que le plugin TypeScript ne voyait jamais les fichiers, donc n'émettait aucun
-//      `.d.ts`. Mesuré : 0 fichier dans `dist/types/` tant qu'il était là. Il masquait de
-//      surcroît un filtre `include` faux, puisque le filtre ne servait plus à rien.
+//   2. 🛑 `load()` transpiled EVERY `.ts` with `ts.transpileModule`. That hook is
+//      what PREVENTED declaration emission: by returning the transpiled code
+//      itself, it made the TypeScript plugin never see the files, hence emit no
+//      `.d.ts`. Measured: 0 files in `dist/types/` while it was there. It
+//      moreover masked a wrong `include` filter, since the filter no longer served
+//      anything.
 //
-// ⚠️ **Le patron ABSOLU de `include` est donc load-bearing, et il est conservé tel quel.** En
-// relatif, le filtre ne matche pas `src/entry.ts` et rollup reçoit du TS brut
-// (« Expected ',', got '{' »). Sans le hook `load()` pour le masquer, l'erreur est franche —
-// c'est le bon mode d'échec, pas une raison de relâcher le patron.
+// ⚠️ **The ABSOLUTE `include` pattern is therefore load-bearing, and kept as-is.**
+// Relative, the filter does not match `src/entry.ts` and rollup receives raw TS
+// ("Expected ',', got '{'"). Without the `load()` hook to mask it, the error is
+// frank — the right failure mode, not a reason to loosen the pattern.
 export default {
     input: "src/entry.ts",
     plugins: pluginStack({
@@ -52,38 +55,40 @@ export default {
         },
         minify: true,
     }),
-    // ⚠️ API publique S4.4c — `@geoleaf/core` est external : FILET, pas mécanisme. Après le
-    // découplage il ne reste que des imports de type (effacés) et le sous-chemin publié
-    // `kernel/config/profile-layers.js`, qui reste bundlé — c'est une fonction PURE, sans
-    // identité à partager, et le navigateur n'a pas d'import map pour résoudre un specifier nu.
+    // ⚠️ `@geoleaf/core` is external: a NET, not a mechanism. After the decoupling
+    // only type imports remain (erased) and the published subpath
+    // `kernel/config/profile-layers.js`, which stays bundled — a PURE function
+    // with no identity to share, and the browser has no import map to resolve a
+    // bare specifier.
     external: [/^@geoleaf\/core$/],
     treeshake: { moduleSideEffects: true },
     output: {
         file: "dist/geoleaf-offline-ui.plugin.js",
         format: "es",
-        // 🛑 L'`output.banner` qui vivait ici est SUPPRIMÉE, pas déplacée — et son histoire vaut
-        // d'être lue avant d'en réintroduire une. Elle était complète, correcte, et elle
-        // n'arrivait JAMAIS dans le livrable : rollup préfixe la bannière avant les hooks
-        // `renderChunk`, `minify()` en est un, et son `legalComments: "none"` la supprimait. Ce
-        // bundle commençait par `var Xe=Object.defineProperty`. C'était le seul paquet du dépôt
-        // à en déclarer une, donc le seul à donner l'illusion d'être couvert.
-        // La bannière est désormais posée par `licenseBanner()` (npm S3), en `generateBundle`,
-        // donc APRÈS le minifieur — et LIC-04 mesure qu'elle sort au lieu de croire qu'elle est
-        // déclarée.
+        // 🛑 The `output.banner` that lived here is DELETED, not moved — and its
+        // story is worth reading before reintroducing one. It was complete,
+        // correct, and it NEVER reached the deliverable: rollup prefixes the
+        // banner before the `renderChunk` hooks, `minify()` is one, and its
+        // `legalComments: "none"` removed it. This bundle started with
+        // `var Xe=Object.defineProperty`. It was the repo's only package declaring
+        // one, hence the only one giving the illusion of being covered.
+        // The banner is now set by `licenseBanner()`, in `generateBundle`, hence
+        // AFTER the minifier — and LIC-04 measures that it comes out instead of
+        // believing it is declared.
         sourcemap: true,
-        // 2.10 bis — les sources voyagent déjà dans `src/` (files[]) :
-        // les embarquer une SECONDE fois dans la carte est un doublon pur.
+        // The sources already travel in `src/` (files[]): embedding them a SECOND
+        // time in the map is a pure duplicate.
         sourcemapExcludeSources: true,
     },
 };
 
-// ── Les deux nuances de la bascule, écrites plutôt que subies ────────────────────────────
+// ── The switch's two nuances, written rather than suffered ──────────────────────
 //
-// 1. `postcss` passe de `sourceMap: true` à `sourceMap: false` — c'est le réglage de la
-//    fabrique commune, partagé par les sept autres paquets à CSS. Le `sourcemap: true` de
-//    l'`output` rollup, lui, est conservé : la carte du JS reste émise.
+// 1. `postcss` goes from `sourceMap: true` to `sourceMap: false` — the common
+//    factory's setting, shared by the seven other CSS packages. The rollup
+//    `output`'s `sourcemap: true` is kept: the JS map stays emitted.
 //
-// 2. Le `onwarn` qui ne faisait que `warn(warning)` a été retiré : c'est le comportement par
-//    défaut de rollup, donc une indirection sans effet. Son commentaire disait qu'il ne
-//    fallait PAS y filtrer TS5096 (« le garder aurait avalé tout TS5096 futur ») — en le
-//    supprimant, ce risque disparaît avec lui.
+// 2. The `onwarn` that only did `warn(warning)` was removed: it is rollup's
+//    default behaviour, hence an effect-less indirection. Its comment said TS5096
+//    must NOT be filtered there ("keeping it would have swallowed any future
+//    TS5096") — deleting it makes that risk vanish with it.

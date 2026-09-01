@@ -1,5 +1,5 @@
 /**
- * Tests for tool-custom.ts — the envelope a registered tool is armed inside (B-253).
+ * Tests for tool-custom.ts — the envelope a registered tool is armed inside.
  *
  * The subject is NOT the third party's callbacks but what the plugin guarantees around them:
  * exclusive mode, cursor, cursor guard, and a balanced arm/disarm however the caller switches.

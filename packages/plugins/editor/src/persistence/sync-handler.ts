@@ -8,37 +8,40 @@
  * The handler the editor registers on `GeoLeaf.Sync` so `offline-ui` can drive its replay
  * button. Task 5.1-b.
  *
- * 🛑 **CE N'EST PAS UN PORTAGE DES 689 LIGNES D'`addpoi`, et la mesure a retourné la ligne.**
- * Le pré-vol du 05/08 a relevé que `offline-ui` ne consomme du seam que **deux méthodes** —
- * `getSyncSummary()` et `processSyncQueue()` — et que dans `addpoi` les deux sont, depuis les
- * tâches 4.4b / 4.9 / 4.11, des **délégations pures au core** : la première lit
- * `Storage.DB.listPendingEdits`, la seconde appelle `Storage.pushOutbox`. Ni l'une ni l'autre
- * ne porte quoi que ce soit de spécifique aux POI. Le reste du fichier d'`addpoi`
- * (`queueOperation`, `syncDirect`, `_runOperation`, `autoSync`, `isSyncing`) a **zéro
- * consommateur hors de son paquet** et meurt avec lui — il ne se transfère pas.
+ * 🛑 **THIS IS NOT A PORT OF `addpoi`'S 689 LINES, and measurement turned the
+ * line around.** The pre-flight found that `offline-ui` consumes only **two
+ * methods** of the seam — `getSyncSummary()` and `processSyncQueue()` — and
+ * that in `addpoi` both are **pure delegations to the core**: the first reads
+ * `Storage.DB.listPendingEdits`, the second calls `Storage.pushOutbox`. Neither
+ * carries anything POI-specific. The rest of `addpoi`'s file
+ * (`queueOperation`, `syncDirect`, `_runOperation`, `autoSync`, `isSyncing`)
+ * has **zero consumers outside its package** and dies with it — it does not
+ * transfer.
  *
- * ⚠️ **DEUX COMPORTEMENTS D'`addpoi` NE SONT DÉLIBÉRÉMENT PAS REPRODUITS ICI.**
+ * ⚠️ **TWO `addpoi` BEHAVIOURS ARE DELIBERATELY NOT REPRODUCED HERE.**
  *
- *   1. **La notification.** `addpoi.processSyncQueue` émet un toast de succès/échec, et
- *      `offline-ui/sync-manager.ts` en émet un AUSSI après l'appel : sur le chemin du bouton,
- *      l'utilisateur en reçoit **deux**. `offline-ui` est propriétaire du message du bouton
- *      qu'il pilote ; ce handler se tait. Le chemin « retour du réseau », lui, appartient à
- *      `editor-sync-replay.ts`, qui a son propre signal.
- *   2. **L'événement `geoleaf:poi:sync-completed`.** Mesuré : son unique écouteur de
- *      production est `addpoi/src/entry.ts:131`, son propre badge. Il meurt avec le plugin.
- *      L'éditeur a le sien, `geoleaf:editor:feature-sync-flushed`, émis par le drain.
+ *   1. **The notification.** `addpoi.processSyncQueue` emits a success/failure
+ *      toast, and `offline-ui/sync-manager.ts` emits one TOO after the call: on
+ *      the button path, the user receives **two**. `offline-ui` owns the
+ *      message of the button it drives; this handler stays silent. The
+ *      "network return" path belongs to `editor-sync-replay.ts`, which has its
+ *      own signal.
+ *   2. **The `geoleaf:poi:sync-completed` event.** Measured: its only
+ *      production listener is `addpoi/src/entry.ts`, its own badge. It
+ *      dies with the plugin. The editor has its own,
+ *      `geoleaf:editor:feature-sync-flushed`, emitted by the drain.
  *
- * ⚠️ **Reproduire un défaut n'est pas « préserver la surface ».** La surface que les
- * consommateurs lisent est la valeur de retour, et elle est identique.
+ * ⚠️ **Reproducing a defect is not "preserving the surface".** The surface
+ * consumers read is the return value, and it is identical.
  */
 import { Log } from "@geoleaf/host-runtime";
 import { storageDb } from "./storage-seam.js";
 import { drainOutbox } from "./editor-sync-replay.js";
 
-/** L'identifiant sous lequel `offline-ui` lit le handler (`sync-seam.ts`). */
+/** The identifier under which `offline-ui` reads the handler (`sync-seam.ts`). */
 export const SYNC_HANDLER_ID = "poi";
 
-/** Décompte des saisies dues au serveur, dans la forme que le contrat du core gèle. */
+/** Tally of captures owed to the server, in the shape the core's contract freezes. */
 export interface SyncSummary {
     total: number;
     add: number;
@@ -46,7 +49,7 @@ export interface SyncSummary {
     delete: number;
 }
 
-/** Décompte d'un rejeu, dans la forme qu'`offline-ui` lit déjà. */
+/** A replay's tally, in the shape `offline-ui` already reads. */
 export interface SyncResults {
     success: boolean;
     total: number;
@@ -55,7 +58,7 @@ export interface SyncResults {
     skipped: number;
 }
 
-/** La façade `GeoLeaf.Sync`, lue à l'appel — le core la monte au boot. */
+/** The `GeoLeaf.Sync` facade, read at call time — the core mounts it at boot. */
 interface SyncSeam {
     registerHandler?(id: string, handler: unknown): void;
     getHandler?(id: string): unknown;
@@ -66,7 +69,7 @@ function _syncSeam(): SyncSeam | null {
 }
 
 /**
- * Le handler enregistré sur `GeoLeaf.Sync`.
+ * The handler registered on `GeoLeaf.Sync`.
  *
  * @example
  * ```ts
@@ -76,28 +79,30 @@ function _syncSeam(): SyncSeam | null {
  */
 export const EditorSyncHandler = {
     /**
-     * Compte les saisies jamais poussées, ventilées par vocabulaire d'opération.
+     * Counts never-pushed captures, broken down by operation vocabulary.
      *
-     * ⚠️ La source est `Storage.DB.listPendingEdits` — **exactement celle qu'`addpoi` lit**.
-     * Compter autrement (par exemple `outbox.list()` filtré, ce que fait la modale d'attente
-     * de l'éditeur) donnerait un total voisin mais pas identique : le core y écarte les
-     * entrées sans `layerId` ou `localId`. Le bouton d'`offline-ui` s'active sur
-     * `total > 0` ; un écart y serait un changement de comportement invisible.
+     * ⚠️ The source is `Storage.DB.listPendingEdits` — **exactly the one
+     * `addpoi` read**. Counting otherwise (e.g. a filtered `outbox.list()`, as
+     * the editor's pending modal does) would give a neighbouring but not
+     * identical total: the core discards entries without `layerId` or `localId`
+     * there. `offline-ui`'s button activates on `total > 0`; a gap there would
+     * be an invisible behaviour change.
      *
-     * @returns le décompte, ou des zéros quand le moteur de stockage est absent.
+     * @returns the tally, or zeros when the storage engine is absent.
      */
     async getSyncSummary(): Promise<SyncSummary> {
         const db = storageDb();
         const listPendingEdits = db?.listPendingEdits;
         if (!listPendingEdits) return { total: 0, add: 0, update: 0, delete: 0 };
 
-        // Appel de MÉTHODE : le récepteur reste lié (B-128).
+        // METHOD call: the receiver stays bound.
         const entries = await listPendingEdits.call(db);
         const summary: SyncSummary = { total: entries.length, add: 0, update: 0, delete: 0 };
         for (const entry of entries) {
-            // Vocabulaire gelé par le contrat (`SyncOperationKind`) et écrit par `applyEdit`.
-            // Une valeur inconnue compte dans `total` sans être ventilée : mieux vaut un total
-            // juste et une ventilation incomplète que l'inverse.
+            // Vocabulary frozen by the contract (`SyncOperationKind`) and
+            // written by `applyEdit`. An unknown value counts in `total` without
+            // being broken down: better a right total and an incomplete
+            // breakdown than the reverse.
             if (entry.kind === "create") summary.add += 1;
             else if (entry.kind === "update") summary.update += 1;
             else if (entry.kind === "delete") summary.delete += 1;
@@ -106,22 +111,25 @@ export const EditorSyncHandler = {
     },
 
     /**
-     * Rejoue la file vers le serveur, pour le bouton d'`offline-ui`.
+     * Replays the queue to the server, for `offline-ui`'s button.
      *
-     * Délègue au drain partagé (`editor-sync-replay.drainOutbox`) pour ne pas ouvrir un
-     * second chemin de drain à côté de celui du retour réseau — les deux partagent un verrou.
+     * Delegates to the shared drain (`editor-sync-replay.drainOutbox`) to avoid
+     * opening a second drain path next to the network-return one — both share a
+     * lock.
      *
-     * @returns le décompte du rejeu.
-     * @throws quand le réseau est absent ou qu'un drain est déjà en cours — `offline-ui`
-     *   attend une exception pour afficher son message, un retour muet lui ferait annoncer
-     *   « 0 synchronisée » sur un rejeu qui n'a jamais eu lieu.
+     * @returns the replay's tally.
+     * @throws when the network is absent or a drain is already running —
+     *   `offline-ui` expects an exception to display its message, a mute return
+     *   would make it announce "0 synchronised" on a replay that never
+     *   happened.
      */
     async processSyncQueue(): Promise<SyncResults> {
         const report = await drainOutbox();
         if (!report) {
-            // `null` couvre trois cas indiscernables ici, et TOUS sont des non-événements :
-            // hors réseau, drain déjà en cours, moteur absent. Les rendre comme un succès à
-            // zéro ferait dire « à jour » à l'UI alors que rien n'a été tenté.
+            // `null` covers three cases indistinguishable here, and ALL are
+            // non-events: off-network, drain already running, engine absent.
+            // Returning them as a zero success would make the UI say "up to
+            // date" while nothing was attempted.
             Log?.warn?.("[editor/sync-handler] Drain not run (offline, busy, or no storage)");
             throw new Error("Synchronisation indisponible");
         }
@@ -130,32 +138,34 @@ export const EditorSyncHandler = {
             total: report.attempted,
             synced: report.pushed,
             failed: report.failed,
-            // Le drain du core ne saute rien : il tente, réussit, échoue ou met en
-            // quarantaine. Le champ est conservé parce qu'`offline-ui` le lit.
+            // The core's drain skips nothing: it attempts, succeeds, fails or
+            // quarantines. The field is kept because `offline-ui` reads it.
             skipped: 0,
         };
     },
 };
 
 /**
- * Enregistre le handler `"poi"` du seam `Sync`, **inconditionnellement**.
+ * Registers the `Sync` seam's `"poi"` handler, **unconditionally**.
  *
- * 🛑 **CETTE FONCTION CÉDAIT LA PLACE, ET ELLE NE LE FAIT PLUS — c'est 5.1-f qui l'impose.**
- * `SyncHandlerContract.registerHandler` fait `_handlers.set(id, handler)` : il enregistre
- * **ou remplace, en silence**. Tant qu'`addpoi` vivait, s'enregistrer sans condition aurait
- * fait décider l'**ordre de chargement des balises `<script>`**. La parade était de céder
- * (`getHandler` non vide ⟹ on s'abstient), puis de reprendre explicitement depuis le pont.
+ * 🛑 **THIS FUNCTION USED TO YIELD, AND NO LONGER DOES.**
+ * `SyncHandlerContract.registerHandler` does `_handlers.set(id, handler)`: it
+ * registers **or replaces, silently**. While `addpoi` lived, registering
+ * unconditionally would have let the **`<script>` tag load order** decide. The
+ * workaround was to yield (`getHandler` non-empty ⟹ abstain), then take over
+ * explicitly from the bridge.
  *
- * 🛑 **Le pont est parti avec `addpoi`, et il portait l'UNIQUE appelant de la reprise.**
- * Garder la cession aurait donc laissé un `return false` qu'aucun repreneur ne rattrape :
- * `GeoLeaf.Sync.getHandler("poi")` resterait vide dès qu'un tiers occuperait la place, et
- * le bouton de rejeu d'`offline-ui` mourrait **sans un mot**. Il n'y a plus de second
- * implémenteur dans le dépôt ; la cession n'a plus de bénéficiaire, seulement un risque.
+ * 🛑 **The bridge left with `addpoi`, and it carried the takeover's ONLY
+ * caller.** Keeping the yield would have left a `return false` no successor
+ * catches: `GeoLeaf.Sync.getHandler("poi")` would stay empty as soon as a third
+ * party took the spot, and `offline-ui`'s replay button would die **without a
+ * word**. There is no second implementer left in the repo; the yield has no
+ * beneficiary any more, only a risk.
  *
- * ✅ Ce que la mesure de 5.1-b avait établi tient toujours : `deploy-full` n'avait **aucun**
- * handler `"poi"` avant cet enregistrement — il ferme un trou vivant.
+ * ✅ What the earlier measurement established still holds: `deploy-full` had
+ * **no** `"poi"` handler before this registration — it closes a live hole.
  *
- * @returns `true` — l'enregistrement n'a plus de cas d'échec autre que l'absence du seam.
+ * @returns `true` — registration has no failure case left other than the seam's absence.
  */
 export function registerSyncHandler(): boolean {
     const seam = _syncSeam();

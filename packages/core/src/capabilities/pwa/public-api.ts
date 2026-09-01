@@ -16,7 +16,7 @@
  * PWA — public surface of the capability (`GeoLeaf.PWA`).
  *
  *
- * ARCHI S12.2 — the only real scaffold gap actually found across the 19 capabilities.
+ * The only real scaffold gap actually found across the 19 capabilities.
  * `pwa` exposed a public facade (`modules/geoleaf.pwa.ts`) that imported `pwa-manager.js`
  * directly, without going through a declared surface: the facade therefore published an
  * internal module, and nothing marked where the contract ended.
@@ -25,7 +25,7 @@
  * `theme-selector`, `vector-tiles` — do NOT need one and will not get one: they expose no
  * facade, hence no public surface. Creating one (empty, or re-exporting internals) would
  * invent a contract that does not exist. The scaffold was not "incomplete at 5": it was
- * complete at 13, mis-named at 1 (`legend`, fixed in S12.1) and moot for 4.
+ * complete at 13, mis-named at 1 (`legend`, fixed since) and moot for 4.
  */
 
 /**

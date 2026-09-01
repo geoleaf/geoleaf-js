@@ -1,26 +1,28 @@
 /**
- * Sprint 3, tâches 3.1 et 3.3 — QUELLES sous-couches reçoivent quel geste.
+ * WHICH sub-layers receive which gesture.
  *
- * Fichier distinct de `feature-interaction-events.test.js`, qui porte l'autre question :
- * *ce que* dispatche un handler une fois déclenché. Ici on ne regarde jamais la charge utile,
- * seulement la **sélection** — c'est le sujet du défaut.
+ * A file distinct from `feature-interaction-events.test.js`, which carries
+ * the other question: *what* a handler dispatches once triggered. Here the
+ * payload is never looked at, only the **selection** — the defect's subject.
  *
- * 🛑 LE DÉFAUT, ET POURQUOI IL DÉBORDE CE QUE LA ROADMAP DÉCRIT
+ * 🛑 THE DEFECT, AND WHY IT OVERFLOWS WHAT THE PLAN DESCRIBES
  *
- * La boucle de clic itère sur **toutes** les sous-couches, là où le survol passe par
- * `_interactionSubLayerIds`. `maplibre-primitives.ts` (`_addSubLayers`) empile les sous-couches
- * **par géométrie et cumulativement** : un polygone reçoit `_addPolygonSubLayers` PUIS
- * `_addLineSubLayers`. Le double événement n'est donc pas propre aux points à icône —
- * mesuré : point+icône **2**, ligne+casing **2**, polygone+casing **3**, tuile vectorielle **4**.
+ * The click loop iterates over **all** sub-layers, where hover goes through
+ * `_interactionSubLayerIds`. `maplibre-primitives.ts` (`_addSubLayers`)
+ * stacks the sub-layers **by geometry and cumulatively**: a polygon receives
+ * `_addPolygonSubLayers` THEN `_addLineSubLayers`. The double event is thus
+ * not specific to icon points — measured: point+icon **2**, line+casing
+ * **2**, polygon+casing **3**, vector tile **4**.
  *
- * ⚠️ HYPOTHÈSE DE MODÉLISATION, ÉCRITE PARCE QU'ELLE EST PORTANTE : `map.on(type, layerId, fn)`
- * enregistre un écouteur **délégué par sous-couche liée**, et MapLibre exécute chacun de ceux
- * dont la sous-couche est touchée par le geste. Rejouer ici tous les handlers capturés avec le
- * MÊME événement modélise donc un clic unique sur une entité rendue par plusieurs sous-couches.
- * Sans cette phrase, le test affirmerait plus qu'il ne mesure.
+ * ⚠️ MODELLING HYPOTHESIS, WRITTEN BECAUSE IT IS LOAD-BEARING:
+ * `map.on(type, layerId, fn)` registers a listener **delegated per bound
+ * sub-layer**, and MapLibre runs each of those whose sub-layer is touched by
+ * the gesture. Replaying here all the captured handlers with the SAME event
+ * thus models a single click on an entity rendered by several sub-layers.
+ * Without this sentence, the test would assert more than it measures.
  *
- * L'assertion de CONVERGENCE (dernier bloc) est celle qui a le plus de valeur dans le temps :
- * elle empêche les deux gestes de re-diverger, ce qu'aucun commentaire ne peut faire.
+ * The CONVERGENCE assertion (last block) is the one with the most value over
+ * time: it keeps the two gestures from re-diverging, which no comment can do.
  */
 
 import { vi, describe, test, expect, beforeEach } from "vitest";
@@ -41,7 +43,7 @@ const { dispatchGeoLeafEvent } = await import("../../src/kernel/events/event-bus
 
 type Handler = (e: unknown) => void;
 
-/** Fausse carte MapLibre : retient chaque abonnement `(type, sous-couche)` et son handler. */
+/** Fake MapLibre map: retains each `(type, sub-layer)` subscription and its handler. */
 function fakeMap(layers: string[]) {
     const bound: Array<{ type: string; id: string; fn: Handler }> = [];
     return {
@@ -54,14 +56,14 @@ function fakeMap(layers: string[]) {
     };
 }
 
-/** Les sous-couches sur lesquelles `type` a été branché, dans l'ordre de liaison. */
+/** The sub-layers `type` was wired on, in binding order. */
 function idsFor(map: ReturnType<typeof fakeMap>, type: string): string[] {
     return map._bound.filter((b) => b.type === type).map((b) => b.id);
 }
 
 /**
- * Rejoue le même clic sur tous les handlers `click` liés, et rend le nombre de
- * `geoleaf:feature:click` émis. C'est l'oracle de comptage de la tâche 3.1.
+ * Replays the same click on all bound `click` handlers, and returns the
+ * number of `geoleaf:feature:click` emitted. The counting oracle.
  */
 function clicksEmitted(map: ReturnType<typeof fakeMap>): number {
     const e = {
@@ -75,7 +77,7 @@ function clicksEmitted(map: ReturnType<typeof fakeMap>): number {
         .mock.calls.filter((c) => c[0] === "geoleaf:feature:click").length;
 }
 
-/** Lie le binder sur une carte dont TOUTES les sous-couches existent. */
+/** Binds the binder on a map where ALL the sub-layers exist. */
 function bind(subLayerIds: string[]) {
     const map = fakeMap(subLayerIds);
     bindFeatureInteractionEvents("L", {}, map as never, subLayerIds);
@@ -83,8 +85,8 @@ function bind(subLayerIds: string[]) {
 }
 
 /**
- * Les quatre empilements réels, tels que `_addSubLayers` les produit.
- * `primary` est la sous-couche que la précédence `fill → circle → line → all` désigne.
+ * The four real stackings, as `_addSubLayers` produces them.
+ * `primary` is the sub-layer the `fill → circle → line → all` precedence designates.
  */
 const GEOMETRIES = [
     { nom: "point + icône", subs: ["a-circle", "a-symbol"], primary: "a-circle", avant: 2 },

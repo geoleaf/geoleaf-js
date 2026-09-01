@@ -64,7 +64,7 @@
         "edition": {
             "type": "object",
             "additionalProperties": false,
-            "description": "What this layer permits, PER OPERATION. Replaces the pair `enableEdition`/`enableEditionFull` (Sprint 5 task 5.9, decision V1): the second name did not mean what it said — it was read once usefully, as `canDelete()`, so \"full edition\" was in fact the right to DELETE. ⚠️ ABSENT MEANS REFUSED, and so does an empty object: declaring the block grants nothing. Each key is independent — `update` does not imply `delete`, `create` does not imply `update`. Deriving one from another is the exact mechanism by which the old pair acquired a name that lied. ✅ Since 07/08/2026 (Sprint 8 task 8.7, B-138) the permission is enforced on EVERY write path, online included: the editor's persistence factory wraps all four of its outputs with a gate that consults `GeoLeaf.Storage.mayEdit()` before choosing a route, so `online`, `offline`, `auto` and the `collection` dialect are all covered. It was previously enforced on the offline path only, and a connected user could delete from a layer declaring `delete: false`. ⚠️ Still true: the editor toolbar gates its delete TOOL on its own `enabledTools`, never on the layer — the button may be offered where the write is refused.",
+            "description": "What this layer permits, PER OPERATION. Replaces the pair `enableEdition`/`enableEditionFull`: the second name did not mean what it said — it was read once usefully, as `canDelete()`, so \"full edition\" was in fact the right to DELETE. ⚠️ ABSENT MEANS REFUSED, and so does an empty object: declaring the block grants nothing. Each key is independent — `update` does not imply `delete`, `create` does not imply `update`. Deriving one from another is the exact mechanism by which the old pair acquired a name that lied. ✅ Since 07/08/2026 the permission is enforced on EVERY write path, online included: the editor's persistence factory wraps all four of its outputs with a gate that consults `GeoLeaf.Storage.mayEdit()` before choosing a route, so `online`, `offline`, `auto` and the `collection` dialect are all covered. It was previously enforced on the offline path only, and a connected user could delete from a layer declaring `delete: false`. ⚠️ Still true: the editor toolbar gates its delete TOOL on its own `enabledTools`, never on the layer — the button may be offered where the write is refused.",
             "properties": {
                 "create": {
                     "type": "boolean",
@@ -179,6 +179,10 @@
                     },
                     "required": ["url"],
                     "properties": {
+                        "cursorPath": {
+                            "type": "string",
+                            "description": "Dot-path to the next-page cursor in the response envelope (e.g. \"pagination.next_cursor\"). Consulted before the standard links[rel=next] relation; when absent, that relation drives pagination alone. The resolved value must be an absolute http(s) URL — anything else stops pagination with a warning."
+                        },
                         "url": {
                             "type": "string",
                             "description": "Base endpoint URL of the OGC API Features service (may include the collection items path)."
@@ -381,12 +385,15 @@
         },
         "write": {
             "type": "object",
-            "description": "Per-layer write target: where this layer's edits are pushed. Declared per layer because on a backend like Odoo each layer is a distinct collection. ⚠️ Was `additionalProperties: true` and set by 0 layers on 48 until 02/08/2026 — a block with no shape that nobody filled. Shape mirrors contracts/sync.contract.ts (LayerWriteTarget) and what the persistence adapters actually read.",
+            "description": "Per-layer write target: where this layer's edits are pushed. Declared per layer because on many backends each layer is a distinct collection. ⚠️ Was `additionalProperties: true` and set by 0 layers on 48 until 02/08/2026 — a block with no shape that nobody filled. Shape mirrors contracts/sync.contract.ts (LayerWriteTarget) and what the persistence adapters actually read.",
             "additionalProperties": false,
             "patternProperties": {
                 "^_comment": {}
             },
-            "required": ["enabled", "endpoint"],
+            "required": ["enabled"],
+            "$comment": "`endpoint` est requis SEULEMENT quand `enabled` est vrai, et la conditionnelle n'est pas un assouplissement de confort. Le build des variantes livrées RETIRE les liaisons vers le backend de développement : il supprime `endpoint` et repasse `enabled` à faux. Avec un `required` inconditionnel, ce retrait — qui est voulu, documenté et gaté — produisait une configuration que le schéma du dépôt interdit, à chaque build. La conditionnelle garde ce qui compte : une cible d'écriture ACTIVE sans URL reste une erreur.",
+            "if": { "properties": { "enabled": { "const": true } }, "required": ["enabled"] },
+            "then": { "required": ["endpoint"] },
             "properties": {
                 "enabled": {
                     "type": "boolean",
@@ -400,7 +407,7 @@
                     "type": "string",
                     "enum": ["rest", "collection"],
                     "default": "rest",
-                    "description": "`rest`: POST {poi, timestamp} envelope, CSRF header. `collection`: flat {...properties, geom} body (OGC/PostgREST), auth delegated to the connector. Exactly the two the code dispatches on — a third value would be indistinguishable from a typo."
+                    "description": "`rest`: POST {poi, timestamp} envelope, CSRF header. `collection`: flat {...properties, geom} body (OGC API Features style), auth delegated to the connector. Exactly the two the code dispatches on — a third value would be indistinguishable from a typo."
                 },
                 "auth": {
                     "type": "string",
@@ -509,7 +516,7 @@
                         },
                         "versionProperty": {
                             "type": "string",
-                            "description": "Feature property carrying the per-entity freshness marker recorded as VersionMarker (kind `timestamp`), which task 4.6 compares. Defaults to `updated_at`. Declarable because it varies by backend — the sync contract names `write_date` on Odoo."
+                            "description": "Feature property carrying the per-entity freshness marker recorded as VersionMarker (kind `timestamp`), which task 4.6 compares. Defaults to `updated_at`. Declarable because it varies by backend — the sync contract names `updated_at` and `write_date` among the forms it has seen."
                         }
                     }
                 }
@@ -518,7 +525,7 @@
     },
     "allOf": [
         {
-            "$comment": "A14 — a field in edition obliges its layer to declare BOTH its editability and its write target. Pure schema, no script: `required` in the `if` is what stops a layer WITHOUT attributes from matching vacuously. ⚠️ REANCHORED on `edition.update` (Sprint 5 task 5.9, was `enableEdition: true`). `update` and NOT `create`, deliberately: `edit` on an attribute describes modifying an EXISTING value, so anchoring on `create` would let a layer that can only create declare fields it will never be able to edit. ⚠️ **This rule HAS live subjects since task 7.2 (07/08/2026), and this comment claimed the opposite in both its halves.** It read « zero of the 48 layer configs carries `attributes.fields[].edit` » — there are **24** configs, not 48 (7.1b retired 24 that nobody read), and **2** of them now carry `edit`: `tourism/sites_rosario` (11 fields) and `_reference/reference-points` (1). So `validate:profiles` finally exercises this rule on real data. That does NOT retire `core/__tests__/config/attributes-opposability.test.js`: two live subjects prove the POSITIVE case only, and the suite is what holds the four negative ones — `write` missing, `edition` missing, `edition.update: false`, and the green positive. It stays mandatory.",
+            "$comment": "A14 — a field in edition obliges its layer to declare BOTH its editability and its write target. Pure schema, no script: `required` in the `if` is what stops a layer WITHOUT attributes from matching vacuously. ⚠️ REANCHORED on `edition.update` (was `enableEdition: true`). `update` and NOT `create`, deliberately: `edit` on an attribute describes modifying an EXISTING value, so anchoring on `create` would let a layer that can only create declare fields it will never be able to edit. ⚠️ **This rule HAS live subjects since task 7.2 (07/08/2026), and this comment claimed the opposite in both its halves.** It read « zero of the 48 layer configs carries `attributes.fields[].edit` » — there are **24** configs, not 48 (7.1b retired 24 that nobody read), and **2** of them now carry `edit`: `tourism/sites_rosario` (11 fields) and `_reference/reference-points` (1). So `validate:profiles` finally exercises this rule on real data. That does NOT retire `core/__tests__/config/attributes-opposability.test.js`: two live subjects prove the POSITIVE case only, and the suite is what holds the four negative ones — `write` missing, `edition` missing, `edition.update: false`, and the green positive. It stays mandatory.",
             "if": {
                 "type": "object",
                 "required": ["attributes"],
@@ -812,7 +819,7 @@
                         "presentation": {
                             "type": "object",
                             "description": "Presentation modifiers that belong to the SURFACE, not to the value — which is why they are not per-widget options.",
-                            "$comment": "Added 02/08/2026 at the Sprint 2 pre-flight: the frozen descriptor could not express 79 declarations the profiles already carry (accordion 35, defaultOpen 32, style 12, variant hero 4). Being `additionalProperties: false`, the migration would have FAILED validation rather than degrade silently — the good failure mode, but the gap was real.",
+                            "$comment": "Added 02/08/2026, at a pre-flight: the frozen descriptor could not express 79 declarations the profiles already carry (accordion 35, defaultOpen 32, style 12, variant hero 4). Being `additionalProperties: false`, the migration would have FAILED validation rather than degrade silently — the good failure mode, but the gap was real.",
                             "additionalProperties": false,
                             "properties": {
                                 "accordion": {

@@ -1,54 +1,59 @@
 #!/usr/bin/env node
 /*!
- * PROFILE-SCHEMA-REFERENCE : le 2ᵉ générateur de la refonte V3 — `profiles/schemas/*.json`
- * vers une référence markdown, et sa gate de fraîcheur.
+ * PROFILE-SCHEMA-REFERENCE: `profiles/schemas/*.json` rendered to a markdown
+ * reference, with its freshness gate.
  *
- * ## Le défaut que ce générateur ferme
+ * ## The defect this generator closes
  *
- * `PROFILE_JSON_REFERENCE.md` est **écrit à la main** et publié sur npm. Mesuré au 29/07/2026 :
- * il documente **128 paramètres** quand les 12 schémas en portent **233**. Il n'est donc pas
- * seulement exposé à la dérive — **il est incomplet de 45 %**, et rien ne le disait. Un
- * intégrateur qui cherche une clé absente du document conclut qu'elle n'existe pas.
+ * `PROFILE_JSON_REFERENCE.md` is **hand-written** and published on npm. Measured on
+ * 2026-07-29: it documents **128 parameters** while the 12 schemas carry **233**.
+ * It is thus not merely exposed to drift — **it is 45 % incomplete**, and nothing
+ * said so. An integrator looking for a key absent from the document concludes it
+ * does not exist.
  *
- * ⚠️ **Le sens de l'écart n'est pas celui qu'on attendait.** La roadmap classait ce document
- * « dérivable, donc remplaçable » ; la mesure dit qu'un générateur **couvre presque le double**
- * de ce que le rédigé couvre. Le gain n'est pas la suppression de 3 306 lignes, c'est
- * l'exhaustivité.
+ * ⚠️ **The gap's direction was not the expected one.** The document was classed
+ * "derivable, hence replaceable"; measurement says a generator **covers nearly
+ * double** what the hand-written one covers. The gain is not deleting 3,306 lines,
+ * it is exhaustiveness.
  *
- * ## Ce qu'il NE remplace PAS encore, et le chiffre est écrit ici
+ * ## What it does NOT replace yet, and the number is written here
  *
- * Les schémas portent la STRUCTURE en entier (**233/233** ont un type ou un `$ref`), mais la
- * prose seulement à moitié : **129/233 descriptions (55 %)**, **17 défauts (7 %)**, **0
- * exemple**. Or `PROFILE_JSON_REFERENCE.md` porte **60 blocs de code**.
+ * The schemas carry the STRUCTURE in full (**233/233** have a type or a `$ref`),
+ * but the prose only by half: **129/233 descriptions (55 %)**, **17 defaults
+ * (7 %)**, **0 examples**. Yet `PROFILE_JSON_REFERENCE.md` carries **60 code
+ * blocks**.
  *
- * **Donc ce générateur ne peut pas encore remplacer le rédigé, et le dire est le résultat.**
- * La suite est un travail de SOURCE, pas de document : écrire les 104 descriptions manquantes
- * **dans les schémas**, où `check-config-coverage.cjs` les gate déjà dans les deux sens. Toute
- * autre voie — un side-car d'annotations, une fusion à la génération — recrée un second endroit
- * où la même phrase peut diverger, c'est-à-dire le défaut d'origine.
+ * **So this generator cannot replace the hand-written one yet, and saying so is
+ * the result.** What follows is SOURCE work, not document work: write the 104
+ * missing descriptions **in the schemas**, where `check-config-coverage.cjs`
+ * already gates them in both directions. Any other route — an annotation sidecar,
+ * a merge at generation — recreates a second place where the same sentence can
+ * diverge, i.e. the original defect.
  *
- * ## Où il écrit, et pourquoi pas dans le tarball
+ * ## Where it writes, and why not in the tarball
  *
- * Sortie sous `docs/reference/`, **pas** `packages/core/docs/`. Y écrire publierait
- * **deux références de profil sur npm** — le doublon exact que cette refonte supprime — et
- * l'item 7 dit « vérifier sa sortie **avant** de retirer » l'ancienne. Tant que les deux
- * coexistent, une seule est publiée. Le jour où l'ancienne part (item 8), `OUT_FILE` déménage :
- * une ligne.
+ * Output under `docs/reference/`, **not** `packages/core/docs/`. Writing there
+ * would publish **two profile references on npm** — the exact duplicate this
+ * rework removes — and the plan says to "verify its output **before** removing"
+ * the old one. While both coexist, only one is published. The day the old one
+ * leaves, `OUT_FILE` moves: one line.
  *
- * ⚠️ La sortie est un `.md` **généré**, donc inscrite dans `.prettierignore` sur le patron
- * d'`ARBORESCENCE_QUALIFIEE.md` : laisser Prettier la reformater la ferait diverger du
- * générateur et rendrait la gate rouge en permanence, sans qu'une source ait bougé.
+ * ⚠️ The output is a **generated** `.md`, hence listed in `.prettierignore` on the
+ * `ARBORESCENCE_QUALIFIEE.md` pattern: letting Prettier reformat it would make it
+ * diverge from the generator and turn the gate permanently red with no source
+ * change.
  *
- * ## Déterminisme
+ * ## Determinism
  *
- * Fonction pure des schémas : ni date, ni SHA, ni chemin absolu ; fichiers et propriétés
- * triés. Même exigence que `docs:tree:check` et `gen-api-surface.cjs`, et pour la même raison —
- * un artefact qui contient « maintenant » n'est comparable à rien.
+ * Pure function of the schemas: no date, no SHA, no absolute path; files and
+ * properties sorted. Same requirement as `docs:tree:check` and
+ * `gen-api-surface.cjs`, for the same reason — an artifact containing "now"
+ * compares to nothing.
  *
  * Usage:
- *   node scripts/gen-profile-schema-reference.cjs           # (re)génère
- *   node scripts/gen-profile-schema-reference.cjs --check    # gate : exit 1 si périmé
- *   node scripts/gen-profile-schema-reference.cjs --audit     # écart vs le rédigé, n'écrit rien
+ *   node scripts/gen-profile-schema-reference.cjs           # (re)generates
+ *   node scripts/gen-profile-schema-reference.cjs --check    # gate: exit 1 if stale
+ *   node scripts/gen-profile-schema-reference.cjs --audit     # gap vs the hand-written doc, writes nothing
  */
 
 "use strict";
@@ -61,8 +66,9 @@ const docsPaths = require("./lib/docs-paths.cjs");
 const ROOT = registry.ROOT;
 const SCHEMA_DIR = path.join(ROOT, "profiles", "schemas");
 const OUT_FILE = docsPaths.reference("PROFILE_SCHEMA_REFERENCE.md");
-// Le rédigé que `--audit` compare. Résolu par le registre : un chemin en dur cesserait
-// silencieusement de matcher si le core bougeait, et l'audit sortirait « 0 écart ».
+// The hand-written doc `--audit` compares against. Resolved by the registry: a
+// hard-coded path would silently stop matching if the core moved, and the audit
+// would output "0 gaps".
 const LEGACY_DOC = path.join(
     registry.requireByDirName("core").absDir,
     "docs",
@@ -73,10 +79,10 @@ const CHECK = process.argv.includes("--check");
 const AUDIT = process.argv.includes("--audit");
 
 // ---------------------------------------------------------------------------
-// Lecture des schémas
+// Schema reading
 // ---------------------------------------------------------------------------
 
-/** @returns {{file: string, schema: object}[]} les schémas, triés par nom de fichier. */
+/** @returns {{file: string, schema: object}[]} the schemas, sorted by file name. */
 function readSchemas() {
     if (!fs.existsSync(SCHEMA_DIR)) {
         throw new Error(
@@ -98,11 +104,11 @@ function readSchemas() {
 }
 
 /**
- * Résout un `$ref` INTERNE (`#/definitions/x`, `#/$defs/x`).
+ * Resolves an INTERNAL `$ref` (`#/definitions/x`, `#/$defs/x`).
  *
- * Mesuré au 29/07/2026 : les 12 schémas n'utilisent **que** des refs internes. Une ref
- * externe rendrait `undefined` ici — elle est donc signalée plutôt qu'ignorée, sans quoi la
- * propriété disparaîtrait de la référence sans un mot.
+ * Measured on 2026-07-29: the 12 schemas use **only** internal refs. An external
+ * ref would return `undefined` here — it is thus flagged rather than ignored,
+ * without which the property would vanish from the reference without a word.
  *
  * @returns {object|null}
  */
@@ -117,12 +123,12 @@ function resolveRef(ref, root) {
 }
 
 /**
- * Aplatit un schéma en chemins pointés.
+ * Flattens a schema into dotted paths.
  *
- * ⚠️ Le garde-cycle est load-bearing : `panelBlock` → `panelBlockBase` se référence en boucle
- * (11 occurrences du même `$ref`), et sans lui la marche ne termine pas. Il coupe sur la
- * DÉFINITION déjà visitée, pas sur le chemin — deux propriétés distinctes peuvent
- * légitimement pointer la même définition.
+ * ⚠️ The cycle guard is load-bearing: `panelBlock` → `panelBlockBase` references
+ * itself in a loop (11 occurrences of the same `$ref`), and without it the walk
+ * does not terminate. It cuts on the already-visited DEFINITION, not the path —
+ * two distinct properties can legitimately point at the same definition.
  *
  * @returns {{path: string, type: string, required: boolean, description: string, def: string, enum: string}[]}
  */
@@ -175,15 +181,16 @@ function flatten(node, root, prefix, seenRefs, out) {
         }
     }
 
-    // `additionalProperties` décrit les entrées d'une map — `basemaps.{id}.*`. La forme `{id}`
-    // est celle que le rédigé emploie déjà, reprise pour que les deux soient comparables.
+    // `additionalProperties` describes a map's entries — `basemaps.{id}.*`. The
+    // `{id}` form is the one the hand-written doc already uses, adopted so the two
+    // stay comparable.
     if (node.additionalProperties && typeof node.additionalProperties === "object") {
         flatten(node.additionalProperties, root, prefix ? `${prefix}.{id}` : "{id}", seenRefs, out);
     }
     return out;
 }
 
-/** Le type affiché d'une propriété — `$ref` rendu par son nom de définition. */
+/** A property's displayed type — a `$ref` rendered by its definition name. */
 function typeName(val, root) {
     if (val.$ref) {
         const target = resolveRef(val.$ref, root);
@@ -224,7 +231,7 @@ function render(schemas) {
 
     for (const { file, schema } of schemas) {
         const rows = flatten(schema, schema, "", new Set(), []);
-        // Dédoublonnage par chemin : `oneOf` peut produire deux fois la même clé.
+        // Dedup by path: `oneOf` can yield the same key twice.
         const byPath = new Map();
         for (const r of rows) if (!byPath.has(r.path)) byPath.set(r.path, r);
         const sorted = [...byPath.values()].sort((a, b) => a.path.localeCompare(b.path));
@@ -265,7 +272,7 @@ function render(schemas) {
 
 // ---------------------------------------------------------------------------
 
-/** Les paramètres que le document RÉDIGÉ documente, lus sur ses titres. */
+/** The parameters the HAND-WRITTEN document covers, read off its headings. */
 function legacyParams() {
     if (!fs.existsSync(LEGACY_DOC)) return null;
     const txt = fs.readFileSync(LEGACY_DOC, "utf8");
@@ -302,7 +309,18 @@ function main() {
         console.log(
             `\n⚠️  Les deux colonnes comptent. « + » = ce que le rédigé NE DIT PAS ; « − » = ce\n` +
                 `   qu'il dit et que les schémas n'imposent pas — soit une clé morte, soit une clé\n` +
-                `   vivante qu'aucun schéma ne valide. Les départager demande de lire, pas de compter.`
+                `   vivante qu'aucun schéma ne valide. Les départager demande de lire, pas de compter.\n` +
+                `\n🛑 ET UNE TROISIÈME LECTURE DE « − », QUE CE COMPTE NE SAIT PAS DISTINGUER :\n` +
+                `   une clé peut n'être validée par AUCUN schéma **par décision**, et non par\n` +
+                `   oubli. Les blocs \`modules.<id>\` sont OUVERTS par conception — le schéma\n` +
+                `   racine les déclare tels —, et certaines clés d'interface sont conservées\n` +
+                `   comme ancres de migration. Les compter comme un manque produit une dette\n` +
+                `   IMAGINAIRE, et c'est le genre de chiffre qui finit par justifier un geste :\n` +
+                `   fermer un bloc volontairement ouvert contredirait un invariant écrit.\n` +
+                `   Tant que cet outil ne sait pas faire la différence, son « − » se relit avec\n` +
+                `   cette réserve. (Mesuré et arbitré le 17/08/2026 ; réserve versée ici le\n` +
+                `   19/08/2026 parce qu'elle doit voyager avec l'instrument, pas avec la ligne\n` +
+                `   de registre qui l'a formulée.)`
         );
         console.log("─".repeat(72));
         return 0;

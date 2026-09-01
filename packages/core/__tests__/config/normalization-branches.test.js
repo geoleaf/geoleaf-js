@@ -196,7 +196,7 @@ describe("config/normalization — isPoiStructNormalized", () => {
     });
 });
 
-// `_safeAssign` coverage lived here until Sprint 5 (optimisation KERNEL). The helper was
+// `_safeAssign` coverage lived here once. The helper was
 // removed: it had had no production caller since 2026-02-18 (commit 15cc5cf7 dropped the
 // per-POI copy for perf), and it duplicated the canonical guard `_isUnsafeKey` in
 // built-in/config/storage.ts. Prototype-pollution coverage for the real write paths now

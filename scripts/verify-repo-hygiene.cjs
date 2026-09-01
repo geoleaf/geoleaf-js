@@ -12,7 +12,7 @@
  *   3. Python bytecode tracked in git (__pycache__/, *.pyc)
  *   4. SOURCE files (.ts/.js/.css) exceeding 700 lines, across all 18 packages.
  *      Tests are OUT OF SCOPE — the limit constrains shipped code, not test suites
- *      (arbitrage MP 24/07/2026, R.16). WARNING, non-blocking.
+ *      (settled 24/07/2026). WARNING, non-blocking.
  *   5. GENERATED artifacts under git control (T4.1) — three assertions:
  *      5a. no artifact path in the INDEX          → the T4 exit criterion
  *      5b. no artifact path untracked AND unignored → blocks the reconstitution
@@ -41,467 +41,666 @@ const ROOT = path.resolve(__dirname, "..");
 
 const SCRIPTS_ALLOWLIST = new Set([
     "audit-ci.cjs",
+    // SIGN — installed dependency tree carries valid registry signatures (npm audit signatures).
+    "verify-registry-signatures.cjs",
     "audit-cleanup.cjs",
-    "audit-dev-report.cjs", // gate audit-dev non bloquant (roadmap nettoyage S1) — CI + ci-local
+    "audit-dev-report.cjs", // non-blocking audit-dev gate — CI + ci-local
     "audit-innerhtml.cjs",
-    // Fraîcheur des rapports de `_docs_projet/travail/rapports/` : vérifie que chaque item
-    // sourcé est encore vrai sur HEAD avant archivage (atelier, hors ci:local).
+    // Freshness of `_docs_projet/travail/rapports/` reports: verifies each
+    // sourced item is still true on HEAD before archiving (workshop, outside ci:local).
     "audit-report-freshness.cjs",
-    // Instrument des sprints 2 à 5 de la roadmap COUVERTURE (`--triage` / `--prove-mocks`).
-    // DÉLIBÉRÉMENT hors ci:local : il relance deux passes de couverture, ce que la roadmap
-    // argumente d'éviter en permanence. La propriété durable est la baseline décroissante de
-    // `verify-test-load-mode.cjs` ; celui-ci prouve, lot par lot, que la conversion a bien
-    // changé l'ATTRIBUTION — ce qu'une suite verte ne peut pas montrer.
+    // Instrument of the coverage conversion (`--triage` / `--prove-mocks`).
+    // DELIBERATELY outside ci:local: it relaunches two coverage passes,
+    // which the plan argues against running permanently. The durable
+    // property is `verify-test-load-mode.cjs`'s decreasing baseline; this
+    // one proves, batch by batch, that the conversion really changed the
+    // ATTRIBUTION — which a green suite cannot show.
     //
-    // ⚠️ Ce commentaire annonçait `--snapshot` et `--compare` : les DEUX ont été supprimées
-    // au commit 3285f48e (COUVERTURE S6, unification du provider sur istanbul), et c'est
-    // `--snapshot` qui écrivait les 117,6 Mio de `run-*` purgés au T4.6. Un commentaire qui
-    // documente des sous-commandes mortes envoie chercher une capacité inexistante.
+    // ⚠️ This comment announced `--snapshot` and `--compare`: BOTH were
+    // deleted at commit 3285f48e (provider unified on istanbul), and
+    // `--snapshot` is what wrote the 117.6 MiB of `run-*` since purged. A
+    // comment documenting dead subcommands sends people looking for a
+    // nonexistent capability.
     "audit-test-load-conversion.cjs",
     "benchmark.cjs",
     "build-deploy-coverage.cjs",
     "build-deploy.cjs",
     "bundle-profiles.cjs",
     "check-bundle-size.cjs",
-    // APP-PAYLOAD (socle-init S4.7) — pèse ce qu'un UTILISATEUR télécharge en ouvrant la page
-    // (shell dérivé + données du premier écran), là où `check-bundle-size.cjs` pèse ce qu'un
-    // INTÉGRATEUR embarque. Objets distincts, jamais comparés. CI + ci-local.
+    // APP-PAYLOAD — weighs what a USER downloads opening the page (derived
+    // shell + first-screen data), where `check-bundle-size.cjs` weighs what
+    // an INTEGRATOR embarks. Distinct objects, never compared. CI + ci-local.
     "check-app-payload.cjs",
+    // ROUTE-FIXTURES — captures `@geoleaf-plugins/routing`'s corpus at
+    // Valhalla and OSRM.
+    // 🛑 DELIBERATELY outside `ci:local` AND `ci.yml`, and it is the ONLY
+    // repo code that touches the network. A test calling a public instance
+    // is subject to a fair-use quota and makes the run non-reproducible:
+    // its red would say "the internet moved", which nobody can act on. Run
+    // by hand, once; the corpus is versioned, and `.prettierignore`
+    // protects it so a re-capture yields a readable diff.
+    "capture-route-fixtures.cjs",
+    // REGISTRY-CROSSREFS — detector of dead `B-nnn`/`D-nn` references,
+    // shared with `packages/core/__tests__/guards/registry-crossrefs.guard.test.ts`.
+    // In `ci:local` through `test:guards`, hence OUTSIDE THE CACHE: its
+    // subject — the two registers and `CLAUDE.md` — lives outside the
+    // package, and a guard whose subject is outside the turbo `inputs`
+    // comes out green having read nothing.
+    // ⚠️ This entry was missing when the gate was laid, and the green
+    // `ci:local` accompanying it could not see it: this check reads
+    // `git ls-files`, and the file was still UNTRACKED at run time. A green
+    // obtained before `git add` says nothing about new files — same class
+    // as "a closing verdict measures the state from before it".
+    "registry-crossrefs.cjs",
+    // The `pre-commit` hook's oracle: for each command, played / skipped
+    // with motive / SKIPPED SILENTLY. Wired in static mode in `ci:local`
+    // AND `ci.yml`; `--run` plays the gates and classifies them — the
+    // re-measure command recorded in the register.
+    "verify-hook-gates.cjs",
+    // MDS — a suite does not double a symbol no source carries any more.
+    // Links the two corpora `extracted-features.guard` left disjoint: it
+    // proved an absence by scanning `src/` and SKIPPING `__tests__`, where
+    // the name still lived.
+    "check-mocked-dead-symbols.cjs",
+    // TTC — compiles the .ts suites JS-TEST-DEBT imposes, decreasing baseline.
+    "check-test-typecheck.cjs",
+    // SLOT — a toolbar slot's two declarations stay identical.
+    "check-slot-declarations.cjs",
+    // NF — production fetches carry an abort path (decreasing ratchet).
+    "check-naked-fetch.cjs",
+    // LI — registry entries of package-lock.json carry an integrity hash (decreasing ratchet).
+    "check-lock-integrity.cjs",
+    // CCO — cross-package CSS couplings are declared (ownership convention).
+    "check-css-class-ownership.cjs",
+    // WREF — no new workshop reference in the public corpus (code-autonomy roadmap, S0).
+    "check-workshop-refs.cjs",
+    // CLANG — no new French code comment (stop-words, never accents).
+    "check-comment-lang.cjs",
+    // lib/ — the MDS detector, two-stage, with its known-answer witnesses.
+    // Extracted at the second reader (the gate and its historical witness),
+    // as the rule requires.
+    "mocked-symbols.cjs",
+    // GRAFT — un module d'effet de bord porte sa marque et son ancrage NU tient encore.
+    "check-graft-sites.cjs",
+    // lib/ — the graft triage, with its witness. The previous instrument
+    // had to be corrected THREE times and lived in an instruction, not in
+    // `scripts/`: its verdict was no longer replayable. Extracted here to
+    // be so, and shared with the gate.
+    "graft-sites.cjs",
+    // DCS — the two dead-code instruments' perimeter, derived and PRINTED.
+    // Neither said what it had scanned: a shrunk perimeter returned the
+    // same green as an intact one.
+    "check-dead-code-scope.cjs",
+    // MG — "no importer" versus "imported for its side effect". The obvious
+    // route (forbidding an importer-less module) would turn red on the
+    // latter; this one separates them.
+    "check-module-graph.cjs",
+    // lib/ — the module graph, resolved through the TypeScript AST. Four
+    // blindnesses fixed, three of which returned CREDIBLE lists; each one's
+    // witness is written in the header.
+    "module-graph.cjs",
     "check-config-consumers.cjs",
     "check-config-coverage.cjs",
-    "check-contracts-pure.cjs", // contracts/ type-only purity gate (socle S4) — CI + ci-local + pre-commit
-    "check-facade-purity.cjs", // geoleaf.*.ts must stay a thin public surface (kernel S13.1) — CI + ci-local + pre-commit
-    "check-dynamic-key-writes.cjs", // prototype-pollution ratchet on dynamic-key writes (kernel S13.2) — CI + ci-local + pre-commit
+    "check-contracts-pure.cjs", // contracts/ type-only purity gate — CI + ci-local + pre-commit
+    "check-doc-versions.cjs", // DOC-VERSIONS — a workshop doc's `version:` = max of its revision table; ci-local
+    "check-roadmap-closures.cjs", // ROADMAP-CLOSURES — DOC-VERSIONS' reverse: what git still knows of a REMOVED roadmap; ci-local
+    // PRC — the README of a published plugin is the integrator's only door, and no gate
+    // checked that what a plugin DECLARES as configuration is written there. ci:local + ci.yml.
+    "check-plugin-readme-config.cjs",
+    "check-specs-verified-against.cjs", // SPECS-FRESH — a docs/specs/ sheet's `verifie_contre:` against its subject's last commit; CI + ci-local
+    "discover-plugins.cjs", // plugin fleet discovery from package.json#geoleaf — build-deploy + APP-12 parity read it
+    "check-facade-purity.cjs", // geoleaf.*.ts must stay a thin public surface — CI + ci-local + pre-commit
+    "check-dynamic-key-writes.cjs", // prototype-pollution ratchet on dynamic-key writes — CI + ci-local + pre-commit
     "check-exact-optional-debt.cjs", // EXACT-OPTIONAL-DEBT (qualite Q4.5) — cliquet, CI + ci-local
-    "check-nonnull-assertion-debt.cjs", // NONNULL-ASSERTION-DEBT (qualite Q5.5) — cliquet, CI + ci-local
-    "check-js-test-debt.cjs", // JS-TEST-DEBT (Sprint 5, S5c/5.3) — cliquet D-23/D-24, CI + ci-local
-    "check-doc-config-examples.cjs", // DOC-CONFIG-EXAMPLES (Sprint 5, S5c/5.8) — cliquet, CI + ci-local
-    "check-dist-integrity.cjs", // DIST-INTEGRITY (Sprint 6, S6a/B-130) — 0 chunk double, 0 orphelin ; CI + ci-local
-    "purge-dist.cjs", // versant préventif de B-130 — câblé en tête de `npm run build`
-    "check-build-determinism.cjs", // déterminisme du build — coûteux (2 builds), hors pre-commit
+    "check-nonnull-assertion-debt.cjs", // NONNULL-ASSERTION-DEBT — ratchet, CI + ci-local
+    "check-js-test-debt.cjs", // JS-TEST-DEBT — `.js` test-debt ratchet, CI + ci-local
+    "check-doc-config-examples.cjs", // DOC-CONFIG-EXAMPLES — ratchet, CI + ci-local
+    "check-dist-integrity.cjs", // DIST-INTEGRITY — 0 duplicate chunks, 0 orphans; CI + ci-local
+    "purge-dist.cjs", // preventive side of stacked chunks — wired at the head of `npm run build`
+    "check-build-determinism.cjs", // build determinism — costly (2 builds), outside pre-commit
     "check-dead-code.cjs",
     "check-dead-links.cjs",
-    "check-e2e-wait-signature.cjs", // E2E-WAIT-SIG (B-100) — timeout perdu en 2e position
-    "check-i18n-dict-shape.cjs", // filet de forme des dicos i18n / C-5 (roadmap nettoyage S8) — CI + ci-local
-    "check-orphan-exports.cjs", // filet anti-code-mort du core / B3 (roadmap nettoyage S2) — CI + ci-local + pre-commit
+    "check-e2e-wait-signature.cjs", // E2E-WAIT-SIG — timeout lost in 2nd position
+    "check-i18n-dict-shape.cjs", // i18n dictionary shape net — CI + ci-local
+    "check-orphan-exports.cjs", // the core's anti-dead-code net (B3) — CI + ci-local + pre-commit
+    // PLATFORM-ISO — `@geoleaf-plugins/navigation`'s three adapters are the
+    // only point of contact with the browser. Perimeter SCOPED to the
+    // plugin and never the repo: the repo carries seven legitimate
+    // `navigator.geolocation` outside any `platform/` (the geolocation
+    // capability and `measure`'s GPS tool), so repo-wide the gate would be
+    // BORN RED — and a gate born red gets disarmed. As long as the plugin
+    // does not exist, it returns a MOTIVATED SKIP saying it is not a green.
+    // CI + ci-local.
+    "check-platform-isolation.cjs",
     "check-consumer-bundle.cjs", // published-package gate (S6) — CI + ci-local + build-deploy
     "check-example-bundle.cjs", // tree-shaking gate (S5) — CI + ci-local + build-deploy
-    "check-side-effects.cjs", // sideEffects honesty gate (S6) — CI + ci-local
-    // SHIP-SPEC (passage public S1) — un specifier du tarball doit se résoudre HORS du
-    // monorepo. Les symlinks de workspace masquent la classe : `@geoleaf/host-runtime` est
-    // `private` et 404 sur npm, et il résolvait vert ici. CI + ci-local + pre-commit.
+    "check-side-effects.cjs", // sideEffects honesty gate — CI + ci-local
+    // SHIP-SPEC — a tarball specifier must resolve OUTSIDE the monorepo.
+    // Workspace symlinks mask the class: `@geoleaf/host-runtime` is
+    // `private` and 404 on npm, and it resolved green here. CI + ci-local + pre-commit.
     "check-shipped-specifiers.cjs",
-    // LIC-HEADERS (passage public S3) — la notice de licence, sur les sources ET sur les
-    // fichiers expédiés. Le `LICENSE` racine exige qu'elle accompagne « all copies or
-    // substantial portions » ; 405 des 540 `.js` du tarball n'en portaient aucune. LIC-05 y
-    // garde en plus la VALEUR du champ `license`, que PC-05 ne regarde pas. CI + ci-local.
-    // ⚠️ Volontairement HORS pre-commit — même motif que `check-subpath-resolve.cjs` : LIC-04
-    // lit `dist/`, et `lint-staged` reformate les sources en cours de route.
+    // LIC-HEADERS — the licence notice, on the sources AND the shipped
+    // files. The root `LICENSE` requires it to accompany "all copies or
+    // substantial portions"; 405 of the tarball's 540 `.js` carried none.
+    // LIC-05 also guards the `license` field's VALUE, which PC-05 does not
+    // look at. CI + ci-local.
+    // ⚠️ Deliberately OUTSIDE pre-commit — same motive as
+    // `check-subpath-resolve.cjs`: LIC-04 reads `dist/`, and `lint-staged`
+    // reformats the sources mid-flight.
     "check-license-headers.cjs",
     "check-test-failures.cjs",
     "check-versions.cjs",
     "ci-local.cjs",
-    // La chambre propre : ci:local rejoué sur un worktree détaché + npm ci, en CI=true.
-    // C'est ce vert-là qui autorise un push, pas celui de ci-local.
+    // The clean room: ci:local replayed on a detached worktree + npm ci,
+    // with CI=true. THAT green is what authorises a push, not ci-local's.
     "ci-push.cjs",
     "count-any.cjs",
     "create-plugin.cjs",
     "deploy-docs.cjs",
-    // Doc V3, Étape 3 item 3 — génère `docs/reference/API_SURFACE.txt`, le manifeste
-    // de la surface dérivée par TypeDoc sur les 14 paquets, et le gate en fraîcheur
-    // (`--check`). Il gate le MODÈLE et non le rendu : ce dernier grave le SHA de HEAD (29
-    // fichiers sur 54 mesurés), donc il n'a pas de point fixe, et pèse 1 806 fichiers / 24 Mo
-    // pour le seul core. Câblé dans ci:local + ci.yml. Déclaré dans le commit qui le crée.
-    // Doc V3, Étape 3 item 7 — le 2ᵉ générateur : `profiles/schemas/*.json` →
-    // `docs/reference/PROFILE_SCHEMA_REFERENCE.md`, gaté en fraîcheur (`--check`) et
-    // doté d'un mode `--audit` qui compare aux 128 paramètres du rédigé. Câblé dans ci:local
-    // et ci.yml, déclaré dans le commit qui le crée.
+    // Generates `docs/reference/API_SURFACE.txt`, the manifest of the
+    // TypeDoc-derived surface over the 14 packages, and gates it on
+    // freshness (`--check`). It gates the MODEL and not the render: the
+    // latter engraves HEAD's SHA (29 files out of 54 measured), so it has
+    // no fixed point, and weighs 1,806 files / 24 MB for the core alone.
+    // Wired in ci:local + ci.yml. Declared in the commit that creates it.
+    // The 2nd generator: `profiles/schemas/*.json` →
+    // `docs/reference/PROFILE_SCHEMA_REFERENCE.md`, freshness-gated
+    // (`--check`) with an `--audit` mode comparing to the hand-written
+    // 128 parameters. Wired in ci:local and ci.yml, declared in the commit
+    // that creates it.
     "gen-attributes-report.cjs",
     "gen-profile-schema-reference.cjs",
     "gen-api-surface.cjs",
     "gen-config-reference.cjs",
-    // socle-init S8 — compose une entrée depuis une liste de capacités, en DÉRIVANT les cinq
-    // choses qu'une entrée écrite à la main recopie (const installer, ordre de `FULL`, chemins
-    // d'import, façades ré-exportables, dépendances). Pas câblé dans `ci:local` : sa garde est
-    // portée par `packages/core/__tests__/guards/generated-entries.guard.test.ts`, que la suite
-    // existante ramasse — voir l'en-tête de ce garde pour le motif (PARITY-11).
+    // Composes an entry from a capability list, DERIVING the five things a
+    // hand-written entry copies (installer const, `FULL` order, import
+    // paths, re-exportable facades, dependencies). Not wired in `ci:local`:
+    // its guard is carried by
+    // `packages/core/__tests__/guards/generated-entries.guard.test.ts`,
+    // which the existing suite collects — see that guard's header for the
+    // motive (PARITY-11).
     "gen-entry.cjs",
     "generate-pwa-icons.cjs",
     "generate-vector-tiles.cjs",
     "golden-master.cjs",
-    // Doc V3, Étape 3 sous-tâche 1 — mesure la surface que TypeDoc rendrait s'il était
-    // élargi (`expand` + `packages`). DÉLIBÉRÉMENT hors ci:local : elle ne garde rien, elle
-    // mesure. Elle est versionnée parce que la roadmap porte SES chiffres, et qu'un chiffre
-    // sans commande qui le réimprime se fossilise (mode d'échec n° 5 de CLAUDE.md) — la
-    // passe 21 a justement retiré trois chiffres de la roadmap pour ce motif, elle ne peut
-    // pas en écrire quatre nouveaux du même régime. N'écrit rien dans le dépôt.
+    // Measures the surface TypeDoc would render if widened
+    // (`expand` + `packages`). DELIBERATELY outside ci:local: it guards
+    // nothing, it measures. It is versioned because the plan carries ITS
+    // figures, and a figure without a command that reprints it fossilises —
+    // one pass removed three figures from the plan for that very motive; it
+    // cannot write four new ones under the same regime. Writes nothing into
+    // the repo.
     "probe-typedoc-surface.mjs",
-    // Publie UN workspace nommé, en sautant ce que le registre porte déjà (15/08/2026).
-    // ⚠️ Existe parce que les étapes `@geoleaf/core` et `@geoleaf/field-renderer` de
-    // `publish.yml` étaient des `npm publish` NUS : sur une version déjà publiée npm rend
-    // `E403` et le workflow mourait AVANT d'atteindre les 12 plugins. DÉLIBÉRÉMENT hors
-    // ci:local — il parle au registre et publie, ce qu'aucune gate ne doit faire.
+    // Publishes ONE named workspace, skipping what the registry already
+    // carries (15/08/2026).
+    // ⚠️ Exists because `publish.yml`'s `@geoleaf/core` and
+    // `@geoleaf/field-renderer` steps were BARE `npm publish`: on an
+    // already-published version npm returns `E403` and the workflow died
+    // BEFORE reaching the 12 plugins. DELIBERATELY outside ci:local — it
+    // talks to the registry and publishes, which no gate must do.
     "publish-one.cjs",
     "publish-plugins.cjs",
-    // Portage de l'atelier vers le dépôt public `geoleaf/geoleaf-js` (passage public, S10.A).
-    // DÉLIBÉRÉMENT hors ci:local : il parle au réseau et écrit sur un dépôt distant, ce
-    // qu'aucune gate ne doit faire. Son `--dry-run` par défaut mesure sans écrire.
+    // Ports the workshop to the public repo `geoleaf/geoleaf-js`.
+    // DELIBERATELY outside ci:local: it talks to the network and writes to
+    // a remote repo, which no gate must do. Its default `--dry-run`
+    // measures without writing.
     //
-    // ⚠️ Il remplace un `cp` à la main qui avait laissé le dépôt public **15 commits en
-    // retard**, dont sept sur de la doc publique, sans que rien ne le signale : le clone
-    // public est éphémère (créé, poussé, supprimé), donc il n'existait aucun endroit où
-    // comparer les deux dépôts, ni où retrouver la liste d'exclusion.
+    // ⚠️ It replaces a hand `cp` that had left the public repo **15 commits
+    // behind**, seven of them on public doc, with nothing flagging it: the
+    // public clone is ephemeral (created, pushed, deleted), so there
+    // existed no place to compare the two repos, nor to find the exclusion
+    // list again.
     "port-to-public.cjs",
-    // scripts/lib/ — la frontière atelier/public, et le seul domicile de ses quatre motifs.
-    // Ils vivaient hors dépôt (`~/.claude/geoleaf-nuit/`), donc sur un seul poste : un
-    // portage qui ne les retrouvait pas réintroduisait 39 fichiers d'atelier en sortant vert.
-    // Gardé par `public-partition.guard.test.ts`, vu rougir sur deux mutations.
+    // scripts/lib/ — the workshop/public boundary, and the only home of its
+    // four patterns. They lived outside the repo (`~/.claude/geoleaf-nuit/`),
+    // hence on a single workstation: a port that did not find them
+    // reintroduced 39 workshop files while exiting green. Guarded by
+    // `public-partition.guard.test.ts`, seen red on two mutations.
     "public-partition.cjs",
-    // T4.5 — ramène `.turbo/cache` sous un budget de taille. DÉLIBÉRÉMENT hors ci:local :
-    // le cache est ce qui rend la séquence tenable, un purgeur en tête garantirait le miss
-    // sur ce qu'il vient d'évincer (l'argument complet est dans son en-tête). La cadence
-    // vit dans `_docs_projet/HYGIENE_CHECKLIST.md`, en fin de sprint.
+    // Brings `.turbo/cache` back under a size budget. DELIBERATELY outside
+    // ci:local: the cache is what makes the sequence tenable, a purger at
+    // the head would guarantee the miss on what it just evicted (the full
+    // argument is in its header). The cadence lives in
+    // `_docs_projet/HYGIENE_CHECKLIST.md`, at end of sprint.
     "purge-turbo-cache.cjs",
     "purgecss-config.cjs", // scripts/lib/ — shared purgecss config (audit + CI gate)
     "side-effect-modules.cjs", // scripts/lib/ — derived side-effect truth (S6), shared by 2 gates
-    "packages.cjs", // scripts/lib/ — derived package registry (ARCHI S9.4), shared by the gates that enumerate packages
-    // scripts/lib/ — « ce paquet@version est-il DÉJÀ au registre ? », en un seul endroit
-    // pour ses deux appelants (`publish-plugins.cjs`, `publish-one.cjs`). ⚠️ Le recopier
-    // ferait diverger deux définitions de « déjà publié » dans un geste irréversible.
+    "packages.cjs", // scripts/lib/ — derived package registry, shared by the gates that enumerate packages
+    // scripts/lib/ — "is this package@version ALREADY on the registry?",
+    // in one place for its two callers (`publish-plugins.cjs`,
+    // `publish-one.cjs`). ⚠️ Copying it would let two definitions of
+    // "already published" diverge inside an irreversible gesture.
     "npm-registry.cjs",
-    // lib/ — LA forme canonique du bandeau de licence (passage public S3), et son unique
-    // domicile : le générateur `--write`, la gate LIC-01/02/04 et la bannière de sortie des
-    // bundles (`build-config/rollup.mjs`) la lisent tous les trois ici. Une gate et son
-    // générateur qui portent chacun leur copie de la règle divergent, et le désaccord se lit
-    // comme « la gate rougit sur un bundle qu'on vient de bannériser ».
+    // lib/ — THE canonical shape of the licence banner, and its single
+    // home: the `--write` generator, the LIC-01/02/04 gate and the bundles'
+    // output banner (`build-config/rollup.mjs`) all three read it here. A
+    // gate and its generator each carrying their copy of the rule diverge,
+    // and the disagreement reads as "the gate turns red on a bundle just bannered".
     "license-banner.cjs",
-    // T4.1 — lib/ : les FORMES de répertoire d'artefact généré, plus la dérivation depuis
-    // les producteurs. Trois lecteurs (check 4 et check 5 ici, check 2 de
-    // check-package-files.cjs). Déclarée dans le commit qui la crée — le dépôt a raté ce
-    // geste trois fois (voir verify-seam-drift.cjs, test-load-sites.cjs et les .mjs).
+    // lib/ — the generated-artefact directory FORMS, plus the derivation
+    // from the producers. Three readers (checks 4 and 5 here, check 2 of
+    // check-package-files.cjs). Declared in the commit that creates it —
+    // the repo missed that gesture three times (see verify-seam-drift.cjs,
+    // test-load-sites.cjs and the .mjs).
     "generated-artifacts.cjs",
-    // T5.7 — lib/ : les 3 tables de motifs de CE fichier, plus leurs témoins à réponse
-    // connue. Deuxième lecteur : `probe-gate-visibility.cjs`, qui ne pouvait pas les
-    // interroger tant qu'elles vivaient ici (ce script s'exécute à l'import). Déclarée
-    // dans le commit qui la crée — quatrième occasion de ne pas rater ce geste.
+    // lib/ — THIS file's 3 pattern tables, plus their known-answer
+    // witnesses. Second reader: `probe-gate-visibility.cjs`, which could
+    // not query them while they lived here (this script executes at
+    // import). Declared in the commit that creates it — fourth occasion not
+    // to miss that gesture.
     "hygiene-patterns.cjs",
-    // T5.8 — le pendant de CE fichier. Il vérifie qu'un script invoqué par `ci:local` est
-    // SUIVI par git ; ici on vérifie qu'un script de `scripts/` est DÉCLARÉ. Les deux
-    // moitiés sont nécessaires : un fichier non tracé est invisible du corpus du check 1,
-    // et une entrée d'allowlist sans fichier n'est pas une erreur.
+    // THIS file's counterpart. It verifies a script invoked by `ci:local`
+    // is TRACKED by git; here we verify a `scripts/` script is DECLARED.
+    // Both halves are necessary: an untracked file is invisible to check
+    // 1's corpus, and an allowlist entry without a file is not an error.
     "verify-ci-scripts-tracked.cjs",
-    // L'autre moitié de la même propriété : `verify-ci-scripts-tracked` garantit que tout
-    // script invoqué par `ci:local` est TRACÉ, celle-ci que toute gate de `ci.yml` est
-    // INVOQUÉE — ou exemptée avec son motif et son témoin. La liste des gates reposait
-    // jusqu'ici sur un commentaire « Keep this list in sync », c'est-à-dire sur rien.
+    // The other half of the same property: `verify-ci-scripts-tracked`
+    // guarantees every script invoked by `ci:local` is TRACKED, this one
+    // that every `ci.yml` gate is INVOKED — or exempted with its motive and
+    // its witness. The gate list rested until then on a "Keep this list in
+    // sync" comment, i.e. on nothing.
     "verify-ci-parity.cjs",
-    "ci-parity.cjs", // scripts/lib/ — parseur ci.yml + résolveur de feuilles, lu aussi par ci-local.cjs
-    // La gate gitleaks de ci.yml rejouée localement par son BINAIRE (l'action, elle, n'est
-    // pas reproductible). Épinglée sur la version exacte qu'installe l'action.
+    "ci-parity.cjs", // scripts/lib/ — ci.yml parser + leaf resolver, also read by ci-local.cjs
+    // ci.yml's gitleaks gate replayed locally through its BINARY (the
+    // action itself is not reproducible). Pinned to the exact version the
+    // action installs.
     "gitleaks-local.cjs",
-    // T6.1 — gate de couverture du BOOT du bundle livré (pas « couverture E2E » : un seul
-    // spec sur 36 la produit). Enveloppe `report:e2e` d'un plancher de témoin, parce que
-    // `nyc report` est vert sur une donnée vide. Déclarée dans le commit qui la crée.
+    // Coverage gate of the shipped bundle's BOOT (not "E2E coverage": a
+    // single spec out of 36 produces it). Wraps `report:e2e` with a witness
+    // floor, because `nyc report` is green on empty data. Declared in the
+    // commit that creates it.
     "verify-e2e-coverage.cjs",
-    // B-235 — préambule de `--e2e` : les navigateurs de Playwright sont-ils réellement là ?
-    // Une montée de version DÉLIBÉRÉE change la révision requise, et rien en local ne les
-    // réinstalle (`ci.yml` le fait, lui, avant chaque run). Sans ce préambule la suite met
-    // 1,2 min à rendre ~215 rouges identiques, indiscernables d'une régression du produit.
+    // `--e2e` preamble: are Playwright's browsers really there? A
+    // DELIBERATE version bump changes the required revision, and nothing
+    // local reinstalls them (`ci.yml` does, before each run). Without this
+    // preamble the suite takes 1.2 min to return ~215 identical reds,
+    // indistinguishable from a product regression.
     "verify-playwright-browsers.cjs",
-    // Second préambule de `--e2e` : un port TENU mais MUET fait attendre Playwright 60 s puis
-    // rendre un message qui ne nomme aucun port. Cause fréquente : un run tué laisse ses
-    // `http-server` orphelins. Lit les URL dans `playwright.config.js`, jamais une liste à part.
+    // `--e2e`'s second preamble: a HELD but MUTE port makes Playwright wait
+    // 60 s then return a message naming no port. Frequent cause: a killed
+    // run leaves its `http-server`s orphaned. Reads the URLs from
+    // `playwright.config.js`, never a separate list.
     "verify-e2e-ports.cjs",
     "simplify-geojson.cjs",
     "smoke-test.cjs",
     "validate-docs-examples.cjs",
-    "typecheck-docs-examples.cjs", // B.20 — compile les exemples ts de la doc (arité, exports fantômes)
-    // NPM-README — npmjs.com ne rend pas les alertes GitHub : `> [!WARNING]` s'affiche en texte
-    // littéral sur la page du paquet. Périmètre `registry.publishable()` + le scaffold ; la règle
-    // est INVERSE sur le README racine et `docs/`, que GitHub et VitePress rendent. CI + ci-local.
+    "typecheck-docs-examples.cjs", // compiles the doc's ts examples (arity, ghost exports)
+    // NPM-README — npmjs.com does not render GitHub alerts: `> [!WARNING]`
+    // displays as literal text on the package page. Perimeter
+    // `registry.publishable()` + the scaffold; the rule is INVERSE on the
+    // root README and `docs/`, which GitHub and VitePress render. CI + ci-local.
     "verify-npm-readme-render.cjs",
     "validate-profiles.cjs",
-    // TPL-CFG (7.1b) — refuse un `_config.json` pour une couche produite par
-    // `layerTemplates` : son `inlineConfig` « skips the fetch entirely », donc le fichier
-    // n'est lu par personne mais se fait éditer. 24 fantômes retirés. CI + ci-local.
+    // TPL-CFG — refuses a `_config.json` for a layer produced by
+    // `layerTemplates`: its `inlineConfig` "skips the fetch entirely", so
+    // the file is read by nobody but gets edited. 24 ghosts removed. CI + ci-local.
     "check-template-layer-configs.cjs",
     "check-package-files.cjs",
-    // ESM-PURITY (socle-init S2, tâche 2.1′) — aucun spécificateur NU dans un `dist/` publié,
-    // hors allowlist dérivée des `peerDependencies`. CI + ci-local.
-    // ⚠️ Inscrit ici par la session Sprint 1, au moment où `git add` a rendu le script SUIVI :
-    // ce gate ne voit que les fichiers trackés, donc il ne pouvait pas rougir tant que le
-    // script restait sur le disque sans être indexé. L'entrée précède donc son commit.
+    // ESM-PURITY — no BARE specifier in a published `dist/`, outside the
+    // allowlist derived from `peerDependencies`. CI + ci-local.
+    // ⚠️ Inscribed here the moment `git add` made the script TRACKED: this
+    // gate only sees tracked files, so it could not turn red while the
+    // script sat on disk unindexed. The entry thus precedes its commit.
     "verify-esm-purity.cjs",
-    // IMPL (B-258) — le complément de SHIP-SPEC et de knip : les deux partent d'un IMPORT,
-    // celui-ci couvre ce que le dépôt charge SANS importer (`happy-dom` nommé par une chaîne
-    // de config, `tsx` injecté dans NODE_OPTIONS). Vérifie aussi « déclaré = exécuté ».
+    // IMPL — SHIP-SPEC's and knip's complement: both start from an IMPORT,
+    // this one covers what the repo loads WITHOUT importing (`happy-dom`
+    // named by a config string, `tsx` injected into NODE_OPTIONS). Also
+    // verifies "declared = executed".
     "verify-implicit-deps.cjs",
     "verify-core-standalone.cjs",
-    // ARCHI S7 (7.4) — frontière symétrique : plugins → core.
+    // Symmetric boundary: plugins → core.
     "verify-plugin-core-boundary.cjs",
-    // PLUGINS S9 — les COPIES délibérées de part et d'autre de cette frontière, gelées par hash.
-    // ⚠️ Déclarée au S11 seulement : elle rougissait ce gate depuis son commit au S9, exactement
-    // comme `test-load-sites.cjs` plus bas. Poser une gate sans l'inscrire ici la fait passer
-    // pour un script jetable — le réflexe est de faire les deux gestes dans le même commit.
+    // The deliberate COPIES on either side of this boundary, frozen by hash.
+    // ⚠️ Declared late only: it had been turning this gate red since its
+    // own commit, exactly like `test-load-sites.cjs` below. Laying a gate
+    // without inscribing it here makes it look like a throwaway script —
+    // the reflex is to make both gestures in the same commit.
     "verify-seam-drift.cjs",
-    // PLUGINS S10 — tout `var(--gl-*)` référencé doit être défini, ou posé au runtime (allowlist).
+    "verify-boot-subscription.cjs",
+    // Every referenced `var(--gl-*)` must be defined, or set at runtime (allowlist).
     "verify-css-tokens.cjs",
-    // PLUGINS S11.1 — la 3ᵉ frontière : re-définition locale d'un utilitaire canonique de
-    // `@geoleaf/host-runtime` au lieu de l'importer.
+    // The 3rd boundary: local re-definition of a canonical
+    // `@geoleaf/host-runtime` utility instead of importing it.
     "verify-plugin-shared-fork.cjs",
-    // 09/08/2026 — aucun secret dans une variante LIVRABLE de `deploy/`. Comble l'angle mort
-    // entre `gitleaks` (qui scanne des plages de COMMITS) et `.gitignore` (qui couvre le canal
-    // git) : `deploy/` est git-ignoré, donc invisible aux deux, tout en étant ce qui part chez
-    // un client. Un JWT `geoleaf_editor` non expiré y a vécu jusqu'à cette date.
+    // 09/08/2026 — no secret in a SHIPPABLE `deploy/` variant. Fills the
+    // blind spot between `gitleaks` (which scans COMMIT ranges) and
+    // `.gitignore` (which covers the git channel): `deploy/` is
+    // git-ignored, hence invisible to both, while being what leaves for a
+    // client. An unexpired `geoleaf_editor` JWT lived there until that date.
     "verify-deploy-no-secrets.cjs",
-    // 09/08/2026 — ce qu'on LIVRE dit ce qu'il exige de son serveur (SC-01/02/03). Sœur de la
-    // gate ci-dessus, et même angle mort d'origine : le fait « sans le type MIME de `.mjs`,
-    // rien ne boote » était écrit dans `docker/nginx.dev.conf`, c'est-à-dire dans un fichier
-    // de DEV qui ne part pas avec le dossier — son propre commentaire l'admettait. Un
-    // `deploy-full` copié sur une prod nginx n'a pas booté ce jour-là.
+    // 09/08/2026 — what SHIPS says what it requires of its server
+    // (SC-01/02/03). Sister of the gate above, and same original blind
+    // spot: the fact "without the `.mjs` MIME type, nothing boots" was
+    // written in `docker/nginx.dev.conf`, i.e. in a DEV file that does not
+    // leave with the folder — its own comment admitted it. A `deploy-full`
+    // copied onto an nginx production did not boot that day.
     "verify-deploy-server-contract.cjs",
-    // lib/ — le contrat serveur lui-même : les 3 fichiers émis dans chaque livrable, plus le
-    // prédicat `declaresMjsType()` qui dit ce que « déclarer le type » veut dire. Un seul
-    // corpus, deux lecteurs (build-deploy + la gate) — patron de `boot-assets.cjs`.
+    // lib/ — the server contract itself: the 3 files emitted into each
+    // deliverable, plus the `declaresMjsType()` predicate saying what
+    // "declaring the type" means. One corpus, two readers (build-deploy +
+    // the gate) — `boot-assets.cjs`'s pattern.
     "server-contract.cjs",
-    // lib/ — retrait des liaisons vers le backend de PREUVE (`qgis.geoleaf.dev`) des variantes
-    // livrables, gardé par DNS-05. ⚠️ Nomme les hôtes de dev, JAMAIS une allowlist de
-    // fournisseurs : celle-ci supprimerait en silence le backend de prod d'un profil client.
+    // lib/ — removal of the PROOF-backend bindings (`qgis.geoleaf.dev`)
+    // from shippable variants, guarded by DNS-05. ⚠️ Names the dev hosts,
+    // NEVER a supplier allowlist: that would silently remove a client
+    // profile's production backend.
     "dev-backend.cjs",
-    // ARCHI S5 (5.3) — propriété du namespace GeoLeaf.
+    // Ownership of the GeoLeaf namespace.
     "verify-globals-ownership.cjs",
     "verify-no-leaflet.cjs",
-    "probe-gate-visibility.cjs", // ARCHI S10.2 — méta-gate : les gates voient-elles un package imbriqué ?
+    "probe-gate-visibility.cjs", // meta-gate: do the gates see a nested package?
+    // PUB — the only instrument that confronts a published tarball with this repo at an
+    // EQUAL version. Skips explicitly without registry access. ci:local + ci.yml.
+    "verify-published-parity.cjs",
     "verify-plugin-contract.cjs",
-    // 08/08/2026 — le gabarit de plugin est le seul paquet qu'aucune gate ne lit : ESLint
-    // l'ignore (ses jetons `__PLUGIN_NAME__` ne sont pas du TS valide) ET il est hors des globs
-    // `workspaces` (`!packages/_*`). Cette gate scaffolde deux formes et éprouve la SORTIE,
-    // qui, elle, est du TS valide — seul canal par lequel un fichier à jetons peut être tenu à
-    // la barre du code qu'il engendre.
+    // 08/08/2026 — the plugin template is the only package no gate reads:
+    // ESLint ignores it (its `__PLUGIN_NAME__` tokens are not valid TS) AND
+    // it is outside the `workspaces` globs (`!packages/_*`). This gate
+    // scaffolds two shapes and exercises the OUTPUT, which is valid TS —
+    // the only channel through which a token file can be held to the bar of
+    // the code it begets.
     "verify-plugin-scaffold.cjs",
     "verify-purgecss.cjs",
-    // T2.6 — le contrat HTML/JS de l'application extraite vers apps/geoleaf-app/. Recueille
-    // les 2 assertions qui vivaient dans `bundle.test.js` (un test de la LIBRAIRIE qui lisait
-    // un fichier de l'APP) et ajoute 3 invariants que rien ne gardait : le chemin d'icônes
-    // dont dépend la réécriture du déploiement, et la forme MONO-LIGNE du commentaire
-    // `Optional plugins` et des <script> de plugins gatés — tous patchés par des regex `/gm`
-    // sans flag `/s`, donc un simple retour à la ligne les faisait manquer en silence.
+    // The HTML/JS contract of the application extracted to
+    // apps/geoleaf-app/. Collects the 2 assertions that lived in
+    // `bundle.test.js` (a LIBRARY test reading an APP file) and adds 3
+    // invariants nothing guarded: the icon path the deployment rewrite
+    // depends on, and the SINGLE-LINE shape of the `Optional plugins`
+    // comment and the gated plugin <script>s — all patched by `/gm` regexes
+    // without the `/s` flag, so a mere line break made them miss silently.
     "verify-app-template.cjs",
     "verify-repo-hygiene.cjs", // this file
-    // ARCHI S6 — les déclarations publiées doivent être ATTEIGNABLES (condition `types`).
+    // Published declarations must be REACHABLE (`types` condition).
     "verify-published-types.cjs",
-    // API S2 — SUBPATH-RESOLVE : résout les DEUX branches (`types` et runtime) de chaque
-    // cible d'`exports`. PUB-TYPES ne voyait que la première, d'où 13 sous-chemins
-    // `./facades/*` qui typecheckaient puis levaient ERR_MODULE_NOT_FOUND.
-    // ⚠️ Absent de cette liste jusqu'au T2 pour une raison simple : le fichier n'était pas
-    // SUIVI PAR GIT, alors que ci-local.cjs l'invoquait — donc l'hygiène ne le voyait pas,
-    // et un clone frais échouait au lancement (item 5.6 de roadmap_structure-monorepo).
+    // SUBPATH-RESOLVE: resolves BOTH branches (`types` and runtime) of
+    // each `exports` target. PUB-TYPES only saw the first, hence 13
+    // `./facades/*` subpaths that typechecked then threw
+    // ERR_MODULE_NOT_FOUND.
+    // ⚠️ Absent from this list for a simple reason: the file was not
+    // TRACKED BY GIT while ci-local.cjs invoked it — so hygiene did not see
+    // it, and a fresh clone failed at launch.
     "check-subpath-resolve.cjs",
-    // ARCHI S11 — l'arborescence commentée et sa gate. `lib/source-inventory.cjs` porte la
-    // règle « documenté ou non » partagée par les deux : une seule définition, deux lecteurs.
+    // The commented tree and its gate. `lib/source-inventory.cjs` carries
+    // the "documented or not" rule shared by both: one definition, two readers.
     "generate-docs-tree.cjs",
     "check-module-headers.cjs",
     "check-tsdoc-conformity.cjs", // TSDOC-01/02/03 — @param ↔ signature, gate `check:tsdoc`
-    "emit-ambient-types.cjs", // B-46 — publie le namespace global avec le paquet (post-build core)
+    "emit-ambient-types.cjs", // publishes the global namespace with the package (post-build core)
+    "emit-css-type-stubs.cjs", // `<name>.css.d.ts` stubs for the published `.d.ts` CSS imports (post-build core AND root)
     "source-inventory.cjs",
-    // B-75 (30/07/2026) — moteur PARTAGÉ d'extraction des `@example` du TSDoc. Écrit pour
-    // B-44 dans `typecheck-docs-examples.cjs`, extrait quand `validate-docs-examples.cjs` a
-    // eu besoin du même corpus : une définition, deux lecteurs, comme `source-inventory.cjs`
-    // ci-dessus. Le recopier aurait créé deux extracteurs à faire diverger.
+    // 30/07/2026 — SHARED engine extracting the TSDoc `@example`s. Written
+    // for `typecheck-docs-examples.cjs`, extracted when
+    // `validate-docs-examples.cjs` needed the same corpus: one definition,
+    // two readers, like `source-inventory.cjs` above. Copying it would have
+    // created two extractors bound to diverge.
     "tsdoc-examples.cjs",
-    // lib/ — socle-init S4.7, MÊME motif que `tsdoc-examples.cjs` juste au-dessus, et il n'est
-    // pas une coïncidence : la dérivation « ce que le premier chargement demande » vivait dans
-    // `build-deploy.cjs`, qui l'INJECTE, et la gate de payload a eu besoin de la PESER. Deux
-    // extracteurs auraient divergé, et celui des deux qui n'est pas maintenu serait sorti vert
-    // en mesurant autre chose. Une définition, deux lecteurs.
+    // lib/ — SAME motive as `tsdoc-examples.cjs` just above, and it is not
+    // a coincidence: the "what the first load requests" derivation lived in
+    // `build-deploy.cjs`, which INJECTS it, and the payload gate needed to
+    // WEIGH it. Two extractors would have diverged, and whichever of the
+    // two goes unmaintained would have come out green measuring something
+    // else. One definition, two readers.
     "boot-assets.cjs",
-    // lib/ — socle-init S4.1, allègement des GeoJSON au déploiement (arrondi des coordonnées,
-    // et un Douglas-Peucker DÉSARMÉ dont le relevé est écrit sur place). À part de
-    // `build-deploy.cjs` parce que ses réglages sont des CHIFFRES qu'on veut pouvoir
-    // ré-éprouver sans rebâtir un déployé entier — et c'est exactement ce qui a permis de
-    // mesurer que DP ne rendait que 10 % du gain, puis de le retirer.
+    // lib/ — GeoJSON slimming at deployment (coordinate rounding, and a
+    // DISARMED Douglas-Peucker whose record is written in place). Separate
+    // from `build-deploy.cjs` because its settings are FIGURES one wants to
+    // re-exercise without rebuilding a whole deploy — and that is exactly
+    // what allowed measuring that DP only returned 10% of the gain, then
+    // removing it.
     "geojson-slim.cjs",
-    // API publique S3.4 — cliquet sur les événements non typés (EM-01/EM-02).
+    // Ratchet on untyped events (EM-01/EM-02).
     "check-event-map-coverage.cjs",
-    // API publique S3.5 — `GeoLeafHost` ⊆ `GeoLeafGlobal` ⊆ oracle post-boot (HOST-01/02/03).
+    // `GeoLeafHost` ⊆ `GeoLeafGlobal` ⊆ oracle post-boot (HOST-01/02/03).
     "verify-host-contract-sync.cjs",
-    // B.48 / Sprint 0 COUVERTURE — outillage de test borné.
-    "run-tests.cjs", // lanceur des tests unitaires : borne l'essaimage turbo × workers vitest
-    "test-scope.cjs", // lib/ — les 2 périmètres de test + l'invariant `ci:local ⊇ ci.yml`
-    // lib/ — définition unique de « qu'est-ce qu'un site require() dans un test », partagée par
-    // le gate `verify-test-load-mode.cjs` et l'instrument `audit-test-load-conversion.cjs`. Les
-    // deux en portaient une copie et elles avaient déjà divergé (COUVERTURE S2.5). Extraite au
-    // S5, elle n'avait pas été déclarée ici : le gate d'hygiène la voyait comme un script
-    // jetable et rougissait, alors que `verify-test-load-mode.cjs` en DÉPEND.
+    // Bounded test tooling.
+    "run-tests.cjs", // unit-test launcher: bounds the turbo fan-out × vitest workers
+    "test-scope.cjs", // lib/ — the 2 test perimeters + the `ci:local ⊇ ci.yml` invariant
+    // lib/ — single definition of "what is a require() site in a test",
+    // shared by the `verify-test-load-mode.cjs` gate and the
+    // `audit-test-load-conversion.cjs` instrument. Both carried a copy and
+    // they had already diverged. When extracted, it had not been declared
+    // here: the hygiene gate saw it as a throwaway script and turned red,
+    // while `verify-test-load-mode.cjs` DEPENDS on it.
     "test-load-sites.cjs",
-    // Sprint 1 COUVERTURE — le garde-fou et l'étalonnage de la mesure.
-    "verify-test-load-mode.cjs", // baseline des `require()` de source, ne peut que descendre
-    "verify-coverage-attribution.cjs", // la gate qui vérifie l'APPAREIL de mesure, pas le code
-    // ── Les .mjs de scripts/ ────────────────────────────────────────────────────
+    // The guardrail and the measure's calibration.
+    "verify-test-load-mode.cjs", // source-`require()` baseline, can only go down
+    "verify-coverage-attribution.cjs", // the gate that verifies the measuring DEVICE, not the code
+    // ── The .mjs of scripts/ ────────────────────────────────────────────────────
     //
-    // Déclarés lors de l'extension du check 1 aux `.mjs`. Ils étaient tracés, invoqués
-    // et JAMAIS contrôlés : le check ne testait que `.cjs`. `knip-hints-reporter.mjs`
-    // est le témoin — créé et câblé dans `check-dead-code.cjs` la veille, déclaré dans
-    // ARCHITECTURE.md et dans l'arborescence qualifiée, mais dans aucun registre
-    // d'hygiène, faute de règle à violer. Troisième occurrence de la même défaillance
-    // après `verify-seam-drift.cjs` et `test-load-sites.cjs` (voir leurs commentaires
-    // ci-dessus) : le registre discipline 64 `.cjs` et disciplinait 0 `.mjs`, alors que
-    // le nouvel outillage s'écrit en ESM.
-    "check-fgb-index.mjs", // outil manuel de préparation de données FlatGeobuf (CDC_plugin-flatgeobuf §187)
-    "probe-boot-contract.mjs", // sonde manuelle Chromium — seul oracle de l'ORDRE des marks de boot
-    // Sonde manuelle Chromium — l'avis d'éviction de cache parvient-il à l'écran, et sur QUELLE
-    // variante ? Seul oracle de B-163 : les 10 tests unitaires de `eviction-notice.ts` éprouvent
-    // la logique de l'écouteur, aucun ne dit qu'il est CÂBLÉ dans le bundle livré — et c'est
-    // exactement le défaut d'origine, vu depuis l'autre bout (un écouteur correct et testé, dans
-    // un plugin absent de `deploy-core`). Elle vise les DEUX variantes, parce qu'un doublon
-    // plugin/core sur `deploy-full` serait la régression symétrique.
-    // ⚠️ Elle porte aussi ses deux propres mensonges, documentés sur place : un sélecteur faux
-    // (`.geoleaf-toast`) l'a rendue rouge partout Y COMPRIS sur le témoin, et un oracle par
-    // TOTAL de toasts la rendait rouge sur un avis parfait — la page porte des avis de boot.
+    // Declared when check 1 was extended to `.mjs`. They were tracked,
+    // invoked and NEVER controlled: the check only tested `.cjs`.
+    // `knip-hints-reporter.mjs` is the witness — created and wired into
+    // `check-dead-code.cjs` the day before, declared in ARCHITECTURE.md and
+    // the qualified tree, but in no hygiene register, for want of a rule to
+    // violate. Third occurrence of the same failure after
+    // `verify-seam-drift.cjs` and `test-load-sites.cjs` (see their comments
+    // above): the register disciplined 64 `.cjs` and disciplined 0 `.mjs`,
+    // while new tooling is written in ESM.
+    "check-fgb-index.mjs", // manual FlatGeobuf data-preparation tool (CDC_plugin-flatgeobuf §187)
+    "probe-boot-contract.mjs", // manual Chromium probe — sole oracle of the boot marks' ORDER
+    // Manual Chromium probe — `position-share`'s two transports, in a real
+    // browser against the shipped bundle. The package's 78 tests run under
+    // happy-dom against mocked seams; this one is the sole oracle of the
+    // REAL GPS watch feeding the emitter, and of the fact `Ws.init()` is
+    // never called on the nominal path.
+    "probe-position-share.mjs",
+    // Static probe — does a guard whose subject is outside its package run
+    // uncached? The `test` task's `inputs` are package-relative, so a
+    // guard's file invalidates the cache but WHAT IT GUARDS does not: the
+    // JOURNAL guard stayed green over three runs above its ceiling. This is
+    // the probe that keeps the next one from arriving already asleep.
+    "verify-guards-uncached.cjs",
+    // Manual Chromium probe — is a toolbar slot DRAWN on the eager path and
+    // skipped on the lazy one. The unit tests assert the DECISION against a
+    // mocked registry; only this one sees the render, and the eager path
+    // (`geocoding`, preloaded by `beforeBoot`) was exercised by nothing —
+    // that hole is what made deleting the registration tempting instead of
+    // conditioning it.
+    "probe-slot-timing.mjs",
+    // Manual Chromium probe — does the cache-eviction notice reach the
+    // screen, and on WHICH variant? Sole oracle of the eviction wiring:
+    // `eviction-notice.ts`'s 10 unit tests exercise the listener's logic,
+    // none says it is WIRED into the shipped bundle — and that is exactly
+    // the original defect, seen from the other end (a correct, tested
+    // listener, in a plugin absent from `deploy-core`). It targets BOTH
+    // variants, because a plugin/core duplicate on `deploy-full` would be
+    // the symmetric regression.
+    // ⚠️ It also carries its own two lies, documented in place: a wrong
+    // selector (`.geoleaf-toast`) turned it red everywhere INCLUDING on the
+    // witness, and a total-toast-count oracle turned it red on a perfect
+    // notice — the page carries boot notices.
     "probe-eviction-notice.mjs",
-    // Sonde manuelle Chromium — le SW est-il observable sous Playwright ? Elle PORTE le
-    // piège qui coûte une journée à retrouver : `ignoreHTTPSErrors` est un drapeau de
-    // CONTEXTE et ne couvre pas le fetch du SCRIPT de Service Worker, alors que
-    // `isSecureContext` rend `true` quand même. Consommée par les helpers `e2e/helpers/
-    // {offline,idb}.js`, qui reprennent ses réponses (trafic vu au niveau CONTEXTE, requête
-    // coupée qui compte quand même).
+    // Manual Chromium probe — is the SW observable under Playwright? It
+    // CARRIES the trap that costs a day to rediscover: `ignoreHTTPSErrors`
+    // is a CONTEXT flag and does not cover the Service Worker SCRIPT's
+    // fetch, while `isSecureContext` still returns `true`. Consumed by the
+    // `e2e/helpers/{offline,idb}.js` helpers, which take up its answers
+    // (traffic seen at CONTEXT level, cut request that still counts).
     "probe-sw-observability.mjs",
-    // Sonde manuelle Chromium — laquelle des DEUX branches de tuiles sert réellement ?
-    // Elle existe parce que 3.13 ne se pré-vole PAS au grep de symbole : un décompte non
-    // nul ne prouve pas la vie, un décompte nul ne prouve pas la mort. Elle porte le
-    // relevé qui a REQUALIFIÉ la décision A7 (03/08/2026) : le Cache API porte 24 tuiles
-    // et les SERT hors ligne, pendant que `cacheProfile()` en écrit 0 en IndexedDB.
+    // Manual Chromium probe — WHICH of the TWO tile branches really
+    // serves? It exists because that question does not preflight by symbol
+    // grep: a non-zero count does not prove life, a zero count does not
+    // prove death. It carries the record that REQUALIFIED the arbitration
+    // (03/08/2026): the Cache API carries 24 tiles and SERVES them
+    // offline, while `cacheProfile()` writes 0 to IndexedDB.
     "probe-tile-cache-arbitration.mjs",
-    // Sonde manuelle Chromium — le trim du cache de tuiles S'EXÉCUTE-T-IL VRAIMENT ?
-    // (tâche 1.2 de `roadmap_socle-init`, 07/08/2026). VERSIONNÉE parce que sa section de
-    // vérification pose la condition en toutes lettres : « une éviction jamais vue s'exécuter
-    // ne borne rien ». Les suites unitaires exécutent le worker contre une Cache API SIMULÉE —
-    // elles ne disent rien de l'ordre d'insertion rendu par un vrai `cache.keys()`, ni de
-    // milliers de `cache.delete()` qui aboutissent, ni du fait que le bundle DÉPLOYÉ (copié,
-    // patché par regex, minifié) porte encore le code écrit. Relevé qu'elle porte, rejouable :
-    // cache semé à 2 100, une navigation, 2 100 → 1 623 — et 2 100 → 2 124 sur la mutation qui
-    // retire l'appel au trim, soit exactement les 24 tuiles que sa voisine ci-dessus avait
-    // comptées le 03/08. C'est le seul instrument du dépôt qui distingue les deux.
+    // Manual Chromium probe — does the tile-cache trim REALLY EXECUTE?
+    // (07/08/2026). VERSIONED because its verification section states the
+    // condition in full: "an eviction never seen executing bounds nothing".
+    // The unit suites run the worker against a SIMULATED Cache API — they
+    // say nothing of the insertion order a real `cache.keys()` returns, nor
+    // of thousands of `cache.delete()` succeeding, nor of the DEPLOYED
+    // bundle (copied, regex-patched, minified) still carrying the written
+    // code. Record it carries, replayable: cache seeded to 2,100, one
+    // navigation, 2,100 → 1,623 — and 2,100 → 2,124 on the mutation
+    // removing the trim call, i.e. exactly the 24 tiles its neighbour above
+    // had counted on 03/08. The repo's only instrument that tells the two apart.
     "probe-tile-cache-trim.mjs",
-    // Sonde manuelle Chromium — les origines tierces de BOOT sont-elles réellement à zéro, et
-    // la CSP resserrée ne casse-t-elle rien ? (S5.4/5.5/5.6, 08/08/2026). VERSIONNÉE parce que
-    // c'est le SEUL instrument qui couvre ce lot : `verify-app-template.cjs` ne lit ni la CSP ni
-    // les balises tierces (0 occurrence de `unpkg|CSP|script-src|font|integrity`), et
-    // `e2e/18-security.spec.js` n'asserte QUE des évènements `securitypolicyviolation`, donc il
-    // est indifférent à la liste des origines autorisées — la roadmap l'avait cru gardien et
-    // s'était trompée de fichier. Relevé qu'elle porte, rejouable : sur les 2 variantes, carte
-    // rendue avec canvas, `maplibregl` présent, **0 violation CSP, 0 requête vers unpkg.com /
-    // fonts.googleapis.com / fonts.gstatic.com**. Vue ROUGE en remettant la feuille Google Fonts
-    // dans la source puis en rebâtissant : 1 violation `style-src-elem` + 1 origine, nommées.
-    // ⚠️ Elle distingue les origines de BOOT des hôtes de RUNTIME (tuiles OpenTopoMap, USGS,
-    // S3) — une première rédaction comptait tout ce qui n'était pas same-origin et rendait un
-    // rouge faux sur des fetchs parfaitement légitimes.
+    // Manual Chromium probe — are the third-party BOOT origins really at
+    // zero, and does the tightened CSP break nothing? (08/08/2026).
+    // VERSIONED because it is the ONLY instrument covering this lot:
+    // `verify-app-template.cjs` reads neither the CSP nor the third-party
+    // tags (0 occurrences of `unpkg|CSP|script-src|font|integrity`), and
+    // `e2e/18-security.spec.js` asserts ONLY `securitypolicyviolation`
+    // events, so it is indifferent to the allowed-origin list — the plan
+    // had believed it a guardian and got the file wrong. Record it carries,
+    // replayable: on the 2 variants, map rendered with canvas, `maplibregl`
+    // present, **0 CSP violations, 0 requests to unpkg.com /
+    // fonts.googleapis.com / fonts.gstatic.com**. Seen RED by putting the
+    // Google Fonts stylesheet back in the source then rebuilding: 1
+    // `style-src-elem` violation + 1 origin, named.
+    // ⚠️ It distinguishes BOOT origins from RUNTIME hosts (OpenTopoMap,
+    // USGS, S3 tiles) — a first draft counted everything not same-origin
+    // and returned a false red on perfectly legitimate fetches.
     "probe-csp-origins.mjs",
-    // Sonde manuelle Chromium — la CASCADE du premier chargement (tâche S11.1, 08/08/2026).
-    // VERSIONNÉE pour le motif exact de ses deux voisines : les 5 chiffres que le CHANGELOG
-    // devait publier venaient d'une sonde ad hoc JAMAIS committée, donc ni rejouables ni
-    // contredisables — mode d'échec n° 5, un chiffre qui se fossilise faute de pouvoir se
-    // périmer. Elle porte 6 assertions dérivées de la page, AUCUN décompte en dur : c'est
-    // précisément un « 4 chunks » recopié qui s'est révélé faux (il y en a 3).
-    // ⚠️ Comme `probe-csp-origins.mjs`, elle vise les vhosts nginx et n'est donc PAS câblée
-    // dans `ci:local` — le gain qu'elle mesure est réel et n'est pas gardé, ce qui doit se
-    // dire plutôt que se supposer.
-    // 🛑 VUE ROUGE deux fois avant d'être crue. La seconde tranche : sur un `modulepreload`
-    // retiré du déployé, W-06 rougit en NOMMANT le chunk pendant que W-02 et W-03 restent
-    // vertes — elle voit ce qu'aucune autre ne voit. Le piège B-168 a dû être rejoué au
-    // passage : sans écarter les `.gz`/`.br`, nginx sert l'ancien markup et la mutation
-    // reste invisible.
+    // Instruction probe — a route corridor's tile cost against its bbox's,
+    // over five synthetic trips. VERSIONED because a design decision
+    // depended on it: the "tile list" route adds BESIDE the bbox route and
+    // does not replace it, and that verdict is only defensible if the
+    // figure carrying it replays.
+    // ⚠️ It measured the wrong quantity TWICE before holding: first the
+    // trip's length, then its sinuosity, while what decides is the
+    // FRACTION OF BBOX FILLED — its "straight" case was a diagonal, where
+    // the corridor gains almost nothing. A committed instrument can be
+    // corrected; an ad hoc figure cannot.
+    "probe-corridor-cost.mjs",
+    // Manual Chromium probe — the first load's WATERFALL (08/08/2026).
+    // VERSIONED for the exact motive of its two neighbours: the 5 figures
+    // the CHANGELOG was to publish came from an ad hoc probe NEVER
+    // committed, hence neither replayable nor refutable — the
+    // fossilising-figure failure mode. It carries 6 assertions derived from
+    // the page, NO hardcoded count: precisely a copied "4 chunks" turned
+    // out false (there are 3).
+    // ⚠️ Like `probe-csp-origins.mjs`, it targets the nginx vhosts and is
+    // thus NOT wired into `ci:local` — the gain it measures is real and not
+    // guarded, which must be said rather than assumed.
+    // 🛑 SEEN RED twice before being believed. The second one decides: on a
+    // `modulepreload` removed from the deploy, W-06 turns red NAMING the
+    // chunk while W-02 and W-03 stay green — it sees what no other sees.
+    // The pre-compressed-archive trap had to be replayed in passing:
+    // without setting aside the `.gz`/`.br`, nginx serves the old markup
+    // and the mutation stays invisible.
     "probe-boot-waterfall.mjs",
-    // Sonde manuelle Chromium — le rapatriement borné écrit-il RÉELLEMENT dans le store
-    // `features` ? (tâche 4.1, 04/08/2026). VERSIONNÉE délibérément : 4.3 avait prouvé sa
-    // lecture locale avec une sonde ad hoc jamais committée, dont la mesure ne peut donc plus
-    // être rejouée ni contredite — le mode d'échec n° 5 du pré-vol, un chiffre qui se
-    // fossilise faute de pouvoir se périmer. Elle porte quatre mesures que ni les tests
-    // unitaires ni l'E2E ne peuvent rendre : store vide → 27 écrites (toutes `serverId` +
-    // `VersionMarker` + `synced`), emprise discriminante → 11, et le plafond DUR — le
-    // chargeur OGC rend 20 pour un plafond de 15, le store en porte 15. C'est aussi elle qui
-    // a attrapé que `Config.Profile` n'est pas monté sur le namespace global, alors que le
-    // test unitaire était vert en moquant la forme espérée.
+    // Manual Chromium probe — does the bounded pull REALLY write into the
+    // `features` store? (04/08/2026). VERSIONED deliberately: the local
+    // read had been proven with an ad hoc probe never committed, whose
+    // measure can thus no longer be replayed nor refuted — the preflight's
+    // fossilising-figure failure mode. It carries four measures neither the
+    // unit tests nor the E2E can render: empty store → 27 written (all
+    // `serverId` + `VersionMarker` + `synced`), discriminating extent → 11,
+    // and the HARD cap — the OGC loader returns 20 for a cap of 15, the
+    // store carries 15. It is also what caught that `Config.Profile` is not
+    // mounted on the global namespace, while the unit test was green
+    // mocking the hoped-for shape.
     "probe-offline-pull.mjs",
-    // Tâche 4.8/4.10 — VERSIONNÉE pour le même motif que sa voisine ci-dessus : une mesure
-    // qu'on ne peut pas rejouer ne peut pas être contredite, donc elle se fossilise. Elle porte
-    // six mesures dont UNE que ni l'unitaire ni l'E2E ne rendent — M6 : la purge de cache
-    // retire-t-elle les entités `synced` en laissant l'OUTBOX INTACTE ? Le test unitaire éprouve
-    // la règle ; la sonde éprouve que le bouton câblé au bundle LIVRÉ l'applique, à travers une
-    // façade, un contrat de plugin et un chunk différé. C'est le défaut que B-115 décrivait, et
-    // il ne se voit qu'ici de bout en bout : mesuré 26 entités purgées, outbox intacte.
+    // VERSIONED for the same motive as its neighbour above: a measure that
+    // cannot be replayed cannot be refuted, so it fossilises. It carries
+    // six measures of which ONE that neither unit nor E2E render — M6:
+    // does the cache purge remove the `synced` entities while leaving the
+    // OUTBOX INTACT? The unit test exercises the rule; the probe exercises
+    // that the button wired to the SHIPPED bundle applies it, through a
+    // facade, a plugin contract and a deferred chunk. The defect already
+    // described, and it only shows here end to end: measured 26 entities
+    // purged, outbox intact.
     "probe-sync-report.mjs",
-    // B-218/B-219 — l'instrument qui a établi que `performance.memory` est FIGÉE par Chrome, et
-    // le seul qui puisse le rejouer : il compare les 4 candidats de mesure de tas à N = 0 / 10 000
-    // / 30 000 entités, sur le déployé, dans un vrai Chromium. Sans lui, les deux lignes se
-    // fossilisent — un verdict qu'on ne peut pas re-mesurer ne se périme pas. Elle n'est PAS
-    // jetable : `e2e/helpers/perf-gate.js` et `e2e/helpers/README.md` la citent comme la source
-    // des bandes qu'ils assertissent, et le §Re-mesure de B-219 en fait sa recette.
+    // The instrument that established `performance.memory` is FROZEN by
+    // Chrome, and the only one able to replay it: it compares the 4 heap
+    // measurement candidates at N = 0 / 10,000 / 30,000 entities, on the
+    // deploy, in a real Chromium. Without it, the two lines fossilise — a
+    // verdict that cannot be re-measured does not expire. It is NOT
+    // throwaway: `e2e/helpers/perf-gate.js` and `e2e/helpers/README.md`
+    // cite it as the source of the bands they assert, and the re-measure
+    // instruction makes it its recipe.
     "probe-heap-metrics.mjs",
-    // B-217 — l'oracle de clustering DÉTERMINISTE qui a remplacé l'invariant de FPS, lequel
-    // tranchait à 5 fps une grandeur dont le bruit mesuré va de 31 à 52. Citée par
-    // `e2e/06-performance-baseline.spec.js`, qui en dépend pour son critère : la retirer
-    // laisserait le spec sans la mesure qui justifie son seuil.
+    // The DETERMINISTIC clustering oracle that replaced the FPS invariant,
+    // which decided at 5 fps a quantity whose measured noise runs from 31
+    // to 52. Cited by `e2e/06-performance-baseline.spec.js`, which depends
+    // on it for its criterion: removing it would leave the spec without the
+    // measure justifying its threshold.
     "probe-cluster-oracle.mjs",
-    "knip-hints-reporter.mjs", // lib/ — reporter knip des configurationHints, que le reporter `json` n'émet pas
-    // API publique S4.1 — lib/ : LA description de la surface `globalThis.GeoLeaf`, et la
-    // marche qui la mesure. Quatre lecteurs : les deux tests de surface, la sonde Chromium
-    // (qui la transporte par sa SOURCE, d'où l'auto-suffisance de `walkNamespace`) et
-    // `verify-host-contract-sync.cjs`, qui lit son AST au lieu de parser un fichier de test
-    // au texte. Déclarée dans le commit qui la crée — cinquième occasion de ne pas rater ce
-    // geste, et la première où le check l'a dit lui-même : il est resté VERT tant que le
-    // fichier n'était pas suivi par git, ce que `verify-ci-scripts-tracked.cjs` existe pour
-    // rattraper de l'autre côté.
+    "knip-hints-reporter.mjs", // lib/ — knip reporter for configurationHints, which the `json` reporter does not emit
+    // lib/ — THE description of the `globalThis.GeoLeaf` surface, and the
+    // walk that measures it. Four readers: the two surface tests, the
+    // Chromium probe (which transports it by its SOURCE, hence
+    // `walkNamespace`'s self-sufficiency) and
+    // `verify-host-contract-sync.cjs`, which reads its AST instead of
+    // parsing a test file as text. Declared in the commit that creates it —
+    // fifth occasion not to miss that gesture, and the first where the
+    // check said it itself: it stayed GREEN while the file was untracked,
+    // which `verify-ci-scripts-tracked.cjs` exists to catch from the other side.
     "namespace-surface.mjs",
-    // API publique S4.2 — l'invariant inverse de HOST-SYNC : toute clé du namespace est
-    // déclarée dans `GeoLeafGlobal` (HOST-04), la liste des non typées ne peut que rétrécir
-    // (HOST-05), et une déclaration VIDE ne compte pas comme un typage (HOST-06).
+    // HOST-SYNC's inverse invariant: every namespace key is declared in
+    // `GeoLeafGlobal` (HOST-04), the untyped list can only shrink
+    // (HOST-05), and an EMPTY declaration does not count as typing (HOST-06).
     "check-namespace-typing-coverage.cjs",
-    // lib/ — les deux lecteurs d'AST sortis de `verify-host-contract-sync.cjs` le jour où la
-    // gate ci-dessus en a eu besoin des DEUX. Deux copies d'un lecteur dérivent, et la dérive
-    // reste invisible tant que les deux gates sortent vertes.
+    // lib/ — the two AST readers extracted from
+    // `verify-host-contract-sync.cjs` the day the gate above needed BOTH.
+    // Two copies of a reader drift, and the drift stays invisible while
+    // both gates come out green.
     "ts-decl-read.cjs",
-    // Contrat inverse S1.8 — le contrat INVERSE : ce dont l'aval DÉPEND n'a pas disparu.
-    // CC-00 à CC-09. Elle saute avec un motif nommé quand `GEOLEAF_CONSUMERS` n'est pas défini.
+    // The INVERSE contract: what downstream DEPENDS on has not vanished.
+    // CC-00 to CC-09. It skips with a named motive when `GEOLEAF_CONSUMERS` is not defined.
     "verify-consumer-contract.cjs",
-    // lib/ — le lecteur des manifestes de consommation, et le PLANCHER DE VERSION qui refuse
-    // de conclure sur un fichier plus ancien que celui contre lequel la gate a été écrite. Le
-    // manifeste vit dans un AUTRE dépôt, sur une branche : sans ce plancher, un `git checkout`
-    // là-bas ferait sortir la gate verte en ayant lu autre chose.
+    // lib/ — the consumption-manifest reader, and the VERSION FLOOR that
+    // refuses to conclude on a file older than the one the gate was written
+    // against. The manifest lives in ANOTHER repo, on a branch: without
+    // this floor, a `git checkout` over there would let the gate exit green
+    // having read something else.
     "consumer-manifest.cjs",
-    // lib/ — le relevé de littéraux `geoleaf:*` et ses TROIS familles d'exclusion, sortis de
-    // `check-event-map-coverage.cjs` le jour où CC-07 en a eu besoin des quatre. Même règle,
-    // même motif : un second lecteur déclenche l'extraction.
+    // lib/ — the `geoleaf:*` literal survey and its THREE exclusion
+    // families, extracted from `check-event-map-coverage.cjs` the day CC-07
+    // needed all four. Same rule, same motive: a second reader triggers the
+    // extraction.
     "event-names.cjs",
-    // lib/ — B-153 ① : suivi d'état des blocs de code Markdown, conforme à CommonMark.
-    // Extrait parce que le motif de bascule était DUPLIQUÉ dans `check-dead-links.cjs`
-    // (extraction des liens ET des ancres) : corriger un site aurait laissé l'autre, et
-    // l'énoncé de la ligne insistait précisément sur ce point.
+    // lib/ — Markdown code-fence state tracking, CommonMark-conformant.
+    // Extracted because the toggle pattern was DUPLICATED in
+    // `check-dead-links.cjs` (link AND anchor extraction): fixing one site
+    // would have left the other, and the line's wording insisted precisely
+    // on that point.
     "md-fences.cjs",
-    // B-93 — cliquet décroissant sur le typage de `scripts/`, `e2e/` et des configs racine.
-    // Ces trois corpus n'étaient couverts par AUCUN tsconfig ; `tsconfig.tooling.json` les
-    // couvre en `checkJs`, et le premier run rend 301 erreurs. Un vert était impossible, un
-    // tsconfig sans `checkJs` aurait été un périmètre décoratif — le cliquet est la troisième
-    // voie, et l'idiome de ce dépôt : la dette est chiffrée et ne peut que rétrécir.
+    // Decreasing ratchet on the typing of `scripts/`, `e2e/` and the root
+    // configs. These three corpora were covered by NO tsconfig;
+    // `tsconfig.tooling.json` covers them in `checkJs`, and the first run
+    // returns 301 errors. A green was impossible, a tsconfig without
+    // `checkJs` would have been a decorative perimeter — the ratchet is the
+    // third way, and this repo's idiom: the debt is quantified and can only shrink.
     "check-tooling-typecheck.cjs",
-    // B-36 — cliquet décroissant sur les artefacts sans verdict d'existence. Le balayage T5
-    // avait atteint 100 % et la dette s'est reformée deux fois : une parade appliquée à la
-    // main sur chaque membre n'est pas une parade, c'est une liste — et une liste oublie.
+    // Decreasing ratchet on artefacts without an existence verdict. The
+    // sweep had reached 100% and the debt re-formed twice: a countermeasure
+    // applied by hand to each member is not a countermeasure, it is a list
+    // — and a list forgets.
     "check-tree-qualification.cjs",
-    // lib/ — EM-03 (B-207) : un littéral d'événement qui contient un `:` DOIT commencer par
-    // `geoleaf:`. Séparé de `event-names.cjs` parce qu'il mesure l'INVERSE de son compagnon :
-    // celui-ci est ancré sur `^geoleaf:` et ne peut donc, par construction, rien dire d'un nom
-    // hors préfixe. La règle porte sur le deux-points et non sur une allowlist, parce que la
-    // mesure du 16/08 l'a rendue possible — aucun des 19 événements ÉTRANGERS relevés (DOM,
-    // Service Worker, MapLibre, Terra Draw) n'en contient, et les 3 du domaine en portaient tous.
+    // lib/ — EM-03: an event literal containing a `:` MUST start with
+    // `geoleaf:`. Separate from `event-names.cjs` because it measures its
+    // companion's INVERSE: that one is anchored on `^geoleaf:` and can
+    // thus, by construction, say nothing of an out-of-prefix name. The rule
+    // bears on the colon and not an allowlist, because the 16/08 measure
+    // made it possible — none of the 19 FOREIGN events surveyed (DOM,
+    // Service Worker, MapLibre, Terra Draw) contains one, and the domain's
+    // 3 all did.
     "event-gates.cjs",
-    // lib/ — les DEUX racines de la documentation, publique (`docs/`) et interne
-    // (`_docs_projet/`), et le garde qui JETTE quand l'une manque. Onze scripts et trois
-    // guards de test écrivaient `_docs_projet` en dur : un chemin en dur ne casse pas au
-    // déplacement du répertoire, il rend `[]` — le générateur écrit alors où plus personne
-    // ne lit, et la gate annonce « 0 résultat » en sortant 0. Quatorze lecteurs sur quinze
-    // ont été VUS jeter dessus, avant le déplacement.
+    // lib/ — the documentation's TWO roots, public (`docs/`) and internal
+    // (`_docs_projet/`), and the guard that THROWS when one is missing.
+    // Eleven scripts and three test guards wrote `_docs_projet` hardcoded:
+    // a hardcoded path does not break when the directory moves, it returns
+    // `[]` — the generator then writes where nobody reads any more, and the
+    // gate announces "0 results" exiting 0. Fourteen readers out of fifteen
+    // were SEEN throwing on it, before the move.
     "docs-paths.cjs",
+
+    // What git still knows of a REMOVED roadmap — shared between the
+    // `ARCHIVEES.md` generator and the gate verifying it. Extracted at the
+    // second reader, as the repo's rule requires: two copies of a reader
+    // drift, and the drift is invisible while both come out green.
+    "roadmap-closures.cjs",
+
+    // lib/ — the GHOST packages a killed run leaves under
+    // `packages/plugins/`. Two readers: `ci-local.cjs`'s refusal preamble
+    // and the WORKSPACE-DEBRIS guard test. Extracted at the second reader,
+    // as the repo's rule requires — and here the hardcoded table had
+    // ALREADY drifted: it only knew one producer out of two, and the second
+    // went through on 22/08 returning six reds none of which named it.
+    "workspace-debris.cjs",
 ]);
 
 // ─── Allowlist — the .cjs/.mjs files that legitimately live OUTSIDE scripts/ ──
@@ -518,7 +717,7 @@ const OUTSIDE_SCRIPTS_ALLOWLIST = new Set([
     // Vitest manual mock — `require()`d by __tests__/setup.js and 3 adapter tests,
     // hence .cjs. Listed by PATH rather than exempting `__mocks__/` wholesale: a
     // directory rule would turn it into a hiding place.
-    // (STRUCT S7: `setup-esm.js` dropped from this list — the file was deleted, it
+    // (`setup-esm.js` dropped from this list — the file was deleted, it
     // had no referent in any config, only this comment.)
     "packages/core/__tests__/__mocks__/maplibre-gl.cjs",
     // Binary e2e fixture builders (GeoTIFF / KMZ), cited by 17-cog.spec.js and
@@ -544,7 +743,7 @@ const OUTSIDE_SCRIPTS_ALLOWLIST = new Set([
 // Per-package Rollup configs, recognised STRUCTURALLY by exact basename rather than
 // listed: every package that builds carries one, so a list would need a new entry per
 // package — precisely the failure mode this file avoids elsewhere by deriving from
-// `REGISTRY.all()` instead of hard-coding (see the R.16 note further down). 19 files
+// `REGISTRY.all()` instead of hard-coding (see the perimeter note further down). 19 files
 // today (18 `rollup.config.mjs` + core's `rollup.consumer.mjs`).
 //
 // ⚠️ EXACT basenames, deliberately NOT a `rollup*.mjs` glob: a glob would make
@@ -554,24 +753,27 @@ const PACKAGE_CONFIG_BASENAMES = new Set(["rollup.config.mjs", "rollup.consumer.
 
 // ─── Patterns ────────────────────────────────────────────────────────────────
 
-// T5.7 — les trois tables vivent désormais dans `lib/hygiene-patterns.cjs`, avec leurs
-// témoins. Elles ont un SECOND lecteur (`probe-gate-visibility.cjs`), et ce fichier
-// s'exécute à l'import : personne ne pouvait les interroger. Même patron que
-// `lib/generated-artifacts.cjs` posé au T4.1 — une définition, plusieurs lecteurs.
+// The three tables now live in `lib/hygiene-patterns.cjs`, with their
+// witnesses. They have a SECOND reader (`probe-gate-visibility.cjs`), and
+// this file executes at import: nobody could query them. Same pattern as
+// `lib/generated-artifacts.cjs` — one definition, several readers.
 //
-// Deux corrections y ont été portées, et la seconde n'était pas dans l'énoncé du sprint :
+// Two corrections were carried there, and the second was not in the
+// sprint's wording:
 //
-//   • ÉLARGISSEMENT. `fix_[\w-]+\.(py|cjs)$` ratait `fix-deferred-paths.js` DEUX fois —
-//     tiret au lieu d'underscore, et `.js` absent de l'alternative. C'est exactement la
-//     forme du fichier supprimé au T3.2 : un CJS nu dans un paquet `type: module`, cassé
-//     à l'exécution.
+//   • WIDENING. `fix_[\w-]+\.(py|cjs)$` missed `fix-deferred-paths.js`
+//     TWICE — hyphen instead of underscore, and `.js` absent from the
+//     alternation. Exactly the shape of the file deleted earlier: a bare
+//     CJS in a `type: module` package, broken at execution.
 //
-//   • ANCRAGE `\b`, mesuré indispensable. L'énoncé du sprint proposait
-//     `/fix[-_][\w-]+\.(py|cjs|js)$/i`, SANS ancre — il prend `prefix-loader.js`,
-//     `hotfix-runner.js` et `postfix-util.js`. Le motif d'avant portait déjà le défaut en
-//     germe (`suffix_map.cjs` matchait) ; il n'avait jamais tiré faute de fichier de cette
-//     forme dans l'index, ce qui est de la chance, pas une garantie. `\btmp_` et
-//     `\bscratch_` étaient ancrés, `fix_` ne l'était pas : l'incohérence était le défaut.
+//   • `\b` ANCHORING, measured indispensable. The sprint's wording
+//     proposed `/fix[-_][\w-]+\.(py|cjs|js)$/i`, WITHOUT an anchor — it
+//     takes `prefix-loader.js`, `hotfix-runner.js` and `postfix-util.js`.
+//     The previous pattern already carried the defect in germ
+//     (`suffix_map.cjs` matched); it had never fired for want of a file of
+//     that shape in the index, which is luck, not a guarantee. `\btmp_`
+//     and `\bscratch_` were anchored, `fix_` was not: the inconsistency
+//     was the defect.
 const {
     THROWAWAY_PATTERNS,
     ARTIFACT_PATTERNS,
@@ -583,56 +785,57 @@ const MAX_LINES = 700;
 // Files with explicit ESLint max-lines: off override (deliberate exception)
 const OVERSIZED_ALLOWLIST = new Set(["packages/core/src/kernel/security/index.ts"]);
 
-// ARCHI S10.2 — chemins dérivés du registre, jamais construits en dur sous
-// `packages/` : après le regroupement du S10 ils n'auraient plus existé,
-// `collectSourceFiles` serait sorti sur son `existsSync`, et le contrôle des 700
-// lignes n'aurait plus rien mesuré — sans un mot.
+// Paths derived from the registry, never hardcoded under `packages/`:
+// after the directory regrouping they would no longer have existed,
+// `collectSourceFiles` would have exited on its `existsSync`, and the
+// 700-line check would have measured nothing — without a word.
 //
-// ─── R.16 (24/07/2026) — périmètre élargi de 3 à 18 packages ─────────────────
+// ─── Perimeter widened from 3 to 18 packages (24/07/2026) ─────────────────────
 //
-// Le périmètre était `["core", "plugin-storage", "plugin-addpoi"]` : le dépôt
-// appliquait à 3 packages un contrôle dont il exemptait les 15 autres. Il couvre
-// désormais les 18, via `REGISTRY.all()` — un package neuf y entre sans que
-// personne ait à y penser, ce qu'une liste ne fait jamais.
+// The perimeter was `["core", "plugin-storage", "plugin-addpoi"]`: the repo
+// applied to 3 packages a check it exempted the other 15 from. It now
+// covers all 18, via `REGISTRY.all()` — a new package enters without
+// anyone having to think of it, which a list never does.
 //
-// L'extension était l'autre cécité : seuls les `.ts` étaient comptés, alors que la
-// règle projet porte sur `.ts`, `.js` ET `.css`.
+// The extension was the other blindness: only `.ts` were counted, while
+// the project rule bears on `.ts`, `.js` AND `.css`.
 //
-// ─── La limite vise le CODE, jamais les TESTS (arbitrage MP, 24/07/2026) ─────
+// ─── The limit targets CODE, never TESTS (settled 24/07/2026) ─────────────────
 //
-// L'élargissement a d'abord été mesuré tests compris : il remontait 15 fichiers,
-// **tous des fichiers de test**, et AUCUN fichier source du dépôt ne dépasse 700
-// lignes. Ce résultat a tranché la question plutôt que d'ouvrir un chantier : la
-// limite existe pour tenir la lisibilité et la modularité du code livré, pas pour
-// contraindre une suite de tests — un fichier de test long est souvent long parce
-// qu'il couvre exhaustivement, ce qui est la propriété recherchée.
+// The widening was first measured tests included: it surfaced 15 files,
+// **all test files**, and NO source file in the repo exceeds 700 lines.
+// That result settled the question rather than opening a work stream: the
+// limit exists to hold the shipped code's readability and modularity, not
+// to constrain a test suite — a long test file is often long because it
+// covers exhaustively, which is the sought property.
 //
-// Les tests sont donc HORS PÉRIMÈTRE, par répertoire ET par nom de fichier (voir
-// `TEST_DIRS` / `TEST_FILE_RE`) : `packages/core/__tests__/` est à la racine du
-// package, `src/__tests__/` chez les 15 autres, et un `*.test.ts` peut vivre
-// ailleurs. Couvrir les trois formes évite qu'un déplacement — R.14 va justement
-// en provoquer un — remette silencieusement des tests dans le périmètre.
+// Tests are thus OUT OF SCOPE, by directory AND by file name (see
+// `TEST_DIRS` / `TEST_FILE_RE`): `packages/core/__tests__/` sits at the
+// package root, `src/__tests__/` at the other 15, and a `*.test.ts` can
+// live elsewhere. Covering the three shapes keeps a move from silently
+// putting tests back into the perimeter.
 const REGISTRY = require("./lib/packages.cjs");
 const SOURCE_DIRS = REGISTRY.all().map((pkg) => path.join(pkg.absDir, "src"));
 
 const SKIP_DIRS = new Set(["node_modules", "dist", ".git", "coverage", ".turbo"]);
 
-/** Répertoires de test — hors périmètre de la limite de lignes. */
+/** Test directories — outside the line-limit perimeter. */
 const TEST_DIRS = new Set(["__tests__", "__mocks__", "test-utils", "e2e", "fixtures"]);
 
-/** Fichiers de test hors répertoire dédié — `foo.test.ts`, `foo.spec.js`. */
+/** Test files outside a dedicated directory — `foo.test.ts`, `foo.spec.js`. */
 const TEST_FILE_RE = /\.(test|spec)\.[cm]?[jt]s$/;
 
-// Répertoires d'artefacts GÉNÉRÉS : mesurer la taille d'un fichier que personne
-// n'écrit à la main n'apprend rien et produit un warning permanent.
+// GENERATED artefact directories: measuring the size of a file nobody
+// writes by hand teaches nothing and produces a permanent warning.
 //
-// ⚠️ T4.1 — la liste vivait ICI, sous la forme
-// `/\/(docs\/api|docs\/public\/api|docs-dist)\//`, et elle matchait **zéro fichier** :
-// son seul lecteur était `collectSourceFiles`, borné à `<pkg>/src`, où aucun de ces
-// chemins ne vit. Le dépôt portait donc la liste de ses répertoires d'artefacts sans
-// qu'elle regarde quoi que ce soit, pendant que 90 fichiers TypeDoc étaient suivis et
-// publiés. Elle est désormais dans `lib/generated-artifacts.cjs`, avec le check 5 comme
-// second lecteur — celui qui la rend enfin porteuse.
+// ⚠️ The list lived HERE, in the shape
+// `/\/(docs\/api|docs\/public\/api|docs-dist)\//`, and it matched **zero
+// files**: its only reader was `collectSourceFiles`, bounded to
+// `<pkg>/src`, where none of those paths lives. The repo thus carried the
+// list of its artefact directories with it looking at nothing, while 90
+// TypeDoc files were tracked and published. It now lives in
+// `lib/generated-artifacts.cjs`, with check 5 as second reader — the one
+// that finally makes it load-bearing.
 const {
     generatedRootOf,
     isGeneratedPath,
@@ -640,17 +843,17 @@ const {
     gitIgnoredSet,
 } = require("./lib/generated-artifacts.cjs");
 
-/** Extensions soumises à la limite de lignes — la règle projet vise ces trois. */
+/** Extensions subject to the line limit — the project rule targets these three. */
 const SOURCE_EXTENSIONS = [".ts", ".js", ".css"];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-// `core.quotePath=false` : sans lui, git échappe les octets non-ASCII ET entoure le
-// chemin de guillemets. Deux des fichiers TypeDoc du T4 sortaient en
-// `"packages/core/docs/api/documents/PWA_\342\200\224_….html"` — guillemets compris. Le
-// matching par segments y survit, l'AFFICHAGE non : le rapport nommait un chemin qu'on
-// ne pouvait pas copier-coller. Sans effet sur les chemins ASCII, donc sans effet sur
-// les checks 1/1b/2/3.
+// `core.quotePath=false`: without it, git escapes non-ASCII bytes AND
+// wraps the path in quotes. Two of the TypeDoc files came out as
+// `"packages/core/docs/api/documents/PWA_\342\200\224_….html"` — quotes
+// included. Segment matching survives it, the DISPLAY does not: the report
+// named a path that could not be copy-pasted. No effect on ASCII paths,
+// hence none on checks 1/1b/2/3.
 const LS_FILES = "git -c core.quotePath=false ls-files";
 
 function getTrackedFiles() {
@@ -730,6 +933,11 @@ const trackedFiles = getTrackedFiles();
 const throwawayHits = [];
 const artifactHits = [];
 const bytecodeHits = [];
+// A UTF-8 BOM shifts every byte offset by three, silently skewing any tool that
+// slices by position — and it survives copy/paste and most editors. Zero tolerated:
+// the 23-file stock was stripped on 24/08/2026, this is what keeps it at zero.
+// Reading 3 bytes per tracked file costs ~one readdir; no cache, no baseline.
+const bomHits = [];
 
 for (const f of trackedFiles) {
     const basename = path.basename(f);
@@ -740,6 +948,20 @@ for (const f of trackedFiles) {
     if (isInScripts && isScript && !SCRIPTS_ALLOWLIST.has(basename)) {
         throwawayHits.push({ file: f, label: "unlisted scripts/ module" });
         continue;
+    }
+
+    // BOM check first: it is orthogonal to the classification below (a file can be
+    // both legitimately tracked AND carry a BOM), so no `continue` here.
+    try {
+        const fd = fs.openSync(path.join(ROOT, f), "r");
+        const buf = Buffer.alloc(3);
+        fs.readSync(fd, buf, 0, 3, 0);
+        fs.closeSync(fd);
+        if (buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf) {
+            bomHits.push({ file: f, label: "UTF-8 BOM" });
+        }
+    } catch {
+        // unreadable (deleted mid-scan under a concurrent session): not this check's verdict
     }
 
     const throwaway = matchesAny(f, THROWAWAY_PATTERNS);
@@ -789,7 +1011,7 @@ for (const f of trackedFiles) {
 // at the package root — and asserts THIS check names it. Narrowing this scope back to
 // `<pkg>/scripts/`, or reading only the index, turns the meta-gate red.
 
-// Hissé : le check 5 partage ce corpus, et pour la même raison qu'ici. Un seul appel git.
+// Hoisted: check 5 shares this corpus, and for the same reason as here. A single git call.
 const gitVisibleFiles = getGitVisibleFiles();
 
 const strayCjsHits = [];
@@ -812,7 +1034,7 @@ const seenFiles = new Set();
 for (const f of sourceFiles) {
     const rel = path.relative(ROOT, f).replaceAll("\\", "/");
     if (OVERSIZED_ALLOWLIST.has(rel)) continue;
-    if (seenFiles.has(rel)) continue; // `src/__tests__` est atteint par deux entrées
+    if (seenFiles.has(rel)) continue; // `src/__tests__` is reached through two entries
     seenFiles.add(rel);
     const lineCount = countLines(f);
     if (lineCount > MAX_LINES) {
@@ -822,35 +1044,37 @@ for (const f of sourceFiles) {
 
 // ─── Check 5 — generated artifacts under git control (T4.1) ──────────────────
 //
-// Le check 2 ci-dessus s'appelle « Build/test artifacts tracked in git » et porte
-// `coverage-e2e/`, `.nyc_output/`. Celui-ci pose la MÊME question sur les répertoires de
-// doc générée — d'où sa place ici plutôt que dans un script à part, qui aurait porté une
-// seconde liste vouée à diverger et qu'il aurait fallu câbler dans ci-local.cjs (49
-// étapes) et ci.yml. Le dépôt compte quatre gates posées sans câblage ; l'une porte le
-// commentaire « an unrun gate is indistinguishable from no gate ».
+// Check 2 above is called "Build/test artifacts tracked in git" and
+// carries `coverage-e2e/`, `.nyc_output/`. This one asks the SAME question
+// about the generated-doc directories — hence its place here rather than
+// in a separate script, which would have carried a second list bound to
+// diverge and would have needed wiring into ci-local.cjs (49 steps) and
+// ci.yml. The repo counts four gates laid without wiring; one carries the
+// comment "an unrun gate is indistinguishable from no gate".
 //
-// ## Le corpus, et la propriété qui en découle
+// ## The corpus, and the property that follows
 //
-// `gitVisibleFiles` = index + worktree non ignoré (`--cached --others
-// --exclude-standard`). Table de vérité :
+// `gitVisibleFiles` = index + unignored worktree (`--cached --others
+// --exclude-standard`). Truth table:
 //
-//   suivi (l'état d'avant le T4, 91 chemins)      → dans le corpus → ROUGE 5a
-//   non suivi ET non ignoré (règle .gitignore qui
-//     a cessé de matcher, ou artefact tout neuf)   → dans le corpus → ROUGE 5b
-//   non suivi et ignoré (l'état visé)              → hors corpus   → vert
+//   tracked (the before state, 91 paths)           → in the corpus → RED 5a
+//   untracked AND unignored (a .gitignore rule that
+//     stopped matching, or a brand-new artefact)   → in the corpus → RED 5b
+//   untracked and ignored (the target state)       → out of corpus → green
 //
-// Donc : **la seule façon d'être vert est que chaque fichier généré soit explicitement
-// ignoré.** Une gate qui ne peut être verte que grâce à une règle `.gitignore` VIVANTE
-// ne peut pas devenir « verte en ne scannant rien » — si la règle meurt (déplacement du
-// core, renommage), les fichiers reparaissent dans `--others` et 5b rougit. C'est ce qui
-// distingue cette gate de la constante vide-verte qu'elle remplace.
+// So: **the only way to be green is that every generated file be
+// explicitly ignored.» A gate that can only be green thanks to a LIVE
+// `.gitignore` rule cannot become "green scanning nothing" — if the rule
+// dies (core move, rename), the files reappear in `--others` and 5b turns
+// red. That is what distinguishes this gate from the empty-green constant
+// it replaces.
 //
-// ⚠️ Corollaire pour `.gitignore` : les motifs doivent être ANCRÉS
-// (`packages/core/docs/api/`) et non génériques (`**/docs/api/`). Un motif générique
-// avalerait la fixture de `probe-gate-visibility.cjs`
-// (`packages/plugins/__probe__/docs/api/`), qui n'est jamais indexée : l'assertion
-// passerait verte sans plus rien prouver. Le générique PARAÎT plus robuste ; c'est le
-// choix qui rend cette gate insondable.
+// ⚠️ Corollary for `.gitignore`: patterns must be ANCHORED
+// (`packages/core/docs/api/`) and not generic (`**/docs/api/`). A generic
+// pattern would swallow `probe-gate-visibility.cjs`'s fixture
+// (`packages/plugins/__probe__/docs/api/`), which is never indexed: the
+// assertion would pass green proving nothing any more. The generic LOOKS
+// more robust; it is the choice that makes this gate unfathomable.
 
 const generatedRoots = new Map();
 const trackedSet = new Set(trackedFiles);
@@ -866,13 +1090,14 @@ for (const f of gitVisibleFiles) {
 
 const generatedHits = [...generatedRoots.values()].sort((a, b) => a.root.localeCompare(b.root));
 
-// 5c — la moitié dérivée du PRODUCTEUR, indépendante de l'état du disque : elle est donc
-// vivante sur un clone frais où aucun artefact n'a encore été généré, ce que 5a/5b ne
-// peuvent pas tenir (elles ont besoin que les fichiers existent).
+// 5c — the half derived from the PRODUCER, independent of disk state: it
+// is thus alive on a fresh clone where no artefact has been generated yet,
+// which 5a/5b cannot hold (they need the files to exist).
 const declared = declaredOutputs();
-// `noIndex` est indispensable : la question est « une RÈGLE couvre-t-elle ce chemin ? »,
-// pas « est-il suivi ? ». Sans lui, git refuse de qualifier d'ignoré un chemin présent
-// dans l'index — et la phase ROUGE d'avant-désindexation serait muette sur 5c(ii).
+// `noIndex` is indispensable: the question is "does a RULE cover this
+// path?", not "is it tracked?". Without it, git refuses to qualify as
+// ignored a path present in the index — and the RED pre-deindexing phase
+// would be mute on 5c(ii).
 const declaredIgnored = gitIgnoredSet(
     declared.filter((d) => d.rel).map((d) => `${d.rel}/`),
     { noIndex: true }
@@ -919,6 +1144,11 @@ reportCategory(
 );
 reportCategory("Python bytecode tracked in git", bytecodeHits, (h) => `${h.file}  [${h.label}]`);
 reportCategory(
+    "UTF-8 BOM in tracked files",
+    bomHits,
+    (h) => `${h.file}  → sed -i '1s/^\\xEF\\xBB\\xBF//'`
+);
+reportCategory(
     "Generated artifacts under git control",
     generatedHits,
     (h) =>
@@ -945,6 +1175,7 @@ const errors =
     strayCjsHits.length +
     artifactHits.length +
     bytecodeHits.length +
+    bomHits.length +
     generatedHits.length +
     producerHits.length;
 const warnings = oversizedHits.length;
@@ -968,6 +1199,9 @@ console.log("  Throwaway scripts     " + throwawayStatus);
 console.log("  Stray modules         " + strayCjsStatus);
 console.log("  Build artifacts       " + artifactStatus);
 console.log("  Python bytecode       " + bytecodeStatus);
+console.log(
+    "  UTF-8 BOM             " + (bomHits.length === 0 ? "OK" : bomHits.length + " ERROR(S)")
+);
 console.log("  Generated artifacts   " + generatedStatus);
 console.log("  Artifact producers    " + producerStatus);
 console.log("  Source > " + MAX_LINES + "L       " + oversizedStatus);

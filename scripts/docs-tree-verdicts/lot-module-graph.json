@@ -1,0 +1,35 @@
+{
+    "schemaVersion": 2,
+    "lot": "module-graph",
+    "scope": ["scripts/check-module-graph.cjs", "scripts/lib/module-graph.cjs"],
+    "verdicts": {
+        "scripts/check-module-graph.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "MG-00…02 — sépare « aucun importeur » de « importé pour son effet de bord », et refuse de conclure quand le graphe ne se résout plus",
+            "confidence": "haute",
+            "rationale": "Câblé dans `ci:local` et `ci.yml` à la pose, inscrit dans SCRIPTS_ALLOWLIST. Son existence est justifiée par une impossibilité nommée au registre : la voie évidente — interdire un module sans importeur — rougirait sur les modules d'effet de bord, dont c'est le métier de n'en avoir aucun de nommé. Deux cliquets DÉCROISSANTS nés non vides (6 orphelins, 15 modules d'effet de bord non marqués), ce que la décision A-D4 autorise quand le premier relevé est inscrit. 🛑 `MG-00` n'est pas décoratif : cet instrument a rendu **914 orphelins sur 929 sources** avant d'être juste, et seule l'absurdité du chiffre l'a dit. Un taux d'orphelins qui explose signale une RÉSOLUTION cassée, pas un dépôt effondré — la gate refuse alors de conclure au lieu de publier une liste. VU ROUGE SUR TROIS MUTATIONS, une par assertion, dont la première REPRODUIT ce bug à l'identique."
+        },
+        "scripts/lib/module-graph.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Le graphe des modules résolu par l'AST TypeScript — arêtes nommées, nues, ré-exports, types et dynamiques",
+            "confidence": "haute",
+            "rationale": "Deux lecteurs : la gate MG et ses témoins. Résout les spécificateurs SUR LE DISQUE et jamais par nom de fichier — le dépôt porte plusieurs `facade.ts` et plusieurs `index.ts`, et un relevé par basename compte pour tous. QUATRE cécités ont été corrigées, chacune trouvée par une réponse connue et non par relecture, et l'en-tête les porte toutes : `p.dir` au lieu de `p.absDir` (914 orphelins sur 929) ; les `.d.ts` absents du corpus d'importeurs, alors que `global.d.ts` est précisément ce qui consomme les contrats ; `import(\"…\")` en position de TYPE, par lequel un contrat se consomme ; et les 478 suites de test encore en `.js`. ⚠️ Seule la première était absurde — les trois autres rendaient des listes CRÉDIBLES qui accusaient à tort un fichier dont l'en-tête disait le contraire. La séparation PROD / TESTS décide du verdict : faire entrer les suites `.js` sans elle fait passer les modules d'effet de bord de 21 à 4, parce qu'un test les importe nommément pour les éprouver."
+        }
+    }
+}

@@ -1,0 +1,342 @@
+{
+    "_comment": "Trace GPS SYNTHÉTIQUE, générée par un script déterministe — jamais capturée sur un véhicule. Ce qu'elle reproduit est la STRUCTURE d'une vraie trace : pas de temps irrégulier (0,9-1,6 s), bruit de 0 à 4 m, `heading` absent un relevé sur quatre, et une sortie de tracé franche aux indices 20 à 27.",
+    "_comment_sortie": "🛑 La sortie est une RAMPE, pas un saut, et c'est la troisième version de ce fichier. ① La v1 décalait à cap FIXE : sur un tracé filant à 30°, 60 m plein nord ne rendent que 30 m de distance perpendiculaire — sous le seuil. ② La v2 décalait PERPENDICULAIREMENT mais d'un coup : 70 m de latéral en 1,2 s valent 58 m/s, donc le filtre de saut de l'adaptateur de position les JETAIT, à raison — un tel écart est un glitch de capteur, pas un changement de route. ③ La v3 rampe : 18, 38, 58, 72, 72, 55, 30, 10 m. Un véhicule qui quitte un itinéraire TOURNE, il ne se téléporte pas, et c'est précisément la distinction que les deux filtres existent pour séparer.",
+    "_version": 3,
+    "line": [
+        [55.4781, -21.0964],
+        [55.478582, -21.0964],
+        [55.479064, -21.0964],
+        [55.479546, -21.0964],
+        [55.480028, -21.0964],
+        [55.48051, -21.0964],
+        [55.480992, -21.0964],
+        [55.481474, -21.0964],
+        [55.481956, -21.0964],
+        [55.482438, -21.0964],
+        [55.48292, -21.0964],
+        [55.483402, -21.0964],
+        [55.483884, -21.0964],
+        [55.484125, -21.0960106],
+        [55.484366, -21.0956212],
+        [55.484607, -21.0952318],
+        [55.484848, -21.0948424],
+        [55.485089, -21.094453],
+        [55.48533, -21.0940636],
+        [55.485571, -21.0936742],
+        [55.485812, -21.0932848],
+        [55.486053, -21.0928954],
+        [55.486294, -21.092506],
+        [55.4867114, -21.0927308],
+        [55.4871288, -21.0929556],
+        [55.4875462, -21.0931804],
+        [55.4879636, -21.0934052],
+        [55.488381, -21.09363],
+        [55.4887984, -21.0938548],
+        [55.4892158, -21.0940796],
+        [55.4896332, -21.0943044],
+        [55.4900506, -21.0945292],
+        [55.490468, -21.094754],
+        [55.4908854, -21.0949788],
+        [55.4913028, -21.0952036],
+        [55.4917202, -21.0954284],
+        [55.4921376, -21.0956532]
+    ],
+    "fixes": [
+        {
+            "longitude": 55.4780875,
+            "latitude": -21.0964079,
+            "accuracy": 8.7,
+            "heading": null,
+            "speed": 8.07,
+            "timestamp": 1755800001144
+        },
+        {
+            "longitude": 55.4785825,
+            "latitude": -21.0964074,
+            "accuracy": 6.9,
+            "heading": 134.7,
+            "speed": 9.3,
+            "timestamp": 1755800002226
+        },
+        {
+            "longitude": 55.4790778,
+            "latitude": -21.0963932,
+            "accuracy": 7.5,
+            "heading": 355.6,
+            "speed": 9.2,
+            "timestamp": 1755800003326
+        },
+        {
+            "longitude": 55.4795467,
+            "latitude": -21.0964027,
+            "accuracy": 7.0,
+            "heading": 253.4,
+            "speed": 8.87,
+            "timestamp": 1755800004401
+        },
+        {
+            "longitude": 55.4800263,
+            "latitude": -21.0963878,
+            "accuracy": 6.5,
+            "heading": null,
+            "speed": 8.96,
+            "timestamp": 1755800005377
+        },
+        {
+            "longitude": 55.480543,
+            "latitude": -21.0963837,
+            "accuracy": 9.5,
+            "heading": 215.1,
+            "speed": 6.98,
+            "timestamp": 1755800006672
+        },
+        {
+            "longitude": 55.4809916,
+            "latitude": -21.096401,
+            "accuracy": 7.8,
+            "heading": 232.5,
+            "speed": 8.87,
+            "timestamp": 1755800007715
+        },
+        {
+            "longitude": 55.4815082,
+            "latitude": -21.0964115,
+            "accuracy": 5.3,
+            "heading": 253.8,
+            "speed": 6.5,
+            "timestamp": 1755800009083
+        },
+        {
+            "longitude": 55.4819536,
+            "latitude": -21.0964028,
+            "accuracy": 8.8,
+            "heading": null,
+            "speed": 7.59,
+            "timestamp": 1755800010262
+        },
+        {
+            "longitude": 55.4824301,
+            "latitude": -21.0963958,
+            "accuracy": 5.5,
+            "heading": 39.4,
+            "speed": 8.24,
+            "timestamp": 1755800011839
+        },
+        {
+            "longitude": 55.4829397,
+            "latitude": -21.0964173,
+            "accuracy": 9.1,
+            "heading": 30.9,
+            "speed": 6.79,
+            "timestamp": 1755800013164
+        },
+        {
+            "longitude": 55.4833997,
+            "latitude": -21.0963972,
+            "accuracy": 5.5,
+            "heading": 36.0,
+            "speed": 7.81,
+            "timestamp": 1755800014079
+        },
+        {
+            "longitude": 55.4838928,
+            "latitude": -21.0964032,
+            "accuracy": 9.3,
+            "heading": null,
+            "speed": 9.17,
+            "timestamp": 1755800015507
+        },
+        {
+            "longitude": 55.484127,
+            "latitude": -21.0960149,
+            "accuracy": 9.5,
+            "heading": 57.5,
+            "speed": 7.4,
+            "timestamp": 1755800017077
+        },
+        {
+            "longitude": 55.484349,
+            "latitude": -21.0956213,
+            "accuracy": 7.8,
+            "heading": 251.5,
+            "speed": 6.21,
+            "timestamp": 1755800018441
+        },
+        {
+            "longitude": 55.484605,
+            "latitude": -21.0951981,
+            "accuracy": 9.9,
+            "heading": 243.6,
+            "speed": 6.16,
+            "timestamp": 1755800019816
+        },
+        {
+            "longitude": 55.4848587,
+            "latitude": -21.0948419,
+            "accuracy": 8.9,
+            "heading": null,
+            "speed": 7.76,
+            "timestamp": 1755800021194
+        },
+        {
+            "longitude": 55.4850889,
+            "latitude": -21.0944529,
+            "accuracy": 7.4,
+            "heading": 1.3,
+            "speed": 9.19,
+            "timestamp": 1755800022565
+        },
+        {
+            "longitude": 55.4853575,
+            "latitude": -21.0940707,
+            "accuracy": 4.6,
+            "heading": 87.6,
+            "speed": 8.97,
+            "timestamp": 1755800023859
+        },
+        {
+            "longitude": 55.4855546,
+            "latitude": -21.0936777,
+            "accuracy": 6.1,
+            "heading": 216.0,
+            "speed": 9.52,
+            "timestamp": 1755800025165
+        },
+        {
+            "longitude": 55.4859623,
+            "latitude": -21.0933657,
+            "accuracy": 8.4,
+            "heading": null,
+            "speed": 8.23,
+            "timestamp": 1755800026464
+        },
+        {
+            "longitude": 55.4863702,
+            "latitude": -21.0930663,
+            "accuracy": 4.8,
+            "heading": 136.2,
+            "speed": 6.24,
+            "timestamp": 1755800028046
+        },
+        {
+            "longitude": 55.4860145,
+            "latitude": -21.0929577,
+            "accuracy": 6.7,
+            "heading": 80.0,
+            "speed": 7.41,
+            "timestamp": 1755800029246
+        },
+        {
+            "longitude": 55.4863644,
+            "latitude": -21.0932916,
+            "accuracy": 5.4,
+            "heading": 283.9,
+            "speed": 9.65,
+            "timestamp": 1755800030252
+        },
+        {
+            "longitude": 55.4867818,
+            "latitude": -21.0935164,
+            "accuracy": 4.3,
+            "heading": null,
+            "speed": 8.28,
+            "timestamp": 1755800031334
+        },
+        {
+            "longitude": 55.4872811,
+            "latitude": -21.0936088,
+            "accuracy": 7.0,
+            "heading": 324.6,
+            "speed": 7.62,
+            "timestamp": 1755800032406
+        },
+        {
+            "longitude": 55.487819,
+            "latitude": -21.0936389,
+            "accuracy": 9.4,
+            "heading": 157.4,
+            "speed": 7.82,
+            "timestamp": 1755800033514
+        },
+        {
+            "longitude": 55.4883328,
+            "latitude": -21.0937079,
+            "accuracy": 5.9,
+            "heading": 331.8,
+            "speed": 9.16,
+            "timestamp": 1755800034873
+        },
+        {
+            "longitude": 55.4887882,
+            "latitude": -21.093826,
+            "accuracy": 5.9,
+            "heading": null,
+            "speed": 7.99,
+            "timestamp": 1755800036378
+        },
+        {
+            "longitude": 55.4891893,
+            "latitude": -21.0941027,
+            "accuracy": 9.7,
+            "heading": 114.2,
+            "speed": 8.44,
+            "timestamp": 1755800037899
+        },
+        {
+            "longitude": 55.4896093,
+            "latitude": -21.0943205,
+            "accuracy": 5.0,
+            "heading": 257.3,
+            "speed": 9.62,
+            "timestamp": 1755800038935
+        },
+        {
+            "longitude": 55.4900355,
+            "latitude": -21.0945221,
+            "accuracy": 6.9,
+            "heading": 332.1,
+            "speed": 8.36,
+            "timestamp": 1755800040388
+        },
+        {
+            "longitude": 55.4904473,
+            "latitude": -21.0947246,
+            "accuracy": 5.6,
+            "heading": null,
+            "speed": 9.37,
+            "timestamp": 1755800041633
+        },
+        {
+            "longitude": 55.4909054,
+            "latitude": -21.0949901,
+            "accuracy": 9.8,
+            "heading": 321.6,
+            "speed": 8.72,
+            "timestamp": 1755800042890
+        },
+        {
+            "longitude": 55.4912749,
+            "latitude": -21.0951931,
+            "accuracy": 9.6,
+            "heading": 98.7,
+            "speed": 8.52,
+            "timestamp": 1755800044412
+        },
+        {
+            "longitude": 55.4917218,
+            "latitude": -21.0954256,
+            "accuracy": 6.9,
+            "heading": 18.0,
+            "speed": 6.5,
+            "timestamp": 1755800045886
+        },
+        {
+            "longitude": 55.492105,
+            "latitude": -21.0956492,
+            "accuracy": 4.3,
+            "heading": null,
+            "speed": 7.13,
+            "timestamp": 1755800047239
+        }
+    ]
+}

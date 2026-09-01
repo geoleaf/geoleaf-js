@@ -4,61 +4,63 @@
  */
 
 /**
- * Les configs de couches du profil actif — état partagé inter-modules.
+ * The active profile's layer configs — cross-module shared state.
  *
  *
  * ## Pourquoi ce fichier existe (API publique S4.3e)
  *
- * Cet état transitait par `globalThis.GeoLeaf._allLayerConfigs` : le chargeur de profil
- * l'écrivait via le seam `_loaderDeps` de `globals/globals.geojson.ts`, et deux modules le
- * relisaient sur le namespace — `kernel/geojson/layers/integration.ts` et
- * `capabilities/legend/lifecycle.ts`.
+ * This state used to travel through `globalThis.GeoLeaf._allLayerConfigs`: the
+ * profile loader wrote it via the `_loaderDeps` seam of
+ * `globals/globals.geojson.ts`, and two modules re-read it on the namespace —
+ * `kernel/geojson/layers/integration.ts` and `capabilities/legend/lifecycle.ts`.
  *
- * Ce n'était pas une façade : rien de public ne l'exposait, aucun plugin ne le lisait, aucun
- * type ne le déclarait. C'était de l'**état partagé** posé sur le namespace faute de porteur.
+ * It was not a facade: nothing public exposed it, no plugin read it, no type
+ * declared it. It was **shared state** set on the namespace for lack of a carrier.
  *
- * ⚠️ **Et il était hors de portée de tout instrument.** La clé n'a jamais figuré dans les trois
- * oracles de `scripts/lib/namespace-surface.mjs`, parce qu'elle n'est écrite qu'au chargement
- * d'un profil — donc jamais pendant le boot nu qu'ils mesurent. On pouvait la renommer chez
- * l'écrivain, ou chez l'un des deux lecteurs, et garder une suite **verte sur un core cassé** :
- * les six fichiers de test qui la mentionnaient plantaient tous la valeur eux-mêmes. Le seul
- * symptôme en production aurait été un `Log.warn` et une légende vide.
+ * ⚠️ **And it was out of reach of every instrument.** The key never appeared in
+ * the three oracles of `scripts/lib/namespace-surface.mjs`, because it is only
+ * written when a profile loads — hence never during the bare boot they measure. It
+ * could be renamed at the writer, or at either of the two readers, and keep a
+ * suite **green on a broken core**: the six test files mentioning it all planted
+ * the value themselves. The only production symptom would have been a `Log.warn`
+ * and an empty legend.
  *
- * Le contrat est désormais un module, et il est gardé par
- * `__tests__/geojson/layer-configs-state.contract.test.js`, qui traverse le chemin réel
- * écrivain → lecteur.
+ * The contract is now a module, and it is guarded by
+ * `__tests__/geojson/layer-configs-state.contract.test.js`, which walks the real
+ * writer → reader path.
  *
- * ## Ce que ce module n'est pas
+ * ## What this module is not
  *
- * Il n'est **pas** le porteur générique des 22 clés `_` que le core lit encore en
- * service-locator (`_VectorTiles`, `_Cluster`…). Celles-là sont le mécanisme d'optionalité des
- * capacités — une capacité absente n'a tout simplement pas d'écrivain — et les sortir du
- * namespace est un chantier d'architecture, consigné à la dette. Ici il ne s'agit que d'un état
- * qui n'avait aucune raison d'être public.
+ * It is **not** the generic carrier of the 22 `_` keys the core still reads as a
+ * service locator (`_VectorTiles`, `_Cluster`…). Those are the capabilities'
+ * optionality mechanism — an absent capability simply has no writer — and getting
+ * them off the namespace is an architecture work item, recorded as debt. Here it
+ * is only state that had no reason to be public.
  */
 
 /**
- * Les configs de couches du profil actif, ou `undefined` tant qu'aucun profil n'est chargé.
+ * The active profile's layer configs, or `undefined` until a profile is loaded.
  *
- * Volontairement typé `unknown` : la forme réelle est un tableau d'entrées de configuration
- * dont chaque lecteur narrow ce dont il a besoin (`integration.ts` déclare son propre
- * `LayerConfigEntry`). Élargir ce type ici obligerait `kernel/shared/` — une feuille — à
- * connaître la forme du profil, ce que la frontière R.8 lui interdit.
+ * Deliberately typed `unknown`: the real shape is an array of configuration
+ * entries of which each reader narrows what it needs (`integration.ts` declares
+ * its own `LayerConfigEntry`). Widening this type here would force
+ * `kernel/shared/` — a leaf — to know the profile's shape, which the boundary
+ * forbids it.
  */
 let _allLayerConfigs: unknown;
 
-/** Rend les configs de couches du profil actif, ou `undefined` avant tout chargement. */
+/** Returns the active profile's layer configs, or `undefined` before any load. */
 export function getAllLayerConfigs(): unknown {
     return _allLayerConfigs;
 }
 
 /**
- * Enregistre les configs de couches du profil actif.
+ * Records the active profile's layer configs.
  *
- * Appelé par le seam `_loaderDeps.setAllLayerConfigs` de `globals/globals.geojson.ts`, lui-même
- * alimenté par le chargeur de profil.
+ * Called by the `_loaderDeps.setAllLayerConfigs` seam of
+ * `globals/globals.geojson.ts`, itself fed by the profile loader.
  *
- * @param configs - Les entrées de configuration, ou `undefined` pour vider l'état.
+ * @param configs - The configuration entries, or `undefined` to clear the state.
  */
 export function setAllLayerConfigs(configs: unknown): void {
     _allLayerConfigs = configs;

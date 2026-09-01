@@ -43,9 +43,9 @@ vi.mock("../event-cleanups.js", () => ({
     _eventCleanups: [],
 }));
 vi.mock("../table-renderer-virtual-scroll.js", () => ({
-    // ⚠️ STRUCT S8 — `VIRTUAL_THRESHOLD` a suivi les 2 autres constantes de scroll
-    // virtuel dans ce module. Le stub à 500 reste ici : c'est lui qui force le rendu
-    // NON virtuel dans ces cas de branche.
+    // ⚠️ `VIRTUAL_THRESHOLD` followed the 2 other virtual-scroll constants
+    // into this module. The stub at 500 stays here: it is what forces the
+    // NON-virtual rendering in these branch cases.
     VIRTUAL_THRESHOLD: 500,
     createTableBodyVirtual: vi.fn(() => document.createElement("tbody")),
     initVirtualState: vi.fn(),

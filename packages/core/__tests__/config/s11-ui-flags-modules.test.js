@@ -5,9 +5,9 @@
  *    GeoLeaf.UI.initMobileToolbar. The theme-selector mobile option is now sourced
  *    from modules.theme-selector.enabled (opt-out, migrated from ui.showThemeSelector, S8/F3).
  *  - showBaseLayerControls → createBaseLayerControlsUI gates #gl-left-panel via
- *    _computeShowControls (basemaps/ui.ts:90,150,166-176).
+ *    _computeShowControls (basemaps/ui.ts-176).
  *  - ui.language → initI18n reads Config.get("ui.language","fr") and selects the
- *    active dictionary (i18n.ts:54-57).
+ *    active dictionary (i18n.ts).
  *
  * Consumers: app/init-features.ts, basemaps/ui.ts, utils/i18n/i18n.ts. Inventory B3.
  */

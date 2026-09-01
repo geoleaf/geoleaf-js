@@ -2,7 +2,7 @@
  * Config-contract Phase C / C3 — B4 themes.json: per-value validation/normalisation.
  *
  * Read path: ThemeLoader._validateConfig(raw) is the pure seam every theme config
- * flows through (theme-loader.ts:173-222) — it merges config.primaryThemes /
+ * flows through (theme-loader.ts) — it merges config.primaryThemes /
  * config.secondaryThemes defaults, normalises each theme entry, and resolves
  * defaultTheme (present / absent / invalid). The live visibility TOGGLE of
  * layers[].{visible,style} is shared-state-coupled (theme-applier + GeoJSONShared)

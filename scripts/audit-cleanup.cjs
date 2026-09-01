@@ -2,9 +2,9 @@
 /**
  * audit-cleanup.cjs
  *
- * Orchestrateur d'audit pour la campagne cleanup GeoLeaf-JS.
- * Lance sequentiellement : knip → ts-prune → depcheck (x3) → jscpd → madge (x3) → purgecss
- * Sauvegarde les rapports bruts JSON dans _docs_projet/travail/audits/
+ * Audit orchestrator for the GeoLeaf-JS cleanup campaign.
+ * Runs sequentially: knip → ts-prune → depcheck (x3) → jscpd → madge (x3) → purgecss
+ * Saves the raw JSON reports under _docs_projet/travail/audits/
  *
  * Usage: node scripts/audit-cleanup.cjs
  */
@@ -39,13 +39,14 @@ const docsPaths = require("./lib/docs-paths.cjs");
 
 const ROOT = path.resolve(__dirname, "..");
 
-// ⚠️ SAUT NOMMÉ — ce script ÉCRIT dans l'atelier, qui n'existe pas sur le dépôt public.
+// ⚠️ NAMED SKIP — this script WRITES into the workshop, which does not exist on the
+// public repo.
 //
-// Troisième et dernier lecteur d'`internal()`, traité comme les deux autres pour que la règle
-// soit uniforme : un lecteur du corpus interne saute, en le disant, quand le corpus n'est pas
-// là. ⚠️ Il n'est PAS câblé dans `ci:local` — contrairement aux deux autres —, donc il ne
-// bloquait rien ; il aurait planté au visage d'un contributeur du dépôt public qui le lance,
-// ce qui est un défaut d'accueil et pas un défaut de gate.
+// Third and last reader of `internal()`, handled like the other two so the rule is
+// uniform: an internal-corpus reader skips, saying so, when the corpus is not there.
+// ⚠️ It is NOT wired into `ci:local` — unlike the other two — so it blocked nothing;
+// it would have crashed in the face of a public-repo contributor running it, which
+// is a hospitality defect and not a gate defect.
 if (!docsPaths.internalRootExists()) {
     console.log(
         "⏭️  [AUDIT-CLEANUP] SAUTÉ — la racine INTERNE est absente : " +
@@ -59,9 +60,9 @@ if (!docsPaths.internalRootExists()) {
     process.exit(0);
 }
 
-// Racine INTERNE : les sorties brutes d'audit ne partent pas dans le dépôt public.
-// ⚠️ Le répertoire lui-même n'existe pas aujourd'hui — ce script le crée. Ce qui est
-// gardé ici est sa RACINE, pas le sous-répertoire : c'est le seul niveau qui bouge.
+// INTERNAL root: raw audit outputs do not ship to the public repo.
+// ⚠️ The directory itself does not exist today — this script creates it. What is
+// guarded here is its ROOT, not the subdirectory: the only level that moves.
 const AUDIT_DIR = docsPaths.internal("travail", "audits");
 const TIMESTAMP = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 16);
 
@@ -121,7 +122,7 @@ function runTool(label, cmd, opts = {}) {
  */
 function discoverPackages() {
     const out = [];
-    // ARCHI S9.5 — from the workspace registry, not a one-level readdirSync.
+    // From the workspace registry, not a one-level readdirSync.
     for (const pkg of require("./lib/packages.cjs").all()) {
         const e = { name: pkg.dirName };
         const dir = pkg.absDir;
@@ -177,8 +178,9 @@ function runKnip() {
 
 function runTsPrune() {
     // ts-prune outputs text lines: "file.ts:line - symbolName (used in module)"
-    // T5.5 — le `--project` vient du registre. Un chemin périmé ferait sortir ts-prune en
-    // erreur d'outil, que `runTool` avale : l'audit conclurait « 0 export inutilisé ».
+    // The `--project` comes from the registry. A stale path would make ts-prune exit
+    // in tool error, which `runTool` swallows: the audit would conclude "0 unused
+    // exports".
     const corePkg = require("./lib/packages.cjs").requireByDirName("core");
     const tsconfig = path.posix.join(corePkg.dir, "tsconfig.json");
     const { output } = runTool("ts-prune", `npx ts-prune --project ${tsconfig}`, {
@@ -339,7 +341,7 @@ function runMadge() {
 async function runPurgecss() {
     // Uses programmatic API via the shared config (also consumed by the CI
     // dead-CSS gate, scripts/verify-purgecss.cjs) — single source of truth for
-    // CSS sources, content globs and safelist. S7.2 widened content to every
+    // CSS sources, content globs and safelist. The perimeter widened to every
     // workspace + HTML templates / demo.
     const { purge } = require("./lib/purgecss-config.cjs");
 

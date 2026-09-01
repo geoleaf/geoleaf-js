@@ -1,5 +1,5 @@
 // @ts-check
-// E2E: 18-security — deploy-core (port 8766). Security roadmap Sprint 3 (3.3).
+// E2E: 18-security — deploy-core (port 8766). Security suite.
 //
 // Dynamic proof of H1 (stored POI XSS) and the CSP guardian for B.5.
 //
@@ -19,8 +19,8 @@
 // the document CSP) and asserts 0 style-src violations — core only.
 //
 // The B.7 guardian does the same on a PLUGIN variant — `deploy-full`
-// (editor + offline-ui + connector) since 5.5, `deploy-addpoi` before it
-// disappeared with the merged plugin. B.5 hardened the core but the e2e ran on
+// (editor + offline-ui + connector) since the variant merge, `deploy-addpoi`
+// before it disappeared with the merged plugin. B.5 hardened the core but the e2e ran on
 // deploy-core alone, so it missed that plugin CSS was injected at runtime via
 // the bundler's styleInject (a <style> element) and the connector's hand-rolled
 // <style> — both blocked under strict style-src. Plugin CSS now loads via
@@ -31,6 +31,7 @@
 
 import { test, expect } from "@playwright/test";
 import { baseURL, isNginxTarget } from "./helpers/base-url.js";
+import { bootMapUntilIdle } from "./helpers/boot.js";
 
 test.use({ baseURL: baseURL("core"), serviceWorkers: "block" });
 
@@ -58,7 +59,7 @@ const XSS_HTML_PAYLOAD = '<img src=x onerror="window.__xss=true">';
 // a plain absence: the sink is provably reached (the controls came through) AND
 // it provably rejected the hostile pair. Neither hits the network — an <a href>
 // is never fetched, and the GIF is a 1x1 data: URL (allowed by the img-src CSP
-// and by ALLOWED_DATA_URL_TYPES, security/validators.ts:37).
+// and by ALLOWED_DATA_URL_TYPES, security/validators.ts).
 const SAFE_CONTROL_HREF = "https://example.org/safe";
 const SAFE_CONTROL_IMG =
     "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
@@ -71,7 +72,7 @@ const SAFE_CONTROL_IMG =
  * Passed as the `layout` override (2nd argument of `openSidePanel`), which fully
  * replaces the auto-resolved layer binding. Without it the assertions below
  * would be VACUOUS: `buildSidePanelBody` skips untyped fields outright
- * (`if (!field?.type) continue;`, feature-info/render/sidepanel-content.ts:283),
+ * (`if (!field?.type) continue;`, feature-info/render/sidepanel-content.ts),
  * and the injection layer carries no `capabilities.feature-info` binding of its
  * own — so nothing at all would be rendered and "no live element in the panel"
  * would hold on an empty panel.
@@ -79,7 +80,7 @@ const SAFE_CONTROL_IMG =
 const HOSTILE_SIDEPANEL_LAYOUT = [
     { field: "name", type: "text", variant: "title" },
     { field: "description", type: "text" },
-    // Nested path — exercises the `attributes.*` branch of resolve.ts:88.
+    // Nested path — exercises the `attributes.*` branch of resolve.ts.
     { field: "attributes.shortDescription", type: "text" },
     { field: "website", type: "link", label: "Site" },
     { field: "mainImage", type: "image" },
@@ -110,24 +111,6 @@ function hostilePoi() {
     };
 }
 
-/** Boot the map and wait until GeoLeaf resolved a native maplibregl.Map. */
-async function bootMap(page) {
-    await page.goto("/");
-    await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
-    await page.waitForFunction(
-        () => {
-            const native = /** @type {any} */ (window).GeoLeaf?.Core?.getMap?.()?.getNativeMap?.();
-            return !!(native && typeof native.loaded === "function" && native.loaded());
-        },
-        null,
-        { timeout: 20000 }
-    );
-    await page
-        .locator("#gl-loader")
-        .waitFor({ state: "hidden", timeout: 10000 })
-        .catch(() => {});
-}
-
 /**
  * Stores the hostile POI in a real layer, reads it BACK from the layer store,
  * and opens its side-panel — all through the real public API.
@@ -136,13 +119,13 @@ async function bootMap(page) {
  * replacement (0 hits outside a remote `/api/pois` path). The honest equivalent
  * today is the very path plugin-storage's offline replay takes to re-inject a
  * stored POI into its host layer — `poiToFeature()` then `mergeFeatures()`, see
- * `core/src/capabilities/offline/poi-restore/poi-restore.ts:201-210`. The panel
+ * `core/src/capabilities/offline/poi-restore/poi-restore.ts`. The panel
  * is fed the feature READ BACK from the store (`getFeatureById`), never the
  * in-test literal, so the payload really transits the storage path: this stays a
  * *stored* XSS proof, not a "renderer called with a hostile string" proof.
  *
  * `showPoiDetails` → `GeoLeaf.FeatureInfo.openSidePanel(detail, layout)`
- * (`capabilities/feature-info/public-api.ts:32`), same `.gl-poi-sidepanel` DOM.
+ * (`capabilities/feature-info/public-api.ts`), same `.gl-poi-sidepanel` DOM.
  */
 async function renderHostilePoi(page) {
     // The injection target must exist: layers land in the store during boot.
@@ -214,7 +197,7 @@ test.describe("18-security — stored POI XSS (H1, dynamic proof)", () => {
         const pageErrors = [];
         page.on("pageerror", (e) => pageErrors.push(e.message));
 
-        await bootMap(page);
+        await bootMapUntilIdle(page);
         await renderHostilePoi(page);
 
         // Give any deferred onerror/script the chance to run.
@@ -226,7 +209,7 @@ test.describe("18-security — stored POI XSS (H1, dynamic proof)", () => {
     });
 
     test("payload is escaped: no live element is injected into the sidepanel", async ({ page }) => {
-        await bootMap(page);
+        await bootMapUntilIdle(page);
         await renderHostilePoi(page);
 
         // The <span data-xss-marker> exists only if the field was injected as HTML.
@@ -238,7 +221,7 @@ test.describe("18-security — stored POI XSS (H1, dynamic proof)", () => {
     });
 
     test("URL sinks reject javascript:/data:text/html (no live href or src)", async ({ page }) => {
-        await bootMap(page);
+        await bootMapUntilIdle(page);
         await renderHostilePoi(page);
 
         const unsafe = await page.evaluate(() => {
@@ -268,7 +251,7 @@ test.describe("18-security — stored POI XSS (H1, dynamic proof)", () => {
     });
 
     test("hostile POI triggers no inline/eval script-src violation", async ({ page }) => {
-        await bootMap(page);
+        await bootMapUntilIdle(page);
         await renderHostilePoi(page);
         await page.waitForTimeout(300);
 
@@ -289,7 +272,7 @@ test.describe("18-security — stored POI XSS (H1, dynamic proof)", () => {
     test("boots with no wasm-eval script-src violation (realtime-layer lazy-loads protobuf)", async ({
         page,
     }) => {
-        await bootMap(page);
+        await bootMapUntilIdle(page);
         // Let any deferred module-init (and its CSP probe) settle.
         await page.waitForTimeout(300);
 
@@ -312,14 +295,14 @@ test.describe("18-security — stored POI XSS (H1, dynamic proof)", () => {
 // sites were migrated to CSSOM / CSS classes (data-gl-style + applyCssText). This test
 // strips 'unsafe-inline' at the network layer and asserts zero style-src violations.
 //
-// N.B. the deployed document ships `style-src 'self'` — no 'unsafe-inline', and since
-// S5.6 no third-party origin either (MapLibre is self-hosted, Google Fonts is gone). So
+// N.B. the deployed document ships `style-src 'self'` — no 'unsafe-inline', and
+// no third-party origin either (MapLibre is self-hosted, Google Fonts is gone). So
 // `forceStrictStyleSrc()` matches nothing. It is kept as a normalizer: it keeps this
 // guardian strict if 'unsafe-inline' is ever re-introduced into the shipped CSP.
 //
 // ⚠️ This spec asserts NOTHING about which origins the CSP allows — its four assertions
 // are `expect(violations).toEqual([])` over `securitypolicyviolation` events, which are
-// indifferent to the allowlist. The roadmap claimed otherwise and sent S5.6 to update a
+// indifferent to the allowlist. The plan claimed otherwise and sent a task to update a
 // file that needed no change, while the real gap went unnamed: no gate reads the shipped
 // CSP at all. `scripts/probe-csp-origins.mjs` is what covers it, and it is manual.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -328,7 +311,7 @@ test.describe("18-security — CSP strict style-src (B.5 guardian)", () => {
     test("boots and opens UI with zero style-src violations under strict CSP", async ({ page }) => {
         await page.addInitScript(SENTINEL_INIT);
         await forceStrictStyleSrc(page);
-        await bootMap(page);
+        await bootMapUntilIdle(page);
         await renderHostilePoi(page);
         await page.waitForTimeout(500);
 
@@ -342,7 +325,7 @@ test.describe("18-security — CSP strict style-src (B.5 guardian)", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// B.7 guardian — strict style-src on a PLUGIN variant. ⚠️ 5.5 — it ran on
+// B.7 guardian — strict style-src on a PLUGIN variant. ⚠️ It used to run on
 // `deploy-addpoi`; that variant died with the merged plugin, so the guardian now
 // runs on `deploy-full` (editor + offline-ui + connector), which is the variant
 // carrying gated plugins. Plugin CSS injects at module-eval and the connector
@@ -353,14 +336,14 @@ test.describe("18-security — CSP strict style-src (B.5 guardian)", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 test.describe("18-security — CSP strict style-src on plugins (B.7 guardian)", () => {
-    test.use({ baseURL: baseURL("full") }); // deploy-full — la variante à plugins gatés (5.5)
+    test.use({ baseURL: baseURL("full") }); // deploy-full — the gated-plugins variant
 
     test("editor + offline-ui + connector load with zero style-src violations under strict CSP", async ({
         page,
     }) => {
         await page.addInitScript(SENTINEL_INIT);
         await forceStrictStyleSrc(page);
-        await bootMap(page);
+        await bootMapUntilIdle(page);
         // Plugin CSS injects at module-eval; give deferred injection a beat.
         await page.waitForTimeout(800);
 
@@ -374,24 +357,27 @@ test.describe("18-security — CSP strict style-src on plugins (B.7 guardian)", 
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// S6.1 — l'en-tête `X-Content-Type-Options` est SERVI, pas seulement configuré.
+// The `X-Content-Type-Options` header is SERVED, not merely configured.
 //
-// Il a vécu en `<meta http-equiv>` dans `index.html` jusqu'au 08/08/2026, où il ne protégeait
-// RIEN : cet en-tête n'est honoré qu'en réponse HTTP. Nginx ne le posait pas non plus — la
-// protection était donc absente partout tout en paraissant présente.
+// It lived as a `<meta http-equiv>` in `index.html` until 2026-08-08, where
+// it protected NOTHING: this header is only honoured as an HTTP response.
+// Nginx did not set it either — the protection was thus absent everywhere
+// while appearing present.
 //
-// 🛑 CE TEST NE PEUT PAS ÊTRE LA SEULE GARDE, et c'est le point à comprendre avant de s'y fier.
-// La cible par défaut est `ports`, où Playwright démarre ses propres http-servers : nginx n'est
-// pas dans la boucle, donc l'en-tête n'y sera JAMAIS présent. Écrit sans le `skip` ci-dessous,
-// ce test serait rouge en permanence sur la cible de référence ; écrit avec un `expect` mou, il
-// serait VIDE — vert par construction, sur une propriété qu'il n'aurait jamais éprouvée.
+// 🛑 THIS TEST CANNOT BE THE ONLY GUARD, and that is the point to grasp
+// before relying on it. The default target is `ports`, where Playwright
+// starts its own http-servers: nginx is not in the loop, so the header will
+// NEVER be present there. Written without the `skip` below, this test would
+// be permanently red on the reference target; written with a soft `expect`,
+// it would be EMPTY — green by construction, on a property it never proved.
 //
-// Le partage est donc explicite : **NGINX-01** (`scripts/verify-app-template.cjs`) vérifie que
-// la conf déclare l'en-tête sur CHAQUE vhost et tourne dans le chemin par défaut de `ci:local` ;
-// ce test-ci vérifie qu'un vrai serveur le REND vraiment, et ne tourne que sous
-// `E2E_TARGET=nginx`. Aucune des deux ne remplace l'autre : la première ne prouve pas que le
-// serveur applique sa conf, la seconde ne tourne pas par défaut.
-test.describe("18-security — en-têtes de sécurité servis (S6.1)", () => {
+// The split is thus explicit: **NGINX-01** (`scripts/verify-app-template.cjs`)
+// verifies the conf declares the header on EACH vhost and runs in
+// `ci:local`'s default path; this test verifies a real server really SERVES
+// it, and only runs under `E2E_TARGET=nginx`. Neither replaces the other:
+// the first does not prove the server applies its conf, the second does not
+// run by default.
+test.describe("18-security — en-têtes de sécurité servis", () => {
     test.skip(
         !isNginxTarget,
         "Les en-têtes viennent de nginx. Sur la cible `ports` (http-server) il n'y en a pas — " +
@@ -410,10 +396,11 @@ test.describe("18-security — en-têtes de sécurité servis (S6.1)", () => {
         expect(response.headers()["x-content-type-options"]).toBe("nosniff");
     });
 
-    // La contre-épreuve compte autant que la garde : un test qui lirait un en-tête posé par
-    // autre chose (un proxy en amont) ne dirait rien de la conf qu'on vient d'écrire.
-    // `X-Frame-Options` sort des mêmes blocs `server` — s'il disparaît aussi, c'est le bloc
-    // entier qui a sauté, et le verdict sur nosniff change de sens.
+    // The counter-proof counts as much as the guard: a test reading a header
+    // set by something else (an upstream proxy) would say nothing about the
+    // conf just written. `X-Frame-Options` comes out of the same `server`
+    // blocks — if it disappears too, the whole block jumped, and the nosniff
+    // verdict changes meaning.
     test("les en-têtes voisins du même bloc server répondent aussi", async ({ page }) => {
         const response = await page.goto("/");
         expect(response.headers()["x-frame-options"]).toBe("DENY");

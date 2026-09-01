@@ -1,5 +1,5 @@
 // @ts-check
-// Sprint 6 — E2E Performance Baseline
+// E2E Performance Baseline
 // Measures init time, GeoJSON render, FPS, and heap memory under MapLibre GL JS.
 // Results populate perf-baseline.json — the post-migration performance contract.
 
@@ -23,7 +23,7 @@ const PERF_BASELINE_PATH = path.join(__dirname, "..", "perf-baseline.json");
 const MAP_SELECTOR = "#geoleaf-map";
 const MAP_TIMEOUT = 20_000;
 
-// Sprint 3 — runtime regression gate. ON under software GL (the CI/WSL default),
+// Runtime regression gate. ON under software GL (the CI/WSL default),
 // where measurements are comparable to the committed contract; OFF under E2E_HW_GL=1,
 // where the host's real GL makes absolute values non-comparable. See
 // helpers/perf-gate.js for the GL-independence rationale.
@@ -52,6 +52,10 @@ if (captureBaseline && !useHardwareGl) {
 }
 
 /** Wait for the GeoLeaf map to be visible and fully initialized. */
+// Local on purpose — the delta vs `helpers/boot.js#bootMap`, named: this one accepts a
+// map whose style has not resolved yet (native !== null), because the perf baseline
+// TIMES the boot — waiting for a live style inside the helper would fold part of the
+// measured interval into the wait and shift every number this spec records.
 async function waitForMap(page) {
     await page.goto("/", { waitUntil: "networkidle" });
     await page.locator(MAP_SELECTOR).waitFor({ state: "visible", timeout: MAP_TIMEOUT });
@@ -374,22 +378,25 @@ test.describe("6.2.3 — FPS during zoom", () => {
                     filter: ["!", ["has", "point_count"]],
                     paint: { "circle-radius": 4, "circle-color": "#f28cb1" },
                 });
-                // --- Recensement du clustering — l'ORACLE, relevé AVANT la mesure de FPS ---
-                // B-217. Ce bloc remplace un littéral : la spec renvoyait `hasClustering: true`
-                // en dur et l'imprimait comme si c'était une mesure. Le mot « clustered » qui
-                // qualifie le FPS ci-dessous n'était donc adossé à rien.
+                // --- Clustering census — the ORACLE, read BEFORE the FPS measurement ---
+                // This block replaces a literal: the spec returned a hard-coded
+                // `hasClustering: true` and printed it as if it were a measurement.
+                // The word "clustered" qualifying the FPS below was thus backed by
+                // nothing.
                 //
-                // Le relevé se fait au zoom de CRÉATION de la source, jamais après la mesure :
-                // `measureFpsDuringZoom()` zoome de +2, et à 100 points ce zoom défait le
-                // groupement (mesuré par scripts/probe-cluster-oracle.mjs : 30 clusters à
-                // z4,23 → 0 à z6,23). Lire après rendrait l'oracle faux sur le plus petit cas.
+                // The census is taken at the source's CREATION zoom, never after the
+                // measurement: `measureFpsDuringZoom()` zooms +2, and at 100 points
+                // that zoom undoes the grouping (measured by
+                // scripts/probe-cluster-oracle.mjs: 30 clusters at z4.23 → 0 at
+                // z6.23). Reading after would make the oracle false on the smallest
+                // case.
                 //
-                // La boucle attend que la source soit CHARGÉE, pas que des clusters
-                // apparaissent : sortir au premier cluster vu rendrait un relevé PARTIEL
-                // (quelques tuiles), et le rapport « points groupés / features rendues »
-                // asserté plus bas s'effondrerait sur du code sain. Elle rend son dernier
-                // relevé si la source ne se stabilise pas — une source dont le clustering
-                // est cassé ne peut pas devenir verte en attendant.
+                // The loop waits for the source to be LOADED, not for clusters to
+                // appear: exiting at the first cluster seen would yield a PARTIAL
+                // census (a few tiles), and the "grouped points / rendered features"
+                // ratio asserted below would collapse on healthy code. It returns
+                // its last census if the source never settles — a source whose
+                // clustering is broken cannot become green by waiting.
                 let census = { rendered: 0, clusters: 0, grouped: 0 };
                 for (let waited = 0; waited <= 3000; waited += 150) {
                     const rendered = map.querySourceFeatures(clusterSrcId);
@@ -431,75 +438,86 @@ test.describe("6.2.3 — FPS during zoom", () => {
             expect(result.plain).toBeGreaterThan(0);
             expect(result.clustered).toBeGreaterThan(0);
 
-            // ─── B-217 — ce qui est asserté ici, et pourquoi ce n'est PLUS le FPS ───────
+            // ─── What is asserted here, and why it is NO LONGER the FPS ────────────────
             //
-            // Les FPS absolus ne sont pas gatés : sous GL logiciel/virtualisé (WSLg/CI) ils ne
-            // sont pas représentatifs (finding Sprint 2 de la roadmap perf). Jusqu'au 10/08/2026
-            // un invariant DIRECTIONNEL les gatait quand même — `clustered ≥ plain − 5 fps` —
-            // au motif qu'une régression de clustering donnerait `clustered << plain`.
+            // Absolute FPS are not gated: under software/virtualised GL (WSLg/CI)
+            // they are not representative (measured under software GL). Until
+            // 2026-08-10 a DIRECTIONAL invariant gated them anyway —
+            // `clustered ≥ plain − 5 fps` — on the ground that a clustering
+            // regression would yield `clustered << plain`.
             //
-            // 🛑 CET INVARIANT NE POUVAIT PAS TENIR CETTE PROMESSE, et trois raisons
-            // INDÉPENDANTES suffisent chacune. Mesuré sur 5 runs (même code, même déployé,
-            // même cible nginx), dont 3 machine au repos :
+            // 🛑 THAT INVARIANT COULD NOT KEEP THAT PROMISE, and three INDEPENDENT
+            // reasons each suffice. Measured over 5 runs (same code, same deploy,
+            // same nginx target), 3 of them with the machine at rest:
             //
-            //  ① Il décidait sur du bruit. L'étendue de la marge `clustered − (plain − 5)` est
-            //     de 52 fps à 100 marqueurs, 46 à 1k, 32 à 5k, 31 à 10k — pour un seuil de 5.
-            //     Le seuil vaut UN DIXIÈME du bruit de la grandeur qu'il tranche. Les deux
-            //     termes varient d'un facteur ~2 à ~2,8 d'un run à l'autre, et la marge étant
-            //     leur DIFFÉRENCE, elle cumule les deux bruits. Le seul rouge connu (10/08,
-            //     11:34 vs 14:58) est un tirage, pas un événement produit.
-            //  ② Il était creux là où le clustering compte. À 5k et 10k, `plain` vaut 1 fps
-            //     dans 5 runs sur 5 (le chemin DOM s'écroule), donc `clustered ≥ plain − 5`
-            //     est vrai quoi qu'il arrive. Il n'avait de mordant qu'à 100 et 1k — c'est-à-dire
-            //     exactement là où le clustering ne sert à rien.
-            //  ③ Il comparait deux chemins de rendu ÉTRANGERS l'un à l'autre : `plain` empile
-            //     des marqueurs DOM (`maplibregl.Marker`), `clustered` pose une source GeoJSON
-            //     et deux couches GL `circle`. « plain ≈ clustered » n'était pas une propriété
-            //     du produit, mais une coïncidence de régimes — que la mesure a défaite.
+            //  ① It decided on noise. The range of the margin
+            //     `clustered − (plain − 5)` is 52 fps at 100 markers, 46 at 1k, 32
+            //     at 5k, 31 at 10k — for a threshold of 5. The threshold is ONE
+            //     TENTH of the noise of the quantity it judges. Both terms vary by
+            //     a factor of ~2 to ~2.8 run to run, and the margin being their
+            //     DIFFERENCE, it accumulates both noises. The only known red
+            //     (08-10, 11:34 vs 14:58) is a draw, not a product event.
+            //  ② It was hollow where clustering counts. At 5k and 10k, `plain` is
+            //     1 fps in 5 runs out of 5 (the DOM path collapses), so
+            //     `clustered ≥ plain − 5` is true no matter what. It only had bite
+            //     at 100 and 1k — i.e. exactly where clustering serves nothing.
+            //  ③ It compared two rendering paths FOREIGN to each other: `plain`
+            //     stacks DOM markers (`maplibregl.Marker`), `clustered` lays a
+            //     GeoJSON source and two GL `circle` layers. "plain ≈ clustered"
+            //     was not a product property but a coincidence of regimes — which
+            //     the measurement undid.
             //
-            // ⚠️ ET SURTOUT : ce test ne touche PAS le clustering de GeoLeaf. Il appelle
-            // `map.addSource(..., { cluster: true })` directement sur la carte native. Un rouge
-            // ici aurait mis en cause MapLibre, jamais GeoLeaf. Le clustering PRODUIT — profil →
-            // `getClusteringStrategy` → source native clusterisée — est gardé déterministiquement
-            // par `e2e/cfg-c4-layers.spec.js` (« une source GeoJSON native est clusterisée ») et
-            // par `packages/core/__tests__/capabilities/cluster/`.
+            // ⚠️ AND ABOVE ALL: this test does NOT touch GeoLeaf's clustering. It
+            // calls `map.addSource(..., { cluster: true })` directly on the native
+            // map. A red here would have implicated MapLibre, never GeoLeaf. The
+            // PRODUCT clustering — profile → `getClusteringStrategy` → clustered
+            // native source — is guarded deterministically by the
+            // native-source-is-clustered test of `e2e/cfg-c4-layers.spec.js` and
+            // by `packages/core/__tests__/capabilities/cluster/`.
             //
-            // CE QUI EST ASSERTÉ À LA PLACE — déterministe, indépendant du GL, et portant sur ce
-            // que ce test CONSTRUIT vraiment : la source qu'il vient d'ajouter a bien clusterisé.
-            // Deux assertions, parce qu'UNE SEULE a été VUE LAISSER PASSER une vraie panne.
-            // Mesures faites au zoom du test (4,23), `clusters` / `points groupés` / `rendues` :
+            // WHAT IS ASSERTED INSTEAD — deterministic, GL-independent, and bearing
+            // on what this test REALLY BUILDS: the source it just added did
+            // cluster. Two assertions, because ONE ALONE was SEEN LETTING a real
+            // outage through. Measurements taken at the test's zoom (4.23),
+            // `clusters` / `grouped points` / `rendered`:
             //
-            //   mutation                       | 100          | 1k             | 5k              | 10k
-            //   -------------------------------|--------------|----------------|-----------------|------------------
-            //   aucune (sain)                  | 30 / 76 / 98 | 196/1189/278   | 335/6871/355    | 361/14167/374
-            //   `cluster: false`               |  0 /  0 /215 |   0/   0/2204  |   0/   0/10924  |   0/    0/21737
-            //   `clusterMaxZoom: 2` (dissous)  | 15 / 52 /107 |  30/ 456/930   |  32/2178/4620   |  33/ 4727/9152
+            //   mutation                        | 100          | 1k             | 5k              | 10k
+            //   --------------------------------|--------------|----------------|-----------------|------------------
+            //   none (healthy)                  | 30 / 76 / 98 | 196/1189/278   | 335/6871/355    | 361/14167/374
+            //   `cluster: false`                |  0 /  0 /215 |   0/   0/2204  |   0/   0/10924  |   0/    0/21737
+            //   `clusterMaxZoom: 2` (dissolved) | 15 / 52 /107 |  30/ 456/930   |  32/2178/4620   |  33/ 4727/9152
             //
-            //  (A) ≥ 1 cluster. Sépare la panne TOTALE — `cluster: false` rend 0 sur les quatre
-            //      cas. ⚠️ Mais elle est CREUSE pour le clustering DISSOUS : à `clusterMaxZoom: 2`
-            //      il reste 15 à 33 clusters, et cette assertion seule reste verte 4 fois sur 4.
-            //  (B) points groupés > features rendues — « le clustering COMPRESSE ». Sain : 4,3× à
-            //      37,9×. Dissous : 0,47× à 0,52×. Un facteur ~9 sépare les deux régimes, sans
-            //      constante arbitraire : le seuil est le point où la compression cesse.
-            //      ⚠️ (B) ne vaut que pour n ≥ 1000, et c'est MESURÉ, pas concédé : à 100 points
-            //      étalés sur la fenêtre, un clustering sain groupe 76 points en 30 clusters pour
-            //      98 features rendues — il ne compresse pas, légitimement. Asserter (B) à 100
-            //      rougirait sur du code sain. Le cas 100 ne porte donc que (A), et il est le seul
-            //      des quatre à ne pas voir la dissolution.
+            //  (A) ≥ 1 cluster. Separates the TOTAL outage — `cluster: false`
+            //      yields 0 on all four cases. ⚠️ But it is HOLLOW for DISSOLVED
+            //      clustering: at `clusterMaxZoom: 2` 15 to 33 clusters remain, and
+            //      this assertion alone stays green 4 times out of 4.
+            //  (B) grouped points > rendered features — "clustering COMPRESSES".
+            //      Healthy: 4.3× to 37.9×. Dissolved: 0.47× to 0.52×. A ~9× factor
+            //      separates the two regimes, with no arbitrary constant: the
+            //      threshold is the point where compression ceases.
+            //      ⚠️ (B) only holds for n ≥ 1000, and that is MEASURED, not
+            //      conceded: at 100 points spread over the window, healthy
+            //      clustering groups 76 points into 30 clusters for 98 rendered
+            //      features — it does not compress, legitimately. Asserting (B) at
+            //      100 would redden on healthy code. The 100 case thus carries only
+            //      (A), and it is the only one of the four not to see dissolution.
             //
-            // 🛑 CE QUE CE CHOIX REND INCAPABLE DE VOIR, et rien ici ne le verra :
-            //   · le COÛT de rendu du clustering — un clustering qui groupe correctement mais
-            //     devient lent reste invisible. Sous GL logiciel il l'était déjà : l'effet serait
-            //     noyé dans une bande de bruit de 30 à 50 fps. Il se verrait sur GL matériel, par
-            //     une capture (`npm run perf:capture`, E2E_HW_GL=1) comparée à un baseline capturé
-            //     sur le même hôte — jamais par un run WSL/CI ;
-            //   · la dissolution du clustering AU CAS 100 — assertion (A) seule, cf. ci-dessus ;
-            //   · un `clusterRadius` réduit qui grouperait toujours, mais moins bien, tant que la
-            //     compression reste > 1 ;
-            //   · et, redite mais essentielle : TOUTE régression du clustering de GEOLEAF, ce
-            //     test n'appelant que MapLibre. C'est `cfg-c4-layers.spec.js` qui la voit.
-            // Ces angles morts sont NOMMÉS plutôt que couverts par une assertion qu'on ne pourrait
-            // pas voir rougir.
+            // 🛑 WHAT THIS CHOICE MAKES UNABLE TO SEE, and nothing here will:
+            //   · the clustering's rendering COST — clustering that groups
+            //     correctly but becomes slow stays invisible. Under software GL it
+            //     already was: the effect would drown in a 30-to-50-fps noise band.
+            //     It would show on hardware GL, through a capture
+            //     (`npm run perf:capture`, E2E_HW_GL=1) compared to a baseline
+            //     captured on the same host — never through a WSL/CI run;
+            //   · clustering dissolution AT THE 100 CASE — assertion (A) alone,
+            //     cf. above;
+            //   · a reduced `clusterRadius` that would still group, but worse, as
+            //     long as compression stays > 1;
+            //   · and, restated but essential: ANY regression of GEOLEAF's
+            //     clustering, this test calling only MapLibre. It is
+            //     `cfg-c4-layers.spec.js` that sees it.
+            // These blind spots are NAMED rather than covered by an assertion that
+            // could not be seen red.
             expect(
                 result.cluster.clusters,
                 `FPS ${label}: la source « clustered » n'a produit AUCUN cluster ` +
@@ -523,53 +541,60 @@ test.describe("6.2.3 — FPS during zoom", () => {
 
 // ─── 6.2.4 — Heap memory after 10K features ────────────────────────────────
 //
-// 🛑 B-218 (10/08/2026) — CE BLOC A MESURÉ LE HEAP AMBIANT DE LA PAGE, PAS LES FEATURES.
-// Il lisait `performance.memory.usedJSHeapSize` avant et après l'ajout, et rendait
-// `delta = 0` dans les SIX runs connus. Ce n'était pas un hasard : sans
-// `--enable-precise-memory-info`, Chrome quantifie cette valeur ET la fige pour la durée
-// de la page — mesuré sur 10 pages fraîches, delta nul à N = 0, 10 000 ET 30 000. Le
-// plafond `committé × 1,5` tranchait donc le heap ambiant, dont la dispersion mesurée
-// (24,8 → 45,2 Mo, ×1,8) le débordait : un rouge attendu par construction, sans aucune
-// régression produit. Même famille que B-217 — un seuil dans la bande de bruit — avec
-// ceci en plus : la métrique elle-même ne variait pas avec son objet, donc élargir le
-// plafond n'aurait rien réparé.
+// 🛑 2026-08-10 — THIS BLOCK MEASURED THE PAGE'S AMBIENT HEAP, NOT THE FEATURES.
+// It read `performance.memory.usedJSHeapSize` before and after the add, and
+// yielded `delta = 0` in the SIX known runs. No accident: without
+// `--enable-precise-memory-info`, Chrome quantises this value AND freezes it for
+// the page's lifetime — measured over 10 fresh pages, null delta at N = 0,
+// 10,000 AND 30,000. The `committed × 1.5` ceiling thus judged the ambient
+// heap, whose measured dispersion (24.8 → 45.2 MB, ×1.8) overflowed it: a red
+// expected by construction, with no product regression. Same family as the
+// FPS — a threshold inside the noise band — with this in addition: the metric
+// itself did not vary with its object, so widening the ceiling would have
+// repaired nothing.
 //
-// CE QUI LE REMPLACE, et pourquoi ce n'est pas un réglage :
-//   1. L'INSTRUMENT change. CDP `Runtime.getHeapUsage` après `HeapProfiler.collectGarbage`
-//      des deux côtés → on mesure ce qui est RETENU, pas ce qui a été alloué. Mesuré :
-//      1,54–1,57 Mo pour 10k features (5 pages fraîches, étendue 0,03), 0,09–0,15 Mo à
-//      N = 0, 4,12 Mo à N = 30 000. La grandeur suit sa dose ; c'est la condition qui
-//      manquait, et sans elle tout seuil est décoratif.
-//      ⚠️ Le GC forcé n'est pas un raffinement : sans lui, le delta brut mesuré était
-//      NÉGATIF (−3,8 Mo à 10k), un GC tombant entre les deux lectures. Changer d'outil
-//      sans changer de protocole n'aurait pas suffi.
-//   2. LE GESTE change. L'ajout passe par `adapter.addGeoJSONLayer` — l'API GeoLeaf —
-//      et non plus par `map.addSource` natif. L'ancien ne touchait aucun code GeoLeaf :
-//      une régression y aurait mis en cause MapLibre (c'est le 4ᵉ fait de B-217, retrouvé
-//      ici). Écart mesuré entre les deux chemins : +0,06 Mo, le registre de couches.
-//   3. LA BANDE ne lit plus le baseline. `perf-baseline.json` porte un heap ambiant
-//      capturé le 26/06 avec l'instrument retiré : il ne peut pas servir de contrat à
-//      l'instrument neuf, et le recapturer sous GL logiciel est interdit. La bande est
-//      absolue et vit dans `helpers/perf-gate.js` avec la table qui la justifie.
-//   4. UN PLANCHER apparaît, et c'est l'assertion que B-218 réclamait : un delta nul
-//      ROUGIT désormais au lieu de passer en silence.
+// WHAT REPLACES IT, and why it is not a tweak:
+//   1. THE INSTRUMENT changes. CDP `Runtime.getHeapUsage` after
+//      `HeapProfiler.collectGarbage` on both sides → what is measured is what is
+//      RETAINED, not what was allocated. Measured: 1.54–1.57 MB for 10k features
+//      (5 fresh pages, 0.03 range), 0.09–0.15 MB at N = 0, 4.12 MB at
+//      N = 30,000. The quantity follows its dose; the missing condition, and
+//      without it every threshold is decorative.
+//      ⚠️ The forced GC is no refinement: without it, the raw measured delta was
+//      NEGATIVE (−3.8 MB at 10k), a GC landing between the two reads. Changing
+//      tools without changing protocol would not have sufficed.
+//   2. THE GESTURE changes. The add goes through `adapter.addGeoJSONLayer` — the
+//      GeoLeaf API — and no longer native `map.addSource`. The old one touched
+//      no GeoLeaf code: a regression there would have implicated MapLibre (the
+//      4th fact of the investigation, found again here). Measured gap between
+//      the two paths: +0.06 MB, the layer registry.
+//   3. THE BAND no longer reads the baseline. `perf-baseline.json` carries an
+//      ambient heap captured on 06-26 with the retired instrument: it cannot
+//      serve as a contract for the new one, and recapturing under software GL is
+//      forbidden. The band is absolute and lives in `helpers/perf-gate.js` with
+//      the table justifying it.
+//   4. A FLOOR appears, and it is the demanded assertion: a null delta now
+//      REDDENS instead of passing in silence.
 //
-// ⛔ CE QUE CE GATE NE VOIT TOUJOURS PAS — nommé, pas couvert :
-//   - Le heap du WORKER. `Runtime.getHeapUsage` ne voit que l'isolat de la page ; MapLibre
-//     tuile le GeoJSON dans un worker. Mesure à l'appui : sous `--enable-precise-memory-info`,
-//     `performance.memory` (à l'échelle du processus) rend ~2× le delta CDP — 2,99 contre
-//     1,49 Mo à 10k, 9,07 contre 4,03 à 30k. Une régression côté worker est invisible ici.
-//   - Les FUITES. Ce test n'enlève jamais la couche ; il mesure un coût, pas une rétention
-//     après teardown. Domicile prévu : 6.2.6 — qui est lui-même aveugle, voir sa note.
-//   - L'EMPREINTE DE BOOT de GeoLeaf. La lecture « avant » est remarquablement stable
-//     (15,65–15,79 Mo sur 10 pages fraîches, ±0,5 %) mais n'est PAS assertée : la garde ne
-//     lit que la différence. Un doublement du heap retenu au boot passerait.
-//   - Le coût mémoire NON-JS (buffers GPU, textures) — hors de portée de toute métrique de
-//     heap JS, sous n'importe quel instrument.
+// ⛔ WHAT THIS GATE STILL DOES NOT SEE — named, not covered:
+//   - The WORKER's heap. `Runtime.getHeapUsage` only sees the page's isolate;
+//     MapLibre tiles the GeoJSON in a worker. Supporting measurement: under
+//     `--enable-precise-memory-info`, `performance.memory` (process-scale)
+//     yields ~2× the CDP delta — 2.99 vs 1.49 MB at 10k, 9.07 vs 4.03 at 30k. A
+//     worker-side regression is invisible here.
+//   - LEAKS. This test never removes the layer; it measures a cost, not a
+//     retention after teardown. Intended home: 6.2.6 — itself blind, see its
+//     note.
+//   - GeoLeaf's BOOT FOOTPRINT. The "before" read is remarkably stable
+//     (15.65–15.79 MB over 10 fresh pages, ±0.5 %) but is NOT asserted: the
+//     guard reads only the difference. A doubling of the boot's retained heap
+//     would pass.
+//   - NON-JS memory cost (GPU buffers, textures) — beyond any JS heap metric,
+//     under any instrument.
 
 const HEAP_FEATURES = 10_000;
 
-/** Heap retenu (octets) : GC forcé (×2, V8 collecte en plusieurs passes) puis lecture. */
+/** Retained heap (bytes): forced GC (×2, V8 collects in several passes) then read. */
 async function retainedHeapBytes(client, page) {
     for (let i = 0; i < 2; i++) await client.send("HeapProfiler.collectGarbage");
     await page.waitForTimeout(200);
@@ -583,11 +608,12 @@ test.describe("6.2.4 — Heap memory", () => {
     test("measure JS heap after loading 10K features", async ({ page }) => {
         await waitForMap(page);
 
-        // CDP : disponible sans condition ici. ⚠️ Le motif a changé le 14/08/2026 — ce
-        // n'est plus « la config n'a qu'un projet » (elle en a deux depuis `chromium-touch`),
-        // c'est que **les deux projets sont Chromium**, seul canal de ce dépôt. Sur un projet
-        // non-Chromium ceci jetterait, et c'est le bon comportement : un gate mémoire qui se
-        // saute en silence est le défaut soldé ici.
+        // CDP: available unconditionally here. ⚠️ The motive changed on
+        // 2026-08-14 — it is no longer "the config has a single project" (it has
+        // two since `chromium-touch`), it is that **both projects are Chromium**,
+        // this repo's only channel. On a non-Chromium project this would throw,
+        // and that is the right behaviour: a memory gate that skips itself in
+        // silence is the defect settled here.
         const client = await page.context().newCDPSession(page);
 
         const beforeBytes = await retainedHeapBytes(client, page);
@@ -630,42 +656,43 @@ test.describe("6.2.4 — Heap memory", () => {
 
         const mb = (b) => Math.round((b / (1024 * 1024)) * 100) / 100;
         const deltaMb = mb(afterBytes - beforeBytes);
-        // Les deux instruments sont journalisés côte à côte À DESSEIN : la colonne
-        // `perf.memory` imprime le symptôme de B-218 (un delta nul) à chaque run, ce qui
-        // rend le fait re-lisible sans relire le registre.
+        // Both instruments are logged side by side ON PURPOSE: the `perf.memory`
+        // column prints the known symptom (a null delta) at every run, which
+        // keeps the fact re-readable without re-reading the register.
         console.log(
             `[perf] Heap (CDP, retenu): before=${mb(beforeBytes)}MB, after 10K=${mb(afterBytes)}MB, delta=${deltaMb}MB` +
                 (pmBefore !== null && pmAfter !== null
-                    ? ` | perf.memory delta=${mb(pmAfter - pmBefore)}MB (figé — cf. B-218)`
+                    ? ` | perf.memory delta=${mb(pmAfter - pmBefore)}MB (figé par Chrome)`
                     : " | perf.memory indisponible")
         );
 
-        // Enregistrement, PAS contrat : plus aucune garde ne lit ce bloc (la bande est dans
-        // perf-gate.js). Il documente l'environnement d'une capture pour un lecteur humain
-        // et ne peut pas fossiliser — chaque `npm run perf:capture` le réécrit. Le
-        // `after10kFeatures_mb: 29,6` encore commité décrit l'instrument RETIRÉ ; il n'est
-        // pas édité à la main ici, il sera remplacé par la prochaine capture.
+        // Recording, NOT a contract: no guard reads this block anymore (the band
+        // lives in perf-gate.js). It documents a capture's environment for a
+        // human reader and cannot fossilise — every `npm run perf:capture`
+        // rewrites it. The `after10kFeatures_mb: 29.6` still committed describes
+        // the RETIRED instrument; it is not hand-edited here, the next capture
+        // will replace it.
         const baseline = readBaseline();
         baseline.runtime.memory = {
             heapBefore_mb: mb(beforeBytes),
             heapAfter10k_mb: mb(afterBytes),
             heapDelta10k_mb: deltaMb,
-            _instrument: "CDP Runtime.getHeapUsage + HeapProfiler.collectGarbage (B-218)",
+            _instrument: "CDP Runtime.getHeapUsage + HeapProfiler.collectGarbage",
         };
         writeBaseline(baseline);
 
         const { floorMb, ceilMb } = heapDeltaBandMb(HEAP_FEATURES);
 
-        // PLANCHER — asserté SANS condition, y compris sous GL matériel : il ne parle pas
-        // de performance mais de l'instrument. « Le heap n'a pas bougé » ne doit plus
-        // jamais être un vert. C'est B-218 en une ligne.
+        // FLOOR — asserted UNCONDITIONALLY, including under hardware GL: it does
+        // not speak of performance but of the instrument. "The heap did not move"
+        // must never be a green again. The hollow instrument in one line.
         expect(
             deltaMb,
             `la mesure de heap ne voit pas les ${HEAP_FEATURES} features : delta=${deltaMb}MB < ${floorMb}MB. ` +
-                "Instrument creux (cf. B-218) ou ajout sans effet — ne PAS abaisser ce plancher pour faire verdir."
+                "Instrument creux ou ajout sans effet — ne PAS abaisser ce plancher pour faire verdir."
         ).toBeGreaterThanOrEqual(floorMb);
 
-        // PLAFOND — gate de régression, sous le régime du fichier (GL logiciel).
+        // CEILING — regression gate, under the file's regime (software GL).
         if (gating) {
             expect(
                 deltaMb,
@@ -690,50 +717,56 @@ test.describe("6.2.5 — Accessibility baseline", () => {
 
 // ─── 6.2.6 — Memory-leak detection (profiler, F-TOOL-4) ────────────────────
 //
-// 🛑 B-219 (10/08/2026) — CE BLOC ÉTAIT VERT PAR CONSTRUCTION, ET SA CAUSE ÉTAIT DANS
-// LE PRODUIT, PAS DANS LE TEST. Il assertait `status !== "critical"` sur le verdict de
-// `GeoLeaf.Utils.PerformanceProfiler.analyzeMemoryLeaks()` — une API PUBLIQUE — qui
-// consomme `getMemoryUsage()`, qui lit `performance.memory.usedJSHeapSize`. Chrome
-// QUANTIFIE cette valeur et la FIGE pour la durée de la page hors
-// `--enable-precise-memory-info` : les ~17 échantillons d'un run étaient donc
-// rigoureusement égaux, `growthRate` valait exactement 0, et `warning`/`critical`
-// étaient INATTEIGNABLES. Mesuré 8 runs sur 8, et 14 pages fraîches de sonde avec la
-// colonne « distincts » à 1 sans exception.
+// 🛑 2026-08-10 — THIS BLOCK WAS GREEN BY CONSTRUCTION, AND ITS CAUSE WAS IN
+// THE PRODUCT, NOT THE TEST. It asserted `status !== "critical"` on the verdict
+// of `GeoLeaf.Utils.PerformanceProfiler.analyzeMemoryLeaks()` — a PUBLIC API —
+// which consumes `getMemoryUsage()`, which reads
+// `performance.memory.usedJSHeapSize`. Chrome QUANTISES this value and FREEZES
+// it for the page's lifetime outside `--enable-precise-memory-info`: the ~17
+// samples of a run were thus rigorously equal, `growthRate` was exactly 0, and
+// `warning`/`critical` were UNREACHABLE. Measured 8 runs out of 8, and 14 fresh
+// probe pages with the "distinct" column at 1 without exception.
 //
-// 🔥 LE FAIT QUI A TRANCHÉ, et il ne se déduit pas du code : sur une page qui RETIENT
-// 9,0 à 9,2 Mo de fuite délibérée (les collections restent référencées), l'API rendait
+// 🔥 THE FACT THAT SETTLED IT, and it cannot be deduced from the code: on a page
+// RETAINING 9.0 to 9.2 MB of deliberate leak (the collections stay referenced),
+// the API returned
 //     {"status":"normal","growthRate":0,"memoryTrend":"decreasing",
 //      "recommendation":"No action needed"}
-// « No action needed » sur une fuite de 9 Mo, mesurée 4 fois. Le défaut n'était donc
-// pas d'abord de test : un intégrateur qui appelle cette API pour surveiller son
-// application reçoit « aucune fuite » quoi qu'il arrive.
+// "No action needed" on a 9 MB leak, measured 4 times. So the defect was not
+// first a test defect: an integrator calling this API to watch their
+// application receives "no leak" no matter what.
 //
-// CE QUI LE REMPLACE — deux gardes distinctes, sur deux objets distincts :
-//   1. L'HONNÊTETÉ DU PRODUIT. `analyzeMemoryLeaks()` rend désormais
-//      `unavailable`/`heap-readings-constant` quand tous ses échantillons sont égaux à
-//      l'octet — un fait arithmétique sur sa fenêtre, sans tolérance à régler. Ce test
-//      l'asserte, et c'est l'assertion qui rougit si le correctif est reverté.
-//   2. UNE VRAIE GARDE DE FUITE, par CDP. Le heap RETENU (`Runtime.getHeapUsage` après
-//      `HeapProfiler.collectGarbage` ×2) est lu avant, au PIC (dernière couche encore
-//      en place) et après retrait. C'est le trou que B-218 nommait explicitement :
-//      §6.2.4 mesure un COÛT et ne retire jamais la couche, donc personne ne mesurait
-//      la RÉTENTION. Table de calibration dans `helpers/perf-gate.js`.
-//   3. LE GESTE passe par `adapter.addGeoJSONLayer` / `adapter.removeLayer` — l'API
-//      GeoLeaf — et non plus par `map.addSource` natif. C'est le 4ᵉ fait de B-217,
-//      retrouvé sur le TROISIÈME test de ce fichier : l'ancien churn ne touchait aucun
-//      code GeoLeaf, donc une fuite du registre de couches y était invisible.
+// WHAT REPLACES IT — two distinct guards, on two distinct objects:
+//   1. THE PRODUCT'S HONESTY. `analyzeMemoryLeaks()` now returns
+//      `unavailable`/`heap-readings-constant` when all its samples are equal to
+//      the byte — an arithmetic fact on its window, with no tolerance to tune.
+//      This test asserts it, and that assertion is what reddens if the fix is
+//      reverted.
+//   2. A REAL LEAK GUARD, through CDP. The RETAINED heap
+//      (`Runtime.getHeapUsage` after `HeapProfiler.collectGarbage` ×2) is read
+//      before, at PEAK (last layer still in place) and after removal. The hole
+//      the investigation named explicitly: §6.2.4 measures a COST and never
+//      removes the layer, so nobody measured RETENTION. Calibration table in
+//      `helpers/perf-gate.js`.
+//   3. THE GESTURE goes through `adapter.addGeoJSONLayer` /
+//      `adapter.removeLayer` — the GeoLeaf API — and no longer native
+//      `map.addSource`. The 4th fact already cited, found again on this file's
+//      THIRD test: the old churn touched no GeoLeaf code, so a layer-registry
+//      leak was invisible to it.
 //
-// ⛔ CE QUE CE BLOC NE VOIT TOUJOURS PAS :
-//   - Le heap du WORKER (MapLibre tuile le GeoJSON hors de l'isolat de la page).
-//   - Une fuite de moins de ~4 Mo sur 14 cycles, soit environ 4 collections sur 14. Le
-//     plafond attrape un ordre de grandeur, pas une dérive lente — et il n'est PAS
-//     resserrable à volonté : la dispersion saine mesurée par ce spec lui-même va de
-//     −0,12 à +1,22 Mo sur 11 runs, quatre fois plus large que celle de la sonde.
-//   - Le fait que l'API produit reste, chez l'intégrateur, INCAPABLE DE MESURER : elle
-//     ne ment plus, elle dit « je ne sais pas ». C'est CDP, hors du produit, qui mesure
-//     ici — et CDP n'est pas disponible chez l'intégrateur.
+// ⛔ WHAT THIS BLOCK STILL DOES NOT SEE:
+//   - The WORKER's heap (MapLibre tiles the GeoJSON outside the page's isolate).
+//   - A leak under ~4 MB over 14 cycles, i.e. about 4 collections out of 14. The
+//     ceiling catches an order of magnitude, not a slow drift — and it is NOT
+//     tightenable at will: the healthy dispersion measured by this very spec
+//     runs from −0.12 to +1.22 MB over 11 runs, four times wider than the
+//     probe's.
+//   - The fact that the product API stays, at the integrator's, UNABLE TO
+//     MEASURE: it no longer lies, it says "I don't know". It is CDP, outside the
+//     product, that measures here — and CDP is not available at the
+//     integrator's.
 
-const CHURN_CYCLES = 14; // ≥10 échantillons pour analyzeMemoryLeaks ; dose de la bande
+const CHURN_CYCLES = 14; // ≥10 samples for analyzeMemoryLeaks; the band's dose
 
 test.describe("6.2.6 — Memory leak detection", () => {
     test.use({ baseURL: baseURL("core") });
@@ -742,15 +775,17 @@ test.describe("6.2.6 — Memory leak detection", () => {
         test.setTimeout(90_000);
         await waitForMap(page);
 
-        // CDP : disponible sans condition ici (un seul projet, `chromium`). Un gate de
-        // fuite qui se saute en silence est exactement le défaut soldé par B-218.
+        // CDP: available unconditionally here (a single project, `chromium`). A
+        // leak gate that skips itself in silence is exactly the defect the
+        // investigation settled.
         const client = await page.context().newCDPSession(page);
         const beforeBytes = await retainedHeapBytes(client, page);
 
-        // PHASE 1 — les cycles add→remove, puis un DERNIER ajout laissé EN PLACE : c'est
-        // lui que la lecture de PIC doit voir. Sans ce point de mesure, une rétention
-        // nulle serait indiscernable d'un churn qui n'a rien fait — la leçon de plancher
-        // de B-218, transposée à une grandeur qui, elle, doit valoir zéro quand tout va bien.
+        // PHASE 1 — the add→remove cycles, then one LAST add left IN PLACE: it is
+        // what the PEAK read must see. Without that measuring point, a null
+        // retention would be indistinguishable from a churn that did nothing —
+        // the anti-hollow floor's lesson, transposed to a quantity that must be
+        // zero when all is well.
         await page.evaluate(async (cycles) => {
             const adapter = window.GeoLeaf.Core.getMap();
             const bounds = adapter.getNativeMap().getBounds();
@@ -784,9 +819,10 @@ test.describe("6.2.6 — Memory leak detection", () => {
             });
             window.__leakProfiler.startMonitoring();
 
-            // Témoin DIRECT de l'entrée du profiler, relevé à la même source que lui :
-            // combien de valeurs DISTINCTES `performance.memory` rend-il sur la durée du
-            // churn ? C'est ce compteur qui autorise — ou non — à croire un verdict.
+            // DIRECT witness of the profiler's input, read at the same source as
+            // it: how many DISTINCT values does `performance.memory` yield over
+            // the churn's duration? That counter is what authorises — or not —
+            // believing a verdict.
             window.__leakSamples = [];
             for (let c = 0; c < cycles; c++) {
                 if (performance.memory)
@@ -803,7 +839,7 @@ test.describe("6.2.6 — Memory leak detection", () => {
 
         const peakBytes = await retainedHeapBytes(client, page);
 
-        // PHASE 2 — retrait de la couche tenue, puis verdict du produit.
+        // PHASE 2 — removal of the held layer, then the product's verdict.
         const analysis = await page.evaluate(async () => {
             const adapter = window.GeoLeaf.Core.getMap();
             adapter.removeLayer("_leak_peak");
@@ -829,26 +865,26 @@ test.describe("6.2.6 — Memory leak detection", () => {
                 `pic=${mb(peakBytes)}MB (+${peakMb}), après retrait=${mb(afterBytes)}MB (+${retainedMb})`
         );
 
-        // ── (1) L'HONNÊTETÉ DU VERDICT PRODUIT ────────────────────────────────────
-        // Vocabulaire fermé : un statut inconnu est une régression de contrat, pas un
-        // détail de rédaction.
+        // ── (1) THE PRODUCT VERDICT'S HONESTY ─────────────────────────────────────
+        // Closed vocabulary: an unknown status is a contract regression, not a
+        // wording detail.
         expect(
             ["insufficient_data", "unavailable", "normal", "warning", "critical"],
             `statut hors vocabulaire : ${JSON.stringify(analysis)}`
         ).toContain(analysis.status);
 
-        // La condition est MESURÉE dans ce run, pas supposée : si l'entrée du profiler
-        // n'a pas varié d'un octet, aucun verdict de croissance n'est calculable, et
-        // l'API doit le DIRE. Sur cet environnement `_distinct` vaut 1 (mesuré sur 14
-        // pages fraîches) ; si Chrome cesse un jour de figer `performance.memory`, la
-        // branche ne s'applique plus au lieu de rougir à tort — et le log ci-dessus le
-        // rend lisible.
+        // The condition is MEASURED in this run, not assumed: if the profiler's
+        // input did not vary by one byte, no growth verdict is computable, and
+        // the API must SAY so. On this environment `_distinct` is 1 (measured on
+        // 14 fresh pages); if Chrome one day stops freezing
+        // `performance.memory`, the branch stops applying instead of reddening
+        // wrongly — and the log above keeps it readable.
         if (analysis._samples > 0 && analysis._distinct <= 1) {
             expect(
                 analysis.status,
                 `l'entrée du profiler n'a rendu qu'UNE valeur sur ${analysis._samples} relevés : ` +
                     "aucun verdict de croissance n'est calculable dessus. Un « normal » ici est le " +
-                    "défaut B-219 — une fuite mesurée à 15,1 Mo par CDP recevait « No action needed »."
+                    "le défaut d'origine — une fuite mesurée à 15,1 Mo par CDP recevait « No action needed »."
             ).toBe("unavailable");
             expect(["heap-readings-constant", "heap-api-unavailable"]).toContain(analysis.reason);
             expect(
@@ -857,25 +893,26 @@ test.describe("6.2.6 — Memory leak detection", () => {
             ).toBeUndefined();
         }
 
-        // F-TOOL-4 gate, INCHANGÉ : un verdict « critical » fait échouer le run.
+        // F-TOOL-4 gate, UNCHANGED: a "critical" verdict fails the run.
         expect(analysis.status, `memory leak detected: ${JSON.stringify(analysis)}`).not.toBe(
             "critical"
         );
 
-        // ── (2) LA GARDE DE FUITE, par CDP ────────────────────────────────────────
+        // ── (2) THE LEAK GUARD, through CDP ───────────────────────────────────────
         const { peakFloorMb, retentionCeilMb } = heapRetentionBandMb(CHURN_CYCLES);
 
-        // PLANCHER anti-creux — asserté SANS condition, y compris sous GL matériel : il
-        // ne parle pas de performance mais de l'instrument et du geste. Si la couche
-        // tenue ne pèse rien, la rétention nulle mesurée juste après ne prouve rien.
+        // Anti-hollow FLOOR — asserted UNCONDITIONALLY, including under hardware
+        // GL: it does not speak of performance but of the instrument and the
+        // gesture. If the held layer weighs nothing, the null retention measured
+        // right after proves nothing.
         expect(
             peakMb,
             `le churn est invisible à l'instrument : pic=${peakMb}MB < ${peakFloorMb}MB. ` +
                 "Instrument creux ou ajout sans effet — ne PAS abaisser ce plancher pour faire verdir."
         ).toBeGreaterThanOrEqual(peakFloorMb);
 
-        // PLAFOND de rétention — la garde de fuite proprement dite, sous le régime du
-        // fichier (GL logiciel).
+        // Retention CEILING — the leak guard proper, under the file's regime
+        // (software GL).
         if (gating) {
             expect(
                 retainedMb,
@@ -956,6 +993,6 @@ test.describe("6.2.7 — Web Vitals", () => {
 //
 // The instrumented rebuild this block measured no longer exists: RM-P1b(c)
 // replaced the `map.setStyle()` teardown + `geoleaf:style:rebuild` re-injection
-// with `transformStyle` (option de `setStyle` depuis la v5), qui préserve les sources/couches GeoLeaf
+// with `transformStyle` (a `setStyle` option since v5), which preserves the GeoLeaf sources/layers
 // natively. There is no `geoleaf:basemap-rebuild` measure to record anymore, so
 // the F-RENDER-1 spike is moot and the block was removed.

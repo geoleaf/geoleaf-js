@@ -55,9 +55,9 @@ interface ProfileLike {
     /**
      * Resolved from `Files.layersFile` by loadProfileConfig — never inlined.
      *
-     * ⚠️ `inlineConfig` est porté par les instances de `layerTemplates`, qui n'ont PAS de
-     * `configFile`. Il manquait à ce type jusqu'à la tâche 8.9, ce qui rendait les 24 couches
-     * templatées de `tourism` invisibles à tout ce fichier — sans qu'aucune erreur ne sorte.
+     * ⚠️ `inlineConfig` is carried by `layerTemplates` instances, which have NO
+     * `configFile`. It was missing from this type, which made `tourism`'s 24 templated
+     * layers invisible to this whole file — with no error coming out.
      */
     layers?: Array<{
         id?: string;
@@ -73,27 +73,27 @@ interface ProfileLike {
 }
 
 /**
- * Le moteur doit-il énumérer des tuiles ? — le drapeau `enableTileCache`, ENFIN LU.
+ * Should the engine enumerate tiles? — the `enableTileCache` flag, FINALLY READ.
  *
- * 🛑 IL NE L'ÉTAIT PAS, ET C'EST LA MOITIÉ VIVANTE D'UNE ENTRÉE « MI-MORTE ». Mesuré à la
- * tâche 3.13 : `modules.offline.cache.enableTileCache` était **écrit** en quatre endroits du
- * core (`cache-manager.ts`, `downloader.ts` ×2, `lifecycle.ts`) et **lu nulle part** ; ses
- * deux seuls lecteurs vivaient dans `offline-ui`. Le moteur ne connaissait donc que
- * `selection.includeTiles`, une valeur que **l'interface** persiste — un hôte qui appelle
- * `CacheManager.cacheProfile()` sans interface n'avait aucun moyen d'exprimer le réglage.
+ * 🛑 IT WAS NOT, AND THIS IS THE LIVE HALF OF A "HALF-DEAD" ENTRY. Measured:
+ * `modules.offline.cache.enableTileCache` was **written** in four core locations
+ * (`cache-manager.ts`, `downloader.ts` ×2, `lifecycle.ts`) and **read nowhere**; its
+ * only two readers lived in `offline-ui`. The engine therefore only knew
+ * `selection.includeTiles`, a value the **UI** persists — a host calling
+ * `CacheManager.cacheProfile()` without a UI had no way to express the setting.
  *
- * ⚠️ ET LA CONSÉQUENCE ÉCRITE À L'INVENTAIRE ÉTAIT INVERSÉE. Elle annonçait « un hôte sans
- * l'UI télécharge les tuiles même avec le drapeau à `false` ». Mesuré en navigateur : sans
- * sélection persistée, `selection` vaut `null`, donc `includeTiles` est indéfini, donc
- * **aucune tuile n'était énumérée** — l'inverse exactement. Mode d'échec n° 2 de la règle de
- * pré-vol, porté sur l'effet.
+ * ⚠️ AND THE CONSEQUENCE WRITTEN IN THE INVENTORY WAS INVERTED. It announced "a host
+ * without the UI downloads tiles even with the flag at `false`". Measured in a
+ * browser: with no persisted selection, `selection` is `null`, so `includeTiles` is
+ * undefined, so **no tile was enumerated** — the exact opposite. Pre-flight failure
+ * mode no. 2, carried on the effect.
  *
- * Le drapeau est un **VETO**, pas un défaut : à `false` il l'emporte sur toute sélection,
- * fût-elle persistée avant que le profil ne change d'avis. À `true`, la sélection de
- * l'utilisateur décide ; en son absence, on suit la déclaration.
+ * The flag is a **VETO**, not a default: at `false` it wins over any selection, even
+ * one persisted before the profile changed its mind. At `true`, the user's selection
+ * decides; absent one, we follow the declaration.
  *
- * @param selection - Sélection persistée par l'interface, ou `null`.
- * @returns `true` si les tuiles entrent dans l'énumération.
+ * @param selection - Selection persisted by the UI, or `null`.
+ * @returns `true` when tiles enter the enumeration.
  */
 function _tilesRequested(selection: LayerSelection | null | undefined): boolean {
     const declared = coreConfigGet("modules.offline.cache.enableTileCache", true) as boolean;
@@ -151,7 +151,7 @@ const ResourceEnumerator = {
             `[ResourceEnumerator] includeTiles: ${(selection as LayerSelection)?.includeTiles}`
         );
 
-        return selection as LayerSelection | null;
+        return selection;
     },
 
     /**
@@ -256,11 +256,11 @@ const ResourceEnumerator = {
 
             Log.debug(`[ResourceEnumerator] Adding layer: ${layer.id}`);
 
-            // Part d'objet calculée UNE fois : les trois `resources.push` ci-dessous doivent
-            // omettre `layerId` quand la couche n'en porte pas — les ressources transitent par
-            // le manifeste persisté, où une clé présente valant `undefined` n'équivaut pas à
-            // son absence. Hissée hors des push pour ne pas ajouter trois branches à la
-            // complexité de cette méthode (plafond ESLint : 20).
+            // Object part computed ONCE: the three `resources.push` below must omit
+            // `layerId` when the layer carries none — resources travel through the
+            // persisted manifest, where a key present with value `undefined` is not
+            // equivalent to its absence. Hoisted out of the pushes to avoid adding
+            // three branches to this method's complexity (ESLint ceiling: 20).
             const layerIdPart = layer.id !== undefined ? { layerId: layer.id } : {};
 
             // If the layer has a configFile, load it to obtain the dataFile
@@ -273,27 +273,28 @@ const ResourceEnumerator = {
                     layerIdPart
                 );
             }
-            // 🛑 TÂCHE 8.9 / C.15 — LA BRANCHE QUI MANQUAIT, ET LA MOITIÉ AVAL DU DÉFAUT.
+            // 🛑 THE MISSING BRANCH, AND THE DOWNSTREAM HALF OF THE DEFECT.
             //
-            // Une instance de `layerTemplates` porte sa config EN LIGNE et n'a donc AUCUN
-            // `configFile`. Le `if` ci-dessus la sautait, le `else if (layer.url)` aussi —
-            // elle traversait l'énumérateur sans produire une seule ressource. Sur `tourism`,
-            // ça faisait **24 couches sur 42** qui ne cachaient rien, en silence.
+            // A `layerTemplates` instance carries its config INLINE and therefore has
+            // NO `configFile`. The `if` above skipped it, the `else if (layer.url)`
+            // too — it crossed the enumerator without producing a single resource. On
+            // `tourism`, that made **24 layers out of 42** cache nothing, silently.
             //
-            // ⚠️ Corriger `resolveProfileLayers` seul n'aurait PAS suffi : les couches
-            // seraient apparues dans le sélecteur, l'utilisateur les aurait cochées, et le
-            // téléchargement n'aurait rien rapatrié. Un défaut pire que l'absence, parce
-            // qu'il promet.
+            // ⚠️ Fixing `resolveProfileLayers` alone would NOT have sufficed: the
+            // layers would have appeared in the selector, the user would have checked
+            // them, and the download would have pulled nothing. A defect worse than
+            // absence, because it promises.
             //
-            // Rien à refetcher ici : la config est déjà dans `layers.json`, lui-même énuméré
-            // avec le profil. Le répertoire vaut `layers/<id>` — c'est la convention que
-            // `profile-loader.ts:38` applique pour ces mêmes couches, et la reprendre plutôt
-            // que d'en inventer une est ce qui empêche les deux chemins de diverger. La
-            // dérivation du fichier passe par `layerDataPath`, comme au-dessus.
+            // Nothing to refetch here: the config is already in `layers.json`, itself
+            // enumerated with the profile. The directory is `layers/<id>` — the
+            // convention `profile-loader.ts` applies to these same layers, and
+            // reusing it rather than inventing one is what keeps the two paths from
+            // diverging. The filename derivation goes through `layerDataPath`, as
+            // above.
             else if (layer.inlineConfig) {
-                // Extrait en méthode pour la même raison que `layerIdPart` juste au-dessus :
-                // en ligne, cette branche portait la complexité de `_addLayerResources` à 24
-                // pour un plafond ESLint de 20. Vu rouge, pas supposé.
+                // Extracted into a method for the same reason as `layerIdPart` just
+                // above: inline, this branch pushed `_addLayerResources`' complexity
+                // to 24 for an ESLint ceiling of 20. Seen red, not assumed.
                 this._addInlineConfigResource(resources, layer, profileId, basePath, layerIdPart);
             }
             // Add data file if direct URL
@@ -317,18 +318,18 @@ const ResourceEnumerator = {
     },
 
     /**
-     * Énumère la config d'une couche ET la donnée qu'elle déclare.
+     * Enumerates a layer's config AND the data it declares.
      *
-     * ⚠️ Extrait de `_addLayerResources` à la tâche 8.9, pour la MÊME raison que
-     * `layerIdPart` et que `_addInlineConfigResource` : ajouter la branche des couches
-     * templatées portait la complexité de l'appelant à 24 pour un plafond ESLint de 20.
-     * Vu rouge deux fois — à 24, puis à 21 après la première extraction.
+     * ⚠️ Extracted from `_addLayerResources` for the SAME reason as `layerIdPart` and
+     * `_addInlineConfigResource`: adding the templated-layers branch pushed the
+     * caller's complexity to 24 for an ESLint ceiling of 20. Seen red twice — at 24,
+     * then at 21 after the first extraction.
      *
-     * @param resources - Liste en construction, mutée.
-     * @param layer - Descripteur de couche portant `configFile`.
-     * @param profileId - Identifiant du profil actif.
-     * @param basePath - Base d'URL des profils, convention de l'appelant.
-     * @param layerIdPart - Part d'objet `{layerId}` ou vide.
+     * @param resources - List under construction, mutated.
+     * @param layer - Layer descriptor carrying `configFile`.
+     * @param profileId - Identifier of the active profile.
+     * @param basePath - Profiles URL base, the caller's convention.
+     * @param layerIdPart - `{layerId}` object part, or empty.
      * @private
      */
     async _addConfigFileResources(
@@ -350,23 +351,23 @@ const ResourceEnumerator = {
             ...layerIdPart,
         });
 
-        // 🛑 TÂCHE 4.2 — CE BLOC LISAIT UNE CLÉ QUI N'EXISTE DANS AUCUN FICHIER.
+        // 🛑 THIS BLOCK READ A KEY THAT EXISTS IN NO FILE.
         //
-        // Il typait la réponse `{ dataFile?, type? }` et testait `layerConfig.dataFile`.
-        // Or `dataFile` est la forme NORMALISÉE, produite par `profile-loader.ts` en
-        // hydratant un profil — et ce chemin-ci ne passe jamais par lui :
-        // `CacheStorage.loadProfileConfig` va chercher `profile.json` BRUT, puis on
-        // refetch ici chaque config de couche BRUTE. Mesuré sur le dépôt : **46 des 48
-        // configs de couche portent `data.file`, et 0 porte `dataFile`**.
+        // It typed the response `{ dataFile?, type? }` and tested
+        // `layerConfig.dataFile`. But `dataFile` is the NORMALISED form, produced by
+        // `profile-loader.ts` when hydrating a profile — and this path never goes
+        // through it: `CacheStorage.loadProfileConfig` fetches the RAW `profile.json`,
+        // then each layer config is refetched RAW here. Measured on the repo: **46 of
+        // the 48 layer configs carry `data.file`, and 0 carry `dataFile`**.
         //
-        // Conséquence : la condition était fausse pour toutes les couches, la donnée
-        // n'était jamais énumérée, donc jamais mise en cache. Une couche « téléchargée
-        // pour le hors-ligne » revenait vide — et rien ne le disait, parce qu'une
-        // ressource non énumérée n'est pas une ressource en échec.
+        // Consequence: the condition was false for every layer, the data was never
+        // enumerated, hence never cached. A layer "downloaded for offline" came back
+        // empty — and nothing said so, because a resource not enumerated is not a
+        // resource in failure.
         //
-        // ⚠️ La dérivation vit dans `layerDataPath`, pas ici : `profile-loader.ts` en a
-        // besoin AUSSI, et la refaire sur place aurait donné deux endroits libres de
-        // diverger — le défaut même que cette roadmap retire ailleurs.
+        // ⚠️ The derivation lives in `layerDataPath`, not here: `profile-loader.ts`
+        // needs it TOO, and redoing it in place would have given two places free to
+        // diverge — the very defect removed elsewhere.
         try {
             const response = await fetchBounded(configUrl);
             if (response.ok) {
@@ -393,9 +394,24 @@ const ResourceEnumerator = {
                         `[ResourceEnumerator] Layer ${layer.id}: added data file ${dataPath}`
                     );
                 } else if (!dataPath) {
-                    // Légitime pour une couche tuilée ou à `url` directe — mais silencieux
-                    // jusqu'ici, ce qui rendait le bug ci-dessus indiscernable du cas normal.
+                    // Legitimate for a tiled or direct-`url` layer — but silent until
+                    // now, which made the bug above indistinguishable from the normal
+                    // case.
                     Log.debug(`[ResourceEnumerator] Layer ${layer.id}: no data file declared`);
+                }
+
+                if (layer.configFile) {
+                    const layerDir = layer.configFile.substring(
+                        0,
+                        layer.configFile.lastIndexOf("/")
+                    );
+                    this._addStyleResources(
+                        resources,
+                        (layerConfig as { styles?: unknown }).styles,
+                        `${basePath}/${profileId}/${layerDir}`,
+                        layer.id,
+                        layerIdPart
+                    );
                 }
             }
         } catch (error) {
@@ -406,25 +422,80 @@ const ResourceEnumerator = {
     },
 
     /**
-     * Énumère la donnée d'une couche dont la config est posée EN LIGNE dans `layers.json`
-     * — une instance de `layerTemplates`.
+     * Pushes a layer's style files into the offline resources.
      *
-     * 🛑 Tâche 8.9 / C.15. Ces couches n'ont AUCUN `configFile`, donc elles traversaient
-     * `_addLayerResources` sans produire une seule ressource : sur `tourism`, 24 couches
-     * sur 42 étaient cochables dans le sélecteur hors-ligne et ne rapatriaient rien, en
-     * silence — une couche non énumérée n'est pas une couche en échec.
+     * 🛑 **Called from BOTH branches, and that is the point.** `configFile` layers and
+     * `layerTemplates` instances are enumerated through two distinct paths; adding
+     * styles to only one of them leaves the other family without offline styles —
+     * exactly the defect recorded above in this file for the data, reproduced
+     * identically.
      *
-     * Aucun fetch : la config est déjà dans `layers.json`, lui-même énuméré avec le profil.
-     * Le répertoire vaut `layers/<id>`, la convention que `profile-loader.ts:38` applique à
-     * ces mêmes couches — la reprendre plutôt qu'en inventer une est ce qui empêche le
-     * chemin hors-ligne et le chemin de boot de diverger. La dérivation du nom de fichier
-     * passe par `layerDataPath`, comme la branche `configFile`.
+     * ⚠️ The path prefix is passed by the caller, never recomputed here. The repo's
+     * three default `profilesBasePath` values diverge deliberately (`"profiles"` in
+     * the style loader, `"profiles"` in the legend, `"../profiles"` here): a
+     * well-meaning "harmonisation" would cache the resource under a key nobody looks
+     * up.
      *
-     * @param resources - Liste en construction, mutée.
-     * @param layer - Descripteur de couche portant `inlineConfig`.
-     * @param profileId - Identifiant du profil actif.
-     * @param basePath - Base d'URL des profils, convention de l'appelant.
-     * @param layerIdPart - Part d'objet `{layerId}` ou vide — voir son calcul dans l'appelant.
+     * @param resources - The resource accumulator.
+     * @param styles - The layer config's `styles` block, whatever its origin.
+     * @param layerDirUrl - URL prefix of the layer directory, no trailing slash.
+     * @param layerId - Layer identifier, for logging.
+     * @param layerIdPart - The `{layerId}` fragment all resources carry.
+     */
+    _addStyleResources(
+        resources: CacheResource[],
+        styles: unknown,
+        layerDirUrl: string,
+        layerId: string | undefined,
+        layerIdPart: { layerId?: string }
+    ): void {
+        if (!styles || typeof styles !== "object") return;
+        const block = styles as {
+            directory?: string;
+            default?: string;
+            available?: { file?: string }[];
+        };
+        const dir = typeof block.directory === "string" ? block.directory : "styles";
+        const files = new Set<string>();
+        for (const entry of Array.isArray(block.available) ? block.available : []) {
+            if (entry && typeof entry.file === "string") files.add(entry.file);
+        }
+        if (typeof block.default === "string") files.add(block.default);
+        if (files.size === 0) return;
+
+        for (const file of [...files].sort()) {
+            resources.push({
+                url: `${layerDirUrl}/${dir}/${file}`,
+                type: "config",
+                priority: 3,
+                ...layerIdPart,
+            });
+        }
+        Log.debug(
+            `[ResourceEnumerator] Layer ${layerId}: added ${files.size} style file(s) from ${dir}/`
+        );
+    },
+
+    /**
+     * Enumerates the data of a layer whose config sits INLINE in `layers.json` — a
+     * `layerTemplates` instance.
+     *
+     * 🛑 These layers have NO `configFile`, so they crossed `_addLayerResources`
+     * without producing a single resource: on `tourism`, 24 layers out of 42 were
+     * checkable in the offline selector and pulled nothing, silently — a layer not
+     * enumerated is not a layer in failure.
+     *
+     * No fetch: the config is already in `layers.json`, itself enumerated with the
+     * profile. The directory is `layers/<id>`, the convention `profile-loader.ts`
+     * applies to these same layers — reusing it rather than inventing one is what
+     * keeps the offline path and the boot path from diverging. The filename
+     * derivation goes through `layerDataPath`, like the `configFile` branch.
+     *
+     * @param resources - List under construction, mutated.
+     * @param layer - Layer descriptor carrying `inlineConfig`.
+     * @param profileId - Identifier of the active profile.
+     * @param basePath - Profiles URL base, the caller's convention.
+     * @param layerIdPart - `{layerId}` object part or empty — see its computation in the caller.
      * @private
      */
     _addInlineConfigResource(
@@ -450,6 +521,13 @@ const ResourceEnumerator = {
         Log.debug(
             `[ResourceEnumerator] Layer ${layer.id}: inline config, added data file ${dataPath}`
         );
+        this._addStyleResources(
+            resources,
+            layer.inlineConfig?.["styles"],
+            `${basePath}/${profileId}/layers/${layer.id}`,
+            layer.id,
+            layerIdPart
+        );
     },
 
     /**
@@ -469,11 +547,11 @@ const ResourceEnumerator = {
         for (const basemap of offlineBasemaps) {
             // Filter by selection.
             //
-            // ⚠️ `selection?.` ET NON `selection.` — depuis 3.13, `_tilesRequested()` peut
-            // rendre `true` SANS sélection (l'hôte sans interface, qui n'en persiste
-            // aucune). L'ancienne garde `if (!selection?.includeTiles) return;` garantissait
-            // implicitement que `selection` était non nul ici ; ce n'est plus vrai, et un
-            // test l'a fait tomber (`Cannot read properties of null`).
+            // ⚠️ `selection?.` AND NOT `selection.` — `_tilesRequested()` can return
+            // `true` WITHOUT a selection (the UI-less host, which persists none). The
+            // old guard `if (!selection?.includeTiles) return;` implicitly guaranteed
+            // `selection` was non-null here; that is no longer true, and a test
+            // brought it down (`Cannot read properties of null`).
             if (
                 selection?.basemaps &&
                 basemap.id != null &&

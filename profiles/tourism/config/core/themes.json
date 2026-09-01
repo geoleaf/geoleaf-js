@@ -50,6 +50,11 @@
                     "id": "reseau_ferroviaire",
                     "visible": true,
                     "style": "defaut"
+                },
+                {
+                    "id": "routing-route",
+                    "visible": true,
+                    "style": "defaut"
                 }
             ]
         },
@@ -99,6 +104,11 @@
                     "id": "observations_gbif",
                     "visible": true,
                     "style": "defaut"
+                },
+                {
+                    "id": "routing-route",
+                    "visible": true,
+                    "style": "defaut"
                 }
             ]
         },
@@ -123,6 +133,11 @@
                     "id": "provinces",
                     "visible": true,
                     "style": "defaut"
+                },
+                {
+                    "id": "routing-route",
+                    "visible": true,
+                    "style": "defaut"
                 }
             ]
         },
@@ -140,6 +155,11 @@
                 },
                 {
                     "id": "hebergements",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "routing-route",
                     "visible": true,
                     "style": "defaut"
                 }
@@ -166,6 +186,11 @@
                     "id": "villes_principales",
                     "visible": true,
                     "style": "defaut"
+                },
+                {
+                    "id": "routing-route",
+                    "visible": true,
+                    "style": "defaut"
                 }
             ]
         },
@@ -188,6 +213,11 @@
                 },
                 {
                     "id": "villes_principales",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "routing-route",
                     "visible": true,
                     "style": "defaut"
                 }
@@ -214,6 +244,11 @@
                     "id": "villes_principales",
                     "visible": true,
                     "style": "defaut"
+                },
+                {
+                    "id": "routing-route",
+                    "visible": true,
+                    "style": "defaut"
                 }
             ]
         },
@@ -236,6 +271,11 @@
                 },
                 {
                     "id": "villes_principales",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "routing-route",
                     "visible": true,
                     "style": "defaut"
                 }
@@ -262,6 +302,11 @@
                     "id": "villes_principales",
                     "visible": true,
                     "style": "defaut"
+                },
+                {
+                    "id": "routing-route",
+                    "visible": true,
+                    "style": "defaut"
                 }
             ]
         },
@@ -284,6 +329,11 @@
                 },
                 {
                     "id": "villes_principales",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "routing-route",
                     "visible": true,
                     "style": "defaut"
                 }
@@ -310,6 +360,11 @@
                     "id": "villes_principales",
                     "visible": true,
                     "style": "defaut"
+                },
+                {
+                    "id": "routing-route",
+                    "visible": true,
+                    "style": "defaut"
                 }
             ]
         },
@@ -332,6 +387,11 @@
                 },
                 {
                     "id": "villes_principales",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "routing-route",
                     "visible": true,
                     "style": "defaut"
                 }
@@ -358,6 +418,11 @@
                     "id": "villes_principales",
                     "visible": true,
                     "style": "defaut"
+                },
+                {
+                    "id": "routing-route",
+                    "visible": true,
+                    "style": "defaut"
                 }
             ]
         },
@@ -380,6 +445,11 @@
                 },
                 {
                     "id": "villes_principales",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "routing-route",
                     "visible": true,
                     "style": "defaut"
                 }
@@ -406,6 +476,11 @@
                     "id": "villes_principales",
                     "visible": true,
                     "style": "defaut"
+                },
+                {
+                    "id": "routing-route",
+                    "visible": true,
+                    "style": "defaut"
                 }
             ]
         },
@@ -428,6 +503,11 @@
                 },
                 {
                     "id": "villes_principales",
+                    "visible": true,
+                    "style": "defaut"
+                },
+                {
+                    "id": "routing-route",
                     "visible": true,
                     "style": "defaut"
                 }

@@ -30,8 +30,8 @@ export interface ClusterConfig {
     /**
      * Global cluster default for GeoJSON point layers (was `poiConfig.clustering`).
      * @default false — a per-layer `clustering:{enabled:true}` override still clusters
-     * regardless (roadmap nettoyage Sprint 3, PA-3 — this doc previously said `true`,
-     * which never matched the runtime default).
+     * regardless (this doc previously said `true`, which never matched the runtime
+     * default).
      */
     clustering?: boolean;
     /**

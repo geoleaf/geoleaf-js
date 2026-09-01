@@ -14,7 +14,7 @@ node scripts/create-plugin.cjs <name> [--ui] [--i18n] [--map]
 - `<name>` — kebab-case plugin id (e.g. `heatmap`). Produces `packages/plugins/<name>/`.
   Every plugin is MIT and published to npmjs with public access — nothing to pick.
   ⚠️ This line read `packages/plugin-<name>/` until 31/07/2026 — the pre-ARCHI-S10 layout.
-  `create-plugin.cjs` has emitted under `packages/plugins/<name>/` since S10.1, and says so in
+  `create-plugin.cjs` has emitted under `packages/plugins/<name>/` for a long time, and says so in
   a comment right above the code that does it. A scaffold README is the one document where a
   stale path is re-seeded into every package created after it.
 - `--ui` — keep the toolbar slot, event listener, CSS and `config.ts` reader.

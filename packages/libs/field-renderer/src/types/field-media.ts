@@ -68,32 +68,32 @@ export function _openLightbox(src: string): void {
 }
 
 /**
- * Comment une image est réellement téléversée.
+ * How an image is really uploaded.
  *
- * @param file     - Fichier, déjà validé et compressé par l'appelant.
- * @param endpoint - Point d'entrée POST configuré sur le champ.
- * @returns l'URL sous laquelle l'image est désormais lisible.
+ * @param file     - File, already validated and compressed by the caller.
+ * @param endpoint - POST endpoint configured on the field.
+ * @returns the URL under which the image is now readable.
  */
 export type ImageUploadStrategy = (file: File, endpoint: string) => Promise<string>;
 
 let _strategy: ImageUploadStrategy | null = null;
 
 /**
- * Remplace la façon dont les composants `image` et `gallery` téléversent (tâche 5.1-d).
+ * Replaces how the `image` and `gallery` components upload.
  *
- * 🛑 **CE POINT D'INJECTION REMPLACE UNE DUPLICATION DE 229 LIGNES.** `addpoi` obtenait le même
- * résultat en enregistrant un composant de substitution (`"addpoi-image"`) et en remappant le
- * type `image` dessus : **229 lignes pour changer 4 appels**, dont ~225 re-implémentaient
- * l'aperçu, la visionneuse, la zone de dépôt et le bouton de retrait que le composant de base
- * (239 lignes) porte déjà. Un hôte qui a besoin d'un autre transport n'a pas besoin d'un autre
- * composant.
+ * 🛑 **THIS INJECTION POINT REPLACES A 229-LINE DUPLICATION.** `addpoi` got
+ * the same result by registering a substitute component (`"addpoi-image"`)
+ * and remapping the `image` type onto it: **229 lines to change 4 calls**, of
+ * which ~225 reimplemented the preview, the viewer, the drop zone and the
+ * remove button the base component (239 lines) already carries. A host
+ * needing another transport does not need another component.
  *
- * ⚠️ **Un seul stratège à la fois, et c'est délibéré.** Deux hôtes qui en poseraient un chacun
- * se donneraient un résultat dépendant de l'ordre de chargement — la classe de défaut que la
- * tâche 5.1-b vient de traiter sur le seam `Sync`. Le dernier appel gagne, et il gagne
- * **explicitement** : c'est à l'hôte de savoir s'il est seul.
+ * ⚠️ **One strategist at a time, and that is deliberate.** Two hosts each
+ * setting one would give themselves a result depending on load order — the
+ * defect class just handled on the `Sync` seam. The last call wins, and it
+ * wins **explicitly**: it is the host's job to know whether it is alone.
  *
- * @param fn - La stratégie, ou `null` pour revenir au `fetch` multipart par défaut.
+ * @param fn - The strategy, or `null` to return to the default multipart `fetch`.
  *
  * @example
  * ```ts
@@ -110,11 +110,11 @@ export function setImageUploadStrategy(fn: ImageUploadStrategy | null): void {
 /**
  * POSTs the file as multipart/form-data and returns the stored URL.
  *
- * Délègue à la stratégie posée par l'hôte quand il y en a une ; sinon, `fetch` multipart.
+ * Delegates to the host-set strategy when there is one; otherwise, multipart `fetch`.
  *
  * @param file     - File to upload.
  * @param endpoint - POST endpoint; response must be JSON `{ url: string }`.
- * @returns l'URL stockée ; la promesse **rejette** quand le transport échoue.
+ * @returns the stored URL; the promise **rejects** when the transport fails.
  */
 export async function _uploadFile(file: File, endpoint: string): Promise<string> {
     if (_strategy) return _strategy(file, endpoint);

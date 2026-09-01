@@ -9,7 +9,7 @@
  * share one typed view of the layer entries they read, the label style/config
  * objects, the MapLibre native map handle they call and the per-layer label
  * state — without re-declaring `any` locally
- * (roadmap_typage-strict.md, S5 — mirrors `poi/core-types.ts` and `search-types.ts`).
+ * (mirrors `poi/core-types.ts` and `search-types.ts`).
  *
  * Layer/style/map shapes are intentionally permissive (`[key: string]: unknown`)
  * because they arrive from arbitrary user profiles and from runtime adapters;
@@ -379,7 +379,7 @@ export interface LabelButtonSyncState {
  * despite what `docs/labels/LABEL_BUTTON_MANAGER.md` documents: the surface is
  * {@link LabelButtonManagerApi.syncImmediate} plus the private `_doSync`, and every real
  * caller uses the former. The phantom went unnoticed because the global declares
- * `_LabelButtonManager?: unknown`, so no call through it is type-checked (B-13).
+ * `_LabelButtonManager?: unknown`, so no call through it was type-checked — typed since.
  */
 export interface LabelButtonManagerApi {
     /**
@@ -394,7 +394,7 @@ export interface LabelButtonManagerApi {
      * @example
      * ```js
      * // Called by Layer Manager during first render
-     * const button = GeoLeaf._LabelButtonManager.createButton("poi-restaurants", controlsContainer);
+     * const button = GeoLeaf._LabelButtonManager?.createButton("poi-restaurants", controlsContainer);
      * ```
      */
     createButton(layerId: string, controlsContainer: HTMLElement): HTMLElement | null;
@@ -413,7 +413,7 @@ export interface LabelButtonManagerApi {
      * @example
      * ```js
      * // Called after layer visibility toggle (urgent)
-     * GeoLeaf._LabelButtonManager.syncImmediate("poi-restaurants");
+     * GeoLeaf._LabelButtonManager?.syncImmediate("poi-restaurants");
      * ```
      */
     syncImmediate(layerId: string): void;

@@ -1,9 +1,10 @@
 // @ts-check
-// Sprint 8 B.2 — E2E: 07-boot-sequence — boot lifecycle, perf marks, deferred modules, coverage
+// E2E: 07-boot-sequence — boot lifecycle, perf marks, deferred modules, coverage
 
 import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
 import { collectCoverage } from "./helpers/coverage.js";
+import { captureConsole } from "./helpers/boot.js";
 
 test.use({ baseURL: baseURL("coverage") });
 
@@ -158,6 +159,39 @@ test.describe("07-boot-sequence", () => {
 
         const hasCoverage = await page.evaluate(() => !!window.__coverage__);
         expect(hasCoverage).toBe(true);
+    });
+
+    // Regression net — the boot console must not carry a readiness warning per themed layer.
+    //
+    // Until 26/08/2026 it carried one PER LAYER of the default theme (nine on the tourism
+    // profile). Cause: `LegendContract.isAvailable()` only tested that the facade CARRIED
+    // `loadLayerLegend`, which is true from `registerGlobals` on — so the theme engine's
+    // per-layer calls were waved through before `Legend.init`, which mounts on
+    // `geoleaf:app:ready`, an event CAUSED by the end of that same theme apply. Nothing was
+    // lost (LegendLifecycle reloads every configured layer right after init) but nothing
+    // stopped it either, and no gate could see it: `ci:local` reads no browser console.
+    //
+    // Same shape as the assertion locking the sibling defect on GeoJSON, in
+    // `15-file-import.spec.js`.
+    test("boot console carries no '[Legend] Module not initialized'", async ({ page }) => {
+        const { all } = captureConsole(page);
+        // No `__GEOLEAF_PERF__` opt-in here, unlike its neighbours: the
+        // `geoleaf:initApp:ready` mark waited on below is UNCONDITIONAL
+        // (`app/boot-core.ts` says so, and says it must stay that way). Only the
+        // granular `geoleaf:boot:*` marks sit behind the flag. Setting it here bought
+        // nothing and cost one `tsc --checkJs` error against the TOOLING-TS ratchet.
+        await page.goto("/");
+        await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
+        // The warnings fired DURING the theme apply, so waiting for app:ready is what makes
+        // this assertion meaningful: before it, an empty console proves nothing.
+        await page.waitForFunction(
+            () => performance.getEntriesByName("geoleaf:initApp:ready").length > 0,
+            null,
+            { timeout: 30000 }
+        );
+
+        const offenders = all.filter((line) => /\[Legend\] Module not initialized/.test(line));
+        expect(offenders, offenders.join("\n")).toEqual([]);
     });
 });
 

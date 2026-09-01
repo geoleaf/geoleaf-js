@@ -1,91 +1,94 @@
 #!/usr/bin/env node
 /*!
- * GeoLeaf — Filet anti-code-mort du core (roadmap nettoyage, Sprint 2 / B3)
+ * GeoLeaf — The core's anti-dead-code net
  * © 2026 Mattieu Pottier — MIT
  *
- * ⚠️ ATTENTION — la justification historique de ce script est PÉRIMÉE.
+ * ⚠️ WARNING — this script's historical justification is STALE.
  *
- * Il a été écrit parce que « knip est aveugle sur packages/core/src » : 0 issue
- * rapportée sur ~470 fichiers, y compris avec un `entry` déclaré (spike Sprint 2.1).
- * Le constat était juste, le diagnostic faux. La cause n'était pas l'architecture à
- * registre : c'était `"./dist/*": "./dist/*"` dans le `exports` de
- * `packages/core/package.json`, qui promouvait TOUT `src/**` au rang de point
- * d'entrée — et un point d'entrée n'est jamais « unused ». Sous-chemin retiré à
- * l'API S2.4 ; knip a alors signalé 159 symboles sur le core.
+ * It was written because "knip is blind on packages/core/src": 0 issues
+ * reported over ~470 files, including with a declared `entry` (measured).
+ * The observation was right, the diagnosis wrong. The cause was not the
+ * registry architecture: it was `"./dist/*": "./dist/*"` in
+ * `packages/core/package.json`'s `exports`, which promoted ALL of `src/**`
+ * to entry-point rank — and an entry point is never "unused". Subpath
+ * removed at the API review; knip then flagged 159 symbols on the core.
  *
- * ⚠️ MISE À JOUR 26/07/2026 — ce script n'est plus complémentaire de knip sur cet
- * angle, il en est le SEUL titulaire. Les 159 symboles ci-dessus ont été triés un par
- * un (API S2.4c) : 116 faux positifs de baril, 39 usages intra-fichier, 3 tests seuls,
- * 1 déjà exempté, **0 actionnable**. `knip.js` porte donc désormais
- * `ignoreIssues: { "packages/core/src/**": ["exports", "types"] }` — motif écrit sur
- * place. Conséquence directe pour ici : la mesure du 25/07 (« 23 des 74 candidats de
- * la baseline sont vus par knip, les 51 autres sont l'apport propre de cette
- * méthode ») devient **74 sur 74**. Le recouvrement est nul, et ce fichier n'a plus de
- * filet sous lui.
+ * ⚠️ UPDATE 26/07/2026 — this script is no longer complementary to knip on
+ * this angle, it is its SOLE holder. The 159 symbols above were triaged one
+ * by one: 116 barrel false positives, 39 intra-file usages, 3 test-only,
+ * 1 already exempted, **0 actionable**. `knip.js` therefore now carries
+ * `ignoreIssues: { "packages/core/src/**": ["exports", "types"] }` — motive
+ * written in place. Direct consequence for here: the 25/07 measure ("23 of
+ * the baseline's 74 candidates are seen by knip, the other 51 are this
+ * method's own contribution") becomes **74 out of 74**. The overlap is nil,
+ * and this file no longer has a net under it.
  *
- * ⚠️ Corollaire à ne pas perdre : supprimer ou affaiblir ce script ne dégrade plus la
- * couverture, il la SUPPRIME sur les exports du core. Avant l'API S2.4 on pouvait
- * croire knip redondant ici ; ce n'est plus vrai dans aucun sens.
+ * ⚠️ Corollary not to lose: deleting or weakening this script no longer
+ * degrades the coverage, it DELETES it on the core's exports. Before that
+ * removal one could believe knip redundant here; that is no longer true in
+ * any direction.
  *
- * La raison de fond n'a pas changé, et c'est elle qui a survécu au resserrage : les
- * deux gates ne cherchent pas la même chose. knip raisonne sur le graphe de modules ;
- * ici on cherche par token dans tout le dépôt, y compris les VALEURS littérales des
- * `const` de type chaîne — clés de registre, noms d'événements — qu'aucun graphe
- * d'imports ne peut relier à leur consommateur. C'est cette méthode-là qui apportait
- * déjà les 51 candidats invisibles à knip, et c'est pourquoi retirer la catégorie
- * exports de knip sur le core ne perd rien de vérifié.
+ * The underlying reason has not changed, and it is what survived the
+ * tightening: the two gates do not look for the same thing. knip reasons on
+ * the module graph; here we search by token across the whole repo,
+ * including the literal VALUES of string-typed `const`s — registry keys,
+ * event names — that no import graph can link to their consumer. That
+ * method is what already contributed the 51 candidates invisible to knip,
+ * and why removing knip's exports category on the core loses nothing verified.
  *
- * Pour chaque export nommé de packages/core/src, il cherche un consommateur réel
- * DANS TOUT LE MONOREPO (tous les packages + examples/), pas seulement dans core :
- * un export core légitimement consommé par un plugin (ex. `storage-contract.ts`,
- * consommé par plugin-storage/plugin-addpoi) ne doit jamais devenir un faux
- * positif — c'est précisément l'erreur d'un grep scopé à core seul.
+ * For each named export of packages/core/src, it looks for a real consumer
+ * ACROSS THE WHOLE MONOREPO (all packages + examples/), not only core: a
+ * core export legitimately consumed by a plugin (e.g. `storage-contract.ts`,
+ * consumed by plugin-storage/plugin-addpoi) must never become a false
+ * positive — precisely the error of a grep scoped to core alone.
  *
- * Un export sans consommateur (nom identifiant, ou valeur littérale pour les
- * `const` de type chaîne — clés de registre, noms d'événements) hors de son
- * propre fichier et hors de tout dossier __tests__ est un candidat mort.
+ * An export without a consumer (identifier name, or literal value for
+ * string-typed `const`s — registry keys, event names) outside its own file
+ * and outside any __tests__ folder is a dead candidate.
  *
- * Limite assumée : recherche par token/chaîne, pas par résolution de binding
- * TypeScript complète — un nom générique (`config`, `init`…) redéclaré ailleurs
- * peut produire un faux "vivant" (faux négatif). C'est un choix délibéré : pour
- * un gate qui bloque la CI, un faux négatif (on rate un mort) est sans danger,
- * un faux positif (on flague un export vivant) casse la prod à la purge.
+ * Owned limit: token/string search, not full TypeScript binding resolution
+ * — a generic name (`config`, `init`…) redeclared elsewhere can produce a
+ * false "alive" (false negative). A deliberate choice: for a CI-blocking
+ * gate, a false negative (a dead one missed) is harmless, a false positive
+ * (a live export flagged) breaks production at the purge.
  *
- * Baseline (roadmap nettoyage, Sprint 2 / B3 — décision Mattieu 15/07) : le premier
- * passage a trouvé 224 candidats déjà présents, une dette jamais vue par knip. Bloquer
- * dessus dès l'introduction du gate aurait figé tout commit — l'anti-pattern « gate
- * rouge en permanence », déjà évité pour le gate audit-dev.
- * `check-orphan-exports.baseline.json` fige donc l'état connu : le gate ne bloque QUE
- * sur un export mort NOUVEAU. Régénérer avec `--update-baseline` une fois un lot purgé.
+ * Baseline (decision, 15/07): the first pass found 224 candidates already
+ * present, a debt never seen by knip. Blocking on it at the gate's
+ * introduction would have frozen every commit — the "permanently red gate"
+ * anti-pattern, already avoided for the audit-dev gate.
+ * `check-orphan-exports.baseline.json` thus freezes the known state: the
+ * gate only blocks on a NEW dead export. Regenerate with `--update-baseline`
+ * once a batch is purged.
  *
- * Après le tri du Sprint 4, ce qui reste en baseline n'est plus de la « dette à
- * trier » mais les angles morts STRUCTURELS de la méthode — et chaque entrée porte
- * désormais sa classe dans `CLASSES`, asservie par CLS-01/CLS-02 (API publique S4.8) :
- *   - A. usage intra-fichier (le symbole est utilisé, mais jamais hors de son fichier —
- *        son `export` est superflu, pas le symbole) ;
- *   - C. consommation structurelle (duck-typing : le champ est lu, le TYPE jamais nommé) ;
- *   - D. seam de test (exporté pour `__tests__`, que le corpus exclut par conception).
- * Ce qui est INTENTIONNEL et permanent va dans `ALLOWLIST` ci-dessous, pas en baseline.
+ * After the triage, what stays in the baseline is no longer "debt to
+ * triage" but the method's STRUCTURAL blind spots — and each entry now
+ * carries its class in `CLASSES`, enforced by CLS-01/CLS-02:
+ *   - A. intra-file usage (the symbol is used, but never outside its file —
+ *        its `export` is superfluous, not the symbol);
+ *   - C. structural consumption (duck-typing: the field is read, the TYPE never named);
+ *   - D. test seam (exported for `__tests__`, which the corpus excludes by design).
+ * What is INTENTIONAL and permanent goes into `ALLOWLIST` below, not the baseline.
  *
- * ⚠️ Une 4ᵉ classe « registre à clé-string » figurait ici — `setModuleSetup("api", …)` →
- * `runModuleSetup("api")`, le token n'apparaissant jamais chez l'appelant. **Elle est vide,
- * et son mécanisme n'existe plus** : l'indirection a été retirée au S6 Lot 5 (cf.
- * `globals/globals.core.ts:117`), la seule trace restante étant les commentaires qui en
- * documentent le retrait. Elle est supprimée plutôt que gardée par précaution : une classe
- * dont aucun membre ne peut plus exister ne trie rien, elle donne l'illusion d'un tri.
- * Les 7 `globals/globals.*.ts::setup*` qu'elle prétendait couvrir relèvent de A — ils sont
- * appelés DANS leur propre fichier (ex. `globals.api.ts:227`).
+ * ⚠️ A 4th class, "string-keyed registry", used to sit here —
+ * `setModuleSetup("api", …)` → `runModuleSetup("api")`, the token never
+ * appearing at the caller. **It is empty, and its mechanism no longer
+ * exists**: the indirection was removed (cf. `globals/globals.core.ts`),
+ * the only remaining trace being the comments documenting its removal. It
+ * is deleted rather than kept as a precaution: a class no member can belong
+ * to any more triages nothing, it gives the illusion of a triage. The 7
+ * `globals/globals.*.ts::setup*` it claimed to cover belong to A — they are
+ * called IN their own file (e.g. `globals.api.ts`).
  *
- * ⚠️ Les classes ne sont PAS disjointes : un type utilisé dans son propre fichier pour
- * annoter une frontière duck-typée relève de A ET de C. Ordre de priorité, du plus
- * spécifique au plus général : **D > C > A**. Sans cet ordre écrit, deux relecteurs
- * classent différemment et le classement ne vaut rien.
+ * ⚠️ The classes are NOT disjoint: a type used in its own file to annotate
+ * a duck-typed boundary belongs to A AND C. Priority order, most specific
+ * to most general: **D > C > A**. Without that order written, two reviewers
+ * classify differently and the classification is worth nothing.
  *
- * Usage :
- *   node scripts/check-orphan-exports.cjs                  # gate (bloque sur le NOUVEAU)
- *   node scripts/check-orphan-exports.cjs --json            # + dump JSON complet
- *   node scripts/check-orphan-exports.cjs --update-baseline # régénère la baseline
- * Exit codes : 0 vert (aucun nouveau candidat) · 1 régression · 2 erreur d'outillage.
+ * Usage:
+ *   node scripts/check-orphan-exports.cjs                  # gate (blocks on the NEW)
+ *   node scripts/check-orphan-exports.cjs --json            # + full JSON dump
+ *   node scripts/check-orphan-exports.cjs --update-baseline # regenerates the baseline
+ * Exit codes: 0 green (no new candidate) · 1 regression · 2 tooling error.
  */
 "use strict";
 
@@ -94,8 +97,9 @@ const path = require("node:path");
 const ts = require("typescript");
 
 const ROOT = path.resolve(__dirname, "..");
-// T5.5 — par le registre, qui jette si le core est introuvable. Un littéral aurait laissé
-// `collectFiles` rendre une liste vide et la gate conclure « 0 export orphelin ».
+// Through the registry, which throws if the core is unreachable. A literal
+// would have let `collectFiles` return an empty list and the gate conclude
+// "0 orphan exports".
 const CORE_SRC = path.join(require("./lib/packages.cjs").requireByDirName("core").absDir, "src");
 const PKG_DIR = path.join(ROOT, "packages");
 const EXAMPLES_DIR = path.join(ROOT, "examples");
@@ -103,16 +107,16 @@ const BASELINE_PATH = path.join(__dirname, "check-orphan-exports.baseline.json")
 const JSON_OUT = process.argv.includes("--json");
 const UPDATE_BASELINE = process.argv.includes("--update-baseline");
 
-/** Chemin relatif normalisé en `/` — `path.relative` rend `\` sous Windows. */
+/** Relative path normalised to `/` — `path.relative` returns `\` on Windows. */
 function normPath(p) {
     return p.split(path.sep).join("/");
 }
 
 function candidateKey(c) {
-    // ⚠ Normaliser : sans ça, une exécution Windows native produit
-    // `adapters\maplibre\x.ts::Y`, qui ne matche AUCUNE clé de la baseline (stockée
-    // en `/`) — les ~130 candidats connus remonteraient tous comme « nouveaux ».
-    // Masqué en CI (ubuntu) et par le trampoline WSL du hook, mais pas en local.
+    // ⚠ Normalise: without it, a native Windows run produces
+    // `adapters\maplibre\x.ts::Y`, which matches NO baseline key (stored in
+    // `/`) — the ~130 known candidates would all resurface as "new". Masked
+    // in CI (ubuntu) and by the hook's WSL trampoline, but not locally.
     return `${normPath(c.file)}::${c.name}`;
 }
 
@@ -153,38 +157,191 @@ function writeBaseline(candidates) {
 }
 
 /*
- * ─── Classement de la baseline (API publique S4.8) ──────────────────────────────────────
+ * ─── Baseline classification ────────────────────────────────────────
  *
- * Chaque entrée de `check-orphan-exports.baseline.json` porte UNE classe. Sans ça, la baseline
- * dit « voici de la dette » sans dire de quelle nature : elle ne peut ni rétrécir de façon
- * défendable, ni être distinguée d'un oubli. Les trois classes sont celles du docblock, et
- * l'ordre de priorité **D > C > A** y est écrit — elles ne sont pas disjointes.
+ * Each `check-orphan-exports.baseline.json` entry carries ONE class.
+ * Without that, the baseline says "here is debt" without saying of what
+ * nature: it can neither shrink defensibly, nor be told from an oversight.
+ * The three classes are the docblock's, and the priority order **D > C > A**
+ * is written there — they are not disjoint.
  *
- * ## Comment ce classement a été obtenu, et comment le REFAIRE
+ * ## How this classification was obtained, and how to REDO it
  *
- * Un verdict qu'on ne peut pas re-mesurer se fossilise. Les deux critères sont mécaniques :
+ * A verdict that cannot be re-measured fossilises. The two criteria are mechanical:
  *
- *   D  le symbole a un consommateur réel sous `__tests__/` et aucun ailleurs. Se re-mesure par
- *      un grep du nom sur `packages apps`, en EXCLUANT `dist/`, `deploy/`, `coverage/` et
- *      `node_modules/` — sans quoi les `.d.ts` émis et les copies de `typescript/lib/*.js` se
- *      comptent comme consommateurs (mesuré : `getInternalMap` sortait à 35 faux positifs).
- *   C  un symbole EXPORTÉ du même fichier porte ce type dans sa signature, et CE porteur a un
- *      consommateur hors du fichier et hors tests. L'appelant construit alors un littéral sans
- *      jamais nommer le type — c'est la consommation structurelle. Vaut par TRANSITIVITÉ :
- *      `ThemeSelectorLike` est porté par `PermalinkGeoLeaf`, lui-même porté par
- *      `getPermalinkGeoLeaf`, consommé par `permalink-sync.ts`.
- *   A  ni l'un ni l'autre : le symbole n'est utilisé que dans son propre fichier.
+ *   D  the symbol has a real consumer under `__tests__/` and none
+ *      elsewhere. Re-measured by a name grep over `packages apps`,
+ *      EXCLUDING `dist/`, `deploy/`, `coverage/` and `node_modules/` —
+ *      otherwise the emitted `.d.ts` and the `typescript/lib/*.js` copies
+ *      count as consumers (measured: `getInternalMap` came out at 35 false positives).
+ *   C  a symbol EXPORTED from the same file carries this type in its
+ *      signature, and THAT carrier has a consumer outside the file and
+ *      outside tests. The caller then builds a literal without ever naming
+ *      the type — structural consumption. Holds by TRANSITIVITY:
+ *      `ThemeSelectorLike` is carried by `PermalinkGeoLeaf`, itself carried
+ *      by `getPermalinkGeoLeaf`, consumed by `permalink-sync.ts`.
+ *   A  neither: the symbol is only used in its own file.
  *
- * Mesure du 25/07/2026 : **D 35 · C 32 · A 7 = 74**, et 0 mort réel.
+ * 25/07/2026 measure: **D 35 · C 32 · A 7 = 74**, and 0 really dead.
  *
- * ⚠️ Deux énoncés que cette mesure a infirmés, tous deux écrits ici avant elle :
- *   - le classement de première passe annonçait « A ~67 · D ~9 ». Il est INVERSÉ ;
- *   - le docblock donnait « les 7 `globals/globals.*.ts::setup*` relèvent de A ». Six sur sept :
- *     `setupCoreMap` est importé et appelé par `__tests__/core/utils.test.js:51` et
- *     `__tests__/utils/utils-shape.test.js:23`, donc **D** par la priorité D > C > A.
+ * ⚠️ Two claims this measure refuted, both written here before it:
+ *   - the first-pass classification announced "A ~67 · D ~9". It is INVERTED;
+ *   - the docblock gave "the 7 `globals/globals.*.ts::setup*` belong to A".
+ *     Six out of seven: `setupCoreMap` is imported and called by
+ *     `__tests__/core/utils.test.js` and
+ *     `__tests__/utils/utils-shape.test.js`, hence **D** by the D > C > A priority.
  */
 
-/** D — seams de test : exportés pour `__tests__/`, que le corpus exclut par conception. */
+/** D — test seams: exported for `__tests__/`, which the corpus excludes by design. */
+/**
+ * U — NOT TRIAGED: the deposit of the 25/08/2026 widening (the net now judges every
+ * non-core package's exports). Frozen at the first widened census, SHRINK-ONLY: a triage
+ * lot empties entries out of here — to a purge, to ALLOWLIST, or to A/C/D once read.
+ * Never add to this list: a new orphan after the widening is a regression, and it must
+ * redden as one instead of hiding among the untriaged.
+ */
+const CLASS_U = [
+    "packages/libs/field-renderer/src/lang/index.ts::builtinLangs",
+    "packages/libs/field-renderer/src/types/field-media.ts::ACCEPTED_MIME",
+    "packages/libs/field-renderer/src/types/image-compress.ts::BASE_QUALITY",
+    "packages/libs/field-renderer/src/types/image-compress.ts::CompressionOutcome",
+    "packages/libs/field-renderer/src/types/image-compress.ts::MAX_DIMENSION",
+    "packages/libs/field-renderer/src/types/image-compress.ts::_fitWithin",
+    "packages/libs/field-renderer/src/types/image-compress.ts::compressImage",
+    "packages/libs/field-renderer/src/types/image-compress.ts::pickCompressionQuality",
+    "packages/plugins/connector/src/entry.ts::_resetAutoBootstrapForTests",
+    "packages/plugins/editor/src/add-form/placement-form.ts::AddFormDeps",
+    "packages/plugins/editor/src/add-form/placement-form.ts::openAddForm",
+    "packages/plugins/editor/src/config.ts::EDITOR_CONFIG_DEFAULTS",
+    "packages/plugins/editor/src/drawing/geo-compute.ts::geoCompute",
+    "packages/plugins/editor/src/drawing/geo-compute.ts::haversineLength",
+    "packages/plugins/editor/src/drawing/geo-compute.ts::shoelaceArea",
+    "packages/plugins/editor/src/drawing/placement-api.ts::PublicPlacementOptions",
+    "packages/plugins/editor/src/drawing/placement-mode.ts::PlacementOptions",
+    "packages/plugins/editor/src/editor-events.ts::EditorEventName",
+    "packages/plugins/editor/src/entry.ts::_openEditorForm",
+    "packages/plugins/editor/src/events.ts::EDIT_ACTION_OP",
+    "packages/plugins/editor/src/history/undo-stack.ts::getRedoDepth",
+    "packages/plugins/editor/src/history/undo-stack.ts::getUndoDepth",
+    "packages/plugins/editor/src/persistence/conflict-resolution.ts::ConflictResolveContext",
+    "packages/plugins/editor/src/persistence/editor-sync-replay.ts::DrainReport",
+    "packages/plugins/editor/src/persistence/image-store.ts::RetryReport",
+    "packages/plugins/editor/src/persistence/image-store.ts::retryPendingImages",
+    "packages/plugins/editor/src/persistence/image-store.ts::uploadImage",
+    "packages/plugins/editor/src/persistence/session-export.ts::collectSessionFeatures",
+    "packages/plugins/editor/src/persistence/storage-seam.ts::OutboxAccess",
+    "packages/plugins/editor/src/persistence/storage-seam.ts::OutboxRow",
+    "packages/plugins/editor/src/persistence/storage-seam.ts::StorageWriteFacade",
+    "packages/plugins/editor/src/persistence/submit.ts::FeatureSavedDetail",
+    "packages/plugins/editor/src/persistence/sync-handler.ts::EditorSyncHandler",
+    "packages/plugins/editor/src/persistence/sync-handler.ts::SyncResults",
+    "packages/plugins/editor/src/persistence/sync-handler.ts::SyncSummary",
+    "packages/plugins/editor/src/selection/host-reconcile.ts::HostMapFacade",
+    "packages/plugins/editor/src/selection/host-reconcile.ts::getHiddenHost",
+    "packages/plugins/editor/src/types.ts::EditorPoint",
+    "packages/plugins/editor/src/types.ts::EditorRenderedFeature",
+    "packages/plugins/editor/src/types.ts::MenuPosition",
+    "packages/plugins/geocoding/src/provider.ts::AddokProvider",
+    "packages/plugins/geocoding/src/provider.ts::CustomProvider",
+    "packages/plugins/geocoding/src/provider.ts::NominatimProvider",
+    "packages/plugins/geocoding/src/provider.ts::PhotonProvider",
+    "packages/plugins/measure/src/annotation-overlays.ts::removeOverlay",
+    "packages/plugins/measure/src/floating-menu.ts::destroyMenu",
+    "packages/plugins/measure/src/floating-menu.ts::getCurrentTool",
+    "packages/plugins/measure/src/floating-menu.ts::getMenuHeight",
+    "packages/plugins/measure/src/floating-menu.ts::setMenuPosition",
+    "packages/plugins/measure/src/geojson-export.ts::buildGeoJSONBlob",
+    "packages/plugins/measure/src/recap-box.ts::renderRecap",
+    "packages/plugins/measure/src/tools/tool-custom.ts::getActiveCustomId",
+    "packages/plugins/measure/src/types.ts::MeasureGeoJSONSource",
+    "packages/plugins/measure/src/types.ts::MeasureLngLat",
+    "packages/plugins/measure/src/types.ts::MeasurePoint",
+    "packages/plugins/navigation/src/engine/heading.ts::normaliseDegrees",
+    "packages/plugins/navigation/src/engine/maneuver.ts::ManeuverAhead",
+    "packages/plugins/navigation/src/engine/off-route.ts::OffRouteConfig",
+    "packages/plugins/navigation/src/engine/off-route.ts::OffRouteVerdict",
+    "packages/plugins/navigation/src/engine/progress.ts::ProgressSample",
+    "packages/plugins/navigation/src/engine/runtime.ts::GuidanceConfig",
+    "packages/plugins/navigation/src/engine/runtime.ts::GuidanceOptions",
+    "packages/plugins/navigation/src/engine/snap.ts::SnapResult",
+    "packages/plugins/navigation/src/engine/state-machine.ts::MachineConfig",
+    "packages/plugins/navigation/src/engine/state-machine.ts::MachineInput",
+    "packages/plugins/navigation/src/platform/geo.ts::GeoWatchFailure",
+    "packages/plugins/navigation/src/platform/geo.ts::GeoWatchOptions",
+    "packages/plugins/navigation/src/platform/voice.ts::VoiceAnnouncer",
+    "packages/plugins/navigation/src/platform/voice.ts::createVoiceAnnouncer",
+    "packages/plugins/navigation/src/platform/wake-lock.ts::ScreenWakeLock",
+    "packages/plugins/navigation/src/platform/wake-lock.ts::createScreenWakeLock",
+    "packages/plugins/navigation/src/public-api.ts::NavigationPublicApi",
+    "packages/plugins/navigation/src/ui/camera.ts::FollowCamera",
+    "packages/plugins/navigation/src/ui/maneuver-banner.ts::BannerLabels",
+    "packages/plugins/navigation/src/ui/maneuver-banner.ts::BannerState",
+    "packages/plugins/navigation/src/ui/session-notice.ts::NoticeLabels",
+    "packages/plugins/navigation/src/ui/session-notice.ts::SessionNotice",
+    "packages/plugins/navigation/src/ui/session-view.ts::ViewSource",
+    "packages/plugins/offline-ui/src/cache/corridor-selection.ts::CorridorLever",
+    "packages/plugins/offline-ui/src/cache/corridor-selection.ts::CorridorOutcome",
+    "packages/plugins/offline-ui/src/cache/corridor-selection.ts::CorridorRefusal",
+    "packages/plugins/offline-ui/src/cache/corridor-selection.ts::CorridorSelection",
+    "packages/plugins/offline-ui/src/core/engine-signals.ts::unwireEngineSignals",
+    "packages/plugins/offline-ui/src/sync/corridor-tiles.ts::TileRef",
+    "packages/plugins/offline-ui/src/sync/corridor-tiles.ts::corridorTilesAtZoom",
+    "packages/plugins/offline-ui/src/sync/corridor-tiles.ts::densify",
+    "packages/plugins/position-share/src/config.ts::ConfigProblem",
+    "packages/plugins/position-share/src/config.ts::PositionShareMode",
+    "packages/plugins/position-share/src/config.ts::ReceiveConfig",
+    "packages/plugins/position-share/src/indicator.ts::isIndicatorVisible",
+    "packages/plugins/position-share/src/public-api.ts::PositionSharePublicApi",
+    "packages/plugins/print/src/lang/lang-fr.ts::PrintLangDict",
+    "packages/plugins/print/src/modal-dom.ts::CheckboxRef",
+    "packages/plugins/print/src/page-format.ts::getPageFormat",
+    "packages/plugins/print/src/server-fallback.ts::ServerComposeOpts",
+    "packages/plugins/print/src/server-fallback.ts::ServerFallbackPayload",
+    "packages/plugins/print/src/server-fallback.ts::ServerPageOpts",
+    "packages/plugins/realtime-layer/src/public-api.ts::RealtimeLayerPublicAPI",
+    "packages/plugins/routing/src/composition.ts::CompositionRefusal",
+    "packages/plugins/routing/src/composition.ts::DEFAULT_MAX_WAYPOINTS",
+    "packages/plugins/routing/src/config.ts::TravelProfile",
+    "packages/plugins/routing/src/entry-point.ts::ActionDetail",
+    "packages/plugins/routing/src/entry-point.ts::EntryOutcome",
+    "packages/plugins/routing/src/fit-route.ts::Bbox",
+    "packages/plugins/routing/src/fit-route.ts::bboxWithin",
+    "packages/plugins/routing/src/fit-route.ts::routeBbox",
+    "packages/plugins/routing/src/legs.ts::stepNumber",
+    "packages/plugins/routing/src/origin.ts::OriginOutcome",
+    "packages/plugins/routing/src/origin.ts::OriginRefusal",
+    "packages/plugins/routing/src/parse-point.ts::ParsedPoint",
+    "packages/plugins/routing/src/polyline.ts::PolylinePrecision",
+    "packages/plugins/routing/src/polyline.ts::reencodePolyline",
+    "packages/plugins/routing/src/provider.ts::resolveEndpoint",
+    "packages/plugins/routing/src/providers/http.ts::FetchOutcome",
+    "packages/plugins/routing/src/public-api.ts::RoutingPublicApi",
+    "packages/plugins/routing/src/route-cache.ts::clearRouteCache",
+    "packages/plugins/routing/src/route-cache.ts::routeCacheSize",
+    "packages/plugins/routing/src/route-cache.ts::routeKey",
+    "packages/plugins/routing/src/ui/attribution.ts::RouteAttribution",
+    "packages/plugins/routing/src/ui/attribution.ts::currentRouteAttribution",
+    "packages/plugins/routing/src/ui/itinerary-panel.ts::PanelHandlers",
+    "packages/plugins/routing/src/ui/itinerary-panel.ts::PanelRefusal",
+    "packages/plugins/routing/src/ui/step-list.ts::StepListProps",
+    "packages/plugins/routing/src/ui/waypoint-input.ts::InputRefusal",
+    "packages/plugins/routing/src/ui/waypoint-input.ts::WaypointInputHandlers",
+    "packages/plugins/table/src/export.ts::buildCSV",
+    "packages/plugins/table/src/export.ts::buildGPX",
+    "packages/plugins/table/src/export.ts::buildGeoJSONCollection",
+    "packages/plugins/table/src/export.ts::buildKML",
+    "packages/plugins/table/src/export.ts::downloadFile",
+    "packages/plugins/table/src/export.ts::downloadGeoJSON",
+    "packages/plugins/table/src/selection-actions.ts::selectRange",
+    "packages/plugins/table/src/table-renderer-virtual-scroll.ts::updateVirtualRows",
+    "packages/plugins/table/src/table-state.ts::TableEventName",
+    "packages/plugins/table/src/types.ts::TableDefaultSort",
+    "packages/plugins/table/src/types.ts::TableLayerConfig",
+    "packages/plugins/websocket/src/config.ts::HeartbeatConfig",
+    "packages/plugins/websocket/src/config.ts::ReconnectConfig",
+    "packages/plugins/websocket/src/public-api.ts::GeoLeafWsApi",
+];
+
 const CLASS_D = [
     "adapters/maplibre/maplibre-event-subscriptions.ts::trackedCleanupCount",
     "adapters/maplibre/maplibre-hatch-patterns.ts::generateHatchImage",
@@ -223,10 +380,11 @@ const CLASS_D = [
 ];
 
 /**
- * C — consommation structurelle : un porteur exporté du même fichier transporte ce type
- * jusqu'à un consommateur qui en lit les champs sans jamais le nommer (duck-typing).
- * Exemple lisible : `lifecycle.ts:33` appelle `ScaleControl.init(_map, { … })` avec un littéral
- * et importe `ScaleMapLike`, mais jamais `ScaleControlConfig`.
+ * C — structural consumption: a carrier exported from the same file
+ * transports this type to a consumer that reads its fields without ever
+ * naming it (duck-typing). Readable example: `lifecycle.ts` calls
+ * `ScaleControl.init(_map, { … })` with a literal and imports
+ * `ScaleMapLike`, but never `ScaleControlConfig`.
  */
 const CLASS_C = [
     "adapters/maplibre/maplibre-layer-registry.ts::LayerRegistryEntry",
@@ -263,9 +421,10 @@ const CLASS_C = [
 ];
 
 /**
- * A — usage intra-fichier : le symbole vit, son `export` est superflu. Les six `setup*` sont
- * appelés dans leur propre `globals.*.ts` (ex. `globals.api.ts:227`) ; `closeSheet` l'est par
- * ses trois écouteurs (`mobile-toolbar-sheet.ts:61,63,71`).
+ * A — intra-file usage: the symbol lives, its `export` is superfluous. The
+ * six `setup*` are called in their own `globals.*.ts` (e.g.
+ * `globals.api.ts`); `closeSheet` by its three listeners
+ * (`mobile-toolbar-sheet.ts`).
  */
 const CLASS_A = [
     "globals/globals.api.ts::setupAPIKernel",
@@ -278,17 +437,23 @@ const CLASS_A = [
 ];
 
 /**
- * Clé de `candidateKey()` → classe. Composée depuis les trois listes ci-dessus.
+ * `candidateKey()` key → class. Composed from the three lists above.
  *
- * ⚠️ La composition REFUSE un doublon. Les classes n'étant pas disjointes (D > C > A), une clé
- * écrite dans deux listes prendrait silencieusement celle de la dernière — le classement
- * dirait alors autre chose que ce que son auteur croit avoir écrit.
+ * ⚠️ The composition REFUSES a duplicate. The classes not being disjoint
+ * (D > C > A), a key written in two lists would silently take the last
+ * one's — the classification would then say something other than what its
+ * author believes they wrote.
  */
 const CLASSES = (() => {
+    // ⚠️ The tuple casts are not decorative: without them, `.map()` infers
+    // `string[]` and `new Map(entries)` can no longer resolve its key and
+    // value types. The `Map` worked, but it was no longer typed — so
+    // `CLASSES.get(...)` returned nothing verifiable.
     const entries = [
-        ...CLASS_D.map((k) => [k, "D"]),
-        ...CLASS_C.map((k) => [k, "C"]),
-        ...CLASS_A.map((k) => [k, "A"]),
+        ...CLASS_D.map((k) => /** @type {[string, string]} */ ([k, "D"])),
+        ...CLASS_C.map((k) => /** @type {[string, string]} */ ([k, "C"])),
+        ...CLASS_A.map((k) => /** @type {[string, string]} */ ([k, "A"])),
+        ...CLASS_U.map((k) => /** @type {[string, string]} */ ([k, "U"])),
     ];
     const map = new Map(entries);
     if (map.size !== entries.length) {
@@ -306,14 +471,14 @@ const CLASSES = (() => {
 })();
 
 /**
- * CLS-01 / CLS-02 — le classement doit couvrir la baseline, exactement.
+ * CLS-01 / CLS-02 — the classification must cover the baseline, exactly.
  *
- *   CLS-01  une entrée de baseline sans classe → le classement a un trou.
- *   CLS-02  une clé de `CLASSES` qui ne correspond à aucune entrée → entrée FANTÔME, même
- *           défaut que `checkAllowlistFresh` traque sur l'`ALLOWLIST` : elle survit aux purges
- *           et donne l'illusion d'un tri complet.
+ *   CLS-01  a baseline entry without a class → the classification has a hole.
+ *   CLS-02  a `CLASSES` key matching no entry → GHOST entry, same defect
+ *           `checkAllowlistFresh` hunts on the `ALLOWLIST`: it survives
+ *           purges and gives the illusion of a complete triage.
  *
- * Même forme que `checkAllowlistFresh` : rend un tableau de chaînes, n'imprime rien, ne sort pas.
+ * Same shape as `checkAllowlistFresh`: returns an array of strings, prints nothing, does not exit.
  */
 function checkClassificationComplete(baseline) {
     const problems = [];
@@ -331,161 +496,182 @@ const EXCLUDED_DIRS = new Set(["node_modules", "dist", "coverage", ".turbo", "__
 const IDENTIFIER_RE = /[A-Za-z_$][A-Za-z0-9_$]*/g;
 
 // ─── Allowlist — exports intentionnellement sans consommateur ─────────────────
-// Voir roadmap_nettoyage.md (Sprint 2 tâche 2.3, Sprint 4 tâche 4.4).
 //
-// Clé = chemin relatif à `packages/core/src`, en `/`, **match exact** (et non plus
-// `endsWith` : deux fichiers peuvent partager un suffixe). Le cas qui a motivé la
-// bascule — `dom-helpers.ts` en double dans `utils/general/` et `utils/helpers/` —
-// n'existe plus depuis KERNEL S14 (la façade est devenue `utils/general/helpers.ts`,
-// renommée `helpers-namespace.ts` au STRUCT S6 — l'autre moitié de la collision N5,
-// contre `app/app-namespace.ts`, que le S14 avait laissée intacte),
-// mais le match exact reste la bonne règle : il est robuste par construction et ne
-// dépend pas de l'absence d'homonymes.
+// Key = path relative to `packages/core/src`, in `/`, **exact match** (no
+// longer `endsWith`: two files can share a suffix). The case that motivated
+// the switch — `dom-helpers.ts` duplicated in `utils/general/` and
+// `utils/helpers/` — no longer exists (the facade became
+// `utils/general/helpers.ts`, since renamed `helpers-namespace.ts` — the
+// other half of that name collision, against `app/app-namespace.ts`, had
+// been left intact), but the exact match stays the right rule: robust by
+// construction and independent of the absence of homonyms.
 //
-// Valeur :
-//   "*"   → tout le fichier est exempté (surface conservée en bloc) ;
-//   [...] → SEULS ces symboles le sont, le reste du fichier reste gaté.
+// Value:
+//   "*"   → the whole file is exempted (surface kept as a block);
+//   [...] → ONLY these symbols are, the rest of the file stays gated.
 //
-// Le symbol-level est ce qui permet d'exempter les 15 membres publics de
-// `errors/index.ts` sans aveugler le fichier : il contenait AUSSI deux types morts
-// (S4). Un `"*"` posé là aurait masqué ses propres morts — et rouvert, à petite
-// échelle, le trou que ce gate est censé fermer.
+// Symbol-level is what allows exempting `errors/index.ts`'s 15 public
+// members without blinding the file: it ALSO contained two dead types. A
+// `"*"` set there would have masked its own dead — and reopened, on a small
+// scale, the hole this gate is supposed to close.
 //
-// `storage-contract.ts` et `geoleaf:popup:action` ne sont PAS ici : le scope
-// repo-wide les trouve vivants. Les y ajouter à l'aveugle masquerait une vraie
-// régression.
+// `storage-contract.ts` and `geoleaf:popup:action` are NOT here: the
+// repo-wide scope finds them alive. Adding them blindly would mask a real
+// regression.
 //
-// ⚠️ Ce commentaire disait « vivants via les PLUGINS », et c'était faux pour la
-// seconde depuis sa naissance : l'unique émetteur de `geoleaf:popup:action` est
-// dans le CORE (`capabilities/feature-info/render/widget-dispatch.ts`), posé par
-// B-69 le 29/07/2026 — aucun plugin ne l'émet ni ne l'écoute. Le backlog notait
-// la contradiction comme « prémisse à re-mesurer » ; mesurée le 14/08/2026, c'est
-// le commentaire qui avait tort. La CONCLUSION (ne pas exempter) reste juste, et
-// c'est précisément ce qui l'a fait survivre : un motif faux sous une décision
-// juste ne se fait jamais contredire par une gate.
+// ⚠️ This comment said "alive via the PLUGINS", and that was false for the
+// second one since its birth: `geoleaf:popup:action`'s only emitter is in
+// the CORE (`capabilities/feature-info/render/widget-dispatch.ts`), set on
+// 29/07/2026 — no plugin emits or listens to it. The backlog noted the
+// contradiction as "premise to re-measure"; measured on 14/08/2026, the
+// comment is what was wrong. The CONCLUSION (do not exempt) stays right,
+// and that is precisely what made it survive: a false motive under a right
+// decision never gets contradicted by a gate.
 const ALLOWLIST = {
-    // ── Un décâblage exporté POUR LE HARNAIS, sans lequel les tests ne prouvent rien ────
+    // ── An unwire exported FOR THE HARNESS, without which the tests prove nothing ────
     //
-    // `unwireEvictionNotice` (B-163) n'a aucun appelant de production : le core n'a pas de
-    // chemin de démontage, et `wireEvictionNotice()` est posée une fois pour toutes par
-    // `setupStorage()`. Son consommateur est le harnais — `__tests__/storage/eviction-notice.test.ts`.
+    // `unwireEvictionNotice` has no production caller: the core has no
+    // teardown path, and `wireEvictionNotice()` is set once and for all by
+    // `setupStorage()`. Its consumer is the harness —
+    // `__tests__/storage/eviction-notice.test.ts`.
     //
-    // ⚠️ **Elle n'est pas un confort de test, elle est ce qui rend la suite falsifiable.**
-    // L'écouteur porte un drapeau module (`_evictionNoticeWired`) qui rend tout second
-    // `wireEvictionNotice()` inopérant — c'est le but : `setupStorage()` est re-callable, et
-    // deux écouteurs afficheraient deux toasts. Sans le décâblage, un `beforeEach` ne pourrait
-    // pas remettre l'état à zéro : les cas s'exécuteraient sur l'écouteur du premier, et les
-    // trois cas de cycle de vie (idempotence, décâblage, re-câblage) sortiraient verts **sans
-    // rien éprouver**.
+    // ⚠️ **It is not a test comfort, it is what makes the suite
+    // falsifiable.» The listener carries a module flag
+    // (`_evictionNoticeWired`) that makes any second `wireEvictionNotice()`
+    // inoperative — that is the goal: `setupStorage()` is re-callable, and
+    // two listeners would show two toasts. Without the unwire, a
+    // `beforeEach` could not reset the state: the cases would run on the
+    // first one's listener, and the three lifecycle cases (idempotence,
+    // unwiring, re-wiring) would come out green **exercising nothing**.
     //
-    // C'est le cas exact de `unwireEngineSignals` dans `offline-ui`, dont le relevé C1 de la
-    // tâche 8.8 avait conclu « sans consommateur » — et sa dé-exportation avait fait rougir
-    // 7 cas immédiatement. Même classe, même motif : « annoncé mort ≠ mort ».
+    // The exact case of `unwireEngineSignals` in `offline-ui`, whose survey
+    // had concluded "no consumer" — and its de-exporting turned 7 cases red
+    // immediately. Same class, same motive: "announced dead ≠ dead".
     "kernel/storage/eviction-notice.ts": ["unwireEvictionNotice"],
 
-    // ── Un seam de GATE : exporté pour être confronté, pas pour être appelé ────
+    // ── Same class as above — a reset seam the harness needs to make the suite falsifiable.
     //
-    // `RENDERED_WIDGETS` est dérivé de la table de rendu (`Object.keys`), jamais écrit à
-    // la main, et son unique consommateur est la garde de parité
-    // `__tests__/guards/attributes-parity.guard.test.js` — que le corpus exclut par
-    // conception. C'est exactement ce que la décision A11′ demande : la liste
-    // décroissante de CE fichier suit des exports et ne peut pas voir un widget déclaré
-    // que rien ne rend, parce que `AttributeWidget` y est une seule entrée pour l'union
-    // entière. Le seam est ce qui rend la confrontation possible.
+    // `_resetPmtilesProtocolForTests` clears the module guards of the pmtiles protocol
+    // bridge. Without it, the idempotence case (register twice → addProtocol once) would run
+    // against the guard set by the PREVIOUS test and prove nothing, and the lazy-loading
+    // case could not observe a fresh registration. Production has no unregister path — the
+    // protocol lives as long as the page — so no production caller will ever appear.
+    "adapters/maplibre/maplibre-pmtiles.ts": ["_resetPmtilesProtocolForTests"],
+
+    // ── A GATE seam: exported to be confronted, not to be called ───────
     //
-    // ⚠️ Il ne se dé-exporte donc PAS : sans lui, la gate ne peut plus lire ce que le
-    // moteur rend, et le trou latent que FE-14 a coûté redevient invisible.
+    // `RENDERED_WIDGETS` is derived from the render table (`Object.keys`),
+    // never hand-written, and its only consumer is the parity guard
+    // `__tests__/guards/attributes-parity.guard.test.js` — which the corpus
+    // excludes by design. Exactly what the arbitration asks: THIS file's
+    // decreasing list follows exports and cannot see a declared widget
+    // nothing renders, because `AttributeWidget` is a single entry there
+    // for the whole union. The seam is what makes the confrontation possible.
+    //
+    // ⚠️ It therefore does NOT get de-exported: without it, the gate can no
+    // longer read what the engine renders, and the latent hole FE-14 cost
+    // becomes invisible again.
     "capabilities/feature-info/render/widget-dispatch.ts": ["RENDERED_WIDGETS"],
 
-    // ── Un type qui n'a plus d'importeur EXTERNE, et qui n'est pas mort pour autant ────
+    // ── A type with no EXTERNAL importer left, and not dead for all that ────
     //
-    // `GeoLeafApiController` décrit la forme du contrôleur d'API. Jusqu'à socle-init 7.7, son
-    // unique consommateur hors fichier était `kernel/api/geoleaf-api.ts`, qui l'importait pour
-    // typer son accesseur validé — supprimé avec le doublon B11. Le gate l'a donc vu apparaître
-    // comme « nouvel export sans consommateur ».
+    // `GeoLeafApiController` describes the API controller's shape. Its only
+    // out-of-file consumer used to be `kernel/api/geoleaf-api.ts`, which
+    // imported it to type its validated accessor — deleted with the
+    // duplicate. The gate thus saw it appear as "new export without a consumer".
     //
-    // ⚠️ **Il est vivant, et le purger serait une purge d'API publique.** Deux mesures : il type
-    // `_APIController` dans `GeoLeafApiNamespace` (même fichier, `:133`) — donc la forme de
-    // l'objet que `GeoLeafAPI` expose —, et il figure sur la **surface publiée**
-    // (`docs/reference/API_SURFACE.txt`, entrées `api-types.GeoLeafApiController.*`),
-    // donc dans `dist/types/` chez l'intégrateur. Non exporté, la déclaration publiée citerait
-    // un type que personne ne peut nommer — le défaut B-87, exactement.
+    // ⚠️ **It is alive, and purging it would be a public-API purge.» Two
+    // measures: it types `_APIController` in `GeoLeafApiNamespace` (same
+    // file, `:133`) — hence the shape of the object `GeoLeafAPI` exposes —,
+    // and it appears on the **published surface**
+    // (`docs/reference/API_SURFACE.txt`, `api-types.GeoLeafApiController.*`
+    // entries), hence in the integrator's `dist/types/`. Unexported, the
+    // published declaration would cite a type nobody can name — the defect
+    // already paid for, exactly.
     //
-    // C'est le cas d'école que le message de ce gate annonce : « annoncé mort ≠ mort ».
+    // The textbook case this gate's message announces: "announced dead ≠ dead".
     "kernel/api/api-types.ts": ["GeoLeafApiController"],
 
-    // ── Un type de SURFACE PUBLIÉE, sans importeur interne par construction ────
+    // ── A PUBLISHED-SURFACE type, without an internal importer by construction ────
     //
-    // `SizeByType` est le type de `byType` dans le retour — INFÉRÉ — de
-    // `CacheMetrics.estimateProfileSize()`. Il part donc dans `dist/types/`, et il est
-    // exporté pour que l'intégrateur puisse le NOMMER : non exporté, la déclaration publiée
-    // citait un type que personne ne pouvait écrire (qualite Q5, B-87).
+    // `SizeByType` is the type of `byType` in the — INFERRED — return of
+    // `CacheMetrics.estimateProfileSize()`. It thus ships in `dist/types/`,
+    // and it is exported so the integrator can NAME it: unexported, the
+    // published declaration cited a type nobody could write.
     //
-    // Aucun fichier du monorepo ne l'importe, et aucun ne le fera : son consommateur est
-    // hors du dépôt. C'est la définition même d'« intentionnel et permanent », donc ALLOWLIST
-    // et pas baseline — la baseline est un tri en attente, celle-ci est une décision.
+    // No monorepo file imports it, and none will: its consumer is outside
+    // the repo. The very definition of "intentional and permanent", hence
+    // ALLOWLIST and not baseline — the baseline is a pending triage, this
+    // one is a decision.
     "capabilities/offline/cache/metrics.ts": ["SizeByType"],
 
-    // ── Deux seams de TEST du rapport hors-ligne (tâche 4.8) ──────────────────
+    // ── Two TEST seams of the offline report ──────────────────────────────
     //
-    // `deriveStatus` porte la table de vérité des 5 `LayerOfflineStatus`, et c'est la seule
-    // règle de ce module qui se décide sans toucher la base. L'éprouver à travers
-    // `buildSyncReport()` demanderait de fabriquer un état IndexedDB par ligne de table :
-    // on testerait le montage, pas la règle — et la ligne qui distingue `declaredNeverPulled`
-    // de « rapatrié à vide » est précisément celle que la tâche existe pour tenir.
+    // `deriveStatus` carries the truth table of the 5 `LayerOfflineStatus`,
+    // and it is this module's only rule that decides without touching the
+    // database. Exercising it through `buildSyncReport()` would require
+    // manufacturing an IndexedDB state per table row: the assembly would be
+    // tested, not the rule — and the row distinguishing
+    // `declaredNeverPulled` from "pulled empty" is precisely the one the
+    // work exists to hold.
     //
-    // `PULL_STATE_KEY` est la clé du store `preferences`. Elle est exportée pour que
-    // `layer-pull.test.js` la LISE au lieu de la recopier : un littéral en double laisserait
-    // le test vert le jour où la clé de production changerait — c'est-à-dire le jour où le
-    // marqueur cesserait d'être relu.
+    // `PULL_STATE_KEY` is the `preferences` store's key. It is exported so
+    // `layer-pull.test.js` READS it instead of copying it: a duplicated
+    // literal would leave the test green the day the production key changed
+    // — i.e. the day the marker stopped being reread.
     //
-    // ALLOWLIST et pas baseline : ce sont des décisions, pas un tri en attente.
+    // ALLOWLIST and not baseline: these are decisions, not a pending triage.
     "capabilities/offline/report/sync-report.ts": ["deriveStatus"],
     "capabilities/offline/report/pull-state.ts": ["PULL_STATE_KEY"],
-    // ── Les 3 patchers de `ThemeApplierCore` — modules d'EFFET DE BORD ────────
+    // ── `ThemeApplierCore`'s 3 patchers — SIDE-EFFECT modules ────────────
     //
-    // Leur export n'a AUCUN consommateur, et c'est normal : ils ne sont pas là pour être
-    // importés nommément mais pour GREFFER 13 méthodes sur `ThemeApplierCore` au moment
-    // de leur import (`TA._hideAllLayers = function …`). `core.ts` les appelle dans
-    // `applyTheme()` (`this._hideAllLayers()`, `this._applyLayerConfig(cfg)`,
-    // `self._syncLegendVisibility()`) SANS les définir.
+    // Their export has NO consumer, and that is normal: they are not there
+    // to be imported by name but to GRAFT 13 methods onto `ThemeApplierCore`
+    // at their import (`TA._hideAllLayers = function …`). `core.ts` calls
+    // them in `applyTheme()` (`this._hideAllLayers()`,
+    // `this._applyLayerConfig(cfg)`, `self._syncLegendVisibility()`)
+    // WITHOUT defining them.
     //
-    // ⚠️ Inscrits ici après une régression réelle, le 25/07/2026. Ils étaient tirés dans le
-    // graphe par l'`Object.assign` qui composait `GeoLeaf._ThemeApplier` ; le retrait de
-    // cette clé (API S4.3, aucun lecteur) a sorti les patches avec elle. CETTE GATE, ESLint
-    // et la lecture humaine ont alors dit « mort » de concert — les trois avaient raison sur
-    // la lettre, tort sur le fond : un module d'effet de bord n'a pas de consommateur par
-    // définition. La suite est restée VERTE (tout ce qui touche aux thèmes mocke
-    // `ThemeApplierCore`) ; la production aurait levé `TypeError: this._hideAllLayers is not
-    // a function` au premier changement de thème.
+    // ⚠️ Inscribed here after a real regression, on 25/07/2026. They were
+    // pulled into the graph by the `Object.assign` composing
+    // `GeoLeaf._ThemeApplier`; removing that key (no reader) took the
+    // patches out with it. THIS GATE, ESLint and human reading then said
+    // "dead" in concert — all three right on the letter, wrong on the
+    // substance: a side-effect module has no consumer by definition. The
+    // suite stayed GREEN (everything touching themes mocks
+    // `ThemeApplierCore`); production would have thrown
+    // `TypeError: this._hideAllLayers is not a function` at the first theme
+    // change.
     //
-    // L'ancrage est désormais explicite (`import "…"` dans `globals.ui.ts`) et gardé par
-    // `__tests__/themes/theme-applier-patching.contract.test.js`.
+    // The anchoring is now explicit (`import "…"` in `globals.ui.ts`) and
+    // guarded by `__tests__/themes/theme-applier-patching.contract.test.js`.
     "kernel/themes/theme-applier/deferred.ts": ["ThemeApplierDeferred"],
     "kernel/themes/theme-applier/ui-sync.ts": ["ThemeApplierUISync"],
     "kernel/themes/theme-applier/visibility.ts": ["ThemeApplierVisibility"],
 
-    // ── Contrat attributaire — figé UN SPRINT AVANT son moteur ────────────────
-    // Posé le 02/08/2026 par l'Étape 1 de `roadmap_collecte-terrain-offline` : le
-    // contrat et son schéma sont livrés au Sprint 1, le moteur qui les lit arrive au
-    // Sprint 2. Ces exports n'ont donc PAS de consommateur par ordre de sprint, pas par
-    // abandon — et le schéma `layer-config.schema.json`, lui, les applique déjà.
+    // ── Attribute contract — frozen ONE SPRINT BEFORE its engine ──────────
+    // Set on 02/08/2026: the contract and its schema ship BEFORE the engine
+    // that reads them. These exports thus have NO consumer by delivery
+    // order, not by abandonment — and the `layer-config.schema.json`
+    // schema, itself, already applies them.
     //
-    // ⚠️ Liste NOMMÉE et non `"*"`, délibérément : un export de plus fait rougir la gate,
-    // et le Sprint 2 la vide entrée par entrée à mesure que le moteur les consomme.
-    // `checkAllowlistFresh` garde le revers : une entrée dont l'export disparaît devient
-    // fantôme et bloque. Le décompte ne se recopie pas ici — il s'imprime au run.
+    // ⚠️ NAMED list and not `"*"`, deliberately: one more export turns the
+    // gate red, and it empties entry by entry as the engine consumes them.
+    // `checkAllowlistFresh` guards the reverse: an entry whose export
+    // vanishes becomes a ghost and blocks. The count is not copied here —
+    // it prints at the run.
     //
-    // ⚠️ Cette liste a été décrite comme « la baseline décroissante de A11 ». Elle est
-    // bien décroissante et bien nommée, mais elle suit des EXPORTS, pas des WIDGETS :
-    // `AttributeWidget` y est UNE entrée pour l'union entière, donc un widget déclaré
-    // que rien ne rend n'y change rien et n'y sera jamais vu. Ce que A11 voulait suivre
-    // est porté par la gate de PARITÉ du Sprint 2 (tâche 2.6), qui confronte le contrat
-    // à la table de rendu. Précision faite au pré-vol 2.0 — voir A11′.
+    // ⚠️ This list was described as "the decreasing baseline of the widget
+    // arbitration". It is indeed decreasing and named, but it follows
+    // EXPORTS, not WIDGETS: `AttributeWidget` is ONE entry there for the
+    // whole union, so a declared widget nothing renders changes nothing
+    // there and will never be seen there. What the arbitration wanted to
+    // follow is carried by the PARITY guard, which confronts the contract
+    // with the render table. Clarified at preflight.
     "contracts/attributes.contract.ts": [
-        // Widget `action` et bloc `presentation` — ajoutés au pré-vol du Sprint 2
-        // (02/08), parce que le contrat figé ne pouvait porter ni le bouton d'action
-        // déjà émis ni les 79 déclarations de présentation des profils.
+        // `action` widget and `presentation` block — added at preflight
+        // (02/08), because the frozen contract could carry neither the
+        // action button already emitted nor the profiles' 79 presentation declarations.
         "ActionOptions",
         "AttributeDisplayOnlyWidget",
         "AttributeDisplayPresentation",
@@ -512,8 +698,9 @@ const ALLOWLIST = {
         "GeometryDomainName",
         "HoursOptions",
         "ImageOptions",
-        // `LayerAttributes` n'est PAS ici : `theme-applier/core.ts` le consomme déjà.
-        // La liste est donc à 35 dès sa pose, pas à 36 — elle ne peut que décroître.
+        // `LayerAttributes` is NOT here: `theme-applier/core.ts` already
+        // consumes it. The list is thus at 35 from its laying, not 36 — it
+        // can only decrease.
         "LinkOptions",
         "ListOptions",
         "LongtextOptions",
@@ -529,22 +716,22 @@ const ALLOWLIST = {
         "TextOptions",
     ],
 
-    // ── Contrat de synchronisation — même régime que le contrat attributaire ──
-    // Posé le 02/08/2026 par l'Étape 1bis. Le cycle (rapatrier → lire local → éditer →
-    // mettre en file → repousser → réconcilier) est figé au Sprint 1 ; le socle de
-    // données qui l'implémente arrive au Sprint 3, le cycle lui-même au Sprint 4.
-    // `LayerWriteTarget` n'est PAS ici : `theme-applier/core.ts` le consomme déjà.
+    // ── Sync contract — same regime as the attribute contract ────────────
+    // Set on 02/08/2026. The cycle (pull → read local → edit → queue → push
+    // → reconcile) is frozen before its implementation; the data foundation
+    // comes next, then the cycle itself.
+    // `LayerWriteTarget` is NOT here: `theme-applier/core.ts` already consumes it.
     //
-    // ⚠️ Liste nommée, décroissante, même contrat que ci-dessus : un export de plus fait
-    // rougir, et chaque type sort de la liste quand son moteur le consomme.
+    // ⚠️ Named, decreasing list, same contract as above: one more export
+    // turns red, and each type leaves the list when its engine consumes it.
     "contracts/sync.contract.ts": [
         "ConflictPolicy",
         "DataOriginDeclaration",
         "DataOriginRole",
         "EvictionClass",
         "FeatureRecord",
-        // Permissions d'édition par couche — figées à l'Étape 4 (02/08), exécutées à
-        // la fusion des deux plugins d'édition.
+        // Per-layer edition permissions — frozen on 02/08, executed at the
+        // merge of the two editing plugins.
         "LayerEditionPermissions",
         "LayerOfflineStatus",
         "LayerSyncConfig",
@@ -564,29 +751,33 @@ const ALLOWLIST = {
         "WriteDialect",
     ],
 
-    // ── ✅ B-20 — LES 4 EXEMPTIONS GLOBALES SONT RETIRÉES (16/08/2026) ──────────
+    // ── ✅ THE 4 GLOBAL EXEMPTIONS ARE REMOVED (16/08/2026) ──────────────
     //
-    // Elles couvraient `api/geoleaf.introspection.ts`, `contracts/introspection.contract.ts`,
-    // `contracts/capability.contract.ts` et `kernel/api/plugin-registry.ts`, sous le motif
-    // « Façade Introspection (~850 l., 0 appel réel hors JSDoc) — conservée pour le futur SaaS ».
+    // They covered `api/geoleaf.introspection.ts`,
+    // `contracts/introspection.contract.ts`,
+    // `contracts/capability.contract.ts` and `kernel/api/plugin-registry.ts`,
+    // under the motive "Introspection facade (~850 l., 0 real calls outside
+    // JSDoc) — kept for the future SaaS".
     //
-    // 🛑 MESURÉ : elles masquaient **ZÉRO** orphelin. Les 13 exports de ces quatre fichiers ont
-    // tous un consommateur réel, et aucun n'était en baseline. Le motif était juste à sa date ;
-    // il ne l'est plus, et son chiffre non plus — `geoleaf.introspection.ts` fait **36 lignes**,
-    // pas 850.
+    // 🛑 MEASURED: they masked **ZERO** orphans. The 13 exports of these
+    // four files all have a real consumer, and none was in the baseline.
+    // The motive was right at its date; it no longer is, and neither is its
+    // figure — `geoleaf.introspection.ts` is **36 lines**, not 850.
     //
-    // ⚠️ ET VOICI POURQUOI PERSONNE NE POUVAIT LE VOIR : `checkAllowlistFresh` portait
-    // `if (value === "*") continue;`. **Une exemption globale était exemptée du contrôle de
-    // péremption lui-même.** C'est la seule forme d'exemption qui ne pouvait jamais se périmer,
-    // et c'est exactement pourquoi ces quatre-là ont survécu à la purge de leur motif.
+    // ⚠️ AND HERE IS WHY NOBODY COULD SEE IT: `checkAllowlistFresh` carried
+    // `if (value === "*") continue;`. **A global exemption was exempted
+    // from the staleness check itself.» The only exemption form that could
+    // never expire, and exactly why those four survived the purge of their
+    // motive.
     //
-    // ✅ Le joker n'appartient plus au vocabulaire : l'ALLOWLIST n'accepte QUE des listes de
-    // symboles nommés, et toute autre valeur est signalée comme périmée. Un fichier entièrement
-    // exempté doit donc NOMMER ses exports — ce qui les rend visibles, donc périssables.
-    // ── `GeoLeaf.Errors.*` — vivants via la façade, jamais importés nommément ──
-    // `kernel-exports.ts` ré-exporte `Errors`, monté au boot B1 par `globals.core.ts`.
-    // Le token-search ne voit que l'agrégat, pas ses membres : exemple canonique du
-    // piège « annoncé mort ≠ mort ».
+    // ✅ The wildcard no longer belongs to the vocabulary: the ALLOWLIST
+    // accepts ONLY lists of named symbols, and any other value is flagged
+    // stale. A fully exempted file must therefore NAME its exports — which
+    // makes them visible, hence perishable.
+    // ── `GeoLeaf.Errors.*` — alive through the facade, never imported by name ──
+    // `kernel-exports.ts` re-exports `Errors`, mounted at boot B1 by
+    // `globals.core.ts`. The token-search only sees the aggregate, not its
+    // members: canonical example of the "announced dead ≠ dead" trap.
     "utils/errors/errors.ts": [
         "DataError",
         "ErrorCodes",
@@ -605,45 +796,102 @@ const ALLOWLIST = {
         "sanitizeErrorMessage",
     ],
 
-    // ── Blocklist anti-prototype-pollution : la liste figée est test-only ──────
-    // `UNSAFE_KEY_LIST` n'a AUCUN consommateur de production, et c'est voulu : il
-    // n'existe que pour que `__tests__/guards/prototype-pollution-sinks.guard.test.js`
-    // épingle le contenu de la blocklist. Avoir une source unique (S13.2) veut dire
-    // qu'en retirer une clé affaiblit les 7 sinks d'un coup, en silence — d'où un test
-    // qui vérifie la liste elle-même, et donc un export qui n'a de lecteur que lui.
-    // Le gate exclut `__tests__/` de son scan par conception (il mesure la consommation
-    // en prod), il ne peut donc pas le voir.
-    // Symbol-level et pas `"*"` : les deux autres exports du fichier, `isUnsafeKey` et
-    // `hasUnsafeSegment`, DOIVENT rester gatés — le jour où plus aucun sink ne les
-    // appelle, c'est que les gardes ont sauté et on veut l'apprendre ici.
+    // ── Anti-prototype-pollution blocklist: the frozen list is test-only ──────
+    // `UNSAFE_KEY_LIST` has NO production consumer, and that is wanted: it
+    // only exists so `__tests__/guards/prototype-pollution-sinks.guard.test.js`
+    // pins the blocklist's content. Having a single source means removing a
+    // key weakens the 7 sinks at once, silently — hence a test verifying
+    // the list itself, and hence an export whose only reader is that test.
+    // The gate excludes `__tests__/` from its scan by design (it measures
+    // production consumption), so it cannot see it.
+    // Symbol-level and not `"*"`: the file's two other exports,
+    // `isUnsafeKey` and `hasUnsafeSegment`, MUST stay gated — the day no
+    // sink calls them any more, the guards have gone, and we want to learn
+    // it here.
     "utils/general/object-path-guard.ts": ["UNSAFE_KEY_LIST"],
 
-    // ── Contrats de duck-typing avec les plugins ──────────────────────────────
-    // Ces types décrivent une frontière vérifiée STRUCTURELLEMENT (le plugin
-    // déclare sa propre copie) : aucun import cross-package, par conception.
-    "contracts/api.contract.ts": ["IGeoLeafAPIConstructors", "IHealthError"],
-    // ⚠️ `GeoLeafGeolocationStateChangeDetail` (B-207) est le même cas, et il l'est de façon
-    // particulièrement littérale : l'événement `geoleaf:geolocation:statechange` est émis par le
-    // core et lu par `plugins/measure/src/tools/tool-gps.ts`, qui n'en importe pas le type — il
-    // lit `e.detail` en duck-typing. Le type part dans `dist/types/` pour que l'intégrateur
-    // puisse le NOMMER ; non exporté, la déclaration publiée citerait un type que personne ne
-    // peut écrire (B-87). C'est un contrat qui FRANCHIT la frontière core → plugin, donc
-    // « sans consommateur » y est une propriété, pas un symptôme.
+    // ── Duck-typing contracts with the plugins ────────────────────────────
+    // These types describe a boundary verified STRUCTURALLY (the plugin
+    // declares its own copy): no cross-package import, by design.
+    // ── A CONTRACT whose last importer had to abandon it to become publishable ────
+    //
+    // `GeoLeafAPINamespace` (class **C**, structural consumption) has no
+    // importer left since 17/08/2026. Its only consumer was
+    // `BootInfoNamespace`, through an `extends`, and it had to be removed:
+    // the type had to be publicly EXPORTED (`showBootInfo` published in
+    // 3.0.0 but untypeable), yet `contracts/api.contract.js` is NOT in the
+    // `exports` map — of the 8 published `./contracts/*` subpaths, it is
+    // not there. Keeping the `extends` would have emitted a public
+    // declaration referencing a type unresolvable at the consumer's: the
+    // `TS2882` class that had just been closed.
+    //
+    // 🛑 **Why ALLOWLIST and not a purge.» A contract is not consumed by
+    // internal imports but by what IMPLEMENTS it: `GeoLeafAPINamespace`
+    // describes the shape of the `GeoLeaf` global as the `api/` files read
+    // it, and that shape is read **structurally** — the very definition of
+    // class C. Removing it would be a contract-surface deletion, a gesture
+    // the night does not make and nothing demands.
+    //
+    // ⚠️ **What this entry admits, and must not be smoothed over**: a
+    // contract type whose only importer had to stop using it no longer has
+    // a usage witness. If it becomes false, nothing will say so. The
+    // subject is filed in the debt register, not closed by this exemption.
+    //
+    // 🛑 **AND THIS ENTRY WAS NEARLY WRITTEN TWICE.» The first draft of
+    // 17/08 added a SECOND `"contracts/api.contract.ts"` key higher in this
+    // object; in JS, the last one wins, so the new exemption was
+    // **silently overwritten** and the gate kept turning red without saying
+    // why. ⚠️ **This sentence said `ALLOWLIST` has NO guard against its own
+    // duplicated keys, and that was true on 17/08 and FALSE since**:
+    // `checkAllowlistUnique()` exists (see its doc block) and runs on every
+    // pass. It is dated rather than deleted, because the motive it carries is
+    // what explains the SHAPE of the entry below — merging into the existing
+    // entry, rather than duplicating the key, is still the only correct form,
+    // and that would be unreadable without the defect that imposed it.
+    "contracts/api.contract.ts": ["IGeoLeafAPIConstructors", "IHealthError", "GeoLeafAPINamespace"],
+    // ⚠️ `GeoLeafGeolocationStateChangeDetail` is the same case, and
+    // particularly literally so: the `geoleaf:geolocation:statechange`
+    // event is emitted by the core and read by
+    // `plugins/measure/src/tools/tool-gps.ts`, which does not import its
+    // type — it reads `e.detail` in duck-typing. The type ships in
+    // `dist/types/` so the integrator can NAME it; unexported, the
+    // published declaration would cite a type nobody can write. A contract
+    // that CROSSES the core → plugin boundary, so "no consumer" is a
+    // property there, not a symptom.
     "contracts/event-bus.contract.ts": [
         "GeoLeafFeatureGeometry",
         "GeoLeafLayerAddedDetail",
         "GeoLeafGeolocationStateChangeDetail",
     ],
-    "contracts/sidepanel-renderer.contract.ts": [
-        "SidePanelFeatureDetail",
-        "SidePanelFeatureGeometry",
-        "SidePanelLayoutField",
-    ],
-    "contracts/ui-controls.contract.ts": ["IGeoLocationControlConfig"],
+    // ⚠️ `contracts/sidepanel-renderer.contract.ts` was exempted HERE until
+    // 19/08/2026, with the same motive as its neighbours. The file is
+    // DELETED: it redeclared, better documented and implemented by nothing,
+    // the three `ISidePanelRenderer` members that live in
+    // `capabilities/feature-info/types.ts`. Its three own types left with
+    // it, at zero importers. 🛑 Its neighbours' motive did NOT apply to it:
+    // they are nameable by the integrator through the package's `exports`
+    // map, it was not — 36 entries, no wildcard covered it. An embarked but
+    // unreachable `.d.ts` is not a public surface, it is tarball weight.
+    // **Verify this point BEFORE carrying this motive onto a contract: "it
+    // ships in dist/types/" is not enough, a specifier must lead there.**
+    // ⚠️ `IProximityCircle` joined this entry on 19/08/2026, and for a
+    // motive of ANOTHER nature than its neighbours: it crosses no boundary,
+    // it describes the shape of `IProximityState.circle` — a member
+    // exported from the SAME file. Its only external importer only served
+    // to re-assert an object the assignment target already typed; the
+    // assertion removed, the type has no importer left, hence "orphan" in
+    // this gate's sense, which counts INTER-FILE consumers.
+    // 🛑 The motive is STRUCTURAL and re-verifies in one line:
+    // `IProximityCircle` must appear TWICE in
+    // `src/contracts/ui-controls.contract.ts` — its declaration and its
+    // usage. If only one remains, the exemption fell with its cause and
+    // must leave here, because de-exporting it would then become possible
+    // without breaking type emission.
+    "contracts/ui-controls.contract.ts": ["IGeoLocationControlConfig", "IProximityCircle"],
 
-    // ── Forme documentée des objets `GeoLeaf.X` (intégrateurs / Studio) ────────
-    // Les `buildPublicApi()` sont vivants ; c'est le TYPE de leur retour qui n'est
-    // jamais importé — il documente la surface publique.
+    // ── Documented shape of the `GeoLeaf.X` objects (integrators / Studio) ────
+    // The `buildPublicApi()`s are alive; it is the TYPE of their return
+    // that is never imported — it documents the public surface.
     "capabilities/branding/public-api.ts": ["BrandingPublicApi", "BrandingReadApi"],
     "capabilities/coordinates/public-api.ts": ["CoordinatesPublicApi", "CoordinatesReadApi"],
     "capabilities/geolocation/public-api.ts": ["GeolocationStateSnapshot"],
@@ -653,106 +901,132 @@ const ALLOWLIST = {
     "capabilities/theme-toggle/public-api.ts": ["ThemeTogglePublicApi"],
 
     // ── Divers, publics par un autre chemin ───────────────────────────────────
-    // `CreateElementOptions` type l'option-bag de `GeoLeaf.Helpers.createElement` ;
-    // `LogImplInterface`/`LogLevelName` typent `GeoLeaf.Log` et sont documentés dans
-    // `log/index.ts` comme importables directement (contournement Rollup pour les
-    // plugins) ; `PresetId` est le contrat public de composition d'entrée.
+    // `CreateElementOptions` types `GeoLeaf.Helpers.createElement`'s
+    // option-bag; `LogImplInterface`/`LogLevelName` type `GeoLeaf.Log` and
+    // are documented in `log/index.ts` as directly importable (Rollup
+    // workaround for the plugins); `PresetId` is the public entry-composition contract.
     "utils/log/logger.ts": ["LogImplInterface", "LogLevelName"],
     "contracts/preset.contract.ts": ["PresetId"],
 
-    // KERNEL S14 — publics par l'OBJET, pas par un import nommé.
-    // Ces 3 fonctions sont des membres de `GeoLeaf.Utils` (montées par
-    // `utils-namespace.ts` via `Object.assign(target, UtilsBase)`). Elles ont perdu
-    // leur dernier importeur *nommé* de production
-    // quand le S14 a supprimé `utils-api.ts` — un assembleur mort depuis le retrait
-    // des builds UMD en v2.0.0. Le gate raisonne sur les imports nommés et ne voit pas
-    // l'atteinte par propriété d'objet : sans cette entrée il les signale à chaque run.
-    // ⚠️ NE PAS PURGER. `object-utils.ts:23` documentait déjà ce cas au S11 pour
-    // `resolveField` (« neither has an internal caller left ») : ces symboles ne
-    // subsistent que par leur exposition publique, ce qui est exactement leur raison
-    // d'être. Les retirer casserait `GeoLeaf.Utils` en silence.
+    // Public through the OBJECT, not a named import.
+    // These 3 functions are members of `GeoLeaf.Utils` (mounted by
+    // `utils-namespace.ts` via `Object.assign(target, UtilsBase)`). They
+    // lost their last *named* production importer when `utils-api.ts` was
+    // deleted — an assembler dead since the UMD builds' removal in v2.0.0.
+    // The gate reasons on named imports and does not see reach through
+    // object property: without this entry it flags them at every run.
+    // ⚠️ DO NOT PURGE. `object-utils.ts` already documented this case
+    // for `resolveField` ("neither has an internal caller left"): these
+    // symbols only subsist through their public exposure, which is exactly
+    // their reason for being. Removing them would break `GeoLeaf.Utils` silently.
     "utils/general/utils-base.ts": ["fireMapEvent", "throttle", "resolveField"],
 
-    // ── Nommé par une signature inférée ───────────────────────────────────────
-    // `FetchHelper.getConfig()` le retourne et `FetchHelper` est ré-exposé sur
-    // `GeoLeaf.Utils` : le dé-exporter casse la déclaration de `Utils` (TS4023).
+    // ── Named by an inferred signature ────────────────────────────────────────
+    // `FetchHelper.getConfig()` returns it and `FetchHelper` is re-exposed
+    // on `GeoLeaf.Utils`: de-exporting it breaks `Utils`' declaration (TS4023).
     "utils/general/fetch-helper.ts": ["FetchHelperOptions"],
-    // Même contrainte, apparue à la tâche 5.1-f : `poiToFeature` est montée sur
-    // `GeoLeaf.Utils` (`utils-namespace.ts`) et `PoiToFeatureInput` EST son type de
-    // paramètre — un intégrateur qui type cet appel en a besoin, et le dé-exporter
-    // casserait la déclaration de `Utils`.
-    // ⚠️ Il est devenu « sans consommateur » parce que son SEUL importeur nommé était la
-    // copie du seam dans `addpoi/src/utils/core-utils.ts`, partie avec le paquet fusionné.
-    // C'est un faux positif structurel, pas un export mort : la fonction, elle, est
-    // appelée par `e2e/18-security.spec.js` sur `deploy-full` — la variante qui n'a jamais
-    // porté `addpoi`.
+    // Same constraint: `poiToFeature` is mounted on `GeoLeaf.Utils`
+    // (`utils-namespace.ts`) and `PoiToFeatureInput` IS its parameter type
+    // — an integrator typing that call needs it, and de-exporting it would
+    // break `Utils`' declaration.
+    // ⚠️ It became "consumer-less" because its ONLY named importer was the
+    // seam copy in `addpoi/src/utils/core-utils.ts`, gone with the merged
+    // package. A structural false positive, not a dead export: the
+    // function, itself, is called by `e2e/18-security.spec.js` on
+    // `deploy-full` — the variant that never carried `addpoi`.
     "utils/general/poi-to-feature.ts": ["PoiToFeatureInput"],
-    // Même contrainte, depuis KERNEL S14 (backlog B.16) : `CSRFToken` fait partie de
-    // l'objet `Security` du baril, donc TypeScript doit pouvoir NOMMER son type pour
-    // émettre la déclaration de `Security`. Aucun consommateur ne l'importe par son nom
-    // — c'est un faux positif structurel, pas un export mort.
+    // Same constraint: `CSRFToken` is part of the barrel's `Security`
+    // object, so TypeScript must be able to NAME its type to emit
+    // `Security`'s declaration. No consumer imports it by name — a
+    // structural false positive, not a dead export.
     "kernel/security/csrf-token.ts": ["CSRFTokenInternal"],
 
-    // Même cas, introduit par la découpe de `ui/components.ts` (KERNEL S8) :
-    // `_UIComponents` agrège `_LegendSymbols` + `_UIWidgets` par spread, donc son
-    // type inféré nomme les configs de ces deux modules. Les dé-exporter casse la
-    // déclaration de l'agrégat (TS4023). Aucun consommateur nommé, par conception —
-    // les appelants passent des littéraux.
+    // Same case, introduced by the `ui/components.ts` split:
+    // `_UIComponents` aggregates `_LegendSymbols` + `_UIWidgets` by spread,
+    // so its inferred type names these two modules' configs. De-exporting
+    // them breaks the aggregate's declaration (TS4023). No named consumer,
+    // by design — callers pass literals.
     "kernel/ui/legend-symbols.ts": ["SymbolConfig", "HatchConfig"],
     "kernel/ui/widgets.ts": ["AccordionConfig", "ToggleButtonConfig"],
 
-    // Même contrainte TS4023 que `FetchHelperOptions` ci-dessus : `DOMSecurity.createSVGIcon()`
-    // et `.getIcon()` le prennent en paramètre, et `DOMSecurity` est ré-exposé sur
-    // `GeoLeaf.Utils` (`utils/general/utils-namespace.ts:75,123`) — le dé-exporter casse
-    // l'émission de la déclaration de `Utils`. Le geste juste est donc l'ALLOWLIST, PAS la
-    // purge (R.46, backlog résiduel S5).
+    // Same TS4023 constraint as `FetchHelperOptions` above:
+    // `DOMSecurity.createSVGIcon()` and `.getIcon()` take it as a
+    // parameter, and `DOMSecurity` is re-exposed on `GeoLeaf.Utils`
+    // (`utils/general/utils-namespace.ts`) — de-exporting it breaks
+    // the emission of `Utils`' declaration. The right gesture is thus the
+    // ALLOWLIST, NOT the purge.
     //
-    // ⚠️ ENTRÉE ENCORE INERTE — et la note qui vivait ici disait le contraire.
+    // ⚠️ ENTRY STILL INERT — and the note that lived here said the opposite.
     //
-    // Elle a été posée PRÉVENTIVE et sans effet : `hasConsumer()` est une recherche par
-    // token sur tout le monorepo, et `SVGIconOptions` apparaissait dans
-    // `packages/plugins/table/src/utils/dom-security.ts` — une COPIE LOCALE non exportée
-    // qui n'importait rien du core. Le gate y voyait un consommateur et tenait l'export
-    // pour vivant : le faux négatif que le docblock de ce fichier assume.
+    // It was laid PREVENTIVE and without effect: `hasConsumer()` is a token
+    // search over the whole monorepo, and `SVGIconOptions` appeared in
+    // `packages/plugins/table/src/utils/dom-security.ts` — a LOCAL,
+    // unexported COPY that imported nothing from the core. The gate saw a
+    // consumer there and held the export alive: the false negative this
+    // file's docblock owns.
     //
-    // Cette copie a bien été fusionnée dans `@geoleaf/host-runtime/src/core-utils-seam.ts`
-    // (G1 de l'audit de structure du 24/07, `audit_structure-arborescence.md` 📦), et le type
-    // y a été DÉLIBÉRÉMENT renommé `IconOptions` : le garder sous le même nom aurait déplacé
-    // le faux négatif de table vers host-runtime au lieu de le lever.
+    // That copy was indeed merged into
+    // `@geoleaf/host-runtime/src/core-utils-seam.ts`, and the type was
+    // DELIBERATELY renamed `IconOptions` there: keeping it under the same
+    // name would have moved the false negative from table to host-runtime
+    // instead of lifting it.
     //
-    // 🔄 MAIS l'entrée n'est PAS devenue active pour autant, contrairement à ce que cette
-    // note a affirmé du 26/07 au 01/08/2026 (« ✅ ENTRÉE DEVENUE ACTIVE à STRUCT S2 (F3) »).
-    // Le token survit dans `kernel/security/index.ts:19`, le BARIL du sous-système :
+    // 🔄 BUT the entry did NOT become active for all that, contrary to what
+    // this note asserted from 26/07 to 01/08/2026 ("✅ ENTRY BECOME
+    // ACTIVE"). The token survives in `kernel/security/index.ts`, the
+    // subsystem's BARREL:
     //     export type { SVGIconOptions } from "./dom-security.js";
-    // `collectMonorepoCorpusFiles()` scanne `<paquet>/src` de tous les workspaces, donc le
-    // core lui-même, et `hasConsumer()` ne saute que le fichier DÉFINISSANT. Le baril compte
-    // comme consommateur. L'export n'est donc jamais candidat, et cette entrée n'absorbe rien.
+    // `collectMonorepoCorpusFiles()` scans every workspace's `<pkg>/src`,
+    // hence the core itself, and `hasConsumer()` only skips the DEFINING
+    // file. The barrel counts as a consumer. The export is thus never a
+    // candidate, and this entry absorbs nothing.
     //
-    // Mesuré par DOUBLE MUTATION le 01/08/2026, pas déduit :
-    //   1. retirer cette entrée seule           → 0 candidat, gate verte  (elle n'absorbe rien)
-    //   2. retirer cette entrée ET la ligne 19  → `SVGIconOptions` remonte en
-    //      `kernel/security/dom-security.ts:26`, gate ROUGE, « 1 régression »
-    // La 2e branche est ce qui prouve la cause ; la 1re seule ne l'aurait pas isolée.
+    // Measured by DOUBLE MUTATION on 01/08/2026, not deduced:
+    //   1. remove this entry alone            → 0 candidates, gate green  (it absorbs nothing)
+    //   2. remove this entry AND line 19      → `SVGIconOptions` resurfaces at
+    //      `kernel/security/dom-security.ts`, gate RED, "1 regression"
+    // The 2nd branch is what proves the cause; the 1st alone would not
+    // have isolated it.
     //
-    // L'erreur de raisonnement, à ne pas refaire : S2 a VÉRIFIÉ que le fork disparaissait —
-    // c'était vrai — puis en a DÉDUIT que l'entrée mordait, sans relancer le check. Un
-    // obstacle levé ne prouve pas qu'il était le seul. ⚠️ Et `checkAllowlistFresh()` ne
-    // rattrape pas cette classe : elle vérifie que le fichier et le symbole existent
-    // toujours, jamais que l'entrée SERT à quelque chose.
+    // The reasoning error, not to repeat: it was VERIFIED that the fork
+    // vanished — true — then DEDUCED that the entry bit, without rerunning
+    // the check. A lifted obstacle does not prove it was the only one.
+    // ⚠️ And `checkAllowlistFresh()` does not catch this class: it verifies
+    // the file and symbol still exist, never that the entry SERVES anything.
     //
-    // L'entrée RESTE malgré tout, et ce n'est pas de la superstition : la contrainte TS4023
-    // ci-dessus est réelle, donc le jour où le baril cesse de ré-exporter ce type, l'export
-    // devient orphelin pour de bon et c'est cette entrée qui doit l'absorber. La retirer
-    // maintenant échangerait une entrée muette contre une gate rouge différée.
-    // Suivi : dette `D-09` (`_docs_projet/registres/dette_technique.md`).
+    // The entry STAYS all the same, and it is not superstition: the TS4023
+    // constraint above is real, so the day the barrel stops re-exporting
+    // this type, the export becomes orphan for good and this entry is what
+    // must absorb it. Removing it now would trade a mute entry for a
+    // deferred red gate. Tracked in the debt register.
     "kernel/security/dom-security.ts": ["SVGIconOptions"],
 
-    // Même cas encore, introduit par la mutualisation de la normalisation cluster
-    // (R.40) : `resolveClusteringNormalization()` est exportée et retourne
-    // `ClusteringNormalizationPatch | null`, donc TypeScript doit pouvoir NOMMER ce type
-    // pour émettre la déclaration de la fonction. Aucun appelant ne l'importe par son nom
-    // — les deux sites passent le résultat à `Object.assign`.
+    // Same case again, introduced by the cluster-normalisation
+    // mutualisation: `resolveClusteringNormalization()` is exported and
+    // returns `ClusteringNormalizationPatch | null`, so TypeScript must be
+    // able to NAME that type to emit the function's declaration. No caller
+    // imports it by name — both sites pass the result to `Object.assign`.
     "kernel/geojson/loader/clustering-normalize.ts": ["ClusteringNormalizationPatch"],
+
+    // ── The pane registry: one public type, one harness-only teardown ───────────────
+    //
+    // `PaneHost` is the parameter type of `registerPaneHost()`, which IS exported and
+    // consumed (the desktop panel and the mobile sheet each register themselves). TypeScript
+    // must be able to NAME the type to emit that function's declaration — the same TS4023
+    // constraint as the two entries above. No caller imports it by name: both hosts pass an
+    // object literal.
+    //
+    // `clearPanelPanes` has no production caller, and 🛑 it must NOT acquire one. Panes are
+    // declared by plugins whose module body runs ONCE; a `Core.destroy()` that cleared them
+    // would leave a later `Core.create()` with no panes at all, because nothing re-imports
+    // those bundles. Its consumer is the harness, where it is what makes the suite
+    // falsifiable: without it each case would inherit the previous one's registrations.
+    //
+    // ⚠️ The symmetric mistake was actually MADE while writing this registry: `clearPanelPanes`
+    // dropped the hosts too, with a plausible rationale, and three cases of
+    // `__tests__/ui/panel-panes.test.ts` went red on the spot. That is the only reason it is
+    // not in the shipped bundle — hence the emphasis here.
+    "kernel/ui/panel-panes.ts": ["PaneHost", "clearPanelPanes"],
 };
 
 /** `"*"` | tableau de symboles | undefined. */
@@ -761,11 +1035,123 @@ function allowlistFor(relFile) {
 }
 
 /**
- * Une entrée d'allowlist qui ne correspond plus à rien est une entrée FANTÔME : elle
- * survit aux purges et exempte silencieusement un fichier qui n'existe plus. Le projet
- * s'est déjà fait mordre par des entrées `sideEffects` fantômes (PB-1/PB-1bis) — on ne
- * rejoue pas.
+ * ALW-COND — the exemptions whose motive is VERIFIABLE, and which fall with it.
+ *
+ * 🛑 Why this table exists. An `ALLOWLIST` entry carries its motive in a
+ * comment, and a comment does not fall when its motive falls: the exemption
+ * survives its cause and then exempts an export that should be purged.
+ * `checkAllowlistFresh` guards the case where the export VANISHES; it can
+ * say nothing of the one where the REASON vanishes, the export remaining.
+ *
+ * Measured on 19/08/2026, on the entry that motivated this table: mutating
+ * the cause — removing the internal usage that makes the type
+ * non-de-exportable — left the gate GREEN. The written motive was right,
+ * and it guarded nothing.
+ *
+ * An entry is `"<file>::<symbol>"` → predicate over the declaring file's
+ * TEXT. The predicate returns `true` when the motive still holds. False ⇒
+ * the exemption is REFUSED and the export becomes a candidate again, with
+ * the fallen motive named in the output.
  */
+const ALLOWLIST_CONDITIONS = {
+    // The type names a member exported from its own file — so `tsc` would
+    // refuse to emit the declaration if it were not exported. The motive
+    // holds as long as that internal usage exists: two occurrences in the
+    // file, the declaration and the usage.
+    "contracts/ui-controls.contract.ts::IProximityCircle": {
+        motif: "le type est encore nommé par un membre exporté de son propre fichier",
+        holds: (text) => (text.match(/\bIProximityCircle\b/g) || []).length >= 2,
+    },
+};
+
+/**
+ * ALW-COND-02 — a condition aiming at no exemption is a GHOST condition: it
+ * gives the illusion an entry is guarded while the entry was removed. Same
+ * defect as CLS-02 on the classification, and it is hunted the same way.
+ *
+ * @returns {string[]} The problems, empty if the table is aligned with the ALLOWLIST.
+ */
+function checkAllowlistConditionsFresh() {
+    const problems = [];
+    for (const key of Object.keys(ALLOWLIST_CONDITIONS).sort()) {
+        const [rel, sym] = key.split("::");
+        const allow = ALLOWLIST[normPath(rel)];
+        if (!allow || !allow.includes(sym)) {
+            problems.push(`${key} — condition sans exemption correspondante (ALW-COND-02)`);
+        }
+    }
+    return problems;
+}
+
+/**
+ * An allowlist entry matching nothing any more is a GHOST entry: it
+ * survives purges and silently exempts a file that no longer exists. The
+ * project has already been bitten by ghost `sideEffects` entries
+ * (PB-1/PB-1bis) — we do not replay that.
+ */
+/**
+ * Hunts the ALLOWLIST's DUPLICATED keys — by rereading the SOURCE, not the object.
+ *
+ * 🛑 **Why the object cannot answer this question.» In JavaScript, the last
+ * key of an object literal silently overwrites the previous one: once
+ * `ALLOWLIST` is evaluated, the duplication no longer exists.
+ * `Object.keys()` returns a duplicate-free list no matter what. The error's
+ * only trace is in the file's TEXT, and that is why this guard goes back to
+ * it rather than querying the value.
+ *
+ * ## What it costs when it happens
+ *
+ * An exemption added twice is **cancelled** — the first one disappears,
+ * while the second is the one just written —, and the gate turns red on a
+ * file believed exempted, **without saying why**. Encountered live: you
+ * reread your entry, it is there, and the gate keeps refusing.
+ *
+ * ## Why the neighbouring guard could not see it
+ *
+ * {@link checkAllowlistFresh} hunts the SYMMETRIC mode: an entry whose
+ * target vanished. It starts from the surviving keys and verifies each
+ * designates a live file and live exports. A duplicated key points at a
+ * **perfectly alive** file — it thus passes that check without reserve.
+ * **Guarding against a failure mode does not guard against its
+ * symmetric**, and both guards are here because neither subsumes the other.
+ *
+ * ## The pattern's perimeter, and why it is narrow
+ *
+ * It only recognises the shape really used in this file: a double-quoted
+ * key at the head of a line, followed by `:`. A wider pattern would catch
+ * nested objects' keys and comment strings, and return duplicates that are
+ * not. The guard thus first delimits the literal, from
+ * `const ALLOWLIST = {` to its closing brace, and only looks at the keys of
+ * its first indentation level.
+ *
+ * @returns {string[]} One entry per key seen more than once, with its line
+ *          numbers. Empty when all is well — the guard prints nothing and
+ *          does not exit by itself.
+ */
+function checkAllowlistUnique() {
+    const src = fs.readFileSync(__filename, "utf8").split("\n");
+    const start = src.findIndex((l) => l.startsWith("const ALLOWLIST = {"));
+    if (start < 0) {
+        // The guard lost its subject: say it, rather than return "no duplicates".
+        return ["ALLOWLIST — littéral introuvable dans la source ; la garde n'a rien pu lire."];
+    }
+    const seen = new Map();
+    for (let i = start + 1; i < src.length; i++) {
+        if (src[i] === "};") break;
+        const m = src[i].match(/^ {4}"([^"]+)"\s*:/);
+        if (!m) continue;
+        if (!seen.has(m[1])) seen.set(m[1], []);
+        seen.get(m[1]).push(i + 1);
+    }
+    return [...seen.entries()]
+        .filter(([, lines]) => lines.length > 1)
+        .map(
+            ([key, lines]) =>
+                `"${key}" — ${lines.length} fois, lignes ${lines.join(", ")}. La dernière écrase ` +
+                `les précédentes : l'exemption la plus ancienne est ANNULÉE, en silence.`
+        );
+}
+
 function checkAllowlistFresh(coreFiles, exportsByFile) {
     const stale = [];
     for (const [rel, value] of Object.entries(ALLOWLIST)) {
@@ -774,12 +1160,13 @@ function checkAllowlistFresh(coreFiles, exportsByFile) {
             stale.push(`${rel} — fichier introuvable`);
             continue;
         }
-        // 🛑 B-20 — LE JOKER `"*"` N'EXISTE PLUS, et cette ligne disait pourquoi il fallait
-        // le retirer. Elle s'écrivait `if (value === "*") continue;` : une exemption globale
-        // était donc **exemptée du contrôle de péremption lui-même**. Les quatre qui vivaient
-        // ici ont survécu à ce titre — mesuré le 16/08/2026, elles masquaient **zéro** orphelin,
-        // et rien ne pouvait le dire. Une exemption qui échappe au contrôle des exemptions est
-        // la seule qui ne se périme jamais.
+        // 🛑 THE `"*"` WILDCARD NO LONGER EXISTS, and this line said why it
+        // had to go. It read `if (value === "*") continue;`: a global
+        // exemption was thus **exempted from the staleness check itself**.
+        // The four that lived here survived on that account — measured on
+        // 16/08/2026, they masked **zero** orphans, and nothing could say
+        // so. An exemption that escapes the exemptions' check is the only
+        // one that never expires.
         if (!Array.isArray(value)) {
             stale.push(
                 `${rel} — valeur non listée (${JSON.stringify(value)}). L'ALLOWLIST n'accepte ` +
@@ -820,9 +1207,45 @@ function collectCoreSourceFiles() {
     return collectFiles(CORE_SRC, [".ts"], []).filter((f) => !f.endsWith(".d.ts"));
 }
 
+/**
+ * Widened candidate corpus (25/08/2026): every NON-core workspace package's `src/**\/*.ts`.
+ * The net used to judge only the core's exports; the plugins' and libs' own exports were
+ * invisible to it — knip sees unreachable FILES there, never a dead export inside a
+ * reachable one. First widened census frozen in the baseline (shrink-only); anything
+ * intentional-and-permanent goes to ALLOWLIST, as the header rule says.
+ */
+function collectExtendedSourceFiles() {
+    const acc = [];
+    for (const pkg of require("./lib/packages.cjs").all()) {
+        if (path.basename(pkg.absDir) === "core") continue;
+        collectFiles(path.join(pkg.absDir, "src"), [".ts"], acc);
+    }
+    const files = acc.filter((f) => !f.endsWith(".d.ts"));
+    // Anti-vacuity: 390 files at the widening. A collapse below the floor means a broken
+    // registry or glob, and "no orphans" from an unscanned corpus must never exit 0.
+    if (files.length < 200) {
+        throw new Error(
+            `check-orphan-exports: extended corpus collapsed (${files.length} files < 200). ` +
+                "Refusing to conclude."
+        );
+    }
+    return files;
+}
+
+/**
+ * Baseline/allowlist key path for a candidate file: core files stay relative to CORE_SRC
+ * (compatibility with every existing key), non-core files are repo-relative — the two can
+ * never collide, and a plugin path is readable at a glance.
+ */
+function relOf(file) {
+    return file.startsWith(CORE_SRC + path.sep)
+        ? path.relative(CORE_SRC, file)
+        : path.relative(ROOT, file);
+}
+
 function collectMonorepoCorpusFiles() {
     const acc = [];
-    // ARCHI S9.5 — packages from the workspace registry, and NO swallow.
+    // Packages from the workspace registry, and NO swallow.
     //
     // The previous form did `try { readdirSync(PKG_DIR) } catch { pkgEntries = [] }`,
     // which is the most dangerous shape in this file: an unreadable packages/ yielded
@@ -842,7 +1265,7 @@ function collectMonorepoCorpusFiles() {
     return acc;
 }
 
-// ─── Extraction des exports nommés (TypeScript compiler API) ──────────────────
+// ─── Named-export extraction (TypeScript compiler API) ────────────────────────
 function modifiersOf(stmt) {
     return ts.canHaveModifiers(stmt) ? ts.getModifiers(stmt) || [] : [];
 }
@@ -895,11 +1318,12 @@ function extractExports(filePath) {
     return found;
 }
 
-// ─── Corpus (commentaires retirés, tokenisé) ───────────────────────────────────
+// ─── Corpus (comments stripped, tokenised) ─────────────────────────────────────
 function stripComments(text) {
-    // Suffisant pour ce grep, pas un vrai parseur : évite les faux "vivant" purement
-    // JSDoc (cas Introspection) ; un "//" dans une chaîne littérale peut tronquer à
-    // tort, cas rare et sans risque (biaise vers le faux négatif, pas le faux positif).
+    // Sufficient for this grep, not a real parser: avoids purely-JSDoc
+    // false "alive" (the Introspection case); a "//" in a string literal
+    // can truncate wrongly, a rare and riskless case (biases towards the
+    // false negative, not the false positive).
     return text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 }
 
@@ -931,9 +1355,10 @@ function hasConsumer(exp, definingFile, corpus) {
 
 // ─── Run ────────────────────────────────────────────────────────────────────────
 function main() {
-    let coreFiles, corpusFiles;
+    let coreFiles, extendedFiles, corpusFiles;
     try {
         coreFiles = collectCoreSourceFiles();
+        extendedFiles = collectExtendedSourceFiles();
         corpusFiles = collectMonorepoCorpusFiles();
     } catch (e) {
         console.error("✖ check-orphan-exports: erreur de collecte des fichiers —", e.message);
@@ -944,12 +1369,17 @@ function main() {
         console.error("✖ check-orphan-exports: aucun fichier trouvé dans packages/core/src.");
         process.exit(2);
     }
+    console.log(
+        `ℹ check-orphan-exports: corpus jugé — ${coreFiles.length} fichiers core + ` +
+            `${extendedFiles.length} fichiers plugins/libs (élargi le 25/08/2026).`
+    );
 
     const corpus = loadCorpus(corpusFiles);
     const candidates = [];
+    const fallenExemptions = [];
     const exportsByFile = new Map();
 
-    for (const file of coreFiles) {
+    for (const file of [...coreFiles, ...extendedFiles]) {
         let exportsFound;
         try {
             exportsFound = extractExports(file);
@@ -959,14 +1389,23 @@ function main() {
         }
         exportsByFile.set(file, exportsFound);
 
-        const relFile = path.relative(CORE_SRC, file);
+        const relFile = relOf(file);
         const allow = allowlistFor(relFile);
-        // B-20 — plus de joker : `allow` est soit `undefined`, soit une liste de symboles.
-        // Un fichier entièrement exempté se déclare donc en NOMMANT ses exports, ce qui les
-        // rend visibles à `checkAllowlistFresh` — et donc périssables.
+        // No more wildcard: `allow` is either `undefined` or a list of
+        // symbols. A fully exempted file thus declares itself by NAMING its
+        // exports, which makes them visible to `checkAllowlistFresh` — and
+        // hence perishable.
 
         for (const exp of exportsFound) {
-            if (allow && allow.includes(exp.name)) continue;
+            if (allow && allow.includes(exp.name)) {
+                const cond = ALLOWLIST_CONDITIONS[`${normPath(relFile)}::${exp.name}`];
+                // No condition = unconditional exemption, as before. A
+                // condition that no longer holds does not turn the gate red
+                // by itself: it WITHDRAWS the exemption, and the export is
+                // judged on the merits like any other.
+                if (!cond || cond.holds(fs.readFileSync(file, "utf8"))) continue;
+                fallenExemptions.push(`${relFile}::${exp.name} — ${cond.motif}`);
+            }
             if (!hasConsumer(exp, file, corpus)) {
                 candidates.push({ file: relFile, line: exp.line, name: exp.name });
             }
@@ -977,7 +1416,55 @@ function main() {
         console.log(JSON.stringify({ candidates }, null, 2));
     }
 
-    // Une allowlist qui pourrit exempte en silence — la vérifier AVANT tout verdict.
+    // A duplicated key cancels an exemption without saying so — and it
+    // makes the staleness check below uninterpretable, since it will never
+    // see the overwritten entry. This check therefore runs FIRST.
+    const dupes = checkAllowlistUnique();
+    if (dupes.length > 0) {
+        console.error(
+            `✖ check-orphan-exports: ${dupes.length} clé(s) d'allowlist dupliquée(s) —\n`
+        );
+        for (const d of dupes) console.error(`  ${d}`);
+        console.error(
+            "\nFusionner les entrées en une seule, en réunissant leurs symboles. Une clé\n" +
+                "dupliquée ne se voit pas à l'exécution : l'objet évalué n'en garde qu'une, et\n" +
+                "la gate refuse alors un fichier dont l'exemption est pourtant écrite."
+        );
+        process.exit(1);
+    }
+
+    // ALW-COND-02 — a condition guarding nothing any more, before any verdict.
+    const orphanConds = checkAllowlistConditionsFresh();
+    if (orphanConds.length > 0) {
+        console.error(
+            `✖ check-orphan-exports: ${orphanConds.length} condition(s) d'allowlist sans exemption —\n`
+        );
+        for (const c of orphanConds) console.error(`  ${c}`);
+        console.error(
+            "\nL'exemption a été retirée mais sa condition est restée. Elle ne garde plus rien\n" +
+                "et donne l'illusion qu'une entrée est vérifiée : retirer l'entrée de\n" +
+                "`ALLOWLIST_CONDITIONS`."
+        );
+        process.exit(1);
+    }
+
+    // ALW-COND — an exemption whose motive fell no longer applies. SAY it,
+    // because an export becoming a candidate again without explanation
+    // rereads as a regression.
+    if (fallenExemptions.length > 0) {
+        console.error(
+            `⚠️  check-orphan-exports: ${fallenExemptions.length} exemption(s) NON APPLIQUÉE(S) — ` +
+                `leur motif est tombé :\n`
+        );
+        for (const f of fallenExemptions) console.error(`  ${f}`);
+        console.error(
+            "\nCes exports sont jugés comme les autres ci-dessous. Si le motif est vraiment\n" +
+                "caduc, retirer l'entrée d'`ALLOWLIST` ET sa condition ; s'il a seulement changé\n" +
+                "de forme, mettre à jour le prédicat — pas le supprimer.\n"
+        );
+    }
+
+    // A rotting allowlist exempts silently — verify it BEFORE any verdict.
     const stale = checkAllowlistFresh(coreFiles, exportsByFile);
     if (stale.length > 0) {
         console.error(
@@ -1003,10 +1490,11 @@ function main() {
 
     const baseline = loadBaseline();
 
-    // ⚠️ APRÈS le bloc `--update-baseline` ci-dessus, et c'est structurel : posée avant lui,
-    // cette vérification interdirait de RÉGÉNÉRER la baseline au moment précis où un candidat
-    // neuf n'a pas encore de classe — la gate se verrouillerait elle-même. L'ordre correct est :
-    // on régénère, puis la prochaine exécution normale rougit tant que la classe manque.
+    // ⚠️ AFTER the `--update-baseline` block above, and it is structural:
+    // placed before it, this check would forbid REGENERATING the baseline
+    // at the precise moment a new candidate has no class yet — the gate
+    // would lock itself. The correct order is: regenerate, then the next
+    // normal run turns red as long as the class is missing.
     const unclassified = checkClassificationComplete(baseline);
     if (unclassified.length > 0) {
         console.error(
@@ -1037,7 +1525,7 @@ function main() {
 
     if (known.length > 0) {
         console.log(
-            `ℹ check-orphan-exports: ${known.length} candidat(s) déjà connu(s) (baseline, Sprint 3/4 — ` +
+            `ℹ check-orphan-exports: ${known.length} candidat(s) déjà connu(s) (baseline — ` +
                 "non bloquant)."
         );
     }
@@ -1049,16 +1537,14 @@ function main() {
         process.exit(0);
     }
 
-    console.error(
-        `✖ check-orphan-exports: ${fresh.length} NOUVEL export(s) sans consommateur :\n`
-    );
+    console.error(`✖ check-orphan-exports: ${fresh.length} NOUVEL export(s) sans consommateur :\n`);
     for (const c of fresh) {
         console.error(`  ${c.file}:${c.line}  ${c.name}`);
     }
     console.error(
         `\n${fresh.length} régression(s) — vérifier avant de purger (« annoncé mort ≠ mort »), ` +
             "ajouter à ALLOWLIST si volontaire, ou régénérer la baseline (--update-baseline) " +
-            "si c'est un candidat légitime destiné au tri Sprint 3/4."
+            "si c'est un candidat légitime destiné au tri."
     );
     process.exit(1);
 }

@@ -13,7 +13,7 @@
  * import at all. `plugin-storage` reaches it through the `@core-offline/*` alias, and
  * rollup COPIES the resolved source into the plugin bundle: every import added here is
  * copied with it. Keeping the file self-contained is precisely what keeps the core
- * logger out of that bundle (CAPACITÉS S1 — it used to reach `calculator.ts`, whose
+ * logger out of that bundle (it used to reach `calculator.ts`, whose
  * `Log` import tethered the whole logger to the plugin).
  *
  * `calculator.ts` delegates to these helpers rather than duplicating them, so the
@@ -29,17 +29,19 @@
  */
 const WEB_MERCATOR_MAX_LAT = 85.0511;
 
-// API publique S4.4 — `AVG_PBF_BYTES`, `GLYPH_SPRITE_OVERHEAD`, `countTilesForBounds` et
-// `estimateVectorZone` ont été DÉPLACÉS dans `@geoleaf-plugins/offline-ui`
-// (`src/sync/vector-zone-estimate.ts`). Ils étaient du code MORT ici : zéro appelant dans le
-// core, et le build les élaguait de l'artefact publié — `dist/esm/.../tile-math.js` n'exportait
-// que `latLngToTile`. Storage, seul consommateur, les atteignait par un alias vers ces SOURCES,
-// ce qui lui interdisait un `rootDir`.
+// Public-API review — `AVG_PBF_BYTES`, `GLYPH_SPRITE_OVERHEAD`, `countTilesForBounds`
+// and `estimateVectorZone` were MOVED into `@geoleaf-plugins/offline-ui`
+// (`src/sync/vector-zone-estimate.ts`). They were DEAD code here: zero callers in
+// the core, and the build pruned them from the published artifact —
+// `dist/esm/.../tile-math.js` exported only `latLngToTile`. Storage, the sole
+// consumer, reached them through an alias to these SOURCES, which forbade it a
+// `rootDir`.
 //
-// ⚠️ Leçon à garder : un sous-chemin publié ne garantit que le FICHIER. Son CONTENU dépend du
-// tree-shaking du paquet qui l'émet — un symbole qu'aucun code du paquet n'appelle n'est pas
-// dans l'artefact, quoi qu'annonce la carte `exports`. `check-subpath-resolve` ne voit pas
-// cette classe : il vérifie l'existence des cibles, pas la présence des symboles.
+// ⚠️ Lesson to keep: a published subpath only guarantees the FILE. Its CONTENT
+// depends on the emitting package's tree-shaking — a symbol no code of the package
+// calls is not in the artifact, whatever the `exports` map announces.
+// `check-subpath-resolve` cannot see this class: it checks that targets exist, not
+// that symbols are present.
 
 /** Geographic bounding box, in degrees. */
 export interface Bounds {

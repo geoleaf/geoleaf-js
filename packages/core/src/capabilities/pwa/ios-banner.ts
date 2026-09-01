@@ -167,7 +167,7 @@ export const IosBanner = {
 
     /**
      * Registry destroy / test seam: cancels a pending show-timer and removes the banner
-     * so a re-init starts clean (S7.5 — no dangling timer / duplicate banner).
+     * so a re-init starts clean (no dangling timer / duplicate banner).
      */
     _reset(): void {
         if (_timer !== null) {

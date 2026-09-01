@@ -4,7 +4,7 @@
     "zIndex": 75,
     "geometry": "point",
     "data": {
-        "_comment": "⚠️ B-56 (28/07/2026) — la source de BOOT est locale, délibérément. Elle a été `https://api.gbif.org/v1/occurrence/search?country=GF&hasCoordinate=true&limit=300` du 27 au 28/07/2026 : `data.mapping` force le fetch sur le fil principal (le worker détruit l'enveloppe `{results}`), et `GeoJSONModule.init()` ATTEND la phase 1, donc cet appel tiers non borné bloquait la chaîne d'init des modules dans les 3 variantes livrées. Le fichier local a la même FORME, donc `mapping` + `itemsPath` restent exercés à l'identique. Repointer vers l'API n'est pas interdit — mais pas dans le thème par défaut, et pas sans borne (`AbortController`).",
+        "_comment": "⚠️ 28/07/2026 — la source de BOOT est locale, délibérément. Elle a été `https://api.gbif.org/v1/occurrence/search?country=GF&hasCoordinate=true&limit=300` du 27 au 28/07/2026 : `data.mapping` force le fetch sur le fil principal (le worker détruit l'enveloppe `{results}`), et `GeoJSONModule.init()` ATTEND la phase 1, donc cet appel tiers non borné bloquait la chaîne d'init des modules dans les 3 variantes livrées. Le fichier local a la même FORME, donc `mapping` + `itemsPath` restent exercés à l'identique. Repointer vers l'API n'est pas interdit — mais pas dans le thème par défaut, et pas sans borne (`AbortController`).",
         "directory": "data",
         "file": "observations_gbif.json",
         "licence": "Jeu de démonstration à la forme GBIF — schéma © GBIF (api.gbif.org), données fictives",
@@ -110,6 +110,21 @@
                 "widget": "text",
                 "display": {
                     "surfaces": ["tooltip", "popup", "sidepanel"]
+                }
+            },
+            {
+                "_comment": "Point d'entrée du plugin `routing` — le bouton n'est posé ni par le cœur ni par le plugin, il se déclare ICI. ⚠️ `payloadFields` est une liste blanche STRICTE : sans le champ du libellé, le panneau reçoit des coordonnées sans nom. Ce champ doit AUSSI figurer dans `modules.routing.labelField`, qui est global au plugin là où celui-ci est par couche — la règle traverse deux fichiers et aucun schéma ne l'exprime. `requiresPlugin` retire le bouton quand le plugin est absent, ce qui est le second sens de la garde.",
+                "field": "properties.species",
+                "label": "Itinéraire",
+                "primitive": "string",
+                "widget": "action",
+                "options": {
+                    "actionId": "routing.destination",
+                    "requiresPlugin": "routing",
+                    "payloadFields": ["species"]
+                },
+                "display": {
+                    "surfaces": ["popup", "sidepanel"]
                 }
             }
         ]

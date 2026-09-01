@@ -1,19 +1,19 @@
 /*!
- * Tests — tâche 5.1-b : le handler `"poi"` du seam `Sync`
+ * Tests — the `Sync` seam's `"poi"` handler
  *
- * 🛑 LA GARDE CENTRALE EST CELLE DE LA COLLISION. `SyncHandlerContract.registerHandler` fait
- * `_handlers.set(id, handler)` — il **remplace en silence**. Le mock de seam ci-dessous
- * REPRODUIT cette sémantique (une `Map`, un vrai écrasement) au lieu d'une `vi.fn()` nue :
- * un mock plus permissif que la surface aurait validé l'enregistrement inconditionnel, qui
- * est précisément le défaut que cette tâche évite.
+ * 🛑 THE CENTRAL GUARD IS THE COLLISION ONE. `SyncHandlerContract.registerHandler`
+ * does `_handlers.set(id, handler)` — it **replaces silently**. The seam mock
+ * below REPRODUCES that semantics (a `Map`, a real overwrite) instead of a
+ * bare `vi.fn()`: a mock more permissive than the surface would have validated
+ * unconditional registration, precisely the defect this work avoids.
  *
- * ⚠️ `listPendingEdits` et `pushOutbox` sont montés comme des MÉTHODES sur leur objet, et les
- * doubles vérifient leur récepteur (B-128) : un appel détaché doit échouer ici comme il
- * échoue dans le navigateur.
+ * ⚠️ `listPendingEdits` and `pushOutbox` are mounted as METHODS on their
+ * object, and the doubles verify their receiver: a detached call must fail
+ * here as it fails in the browser.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// --- le seam Sync, avec la sémantique d'écrasement du core ---------------------
+// --- the Sync seam, with the core's overwrite semantics ------------------------
 const _handlers = new Map<string, unknown>();
 const _sync = {
     registerHandler: vi.fn((id: string, h: unknown) => {
@@ -22,7 +22,7 @@ const _sync = {
     getHandler: vi.fn((id: string) => _handlers.get(id)),
 };
 
-// --- la base, avec un `listPendingEdits` qui EXIGE son récepteur ---------------
+// --- the database, with a `listPendingEdits` that DEMANDS its receiver --------
 let _pendingRows: Array<{ kind: string }> = [];
 let _dbPresent = true;
 const _db = {
@@ -49,9 +49,8 @@ vi.mock("../persistence/editor-sync-replay.js", () => ({
     drainOutbox: () => _drain(),
 }));
 
-const { EditorSyncHandler, registerSyncHandler, SYNC_HANDLER_ID } = await import(
-    "../persistence/sync-handler.js"
-);
+const { EditorSyncHandler, registerSyncHandler, SYNC_HANDLER_ID } =
+    await import("../persistence/sync-handler.js");
 
 function installSeam(present = true) {
     (globalThis as { GeoLeaf?: unknown }).GeoLeaf = present ? { Sync: _sync } : {};
@@ -68,7 +67,7 @@ beforeEach(() => {
     installSeam(true);
 });
 
-// --- l'enregistrement et la collision ------------------------------------------
+// --- registration and the collision --------------------------------------------
 
 describe("registerSyncHandler — l'enregistrement, désormais INCONDITIONNEL", () => {
     it('enregistre sous "poi" quand la place est libre', () => {
@@ -77,9 +76,10 @@ describe("registerSyncHandler — l'enregistrement, désormais INCONDITIONNEL", 
     });
 
     it("🛑 NE CÈDE PLUS une place occupée — il la prend", () => {
-        // 5.1-f : `editor` cédait tant qu'`addpoi` vivait, et la reprise vivait dans le pont.
-        // Le pont est parti avec le paquet, donc il n'existe plus aucun repreneur : céder
-        // laisserait `offline-ui` branché sur un handler tiers, ou sur rien — en silence.
+        // `editor` yielded as long as `addpoi` lived, and the takeover lived
+        // in the bridge. The bridge left with the package, so no taker exists
+        // any more: yielding would leave `offline-ui` wired to a third-party
+        // handler, or to nothing — silently.
         _handlers.set("poi", { _owner: "un-tiers" });
 
         expect(registerSyncHandler()).toBe(true);
@@ -124,8 +124,9 @@ describe("getSyncSummary — le décompte qui pilote le bouton d'offline-ui", ()
     });
 
     it("🛑 un `kind` inconnu compte dans total sans être ventilé", async () => {
-        // Mieux vaut un total juste et une ventilation incomplète que l'inverse : le bouton
-        // s'active sur `total`, et le sous-compter laisserait une saisie invisible.
+        // Better a correct total and an incomplete breakdown than the
+        // opposite: the button activates on `total`, and undercounting it
+        // would leave a capture invisible.
         _pendingRows = [{ kind: "create" }, { kind: "chose-inconnue" }];
         const s = await EditorSyncHandler.getSyncSummary();
         expect(s.total).toBe(2);
@@ -142,9 +143,10 @@ describe("getSyncSummary — le décompte qui pilote le bouton d'offline-ui", ()
         });
     });
 
-    it("🛑 appelle listPendingEdits AVEC SON RÉCEPTEUR (B-128)", async () => {
-        // Le double jette si `this` n'est pas la base — exactement ce que fait la façade du
-        // core, et ce qu'aucun typecheck n'attrape puisque le plugin redéclare la surface.
+    it("🛑 appelle listPendingEdits AVEC SON RÉCEPTEUR", async () => {
+        // The double throws when `this` is not the database — exactly what the
+        // core's facade does, and what no typecheck catches since the plugin
+        // redeclares the surface.
         _pendingRows = [{ kind: "update" }];
         await expect(EditorSyncHandler.getSyncSummary()).resolves.toMatchObject({ total: 1 });
     });
@@ -173,9 +175,9 @@ describe("processSyncQueue — le rejeu du bouton", () => {
     });
 
     it("🛑 JETTE quand le drain n'a pas eu lieu — il ne rend pas un succès à zéro", async () => {
-        // `null` = hors réseau, drain déjà en cours, ou moteur absent. Le rendre comme
-        // `{synced: 0, success: true}` ferait annoncer « à jour » à l'UI sur un rejeu qui
-        // n'a jamais été tenté.
+        // `null` = off-network, drain already running, or engine absent.
+        // Returning it as `{synced: 0, success: true}` would make the UI
+        // announce "up to date" on a replay that was never attempted.
         _drainResult = null;
         await expect(EditorSyncHandler.processSyncQueue()).rejects.toThrow();
     });
@@ -205,7 +207,7 @@ describe("processSyncQueue — le rejeu du bouton", () => {
     });
 });
 
-// --- la forme attendue par le contrat du core -----------------------------------
+// --- the shape the core's contract expects --------------------------------------
 
 describe("La surface que le seam expose", () => {
     it("porte exactement les deux méthodes qu'offline-ui consomme", () => {

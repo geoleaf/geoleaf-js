@@ -11,16 +11,17 @@ vi.mock("../../src/utils/log/index.js", () => ({
     Log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-// ⚠️ R.21 (24/07/2026) — un `vi.mock("../../src/utils/security/security-utils.js")`
-// fournissant `validateUrl` vivait ici. Il ne s'est JAMAIS appliqué, pour deux raisons
-// cumulées : `modules/utils/security/` n'existe pas dans l'arbre, et `general-utils.ts`
-// prend son `validateUrl` de `built-in/security/index.js`. Les assertions `validateUrl`
-// de ce fichier ont donc toujours exercé la VRAIE implémentation — ce qui est le
-// comportement souhaitable, mais pas celui que l'auteur croyait écrire.
+// ⚠️ A `vi.mock("../../src/utils/security/security-utils.js")` providing
+// `validateUrl` lived here. It NEVER applied, for two cumulative reasons:
+// `modules/utils/security/` does not exist in the tree, and
+// `general-utils.ts` takes its `validateUrl` from
+// `built-in/security/index.js`. This file's `validateUrl` assertions thus
+// always exercised the REAL implementation — the desirable behaviour, but
+// not the one the author believed they were writing.
 //
-// Retiré après preuve : sans lui, la suite est inchangée. Un `vi.mock` sur un chemin
-// que rien n'importe est silencieux (le mocker natif ne jette que sur un export
-// manquant d'un module RÉSOLU), donc rien ne l'aurait signalé.
+// Removed after proof: without it, the suite is unchanged. A `vi.mock` on a
+// path nothing imports is silent (the native mocker only throws on a
+// missing export of a RESOLVED module), so nothing would have flagged it.
 
 import {
     validateUrl,

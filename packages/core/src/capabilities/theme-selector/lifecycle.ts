@@ -19,10 +19,10 @@
  * Registered by `ThemeSelectorModule` when the `theme-selector` capability is enabled
  * (`modules.theme-selector.enabled === true`, **opt-in** — S8/F3).
  *
- * ⚠️ Ces deux lignes ont dit « opt-out » et cité un test `!== false` qui n'existe plus (B-62).
- * Le gate de DÉCLARATION, lui, est bien `enableWhenAbsent: true` — les deux étages répondent à
- * deux questions différentes, et c'est pourquoi la mention « opt-out boot gate » de
- * `theme-selector.ts` est JUSTE et n'a pas été touchée.
+ * ⚠️ These two lines said "opt-out" and cited a `!== false` test that no longer
+ * exists. The DECLARATION gate, however, is indeed `enableWhenAbsent: true` — the
+ * two stages answer two different questions, which is why the "opt-out boot gate"
+ * mention in `theme-selector.ts` is RIGHT and was not touched.
  *
  * `ThemeSelectorModule` depends on `geojson` (not `ui`/`theme-engine`) so this init()
  * — and thus the `app:ready` subscription below — runs BEFORE ThemeEngineModule

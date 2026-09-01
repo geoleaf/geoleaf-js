@@ -1,93 +1,99 @@
 #!/usr/bin/env node
 /**
- * LIC-HEADERS : la licence est-elle VRAIMENT portée par ce qui part ? (npm S3)
+ * LIC-HEADERS: is the licence REALLY carried by what ships?
  *
- * Deux objets distincts, souvent confondus, et c'est pourquoi ils sont gatés séparément :
- * la **notice du bundle distribué** et l'**en-tête des sources**. Le `LICENSE` racine, ligne
- * 12, exige que la notice accompagne « all copies or substantial portions of the Software ».
- * Le tarball npm la satisfait via `files[]` ; **un `.js` servi seul depuis un CDN ou copié
- * dans un `deploy/` chez un client, non**. C'est ce trou-là que LIC-04 ferme.
+ * Two distinct objects, often confused, and that is why they are gated separately:
+ * the **distributed bundle's notice** and the **sources' header**. The root
+ * `LICENSE`, line 12, requires the notice to accompany "all copies or substantial
+ * portions of the Software". The npm tarball satisfies it through `files[]`; **a
+ * `.js` served alone from a CDN or copied into a client's `deploy/`, no**. That is
+ * the hole LIC-04 closes.
  *
- *   LIC-01  Toute source `.ts` du corpus `collect()` ouvre sur un bloc `/*!` canonique —
- *           un titre, `© <an> Mattieu Pottier`, une mention MIT, et l'URL du projet.
- *   LIC-02  Aucune attribution concurrente : ni un second détenteur de copyright, ni un
- *           titre qui nomme un AUTRE paquet du dépôt.
- *   LIC-03  Plancher anti-gate-vide, sur les DEUX corpus. Un vert seul est ambigu entre
- *           « 0 fichier nu » et « 0 fichier scanné » — et ce dépôt s'est déjà fait avoir.
- *   LIC-04  Tout `.js`/`.mjs` expédié par `files[]` d'un paquet publiable porte la notice
- *           dans ses **200 premiers octets**, sauf les chunks 100 % tiers, nommés à chaque run.
- *   LIC-05  `package.json#license` vaut exactement `MIT` sur tout paquet du dépôt.
- *   LIC-06  Tout fichier `LICENSE` suivi porte `Copyright (c) <an> Mattieu Pottier` et **jamais
- *           le signe `©`** — l'assertion de disjonction de la partition (tâche 4.3).
+ *   LIC-01  Every `.ts` source of the `collect()` corpus opens on a canonical `/*!`
+ *           block — a title, `© <year> Mattieu Pottier`, an MIT mention, and the
+ *           project URL.
+ *   LIC-02  No competing attribution: neither a second copyright holder, nor a
+ *           title naming ANOTHER package of the repo.
+ *   LIC-03  Anti-empty-gate floor, on BOTH corpora. A lone green is ambiguous
+ *           between "0 bare files" and "0 scanned files" — and this repo has
+ *           already been caught.
+ *   LIC-04  Every `.js`/`.mjs` shipped by a publishable package's `files[]` carries
+ *           the notice in its **first 200 bytes**, except 100 %-third-party chunks,
+ *           named at every run.
+ *   LIC-05  `package.json#license` is exactly `MIT` on every package of the repo.
+ *   LIC-06  Every tracked `LICENSE` file carries `Copyright (c) <year> Mattieu
+ *           Pottier` and **never the `©` sign** — the partition's disjunction
+ *           assertion.
  *
- * ## Aucune baseline, délibérément
+ * ## No baseline, deliberately
  *
- * Régime MH-03 : « celui-ci n'a AUCUNE baseline, on purpose : la règle tient à zéro ». Une
- * baseline sur les en-têtes de licence serait un permis de ne pas les poser — et le geste qui
- * les pose est mécanique (`--write`), donc il n'y a pas de dette à étaler.
+ * MH-03 regime: "this one has NO baseline, on purpose: the rule holds at zero". A
+ * baseline on licence headers would be a permit not to set them — and the gesture
+ * that sets them is mechanical (`--write`), so there is no debt to spread.
  *
- * ## Ce que LIC-04 NE fait PAS, et pourquoi
+ * ## What LIC-04 does NOT do, and why
  *
- * Il ne réclame pas la notice sur un chunk dont **toutes** les sources sont dans
- * `node_modules/`. Y écrire « © 2026 Mattieu Pottier — Released under the MIT License »
- * serait une **fausse attribution** : `geoleaf-print.jspdf-*.js` est du jsPDF, pas du
- * GeoLeaf. La liste n'est pas écrite à la main, elle se dérive de la sourcemap du chunk, et
- * la gate l'imprime à chaque run — un fichier tiers exempté en silence serait indiscernable
- * d'un fichier à nous qu'on aurait oublié. Un fichier SANS sourcemap n'est jamais exempté :
- * le doute joue contre l'exemption.
+ * It does not demand the notice on a chunk whose sources are **all** inside
+ * `node_modules/`. Writing "© 2026 Mattieu Pottier — Released under the MIT
+ * License" there would be a **false attribution**: `geoleaf-print.jspdf-*.js` is
+ * jsPDF, not GeoLeaf. The list is not hand-written, it derives from the chunk's
+ * sourcemap, and the gate prints it at every run — a third-party file exempted in
+ * silence would be indistinguishable from a file of ours forgotten. A file WITHOUT
+ * a sourcemap is never exempted: doubt plays against the exemption.
  *
- * ## `packages/_plugin-template/` est HORS corpus, et c'est voulu — tâche 3.9
+ * ## `packages/_plugin-template/` is OUT of the corpus, and that is wanted
  *
- * Les globs `workspaces` portent `!packages/_*`, donc `packages.cjs` ne rend pas le scaffold
- * et aucune règle dérivée de lui ne s'y applique. C'est **une exclusion voulue** : ses
- * fichiers portent des jetons `__PLUGIN_PKG__` non substitués, il n'est jamais publié, et une
- * gate qui le scannerait rougirait sur des gabarits.
+ * The `workspaces` globs carry `!packages/_*`, so `packages.cjs` does not return
+ * the scaffold and no rule derived from it applies there. **A wanted exclusion**:
+ * its files carry unsubstituted `__PLUGIN_PKG__` tokens, it is never published, and
+ * a gate scanning it would redden on templates.
  *
- * 🛑 **Mais un scaffold qui n'émet pas le bandeau produit des plugins non conformes DÈS LEUR
- * NAISSANCE, dans l'angle mort exact de cette gate.** Mesuré le 10/08/2026 : ses 5 sources
- * portaient bien un `/*!`, sans la ligne `https://geoleaf.dev` — le prochain
- * `npm run create:plugin` serait donc né en violation de LIC-01, et son bundle sans notice
- * (sa config ne passait pas `pkg` à `pluginStack`). Corrigé à la source, dans le gabarit.
- * Le geste utile n'est donc pas d'inclure le template dans le corpus, c'est de **vérifier que
- * le générateur émet la forme canonique** — ce qui s'éprouve en créant un plugin et en
- * regardant LIC-01 passer sur lui sans intervention. C'est le même mode que **R-N5** du
- * journal de nuit : une gate dérivée d'un registre hérite des exclusions de ce registre, et
- * le générateur est précisément ce qui fait sortir du trou.
+ * 🛑 **But a scaffold that does not emit the banner produces non-conforming plugins
+ * FROM BIRTH, in this gate's exact blind spot.** Measured on 2026-08-10: its 5
+ * sources did carry a `/*!`, without the `https://geoleaf.dev` line — the next
+ * `npm run create:plugin` would thus be born violating LIC-01, and its bundle
+ * notice-less (its config did not pass `pkg` to `pluginStack`). Fixed at the
+ * source, in the template. The useful gesture is thus not to include the template
+ * in the corpus, it is to **verify that the generator emits the canonical form** —
+ * proven by creating a plugin and watching LIC-01 pass on it without intervention.
+ * Same mode as the night journal's finding: a gate derived from a registry inherits
+ * that registry's exclusions, and the generator is precisely what leads out of the
+ * hole.
  *
- * ## LIC-05 porte sur ce qu'on PUBLIE, jamais sur ce qu'on consomme (tâche 3.15)
+ * ## LIC-05 bears on what we PUBLISH, never on what we consume
  *
- * `maplibre-gl@6.2.0` — la peer dependency du core — est **BSD-3-Clause**, et
- * `packages/core/docs/NOTICE.md` §Dependencies le dit. ⚠️ Ce renvoi citait `:64` jusqu'au
- * 10/08/2026 (tâche 4.4) : la ligne réelle était `:59`, et un numéro de ligne dans un renvoi
- * vers un `.md` se périme au premier paragraphe inséré — la SECTION, elle, ne bouge pas. Une
- * licence de dépendance permissive et
- * compatible n'est pas une violation de « MIT sans exception » : la doctrine porte sur les
- * paquets de CE dépôt. La constante s'appelle donc `PUBLISHED_PACKAGE_LICENSE` et non
- * `ALLOWED_LICENSE` — sans quoi la première dépendance BSD ou Apache fera croire à une
- * violation, et quelqu'un « corrigera » la gate.
+ * `maplibre-gl@6.2.0` — the core's peer dependency — is **BSD-3-Clause**, and
+ * `packages/core/docs/NOTICE.md` §Dependencies says so. ⚠️ This pointer cited `:64`
+ * until 2026-08-10: the real line was `:59`, and a line number in a pointer to a
+ * `.md` goes stale at the first inserted paragraph — the SECTION does not move. A
+ * permissive, compatible dependency licence is no violation of "MIT, no exception":
+ * the doctrine bears on THIS repo's packages. The constant is therefore named
+ * `PUBLISHED_PACKAGE_LICENSE` and not `ALLOWED_LICENSE` — otherwise the first BSD
+ * or Apache dependency will suggest a violation, and someone will "fix" the gate.
  *
- * ## LIC-06 — la partition `Copyright (c)` / `©` est ACTÉE, donc elle se garde (tâche 4.3)
+ * ## LIC-06 — the `Copyright (c)` / `©` partition is SETTLED, so it gets guarded
  *
- * La tâche demandait de trancher une « divergence de formulation ». Il n'y en a pas :
- * `Copyright (c)` vit dans les **19 fichiers `LICENSE`**, `©` dans les bandeaux, et
- * **l'intersection est vide dans les deux sens**. Le motif de chaque côté — texte MIT canonique
- * reconnu au mot près par SPDX d'un côté, notice typographique de l'autre — est écrit une seule
- * fois, au §« `Copyright (c)` / `©` » de `lib/license-banner.cjs`.
+ * The request was to settle a "wording divergence". There is none: `Copyright (c)`
+ * lives in the **19 `LICENSE` files**, `©` in the banners, and **the intersection
+ * is empty in both directions**. Each side's motive — canonical MIT text recognised
+ * word for word by SPDX on one side, typographic notice on the other — is written
+ * once, at the §"`Copyright (c)` / `©`" of `lib/license-banner.cjs`.
  *
- * 🛑 **Ce qui est gardé ici, c'est le sens que RIEN ne gardait.** « Aucun bandeau ne porte
- * `(c)` » l'était déjà par LIC-01 (`inspect()` classe la forme `parenthesee`). « Aucun `LICENSE`
- * ne porte `©` » ne l'était par rien — et c'est le sens qu'une harmonisation casse : devant
- * 845 bandeaux en `©` et 19 `LICENSE` en `(c)`, on « corrige » le plus petit tas. LIC-06 rougit
- * à cet instant-là, et renvoie au paragraphe qui explique pourquoi ne pas le faire.
+ * 🛑 **What is guarded here is the direction NOTHING guarded.** "No banner carries
+ * `(c)`" already was, by LIC-01 (`inspect()` classes the `parenthesee` form). "No
+ * `LICENSE` carries `©`" was guarded by nothing — and that is the direction a
+ * harmonisation breaks: facing 845 banners in `©` and 19 `LICENSE` in `(c)`, one
+ * "fixes" the smaller pile. LIC-06 turns red at that instant, and points to the
+ * paragraph explaining why not to.
  *
- * Le corpus se dérive de `git ls-files`, jamais du registre : les 19 `LICENSE` **débordent**
- * `packages.cjs` des deux côtés — le `LICENSE` racine n'appartient à aucun paquet, et celui de
- * `packages/_plugin-template/` est dans l'angle mort `!packages/_*` (mode R-N5, déjà payé deux
- * fois par ce sprint et le précédent). Un corpus dérivé du registre en verrait 17 sur 19, et
- * sortirait vert sur les deux qu'il ne regarde pas.
+ * The corpus derives from `git ls-files`, never the registry: the 19 `LICENSE`
+ * **overflow** `packages.cjs` on both sides — the root `LICENSE` belongs to no
+ * package, and `packages/_plugin-template/`'s sits in the `!packages/_*` blind spot
+ * (a mode already paid for twice). A registry-derived corpus would see 17 of 19,
+ * and would go green on the two it does not look at.
  *
  * Usage : node scripts/check-license-headers.cjs            (gate)
- *         node scripts/check-license-headers.cjs --write    (pose/complète les bandeaux)
+ *         node scripts/check-license-headers.cjs --write    (sets/completes banners)
  */
 
 "use strict";
@@ -104,36 +110,37 @@ const ROOT = registry.ROOT;
 const WRITE = process.argv.includes("--write");
 
 /**
- * Où la notice doit se trouver dans un fichier expédié (LIC-04).
+ * Where the notice must sit in a shipped file (LIC-04).
  *
- * 🛑 **La tâche 3.4 disait « dans ses 200 premiers octets », et ce critère rougit sur des
- * fichiers PARFAITEMENT conformes.** Mesuré le 10/08/2026 : `dist/esm/lang/lang-fr.js`,
- * `capabilities/feature-info/render/dom.js` et `resolve.js` ouvrent bien sur un `/*!` complet
- * — mais leur TITRE et leur description poussent la ligne `https://geoleaf.dev` au-delà de
- * l'octet 200. Un seuil en octets punit un titre informatif, ce qui est l'inverse du but.
+ * 🛑 **The original wording said "in its first 200 bytes", and that criterion
+ * reddens on PERFECTLY conforming files.** Measured on 2026-08-10:
+ * `dist/esm/lang/lang-fr.js`, `capabilities/feature-info/render/dom.js` and
+ * `resolve.js` do open on a complete `/*!` — but their TITLE and description push
+ * the `https://geoleaf.dev` line past byte 200. A byte threshold punishes an
+ * informative title, the opposite of the goal.
  *
- * Le critère réel est **structurel** : la notice doit vivre dans le bloc `/*!` de TÊTE, celui
- * qui ouvre le fichier — le *legal comment* qu'un minifieur préserve et qu'un lecteur voit en
- * premier. C'est plus strict que « quelque part dans les 200 premiers octets » (une notice
- * enfouie au milieu du code ne passe plus) et ça ne dépend d'aucune constante arbitraire.
+ * The real criterion is **structural**: the notice must live in the HEAD `/*!`
+ * block, the one opening the file — the *legal comment* a minifier preserves and a
+ * reader sees first. Stricter than "somewhere in the first 200 bytes" (a notice
+ * buried mid-code no longer passes) and dependent on no arbitrary constant.
  *
- * Le plafond reste, mais sur le BLOC, et large : un bandeau de tête n'est pas un fichier.
+ * The cap stays, but on the BLOCK, and wide: a head banner is not a file.
  */
 const NOTICE_BLOCK_MAX_BYTES = 4096;
 
 /**
- * Planchers LIC-03 — le corpus ne peut pas rétrécir en silence.
+ * LIC-03 floors — the corpus cannot shrink in silence.
  *
- * Mesuré le 10/08/2026 : 845 sources `.ts` sur 15 paquets, 545 `.js` expédiés sur 14
- * publiables, **19 fichiers `LICENSE` suivis** (17 avant la tâche 4.1). Les planchers sont posés
- * NETTEMENT en dessous : leur travail est de rougir quand un corpus tombe à zéro ou s'effondre,
- * pas de cliqueter à chaque fichier ajouté. ⚠️ `licenses` n'est donc PAS à 19 : un plancher qui
- * suit le corpus à l'unité est un cliquet déguisé, et il se fait baisser au premier retrait
- * légitime.
+ * Measured on 2026-08-10: 845 `.ts` sources on 15 packages, 545 shipped `.js` on 14
+ * publishable ones, **19 tracked `LICENSE` files** (17 before the addition). The
+ * floors sit WELL below: their job is to redden when a corpus falls to zero or
+ * collapses, not to ratchet at every added file. ⚠️ `licenses` is therefore NOT at
+ * 19: a floor tracking the corpus to the unit is a ratchet in disguise, and it gets
+ * lowered at the first legitimate removal.
  */
 const FLOOR = { sources: 700, sourcePackages: 12, shipped: 400, shippedPackages: 12, licenses: 15 };
 
-// ─── Corpus 1 — les sources ──────────────────────────────────────────────────
+// ─── Corpus 1 — the sources ──────────────────────────────────────────────────
 
 const { files: sources } = inventory.collect();
 
@@ -167,7 +174,9 @@ for (const f of sources) {
                 detail: `titre « ${info.title} » — nomme ${foreign}, le fichier appartient à ${f.package}`,
             });
         }
-        for (const m of info.body.matchAll(/(?:©|\(c\)|Copyright)\s*(?:\d{4}[^\S\n]*)?([^\n*]{2,60})/gi)) {
+        for (const m of info.body.matchAll(
+            /(?:©|\(c\)|Copyright)\s*(?:\d{4}[^\S\n]*)?([^\n*]{2,60})/gi
+        )) {
             const who = m[1].trim();
             if (who && !who.startsWith(canon.HOLDER)) {
                 lic02.push({ rel: f.rel, detail: `détenteur concurrent : « ${who} »` });
@@ -177,7 +186,8 @@ for (const f of sources) {
 
     if (WRITE) {
         const out = canon.normalize(src, f.package);
-        if (out.changed) toWrite.push({ rel: f.rel, pkg: f.package, source: out.source, why: out.why });
+        if (out.changed)
+            toWrite.push({ rel: f.rel, pkg: f.package, source: out.source, why: out.why });
     }
 }
 
@@ -198,32 +208,32 @@ if (WRITE) {
     process.exit(0);
 }
 
-// ─── Corpus 2 — les `.js` expédiés ───────────────────────────────────────────
+// ─── Corpus 2 — the shipped `.js` ────────────────────────────────────────────
 
 /**
- * Répertoires qui ne portent jamais de code de produit.
+ * Directories that never carry product code.
  *
- * Recopie assumée de `source-inventory.cjs:SKIP_DIRS` — et c'est le point : le corpus de
- * `--write` (`collect()`) les exclut par construction, donc une gate qui les EXIGERAIT
- * demanderait ce que son propre générateur ne sait pas produire. Un rouge permanent que
- * personne ne peut fermer finit toujours par se faire relâcher.
- * ⚠️ Ces fichiers PARTENT bel et bien dans les tarballs — c'est l'arbitrage écrit de la tâche
- * 2.10 (177 tests sur 493 sources). Ils sont hors du périmètre de la NOTICE, pas hors du
- * tarball, et confondre les deux serait une erreur de lecture de ce commentaire.
+ * Assumed copy of `source-inventory.cjs:SKIP_DIRS` — and that is the point: the
+ * `--write` corpus (`collect()`) excludes them by construction, so a gate
+ * REQUIRING them would demand what its own generator cannot produce. A permanent
+ * red nobody can close always ends up released.
+ * ⚠️ These files DO ship in the tarballs — a written arbitration (177 tests out of
+ * 493 sources). They are outside the NOTICE's perimeter, not outside the tarball,
+ * and confusing the two would be a misreading of this comment.
  */
 const SKIP_DIRS = new Set(["__tests__", "__mocks__", "test-utils", "node_modules"]);
 
 /**
- * Les fichiers JavaScript qu'un `npm pack` emporterait, par paquet publiable.
+ * The JavaScript files an `npm pack` would carry, per publishable package.
  *
- * Dérivé de `files[]` et jamais d'un glob : `files[]` EST la déclaration de ce qui part, et
- * c'est elle qu'il faut éprouver. Volontairement pas `npm pack --dry-run`, qui déclenche
- * `prepack` (donc un build) au milieu d'une gate.
+ * Derived from `files[]` and never a glob: `files[]` IS the declaration of what
+ * ships, and it is what must be proven. Deliberately not `npm pack --dry-run`,
+ * which triggers `prepack` (hence a build) mid-gate.
  *
- * 🛑 **Les entrées négatives de `files[]` sont APPLIQUÉES, pas sautées.** `@geoleaf/core`
- * déclare `docs/` puis `!docs/api/` et `!docs/public/` : ignorer les négations faisait entrer
- * dans le corpus **10 fichiers d'assets générés par TypeDoc** que npm n'expédie pas. Une gate
- * qui rougit sur un fichier absent du tarball est une gate qu'on désarme.
+ * 🛑 **Negative `files[]` entries are APPLIED, not skipped.** `@geoleaf/core`
+ * declares `docs/` then `!docs/api/` and `!docs/public/`: ignoring the negations
+ * let **10 TypeDoc-generated asset files** npm does not ship enter the corpus. A
+ * gate reddening on a file absent from the tarball is a gate that gets disarmed.
  *
  * @returns {{rel: string, abs: string, pkg: string}[]}
  */
@@ -266,11 +276,11 @@ function shippedJs() {
 }
 
 /**
- * Ce chunk est-il intégralement du code tiers ?
+ * Is this chunk entirely third-party code?
  *
- * Lu sur la SOURCEMAP, jamais sur le nom de fichier : `geoleaf-print.jspdf-*.js` porte notre
- * préfixe de sortie et zéro ligne de nous. Sans carte → `false`, le doute joue contre
- * l'exemption.
+ * Read off the SOURCEMAP, never the file name: `geoleaf-print.jspdf-*.js` carries
+ * our output prefix and zero lines of ours. No map → `false`, doubt plays against
+ * the exemption.
  *
  * @param {string} absJs
  * @returns {{vendor: boolean, sources: number}}
@@ -321,14 +331,15 @@ for (const f of shipped) {
     }
 }
 
-// ─── LIC-05 — la VALEUR du champ license ─────────────────────────────────────
+// ─── LIC-05 — the VALUE of the license field ─────────────────────────────────
 
 /**
- * Exceptions nommées à LIC-05 — vide, et c'est le but.
+ * Named exceptions to LIC-05 — empty, and that is the goal.
  *
- * Le jour où une entrée y apparaît, elle porte son motif ici même : une exception sans motif
- * écrit est indiscernable d'un oubli six mois plus tard. ⚠️ Ce n'est PAS l'endroit où ranger
- * une dépendance non-MIT : LIC-05 ne regarde que les manifestes de CE dépôt.
+ * The day an entry appears here, it carries its motive right here: an exception
+ * without a written motive is indistinguishable from an oversight six months
+ * later. ⚠️ This is NOT the place to file a non-MIT dependency: LIC-05 only looks
+ * at THIS repo's manifests.
  *
  * @type {Map<string, string>}
  */
@@ -347,21 +358,21 @@ for (const pkg of registry.all()) {
     }
 }
 
-// ─── LIC-06 — la disjonction `Copyright (c)` / `©` ───────────────────────────
+// ─── LIC-06 — the `Copyright (c)` / `©` disjunction ──────────────────────────
 
 /**
- * Les fichiers `LICENSE` suivis par git — le corpus de LIC-06.
+ * The git-tracked `LICENSE` files — LIC-06's corpus.
  *
- * Dérivé de `git ls-files` et jamais du registre : voir le §LIC-06 de l'en-tête. Le motif est
- * ancré aux deux bouts (`^LICENSE$` ou `/LICENSE$`) pour ne PAS attraper `LICENSE_HEADERS.md`
- * ni `LICENSE-DATA.md`, qui parlent de licence sans en être une — c'est la confusion exacte
- * qui rendait la recette de la tâche 4.5 inexploitable (elle en comptait 19 là où il y avait
- * 17 `LICENSE` + 2 documents).
+ * Derived from `git ls-files` and never the registry: see the header's §LIC-06.
+ * The pattern is anchored at both ends (`^LICENSE$` or `/LICENSE$`) so as NOT to
+ * catch `LICENSE_HEADERS.md` nor `LICENSE-DATA.md`, which speak of licence without
+ * being one — the exact confusion that made an earlier recipe unusable (it counted
+ * 19 where there were 17 `LICENSE` + 2 documents).
  *
- * Jette si git échoue, patron de `lib/source-inventory.cjs:87` : un corpus vide obtenu en
- * silence est le mode d'échec que LIC-03 existe pour interdire.
+ * Throws if git fails, `lib/source-inventory.cjs` pattern: a corpus emptied in
+ * silence is the failure mode LIC-03 exists to forbid.
  *
- * @returns {string[]} Chemins relatifs à la racine du dépôt.
+ * @returns {string[]} Paths relative to the repo root.
  */
 function trackedLicenseFiles() {
     const res = spawnSync("git", ["ls-files", "-z"], { cwd: ROOT, encoding: "utf8" });
@@ -467,7 +478,7 @@ if (lic04.length > 0) {
     console.error(
         "⚠️ DÉCLARER une bannière ne suffit pas : `offline-ui/rollup.config.mjs` en déclarait une " +
             "et son bundle commençait par `var Xe=Object.defineProperty` — `minify()` la voyait " +
-            "et `legalComments: \"none\"` la supprimait. La bannière se pose APRÈS le minifieur " +
+            'et `legalComments: "none"` la supprimait. La bannière se pose APRÈS le minifieur ' +
             "(`licenseBanner()` de `@geoleaf/build-config/rollup.mjs`), et se MESURE ici."
     );
 }

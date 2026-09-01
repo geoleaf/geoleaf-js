@@ -61,111 +61,110 @@
 const _SW_DEBUG = typeof __SW_DEBUG__ !== "undefined" ? __SW_DEBUG__ : false;
 
 // ═══════════════════════════════════════════════════════════════════════════════════════
-// NOMMAGE DES CACHES — la survie à un déploiement est portée par le CONSTRUCTEUR DE NOM,
-// jamais par une liste d'exceptions (tâche 3.5).
+// CACHE NAMING — survival across a deployment is carried by the NAME CONSTRUCTOR,
+// never by an exception list.
 // ═══════════════════════════════════════════════════════════════════════════════════════
 //
-// 🛑 CE QUE `activate` FAIT VRAIMENT, mesuré : il ne rase pas « à chaque montée de version »,
-// il rase À CHAQUE BUILD. `scripts/build-deploy.cjs` suffixe `CACHE_VERSION` d'un
-// `Date.now()` — et le commentaire y dit explicitement « so the SW purges old caches on every
-// build ». Relevé sur les quatre variantes déployées : TROIS horodatages différents pour un
-// seul `build:deploy`. Déployer pendant une campagne de terrain rasait donc le fond de carte
-// téléchargé, sans qu'aucune version n'ait changé.
+// 🛑 WHAT `activate` REALLY DOES, measured: it does not raze "on every version bump",
+// it razes ON EVERY BUILD. `scripts/build-deploy.cjs` suffixes `CACHE_VERSION` with a
+// `Date.now()` — and the comment there explicitly says "so the SW purges old caches on
+// every build". Read off the four deployed variants: THREE different timestamps for a
+// single `build:deploy`. Deploying during a field campaign therefore razed the
+// downloaded basemap, with no version having changed.
 //
-// L'intention est juste pour le STATIQUE — du code re-téléchargeable depuis le serveur que
-// l'utilisateur vient forcément d'atteindre. Elle est fausse pour ce que l'UTILISATEUR a
-// délibérément mis en cache.
+// The intent is right for the STATIC — code re-downloadable from a server the user
+// has necessarily just reached. It is wrong for what the USER deliberately cached.
 //
-// LA RÈGLE : un cache survit PARCE QUE SON NOM NE PORTE PAS DE VERSION, et il n'en porte pas
-// parce que son contenu appartient à l'utilisateur et non au build. Aucun nom n'est écrit deux
-// fois, il n'y a pas de liste à tenir à jour, et un futur cache durable survit par
-// construction — il suffit de le nommer `geoleaf-data-*`.
+// THE RULE: a cache survives BECAUSE ITS NAME CARRIES NO VERSION, and it carries none
+// because its content belongs to the user and not to the build. No name is written
+// twice, there is no list to keep current, and a future durable cache survives by
+// construction — naming it `geoleaf-data-*` is enough.
 const CACHE_VERSION = "geoleaf-v__GEOLEAF_VERSION__";
 
-/** Purgeable : du code, re-téléchargeable. */
+/** Purgeable: code, re-downloadable. */
 const CACHE_STATIC = `${CACHE_VERSION}-static`;
-/** Purgeable : des ressources de profil, re-téléchargeables. */
+/** Purgeable: profile resources, re-downloadable. */
 const CACHE_PROFILE_PREFIX = `${CACHE_VERSION}-profile-`;
 /**
- * DURABLE — pas de version dans le nom, délibérément.
+ * DURABLE — no version in the name, deliberately.
  *
- * C'est le fond de carte que l'utilisateur a téléchargé pour aller sur le terrain. Le
- * re-télécharger suppose un réseau qu'il n'a précisément pas.
+ * This is the basemap the user downloaded to go into the field. Re-downloading it
+ * assumes a network they precisely do not have.
  *
- * ⚠️ Renommé en 3.5. Aucune clause transitoire n'accompagne ce renommage, et c'est la
- * décision **A16** qui le permet : l'application n'a pas d'utilisateurs, donc aucun appareil
- * ne porte l'ancien nom `${CACHE_VERSION}-tiles`. Au premier déploiement terrain, un
- * renommage de cache durable exigera un pont — pas maintenant.
+ * ⚠️ Renamed once. No transitional clause accompanies the rename, and the
+ * no-migration decision is what allows it: the application had no users, so no
+ * device carries the old `${CACHE_VERSION}-tiles` name. At the first field
+ * deployment, renaming a durable cache will require a bridge — not now.
  */
 const CACHE_TILES = "geoleaf-data-tiles";
 const CACHE_RUNTIME = `${CACHE_VERSION}-runtime`;
 
 // ═══════════════════════════════════════════════════════════════════════════════════════
-// BORNAGE DU CACHE DE TUILES (tâches 1.2 / 1.3 / 1.4) — une garde de PERTE DE DONNÉES
+// TILE CACHE BOUNDING — a DATA-LOSS guard
 // ═══════════════════════════════════════════════════════════════════════════════════════
 //
-// 🛑 CE N'EST PAS UN SUJET DE PERFORMANCE. Les navigateurs évincent par ORIGINE, jamais par
-// magasin. IndexedDB est borné (`maxCacheBytes`, éviction LRU, un événement) et porte `outbox`
-// et `features` — des saisies terrain qui n'ont AUCUNE autre copie. `CACHE_TILES` n'était
-// borné par rien. Sous pression disque, un cache de tuiles libre de grossir peut donc faire
-// évincer l'origine ENTIÈRE, saisies non synchronisées comprises.
+// 🛑 THIS IS NOT A PERFORMANCE TOPIC. Browsers evict by ORIGIN, never by store.
+// IndexedDB is bounded (`maxCacheBytes`, LRU eviction, an event) and carries `outbox`
+// and `features` — field captures with NO other copy. `CACHE_TILES` was bounded by
+// nothing. Under disk pressure, a tile cache free to grow can therefore get the
+// ENTIRE origin evicted, unsynchronised captures included.
 //
-// ⚠️ Et la persistance ne répond pas à l'objection. Mesuré à la tâche 1.1, deux verdicts
-// OPPOSÉS sur la même origine : `persist()` REFUSÉ en Chromium headless sur profil neuf
-// (~800 Mo de quota), ACCORDÉ en Chrome réel (~10 Go). Elle dépend de l'engagement de
-// l'utilisateur avec l'ORIGINE, pas d'une propriété de l'application — un appareil de terrain
-// qui ouvre une origine de production pour la première fois démarre en `bestEffort`.
+// ⚠️ And persistence does not answer the objection. Measured: two OPPOSITE verdicts
+// on the same origin — `persist()` REFUSED in headless Chromium on a fresh profile
+// (~800 MB quota), GRANTED in real Chrome (~10 GB). It depends on the user's
+// engagement with the ORIGIN, not on a property of the application — a field device
+// opening a production origin for the first time starts in `bestEffort`.
 //
-// ⚠️ POURQUOI UN COMPTE ET PAS DES OCTETS. La Cache API n'expose la taille d'aucune entrée, et
-// `estimate()` mesure toute l'origine et non un magasin. Le compte est le seul bornage
-// portable et bon marché ; `estimate()` sert d'ÉCHAPPATOIRE. L'équivalence en octets est
-// écrite au CDC (`specs/capacites/offline.md` §Arbitrage du stockage) et NULLE PART AILLEURS —
-// la recopier ici ferait deux vérités qui divergent.
+// ⚠️ WHY A COUNT AND NOT BYTES. The Cache API exposes no entry's size, and
+// `estimate()` measures the whole origin, not one store. The count is the only
+// portable, cheap bound; `estimate()` serves as the ESCAPE HATCH. The byte
+// equivalence is written in the spec (`specs/capacites/offline.md` §Arbitrage du
+// stockage) and NOWHERE ELSE — copying it here would make two truths that diverge.
 
 /**
- * Plafond de REPLI, en nombre d'entrées, quand aucun profil n'en publie.
+ * FALLBACK cap, in entry count, when no profile publishes one.
  *
- * ⚠️ Le repli BORNE, il n'ouvre pas : un déploiement core-only n'a pas de base à lire, et
- * « pas de valeur lue » ne doit jamais vouloir dire « pas de limite ». L'équivalence en octets
- * (mesurée, et DISPERSÉE d'un facteur 10) est écrite au CDC, pas ici.
+ * ⚠️ The fallback BOUNDS, it does not open: a core-only deployment has no database
+ * to read, and "no value read" must never mean "no limit". The byte equivalence
+ * (measured, and SPREAD by a factor of 10) is written in the spec, not here.
  *
- * ⚠️ Littéral MIROIR du défaut de `modules.offline.cache.maxTileCacheEntries`
- * (`capabilities/offline/offline-capability.ts`). `config-schema-coverage.test.js` vérifie que
- * les deux disent le même nombre — le worker ne peut pas importer le schéma.
+ * ⚠️ MIRROR literal of the `modules.offline.cache.maxTileCacheEntries` default
+ * (`capabilities/offline/offline-capability.ts`). `config-schema-coverage.test.js`
+ * checks both say the same number — the worker cannot import the schema.
  */
 const TILE_CACHE_MAX_ENTRIES = 2000;
 
 /**
- * Clé du store `preferences` où le moteur publie le plafond.
+ * `preferences`-store key where the engine publishes the cap.
  *
- * ⚠️ Littéral PARTAGÉ avec `capabilities/offline/tile-budget.ts`, qui ne peut pas être importé
- * ici — ce fichier est copié tel quel, sans bundler. Une garde de source vérifie que les deux
- * disent la même chose.
+ * ⚠️ Literal SHARED with `capabilities/offline/tile-budget.ts`, which cannot be
+ * imported here — this file is copied as-is, no bundler. A source guard checks both
+ * say the same thing.
  */
 const TILE_BUDGET_KEY = "offline.tileCacheMaxEntries";
 
-/** Marge basse du trim FIFO : on déclenche AU plafond, on redescend à cette fraction. */
+/** FIFO trim low-water mark: trigger AT the cap, come back down to this fraction. */
 const TILE_CACHE_TRIM_RATIO = 0.8;
 
-/** Part du quota d'ORIGINE au-delà de laquelle le trim cesse d'être de routine. */
+/** Share of the ORIGIN quota beyond which trimming stops being routine. */
 const TILE_CACHE_PRESSURE_RATIO = 0.8;
 
-/** Cible du trim sous pression — délibérément bien plus basse que le plafond nominal. */
+/** Trim target under pressure — deliberately far below the nominal cap. */
 const TILE_CACHE_PRESSURE_TRIM_TO = 400;
 
 /**
- * Amortissement : `cache.keys()` est en O(n), on ne le paie pas à chaque tuile.
+ * Amortisation: `cache.keys()` is O(n), we do not pay it on every tile.
  *
- * ⚠️ Le compteur DÉMARRE à cette valeur, donc le premier `put` du worker vérifie. Ce n'est pas
- * un détail : le navigateur redémarre le worker quand il veut, et un worker qui attendrait 50
- * tuiles avant de regarder laisserait vivre un cache déjà dix fois trop plein.
+ * ⚠️ The counter STARTS at this value, so the worker's first `put` checks. Not a
+ * detail: the browser restarts the worker whenever it wants, and a worker waiting 50
+ * tiles before looking would let a cache already ten times too full live on.
  */
 const TILE_CACHE_CHECK_EVERY = 50;
 
-/** Plafond mémoïsé. `null` = pas encore lu. */
+/** Memoised cap. `null` = not read yet. */
 let _tileMaxEntries = null;
 
-/** Puts de tuile depuis le dernier contrôle — voir {@link TILE_CACHE_CHECK_EVERY}. */
+/** Tile puts since the last check — see {@link TILE_CACHE_CHECK_EVERY}. */
 let _tilePutsSinceCheck = TILE_CACHE_CHECK_EVERY;
 
 // Core assets to pre-cache — injected by build-deploy.cjs at build time
@@ -190,20 +189,21 @@ self.addEventListener("install", (event) => {
             try {
                 const cache = await caches.open(CACHE_STATIC);
                 if (STATIC_ASSETS.length > 0) {
-                    // 🛑 PAS de `cache: "reload"` (S5.7). Il forçait le pré-cache à REFETCHER
-                    // sur le réseau, en contournant le cache HTTP, tout ce que la page venait
-                    // exactement de télécharger : ~257 Ko gz redemandés au serveur alors qu'ils
-                    // étaient déjà en mémoire du navigateur, pendant que les tuiles chargeaient.
+                    // 🛑 NO `cache: "reload"`. It forced the pre-cache to REFETCH from
+                    // the network, bypassing the HTTP cache, everything the page had
+                    // exactly just downloaded: ~257 KB gz re-requested from the server
+                    // while already in the browser's memory, while tiles were loading.
                     //
-                    // La fraîcheur ne repose pas là-dessus, et ne l'a jamais fait : chaque
-                    // déploiement change `CACHE_VERSION`, donc `activate` purge la famille
-                    // `geoleaf-v*` et cette install repart d'un cache vide. Un asset périmé ne
-                    // peut survivre à ce cycle. `reload` n'achetait donc pas de la fraîcheur,
-                    // il achetait un second téléchargement.
+                    // Freshness does not rest on that, and never did: every deployment
+                    // changes `CACHE_VERSION`, so `activate` purges the `geoleaf-v*`
+                    // family and this install starts from an empty cache. A stale asset
+                    // cannot survive that cycle. `reload` therefore bought no
+                    // freshness — it bought a second download.
                     //
-                    // ⚠️ `addAll` reste TOUT-OU-RIEN : un seul 404 rejette le lot entier. C'est
-                    // le motif de la bijection posée en S3 (`lib/boot-assets.cjs`) — chaque
-                    // entrée dérivée doit avoir un fichier derrière, et la dérivation lève sinon.
+                    // ⚠️ `addAll` stays ALL-OR-NOTHING: a single 404 rejects the whole
+                    // batch. That is the motive for the bijection in
+                    // `lib/boot-assets.cjs` — every derived entry must have a file
+                    // behind it, and the derivation throws otherwise.
                     await cache.addAll(STATIC_ASSETS);
                 }
                 await self.skipWaiting();
@@ -228,11 +228,11 @@ self.addEventListener("activate", (event) => {
             .then((cacheNames) => {
                 return Promise.all(
                     cacheNames.map((cacheName) => {
-                        // Seuls les caches VERSIONNÉS sont purgeables, et seulement ceux d'une
-                        // AUTRE version que la nôtre. `geoleaf-data-*` n'est pas versionné,
-                        // donc il ne peut pas entrer ici — c'est un fait de nommage, pas une
-                        // exception listée. Le préfixe testé est `geoleaf-v` et non
-                        // `geoleaf-`, et c'est toute la différence.
+                        // Only VERSIONED caches are purgeable, and only those of ANOTHER
+                        // version than ours. `geoleaf-data-*` is not versioned, so it
+                        // cannot enter here — a naming fact, not a listed exception. The
+                        // tested prefix is `geoleaf-v` and not `geoleaf-`, and that is
+                        // the whole difference.
                         if (
                             cacheName.startsWith("geoleaf-v") &&
                             !cacheName.startsWith(CACHE_VERSION)
@@ -256,27 +256,27 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
     const { request } = event;
 
-    // 🛑 FILTRE DE MÉTHODE — en tête, avant toute autre décision (tâche 3.7).
+    // 🛑 METHOD FILTER — first, before any other decision.
     //
-    // Le gestionnaire ne testait JAMAIS `request.method`. Chaque écriture — POST, PUT,
-    // DELETE, y compris les envois de POI vers le serveur — tombait donc dans la stratégie
-    // réseau-d'abord, qui tente un `cache.put`. La Cache API REJETTE toute requête non-GET,
-    // et ce rejet partait dans un `.catch(() => {})` vide : une promesse rejetée par
-    // conception, avalée à chaque écriture.
+    // The handler NEVER tested `request.method`. Every write — POST, PUT, DELETE,
+    // POI sends to the server included — therefore fell into the network-first
+    // strategy, which attempts a `cache.put`. The Cache API REJECTS any non-GET
+    // request, and that rejection went into an empty `.catch(() => {})`: a promise
+    // rejected by design, swallowed on every write.
     //
-    // Sortir sans `respondWith` laisse le navigateur traiter la requête normalement. C'est
-    // exactement ce qu'on veut : le worker n'a rien à dire sur une écriture.
+    // Returning without `respondWith` lets the browser handle the request normally.
+    // Exactly what we want: the worker has nothing to say about a write.
     if (request.method !== "GET") {
         return;
     }
 
     const url = new URL(request.url);
 
-    // ⚠️ La blacklist ne porte plus `/api/` (tâche 3.9). Elle exclut désormais ce qui n'est
-    // PAS de l'HTTP applicatif (`chrome-extension:`) et les chemins réservés — pas une
-    // convention d'URL. `/api/` était une exclusion en aveugle qui sautait le chemin le plus
-    // courant d'une API de données, c'est-à-dire exactement le trafic dont dépend un
-    // déploiement de terrain. Ce qui décide désormais, c'est la DÉCLARATION.
+    // ⚠️ The blacklist no longer carries `/api/`. It now excludes what is NOT
+    // applicative HTTP (`chrome-extension:`) and reserved paths — not a URL
+    // convention. `/api/` was a blind exclusion skipping the most common path of a
+    // data API, i.e. exactly the traffic a field deployment depends on. What decides
+    // now is the DECLARATION.
     if (CACHE_BLACKLIST.some((pattern) => pattern.test(url.href))) {
         return;
     }
@@ -290,22 +290,23 @@ self.addEventListener("fetch", (event) => {
         return;
     }
 
-    // 🛑 ROUTAGE PAR DÉCLARATION (tâche 3.9) — il PRÉCÈDE toute heuristique.
+    // 🛑 ROUTING BY DECLARATION — it PRECEDES every heuristic.
     //
-    // Une origine déclarée décide d'elle-même : ses `roles` disent ce qu'elle sert, son
-    // `cacheable` dit si on a le droit de la garder. Une origine déclarée NON cachable — un
-    // fournisseur de tuiles qui répond en opaque, une API authentifiée — passe au réseau sans
-    // qu'aucune stratégie ne s'en mêle. C'est une décision REVUE, pas devinée.
+    // A declared origin decides for itself: its `roles` say what it serves, its
+    // `cacheable` says whether we may keep it. An origin declared NOT cacheable — a
+    // tile provider answering opaque, an authenticated API — goes to the network with
+    // no strategy interfering. A REVIEWED decision, not a guessed one.
     //
-    // ⚠️ Ce qui suit ne s'exécute que si RIEN n'est déclaré. Les heuristiques restantes sont
-    // donc un chemin d'AMORÇAGE, pas le régime nominal — et un profil qui déclare ses origines
-    // ne les emprunte jamais. Elles disparaissent avec la tâche 4.x qui rendra la déclaration
-    // obligatoire ; les garder muettes aujourd'hui casserait tout profil non encore migré.
+    // ⚠️ What follows only runs when NOTHING is declared. The remaining heuristics
+    // are therefore a BOOTSTRAP path, not the nominal regime — and a profile that
+    // declares its origins never takes them. They will disappear when declaration
+    // becomes mandatory; muting them today would break every not-yet-migrated
+    // profile.
     event.respondWith(routeRequest(request, url));
 });
 
 /**
- * Choisit la stratégie : par DÉCLARATION d'abord, par heuristique d'amorçage ensuite.
+ * Picks the strategy: by DECLARATION first, by bootstrap heuristic second.
  *
  * @param {Request} request
  * @param {URL} url
@@ -317,46 +318,48 @@ async function routeRequest(request, url) {
     if (origins.length > 0) {
         const declared = matchDeclaredOrigin(url.href, origins);
         if (!declared) {
-            // 🛑 TÂCHE 8.2 / B-119 — L'APPLICATION ELLE-MÊME N'EST PAS DÉCLARABLE.
+            // 🛑 THE APPLICATION ITSELF IS NOT DECLARABLE (arbitrated 07/08/2026).
             //
-            // Déclarer une origine désactive le cache de toutes les autres. Or l'origine qui
-            // SERT l'application change à chaque déploiement — `localhost:8766` en cible
-            // `ports`, `demo.geoleaf.local.test` sous nginx, la production ailleurs — donc
-            // aucun profil PORTABLE ne peut l'écrire. Conséquence mesurée avant ce correctif :
-            // un profil qui déclarait ses origines de données perdait le cache de sa propre
-            // coquille, c'est-à-dire le hors-ligne tout entier. Tout-ou-rien, et le « rien »
-            // n'était atteignable qu'en renonçant à déclarer quoi que ce soit.
+            // Declaring one origin disables caching for all others. Yet the origin
+            // SERVING the application changes with every deployment —
+            // `localhost:8766` on the `ports` target, `demo.geoleaf.local.test`
+            // under nginx, production elsewhere — so no PORTABLE profile can write
+            // it. Measured consequence before this fix: a profile declaring its data
+            // origins lost the cache of its own shell, i.e. offline entirely.
+            // All-or-nothing, and the "nothing" was only reachable by giving up
+            // declaring anything.
             //
-            // ⚠️ LA PERMISSION EST ÉTROITE, ET C'EST LE CŒUR DE L'ARBITRAGE. Elle ne couvre
-            // pas « la même origine », elle couvre CE QUI SERT L'APPLICATION : ses ressources
-            // de profil et ses fichiers statiques. Une API de données servie depuis la même
-            // origine reste une origine de DONNÉES — le motif même de la voie 1 le dit — et
-            // elle se DÉCLARE, comme n'importe quelle autre. Sans ce resserrage, une réponse
-            // authentifiée same-origin serait mise en cache par défaut : on aurait ouvert
-            // B-120 en fermant B-119.
+            // ⚠️ THE PERMISSION IS NARROW, AND THAT IS THE HEART OF THE ARBITRATION.
+            // It does not cover "the same origin", it covers WHAT SERVES THE
+            // APPLICATION: its profile resources and its static files. A data API
+            // served from the same origin stays a DATA origin — the very motive of
+            // route 1 says so — and it gets DECLARED, like any other. Without this
+            // narrowing, an authenticated same-origin response would be cached by
+            // default: we would have opened the authenticated-cache leak while
+            // closing the shell one.
             //
-            // 🛑 L'INVARIANT N'EST DONC PAS AFFAIBLI, IL EST DÉLIMITÉ : le silence d'une
-            // déclaration refuse le cache des DONNÉES ; la coquille applicative n'est pas une
-            // donnée. C'est le principe que `isStaticAsset` porte déjà quelques lignes plus
-            // bas — « statique ne veut rien dire hors de notre propre origine : ce qui est à
-            // nous est déployé avec nous et versionné avec nous ». On le généralise, on ne
-            // l'introduit pas.
+            // 🛑 THE INVARIANT IS THEREFORE NOT WEAKENED, IT IS DELIMITED: a
+            // declaration's silence refuses the caching of DATA; the application
+            // shell is not data. It is the principle `isStaticAsset` already carries
+            // a few lines below — "static means nothing outside our own origin: what
+            // is ours is deployed with us and versioned with us". We generalise it,
+            // we do not introduce it.
             if (url.origin === self.location.origin) {
-                // B-236 — EN PREMIER : ce qu'`install` a écrit dans `CACHE_STATIC` s'y relit,
-                // sans repasser par une seconde dérivation du périmètre.
+                // FIRST: what `install` wrote into `CACHE_STATIC` is read back from
+                // it, without a second derivation of the perimeter.
                 if (isPrecachedAsset(url)) return cacheFirstStrategy(request, CACHE_STATIC);
                 if (isProfileResource(url)) {
                     return cacheFirstStrategy(request, getCacheNameForProfile(url));
                 }
                 if (isStaticAsset(url)) return cacheFirstStrategy(request, CACHE_STATIC);
             }
-            // Origine NON déclarée dans un profil qui déclare : on ne met rien en cache. Le
-            // silence d'une déclaration est un refus, pas une permission.
+            // Origin NOT declared in a profile that declares: nothing is cached. A
+            // declaration's silence is a refusal, not a permission.
             return fetchBounded(request);
         }
         if (!declared.cacheable) {
-            // Déclarée et explicitement non cachable — le cas de l'API authentifiée et du
-            // fournisseur opaque. Réseau direct, jamais de copie.
+            // Declared and explicitly not cacheable — the authenticated-API and
+            // opaque-provider case. Straight to the network, never a copy.
             return fetchBounded(request);
         }
         if (declared.roles.includes("tiles")) return tileCacheStrategy(request);
@@ -367,22 +370,22 @@ async function routeRequest(request, url) {
         return networkFirstStrategy(request, CACHE_RUNTIME);
     }
 
-    // ── Amorçage : aucun profil n'a encore déclaré ses origines ───────────────────────────
+    // ── Bootstrap: no profile has declared its origins yet ─────────────────────────────
     return legacyRoute(request, url);
 }
 
 /**
- * Routage HISTORIQUE, par heuristique. Conservé UNIQUEMENT pour les profils qui ne déclarent
- * pas encore leurs origines — voir `routeRequest`.
+ * HISTORICAL routing, by heuristic. Kept ONLY for profiles that do not yet declare
+ * their origins — see `routeRequest`.
  *
  * @param {Request} request
  * @param {URL} url
  * @returns {Promise<Response>}
  */
 function legacyRoute(request, url) {
-    // B-236 — même geste que sur la route déclarée, et EN PREMIER pour la même raison. Les
-    // DEUX sites portaient le défaut ; n'en corriger qu'un l'aurait laissé vivant pour tout
-    // profil qui ne déclare pas ses origines, c'est-à-dire sur le chemin le plus courant.
+    // Same gesture as on the declared route, and FIRST for the same reason. BOTH
+    // sites carried the defect; fixing only one would have left it alive for every
+    // profile that does not declare its origins, i.e. on the most common path.
     if (isPrecachedAsset(url)) {
         return cacheFirstStrategy(request, CACHE_STATIC);
     }
@@ -407,21 +410,21 @@ self.addEventListener("message", (event) => {
         return;
     }
 
-    // 🛑 ET SON ORIGINE (tâche 3.13). Le contrôle ci-dessus ne teste que le TYPE de la
-    // source, jamais d'où elle vient. L'effet est borné par construction — un worker ne
-    // reçoit de messages que de clients de son propre scope, donc de sa propre origine — mais
-    // « borné par construction » est un raisonnement, pas une vérification : il repose
-    // entièrement sur une propriété du navigateur qu'aucune ligne d'ici n'affirme.
+    // 🛑 AND ITS ORIGIN. The check above tests only the source's TYPE, never where it
+    // comes from. The effect is bounded by construction — a worker only receives
+    // messages from clients of its own scope, hence its own origin — but "bounded by
+    // construction" is a reasoning, not a verification: it rests entirely on a
+    // browser property no line here asserts.
     //
-    // Ce que ça coûte : rien. Ce que ça achète : `CLEAR_CACHE` est destructeur, et le jour où
-    // un scope s'élargit, où un `client.postMessage` transite autrement, ou simplement où
-    // quelqu'un relit ce fichier pour savoir qui a le droit de vider le cache, la réponse est
-    // écrite ici au lieu d'être déduite.
+    // What it costs: nothing. What it buys: `CLEAR_CACHE` is destructive, and the
+    // day a scope widens, a `client.postMessage` travels differently, or someone
+    // simply re-reads this file to know who may clear the cache, the answer is
+    // written here instead of deduced.
     //
-    // ⚠️ `event.origin` est vide pour un message de client same-origin dans certains
-    // navigateurs : on le refuse seulement s'il est RENSEIGNÉ et différent. Traiter une chaîne
-    // vide comme une origine étrangère rendrait la garde bloquante partout — une garde qui
-    // refuse tout ne garde pas mieux, elle casse.
+    // ⚠️ `event.origin` is empty for a same-origin client message in some browsers:
+    // we refuse it only when it is SET and different. Treating an empty string as a
+    // foreign origin would make the guard block everywhere — a guard refusing
+    // everything does not guard better, it breaks.
     if (event.origin && event.origin !== self.location.origin) {
         console.warn("[SW] Message refusé — origine étrangère:", event.origin);
         return;
@@ -438,19 +441,21 @@ self.addEventListener("message", (event) => {
                 .then((cacheNames) => {
                     return Promise.all(
                         cacheNames.map((cacheName) => {
-                            // ⚠️ ASYMÉTRIE DÉLIBÉRÉE AVEC `activate`, et elle est le sujet.
+                            // ⚠️ DELIBERATE ASYMMETRY WITH `activate`, and it is the
+                            // subject.
                             //
-                            // `activate` ne purge que les caches VERSIONNÉS d'une autre
-                            // version : il nettoie après le BUILD, et n'a aucun mandat sur ce
-                            // que l'utilisateur a téléchargé.
+                            // `activate` purges only VERSIONED caches of another
+                            // version: it cleans up after the BUILD, and has no
+                            // mandate over what the user downloaded.
                             //
-                            // `CLEAR_CACHE` est ce même utilisateur qui DEMANDE de vider. Le
-                            // préfixe est donc `geoleaf-` et non `geoleaf-v` : le cache
-                            // durable est inclus, sinon le bouton mentirait sur ce qu'il fait.
+                            // `CLEAR_CACHE` is that same user ASKING to clear. The
+                            // prefix is therefore `geoleaf-` and not `geoleaf-v`: the
+                            // durable cache is included, otherwise the button would
+                            // lie about what it does.
                             //
-                            // 🛑 Sans ce changement, dé-versionner `CACHE_TILES` (3.5) aurait
-                            // rendu le fond de carte INEFFAÇABLE — un cache que rien ne purge
-                            // plus, ni le déploiement ni l'utilisateur.
+                            // 🛑 Without this change, de-versioning `CACHE_TILES`
+                            // would have made the basemap UNERASABLE — a cache
+                            // nothing purges any more, neither deployment nor user.
                             if (cacheName.startsWith("geoleaf-")) {
                                 return caches.delete(cacheName);
                             }
@@ -470,23 +475,25 @@ self.addEventListener("message", (event) => {
 // BACKGROUND SYNC EVENT
 // ═══════════════════════════════════════════════
 // ═══════════════════════════════════════════════
-// PAS DE BACKGROUND SYNC — ET C'EST UNE DÉCISION, PAS UN OUBLI
+// NO BACKGROUND SYNC — AND IT IS A DECISION, NOT AN OVERSIGHT
 // ═══════════════════════════════════════════════
 //
-// 🛑 Un écouteur `sync` a vécu ici jusqu'à la tâche 3.13, avec `syncProfile()`,
-// `getSyncQueue()` et `removeSyncItem()` derrière lui — environ 75 lignes que RIEN ne
-// déclenchait : il n'existe aucun `registration.sync.register(...)` dans le dépôt, et il n'y
-// en a jamais eu. Un écouteur sans émetteur n'est pas du code inactif, c'est du code qui MENT
-// sur ce que le produit fait.
+// 🛑 A `sync` listener lived here, with `syncProfile()`, `getSyncQueue()` and
+// `removeSyncItem()` behind it — about 75 lines NOTHING triggered: no
+// `registration.sync.register(...)` exists in the repository, and there never was
+// one. A listener with no emitter is not inactive code, it is code that LIES about
+// what the product does.
 //
-// Et le retrait n'est pas qu'un ménage : le point 5 du contrat de synchronisation
-// (`contracts/sync.contract.ts`) fige que **le rejeu tourne sur la PAGE, pas dans le worker**.
-// Le motif est mécanique — l'authentification du connector patche le `fetch` DE LA PAGE et
-// n'atteint jamais le worker, donc un rejeu depuis le SW partirait sans jeton. Le contrat dit
-// « le chemin Background Sync est SUPPRIMÉ, pas laissé mort » : voilà.
+// And the removal is not mere cleanup: point 5 of the sync contract
+// (`contracts/sync.contract.ts`) fixes that **replay runs on the PAGE, not in the
+// worker**. The motive is mechanical — the connector's authentication patches the
+// PAGE's `fetch` and never reaches the worker, so a replay from the SW would leave
+// without a token. The contract says "the Background Sync path is REMOVED, not left
+// dead": here it is.
 //
-// ⚠️ Le rétablir un jour ne serait pas « rebrancher un écouteur » : il faudrait d'abord
-// résoudre l'authentification côté worker. Écrit ici pour que la question se repose entière.
+// ⚠️ Restoring it one day would not be "rewiring a listener": worker-side
+// authentication would have to be solved first. Written here so the question comes
+// back whole.
 
 // ═══════════════════════════════════════════════
 // CACHING STRATEGIES
@@ -497,48 +504,48 @@ self.addEventListener("message", (event) => {
  * Serves from cache immediately, updates in the background.
  */
 /**
- * Cette réponse a-t-elle le droit d'entrer en cache ? (tâche 3.11)
+ * May this response enter the cache?
  *
- * 🛑 LE TROU FONCTIONNEL ⑤, ET IL N'ÉTAIT PAS OÙ ON LE CROYAIT. Les quatre stratégies
- * gardaient sur `status === 200`. Une réponse OPAQUE — celle que rend une requête
- * cross-origin sans CORS, c'est-à-dire la quasi-totalité des fournisseurs de tuiles raster —
- * porte `status: 0`. Elle était donc écartée, silencieusement, et **aucun fond raster n'est
- * hors-ligne aujourd'hui**.
+ * 🛑 THE FUNCTIONAL HOLE, AND IT WAS NOT WHERE IT WAS BELIEVED. The four strategies
+ * guarded on `status === 200`. An OPAQUE response — what a CORS-less cross-origin
+ * request returns, i.e. nearly every raster tile provider — carries `status: 0`. It
+ * was therefore discarded, silently, and **no raster basemap is offline today**.
  *
- * ⚠️ NE PAS CACHER UNE OPAQUE EST JUSTE, et ce correctif ne change pas cette décision :
- *   - son contenu est **invérifiable** — on ne peut ni lire son statut, ni ses en-têtes, ni
- *     distinguer une tuile d'une page d'erreur ou d'une redirection de portail captif ;
- *   - elle coûte au quota bien plus que sa taille (le navigateur la rembourre, jusqu'à
- *     plusieurs centaines de kilo-octets par entrée), donc quelques centaines de tuiles
- *     suffisent à faire évincer du travail de terrain.
+ * ⚠️ NOT CACHING AN OPAQUE IS RIGHT, and this fix does not change that decision:
+ *   - its content is **unverifiable** — we can read neither its status nor its
+ *     headers, nor tell a tile from an error page or a captive-portal redirect;
+ *   - it costs the quota far more than its size (the browser pads it, up to several
+ *     hundred kilobytes per entry), so a few hundred tiles suffice to get field
+ *     work evicted.
  *
- * **Ce qui n'était pas juste, c'est de ne pas le DIRE.** Un intégrateur qui déclare une
- * origine `cacheable: true` et n'obtient aucun cache n'avait aucun moyen de comprendre
- * pourquoi. La contradiction est désormais journalisée, une fois par origine.
+ * **What was not right was not SAYING it.** An integrator declaring an origin
+ * `cacheable: true` and getting no cache had no way to understand why. The
+ * contradiction is now logged, once per origin.
  *
- * ── TÂCHE 8.3 / B-120 — DEUX REFUS DE PLUS, ET ILS NE DÉPENDENT D'AUCUNE DÉCLARATION ──
+ * ── TWO MORE REFUSALS, AND THEY DEPEND ON NO DECLARATION (07/08/2026) ──
  *
- * 🛑 Cette fonction ne regardait que « pas opaque, statut 200 ». Conséquence sur le chemin
- * d'AMORÇAGE — celui de tous les profils livrés, puisque aucun ne déclare ses origines : une
- * URL de rapatriement `…/collections/<id>/items?limit=…` ne matche aucune heuristique, tombe
- * sur `networkFirstStrategy(request, CACHE_RUNTIME)`, et **toute** réponse à 200 y entrait —
- * y compris une réponse AUTHENTIFIÉE, dans un cache PARTAGÉ, sur un appareil de terrain
- * lui-même partagé. Le connector patche le `fetch` de la page, donc le jeton est bien sur la
- * requête que le worker voit.
+ * 🛑 This function only looked at "not opaque, status 200". Consequence on the
+ * BOOTSTRAP path — that of every shipped profile, since none declares its origins: a
+ * pull URL `…/collections/<id>/items?limit=…` matches no heuristic, falls onto
+ * `networkFirstStrategy(request, CACHE_RUNTIME)`, and **every** 200 response entered
+ * it — including an AUTHENTICATED response, in a SHARED cache, on a field device
+ * itself shared. The connector patches the page's `fetch`, so the token is indeed on
+ * the request the worker sees.
  *
- * ⚠️ **La tâche 8.2 ne fermait pas cette classe.** Elle protège le profil qui DÉCLARE ses
- * origines : `publishDataOrigins` force `cacheable: false` sur toute origine `authenticated`.
- * Le chemin d'amorçage n'atteint jamais cette règle. Les deux refus ci-dessous valent **quelle
- * que soit la déclaration** — c'est ce qui les rend utiles, et c'est pourquoi ils vivent ici
- * plutôt que dans `routeRequest`.
+ * ⚠️ **The declared-origins hardening did not close this class.** It protects the
+ * profile that DECLARES its origins: `publishDataOrigins` forces `cacheable: false`
+ * on any `authenticated` origin. The bootstrap path never reaches that rule. The two
+ * refusals below hold **whatever the declaration** — which is what makes them
+ * useful, and why they live here rather than in `routeRequest`.
  *
- * ⚠️ Ils tiennent aussi à un niveau que la déclaration ne peut pas atteindre : une origine
- * peut être déclarée cachable **en toute bonne foi** et servir, sur un seul chemin, une
- * réponse authentifiée. La déclaration porte sur l'ORIGINE, l'identifiant sur la REQUÊTE.
+ * ⚠️ They also hold at a level the declaration cannot reach: an origin can be
+ * declared cacheable **in perfectly good faith** and serve, on one path, an
+ * authenticated response. The declaration bears on the ORIGIN, the credential on
+ * the REQUEST.
  *
  * @param {Response} response
- * @param {Request|string} request - Requête d'origine (ou son URL, forme héritée).
- * @returns {boolean} `true` si la réponse peut être mise en cache.
+ * @param {Request|string} request - Original request (or its URL, legacy form).
+ * @returns {boolean} `true` when the response may be cached.
  */
 function isCacheableResponse(response, request) {
     if (!response) return false;
@@ -548,26 +555,28 @@ function isCacheableResponse(response, request) {
         _warnOpaqueOnce(url);
         return false;
     }
-    // Une réponse partielle (206) ne vaut pas la ressource : la remettre en cache
-    // servirait un fragment comme s'il était le tout.
+    // A partial response (206) is not worth the resource: caching it would serve a
+    // fragment as if it were the whole.
     if (response.status !== 200) return false;
 
-    // La requête porte des identifiants → sa réponse n'appartient à personne d'autre.
+    // The request carries credentials → its response belongs to nobody else.
     if (carriesCredentials(request)) return false;
 
-    // Le serveur refuse le cache partagé → on l'honore. `no-store` interdit tout stockage ;
-    // `private` vise EXACTEMENT le cache partagé, ce qu'est celui d'un Service Worker.
+    // The server refuses shared caching → we honour it. `no-store` forbids any
+    // storage; `private` targets EXACTLY the shared cache, which a Service Worker's
+    // is.
     if (refusesSharedCache(response)) return false;
 
     return true;
 }
 
 /**
- * La requête porte-t-elle des identifiants ?
+ * Does the request carry credentials?
  *
- * Deux signaux, et il en faut deux : un jeton porté par un en-tête `Authorization` (ce que
- * pose le connector), et `credentials: "include"`, qui joint les cookies sans qu'aucun
- * en-tête ne le dise. Ne regarder que le premier laisserait passer toute API à session.
+ * Two signals, and both are needed: a token carried by an `Authorization` header
+ * (what the connector sets), and `credentials: "include"`, which attaches cookies
+ * with no header saying so. Looking only at the first would let every session API
+ * through.
  *
  * @param {Request|string} request
  * @returns {boolean}
@@ -583,7 +592,7 @@ function carriesCredentials(request) {
 }
 
 /**
- * La réponse interdit-elle le cache PARTAGÉ ?
+ * Does the response forbid SHARED caching?
  *
  * @param {Response} response
  * @returns {boolean}
@@ -600,15 +609,15 @@ function refusesSharedCache(response) {
     return directives.includes("no-store") || directives.includes("private");
 }
 
-/** Origines déjà signalées — une contradiction se dit UNE fois, pas à chaque tuile. */
+/** Origins already flagged — a contradiction is said ONCE, not on every tile. */
 const _opaqueWarned = new Set();
 
 /**
- * Journalise, une seule fois par origine, qu'une réponse opaque n'a pas pu être cachée.
+ * Logs, once per origin, that an opaque response could not be cached.
  *
- * ⚠️ Le message change selon que l'origine est DÉCLARÉE cachable ou non : déclarée, c'est une
- * contradiction que l'intégrateur doit corriger (ou accepter en connaissance de cause) ; non
- * déclarée, c'est simplement le régime normal d'un tiers sans CORS.
+ * ⚠️ The message differs on whether the origin is DECLARED cacheable or not:
+ * declared, it is a contradiction the integrator must fix (or accept knowingly); not
+ * declared, it is simply the normal regime of a CORS-less third party.
  */
 function _warnOpaqueOnce(url) {
     let origin;
@@ -635,19 +644,20 @@ function _warnOpaqueOnce(url) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════
-// LE BORNAGE — lire le plafond, tailler, dire ce qu'on a taillé
+// THE BOUNDING — read the cap, trim, say what was trimmed
 // ═══════════════════════════════════════════════════════════════════════════════════════
 
 /**
- * Lit le plafond publié par le profil, une fois, puis le garde en mémoire.
+ * Reads the cap the profile published, once, then keeps it in memory.
  *
- * Calqué sur {@link loadDataOrigins} — même store, même mémoïsation, même motif : un message
- * meurt avec le worker, une préférence survit.
+ * Modelled on {@link loadDataOrigins} — same store, same memoisation, same motive: a
+ * message dies with the worker, a preference survives.
  *
- * ⚠️ Un plafond ABSENT rend le repli, jamais l'infini. `0`, lui, est une valeur SIGNIFIANTE
- * (bornage désactivé) et n'est donc pas filtré avec les rebuts.
+ * ⚠️ An ABSENT cap yields the fallback, never infinity. `0`, however, is a
+ * MEANINGFUL value (bounding disabled) and is therefore not filtered out with the
+ * rejects.
  *
- * @returns {Promise<number>} Le plafond en nombre d'entrées.
+ * @returns {Promise<number>} The cap, in entry count.
  */
 async function loadTileMaxEntries() {
     if (_tileMaxEntries !== null) return _tileMaxEntries;
@@ -676,16 +686,15 @@ async function loadTileMaxEntries() {
 }
 
 /**
- * Lit la pression du quota d'ORIGINE.
+ * Reads the ORIGIN quota pressure.
  *
- * ⚠️ Le vocabulaire de clés est celui de `CacheManager.getStorageQuota()` — `usage` / `quota`,
- * jamais `used`. Ce n'est pas de la cosmétique : la capacité hors-ligne a porté TROIS
- * enveloppements de `estimate()` avec trois vocabulaires différents, et un appelant qui se
- * trompait d'exemplaire lisait `undefined` sans que rien ne le dise. Deux ont été retirés à la
- * clôture S3c ; celui-ci ne peut pas importer le survivant (aucun bundler ici), alors il en
- * reprend au moins la forme.
+ * ⚠️ The key vocabulary is that of `CacheManager.getStorageQuota()` — `usage` /
+ * `quota`, never `used`. Not cosmetics: the offline capability carried THREE
+ * `estimate()` wrappers with three different vocabularies, and a caller picking the
+ * wrong copy read `undefined` with nothing saying so. Two were removed; this one
+ * cannot import the survivor (no bundler here), so it at least takes its shape.
  *
- * @returns {Promise<number|null>} Part du quota consommée (0–1), ou `null` si non mesurable.
+ * @returns {Promise<number|null>} Share of quota consumed (0–1), or `null` when not measurable.
  */
 async function _originPressure() {
     try {
@@ -700,24 +709,24 @@ async function _originPressure() {
 }
 
 /**
- * Retire les entrées les plus ANCIENNES du magasin jusqu'à `target`, si `trigger` est dépassé.
+ * Removes the OLDEST entries from the store down to `target`, when `trigger` is exceeded.
  *
- * FIFO par nombre d'entrées : `cache.keys()` rend l'ordre d'insertion, la tête est donc la plus
- * ancienne. C'est une approximation de LRU — la Cache API n'expose aucune date d'accès — et
- * elle suffit ici parce que tout ce que porte ce magasin est re-téléchargeable.
+ * FIFO by entry count: `cache.keys()` returns insertion order, so the head is the
+ * oldest. An approximation of LRU — the Cache API exposes no access date — and it
+ * suffices here because everything this store carries is re-downloadable.
  *
- * 🛑 CE QU'IL NE PEUT PAS ÉVINCER, ET C'EST STRUCTUREL : ce magasin n'a qu'un écrivain,
- * l'étape opportuniste de {@link tileCacheStrategy}. Ce que l'utilisateur a EXPLICITEMENT
- * demandé à télécharger part en IndexedDB via le `Downloader`, jamais ici. Un trim ne peut donc
- * pas emporter une zone préparée pour le terrain.
+ * 🛑 WHAT IT CANNOT EVICT, AND IT IS STRUCTURAL: this store has one writer, the
+ * opportunistic step of {@link tileCacheStrategy}. What the user EXPLICITLY asked to
+ * download goes to IndexedDB via the `Downloader`, never here. A trim therefore
+ * cannot take away a zone prepared for the field.
  *
  * @param {Cache} cache
- * @param {number} trigger Au-dessus de ce compte, on taille.
- * @param {number} target Compte visé après la taille.
- * @returns {Promise<{evicted: number, totalBefore: number, totalAfter: number}>} La forme
- *   d'`EvictionResult` (`capabilities/offline/db/eviction.ts`), **moins `freedBytes`** : la
- *   Cache API ne donne pas la taille d'une entrée, et fabriquer un nombre serait pire que se
- *   taire.
+ * @param {number} trigger Above this count, we trim.
+ * @param {number} target Count aimed for after the trim.
+ * @returns {Promise<{evicted: number, totalBefore: number, totalAfter: number}>} The
+ *   shape of `EvictionResult` (`capabilities/offline/db/eviction.ts`), **minus
+ *   `freedBytes`**: the Cache API gives no entry's size, and fabricating a number
+ *   would be worse than staying silent.
  */
 async function _trimTileCache(cache, trigger, target) {
     let keys;
@@ -738,22 +747,23 @@ async function _trimTileCache(cache, trigger, target) {
             )
         )
     );
-    // Le compte rendu est celui des suppressions RÉELLES, pas des tentatives : une éviction
-    // qu'on annonce sans l'avoir faite est exactement ce que cette tâche corrige ailleurs.
+    // The report is that of REAL deletions, not attempts: an eviction announced
+    // without having been done is exactly what is being fixed elsewhere.
     const evicted = outcomes.filter(Boolean).length;
     return { evicted, totalBefore, totalAfter: totalBefore - evicted };
 }
 
 /**
- * Dit qu'une éviction a eu lieu — à la console toujours, aux clients seulement quand ça compte.
+ * Says an eviction happened — to the console always, to clients only when it matters.
  *
- * ⚠️ LE TRIM DE ROUTINE NE REMONTE PAS, ET C'EST LE POINT. Il tourne à chaque panoramique
- * soutenu ; un toast par déplacement de carte apprend à l'utilisateur à ne plus lire les
- * notifications, ce qui coûte précisément l'avertissement qu'on veut pouvoir donner le jour où
- * la place manque vraiment.
+ * ⚠️ THE ROUTINE TRIM DOES NOT BUBBLE UP, AND THAT IS THE POINT. It runs on every
+ * sustained pan; one toast per map move teaches the user to stop reading
+ * notifications, which costs precisely the warning we want to be able to give the
+ * day space genuinely runs out.
  *
- * Le détail reprend la forme d'`EvictionResult` et le nom d'événement `geoleaf:cache:evicted` :
- * `sw-register.ts` le re-diffuse sur `document`, où l'écouteur d'`offline-ui` l'affiche déjà.
+ * The detail takes `EvictionResult`'s shape and the `geoleaf:cache:evicted` event
+ * name: `sw-register.ts` re-broadcasts it on `document`, where `offline-ui`'s
+ * listener already displays it.
  *
  * @param {{evicted: number, totalBefore: number, totalAfter: number}} result
  * @param {"fifo"|"pressure"|"quota"} reason
@@ -764,11 +774,12 @@ function _notifyEvicted(result, reason) {
         `${result.totalBefore} → ${result.totalAfter}.`;
 
     if (reason === "fifo") {
-        // ⚠️ `_SW_DEBUG` et non `warn`, contrairement aux deux autres. Un trim de routine n'est
-        // pas un incident : c'est le régime nominal d'un cache borné, et il tourne à chaque
-        // panoramique soutenu. L'annoncer en avertissement noierait ceux qui en sont vraiment,
-        // et terser retire ces appels du bundle de production. Même partage que
-        // `_warnOpaqueOnce`, qui n'élève la voix que pour la contradiction.
+        // ⚠️ `_SW_DEBUG` and not `warn`, unlike the other two. A routine trim is not
+        // an incident: it is the nominal regime of a bounded cache, and it runs on
+        // every sustained pan. Announcing it as a warning would drown the ones that
+        // really are, and terser strips these calls from the production bundle. Same
+        // split as `_warnOpaqueOnce`, which only raises its voice for the
+        // contradiction.
         if (_SW_DEBUG) console.log(line);
         return;
     }
@@ -792,22 +803,22 @@ function _notifyEvicted(result, reason) {
                 }
             })
             .catch(() => {
-                // Un client parti entre le `matchAll` et le `postMessage` n'est pas un défaut.
+                // A client gone between `matchAll` and `postMessage` is not a defect.
             });
     } catch (_e) {
-        /* `clients` absent (contexte de test, worker en cours d'arrêt) — sans conséquence. */
+        /* `clients` absent (test context, worker shutting down) — inconsequential. */
     }
 }
 
 /**
- * Contrôle amorti du magasin de tuiles, appelé après une écriture réussie.
+ * Amortised check of the tile store, called after a successful write.
  *
- * Deux régimes : sous pression d'origine on taille AGRESSIVEMENT et on le dit ; sinon on
- * ramène simplement au plafond. Le premier est correct parce que sous pression la bonne classe
- * à sacrifier est la re-téléchargeable — c'est la distinction `lru` / `never` du CDC, appliquée
- * à la Cache API.
+ * Two regimes: under origin pressure we trim AGGRESSIVELY and say so; otherwise we
+ * simply bring it back to the cap. The first is correct because under pressure the
+ * right class to sacrifice is the re-downloadable one — the spec's `lru` / `never`
+ * distinction, applied to the Cache API.
  *
- * @param {Cache} cache Le magasin de tuiles, déjà ouvert.
+ * @param {Cache} cache The tile store, already open.
  */
 async function _maybeTrimTiles(cache) {
     if (++_tilePutsSinceCheck < TILE_CACHE_CHECK_EVERY) return;
@@ -815,7 +826,7 @@ async function _maybeTrimTiles(cache) {
 
     try {
         const max = await loadTileMaxEntries();
-        if (max <= 0) return; // `0` = bornage explicitement désactivé par le profil.
+        if (max <= 0) return; // `0` = bounding explicitly disabled by the profile.
 
         const pressure = await _originPressure();
         if (pressure !== null && pressure >= TILE_CACHE_PRESSURE_RATIO) {
@@ -828,18 +839,18 @@ async function _maybeTrimTiles(cache) {
         const result = await _trimTileCache(cache, max, Math.floor(max * TILE_CACHE_TRIM_RATIO));
         if (result.evicted > 0) _notifyEvicted(result, "fifo");
     } catch (error) {
-        // Journalisé et non avalé : un bornage qui échoue en silence est indiscernable d'un
-        // bornage qui n'existe pas, et c'est l'état dont cette tâche sort.
+        // Logged, not swallowed: a bounding failing silently is indistinguishable
+        // from one that does not exist, and that is the state this comes out of.
         console.warn("[SW] Contrôle du cache de tuiles impossible:", error);
     }
 }
 
 /**
- * Le refus vient-il du QUOTA, ou d'autre chose ?
+ * Does the refusal come from the QUOTA, or something else?
  *
- * Trois formes selon les moteurs : le nom standard, le code hérité de `DOMException`, et celui
- * de Gecko. Les confondre avec le reste est exactement ce que les quatre `.catch(() => {})`
- * faisaient — un dépassement de quota avalé comme une requête non-GET.
+ * Three shapes across engines: the standard name, the legacy `DOMException` code,
+ * and Gecko's. Confusing them with the rest is exactly what the four
+ * `.catch(() => {})` did — a quota overflow swallowed like a non-GET request.
  *
  * @param {unknown} error
  * @returns {boolean}
@@ -856,36 +867,37 @@ function _isQuotaError(error) {
 }
 
 /**
- * Écrit en cache — POINT DE DÉCISION UNIQUE pour les quatre stratégies.
+ * Writes to cache — SINGLE DECISION POINT for the four strategies.
  *
- * 🛑 CE QUE ÇA REMPLACE. Les quatre sites faisaient `cache.put(…).catch(() => {})` : un
- * dépassement de quota y était avalé exactement comme une requête non-GET. Le worker ne pouvait
- * donc pas savoir qu'il était plein, ni rien faire de cette information. Même geste que la
- * tâche 3.11, qui a réuni les quatre gardes de cachabilité en un seul endroit.
+ * 🛑 WHAT THIS REPLACES. The four sites did `cache.put(…).catch(() => {})`: a quota
+ * overflow was swallowed there exactly like a non-GET request. The worker therefore
+ * could not know it was full, nor do anything with that information. Same gesture as
+ * the cacheability fix, which gathered the four guards in one place.
  *
- * Sur quota : on rend de la place dans la classe RE-TÉLÉCHARGEABLE — les tuiles — quel que soit
- * le magasin qui a débordé, puis **un seul** retry. Rien libéré ⟹ pas de retry : il échouerait
- * pour la même raison, et une boucle sur un disque plein est un gel, pas une résilience.
+ * On quota: we free space in the RE-DOWNLOADABLE class — the tiles — whatever store
+ * overflowed, then **one** retry. Nothing freed ⟹ no retry: it would fail for the
+ * same reason, and a loop on a full disk is a freeze, not resilience.
  *
- * ⚠️ LE CLONE EST PRIS AVANT LE PREMIER `put`, et ce n'est pas de la prudence. Un corps de
- * `Response` ne se consomme qu'une fois, et `cache.put` le consomme. Réessayer avec le même
- * objet échoue en « body already used » — le trim aurait tourné pour rien, et le correctif
- * serait sorti vert en ne réparant rien.
+ * ⚠️ THE CLONE IS TAKEN BEFORE THE FIRST `put`, and that is not caution. A
+ * `Response` body is consumed only once, and `cache.put` consumes it. Retrying with
+ * the same object fails with "body already used" — the trim would have run for
+ * nothing, and the fix would have come out green while repairing nothing.
  *
  * @param {Cache} cache
  * @param {Request} request
  * @param {Response} response
- * @returns {Promise<boolean>} `true` si la réponse est en cache. Ne rejette jamais : trois des
- *   quatre appelants sont en fire-and-forget.
+ * @returns {Promise<boolean>} `true` when the response is cached. Never rejects:
+ *   three of the four callers are fire-and-forget.
  */
 async function cachePut(cache, request, response) {
-    // Pris AVANT le premier `put`, jamais après : le corps sera consommé.
+    // Taken BEFORE the first `put`, never after: the body will be consumed.
     let spare = null;
     try {
         spare = response.clone();
     } catch (_e) {
-        // Corps déjà consommé, ou réponse non clonable : il n'y aura pas de retry, et
-        // `spare` vaut déjà `null`. Le réassigner ici serait une écriture sans lecteur.
+        // Body already consumed, or response not clonable: there will be no retry,
+        // and `spare` is already `null`. Reassigning it here would be a readerless
+        // write.
     }
 
     try {
@@ -900,12 +912,12 @@ async function cachePut(cache, request, response) {
         let result = { evicted: 0, totalBefore: 0, totalAfter: 0 };
         try {
             const max = await loadTileMaxEntries();
-            // ⚠️ `max === 0` — bornage désactivé par le profil — NE DÉSARME PAS ce chemin, et
-            // c'est un choix. « Pas de plafond » dit de ne pas tailler *préventivement* ; ici
-            // le navigateur vient de REFUSER une écriture. Honorer le `0` reviendrait à ne
-            // plus rien mettre en cache du tout, indéfiniment, sur un appareil plein — soit
-            // exactement le chemin de perte que ce sprint ferme. On récupère donc dans la
-            // classe re-téléchargeable, et on le DIT (`reason: "quota"`).
+            // ⚠️ `max === 0` — bounding disabled by the profile — does NOT DISARM
+            // this path, and that is a choice. "No cap" says not to trim
+            // *preventively*; here the browser just REFUSED a write. Honouring the
+            // `0` would mean caching nothing at all, indefinitely, on a full device —
+            // exactly the loss path being closed. So we recover in the
+            // re-downloadable class, and we SAY it (`reason: "quota"`).
             const target = Math.min(TILE_CACHE_PRESSURE_TRIM_TO, max > 0 ? max : Infinity);
             const tiles = await caches.open(CACHE_TILES);
             result = await _trimTileCache(tiles, target, target);
@@ -940,14 +952,15 @@ async function cacheFirstStrategy(request, cacheName) {
     if (cachedResponse) {
         // Background update (stale-while-revalidate)
         //
-        // 🛑 BORNÉ, et c'est le site que le détecteur de la roadmap NE POUVAIT PAS VOIR : sa
-        // forme ne cherchait que `await fetch(`, `= fetch(` et `return fetch(`. Un appel
-        // fire-and-forget n'est aucun des trois. Le chiffre « ≥ 14 » sous-comptait donc pour
-        // une raison de FORME, pas d'inattention — trouvé par la garde de non-régression, qui
-        // scanne les lignes au lieu de chercher trois patrons.
+        // 🛑 BOUNDED, and this is the site a pattern-based detector COULD NOT SEE:
+        // its shape only looked for `await fetch(`, `= fetch(` and `return fetch(`.
+        // A fire-and-forget call is none of the three. The "≥ 14" figure therefore
+        // under-counted for a reason of SHAPE, not inattention — found by the
+        // non-regression guard, which scans lines instead of matching three
+        // patterns.
         //
-        // Une revalidation d'arrière-plan qui pend est le pire cas : personne ne l'attend,
-        // donc personne ne voit qu'elle retient une connexion.
+        // A hanging background revalidation is the worst case: nobody awaits it, so
+        // nobody sees it holding a connection.
         fetchBounded(request)
             .then((networkResponse) => {
                 if (isCacheableResponse(networkResponse, request)) {
@@ -1004,28 +1017,28 @@ async function navigationStrategy(request) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════
-// ORIGINES DE DONNÉES DÉCLARÉES (tâche 3.9) — router sur une DÉCLARATION, pas sur une devinette
+// DECLARED DATA ORIGINS — route on a DECLARATION, not a guess
 // ═══════════════════════════════════════════════════════════════════════════════════════
 
 /**
- * Clé du store `preferences` où le moteur publie les déclarations.
+ * `preferences`-store key where the engine publishes the declarations.
  *
- * ⚠️ Littéral PARTAGÉ avec `capabilities/offline/data-origins.ts`, qui ne peut pas être
- * importé ici — ce fichier est copié tel quel, sans bundler. Une garde de source vérifie que
- * les deux disent la même chose ; sans elle, une divergence sortirait silencieusement verte,
- * exactement comme la version de base l'a fait pendant des mois.
+ * ⚠️ Literal SHARED with `capabilities/offline/data-origins.ts`, which cannot be
+ * imported here — this file is copied as-is, no bundler. A source guard checks both
+ * say the same thing; without it, a divergence would come out silently green,
+ * exactly as the base version did for months.
  */
 const DATA_ORIGINS_KEY = "offline.dataOrigins";
 
-/** Déclarations mémoïsées. `null` = pas encore lues ; `[]` = lues et vides (un REFUS). */
+/** Memoised declarations. `null` = not read yet; `[]` = read and empty (a REFUSAL). */
 let _dataOrigins = null;
 
 /**
- * Lit les déclarations depuis IndexedDB, une fois, puis les garde en mémoire.
+ * Reads the declarations from IndexedDB, once, then keeps them in memory.
  *
- * ⚠️ Par IndexedDB et non par `postMessage` : un message est perdu à chaque redémarrage du
- * worker, et le navigateur le redémarre quand il veut — laissant le worker sans déclaration
- * exactement au moment où un appareil de terrain se réveille hors réseau.
+ * ⚠️ Through IndexedDB and not `postMessage`: a message is lost at every worker
+ * restart, and the browser restarts it whenever it wants — leaving the worker
+ * declaration-less exactly when a field device wakes up off-network.
  */
 async function loadDataOrigins() {
     if (_dataOrigins !== null) return _dataOrigins;
@@ -1053,10 +1066,10 @@ async function loadDataOrigins() {
 }
 
 /**
- * La requête vise-t-elle une origine DÉCLARÉE, dans le rôle demandé ?
+ * Does the request target a DECLARED origin, in the requested role?
  *
- * Comparaison d'ORIGINE stricte — ni `includes`, ni `startsWith`, ni reniflage de chemin.
- * @returns {object|null} la déclaration, ou `null` si l'origine n'est pas déclarée.
+ * Strict ORIGIN comparison — no `includes`, no `startsWith`, no path sniffing.
+ * @returns {object|null} the declaration, or `null` when the origin is not declared.
  */
 function matchDeclaredOrigin(url, origins, role) {
     if (!origins || origins.length === 0) return null;
@@ -1075,21 +1088,23 @@ function matchDeclaredOrigin(url, origins, role) {
 }
 
 /**
- * `fetch` BORNÉ — le worker ne peut pas importer, alors il porte le sien (tâche 3.8).
+ * BOUNDED `fetch` — the worker cannot import, so it carries its own.
  *
- * 🛑 POURQUOI C'EST LE SITE LE PLUS DANGEREUX DU PÉRIMÈTRE. Ce fichier est copié tel quel
- * dans les variantes de déploiement : il n'a ni bundler ni imports. Ses `fetch` sont sur le
- * chemin critique d'un `FetchEvent` — un serveur lent ne les FAIT PAS ÉCHOUER, il les RETIENT.
- * La ressource ne se résout jamais, la page attend, et il n'y a ni erreur à montrer ni rien à
- * réessayer. Un échec franc est infiniment préférable à une attente sans fin.
+ * 🛑 WHY THIS IS THE MOST DANGEROUS SITE OF THE PERIMETER. This file is copied
+ * as-is into the deployment variants: it has neither bundler nor imports. Its
+ * `fetch`es sit on a `FetchEvent`'s critical path — a slow server does not FAIL
+ * them, it HOLDS them. The resource never resolves, the page waits, and there is no
+ * error to show and nothing to retry. A frank failure is infinitely preferable to an
+ * endless wait.
  *
- * ⚠️ Il JETTE plutôt que de rendre `null` : chaque stratégie a déjà son `catch` et sait
- * dégrader visiblement — cache, puis placeholder en 504 (bug n° 6). Rendre `null` obligerait
- * chaque appelant à distinguer « pas de réponse » de « réponse vide », ce que personne ne fait.
+ * ⚠️ It THROWS rather than returning `null`: each strategy already has its `catch`
+ * and knows how to degrade visibly — cache, then a 504 placeholder. Returning
+ * `null` would force every caller to distinguish "no response" from "empty
+ * response", which nobody does.
  *
  * @param {Request|string} request
- * @param {number} [timeoutMs] Délai avant abandon. 10 s par défaut : au-delà, sur le terrain,
- *   l'utilisateur a déjà conclu que ça ne marche pas.
+ * @param {number} [timeoutMs] Delay before giving up. 10 s by default: beyond that,
+ *   in the field, the user has already concluded it does not work.
  * @returns {Promise<Response>}
  */
 async function fetchBounded(request, timeoutMs = 10000) {
@@ -1098,8 +1113,8 @@ async function fetchBounded(request, timeoutMs = 10000) {
     try {
         return await fetch(request, { signal: controller.signal });
     } finally {
-        // Le timer se libère MÊME sur rejet : sans ce `finally`, un réseau durablement
-        // coupé accumulait un timer par requête tentée.
+        // The timer is released EVEN on rejection: without this `finally`, a durably
+        // down network accumulated one timer per attempted request.
         clearTimeout(timer);
     }
 }
@@ -1143,10 +1158,11 @@ async function tileCacheStrategy(request) {
     try {
         const networkResponse = await fetchBounded(request);
         if (isCacheableResponse(networkResponse, request)) {
-            // 🛑 LE SEUL ÉCRIVAIN DE `CACHE_TILES`, et c'est ce qui rend le trim sûr : ce que
-            // l'utilisateur a EXPLICITEMENT demandé à télécharger part en IndexedDB via le
-            // `Downloader`, jamais ici. Une éviction ne peut donc pas emporter une zone
-            // préparée pour le terrain — c'est une propriété de structure, pas une précaution.
+            // 🛑 THE ONLY WRITER OF `CACHE_TILES`, and that is what makes the trim
+            // safe: what the user EXPLICITLY asked to download goes to IndexedDB via
+            // the `Downloader`, never here. An eviction therefore cannot take away a
+            // zone prepared for the field — a structural property, not a
+            // precaution.
             void cachePut(cache, request, networkResponse.clone()).then((stored) =>
                 stored ? _maybeTrimTiles(cache) : undefined
             );
@@ -1155,29 +1171,31 @@ async function tileCacheStrategy(request) {
     } catch (_error) {
         // 4. Placeholder tile on total failure.
         //
-        // 🛑 BUG n° 6 — ce placeholder partait en statut **200**, donc un ÉCHEC RÉSEAU
-        // devenait un SUCCÈS. Pour une tuile raster c'est une image grise à la place d'une
-        // image ; pour une tuile VECTORIELLE, MapLibre reçoit un `200` et tente de parser du
-        // SVG en protobuf. L'erreur qu'il remonte alors ne parle plus de réseau.
+        // 🛑 This placeholder used to leave with status **200**, so a NETWORK
+        // FAILURE became a SUCCESS. For a raster tile that is a grey image instead
+        // of an image; for a VECTOR tile, MapLibre receives a `200` and tries to
+        // parse SVG as protobuf. The error it then raises no longer speaks of the
+        // network.
         //
-        // Le statut est désormais **504 Gateway Timeout** : le corps reste servi — le
-        // placeholder a une valeur d'usage, il dit à l'utilisateur que la tuile manque — mais
-        // le statut dit la VÉRITÉ, et tout consommateur qui teste `response.ok` la voit.
+        // The status is now **504 Gateway Timeout**: the body is still served — the
+        // placeholder has use value, it tells the user the tile is missing — but the
+        // status tells the TRUTH, and any consumer testing `response.ok` sees it.
         //
-        // ⚠️ `Cache-Control: no-store` et non `no-cache` : une réponse d'échec ne doit pas
-        // être conservée, même revalidable. Elle n'a aucune valeur au-delà de l'instant.
+        // ⚠️ `Cache-Control: no-store` and not `no-cache`: a failure response must
+        // not be kept, even revalidatable. It has no value beyond the instant.
         return new Response(OFFLINE_TILE_SVG, {
             headers: {
                 "Content-Type": "image/svg+xml",
                 "Cache-Control": "no-store",
-                // Marqueur explicite : le corps est un substitut, pas la ressource demandée.
+                // Explicit marker: the body is a substitute, not the requested resource.
                 "X-GeoLeaf-Placeholder": "tile",
             },
             status: 504,
-            // ⚠️ ASCII PUR, et ce n'est pas du style. Un `statusText` non-ASCII fait JETER le
-            // constructeur `Response` — le tiret cadratin d'une première rédaction faisait
-            // échouer `tileCacheStrategy` DANS son propre catch, et la page recevait un
-            // `TypeError: Failed to fetch` au lieu du placeholder. Mesuré le 02/08/2026.
+            // ⚠️ PURE ASCII, and this is not style. A non-ASCII `statusText` makes
+            // the `Response` constructor THROW — a first draft's em-dash made
+            // `tileCacheStrategy` fail INSIDE its own catch, and the page received a
+            // `TypeError: Failed to fetch` instead of the placeholder. Measured on
+            // 02/08/2026.
             statusText: "Offline - tile unavailable",
         });
     }
@@ -1188,58 +1206,62 @@ async function tileCacheStrategy(request) {
 // ═══════════════════════════════════════════════
 
 /**
- * La ressource appartient-elle à UN profil, c'est-à-dire vit-elle SOUS son répertoire ?
+ * Does the resource belong to ONE profile, i.e. does it live UNDER its directory?
  *
- * 🛑 **Le `/` final n'est pas cosmétique, il est le correctif de B-236.** Cette fonction rendait
- * `true` pour tout chemin CONTENANT `/profiles/`, donc aussi pour l'index `geoleaf.config.json`,
- * qui est à la racine de `profiles/` et n'appartient à aucun profil. `getCacheNameForProfile`
- * capturait alors le NOM DE FICHIER comme s'il était un nom de profil et dérivait un seau
- * `…-profile-geoleaf.config.json` — que `cacheFirstStrategy` CRÉE en l'ouvrant, et que rien ne
- * remplit jamais.
+ * 🛑 **The trailing `/` is not cosmetic, it is a measured fix.** This function
+ * returned `true` for any path CONTAINING `/profiles/`, hence also for the index
+ * `geoleaf.config.json`, which sits at the root of `profiles/` and belongs to no
+ * profile. `getCacheNameForProfile` then captured the FILE NAME as if it were a
+ * profile name and derived a `…-profile-geoleaf.config.json` bucket — which
+ * `cacheFirstStrategy` CREATES by opening it, and nothing ever fills.
  *
- * Conséquence mesurée le 13/08/2026 : le fichier était correctement PRÉ-CACHÉ dans
- * `CACHE_STATIC` (`lib/boot-assets.cjs` l'y inscrit délibérément) et **inatteignable** — la
- * lecture était scopée à un seau vide. Hors ligne, `caches.match()` global le trouvait ;
- * la route, non. L'application ne bootait pas au second chargement, faute de `map.bounds`.
+ * Measured consequence on 13/08/2026: the file was correctly PRE-CACHED in
+ * `CACHE_STATIC` (`lib/boot-assets.cjs` deliberately lists it) and **unreachable** —
+ * the read was scoped to an empty bucket. Offline, a global `caches.match()` found
+ * it; the route did not. The application did not boot on second load, for lack of
+ * `map.bounds`.
  *
- * ⚠️ **Restreindre ici ne suffit PAS**, et c'est le piège de ce correctif : `isStaticAsset`
- * n'accepte pas `json`, donc l'index retomberait en `networkFirstStrategy(CACHE_RUNTIME)` —
- * autre seau, autre miss, même panne. Voir {@link isProfileShellConfig}, qui est l'autre moitié.
+ * ⚠️ **Narrowing here is NOT enough**, and that is this fix's trap: `isStaticAsset`
+ * does not accept `json`, so the index would fall back to
+ * `networkFirstStrategy(CACHE_RUNTIME)` — another bucket, another miss, same
+ * outage. See {@link isProfileShellConfig}, the other half.
  */
 function isProfileResource(url) {
     return /\/profiles\/[^/]+\//.test(url.pathname);
 }
 
 /**
- * Clés de {@link STATIC_ASSETS}, résolues comme `install` les a écrites. `null` tant que
- * la première requête ne l'a pas demandé — la liste est injectée au build, pas au chargement.
+ * Keys of {@link STATIC_ASSETS}, resolved as `install` wrote them. `null` until the
+ * first request asks — the list is injected at build time, not at load time.
  */
 let _precachedKeys = null;
 
 /**
- * La ressource fait-elle partie du PRÉ-CACHE, tel qu'`install` l'a écrit ?
+ * Is the resource part of the PRE-CACHE, as `install` wrote it?
  *
- * 🛑 **L'AUTRE MOITIÉ DE B-236, ET LA PLUS IMPORTANTE : ce que `install` écrit, `fetch` doit
- * savoir le lire.** Les deux moitiés du worker dérivaient leur périmètre séparément — `install`
- * depuis `STATIC_ASSETS` (dérivée par `lib/boot-assets.cjs`), `fetch` depuis une LISTE
- * D'EXTENSIONS (`isStaticAsset`) qui n'accepte pas `json`. Toute entrée pré-cachée dont
- * l'extension manquait à cette liste était donc écrite dans `CACHE_STATIC` puis cherchée
- * ailleurs — `networkFirstStrategy(CACHE_RUNTIME)` — et introuvable hors ligne.
+ * 🛑 **THE OTHER HALF OF THE SAME DEFECT, AND THE MORE IMPORTANT ONE: what `install`
+ * writes, `fetch` must know how to read.** The worker's two halves derived their
+ * perimeter separately — `install` from `STATIC_ASSETS` (derived by
+ * `lib/boot-assets.cjs`), `fetch` from an EXTENSION LIST (`isStaticAsset`) that does
+ * not accept `json`. Any pre-cached entry whose extension was missing from that
+ * list was therefore written into `CACHE_STATIC` then looked up elsewhere —
+ * `networkFirstStrategy(CACHE_RUNTIME)` — and unfindable offline.
  *
- * Mesuré le 13/08/2026 par la garde de classe de `e2e/31-offline-second-load.spec.js` :
- * **DEUX** entrées sur 17, `profiles/geoleaf.config.json` et `manifest.json`. La première
- * empêchait l'application de booter au second chargement, faute de `map.bounds`.
+ * Measured on 13/08/2026 by the class guard of `e2e/31-offline-second-load.spec.js`:
+ * **TWO** entries out of 17, `profiles/geoleaf.config.json` and `manifest.json`.
+ * The first prevented the application from booting on second load, for lack of
+ * `map.bounds`.
  *
- * ⚠️ **Le premier correctif écrit ne traitait que le config**, en restreignant
- * `isProfileResource` et en routant la racine de `profiles/` vers `CACHE_STATIC`. Il aurait
- * laissé `manifest.json` cassé — c'est la garde, et non la relecture, qui l'a dit. D'où cette
- * forme-ci : au lieu de deviner le périmètre une seconde fois, on lit CELUI QUI A SERVI À
- * ÉCRIRE. Une liste d'extensions et une liste d'assets ne peuvent pas diverger si l'une des
- * deux n'existe plus.
+ * ⚠️ **The first fix written treated only the config**, by narrowing
+ * `isProfileResource` and routing the `profiles/` root to `CACHE_STATIC`. It would
+ * have left `manifest.json` broken — the guard, not re-reading, is what said so.
+ * Hence this shape: instead of guessing the perimeter a second time, we read THE
+ * ONE THAT SERVED TO WRITE. An extension list and an asset list cannot diverge if
+ * one of the two no longer exists.
  *
- * ⚠️ La base de résolution est `self.location.href`, et ce n'est pas indifférent : c'est
- * exactement celle que `cache.addAll(STATIC_ASSETS)` emploie à l'installation. Résoudre ici
- * depuis une autre base produirait des clés qui ne correspondraient à rien.
+ * ⚠️ The resolution base is `self.location.href`, and that is not indifferent: it
+ * is exactly the one `cache.addAll(STATIC_ASSETS)` uses at installation. Resolving
+ * here from another base would produce keys matching nothing.
  */
 function isPrecachedAsset(url) {
     if (url.origin !== self.location.origin) {
@@ -1257,22 +1279,22 @@ function isPrecachedAsset(url) {
 }
 
 /**
- * L'hôte appartient-il au domaine `domain`, ou à l'un de ses sous-domaines ?
+ * Does the host belong to `domain`, or to one of its subdomains?
  *
- * 🛑 REMPLACE `hostname.includes(...)` (tâche 3.7). Une sous-chaîne ne connaît pas les
- * frontières d'un nom d'hôte : `includes("tile")` matchait `mon-site-hostile.tilerie.com`, et
- * `includes("maptiler")` matcherait `maptiler.attaquant.tld`. Le worker routait alors du
- * trafic hostile vers sa stratégie de tuiles, donc vers son cache.
+ * 🛑 REPLACES `hostname.includes(...)`. A substring knows no hostname boundaries:
+ * `includes("tile")` matched `mon-site-hostile.tilerie.com`, and
+ * `includes("maptiler")` would match `maptiler.attaquant.tld`. The worker then
+ * routed hostile traffic to its tile strategy, hence to its cache.
  *
- * ⚠️ Ce durcissement ne fait que rendre le mécanisme ACTUEL honnête. Il ne le remplace pas :
- * la tâche 3.9 substitue à ces listes codées en dur les **origines de données déclarées** du
- * profil. Tant qu'elles ne sont pas là, au moins la comparaison ne ment plus.
+ * ⚠️ This hardening only makes the CURRENT mechanism honest. It does not replace
+ * it: declared data origins supersede these hard-coded lists. Until they are there,
+ * at least the comparison no longer lies.
  */
 function _isHostOf(hostname, domain) {
     return hostname === domain || hostname.endsWith(`.${domain}`);
 }
 
-/** Domaines de tuiles VECTORIELLES connus. Provisoire — remplacé par 3.9. */
+/** Known VECTOR tile domains. Provisional — superseded by declared origins. */
 const _VECTOR_TILE_DOMAINS = ["openfreemap.org", "maptiler.com", "protomaps.com", "versatiles.org"];
 
 function _isVectorTileProvider(hostname) {
@@ -1280,12 +1302,12 @@ function _isVectorTileProvider(hostname) {
 }
 
 /**
- * Domaines de tuiles RASTER connus. Provisoire — remplacé par 3.9.
+ * Known RASTER tile domains. Provisional — superseded by declared origins.
  *
- * ⚠️ `"tile"` a disparu de cette liste, et c'est le point du correctif : ce n'était pas un
- * domaine mais une sous-chaîne, qui acceptait n'importe quel hôte en contenant le mot. Les
- * hôtes réellement visés (`tile.openstreetmap.org`, `c.tile.opentopomap.org`) sont couverts
- * par leur domaine, en sous-domaine.
+ * ⚠️ `"tile"` disappeared from this list, and that is the fix's point: it was not a
+ * domain but a substring, accepting any host containing the word. The genuinely
+ * targeted hosts (`tile.openstreetmap.org`, `c.tile.opentopomap.org`) are covered
+ * by their domain, as subdomains.
  */
 const _RASTER_TILE_DOMAINS = ["openstreetmap.org", "arcgisonline.com", "opentopomap.org"];
 
@@ -1305,10 +1327,10 @@ function isTileRequest(url) {
     //    .png/.json, style .json) to the tile strategy so the full vector basemap
     //    renders offline. Paths never contain /profiles/, so this pre-empts
     //    isStaticAsset (.png) and the networkFirst fallback (.json).
-    //    ⚠️ `_isHostOf` et non `includes` (3.7) : ce domaine est CODÉ EN DUR dans le worker,
-    //    et une sous-chaîne l'aurait fait matcher `data.geopf.fr.attaquant.tld`. Un domaine
-    //    en dur qui se compare mal est doublement fragile. Le codage en dur lui-même est ce
-    //    que 3.9 retire, en le remplaçant par les origines déclarées du profil.
+    //    ⚠️ `_isHostOf` and not `includes`: this domain is HARD-CODED in the worker,
+    //    and a substring would have made it match `data.geopf.fr.attaquant.tld`. A
+    //    hard-coded domain that compares badly is doubly fragile. The hard-coding
+    //    itself is what declared origins remove.
     if (_isHostOf(hostname, "data.geopf.fr")) {
         return true;
     }
@@ -1331,24 +1353,25 @@ function isTileRequest(url) {
 }
 
 function isStaticAsset(url) {
-    // 🛑 CONTRÔLE D'ORIGINE — sans lui, l'extension suffisait (tâche 3.7).
+    // 🛑 ORIGIN CHECK — without it, the extension sufficed.
     //
-    // La fonction ne testait que le chemin : n'importe quel `.js` de n'importe quel hôte
-    // entrait dans le cache STATIQUE, puis était resservi **cache-first** — c'est-à-dire que
-    // le cache l'emportait sur le réseau, pour un script tiers, indéfiniment. Un script
-    // compromis une seule fois restait servi après sa correction à la source.
+    // The function tested only the path: any `.js` from any host entered the STATIC
+    // cache, then was re-served **cache-first** — i.e. the cache won over the
+    // network, for a third-party script, indefinitely. A script compromised once
+    // stayed served after its fix at the source.
     //
-    // « Statique » ne veut rien dire hors de notre propre origine : ce qui est à nous est
-    // déployé avec nous et versionné avec nous.
+    // "Static" means nothing outside our own origin: what is ours is deployed with
+    // us and versioned with us.
     if (url.origin !== self.location.origin) {
         return false;
     }
-    // ⚠️ `mjs` compte autant que `js`, et son absence était un PIÈGE À DIAGNOSTIC. Depuis
-    // MapLibre 6 le moteur entier est en `.mjs` : sans cette extension il tombait en
-    // `networkFirstStrategy(CACHE_RUNTIME)` au lieu du cache statique — donc un premier
-    // chargement EN LIGNE remplissait le cache runtime, et le rechargement hors ligne
-    // fonctionnait quand même. Le défaut de pré-cache devenait invisible aux tests, y compris
-    // à `e2e/31-offline-second-load.spec.js`, qui charge en ligne avant de couper le réseau.
+    // ⚠️ `mjs` counts as much as `js`, and its absence was a DIAGNOSTIC TRAP. Since
+    // MapLibre 6 the whole engine is `.mjs`: without this extension it fell into
+    // `networkFirstStrategy(CACHE_RUNTIME)` instead of the static cache — so a first
+    // ONLINE load filled the runtime cache, and the offline reload worked anyway.
+    // The pre-cache defect became invisible to tests, including
+    // `e2e/31-offline-second-load.spec.js`, which loads online before cutting the
+    // network.
     return url.pathname.match(/\.(js|mjs|css|html|png|jpg|jpeg|svg|woff|woff2|ttf)$/);
 }
 
@@ -1564,27 +1587,27 @@ function extractBinary(cachedData, record) {
 }
 
 /**
- * Bâtit la réponse d'un enregistrement RECONSTRUIT depuis IndexedDB.
+ * Builds the response of a record RECONSTRUCTED from IndexedDB.
  *
- * 🛑 **`no-store`, et ce n'est pas une prudence : c'est le seul en-tête qui dise vrai.**
- * Ces réponses ne viennent pas du réseau, elles sont rebâties depuis la base. Annoncer
- * `max-age=31536000` (tâche 3.7) promettait un an de fraîcheur à un contenu dont **rien** ne
- * garantit la fraîcheur, et faisait garder au navigateur une seconde copie, hors de portée de
- * toute purge du worker. C'est le worker qui détient ce cache, pas le cache HTTP.
+ * 🛑 **`no-store`, and it is not caution: it is the only header that tells the
+ * truth.** These responses do not come from the network, they are rebuilt from the
+ * database. Announcing `max-age=31536000` promised a year of freshness to content
+ * whose freshness **nothing** guarantees, and made the browser keep a second copy,
+ * out of reach of any worker purge. The worker owns this cache, not the HTTP cache.
  *
- * ⚠️ **La justification de cet en-tête a été corrigée à la tâche 8.8 (compteurs C4 et C5).**
- * Elle était recopiée **trois fois** à l'identique dans la fonction ci-dessous — un bloc de 8
- * lignes par type de charge utile — et elle affirmait que « le TTL qui devait le faire est
- * **calculé, transmis**, puis jeté à l'écriture ». Mesuré : il n'est plus ni calculé ni
- * transmis. `downloader.ts` porte « LE `ttl` A ÉTÉ RETIRÉ D'ICI (tâche 3.13) », et aucun `ttl`
- * ne subsiste nulle part — ni dans le core, ni dans `offline-ui`, ni dans les schémas de
- * profil ; `LayerMetadata` ne déclare que `etag`, `lastModified`, `contentLength`,
- * `contentType` et `resourceType`. **La prose décrivait un producteur supprimé quatre tâches
- * plus tôt**, et la tripler avait triplé le coût de la corriger.
+ * ⚠️ **This header's justification was corrected.** It was copied **three times**
+ * identically in the function below — an 8-line block per payload type — and it
+ * asserted that "the TTL meant to do it is **computed, forwarded**, then discarded
+ * at write time". Measured: it is no longer computed nor forwarded.
+ * `downloader.ts` carries "THE `ttl` WAS REMOVED FROM HERE", and no `ttl` survives
+ * anywhere — not in the core, not in `offline-ui`, not in the profile schemas;
+ * `LayerMetadata` declares only `etag`, `lastModified`, `contentLength`,
+ * `contentType` and `resourceType`. **The prose described a producer deleted four
+ * steps earlier**, and tripling it had tripled the cost of correcting it.
  *
- * @param {BodyInit} body - Le corps déjà décodé.
- * @param {string} contentType - Le type MIME à annoncer.
- * @returns {Response} Une réponse 200, sans `Content-Encoding` (le corps est en clair).
+ * @param {BodyInit} body - The already-decoded body.
+ * @param {string} contentType - The MIME type to announce.
+ * @returns {Response} A 200 response, no `Content-Encoding` (the body is plain).
  */
 function reconstructedResponse(body, contentType) {
     return new Response(body, {

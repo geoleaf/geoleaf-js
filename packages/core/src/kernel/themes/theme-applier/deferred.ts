@@ -7,9 +7,30 @@
 
 /**
  * GeoLeaf Theme Applier - Deferred
- * Loadsment deferred de layers, resolution de profile, gestion du cache
+ * Deferred layer loading, profile resolution, cache management
  */
 
+/**
+ * @sideEffectGraft packages/core/src/globals/globals.ui.ts
+ *
+ * ✅ ASSUMED as a module-level state, decided 24-25/08/2026 — not a side effect awaiting
+ * conversion. Converting the graft to plain exports would force the anchor to know every
+ * member it re-exports, for nothing measurable: the graft is declared (this mark), anchored
+ * (the bare import the mark names), and guarded (the graft gate reddens if either
+ * disappears). What would REOPEN the decision is a second writer grafting onto the same
+ * base — not a re-reading of this file.
+ *
+ * ⚠️ **SIDE-EFFECT module**: grafts 7 members onto `ThemeApplierCore` at import;
+ * `core.ts` CALLS them without defining them. It exports nothing that is consumed, so
+ * no dead-code instrument can see it live — ESLint, `check-orphan-exports` and a
+ * human read all declared it dead **in concert, and all three were wrong**. A
+ * side-effect module has no consumer, by definition.
+ *
+ * **Its only anchor is a BARE import in `globals.ui.ts`.** Removing it drops
+ * this file from the graph **silently**: the test suite stays green, and the
+ * symptom is a production `TypeError`. It happened (July 2026, caught within the
+ * hour). `GRAFT-03` now guards that the anchor still imports it.
+ */
 import { ThemeApplierCore as _TA } from "./core.js";
 import type { ActiveProfile, ProfileLayerConfig, ThemeApplierModule } from "./core.js";
 import { Config } from "../../config/config-primitives.js";
@@ -29,10 +50,10 @@ interface ConfigLike {
 const _Config = Config as unknown as ConfigLike;
 
 /**
- * Programme l'application of a configuration de layer pour plus tard
- * @param {string} layerId - ID de the layer
+ * Schedules a layer configuration to be applied later
+ * @param {string} layerId - Layer ID
  * @param {boolean} visible - Desired visibility
- * @param {string} styleId - ID du style to appliquer
+ * @param {string} styleId - Style ID to apply
  * @returns {Promise<void>}
  * @private
  */
@@ -58,7 +79,7 @@ TA._scheduleLayerConfig = function (
 };
 
 /**
- * Planifie une verification des layers en attente
+ * Schedules a check of the pending layers
  * @private
  */
 TA._schedulePendingCheck = function () {
@@ -99,7 +120,7 @@ TA._checkPendingLayerConfigs = function () {
         TA._pendingLayerConfigs.delete(layerId);
     });
 
-    // S'il reste des layers en attente, programmer une nouvelle verification
+    // If layers are still pending, schedule another check
     if (TA._pendingLayerConfigs.size > 0) {
         TA._schedulePendingCheck();
     }
@@ -258,9 +279,9 @@ TA._loadLayerFromProfile = async function (layerId: string) {
 };
 
 /**
- * Resolves le path du file de data d'a layer
- * @param {Object} layerConfig - Configuration de the layer
- * @returns {string|null} - URL complete du file de data
+ * Resolves a layer's data file path
+ * @param {Object} layerConfig - Layer configuration
+ * @returns {string|null} - Full data file URL
  * @private
  */
 TA._resolveDataFilePath = function (layerConfig: ProfileLayerConfig) {
@@ -305,7 +326,7 @@ TA._resolveDataFilePath = function (layerConfig: ProfileLayerConfig) {
 };
 
 /**
- * Resolves le path de base des profiles
+ * Resolves the profiles base path
  * @private
  */
 TA._getProfilesBasePath = function (activeProfile: ActiveProfile) {
@@ -323,7 +344,7 @@ TA._getProfilesBasePath = function (activeProfile: ActiveProfile) {
 };
 
 /**
- * Normalise un path (trim + supprime le / final)
+ * Normalises a path (trim + strips the trailing /)
  * @private
  */
 TA._normalizeBasePath = function (path: string) {

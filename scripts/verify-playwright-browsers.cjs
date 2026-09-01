@@ -1,64 +1,66 @@
 /*!
- * GeoLeaf — préambule E2E : les navigateurs de Playwright sont-ils réellement là ?
+ * GeoLeaf — E2E preamble: are Playwright's browsers really there?
  * © 2026 Mattieu Pottier — MIT
  *
- * ## Le défaut que cette garde existe pour rendre BRUYANT (B-235)
+ * ## The defect this guard exists to make LOUD
  *
- * Le 13/08/2026, `npx playwright test` ne lançait **aucun** test :
+ * On 2026-08-13, `npx playwright test` launched **no** test:
  *
  *     browserType.launch: Executable doesn't exist at
  *       ~/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/…
  *
- * `ebb962b7` avait porté `@playwright/test` de `^1.49.0` à `^1.62.1` — une montée **délibérée**,
- * reprise de PR Dependabot — et la révision de navigateur requise était passée de 1217 à 1234.
- * Rien ne les avait réinstallés.
+ * `ebb962b7` had taken `@playwright/test` from `^1.49.0` to `^1.62.1` — a
+ * **deliberate** bump, from a Dependabot PR — and the required browser revision
+ * had gone from 1217 to 1234. Nothing had reinstalled them.
  *
- * 🛑 **L'ASYMÉTRIE EST CE QUI REND CETTE GARDE NÉCESSAIRE, ET ELLE SE COMPOSE AU PIRE.**
- * `ci.yml` lance `npx playwright install --with-deps chromium` **avant chaque run** E2E ; en
- * local, **rien** ne le fait (`package.json` n'a que `prepare: husky`). Le côté qui fonctionne
- * est donc celui dont les étapes E2E sont sous `workflow_dispatch`, que personne ne déclenche ;
- * le côté qu'on lance est celui qui est cassé. La suite était **exécutable là où on ne la lance
- * pas, et morte là où on la lance**.
+ * 🛑 **THE ASYMMETRY IS WHAT MAKES THIS GUARD NECESSARY, AND IT COMPOSES AT THE
+ * WORST.** `ci.yml` runs `npx playwright install --with-deps chromium` **before
+ * every** E2E run; locally, **nothing** does (`package.json` has only
+ * `prepare: husky`). The side that works is thus the one whose E2E steps sit
+ * under `workflow_dispatch`, which nobody triggers; the side one launches is the
+ * broken one. The suite was **runnable where it is not launched, and dead where
+ * it is**.
  *
- * ⚠️ **CE QUE CETTE GARDE N'APPORTE PAS, ET QU'UNE PREMIÈRE RÉDACTION LUI PRÊTAIT.** Elle a été
- * justifiée par « la suite s'annonce en VERT quand le navigateur manque ». **C'est faux, et la
- * mesure le dit** : navigateur retiré, `npx playwright test` rend `215 failed · 14 skipped ·
- * 3 passed` et **exit 1**. Playwright rapporte correctement. Ce qui avait menti était
- * l'INSTRUMENT DE LECTURE — un `| tail -60` qui coupait la ligne `215 failed` hors de la fenêtre
- * et, le code de sortie d'un pipeline étant celui du dernier maillon, rendait **0**. Le faux vert
- * était le mien, pas celui de l'outil.
+ * ⚠️ **WHAT THIS GUARD DOES NOT BRING, AND WHAT A FIRST DRAFT LENT IT.** It was
+ * justified by "the suite announces GREEN when the browser is missing". **That is
+ * false, and the measurement says so**: browser removed, `npx playwright test`
+ * returns `215 failed · 14 skipped · 3 passed` and **exit 1**. Playwright reports
+ * correctly. What had lied was the READING INSTRUMENT — a `| tail -60` that cut
+ * the `215 failed` line out of the window and, a pipeline's exit code being its
+ * last link's, returned **0**. The false green was mine, not the tool's.
  *
- * ✅ **Ce qu'elle apporte réellement, et qui suffit à la justifier** : elle échoue en **2
- * secondes avec un diagnostic**, là où la suite met **1,2 minute à rendre 215 rouges
- * identiques**. Et surtout elle DISTINGUE : 215 tests rouges ressemblent à une régression
- * catastrophique du produit, pas à un répertoire absent. C'est la même famille que « un rouge
- * d'infrastructure est indiscernable d'un rouge de gate » — `CC-06`, puis `CC-01` lancé depuis
- * un `git worktree` sans `node_modules` —, à ceci près qu'ici les deux rouges existent : le
- * problème est de savoir LEQUEL on regarde.
+ * ✅ **What it really brings, and which suffices to justify it**: it fails in **2
+ * seconds with a diagnosis**, where the suite takes **1.2 minutes to render 215
+ * identical reds**. And above all it DISTINGUISHES: 215 red tests look like a
+ * catastrophic product regression, not an absent directory. Same family as "an
+ * infrastructure red is indistinguishable from a gate red" — `CC-06`, then
+ * `CC-01` launched from a `git worktree` without `node_modules` — except here
+ * both reds exist: the problem is knowing WHICH one is being looked at.
  *
- * ## Ce que cette garde REFUSE, et pourquoi elle sort en 2
+ * ## What this guard REFUSES, and why it exits 2
  *
- * Elle ne rend jamais de verdict sur la suite : elle dit seulement si la suite **peut** être
- * jouée. Un préalable manquant sort donc en **exit 2** — refus de conclure —, jamais en 1, qui
- * signifierait « la suite a trouvé une régression ». Même partition que
- * `lib/consumer-manifest.cjs` et `lib/ts-decl-read.cjs`.
+ * It never renders a verdict on the suite: it only says whether the suite **can**
+ * be played. A missing prerequisite thus exits **2** — refusal to conclude —
+ * never 1, which would mean "the suite found a regression". Same partition as
+ * `lib/consumer-manifest.cjs` and `lib/ts-decl-read.cjs`.
  *
- * ## L'oracle, et le piège qu'il porte
+ * ## The oracle, and the trap it carries
  *
- * `npx playwright install --dry-run <navigateur>` imprime les chemins d'installation **attendus**
- * sans rien télécharger. On les lit ; on ne les devine pas.
+ * `npx playwright install --dry-run <browser>` prints the **expected** install
+ * paths without downloading anything. They are read; not guessed.
  *
- * 🛑 **NE JAMAIS PRÉSUMER LES NOMS — C'EST CE QUI RENDRAIT CETTE GARDE CREUSE.** Pour la version
- * courante, `--dry-run chromium` annonce **trois** artefacts : `chromium-1234`, `ffmpeg-1011`
- * **et `chromium_headless_shell-1234`**. Or l'artefact qui manquait le jour de la panne est le
- * **troisième**, pas celui qui s'appelle « chromium ». Une garde qui n'aurait vérifié que
- * `chromium-*` serait **sortie verte le jour même du défaut qu'elle existe pour attraper**.
- * D'où : on vérifie tout ce que `--dry-run` imprime, quels que soient les noms.
+ * 🛑 **NEVER PRESUME THE NAMES — THAT IS WHAT WOULD MAKE THIS GUARD HOLLOW.** For
+ * the current version, `--dry-run chromium` announces **three** artifacts:
+ * `chromium-1234`, `ffmpeg-1011` **and `chromium_headless_shell-1234`**. Yet the
+ * artifact missing on the outage day is the **third**, not the one named
+ * "chromium". A guard that had verified only `chromium-*` would have **gone green
+ * on the very day of the defect it exists to catch**. Hence: everything
+ * `--dry-run` prints is verified, whatever the names.
  *
- * ⚠️ **Ne pas remplacer cette garde par « pensez à lancer `playwright install` » dans un
- * README.** La recette est déjà imprimée par Playwright dans son propre message d'erreur : ce
- * qui a manqué n'est pas la connaissance du remède, c'est que personne n'a été mis au courant
- * du besoin.
+ * ⚠️ **Do not replace this guard with "remember to run `playwright install`" in a
+ * README.** The recipe is already printed by Playwright in its own error message:
+ * what was missing is not knowledge of the remedy, it is that nobody was made
+ * aware of the need.
  *
  * Usage : node scripts/verify-playwright-browsers.cjs
  */
@@ -70,15 +72,15 @@ const { spawnSync } = require("node:child_process");
 const TAG = "PW-BROWSERS";
 
 /**
- * Navigateurs dont les binaires sont exigés.
+ * Browsers whose binaries are required.
  *
- * `playwright.config.js` ne déclare qu'un seul projet, `chromium` — et c'est aussi le seul que
- * `ci.yml` installe. Élargir cette liste sans élargir les deux autres endroits produirait une
- * garde qui réclame ce que personne n'installe.
+ * `playwright.config.js` declares a single project, `chromium` — also the only
+ * one `ci.yml` installs. Widening this list without widening the other two places
+ * would produce a guard demanding what nobody installs.
  */
 const BROWSERS = ["chromium"];
 
-/** Sortie d'outillage — jamais 0, jamais 1 : pouvoir jouer est un préalable, pas un verdict. */
+/** Tooling exit — never 0, never 1: being able to play is a prerequisite, not a verdict. */
 function refuse(lignes) {
     console.error(`\x1b[31m✗\x1b[0m [${TAG}] La suite E2E NE PEUT PAS être jouée.`);
     for (const l of lignes) console.error(l);
@@ -86,10 +88,10 @@ function refuse(lignes) {
 }
 
 /**
- * Rend les chemins d'installation qu'attend la version courante de Playwright.
+ * Returns the install paths the current Playwright version expects.
  *
  * @param {string} browser
- * @returns {string[]} chemins absolus, tels que `--dry-run` les imprime
+ * @returns {string[]} absolute paths, as `--dry-run` prints them
  */
 function cheminsAttendus(browser) {
     const res = spawnSync("npx", ["playwright", "install", "--dry-run", browser], {
@@ -100,7 +102,9 @@ function cheminsAttendus(browser) {
         refuse([
             `  \`playwright install --dry-run ${browser}\` a échoué — impossible de savoir ce qui`,
             "  est attendu, donc impossible de conclure quoi que ce soit.",
-            `  ${String(res.error ?? res.stderr ?? "").trim().slice(0, 300)}`,
+            `  ${String(res.error ?? res.stderr ?? "")
+                .trim()
+                .slice(0, 300)}`,
         ]);
     }
     const out = String(res.stdout ?? "");
@@ -121,14 +125,14 @@ function main() {
 
     for (const browser of BROWSERS) {
         for (const chemin of cheminsAttendus(browser)) {
-            // ⚠️ On teste CHAQUE chemin imprimé, sans filtrer sur son nom : le répertoire qui
-            // manquait en B-235 est `chromium_headless_shell-*`, pas `chromium-*`.
+            // ⚠️ EVERY printed path is tested, no name filter: the missing
+            // directory is `chromium_headless_shell-*`, not `chromium-*`.
             if (fs.existsSync(chemin)) vus.push(chemin);
             else manquants.push(chemin);
         }
     }
 
-    // Plancher de non-vacuité : sans lui, un oracle devenu muet rendrait cette garde verte.
+    // Non-emptiness floor: without it, an oracle gone mute would render this guard green.
     if (vus.length === 0 && manquants.length === 0) {
         refuse([
             "  aucun artefact à vérifier — l'oracle n'a rien rendu.",

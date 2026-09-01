@@ -1,14 +1,14 @@
 /**
  * Unit tests — poi-restore (S9 D5).
  *
- * Storage pushes offline ENTITIES onto their host layers via GeoLeaf.Layers. Le lecteur
- * d'outbox, le lecteur du magasin `features` et le seam de couche sont injectés.
+ * Storage pushes offline ENTITIES onto their host layers via GeoLeaf.Layers.
+ * The outbox reader, the `features` store reader and the layer seam are injected.
  *
- * 🛑 TÂCHE 4.7 — UN DE CES TESTS ASSERTAIT LE DÉFAUT. « filters POI kinds and ignores
- * editor.* entries » EXIGEAIT que les entrées de l'éditeur soient écartées : c'est le bug
- * lui-même — une géométrie tracée hors réseau n'était jamais réaffichée. Il est INVERSÉ ici.
- * Un test qui garde un défaut en place coûte plus cher que pas de test du tout : il le rend
- * intentionnel aux yeux du lecteur suivant.
+ * 🛑 ONE OF THESE TESTS ASSERTED THE DEFECT. "filters POI kinds and ignores
+ * editor.* entries" REQUIRED the editor's entries to be set aside: the bug
+ * itself — a geometry drawn off-network was never redisplayed. It is FLIPPED
+ * here. A test keeping a defect in place costs more than no test at all: it
+ * makes it look intentional to the next reader.
  */
 
 import { restorePendingPois } from "../../../src/capabilities/offline/poi-restore/poi-restore.js";
@@ -42,7 +42,7 @@ describe("poi-restore", () => {
         };
     }
 
-    /** Constructeur d'entrée d'outbox (forme d'`OutboxEntry`, telle que 4.4 l'écrit). */
+    /** Outbox entry builder (the `OutboxEntry` shape, as the write cycle writes it). */
     function rec(overrides = {}) {
         return {
             id: "op_1",
@@ -55,15 +55,15 @@ describe("poi-restore", () => {
         };
     }
 
-    /** Magasin permissif : toute entité demandée existe et porte son `localId` en id. */
+    /** Permissive store: any requested entity exists and carries its `localId` as id. */
     const anyFeature = (_layerId, localId) =>
         Promise.resolve({
             feature: { type: "Feature", geometry: null, properties: {}, id: localId },
         });
 
     test("restaure les entités de TOUT producteur — plus de filtre par vocabulaire", async () => {
-        // 🛑 L'INVERSE DE CE QUE CE TEST EXIGEAIT AVANT 4.7 : il vérifiait que les entrées de
-        // l'éditeur soient écartées comme « foreign ». C'était le défaut.
+        // 🛑 THE OPPOSITE OF WHAT THIS TEST REQUIRED BEFORE: it verified the
+        // editor's entries were set aside as "foreign". That was the defect.
         const layers = makeFakeLayers();
         const entries = [
             rec({ id: "s1", kind: "create", localId: "a" }),
@@ -118,8 +118,8 @@ describe("poi-restore", () => {
     });
 
     test("une entrée `quarantined` RESTE à l'écran", async () => {
-        // Le contrat dit qu'une entrée mise de côté « reste visible » ; la faire disparaître de
-        // la carte serait la perte contre laquelle elle a été mise de côté.
+        // The contract says a set-aside entry "stays visible"; making it
+        // vanish from the map would be the loss it was set aside against.
         const layers = makeFakeLayers();
         const result = await restorePendingPois({
             getEntries: async () => [rec({ state: "quarantined" })],
@@ -258,8 +258,8 @@ describe("poi-restore", () => {
     });
 
     test("une entrée dont l'entité a disparu du magasin est comptée `skipped`", async () => {
-        // La charge vient du magasin depuis 4.7 : une entrée qui nomme une entité absente ne
-        // peut rien restaurer. Elle est ÉCARTÉE et comptée — jamais avalée en silence.
+        // The payload comes from the store: an entry naming an absent entity
+        // can restore nothing. It is SET ASIDE and counted — never silently swallowed.
         const layers = makeFakeLayers(["candelabres"]);
         const result = await restorePendingPois({
             getEntries: async () => [rec({ id: "s1", localId: "fantome" })],

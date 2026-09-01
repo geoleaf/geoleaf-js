@@ -1,12 +1,12 @@
 /**
  * Integration — Cache workflow extended mock simulation
- * Sprint 2 reactivation: deferred/integration/cache-workflow-integration.test.js
+ * Reactivated from deferred/integration/cache-workflow-integration.test.js
  * Pure mock-based simulation of cache workflows (no real module import).
  *
- * ⚠️ **Conservé délibérément** (backlog R.3, 24/07/2026) — même motif que
- * `cache-workflow.integration.test.js` : la simulation est annoncée en toutes lettres
- * dès la ligne ci-dessus. Ne pas le confondre avec les cinq fichiers supprimés au même
- * tri, qui recopiaient du code de production dans le test sans le déclarer.
+ * ⚠️ **Kept deliberately** — same motive as
+ * `cache-workflow.integration.test.js`: the simulation is announced in full
+ * from the line above. Do not confuse it with the five files deleted at the
+ * same triage, which copied production code into the test without declaring it.
  */
 
 describe("Integration — Cache workflow (extended)", () => {

@@ -6,7 +6,7 @@
  * https://geoleaf.dev
  */
 
-import { bearer } from "@geoleaf/host-runtime";
+import { bearer, isSameOrigin } from "@geoleaf/host-runtime";
 import type { ConnectorConfig } from "./config.js";
 import { TokenStore } from "./token-store.js";
 import { detectFormat } from "./format-detector.js";
@@ -30,40 +30,15 @@ function _extractUrl(input: RequestInfo | URL): string {
 /**
  * Returns true if the request URL should have a token injected via window.fetch.
  * MVT and PMTiles are routed to the MapLibre bridge instead.
+ *
+ * Origin validation is delegated to `isSameOrigin` (@geoleaf/host-runtime), the
+ * single guard shared by every credential-injection point — window.fetch here,
+ * the worker header hook, and the MapLibre tile bridge — so none can drift back
+ * to the suffix-host leak `url.startsWith(baseUrl)` let through (bug no. 4).
  */
-/**
- * L'URL appartient-elle vraiment à `baseUrl` ? (bug n° 4, corrigé le 02/08/2026)
- *
- * 🛑 CE QUE `url.startsWith(baseUrl)` LAISSAIT PASSER. Pour `baseUrl =
- * "https://api.exemple.fr"`, la chaîne `"https://api.exemple.fr.attaquant.tld/vol"` commence
- * bien par elle — **le jeton bearer partait donc chez un hôte suffixe**. Une comparaison de
- * chaînes ne sait rien des frontières de nom d'hôte ; seule une comparaison d'ORIGINES en sait.
- *
- * ⚠️ Le chemin est comparé en plus de l'origine, et avec une frontière de segment : sinon
- * `https://api.exemple.fr/v1` autoriserait `https://api.exemple.fr/v1betrayal`.
- *
- * @param url - L'URL candidate, absolue ou relative.
- * @param baseUrl - La base configurée du connecteur.
- * @returns `true` si l'URL est sur la même origine ET sous le chemin de base.
- */
-function _isSameOrigin(url: string, baseUrl: string): boolean {
-    try {
-        const target = new URL(url, globalThis.location?.href);
-        const base = new URL(baseUrl, globalThis.location?.href);
-        if (target.origin !== base.origin) return false;
-        // Chemin de base normalisé sans `/` final, puis frontière de segment explicite.
-        const basePath = base.pathname.replace(/\/+$/, "");
-        if (basePath === "") return true;
-        return target.pathname === basePath || target.pathname.startsWith(`${basePath}/`);
-    } catch {
-        // Une URL illisible n'appartient à personne — on n'y envoie pas de jeton.
-        return false;
-    }
-}
-
 function _shouldIntercept(url: string): boolean {
     if (!_config) return false;
-    if (!_isSameOrigin(url, _config.baseUrl)) return false;
+    if (!isSameOrigin(url, _config.baseUrl)) return false;
     const fmt = detectFormat(url);
     return fmt !== "pmtiles" && fmt !== "mvt";
 }
@@ -200,7 +175,7 @@ export function uninstall(): void {
  * Uses only the RAM cache (sync) — IDB is never accessed in this path.
  */
 export function getWorkerHeaders(url: string, baseUrl: string): Record<string, string> | undefined {
-    if (!_isSameOrigin(url, baseUrl)) return undefined;
+    if (!isSameOrigin(url, baseUrl)) return undefined;
     const token = TokenStore.getTokenSync(baseUrl);
     if (!token) return undefined;
     return { Authorization: bearer(token) };

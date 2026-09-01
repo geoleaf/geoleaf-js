@@ -1,19 +1,19 @@
 /**
- * Unit tests — façade publique `Storage` (backlog COUVERTURE B.2).
+ * Unit tests — the public `Storage` facade.
  *
- * `built-in/storage/facade.ts` était mesuré à **6,6 %** (7/106 lignes) : 47 fichiers de test
- * la citent, mais tous la MOCKENT — personne ne l'exerçait. Or c'est le point d'entrée public
- * du moteur hors-ligne (`GeoLeaf.Storage`).
+ * `built-in/storage/facade.ts` measured at **6.6%** (7/106 lines): 47 test
+ * files cite it, but all MOCK it — nobody exercised it. Yet it is the offline
+ * engine's public entry point (`GeoLeaf.Storage`).
  *
- * La façade est **découplée par conception** : elle ne contient aucun code de moteur, seulement
- * des références injectées par `wireModules()`. On peut donc l'exercer avec de faux modules,
- * sans mocker quoi que ce soit — c'est exactement ce que cette découpe permet.
+ * The facade is **decoupled by design**: it contains no engine code, only
+ * references injected by `wireModules()`. It can thus be exercised with fake
+ * modules, mocking nothing — exactly what this cut allows.
  */
 import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
 
 const { Storage } = await import("../../src/kernel/storage/facade.js");
 
-/** Un faux moteur, entièrement sous contrôle du test. */
+/** A fake engine, entirely under the test's control. */
 function fakeModules(overrides = {}) {
     return {
         db: {
@@ -182,10 +182,10 @@ describe("Storage.init", () => {
 
 describe("Storage.getStats — agrégation, et elle ne jette JAMAIS", () => {
     test("agrège quota, couches, magasins v4 et profils cachés", async () => {
-        // ⚠️ Ce cas assertait `stats.sync.pending`. Le bloc `sync` est retiré (4.11) : sa seule
-        // source était `syncQueueCount`, le magasin v3 que plus personne n'écrivait depuis
-        // 4.4b — il rapportait 0 en toutes circonstances, et `failed` n'était jamais assigné.
-        // Le décompte réel des écritures dues est `outbox.count`.
+        // ⚠️ This case asserted `stats.sync.pending`. The `sync` block is
+        // removed: its only source was `syncQueueCount`, the v3 store nobody
+        // wrote any more — it reported 0 in all circumstances, and `failed`
+        // was never assigned. The real tally of owed writes is `outbox.count`.
         const m = fakeModules();
         Storage.wireModules(m);
         const stats = await Storage.getStats();
@@ -222,7 +222,7 @@ describe("Storage.getStats — agrégation, et elle ne jette JAMAIS", () => {
 });
 
 describe("Storage.clearAll", () => {
-    /** Fabrique un `_db` dont la transaction se complète toute seule. */
+    /** Builds a `_db` whose transaction completes on its own. */
     function dbWithTransaction(stores = {}) {
         const cleared = [];
         const tx = {
@@ -255,9 +255,10 @@ describe("Storage.clearAll", () => {
         await Storage.clearAll();
 
         expect(m.cacheManager.clearProfile).toHaveBeenCalledWith("p1");
-        // ⚠️ `sync_queue` était le troisième. Le magasin est retiré (4.11), et le NOMMER dans
-        // la transaction la ferait jeter sur une base neuve. `features` et `outbox` restent
-        // délibérément absents : `clearAll()` ne détruit jamais une saisie de terrain.
+        // ⚠️ `sync_queue` was the third. The store is removed, and NAMING it
+        // in the transaction would make it throw on a fresh base. `features`
+        // and `outbox` stay deliberately absent: `clearAll()` never destroys
+        // a field capture.
         expect(cleared).toEqual(["preferences", "metadata"]);
         expect(onCleared).toHaveBeenCalledTimes(1);
         document.removeEventListener("geoleaf:storage:cleared", onCleared);
@@ -288,13 +289,14 @@ describe("Storage.close", () => {
     });
 });
 
-// ⚠️ LE BLOC `Storage.downloadProfileForOffline` A ÉTÉ RETIRÉ D'ICI (tâche 3.13), et ses
-// quatre tests n'ont pas été jetés : ils sont DÉPLACÉS dans
-// `__tests__/capabilities/offline/cache-manager-orchestration.test.js`, où le pré-contrôle de
-// quota vit désormais. La fonction était morte — zéro appelant dans tout le dépôt — mais elle
-// portait la seule garde de quota du téléchargement ; ses tests suivent le comportement, pas
-// le symbole. Deux tests neufs les accompagnent là-bas : un navigateur muet sur le quota ne
-// doit pas faire refuser, et un refus doit libérer le verrou de profil.
+// ⚠️ THE `Storage.downloadProfileForOffline` BLOCK WAS REMOVED FROM HERE,
+// and its four tests were not discarded: they are MOVED to
+// `__tests__/capabilities/offline/cache-manager-orchestration.test.js`, where
+// the quota pre-check now lives. The function was dead — zero callers in the
+// whole repo — but it carried the download's only quota guard; its tests
+// follow the behaviour, not the symbol. Two new tests join them there: a
+// quota-mute browser must not cause a refusal, and a refusal must release
+// the profile lock.
 
 describe("Storage — lectures hors-ligne", () => {
     test("isProfileAvailableOffline est faux tant que le stockage n'est pas prêt", async () => {
@@ -330,10 +332,11 @@ describe("Storage.pullLayer — tâche 4.1, l'attente du moteur est BORNÉE", ()
     });
 
     test("sans moteur, refuse en `engineUnavailable` — et ne pend PAS", async () => {
-        // 🛑 Le motif de la borne : `StorageContract.whenReady()` ne résout JAMAIS quand
-        // `modules.offline` est désactivé. Sans plafond, cet appel attendrait pour toujours
-        // sur une variante sans moteur. Et contrairement à la lecture de couche, il n'y a
-        // aucun repli réseau ici : le refus doit se DIRE, pas rendre un zéro muet.
+        // 🛑 The bound's motive: `StorageContract.whenReady()` NEVER resolves
+        // when `modules.offline` is disabled. Without a cap, this call would
+        // wait forever on an engineless variant. And unlike the layer read,
+        // there is no network fallback here: the refusal must be SAID, not
+        // return a mute zero.
         vi.useFakeTimers();
         Storage.wireModules({});
         const pending = Storage.pullLayer("sites_rosario");

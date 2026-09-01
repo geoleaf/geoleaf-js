@@ -1,70 +1,69 @@
 /*!
- * GeoLeaf — lecture des manifestes de consommation (contrat inverse).
+ * GeoLeaf — consumer manifest reader (the reverse contract).
  * © 2026 Mattieu Pottier — MIT
  *
- * ## Ce que ce module lit, et pourquoi il ne vit pas dans ce dépôt
+ * ## What this module reads, and why it does not live in this repo
  *
- * Un « manifeste de consommation » énumère ce qu'un intégrateur AVAL appelle sur
- * `window.GeoLeaf`. C'est le **contrat inverse** : les gates du dépôt tiennent que ce qui est
- * déclaré existe ; celle-ci tient que ce dont quelqu'un dépend n'a pas disparu. Neuf clés du
- * namespace sont parties parce qu'aucun lecteur du monorepo ne les lisait — le lecteur était
- * dehors.
+ * A "consumer manifest" enumerates what a DOWNSTREAM integrator calls on
+ * `window.GeoLeaf`. It is the **reverse contract**: the repo's gates hold that what is
+ * declared exists; this one holds that what someone depends on has not disappeared. Nine
+ * namespace keys left because no reader in the monorepo read them — the reader was outside.
  *
- * Le fichier lui-même **ne peut pas vivre ici** : il nomme un client, un contact et des chemins
- * de fichiers Odoo (décision ④ de `roadmap_contrat-inverse-api-publique.md`). Il vit chez le
- * consommateur, et ce module le trouve par le crochet `GEOLEAF_CONSUMERS`.
+ * The file itself **cannot live here**: it names a client, a contact and file paths that
+ * belong to the downstream side (arbitrated decision). It lives with the consumer, and this
+ * module finds it through the `GEOLEAF_CONSUMERS` hook.
  *
- * ## Les trois issues, et pourquoi il n'y en a pas deux
+ * ## The three outcomes, and why there are not two
  *
- *   ① `GEOLEAF_CONSUMERS` pointe un répertoire contenant ≥ 1 `*.consumer.json` lisible
- *      → `status: "read"`, la gate appelante conclut (exit 0 ou 1).
- *   ② le crochet est absent, ou le répertoire est absent/vide
- *      → `status: "skip"`, **exit 0**, avec le chemin essayé IMPRIMÉ et le motif nommé.
- *      C'est le cas du clone public, et c'est aussi le cas par défaut sur toute machine —
- *      voir « pourquoi aucun chemin par défaut » ci-dessous. Précédent du dépôt :
- *      `e2e/30-sync-cycle.spec.js` saute avec un motif nommé plutôt que de se taire.
- *   ③ un manifeste est présent mais **illisible**, porte une **clé inconnue**, ou déclare une
- *      **version antérieure au plancher** → **exit 2**, refus de conclure.
+ *   ① `GEOLEAF_CONSUMERS` points at a directory holding ≥ 1 readable `*.consumer.json`
+ *      → `status: "read"`, the calling gate concludes (exit 0 or 1).
+ *   ② the hook is absent, or the directory is absent/empty
+ *      → `status: "skip"`, **exit 0**, with the attempted path PRINTED and the reason named.
+ *      That is the public clone's case, and also the default on any machine — see "why NO
+ *      default path" below. Repo precedent: `e2e/30-sync-cycle.spec.js` skips with a named
+ *      reason rather than staying silent.
+ *   ③ a manifest is present but **unreadable**, carries an **unknown key**, or declares a
+ *      **version below the floor** → **exit 2**, refusal to conclude.
  *
- * ⚠️ **La troisième issue n'est pas du zèle, elle répond à un risque mesuré.** Le manifeste
- * v1.4.0 vit sur une branche NON FUSIONNÉE du dépôt `geoleaf-maintenance`. Son contenu sur le
- * disque suit donc la branche courante DE CE DÉPÔT-LÀ : quiconque y fait `git checkout main`
- * remet la v1.3.0 sous les pieds de cette gate, **qui sortirait verte en lisant un autre
- * fichier que celui contre lequel elle a été écrite**. C'est exactement la classe d'angle mort
- * que `probe-gate-visibility.cjs` traque — sauf qu'ici la cécité vient d'un dépôt tiers, où
- * aucune sonde d'ici ne peut aller. D'où deux dispositifs, et non un :
+ * ⚠️ **The third outcome is not zeal, it answers a measured risk.** The v1.4.0 manifest
+ * lives on an UNMERGED branch of the `geoleaf-maintenance` repo. Its on-disk content thus
+ * follows THAT repo's current branch: anyone running `git checkout main` there puts v1.3.0
+ * back under this gate's feet, **which would go green reading a different file than the one
+ * it was written against**. That is exactly the blind-spot class `probe-gate-visibility.cjs`
+ * hunts — except here the blindness comes from a third-party repo, where no probe of ours
+ * can go. Hence two devices, not one:
  *
- *   • `MIN_MANIFEST_VERSION` — un plancher de version. Une v1.3.0 lue par une gate écrite pour
- *     la v1.4.0 sort en **exit 2**, jamais en vert.
- *   • **la gate DIT ce qu'elle a lu** — chemin absolu, `consumer`, `manifest_version`, et les
- *     12 premiers caractères du sha256 du fichier. Un opérateur qui voit passer une empreinte
- *     inattendue le sait au lieu de le supposer.
+ *   • `MIN_MANIFEST_VERSION` — a version floor. A v1.3.0 read by a gate written for v1.4.0
+ *     exits **2**, never green.
+ *   • **the gate SAYS what it read** — absolute path, `consumer`, `manifest_version`, and
+ *     the first 12 characters of the file's sha256. An operator who sees an unexpected
+ *     fingerprint go by knows it instead of assuming it.
  *
- * ## Pourquoi AUCUN chemin par défaut
+ * ## Why NO default path
  *
- * Un défaut du genre `../geoleaf-maintenance/ci` écrirait le nom d'un dépôt privé dans
- * `scripts/`, qui part **intégralement** dans le clone public au Sprint 9 de
- * `roadmap_passage-public-npm.md` — et il faudrait alors le retirer là, c'est-à-dire ajouter
- * une pièce à une bascule non réversible. Le crochet est donc l'**unique** entrée : sans lui,
- * on saute. Conséquence assumée et non un défaut : sur une machine de développement, cette
- * gate ne mord que si l'opérateur nomme le répertoire. Ce qui l'empêche de tout avaler est la
- * sonde (`probe-gate-visibility.cjs`), qui plante un manifeste de FIXTURE et exige de voir la
- * gate rougir dessus — elle ne prouve pas que le vrai manifeste est lu, elle prouve que la
- * gate **mord encore**.
+ * A default like `../geoleaf-maintenance/ci` would write the name of a private repo into
+ * `scripts/`, which ships **in full** to the public clone with the public split — and it
+ * would then have to be stripped there, i.e. one more moving part on a non-reversible
+ * switch. The hook is therefore the **only** entrance: without it, we skip. An accepted
+ * consequence, not a defect: on a development machine this gate only bites if the operator
+ * names the directory. What keeps it from swallowing everything is the probe
+ * (`probe-gate-visibility.cjs`), which plants a FIXTURE manifest and demands to see the
+ * gate go red on it — it does not prove the real manifest is read, it proves the gate
+ * **still bites**.
  *
- * ## Ce que ce module REFUSE — c'est son cœur, comme pour `ts-decl-read.cjs`
+ * ## What this module REFUSES — its core, as for `ts-decl-read.cjs`
  *
- * Aucune fonction ne rend jamais un résultat vide « par défaut ». Une gate qui compare deux
- * ensembles vides s'accorde parfaitement avec elle-même et ne prouve rien. Chaque cause
- * d'échec de LECTURE sort en **exit 2** (erreur d'outillage), jamais en 0 ni en 1 — la même
- * partition que `lib/ts-decl-read.cjs`, et pour la même raison.
+ * No function ever returns an empty result "by default". A gate comparing two empty sets
+ * agrees perfectly with itself and proves nothing. Every READ failure cause exits **2**
+ * (tooling error), never 0 nor 1 — the same partition as `lib/ts-decl-read.cjs`, and for
+ * the same reason.
  *
- * ⚠️ **Les clés préfixées `$` sont tolérées NOMMÉMENT, et cette ligne est load-bearing.** Le
- * manifeste porte `$comment` au premier niveau ET dans quatre sous-objets, plus `$changelog`
- * depuis la v1.4.0 (l'archive des formes d'avant, dont la tâche 1.2 tire ses fixtures). Un
- * lecteur qui refuse toute clé inconnue sortirait en **exit 2 sur son propre manifeste au
- * premier lancement** — le mode exact que la décision ⑥ de la roadmap veut éviter, à savoir
- * une gate rouge à la pose, dont on ajuste la liste au lieu de réparer le défaut.
+ * ⚠️ **`$`-prefixed keys are tolerated BY NAME, and this line is load-bearing.** The
+ * manifest carries `$comment` at top level AND in four sub-objects, plus `$changelog` since
+ * v1.4.0 (the archive of past shapes, which feeds the reader's own test fixtures). A reader
+ * refusing every unknown key would exit **2 on its own manifest at first launch** — the
+ * exact failure mode this gate's design set out to avoid: a gate born red, whose list gets
+ * adjusted instead of the defect getting fixed.
  *
  * Usage : const cm = require("./lib/consumer-manifest.cjs");
  */
@@ -76,33 +75,33 @@ const path = require("node:path");
 
 const TAG = "CONSUMER-CONTRACT";
 
-/** Le crochet, et le seul. Calqué sur `GEOLEAF_CI_WORKFLOW_DIR` (cf. `verify-ci-parity`). */
+/** The hook, and the only one. Modelled on `GEOLEAF_CI_WORKFLOW_DIR` (cf. `verify-ci-parity`). */
 const ENV_HOOK = "GEOLEAF_CONSUMERS";
 
-/** Suffixe reconnu dans le répertoire pointé. Un autre nom n'est pas lu — et n'est pas une erreur. */
+/** Suffix recognized in the pointed directory. Another name is not read — and is not an error. */
 const MANIFEST_SUFFIX = ".consumer.json";
 
 /**
- * Plancher de version du manifeste.
+ * Version floor of the manifest.
  *
- * ⚠️ **Ce n'est pas un numéro décoratif.** Il vaut la version contre laquelle les codes CC-00
- * à CC-09 ont été écrits et éprouvés. Le relever fait partie du travail de qui change la forme
- * du manifeste ; l'abaisser est un geste qui appartient à Mattieu, jamais à un run autonome.
+ * ⚠️ **This is not a decorative number.** It equals the version the CC-00 to CC-09 codes
+ * were written and proven against. Raising it is part of the work of whoever changes the
+ * manifest's shape; lowering it is a move that belongs to Mattieu, never to an autonomous
+ * run.
  *
- * Historique du besoin, pour que personne ne le prenne pour de la rigidité : la v1.3.0 portait
- * `dom_contract` en **chaînes nues**, sur lesquelles CC-08 ne peut pas s'exécuter — il lui faut
- * `{selector, owner, readBy}`. Sans plancher, lire une v1.3.0 aurait fait sortir CC-08 vert en
- * n'ayant rien vérifié.
+ * History of the need, so nobody mistakes it for rigidity: v1.3.0 carried `dom_contract` as
+ * **bare strings**, on which CC-08 cannot run — it needs `{selector, owner, readBy}`.
+ * Without a floor, reading a v1.3.0 would have let CC-08 go green having verified nothing.
  */
 const MIN_MANIFEST_VERSION = "1.4.0";
 
 /**
- * Clés de premier niveau connues du lecteur. Toute autre → exit 2.
+ * Top-level keys known to the reader. Any other → exit 2.
  *
- * La liste est FERMÉE à dessein : c'est ce qui empêche un schéma de dériver en silence chez le
- * consommateur. Ajouter une clé au manifeste sans l'ajouter ici fait rougir la gate — ce qui
- * est le bon endroit pour s'en apercevoir, et non six mois plus tard sur une entrée que
- * personne n'a jamais vérifiée.
+ * The list is CLOSED on purpose: that is what keeps a schema from drifting silently on the
+ * consumer's side. Adding a key to the manifest without adding it here makes the gate go
+ * red — which is the right place to notice, not six months later on an entry nobody ever
+ * verified.
  */
 const KNOWN_TOP_LEVEL = new Set([
     "consumer",
@@ -116,11 +115,11 @@ const KNOWN_TOP_LEVEL = new Set([
     "requested_events",
     "withdrawn",
     "broken_since_v3",
-    // Ce que l'hôte ÉCRIT sur le namespace, par opposition à tout le reste, qu'il LIT.
-    // Entrée en v1.7.0 du manifeste aval. Gardée par CC-11 : un chemin écrit par l'aval
-    // ne doit PAS résoudre ici, sans quoi deux écrivains se disputent une clé et le
-    // vainqueur dépend de l'ordre de boot. La déclarer sans lui donner de code aurait
-    // satisfait la lettre du refus CC-00 en manquant sa raison.
+    // What the host WRITES onto the namespace, as opposed to everything else, which it
+    // READS. Entered in v1.7.0 of the downstream manifest. Guarded by CC-11: a path the
+    // downstream writes must NOT resolve here, otherwise two writers fight over one key
+    // and the winner depends on boot order. Declaring it without giving it a code would
+    // have satisfied the letter of the CC-00 refusal while missing its reason.
     "installed_by_host",
     "out_of_scope",
     "oracles",
@@ -128,30 +127,30 @@ const KNOWN_TOP_LEVEL = new Set([
     "policy",
 ]);
 
-/** Sous-clés connues de `required`. Même partition, même motif. */
+/** Known sub-keys of `required`. Same partition, same rationale. */
 const KNOWN_REQUIRED = new Set(["public", "private_tolerated", "events", "dom_contract"]);
 
 /**
- * Les trois listes NÉGATIVES, au sens du cliquet CC-04/CC-05.
+ * The three NEGATIVE lists, in the CC-04/CC-05 ratchet sense.
  *
- * Elles décrivent ce que l'aval NE peut PAS avoir, ou n'a plus. Elles ne peuvent que
- * **rétrécir** : une entrée n'en sort que quand le défaut qu'elle nomme est réparé.
+ * They describe what the downstream CANNOT have, or no longer has. They can only
+ * **shrink**: an entry only leaves when the defect it names is fixed.
  */
 const NEGATIVE_LISTS = ["private_tolerated", "requested", "broken_since_v3"];
 
-/** Une clé `$…` est de la MÉTADONNÉE, jamais de la donnée. Voir l'en-tête. */
+/** A `$…` key is METADATA, never data. See the header. */
 const isMeta = (k) => k.charAt(0) === "$";
 
 /**
- * Sortie d'outillage — jamais 0, jamais 1 : lire est un préalable, pas un verdict.
+ * Tooling exit — never 0, never 1: reading is a precondition, not a verdict.
  *
- * ⚠️ **Le CODE est obligatoire, et c'est la sonde qui l'a exigé.** La première version
- * imprimait `ERROR [CONSUMER-CONTRACT]: …` sans code. L'assertion de `probe-gate-visibility.cjs`
- * qui éprouve le refus « clé de premier niveau inconnue » cherche `CC-00` — elle a donc
- * rapporté *« exit 2, mais CC-00 jamais nommé (rougit pour une autre raison) »*, ce qui était
- * littéralement vrai : rien ne permettait de distinguer CE refus d'un autre. Une aiguille
- * générique se fait satisfaire par une autre catégorie ; c'est écrit deux fois dans la sonde,
- * et ça s'est vérifié ici sur la gate qu'elle venait éprouver.
+ * ⚠️ **The CODE is mandatory, and the probe is what demanded it.** The first version
+ * printed `ERROR [CONSUMER-CONTRACT]: …` with no code. The `probe-gate-visibility.cjs`
+ * assertion that exercises the "unknown top-level key" refusal looks for `CC-00` — so it
+ * reported *"exit 2, but CC-00 never named (reddens for another reason)"*, which was
+ * literally true: nothing distinguished THIS refusal from any other. A generic needle gets
+ * satisfied by another category; that is written twice in the probe, and it proved itself
+ * here on the very gate it came to exercise.
  */
 function refuse(message, code = "CC-00") {
     console.error(`ERROR [${TAG}/${code}]: ${message}`);
@@ -159,7 +158,7 @@ function refuse(message, code = "CC-00") {
     process.exit(2);
 }
 
-/** Compare deux versions `x.y.z`. Rend < 0, 0 ou > 0. Refuse une forme non conforme. */
+/** Compares two `x.y.z` versions. Returns < 0, 0 or > 0. Refuses a non-conforming shape. */
 function cmpVersion(a, b, whence) {
     const parse = (v) => {
         const m = /^(\d+)\.(\d+)\.(\d+)$/.exec(String(v ?? ""));
@@ -173,7 +172,7 @@ function cmpVersion(a, b, whence) {
 }
 
 /**
- * Résout le répertoire de manifestes, ou dit pourquoi il saute.
+ * Resolves the manifest directory, or says why it skips.
  *
  * @returns {{ ok: true, dir: string } | { ok: false, tried: string|null, why: string }}
  */
@@ -197,7 +196,7 @@ function resolveDir() {
 }
 
 /**
- * Lit tous les manifestes du répertoire pointé.
+ * Reads every manifest in the pointed directory.
  *
  * @returns {{ status: "skip", tried: string|null, why: string }
  *          |{ status: "read", dir: string, manifests: Array<{
@@ -239,7 +238,7 @@ function readConsumers() {
             refuse(`manifeste dont la racine n'est pas un objet — ${file}`);
         }
 
-        // ── Clés de premier niveau ─────────────────────────────────────────────────────
+        // ── Top-level keys ─────────────────────────────────────────────────────────────
         const unknown = Object.keys(data).filter((k) => !isMeta(k) && !KNOWN_TOP_LEVEL.has(k));
         if (unknown.length > 0) {
             refuse(
@@ -261,7 +260,7 @@ function readConsumers() {
             );
         }
 
-        // ── Plancher de version ────────────────────────────────────────────────────────
+        // ── Version floor ──────────────────────────────────────────────────────────────
         const version = String(data.manifest_version ?? "");
         if (cmpVersion(version, MIN_MANIFEST_VERSION, name) < 0) {
             refuse(
@@ -288,10 +287,10 @@ function readConsumers() {
 }
 
 /**
- * Imprime CE QUI A ÉTÉ LU. Appelée par la gate avant tout verdict.
+ * Prints WHAT WAS READ. Called by the gate before any verdict.
  *
- * Une gate qui lit un fichier hors de son dépôt doit dire lequel : c'est la seule chose qui
- * distingue « vert parce que le contrat tient » de « vert parce que j'ai lu autre chose ».
+ * A gate that reads a file outside its repo must say which one: that is the only thing that
+ * separates "green because the contract holds" from "green because I read something else".
  */
 function describe(read) {
     if (read.status === "skip") {
@@ -311,12 +310,78 @@ function describe(read) {
 }
 
 /**
- * Normalise une entrée de liste en `{ path, provider, source }`.
+ * Opaque, stable identity for a consumer, for use as a KEY inside the baseline.
  *
- * Le manifeste porte des OBJETS depuis la v1.3.0 (`{path, provider, usedBy}`), mais
- * `requested` reste un tableau de chaînes nues et `broken_since_v3` un objet
- * `{chemin: motif}` : trois formes, une seule normalisation, pour que les codes CC ne
- * réimplémentent pas chacun la leur.
+ * ## Why the name does not enter the repo (26/08/2026)
+ *
+ * The manifest's `consumer` field is the downstream project's own name, and a project name
+ * routinely carries the name of the business backend it runs on. This repo's golden rule is
+ * that **no backend and no integrator is named anywhere**, and `public-partition.cjs` classes
+ * `scripts/.baselines/` as NON-internal: whatever lands there is published.
+ *
+ * The digest keeps every property the baseline actually needs — it is stable, it distinguishes
+ * two consumers, and it survives a regeneration — while carrying no name at all. It is not a
+ * secret and does not pretend to be one: it is an identity that happens not to spell anything.
+ *
+ * ⚠️ The console still prints the real name (`describe()`): an operator must know which file
+ * was read. Runtime output is not the corpus; the baseline is.
+ *
+ * @param {string} name Consumer name as declared by the manifest.
+ * @returns {string} `consumer-<12 hex>` — stable across runs and machines.
+ *
+ * @example
+ * consumerKey("acme-widgets"); // → "consumer-1f0c…"
+ */
+function consumerKey(name) {
+    const text = String(name);
+    // IDEMPOTENT, and this is load-bearing rather than tidy. `probe-gate-visibility.cjs` builds
+    // its CC-10 fixture with `consumer: baseline._consumer` — an already-opaque identity, since
+    // that is all the baseline carries. Hashing it a second time yields a key matching no
+    // `positives` entry, so CC-10 stopped biting and the gate came out GREEN ON A MUTATED
+    // FIXTURE. Measured the day this function was written: the probe caught it, and nothing
+    // else in the repo would have.
+    if (/^consumer-[0-9a-f]{12}$/.test(text)) return text;
+    return "consumer-" + crypto.createHash("sha256").update(text).digest("hex").slice(0, 12);
+}
+
+/**
+ * Identity of a ratchet entry, safe to write into the baseline.
+ *
+ * ## The class this closes, and why it is not "redact the forbidden word"
+ *
+ * `requested` is an array of FREE PROSE written upstream, and the ratchet stores each entry
+ * verbatim so it can tell a new entry from a known one. That copied whatever the prose
+ * happened to contain — which is how a backend name reached a published file.
+ *
+ * Matching a list of forbidden words would only close the instance: the next import brings the
+ * next word. What closes the CLASS is refusing to copy free prose at all. A short entry that
+ * looks like an API path is kept verbatim — it IS the identity, and a reader needs to see it.
+ * Anything longer is reduced to its leading token plus a digest of the whole: the ratchet keeps
+ * exact identity (any edit upstream changes the digest, so the entry reads as new, which is the
+ * intended behaviour), and the repo keeps no sentence it did not write.
+ *
+ * @param {string} entry Raw list entry as read from the manifest.
+ * @returns {string} The entry itself when it is a bare identifier, else `<lead> …#<12 hex>`.
+ *
+ * @example
+ * ratchetKey("POI.Config.init");            // → "POI.Config.init"  (unchanged)
+ * ratchetKey("boot(): accept a config …");  // → "boot() …#9a1c…"
+ */
+function ratchetKey(entry) {
+    const text = String(entry);
+    // A bare identifier: no whitespace and short enough to be a member path, never a sentence.
+    if (!/\s/.test(text) && text.length <= 80) return text;
+    const digest = crypto.createHash("sha256").update(text).digest("hex").slice(0, 12);
+    const lead = (text.split(/[:(\n]/, 1)[0] || text).trim().slice(0, 48);
+    return `${lead} …#${digest}`;
+}
+
+/**
+ * Normalizes a list entry into `{ path, provider, source }`.
+ *
+ * The manifest carries OBJECTS since v1.3.0 (`{path, provider, usedBy}`), but `requested`
+ * remains an array of bare strings and `broken_since_v3` an object of `{path: reason}`:
+ * three shapes, one normalization, so the CC codes do not each reimplement their own.
  */
 function entriesOf(value, listName) {
     if (Array.isArray(value)) {
@@ -354,4 +419,6 @@ module.exports = {
     readConsumers,
     describe,
     entriesOf,
+    consumerKey,
+    ratchetKey,
 };

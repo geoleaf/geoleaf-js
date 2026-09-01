@@ -1,30 +1,33 @@
 /*!
- * Tests — le catalogue i18n du plugin dit-il tout ce que le plugin demande ?
+ * Tests — does the plugin's i18n catalogue say everything the plugin asks for?
  *
- * 🛑 **CETTE GARDE NAÎT D'UN DÉFAUT VIVANT, TROUVÉ À LA TÂCHE 5.2 — ET DE SON ABSENCE.**
- * `editor.modal.btn.delete` était lue par la **bibliothèque partagée**
- * (`field-renderer/src/ui/responsive-modal.ts`) sur le bouton de suppression que **ce plugin
- * arme lui-même** (`entry.ts`, `onDelete`), et elle n'était déclarée **dans aucune** de ses six
- * locales : seul `addpoi` la portait. Dans `deploy-full` — editor sans addpoi — le bouton
- * affichait donc **la clé brute**. La corriger sans poser cette garde aurait laissé le défaut
- * revenir au premier oubli : mesuré, retirer la clé d'une locale laissait les 447 tests verts.
+ * 🛑 **THIS GUARD IS BORN FROM A LIVE DEFECT — AND FROM ITS OWN ABSENCE.**
+ * `editor.modal.btn.delete` was read by the **shared library**
+ * (`field-renderer/src/ui/responsive-modal.ts`) on the delete button **this
+ * plugin arms itself** (`entry.ts`, `onDelete`), and it was declared **in
+ * none** of its six locales: only `addpoi` carried it. In `deploy-full` —
+ * editor without addpoi — the button thus displayed **the raw key**. Fixing it
+ * without setting this guard would have let the defect return at the first
+ * omission: measured, removing the key from one locale left all 447 tests green.
  *
- * ⚠️ **CE QUE LA GARDE DOIT SCANNER, ET POURQUOI C'EST LE POINT.** Une garde qui ne lirait que
- * `editor/src/**` **aurait manqué ce défaut précis** — la clé n'y est écrite nulle part. Le
- * balayage inclut donc la **bibliothèque de rendu de champs**, dont ce plugin est le principal
- * consommateur et qui résout des clés `editor.*` pour son compte. C'est exactement la cécité que
- * le corollaire « le pré-vol porte la cécité qu'il mesure » désigne.
+ * ⚠️ **WHAT THE GUARD MUST SCAN, AND WHY THAT IS THE POINT.** A guard reading
+ * only `editor/src/**` **would have missed this precise defect** — the key is
+ * written nowhere there. The sweep therefore includes the **field-rendering
+ * library**, of which this plugin is the main consumer and which resolves
+ * `editor.*` keys on its behalf. Exactly the blindness the corollary "the
+ * preflight carries the blindness it measures" names.
  *
- * ⚠️ `GeoLeaf.I18n.getLabel` rend **la clé** quand il ne la connaît pas — c'est son contrat, pas
- * `undefined`. Rien ne rougit donc à l'exécution : un libellé manquant est indiscernable d'un
- * libellé juste, sauf à l'œil. D'où une garde **statique**.
+ * ⚠️ `GeoLeaf.I18n.getLabel` returns **the key** when it does not know it —
+ * that is its contract, not `undefined`. So nothing turns red at runtime: a
+ * missing label is indistinguishable from a correct one, except by eye. Hence
+ * a **static** guard.
  */
 import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-// ⚠️ Préfixés `L_` : la locale italienne s'importerait sous le nom `it`, déjà celui de la
-// fonction de test de vitest — la collision casse le parseur, pas le test.
+// ⚠️ Prefixed `L_`: the Italian locale would import under the name `it`,
+// already vitest's test function — the collision breaks the parser, not the test.
 import L_fr from "../lang/lang-fr.js";
 import L_en from "../lang/lang-en.js";
 import L_es from "../lang/lang-es.js";
@@ -44,29 +47,30 @@ const ALL: Record<string, Record<string, string>> = {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "../../../../..");
 
-/** Répertoires balayés — le plugin ET la lib qui résout des clés `editor.*` pour lui. */
+/** Swept directories — the plugin AND the lib resolving `editor.*` keys for it. */
 const SCANNED = [
     path.join(REPO_ROOT, "packages/plugins/editor/src"),
     path.join(REPO_ROOT, "packages/libs/field-renderer/src"),
 ];
 
-/** `"editor.<quelque.chose>"` dans un littéral de chaîne. */
+/** `"editor.<some.thing>"` inside a string literal. */
 const KEY_RE = /["'`](editor\.[a-zA-Z0-9_.]+)["'`]/g;
 
 /**
- * Retire commentaires de bloc et de ligne avant le balayage.
+ * Strips block and line comments before the sweep.
  *
- * ⚠️ **Sans ça, la garde compte la PROSE comme du code**, et c'est mesuré : le premier run a
- * signalé `editor.save` / `editor.update` / `editor.delete` comme « lues mais non déclarées ».
- * Ce sont l'ancien **vocabulaire d'opération de file** (tâche 4.9), cités dans deux blocs de
- * documentation — jamais des clés i18n. Une garde qui jette sur de la prose se fait désarmer,
- * pas corriger : la liste d'exceptions aurait grossi jusqu'à ne plus rien garder.
+ * ⚠️ **Without this, the guard counts PROSE as code**, and that is measured:
+ * the first run flagged `editor.save` / `editor.update` / `editor.delete` as
+ * "read but undeclared". They are the old **queue operation vocabulary**,
+ * cited in two documentation blocks — never i18n keys. A guard that throws on
+ * prose gets disarmed, not fixed: the exception list would have grown until it
+ * guarded nothing.
  */
 function stripComments(src: string): string {
     return src.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
 }
 
-/** Fichiers sources scannés, hors tests, mocks et dictionnaires. */
+/** Scanned source files, excluding tests, mocks and dictionaries. */
 function sourceFiles(dir: string): string[] {
     const out: string[] = [];
     if (!fs.existsSync(dir)) return out;
@@ -84,16 +88,16 @@ function sourceFiles(dir: string): string[] {
 }
 
 /**
- * ⚠️ Clés construites à l'exécution, donc invisibles au scan et légitimement absentes des
- * dictionnaires. Toute entrée ici porte son motif — une liste sans motif redevient un
- * fourre-tout, et la garde cesse de garder.
+ * ⚠️ Keys built at runtime, hence invisible to the scan and legitimately absent
+ * from the dictionaries. Every entry here carries its motive — a motiveless
+ * list becomes a catch-all again, and the guard stops guarding.
  */
 const DYNAMIC_PREFIXES = [
-    // `editor.history.op.<type>` — assemblée depuis le type d'opération (`undo-stack.ts`).
+    // `editor.history.op.<type>` — assembled from the operation type (`undo-stack.ts`).
     "editor.history.op.",
-    // `editor.tool.<id>.label|hint` — assemblée depuis l'identifiant d'outil.
+    // `editor.tool.<id>.label|hint` — assembled from the tool identifier.
     "editor.tool.",
-    // `editor.sync.kind.<kind>` — assemblée depuis le genre d'opération de file.
+    // `editor.sync.kind.<kind>` — assembled from the queue operation kind.
     "editor.sync.kind.",
 ];
 
@@ -109,7 +113,7 @@ for (const f of files) {
 }
 
 describe("le corpus scanné", () => {
-    // Anti-garde-vide : une garde qui ne lit rien sort verte en ne gardant rien.
+    // Anti-empty-guard: a guard that reads nothing comes out green guarding nothing.
     it("lit réellement des fichiers dans les DEUX répertoires", () => {
         for (const dir of SCANNED) {
             expect(sourceFiles(dir).length, `aucun fichier scanné dans ${dir}`).toBeGreaterThan(0);
@@ -121,8 +125,8 @@ describe("le corpus scanné", () => {
     });
 
     it("🛑 voit les clés écrites DANS LA LIB, pas seulement dans le plugin", () => {
-        // Sans cette assertion, restreindre le scan au seul plugin passerait inaperçu — et
-        // c'est précisément la cécité qui a laissé vivre le défaut de 5.2.
+        // Without this assertion, narrowing the scan to the plugin alone would
+        // go unnoticed — precisely the blindness that let the original defect live.
         const libFiles = sourceFiles(SCANNED[1]!);
         const libKeys = new Set<string>();
         for (const f of libFiles) {

@@ -8,7 +8,7 @@
 /**
  * GeoLeaf Application Boot — the SHIPPED bundle (every in-core capability of the full preset).
  *
- * ⚠️ The count is deliberately NOT written here (B-43). It said « 17 » while the manifest said
+ * ⚠️ The count is deliberately NOT written here. This header once said « 17 » while the manifest said
  * « 18 » and the truth was 21 — two headers, two wrong numbers, neither load-bearing. The
  * registry is `presets/manifest.full.ts`; count it there if you need the figure.
  *

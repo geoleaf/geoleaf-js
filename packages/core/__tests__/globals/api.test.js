@@ -55,16 +55,19 @@ describe("globals.api — T22 branch coverage", () => {
 
     // ── catch blocks: if (Log) ────────────────────────────────────────────────
     //
-    // ⚠️ socle-init 7.7 — les trois faux contrôleurs ci-dessous portent désormais
-    // `isInitialized: true`, et c'est PORTEUR. `init`, `setTheme` et `loadConfig` passent depuis
-    // par `requireController()`, qui refuse un contrôleur en échec AVANT de déléguer. Sans ce
-    // drapeau, les trois tests reçoivent « APIController in failed state » au lieu de l'erreur du
-    // délégué — ils n'atteignent plus le bloc `catch` qu'ils existent pour couvrir.
+    // ⚠️ The three fake controllers below now carry
+    // `isInitialized: true`, and that is LOAD-BEARING. `init`, `setTheme`
+    // and `loadConfig` now go through `requireController()`, which refuses a
+    // failed controller BEFORE delegating. Without this flag, the three
+    // tests receive "APIController in failed state" instead of the
+    // delegate's error — they no longer reach the `catch` block they exist
+    // to cover.
     //
-    // Ce n'est pas un contournement : la validation est exactement ce que 7.7 a porté depuis
-    // `kernel/api/geoleaf-api.ts` avant d'en supprimer le doublon, et sans elle un contrôleur en
-    // échec fait PENDRE le boot en silence (voir la note de `requireController`). Les faux
-    // déclarent donc ce que déclare un vrai contrôleur vivant.
+    // Not a workaround: the validation is exactly what was carried over from
+    // `kernel/api/geoleaf-api.ts` before its duplicate was deleted, and
+    // without it a failed controller makes the boot HANG silently (see
+    // `requireController`'s note). The fakes thus declare what a live real
+    // controller declares.
 
     it("GeoLeaf.init: catch block runs if(Log) when _APIController.geoleafInit throws (MISS[10])", () => {
         GL._APIController = {

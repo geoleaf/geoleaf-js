@@ -1,14 +1,14 @@
 /*!
- * Tests — tâche 5.1-d (2ᵉ moitié) : le téléversement d'image hors ligne
+ * Tests — the offline image upload
  *
- * 🛑 LA GARDE CENTRALE EST CELLE DE L'ORPHELIN. Chez `addpoi`, `retryPendingUploads` n'avait
- * AUCUN appelant de production : `storeImageLocally` écrivait des photos de terrain que plus
- * rien ne renvoyait jamais. Le module absorbé reçoit son appelant, et c'est éprouvé ici —
- * sinon on aurait déplacé le trou au lieu de le fermer.
+ * 🛑 THE CENTRAL GUARD IS THE ORPHAN ONE. In `addpoi`, `retryPendingUploads`
+ * had NO production caller: `storeImageLocally` wrote field photos nothing
+ * ever sent back. The absorbed module receives its caller, and that is
+ * exercised here — otherwise we would have moved the hole instead of closing it.
  *
- * ⚠️ Les doubles REPRODUISENT les contraintes : `uploaded` doit être un `0` numérique (un
- * booléen n'est pas une clé IndexedDB valide et sort l'enregistrement de l'index), et une
- * reprise qui échoue ne doit RIEN détruire.
+ * ⚠️ The doubles REPRODUCE the constraints: `uploaded` must be a numeric `0`
+ * (a boolean is not a valid IndexedDB key and drops the record out of the
+ * index), and a retry that fails must destroy NOTHING.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
@@ -70,7 +70,7 @@ afterEach(() => {
     vi.unstubAllGlobals();
 });
 
-// --- le stockage local ----------------------------------------------------------
+// --- local storage ---------------------------------------------------------------
 
 describe("storeImageLocally — la mise de côté", () => {
     it("rend une data-URL immédiatement affichable", async () => {
@@ -85,10 +85,11 @@ describe("storeImageLocally — la mise de côté", () => {
         const rec = _stored[0] as { uploaded: unknown; blob: unknown; endpoint: string };
         expect(rec.uploaded).toBe(0);
         expect(typeof rec.uploaded).toBe("number");
-        // Le blob DOIT être là : c'est ce qui manquait dans le défaut d'origine (clé `base64`
-        // écrite là où le magasin déclare `blob`), et l'enregistrement était inexploitable.
+        // The blob MUST be there: what was missing in the original defect
+        // (a `base64` key written where the store declares `blob`), and the
+        // record was unusable.
         expect(rec.blob).toBeInstanceOf(File);
-        // L'endpoint est conservé, sinon la reprise ne saurait pas où renvoyer.
+        // The endpoint is kept, otherwise the retry would not know where to resend.
         expect(rec.endpoint).toBe("/api/up");
     });
 
@@ -104,7 +105,7 @@ describe("storeImageLocally — la mise de côté", () => {
     });
 });
 
-// --- la stratégie ----------------------------------------------------------------
+// --- the strategy ----------------------------------------------------------------
 
 describe("uploadImage — réseau d'abord, local en secours", () => {
     it("rend l'URL du serveur quand le POST réussit", async () => {
@@ -175,12 +176,12 @@ describe("uploadImage — réseau d'abord, local en secours", () => {
             ok: true,
             json: () => Promise.resolve({}),
         } as Response);
-        // Rendre "" ferait enregistrer une image sans adresse dans l'entité.
+        // Returning "" would record an addressless image into the entity.
         await expect(uploadImage(imageFile(), "/api/up")).resolves.toMatch(/^data:/);
     });
 });
 
-// --- la reprise ------------------------------------------------------------------
+// --- the retry -------------------------------------------------------------------
 
 describe("retryPendingImages — l'orphelin qui reçoit son appelant", () => {
     it("téléverse les images en attente et les marque", async () => {
@@ -241,12 +242,12 @@ describe("retryPendingImages — l'orphelin qui reçoit son appelant", () => {
         await expect(retryPendingImages()).resolves.toBeNull();
     });
 
-    // --- la purge (B-190) --------------------------------------------------------
+    // --- the purge ------------------------------------------------------------
     //
-    // 🛑 `local_images` avait un ÉCRIVAIN VIVANT et AUCUNE PURGE JOIGNABLE :
-    // `cleanUploadedImages` n'avait ni appelant, ni relais de façade, ni exposition au
-    // namespace. Le C1 a traversé la clôture des Sprints 4, 5 et 8. Ces deux cas sont ce
-    // qui empêche l'orphelin de revenir — le second autant que le premier.
+    // 🛑 `local_images` had a LIVE WRITER and NO REACHABLE PURGE:
+    // `cleanUploadedImages` had no caller, no facade relay, no namespace
+    // exposure. The orphan crossed three sprint closures in a row. These two
+    // cases are what keeps it from coming back — the second as much as the first.
 
     it("🛑 PURGE les images acquittées après un rejeu réussi", async () => {
         const db = mountCore();
@@ -282,7 +283,7 @@ describe("retryPendingImages — l'orphelin qui reçoit son appelant", () => {
     });
 });
 
-// --- le câblage ------------------------------------------------------------------
+// --- the wiring ------------------------------------------------------------------
 
 describe("initImageUpload — le câblage qui ferme l'orphelin", () => {
     it("🛑 POSE la stratégie sur field-renderer", () => {

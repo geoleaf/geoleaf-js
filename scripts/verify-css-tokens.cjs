@@ -45,18 +45,18 @@ const { ROOT } = require("./lib/packages.cjs");
 /**
  * Tokens written at runtime by JS; each cites its production `setProperty` site.
  *
- * ⚠️ Ces citations sont de la PROSE — ce script ne les résout pas, donc rien ne les
- * empêche de pourrir. Elles portaient encore le préfixe `plugin-` retiré au R.15 et
- * des numéros de ligne d'avant B-12 ; corrigées le 25/07/2026. Les revérifier à la
- * main quand on touche un des sites cités.
+ * ⚠️ These citations are PROSE — this script does not resolve them, so nothing
+ * keeps them from rotting. They still carried the removed `plugin-` prefix and
+ * stale line numbers; fixed on 2026-07-25. Re-verify them by hand when touching
+ * one of the cited sites.
  */
 const RUNTIME_SET = {
     "--gl-measure-top": "packages/plugins/measure/src/floating-menu.ts:206",
     "--gl-measure-left": "packages/plugins/measure/src/floating-menu.ts:207",
     "--gl-measure-max-h": "packages/plugins/measure/src/floating-menu.ts:337",
-    // B-12 — les QUATRE bords, désormais. `_applyPosition` les pose par un helper à
-    // template literal (`--gl-editor-${edge}`, floating-menu.ts:495), donc INVISIBLE à
-    // un grep littéral : c'est cette table qui porte la connaissance, pas le code.
+    // ALL FOUR edges, now. `_applyPosition` sets them through a template-literal
+    // helper (`--gl-editor-${edge}`, floating-menu.ts), hence INVISIBLE to a
+    // literal grep: this table carries the knowledge, not the code.
     "--gl-editor-top":
         "packages/plugins/editor/src/sub-menu/floating-menu.ts:241, :509 (+ host-runtime/src/ui/drag.ts:66)",
     "--gl-editor-left":

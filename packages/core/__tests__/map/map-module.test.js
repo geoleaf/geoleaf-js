@@ -232,9 +232,8 @@ describe("map-container.ts", () => {
     beforeEach(async () => {
         // After Section 1's vi.resetModules(), map-container is not in cache.
         // Require fresh so we get the same Log mock instance as the module uses.
-        ({ resolveMapContainer, padBounds, applyThemeSafe } = await import(
-            "../../src/kernel/map/map-container.js"
-        ));
+        ({ resolveMapContainer, padBounds, applyThemeSafe } =
+            await import("../../src/kernel/map/map-container.js"));
         Log = (await import("../../src/utils/log/index.js")).Log;
         vi.clearAllMocks();
         document.body.innerHTML = '<div id="map-el"></div>';

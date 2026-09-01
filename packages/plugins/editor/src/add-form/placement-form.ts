@@ -9,37 +9,39 @@
  * feeds it: pick a position (GPS fix or a map tap), then open the attribute form on a
  * brand-new Point.
  *
- * ## Pourquoi ce fichier existe (tâche 5.1-f)
+ * ## Why this file exists
  *
- * Le seam `poi-addform-seam.ts` du core avait **deux moitiés** — `PlacementMode` et
- * `AddForm`. La tâche 5.1-a a absorbé la première ; celle-ci écrit la seconde, qui
- * n'existait **nulle part** dans `editor` : son formulaire n'était atteignable que par le
- * pont d'événements Terra Draw (`initEventsBridge`), sur une signature incompatible.
+ * The core's `poi-addform-seam.ts` seam had **two halves** — `PlacementMode`
+ * and `AddForm`. The first was absorbed earlier; this writes the second, which
+ * existed **nowhere** in `editor`: its form was only reachable through the
+ * Terra Draw event bridge (`initEventsBridge`), on an incompatible signature.
  *
- * ⚠️ **Rien n'est transféré d'`addpoi`.** Sa moitié `AddForm` est un sous-système de
- * 2 373 lignes (orchestrateur, contrôleur, gestionnaire d'état, adaptateur de schéma,
- * pont de modale…) qui réimplémente ce que `responsive-modal` + `_getSchemaForLayer` +
- * `submitFeature` font déjà ici. Ce module **mappe**, il ne porte pas de formulaire :
- * c'est le jumeau de `_handleCreate` (`events.ts`), pour une géométrie qui vient d'un
- * point choisi au lieu d'un tracé Terra Draw.
+ * ⚠️ **Nothing is transferred from `addpoi`.** Its `AddForm` half is a
+ * 2,373-line subsystem (orchestrator, controller, state manager, schema
+ * adapter, modal bridge…) reimplementing what `responsive-modal` +
+ * `_getSchemaForLayer` + `submitFeature` already do here. This module
+ * **maps**, it carries no form: it is `_handleCreate`'s twin (`events.ts`),
+ * for a geometry coming from a chosen point instead of a Terra Draw line.
  *
- * ## Trois contraintes mesurées que ce module doit tenir
+ * ## Three measured constraints this module must hold
  *
- * 1. **Le câblage de persistance ne peut pas venir d'`events.ts`.** Son `_wiring` n'est
- *    posé que par `initEventsBridge`, appelé au chargement **paresseux** de Terra Draw.
- *    Poser un POI sans jamais armer d'outil aurait donné une sauvegarde muette. Le
- *    câblage est donc **injecté** par `entry.ts`, qui l'a dès `_initOnMapReady`.
- * 2. **Le rappel de placement est RÉPÉTÉ.** `placement-mode.ts` garde le marqueur après
- *    le tap (`keepMarker: true`) et son `dragend` **rejoue le rappel** pour que le
- *    glisser corrige la position. Le formulaire ne doit donc **pas** se rouvrir : c'est
- *    la géométrie en attente qui se met à jour, lue **à l'instant de la sauvegarde**.
- *    ⚠️ `addpoi` n'avait pas ce cas — non parce qu'il le traitait, mais parce que son
- *    affordance était **morte** : son `deactivate()` supprimait le marqueur juste après
- *    le rappel (`poi-placement.ts:138-141`), alors que le commentaire deux lignes plus
- *    haut annonçait « user can adjust with draggable marker ».
- * 3. **Le marqueur temporaire n'appartient pas au formulaire.** Il survit au tap ; c'est
- *    à la fermeture du formulaire — succès **comme** annulation — de le retirer, sinon il
- *    reste sur la carte sans rien désigner.
+ * 1. **The persistence wiring cannot come from `events.ts`.** Its `_wiring` is
+ *    only set by `initEventsBridge`, called at Terra Draw's **lazy** load.
+ *    Placing a POI without ever arming a tool would have given a mute save.
+ *    The wiring is therefore **injected** by `entry.ts`, which has it from
+ *    `_initOnMapReady`.
+ * 2. **The placement callback is REPEATED.** `placement-mode.ts` keeps the
+ *    marker after the tap (`keepMarker: true`) and its `dragend` **replays the
+ *    callback** so dragging corrects the position. The form must therefore
+ *    **not** reopen: the pending geometry updates, read **at save time**.
+ *    ⚠️ `addpoi` did not have this case — not because it handled it, but
+ *    because its affordance was **dead**: its `deactivate()` removed the
+ *    marker right after the callback (`poi-placement.ts`), while the
+ *    comment two lines above announced "user can adjust with draggable
+ *    marker".
+ * 3. **The temporary marker does not belong to the form.** It survives the
+ *    tap; closing the form — success **as well as** cancellation — is what
+ *    must remove it, otherwise it stays on the map designating nothing.
  */
 import type { Geometry } from "geojson";
 import { getGeoLeaf } from "@geoleaf/host-runtime";
@@ -166,9 +168,9 @@ export function openAddForm(latlng: LatLng): void {
 /**
  * Starts the "add a POI" flow: resolve a position, then open the form on it.
  *
- * ⚠️ Descendue du core (`kernel/ui/mobile/mobile-toolbar.ts`, `_handlePoiAdd`) par 5.1-f.
- * Elle y obligeait le kernel à connaître la géolocalisation ET le formulaire d'un plugin ;
- * ici elle est à côté du mode de placement qu'elle arme.
+ * ⚠️ Moved down from the core (`kernel/ui/mobile/mobile-toolbar.ts`,
+ * `_handlePoiAdd`). There it forced the kernel to know a plugin's geolocation
+ * AND form; here it sits next to the placement mode it arms.
  *
  * @param map - Map instance to arm placement on; `null` lets the plugin resolve its own.
  * @param onSettled - Called when the flow ends without opening the form (cancelled tap),
@@ -199,8 +201,8 @@ export interface AddFormApi {
 /**
  * @returns the add-form slice mounted at `GeoLeaf.Editor.AddForm`.
  *
- * ⚠️ Un objet construit, comme `buildPlacementApi` : `check-facade-purity.cjs` n'accepte
- * dans `public-api.ts` qu'un délégué mince, jamais un littéral imbriqué.
+ * ⚠️ A built object, like `buildPlacementApi`: `check-facade-purity.cjs` only
+ * accepts a thin delegate in `public-api.ts`, never a nested literal.
  */
 export function buildAddFormApi(): AddFormApi {
     return { openAddForm };

@@ -1,7 +1,6 @@
 /**
  * @file event-listener-manager.test.js
  * @description Tests for the real EventListenerManager class (imports actual module)
- * @phase Sprint 3 — Lots A-C branch recovery (0% => 80%+)
  */
 
 const mockLog = {
@@ -15,9 +14,10 @@ vi.mock("../../src/utils/log/index.js", () => ({ Log: mockLog }));
 
 let EventListenerManager, globalEventManager, events;
 
-// Déféré PORTEUR : le module installe un singleton au chargement
-// (`globalEventManager = new EventListenerManager("global")`), donc le MOMENT du chargement compte.
-// `await import()` le préserve tout en faisant passer le module par Vite.
+// LOAD-BEARING deferral: the module installs a singleton at load
+// (`globalEventManager = new EventListenerManager("global")`), so the load
+// MOMENT counts. `await import()` preserves it while still running the
+// module through Vite.
 beforeAll(async () => {
     const mod = await import("../../src/utils/general/event-listener-manager.js");
     EventListenerManager = mod.EventListenerManager;

@@ -1,0 +1,257 @@
+/* @geoleaf-plugins/navigation — styles (loaded via rollup-plugin-postcss, injected at runtime) */
+
+/* ⚠️ Les espacements sont écrits en dur et NON en `var(--gl-space-*)` : ce dépôt n'a pas de
+   token d'espacement, et inventer un nom ferait retomber la déclaration sur son fallback en
+   silence — donc insensible au thème, donc morte en sombre chez quelqu'un qui teste en clair.
+   `verify-css-tokens` refuse à raison. Les couleurs, elles, sont thémées : elles ont de vrais
+   tokens. */
+
+/* Le bandeau de manœuvre. Il n'est PAS positionné ici : le conteneur qui l'accueille décide
+   où il vit, parce qu'un plugin qui se place lui-même en absolu se retrouve sous la barre
+   d'outils d'un intégrateur qui a déplacé la sienne. */
+.gl-nav-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--gl-color-bg-surface, #fff);
+    color: var(--gl-color-text, #1a1a1a);
+    border-radius: var(--gl-border-radius, 6px);
+    box-shadow: var(--gl-shadow-panel, 0 2px 8px rgb(0 0 0 / 20%));
+    font-size: 1rem;
+    line-height: 1.3;
+}
+
+/* ⚠️ `hidden` doit gagner contre `display: flex`. Sans cette règle, l'attribut est posé, le
+   test le voit, et l'élément reste VISIBLE — un bandeau qu'on croit caché est pire qu'un
+   bandeau visible, parce qu'on cesse de le regarder. */
+.gl-nav-banner[hidden] {
+    display: none;
+}
+
+.gl-nav-banner__icon {
+    flex: 0 0 auto;
+    width: 2rem;
+    height: 2rem;
+    background: currentcolor;
+    mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+}
+
+.gl-nav-banner__distance {
+    font-size: 1.5rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.gl-nav-banner__maneuver {
+    font-weight: 600;
+}
+
+/* Le nom de route vient du fournisseur : il peut être long, absent, ou dans un alphabet
+   qu'on n'attendait pas. Il se tronque plutôt que de pousser la distance hors de l'écran. */
+.gl-nav-banner__road {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--gl-color-text-muted, #555);
+}
+
+.gl-nav-banner__road:empty {
+    display: none;
+}
+
+/* L'ancre — c'est ELLE qui décide où vit le bandeau, et le commentaire au-dessus dit pourquoi
+   la règle n'est pas sur `.gl-nav-banner`. Elle est posée dans le conteneur de la carte par
+   `ui/session-view.ts`, pour la durée d'une session. */
+.gl-nav-banner-anchor {
+    position: absolute;
+    top: 0.75rem;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: min(90%, 32rem);
+
+    /* ⚠️ `pointer-events: none` sur l'ANCRE et `auto` sur ce qu'elle porte. Sans ça, la bande
+       transparente qui centre le bandeau intercepte le glissé sur toute la largeur de la carte :
+       l'utilisateur croit déplacer la carte, rien ne bouge, et le coupable est invisible. */
+    pointer-events: none;
+
+    /* 🛑 CE COMMENTAIRE A RAISONNÉ SUR LES MAUVAIS VOISINS, et c'est ce qui a coûté le défaut.
+       Il citait `measure` (980) et les contrôles MapLibre (2), et concluait 500. Aucun des deux
+       n'occupe le haut-centre. Les voisins RÉELS de cette coordonnée sont deux, et ni l'un ni
+       l'autre n'était nommé :
+         · `#gl-theme-primary-container` — z 1001 (1490 en mobile), `top: 10px; left: 50%`.
+           Il gagnait de 501 points et masquait ce bandeau entièrement.
+         · `.gl-position-share-badge` — z 900, `top: 10px; left: 50%`, et posé dans LE MÊME
+           parent que cette ancre (`.maplibregl-map`).
+
+       ⚠️ Et le remède n'est PAS de monter le z-index. Le premier voisin est retiré par le mode
+       immersif — passer par-dessus ce qui est déjà retiré ne gagne rien —, et monter au-dessus
+       de 900 enterrerait un indicateur de vie privée dont le rôle est justement de ne pas
+       pouvoir être manqué pendant que des données de localisation quittent le navigateur. Deux
+       bandeaux au même pixel se règlent en les EMPILANT (voir la règle suivante), pas en en
+       enterrant un. 500 reste donc juste — pour une raison qui, elle, est enfin la bonne :
+       au-dessus des contrôles de la carte, et sous les modales de plugin, qu'un bandeau rendrait
+       illisibles pendant qu'on les lit. */
+    z-index: 500;
+}
+
+/* Le bandeau descend sous le badge de partage de position quand il y en a un.
+   ⚠️ Le sens de la dégradation est délibéré : si `:has()` n'est pas supporté, la règle ne
+   s'applique pas, le badge (z 900) reste devant le bandeau (z 500), et c'est l'indicateur de
+   vie privée qui gagne. Un repli qui échoue du bon côté. */
+.maplibregl-map:has(.gl-position-share-badge) .gl-nav-banner-anchor {
+    top: 3.25rem;
+}
+
+.gl-nav-banner-anchor > .gl-nav-banner {
+    pointer-events: auto;
+}
+
+/* L'avertissement de début de session. 🛑 Il ne bloque pas la carte : `role="region"` et non
+   `alertdialog`, parce qu'un piège à focus au moment où quelqu'un s'apprête à conduire est le
+   pire endroit possible pour en poser un. */
+.gl-nav-notice {
+    position: absolute;
+    left: 50%;
+    bottom: 1rem;
+    transform: translateX(-50%);
+    max-width: min(92%, 30rem);
+    padding: 0.6rem 0.8rem;
+    background: var(--gl-color-bg-surface, #fff);
+    color: var(--gl-color-text, #1a1a1a);
+    border-radius: var(--gl-border-radius, 6px);
+    box-shadow: var(--gl-shadow-panel, 0 2px 8px rgb(0 0 0 / 20%));
+    font-size: 0.85rem;
+    line-height: 1.4;
+
+    /* Au-dessus du bandeau (500) : il s'affiche une fois et se retire, le bandeau reste. */
+    z-index: 600;
+}
+
+.gl-nav-notice p {
+    margin: 0 0 0.4rem;
+}
+
+.gl-nav-notice__dismiss {
+    display: block;
+    margin-left: auto;
+    padding: 0.3rem 0.8rem;
+    border: 1px solid var(--gl-color-border, #ccc);
+    border-radius: var(--gl-border-radius, 6px);
+    background: var(--gl-color-bg-surface-muted, #eee);
+    color: var(--gl-color-text, #1a1a1a);
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+/* ── La flèche de position du conducteur ─────────────────────────────────────────────
+   Le marqueur est créé par la couture d'adaptateur du cœur ; sa RACINE reçoit cette classe
+   et c'est aussi le nœud sur lequel le moteur écrit sa propre `transform` de placement.
+   D'où la règle : cette feuille ne pose ici que taille et couleur, jamais une transformation.
+   La rotation passe par `setMarkerRotation` + `rotationAlignment: "map"`, donc par le moteur,
+   qui la recalcule à chaque frame — c'est ce qui évite qu'elle se fige pendant un virage. */
+.gl-nav-arrow-marker {
+    color: var(--gl-color-accent, #2b6cb0);
+    /* La couture pose `cursor: pointer` sur tout marqueur ; celui-ci ne se clique pas. */
+    cursor: default;
+    pointer-events: none;
+}
+
+.gl-nav-arrow-marker svg {
+    display: block;
+}
+
+/* ⚠️ Le disque bleu de la capacité `geolocation` s'efface pendant le guidage — sinon deux
+   marqueurs de position se superposent au même pixel et l'utilisateur en voit un qui bave.
+   Sans `!important` : `geolocation.css` ne déclare pas `display`, et cette feuille est
+   injectée HORS `@layer`, donc une déclaration normale d'ici bat une déclaration normale de
+   `gl.capabilities`. */
+body.gl-immersive .gl-user-location-marker {
+    display: none;
+}
+
+/* ── Les icônes de manœuvre ──────────────────────────────────────────────────────────
+   🛑 `.gl-nav-banner__icon` ne portait AUCUN `mask-image` : avec `background: currentcolor`
+   et un masque absent, le bloc peignait un carré plein de 2 rem. Le bandeau publié affichait
+   un pavé noir à la place de la flèche, et rien ne pouvait le voir — les classes sont
+   assemblées à l'exécution, donc invisibles à toute analyse statique.
+
+   🛑 L'ORDRE DE DÉCLARATION CI-DESSOUS PORTE DU COMPORTEMENT. `maneuver-banner.ts` pose deux
+   classes de MÊME spécificité (`--turn` ET `--left`) ; à spécificité égale, c'est la dernière
+   déclarée DANS LA FEUILLE qui gagne, jamais la dernière écrite dans l'attribut. D'où le
+   partage : les MODIFICATEURS d'abord — ils portent la direction et doivent servir de défaut
+   pour `turn`, `continue`, `new-name`, `end-of-road`, qui n'ont volontairement pas de masque
+   à eux —, puis les manœuvres QUI SE DÉCRIVENT SEULES ensuite, pour qu'un `arrive` + `left`
+   rende bien un point d'arrivée et non une flèche à gauche. */
+
+.gl-nav-banner__icon {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21V5M6 11l6-6 6 6' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.gl-nav-banner__icon--straight {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21V5M6 11l6-6 6 6' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.gl-nav-banner__icon--left {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M19 21v-6a4 4 0 0 0-4-4H5' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M10 6 5 11l5 5' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.gl-nav-banner__icon--right {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 21v-6a4 4 0 0 1 4-4h10' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M14 6l5 5-5 5' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.gl-nav-banner__icon--slight-left {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M17 21v-8L8 4' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M8 4h6M8 4v6' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.gl-nav-banner__icon--slight-right {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 21v-8l9-9' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 4h-6M16 4v6' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.gl-nav-banner__icon--sharp-left {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M19 21v-4a5 5 0 0 0-5-5H6' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M11 7 6 12l5 5' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.gl-nav-banner__icon--sharp-right {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 21v-4a5 5 0 0 1 5-5h8' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M13 7l5 5-5 5' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.gl-nav-banner__icon--uturn {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8 21V10a5 5 0 0 1 10 0v4' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M4 17l4 4 4-4' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+/* Les manœuvres autoportantes — déclarées APRÈS, donc prioritaires. Voir l'encadré. */
+
+.gl-nav-banner__icon--arrive {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21s6-6 6-10a6 6 0 1 0-12 0c0 4 6 10 6 10z' fill='black'/%3E%3Ccircle cx='12' cy='11' r='2.2' fill='white'/%3E%3C/svg%3E");
+}
+
+.gl-nav-banner__icon--depart {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='20' r='2.4' fill='black'/%3E%3Cpath d='M12 17V5M7 10l5-5 5 5' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.gl-nav-banner__icon--roundabout {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='10' cy='15' r='4.5' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M10 22v-2.5M13.5 12 19 6.5M14 6.5h5v5' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.gl-nav-banner__icon--rotary {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='10' cy='15' r='4.5' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M10 22v-2.5M13.5 12 19 6.5M14 6.5h5v5' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.gl-nav-banner__icon--merge {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21v-7' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M12 14 6 8V4' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M12 14l6-6V4' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M9 7l3-3 3 3' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.gl-nav-banner__icon--fork {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21v-7' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M12 14 6 8V4' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M12 14l6-6V4' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M3 7l3-3 3 3' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M15 7l3-3 3 3' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.gl-nav-banner__icon--on-ramp {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 21v-8l9-9' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M16 4h-6M16 4v6' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.gl-nav-banner__icon--off-ramp {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M17 21v-8L8 4' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M8 4h6M8 4v6' stroke='black' stroke-width='2' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}

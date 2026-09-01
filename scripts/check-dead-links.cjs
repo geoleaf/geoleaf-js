@@ -13,8 +13,8 @@
  * Usage:
  *   node scripts/check-dead-links.cjs [--dir <path>] [--verbose]
  *
- * Périmètre par défaut (T6.6) : les docs publiques de `@geoleaf/core` (récursif) PLUS
- * le markdown de la RACINE (profondeur 0). `--dir <path>` force un scope unique.
+ * Default perimeter: the public docs of `@geoleaf/core` (recursive) PLUS the ROOT's
+ * markdown (depth 0). `--dir <path>` forces a single scope.
  */
 
 "use strict";
@@ -33,147 +33,154 @@ const dirArgIdx = args.indexOf("--dir");
 const CWD = process.cwd();
 const registry = require("./lib/packages.cjs");
 const docsPaths = require("./lib/docs-paths.cjs");
-// Ancré au SCRIPT, jamais à `process.cwd()` : le périmètre racine doit être le même
-// quel que soit le répertoire d'invocation.
+// Anchored to the SCRIPT, never to `process.cwd()`: the root perimeter must be the
+// same whatever the invocation directory.
 const REPO_ROOT = path.resolve(__dirname, "..");
 
 /**
- * T6.6 — le périmètre par défaut compte DEUX scopes, plus un seul.
+ * The default perimeter counts TWO scopes, no longer one.
  *
- * Le markdown de la RACINE n'était scanné par rien, et ce trou coûtait quatre 404 bien
- * réels dans le README public : `packages/core/docs/poi/GeoLeaf_POI_README.md`
- * (supprimé au `54b5651b`, sous-système POI dissous au S9) et trois `LICENCE` pour
- * `LICENSE`. C'est le rejeu exact de `b3d85253`/`MIGRATION_V1_V2.md` — le défaut qui a
- * fait câbler cette gate au S7bis.10 — un cran plus haut.
+ * The ROOT's markdown was scanned by nothing, and that hole cost four very real 404s
+ * in the public README: `packages/core/docs/poi/GeoLeaf_POI_README.md` (deleted at
+ * `54b5651b`, POI subsystem long dissolved) and three `LICENCE` for `LICENSE`. It is
+ * the exact replay of `b3d85253`/`MIGRATION_V1_V2.md` — the defect that had this gate
+ * wired in the first place — one notch higher.
  *
- * ⚠️ `depth: 0` sur la racine n'est pas un raccourci, c'est LE contrat : récurser depuis
- * la racine descendrait dans `.git/`, `docs-dist/`, `coverage/`, `deploy/`,
- * `_archive_local/` et `.claude/worktrees/`. Leur donner une liste d'exclusion serait
- * une énumération non bornée qui pourrit en silence — la classe de défaut que T3 a
- * passé son sprint à fermer. `node_modules/` fait exception et est sauté par `walkDir`
- * lui-même : voir le motif sur la fonction.
+ * ⚠️ `depth: 0` on the root is not a shortcut, it is THE contract: recursing from the
+ * root would descend into `.git/`, `docs-dist/`, `coverage/`, `deploy/`,
+ * `_archive_local/` and `.claude/worktrees/`. Giving them an exclusion list would be
+ * an unbounded enumeration rotting in silence — the defect class an entire earlier
+ * cleanup closed. `node_modules/` is the exception and is skipped by `walkDir` itself:
+ * see the rationale on the function.
  *
- * ## 31/07/2026 — B-09 seconde moitié : les README de paquets ENTRENT au périmètre
+ * ## 2026-07-31 — second half: package READMEs ENTER the perimeter
  *
- * ⚠️ Ce bloc a porté jusqu'au 31/07 le motif inverse (« DÉLIBÉRÉMENT non étendu à
- * `packages/*​/README.md` »), et **ce motif est tombé** — mode d'échec n° 6 du §Pré-vol de
- * `CLAUDE.md` : la cible existait toujours, c'est la contrainte qui avait disparu. Il est
- * conservé ici plutôt que supprimé, parce qu'il dit ce qui bloquait et donc ce qu'il a
- * fallu traiter.
+ * ⚠️ This block carried the inverse rationale until 07-31 ("DELIBERATELY not extended
+ * to `packages/*​/README.md`"), and **that rationale fell** — the target still existed,
+ * it is the constraint that had disappeared. It is kept here rather than deleted,
+ * because it says what was blocking and hence what had to be handled.
  *
- * Ancien motif : `packages/core/README.md` pointait `docs/api/index.html`, artefact TypeDoc
- * **gitignoré** et **exclu du tarball** (`files[]` porte `!docs/api/`) — donc absent d'un
- * clone frais ET du paquet publié. Gater ce fichier l'aurait rendu rouge en permanence.
+ * Old rationale: `packages/core/README.md` pointed at `docs/api/index.html`, a TypeDoc
+ * artifact both **gitignored** and **excluded from the tarball** (`files[]` carries
+ * `!docs/api/`) — hence absent from a fresh clone AND from the published package.
+ * Gating that file would have made it permanently red.
  *
- * Ce qui a changé : la **cible** a été traitée, pas le générateur. `packages/core/README.md`
- * est réécrit en vitrine + pointeurs et renvoie désormais vers la référence API **par son
- * URL publique**, idiome que `packages/core/docs/README.md:13` appliquait déjà. Il ne reste
- * aucun lien vers un artefact généré, donc plus rien à attendre d'un clone frais.
+ * What changed: the **target** was handled, not the generator.
+ * `packages/core/README.md` is rewritten as storefront + pointers and now points at
+ * the API reference **by its public URL**, an idiom `packages/core/docs/README.md:13`
+ * already applied. No link to a generated artifact remains, hence nothing left to
+ * expect from a fresh clone.
  *
- * ⚠️ Et le trou que cette exclusion laissait n'était pas théorique. Mesuré au câblage, sur
- * des fichiers qu'AUCUNE gate ne voyait : `packages/core/README.md` renvoyait vers
- * `docs/poi/GeoLeaf_POI_README.md` (sous-système dissous au S9) — le rejeu **exact** du
- * défaut qui a fait câbler cette gate, un cran plus bas ; trois README de plugins publiés
- * portaient `[LICENSE](../../LICENSE)`, qui résout `packages/LICENSE` et n'existe **ni sur
- * GitHub ni dans le tarball** ; et `addpoi/docs/` portait 5 ancres de sommaire mortes.
+ * ⚠️ And the hole this exclusion left was not theoretical. Measured at wiring time, on
+ * files NO gate saw: `packages/core/README.md` pointed at
+ * `docs/poi/GeoLeaf_POI_README.md` (a dissolved subsystem) — the **exact** replay of
+ * the defect that had this gate wired, one notch lower; three published plugin READMEs
+ * carried `[LICENSE](../../LICENSE)`, which resolves to `packages/LICENSE` and exists
+ * **neither on GitHub nor in the tarball**; and `addpoi/docs/` carried 5 dead
+ * table-of-contents anchors.
  *
- * Périmètre ajouté, tout **dérivé de `lib/packages.cjs`** — jamais un glob `packages/**`,
- * qui capterait les artefacts générés (`core/node_modules`, `core/dist`) :
+ * Perimeter added, all **derived from `lib/packages.cjs`** — never a `packages/**`
+ * glob, which would capture generated artifacts (`core/node_modules`, `core/dist`):
  *
- *   README des paquets   `<paquet>/*.md` à profondeur 0, les 18 du registre
- *   docs des paquets     `<paquet>/docs/` récursif (aujourd'hui `addpoi`, `offline-ui`)
- *   `.github/`           CODE_OF_CONDUCT · SECURITY · copilot-instructions — la vitrine
- *                        que GitHub affiche dans ses propres onglets
- *   `e2e/`               procédure qu'on exécute, donc état COURANT
- *   `_plugin-template/`  le SCAFFOLD : un lien mort y est re-semé dans chaque plugin futur.
- *                        Hors `workspaces` (`!packages/_*`), donc absent du registre —
- *                        c'est le seul chemin nommé en dur ici, et il l'est pour ça.
+ *   package READMEs      `<pkg>/*.md` at depth 0, the registry's 18
+ *   package docs         `<pkg>/docs/` recursive (today `addpoi`, `offline-ui`)
+ *   `.github/`           CODE_OF_CONDUCT · SECURITY · copilot-instructions — the
+ *                        storefront GitHub shows in its own tabs
+ *   `e2e/`               a procedure people execute, hence CURRENT state
+ *   `_plugin-template/`  the SCAFFOLD: a dead link there is re-sown into every future
+ *                        plugin. Outside `workspaces` (`!packages/_*`), hence absent
+ *                        from the registry — the only hard-named path here, and it is
+ *                        for that reason.
  *
- * Aucun script npm ni câblage de CI n'est ajouté : le périmètre change, le nom
- * `check:links` ne change pas. Un `check:links:root` séparé, ce serait trois câblages
- * de plus à ne pas oublier (`ci.yml`, `ci-local.cjs`, `.husky/pre-commit`) et un
- * quatrième point de désynchronisation.
+ * No npm script nor CI wiring is added: the perimeter changes, the `check:links` name
+ * does not. A separate `check:links:root` would be three more wirings not to forget
+ * (`ci.yml`, `ci-local.cjs`, `.husky/pre-commit`) and a fourth desynchronization
+ * point.
  *
- * ## B-09 (27/07/2026) — la doc INTERNE entre dans le périmètre, par scopes explicites
+ * ## 2026-07-27 — the INTERNAL docs enter the perimeter, through explicit scopes
  *
- * Second angle mort de B-09 : `_docs_projet/` — le plus gros corpus du dépôt, et celui que
- * chaque session lit — n'était vu par rien. Il a coûté cher deux fois dans la seule journée
- * du 27/07 : un lien frère entre deux specs de `specs/contrats/`, et **20 liens morts dans
- * les deux registres permanents**, cassés par leur propre déplacement de `travail/rapports/`
- * vers `registres/` (7 × `../../archives/` au lieu de `../archives/`). Ce sont les documents
- * qui ORIENTENT le travail : un lien mort y coûte plus qu'ailleurs.
+ * Second blind spot: `_docs_projet/` — the repo's biggest corpus, and the one every
+ * session reads — was seen by nothing. It cost dearly twice in the single day of
+ * 07-27: a sibling link between two `specs/contrats/` specs, and **20 dead links in
+ * the two permanent registers**, broken by their own move from `travail/rapports/` to
+ * `registres/` (7 × `../../archives/` instead of `../archives/`). These are the
+ * documents that STEER the work: a dead link there costs more than elsewhere.
  *
- * ⚠️ **`_docs_projet/` n'est PAS ajouté en bloc, et ce n'est pas de la prudence.** Mesuré :
- * `archives/` seul rend **1 175 liens morts** — et ils sont LÉGITIMES. Un document d'archive
- * pointe vers le code de sa date, code supprimé depuis ; le « réparer » en ferait un faux
- * témoignage (règle énoncée dans `_docs_projet/archives/README.md`). B-09 le dit déjà :
- * ce sont des ENREGISTREMENTS, à exclure par conception.
+ * ⚠️ **`_docs_projet/` is NOT added wholesale, and that is not caution.** Measured:
+ * `archives/` alone returns **1,175 dead links** — and they are LEGITIMATE. An archive
+ * document points at the code of its date, code deleted since; "fixing" it would turn
+ * it into false testimony (rule stated in `_docs_projet/archives/README.md`): these
+ * are RECORDS, to exclude by design.
  *
- * Sont donc gatés les seuls répertoires dont le contenu prétend décrire l'état COURANT :
+ * Gated, therefore, are only the directories whose content claims to describe the
+ * CURRENT state:
  *
- *   `_docs_projet/` (depth 0)   ETAT · JOURNAL · INDEX · les 2 checklists
- *   `specs/`                    le gelé — c'est là que vivent les liens frères
- *   `registres/`                les listes vivantes qui orientent le travail
- *   `reference/`                le généré et le lu-par-un-programme
- *   `travail/roadmaps/`         les roadmaps actives
+ *   `_docs_projet/` (depth 0)   ETAT · JOURNAL · INDEX · the 2 checklists
+ *   `specs/`                    the frozen — where the sibling links live
+ *   `registres/`                the living lists that steer the work
+ *   `reference/`                the generated and the machine-read
+ *   `travail/roadmaps/`         the active roadmaps
  *
- * Restent hors périmètre, délibérément : `archives/` (ci-dessus), et
- * `travail/{audits,cdc,rapports}` — daté et périssable, dont `cdc/` qui est de la matière
- * première en cours de consommation.
+ * Out of perimeter, deliberately: `archives/` (above), and
+ * `travail/{audits,cdc,rapports}` — dated and perishable, `cdc/` among them being raw
+ * material in the middle of being consumed.
  *
- * **Vert au câblage** (les 5 scopes à 0), donc **pas de baseline** — même régime que
- * `check-orphan-exports`. La gate ne peut mordre que sur une régression neuve.
+ * **Green at wiring time** (the 5 scopes at 0), hence **no baseline** — same regime as
+ * `check-orphan-exports`. The gate can only bite on a fresh regression.
  *
- * ## 10/08/2026 — la SCISSION : 7 scopes de doc interne deviennent 3 scopes publics
+ * ## 2026-08-10 — the SPLIT: 7 internal-doc scopes become 3 public scopes
  *
- * ⚠️ **Le paragraphe ci-dessus décrit un périmètre qui n'existe plus, et il est conservé
- * parce qu'il dit ce qui a été gaté et pourquoi.** La doc se partage en deux racines
- * (`lib/docs-paths.cjs`) : `docs/` part dans le dépôt public, `_docs_projet/` reste à
- * l'atelier. Le périmètre suit la partition, pas l'ancien répertoire.
+ * ⚠️ **The paragraph above describes a perimeter that no longer exists, and it is kept
+ * because it says what was gated and why.** The docs split into two roots
+ * (`lib/docs-paths.cjs`): `docs/` ships to the public repo, `_docs_projet/` stays in
+ * the workshop. The perimeter follows the partition, not the old directory.
  *
- *   RETARGÉS sur `docs/`, **avec `mustNotBeEmpty`** : `specs/` · `reference/` · `guides/`
- *   RETIRÉS : la racine `_docs_projet/` (depth 0) · `registres/` · `vision/` ·
- *             `travail/roadmaps/`
+ *   RETARGETED to `docs/`, **with `mustNotBeEmpty`**: `specs/` · `reference/` ·
+ *   `guides/`
+ *   REMOVED: the internal-docs root (depth 0) · `registres/` · `vision/` ·
+ *            `travail/roadmaps/`
  *
- * Les 4 retirés ne sont pas une perte de couverture consentie à la légère : ils gatent un
- * corpus qui **ne sera pas dans le clone public**, et un scope dont le répertoire est
- * absent sort vert en n'ayant rien lu — exactement la panne que les 3 assertions
- * ci-dessous interdisent désormais côté public. Le jour où la doc interne se re-gate, ce
- * sera dans son propre dépôt, avec `--dir`.
+ * The 4 removed are not a coverage loss lightly consented: they gate a corpus that
+ * **will not be in the public clone**, and a scope whose directory is absent goes
+ * green having read nothing — exactly the failure the 3 assertions below now forbid
+ * on the public side. The day the internal docs get re-gated, it will be in their own
+ * repo, with `--dir`.
  *
- * 🛑 **Aucun des 7 ne portait `mustNotBeEmpty`** — vérifié avant de déplacer quoi que ce
- * soit. Un déplacement fait sans poser les 3 assertions d'abord aurait fait passer
- * `Scanned 172` à ~110 **sans qu'aucune ligne ne rougisse**.
+ * 🛑 **None of the 7 carried `mustNotBeEmpty`** — verified before moving anything. A
+ * move done without laying the 3 assertions first would have taken `Scanned 172` to
+ * ~110 **without a single line turning red**.
  *
- * ⚠️ **Angle mort connu, non fermé ici** : la forme **badge** (une image imbriquée dans un
- * lien) échappe à la regex — c'est la dette **D-13** du registre, mesurée et acceptée. Elle
- * devient visible dans ce nouveau périmètre ; ne pas la confondre avec une régression.
+ * ⚠️ **Known blind spot, not closed here**: the **badge** shape (an image nested in a
+ * link) escapes the regex — a measured, accepted debt. It becomes visible in this new
+ * perimeter; do not mistake it for a regression.
  */
 const SCOPES =
     dirArgIdx >= 0
         ? [{ dir: path.resolve(CWD, args[dirArgIdx + 1]), depth: Infinity, label: "--dir" }]
         : [
-              // T5.5 — le défaut vient du registre, qui jette.
+              // The default comes from the registry, which throws.
               {
                   dir: path.join(registry.requireByDirName("core").absDir, "docs"),
                   depth: Infinity,
                   label: "docs publiques",
               },
               { dir: REPO_ROOT, depth: 0, label: "markdown de la racine" },
-              // ── 10/08/2026 — la doc se SCINDE, et le périmètre suit la scission
+              // ── 2026-08-10 — the docs SPLIT, and the perimeter follows the split
               //
-              // Les 7 scopes `_docs_projet/` de B-09 deviennent 3, et les 3 changent de
-              // NATURE : ils décrivent désormais une surface PUBLIÉE, donc chacun porte son
-              // assertion anti-gate-vide. Les 4 autres (racine de la doc interne, `registres/`,
-              // `vision/`, `travail/roadmaps/`) sont RETIRÉS : ce qui reste sous
-              // `_docs_projet/` ne part pas dans le dépôt public, et un scope qui gate un
-              // corpus absent du clone est un scope qui sortira vert en ne lisant rien.
+              // The 7 original internal-doc scopes become 3, and the 3 change NATURE:
+              // they now describe a PUBLISHED surface, so each carries its
+              // anti-empty-gate assertion. The 4 others (internal-docs root,
+              // `registres/`, `vision/`, `travail/roadmaps/`) are REMOVED: what stays
+              // under `_docs_projet/` does not ship to the public repo, and a scope
+              // gating a corpus absent from the clone is a scope that will go green
+              // reading nothing.
               //
-              // 🛑 Aucun des 7 ne portait `mustNotBeEmpty`, et c'est ce trou qui rendait le
-              // déplacement dangereux : `walkDir` rend `[]` sur un répertoire absent (voir
-              // son garde :265-267), donc la gate aurait annoncé « 0 lien mort » sur ~60
-              // fichiers en moins, en sortant 0. Une gate ne perd pas sa cible en rougissant,
-              // elle se tait — d'où les trois assertions ci-dessous.
+              // 🛑 None of the 7 carried `mustNotBeEmpty`, and that hole is what made
+              // the move dangerous: `walkDir` returns `[]` on an absent directory
+              // (see its guard :265-267), so the gate would have announced "0 dead
+              // links" over ~60 fewer files, while exiting 0. A gate does not lose
+              // its target by reddening, it goes quiet — hence the three assertions
+              // below.
               {
                   dir: docsPaths.specs(),
                   depth: Infinity,
@@ -186,31 +193,33 @@ const SCOPES =
                   label: "reference",
                   mustNotBeEmpty: true,
               },
-              // Ajouté le 27/07/2026 avec la sortie de la zone : un guide décrit une procédure
-              // qu'on exécute, donc l'état COURANT. 16 liens morts au câblage, tous corrigés
-              // avant de brancher — vert, sans baseline, comme les autres scopes.
+              // Added on 2026-07-27 with the zone's exit: a guide describes a
+              // procedure people execute, hence CURRENT state. 16 dead links at
+              // wiring, all fixed before plugging in — green, no baseline, like the
+              // other scopes.
               {
                   dir: docsPaths.guides(),
                   depth: Infinity,
                   label: "guides",
                   mustNotBeEmpty: true,
               },
-              // ── 31/07/2026 — les surfaces PRODUIT (voir l'en-tête, B-09 seconde moitié)
+              // ── 2026-07-31 — the PRODUCT surfaces (see the header, second half)
               //
-              // Deux scopes SYNTHÉTIQUES : leur liste de fichiers est calculée depuis le
-              // registre plutôt que marchée depuis un répertoire. Les déclarer en 18 entrées
-              // rendrait la ligne de périmètre illisible, et surtout un paquet sans `.md` à
-              // sa racine ferait alors sortir un scope vide sans que ce soit un défaut.
+              // Two SYNTHETIC scopes: their file list is computed from the registry
+              // rather than walked from a directory. Declaring them as 18 entries
+              // would make the perimeter line unreadable, and above all a package
+              // with no `.md` at its root would then yield an empty scope without it
+              // being a defect.
               {
                   label: "README des paquets",
                   files: registry
                       .all()
                       .flatMap((p) => walkDir(p.absDir, (f) => f.endsWith(".md"), 0)),
-                  // Ce que l'assertion ci-dessous vérifie, et pourquoi elle n'est pas
-                  // circulaire : l'oracle est `fs.existsSync` sur `<paquet>/README.md`, la
-                  // chose testée est la construction du scope. Un `path.join` faux ou une
-                  // profondeur qui dérape laisse le fichier sur le disque et hors du scan —
-                  // exactement la panne que `packages.cjs` refuse de laisser silencieuse.
+                  // What the assertion below verifies, and why it is not circular:
+                  // the oracle is `fs.existsSync` on `<pkg>/README.md`, the thing
+                  // under test is the scope's construction. A wrong `path.join` or a
+                  // slipping depth leaves the file on disk and out of the scan —
+                  // exactly the failure `packages.cjs` refuses to leave silent.
                   mustContain: registry
                       .all()
                       .map((p) => path.join(p.absDir, "README.md"))
@@ -252,21 +261,21 @@ const SCOPES =
 /**
  * Walk a directory and return all files matching the predicate.
  *
- * ⚠️ `node_modules/` est sauté, et c'est le SEUL nom exclu. L'en-tête de ce fichier
- * affirmait déjà que le marcheur n'y descend pas ; c'était faux, et la mesure du 31/07 le
- * dit : `--dir packages/build-config` rendait **36 liens morts, tous dans `node_modules`**
- * — un vhost de gate qui crie au loup sur du code tiers. Inoffensif tant que les scopes
- * configurés n'en contenaient pas ; bloquant dès qu'on ajoute des racines de paquets, et
- * déjà nuisible pour l'opérateur, à qui la recette de la refonte V3 fait justement lancer
- * `--dir <répertoire>` document par document.
+ * ⚠️ `node_modules/` is skipped, and it is the ONLY excluded name. This file's header
+ * already claimed the walker does not descend into it; that was false, and the 07-31
+ * measurement says so: `--dir packages/build-config` returned **36 dead links, all in
+ * `node_modules`** — a gate crying wolf on third-party code. Harmless while the
+ * configured scopes contained none; blocking as soon as package roots are added, and
+ * already harmful to the operator, whom the V3 overhaul's recipe has run
+ * `--dir <directory>` document by document.
  *
- * Un seul nom, universel et borné — ce n'est pas l'énumération non bornée que l'en-tête
- * refuse : les autres répertoires générés (`dist/`, `docs/api/`, `docs/public/`,
- * `docs-dist/`) ne portent aucun `.md` et sont écartés par le prédicat, pas par une liste.
+ * One name, universal and bounded — not the unbounded enumeration the header refuses:
+ * the other generated directories (`dist/`, `docs/api/`, `docs/public/`, `docs-dist/`)
+ * carry no `.md` and are set aside by the predicate, not by a list.
  *
  * @param {string} dir
  * @param {(f: string) => boolean} predicate
- * @param {number} [maxDepth=Infinity] 0 = ce répertoire SEUL, aucune récursion (T6.6).
+ * @param {number} [maxDepth=Infinity] 0 = this directory ALONE, no recursion.
  * @returns {string[]}
  */
 function walkDir(dir, predicate, maxDepth = Infinity) {
@@ -290,15 +299,15 @@ function walkDir(dir, predicate, maxDepth = Infinity) {
  * Matches: [text](target) — skips image links ![...](...) as well as
  * HTML/JS code blocks delimited by ```...```.
  *
- * ⚠️ ANGLE MORT CONNU, MESURÉ, NON CORRIGÉ ICI (T6.6) — la forme BADGE
- * `[![alt](image)](cible)` n'est PAS extraite : la regex ci-dessous consomme le lien
- * INTERNE de l'image et s'arrête avant `](cible)`. Vérifié par mutation — casser
- * délibérément la cible d'un badge de `README.md` laisse cette gate VERTE.
+ * ⚠️ KNOWN, MEASURED BLIND SPOT, NOT FIXED HERE — the BADGE shape
+ * `[![alt](image)](target)` is NOT extracted: the regex below consumes the image's
+ * INNER link and stops before `](target)`. Verified by mutation — deliberately
+ * breaking a `README.md` badge's target leaves this gate GREEN.
  *
- * `README.md` en porte 5. Trois pointaient `LICENCE` pour `LICENSE` et ont été corrigés
- * À LA MAIN au T6.6, faute de pouvoir l'être par la gate. Élargir la regex demande de
- * re-mesurer les 62 documents publics (risque de faux positifs sur les images
- * imbriquées) — versé au backlog sous **T6.6ter**, plutôt que bricolé au passage.
+ * `README.md` carries 5. Three pointed `LICENCE` for `LICENSE` and were fixed BY
+ * HAND, since the gate could not do it. Widening the regex requires re-measuring the
+ * 62 public documents (false-positive risk on nested images) — recorded as a named
+ * follow-up rather than improvised in passing.
  *
  * @param {string} content
  * @returns {{ target: string; line: number }[]}
@@ -306,10 +315,10 @@ function walkDir(dir, predicate, maxDepth = Infinity) {
 function extractLinks(content) {
     const links = [];
     const lines = content.split("\n");
-    // B-153 ① — suivi conforme à CommonMark, PARTAGÉ avec `extractAnchors` ci-dessous.
-    // La bascule aveugle (`inCodeBlock = !inCodeBlock` sur tout ```) se trompait sur un
-    // fence imbriqué : le motif était DUPLIQUÉ ici et là, donc corriger l'un aurait laissé
-    // la moitié du défaut. Le helper est la réponse à cette duplication autant qu'au défaut.
+    // CommonMark-conformant tracking, SHARED with `extractAnchors` below.
+    // The blind toggle (`inCodeBlock = !inCodeBlock` on any ```) got nested fences
+    // wrong: the pattern was DUPLICATED here and there, so fixing one would have left
+    // half the defect. The helper answers that duplication as much as the defect.
     const fences = createFenceTracker();
 
     for (let i = 0; i < lines.length; i++) {
@@ -371,9 +380,9 @@ function extractAnchors(filePath) {
     const anchors = new Set();
     if (!fs.existsSync(filePath)) return anchors;
     const lines = fs.readFileSync(filePath, "utf8").split("\n");
-    // B-153 ① — MÊME helper que `extractLinks`. C'est ici que la duplication mordait :
-    // les deux extracteurs portaient la même cécité, et l'énoncé de la ligne insistait
-    // sur ce point — « corriger l'un laisserait la moitié du défaut ».
+    // SAME helper as `extractLinks`. This is where the duplication bit: both
+    // extractors carried the same blindness, and the founding note insisted on that
+    // point — "fixing one would leave half the defect".
     const fences = createFenceTracker();
     for (const ln of lines) {
         if (fences.consume(ln)) continue;
@@ -388,34 +397,33 @@ function extractAnchors(filePath) {
 // Main
 // ---------------------------------------------------------------------------
 
-/** Libellé lisible d'un scope — `docs publiques (packages/core/docs)`. */
+/** Readable label of a scope — `docs publiques (packages/core/docs)`. */
 const scopeLabel = (s) =>
     s.dir ? `${s.label} (${path.relative(REPO_ROOT, s.dir) || "."})` : `${s.label} (dérivé)`;
 
-/** Les fichiers d'un scope — liste calculée si elle est fournie, sinon marche du répertoire. */
+/** A scope's files — computed list when provided, directory walk otherwise. */
 const scopeFiles = (s) => s.files ?? walkDir(s.dir, (f) => f.endsWith(".md"), s.depth);
 
 // ── Assertions anti-gate-vide, par scope
 //
-// Le garde global « 0 fichier au total » ne suffit plus depuis que le périmètre est
-// multiple : un scope qui ne trouve rien disparaît dans la somme des autres et la gate
-// sort VERTE en n'ayant pas regardé. C'est la règle de `CLAUDE.md` — une garde jamais vue
-// rouge ne garde rien — appliquée au périmètre plutôt qu'au verdict.
+// The global "0 files in total" guard is no longer enough now that the perimeter is
+// multiple: a scope finding nothing disappears into the sum of the others and the gate
+// goes GREEN without having looked. It is the rule — a guard never seen red guards
+// nothing — applied to the perimeter rather than the verdict.
 //
-// Deux formes, parce que les deux pannes diffèrent :
-//   `mustNotBeEmpty`  un répertoire nommé en dur qu'un renommage ferait disparaître
-//   `mustContain`     un scope dérivé : le fichier est sur le disque, la construction du
-//                     scope doit le ramener. `packages.cjs` protège la liste des paquets,
-//                     rien ne protégeait le chemin qu'on en tire.
+// Two shapes, because the two failures differ:
+//   `mustNotBeEmpty`  a hard-named directory a rename would make vanish
+//   `mustContain`     a derived scope: the file is on disk, the scope's construction
+//                     must bring it back. `packages.cjs` protects the package list,
+//                     nothing protected the path drawn from it.
 /**
- * Le compte de fichiers PAR SCOPE, dans l'ordre de déclaration.
+ * The file count PER SCOPE, in declaration order.
  *
- * Ajouté le 10/08/2026 (tâche 6.13) : jusque-là le rapport n'imprimait qu'un TOTAL, même
- * en `--verbose`. Un total est indiscernable — `Scanned 172` reste `Scanned 172` qu'un
- * scope ait perdu 30 fichiers pendant qu'un autre en gagnait 30. Or c'est précisément la
- * question qu'on se pose après un déplacement de répertoire, et la seule que
- * `mustNotBeEmpty` ne réponde pas : elle distingue « vide » de « non vide », pas
- * « complet » de « amputé ».
+ * Added on 2026-08-10: until then the report only printed a TOTAL, even in
+ * `--verbose`. A total is indistinguishable — `Scanned 172` stays `Scanned 172`
+ * whether one scope lost 30 files while another gained 30. Yet that is precisely the
+ * question one asks after a directory move, and the only one `mustNotBeEmpty` does
+ * not answer: it separates "empty" from "non-empty", not "complete" from "amputated".
  *
  * @type {{label: string, n: number}[]}
  */
@@ -438,13 +446,13 @@ for (const s of SCOPES) {
     }
 }
 
-// Union dédupliquée : deux scopes peuvent se recouvrir (`--dir .` face à un défaut,
-// ou une future racine de docs déplacée sous la racine du dépôt).
+// Deduplicated union: two scopes may overlap (`--dir .` against a defect, or a future
+// docs root moved under the repo root).
 const mdFiles = [...new Set(SCOPES.flatMap(scopeFiles))];
 
 if (mdFiles.length === 0) {
-    // Le garde doit nommer TOUS les scopes : avec un périmètre multiple, citer le seul
-    // premier enverrait chercher la panne au mauvais endroit.
+    // The guard must name ALL scopes: with a multiple perimeter, citing only the
+    // first would send the failure hunt to the wrong place.
     console.error(
         `[check-dead-links] Aucun .md trouvé dans : ${SCOPES.map(scopeLabel).join(" + ")}`
     );
@@ -547,7 +555,7 @@ for (const mdFile of mdFiles) {
 
 const sep = "─".repeat(72);
 
-/** Le périmètre, scope par scope, avec son compte — imprimé dans les deux verdicts. */
+/** The perimeter, scope by scope, with its count — printed in both verdicts. */
 function printScopes(indent) {
     console.log(`${indent}Scanned ${mdFiles.length} file(s) — ${scopeCounts.length} scope(s) :`);
     for (const { label, n } of scopeCounts) {
@@ -558,7 +566,7 @@ function printScopes(indent) {
 if (broken.length === 0) {
     console.log(`${sep}`);
     console.log(`✅  check-dead-links — 0 broken internal links`);
-    // T6.6 — `in docs/` était CODÉ EN DUR, donc faux dès que le périmètre a bougé.
+    // `in docs/` was HARD-CODED, hence wrong as soon as the perimeter moved.
     printScopes("    ");
     if (externalLinks.length > 0) {
         console.log(

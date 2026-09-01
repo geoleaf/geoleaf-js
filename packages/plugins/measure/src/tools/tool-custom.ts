@@ -8,7 +8,7 @@
  * @description Arms a tool registered through `registerMeasureType()`, wrapping its callbacks
  * in the same envelope the six built-in tools carry.
  *
- * ⚠️ **Why the envelope belongs here and not in the integrator's callback (B-253).** Three
+ * ⚠️ **Why the envelope belongs here and not in the integrator's callback.** Three
  * invariants make a tool behave like a GeoLeaf tool, and none of the three is reachable from
  * `onActivate(map: unknown)`:
  *

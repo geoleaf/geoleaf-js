@@ -15,16 +15,16 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Only `./__mocks__/maplibre-gl.cjs` below is a genuinely CommonJS target.
 const require = createRequire(import.meta.url);
 
-// ── jest → vi alias ───────────────────────────────────────────────────────────
-// Some engine unit tests relocated from plugin-storage (S14 Phase B) use jest.fn()
-// / jest.spyOn() from the Jest era; expose vi under the jest name so they run.
-if (typeof globalThis.jest === "undefined" && typeof vi !== "undefined") {
-    globalThis.jest = vi;
-}
+// ── jest → vi alias : REMOVED (2026-08-18) ────────────────────────────────────
+// The alias existed for Jest-era tests relocated from plugin-storage. Measured before
+// removal: zero remaining `jest.*` CALLS in the whole package — the four grep hits left
+// are comments narrating jest.mock hoisting history. A global alias with no caller is
+// not free: it makes `jest.fn()` silently work in NEW tests, which then read as portable
+// Jest tests while depending on this file.
 
 // Node 18 compat: SharedArrayBuffer.prototype.growable was added in Node 20.
 // webidl-conversions v8 (shipped with whatwg-url inside jsdom) reads its descriptor
-// at module-evaluation time (lib/index.js:299). On Node 18 the descriptor is missing,
+// at module-evaluation time (lib/index.js). On Node 18 the descriptor is missing,
 // which throws "Cannot read properties of undefined (reading 'get')".
 // This polyfill runs before any test file's CJS require() triggers whatwg-url loading.
 if (
@@ -158,7 +158,7 @@ if (typeof globalThis.TextEncoder === "undefined") {
 
 // ── CSS.supports — real color validation for happy-dom ───────────────────────
 // happy-dom v20 stubs CSS.supports() to ALWAYS return true (see
-// node_modules/happy-dom/lib/css/CSS.js:48). validateColor() falls back to
+// node_modules/happy-dom/lib/css/CSS.js). validateColor() falls back to
 // CSS.supports("color", value) for non-regex colors, so under happy-dom every
 // string is accepted — breaking the "reject invalid color" tests. Replace the
 // stub with a realistic CSS color validator. Only the ("color", value) form is
@@ -382,7 +382,7 @@ if (typeof navigator !== "undefined") {
     }
 }
 
-// Sprint 9: Leaflet mock removed — MapLibre is the sole engine.
+// Leaflet mock removed — MapLibre is the sole engine.
 global.maplibregl = require("./__mocks__/maplibre-gl.cjs");
 
 // requestAnimationFrame / cancelAnimationFrame for jsdom

@@ -92,9 +92,10 @@ function _buildInitOptions(container: HTMLElement, options: NormalizedInitOption
     return {
         container,
         ...(center !== undefined && { center }),
-        // `Number.isFinite` ne rétrécit pas le type de son argument : sans le test d'existence,
-        // la branche vraie reste `number | undefined`. Comportement identique — `isFinite(undefined)`
-        // est faux — mais le typage le voit désormais.
+        // `Number.isFinite` does not narrow its argument's type: without the
+        // existence test, the true branch stays `number | undefined`. Identical
+        // behaviour — `isFinite(undefined)` is false — but the typing now sees
+        // it.
         zoom:
             options.zoom !== undefined && Number.isFinite(options.zoom)
                 ? options.zoom

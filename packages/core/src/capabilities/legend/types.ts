@@ -8,7 +8,7 @@
  * Extracted so `legend-generator.ts`, `public-api.ts` and `legend-control.ts`
  * share one typed view of the style JSON, the taxonomy, and the few control
  * instance shapes they pass around — without re-declaring `any` locally
- * (roadmap_typage-strict.md, S5 — mirrors `search/search-types.ts`).
+ * (mirrors `search/search-types.ts`).
  *
  * All style/taxonomy shapes are intentionally permissive
  * (`[key: string]: unknown`) because they arrive from arbitrary user profiles

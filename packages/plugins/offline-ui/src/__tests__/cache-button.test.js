@@ -21,8 +21,12 @@ describe("ButtonControl (map capture)", () => {
         expect(BC.init(null, {})).toBeNull();
     });
 
-    test("returns null when showCacheButton is false", () => {
-        expect(BC.init({ id: "m" }, { ui: { showCacheButton: false } })).toBeNull();
+    // Contract change, 24/08/2026: `ui.showCacheButton` no longer switches off
+    // MAP CAPTURE — that coupling let a visible button open a modal over a null map. The
+    // legacy key still hides the BUTTON (slot fallback); capture is unconditional.
+    test("captures the map even when showCacheButton is false", () => {
+        const map = { id: "m" };
+        expect(BC.init(map, { ui: { showCacheButton: false } })).toBe(map);
     });
 
     test("captures and returns the real map when enabled", () => {
@@ -31,7 +35,7 @@ describe("ButtonControl (map capture)", () => {
         expect(BC.getMap()).toBe(map);
     });
 
-    test("showCacheButton defaults to true when not specified", () => {
+    test("captures without any ui config at all", () => {
         const map = { id: "m2" };
         expect(BC.init(map, {})).toBe(map);
         expect(BC.getMap()).toBe(map);
@@ -54,7 +58,13 @@ describe("registerCacheToolbar", () => {
         expect(arg.id).toBe("offline-ui");
         for (const slot of [arg.ui.mobileIcon, arg.ui.desktopTabButton]) {
             expect(slot.action).toBe("offline-ui");
-            expect(slot.profileKey).toBe("ui.showCacheButton");
+            // INV-CONFIG / PC-14 — the canonical key lives under
+            // `modules.<pluginId>`. The old one stays declared as
+            // `legacyProfileKey`: a profile still carrying it keeps governing the
+            // button, with no migration on its plate (fallback in
+            // `ui-slot-builder.ts`).
+            expect(slot.profileKey).toBe("modules.offline-ui.showButton");
+            expect(slot.legacyProfileKey).toBe("ui.showCacheButton");
             expect(slot.requiresPlugin).toBe("offline-ui");
             expect(slot.labelKey).toBe("storage.toolbar.button");
             expect(typeof slot.icon).toBe("string");

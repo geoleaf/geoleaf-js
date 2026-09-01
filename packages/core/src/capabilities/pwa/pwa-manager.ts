@@ -147,7 +147,7 @@ export const PWAManager = {
     /**
      * Registry destroy / test seam: tears down both install sub-flows (the Android
      * install-prompt global listeners and the iOS banner timer/banner) so a re-init
-     * starts clean (S7.5 — no listener / timer leak).
+     * starts clean (no listener / timer leak).
      */
     _reset(): void {
         InstallPrompt._reset();

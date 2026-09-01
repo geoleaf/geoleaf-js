@@ -1,28 +1,29 @@
 /**
- * Unit tests — `sync/sync-manager.ts`, couverture réelle (chantier R.31).
+ * Unit tests — `sync/sync-manager.ts`, real coverage.
  *
- * Fichier mesuré à 37 % : la SECTION DE SYNCHRO POI (statut des opérations en attente,
- * liste des sauvegardes, boutons synchroniser/restaurer). Aucune carte requise — le
- * gestionnaire POI est lu sur le seam `GeoLeaf.Sync.getHandler("poi")`, les sauvegardes
- * sur `StorageContract.DB.getBackups()`, les notifications et `confirmDialog` sont mockés.
- * On bâtit la section (`buildSection` + `init`) pour disposer des vraies références DOM,
- * puis on exerce chaque méthode et ses branches.
+ * File measured at 37%: the POI SYNC SECTION (pending-operations status, backup
+ * list, sync/restore buttons). No map required — the POI handler is read on the
+ * `GeoLeaf.Sync.getHandler("poi")` seam, backups on
+ * `StorageContract.DB.getBackups()`, notifications and `confirmDialog` are
+ * mocked. We build the section (`buildSection` + `init`) to hold the real DOM
+ * references, then exercise each method and its branches.
  */
 import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
 
 import { SyncManager } from "../sync/sync-manager.js";
 import { confirmDialog } from "@geoleaf/host-runtime";
 
-// API publique S4.4 — les tests plantent `GeoLeaf.Storage` comme le fait la PRODUCTION.
-// Ils pilotaient `StorageContract.init()`, c'est-à-dire une SECONDE instance du singleton
-// que le bundle embarquait et que rien n'initialisait : ils validaient un canal mort.
+// The tests plant `GeoLeaf.Storage` the way PRODUCTION does. They used to drive
+// `StorageContract.init()`, i.e. a SECOND instance of the singleton the bundle
+// embedded and nothing initialised: they validated a dead channel.
 function _installGeoLeafStorage(api) {
     globalThis.GeoLeaf = globalThis.GeoLeaf ?? {};
-    // Le helper reproduit ce que `StorageContract.init()` fournissait, parce que la façade
-    // du core le fournit aussi : `isPluginLoaded()` = « un moteur s'est enregistré », et
-    // `isAvailable()` = « et sa base est ouverte ». L'adaptateur du plugin DÉLÈGUE ces deux
-    // méthodes — il ne les recalcule pas —, donc un objet planté qui ne les porte pas
-    // rendrait `false` là où le test attend `true`. Un appelant qui les fournit garde la main.
+    // The helper reproduces what `StorageContract.init()` provided, because the
+    // core's facade provides it too: `isPluginLoaded()` = "an engine registered",
+    // and `isAvailable()` = "and its database is open". The plugin's adapter
+    // DELEGATES these two methods — it does not recompute them — so a planted
+    // object not carrying them would return `false` where the test expects
+    // `true`. A caller providing them keeps the hand.
     globalThis.GeoLeaf.Storage =
         api === null || api === undefined
             ? null
@@ -71,7 +72,7 @@ function installBackups({ available = true, backups = [], hasGetBackups = true }
     return { getBackups };
 }
 
-/** Bâtit la section et câble les références internes, sans lancer updateStatus. */
+/** Builds the section and wires the internal references, without running updateStatus. */
 function setup() {
     const parent = document.createElement("div");
     document.body.appendChild(parent);
@@ -100,9 +101,9 @@ afterEach(() => {
 
 describe("buildSection", () => {
     test("bâtit la section complète et rend les 6 références", () => {
-        // ⚠️ Sept jusqu'à la tâche 4.11 : `syncBackupsEl` part avec la chaîne de sauvegarde,
-        // dont le magasin n'avait plus d'écrivain depuis 4.4b — le panneau affichait « aucune
-        // sauvegarde » par construction.
+        // ⚠️ Seven previously: `syncBackupsEl` leaves with the backup chain,
+        // whose store had no writer left — the panel displayed "no backup" by
+        // construction.
         const parent = document.createElement("div");
         const els = SyncManager.buildSection(parent);
         expect(parent.querySelector(".gl-cache-sync")).toBeTruthy();
@@ -126,7 +127,7 @@ describe("mount", () => {
 
         expect(parent.querySelector(".gl-cache-sync")).toBeTruthy();
         expect(SyncManager._onSynced).toBe(onSynced);
-        // rendu initial : statut « à jour » posé
+        // initial render: "up to date" status set
         expect(parent.querySelector(".gl-cache-sync__placeholder")).toBeTruthy();
         parent.remove();
     });
@@ -194,7 +195,7 @@ describe("_renderSyncStatus", () => {
         installHandler({ getSyncSummary: vi.fn(async () => null) });
         const { els } = setup();
         await SyncManager._renderSyncStatus();
-        // le placeholder de chargement initial reste
+        // the initial loading placeholder stays
         expect(els.syncStatusEl.textContent).toContain("loading");
     });
 
@@ -216,11 +217,11 @@ describe("_renderSyncStatus", () => {
 
 describe("updateStatus", () => {
     test("délègue au rendu du statut — il n'y a plus qu'un emplacement", async () => {
-        // ⚠️ Ce bloc contenait « enchaîne statut puis sauvegardes (backups dans le finally) ».
-        // Le `finally` existait parce que quatre sorties du rendu de statut laissaient le
-        // libellé « Sauvegardes : chargement… » à l'écran pour de bon. La liste est retirée
-        // (4.11), donc il n'a plus de second emplacement à sauver — et le laisser aurait été
-        // une garde sans objet.
+        // ⚠️ This block contained "chains status then backups (backups in the
+        // finally)". The `finally` existed because four status-render exits left
+        // the "Backups: loading…" label on screen for good. The list is removed,
+        // so it has no second slot left to save — and keeping it would have been
+        // an objectless guard.
         installHandler(makeHandler({ summary: { total: 0, add: 0, update: 0, delete: 0 } }));
         const parent = document.createElement("div");
         SyncManager.mount(parent);
@@ -291,7 +292,7 @@ describe("handleSync", () => {
         expect(notif.success).toHaveBeenCalled();
         expect(evt).toHaveBeenCalled();
         expect(onSynced).toHaveBeenCalled();
-        // bouton réactivé dans le finally
+        // button re-enabled in the finally
         expect(els.syncBtn.disabled).toBe(false);
     });
 

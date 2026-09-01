@@ -5,33 +5,33 @@
  * Deployment pipeline for GeoLeaf public documentation:
  *   1. Regenerate TypeDoc API reference (v2.0.0)
  *   2. Copy docs/api/ → docs/public/api/ (VitePress static asset)
- *   3. Build VitePress → docs-dist/ (racine — T4.4 l'a sorti de packages/)
+ *   3. Build VitePress → docs-dist/ (root — moved out of packages/)
  *   4. Sync docs-dist/ → <site>/docs/
  *   5. Auto-generate <site>/assets/data/news.json from CHANGELOG.md
  *
- * ## Le SEUL canal de publication de la doc (arbitrage 4.8, option (c), 25/07/2026)
+ * ## The ONLY publication channel for the docs (settled 2026-07-25)
  *
- * Cette publication est **manuelle** : `npm run docs:deploy`, lancé par un humain. Aucun
- * workflow GitHub ne la déclenche — `packages/core/.github/workflows/deploy-docs.yml`,
- * supprimé au T3.3, ne s'exécutait de toute façon jamais (GitHub ne lit les workflows
- * qu'à la racine du dépôt), et le quota Actions du compte est rare. Ne pas en recréer un
- * sans rouvrir 4.8 : le dépôt aurait alors deux politiques documentaires.
+ * This publication is **manual**: `npm run docs:deploy`, launched by a human. No
+ * GitHub workflow triggers it — `packages/core/.github/workflows/deploy-docs.yml`,
+ * since deleted, never executed anyway (GitHub only reads workflows at the repo
+ * root), and the account's Actions quota is scarce. Do not recreate one without
+ * revisiting that arbitration: the repo would then have two documentation policies.
  *
- * ## Où ce script écrit — les deux moitiés, et pourquoi elles diffèrent
+ * ## Where this script writes — the two halves, and why they differ
  *
- * **Hors du dépôt** (étapes 4 et 5), sous `GEOLEAF_DOCS_SITE_ROOT`. C'était le point le
- * plus risqué du dépôt jusqu'au T5.1 : la cible était atteinte par QUATRE `..` en dur,
- * et `syncDir` la détruisait récursivement. Sur une machine où le dépôt n'est pas à cette
- * profondeur exacte, ce qui était détruit n'était pas déterminé. La variable est
- * désormais OBLIGATOIRE et sans défaut — un défaut aurait conservé la supposition qu'on
- * retire.
+ * **Outside the repo** (steps 4 and 5), under `GEOLEAF_DOCS_SITE_ROOT`. This used
+ * to be the repo's riskiest spot: the target was reached through FOUR hard-coded
+ * `..`, and `syncDir` destroyed it recursively. On a machine where the repo is not
+ * at that exact depth, what got destroyed was not determined. The variable is now
+ * MANDATORY and defaultless — a default would have preserved the assumption being
+ * removed.
  *
- * **Dans `packages/core/docs/`** (étapes 1, 2 et 2b) : `api/`, `public/api/` et
- * `public/logo.png`. ⚠️ Ces trois-là RESTENT sur place, et ce n'est pas un oubli du
- * T5.3 : `public/` est le répertoire d'assets statiques de VitePress, résolu contre
- * `srcDir` — le déplacer casserait le build. Ils sont gitignorés depuis le T4.1 et exclus
- * de `files[]` par négation, donc ils ne sont ni versionnés ni publiés : le défaut que
- * T5.3 visait est traité, l'emplacement ne l'était pas.
+ * **Inside `packages/core/docs/`** (steps 1, 2 and 2b): `api/`, `public/api/` and
+ * `public/logo.png`. ⚠️ Those three STAY in place, and it is no oversight:
+ * `public/` is VitePress's static-assets directory, resolved against `srcDir` —
+ * moving it would break the build. They are gitignored and excluded from `files[]`
+ * by negation, so they are neither versioned nor published: the targeted defect is
+ * handled, the location was not the defect.
  */
 
 "use strict";
@@ -44,10 +44,10 @@ const registry = require("./lib/packages.cjs");
 // ── Paths ────────────────────────────────────────────────────────────────────
 
 const ROOT = path.resolve(__dirname, "..");
-// Résolu par le registre, jamais par `path.join(ROOT, "packages", "core")` : un chemin en
-// dur ne casse pas au déplacement, il cesse silencieusement de matcher. `requireByDirName`
-// jette si le paquet est introuvable, ce qui est le comportement voulu ici — ce script
-// écrit, et un chemin périmé publierait à côté.
+// Resolved by the registry, never by `path.join(ROOT, "packages", "core")`: a
+// hard-coded path does not break on a move, it silently stops matching.
+// `requireByDirName` throws if the package cannot be found, the wanted behaviour
+// here — this script writes, and a stale path would publish beside the target.
 const CORE = registry.requireByDirName("core").absDir;
 const DOCS_SRC = path.join(CORE, "docs");
 const TYPEDOC_OUT = path.join(DOCS_SRC, "api");
@@ -56,13 +56,13 @@ const CHANGELOG_SRC = path.join(DOCS_SRC, "CHANGELOG.md");
 const BUILD_OUT = path.join(ROOT, "docs-dist");
 
 /**
- * Échec attendu du pipeline — une cible douteuse, une source absente.
+ * Expected pipeline failure — a dubious target, an absent source.
  *
- * ⚠️ Les gardes JETTENT au lieu d'appeler `process.exit(1)`, et c'est ce qui les rend
- * PROUVABLES. Un `process.exit` tue le processus appelant : `probe-gate-visibility.cjs`
- * ne pourrait pas les exercer, et la correction la plus coûteuse du T5 — l'ordre
- * détruire/constater de `syncDir` — resterait gardée par rien du tout. `main()` attrape
- * et sort en 1 : le comportement en ligne de commande est inchangé.
+ * ⚠️ The guards THROW instead of calling `process.exit(1)`, and that is what makes
+ * them PROVABLE. A `process.exit` kills the calling process:
+ * `probe-gate-visibility.cjs` could not exercise them, and the costliest fix —
+ * `syncDir`'s destroy/observe order — would be guarded by nothing at all. `main()`
+ * catches and exits 1: command-line behaviour is unchanged.
  */
 class DeployError extends Error {
     constructor(message) {
@@ -72,12 +72,11 @@ class DeployError extends Error {
 }
 
 /**
- * Racine du site publié — `GEOLEAF_DOCS_SITE_ROOT`, obligatoire, sans défaut (Q4).
+ * Published site root — `GEOLEAF_DOCS_SITE_ROOT`, mandatory, defaultless.
  *
- * Les trois cibles externes en dérivent, de sorte que la profondeur du dépôt n'est
- * supposée nulle part. La validation tourne AVANT l'étape 1 : une cible fausse doit
- * arrêter le script pendant qu'il n'a encore rien détruit, pas au moment où l'étape 4
- * appelle `rmSync`.
+ * The three external targets derive from it, so the repo's depth is assumed
+ * nowhere. Validation runs BEFORE step 1: a wrong target must stop the script while
+ * it has destroyed nothing yet, not when step 4 calls `rmSync`.
  */
 function resolveSiteRoot(raw = process.env.GEOLEAF_DOCS_SITE_ROOT, root = ROOT) {
     if (!raw || !raw.trim()) {
@@ -97,9 +96,9 @@ function resolveSiteRoot(raw = process.env.GEOLEAF_DOCS_SITE_ROOT, root = ROOT) 
         throw new DeployError(`GEOLEAF_DOCS_SITE_ROOT « ${abs} » — ${why}`);
     };
 
-    // Les cinq gardes portent sur ce qui va être DÉTRUIT. Un `rmSync` récursif dont la
-    // cible vient d'une variable d'environnement doit échouer sur une valeur douteuse,
-    // jamais s'exécuter « au cas où ».
+    // The five guards bear on what is about to be DESTROYED. A recursive `rmSync`
+    // whose target comes from an environment variable must fail on a dubious value,
+    // never execute "just in case".
     if (abs === path.parse(abs).root) fail("c'est la racine du système de fichiers.");
     if (abs === root) fail("c'est la racine du dépôt.");
     if (!path.relative(root, abs).startsWith("..")) {
@@ -137,18 +136,18 @@ function copyDir(src, dest) {
 }
 
 /**
- * Remplace intégralement `dest` par le contenu de `src`.
+ * Fully replaces `dest` with the contents of `src`.
  *
- * ⚠️ L'ORDRE est la correction du T5.1, et c'était le défaut le plus coûteux du script.
- * Avant : `rmSync(dest)` d'abord, `copyDir(src, dest)` ensuite — et `copyDir` se contente
- * d'un `console.warn` quand la source manque. La cible externe était donc **effacée sans
- * être remplacée, en exit 0** : la doc publiée disparaissait et le script annonçait un
- * succès. Ce n'était pas théorique — T4.4 a déplacé `docs-dist/` hors de `packages/`, et
- * pendant la fenêtre où `BUILD_OUT` pointait encore l'ancien chemin, c'est exactement ce
- * qu'un `npm run docs:deploy` aurait fait.
+ * ⚠️ The ORDER is the key fix, and it was the script's costliest defect. Before:
+ * `rmSync(dest)` first, `copyDir(src, dest)` next — and `copyDir` settles for a
+ * `console.warn` when the source is missing. The external target was thus **erased
+ * without being replaced, in exit 0**: the published docs vanished and the script
+ * announced success. Not theoretical — `docs-dist/` moved out of `packages/`, and
+ * during the window where `BUILD_OUT` still pointed at the old path, that is
+ * exactly what an `npm run docs:deploy` would have done.
  *
- * Même famille que le `continue` des workflows de miroir supprimés au S9.0 : un
- * dispositif destructeur qui traite l'absence de source comme un cas bénin.
+ * Same family as the deleted mirror workflows' `continue`: a destructive device
+ * treating an absent source as a benign case.
  */
 function syncDir(src, dest) {
     if (!fs.existsSync(src)) {
@@ -312,9 +311,9 @@ function main() {
     console.log(`  ✓ Build output: ${BUILD_OUT} (${countFiles(BUILD_OUT)} files)`);
 
     // Step 4 — Sync to <site>/docs/
-    // Pas de `mkdirSync` préalable : `syncDir` valide la source AVANT de toucher à la
-    // cible, et `copyDir` crée la destination. Créer la cible en amont revenait à préparer
-    // le terrain d'une suppression qu'on n'a pas encore le droit de faire.
+    // No prior `mkdirSync`: `syncDir` validates the source BEFORE touching the
+    // target, and `copyDir` creates the destination. Creating the target upstream
+    // amounted to preparing the ground for a deletion not yet authorised.
     console.log("\n── Step 4 : Sync to <site>/docs/ ───────────────");
     syncDir(BUILD_OUT, DEPLOY_TARGET);
     console.log(`  ✓ Deployed ${countFiles(DEPLOY_TARGET)} files to ${DEPLOY_TARGET}`);
@@ -330,33 +329,34 @@ function main() {
     fs.writeFileSync(NEWS_JSON, JSON.stringify(newsData, null, 2) + "\n", "utf-8");
     console.log(`  ✓ news.json updated (${patchnotes.length} versions) → ${NEWS_JSON}`);
 
-    // ⚠️ Il y avait ici une étape 6 : `docs/CHANGELOG.md` → `packages/core/CHANGELOG.md`,
-    // annoncée « (npm consumers) ». Elle n'atteignait AUCUN consommateur npm et a été
-    // retirée au T5.2. Mesure par `npm pack --dry-run -w @geoleaf/core` : le tarball
-    // contient `docs/CHANGELOG.md` (174,2 ko) — c'est-à-dire la SOURCE de la copie — et
-    // aucun `CHANGELOG.md` à la racine du paquet. `files[]` liste `dist/`, `README.md`,
-    // `docs/` et `LICENSE` ; npm n'ajoute d'office que package.json, README et LICENSE,
-    // pas CHANGELOG. Le fichier écrit était du bruit versionné : 35 ko, 0 référent.
+    // ⚠️ A step 6 used to live here: `docs/CHANGELOG.md` →
+    // `packages/core/CHANGELOG.md`, announced "(npm consumers)". It reached NO npm
+    // consumer and was removed. Measured with `npm pack --dry-run -w @geoleaf/core`:
+    // the tarball contains `docs/CHANGELOG.md` (174.2 KB) — i.e. the copy's SOURCE —
+    // and no `CHANGELOG.md` at the package root. `files[]` lists `dist/`,
+    // `README.md`, `docs/` and `LICENSE`; npm auto-adds only package.json, README
+    // and LICENSE, not CHANGELOG. The written file was versioned noise: 35 KB, 0
+    // referents.
 
     console.log("\n═══════════════════════════════════════════════");
-    // La cible est nommée, jamais supposée : « geoleaf.dev/docs/ » était écrit en dur ici
-    // et serait devenu faux dès que GEOLEAF_DOCS_SITE_ROOT pointe ailleurs — ce que ce
-    // sprint vient précisément de rendre possible.
+    // The target is named, never assumed: "geoleaf.dev/docs/" was hard-coded here
+    // and would have become false as soon as GEOLEAF_DOCS_SITE_ROOT pointed
+    // elsewhere — precisely what has just been made possible.
     console.log(`  ✅ Deploy complete — ${DEPLOY_TARGET} updated`);
     console.log("═══════════════════════════════════════════════\n");
 }
 
-// ── Exécution vs lecture ─────────────────────────────────────────────────────
+// ── Execution vs reading ─────────────────────────────────────────────────────
 //
-// Ce script n'est invoqué par AUCUNE CI — ni `ci-local.cjs`, ni `ci.yml`, ni le hook. Il
-// est lancé à la main, rarement, et c'est le plus destructeur du dépôt. Sa correction la
-// plus importante (l'ordre détruire/constater de `syncDir`) n'était donc gardée par rien :
-// elle ne tenait qu'aux mutations manuelles du T5.
+// This script is invoked by NO CI — not `ci-local.cjs`, not `ci.yml`, not the hook.
+// It is launched by hand, rarely, and it is the repo's most destructive. Its most
+// important fix (`syncDir`'s destroy/observe order) was thus guarded by nothing: it
+// held only through manual mutations.
 //
-// L'export ferme ça. `probe-gate-visibility.cjs` exerce `syncDir` et `resolveSiteRoot`
-// sur un répertoire temporaire à chaque `ci:local`. C'est le même geste que pour
-// `ci-local.cjs` au T5.8, pour la même raison : un fichier qui s'exécute à l'import ne
-// peut être vérifié par personne.
+// The export closes that. `probe-gate-visibility.cjs` exercises `syncDir` and
+// `resolveSiteRoot` on a temporary directory at every `ci:local`. Same gesture as
+// for `ci-local.cjs`, for the same reason: a file that executes at import can be
+// verified by nobody.
 if (require.main === module) {
     try {
         main();

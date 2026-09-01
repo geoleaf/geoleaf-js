@@ -152,7 +152,7 @@ export const GeocodingRegistry = {
      * Subscribes to `geoleaf:map:ready` and prepares the control.
      * Idempotent — safe to call multiple times.
      *
-     * ⚠️ B-169 — the subscription alone is NOT enough, and the gap was silent. Until
+     * ⚠️ The subscription alone is NOT enough, and the gap was silent. Until
      * 08/08/2026 this method only added the listener: loaded after `geoleaf:map:ready` had
      * already fired, the plugin posted a listener for an event that would never come again,
      * and the search bar never mounted. No error, no warning — `isEnabled()` even returned

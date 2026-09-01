@@ -407,3 +407,45 @@
 .gl-poi-panel__section.gl-accordion {
     margin-bottom: 0.75rem;
 }
+
+/* ========================================================================== */
+/* Mode immersif — `body.gl-immersive`, posé par kernel/ui/immersive.ts       */
+/* ========================================================================== */
+
+/* Le mode retire le chrome que LE CŒUR possède, pour qu'un appelant qui a besoin de toute
+   la surface l'obtienne sans savoir quels contrôles existent. Il ne nomme aucun appelant :
+   c'est ce qui laisse `no-plugin-in-core` intact pendant qu'un plugin pilote un mode d'UI
+   applicatif.
+
+   ⚠️ Le `!important` n'est PAS de la coquetterie, et le mécanisme est l'INVERSION DES
+   COUCHES, pas la spécificité. Ce fichier entre en `layer(gl.kernel)` et
+   `capabilities/theme-selector/css/theme-selector.css` en `gl.capabilities`, déclarées dans
+   cet ordre par `geoleaf-main.css`. Pour les déclarations NORMALES, la couche la plus tardive
+   gagne — `gl.capabilities` battrait ce fichier. Pour les déclarations `!important`, l'ordre
+   s'INVERSE : `gl.kernel` l'emporte. Or `theme-selector.css` porte `display: block !important`
+   sous `@media (max-width: 768px)`. Sans `!important` ici, le masquage échouerait EN MOBILE
+   SEULEMENT — exactement là où ce mode sert.
+
+   📌 Conséquence assumée : ces règles battent aussi `gl.overrides`, le point d'entrée offert
+   à l'intégrateur, qui ne peut les reprendre que depuis une feuille HORS COUCHE (la sienne,
+   servie à côté du bundle). Acceptable pour un MODE ; ça ne le serait pas pour un style. */
+
+body.gl-immersive #gl-theme-primary-container,
+body.gl-immersive #gl-theme-secondary-container,
+body.gl-immersive #gl-right-panel,
+body.gl-immersive .gl-proximity-bar {
+    display: none !important;
+}
+
+/* ⚠️ Ciblé par RÔLE, jamais par `#gl-filter-toggle`. Cet id n'est créé nulle part dans le
+   cœur : il est écrit en dur dans la page hôte (`apps/geoleaf-app/index.html`), et le cœur ne
+   fait que le lire. Une règle du cœur sur un id que le cœur ne possède pas est morte, en
+   silence, chez tout intégrateur qui nomme son bouton autrement. `data-gl-role` est au moins
+   un contrat annoncé. */
+body.gl-immersive [data-gl-role="filter-toggle"] {
+    display: none !important;
+}
+
+/* ⚠️ `.gl-map-toolbar__group` n'est PAS listé ici : `kernel/ui/mobile/css/mobile-toolbar-bar.css`
+   le masque déjà sous `.gl-map-toolbar--fullscreen`. Deux règles pour le même effet sur le même
+   élément, posées par deux écouteurs du même événement, c'est le doublon qu'on cherche à éviter. */

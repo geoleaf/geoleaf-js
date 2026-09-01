@@ -1,28 +1,27 @@
 /**
- * Le contrat attributaire est-il OPPOSABLE ? — tâches 2.7 et 2.8 de
- * `roadmap_collecte-terrain-offline`.
+ * Is the attribute contract ENFORCEABLE?
  *
- * ⚠️ Ces deux gardes ont été « vues rougir » à l'Étape 1 — mais à la MAIN, pendant
- * l'implémentation, et rien n'en est resté. Mesuré au pré-vol du Sprint 2 :
- * `grep -rln "attributes.contract" __tests__/` ne rendait aucun test, et
- * `s13-layers-anomalies-lock.test.js` ne mentionnait ni `attributes`, ni `primitive`,
- * ni `widget`, ni A14. Une vérification manuelle ne survit pas à la session qui l'a
- * faite : c'est ce que ces deux suites remplacent.
+ * ⚠️ These two guards were "seen turning red" at Step 1 — but by HAND, during
+ * implementation, and nothing remained of it. Measured later:
+ * `grep -rln "attributes.contract" __tests__/` returned no test, and
+ * `s13-layers-anomalies-lock.test.js` mentioned neither `attributes`, nor
+ * `primitive`, nor `widget`, nor A14. A manual check does not survive the
+ * session that made it: that is what these two suites replace.
  *
- * Ce qu'elles prouvent, et que rien d'autre ne prouve :
+ * What they prove, and nothing else proves:
  *
- *   2.7 — **A10**, la liste blanche des couples (`primitive`, `widget`). C'est la
- *         raison d'être des DEUX colonnes de type (décision A13) : avec une seule
- *         colonne « représentation », le validateur n'aurait rien à confronter et ne
- *         pourrait refuser aucune combinaison.
- *   2.8 — **A14**, « un champ en écriture oblige sa couche à déclarer son éditabilité
- *         ET sa cible d'écriture ». Exprimée en JSON Schema pur (`if`/`contains`/
- *         `then`), jamais en script.
+ *   2.7 — **A10**, the whitelist of (`primitive`, `widget`) pairs. The
+ *         reason for the TWO type columns: with a single "representation"
+ *         column, the validator would have nothing to confront and could
+ *         refuse no combination.
+ *   2.8 — **A14**, "a writable field forces its layer to declare its
+ *         editability AND its write target". Expressed in pure JSON Schema
+ *         (`if`/`contains`/`then`), never in a script.
  *
- * 🛑 **Une garde jamais vue rouge ne garde rien.** Chaque cas négatif ci-dessous a été
- * éprouvé par mutation du schéma au moment de son écriture : rendre le couple légal,
- * ou retirer la branche A14, fait tomber la suite. Le balayage systématique est ce qui
- * empêche qu'une branche `if`/`then` devienne inerte sans que personne le voie.
+ * 🛑 **A guard never seen red guards nothing.» Each negative case below was
+ * exercised by mutating the schema as it was written: making the pair legal,
+ * or removing the A14 branch, brings the suite down. The systematic sweep is
+ * what keeps an `if`/`then` branch from going inert with nobody seeing it.
  */
 
 import Ajv from "ajv";
@@ -41,12 +40,13 @@ const ajv = new Ajv({ allErrors: true, allowUnionTypes: true });
 const validate = ajv.compile(schema);
 
 /**
- * Le couple légal de chaque widget, LU DANS LE CONTRAT.
+ * Each widget's legal pair, READ FROM THE CONTRACT.
  *
- * ⚠️ Dérivé, jamais recopié — sans quoi cette suite affirmerait ce qu'elle est censée
- * vérifier. Et c'est bien une confrontation : la table vient du contrat TypeScript, le
- * verdict vient du schéma JSON. Les deux peuvent diverger, et ATTR-01 de la garde de
- * parité s'occupe de leurs LISTES ; ici, on éprouve leur COMPORTEMENT.
+ * ⚠️ Derived, never copied — otherwise this suite would assert what it is
+ * supposed to verify. And it is indeed a confrontation: the table comes from
+ * the TypeScript contract, the verdict from the JSON schema. The two can
+ * diverge, and the parity guard's ATTR-01 handles their LISTS; here, their
+ * BEHAVIOUR is exercised.
  */
 function legalPrimitives() {
     const start = contractSource.indexOf("export interface AttributeWidgetPrimitive {");
@@ -61,28 +61,28 @@ function legalPrimitives() {
 const LEGAL = legalPrimitives();
 const ALL_PRIMITIVES = ["string", "number", "boolean", "string[]", "object", "object[]"];
 
-/** Une config de couche minimale, fusionnée avec le fragment éprouvé. */
+/** A minimal layer config, merged with the exercised fragment. */
 const doc = (extra) => ({ id: "probe", ...extra });
 
-/** Une couche portant un unique champ attributaire. */
+/** A layer carrying a single attribute field. */
 const withField = (field, extra = {}) => doc({ ...extra, attributes: { fields: [field] } });
 
-/** Un descripteur de champ complet, en lecture seule. */
+/** A complete field descriptor, read-only. */
 const field = (primitive, widget, extra = {}) => ({
     field: "properties.x",
     label: "X",
     primitive,
     widget,
     display: { surfaces: ["popup"] },
-    // `action` est le seul widget à exiger ses options — son `actionId` est porteur.
+    // `action` is the only widget requiring its options — its `actionId` is load-bearing.
     ...(widget === "action" ? { options: { actionId: "a" } } : {}),
     ...extra,
 });
 
 describe("2.7 — A10 : la liste blanche des couples (primitive, widget)", () => {
     it("le contrat déclare un couple légal pour chaque widget", () => {
-        // Garde anti-gate-vide : si l'extraction casse, tout le balayage ci-dessous
-        // sortirait vert en n'ayant rien éprouvé.
+        // Anti-empty-gate guard: if the extraction breaks, the whole sweep
+        // below would come out green having exercised nothing.
         expect(Object.keys(LEGAL).length).toBeGreaterThan(20);
         expect(LEGAL["checkbox"]).toEqual(["boolean", "string[]"]);
     });
@@ -112,9 +112,9 @@ describe("2.7 — A10 : la liste blanche des couples (primitive, widget)", () =>
     });
 
     it("le cas qui a motivé les deux colonnes : un nombre affiché en date", () => {
-        // ⚠️ C'est l'énoncé exact de Mattieu — « si la donnée est un nombre et qu'on
-        // dit de l'afficher en date, ça coincera ». Avec une seule colonne
-        // « représentation », rien ne coincerait.
+        // ⚠️ Mattieu's exact wording — "if the data is a number and we say to
+        // display it as a date, it will jam". With a single "representation"
+        // column, nothing would jam.
         expect(validate(withField(field("number", "date")))).toBe(false);
     });
 
@@ -123,21 +123,21 @@ describe("2.7 — A10 : la liste blanche des couples (primitive, widget)", () =>
     });
 
     it("une faute de frappe dans les options est refusée", () => {
-        // `maxRow` pour `maxRows` — le cas vu rougir à l'Étape 1, désormais permanent.
+        // `maxRow` for `maxRows` — the case seen red at Step 1, now permanent.
         expect(validate(withField(field("object[]", "table", { options: { maxRow: 5 } })))).toBe(
             false
         );
     });
 
     it("une clé d'option légale sur un AUTRE widget passe — asymétrie CONNUE", () => {
-        // 🛑 Ce n'est pas un oubli, c'est une limite mesurée et écrite sur place dans
-        // le schéma : `attributeOptions` est PLAT, donc il vérifie « cette clé
-        // existe-t-elle » et non « est-elle légale pour ce widget ». Le contrat
-        // TypeScript, lui, contraint bien par widget. Fermer le cas général demande
-        // une branche par widget — versé au registre, pas fait au passage.
+        // 🛑 Not an oversight, a limit measured and written in place in the
+        // schema: `attributeOptions` is FLAT, so it checks "does this key
+        // exist" and not "is it legal for this widget". The TypeScript
+        // contract does constrain per widget. Closing the general case takes
+        // one branch per widget — filed, not done in passing.
         //
-        // ⚠️ Le cas est verrouillé ICI plutôt que tu, pour qu'il soit trouvé le jour
-        // où quelqu'un décidera de le fermer.
+        // ⚠️ The case is locked HERE rather than silenced, so it is found the
+        // day someone decides to close it.
         expect(validate(withField(field("number", "rating", { options: { maxRows: 5 } })))).toBe(
             true
         );
@@ -180,15 +180,17 @@ describe("2.8 — A14 : un champ en écriture exige une couche éditable ET une 
     });
 
     it("edit avec `create` SEUL est refusé — la règle s'ancre sur `update`, pas sur `create`", () => {
-        // 🛑 L'ancrage est un ARBITRAGE de 5.9, pas une évidence, et c'est cette garde qui le
-        // rend falsifiable : `edit` sur un attribut décrit la modification d'une valeur
-        // EXISTANTE. S'ancrer sur `create` laisserait une couche qui ne sait que créer
-        // déclarer des champs qu'elle ne pourra jamais éditer.
-        // ⚠️ A14 a DEUX sujets vivants depuis 7.2 (`tourism/sites_rosario` et
-        // `_reference/reference-points`) — ce commentaire disait « AUCUN » et il a cessé
-        // d'être vrai le jour de la migration. Mais deux sujets vivants n'éprouvent que le
-        // cas POSITIF : aucun profil ne peut porter une couche invalide, par construction.
-        // Les cinq cas négatifs ci-dessus n'ont donc toujours qu'un seul instrument, celui-ci.
+        // 🛑 The anchoring is an ARBITRATION, not an evidence, and this guard
+        // is what makes it falsifiable: `edit` on an attribute describes
+        // modifying an EXISTING value. Anchoring on `create` would let a
+        // layer that only knows how to create declare fields it will never
+        // be able to edit.
+        // ⚠️ A14 has TWO live subjects (`tourism/sites_rosario` and
+        // `_reference/reference-points`) — this comment said "NONE" and
+        // stopped being true the day of the migration. But two live subjects
+        // only exercise the POSITIVE case: no profile can carry an invalid
+        // layer, by construction. The five negative cases above thus still
+        // have a single instrument, this one.
         expect(validate(withField(editable, { edition: { create: true }, write: WRITE }))).toBe(
             false
         );
@@ -212,9 +214,10 @@ describe("2.8 — A14 : un champ en écriture exige une couche éditable ET une 
     });
 
     it("elle ne matche pas À VIDE sur une couche sans bloc attributes", () => {
-        // ⚠️ C'est le rôle du `required: ["attributes"]` dans le `if`. Sans lui, une
-        // couche sans attributs satisfait vacuement le `contains` et se voit exiger
-        // `edition` + `write` — 6 couches sur 24 seraient devenues invalides.
+        // ⚠️ The role of the `required: ["attributes"]` in the `if`. Without
+        // it, an attribute-less layer vacuously satisfies the `contains` and
+        // gets required `edition` + `write` — 6 layers out of 24 would have
+        // become invalid.
         expect(validate(doc({}))).toBe(true);
         expect(validate(doc({ label: "Une couche sans attributs" }))).toBe(true);
     });
@@ -231,8 +234,8 @@ describe("2.8 — A14 : un champ en écriture exige une couche éditable ET une 
         expect(validate(withField(field("string", "action", { edit: { required: true } })))).toBe(
             false
         );
-        // Et même en fournissant tout ce que A14 demanderait, il reste refusé : la
-        // contrainte porte sur le widget, pas sur la couche.
+        // And even providing everything A14 would ask, it stays refused: the
+        // constraint bears on the widget, not the layer.
         expect(
             validate(
                 withField(field("string", "action", { edit: { required: true } }), {
@@ -245,42 +248,44 @@ describe("2.8 — A14 : un champ en écriture exige une couche éditable ET une 
 });
 
 /**
- * 7.2 — `edit` cesse d'être `{required?}` et devient une PROJECTION, symétrique de
+ * `edit` stops being `{required?}` and becomes a PROJECTION, symmetric with
  * `display`.
  *
- * Le mécanisme, mesuré au 07/08/2026 : `AttributeWidgetOptions` est indexé PAR WIDGET.
- * `BadgeOptions` vaut `{placeholder?}` et n'a nulle part où porter une liste de choix,
- * `DropdownOptions` porte `options`. Un seul slot `widget` n'admet donc qu'UN sac
- * d'options typé — et deux projections qui veulent deux widgets veulent deux paires.
- * C'est ce qui a écarté la table de correspondance en dur : `badge→dropdown` n'aurait eu
- * aucun endroit typé où mettre les trois choix de `sites_rosario.statut`.
+ * The mechanism, measured on 07/08/2026: `AttributeWidgetOptions` is indexed
+ * BY WIDGET. `BadgeOptions` is `{placeholder?}` and has nowhere to carry a
+ * choice list, `DropdownOptions` carries `options`. A single `widget` slot
+ * thus admits only ONE typed options bag — and two projections wanting two
+ * widgets want two pairs. That is what ruled out the hardcoded mapping
+ * table: `badge→dropdown` would have had no typed place to put
+ * `sites_rosario.statut`'s three choices.
  *
- * 🛑 Ce que ce bloc garde, et que rien d'autre ne garde : que la paire de capture soit
- * confrontée comme l'est la paire de lecture. Sans lui, `edit.widget` serait un champ
- * libre, et un widget inconnu tomberait dans le repli SILENCIEUX
- * `?? ComponentRegistry.get("text")` de `field-renderer-bridge.ts`.
+ * 🛑 What this block guards, and nothing else does: that the capture pair be
+ * confronted as the reading pair is. Without it, `edit.widget` would be a
+ * free field, and an unknown widget would fall into
+ * `field-renderer-bridge.ts`'s SILENT fallback
+ * `?? ComponentRegistry.get("text")`.
  */
 describe("7.2 — la paire de CAPTURE (primitive, edit.widget)", () => {
     const WRITE = { enabled: true, endpoint: "https://backend.test/collections/x" };
 
-    /** Une couche éditable complète, pour qu'A14 ne soit jamais la cause du rouge. */
+    /** A complete editable layer, so A14 is never the red's cause. */
     const editableLayer = (fieldDesc) =>
         withField(fieldDesc, { edition: { update: true }, write: WRITE });
 
     /**
-     * Les widgets dont la valeur de CAPTURE est un objet, quel que soit ce qu'ils lisent.
-     * `badge` émet `{label, color}`, `link` émet `{href, label?}`, `price` un montant —
-     * mesuré dans `packages/libs/field-renderer/src/types/`.
+     * The widgets whose CAPTURE value is an object, whatever they read.
+     * `badge` emits `{label, color}`, `link` emits `{href, label?}`, `price`
+     * an amount — measured in `packages/libs/field-renderer/src/types/`.
      */
     const OBJECT_CAPTURE = ["badge", "link", "price"];
 
     /**
-     * La table de capture, DÉRIVÉE de la table de lecture — jamais retapée.
+     * The capture table, DERIVED from the reading table — never retyped.
      *
-     * Deux retraits, tous deux motivés : `action`, dont `field-renderer` n'enregistre
-     * aucun composant ; et, sur une primitive `string` SEULEMENT, les trois widgets
-     * ci-dessus — capturer un objet dans une colonne scalaire est exactement ce que
-     * `write.properties` expédierait à plat au backend.
+     * Two removals, both motivated: `action`, for which `field-renderer`
+     * registers no component; and, on a `string` primitive ONLY, the three
+     * widgets above — capturing an object into a scalar column is exactly
+     * what `write.properties` would ship flat to the backend.
      */
     const captureWidgets = (primitive) =>
         Object.keys(LEGAL).filter(
@@ -291,26 +296,27 @@ describe("7.2 — la paire de CAPTURE (primitive, edit.widget)", () => {
         );
 
     /**
-     * Le widget de LECTURE utilisé pour éprouver `edit.widget` — jamais `action`.
+     * The READING widget used to exercise `edit.widget` — never `action`.
      *
-     * 🛑 Ce helper existe à cause d'un faux vert MESURÉ le 07/08/2026. Le balayage
-     * négatif ci-dessous prenait « le premier widget légal pour cette primitive », qui
-     * est `action` en `string` par ordre de déclaration du contrat. Or `action` porte
-     * `not: {required: ["edit"]}` : TOUT champ le déclarant avec un `edit` est refusé,
-     * quel que soit `edit.widget`. Le balayage rougissait donc pour la mauvaise raison,
-     * et supprimer l'enum de capture de la branche `string` — la seule branche où elle
-     * restreint quoi que ce soit — laissait la suite VERTE.
+     * 🛑 This helper exists because of a false green MEASURED on 07/08/2026.
+     * The negative sweep below took "the first legal widget for this
+     * primitive", which is `action` in `string` by the contract's
+     * declaration order. Yet `action` carries `not: {required: ["edit"]}`:
+     * ANY field declaring it with an `edit` is refused, whatever
+     * `edit.widget`. The sweep thus turned red for the wrong reason, and
+     * removing the capture enum from the `string` branch — the only branch
+     * where it restricts anything — left the suite GREEN.
      */
     const readWidgetFor = (primitive) => captureWidgets(primitive)[0];
 
     it("garde anti-gate-vide : la table de capture n'est pas vide, et elle est plus étroite en string", () => {
-        // Sans cette assertion, une extraction cassée ferait sortir tout le balayage
-        // ci-dessous vert en n'ayant éprouvé aucun couple.
+        // Without this assertion, a broken extraction would let the whole
+        // sweep below come out green having exercised no pair.
         expect(captureWidgets("string").length).toBeGreaterThan(5);
         expect(captureWidgets("object")).toEqual(expect.arrayContaining(["badge", "link"]));
         expect(captureWidgets("string")).not.toContain("badge");
-        // Et le porteur du balayage négatif ne doit JAMAIS être `action`, sans quoi le
-        // rouge viendrait de sa propre règle et n'éprouverait pas la paire de capture.
+        // And the negative sweep's carrier must NEVER be `action`, otherwise
+        // the red would come from its own rule and not exercise the capture pair.
         for (const p of ALL_PRIMITIVES) {
             expect(readWidgetFor(p), `aucun widget de capture pour ${p}`).toBeDefined();
             expect(readWidgetFor(p)).not.toBe("action");
@@ -335,9 +341,10 @@ describe("7.2 — la paire de CAPTURE (primitive, edit.widget)", () => {
             const illegal = Object.keys(LEGAL).filter((w) => !legal.includes(w));
             expect(illegal.length).toBeGreaterThan(0);
             for (const widget of illegal) {
-                // Le widget de LECTURE reste légal ET neutre : seul `edit.widget` est en
-                // cause, sans quoi le rouge pourrait venir d'A10 ou de la règle `action`
-                // et ne rien prouver d'ici. Voir `readWidgetFor`.
+                // The READING widget stays legal AND neutral: only
+                // `edit.widget` is at stake, otherwise the red could come
+                // from A10 or the `action` rule and prove nothing of this.
+                // See `readWidgetFor`.
                 const desc = field(primitive, readWidgetFor(primitive), { edit: { widget } });
                 expect(
                     validate(editableLayer(desc)),
@@ -348,10 +355,11 @@ describe("7.2 — la paire de CAPTURE (primitive, edit.widget)", () => {
     });
 
     it.each(ALL_PRIMITIVES)("`action` n'est capturable sur AUCUNE primitive (%s)", (primitive) => {
-        // ⚠️ Doublement gardé, et c'est voulu : l'enum de tête l'exclut, ET aucune des six
-        // branches par primitive ne le liste. La mutation qui l'ajoute à l'enum de tête
-        // sort donc verte — ce sont les branches qui mordent, et c'est elles qu'on éprouve
-        // en balayant les six primitives plutôt qu'une seule.
+        // ⚠️ Doubly guarded, on purpose: the head enum excludes it, AND none
+        // of the six per-primitive branches lists it. The mutation adding it
+        // to the head enum thus comes out green — the branches are what
+        // bites, and they are what is exercised by sweeping all six
+        // primitives rather than one.
         const desc = field(primitive, readWidgetFor(primitive), { edit: { widget: "action" } });
         expect(validate(editableLayer(desc))).toBe(false);
     });
@@ -385,14 +393,15 @@ describe("7.2 — la paire de CAPTURE (primitive, edit.widget)", () => {
 });
 
 /**
- * A17 — un widget de lecture à valeur OBJET posé sur une valeur `string` doit nommer
- * son widget de capture.
+ * A17 — an OBJECT-valued reading widget set on a `string` value must name
+ * its capture widget.
  *
- * 🛑 C'est la forme exacte de `sites_rosario.statut` avant 7.2 : `primitive: "string"`,
- * `widget: "badge"`, donnée `"Ouvert"`. La lecture le tolère délibérément
- * (`textOfBadge` branche sur le type) ; la capture, elle, aurait émis `{label, color}`
- * dans une colonne que `write.properties` expédie à plat. Sans cette règle, `edit` sans
- * `widget` héritait de `badge` et personne ne l'aurait vu.
+ * 🛑 The exact shape of `sites_rosario.statut` before the fix:
+ * `primitive: "string"`, `widget: "badge"`, data `"Ouvert"`. Reading
+ * tolerates it deliberately (`textOfBadge` branches on the type); capture
+ * would have emitted `{label, color}` into a column `write.properties` ships
+ * flat. Without this rule, `edit` without `widget` inherited `badge` and
+ * nobody would have seen it.
  */
 describe("7.2 / A17 — la capture d'une valeur objet sur une primitive scalaire", () => {
     const WRITE = { enabled: true, endpoint: "https://backend.test/collections/x" };
@@ -413,15 +422,15 @@ describe("7.2 / A17 — la capture d'une valeur objet sur une primitive scalaire
     });
 
     it("la règle ne mord PAS quand la valeur est réellement un objet", () => {
-        // Ici `badge` lit ET capture `{label, color}` : les deux projections sont
-        // d'accord, et exiger une déclaration serait du bruit.
+        // Here `badge` reads AND captures `{label, color}`: the two
+        // projections agree, and requiring a declaration would be noise.
         const desc = field("object", "badge", { edit: { required: true } });
         expect(validate(editableLayer(desc)), JSON.stringify(validate.errors)).toBe(true);
     });
 
     it("la règle ne mord PAS sur un champ en lecture seule", () => {
-        // Pas d'`edit`, donc aucune capture à contraindre — et c'était le cas de
-        // `statut` pendant tout le Sprint 7 avant cette tâche.
+        // No `edit`, hence no capture to constrain — and that was `statut`'s
+        // case before this fix.
         expect(validate(withField(field("string", "badge")))).toBe(true);
     });
 

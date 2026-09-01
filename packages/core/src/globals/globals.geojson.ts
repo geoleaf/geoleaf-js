@@ -68,7 +68,7 @@ interface PluginLayerLoaderRegistry {
     getLayerLoader?: (
         id: string
     ) => ((def: Record<string, unknown>) => Promise<string>) | undefined;
-    /** True when `id` has a lazy resolver registered and is not loaded yet (S4.5). */
+    /** True when `id` has a lazy resolver registered and is not loaded yet. */
     isLazyAvailable?: (id: string) => boolean;
     /** Runs the lazy resolver registered for `id`. Throws on an unknown id — hence the guard. */
     load?: (id: string) => Promise<void>;
@@ -102,10 +102,11 @@ export function setupGeoJSONKernel(): void {
     // LayerConfigManager.resolveDataFilePath resolves the path of a GeoJSON data file.
     _GeoJSONLoader._resolveDataFilePath =
         LayerConfigManager.resolveDataFilePath?.bind(LayerConfigManager);
-    // API publique S4.3 — cinq clés `_` ont quitté le namespace ici : `_GeoJSONShared`,
-    // `_GeoJSONFeatureValidator`, `_GeoJSONStyleResolver`, `_StyleRules` et `_WorkerManager`.
-    // Aucune n'avait de lecteur — ni dans le core, ni dans les 13 plugins, ni dans l'app.
-    // Elles n'étaient pas non plus typées dans `global.d.ts`, donc HOST-02 est indifférent.
+    // Five `_` keys left the namespace here: `_GeoJSONShared`,
+    // `_GeoJSONFeatureValidator`, `_GeoJSONStyleResolver`, `_StyleRules` and
+    // `_WorkerManager`. None had a reader — not in the core, not in the 13
+    // plugins, not in the app. Nor were they typed in `global.d.ts`, so HOST-02 is
+    // indifferent.
     _gl._LayerVisibilityManager = LayerVisibilityManager;
     _gl._GeoJSONLayerConfig = LayerConfigManager;
     _gl._GeoJSONLayerManager = _GeoJSONLayerManager;
@@ -116,7 +117,7 @@ export function setupGeoJSONKernel(): void {
     const _loaderDeps: LoaderDependencies = {
         getLayerManager: () => _GeoJSONLayerManager,
         getLoader: () => _GeoJSONLoader,
-        getConfig: () => _gl.Config as unknown as ConfigModule | undefined,
+        getConfig: () => _gl.Config as ConfigModule | undefined,
         getFeatureValidator: () => FeatureValidator as ValidatorModule,
         getLayerConfig: () => LayerConfigManager,
         // Capability, not kernel (S5): the `vector-tiles` installer writes `_VectorTiles`.
@@ -127,25 +128,25 @@ export function setupGeoJSONKernel(): void {
         // pure resolvers). Read it back lazily — an entry that leaves the capability out
         // simply has no writer, and the loader falls back to `{ shouldCluster: false }`.
         getCluster: () => _gl._Cluster as ClusterResolversLike | undefined,
-        getUtils: () => _gl.Utils as unknown as UtilsModuleLike | undefined,
+        getUtils: () => _gl.Utils as UtilsModuleLike | undefined,
         getCore: () => _gl.Core as CoreModuleLike | undefined,
         getLabels: () => _gl.Labels as LabelsLike | undefined,
         getWorkerManager: () => WorkerManager,
         getDataConverter: () => _gl._DataConverter as DataConverterLike | undefined,
-        // API S4.3e — le seam passe par `kernel/shared/layer-configs-state`, plus par
-        // `_gl._allLayerConfigs`. Cet état n'était pas une façade : rien de public ne
-        // l'exposait, aucun plugin ne le lisait, aucun type ne le déclarait — et il était
-        // HORS des trois oracles, donc renommable sans qu'aucune gate ne bronche.
+        // The seam goes through `kernel/shared/layer-configs-state`, no longer
+        // through `_gl._allLayerConfigs`. That state was not a facade: nothing
+        // public exposed it, no plugin read it, no type declared it — and it was
+        // OUTSIDE the three oracles, hence renamable with no gate flinching.
         getAllLayerConfigs,
         setAllLayerConfigs,
         getPluginLayerLoader: (pluginId: string) =>
             (_gl.plugins as PluginLayerLoaderRegistry | undefined)?.getLayerLoader?.(pluginId),
-        // socle-init S4.5 — le pendant ASYNCHRONE du getter ci-dessus. Un plugin enregistré
-        // paresseusement n'a pas encore exécuté son `registerLayerLoader()`, donc le getter
-        // rend `undefined` et la couche est sautée à 0 feature. Ce seam laisse les deux
-        // dispatchers le charger d'abord, sans que le core nomme jamais un plugin : la
-        // résolution reste par ID, `isLazyAvailable` décide, et un id que personne ne fournit
-        // n'est pas une erreur ici — c'est le `warn` de l'appelant qui le dit.
+        // The ASYNCHRONOUS counterpart of the getter above. A lazily-registered
+        // plugin has not yet run its `registerLayerLoader()`, so the getter yields
+        // `undefined` and the layer is skipped at 0 features. This seam lets both
+        // dispatchers load it first, without the core ever naming a plugin:
+        // resolution stays by ID, `isLazyAvailable` decides, and an id nobody
+        // provides is not an error here — the caller's `warn` says it.
         ensurePluginLoaded: async (pluginId: string) => {
             const reg = _gl.plugins as PluginLayerLoaderRegistry | undefined;
             if (reg?.isLazyAvailable?.(pluginId)) await reg.load?.(pluginId);

@@ -1,8 +1,9 @@
 /**
- * Unit tests — `entry.ts` (couverture, fichier à 0 %).
+ * Unit tests — `entry.ts` (coverage, file at 0%).
  *
- * Module à effet de bord : monte `GeoLeaf.FileImport` (convert/importAsLayer/…) et enregistre
- * le plugin. Chargé dynamiquement (`vi.resetModules()`) après préparation du namespace global.
+ * Side-effect module: mounts `GeoLeaf.FileImport` (convert/importAsLayer/…)
+ * and registers the plugin. Loaded dynamically (`vi.resetModules()`) after
+ * preparing the global namespace.
  */
 import { describe, test, expect, vi, beforeEach } from "vitest";
 

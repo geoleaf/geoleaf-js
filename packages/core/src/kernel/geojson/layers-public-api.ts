@@ -8,16 +8,15 @@
 /**
  * Layers — public API surface of the `GeoLeaf.Layers` kernel seam.
 
- * ARCHI S12.3 — ce fichier vivait sous `capabilities/layers/`, où il était le SEUL
- * fichier : pas de `<id>-capability.ts`, pas d'`install.ts`, absent du manifeste
- * INSTALLER. Les 18 vraies capacités ont les trois. Son propre en-tête le disait
- * déjà — « kernel seam ». Ce n'était donc pas une capacité mal outillée, mais du
- * kernel rangé au mauvais endroit.
+ * This file used to live under `capabilities/layers/`, where it was the ONLY
+ * file: no `<id>-capability.ts`, no `install.ts`, absent from the INSTALLER
+ * manifest. The 18 real capabilities have all three. Its own header already said
+ * it — "kernel seam". So it was not a badly-tooled capability, but kernel filed in
+ * the wrong place.
  *
- * Il est ici parce que ses trois imports d'exécution viennent tous de
- * `kernel/geojson/` : il promeut le store par couche (`GeoJSONShared.state.layers`
- * + `GeoJSONCore`) en surface publique. Son unique consommateur est la façade
- * `api/geoleaf.layers.ts`.
+ * It is here because its three runtime imports all come from `kernel/geojson/`: it
+ * promotes the per-layer store (`GeoJSONShared.state.layers` + `GeoJSONCore`) to
+ * public surface. Its sole consumer is the `api/geoleaf.layers.ts` facade.
  *
  * Promotion of the internal per-layer store (`GeoJSONShared.state.layers` +
  * `GeoJSONCore`): reads wrap the existing store; base-dataset writes go through
@@ -58,27 +57,46 @@ function matchId(f: StoreFeature, id: string | number): boolean {
  * `GeoJSONCore.updateLayerData`). Single funnel for every base-dataset mutation;
  * `patchFeature` (silent) bypasses it on purpose.
  *
- * 🛑 REFUS MAINTENU — `geoleaf:layer:updated` n'est PAS émis, et ce n'est pas un oubli.
- * Un événement public sans auditeur est une promesse qu'on ne peut plus reprendre : il entre
- * dans le contrat, il se type, il se documente, et il faut le maintenir pour personne.
+ * 🛑 REFUSAL UPHELD — `geoleaf:layer:updated` is NOT emitted, and it is not an
+ * oversight. A public event with no listener is a promise that can no longer be
+ * taken back: it enters the contract, gets typed, gets documented, and must be
+ * maintained for nobody.
  *
- * ⚠️ **CONDITION DE RÉOUVERTURE, vérifiable — c'est elle qui rend ce refus falsifiable plutôt
- * que définitif** : un abonné existe en source, dans ce dépôt OU dans un manifeste lu par
- * `scripts/verify-consumer-contract.cjs`. Le jour où c'est vrai, la gate du contrat inverse le
- * dira d'elle-même ; d'ici là, la mesure est `grep -rn "layer:updated"`, qui ne rend
- * aujourd'hui que ce commentaire.
+ * ⚠️ **REOPENING CONDITION, verifiable — it is what makes this refusal falsifiable
+ * rather than definitive**: a **SUBSCRIBER** exists in source, in this repo OR in
+ * a manifest read by `scripts/verify-consumer-contract.cjs`.
  *
- * ⚠️ Ce refus citait « filter/search D3, **addpoi** D4 » comme consommateurs à venir.
- * `addpoi` **n'existe plus** — fusionné dans `editor` au Sprint 5. Une note de refus qui nomme
- * un consommateur disparu se périme sans jamais rougir : quiconque la relit conclut soit que
- * l'auditeur va arriver, soit que le refus est caduc, et les deux sont faux. D'où la
- * réécriture en condition mesurable plutôt qu'en liste de noms. Suivi au backlog **B.7** de
- * `roadmap_contrat-inverse-api-publique.md` comme refus CONDITIONNÉ.
+ * 🔻 **AND THE CONDITION IS NOW OBSERVABLE — it was not when written
+ * (17/08/2026).** The manifest did declare a `requested_events` block, accepted by
+ * `KNOWN_TOP_LEVEL`, but **no `CC` rule read its content**: the refutation could
+ * arrive with nothing seeing it. A refusal whose reopening condition is
+ * unobservable is not refutable — it is an opinion. `CC-13` now reads that block
+ * and yields one **NOTE** per entry.
  *
- * ⚠️ Et il restera à dire QUAND il part, ce que la question « faut-il l'écrire ? » masque :
- * par `setData` ? par `patchFeature`, qui contourne délibérément cet entonnoir ? les deux ?
- * avec quelle granularité ? Un événement dont le déclencheur n'est pas tranché est pire
- * qu'aucun événement.
+ * 📌 **REQUESTED ≠ SUBSCRIBED, and the state changed without the refusal moving.**
+ * Measured on 17/08/2026: downstream **requests** `geoleaf:layer:updated`
+ * (manifest, `requested_events`). The refusal **holds** — the condition requires a
+ * subscriber, and a request is not one. But "nobody asked for it" can no longer be
+ * said: what is missing is an `on("geoleaf:layer:updated", …)` in real code, not a
+ * wish in a contract.
+ *
+ * ⚠️ **`grep -rn "layer:updated"` is no longer the right measure**: it only sees
+ * this repo, and half the condition lives downstream. The oracle is now **`CC-13`**,
+ * which reads both sides — but which **SKIPS on the public clone**
+ * (`GEOLEAF_CONSUMERS` undefined): a green there says nothing about this
+ * condition.
+ *
+ * ⚠️ This refusal cited "filter/search, **addpoi**" as consumers to come. `addpoi`
+ * **no longer exists** — merged into `editor`. A refusal note naming a vanished
+ * consumer goes stale without ever turning red: whoever re-reads it concludes
+ * either that the listener is coming, or that the refusal is void, and both are
+ * false. Hence the rewrite as a measurable condition rather than a list of names —
+ * a CONDITIONED refusal, never a definitive one.
+ *
+ * ⚠️ And WHEN it fires would remain to be said, which the question "should it be
+ * written?" masks: on `setData`? on `patchFeature`, which deliberately bypasses
+ * this funnel? both? at what granularity? An event whose trigger is not decided is
+ * worse than no event.
  */
 function writeBase(layerId: string, features: StoreFeature[]): void {
     GeoJSONCore.updateLayerData(layerId, { type: "FeatureCollection", features });

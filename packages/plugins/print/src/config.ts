@@ -56,10 +56,13 @@ export interface PrintConfig {
 
 /** Returns the merged printConfig (profile values over defaults). */
 export function getPrintConfig(): PrintConfig {
-    // Plugin settings now live under `modules.print.*` (INV-CONFIG). The core S0
-    // mirror keeps the legacy root key `printConfig.*` in sync during the
-    // deprecation window, so both shapes resolve here.
-    const raw = (coreConfigGet<Partial<PrintConfig>>("modules.print", {}) ??
-        {}) as Partial<PrintConfig>;
+    // Plugin settings live under `modules.print.*` (INV-CONFIG) — and ONLY there.
+    //
+    // ⚠️ This comment claimed a "core S0 mirror" kept the legacy root key `printConfig.*`
+    // in sync "during the deprecation window". That window is closed: the core CHANGELOG
+    // lists `printConfig` at the profile root among the root-level plugin keys REMOVED as
+    // a breaking change, and `grep printConfig` over every `src/` and every profile
+    // returns zero. Only one path is read, and it is the one below.
+    const raw = coreConfigGet<Partial<PrintConfig>>("modules.print", {}) ?? {};
     return { ...PRINT_CONFIG_DEFAULTS, ...raw } as PrintConfig;
 }

@@ -1,18 +1,18 @@
 // @ts-check
-// B.6 (batch F) — E2E permalink restore/sync en navigateur réel (WebGL logiciel).
+// E2E permalink restore/sync in a real browser (software WebGL).
 //
-// Valide le hot-path permalink refactorisé en B.6 (extraction de helpers, 0
-// changement de comportement) de bout en bout sur deploy-core (profil tourism,
-// ui.permalink.enabled = true, mode hash) :
-//   - _parseParams (verbose, tous champs)  → readUrl au boot (hook 1)
-//   - applyState (vue immédiate)           → restauration centre/zoom au boot (hook 2)
-//   - _applyLayersAndFilter (filtre texte) → _applyPermalinkTextFilter (deferred theme:applied)
-//   - _captureState + buildUrl + startSync → écriture de l'URL sur déplacement
+// Validates the refactored permalink hot-path (helper extraction, 0
+// behaviour change) end to end on deploy-core (tourism profile,
+// ui.permalink.enabled = true, hash mode):
+//   - _parseParams (verbose, all fields)   → readUrl at boot (hook 1)
+//   - applyState (immediate view)          → centre/zoom restore at boot (hook 2)
+//   - _applyLayersAndFilter (text filter)  → _applyPermalinkTextFilter (deferred theme:applied)
+//   - _captureState + buildUrl + startSync → URL write on move
 //
-// La couverture par-valeur exhaustive (validation/caps/anti-XSS, compact) est en
-// Vitest (__tests__/ui/permalink*, __tests__/security/permalink-injection). Ici on
-// confirme la chaîne réelle via des ancrages STABLES (API GeoLeaf.Permalink,
-// état natif maplibregl, valeur d'input DOM) — pas d'assertion pixel.
+// The exhaustive per-value coverage (validation/caps/anti-XSS, compact) is
+// in Vitest (__tests__/ui/permalink*, __tests__/security/permalink-injection).
+// Here the real chain is confirmed through STABLE anchors (GeoLeaf.Permalink
+// API, native maplibregl state, DOM input value) — no pixel assertion.
 
 import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
@@ -20,7 +20,8 @@ import { baseURL } from "./helpers/base-url.js";
 test.use({ baseURL: baseURL("core") }); // deploy-core (profil tourism)
 
 /** Boot the map and wait until GeoLeaf has resolved a native maplibregl.Map. */
-async function bootMap(page) {
+// Contract: style live, NO goto — these tests navigate with their own params first.
+async function waitMapStyleReady(page) {
     await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
     await page.waitForFunction(
         () => {
@@ -34,17 +35,19 @@ async function bootMap(page) {
 }
 
 test.describe("19 — permalink restore/sync (état map/DOM réel)", () => {
-    // ── _parseParams + applyState : la vue est restaurée depuis l'URL au boot ────
+    // ── _parseParams + applyState: the view is restored from the URL at boot ─────
     test("restore: une URL #gl_lat/lng/zoom restaure le centre + le zoom de la carte", async ({
         page,
     }) => {
-        // Coordonnées IN-BOUNDS (profil tourism : lat [-55,-21.78], lng [-73.5,-53.5]),
-        // distinctives du centre par défaut (~-38.4,-63.5) et du zoom de fit.
+        // IN-BOUNDS coordinates (tourism profile: lat [-55,-21.78],
+        // lng [-73.5,-53.5]), distinctive from the default centre
+        // (~-38.4,-63.5) and the fit zoom.
         await page.goto("/#gl_lat=-48&gl_lng=-58&gl_zoom=8");
-        await bootMap(page);
+        await waitMapStyleReady(page);
 
-        // applyStoredState (hook 2) appelle map.setView immédiatement ; on attend que
-        // le centre natif converge vers les coordonnées du permalink (≠ vue profil).
+        // applyStoredState (hook 2) calls map.setView immediately; wait for
+        // the native centre to converge on the permalink's coordinates
+        // (≠ profile view).
         await page.waitForFunction(
             () => {
                 const native = /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap();
@@ -69,14 +72,14 @@ test.describe("19 — permalink restore/sync (état map/DOM réel)", () => {
         expect(view.zoom).toBeCloseTo(8, 0);
     });
 
-    // ── _parseParams : tous les champs verbeux sont parsés (listes + scalaires) ──
+    // ── _parseParams: every verbose field is parsed (lists + scalars) ────────────
     test("parse: GeoLeaf.Permalink.getState() reflète tous les champs de l'URL", async ({
         page,
     }) => {
         await page.goto(
             "/#gl_lat=45.5&gl_lng=-73.6&gl_zoom=10&gl_layers=alpha,beta&gl_filter=parc&gl_rating=3"
         );
-        await bootMap(page);
+        await waitMapStyleReady(page);
 
         const state = await page.evaluate(() =>
             /** @type {any} */ (window).GeoLeaf.Permalink.getState()
@@ -92,13 +95,14 @@ test.describe("19 — permalink restore/sync (état map/DOM réel)", () => {
         expect(state.rating).toBe(3);
     });
 
-    // ── _applyLayersAndFilter → _applyPermalinkTextFilter : filtre texte restauré ─
+    // ── _applyLayersAndFilter → _applyPermalinkTextFilter: text filter restored ──
     test("restore: gl_filter réinjecte la valeur dans le champ de recherche", async ({ page }) => {
         await page.goto("/#gl_lat=12.34&gl_lng=56.78&gl_zoom=7&gl_filter=montagne");
-        await bootMap(page);
+        await waitMapStyleReady(page);
 
-        // _applyLayersAndFilter est différé au geoleaf:theme:applied du boot ; on attend
-        // que la valeur soit réinjectée dans l'input searchText (réel ou ghost).
+        // _applyLayersAndFilter is deferred to the boot's
+        // geoleaf:theme:applied; wait for the value to be re-injected into
+        // the searchText input (real or ghost).
         await page.waitForFunction(
             () => {
                 const input = /** @type {HTMLInputElement|null} */ (
@@ -118,19 +122,20 @@ test.describe("19 — permalink restore/sync (état map/DOM réel)", () => {
         expect(value).toBe("montagne");
     });
 
-    // ── _captureState + buildUrl + startSync : un déplacement écrit l'URL ────────
+    // ── _captureState + buildUrl + startSync: a move writes the URL ──────────────
     test("sync: un déplacement de la carte sérialise l'état dans l'URL", async ({ page }) => {
         await page.goto("/");
-        await bootMap(page);
+        await waitMapStyleReady(page);
         const before = await page.evaluate(() => window.location.hash);
 
-        // startSync est attaché au boot (hook 2). On déplace la carte vers des
-        // coordonnées IN-BOUNDS distinctives via l'API adaptateur (même chemin prod).
+        // startSync is attached at boot (hook 2). The map is moved to
+        // distinctive IN-BOUNDS coordinates via the adapter API (same path
+        // as production).
         await page.evaluate(() => {
             /** @type {any} */ (window).GeoLeaf.Core.getMap().setView({ lat: -45, lng: -60 }, 5);
         });
 
-        // L'écriture est débouncée (~400 ms) via history.replaceState → window.location.hash.
+        // The write is debounced (~400 ms) via history.replaceState → window.location.hash.
         await page.waitForFunction(
             (prev) => /gl_zoom=5\b/.test(window.location.hash) && window.location.hash !== prev,
             before,
@@ -138,7 +143,7 @@ test.describe("19 — permalink restore/sync (état map/DOM réel)", () => {
         );
 
         const hash = await page.evaluate(() => window.location.hash);
-        expect(hash).toMatch(/gl_lat=-4[0-9]/); // ~ -45 (capturé depuis la carte)
+        expect(hash).toMatch(/gl_lat=-4[0-9]/); // ~ -45 (captured from the map)
         expect(hash).toMatch(/gl_lng=-[56][0-9]/); // ~ -60
         expect(hash).toMatch(/gl_zoom=5\b/);
         expect(hash).not.toBe(before);

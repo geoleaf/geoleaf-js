@@ -1,6 +1,5 @@
 /**
- * Phase 60 — Step 1.1: src/api/geoleaf.core.ts (0% → 60%)
- * Couvre le shim core qui re-exporte { Core } depuis src/api/geoleaf.core.ts
+ * Covers the core shim that re-exports { Core } from src/api/geoleaf.core.ts
  */
 import { Core } from "../../src/api/geoleaf.core.js";
 

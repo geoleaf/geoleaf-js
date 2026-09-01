@@ -1,36 +1,31 @@
 /**
- * Unit tests — capacité `theme-palette` (S3).
+ * Unit tests — `theme-palette` capability.
  *
- * Insiste sur les propriétés que le CDC désigne comme porteuses :
- *   • la palette et le mode clair/sombre sont ORTHOGONAUX (axes indépendants) ;
- *   • la palette `default` est l'ABSENCE d'attribut, pas un attribut valant "default" ;
- *   • le `default` de config s'applique MÊME quand le sélecteur est désactivé — c'est le
- *     cas majoritaire en production ;
- *   • un accès `localStorage` qui jette ne casse rien.
+ * Insists on the properties the CDC names as load-bearing:
+ *   • the palette and the light/dark mode are ORTHOGONAL (independent axes);
+ *   • the `default` palette is the ABSENCE of the attribute, not an attribute
+ *     worth "default";
+ *   • the config `default` applies EVEN when the selector is disabled — the
+ *     majority case in production;
+ *   • a throwing `localStorage` access breaks nothing.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { CapabilityRegistry } = await import("../../../src/kernel/api/capability-registry.ts");
-const { THEME_PALETTE_CAPABILITY } = await import(
-    "../../../src/capabilities/theme-palette/theme-palette-capability.ts"
-);
+const { THEME_PALETTE_CAPABILITY } =
+    await import("../../../src/capabilities/theme-palette/theme-palette-capability.ts");
 const { Config } = await import("../../../src/kernel/config/config-primitives.ts");
-const { getThemePaletteConfig, getPalettes } = await import(
-    "../../../src/capabilities/theme-palette/config.ts"
-);
-const { applyPalette, getPalette, resolveInitialPalette, PALETTE_STORAGE_KEY } = await import(
-    "../../../src/capabilities/theme-palette/palette-engine.ts"
-);
-const { ThemePaletteLifecycle } = await import(
-    "../../../src/capabilities/theme-palette/lifecycle.ts"
-);
-const { PALETTE_BUTTON_CLASS } = await import(
-    "../../../src/capabilities/theme-palette/palette-button.ts"
-);
-const { emitDesktopTabsReady } = await import(
-    "../../../src/kernel/ui/desktop/desktop-tabs-seam.ts"
-);
+const { getThemePaletteConfig, getPalettes } =
+    await import("../../../src/capabilities/theme-palette/config.ts");
+const { applyPalette, getPalette, resolveInitialPalette, PALETTE_STORAGE_KEY } =
+    await import("../../../src/capabilities/theme-palette/palette-engine.ts");
+const { ThemePaletteLifecycle } =
+    await import("../../../src/capabilities/theme-palette/lifecycle.ts");
+const { PALETTE_BUTTON_CLASS } =
+    await import("../../../src/capabilities/theme-palette/palette-button.ts");
+const { emitDesktopTabsReady } =
+    await import("../../../src/kernel/ui/desktop/desktop-tabs-seam.ts");
 
 const _originalGet = Config.get;
 function stubConfig(cfg) {
@@ -101,8 +96,8 @@ describe("palette-engine", () => {
     });
 
     it("'default' REMOVES the attribute — it is the absence, not a value", () => {
-        // Un bloc `[data-gl-palette="default"]` n'existe pas : le défaut, ce sont les
-        // tokens du kernel tels quels.
+        // A `[data-gl-palette="default"]` block does not exist: the default
+        // is the kernel's tokens as-is.
         stubConfig({});
         applyPalette("green");
         applyPalette("default");
@@ -142,7 +137,7 @@ describe("palette-engine", () => {
         expect(resolveInitialPalette()).toBe("green");
 
         localStorage.setItem(PALETTE_STORAGE_KEY, "chartreuse"); // inconnue
-        expect(resolveInitialPalette()).toBe("blue"); // repli sur la config
+        expect(resolveInitialPalette()).toBe("blue"); // fallback to the config
     });
 
     it("ne jette pas quand localStorage est inaccessible", () => {
@@ -155,14 +150,14 @@ describe("palette-engine", () => {
         });
         expect(() => resolveInitialPalette()).not.toThrow();
         expect(() => applyPalette("green")).not.toThrow();
-        expect(getPalette()).toBe("green"); // appliquée quand même
+        expect(getPalette()).toBe("green"); // applied all the same
         get.mockRestore();
         set.mockRestore();
     });
 
     it("est ORTHOGONAL au mode clair/sombre", () => {
-        // La palette vit sur <html>, le mode sur <body> : changer l'une ne doit jamais
-        // réinitialiser l'autre.
+        // The palette lives on <html>, the mode on <body>: changing one must
+        // never reset the other.
         stubConfig({});
         document.body.className = "gl-theme-dark";
         applyPalette("green");
@@ -185,7 +180,7 @@ describe("ThemePaletteLifecycle", () => {
     }
 
     it("applique le `default` de config MÊME sélecteur désactivé (cas majoritaire)", () => {
-        // L'intégrateur qui fixe sa couleur de marque met enabled:false et garde default.
+        // The integrator pinning their brand colour sets enabled:false and keeps default.
         stubConfig({ modules: { "theme-palette": { enabled: false, default: "green" } } });
         ThemePaletteLifecycle.init();
         expect(document.documentElement.dataset.glPalette).toBe("green");
@@ -247,7 +242,7 @@ describe("ThemePaletteLifecycle", () => {
 
         popover.querySelector('[data-gl-palette="green"]').click();
         expect(document.documentElement.dataset.glPalette).toBe("green");
-        // Marquage actif mis à jour sans reconstruire le popover.
+        // Active marking updated without rebuilding the popover.
         expect(
             popover.querySelector('[data-gl-palette="green"]').getAttribute("aria-current")
         ).toBe("true");

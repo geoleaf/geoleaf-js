@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "naked-fetch",
+    "scope": ["scripts/check-naked-fetch.cjs"],
+    "verdicts": {
+        "scripts/check-naked-fetch.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "NF-01…03 — un fetch de production porte un chemin d'annulation (clé signal dans ses options), cliquet décroissant",
+            "confidence": "haute",
+            "rationale": "Câblé dans ci:local et ci.yml à la pose. Tient l'invariant : un fetch sans signal ne peut ni expirer ni être annulé — un profil qui bascule laisse la requête tirer dans un monde disparu. Détection À L'AST et non au grep à fenêtre : le pré-vol de la ligne a documenté que le grep comptait de la prose et ratait les options multi-lignes ; l'idiome conditionnel `signal ? { signal } : undefined` et les spreads comptent COUVERTS (punir le spread punirait l'idiome composable du correctif lui-même). Relevé de pose : 25 appels réels (le grep en rendait 36 avec le bruit), 12 nus gelés en baseline décroissante, clés fichier::fonction sans numéro de ligne. Ce que le gel ne prouve pas est écrit dans son _comment : qu'un timeout est attaché au signal — propriété de flux, vérifiée à la revue de chaque descente. VU ROUGE SUR TROIS MUTATIONS (site nu neuf nommé, guérison non resserrée, corpus effondré sous le plancher de 10), restaurations sha256 OK."
+        }
+    }
+}

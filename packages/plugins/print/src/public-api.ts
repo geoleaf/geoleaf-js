@@ -29,10 +29,11 @@ export function buildPublicApi() {
         registerExporter,
         registerPageFormat,
         registerSlot,
-        // ⚠️ Préfixe `_` = « interne » par convention du dépôt, et pourtant PUBLIÉ sur
-        // `GeoLeaf.Print` (B-71). La convention et la surface réelle se contredisent ici.
-        // Il est consommé par les tests : le retirer demande de leur donner une autre voie,
-        // ce qui n'est pas un geste de documentation. Marqué plutôt que déplacé en douce.
+        // ⚠️ `_` prefix = "internal" by repo convention, and yet PUBLISHED on
+        // `GeoLeaf.Print`. Convention and real surface contradict each other
+        // here. It is consumed by the tests: removing it means giving them
+        // another way in, which is not a documentation act. Marked rather than
+        // quietly moved.
         _getExporter,
     };
 }

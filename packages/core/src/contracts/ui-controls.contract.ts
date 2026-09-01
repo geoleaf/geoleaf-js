@@ -94,7 +94,7 @@ export interface IProximityState {
     map: IMapAdapter | null;
     /** The map-click event handler registered during placement mode (null when inactive). */
     clickHandler: ((e: unknown) => void) | null;
-    /** Pending radius value (metres) waiting to be applied after a marker placement. */
+    /** Pending radius value (km) waiting to be applied after a marker placement. */
     pendingRadius: number | null;
     /** Array of cleanup callbacks collected during proximity session (event listeners, etc.). */
     eventCleanups: Array<number | null | (() => void)>;

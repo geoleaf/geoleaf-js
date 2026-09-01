@@ -14,7 +14,7 @@
  *
  * ## Why this lives here and not in `geoleaf.events.ts`
  *
- * Split in S13.1: `modules/geoleaf.events.ts` is a public facade and, per the "Façades
+ * Split out: `modules/geoleaf.events.ts` is a public facade and, per the "Façades
  * publiques" rule (ARCHITECTURE.md), carries no logic. The three DOM listener calls
  * below are that logic, so they moved here — the same conformation `storage` received
  * in S3 (`kernel/storage/facade.ts`), which the architecture document names as the
@@ -26,11 +26,12 @@
  * exist only for integrators. Merging would make every one of those internal modules
  * import the public surface just to reach the dispatcher.
  *
- * ⚠️ Ce paragraphe annonçait « 16 internal callers », deux fois. Le compte valait **20** au
- * 13/08/2026 sans que rien ne l'ait signalé, et le Sprint 4 du contrat inverse l'a encore
- * fait monter. L'argument ne dépend pas du nombre — il dépend du fait qu'il y en a beaucoup
- * d'un côté et zéro de l'autre. Le nombre est donc retiré plutôt que rafraîchi ; il se
- * mesure : `grep -rn "dispatchGeoLeafEvent(" packages/core/src --include=*.ts`.
+ * ⚠️ This paragraph announced "16 internal callers", twice. The count was **20** on
+ * 13/08/2026 with nothing having flagged it, and the seam typing pushed it up
+ * again. The argument does not depend on the number — it depends on there being
+ * many on one side and zero on the other. The number is therefore removed rather
+ * than refreshed; it measures:
+ * `grep -rn "dispatchGeoLeafEvent(" packages/core/src --include=*.ts`.
  *
  * ⚠️ Unlike the storage facade, this module has **no top-level side effect**. The global
  * mount belongs to `globals/globals.api.ts` (single owner, frozen by the boot golden
@@ -38,8 +39,8 @@
  *
  * @example — Basic usage
  * ```ts
- * GeoLeaf.Events.on("geoleaf:poi:click", (e) => {
- *   console.log("POI clicked:", e.detail.poiId);
+ * GeoLeaf.Events.on("geoleaf:poi:panel:open", (e) => {
+ *   console.log("POI panel opened:", e.detail.poiId, e.detail.poiName);
  * });
  * ```
  *
@@ -52,8 +53,8 @@
  *
  * @example — Analytics / Matomo
  * ```ts
- * GeoLeaf.Events.on("geoleaf:poi:click", (e) => {
- *   _paq.push(["trackEvent", "Map", "POI Click", e.detail.poiId]);
+ * GeoLeaf.Events.on("geoleaf:poi:panel:open", (e) => {
+ *   _paq.push(["trackEvent", "Map", "POI Panel", e.detail.poiId]);
  * });
  * GeoLeaf.Events.on("geoleaf:filter:apply", (e) => {
  *   _paq.push(["trackEvent", "Map", "Filter Apply", e.detail.activeCount.toString()]);
@@ -79,7 +80,7 @@
  * | `geoleaf:map:ready`           | MapLibre map created                    | —                                         |
  * | `geoleaf:basemap:change`      | Base tile layer switched                | `key`, `previousKey`                      |
  * | `geoleaf:theme:applied`       | Theme applied (layers loaded)           | `themeName`, `layerCount`                 |
- * | `geoleaf:poi:click`           | POI marker clicked                      | `poiId`, `layerId`, `source`              |
+ * | `geoleaf:poi:click`           | 🛑 **DECLARED, NEVER EMITTED** (see below) | `poiId`, `layerId`, `source` (no referent) |
  * | `geoleaf:poi:panel:open`      | Side panel opened for a POI             | `poiId`, `poiName`                        |
  * | `geoleaf:poi:panel:close`     | Side panel closed                       | `poiId`                                   |
  * | `geoleaf:panel:opened`        | Desktop tab panel opened a tab          | `tabId`                                   |
@@ -99,6 +100,21 @@
  * would flatten to `{}`. It is emitted as a raw `CustomEvent` by
  * `kernel/ui/toolbar-dispatch.ts` and typed in `GeoLeafRawEventMap`. Subscribing to it here
  * is fully typed; there is deliberately no way to emit it through this API.
+ *
+ * 🛑 **`geoleaf:poi:click` is DECLARED and NEVER EMITTED — subscribing to it
+ * triggers nothing.** Measured on 17/08/2026: of the map's 49 events, 48 are cited
+ * by emitting code, this one by none. ⚠️ **The table above announced it as "POI
+ * marker clicked" for months, and three `@example`s of this very file showed how to
+ * subscribe** — in the API's most-read document. The exact class of the phantom POI
+ * API `CLAUDE.md` records as having already cost this repo: an extract right in
+ * appearance, that nothing compiles or executes, and that an integrator copies
+ * before wondering why their code does not react. (That API's name is not spelled
+ * here on purpose: the `poi-dissolution` guard —
+ * `__tests__/guards/extracted-features.guard.test.js` — refuses the token in
+ * `src/`, and it bit on this very sentence. A guard that punishes the citation is
+ * strict, not broken.) The examples now target `geoleaf:poi:panel:open`, which is
+ * really emitted. The event is NOT removed from the map (published interface); it
+ * is said to be false.
  *
  * @see `kernel/events/event-bus.ts` for the internal event dispatcher
  */
@@ -123,37 +139,40 @@ type GeoLeafEventHandler<K extends keyof GeoLeafListenableEventMap> = (
 ) => void;
 
 /**
- * Noms déjà signalés — un avertissement par nom, pas par appel.
+ * Names already flagged — one warning per name, not per call.
  *
- * Un intégrateur qui s'abonne dans une boucle de rendu produirait sinon des centaines de
- * lignes identiques, et une console noyée n'avertit plus personne.
+ * An integrator subscribing in a render loop would otherwise produce hundreds of
+ * identical lines, and a drowned console warns nobody any more.
  */
 const _warnedNames = new Set<string>();
 
 /**
- * Avertit quand un nom d'événement sort du domaine `geoleaf:`.
+ * Warns when an event name leaves the `geoleaf:` domain.
  *
- * 🛑 **B-240 — POURQUOI UN AVERTISSEMENT PLUTÔT QU'UN REFUS, ET POURQUOI ICI.**
+ * 🛑 **WHY A WARNING RATHER THAN A REFUSAL, AND WHY HERE.**
  *
- * `on()` fait `document.addEventListener(event, …)` **sans rien préfixer** : le nom passe
- * verbatim. Un abonnement à `"popup:action"` au lieu de `"geoleaf:popup:action"` est donc
- * **nécessairement mort** — et il l'est **en silence**, puisque le DOM accepte n'importe quelle
- * chaîne. Mesuré chez l'aval : trois abonnements de `GeoLeafMapView.js` sont dans ce cas depuis
- * qu'ils ont été écrits, sur un canal enrichi exprès pour eux.
+ * `on()` does `document.addEventListener(event, …)` **prefixing nothing**: the name
+ * passes verbatim. A subscription to `"popup:action"` instead of
+ * `"geoleaf:popup:action"` is therefore **necessarily dead** — and it is
+ * **silently**, since the DOM accepts any string. Measured downstream: three
+ * subscriptions in `GeoLeafMapView.js` have been in this case since they were
+ * written, on a channel enriched expressly for them.
  *
- * ⚠️ **Le typage ne protège pas la personne concernée.** `K extends keyof
- * GeoLeafListenableEventMap` refuse le nom fautif à la compilation — mais le consommateur qui
- * s'est trompé est en **JavaScript**, dans une base Odoo qui ne compile pas nos types. La
- * garantie existe précisément là où elle n'est pas lue.
+ * ⚠️ **Typing does not protect the person concerned.** `K extends keyof
+ * GeoLeafListenableEventMap` refuses the faulty name at compilation — but the
+ * consumer who erred is in **JavaScript**, in a codebase that does not compile our
+ * types. The guarantee exists precisely where it is not read.
  *
- * ✅ **C'est le geste du dépôt quand un fait ne peut pas être gaté chez celui qui en a besoin :
- * le faire VOYAGER avec l'artefact**, comme `SERVEUR.md` part avec le livrable parce qu'aucune
- * gate ne voit le nginx de l'intégrateur. `EM-03` ferme cette classe pour NOTRE code ; rien ne
- * peut la fermer dans le code d'un consommateur, sauf l'API elle-même au moment de l'appel.
+ * ✅ **It is the repo's gesture when a fact cannot be gated where it is needed:
+ * make it TRAVEL with the artifact**, as `SERVEUR.md` ships with the deliverable
+ * because no gate sees the integrator's nginx. `EM-03` closes this class for OUR
+ * code; nothing can close it in a consumer's code, except the API itself at call
+ * time.
  *
- * 🖐 **Il avertit, il ne refuse pas.** Refuser casserait à l'exécution un intégrateur dont le
- * seul tort est d'avoir écrit un nom que nous acceptions hier — sur une API publiée, et avec un
- * `DEPRECATIONS.json` vide. L'avertissement rend le défaut visible sans rien rompre.
+ * 🖐 **It warns, it does not refuse.** Refusing would break at runtime an
+ * integrator whose only fault is having written a name we accepted yesterday — on
+ * a published API, with an empty `DEPRECATIONS.json`. The warning makes the defect
+ * visible without breaking anything.
  */
 function _warnIfOutOfDomain(event: string): void {
     if (event.startsWith("geoleaf:") || _warnedNames.has(event)) return;
@@ -180,8 +199,8 @@ export const Events = {
      *
      * @example
      * ```js
-     * GeoLeaf.Events.on("geoleaf:poi:click", (e) => {
-     *     console.log("POI cliqué :", e.detail.poiId);
+     * GeoLeaf.Events.on("geoleaf:poi:panel:open", (e) => {
+     *     console.log("Panneau POI ouvert :", e.detail.poiId);
      * });
      * ```
      */
@@ -200,14 +219,14 @@ export const Events = {
      *
      * @example
      * ```js
-     * // Le handler doit être NOMMÉ : une fonction anonyme ne peut jamais être retirée.
-     * const handlePoiClick = (e) => {
+     * // The handler must be NAMED: an anonymous function can never be removed.
+     * const handlePoiPanel = (e) => {
      *     console.log(e.detail.poiId);
      * };
-     * GeoLeaf.Events.on("geoleaf:poi:click", handlePoiClick);
+     * GeoLeaf.Events.on("geoleaf:poi:panel:open", handlePoiPanel);
      *
      * // Plus tard :
-     * GeoLeaf.Events.off("geoleaf:poi:click", handlePoiClick);
+     * GeoLeaf.Events.off("geoleaf:poi:panel:open", handlePoiPanel);
      * ```
      */
     off<K extends keyof GeoLeafListenableEventMap>(

@@ -15,7 +15,7 @@
  *     find the file.
  *
  * Typed in JSDoc rather than TypeScript — see ensure-tsx-node-options.mjs for why
- * everything under build-config/ is `.mjs` (ARCHI S9.3).
+ * everything under build-config/ is `.mjs`.
  */
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";

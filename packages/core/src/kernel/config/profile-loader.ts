@@ -11,6 +11,7 @@
 
 import { Log } from "../../utils/log/index.js";
 import { ConfigLoader } from "./loader.js";
+import { seedStyleDocuments } from "../../utils/loaders/style-cache.js";
 import { isUnsafeKey } from "../../utils/general/object-path-guard.js";
 import { layerDataPath } from "../../utils/general/layer-data-path.js";
 import {
@@ -57,6 +58,28 @@ function _resolveBundledLayerConfigs(
         };
     });
 }
+
+/**
+ * Bundle format this loader understands. Compared with the `_bundleVersion` the build writes
+ * into every bundle.
+ *
+ * 🛑 **The field existed for months and NOTHING read it** — the comment beside the writer even
+ * asserted that it was read, which is why it survived a purge that removed its neighbour for
+ * exactly the reason it should itself have been removed. Either the field gains the reader its
+ * comment promises, or it goes; this is the first branch.
+ *
+ * ⚠️ **A stale bundle is not hypothetical here, and that is what settles the choice.** The
+ * bundle is PRE-CACHED by the service worker — it is the file that collapses thirty-odd
+ * requests into one — so a browser can legitimately hold one produced by an older build long
+ * after the deployment changed. Without a version, a format change would be read as data and
+ * produce a profile silently missing sections.
+ *
+ * 📌 **Module-private on purpose.** Hung on the loader object it would enter the published API
+ * surface, where a name stays for good. And a test reading it back would be asserting the loader
+ * against its own constant — the confrontation that matters is with the BUILD, which writes the
+ * field.
+ */
+const BUNDLE_FORMAT = "1.0";
 
 const ProfileLoader = {
     /**
@@ -319,7 +342,7 @@ const ProfileLoader = {
      * ~19-request cascade with a single HTTP fetch.
      *
      * Called automatically by `loadModularProfile()` when `profile.bundleFile` is set.
-     * The bundle must have been generated at build time by `scripts/bundle-profiles.cjs`.
+     * The bundle must have been generated at build time by `scripts/lib/bundle-profiles.cjs`.
      *
      * @param profile     - The base profile object (already loaded from profile.json).
      * @param baseUrl     - Base URL for resolving the bundle file path.
@@ -363,16 +386,38 @@ const ProfileLoader = {
         baseUrl: string,
         profileId: string
     ): Record<string, unknown> {
+        // The version confrontation. It WARNS and continues, deliberately: refusing an
+        // unknown format would turn a cached bundle into a blank map, which is worse than a
+        // profile assembled from a format we half-understand — and the cascade fallback below
+        // is not reachable from here, the payload is already fetched. What matters is that a
+        // mismatch stops being invisible.
+        const seen = bundle._bundleVersion;
+        if (seen !== undefined && seen !== BUNDLE_FORMAT) {
+            Log.warn(
+                `[ProfileLoader] ${profileId} — bundle format ${String(seen)} where ` +
+                    `${BUNDLE_FORMAT} is expected. It is most likely a bundle held by the ` +
+                    `service worker from an earlier deployment: sections this loader does not ` +
+                    `know are ignored, and sections it expects may be absent.`
+            );
+        }
+
         const layersFileData = (bundle.layersFile as Record<string, unknown>) ?? null;
         const layerConfigsMap =
             (bundle.layerConfigs as Record<string, Record<string, unknown>>) ?? {};
 
+        // Style documents travel with the bundle since S3: seeding them here is what turns
+        // "the bundle collapses 32 requests into one" into a statement that also covers the
+        // styles. Seeded BEFORE the merge, because a layer's style can be requested as soon
+        // as the theme applies — the seeding must not be racing the first render.
+        seedStyleDocuments(profileId, bundle.layerStyleDocuments);
+
         // Mirror the same merge/expand logic as the cascade (basemaps/ui/features + modules).
-        // Insertion conditionnelle sur les quatre sections : elles alimentent le MERGE de
-        // profil. Une section présente valant `undefined` y écraserait la valeur en cascade,
-        // là où une section absente la laisse intacte — c'est précisément la distinction que
-        // `exactOptionalPropertyTypes` rend visible, et le seul endroit du kernel où elle
-        // porte sur la configuration livrée à l'intégrateur.
+        // Conditional insertion on all four sections: they feed the profile MERGE. A
+        // section present with value `undefined` would overwrite the cascaded value
+        // there, where an absent section leaves it intact — precisely the
+        // distinction `exactOptionalPropertyTypes` makes visible, and the kernel's
+        // only place where it bears on the configuration delivered to the
+        // integrator.
         const { mergedProfile, expandedLayers } = this._mergeAndExpand(profile, profileId, {
             ...(bundle.basemaps !== undefined && {
                 basemaps: bundle.basemaps as Record<string, unknown>,
@@ -524,11 +569,11 @@ const ProfileLoader = {
                             (layerData.config.layerManagerId as string) ||
                             "geojson-default",
                     } as Record<string, unknown>;
-                    // ⚠️ La dérivation vit dans `layerDataPath` depuis la tâche 4.2, et non
-                    // plus ici : le chemin de cache hors-ligne en avait besoin AUSSI, la
-                    // refaire là-bas aurait fait deux endroits libres de diverger. Le helper
-                    // rend `dataFile` tel quel quand il est déjà posé, donc l'ancien garde
-                    // `!normalized.dataFile` est porté par lui.
+                    // ⚠️ The derivation lives in `layerDataPath`, no longer here:
+                    // the offline cache path needed it TOO, and redoing it there
+                    // would have made two places free to diverge. The helper returns
+                    // `dataFile` as-is when already set, so the old
+                    // `!normalized.dataFile` guard is carried by it.
                     const derived = layerDataPath(
                         normalized as { dataFile?: unknown; data?: unknown }
                     );

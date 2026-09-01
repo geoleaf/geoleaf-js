@@ -61,7 +61,7 @@ describe("Integration core ↔ storage — SyncManager", () => {
             expect(result).toHaveProperty("syncContent");
             expect(result).toHaveProperty("syncStatusEl");
             expect(result).toHaveProperty("syncBtn");
-            // ⚠️ `syncBackupsEl` retiré à la tâche 4.11, avec la chaîne de sauvegarde.
+            // ⚠️ `syncBackupsEl` removed with the backup chain.
             expect(result).not.toHaveProperty("syncBackupsEl");
         });
     });

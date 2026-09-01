@@ -9,9 +9,10 @@ vi.mock("../../src/utils/log/index.js", () => ({
 import { Log } from "../../src/utils/log/index.js";
 
 describe("layer-manager", () => {
-    // Déféré PORTEUR : `layer-manager-api.ts` assigne `LayerManagerModule` au chargement.
-    // Les 7 sites visaient le MÊME module ; un seul `await import()` en tête suffit, et il
-    // préserve l'ordre là où un `import` statique se hisserait au-dessus des mocks du fichier.
+    // LOAD-BEARING deferral: `layer-manager-api.ts` assigns
+    // `LayerManagerModule` at load. The 7 sites aimed at the SAME module;
+    // one `await import()` at the top suffices, and it preserves the order
+    // where a static `import` would hoist above the file's mocks.
     let LayerManager;
     beforeAll(async () => {
         ({ LayerManager } = await import("../../src/kernel/layer-manager/layer-manager-api.js"));
@@ -287,18 +288,16 @@ describe("layer-manager", () => {
             expect(Array.isArray(LM._options.sections)).toBe(true);
         });
 
-        // ── addSection ───────────────────────────────────────────────────────
-
-        // ── _mergeItem — item existant mis à jour ────────────────────────────
+        // ── _mergeItem — existing item updated ───────────────────────────────
 
         // ── _mergeSection — collapsedByDefault ───────────────────────────────
 
-        // B-251 — l'ordre RÉEL du runtime : les couches s'enregistrent (créant leur
-        // section implicite) AVANT que init() ne replie la config. Les tests de
-        // `_applyLayerManagerConfig` partent tous d'options vides, soit le chemin
-        // qui ne se produit jamais dans l'app — c'est ce trou qui a laissé passer
-        // la perte des libellés, de l'ordre et des accordéons.
-        it("B-251 — une section créée par _registerGeoJsonLayer adopte libellé/ordre/accordéon de la config", () => {
+        // The runtime's REAL order: layers register (creating their
+        // implicit section) BEFORE init() folds the config in. The
+        // `_applyLayerManagerConfig` tests all start from empty options —
+        // the path that never happens in the app — and that hole is what
+        // let the loss of labels, order and accordions through.
+        it("une section créée par _registerGeoJsonLayer adopte libellé/ordre/accordéon de la config", () => {
             setupL();
             const LM = getLM();
             LM._options = { sections: [] };
@@ -308,8 +307,8 @@ describe("layer-manager", () => {
                 label: "Couche 1",
             });
             const implicit = LM._options.sections.find((s) => s.id === "data-tourism");
-            expect(implicit.collapsedByDefault).toBeUndefined(); // pas encore un accordéon
-            expect(implicit.order).toBe(10); // ordre en dur de la création implicite
+            expect(implicit.collapsedByDefault).toBeUndefined(); // not yet an accordion
+            expect(implicit.order).toBe(10); // implicit creation's hardcoded order
 
             globalThis.GeoLeaf.Config = {
                 get: vi.fn((k) =>
@@ -333,7 +332,7 @@ describe("layer-manager", () => {
             expect(merged.label).toBe("Données touristiques");
             expect(merged.order).toBe(1);
             expect(merged.collapsedByDefault).toBe(false);
-            expect(merged.items).toHaveLength(1); // la couche enregistrée survit
+            expect(merged.items).toHaveLength(1); // the registered layer survives
         });
 
         // ── toggleCollapse ───────────────────────────────────────────────────

@@ -250,8 +250,11 @@ export async function createClusteredSource(
     if (!map.isStyleLoaded()) {
         await new Promise<void>((resolve) => {
             // `once(type, listener)` returns the map, not a promise — MapLibre unions
-            // both in a single signature (maplibre-gl.d.ts:12010).
-            void map.once("styledata", resolve);
+            // both in a single signature. ⚠️ `resolve` is NOT passed directly: it is a
+            // continuation, not an event listener. Its parameter is `void | PromiseLike<void>`,
+            // which MapLibre's `Listener` argument is not assignable to since 6.3.0 typed it
+            // (TS2769). Wrapping states the truth — resume when the event fires, ignore it.
+            void map.once("styledata", () => resolve());
         });
     }
     const ids = toClusterLayerIds(id);

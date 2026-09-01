@@ -6,15 +6,14 @@
  */
 
 /**
- * Outbox Module — the write queue, with B-03 FIXED IN THE KEY.
+ * Outbox Module — the write queue, with the key-collision fix IN THE KEY.
  *
  * Implements {@link OutboxEntry} of `contracts/sync.contract.ts` (task 3.4). It **replaced**
  * `sync_queue`, which is gone: task 4.4b rewired both producers, and **4.11** removed the store
- * and its 691 LOC (B-124).
+ * and its 691 LOC.
  *
- * ⚠️ This sentence read « which stays live until Sprint 4 rewires its producers (4.4/4.5) and
- * 4.9 retires it » until 08/08/2026 — a future tense over a finished fact, and it named the
- * wrong task twice: 4.9 was itself closed **by** 4.11. The prose below is kept in the past
+ * ⚠️ This sentence carried a future tense over a finished fact until 08/08/2026, and it
+ * attributed the retirement to the wrong lot twice. The prose below is kept in the past
  * tense on purpose; `sync_queue` is described here only because the key design below cannot be
  * justified without it.
  *
@@ -52,9 +51,10 @@ import type { OutboxEntry, QuarantineReason } from "../../../contracts/sync.cont
 /**
  * An {@link OutboxEntry} as stored, i.e. carrying the key the database minted.
  *
- * ⚠️ NON exporté délibérément : `seq` est un détail de persistance, et le seul consommateur
- * est `OutboxDBInstance` ci-dessous. L'exporter en ferait un orphelin de `check-orphan-exports`
- * — dont la baseline ne peut que RÉTRÉCIR — pour élargir une surface publique sans lecteur.
+ * ⚠️ NOT exported, deliberately: `seq` is a persistence detail, and the only
+ * consumer is `OutboxDBInstance` below. Exporting it would make it a
+ * `check-orphan-exports` orphan — whose baseline can only SHRINK — to widen a public
+ * surface with no reader.
  */
 interface StoredOutboxEntry extends OutboxEntry {
     /** Monotonic, database-minted. The replay order, and nothing else. */
@@ -74,13 +74,13 @@ export interface OutboxDBInstance {
     /** Entries touching one entity — coalescence (3.10) and join to `features`. */
     listByEntity(layerId: string, localId: string): Promise<StoredOutboxEntry[]>;
     /**
-     * Change l'état d'une entrée, et — si `patch` est fourni — son compteur d'essais et son
-     * motif de quarantaine, dans la MÊME transaction.
+     * Changes an entry's state, and — when `patch` is given — its attempt counter and
+     * quarantine motive, in the SAME transaction.
      *
-     * ⚠️ **`patch` existe parce qu'un état de quarantaine sans motif ne dit rien** (B-125) :
-     * le contrat déclare `quarantine?: QuarantineReason` sur l'entrée, et jusqu'ici aucun
-     * chemin ne pouvait l'écrire. Écrire l'état d'abord puis le motif ensuite aurait ouvert
-     * une fenêtre où l'entrée est mise de côté sans qu'on sache pourquoi.
+     * ⚠️ **`patch` exists because a quarantine state without a motive says nothing**:
+     * the contract declares `quarantine?: QuarantineReason` on the entry, and until
+     * now no path could write it. Writing the state first then the motive would have
+     * opened a window where the entry is set aside with nobody knowing why.
      */
     updateState(
         id: string,
@@ -88,7 +88,7 @@ export interface OutboxDBInstance {
         patch?: {
             attempts?: number;
             quarantine?: QuarantineReason | null;
-            /** B-200 — statut HTTP du refus. `null` l'efface au rejeu. */
+            /** HTTP status of the refusal. `null` erases it on requeue. */
             quarantineStatus?: number | null;
         }
     ): Promise<void>;

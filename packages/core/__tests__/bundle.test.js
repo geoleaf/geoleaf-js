@@ -1,7 +1,7 @@
 /**
- * Tests de validation du bundle Rollup
- * Verifies que les bundles generated contiennent les modules attendus
- * et que les files deprecated ne are no longer used.
+ * Rollup bundle validation tests
+ * Verifies that the generated bundles contain the expected modules
+ * and that deprecated files are no longer used.
  */
 
 import fs from "node:fs";
@@ -98,7 +98,7 @@ describe("Bundle Rollup — core (geoleaf.esm.js)", () => {
         expect(bundleContent).toMatch(/\.boot\s*=\s*function/);
     });
 
-    // ─── Pas de spinners/loaders deprecated ─────────────────────
+    // ─── No deprecated spinners/loaders ─────────────────────────
     test("ne contient PAS le code de EarlyLoader (early-loader.js)", () => {
         expect(bundleContent).not.toContain("gl-early-loader");
         expect(bundleContent).not.toContain("EarlyLoader");
@@ -109,10 +109,10 @@ describe("Bundle Rollup — core (geoleaf.esm.js)", () => {
         expect(bundleContent).not.toContain("LoadingScreen.show");
     });
 
-    // ─── Pas de modules Storage/AddPOI in the core ────────────
+    // ─── No Storage/AddPOI modules in the core ────────────────
     test("does not contain Storage imports (separate plugin)", () => {
-        // Le core peut reference GeoLeaf.Storage par des guards,
-        // mais ne doit PAS contenir l'implementation IndexedDB
+        // The core may reference GeoLeaf.Storage through guards,
+        // but must NOT contain the IndexedDB implementation
         expect(bundleContent).not.toContain("openDatabase");
         expect(bundleContent).not.toContain("indexedDB.open");
     });
@@ -158,10 +158,10 @@ describe("dist/ du core — aucun artefact plugin", () => {
 
 describe("boot pipeline (app/boot.ts) — structure", () => {
     // The legacy single-file src/geoleaf.app.js was split into the modern boot pipeline:
-    // app/boot.ts, app/init-reveal.ts (reveal / map:ready / loader, S6.2) and app/app-namespace.ts
+    // app/boot.ts, app/init-reveal.ts (reveal / map:ready / loader) and app/app-namespace.ts
     // (checkPlugins warnings). `app/init.ts` — the legacy `initApp()` test-only facade that
-    // just delegated to CoreMapModule/SharedModule/UIModule — was removed (roadmap nettoyage
-    // Sprint 3 / A-1); those module classes are exercised directly by the config-contract
+    // just delegated to CoreMapModule/SharedModule/UIModule — was removed
+    // — those module classes are exercised directly by the config-contract
     // test suite (s10/s11/s15) instead.
     //
     // Since the presets chantier, `boot.ts` is "a binding, not a boot" (its own words): the
@@ -213,14 +213,15 @@ describe("boot pipeline (app/boot.ts) — structure", () => {
         expect(revealContent).toContain('getElementById("gl-loader")');
     });
 
-    // ⚠️ 5.1-f — l'assertion sur « AddPOI plugin is not loaded » est RETIRÉE, pas relâchée :
-    // la garde qu'elle observait n'existe plus. Elle conseillait d'inclure un fichier
-    // (`geoleaf-addpoi.plugin.js`) qui n'est plus produit, et son motif est tombé avec le
-    // modèle qu'elle supposait : le bouton d'ajout de POI passe désormais par un créneau
-    // PARESSEUX, dont l'absence de plugin au boot est un état NORMAL et non un défaut.
-    // ⚠️ La garde `storage` reste, et c'est elle qui porte le sens du test : un bloc de
-    // config qui référence un plugin absent doit se voir. Le cas `editor` n'a pas
-    // d'équivalent — il n'y a pas de bloc `modules.editor` obligatoire.
+    // ⚠️ The "AddPOI plugin is not loaded" assertion is REMOVED, not
+    // loosened: the guard it observed no longer exists. It advised including
+    // a file (`geoleaf-addpoi.plugin.js`) that is no longer produced, and
+    // its motive fell with the model it assumed: the add-POI button now goes
+    // through a LAZY slot, whose plugin absence at boot is a NORMAL state
+    // and not a defect.
+    // ⚠️ The `storage` guard stays, and it carries the test's meaning: a
+    // config block referencing an absent plugin must be seen. The `editor`
+    // case has no equivalent — there is no mandatory `modules.editor` block.
     test("verifies les plugins manquants", () => {
         expect(helpersContent).toContain("checkPlugins");
         expect(helpersContent).toContain("Storage plugin is not loaded");

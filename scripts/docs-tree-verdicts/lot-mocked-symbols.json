@@ -1,0 +1,35 @@
+{
+    "schemaVersion": 2,
+    "lot": "mocked-symbols",
+    "scope": ["scripts/check-mocked-dead-symbols.cjs", "scripts/lib/mocked-symbols.cjs"],
+    "verdicts": {
+        "scripts/check-mocked-dead-symbols.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "MDS-01…03 — une suite ne double pas un symbole que plus aucune source du registre ne porte ; cliquet DÉCROISSANT",
+            "confidence": "haute",
+            "rationale": "Câblé dans `ci:local` et `ci.yml` à la pose, et inscrit dans SCRIPTS_ALLOWLIST. Son existence est justifiée par une cécité mesurée : `extracted-features.guard` prouvait l'absence de `getIconsConfig` en scannant `src/` et en SAUTANT `__tests__`, où deux suites l'écrivaient encore — quarante jours, deux corpus, aucun lien entre eux. Cette gate est ce lien. Baseline non vide à la pose (8), ce que la décision A-D4 autorise pour une gate décroissante dont le premier relevé est inscrit : rougir sur les 8 la ferait désarmer dans la semaine. CINQ des six symboles gelés sont de VRAIS défauts de la classe, lus un par un et nommés dans le `_comment` de la baseline ; ils sont gelés et NON réparés parce que rebrancher un oracle sur la source peut le faire rougir à juste titre, et le faire dans le diff qui pose la gate ferait un lot qui n'éprouve plus rien. VU ROUGE SUR QUATRE MUTATIONS, une par assertion, restaurations vérifiées au sha256."
+        },
+        "scripts/lib/mocked-symbols.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Le détecteur PARTAGÉ des symboles doublés qu'aucune source ne porte — deux étages, plus le témoin historique",
+            "confidence": "haute",
+            "rationale": "Deux lecteurs : la gate `check-mocked-dead-symbols.cjs` et ses témoins à réponse connue. Extrait dès le second lecteur, comme la règle du dépôt l'exige, et pour une raison propre ici : les fonctions doivent être PURES sur des chaînes pour qu'on puisse les éprouver sur le cas fondateur, dont le fichier réel est corrigé depuis le 20/08/2026 — le lire ne prouverait plus rien. Le discriminant a demandé DEUX filtres successifs, chacun mesuré : sans « traité comme membre » le relevé est de 68 (des noms de variables locales, absents des sources par métier) ; sans le filtre d'alias local il reste 4 faux positifs du patron `{ vraiNom: holder.aliasLocal }`. Avec les deux : 6. L'étage 2 existe parce que l'étage 1 était aveugle à `Baselayers.setBaselayer` — un cas que le registre NOMME, monté sans être asserté : un instrument aveugle à une instance connue de sa propre classe est exactement le défaut que le §Pré-vol appelle « l'instrument porte la cécité qu'il mesure »."
+        }
+    }
+}

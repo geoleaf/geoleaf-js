@@ -47,16 +47,16 @@ describe("APIModuleManager — branch coverage", () => {
     });
 
     it("init ne ramasse plus une clé `_` inconnue du catalogue (API S4.3f)", () => {
-        // Ce test assertait l'inverse jusqu'au S4.3f : le balayage prenait TOUTE clé commençant
-        // par `_`. C'était le défaut, pas la fonctionnalité — il promouvait au rang de module
-        // une chaîne (`_version`), un sac d'état (`_app`) et un ACCESSEUR qu'il déclenchait
-        // (`_APIController`, en pleine construction de l'APIController qui l'appelle).
-        // La découverte est désormais déclarative.
+        // This test asserted the opposite before the catalogue: the sweep
+        // took EVERY key starting with `_`. That was the defect, not the
+        // feature — it promoted to module a string (`_version`), a state
+        // bag (`_app`) and an ACCESSOR it triggered (`_APIController`, mid
+        // construction of the APIController calling it). Discovery is now declarative.
         _g.GeoLeaf = { _PrivateModule: { foo: 1 }, _AnotherPrivate: { bar: 2 } };
         mgr.init();
         expect(mgr.modules.has("_PrivateModule")).toBe(false);
         expect(mgr.modules.has("_AnotherPrivate")).toBe(false);
-        // …mais elles restent atteignables : `getModule` se replie sur le namespace.
+        // …but they stay reachable: `getModule` falls back on the namespace.
         expect(mgr.getModule("_PrivateModule")).toEqual({ foo: 1 });
     });
 
@@ -68,9 +68,9 @@ describe("APIModuleManager — branch coverage", () => {
     });
 
     it("init ramasse une clé `_` DU catalogue", () => {
-        // Le pendant du test ci-dessus : le catalogue n'est pas un refus global, c'est une
-        // liste. Sans cette assertion, désarmer entièrement la boucle laisserait le test
-        // précédent vert.
+        // The counterpart of the test above: the catalogue is not a global
+        // refusal, it is a list. Without this assertion, fully disarming the
+        // loop would leave the previous test green.
         _g.GeoLeaf = { _UITheme: { toggleTheme: () => {} } };
         mgr.init();
         expect(mgr.modules.has("_UITheme")).toBe(true);
@@ -126,7 +126,7 @@ describe("APIModuleManager — branch coverage", () => {
         });
         _g.GeoLeaf = allMods;
         mgr.init();
-        // 18 → 17 : `Filters` a quitté `moduleList` avec `GeoLeaf.Filters` (API S4.5).
+        // 18 → 17: `Filters` left `moduleList` along with `GeoLeaf.Filters`.
         expect(mgr.stats.totalModules).toBe(17);
     });
 

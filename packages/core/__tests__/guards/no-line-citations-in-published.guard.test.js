@@ -1,42 +1,49 @@
 /**
  * @file no-line-citations-in-published.guard.test.js
- * @description Test-garde — aucune citation `fichier.ext:ligne` dans les surfaces PUBLIÉES.
+ * @description Guard test — no `file.ext:line` citation in the PUBLISHED surfaces.
  *
- * Pourquoi ce garde existe (B-63, 28-29/07/2026)
+ * Why this guard exists (28-29/07/2026)
  * ----------------------------------------------
- * Deux surfaces de ce dépôt partent chez l'intégrateur avec leur prose :
+ * Two surfaces of this repo ship to the integrator with their prose:
  *
- *  - les `description` des `configSchema`, que `getCapabilitySchema(id)` publie **au runtime**
- *    (un studio de configuration les affiche telles quelles) ;
- *  - les façades `src/api/geoleaf.*.ts`, publiées **par TypeDoc** dans le paquet npm.
+ *  - the `configSchema` `description`s, which `getCapabilitySchema(id)`
+ *    publishes **at runtime** (a configuration studio displays them as-is);
+ *  - the `src/api/geoleaf.*.ts` facades, published **by TypeDoc** in the npm package.
  *
- * Mesuré à l'ouverture de B-63 : **25 citations `fichier:ligne`** y vivaient, réparties sur quatre
- * capacités, et **les 25 pointaient une ligne qui ne portait plus l'énoncé cité** — de 1 ligne
- * d'écart à 178. Aucune n'était fausse à sa naissance : elles se sont toutes périmées en silence,
- * parce qu'une citation de ligne ne survit pas au premier déplacement de code.
+ * Measured at the work's opening: **25 `file:line` citations** lived there,
+ * across four capabilities, and **all 25 pointed at a line that no longer
+ * carried the cited statement** — from 1 line of drift to 178. None was
+ * false at birth: they all went stale silently, because a line citation does
+ * not survive the first code move.
  *
- * ## Pourquoi une gate, et pas seulement une correction
+ * ## Why a gate, and not just one more fix
  *
- * Corriger les 25 sans fermer la classe, c'est re-payer la même correction au prochain sprint de
- * structure. `CLAUDE.md` interdit déjà de citer une ligne de `global.d.ts` pour cette raison
- * exacte ; ce garde étend l'interdit aux deux surfaces publiées, où le coût est le plus élevé
- * puisque le lecteur est **extérieur au dépôt** et ne peut pas constater la dérive.
+ * Fixing the 25 without closing the class means re-paying the same fix at
+ * the next structure sprint. `CLAUDE.md` already forbids citing a
+ * `global.d.ts` line for this exact reason; this guard extends the ban to
+ * the two published surfaces, where the cost is highest since the reader is
+ * **outside the repo** and cannot observe the drift.
  *
- * ## Ce que ce garde N'EST PAS
+ * ## What this guard is NOT
  *
- * Il ne juge pas la VÉRACITÉ d'une description — c'est la règle ⛔ de `CLAUDE.md`, et elle reste à
- * l'humain. Il ferme une seule classe, mécanisable et sans ambiguïté : **la forme d'une référence
- * qui ne peut pas rester vraie**. Citer le SYMBOLE survit au déplacement et reste vérifiable au
- * grep ; citer la ligne, non.
+ * It does not judge a description's TRUTH — `CLAUDE.md`'s ⛔ rule, and it
+ * stays with the human. It closes a single class, mechanisable and
+ * unambiguous: **the form of a reference that cannot stay true**. Citing the
+ * SYMBOL survives the move and stays grep-verifiable; citing the line does not.
  *
- * ⚠️ Il ne s'applique **qu'aux surfaces publiées**. Un commentaire interne peut légitimement citer
- * une ligne — il vieillira, mais son lecteur a le fichier sous les yeux et peut le constater.
+ * ⚠️ It ENFORCES **only the published surfaces**. Internal comments were
+ * long allowed to cite lines (the reader has the file in front of them);
+ * the code-autonomy pass of 2026-08-26 adjudicated the class as fragile
+ * everywhere and swept the ~400 internal occurrences down to the pattern
+ * samples this very file carries. Extending the enforcement repo-wide is a
+ * separate, conditioned decision — until it is taken, this guard's corpus
+ * stays the two surfaces above.
  *
- * ## Une garde jamais vue rouge ne garde rien
+ * ## A guard never seen red guards nothing
  *
- * Deux assertions anti-garde-vide : au moins un fichier lu de chaque côté. Sans elles, un
- * répertoire renommé rendrait ce garde vert en n'ayant rien scanné — la classe que
- * `probe-gate-visibility.cjs` surveille ailleurs.
+ * Two anti-empty-guard assertions: at least one file read on each side.
+ * Without them, a renamed directory would make this guard green having
+ * scanned nothing — the class `probe-gate-visibility.cjs` watches elsewhere.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -51,12 +58,13 @@ const API = path.join(SRC, "api");
 /**
  * `fichier.ts:12` / `build-deploy.cjs:676-680` / `x.ts:203,243`.
  *
- * L'extension est exigée : sans elle, le motif attraperait les `http://…:8080`, les plages de
- * temps et les deux-points de prose. Les extensions listées sont celles que ce dépôt cite.
+ * The extension is required: without it, the pattern would catch
+ * `http://…:8080`, time ranges and prose colons. The listed extensions are
+ * the ones this repo cites.
  */
 const LINE_CITATION = /[A-Za-z0-9_.-]+\.(?:ts|tsx|js|mjs|cjs|json)\s*:\s*\d+(?:\s*[-,]\s*\d+)*/g;
 
-/** Les déclarations de capacité — leur `configSchema` est publié par l'introspection. */
+/** The capability declarations — their `configSchema` is published by introspection. */
 function declarationFiles() {
     if (!fs.existsSync(CAPS)) return [];
     return fs
@@ -66,7 +74,7 @@ function declarationFiles() {
         .filter((p) => fs.existsSync(p));
 }
 
-/** Les façades ESM — publiées par TypeDoc dans le tarball npm. */
+/** The ESM facades — published by TypeDoc in the npm tarball. */
 function facadeFiles() {
     if (!fs.existsSync(API)) return [];
     return fs
@@ -86,7 +94,7 @@ function offenders(files) {
                     out.push(
                         `${rel}:${i + 1} — citation de ligne \`${m}\` dans une surface PUBLIÉE. ` +
                             `Citer le SYMBOLE (une fonction, une constante) : il survit au ` +
-                            `déplacement et reste vérifiable au grep. (B-63)`
+                            `déplacement et reste vérifiable au grep.`
                     );
                 }
             });

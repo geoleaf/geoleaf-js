@@ -129,7 +129,7 @@ Le tenir pour un défaut du code est l'erreur que ce paragraphe existe pour emp�
 10/08 : dès qu'une seconde entrée est servie, le contrôle se monte à la bonne place avec la bonne
 valeur, sans qu'une ligne de la capacité n'ait bougé.
 
-✅ **Et « sans qu'aucune gate ne rougisse » n'est plus vrai depuis le 10/08/2026** (B-49, soldée).
+✅ **Et « sans qu'aucune gate ne rougisse » n'est plus vrai depuis le 10/08/2026**.
 Une garde unitaire — donc sur le chemin PAR DÉFAUT, « Unit tests » et « Coverage gate » —
 affirme que **la récolte est sans perte** :
 `packages/core/__tests__/capabilities/profile-switcher/profile-harvest.guard.test.ts`. Elle rougit
@@ -189,6 +189,11 @@ abonnés, parce qu'il refire à chaque reconstruction du contrôle.
 | --------------------------------------- | ------------ | ------------------------------------------------------------------------------- |
 | `sessionStorage["gl-selected-profile"]` | **one-shot** | Consommée par `app/boot-core.ts` au chargement suivant (lue **puis supprimée**) |
 | `localStorage["gl-profile"]`            | durable      | La préférence, restaurée aux visites ultérieures (`PROFILE_STORAGE_KEY`)        |
+
+Les deux clés sont **déclarées une seule fois**, dans `kernel/shared/profile-storage-keys.ts`
+(ré-exportées par le baril) : elles ont deux écrivains de part et d'autre de la frontière
+app/capacité, et une copie qui dérive ne casse pas — elle fait cesser le boot de voir le choix,
+en silence. `profile-switch.ts` ré-exporte `PROFILE_STORAGE_KEY` pour ses consommateurs.
 
 L'ordre de résolution au boot appartient à `app/boot-core.ts` : `sessionStorage` (one-shot),
 puis `localStorage`, puis `data.activeProfile` du JSON. Les deux sources de stockage passent par
@@ -271,7 +276,7 @@ quand on sert l'application directement depuis les sources.
 
 Le CDC `CDC_capacite-profile-switcher.md` (v1.0.0, 25/07/2026) a été **consommé** en écrivant cette
 fiche, puis retiré du dossier de tri — trace au §Journal des décisions de
-`roadmap_documentation-v3.md`. Ce qu'il
+la refonte documentaire V3. Ce qu'il
 disait et que le code contredit est consigné ici plutôt que perdu :
 
 | Énoncé du CDC                                                                   | Ce que dit le code                                                                                                                                                                                                   |

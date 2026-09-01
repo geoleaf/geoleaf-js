@@ -34,8 +34,7 @@
  * `packages/core` does not depend on `@geoleaf/field-renderer`, and making it
  * do so is an architecture decision. It also cannot be validated where it
  * matters — difference 3 is unobservable under happy-dom, where `offsetParent`
- * is `undefined` — so it is blocked on the browser verification pass
- * (roadmap_backlog-residuel R.7). Until then the duplication is deliberate and
+ * is `undefined` — so it is blocked on the browser verification pass. Until then the duplication is deliberate and
  * recorded, which is cheaper than a silent behaviour change.
  */
 

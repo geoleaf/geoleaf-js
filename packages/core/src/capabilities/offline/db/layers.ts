@@ -30,7 +30,7 @@ interface LayerMetadata {
      */
     contentLength?: string | number | null;
     contentType?: string | null;
-    /** Nature du contenu ; voir {@link LAYER_RESOURCE_TYPES}. Une valeur inconnue est légale et vaut « non binaire ». */
+    /** Content nature; see {@link LAYER_RESOURCE_TYPES}. An unknown value is legal and means "non-binary". */
     resourceType?: LayerResourceType | (string & {}) | null;
 }
 
@@ -47,31 +47,31 @@ interface BinaryWrapper {
  * payloads (e.g. PNG), which are then stored as the raw wrapper.
  */
 /**
- * Les natures de contenu que le magasin `layers` RECONNAÎT — nommées en un seul endroit.
+ * The content natures the `layers` store RECOGNISES — named in one place.
  *
- * 🛑 RÉSIDU QUI SE CORRIGE, PAS QUI SE SUPPRIME (tâche 3.13). Le magasin mélange configs,
- * icônes, couches, tuiles, styles, glyphes, images de sprite et JSON de sprite ; le champ
- * était une chaîne LIBRE dont seules trois valeurs étaient réellement lues, et l'ensemble
- * n'était écrit nulle part — donc ni relisable, ni opposable.
+ * 🛑 A RESIDUE TO FIX, NOT TO DELETE. The store mixes configs, icons, layers, tiles,
+ * styles, glyphs, sprite images and sprite JSON; the field was a FREE string of which
+ * only three values were actually read, and the set was written nowhere — hence
+ * neither re-readable nor enforceable.
  *
- * ⚠️ MAIS UNE UNION **FERMÉE** SERAIT UN TYPE QUI MENT, et je l'ai écrite avant de le
- * mesurer. Deux producteurs dérivent la valeur d'un champ de PROFIL —
- * `resource-enumerator.ts` écrit `layerConfig.type || "geojson"` et `layer.type || "data"` —
- * et aucun schéma ne contraint `layer.type`. Un profil qui poserait `"wms"` produirait donc
- * une valeur légale que l'union refuserait, sans que `tsc` puisse seulement le voir : la
- * valeur traverse la façade en `Record<string, unknown>`. Un ensemble fermé ici serait
- * décoratif au mieux, faux au pire.
+ * ⚠️ BUT A **CLOSED** UNION WOULD BE A LYING TYPE, and I wrote it before measuring.
+ * Two producers derive the value from a PROFILE field — `resource-enumerator.ts`
+ * writes `layerConfig.type || "geojson"` and `layer.type || "data"` — and no schema
+ * constrains `layer.type`. A profile setting `"wms"` would thus produce a legal value
+ * the union refuses, without `tsc` even able to see it: the value crosses the facade
+ * as `Record<string, unknown>`. A closed set here would be decorative at best, false
+ * at worst.
  *
- * ⚠️ Mon premier relevé était biaisé de la même façon : `grep 'type: "…"'` ne voit que les
- * littéraux et manquait précisément les deux replis. Sixième biais d'instrument du dossier.
+ * ⚠️ My first survey was biased the same way: `grep 'type: "…"'` only sees literals
+ * and missed precisely the two fallbacks. Sixth instrument bias of the file.
  *
- * Le geste réel est donc : **nommer l'ensemble reconnu**, en DÉRIVER l'ensemble binaire au
- * lieu de le recopier, et dire en clair qu'une valeur inconnue est légale et signifie
- * « non binaire ». C'est ce qui rendra possible l'éviction **par nature** que le contrat de
- * synchronisation exige (classes `lru` / `never`) : elle a besoin d'un ensemble RECONNU, pas
- * d'un ensemble fermé.
+ * The real gesture is therefore: **name the recognised set**, DERIVE the binary set
+ * from it instead of copying it, and state plainly that an unknown value is legal
+ * and means "non-binary". That is what will make the **by-nature** eviction the sync
+ * contract requires (`lru` / `never` classes) possible: it needs a RECOGNISED set,
+ * not a closed one.
  *
- * Re-dérivable :
+ * Re-derivable:
  *   grep -hoE 'type: (\"[a-z-]+\"|[A-Za-z.]+ \|\| \"[a-z]+\")' src/capabilities/offline/cache/*.ts | sort -u
  */
 const LAYER_RESOURCE_TYPES = {
@@ -87,21 +87,21 @@ const LAYER_RESOURCE_TYPES = {
     tile: "binary",
 } as const;
 
-/** Une nature reconnue. ⚠️ Le champ stocké accepte aussi une valeur inconnue — voir ci-dessus. */
+/** A recognised nature. ⚠️ The stored field also accepts an unknown value — see above. */
 type LayerResourceType = keyof typeof LAYER_RESOURCE_TYPES;
 
 /**
- * Natures stockées en binaire gzippé — **calculées** depuis la table ci-dessus.
+ * Natures stored as gzipped binary — **computed** from the table above.
  *
- * 🛑 C'était `new Set(["tile", "glyph", "sprite-image"])` : une liste littérale face à une
- * AUTRE liste littérale, qu'aucune ligne ne confrontait. Renommer une nature d'un côté
- * laissait l'autre continuer de compiler **en ne gardant plus rien** — la forme exacte de la
- * garde vide, sur une décision de compression.
+ * 🛑 It was `new Set(["tile", "glyph", "sprite-image"])`: a literal list facing
+ * ANOTHER literal list, which no line confronted. Renaming a nature on one side let
+ * the other keep compiling **while guarding nothing any more** — the exact shape of
+ * the empty guard, on a compression decision.
  *
- * Ici la nature PORTE son mode de stockage, et l'ensemble se calcule. Il n'y a plus deux
- * vérités à tenir alignées ; il n'y en a qu'une, et c'est la table. C'est aussi ce qui rendra
- * possible l'éviction **par nature** (classes `lru` / `never` du contrat) : elle a besoin
- * d'une propriété portée par la nature, pas d'un second ensemble à maintenir.
+ * Here the nature CARRIES its storage mode, and the set is computed. There are no
+ * longer two truths to keep aligned; there is one, and it is the table. This is also
+ * what will make **by-nature** eviction (the contract's `lru` / `never` classes)
+ * possible: it needs a property carried by the nature, not a second set to maintain.
  */
 const BINARY_GZIP_TYPES: ReadonlySet<string> = new Set(
     Object.entries(LAYER_RESOURCE_TYPES)
@@ -130,7 +130,7 @@ interface LayerRecord {
     lastModified?: string | null;
     contentLength?: number;
     contentType?: string | null;
-    /** Nature du contenu ; voir {@link LAYER_RESOURCE_TYPES}. Une valeur inconnue est légale et vaut « non binaire ». */
+    /** Content nature; see {@link LAYER_RESOURCE_TYPES}. An unknown value is legal and means "non-binary". */
     resourceType?: LayerResourceType | (string & {}) | null;
     dataCompressed?: boolean;
     dataEncoding?: string | null;
@@ -528,7 +528,7 @@ const LayersDB: LayersDBInstance = {
                 Log.error(error.message);
 
                 // Check if quota exceeded
-                if (err && (err as DOMException).name === "QuotaExceededError") {
+                if (err && err.name === "QuotaExceededError") {
                     document.dispatchEvent(
                         new CustomEvent("geoleaf:storage:quota-exceeded", {
                             detail: { id, size },

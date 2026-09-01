@@ -1,5 +1,5 @@
 /**
- * Tests for recap-box.ts — Sprint 2
+ * Tests for recap-box.ts
  * Covers: initRecapBox, renderRecap, clearRecap, XSS safety.
  * PLUGINS S5: renderRecapFromSession, menu-open gating, and the engine wiring —
  * the box was never reachable before this sprint, so none of it had coverage.
@@ -291,8 +291,8 @@ describe("recap-box", () => {
 // ---------------------------------------------------------------------------
 // Engine → recap wiring — PLUGINS S5
 //
-// This is the part that was missing: recap-box.ts was complete and correct since
-// Sprint 2, but no production code ever called it. These tests pin the calls, not
+// This is the part that was missing: recap-box.ts was complete and correct from the start,
+// but no production code ever called it. These tests pin the calls, not
 // the rendering, so a future purge of the wiring fails loudly.
 // ---------------------------------------------------------------------------
 

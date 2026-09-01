@@ -17,7 +17,7 @@
 const fs = require("fs");
 const path = require("path");
 
-// ARCHI S9.5 — the three package enumerations below come from the workspace
+// The three package enumerations below come from the workspace
 // registry rather than a one-level `readdirSync(packages/)`. That form scanned only
 // direct children, so once ARCHI S10 nests packages under `packages/plugins/` it
 // would have found no `src/` and no `__tests__/` at that level and scanned NOTHING —
@@ -68,7 +68,7 @@ const CONFIG_FILES = [
     "rollup.config.mjs",
     "rollup.config.cjs",
     "rollup.config.ts",
-    // ARCHI S9.2 — the shared rollup factory (packages/build-config/rollup.mjs) now
+    // The shared rollup factory (packages/build-config/rollup.mjs) now
     // holds the plugin assembly that used to live in the 15 scanned configs. Without
     // this entry the gate would have lost that surface: the code moved, the coverage
     // would not have followed.

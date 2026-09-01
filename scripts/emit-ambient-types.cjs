@@ -1,70 +1,72 @@
 #!/usr/bin/env node
 /**
- * AMBIENT-TYPES: publie le namespace global `GeoLeaf` avec le paquet (backlog B-46).
+ * AMBIENT-TYPES: publishes the global `GeoLeaf` namespace with the package.
  *
- * ## Le défaut que ce script ferme
+ * ## The defect this script closes
  *
- * `@geoleaf/core` ne publiait **pas son propre namespace global**. Un intégrateur qui écrit
- * la forme que toute la documentation enseigne —
+ * `@geoleaf/core` did **not publish its own global namespace**. An integrator
+ * writing the form all the documentation teaches —
  *
  *     GeoLeaf.Core.setTheme("dark");
  *
- * — obtenait **`TS2304: Cannot find name 'GeoLeaf'`** contre `dist/types/`, le `types`
- * déclaré du paquet. Mesuré et prouvé par compilation le 27/07/2026.
+ * — got **`TS2304: Cannot find name 'GeoLeaf'`** against `dist/types/`, the
+ * package's declared `types`. Measured and proven by compilation on 2026-07-27.
  *
- * ## Pourquoi ce n'était pas un oubli de configuration
+ * ## Why it was not a configuration oversight
  *
- * `tsconfig.declarations.json` porte bien `"include": ["src/**\/*"]`, donc `src/global.d.ts`
- * EST dans le périmètre. Mais **TypeScript ne ré-émet pas un `.d.ts` d'entrée** : un fichier
- * de déclaration est une *entrée*, pas une *source*, et `emitDeclarationOnly` le saute. Le
- * résultat était silencieux — `find dist -name global.d.ts` rendait 0, sans le moindre
- * avertissement du compilateur. Aucune quantité de réglage de `tsconfig` n'y change quoi que
- * ce soit ; il faut copier le fichier.
+ * `tsconfig.declarations.json` does carry `"include": ["src/**\/*"]`, so
+ * `src/global.d.ts` IS in the perimeter. But **TypeScript does not re-emit an
+ * input `.d.ts`**: a declaration file is an *input*, not a *source*, and
+ * `emitDeclarationOnly` skips it. The result was silent —
+ * `find dist -name global.d.ts` returned 0, without the slightest compiler
+ * warning. No amount of `tsconfig` tuning changes anything; the file must be
+ * copied.
  *
- * ## Ce que ce script fait, et pourquoi dans cet ordre
+ * ## What this script does, and why in this order
  *
- * 1. Copie `src/global.d.ts` → `dist/types/global.d.ts`. Ses références de type sont des
- *    `import("./api/geoleaf.*.js")` **relatives** : elles résolvent donc vers les `.d.ts`
- *    émis à côté, sans réécriture.
- * 2. Préfixe **chaque entrée de types déclarée par la carte `exports`** d'un
- *    `/// <reference path="<…>/global.d.ts" />`. C'est ce qui tire le fichier dans le
- *    programme du consommateur : `global.d.ts` est un **module** (`export {}`) portant un
- *    `declare global`, donc son augmentation ne s'applique que s'il est inclus.
+ * 1. Copies `src/global.d.ts` → `dist/types/global.d.ts`. Its type references are
+ *    **relative** `import("./api/geoleaf.*.js")`: they thus resolve to the `.d.ts`
+ *    emitted alongside, without rewriting.
+ * 2. Prefixes **every types entry declared by the `exports` map** with a
+ *    `/// <reference path="<…>/global.d.ts" />`. That is what pulls the file into
+ *    the consumer's program: `global.d.ts` is a **module** (`export {}`) carrying
+ *    a `declare global`, so its augmentation only applies if it is included.
  *
- * ⚠️ **Le fait que ce soit un script et non une option de build est le sujet.** Un
- * `tsconfig` ne sait pas exprimer « recopie cette déclaration » ; l'écrire ici le rend
- * visible, testable et daté, au lieu d'être une case cochée quelque part.
+ * ⚠️ **That this is a script and not a build option is the point.** A `tsconfig`
+ * cannot express "copy this declaration"; writing it here makes it visible,
+ * testable and dated, instead of a box ticked somewhere.
  *
- * ## 🛑 Pourquoi TOUTES les entrées, et pas seulement `"."` (B-231, 12/08/2026)
+ * ## 🛑 Why ALL entries, and not only `"."` (2026-08-12)
  *
- * Ce script n'a préfixé que `bundle-esm-entry.d.ts` — l'entrée `"."` — jusqu'au 12/08/2026,
- * et **la recette que ce dépôt RECOMMANDE ne passe pas par elle**. Un intégrateur qui importe
- * des sous-chemins (`@geoleaf/core/kernel`, `@geoleaf/core/capabilities/<id>/install.js`),
- * c'est-à-dire ce que le tree-shaking exige et ce qu'`examples/consumer/entry.ts` incarne, ne
- * chargeait jamais l'ambient.
+ * This script prefixed only `bundle-esm-entry.d.ts` — the `"."` entry — until
+ * 2026-08-12, and **the recipe this repo RECOMMENDS does not go through it**. An
+ * integrator importing subpaths (`@geoleaf/core/kernel`,
+ * `@geoleaf/core/capabilities/<id>/install.js`) — i.e. what tree-shaking requires
+ * and what `examples/consumer/entry.ts` embodies — never loaded the ambient.
  *
- * Mesuré par la tâche 10.8, sur tarballs packés dans un répertoire vierge, `skipLibCheck`
- * désactivé : **11 erreurs** — `GeoLeafGlobal` (9 sites), `GeoLeafUIFacade`,
- * `GeoLeafThemeSelector`. Avec `skipLibCheck: true`, le réglage de la quasi-totalité des
- * projets, la même compilation rend **exit 0**.
+ * Measured on tarballs packed into a pristine directory, `skipLibCheck` disabled:
+ * **11 errors** — `GeoLeafGlobal` (9 sites), `GeoLeafUIFacade`,
+ * `GeoLeafThemeSelector`. With `skipLibCheck: true`, the setting of nearly every
+ * project, the same compilation returns **exit 0**.
  *
- * ⚠️ **Et le monorepo ne pouvait pas le voir.** Le docblock affirmait ici que la preuve
- * vivait dans `examples/consumer/published-types.ts` — or ce fichier **importe l'entrée
- * `"."`**, ce qui tire l'ambient et masque le défaut pour TOUT le programme, y compris pour
- * `entry.ts` compilé à ses côtés. La preuve invoquée était donc précisément ce qui empêchait
- * de voir. C'est `entry.ts` SEUL, hors monorepo, qui juge.
+ * ⚠️ **And the monorepo could not see it.** The docblock here claimed the proof
+ * lived in `examples/consumer/published-types.ts` — yet that file **imports the
+ * `"."` entry**, which pulls the ambient and masks the defect for the WHOLE
+ * program, including for `entry.ts` compiled beside it. The invoked proof was thus
+ * precisely what prevented seeing. It is `entry.ts` ALONE, outside the monorepo,
+ * that judges.
  *
- * ## Ce que ce script REFUSE de faire
+ * ## What this script REFUSES to do
  *
- * Il ne « saute pas silencieusement » quand la source ou une cible manque : il sort en 1 et
- * le dit. Un post-build muet qui ne trouve rien reproduirait exactement le défaut qu'il
- * corrige — un artefact absent dont personne n'est prévenu. Même posture que
- * `verify-repo-hygiene` et `probe-gate-visibility` sur cette classe.
+ * It does not "silently skip" when the source or a target is missing: it exits 1
+ * and says so. A mute post-build that finds nothing would reproduce exactly the
+ * defect it fixes — an absent artifact nobody is warned about. Same posture as
+ * `verify-repo-hygiene` and `probe-gate-visibility` on this class.
  *
- * Il refuse aussi de tourner sur **zéro entrée** : une carte `exports` qui cesserait de
- * déclarer des conditions `types` le rendrait vert en ne préfixant rien.
+ * It also refuses to run on **zero entries**: an `exports` map that stopped
+ * declaring `types` conditions would render it green while prefixing nothing.
  *
- * Usage: node scripts/emit-ambient-types.cjs   (post-build de @geoleaf/core)
+ * Usage: node scripts/emit-ambient-types.cjs   (post-build of @geoleaf/core)
  */
 
 "use strict";
@@ -84,13 +86,13 @@ function fail(msg) {
 }
 
 /**
- * Les `.d.ts` d'entrée que la carte `exports` expose, DÉRIVÉS d'elle et jamais listés ici.
+ * The entry `.d.ts` the `exports` map exposes, DERIVED from it and never listed here.
  *
- * Une liste écrite à la main divergerait au premier sous-chemin ajouté — et divergerait en
- * silence, puisque rien en aval ne compile ces entrées séparément. Les globs (`./capabilities/*`)
- * sont expansés sur le disque.
+ * A hand-written list would diverge at the first added subpath — and diverge in
+ * silence, since nothing downstream compiles these entries separately. Globs
+ * (`./capabilities/*`) are expanded on disk.
  *
- * @returns {string[]} Chemins absolus, dédoublonnés, triés.
+ * @returns {string[]} Absolute paths, deduplicated, sorted.
  */
 function entryDeclarationFiles() {
     const exportsMap = CORE.manifest.exports;
@@ -104,7 +106,7 @@ function entryDeclarationFiles() {
         const types = typeof conditions === "object" && conditions ? conditions.types : null;
         if (typeof types !== "string") continue;
 
-        // `./dist/types/x.d.ts` → absolu ; un `*` est expansé sur le disque.
+        // `./dist/types/x.d.ts` → absolute; a `*` is expanded on disk.
         const rel = types.replace(/^\.\//, "");
         if (!rel.includes("*")) {
             found.add(path.join(CORE.absDir, rel));
@@ -122,14 +124,14 @@ function entryDeclarationFiles() {
 }
 
 /**
- * La directive à poser en tête de `file`, avec le chemin RELATIF vers `global.d.ts`.
+ * The directive to set at the head of `file`, with the RELATIVE path to `global.d.ts`.
  *
- * ⚠️ Le chemin dépend de la profondeur : `./global.d.ts` pour une entrée à la racine de
- * `dist/types/`, `../global.d.ts` pour `dist/types/api/…`. Un chemin figé casserait toutes
- * les entrées sauf celles d'un seul niveau — et casserait en silence, `tsc` ignorant une
- * `/// <reference>` dont la cible est introuvable.
+ * ⚠️ The path depends on depth: `./global.d.ts` for an entry at the root of
+ * `dist/types/`, `../global.d.ts` for `dist/types/api/…`. A fixed path would break
+ * every entry but one level's — and break silently, `tsc` ignoring a
+ * `/// <reference>` whose target cannot be found.
  *
- * @param {string} file Chemin absolu du `.d.ts` d'entrée.
+ * @param {string} file Absolute path of the entry `.d.ts`.
  * @returns {string}
  */
 function referenceFor(file) {
@@ -145,8 +147,8 @@ if (!fs.existsSync(SRC)) {
 fs.copyFileSync(SRC, OUT);
 
 const entries = entryDeclarationFiles();
-// Anti-gate-vide : zéro entrée signifie une carte `exports` qui a cessé de déclarer ses
-// conditions `types`. Préfixer zéro fichier « réussirait » en ne faisant rien.
+// Anti-empty-gate: zero entries means an `exports` map that stopped declaring its
+// `types` conditions. Prefixing zero files would "succeed" doing nothing.
 if (entries.length === 0) {
     fail(
         "aucune entrée de types dérivée de la carte `exports`.\n" +
@@ -159,7 +161,7 @@ let already = 0;
 const missing = [];
 
 for (const file of entries) {
-    if (file === OUT) continue; // `global.d.ts` ne se référence pas lui-même
+    if (file === OUT) continue; // `global.d.ts` does not reference itself
     if (!fs.existsSync(file)) {
         missing.push(path.relative(CORE.absDir, file));
         continue;
@@ -182,7 +184,7 @@ if (missing.length > 0) {
     );
 }
 
-// Le contrôle qui compte : la déclaration est là, et CHAQUE entrée la tire.
+// The check that counts: the declaration is there, and EVERY entry pulls it.
 const emitted = fs.existsSync(OUT) && /declare global/.test(fs.readFileSync(OUT, "utf8"));
 const unreferenced = entries.filter(
     (f) => f !== OUT && !fs.readFileSync(f, "utf8").includes(referenceFor(f))
@@ -191,7 +193,7 @@ if (!emitted || unreferenced.length > 0) {
     fail(
         `état incohérent après écriture — émis: ${emitted}, ` +
             `${unreferenced.length} entrée(s) sans référence.\n` +
-            `   Ne pas ignorer : c'est exactement le défaut que B-46 a fermé, et B-231 élargi.`
+            `   Ne pas ignorer : c'est exactement le défaut que ce script ferme.`
     );
 }
 

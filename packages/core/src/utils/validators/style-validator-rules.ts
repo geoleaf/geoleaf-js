@@ -28,7 +28,7 @@ const MAX_ZOOM_LIKE = 24;
  * `profiles/_reference/layers/reference-points/styles/alt.json` is one, and it has been failing
  * validation unnoticed because it is not any layer's `styles.default`.
  *
- * ⚠️ Found while making the boot path validate (S5.2), which is what turned this from latent
+ * ⚠️ Found while making the boot path validate, which is what turned this from latent
  * into load-bearing: before, an unlisted operator in a DEFAULT style still rendered (the
  * preload path applied the file without validating and the theme path failed silently); after,
  * it would degrade the layer to neutral styling. Deriving the list removes that regression.

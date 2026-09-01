@@ -1,40 +1,38 @@
 /**
- * Les 4 arêtes capacité → kernel (CAPACITÉS S10.2).
+ * The 4 capability → kernel edges.
  *
- * Quatre capacités consomment une primitive du kernel au lieu de la réimplémenter. Chaque
- * bascule a été faite par un sprint distinct — S4 (legend → taxonomy/resolver), S6 (scale →
- * scale-utils), socle B.1/S8 (vector-tiles → adaptateur), S10 (proximity → haversine) — et
- * AUCUN garde-fou ne les tenait.
+ * Four capabilities consume a kernel primitive instead of reimplementing it.
+ * Each switch was made by a distinct sprint — legend → taxonomy/resolver,
+ * scale → scale-utils, vector-tiles → adapter, proximity → haversine — and NO
+ * guardrail held them.
  *
- * Pourquoi les gates existants n'y suffisent pas : `check-orphan-exports` et knip cherchent
- * des exports SANS consommateur. Or `scaleAtZoom` (scale-utils.ts:95, :190) et
- * `resolveCategoryKey` (resolver.ts:133, :137) ont aussi des appelants INTERNES à leur
- * propre module. Une capacité qui re-forkerait la formule à côté les laisserait donc
- * parfaitement verts. La règle ESLint `no-restricted-syntax` posée au même sprint n'attrape
- * que le copier-coller littéral des constantes.
+ * Why the existing gates do not suffice: `check-orphan-exports` and knip look
+ * for exports WITHOUT consumers. Yet `scaleAtZoom` (scale-utils.ts, :190)
+ * and `resolveCategoryKey` (resolver.ts, :137) also have callers INTERNAL
+ * to their own module. A capability re-forking the formula next door would
+ * thus leave them perfectly green. The `no-restricted-syntax` ESLint rule set
+ * at the same time only catches literal copy-paste of the constants.
  *
- * Ce fichier attrape le reste : chaque test calcule son attendu AVEC la primitive du kernel,
- * jamais avec une valeur écrite en dur. Un re-fork qui dérive numériquement — même d'un
- * chouïa, même en s'écrivant autrement — rougit ici.
+ * This file catches the rest: each test computes its expectation WITH the
+ * kernel primitive, never with a hardcoded value. A re-fork drifting
+ * numerically — even a hair, even spelled differently — turns red here.
  */
 
 const mockLog = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 vi.mock("../../src/utils/log/index.js", () => ({ Log: mockLog }));
 
-// Spécifieur `.js` comme le fait l'app (cf. l'en-tête de scale-control.test.js) : sous
-// pool:forks + tsx, un `require(".ts")` charge une instance CJS séparée dont la couverture
-// ne fusionne pas avec l'instance ESM de l'app.
+// `.js` specifier as the app does (cf. scale-control.test.js's header): under
+// pool:forks + tsx, a `require(".ts")` loads a separate CJS instance whose
+// coverage does not merge with the app's ESM instance.
 const { ScaleControl } = await import("../../src/capabilities/scale/scale-control.js");
 const { scaleAtZoom, zoomAtScale } = await import("../../src/utils/general/scale-utils.js");
 const { LegendGenerator } = await import("../../src/capabilities/legend/legend-generator.js");
 const { resolveCategoryKey } = await import("../../src/capabilities/taxonomy/resolver.js");
-const { createProximityCircle } = await import(
-    "../../src/capabilities/filter/panel/proximity/proximity-circle.js"
-);
+const { createProximityCircle } =
+    await import("../../src/capabilities/filter/panel/proximity/proximity-circle.js");
 const { haversineDistance, EARTH_RADIUS_M } = await import("../../src/utils/geo/haversine.js");
-const { buildVtLayerData } = await import(
-    "../../src/capabilities/vector-tiles/vector-tiles-layer-data.js"
-);
+const { buildVtLayerData } =
+    await import("../../src/capabilities/vector-tiles/vector-tiles-layer-data.js");
 
 describe("arête 1/4 — scale → modules/utils/general/scale-utils (S6)", () => {
     const LAT = 48.8;
@@ -60,17 +58,18 @@ describe("arête 1/4 — scale → modules/utils/general/scale-utils (S6)", () =
     });
 
     it("_calculateZoomFromScale boucle sur ces deux primitives — l'aller-retour ferme", () => {
-        // Le solveur amorti part de `zoomAtScale` puis raffine jusqu'à |écart| < 1 : on ne
-        // peut donc pas exiger l'égalité avec la primitive analytique. Ce qu'on exige, et
-        // qui casse au premier re-fork de la formule AVANT ou APRÈS, c'est que l'échelle
-        // re-calculée par le kernel au zoom trouvé retombe sur la cible.
+        // The damped solver starts from `zoomAtScale` then refines until
+        // |gap| < 1: equality with the analytic primitive thus cannot be
+        // demanded. What is demanded, and breaks at the first re-fork of the
+        // formula BEFORE or AFTER, is that the scale the kernel re-computes
+        // at the found zoom lands back on the target.
         //
-        // La borne n'est pas une tolérance choisie au doigt mouillé, c'est la somme des
-        // deux imprécisions ASSUMÉES du solveur (scale-control.ts:424-440) :
-        //   - son critère d'arrêt, |écart| < 1 ;
-        //   - l'arrondi du zoom à 4 décimales, qui déplace l'échelle d'un facteur
-        //     2^5e-5 - 1 ≈ 3,5e-5 en relatif.
-        // Un re-fork de la formule dériverait de bien plus que ça.
+        // The bound is not a wet-finger tolerance, it is the sum of the
+        // solver's two ASSUMED imprecisions (scale-control.ts):
+        //   - its stop criterion, |gap| < 1;
+        //   - the zoom rounding to 4 decimals, which moves the scale by a
+        //     factor 2^5e-5 - 1 ≈ 3.5e-5 relative.
+        // A re-fork of the formula would drift far beyond that.
         const bound = (target) => 1 + target * 3.5e-5;
         for (const target of [1000, 25_000, 250_000, 2_000_000]) {
             const zoom = control._calculateZoomFromScale(target);
@@ -81,14 +80,16 @@ describe("arête 1/4 — scale → modules/utils/general/scale-utils (S6)", () =
     });
 
     it("l'amorce du solveur est bien la primitive inverse du kernel", () => {
-        // `zoomAtScale` est l'inverse de `scaleAtZoom` : le vérifier ici garantit que le
-        // couple consommé par la capacité reste cohérent, indépendamment du solveur.
+        // `zoomAtScale` is `scaleAtZoom`'s inverse: verifying it here
+        // guarantees the pair the capability consumes stays coherent,
+        // independently of the solver.
         //
-        // L'aller-retour n'est PAS exact, et c'est voulu : `scaleAtZoom` arrondit son
-        // résultat à l'entier (scale-utils.ts:56, « rounded to an integer »). Le résidu
-        // vaut donc ~0,72/scale en zoom — mesuré 1,2e-8 à z=3 et 1,3e-3 à z=22, soit
-        // exactement la loi en 1/scale. `1.5/scale` la borne partout. Toute dérive qui ne
-        // serait PAS cet arrondi sort de cette borne.
+        // The round trip is NOT exact, and that is intended: `scaleAtZoom`
+        // rounds its result to the integer (scale-utils.ts, "rounded to an
+        // integer"). The residue is thus ~0.72/scale in zoom — measured
+        // 1.2e-8 at z=3 and 1.3e-3 at z=22, exactly the 1/scale law.
+        // `1.5/scale` bounds it everywhere. Any drift that is NOT this
+        // rounding leaves the bound.
         for (const z of [3, 7, 11, 16, 20, 22]) {
             const scale = scaleAtZoom(z, LAT);
             expect(Math.abs(zoomAtScale(scale, LAT) - z)).toBeLessThan(1.5 / scale);
@@ -97,9 +98,9 @@ describe("arête 1/4 — scale → modules/utils/general/scale-utils (S6)", () =
 });
 
 describe("arête 2/4 — legend → capabilities/taxonomy/resolver (S4)", () => {
-    // Les 4 branches de `resolveCategoryKey` : clé exacte, variante MAJ, variante min,
-    // puis balayage insensible à la casse. Un matcher re-forké qui n'implémenterait que
-    // l'égalité stricte passerait le 1er cas et échouerait les 3 autres.
+    // `resolveCategoryKey`'s 4 branches: exact key, UPPER variant, lower
+    // variant, then case-insensitive sweep. A re-forked matcher implementing
+    // only strict equality would pass the 1st case and fail the other 3.
     const CATEGORIES = {
         CULTURES: { svgId: "culture" },
         nature: { svgId: "tree" },
@@ -107,7 +108,7 @@ describe("arête 2/4 — legend → capabilities/taxonomy/resolver (S4)", () => 
     };
     const PREFIX = "cat-";
 
-    /** Génère l'item de légende d'une règle liée à `value`, et rend son icône. */
+    /** Generates the legend item of a rule bound to `value`, and returns its icon. */
     function iconFor(value) {
         const styleData = {
             styleRules: [
@@ -144,8 +145,8 @@ describe("arête 2/4 — legend → capabilities/taxonomy/resolver (S4)", () => 
         ["variante minuscule", "cultures"],
         ["balayage insensible à la casse", "patrimoine"],
     ])("%s : legend résout la même clé que le resolver", (_label, value) => {
-        // Attendu DÉRIVÉ du kernel — jamais écrit en dur : c'est ce qui rend le test
-        // insensible à la valeur et sensible à la divergence.
+        // Expectation DERIVED from the kernel — never hardcoded: what makes
+        // the test insensitive to the value and sensitive to the divergence.
         const key = resolveCategoryKey(CATEGORIES, value);
         expect(key).not.toBeNull();
         expect(iconFor(value)).toBe(PREFIX + CATEGORIES[key].svgId);
@@ -160,7 +161,7 @@ describe("arête 2/4 — legend → capabilities/taxonomy/resolver (S4)", () => 
 describe("arête 3/4 — vector-tiles → adapters/maplibre (socle B.1)", () => {
     const DEF = { geometry: "polygon", legends: { title: "T" }, paint: { "fill-color": "#f00" } };
 
-    /** @returns l'entrée de couche construite par la capacité. */
+    /** @returns the layer entry the capability builds. */
     function entry() {
         return buildVtLayerData({
             layerId: "lyr",
@@ -183,15 +184,15 @@ describe("arête 3/4 — vector-tiles → adapters/maplibre (socle B.1)", () => 
 
     it("elle transmet la déclaration telle quelle, sans résoudre de paint", () => {
         const e = entry();
-        // `config` EST la def d'origine (même référence) : rien n'a été calculé au passage.
+        // `config` IS the original def (same reference): nothing was computed in passing.
         expect(e.config).toBe(DEF);
-        // Aucune clé de rendu résolue ne remonte dans l'entrée — la résolution de paint
-        // appartient à `adapters/maplibre/maplibre-vector-tiles.ts` (helper
-        // `resolveVtSubLayerPaint`), pas ici. Cf. backlog B.17.
+        // No resolved render key climbs into the entry — paint resolution
+        // belongs to `adapters/maplibre/maplibre-vector-tiles.ts` (helper
+        // `resolveVtSubLayerPaint`), not here.
         for (const forbidden of ["paint", "layout", "filter", "source-layer"]) {
             expect(Object.keys(e)).not.toContain(forbidden);
         }
-        // Les ids de sous-couches sont ceux que l'ADAPTATEUR a rendus, repris tels quels.
+        // The sub-layer ids are the ones the ADAPTER returned, taken as-is.
         expect(e._maplibreSubLayerIds).toEqual(["lyr__0"]);
     });
 });
@@ -199,7 +200,7 @@ describe("arête 3/4 — vector-tiles → adapters/maplibre (socle B.1)", () => 
 describe("arête 4/4 — proximity → modules/utils/geo/haversine (S10)", () => {
     const CENTER = { lat: 48.8566, lng: 2.3522 };
 
-    /** Capture le polygone que la capacité pousse à l'adaptateur. */
+    /** Captures the polygon the capability pushes to the adapter. */
     function polygonFor(radiusMetres, center = CENTER) {
         let captured = null;
         const map = {
@@ -215,10 +216,11 @@ describe("arête 4/4 — proximity → modules/utils/geo/haversine (S10)", () =>
     }
 
     it("le cercle DESSINÉ et le prédicat qui FILTRE tiennent sur la même Terre", () => {
-        // C'est l'assertion qui rend un re-fork du rayon impossible : les sommets sont
-        // mesurés avec `haversineDistance`, la fonction même dont `predicate.ts` se sert
-        // pour décider ce qui passe le filtre. Avant S10 la capacité portait son propre
-        // 6371008.8 et les deux frontières différaient de 1,4 ppm.
+        // The assertion that makes a radius re-fork impossible: the vertices
+        // are measured with `haversineDistance`, the very function
+        // `predicate.ts` uses to decide what passes the filter. Before, the
+        // capability carried its own 6371008.8 and the two boundaries
+        // differed by 1.4 ppm.
         for (const radius of [500, 10_000, 100_000]) {
             const poly = polygonFor(radius);
             const ring = poly.geometry.coordinates[0];

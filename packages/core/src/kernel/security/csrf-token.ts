@@ -38,11 +38,10 @@ interface CSRFTokenInfo {
 }
 
 /**
- * ⚠ Doit rester EXPORTÉ. Depuis KERNEL S14, `CSRFToken` fait partie de l'objet
- * `Security` du baril (`security/index.ts`) ; TypeScript doit donc pouvoir NOMMER ce
- * type pour émettre la déclaration de `Security`, sinon TS4023
- * (« has or is using name … but cannot be named »). Même contrainte que
- * `FetchHelperOptions` pour `Utils`.
+ * ⚠ Must stay EXPORTED. `CSRFToken` is part of the barrel's `Security` object
+ * (`security/index.ts`); TypeScript must therefore be able to NAME this type to
+ * emit `Security`'s declaration, otherwise TS4023 ("has or is using name … but
+ * cannot be named"). Same constraint as `FetchHelperOptions` for `Utils`.
  */
 export interface CSRFTokenInternal {
     _token: string | null;
@@ -68,9 +67,12 @@ export interface CSRFTokenInternal {
 /**
  * CSRF token issuance and verification for state-changing requests.
  *
- * Holds a token per session and exposes it for outgoing requests. Verification is
- * constant-time by construction — a comparison that short-circuits on the first differing
- * byte leaks the token's prefix through timing.
+ * Holds a token per session and exposes it for outgoing requests. The token is minted in
+ * THIS browser (`crypto.getRandomValues`) and checked in the same context — it is never a
+ * server secret verified across the network — so {@link CSRFTokenInternal.validateToken}
+ * compares by direct equality. There is no cross-origin timing oracle here that a
+ * constant-time comparison would defend against; do not add that complexity on the strength
+ * of the word alone.
  */
 export const CSRFToken: CSRFTokenInternal = {
     _token: null,
@@ -144,9 +146,9 @@ export const CSRFToken: CSRFTokenInternal = {
     addTokenToData<T extends FormData | Record<string, unknown>>(data: T): T {
         const token = this.getToken();
         if (data instanceof FormData) {
-            (data as FormData).append("csrf_token", token ?? "");
+            data.append("csrf_token", token ?? "");
         } else if (typeof data === "object" && data !== null) {
-            (data as Record<string, unknown>).csrf_token = token;
+            data.csrf_token = token;
         }
         return data;
     },
@@ -203,7 +205,7 @@ export const CSRFToken: CSRFTokenInternal = {
         if (data instanceof FormData) {
             token = data.get("csrf_token");
         } else if (typeof data === "object" && data !== null) {
-            token = (data as Record<string, unknown>).csrf_token;
+            token = data.csrf_token;
         } else {
             token = undefined;
         }

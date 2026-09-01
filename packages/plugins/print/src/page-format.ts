@@ -36,8 +36,8 @@ export const METERS_PER_PIXEL_AT_ZOOM_0 = 156543.04;
 const TITLE_HEIGHT_MM = 14;
 
 /**
- * Legend band height (mm) — provisional for Sprint 4.
- * Sprint 5 (legend-inline.ts) will measure the actual canvas height and adjust.
+ * Legend band height (mm) — a provisional default.
+ * legend-inline.ts measures the actual canvas height and adjusts.
  */
 const LEGEND_HEIGHT_MM = 24;
 

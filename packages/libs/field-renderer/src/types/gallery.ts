@@ -146,16 +146,16 @@ function formRender(
         errorEl.hidden = true;
         for (const file of files) {
             if (urls.length >= maxCount) break;
-            // 5.1-d — même forme que le composant `image` : le refus reste SYNCHRONE, et on
-            // n'attend la compression que si elle est nécessaire. `maxSizeMb` devient la
-            // taille visée APRÈS compression. Voir `image-compress.ts`.
+            // Same shape as the `image` component: the refusal stays
+            // SYNCHRONOUS, and we only wait for compression when needed.
+            // `maxSizeMb` becomes the size aimed for AFTER compression. See `image-compress.ts`.
             const preErr = _validateFile(file, maxSizeMb * PRECOMPRESSION_FACTOR);
             if (preErr) {
                 errorEl.textContent = _getLabel(preErr);
                 errorEl.hidden = false;
                 continue;
             }
-            // Variable distincte : `file` est le `const` de la boucle `for…of`.
+            // Separate variable: `file` is the `for…of` loop's `const`.
             let toSend = file;
             if (file.size > maxSizeMb * 1024 * 1024) {
                 const outcome = await compressToFit(file, maxSizeMb);

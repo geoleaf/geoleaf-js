@@ -1,21 +1,23 @@
 /**
- * Garde 8.7 — la permission de couche est appliquée AUSSI sur le chemin CONNECTÉ (B-138),
- * et un refus de permission n'est pas réessayable (B-139).
+ * Guard — the layer permission is applied ALSO on the CONNECTED path,
+ * and a permission refusal is not retryable.
  *
- * ## Ce que ces cas asserteraient MAL s'ils n'observaient que l'erreur
+ * ## What these cases would assert BADLY if they only observed the error
  *
- * 🛑 **Le cas central assère sur l'ABSENCE D'APPEL AU RÉSEAU, pas sur le type de l'erreur.**
- * Une garde qui vérifie seulement qu'une `PersistenceError("forbidden")` est levée reste verte
- * si le `DELETE` est déjà parti avant qu'elle ne soit levée — l'entité serait supprimée côté
- * serveur ET l'utilisateur verrait un refus. C'est le faux vert n° ④ de la session précédente
- * (observer `caches.open` au lieu de l'écriture effective) : on mesurait « une décision a été
- * prise », pas « rien n'a été écrit ».
+ * 🛑 **The central case asserts on the ABSENCE OF A NETWORK CALL, not on the
+ * error's type.** A guard that only verifies a `PersistenceError("forbidden")`
+ * is thrown stays green if the `DELETE` already left before it was thrown —
+ * the entity would be deleted server-side AND the user would see a refusal.
+ * It is the false green of observing `caches.open` instead of the effective
+ * write, seen before: measuring "a decision was made", not "nothing was
+ * written".
  *
- * ## Pourquoi `mode: "online"` et pas seulement `"auto"`
+ * ## Why `mode: "online"` and not just `"auto"`
  *
- * `createPersistenceAdapter` rend l'adaptateur REST **nu** en `mode: "online"` — sans passer
- * par `createAutoAdapter`. Une garde qui n'éprouverait que le mode automatique laisserait
- * ouvert le mode le plus exposé, celui qui portait le trou.
+ * `createPersistenceAdapter` returns the **bare** REST adapter in
+ * `mode: "online"` — without going through `createAutoAdapter`. A guard
+ * exercising only the auto mode would leave open the most exposed mode, the
+ * one that carried the hole.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createPersistenceAdapter } from "../persistence/adapter-factory.js";
@@ -35,7 +37,7 @@ let fetchMock: ReturnType<typeof vi.fn>;
 let applyEdit: ReturnType<typeof vi.fn>;
 let mayEdit: ReturnType<typeof vi.fn>;
 
-/** Le profil de référence : tout accordé sauf `delete`, comme `_reference/reference-points`. */
+/** The reference profile: everything granted but `delete`, like `_reference/reference-points`. */
 function grantAllButDelete(_layerId: string, kind: string): boolean {
     return kind !== "delete";
 }
@@ -65,14 +67,14 @@ function cfg(mode: "online" | "offline" | "auto", dialect?: "rest" | "collection
     return { api: API, persistence: { mode, dialect } };
 }
 
-describe("8.7 / B-138 — la permission vaut EN LIGNE, pas seulement hors ligne", () => {
+describe("la permission vaut EN LIGNE, pas seulement hors ligne", () => {
     it("mode online : un delete refusé n'atteint JAMAIS le réseau", async () => {
         const adapter = createPersistenceAdapter(cfg("online"));
 
         await expect(adapter.delete("f1", "reference-points")).rejects.toThrow(PersistenceError);
 
-        // 🛑 L'assertion qui compte : rien n'est parti. Vérifier seulement le type de l'erreur
-        // laisserait passer un DELETE déjà émis.
+        // 🛑 The assertion that matters: nothing left. Checking only the
+        // error's type would let an already-emitted DELETE pass.
         expect(fetchMock).not.toHaveBeenCalled();
         expect(mayEdit).toHaveBeenCalledWith("reference-points", "delete");
     });
@@ -109,7 +111,7 @@ describe("8.7 / B-138 — la permission vaut EN LIGNE, pas seulement hors ligne"
     });
 });
 
-describe("8.7 / B-139 — un refus de permission n'est pas réessayable", () => {
+describe("un refus de permission n'est pas réessayable", () => {
     it("le refus porte `forbidden`, jamais `network`", async () => {
         const adapter = createPersistenceAdapter(cfg("online"));
 
@@ -117,14 +119,16 @@ describe("8.7 / B-139 — un refus de permission n'est pas réessayable", () => 
 
         expect(err).toBeInstanceOf(PersistenceError);
         expect((err as PersistenceError).kind).toBe("forbidden");
-        // ⚠️ La moitié qui compte : `auto-adapter._isTransportError` ne reconnaît que
-        // `network`/`timeout`. Typé `network`, ce refus serait remis en file indéfiniment.
+        // ⚠️ The half that matters: `auto-adapter._isTransportError` only
+        // recognises `network`/`timeout`. Typed `network`, this refusal would
+        // be requeued indefinitely.
         expect((err as PersistenceError).kind).not.toBe("network");
     });
 
     it("un refus REMONTÉ PAR LE CORE est requalifié, pas laissé en `network`", async () => {
-        // La couche est accordée côté prédicat, mais le core refuse à l'écriture — le second
-        // niveau de garde, celui qu'`applyEdit` tient pour son propre compte.
+        // The layer is granted on the predicate side, but the core refuses at
+        // write time — the second guard level, the one `applyEdit` holds on
+        // its own account.
         mayEdit.mockReturnValue(true);
         applyEdit.mockResolvedValue({ entryId: null, refused: "deleteNotPermitted" });
         const adapter = createPersistenceAdapter(cfg("offline"));
@@ -141,30 +145,32 @@ describe("8.7 / B-139 — un refus de permission n'est pas réessayable", () => 
 
         const err = await adapter.delete("f1", "L").catch((e: unknown) => e);
 
-        // Le moteur absent EST une panne, et elle doit rester réessayable.
+        // The absent engine IS an outage, and it must stay retryable.
         expect((err as PersistenceError).kind).toBe("network");
     });
 });
 
-describe("8.7 / B-139 — ce que l'UTILISATEUR lit", () => {
+describe("refus de permission — ce que l'UTILISATEUR lit", () => {
     /**
-     * ⚠️ **CE CAS A ÉTÉ ÉCRIT VACUEUX, ET LA MUTATION L'A ATTRAPÉ.** Sa première rédaction
-     * moquait `GeoLeaf.UI.Notifications.show` et assertait en NÉGATIF
-     * (`expect(shown).not.toMatch(/Erreur serveur/)`). Or `_notify` (`internal.ts:53`) passe
-     * par `GeoLeaf.UI.notify[kind]` — un tout autre canal. Le mock ne recevait rien, la chaîne
-     * observée était vide, et une assertion négative sur du vide passe **toujours**. Retirer
-     * le correctif de `_notifyError` laissait le cas VERT.
+     * ⚠️ **THIS CASE WAS WRITTEN VACUOUS, AND THE MUTATION CAUGHT IT.** Its
+     * first draft mocked `GeoLeaf.UI.Notifications.show` and asserted in the
+     * NEGATIVE (`expect(shown).not.toMatch(/Erreur serveur/)`). But `_notify`
+     * (`internal.ts`) goes through `GeoLeaf.UI.notify[kind]` — a whole
+     * other channel. The mock received nothing, the observed string was empty,
+     * and a negative assertion on emptiness **always** passes. Removing the
+     * `_notifyError` fix left the case GREEN.
      *
-     * D'où cette forme : on observe le vrai canal, on assère en POSITIF sur le libellé exact,
-     * et un contrôle vérifie d'abord qu'une notification a bien eu lieu — sans quoi on
-     * retomberait dans le même piège par une autre porte.
+     * Hence this shape: observe the real channel, assert POSITIVELY on the
+     * exact label, and a check first verifies a notification did happen —
+     * without which we would fall into the same trap through another door.
      */
     it("un refus de permission nomme la couche, pas une panne serveur réessayable", async () => {
         const notifyError = vi.fn();
         (globalThis as any).GeoLeaf.UI = { notify: { error: notifyError } };
-        // `submitFeature` ne fait que `save`/`update` — jamais `delete`. Il faut donc une
-        // couche qui refuse la MISE À JOUR, sinon rien n'est refusé et le cas serait sans
-        // objet. (C'est ce que le contrôle anti-vacuité ci-dessous a signalé à la rédaction.)
+        // `submitFeature` only does `save`/`update` — never `delete`. So we
+        // need a layer refusing the UPDATE, otherwise nothing is refused and
+        // the case would be moot. (Which the anti-vacuity check below flagged
+        // at writing time.)
         mayEdit.mockReturnValue(false);
         const { submitFeature } = await import("../persistence/submit.js");
         const { _getLabel } = await import("../internal.js");
@@ -180,10 +186,10 @@ describe("8.7 / B-139 — ce que l'UTILISATEUR lit", () => {
             } as never,
             { feature: FEATURE, layerId: "reference-points", isUpdate: true }
         ).catch(() => {
-            /* le rejet est attendu — c'est le LIBELLÉ qu'on éprouve */
+            /* the rejection is expected — the LABEL is what we exercise */
         });
 
-        // Contrôle anti-vacuité : sans notification, tout ce qui suit serait sans objet.
+        // Anti-vacuity check: without a notification, all that follows would be moot.
         expect(notifyError).toHaveBeenCalledOnce();
         expect(notifyError).toHaveBeenCalledWith(_getLabel("editor.error.editionNotPermitted"));
         expect(notifyError).not.toHaveBeenCalledWith(_getLabel("editor.error.server"));

@@ -80,13 +80,14 @@ describe("tile-math", () => {
 
     // ----- countTilesForBounds -----
 
-    // API publique S4.4 — le describe `tile counting` a suivi `estimateVectorZone` chez
-    // storage : il exerçait `countTilesForBounds` (privé) À TRAVERS elle. Le core garde ce
-    // qu'il utilise réellement, `latLngToTile`.
+    // Public API review — the `tile counting` describe followed
+    // `estimateVectorZone` to storage: it exercised `countTilesForBounds`
+    // (private) THROUGH it. The core keeps what it really uses, `latLngToTile`.
 
     // ----- estimateVectorZone -----
 
-    // API publique S4.4 — le describe `estimateVectorZone()` a été DÉPLACÉ dans
-    // `packages/plugins/offline-ui/src/__tests__/vector-zone-estimate.test.js`, avec la fonction.
-    // Elle était du code mort ici : zéro appelant dans le core, élaguée de l'artefact publié.
+    // Public API review — the `estimateVectorZone()` describe was MOVED to
+    // `packages/plugins/offline-ui/src/__tests__/vector-zone-estimate.test.js`,
+    // with the function. It was dead code here: zero core callers, pruned
+    // from the published artefact.
 });

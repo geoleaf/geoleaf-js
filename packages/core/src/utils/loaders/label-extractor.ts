@@ -5,8 +5,10 @@
  * https://geoleaf.dev
  */
 /**
- * @fileoverview Label configuration extractor for GeoLeaf style data.
- * Extracted from style-loader.ts as part of Sprint 1 refactoring.
+ * Label configuration extractor for GeoLeaf style data.
+ *
+ * Reads the `label` sub-block of a style file (integrated labels) and normalises
+ * it for the renderers. Extracted from style-loader.ts.
  */
 
 import { Log } from "../log/index.js";

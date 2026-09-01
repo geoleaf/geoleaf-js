@@ -19,6 +19,7 @@ import {
     toClusterCirclePaint,
 } from "../../src/adapters/maplibre/maplibre-style-converter.js";
 import { buildHatchPatternId } from "../../src/adapters/maplibre/maplibre-hatch-patterns.js";
+import { DEFAULT_FEATURE_COLOR } from "../../src/utils/constants/constants.js";
 describe("normalizeToFlat", () => {
     it("returns {} for null input", () => {
         expect(normalizeToFlat(null)).toEqual({});
@@ -128,8 +129,11 @@ describe("toFillPaint", () => {
         const result = toFillPaint({ color: "#0000ff" });
         expect(result["fill-outline-color"]).toBe("#0000ff");
     });
-    it("returns empty object for empty input", () => {
-        expect(toFillPaint({})).toEqual({});
+    // 🛑 A missing colour used to emit NOTHING, so MapLibre applied its own default —
+    // an opaque #000000, which reads as data rather than as an omission. The styleRules
+    // path already fell back to DEFAULT_FEATURE_COLOR; the two paths now agree.
+    it("falls back to the feature default colour, never to MapLibre black", () => {
+        expect(toFillPaint({})).toEqual({ "fill-color": DEFAULT_FEATURE_COLOR });
     });
     it("maps all fill properties at once", () => {
         const result = toFillPaint({
@@ -160,8 +164,8 @@ describe("toLinePaint", () => {
         expect(result["line-cap"]).toBe("round");
         expect(result["line-join"]).toBe("miter");
     });
-    it("returns empty object for empty input", () => {
-        expect(toLinePaint({})).toEqual({});
+    it("falls back to the feature default colour, never to MapLibre black", () => {
+        expect(toLinePaint({})).toEqual({ "line-color": DEFAULT_FEATURE_COLOR });
     });
 });
 describe("toCirclePaint", () => {
@@ -185,8 +189,15 @@ describe("toCirclePaint", () => {
         const result = toCirclePaint({ weight: 2 });
         expect(result["circle-stroke-width"]).toBe(2);
     });
-    it("returns empty object for empty input", () => {
-        expect(toCirclePaint({})).toEqual({});
+    it("falls back to the feature default colour, never to MapLibre black", () => {
+        expect(toCirclePaint({})).toEqual({ "circle-color": DEFAULT_FEATURE_COLOR });
+    });
+
+    // The size defaults are DELIBERATELY left to MapLibre: 41 of the 53 layer styles in
+    // the repo omit `radius`, and moving that default would move almost every point
+    // layer for a defect that is not the one being closed here.
+    it("leaves circle-radius unset when no radius is declared", () => {
+        expect(toCirclePaint({})["circle-radius"]).toBeUndefined();
     });
 });
 describe("toCasingPaint", () => {

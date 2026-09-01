@@ -3,7 +3,7 @@
  *
  * Per-value verification of `_applyLayerManagerConfig(lmConfig, options)`, the
  * pure helper the LayerManager calls to fold layerManagerConfig into its module
- * options (layer-manager-api.ts:248-255 → here). Pure function = cleanest unit
+ * options (layer-manager-api.ts → here). Pure function = cleanest unit
  * surface (no global Config, no map, no DOM).
  *
  * Consumer: packages/core/src/kernel/layer-manager/layer-manager-helpers.ts.
@@ -114,7 +114,7 @@ describe("config B3 — layerManagerConfig (layer-manager-helpers.ts)", () => {
         });
     });
 
-    // ── B-251 — sections pre-created by `_registerGeoJsonLayer` ───────────────
+    // ── Sections pre-created by `_registerGeoJsonLayer` ───────────────
     // The runtime order is: layers register FIRST (implicitly creating their
     // section with the generic i18n label, order 10 and no collapsedByDefault),
     // and only then does init() fold the config in. Every case above starts from

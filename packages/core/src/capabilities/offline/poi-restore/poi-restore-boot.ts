@@ -5,7 +5,7 @@
  */
 
 /**
- * Boot wiring for the offline POI restore (S9 D5). Kept separate from the pure
+ * Boot wiring for the offline entity restore (S9 D5). Kept separate from the pure
  * restore logic in `poi-restore.ts` so that logic stays side-effect-free and
  * unit-testable, while this module owns the DOM event lifecycle.
  */
@@ -15,7 +15,7 @@ import { restorePendingPois, type PoiRestoreDeps } from "./poi-restore.js";
 let _attached = false;
 
 /**
- * Attaches the boot listeners that push offline POIs onto their host layers.
+ * Attaches the boot listeners that push offline entities onto their host layers.
  *
  * Listens on `geoleaf:layers:initial-loaded` (earliest — phase-1 host sources
  * exist) and replays on `geoleaf:app:ready` (net for deferred layers). Both

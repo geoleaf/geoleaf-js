@@ -17,14 +17,15 @@ import { DBModulesRegistry } from "../../../src/capabilities/offline/db/db-modul
 
 const DB_NAME = "geoleaf-db"; // fixed by StorageDB._dbName — not a choice here.
 
-// ⚠️ L'ÉCOUTEUR DE `geoleaf:storage:ready` A ÉTÉ RETIRÉ D'ICI (B-72, 03/08/2026) — le signal
-// n'existe plus. Il n'avait aucune charge utile, partait à chaque ouverture de base et n'avait
-// aucun écouteur de production ; ces tests étaient son seul consommateur au monde.
+// ⚠️ THE `geoleaf:storage:ready` LISTENER WAS REMOVED FROM HERE (03/08/2026)
+// — the signal no longer exists. It carried no payload, fired at every base
+// opening and had no production listener; these tests were its only consumer
+// in the world.
 //
-// 🛑 CE QU'IL SERVAIT À PROUVER RESTE PROUVÉ, par un instrument MEILLEUR : l'idempotence de
-// `init()` se mesure désormais sur le nombre d'appels à `indexedDB.open`, ce qui dit « la base
-// n'a pas été rouverte » plutôt que « un événement n'a pas été réémis ». Le second était une
-// conséquence du premier, pas la propriété elle-même.
+// 🛑 WHAT IT SERVED TO PROVE STAYS PROVEN, by a BETTER instrument: `init()`'s
+// idempotence is now measured on the number of `indexedDB.open` calls, which
+// says "the base was not reopened" rather than "an event was not re-emitted".
+// The second was a consequence of the first, not the property itself.
 
 afterEach(async () => {
     vi.unstubAllGlobals();
@@ -47,16 +48,23 @@ describe("StorageDB.init — success", () => {
 
         expect(db).toBeInstanceOf(IDBDatabase);
         expect(db.name).toBe(DB_NAME);
-        expect(db.version).toBe(4);
+        expect(db.version).toBe(5);
         expect(IndexedDB._db).toBe(db);
     });
 
-    // La forme fine du schéma v4 (clés, index, unicité) est éprouvée par `schema-v4.test.js` ;
-    // ici on ne garde que l'inventaire, qui appartient au contrat de boot.
-    test("creates the six object stores the engine expects (v4)", async () => {
-        // ⚠️ Huit jusqu'à la tâche 4.11 : `sync_queue` (B-124) et `sync_backups` (chaîne de
-        // sauvegarde) ne sont plus créés. Le test qui garde leur ABSENCE vit dans
-        // `schema-v4.test.js` — celui-ci compte ce qui existe, l'autre refuse ce qui revient.
+    // The v4 schema's fine shape (keys, indexes, uniqueness) is exercised by
+    // `schema-v4.test.js`; here we only keep the inventory, which belongs to
+    // the boot contract.
+    test("creates the seven object stores the engine expects (v5)", async () => {
+        // ⚠️ Eight until recently: `sync_queue` and `sync_backups` (the backup
+        // chain) are no longer created. The test guarding their ABSENCE lives
+        // in `schema-v4.test.js` — this one counts what exists, the other
+        // refuses what comes back.
+        //
+        // ⚠️ SIX before `routes`, which takes the base to v5. The assertion
+        // stays EXHAUSTIVE: it is what would catch an eighth store appearing
+        // by accident, and loosening it to `arrayContaining` would make
+        // invisible exactly what it guards.
         const db = await IndexedDB.init();
 
         expect([...db.objectStoreNames].sort()).toEqual([
@@ -66,6 +74,7 @@ describe("StorageDB.init — success", () => {
             "metadata",
             "outbox",
             "preferences",
+            "routes",
         ]);
     });
 
@@ -78,9 +87,10 @@ describe("StorageDB.init — success", () => {
     });
 
     test("a second init is a no-op — same handle, and the base is NOT reopened", async () => {
-        // L'identité du handle ne suffit pas : une seconde ouverture qui rendrait par hasard
-        // le même objet passerait. Ce qui prouve le court-circuit est qu'`open` n'est appelé
-        // qu'UNE fois — et c'est ce qui coûte, une ouverture pouvant expirer à 15 s.
+        // Handle identity is not enough: a second opening that happened to
+        // return the same object would pass. What proves the short-circuit is
+        // that `open` is called only ONCE — and that is what costs, an
+        // opening being able to time out at 15 s.
         const openSpy = vi.spyOn(globalThis.indexedDB, "open");
 
         const first = await IndexedDB.init();
@@ -106,9 +116,10 @@ describe("StorageDB.init — degradation when IndexedDB is unavailable", () => {
         refuseIndexedDB();
 
         await expect(IndexedDB.init()).resolves.toEqual({ _isStub: true });
-        // ⚠️ L'assertion `readyEvents` est retirée avec le signal (B-72). Ce qu'elle gardait
-        // — « un échec d'ouverture n'annonce pas une réussite » — est porté par la forme du
-        // retour lui-même : un talon, pas une base. C'est plus direct qu'un événement absent.
+        // ⚠️ The `readyEvents` assertion is removed with the signal. What it
+        // guarded — "an opening failure does not announce a success" — is
+        // carried by the return's shape itself: a stub, not a base. More
+        // direct than an absent event.
     });
 
     test("the stub IS retained — `_db` holds it and the open is not retried", async () => {
@@ -134,10 +145,11 @@ describe("StorageDB.init — degradation when IndexedDB is unavailable", () => {
     test("the list-returning calls still answer with an empty list, never undefined", async () => {
         refuseIndexedDB();
 
-        // ⚠️ Les deux appels `sync_queue` de ce cas sont retirés (4.11) avec la façade.
-        // `listPendingEdits` prend leur place : c'est désormais LA lecture de liste qui doit
-        // rendre `[]` plutôt que `undefined` quand la base refuse de s'ouvrir — un `undefined`
-        // ici ferait planter le décompte d'`autoSync`, donc le rejeu au retour du réseau.
+        // ⚠️ This case's two `sync_queue` calls are removed with the facade.
+        // `listPendingEdits` takes their place: it is now THE list read that
+        // must return `[]` rather than `undefined` when the base refuses to
+        // open — an `undefined` here would crash `autoSync`'s tally, hence
+        // the replay on network return.
         await expect(IndexedDB.listPendingEdits()).resolves.toEqual([]);
         await expect(IndexedDB.getStorageStats()).resolves.toEqual({
             used: 0,
@@ -162,27 +174,39 @@ describe("StorageDB.init — degradation when IndexedDB is unavailable", () => {
 });
 
 describe("StorageDB — cède la place sur versionchange (hygiène de connexion, préalable de 3.1)", () => {
-    // ⚠️ Cette garde est INVISIBLE aujourd'hui et le devient au moment où le schéma bouge
-    // (tâche 3.4) — c'est exactement pourquoi elle est posée AVANT la migration et pas avec.
+    // ⚠️ This guard is INVISIBLE today and becomes visible the moment the
+    // schema moves — exactly why it is set BEFORE the migration and not with it.
     //
-    // Une connexion vivante est la SEULE chose qui puisse bloquer une montée de schéma.
-    // Sans `onversionchange`, le moteur qui détient la base fait pendre l'upgrade de l'autre
-    // contexte jusqu'à son timeout, après quoi celui-ci retombe sur `_isStub` : plus de
-    // stockage, en silence, sur un appareil qui peut porter des saisies non synchronisées.
+    // A live connection is the ONLY thing that can block a schema upgrade.
+    // Without `onversionchange`, the engine holding the base leaves the other
+    // context's upgrade hanging until its timeout, after which that context
+    // falls back to `_isStub`: no more storage, silently, on a device that
+    // may carry unsynced captures.
     test("ferme sa connexion quand un autre contexte demande une montée de version", async () => {
-        await IndexedDB.init();
+        const db = await IndexedDB.init();
         expect(IndexedDB._db).not.toBeNull();
 
-        // Un second contexte demande la version suivante. Il ne doit PAS être bloqué.
+        // 🛑 The next version is DERIVED from the one just opened, never
+        // hardcoded. It was — `open(DB_NAME, 5)` —, and the day the engine
+        // moved to v5 that call stopped being an upgrade: the request no
+        // longer emitted `versionchange`, the promise was no longer kept, and
+        // the leaked connection made six unrelated tests TIME OUT, thirty to
+        // forty seconds each.
+        //
+        // ⚠️ The failure mode is the real cost: it points nowhere near its
+        // cause. A "+ 1" on the READ version cannot desynchronise from a bump.
+        const next = db.version + 1;
+
+        // A second context requests the next version. It must NOT be blocked.
         const upgraded = await new Promise((resolve, reject) => {
-            const req = globalThis.indexedDB.open(DB_NAME, 5);
+            const req = globalThis.indexedDB.open(DB_NAME, next);
             req.onsuccess = () => resolve(req.result);
             req.onerror = () => reject(req.error);
             req.onblocked = () => reject(new Error("BLOQUÉ — le moteur n'a pas cédé la place"));
         });
 
-        expect(upgraded.version).toBe(5);
-        // Et le moteur a bien lâché : son handle est libéré, pas simplement fermé en douce.
+        expect(upgraded.version).toBe(next);
+        // And the engine did let go: its handle is released, not just quietly closed.
         expect(IndexedDB._db).toBeNull();
         expect(IndexedDB._modules).toEqual({});
 
@@ -297,23 +321,25 @@ describe("StorageDB — delegation through a live database", () => {
         expect(await IndexedDB.getLayersByProfile("p2")).toHaveLength(1);
     });
 
-    // ⚠️ RÉÉCRIT le 02/08/2026 (tâche 3.3). Ce test s'appelait « addToSyncQueue rewrites the
-    // caller's payload into SyncDB's entry shape » et VERROUILLAIT le remap : il appelait la
-    // façade à DEUX arguments avec `{endpoint, data}` et assertait la réécriture en
-    // `{layerId, poiData}`. Or aucun appelant de production n'a jamais utilisé cette forme —
-    // les trois passent UN argument. Le test prouvait donc qu'un chemin sans utilisateur
-    // fonctionnait, pendant que le chemin réel écrivait `poiData: null` sur chaque saisie.
+    // ⚠️ REWRITTEN on 02/08/2026. This test was called "addToSyncQueue
+    // rewrites the caller's payload into SyncDB's entry shape" and LOCKED the
+    // remap: it called the facade with TWO arguments as `{endpoint, data}`
+    // and asserted the rewrite into `{layerId, poiData}`. Yet no production
+    // caller ever used that form — all three pass ONE argument. The test thus
+    // proved a userless path worked, while the real path wrote
+    // `poiData: null` on every capture.
 
-    // ⚠️ The `status === "pending"` fast path (indexeddb.ts:329) is REDUNDANT: deleting it
+    // ⚠️ The `status === "pending"` fast path (indexeddb.ts) is REDUNDANT: deleting it
     // leaves this test green. `SyncDB.getSyncQueue(profileId, "pending")` filters on the same
     // field the `status` index selects, so both routes return the same records. They differ
     // only in that `getPendingSyncQueue` sorts by timestamp — and since the primary key is
     // `sync_<Date.now()>_<random>`, timestamp order and key order cannot be made to disagree
     // through the public API. The branch is exercised below; its mutation is a documented
     // survivor, not an untested path.
-    // ⚠️ LE TEST DU ROUTAGE DE `getSyncQueue` EST RETIRÉ (clôture S3c). Il éprouvait une
-    // branche de compatibilité — « si status === 'pending', déléguer à getPendingSyncQueue » —
-    // d'une méthode elle-même legacy et sans appelant. La branche partait avec la méthode.
+    // ⚠️ THE `getSyncQueue` ROUTING TEST IS REMOVED. It exercised a
+    // compatibility branch — "if status === 'pending', delegate to
+    // getPendingSyncQueue" — of a method itself legacy and callerless. The
+    // branch left with the method.
 
     test("preferences round-trip and fall back to the supplied default", async () => {
         await IndexedDB.init();
@@ -336,10 +362,11 @@ describe("StorageDB — delegation through a live database", () => {
 
         await IndexedDB.storeImageLocally(image);
 
-        // ⚠️ Relu par l'index des « en attente » et non par `getLocalImage` — retiré à la
-        // tâche 3.13, son seul consommateur (`addpoi/getLocalImageUrl`) étant redondant avec
-        // la data-URL base64 que le même module écrit. L'index est de toute façon le bon
-        // instrument : c'est LUI que le bug n° 2 de la classe B.6 rendait aveugle.
+        // ⚠️ Re-read through the "pending" index and not `getLocalImage` —
+        // removed, its only consumer (`addpoi/getLocalImageUrl`) being
+        // redundant with the base64 data-URL the same module writes. The
+        // index is the right instrument anyway: it is the ONE a prior bug
+        // class made blind.
         expect((await IndexedDB.getPendingImages()).map((i) => i.id)).toEqual(["img-1"]);
 
         await IndexedDB.updateImageUploadStatus("img-1", {
@@ -349,15 +376,16 @@ describe("StorageDB — delegation through a live database", () => {
         expect(await IndexedDB.getPendingImages()).toHaveLength(0);
 
         await IndexedDB.deleteLocalImage("img-1");
-        // Après suppression, l'image ne peut plus être en attente : la relecture par l'index
-        // vaut ici la relecture par clé, et elle n'exige aucun accesseur supplémentaire.
+        // After deletion, the image can no longer be pending: re-reading
+        // through the index equals re-reading by key here, and it requires no
+        // extra accessor.
         expect(await IndexedDB.getPendingImages()).toHaveLength(0);
     });
 
     test("getStorageStats counts what is actually stored", async () => {
-        // ⚠️ Ce cas écrivait dans `sync_queue` et comptait `syncQueueCount` ; les deux sont
-        // retirés (4.11). Il compte désormais l'outbox, par le point d'entrée qui l'alimente
-        // vraiment — `applyEdit`, unique écrivain depuis 4.4b.
+        // ⚠️ This case wrote into `sync_queue` and counted `syncQueueCount`;
+        // both are removed. It now counts the outbox, through the entry point
+        // that really feeds it — `applyEdit`, the sole writer.
         await IndexedDB.init();
         await IndexedDB.cacheLayer("l1", {}, "p1");
         await IndexedDB.applyLocalEdit({
@@ -375,13 +403,14 @@ describe("StorageDB — delegation through a live database", () => {
     });
 });
 
-// ── B.47b — un échec d'ouverture n'est pas mémorisé ───────────────────────────
+// ── an opening failure is not memoised ────────────────────────────────────────
 //
-// `init()` court-circuite sur `this._db`, mais le chemin d'échec ne renseigne jamais
-// `_db` : il rend le stub `{_isStub:true}` sans rien retenir. Chaque appel de façade
-// suivant repart donc dans `StorageHelper.openDatabase` et repaie une tentative complète
-// — jusqu'à 15 s de timeout chacune. Sur une base durablement inouvrable (quota dépassé,
-// navigation privée, IDB désactivé), ce n'est pas un cas de bord : c'est l'état permanent.
+// `init()` short-circuits on `this._db`, but the failure path never fills
+// `_db`: it returns the `{_isStub:true}` stub retaining nothing. Every later
+// facade call thus goes back into `StorageHelper.openDatabase` and pays a
+// full attempt again — up to 15 s of timeout each. On a durably unopenable
+// base (quota exceeded, private browsing, IDB disabled), this is not an edge
+// case: it is the permanent state.
 describe("IndexedDB.init — un échec d'ouverture ne se retente pas indéfiniment (B.47b)", () => {
     let IndexedDB;
     let StorageHelper;
@@ -392,9 +421,8 @@ describe("IndexedDB.init — un échec d'ouverture ne se retente pas indéfinime
         // Deferred on purpose — the modules load AFTER fake-indexeddb installs
         // `globalThis.indexedDB`. `await import()` preserves that order exactly.
         ({ IndexedDB } = await import("../../../src/capabilities/offline/db/indexeddb.js"));
-        ({ StorageHelperModule: StorageHelper } = await import(
-            "../../../src/capabilities/offline/db/storage-helper.js"
-        ));
+        ({ StorageHelperModule: StorageHelper } =
+            await import("../../../src/capabilities/offline/db/storage-helper.js"));
     });
 
     beforeEach(() => {
@@ -428,9 +456,9 @@ describe("IndexedDB.init — un échec d'ouverture ne se retente pas indéfinime
     });
 
     test("une ouverture qui redevient possible n'est PAS masquée par l'échec mémorisé", async () => {
-        // Le cache d'échec ne doit pas être définitif : `close()` remet à plat, et c'est
-        // le point de reprise. Sans cette sortie, une base temporairement indisponible
-        // resterait inaccessible pour toute la durée de la page.
+        // The failure cache must not be definitive: `close()` resets, and
+        // that is the recovery point. Without this exit, a temporarily
+        // unavailable base would stay unreachable for the page's whole lifetime.
         await IndexedDB.init();
         expect(openSpy).toHaveBeenCalledTimes(1);
 

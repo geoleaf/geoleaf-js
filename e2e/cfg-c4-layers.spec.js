@@ -1,20 +1,21 @@
 // @ts-check
-// Config-contract Phase C / C4 — E2E ciblés (état map/DOM réel) pour B5
-// (layers.json + {id}_config.json), sur deploy-core (profil tourism).
+// Config-contract Phase C / C4 — targeted E2E (real map/DOM state) for the B5
+// config family (layers.json + {id}_config.json), on deploy-core (tourism
+// profile).
 //
-// La couverture EXHAUSTIVE par-valeur est en Vitest (__tests__/config/s13-*) :
+// The EXHAUSTIVE per-value coverage lives in Vitest (__tests__/config/s13-*):
 // index/templates (expandLayerTemplates), popup/tooltip/sidepanel fields
-// (LoaderConfigHelpers), clustering (getClusteringStrategy), data.vectorTiles +
-// scheme (VectorTiles), styles/legends (LayerConfigManager), verrous @anomaly.
-// Ici on confirme, en navigateur réel (WebGL logiciel SwiftShader), que la chaîne
-// layers.json + {id}_config.json → effet tient de bout en bout pour le profil
-// déployé, via des ancrages STABLES (registre runtime des couches, source native
-// clusterisée, API sidepanel, classes DOM) — pas d'assertion pixel.
+// (LoaderConfigHelpers), clustering (getClusteringStrategy), data.vectorTiles
+// + scheme (VectorTiles), styles/legends (LayerConfigManager), @anomaly
+// locks. Here we confirm, in a real browser (SwiftShader software WebGL),
+// that the layers.json + {id}_config.json → effect chain holds end to end for
+// the deployed profile, through STABLE anchors (runtime layer registry,
+// clustered native source, sidepanel API, DOM classes) — no pixel assertion.
 //
-// Décision scope (S13) : LIVE déterministe = APIs runtime + état map/DOM
-// (pas de hover/clic canvas non-déterministe en headless).
+// Scope decision: deterministic LIVE = runtime APIs + map/DOM state (no
+// non-deterministic canvas hover/click in headless).
 //
-// Préfixe `cfg-` (convention roadmap config-contract).
+// The `cfg-` prefix marks the config-contract spec family.
 
 import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
@@ -25,18 +26,20 @@ test.use({ baseURL: baseURL("core") }); // deploy-core (profil tourism)
  * Boot the map, wait for a native maplibregl.Map, then wait for PHASE 1 of smart
  * loading (all default-theme layers) to be complete.
  *
- * Attendre `getAllLayers().length > 0` ne suffit pas : le loader charge le thème par
- * défaut par lots de 3 en parallèle (geojson/loader/profile.ts `_loadLayersByBatch`,
- * batchSize 3 / 200 ms), donc le registre devient non vide dès la PREMIÈRE couche
- * résolue — la plus petite du lot, `villes_principales` (23 Ko contre 838 Ko pour
- * `aires_protegees_nationales_sib`). Une lecture faite à cet instant ne voit qu'une
- * couche, et les assertions par-couche deviennent une loterie.
+ * Waiting for `getAllLayers().length > 0` does not suffice: the loader loads
+ * the default theme in parallel batches of 3 (geojson/loader/profile.ts
+ * `_loadLayersByBatch`, batchSize 3 / 200 ms), so the registry becomes
+ * non-empty as soon as the FIRST layer resolves — the batch's smallest,
+ * `villes_principales` (23 KB vs 838 KB for
+ * `aires_protegees_nationales_sib`). A read at that instant sees one layer,
+ * and per-layer assertions become a lottery.
  *
- * `geoleaf:layers:initial-loaded` (profile.ts:386) est émis exactement une fois, à la
- * fin de la phase 1. Le listener est posé via `addInitScript` — donc AVANT tout script
- * de page — pour qu'il soit impossible de manquer l'événement.
+ * `geoleaf:layers:initial-loaded` (profile.ts) is emitted exactly once,
+ * at the end of phase 1. The listener is set via `addInitScript` — hence
+ * BEFORE any page script — so missing the event is impossible.
  */
-async function bootMap(page) {
+// Contract: style live PLUS __glPhase1 — layer assertions need phase-1 layers landed.
+async function bootMapUntilLayersPhase(page) {
     await page.addInitScript(() => {
         /** @type {any} */ (window).__glPhase1 = -1;
         document.addEventListener(
@@ -49,9 +52,10 @@ async function bootMap(page) {
     });
     await page.goto("/");
     await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
-    // ⚠️ `waitForFunction(fn, arg, options)` : les options sont le 3e argument. Passées
-    // en 2e, elles partent comme `arg` et le wait retombe sur `actionTimeout` — dont la
-    // valeur se lit dans `playwright.config.js`, jamais ici (elle a bougé le 01/08/2026).
+    // ⚠️ `waitForFunction(fn, arg, options)`: the options are the 3rd
+    // argument. Passed 2nd, they leave as `arg` and the wait falls back to
+    // `actionTimeout` — whose value is read in `playwright.config.js`, never
+    // here (it moved on 2026-08-01).
     await page.waitForFunction(
         () => {
             const m = /** @type {any} */ (window).GeoLeaf;
@@ -67,11 +71,11 @@ async function bootMap(page) {
 }
 
 test.describe("cfg-c4 — layers + {id}_config (état map/DOM réel)", () => {
-    // ── layers.json → couches réellement chargées dans le registre runtime ──────
+    // ── layers.json → layers really loaded into the runtime registry ─────────────
     test("layers.json: les couches du profil sont chargées (registre runtime)", async ({
         page,
     }) => {
-        await bootMap(page);
+        await bootMapUntilLayersPhase(page);
         await page.waitForFunction(
             () => /** @type {any} */ (window.GeoLeaf.GeoJSON?.getAllLayers?.() || []).length > 0,
             undefined,
@@ -83,32 +87,34 @@ test.describe("cfg-c4 — layers + {id}_config (état map/DOM réel)", () => {
         expect(ids.length).toBeGreaterThan(0);
     });
 
-    // ── {id}_config.json → blocs d'interaction câblés dans les couches vivantes ──
+    // ── {id}_config.json → interaction blocks wired into the live layers ─────────
     test("{id}_config.json: popup/tooltip/sidepanel atteignent le registre runtime", async ({
         page,
     }) => {
-        await bootMap(page);
+        await bootMapUntilLayersPhase(page);
         await page.waitForFunction(
             () => /** @type {any} */ (window.GeoLeaf.GeoJSON?.getAllLayers?.() || []).length > 0,
             undefined,
             { timeout: 20000 }
         );
-        // Smart loading charge d'abord les couches du thème par défaut ; on inspecte le
-        // registre runtime (getLayerData(id).config) de toutes les couches CHARGÉES et on
-        // prouve que les blocs d'interaction de {id}_config.json y arrivent — sans dépendre
-        // d'une couche différée précise.
+        // Smart loading loads the default theme's layers first; the runtime
+        // registry (getLayerData(id).config) of every LOADED layer is
+        // inspected, proving the interaction blocks of {id}_config.json reach
+        // it — without depending on one specific deferred layer.
         //
-        // Forme CANONIQUE de la déclaration attributaire : le bloc RACINE `attributes`,
-        // une liste unique de champs dont chacun nomme ses surfaces. C'est exactement ce
-        // que lit le runtime — `feature-info/convert.ts` (`resolveSurfaceFields`) puis
-        // `attributes-binding.ts` (`fieldsForSurface`).
+        // CANONICAL shape of the attribute declaration: the ROOT `attributes`
+        // block, a single field list where each field names its surfaces.
+        // Exactly what the runtime reads — `feature-info/convert.ts`
+        // (`resolveSurfaceFields`) then `attributes-binding.ts`
+        // (`fieldsForSurface`).
         //
-        // ⚠️ Ce bloc lisait `capabilities["feature-info"]` jusqu'au 02/08/2026, avec
-        // `tooltip` / `popup` / `sidepanel` en trois listes parallèles. La bascule du
-        // Sprint 2 a retiré ce bloc des 48 configs ET du schéma : l'assertion est
-        // RE-POINTÉE sur le successeur, pas relâchée. Ce qu'elle garde est inchangé —
-        // qu'une déclaration écrite dans un `{id}_config.json` atteigne bien le registre
-        // runtime, et que les trois surfaces y soient câblées.
+        // ⚠️ This block used to read `capabilities["feature-info"]` until
+        // 2026-08-02, with `tooltip` / `popup` / `sidepanel` as three parallel
+        // lists. That old block is removed from all 48 configs AND from the
+        // schema: the assertion is RE-POINTED at the successor, not relaxed.
+        // What it guards is unchanged — that a declaration written in an
+        // `{id}_config.json` does reach the runtime registry, and that the
+        // three surfaces are wired there.
         const configs = await page.evaluate(() => {
             const G = /** @type {any} */ (window).GeoLeaf.GeoJSON;
             return (G.getAllLayers() || []).map((l) => G.getLayerData(l.id)?.config || {});
@@ -117,10 +123,10 @@ test.describe("cfg-c4 — layers + {id}_config (état map/DOM réel)", () => {
         const blocks = configs
             .map((c) => c.attributes)
             .filter((a) => a && Array.isArray(a.fields) && a.fields.length > 0);
-        // ≥1 couche chargée porte bien un bloc `attributes` issu de {id}_config.json
+        // ≥1 loaded layer does carry an `attributes` block from {id}_config.json
         expect(blocks.length).toBeGreaterThan(0);
 
-        /** Les surfaces réellement déclarées, toutes couches confondues. */
+        /** The surfaces actually declared, all layers taken together. */
         const surfaces = new Set(
             blocks.flatMap((a) => a.fields.flatMap((f) => f.display?.surfaces || []))
         );
@@ -128,19 +134,20 @@ test.describe("cfg-c4 — layers + {id}_config (état map/DOM réel)", () => {
         expect(surfaces.has("tooltip")).toBeTruthy();
         expect(surfaces.has("sidepanel")).toBeTruthy();
 
-        // ⚠️ Et le couple de type arrive INTACT jusqu'au runtime : c'est lui que la liste
-        // blanche oppose au build, donc le perdre en route rendrait la garde décorative.
+        // ⚠️ And the type pair arrives INTACT at the runtime: it is what the
+        // whitelist checks at build, so losing it on the way would render the
+        // guard decorative.
         const withPair = blocks
             .flatMap((a) => a.fields)
             .filter((f) => typeof f.primitive === "string" && typeof f.widget === "string");
         expect(withPair.length).toBeGreaterThan(0);
     });
 
-    // ── clustering.enabled → source native clusterisée + dissolve (clusterMaxZoom) ─
+    // ── clustering.enabled → clustered native source + dissolve (clusterMaxZoom) ──
     test("clustering: une source GeoJSON native est clusterisée (cluster + clusterMaxZoom)", async ({
         page,
     }) => {
-        await bootMap(page);
+        await bootMapUntilLayersPhase(page);
         await page.waitForFunction(
             () => {
                 const native = /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap();
@@ -158,26 +165,29 @@ test.describe("cfg-c4 — layers + {id}_config (état map/DOM réel)", () => {
                 .map((s) => /** @type {any} */ (s).clusterMaxZoom);
         });
         expect(clustered.length).toBeGreaterThan(0);
-        // disableClusteringAtZoom → MapLibre clusterMaxZoom (seuil de dissolution).
+        // disableClusteringAtZoom → MapLibre clusterMaxZoom (dissolve threshold).
         expect(clustered.some((z) => typeof z === "number")).toBeTruthy();
     });
 
-    // ── capabilities.feature-info.sidepanel → ouverture du panneau via l'API runtime ─
+    // ── capabilities.feature-info.sidepanel → panel opening via the runtime API ────
     //
-    // `GeoLeaf.POI.showPoiDetails` n'existe plus : le namespace `GeoLeaf.POI` a été
-    // DISSOUS (commit 02c6a8d0, 0 assignation `.POI =` dans le dépôt). Le remplaçant est
-    // `GeoLeaf.FeatureInfo.openSidePanel(detail, layout)` — capacité core, pas plugin
-    // (capabilities/feature-info/public-api.ts:32). Le payload change de forme avec lui :
-    // `GeoLeafFeatureClickDetail` ({layerId, featureId, properties, geometry, lngLat,
-    // point}, types.ts:117), plus le POI plat d'avant.
+    // `GeoLeaf.POI.showPoiDetails` no longer exists: the `GeoLeaf.POI`
+    // namespace was DISSOLVED (commit 02c6a8d0, 0 `.POI =` assignments in the
+    // repo). The replacement is
+    // `GeoLeaf.FeatureInfo.openSidePanel(detail, layout)` — a core capability,
+    // not a plugin (capabilities/feature-info/public-api.ts). The payload
+    // changes shape with it: `GeoLeafFeatureClickDetail` ({layerId, featureId,
+    // properties, geometry, lngLat, point}, types.ts), no longer the old
+    // flat POI.
     //
-    // ⚠️ Le conteneur `.gl-poi-sidepanel` est créé PARESSEUSEMENT (surfaces/sidepanel.ts,
-    // `ensureContainer`) : il est absent du DOM tant qu'aucune ouverture n'a eu lieu — le
-    // `toBeAttached` d'après l'appel est donc bien une preuve, pas une tautologie.
+    // ⚠️ The `.gl-poi-sidepanel` container is created LAZILY
+    // (surfaces/sidepanel.ts, `ensureContainer`): it is absent from the DOM
+    // while no opening has happened — the `toBeAttached` after the call is
+    // thus a proof, not a tautology.
     test("sidepanel: GeoLeaf.FeatureInfo.openSidePanel ouvre le panneau latéral", async ({
         page,
     }) => {
-        await bootMap(page);
+        await bootMapUntilLayersPhase(page);
         const hasApi = await page.evaluate(
             () =>
                 typeof (/** @type {any} */ (window).GeoLeaf.FeatureInfo?.openSidePanel) ===
@@ -185,7 +195,7 @@ test.describe("cfg-c4 — layers + {id}_config (état map/DOM réel)", () => {
         );
         expect(hasApi).toBeTruthy();
 
-        // Le conteneur n'existe pas avant la première ouverture — on le prouve.
+        // The container does not exist before the first opening — proven here.
         await expect(page.locator(".gl-poi-sidepanel")).toHaveCount(0);
 
         await page.evaluate(() => {

@@ -46,6 +46,30 @@ export interface DataConfig {
     /** Enable POI mapping from active profile. */
     enableProfilePoiMapping?: boolean;
     /**
+     * The active profile, handed over in memory instead of being fetched.
+     *
+     * Carries BOTH on-disk artefacts, mirrored one to one — `profile.json` under `profile`,
+     * `profile-bundle.json` under `bundle`. They are two payloads because the bundle does not
+     * contain the profile: the compiler writes `_bundleVersion` plus the sections, and the
+     * assembly takes the profile as a separate argument. Handing over the bundle alone would
+     * leave the `profile.json` request in place.
+     *
+     * Present ⟹ no HTTP request is issued for the profile's configuration. Absent ⟹ nothing
+     * changes: the cascade stays the default path. Data paths are still resolved from
+     * `profilesBasePath`; this removes configuration requests, not data ones.
+     *
+     * ⚠️ The bundle format is confronted but NOT enforced: a `_bundleVersion` other than the
+     * expected one produces a warning and the assembly continues. Sections the loader does not
+     * know are ignored, and sections it expects may be absent — so an injected bundle built by
+     * another version passes, quietly degraded rather than rejected.
+     */
+    profileBundle?: {
+        /** The `profile.json` payload. */
+        profile: Record<string, unknown>;
+        /** The `profile-bundle.json` payload. */
+        bundle: Record<string, unknown>;
+    };
+    /**
      * Profiles offered by the `profile-switcher` capability.
      *
      * **Generated at deploy time** by `scripts/build-deploy.cjs`, which harvests
@@ -96,11 +120,11 @@ export interface UIConfig {
     showMeasure?: boolean;
     /** Show the geometry editor button (requires @geoleaf-plugins/editor). Default false. */
     showEditor?: boolean;
-    // 5.1-f — `showAddPoi`, `showPoiExport` et `showPoiSubmit` sont retirés. Les deux
-    // derniers n'étaient déclarés dans AUCUN schéma alors que `ui.schema.json` est
-    // `additionalProperties: false` : ils étaient inatteignables, donc leurs boutons ni
-    // masquables ni affichables (R19). Leurs équivalents vivent sous `modules.editor.*`,
-    // déclarés — `showAddPoi` et `showExport`.
+    // `showAddPoi`, `showPoiExport` and `showPoiSubmit` are removed. The last two
+    // were declared in NO schema while `ui.schema.json` is
+    // `additionalProperties: false`: they were unreachable, so their buttons could
+    // be neither hidden nor shown. Their equivalents live under
+    // `modules.editor.*`, declared — `showAddPoi` and `showExport`.
     [key: string]: unknown;
 }
 
@@ -401,9 +425,13 @@ export interface GeoLeafConfig {
     layers?: LayerConfig[];
     /**
      * Per-plugin configuration blocks, keyed by module id (Plugin Contract
-     * v1, INV-CONFIG) — e.g. `modules.offline`, `modules.addpoi`,
+     * v1, INV-CONFIG) — e.g. `modules.offline`, `modules.editor`,
      * `modules.print`. The keys inside each block belong to the owning
      * plugin/capability; the core treats them as opaque.
+     *
+     * ⚠️ This example cited `modules.addpoi` until 17/08/2026: that plugin MERGED
+     * into `editor`, and the key it named can no longer be read by anyone. A
+     * canonical example designating a vanished module gets copied around.
      */
     modules?: Record<string, Record<string, unknown>>;
     /** Layer manager panel configuration (e.g. title). */
@@ -504,7 +532,7 @@ export interface ConfigFacade {
      * hand-typed and declares `getAll(): Record<string, unknown>`, not {@link GeoLeafConfig}.
      * To read a field with its real type, use {@link ConfigFacade.get} — which is generic — or
      * import `Config` from `@geoleaf/core/kernel`. Typing the ambient member from this
-     * interface is tracked as **B-13**.
+     * interface only ever shrinks — never widened back.
      *
      * @example
      * ```ts
@@ -546,10 +574,24 @@ export interface ConfigFacade {
     /**
      * Fetches a JSON configuration and applies it.
      *
-     * Failure is contained, not thrown: an unreachable URL or invalid JSON is logged and the
-     * configuration already in place is returned, so a bad fetch degrades the map rather than
-     * breaking its boot. `strictContentType` rejects a response that is not `application/json`.
+     * 🔻 **Failure REJECTS, since 20/08/2026 — and this sentence said the exact opposite.**
+     * It read « Failure is contained, not thrown: […] a bad fetch degrades the map rather than
+     * breaking its boot ». That was true until the loader's `catch` was changed to re-throw, and
+     * the sentence was not updated with it: for a few hours a published `.d.ts` promised an
+     * integrator the inverse of what the runtime did. No gate can catch that — nothing checks
+     * whether a sentence is still true.
      *
+     * An unreachable URL, invalid JSON, or a response that is not `application/json` when
+     * `strictContentType` is set: the cause is logged, then the promise REJECTS. The boot stops
+     * instead of continuing on an empty configuration and rendering a blank map under a
+     * "Configuration loaded successfully" message.
+     *
+     * ⚠️ **Breaking for a caller that relied on the degradation** — even without knowing it.
+     * If the configuration is already in memory, `GeoLeaf.boot({ config })` removes the request
+     * entirely and the question does not arise.
+     *
+     * @throws When the fetch fails, the payload is not valid JSON, or `strictContentType`
+     *   rejects the response's content type.
      * @example
      * ```ts
      * await GeoLeaf.Config.loadUrl("../data/config.json", {

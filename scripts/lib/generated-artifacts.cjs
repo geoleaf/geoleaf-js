@@ -1,35 +1,34 @@
 #!/usr/bin/env node
 /**
- * Répertoires d'ARTEFACTS GÉNÉRÉS — définition unique, trois lecteurs.
+ * GENERATED-ARTIFACT directories — one definition, three readers.
  *
- * Lecteurs : `verify-repo-hygiene.cjs` (check 4, exemption de la limite de 700 lignes ;
- * check 5, interdiction d'indexation) et `check-package-files.cjs` (check 2, interdiction
- * de publication npm). Une seconde liste divergerait — c'est le motif pour lequel
- * `lib/source-inventory.cjs` et `lib/test-load-sites.cjs` ont été extraits.
+ * Readers: `verify-repo-hygiene.cjs` (check 4, exemption from the 700-line limit;
+ * check 5, indexing ban) and `check-package-files.cjs` (check 2, npm publication ban). A
+ * second list would diverge — the very reason `lib/source-inventory.cjs` and
+ * `lib/test-load-sites.cjs` were extracted.
  *
- * ## Pourquoi des FORMES de chemin, et jamais des emplacements
+ * ## Why path SHAPES, and never locations
  *
- * `verify-repo-hygiene.cjs:279` portait déjà cette liste, sous le nom
- * `GENERATED_PATH_RE`. Mesure au T4 : elle matchait **zéro fichier**. Elle n'était
- * consultée que par `collectSourceFiles`, dont le périmètre est `<pkg>/src` — or aucun
- * `docs/api`, `docs/public` ni `docs-dist` ne vit sous un `src/`. La liste des chemins
- * d'artefacts du dépôt était elle-même vide-verte, pendant que 90 fichiers TypeDoc
- * générés étaient suivis par git et publiés sur npm.
+ * `verify-repo-hygiene.cjs` already carried this list, under the name
+ * `GENERATED_PATH_RE`. Measured before the extraction: it matched **zero files**. It was
+ * only consulted by `collectSourceFiles`, whose perimeter is `<pkg>/src` — yet no
+ * `docs/api`, `docs/public` nor `docs-dist` lives under a `src/`. The repo's list of
+ * artifact paths was itself empty-green, while 90 generated TypeDoc files were tracked by
+ * git and published to npm.
  *
- * D'où la règle de conception, qui est la leçon du T3 appliquée littéralement : écrire
- * `packages/core/docs/api` en dur reproduirait la faute à l'identique. Le jour où le
- * core se déplace, ou où `docs-dist/` sort de `packages/`, une forme absolue cesse de
- * matcher — elle ne RATE pas des violations, elle sort **verte en ne regardant plus
- * rien**. Aucune des trois formes ci-dessous ne nomme son parent : toutes survivent aux
- * déplacements.
+ * Hence the design rule, which is the earlier audit's lesson applied literally: writing
+ * `packages/core/docs/api` verbatim would reproduce the fault identically. The day the
+ * core moves, or `docs-dist/` leaves `packages/`, an absolute shape stops matching — it
+ * does not MISS violations, it goes **green while no longer looking at anything**. None of
+ * the three shapes below names its parent: all survive moves.
  *
- * ## Le complément indispensable : la dérivation depuis le producteur
+ * ## The indispensable complement: derivation from the producer
  *
- * Une liste de formes, même relative, reste aveugle à un RENOMMAGE : si `typedoc.json`
- * passe à `"out": "docs/reference"`, plus aucun fichier généré ne tombe dans le
- * périmètre et rien ne rougit. `declaredOutputs()` lit la déclaration du producteur au
- * lieu de recopier son chemin, ce qui permet à la gate de DIRE qu'elle a perdu de vue
- * une sortie — au lieu de se taire.
+ * A list of shapes, even relative ones, stays blind to a RENAME: if `typedoc.json`
+ * switches to `"out": "docs/reference"`, no generated file falls in the perimeter anymore
+ * and nothing turns red. `declaredOutputs()` reads the producer's declaration instead of
+ * copying its path, which lets the gate SAY it has lost sight of an output — instead of
+ * keeping quiet.
  */
 
 "use strict";
@@ -41,129 +40,132 @@ const { spawnSync } = require("node:child_process");
 const ROOT = path.resolve(__dirname, "..", "..");
 
 /**
- * Les formes de chemin qui désignent un répertoire d'artefacts générés.
+ * The path shapes that designate a generated-artifact directory.
  *
- * ⚠️ Relatives et sans parent, délibérément — voir l'en-tête de ce module.
+ * ⚠️ Relative and parentless, deliberately — see this module's header.
  */
 const GENERATED_DIR_FORMS = [
-  { form: "docs/api", label: "sortie TypeDoc (typedoc.json → out)" },
-  { form: "docs/public", label: "assets statiques VitePress (deploy-docs.cjs steps 2 + 2b)" },
-  { form: "docs-dist", label: "build VitePress (.vitepress/config.ts → outDir)" },
+    { form: "docs/api", label: "sortie TypeDoc (typedoc.json → out)" },
+    { form: "docs/public", label: "assets statiques VitePress (deploy-docs.cjs steps 2 + 2b)" },
+    { form: "docs-dist", label: "build VitePress (.vitepress/config.ts → outDir)" },
 ];
 
 /**
- * La racine d'artefact qui contient `p`, ou `null`.
+ * The artifact root containing `p`, or `null`.
  *
- * Comparaison par SEGMENTS, jamais par sous-chaîne : `docs/publicity/x.md` et
- * `packages/my-docs-dist-tool/a.js` ne sont pas des artefacts, alors qu'un
- * `String.includes("docs/public")` ou `includes("docs-dist")` les capterait tous les
- * deux. Un faux positif ici ferait rougir une gate sur une source rédigée.
+ * Comparison by SEGMENTS, never by substring: `docs/publicity/x.md` and
+ * `packages/my-docs-dist-tool/a.js` are not artifacts, whereas a
+ * `String.includes("docs/public")` or `includes("docs-dist")` would capture both. A false
+ * positive here would redden a gate on hand-written source.
  *
- * Rendre la RACINE (et pas seulement `true`) est ce qui permet de grouper le rapport :
- * 91 lignes de HTML sont illisibles, 2 lignes avec compteurs se lisent.
+ * Returning the ROOT (and not just `true`) is what allows grouping the report: 91 lines of
+ * HTML are unreadable, 2 lines with counters read fine.
  *
- * @param {string} p Chemin relatif au dépôt (séparateurs `/` ou `\`).
+ * @param {string} p Repo-relative path (`/` or `\` separators).
  * @returns {{root: string, form: string, label: string} | null}
  */
 function generatedRootOf(p) {
-  const parts = String(p).replaceAll("\\", "/").split("/");
-  for (const { form, label } of GENERATED_DIR_FORMS) {
-    const f = form.split("/");
-    for (let i = 0; i + f.length <= parts.length; i++) {
-      if (f.every((seg, k) => parts[i + k] === seg)) {
-        return { root: parts.slice(0, i + f.length).join("/"), form, label };
-      }
+    const parts = String(p).replaceAll("\\", "/").split("/");
+    for (const { form, label } of GENERATED_DIR_FORMS) {
+        const f = form.split("/");
+        for (let i = 0; i + f.length <= parts.length; i++) {
+            if (f.every((seg, k) => parts[i + k] === seg)) {
+                return { root: parts.slice(0, i + f.length).join("/"), form, label };
+            }
+        }
     }
-  }
-  return null;
+    return null;
 }
 
-/** Raccourci booléen de `generatedRootOf`. */
+/** Boolean shortcut of `generatedRootOf`. */
 const isGeneratedPath = (p) => generatedRootOf(p) !== null;
 
 /**
- * Les sorties DÉCLARÉES par un producteur, lues dans sa déclaration.
+ * The outputs a producer DECLARES, read from its declaration.
  *
- * Aujourd'hui : le `out` de chaque `typedoc.json` du registre. `docs/public` n'a pas de
- * producteur déclaratif (ce sont des constantes JS de `deploy-docs.cjs`), et `docs-dist`
- * est déclaré dans un `.ts` que ce module ne parse pas — les deux restent couverts par
- * `GENERATED_DIR_FORMS`. Les deux moitiés se compensent : celle-ci est vivante sur un
- * clone frais où rien n'a encore été généré, celle-là couvre ce qu'aucun JSON ne déclare.
+ * Today: the `out` of every `typedoc.json` in the registry. `docs/public` has no
+ * declarative producer (those are JS constants in `deploy-docs.cjs`), and `docs-dist` is
+ * declared in a `.ts` this module does not parse — both stay covered by
+ * `GENERATED_DIR_FORMS`. The two halves compensate each other: this one is alive on a
+ * fresh clone where nothing has been generated yet, that one covers what no JSON declares.
  *
  * @returns {Array<{producer: string, rel?: string, error?: string}>}
  */
 function declaredOutputs() {
-  const out = [];
-  for (const pkg of require("./packages.cjs").all()) {
-    const cfg = path.join(pkg.absDir, "typedoc.json");
-    if (!fs.existsSync(cfg)) continue;
-    let json;
-    try {
-      json = JSON.parse(fs.readFileSync(cfg, "utf8"));
-    } catch (e) {
-      out.push({ producer: `${pkg.dir}/typedoc.json`, error: `JSON invalide — ${e.message}` });
-      continue;
+    const out = [];
+    for (const pkg of require("./packages.cjs").all()) {
+        const cfg = path.join(pkg.absDir, "typedoc.json");
+        if (!fs.existsSync(cfg)) continue;
+        let json;
+        try {
+            json = JSON.parse(fs.readFileSync(cfg, "utf8"));
+        } catch (e) {
+            out.push({
+                producer: `${pkg.dir}/typedoc.json`,
+                error: `JSON invalide — ${e.message}`,
+            });
+            continue;
+        }
+        // A missing `out` is not neutral: TypeDoc's default is `./docs`, i.e. the
+        // HAND-WRITTEN tree. It would overwrite 62 .md files with generated HTML. Silent
+        // would be worse than red.
+        if (typeof json.out !== "string" || json.out.length === 0) {
+            out.push({
+                producer: `${pkg.dir}/typedoc.json`,
+                error: 'pas de "out" — TypeDoc écrirait dans ./docs, soit l\'arbre rédigé',
+            });
+            continue;
+        }
+        out.push({
+            producer: `${pkg.dir}/typedoc.json ("out")`,
+            rel: `${pkg.dir}/${json.out.replace(/^\.\//, "").replace(/\/+$/, "")}`,
+        });
     }
-    // Un `out` absent n'est pas neutre : le défaut de TypeDoc est `./docs`, c'est-à-dire
-    // l'arbre RÉDIGÉ. Il écraserait 62 .md par du HTML généré. Silencieux serait pire
-    // que rouge.
-    if (typeof json.out !== "string" || json.out.length === 0) {
-      out.push({
-        producer: `${pkg.dir}/typedoc.json`,
-        error: 'pas de "out" — TypeDoc écrirait dans ./docs, soit l\'arbre rédigé',
-      });
-      continue;
-    }
-    out.push({
-      producer: `${pkg.dir}/typedoc.json ("out")`,
-      rel: `${pkg.dir}/${json.out.replace(/^\.\//, "").replace(/\/+$/, "")}`,
-    });
-  }
-  return out;
+    return out;
 }
 
 /**
- * Demande à git lesquels des chemins donnés sont ignorés. Un seul appel groupé.
+ * Asks git which of the given paths are ignored. One grouped call.
  *
- * `git check-ignore` sort en 1 quand rien ne matche : c'est un résultat normal ici, et
- * surtout pas un échec.
+ * `git check-ignore` exits 1 when nothing matches: that is a normal result here, and
+ * emphatically not a failure.
  *
- * La barre oblique finale est PORTEUSE et doit être préservée : `.gitignore` écrit
- * `dist/`, et un motif à slash final ne matche qu'un RÉPERTOIRE. Sur un chemin nu
- * (`packages/x/dist`), git ne peut pas savoir qu'il s'agit d'un répertoire s'il n'existe
- * pas sur le disque — le motif ne matcherait pas et l'entrée serait déclarée manquante.
- * C'est précisément le cas du clone frais, avant le premier build.
+ * The trailing slash is LOAD-BEARING and must be preserved: `.gitignore` writes `dist/`,
+ * and a trailing-slash pattern only matches a DIRECTORY. On a bare path
+ * (`packages/x/dist`), git cannot know it is a directory if it does not exist on disk —
+ * the pattern would not match and the entry would be reported missing. That is precisely
+ * the fresh-clone case, before the first build.
  *
- * @param {string[]} queryPaths Chemins relatifs au dépôt, slash final compris.
- * @param {{noIndex?: boolean}} [opts] `noIndex` ajoute `--no-index` : la question devient
- *   « une RÈGLE couvre-t-elle ce chemin ? » et non « ce chemin est-il suivi ? ». Sans
- *   lui, git refuse de qualifier d'ignoré un chemin présent dans l'index — ce qui rend
- *   muette toute vérification menée AVANT une désindexation.
- * @returns {Set<string>} Le sous-ensemble ignoré, tel qu'écrit en entrée.
+ * @param {string[]} queryPaths Repo-relative paths, trailing slash included.
+ * @param {{noIndex?: boolean}} [opts] `noIndex` adds `--no-index`: the question becomes
+ *   "does a RULE cover this path?" and not "is this path tracked?". Without it, git
+ *   refuses to call ignored a path present in the index — which mutes any check run
+ *   BEFORE an unindexing.
+ * @returns {Set<string>} The ignored subset, as written on input.
  */
 function gitIgnoredSet(queryPaths, opts = {}) {
-  if (queryPaths.length === 0) return new Set();
-  const args = ["check-ignore", "--stdin"];
-  if (opts.noIndex) args.push("--no-index");
-  const res = spawnSync("git", args, {
-    cwd: ROOT,
-    input: queryPaths.join("\n"),
-    encoding: "utf8",
-    maxBuffer: 32 * 1024 * 1024,
-  });
-  if (res.error) return new Set(); // git indisponible → tout vérifier
-  return new Set(
-    (res.stdout || "")
-      .split("\n")
-      .map((s) => s.trim())
-      .filter(Boolean)
-  );
+    if (queryPaths.length === 0) return new Set();
+    const args = ["check-ignore", "--stdin"];
+    if (opts.noIndex) args.push("--no-index");
+    const res = spawnSync("git", args, {
+        cwd: ROOT,
+        input: queryPaths.join("\n"),
+        encoding: "utf8",
+        maxBuffer: 32 * 1024 * 1024,
+    });
+    if (res.error) return new Set(); // git unavailable → verify everything
+    return new Set(
+        (res.stdout || "")
+            .split("\n")
+            .map((s) => s.trim())
+            .filter(Boolean)
+    );
 }
 
 module.exports = {
-  GENERATED_DIR_FORMS,
-  generatedRootOf,
-  isGeneratedPath,
-  declaredOutputs,
-  gitIgnoredSet,
+    GENERATED_DIR_FORMS,
+    generatedRootOf,
+    isGeneratedPath,
+    declaredOutputs,
+    gitIgnoredSet,
 };

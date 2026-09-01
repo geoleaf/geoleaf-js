@@ -27,7 +27,22 @@ vi.mock("../utils/dom-helpers.js", () => ({
         return el;
     },
 }));
-vi.mock("../utils/events.js", () => ({ events: null }));
+vi.mock("../utils/events.js", () => ({
+    // 🛑 DO NOT RE-NEUTRALISE THIS SEAM — measured on 17/08/2026.
+    // Neutralising the seam forces `panel-resize.ts`'s FALLBACK, while `events`
+    // is a constant module object: in production the condition is always true.
+    // Seven suites in the package neutralised it, so that none exercised the
+    // path production takes. This mock reproduces `utils/events.ts` exactly, `off` included.
+    events: {
+        on: vi.fn((target, type, handler, options) => {
+            target.addEventListener(type, handler, options);
+            return () => target.removeEventListener(type, handler, options);
+        }),
+        off: vi.fn((cleanup) => {
+            if (typeof cleanup === "function") cleanup();
+        }),
+    },
+}));
 vi.mock("../table-seam.js", () => ({
     TableContract: {
         setSelection: h.setSelection,

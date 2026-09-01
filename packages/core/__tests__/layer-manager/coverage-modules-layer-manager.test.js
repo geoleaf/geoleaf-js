@@ -5,13 +5,14 @@
  *
  * Sprint T9 — coverage-modules pattern.
  *
- * ⚠️ Cette liste annonçait HUIT cibles ; ce fichier n'en importe que deux (B-31, 29/07/2026).
- * Les six autres — `shared.ts`, `visibility-checker.ts`, `attach-toggle.ts`,
- * `render-sections.ts`, `item-controls.ts`, `basemap-selector.ts` — n'étaient plus couvertes
- * ici, et deux d'entre elles n'existent même plus sous ce nom (`shared.ts` a disparu,
- * `item-controls.ts` est devenu `item-controls-seam.ts`). Une liste de cibles qu'aucun import
- * ne soutient donne à croire à une couverture qui n'a pas lieu : c'est le contraire du service
- * qu'un en-tête `Targets:` doit rendre.
+ * ⚠️ This list announced EIGHT targets; this file imports only two
+ * (29/07/2026). The six others — `shared.ts`, `visibility-checker.ts`,
+ * `attach-toggle.ts`, `render-sections.ts`, `item-controls.ts`,
+ * `basemap-selector.ts` — were no longer covered here, and two of them do
+ * not even exist under that name any more (`shared.ts` vanished,
+ * `item-controls.ts` became `item-controls-seam.ts`). A target list no
+ * import backs suggests coverage that does not happen: the opposite of the
+ * service a `Targets:` header must render.
  */
 "use strict";
 
@@ -35,12 +36,13 @@ vi.mock("../../src/kernel/geojson/core.js", () => ({
     },
 }));
 
-// ⚠️ R.32 (25/07/2026) — un `vi.mock("…/themes/theme-applier/core.js")` fournissant
-// `ThemeApplierCore.loadLayerFromProfile` vivait ici. Il est MORT : aucun des trois modules
-// sous test (`renderer`, `visibility-checker`, `style-selector`) n'atteint `theme-applier/`,
-// ni directement ni par ses imports. Prouvé par mutation — factory qui jette, suite
-// inchangée à 10/10. Retiré : un mock qui ne mord rien donne l'illusion d'une isolation
-// qui n'existe pas, et masque quelle est la vraie surface du test.
+// ⚠️ A `vi.mock("…/themes/theme-applier/core.js")` providing
+// `ThemeApplierCore.loadLayerFromProfile` lived here. It is DEAD: none of
+// the three modules under test (`renderer`, `visibility-checker`,
+// `style-selector`) reaches `theme-applier/`, directly or through its
+// imports. Proven by mutation — throwing factory, suite unchanged at
+// 10/10. Removed: a mock that bites nothing gives the illusion of an
+// isolation that does not exist, and masks the test's real surface.
 
 vi.mock("../../src/kernel/layer-manager/render-sections.js", () => ({
     renderSections: vi.fn(),
@@ -106,15 +108,16 @@ describe("Coverage — LMRenderer", () => {
 });
 
 // ── VisibilityChecker ─────────────────────────────────────────────────────────
-// ⚠️ R.32 (25/07/2026) — ce bloc importait `visibility-checker.ts` en pariant que
-// l'extension `.ts` contournerait le `vi.mock("…/visibility-checker.js")` posé plus haut,
-// et son titre affirmait « real implementation via real import ». **C'était faux** :
-// vitest résout les deux vers le MÊME module, donc le bloc exerçait le mock. Le défaut
-// était indétectable parce que le mock rend `false` et que les deux assertions attendent
-// `false` — elles passaient dans les deux cas. Prouvé par mutation dans les deux sens :
-// mock → `true` fait rougir ce bloc ; la VRAIE implémentation → `true` le laisse vert.
-// Le mock ne peut pas être retiré (`renderer.ts` en dépend légitimement), d'où
-// `importActual` : c'est le seul moyen d'atteindre l'implémentation réelle d'ici.
+// ⚠️ This block imported `visibility-checker.ts` betting that the `.ts`
+// extension would bypass the `vi.mock("…/visibility-checker.js")` set
+// above, and its title claimed "real implementation via real import". **It
+// was false**: vitest resolves both to the SAME module, so the block
+// exercised the mock. The defect was undetectable because the mock returns
+// `false` and both assertions expect `false` — they passed either way.
+// Proven by mutation both ways: mock → `true` turns this block red; the
+// REAL implementation → `true` leaves it green. The mock cannot be removed
+// (`renderer.ts` legitimately depends on it), hence `importActual`: the
+// only way to reach the real implementation from here.
 const { checkLayerVisibility } = await vi.importActual(
     "../../src/kernel/layer-manager/visibility-checker.ts"
 );

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * HOST-SYNC: the two descriptions of the `GeoLeaf` namespace must not drift (API publique S3.5).
+ * HOST-SYNC: the two descriptions of the `GeoLeaf` namespace must not drift.
  *
  * ## The two descriptions, and why there are two
  *
@@ -43,13 +43,13 @@
  * real namespace disagrees. Reading it here means this gate inherits a measurement instead of
  * taking one, and stays a sub-second static check.
  *
- * ⚠️ Two figures in this paragraph were wrong until API S4.2, and both in the direction that
- * flatters: the oracle left the test file for `lib/` at S4.1, and it holds 92 keys, not 103 —
- * 13 `_` keys with no reader were removed at S4.3b. A comment that names a file the gate no
+ * ⚠️ Two figures in this paragraph were wrong, and both in the direction that
+ * flatters: the oracle left the test file for `lib/`, and it holds 92 keys, not 103 —
+ * 13 `_` keys with no reader were removed since. A comment that names a file the gate no
  * longer reads is the failure mode this repo calls n°3; it survives precisely because it
  * never reddens.
  *
- * ⚠️ **And the same paragraph said 89 until the contrat inverse S1.1 (10/08/2026) — three
+ * ⚠️ **And the same paragraph said 89 until 10/08/2026 — three
  * sites, not two.** The count is derived (`EXPECTED_FACADE_KEYS.length`), the prose was not,
  * and the drift is the very defect the paragraph above narrates. The third site is the
  * `FLOOR` comment below, which additionally claimed 28 members for `GeoLeafGlobal` when the
@@ -82,10 +82,10 @@
 const path = require("node:path");
 
 const registry = require("./lib/packages.cjs");
-// API S4.2 — les deux lecteurs d'AST sont sortis d'ici vers `lib/` le jour où
-// `check-namespace-typing-coverage.cjs` en a eu besoin. Deux copies d'un lecteur dérivent, et
-// la dérive reste invisible tant que les deux gates sortent vertes. Le motif de refus, lui,
-// est écrit dans la lib : il porte le bug de regex de l'API S4 C0.
+// Both AST readers left this file for `lib/` the day
+// `check-namespace-typing-coverage.cjs` needed them. Two copies of a reader drift, and
+// the drift stays invisible as long as both gates come out green. The refusal
+// rationale, for its part, is written in the lib: it carries the regex bug story.
 const { readInterfaceMembers, readExportedStringArray } = require("./lib/ts-decl-read.cjs");
 
 const ROOT = registry.ROOT;
@@ -98,8 +98,8 @@ const HOST_DIR = registry.requireByDirName("host-runtime").absDir;
 
 const GLOBAL_DTS = path.join(CORE_DIR, "src", "global.d.ts");
 const HOST_TS = path.join(HOST_DIR, "src", "host.ts");
-// API S4.1 — l'oracle a quitté le fichier de test pour la source unique. La gate n'a plus
-// à parser un fichier dont la forme ne lui est pas destinée : elle lit un `export const`.
+// The oracle left the test file for the single source. The gate no longer has to
+// parse a file whose shape was not meant for it: it reads an `export const`.
 const ORACLE = path.join(ROOT, "scripts", "lib", "namespace-surface.mjs");
 
 /**
@@ -107,58 +107,90 @@ const ORACLE = path.join(ROOT, "scripts", "lib", "namespace-surface.mjs");
  * name. Every entry needs a reason; an unexplained exemption is indistinguishable from a
  * name someone got tired of chasing.
  *
- * ⚠️ **Renseignée le 27/07/2026 (B-13), et c'est une conséquence directe du retrait de la
- * traîne `[key: string]: unknown` de `GeoLeafGlobal`.** Tant que la traîne était là, ces
- * membres n'étaient PAS déclarés nommément — HOST-02 ne les voyait donc pas. Les déclarer
- * les a rendus visibles, et a révélé que l'invariant confondait deux choses : « déclaré » et
- * « toujours monté ». Un membre **optionnel** l'est par définition sous condition ; l'oracle,
- * lui, mesure **un boot core seul**.
+ * ⚠️ **Filled in on 2026-07-27, a direct consequence of removing the
+ * `[key: string]: unknown` tail from `GeoLeafGlobal`.** While the tail was there, these
+ * members were NOT declared by name — HOST-02 thus did not see them. Declaring them
+ * made them visible, and revealed that the invariant conflated two things: "declared"
+ * and "always mounted". An **optional** member is by definition conditional; the
+ * oracle, for its part, measures **a core-only boot**.
  *
- * Deux familles, deux motifs distincts — à ne pas confondre en les relisant :
+ * Two families, two distinct rationales — not to be conflated when re-reading:
  */
 const ORACLE_EXEMPT = new Map([
-    // ── (1) Namespaces montés par un PLUGIN ──────────────────────────────────────────────
-    // Absents d'un boot core seul PAR CONSTRUCTION : le core ne les référence jamais
-    // (`no-plugin-in-core`). Ils sont déclarés dans `GeoLeafGlobal` parce que le namespace
-    // est la route sanctionnée du plugin vers l'hôte (`MODULE_CONTRACT.md`), et optionnels
-    // parce que leur présence dépend du plugin chargé.
+    // ── (1) Namespaces mounted by a PLUGIN ───────────────────────────────────────────────
+    // Absent from a core-only boot BY CONSTRUCTION: the core never references them
+    // (`no-plugin-in-core`). They are declared in `GeoLeafGlobal` because the namespace
+    // is the plugin's sanctioned route to the host (`MODULE_CONTRACT.md`), and optional
+    // because their presence depends on the loaded plugin.
     //
-    // ⚠️ Les 5 dernières entrées sont arrivées avec **B-52** (27/07/2026), et ce contrat est
-    // celui qui a exigé qu'on écrive leur motif. Elles complètent la liste : les 12 plugins qui
-    // montent un namespace y sont désormais tous, ce qui rend la section (1) **exhaustive et
-    // vérifiable** — `plugin-namespace-declared.guard.test.js` garde l'autre bout de la chaîne
-    // (tout namespace monté est déclaré), celui-ci garde qu'un membre déclaré mais absent d'un
-    // boot core seul porte sa raison. `offline-ui` n'y figure pas et n'y figurera pas : il ne
-    // monte aucun namespace propre, il pilote `GeoLeaf.Storage`, façade du core.
+    // ⚠️ The 5 entries that arrived on 2026-07-27 completed the list, and this contract
+    // is what demanded their rationale be written. EVERY plugin mounting a namespace is
+    // here, which makes section (1) **exhaustive and verifiable**
+    // — `plugin-namespace-declared.guard.test.js` guards the other end of the chain
+    //
+    // ⚠️ This sentence said "the 12 plugins" until 2026-08-21, and the number went stale
+    // twice before being removed: the fleet grew to 13 with `position-share`, then to 15
+    // with `routing` and `navigation`. A count copied next to a growing list goes stale
+    // at every addition, and nothing reddens — the DEFENDED property is exhaustiveness,
+    // not the cardinal. It derives: `node -e "const p=require('./scripts/lib/packages.cjs');
+    // console.log(p.plugins().length)"`.
+    // (every mounted namespace is declared); this one guards that a member declared yet
+    // absent from a core-only boot carries its reason. `offline-ui` is not here and will
+    // not be: it mounts no namespace of its own, it drives `GeoLeaf.Storage`, a core
+    // facade.
     ["COG", "monté par @geoleaf-plugins/cog"],
     ["Connector", "monté par @geoleaf-plugins/connector"],
-    ["Editor", "monté par @geoleaf-plugins/editor — déclaré à B-52"],
-    ["FileImport", "monté par @geoleaf-plugins/file-import — déclaré à B-52"],
+    ["Editor", "monté par @geoleaf-plugins/editor"],
+    ["FileImport", "monté par @geoleaf-plugins/file-import"],
     ["FlatGeobuf", "monté par @geoleaf-plugins/flatgeobuf"],
     ["Geocoding", "monté par @geoleaf-plugins/geocoding"],
     [
         "Measure",
-        "monté par @geoleaf-plugins/measure — déclaré à B-52 (⚠️ ne pas confondre avec `measure`, l'aide de mesure de performance, qui n'en diffère que par la casse)",
+        "monté par @geoleaf-plugins/measure (⚠️ ne pas confondre avec `measure`, l'aide de mesure de performance, qui n'en diffère que par la casse)",
     ],
-    ["Print", "monté par @geoleaf-plugins/print — déclaré à B-52"],
-    ["RealtimeLayer", "monté par @geoleaf-plugins/realtime-layer"],
-    ["Table", "monté par @geoleaf-plugins/table"],
+    ["Print", "monté par @geoleaf-plugins/print"],
     [
-        "Ws",
-        "monté par @geoleaf-plugins/websocket sous le nom `Ws`, pas `Websocket` — déclaré à B-52",
+        "PositionShare",
+        "monté par @geoleaf-plugins/position-share — et il est chargé PARESSEUSEMENT par l'app (`registerLazy`), donc absent d'un boot core seul à double titre",
     ],
+    ["RealtimeLayer", "monté par @geoleaf-plugins/realtime-layer"],
+    [
+        "Routing",
+        "monté par @geoleaf-plugins/routing — chargé EAGER par sa balise `<script>` d'index.html, mais l'oracle mesure un boot CORE SEUL, où aucune balise de plugin n'est jouée : l'exemption tient donc pour la même raison que les paresseux, et non parce qu'il le serait",
+    ],
+    [
+        "Navigation",
+        "monté par @geoleaf-plugins/navigation — paresseux (`registerLazy`), donc absent d'un boot core seul à double titre, comme PositionShare",
+    ],
+    ["Table", "monté par @geoleaf-plugins/table"],
+    ["Ws", "monté par @geoleaf-plugins/websocket sous le nom `Ws`, pas `Websocket`"],
 
-    // ── (2) Membres du core CONDITIONNELS au runtime ─────────────────────────────────────
+    // ── (2) Core members CONDITIONAL at runtime ──────────────────────────────────────────
+    //
+    // 🛑 `DEBUG` is of a THIRD nature, worth distinguishing from the other two sections:
+    // it is neither a member the core sometimes mounts, nor a namespace a plugin mounts
+    // — it is a member the **INTEGRATOR** sets (`window.GeoLeaf.DEBUG = true`) and the
+    // library only READS (`kernel/config/debug-flag.ts`, at every call, so the toggle
+    // takes effect without a reload). It will thus NEVER be on the post-boot namespace
+    // of an oracle measuring what the code writes, and that is correct.
+    // ⚠️ It was declared on 2026-08-19 because its absence was a PUBLIC API defect: the
+    // `[key: string]: unknown` tail that absorbed it was removed on purpose, and an
+    // integrator following the instruction written in the accessor got TS2339. The hole
+    // was invisible from the inside — no gate tracks what the code READS from the
+    // namespace; `namespace-local-views.guard.test.ts` is what found it, and now guards
+    // that class.
+    ["DEBUG", "posé par l'intégrateur, jamais par la bibliothèque — lu par getDebugMode()"],
     ["_beforeBootCallback", "écrit seulement si `boot({ beforeBoot })` reçoit un hook"],
     ["_perfCallback", "écrit seulement si `boot({ onPerformanceMetrics })` reçoit un rappel"],
     ["_debugPerf", "armé par `?perf=1` uniquement"],
 
-    // ⚠️ Les trois suivants sont montés INCONDITIONNELLEMENT — mais par
-    // `bundle-esm-entry.ts:36`, PAS par la chaîne `globals/` que l'oracle mesure. Ils sont
-    // donc réellement présents dans l'artefact livré et absents du golden master, qui
-    // importe la chaîne directement. **Ce n'est pas un défaut de ce contrat, c'est un écart
-    // entre l'oracle et l'artefact** — couvert par le tier artefact
-    // (`__tests__/bundle-boot-contract.test.js`), pas par celui-ci. Noté ici plutôt que tu.
+    // ⚠️ The next three are mounted UNCONDITIONALLY — but by `bundle-esm-entry.ts`,
+    // NOT by the `globals/` chain the oracle measures. They are thus genuinely present
+    // in the shipped artifact and absent from the golden master, which imports the
+    // chain directly. **Not a defect of this contract, but a gap between the oracle and
+    // the artifact** — covered by the artifact tier
+    // (`__tests__/bundle-boot-contract.test.js`), not by this one. Noted here rather
+    // than silenced.
     ["getPerformanceMetrics", "monté par bundle-esm-entry, hors périmètre de l'oracle globals/"],
     ["getRuntimeMetrics", "idem — alias de getPerformanceMetrics"],
     ["resetRuntimeMetrics", "idem"],
@@ -189,10 +221,10 @@ const globalD = readInterfaceMembers(GLOBAL_DTS, "GeoLeafGlobal", { tag: "HOST-S
 // A gate that compares three empty sets agrees with itself perfectly and proves nothing.
 // The floors are deliberately well under today's values (92 / 15 / 102) — they catch an
 // instrument that collapsed, not a surface that shrank legitimately.
-// ⚠️ Ce triplet disait `89 / 15 / 28` jusqu'au 10/08/2026, et DEUX de ses trois nombres
-// étaient faux — l'oracle (92) et `GeoLeafGlobal` (102, pas 28). Les trois sont imprimés à
-// chaque run vert par la ligne de sortie tout en bas de ce fichier : c'est là qu'on les lit,
-// jamais ici.
+// ⚠️ This triplet said `89 / 15 / 28` until 2026-08-10, and TWO of its three numbers
+// were wrong — the oracle (92) and `GeoLeafGlobal` (102, not 28). All three are printed
+// at every green run by the output line at the very bottom of this file: that is where
+// they are read, never here.
 const FLOOR = { oracle: 50, host: 5, global: 10 };
 for (const [label, set, min] of [
     ["oracle (EXPECTED_FACADE_KEYS)", oracle, FLOOR.oracle],

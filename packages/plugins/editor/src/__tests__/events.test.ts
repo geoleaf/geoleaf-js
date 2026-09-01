@@ -555,7 +555,7 @@ describe("events bridge — persistence wiring (S10)", () => {
 // Anti-drift — EDIT_ACTION_OP must cover Terra Draw's finish-action vocabulary
 // ---------------------------------------------------------------------------
 
-// Canonical FinishActions, mirrored from terra-draw (dist/common.d.ts:59-67).
+// Canonical FinishActions, mirrored from terra-draw (dist/common.d.ts).
 // terra-draw does NOT re-export FinishActions from its package root, so the list
 // is duplicated here. On a terra-draw upgrade, re-check that file and update BOTH
 // this list AND EDIT_ACTION_OP (events.ts) — this test fails if they diverge,

@@ -43,18 +43,19 @@ describe("bundle — aucun cycle entre chunks (B.12)", () => {
     let graph;
 
     beforeAll(() => {
-        // ⚠️ On marche le graphe DEPUIS L'ENTRÉE, on ne liste pas `dist/chunks/`.
+        // ⚠️ The graph is walked FROM THE ENTRY, `dist/chunks/` is not listed.
         //
-        // Lister le répertoire paraît équivalent et ne l'est pas : Rollup n'efface pas ce qu'il
-        // ne réémet pas, et les noms portent un hash de contenu. Un `rollup -c` sans purge
-        // préalable laisse donc les générations précédentes côte à côte — mesuré ici même,
-        // **quatre** générations en cinq minutes (c'est B-130). La première version de cette
-        // garde les lisait toutes et rapportait comme cycles vivants ceux des builds d'AVANT le
-        // correctif : un rouge parfaitement faux, sur un dépôt déjà réparé.
+        // Listing the directory looks equivalent and is not: Rollup does not
+        // erase what it does not re-emit, and names carry a content hash. A
+        // `rollup -c` without a prior purge thus leaves previous generations
+        // side by side — measured right here, **four** generations in five
+        // minutes. This guard's first version read them all and reported as
+        // live cycles those of builds from BEFORE the fix: a perfectly false
+        // red, on an already repaired repo.
         //
-        // Partir de l'entrée ne mesure que ce qui est réellement servi, et rend la garde
-        // insensible aux résidus — sans l'aveugler, puisqu'un chunk vraiment atteint est
-        // forcément atteignable.
+        // Starting from the entry only measures what is really served, and
+        // makes the guard insensitive to residues — without blinding it,
+        // since a chunk really reached is necessarily reachable.
         const entry = path.join(DIST, "geoleaf.esm.js");
         graph = new Map();
 

@@ -2,7 +2,7 @@
  * Unit tests — url-guard (CAPACITÉS S1)
  *
  * `validateFetchUrl` is the scheme guard standing in front of every cache fetch
- * (`cache/storage.ts:47`, `cache/metrics.ts:50`, `cache/fetch-manager.ts:49` and `:306`),
+ * (`cache/storage.ts`, `cache/metrics.ts`, `cache/fetch-manager.ts` and `:306`),
  * and it had NO direct test — the only file of the capability in that situation, and the
  * one where it matters most. The cases below are the ones its own JSDoc documents.
  *

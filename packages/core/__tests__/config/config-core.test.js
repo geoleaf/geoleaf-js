@@ -33,8 +33,9 @@ vi.mock("../../src/kernel/config/normalization.js", () => ({
 import * as storageMod from "../../src/kernel/config/storage.js";
 import * as profileMod from "../../src/kernel/config/profile.js";
 import { Config } from "../../src/kernel/config/geoleaf-config/config-core.js";
-// config-validation.js augmente Config avec _validateConfig (requis par _applyConfig).
-// Chargé pour son effet, comme avant — l'ordre relatif est garanti par la position ici.
+// config-validation.js augments Config with _validateConfig (required by
+// _applyConfig). Loaded for its effect, as before — relative order is
+// guaranteed by its position here.
 import "../../src/kernel/config/geoleaf-config/config-validation.js";
 import * as logMod from "../../src/utils/log/index.js";
 
@@ -74,7 +75,7 @@ describe("Config (config-core.js)", () => {
             Config._initSubModules();
             Config._initSubModules();
 
-            // Chacun doit etre appele exactement une seule fois
+            // Each must be called exactly once
             expect(storageMod.ConfigStore.init).toHaveBeenCalledTimes(1);
             expect(profileMod.ProfileManager.init).toHaveBeenCalledTimes(1);
         });
@@ -103,12 +104,12 @@ describe("Config (config-core.js)", () => {
         });
 
         test("should reset _subModulesInitialized and call _initSubModules()", () => {
-            // Simuler une init precedente
+            // Simulate a previous init
             Config._subModulesInitialized = true;
 
             Config._applyConfig({ key: "value" }, "inline");
 
-            // Le flag doit etre reset puis repositionne a true par _initSubModules
+            // The flag must be reset then set back to true by _initSubModules
             expect(Config._subModulesInitialized).toBe(true);
             expect(storageMod.ConfigStore.init).toHaveBeenCalledTimes(1);
         });
@@ -117,7 +118,7 @@ describe("Config (config-core.js)", () => {
             Config._applyConfig({}, "inline");
             Config._applyConfig({}, "reload");
 
-            // 2 appels _applyConfig -> 2 inits (le flag est reset a chaque fois)
+            // 2 _applyConfig calls -> 2 inits (the flag is reset each time)
             expect(storageMod.ConfigStore.init).toHaveBeenCalledTimes(2);
         });
 
@@ -282,7 +283,7 @@ describe("Config (config-core.js)", () => {
 
     describe("Module-level state", () => {
         test("_subModulesInitialized starts as false", () => {
-            // Apres reset dans beforeEach
+            // After the reset in beforeEach
             expect(Config._subModulesInitialized).toBe(false);
         });
 

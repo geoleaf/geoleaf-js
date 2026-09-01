@@ -67,10 +67,31 @@ export type { FlyToOptions, FitBoundsOptions };
 
 /**
  * Native MapLibre event-listener type accepted by the `Map.on/off/once(type: string, …)`
- * string overload. Aliased from MapLibre's own published `Listener` type — the
- * adapter casts its GeoLeaf-shaped wrapper to this at the subscription boundary.
+ * string overload. Aliased from MapLibre's own published `Listener` type.
+ *
+ * ⚠️ **This alias used to be reached through a cast, and the cast only held because the
+ * target was `any`.** Until maplibre-gl 6.2.0 the published type was
+ * `Listener = (a: any) => any`; 6.3.0 narrowed it to `Listener<E extends Event = Event> =
+ * (event: E) => any`. A wrapper declared as `(e: GeoLeafNormalizedMapEvent) => void` then
+ * stopped overlapping it, and `wrapped as MaplibreEventListener` became `TS2352`. Measured
+ * on a 2×2 matrix: maplibre 6.3.0 alone reproduces all four errors, TypeScript 5.9.3 alone
+ * reproduces none. **The alias was never wrong — the target tightened, and the cast had
+ * been hiding the mismatch all along.**
+ *
+ * The subscription boundary no longer casts: wrappers declare {@link MaplibreEventArg} as
+ * their parameter, so they are assignable to this type by construction.
  */
 export type MaplibreEventListener = Listener;
+
+/**
+ * The argument MapLibre actually hands to a listener, derived from the published type
+ * rather than restated.
+ *
+ * Deriving it is what keeps this correct across engine versions: it resolves to `any` on
+ * 6.2.0 and to MapLibre's `Event` on 6.3.0, so a wrapper typed with it compiles against
+ * both without a cast, and will follow any further narrowing on its own.
+ */
+export type MaplibreEventArg = Parameters<MaplibreEventListener>[0];
 
 /**
  * Native MapLibre filter expression accepted by `map.setFilter()`, derived from

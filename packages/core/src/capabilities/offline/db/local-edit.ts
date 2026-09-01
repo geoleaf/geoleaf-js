@@ -6,40 +6,40 @@
  */
 
 /**
- * Local Edit Module — l'écriture optimiste, et le seul écrivain de l'`outbox` (tâche 4.4).
+ * Local Edit Module — the optimistic write, and the `outbox`'s only writer.
  *
- * 🛑 **POURQUOI UN MODULE À LUI, ET PAS UNE MÉTHODE DE `features.ts` OU D'`outbox.ts`.**
- * L'invariant que cette tâche existe pour tenir est **inter-stores** : une saisie doit
- * atterrir dans `features` **et** dans l'`outbox`, ou dans aucun des deux. Écrite dans l'un
- * des deux modules, l'opération ouvrirait deux transactions successives — et un plantage
- * entre elles laisserait soit une saisie que rien ne poussera, soit un push qui ne trouvera
- * aucune entité. Les deux sont des pertes silencieuses, la classe même que la propriété 1 du
- * contrat interdit. Un invariant inter-stores ne peut vivre dans aucun store.
+ * 🛑 **WHY A MODULE OF ITS OWN, AND NOT A METHOD OF `features.ts` OR `outbox.ts`.** The
+ * invariant this exists to hold is **cross-store**: a capture must land in `features`
+ * **and** in the `outbox`, or in neither. Written inside one of the two modules, the
+ * operation would open two successive transactions — and a crash between them would
+ * leave either a capture nothing will push, or a push that will find no entity. Both
+ * are silent losses, the very class the contract's property 1 forbids. A cross-store
+ * invariant can live in no store.
  *
- * ## La coalescence (reportée de 3.10, D1) — et pourquoi elle est triviale ici
+ * ## Coalescing — and why it is trivial here
  *
- * ⚠️ **L'entrée d'outbox ne porte PAS la charge utile.** Elle référence `localId`, et rien
- * d'autre (contrat : « It references `localId` and never `serverId` »). La charge est
- * **toujours** l'enregistrement courant de `features`. Conséquence directe : fusionner deux
- * éditions successives ne demande aucune fusion de données — il suffit de ne pas empiler une
- * seconde entrée. C'est cette forme qui rend le rejeu idempotent.
+ * ⚠️ **The outbox entry does NOT carry the payload.** It references `localId`, and
+ * nothing else (contract: "It references `localId` and never `serverId`"). The payload
+ * is **always** the current `features` record. Direct consequence: merging two
+ * successive edits requires no data merge — it suffices not to stack a second entry.
+ * That shape is what makes replay idempotent.
  *
- * | Déjà en file      | Nouvelle édition | Résultat                                             |
+ * | Already queued    | New edit         | Result                                               |
  * | ----------------- | ---------------- | ---------------------------------------------------- |
- * | `create`          | `update`         | reste `create` — il poussera l'état le plus récent   |
- * | `update`          | `update`         | reste `update`, une seule entrée                     |
- * | `create`          | `delete`         | **ANNULATION** — les deux disparaissent              |
- * | `update`          | `delete`         | devient `delete`                                      |
- * | rien              | n'importe        | une entrée neuve                                     |
+ * | `create`          | `update`         | stays `create` — it will push the freshest state     |
+ * | `update`          | `update`         | stays `update`, a single entry                       |
+ * | `create`          | `delete`         | **CANCELLATION** — both disappear                    |
+ * | `update`          | `delete`         | becomes `delete`                                     |
+ * | none              | any              | a new entry                                          |
  *
- * 🛑 **L'annulation efface AUSSI l'enregistrement `features`.** Une entité créée hors ligne
- * puis supprimée hors ligne n'a jamais existé côté serveur : garder sa trace produirait un
- * `DELETE` sur une identité que le serveur n'a jamais vue.
+ * 🛑 **Cancellation ALSO erases the `features` record.** An entity created offline then
+ * deleted offline never existed server-side: keeping its trace would produce a
+ * `DELETE` on an identity the server never saw.
  *
- * ⚠️ **`inFlight` et `quarantined` ne coalescent JAMAIS.** Le premier est en cours de push —
- * le fusionner ferait diverger ce qui part sur le fil de ce que la file croit avoir envoyé.
- * Le second est mis de côté délibérément et **reste visible** : le fusionner l'effacerait.
- * `pending` et `failed` coalescent, parce que `failed` n'est pas terminal (contrat).
+ * ⚠️ **`inFlight` and `quarantined` NEVER coalesce.** The first is mid-push — merging
+ * it would make what goes on the wire diverge from what the queue believes it sent.
+ * The second is set aside deliberately and **stays visible**: merging it would erase
+ * it. `pending` and `failed` coalesce, because `failed` is not terminal (contract).
  *
  * @version 1.0.0
  */
@@ -55,65 +55,65 @@ import type {
 const FEATURES = "features";
 const OUTBOX = "outbox";
 
-/** États dont une entrée peut encore être fusionnée — voir le bandeau. */
+/** States an entry can still be merged from — see the header banner. */
 const COALESCIBLE = new Set(["pending", "failed"]);
 
-/** Une édition locale, telle que le seam la reçoit. */
+/** A local edit, as the seam receives it. */
 export interface LocalEditInput {
     readonly layerId: string;
     readonly localId: string;
     readonly kind: SyncOperationKind;
-    /** L'entité après édition. Ignorée pour un `delete`, qui conserve la version stockée. */
+    /** The entity after the edit. Ignored for a `delete`, which keeps the stored version. */
     readonly feature?: unknown;
-    /** Marqueur sur lequel l'édition se fonde, renvoyé au push pour rendre le conflit détectable. */
+    /** Marker the edit is based on, forwarded to the push to make the conflict detectable. */
     readonly baseVersion?: VersionMarker | null;
 }
 
-/** Ce que l'écriture optimiste a réellement fait. */
+/** What the optimistic write really did. */
 export interface LocalEditTally {
     readonly localId: string;
-    /** Identifiant de l'entrée d'outbox qui porte cette édition, ou `null` si annulée. */
+    /** Identifier of the outbox entry carrying this edit, or `null` when cancelled. */
     readonly entryId: string | null;
-    /** Vrai quand une entrée NEUVE a été empilée. Faux quand l'édition a fusionné. */
+    /** True when a NEW entry was stacked. False when the edit merged. */
     readonly queued: boolean;
-    /** Identifiant de l'entrée qui a absorbé cette édition, le cas échéant. */
+    /** Identifier of the entry that absorbed this edit, if any. */
     readonly coalescedInto: string | null;
-    /** Vrai quand un `create` en attente et un `delete` se sont annulés. */
+    /** True when a pending `create` and a `delete` cancelled each other. */
     readonly annulled: boolean;
 }
 
-/** Surface publique du module. */
+/** Public surface of the module. */
 export interface LocalEditDBInstance {
-    /** Applique une édition localement ET la met en file, dans UNE transaction. */
+    /** Applies an edit locally AND enqueues it, in ONE transaction. */
     applyLocalEdit(input: LocalEditInput): Promise<LocalEditTally>;
-    /** Identifiants d'entités portant une suppression en attente, pour une couche. */
+    /** Identifiers of entities carrying a pending deletion, for one layer. */
     pendingDeletions(layerId: string): Promise<Set<string>>;
 }
 
 /**
- * Compteur monotone de frappe d'identifiants — la part que l'horloge ne peut pas fournir.
+ * Monotonic id-minting counter — the part the clock cannot provide.
  *
- * 🛑 **`Date.now()` SEUL NE SUFFIT PAS, et c'est l'index UNIQUE qui l'a prouvé.** La première
- * rédaction composait `kind:layerId:localId:now` en affirmant que l'entité et l'instant
- * étaient « déjà uniques ensemble pour un écrivain mono-thread ». C'est faux : `Date.now()` a
- * une résolution à la milliseconde, et deux éditions de la même entité dans la même
- * milliseconde frappent le MÊME identifiant. La collision a fait JETER la transaction — le
- * comportement voulu (correctif B-03 : une collision lève au lieu d'écraser silencieusement),
- * mais sur un cas parfaitement légitime. Le défaut n'est apparu que sous la suite complète,
- * assez rapide pour que deux appels tombent dans la même milliseconde.
+ * 🛑 **`Date.now()` ALONE IS NOT ENOUGH, and the UNIQUE index proved it.** The first
+ * draft composed `kind:layerId:localId:now`, asserting that entity plus instant were
+ * "already unique together for a single-threaded writer". False: `Date.now()` has
+ * millisecond resolution, and two edits of the same entity within the same
+ * millisecond mint the SAME identifier. The collision made the transaction THROW —
+ * the intended behaviour (a collision throws instead of silently overwriting), but on
+ * a perfectly legitimate case. The defect only appeared under the full suite, fast
+ * enough for two calls to land in the same millisecond.
  */
 let _mintCounter = 0;
 
 /**
- * Identifiant d'entrée d'outbox — monotone par construction, jamais aléatoire.
+ * Outbox entry identifier — monotonic by construction, never random.
  *
- * ⚠️ Pas de `Math.random()` : l'index `id` est **unique**, donc une collision jette. Un
- * identifiant tiré au sort rendrait cette garde probabiliste au lieu de la rendre inutile.
- * Le compteur, lui, ne peut pas collisionner dans un contexte mono-thread.
+ * ⚠️ No `Math.random()`: the `id` index is **unique**, so a collision throws. A
+ * randomly-drawn identifier would make that guard probabilistic instead of making it
+ * unnecessary. The counter, by contrast, cannot collide in a single-threaded context.
  *
- * @param input - L'édition en cours.
- * @param now - Horodatage de l'édition.
- * @returns Un identifiant unique, stable et lisible en journal.
+ * @param input - The edit in progress.
+ * @param now - Timestamp of the edit.
+ * @returns A unique identifier, stable and readable in logs.
  */
 function mintEntryId(input: LocalEditInput, now: number): string {
     _mintCounter += 1;
@@ -121,11 +121,11 @@ function mintEntryId(input: LocalEditInput, now: number): string {
 }
 
 /**
- * Initialise le module d'écriture optimiste.
+ * Initialises the optimistic-write module.
  *
- * @param db - Une connexion IndexedDB ouverte.
- * @returns La surface publique du module.
- * @throws Quand `db` est absent.
+ * @param db - An open IndexedDB connection.
+ * @returns The module's public surface.
+ * @throws When `db` is absent.
  * @example
  * const edits = DBLocalEdit.init(db);
  * await edits.applyLocalEdit({ layerId: "sites", localId: "l1", kind: "update", feature });
@@ -155,9 +155,10 @@ function init(db: IDBDatabase): LocalEditDBInstance {
                 tx.onerror = () => reject(new Error(`[DB.LocalEdit] failed: ${tx.error}`));
                 tx.onabort = () => reject(new Error(`[DB.LocalEdit] aborted: ${tx.error}`));
 
-                // 1. Ce qui est déjà en file pour CETTE entité — l'index composé que 3.4 a posé
-                //    pour ça, et la raison pour laquelle la coalescence n'a pas pu vivre sur
-                //    `sync_queue` (elle y aurait exigé d'inférer l'identité par vocabulaire).
+                // 1. What is already queued for THIS entity — the composite index laid
+                //    down for exactly this, and the reason coalescing could not live on
+                //    `sync_queue` (there it would have required inferring identity from
+                //    vocabulary).
                 const queued = outbox.index("localId").getAll([input.layerId, input.localId]);
 
                 queued.onsuccess = () => {
@@ -165,7 +166,7 @@ function init(db: IDBDatabase): LocalEditDBInstance {
                     const mergeable = entries.filter((e) => COALESCIBLE.has(e.state));
                     const pendingCreate = mergeable.find((e) => e.kind === "create");
 
-                    // 2. ANNULATION — créé puis supprimé hors ligne : le serveur ne l'a jamais vu.
+                    // 2. CANCELLATION — created then deleted offline: the server never saw it.
                     if (input.kind === "delete" && pendingCreate) {
                         for (const entry of mergeable) outbox.delete(entry.seq);
                         features.delete([input.layerId, input.localId]);
@@ -173,9 +174,9 @@ function init(db: IDBDatabase): LocalEditDBInstance {
                         return;
                     }
 
-                    // 3. L'enregistrement d'entité. Un `delete` CONSERVE le sien : c'est le seul
-                    //    endroit où vit le `serverId`, et le push en a besoin pour savoir QUOI
-                    //    supprimer — l'entrée d'outbox, elle, ne porte que le `localId`.
+                    // 3. The entity record. A `delete` KEEPS its own: it is the only
+                    //    place the `serverId` lives, and the push needs it to know WHAT
+                    //    to delete — the outbox entry carries only the `localId`.
                     const existing = features.get([input.layerId, input.localId]);
                     existing.onsuccess = () => {
                         const current = existing.result as FeatureRecord | undefined;
@@ -189,19 +190,19 @@ function init(db: IDBDatabase): LocalEditDBInstance {
                                 input.baseVersion !== undefined
                                     ? input.baseVersion
                                     : (current?.version ?? null),
-                            // 🛑 UNE ÉDITION PARTIELLE NE DÉTRUIT PAS CE QU'ELLE N'APPORTE PAS.
-                            // Une modification d'attributs ne renvoie pas forcément la
-                            // géométrie — mesuré : `updateExistingPoi` journalise « missing
-                            // geometry » et met en file quand même. Écraser avec `undefined`
-                            // ferait disparaître la position d'une entité que l'utilisateur
-                            // voulait seulement renommer. La règle valait déjà pour les
-                            // suppressions ; elle vaut pour toute édition.
+                            // 🛑 A PARTIAL EDIT DOES NOT DESTROY WHAT IT DOES NOT BRING.
+                            // An attribute modification does not necessarily resend the
+                            // geometry — measured: `updateExistingPoi` logs "missing
+                            // geometry" and enqueues anyway. Overwriting with
+                            // `undefined` would make the position of an entity the user
+                            // only wanted to rename disappear. The rule already held
+                            // for deletions; it holds for every edit.
                             feature: input.feature ?? current?.feature,
                         };
                         features.put(record);
 
-                        // 4. La file. Une entrée fusionnable rend l'empilement inutile —
-                        //    la charge étant l'enregistrement, elle est déjà à jour.
+                        // 4. The queue. A mergeable entry makes stacking unnecessary —
+                        //    the payload being the record, it is already up to date.
                         const absorber =
                             input.kind === "delete"
                                 ? mergeable.find((e) => e.kind === "delete")
@@ -212,9 +213,9 @@ function init(db: IDBDatabase): LocalEditDBInstance {
                             return;
                         }
 
-                        // Un `delete` qui suit un `update` en attente REMPLACE cet update :
-                        // pousser une modification puis une suppression est du travail pour rien,
-                        // et la modification peut échouer sur une entité qui va disparaître.
+                        // A `delete` following a pending `update` REPLACES that update:
+                        // pushing a modification then a deletion is work for nothing,
+                        // and the modification can fail on an entity about to vanish.
                         if (input.kind === "delete") {
                             for (const entry of mergeable) outbox.delete(entry.seq);
                         }

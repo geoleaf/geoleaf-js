@@ -1,5 +1,5 @@
 /**
- * Tests pour le module GeoLeaf._TablePanel
+ * Tests for the GeoLeaf._TablePanel module
  *
  * Ported from the core suite (`__tests__/table/panel.test.js`).
  * Adaptation: import paths point at the plugin's flat `src/` layout; the GeoJSON /

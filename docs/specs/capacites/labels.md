@@ -211,12 +211,12 @@ reconstruit depuis le style au rechargement.
 
 ## Dépendances et frontières
 
-### Dépendance de cycle de vie — et le pré-vol de B-57
+### Dépendance de cycle de vie — et son pré-vol
 
 `module.ts` → `LabelsModule` : `id = "labels"`, `dependencies = ["geojson"]`.
 
 ⚠️ **Ce que `init()` fait réellement, mesuré fichier par fichier** — c'est la question que
-**B-57** pose, et la réponse n'est pas celle que le nom de
+que pose la question des dépendances, et la réponse n'est pas celle que le nom de
 la capacité suggère :
 
 | Étape de `LabelsLifecycle.init()`                 | Ce qu'elle lit                            | Besoin de l'état GeoJSON ? |
@@ -239,13 +239,13 @@ grep -rn "initializeLayerLabels\|refreshLabels\|enableLabels\|disableLabels\|_hi
   packages/core/src --include=*.ts | grep -v "src/capabilities/labels/"
 ```
 
-⚠️ **Ce que le geste de B-57 coûterait ici, et il n'est pas nul.** Ramener la dépendance à
+⚠️ **Ce que le geste coûterait ici, et il n'est pas nul.** Ramener la dépendance à
 `["config"]` ferait poser l'écouteur de seam **plus tôt** — donc il capterait davantage — et
 laisserait `syncExistingLayers()` ne trouver aucune ligne de couche, puisque la liste n'est pas
 encore rendue. Le filet de premier rendu deviendrait vide, mais il est **redondant** avec le seam
 dans ce cas : il n'existe que pour le cas inverse, une capacité montée après le rendu de la liste.
 Le geste paraît sûr ; il n'est pas exécuté ici, et **l'observable reste à construire** avant de le
-faire — c'est le travail de B-57, pas de cette fiche.
+faire — c'est un travail à part, pas celui de cette fiche.
 
 Position dans `presets/manifest.full.ts` : **première du manifeste**, seule de son lot. La position
 est porteuse — l'ordre d'enregistrement départage les égalités du tri topologique et l'ordre
@@ -284,11 +284,18 @@ C'est ce qui rend `labels` réellement élaguable : une entrée qui omet l'insta
 l'installeur. Elle ne couvre que le bouton 🏷️ : le texte des étiquettes est peint par MapLibre et
 n'a aucune règle CSS.
 
-⚠️ **Deux en-têtes de cette capacité annoncent une exclusion du « build Lite »**
-(`api/geoleaf.labels.ts` et `public-api.ts`, motif « PERF-02 »). **Le build Lite n'existe plus** —
-son retrait est motivé sur place dans `packages/core/rollup.config.mjs`, et
-`globals.ui-lite.ts`, que ces en-têtes citent comme site de montage, **n'existe pas**. Mesure et
-gisement complet : ligne **B-61** du registre.
+✅ **Les en-têtes qui annonçaient une exclusion du « build Lite » sont corrigés** le 19/08/2026.
+Ce build n'existe plus — son retrait est motivé sur place dans la configuration de bundle, et le
+site de montage alternatif que ces en-têtes citaient n'existe pas davantage.
+
+🔻 **Il y en avait SIX dans les sources, pas deux.** Cette fiche en comptait deux parce qu'elle ne
+regardait que sa propre capacité ; le recensement du 19/08 rend **trois** en-têtes annonçant une
+EXCLUSION (`labels` ×2, `share`) et **trois** annonçant une PRÉSENCE « Full + Lite »
+(`coordinates`, `scale`, `branding`) — alors qu'il n'y a qu'un seul build.
+
+🛑 **Les phrases fautives ne sont pas effacées mais datées sur place** : une distinction de build
+disparue ne se lit pas comme une erreur, elle se lit comme une **contrainte vivante** — un lecteur
+s'organise autour, un relecteur cherche le graphe qu'elle nomme.
 
 ---
 

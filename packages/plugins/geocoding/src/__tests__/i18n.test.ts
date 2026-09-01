@@ -31,7 +31,7 @@ import langDe from "../lang/lang-de.js";
 
 /**
  * Every key the plugin asks the core for.
- * Sources: `control.ts:68,82,83,84` (via `t()`) and `entry.ts:83` (`labelKey`).
+ * Sources: `control.ts` (via `t()`) and `entry.ts` (`labelKey`).
  * `geocoding.toolbar.button` is the one with NO fallback — `mobile-toolbar-pill.ts`
  * calls `getLabel` bare, so an unresolved key is rendered verbatim to the user.
  */

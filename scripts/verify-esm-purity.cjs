@@ -1,113 +1,120 @@
 #!/usr/bin/env node
 /**
- * @fileoverview ESM-PURITY — aucun spécificateur NU ne doit survivre dans un `dist/`.
+ * @fileoverview ESM-PURITY — no BARE specifier may survive in a `dist/`.
  *
- * ## Le défaut que cette garde attrape
+ * ## The defect this guard catches
  *
- * Un module publié qui porte `import … from 'gtfs-realtime-bindings'` est **irrésoluble en
- * navigateur** : sans import map, un spécificateur nu n'a pas d'URL. Le fichier se charge chez
- * l'intégrateur, et il casse — silencieusement pour la CI, bruyamment pour l'utilisateur.
+ * A published module carrying `import … from 'gtfs-realtime-bindings'` is
+ * **unresolvable in a browser**: without an import map, a bare specifier has no URL.
+ * The file loads on the integrator's side, and it breaks — silently for CI, loudly
+ * for the user.
  *
- * Le témoin historique était réel : `realtime-layer/dist/geoleaf-realtime-layer.gtfs-rt-BMaf7NPc.js`,
- * 3,3 Ko, référencé par rien, **copié tel quel dans les 4 variantes de `deploy/`**. Il a été
- * emporté depuis par `purge-dist.cjs`, ce qui rend cette garde impossible à voir rougir sur le
- * dépôt tel quel : son témoin se **fabrique** par mutation (cf. §Comment la voir rouge).
+ * The historical witness was real:
+ * `realtime-layer/dist/geoleaf-realtime-layer.gtfs-rt-BMaf7NPc.js`, 3.3 KB, referenced
+ * by nothing, **copied as-is into the 4 `deploy/` variants**. It has since been swept
+ * away by `purge-dist.cjs`, which makes this guard impossible to see red on the repo
+ * as-is: its witness is **fabricated** by mutation (cf. §How to see it red).
  *
- * ## La ligne de partage : `peerDependencies` OUI, `dependencies` NON
+ * ## The dividing line: `peerDependencies` YES, `dependencies` NO
  *
- * Tout spécificateur nu n'est pas un défaut. `maplibre-gl` en est un cas légitime et voulu :
- * moteur WebGL **externe au bundle**, déclaré en `peerDependencies` du paquet ET en `external:`
- * du rollup (`packages/core/rollup.config.mjs`). L'intégrateur le fournit ; le laisser nu est
- * le contrat, pas l'accident.
+ * Not every bare specifier is a defect. `maplibre-gl` is a legitimate, intended case:
+ * a WebGL engine **external to the bundle**, declared in the package's
+ * `peerDependencies` AND in the rollup's `external:`
+ * (`packages/core/rollup.config.mjs`). The integrator provides it; leaving it bare is
+ * the contract, not the accident.
  *
- * D'où l'allowlist, et sa forme exacte :
+ * Hence the allowlist, and its exact shape:
  *
- *   - **DÉRIVÉE**, jamais écrite en dur — les clés de `peerDependencies` lues sur le manifeste,
- *     via `packages.cjs` (qui **jette** si un paquet est introuvable). Un chemin en dur ne
- *     casse pas au déplacement : il cesse silencieusement de matcher, et la gate sort verte en
- *     n'ayant rien gardé. Classe surveillée par `probe-gate-visibility.cjs`.
- *   - **PAR PAQUET**, pas globale. `maplibre-gl` est tolérée dans les 6 paquets qui la
- *     déclarent, et refusée partout ailleurs. Une allowlist globale rendrait la déclaration
- *     décorative.
+ *   - **DERIVED**, never hard-coded — the `peerDependencies` keys read off the
+ *     manifest, via `packages.cjs` (which **throws** if a package cannot be found). A
+ *     hard-coded path does not break on a move: it silently stops matching, and the
+ *     gate goes green guarding nothing. Class watched by
+ *     `probe-gate-visibility.cjs`.
+ *   - **PER PACKAGE**, not global. `maplibre-gl` is tolerated in the 6 packages that
+ *     declare it, and refused everywhere else. A global allowlist would make the
+ *     declaration decorative.
  *
- * Et c'est bien `peerDependencies` qui trace la ligne, pas `dependencies` : le témoin historique
- * `gtfs-realtime-bindings` est une **`dependencies`** de `realtime-layer`. Une dépendance
- * d'exécution qui fuit en spécificateur nu est exactement le défaut ; une paire déclarée en
- * `peer` est le contrat. La règle n'aurait pas laissé passer le témoin.
+ * And it is indeed `peerDependencies` that draws the line, not `dependencies`: the
+ * historical witness `gtfs-realtime-bindings` is a **`dependencies`** of
+ * `realtime-layer`. A runtime dependency leaking as a bare specifier is exactly the
+ * defect; a pair declared as `peer` is the contract. The rule would not have let the
+ * witness through.
  *
- * ## Les trois règles
+ * ## The three rules
  *
- *   ESM-00   **Le corpus ne peut pas être vide.** Évaluée EN PREMIER, sur le patron de DIST-03
- *            (`check-dist-integrity.cjs`) : avant tout build il n'y a AUCUN `dist/`, et la gate
- *            sortirait verte en ne regardant rien. Une garde jamais vue rouge ne garde rien.
- *   ESM-00b  **Le corpus ne peut pas être PARTIEL.** Tout workspace déclarant un script `build`
- *            doit avoir produit au moins un `.js`. 🛑 Ajoutée le jour même de la pose, sur un
- *            incident réel : un `npm run build` lancé par une session concurrente a fait
- *            tourner cette gate pendant que `purge-dist.cjs` avait vidé les `dist/`, et elle
- *            est sortie **✅ verte sur 101 fichiers au lieu de 584** — 17 % du corpus, sans un
- *            mot. **ESM-00 ne pouvait pas le voir : 101 n'est pas 0.** Le critère est dérivé
- *            des manifestes, jamais un seuil en dur — un « au moins N » se périmerait au
- *            premier paquet ajouté et ne dirait pas LEQUEL manque.
- *   ESM-01   **Aucun spécificateur nu** dans un `import … from`, `export … from`, `import "x"`
- *            ou `import("x")` — hors allowlist du périmètre.
+ *   ESM-00   **The corpus cannot be empty.** Evaluated FIRST, on the DIST-03 pattern
+ *            (`check-dist-integrity.cjs`): before any build there is NO `dist/`, and
+ *            the gate would come out green looking at nothing. A guard never seen red
+ *            guards nothing.
+ *   ESM-00b  **The corpus cannot be PARTIAL.** Every workspace declaring a `build`
+ *            script must have produced at least one `.js`. 🛑 Added the very day of
+ *            the landing, on a real incident: an `npm run build` launched by a
+ *            concurrent session had this gate run while `purge-dist.cjs` had emptied
+ *            the `dist/`, and it came out **✅ green on 101 files instead of 584** —
+ *            17 % of the corpus, without a word. **ESM-00 could not see it: 101 is
+ *            not 0.** The criterion derives from the manifests, never a hard
+ *            threshold — an "at least N" would go stale at the first added package
+ *            and would not say WHICH one is missing.
+ *   ESM-01   **No bare specifier** in an `import … from`, `export … from`,
+ *            `import "x"` or `import("x")` — outside the perimeter's allowlist.
  *
- * ## Pourquoi un scanner, et pas un grep
+ * ## Why a scanner, and not a grep
  *
- * Un `grep` sur `from ['"]…` produit **deux faux positifs sur le dépôt tel quel**, tous deux
- * mesurés au pré-vol du 07/08/2026 :
+ * A `grep` on `from ['"]…` produces **two false positives on the repo as-is**, both
+ * measured at the 2026-08-07 preflight:
  *
- *   1. `packages/core/dist/esm/capabilities/legend/legend.js:198` porte
- *      `* import maplibregl from "maplibre-gl";` — dans un `@example` **TSDoc**.
- *   2. `geoleaf-print.plugin.js` porte `"[GeoLeaf.Print] maplibre-gl global not found."` —
- *      dans une **chaîne de caractères**.
+ *   1. `packages/core/dist/esm/capabilities/legend/legend.js` carries
+ *      `* import maplibregl from "maplibre-gl";` — inside a **TSDoc** `@example`.
+ *   2. `geoleaf-print.plugin.js` carries
+ *      `"[GeoLeaf.Print] maplibre-gl global not found."` — inside a **string**.
  *
- * Une gate bruyante apprend à être ignorée, ce qui est pire qu'une gate absente — le dépôt
- * l'a déjà écrit après l'incident `maplibre-layer-builders` de DIST-01. Le scanner ci-dessous
- * neutralise donc commentaires, chaînes et littéraux regex **avant** de chercher, et ne juge
- * que des positions d'import réelles. Ces deux occurrences sont, par construction, sa
- * non-régression permanente : elles vivent sur le disque, et un vert les traverse.
+ * A noisy gate learns to be ignored, which is worse than an absent one — the repo
+ * already wrote that after DIST-01's `maplibre-layer-builders` incident. The scanner
+ * below thus neutralizes comments, strings and regex literals **before** searching,
+ * and only judges real import positions. Those two occurrences are, by construction,
+ * its permanent non-regression: they live on disk, and a green passes through them.
  *
- * ## Périmètre
+ * ## Perimeter
  *
- * Dérivé de `packages.cjs` (`all()`), jamais d'un glob `packages/*​/dist` — qui ne matche ni
- * `packages/plugins/*` ni `packages/libs/*`. Marche **récursive** : le glob plat
- * `packages/*​/*​/dist/*.js` de l'énoncé d'origine laissait `packages/core/dist/esm/**` — la
- * moitié du livrable — hors champ. `deploy/` est scanné à part, avec l'**union** des
- * `peerDependencies` : une variante de déploiement est un assemblage de `dist/` de paquets,
- * elle hérite du contrat d'externals de ses sources.
+ * Derived from `packages.cjs` (`all()`), never from a `packages/*​/dist` glob — which
+ * matches neither `packages/plugins/*` nor `packages/libs/*`. **Recursive** walk: the
+ * flat glob `packages/*​/*​/dist/*.js` of the original statement left
+ * `packages/core/dist/esm/**` — half the deliverable — out of scope. `deploy/` is
+ * scanned separately, with the **union** of `peerDependencies`: a deploy variant is
+ * an assembly of package `dist/`s, it inherits its sources' externals contract.
  *
- * Seuls les `.js` sont lus : les `.d.ts` sont des déclarations (TypeScript résout les nus), et
- * il n'y a ni `.mjs` ni `.cjs` dans les `dist/`.
+ * Only the `.js` are read: the `.d.ts` are declarations (TypeScript resolves bares),
+ * and there is neither `.mjs` nor `.cjs` in the `dist/`s.
  *
- * ## Comment la voir rouge
+ * ## How to see it red
  *
  * ```bash
- * # ① témoin d'ESM-01 — une `dependencies` qui fuit ⟹ sortie 1
+ * # ① ESM-01 witness — a leaking `dependencies` ⟹ exit 1
  * echo "export * from 'gtfs-realtime-bindings';" > packages/plugins/realtime-layer/dist/_witness.js
  * node scripts/verify-esm-purity.cjs; rm packages/plugins/realtime-layer/dist/_witness.js
  *
- * # ② témoin de l'allowlist — la même paire, dans un paquet qui NE la déclare PAS ⟹ sortie 1
+ * # ② allowlist witness — the same pair, in a package that does NOT declare it ⟹ exit 1
  * echo "export * from 'maplibre-gl';" > packages/plugins/realtime-layer/dist/_witness.js
  * node scripts/verify-esm-purity.cjs; rm packages/plugins/realtime-layer/dist/_witness.js
  *
- * # ③ contre-témoin — la même paire dans un paquet qui la déclare ⟹ sortie 0
+ * # ③ counter-witness — the same pair in a package that declares it ⟹ exit 0
  * echo "export * from 'maplibre-gl';" > packages/core/dist/_witness.js
  * node scripts/verify-esm-purity.cjs; rm packages/core/dist/_witness.js
  * ```
  *
- * ② et ③ vont par paire : c'est l'écart entre les deux qui prouve que l'allowlist est **par
- * paquet**. Une allowlist jamais éprouvée est indiscernable d'un `return true`.
+ * ② and ③ go as a pair: the gap between the two is what proves the allowlist is
+ * **per package**. An allowlist never proven is indistinguishable from a
+ * `return true`.
  *
  * ```bash
- * # ④ témoin d'ESM-00b — un seul dist/ manquant ⟹ sortie 1, en nommant le paquet
+ * # ④ ESM-00b witness — a single missing dist/ ⟹ exit 1, naming the package
  * mv packages/plugins/table/dist /tmp/d && node scripts/verify-esm-purity.cjs
  * mv /tmp/d packages/plugins/table/dist
  * ```
  *
- * @see scripts/check-dist-integrity.cjs — DIST-03, le patron de l'anti-gate-vide
- * @see scripts/check-subpath-resolve.cjs — écarte les nus (« not ours to check ») ; c'est ce
- *   trou que cette gate ferme
- * @see roadmap_socle-init.md 📦 (archivée le 09/08/2026) § Sprint 2, tâche 2.1′
+ * @see scripts/check-dist-integrity.cjs — DIST-03, the anti-empty-gate pattern
+ * @see scripts/check-subpath-resolve.cjs — sets bares aside ("not ours to check");
+ *   this gate closes that very hole
  */
 
 "use strict";
@@ -118,19 +125,20 @@ const packages = require("./lib/packages.cjs");
 
 const ROOT = packages.ROOT;
 
-/** Mots-clés après lesquels un `/` ouvre un littéral regex, jamais une division. */
+/** Keywords after which a `/` opens a regex literal, never a division. */
 const REGEX_AFTER_KEYWORD =
     /\b(return|typeof|instanceof|in|of|new|delete|void|throw|case|do|else|yield|await)$/;
 
 /**
- * Un `/` ouvre-t-il un littéral regex, ou est-ce une division ?
+ * Does a `/` open a regex literal, or is it a division?
  *
- * L'heuristique standard : après une valeur (identifiant, littéral, `)`, `]`, `}`) c'est une
- * division ; après un opérateur, un séparateur ou un mot-clé, c'est une regex. Se tromper est
- * sans conséquence sur le verdict — au pire un littéral regex est lu comme du code, et il
- * faudrait qu'il contienne une position d'import complète pour produire un faux positif.
+ * The standard heuristic: after a value (identifier, literal, `)`, `]`, `}`) it is a
+ * division; after an operator, a separator or a keyword, it is a regex. Getting it
+ * wrong has no consequence on the verdict — at worst a regex literal is read as code,
+ * and it would have to contain a complete import position to produce a false
+ * positive.
  *
- * @param {string} maskedSoFar Le texte déjà neutralisé, dont on lit la queue.
+ * @param {string} maskedSoFar The already-neutralized text, whose tail is read.
  * @returns {boolean}
  */
 function opensRegex(maskedSoFar) {
@@ -141,21 +149,21 @@ function opensRegex(maskedSoFar) {
 }
 
 /**
- * Neutralise commentaires, chaînes et littéraux regex, en préservant les offsets.
+ * Neutralizes comments, strings and regex literals, preserving offsets.
  *
- * Le texte rendu a **exactement la même longueur** que l'entrée : chaque caractère neutralisé
- * devient une espace (ou un `x` dans le corps d'une chaîne, pour que la position des guillemets
- * reste lisible), et les `\n` sont conservés pour que le calcul de ligne reste juste. C'est
- * cette conservation des offsets qui permet de retrouver la valeur réelle d'une chaîne à partir
- * de la position de son guillemet ouvrant.
+ * The returned text has **exactly the same length** as the input: each neutralized
+ * character becomes a space (or an `x` in a string's body, so the quote positions
+ * stay readable), and the `\n` are kept so the line computation stays right. That
+ * offset conservation is what allows recovering a string's real value from the
+ * position of its opening quote.
  *
- * ⚠️ Limite connue et assumée : un `${…}` de gabarit est traité comme du corps de chaîne. Un
- * `import` vivant à l'intérieur d'une interpolation ne serait pas vu. Le cas n'existe pas dans
- * une sortie de bundler, et l'erreur va dans le sens du silence, pas du bruit.
+ * ⚠️ Known, accepted limit: a template `${…}` is treated as string body. An `import`
+ * living inside an interpolation would not be seen. The case does not exist in
+ * bundler output, and the error goes toward silence, not noise.
  *
- * @param {string} text Source d'un fichier `.js`.
- * @returns {{masked: string, strings: Map<number, string>}} Le texte neutralisé, et les valeurs
- *   littérales des chaînes indexées par la position de leur guillemet ouvrant.
+ * @param {string} text Source of a `.js` file.
+ * @returns {{masked: string, strings: Map<number, string>}} The neutralized text, and
+ *   the strings' literal values indexed by their opening quote's position.
  */
 function neutralise(text) {
     /** @type {Map<number, string>} */
@@ -168,7 +176,7 @@ function neutralise(text) {
         const c = text[i];
         const c2 = i + 1 < n ? text[i + 1] : "";
 
-        // Commentaire de ligne.
+        // Line comment.
         if (c === "/" && c2 === "/") {
             while (i < n && text[i] !== "\n") {
                 masked += " ";
@@ -177,7 +185,7 @@ function neutralise(text) {
             continue;
         }
 
-        // Commentaire de bloc — c'est lui qui porte le TSDoc, donc le faux positif n° 1.
+        // Block comment — it carries the TSDoc, hence false positive #1.
         if (c === "/" && c2 === "*") {
             masked += "  ";
             i += 2;
@@ -192,8 +200,8 @@ function neutralise(text) {
             continue;
         }
 
-        // Littéral regex — consommé en bloc, sinon un `"` ou un `//` à l'intérieur ferait
-        // dérailler le scanner sur TOUT le reste du fichier.
+        // Regex literal — consumed whole, otherwise a `"` or a `//` inside would
+        // derail the scanner on ALL the rest of the file.
         if (c === "/" && opensRegex(masked)) {
             masked += " ";
             i++;
@@ -205,7 +213,7 @@ function neutralise(text) {
                     i += 2;
                     continue;
                 }
-                if (r === "\n") break; // regex non terminée : on rend la main plutôt que tout avaler
+                if (r === "\n") break; // unterminated regex: hand back rather than swallow everything
                 if (r === "[") inClass = true;
                 else if (r === "]") inClass = false;
                 else if (r === "/" && !inClass) break;
@@ -219,7 +227,7 @@ function neutralise(text) {
             continue;
         }
 
-        // Chaîne — c'est elle qui porte le faux positif n° 2.
+        // String — it carries false positive #2.
         if (c === '"' || c === "'" || c === "`") {
             const quote = c;
             const openedAt = i;
@@ -253,12 +261,12 @@ function neutralise(text) {
 }
 
 /**
- * Les positions d'import d'un fichier, avec le spécificateur réellement écrit.
+ * A file's import positions, with the specifier actually written.
  *
- * Les deux motifs couvrent les quatre formes ESM : `import … from "x"`, `export … from "x"`,
- * `import "x"` (effet de bord) et `import("x")` (dynamique). Ils sont cherchés dans le texte
- * NEUTRALISÉ, donc jamais dans un commentaire ni dans une chaîne ; la valeur, elle, se relit
- * dans la table des chaînes à la position du guillemet.
+ * The two patterns cover the four ESM forms: `import … from "x"`,
+ * `export … from "x"`, `import "x"` (side effect) and `import("x")` (dynamic). They
+ * are searched in the NEUTRALIZED text, hence never in a comment nor a string; the
+ * value, for its part, is re-read from the string table at the quote's position.
  *
  * @param {string} text Source d'un fichier `.js`.
  * @returns {{spec: string, line: number}[]}
@@ -266,7 +274,7 @@ function neutralise(text) {
 function specifiers(text) {
     const { masked, strings } = neutralise(text);
 
-    // Offsets de début de ligne, pour rendre un numéro de ligne cliquable.
+    // Line-start offsets, to render a clickable line number.
     const lineStarts = [0];
     for (let k = 0; k < masked.length; k++) if (masked[k] === "\n") lineStarts.push(k + 1);
     const lineOf = (idx) => {
@@ -290,7 +298,7 @@ function specifiers(text) {
         while ((m = re.exec(masked)) !== null) {
             const quoteAt = m.index + m[0].length - 1;
             const spec = strings.get(quoteAt);
-            if (spec === undefined) continue; // pas une chaîne reconnue : on ne devine pas
+            if (spec === undefined) continue; // not a recognized string: we do not guess
             out.push({ spec, line: lineOf(quoteAt) });
         }
     }
@@ -298,11 +306,11 @@ function specifiers(text) {
 }
 
 /**
- * Un spécificateur est-il NU ?
+ * Is a specifier BARE?
  *
- * Nu = ni relatif (`./`, `../`), ni absolu (`/`), ni URL absolue. Tout le reste demande une
- * résolution que le navigateur ne sait pas faire sans import map — y compris `node:fs`, qui
- * dans un bundle navigateur est un défaut et non un cas limite.
+ * Bare = neither relative (`./`, `../`), nor absolute (`/`), nor an absolute URL.
+ * Everything else demands a resolution the browser cannot do without an import map —
+ * including `node:fs`, which in a browser bundle is a defect and not an edge case.
  *
  * @param {string} spec
  * @returns {boolean}
@@ -314,11 +322,11 @@ function isBare(spec) {
 }
 
 /**
- * Scanne récursivement un `dist/` et rend les violations d'ESM-01.
+ * Recursively scans a `dist/` and returns the ESM-01 violations.
  *
- * @param {string} label Nom lisible du périmètre.
- * @param {string} distDir Chemin absolu du `dist/`.
- * @param {Set<string>} allow Spécificateurs nus tolérés — les `peerDependencies` du périmètre.
+ * @param {string} label Readable name of the perimeter.
+ * @param {string} distDir Absolute path of the `dist/`.
+ * @param {Set<string>} allow Tolerated bare specifiers — the perimeter's `peerDependencies`.
  * @returns {{label: string, scanned: number, allow: string[], violations: object[]}}
  */
 function analyse(label, distDir, allow) {
@@ -344,8 +352,9 @@ function analyse(label, distDir, allow) {
     return { label, scanned, allow: [...allow].sort(), violations };
 }
 
-// ── Périmètres ────────────────────────────────────────────────────────────────
-// Un par paquet, avec SES peerDependencies ; puis un par variante de `deploy/`, avec l'union.
+// ── Perimeters ────────────────────────────────────────────────────────────────
+// One per package, with ITS peerDependencies; then one per `deploy/` variant, with
+// the union.
 
 /** @type {object[]} */
 const results = [];
@@ -356,7 +365,7 @@ for (const p of packages.all()) {
     for (const k of Object.keys(p.manifest.peerDependencies || {})) unionPeers.add(k);
 }
 
-/** Paquets qui déclarent un `build` mais dont le `dist/` ne contient aucun `.js`. */
+/** Packages declaring a `build` whose `dist/` contains no `.js`. */
 const notBuilt = [];
 
 for (const p of packages.all()) {
@@ -392,8 +401,8 @@ console.log(BAR);
 
 let failed = false;
 
-// ESM-00 — anti-gate-vide, évaluée EN PREMIER : sans elle, un dépôt jamais buildé sort vert
-// en n'ayant rien regardé, ce qui est le résultat le plus trompeur possible.
+// ESM-00 — anti-empty-gate, evaluated FIRST: without it, a never-built repo comes
+// out green having looked at nothing, the most misleading result possible.
 if (totalScanned === 0) {
     console.error("❌ [ESM-00] corpus VIDE — aucun fichier .js scanné dans aucun dist/.");
     console.error("   Une gate verte qui n'a rien scanné ne garde rien. Lancer un build d'abord :");
@@ -401,17 +410,19 @@ if (totalScanned === 0) {
     failed = true;
 }
 
-// ESM-00b — corpus PARTIEL. Le zéro absolu n'est pas le seul silence possible, et ce n'est
-// même pas le plus probable.
+// ESM-00b — PARTIAL corpus. Absolute zero is not the only possible silence, and not
+// even the most likely.
 //
-// 🛑 Observé le 07/08/2026, le jour de la pose : un `npm run build` lancé en parallèle par une
-// autre session a fait tourner cette gate pendant que `purge-dist.cjs` avait vidé les `dist/`
-// et que turbo reconstruisait. Elle est sortie **✅ verte sur 101 fichiers au lieu de 584** —
-// 17 % du corpus, sans un mot. ESM-00 ne pouvait pas le voir : 101 n'est pas 0.
+// 🛑 Observed on 2026-08-07, the day of the landing: an `npm run build` launched in
+// parallel by another session had this gate run while `purge-dist.cjs` had emptied
+// the `dist/`s and turbo was rebuilding. It came out **✅ green on 101 files instead
+// of 584** — 17 % of the corpus, without a word. ESM-00 could not see it: 101 is not
+// 0.
 //
-// Le critère est donc DÉRIVÉ, pas un seuil : tout workspace qui déclare un script `build` doit
-// avoir produit au moins un `.js`. Un chiffre en dur (« au moins N fichiers ») se périmerait au
-// premier paquet ajouté, et ne dirait pas LEQUEL manque.
+// The criterion is therefore DERIVED, not a threshold: every workspace declaring a
+// `build` script must have produced at least one `.js`. A hard number ("at least N
+// files") would go stale at the first added package, and would not say WHICH one is
+// missing.
 if (notBuilt.length) {
     console.error(
         "❌ [ESM-00b] corpus PARTIEL — des paquets déclarent `build` sans avoir produit :"
@@ -436,10 +447,10 @@ for (const r of offenders) {
 }
 
 if (failed) {
-    // Le remède n'est imprimé que s'il RÉPOND à ce qui a échoué. ESM-00 porte déjà le sien
-    // (« lancer un build ») ; lui accoler celui d'ESM-01 offrirait de déclarer une
-    // peerDependency à quelqu'un dont le seul tort est de n'avoir rien buildé. Une gate qui
-    // conseille à côté apprend à être ignorée, ce que ce fichier existe pour éviter.
+    // The remedy only prints when it ANSWERS what failed. ESM-00 already carries its
+    // own ("run a build"); appending ESM-01's would offer declaring a peerDependency
+    // to someone whose only fault is not having built. A gate that advises beside the
+    // point learns to be ignored, which this file exists to avoid.
     if (offenders.length) {
         console.error("");
         console.error("   Deux issues, et une seule est la bonne selon le cas :");

@@ -67,7 +67,7 @@ flowchart TD
 > au S9, et `TableModule` / `SearchModule` n'ont **jamais eu de classe** dans ce dépôt. Les
 > capacités (route, labels, legend…) ne sont plus des nœuds nommés : elles sont enregistrées par
 > le preset (`presets/apply-preset.ts:203`), gatées par la config. Côté plugins, `AddPOI` a
-> fusionné dans `editor` au Sprint 5 — le namespace vivant est `GeoLeaf.Editor.AddForm`.
+> fusionné dans `editor` — le namespace vivant est `GeoLeaf.Editor.AddForm`.
 
 ---
 
@@ -269,7 +269,7 @@ GeoLeaf.createMap(targetId, options); // → IMapAdapter (multi-carte)
 
 ---
 
-## 9. Bundle Lite — **RETIRÉ** (section requalifiée le 11/08/2026, backlog B-07)
+## 9. Bundle Lite — **RETIRÉ** (section requalifiée le 11/08/2026)
 
 🛑 **Le build « Lite » n'existe plus, et cette section le décrivait au présent sur douze
 lignes.** `packages/core/rollup.config.mjs:650` l'acte : _« The frozen "lite" build (S4, presets
@@ -297,7 +297,7 @@ de `pwa`/`offline` les laisse tomber par son manifeste, sans build parallèle à
 - `packages/core/src/app/module-registry.ts` — implémentation `ModuleRegistry` (source de vérité de l'ordre d'init)
 - `packages/core/src/contracts/core-module.contract.ts` — `ILifecycleModule` / `IUISlotModule` / `ICoreModule`
 - `packages/core/src/contracts/map-adapter.contract.ts` — `IMapAdapter`
-- `packages/plugins/offline-ui/docs/` — documentation du plugin (relu le 10/08/2026 : la ligne citait aussi `packages/plugins/addpoi/docs/`, **répertoire absent** depuis la fusion d'`addpoi` dans `editor` au Sprint 5)
+- `packages/plugins/offline-ui/docs/` — documentation du plugin (relu le 10/08/2026 : la ligne citait aussi `packages/plugins/addpoi/docs/`, **répertoire absent** depuis la fusion d'`addpoi` dans `editor`)
 
 ⚠️ _Ces chemins sont cités en **code inline**, pas en liens : un lien relatif depuis
 `docs/specs/contrats/` vers `packages/core/src/` traverse trois niveaux et casse au

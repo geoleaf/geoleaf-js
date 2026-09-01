@@ -3,17 +3,31 @@
  *
  * Implements IWsTransport with fully controllable behavior.
  *
- * ⚠️ Shipped in the tarball (`files[]` carries `test-utils/`) but NOT reachable: the
- * `exports` map declares no `./test-utils`, so the import below raises
- * ERR_PACKAGE_PATH_NOT_EXPORTED at the consumer — measured 31/07/2026, not inferred. This
- * header claimed "exported publicly" for four versions while three other places said the
- * same and only the manifest disagreed. Declaring the subpath is a package-contract call
- * (it would point at UNCOMPILED TypeScript, where every other subpath in this repo targets
- * `dist/`): opened as B-97. Kept as an `@example` on purpose — it states the intent, and
- * the README carries the measurement next to it.
+ * 🛑 THIS FILE IS NOT PUBLISHED, AND THAT IS A DECISION — not an oversight.
  *
- * @example
- * import { MockTransport } from "@geoleaf-plugins/websocket/test-utils";
+ * It was until 17/08/2026: `files[]` carried `test-utils/`, so the tarball
+ * took it along (measured by `npm pack`: 4.8 kB over 41 files), while the
+ * `exports` map declared no `./test-utils`. A consumer paid the weight and
+ * received `ERR_PACKAGE_PATH_NOT_EXPORTED` on trying the import — measured on
+ * 31/07/2026, not deduced. ⚠️ The header moreover announced "exported
+ * publicly" for four versions, with three other places saying the same: only
+ * the manifest told the truth.
+ *
+ * **The arbitration, settled on 17/08/2026, is REMOVAL, not declaration.**
+ * The two branches did not cost the same: declaring `./test-utils` would
+ * target **uncompiled TypeScript**, where every other subpath in the repo
+ * targets `dist/` — it would have taken a second build entry and its type
+ * emission, to publicly support a test utility. Removing is one line, and
+ * makes the tarball consistent with what its `exports` map announces.
+ *
+ * ⚠️ **The file stays in the repo and stays used**: the four suites of
+ * `src/__tests__/` import it by **relative** path
+ * (`../../test-utils/mock-transport.js`), which the `files[]` removal does
+ * not touch. What changes is what **ships to the consumer**, and nothing else.
+ *
+ * 🛑 Do not put back an `@example` showing an import from
+ * `@geoleaf-plugins/websocket/test-utils`: it would describe an import that
+ * **fails**, and that is exactly what this header did for four versions.
  */
 
 import type {

@@ -52,7 +52,14 @@ export default {
             exportConditions: ["import", "browser", "default"],
         }),
         commonjs(),
-        minify({ target: "es2015", legalComments: "none" }),
+        // ⚠️ `es2022` and not `es2015`: see the long motive at
+        // `packages/build-config/rollup.mjs`. 🛑 This file is the FIFTH site and the one a
+        // grep of `rollup.config.mjs` misses — it builds the WITNESS the consumer gate
+        // compares the shipped bundle against. Left behind, the two sides are minified to
+        // different targets and the differential collapses below its floor for a reason
+        // that has nothing to do with what the gate measures. It reddened; that is how
+        // this line was found.
+        minify({ target: "es2022", legalComments: "none" }),
     ],
     output: {
         // Spread esmConfig.output to keep the SAME manualChunks and the same minifier: measuring a

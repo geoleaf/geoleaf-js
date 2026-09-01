@@ -18,7 +18,13 @@ vi.mock("../../src/globals/globals.config.js", () => ({}));
 vi.mock("../../src/globals/globals.geojson.js", () => ({}));
 vi.mock("../../src/globals/globals.ui.js", () => ({}));
 vi.mock("../../src/globals/globals.storage.js", () => ({}));
-vi.mock("../../src/globals/globals.poi.js", () => ({}));
+// 🛑 `globals.poi.js` IS NO LONGER MOCKED: the file no longer exists. The
+// POI module was dissolved and its global vanished with it; neutralising it
+// amounted to neutralising a path nothing takes. A mock aimed at an absent
+// file does not fail the suite — it merely makes it longer and falser to
+// read, and it survives indefinitely because nothing rereads a passing mock
+// list. ⚠️ The four neighbours above all aim at a LIVE file: checked, it is
+// not the whole list that drifted, it is one entry.
 vi.mock("../../src/globals/globals.api.js", () => ({}));
 
 describe("globals.ts — orchestrator boot-sequence", () => {
@@ -55,7 +61,9 @@ describe("globals.ts — orchestrator boot-sequence", () => {
         vi.mock("../../src/globals/globals.geojson.js", () => ({}));
         vi.mock("../../src/globals/globals.ui.js", () => ({}));
         vi.mock("../../src/globals/globals.storage.js", () => ({}));
-        vi.mock("../../src/globals/globals.poi.js", () => ({}));
+        // Second site of the same dead mock — see the motive at the top of
+        // the file. The register entry only cited ONE: purging that one
+        // alone would have left the line half settled with nothing saying so.
         vi.mock("../../src/globals/globals.api.js", () => ({}));
 
         await import("../../src/globals/globals.js");

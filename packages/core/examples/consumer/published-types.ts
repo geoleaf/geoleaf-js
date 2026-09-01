@@ -33,19 +33,19 @@
  * that witness bundle and corrupt the measurement. `typeof import(...)` is **erased entirely**
  * at compile time: it forces module resolution and emits nothing.
  *
- * ⚠ `addpoi` et `storage` étaient absents ON PURPOSE jusqu'à l'API publique S4.4c : ils ne
- * publiaient aucune déclaration, faute de pouvoir porter un `rootDir` — leurs tsconfig
- * compilaient les SOURCES du core. Cette dette est payée : les deux n'ont plus aucun import
- * `@core/*` et émettent 34 et 36 déclarations, **0 du core**. Ils sont donc ici, et les 13
- * plugins sont désormais tous asservis par le compilateur.
+ * ⚠ `addpoi` and `storage` were absent ON PURPOSE for a while: they published no
+ * declaration, unable to carry a `rootDir` — their tsconfigs compiled the
+ * core's SOURCES. That debt is paid: both have no `@core/*` import left and
+ * emit 34 and 36 declarations, **0 from the core**. So they are here, and the
+ * 13 plugins are now all held by the compiler.
  */
 
 // ── Libraries (packages/libs/) ───────────────────────────────────────────────────────────────
 type _FieldRenderer = typeof import("@geoleaf/field-renderer");
 type _HostRuntime = typeof import("@geoleaf/host-runtime");
 
-// ── Plugins (packages/plugins/) — les 12, tous typés depuis l'API S4.4c ──────────────────────
-// ⚠️ 5.1-f — `@geoleaf-plugins/addpoi` a fusionné dans `editor` : 13 → 12.
+// ── Plugins (packages/plugins/) — all 12, all typed ──────────────────────────────────────────
+// ⚠️ `@geoleaf-plugins/addpoi` merged into `editor`: 13 → 12.
 type _Cog = typeof import("@geoleaf-plugins/cog");
 type _Connector = typeof import("@geoleaf-plugins/connector");
 type _Editor = typeof import("@geoleaf-plugins/editor");

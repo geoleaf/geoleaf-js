@@ -1,44 +1,45 @@
 /*!
- * GeoLeaf — sonde B-163
+ * GeoLeaf — eviction-notice probe
  * © 2026 Mattieu Pottier · MIT
  */
 
 /**
  * @file probe-eviction-notice.mjs
- * @description Tâche 1.4 de R9 — VOIR l'avis d'éviction s'afficher, sur les DEUX variantes.
+ * @description SEE the eviction notice display, on BOTH variants.
  *
- * 🛑 POURQUOI CETTE SONDE EXISTE ALORS QUE 10 TESTS UNITAIRES SONT VERTS.
- * Les unitaires éprouvent la LOGIQUE de l'écouteur ; aucun ne dit qu'il est CÂBLÉ dans le
- * bundle livré. C'est exactement le défaut d'origine vu depuis l'autre bout : `offline-ui`
- * avait un écouteur correct et testé, et l'avis ne s'affichait pas sur `deploy-core` parce que
- * le plugin n'y était pas. Un vert unitaire ne peut pas fermer B-163.
+ * 🛑 WHY THIS PROBE EXISTS WHILE 10 UNIT TESTS ARE GREEN.
+ * The unit tests prove the listener's LOGIC; none says it is WIRED into the shipped
+ * bundle. It is exactly the original defect seen from the other end: `offline-ui` had
+ * a correct, tested listener, and the notice did not display on `deploy-core` because
+ * the plugin was not there. A unit green cannot close that defect.
  *
- * 🛑 ET LA VARIANTE QUI COMPTE EST `deploy-core`, celle qu'on oublierait : c'est elle qui
- * portait la régression, et elle qui part chez un client.
+ * 🛑 AND THE VARIANT THAT MATTERS IS `deploy-core`, the one that would be forgotten:
+ * it carried the regression, and it ships to a client.
  *
- * Elle éprouve aussi l'ABSENCE de doublon sur `deploy-full`, où le core et le plugin
- * pourraient tous deux écouter — deux toasts pour une éviction.
+ * It also proves the ABSENCE of a duplicate on `deploy-full`, where the core and the
+ * plugin could both listen — two toasts for one eviction.
  *
- * Usage : `node scripts/probe-eviction-notice.mjs` (nginx de dev déjà en place).
+ * Usage: `node scripts/probe-eviction-notice.mjs` (dev nginx already in place).
  */
 "use strict";
 
-// ⚠️ `@playwright/test` et NON `playwright` : c'est le paquet déclaré du dépôt. Importer le
-// second passe à l'exécution (il est présent en transitif) mais fait rougir Knip — une
-// dépendance non déclarée qui marche est exactement ce qu'un lockfile régénéré casse un jour.
+// ⚠️ `@playwright/test` and NOT `playwright`: it is the repo's declared package.
+// Importing the latter works at runtime (present transitively) but makes Knip go red —
+// an undeclared dependency that works is exactly what a regenerated lockfile breaks
+// one day.
 import { chromium } from "@playwright/test";
 import { baseURL, hostResolverArgs } from "../e2e/helpers/base-url.js";
 import { SOFTWARE_GL_ARGS } from "../e2e/helpers/launch-options.js";
 
-/** Détail réaliste : la forme IndexedDB, celle qui renseigne `freedBytes`. */
+/** Realistic detail: the IndexedDB shape, the one that fills `freedBytes`. */
 const DETAIL = { evicted: 3, freedBytes: 2048, totalBefore: 10, totalAfter: 7 };
 
 /**
- * Charge une variante, provoque une éviction, et rend ce qui s'est affiché.
+ * Loads a variant, triggers an eviction, and returns what displayed.
  *
- * ⚠️ On dispatche l'événement plutôt que de remplir un cache réel : l'objet de la tâche est la
- * chaîne « signal → avis », pas l'algorithme d'éviction, qui a ses propres tests. Le signal est
- * émis exactement comme les deux producteurs le font — même nom, même `document`.
+ * ⚠️ We dispatch the event rather than fill a real cache: the subject is the
+ * "signal → notice" chain, not the eviction algorithm, which has its own tests. The
+ * signal is emitted exactly as both producers do — same name, same `document`.
  */
 async function probeVariant(browser, variant) {
     const page = await browser.newPage({ ignoreHTTPSErrors: true });
@@ -48,20 +49,20 @@ async function probeVariant(browser, variant) {
     });
 
     await page.goto(`${baseURL(variant)}/`, { waitUntil: "load", timeout: 30_000 });
-    // Le boot doit être fini : `setupStorage()` câble l'écouteur, et rien ne sert de dispatcher
-    // avant. On attend le namespace plutôt qu'un délai fixe.
+    // Boot must be over: `setupStorage()` wires the listener, and dispatching before
+    // is pointless. We wait for the namespace rather than a fixed delay.
     await page.waitForFunction(() => typeof globalThis.GeoLeaf !== "undefined", {
         timeout: 30_000,
     });
 
     const before = await page.evaluate(() => document.querySelectorAll(".gl-toast").length);
 
-    // 🛑 SCÉNARIO DE CONTRÔLE, JOUÉ EN PREMIER — il rend cette sonde falsifiable.
-    // Une éviction à ZÉRO entrée ne doit produire AUCUN avis. S'il en apparaît un, le garde
-    // `count <= 0` du bundle livré ne mord pas ; et si le scénario nominal ci-dessous verdissait
-    // alors que celui-ci échoue, on saurait que la sonde compte n'importe quoi. Sans ce
-    // contrôle, « 1 toast correspondant » ne distingue pas un écouteur qui marche d'un
-    // compteur complaisant.
+    // 🛑 CONTROL SCENARIO, PLAYED FIRST — it makes this probe falsifiable.
+    // A ZERO-entry eviction must produce NO notice. If one appears, the shipped
+    // bundle's `count <= 0` guard does not bite; and if the nominal scenario below
+    // went green while this one fails, we would know the probe counts anything.
+    // Without this control, "1 matching toast" cannot tell a working listener from a
+    // complacent counter.
     await page.evaluate(() => {
         document.dispatchEvent(
             new CustomEvent("geoleaf:cache:evicted", { detail: { evicted: 0, freedBytes: 0 } })
@@ -79,7 +80,7 @@ async function probeVariant(browser, variant) {
         document.dispatchEvent(new CustomEvent("geoleaf:cache:evicted", { detail }));
     }, DETAIL);
 
-    // Le renderer insère de façon synchrone, mais on laisse une frame pour l'animation.
+    // The renderer inserts synchronously, but we leave one frame for the animation.
     await page.waitForTimeout(400);
 
     const result = await page.evaluate(() => {
@@ -91,8 +92,9 @@ async function probeVariant(browser, variant) {
     return { before, toasts: result, consoleWarnings, afterZero };
 }
 
-// ⚠️ `hostResolverArgs` est un TABLEAU, et il n'est peuplé que si `E2E_TARGET=nginx` — sinon
-// `baseURL()` viserait les http-servers de Playwright, que cette sonde ne démarre pas.
+// ⚠️ `hostResolverArgs` is an ARRAY, and it is only populated when `E2E_TARGET=nginx`
+// — otherwise `baseURL()` would target Playwright's http-servers, which this probe
+// does not start.
 if (process.env.E2E_TARGET !== "nginx") {
     console.error("❌ Lancer avec E2E_TARGET=nginx — la sonde vise les vhosts, elle ne sert rien.");
     process.exit(2);
@@ -114,13 +116,13 @@ for (const variant of ["core", "full"]) {
     const rawKeyLeaked = texts.some((t) => t.includes("storage.notif.cacheEvicted"));
     const placeholderLeaked = texts.some((t) => t.includes("{0}") || t.includes("{count}"));
 
-    // 🛑 L'ORACLE EST LE NOMBRE DE TOASTS D'ÉVICTION, PAS LA VARIATION DU TOTAL.
-    // Premier jet de cette sonde : `fresh === 1`, sur le total des `.gl-toast`. Il rendait 3 et 2
-    // alors que l'avis était PARFAIT sur les deux variantes — la page porte des avis de boot,
-    // qui apparaissent après le point où la ligne de base est prise et n'ont rien à voir avec
-    // l'éviction. Un total est un proxy ; ce qu'on veut savoir, c'est « combien d'écouteurs ont
-    // répondu », et cela se lit sur les toasts QUI CORRESPONDENT. `fresh` reste imprimé comme
-    // contexte, jamais comme critère.
+    // 🛑 THE ORACLE IS THE NUMBER OF EVICTION TOASTS, NOT THE TOTAL'S VARIATION.
+    // This probe's first draft: `fresh === 1`, on the `.gl-toast` total. It returned 3
+    // and 2 while the notice was PERFECT on both variants — the page carries boot
+    // notices, which appear after the point where the baseline is taken and have
+    // nothing to do with the eviction. A total is a proxy; what we want to know is
+    // "how many listeners answered", and that reads on the toasts THAT MATCH.
+    // `fresh` stays printed as context, never as criterion.
     const ok = matched.length === 1 && afterZero === 0 && !rawKeyLeaked && !placeholderLeaked;
     if (!ok) failed = true;
 
@@ -139,11 +141,11 @@ for (const variant of ["core", "full"]) {
 
 await browser.close();
 
-console.log("\n── B-163 · l'avis d'éviction, sur les deux variantes livrées ──\n");
+console.log("\n── L'avis d'éviction, sur les deux variantes livrées ──\n");
 for (const r of report) {
     console.log(`${r.verdict}  deploy-${r.variant}`);
     console.log(
-        `      toasts d'éviction : ${r.correspondants}  (attendu 1 — 0 = le défaut B-163, ≥2 = doublon)`
+        `      toasts d'éviction : ${r.correspondants}  (attendu 1 — 0 = le défaut, ≥2 = doublon)`
     );
     console.log(`      texte affiché     : ${r.texte}`);
     console.log(`      (contexte : ${r.toastsFrais} toasts au total, avis de boot compris)`);
@@ -153,7 +155,7 @@ for (const r of report) {
 }
 
 if (failed) {
-    console.error("❌ B-163 n'est PAS soldée — voir ci-dessus.");
+    console.error("❌ L'avis d'éviction n'est PAS câblé partout — voir ci-dessus.");
     process.exit(1);
 }
-console.log("✅ B-163 : l'avis s'affiche sur deploy-core ET deploy-full, une seule fois.");
+console.log("✅ L'avis s'affiche sur deploy-core ET deploy-full, une seule fois.");

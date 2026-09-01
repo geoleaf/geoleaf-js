@@ -53,10 +53,7 @@ function _hasLatitudeDrifted(lat: number): boolean {
 function _readScaleConfig(
     layerData: GeoJSONLayerEntry
 ): { minScale?: number | null; maxScale?: number | null } | null {
-    return (layerData.currentStyle?.scaleConfig ?? null) as {
-        minScale?: number | null;
-        maxScale?: number | null;
-    } | null;
+    return layerData.currentStyle?.scaleConfig ?? null;
 }
 
 /**
@@ -72,7 +69,7 @@ function syncZoomRanges(lat: number): number {
     const state = getState();
     const Core = getGeoLeaf()?.Core as
         { getMap?: () => ZoomRangeAdapterLike | undefined } | undefined;
-    const adapter = (state.adapter || Core?.getMap?.()) as ZoomRangeAdapterLike | undefined;
+    const adapter = state.adapter || Core?.getMap?.();
     if (!adapter || typeof adapter.setLayerZoomRange !== "function") return 0;
 
     let pushed = 0;

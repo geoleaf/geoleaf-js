@@ -34,8 +34,8 @@ export interface ConnectorConfig {
      *
      * ## Why there is no `Connector.setToken` nor `onTokenExpiring`
      *
-     * 🛑 **They will not be written** — this is an arbitrated refusal (decision ⑧ of
-     * `roadmap_contrat-inverse-api-publique.md`), not an omission, and re-opening it needs a
+     * 🛑 **They will not be written** — this is an arbitrated refusal, not an omission,
+     * and re-opening it needs a
      * new argument rather than a new request.
      *
      * `setToken` would be a **PUSH**: a credential handed to the global namespace, persisted,
@@ -110,11 +110,11 @@ export function validateConfig(config: ConnectorConfig): void {
     _validateBaseUrl(config);
     _validateAuthMode(config);
 
-    // Sprint 2 — validate external URLs (HTTPS in production, http allowed on localhost)
+    // Validate external URLs (HTTPS in production, http allowed on localhost)
     _validateExternalUrl(config.auth?.signupUrl, "auth.signupUrl");
     _validateExternalUrl(config.auth?.forgotPasswordUrl, "auth.forgotPasswordUrl");
 
-    // Sprint 2 — iconVariant silent fallback (no throw, no warn)
+    // iconVariant silent fallback (no throw, no warn)
     _normalizeIconVariant(config);
 }
 

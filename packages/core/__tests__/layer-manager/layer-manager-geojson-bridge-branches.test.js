@@ -83,11 +83,11 @@ describe("LayerManager Integration (T10.3.9+10)", () => {
         }
     });
 
-    // B-228 — les blocs `_resolveLegendType` / `_resolveLayerColor` ont été retirés le
-    // 11/08/2026 AVEC les fonctions qu'ils nommaient. Elles alimentaient `SectionItem.type`
-    // et `.color`, deux champs que la charge utile d'enregistrement ne déclare pas et que
-    // personne ne relisait. 🛑 Leur suppression n'a fait rougir AUCUN test : ces cas
-    // exerçaient les lignes pour la couverture sans jamais asserter leur résultat.
+    // The `_resolveLegendType` / `_resolveLayerColor` blocks were removed on
+    // 11/08/2026 WITH the functions they named. They fed `SectionItem.type`
+    // and `.color`, two fields the registration payload does not declare and
+    // nobody reread. 🛑 Their deletion turned NO test red: these cases
+    // exercised the lines for coverage without ever asserting their result.
     // ── _resolveLayerLabels (via registerWithLayerManager) ───────────────────
 
     describe("_resolveLayerLabels()", () => {

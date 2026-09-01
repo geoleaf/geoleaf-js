@@ -23,11 +23,12 @@ vi.mock("../../src/kernel/basemaps/registry.ts", () => ({
     getBaseLayers,
     getActiveKey,
     getActiveLayer,
-    // ⚠️ `index.ts` importe et ré-exporte `refreshBasemap`, que ce mock omettait. Sous
-    // `require()` le shim de `setup.js` rendait `undefined` en silence ; le mocker natif
-    // REFUSE de servir un export non déclaré. Le mock était donc incomplet depuis toujours,
-    // et rien ne le disait. Déclaré ici avec la valeur qu'il avait de fait — aucun test ne
-    // le touche, et lui donner un spy changerait ce qui est testé.
+    // ⚠️ `index.ts` imports and re-exports `refreshBasemap`, which this mock
+    // omitted. Under `require()` the `setup.js` shim returned `undefined`
+    // silently; the native mocker REFUSES to serve an undeclared export. The
+    // mock had thus been incomplete forever, and nothing said so. Declared
+    // here with the value it had in fact — no test touches it, and giving it
+    // a spy would change what is tested.
     refreshBasemap: undefined,
 }));
 

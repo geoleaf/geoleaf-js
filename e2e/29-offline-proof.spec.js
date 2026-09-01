@@ -1,55 +1,59 @@
 // @ts-check
 /**
- * 29 — LES CRITÈRES DE PREUVE DU SPRINT 3 QUI RESTAIENT (n° 1, 3, 5 et 6)
+ * 29 — THE REMAINING OFFLINE PROOF CRITERIA (nos. 1, 3, 5 and 6)
  *
- * **Critère 1** — écrire hors ligne, puis **relire l'entrée IndexedDB et asserter la CHARGE
- *   UTILE** après un rechargement de page.
- * **Critère 3** — « un ajout suivi d'une suppression hors ligne produit ZÉRO requête ».
- * **Critère 5** — « une sauvegarde qui se restaure — aujourd'hui c'est impossible ».
- * **Critère 6** — « une photo prise hors réseau contient réellement ses octets après
- *   rechargement ».
+ * **Criterion 1** — write offline, then **re-read the IndexedDB entry and assert
+ *   the PAYLOAD** after a page reload.
+ * **Criterion 3** — "an add followed by a delete offline produces ZERO requests".
+ * **Criterion 5** — "a backup that restores — today it is impossible".
+ * **Criterion 6** — "a photo taken off-network really contains its bytes after a
+ *   reload".
  *
- * ⚠️ LES CRITÈRES 1 ET 6 ÉTAIENT ASSIGNÉS À S3b, QUI A ÉTÉ DÉCLARÉE CLOSE SANS LES FOURNIR.
- * Le CODE qu'ils éprouvent était bien corrigé — la façade de file par la tâche 3.3, les octets
- * de photo par le bug n° 3 de la tâche 3.6 — mais aucun scénario ne les avait jamais observés
- * en navigateur. Trouvé le 03/08/2026 en relisant la table des tranches plutôt que la liste des
- * tâches : les deux disaient des choses différentes, et c'est la liste des critères qui avait
- * raison. Un critère de preuve qu'aucun test ne porte n'est pas clos, il est **affirmé**.
+ * ⚠️ CRITERIA 1 AND 6 WERE ASSIGNED TO A SLICE DECLARED CLOSED WITHOUT DELIVERING
+ * THEM. The CODE they prove was indeed fixed — the queue facade, the photo bytes
+ * — but no scenario had ever observed them in a browser. Found on 2026-08-03 by
+ * re-reading the slices table rather than the task list: the two said different
+ * things, and the criteria list was the one that was right. A proof criterion no
+ * test carries is not closed, it is **asserted**.
  *
- * 🛑 CE QUE CES DEUX-LÀ EXIGENT ET QUE LES AUTRES N'EXIGEAIENT PAS : **un rechargement de
- * page**. C'est tout leur sujet — « après rechargement » est dans l'énoncé des deux. Un test
- * qui relit dans la même session prouve qu'un objet est en mémoire, pas qu'il a été PERSISTÉ.
+ * 🛑 WHAT THESE TWO REQUIRE THAT THE OTHERS DID NOT: **a page reload**. That is
+ * their whole subject — "after reload" is in both statements. A test re-reading
+ * in the same session proves an object is in memory, not that it was PERSISTED.
  *
- * ═══ L'INSTRUMENT DU CRITÈRE 3 A ÉTÉ INSTRUIT AVANT D'ÉCRIRE CE SCÉNARIO ═══
+ * ═══ CRITERION 3's INSTRUMENT WAS INVESTIGATED BEFORE WRITING THIS SCENARIO ═══
  *
- * L'en-tête de `helpers/offline.js` consignait une limite mesurée : `recordRequests` compte
- * des **initiations** de requête, pas de la sortie réseau — un `fetch()` servi entièrement
- * par le Service Worker émet quand même un événement `request`, et
- * `Response.fromServiceWorker()` ne tranche pas (il rend `true` aussi quand le worker relaie).
- * Écrire « zéro requête » là-dessus sans mesurer aurait produit un rouge qui ne dit rien.
+ * `helpers/offline.js`'s header recorded a measured limit: `recordRequests`
+ * counts request **initiations**, not network egress — a `fetch()` served
+ * entirely by the Service Worker still emits a `request` event, and
+ * `Response.fromServiceWorker()` does not settle it (it also returns `true` when
+ * the worker relays). Writing "zero requests" on top of that without measuring
+ * would have produced a red that says nothing.
  *
- * Mesuré le 03/08/2026, enregistreur ouvert et **sans assertion**, contre le vhost :
+ * Measured on 2026-08-03, recorder open and **without assertion**, against the
+ * vhost:
  *
- *   1. **Le geste d'écriture produit RÉELLEMENT zéro requête.** Deux mises en file hors
- *      ligne → **0** événement, ni page ni worker. _(La mesure portait sur
- *      `addToSyncQueue` ; le geste passe par `Storage.applyEdit` depuis 4.4b, et le retrait
- *      de la file v3 à la tâche 4.11 a rendu l'ancien nom inatteignable. Le fait mesuré ne
- *      change pas : une mise en file n'émet rien.)_ La limite documentée ne s'applique
- *      pas ici : elle concerne les LECTURES que le worker intercepte, et une mise en file
- *      n'en est pas une. Aucun discriminateur n'est donc nécessaire — en construire un
- *      « au cas où » aurait été du code sans objet.
- *   2. **`request.serviceWorker()` DISCRIMINE, si un jour il le faut.** Sur une lecture que
- *      le worker relaie, l'enregistreur voit **deux** événements pour une seule URL : celui
- *      de la page (`serviceWorker() === null`) et celui du worker. Une requête portant un
- *      worker est une preuve **suffisante** que le fil a été sollicité — le `fetch` du
- *      worker n'est pas ré-interceptable. Consigné pour le jour où un scénario en aura besoin.
- *   3. **Le trafic de boot se calme en ~2 s**, pas en 300 ms. `settleNetwork` avant toute
- *      assertion de zéro n'est donc pas une précaution, c'est la condition.
+ *   1. **The write gesture REALLY produces zero requests.** Two offline
+ *      enqueues → **0** events, neither page nor worker. _(The measurement bore
+ *      on `addToSyncQueue`; the gesture goes through `Storage.applyEdit` since
+ *      the producer switch, and the v3 queue's removal made the old name
+ *      unreachable. The measured fact does not change: an enqueue emits
+ *      nothing.)_ The documented limit does not apply here: it concerns the
+ *      READS the worker intercepts, and an enqueue is not one. No discriminator
+ *      is thus necessary — building one "just in case" would have been
+ *      purposeless code.
+ *   2. **`request.serviceWorker()` DISCRIMINATES, should it one day be needed.**
+ *      On a read the worker relays, the recorder sees **two** events for one
+ *      URL: the page's (`serviceWorker() === null`) and the worker's. A request
+ *      carrying a worker is **sufficient** proof the thread was solicited — the
+ *      worker's `fetch` is not re-interceptable. Recorded for the day a scenario
+ *      needs it.
+ *   3. **Boot traffic settles in ~2 s**, not 300 ms. `settleNetwork` before any
+ *      zero assertion is thus no precaution, it is the condition.
  *
- * ⚠️ CE QUI NE PROUVERAIT RIEN : un `assertZeroNetwork` NON SCOPÉ. Une carte vivante ne cesse
- * jamais de parler au réseau ; « zéro requête » n'est jamais qu'un énoncé sur un PÉRIMÈTRE.
- * Le périmètre est ici l'origine d'écriture, et le contrôle négatif prouve que l'instrument
- * voit bien quelque chose quand il y a quelque chose à voir.
+ * ⚠️ WHAT WOULD PROVE NOTHING: an UNSCOPED `assertZeroNetwork`. A live map never
+ * stops talking to the network; "zero requests" is only ever a statement about a
+ * PERIMETER. The perimeter here is the write origin, and the negative control
+ * proves the instrument does see something when there is something to see.
  */
 
 import { test, expect } from "@playwright/test";
@@ -64,46 +68,49 @@ import {
     recordRequests,
 } from "./helpers/offline.js";
 
-/** La variante qui embarque À LA FOIS l'édition et `offline-ui` — la seule où le cycle de
- *  restauration est atteignable de bout en bout. ⚠️ 5.5 : c'était `deploy-addpoi` ; depuis la
- *  fusion c'est `deploy-full` qui joue ce rôle, et ce n'est pas un simple changement de port. */
+/** The variant embarking BOTH editing and `offline-ui` — the only one where the
+ *  restoration cycle is reachable end to end. ⚠️ It used to be `deploy-addpoi`;
+ *  since the merge `deploy-full` plays that role, and it is not a mere port
+ *  change. */
 const ORIGIN = baseURL("full");
 
 /**
- * Le PÉRIMÈTRE du critère 3 : tout ce qui n'est pas l'origine de l'application est du bruit.
+ * Criterion 3's PERIMETER: everything that is not the application's origin is
+ * noise.
  *
- * 🛑 IL EST DÉRIVÉ, PAS ÉCRIT À LA MAIN, et ce n'est pas de la cosmétique. Une première
- * version de ce test n'avait aucun périmètre : elle a rendu **28 URL distinctes** — les
- * tuiles `s3.amazonaws.com/elevation-tiles-prod` et `tile.opentopomap.org` du fond de carte,
- * qui continuent d'arriver bien après `settleNetwork`. Une carte vivante ne cesse jamais de
- * parler au réseau ; « zéro requête » n'est jamais qu'un énoncé sur un périmètre.
+ * 🛑 IT IS DERIVED, NOT HAND-WRITTEN, and that is not cosmetics. A first version
+ * of this test had no perimeter: it yielded **28 distinct URLs** — the basemap's
+ * `s3.amazonaws.com/elevation-tiles-prod` and `tile.opentopomap.org` tiles,
+ * which keep arriving well after `settleNetwork`. A live map never stops talking
+ * to the network; "zero requests" is only ever a statement about a perimeter.
  *
- * ⚠️ ET C'EST UN BIAIS D'INSTRUMENT DE MA PART, pas une surprise du code : l'instruction
- * préalable avait été jouée sur la variante `full`, où la carte s'était calmée, et j'en ai
- * conclu « zéro requête tout court ». Mesurer sur une variante et conclure sur une autre est
- * exactement ce que la règle de pré-vol interdit.
+ * ⚠️ AND IT IS AN INSTRUMENT BIAS OF MINE, not a code surprise: the preliminary
+ * investigation had been played on the `full` variant, where the map had
+ * settled, and I concluded "zero requests at all". Measuring on one variant and
+ * concluding on another is exactly what the preflight rule forbids.
  *
- * Le périmètre est POSITIF — « l'origine de l'application » — et non une liste noire de
- * fournisseurs : une liste noire excuserait en silence le trafic qu'un futur scénario doit
- * précisément attraper. Et c'est le bon périmètre pour ce critère : une pousée de POI part
- * vers l'origine (`/api/pois`), jamais vers un fournisseur de tuiles.
+ * The perimeter is POSITIVE — "the application's origin" — and not a provider
+ * blacklist: a blacklist would silently excuse the traffic a future scenario
+ * must precisely catch. And it is the right perimeter for this criterion: a POI
+ * push goes to the origin (`/api/pois`), never to a tile provider.
  */
 const NOT_APP_ORIGIN = new RegExp(`^(?!${ORIGIN.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`);
 
 /**
- * Boote l'application et attend la SURFACE, jamais un événement.
+ * Boots the application and waits on the SURFACE, never an event.
  *
- * ⚠️ Le témoin de disponibilité était `Storage.DB.addToSyncQueue`, retiré avec la file v3
- * (tâche 4.11). On attend désormais `Storage.applyEdit` — le point d'écriture unique depuis
- * 4.4b, c'est-à-dire ce que ces tests exercent réellement.
+ * ⚠️ The availability witness used to be `Storage.DB.addToSyncQueue`, removed
+ * with the v3 queue. We now wait on `Storage.applyEdit` — the single write point
+ * since the producer switch, i.e. what these tests really exercise.
  */
 async function boot(page) {
     await page.goto(`${ORIGIN}/`, { waitUntil: "domcontentloaded" });
     await page.waitForFunction(
-        // 🛑 Le témoin doit prouver que le moteur est CÂBLÉ, pas seulement que la façade
-        // existe. `Storage.applyEdit` est monté dès le boot et rendrait `true` trop tôt —
-        // mesuré : les tests partaient alors avec `Storage.DB` encore `null`. `DB.<méthode>`
-        // exige les deux, c'est ce que faisait `addToSyncQueue` avant son retrait.
+        // 🛑 The witness must prove the engine is WIRED, not merely that the
+        // facade exists. `Storage.applyEdit` is mounted from boot and would
+        // return `true` too early — measured: the tests then started with
+        // `Storage.DB` still `null`. `DB.<method>` requires both, which is what
+        // `addToSyncQueue` did before its removal.
         () =>
             typeof (/** @type {any} */ (globalThis).GeoLeaf?.Storage?.DB?.listPendingEdits) ===
             "function",
@@ -119,12 +126,12 @@ test.describe("29 — critères de preuve n° 1, 3, 5 et 6", () => {
 
     test.afterEach(async ({ context, page }) => {
         await goOnline(context, page).catch(() => {
-            /* le contexte peut déjà être en ligne */
+            /* the context may already be online */
         });
     });
 
     // ═══════════════════════════════════════════════════════════════════════════════════
-    // CRITÈRE 3
+    // CRITERION 3
     // ═══════════════════════════════════════════════════════════════════════════════════
 
     test("CRITÈRE 3 — un ajout PUIS une suppression hors ligne ne produisent AUCUNE requête", async ({
@@ -132,8 +139,9 @@ test.describe("29 — critères de preuve n° 1, 3, 5 et 6", () => {
         page,
     }) => {
         await boot(page);
-        // Sans ça, l'assertion rougirait sur le trafic de boot : ~2 s de tuiles, styles,
-        // glyphes et sprites qui n'ont rien à voir avec le geste éprouvé.
+        // Without this, the assertion would redden on boot traffic: ~2 s of
+        // tiles, styles, glyphs and sprites that have nothing to do with the
+        // gesture being proven.
         await settleNetwork(context, { quietMs: 800, timeout: 30000 });
 
         await goOffline(context, page);
@@ -150,17 +158,18 @@ test.describe("29 — critères de preuve n° 1, 3, 5 et 6", () => {
                         geometry: { type: "Point", coordinates: [55.38, -21.07] },
                         properties: { nom: "Saisie hors réseau" },
                     };
-                    // ⚠️ `sites_rosario` et NON `poi_tourisme` : `applyEdit` valide la couche
-                    // (refus `layerUnknown`), là où la file v3 acceptait n'importe quel
-                    // identifiant. Le profil `tourism` n'a que quatre couches éditables, et
-                    // celle-ci est la seule à porter un bloc `write`.
+                    // ⚠️ `sites_rosario` and NOT `poi_tourisme`: `applyEdit`
+                    // validates the layer (`layerUnknown` refusal), where the v3
+                    // queue accepted any identifier. The `tourism` profile has
+                    // only four editable layers, and this one is the only one
+                    // carrying a `write` block.
                     const add = await gl.Storage.applyEdit({
                         layerId: "sites_rosario",
                         kind: "create",
                         localId: "c3-poi",
                         feature,
                     });
-                    // État APRÈS la création seule : l'entité est là, son entrée aussi.
+                    // State AFTER the creation alone: the entity is there, its entry too.
                     const afterAdd = await gl.Storage.DB.listPendingEdits();
 
                     const del = await gl.Storage.applyEdit({
@@ -176,33 +185,34 @@ test.describe("29 — critères de preuve n° 1, 3, 5 et 6", () => {
                         afterDel: afterDel.length,
                     };
                 });
-                // Laisser le temps à une requête tardive de se manifester : une assertion
-                // qui ferme sa fenêtre trop tôt ne prouve pas l'absence, elle prouve
-                // l'impatience.
+                // Give a late request time to show: an assertion closing its
+                // window too early does not prove absence, it proves impatience.
                 await page.waitForTimeout(1500);
             },
             { allow: [NOT_APP_ORIGIN] }
         );
 
-        // 🛑 L'ASSERTION QUI PORTE LE CRITÈRE N'EST PAS « ZÉRO REQUÊTE » SEULE. Zéro requête
-        // est aussi ce que produirait un geste qui n'a rien fait. Il faut que le geste ait
-        // LAISSÉ UNE TRACE pour que le zéro veuille dire « c'est resté local ».
+        // 🛑 THE ASSERTION CARRYING THE CRITERION IS NOT "ZERO REQUESTS" ALONE.
+        // Zero requests is also what a gesture that did nothing would produce.
+        // The gesture must have LEFT A TRACE for the zero to mean "it stayed
+        // local".
         //
-        // ⚠️ **PORTÉ SUR LE CYCLE v4 (tâche 4.11), et la propriété a CHANGÉ DE FORME.** En v3
-        // les deux opérations restaient empilées côte à côte, et le test lisait leur ordre.
-        // L'outbox **coalesce** : une entité créée puis supprimée hors ligne n'a jamais existé
-        // côté serveur, donc les deux entrées s'ANNULENT (`local-edit.ts`, cas « annulation »).
-        // Garder l'ancienne assertion aurait exigé de désactiver la coalescence pour la
-        // mesurer — c'est-à-dire de tester le contraire du contrat.
+        // ⚠️ **PORTED TO THE v4 CYCLE, and the property CHANGED SHAPE.** In v3
+        // the two operations stayed stacked side by side, and the test read
+        // their order. The outbox **coalesces**: an entity created then deleted
+        // offline never existed server-side, so the two entries CANCEL OUT
+        // (`local-edit.ts`, the "annulation" case). Keeping the old assertion
+        // would have required disabling coalescence to measure it — i.e. testing
+        // the contract's opposite.
         //
-        // La trace se lit donc en deux temps : la création seule laisse UNE entrée en file,
-        // la suppression qui suit n'en laisse AUCUNE. Un geste inerte ne produirait ni l'une
-        // ni l'autre.
-        // @ts-expect-error — affecté dans le callback ci-dessus
+        // The trace thus reads in two steps: the creation alone leaves ONE queue
+        // entry, the deletion that follows leaves NONE. An inert gesture would
+        // produce neither.
+        // @ts-expect-error — assigned in the callback above
         expect(queued.add, "la création doit rendre un identifiant d'entrée").toBeTruthy();
-        // @ts-expect-error — affecté dans le callback ci-dessus
+        // @ts-expect-error — assigned in the callback above
         expect(queued.afterAdd, "une entrée après la création").toBe(1);
-        // @ts-expect-error — affecté dans le callback ci-dessus
+        // @ts-expect-error — assigned in the callback above
         expect(queued.afterDel, "ANNULATION — plus rien après la suppression").toBe(0);
     });
 
@@ -210,9 +220,10 @@ test.describe("29 — critères de preuve n° 1, 3, 5 et 6", () => {
         context,
         page,
     }) => {
-        // Sans ce test, le vert du précédent serait indiscernable d'un enregistreur débranché.
-        // C'est la garde de la garde : une mesure de zéro n'a de valeur que si l'on montre
-        // que la même mesure sait rendre autre chose que zéro.
+        // Without this test, the previous one's green would be indistinguishable
+        // from an unplugged recorder. The guard's guard: a zero measurement only
+        // has value if the same measurement is shown able to yield something
+        // other than zero.
         await boot(page);
         await settleNetwork(context, { quietMs: 800, timeout: 30000 });
 
@@ -228,52 +239,54 @@ test.describe("29 — critères de preuve n° 1, 3, 5 et 6", () => {
             "l'enregistreur doit voir la requête qu'on vient de faire"
         ).toBeGreaterThan(0);
     });
-    // 🛑 LE CRITÈRE 5 EST RETIRÉ — LA FONCTIONNALITÉ N'EXISTE PLUS (tâche 4.11, 04/08/2026).
+    // 🛑 CRITERION 5 IS WITHDRAWN — THE FEATURE NO LONGER EXISTS (2026-08-04).
     //
-    // Ses trois tests portaient sur la restauration de sauvegarde : la moitié prouvée (la clé
-    // numérique, corrigée en 3.6), le `test.fixme` de **B-116**, et son contrôle négatif.
+    // Its three tests bore on backup restoration: the proven half (the numeric
+    // key, fixed earlier), the backup `test.fixme`, and its negative control.
     //
-    // Le pré-vol du 04/08 a retourné la prémisse de B-116. La ligne disait « les sauvegardes
-    // sont créées VIDES » ; la mesure dit qu'elles **ne sont plus créées du tout** —
-    // `_createBackup` n'avait aucun appelant de production depuis que 4.4b a réécrit
-    // `processSyncQueue` en délégation à `pushOutbox`. Et son motif était faux sur le
-    // mécanisme : le magasin vivait dans la base qu'une purge d'origine détruit, donc il ne
-    // protégeait pas du cas pour lequel il existait. La chaîne entière est supprimée, et
-    // **B-116 se ferme par retrait**.
+    // The 08-04 preflight overturned the premise. The line said "backups are
+    // created EMPTY"; the measurement says they **are no longer created at
+    // all** — `_createBackup` had no production caller since the producer
+    // switch rewrote `processSyncQueue` as a delegation to `pushOutbox`. And its
+    // motive was wrong on the mechanism: the store lived in the database an
+    // origin purge destroys, so it did not protect against the case it existed
+    // for. The whole chain is deleted, and **the chain closes by removal**.
     //
-    // ⚠️ Ce qui la remplaçait existait déjà : l'outbox interdit contractuellement de détruire
-    // une entrée, et l'export JSON d'`offline-ui` sort du navigateur — lui survit à la purge.
+    // ⚠️ What replaced it already existed: the outbox contractually forbids
+    // destroying an entry, and `offline-ui`'s JSON export leaves the browser —
+    // it survives the purge.
 
     // ═══════════════════════════════════════════════════════════════════════════════════
-    // CRITÈRE 1 — la charge utile SURVIT au rechargement
+    // CRITERION 1 — the payload SURVIVES the reload
     // ═══════════════════════════════════════════════════════════════════════════════════
 
     test("CRITÈRE 1 — une saisie hors ligne se relit AVEC SA CHARGE UTILE après rechargement", async ({
         context,
         page,
     }) => {
-        // 🛑 LE DÉFAUT QUE CE TEST ÉPINGLE (tâche 3.3). La façade `addToSyncQueue` remappait
-        // les arguments : elle lisait `operation.data` — toujours `undefined` — et n'avait
-        // **aucun slot pour `payload`**. Toute saisie de terrain partait donc en file
-        // `poiData: null`, et l'éditeur perdait son enveloppe. Deux vocabulaires de charge
-        // utile, deux pertes, un seul remap fautif.
+        // 🛑 THE DEFECT THIS TEST PINS. The `addToSyncQueue` facade remapped the
+        // arguments: it read `operation.data` — always `undefined` — and had
+        // **no slot for `payload`**. Every field entry thus went into the queue
+        // as `poiData: null`, and the editor lost its envelope. Two payload
+        // vocabularies, two losses, one faulty remap.
         //
-        // ⚠️ ET VOICI POURQUOI CE CRITÈRE EXISTE : le seul E2E qui coupait le réseau avant le
-        // 02/08 assertait un DRAPEAU (`window.__edQueued`), jamais la donnée. Un événement se
-        // déclenche aussi bien quand ce qu'il transporte est vide — c'est exactement ainsi que
-        // le défaut a survécu des mois.
+        // ⚠️ AND HERE IS WHY THIS CRITERION EXISTS: the only E2E that cut the
+        // network before 08-02 asserted a FLAG (`window.__edQueued`), never the
+        // data. An event fires just as well when what it carries is empty —
+        // exactly how the defect survived for months.
         await boot(page);
         await goOffline(context, page);
 
-        // ⚠️ **PORTÉ SUR LE CYCLE v4 (tâche 4.11) — et le défaut d'origine est devenu
-        // INEXPRIMABLE.** Le test écrivait DEUX entrées de file, une par vocabulaire de charge
-        // utile (`poiData` pour `addpoi`, `payload` pour l'éditeur), parce que le remap de
-        // `addToSyncQueue` en perdait une. Depuis 4.4b il n'y a qu'un point d'écriture et un
-        // seul vocabulaire ; depuis 3.4, **l'entrée de file ne porte PLUS la charge utile du
-        // tout** — elle référence `localId`, et la donnée vit dans `features`.
+        // ⚠️ **PORTED TO THE v4 CYCLE — and the original defect became
+        // INEXPRESSIBLE.** The test wrote TWO queue entries, one per payload
+        // vocabulary (`poiData` for `addpoi`, `payload` for the editor),
+        // because the `addToSyncQueue` remap lost one. Since the producer
+        // switch there is one write point and one vocabulary; since the queue
+        // slimming, **the queue entry carries NO payload at all** — it
+        // references `localId`, and the data lives in `features`.
         //
-        // La propriété reste la même — « une saisie hors ligne se relit AVEC SA CHARGE UTILE
-        // après rechargement » — mais elle se lit désormais dans le magasin d'entités.
+        // The property stays the same — "an offline entry re-reads WITH ITS
+        // PAYLOAD after reload" — but it now reads in the entity store.
         const queued = await page.evaluate(async () => {
             const gl = /** @type {any} */ (globalThis).GeoLeaf;
             const poi = await gl.Storage.applyEdit({
@@ -307,9 +320,9 @@ test.describe("29 — critères de preuve n° 1, 3, 5 et 6", () => {
 
         await goOnline(context, page);
 
-        // ── LE RECHARGEMENT — c'est tout le sujet du critère ────────────────────────────
-        // Sans lui, on prouverait qu'un objet est en mémoire, pas qu'il a été PERSISTÉ.
-        // ⚠️ Aucun `wipeOnOrigin` entre les deux : ce serait effacer la preuve.
+        // ── THE RELOAD — the criterion's whole subject ──────────────────────────────────
+        // Without it, we would prove an object is in memory, not that it was
+        // PERSISTED. ⚠️ No `wipeOnOrigin` in between: that would erase the proof.
         await page.reload({ waitUntil: "domcontentloaded" });
         await page.waitForFunction(
             () =>
@@ -319,7 +332,7 @@ test.describe("29 — critères de preuve n° 1, 3, 5 et 6", () => {
             { timeout: 25000 }
         );
 
-        // Relu par les STORES, pas par le moteur : ce qu'on assert est ce qui est sur le disque.
+        // Re-read through the STORES, not the engine: what is asserted is what is on disk.
         const entities = await readStore(page, { db: GEOLEAF_DB, store: "features" });
         const outbox = await readStore(page, { db: GEOLEAF_DB, store: "outbox" });
         const poiRow = entities.find((/** @type {any} */ r) => r.localId === "c1-poi");
@@ -328,8 +341,9 @@ test.describe("29 — critères de preuve n° 1, 3, 5 et 6", () => {
         expect(poiRow, "l'entité POI doit survivre au rechargement").toBeTruthy();
         expect(edRow, "l'entité tracée doit survivre au rechargement").toBeTruthy();
 
-        // 🛑 LES ASSERTIONS QUI PORTENT LE CRITÈRE : la charge utile, pas sa présence.
-        // `toBeTruthy()` sur la ligne aurait été vert AVANT 3.3, avec `poiData: null`.
+        // 🛑 THE ASSERTIONS CARRYING THE CRITERION: the payload, not its
+        // presence. `toBeTruthy()` on the row would have been green BEFORE the
+        // fix, with `poiData: null`.
         expect(poiRow.feature.properties).toMatchObject({
             nom: "Belvédère du Maïdo",
             categorie: "belvedere",
@@ -338,10 +352,11 @@ test.describe("29 — critères de preuve n° 1, 3, 5 et 6", () => {
         expect(edRow.feature.properties).toMatchObject({ nom: "Sentier" });
         expect(edRow.feature.geometry.type).toBe("LineString");
 
-        // 🛑 ET VOICI CE QUI REND LE DÉFAUT D'ORIGINE INEXPRIMABLE : l'entrée de file ne
-        // porte AUCUNE charge utile. Il n'y a plus de slot où l'enveloppe d'un producteur
-        // puisse tomber à côté de celle d'un autre — le contrat l'écrit (« It references
-        // `localId` and never `serverId` »), et c'est vérifiable sur le disque.
+        // 🛑 AND HERE IS WHAT MAKES THE ORIGINAL DEFECT INEXPRESSIBLE: the queue
+        // entry carries NO payload. There is no slot left where one producer's
+        // envelope could fall beside another's — the contract writes it ("It
+        // references `localId` and never `serverId`"), and it is verifiable on
+        // disk.
         const poiEntry = outbox.find((/** @type {any} */ e) => e.id === queued.poi);
         expect(poiEntry, "l'entrée de file doit survivre au rechargement").toBeTruthy();
         expect(poiEntry.localId).toBe("c1-poi");
@@ -349,37 +364,40 @@ test.describe("29 — critères de preuve n° 1, 3, 5 et 6", () => {
         expect(poiEntry.payload).toBeUndefined();
     });
 
-    // ⚠️ LA MOITIÉ « retour en ligne → vérifier le push » DU CRITÈRE 1 N'EST PAS ICI, et son
-    // absence est délibérée : elle exige un vrai backend et l'authentification du connector.
-    // C'est la preuve du **Sprint 4**, dont l'énoncé la reprend mot pour mot. La moitié qui
-    // relevait du Sprint 3 — écrire hors ligne et relire la charge utile — est ci-dessus.
+    // ⚠️ CRITERION 1's "back online → verify the push" HALF IS NOT HERE, and its
+    // absence is deliberate: it requires a real backend and the connector's
+    // authentication. It is the v4 cycle's proof, whose statement repeats it
+    // word for word. The half that belonged to the foundation — write offline
+    // and re-read the payload — is above.
 
     // ═══════════════════════════════════════════════════════════════════════════════════
-    // CRITÈRE 6 — la photo contient ses OCTETS
+    // CRITERION 6 — the photo contains its BYTES
     // ═══════════════════════════════════════════════════════════════════════════════════
 
     test("CRITÈRE 6 — une photo prise hors réseau contient ses OCTETS après rechargement", async ({
         context,
         page,
     }) => {
-        // 🛑 LE DÉFAUT (bug n° 3, tâche 3.6) — et il était DOUBLE dans le même objet.
-        //   ① `image-upload.ts` écrivait `base64: <data-url>` alors que `db/images.ts` déclare
-        //      `blob: Blob` et que `storeImageLocally` mappe explicitement `blob:
-        //      imageData.blob`. La clé `base64` n'était lue par personne : le store recevait
-        //      `blob: undefined`. L'enregistrement existait, il était INEXPLOITABLE.
-        //   ② `uploaded: false` — un booléen n'est PAS une clé IndexedDB valide, et le store
-        //      porte un index `uploaded`. L'enregistrement restait HORS de cet index, donc
-        //      invisible à `getPendingImages()` : jamais téléversé, jamais nettoyé.
+        // 🛑 THE DEFECT — and it was DOUBLE in the same object.
+        //   ① `image-upload.ts` wrote `base64: <data-url>` while `db/images.ts`
+        //      declares `blob: Blob` and `storeImageLocally` explicitly maps
+        //      `blob: imageData.blob`. The `base64` key was read by nobody: the
+        //      store received `blob: undefined`. The record existed, it was
+        //      UNUSABLE.
+        //   ② `uploaded: false` — a boolean is NOT a valid IndexedDB key, and
+        //      the store carries an `uploaded` index. The record stayed OUT of
+        //      that index, hence invisible to `getPendingImages()`: never
+        //      uploaded, never cleaned.
         //
-        // Les deux moitiés sont éprouvées ici, et le contrôle négatif ci-dessous rejoue la
-        // forme défectueuse pour montrer que la correction fait une différence OBSERVABLE.
+        // Both halves are proven here, and the negative control below replays
+        // the defective shape to show the fix makes an OBSERVABLE difference.
         await boot(page);
         await goOffline(context, page);
 
         const written = await page.evaluate(async () => {
             const db = /** @type {any} */ (globalThis).GeoLeaf.Storage.DB;
-            // Des octets qu'on CONNAÎT — l'en-tête PNG, pour que l'assertion puisse dire
-            // « ce sont les miens » et pas seulement « il y a quelque chose ».
+            // Bytes we KNOW — the PNG header, so the assertion can say "these
+            // are mine" and not merely "there is something".
             const bytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3, 4]);
             await db.storeImageLocally({
                 id: "c6-photo",
@@ -395,7 +413,7 @@ test.describe("29 — critères de preuve n° 1, 3, 5 et 6", () => {
 
         await goOnline(context, page);
 
-        // ── LE RECHARGEMENT ─────────────────────────────────────────────────────────────
+        // ── THE RELOAD ──────────────────────────────────────────────────────────────────
         await page.reload({ waitUntil: "domcontentloaded" });
         await page.waitForFunction(
             () =>
@@ -405,10 +423,11 @@ test.describe("29 — critères de preuve n° 1, 3, 5 et 6", () => {
             { timeout: 25000 }
         );
 
-        // ── ① Les OCTETS, et sous la bonne FORME ────────────────────────────────────────
-        // `readBinary` distingue un Blob d'un ArrayBuffer et d'une chaîne — c'est l'outil
-        // écrit pour ce critère, et c'est ce qui sépare « il y a un enregistrement » de
-        // « il y a une image ». Un `toBeTruthy()` aurait été vert avec le défaut.
+        // ── ① The BYTES, and in the right SHAPE ─────────────────────────────────────────
+        // `readBinary` tells a Blob from an ArrayBuffer and a string — the tool
+        // written for this criterion, and what separates "there is a record"
+        // from "there is an image". A `toBeTruthy()` would have been green with
+        // the defect.
         const stored = await readBinary(page, {
             db: GEOLEAF_DB,
             store: "local_images",
@@ -418,9 +437,10 @@ test.describe("29 — critères de preuve n° 1, 3, 5 et 6", () => {
         expect(stored.kind, "la photo doit être un Blob, pas une chaîne base64").toBe("blob");
         expect(stored.byteLength).toBe(written.size);
 
-        // ── ② Et elle est DANS L'INDEX des « en attente » ────────────────────────────────
-        // La seconde moitié du bug : un booléen reste hors index. Sans cette assertion, une
-        // photo pourrait avoir ses octets et rester invisible au téléversement pour toujours.
+        // ── ② And it is IN the "pending" INDEX ──────────────────────────────────────────
+        // The bug's second half: a boolean stays out of the index. Without this
+        // assertion, a photo could have its bytes and stay invisible to upload
+        // forever.
         const pending = await page.evaluate(async () => {
             const db = /** @type {any} */ (globalThis).GeoLeaf.Storage.DB;
             const rows = await db.getPendingImages();
@@ -432,10 +452,11 @@ test.describe("29 — critères de preuve n° 1, 3, 5 et 6", () => {
     test("CONTRÔLE NÉGATIF — la forme du bug n° 3 perd les octets ET sort de l'index", async ({
         page,
     }) => {
-        // Sans ce test, les deux assertions ci-dessus seraient indiscernables d'un store
-        // tolérant. On rejoue la forme EXACTE que `image-upload.ts` écrivait avant 3.6 —
-        // `base64` au lieu de `blob`, `uploaded: false` au lieu de `0` — et on montre que
-        // les deux défauts sont observables sur le store réel, pas seulement raisonnés.
+        // Without this test, the two assertions above would be indistinguishable
+        // from a tolerant store. The EXACT shape `image-upload.ts` wrote before
+        // the fix is replayed — `base64` instead of `blob`, `uploaded: false`
+        // instead of `0` — showing both defects are observable on the real
+        // store, not merely reasoned.
         await boot(page);
 
         await seedStore(page, {
@@ -454,7 +475,7 @@ test.describe("29 — critères de preuve n° 1, 3, 5 et 6", () => {
             ],
         });
 
-        // ① Les octets ne sont nulle part : le champ que le lecteur regarde est ABSENT.
+        // ① The bytes are nowhere: the field the reader looks at is ABSENT.
         const stored = await readBinary(page, {
             db: GEOLEAF_DB,
             store: "local_images",
@@ -463,7 +484,7 @@ test.describe("29 — critères de preuve n° 1, 3, 5 et 6", () => {
         });
         expect(stored.kind, "`base64` n'est pas `blob` — le lecteur ne trouve rien").toBe("absent");
 
-        // ② Et l'enregistrement est hors de l'index, donc invisible au téléversement.
+        // ② And the record is out of the index, hence invisible to upload.
         const pending = await page.evaluate(async () => {
             const db = /** @type {any} */ (globalThis).GeoLeaf.Storage.DB;
             const rows = await db.getPendingImages();
@@ -472,7 +493,7 @@ test.describe("29 — critères de preuve n° 1, 3, 5 et 6", () => {
         expect(pending, "un booléen reste HORS de l'index `uploaded`").not.toContain(
             "c6-defectueuse"
         );
-        // …alors qu'il est bien EN BASE : c'est ce qui rend le défaut silencieux.
+        // …while it IS in the database: what makes the defect silent.
         const rows = await readStore(page, { db: GEOLEAF_DB, store: "local_images" });
         expect(rows.map((/** @type {any} */ r) => r.id)).toContain("c6-defectueuse");
     });

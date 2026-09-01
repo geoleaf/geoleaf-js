@@ -140,7 +140,7 @@ describe("validateConfig", () => {
         });
     });
 
-    describe("Sprint 2 — signupUrl / forgotPasswordUrl validation", () => {
+    describe("signupUrl / forgotPasswordUrl validation", () => {
         afterEach(() => {
             delete (globalThis as Record<string, unknown>)["location"];
         });
@@ -236,7 +236,7 @@ describe("validateConfig", () => {
         });
     });
 
-    describe("Sprint 2 — credentialButton.iconVariant fallback", () => {
+    describe("credentialButton.iconVariant fallback", () => {
         it("silently falls back to 'lock' for invalid iconVariant", () => {
             const config: ConnectorConfig = {
                 baseUrl: VALID_HTTPS,

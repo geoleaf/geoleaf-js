@@ -67,10 +67,10 @@ describe("FeatureInfoLifecycle", () => {
             Core: {
                 getMap: () => ({ getNativeMap: () => ({ getContainer: () => document.body }) }),
             },
-            // ⚠️ La couche déclare sa lecture. Ce stub n'avait AUCUN seam `GeoJSON` et
-            // les deux cas de rendu s'appuyaient sur le repli implicite, retiré par la
-            // décision U2 — ce qui est testé ici est le CÂBLAGE des deux signaux du
-            // kernel, pas la résolution des champs.
+            // ⚠️ The layer declares its reading. This stub had NO `GeoJSON`
+            // seam and both render cases leaned on the implicit fallback,
+            // since removed — what is tested here is the WIRING of the
+            // kernel's two signals, not field resolution.
             GeoJSON: {
                 getLayerConfig: (id) =>
                     id === "l1"

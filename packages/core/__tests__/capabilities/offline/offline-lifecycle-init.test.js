@@ -1,10 +1,11 @@
 /**
  * Unit tests — `capabilities/offline/lifecycle.ts` OfflineLifecycle.init (gisement offline).
  *
- * `lifecycle-detector-teardown.test.js` couvre `_reset` ; `init` restait le trou (~41 %).
- * On l'exerce en injectant les deps (pur DI, sans accès global) et en espionnant les deux
- * seams réels : `CapabilityRegistry.ensureLoaded` (import dynamique du moteur) et
- * `StorageContract._markReady`. Trois modes : moteur (enabled+pwa+storage), badge seul, rien.
+ * `lifecycle-detector-teardown.test.js` covers `_reset`; `init` remained the
+ * hole (~41%). We exercise it by injecting the deps (pure DI, no global
+ * access) and spying on the two real seams: `CapabilityRegistry.ensureLoaded`
+ * (the engine's dynamic import) and `StorageContract._markReady`. Three
+ * modes: engine (enabled+pwa+storage), badge only, nothing.
  */
 import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
 
@@ -40,7 +41,7 @@ describe("OfflineLifecycle.init — mode moteur", () => {
 
         expect(ensure).toHaveBeenCalledWith("offline");
         expect(storage.init).toHaveBeenCalledTimes(1);
-        // la config cache fusionne les défauts + l'override
+        // the cache config merges the defaults + the override
         const initArg = storage.init.mock.calls[0][0];
         expect(initArg.cache).toMatchObject({ enableProfileCache: true, maxCacheBytes: 5 });
         expect(markReady).toHaveBeenCalled();

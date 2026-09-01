@@ -5,6 +5,27 @@
  * https://geoleaf.dev
  */
 
+/**
+ * @sideEffectGraft packages/core/src/globals/globals.config.ts
+ *
+ * ✅ ASSUMED as a module-level state, decided 24-25/08/2026 — not a side effect awaiting
+ * conversion. Converting the graft to plain exports would force the anchor to know every
+ * member it re-exports, for nothing measurable: the graft is declared (this mark), anchored
+ * (the bare import the mark names), and guarded (the graft gate reddens if either
+ * disappears). What would REOPEN the decision is a second writer grafting onto the same
+ * base — not a re-reading of this file.
+ *
+ * ⚠️ **SIDE-EFFECT module**: grafts 9 accessors onto `Config` at import, via a
+ * local re-binding `C`. It exports nothing that is consumed, so
+ * no dead-code instrument can see it live — ESLint, `check-orphan-exports` and a
+ * human read all declared it dead **in concert, and all three were wrong**. A
+ * side-effect module has no consumer, by definition.
+ *
+ * **Its only anchor is a BARE import in `globals.config.ts`.** Removing it drops
+ * this file from the graph **silently**: the test suite stays green, and the
+ * symptom is a production `TypeError`. It happened (July 2026, caught within the
+ * hour). `GRAFT-03` now guards that the anchor still imports it.
+ */
 import { Log } from "../../../utils/log/index.js";
 import { Config } from "./config-core.js";
 import { resolveModuleConfig } from "./module-config.js";
@@ -22,7 +43,7 @@ C.getAll = function (): GeoLeafConfig {
         this._initSubModules();
     }
     const Storage = ConfigStore;
-    return (Storage?.getAll ? Storage.getAll() : this._config) as GeoLeafConfig;
+    return Storage?.getAll ? Storage.getAll() : this._config;
 };
 
 C.get = function <T = unknown>(path: string, defaultValue?: T): T {

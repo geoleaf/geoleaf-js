@@ -1,28 +1,29 @@
 /**
- * Gate 7.5 (socle-init) — les pastilles du pill toolbar sortent dans l'ordre DÉCLARÉ,
- * plus dans l'ordre d'enregistrement.
+ * The pill toolbar's badges come out in DECLARED order, no longer in
+ * registration order.
  *
- * ## Le défaut, et pourquoi il ne se voyait pas
+ * ## The defect, and why it went unseen
  *
- * `_appendRegistryIcons()` itérait `registry.getAll()` tel quel, et son commentaire le
- * disait : « Icons are rendered in module registration order (set in boot.ts) ». La mise en
- * page de la barre était donc une propriété **émergente** de `presets/manifest.full.ts`,
- * dont l'ordre porte déjà **trois** contraintes sans rapport — départage du tri topologique
- * de Kahn, séquence des `sharedLifecycle` (#7 `pwa` → #8 `offline`), arêtes de dépendance.
- * Réordonner le manifeste pour l'une des trois déplaçait les boutons, et **aucun test ne
- * l'aurait vu** : `legend` précédait `share` par coïncidence de manifeste, pas par décision.
+ * `_appendRegistryIcons()` iterated `registry.getAll()` as-is, and its
+ * comment said so: "Icons are rendered in module registration order (set in
+ * boot.ts)". The bar's layout was thus an **emergent** property of
+ * `presets/manifest.full.ts`, whose order already carries **three**
+ * unrelated constraints — Kahn topological-sort tie-breaking, the
+ * `sharedLifecycle` sequence (#7 `pwa` → #8 `offline`), dependency edges.
+ * Reordering the manifest for any of the three moved the buttons, and **no
+ * test would have seen it**: `legend` preceded `share` by manifest
+ * coincidence, not by decision.
  *
- * `IModuleUISlot.filterTab` portait **déjà** un `order: number`. 7.5 aligne les deux moitiés
- * de la même interface plutôt que d'en inventer une seconde.
+ * `IModuleUISlot.filterTab` **already** carried an `order: number`. The fix
+ * aligns the two halves of the same interface rather than inventing a second one.
  *
- * ## Ce que la gate exige
+ * ## What the gate demands
  *
- * Enregistrer `share` **AVANT** `legend` — donc à l'envers de la production — et exiger que
- * les pastilles sortent quand même `legend` → `share`. C'est rouge avant le tri, vert après :
- * le test ne peut pas passer par accident, puisque l'ordre d'entrée est l'inverse de la
- * sortie attendue.
+ * Register `share` **BEFORE** `legend` — i.e. backwards from production —
+ * and demand that the badges still come out `legend` → `share`. Red before
+ * the sort, green after: the test cannot pass by accident, since the input
+ * order is the inverse of the expected output.
  *
- * @see roadmap_socle-init.md 📦 (archivée le 09/08/2026) §Sprint 7, tâche 7.5
  * @see packages/core/src/contracts/core-module.contract.ts — `IModuleUISlot.mobileIcon.order`
  */
 vi.mock("../../src/utils/i18n/i18n.js", () => ({
@@ -31,7 +32,7 @@ vi.mock("../../src/utils/i18n/i18n.js", () => ({
 
 const _ICON = '<svg viewBox="0 0 24 24"><rect x="0" y="0" width="1" height="1"/></svg>';
 
-/** Module minimal porteur d'un `mobileIcon`, tel que `registry.getAll()` le rend. */
+/** Minimal module carrying a `mobileIcon`, as `registry.getAll()` returns it. */
 function mod(id, order) {
     return {
         id,
@@ -55,13 +56,13 @@ function setupGeoLeaf(modules) {
 }
 
 /**
- * Les ids des pastilles issues du REGISTRE, dans l'ordre du DOM.
+ * The ids of the badges coming from the REGISTRY, in DOM order.
  *
- * ⚠️ Le filtre sur `only` n'est pas cosmétique : la barre porte aussi des boutons statiques
- * (`geoloc`, `proximity`, …) construits avant la boucle du registre et qui portent le même
- * attribut `data-gl-sheet`. Comparer le DOM entier ferait échouer ce test sur des boutons
- * qui n'ont rien à voir avec l'ordre qu'il éprouve — c'est ce qui est arrivé à sa première
- * version.
+ * ⚠️ The `only` filter is not cosmetic: the bar also carries static buttons
+ * (`geoloc`, `proximity`, …) built before the registry loop and carrying
+ * the same `data-gl-sheet` attribute. Comparing the whole DOM would fail
+ * this test on buttons unrelated to the order it exercises — which is what
+ * happened to its first version.
  */
 async function renderPillIds(only) {
     const { createToolbarDom } = await import("../../src/kernel/ui/mobile/mobile-toolbar-pill.ts");
@@ -80,17 +81,17 @@ afterEach(() => {
 
 describe("mobile-toolbar-pill — ordre déclaré des pastilles (socle-init 7.5)", () => {
     it("rend legend AVANT share même enregistrés à l'envers", async () => {
-        // Ordre d'entrée INVERSE de la sortie attendue : sans tri, ce test sort share, legend.
+        // Input order INVERSE of the expected output: without the sort, this test yields share, legend.
         setupGeoLeaf([mod("share", 20), mod("legend", 10)]);
 
         expect(await renderPillIds(["legend", "share"])).toEqual(["legend", "share"]);
     });
 
     it("les modules SANS order gardent leur ordre d'enregistrement, après les ordonnés", async () => {
-        // `b` et `a` n'ont pas d'ordre : ils doivent rester dans cet ordre-là entre eux, et
-        // passer derrière `legend` malgré leur position d'entrée. C'est ce qui rend le geste
-        // additif — un module existant qui ne déclare rien ne bouge pas relativement aux
-        // autres non-déclarants.
+        // `b` and `a` have no order: they must stay in that order between
+        // themselves, and go behind `legend` despite their input position.
+        // That is what makes the change additive — an existing module
+        // declaring nothing does not move relative to the other non-declarers.
         setupGeoLeaf([mod("b"), mod("a"), mod("legend", 10)]);
 
         expect(await renderPillIds(["legend", "b", "a"])).toEqual(["legend", "b", "a"]);

@@ -1,22 +1,22 @@
 /**
- * Tests unitaires — app/module-registry.ts (Sprint 3)
+ * Tests unitaires — app/module-registry.ts
  *
- * Cas couverts (roadmap tâche 3.4.1) :
- *  1. Enregistrement simple → has() / getAll()
- *  2. Doublon d'id → GeoLeafError
- *  3. Tri topologique — init() appelle dans le bon ordre
- *  4. Dépendance circulaire — GeoLeafError avec chemin du cycle
- *  5. get('inconnu') → GeoLeafError
- *  6. destroy() → ordre inverse de l'init
- *  7. getUISlots() → uniquement les modules avec ui
- *  8. init() rejette si un module.init() rejette
- *  9. register() après init() → stocké SANS erreur (S4, plugins lazy) — ⚠️ cette ligne a dit
- *     « → GeoLeafError » jusqu'au 07/08/2026, alors que le cas 9 lui-même asserte l'inverse
- *     depuis le S4 : l'en-tête décrivait le comportement d'avant, dans le fichier qui prouve
- *     le nouveau
- *  9b. …mais plus en SILENCE (socle-init 7.2) — le warn nomme les deux conséquences
- * 10. Dépendance non enregistrée → GeoLeafError
- * 11. has() → false pour module inconnu
+ * Covered cases:
+ *  1. Simple registration → has() / getAll()
+ *  2. Duplicate id → GeoLeafError
+ *  3. Topological sort — init() calls in the right order
+ *  4. Circular dependency — GeoLeafError with the cycle's path
+ *  5. get('unknown') → GeoLeafError
+ *  6. destroy() → reverse init order
+ *  7. getUISlots() → only modules with ui
+ *  8. init() rejects if a module.init() rejects
+ *  9. register() after init() → stored WITHOUT error (lazy plugins) — ⚠️ this
+ *     line said "→ GeoLeafError" until 07/08/2026, while case 9 itself has
+ *     asserted the opposite since lazy plugins landed: the header described
+ *     the old behaviour, in the file that proves the new one
+ *  9b. …but no longer SILENTLY — the warn names both consequences
+ * 10. Unregistered dependency → GeoLeafError
+ * 11. has() → false for an unknown module
  */
 "use strict";
 
@@ -27,7 +27,7 @@ import { Log } from "../../src/utils/log/index.js";
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 /**
- * Crée un ICoreModule stub avec init/destroy espionnés.
+ * Creates an ICoreModule stub with spied init/destroy.
  * @param {string} id
  * @param {string[]} deps
  * @param {boolean} withUI
@@ -54,7 +54,7 @@ function makeModule(id, deps = [], withUI = false) {
 
 // ── Suite principale ───────────────────────────────────────────────────────────
 
-describe("ModuleRegistry (Sprint 3)", () => {
+describe("ModuleRegistry", () => {
     let registry;
 
     beforeEach(() => {
@@ -116,7 +116,7 @@ describe("ModuleRegistry (Sprint 3)", () => {
             callOrder.push("c");
         });
 
-        // Enregistrement dans un ordre différent pour valider que le registry trie
+        // Registered in a different order to validate that the registry sorts
         registry.register(modC);
         registry.register(modA);
         registry.register(modB);
@@ -141,14 +141,14 @@ describe("ModuleRegistry (Sprint 3)", () => {
 
         await registry.init(null, null);
 
-        // A doit être avant B et C ; B et C avant D
+        // A must come before B and C; B and C before D
         expect(callOrder.indexOf("a")).toBeLessThan(callOrder.indexOf("b"));
         expect(callOrder.indexOf("a")).toBeLessThan(callOrder.indexOf("c"));
         expect(callOrder.indexOf("b")).toBeLessThan(callOrder.indexOf("d"));
         expect(callOrder.indexOf("c")).toBeLessThan(callOrder.indexOf("d"));
     });
 
-    // ── 4. Dépendance circulaire ───────────────────────────────────────────────
+    // ── 4. Circular dependency ─────────────────────────────────────────────────
     it("init() lève GeoLeafError lorsqu'un cycle est détecté (X → Y → X)", async () => {
         registry.register(makeModule("x", ["y"]));
         registry.register(makeModule("y", ["x"]));
@@ -212,13 +212,14 @@ describe("ModuleRegistry (Sprint 3)", () => {
         expect(() => registry.destroy()).not.toThrow();
     });
 
-    // ── destroy() ré-arme le registre (S6 Lot 1) ───────────────────────────────
-    // `destroy()` détruisait les modules mais ne remettait jamais `_initialized` à false,
-    // donc `init()` sortait ensuite sur son garde idempotent : le cycle create → destroy →
-    // recreate était un NO-OP SILENCIEUX. Resté invisible parce que `registry.destroy()` n'a
-    // aucun appelant de production (le teardown réel passe par `registerLifecycleTeardown`),
-    // et parce que les 2 tests qui en avaient besoin forçaient la privée `_initialized = false`
-    // au lieu d'appeler `destroy()` — ils contournaient le bug qu'ils auraient pu révéler.
+    // ── destroy() re-arms the registry ─────────────────────────────────────────
+    // `destroy()` destroyed the modules but never reset `_initialized` to
+    // false, so `init()` then exited on its idempotence guard: the create →
+    // destroy → recreate cycle was a SILENT NO-OP. It stayed invisible
+    // because `registry.destroy()` has no production caller (the real
+    // teardown goes through `registerLifecycleTeardown`), and because the 2
+    // tests that needed it forced the private `_initialized = false` instead
+    // of calling `destroy()` — they worked around the bug they could have revealed.
     it("destroy() ré-arme le registre : init → destroy → init ré-initialise les modules", async () => {
         const mod = makeModule("recreate-me");
         registry.register(mod);
@@ -244,14 +245,15 @@ describe("ModuleRegistry (Sprint 3)", () => {
         registry.destroy();
         registry.destroy();
 
-        // `_initOrder` vidé ⇒ la seconde passe n'a plus rien à parcourir.
+        // `_initOrder` emptied ⇒ the second pass has nothing left to walk.
         expect(mod.destroy).toHaveBeenCalledTimes(1);
     });
 
     it("destroy() conserve les modules enregistrés — sinon aucun recreate n'est possible", async () => {
-        // `_modules` ne doit PAS être vidé : les 8 modules kernel sont enregistrés une seule
-        // fois, à l'évaluation du bundle (`boot-install.ts:115-128`). Les purger rendrait tout
-        // recreate impossible — le registre serait vide et `init()` n'aurait rien à faire.
+        // `_modules` must NOT be emptied: the 8 kernel modules are
+        // registered once, at bundle evaluation (`boot-install.ts`).
+        // Purging them would make any recreate impossible — the registry
+        // would be empty and `init()` would have nothing to do.
         const mod = makeModule("survivor");
         registry.register(mod);
         await registry.init(null, null);
@@ -292,7 +294,7 @@ describe("ModuleRegistry (Sprint 3)", () => {
         await expect(registry.init(null, null)).rejects.toThrow("module boom");
     });
 
-    // ── 9. register() après init() — S4: autorisé pour les plugins lazy ──────────
+    // ── 9. register() after init() — allowed for lazy plugins ────────────────────
     it("register() après init() stocke le module sans lancer d'erreur (plugins lazy)", async () => {
         registry.register(makeModule("early"));
         await registry.init(null, null);
@@ -303,26 +305,27 @@ describe("ModuleRegistry (Sprint 3)", () => {
         expect(registry.get("late")).not.toBeNull();
     });
 
-    // ── 9b. …mais il ne le fait plus EN SILENCE (socle-init 7.2) ────────────────
-    // Le silence était le vrai défaut : le module est bien enregistré, l'introspection le
-    // confirme, et rien n'apparaît — ce qui fait chercher un problème d'ORDRE là où il n'y
-    // en a pas. Le warn doit nommer les DEUX conséquences, pas seulement `init()`.
+    // ── 9b. …but it no longer does so SILENTLY ──────────────────────────────────
+    // The silence was the real defect: the module is registered,
+    // introspection confirms it, and nothing shows — which sends people
+    // hunting an ORDER problem where there is none. The warn must name BOTH
+    // consequences, not just `init()`.
     describe("9b. register() post-init avertit — le silence de 7.2", () => {
         it("avertit en nommant le module, les deux conséquences, et la voie supportée", async () => {
             const warn = vi.spyOn(Log, "warn").mockImplementation(() => {});
             try {
                 registry.register(makeModule("early"));
                 await registry.init(null, null);
-                warn.mockClear(); // ignorer tout warn émis pendant le boot lui-même
+                warn.mockClear(); // ignore any warn emitted during the boot itself
 
                 registry.register(makeModule("late", [], true));
 
                 expect(warn).toHaveBeenCalledTimes(1);
                 const msg = warn.mock.calls[0][0];
-                expect(msg).toContain("late"); // le module est NOMMÉ
-                expect(msg).toContain("init()"); // conséquence 1
-                expect(msg).toContain("UI slot"); // conséquence 2 — le corollaire non documenté
-                expect(msg).toContain("registerLazyForAction"); // la voie supportée
+                expect(msg).toContain("late"); // the module is NAMED
+                expect(msg).toContain("init()"); // consequence 1
+                expect(msg).toContain("UI slot"); // consequence 2 — the undocumented corollary
+                expect(msg).toContain("registerLazyForAction"); // the supported route
             } finally {
                 warn.mockRestore();
             }
@@ -346,7 +349,7 @@ describe("ModuleRegistry (Sprint 3)", () => {
                 await registry.init(null, null);
                 warn.mockClear();
 
-                registry.register(makeModule("twice")); // même id, déjà présent
+                registry.register(makeModule("twice")); // same id, already present
                 expect(warn).not.toHaveBeenCalled();
             } finally {
                 warn.mockRestore();
@@ -354,7 +357,7 @@ describe("ModuleRegistry (Sprint 3)", () => {
         });
     });
 
-    // ── 10. Dépendance non enregistrée ────────────────────────────────────────
+    // ── 10. Unregistered dependency ───────────────────────────────────────────
     it("init() lève GeoLeafError si une dépendance déclarée n'est pas enregistrée", async () => {
         registry.register(makeModule("orphan", ["missing-dep"]));
 
@@ -374,13 +377,13 @@ describe("ModuleRegistry (Sprint 3)", () => {
     });
 
     // ════════════════════════════════════════════════════════════════════════
-    //  S0 — delta filet de sécurité (roadmap boot-di-lifecycle)
+    //  Safety-net delta
     // ════════════════════════════════════════════════════════════════════════
 
-    // ── S0.2 — branche `?? []` : module sans propriété `dependencies` ──────────
+    // ── `?? []` branch: module without a `dependencies` property ────────
     it("init() tolère un module sans propriété `dependencies` (guard `?? []`)", async () => {
-        // makeModule fournit toujours `dependencies` → on enregistre un objet brut
-        // sans cette clé pour exercer réellement `mod.dependencies ?? []`.
+        // makeModule always provides `dependencies` → a raw object without
+        // that key is registered to really exercise `mod.dependencies ?? []`.
         const noDeps = {
             id: "nodeps",
             init: vi.fn().mockResolvedValue(undefined),
@@ -392,7 +395,7 @@ describe("ModuleRegistry (Sprint 3)", () => {
         expect(noDeps.init).toHaveBeenCalledTimes(1);
     });
 
-    // ── S0.2 — message de cycle : chemin complet exact `a → b → a` ─────────────
+    // ── Message de cycle : chemin complet exact `a → b → a` ─────────────
     it("init() expose le chemin de cycle complet `a → b → a` dans le message", async () => {
         registry.register(makeModule("a", ["b"]));
         registry.register(makeModule("b", ["a"]));
@@ -402,7 +405,7 @@ describe("ModuleRegistry (Sprint 3)", () => {
         );
     });
 
-    // ── S0.3 — guard de forme : module lifecycle incomplet rejeté ──────────────
+    // ── Shape guard: incomplete lifecycle module rejected ───────────────
     it("register() lève GeoLeafError si un module déclare init sans destroy", () => {
         expect(() => registry.register({ id: "half", dependencies: [], init: vi.fn() })).toThrow(
             GeoLeafError
@@ -425,7 +428,7 @@ describe("ModuleRegistry (Sprint 3)", () => {
         expect(() => registry.register({ id: "empty" })).toThrow(GeoLeafError);
     });
 
-    // ── S0.3 — tolérance slot UI-only `{ id, ui }` (sans init/destroy) ─────────
+    // ── UI-only slot tolerance `{ id, ui }` (no init/destroy) ───────────
     it("register() accepte un slot UI-only `{ id, ui }` et l'expose via getUISlots()", () => {
         const slot = {
             id: "storage",
@@ -446,15 +449,15 @@ describe("ModuleRegistry (Sprint 3)", () => {
             ui: { mobileIcon: { icon: "<svg/>", labelKey: "x.label", profileKey: "ui.x" } },
         };
         registry.register(lifecycle);
-        registry.register(uiSlot); // enregistré avant init → présent dans _initOrder
+        registry.register(uiSlot); // registered before init → present in _initOrder
 
         await expect(registry.init(null, null)).resolves.toBeUndefined();
-        expect(lifecycle.init).toHaveBeenCalledTimes(1); // slot UI ignoré, pas d'erreur
+        expect(lifecycle.init).toHaveBeenCalledTimes(1); // UI slot ignored, no error
         expect(() => registry.destroy()).not.toThrow();
         expect(lifecycle.destroy).toHaveBeenCalledTimes(1);
     });
 
-    // ── S1.5 — API d'introspection ─────────────────────────────────────────────
+    // ── API d'introspection ─────────────────────────────────────────────
     it("getActiveModules() retourne les modules sans gate avec id/dependencies/hasUI", () => {
         registry.register(makeModule("security", []));
         registry.register(makeModule("poi", ["security"]));
@@ -468,9 +471,10 @@ describe("ModuleRegistry (Sprint 3)", () => {
         expect(poi.hasUI).toBe(false);
     });
 
-    // socle-init 9.3 — depuis 9.2, un module éteint EST enregistré. Sans ce filtre, une
-    // méthode nommée `getActiveModules` répondrait « enregistrés » à une question qui demande
-    // « actifs », et l'introspection annoncerait à l'intégrateur des capacités éteintes.
+    // Since the gate moved into init(), a gated-off module IS registered.
+    // Without this filter, a method named `getActiveModules` would answer
+    // "registered" to a question asking "active", and introspection would
+    // announce gated-off capabilities to the integrator.
     it("getActiveModules() écarte un module dont l'enrobage répond isEnabled() === false", () => {
         registry.register(makeModule("security", []));
         registry.register({ ...makeModule("gated-off", []), isEnabled: () => false });
@@ -479,7 +483,7 @@ describe("ModuleRegistry (Sprint 3)", () => {
         const ids = registry.getActiveModules().map((m) => m.id);
 
         expect(ids).toEqual(["security", "gated-on"]);
-        // Enregistré ≠ actif : `getModuleSchema()` répond, lui, sur l'enregistrement.
+        // Registered ≠ active: `getModuleSchema()` answers on registration.
         expect(registry.getModuleSchema("gated-off")).not.toBeNull();
     });
 

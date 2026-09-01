@@ -44,15 +44,16 @@ export class StyleValidationError extends Error {
  *
  * `id` is NOT required — the schema stopped demanding it in S1/PRF-SCHEMA ("filename acts
  * as id for ~20% of style files"), and the loader derives it from the file name
- * (`_ensureStyleId`). Ce validateur l'exigeait encore : les styles sans `id` étaient donc
- * rejetés, et comme le chargeur jette sur une erreur de validation, leurs couches n'étaient
- * jamais chargées. Le format de `id` reste validé quand il est présent (`validateId`).
+ * (`_ensureStyleId`). This validator still required it: id-less styles were thus
+ * rejected, and since the loader throws on a validation error, their layers were
+ * never loaded. The `id` format stays validated when present (`validateId`).
  *
- * ⚠️ Cette ligne a chiffré le défaut par profil (« guyane 9, france-risques-inondation 5,
- * france-rail 1 ») jusqu'au 29/07/2026 — **les trois profils ont été supprimés depuis** (B-43).
- * Le décompte est retiré plutôt que corrigé : il datait un défaut réparé, sur un corpus qui
- * n'existe plus, et le maintenir aurait demandé de le re-mesurer à chaque profil ajouté ou
- * retiré. Ce qui reste ici est le motif, qui ne se périme pas.
+ * ⚠️ This line quantified the defect per profile ("guyane 9,
+ * france-risques-inondation 5, france-rail 1") until 29/07/2026 — **all three
+ * profiles have since been deleted**. The tally is removed rather than corrected:
+ * it dated a repaired defect, on a corpus that no longer exists, and keeping it
+ * would have required re-measuring at every profile added or removed. What stays
+ * here is the motive, which does not expire.
  *
  * `scaleConfig` is not required either: absent means no scale constraint (S5/N-1).
  * Its shape is validated by `validateScales`.

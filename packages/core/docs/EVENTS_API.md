@@ -125,8 +125,8 @@ Dispatched on `document` on every click of an action button (renderer `type: "ac
 > sends the un-whitelisted bag, and its absence is not a configuration gap.
 >
 > _This table announced a default of `id`, `name`, `title`, `label` until 14/08/2026. That was
-> never what the code did — `render/widget-dispatch.ts` has read `payloadFields ?? []` since B-69
-> (29/07/2026). Correcting it is the point: a downstream integrator had written its own handler
+> never what the code did — `render/widget-dispatch.ts` has read `payloadFields ?? []` since
+> 29/07/2026. Correcting it is the point: a downstream integrator had written its own handler
 > contract around "the full properties", on the strength of this line._
 
 > ⚠️ **The payload is NOT JSON-serialisable**, since 14/08/2026: `button` is a DOM node and two
@@ -139,7 +139,7 @@ Dispatched on `document` on every click of an action button (renderer `type: "ac
 ```ts
 GeoLeaf.Events.on("geoleaf:popup:action", (e) => {
     const { actionId, layerId, featureId } = e.detail;
-    if (actionId === "odoo:open-form") {
+    if (actionId === "host:open-form") {
         _paq.push(["trackEvent", "Popup", "Action", actionId]);
     }
 });
@@ -151,7 +151,7 @@ offer before ADR-07 removed it:
 ```ts
 GeoLeaf.Events.on("geoleaf:popup:action", (e) => {
     const d = e.detail;
-    if (d.actionId !== "odoo:create-request") return;
+    if (d.actionId !== "tickets:create-request") return;
     d.setBusy(true);
     void createRequest(d.featureId)
         .then(() => d.close())

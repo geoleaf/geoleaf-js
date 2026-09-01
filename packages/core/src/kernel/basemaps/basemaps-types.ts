@@ -172,7 +172,7 @@ export type BasemapRenderType = "raster" | "vector";
  * A single entry in the in-memory basemap registry (`_baseLayers`).
  *
  * `layer` is a permanent backward-compat tombstone — no MapLibre layer instance
- * is stored (Sprint 3 rewrite to the native API). It is always `null`.
+ * is stored (rewrite to the native API). It is always `null`.
  */
 export interface BaseLayerEntry {
     key: string;

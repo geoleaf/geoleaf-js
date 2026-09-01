@@ -1,51 +1,56 @@
 /**
  * @file taxonomy-symbol-prefix.guard.test.js
- * @description Test-garde — aucun `svgId` de profil ne répète son propre `symbolPrefix`.
+ * @description Guard test — no profile `svgId` repeats its own `symbolPrefix`.
  *
- * Pourquoi ce garde existe (palier M des fiches specs/, 28/07/2026)
+ * Why this guard exists (28/07/2026)
  * -----------------------------------------------------------------
- * `resolvePoiIcon` compose l'identifiant d'image MapLibre par CONCATÉNATION :
+ * `resolvePoiIcon` composes the MapLibre image id by CONCATENATION:
  *
- *     symbolPrefix + svgId   (+ "--" + teinte, s'il y en a une)
+ *     symbolPrefix + svgId   (+ "--" + tint, if any)
  *
- * Un profil qui écrit le préfixe **dans** `svgId` **et** le déclare dans `icons.symbolPrefix`
- * produit donc un identifiant doublé — `tourism-poi-cat-tourism-poi-cat-musee` — qui n'existe
- * dans aucun sprite. Le rendu ne lève rien : `icon-image` pointe vers une image jamais
- * enregistrée, et **le glyphe disparaît en silence**.
+ * A profile that writes the prefix **inside** `svgId` **and** declares it in
+ * `icons.symbolPrefix` thus produces a doubled id —
+ * `tourism-poi-cat-tourism-poi-cat-musee` — existing in no sprite. Rendering
+ * raises nothing: `icon-image` points at an image never registered, and
+ * **the glyph vanishes silently**.
  *
- * ## Ce n'est pas une précaution de principe : c'est déjà arrivé, à l'échelle
+ * ## Not a precaution of principle: it already happened, at scale
  *
- * Le CDC de la refonte `taxonomy` (v3.0.0, 14/07/2026, §13.1) relevait le défaut sur **trois
- * profils déployés**, et pas marginalement : 11/11 catégories cassées sur l'un, 7/7 sur les deux
- * autres. Ces profils ont disparu depuis (retrait des 6 profils de démonstration, `4967db6d`) —
- * autrement dit **le défaut n'a jamais été corrigé, ses sujets ont été supprimés**. Rien n'a donc
- * jamais empêché sa réapparition.
+ * The `taxonomy` rework's CDC (v3.0.0, 14/07/2026, §13.1) noted the defect
+ * on **three deployed profiles**, and not marginally: 11/11 broken
+ * categories on one, 7/7 on the other two. Those profiles have since gone
+ * (removal of the 6 demo profiles, `4967db6d`) — in other words **the defect
+ * was never fixed, its subjects were deleted**. Nothing has therefore ever
+ * prevented its reappearance.
  *
- * ## Ce que la règle avait pour seule défense jusqu'ici
+ * ## What the rule had as its only defence until now
  *
- * Une phrase, dans la `description` du `configSchema` de la capacité
- * (`capabilities/taxonomy/taxonomy-capability.ts` → `icons.symbolPrefix`) : « Do NOT repeat it
- * inside `svgId` ». Elle est publiée aux intégrateurs par `getCapabilitySchema('taxonomy')`, et
- * c'est très bien — mais une phrase ne vérifie rien. C'est exactement le régime documentaire que
- * la refonte V3 mesure comme le seul à avoir échoué dans ce dépôt.
+ * One sentence, in the capability's `configSchema` `description`
+ * (`capabilities/taxonomy/taxonomy-capability.ts` → `icons.symbolPrefix`):
+ * "Do NOT repeat it inside `svgId`". It is published to integrators by
+ * `getCapabilitySchema('taxonomy')`, and that is fine — but a sentence
+ * verifies nothing. Exactly the documentation regime the rework measures as
+ * the only one to have failed in this repo.
  *
- * ## Pourquoi un TEST et non un script de `scripts/`
+ * ## Why a TEST and not a `scripts/` script
  *
- * Même motif que `doc-plugin-manifest.guard.test.js`, et il est écrit là-bas en entier : un script
- * neuf est refusé par `verify-repo-hygiene.cjs` / `verify-ci-scripts-tracked.cjs` tant qu'il n'est
- * pas suivi par git **et** inscrit dans `SCRIPTS_ALLOWLIST` — donc `ci:local` reste rouge jusqu'au
- * commit. Un test sous `__tests__/guards/` entre dans la suite déjà câblée.
+ * Same motive as `doc-plugin-manifest.guard.test.js`, and it is written
+ * there in full: a new script is refused by `verify-repo-hygiene.cjs` /
+ * `verify-ci-scripts-tracked.cjs` until git-tracked **and** enrolled in
+ * `SCRIPTS_ALLOWLIST` — so `ci:local` stays red until the commit. A test
+ * under `__tests__/guards/` enters the already-wired suite.
  *
- * ⚠️ **Il ne s'ajoute pas non plus à `validate-profiles.cjs`**, qui serait pourtant le lieu
- * naturel : ce script est en cours de modification par un autre chantier au moment où ce garde est
- * écrit. Le jour où les deux se rejoignent, ce fichier peut disparaître au profit d'une règle
- * là-bas — la note est ici pour que ce soit une décision et non un oubli.
+ * ⚠️ **Nor does it join `validate-profiles.cjs`**, which would yet be the
+ * natural place: that script is being modified by another work stream as
+ * this guard is written. The day the two meet, this file may disappear in
+ * favour of a rule there — the note is here so that is a decision and not an oversight.
  *
- * ## Une garde jamais vue rouge ne garde rien
+ * ## A guard never seen red guards nothing
  *
- * Trois assertions anti-garde-vide : au moins un profil trouvé, au moins un `symbolPrefix` non
- * vide, au moins un `svgId` lu. Sans elles, ce garde sortirait vert le jour où `profiles/` est
- * déplacé, où la clé est renommée, ou où plus aucun profil ne déclare de préfixe.
+ * Three anti-empty-guard assertions: at least one profile found, at least
+ * one non-empty `symbolPrefix`, at least one `svgId` read. Without them,
+ * this guard would come out green the day `profiles/` moves, the key is
+ * renamed, or no profile declares a prefix any more.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -56,15 +61,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "../../../..");
 const PROFILES_DIR = path.join(REPO_ROOT, "profiles");
 
-/** Emplacement canonique du bloc `modules.taxonomy` d'un profil. */
+/** Canonical location of a profile's `modules.taxonomy` block. */
 const TAXONOMY_REL = path.join("config", "plugins", "taxonomy.json");
 
 /**
- * Les profils présents sur le disque — la liste n'est pas écrite, elle est LUE.
+ * The profiles present on disk — the list is not written, it is READ.
  *
- * `schemas/` est le seul répertoire de `profiles/` qui ne soit pas un profil (il porte les
- * schémas JSON). Il est écarté par l'absence de `config/plugins/taxonomy.json`, pas par son nom :
- * un filtre nominatif cesserait de protéger au premier renommage.
+ * `schemas/` is the only `profiles/` directory that is not a profile (it
+ * carries the JSON schemas). It is set aside by the absence of
+ * `config/plugins/taxonomy.json`, not by its name: a name-based filter would
+ * stop protecting at the first rename.
  */
 function readProfiles() {
     if (!fs.existsSync(PROFILES_DIR)) return [];
@@ -81,12 +87,13 @@ function readProfiles() {
 }
 
 /**
- * Récolte tous les `svgId` d'un bloc de taxonomie, à toute profondeur.
+ * Harvests every `svgId` of a taxonomy block, at any depth.
  *
- * La récolte est RÉCURSIVE et non ciblée sur `taxonomies.<nom>.categories.<val>.svgId` : les
- * sous-catégories en portent aussi, et un futur niveau en porterait encore. Viser le chemin exact
- * ferait sortir ce garde vert sur la moitié du gisement — c'est le défaut que le relevé d'origine
- * a précisément mesuré sur les sous-catégories.
+ * The harvest is RECURSIVE and not targeted at
+ * `taxonomies.<name>.categories.<val>.svgId`: sub-categories carry them too,
+ * and a future level would still. Aiming at the exact path would let this
+ * guard come out green on half the deposit — the defect the original survey
+ * precisely measured on the sub-categories.
  */
 function collectSvgIds(node, out = []) {
     if (Array.isArray(node)) {

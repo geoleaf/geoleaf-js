@@ -52,12 +52,12 @@ interface StorageInitOptions {
 /**
  * Optimistic-edit module, injected by the offline capability (tâche 4.4).
  *
- * Structural, like {@link PullLike}: la façade vit dans le graphe de boot, l'édition dans le
- * chunk différé.
+ * Structural, like {@link PullLike}: the facade lives in the boot graph, editing in
+ * the deferred chunk.
  */
 interface EditLike {
     pushOutbox: () => Promise<StoragePushReport>;
-    /** Sorties de quarantaine — tâche 8.4 (B-123). Voir `write/quarantine-api.ts`. */
+    /** Sorties de quarantaine — voir `write/quarantine-api.ts`. */
     requeueQuarantined: (id: string) => Promise<StorageQuarantineOutcome>;
     discardQuarantined: (id: string, confirmedLocalId: string) => Promise<StorageQuarantineOutcome>;
     applyEdit: (input: {
@@ -70,11 +70,11 @@ interface EditLike {
 }
 
 /**
- * Compte rendu d'une sortie de quarantaine — miroir de `write/quarantine-api.ts`.
+ * Report of a quarantine exit — mirror of `write/quarantine-api.ts`.
  *
- * `refused` dit POURQUOI la sortie n'a pas eu lieu, plutôt que de rendre un `false` muet :
- * « la cause n'est pas levable » et « la cause est encore là » appellent deux gestes
- * différents de l'opérateur.
+ * `refused` says WHY the exit did not happen, rather than returning a mute `false`:
+ * "the cause is not liftable" and "the cause is still there" call for two different
+ * operator gestures.
  */
 interface StorageQuarantineOutcome {
     readonly ok: boolean;
@@ -121,13 +121,14 @@ interface PullLike {
 }
 
 /**
- * Le module de rapport, injecté par le chunk différé (tâche 4.8).
+ * The report module, injected by the deferred chunk.
  *
- * ⚠️ **`LayerSyncReport` est IMPORTÉ du contrat, pas re-décrit ici**, contrairement à
- * {@link StorageLayerPullReport} au-dessus. L'import est `type`-only donc effacé au build : il
- * ne coûte rien au graphe de boot, et il évite d'ouvrir un second exemplaire d'une forme que le
- * contrat déclare déjà. C'est la leçon du compteur C4, soldé par 4.9 — deux déclarations d'un
- * même contrat ne divergent pas bruyamment, elles s'accordent et se trompent ensemble.
+ * ⚠️ **`LayerSyncReport` is IMPORTED from the contract, not re-described here**,
+ * unlike {@link StorageLayerPullReport} above. The import is `type`-only hence
+ * erased at build: it costs the boot graph nothing, and it avoids opening a second
+ * copy of a shape the contract already declares. The duplication lesson — two
+ * declarations of one contract do not diverge loudly, they agree and go wrong
+ * together.
  */
 interface ReportLike {
     buildSyncReport: (now?: number) => Promise<readonly LayerSyncReport[]>;
@@ -146,11 +147,11 @@ interface StorageLayerPullReport {
 }
 
 /**
- * Plafond de l'attente du moteur dans {@link Storage.pullLayer}.
+ * Cap on the engine wait in {@link Storage.pullLayer}.
  *
- * Même valeur et même motif que `OFFLINE_ENGINE_WAIT_MS` de
- * `kernel/geojson/loader/single-layer.ts` : le chunk se câble en ~85 ms au boot mesuré, et
- * `whenReady()` ne résout jamais sans `modules.offline`.
+ * Same value and same motive as `OFFLINE_ENGINE_WAIT_MS` in
+ * `kernel/geojson/loader/single-layer.ts`: the chunk wires in ~85 ms at measured
+ * boot, and `whenReady()` never resolves without `modules.offline`.
  */
 const PULL_ENGINE_WAIT_MS = 3000;
 
@@ -351,25 +352,25 @@ const Storage = {
     },
 
     /**
-     * `true` dès que le moteur hors-ligne s'est enregistré — indépendamment de l'ouverture
-     * d'IndexedDB, que teste {@link isAvailable}.
+     * `true` as soon as the offline engine registered — independently of IndexedDB
+     * opening, which {@link isAvailable} tests.
      *
-     * ⚠️ API publique S4.4 — délégation ajoutée pour que `@geoleaf-plugins/offline-ui` cesse
-     * d'importer `StorageContract`. Le contrat est un SINGLETON dont l'état est un `let` de
-     * portée module : un plugin chargé en `<script type="module">` a son propre graphe et ne
-     * peut pas le partager. La copie qu'il embarquait n'était jamais initialisée — ce membre
-     * lui donne la vraie, par le namespace.
+     * ⚠️ Delegation added so `@geoleaf-plugins/offline-ui` stops importing
+     * `StorageContract`. The contract is a SINGLETON whose state is a module-scoped
+     * `let`: a plugin loaded as `<script type="module">` has its own graph and
+     * cannot share it. The copy it embedded was never initialised — this member
+     * gives it the real one, through the namespace.
      */
     isPluginLoaded(): boolean {
         return StorageContract.isPluginLoaded();
     },
 
     /**
-     * Résout quand le moteur hors-ligne est prêt à piloter.
+     * Resolves when the offline engine is ready to drive.
      *
-     * ⚠️ Ne résout JAMAIS tant que `modules.offline` est désactivé — le moteur ne se charge
-     * pas, et les actions d'UI qui l'attendent défèrent indéfiniment. C'est le comportement du
-     * contrat, repris tel quel. Même motif de délégation que {@link isPluginLoaded}.
+     * ⚠️ NEVER resolves while `modules.offline` is disabled — the engine does not
+     * load, and UI actions awaiting it defer indefinitely. That is the contract's
+     * behaviour, taken as-is. Same delegation motive as {@link isPluginLoaded}.
      */
     whenReady(): Promise<void> {
         return StorageContract.whenReady();
@@ -382,19 +383,20 @@ const Storage = {
      * Downloading NEVER grants write access: the records land as `synced` and no queue entry
      * is created (invariant S6 of the sync contract).
      *
-     * ⏱ **Attend le moteur, mais pas indéfiniment.** L'implémentation vit dans le chunk
-     * offline, chargé en `import()` **après** le boot — l'appeler à la première frame la
-     * trouverait absente. La course est bornée à {@link PULL_ENGINE_WAIT_MS} parce que
-     * `StorageContract.whenReady()` **ne résout jamais** quand `modules.offline` est
-     * désactivé : sans borne, l'appel pendrait pour toujours sur une variante sans moteur.
+     * ⏱ **Waits for the engine, but not indefinitely.** The implementation lives in
+     * the offline chunk, loaded via `import()` **after** boot — calling it at the
+     * first frame would find it absent. The race is bounded by
+     * {@link PULL_ENGINE_WAIT_MS} because `StorageContract.whenReady()` **never
+     * resolves** when `modules.offline` is disabled: unbounded, the call would hang
+     * forever on an engine-less variant.
      *
-     * ⚠️ Contrairement à la lecture de couche, il n'y a **aucun repli réseau** ici. Un
-     * rapatriement sans moteur doit se DIRE — `refused: "engineUnavailable"` — et non rendre
-     * un zéro que rien ne distingue d'une couche vide.
+     * ⚠️ Unlike the layer read, there is **no network fallback** here. A pull
+     * without an engine must SAY SO — `refused: "engineUnavailable"` — and not
+     * return a zero nothing distinguishes from an empty layer.
      *
-     * @param layerId - Identifiant de la couche à rapatrier.
-     * @param options - Emprise `bbox` et signal d'abandon.
-     * @returns Le rapport de rapatriement ; `refused` est non nul quand rien n'a été écrit.
+     * @param layerId - Identifier of the layer to pull.
+     * @param options - `bbox` extent and abort signal.
+     * @returns The pull report; `refused` is non-null when nothing was written.
      * @example
      * const report = await GeoLeaf?.Storage?.pullLayer?.("sites_rosario");
      * console.info(report?.written, report?.preserved, report?.capped);
@@ -434,19 +436,20 @@ const Storage = {
     /**
      * Applies an edit locally AND queues it for the server — the optimistic write (tâche 4.4).
      *
-     * L'entité part dans le store `features` et l'opération dans l'`outbox`, **dans une seule
-     * transaction** : une saisie de terrain n'a pas d'autre copie, et une écriture à moitié
-     * faite serait indétectable après coup.
+     * The entity goes into the `features` store and the operation into the
+     * `outbox`, **in a single transaction**: a field capture has no other copy, and
+     * a half-done write would be undetectable after the fact.
      *
-     * ⚠️ **Rien de ce qui est écrit ici ne confère l'éditabilité** (invariant S6) — au
-     * contraire, l'appel est REFUSÉ, avec son motif, quand la couche n'est pas modifiable en
-     * ligne. Télécharger une couche n'a jamais rendu une couche modifiable.
+     * ⚠️ **Nothing written here confers editability** — on the contrary, the call is
+     * REFUSED, with its motive, when the layer is not modifiable online. Downloading
+     * a layer never made a layer modifiable.
      *
-     * Attente bornée du moteur, même motif que {@link Storage.pullLayer} : le chunk offline
-     * est différé, et `whenReady()` ne résout jamais sans `modules.offline`.
+     * Bounded engine wait, same motive as {@link Storage.pullLayer}: the offline
+     * chunk is deferred, and `whenReady()` never resolves without
+     * `modules.offline`.
      *
-     * @param input - La couche, le type d'opération, l'identité locale et l'entité.
-     * @returns Le rapport : entrée créée, fusionnée, ou annulée ; `refused` porte le motif.
+     * @param input - The layer, operation kind, local identity and entity.
+     * @returns The report: entry created, merged, or cancelled; `refused` carries the motive.
      * @example
      * const report = await GeoLeaf?.Storage?.applyEdit?.({
      *     layerId: "sites_rosario", kind: "update", localId: "loc:abc", feature
@@ -489,25 +492,25 @@ const Storage = {
     },
 
     /**
-     * La couche accorde-t-elle cette opération ? — à consulter AVANT d'écrire.
+     * Does the layer grant this operation? — to consult BEFORE writing.
      *
-     * 🛑 **C'est la réponse à B-138, et elle est SYNCHRONE ET SANS MOTEUR, délibérément.**
-     * La permission se lit dans le profil actif, pas dans IndexedDB : la router par le sac
-     * `edit` (comme {@link Storage.applyEdit}) l'aurait rendue indisponible quand le chunk
-     * hors-ligne n'est pas chargé — c'est-à-dire **exactement** dans le cas qui portait le
-     * trou, `@geoleaf-plugins/editor` déclarant `requires: []` et tournant en
-     * `persistence.mode: "online"` sans ce moteur.
+     * 🛑 **It is SYNCHRONOUS AND ENGINE-LESS, deliberately.**
+     * The permission is read from the active profile, not IndexedDB: routing it
+     * through the `edit` bag (like {@link Storage.applyEdit}) would have made it
+     * unavailable when the offline chunk is not loaded — i.e. **exactly** the case
+     * that carried the hole, `@geoleaf-plugins/editor` declaring `requires: []` and
+     * running in `persistence.mode: "online"` without this engine.
      *
-     * ⚠️ **Ne remplace pas la garde d'`applyEdit`, elle la précède.** `applyEdit` continue de
-     * refuser pour son propre compte : un appelant qui ne consulterait pas ce prédicat ne
-     * contourne rien. Les deux appliquent `grantsEdition`, la même fonction.
+     * ⚠️ **Does not replace `applyEdit`'s guard, it precedes it.** `applyEdit`
+     * keeps refusing on its own account: a caller not consulting this predicate
+     * bypasses nothing. Both apply `grantsEdition`, the same function.
      *
-     * ⚠️ Une couche inconnue rend `false` — refuser l'inconnu, sans quoi une faute de frappe
-     * dans un identifiant vaudrait autorisation.
+     * ⚠️ An unknown layer yields `false` — refuse the unknown, otherwise a typo in
+     * an identifier would amount to authorisation.
      *
-     * @param layerId - L'identifiant de couche du profil actif.
-     * @param kind - L'opération soumise.
-     * @returns `true` seulement si la couche accorde littéralement cette opération.
+     * @param layerId - The layer identifier from the active profile.
+     * @param kind - The submitted operation.
+     * @returns `true` only when the layer literally grants this operation.
      * @example
      * if (GeoLeaf?.Storage?.mayEdit?.("reference-points", "delete")) {
      *     console.info("la couche accorde la suppression");
@@ -520,13 +523,14 @@ const Storage = {
     /**
      * Drains the outbox: pushes every queued edit and reconciles server identities (4.5).
      *
-     * ⚠️ **Tourne dans la PAGE, jamais dans le Service Worker** — point 5 du contrat. Le
-     * patch `fetch` du connector vit dans la page ; un rejeu depuis le worker ne le voit pas
-     * et partirait sans jeton. C'est le motif qui a fait supprimer le chemin Background Sync.
+     * ⚠️ **Runs in the PAGE, never in the Service Worker** — contract point 5. The
+     * connector's `fetch` patch lives in the page; a replay from the worker does not
+     * see it and would leave without a token. That is the motive that removed the
+     * Background Sync path.
      *
-     * Ne jette pas : une entrée qui échoue reste en file, `failed` n'étant pas terminal.
+     * Does not throw: a failing entry stays queued, `failed` not being terminal.
      *
-     * @returns Le décompte du drain ; `refused` est non nul si le moteur n'est pas câblé.
+     * @returns The drain tally; `refused` is non-null when the engine is not wired.
      * @example
      * const report = await GeoLeaf?.Storage?.pushOutbox?.();
      * console.info(report?.pushed, report?.failed);
@@ -548,15 +552,15 @@ const Storage = {
     },
 
     /**
-     * Remet en file une entrée mise en quarantaine, quand sa cause est LEVÉE.
+     * Requeues a quarantined entry, when its cause is LIFTED.
      *
-     * Réservée aux motifs dont la cause peut être constatée levée — `retryBudgetExhausted`,
-     * `layerNoLongerWritable` et `notImplementedByServer`. Les deux autres nomment un fait du
-     * serveur qu'aucun geste local ne défait : leur sortie est
+     * Reserved for motives whose cause can be observed as lifted —
+     * `retryBudgetExhausted`, `layerNoLongerWritable` and `notImplementedByServer`.
+     * The other two name a server fact no local gesture undoes: their exit is
      * {@link Storage.discardQuarantined}.
      *
-     * @param id - Identifiant de contrat de l'entrée.
-     * @returns `{ok}` et, en cas de refus, son motif.
+     * @param id - The entry's contract identifier.
+     * @returns `{ok}` and, on refusal, its motive.
      * @example
      * const out = await GeoLeaf?.Storage?.requeueQuarantined?.("create:sites:loc:abc:1");
      * if (!out?.ok) console.warn(out?.refused);
@@ -571,17 +575,17 @@ const Storage = {
     },
 
     /**
-     * Détruit une entrée en quarantaine, sur confirmation EXPLICITE.
+     * Destroys a quarantined entry, on EXPLICIT confirmation.
      *
-     * 🛑 `confirmedLocalId` doit être le `localId` de l'entrée — une valeur que l'appelant ne
-     * connaît qu'en l'ayant LISTÉE. C'est ce qui rend structurellement vrai le fait que la
-     * saisie a été énumérée avant d'être jetée, ce qu'exige `ServerDeletionPolicy` depuis son
-     * amendement de la tâche 8.4 : ce que le contrat interdit est la perte que l'opérateur
-     * n'a pas VUE.
+     * 🛑 `confirmedLocalId` must be the entry's `localId` — a value the caller only
+     * knows by having LISTED it. That is what makes it structurally true that the
+     * capture was enumerated before being discarded, as `ServerDeletionPolicy`
+     * requires since its amendment: what the contract forbids is the loss the
+     * operator did not SEE.
      *
-     * @param id - Identifiant de contrat de l'entrée.
-     * @param confirmedLocalId - Le `localId` de cette entrée, tel que l'appelant l'a lu.
-     * @returns `{ok}` et, en cas de refus, son motif.
+     * @param id - The entry's contract identifier.
+     * @param confirmedLocalId - This entry's `localId`, as the caller read it.
+     * @returns `{ok}` and, on refusal, its motive.
      * @example
      * const [e] = (await GeoLeaf?.Storage?.listPendingEdits?.()) ?? [];
      * if (e) await GeoLeaf?.Storage?.discardQuarantined?.(e.id, e.localId);
@@ -599,17 +603,18 @@ const Storage = {
     },
 
     /**
-     * Rapporte, couche par couche, ce que le hors-ligne a réellement sous la main (tâche 4.8).
+     * Reports, layer by layer, what offline really has at hand.
      *
-     * 🛑 **Le cas qu'il existe pour rendre visible** : une couche déclarée hors-ligne mais
-     * jamais rapatriée. Le contrat le décrit comme « le cas qui n'a aucun observable jusqu'à la
-     * coupure » — tout marche, jusqu'au terrain. Il ressort ici en `declaredNeverPulled`.
+     * 🛑 **The case it exists to make visible**: a layer declared offline but never
+     * pulled. The contract describes it as "the case with no observable until the
+     * outage" — everything works, until the field. It shows up here as
+     * `declaredNeverPulled`.
      *
-     * Ne jette jamais. Sans moteur câblé, rend un tableau **vide** plutôt qu'un rapport
-     * rassurant : un rapport qui dirait « tout va bien » sans avoir rien lu serait pire que pas
-     * de rapport, puisqu'il se croirait complet.
+     * Never throws. With no engine wired, returns an **empty** array rather than a
+     * reassuring report: a report saying "all is well" having read nothing would be
+     * worse than no report, since it would believe itself complete.
      *
-     * @returns Un rapport par couche du profil actif ; vide quand le moteur n'est pas câblé.
+     * @returns One report per active-profile layer; empty when the engine is not wired.
      * @example
      * const report = await GeoLeaf?.Storage?.getSyncReport?.();
      * const jamais = report?.filter((r) => r.status === "declaredNeverPulled") ?? [];
@@ -635,18 +640,18 @@ const Storage = {
     /**
      * Aggregate storage usage across IndexedDB and the cache manager.
      *
-     * ⚠️ **`features` et `outbox` sont comptés depuis B-121 (tâche 4.8).** Cette méthode ne
-     * lisait que `layersCount` et `syncQueueCount` — les deux magasins v3 —, donc après un
-     * rapatriement de 27 entités elle rapportait toujours 0, et `offline-ui` affichait ce zéro.
-     * Ce n'était pas observable tant que `features` n'avait aucun écrivain : le zéro était
-     * VRAI. Il est devenu faux le jour où 4.1 a atterri.
+     * ⚠️ **`features` and `outbox` are counted since 03/08/2026.** This method read
+     * only `layersCount` and `syncQueueCount` — the two v3 stores — so after a pull
+     * of 27 entities it still reported 0, and `offline-ui` displayed that zero. Not
+     * observable while `features` had no writer: the zero was TRUE. It became false
+     * the day the pull landed.
      *
-     * 🛑 **Le bloc `sync: { pending, failed }` est RETIRÉ (tâche 4.11).** Sa seule source
-     * était `syncQueueCount`, c'est-à-dire le magasin v3 que plus personne n'écrivait depuis
-     * 4.4b : il rapportait `0` en toutes circonstances, et `failed` n'était jamais assigné
-     * du tout. Le décompte réel des écritures dues est `outbox.count` ci-dessus, et la
-     * ventilation par état est {@link StorageDB.getSyncCounts}, qui rend `pendingCount` et
-     * `quarantinedCount` par couche.
+     * 🛑 **The `sync: { pending, failed }` block is REMOVED.** Its only source was
+     * `syncQueueCount`, i.e. the v3 store nobody wrote any more: it reported `0` in
+     * all circumstances, and `failed` was never assigned at all. The real tally of
+     * owed writes is `outbox.count` above, and the per-state breakdown is
+     * {@link StorageDB.getSyncCounts}, which yields `pendingCount` and
+     * `quarantinedCount` per layer.
      *
      * @returns storage quota/usage, layer counts (total + per profile), entity/outbox counts,
      * cached profile ids and the online flag.
@@ -722,15 +727,12 @@ const Storage = {
             }
 
             const db = this.DB;
-            if (db?._db && typeof (db._db as IDBDatabase).transaction === "function") {
-                // ⚠️ `sync_queue` figurait ici jusqu'à la tâche 4.11 ; le magasin est retiré,
-                // et le nommer dans la transaction la ferait JETER sur une base neuve.
-                // `features` et `outbox` restent délibérément absents : la règle de cette
-                // méthode est de ne jamais détruire une saisie de terrain.
-                const transaction = (db._db as IDBDatabase).transaction(
-                    ["preferences", "metadata"],
-                    "readwrite"
-                );
+            if (db?._db && typeof db._db.transaction === "function") {
+                // ⚠️ `sync_queue` used to be listed here; the store is removed, and
+                // naming it in the transaction would make it THROW on a fresh
+                // database. `features` and `outbox` stay deliberately absent: this
+                // method's rule is to never destroy a field capture.
+                const transaction = db._db.transaction(["preferences", "metadata"], "readwrite");
 
                 transaction.objectStore("preferences").clear();
                 transaction.objectStore("metadata").clear();

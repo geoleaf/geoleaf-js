@@ -4,13 +4,13 @@ import {
     destroyTooltip,
 } from "../../../src/capabilities/feature-info/surfaces/tooltip.js";
 /**
- * Déclaration par défaut des cas qui testent la MÉCANIQUE de l'infobulle —
- * création, position, empilement, échappement — et non la résolution des champs.
+ * Default declaration for the cases testing the tooltip's MECHANICS —
+ * creation, position, stacking, escaping — and not field resolution.
  *
- * ⚠️ Ces cas appelaient `stubGeoLeaf()` sans argument et s'appuyaient sur un repli
- * qui montrait la PREMIÈRE propriété d'une couche non déclarée : une troisième
- * orthographe de la même règle implicite, que la bulle et le panneau écrivaient
- * chacun autrement. La décision U2 la retire.
+ * ⚠️ These cases called `stubGeoLeaf()` with no argument and leaned on a
+ * fallback showing an undeclared layer's FIRST property: a third spelling of
+ * the same implicit rule, which the popup and the panel each wrote
+ * differently. The decision removes it.
  */
 const DEFAULT_TOOLTIP = { tooltip: [{ field: "name" }] };
 
@@ -114,9 +114,9 @@ describe("handleHover()", () => {
         handleHover({ ...MOVE, properties: {} });
         expect(tt()).toBeNull();
     });
-    // ⚠️ RETOURNÉ le 02/08/2026 (U2). Ce cas asseyait « pas de binding ⟹ montre la
-    // première propriété ». C'était le repli implicite dans sa troisième orthographe,
-    // celle de l'infobulle. Il asserte désormais l'inverse.
+    // ⚠️ FLIPPED on 02/08/2026. This case asserted "no binding ⟹ show the
+    // first property". The implicit fallback in its third spelling, the
+    // tooltip's. It now asserts the opposite.
     it("ne montre RIEN quand la couche ne déclare aucune infobulle", () => {
         stubGeoLeaf(null);
         handleHover({ ...MOVE, properties: { title: "Sans déclaration" } });

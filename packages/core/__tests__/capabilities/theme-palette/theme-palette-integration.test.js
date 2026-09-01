@@ -1,10 +1,10 @@
 /**
  * Integration tests — theme-palette wiring (S3).
  *
- * Le point le plus important est le DERNIER : les blocs de palette doivent réellement
- * exister dans la feuille source livrée. C'est le risque n°1 du CDC — un attribut posé
- * en JS que le CSS ne suit pas donne un bouton qui « marche » et un écran qui ne change
- * pas, tous tests unitaires au vert.
+ * The most important point is the LAST: the palette blocks must really exist
+ * in the shipped source sheet. The CDC's risk no. 1 — an attribute set in JS
+ * the CSS does not follow gives a button that "works" and a screen that does
+ * not change, all unit tests green.
  */
 
 import { describe, expect, it } from "vitest";
@@ -12,14 +12,13 @@ import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const { FULL } = await import("../../../src/presets/manifest.full.ts");
-const { THEME_PALETTE_INSTALLER } = await import(
-    "../../../src/capabilities/theme-palette/install.ts"
-);
+const { THEME_PALETTE_INSTALLER } =
+    await import("../../../src/capabilities/theme-palette/install.ts");
 const { ThemePaletteModule } = await import("../../../src/capabilities/theme-palette/module.ts");
 
-// `import.meta.dirname`, pas `fileURLToPath(import.meta.url)` : sous happy-dom
-// `import.meta.url` n'est pas une URL `file:` et la conversion jette (même idiome que
-// `__tests__/capabilities/scaffold-taxonomy.test.js`).
+// `import.meta.dirname`, not `fileURLToPath(import.meta.url)`: under
+// happy-dom `import.meta.url` is not a `file:` URL and the conversion throws
+// (same idiom as `__tests__/capabilities/scaffold-taxonomy.test.js`).
 const CAPABILITY_DIR = resolve(import.meta.dirname, "../../../src/capabilities/theme-palette");
 
 describe("preset manifest wiring", () => {
@@ -51,8 +50,9 @@ describe("preset manifest wiring", () => {
 });
 
 describe("les feuilles de palette existent et ciblent le bon attribut", () => {
-    // Sans ce contrôle, `applyPalette("green")` poserait un attribut que RIEN ne stylise :
-    // le bouton fonctionnerait, l'écran ne changerait pas, et aucun test DOM ne le verrait.
+    // Without this check, `applyPalette("green")` would set an attribute
+    // NOTHING styles: the button would work, the screen would not change, and
+    // no DOM test would see it.
     for (const id of ["green", "blue"]) {
         it(`palettes/${id}.css cible :root[data-gl-palette="${id}"] en clair ET en sombre`, () => {
             const file = join(CAPABILITY_DIR, "css", "palettes", `${id}.css`);
@@ -64,22 +64,22 @@ describe("les feuilles de palette existent et ciblent le bon attribut", () => {
             expect(css).toContain(`${root} .gl-theme-light`);
             expect(css).toContain(`${root} .gl-theme-dark`);
 
-            // Enveloppée dans la couche des capacités : c'est ce qui fait gagner la
-            // surcharge sur gl.tokens SANS !important.
+            // Wrapped in the capabilities layer: what makes the override win
+            // over gl.tokens WITHOUT !important.
             expect(css.trimStart().startsWith("@layer gl.capabilities")).toBe(true);
 
-            // Et surtout : AUCUNE ligne de sélecteur non scopée. Sinon la palette
-            // s'applique globalement et la DERNIÈRE importée gagne pour tout le monde.
+            // And above all: NO unscoped selector line. Otherwise the palette
+            // applies globally and the LAST imported wins for everyone.
             //
-            // ⚠️ La première version de cette garde ne cherchait que `.gl-theme-light {`
-            // — une accolade sur la même ligne. Or les feuilles récupérées portent des
-            // listes de sélecteurs MULTI-LIGNES (`body.gl-theme-light,\n.gl-theme-light {`),
-            // dont seule la seconde ligne avait été scopée. La garde est sortie verte
-            // pendant que la palette bleue repeignait toutes les pages : elle portait
-            // exactement la cécité qu'elle prétendait mesurer.
+            // ⚠️ This guard's first version only looked for `.gl-theme-light {`
+            // — a brace on the same line. Yet the retrieved sheets carry
+            // MULTI-LINE selector lists (`body.gl-theme-light,\n.gl-theme-light {`),
+            // of which only the second line had been scoped. The guard came
+            // out green while the blue palette repainted every page: it
+            // carried exactly the blindness it claimed to measure.
             //
-            // On vérifie donc CHAQUE ligne de sélecteur (celles qui finissent par `,` ou
-            // `{`), et non plus une forme particulière.
+            // So EVERY selector line is checked (those ending in `,` or `{`),
+            // no longer one particular shape.
             const selectorLines = css
                 .split("\n")
                 .map((l) => l.trim())

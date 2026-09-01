@@ -14,7 +14,7 @@
  * This file used to carry four devices. All four were measured inert, three of
  * them silently:
  *
- *   1. `--ci` → `evaluateCiBudgets`. Wired TWICE (ci.yml:147, ci-local.cjs:137)
+ *   1. `--ci` → `evaluateCiBudgets`. Wired TWICE (ci.yml:147, ci-local.cjs)
  *      and carrying exactly three assertions, all three unreachable:
  *        · `geoleaf.esm.js` regression > +5 % — the tracked baseline dated
  *          2026-02-27 (Leaflet era) recorded 1 928 560 B against ~948 B measured
@@ -35,7 +35,7 @@
  *      `perf-baseline.json` is `version 2.4.0`, `engine: "maplibre"`, with
  *      `runtime._status: "captured"`; this generator wrote `engine: "leaflet"`,
  *      an incompatible bundle shape, and NO `_status` at all. Since
- *      `e2e/helpers/perf-gate.js:42` arms the perf gate on exactly
+ *      `e2e/helpers/perf-gate.js` arms the perf gate on exactly
  *      `runtime._status === 'captured'`, one run would have DISARMED that gate in
  *      silence. `perf-baseline.json` is alive, but it is maintained by
  *      `e2e/06-performance-baseline.spec.js` round-tripping it — never by this
@@ -51,9 +51,9 @@ const path = require("path");
 const zlib = require("zlib");
 
 // Configuration
-// T5.5 — le core par le registre, qui jette. Les 4 sites de ce fichier construisaient
-// `__dirname + '../packages/core/…'` : deux niveaux de supposition (la profondeur du
-// script ET l'emplacement du paquet).
+// The core through the registry, which throws. This file's 4 sites used to build
+// `__dirname + '../packages/core/…'`: two levels of assumption (the script's
+// depth AND the package's location).
 const CORE_DIR = require("./lib/packages.cjs").requireByDirName("core").absDir;
 const ITERATIONS = 10;
 
@@ -89,11 +89,11 @@ function measureTime(fn, iterations = ITERATIONS) {
 }
 
 /**
- * Mesure la taille des fichiers de build
+ * Measures the build files' size.
  *
- * T6.3 — `geoleaf-lite.esm.js` retiré des cibles : le build Lite a disparu au S4.
- * Le mesurer produisait une entrée toujours absente, que trois assertions de CI
- * lisaient ensuite comme un succès.
+ * `geoleaf-lite.esm.js` removed from the targets: the Lite build is gone.
+ * Measuring it produced an always-absent entry, which three CI assertions then
+ * read as a success.
  */
 function measureBuildSize() {
     // Prioritize packages/core/dist (latest build), fallback to root dist
@@ -124,7 +124,7 @@ function measureBuildSize() {
                 kb: (bytes / 1024).toFixed(2),
                 mb: (bytes / 1024 / 1024).toFixed(2),
             };
-            // Mesure gzip pour le bundle de production ESM + le CSS
+            // Gzip measurement for the production ESM bundle + the CSS
             if (name === "geoleaf.esm.js" || name === "geoleaf-main.min.css") {
                 try {
                     const buf = fs.readFileSync(filepath);
@@ -155,7 +155,7 @@ function getTotalBuildKb(buildSize) {
 }
 
 /**
- * Compte les lignes de code (source core : packages/core/src)
+ * Counts lines of code (core source: packages/core/src)
  */
 function measureCodeMetrics() {
     const srcPath = path.join(CORE_DIR, "src");

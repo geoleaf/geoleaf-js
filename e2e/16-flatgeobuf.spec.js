@@ -1,31 +1,33 @@
 // @ts-check
-// E2E: 16-flatgeobuf (@geoleaf-plugins/flatgeobuf) — deploy-core (port 8766), PARESSEUX.
+// E2E: 16-flatgeobuf (@geoleaf-plugins/flatgeobuf) — deploy-core (port 8766), LAZY.
 //
-// Sprint S10 (plugin-validation). ⚠️ Cet en-tête a dit « EAGER … no `plugins.load` needed »
-// jusqu'au 07/08/2026 : socle-init S4.5 a retiré sa balise <script> (13,6 Ko gz). DEUX chemins
-// depuis : une couche de profil qui déclare `"plugin": "flatgeobuf"` est servie sans aucun load,
-// par la couture `ensurePluginLoaded` du core ; l'API appelée directement se charge à la main.
+// Plugin-validation suite. ⚠️ This header said "EAGER … no `plugins.load`
+// needed" until 2026-08-07: the plugin's <script> tag was removed
+// (13.6 KB gz). TWO paths since: a profile layer declaring
+// `"plugin": "flatgeobuf"` is served without any load, through the core's
+// `ensurePluginLoaded` seam; the API called directly is loaded by hand.
 //
-// ⚠️ UN SEUL jeu de données depuis le 27/07/2026 (B-42) : `tourism eco_regions.fgb`.
+// ⚠️ A SINGLE dataset since 2026-07-27: `tourism eco_regions.fgb`.
 //
-// Cette spec exerçait DEUX fichiers — `eco_regions.fgb` pour le chargement complet, et
-// `france-rail zones_desserte.fgb` (~5 Ko) pour bbox + Range + autoRefresh. Le profil
-// `france-rail` faisait partie des 6 démos retirées : la spec cherchait un fichier absent du
-// déployé. Tout est reporté sur `eco_regions.fgb`, ce qui est possible parce que l'index
-// R-tree et les requêtes partielles sont des propriétés du FORMAT, pas de ce fichier-là.
+// This spec used to exercise TWO files — `eco_regions.fgb` for the full load,
+// and `france-rail zones_desserte.fgb` (~5 KB) for bbox + Range + autoRefresh.
+// The `france-rail` profile was among the 6 removed demos: the spec was
+// looking for a file absent from the deploy. Everything is carried over to
+// `eco_regions.fgb`, which is possible because the R-tree index and partial
+// requests are properties of the FORMAT, not of that particular file.
 //
-// Ce que la conversion coûte, dit franchement : le fichier fait ~1 Mo au lieu de ~5 Ko, donc
-// les tests bbox/Range/autoRefresh transfèrent davantage — plus lents, pas moins probants. Et
-// le test de dispatch déclaratif perd la variante « config portant un bbox » : la couche
-// `eco_regions_fgb` de `tourism` n'en déclare pas. `loadBbox` reste couvert par ses propres
-// tests, en passant le bbox en mémoire.
+// What the conversion costs, said plainly: the file is ~1 MB instead of
+// ~5 KB, so the bbox/Range/autoRefresh tests transfer more — slower, not less
+// probing. And the declarative-dispatch test loses the "config carrying a
+// bbox" variant: `tourism`'s `eco_regions_fgb` layer declares none.
+// `loadBbox` stays covered by its own tests, passing the bbox in memory.
 //
 // Coverage:
-//   - load()/loadBbox()  → FeatureCollection (data-only, was already conforme)
+//   - load()/loadBbox()  → FeatureCollection (data-only, was already conformant)
 //   - HTTP Range 206     → bbox mode issues Range requests (http-server replies 206)
-//   - loadAsLayer/loadBboxAsLayer → render via adapter.addGeoJSONLayer  (S10 correctif A)
+//   - loadAsLayer/loadBboxAsLayer → render via adapter.addGeoJSONLayer  (rendering fix A)
 //   - autoRefresh        → moveend re-fetches (adapter.updateLayerData)
-//   - declarative `plugin: "flatgeobuf"` profile layer → core dispatch  (S10 correctif B)
+//   - declarative `plugin: "flatgeobuf"` profile layer → core dispatch  (dispatch fix B)
 //
 // NOTE: deploy-core ships a PWA service worker → serviceWorkers:'block'. Run after
 // `npm run build:deploy:all`.
@@ -38,12 +40,13 @@ test.use({ baseURL: baseURL("core"), serviceWorkers: "block" });
 // Deployed .fgb files (root-relative; made absolute in-page via location.origin).
 const ECO_PATH = "/profiles/tourism/layers/eco_regions_fgb/data/eco_regions.fgb";
 
-// Un bbox qui CONTIENT des entités, et un qui n'en contient aucune. Le premier reprend
-// l'emprise déclarée par `profiles/tourism/profile.json` (`map.bounds`, Amérique du Sud) —
-// pas une valeur inventée : si l'emprise du profil bougeait sans que ce bbox suive, le test
-// dirait « 0 entité » et accuserait le plugin.
+// One bbox that CONTAINS features, and one containing none. The first takes
+// up the bounds declared by `profiles/tourism/profile.json` (`map.bounds`,
+// South America) — not an invented value: if the profile's bounds moved
+// without this bbox following, the test would say "0 features" and blame the
+// plugin.
 const DATA_BBOX = { minX: -73.5, minY: -55, maxX: -53.5, maxY: -21.78 };
-// Atlantique nord : hors de l'emprise du profil, donc 0 entité par construction.
+// North Atlantic: outside the profile's bounds, hence 0 features by construction.
 const OCEAN_BBOX = { minX: -40, minY: 20, maxX: -39, maxY: 21 };
 
 const SW_NOISE = /SWRegister|ServiceWorker|serviceworker/i;
@@ -90,12 +93,13 @@ async function boot(page) {
         .locator("#gl-loader")
         .waitFor({ state: "hidden", timeout: 10000 })
         .catch(() => {});
-    // socle-init S4.5 — `flatgeobuf` n'est plus eager. ⚠️ DEUX chemins, à ne pas confondre :
-    // une couche de profil qui déclare `"plugin": "flatgeobuf"` est servie SANS ce load, par
-    // la couture `ensurePluginLoaded` du core (`globals.geojson.ts`) — c'est le chemin
-    // produit, et le test « couche déclarative » plus bas l'exerce tel quel. Ce load-ci ne
-    // sert qu'aux tests qui appellent `GeoLeaf.FlatGeobuf.*` DIRECTEMENT, sans passer par
-    // une couche : eux sont dans la position d'un intégrateur qui pilote l'API à la main.
+    // `flatgeobuf` is no longer eager. ⚠️ TWO paths, not to be conflated: a
+    // profile layer declaring `"plugin": "flatgeobuf"` is served WITHOUT this
+    // load, through the core's `ensurePluginLoaded` seam (`globals.geojson.ts`)
+    // — the product path, and the "declarative layer" test below exercises it
+    // as is. This load only serves the tests calling `GeoLeaf.FlatGeobuf.*`
+    // DIRECTLY, without a layer: they stand where an integrator driving the
+    // API by hand stands.
     await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.plugins.load("flatgeobuf"));
     return { errors, consoleErrors, fgbResponses };
 }
@@ -180,7 +184,7 @@ test("loadBbox() triggers HTTP Range requests (206 Partial Content)", async ({ p
     expect(fgbResponses.some((r) => r.status === 206)).toBe(true);
 });
 
-// ── loadAsLayer() — renders on the map via the adapter (S10 correctif A) ──────────
+// ── loadAsLayer() — renders on the map via the adapter (rendering fix A) ──────────
 
 test("loadAsLayer() renders a GeoJSON layer on the map (S10 correctif A)", async ({ page }) => {
     const { errors } = await boot(page);
@@ -291,17 +295,18 @@ test("rejects an invalid bbox and a disallowed URL", async ({ page }) => {
     expect(res.urlErr).toMatch(/Invalid or disallowed URL/);
 });
 
-// ── Declarative dispatch — profile `plugin: "flatgeobuf"` layer (S10 correctif B) ──
+// ── Declarative dispatch — profile `plugin: "flatgeobuf"` layer (dispatch fix B) ──
 //
-// Proves correctif B end-to-end on a REAL bundled profile: the core registers the
+// Proves the dispatch fix end-to-end on a REAL bundled profile: the core registers the
 // plugin's layer loader (GeoLeaf.plugins.registerLayerLoader), and dispatching the
 // `tourism` `eco_regions_fgb` declarative config (plugin:"flatgeobuf") through it renders
 // the layer from the indexed .fgb — config → core dispatch → URL resolution → rendered source.
 //
-// ⚠️ Reporté de `france-rail zones_desserte` sur `tourism eco_regions_fgb` le 27/07/2026
-// (B-42). La couche cible ne déclare **pas** de `bbox`, donc ce test ne couvre plus la
-// variante « config déclarative PORTANT un bbox » — `loadBbox` reste couvert par ses tests
-// dédiés, qui passent le bbox en mémoire. C'est la seule perte de couverture du report.
+// ⚠️ Carried over from `france-rail zones_desserte` to `tourism eco_regions_fgb`
+// on 2026-07-27 (with the demo-profile purge). The target layer declares
+// **no** `bbox`, so this test no longer covers the "declarative config
+// CARRYING a bbox" variant — `loadBbox` stays covered by its dedicated tests,
+// which pass the bbox in memory. The carry-over's only coverage loss.
 //
 // NOTE (finding): the bundled-profile theme orchestration does not yet auto-trigger
 // plugin-typed layers at boot (it spans the profile/theme/visibility loaders, each
@@ -367,28 +372,30 @@ test("core's registered dispatch renders a declarative `plugin: flatgeobuf` conf
     console.log("DECLARATIVE", JSON.stringify(res));
     expect(res.error).toBeUndefined();
     expect(res.hasPlugin).toBe(true);
-    // ⚠️ `false`, et c'est ASSERTÉ, pas contourné (B-42, 27/07/2026). Cette ligne exigeait
-    // `true` : la config déclarative de `france-rail zones_desserte` portait un `bbox`. Celle
-    // de `tourism eco_regions_fgb` n'en déclare pas. Affirmer `false` dit la forme RÉELLE de la
-    // couche visée — retirer l'assertion aurait laissé le test muet sur ce point, et la mettre
-    // à `true` demanderait de modifier un profil LIVRÉ pour satisfaire un test.
+    // ⚠️ `false`, and it is ASSERTED, not worked around (2026-07-27). This
+    // line used to require `true`: `france-rail zones_desserte`'s declarative
+    // config carried a `bbox`. `tourism eco_regions_fgb`'s declares none.
+    // Asserting `false` states the target layer's REAL shape — removing the
+    // assertion would have left the test mute on the point, and setting it to
+    // `true` would require changing a SHIPPED profile to satisfy a test.
     expect(res.hasBbox).toBe(false);
     expect(res.id).toBe("eco_regions_fgb");
     expect(res.hasSource).toBe(true);
     expect(res.sourceDelta).toBe(1);
     expect(res.featureCount).toBeGreaterThan(0);
-    // ⚠️ 200, pas 206 — et c'est la CONSÉQUENCE DIRECTE du report (B-42, 27/07/2026).
-    // Cette ligne exigeait un 206 : la config déclarative de `france-rail` portait un `bbox`,
-    // donc le chargement passait par des requêtes partielles. Celle de `tourism` n'en déclare
-    // pas → chargement complet, statut 200. Assouplir en « 200 ou 206 » aurait rendu
-    // l'assertion vraie dans les deux cas, donc incapable de distinguer un mode de l'autre :
-    // on affirme le mode RÉEL de la couche visée. Le 206 reste couvert par le test
-    // « loadBbox() triggers HTTP Range requests » plus haut, qui passe son bbox en mémoire.
+    // ⚠️ 200, not 206 — the DIRECT CONSEQUENCE of the carry-over (2026-07-27).
+    // This line used to require a 206: `france-rail`'s declarative config
+    // carried a `bbox`, so the load went through partial requests. `tourism`'s
+    // declares none → full load, status 200. Softening to "200 or 206" would
+    // have made the assertion true in both cases, hence unable to tell one
+    // mode from the other: the target layer's REAL mode is asserted. The 206
+    // stays covered by the "loadBbox() triggers HTTP Range requests" test
+    // above, which passes its bbox in memory.
     expect(fgbResponses.some((r) => r.status === 200)).toBe(true);
     expect(errors).toEqual([]);
-    // Aucune erreur console propre à flatgeobuf. (La note sur le 404 de boot de `france-rail`
-    // est tombée avec ce profil : `tourism` est celui que les autres tests de cette suite
-    // exigent déjà sans aucune erreur console.)
+    // No flatgeobuf-specific console error. (The note about `france-rail`'s
+    // boot 404 fell with that profile: `tourism` is the one the other tests of
+    // this suite already require with no console error at all.)
     const fgbErrors = pluginErrors(consoleErrors).filter((t) => /flatgeobuf|fgb/i.test(t));
     expect(fgbErrors).toEqual([]);
 });

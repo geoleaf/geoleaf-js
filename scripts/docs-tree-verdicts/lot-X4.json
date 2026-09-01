@@ -171,20 +171,6 @@
             "confidence": "haute",
             "rationale": "3 exports type-only, 2 importeurs (utils/notify/notify.primitive.ts et capabilities/toast-renderer/lifecycle.ts) — la frontière qui rend le toast détachable en plugin"
         },
-        "packages/core/src/contracts/sidepanel-renderer.contract.ts": {
-            "kind": "file",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Forme structurelle qu'une surface de rendu doit satisfaire pour servir de panneau latéral du kernel, déclarée sans aucune relation d'import avec le plugin feature-info",
-            "confidence": "haute",
-            "rationale": "0 importeur, mais orphelin PAR CONCEPTION : entrée dédiée dans l'allowlist de check-orphan-exports.cjs:187-191 et doctrine énoncée l.11-15 du fichier — X1a écarté (T3 §1.2)"
-        },
         "packages/core/src/contracts/ui-controls.contract.ts": {
             "kind": "file",
             "name": "ok",
@@ -435,7 +421,7 @@
             "severity": null,
             "description": "Enveloppe ICoreModule du cœur runtime : lecture de l'état permalink, résolution de l'emprise du profil, création de la carte via GeoLeaf.init() et dépôt de l'état sur _app",
             "confidence": "haute",
-            "rationale": "208 LOC, id « core-map », dépendance [config] ; l'en-tête documente un plan d'extraction délibérément non appliqué (rapport_extraction-core-map-module.md, S1, audité et conservé S13.3) — règle 3"
+            "rationale": "208 LOC, id « core-map », dépendance [config] ; l'en-tête documente un plan d'extraction délibérément non appliqué (rapport d'extraction audité et conservé) — règle 3"
         },
         "packages/core/src/app/boot-modules/geojson.module.ts": {
             "kind": "file",

@@ -1,4 +1,4 @@
-﻿/*!
+/*!
  * @geoleaf/core
  * © 2026 Mattieu Pottier
  * Released under the MIT License
@@ -234,7 +234,8 @@ FilterPanelProximity.resetProximity = _resetProximity;
  * attributes it reads.
  *
  * @param {unknown} map - Map instance
- * @param {number} [defaultRadius=10] - Default radius, in km
+ * @param {number} [defaultRadius=10] - Default radius, in km. Fractional values are carried
+ *   through unchanged; anything non-finite or not greater than zero falls back to 10 km.
  * @param options - `onPointPlaced` fires once the user has dropped the proximity centre,
  *   which is what lets the caller close a mobile sheet at the right moment rather than on
  *   activation.
@@ -246,7 +247,12 @@ FilterPanelProximity.toggleProximityToolbar = function (
     options?: { onPointPlaced?: () => void }
 ): boolean {
     const Log = getLog();
-    const effectiveDefaultRadius = defaultRadius ?? 10;
+    // `??` would only catch null/undefined — a 0 handed in by a caller travelled intact to
+    // createProximityCircle and painted a circle nobody could see.
+    const effectiveDefaultRadius =
+        defaultRadius !== undefined && Number.isFinite(defaultRadius) && defaultRadius > 0
+            ? defaultRadius
+            : 10;
     ProximityState.mode = !ProximityState.mode;
 
     const effectiveRadius = ProximityState.pendingRadius ?? effectiveDefaultRadius;

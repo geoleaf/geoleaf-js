@@ -331,8 +331,8 @@ describe("delete button", () => {
         const delBtn = el.querySelector("button") as HTMLButtonElement;
 
         // The mock resolver echoes the key back, so seeing the key proves the lookup
-        // happened. The CDC §2.11 rule is "aucun libellé en dur dans le code"; this one
-        // was hardcoded French, so a non-French UI showed "Supprimer".
+        // happened. The CDC rule forbids hardcoded UI labels; this one was
+        // hardcoded French, so a non-French UI showed "Supprimer".
         expect(delBtn.getAttribute("aria-label")).toBe("measure.aria.deleteAnnotation");
     });
 

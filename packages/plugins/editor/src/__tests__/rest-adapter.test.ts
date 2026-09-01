@@ -119,10 +119,10 @@ describe("createRestAdapter — error mapping", () => {
         });
     });
 
-    // 🛑 B-199 — un 501 n'est PAS une panne de réseau. Le serveur déclare ne pas connaître le
-    // verbe : c'est définitif, donc non réessayable, donc la file ne doit jamais le reprendre
-    // (voir `auto-adapter.test.ts`). Avant ce sprint il sortait en `"network"` par la branche
-    // fourre-tout, dans CE dialecte comme dans l'autre.
+    // 🛑 A 501 is NOT a network outage. The server declares it does not know
+    // the verb: definitive, hence not retryable, hence the queue must never
+    // pick it up (see `auto-adapter.test.ts`). Before the fix it came out as
+    // `"network"` through the catch-all branch, in THIS dialect as in the other.
     it("maps 501 to a 'capability' PersistenceError — jamais 'network'", async () => {
         const adapter = createRestAdapter({
             baseUrl: "https://api.test",

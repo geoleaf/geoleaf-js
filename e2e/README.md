@@ -38,7 +38,7 @@ Trois contraintes, chacune capable de le rendre silencieux si on l'oublie :
 | `full`     | offline-ui + cog + **editor** (édition unifiée) | `deploy/deploy-full`     | `02-storage`, `03-storage-poi`, `09-editor`, `17-cog`, `29`, `30`, `31` |
 | `coverage` | copie **instrumentée** de core (istanbul)       | `deploy/deploy-coverage` | `07-boot-sequence`, `20-geocoding`, `21-table`, `22`                    |
 
-> ⚠️ **Il y avait une QUATRIÈME variante, `addpoi`, retirée au Sprint 5 (05/08/2026)** avec le
+> ⚠️ **Il y avait une QUATRIÈME variante, `addpoi`, retirée le 05/08/2026** avec le
 > plugin du même nom, fusionné dans `editor`. La note qui vivait ici — « `addpoi` et `full` sont
 > exclusives, c'est pourquoi ARCHI S8 a consolidé à 3 variantes et non 2 » — décrivait une
 > exclusivité qui **n'existe plus** : il n'y a qu'un plugin d'édition, donc plus rien à exclure.
@@ -84,8 +84,8 @@ npx turbo run build && npm run build:deploy:all && node scripts/build-deploy-cov
 en code 0.** `build-deploy.cjs` **assemble** depuis les `dist/` existants et n'en rebâtit qu'une
 partie — après une modification de source, l'enchaîner seul produit un déployé **périmé**, et tout
 E2E lancé ensuite éprouve l'ancien bundle **en se croyant vert**. Mesuré, et ça a coûté un cycle de
-vérification entier (**B-105**). C'est le protocole en trois temps de `CLAUDE.md` §Points
-d'attention ; `scripts/ci-local.cjs` l'applique déjà dans ses étapes E2E.
+vérification entier. C'est le protocole de régénération en QUATRE temps du dépôt ;
+`scripts/ci-local.cjs` l'applique déjà dans ses étapes E2E.
 
 ⚠️ `build:deploy` **vide `deploy/`** et ne reconstruit **pas** `deploy-coverage`. L'oublier fait
 échouer au démarrage les 4 specs de la cible `coverage`. Sous la cible `nginx`, un dossier absent
@@ -93,6 +93,43 @@ rend un **503 qui nomme la commande à lancer** (`docker/nginx.dev.conf`, locati
 
 Après un rebuild, la cible nginx est servie immédiatement (le conteneur monte `./deploy` en
 lecture seule) ; seul l'ajout ou le renommage d'un **vhost** demande `npm run demo:up`.
+
+## Rouges de référence, et le jeu instable — à lire AVANT de conclure que tout est cassé
+
+🛑 **La suite complète ne sort pas verte, et c'est un état connu, pas une panne.** Sans cette
+section, quiconque lance l'E2E voit des dizaines de rouges et en conclut que le dépôt est
+cassé — ce qui coûte une demi-journée à chaque fois.
+
+**Relevé du 24/08/2026** — trois passes consécutives sur machine au repos, déployé régénéré en
+quatre temps avant la première : **28 / 27 / 27 rouges**, dont **26 aux TROIS passes**. Le
+relevé sépare donc **26 rouges systématiques** d'un **jeu instable de 3 tests sur 2 fichiers**,
+là où une lecture globale les confondait. Re-confirmé à l'identique le 26/08 : _26 rouges,
+exactement le compte de la référence, 229 verts._
+
+⚠️ **Les 26 ne sont imputables à aucun chantier récent** — c'était la conclusion du relevé, tirée
+du diff, pas d'une impression. Ils ne se réparent pas au fil de l'eau : ils constituent la
+**référence** contre laquelle un rouge nouveau se classe en _régression_ ou en _préexistant_.
+
+**Deux verdicts attendus qui ne sont PAS des rouges** : le spec de cycle hors-ligne **saute** sur
+un déployé construit normalement, avec son motif nommé ; et `[SWRegister] Registration failed …`
+est un artefact de `serviceWorkers:'block'`.
+
+**Re-mesure — trois passes consécutives, machine au repos.** Une seule passe ne distingue pas un
+rouge systématique d'un rouge instable, et c'est exactement la confusion que ce relevé a levée :
+
+```bash
+npx turbo run build && npm run build:deploy \
+  && node scripts/build-deploy-coverage.cjs && npm run build:deploy:local
+for i in 1 2 3; do npx playwright test > "/tmp/e2e-passe-$i.log" 2>&1; done
+```
+
+⚠️ **Ne pas recopier ces comptes** : ils sont datés, et c'est ce qui leur permet de se périmer
+visiblement au lieu de se fossiliser. Un chiffre sans date se fait croire indéfiniment.
+
+📌 **Une instance du jeu instable était déterministe à 2 cœurs et intermittente à 24** — un test
+de navigation hors-ligne recevait seize appels réseau là où il en attendait un. Elle est close
+depuis. La leçon survit : **reproduire un instable sous `taskset -c 0,1`** avant de le déclarer
+irreproductible.
 
 ## Débogage
 
@@ -117,7 +154,7 @@ npx playwright show-report                          # rapport HTML du dernier ru
 ## Voir aussi
 
 - [`helpers/README.md`](helpers/README.md) — axe, launch-options, perf-gate, web-vitals, base-url
-- `_docs_projet/travail/rapports/rapport_table-verification-navigateur.md` — les 46 scénarios que
+- la table de vérification navigateur (interne) — les 46 scénarios que
   la suite unitaire ne peut pas décider.
   ⚠️ **Cité, pas lié, et le motif tient à ce fichier-ci.** Ce rapport est interne : il ne part pas
   dans le dépôt public, alors que ce README, lui, y part. Un lien markdown résoudrait donc ici et

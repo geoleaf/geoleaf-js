@@ -59,8 +59,8 @@ function _loadActiveThemeLayerLegends(): void {
     const g = asObject(getGeoLeaf());
     const layerManager = asObject(g?._GeoJSONLayerManager);
     const loadLayerLegend = _asFn(layerManager?._loadLayerLegend);
-    // API S4.3e — via le BARIL `kernel/shared`, pas en import profond : R.8 interdit à
-    // `capabilities/**` d'atteindre `kernel/<dir>/<fichier>` directement.
+    // Through the `kernel/shared` BARREL, not a deep import: the boundary rule
+    // forbids `capabilities/**` to reach `kernel/<dir>/<file>` directly.
     const layerConfigs = asArray(getAllLayerConfigs());
     if (!loadLayerLegend || !layerConfigs) return;
 

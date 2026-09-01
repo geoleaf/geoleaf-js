@@ -19,7 +19,7 @@ This document defines the **official format** of the fields used by the `tourism
 
 These formats are the reference for:
 
-- **generating** the data (backend, Odoo, API),
+- **generating** the data (backend, API),
 - **rendering** in the GeoLeaf side panel (`poiProfiles.tourism.layout`),
 - mobile-optimised display through **collapsible panels (accordions)**.
 

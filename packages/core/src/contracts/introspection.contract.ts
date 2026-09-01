@@ -10,11 +10,11 @@
  *
  * Defines the read-only introspection API exposed on `GeoLeaf.Introspection`:
  * - `IModuleInfo` — stable metadata view of a registered module (id, deps, ui presence)
- * - `IModuleSchema` — enrichable schema: configSchema + capabilities (added in S2.1)
+ * - `IModuleSchema` — enrichable schema: configSchema + capabilities
  * - `IIntrospectionAPI` — public methods consumed by studio / form-builder (P4):
  *   module queries (getModuleSchema, getActiveModules), capability queries
- *   (getCapabilitySchema, getAllCapabilities — added in S2.1) and the activation
- *   verdict (getCapabilityStatus — added in socle-init S9.4)
+ *   (getCapabilitySchema, getAllCapabilities) and the activation
+ *   verdict (getCapabilityStatus)
  */
 
 import type {
@@ -50,8 +50,8 @@ export interface IModuleInfo {
  * Enrichable schema for a module.
  *
  * Extends `IModuleInfo` with room for capability-specific metadata.
- * Fields are deliberately absent in S1.5 — `capability.contract.ts` (S2.1)
- * will add `config`, `capabilities`, and `metadata` once the Capability
+ * Fields are deliberately absent for now — `capability.contract.ts`
+ * adds `config`, `capabilities`, and `metadata` once the Capability
  * contract is stabilised.
  *
  * Consumers should guard against `null` (module not registered) and treat

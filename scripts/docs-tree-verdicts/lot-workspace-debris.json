@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "workspace-debris",
+    "scope": ["scripts/lib/workspace-debris.cjs"],
+    "verdicts": {
+        "scripts/lib/workspace-debris.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Corpus PARTAGÉ des paquets fantômes — les workspaces qu'un run tué laisse sous `packages/plugins/`, avec le producteur qui explique chacun",
+            "confidence": "haute",
+            "rationale": "123 LOC, 3 exports, 2 lecteurs — le préambule de refus de `ci-local.cjs` et le test-garde `workspace-debris.guard.test.ts`. Même patron que `lib/hygiene-patterns.cjs` et `lib/generated-artifacts.cjs`, et pour la même raison : `ci-local.cjs` s'exécute à l'import, un lecteur tiers ne peut pas le `require()` pour interroger sa table. Son existence est justifiée par une mesure : le refus posé le 19/08/2026 filtrait `zz-scaffold-` EN DUR, donc un producteur sur deux, et le second — `packages/plugins/__probe__`, laissé par `probe-gate-visibility.cjs` — est passé le 22/08 en rendant six rouges dont aucun ne nommait la cause. Une table en dur dans le consommateur ne peut pas être éprouvée ; ici chaque motif porte des `anchors` que le garde confronte au script producteur, donc un renommage de fixture fait rougir au lieu de rendre le détecteur aveugle en silence. N'efface RIEN, délibérément : nettoyer au démarrage reviendrait à retirer un répertoire qu'on n'a pas créé, la classe de geste qui a coûté 13 plugins réels (557 fichiers) à `probe-gate-visibility.cjs`."
+        }
+    }
+}

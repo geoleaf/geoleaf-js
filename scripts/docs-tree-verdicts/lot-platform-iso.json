@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "platform-iso",
+    "scope": ["scripts/check-platform-isolation.cjs"],
+    "verdicts": {
+        "scripts/check-platform-isolation.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "PLATFORM-ISO — le plugin navigation ne touche les API du navigateur que depuis src/platform/",
+            "confidence": "haute",
+            "rationale": "3 assertions (PI-00 identification du corpus, PI-01 la règle, PI-02 plancher anti-corpus-vide). Périmètre SCOPÉ au plugin par décision D9 : le dépôt porte sept `navigator.geolocation` légitimes hors de tout `platform/`, donc au dépôt entier la gate naîtrait rouge. Résolution par `lib/packages.cjs` D'ABORD, puis repli sur le disque — les deux, parce qu'un chemin en dur cesse silencieusement de matcher tandis que le registre seul SAUTE un répertoire réel sans `package.json` ; leur désaccord est imprimé au lieu d'être résolu en silence. Vue rouge sur les trois jetons de D9 nommés en `fichier:ligne`, vue verte sur le MÊME fichier déplacé sous `src/platform/` (mêmes octets, verdict inverse), vue rouge sur corpus vide, et un commentaire comme une chaîne littérale nommant `navigator.geolocation` sont correctement ignorés — elle lit l'arbre syntaxique. Tant que le plugin n'existe pas, elle rend un SAUT MOTIVÉ qui déclare explicitement ne pas être un vert."
+        }
+    }
+}

@@ -23,7 +23,8 @@ for (const p of files) {
     try {
         const u8 = new Uint8Array(readFileSync(p));
         const h = fromByteBuffer(new ByteBuffer(u8.subarray(magicbytes.length)));
-        const indexed = h.indexNodeSize > 0 ? "INDEXED ✓ (bbox/Range OK)" : "NO INDEX ✗ (full-file only)";
+        const indexed =
+            h.indexNodeSize > 0 ? "INDEXED ✓ (bbox/Range OK)" : "NO INDEX ✗ (full-file only)";
         console.log(
             `${p}\n  indexNodeSize=${h.indexNodeSize}  featuresCount=${h.featuresCount}  geometryType=${h.geometryType}  → ${indexed}`
         );

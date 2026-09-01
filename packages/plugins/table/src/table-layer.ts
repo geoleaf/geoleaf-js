@@ -131,23 +131,25 @@ export function attachMapEvents(
         }, 150);
     };
 
-    // 🛑 B-204 — CET ABONNEMENT ÉTAIT MORT DEUX FOIS, et le fichier portait la preuve à trois
-    // lignes d'écart. Il s'écrivait `map.on("geoleaf:filters:changed", …)` :
+    // 🛑 THIS SUBSCRIPTION WAS DEAD TWICE OVER, and the file carried the proof
+    // three lines away. It read `map.on("geoleaf:filters:changed", …)`:
     //
-    //   ① le NOM n'est émis par rien — le vrai est `geoleaf:filters:applied`
-    //     (`core/capabilities/filter/apply.ts`, `filter/public-api.ts`) ;
-    //   ② le BUS est le mauvais — `filters:applied` part par `dispatchGeoLeafEvent()`, donc sur
-    //     `document`. Le bus MapLibre ne porte que TROIS événements, tous émis par
-    //     `kernel/geojson/` via `map.fire()`. **Corriger le seul nom aurait laissé
-    //     l'abonnement tout aussi mort**, sur un canal où personne ne parle.
+    //   ① the NAME is emitted by nothing — the real one is
+    //     `geoleaf:filters:applied` (`core/capabilities/filter/apply.ts`,
+    //     `filter/public-api.ts`);
+    //   ② the BUS is the wrong one — `filters:applied` leaves through
+    //     `dispatchGeoLeafEvent()`, hence on `document`. The MapLibre bus only
+    //     carries THREE events, all emitted by `kernel/geojson/` via
+    //     `map.fire()`. **Fixing the name alone would have left the
+    //     subscription just as dead**, on a channel where nobody speaks.
     //
-    // Conséquence pour l'utilisateur : le tableau ne se rafraîchissait **jamais** en appliquant
-    // un filtre. Ce n'était pas du confort — les lignes affichées contredisaient la carte.
+    // Consequence for the user: the table **never** refreshed when applying a
+    // filter. Not a comfort issue — the displayed rows contradicted the map.
     //
-    // ⚠️ Les deux lignes voisines montrent les deux patrons corrects : `map.on()` pour
-    // `layers-loaded` (réellement `fire()` sur le bus carte) et `document.addEventListener()`
-    // pour `theme:applied`. Le défaut n'était pas une ignorance du modèle, c'était un nom
-    // recopié.
+    // ⚠️ The two neighbouring lines show both correct patterns: `map.on()` for
+    // `layers-loaded` (really `fire()`d on the map bus) and
+    // `document.addEventListener()` for `theme:applied`. The defect was not
+    // ignorance of the model, it was a copied name.
     document.addEventListener("geoleaf:filters:applied", () => {
         if (tableState._isVisible && tableState._currentLayerId) {
             refreshCallback();

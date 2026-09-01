@@ -8,12 +8,13 @@ export default defineConfig({
     // Source directory = docs/ folder (config.ts is in docs/.vitepress/)
     srcDir: ".",
 
-    // Build output — hors de `docs/` (conflit avec le dossier TypeDoc `api/`) ET hors de
-    // `packages/` depuis T4.4 : le glob workspace `packages/*` le captait, et un
-    // répertoire sans manifeste n'y était que TOLÉRÉ par `scripts/lib/packages.cjs`,
-    // jamais déclaré. Trois remontées : `docs/` → `core/` → `packages/` → racine.
-    // Résolu par VitePress contre `root`, qui vaut `packages/core/docs` (la CLI reçoit
-    // `vitepress build docs` avec cwd `packages/core`).
+    // Build output — outside `docs/` (conflict with the TypeDoc `api/` folder)
+    // AND outside `packages/`: the `packages/*` workspace glob caught it, and a
+    // manifest-less directory was only TOLERATED there by
+    // `scripts/lib/packages.cjs`, never declared. Three climbs: `docs/` →
+    // `core/` → `packages/` → root. Resolved by VitePress against `root`, which
+    // is `packages/core/docs` (the CLI receives `vitepress build docs` with cwd
+    // `packages/core`).
     outDir: "../../../docs-dist",
 
     // Exclude TypeDoc generated HTML (not markdown-based pages)
@@ -23,26 +24,28 @@ export default defineConfig({
     title: "GeoLeaf",
     description: "GeoLeaf documentation — @geoleaf/core v3.0.0",
 
-    // S7bis.10 — passé à `false` une fois les 26 liens morts réparés. Tant qu'il valait
-    // `true`, VitePress MASQUAIT les liens morts au build : combiné à `check:links` qui
-    // n'était câblé nulle part, RIEN ne protégeait les liens de la doc publique. C'est le
-    // trou par lequel MIGRATION_V1_V2.md est sorti (b3d85253, 30/03) en laissant 4 liens
-    // 404 en production. Le build échoue désormais sur un lien mort — second filet,
-    // en plus du gate CI + pre-commit.
-    // S7bis.10 : `false` = le build ÉCHOUE sur un lien mort. On ne revient pas là-dessus —
-    // c'est le second filet qui a rattrapé 26 liens morts, et la seule protection en place
-    // tant que `docs:build` n'est pas câblé dans `ci:local`.
+    // Set to `false` once the 26 dead links were repaired. While it was `true`,
+    // VitePress MASKED dead links at build: combined with a `check:links` wired
+    // nowhere, NOTHING protected the public docs' links. That is the hole
+    // through which MIGRATION_V1_V2.md shipped (b3d85253, 03-30) leaving 4
+    // 404 links in production. The build now fails on a dead link — a second
+    // net, on top of the CI + pre-commit gate.
+    // `false` = the build FAILS on a dead link. This is not revisited — it is
+    // the second net that caught 26 dead links, and the only protection in
+    // place while `docs:build` is not wired into `ci:local`.
     //
-    // L'exception ci-dessous est une exception de RACINE, pas un lien faux (30/07/2026).
-    // `NOTICE.md` est livré dans le tarball npm (`files[]` du core contient `docs/` ET
-    // `LICENSE`), et pour ce lecteur-là `../LICENSE` résout exactement sur
-    // `packages/core/LICENSE`, qui existe. Pour le site, `NOTICE.md` devient
-    // `/docs/NOTICE.html` et `../LICENSE` sort du site : aucune chaîne unique ne peut
-    // résoudre dans les deux racines à la fois. Le choix est donc entre dupliquer le
-    // fichier légal et déclarer l'exception — on déclare, et on garde UNE source de vérité.
-    // ⚠️ Le motif est la DIVERGENCE DES RACINES ; toute autre cible morte doit rougir.
-    // ⚠️ Le motif matche la forme NORMALISÉE par VitePress (`./../LICENSE`), pas la forme
-    // écrite dans le markdown (`../LICENSE`) — vérifié en le voyant échouer d'abord.
+    // The exception below is a ROOT exception, not a wrong link (2026-07-30).
+    // `NOTICE.md` ships in the npm tarball (the core's `files[]` contains
+    // `docs/` AND `LICENSE`), and for that reader `../LICENSE` resolves exactly
+    // onto `packages/core/LICENSE`, which exists. For the site, `NOTICE.md`
+    // becomes `/docs/NOTICE.html` and `../LICENSE` leaves the site: no single
+    // string can resolve in both roots at once. The choice is thus between
+    // duplicating the legal file and declaring the exception — we declare, and
+    // keep ONE source of truth.
+    // ⚠️ The motive is the ROOTS' DIVERGENCE; any other dead target must redden.
+    // ⚠️ The pattern matches the form VitePress NORMALISES (`./../LICENSE`), not
+    // the form written in the markdown (`../LICENSE`) — verified by seeing it
+    // fail first.
     ignoreDeadLinks: [/^\.\/\.\.\/LICENSE$/],
 
     head: [
@@ -141,14 +144,16 @@ export default defineConfig({
                 items: [
                     { text: "Plugin Development", link: "/PLUGIN_DEVELOPMENT_GUIDE" },
                     { text: "Core Extension", link: "/CORE_EXTENSION_GUIDE" },
-                    // ⚠️ « Connector Guide » retiré le 10/08/2026 — la page a déménagé dans
-                    // `packages/plugins/connector/docs/`, hors du `srcDir` de ce site (qui
-                    // vaut `packages/core/docs`). Le laisser aurait produit un 404 dans la
-                    // barre latérale : une entrée de nav ne passe pas par la détection de
-                    // liens morts de VitePress, elle n'aurait été vue par personne.
-                    // 🛑 Conséquence assumée du déménagement : le guide du connector n'est
-                    // plus sur le site de doc. Le remettre suppose d'élargir le `srcDir` à
-                    // plusieurs paquets, ce qui est un autre chantier que celui-ci.
+                    // ⚠️ "Connector Guide" removed on 2026-08-10 — the page moved
+                    // to `packages/plugins/connector/docs/`, outside this site's
+                    // `srcDir` (which is `packages/core/docs`). Leaving it would
+                    // have produced a 404 in the sidebar: a nav entry does not go
+                    // through VitePress's dead-link detection, nobody would have
+                    // seen it.
+                    // 🛑 Assumed consequence of the move: the connector guide is
+                    // no longer on the docs site. Putting it back would mean
+                    // widening the `srcDir` to several packages — different work
+                    // from this.
                 ],
             },
             {
@@ -162,9 +167,10 @@ export default defineConfig({
                     { text: "Permalink / Deep Link", link: "/ui/PERMALINK" },
                     { text: "Breakpoints", link: "/ui/BREAKPOINTS" },
                     { text: "Cache Button", link: "/ui/cache-button" },
-                    // 11/08/2026 — `/pwa/pwa` et `/pwa` documentaient le même sujet ; la
-                    // seconde l'a emporté (elle est aussi le `projectDocuments` de TypeDoc).
-                    // La première subsiste en page de renvoi, hors barre latérale.
+                    // 2026-08-11 — `/pwa/pwa` and `/pwa` documented the same
+                    // subject; the second won (it is also TypeDoc's
+                    // `projectDocuments`). The first survives as a redirect page,
+                    // off the sidebar.
                     { text: "PWA", link: "/pwa" },
                     { text: "Versioning Policy", link: "/VERSIONING_POLICY" },
                     { text: "Performance Metrics", link: "/PERFORMANCE_METRICS" },

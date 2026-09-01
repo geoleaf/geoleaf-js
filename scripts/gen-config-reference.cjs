@@ -1,36 +1,37 @@
 #!/usr/bin/env node
 /*!
- * GeoLeaf — Générateur du tableau HTML de référence des paramètres de config
+ * GeoLeaf — Generator of the config parameters' HTML reference table
  * © 2026 Mattieu Pottier — MIT
  *
- * Config-contract roadmap, sprint S16 (Phase D). Source UNIQUE de vérité =
- * docs/reference/inventaire_config_parametres.md (familles B1→B7,
- * code-sourcées en Phase B, testées en Phase C). Ce script parse ses tables
- * Markdown et émet un tableau HTML autonome (aucune dépendance externe),
- * filtrable par famille / fichier / statut + recherche plein-texte.
+ * SINGLE source of truth = docs/reference/inventaire_config_parametres.md
+ * (families B1→B7, code-sourced then tested). This script parses its Markdown
+ * tables and emits a self-contained HTML table (no external dependency),
+ * filterable by family / file / status + full-text search.
  *
  * ## Modes
  *
- *   node scripts/gen-config-reference.cjs           # écrit le HTML
- *   node scripts/gen-config-reference.cjs --check   # exit 1 si l'artefact commité est périmé
+ *   node scripts/gen-config-reference.cjs           # writes the HTML
+ *   node scripts/gen-config-reference.cjs --check   # exit 1 if the committed artifact is stale
  *
- * Le parseur mappe les colonnes PAR MOT-CLÉ de l'en-tête (Fichier/Clé/Type/
- * Valeurs/Défaut/Consommateur/Statut/Effet/Testé) → robuste aux variations de
- * libellé entre sections. Les pipes littéraux échappés `\|` sont préservés.
+ * The parser maps columns BY HEADER KEYWORD (Fichier/Clé/Type/
+ * Valeurs/Défaut/Consommateur/Statut/Effet/Testé) → robust to label variations
+ * between sections. Escaped literal pipes `\|` are preserved.
  *
  * ## Pourquoi `--check` existe (refonte documentaire V3, §2.3bis)
  *
- * La chaîne `profiles/schemas/*.json` → inventaire → HTML n'était gatée qu'à MOITIÉ : le
- * premier maillon a `check-config-coverage.cjs`, bidirectionnel et bloquant ; le second
- * n'avait rien. Un inventaire modifié sans régénération laissait un HTML périmé, commité,
- * et **muet** — le régime documentaire qui a échoué partout ailleurs dans ce dépôt.
+ * The `profiles/schemas/*.json` → inventory → HTML chain was only HALF gated:
+ * the first link has `check-config-coverage.cjs`, bidirectional and blocking;
+ * the second had nothing. An inventory modified without regeneration left a
+ * stale, committed, **mute** HTML — the documentation regime that failed
+ * everywhere else in this repo.
  *
- * ⚠️ **Le préalable a été de rendre la sortie DÉTERMINISTE.** Elle embarquait `new Date()` :
- * un artefact qui contient « maintenant » n'est comparable à rien, et une gate de fraîcheur
- * bâtie dessus rougirait chaque matin sans raison — donc serait désarmée en une semaine.
- * La date et la version sont désormais lues DANS le bandeau de l'inventaire
- * (`readSourceStamp`), ce qui fait de la sortie une fonction pure de son entrée. C'est la
- * condition d'existence de `docs:tree:check`, prise ici au même endroit.
+ * ⚠️ **The prerequisite was making the output DETERMINISTIC.** It embedded
+ * `new Date()`: an artifact containing "now" compares to nothing, and a
+ * freshness gate built on it would redden every morning for no reason — hence
+ * be disarmed within a week. The date and version are now read IN the
+ * inventory's banner (`readSourceStamp`), which makes the output a pure
+ * function of its input. The condition of existence of `docs:tree:check`,
+ * taken here at the same spot.
  */
 
 "use strict";
@@ -46,14 +47,14 @@ const OUT = docsPaths.reference("reference_parametres_config.html");
 const SRC_REL = path.relative(ROOT, SRC);
 const CHECK = process.argv.includes("--check");
 
-// ─── Grille de statuts (figée S0, cf. §Grille de statuts de l'inventaire) ─────
+// ─── Status grid (frozen, cf. the inventory's §Grille de statuts) ─────────────
 const STATUS_DEFS = [
     { sym: "✅", key: "used", label: "utilisé" },
     { sym: "🟡", key: "partial", label: "partiel" },
     { sym: "⚪", key: "orphan", label: "orphelin (schéma-only)" },
     { sym: "🟥", key: "dead", label: "consommateur-mort" },
     { sym: "🔁", key: "alias", label: "alias/duplicata" },
-    { sym: "🕯", key: "legacy", label: "légacy-déprécié" }, // base codepoint (sans VS16)
+    { sym: "🕯", key: "legacy", label: "légacy-déprécié" }, // base codepoint (without VS16)
     { sym: "❌", key: "broken", label: "cassé (no-mapping)" },
     { sym: "🔗", key: "ref", label: "renvoi (autre famille)" },
 ];
@@ -360,7 +361,7 @@ render();
 `;
 }
 
-// ─── Contrôle de complétude ───────────────────────────────────────────────────
+// ─── Completeness check ───────────────────────────────────────────────────────
 /**
  * Fails if a table inside a `## B<n>` family section was not recognised as a parameter table.
  *
@@ -441,28 +442,30 @@ function assertParsedEverything(md, records) {
 }
 
 /**
- * Lit la version et la date que l'inventaire déclare LUI-MÊME dans son bandeau de tête
+ * Reads the version and date the inventory declares ITSELF in its head banner
  * (`> **Version :** 1.19.1 — 2026-07-27`).
  *
- * ⚠️ **C'est ce qui rend `--check` possible, et c'est la seule raison d'être de cette
- * fonction.** La sortie embarquait `new Date()` : un artefact généré qui contient « maintenant »
- * n'est comparable à rien — il diverge de lui-même à chaque jour qui passe, et toute gate de
- * fraîcheur bâtie dessus rougirait tous les matins pour rien, donc serait désarmée en une
- * semaine. En lisant la date DANS la source, la sortie redevient une **fonction pure de son
- * entrée**, ce qui est la condition d'existence de `docs:tree:check` et de toute gate du même
- * genre.
+ * ⚠️ **This is what makes `--check` possible, and this function's only reason to
+ * exist.** The output embedded `new Date()`: a generated artifact containing
+ * "now" compares to nothing — it diverges from itself with each passing day, and
+ * any freshness gate built on it would redden every morning for nothing, hence
+ * be disarmed within a week. Reading the date IN the source makes the output a
+ * **pure function of its input** again, the condition of existence of
+ * `docs:tree:check` and every gate of the kind.
  *
- * ⚠️ **Aucun repli silencieux.** Un bandeau absent ou reformaté fait ÉCHOUER le script plutôt
- * que retomber sur la date du jour : le repli réintroduirait exactement la non-déterminisme
- * qu'on vient de retirer, et il le ferait sans que personne ne le voie.
+ * ⚠️ **No silent fallback.** An absent or reformatted banner makes the script
+ * FAIL rather than fall back on today's date: the fallback would reintroduce
+ * exactly the non-determinism just removed, and would do so with nobody seeing.
  *
- * ⚠️ **La recherche est BORNÉE À L'EN-TÊTE, et la première version ne l'était pas — la mutation
- * de contrôle l'a prouvé.** L'inventaire porte DEUX bandeaux `> **Version :** X — date` : le
- * sien, en tête, et un second dans son historique de révisions (`1.19.0 — 2026-07-21`). Un
- * `/m` sur tout le document trouvait le bon par simple ordre d'apparition ; en retirant la date
- * du premier, le script est allé lire **le second**, sans rien dire — le repli silencieux que le
- * paragraphe ci-dessus prétendait avoir supprimé. La recherche s'arrête donc au premier titre
- * `## `, ce qui délimite l'en-tête **par construction** et non par un nombre de lignes.
+ * ⚠️ **The search is BOUNDED TO THE HEADER, and the first version was not — the
+ * control mutation proved it.** The inventory carries TWO
+ * `> **Version :** X — date` banners: its own, at the head, and a second in its
+ * revision history (`1.19.0 — 2026-07-21`). A `/m` over the whole document found
+ * the right one by mere order of appearance; removing the first one's date, the
+ * script went and read **the second**, saying nothing — the silent fallback the
+ * paragraph above claimed removed. The search therefore stops at the first
+ * `## ` heading, which delimits the header **by construction** and not by a
+ * line count.
  */
 function readSourceStamp(md) {
     const head = md.split(/^##\s/m)[0];

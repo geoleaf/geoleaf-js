@@ -9,59 +9,59 @@
  *           packages/core/package.json.
  * SYNC-03:  no offline-ui cache UI selector in packages/core/src (.css).
  * SYNC-04:  no CacheSection remnant in packages/core/src (.ts .js .json).
- * SYNC-01b: same as SYNC-01 for the connector plugin (chemin résolu par le registre).
+ * SYNC-01b: same as SYNC-01 for the connector plugin (path resolved by the registry).
  * SYNC-02:  in packages/core/docs/, every import/require specifier naming a plugin
  *           must be one a reader can RESOLVE from an `npm install`.
  *
- * SYNC-02 was scoped to the sync-core-public.yml mirror, which ARCHI S9.0
- * deleted; S0 recorded that it would go with it. It is KEPT deliberately. Its
+ * SYNC-02 was scoped to the sync-core-public.yml mirror, which is deleted
+ * since; it was recorded that it would go with it. It is KEPT deliberately. Its
  * subject is publication hygiene of packages/core/docs/ — the docs shipped on
- * npm — and that concern outlives the mirror. It also grows once ARCHI S3.6
- * makes the monorepo public: the check then applies to the repository itself
+ * npm — and that concern outlives the mirror. It also grows once
+ * the monorepo goes public: the check then applies to the repository itself
  * rather than to a copy of it.
  *
- * ⚠️ SYNC-02 A CHANGÉ D'AXE LE 10/08/2026 (B-214). Elle interdisait toute ligne
- * d'import citant `@geoleaf-plugins/*` — mais seulement quand cette ligne portait un
- * `from` ou un `require(`. La forme CANONIQUE de chargement d'un plugin GeoLeaf,
- * l'import à effet de bord nu (`import "@geoleaf-plugins/cog";`), lui était invisible,
- * et 9 lignes de cette forme vivaient déjà dans `packages/core/docs/`. Le partage
- * `from`/nu ne recouvrait AUCUNE propriété que quiconque cherchait à garder : il
- * rougissait `import { createConnector } from "@geoleaf-plugins/connector"` et laissait
- * passer `import "@geoleaf-plugins/connector"` — deux écritures du même geste
- * d'intégrateur. C'était un artefact de regex, pas un découpage.
+ * ⚠️ SYNC-02 CHANGED AXIS ON 2026-08-10. It used to forbid any import line citing
+ * `@geoleaf-plugins/*` — but only when that line carried a `from` or a `require(`. The
+ * CANONICAL loading form of a GeoLeaf plugin, the bare side-effect import
+ * (`import "@geoleaf-plugins/cog";`), was invisible to it, and 9 lines of that form
+ * already lived in `packages/core/docs/`. The `from`/bare split covered NO property
+ * anyone sought to guard: it reddened
+ * `import { createConnector } from "@geoleaf-plugins/connector"` and let
+ * `import "@geoleaf-plugins/connector"` through — two spellings of the same
+ * integrator move. It was a regex artifact, not a partition.
  *
- * **La question de fond, et la réponse retenue.** Un import écrit dans un `.md` du core
- * n'est JAMAIS un import que le core exécute : c'est celui de l'INTÉGRATEUR. La règle
- * ne peut donc pas se lire « les imports que le core exécuterait » (elle serait vide),
- * ni « toute référence » (elle interdirait à une page qui enseigne le chargement d'un
- * plugin de montrer son import — elle serait désarmée en une semaine). Ce qui reste à
- * garder, c'est que ce que la doc fait COPIER soit résoluble par le lecteur du tarball :
+ * **The underlying question, and the retained answer.** An import written in a core
+ * `.md` is NEVER an import the core executes: it is the INTEGRATOR's. The rule can
+ * thus read neither "the imports the core would execute" (it would be empty), nor
+ * "any reference" (it would forbid a page teaching plugin loading from showing its
+ * import — disarmed within a week). What remains to guard is that what the docs get
+ * COPIED be resolvable by the tarball's reader:
  *
- *     le specifier publié `@geoleaf-plugins/<nom>` est AUTORISÉ sous toutes ses formes
- *     syntaxiques ; ce qui est INTERDIT, c'est un specifier que `npm install` ne rend
- *     pas — chemin interne au monorepo, chemin profond dans un plugin, nom de plugin
- *     que le registre ne connaît pas.
+ *     the published specifier `@geoleaf-plugins/<name>` is ALLOWED in all its
+ *     syntactic forms; what is FORBIDDEN is a specifier `npm install` does not
+ *     provide — a monorepo-internal path, a deep path into a plugin, a plugin name
+ *     the registry does not know.
  *
- * PROSE vs BLOC DE CODE. C'est la transposition en Markdown de l'exemption dont
- * bénéficient déjà les lignes de commentaire en SYNC-01/03/04 : décrire est permis,
- * faire exécuter ne l'est pas. Un bloc clôturé est ce qu'un lecteur copie ; la prose
- * décrit l'écosystème, et le docblock l'admettait déjà. Conséquence mesurée : l'arme
- * « plugin inconnu du registre » ne s'applique QU'AUX BLOCS DE CODE, parce qu'un
- * CHANGELOG nomme légitimement un paquet par le nom qu'il portait à sa date
- * (`CHANGELOG.md:443` cite `@geoleaf-plugins/storage`, renommé `offline-ui` depuis —
- * l'énoncé est vrai à sa date). Les deux autres armes valent partout : un chemin de
- * monorepo n'a JAMAIS été résoluble pour un lecteur du tarball, à aucune date.
+ * PROSE vs CODE BLOCK. It is the Markdown transposition of the exemption comment
+ * lines already enjoy in SYNC-01/03/04: describing is allowed, making execute is
+ * not. A fenced block is what a reader copies; prose describes the ecosystem, and
+ * the docblock already admitted it. Measured consequence: the "plugin unknown to the
+ * registry" weapon only applies TO CODE BLOCKS, because a CHANGELOG legitimately
+ * names a package by the name it carried at its date (`CHANGELOG.md:443` cites
+ * `@geoleaf-plugins/storage`, renamed `offline-ui` since — the statement is true at
+ * its date). The two other weapons hold everywhere: a monorepo path was NEVER
+ * resolvable for a tarball reader, at any date.
  *
- * 🖐 CE QU'AUCUNE GATE NE PORTE, et il faut le dire : qu'un document du core soit
- * bien un document DU CORE. `CONNECTOR_GUIDE.md` — le guide d'un plugin logé dans les
- * docs du core — était le seul cas que SYNC-02 ait jamais attrapé, et elle l'attrapait
- * PAR PROCURATION, sur une de ses deux lignes, par accident de regex. C'est un problème
- * de PLACEMENT, pas d'import : il relève de la règle tranchée en B-215 — « un paquet
- * expédie la documentation qui le décrit » — et d'une relecture humaine.
+ * 🖐 WHAT NO GATE CARRIES, and it must be said: that a core document really is a
+ * document OF THE CORE. `CONNECTOR_GUIDE.md` — a plugin's guide housed in the core's
+ * docs — was the only case SYNC-02 ever caught, and it caught it BY PROXY, on one of
+ * its two lines, by regex accident. It is a PLACEMENT problem, not an import one: it
+ * falls under the settled rule — "a package ships the documentation that describes
+ * it" — and under human re-reading.
  *
- * ⚠️ Limite assumée : les blocs de code INDENTÉS (4 espaces) ne sont pas reconnus comme
- * du code. Le corpus est formaté par Prettier, qui n'en produit pas ; le jour où il y en
- * aurait, ils seraient lus comme de la prose. Écrit ici plutôt que découvert plus tard.
+ * ⚠️ Accepted limit: INDENTED code blocks (4 spaces) are not recognized as code. The
+ * corpus is formatted by Prettier, which produces none; the day there were some,
+ * they would be read as prose. Written here rather than discovered later.
  *
  * Usage: node scripts/verify-core-standalone.cjs (from repo root)
  */
@@ -72,17 +72,17 @@ const path = require("path");
 const ROOT = path.resolve(__dirname, "..");
 const registry = require("./lib/packages.cjs");
 
-// ARCHI S10.2 — le connector se déplace sous `packages/plugins/` au S10 ; ses chemins
-// viennent donc du registre, qui JETTE si le package est introuvable. Sans cela, SYNC-01b
-// aurait cessé de scanner le connector en silence : `collectSources` sort sur son
-// `existsSync` et la gate annonce « aucune fuite » sans avoir rien lu.
+// The connector lives under `packages/plugins/`; its paths therefore come from the
+// registry, which THROWS if the package cannot be found. Without that, SYNC-01b would
+// have silently stopped scanning the connector: `collectSources` exits on its
+// `existsSync` and the gate announces "no leak" having read nothing.
 //
-// ⚠️ T5.5 — les chemins du CORE étaient restés littéraux, avec pour justification écrite
-// que « le core reste ». C'est l'argument qui précède toujours un déplacement, et il ne
-// protège de rien : la gate ne devient pas rouge quand le chemin cesse de matcher, elle
-// devient MUETTE — `collectSources` sort sur `existsSync`, exactement comme pour le
-// connector. Les deux moitiés passent maintenant par le même registre, et cette gate est
-// celle que CLAUDE.md qualifie de non négociable.
+// ⚠️ The CORE's paths had stayed literal, with the written justification that "the
+// core stays". That is the argument that always precedes a move, and it protects from
+// nothing: the gate does not go red when the path stops matching, it goes MUTE —
+// `collectSources` exits on `existsSync`, exactly as for the connector. Both halves
+// now go through the same registry, and this gate is the one the project instructions
+// call non-negotiable.
 const CORE_DIR = registry.requireByDirName("core").absDir;
 const CORE_SRC = path.join(CORE_DIR, "src");
 const CORE_PKG = path.join(CORE_DIR, "package.json");
@@ -96,29 +96,29 @@ const DOCS_DIR = path.join(CORE_DIR, "docs");
 // cog, editor, measure, print, table…) and is the canonical form of the
 // violation; the three workspace paths cover relative/monorepo imports.
 //
-// ⚠️ R.15 (24/07/2026) — les répertoires ont perdu leur préfixe `plugin-`
-// (`packages/plugins/plugin-storage` → `packages/plugins/storage`). Les trois
-// alternatives DEVAIENT suivre : laissées à `plugin-storage`, elles auraient cessé
-// de matcher le moindre chemin et cette gate serait sortie VERTE en n'ayant plus
-// rien gardé — la frontière `no-plugin-in-core` est précisément ce qu'on ne peut
-// pas se permettre de perdre en silence. Elles sont désormais `plugins/<nom>`, ce
-// qui couvre aussi le specifier scopé (`@geoleaf-plugins/offline-ui` contient
-// `plugins/offline-ui`) : redondant avec la première alternative, et c'est voulu.
+// ⚠️ 2026-07-24 — the directories lost their `plugin-` prefix
+// (`packages/plugins/plugin-storage` → `packages/plugins/storage`). The three
+// alternatives HAD to follow: left at `plugin-storage`, they would have stopped
+// matching any path and this gate would have come out GREEN guarding nothing anymore
+// — the `no-plugin-in-core` boundary is precisely what cannot be afforded to lose in
+// silence. They are now `plugins/<name>`, which also covers the scoped specifier
+// (`@geoleaf-plugins/offline-ui` contains `plugins/offline-ui`): redundant with the
+// first alternative, and intended.
 //
-// ⚠️ STRUCT S3 (26/07/2026) — le MÊME mode d'échec, une seconde fois, dix-neuf mois
-// après le premier : `packages/plugins/storage` est devenu `packages/plugins/offline-ui`,
-// et l'alternative — alors écrite `plugins/storage` — aurait cessé de matcher SANS
-// rougir. Elle a été vue rouge avant correction (import planté dans `packages/core/src/`),
-// conformément à « toute garde doit être VUE rougir ».
+// ⚠️ 2026-07-26 — the SAME failure mode, a second time, nineteen months after the
+// first: `packages/plugins/storage` became `packages/plugins/offline-ui`, and the
+// alternative — then written `plugins/storage` — would have stopped matching WITHOUT
+// reddening. It was seen red before the fix (an import planted in
+// `packages/core/src/`), per "every guard must be SEEN reddening".
 //
-// ⚠️ Et un troisième mode, propre à ce sprint : un `sed` de renommage passé sur ce
-// fichier RÉÉCRIT ces commentaires-ci, transformant le récit historique en contresens
-// (« R.15 a renommé vers offline-ui » — faux, R.15 renommait vers `storage`). Les
-// commentaires qui datent un renommage doivent être relus après toute passe mécanique.
+// ⚠️ And a third mode, specific to that rename pass: a renaming `sed` run over this
+// file REWRITES these very comments, turning the historical record into a
+// contradiction ("the first rename went to offline-ui" — false, it renamed to
+// `storage`). Comments that date a rename must be re-read after any mechanical pass.
 //
-// Do NOT generalise to `plugins?/[a-z-]+`: `plugin-registry.ts` est un fichier du
-// core, et `connector` est un plugin dont le core ne dépend pas — les deux seraient
-// des faux positifs.
+// Do NOT generalise to `plugins?/[a-z-]+`: `plugin-registry.ts` is a core file, and
+// `connector` is a plugin the core does not depend on — both would be false
+// positives.
 const PLUGIN_REF_RE = /(@geoleaf-plugins|plugins\/offline-ui|plugins\/editor|plugins\/cog)/;
 
 // SYNC-03: Patterns forbidden in core CSS (selectors used exclusively by the offline-ui cache UI)
@@ -131,30 +131,30 @@ const CORE_CACHE_REMNANTS_RE =
 
 // ─── SYNC-02 — l'outillage ────────────────────────────────────────────────────
 //
-// Extraction du SPECIFIER de toute construction d'import/require, quelle que soit sa
-// forme syntaxique. Les quatre alternatives couvrent les six formes du banc d'essai de
-// B-214 : `from "…"` prend l'import nommé et le ré-export, `require(` et `import(`
-// prennent le CommonJS et le dynamique, `import "…"` prend l'import à effet de bord nu
-// — celui que l'ancien motif ratait, et qui est la forme canonique.
+// Extraction of the SPECIFIER from any import/require construct, whatever its
+// syntactic form. The four alternatives cover the test bench's six forms:
+// `from "…"` takes the named import and the re-export, `require(` and `import(` take
+// CommonJS and dynamic, `import "…"` takes the bare side-effect import — the one the
+// old pattern missed, and the canonical form.
 //
-// ⚠️ Le motif ne se généralise PAS à « toute chaîne entre guillemets » : il faut une
-// construction d'import. Sans cela, une phrase de CHANGELOG citant un chemin entre
-// backticks deviendrait une violation, et la gate se ferait désarmer sur des faux
-// positifs — c'est le mode d'échec que B-214 cherchait précisément à éviter.
+// ⚠️ The pattern does NOT generalise to "any quoted string": an import construct is
+// required. Without that, a CHANGELOG sentence citing a path in backticks would
+// become a violation, and the gate would get disarmed on false positives — the very
+// failure mode the axis change sought to avoid.
 const DOCS_SPECIFIER_RE =
     /(?:\bfrom\s*|\brequire\s*\(\s*|\bimport\s*\(\s*|\bimport\s+)['"]([^'"]+)['"]/g;
 
-// Ouverture/fermeture d'un bloc clôturé Markdown (``` ou ~~~, 3 marqueurs ou plus).
+// Opening/closing of a fenced Markdown block (``` or ~~~, 3 markers or more).
 const DOCS_FENCE_RE = /^\s*(`{3,}|~{3,})/;
 
 const PLUGIN_SCOPE = "@geoleaf-plugins";
 
-// ⚠️ Dérivé du registre, JAMAIS écrit à la main. `PLUGIN_REF_RE` ci-dessus épingle trois
-// noms de répertoire en dur (`offline-ui`, `editor`, `cog`) et ils ont dû être corrigés
-// DEUX FOIS — R.15 puis STRUCT S3 — chaque fois avec le même risque de sortir verte en
-// n'ayant plus rien gardé. SYNC-02 ne rejoue pas cette partie : elle demande au registre,
-// qui JETTE si les globs de workspaces cessent de matcher. Les 12 plugins sont couverts,
-// pas 3, et un plugin ajouté demain l'est sans toucher à ce fichier.
+// ⚠️ Derived from the registry, NEVER hand-written. `PLUGIN_REF_RE` above pins three
+// directory names verbatim (`offline-ui`, `editor`, `cog`) and they had to be fixed
+// TWICE — the two renames above — each time with the same risk of going green while
+// guarding nothing anymore. SYNC-02 does not replay that game: it asks the registry,
+// which THROWS if the workspace globs stop matching. The 12 plugins are covered, not
+// 3, and a plugin added tomorrow is too without touching this file.
 const KNOWN_PLUGIN_NAMES = new Set(registry.plugins().map((p) => p.pluginName));
 const PLUGIN_DIR_ALTERNATIVES = registry
     .plugins()
@@ -163,26 +163,26 @@ const PLUGIN_DIR_ALTERNATIVES = registry
 const MONOREPO_PLUGIN_PATH_RE = new RegExp(`(?:^|/)plugins/(?:${PLUGIN_DIR_ALTERNATIVES})(?:$|/)`);
 
 /**
- * SYNC-02 — un specifier de `packages/core/docs/` est-il résoluble par le lecteur ?
+ * SYNC-02 — is a `packages/core/docs/` specifier resolvable by the reader?
  *
- * Voir le docblock de tête pour le motif du découpage. Trois armes, dont deux valent
- * partout et une ne vaut que dans un bloc de code :
+ * See the head docblock for the partition's rationale. Three weapons, of which two
+ * hold everywhere and one only inside a code block:
  *
- *   1. chemin interne au monorepo (`../../plugins/cog`, `packages/plugins/editor/…`)
- *      → jamais résoluble hors du dépôt, à aucune date. Vaut aussi en prose.
- *   2. chemin profond dans un plugin (`@geoleaf-plugins/editor/src/entry.ts`)
- *      → enseigne un chemin privé que le paquet n'a jamais promis. Vaut aussi en prose.
- *   3. plugin inconnu du registre (`@geoleaf-plugins/storage`, renommé depuis)
- *      → BLOC DE CODE SEULEMENT : un CHANGELOG nomme légitimement un paquet par le nom
- *        qu'il portait à sa date. Ce que la doc fait COPIER, en revanche, doit exister.
+ *   1. monorepo-internal path (`../../plugins/cog`, `packages/plugins/editor/…`)
+ *      → never resolvable outside the repo, at any date. Holds in prose too.
+ *   2. deep path into a plugin (`@geoleaf-plugins/editor/src/entry.ts`)
+ *      → teaches a private path the package never promised. Holds in prose too.
+ *   3. plugin unknown to the registry (`@geoleaf-plugins/storage`, renamed since)
+ *      → CODE BLOCK ONLY: a CHANGELOG legitimately names a package by the name it
+ *        carried at its date. What the docs get COPIED, however, must exist.
  *
- * ⚠️ L'arme 3 mesure l'existence du plugin DANS CE DÉPÔT, pas sur le registre npm.
- * L'écart entre les deux est un objet distinct, suivi en B-141, et il ne se vérifie pas
- * hors ligne — confondre les deux ferait dépendre cette gate du réseau.
+ * ⚠️ Weapon 3 measures the plugin's existence IN THIS REPO, not on the npm registry.
+ * The gap between the two is a distinct object, tracked separately, and it cannot be
+ * verified offline — conflating the two would make this gate depend on the network.
  *
- * @param {string} spec - le specifier extrait, tel qu'écrit.
- * @param {boolean} inCode - vrai si la ligne est dans un bloc clôturé.
- * @returns {string|null} le motif du refus, ou null si le specifier est résoluble.
+ * @param {string} spec - the extracted specifier, as written.
+ * @param {boolean} inCode - true if the line is inside a fenced block.
+ * @returns {string|null} the refusal reason, or null if the specifier resolves.
  */
 function docSpecifierVerdict(spec, inCode) {
     if (spec.startsWith(`${PLUGIN_SCOPE}/`)) {
@@ -284,29 +284,29 @@ function collectMarkdown(dir, results) {
 }
 
 /**
- * Cherche une référence à un plugin dans les DÉPENDANCES d'un `package.json`, pas dans son
- * texte brut.
+ * Looks for a plugin reference in a `package.json`'s DEPENDENCIES, not in its raw
+ * text.
  *
- * ⚠️ API publique S4.6 — la version d'avant testait `PLUGIN_REF_RE` sur le contenu du fichier
- * entier. Ça a tenu tant que le connector s'appelait `@geoleaf/connector` : dès qu'il a été
- * renommé `@geoleaf-plugins/connector`, la gate a signalé une fuite dans son propre
- * `package.json` — parce qu'il y déclare son NOM. Un paquet qui se nomme n'est pas un
- * paquet qui dépend.
+ * ⚠️ The previous version tested `PLUGIN_REF_RE` on the whole file's content. That
+ * held while the connector was named `@geoleaf/connector`: as soon as it was renamed
+ * `@geoleaf-plugins/connector`, the gate flagged a leak in its own `package.json` —
+ * because it declares its NAME there. A package that names itself is not a package
+ * that depends.
  *
- * Le motif restant est correct pour les SOURCES (un import est un import) ; il ne l'était pas
- * pour un manifeste, où le même mot occupe deux rôles. On lit donc les 4 cartes de dépendances,
- * et rien d'autre.
+ * The remaining pattern is correct for SOURCES (an import is an import); it was not
+ * for a manifest, where the same word plays two roles. So we read the 4 dependency
+ * maps, and nothing else.
  *
- * @param {string} pkgPath - chemin du package.json.
- * @returns {string|null} le specifier fautif, ou null.
+ * @param {string} pkgPath - path of the package.json.
+ * @returns {string|null} the offending specifier, or null.
  */
 function pluginDependency(pkgPath) {
     let json;
     try {
         json = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
     } catch {
-        // Un manifeste illisible n'est pas « propre » : on refuse de conclure plutôt que de
-        // rendre null, sinon la gate sort verte sur un fichier qu'elle n'a pas su lire.
+        // An unreadable manifest is not "clean": we refuse to conclude rather than
+        // return null, otherwise the gate goes green on a file it could not read.
         console.error(`ERROR [SYNC-01]: ${path.relative(ROOT, pkgPath)} illisible.`);
         process.exit(2);
     }
@@ -399,39 +399,39 @@ const allDocFiles = [];
 collectMarkdown(DOCS_DIR, allDocFiles);
 const docLeaks = [];
 /**
- * Exemptions de SYNC-02 — chemin relatif → motif. Chaque entrée doit porter sa raison : une
- * exemption muette est indiscernable d'un cas que quelqu'un a cessé de poursuivre.
+ * SYNC-02 exemptions — relative path → reason. Every entry must carry its reason: a
+ * mute exemption is indistinguishable from a case someone stopped pursuing.
  *
- * ✅ **VIDE depuis le 10/08/2026, et c'est le sujet qui est parti, pas la règle.** L'unique
- * entrée exemptait `packages/core/docs/CONNECTOR_GUIDE.md` — le guide d'un plugin, livré dans
- * le tarball du core. La question de fond, ouverte en **D-16** et explicitement provisoire, a
- * été tranchée par le Sprint 8 de `roadmap_passage-public-npm` : le guide a été déplacé vers
- * `packages/plugins/connector/docs/`, le paquet qu'il documente. L'exemption disparaît donc
- * **avec son sujet**, pas par relâchement.
+ * ✅ **EMPTY since 2026-08-10, and the subject left, not the rule.** The single entry
+ * exempted `packages/core/docs/CONNECTOR_GUIDE.md` — a plugin's guide, shipped in the
+ * core's tarball. The underlying question, open and explicitly provisional, was
+ * settled: the guide moved to `packages/plugins/connector/docs/`, the package it
+ * documents. The exemption thus disappears **with its subject**, not through
+ * loosening.
  *
- * 🛑 Deux mesures ont été prises pour que ce ne soit pas un affaiblissement muet :
- *   1. après le seul `git mv`, cette gate est sortie en **exit 2** sur « exemption périmée » —
- *      c'est la boucle de contrôle ci-dessous, et elle a fait exactement son travail ;
- *   2. la Map une fois vidée, un import de plugin réintroduit dans `packages/core/docs/` a été
- *      **vu faire rougir SYNC-02**. La règle mord toujours ; c'est sa seule dérogation qui
- *      n'existe plus.
+ * 🛑 Two measures were taken so this is not a mute weakening:
+ *   1. after the single `git mv`, this gate exited **2** on "stale exemption" — that
+ *      is the control loop below, and it did exactly its job;
+ *   2. the Map once emptied, a plugin import reintroduced into `packages/core/docs/`
+ *      was **seen making SYNC-02 go red**. The rule still bites; only its one
+ *      derogation no longer exists.
  *
- * ⚠️ La Map reste en place, vide, plutôt que d'être supprimée : le prochain cas d'exemption
- * doit trouver ici l'obligation d'écrire son motif ET la boucle qui périme les exemptions
- * mortes. C'est la machinerie qui a rendu ce déménagement visible.
+ * ⚠️ The Map stays in place, empty, rather than deleted: the next exemption case must
+ * find here the obligation to write its reason AND the loop that expires dead
+ * exemptions. That is the machinery that made this move visible.
  */
 const DOCS_EXEMPT = new Map([]);
 
 /**
- * Relève les violations SYNC-02 d'un `.md`, en distinguant PROSE et BLOC DE CODE.
+ * Collects a `.md` file's SYNC-02 violations, distinguishing PROSE and CODE BLOCK.
  *
- * L'état de clôture se suit ligne à ligne : la ligne d'ouverture porte l'info-string
- * (` ```js `), pas du code, donc elle n'est pas inspectée ; la ligne de fermeture non
- * plus. Un marqueur plus long ferme un marqueur plus court, jamais l'inverse — c'est la
- * règle CommonMark, et c'est ce qui permet à un bloc d'en contenir un autre.
+ * The fence state is tracked line by line: the opening line carries the info string
+ * (` ```js `), not code, so it is not inspected; nor is the closing line. A longer
+ * marker closes a shorter one, never the reverse — the CommonMark rule, and what
+ * allows a block to contain another.
  *
- * @param {string} abs - chemin absolu du fichier.
- * @param {string} rel - chemin relatif au dépôt, séparateurs POSIX.
+ * @param {string} abs - absolute path of the file.
+ * @param {string} rel - repo-relative path, POSIX separators.
  * @returns {{file: string, line: number, content: string, why: string}[]}
  */
 function scanDocFile(abs, rel) {
@@ -461,10 +461,10 @@ function scanDocFile(abs, rel) {
     return found;
 }
 
-// ⚠️ Assertion anti-gate-vide. `collectMarkdown` sort silencieusement sur un répertoire
-// absent : si `packages/core/docs/` déménage, SYNC-02 annonçait « aucune référence » en
-// n'ayant lu AUCUN fichier — exit 0, verte, aveugle. C'est la classe que
-// `probe-gate-visibility.cjs` surveille, et cette gate n'y était pas immunisée.
+// ⚠️ Anti-empty-gate assertion. `collectMarkdown` exits silently on an absent
+// directory: if `packages/core/docs/` moved, SYNC-02 announced "no reference" having
+// read NO file — exit 0, green, blind. The class `probe-gate-visibility.cjs`
+// watches, and this gate was not immune to it.
 if (allDocFiles.length === 0) {
     console.error(
         `ERROR [SYNC-02]: aucun .md trouvé sous ${path.relative(ROOT, DOCS_DIR)} — ` +
@@ -479,8 +479,8 @@ for (const filePath of allDocFiles) {
     docLeaks.push(...scanDocFile(filePath, rel));
 }
 
-// Une exemption qui ne vise plus rien est un mensonge silencieux : si le fichier disparaît, ou
-// s'il cesse de contenir ce qu'on exempte, la gate doit le dire plutôt que de l'ignorer.
+// An exemption that no longer targets anything is a silent lie: if the file vanishes,
+// or stops containing what is exempted, the gate must say so rather than ignore it.
 for (const [rel, motif] of DOCS_EXEMPT) {
     const abs = path.join(ROOT, rel);
     if (!fs.existsSync(abs)) {
@@ -505,9 +505,9 @@ if (docLeaks.length > 0) {
     process.exit(1);
 }
 
-// Le périmètre s'imprime en fin de run — un chiffre qu'on peut relire vaut mieux qu'une
-// affirmation qu'on doit croire. Le nombre de plugins vient du registre : s'il tombe à 0,
-// `packages.cjs` jette avant d'arriver ici.
+// The perimeter prints at the end of the run — a number one can re-read beats a claim
+// one must believe. The plugin count comes from the registry: if it drops to 0,
+// `packages.cjs` throws before reaching here.
 console.log(
     `✅ [SYNC-02] Tout specifier de plugin est résoluble dans les docs du core ` +
         `(${allDocFiles.length} .md scannés, ${KNOWN_PLUGIN_NAMES.size} plugins au registre).`

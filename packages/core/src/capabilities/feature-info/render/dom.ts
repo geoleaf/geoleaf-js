@@ -61,22 +61,22 @@ export interface RenderContext {
     /** Raw feature property bag (for cross-field lookups). */
     readonly feature?: Record<string, unknown>;
     /**
-     * Feature identifier, carried for `type: "action"` buttons (B-69).
+     * Feature identifier, carried for `type: "action"` buttons.
      *
-     * ⚠️ Ce champ et le suivant ont manqué pendant toute la vie du type `action`, et c'est
-     * exactement ce qui a fait abandonner la fonctionnalité : le détail du clic les porte
-     * (`GeoLeafFeatureClickDetail`), mais le contexte de rendu s'arrêtait au `layerId` — donc le
-     * renderer ne pouvait pas construire la charge utile que le contrat promettait.
+     * ⚠️ This field and the next were missing for the whole life of the `action`
+     * type, and that is exactly what made the feature get abandoned: the click detail
+     * carries them (`GeoLeafFeatureClickDetail`), but the render context stopped at
+     * `layerId` — so the renderer could not build the payload the contract promised.
      *
-     * ⚠️ **Et B-69 n'a réparé que la MOITIÉ, ce qui ne s'est vu que le 14/08/2026** :
-     * `surfaces/popup.ts` passait les trois champs, `surfaces/sidepanel.ts` s'en tenait au
-     * `layerId`. Le widget `action` vivant dans la table de dispatch partagée, il rend sur les
-     * deux surfaces — une action cliquée dans le panneau émettait donc `featureId: null`
-     * pendant seize jours, sous un commentaire qui disait le contraire. Une réparation
-     * asymétrique se lit comme une réparation.
+     * ⚠️ **And the first fix repaired only HALF, which was only seen on
+     * 14/08/2026**: `surfaces/popup.ts` passed all three fields,
+     * `surfaces/sidepanel.ts` stuck to `layerId`. The `action` widget living in the
+     * shared dispatch table, it renders on both surfaces — an action clicked in the
+     * panel therefore emitted `featureId: null` for sixteen days, under a comment
+     * saying the opposite. An asymmetric repair reads as a repair.
      */
     readonly featureId?: string | number | null;
-    /** Geographic position of the popup, for the `action` payload (B-69). */
+    /** Geographic position of the popup, for the `action` payload. */
     readonly lngLat?: { readonly lat: number; readonly lng: number };
     /**
      * Closes the surface this context belongs to — supplied by `surfaces/popup.ts`

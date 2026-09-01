@@ -40,12 +40,13 @@ export type {
     GeoLeafPluginLoadedDetail,
     GeoLeafPluginLazyLoadedDetail,
     GeoLeafPluginFailedDetail,
-    // ⚠️ `GeoLeafPopupActionDetail` est le seul type de cette liste dont la clé ne vit PLUS dans
-    // `GeoLeafEventMap` : elle est passée dans `GeoLeafRawEventMap` le 14/08/2026, et son detail
-    // porte désormais un `HTMLElement` et deux fonctions. Le ré-export reste ici — le retirer
-    // casserait des importateurs pour un gain nul —, mais il ne dit plus « ce type passe par le
-    // bus assaini ». Aucune gate ne peut voir cet écart : c'est une réexportation valide d'un
-    // type valide. Ne pas en déduire que cette clé s'émet par `dispatchGeoLeafEvent`.
+    // ⚠️ `GeoLeafPopupActionDetail` is the only type in this list whose key NO
+    // LONGER lives in `GeoLeafEventMap`: it moved to `GeoLeafRawEventMap` on
+    // 14/08/2026, and its detail now carries an `HTMLElement` and two functions.
+    // The re-export stays here — removing it would break importers for zero gain —
+    // but it no longer says "this type goes through the sanitised bus". No gate can
+    // see this gap: it is a valid re-export of a valid type. Do not infer that this
+    // key is emitted via `dispatchGeoLeafEvent`.
     GeoLeafPopupActionDetail,
     IEventBus,
 } from "../../contracts/event-bus.contract.js";

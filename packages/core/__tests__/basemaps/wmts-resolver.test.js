@@ -22,7 +22,7 @@ let resolveWmtsTilesUrl;
 let buildWmsUrl;
 let _clearWmtsCache;
 let _getWmtsCache;
-/** The mocked Log — the B-151 guard is asserted through the messages it emits. */
+/** The mocked Log — the grid-compatibility guard is asserted through the messages it emits. */
 let Log;
 
 beforeAll(async () => {
@@ -118,6 +118,73 @@ describe("parseWmtsCapabilities — RESTful ResourceURL", () => {
         expect(url).not.toBeNull();
     });
 
+    // ─── An OMITTED TileMatrixSet: quiet when there is nothing to choose, loud when there is ──
+    //
+    // Taking the first link is documented behaviour. What deserves a warning is not the fallback
+    // itself but the ARBITRARY pick — several grids on offer, no preference expressed, and
+    // document order deciding. That order belongs to the provider and can change between two
+    // capability documents with nothing here noticing.
+
+    /** Same layer, several `<TileMatrixSetLink>` — the case where the first pick is a choice. */
+    function makeMultiGridXml(ids) {
+        const links = ids
+            .map(
+                (id) =>
+                    `<TileMatrixSetLink><TileMatrixSet>${id}</TileMatrixSet></TileMatrixSetLink>`
+            )
+            .join("\n      ");
+        return `<?xml version="1.0"?>
+<Capabilities xmlns:ows="http://www.opengis.net/ows/1.1" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <Contents>
+    <Layer>
+      <ows:Identifier>ORTHO</ows:Identifier>
+      ${links}
+      <ResourceURL format="image/png" resourceType="tile" template="https://t.example.com/{TileMatrixSet}/{TileMatrix}/{TileCol}/{TileRow}.png"/>
+    </Layer>
+  </Contents>
+</Capabilities>`;
+    }
+
+    /** The arbitrary-pick warning, or null if it never fired. */
+    function pickWarning() {
+        const call = Log.warn.mock.calls.find(
+            (c) => typeof c[0] === "string" && c[0].includes("No TileMatrixSet requested")
+        );
+        return call ? call[0] : null;
+    }
+
+    it("stays QUIET when the grid is omitted and the layer offers only one", () => {
+        parseWmtsCapabilities(makeMultiGridXml(["PM"]), "ORTHO", undefined, "image/png");
+        expect(
+            pickWarning(),
+            "a single link is not a choice — warning here would be noise on the common case"
+        ).toBeNull();
+    });
+
+    it("WARNS when the grid is omitted and several are offered, naming the pick and the options", () => {
+        parseWmtsCapabilities(
+            makeMultiGridXml(["PM", "WGS84G", "LAMB93"]),
+            "ORTHO",
+            undefined,
+            "image/png"
+        );
+        const msg = pickWarning();
+        expect(msg, "the arbitrary pick went unreported").not.toBeNull();
+        // Naming the winner AND the alternatives is what makes the warning actionable:
+        // without the list, a reader cannot tell what they could have asked for instead.
+        expect(msg).toContain('"PM"');
+        expect(msg).toContain("WGS84G");
+        expect(msg).toContain("LAMB93");
+    });
+
+    it("does NOT fire the arbitrary-pick warning when a grid WAS requested", () => {
+        parseWmtsCapabilities(makeMultiGridXml(["PM", "WGS84G"]), "ORTHO", "PM", "image/png");
+        expect(
+            pickWarning(),
+            "the caller expressed a preference — there is nothing arbitrary to report"
+        ).toBeNull();
+    });
+
     it("returns null for empty XML", () => {
         const url = parseWmtsCapabilities("", undefined, undefined, "image/png");
         expect(url).toBeNull();
@@ -179,7 +246,7 @@ describe("parseWmtsCapabilities — RESTful ResourceURL", () => {
     });
 });
 
-// ─── XYZ grid-compatibility guard (B-151) ─────────────────────────────────────
+// ─── XYZ grid-compatibility guard ─────────────────────────────────────
 //
 // Fixtures below are TRIMMED FROM THE REAL `https://data.geopf.fr/wmts` GetCapabilities
 // (2 895 885 bytes, 763 TileMatrixSet definitions, fetched 07/08/2026). `PM` is the grid
@@ -240,7 +307,7 @@ ${matrices}
 </Capabilities>`;
 }
 
-describe("parseWmtsCapabilities — XYZ grid compatibility (B-151)", () => {
+describe("parseWmtsCapabilities — XYZ grid compatibility", () => {
     // ── The guard must be SEEN RED — and seen red FOR THE RIGHT REASON. Asserting only
     //    `toBeNull()` would pass just as well if the fixture were malformed or the layer
     //    were missing, so every refusal below also pins the message the guard emits.
@@ -286,7 +353,7 @@ describe("parseWmtsCapabilities — XYZ grid compatibility (B-151)", () => {
         expect(guardRefusalReason()).toContain("not a 2^z quadtree");
     });
 
-    it("warns instead of substituting silently when the requested grid is absent (B-151 ①)", () => {
+    it("warns instead of substituting silently when the requested grid is absent", () => {
         Log.warn.mockClear();
         // Layer links only `PM`; the caller asks for a Lambert-93 set that is not linked.
         parseWmtsCapabilities(makeWmtsXml(), "ORTHO", "2154_5cm", "image/png");

@@ -9,7 +9,7 @@
  * LayerManager — Visibility Checker
  * Validates the visibility state logical d'a layer.
  *
- * Extrait de layer-manager/renderer.ts (split Sprint 1 roadmap).
+ * Extrait de layer-manager/renderer.ts.
  */
 
 import { Log } from "../../utils/log/index.js";

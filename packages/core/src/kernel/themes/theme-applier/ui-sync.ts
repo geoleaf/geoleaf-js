@@ -10,6 +10,27 @@
  * Synchronization of the UI : selector de style, legend, fitBounds
  */
 
+/**
+ * @sideEffectGraft packages/core/src/globals/globals.ui.ts
+ *
+ * ✅ ASSUMED as a module-level state, decided 24-25/08/2026 — not a side effect awaiting
+ * conversion. Converting the graft to plain exports would force the anchor to know every
+ * member it re-exports, for nothing measurable: the graft is declared (this mark), anchored
+ * (the bare import the mark names), and guarded (the graft gate reddens if either
+ * disappears). What would REOPEN the decision is a second writer grafting onto the same
+ * base — not a re-reading of this file.
+ *
+ * ⚠️ **SIDE-EFFECT module**: grafts 4 members onto `ThemeApplierCore` at import;
+ * `core.ts` CALLS them without defining them. It exports nothing that is consumed, so
+ * no dead-code instrument can see it live — ESLint, `check-orphan-exports` and a
+ * human read all declared it dead **in concert, and all three were wrong**. A
+ * side-effect module has no consumer, by definition.
+ *
+ * **Its only anchor is a BARE import in `globals.ui.ts`.** Removing it drops
+ * this file from the graph **silently**: the test suite stays green, and the
+ * symptom is a production `TypeError`. It happened (July 2026, caught within the
+ * hour). `GRAFT-03` now guards that the anchor still imports it.
+ */
 import { ThemeApplierCore as _TA } from "./core.js";
 import type { ThemeApplierModule, ThemeBounds } from "./core.js";
 import { GeoJSONShared } from "../../shared/geojson-state.js";
@@ -47,9 +68,9 @@ interface LoadingWindow {
 }
 
 /**
- * Updates the selector de style dans l'UI
- * @param {string} layerId - Identifier de the layer
- * @param {string} styleId - Identifier du style
+ * Updates the style selector in the UI
+ * @param {string} layerId - Layer identifier
+ * @param {string} styleId - Style identifier
  * @private
  */
 TA._updateStyleSelector = function (layerId: string, styleId: string | undefined) {
@@ -63,8 +84,8 @@ TA._updateStyleSelector = function (layerId: string, styleId: string | undefined
 
 /**
  * Loads the legend correspondant au style applied
- * @param {string} layerId - ID de the layer
- * @param {string} styleId - ID du style
+ * @param {string} layerId - Layer ID
+ * @param {string} styleId - Style ID
  * @private
  */
 TA._loadLegendForStyle = function (layerId: string, styleId: string | undefined) {
@@ -72,7 +93,7 @@ TA._loadLegendForStyle = function (layerId: string, styleId: string | undefined)
         return;
     }
 
-    // Retrieve les information de the layer
+    // Retrieve the layer's information
     const layersMap = GeoJSONShared.state.layers;
     const layerInfo = layersMap instanceof Map ? layersMap.get(layerId) : layersMap?.[layerId];
 
@@ -81,12 +102,12 @@ TA._loadLegendForStyle = function (layerId: string, styleId: string | undefined)
         return;
     }
 
-    // Utiliser la nouvelle API qui generates the legend from the style
+    // Use the new API that generates the legend from the style
     LegendContract.loadLayerLegend(layerId, styleId, layerConfig);
 };
 
 /**
- * Zoom sur l'emprise de toutes the layers loadedes
+ * Zooms to the extent of all loaded layers
  * @private
  */
 
@@ -146,7 +167,7 @@ function _fitAndReveal(map: MapLike, bounds: ThemeBounds) {
         document.getElementById("geoleaf-map") ||
         document.querySelector(".maplibregl-map")?.parentElement;
     if (mapContainer) {
-        (mapContainer as HTMLElement).style.opacity = "1";
+        mapContainer.style.opacity = "1";
     }
     map.fitBounds(bounds, { padding: { x: 50, y: 50 } });
     setTimeout(() => {
@@ -178,7 +199,7 @@ TA._fitBoundsOnAllLayers = function () {
 };
 
 /**
- * Synchronise l'visibility state de toutes the layers dans the legend
+ * Synchronises the visibility state of all layers in the legend
  * @private
  */
 TA._syncLegendVisibility = function () {

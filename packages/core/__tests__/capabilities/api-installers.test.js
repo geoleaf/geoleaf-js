@@ -20,9 +20,8 @@ const taxonomyCap = await import("../../src/capabilities/taxonomy/taxonomy-capab
 const taxonomyFacade = await import("../../src/api/geoleaf.taxonomy.ts");
 
 const featureInfo = await import("../../src/capabilities/feature-info/install.ts");
-const featureInfoCap = await import(
-    "../../src/capabilities/feature-info/feature-info-capability.ts"
-);
+const featureInfoCap =
+    await import("../../src/capabilities/feature-info/feature-info-capability.ts");
 const featureInfoMod = await import("../../src/capabilities/feature-info/module.ts");
 const featureInfoFacade = await import("../../src/api/geoleaf.featureinfo.ts");
 

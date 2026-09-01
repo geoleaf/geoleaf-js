@@ -1,51 +1,63 @@
 #!/usr/bin/env node
 /*!
- * GeoLeaf — Vérificateur de cohérence des versions inter-packages
+ * GeoLeaf — Inter-package version coherence checker
  * © 2026 Mattieu Pottier — MIT
  *
- * Archi backlog B.1 — « clarifier la divergence de version monorepo 2.0.0 / core 3.0.0 ».
+ * Clarifies the monorepo-2.0.0 / core-3.0.0 version divergence.
  *
- * POLITIQUE (cf. ARCHITECTURE.md §Versioning) : le versioning est INDÉPENDANT par
- * package publié (chaque `package.json` est sa propre source de vérité, injectée au
- * build via `__GEOLEAF_VERSION__`). La version de la racine du monorepo est
- * `private:true` — un simple identifiant d'orchestration, NON significatif et NON
- * publié. Il n'y a donc volontairement AUCUN alignement de version racine ↔ packages.
+ * POLICY (cf. ARCHITECTURE.md §Versioning): versioning is INDEPENDENT per published
+ * package (each `package.json` is its own source of truth, injected at build
+ * through `__GEOLEAF_VERSION__`). The monorepo root's version is `private:true` —
+ * a mere orchestration identifier, NOT significant and NOT published. There is
+ * thus deliberately NO root ↔ packages version alignment.
  *
- * Ce script ne change aucune version : il VÉRIFIE des invariants réels et signale les
- * incohérences (exit 1) :
- *   1. chaque `package.json` a une `version` semver valide ;
- *   2. la racine est bien `private:true` (orchestrateur — version hors-scope) ;
- *   3. toute dépendance interne (`@geoleaf/*` / `@geoleaf-plugins/*`) pointe vers un
- *      workspace existant ;
- *   4. un package interne NON publié (`private:true`, ex. `@geoleaf/http-helpers`)
- *      n'est jamais déclaré en `dependencies`/`peerDependencies` d'un autre package —
- *      uniquement en `devDependencies` (il est bundlé inline ; sinon `npm install`
- *      du consommateur publié casserait — piège S6) ;
- *   5. toute plage interne déclarée en position D'EXÉCUTION (`dependencies` /
- *      `peerDependencies`) est BORNÉE et SATISFAITE par la version du workspace cible.
+ * This script changes no version: it VERIFIES real invariants and flags
+ * incoherences (exit 1):
+ *   1. every `package.json` has a valid semver `version`;
+ *   2. the root really is `private:true` (orchestrator — version out of scope);
+ *   3. every internal dependency (`@geoleaf/*` / `@geoleaf-plugins/*`) points at an
+ *      existing workspace;
+ *   4. an UNPUBLISHED internal package (`private:true`, e.g.
+ *      `@geoleaf/http-helpers`) is never declared in
+ *      `dependencies`/`peerDependencies` of another package — only in
+ *      `devDependencies` (it is bundled inline; otherwise the published
+ *      consumer's `npm install` would break);
+ *   5. every internal range declared in an EXECUTION position (`dependencies` /
+ *      `peerDependencies`) is BOUNDED and SATISFIED by the target workspace's
+ *      version.
  *
- * ## Pourquoi le check 5 existe, et pourquoi il ne regarde QUE l'exécution
+ * ## Why check 5 exists, and why it only looks at execution
  *
- * Dans le monorepo, npm résout `@geoleaf/core` par le workspace : n'importe quelle plage
- * « marche », y compris `"*"`. **Chez l'intégrateur, il n'y a pas de workspace** — la plage
- * part au registre, et `"*"` y désigne le `latest` publié. Mesuré le 09/08/2026 : `latest`
- * pour `@geoleaf/core` est **2.1.8**, soit un MAJEUR en arrière du 3.0.0 que les 12 plugins
- * exigent réellement. Les 12 tarballs auraient donc installé un core incompatible **sans
- * qu'aucune gate du dépôt ne puisse le voir**, puisque tout est vert en local.
+ * In the monorepo, npm resolves `@geoleaf/core` by the workspace: any range
+ * "works", `"*"` included. **At the integrator's, there is no workspace** — the
+ * range goes to the registry, and `"*"` there designates the published `latest`.
+ * Measured on 2026-08-09: `latest` for `@geoleaf/core` is **2.1.8**, one MAJOR
+ * behind the 3.0.0 the 12 plugins really require. The 12 tarballs would thus have
+ * installed an incompatible core **without any gate of the repo able to see it**,
+ * since everything is green locally.
  *
- * Le check est borné aux `dependencies`/`peerDependencies` parce que ce sont les seules que
- * `npm install` d'un consommateur reproduit. Les `devDependencies` internes (`build-config`,
- * `host-runtime`) restent en `"*"` **à dessein** : elles visent des workspaces `private`, ne
- * partent dans aucun tarball, et le check 4 leur interdit déjà la position d'exécution.
+ * The check is bounded to `dependencies`/`peerDependencies` because those are the
+ * only ones a consumer's `npm install` reproduces. Internal `devDependencies`
+ * (`build-config`, `host-runtime`) stay at `"*"` **on purpose**: they target
+ * `private` workspaces, ship in no tarball, and check 4 already forbids them the
+ * execution position.
  *
- * 🔗 **Ce que le check 4 NE couvre PAS est écrit une seule fois**, dans l'en-tête de
- * `check-shipped-specifiers.cjs` (§ « Le recouvrement des gates du tarball », B-87/B-232) :
- * il lit des cartes de dépendances, **jamais les `.d.ts`**. Un vert d'ici ne dit rien de ce
- * que le code émis importe.
+ * 🔗 **What check 4 does NOT cover is written once**, in the header of
+ * `check-shipped-specifiers.cjs` — gate **`SHIP-SPEC`** (§ "THE TARBALL GATES'
+ * OVERLAP"): it reads dependency maps, **never the `.d.ts`**. A green
+ * here says nothing of what the emitted code imports.
  *
- * ⚠️ Une plage dont la FORME n'est pas comprise est une ERREUR, jamais un passage silencieux
- * (même patron que `lib/packages.cjs`). Un vérificateur qui ignore ce qu'il ne sait pas lire
- * sort vert en n'ayant rien vérifié — c'est le mode d'échec que ce fichier existe pour tuer.
+ * 📌 **The `SHIP-SPEC` code is named here ON PURPOSE, in addition to the file
+ * name.** The pointer already existed and said the right split, but it cited only
+ * the *file*: a reader — or a `grep` — starting from the **gate code** did not
+ * find it. ⚠️ That was the half really missing, and its closure criterion
+ * (`grep -c 'SHIP-SPEC'` → 0) measured it without saying so: it returned `0` on a
+ * coverage **already written**. A criterion searching for a pattern other than the
+ * one set renders "absent" what is only named differently.
+ *
+ * ⚠️ A range whose FORM is not understood is an ERROR, never a silent pass (same
+ * pattern as `lib/packages.cjs`). A checker that ignores what it cannot read goes
+ * green having verified nothing — the failure mode this file exists to kill.
  *
  * Usage : node scripts/check-versions.cjs
  */
@@ -137,7 +149,7 @@ function rangeAdmits(range, version) {
 // ─── Collect workspaces (root + packages/*, excluding _templates) ───────────────
 const rootPkg = readJson(path.join(ROOT, "package.json"));
 
-// ARCHI S9.5 — workspaces come from the registry, which reads the same globs npm
+// Workspaces come from the registry, which reads the same globs npm
 // obeys. The previous one-level `readdirSync(packages/)` would, after ARCHI S10
 // nests packages, find no package.json at that level and compare ZERO versions —
 // exiting 0 on an empty set rather than reporting the drift it exists to catch.
@@ -181,10 +193,10 @@ if (rootPkg.private !== true) {
 // ─── Checks 3, 4 & 5 — internal deps resolve, private-never-runtime, range bounded ──
 //
 let runtimeRangesChecked = 0;
-// ⚠️ La plage se lit sur `runtime[dep]`, PAS sur l'entrée de `all` : la fusion
-// `{...deps, ...peerDeps, ...devDeps}` laisse gagner la devDependency quand un même
-// paquet est déclaré des deux côtés, et le check 5 aurait alors jugé une plage de
-// développement en croyant juger celle qui part dans le tarball.
+// ⚠️ The range is read on `runtime[dep]`, NOT on the `all` entry: the
+// `{...deps, ...peerDeps, ...devDeps}` merge lets the devDependency win when one
+// package is declared on both sides, and check 5 would then have judged a
+// development range believing it judged the one shipping in the tarball.
 for (const w of workspaces) {
     const runtime = { ...w.deps, ...w.peerDeps }; // published surface
     const all = { ...w.deps, ...w.peerDeps, ...w.devDeps };
@@ -207,7 +219,7 @@ for (const w of workspaces) {
         }
         // Check 5 — an internal range in RUNTIME position must be bounded and satisfied.
         const declared = runtime[dep];
-        if (declared === undefined) continue; // devDependency only — hors périmètre, cf. docblock
+        if (declared === undefined) continue; // devDependency only — out of scope, cf. docblock
         runtimeRangesChecked++;
         const verdict = rangeAdmits(String(declared), String(target.version));
         if (!verdict.ok) {
@@ -231,9 +243,11 @@ console.log("");
 for (const n of notes) console.log(`ℹ  ${n}`);
 console.log("");
 
-// Assertion anti-gate-vide : un check 5 qui ne compare RIEN sortirait vert en n'ayant rien
-// vérifié — le mode d'échec exact que `packages.cjs` documente. Les 12 plugins déclarent au
-// moins `@geoleaf/core` en `dependencies`, donc le plancher ne peut pas être nul.
+// Anti-empty-gate assertion: a check 5 that compares NOTHING would go green having
+// verified nothing — the exact failure mode `packages.cjs` documents. Every published
+// plugin declares `@geoleaf/core` in `peerDependencies` (moved from `dependencies` on 25/08/2026 so
+// that a version conflict fails loudly at install instead of silently installing two copies
+// of the core), so the floor cannot be zero.
 if (runtimeRangesChecked === 0) {
     errors.push(
         "Check 5: AUCUNE plage interne d'exécution n'a été comparée. Le monorepo en compte " +

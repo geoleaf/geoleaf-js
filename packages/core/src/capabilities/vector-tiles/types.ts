@@ -9,7 +9,7 @@
  * Vector-tiles capability — type definitions.
  *
  * Structural interfaces consumed by `vector-tiles.ts`. Originally extracted to keep that
- * file under the 700-line limit (roadmap_typage-strict.md, S3); since socle B.1 moved the
+ * file under the 700-line limit; since a later refactor moved the
  * MapLibre building to `adapters/maplibre/maplibre-vector-tiles.ts` the orchestrator is far
  * below it, and this split now stands on its own merit — a type boundary the layer-data
  * builder shares.

@@ -1,0 +1,121 @@
+/* @geoleaf/host-runtime — confirm dialog
+   Injected at runtime by rollup-plugin-postcss. */
+
+/* The eight classes `confirmDialog()` writes, styled where they are written — see the note in
+   `modal-shell.css` for why this package carries its own copy rather than borrowing
+   field-renderer's. Split from that file on purpose: a caller that only uses
+   `createModalShell` (the editor's conflict dialogs, for one) should not carry the confirm
+   dialog's rules, and rollup drops this module with the function when nothing calls it. */
+
+/* Compact panel — without this the shell's `width: 100%` makes a yes/no question span the
+   whole viewport. */
+.gl-form-modal-panel.gl-form-modal-confirm {
+    width: min(420px, calc(100vw - 32px));
+    max-width: 420px;
+    padding: 20px;
+    gap: 4px;
+}
+
+.gl-form-modal__delete-title {
+    font-size: var(--gl-font-size-base, 0.875rem);
+    font-weight: 600;
+    color: #dc2626;
+    margin: 0 0 8px;
+    font-family: inherit;
+}
+
+.gl-form-modal__delete-body {
+    font-size: var(--gl-font-size-sm, 0.78rem);
+    color: var(--gl-color-text-muted, #6b7280);
+    margin: 0 0 16px;
+    line-height: 1.5;
+}
+
+.gl-form-modal__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 10px 14px 12px;
+    border-top: 1px solid var(--gl-color-border-strong, rgba(15, 23, 42, 0.1));
+    flex-shrink: 0;
+}
+
+.gl-form-modal__btn {
+    appearance: none;
+    background: none;
+    border: none;
+    border-radius: var(--gl-border-radius, 6px);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition:
+        background 0.15s,
+        opacity 0.15s;
+    font-family: inherit;
+    color: var(--gl-color-text-main, #0f172a);
+}
+
+.gl-form-modal__btn:hover:not(:disabled),
+.gl-form-modal__btn:focus-visible:not(:disabled) {
+    background: var(--gl-color-bg-surface-muted, #f3f4f6);
+    outline: none;
+}
+
+.gl-form-modal__btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.gl-form-modal__btn-cancel,
+.gl-form-modal__btn-save,
+.gl-form-modal__btn-delete {
+    width: auto;
+    padding: 0 18px;
+    height: 36px;
+    font-size: var(--gl-font-size-base, 0.875rem);
+    font-family: inherit;
+    border-radius: var(--gl-border-radius, 6px);
+}
+
+.gl-form-modal__btn-cancel {
+    color: var(--gl-color-text-muted, #6b7280);
+    border: 1px solid var(--gl-color-border-strong, rgba(15, 23, 42, 0.18));
+}
+
+.gl-form-modal__btn-cancel:hover:not(:disabled) {
+    background: var(--gl-color-bg-surface-muted, #f3f4f6);
+}
+
+/* ⚠️ `color` is the per-theme contrast token, never a literal white: #ffffff on the brand
+   orange (#f97316) measures ~2.6:1, under the 4.5:1 of WCAG AA. Every accent surface in the
+   repository reads this token, and each theme sets it to whatever is readable on ITS accent. */
+.gl-form-modal__btn-save {
+    background: var(--gl-color-accent, #f97316);
+    color: var(--gl-color-accent-contrast, #020617);
+    border: 1px solid var(--gl-color-accent, #f97316);
+    font-weight: 500;
+}
+
+.gl-form-modal__btn-save:hover:not(:disabled) {
+    background: var(--gl-color-accent, #f97316);
+    opacity: 0.88;
+}
+
+.gl-form-modal__btn-save:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.gl-form-modal__btn-delete {
+    color: #dc2626;
+    border: 1px solid rgba(220, 38, 38, 0.35);
+    /* Pushed to the far left of the flex-end footer: an irreversible action must not sit
+       flush against the safe one, where a mis-click costs the record. */
+    margin-right: auto;
+}
+
+.gl-form-modal__btn-delete:hover:not(:disabled) {
+    background: rgba(220, 38, 38, 0.08);
+}

@@ -12,7 +12,7 @@
  * Underlying globals: `globals.geojson.ts` (B5) — full bundle.
  *                     `globals.geojson-lite.ts` (B5) — lite bundle.
  *
- * Sprint 3: stub wrapper — initialization already performed as a side-effect
+ * Stub wrapper — initialization already performed as a side-effect
  * of the `globals.ts` import in the bundle entry point.
  */
 

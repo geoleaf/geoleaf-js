@@ -52,6 +52,24 @@ function buildLightboxDom(imageSrc: string): {
     lightbox.className = "gl-poi-lightbox-global";
     lightbox.style.display = "flex";
 
+    // 🛑 THESE THREE ATTRIBUTES WERE MISSING, AND THE ABSENCE OF A TEST IS WHAT HID THEM.
+    // The lightbox traps focus, closes on Escape and restores focus to its trigger — it
+    // behaves as a modal on every point EXCEPT the one that ANNOUNCES it. Without `role`
+    // and `aria-modal`, a screen reader announces it as an ordinary `div`: the content
+    // behind stays announced as reachable, and nothing signals that a dialog opened.
+    // The repo's three other modals already set them — `share-modal.ts`,
+    // `mobile-toolbar-sheet.ts`, `field-renderer/responsive-modal.ts`. This one alone did
+    // not, and the test that would have seen it has been `skip` since forever: it looks
+    // for `[role="dialog"].gl-poi-lightbox-global`, a selector that would have found
+    // nothing even with the data it was missing.
+    // 📌 `aria.lightbox.title` ALREADY existed in the six dictionaries, translated, and
+    // was called by no code: a key created for this dialog and never wired. Reusing it
+    // avoids a seventh translation — and the i18n gate `requested-keys-exist` rejected the
+    // new key I had written first, which is exactly its office.
+    lightbox.setAttribute("role", "dialog");
+    lightbox.setAttribute("aria-modal", "true");
+    lightbox.setAttribute("aria-label", i18n("aria.lightbox.title", "Galerie d'images"));
+
     const overlay = document.createElement("div");
     overlay.className = "gl-poi-lightbox__overlay";
     lightbox.appendChild(overlay);
@@ -105,9 +123,18 @@ export class LightboxManager implements Lightbox {
      * @param startIndex Optional initial index into `galleryImages`.
      */
     open(imageSrc: string, galleryImages?: string[], startIndex?: number): void {
-        // Save the triggering element so focus can be restored on close.
-        this.triggerElement = document.activeElement as HTMLElement | null;
+        // 🛑 THE ORDER OF THESE THREE LINES IS THE FIX, AND THE OLD ONE CANCELLED ITSELF.
+        // The previous version wrote `this.triggerElement = document.activeElement` THEN
+        // called `this.close()` — but `close()` ends with `this.triggerElement = null`. The
+        // trigger was thus erased on the line after the one that memorised it, and the
+        // `this.triggerElement?.focus()` on close was a no-op **every single time**: a
+        // keyboard user landed back at the top of the page on every close, while the TSDoc
+        // of `close()` promises "restores focus".
+        // Found on 17/08/2026 by the `lightbox-a11y.guard.test.ts` guard, written the same
+        // day: precisely what the missing coverage was hiding.
+        const trigger = document.activeElement as HTMLElement | null;
         this.close();
+        this.triggerElement = trigger;
 
         if (Array.isArray(galleryImages) && galleryImages.length > 1) {
             this.galleryImages = galleryImages;
@@ -305,7 +332,7 @@ export function attachGalleryEvents(
 
     // Collect every gallery image URL from the thumbnails.
     //
-    // ⚠️ A thumbnail whose URL was rejected by `safeUrl` carries NO `<img>` — `media.ts:108-109`
+    // ⚠️ A thumbnail whose URL was rejected by `safeUrl` carries NO `<img>` — `media.ts`
     // produces it DELIBERATELY ("an unsafe URL yields an empty (non-interactive) thumbnail
     // rather than an unsafe img.src sink"). Dereferencing `querySelector("img")!.src` here
     // therefore threw on any remote gallery holding one bad URL, and since this runs inside

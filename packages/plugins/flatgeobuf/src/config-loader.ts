@@ -126,9 +126,10 @@ export async function loadLayerFromConfig(config: FgbLayerJsonConfig): Promise<s
     const { id, label, data, defaultVisible, cluster, geometry, zIndex } = config;
     const url = resolveProfileUrl(data.url, config._profileId);
 
-    // Construction conditionnelle, et pas seulement pour satisfaire le compilateur : cet
-    // objet est ETALE treize lignes plus bas (`...layerOpts`). Y poser six cles valant
-    // `undefined` reviendrait a ecraser dans la cible ce que l'absence aurait laisse intact.
+    // Conditional construction, and not only to satisfy the compiler: this
+    // object is SPREAD thirteen lines below (`...layerOpts`). Setting six keys
+    // to `undefined` on it would overwrite in the target what absence would
+    // have left intact.
     const layerOpts: FgbLayerOptions = {
         layerId: id,
         ...(label !== undefined && { layerName: label }),

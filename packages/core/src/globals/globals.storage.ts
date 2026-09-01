@@ -45,18 +45,18 @@ import { wireEvictionNotice } from "../kernel/storage/eviction-notice.js";
 export function setupStorage(): void {
     const _gl = ensureGeoLeaf();
     _gl._OfflineDetector = OfflineDetector;
-    // API S4.3 — `_SWRegister` retirée : aucun lecteur (son membre `_SWRegister?` dans
-    // l'interface locale de `kernel/storage/facade.ts` ne l'était pas davantage).
+    // `_SWRegister` removed: no reader (its `_SWRegister?` member in
+    // `kernel/storage/facade.ts`'s local interface was not one either).
     // Re-affirm the façade mount (idempotent — it self-mounts at import already). The
     // engine (DB/CacheManager/Cache) is injected later via `Storage.wireModules(...)`.
     _gl.Storage = Storage as unknown as NonNullable<typeof _gl.Storage>;
 
-    // B-163 — l'unique écouteur in-core de `geoleaf:cache:evicted`. Posé ICI et non dans
-    // `_wireEvictionBridge()` (`kernel/storage/sw-register.ts`) : ce pont n'est câblé qu'après
-    // l'enregistrement d'un Service Worker, alors que le SECOND émetteur
-    // (`capabilities/offline/cache/cache-manager.ts`) est in-core et tourne hors PWA. Ce
-    // chemin-ci est inconditionnel, donc il voit les deux. Idempotent — `setupStorage()` est
-    // re-callable.
+    // The single in-core listener of `geoleaf:cache:evicted`. Set HERE and not in
+    // `_wireEvictionBridge()` (`kernel/storage/sw-register.ts`): that bridge is
+    // only wired after a Service Worker registers, while the SECOND emitter
+    // (`capabilities/offline/cache/cache-manager.ts`) is in-core and runs outside
+    // PWA. This path is unconditional, so it sees both. Idempotent —
+    // `setupStorage()` is re-callable.
     wireEvictionNotice();
 }
 

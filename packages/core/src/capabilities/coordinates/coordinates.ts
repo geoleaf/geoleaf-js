@@ -38,6 +38,21 @@ const DEFAULT_COORDS_TEXT = "Lat: --, Lng: --";
 /** Fallback delay (ms) after which the standalone control is created if the scale wrapper never appears. */
 const WRAPPER_FALLBACK_TIMEOUT_MS = 5000;
 
+/**
+ * The visual separator inserted before the coordinates in the scale wrapper.
+ *
+ * 🛑 **MODULE scope and not an object member, on purpose.** `CoordinatesControl` is a
+ * contract type, and `CoordinatesDisplay` is frozen as depth-2 public surface: adding
+ * a field there would move a gated artifact (`API_SURFACE.txt`, the namespace's
+ * golden master) for an implementation detail no integrator cares about. A module
+ * variable holds the reference without widening the surface.
+ *
+ * ⚠️ Assumed corollary: the control is a SINGLETON, this variable too. That was
+ * already true of `_coordsElement` — two simultaneous instances were never
+ * supported.
+ */
+let _separatorElement: HTMLElement | null = null;
+
 const CoordinatesDisplay: CoordinatesControl = {
     _map: null,
     _controlHandle: null,
@@ -65,6 +80,15 @@ const CoordinatesDisplay: CoordinatesControl = {
         try {
             if (!map) {
                 throw new Error("A map instance is required.");
+            }
+
+            // 🛑 RE-ENTRANCE guard (twin of a measured leak). Without it, two consecutive
+            // `init()` calls stacked TWO separators and TWO coordinate elements, and the
+            // first of each pair became unreachable — `_coordsElement` was overwritten, so
+            // `destroy()` could no longer remove it. Tearing down before re-mounting makes
+            // `init()` idempotent, which its own TSDoc already implied.
+            if (this._coordsElement || _separatorElement) {
+                this.destroy();
             }
 
             this._map = map;
@@ -136,8 +160,10 @@ const CoordinatesDisplay: CoordinatesControl = {
      * @private
      */
     _attachToScaleWrapper(scaleWrapper: HTMLElement) {
-        // Add a separator before the coordinates
-        domCreate("div", "gl-scale-separator", scaleWrapper);
+        // ⚠️ The reference is KEPT — without it, `destroy()` had no way to remove the
+        // separator, and every teardown → remount cycle left one more on screen (it is a
+        // visible vertical bar).
+        _separatorElement = domCreate("div", "gl-scale-separator", scaleWrapper);
 
         // Create the display element for coordinates directly in the wrapper
         this._coordsElement = domCreate("div", "gl-scale-coordinates", scaleWrapper);
@@ -235,6 +261,13 @@ const CoordinatesDisplay: CoordinatesControl = {
                 this._coordsElement.parentNode.removeChild(this._coordsElement);
                 this._coordsElement = null;
             }
+
+            // …and its separator, which nothing used to remove. It is removed AFTER the
+            // coordinates so the teardown order mirrors the mount order.
+            if (_separatorElement && _separatorElement.parentNode) {
+                _separatorElement.parentNode.removeChild(_separatorElement);
+            }
+            _separatorElement = null;
 
             // Run all event listener cleanups
             for (const fn of this._cleanups) fn();

@@ -18,7 +18,7 @@ describe("GeoLeaf.Utils.ObjectUtils", () => {
             error: vi.fn(),
         };
 
-        // Build ObjectUtils namespace compatible avec le test
+        // Build an ObjectUtils namespace compatible with the test
         const ObjectUtils = {
             getNestedValue: mod.getNestedValue,
             hasNestedPath: mod.hasNestedPath,

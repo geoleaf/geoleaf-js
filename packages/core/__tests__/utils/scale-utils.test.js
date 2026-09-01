@@ -45,11 +45,12 @@ describe("scale-utils", () => {
         beforeEach(() => clearScaleCache());
 
         it("inverts calculateMapScale (round-trip)", () => {
-            // Tolérance 2 décimales, pas davantage : `calculateMapScale` ARRONDIT le
-            // dénominateur (Math.round), et cet arrondi coûte d'autant plus de zoom que
-            // l'échelle est petite (à zoom 20, 1:564,26 devient 1:564 → +0,0006 zoom).
-            // La perte est intrinsèque à l'aller-retour, pas à la conversion — et 0,01
-            // niveau de zoom est très en deçà du perceptible.
+            // 2-decimal tolerance, no more: `calculateMapScale` ROUNDS the
+            // denominator (Math.round), and that rounding costs the more
+            // zoom the smaller the scale (at zoom 20, 1:564.26 becomes
+            // 1:564 → +0.0006 zoom). The loss is intrinsic to the round
+            // trip, not the conversion — and 0.01 zoom level is well below
+            // the perceptible.
             for (const lat of [0, 4, 46.2, -40.4, 60]) {
                 for (const zoom of [0, 5, 6, 10, 14, 18, 20]) {
                     const scale = calculateMapScale(
@@ -86,7 +87,7 @@ describe("scale-utils", () => {
         it("returns null for a disabled or invalid bound", () => {
             expect(scaleToZoom(null, 4)).toBeNull();
             expect(scaleToZoom(undefined, 4)).toBeNull();
-            expect(scaleToZoom(0, 4)).toBeNull(); // convention "contrainte désactivée"
+            expect(scaleToZoom(0, 4)).toBeNull(); // "constraint disabled" convention
             expect(scaleToZoom(-100, 4)).toBeNull();
             expect(scaleToZoom(Number.NaN, 4)).toBeNull();
             expect(scaleToZoom(Number.POSITIVE_INFINITY, 4)).toBeNull();
@@ -94,12 +95,13 @@ describe("scale-utils", () => {
         });
 
         it("returns null beyond Web Mercator's latitude limit", () => {
-            // Math.cos(90°) vaut 6.1e-17, pas 0 : sans garde explicite sur la latitude, la
-            // conversion rendrait un zoom clampé (0) au lieu de « pas de réponse ».
+            // Math.cos(90°) is 6.1e-17, not 0: without an explicit latitude
+            // guard, the conversion would return a clamped zoom (0) instead
+            // of "no answer".
             expect(scaleToZoom(1000, 90)).toBeNull();
             expect(scaleToZoom(1000, -90)).toBeNull();
             expect(scaleToZoom(1000, 85.06)).toBeNull();
-            expect(scaleToZoom(1000, 85)).not.toBeNull(); // juste en deçà : valide
+            expect(scaleToZoom(1000, 85)).not.toBeNull(); // just below: valid
         });
 
         it("clamps to MapLibre's [0 ; 24]", () => {

@@ -1,0 +1,38 @@
+{
+    "schemaVersion": 2,
+    "lot": "capabilities-bus",
+    "scope": [
+        "packages/core/src/kernel/api/unavailable-capabilities.ts",
+        "packages/core/src/api/geoleaf.capabilities.ts"
+    ],
+    "verdicts": {
+        "packages/core/src/kernel/api/unavailable-capabilities.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Le bus des capacités indisponibles — `declareUnavailable` / `onUnavailable`, avec rattrapage des faits déjà déclarés",
+            "confidence": "haute",
+            "rationale": "Voisin direct de `capability-registry.ts`, qui est son premier appelant : le registre déclare l'absence à l'endroit où il la constate. Il est ici et non dans `capabilities/` parce qu'il ne dépend d'aucune capacité et que toutes peuvent l'atteindre — la règle R.8 interdit l'inverse. Son existence répond à un besoin établi HORS de ce dépôt : le manifeste de consommation aval demande les deux membres nommément. La forme est un BUS et non un détecteur, et le motif est mesuré : les plugins versent dans le même registre et se chargent paresseusement, donc « X est-elle absente ? » n'a de réponse à aucun instant, et une confrontation au boot serait née VERTE (5 clés `modules.*` sur 5 connues dans `profiles/`) tout en étant fausse par construction. Le rattrapage sur abonnement et l'idempotence par id sont du CONTRAT, pas du confort : sans le premier, la déclaration au boot serait émise avant que quiconque puisse l'entendre — le problème d'ordonnancement que cette forme existe pour résoudre, réintroduit d'un cran plus bas. VU ROUGE SUR CINQ MUTATIONS (garde `CU-01…04`), restaurations vérifiées au sha256."
+        },
+        "packages/core/src/api/geoleaf.capabilities.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Façade publique `GeoLeaf.Capabilities` — ré-export mince du bus, patron A",
+            "confidence": "haute",
+            "rationale": "Trentième fichier de `api/geoleaf.*.ts`, au même patron que les vingt-neuf autres : un `export { … } from` et rien d'autre, ce que `check-facade-purity.cjs` vérifie sans allowlist. Sa séparation d'avec l'implémentation n'est pas décorative ici — le kernel porte l'état (faits déclarés, abonnés) et la façade porte le nom public, si bien que le namespace peut être monté sans que `globals.api.ts` connaisse la mécanique. ⚠️ C'est une API publique NEUVE sur un `3.0.0` déjà publié : l'interdit I4 empêche de la retirer ou de la déprécier, donc sa forme à deux membres est gelée dès la première publication. Elle n'a pas été devinée — elle a été tranchée par l'aval lui-même, qui est le demandeur."
+        }
+    }
+}

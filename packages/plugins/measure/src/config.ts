@@ -65,21 +65,34 @@ function _normalizeMenuPosition(raw: unknown): MeasureConfig["menuPosition"] {
 
 /** Returns the merged measureConfig (profile values over defaults). */
 export function getMeasureConfig(): MeasureConfig {
-    // Plugin settings now live under `modules.measure.*` (INV-CONFIG). The core S0
-    // mirror keeps the legacy root key `measureConfig.*` in sync during the
-    // deprecation window, so both shapes resolve here.
-    const raw = (coreConfigGet<Partial<MeasureConfig>>("modules.measure", {}) ??
-        {}) as Partial<MeasureConfig>;
+    // Plugin settings live under `modules.measure.*` (INV-CONFIG) — and ONLY there.
+    //
+    // ⚠️ This comment claimed a "core S0 mirror keeps the legacy root key
+    // `measureConfig.*` in sync during the deprecation window, so both shapes resolve
+    // here". None of that is true any more, and it had not been for a while: the core
+    // CHANGELOG lists `measureConfig` at the profile root among the root-level plugin
+    // keys REMOVED as a breaking change, `grep measureConfig` over every `src/` and
+    // every profile returns zero, and the line below reads a single path. The README of
+    // this very package already said the truth ("the legacy root key `measureConfig` is
+    // no longer read") — source and README had drifted apart, and only the README was
+    // right.
+    const raw = coreConfigGet<Partial<MeasureConfig>>("modules.measure", {}) ?? {};
 
-    // Alias: showButton ↔ ui.showMeasure. `ui` stays a CORE-level key (also read by
-    // the toolbar registry via profileKey "ui.showMeasure") — not migrated to modules.
+    // Alias: `modules.measure.showButton` falls back to the core-level `ui.showMeasure`.
+    //
+    // ⚠️ This comment read "— not migrated to modules". It IS migrated: the toolbar slot
+    // declares `profileKey: "modules.measure.showButton"` and keeps `ui.showMeasure` as
+    // its `legacyProfileKey`, i.e. as a fallback that only speaks when the canonical key
+    // is silent (`ui-slot-builder.ts`, `_configuredVisibility`). The read below mirrors
+    // that precedence deliberately — canonical first — so a profile migrated to the
+    // canonical key is never governed by the legacy value.
     const ui = coreConfigGet<{ showMeasure?: boolean }>("ui", {});
     const showButton = raw.showButton ?? ui?.showMeasure ?? MEASURE_CONFIG_DEFAULTS.showButton;
 
     // Validate and filter enabledTools
     const enabledToolsRaw = raw.enabledTools;
     const enabledTools = Array.isArray(enabledToolsRaw)
-        ? (enabledToolsRaw.filter((t) => ALL_TOOLS.includes(t as MeasureType)) as MeasureType[])
+        ? enabledToolsRaw.filter((t) => ALL_TOOLS.includes(t))
         : MEASURE_CONFIG_DEFAULTS.enabledTools;
 
     // Clamp numeric bounds
@@ -124,5 +137,5 @@ export function getMeasureConfig(): MeasureConfig {
         gpsMaxJumpMps,
         defaultDistanceUnit,
         defaultAreaUnit,
-    } as MeasureConfig;
+    };
 }

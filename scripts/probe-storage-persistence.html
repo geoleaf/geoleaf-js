@@ -7,7 +7,7 @@
         <title>GeoLeaf — sonde de persistance du stockage</title>
 
         <!--
-      Standalone probe for B-113 (backlog_technique.md) — storage persistence on a REAL device.
+      Standalone probe — storage persistence on a REAL device.
 
       WHY THIS FILE EXISTS. `navigator.storage.persisted()` was measured twice on the same origin
       the same day with OPPOSITE results: refused in headless Chromium (~800 MB quota), granted in
@@ -17,15 +17,16 @@
       inactivity for a site that is not on the Home Screen.
 
       The 7-day purge cannot be observed in one sitting. What CAN be observed, and what actually
-      decides the design of the v4 IndexedDB schema (task 3.4 of roadmap_collecte-terrain-offline),
-      is whether "Add to Home Screen" flips `persisted()` to true on the target iOS version.
+      decides the design of the offline collection store, is whether "Add to Home Screen" flips `persisted()` to true on the target iOS version.
 
       HOW TO USE IT. Serve this single file over HTTPS from an origin the phone can reach — the
       Storage API requires a secure context, so `file://` and plain http over LAN will not do, and
       the dev vhosts point at 127.0.0.1. Then read it TWICE on the same origin:
         1. plain Safari tab;
         2. after "Add to Home Screen", opened from the Home Screen icon.
-      Report both blocks into B-113, in the same shape as the Chrome reading of f4d3e282.
+      Keep both rendered blocks VERBATIM — they are the reading. The probe prints the userAgent
+      and platform itself, so the device and OS version travel with the report; nothing else
+      needs to be noted by hand.
 
       NOT WIRED TO ANY GATE, and deliberately so: it measures the browser's relationship with an
       origin, which no CI runner can stand in for. Zero dependency, zero network access, safe to
@@ -108,8 +109,7 @@
     <body>
         <h1>Sonde de persistance du stockage</h1>
         <p class="sub">
-            B-113 — relever sur appareil réel, deux fois : onglet simple, puis depuis l'écran
-            d'accueil.
+            Relever sur appareil réel, deux fois : onglet simple, puis depuis l'écran d'accueil.
         </p>
 
         <div id="verdict" class="verdict unk">…</div>
@@ -117,7 +117,8 @@
         <pre id="out">Mesure en cours…</pre>
 
         <footer>
-            Le bloc ci-dessus est sélectionnable d'un appui long — le recopier tel quel dans B-113.
+            Le bloc ci-dessus est sélectionnable d'un appui long — le recopier tel quel dans le
+            rapport.
         </footer>
 
         <script>

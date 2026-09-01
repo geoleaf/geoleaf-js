@@ -9,15 +9,15 @@
  * Branding capability — shared overlay defaults.
  *
  * Before this module the overlay position lived as a bare `"bottomleft"` literal in THREE
- * places that nothing held together: the introspection schema (`branding-capability.ts:48`)
- * advertised it, the config reader (`config.ts:47`) did NOT materialise it, and the value
- * actually applied came from a third copy in the control itself (`branding.ts:35`, the
+ * places that nothing held together: the introspection schema (`branding-capability.ts`)
+ * advertised it, the config reader (`config.ts`) did NOT materialise it, and the value
+ * actually applied came from a third copy in the control itself (`branding.ts`, the
  * `_options` seed). A profile author reading `getCapabilitySchema('branding')` was told a
  * default that no accessor rendered, and editing either literal left the other two lying.
  *
  * Centralising here — imported by the declaration (advertised value), the reader (applied
- * value) and the control (its `_options` seed) — makes the three the same *by construction*
- * (roadmap_optimisation-capacites B.24). Mirrors the `cluster/constants.ts` pattern.
+ * value) and the control (its `_options` seed) — makes the three the same *by construction*.
+ * Mirrors the `cluster/constants.ts` pattern.
  */
 
 // Type-only (erased at compile): no runtime edge back to the reader that imports us.

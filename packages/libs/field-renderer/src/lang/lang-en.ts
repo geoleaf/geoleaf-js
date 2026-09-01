@@ -1,16 +1,17 @@
 /*!
- * @geoleaf/field-renderer — libellés intégrés (en)
+ * @geoleaf/field-renderer — built-in labels (en)
  * © 2026 Mattieu Pottier
  * Released under the MIT License
  * https://geoleaf.dev
  */
 
 /**
- * Les libellés `form.*` de la bibliothèque, en en.
+ * The library's `form.*` labels, in en.
  *
- * ⚠️ **Dérivés des catalogues d'`editor`, pas réécrits** — ces traductions étaient déjà en
- * production et à parité sur les six locales. Les récrire aurait introduit des variantes
- * silencieuses là où la tâche vise l'inverse.
+ * ⚠️ **Derived from `editor`'s catalogues, not rewritten** — these
+ * translations were already in production and at parity across the six
+ * locales. Rewriting them would have introduced silent variants where the
+ * work aims for the opposite.
  */
 const lang_en: Record<string, string> = {
     "form.aria.badgeColor": "Badge color",

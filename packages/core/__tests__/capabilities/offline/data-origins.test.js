@@ -1,8 +1,8 @@
 /**
- * Origines de données DÉCLARÉES (tâche 3.9).
+ * DECLARED data origins.
  *
- * Ce qui est éprouvé : la normalisation refuse plutôt qu'elle ne devine, l'appariement compare
- * des ORIGINES et non des chaînes, et une origine authentifiée ne devient jamais cachable.
+ * What is exercised: normalisation refuses rather than guesses, matching
+ * compares ORIGINS and not strings, and an authenticated origin never becomes cacheable.
  */
 
 import {
@@ -14,8 +14,8 @@ import swSource from "../../../src/kernel/storage/sw-core.js?raw";
 
 describe("parseDataOrigins — refuser plutôt que deviner", () => {
     test("normalise l'origine au lieu d'accepter la chaîne écrite", () => {
-        // Accepter `"https://api.example.com/v1"` tel quel réintroduirait la comparaison de
-        // chaînes que cette tâche retire.
+        // Accepting `"https://api.example.com/v1"` as-is would reintroduce
+        // the string comparison this work removes.
         const [d] = parseDataOrigins([
             { origin: "https://api.example.com/v1?x=1", roles: ["api"], cacheable: false },
         ]);
@@ -29,8 +29,8 @@ describe("parseDataOrigins — refuser plutôt que deviner", () => {
     });
 
     test("`cacheable` absent est un REFUS — aucun défaut n'est sûr", () => {
-        // `true` par défaut cacherait une API authentifiée le jour où quelqu'un oublie le
-        // champ ; `false` casserait un fond de carte hors-ligne. Absence = refus.
+        // A `true` default would cache an authenticated API the day someone
+        // forgets the field; `false` would break an offline basemap. Absence = refusal.
         expect(parseDataOrigins([{ origin: "https://a.test", roles: ["tiles"] }])).toEqual([]);
     });
 
@@ -47,9 +47,10 @@ describe("parseDataOrigins — refuser plutôt que deviner", () => {
 });
 
 describe("appariement d'origine — strict, jamais sous-chaîne", () => {
-    // ⚠️ Éprouvé À TRAVERS `publishDataOrigins`, qui s'en sert pour refuser un doublon.
-    // `matchDataOrigin` n'est pas exporté : il n'a qu'un consommateur, et exporter pour un
-    // appelant du Sprint 4 qui n'existe pas serait la posture que ce sprint reproche ailleurs.
+    // ⚠️ Exercised THROUGH `publishDataOrigins`, which uses it to refuse a
+    // duplicate. `matchDataOrigin` is not exported: it has one consumer, and
+    // exporting for a caller that does not exist yet would be the posture
+    // reproached elsewhere.
     const publish = async (raw) => {
         const written = [];
         await publishDataOrigins(
@@ -69,8 +70,8 @@ describe("appariement d'origine — strict, jamais sous-chaîne", () => {
     });
 
     test("un hôte SUFFIXE n'est PAS un doublon — c'est une autre origine", async () => {
-        // Le défaut que 3.7 avait durci et que 3.9 rend impossible : `includes`/`startsWith`
-        // auraient confondu ces deux hôtes.
+        // The defect earlier hardened and now made impossible:
+        // `includes`/`startsWith` would have confused these two hosts.
         const out = await publish([
             { origin: "https://a.test", roles: ["tiles"], cacheable: true },
             { origin: "https://a.test.attaquant.tld", roles: ["tiles"], cacheable: true },
@@ -87,8 +88,9 @@ describe("appariement d'origine — strict, jamais sous-chaîne", () => {
     });
 
     test("une origine AUTHENTIFIÉE est publiée non cachable, quoi qu'ait dit le profil", async () => {
-        // Une réponse créditée dans un cache partagé est servie au lecteur suivant. Aucune
-        // déclaration ne rend cela acceptable, donc les deux champs sont réconciliés ICI.
+        // A credentialed response in a shared cache is served to the next
+        // reader. No declaration makes that acceptable, so the two fields are
+        // reconciled HERE.
         const out = await publish([
             { origin: "https://api.test", roles: ["api"], cacheable: true, authenticated: true },
         ]);
@@ -96,7 +98,7 @@ describe("appariement d'origine — strict, jamais sous-chaîne", () => {
     });
 
     test("une panne d'écriture est journalisée, jamais propagée", async () => {
-        // Un profil doit continuer à charger quand la persistance est indisponible.
+        // A profile must keep loading when persistence is unavailable.
         await expect(
             publishDataOrigins(
                 {
@@ -112,9 +114,9 @@ describe("appariement d'origine — strict, jamais sous-chaîne", () => {
 
 describe("3.9 — le littéral PARTAGÉ entre le core et le worker", () => {
     test("`sw-core.js` code la MÊME clé que `data-origins.ts`", () => {
-        // 🛑 Le worker ne peut pas importer — il est copié tel quel, sans bundler. Le littéral
-        // est donc écrit deux fois, et c'est exactement la forme de défaut qui a laissé la
-        // version de base diverger pendant des mois. Cette garde est ce qui l'empêche.
+        // 🛑 The worker cannot import — it is copied as-is, unbundled. The
+        // literal is thus written twice, and that is exactly the defect shape
+        // that let the base version diverge for months. This guard is what prevents it.
         const inWorker = swSource.match(/const DATA_ORIGINS_KEY = "([^"]+)"/);
         expect(inWorker, "le worker doit déclarer la clé").not.toBeNull();
         expect(inWorker[1]).toBe(DATA_ORIGINS_KEY);
@@ -126,17 +128,17 @@ describe("3.9 — le littéral PARTAGÉ entre le core et le worker", () => {
             swSource.indexOf("function fetchBounded")
         );
         expect(declarative).toMatch(/new URL\(url\)\.origin/);
-        // ⚠️ Interdire `includes(` tout court serait FAUX : `roles.includes(role)` est un
-        // `includes` de TABLEAU, parfaitement légitime. Ce qui est proscrit, c'est la
-        // comparaison de CHAÎNES sur une partie d'URL — c'est elle, et elle seule, que
-        // `hostname.includes("tile")` illustrait.
+        // ⚠️ Banning `includes(` outright would be WRONG: `roles.includes(role)`
+        // is an ARRAY `includes`, perfectly legitimate. What is proscribed is
+        // STRING comparison on a URL fragment — it, and it alone, is what
+        // `hostname.includes("tile")` illustrated.
         expect(declarative).not.toMatch(/(hostname|href|pathname|origin)\s*\.\s*includes\(/);
         expect(declarative).not.toMatch(/(hostname|href|pathname|origin)\s*\.\s*startsWith\(/);
     });
 
     test("la blacklist ne porte plus `/api/`", () => {
-        // T4 : une exclusion en aveugle qui sautait le chemin le plus courant d'une API de
-        // données — c'est-à-dire exactement le trafic dont dépend un déploiement de terrain.
+        // A blind exclusion skipping a data API's most common path — i.e.
+        // exactly the traffic a field deployment depends on.
         const bl = swSource.match(/const CACHE_BLACKLIST = \[([^\]]*)\]/);
         expect(bl).not.toBeNull();
         expect(bl[1]).not.toMatch(/api/);

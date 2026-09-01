@@ -108,7 +108,7 @@ export function updateProgress(self: CacheControlState, progress: CacheProgressD
         // Max 24h
     }
 
-    self._progressText!.textContent = text;
+    self._progressText.textContent = text;
 }
 
 /** Updates clear progress. */
@@ -132,7 +132,7 @@ export function updateClearProgress(self: CacheControlState, progress: CacheProg
 // ─── Action handlers (delegation) ───────────────────────────────────
 
 // Download / clear / sync commands are wired directly to DownloadHandler /
-// SyncManager by the assembler (cache-control.ts) since S6.6 — kept out of here
+// SyncManager by the assembler (cache-control.ts) — kept out of here
 // so this module stays a pure status/progress view. Restore is owned by SyncManager.
 
 /** Handles download stop. */
@@ -181,7 +181,7 @@ export function handleCancelled(self: CacheControlState): void {
 }
 
 // Select-all handling lives in the layer-selector itself (row-rendering →
-// selection-cache); the control no longer proxies it (dead path removed S6.6).
+// selection-cache); the control no longer proxies it (dead path removed).
 
 /** Populates the layer selection section. Delegates to LayerSelectorCore. */
 export async function populateLayerSelection(): Promise<void> {

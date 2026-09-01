@@ -20,9 +20,10 @@ export type { LayerLike, ProfileWithLayers } from "./profile-layers.js";
 
 export { resolveProfileLayers } from "./profile-layers.js";
 
-// B-161 — élargissement EXPLICITE du baril, qui est le geste que la règle R.8 désigne.
-// `layerGeometry` résout l'alias `geometry`/`geometryType` (ANO-007), et trois capacités en
-// ont besoin : `legend` et les deux `vector-tiles`, qui le refaisaient chacune à la main.
-// ⚠️ L'import profond a été TENTÉ d'abord et ESLint l'a refusé, à raison — c'est en le voyant
-// rouge que le passage par ce baril a été posé, pas par anticipation.
+// EXPLICIT barrel widening, the gesture the boundary rule designates.
+// `layerGeometry` resolves the `geometry`/`geometryType` alias, and three
+// capabilities need it: `legend` and the two `vector-tiles`, which each redid it by
+// hand.
+// ⚠️ The deep import was TRIED first and ESLint refused it, rightly — the barrel
+// route was added after seeing it red, not by anticipation.
 export { layerGeometry } from "./layer-geometry.js";

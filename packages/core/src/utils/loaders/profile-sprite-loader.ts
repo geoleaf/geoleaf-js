@@ -14,8 +14,8 @@
  * capabilities read the same DOM sprite to render icon swatches.
  *
  * This module is **engine-agnostic** — pure DOM + `fetch`, no MapLibre dependency.
- * It lived under `adapters/maplibre/maplibre-sprite-loader.ts` (Sprint 1) but was
- * relocated here (socle B.1) so the legend and taxonomy capabilities depend on a
+ * It lived under `adapters/maplibre/maplibre-sprite-loader.ts` but was
+ * relocated here so the legend and taxonomy capabilities depend on a
  * neutral loader and never import from `adapters/maplibre/` — the capability↔engine
  * boundary is now ESLint-guarded (`no-restricted-imports`, block "6ter ter").
  *

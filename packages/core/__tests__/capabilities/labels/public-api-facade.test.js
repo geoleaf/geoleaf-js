@@ -1,13 +1,14 @@
 /**
- * Unit tests — `capabilities/labels/public-api.ts` (façade à 33 %).
+ * Unit tests — `capabilities/labels/public-api.ts` (facade at 33%).
  *
- * `buildPublicApi()` augmente le singleton `Labels` de deux aides de lecture
- * (`isEnabled` / `getConfig`) et le rend tel quel. On mocke `Labels` et `getLabelsConfig`.
+ * `buildPublicApi()` augments the `Labels` singleton with two read helpers
+ * (`isEnabled` / `getConfig`) and returns it as-is. `Labels` and
+ * `getLabelsConfig` are mocked.
  */
 import { vi, test, expect, beforeEach } from "vitest";
 
-// vi.hoisted : la factory de vi.mock est hissée en tête ; les variables qu'elle
-// référence doivent l'être aussi, sinon « Cannot access before initialization ».
+// vi.hoisted: vi.mock's factory is hoisted to the top; the variables it
+// references must be too, otherwise "Cannot access before initialization".
 const { getLabelsConfig } = vi.hoisted(() => ({ getLabelsConfig: vi.fn() }));
 
 vi.mock("../../../src/capabilities/labels/labels.js", () => ({

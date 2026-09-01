@@ -35,7 +35,7 @@ Once the plugin is loaded it mounts the `GeoLeaf.Measure` namespace and register
 button (shown when `ui.showMeasure` / `showButton` is enabled). Clicking the button opens a
 floating sub-menu containing:
 
-1. **Distance tool** — click two or more points; double-click (or `Space`) to finish. Segment lengths and total distance are shown.
+1. **Distance tool** — click two or more points; re-click the last vertex, double-click (or `Space`) to finish — the re-click is what makes a touch double-tap work. Segment lengths and total distance are shown.
 2. **Rectangle tool** — drag from one corner to the opposite one; the area and side lengths are shown.
 3. **Circle tool** — drag from the center outward to set the radius; area, radius and circumference are shown.
 4. **Polygon tool** — click successive vertices; close by snapping onto the first vertex, double-clicking, or pressing `C`. Area, side lengths and perimeter are shown.

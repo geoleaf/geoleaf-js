@@ -1,17 +1,18 @@
 /**
- * S5/P-1 — avertissement sur les points rendus sans clustering.
+ * Warning on points rendered without clustering.
  *
- * L'avertissement d'origine vivait dans le monolithe POI (`poi/core.ts`, dissous en S9) et
- * a disparu avec lui : il n'existait plus AUCUN seuil, aucun garde-fou, aucune décimation.
- * La roadmap croyait « durcir un console.warn » — il n'y avait plus rien à durcir.
+ * The original warning lived in the POI monolith (`poi/core.ts`, long
+ * dissolved) and vanished with it: NO threshold, no guardrail, no decimation
+ * existed any more. The plan believed it was "hardening a console.warn" —
+ * there was nothing left to harden.
  *
- * Il était de toute façon quasi muet : sa condition exigeait `clustering === false`, une
- * égalité STRICTE, alors que le défaut est `undefined`. Il ne parlait donc QUE pour les
- * profils qui désactivaient explicitement le clustering — jamais pour le cas par défaut,
- * précisément celui qui dégrade le navigateur en silence.
+ * It was near mute anyway: its condition required `clustering === false`, a
+ * STRICT equality, while the default is `undefined`. It thus only spoke for
+ * profiles explicitly disabling clustering — never for the default case,
+ * precisely the one that degrades the browser silently.
  *
- * Ces tests verrouillent le nouveau : il parle dès que des points s'affichent réellement
- * sans cluster, quelle qu'en soit la raison.
+ * These tests lock the new one: it speaks as soon as points really display
+ * unclustered, whatever the reason.
  */
 import {
     LoaderSingleLayer,
@@ -33,7 +34,7 @@ vi.mock("../../src/kernel/geojson/shared.js", () => ({
     GeoJSONShared: { state },
 }));
 
-/** FeatureCollection de `count` géométries du type demandé. */
+/** FeatureCollection of `count` geometries of the requested type. */
 const makeData = (count, type = "Point") => ({
     type: "FeatureCollection",
     features: Array.from({ length: count }, (_, i) => ({
@@ -109,7 +110,7 @@ describe("geojson/loader — avertissement volume non clusterisé (P-1)", () => 
 
     async function load(count, { type = "Point", shouldCluster = false } = {}) {
         setupSingleLayerDeps(makeDeps(shouldCluster));
-        // `_cachedData` + `fromCache` : le chemin qui alimente le loader sans réseau.
+        // `_cachedData` + `fromCache`: the path feeding the loader without network.
         await LoaderSingleLayer._loadSingleLayer(
             "lyr",
             "Ma couche",
@@ -124,7 +125,7 @@ describe("geojson/loader — avertissement volume non clusterisé (P-1)", () => 
         const message = volumeWarnings()[0][0];
         expect(message).toContain("Ma couche");
         expect(message).toContain("1001");
-        expect(message).toContain("clustering"); // dit quoi faire, pas seulement que ça va mal
+        expect(message).toContain("clustering"); // says what to do, not only that things are bad
     });
 
     it("reste muet pile au seuil", async () => {

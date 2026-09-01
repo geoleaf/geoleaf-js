@@ -1,6 +1,6 @@
 /**
- * R4 — Tests du Service Worker core (sw-core.ts).
- * Mock de self, caches, fetch pour execute les listeners install/activate/fetch/message.
+ * Tests of the core Service Worker (sw-core.ts).
+ * Mocks self, caches, fetch to run the install/activate/fetch/message listeners.
  */
 "use strict";
 
@@ -103,11 +103,11 @@ describe("sw-core (R4)", () => {
     });
 
     describe("fetch", () => {
-        // ⚠️ RÉÉCRIT le 02/08/2026 (tâche 3.9, décision T4). Ce test s'appelait « ignores
-        // blacklisted URLs (/api/) » et VERROUILLAIT une exclusion en aveugle : `/api/` est le
-        // chemin le plus courant d'une API de données, c'est-à-dire exactement le trafic dont
-        // dépend un déploiement de terrain. Ce qui décide désormais, c'est la DÉCLARATION
-        // d'origine du profil — pas une convention d'URL.
+        // ⚠️ REWRITTEN on 02/08/2026. This test was called "ignores
+        // blacklisted URLs (/api/)" and LOCKED IN a blind exclusion: `/api/`
+        // is a data API's most common path, i.e. exactly the traffic a field
+        // deployment depends on. What decides now is the profile's origin
+        // DECLARATION — not a URL convention.
         it("une URL en /api/ n'est PLUS exclue d'office — la déclaration décide", () => {
             const respondWith = vi.fn();
             handlers.fetch({
@@ -118,8 +118,8 @@ describe("sw-core (R4)", () => {
         });
 
         it("ce qui n'est pas de l'HTTP applicatif reste ignoré", () => {
-            // La blacklist ne garde que ce qui n'est pas une ressource de l'app : un schéma
-            // d'extension, et les chemins réservés `/__`.
+            // The blacklist only keeps what is not an app resource: an
+            // extension scheme, and the reserved `/__` paths.
             for (const url of ["chrome-extension://abc/x.js", "https://example.com/__probe"]) {
                 const respondWith = vi.fn();
                 handlers.fetch({ request: { method: "GET", url }, respondWith });
@@ -161,14 +161,16 @@ describe("sw-core (R4)", () => {
             expect(respondWith).toHaveBeenCalled();
             const response = await respondWith.mock.calls[0][0];
             expect(response).toBeDefined();
-            // 🛑 504 et non 200 : un échec réseau ne doit pas se présenter comme un succès.
-            // En 200, MapLibre recevait du SVG pour une tuile VECTORIELLE et tentait de le
-            // parser en protobuf — l'erreur remontée ne parlait alors plus de réseau.
+            // 🛑 504 and not 200: a network failure must not present as a
+            // success. At 200, MapLibre received SVG for a VECTOR tile and
+            // tried to parse it as protobuf — the surfaced error then no
+            // longer spoke of network.
             expect(response.status).toBe(504);
-            // ⚠️ `Response` est NATIVE dans cet environnement (la mock en tête de fichier
-            // n'est posée que si `global.Response` est absent), donc `headers` est un vrai
-            // `Headers` : il se lit par `.get()`, pas par indexation. Les deux formes sont
-            // acceptées ici pour que le test ne dépende pas de cette bascule.
+            // ⚠️ `Response` is NATIVE in this environment (the mock at the top
+            // of the file is only set if `global.Response` is absent), so
+            // `headers` is a real `Headers`: it reads through `.get()`, not
+            // indexing. Both forms are accepted here so the test does not
+            // depend on that toggle.
             const marker =
                 response.headers.get?.("X-GeoLeaf-Placeholder") ??
                 response.headers["X-GeoLeaf-Placeholder"];
@@ -244,11 +246,11 @@ describe("sw-core (R4)", () => {
             expect(mockSkipWaiting).not.toHaveBeenCalled();
         });
 
-        // ── Tâche 3.13 — le contrôle d'ORIGINE, en plus du type de source ───────────────
+        // ── the ORIGIN check, on top of the source type ─────────────────────────────────
         it("refuse un message d'une AUTRE origine, même de type window", () => {
-            // Le contrôle qui existait ne testait que le TYPE de la source. L'effet de
-            // `CLEAR_CACHE` est destructeur, et « borné par construction » est un
-            // raisonnement sur le navigateur, pas une vérification faite ici.
+            // The existing check only tested the source's TYPE.
+            // `CLEAR_CACHE`'s effect is destructive, and "bounded by
+            // construction" is reasoning about the browser, not a check made here.
             mockSkipWaiting.mockClear();
             handlers.message({
                 source: { type: "window" },
@@ -259,10 +261,10 @@ describe("sw-core (R4)", () => {
         });
 
         it("accepte un message dont l'origine est VIDE — sinon la garde bloque tout", () => {
-            // 🛑 LE PIÈGE DE LA GARDE. `event.origin` est vide pour un message de client
-            // same-origin dans plusieurs navigateurs. Traiter la chaîne vide comme une
-            // origine étrangère aurait rendu le worker sourd à sa propre page : une garde qui
-            // refuse tout ne garde pas mieux, elle casse.
+            // 🛑 THE GUARD'S TRAP. `event.origin` is empty for a same-origin
+            // client message in several browsers. Treating the empty string
+            // as a foreign origin would have made the worker deaf to its own
+            // page: a guard refusing everything does not guard better, it breaks.
             mockSkipWaiting.mockClear();
             handlers.message({
                 source: { type: "window" },
@@ -356,29 +358,32 @@ describe("sw-core (R4)", () => {
             });
         });
 
-        // ── isTileRequest — la règle 0, jamais testée jusqu'ici (backlog R.3) ──────
+        // ── isTileRequest — rule 0, never tested until now ─────────────────────────
         //
-        // Ces trois cas viennent du tri de R.3. `__tests__/storage/sw-tile-detection.test.js`
-        // (144 l.) prétendait couvrir `isTileRequest` ; il en **recopiait** une version dans
-        // le fichier de test — « Replicate isTileRequest() logic from sw.js / sw-core.js » —
-        // et vérifiait la copie. Elle avait DIVERGÉ : la règle 0 (`data.geopf.fr`, toute
-        // ressource de l'IGN Géoplateforme routée vers la stratégie tuile) n'y figurait pas.
-        // Un réplica ne peut pas rougir quand l'original change ; c'est précisément ce qui
-        // s'était produit, sans bruit. Le fichier est supprimé, ses scénarios rejoués ici
-        // contre le vrai `sw-core.js`.
+        // These three cases come from a triage.
+        // `__tests__/storage/sw-tile-detection.test.js` (144 l.) claimed to
+        // cover `isTileRequest`; it **copied** a version of it into the test
+        // file — "Replicate isTileRequest() logic from sw.js / sw-core.js" —
+        // and verified the copy. It had DIVERGED: rule 0 (`data.geopf.fr`,
+        // every IGN Géoplateforme resource routed to the tile strategy) was
+        // not in it. A replica cannot turn red when the original changes;
+        // precisely what had happened, noiselessly. The file is deleted, its
+        // scenarios replayed here against the real `sw-core.js`.
         //
-        // Discriminant : `tileSimpleStrategy` rend un **placeholder 200** quand le réseau
-        // échoue, là où `networkFirstStrategy` **relance** l'erreur sans entrée en cache.
-        // C'est ce qui distingue « routé en tuile » de « routé ailleurs » depuis l'extérieur.
+        // Discriminant: `tileSimpleStrategy` returns a **200 placeholder**
+        // when the network fails, where `networkFirstStrategy` **rethrows**
+        // the error with no cache entry. What tells "routed as tile" from
+        // "routed elsewhere" from the outside.
         //
-        // ⚠️ **Sensibilité mesurée par mutation, pas supposée.** Règle 0 neutralisée
-        // (`if (false && hostname.includes("data.geopf.fr"))`), les trois cas ci-dessous
-        // ne rougissent PAS pareil :
-        //   · le `.json`  → ROUGE   — c'est lui, et lui seul, qui prouve la règle 0 ;
-        //   · le `.pbf`   → vert    — la règle 3 (`_isTileFile`) l'attrape de toute façon ;
-        //   · la contre-épreuve → verte, elle n'est pas censée dépendre de la règle 0.
-        // Le `.pbf` est donc gardé pour ce qu'il vaut (le chemin geopf est bien tuile),
-        // pas comme preuve de la règle. Écrit ici pour qu'on ne le prenne pas pour telle.
+        // ⚠️ **Sensitivity measured by mutation, not assumed.** Rule 0
+        // neutralised (`if (false && hostname.includes("data.geopf.fr"))`),
+        // the three cases below do NOT turn red alike:
+        //   · the `.json`  → RED    — it, and it alone, proves rule 0;
+        //   · the `.pbf`   → green  — rule 3 (`_isTileFile`) catches it anyway;
+        //   · the counter-proof → green, it is not supposed to depend on rule 0.
+        // The `.pbf` is thus kept for what it is worth (the geopf path is
+        // indeed tile), not as proof of the rule. Written here so it is not
+        // taken for such.
         describe("isTileRequest — règle 0 (IGN Géoplateforme)", () => {
             it("route un .pbf vectoriel de data.geopf.fr vers la stratégie tuile", async () => {
                 mockFetch.mockRejectedValue(new Error("offline"));
@@ -391,9 +396,10 @@ describe("sw-core (R4)", () => {
                     respondWith,
                 });
                 const response = await respondWith.mock.calls[0][0];
-                // 504 depuis le bug n° 6 : ces deux tests éprouvent le ROUTAGE vers la
-                // stratégie tuile, et la preuve du routage est justement le placeholder —
-                // qu'aucune autre stratégie ne produit. Le statut a changé, pas le sujet.
+                // 504 since bug no. 6: these two tests exercise the ROUTING
+                // to the tile strategy, and the routing's proof is precisely
+                // the placeholder — which no other strategy produces. The
+                // status changed, not the subject.
                 expect(response.status).toBe(504);
             });
 
@@ -407,12 +413,13 @@ describe("sw-core (R4)", () => {
                     },
                     respondWith,
                 });
-                // Sans la règle 0, un `.json` partirait en networkFirst et cette promesse
-                // serait rejetée faute de cache. Le placeholder prouve le pré-emption.
+                // Without rule 0, a `.json` would go networkFirst and this
+                // promise would reject for want of cache. The placeholder proves the pre-emption.
                 const response = await respondWith.mock.calls[0][0];
-                // 504 depuis le bug n° 6 : ces deux tests éprouvent le ROUTAGE vers la
-                // stratégie tuile, et la preuve du routage est justement le placeholder —
-                // qu'aucune autre stratégie ne produit. Le statut a changé, pas le sujet.
+                // 504 since bug no. 6: these two tests exercise the ROUTING
+                // to the tile strategy, and the routing's proof is precisely
+                // the placeholder — which no other strategy produces. The
+                // status changed, not the subject.
                 expect(response.status).toBe(504);
             });
 
@@ -426,16 +433,17 @@ describe("sw-core (R4)", () => {
                     },
                     respondWith,
                 });
-                // Contre-épreuve de la précédente : hors data.geopf.fr, un .json de style
-                // reste en networkFirst — donc rejet quand le réseau tombe et que rien
-                // n'est en cache. C'est ce contraste qui donne son sens à la règle 0.
+                // Counter-proof of the previous: outside data.geopf.fr, a
+                // style .json stays networkFirst — hence rejection when the
+                // network falls and nothing is cached. That contrast is what
+                // gives rule 0 its meaning.
                 await expect(respondWith.mock.calls[0][0]).rejects.toThrow("offline");
             });
         });
     });
 
     // ═══════════════════════════════════════════════════════════════════════════════════
-    // Tâche 3.1 (T2′) — le SW ne RETIENT aucune connexion (défaut A)
+    // The SW RETAINS no connection
     // ═══════════════════════════════════════════════════════════════════════════════════
     describe("3.1 — ouverture versionless, et handle rendu", () => {
         let originalIndexedDB;
@@ -492,11 +500,11 @@ describe("sw-core (R4)", () => {
             await respondWith.mock.calls[0][0];
 
             expect(openCalls).toHaveLength(1);
-            // LE point de 3.1 : un seul argument. Un numéro JUSTE passerait tous les tests
-            // fonctionnels et se désynchroniserait au bump suivant — d'où la garde de source.
+            // THE point: a single argument. A CORRECT number would pass every
+            // functional test and desynchronise at the next bump — hence the source guard.
             expect(openCalls[0]).toEqual(["geoleaf-db"]);
-            // LE point de l'hygiène : la connexion est rendue. Une connexion retenue par
-            // requête de tuile bloquerait toute montée de schéma ultérieure.
+            // THE hygiene point: the connection is returned. A connection
+            // retained per tile request would block any later schema upgrade.
             expect(closeSpy).toHaveBeenCalled();
         });
 
@@ -511,9 +519,9 @@ describe("sw-core (R4)", () => {
             });
             await respondWith.mock.calls[0][0];
 
-            // La détection de CAPACITÉ remplace le contrôle de version : ce dont le worker a
-            // besoin est le store, pas un numéro — et cette question reste vraie en v3, en v4
-            // et après, ce qu'un numéro ne fait jamais.
+            // CAPABILITY detection replaces the version check: what the
+            // worker needs is the store, not a number — and that question
+            // stays true at v3, v4 and beyond, which a number never does.
             expect(openCalls[0]).toEqual(["geoleaf-db"]);
             expect(closeSpy).toHaveBeenCalled();
         });
@@ -525,9 +533,9 @@ describe("sw-core (R4)", () => {
             mockCaches.keys.mockResolvedValue([
                 "geoleaf-v1.0.0-static",
                 "geoleaf-v1.0.0-profile-tourism",
-                "geoleaf-v1.0.0-tiles", // ancien nom VERSIONNÉ : purgeable, c'est voulu
+                "geoleaf-v1.0.0-tiles", // old VERSIONED name: purgeable, intended
                 "geoleaf-data-tiles", // DURABLE : doit survivre
-                `${version}-static`, // la version courante : on ne se rase pas soi-même
+                `${version}-static`, // the current version: we do not raze ourselves
                 "autre-appli-cache", // pas à nous
             ]);
             mockCaches.delete.mockClear();
@@ -540,22 +548,23 @@ describe("sw-core (R4)", () => {
             expect(deleted).toContain("geoleaf-v1.0.0-static");
             expect(deleted).toContain("geoleaf-v1.0.0-profile-tourism");
             expect(deleted).toContain("geoleaf-v1.0.0-tiles");
-            // 🛑 Les trois assertions qui portent la tâche.
+            // 🛑 The three assertions carrying the work.
             expect(deleted).not.toContain("geoleaf-data-tiles");
             expect(deleted).not.toContain(`${version}-static`);
             expect(deleted).not.toContain("autre-appli-cache");
         });
 
         it("`CLEAR_CACHE` atteint AUSSI le durable — sinon le bouton mentirait", async () => {
-            // Asymétrie délibérée : `activate` nettoie après le build et n'a pas mandat sur ce
-            // que l'utilisateur a téléchargé ; `CLEAR_CACHE` EST cet utilisateur qui demande.
+            // Deliberate asymmetry: `activate` cleans up after the build and
+            // has no mandate over what the user downloaded; `CLEAR_CACHE` IS
+            // that user asking.
             mockCaches.keys.mockResolvedValue(["geoleaf-data-tiles", "geoleaf-v9-static", "tiers"]);
             mockCaches.delete.mockClear();
 
             const event = {
-                // `source: { type: "window" }` et non `{}` : le handler valide la source, et
-                // un message sans source valide est IGNORÉ — le test serait vert sur un
-                // handler qui n'a rien fait.
+                // `source: { type: "window" }` and not `{}`: the handler
+                // validates the source, and a message without a valid source
+                // is IGNORED — the test would be green on a handler that did nothing.
                 source: { type: "window" },
                 data: { type: "CLEAR_CACHE" },
                 ports: [{ postMessage: vi.fn() }],
@@ -572,21 +581,23 @@ describe("sw-core (R4)", () => {
     });
 
     // ═══════════════════════════════════════════════════════════════════════════════════
-    // Tâche 3.7 — durcissement : méthode, origine, frontières de nom d'hôte
+    // Hardening: method, origin, hostname boundaries
     // ═══════════════════════════════════════════════════════════════════════════════════
     describe("3.7 — durcissement du Service Worker", () => {
         it("une écriture (POST/PUT/DELETE) n'est PAS interceptée", () => {
-            // Le worker ne testait jamais la méthode : chaque écriture tombait dans la
-            // stratégie réseau-d'abord, qui tente un `cache.put` que la Cache API REJETTE —
-            // rejet avalé par un `.catch(() => {})` vide. Ne pas appeler `respondWith` laisse
-            // le navigateur traiter la requête normalement, ce qui est le comportement voulu.
+            // The worker never tested the method: every write fell into the
+            // network-first strategy, which attempts a `cache.put` the Cache
+            // API REJECTS — a rejection swallowed by an empty
+            // `.catch(() => {})`. Not calling `respondWith` lets the browser
+            // handle the request normally, the intended behaviour.
             for (const method of ["POST", "PUT", "DELETE", "PATCH"]) {
                 const respondWith = vi.fn();
                 handlers.fetch({
-                    // ⚠️ PAS d'URL en `/api/` ici. La blacklist `CACHE_BLACKLIST` fait déjà
-                    // sortir le handler sur ces chemins : ce test aurait été VERT sans le
-                    // filtre de méthode, c'est-à-dire vide. Vu par mutation le 02/08/2026 —
-                    // exactement le piège que ce fichier existe pour interdire.
+                    // ⚠️ NO `/api/` URL here. The `CACHE_BLACKLIST` already
+                    // bails the handler on those paths: this test would have
+                    // been GREEN without the method filter, i.e. empty. Seen
+                    // by mutation on 02/08/2026 — exactly the trap this file
+                    // exists to forbid.
                     request: {
                         method,
                         url: "https://example.com/collections/pois/items",
@@ -599,7 +610,7 @@ describe("sw-core (R4)", () => {
         });
 
         it("un GET reste intercepté — la garde ne coupe pas tout", () => {
-            // Témoin : sans lui, un filtre trop large sortirait vert en n'interceptant RIEN.
+            // Witness: without it, a too-wide filter would come out green intercepting NOTHING.
             const respondWith = vi.fn();
             handlers.fetch({
                 request: { method: "GET", url: "https://example.com/app.js" },
@@ -609,9 +620,9 @@ describe("sw-core (R4)", () => {
         });
 
         it("un script TIERS n'entre pas dans le cache statique", () => {
-            // `isStaticAsset` ne testait que l'extension : n'importe quel `.js` de n'importe
-            // quel hôte entrait en cache STATIQUE, puis était resservi cache-first — le cache
-            // l'emportant sur le réseau, indéfiniment, pour du code qu'on ne contrôle pas.
+            // `isStaticAsset` only tested the extension: any `.js` from any
+            // host entered the STATIC cache, then was reserved cache-first —
+            // the cache beating the network, indefinitely, for code we do not control.
             const staticSrc = swCoreSource.slice(
                 swCoreSource.indexOf("function isStaticAsset"),
                 swCoreSource.indexOf("function isConfigFile")
@@ -620,24 +631,26 @@ describe("sw-core (R4)", () => {
         });
 
         it("les fournisseurs se comparent par FRONTIÈRE de nom d'hôte, pas par sous-chaîne", () => {
-            // 🛑 `hostname.includes("tile")` matchait `mon-site-hostile.tilerie.com`, et
-            // `includes("maptiler")` matcherait `maptiler.attaquant.tld`. Le worker routait
-            // alors du trafic hostile vers sa stratégie de tuiles, donc vers son cache.
+            // 🛑 `hostname.includes("tile")` matched
+            // `mon-site-hostile.tilerie.com`, and `includes("maptiler")` would
+            // match `maptiler.attaquant.tld`. The worker then routed hostile
+            // traffic to its tile strategy, hence into its cache.
             expect(swCoreSource).toMatch(/function _isHostOf\(/);
-            // Aucune détection de fournisseur ne doit plus passer par `includes`.
+            // No provider detection may go through `includes` any more.
             const providers = swCoreSource.slice(
                 swCoreSource.indexOf("function _isHostOf"),
                 swCoreSource.indexOf("function isTileRequest")
             );
             expect(providers).not.toMatch(/hostname\.includes\(/);
-            // Et le mot « tile », qui n'était pas un domaine, a disparu des listes.
+            // And the word "tile", which was not a domain, is gone from the lists.
             expect(swCoreSource).not.toMatch(/hostname\.includes\("tile"\)/);
         });
 
         it("plus aucune immutabilité d'un an affirmée sur du contenu reconstruit", () => {
-            // Promettre `max-age=31536000` sur une réponse rebâtie depuis IndexedDB, alors que
-            // le TTL censé garantir sa fraîcheur est calculé puis JETÉ à l'écriture, faisait
-            // en plus garder au navigateur une seconde copie hors de portée du worker.
+            // Promising `max-age=31536000` on a response rebuilt from
+            // IndexedDB, while the TTL supposed to guarantee its freshness is
+            // computed then DISCARDED at write, moreover made the browser
+            // keep a second copy out of the worker's reach.
             const headerValues = [...swCoreSource.matchAll(/"Cache-Control":\s*"([^"]+)"/g)].map(
                 (m) => m[1]
             );
@@ -649,18 +662,18 @@ describe("sw-core (R4)", () => {
     });
 
     // ═══════════════════════════════════════════════════════════════════════════════════
-    // Tâche 3.11 — trancher les réponses OPAQUES, et le DIRE
+    // Settling OPAQUE responses, and SAYING so
     // ═══════════════════════════════════════════════════════════════════════════════════
     describe("3.11 — une réponse opaque n'entre pas en cache, et la contradiction se dit", () => {
         it("les quatre stratégies passent par `isCacheableResponse`, pas par `status === 200`", () => {
-            // 🛑 Une opaque porte `status: 0`. Les gardes `status === 200` l'écartaient donc
-            // silencieusement — et c'est pour ça qu'AUCUN fond raster n'est hors-ligne. La
-            // décision (ne pas cacher) est juste ; c'est le silence qui ne l'était pas.
+            // 🛑 An opaque carries `status: 0`. The `status === 200` guards
+            // thus discarded it silently — and that is why NO raster basemap
+            // is offline. The decision (not caching) is right; the silence was not.
             const strategies = swCoreSource.slice(
                 swCoreSource.indexOf("function isCacheableResponse"),
                 swCoreSource.indexOf("async function navigationStrategy")
             );
-            // Le seul `status === 200` restant est celui du helper lui-même.
+            // The only remaining `status === 200` is the helper's own.
             const guards = swCoreSource.match(/networkResponse\.status === 200/g) || [];
             expect(guards).toHaveLength(0);
             expect(strategies).toMatch(/isCacheableResponse\(/);
@@ -671,23 +684,25 @@ describe("sw-core (R4)", () => {
                 swCoreSource.indexOf("function isCacheableResponse"),
                 swCoreSource.indexOf("const _opaqueWarned")
             );
-            // Une réponse partielle ne vaut pas la ressource : la cacher servirait un
-            // fragment comme s'il était le tout.
+            // A partial response is not the resource: caching it would serve
+            // a fragment as though it were the whole.
             expect(src).toMatch(/response\.type === "opaque"/);
             expect(src).toMatch(/response\.status === 0/);
-            // ⚠️ Cette ligne cherchait le LITTÉRAL `return response.status === 200;` jusqu'à la
-            // tâche 8.3, qui a ajouté deux refus APRÈS le contrôle de statut — celui-ci est
-            // donc devenu `if (response.status !== 200) return false;`. La garde rougissait sur
-            // un refactor correct, parce qu'elle s'ancrait sur la FORME et non sur l'intention.
-            // Elle vérifie désormais que le statut décide, quelle que soit la tournure ; le
-            // COMPORTEMENT, lui, est éprouvé par `sw-core-data-origins.test.ts`, qui exécute
-            // vraiment le worker plutôt que de lire sa source.
+            // ⚠️ This line looked for the LITERAL
+            // `return response.status === 200;` until two refusals were added
+            // AFTER the status check — it thus became
+            // `if (response.status !== 200) return false;`. The guard turned
+            // red on a correct refactor, because it anchored on the FORM and
+            // not the intent. It now verifies the status decides, whatever
+            // the phrasing; the BEHAVIOUR is exercised by
+            // `sw-core-data-origins.test.ts`, which really runs the worker
+            // rather than reading its source.
             expect(src).toMatch(/response\.status (===|!==) 200/);
         });
 
         it("la contradiction « déclarée cachable mais opaque » est journalisée UNE fois", () => {
-            // Un intégrateur qui déclare `cacheable: true` et n'obtient aucun cache n'avait
-            // aucun moyen de comprendre pourquoi. Et le dire à chaque tuile noierait le signal.
+            // An integrator declaring `cacheable: true` and getting no cache
+            // had no way to understand why. And saying it at every tile would drown the signal.
             expect(swCoreSource).toMatch(/const _opaqueWarned = new Set\(\)/);
             const warn = swCoreSource.slice(
                 swCoreSource.indexOf("function _warnOpaqueOnce"),
@@ -701,18 +716,18 @@ describe("sw-core (R4)", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════════════
-// Garde de SOURCE de la tâche 3.1 — la seule qui attrape « quelqu'un remet un numéro ».
-// Aucune assertion de comportement ne la remplace : un numéro JUSTE passerait tout, puis se
-// désynchroniserait au bump suivant, ce qui EST la cause racine n° 2.
-// Le source est importé via `?raw` (résolution vite) plutôt que par un chemin de fichier :
-// `import.meta.url` n'est pas un URL `file:` sous vitest, mesuré.
+// SOURCE guard — the only one that catches "someone puts a number back". No
+// behaviour assertion replaces it: a CORRECT number would pass everything,
+// then desynchronise at the next bump, which IS root cause no. 2.
+// The source is imported via `?raw` (vite resolution) rather than a file
+// path: `import.meta.url` is not a `file:` URL under vitest, measured.
 // ═══════════════════════════════════════════════════════════════════════════════════════
 import swCoreSource from "../../src/kernel/storage/sw-core.js?raw";
 
 describe("3.1 — garde de source", () => {
     it("aucun `indexedDB.open(` de sw-core.js ne porte de second argument", () => {
         const calls = swCoreSource.match(/indexedDB\.open\([^)]*\)/g) || [];
-        expect(calls.length).toBeGreaterThan(0); // témoin : la garde ne mesure pas le vide
+        expect(calls.length).toBeGreaterThan(0); // witness: the guard does not measure emptiness
         for (const call of calls) {
             expect(call).not.toMatch(/,/);
         }
@@ -720,33 +735,37 @@ describe("3.1 — garde de source", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════════════
-// S5.7 — le pré-cache d'install ne contourne PAS le cache HTTP
+// The install pre-cache does NOT bypass the HTTP cache
 // ═══════════════════════════════════════════════════════════════════════════════════════
 
-describe("S5.7 — garde de source : l'install ne force aucun refetch", () => {
-    // 🛑 GARDE DE SOURCE, ET C'EST UN CHOIX CONTRAINT. La forme comportementale — lire les
-    // arguments d'`addAll` — NE PEUT PAS S'ARMER ici : `STATIC_ASSETS` n'est peuplé qu'au
-    // déploiement (le source porte le placeholder `__GEOLEAF_STATIC_ASSETS__`), donc la garde
-    // `STATIC_ASSETS.length > 0` est fausse sous vitest et `addAll` n'est jamais appelé.
-    // Écrite en comportement, elle serait sortie VERTE sans rien avoir mesuré.
+describe("garde de source : l'install ne force aucun refetch", () => {
+    // 🛑 SOURCE GUARD, AND THAT IS A CONSTRAINED CHOICE. The behavioural form
+    // — reading `addAll`'s arguments — CANNOT ARM here: `STATIC_ASSETS` is
+    // only populated at deployment (the source carries the
+    // `__GEOLEAF_STATIC_ASSETS__` placeholder), so the
+    // `STATIC_ASSETS.length > 0` guard is false under vitest and `addAll` is
+    // never called. Written as behaviour, it would have come out GREEN having
+    // measured nothing.
     //
-    // ⚠️ ET C'EST EXACTEMENT COMME ÇA QUE `cache: "reload"` A SURVÉCU : le mock d'`addAll`
-    // n'a jamais lu ses arguments, donc la suite était verte que l'install refetche tout ou
-    // non. Elle mesurait qu'on appelle `addAll`, jamais AVEC QUOI.
+    // ⚠️ AND THAT IS EXACTLY HOW `cache: "reload"` SURVIVED: the `addAll`
+    // mock never read its arguments, so the suite was green whether the
+    // install refetched everything or not. It measured that `addAll` is
+    // called, never WITH WHAT.
     //
-    // ⚠️ Le source est dépouillé de ses commentaires avant lecture. Sans ça, la garde
-    // rougirait sur la prose qui EXPLIQUE le correctif — le défaut mesuré au Sprint 1, où une
-    // garde punissait le fait d'avoir documenté ce qu'elle protégeait.
+    // ⚠️ The source is stripped of its comments before reading. Without that,
+    // the guard would turn red on the prose EXPLAINING the fix — a defect
+    // already paid, where a guard punished having documented what it protected.
     const code = swCoreSource.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
     it("`cache.addAll` reçoit les URL telles quelles, sans `new Request`", () => {
-        expect(code).toMatch(/cache\.addAll\(/); // témoin : la garde ne mesure pas le vide
-        // ⚠️ Découper jusqu'au `;` de fin d'instruction, PAS jusqu'à la première `)`.
-        // La première rédaction faisait `addAll\([\s\S]{0,200}?\)` — non gourmand, donc elle
-        // s'arrêtait à la parenthèse de `(url)` dans
-        // `addAll(STATIC_ASSETS.map((url) => new Request(...)))` et ne voyait JAMAIS le
-        // `new Request` qu'elle prétendait interdire. Vue verte sous la mutation qui le
-        // restaure : une garde décorative, attrapée parce qu'on l'a mutée avant de la croire.
+        expect(code).toMatch(/cache\.addAll\(/); // witness: the guard does not measure emptiness
+        // ⚠️ Cut to the statement-ending `;`, NOT to the first `)`. The first
+        // draft did `addAll\([\s\S]{0,200}?\)` — non-greedy, so it stopped at
+        // `(url)`'s parenthesis in
+        // `addAll(STATIC_ASSETS.map((url) => new Request(...)))` and NEVER
+        // saw the `new Request` it claimed to forbid. Seen green under the
+        // mutation restoring it: a decorative guard, caught because it was
+        // mutated before being believed.
         const calls = code.match(/cache\.addAll\([\s\S]*?;/g) || [];
         expect(calls.length).toBeGreaterThan(0);
         for (const call of calls) {
@@ -761,41 +780,44 @@ describe("S5.7 — garde de source : l'install ne force aucun refetch", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════════════
-// Tâche 3.13 — le chemin Background Sync est SUPPRIMÉ, et il doit le rester
+// The Background Sync path is REMOVED, and it must stay so
 // ═══════════════════════════════════════════════════════════════════════════════════════
 
 describe("3.13 — garde de source : aucun Background Sync", () => {
-    // 🛑 CE N'EST PAS UNE GARDE DE MÉNAGE. Le point 5 du contrat de synchronisation fige que
-    // le rejeu tourne SUR LA PAGE : l'authentification du connector patche le `fetch` de la
-    // page et n'atteint jamais le worker, donc un rejeu depuis le SW partirait sans jeton.
-    // Un écouteur `sync` rebranché produirait des requêtes silencieusement non authentifiées.
+    // 🛑 NOT A HOUSEKEEPING GUARD. The sync contract's point 5 pins that the
+    // replay runs ON THE PAGE: the connector's authentication patches the
+    // page's `fetch` and never reaches the worker, so a replay from the SW
+    // would leave without a token. A rewired `sync` listener would produce
+    // silently unauthenticated requests.
     it("`sw-core.js` n'écoute plus l'événement `sync`", () => {
-        // Témoin : le fichier écoute bien d'AUTRES événements — la garde ne mesure pas le vide.
+        // Witness: the file does listen to OTHER events — the guard does not measure emptiness.
         expect(swCoreSource).toMatch(/self\.addEventListener\("fetch"/);
         expect(swCoreSource).not.toMatch(/addEventListener\(\s*["']sync["']/);
     });
 
     it("le worker ne parle plus au store `sync_queue`", () => {
-        // `getSyncQueue` / `removeSyncItem` lisaient et écrivaient la file depuis le worker,
-        // avec une forme d'entrée que `SyncDB` n'écrit pas. Elles partent avec l'écouteur.
-        expect(swCoreSource).toMatch(/objectStore\(/); // témoin : il parle encore à IndexedDB
+        // `getSyncQueue` / `removeSyncItem` read and wrote the queue from the
+        // worker, with an entry shape `SyncDB` does not write. They leave with the listener.
+        expect(swCoreSource).toMatch(/objectStore\(/); // witness: it still talks to IndexedDB
         expect(swCoreSource).not.toMatch(/["']sync_queue["']/);
     });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════════════
-// Tâche 3.5 — ce qui doit SURVIVRE à un déploiement y survit, et par son NOM
+// What must SURVIVE a deployment does, and by its NAME
 // ═══════════════════════════════════════════════════════════════════════════════════════
 
 describe("3.5 — garde de source du nommage des caches", () => {
     it("`CACHE_TILES` ne porte AUCUNE version — c'est ce qui le fait survivre", () => {
-        // 🛑 La garde qui compte. `activate` ne rase pas « à chaque version » mais À CHAQUE
-        // BUILD : `build-deploy.cjs` suffixe `CACHE_VERSION` d'un `Date.now()`, et son
-        // commentaire l'assume (« purges old caches on every build »). Mesuré : trois
-        // horodatages différents pour un seul `build:deploy` sur quatre variantes.
+        // 🛑 The guard that matters. `activate` does not raze "at every
+        // version" but AT EVERY BUILD: `build-deploy.cjs` suffixes
+        // `CACHE_VERSION` with a `Date.now()`, and its comment owns it
+        // ("purges old caches on every build"). Measured: three different
+        // timestamps for one `build:deploy` across four variants.
         //
-        // Tant que le nom du cache de tuiles ne contient pas la version, il ne peut pas
-        // entrer dans le prédicat de purge. Remettre `${CACHE_VERSION}-tiles` fait rougir.
+        // As long as the tile cache's name does not contain the version, it
+        // cannot enter the purge predicate. Putting `${CACHE_VERSION}-tiles`
+        // back turns this red.
         const decl = swCoreSource.match(/const CACHE_TILES = ([^;]+);/);
         expect(decl).not.toBeNull();
         expect(decl[1]).not.toMatch(/CACHE_VERSION/);
@@ -803,7 +825,7 @@ describe("3.5 — garde de source du nommage des caches", () => {
     });
 
     it("le prédicat de purge teste `geoleaf-v`, pas `geoleaf-`", () => {
-        // Un seul caractère sépare « je purge le build » de « je rase le travail de terrain ».
+        // A single character separates "I purge the build" from "I raze the field work".
         const activate = swCoreSource.slice(
             swCoreSource.indexOf('addEventListener("activate"'),
             swCoreSource.indexOf('addEventListener("fetch"')

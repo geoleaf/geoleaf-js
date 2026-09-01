@@ -1,38 +1,40 @@
 /**
- * Guard PNC — aucun plugin ne porte un nom que le rapport de boot traite comme du core.
+ * Guard PNC — no plugin carries a name the boot report treats as core.
  *
- * ## Le défaut, et pourquoi il est silencieux
+ * ## The defect, and why it is silent
  *
- * `reportPlugins()` (`kernel/api/plugin-registry.ts`) filtre sa liste avec `_isCoreName()`,
- * une liste de noms **en dur**. Le risque n'est pas la liste — c'est la **collision** : un
- * plugin qui s'enregistrerait sous `themes`, `legend`, `route`, `labels` ou `layerManager`
- * disparaîtrait du rapport de chaque boot, **en sortant 0**. Il serait chargé, fonctionnel,
- * et invisible. Le fichier porte déjà la trace d'un cas réel : `"table"` a figuré dans cette
- * liste alors que `plugins/table` est un plugin autonome depuis plusieurs sprints, et
- * « keeping it here silently hid a real plugin from every boot report ».
+ * `reportPlugins()` (`kernel/api/plugin-registry.ts`) filters its list with
+ * `_isCoreName()`, a **hardcoded** name list. The risk is not the list — it
+ * is the **collision**: a plugin registering as `themes`, `legend`, `route`,
+ * `labels` or `layerManager` would vanish from every boot's report,
+ * **exiting 0**. It would be loaded, functional, and invisible. The file
+ * already carries the trace of a real case: `"table"` sat in that list while
+ * `plugins/table` had been a standalone plugin for several sprints, and
+ * "keeping it here silently hid a real plugin from every boot report".
  *
- * ## Deux règles, et une troisième qui garde l'instrument
+ * ## Two rules, and a third guarding the instrument
  *
- *   PNC-01  **Aucun nom de répertoire de plugin dans `_isCoreName()`.** C'est la forme que
- *           `registry.plugins()` connaît, et celle que le build manipule.
- *   PNC-02  **Aucun nom RÉELLEMENT enregistré dans `_isCoreName()`.** C'est la chaîne que
- *           `reportPlugins()` compare à l'exécution — la seule qui décide vraiment. Elle
- *           coïncide aujourd'hui avec le nom de répertoire pour les 12 plugins, mais rien
- *           dans le code ne l'impose : PNC-01 seule serait aveugle à un plugin qui
- *           s'enregistrerait sous un autre nom que son dossier.
- *   PNC-03  **Les deux extracteurs doivent avoir trouvé quelque chose.** C'est la règle qui
- *           garde la garde, et elle n'est pas théorique ici : la première version de ce
- *           relevé cherchait `plugins.register(` et ne voyait **que 7 plugins sur 12** —
- *           les 5 autres écrivent `plugins?.register?.(`, avec chaînage optionnel. Un
- *           extracteur myope rend une garde verte sur le sous-ensemble qu'il sait lire.
+ *   PNC-01  **No plugin directory name in `_isCoreName()`.** The form
+ *           `registry.plugins()` knows, and the one the build manipulates.
+ *   PNC-02  **No REALLY registered name in `_isCoreName()`.** The string
+ *           `reportPlugins()` compares at runtime — the only one that truly
+ *           decides. It coincides today with the directory name for the 12
+ *           plugins, but nothing in the code enforces it: PNC-01 alone would
+ *           be blind to a plugin registering under a name other than its folder.
+ *   PNC-03  **Both extractors must have found something.» The rule guarding
+ *           the guard, and it is not theoretical here: this survey's first
+ *           version looked for `plugins.register(` and saw **only 7 plugins
+ *           out of 12** — the other 5 write `plugins?.register?.(`, with
+ *           optional chaining. A short-sighted extractor yields a guard
+ *           green on the subset it can read.
  *
- * ## Preuve par mutation — à rejouer avant de croire cette garde
+ * ## Proof by mutation — to replay before believing this guard
  *
- * Renommer `packages/plugins/measure/` en `packages/plugins/themes/` doit faire rougir
- * **PNC-01** en nommant `themes` ; remplacer `register?.("measure"` par `register?.("legend"`
- * dans son `entry.ts` doit faire rougir **PNC-02**. Vu rouge sur les deux le 07/08/2026.
+ * Renaming `packages/plugins/measure/` to `packages/plugins/themes/` must
+ * turn **PNC-01** red naming `themes`; replacing `register?.("measure"` with
+ * `register?.("legend"` in its `entry.ts` must turn **PNC-02** red. Seen red
+ * on both on 07/08/2026.
  *
- * @see roadmap_socle-init.md 📦 (archivée le 09/08/2026) §Sprint 7, tâche 7.3
  * @see packages/core/src/kernel/api/plugin-registry.ts — `_isCoreName()`, le sujet
  */
 import { describe, expect, it } from "vitest";
@@ -44,36 +46,39 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(__dirname, "../../../..");
 
-// `packages.cjs` est le registre unique des paquets — il JETTE si rien n'est trouvé, ce qui
-// est précisément pourquoi on ne globe pas `packages/plugins/*` à la main ici.
+// `packages.cjs` is the packages' single registry — it THROWS if nothing is
+// found, which is precisely why `packages/plugins/*` is not hand-globbed here.
 const packages = createRequire(import.meta.url)(path.join(REPO, "scripts/lib/packages.cjs"));
 
 const PLUGIN_REGISTRY_SRC = path.join(REPO, "packages/core/src/kernel/api/plugin-registry.ts");
 
 /**
- * Les noms traités comme du core, LUS dans le corps de `_isCoreName()`.
+ * The names treated as core, READ from `_isCoreName()`'s body.
  *
- * Lus plutôt que recopiés : une copie diverge, et la garde certifierait alors une liste que
- * le runtime n'utilise plus. Même patron que `KNOWN_DEFAULT_DRIFT` dans
- * `capabilities/config-schema-defaults.test.js`, qui lit son voisin au lieu de le dupliquer.
+ * Read rather than copied: a copy diverges, and the guard would then certify
+ * a list the runtime no longer uses. Same pattern as `KNOWN_DEFAULT_DRIFT`
+ * in `capabilities/config-schema-defaults.test.js`, which reads its
+ * neighbour instead of duplicating it.
  *
- * Non exporté depuis le module : `check-orphan-exports.cjs` exclut `__tests__` de son corpus,
- * donc un export dont le seul consommateur est ce fichier entrerait en baseline comme orphelin.
+ * Not exported from the module: `check-orphan-exports.cjs` excludes
+ * `__tests__` from its corpus, so an export whose only consumer is this file
+ * would enter the baseline as an orphan.
  */
 function readCoreNames() {
     const src = fs.readFileSync(PLUGIN_REGISTRY_SRC, "utf8");
     const body = src.slice(src.indexOf("function _isCoreName"));
     const arr = body.slice(body.indexOf("["), body.indexOf("]") + 1);
-    // ⚠️ Les commentaires DOIVENT tomber avant l'extraction. Le tableau porte une note
-    // expliquant pourquoi `"table"` en a été RETIRÉ (API S1) — en citant le nom entre
-    // guillemets, à l'intérieur du littéral. Un extracteur naïf le relit comme une entrée
-    // vivante et accuse `plugins/table` d'une collision qui a justement été réparée. Vu à
-    // la pose de cette garde : elle rougissait sur `table`, et c'était elle qui avait tort.
+    // ⚠️ Comments MUST fall before the extraction. The array carries a note
+    // explaining why `"table"` was REMOVED from it — citing the name in
+    // quotes, inside the literal. A naive extractor rereads it as a live
+    // entry and accuses `plugins/table` of a collision that was precisely
+    // repaired. Seen at this guard's pose: it turned red on `table`, and it
+    // was the one that was wrong.
     const code = arr.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
     return [...code.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
 }
 
-/** Le nom que chaque plugin passe RÉELLEMENT à `plugins.register(...)`, chaînage compris. */
+/** The name each plugin REALLY passes to `plugins.register(...)`, chaining included. */
 function readRegisteredNames(pluginDir) {
     const names = new Set();
     const walk = (dir) => {
@@ -85,8 +90,8 @@ function readRegisteredNames(pluginDir) {
             }
             if (!/\.(ts|js)$/.test(e.name)) continue;
             const src = fs.readFileSync(p, "utf8");
-            // ⚠️ Le `\??` sur CHAQUE maillon est ce qui manquait au premier relevé :
-            // `plugins?.register?.(` est la forme des 5 plugins passés par host-runtime.
+            // ⚠️ The `\??` on EACH link is what the first survey lacked:
+            // `plugins?.register?.(` is the form of the 5 host-runtime plugins.
             for (const m of src.matchAll(/plugins\??\.register\??\.?\(\s*"([^"]+)"/g)) {
                 names.add(m[1]);
             }
@@ -105,8 +110,8 @@ const PLUGINS = packages.plugins().map((p) => ({
 
 describe("PNC — noms de plugin ↔ liste `_isCoreName()` du rapport de boot", () => {
     it("PNC-03 — les deux extracteurs ont trouvé quelque chose", () => {
-        // Sans ça, PNC-01 et PNC-02 passeraient sur l'ensemble vide : une garde verte qui
-        // n'a rien lu. C'est le mode d'échec que ce dépôt nomme « anti-gate-vide ».
+        // Without it, PNC-01 and PNC-02 would pass on the empty set: a green
+        // guard that read nothing. The failure mode this repo calls "anti-empty-gate".
         expect(CORE_NAMES.length).toBeGreaterThan(0);
         expect(CORE_NAMES).toContain("core"); // canari : si l'extraction dérape, elle rougit ici
         expect(PLUGINS.length).toBeGreaterThan(0);

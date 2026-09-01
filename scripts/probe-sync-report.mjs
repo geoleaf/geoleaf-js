@@ -1,29 +1,31 @@
 /**
- * Sonde — le rapport voit-il ce que le magasin contient, et la purge épargne-t-elle le
- * travail ? (tâches 4.8 et 4.10)
+ * Probe — does the report see what the store contains, and does the purge spare the
+ * work?
  *
- * Six mesures, dans un vrai Chromium, contre le bundle livré et le backend pygeoapi :
+ * Six measurements, in a real Chromium, against the shipped bundle and the pygeoapi
+ * backend:
  *
- *   M1 — une couche déclarée hors-ligne, jamais rapatriée → `declaredNeverPulled` ?
- *   M2 — après `pullLayer()` → `pulled`, avec `featureCount` et `lastPullAt` peuplés ?
- *   M3 — `getStats()` compte-t-il enfin `features` et `outbox` ? (B-121)
- *   M4 — après une saisie locale → `pendingCount` monte ?
- *   M5 — l'export rend-il cette saisie, avec sa géométrie ?
- *   M6 — la purge retire-t-elle le CACHE en laissant l'outbox INTACTE ?
+ *   M1 — a layer declared offline, never pulled → `declaredNeverPulled`?
+ *   M2 — after `pullLayer()` → `pulled`, with `featureCount` and `lastPullAt` set?
+ *   M3 — does `getStats()` finally count `features` and `outbox`?
+ *   M4 — after a local edit → does `pendingCount` rise?
+ *   M5 — does the export return that edit, with its geometry?
+ *   M6 — does the purge remove the CACHE while leaving the outbox INTACT?
  *
- * 🛑 M6 EST LA MESURE QUI COMPTE, et c'est la seule qui ne peut pas se prouver en unitaire :
- * B-115 décrivait un bouton qui détruisait des saisies jamais poussées. Le test unitaire
- * éprouve la règle ; ici on éprouve que le bouton câblé au bundle livré applique bien cette
- * règle-là. Entre les deux il y a une façade, un contrat de plugin et un chunk différé.
+ * 🛑 M6 IS THE MEASUREMENT THAT COUNTS, and the only one that cannot be proven in a
+ * unit test. The original defect: a button destroying never-pushed edits. The unit
+ * test proves the rule; here we prove that the button wired to the shipped bundle
+ * applies that very rule. Between the two sit a facade, a plugin contract and a
+ * deferred chunk.
  *
- * ⚠️ Versionnée pour la même raison que `probe-offline-pull.mjs` : une mesure qu'on ne peut
- * pas rejouer ne peut pas être contredite, donc elle se fossilise (mode d'échec n° 5).
+ * ⚠️ Versioned for the same reason as `probe-offline-pull.mjs`: a measurement that
+ * cannot be replayed cannot be contradicted, so it fossilises.
  *
- * Prérequis : le backend doit tourner.
+ * Prerequisite: the backend must be running.
  *   docker compose -f docker-compose.dev.yml up -d geoleaf-postgrest geoleaf-featureserv
  *
  * Usage : E2E_TARGET=nginx node scripts/probe-sync-report.mjs
- * Exit  : 0 = les six mesures sont prises · 2 = erreur de sonde
+ * Exit  : 0 = the six measurements are taken · 2 = probe error
  */
 
 import { chromium } from "@playwright/test";
@@ -34,7 +36,7 @@ const VARIANT = process.env.PROBE_VARIANT || "full";
 const TARGET_URL = `${baseURL(VARIANT)}/`;
 const LAYER = "sites_rosario";
 
-/** Une mesure qui pend ne mesure rien : tout appel au navigateur est borné. */
+/** A hanging measurement measures nothing: every browser call is bounded. */
 const withTimeout = (promise, ms, label) =>
     Promise.race([
         Promise.resolve(promise).catch((e) => `__ERR__ ${e.message}`),
@@ -44,11 +46,11 @@ const withTimeout = (promise, ms, label) =>
 const say = (label, detail) => console.log(`▸ ${label}\n     → ${detail}\n`);
 
 /**
- * Compte les deux magasins v4 directement, sans passer par la façade.
+ * Counts both v4 stores directly, without going through the facade.
  *
- * ⚠️ Lecture INDÉPENDANTE, et c'est délibéré : si on interrogeait `getStats()` pour vérifier
- * `getStats()`, on ne prouverait que sa cohérence avec elle-même. Ici la base est lue par un
- * chemin que le code mesuré n'emprunte pas.
+ * ⚠️ INDEPENDENT read, deliberately: querying `getStats()` to verify `getStats()`
+ * would only prove its consistency with itself. Here the database is read through a
+ * path the measured code does not take.
  */
 const readStores = () =>
     new Promise((resolve) => {
@@ -98,11 +100,11 @@ const run = async () => {
 
     await page.goto(TARGET_URL, { waitUntil: "domcontentloaded", timeout: 30000 });
     await page.waitForSelector("#geoleaf-map", { timeout: 25000 });
-    // Le moteur de stockage est un chunk DIFFÉRÉ : sans cette attente, le rapport mesurerait
-    // l'attente bornée de la façade et non le moteur.
+    // The storage engine is a DEFERRED chunk: without this wait, the report would
+    // measure the facade's bounded wait and not the engine.
     await page.waitForFunction(() => !!globalThis.GeoLeaf?.Storage?.DB, null, { timeout: 25000 });
-    // Repartir d'une base propre : sinon M1 compterait ce qu'une exécution antérieure a laissé,
-    // et « jamais rapatriée » serait faux sans qu'on le voie.
+    // Start from a clean database: otherwise M1 would count what a previous run
+    // left, and "never pulled" would be false without us seeing it.
     await page.evaluate(
         () =>
             new Promise((resolve) => {
@@ -135,10 +137,10 @@ const run = async () => {
         );
     const forLayer = (r) => (Array.isArray(r) ? r.find((x) => x.layerId === LAYER) : r);
 
-    // ── M1 — le cas qui n'a AUCUN observable jusqu'à la coupure ─────────────────────────
+    // ── M1 — the case with NO observable until the cutoff ───────────────────────────────
     say("M1 — rapport AVANT tout rapatriement", JSON.stringify(forLayer(await report("M1"))));
 
-    // ── M2 — après un rapatriement réel ────────────────────────────────────────────────
+    // ── M2 — after a real pull ─────────────────────────────────────────────────────────
     const pull = await withTimeout(
         page.evaluate((layer) => globalThis.GeoLeaf.Storage.pullLayer(layer), LAYER),
         90000,
@@ -147,14 +149,14 @@ const run = async () => {
     say("M2 — rapport du rapatriement", JSON.stringify(pull));
     say("M2 — rapport APRÈS", JSON.stringify(forLayer(await report("M2"))));
 
-    // ── M3 — B-121 : la façade voit-elle enfin les magasins v4 ? ────────────────────────
+    // ── M3 — does the facade finally see the v4 stores? ─────────────────────────
     const stats = await withTimeout(
         page.evaluate(() => globalThis.GeoLeaf.Storage.getStats()),
         20000,
         "M3"
     );
     say(
-        "M3 — getStats() (B-121)",
+        "M3 — getStats()",
         JSON.stringify({ features: stats?.features, outbox: stats?.outbox, layers: stats?.layers })
     );
     say(
@@ -162,7 +164,7 @@ const run = async () => {
         JSON.stringify(await page.evaluate(readStores))
     );
 
-    // ── M4 — une saisie locale, c'est-à-dire du travail qui n'a aucune autre copie ──────
+    // ── M4 — a local edit, i.e. work that has no other copy ─────────────────────────────
     const edit = await withTimeout(
         page.evaluate(
             (layer) =>
@@ -184,7 +186,7 @@ const run = async () => {
     say("M4 — applyEdit", JSON.stringify(edit));
     say("M4 — rapport APRÈS la saisie", JSON.stringify(forLayer(await report("M4"))));
 
-    // ── M5 — l'export : le panneau rendait 0, il doit rendre la saisie ──────────────────
+    // ── M5 — the export: the panel returned 0, it must return the edit ──────────────────
     const pending = await withTimeout(
         page.evaluate(() => globalThis.GeoLeaf.Storage.DB.listPendingEdits()),
         20000,
@@ -204,7 +206,7 @@ const run = async () => {
         )
     );
 
-    // ── M6 — LA MESURE QUI COMPTE : la purge épargne-t-elle le travail ? ────────────────
+    // ── M6 — THE MEASUREMENT THAT COUNTS: does the purge spare the work? ────────────────
     const beforePurge = await page.evaluate(readStores);
     const purge = await withTimeout(
         page.evaluate(() => globalThis.GeoLeaf.Storage.DB.purgeCachedFeatures()),

@@ -77,6 +77,7 @@ const SHAPES = [
             ["src/public-api.ts", true],
             ["src/css/geoleaf-zz-scaffold-full.css", true],
             ["src/lang/lang-fr.ts", true],
+            ["README.md", true], // emitted from README.plugin.md — NPMDOC-02 requires it
             ["README.template.md", false], // template-only doc, never emitted
         ],
     },
@@ -90,9 +91,41 @@ const SHAPES = [
             // with no way to read its own `modules.<id>` branch. Config is not a UI concern.
             ["src/config.ts", true],
             ["src/public-api.ts", true],
+            ["README.md", true], // a plugin with no UI is published all the same
             ["src/css.d.ts", false],
             ["src/lang/lang-fr.ts", false],
         ],
+    },
+];
+
+/**
+ * The repo gates a scaffolded plugin must already satisfy.
+ *
+ * Only failures NAMING the throwaway are attributed here: each of these gates can be red for
+ * reasons of its own, and swallowing those under a scaffold code would send the reader to the
+ * wrong file. `ci:local` runs them all in their own right.
+ */
+const REPO_GATES = [
+    {
+        code: "SCAF-05",
+        label: "module headers (MH-01)",
+        script: "scripts/check-module-headers.cjs",
+    },
+    {
+        code: "SCAF-06",
+        label: "npm README render (NPMDOC-02)",
+        script: "scripts/verify-npm-readme-render.cjs",
+    },
+    {
+        code: "SCAF-07",
+        label: "TSDoc conformity (TSD-05)",
+        script: "scripts/check-tsdoc-conformity.cjs",
+    },
+    { code: "SCAF-08", label: "dead CSS (purgecss)", script: "scripts/verify-purgecss.cjs" },
+    {
+        code: "SCAF-09",
+        label: "README ↔ declared config (PRC-01)",
+        script: "scripts/check-plugin-readme-config.cjs",
     },
 ];
 
@@ -149,11 +182,7 @@ try {
         }
 
         // SCAF-01 — the scaffold builds and passes its own self-checks.
-        const scaffold = run("node", [
-            "scripts/create-plugin.cjs",
-            shape.id,
-            ...shape.flags,
-        ]);
+        const scaffold = run("node", ["scripts/create-plugin.cjs", shape.id, ...shape.flags]);
         if (scaffold.code !== 0) {
             errors.push(
                 `SCAF-01 create-plugin.cjs exited ${scaffold.code} for "${shape.id}" ` +
@@ -193,7 +222,43 @@ try {
             "--quiet",
         ]);
         if (contract.code !== 0)
-            errors.push(`SCAF-03 "${shape.id}" violates Plugin Contract v1 —\n${indent(contract.out)}`);
+            errors.push(
+                `SCAF-03 "${shape.id}" violates Plugin Contract v1 —\n${indent(contract.out)}`
+            );
+
+        // SCAF-05…08 — the repo's OWN gates, run against the throwaway output.
+        //
+        // ## What this closes, and why the count was the whole problem
+        //
+        // Until 26/08/2026 this file ran four checks and none of them was a gate of the
+        // repo. Measured that day on a freshly scaffolded plugin, FIVE gates reddened while
+        // `create-plugin.cjs` exited 0: three source files carried no module header, an
+        // exported interface carried no TSDoc block, the stylesheet's only class was dead,
+        // and **no README was emitted at all** — the generated package would have shown
+        // "no README" on its npm page. Every new plugin inherited those, and paid them by
+        // hand; the repairs were never fed back here, so the next plugin paid them again.
+        //
+        // ⚠️ They are run WHOLE, not scoped, and that is deliberate. The throwaway lands in
+        // `packages/plugins/`, which every one of these gates derives from `packages.cjs` —
+        // so they see it without being told to. Scoping them by argument would have needed
+        // four different CLI surfaces, three of which do not exist.
+        //
+        // 🛑 The baselines are safe BECAUSE the throwaway is not in the git index: the
+        // ratchets (MH-02, TSD-04, purgecss) compare against frozen lists keyed by path, and
+        // a path that appears for 1.5 s and is removed enters none of them. What DOES see it
+        // is the "new violation" branch of each gate — which is exactly the branch this
+        // wiring exists to trigger.
+        for (const g of REPO_GATES) {
+            const r = run("node", [g.script]);
+            if (r.code !== 0 && r.out.includes(shape.id)) {
+                errors.push(
+                    `${g.code} "${shape.id}" fails ${g.label} —\n${indent(r.out)}\n` +
+                        `  A scaffolded plugin must be born passing the gates the repo holds ` +
+                        `every other plugin to. Fix packages/_plugin-template/ or ` +
+                        `scripts/create-plugin.cjs — never the generated output.`
+                );
+            }
+        }
     }
 } finally {
     cleanup();
@@ -213,8 +278,14 @@ if (errors.length) {
 }
 
 // ⚠️ Counts are DERIVED, never written beside the list — a written total is a second source
-// of truth that can only diverge (B-43, and the same doctrine as APP-TEMPLATE's HELD list).
-const CHECKS = ["self-checks", "typecheck", "Plugin Contract v1", "sélection par drapeau"];
+// of truth that can only diverge (the same doctrine as APP-TEMPLATE's HELD list).
+const CHECKS = [
+    "self-checks",
+    "typecheck",
+    "Plugin Contract v1",
+    "sélection par drapeau",
+    ...REPO_GATES.map((g) => g.label),
+];
 console.log(
     `✔ SCAFFOLD: packages/_plugin-template/ — ${SHAPES.length} formes scaffoldées ` +
         `(${SHAPES.map((s) => s.id.replace("zz-scaffold-", "")).join(", ")}), ` +

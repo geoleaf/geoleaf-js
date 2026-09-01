@@ -16,9 +16,9 @@
  * The `GeoLeaf` namespace is assembled incrementally across the B1→B11 boot phases
  * (and varies with which plugins are loaded), so members are typed where they are
  * stable and frequently accessed, with a top-level `[key: string]: unknown` fallback
- * for the long tail. Precision is meant to GROW sprint by sprint
- * (see `roadmap_typage-strict.md`): each cleaned domain promotes members from the
- * `unknown` tail to explicit types — never widen back to `any`.
+ * for the long tail. Precision is meant to GROW release after release: each cleaned
+ * domain promotes members from the `unknown` tail to explicit types — never widen
+ * back to `any`.
  */
 
 export {};
@@ -44,7 +44,7 @@ declare global {
      * the only view of this surface for its own use (B.25); that module now aliases this
      * one rather than keeping a second, quietly divergent copy — its `getCurrentTheme`
      * declared `string | undefined` where `_state.currentTheme` is `string | null`
-     * (theme-selector-state.ts:28), so `null` was outside the declared type at the one
+     * (theme-selector-state.ts), so `null` was outside the declared type at the one
      * call site that reads it.
      *
      * Narrow on purpose (the two members consumers actually reach for) with the usual
@@ -59,54 +59,56 @@ declare global {
     }
 
     /**
-     * Raccourci local vers le contrat des onze méthodes de premier niveau.
+     * Local shortcut to the contract of the eleven top-level methods.
      *
-     * `GeoLeafGlobal` les référence membre par membre (`init?: GeoLeafTopLevelApi["init"]`)
-     * plutôt que par `extends` : les lecteurs d'AST du dépôt n'itèrent que les membres
-     * déclarés, et un membre hérité disparaîtrait de la vue de toutes les gates du namespace.
+     * `GeoLeafGlobal` references them member by member (`init?: GeoLeafTopLevelApi["init"]`)
+     * rather than via `extends`: the repo's AST readers only iterate declared members, and
+     * an inherited member would vanish from the view of every namespace gate.
      */
     type GeoLeafTopLevelApi = import("./contracts/top-level-api.contract.js").GeoLeafTopLevelApi;
 
     /**
-     * `GeoLeaf.UI` — the kernel UI façade (API publique S4.2, lot B).
+     * `GeoLeaf.UI` — the kernel UI façade.
      *
-     * ## Pourquoi une interface écrite à la main, et pas un `typeof import(...)`
+     * ## Why a hand-written interface, and not a `typeof import(...)`
      *
-     * `kernel/ui/ui-api.ts:304` fait `const UI = _g.GeoLeaf.UI;` puis le ré-exporte : la valeur
-     * exportée EST le membre du namespace. Un `typeof import("./api/geoleaf.ui.js").UI` est donc
-     * structurellement circulaire — mesuré, `tsc` sort `TS7022` puis `TS2303`. C'est très
-     * probablement la raison pour laquelle ce membre était déclaré `Record<string, unknown>` :
-     * la forme facile ne compile pas.
+     * `kernel/ui/ui-api.ts` does `const UI = _g.GeoLeaf.UI;` then re-exports it: the
+     * exported value IS the namespace member. A `typeof import("./api/geoleaf.ui.js").UI`
+     * is therefore structurally circular — measured, `tsc` emits `TS7022` then `TS2303`.
+     * Most probably the reason this member used to be declared `Record<string, unknown>`:
+     * the easy form does not compile.
      *
-     * Ce n'est pas une raison de ne rien typer. La façade est montée par mutation depuis ~10
-     * modules ; les 24 membres ci-dessous sont relevés sur les sites d'affectation réels, et
-     * l'interface nommée rompt le cycle en ne dépendant d'aucune valeur.
+     * That is no reason to type nothing. The facade is mounted by mutation from ~10
+     * modules; the 24 members below were read off the real assignment sites, and the named
+     * interface breaks the cycle by depending on no value.
      *
-     * ## B-202 (09/08/2026) — la traîne `[key: string]: unknown` est RETIRÉE
+     * ## The `[key: string]: unknown` tail is REMOVED (09/08/2026)
      *
-     * ⚠️ **Le motif qui la justifiait ici était faux.** Il disait « `boot-core.ts` et
-     * `init-features.ts` posent encore des membres hors de cette liste ». Mesuré : ces deux
-     * fichiers ne posent **aucun** membre sur `GeoLeaf.UI` — leurs seules occurrences de
-     * `ui.` sont des lectures de config (`init-features.ts:227,246`). Les 6 membres qui
-     * manquaient réellement venaient de `globals/globals.ui.ts` et du plugin `offline-ui` ;
-     * ils sont déclarés ci-dessous, relevés sur leurs sites d'affectation.
+     * ⚠️ **The motive that justified it here was false.** It said "`boot-core.ts` and
+     * `init-features.ts` still set members outside this list". Measured: those two files
+     * set **no** member on `GeoLeaf.UI` — their only `ui.` occurrences are config reads
+     * (`init-features.ts`). The 6 genuinely missing members came from
+     * `globals/globals.ui.ts` and the `offline-ui` plugin; they are declared below, read
+     * off their assignment sites.
      *
-     * **Ce que la traîne coûtait.** Elle rendait `unknown` — donc indiscernable d'un membre
-     * réel non typé — **tout membre inventé**. `GeoLeaf.UI.toggleFilterPanel(true)` était
-     * enseigné par l'`@example` de `api/geoleaf.ui.ts` alors que cet identifiant n'a jamais
-     * existé dans le dépôt, et les trois gates de documentation sortaient vertes dessus.
-     * B-80 l'avait mesuré le 31/07/2026 (mutation `GeoLeaf.UI.cetteApiNExistePas("dark")`
-     * → **VERTE**) et conclu « le bénéfice réel de B-80 croît avec B-13, et pas autrement ».
-     * Traîne ôtée, un membre fantôme rend TS2339, que `typecheck-docs-examples.cjs` connaît.
+     * **What the tail cost.** It made **any invented member** `unknown` — hence
+     * indistinguishable from a real untyped one. `GeoLeaf.UI.toggleFilterPanel(true)` was
+     * taught by the `@example` of `api/geoleaf.ui.ts` although that identifier never
+     * existed in the repo, and the three documentation gates came out green on it.
+     * Measured on 31/07/2026 (mutation `GeoLeaf.UI.cetteApiNExistePas("dark")` →
+     * **GREEN**), with the conclusion: the benefit of compiling the examples grows with
+     * the namespace's typing, and not otherwise.
+     * Tail removed, a phantom member yields TS2339, which `typecheck-docs-examples.cjs`
+     * knows.
      *
-     * **Aucun site d'affectation ne casse** : `globals.ui.ts:138` écrit à travers
-     * `_gl.UI as Record<string, unknown>`, `cache-button.ts:43` par son propre cast, et
-     * `ui.module.ts:119` lit par le helper dynamique `member(obj: unknown, …)`.
+     * **No assignment site breaks**: `globals.ui.ts` writes through
+     * `_gl.UI as Record<string, unknown>`, `cache-button.ts` through its own cast, and
+     * `ui.module.ts` reads through the dynamic helper `member(obj: unknown, …)`.
      */
     interface GeoLeafUIFacade {
-        /** Orchestrator version tag, set by `ui-api.ts:296`. */
+        /** Orchestrator version tag, set by `ui-api.ts`. */
         VERSION?: string;
-        /** Build tag, set by `ui-api.ts:297`. */
+        /** Build tag, set by `ui-api.ts`. */
         BUILD?: string;
         /** Boots the UI kernel (delegation, theme, containers). */
         init?: (options?: {
@@ -160,7 +162,7 @@ declare global {
          *
          * @example
          * ```js
-         * GeoLeaf.UI.toggleTheme(); // passe à "light"
+         * GeoLeaf.UI.toggleTheme(); // switches to "light"
          * ```
          */
         toggleTheme?: (...args: unknown[]) => unknown;
@@ -170,7 +172,8 @@ declare global {
          * The notification renderer, reachable through the UI façade.
          *
          * ⚠️ Typed `Record<string, unknown>`, so nothing here is arity-checked — the real
-         * surface is the one documented on `NotificationSystem`. Tracked as **B-13**.
+         * surface is the one documented on `NotificationSystem`. The `unknown`-typed
+         * remainder only ever shrinks — never widened back.
          *
          * @example
          * ```js
@@ -192,21 +195,21 @@ declare global {
         /** Dismisses every visible toast and empties the queue. */
         clearNotifications?: (...args: unknown[]) => unknown;
 
-        // ── B-202 (09/08/2026) — les 6 membres que la traîne couvrait ────────────────────
-        // Relevés sur leurs sites d'affectation, pas devinés. Sans eux, retirer la traîne
-        // rejouerait le collatéral de B-52 : des membres bien montés au runtime, devenus
-        // inatteignables au niveau des types.
+        // ── The 6 members the tail used to cover, declared on 09/08/2026 ─────────────────
+        // Read off their assignment sites, not guessed. Without them, removing the tail
+        // would replay a collateral already paid once: members properly mounted at
+        // runtime, become unreachable at the type level.
 
         /**
-         * Rich toast surface — the KERNEL one, mounted by `globals/globals.ui.ts:151`.
+         * Rich toast surface — the KERNEL one, mounted by `globals/globals.ui.ts`.
          *
          * Distinct from {@link GeoLeafUIFacade.Notifications}: `notify` is the anchor-B2
          * adapter that reads the renderer back lazily, so a build without the
          * `toast-renderer` capability degrades to a silent no-op instead of throwing.
          *
-         * ⚠️ Chaîner l'optionnel n'est pas de la coquetterie ici : sans écrivain, le membre
-         * est absent, et `GeoLeaf.UI.notify.success(…)` jette. C'est aussi ce qui évite
-         * d'ajouter une entrée de baseline à `typecheck-docs-examples` (B-202).
+         * ⚠️ Optional chaining is not cosmetic here: without a writer the member is
+         * absent, and `GeoLeaf.UI.notify.success(…)` throws. It is also what avoids
+         * adding a baseline entry to `typecheck-docs-examples`.
          *
          * @example
          * ```js
@@ -220,10 +223,10 @@ declare global {
             success?: (msg: string, opts?: number | Record<string, unknown>) => unknown;
             dismiss?: (id: HTMLElement) => unknown;
         };
-        // ⚠️ Les six entrées ci-dessous citaient `globals/globals.ui.ts:207` à `:210`. Les
-        // numéros ont été retirés le 13/08/2026 : la tâche 2.4 a inséré des lignes dans ce
-        // fichier et les quatre citations sont devenues fausses d'un coup, sans qu'aucune
-        // gate ne puisse le voir. Le nom de la fonction, lui, ne dérive pas.
+        // ⚠️ The six entries below used to cite `globals/globals.ui.ts` through
+        // `:210`. The numbers were removed on 13/08/2026: lines were inserted into that
+        // file and the four citations all went false at once, with no gate able to see
+        // it. The function name, on the other hand, does not drift.
         /** Mounts the mobile toolbar. Set by `setupUIKernel()` in `globals/globals.ui.ts`. */
         initMobileToolbar?: typeof import("./kernel/ui/mobile/mobile-toolbar.js").initMobileToolbar;
         /** Mounts the desktop side-panel. Set by `setupUIKernel()`. */
@@ -242,7 +245,7 @@ declare global {
          * @example
          * ```js
          * GeoLeaf?.UI?.openPanel("layers"); // true
-         * GeoLeaf?.UI?.openPanel("layers"); // true — pas une bascule
+         * GeoLeaf?.UI?.openPanel("layers"); // true — not a toggle
          * ```
          */
         openPanel?: typeof import("./kernel/ui/desktop/desktop-panel.js").openPanel;
@@ -265,15 +268,66 @@ declare global {
          * ```
          */
         getOpenPanel?: typeof import("./kernel/ui/desktop/desktop-panel.js").getOpenPanel;
+
+        /**
+         * Offers a panel surface to whichever host is live — the desktop side panel above
+         * 1440px, the mobile sheet below it.
+         *
+         * The host ADOPTS the element named by `selector`: it moves the node, and puts it
+         * back where it came from on close. Register before or after boot; a registration
+         * arriving late is synced into an already-built panel.
+         *
+         * @example
+         * ```js
+         * GeoLeaf?.UI?.registerPanelPane({
+         *     id: "routing",
+         *     labelKey: "routing.toolbar.button",
+         *     selector: ".gl-routing-panel",
+         * });
+         * ```
+         */
+        registerPanelPane?: typeof import("./kernel/ui/panel-panes.js").registerPanelPane;
+
+        /**
+         * Opens a registered pane on whichever host is live.
+         *
+         * ⚠️ Prefer this to {@link GeoLeafUIFacade.openPanel} from a plugin: `openPanel`
+         * drives the DESKTOP panel and answers `false` below its breakpoint, where the same
+         * content belongs in the mobile sheet. A caller reacting to a click on a feature
+         * cannot be asked to know which surface the current width implies.
+         *
+         * @example
+         * ```js
+         * GeoLeaf?.UI?.openPane("routing"); // true at any width
+         * ```
+         */
+        openPane?: typeof import("./kernel/ui/panel-panes.js").openPane;
+
+        /** Closes the pane on every live host. */
+        closePane?: typeof import("./kernel/ui/panel-panes.js").closePane;
+
+        /**
+         * Turns the immersive UI mode on or off — strips the chrome the kernel owns, and
+         * optionally asks for browser fullscreen.
+         *
+         * @example
+         * ```js
+         * GeoLeaf?.UI?.setImmersive(true, { fullscreen: true });
+         * ```
+         */
+        setImmersive?: typeof import("./kernel/ui/immersive.js").setImmersive;
+
+        /** Whether the document is currently in immersive mode. */
+        isImmersive?: typeof import("./kernel/ui/immersive.js").isImmersive;
         /**
          * Offline cache button — mounted by the `offline-ui` PLUGIN
-         * (`ui/cache-button.ts:43`), read by `app/boot-modules/ui.module.ts:119`.
+         * (`ui/cache-button.ts`), read by `app/boot-modules/ui.module.ts`.
          *
-         * ⚠️ Typé STRUCTURELLEMENT à dessein. La règle `no-plugin-in-core`
-         * (`scripts/verify-core-standalone.cjs`) interdit au core de nommer
-         * `@geoleaf-plugins/*` : un `typeof import(...)` est indisponible ici, et ce n'est
-         * pas un raccourci mais la frontière d'architecture. Le membre reste optionnel —
-         * un build sans le plugin n'a pas d'écrivain.
+         * ⚠️ Typed STRUCTURALLY on purpose. The `no-plugin-in-core` rule
+         * (`scripts/verify-core-standalone.cjs`) forbids the core to name
+         * `@geoleaf-plugins/*`: a `typeof import(...)` is unavailable here, and that is
+         * not a shortcut but the architecture boundary. The member stays optional — a
+         * build without the plugin has no writer.
          */
         CacheButton?: {
             init?: (map: unknown, cfg: Record<string, unknown>) => unknown;
@@ -286,7 +340,7 @@ declare global {
     /**
      * `GeoLeaf.Baselayers` and its alias `GeoLeaf.BaseLayers`.
      *
-     * ⚠️ ONE alias, ONE type. `globals.api.ts:86-87` assigns the SAME reference to both names;
+     * ⚠️ ONE alias, ONE type. `globals.api.ts` assigns the SAME reference to both names;
      * declaring them separately would let the two drift with nothing to notice — both names sit
      * in the post-boot oracle, so the namespace gates are satisfied by their mere presence.
      */
@@ -297,7 +351,7 @@ declare global {
 
     /**
      * `GeoLeaf.API` — the seven constructors assembled as an object literal by
-     * `globals.api.ts:75-84`.
+     * `globals.api.ts`.
      *
      * Written out rather than pointed at `contracts/api.contract.ts`'s
      * `IGeoLeafAPIConstructors`: that one declares only the three Phase-7 aliases, so
@@ -320,17 +374,33 @@ declare global {
      */
     interface GeoLeafGlobal {
         /**
-         * `GeoLeaf.UI` — la façade UI du kernel.
+         * `GeoLeaf.DEBUG` — debug mode, set by the INTEGRATOR, never by the library.
          *
-         * ⚠️ Déclarée `Record<string, unknown>` jusqu'à l'API S4.2, elle était comptée parmi les
-         * membres « typés » alors qu'elle ne vérifiait rien : ce type accepte n'importe quel
-         * objet et rend `unknown` sur chaque accès, exactement comme la traîne qu'il était censé
-         * remplacer. C'est HOST-06 (`check-namespace-typing-coverage.cjs`) qui l'a trouvée, en
-         * refusant de compter une déclaration vide comme un typage.
+         * `getDebugMode()` reads it at call time, precisely so that setting
+         * `window.GeoLeaf.DEBUG = true` after boot takes effect without a reload.
          *
-         * ⚠️ `globals.ui.ts:128` pose `_gl.UI = {}` si absent : tous les membres de
-         * {@link GeoLeafUIFacade} sont donc optionnels. Et son typage ne peut PAS passer par
-         * `typeof import(...)` — la façade est auto-montée, le détail est sur l'interface.
+         * ⚠️ It was missing from this contract until 19/08/2026, and the gap was invisible from
+         * the inside: nothing here writes it, so no gate that watches what the library MOUNTS
+         * could see it. An integrator following the accessor's own instruction got
+         * `TS2339: Property 'DEBUG' does not exist on type 'GeoLeafGlobal'` — the top-level
+         * index signature that used to absorb it is gone, deliberately, so a member only
+         * reachable through it became unreachable. A read-only member of the public surface is
+         * declared here or it does not exist for the consumer.
+         */
+        DEBUG?: boolean;
+        /**
+         * `GeoLeaf.UI` — the kernel UI facade.
+         *
+         * ⚠️ Long declared `Record<string, unknown>`, it was counted among the "typed"
+         * members while verifying nothing: that type accepts any object and yields
+         * `unknown` on every access, exactly like the tail it was supposed to replace.
+         * HOST-06 (`check-namespace-typing-coverage.cjs`) found it, by refusing to count
+         * an empty declaration as typing.
+         *
+         * ⚠️ `globals.ui.ts` sets `_gl.UI = {}` when absent: every member of
+         * {@link GeoLeafUIFacade} is therefore optional. And its typing canNOT go through
+         * `typeof import(...)` — the facade is self-mounted, the detail sits on the
+         * interface.
          */
         UI?: GeoLeafUIFacade;
         _UITheme?: {
@@ -393,12 +463,12 @@ declare global {
             get(key: string, def?: unknown): unknown;
             getAll(): Record<string, unknown>;
             /**
-             * Profil actif enrichi. Son tableau `layers` porte les configurations de couche
-             * **complètes** — à la différence de `getAllLayerConfigs()`, qui est une projection
-             * en liste blanche et ne porte ni `offline`, ni `data`, ni `write`.
+             * Enriched active profile. Its `layers` array carries the **complete** layer
+             * configurations — unlike `getAllLayerConfigs()`, which is a whitelist
+             * projection and carries neither `offline`, nor `data`, nor `write`.
              *
-             * ⚠️ `Config.Profile` n'est PAS monté ici, bien que le module `Config` le porte :
-             * mesuré en navigateur (tâche 4.1). Passer par `getActiveProfile()`.
+             * ⚠️ `Config.Profile` is NOT mounted here, although the `Config` module
+             * carries it: measured in a browser. Go through `getActiveProfile()`.
              */
             getActiveProfile?(): unknown;
             /**
@@ -417,7 +487,7 @@ declare global {
              * @example
              * ```js
              * GeoLeaf?.Config?.clearThemesCache("reunion-eclairage");
-             * GeoLeaf?.Config?.clearThemesCache(); // tous les profils
+             * GeoLeaf?.Config?.clearThemesCache(); // every profile
              * ```
              */
             clearThemesCache(profileId?: string): void;
@@ -438,29 +508,30 @@ declare global {
         };
         Security?: { escapeHtml?: (s: unknown) => string; [key: string]: unknown };
         /**
-         * Façade de la légende (`GeoLeaf.Legend`).
+         * Legend facade (`GeoLeaf.Legend`).
          *
-         * ⚠️ Les 8 membres ci-dessous étaient **implémentés et documentés** dans
-         * `capabilities/legend/legend.ts` — `@example` compris — mais **non déclarés ici**,
-         * donc absents de la page `GeoLeafGlobal` que TypeDoc rend et que lit un intégrateur
-         * (B-229). La traîne `[key: string]: unknown` subsiste (gisement B-13).
+         * ⚠️ The 8 members below were **implemented and documented** in
+         * `capabilities/legend/legend.ts` — `@example` included — but **not declared
+         * here**, hence absent from the `GeoLeafGlobal` page TypeDoc renders and an
+         * integrator reads, until 11/08/2026. The `[key: string]: unknown` tail remains —
+         * it only ever shrinks.
          */
         Legend?: {
-            /** Monte la légende sur une carte. Rend `false` si le montage échoue. */
+            /** Mounts the legend on a map. Returns `false` when mounting fails. */
             init(mapInstance: unknown, options?: Record<string, unknown>): boolean;
-            /** Charge et rend l'entrée de légende d'une couche, pour un style donné. */
+            /** Loads and renders a layer's legend entry, for a given style. */
             loadLayerLegend(layerId: string, styleId: string, layerConfig: unknown): void;
-            /** Affiche ou masque une couche depuis la légende. */
+            /** Shows or hides a layer from the legend. */
             setLayerVisibility(layerId: string, visible: boolean): void;
-            /** Toutes les couches connues de la légende, indexées par identifiant. */
+            /** Every layer the legend knows, indexed by identifier. */
             getAllLayers(): Map<string, unknown>;
-            /** Masque le panneau sans le démonter — l'état des couches est conservé. */
+            /** Hides the panel without unmounting it — layer state is preserved. */
             hideLegend(): void;
-            /** Démonte le panneau et libère ses écouteurs. */
+            /** Unmounts the panel and releases its listeners. */
             removeLegend(): void;
-            /** Si le panneau est actuellement visible. */
+            /** Whether the panel is currently visible. */
             isLegendVisible(): boolean;
-            /** Plie ou déplie la section d'une couche. */
+            /** Collapses or expands a layer's section. */
             toggleAccordion: (id: string) => void;
             [key: string]: unknown;
         };
@@ -475,38 +546,39 @@ declare global {
                 ref: string
             ): import("./capabilities/taxonomy/types.js").TaxonomyFieldMappings;
             /**
-             * La table `valeur → symbole` d'une couche donnée (vide si la couche ne déclare
-             * aucune taxonomie). B-229 : implémenté et documenté dans
-             * `capabilities/taxonomy/public-api.ts`, mais non déclaré ici jusqu'au 11/08/2026.
+             * The `value → symbol` table of a given layer (empty when the layer declares
+             * no taxonomy). Implemented and documented in
+             * `capabilities/taxonomy/public-api.ts`, but not declared here until
+             * 11/08/2026.
              */
             getLayerCategories(
                 layerId: string
             ): Record<string, import("./capabilities/taxonomy/types.js").TaxonomyCategory>;
-            /** Résout l'icône de sprite d'un point, tenant compte de sa catégorie et de sa teinte. */
+            /** Resolves a point's sprite icon, accounting for its category and tint. */
             resolvePoiIcon(
                 poi: import("./capabilities/taxonomy/resolver.js").TaxonomyFeatureLike
             ): import("./capabilities/taxonomy/types.js").ResolvedIcon;
             /**
-             * Chaque paire (icône × teinte) référencée par la config, pour que l'adaptateur
-             * MapLibre les rastérise et les enregistre. Vide si rien n'est teinté.
+             * Every (icon × tint) pair the config references, so the MapLibre adapter can
+             * rasterise and register them. Empty when nothing is tinted.
              */
             getIconVariants(): import("./capabilities/taxonomy/types.js").TaxonomyIconVariant[];
-            /** Peinture MapLibre d'une couche de marqueurs, ou `null` si la taxonomie ne s'applique pas. */
+            /** MapLibre paint of a marker layer, or `null` when taxonomy does not apply. */
             resolveMarkerPaint(
                 layerId: string,
                 existingPaint: Record<string, unknown>
             ): Record<string, unknown> | null;
             /**
-             * Le `symbolId` de l'icône à afficher à côté du TITRE d'une entité sur une surface
-             * feature-info, en honorant les drapeaux `render` par surface
-             * (priorité sous-catégorie → catégorie → défaut).
+             * The `symbolId` of the icon to show next to a feature's TITLE on a
+             * feature-info surface, honouring the per-surface `render` flags
+             * (priority: subcategory → category → default).
              */
             resolveTitleIcon(
                 layerId: string,
                 feature: import("./capabilities/taxonomy/resolver.js").TaxonomyFeatureLike,
                 surface: import("./capabilities/taxonomy/types.js").TaxonomySurface
             ): string | null;
-            /** Le style de badge d'un champ, ou `null` si aucun ne s'applique. */
+            /** A field's badge style, or `null` when none applies. */
             resolveBadgeStyle(
                 layerId: string,
                 feature: import("./capabilities/taxonomy/resolver.js").TaxonomyFeatureLike,
@@ -514,9 +586,9 @@ declare global {
                 field: string
             ): import("./capabilities/taxonomy/types.js").ResolvedBadgeStyle | null;
             /**
-             * Garantit que le sprite SVG du profil actif (ses `<symbol>`) est présent dans le
-             * DOM, pour qu'un `<use href="#…">` puisse le référencer. Sans attente et
-             * idempotent — le chargeur dédoublonne.
+             * Guarantees the active profile's SVG sprite (its `<symbol>` elements) is in
+             * the DOM, so a `<use href="#…">` can reference it. Non-blocking and
+             * idempotent — the loader deduplicates.
              */
             ensureSprite(): void;
             [key: string]: unknown;
@@ -531,27 +603,29 @@ declare global {
             [key: string]: unknown;
         };
         /**
-         * `GeoLeaf._LayerVisibilityManager` — **contrat de fait, délibérément NON promu.**
+         * `GeoLeaf._LayerVisibilityManager` — **a contract of fact, deliberately NOT
+         * promoted.**
          *
-         * API publique S4.3d a examiné sa promotion en `GeoLeaf.Layers.getVisibilityState()`
-         * et l'a écartée, pour deux raisons mesurées :
+         * Its promotion to `GeoLeaf.Layers.getVisibilityState()` was examined and set
+         * aside, for two measured reasons:
          *
-         * 1. **Elle n'aurait retiré aucune clé.** Le motif annoncé était « promouvoir puis
-         *    retirer `_LayerVisibilityManager` du namespace » — impossible : le CORE le relit
-         *    lui-même par le global à **5 sites**, avec 3 méthodes différentes
-         *    (`kernel/geojson/layers/visibility.ts:87,159,207,246` et
-         *    `capabilities/legend/legend.ts:163`). La promotion n'achetait qu'un chemin typé
-         *    pour `plugin-table`, au prix d'une entrée publique de plus.
+         * 1. **It would have removed no key.** The announced motive was "promote, then
+         *    remove `_LayerVisibilityManager` from the namespace" — impossible: the CORE
+         *    itself re-reads it through the global at **5 sites**, with 3 different
+         *    methods (`kernel/geojson/layers/visibility.ts` and
+         *    `capabilities/legend/legend.ts`). Promotion only bought a typed path for
+         *    `plugin-table`, at the price of one more public entry.
          *
-         * 2. **La forme est un piège, et le publier le graverait.** `getVisibilityState()`
-         *    rend 6 champs, dont `current` — la visibilité PHYSIQUE, que le zoom force à
-         *    `false` — et `logicalState`, l'intention utilisateur. Le backlog B.19 consigne
-         *    que lire `current` pour piloter un toggle est le bug DÉJÀ commis. Or les 2 sites
-         *    de `plugin-table` lisent exactement `current`. Publier dans `LayerDataApi` est
-         *    irréversible (règle Q1 : on ajoute un sous-chemin, on n'en retire jamais).
+         * 2. **The shape is a trap, and publishing would engrave it.**
+         *    `getVisibilityState()` returns 6 fields, among them `current` — the PHYSICAL
+         *    visibility, which zoom forces to `false` — and `logicalState`, the user's
+         *    intent. Reading `current` to drive a toggle is a bug that was ALREADY
+         *    committed once. And `plugin-table`'s 2 sites read exactly `current`.
+         *    Publishing into `LayerDataApi` is irreversible (rule: subpaths are added,
+         *    never removed).
          *
-         * Lecteurs de fait, hors core : `packages/plugins/table/src/panel.ts:236` et
-         * `src/table-layer.ts:93`. Ils restent sur cette clé, sciemment.
+         * De-facto readers, outside the core: `packages/plugins/table/src/panel.ts`
+         * and `src/table-layer.ts`. They stay on this key, knowingly.
          */
         _LayerVisibilityManager?: {
             getVisibilityState: (layerId: string) => { current?: boolean } | null;
@@ -561,8 +635,8 @@ declare global {
          * `GeoLeaf.Sync` — the offline sync-handler registry seam (S14 Phase B).
          *
          * A **public API of fact** (B.25): it is how a data plugin pushes its offline
-         * sync handler into the core (`@geoleaf-plugins/addpoi` does
-         * `GeoLeaf.Sync.registerHandler("poi", POISyncHandler)` at its own `entry.ts`),
+         * sync handler into the core (`@geoleaf-plugins/editor` does
+         * `GeoLeaf.Sync.registerHandler("poi", EditorSyncHandler)` at its own `entry.ts`),
          * and the offline engine reads them back at replay time. It was reachable and
          * documented but typed NOWHERE — a third-party plugin integrated against
          * `unknown`. Mounted twice on purpose: `geoleaf.sync.ts` self-mounts at import
@@ -580,7 +654,6 @@ declare global {
                 id: string
             ): import("./kernel/shared/sync-handler-seam.js").SyncHandler | undefined;
             /** Every registered handler, in registration order. */
-            getHandlers(): import("./kernel/shared/sync-handler-seam.js").SyncHandler[];
         };
         /** Theme switch bar — in-core `theme-selector` capability (see above). */
         ThemeSelector?: GeoLeafThemeSelector;
@@ -588,33 +661,60 @@ declare global {
          * `GeoLeaf._VectorTiles` — the MVT policy seam published by the `vector-tiles`
          * installer. Internal (underscore), but read through the global by two kernel
          * modules that each wrote their own narrow `VectorTilesLike` — and the two were
-         * DISJOINT (`loader-types.ts:273` declares `shouldUseVectorTiles` /
-         * `loadVectorTileLayer`, `layer-manager/style.ts:17` declares `updateLayerStyle`),
+         * DISJOINT (`loader-types.ts` declares `shouldUseVectorTiles` /
+         * `loadVectorTileLayer`, `layer-manager/style.ts` declares `updateLayerStyle`),
          * so neither described the seam. Typed here as the capability's own export, the
          * only shape that covers both (B.25).
          */
         _VectorTiles?: typeof import("./capabilities/vector-tiles/vector-tiles.js").VectorTiles;
+        /**
+         * `GeoLeaf._Cluster` — the bag of PURE resolvers the `cluster` installer
+         * publishes for the GeoJSON loader. Same mechanism as `_VectorTiles` just above,
+         * and the same motive: a build that leaves the capability out has **no writer**,
+         * the loader falls back to `{ shouldCluster: false }`, and the core imports
+         * nothing statically.
+         *
+         * ⚠️ This is NOT the whole module: the installer writes only two members
+         * (`install.ts`). Typing them via `typeof import(...)` keeps them tied to the
+         * SOURCE — a signature hand-copied here would drift with nothing saying so, which
+         * is exactly the defect `_VectorTiles` documents for its two disjoint local
+         * views.
+         *
+         * 📌 The reader's local view, `ClusterResolversLike` (`loader/loader-types.ts`),
+         * widens `def`/`geojsonData` to `unknown` and COPIES the return shape. It agrees
+         * with the source as of 23/08/2026 — `ClusterStrategyResult` is indeed
+         * `{ shouldCluster, useSharedCluster }` — but nothing holds it there: the
+         * local-views guard compares NAMES, not SHAPES, and says so.
+         */
+        _Cluster?: {
+            getClusteringStrategy: typeof import("./capabilities/cluster/strategy.js").getClusteringStrategy;
+            applyGeoJSONClusterOptions: typeof import("./capabilities/cluster/options.js").applyGeoJSONClusterOptions;
+        };
         Introspection?: import("./contracts/introspection.contract.js").IIntrospectionAPI;
+        /** Capability-unavailable bus — `declareUnavailable` / `onUnavailable`. */
+        Capabilities?: import("./contracts/capability.contract.js").ICapabilitiesAPI;
         Layers?: import("./contracts/layer-data.contract.js").LayerDataApi;
         /** In-core geolocation capability seam (GPS state + config helpers). */
         Geolocation?: import("./capabilities/geolocation/public-api.js").GeolocationPublicApi;
 
-        // ── API publique S4.2 lot A — les 11 façades de capacité montées au namespace ──
+        // ── The 11 capability facades mounted on the namespace ──
         //
-        // Elles tombaient toutes dans la traîne `[key: string]: unknown` : `GeoLeaf.Scale.show()`
-        // ne se vérifiait pas plus que `GeoLeaf.Scale.nimportequoi()`. `Geolocation` ci-dessus
-        // était le seul précédent — ce lot le généralise aux dix autres.
+        // They all fell into the `[key: string]: unknown` tail: `GeoLeaf.Scale.show()`
+        // checked no better than `GeoLeaf.Scale.nimportequoi()`. `Geolocation` above was
+        // the only precedent — this batch generalises it to the other ten.
         //
-        // Quatre dévient du patron `capabilities/<nom>/public-api.js`, et le pré-vol les a
-        // trouvées une par une plutôt que de les supposer :
-        //   • `Share` n'est pas une capacité de premier niveau — elle vit sous `permalink/` ;
-        //   • `NotificationSystem` est une CLASSE, montée depuis `toast-renderer/renderer/`,
-        //     répertoire dont le nom ne ressemble pas à la clé ;
-        //   • `FeatureInfoPublicApi` est déclaré dans `types.ts`, pas ré-exporté par sa façade ;
-        //   • `Cluster`, `PWA` et `Permalink` n'ont AUCUN type public nommé. Elles prennent
-        //     `typeof import(...)` de la valeur : le compilateur infère la forme exacte, ce qui
-        //     est précis, pas un compromis. `pwa/public-api.ts:27-36` motive explicitement son
-        //     refus d'un `PWAPublicApi` — on ne lui en fabrique pas un au passage.
+        // Four deviate from the `capabilities/<name>/public-api.js` pattern, and the
+        // pre-flight found them one by one rather than assuming:
+        //   • `Share` is not a top-level capability — it lives under `permalink/`;
+        //   • `NotificationSystem` is a CLASS, mounted from `toast-renderer/renderer/`,
+        //     a directory whose name does not resemble the key;
+        //   • `FeatureInfoPublicApi` is declared in `types.ts`, not re-exported by its
+        //     facade;
+        //   • `Cluster`, `PWA` and `Permalink` have NO named public type. They take
+        //     `typeof import(...)` of the value: the compiler infers the exact shape,
+        //     which is precise, not a compromise. `pwa/public-api.ts` explicitly
+        //     motivates its refusal of a `PWAPublicApi` — we do not fabricate one in
+        //     passing.
 
         /** Branding overlay (logo, attribution) — `GeoLeaf.Branding`. */
         Branding?: import("./capabilities/branding/public-api.js").BrandingPublicApi;
@@ -622,100 +722,102 @@ declare global {
         Cluster?: import("./capabilities/cluster/public-api.js").ClusterPublicApi;
         /** Coordinate readout control — `GeoLeaf.Coordinates`. */
         Coordinates?: import("./capabilities/coordinates/public-api.js").CoordinatesPublicApi;
-        /** Feature detail panel — `GeoLeaf.FeatureInfo`. Type déclaré dans `types.ts`. */
+        /** Feature detail panel — `GeoLeaf.FeatureInfo`. Type declared in `types.ts`. */
         FeatureInfo?: import("./capabilities/feature-info/types.js").FeatureInfoPublicApi;
         /** Map labels toggle + renderer — `GeoLeaf.Labels`. */
         Labels?: import("./capabilities/labels/public-api.js").LabelsPublicApi;
         /** Toast/notification CLASS mounted by the `toast-renderer` installer. */
         NotificationSystem?: typeof import("./capabilities/toast-renderer/notifications.js").NotificationSystem;
-        /** PWA install/update manager — `GeoLeaf.PWA`. Pas de type public nommé, cf. ci-dessus. */
+        /** PWA install/update manager — `GeoLeaf.PWA`. No named public type, see above. */
         PWA?: typeof import("./capabilities/pwa/public-api.js").PWA;
-        /** URL state serialisation — `GeoLeaf.Permalink`. Pas de type public nommé. */
+        /** URL state serialisation — `GeoLeaf.Permalink`. No named public type. */
         Permalink?: typeof import("./capabilities/permalink/public-api.js").Permalink;
         /** Scale bar control — `GeoLeaf.Scale`. */
         Scale?: import("./capabilities/scale/public-api.js").ScalePublicApi;
 
-        /** Data-profile selector — `GeoLeaf.ProfileSwitcher` (S1 sélecteurs UI). */
+        /** Data-profile selector — `GeoLeaf.ProfileSwitcher`. */
         ProfileSwitcher?: import("./capabilities/profile-switcher/public-api.js").ProfileSwitcherPublicApi;
-        /** UI language selector — `GeoLeaf.LanguageSwitcher` (S2 sélecteurs UI). */
+        /** UI language selector — `GeoLeaf.LanguageSwitcher`. */
         LanguageSwitcher?: import("./capabilities/language-switcher/public-api.js").LanguageSwitcherPublicApi;
-        /** Accent-colour palette — `GeoLeaf.ThemePalette` (S3 sélecteurs UI). */
+        /** Accent-colour palette — `GeoLeaf.ThemePalette`. */
         ThemePalette?: import("./capabilities/theme-palette/public-api.js").ThemePalettePublicApi;
-        /** Share sheet — `GeoLeaf.Share`, sous-dossier de la capacité `permalink`. */
+        /** Share sheet — `GeoLeaf.Share`, subdirectory of the `permalink` capability. */
         Share?: import("./capabilities/permalink/share/public-api.js").SharePublicApi;
         /** Light/dark toggle — `GeoLeaf.ThemeToggle`. */
         ThemeToggle?: import("./capabilities/theme-toggle/public-api.js").ThemeTogglePublicApi;
 
-        // ── API publique S4.2 lot B — les façades kernel ──
+        // ── The kernel facades ──
         //
-        // ⚠️ Les deux paires d'ALIAS partagent UN SEUL type, jamais deux déclarations jumelles.
-        // `_gl.BaseLayers = Baselayers` (globals.api.ts:87) et `_gl.events = Events` (:100)
-        // pointent la MÊME référence : deux déclarations indépendantes pourraient diverger sans
-        // qu'aucune gate ne le voie, puisque les deux noms sont dans l'oracle et que HOST-04 se
-        // contente de leur présence.
+        // ⚠️ The two ALIAS pairs share ONE type, never twin declarations.
+        // `_gl.BaseLayers = Baselayers` (globals.api.ts) and `_gl.events = Events`
+        // (:100) point at the SAME reference: two independent declarations could diverge
+        // with no gate seeing it, since both names sit in the oracle and HOST-04 is
+        // satisfied by their mere presence.
         //
-        // ⚠️ Cinq ne viennent pas d'`api/`, contrairement au patron : `CONSTANTS` et `Errors`
-        // sont posées par `globals.core.ts:62-63`, `ThemeCache` par `globals.ui.ts:120`, et
-        // `version` est une chaîne. Pré-volé fichier par fichier plutôt que supposé.
+        // ⚠️ Five do not come from `api/`, unlike the pattern: `CONSTANTS` and `Errors`
+        // are set by `globals.core.ts`, `ThemeCache` by `globals.ui.ts`, and
+        // `version` is a string. Pre-flown file by file rather than assumed.
 
         /** Base layer catalogue façade. */
         Baselayers?: GeoLeafBaselayersFacade;
-        /** Alias historique de {@link GeoLeafGlobal.Baselayers} — même référence, même type. */
+        /** Historical alias of {@link GeoLeafGlobal.Baselayers} — same reference, same type. */
         BaseLayers?: GeoLeafBaselayersFacade;
         /** Typed event bus façade (`on`/`off`/`once`/`dispatch`). */
         Events?: GeoLeafEventsFacade;
-        /** Alias minuscule de {@link GeoLeafGlobal.Events} — même référence, même type. */
+        /** Lowercase alias of {@link GeoLeafGlobal.Events} — same reference, same type. */
         events?: GeoLeafEventsFacade;
-        /** Frozen runtime constants — posé par `globals.core.ts:63`. */
+        /** Frozen runtime constants — set by `globals.core.ts`. */
         CONSTANTS?: typeof import("./utils/constants/constants.js").CONSTANTS;
-        /** Error helpers — posé par `globals.core.ts:62`. */
+        /** Error helpers — set by `globals.core.ts`. */
         Errors?: typeof import("./utils/errors/errors.js").Errors;
         /** General-purpose helpers façade. */
         Helpers?: typeof import("./api/geoleaf.helpers.js").Helpers;
         /** Layer manager façade (visibility, ordering, legend wiring). */
         LayerManager?: typeof import("./api/geoleaf.layer-manager.js").LayerManager;
-        /** Theme cache — posé par `globals.ui.ts:120`, hors de la chaîne des façades. */
+        /** Theme cache — set by `globals.ui.ts`, outside the facade chain. */
         ThemeCache?: typeof import("./kernel/themes/theme-cache.js").ThemeCache;
         /** Style/config validators façade. */
         Validators?: typeof import("./api/geoleaf.validators.js").Validators;
         /**
          * Package version string.
          *
-         * ✅ **Un seul écrivain depuis socle-init 7.7** : `globals/globals.api.ts`, sous garde
-         * `if (!_gl.version)` — ce qui rend `setupAPIKernel()` ré-appelable sans écraser une
-         * version déjà posée.
+         * ✅ **A single writer**: `globals/globals.api.ts`, under an `if (!_gl.version)`
+         * guard — which makes `setupAPIKernel()` re-callable without overwriting an
+         * already-set version.
          *
-         * ⚠️ Cette note disait « Écrite à DEUX endroits : `globals.api.ts:200` […] et
-         * `kernel/api/geoleaf-api.ts:133` sans garde. Le dernier writer gagne » — c'était vrai
-         * (divergence D8), et **les deux numéros de ligne avaient dérivé** (208 et 164 au moment
-         * du retrait). Une citation de ligne dans un commentaire vieillit sans bruit ; celle-ci
-         * ne renvoie plus qu'au fichier.
+         * ⚠️ This note used to say "Written in TWO places: `globals.api.ts` […] and
+         * `kernel/api/geoleaf-api.ts` unguarded. Last writer wins" — that was true,
+         * and **both line numbers had drifted** (208 and 164 by the time of removal). A
+         * line citation in a comment ages silently; this one now points only at the
+         * file.
          */
         version?: string;
         /**
-         * `GeoLeaf.API` — les constructeurs de l'API, assemblés en littéral par
-         * `globals.api.ts:75-84`.
+         * `GeoLeaf.API` — the API constructors, assembled as a literal by
+         * `globals.api.ts`.
          *
-         * ⚠️ Écrit à la main, et c'est mesuré : `contracts/api.contract.ts:103` déclare bien
-         * `IGeoLeafAPIConstructors`, mais il ne couvre que les **3 alias**, pas les 7 clés
-         * réellement posées. Le référencer aurait typé moins de la moitié de l'objet tout en
-         * ayant l'air de le typer — le défaut que HOST-06 traque, un cran plus haut.
+         * ⚠️ Hand-written, and that is measured: `contracts/api.contract.ts` does
+         * declare `IGeoLeafAPIConstructors`, but it covers only the **3 aliases**, not
+         * the 7 keys actually set. Referencing it would have typed under half the object
+         * while looking like it typed it — the defect HOST-06 hunts, one level up.
          */
         API?: GeoLeafApiConstructors;
 
-        // ── API publique S4.2 lot C — les méthodes et valeurs de premier niveau ──
+        // ── The top-level methods and values ──
         //
-        // ⚠️ Les onze méthodes C2 sont référencées MEMBRE PAR MEMBRE depuis
-        // `GeoLeafTopLevelApi`, et jamais par `extends`. Les lecteurs d'AST du dépôt
-        // (`scripts/lib/ts-decl-read.cjs`) n'itèrent que les membres DÉCLARÉS : un membre
-        // hérité leur serait invisible, et HOST-02/HOST-04 se desserreraient en silence sur
-        // onze clés d'un coup. Le lecteur refuse d'ailleurs de conclure sur une clause
-        // `extends` depuis S4.2, précisément pour que ce piège ne se retende pas.
+        // ⚠️ The eleven methods are referenced MEMBER BY MEMBER from
+        // `GeoLeafTopLevelApi`, and never via `extends`. The repo's AST readers
+        // (`scripts/lib/ts-decl-read.cjs`) iterate DECLARED members only: an inherited
+        // member would be invisible to them, and HOST-02/HOST-04 would silently loosen
+        // on eleven keys at once. The reader in fact refuses to conclude on an `extends`
+        // clause since their member-by-member declaration — precisely so this trap can
+        // never re-arm.
         //
-        // ⚠️ Et ce n'est pas de la décoration : `globals.api.ts:70` type son `_gl` en
-        // `GeoLeafRuntime = ReturnType<typeof ensureGeoLeaf>`, c'est-à-dire `GeoLeafGlobal`.
-        // Déclarer ici fait donc VÉRIFIER par le compilateur les onze affectations de
-        // `defineApiMethods`. C'est le versant UMD du lien ; le versant ESM le `satisfies`.
+        // ⚠️ And this is not decoration: `globals.api.ts` types its `_gl` as
+        // `GeoLeafRuntime = ReturnType<typeof ensureGeoLeaf>`, that is `GeoLeafGlobal`.
+        // Declaring here therefore makes the compiler CHECK the eleven assignments of
+        // `defineApiMethods`. This is the UMD side of the link; the ESM side `satisfies`
+        // it.
 
         /** {@inheritDoc GeoLeafTopLevelApi.init} */
         init?: GeoLeafTopLevelApi["init"];
@@ -740,42 +842,59 @@ declare global {
         /** {@inheritDoc GeoLeafTopLevelApi.getMetrics} */
         getMetrics?: GeoLeafTopLevelApi["getMetrics"];
 
-        // ── C1 — les quatre valeurs de premier niveau ──
+        // ── C1 — the four top-level values ──
         //
-        // `fetch`, `get` et `post` sont des méthodes LIÉES de `FetchHelper`
-        // (`globals.core.ts:89-91` fait `.bind(FetchHelper)`), d'où l'indexation du type de la
-        // méthode plutôt qu'un `typeof` de l'objet entier.
+        // `fetch`, `get` and `post` are BOUND methods of `FetchHelper`
+        // (`globals.core.ts` does `.bind(FetchHelper)`), hence indexing the
+        // method's type rather than a `typeof` of the whole object.
 
-        /** `FetchHelper.fetch`, liée — requête HTTP instrumentée. */
+        /** `FetchHelper.fetch`, bound — instrumented HTTP request. */
         fetch?: (typeof import("./utils/general/fetch-helper.js").FetchHelper)["fetch"];
-        /** `FetchHelper.get`, liée. */
+        /** `FetchHelper.get`, bound. */
         get?: (typeof import("./utils/general/fetch-helper.js").FetchHelper)["get"];
-        /** `FetchHelper.post`, liée. */
+        /** `FetchHelper.post`, bound. */
         post?: (typeof import("./utils/general/fetch-helper.js").FetchHelper)["post"];
-        /** Rapport de démarrage (⚠️ minuscule côté namespace, `BootInfo` côté module). */
+        /** Boot report (⚠️ lowercase on the namespace side, `BootInfo` on the module side). */
         bootInfo?: typeof import("./kernel/api/boot-info.js").BootInfo;
 
-        // ── C3 — le boot et les cinq mesures de performance ──
+        // ── C3 — boot and the five performance measures ──
 
         /**
-         * Démarre l'application GeoLeaf : charge le profil, crée la carte, initialise les
-         * modules. C'est l'entrée applicative — `apps/geoleaf-app/init.js` l'appelle, et
-         * l'ordre de chargement de tous les plugins s'y réfère.
+         * Starts the GeoLeaf application: loads the profile, creates the map, initialises
+         * the modules. This is the application entry — `apps/geoleaf-app/init.js` calls
+         * it, and the load order of every plugin refers to it.
          *
-         * ⚠️ À ne pas confondre avec {@link GeoLeafGlobal.init}, qui est l'enveloppe manuelle
-         * de `Core.init()`. Le chemin de boot passe par `registry.init()` — celui du
-         * ModuleRegistry — et n'appelle jamais `GeoLeaf.init`.
+         * ⚠️ Not to be confused with {@link GeoLeafGlobal.init}, the manual wrapper
+         * around `Core.init()`. The boot path goes through `registry.init()` — the
+         * ModuleRegistry's — and never calls `GeoLeaf.init`.
          *
-         * Les deux options sont le seul canal par lequel un hôte pose un gate d'auth (SSO) ou
-         * récupère les métriques de démarrage ; elles sont relues depuis `_beforeBootCallback`
-         * et `_perfCallback`, qui restent hors de ce contrat (dette D-14).
+         * The two options are the only channel through which a host sets an auth gate
+         * (SSO) or retrieves the startup metrics; they are re-read from
+         * `_beforeBootCallback` and `_perfCallback`. Those two stay out of this contract:
+         * they are service-locator keys, `_`-prefixed because they are internal to the
+         * core and no integrator has to write them — they are the channel, not the
+         * rendezvous.
          */
         boot?: (options?: {
-            /** Appelé après le chargement de la config, avant la carte. Jeter abandonne le boot. */
+            /**
+             * Configuration handed over IN MEMORY. When present it is applied as-is and
+             * no request is emitted to fetch one. Takes precedence over `configUrl`.
+             *
+             * ⚠️ An empty object `{}` is a VALID inline configuration, exactly as for
+             * `GeoLeaf.loadConfig` — the two bootstrap paths never diverge on the same
+             * value.
+             */
+            config?: Record<string, unknown>;
+            /**
+             * Explicit URL to load the configuration from. Used when `config` is absent.
+             * With neither, the path stays INFERRED from the host page — unchanged.
+             */
+            configUrl?: string;
+            /** Called after config load, before the map. Throwing aborts the boot. */
             beforeBoot?: (context: {
                 config: Readonly<Record<string, unknown>>;
             }) => Promise<void> | void;
-            /** Reçoit les métriques de démarrage après `geoleaf:app:ready`. */
+            /** Receives the startup metrics after `geoleaf:app:ready`. */
             onPerformanceMetrics?: (metrics: {
                 timeToMapReadyMs: number | null;
                 timeToAppReadyMs: number | null;
@@ -784,110 +903,112 @@ declare global {
             }) => void;
         }) => void;
 
-        /** Pose une marque de performance nommée. */
+        /** Sets a named performance mark. */
         mark?: (name: string) => void;
-        /** Mesure entre deux marques ; rend la durée en millisecondes. */
+        /** Measures between two marks; returns the duration in milliseconds. */
         measure?: (name: string, startMark: string, endMark?: string) => number;
-        /** Rapport de performance agrégé du profileur. */
+        /** Aggregated performance report from the profiler. */
         getPerformanceReport?: () => Record<string, unknown>;
-        /** Fige la mesure courante comme référence de comparaison. */
+        /** Freezes the current measurement as the comparison reference. */
         establishBaseline?: () => Record<string, unknown>;
-        /** Notification utilisateur — primitive, indépendante du rendu. */
+        /** User notification — primitive, renderer-independent. */
         notify?: import("./contracts/notify.contract.js").INotifyPrimitive["notify"];
 
-        // ── API publique S3.5 — les membres que `GeoLeafHost` nommait et pas ce fichier ──
+        // ── The members `GeoLeafHost` named and this file did not ──
         //
-        // `GeoLeafHost` (`@geoleaf/host-runtime`) se déclare « kept in sync (loosely) with
-        // the core source of truth `GeoLeafGlobal` ». C'était faux dans les deux sens : 5 de
-        // ses 9 membres (`Core`, `plugins`, `registry`, `I18n`, `Storage`) n'étaient pas
-        // décrits ici du tout, et 3 des membres les plus appelés par les plugins (`GeoJSON`,
-        // `Log`, `Notifications`) ne l'étaient nulle part.
+        // `GeoLeafHost` (`@geoleaf/host-runtime`) declares itself "kept in sync (loosely)
+        // with the core source of truth `GeoLeafGlobal`". That was false in both
+        // directions: 5 of its 9 members (`Core`, `plugins`, `registry`, `I18n`,
+        // `Storage`) were not described here at all, and 3 of the members plugins call
+        // most (`GeoJSON`, `Log`, `Notifications`) were described nowhere.
         //
-        // Les voici. L'invariant « tout membre de `GeoLeafHost` est aussi un membre de
-        // `GeoLeafGlobal` » devient vrai, et `verify-host-contract-sync.cjs` (HOST-03) le
-        // tient. Additif : ces 8 tombaient dans la traîne, aucun consommateur ne casse.
+        // Here they are. The invariant "every member of `GeoLeafHost` is also a member of
+        // `GeoLeafGlobal`" becomes true, and `verify-host-contract-sync.cjs` (HOST-03)
+        // holds it. Additive: these 8 fell into the tail, no consumer breaks.
 
         /**
          * Core map façade (`GeoLeaf.Core`) — low-level map lifecycle.
          *
-         * Depuis la **v3.0.0**, `Core` tient un **registre indexé** d'adaptateurs
-         * (`Map<mapId, IMapAdapter>`) : N cartes coexistent sur une page, chacune avec son
-         * cycle de vie. Le singleton de module des versions ≤ 2.1.x n'existe plus.
+         * Since **v3.0.0**, `Core` holds an **indexed registry** of adapters
+         * (`Map<mapId, IMapAdapter>`): N maps coexist on one page, each with its own
+         * lifecycle. The module singleton of versions ≤ 2.1.x no longer exists.
          *
-         * ⚠️ **La traîne `[key: string]: unknown` subsiste** (gisement B-13) : les 8 membres
-         * ci-dessous sont désormais déclarés et documentés, le reste du namespace ne l'est pas
-         * encore. Ne jamais l'élargir vers `any`.
+         * ⚠️ **The `[key: string]: unknown` tail remains**: the 8 members below are now
+         * declared and documented, the rest of the namespace is not yet. Never widen it
+         * back to `any`.
          */
         Core?: {
             /**
-             * Initialise une carte. **Exige `options.mapId`** — sans lui, rend `null` et
-             * journalise. Ré-initialiser un `mapId` existant rend l'instance déjà en place
-             * plutôt que d'en créer une seconde.
+             * Initialises a map. **Requires `options.mapId`** — without it, returns
+             * `null` and logs. Re-initialising an existing `mapId` returns the instance
+             * already in place rather than creating a second one.
              */
             init(options?: Record<string, unknown>): unknown;
             /**
-             * L'instance ciblée par `mapId` ; **sans argument, la première instance active** —
-             * forme rétro-compatible pour les applications mono-carte.
+             * The instance targeted by `mapId`; **with no argument, the first active
+             * instance** — the backward-compatible form for single-map applications.
              */
             getMap(mapId?: string): unknown;
-            /** Alias de {@link getMap}. */
+            /** Alias of {@link getMap}. */
             getAdapter(mapId?: string): unknown;
             /**
-             * Détruit l'instance (`map.remove()` puis libère l'emplacement du registre).
-             * Rend `true` si elle existait. À appeler au démontage côté consommateur.
+             * Destroys the instance (`map.remove()` then frees the registry slot).
+             * Returns `true` when it existed. Call it at unmount on the consumer side.
              */
             destroy(mapId: string): boolean;
-            /** Si une instance est enregistrée sous ce `mapId`. */
+            /** Whether an instance is registered under this `mapId`. */
             hasMap(mapId: string): boolean;
-            /** Les identifiants de toutes les instances actives. */
+            /** The identifiers of every active instance. */
             listMaps(): string[];
             /**
-             * Si une instance est enregistrée **et** que son conteneur est encore dans le
-             * document. Plus fort que {@link hasMap}, qui ne répond que de l'enregistrement :
-             * un hôte qui retire le sous-arbre sans appeler `destroy()` laisse une carte
-             * enregistrée qui ne s'affiche nulle part. Rend `false` après `destroy()`.
+             * Whether an instance is registered **and** its container is still in the
+             * document. Stronger than {@link hasMap}, which only answers for the
+             * registration: a host that removes the subtree without calling `destroy()`
+             * leaves a registered map that renders nowhere. Returns `false` after
+             * `destroy()`.
              */
             isAttached(mapId: string): boolean;
             /**
-             * Déplace une carte vivante dans un autre parent, sans la détruire ni la
-             * reconstruire. Le conteneur ENTIER est re-parenté — MapLibre mémorise
-             * l'élément de construction, donc déplacer ses enfants laisserait
-             * `getContainer()` pointer l'ancien nœud.
+             * Moves a live map into another parent, without destroying or rebuilding it.
+             * The ENTIRE container is re-parented — MapLibre remembers its construction
+             * element, so moving its children would leave `getContainer()` pointing at
+             * the old node.
              *
-             * ⚠️ **Les panneaux ne suivent pas** : ils vivent dans `glMain`, pas dans le
-             * conteneur de carte. Les remonter est du ressort de l'hôte —
+             * ⚠️ **The panels do not follow**: they live in `glMain`, not in the map
+             * container. Remounting them is the host's job —
              * `UI.destroyDesktopPanel()` → `initDesktopPanel()` → `activateDesktopPanel()`.
              */
             reattach(mapId: string, parent: HTMLElement): boolean;
             /**
-             * Applique un thème au conteneur de la carte.
+             * Applies a theme to the map container.
              *
-             * ⚠️ Le thème reste **global** en v3.0.0 et s'applique à la **première** instance :
-             * l'isolation par carte est hors périmètre de cette version.
+             * ⚠️ The theme stays **global** in v3.0.0 and applies to the **first**
+             * instance: per-map isolation is out of this version's scope.
              */
             setTheme(theme: string): void;
-            /** Le nom du thème courant. */
+            /** The current theme's name. */
             getTheme(): string;
             [key: string]: unknown;
         };
         /**
          * Plugin registry / lifecycle façade (`GeoLeaf.plugins`).
          *
-         * ⚠️ **`getLoadedPlugins`, `canActivate` et `registerLazy` ont été ajoutés le
-         * 31/07/2026, et pas par confort de typage.** Les trois sont **enseignés par
-         * `docs/API_REFERENCE.md`** (section « Plugins ») depuis longtemps, existent dans
-         * `kernel/api/plugin-registry.ts` et partent dans le bundle livré — mais n'étaient
-         * déclarés nulle part ici, donc ils tombaient dans la traîne `[key: string]: unknown`.
+         * ⚠️ **`getLoadedPlugins`, `canActivate` and `registerLazy` were added on
+         * 31/07/2026, and not for typing comfort.** All three have long been **taught by
+         * `docs/API_REFERENCE.md`** ("Plugins" section), exist in
+         * `kernel/api/plugin-registry.ts` and ship in the delivered bundle — but were
+         * declared nowhere here, so they fell into the `[key: string]: unknown` tail.
          *
-         * Ce que ça coûtait, mesuré : `showBootInfo(GeoLeaf)` — l'appel que sa propre doc
-         * montre — **ne compilait pas**. `BootInfoNamespace` exige
-         * `plugins?.getLoadedPlugins?: () => string[]` ; résolu par la traîne, le membre valait
-         * `unknown`, et `unknown` n'est pas assignable à `(() => string[]) | undefined`. Le
-         * défaut n'était visible d'aucune gate tant que l'exemple de `showBootInfo` s'écrivait
-         * `showBootInfo()` — c'est-à-dire tant qu'il était faux d'une AUTRE manière, gelée dans
-         * la baseline du typecheck. Un diagnostic gelé masque ce qui vit sous lui.
+         * What that cost, measured: `showBootInfo(GeoLeaf)` — the call its own doc shows
+         * — **did not compile**. `BootInfoNamespace` requires
+         * `plugins?.getLoadedPlugins?: () => string[]`; resolved through the tail the
+         * member was `unknown`, and `unknown` is not assignable to
+         * `(() => string[]) | undefined`. The defect was visible to no gate as long as
+         * the `showBootInfo` example was written `showBootInfo()` — that is, as long as
+         * it was wrong in ANOTHER way, frozen in the typecheck baseline. A frozen
+         * diagnostic masks what lives under it.
          *
-         * Rétrécir la traîne est le sens autorisé (B-13) : jamais élargir vers `any`.
+         * Shrinking the tail is the only allowed direction: never widen back to `any`.
          */
         plugins?: {
             register?(name: string, meta?: Record<string, unknown>): void;
@@ -906,7 +1027,7 @@ declare global {
          *
          * Typed as the contract itself rather than as a structural `{ register?; [key]: unknown }`:
          * `ModuleRegistry` is a CLASS, and TypeScript does not give classes an implicit index
-         * signature, so the loose shape rejected the very object `boot-install.ts:135` assigns.
+         * signature, so the loose shape rejected the very object `boot-install.ts` assigns.
          */
         registry?: import("./contracts/core-module.contract.js").IModuleRegistry;
         /** Internationalization façade (`GeoLeaf.I18n`). */
@@ -919,16 +1040,16 @@ declare global {
         /**
          * Offline storage façade (`GeoLeaf.Storage`), mounted in-core by `kernel/storage/facade.ts`.
          *
-         * ⚠️ La traîne `[key: string]: unknown` rend `unknown` — donc **non appelable** — tout
-         * membre non nommé ici, et aucune gate ne le signale : HOST-06 ne rejette qu'une
-         * déclaration entièrement vide. Un membre qui est une API publique se **nomme**.
+         * ⚠️ The `[key: string]: unknown` tail makes any member not named here `unknown`
+         * — hence **not callable** — and no gate flags it: HOST-06 only rejects a fully
+         * empty declaration. A member that is a public API gets **named**.
          */
         Storage?: {
             DB?: Record<string, unknown>;
             /**
-             * Rapatriement borné d'une couche déclarée vers le store `features` (tâche 4.1).
-             * Ne confère jamais l'éditabilité (invariant S6). Ne jette pas : `refused` porte
-             * le motif quand rien n'a été écrit.
+             * Bounded pull of a declared layer into the `features` store.
+             * Never confers editability (a standing invariant). Does not throw:
+             * `refused` carries the motive when nothing was written.
              */
             pullLayer?(
                 layerId: string,
@@ -944,11 +1065,11 @@ declare global {
                 refused: string | null;
             }>;
             /**
-             * Rapport de synchronisation par couche (tâche 4.8).
+             * Per-layer synchronisation report.
              *
-             * Rend `declaredNeverPulled` observable : une couche déclarée hors-ligne mais
-             * jamais rapatriée est autrement indiscernable d'une couche rapatriée, jusqu'à
-             * l'instant où le réseau tombe. Ne jette pas — sans moteur câblé, rend `[]`.
+             * Makes `declaredNeverPulled` observable: a layer declared offline but never
+             * pulled is otherwise indistinguishable from a pulled one, until the instant
+             * the network drops. Does not throw — with no engine wired, returns `[]`.
              */
             getSyncReport?(): Promise<
                 ReadonlyArray<import("./contracts/sync.contract.js").LayerSyncReport>
@@ -959,21 +1080,22 @@ declare global {
          * GeoJSON subsystem façade (`GeoLeaf.GeoJSON`) — 87 call sites across the plugins,
          * the single most-used member of the host, and typed nowhere before S3.
          *
-         * ⚠️ Distinct de `Layers` ci-dessus : `Layers` est le seam de données par couche.
+         * ⚠️ Distinct from `Layers` above: `Layers` is the per-layer data seam.
          */
         GeoJSON?: {
             getLayerById?(id: string): unknown;
             getAllLayers(): unknown;
             getLayerData?(id: string): unknown;
-            // ⚠️ `addData` a été DÉCLARÉE ICI et n'a JAMAIS existé sur cette façade
-            // (retirée le 09/08/2026, roadmap npm S2 tâche 2.16). `kernel/geojson/core.ts`
-            // ne la porte pas, et l'oracle post-boot `namespace-surface.mjs` ne la liste
-            // pas. Comme `emit-ambient-types.cjs` publie ce fichier dans le tarball, un
-            // intégrateur qui écrivait `GeoLeaf.GeoJSON.addData(fc)` COMPILAIT puis
-            // cassait à l'exécution — mesuré par témoin avant/après.
-            // Ne pas la réintroduire : la capacité existe, mais ailleurs — sur
-            // `CoreLoaderLike` (`kernel/geojson/loader/loader-types.ts`), atteignable en
-            // `GeoLeaf._GeoJSONLoader.addData()`. Le remplaçant PUBLIC est `Layers.setData`.
+            // ⚠️ `addData` was DECLARED HERE and NEVER existed on this facade
+            // (removed on 09/08/2026). `kernel/geojson/core.ts` does not carry it, and
+            // the post-boot oracle `namespace-surface.mjs` does not list it. Since
+            // `emit-ambient-types.cjs` publishes this file in the tarball, an integrator
+            // writing `GeoLeaf.GeoJSON.addData(fc)` COMPILED then broke at runtime —
+            // measured by a before/after witness.
+            // Do not reintroduce it: the capability exists, but elsewhere — on
+            // `CoreLoaderLike` (`kernel/geojson/loader/loader-types.ts`), reachable as
+            // `GeoLeaf._GeoJSONLoader.addData()`. The PUBLIC replacement is
+            // `Layers.setData`.
             [key: string]: unknown;
         };
         /**
@@ -981,7 +1103,7 @@ declare global {
          *
          * Same reason as `registry` above — `LogImplInterface` is an interface, so it carries
          * no implicit index signature and a loose `{ error?; …; [key]: unknown }` shape would
-         * reject what `globals.core.ts:61` actually mounts.
+         * reject what `globals.core.ts` actually mounts.
          */
         Log?: typeof import("./utils/log/index.js").Log;
         /** Toast façade (`GeoLeaf.Notifications`), mounted by the `toast-renderer` capability. */
@@ -990,130 +1112,193 @@ declare global {
             [key: string]: unknown;
         };
 
-        // ── Les 17 membres qui remplacent la traîne `[key: string]: unknown` (B-13) ──────
+        // ── The 17 members that replace the `[key: string]: unknown` tail ─────────────
         //
-        // ⚠️ **Ce bloc n'est pas un fourre-tout renommé.** La traîne acceptait N'IMPORTE
-        // QUEL nom : `GeoLeaf.nimporteQuoi` compilait, et l'intégrateur n'avait aucun moyen
-        // de distinguer une faute de frappe d'un membre réel. Ces 17 clés sont exactement
-        // celles que le code accède — mesurées en retirant la traîne : 61 erreurs,
-        // 17 clés distinctes (27/07/2026). Les déclarer nommément ferme la porte tout en
-        // gardant le code compilable.
+        // ⚠️ **This block is not a renamed catch-all.** The tail accepted ANY name:
+        // `GeoLeaf.nimporteQuoi` compiled, and the integrator had no way to tell a typo
+        // from a real member. These 17 keys are exactly the ones the code accesses —
+        // measured by removing the tail: 61 errors, 17 distinct keys (27/07/2026).
+        // Declaring them by name closes the door while keeping the code compilable.
         //
-        // ⚠️ Les membres `_`-préfixés sont **internes** : ils existent sur l'objet runtime,
-        // donc le contrat doit les dire, mais ils ne sont pas une API pour l'intégrateur.
-        // Ne pas s'appuyer dessus depuis un plugin — la route sanctionnée reste les façades
-        // publiques et les 6 sous-chemins `contracts/`.
+        // ⚠️ The `_`-prefixed members are **internal**: they exist on the runtime object,
+        // so the contract must say them, but they are not an API for the integrator. Do
+        // not lean on them from a plugin — the sanctioned route stays the public facades
+        // and the 6 `contracts/` subpaths.
 
-        /** @internal Namespace applicatif (`boot`, `startApp`, `AppLog`…). */
-        _app?: unknown;
-        /** @internal Le `ModuleRegistry`, aussi exposé publiquement en `registry`. */
-        _registry?: unknown;
-        /** @internal Accesseur du contrôleur d'API — CONSTRUIT à la lecture (garde de ré-entrance). */
-        _APIController?: unknown;
-        /** @internal Version du bundle, injectée au build. */
+        /** @internal Application namespace (`boot`, `startApp`, `AppLog`…). */
+        _app?: Partial<import("./app/app-types.js").AppNamespace>;
+        /** @internal The `ModuleRegistry`, also publicly exposed as `registry`. */
+        _registry?: import("./app/module-registry.js").ModuleRegistry;
+        /** @internal API controller accessor — CONSTRUCTED on read (re-entrance guard). */
+        _APIController?: import("./kernel/api/controller.js").APIController | null;
+        /** @internal Bundle version, injected at build time. */
         _version?: string;
         /**
-         * @internal Hook d'authentification appelé avant `registry.init()` ; jeter interrompt
-         * le boot. Volontairement opaque : le typer en `(ctx: unknown) => unknown` rendrait
-         * l'affectation d'un rappel à paramètre concret non assignable (contravariance).
+         * @internal Authentication hook called before `registry.init()`; throwing aborts
+         * the boot. Deliberately opaque: typing it `(ctx: unknown) => unknown` would make
+         * assigning a callback with a concrete parameter non-assignable (contravariance).
          */
         _beforeBootCallback?: unknown;
-        /** @internal Rappel de métriques de performance, armé par `?perf=1`. Opaque, même motif. */
+        /** @internal Performance-metrics callback, armed by `?perf=1`. Opaque, same motive. */
         _perfCallback?: unknown;
-        /** @internal Drapeau de trace perf. */
+        /** @internal Perf trace flag. */
         _debugPerf?: boolean;
 
-        /** @internal Sous-systèmes GeoJSON exposés pour le pont plugin. */
-        _GeoJSONLayerConfig?: unknown;
+        /** @internal GeoJSON subsystems exposed for the plugin bridge. */
+        _GeoJSONLayerConfig?: typeof import("./kernel/geojson/layer-config-manager.js").LayerConfigManager;
+        /** @internal `Object.assign` composite of four modules — the shape is the one
+         * the writer (`globals.geojson.ts`) asserts at assignment. */
+        _GeoJSONLayerManager?: import("./kernel/geojson/loader/loader-types.js").GeoJSONLayerManagerLike &
+            Record<string, unknown>;
+        /** @internal Profile + single-layer composite — same derivation as the manager. */
+        _GeoJSONLoader?: import("./kernel/geojson/loader/loader-types.js").GeoJSONLoaderLike &
+            Record<string, unknown>;
         /** @internal */
-        _GeoJSONLayerManager?: unknown;
+        _LabelButtonManager?: typeof import("./capabilities/labels/label-button-manager.js").LabelButtonManager;
         /** @internal */
-        _GeoJSONLoader?: unknown;
+        _LayerManagerStyleSelector?: typeof import("./kernel/layer-manager/style-selector.js").StyleSelector;
         /** @internal */
-        _LabelButtonManager?: unknown;
-        /** @internal */
-        _LayerManagerStyleSelector?: unknown;
-        /** @internal */
-        _OfflineDetector?: unknown;
+        _OfflineDetector?: typeof import("./kernel/storage/offline-detector.js").OfflineDetector;
 
-        // ── Namespaces montés par les PLUGINS ────────────────────────────────────────────
-        //
-        // Ils n'existent que si le plugin correspondant est chargé — d'où l'optionnalité,
-        // qui n'est pas une précaution mais la vérité du runtime. Le core ne les référence
-        // jamais (`no-plugin-in-core`) ; ils sont déclarés ici parce que **le namespace est
-        // la route sanctionnée du plugin vers l'hôte** (`MODULE_CONTRACT.md` §Règles de
-        // dépendances), donc son type doit les nommer.
-        //
-        // ⚠️ Déclarés à la suite de B-13 (27/07/2026) : la traîne `[key: string]: unknown`
-        // les couvrait implicitement, ce qui rendait indiscernables un plugin réel et une
-        // faute de frappe. Le retrait de la traîne a fait apparaître **8 appels documentés
-        // vers des namespaces inexistants** dans `packages/core/docs/` — publiés sur npm.
+        /** @internal Configuration loader (UMD/ESM bridge, B3). */
+        _ConfigLoader?: typeof import("./kernel/config/loader.js").ConfigLoader;
+        /** @internal Data converter (UMD/ESM bridge, B3). */
+        _DataConverter?: typeof import("./kernel/geojson/loader/data-converter.js").DataConverter;
+        /** @internal Label renderer of the labels capability. */
+        _LabelRenderer?: typeof import("./capabilities/labels/label-renderer.js").LabelRenderer;
+        /** @internal Layer manager control. */
+        _LayerManagerControl?: typeof import("./kernel/layer-manager/control.js").LMControl;
+        /** @internal Shared UI component factory (`kernel/ui/components.ts`). */
+        _UIComponents?: typeof import("./kernel/ui/components.js")._UIComponents;
+        /** @internal Style validators, set member by member by `globals.config.ts`. */
+        _Validators?: {
+            StyleValidator?: typeof import("./utils/validators/style-validator.js").StyleValidator;
+            StyleValidatorRules?: typeof import("./utils/validators/style-validator-rules.js").StyleValidatorRules;
+        };
 
-        /** `@geoleaf-plugins/table` — panneau tabulaire. */
+        // ── Namespaces mounted by the PLUGINS ────────────────────────────────────────────
+        //
+        // They only exist when the matching plugin is loaded — hence the optionality,
+        // which is not caution but the runtime's truth. The core never references them
+        // (`no-plugin-in-core`); they are declared here because **the namespace is the
+        // plugin's sanctioned route to the host** (`MODULE_CONTRACT.md`, dependency
+        // rules), so its type must name them.
+        //
+        // ⚠️ Declared on 27/07/2026, when the tail was removed: the
+        // `[key: string]: unknown` tail covered them implicitly, which made a real
+        // plugin and a typo indistinguishable. Removing the tail surfaced **8 documented
+        // calls to non-existent namespaces** in `packages/core/docs/` — published on
+        // npm.
+
+        /** `@geoleaf-plugins/table` — tabular panel. */
         Table?: unknown;
-        /** `@geoleaf-plugins/geocoding` — recherche d'adresses. */
+        /** `@geoleaf-plugins/geocoding` — address search. */
         Geocoding?: unknown;
-        /** `@geoleaf-plugins/realtime-layer` — flux temps réel (GTFS-RT…). */
+        /** `@geoleaf-plugins/realtime-layer` — realtime feeds (GTFS-RT…). */
         RealtimeLayer?: unknown;
-        /** `@geoleaf-plugins/flatgeobuf` — lecture FlatGeobuf par bbox. */
+        /** `@geoleaf-plugins/position-share` — user position broadcasting. */
+        PositionShare?: unknown;
+        /** `@geoleaf-plugins/routing` — multi-stop route computation. */
+        Routing?: unknown;
+        /**
+         * `@geoleaf-plugins/navigation` — realtime guidance.
+         *
+         * ⚠️ Two packages and not one: computation has value alone, guidance has none
+         * without it. The dependency is asymmetric, so the boundary sits there — and
+         * `navigation` imports only TYPES from `routing`.
+         */
+        Navigation?: unknown;
+        /** `@geoleaf-plugins/flatgeobuf` — FlatGeobuf reads by bbox. */
         FlatGeobuf?: unknown;
-        /** `@geoleaf-plugins/connector` — pont vers le backend Connector. */
+        /** `@geoleaf-plugins/connector` — bridge to the Connector backend. */
         Connector?: unknown;
         /** `@geoleaf-plugins/cog` — Cloud Optimized GeoTIFF. */
         COG?: unknown;
 
-        // ── B-52 (27/07/2026) — les 5 namespaces que B-13 avait laissés fermés ───────────
+        // ── The 5 plugin namespaces, declared on 27/07/2026 ──────────────────────────
         //
-        // ⚠️ B-13 a retiré la traîne `[key: string]: unknown` de cette interface et déclaré
-        // 7 namespaces de plugins. Les 5 ci-dessous n'y étaient pas, et le retrait de la
-        // traîne les a donc rendus **inatteignables au niveau des types** : un intégrateur
-        // compilant contre les types publiés recevait TS2339 sur `GeoLeaf.FileImport`, alors
-        // que le plugin le monte bien au runtime. Les deux effets de B-13 — 8 API fantômes
-        // tombées, 5 plugins fermés — venaient du MÊME geste ; seul le premier était voulu.
+        // ⚠️ Removing the `[key: string]: unknown` tail closed this interface and
+        // declared 7 plugin namespaces. The 5 below were not among them, so the removal
+        // made them **unreachable at the type level**: an integrator compiling against
+        // the published types got TS2339 on `GeoLeaf.FileImport`, although the plugin
+        // does mount it at runtime. Both effects of the removal — 8 phantom APIs down, 5
+        // plugins closed off — came from the SAME gesture; only the first was intended.
         //
-        // Mesuré par une sonde qui compile contre `dist/types/` **via l'exports map**, comme
-        // le fait un intégrateur (`examples/consumer/`) : 5 erreurs avant, 0 après. La sonde
-        // portait aussi un témoin POSITIF (`GeoLeaf.COG`, déclaré) pour prouver qu'elle
-        // discriminait au lieu de tout rejeter.
+        // Measured by a probe compiling against `dist/types/` **through the exports
+        // map**, the way an integrator does (`examples/consumer/`): 5 errors before, 0
+        // after. The probe also carried a POSITIVE witness (`GeoLeaf.COG`, declared) to
+        // prove it discriminated instead of rejecting everything.
         //
-        // `unknown` suffit ici, et c'est délibéré : l'objet de cette ligne est l'EXISTENCE de
-        // la propriété (une faute de frappe ne compile pas, un accès légitime compile). Le
-        // typage fin de chaque surface reste le gisement de B-13, et **ne s'élargit jamais en
-        // arrière vers `any`**.
+        // `unknown` suffices here, deliberately: this line's object is the EXISTENCE of
+        // the property (a typo does not compile, a legitimate access does). The fine
+        // typing of each surface remains a tracked deposit, and **never widens back to
+        // `any`**.
         //
-        // ⚠️ `offline-ui` n'est pas dans cette liste et n'y sera jamais : il ne monte AUCUN
-        // namespace propre — il pilote `GeoLeaf.Storage`, qui est une façade du core. Son
-        // `entry.ts` l'écrit en toutes lettres.
+        // ⚠️ `offline-ui` is not in this list and never will be: it mounts NO namespace
+        // of its own — it drives `GeoLeaf.Storage`, a core facade. Its `entry.ts` says
+        // so in as many words.
 
-        /** `@geoleaf-plugins/file-import` — conversion GPX/KML/KMZ/CSV/TSV/TopoJSON. */
+        /** `@geoleaf-plugins/file-import` — GPX/KML/KMZ/CSV/TSV/TopoJSON conversion. */
         FileImport?: unknown;
         /**
-         * `@geoleaf-plugins/measure` — outils de mesure.
+         * `@geoleaf-plugins/measure` — measuring tools.
          *
-         * ⚠️ **Ne pas confondre avec `measure` en minuscule**, plus haut dans cette même
-         * interface : celui-là est l'aide de mesure de performance entre deux marques. Les
-         * deux ne diffèrent que par la casse. C'est d'ailleurs le compilateur qui l'a signalé
-         * — la sonde de B-52 a rendu TS2551 « Did you mean 'measure'? » sur ce nom.
+         * ⚠️ **Not to be confused with lowercase `measure`**, higher in this same
+         * interface: that one is the performance-measuring helper between two marks. The
+         * two differ only by case. The compiler is in fact what flagged it — the
+         * declaration probe yielded TS2551 "Did you mean 'measure'?" on this name.
          */
         Measure?: unknown;
-        /** `@geoleaf-plugins/print` — export imprimable de la carte. */
+        /** `@geoleaf-plugins/print` — printable map export. */
         Print?: unknown;
-        /** `@geoleaf-plugins/editor` — édition d'entités. */
+        /** `@geoleaf-plugins/editor` — feature editing. */
         Editor?: unknown;
-        /** `@geoleaf-plugins/websocket` — flux WebSocket (monté sous `Ws`, pas `Websocket`). */
+        /** `@geoleaf-plugins/websocket` — WebSocket feeds (mounted as `Ws`, not `Websocket`). */
         Ws?: unknown;
 
-        /** @internal Enregistrement du Service Worker (`kernel/storage/sw-register.ts`). */
+        /** @internal Service Worker registration (`kernel/storage/sw-register.ts`). */
 
-        /** Métriques runtime (alias historique de `getRuntimeMetrics`). */
+        /** Runtime metrics (historical alias of `getRuntimeMetrics`). */
         getPerformanceMetrics?: () => unknown;
-        /** Métriques runtime — temps d'init, mémoire, rendu. */
+        /** Runtime metrics — init time, memory, rendering. */
         getRuntimeMetrics?: () => unknown;
-        /** Remet les compteurs de métriques à zéro. */
+        /** Resets the metric counters to zero. */
         resetRuntimeMetrics?: () => void;
     }
 
-    /** The global `GeoLeaf` namespace (`undefined` before boot completes). */
+    /**
+     * The global `GeoLeaf` namespace (`undefined` before boot completes).
+     *
+     * 🛑 **The `| undefined` is a DELIBERATE CHOICE, not an oversight — and it costs 117
+     * diagnostics. The next reader must know both.**
+     *
+     * **The motive**: the namespace **does not exist** before boot. Declaring it
+     * present-holding-`undefined` is more **true** than `GeoLeaf?:`, which would suggest
+     * an optional property of an existing object.
+     *
+     * **The cost, measured on 17/08/2026** — `scripts/typecheck-docs-examples.baseline.json`:
+     * `generatedCount: 117`, `diagnostics: [117]`, and **117 out of 117 are `TS18048 —
+     * 'GeoLeaf' is possibly 'undefined'`**. A single cause, this line. The deposit is
+     * therefore not a 117-fix work site: it is **one** decision.
+     *
+     * 🛑 **There is no third way, and the arbitration was RENDERED on 17/08/2026: KEEP.**
+     * The two branches, for the decision's record:
+     *   • **keep** — the typing stays true, the 117 diagnostics stay in the baseline
+     *     (chosen);
+     *   • **remove the `| undefined`** — the 117 would fall at once, at the price of an
+     *     ambient asserting a presence the boot does not guarantee.
+     *
+     * ⚠️ **What must ABOVE ALL not be done**: fix example by example. The baseline's
+     * `_comment` settles it — _"this is NOT a per-example defect, it is a property of the
+     * published ambient […] fixing it example by example would teach an idiom
+     * (`GeoLeaf!.X`) the rest of the doc does not use; it gets fixed at the source, in
+     * the declaration, or not at all."_
+     *
+     * ⚠️ **And both branches commit the ambient PUBLISHED on npm** since 12/08/2026: this
+     * is not an internal setting. That is why the motive was written down without
+     * deciding — writing the decision has value whatever the outcome, taking it only has
+     * value once.
+     */
     var GeoLeaf: GeoLeafGlobal | undefined;
 
     interface Window {

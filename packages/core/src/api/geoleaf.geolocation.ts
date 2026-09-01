@@ -13,7 +13,10 @@
  *
  * Geolocation is opt-out: the button is active unless `modules.geolocation.enabled`
  * is `false`. Migrated from the former `ui.showGeolocation` flag. `getState()` is the
- * public seam for the GPS state singleton (read by plugin-addpoi).
+ * public seam for the GPS state singleton — it exists for OUT-OF-CORE readers, in-core
+ * consumers importing the state module directly. Its first consumer was a plugin that no
+ * longer exists; the seam is kept because the boundary it crosses is still real, not because
+ * that plugin is coming back.
  */
 import { buildPublicApi } from "../capabilities/geolocation/public-api.js";
 

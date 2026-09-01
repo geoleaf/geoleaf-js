@@ -31,13 +31,15 @@ interface LocalImageData {
  * written with `uploaded: false` therefore never entered the `uploaded` index, and the
  * failure was SILENT: `getPendingImages()` returned an empty list forever, so the
  * deferred upload found nothing to do and reported success while queued images piled up
- * unreachable (CAPACITÉS S1 / backlog B.6). Measured under fake-indexeddb; the spec has
+ * unreachable. Measured under fake-indexeddb; the spec has
  * `getAll(false)` throw `DataError`, which a browser may additionally do.
  *
  * The unit mock never surfaced any of it — it compares keys with `===`.
  *
  * The PUBLIC surface stays boolean: {@link ImageUploadStatus} takes `uploaded: boolean`
- * and the flag is converted on write, so `plugin-addpoi` is unaffected.
+ * and the flag is converted on write, so no CONSUMER of that surface is affected. (It named
+ * the one consumer of the day until the 19/08/2026 — which made the guarantee look narrower
+ * than it is: the conversion protects the surface, not a particular caller.)
  */
 type UploadedFlag = 0 | 1;
 
@@ -75,43 +77,45 @@ interface ImageStats {
  * an image is never dropped on the strength of its age alone.
  */
 /**
- * ⚠️ CE QUE LA TÂCHE 3.13 A RETIRÉ D'ICI, ET CE QU'ELLE A GARDÉ — la mesure a scindé une
- * ligne d'inventaire qui annonçait « chaîne des images locales, 0 appelant, à supprimer ».
+ * ⚠️ WHAT WAS REMOVED FROM HERE, AND WHAT WAS KEPT — measurement split an inventory
+ * line that announced "local images chain, 0 callers, delete".
  *
- * **Retiré** : `getLocalImage(id)`. Son unique consommateur était
- * `addpoi/image-upload.ts` → `getLocalImageUrl()`, lui-même redondant : `storeImageLocally`
- * écrit AUSSI une data-URL base64 dans la donnée du POI, « so images display in popups/panels
- * without IndexedDB retrieval ». Deux chemins de lecture pour un rôle, dont un jamais pris.
+ * **Removed**: `getLocalImage(id)`. Its sole consumer was
+ * `addpoi/image-upload.ts` → `getLocalImageUrl()`, itself redundant:
+ * `storeImageLocally` ALSO writes a base64 data-URL into the POI's data, "so images
+ * display in popups/panels without IndexedDB retrieval". Two read paths for one
+ * role, one never taken.
  *
- * 🛑 **Gardé, et le pari a été tenu — mais pas par le sprint annoncé.** Le motif du 3.13 était
- * que le PRODUCTEUR (`storeImageLocally`, réparé à 3.6 : le blob et `uploaded: 0`) est vivant,
- * et que retirer ses lecteurs ferait deux dégâts :
+ * 🛑 **Kept, and the bet held — but not by the announced sprint.** The motive was
+ * that the PRODUCER (`storeImageLocally`, repaired: the blob and `uploaded: 0`) is
+ * alive, and that removing its readers would do two damages:
  *
- *   1. `storeImageLocally` deviendrait **write-only** — des octets écrits que plus rien ne
- *      pourrait relire, soit un compteur C2 ouvert à la place d'un C1 ;
- *   2. le store `local_images` n'aurait **plus aucune purge**, alors qu'un écrivain vivant
- *      l'alimente. C'est la même erreur que retirer le pré-contrôle de quota parce que sa
- *      coquille était morte, et sur un appareil de terrain le quota décide de tout.
+ *   1. `storeImageLocally` would become **write-only** — written bytes nothing could
+ *      re-read;
+ *   2. the `local_images` store would have **no purge left**, while a live writer
+ *      feeds it. Same error as removing the quota pre-check because its shell was
+ *      dead, and on a field device the quota decides everything.
  *
- * ⚠️ **CE BLOC A DIT « les quatre n'ont pas d'appelant de production » et « les quatre sont
- * RÉSERVÉS AU SPRINT 4 (4.5), avec `addpoi/image-upload.ts` → `retryPendingUploads()` »
- * JUSQU'AU 08/08/2026 — trois énoncés, aucun encore vrai.** ① Le Sprint 4 s'est **clos le
- * 05/08 sans eux** : 4.5 n'a jamais câblé cette chaîne. ② C'est le **Sprint 5** qui l'a rendue
- * vivante, sous un autre nom et dans un autre paquet —
- * `editor/persistence/image-store.ts` → `retryPendingImages()`, armé par `initImageUpload()`.
- * ③ `addpoi` **n'existe plus** (fusionné dans `editor`, Sprint 5).
+ * ⚠️ **THIS BLOCK SAID "none of the four has a production caller" and "all four are
+ * RESERVED for an upcoming batch, with `addpoi/image-upload.ts` →
+ * `retryPendingUploads()`" UNTIL 08/08/2026 — three statements, none yet true.**
+ * ① The targeted batch **closed on 05/08 without them**: nothing had wired that
+ * chain. ② A LATER batch is what made it live, under another name and in another
+ * package — `editor/persistence/image-store.ts` → `retryPendingImages()`, armed by
+ * `initImageUpload()`. ③ `addpoi` **no longer exists** (merged into `editor`).
  *
- * **État mesuré le 08/08/2026** — et c'est là que le dégât n° 2 s'était réalisé par l'autre bout :
+ * **State measured on 08/08/2026** — and this is where damage no. 2 had happened
+ * from the other end:
  *
- * | Membre | Atteignable par |
+ * | Member | Reachable through |
  * | --- | --- |
- * | `getPendingImages` · `updateImageUploadStatus` | `editor` (`retryPendingImages`), **câblés** |
- * | `deleteLocalImage` | relayé sur `GeoLeaf.Storage.DB` — **surface publique**, pas du mort |
- * | `cleanUploadedImages` | **0 appelant, 0 relais, 0 exposition** jusqu'au 08/08 — la purge existait et personne ne pouvait l'appeler (**B-190**) |
+ * | `getPendingImages` · `updateImageUploadStatus` | `editor` (`retryPendingImages`), **wired** |
+ * | `deleteLocalImage` | relayed on `GeoLeaf.Storage.DB` — **public surface**, not dead |
+ * | `cleanUploadedImages` | **0 callers, 0 relay, 0 exposure** until 08/08 — the purge existed and nobody could call it — relay added since |
  *
- * Le relais manquant est posé, et `retryPendingImages` appelle la purge après chaque
- * acquittement. Le pari du 3.13 tient donc — mais il a fallu trois clôtures de sprint pour
- * que quelqu'un vérifie qu'il tenait.
+ * The missing relay is in place, and `retryPendingImages` calls the purge after each
+ * acknowledgement. The bet therefore holds — but it took three sprint closures for
+ * someone to check that it did.
  */
 export interface ImagesDBInstance {
     _db: IDBDatabase | null;

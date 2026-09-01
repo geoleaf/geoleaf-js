@@ -1,7 +1,7 @@
 /**
  * @vitest-environment happy-dom
  *
- * Sprint 2 (A.7) regression — `gl_shown` URL parameter must restore layers
+ * Regression — `gl_shown` URL parameter must restore layers
  * that are NOT part of the active theme.
  *
  * Before the fix in permalink-sync.ts, `VisibilityManager.setVisibility(id,

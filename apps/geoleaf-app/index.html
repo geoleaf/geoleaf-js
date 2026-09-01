@@ -17,8 +17,21 @@
              do not run JS, and a deploy carries several profiles chosen at runtime — so these
              describe the application, which is the only statement true of every profile.
              `og:url` is deliberately absent so crawlers fall back to the fetched URL, which is
-             what a permalink needs. The integrator must prefix `og:image` with its own origin
-             (Open Graph requires an absolute URL) — see the integrator security guide checklist. -->
+             what a permalink needs.
+
+             🛑 `og:image` A ÉTÉ RETIRÉE le 17/08/2026, et son absence est un CHOIX.
+             Elle valait `src/assets/icons/icon-512.png` — un chemin RELATIF, alors qu'Open Graph
+             exige une URL absolue. Aucun agrégateur ne produisait donc d'aperçu : la balise ne
+             faisait rien, tout en donnant à lire que le sujet était traité. Une balise inopérante
+             vaut moins que son absence, parce qu'elle empêche de voir qu'il manque quelque chose.
+             ⚠️ La substitution au build a été écartée : le précédent existe
+             (`GEOLEAF_BACKEND_BASE_URL`) mais il fait varier un livrable selon la machine qui
+             construit — le piège déjà consigné pour `deploy-full`.
+             ➜ L'intégrateur qui veut un aperçu ajoute `og:image` avec SON origine absolue, ainsi
+             que `og:image:alt`. C'est une ligne, et elle lui appartient : l'origine n'est
+             connaissable que de lui.
+             📌 `twitter:card` repasse de `summary_large_image` à `summary` — sans image, la
+             grande carte n'a rien à montrer et l'agrégateur retombe sur le petit format. -->
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="GeoLeaf" />
         <meta property="og:title" content="GeoLeaf — cartographie interactive" />
@@ -26,9 +39,7 @@
             property="og:description"
             content="Couches, thèmes et points d'intérêt pilotés par profil JSON, avec consultation et saisie hors-ligne."
         />
-        <meta property="og:image" content="src/assets/icons/icon-512.png" />
-        <meta property="og:image:alt" content="Logo GeoLeaf" />
-        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:card" content="summary" />
 
         <!-- PWA -->
         <link rel="manifest" href="manifest.json" />
@@ -51,7 +62,7 @@
             content="default-src 'self';
                     script-src 'self';
                     style-src 'self';
-                    img-src 'self' data: https:;
+                    img-src 'self' data: blob: https:;
                     connect-src 'self' https:;
                     font-src 'self' data:;
                     worker-src 'self' blob:;
@@ -153,6 +164,16 @@
              would never exist, and unsynced field edits would be lost without a warning. -->
         <!-- Optional plugins — variant-gated: stripped by build-deploy.cjs when unused -->
         <script type="module" src="dist/geoleaf-offline-ui.plugin.js"></script>
+
+        <!-- routing stays EAGER, and the reason is a GUARD, not performance. Its entry point
+             is a profile-declared `action` widget of feature-info, whose visibility is gated on
+             `GeoLeaf.plugins.isLoaded()` ALONE — unlike toolbar slots, it does not consult
+             `isLazyAvailable()`. A lazily registered routing would therefore hide its own entry
+             point, and nothing would ever trigger the load that reveals it: no button, no error,
+             no trace. It is also the light half of the two navigation packages.
+             ⚠️ Do NOT "fix" the widget guard to make this lazy: that would change the meaning of
+             `requiresPlugin` for every existing profile. -->
+        <script type="module" src="dist/geoleaf-routing.plugin.js"></script>
 
         <!-- GEOLEAF-DEPLOY:DEV-CONNECTOR ─── START
              Local workstation bootstrap, removed from every SHIPPED variant by build-deploy.cjs

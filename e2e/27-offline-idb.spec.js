@@ -1,31 +1,34 @@
 // @ts-check
 /**
- * 27 — LE HORS-LIGNE SERT DEPUIS INDEXEDDB (tâche 3.2, critère de preuve n° 2)
+ * 27 — OFFLINE SERVES FROM INDEXEDDB (proof criterion no. 2)
  *
- * C'est la vérification que la cause racine n° 2 est RÉELLEMENT corrigée, et pas seulement
- * corrigée en apparence : jusqu'au 02/08/2026 le Service Worker ouvrait `geoleaf-db` à une
- * version `2` codée en dur pendant que le moteur déclarait `3`, donc `openIndexedDB()`
- * rendait `null` à chaque appel et l'étape 1 de la stratégie de tuiles n'était jamais prise.
+ * The verification that root cause no. 2 is REALLY fixed, and not merely fixed
+ * in appearance: until 2026-08-02 the Service Worker opened `geoleaf-db` at a
+ * hard-coded version `2` while the engine declared `3`, so `openIndexedDB()`
+ * returned `null` at every call and step 1 of the tile strategy was never
+ * taken.
  *
- * 🛑 CE QUI NE PROUVERAIT RIEN, et qui est le piège que ce fichier existe pour éviter :
- *   - « la tuile arrive hors ligne » — le chemin Cache API produit exactement le même vert ;
- *   - « on a vidé la Cache API » — le cache HTTP du navigateur peut encore servir ;
- *   - « un événement a été émis » — c'est ainsi que six défauts ont survécu des mois.
+ * 🛑 WHAT WOULD PROVE NOTHING, and which is the trap this file exists to avoid:
+ *   - "the tile arrives offline" — the Cache API path produces exactly the same
+ *     green;
+ *   - "the Cache API was emptied" — the browser's HTTP cache can still serve;
+ *   - "an event was emitted" — that is how six defects survived for months.
  *
- * ✅ CE QUI PROUVE : des octets que SEULE la branche IndexedDB peut produire. On sème une
- * tuile dont on connaît le contenu exact, on vide la Cache API, on coupe le réseau, et on
- * assert l'égalité OCTET POUR OCTET. Hors ligne et sans cache, aucune autre branche ne peut
- * rendre ces octets-là.
+ * ✅ WHAT PROVES: bytes that ONLY the IndexedDB branch can produce. A tile
+ * whose exact content is known is seeded, the Cache API emptied, the network
+ * cut, and BYTE-FOR-BYTE equality asserted. Offline and cache-less, no other
+ * branch can yield those bytes.
  *
- * ✅ ET LE CONTRÔLE NÉGATIF, sans lequel le vert ci-dessus reste douteux : on retire
- * l'enregistrement, on reste hors ligne, on redemande — et on doit obtenir le placeholder
- * SVG. Sans ce pas, un vert pourrait venir d'un cache mal nettoyé.
+ * ✅ AND THE NEGATIVE CONTROL, without which the green above stays dubious: the
+ * record is removed, we stay offline, we ask again — and must get the SVG
+ * placeholder. Without that step, a green could come from a badly cleaned
+ * cache.
  *
- * ⚠️ CE SPEC N'ARME PAS `serviceWorkers: "block"`, contrairement aux 26 autres. C'est le
- * Service Worker qui est le sujet. Sous `E2E_TARGET=nginx` l'enregistrement exige
- * `--ignore-certificate-errors` au niveau NAVIGATEUR — `ignoreHTTPSErrors` ne couvre pas le
- * fetch du script de worker. Le drapeau est posé par `hostResolverArgs`
- * (`e2e/helpers/base-url.js`), qui documente le piège.
+ * ⚠️ THIS SPEC DOES NOT ARM `serviceWorkers: "block"`, unlike the 26 others.
+ * The Service Worker is the subject. Under `E2E_TARGET=nginx` registration
+ * requires `--ignore-certificate-errors` at BROWSER level — `ignoreHTTPSErrors`
+ * does not cover the worker script's fetch. The flag is set by
+ * `hostResolverArgs` (`e2e/helpers/base-url.js`), which documents the trap.
  */
 
 import { test, expect } from "@playwright/test";
@@ -47,9 +50,9 @@ import { goOffline, goOnline, withOffline } from "./helpers/offline.js";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-// ⚠️ Lecture par `fs` et non `import ... with { type: "json" }` : Node 22 accepte les
-// attributs d'import, le parser d'ESLint configuré ici non — la forme « moderne » fait
-// échouer la gate Lint. Mesuré le 02/08/2026.
+// ⚠️ Read through `fs` and not `import ... with { type: "json" }`: Node 22
+// accepts import attributes, the ESLint parser configured here does not — the
+// "modern" form fails the Lint gate. Measured on 2026-08-02.
 const dump = JSON.parse(
     readFileSync(
         fileURLToPath(new URL("./fixtures/offline/db-v3-dump.json", import.meta.url)),
@@ -59,23 +62,23 @@ const dump = JSON.parse(
 
 const ORIGIN = baseURL("core");
 
-/** Une URL de tuile — `isTileRequest()` du SW la route vers `tileCacheStrategy`. */
+/** A tile URL — the SW's `isTileRequest()` routes it to `tileCacheStrategy`. */
 const TILE_URL = "https://tile.openstreetmap.org/7/63/42.png";
 
-/** PNG 1×1 réellement décodable, et son empreinte : c'est l'oracle de l'assertion d'octets. */
+/** A really decodable 1×1 PNG, and its fingerprint: the byte assertion's oracle. */
 const TILE_B64 =
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 const TILE_BYTES = 70;
 
 test.describe("27 — le hors-ligne sert depuis IndexedDB (3.2)", () => {
     test.beforeEach(async ({ page }) => {
-        // Isolation réelle : un vert ne doit jamais pouvoir venir d'un run précédent.
+        // Real isolation: a green must never be able to come from a previous run.
         await wipeOnOrigin(page, ORIGIN);
     });
 
     test.afterEach(async ({ context, page }) => {
         await goOnline(context, page).catch(() => {
-            /* le contexte peut déjà être en ligne */
+            /* the context may already be online */
         });
     });
 
@@ -83,9 +86,10 @@ test.describe("27 — le hors-ligne sert depuis IndexedDB (3.2)", () => {
         context,
         page,
     }) => {
-        // ── 1. Semer une v3 RÉELLE avant tout boot ──────────────────────────────────────
-        // Le critère dit « ouvrir geoleaf-db APRÈS migration » : il faut donc qu'une base
-        // existe déjà quand l'application démarre. Semer après le boot ne teste rien.
+        // ── 1. Seed a REAL v3 before any boot ───────────────────────────────────────────
+        // The criterion says "open geoleaf-db AFTER migration": a database must
+        // thus already exist when the application starts. Seeding after the boot
+        // tests nothing.
         await seedDatabase(page, {
             ...dump,
             clear: true,
@@ -97,10 +101,11 @@ test.describe("27 — le hors-ligne sert depuis IndexedDB (3.2)", () => {
                         resourceType: "tile",
                         contentType: "image/png",
                         timestamp: 1785600000000,
-                        // ArrayBuffer et NON Blob : `extractBinary()` du SW lit un
-                        // ArrayBuffer, une chaîne `data:` ou une enveloppe {kind:"binary"} —
-                        // un Blob traverse les trois et l'enregistrement devient illisible
-                        // par le chemin même qu'il sert à éprouver.
+                        // ArrayBuffer and NOT Blob: the SW's `extractBinary()`
+                        // reads an ArrayBuffer, a `data:` string or a
+                        // {kind:"binary"} envelope — a Blob falls through all
+                        // three and the record becomes unreadable by the very
+                        // path it serves to prove.
                         data: { __arraybuffer__: { base64: TILE_B64 } },
                     },
                 ],
@@ -111,16 +116,16 @@ test.describe("27 — le hors-ligne sert depuis IndexedDB (3.2)", () => {
         expect(seeded.version).toBe(3);
         expect(seeded.stores).toContain("layers");
 
-        // ── 2. Booter l'application SUR cette base ──────────────────────────────────────
+        // ── 2. Boot the application ON that database ────────────────────────────────────
         await page.goto(`${ORIGIN}/`, { waitUntil: "domcontentloaded" });
 
-        // `controller`, pas `.ready` : un SW enregistré mais NON CONTRÔLANT ne sert rien,
-        // et l'attendre est ce qui rend ce test non menteur.
+        // `controller`, not `.ready`: a registered but NON-CONTROLLING SW serves
+        // nothing, and waiting on it is what keeps this test honest.
         await page.waitForFunction(() => !!navigator.serviceWorker.controller, null, {
             timeout: 25000,
         });
 
-        // La base semée a survécu au boot — sinon on éprouverait une base neuve.
+        // The seeded database survived the boot — else a fresh one would be proven.
         const afterBoot = await readRecord(page, {
             db: GEOLEAF_DB,
             store: "layers",
@@ -128,16 +133,17 @@ test.describe("27 — le hors-ligne sert depuis IndexedDB (3.2)", () => {
         });
         expect(afterBoot, "la tuile semée doit survivre au boot de l'app").toBeTruthy();
 
-        // ── 3. Vider la Cache API — la branche concurrente ──────────────────────────────
+        // ── 3. Empty the Cache API — the competing branch ───────────────────────────────
         //
-        // ⚠️ NE PAS asserter « 0 cache ». L'application tourne : le worker rouvre un bucket
-        // dès la requête suivante (`caches.open(CACHE_TILES)`, les stratégies network-first
-        // qui font `cache.put`), donc compter les caches revient à courir contre elle et
-        // rend un rouge qui ne dit rien du code testé. Mesuré : 1 cache recréé entre le
-        // `delete` et la relecture.
+        // ⚠️ Do NOT assert "0 caches". The application is running: the worker
+        // reopens a bucket at the very next request (`caches.open(CACHE_TILES)`,
+        // the network-first strategies doing `cache.put`), so counting caches
+        // amounts to racing it and yields a red that says nothing of the tested
+        // code. Measured: 1 cache recreated between the `delete` and the
+        // re-read.
         //
-        // Ce qui compte n'est pas « aucun cache » mais « rien EN CACHE POUR CETTE URL » —
-        // c'est-à-dire que la branche concurrente ne peut pas répondre à la place d'IndexedDB.
+        // What counts is not "no cache" but "nothing IN CACHE FOR THIS URL" —
+        // i.e. the competing branch cannot answer in IndexedDB's place.
         const tileInCache = await page.evaluate(async (url) => {
             const names = await caches.keys();
             await Promise.all(names.map((n) => caches.delete(n)));
@@ -146,9 +152,9 @@ test.describe("27 — le hors-ligne sert depuis IndexedDB (3.2)", () => {
         }, TILE_URL);
         expect(tileInCache, "aucune réponse en Cache API pour cette tuile").toBeNull();
 
-        // ── 3bis. Les octets sont RÉELLEMENT en base, sous la bonne forme ───────────────
-        // `readBinary` distingue un ArrayBuffer d'une chaîne : semer un Blob passerait
-        // silencieusement le `toBeTruthy()` ci-dessus et resterait illisible par le SW.
+        // ── 3bis. The bytes ARE really in the database, in the right shape ──────────────
+        // `readBinary` tells an ArrayBuffer from a string: seeding a Blob would
+        // silently pass the `toBeTruthy()` above and stay unreadable by the SW.
         const stored = await readBinary(page, {
             db: GEOLEAF_DB,
             store: "layers",
@@ -160,20 +166,22 @@ test.describe("27 — le hors-ligne sert depuis IndexedDB (3.2)", () => {
         );
         expect(stored.byteLength).toBe(TILE_BYTES);
 
-        // ── 4. Couper le réseau ─────────────────────────────────────────────────────────
-        // ── 5. Demander la tuile — la réponse ne peut venir que d'IndexedDB ─────────────
-        // `withOffline` restaure le réseau même si une assertion échoue : sans lui, un rouge
-        // ici laisserait le contexte hors ligne pour tous les tests suivants du fichier.
-        // ⚠️ PAS d'`assertZeroNetwork` ici, et le motif est mesuré : un `fetch()` servi
-        // ENTIÈREMENT par le Service Worker émet quand même un événement `request`. Le
-        // helper compte des INITIATIONS de requête, pas de la sortie réseau — l'assertion
-        // aurait donc rougi sur la tuile qu'on vient de servir depuis la base.
+        // ── 4. Cut the network ──────────────────────────────────────────────────────────
+        // ── 5. Request the tile — the answer can only come from IndexedDB ───────────────
+        // `withOffline` restores the network even if an assertion fails: without
+        // it, a red here would leave the context offline for every following
+        // test of the file.
+        // ⚠️ NO `assertZeroNetwork` here, and the motive is measured: a `fetch()`
+        // served ENTIRELY by the Service Worker still emits a `request` event.
+        // The helper counts request INITIATIONS, not network egress — the
+        // assertion would thus have reddened on the tile just served from the
+        // database.
         //
-        // ✅ La limite est INSTRUITE depuis le 03/08 (voir l'en-tête d'`offline.js`) : elle ne
-        // concerne QUE les lectures que le worker intercepte — c'est-à-dire exactement ce
-        // test-ci. Le critère 3 porte sur une ÉCRITURE, qui n'en émet aucune ; il est éprouvé
-        // par `29-offline-proof.spec.js`. Ce commentaire reste donc juste, et il l'est
-        // désormais pour une raison mesurée plutôt que par prudence.
+        // ✅ The limit has been INVESTIGATED since 08-03 (see `offline.js`'s
+        // header): it concerns ONLY the reads the worker intercepts — i.e.
+        // exactly this test. Criterion 3 bears on a WRITE, which emits none; it
+        // is proven by `29-offline-proof.spec.js`. This comment thus stays
+        // right, and it now is for a measured reason rather than by prudence.
         const served = await withOffline(context, page, () =>
             page.evaluate(async (url) => {
                 const res = await fetch(url, { cache: "no-store" });
@@ -190,10 +198,11 @@ test.describe("27 — le hors-ligne sert depuis IndexedDB (3.2)", () => {
 
         expect(served.status).toBe(200);
         expect(served.contentType).toContain("image/png");
-        // L'assertion qui porte tout : les octets sont CEUX QU'ON A SEMÉS. Hors ligne, sans
-        // Cache API, aucune autre branche du worker ne peut les produire.
+        // The assertion carrying everything: the bytes are THE ONES SEEDED.
+        // Offline, without the Cache API, no other worker branch can produce
+        // them.
         expect(served.byteLength).toBe(TILE_BYTES);
-        // En-tête PNG — la preuve que ce n'est ni le placeholder SVG ni une réponse vide.
+        // PNG header — the proof it is neither the SVG placeholder nor an empty response.
         expect(served.head).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
     });
 
@@ -201,19 +210,21 @@ test.describe("27 — le hors-ligne sert depuis IndexedDB (3.2)", () => {
         context,
         page,
     }) => {
-        // Sans ce test, le vert du précédent pourrait venir d'un cache mal nettoyé : il faut
-        // montrer que la MÊME requête, dans les MÊMES conditions, échoue quand la seule
-        // chose qui change est l'absence de l'enregistrement IndexedDB.
-        // `seedLegacyDump` — le point d'entrée documenté : il pose la fixture v3 COMPLÈTE
-        // avant tout boot. Sa tuile est une AUTRE URL que celle mesurée, ce qui est
-        // exactement la condition du contrôle négatif.
+        // Without this test, the previous one's green could come from a badly
+        // cleaned cache: the SAME request, under the SAME conditions, must be
+        // shown to fail when the only thing that changes is the IndexedDB
+        // record's absence.
+        // `seedLegacyDump` — the documented entry point: it lays the COMPLETE v3
+        // fixture before any boot. Its tile is a DIFFERENT URL from the measured
+        // one, which is exactly the negative control's condition.
         const seeded = await seedLegacyDump(page, ORIGIN, dump);
         expect(seeded.version).toBe(3);
 
-        // La fixture porte bien ce qu'elle annonce — 5 entrées de file, dont l'entrée
-        // `failed` du critère 4 et les trois qui portent l'ordre de saisie (B-03). Ce que
-        // ces cinq prouvent est éprouvé par `28-offline-queue.spec.js` ; ici on ne vérifie
-        // que leur PRÉSENCE, pour que le contrôle négatif ci-dessous parte d'une base réelle.
+        // The fixture carries what it announces — 5 queue entries, including
+        // criterion 4's `failed` entry and the three carrying the input order.
+        // What those five prove is proven by `28-offline-queue.spec.js`; here
+        // only their PRESENCE is verified, so the negative control below starts
+        // from a real database.
         expect(await countStore(page, { db: GEOLEAF_DB, store: "sync_queue" })).toBe(5);
 
         await page.goto(`${ORIGIN}/`, { waitUntil: "domcontentloaded" });
@@ -239,25 +250,27 @@ test.describe("27 — le hors-ligne sert depuis IndexedDB (3.2)", () => {
             };
         }, TILE_URL);
 
-        // Le worker sert son placeholder. ✅ Depuis 3.6 il le sert en **504** : le corps a
-        // une valeur d'usage — il dit à l'utilisateur que la tuile manque — mais le statut dit
-        // la vérité, et tout consommateur qui teste `response.ok` la voit. En 200, MapLibre
-        // recevait du SVG pour une tuile vectorielle et tentait de le parser en protobuf.
+        // The worker serves its placeholder. ✅ Since the fix it serves it as
+        // **504**: the body has use value — it tells the user the tile is
+        // missing — but the status tells the truth, and any consumer testing
+        // `response.ok` sees it. At 200, MapLibre received SVG for a vector tile
+        // and tried parsing it as protobuf.
         expect(served.contentType).toContain("image/svg+xml");
         expect(served.body).toContain("<svg");
         expect(served.status, "bug n° 6 : l'échec réseau ne se déguise plus en succès").toBe(504);
     });
 
-    // ⚠️ CE TEST N'EST PAS UNE GARDE, et le dire est le seul moyen qu'on ne le prenne pas
-    // pour une. Il rejoue les deux ouvertures depuis la PAGE : il constate donc un fait sur
-    // IndexedDB et sur la base semée, pas sur `sw-core.js`. Vérifié par mutation — en
-    // remettant `open("geoleaf-db", 2)` dans le worker et en reconstruisant le déployé, il
-    // reste VERT pendant que le premier test de ce fichier rougit.
+    // ⚠️ THIS TEST IS NOT A GUARD, and saying so is the only way it will not be
+    // taken for one. It replays the two opens from the PAGE: it thus observes a
+    // fact about IndexedDB and the seeded database, not about `sw-core.js`.
+    // Verified by mutation — putting `open("geoleaf-db", 2)` back in the worker
+    // and rebuilding the deploy, it stays GREEN while this file's first test
+    // reddens.
     //
-    // Il vaut pour ce qu'il documente : POURQUOI une version épinglée ne peut pas marcher.
-    // Ce qui GARDE le comportement du worker, ce sont le premier test ci-dessus (octets
-    // servis hors ligne) et la garde de source de `__tests__/storage/sw-core.test.js`
-    // (aucun `indexedDB.open(` à deux arguments).
+    // It is worth what it documents: WHY a pinned version cannot work. What
+    // GUARDS the worker's behaviour are the first test above (bytes served
+    // offline) and `__tests__/storage/sw-core.test.js`'s source guard (no
+    // two-argument `indexedDB.open(`).
     test("le MÉCANISME de 3.1, documenté depuis le navigateur (pas une garde — voir ci-dessus)", async ({
         page,
     }) => {
@@ -267,9 +280,10 @@ test.describe("27 — le hors-ligne sert depuis IndexedDB (3.2)", () => {
             timeout: 25000,
         });
 
-        // Reproduit les deux ouvertures depuis la PAGE (même origine, même base que le SW).
-        // La versionless doit aboutir ; celle épinglée à 2 doit encore échouer — sans ce
-        // témoin, le vert ne se distinguerait pas d'un navigateur sans base.
+        // Reproduces the two opens from the PAGE (same origin, same database as
+        // the SW). The versionless one must succeed; the one pinned at 2 must
+        // still fail — without that witness, the green would not be
+        // distinguishable from a browser with no database.
         const opens = await page.evaluate(async () => {
             const tryOpen = (version) =>
                 new Promise((resolve) => {
@@ -292,20 +306,22 @@ test.describe("27 — le hors-ligne sert depuis IndexedDB (3.2)", () => {
             return { versionless: await tryOpen(undefined), pinnedAt2: await tryOpen(2) };
         });
 
-        // ⚠️ AUCUN littéral de version ici, et c'est le sujet même du test. Ce qui se
-        // vérifie est que l'ouverture SANS version SUIT le moteur, quel que soit son numéro —
-        // c'est précisément ce que T2′ achète. Écrire `version: 3` a fait rougir ce test au
-        // passage en v4 (3.4) alors que RIEN n'avait cassé : le littéral était la seule
-        // chose désynchronisée, dans le test qui documente la désynchronisation.
+        // ⚠️ NO version literal here, and that is the test's very subject. What
+        // is verified is that the versionless open FOLLOWS the engine, whatever
+        // its number — precisely what the fix buys. Writing `version: 3` made
+        // this test redden at the v4 move while NOTHING had broken: the literal
+        // was the only desynchronised thing, in the test documenting the
+        // desynchronisation.
         expect(opens.versionless).toMatchObject({ ok: true, hasLayers: true });
         expect(opens.versionless.version).toBeGreaterThanOrEqual(3);
-        // Le témoin historique : une version ÉPINGLÉE en-dessous échoue toujours.
+        // The historical witness: a version PINNED below still fails.
         expect(opens.pinnedAt2).toMatchObject({ ok: false, err: "VersionError" });
     });
 
     test("openBlankOnOrigin ne boote PAS l'application", async ({ page }) => {
-        // Garde du harnais lui-même : si ce document bootait l'app, le seeding cesserait
-        // d'être « avant le boot » et le critère 2 perdrait son objet, en silence.
+        // Guard of the harness itself: if this document booted the app, seeding
+        // would stop being "before the boot" and criterion 2 would lose its
+        // subject, in silence.
         await openBlankOnOrigin(page, ORIGIN);
         const state = await page.evaluate(() => ({
             hasGeoLeaf: typeof (/** @type {any} */ (window).GeoLeaf) !== "undefined",

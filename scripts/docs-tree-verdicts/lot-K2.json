@@ -17,35 +17,7 @@
             "confidence": "haute",
             "rationale": "21 fichiers, 2 131 LOC, profondeur 3 sous src/ (seuil E7 = 5) ; index.ts n'expose que 3 symboles sur les 21 fichiers, frontiere capabilities/ -> kernel/ mediee."
         },
-        "packages/core/src/kernel/ui/desktop": {
-            "kind": "dir",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Panneau latéral droit (>= 1440 px) : bandeau d'onglets vertical, bouton de thème, injection des boutons déclarés par le registre, seam d'onglets.",
-            "confidence": "haute",
-            "rationale": "4 fichiers, 664 LOC ; INV-UI-SPLIT interdit tout import croise avec mobile/, ce que confirme le partage remonte a la racine (roving-tabindex, toolbar-dispatch, ui-slot-builder)."
-        },
-        "packages/core/src/kernel/ui/mobile": {
-            "kind": "dir",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Barre d'outils mobile découpée en pilule, barre de proximité, feuille modale et état partage, assemblés par un orchestrateur.",
-            "confidence": "haute",
-            "rationale": "5 fichiers, 1 230 LOC, un seul point d'entree (mobile-toolbar.ts, 1 importeur : globals.ui.ts) ; decoupage impose par INV-700, aucun fichier au-dessus de 437 LOC."
-        },
-        "packages/core/src/kernel/ui/index.ts": {
+        "packages/core/src/kernel/ui/collapsible-toggle.ts": {
             "kind": "file",
             "name": "ok",
             "nameTarget": null,
@@ -55,9 +27,9 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Barrel public du sous-arbre UI : n'expose que _UIComponents, createPillSearchInput et _UITheme aux capacités.",
+            "description": "Bouton de repli des contrôles à panneau : fabrique le bouton `<prefixe>__toggle` avec son libellé accessible et bascule le modificateur `--collapsed` du conteneur",
             "confidence": "haute",
-            "rationale": "26 LOC, 3 `export … from`, aucune declaration : N4 ne se declenche pas (seuil 40 LOC + declarations). 4 importeurs, tous dans capabilities/, conforme a la frontiere R.8."
+            "rationale": "✅ FERMÉ au STRUCT S8 (26/07/2026) — E2, niveau d'abstraction. Le test décisif de la règle : un fichier de `utils/` doit être publiable tel quel sur npm sans mentionner GeoLeaf ni MapLibre. Celui-ci lit `getLabel` de l'i18n du core et construit du DOM aux classes `gl-*` : c'est du kernel UI, pas un utilitaire générique. Il rejoint `kernel/ui/`."
         },
         "packages/core/src/kernel/ui/components.ts": {
             "kind": "file",
@@ -73,8 +45,8 @@
             "confidence": "haute",
             "rationale": "42 LOC mais 3 importeurs : X2a exige <= 1 consommateur. L'en-tete documente la contrainte — _UIComponents est fige par 2 tests de contrat boot, lu par plugin-print via gl._UIComponents et reference dans 11 fichiers de test."
         },
-        "packages/core/src/kernel/ui/legend-symbols.ts": {
-            "kind": "file",
+        "packages/core/src/kernel/ui/desktop": {
+            "kind": "dir",
             "name": "ok",
             "nameTarget": null,
             "location": "ok",
@@ -83,149 +55,9 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Rendu DOM des symboles de légende — point, ligne, polygone, étoile, icône — partagés par la légende et le gestionnaire de couches.",
+            "description": "Panneau latéral droit (>= 1440 px) : bandeau d'onglets vertical, bouton de thème, injection des boutons déclarés par le registre, seam d'onglets.",
             "confidence": "haute",
-            "rationale": "470 LOC, 1 importeur (components.ts) ; en-tete : « Split out of components.ts in KERNEL S8 » — extraction documentee, deux types exportes sont declares dans check-orphan-exports.cjs."
-        },
-        "packages/core/src/kernel/ui/widgets.ts": {
-            "kind": "file",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Constructeurs d'accordéon et de bouton bascule, widgets génériques partagés par la légende et le gestionnaire de couches.",
-            "confidence": "haute",
-            "rationale": "203 LOC, 1 importeur (components.ts) ; seconde moitie de la scission KERNEL S8 documentee en en-tete, exportee sous _UIWidgets."
-        },
-        "packages/core/src/kernel/ui/theme.ts": {
-            "kind": "file",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Thème clair/sombre de l'interface : détection auto, bascule, persistance localStorage, expose l'objet _UITheme.",
-            "confidence": "haute",
-            "rationale": "396 LOC, 3 importeurs. Homonyme de kernel/map/theme.ts (N5) mais les deux dossiers qualifient le domaine — arbitrage cross-T5 §6.2 : le chemin porte l'information. Distinct de kernel/themes/, qui est le moteur des themes metier."
-        },
-        "packages/core/src/kernel/ui/event-delegation.ts": {
-            "kind": "file",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Délégation d'événements UI centralisée, avec registre des écouteurs attachés pour un nettoyage intégral, expose _UIEventDelegation.",
-            "confidence": "haute",
-            "rationale": "159 LOC, 1 importeur (globals/globals.ui.ts) qui le monte sur le namespace ; consomme ensuite par ui-api.ts via GeoLeaf._UIEventDelegation — pont globals assume, pas une arete manquante."
-        },
-        "packages/core/src/kernel/ui/ui-api.ts": {
-            "kind": "file",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Orchestrateur qui monte la surface GeoLeaf.UI (thème, notifications, délégation, init, cleanup) en déléguant aux sous-modules _UI*.",
-            "confidence": "haute",
-            "rationale": "306 LOC, 1 importeur (api/geoleaf.ui.ts). Chemin epingle dans la BASELINE de verify-globals-ownership.cjs, qui documente l'auto-montage de facade comme tolere ; le deplacer imposerait de modifier la gate (RUBRIC §1 regle 7). Famille <domaine>-api.ts : 11 occurrences."
-        },
-        "packages/core/src/kernel/ui/pill-search.ts": {
-            "kind": "file",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Champ de recherche en pilule réutilisable — structure DOM, icônes SVG et gestion clavier — utilise par la recherche POI du panneau de filtres.",
-            "confidence": "haute",
-            "rationale": "197 LOC ; copie deliberee vers plugins/geocoding/src/ui/pill-search.ts, enregistree dans la table SEAMS de verify-seam-drift.cjs (145 L communes). RUBRIC §4 : une entree SEAMS est justifiee, pas a fusionner."
-        },
-        "packages/core/src/kernel/ui/roving-tabindex.ts": {
-            "kind": "file",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Arithmétique clavier partagée des widgets a roving tabindex : traduit une touche fléchée, Home ou End en index cible.",
-            "confidence": "haute",
-            "rationale": "44 LOC, 2 importeurs, un dans desktop/ et un dans mobile/ ; l'en-tete cite la frontiere no-restricted-imports (archi B.4) et INV-UI-SPLIT impose ce placement a la racine de ui/."
-        },
-        "packages/core/src/kernel/ui/toolbar-dispatch.ts": {
-            "kind": "file",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Émission de l'événement geoleaf:toolbar:action pour les actions déclarées par les plugins, avec chargement préalable du bundle lazy.",
-            "confidence": "haute",
-            "rationale": "55 LOC, 2 importeurs (desktop-panel-slots.ts, mobile-toolbar.ts) ; en-tete : « Extracted in KERNEL S8 from two byte-identical blocks », placement racine impose par INV-UI-SPLIT."
-        },
-        "packages/core/src/kernel/ui/ui-slot-builder.ts": {
-            "kind": "file",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Liste blanche de balises SVG et résolution des deux gardes de visibilité (profileKey, requiresPlugin) des boutons de slot UI.",
-            "confidence": "moyenne",
-            "rationale": "96 LOC, 2 importeurs, un par ecran ; le suffixe -builder ne figure ni dans la liste N7 ni dans la table des suffixes cross-T5, et l'en-tete annonce des « helpers for building », pas un constructeur — tension reelle mais sous le seuil d'un verdict."
-        },
-        "packages/core/src/kernel/ui/desktop/desktop-panel.ts": {
-            "kind": "file",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Panneau latéral droit a onglets verticaux repliables (Filtres, Couches, Légende) : construction, activation et destruction.",
-            "confidence": "haute",
-            "rationale": "403 LOC, 3 exports, 1 importeur (globals/globals.ui.ts) ; agrege ses trois voisins de dossier plus roving-tabindex, aucune remontee vers capabilities/."
-        },
-        "packages/core/src/kernel/ui/desktop/desktop-panel-theme.ts": {
-            "kind": "file",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Bouton de bascule clair/sombre du panneau desktop : icônes SVG soleil/lune, libellés ARIA et ajout dans le bandeau d'onglets.",
-            "confidence": "haute",
-            "rationale": "62 LOC, 1 importeur (desktop-panel.ts) ; en-tete : « Extracted from desktop-panel.ts to keep it within the 700-line limit » — decoupage impose par INV-700, X2c ne s'applique pas (dossier de 4 fichiers, 664 LOC)."
+            "rationale": "4 fichiers, 664 LOC ; INV-UI-SPLIT interdit tout import croise avec mobile/, ce que confirme le partage remonte a la racine (roving-tabindex, toolbar-dispatch, ui-slot-builder)."
         },
         "packages/core/src/kernel/ui/desktop/desktop-panel-slots.ts": {
             "kind": "file",
@@ -241,6 +73,34 @@
             "confidence": "haute",
             "rationale": "Renommé au STRUCT S4 depuis `desktop-panel-registry.ts`. 155 LOC, UN SEUL export : `appendRegistryTabButtons` — aucun objet ni classe éponyme, et c’est le cas N7 le plus net des douze : un fichier nommé `-registry` qui n’expose ni registre ni objet, seulement une fonction d’assemblage de boutons. Il ne stocke rien, il consomme `IModuleUISlot[\"desktopTabButton\"]` via `ui-slot-builder.ts`, d’où la cible `-slots`. Cohérent avec le voisin `kernel/ui/ui-slot-builder.ts`, dont l’en-tête nommait déjà ce fichier comme source d’extraction."
         },
+        "packages/core/src/kernel/ui/desktop/desktop-panel-theme.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Bouton de bascule clair/sombre du panneau desktop : icônes SVG soleil/lune, libellés ARIA et ajout dans le bandeau d'onglets.",
+            "confidence": "haute",
+            "rationale": "62 LOC, 1 importeur (desktop-panel.ts) ; en-tete : « Extracted from desktop-panel.ts to keep it within the 700-line limit » — decoupage impose par INV-700, X2c ne s'applique pas (dossier de 4 fichiers, 664 LOC)."
+        },
+        "packages/core/src/kernel/ui/desktop/desktop-panel.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Panneau latéral droit a onglets verticaux repliables (Filtres, Couches, Légende) : construction, activation et destruction.",
+            "confidence": "haute",
+            "rationale": "403 LOC, 3 exports, 1 importeur (globals/globals.ui.ts) ; agrege ses trois voisins de dossier plus roving-tabindex, aucune remontee vers capabilities/."
+        },
         "packages/core/src/kernel/ui/desktop/desktop-tabs-seam.ts": {
             "kind": "file",
             "name": "ok",
@@ -255,7 +115,7 @@
             "confidence": "haute",
             "rationale": "Le basename est conforme (famille *-seam.ts, 5 occurrences, gatee par INV-CAPABILITY-BARREL), mais l'en-tete declare @module built-in/ui/desktop/desktop-tabs-seam alors que packages/core/src/built-in/ n'existe plus depuis la restructuration kernel/plugins — 12 fichiers du core portent ce prefixe mort, 1 dans ce lot. — CORRECTION DE COHÉRENCE : N10 sanctionne l'en-tête @module, pas le basename, qui est ici conforme (kebab-case, famille déclarée) ; les 13 autres verdicts N10 du corpus (C7 ×3, K4, K5 ×8) rendent name \"ok\". T5 §6.2 tranche par ailleurs que facade.ts et layers-public-api.ts sont \"ok\" : dans un dossier plat déjà nommé, le chemin porte l'information. ✅ SOLDÉ au STRUCT S5 (26/07/2026) — par SUPPRESSION du tag, PAS par le renommage prescrit ici. Mesure préalable : 514 tags `@module` dans le dépôt, dont 204 (43 %) désignaient un chemin inexistant, répartis sur 4 conventions concurrentes — et AUCUN consommateur : `moduleTag` est extrait par source-inventory et relu par rien, et `packages/core/typedoc.json` est en `entryPointStrategy: \"resolve\"`, qui ne lit jamais un `@module` par fichier (vérifié contre la sortie générée : aucune valeur de tag n'y apparaît). Un tag obligé d'égaler le chemin de son fichier ne porte aucune information — ses deux seuls états sont « correct » et « dérivé » —, d'où l'interdiction plutôt que la synchronisation. ⚠️ CORRECTION DE MÉCANISME : « ce tag est lu par la doc générée » était FAUX. La colonne `description` de l'arborescence rend `summary`, soit la première phrase de la PROSE `@description` (source-inventory:207 → generate-docs-tree:320-322), jamais `@module`. La fausse doc publiée venait donc de la prose, et **un seul** fichier du corpus était concerné (`kernel/basemaps/basemaps-types.ts`, « shared by every file under `built-in/basemaps/` ») — corrigé au même sprint, avec 36 autres chemins morts de prose et 10 liens TypeDoc `{@link module:built-in/…}` qui ne pouvaient pas résoudre. Gate MH-03 interdit désormais le tag, sans baseline (la règle tient à zéro)."
         },
-        "packages/core/src/kernel/ui/mobile/mobile-toolbar.ts": {
+        "packages/core/src/kernel/ui/event-delegation.ts": {
             "kind": "file",
             "name": "ok",
             "nameTarget": null,
@@ -265,9 +125,93 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Orchestrateur de la barre d'outils mobile : assemble pilule, barre de proximité et feuille modale, et expose initMobileToolbar.",
+            "description": "Délégation d'événements UI centralisée, avec registre des écouteurs attachés pour un nettoyage intégral, expose _UIEventDelegation.",
             "confidence": "haute",
-            "rationale": "335 LOC, 1 importeur (globals/globals.ui.ts) ; unique point d'entree du dossier, il importe les 4 autres fichiers de mobile/ et ne remonte que vers la racine ui/ (INV-UI-SPLIT respecte)."
+            "rationale": "159 LOC, 1 importeur (globals/globals.ui.ts) qui le monte sur le namespace ; consomme ensuite par ui-api.ts via GeoLeaf._UIEventDelegation — pont globals assume, pas une arete manquante."
+        },
+        "packages/core/src/kernel/ui/index.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Barrel public du sous-arbre UI : n'expose que _UIComponents, createPillSearchInput et _UITheme aux capacités.",
+            "confidence": "haute",
+            "rationale": "26 LOC, 3 `export … from`, aucune declaration : N4 ne se declenche pas (seuil 40 LOC + declarations). 4 importeurs, tous dans capabilities/, conforme a la frontiere R.8."
+        },
+        "packages/core/src/kernel/ui/legend-symbols.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Rendu DOM des symboles de légende — point, ligne, polygone, étoile, icône — partagés par la légende et le gestionnaire de couches.",
+            "confidence": "haute",
+            "rationale": "470 LOC, 1 importeur (components.ts) ; en-tete : « Split out of components.ts in KERNEL S8 » — extraction documentee, deux types exportes sont declares dans check-orphan-exports.cjs."
+        },
+        "packages/core/src/kernel/ui/mobile": {
+            "kind": "dir",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Barre d'outils mobile découpée en pilule, barre de proximité, feuille modale et état partage, assemblés par un orchestrateur.",
+            "confidence": "haute",
+            "rationale": "5 fichiers, 1 230 LOC, un seul point d'entree (mobile-toolbar.ts, 1 importeur : globals.ui.ts) ; decoupage impose par INV-700, aucun fichier au-dessus de 437 LOC."
+        },
+        "packages/core/src/kernel/ui/mobile/css": {
+            "kind": "dir",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Feuilles de style de la barre d'outils mobile, coloquées avec elle",
+            "confidence": "haute",
+            "rationale": "✅ Créé au STRUCT S8 (26/07/2026) — répertoire de colocalisation CSS de la feature, ouvert par E6. Reprend le patron des 11 `capabilities/*/css/`, déclaré référence du dépôt par T7."
+        },
+        "packages/core/src/kernel/ui/mobile/css/mobile-toolbar-bar.css": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Feuille de la barre pilule d'utilitaires mobile et de son bottom sheet réutilisable, visible sous 768 px, avec le masquage des contrôles desktop",
+            "confidence": "haute",
+            "rationale": "✅ FERMÉ au STRUCT S8 (26/07/2026) — E6, colocalisation des assets. La feuille rejoint la feature qu'elle habille : les 11 `capabilities/*/css/` étaient déjà coloqués, `css/components/**` était l'îlot restant. Le répertoire `css/components/` disparaît, et ses 4 clés de RÉPERTOIRE avec — elles ne se requalifient pas. ⚠️ Le contre-argument de la cascade `@layer` a été pesé PUIS mesuré : les 5 `@import` de `geoleaf-main.css:40-45` sont tous en `layer(gl.kernel)` et seuls leurs CHEMINS changent — ordre et couche identiques. Le fichier documente lui-même à `:20-23` (écrit au S6) qu'« il ne dépend plus de l'ordre des @import ». Preuve à l'octet : boot payload **177,8 KB gz / 602,2 KB raw avant ET après**, `geoleaf-main.min.css` 16,2 / 24 KB gz. `verify-purgecss` a été VU rougir sur **exactement 53** sélecteurs — le compte attendu ; un chemin mal réécrit l'aurait fait dévier. Baseline régénérée à 75."
+        },
+        "packages/core/src/kernel/ui/mobile/css/mobile-toolbar-responsive.css": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Règles responsive restantes de la barre mobile : ses propres boutons, son infobulle et le gestionnaire de couches intégré, après l'éviction des règles de cinq capacités au S6",
+            "confidence": "haute",
+            "rationale": "✅ FERMÉ au STRUCT S8 (26/07/2026) — E6, colocalisation des assets. La feuille rejoint la feature qu'elle habille : les 11 `capabilities/*/css/` étaient déjà coloqués, `css/components/**` était l'îlot restant. Le répertoire `css/components/` disparaît, et ses 4 clés de RÉPERTOIRE avec — elles ne se requalifient pas. ⚠️ Le contre-argument de la cascade `@layer` a été pesé PUIS mesuré : les 5 `@import` de `geoleaf-main.css:40-45` sont tous en `layer(gl.kernel)` et seuls leurs CHEMINS changent — ordre et couche identiques. Le fichier documente lui-même à `:20-23` (écrit au S6) qu'« il ne dépend plus de l'ordre des @import ». Preuve à l'octet : boot payload **177,8 KB gz / 602,2 KB raw avant ET après**, `geoleaf-main.min.css` 16,2 / 24 KB gz. `verify-purgecss` a été VU rougir sur **exactement 53** sélecteurs — le compte attendu ; un chemin mal réécrit l'aurait fait dévier. Baseline régénérée à 75."
         },
         "packages/core/src/kernel/ui/mobile/mobile-toolbar-pill.ts": {
             "kind": "file",
@@ -325,7 +269,7 @@
             "confidence": "haute",
             "rationale": "78 LOC, 4 importeurs — les 4 autres fichiers de mobile/ : cohesion maximale, aucun consommateur hors du dossier, E1 ne se declenche pas."
         },
-        "packages/core/src/kernel/ui/mobile/css/mobile-toolbar-bar.css": {
+        "packages/core/src/kernel/ui/mobile/mobile-toolbar.ts": {
             "kind": "file",
             "name": "ok",
             "nameTarget": null,
@@ -335,11 +279,11 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Feuille de la barre pilule d'utilitaires mobile et de son bottom sheet réutilisable, visible sous 768 px, avec le masquage des contrôles desktop",
+            "description": "Orchestrateur de la barre d'outils mobile : assemble pilule, barre de proximité et feuille modale, et expose initMobileToolbar.",
             "confidence": "haute",
-            "rationale": "✅ FERMÉ au STRUCT S8 (26/07/2026) — E6, colocalisation des assets. La feuille rejoint la feature qu'elle habille : les 11 `capabilities/*/css/` étaient déjà coloqués, `css/components/**` était l'îlot restant. Le répertoire `css/components/` disparaît, et ses 4 clés de RÉPERTOIRE avec — elles ne se requalifient pas. ⚠️ Le contre-argument de la cascade `@layer` a été pesé PUIS mesuré : les 5 `@import` de `geoleaf-main.css:40-45` sont tous en `layer(gl.kernel)` et seuls leurs CHEMINS changent — ordre et couche identiques. Le fichier documente lui-même à `:20-23` (écrit au S6) qu'« il ne dépend plus de l'ordre des @import ». Preuve à l'octet : boot payload **177,8 KB gz / 602,2 KB raw avant ET après**, `geoleaf-main.min.css` 16,2 / 24 KB gz. `verify-purgecss` a été VU rougir sur **exactement 53** sélecteurs — le compte attendu ; un chemin mal réécrit l'aurait fait dévier. Baseline régénérée à 75."
+            "rationale": "335 LOC, 1 importeur (globals/globals.ui.ts) ; unique point d'entree du dossier, il importe les 4 autres fichiers de mobile/ et ne remonte que vers la racine ui/ (INV-UI-SPLIT respecte)."
         },
-        "packages/core/src/kernel/ui/mobile/css/mobile-toolbar-responsive.css": {
+        "packages/core/src/kernel/ui/panel-panes.ts": {
             "kind": "file",
             "name": "ok",
             "nameTarget": null,
@@ -349,25 +293,11 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Règles responsive restantes de la barre mobile : ses propres boutons, son infobulle et le gestionnaire de couches intégré, après l'éviction des règles de cinq capacités au S6",
+            "description": "Registre des panes hebergeables : ce qu'un module exterieur declare, et quelle surface l'affiche — panneau lateral droit au-dessus de 1440px, sheet mobile en dessous.",
             "confidence": "haute",
-            "rationale": "✅ FERMÉ au STRUCT S8 (26/07/2026) — E6, colocalisation des assets. La feuille rejoint la feature qu'elle habille : les 11 `capabilities/*/css/` étaient déjà coloqués, `css/components/**` était l'îlot restant. Le répertoire `css/components/` disparaît, et ses 4 clés de RÉPERTOIRE avec — elles ne se requalifient pas. ⚠️ Le contre-argument de la cascade `@layer` a été pesé PUIS mesuré : les 5 `@import` de `geoleaf-main.css:40-45` sont tous en `layer(gl.kernel)` et seuls leurs CHEMINS changent — ordre et couche identiques. Le fichier documente lui-même à `:20-23` (écrit au S6) qu'« il ne dépend plus de l'ordre des @import ». Preuve à l'octet : boot payload **177,8 KB gz / 602,2 KB raw avant ET après**, `geoleaf-main.min.css` 16,2 / 24 KB gz. `verify-purgecss` a été VU rougir sur **exactement 53** sélecteurs — le compte attendu ; un chemin mal réécrit l'aurait fait dévier. Baseline régénérée à 75."
+            "rationale": "161 LOC, 3 importeurs (desktop-panel.ts, mobile-toolbar-sheet.ts, globals.ui.ts) : X2a exige <= 1 consommateur, non declenche. Sa place dans kernel/ui/ et non sous desktop/ est portee par le fait que ses DEUX hotes sont a des niveaux differents — le mettre chez l'un des deux ferait importer desktop/ depuis mobile/. Le noyau n'y nomme aucun plugin : c'est le plugin qui s'enregistre, donc verify-core-standalone reste vert."
         },
-        "packages/core/src/kernel/ui/mobile/css": {
-            "kind": "dir",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Feuilles de style de la barre d'outils mobile, coloquées avec elle",
-            "confidence": "haute",
-            "rationale": "✅ Créé au STRUCT S8 (26/07/2026) — répertoire de colocalisation CSS de la feature, ouvert par E6. Reprend le patron des 11 `capabilities/*/css/`, déclaré référence du dépôt par T7."
-        },
-        "packages/core/src/kernel/ui/collapsible-toggle.ts": {
+        "packages/core/src/kernel/ui/pill-search.ts": {
             "kind": "file",
             "name": "ok",
             "nameTarget": null,
@@ -377,9 +307,107 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Bouton de repli des contrôles à panneau : fabrique le bouton `<prefixe>__toggle` avec son libellé accessible et bascule le modificateur `--collapsed` du conteneur",
+            "description": "Champ de recherche en pilule réutilisable — structure DOM, icônes SVG et gestion clavier — utilise par la recherche POI du panneau de filtres.",
             "confidence": "haute",
-            "rationale": "✅ FERMÉ au STRUCT S8 (26/07/2026) — E2, niveau d'abstraction. Le test décisif de la règle : un fichier de `utils/` doit être publiable tel quel sur npm sans mentionner GeoLeaf ni MapLibre. Celui-ci lit `getLabel` de l'i18n du core et construit du DOM aux classes `gl-*` : c'est du kernel UI, pas un utilitaire générique. Il rejoint `kernel/ui/`."
+            "rationale": "197 LOC ; copie deliberee vers plugins/geocoding/src/ui/pill-search.ts, enregistree dans la table SEAMS de verify-seam-drift.cjs (145 L communes). RUBRIC §4 : une entree SEAMS est justifiee, pas a fusionner."
+        },
+        "packages/core/src/kernel/ui/roving-tabindex.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Arithmétique clavier partagée des widgets a roving tabindex : traduit une touche fléchée, Home ou End en index cible.",
+            "confidence": "haute",
+            "rationale": "44 LOC, 2 importeurs, un dans desktop/ et un dans mobile/ ; l'en-tete cite la frontiere no-restricted-imports (archi B.4) et INV-UI-SPLIT impose ce placement a la racine de ui/."
+        },
+        "packages/core/src/kernel/ui/theme.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Thème clair/sombre de l'interface : détection auto, bascule, persistance localStorage, expose l'objet _UITheme.",
+            "confidence": "haute",
+            "rationale": "396 LOC, 3 importeurs. Homonyme de kernel/map/theme.ts (N5) mais les deux dossiers qualifient le domaine — arbitrage cross-T5 §6.2 : le chemin porte l'information. Distinct de kernel/themes/, qui est le moteur des themes metier."
+        },
+        "packages/core/src/kernel/ui/toolbar-dispatch.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Émission de l'événement geoleaf:toolbar:action pour les actions déclarées par les plugins, avec chargement préalable du bundle lazy.",
+            "confidence": "haute",
+            "rationale": "55 LOC, 2 importeurs (desktop-panel-slots.ts, mobile-toolbar.ts) ; en-tete : « Extracted in KERNEL S8 from two byte-identical blocks », placement racine impose par INV-UI-SPLIT."
+        },
+        "packages/core/src/kernel/ui/ui-api.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Orchestrateur qui monte la surface GeoLeaf.UI (thème, notifications, délégation, init, cleanup) en déléguant aux sous-modules _UI*.",
+            "confidence": "haute",
+            "rationale": "306 LOC, 1 importeur (api/geoleaf.ui.ts). Chemin epingle dans la BASELINE de verify-globals-ownership.cjs, qui documente l'auto-montage de facade comme tolere ; le deplacer imposerait de modifier la gate (RUBRIC §1 regle 7). Famille <domaine>-api.ts : 11 occurrences."
+        },
+        "packages/core/src/kernel/ui/ui-slot-builder.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Liste blanche de balises SVG et résolution des deux gardes de visibilité (profileKey, requiresPlugin) des boutons de slot UI.",
+            "confidence": "moyenne",
+            "rationale": "96 LOC, 2 importeurs, un par ecran ; le suffixe -builder ne figure ni dans la liste N7 ni dans la table des suffixes cross-T5, et l'en-tete annonce des « helpers for building », pas un constructeur — tension reelle mais sous le seuil d'un verdict."
+        },
+        "packages/core/src/kernel/ui/widgets.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Constructeurs d'accordéon et de bouton bascule, widgets génériques partagés par la légende et le gestionnaire de couches.",
+            "confidence": "haute",
+            "rationale": "203 LOC, 1 importeur (components.ts) ; seconde moitie de la scission KERNEL S8 documentee en en-tete, exportee sous _UIWidgets."
+        },
+        "packages/core/src/kernel/ui/immersive.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "X1a",
+            "severity": null,
+            "description": "Mode d'UI immersif — retire le chrome du cœur sans nommer qui le demande",
+            "confidence": "haute",
+            "rationale": "Deux exports montés sur `GeoLeaf.UI` par `globals/globals.ui.ts`. Le mode est nommé ICI et non chez l'appelant : le dépôt avait déjà quatre modes par classe sur `<body>`, chacun possédé par celui qui le pose, chacun visant des sélecteurs d'un autre — ce qui rend le masquage invisible du côté masqué. Le nommer au kernel le rend typé, gaté et réutilisable, et laisse `no-plugin-in-core` intact puisque rien ici n'apprend qui a demandé. La cible du plein écran est `document.documentElement`, jamais `.gl-main` : hors du sous-arbre plein écran un élément n'est pas mal placé, il n'est PAS rendu, et le conteneur de toasts vit sur `document.body`."
         }
     }
 }

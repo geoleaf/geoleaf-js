@@ -1,45 +1,45 @@
 #!/usr/bin/env node
 /**
- * B-218 — SONDE D'INSTRUCTION (jetable, non gatée) : QUEL instrument de heap voit
- * 10 000 features dans CET environnement, et avec quelle dispersion ?
+ * INSTRUCTION PROBE (throwaway, not gated): WHICH heap instrument sees 10,000
+ * features in THIS environment, and with what dispersion?
  *
- * La question commande tout le reste : `06-performance-baseline.spec.js` §6.2.4 lit
- * `performance.memory.usedJSHeapSize` avant et après un ajout de 10k points, et rend
- * `delta = 0` dans les six runs connus. Tant qu'on n'a pas établi qu'une grandeur BOUGE
- * avec son objet, tout seuil posé dessus est décoratif (mode d'échec n° 5 : un verdict
- * invérifiable). Et tant qu'on n'a pas mesuré sa DISPERSION, tout seuil risque d'être
- * posé dans la bande de bruit — c'est exactement ce qui a coûté B-217.
+ * The question commands everything else: `06-performance-baseline.spec.js` §6.2.4
+ * reads `performance.memory.usedJSHeapSize` before and after adding 10k points, and
+ * renders `delta = 0` in all six known runs. Until it is established that a quantity
+ * MOVES with its object, any threshold laid on it is decorative (an unverifiable
+ * verdict). And until its DISPERSION is measured, any threshold risks being laid in
+ * the noise band — exactly what the FPS oracle cost.
  *
- * ── MODE « instruments » (défaut) ──────────────────────────────────────────────
- * Quatre instruments comparés, sur la même page et le même geste, en dose-réponse
- * (N = 0 témoin inverse, 10 000, 30 000) :
- *   1. `performance.memory.usedJSHeapSize`            — celui du gate d'avant B-218
- *   2. CDP `Performance.getMetrics` → JSHeapUsedSize  — candidat nommé par B-218
- *   3. CDP `Runtime.getHeapUsage` → usedSize          — candidat nommé par B-218
- *   4. `performance.measureUserAgentSpecificMemory()` — candidat nommé par B-218
- * Passe 2 : les mêmes + `--enable-precise-memory-info`, pour ÉVALUER ce drapeau (il
- * lèverait la quantification de `performance.memory`, mais il changerait le régime de
- * mesure de TOUTE la suite — cf. `e2e/helpers/launch-options.js`).
+ * ── "instruments" MODE (default) ───────────────────────────────────────────────
+ * Four instruments compared, on the same page and the same move, dose-response
+ * (N = 0 inverse witness, 10,000, 30,000):
+ *   1. `performance.memory.usedJSHeapSize`            — the previous gate's
+ *   2. CDP `Performance.getMetrics` → JSHeapUsedSize  — candidate named in the brief
+ *   3. CDP `Runtime.getHeapUsage` → usedSize          — candidate named in the brief
+ *   4. `performance.measureUserAgentSpecificMemory()` — candidate named in the brief
+ * Pass 2: the same + `--enable-precise-memory-info`, to EVALUATE that flag (it would
+ * lift `performance.memory`'s quantization, but it would change the measurement
+ * regime of the WHOLE suite — cf. `e2e/helpers/launch-options.js`).
  *
- * ── MODE « bande » (PROBE_MODE=bande) ──────────────────────────────────────────
- * Dispersion du delta RETENU (GC forcé des deux côtés), page fraîche à chaque ligne,
- * sur les deux constructions possibles : l'API GeoLeaf (`adapter.addGeoJSONLayer`) et
- * l'appel natif MapLibre (`map.addSource`) que le spec utilisait. C'est cette table qui
- * fixe le plancher et le plafond de la garde — jamais une constante choisie d'avance.
+ * ── "bande" MODE (PROBE_MODE=bande) ────────────────────────────────────────────
+ * Dispersion of the RETAINED delta (GC forced on both sides), fresh page per line,
+ * on both possible constructions: the GeoLeaf API (`adapter.addGeoJSONLayer`) and
+ * the native MapLibre call (`map.addSource`) the spec used. This table is what sets
+ * the guard's floor and ceiling — never a constant picked in advance.
  *
- * ── MODE « fuite » (PROBE_MODE=fuite) — ajouté par B-219 ───────────────────────
- * Répond à UNE question que les deux modes ci-dessus ne posent pas : que verrait une
- * garde de RÉTENTION (add → remove répétés, puis heap retenu) là où §6.2.4 ne mesure
- * qu'un COÛT ? Trois scénarios sur pages fraîches — churn sain, churn qui FUIT (les
- * collections restent référencées), et témoin sans churn — et, sur la même page, le
- * verdict rendu par l'API produit `analyzeMemoryLeaks()`. C'est la comparaison des deux
- * colonnes qui tranche : si CDP voit la fuite simulée et que le produit dit « normal »,
- * le défaut est chez le produit, pas dans le test.
+ * ── "fuite" MODE (PROBE_MODE=fuite) ─────────────────────────
+ * Answers ONE question the two modes above do not ask: what would a RETENTION guard
+ * see (repeated add → remove, then retained heap) where §6.2.4 only measures a COST?
+ * Three scenarios on fresh pages — healthy churn, LEAKING churn (the collections stay
+ * referenced), and a churn-less witness — and, on the same page, the verdict rendered
+ * by the product API `analyzeMemoryLeaks()`. Comparing the two columns is what
+ * decides: if CDP sees the simulated leak and the product says "normal", the defect
+ * is in the product, not the test.
  *
  * Usage : E2E_TARGET=nginx node scripts/probe-heap-metrics.mjs           (instruments)
  *         E2E_TARGET=nginx PROBE_MODE=bande node scripts/probe-heap-metrics.mjs
  *         E2E_TARGET=nginx PROBE_MODE=fuite node scripts/probe-heap-metrics.mjs
- * Ne démarre aucun serveur : vise les vhosts nginx permanents.
+ * Starts no server: targets the permanent nginx vhosts.
  */
 
 import { chromium } from "@playwright/test";
@@ -50,7 +50,7 @@ const URL = process.env.GEOLEAF_PROBE_URL || `${baseURL("core")}/`;
 const MODE = process.env.PROBE_MODE || "instruments";
 const MB = (o) => (o / (1024 * 1024)).toFixed(2);
 
-/** Le geste mesuré, dans les deux constructions possibles. `api` : "geoleaf" | "native". */
+/** The measured move, in both possible constructions. `api`: "geoleaf" | "native". */
 const AJOUT = ([count, api]) => {
     const map = window.GeoLeaf.Core.getMap();
     const native = map.getNativeMap();
@@ -75,12 +75,13 @@ const AJOUT = ([count, api]) => {
     }
     const id = "_probe_mem_" + Date.now();
     const data = { type: "FeatureCollection", features };
-    // 🖐 B-88 — FAUX POSITIF INSTRUIT, pas une gêne. `detect-possible-timing-attacks` mord sur
-    // tout `===` dont un côté s'appelle `api`, `token`, `secret`… — il compare des NOMS, pas
-    // des valeurs. Ici `api` est le sélecteur de mode de la sonde (`"geoleaf"` ou l'adaptateur
-    // brut), lu depuis un argument CLI d'opérateur : il n'y a ni secret, ni comparaison en
-    // temps variable à protéger. Dérogation LOCALE et non extinction de la règle sur
-    // `scripts/` : le prochain `===` sur un vrai jeton doit encore rougir.
+    // 🖐 INSTRUCTED FALSE POSITIVE, not an annoyance. `detect-possible-timing-attacks`
+    // bites on any `===` whose one side is named `api`, `token`, `secret`… — it
+    // compares NAMES, not values. Here `api` is the probe's mode selector
+    // (`"geoleaf"` or the raw adapter), read from an operator CLI argument: there is
+    // no secret, no variable-time comparison to protect. LOCAL derogation and not an
+    // extinction of the rule over `scripts/`: the next `===` on a real token must
+    // still go red.
     // eslint-disable-next-line security/detect-possible-timing-attacks
     if (api === "geoleaf") {
         map.addGeoJSONLayer(id, data);
@@ -91,7 +92,7 @@ const AJOUT = ([count, api]) => {
     return id;
 };
 
-/** Relève les quatre instruments à un instant donné. */
+/** Reads the four instruments at a given instant. */
 async function releve(page, client, label) {
     const inPage = await page.evaluate(() => {
         const m = performance.memory;
@@ -126,20 +127,20 @@ async function releve(page, client, label) {
     return { label, inPage, cdpMetrics, heapUsage, uaMem };
 }
 
-/** GC forcé (deux passes) puis relève — mesure ce qui est RETENU, pas ce qui a été alloué. */
+/** Forced GC (two passes) then reading — measures what is RETAINED, not what was allocated. */
 async function releveApresGc(page, client, label) {
     for (let i = 0; i < 2; i++) {
         try {
             await client.send("HeapProfiler.collectGarbage");
         } catch {
-            /* non fatal — le relevé dira ce qu'il vaut */
+            /* non-fatal — the reading will say what it is worth */
         }
     }
     await page.waitForTimeout(200);
     return releve(page, client, label);
 }
 
-/** Ouvre une page fraîche sur la cible, carte prête. */
+/** Opens a fresh page on the target, map ready. */
 async function pageFraiche(browser) {
     const context = await browser.newContext({ ignoreHTTPSErrors: true, serviceWorkers: "block" });
     const page = await context.newPage();
@@ -147,7 +148,7 @@ async function pageFraiche(browser) {
     try {
         await client.send("Performance.enable");
     } catch {
-        /* déjà actif */
+        /* already active */
     }
     await page.goto(URL, { waitUntil: "networkidle" });
     await page.waitForFunction(
@@ -235,8 +236,8 @@ async function modeInstruments() {
 }
 
 async function modeBande() {
-    // Chaque ligne = une page FRAÎCHE. L'ordre alterne les constructions pour qu'une
-    // dérive lente de la machine ne se lise pas comme une différence entre elles.
+    // Each line = a FRESH page. The order alternates the constructions so a slow
+    // machine drift does not read as a difference between them.
     const plan = [
         [10_000, "geoleaf"],
         [10_000, "native"],
@@ -303,14 +304,15 @@ async function modeBande() {
 }
 
 /**
- * Phase 1 du churn : `cycles` cycles add→remove complets, PUIS un dernier ajout laissé
- * EN PLACE. La page rend la main là pour que Node lise le PIC par CDP — la mesure qui
- * établit que le geste a un effet visible, sans quoi une rétention nulle serait
- * indiscernable d'un churn qui n'a rien fait (c'est la leçon de plancher de B-218).
+ * Churn phase 1: `cycles` complete add→remove cycles, THEN one last addition left
+ * IN PLACE. The page hands back there so Node reads the PEAK via CDP — the
+ * measurement establishing the move has a visible effect, without which a zero
+ * retention would be indistinguishable from a churn that did nothing (the brief's
+ * floor lesson).
  *
- * `leak` : si vrai, les collections restent référencées depuis un tableau global —
- * c'est la FUITE SIMULÉE, et elle sert de témoin positif : une garde de rétention qui
- * ne la voit pas ne garde rien.
+ * `leak`: if true, the collections stay referenced from a global array — the
+ * SIMULATED LEAK, serving as positive witness: a retention guard that does not see
+ * it guards nothing.
  */
 const CHURN_PIC = async ([cycles, leak, churn]) => {
     const adapter = window.GeoLeaf.Core.getMap();
@@ -342,15 +344,15 @@ const CHURN_PIC = async ([cycles, leak, churn]) => {
         return { type: "FeatureCollection", features };
     };
 
-    // Le profiler produit tourne PENDANT le churn, exactement comme en 6.2.6.
+    // The product profiler runs DURING the churn, exactly as in §6.2.6.
     window.__probeProfiler = new window.GeoLeaf.Utils.PerformanceProfiler({
         monitoring: { enabled: true, interval: 200, maxDataPoints: 60 },
     });
     window.__probeProfiler.startMonitoring();
 
     for (let c = 0; c < cycles; c++) {
-        // Témoin direct de l'ENTRÉE du profiler : combien de valeurs DISTINCTES
-        // `performance.memory` rend-il sur la durée du churn ?
+        // Direct witness of the profiler's INPUT: how many DISTINCT values does
+        // `performance.memory` render over the churn's duration?
         if (performance.memory) window.__probeSamples.push(performance.memory.usedJSHeapSize);
         if (churn) {
             const data = collection();
@@ -365,7 +367,7 @@ const CHURN_PIC = async ([cycles, leak, churn]) => {
         }
     }
 
-    // Le dernier ajout reste EN PLACE — c'est lui que la lecture de pic doit voir.
+    // The last addition stays IN PLACE — it is what the peak reading must see.
     if (churn) {
         window.__probeHeld = collection();
         adapter.addGeoJSONLayer("_churn_pic", window.__probeHeld);
@@ -374,7 +376,7 @@ const CHURN_PIC = async ([cycles, leak, churn]) => {
     return { cycles };
 };
 
-/** Phase 2 : retire la couche tenue, libère les références, rend le verdict produit. */
+/** Phase 2: removes the held layer, frees the references, returns the product verdict. */
 const CHURN_FIN = async ([churn, leak]) => {
     const adapter = window.GeoLeaf.Core.getMap();
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -396,12 +398,12 @@ const CHURN_FIN = async ([churn, leak]) => {
 };
 
 async function modeFuite() {
-    // Par défaut la DOSE du spec (`e2e/06-performance-baseline.spec.js` §6.2.6), pour que
-    // la bande soit mesurée là où elle est appliquée — la leçon de `heapDeltaBandMb`,
-    // qui jette plutôt que de se laisser réemployer à une autre dose.
+    // By default the spec's DOSE (`e2e/06-performance-baseline.spec.js` §6.2.6), so
+    // the band is measured where it is applied — the `heapDeltaBandMb` lesson, which
+    // throws rather than let itself be reused at another dose.
     const CYCLES = Number(process.env.PROBE_CYCLES || 14);
-    // L'ordre ALTERNE les scénarios pour qu'une dérive lente de la machine ne se lise
-    // pas comme une différence entre eux.
+    // The order ALTERNATES the scenarios so a slow machine drift does not read as a
+    // difference between them.
     const plan = [
         ["churn sain", true, false],
         ["FUITE simulée", true, true],
@@ -473,7 +475,7 @@ async function modeFuite() {
         }
     }
     console.log(
-        "\n  La colonne « distincts » est le fait de B-219 : si elle vaut 1, l'entrée du profiler\n" +
+        "\n  La colonne « distincts » existe pour une raison : si elle vaut 1, l'entrée du profiler\n" +
             "  n'a pas varié d'un octet, et AUCUN verdict de croissance n'est calculable sur elle.\n"
     );
 }

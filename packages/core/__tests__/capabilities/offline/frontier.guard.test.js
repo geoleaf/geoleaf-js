@@ -22,18 +22,20 @@ import { fileURLToPath } from "node:url";
 
 const SRC = resolve(dirname(fileURLToPath(import.meta.url)), "../../../src");
 const OFFLINE = join(SRC, "capabilities", "offline");
-// ⚠️ LISTE EN DUR, DONC À TENIR — et elle a déjà pris du retard une fois. `pull/` est arrivé
-// avec la tâche 4.1 et n'y a PAS été ajouté : la garde est restée verte en cessant simplement
-// de couvrir un répertoire du moteur, exactement la classe de cécité que
-// `probe-gate-visibility.cjs` surveille ailleurs. `write/` (tâche 4.4) l'a fait rougir en
-// important `db/local-edit.js`, ce qui a révélé l'omission précédente.
+// ⚠️ HARDCODED LIST, HENCE TO MAINTAIN — and it already fell behind once.
+// `pull/` arrived and was NOT added: the guard stayed green by simply ceasing
+// to cover one engine directory, exactly the blindness class
+// `probe-gate-visibility.cjs` watches elsewhere. `write/` turned it red by
+// importing `db/local-edit.js`, which revealed the earlier omission.
 //
-// Un répertoire neuf sous `capabilities/offline/` est un répertoire de MOTEUR par défaut :
-// il part dans le chunk différé et ne doit jamais entrer dans la clôture statique du boot.
-// ⚠️ LISTE EN DUR — tout répertoire neuf du moteur doit y être déclaré, sinon cette garde
-// reste VERTE en cessant simplement de scanner le nouveau code. Elle a déjà été prise en
-// défaut ainsi : 4.1 a créé `pull/` sans l'y ajouter, et la garde a couvert un répertoire de
-// moins sans rien dire (tâche 4.4). `report/` ajouté par 4.8.
+// A new directory under `capabilities/offline/` is an ENGINE directory by
+// default: it goes in the deferred chunk and must never enter the boot's
+// static closure.
+// ⚠️ HARDCODED LIST — every new engine directory must be declared here,
+// otherwise this guard stays GREEN by simply ceasing to scan the new code. It
+// has already been caught out this way: `pull/` was created without being
+// added, and the guard covered one directory fewer without a word. `report/`
+// added later.
 const ENGINE_DIRS = ["core", "db", "cache", "poi-restore", "pull", "report", "write"].map((d) =>
     join(OFFLINE, d)
 );

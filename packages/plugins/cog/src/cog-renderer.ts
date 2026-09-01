@@ -23,8 +23,7 @@ type ImageCoordinates = [[number, number], [number, number], [number, number], [
  * `getContext("2d")` because it has no 2D backend. happy-dom is exactly that case from 20.11.0
  * on — it defines `window.OffscreenCanvas` but its `getContext` returns `null` unless a
  * `canvasAdapter` is configured. Detecting existence only, this function handed back a surface
- * with no context and {@link rastersToCanvas} threw one line later. Measured 15/08/2026,
- * backlog B-258. Calling `getContext("2d")` twice on one surface returns the same context, so
+ * with no context and {@link rastersToCanvas} threw one line later. Measured 15/08/2026. Calling `getContext("2d")` twice on one surface returns the same context, so
  * the probe costs nothing and has no side effect.
  */
 function createCanvas(width: number, height: number): OffscreenCanvas | HTMLCanvasElement {
@@ -82,12 +81,12 @@ function resolveBandIndices(bandCount: number, bands?: CogLayerOptions["bands"])
     let singleOverride = false;
     if (bands) {
         if (bands.length === 1) {
-            redIdx = greenIdx = blueIdx = (bands[0] as number) - 1;
+            redIdx = greenIdx = blueIdx = bands[0] - 1;
             singleOverride = true;
         } else if (bands.length === 3) {
             // Destructure the tuple, not the array `.map()` returns: `map` erases tuple-ness,
             // so each binding came back possibly-undefined for no reason (qualite Q5).
-            const [r, g, b] = bands as [number, number, number];
+            const [r, g, b] = bands;
             redIdx = r - 1;
             greenIdx = g - 1;
             blueIdx = b - 1;

@@ -45,6 +45,20 @@
             "confidence": "haute",
             "rationale": "664 LOC (sous INV-700), 1 seul export — la classe éponyme du fichier. Seul fichier du dossier importé de l'extérieur, par exactement 2 sites légitimes : `app/boot-core.ts` et `kernel/map/index.ts` — la façade de la frontière est unique, aucun déclencheur E1"
         },
+        "packages/core/src/adapters/maplibre/maplibre-pmtiles.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Pont de protocole pmtiles:// — enregistrement eager à l'init de l'adaptateur, bibliothèque chargée lazy au premier usage",
+            "confidence": "haute",
+            "rationale": "Décision rendue : ENREGISTRER. Trois sites in-core reconnaissaient pmtiles:// et le connector l'extension .pmtiles pendant qu'AUCUN addProtocol n'existait : profil valide, code qui reconnaît, carte vide sans erreur — et le mot-clé npm publié annonçait la capacité. L'enregistrement est posé AVANT la création de la carte (MapLibre résout les protocoles au chargement de source) ; la bibliothèque part en chunk lazy au premier tuile pmtiles:// — boot mesuré +0,1 Ko gz, les profils sans PMTiles ne paient rien. Idempotent (MapLibre garde le DERNIER handler d'un scheme), no-op sans moteur (les tests d'adaptateur ne portent pas de stub MapLibre pour une feature qu'ils n'exercent pas). Le Protocol pmtiles est un singleton partagé : il cache un lecteur PMTiles par archive, et l'instancier par tuile re-téléchargerait l'en-tête de l'archive à chaque requête. 3 témoins unitaires, dont un qui prouve que la requête TRAVERSE la vraie bibliothèque (erreur pmtiles sur archive injoignable, pas un stub)."
+        },
         "packages/core/src/adapters/maplibre/maplibre-adapter-types.ts": {
             "kind": "file",
             "name": "ok",

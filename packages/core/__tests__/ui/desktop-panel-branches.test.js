@@ -26,9 +26,9 @@ Object.defineProperty(window, "matchMedia", {
     value: vi.fn(() => mockMql),
 });
 
-// `window.matchMedia` est posé juste au-dessus, et un `import` se hisse au-dessus de lui —
-// mais `desktop-panel.ts` n'exécute rien au chargement (deux `const` et un `let`), donc le
-// moment de son import ne peut pas compter. Dérivé du module cible, pas supposé.
+// `window.matchMedia` is set just above, and an `import` hoists above it —
+// but `desktop-panel.ts` runs nothing at load (two `const`s and one `let`),
+// so its import timing cannot matter. Derived from the target module, not assumed.
 import {
     initDesktopPanel,
     activateDesktopPanel,

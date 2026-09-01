@@ -1,5 +1,5 @@
 /**
- * @tests built-in/basemaps/registry — Sprint 2 type routing
+ * @tests built-in/basemaps/registry — new basemap type routing
  *
  * Tests for setBaseLayer() routing with the four new basemap types:
  * type: "image", "hillshade", "wms", "wmts"
@@ -96,7 +96,7 @@ function makeMockMap() {
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-describe("basemaps/registry — Sprint 2 new basemap types", () => {
+describe("basemaps/registry — new basemap types", () => {
     let mockMap;
 
     beforeEach(() => {

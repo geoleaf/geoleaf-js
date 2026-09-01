@@ -1,11 +1,12 @@
 /**
- * `createStorageQueueAdapter` — APRÈS la migration vers le point d'écriture du core (4.9).
+ * `createStorageQueueAdapter` — AFTER the migration to the core's write point.
  *
- * 🛑 CE FICHIER ASSERTAIT L'ENVELOPPE v3 : `type: "editor.save"`, une charge sous `payload`,
- * un `profileId`. Les trois ont disparu avec le second vocabulaire. Ce qui est éprouvé
- * désormais, c'est la TRADUCTION — l'adaptateur ne connaît plus que `create`/`update`/`delete`,
- * et il ne refuse rien : les gardes (éditabilité S6, géométrie) vivent dans le core, seul
- * endroit qui lit la déclaration de couche. Refuser une saisie déjà faite serait la perdre.
+ * 🛑 THIS FILE ASSERTED THE v3 ENVELOPE: `type: "editor.save"`, a payload under
+ * `payload`, a `profileId`. All three vanished with the second vocabulary.
+ * What is exercised now is the TRANSLATION — the adapter only knows
+ * `create`/`update`/`delete`, and it refuses nothing: the guards (editability
+ * invariant, geometry) live in the core, the only place reading the layer
+ * declaration. Refusing an already-made capture would lose it.
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
 
@@ -60,24 +61,24 @@ describe("createStorageQueueAdapter — écriture par le core", () => {
         const call = applyEdit.mock.calls[0][0];
         expect(call.kind).toBe("delete");
         expect(call.localId).toBe("f9");
-        // ⚠️ Pas d'entité : le magasin conserve celle qu'il a. C'est le seul endroit où vit le
-        // `serverId`, et le push en a besoin pour savoir QUOI supprimer.
+        // ⚠️ No entity: the store keeps the one it has. It is the only place
+        // the `serverId` lives, and the push needs it to know WHAT to delete.
         expect(call.feature).toBeUndefined();
     });
 
-    it("🛑 appelle `applyEdit` AVEC SON RÉCEPTEUR — le détacher casse la façade (B-128)", async () => {
-        // 🛑 CE QUE LES AUTRES MOCKS NE PEUVENT PAS VOIR. Ils posent `applyEdit` comme une
-        // `vi.fn()` nue : une fonction sans `this` marche aussi bien détachée qu'attachée,
-        // donc ils sortent verts sur les deux formes. La façade du core, elle, lit
-        // `this._modules` pour joindre le moteur — un appel détaché y jette
-        // `TypeError: Cannot read properties of undefined (reading '_modules')`.
+    it("🛑 appelle `applyEdit` AVEC SON RÉCEPTEUR — le détacher casse la façade", async () => {
+        // 🛑 WHAT THE OTHER MOCKS CANNOT SEE. They set `applyEdit` as a bare
+        // `vi.fn()`: a function without `this` works detached as well as
+        // attached, so they come out green on both forms. The core's facade,
+        // though, reads `this._modules` to reach the engine — a detached call
+        // throws `TypeError: Cannot read properties of undefined (reading '_modules')` there.
         //
-        // Mesuré sur le déployé (B-128) : la sauvegarde hors ligne fermait sa modale,
-        // n'écrivait RIEN, et le rejet partait en `unhandledrejection` — donc sans
-        // notification. Une saisie de terrain perdue en silence.
+        // Measured on the deployed build: the offline save closed its modal,
+        // wrote NOTHING, and the rejection left as an `unhandledrejection` —
+        // hence no notification. A field capture lost in silence.
         //
-        // Ce mock REPRODUIT la contrainte au lieu de l'ignorer : il jette si `this` n'est pas
-        // la façade. C'est la seule forme qui puisse rendre faux.
+        // This mock REPRODUCES the constraint instead of ignoring it: it
+        // throws when `this` is not the facade. The only shape that can turn false.
         const seen: unknown[] = [];
         const facade = {
             _modules: { edit: true },
@@ -109,8 +110,9 @@ describe("createStorageQueueAdapter — écriture par le core", () => {
     });
 
     it("un REFUS du core remonte — il ne se perd pas en silence", async () => {
-        // Une couche non modifiable refuse l'édition (invariant S6). Avaler ce refus rendrait
-        // une saisie perdue indiscernable d'une saisie enregistrée.
+        // A non-modifiable layer refuses the edit (the editability invariant).
+        // Swallowing that refusal would make a lost capture indistinguishable
+        // from a recorded one.
         mountStorage({ entryId: null, refused: "layerNotEditable" });
         await expect(createStorageQueueAdapter().save(FEATURE, "l1")).rejects.toThrow(
             /layerNotEditable/

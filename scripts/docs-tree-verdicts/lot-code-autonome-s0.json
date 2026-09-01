@@ -1,0 +1,37 @@
+{
+    "schemaVersion": 2,
+    "lot": "code-autonome-s0",
+    "scope": ["scripts/check-workshop-refs.cjs", "scripts/check-comment-lang.cjs"],
+    "verdicts": {
+        "scripts/check-workshop-refs.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "WREF-01…03 — no new workshop-only reference in the PUBLIC corpus (backlog/debt ids, sprint markers, workshop paths), per-file frozen count, shrink-only",
+            "confidence": "haute",
+            "rationale": "Posed BEFORE the triage — the deliberate inversion of the migrate-first doctrine, motivated by volume: 2725 tokens over 811 public files frozen at posing. The public/workshop boundary is DERIVED from lib/public-partition.cjs, never a hand-written glob. Seen red both ways (new token named with file and count; inflated freeze), byte-checked restores. The triage of the frozen deposit follows as its own campaign — three buckets, three gestures, never a sed.",
+            "generatedBy": null
+        },
+        "scripts/check-comment-lang.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "CLANG-01…03 — no new FRENCH code comment in the public corpus, stop-word detection (>= 2 distinct per comment), string literals excluded by a state lexer, per-file frozen count, shrink-only",
+            "confidence": "haute",
+            "rationale": "Includes the re-count its task demanded: 794 carrier files / 11 671 French comments measured by a LANGUAGE detector, against a floor of 756 files from the accent motif — which missed accentless French and bit accented English. The first lexer stripped string literals by regex BEFORE scanning: a French apostrophe inside a comment opened phantom literals, and the gate's own ratchet caught its own instrument (+57 ghosts for a two-line edit) — replaced by a single-pass state lexer. Markdown out of scope (the convention wants docs in French). Seen red both ways; the translation of the deposit follows as its own campaign — a translation is read, never substituted.",
+            "generatedBy": null
+        }
+    }
+}

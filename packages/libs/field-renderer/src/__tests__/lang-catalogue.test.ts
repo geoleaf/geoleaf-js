@@ -1,16 +1,16 @@
 /*!
- * Tests — tâche 5.1c (D6) : la bibliothèque POSSÈDE ses libellés `form.*`
+ * Tests — the library OWNS its `form.*` labels
  *
- * 🛑 LA GARDE CENTRALE EST CELLE DU « SANS HÔTE ». Avant cette tâche, `_getLabel` retombait sur
- * la CLÉ BRUTE : un hôte qui chargeait la lib seule affichait `form.error.imageSize` à
- * l'utilisateur. Les tests ci-dessous s'exécutent donc **sans `globalThis.GeoLeaf`**, ce qui est
- * précisément le cas que personne ne couvrait.
+ * 🛑 THE CENTRAL GUARD IS THE "HOSTLESS" ONE. Before this work, `_getLabel`
+ * fell back to the RAW KEY: a host loading the lib alone showed
+ * `form.error.imageSize` to the user. The tests below therefore run
+ * **without `globalThis.GeoLeaf`**, precisely the case nobody covered.
  */
 import { describe, it, expect, afterEach, beforeEach } from "vitest";
 import { builtinLabel, builtinLangs, FALLBACK_LANG } from "../lang/index.js";
 import { _getLabel } from "../helpers.js";
-// ⚠️ Préfixés `L_` : la locale italienne s'importerait sous le nom `it`, qui est déjà celui
-// de la fonction de test de vitest. La collision casse le parseur, pas le test.
+// ⚠️ Prefixed `L_`: the Italian locale would import under the name `it`,
+// already vitest's test function. The collision breaks the parser, not the test.
 import L_fr from "../lang/lang-fr.js";
 import L_en from "../lang/lang-en.js";
 import L_es from "../lang/lang-es.js";
@@ -30,7 +30,7 @@ afterEach(() => {
     delete (globalThis as Record<string, unknown>).GeoLeaf;
 });
 
-// --- le catalogue lui-même --------------------------------------------------------
+// --- the catalogue itself ----------------------------------------------------------
 
 describe("Le catalogue intégré", () => {
     it("porte les six locales du dépôt", () => {
@@ -38,8 +38,8 @@ describe("Le catalogue intégré", () => {
     });
 
     it("🛑 les six locales sont à PARITÉ STRICTE de clés", () => {
-        // Une locale qui perd une clé rend un libellé dans une autre langue — lisible, mais
-        // c'est une dérive silencieuse qu'il vaut mieux voir ici.
+        // A locale losing a key returns a label in another language —
+        // readable, but a silent drift better seen here.
         const refs = Object.keys(fr).sort();
         for (const [loc, dict] of Object.entries(ALL)) {
             expect(Object.keys(dict).sort(), `locale ${loc}`).toEqual(refs);
@@ -60,14 +60,14 @@ describe("Le catalogue intégré", () => {
     });
 
     it("les locales portent des textes RÉELLEMENT distincts", () => {
-        // Contre-épreuve d'une génération qui aurait recopié le français partout.
+        // Counter-check against a generation that copied the French everywhere.
         const k = "form.error.imageSize";
         expect(fr[k]).toBeDefined();
         expect(new Set([fr[k], en[k], de[k]]).size).toBeGreaterThan(1);
     });
 });
 
-// --- la résolution ----------------------------------------------------------------
+// --- resolution --------------------------------------------------------------------
 
 describe("builtinLabel — la résolution", () => {
     it("rend le libellé de la locale demandée", () => {
@@ -86,11 +86,11 @@ describe("builtinLabel — la résolution", () => {
     });
 });
 
-// --- _getLabel : l'ordre de priorité ----------------------------------------------
+// --- _getLabel: the priority order --------------------------------------------------
 
 describe("_getLabel — l'ordre : hôte, catalogue, clé", () => {
     it("🛑 SANS AUCUN HÔTE, rend un vrai libellé — plus la clé brute", () => {
-        // C'est le défaut que D6 corrige, dans sa forme exacte : la lib chargée seule.
+        // The defect this fixes, in its exact form: the lib loaded alone.
         const k = "form.error.imageSize";
         const out = _getLabel(k);
         expect(out).not.toBe(k);
@@ -105,9 +105,10 @@ describe("_getLabel — l'ordre : hôte, catalogue, clé", () => {
     });
 
     it("🛑 un hôte qui rend LA CLÉ n'empêche pas le catalogue de répondre", () => {
-        // `GeoLeaf.I18n.getLabel` rend la clé quand il ne la connaît pas — c'est son contrat.
-        // Sans ce cas, le catalogue intégré ne serait JAMAIS atteint dès qu'un hôte est là,
-        // et la tâche n'aurait rien changé pour les deux plugins du dépôt.
+        // `GeoLeaf.I18n.getLabel` returns the key when it does not know it —
+        // its contract. Without this case, the built-in catalogue would NEVER
+        // be reached once a host is there, and the work would have changed
+        // nothing for the repo's two plugins.
         (globalThis as Record<string, unknown>).GeoLeaf = {
             I18n: { getLabel: (k: string) => k },
         };
@@ -134,13 +135,13 @@ describe("_getLabel — l'ordre : hôte, catalogue, clé", () => {
     });
 });
 
-// --- la couverture réelle ----------------------------------------------------------
+// --- real coverage -----------------------------------------------------------------
 
 describe("La couverture du catalogue", () => {
     it("🛑 CHAQUE clé `form.*` utilisée par la lib est déclarée", async () => {
-        // La garde qui empêche la régression : un composant qui introduirait une clé neuve
-        // sans l'ajouter au catalogue ferait rougir ce test, au lieu d'afficher la clé brute
-        // à l'utilisateur — ce qui est arrivé aux tâches 5.1-d et 5.1-e.
+        // The guard preventing the regression: a component introducing a new
+        // key without adding it to the catalogue turns this test red, instead
+        // of showing the raw key to the user — which happened twice before.
         const mods = import.meta.glob("../types/*.ts", { query: "?raw", import: "default" });
         const keys = new Set<string>();
         for (const load of Object.values(mods)) {

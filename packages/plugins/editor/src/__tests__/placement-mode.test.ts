@@ -1,13 +1,14 @@
 /*!
- * Tests — tâche 5.1-a : le mode de placement programmatique (`drawing/placement-mode.ts`)
+ * Tests — the programmatic placement mode (`drawing/placement-mode.ts`)
  *
- * ⚠️ Le mock de carte REPRODUIT les contraintes de MapLibre au lieu de les ignorer :
- *   - `on`/`off` tiennent un vrai registre, donc un `off` mal apparié laisse le handler vivant
- *     et le test suivant le voit ;
- *   - `getCanvas()` rend un vrai élément, donc le curseur est réellement écrit puis restauré ;
- *   - `dragPan` est ABSENT du mock par défaut — c'est le cas réel d'un double de test, et le
- *     code doit dégrader et non jeter.
- * C'est la leçon du Sprint 4 : un mock plus permissif que la surface valide les deux formes.
+ * ⚠️ The map mock REPRODUCES MapLibre's constraints instead of ignoring them:
+ *   - `on`/`off` keep a real registry, so a mispaired `off` leaves the handler
+ *     alive and the next test sees it;
+ *   - `getCanvas()` returns a real element, so the cursor is really written
+ *     then restored;
+ *   - `dragPan` is ABSENT from the mock by default — the real case of a test
+ *     double, and the code must degrade, not throw.
+ * The lesson: a mock more permissive than the surface validates both forms.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
@@ -182,7 +183,7 @@ describe("PlacementMode — le panoramique", () => {
     });
 });
 
-// --- la résolution du clic -------------------------------------------------
+// --- click resolution --------------------------------------------------------
 
 describe("PlacementMode — le clic résout le placement", () => {
     it("rend la position cliquée quand rien n'est à proximité", () => {
@@ -211,9 +212,10 @@ describe("PlacementMode — le clic résout le placement", () => {
         map._click(-21.1, 55.5);
 
         expect(cb.mock.calls[0][0]).toEqual({ latlng: near.latlng, snapped: near });
-        // 2 notifications : l'invite posée par `activate`, puis l'alerte de doublon. On
-        // assert la SECONDE nommément — compter les appels laisserait passer une invite
-        // émise deux fois, et « au moins une » laisserait passer l'alerte manquante.
+        // 2 notifications: the prompt set by `activate`, then the duplicate
+        // alert. We assert the SECOND by name — counting calls would let a
+        // prompt emitted twice pass, and "at least one" would let the missing
+        // alert pass.
         expect(_notify.info).toHaveBeenCalledTimes(2);
         expect(_notify.info.mock.calls[0][0]).toBe("editor.placement.prompt");
         expect(_notify.info.mock.calls[1][0]).toContain("editor.placement.existingDetected");
@@ -258,7 +260,7 @@ describe("PlacementMode — le clic résout le placement", () => {
     });
 });
 
-// --- le marqueur de correction ---------------------------------------------
+// --- the correction marker ---------------------------------------------------
 
 describe("PlacementMode — le marqueur draggable", () => {
     it("pose un marqueur et le CONSERVE après le clic", () => {
@@ -284,7 +286,7 @@ describe("PlacementMode — le marqueur draggable", () => {
         map._click(-21.1, 55.5);
         expect(cb.mock.calls[0][0].snapped?.id).toBe("c-7");
 
-        // Le marqueur est traîné ailleurs ; le garde-fou ne trouve plus rien.
+        // The marker is dragged elsewhere; the guard no longer finds anything.
         _findNearbyFeature.mockReturnValue(null);
         _markers[0]._pos = { lat: -21.9, lng: 55.9 };
         _markers[0]._fire("dragend");

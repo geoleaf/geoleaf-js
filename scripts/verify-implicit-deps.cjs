@@ -1,84 +1,86 @@
 #!/usr/bin/env node
 /**
- * IMPL: les dépendances que le dépôt CHARGE sans les IMPORTER sont déclarées, et c'est
- * bien la copie déclarée qui s'exécute.
+ * IMPL: the dependencies the repo LOADS without IMPORTING are declared, and the
+ * declared copy really is the one that executes.
  *
- * ## Pourquoi cette gate existe — la classe d'angle mort qu'aucune autre ne voit
+ * ## Why this gate exists — the blind-spot class no other sees
  *
- * Toutes les gardes de dépendances du dépôt partent d'un import :
+ * All the repo's dependency guards start from an import:
  *
- *   - `check-shipped-specifiers.cjs` (SHIP-SPEC-01) lit les specifiers nus des fichiers
- *     ATTEIGNABLES du paquet publié — donc du code, donc des `import`/`require` ;
- *   - `knip` (catégorie `unlisted`) lit le graphe de modules des sources.
+ *   - `check-shipped-specifiers.cjs` (SHIP-SPEC-01) reads the bare specifiers of the
+ *     published package's REACHABLE files — hence code, hence `import`/`require`;
+ *   - `knip` (`unlisted` category) reads the sources' module graph.
  *
- * Il reste une classe qu'aucune des deux ne peut voir : un paquet que le dépôt charge
- * **sans jamais l'importer**. Deux cas mesurés le 15/08/2026 (backlog **B-258**) :
+ * One class remains that neither can see: a package the repo loads **without ever
+ * importing it**. Two cases measured on 2026-08-15:
  *
- *   - `happy-dom` — nommé par une CHAÎNE de caractères (`environment: "happy-dom"` dans
- *     14 `vitest.config.ts`). C'est Vitest qui l'importe, depuis son propre `dist/` ;
- *   - `tsx` — injecté dans `NODE_OPTIONS` par `ensure-tsx-node-options.mjs`. Une option
- *     de ligne de commande, pas une arête du graphe de modules.
+ *   - `happy-dom` — named by a STRING (`environment: "happy-dom"` in
+ *     14 `vitest.config.ts`). Vitest is what imports it, from its own `dist/`;
+ *   - `tsx` — injected into `NODE_OPTIONS` by `ensure-tsx-node-options.mjs`. A
+ *     command-line option, not a module-graph edge.
  *
- * Aucun des deux n'était déclaré par qui le charge. Les deux étaient présents à la racine
- * comme **peerDependencies optionnelles auto-installées** (`vitest → happy-dom: "*"`,
- * `vite → tsx`) — une propriété que personne n'a demandée. `npm ci` sous le npm de Node 22
- * (10.9.x) la reconduisait ; un recalcul sous npm ≥ 11 la retirait, et toute la suite de
- * tests mourait sur « Cannot find package 'tsx' ». Or **seul `publish.yml` monte à npm ≥ 11**
- * (exigence du trusted publishing) : `ci.yml` comme `ci:local` sont structurellement aveugles
- * à ce défaut.
+ * Neither was declared by what loads it. Both were present at the root as
+ * **auto-installed optional peerDependencies** (`vitest → happy-dom: "*"`,
+ * `vite → tsx`) — a property nobody asked for. `npm ci` under Node 22's npm (10.9.x)
+ * carried it forward; a recomputation under npm ≥ 11 removed it, and the whole test
+ * suite died on "Cannot find package 'tsx'". Yet **only `publish.yml` climbs to
+ * npm ≥ 11** (trusted-publishing requirement): `ci.yml` like `ci:local` are
+ * structurally blind to this defect.
  *
- * ## Le second défaut, plus discret : DÉCLARÉ ≠ EXÉCUTÉ
+ * ## The second, quieter defect: DECLARED ≠ EXECUTED
  *
- * 14 paquets déclaraient `happy-dom: "^20.11.2"` et recevaient chacun une copie nichée en
- * 20.11.2. **Aucune n'était jamais chargée.** `environment: "happy-dom"` est un environnement
- * *builtin* de Vitest, qui fait `await import('happy-dom')` depuis `vitest/dist/` — la
- * résolution part donc de là et atteint toujours la RACINE, qui portait la 20.9.0. Quatorze
- * déclarations décoratives, et deux mineures d'écart entre la version annoncée et la version
- * qui tourne.
+ * 14 packages declared `happy-dom: "^20.11.2"` and each received a nested copy at
+ * 20.11.2. **None was ever loaded.** `environment: "happy-dom"` is a Vitest
+ * *builtin* environment, which does `await import('happy-dom')` from
+ * `vitest/dist/` — resolution thus starts there and always reaches the ROOT, which
+ * carried 20.9.0. Fourteen decorative declarations, and two minors of gap between
+ * the announced version and the one that runs.
  *
- * Cet écart n'est pas cosmétique : happy-dom ≥ 20.11 pose `window.OffscreenCanvas`, ce que la
- * 20.9 ne fait pas. Deux `typeof OffscreenCanvas !== "undefined"` en production basculaient
- * donc sur une surface dont `getContext("2d")` rend `null`. Le jour où quoi que ce soit
- * alignait la racine, 8 tests de `cog` et le rendu de hachures du core tombaient — sans qu'une
- * seule ligne de code ait changé.
+ * That gap is not cosmetic: happy-dom ≥ 20.11 sets `window.OffscreenCanvas`, which
+ * 20.9 does not. Two production `typeof OffscreenCanvas !== "undefined"` thus
+ * flipped onto a surface whose `getContext("2d")` returns `null`. The day anything
+ * aligned the root, 8 `cog` tests and the core's hatch rendering fell — without a
+ * single line of code changing.
  *
- * ## Ce que cette gate NE fait PAS, et pourquoi
+ * ## What this gate does NOT do, and why
  *
- * 🛑 **Elle ne s'adosse pas au marqueur `peer + optional` du lockfile.** C'était le dessin
- * initial (« verify-peer-hoist »), et la mesure l'a écarté : ce marqueur **n'est pas stable
- * d'une version de npm à l'autre**. Mesuré le 15/08/2026 sur le même dépôt —
+ * 🛑 **It does not lean on the lockfile's `peer + optional` marker.** That was the
+ * initial design ("verify-peer-hoist"), and measurement ruled it out: that marker
+ * **is not stable from one npm version to the next**. Measured on 2026-08-15 on the
+ * same repo —
  *
  *     npm 10.9.8   happy-dom   peer=true  optional=true
  *     npm 12.0.2   happy-dom   peer=false optional=false
  *     npm 10.9.8   @esbuild/linux-x64   peer=true  optional=true
  *     npm 12.0.2   @esbuild/linux-x64   peer=false optional=true
  *
- * — sous npm 12 l'ensemble « racine, peer ET optional » est **vide**. Une gate bâtie dessus
- * aurait donc scanné zéro entrée en sortant verte : exactement le mode d'échec que ce dépôt
- * poursuit. Le marqueur reste balayé par IMPL-03, mais en filet AVANT, jamais comme plancher.
+ * — under npm 12 the "root, peer AND optional" set is **empty**. A gate built on it
+ * would thus have scanned zero entries while going green: exactly the failure mode
+ * this repo hunts. The marker stays swept by IMPL-03, but as a net BEFORE, never as
+ * a floor.
  *
- * Le fondement est ailleurs : une table EXPLICITE des paquets que l'outillage charge sans les
- * importer, chacun portant son motif et sa position de chargement. Une table se périme, mais
- * elle se périme **bruyamment** (IMPL-04), là où un marqueur qui change de sémantique se
- * périme en silence.
+ * The foundation is elsewhere: an EXPLICIT table of the packages the tooling loads
+ * without importing, each carrying its rationale and its load position. A table goes
+ * stale, but it goes stale **loudly** (IMPL-04), where a marker changing semantics
+ * goes stale in silence.
  *
- *   IMPL-01  chaque entrée de la table est déclarée par au moins un manifeste du dépôt
- *   IMPL-02  la copie résolue depuis la POSITION DE CHARGEMENT est la même que celle résolue
- *            depuis chaque manifeste qui la déclare — c'est « déclaré = exécuté »
- *   IMPL-03  balayage du lock : une entrée racine `peer+optional` sans `os`/`cpu` que nul
- *            manifeste ne déclare est signalée. Peut légitimement ne rien voir (cf. ci-dessus),
- *            donc son décompte s'imprime et ne sert JAMAIS de plancher
- *   IMPL-04  refus de conclure (exit 2) : table vide, lock illisible, ou position de
- *            chargement introuvable — une entrée dont la sonde ne résout plus décrit un
- *            montage qui n'existe plus
+ *   IMPL-01  each table entry is declared by at least one manifest of the repo
+ *   IMPL-02  the copy resolved from the LOAD POSITION is the same as the one
+ *            resolved from each declaring manifest — that is "declared = executed"
+ *   IMPL-03  lock sweep: a root `peer+optional` entry without `os`/`cpu` that no
+ *            manifest declares is flagged. Can legitimately see nothing (cf. above),
+ *            so its tally prints and NEVER serves as a floor
+ *   IMPL-04  refusal to conclude (exit 2): empty table, unreadable lock, or load
+ *            position not found — an entry whose probe no longer resolves describes
+ *            a mount that no longer exists
  *
- * ## Crochets d'environnement (pour `probe-gate-visibility.cjs`)
+ * ## Environment hooks (for `probe-gate-visibility.cjs`)
  *
- *   GEOLEAF_LOCKFILE        — viser un autre lockfile (IMPL-03)
- *   GEOLEAF_IMPLICIT_EXTRA  — ajouter un nom à la table (IMPL-01/02), pour éprouver la règle
- *                             sur un paquet que rien ne déclare
+ *   GEOLEAF_LOCKFILE        — target another lockfile (IMPL-03)
+ *   GEOLEAF_IMPLICIT_EXTRA  — add a name to the table (IMPL-01/02), to prove the
+ *                             rule on a package nothing declares
  *
- * Exit 0 = conforme · 1 = violation · 2 = la gate refuse de conclure.
+ * Exit 0 = conforming · 1 = violation · 2 = the gate refuses to conclude.
  */
 
 "use strict";
@@ -89,12 +91,13 @@ const registry = require("./lib/packages.cjs");
 
 const ROOT = registry.ROOT;
 
-// ─── La table — un paquet chargé sans être importé, et pourquoi ───────────────
+// ─── The table — a package loaded without being imported, and why ─────────────
 //
-// ⚠️ Chaque entrée porte son MOTIF et sa POSITION DE CHARGEMENT. Le motif dit pourquoi
-// aucune analyse statique ne peut voir ce paquet ; la position dit d'où part la résolution
-// réelle, qui n'est presque jamais le paquet qui déclare. Une entrée sans les deux serait
-// indiscernable d'une dépendance ordinaire — que knip et SHIP-SPEC couvrent déjà.
+// ⚠️ Each entry carries its RATIONALE and its LOAD POSITION. The rationale says why
+// no static analysis can see this package; the position says where the real
+// resolution starts, which is almost never the declaring package. An entry without
+// both would be indistinguishable from an ordinary dependency — which knip and
+// SHIP-SPEC already cover.
 
 const IMPLICIT_TOOLCHAIN = [
     {
@@ -119,15 +122,16 @@ const IMPLICIT_TOOLCHAIN = [
 // ─── Utilitaires ──────────────────────────────────────────────────────────────
 
 /**
- * Répertoire racine d'un paquet, par la remontée `node_modules` de Node.
+ * A package's root directory, through Node's `node_modules` climb.
  *
- * Délibérément fait à la main plutôt que par `require.resolve(name + "/package.json")` :
- * tout paquet n'expose pas `./package.json` dans sa carte `exports`, et un échec de
- * résolution serait alors indiscernable d'une absence réelle.
+ * Deliberately done by hand rather than
+ * `require.resolve(name + "/package.json")`: not every package exposes
+ * `./package.json` in its `exports` map, and a resolution failure would then be
+ * indistinguishable from a real absence.
  *
- * @param {string} name - nom du paquet.
- * @param {string} fromDir - répertoire d'où part la résolution.
- * @returns {string | null} chemin réel du répertoire du paquet, ou `null`.
+ * @param {string} name - package name.
+ * @param {string} fromDir - directory the resolution starts from.
+ * @returns {string | null} real path of the package's directory, or `null`.
  */
 function resolvePkgDir(name, fromDir) {
     let dir = path.resolve(fromDir);
@@ -150,11 +154,11 @@ function versionOf(pkgDir) {
 }
 
 /**
- * Chemin lisible : relatif au dépôt s'il y est, ABSOLU sinon.
+ * Readable path: repo-relative when inside it, ABSOLUTE otherwise.
  *
- * Le `GEOLEAF_LOCKFILE` des sondes vit dans `/tmp` ; un `path.relative` y rendrait
- * « ../../../../../tmp/… », que personne ne relit. Un message de gate qu'on ne peut pas
- * lire ne vaut pas mieux qu'un silence.
+ * The probes' `GEOLEAF_LOCKFILE` lives in `/tmp`; a `path.relative` would render
+ * "../../../../../tmp/…" there, which nobody re-reads. A gate message one cannot
+ * read is no better than silence.
  *
  * @param {string} p
  * @returns {string}
@@ -166,10 +170,10 @@ function rel(p) {
 }
 
 /**
- * Tous les manifestes du dépôt : la racine plus chaque workspace.
+ * Every manifest of the repo: the root plus each workspace.
  *
- * ⚠️ Dérivé de `lib/packages.cjs`, JAMAIS d'un glob `packages/**` — qui capterait `dist/`
- * et `node_modules/`, et ferait croire à des déclarations qui ne sont pas les nôtres.
+ * ⚠️ Derived from `lib/packages.cjs`, NEVER a `packages/**` glob — which would
+ * capture `dist/` and `node_modules/`, and suggest declarations that are not ours.
  *
  * @returns {{name: string, dir: string, file: string, deps: Record<string, string>}[]}
  */
@@ -204,7 +208,7 @@ function allManifests() {
     return out;
 }
 
-// ─── Exécution ────────────────────────────────────────────────────────────────
+// ─── Execution ────────────────────────────────────────────────────────────────
 
 const problems = [];
 const refuse = (code, msg) => {
@@ -227,8 +231,8 @@ if (extra) {
     }
 }
 
-// IMPL-04 — plancher anti-gate-vide. Sans lui, une table vidée par mégarde sortirait verte
-// en n'ayant rien vérifié, ce qui est exactement le défaut que la gate poursuit.
+// IMPL-04 — anti-empty-gate floor. Without it, an inadvertently emptied table would
+// go green having verified nothing, exactly the defect the gate hunts.
 if (table.length === 0) {
     refuse(
         "IMPL-04",
@@ -283,10 +287,10 @@ for (const entry of table) {
         continue;
     }
 
-    // IMPL-02 — « déclaré = exécuté ». Comparaison de CHEMINS RÉELS, pas de plages semver :
-    // deux copies d'une même version satisfont la même plage tout en étant deux fichiers
-    // différents, et c'est précisément ce cas (14 copies nichées, une seule chargée) qui a
-    // laissé passer un écart de deux mineures pendant toute la vie de la déclaration.
+    // IMPL-02 — "declared = executed". Comparison of REAL PATHS, not semver ranges:
+    // two copies of one version satisfy the same range while being two different
+    // files, and precisely that case (14 nested copies, one loaded) let a two-minor
+    // gap through for the declaration's whole life.
     for (const d of declarers) {
         const seen = resolvePkgDir(entry.name, d.dir);
         if (seen && seen !== loaded) {
@@ -303,7 +307,7 @@ for (const entry of table) {
     }
 }
 
-// ─── IMPL-03 — balayage du lockfile ───────────────────────────────────────────
+// ─── IMPL-03 — lockfile sweep ─────────────────────────────────────────────────
 
 const lockPath = process.env.GEOLEAF_LOCKFILE || path.join(ROOT, "package-lock.json");
 let lock;
@@ -322,9 +326,9 @@ let sweptCount = 0;
 for (const [key, meta] of Object.entries(lock.packages)) {
     if (!key.startsWith("node_modules/")) continue;
     const name = key.slice("node_modules/".length);
-    if (name.includes("/node_modules/")) continue; // niché, pas racine
+    if (name.includes("/node_modules/")) continue; // nested, not root
     if (!meta.peer || !meta.optional) continue;
-    if (meta.os || meta.cpu) continue; // binaire de plateforme : optionnel par conception
+    if (meta.os || meta.cpu) continue; // platform binary: optional by design
     sweptCount++;
     if (!declaredAnywhere.has(name)) {
         problems.push({
@@ -355,8 +359,8 @@ console.log(
     `✅ [IMPL-03] ${sweptCount} entrée(s) racine peer+optional hors binaires de plateforme, aucune orpheline.`
 );
 if (sweptCount === 0) {
-    // Pas un échec : npm ≥ 12 ne pose plus ce marqueur (cf. docblock). Le dire à voix haute
-    // évite qu'un lecteur prenne ce vert-là pour une preuve qu'il n'est pas.
+    // Not a failure: npm ≥ 12 no longer sets that marker (cf. docblock). Saying it
+    // out loud keeps a reader from taking that green for a proof it is not.
     console.log(
         `   ↳ ⚠️ 0 entrée balayée — ce npm ne pose pas le marqueur peer+optional. IMPL-03 n'a rien prouvé ici ; ce sont IMPL-01/02 qui portent la garde.`
     );

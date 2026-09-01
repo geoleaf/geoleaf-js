@@ -162,15 +162,17 @@ describe("config B5 — orphan / legacy / plugin keys (schema-accepted, locked i
     );
     // Legacy → renvoi B9 (mapping.json)
     it.todo("ANO-054 {id}_config.data.mapping / data.mappingFile — legacy mapping → roadmap B9");
-    // Plugin-owned per-layer keys → renvoi B7 / roadmap plugin-validation
-    // ⚠️ `formSchema` a quitté cette ligne à la tâche 7.2 : la clé n'existe plus, le schéma
-    // la REFUSE désormais, et la saisie se déclare sur `attributes.fields[].edit` — couvert
-    // par `attributes-opposability` (A14/A17) et `write-capture-parity`, pas par un renvoi.
+    // Plugin-owned per-layer keys → plugin-validation follow-up
+    // ⚠️ `formSchema` left this line: the key no longer exists, the schema
+    // now REFUSES it, and input declares on `attributes.fields[].edit` —
+    // covered by `attributes-opposability` (A14/A17) and
+    // `write-capture-parity`, not by a follow-up note.
     it.todo("B7 renvoi — edition.{create,update,delete}/editableGeometryTypes (editor)");
-    // ⚠️ `pointStyle` a quitté cette ligne le 11/08/2026 (B-225), pour la même raison que
-    // `formSchema` ci-dessus : la clé n'existe plus. Elle a été retirée du résolveur au S3
-    // (`e17e41a6`, BREAKING v3.0.0) et ne figure ni en source, ni dans les schémas, ni dans
-    // les profils livrés — un renvoi vers elle certifierait une dette sans objet.
+    // ⚠️ `pointStyle` left this line on 11/08/2026, for the same reason as
+    // `formSchema` above: the key no longer exists. It was removed from the
+    // resolver (`e17e41a6`, BREAKING v3.0.0) and appears neither in source,
+    // nor the schemas, nor the shipped profiles — a follow-up towards it
+    // would certify a moot debt.
     it.todo(
         "B7 renvoi — data.limit/data.realtime/realtimeLayer/write (flatgeobuf/realtime/editor)"
     );

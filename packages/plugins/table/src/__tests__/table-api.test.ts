@@ -27,7 +27,22 @@ vi.mock("../utils/dom-helpers.js", () => ({
         return el;
     },
 }));
-vi.mock("../utils/events.js", () => ({ events: null }));
+vi.mock("../utils/events.js", () => ({
+    // 🛑 DO NOT RE-NEUTRALISE THIS SEAM — measured on 17/08/2026.
+    // Neutralising the seam forces `panel-resize.ts`'s FALLBACK, while `events`
+    // is a constant module object: in production the condition is always true.
+    // Seven suites in the package neutralised it, so that none exercised the
+    // path production takes. This mock reproduces `utils/events.ts` exactly, `off` included.
+    events: {
+        on: vi.fn((target, type, handler, options) => {
+            target.addEventListener(type, handler, options);
+            return () => target.removeEventListener(type, handler, options);
+        }),
+        off: vi.fn((cleanup) => {
+            if (typeof cleanup === "function") cleanup();
+        }),
+    },
+}));
 
 describe("modules/table/table-api", () => {
     let TableModule;
@@ -132,8 +147,9 @@ describe("modules/table/table-api", () => {
         expect(_TablePanel.create).toHaveBeenCalledWith(mockMap, expect.any(Object));
         expect(TableModule._container).toBeInstanceOf(HTMLElement);
         expect(TableModule._map).toBe(mockMap);
-        // ⚠️ B-204 — les filtres ne passent PLUS par `map.on()` : leur émetteur dispatche sur
-        // `document`. Ce qui reste sur le bus carte est ce que `kernel/geojson/` y `fire()`.
+        // ⚠️ The filters NO LONGER go through `map.on()`: their emitter
+        // dispatches on `document`. What stays on the map bus is what
+        // `kernel/geojson/` `fire()`s on it.
         expect(mockMap.on).not.toHaveBeenCalledWith(
             "geoleaf:filters:changed",
             expect.any(Function)
@@ -406,11 +422,11 @@ describe("modules/table/table-api", () => {
         expect(bounds.extend).toHaveBeenCalled();
     });
 
-    // 🛑 B-204 — réécrit : la forme précédente récupérait le handler sur `mockMap.on` et
-    // l'appelait à la main, donc elle restait verte alors que l'abonnement était mort (nom
-    // inexistant, ET bus MapLibre là où l'émetteur dispatche sur `document`). Émettre un vrai
-    // événement est la seule forme qui distingue « le handler est correct » de « le handler est
-    // atteignable ».
+    // 🛑 Rewritten: the previous shape fetched the handler off `mockMap.on`
+    // and called it by hand, so it stayed green while the subscription was
+    // dead (nonexistent name, AND the MapLibre bus where the emitter
+    // dispatches on `document`). Emitting a real event is the only shape that
+    // tells "the handler is correct" from "the handler is reachable".
     it("l'événement `geoleaf:filters:applied` déclenche refresh quand visible et couche choisie", () => {
         TableModule.init({ map: mockMap, config: { enabled: true } });
         TableModule._isVisible = true;

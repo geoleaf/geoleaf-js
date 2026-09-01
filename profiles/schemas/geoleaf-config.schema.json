@@ -23,10 +23,38 @@
                     "type": "string",
                     "description": "Name of the active profile to load (must match a directory in profiles/)."
                 },
+                "availableProfiles": {
+                    "type": "array",
+                    "description": "INJECTÉE PAR LE BUILD, jamais écrite à la main : inventaire des profils réellement embarqués dans la variante, récolté au moment de la copie et lu par le sélecteur de profil. ⚠️ Elle n'a de sens que dans un artefact déployé — la source ne sait pas ce qu'une variante embarquera. Déclarée ici parce que le bloc est `additionalProperties: false` et que la configuration déployée doit valider.",
+                    "items": {
+                        "type": "object",
+                        "$comment": "La forme est celle que le build ÉCRIT et que la capacité de sélection LIT — pas une forme plausible. Elle est volontairement fermée : si la récolte gagne un champ, le schéma rougit, ce qui est le couplage recherché. Une forme ouverte aurait laissé la clé injectée dériver du type qui la décrit, ce qui est le défaut d'origine à une variable près.",
+                        "additionalProperties": false,
+                        "required": ["id", "displayLabel"],
+                        "properties": {
+                            "id": {
+                                "type": "string",
+                                "description": "Identifiant du profil, égal au nom de son répertoire sous `profiles/`."
+                            },
+                            "displayLabel": {
+                                "type": "string",
+                                "description": "Libellé court du sélecteur. Le build le dérive de `displayLabel`, à défaut `label`, à défaut l'identifiant — il est donc toujours présent."
+                            },
+                            "icon": {
+                                "type": "string",
+                                "description": "Emoji facultatif rendu devant le libellé. Omis, et non vide, quand le profil n'en déclare pas."
+                            }
+                        }
+                    }
+                },
                 "profilesBasePath": {
                     "type": "string",
                     "default": "profiles",
                     "description": "Base path to the profiles directory."
+                },
+                "profileBundle": {
+                    "type": "object",
+                    "description": "The active profile handed over in memory instead of being fetched. Carries both on-disk artefacts: `profile` (profile.json) and `bundle` (profile-bundle.json). Present, no HTTP request is issued for the profile configuration; absent, the cascade stays the default path."
                 },
                 "enableProfilePoiMapping": {
                     "type": "boolean",

@@ -36,7 +36,7 @@ import { UIModule } from "./boot-modules/ui.module.js";
 import { ThemeEngineModule } from "./boot-modules/theme-engine.module.js";
 import { bootWithPreset } from "./boot-core.js";
 import type { PresetManifest } from "../contracts/preset.contract.js";
-import type { AppNamespace } from "./app-types.js";
+import type { AppNamespace, BootOptions } from "./app-types.js";
 import { asFn, member, perfWindow } from "./app-types.js";
 
 /** What {@link installBoot} hands back — the collaborators an entry may want to re-expose. */
@@ -102,7 +102,7 @@ export function installBoot(preset: PresetManifest): BootInstallation {
 
     latchPerfFlag();
 
-    // ── Sprint 3 — ModuleRegistry setup ──────────────────────────────────────
+    // ── ModuleRegistry setup ─────────────────────────────────────────────────
     // Modules are registered here, at module-init time, before startApp() is called.
     // Registration order does NOT determine initialization order — the registry
     // resolves the dependency graph at init() time.
@@ -138,8 +138,8 @@ export function installBoot(preset: PresetManifest): BootInstallation {
     // startApp — the boot sequence, bound to THIS entry's preset. The sequence itself lives
     // in `boot-core.ts#bootWithPreset()`; binding it here keeps `GeoLeaf._app.startApp` as
     // the single entry the tests and the `GeoLeaf.boot()` facade call.
-    _app.startApp = function () {
-        return bootWithPreset(preset, { GeoLeaf, app: _app, registry: _registry });
+    _app.startApp = function (options?: BootOptions) {
+        return bootWithPreset(preset, { GeoLeaf, app: _app, registry: _registry }, options);
     };
 
     /**
@@ -152,10 +152,20 @@ export function installBoot(preset: PresetManifest): BootInstallation {
      * @param options - Optional boot options.
      * @param options.beforeBoot - Async hook called after config load, before map creation.
      *   Return void to proceed, throw to abort boot (emits `geoleaf:boot:aborted`).
-     *   Use case: SSO / external auth gate (Keycloak, Azure AD, Laravel/Symfony) without the connector plugin.
+     *   Use case: SSO / external auth gate (any identity provider) without the connector plugin.
      * @param options.onPerformanceMetrics - Callback to receive runtime metrics after geoleaf:app:ready.
+     * @param options.config - A configuration object handed over in memory. When present, the
+     *   boot applies it directly and issues no request for it. Wins over `configUrl`.
+     * @param options.configUrl - An explicit URL to fetch the configuration from. Used when
+     *   `config` is absent. Without either, the path is derived from the host page — unchanged.
      * @example
      * GeoLeaf.boot();
+     * // Configuration handed over in memory — no request is issued for it. An embedding
+     * // application whose router answers unknown paths with its own HTML document needs
+     * // this: the derived path would return HTML in HTTP 200 where JSON is expected.
+     * GeoLeaf.boot({ config: { map: { center: [4.85, 45.75], zoom: 12 } } });
+     * // Explicit URL, when the configuration is served from somewhere the page cannot imply
+     * GeoLeaf.boot({ configUrl: '/assets/geoleaf/config.json' });
      * // Auth gate (SSO without connector)
      * GeoLeaf.boot({
      *   beforeBoot: async ({ config }) => {
@@ -166,17 +176,7 @@ export function installBoot(preset: PresetManifest): BootInstallation {
      * // Performance metrics
      * GeoLeaf.boot({ onPerformanceMetrics: (m) => console.log(m.timeToMapReadyMs) });
      */
-    GeoLeaf.boot = function (options?: {
-        beforeBoot?: (context: {
-            config: Readonly<Record<string, unknown>>;
-        }) => Promise<void> | void;
-        onPerformanceMetrics?: (metrics: {
-            timeToMapReadyMs: number | null;
-            timeToAppReadyMs: number | null;
-            startupTotalMs: number | null;
-            capturedAt: string;
-        }) => void;
-    }) {
+    GeoLeaf.boot = function (options?: BootOptions) {
         if (options?.beforeBoot) {
             GeoLeaf._beforeBootCallback = options.beforeBoot;
         }
@@ -197,7 +197,7 @@ export function installBoot(preset: PresetManifest): BootInstallation {
         // nothing is awaited, and the B1→B11 ordering is untouched. Only a rejection
         // handler is attached.
         const _startApp = () => {
-            _app.startApp().catch((e: unknown) => {
+            _app.startApp(options).catch((e: unknown) => {
                 console.error("[GeoLeaf] Boot sequence failed:", e);
             });
         };

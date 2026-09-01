@@ -39,7 +39,7 @@ describe("@anomaly ANO-023 — security.httpsOnly (capability present, config un
 describe("performance.* orphans (ANO-028/029/030) — locked by inventory, not behaviour", () => {
     // Intentionally no behavioural assertions: these keys have no runtime consumer
     // (maxConcurrentLayers / layerLoadDelay = 0 reader; fitBoundsOnThemeChange =
-    // hardcoded `false` in themes/theme-applier/core.ts:162, config never read).
+    // hardcoded `false` in themes/theme-applier/core.ts, config never read).
     // A no-effect test would assert nothing observable. The regression-lock is the
     // anomaly registry + check-config-coverage; see registre_anomalies_config.md.
     it.todo("ANO-028 performance.maxConcurrentLayers — wire a consumer, then test");

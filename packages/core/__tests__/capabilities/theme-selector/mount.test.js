@@ -35,9 +35,8 @@ vi.mock("../../../src/kernel/themes/theme-applier/core.js", () => ({
     ThemeApplierCore: { applyTheme: mockApplyTheme },
 }));
 
-const { ThemeSelector } = await import(
-    "../../../src/capabilities/theme-selector/theme-selector.ts"
-);
+const { ThemeSelector } =
+    await import("../../../src/capabilities/theme-selector/theme-selector.ts");
 const { _state } = await import("../../../src/capabilities/theme-selector/theme-selector-state.ts");
 
 const theme = (id, type, label) => ({ id, type, label, icon: "•", description: `${label} theme` });

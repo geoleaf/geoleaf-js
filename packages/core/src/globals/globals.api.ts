@@ -22,9 +22,9 @@
  *
  * ⚠️ The note here read: « **UMD note:** public methods are assigned directly here (not via
  * `geoleaf-api.js`) to prevent Rollup DCE from eliminating them when
- * `propertyReadSideEffects:false`. » That premise was measured FALSE at API S4.2 — the other
+ * `propertyReadSideEffects:false`. » That premise was measured FALSE — the other
  * module was not eliminated, it ran LAST and won — and believing it is what let a duplicate look
- * inert for three sprints. 7.7 removed the duplicate instead of arbitrating between the two.
+ * inert for months. The duplicate was removed instead of arbitrating between the two.
  *
  * @see globals for the orchestrator and import order
  * @see kernel/api/geoleaf-api — now a re-export of the live namespace, nothing more
@@ -54,6 +54,7 @@ import { BootInfo } from "../kernel/api/boot-info.js";
 import { PluginRegistry } from "../kernel/api/plugin-registry.js";
 import { Events } from "../api/geoleaf.events.js";
 import { Introspection } from "../api/geoleaf.introspection.js";
+import { Capabilities } from "../api/geoleaf.capabilities.js";
 // geoleaf.api.js is imported last in bundle-entry.js (requires _APIController to be set up first)
 import { ensureGeoLeaf } from "../utils/general/geoleaf-global.js";
 
@@ -119,7 +120,7 @@ function assignApiFacades(_gl: GeoLeafRuntime): void {
     _gl.plugins = PluginRegistry;
     _gl.bootInfo = BootInfo;
     _gl.events = Events;
-    // Canonical casing (S13.7). The root `index.d.ts` (since removed at S6) declared
+    // Canonical casing. The root `index.d.ts` (since removed) declared
     // `GeoLeaf.Events` and docs/EVENTS_API.md
     // documents it in 18 examples, but nothing ever mounted it: `GeoLeaf.Events.on(...)`
     // type-checked and threw at runtime. Same ghost-API class as `_UIComponents.clearElement`
@@ -130,8 +131,12 @@ function assignApiFacades(_gl: GeoLeafRuntime): void {
     // (boot-golden-master + bundle-boot-contract).
     _gl.Events = Events;
     _gl.Introspection = Introspection;
+    // `GeoLeaf.Capabilities` — the channel through which a capability's absence
+    // becomes a FACT observable by the host, instead of a log line it cannot
+    // read.
+    _gl.Capabilities = Capabilities;
     // Registers core as loaded
-    const coreVersion = _gl._version as string | undefined;
+    const coreVersion = _gl._version;
     PluginRegistry.register("core", { ...(coreVersion !== undefined && { version: coreVersion }) });
 }
 
@@ -186,9 +191,9 @@ function requireController(): APIControllerLike {
  * detached. Guarded by `__tests__/guards/top-level-api-single-writer.guard.test.ts`, which was
  * written BEFORE the removal precisely so it could be seen red on intact code.
  *
- * ⚠️ The old note here claimed, since PHASE11, that `api/geoleaf-api.js` is eliminated by Rollup's
- * DCE in the ESM build — hence the duplication. **That was measured false at API S4.2**, and
- * believing it is what let the duplication look inert for three sprints.
+ * ⚠️ The old note here long claimed that `api/geoleaf-api.js` is eliminated by Rollup's
+ * DCE in the ESM build — hence the duplication. **That was measured false**, and
+ * believing it is what let the duplication look inert for months.
  *
  * ## Three methods refuse a dead controller, eight do not — and that is the contract
  *
@@ -258,8 +263,9 @@ function defineApiMethods(_gl: GeoLeafRuntime): void {
     };
     _gl.getNamespace = function (name: string) {
         const gl = ensureGeoLeaf();
-        // Recherche par nom calculé : le cast est la forme honnête depuis que la traîne
-        // `[key: string]: unknown` a quitté `GeoLeafGlobal` (B-13). Le résultat EST inconnu.
+        // Lookup by computed name: the cast is the honest form since the
+        // `[key: string]: unknown` tail left `GeoLeafGlobal`. The result IS
+        // unknown.
         return name ? (gl as unknown as Record<string, unknown>)[name] || null : null;
     };
     _gl.getHealth = function () {
@@ -270,16 +276,17 @@ function defineApiMethods(_gl: GeoLeafRuntime): void {
         const gl = ensureGeoLeaf();
         return (gl.getHealth as () => unknown)();
     };
-    // Alias version — mirrors the build-injected `_version` (set at B1); shared dev/test
-    // fallback. ⚠️ « Also set by geoleaf-api.js for ESM — harmless duplicate » jusqu'à
-    // socle-init 7.7 : le doublon existait bien, et il n'était PAS harmless — il écrivait sans
-    // garde et écrasait celle-ci. C'est la divergence D8. Le garde ci-dessous est le versant
-    // correct, et il est désormais le seul.
+    // Alias version — mirrors the build-injected `_version` (set at B1); shared
+    // dev/test fallback. ⚠️ "Also set by geoleaf-api.js for ESM — harmless
+    // duplicate", it long said: the duplicate did exist, and it was NOT harmless —
+    // it wrote unguarded and overwrote this one. The guard below is the correct
+    // side, and it is now the only one.
     if (!_gl.version) {
-        _gl.version = (_gl._version as string | undefined) ?? VERSION_FALLBACK;
+        _gl.version = _gl._version ?? VERSION_FALLBACK;
     }
-    // ⚠️ « geoleaf.api.js (ESM facade) also sets these » jusqu'à socle-init 7.7 — ce n'est plus
-    // vrai, et c'est le point : ce module est le seul écrivain, gardé par TLA-01.
+    // ⚠️ "geoleaf.api.js (ESM facade) also sets these", it long said — no longer
+    // true, and that is the point: this module is the only writer, guarded by
+    // TLA-01.
 }
 
 /**

@@ -9,7 +9,7 @@
  * Typed access to the global `GeoLeaf` namespace.
  *
  * Canonical replacement for the ad-hoc `const _g/_gl: any = globalThis…` accessor
- * blocks scattered across the core (roadmap_typage-strict.md, S1). The namespace
+ * blocks scattered across the core. The namespace
  * shape is declared ambiently in `src/global.d.ts` (`GeoLeafGlobal`).
  */
 

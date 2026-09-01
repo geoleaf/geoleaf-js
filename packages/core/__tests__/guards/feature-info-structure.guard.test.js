@@ -1,45 +1,45 @@
 /**
  * @file feature-info-structure.guard.test.js
- * @description Test-garde structurel de la capacité `feature-info` (backlog R.20).
+ * @description Structural guard test of the `feature-info` capability.
  *
- * ## Pourquoi ce garde existe
+ * ## Why this guard exists
  *
- * Le reclassement SR0 (04/07/2026) a fait passer `feature-info` de plugin externe à
- * capacité in-core. Les **2 specs qui verrouillaient sa liste de fichiers** ont été
- * retirées de `extracted-features.guard.test.js` à cette occasion — à juste titre :
- * ce garde-là interdit à une feature EXTRAITE de laisser un résidu dans le core, et
- * `feature-info` est désormais délibérément DANS le core. Le contrat ne s'appliquait
- * plus.
+ * A reclassification (04/07/2026) moved `feature-info` from external plugin
+ * to in-core capability. The **2 specs locking its file list** were removed
+ * from `extracted-features.guard.test.js` on that occasion — rightly: that
+ * guard forbids an EXTRACTED feature to leave residue in the core, and
+ * `feature-info` is now deliberately IN the core. The contract no longer applied.
  *
- * Mais rien n'a pris le relais. C'est ce retrait qui a rendu le renommage de
- * CAPACITÉS S2 indolore, et c'est lui qui laisse la capacité sans filet depuis.
+ * But nothing took over. That removal is what made a later rename painless,
+ * and what has left the capability without a net since.
  *
- * ## Ce que ce garde vérifie — et ce qu'il ne vérifie PAS
+ * ## What this guard verifies — and what it does NOT
  *
- * Le miroir naïf du garde retiré serait « aucune mention de feature-info hors de son
- * répertoire ». Mesuré au 24/07 : **33 fichiers du core en portent une, toutes
- * légitimes** (module de boot, façade `geoleaf.featureinfo.ts`, contrats, i18n, CSS,
- * et toute la capacité `taxonomy` qui la consomme). Un garde par token produirait 33
- * faux positifs le jour de sa pose — donc ce n'est pas l'invariant à écrire.
+ * The removed guard's naive mirror would be "no feature-info mention outside
+ * its directory". Measured on 24/07: **33 core files carry one, all
+ * legitimate** (boot module, `geoleaf.featureinfo.ts` facade, contracts,
+ * i18n, CSS, and the whole `taxonomy` capability consuming it). A per-token
+ * guard would produce 33 false positives the day of its pose — so that is
+ * not the invariant to write.
  *
- * Les trois invariants ci-dessous sont ceux qui se cassent en silence :
+ * The three invariants below are the ones that break silently:
  *
- *   FI-01  Les fichiers STRUCTURANTS existent. Pas un inventaire exhaustif (il
- *          rougirait à chaque ajout légitime) : les fichiers dont la disparition ou
- *          le déplacement change l'architecture de la capacité.
- *   FI-02  La façade reste une façade (INV-FACADE). `public-api.ts` délègue aux
- *          surfaces ; s'il se met à importer `render/*` directement, il a absorbé de
- *          la logique de présentation — exactement la dérive que la séparation
- *          façade/implémentation interdit.
- *   FI-03  La capacité est bien montée sur le namespace via sa façade.
+ *   FI-01  The STRUCTURING files exist. Not an exhaustive inventory (it
+ *          would turn red at every legitimate addition): the files whose
+ *          disappearance or move changes the capability's architecture.
+ *   FI-02  The facade stays a facade (INV-FACADE). `public-api.ts` delegates
+ *          to the surfaces; if it starts importing `render/*` directly, it
+ *          has absorbed presentation logic — exactly the drift the
+ *          facade/implementation separation forbids.
+ *   FI-03  The capability is mounted on the namespace through its facade.
  *
- * La surface publique à 5 méthodes est déjà couverte par
- * `__tests__/capabilities/feature-info/public-api.test.js` — non redupliquée ici.
+ * The 5-method public surface is already covered by
+ * `__tests__/capabilities/feature-info/public-api.test.js` — not duplicated here.
  *
- * ⚠️ Écrit en ESM et non en CJS comme les 3 autres gardes : le paquet est
- * `"type": "module"`, et les fichiers `.js` en CJS sont précisément ce qui maintient
- * la dépendance à tsx (mesuré en R.22, voir `ensure-tsx-node-options.mjs`). Ne pas
- * réintroduire de `require()` ici.
+ * ⚠️ Written in ESM and not CJS like the 3 other guards: the package is
+ * `"type": "module"`, and CJS `.js` files are precisely what maintains the
+ * tsx dependency (measured, see `ensure-tsx-node-options.mjs`). Do not
+ * reintroduce a `require()` here.
  */
 
 import { describe, it, expect } from "vitest";
@@ -52,23 +52,23 @@ const CORE_SRC = resolve(__dirname, "../../src");
 const CAP = resolve(CORE_SRC, "capabilities/feature-info");
 
 /**
- * Fichiers structurants de la capacité. Chacun porte une part de l'architecture :
- * retirer ou déplacer l'un d'eux est une décision, pas un détail.
+ * The capability's structuring files. Each carries a share of the
+ * architecture: removing or moving one is a decision, not a detail.
  */
 const STRUCTURAL_FILES = [
-    // Façade et contrat
+    // Facade and contract
     "public-api.ts",
     "types.ts",
     "config.ts",
-    // Cycle de vie et enregistrement
+    // Lifecycle and registration
     "install.ts",
     "lifecycle.ts",
     "feature-info-capability.ts",
-    // Les 3 surfaces — c'est la promesse de l'API publique
+    // The 3 surfaces — the public API's promise
     "surfaces/popup.ts",
     "surfaces/sidepanel.ts",
     "surfaces/tooltip.ts",
-    // Résolution de la liaison par couche
+    // Per-layer binding resolution
     "convert.ts",
     "resolve.ts",
 ];
@@ -95,7 +95,7 @@ describe("feature-info — garde structurelle (R.20, filet repris après le retr
                 `de présentation. Elle doit passer par surfaces/.`
         ).toEqual([]);
 
-        // Et elle délègue bien : au moins une surface importée.
+        // And it does delegate: at least one surface imported.
         expect(source).toMatch(/from\s+["']\.\/surfaces\//);
     });
 
@@ -103,12 +103,12 @@ describe("feature-info — garde structurelle (R.20, filet repris après le retr
         const facade = resolve(CORE_SRC, "api/geoleaf.featureinfo.ts");
         expect(existsSync(facade), "api/geoleaf.featureinfo.ts est absent").toBe(true);
 
-        // ⚠️ Première écriture de ce test : deux `toMatch` sur la SOURCE
-        // (`/buildPublicApi/` et `/export const FeatureInfo/`). Prouvé non couvrant
-        // par mutation — en remplaçant `buildPublicApi()` par `{}`, la ligne d'import
-        // restait et les deux regex passaient toujours. Un test qui cherche un token
-        // que la mutation ne retire pas ne garde rien : on importe donc le module et
-        // on regarde ce qu'il monte réellement.
+        // ⚠️ This test's first writing: two `toMatch` on the SOURCE
+        // (`/buildPublicApi/` and `/export const FeatureInfo/`). Proven
+        // non-covering by mutation — replacing `buildPublicApi()` with `{}`,
+        // the import line stayed and both regexes still passed. A test
+        // looking for a token the mutation does not remove guards nothing:
+        // so the module is imported and what it really mounts is looked at.
         const { FeatureInfo } = await import(facade);
         for (const method of ["isEnabled", "close", "openPopup", "openSidePanel", "getConfig"]) {
             expect(typeof FeatureInfo[method], `FeatureInfo.${method} n'est pas monté`).toBe(

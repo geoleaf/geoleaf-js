@@ -24,7 +24,10 @@ export interface SafeElementOptions {
 /**
  * Escape dangerous HTML characters to prevent XSS.
  *
- * @security Sanitizes arbitrary strings against HTML injection by escaping <, >, &, ", ' to entities.
+ * @security Escapes `&`, `<`, `>` via a text node's HTML serialization — safe for HTML
+ * TEXT / element-content contexts. It does NOT escape the quotes `"` and `'`; for an
+ * attribute-value context use {@link escapeAttribute}, which escapes all five. (An earlier
+ * version of this line claimed the quotes were escaped — they are not.)
  * @param str - The string to escape. Null or undefined returns `""`.
  * @returns The HTML-escaped string, safe for use in DOM text contexts.
  */

@@ -1,56 +1,62 @@
 /**
- * Caractérisation de la découverte de modules — API publique S4.3.
+ * Module-discovery characterisation — public API review.
  *
- * Écrit AVANT le retrait des 13 clés `_` du namespace, et vert au moment où il est écrit :
- * c'est la définition d'un test de caractérisation. Il ne dit pas ce que le code DEVRAIT
- * faire, il grave ce qu'il fait, pour que le lot suivant produise un diff lisible au lieu
- * d'une régression silencieuse.
+ * Written BEFORE the removal of the namespace's 13 `_` keys, and green when
+ * written: the definition of a characterisation test. It does not say what
+ * the code SHOULD do, it engraves what it does, so the next pass produces a
+ * readable diff instead of a silent regression.
  *
- * ## Ce qu'il garde, et pourquoi ça compte
+ * ## What it guards, and why it matters
  *
- * `APIModuleManager._scanExistingModules()` (`kernel/api/module-manager.ts:102-108`) ne
- * découvre pas des modules : il **copie toute clé du namespace dont le nom commence par `_`**.
- * Il promeut donc au rang de « module » une chaîne (`_version`), un sac d'état (`_app`), et
- * un ACCESSEUR qu'il invoque au passage (`_APIController`). Retirer 13 de ces clés change
- * mécaniquement `stats.totalModules`, la liste en cache et `getModuleList()`.
+ * `APIModuleManager._scanExistingModules()`
+ * (`kernel/api/module-manager.ts`) does not discover modules: it
+ * **copies every namespace key whose name starts with `_`**. It thus
+ * promotes to "module" a string (`_version`), a state bag (`_app`), and an
+ * ACCESSOR it invokes in passing (`_APIController`). Removing 13 of these
+ * keys mechanically changes `stats.totalModules`, the cached list and
+ * `getModuleList()`.
  *
- * ⚠️ Une intention du plan de sprint est ici corrigée par la mesure : le catalogue explicite
- * qui remplacera le scan **ne peut pas** « préserver la sortie de `getModuleList()` ».
- * Celle-ci fait l'union avec `Object.keys(gl)` à chaque appel (`:213-226`) — dès que les clés
- * quittent le namespace, elle rétrécit, catalogue ou pas. Ce que le catalogue apporte est
- * autre chose, et se suffit : la découverte cesse d'être un balayage de préfixe, et la
- * ré-entrance du getter disparaît.
+ * ⚠️ One plan intention is corrected here by measurement: the explicit
+ * catalogue replacing the scan **cannot** "preserve `getModuleList()`'s
+ * output". That output unions with `Object.keys(gl)` at every call
+ * (`:213-226`) — as soon as keys leave the namespace, it shrinks, catalogue
+ * or not. What the catalogue brings is something else, and suffices:
+ * discovery stops being a prefix sweep, and the getter's re-entrance
+ * disappears.
  *
- * ## Portée réelle du risque, mesurée
+ * ## Real scope of the risk, measured
  *
- * `getModule` / `hasModule` / `getNamespace` sont publics (ils sont dans l'oracle post-boot).
- * `getModuleList` ne l'est pas — il n'est joignable que par l'instance du manager. Mesure de
- * confirmation : ces quatre méthodes ont **zéro appelant** hors du core (rien dans `apps/`,
- * `e2e/`, `deploy/`, les 13 plugins, `packages/libs/`, `examples/`, `profiles/`).
+ * `getModule` / `hasModule` / `getNamespace` are public (they are in the
+ * post-boot oracle). `getModuleList` is not — only reachable through the
+ * manager instance. Confirming measure: these four methods have **zero
+ * callers** outside the core (nothing in `apps/`, `e2e/`, `deploy/`, the 13
+ * plugins, `packages/libs/`, `examples/`, `profiles/`).
  *
- * ## ⚠️ Ce que ces chiffres ne décrivent PAS
+ * ## ⚠️ What these numbers do NOT describe
  *
- * Ce boot n'est pas celui de la production : `GeoLeaf.loadConfig` est stubé, donc le scan
- * s'exécute à un instant qui n'est pas le sien en conditions réelles, et il y voit un
- * namespace plus peuplé. Ne pas transposer `38` tel quel à un chargement de page. Ce que le
- * test garantit est l'invariant, pas le nombre absolu : **le cache est un sous-ensemble du
- * namespace**, et il bouge exactement quand le namespace bouge.
+ * This boot is not production's: `GeoLeaf.loadConfig` is stubbed, so the
+ * scan runs at a moment that is not its own in real conditions, and sees a
+ * more populated namespace. Do not transpose `38` as-is to a page load.
+ * What the test guarantees is the invariant, not the absolute number: **the
+ * cache is a subset of the namespace**, and it moves exactly when the
+ * namespace moves.
  *
  * ## Journal
  *
- * API S4.3b : 51 → 38 (14 publics + 24 `_`), `moduleList` 102 → 89. Les 13 clés `_` retirées
- * n'avaient aucun lecteur et n'étaient déclarées dans aucun type.
+ * First pass: 51 → 38 (14 public + 24 `_`), `moduleList` 102 → 89. The 13
+ * removed `_` keys had no reader and were declared in no type.
  *
- * API S4.3f : 38 → 34. Le catalogue déclaratif remplace le balayage de préfixe, et **quatre
- * clés `_` quittent le cache sans quitter le namespace** : `_version` (une chaîne), `_app`
- * (un sac d'état), `_registry` (l'instance du ModuleRegistry) et `_APIController` (un
- * accesseur). Le balayage les prenait parce qu'elles commencent par `_`, pas parce que ce
- * sont des modules.
+ * Second pass: 38 → 34. The declarative catalogue replaces the prefix
+ * sweep, and **four `_` keys leave the cache without leaving the
+ * namespace**: `_version` (a string), `_app` (a state bag), `_registry`
+ * (the ModuleRegistry instance) and `_APIController` (an accessor). The
+ * sweep took them because they start with `_`, not because they are modules.
  *
- * ⚠️ **La surface PUBLIQUE est inchangée**, et c'est le seul critère qui compte ici —
- * mesuré : `getModule("POI")` rend toujours `null` (pas `undefined`), `getModule
- * ("_APIController")` rend toujours l'objet (par le repli), `hasModule` répond pareil sur les
- * quatre, `getModuleList()` vaut toujours l'oracle, et les 3 alias sont identiques.
+ * ⚠️ **The PUBLIC surface is unchanged**, and that is the only criterion
+ * that counts here — measured: `getModule("POI")` still returns `null` (not
+ * `undefined`), `getModule("_APIController")` still returns the object
+ * (through the fallback), `hasModule` answers the same on all four,
+ * `getModuleList()` still equals the oracle, and the 3 aliases are identical.
  */
 "use strict";
 
@@ -65,12 +71,13 @@ const _app = bootModule._app;
 const GeoLeaf = globalThis.GeoLeaf;
 
 /**
- * Les 14 modules PUBLICS mis en cache par `moduleList` (la liste en dur de `:75-93`).
+ * The 14 PUBLIC modules cached by `moduleList` (the hardcoded list at `:75-93`).
  *
- * Elle en énumère 17, mais trois ne sont montés par personne depuis leurs dissolutions
- * respectives — `POI` (S9), `Route` (façade dissoute au S11), `Constants` (le namespace porte
- * `CONSTANTS`, en capitales). Le `if (gl[name])` les saute en silence : la liste en dur et le
- * runtime divergent de trois entrées, et rien ne le dit.
+ * It enumerates 17, but three are mounted by nobody since their respective
+ * dissolutions — `POI`, `Route` (facade dissolved), `Constants` (the
+ * namespace carries `CONSTANTS`, capitals). The `if (gl[name])` skips them
+ * silently: the hardcoded list and the runtime diverge by three entries,
+ * and nothing says so.
  */
 const CACHED_PUBLIC = [
     "BaseLayers",
@@ -89,7 +96,7 @@ const CACHED_PUBLIC = [
     "Validators",
 ];
 
-/** Les 20 modules internes ÉNUMÉRÉS par le catalogue (37 balayés avant l'API S4.3). */
+/** The 20 internal modules ENUMERATED by the catalogue (37 swept before the review). */
 const CACHED_PRIVATE = [
     "_Cluster",
     "_ConfigLoader",
@@ -113,7 +120,7 @@ const CACHED_PRIVATE = [
     "_VectorTiles",
 ];
 
-describe("découverte de modules — caractérisation (API S4.3)", () => {
+describe("découverte de modules — caractérisation", () => {
     let mm;
     let captured;
 
@@ -147,8 +154,9 @@ describe("découverte de modules — caractérisation (API S4.3)", () => {
     });
 
     test("trois entrées de `moduleList` ne sont montées par personne", () => {
-        // Le `if (gl[name])` les saute sans un mot. Gelé pour que le catalogue explicite du
-        // lot suivant ne les recopie pas par fidélité à une liste qui ment déjà.
+        // The `if (gl[name])` skips them without a word. Frozen so the next
+        // pass's explicit catalogue does not copy them out of fidelity to a
+        // list that already lies.
         for (const fantome of ["POI", "Route", "Constants"]) {
             expect(captured.cached, `${fantome} ne devrait pas être en cache`).not.toContain(
                 fantome
@@ -158,10 +166,11 @@ describe("découverte de modules — caractérisation (API S4.3)", () => {
     });
 
     test("pose 3 alias sur 4 — `Log → Logger` est MORTE", () => {
-        // `_setupAliases()` ne pose un alias que si la CIBLE est déjà en cache. `Logger` n'est
-        // ni dans `moduleList` ni sur le namespace, donc `Log → Logger` ne se pose jamais.
-        // Elle est inerte depuis toujours ; la geler documente le fait au lieu de le laisser
-        // réapparaître comme une intention.
+        // `_setupAliases()` only sets an alias if the TARGET is already
+        // cached. `Logger` is neither in `moduleList` nor on the namespace,
+        // so `Log → Logger` never gets set. It has been inert forever;
+        // freezing it documents the fact instead of letting it reappear as
+        // an intention.
         expect(captured.aliases).toEqual([
             ["BaseLayers", "Baselayers"],
             ["Baselayers", "BaseLayers"],
@@ -172,9 +181,10 @@ describe("découverte de modules — caractérisation (API S4.3)", () => {
 
     describe("le catalogue déclaratif (API S4.3f)", () => {
         test("toute entrée du catalogue est montée, sauf celles motivées comme absentes", () => {
-            // L'anti-dérive : un nom que plus personne ne monte doit être RETIRÉ du catalogue
-            // ou DÉCLARÉ absent avec sa raison. Une exemption sans motif est indiscernable
-            // d'un nom que quelqu'un a cessé de poursuivre.
+            // The anti-drift: a name nobody mounts any more must be REMOVED
+            // from the catalogue or DECLARED absent with its reason. A
+            // motiveless exemption is indistinguishable from a name someone
+            // stopped pursuing.
             const absentes = MODULE_CATALOG.filter((n) => !GeoLeaf[n]);
             const nonMotivees = absentes.filter((n) => !CATALOG_EXPECTED_ABSENT.has(n));
             expect(
@@ -184,24 +194,27 @@ describe("découverte de modules — caractérisation (API S4.3)", () => {
         });
 
         test("les 3 fantômes restent hors du cache — la garde de présence tient", () => {
-            // Sans `if (!descriptor.value) continue`, ces trois entreraient au cache et
-            // `getModuleList()` deviendrait STRICTEMENT PLUS GRAND que `Object.keys(gl)`.
+            // Without `if (!descriptor.value) continue`, these three would
+            // enter the cache and `getModuleList()` would become STRICTLY
+            // LARGER than `Object.keys(gl)`.
             for (const [nom, motif] of CATALOG_EXPECTED_ABSENT) {
                 expect(captured.cached, `${nom} en cache — ${motif}`).not.toContain(nom);
-                // Et la sortie publique reste `null`, pas `undefined` : c'est le repli sur le
-                // namespace qui la produit, et il n'existe que si le nom traverse la boucle.
+                // And the public output stays `null`, not `undefined`: the
+                // namespace fallback produces it, and it only exists if the
+                // name crosses the loop.
                 expect(GeoLeaf.getModule(nom), `getModule("${nom}") doit rendre null`).toBeNull();
             }
         });
 
         test("l'accesseur `_APIController` n'est PAS mis en cache, et reste atteignable", () => {
-            // La politique d'accesseur : on ne lit jamais `.value` d'un descripteur porteur
-            // d'un getter. Lire celui-ci pendant `_scanExistingModules()` re-entrait dans la
-            // construction de l'APIController qui l'appelle — récursion mesurée en navigateur.
+            // The accessor policy: never read `.value` of a getter-bearing
+            // descriptor. Reading this one during `_scanExistingModules()`
+            // re-entered the construction of the APIController calling it —
+            // recursion measured in a browser.
             const d = Object.getOwnPropertyDescriptor(GeoLeaf, "_APIController");
             expect(typeof d?.get, "_APIController doit rester un accesseur").toBe("function");
             expect(captured.cached).not.toContain("_APIController");
-            // …et le repli de `getModule` le sert quand même, hors construction.
+            // …and `getModule`'s fallback still serves it, outside construction.
             expect(typeof GeoLeaf.getModule("_APIController")).toBe("object");
             expect(GeoLeaf.hasModule("_APIController")).toBe(true);
         });
@@ -215,9 +228,10 @@ describe("découverte de modules — caractérisation (API S4.3)", () => {
     });
 
     test("`getModuleList()` est l'union du cache et du namespace — donc le namespace", () => {
-        // Le cache est un sous-ensemble du namespace (tout y a été lu), donc l'union vaut
-        // exactement l'oracle post-boot. C'est ce qui rend impossible de « préserver » cette
-        // sortie en retirant des clés : elle SUIT le namespace, par construction.
+        // The cache is a subset of the namespace (everything was read from
+        // it), so the union equals exactly the post-boot oracle. That is
+        // what makes it impossible to "preserve" this output while removing
+        // keys: it FOLLOWS the namespace, by construction.
         expect(captured.moduleList).toEqual([...EXPECTED_FACADE_KEYS].sort());
     });
 

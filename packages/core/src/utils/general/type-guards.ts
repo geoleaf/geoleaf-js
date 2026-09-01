@@ -11,7 +11,7 @@
  * GeoJSON `properties` arrive as an opaque `Record<string, unknown>`; these guards
  * turn `unknown` into a concrete value (or `null`) at the call site, replacing the
  * `as any` casts spread across loaders, popups and renderers
- * (roadmap_typage-strict.md, S1 — adopted progressively from S3 onward).
+ * (adopted progressively).
  */
 
 /** Narrows `unknown` to a plain object (non-null, non-array), else `null`. */

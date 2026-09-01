@@ -1,6 +1,6 @@
 {
     "_comment": "Erreurs de type CONNUES dans les exemples ts/typescript de la doc PRODUIT (lib/tsdoc-examples.cjs::productDocsFiles), figées par scripts/typecheck-docs-examples.cjs. Le gate ne bloque que sur une erreur ABSENTE d'ici. Clé = fichier::codeTS::message (sans numéro de ligne, qui bouge à chaque édition du texte autour du bloc). Régénérer via `--update-baseline` après avoir corrigé un lot. ⚠️ La quasi-totalité des entrées est TS18048 « 'GeoLeaf…' is possibly 'undefined' » : ce n'est PAS un défaut par exemple, c'est une propriété de l'ambiant publié, qui déclare `var GeoLeaf: GeoLeafGlobal | undefined` (global.d.ts:915). Tout exemple qui écrit `GeoLeaf.X` la déclenche. La corriger exemple par exemple enseignerait un idiome (`GeoLeaf!.X`) que le reste de la doc n'emploie pas ; elle se corrige à la source, dans la déclaration, ou pas du tout — suivi au backlog.",
-    "generatedCount": 117,
+    "generatedCount": 118,
     "diagnostics": [
         "docs/specs/contrats/PLUGIN_ARCHITECTURE_SPEC.md::TS18048::'GeoLeaf' is possibly 'undefined'.",
         "docs/specs/contrats/PLUGIN_ARCHITECTURE_SPEC.md::TS18048::'GeoLeaf.Config' is possibly 'undefined'.",
@@ -115,6 +115,7 @@
         "packages/plugins/geocoding/src/public-api.ts::TS18048::'GeoLeaf' is possibly 'undefined'.",
         "packages/plugins/offline-ui/README.md::TS18048::'GeoLeaf' is possibly 'undefined'.",
         "packages/plugins/offline-ui/README.md::TS18048::'GeoLeaf.Storage' is possibly 'undefined'.",
+        "packages/plugins/position-share/src/receive.ts::TS18048::'GeoLeaf' is possibly 'undefined'.",
         "packages/plugins/print/README.md::TS18048::'GeoLeaf' is possibly 'undefined'.",
         "packages/plugins/realtime-layer/src/public-api.ts::TS18048::'GeoLeaf' is possibly 'undefined'.",
         "packages/plugins/realtime-layer/src/public-api.ts::TS18048::'GeoLeaf.Notifications' is possibly 'undefined'.",

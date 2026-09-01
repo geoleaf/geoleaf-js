@@ -47,7 +47,8 @@ export type ServerId = string;
  * Per-entity freshness marker, read at pull time and sent back at push time.
  *
  * Whatever the backend offers: an HTTP `ETag`, or a modification timestamp (`updated_at`,
- * `write_date` on Odoo). Its only job is to make a conflict DETECTABLE — today nothing
+ * `write_date`, whatever the server names it). Its only job is to make a conflict DETECTABLE
+ * — today nothing
  * carries it, so a conflict cannot even be observed, let alone arbitrated.
  */
 export interface VersionMarker {
@@ -92,7 +93,7 @@ export type QuarantineReason =
     /**
      * The push was refused by the server for a reason replay cannot fix.
      *
-     * ⚠️ **NARROWED at B-199 (09/08/2026), and the previous width had a measured cost.** This
+     * ⚠️ **NARROWED on 09/08/2026, and the previous width had a measured cost.** This
      * member used to name EVERY non-409/non-404 failure, transient server outages included:
      * `pushOne` had a single branch for the whole spectrum. Since this reason is excluded from
      * `REQUEUEABLE`, a 503 during maintenance spent the replay budget and then left the capture
@@ -105,7 +106,7 @@ export type QuarantineReason =
     /**
      * The server does not implement the verb — HTTP 501.
      *
-     * 🛑 **ADDED at B-199, and the asymmetry it closes is the reason it exists.** An
+     * 🛑 **ADDED on 09/08/2026, and the asymmetry it closes is the reason it exists.** An
      * unimplemented verb on the CLIENT side (the `rest` dialect, `push-engine.ts`) already fell
      * through to `retryBudgetExhausted` and was therefore replayable; the same fact reported by
      * the SERVER landed on `rejectedByServer` and was not. Same fact, opposite outcomes.
@@ -120,15 +121,15 @@ export type QuarantineReason =
      * The replay budget ran out — the entry failed `MAX_REPLAY_ATTEMPTS` times without the
      * server ever answering in a way replay could act on.
      *
-     * ⚠️ **AJOUTÉ à la tâche 4.11d (B-125), et il manquait pour une raison précise.** Les trois
-     * motifs au-dessus nomment tous une CAUSE observée côté serveur ou côté couche. Un budget
-     * épuisé n'en est pas une : le serveur a pu ne jamais répondre. Réutiliser
-     * `rejectedByServer` pour un délai réseau aurait été un mensonge que le code lui-même
-     * détecte — `push-engine` distingue déjà `networkError` de `rejectedByServer`.
+     * ⚠️ **ADDED on 05/08/2026, and it was missing for a precise reason.** The three
+     * motives above all name a CAUSE observed on the server or layer side. An exhausted
+     * budget is not one: the server may never have answered. Reusing `rejectedByServer`
+     * for a network timeout would have been a lie the code itself detects —
+     * `push-engine` already distinguishes `networkError` from `rejectedByServer`.
      *
-     * ✅ **Il porte aussi les pannes serveur transitoires depuis B-199** — 500, 502, 503, 504,
-     * 408, 429. Sa phrase les couvrait déjà (« without the server ever answering in a way
-     * replay could act on ») : c'est la classification en amont qui ne les lui envoyait pas.
+     * ✅ **It also carries transient server failures since 09/08/2026** — 500, 502, 503, 504,
+     * 408, 429. Its sentence already covered them ("without the server ever answering in a
+     * way replay could act on"): upstream classification just was not sending them here.
      */
     | "retryBudgetExhausted";
 
@@ -166,7 +167,7 @@ export interface FeatureRecord {
     readonly feature: unknown;
     /** Present only when `syncState` is `quarantined`. */
     readonly quarantine?: QuarantineReason;
-    /** Statut HTTP du dernier refus, quand la quarantaine en vient un. Voir {@link OutboxEntry.quarantineStatus}. */
+    /** HTTP status of the last refusal, when the quarantine comes from one. See {@link OutboxEntry.quarantineStatus}. */
     readonly quarantineStatus?: number;
 }
 
@@ -182,9 +183,9 @@ export interface FeatureRecord {
  * the v3 queue module of this capability. A third homonym would have been indistinguishable
  * from them at a call site, and the identical name IS the defect — so it is not reused.
  *
- * ⚠️ **Les deux homonymes sont retirés à la tâche 4.11**, avec le magasin `sync_queue` qu'ils
- * décrivaient. Le nom reste néanmoins libre-de-collision par construction, et c'est le point :
- * il n'a pas été repris parce que le défaut était le nom partagé, pas sa rareté.
+ * ⚠️ **Both homonyms are removed**, together with the `sync_queue` store they described.
+ * The name nevertheless stays collision-free by construction, and that is the point: it
+ * was not reused because the defect was the shared name, not its rarity.
  */
 export interface OutboxEntry {
     readonly id: string;
@@ -199,26 +200,26 @@ export interface OutboxEntry {
     readonly createdAt: number;
     readonly quarantine?: QuarantineReason;
     /**
-     * Statut HTTP du refus qui a causé la quarantaine — absent quand elle ne vient pas d'une
-     * réponse serveur (`layerNoLongerWritable`, `networkError` au plafond).
+     * HTTP status of the refusal that caused the quarantine — absent when it does not come
+     * from a server response (`layerNoLongerWritable`, `networkError` at the cap).
      *
-     * 🛑 **B-200 — POURQUOI UN CHAMP À CÔTÉ, ET NON UN `QuarantineReason` ENRICHI.** L'énoncé
-     * demandait de « faire porter le statut par `QuarantineReason` ». Pris à la lettre, cela
-     * transforme une union de littéraux en objet : **une rupture d'une surface publiée sur npm
-     * depuis le 12/08**, alors que `DEPRECATIONS.json` est vide — donc aucun retrait autorisé.
-     * Un champ **optionnel** rend le même service et n'ajoute rien à ce qu'un consommateur
-     * existant doit lire.
+     * 🛑 **WHY A FIELD BESIDE, AND NOT AN ENRICHED `QuarantineReason`.** The instruction
+     * asked to "make `QuarantineReason` carry the status". Taken literally, that turns a
+     * union of literals into an object: **a break of a surface published on npm since
+     * 12/08**, while `DEPRECATIONS.json` is empty — so no removal is authorised. An
+     * **optional** field renders the same service and adds nothing to what an existing
+     * consumer must read.
      *
-     * ⚠️ **Le motif de la ligne : sur du terrain hors-ligne, le diagnostic doit VOYAGER AVEC
-     * L'ENTRÉE.** `pushOne` connaît le statut au point de décision et le journalise
-     * (`Log.warn(… refusé (403))`) — mais un log est volatil et personne n'ouvre une console
-     * sur le terrain. `rejectedByServer` seul ne distingue pas un droit manquant (403, que
-     * l'exploitant peut corriger) d'une requête malformée (400, qui est notre bug). Sans le
-     * statut, les deux se ressemblent, et la saisie reste bloquée sans que quiconque sache
-     * laquelle des deux causes traiter.
+     * ⚠️ **The motive: on offline fieldwork, the diagnosis must TRAVEL WITH THE ENTRY.**
+     * `pushOne` knows the status at the decision point and logs it
+     * (`Log.warn(… refused (403))`) — but a log is volatile and nobody opens a console in
+     * the field. `rejectedByServer` alone does not distinguish a missing right (403, which
+     * the operator can fix) from a malformed request (400, which is our bug). Without the
+     * status the two look alike, and the entry stays stuck with nobody knowing which of
+     * the two causes to treat.
      *
-     * 📌 Même conséquence que B-163, par l'autre bout : une perte dont l'utilisateur n'a aucun
-     * moyen de savoir qu'elle a eu lieu, ni pourquoi.
+     * 📌 Same consequence as the eviction alert without a listener, from the other end: a
+     * loss the user has no way to know happened, nor why.
      */
     readonly quarantineStatus?: number;
 }
@@ -236,6 +237,41 @@ export interface OutboxEntry {
  *
  * The rationale is the field: an operator is the authority on what they have just
  * observed, and a blocking dialog raised offline, alone on site, gets clicked at random.
+ *
+ * ## Its twin in `editor`, and what their relationship had no home to say
+ *
+ * ⚠️ **A SECOND type describes the same arbitration, under another name and in another
+ * package**: `ConflictStrategy` (`@geoleaf-plugins/editor`,
+ * `persistence/conflict-resolution.ts`), which is `"client-wins" | "server-wins" |
+ * "prompt"`. Neither the compiler nor any gate can flag that they speak of the same
+ * thing: **two differently-named types on either side of a package boundary**, which is
+ * also a review boundary.
+ *
+ * **The split as MEASURED on 17/08/2026 — each governs its own path, no hierarchy:**
+ *
+ * | Path                                | Governed by         | Applied in                               |
+ * | ----------------------------------- | ------------------- | ---------------------------------------- |
+ * | offline drain (outbox queue)        | `ConflictPolicy`    | `capabilities/offline/write/push-engine` |
+ * | interactive submission (form)       | `ConflictStrategy`  | `editor` — `persistence/submit.ts`       |
+ *
+ * 🛑 **What this split produces, and what was written nowhere: an integrator who sets
+ * `modules.editor.persistence.conflictResolution: "prompt"` does get a prompt on the
+ * interactive path — and does NOT get one on the offline drain, which decides by
+ * `lastWriteWins` without consulting it.** Measured: `push-engine.ts` carries no
+ * reference to `conflictResolution` nor to `ConflictStrategy`. That is not a defect — it
+ * is even the deliberate motive recalled above (a blocking prompt raised offline, alone
+ * in the field, gets clicked at random). **But it happens silently**, and that is the
+ * one thing the relationship between the two types had to say.
+ *
+ * 📌 **Neither "wins" over the other** — the question "which one wins when the two paths
+ * cross" is not decided here, and it is named rather than invented: deciding it would
+ * mean choosing whether a replayed offline capture should reopen a prompt after the
+ * fact. Not instructed, not urgent, no requester.
+ *
+ * ⚠️ `ConflictPolicy` has NO consumer in source: the policy is applied by the BEHAVIOUR
+ * of `push-engine.ts` (which names it in its log), not by a reference to the type. The
+ * type declares the intent; it does not enforce it. Knowing that prevents believing
+ * that changing its value would change anything.
  */
 export type ConflictPolicy = "lastWriteWins";
 
@@ -262,7 +298,7 @@ export type ConflictPolicy = "lastWriteWins";
  *    `pending`. The other two cannot: replaying a `deletedOnServer` would recreate what the
  *    server deleted, and `rejectedByServer` is defined as a reason replay cannot fix.
  *
- *    ⚠️ **The third one was added at B-199, and its absence had turned exit 1 into exit 2 for
+ *    ⚠️ **The third one was added on 09/08/2026, and its absence had turned exit 1 into exit 2 for
  *    a whole class of captures.** Every transient server outage was reported as
  *    `rejectedByServer`, so the only exit left for a capture caught during a maintenance
  *    window was the confirmed destruction below — which the operator would have confirmed in
@@ -308,8 +344,8 @@ export type LayerSyncMode = "readOnly" | "readWrite";
 /**
  * What a layer permits, per operation. Declared under the profile key `edition`.
  *
- * Replaced the pair `enableEdition` / `enableEditionFull` on 05/08/2026 (Sprint 5, task
- * 5.9 — decision V1). The second name did not mean what it said: it was read once
+ * Replaced the pair `enableEdition` / `enableEditionFull` on 05/08/2026. The second
+ * name did not mean what it said: it was read once
  * usefully, as `canDelete()`, so "full edition" was in fact **the right to delete**.
  *
  * ## Absent means refused — each key independently
@@ -334,7 +370,7 @@ export type LayerSyncMode = "readOnly" | "readWrite";
  * declare nothing and are not editable — a restrictive default changes nothing for them,
  * a permissive one would have granted edition to all 42 in silence.
  *
- * ✅ **Enforced on EVERY write path since 07/08/2026** (Sprint 8, task 8.7 — B-138). It was
+ * ✅ **Enforced on EVERY write path since 07/08/2026.** It was
  * enforced on the **offline** path only (`local-edit-api.ts`), while the online path
  * (`editor/src/persistence/rest-adapter.ts`) issued an unconditional `DELETE`: a connected
  * user could delete from a layer declaring `delete: false`. The rule now lives in the BOOT
@@ -385,8 +421,8 @@ export type WriteAuth = "csrf" | "bearer" | "none";
 /**
  * Where a layer's edits are pushed.
  *
- * Declared PER LAYER, with a plugin-level default, because on a backend such as Odoo each
- * layer is a distinct collection. Today two mechanisms compete and never meet: a per-layer
+ * Declared PER LAYER, with a plugin-level default, because on many backends each layer is a
+ * distinct collection. Today two mechanisms compete and never meet: a per-layer
  * block read in four places but set by zero layers on 48, and a plugin-level base URL that
  * ignores the layer entirely.
  *
@@ -426,7 +462,7 @@ export type DataOriginRole = "layerData" | "tiles" | "sprites" | "glyphs" | "api
  * **Declaring any origin refuses every origin left undeclared.** Silence is a refusal, not a
  * permission — that is what makes a declaration reviewable, and it governs everything below.
  *
- * ⚠️ **It does NOT cover the origin that SERVES the application** (decision B-119, arbitrated
+ * ⚠️ **It does NOT cover the origin that SERVES the application** (arbitrated
  * 07/08/2026). That origin changes with every deployment — `localhost:8766` on the `ports`
  * target, `demo.geoleaf.local.test` behind nginx, production elsewhere — so no PORTABLE
  * profile can write it. Before the exception, a profile that declared its data origins lost
@@ -529,11 +565,11 @@ export interface SyncHandler {
     /** Replay the whole pending queue. */
     processSyncQueue?(): Promise<{ synced?: number; failed?: number; skipped?: number }>;
     /**
-    /* 🛑 `restoreBackup?()` est RETIRÉE du contrat (tâche 4.11), avec toute la chaîne de
-     * sauvegarde : plus d'écrivain depuis 4.4b, un motif faux sur le mécanisme (le magasin
-     * vivait dans la base qu'une purge d'origine détruit), et un rôle couvert deux fois —
-     * par l'interdiction contractuelle de détruire une entrée d'outbox, et par l'export JSON
-     * d'`offline-ui`, qui sort du navigateur. */
+    /* 🛑 `restoreBackup?()` is REMOVED from the contract, together with the whole backup
+     * chain: no writer left, a motive false on the mechanism (the store lived in the very
+     * database an origin purge destroys), and a role covered twice — by the contractual
+     * ban on destroying an outbox entry, and by `offline-ui`'s JSON export, which leaves
+     * the browser. */
     /** One-shot sync trigger. */
     sync?(): Promise<unknown>;
     [key: string]: unknown;

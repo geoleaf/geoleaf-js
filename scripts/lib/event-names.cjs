@@ -1,43 +1,44 @@
 /*!
- * GeoLeaf — noms d'événements DOM : relevé sur AST et exclusions, partagés entre gates.
+ * GeoLeaf — DOM event names: AST-based census and exclusions, shared between gates.
  * © 2026 Mattieu Pottier — MIT
  *
- * ## Pourquoi ce module existe
+ * ## Why this module exists
  *
- * `check-event-map-coverage.cjs` (API publique S3.4) portait ce relevé et ses familles
- * d'exclusion. Au contrat inverse S1.7, `verify-consumer-contract.cjs` en a eu besoin aussi —
- * son code CC-07 tient que tout `required.events` du manifeste aval est émis **en littéral**
- * dans les sources livrées **et** sur le bus DOM, ce qui est exactement ce que
- * `collectEventLiterals`, `MAP_BUS` et `PERF_MARK_RE` décrivent ensemble.
+ * `check-event-map-coverage.cjs` used to carry this census and its exclusion families.
+ * Then `verify-consumer-contract.cjs` needed them too — its CC-07 code holds that every
+ * `required.events` of the downstream manifest is emitted **as a literal** in the shipped
+ * sources **and** on the DOM bus, which is exactly what `collectEventLiterals`, `MAP_BUS`
+ * and `PERF_MARK_RE` describe together.
  *
- * ⚠️ **Elles étaient TROIS familles jusqu'au 13/08/2026, et quatre exports au S1.7.** La
- * troisième — `DYNAMIC_PREFIXES` / `isDynamic` — est retirée par le Sprint 4 du contrat
- * inverse : son unique producteur, le `fireEvent` du plugin `table`, prend désormais le nom
- * complet. Le motif complet est au corps du fichier, là où la famille vivait.
+ * ⚠️ **They were THREE families until 2026-08-13, and four exports.** The third —
+ * `DYNAMIC_PREFIXES` / `isDynamic` — is removed since: its only producer, the `table`
+ * plugin's `fireEvent`, now takes the full name. The complete rationale is in the file
+ * body, where the family used to live.
  *
- * **Un second lecteur déclenche l'extraction** : c'est la règle du dépôt, et elle a un motif
- * mesuré — `ts-decl-read.cjs` la formule ainsi, *« deux copies d'un lecteur dérivent, et la
- * dérive est invisible tant que les deux gates sortent vertes »*. `source-inventory.cjs`,
- * `side-effect-modules.cjs` et `test-load-sites.cjs` sont nés du même geste.
+ * **A second reader triggers the extraction**: that is this repo's rule, and it has a
+ * measured rationale — `ts-decl-read.cjs` phrases it as *"two copies of a reader drift,
+ * and the drift is invisible as long as both gates come out green"*.
+ * `source-inventory.cjs`, `side-effect-modules.cjs` and `test-load-sites.cjs` were born of
+ * the same move.
  *
- * ⚠️ **Refactor à comportement NUL.** Rien n'est corrigé ici au passage : les trois familles
- * d'exclusion sont transportées à l'octet, commentaires compris, parce que chacune porte le
- * motif qui la rend relisible et qu'un motif réécrit « au passage » est un motif qu'on ne peut
- * plus confronter à ce qu'il explique. `npm run check:event-map` doit rester vert **et rendre
- * les mêmes nombres** — c'est le critère de succès de la tâche, pas un espoir.
+ * ⚠️ **Zero-behaviour refactor.** Nothing is fixed here in passing: the three exclusion
+ * families are transported byte-for-byte, comments included, because each carries the
+ * rationale that keeps it re-readable, and a rationale rewritten "in passing" is one you
+ * can no longer confront with what it explains. `npm run check:event-map` must stay green
+ * **and return the same numbers** — that is the task's success criterion, not a hope.
  *
- * ## Pourquoi le relevé lit des LITTÉRAUX et non des sites d'appel
+ * ## Why the census reads LITERALS and not call sites
  *
- * L'instrument évident — parcourir l'AST, trouver les `dispatchEvent`, lire l'argument 1 — est
- * précisément celui qui ne marche pas ici, et le code du dépôt dit pourquoi : quatre modules
- * émettent via un helper local qui prend le nom en PARAMÈTRE (`_dispatchCustomEvent`,
- * `_firePluginEvent`, `_dispatch`, `emit`). Une gate qui inspecte les arguments voit quatre
- * appels dynamiques ; le relevé de littéraux voit les 23 littéraux des sites d'appel.
+ * The obvious instrument — walk the AST, find the `dispatchEvent`s, read argument 1 — is
+ * precisely the one that does not work here, and the repo's code says why: four modules
+ * emit through a local helper that takes the name as a PARAMETER (`_dispatchCustomEvent`,
+ * `_firePluginEvent`, `_dispatch`, `emit`). A gate inspecting arguments sees four dynamic
+ * calls; the literal census sees the call sites' 23 literals.
  *
- * Conséquence énoncée plutôt que cachée : ce relevé **ne distingue pas l'émission de
- * l'abonnement**. Un nom seulement écouté compte quand même. C'est délibéré côté EVENT-MAP —
- * un seam non typé est la même dette par quelque bout qu'on le tienne — et c'est une LIMITE
- * dont CC-07 doit tenir compte : il ne peut pas conclure « émis » d'un littéral seul.
+ * A consequence stated rather than hidden: this census **does not distinguish emission
+ * from subscription**. A name that is only listened to still counts. That is deliberate on
+ * the EVENT-MAP side — an untyped seam is the same debt whichever end you hold it by — and
+ * it is a LIMIT CC-07 must account for: it cannot conclude "emitted" from a literal alone.
  *
  * Usage : const ev = require("./lib/event-names.cjs");
  */
@@ -69,7 +70,7 @@ const EVENT_LITERAL_RE = /^geoleaf:[A-Za-z0-9:_-]+$/;
  * whose fifth of entries are permanent is one nobody reads.
  *
  * ⚠️ `geoleaf:boot:aborted` is NOT one of these. It is a real `CustomEvent`
- * (`app/boot-core.ts:242`) that happens to share the `geoleaf:boot:` stem with six
+ * (`app/boot-core.ts`) that happens to share the `geoleaf:boot:` stem with six
  * marks. The predicate below matches the mark families exactly, never by stem.
  */
 const PERF_MARK_RE =
@@ -82,47 +83,48 @@ const PERF_MARK_RE =
  * MapLibre-only name typed there would be a promise the facade cannot keep. Whether the
  * two buses should share one map is a real question; it is not this gate's to answer.
  *
- * ⚠️ Ce jeu est load-bearing pour DEUX gates depuis le contrat inverse S1.7, et pour deux
- * verdicts opposés : EVENT-MAP l'utilise pour **ne pas exiger** de typage, CC-07 pour
- * **rougir** — un événement que l'aval déclare écouter via `Events.on` alors qu'il ne
- * transite que par le bus MapLibre est une promesse que la façade ne peut pas tenir.
+ * ⚠️ This set is load-bearing for TWO gates, and for two opposite verdicts: EVENT-MAP
+ * uses it to **not demand** typing, CC-07 to **go red** — an event the downstream declares
+ * listening to via `Events.on` while it only travels the MapLibre bus is a promise the
+ * facade cannot keep.
  */
 const MAP_BUS = new Set([
-    "geoleaf:geojson:deferred-layers-loaded", // kernel/geojson/loader/profile.ts:337
-    "geoleaf:geojson:layers-loaded", // kernel/geojson/loader/profile.ts:364
-    "geoleaf:filters:changed", // listened via map.on — plugins/table/src/table-layer.ts:129
+    "geoleaf:geojson:deferred-layers-loaded", // kernel/geojson/loader/profile.ts
+    "geoleaf:geojson:layers-loaded", // kernel/geojson/loader/profile.ts
+    "geoleaf:filters:changed", // listened via map.on — plugins/table/src/table-layer.ts
 ]);
 
-// ── La troisième famille a DISPARU, et c'est le fait à connaître ─────────────────────
+// ── The third family is GONE, and that is the fact to know ───────────────────────────
 //
-// `DYNAMIC_PREFIXES = ["geoleaf:table:"]` et son compagnon `isDynamic` vivaient ici. Ils
-// nommaient une cécité STRUCTURELLE : `fireEvent` (plugin `table`) composait ses noms à
-// l'exécution — `map.fire("geoleaf:" + eventName)` —, donc aucun littéral complet n'existait
-// en source, donc ce relevé ne pouvait rien voir de ses 9 noms et le disait plutôt que de
-// laisser croire à une couverture qu'il n'avait pas.
+// `DYNAMIC_PREFIXES = ["geoleaf:table:"]` and its companion `isDynamic` lived here. They
+// named a STRUCTURAL blindness: `fireEvent` (`table` plugin) composed its names at runtime
+// — `map.fire("geoleaf:" + eventName)` — so no complete literal existed in source, so this
+// census could see nothing of its 9 names and said so rather than suggesting a coverage it
+// did not have.
 //
-// ✅ **Retirés le 13/08/2026** (Sprint 4, tâches 4.2/4.3) : `fireEvent` prend désormais le nom
-// COMPLET, contraint par le type `TableEventName` (`plugins/table/src/table-state.ts`), et les
-// 9 noms sont typés dans `GeoLeafEventMap`. La cécité n'est pas contournée, elle n'a plus
-// d'objet — c'est ce que l'ancien commentaire annonçait comme la sortie (*« Refactoring
-// `fireEvent` to take full literals is on the backlog »*).
+// ✅ **Removed on 2026-08-13**: `fireEvent` now takes the FULL name, constrained by the
+// `TableEventName` type (`plugins/table/src/table-state.ts`), and the 9 names are typed in
+// `GeoLeafEventMap`. The blindness is not worked around, it has no object left — which is
+// what the old comment announced as the exit (*"Refactoring `fireEvent` to take full
+// literals is on the backlog"*).
 //
-// ⚠️ **Deux lecteurs bougeaient ensemble, et c'était le piège.** `isExcluded` (ci-dessous) sert
-// EVENT-MAP ; `isDynamic` servait CC-06 dans `verify-consumer-contract.cjs`, avec une carte
-// `SCOPE_EXEMPT` dont l'entrée nommait ce sprint comme échéance. L'ORDRE de retrait comptait :
-// une fois `isDynamic` parti, la branche de CC-06 devient morte et une exemption périmée
-// deviendrait invisible pour toujours. Elle a donc été VUE rouge, puis retirée, avant celui-ci.
+// ⚠️ **Two readers moved together, and that was the trap.** `isExcluded` (below) serves
+// EVENT-MAP; `isDynamic` served CC-06 in `verify-consumer-contract.cjs`, with a
+// `SCOPE_EXEMPT` map whose entry named a deadline. The removal ORDER mattered: once
+// `isDynamic` is gone, the CC-06 branch goes dead and a stale exemption would become
+// invisible forever. So it was SEEN red, then removed, before this one.
 //
-// 🛑 Ce que ce retrait laisse découvert est écrit là où quelqu'un le lira au bon moment :
-// bloc `SCOPE_EXEMPT` de `verify-consumer-contract.cjs`, avec sa commande de re-mesure.
+// 🛑 What this removal leaves uncovered is written where someone will read it at the right
+// moment: the `SCOPE_EXEMPT` block of `verify-consumer-contract.cjs`, with its re-measure
+// command.
 
 /**
- * Vrai si le nom n'est pas un événement DOM typable — les DEUX familles ci-dessus.
+ * True if the name is not a typable DOM event — the TWO families above.
  *
- * ⚠️ Elles étaient trois jusqu'au 13/08/2026. Ne pas retirer cette fonction en croyant retirer
- * la famille disparue : elle porte encore les **18 marques `performance`** et les **3 noms du
- * bus MapLibre**, que rien d'autre n'exclut. La supprimer ferait exiger le typage de 21 noms
- * qui ne sont pas des événements DOM.
+ * ⚠️ They were three until 2026-08-13. Do not remove this function believing you remove
+ * the vanished family: it still carries the **18 `performance` marks** and the **3
+ * MapLibre-bus names**, which nothing else excludes. Deleting it would demand typing for
+ * 21 names that are not DOM events.
  */
 const isExcluded = (name) => PERF_MARK_RE.test(name) || MAP_BUS.has(name);
 
@@ -156,14 +158,14 @@ function collectSources(dir, acc) {
 }
 
 /**
- * Le corpus des sources expédiées de tous les workspaces, plus le scaffold.
+ * The shipped-sources corpus of every workspace, plus the scaffold.
  *
- * ⚠️ `_plugin-template` est HORS de `workspaces` (`!packages/_*`) et n'apparaît donc jamais
- * dans `registry.all()`. Il expédie pourtant l'entrée depuis laquelle chaque nouveau plugin
- * est scaffoldé — y compris son écouteur `geoleaf:toolbar:action`. Laissé dehors, le seul
- * fichier dont l'usage d'événements se propage à TOUS les plugins futurs n'est surveillé par
- * personne. C'est le même angle mort que celui qui a coûté trois relevés au dépôt cette
- * semaine (R-N5, tâche npm 3.9, corpus LIC-06).
+ * ⚠️ `_plugin-template` is OUTSIDE `workspaces` (`!packages/_*`) and thus never appears in
+ * `registry.all()`. Yet it ships the entry every new plugin is scaffolded from — including
+ * its `geoleaf:toolbar:action` listener. Left outside, the one file whose event usage
+ * propagates to ALL future plugins is watched by nobody. It is the same blind spot that
+ * cost the repo three separate censuses in one week — the license-banner corpus that
+ * LIC-06 now guards among them.
  */
 function shippedSources() {
     const files = [];
@@ -179,7 +181,7 @@ function shippedSources() {
  * in a comment or a docblock is not a use, and this repo's sources are dense with both.
  *
  * @param {string[]} files
- * @returns {Map<string, Set<string>>} nom → chemins relatifs à la racine du dépôt.
+ * @returns {Map<string, Set<string>>} name → repo-root-relative paths.
  */
 function collectEventLiterals(files) {
     const found = new Map(); // name → Set<relative file>

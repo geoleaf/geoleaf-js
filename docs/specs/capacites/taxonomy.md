@@ -266,7 +266,7 @@ Aucun.
 Il n'y a **ni `module.ts`, ni `lifecycle.ts`, ni `createModule`**. `install.ts` ne fait qu'une
 chose : déclarer la capacité et monter le namespace. Elle n'apparaît donc **pas** dans le tri
 topologique du registre, et la question de rang que pose
-**B-57** aux quatorze capacités qui déclarent `["geojson"]`
+que pose la question des dépendances aux quatorze capacités qui déclarent `["geojson"]`
 **ne se pose pas ici**.
 
 Position dans `presets/manifest.full.ts` : dans le lot des capacités d'API simple, **avant
@@ -314,7 +314,7 @@ contrairement à un attribut `style`.
 Le CDC `CDC_plugin-taxonomy.md` (v3.0.0, 14/07/2026) a été **consommé** en écrivant cette fiche.
 ⚠️ **Il n'a PAS été retiré du dossier de tri** — même motif que les deux CDC de la passe précédente,
 tracé au §Journal des décisions de
-`roadmap_documentation-v3.md`.
+la refonte documentaire V3.
 
 ⚠️ **C'est le CDC le plus exact rencontré jusqu'ici** — parce qu'il est la spécification qui a
 **produit** le code actuel, et non un document écrit avant lui puis dérivé. Les écarts sont peu
@@ -336,7 +336,7 @@ introduit — c'est le TSDoc de `src/api/geoleaf.taxonomy.ts`, **publié sur npm
 | « La capacité est inerte tant que `modules.taxonomy.enabled` n'est pas posé »                 | **Faux** : le gate est **opt-out**, défaut `true`. Seul un `false` explicite l'éteint                  |
 | « La peinture de catégorie est appliquée automatiquement via le cycle de vie de la capacité » | **Faux** : il n'y a **aucun cycle de vie**. `install.ts` l'écrit noir sur blanc au-dessus du même code |
 
-Ligne **B-63** du registre — même classe que B-62, et le corollaire est le même : **relire le
+Même classe que les citations mortes, et le corollaire est le même : **relire le
 fichier plutôt que son commentaire**.
 
 Ce qui a été **retenu** du CDC et ne se lit pas dans le code : le motif de la refonte (le

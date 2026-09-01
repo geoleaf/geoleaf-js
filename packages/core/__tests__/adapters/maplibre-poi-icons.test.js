@@ -5,7 +5,7 @@
  * hasImage skip, empty canvas, null ctx, and successful registration
  * for each SVG shape type (path, circle, line, polyline, polygon, rect, ellipse).
  *
- * Sprint S5.6 — coverage consolidation for adapters/maplibre.
+ * Coverage consolidation for adapters/maplibre.
  */
 
 vi.mock("../../src/utils/log/index.js", () => ({

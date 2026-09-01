@@ -35,10 +35,11 @@ describe("Legend _reset (create → destroy → recreate)", () => {
         updateMultiLayerContent: vi.fn(),
     }));
 
-    // Le déféré est PORTEUR malgré une cible inerte : le hook installe `GeoLeaf.Config`,
-    // `_LegendControl` et `fetch` AVANT de charger. La séquence est écrite, l'auteur l'a
-    // voulue, et un module inerte aujourd'hui peut cesser de l'être. `await import()` la
-    // préserve à la lettre — c'est la 1ʳᵉ des quatre limites du triage, dans l'ADR.
+    // The deferral is LOAD-BEARING despite an inert target: the hook installs
+    // `GeoLeaf.Config`, `_LegendControl` and `fetch` BEFORE loading. The
+    // sequence is written, the author intended it, and a module inert today
+    // can stop being so. `await import()` preserves it to the letter — the
+    // 1st of the triage's four limits, in the ADR.
     beforeAll(async () => {
         globalThis.GeoLeaf = globalThis.GeoLeaf || {};
         globalThis.GeoLeaf.Config = {

@@ -76,9 +76,9 @@ describe("LegendLifecycle (S10/F1 mount + F2 late-gate)", () => {
         mockGeoLeaf = {
             _GeoJSONLayerManager: { _loadLayerLegend: loadLayerLegend },
         };
-        // API S4.3e — les configs de couches ont quitté le namespace pour `kernel/shared/`.
-        // Ce test les plantait sur son faux global : il testait sa propre fixture, jamais le
-        // chemin réel écrivain → lecteur.
+        // The layer configs left the namespace for `kernel/shared/`. This
+        // test planted them on its fake global: it tested its own fixture,
+        // never the real writer → reader path.
         setAllLayerConfigs([{ id: "a" }, { id: "b" }]);
         LegendLifecycle.init();
         document.dispatchEvent(new Event("geoleaf:app:ready"));

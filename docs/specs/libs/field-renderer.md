@@ -91,7 +91,7 @@ hôtes qui en poseraient un chacun se donneraient un résultat dépendant de l'o
 ⚠️ **Deux aides publiques portent un préfixe `_`** — `_el` et `_getLabel`. Le préfixe est la
 convention du dépôt pour « interne », et elles sont pourtant exportées **et** consommées par trois
 plugins. Même contradiction convention / surface que `_getExporter` de
-[`print`](../plugins/CDC_print.md), relevée en **B-71** du
+[`print`](../plugins/CDC_print.md), relevée au registre du
 registre.
 
 ⚠️ **Ce qui est délibérément NON exporté** : l'application de texte CSS, et la **classe**
@@ -117,7 +117,7 @@ a déjà coûté un défaut :
    idempotent.
 2. **Un plugin qui n'enregistre qu'une partie du catalogue ne se limite pas lui-même** : il fait
    dépendre le reste de la présence d'un autre plugin. C'est précisément ce qui est arrivé —
-   `addpoi` (fusionné dans [`editor`](../plugins/CDC_editor.md) au Sprint 5) n'enregistrait que dix composants, et les treize autres ne
+   `addpoi` (fusionné dans [`editor`](../plugins/CDC_editor.md)) n'enregistrait que dix composants, et les treize autres ne
    se résolvaient **que si `editor` était aussi chargé**, retombant silencieusement sur du texte
    sinon.
 3. **Une surcharge doit porter son propre identifiant.** Le composant d'image d'`addpoi` en a un, et
@@ -151,11 +151,11 @@ registre public, et `files[]` embarque `dist/`, `src/`, la licence et le fichier
 
 ### Les trois consommateurs, et ce qu'ils prennent
 
-| Consommateur                         | Ce qu'il importe                                                                                                                                                     |
-| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`editor`](../plugins/CDC_editor.md) | Le **plus gros usage** : catalogue complet, modale responsive, registre, dialogue de confirmation, aides et sécurité. ⚠️ Hérité d'`addpoi`, fusionné ici au Sprint 5 |
-| `editor`                             | Catalogue complet, piège de focus (trois sites), et une **ré-exportation** des deux aides DOM                                                                        |
-| `offline-ui`                         | Le plus léger : dialogue de confirmation (quatre sites) et piège de focus                                                                                            |
+| Consommateur                         | Ce qu'il importe                                                                                                                                         |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`editor`](../plugins/CDC_editor.md) | Le **plus gros usage** : catalogue complet, modale responsive, registre, dialogue de confirmation, aides et sécurité. ⚠️ Hérité d'`addpoi`, fusionné ici |
+| `editor`                             | Catalogue complet, piège de focus (trois sites), et une **ré-exportation** des deux aides DOM                                                            |
+| `offline-ui`                         | Le plus léger : dialogue de confirmation (quatre sites) et piège de focus                                                                                |
 
 **`packages/core` n'en dépend PAS**, et ne doit pas commencer.
 
@@ -190,7 +190,7 @@ ne saisissent pas de données : la frontière d'usage recoupe exactement la fron
 
 Le CDC `CDC_field-renderer.md` (v1.7.0, 23/07/2026) a été **consommé** en écrivant cette fiche, puis
 **supprimé** du dossier de tri — ligne au §Journal des décisions de
-`roadmap_documentation-v3.md`.
+la refonte documentaire V3.
 
 **C'est un CDC bien tenu** : il porte le renommage depuis son nom d'origine et le déplacement sous
 `packages/libs/`. Son annexe B liste même ses affirmations techniques comme **vérifiées**.
@@ -204,7 +204,7 @@ Le CDC `CDC_field-renderer.md` (v1.7.0, 23/07/2026) a été **consommé** en éc
 | §12 — contrats avec les plugins consommateurs                      | ✅ **Vérifié**, et complété ici par la mesure de ce que chacun importe réellement                                                                               |
 
 ⚠️ **Ce que le CDC ne dit pas, et que la fiche ajoute** : les deux aides publiques portent un préfixe
-`_` alors qu'elles sont dans la surface publique (**B-71**), et **trois plugins du dépôt ne la
+`_` alors qu'elles sont dans la surface publique, et **trois plugins du dépôt ne la
 consomment pas** — ceux qui ne saisissent pas de données.
 
 Ce qui a été **retenu** du CDC et ne se lit pas dans le code : l'origine de l'extraction (elle est

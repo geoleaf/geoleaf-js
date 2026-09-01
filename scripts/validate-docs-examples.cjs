@@ -30,12 +30,13 @@ const args = process.argv.slice(2);
 const VERBOSE = args.includes("--verbose");
 const dirArgIdx = args.indexOf("--dir");
 const ROOT = process.cwd();
-// T5.5 — le défaut vient du registre (qui jette), l'argument `--dir` reste roi.
+// The default comes from the registry (which throws); the `--dir` argument stays king.
 const { extractTsdocExamples, sourceFiles, productDocsFiles } = require("./lib/tsdoc-examples.cjs");
 
-// 31/07/2026 — le périmètre passe de UN répertoire aux surfaces PRODUIT, et il est dérivé
-// dans `lib/tsdoc-examples.cjs` pour que `typecheck-docs-examples` lise exactement le même
-// (motif complet sur `productDocsFiles`). `--dir` reste roi et force un scope unique.
+// 2026-07-31 — the perimeter goes from ONE directory to the PRODUCT surfaces, and it is
+// derived in `lib/tsdoc-examples.cjs` so `typecheck-docs-examples` reads exactly the
+// same one (full rationale on `productDocsFiles`). `--dir` stays king and forces a
+// single scope.
 const DOCS_DIR = dirArgIdx >= 0 ? path.resolve(ROOT, args[dirArgIdx + 1]) : null;
 
 // ---------------------------------------------------------------------------
@@ -136,32 +137,32 @@ const JS_TS_RULES = [
             "Stale API: GeoLeaf.ThemeSelector does not exist. Use GeoLeaf.Themes or UI.toggleTheme().",
         severity: "error",
     },
-    // ── Doc V3 Étape 3 item 4 — la dissolution POI (S9), documentée mais pas gatée ──
+    // ── The POI dissolution, documented but not gated ──
     //
-    // `GeoLeaf.POI` a été retiré du core : une POI est désormais une couche point GeoJSON
-    // générique. Trois exemples COPIABLES survivaient sur la doc publiée
-    // (`USER_GUIDE.md`, `helpers/`, `security/`) — un intégrateur qui les recopie prend un
-    // TypeError. Le message de migration n'est pas inventé : il est recopié de
-    // `docs/CHANGELOG.md` §[3.0.0], qui le porte déjà mot pour mot.
+    // `GeoLeaf.POI` was removed from the core: a POI is now a generic GeoJSON point
+    // layer. Three COPY-PASTABLE examples survived on the published docs
+    // (`USER_GUIDE.md`, `helpers/`, `security/`) — an integrator copying them gets a
+    // TypeError. The migration message is not invented: it is copied from
+    // `docs/CHANGELOG.md` §[3.0.0], which already carries it word for word.
     //
-    // ⚠️ LA PORTÉE EST LE BLOC DE CODE, et c'est load-bearing. Le même nom apparaît
-    // **légitimement** 6 fois en PROSE : 5 dans `CHANGELOG.md` sous `## [3.0.0]` et 1 dans
-    // `COOKBOOK.md` (« BREAKING — GeoLeaf.POI.init() no longer exists »). Un registre de
-    // rupture DOIT nommer l'API retirée : c'est la seule information qui relie le code d'un
-    // intégrateur à sa migration. Or ce script n'applique `JS_TS_RULES` qu'aux blocs
-    // clôturés — l'exemption découle donc du CORPUS, pas d'une allow-list, et ne peut pas
-    // dériver. Implémentée comme un `grep` de fichier entier, cette règle rougirait sur les
-    // 6 légitimes et le contributeur suivant la contournerait : c'est la mécanique que
-    // l'en-tête de ce script décrit déjà pour son parseur JSON.
-    // 🛑 **CE MESSAGE A PRESCRIT UNE API FANTÔME PENDANT QU'IL EN INTERDISAIT UNE AUTRE**
-    // (corrigé le 11/08/2026). Il renvoyait vers `GeoLeaf.AddPOI.*` / `@geoleaf-plugins/addpoi`,
-    // c'est-à-dire le plugin **fusionné dans `editor` au Sprint 5** : un lecteur qui suivait la
-    // remédiation à la lettre remplaçait une API dissoute par un paquet inexistant. C'est la
-    // classe même que cette règle traque, à l'endroit qui la traque — et aucune gate ne peut la
-    // voir : le corpus scanné, ce sont les `.md` et les `@example`, jamais le texte des règles.
-    // La surface réelle est vérifiée dans `packages/plugins/editor/src/public-api.ts` (façade
-    // montée sur `GeoLeaf.Editor` par `entry.ts`) : `AddForm` et `PlacementMode` sont des
-    // getters de cette façade.
+    // ⚠️ THE SCOPE IS THE CODE BLOCK, and that is load-bearing. The same name appears
+    // **legitimately** 6 times in PROSE: 5 in `CHANGELOG.md` under `## [3.0.0]` and 1
+    // in `COOKBOOK.md` ("BREAKING — GeoLeaf.POI.init() no longer exists"). A breaking
+    // register MUST name the removed API: it is the only information linking an
+    // integrator's code to its migration. Yet this script only applies `JS_TS_RULES`
+    // to fenced blocks — the exemption thus derives from the CORPUS, not from an
+    // allow-list, and cannot drift. Implemented as a whole-file `grep`, this rule
+    // would redden on the 6 legitimate ones and the next contributor would bypass it:
+    // the very mechanics this script's header already describes for its JSON parser.
+    // 🛑 **THIS MESSAGE PRESCRIBED A GHOST API WHILE FORBIDDING ANOTHER**
+    // (fixed on 2026-08-11). It pointed to `GeoLeaf.AddPOI.*` /
+    // `@geoleaf-plugins/addpoi`, i.e. the plugin **merged into `editor`**: a reader
+    // following the remediation to the letter replaced a dissolved API with a
+    // non-existent package. It is the very class this rule hunts, at the place that
+    // hunts it — and no gate can see it: the scanned corpus is the `.md` files and the
+    // `@example`s, never the rules' own text. The real surface is verified in
+    // `packages/plugins/editor/src/public-api.ts` (facade mounted on `GeoLeaf.Editor`
+    // by `entry.ts`): `AddForm` and `PlacementMode` are getters of that facade.
     {
         pattern: /GeoLeaf\s*\.\s*POI\s*\./,
         message:
@@ -206,11 +207,11 @@ const JS_TS_RULES = [
         message: 'Wrong package name in require(): use "@geoleaf/core".',
         severity: "error",
     },
-    // MapLibre 6 n'exporte pas de `default`. Cette règle vit ici, dans les règles JS/TS, et
-    // non parmi les règles HTML où sa jumelle a d'abord été écrite : les blocs `html` passent
-    // AUSSI par JS_TS_RULES (voir plus bas), donc la placer ici la fait porter sur les deux
-    // corpus, tandis que l'inverse la laissait inerte sur tout bloc `ts`/`js`. Une règle rangée
-    // dans le mauvais tableau sort verte sans jamais rien regarder.
+    // MapLibre 6 exports no `default`. This rule lives here, among the JS/TS rules,
+    // and not among the HTML rules where its twin was first written: `html` blocks
+    // ALSO go through JS_TS_RULES (see below), so placing it here makes it cover both
+    // corpora, while the reverse left it inert on every `ts`/`js` block. A rule filed
+    // in the wrong table goes green without ever looking at anything.
     {
         pattern: /import\s+\w+\s+from\s+["']maplibre-gl["']/,
         message:
@@ -254,31 +255,31 @@ const HTML_RULES = [
         message: "Wrong package name in CDN URL: use unpkg.com/@geoleaf/core@<version>",
         severity: "error",
     },
-    // ─── MapLibre 6 — les trois règles ont été RETOURNÉES ────────────────────
-    // Elles interdisaient jusqu'ici `<script type="module" src="…maplibre-gl….js">`, parce que
-    // la v5 était distribuée en script CLASSIQUE (`main: dist/maplibre-gl.js`, sans `module`
-    // ni `exports`). **En v6 c'est l'inverse, et exactement l'inverse** : la distribution est
-    // ESM-only, `maplibre-gl.js` et `maplibre-gl-csp.js` ne sont plus publiés du tout, et la
-    // carte `exports` n'expose que `import`. La forme autrefois interdite est devenue la
-    // seule qui boote.
+    // ─── MapLibre 6 — the three rules were FLIPPED ───────────────────────────
+    // Until now they forbade `<script type="module" src="…maplibre-gl….js">`, because
+    // v5 was distributed as a CLASSIC script (`main: dist/maplibre-gl.js`, no `module`
+    // nor `exports`). **In v6 it is the reverse, and exactly the reverse**: the
+    // distribution is ESM-only, `maplibre-gl.js` and `maplibre-gl-csp.js` are no
+    // longer published at all, and the `exports` map only exposes `import`. The form
+    // once forbidden became the only one that boots.
     //
-    // ⚠️ Les deux anciennes regexes ne pouvaient pas être laissées en place « au cas où » :
-    // elles cherchent `…maplibre-gl[^"']*\.js`, motif qu'un `.mjs` ne contient PAS. Conservées,
-    // elles seraient sorties vertes sur n'importe quoi — une gate décorative, ce qui est pire
-    // qu'une gate absente. C'est la même classe que le corpus tronqué de 6.7b : la règle avait
-    // raison, son instrument ne portait plus.
+    // ⚠️ The two old regexes could not be left in place "just in case": they look for
+    // `…maplibre-gl[^"']*\.js`, a pattern an `.mjs` does NOT contain. Kept, they
+    // would have come out green on anything — a decorative gate, which is worse than
+    // an absent one. Same class as the earlier truncated corpus: the rule was right,
+    // its instrument no longer carried.
     {
         pattern: /(?:src|href)=["'][^"']*maplibre-gl(?:-csp)?\.js(?![\w-])/,
         message:
             "Artefact MapLibre disparu : `maplibre-gl.js` / `maplibre-gl-csp.js` ne sont PLUS " +
             "publiés depuis la v6 (distribution ESM-only). Cette recette rend un 404. Charger " +
-            "`maplibre-gl.mjs` en <script type=\"module\">, ou le shim `vendor/maplibre-gl/global.mjs`.",
+            '`maplibre-gl.mjs` en <script type="module">, ou le shim `vendor/maplibre-gl/global.mjs`.',
         severity: "error",
     },
     {
-        // Le symétrique : un `.mjs` chargé en script CLASSIQUE. La négative lookahead porte sur
-        // la balise entière, donc elle couvre les DEUX ordres d'attributs d'un coup — là où les
-        // deux règles jumelées d'avant devaient être écrites en double pour la même raison.
+        // The symmetric case: an `.mjs` loaded as a CLASSIC script. The negative
+        // lookahead spans the whole tag, so it covers BOTH attribute orders at once —
+        // where the paired rules of before had to be written twice for the same reason.
         pattern: /<script(?![^>]*\stype=["']module["'])[^>]*\ssrc=["'][^"']*maplibre-gl[^"']*\.mjs/,
         message:
             "MapLibre `.mjs` chargé en script classique — un module ne s'exécute que sous " +
@@ -288,48 +289,48 @@ const HTML_RULES = [
 ];
 
 // ---------------------------------------------------------------------------
-// HTML-04 — la règle qui garde une ABSENCE
+// HTML-04 — the rule that guards an ABSENCE
 // ---------------------------------------------------------------------------
 //
-// 🛑 Les règles ci-dessus, TOUTES, gardent une PRÉSENCE fautive : elles cherchent un motif et
-// rougissent quand il est là. Aucune ne peut voir ce qui MANQUE — et le défaut mesuré le
-// 08/08/2026 est précisément une absence : des recettes complètes qui chargent la feuille de
-// style de MapLibre et le bundle GeoLeaf, mais jamais le JavaScript de MapLibre. `geoleaf.esm.js`
-// déclare `maplibre-gl` en `external` (rollup.config.mjs) et ne l'atteint que par
-// `globalThis.maplibregl` ; la v6 étant ESM-only, plus rien ne pose ce global tout seul. Une
-// recette sans shim rend donc une page qui ne boote pas.
+// 🛑 The rules above, ALL of them, guard a faulty PRESENCE: they look for a pattern and
+// redden when it is there. None can see what is MISSING — and the defect measured on
+// 2026-08-08 is precisely an absence: complete recipes loading MapLibre's stylesheet
+// and the GeoLeaf bundle, but never MapLibre's JavaScript. `geoleaf.esm.js` declares
+// `maplibre-gl` as `external` (rollup.config.mjs) and only reaches it through
+// `globalThis.maplibregl`; v6 being ESM-only, nothing sets that global on its own
+// anymore. A recipe without the shim thus renders a page that does not boot.
 //
-// ⚠️ Ce défaut a été trouvé et corrigé DEUX FOIS sans qu'une gate le retienne — `usage-cdn.md`
-// et les deux README (6.7b) —, et il est revenu une troisième fois dans `USER_GUIDE.md` et
-// `FAQ.md`, que la passe v6 n'a pas balayés. Trois découvertes manuelles de la même classe :
-// c'est ce qui justifie une règle plutôt qu'une relecture de plus.
+// ⚠️ This defect was found and fixed TWICE with no gate retaining it — `usage-cdn.md`
+// and the two READMEs — and it came back a third time in `USER_GUIDE.md` and `FAQ.md`,
+// which the v6 pass had not swept. Three manual discoveries of the same class: that is
+// what justifies a rule rather than one more re-read.
 //
-// LE CRITÈRE — et il est plus étroit que « le bloc cite le bundle », délibérément. Charger
-// `geoleaf.esm.js` sans MapLibre ne lève PAS : le global n'est lu qu'à la création de la carte.
-// La règle ne mord donc que sur les blocs qui BOOTENT une carte. Les blocs qui illustrent
-// autre chose (ordre de chargement, apparition de `window.GeoLeaf`, une clé de config) restent
-// verts sans avoir à se déclarer — il y en a 6 dans le corpus, et les alourdir de quatre lignes
-// de shim noierait ce qu'ils montrent.
+// THE CRITERION — and it is narrower than "the block cites the bundle", deliberately.
+// Loading `geoleaf.esm.js` without MapLibre does NOT throw: the global is only read at
+// map creation. The rule therefore only bites on blocks that BOOT a map. Blocks that
+// illustrate something else (load order, `window.GeoLeaf` appearing, a config key)
+// stay green without having to declare themselves — there are 6 in the corpus, and
+// weighing them down with four shim lines would drown what they show.
 //
-// ⚠️ Les commentaires sont neutralisés avant le test. Sans ça, `NOTIFICATIONS_API.md` rougissait
-// sur un « // After GeoLeaf.boot() » en commentaire — le faux positif exact que PNC-02 et la
-// garde ESM ont déjà payé chacune une fois. Un faux positif de garde coûte plus cher qu'un vrai
-// négatif : il envoie corriger du code sain.
+// ⚠️ Comments are neutralized before the test. Without that, `NOTIFICATIONS_API.md`
+// reddened on an "// After GeoLeaf.boot()" in a comment — the exact false positive
+// PNC-02 and the ESM guard each already paid once. A guard's false positive costs more
+// than a true negative: it sends someone to fix healthy code.
 
-/** Un bloc qui porte ce marqueur déclare être un fragment, et sort du champ de HTML-04. */
+/** A block carrying this marker declares itself a fragment, and leaves HTML-04's field. */
 const FRAGMENT_MARKER = /<!--\s*geoleaf:docs:fragment\b/;
 
-/** Une forme, quelle qu'elle soit, qui charge le JavaScript de MapLibre. */
+/** Any shape whatsoever that loads MapLibre's JavaScript. */
 const MAPLIBRE_JS_LOAD =
     /maplibre-gl[^"'\s]*\.mjs|from\s+["']maplibre-gl["']|global\.mjs|maplibre-gl[^"'\s]*\.js(?![\w-])/;
 
-/** Le bloc crée une carte — c'est là, et seulement là, que le global est lu. */
+/** The block creates a map — there, and only there, is the global read. */
 const BOOTS_A_MAP = /\b(?:GeoLeaf|Core)\s*\.\s*(?:init|boot)\s*\(|new\s+maplibregl\.Map\s*\(/;
 
 const GEOLEAF_BUNDLE = /geoleaf\.esm\.js/;
 
 /**
- * Neutralise commentaires HTML et JS pour qu'une simple MENTION ne se lise jamais comme un appel.
+ * Neutralizes HTML and JS comments so a mere MENTION never reads as a call.
  * @param {string} code
  * @returns {string}
  */
@@ -341,7 +342,7 @@ function stripComments(code) {
 }
 
 /**
- * HTML-04 — tout bloc `html` qui boote une carte avec le bundle GeoLeaf doit charger MapLibre JS.
+ * HTML-04 — every `html` block booting a map with the GeoLeaf bundle must load MapLibre JS.
  * @param {string} code
  * @returns {{ message: string; severity: string; matchedText: string }[]}
  */
@@ -359,7 +360,7 @@ function checkMapLibrePresence(code) {
                 "il n'est atteint que par `globalThis.maplibregl`, et la v6 (ESM-only) ne pose " +
                 'plus ce global. Ajouter le shim — `<script type="module">import * as maplibregl ' +
                 'from "…/maplibre-gl@6/dist/maplibre-gl.mjs"; globalThis.maplibregl = maplibregl;' +
-                "</script>` — ou, en auto-hébergé, `<script type=\"module\" src=\"…/global.mjs\">`. " +
+                '</script>` — ou, en auto-hébergé, `<script type="module" src="…/global.mjs">`. ' +
                 "Si ce bloc est un fragment délibéré, le déclarer par " +
                 "`<!-- geoleaf:docs:fragment — motif -->`.",
             severity: "error",
@@ -513,7 +514,7 @@ for (const mdFile of mdFiles) {
             violations = violations.concat(applyRules(block.code, HTML_RULES));
             // Also check for JS inside HTML
             violations = violations.concat(applyRules(block.code, JS_TS_RULES));
-            // HTML-04 — la seule règle du fichier qui garde une ABSENCE (voir son bloc)
+            // HTML-04 — the file's only rule guarding an ABSENCE (see its block)
             violations = violations.concat(checkMapLibrePresence(block.code));
         }
 
@@ -535,21 +536,21 @@ for (const mdFile of mdFiles) {
 }
 
 // ---------------------------------------------------------------------------
-// 2ᵉ corpus (B-75) — les `@example` du TSDoc des sources
+// 2nd corpus — the sources' TSDoc `@example`s
 //
-// Cette deny-list avait le bon MOTIF mais le mauvais CORPUS : elle attrapait une API
-// fantôme dans un `.md` et la laissait passer dans un `@example`, alors que les deux
-// partent sur npm et sont copiables-collables à l'identique. Un `@example` citant
-// `POIModule` (classe dissoute au S9) a vécu ainsi dans `core-module.contract.ts`.
+// This deny-list had the right MOTIVE but the wrong CORPUS: it caught a ghost API in a
+// `.md` and let it through in an `@example`, while both ship on npm and are
+// copy-pastable identically. An `@example` citing `POIModule` (a long-dissolved class)
+// lived that way in `core-module.contract.ts`.
 //
-// ⚠️ Le corpus est partagé avec `typecheck-docs-examples.cjs` via
-// `lib/tsdoc-examples.cjs`, il n'est pas recopié : deux extracteurs auraient divergé.
+// ⚠️ The corpus is shared with `typecheck-docs-examples.cjs` through
+// `lib/tsdoc-examples.cjs`, not copied: two extractors would have diverged.
 //
-// ⚠️ Et ce n'est PAS `typecheck-docs-examples` qu'il fallait élargir. Ce script-là
-// compile déjà ces blocs, mais il ignore `TS2304` (« Cannot find name ») **à raison** —
-// son en-tête le motive : un exemple élide souvent son setup, et remonter cette classe
-// enterrerait ses huit défauts réels sous soixante-quinze faux. Le geste juste est donc
-// d'étendre le corpus de la deny-list, pas les codes du compilateur.
+// ⚠️ And it is NOT `typecheck-docs-examples` that needed widening. That script already
+// compiles these blocks, but it ignores `TS2304` ("Cannot find name") **rightly** —
+// its header motivates it: an example often elides its setup, and surfacing that class
+// would bury its eight real defects under seventy-five false ones. The right move is
+// thus to extend the deny-list's corpus, not the compiler's codes.
 const tsdocFiles = sourceFiles();
 let tsdocBlocks = 0;
 for (const srcFile of tsdocFiles) {

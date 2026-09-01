@@ -1,48 +1,50 @@
 #!/usr/bin/env node
 /**
- * TILE-CACHE ARBITRATION PROBE — deux chemins de tuiles, lequel sert réellement ?
+ * TILE-CACHE ARBITRATION PROBE — two tile paths, which one actually serves?
  *
- * POURQUOI. La décision **A7** de `roadmap_collecte-terrain-offline.md` dit « IndexedDB seul
- * pour les tuiles, et le SW le lit », et la tâche **3.13** doit l'exécuter — mais dans un
- * ordre non négociable : *réparer → VOIR servir → puis supprimer*. Le pré-vol du sprint
- * l'écrit noir sur blanc : ⑦ « 3.13 ne se pré-vole PAS au grep de symbole ». Un décompte non
- * nul ne prouve pas la vie (les symboles s'appellent entre eux à l'intérieur de la région
- * morte), un décompte nul ne prouve pas la mort. **L'arbitrage se prend sur ce qu'un
- * navigateur montre.**
+ * WHY. The standing decision says "IndexedDB alone for tiles, and the SW reads it",
+ * and executing it follows a non-negotiable order: *repair → SEE it serve → then
+ * delete*. The preflight spelled it out: this arbitration is NOT preflown by symbol
+ * grep. A non-zero count does not prove life (the symbols call each other inside
+ * the dead region), a zero count does not prove death. **The arbitration is taken
+ * on what a browser shows.**
  *
- * 🛑 CE QUE 3.2 A PROUVÉ, ET CE QU'ELLE N'A PAS PROUVÉ. `e2e/27-offline-idb.spec.js` établit
- * qu'une tuile **semée à la main** dans le store `layers` est resservie hors ligne par le
- * chemin IndexedDB du worker. Elle ne dit rien du chemin d'**écriture** : personne n'a encore
- * vu le téléchargement de profil déposer une tuile en base. Supprimer la branche Cache API
- * sans cette mesure, ce serait retirer le seul chemin dont on sait qu'il fonctionne au profit
- * d'un chemin dont on n'a vu que la moitié.
+ * 🛑 WHAT WAS PROVEN, AND WHAT WAS NOT. `e2e/27-offline-idb.spec.js` establishes
+ * that a tile **hand-seeded** into the `layers` store is re-served offline by the
+ * worker's IndexedDB path. It says nothing of the **write** path: nobody has yet
+ * seen the profile download deposit a tile in the database. Deleting the Cache API
+ * branch without that measurement would remove the only path known to work in
+ * favour of one only half seen.
  *
- * LES QUATRE MESURES, chacune imprimée avec son relevé :
- *   M1 — après affichage de la carte, que contient le cache `geoleaf-data-tiles` ?
- *        Le spike du 02/08 le trouvait ABSENT. S'il est encore vide, la branche Cache API de
- *        `tileCacheStrategy` ne cache rien pour les fournisseurs réellement employés — tous
- *        cross-origin, donc opaques, donc refusés par `isCacheableResponse` (tâche 3.11).
- *   M2 — le store `layers` porte-t-il des enregistrements `resourceType: "tile"` après un
- *        téléchargement de profil ? C'est le chemin d'ÉCRITURE, jamais observé.
- *   M3 — le drapeau `enableTileCache` atteint-il le moteur ? Mesuré par ce que
- *        `ResourceEnumerator` énumère, pas par ce que la config déclare.
- *   M4 — combien de requêtes de tuiles la page émet-elle, et vers quelles origines ? C'est
- *        ce qui dit si le sujet de l'arbitrage est un fond raster, vectoriel, ou les deux.
+ * THE FOUR MEASUREMENTS, each printed with its reading:
+ *   M1 — after the map displays, what does the `geoleaf-data-tiles` cache contain?
+ *        The 08-02 spike found it ABSENT. If still empty, `tileCacheStrategy`'s
+ *        Cache API branch caches nothing for the providers actually used — all
+ *        cross-origin, hence opaque, hence refused by `isCacheableResponse`.
+ *   M2 — does the `layers` store carry `resourceType: "tile"` records after a
+ *        profile download? That is the WRITE path, never observed.
+ *   M3 — does the `enableTileCache` flag reach the engine? Measured by what
+ *        `ResourceEnumerator` enumerates, not by what the config declares.
+ *   M4 — how many tile requests does the page emit, and toward which origins? That
+ *        is what says whether the arbitration's subject is a raster background, a
+ *        vector one, or both.
  *
- * ELLE VALIDE, ELLE NE GARDE PAS — même statut que `probe-sw-observability.mjs` et
- * `probe-boot-contract.mjs` : elle exige un déployé à jour et le nginx de dev, donc elle n'est
- * ni dans `ci:local` ni dans `package.json`.
+ * IT VALIDATES, IT DOES NOT GUARD — same status as `probe-sw-observability.mjs`
+ * and `probe-boot-contract.mjs`: it requires an up-to-date deploy and the dev
+ * nginx, so it is neither in `ci:local` nor in `package.json`.
  *
- * ⚠️ Régénérer le déployé avant de croire un run — en TROIS temps, le premier n'est pas
- * optionnel : `npx turbo run build`, puis `npm run build:deploy`, puis
- * `node scripts/build-deploy-coverage.cjs`. `build-deploy.cjs` assemble depuis les `dist/`
- * existants, **il ne compile rien** : l'enchaîner seul produit un déployé périmé EN SORTANT 0.
+ * ⚠️ Regenerate the deploy before believing a run — in THREE steps, the first not
+ * optional: `npx turbo run build`, then `npm run build:deploy`, then
+ * `node scripts/build-deploy-coverage.cjs`. `build-deploy.cjs` assembles from the
+ * existing `dist/`, **it compiles nothing**: chaining it alone produces a stale
+ * deploy WHILE EXITING 0.
  *
- * ⚠️ Cible `full` par défaut, et ce n'est pas un détail : c'est la seule variante qui embarque
- * `offline-ui`, donc la seule où le téléchargement de profil est atteignable par l'interface.
+ * ⚠️ Targets `full` by default, and that is no detail: it is the only variant that
+ * embarks `offline-ui`, hence the only one where the profile download is reachable
+ * from the interface.
  *
  * Usage : E2E_TARGET=nginx node scripts/probe-tile-cache-arbitration.mjs
- * Exit  : 0 = les quatre mesures sont prises · 2 = erreur de sonde
+ * Exit  : 0 = the four measurements are taken · 2 = probe error
  */
 
 import { chromium } from "@playwright/test";
@@ -52,7 +54,7 @@ import { baseURL, hostResolverArgs } from "../e2e/helpers/base-url.js";
 const VARIANT = process.env.PROBE_VARIANT || "full";
 const TARGET_URL = `${baseURL(VARIANT)}/`;
 
-/** Une mesure qui pend ne mesure rien : tout appel au navigateur est borné. */
+/** A hanging measurement measures nothing: every browser call is bounded. */
 const withTimeout = (promise, ms, label) =>
     Promise.race([
         Promise.resolve(promise).catch((e) => `__ERR__ ${e.message}`),
@@ -65,7 +67,7 @@ const run = async () => {
     const browser = await chromium.launch({
         args: [...SOFTWARE_GL_ARGS, ...hostResolverArgs],
     });
-    // Aucun `serviceWorkers: "block"` : le worker est le sujet.
+    // No `serviceWorkers: "block"`: the worker is the subject.
     const context = await browser.newContext({ ignoreHTTPSErrors: true });
 
     /** @type {{url: string, from: 'page'|'sw', phase: 'sent'|'failed'}[]} */
@@ -87,8 +89,8 @@ const run = async () => {
         timeout: 25000,
     });
 
-    // La carte doit avoir demandé des tuiles : sans ça, M1 mesurerait un cache qu'on n'a pas
-    // encore eu l'occasion de remplir, et son vide ne dirait rien.
+    // The map must have requested tiles: without that, M1 would measure a cache we
+    // have not yet had the chance to fill, and its emptiness would say nothing.
     await page
         .waitForFunction(
             () => {
@@ -101,7 +103,7 @@ const run = async () => {
         .catch(() => console.log("  (style non signalé chargé — on poursuit, M4 le dira)"));
     await page.waitForTimeout(4000);
 
-    // ── M4 d'abord : de quoi parle-t-on ? ───────────────────────────────────────────────
+    // ── M4 first: what are we even talking about? ───────────────────────────────────────
     const tileLike = traffic.filter((t) => /\.(png|jpe?g|webp|pbf|mvt)(\?|$)/i.test(t.url));
     const byOrigin = new Map();
     for (const t of tileLike) {
@@ -122,7 +124,7 @@ const run = async () => {
                   .join("\n       ")
     );
 
-    // ── M1 — la branche Cache API cache-t-elle quoi que ce soit ? ───────────────────────
+    // ── M1 — does the Cache API branch cache anything at all? ───────────────────────────
     const caches0 = await withTimeout(
         page.evaluate(async () => {
             const names = await caches.keys();
@@ -147,8 +149,8 @@ const run = async () => {
                   `\n       tous les caches : ${caches0.map((c) => `${c.name}=${c.keys}`).join(" · ") || "aucun"}`
     );
 
-    // ── M2 — le chemin d'écriture dépose-t-il des tuiles en IndexedDB ? ─────────────────
-    // On appelle le moteur, pas l'interface : c'est le chemin que garderait A7.
+    // ── M2 — does the write path deposit tiles in IndexedDB? ────────────────────────────
+    // We call the engine, not the interface: the path the standing decision would keep.
     const before = await withTimeout(
         page.evaluate(async () => {
             const rows = await /** @type {any} */ (
@@ -220,7 +222,7 @@ const run = async () => {
             `\n       layers après : ${JSON.stringify(stored)}`
     );
 
-    // ── M3 — le drapeau atteint-il le moteur ? ──────────────────────────────────────────
+    // ── M3 — does the flag reach the engine? ────────────────────────────────────────────
     const flag = await withTimeout(
         page.evaluate(async () => {
             const gl = /** @type {any} */ (globalThis).GeoLeaf;
@@ -244,9 +246,10 @@ const run = async () => {
             "\n          `ResourceEnumerator` n'énumère AUCUNE tuile — quel que soit le drapeau."
     );
 
-    // ── M5 — la branche Cache API est-elle EFFECTIVE hors ligne ? ───────────────────────
-    // C'est la mesure qui décide : un cache peuplé ne prouve pas qu'il SERT. Si une tuile
-    // qu'il contient revient hors réseau, alors le retirer perd du comportement qui marche.
+    // ── M5 — is the Cache API branch EFFECTIVE offline? ─────────────────────────────────
+    // The deciding measurement: a populated cache does not prove it SERVES. If a
+    // tile it contains comes back off-network, then removing it loses working
+    // behaviour.
     const cachedTileUrl = await withTimeout(
         page.evaluate(async () => {
             const c = await caches.open("geoleaf-data-tiles");

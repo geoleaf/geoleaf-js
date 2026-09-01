@@ -1,6 +1,5 @@
 /**
  * @fileoverview Unit tests for formatters — formatDateTime, formatFileSize, toMB, toGB
- * @phase Sprint 4 — Coverage 50%
  */
 
 import { formatDateTime, formatFileSize, toMB, toGB } from "../../src/utils/general/formatters.js";

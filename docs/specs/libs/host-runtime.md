@@ -70,7 +70,7 @@ Exportée par `src/index.ts`. Trois familles, plus les primitives HTTP.
 | **Seam DOM**              | `createEl(...)` · `applyStyleText(...)`                                                                                                                   |
 | **Téléchargement**        | `downloadBlob(...)`                                                                                                                                       |
 | **Interface partagée**    | `adoptStylesheet(...)` · `wireDrag(...)` · `wireTouchDrag(...)` · `wireTooltips(...)` · `showTooltip(...)` · `hideTooltip(...)` · `positionMenuNear(...)` |
-| **HTTP**                  | `jsonHeaders(...)` · `bearer(...)` · `fetchWithTimeout(...)` · `parseJsonBody(...)` · `HttpFetchError` + deux types                                       |
+| **HTTP**                  | `jsonHeaders(...)` · `bearer(...)` · `fetchWithTimeout(...)` · `parseJsonBody(...)` · `isSameOrigin(...)` · `HttpFetchError` + deux types                 |
 
 ⚠️ **Deux fonctions de glissement ne sont PAS ré-exportées** par l'entrée, bien qu'exportées par leur
 module : la lecture et l'application du décalage. Elles sont donc atteignables par sous-chemin et
@@ -130,6 +130,45 @@ d'écart que la vérification et l'assemblage ne voient pas au même moment.
 
 ---
 
+## 🛑 Les feuilles de style `.lazy.css` — et pourquoi la forme de l'import ne suffit pas
+
+Trois seams de ce paquet apportent leur propre feuille : `tooltip`, `modal-shell`,
+`confirm-dialog`. Elles sont nommées **`*.lazy.css`** et adoptées **au moment de l'appel**, par
+`adoptStylesheet(css, key)`. Ce n'est pas un raffinement : c'est un correctif.
+
+**Le défaut, mesuré le 27/08/2026.** Elles portaient un import d'effet de bord en tête de
+module. Le build en fait une adoption **inconditionnelle** dans `document.adoptedStyleSheets` —
+un effet de bord que rollup ne peut pas supprimer. Or ce paquet est **inliné dans chaque
+plugin** : le JS des trois seams était bien élagué des bundles qui ne les appellent pas, la CSS
+non. Résultat : **9 bundles de plugin portaient 5,05 Ko gz de feuilles pour des composants qui
+n'y étaient pas**, adoptées à chaque chargement de page. `position-share` en payait 12 % de son
+poids.
+
+⚠️ **Changer la forme de l'import ne corrige RIEN**, et c'est le piège à connaître avant d'y
+toucher : `rollup-plugin-postcss` émet `export default <css>` pour tout module CSS de toute
+façon, et appose l'injecteur pareillement. Seul le suffixe agit — `csp-style-inject.mjs` teste
+l'identité du module et n'émet aucune injection pour `*.lazy.css`.
+
+### Ce qui garde la propriété, et ce qui ne peut pas la garder
+
+| Instrument                                                 | Ce qu'il voit                                                                                                                                                                                      |
+| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `checkOrphanStylesheets` (`scripts/check-bundle-size.cjs`) | **La moitié qui compte.** Une classe marqueur présente **exactement une fois** dans un bundle bâti = la feuille est là, son JS non. Vu rouge sur mutation : 8 plugins, exit 1                      |
+| `src/__tests__/lazy-stylesheets.test.ts`                   | **L'autre moitié seulement** : que chaque seam adopte à l'appel, une seule fois                                                                                                                    |
+| Tout le reste                                              | **Rien.** Le budget de bundle mesure ce qu'un bundle CONTIENT, pas ce qu'il devrait ; `verify-purgecss` compare des sources et ces feuilles y sont vivantes — juste pas chez ceux qui les payaient |
+
+🛑 **Et la suite unitaire ne peut PAS garder la première moitié**, ce qui vaut d'être écrit
+plutôt que supposé : sous vitest l'injecteur du build n'est jamais exécuté, donc remettre
+l'import de portée module laisse la suite **verte**. Éprouvé par mutation, dans les deux sens.
+
+⚠️ Le commentaire de `tooltip.ts` disait « les cinq plugins qui n'appellent jamais `wireTooltips`
+sont inchangés octet pour octet, donc l'effet de bord ne fuit pas par le baril ». C'était **vrai
+et plus étroit que ça n'en avait l'air** : il avait mesuré cinq paquets propres, jamais demandé
+ce qu'il advenait d'un paquet qui tire ce module pour une AUTRE raison. Un effet de bord qui ne
+fuit pas chez ceux qu'on a regardés n'est pas un effet de bord qui ne fuit pas.
+
+---
+
 ## Décisions de conception
 
 | Décision                                                    | Pourquoi                                                                                                                                                                                                                                             | Alternative écartée                 |
@@ -163,7 +202,7 @@ invisible de l'autre.
 ### Les consommateurs
 
 Tous les plugins qui parlent au namespace, en dépendance de **développement**.
-`addpoi` faisait exception (fusionné dans [`editor`](../plugins/CDC_editor.md) au Sprint 5) : il le **déclarait** et son `entry.ts` **ne s'en
+`addpoi` faisait exception (fusionné dans [`editor`](../plugins/CDC_editor.md)) : il le **déclarait** et son `entry.ts` **ne s'en
 sert pas**, préférant une conversion de `globalThis` faite à la main — c'est-à-dire exactement la
 forme que ce paquet existe pour supprimer, et le dernier site à ne pas l'avoir adoptée.
 

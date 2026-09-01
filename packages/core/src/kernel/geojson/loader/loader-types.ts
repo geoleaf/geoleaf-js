@@ -96,6 +96,21 @@ export interface ClusteringConfig {
  */
 export interface OgcApiConfig {
     /**
+     * Dot-path to the next-page cursor in the response envelope
+     * (e.g. `"pagination.next_cursor"`).
+     *
+     * Consulted BEFORE the standard `links[rel="next"]` relation; when absent, that relation
+     * drives pagination alone and nothing changes. It exists because an envelope that paginates
+     * by cursor rather than by link relation is otherwise unreachable from a profile — and a
+     * profile is the only channel an integrator has.
+     *
+     * 🛑 **The resolved value is treated as a URL, not as a token.** If it is not an absolute
+     * http(s) URL, pagination STOPS and says so. `validateUrl()` is the only anti-SSRF guard on
+     * this path; a bare token to re-inject into a query parameter would need a tenth key AND a
+     * page bound, neither of which is decided.
+     */
+    cursorPath?: string;
+    /**
      * Base endpoint URL of the OGC API Features service.
      * The collection path may be included here (e.g. `https://api.example.com/collections/roads/items`)
      * or separated via `collectionId`.
@@ -163,8 +178,8 @@ export interface LayerDataConfig {
     itemsPath?: string;
     /**
      * Custom HTTP request headers for a remote `dataUrl` GeoJSON source.
-     * Use for content negotiation (e.g. `{ "Accept": "application/geo+json" }` for a
-     * PostgREST/PostGIS endpoint) or other static request headers. When present, the
+     * Use for content negotiation (e.g. `{ "Accept": "application/geo+json" }` on a
+     * server that serves several representations) or other static request headers. When present, the
      * layer is fetched on the main thread (the worker fetch path does not forward
      * per-layer headers); auth headers stay centralized in the Connector plugin.
      */
@@ -383,7 +398,7 @@ export interface LoaderDependencies {
      * Exists because `getPluginLayerLoader()` resolves SYNCHRONOUSLY: a lazily registered
      * plugin has not run its `registerLayerLoader()` yet, so the lookup returns `undefined`
      * and the layer is skipped with 0 features. Without this seam, no layer-backing plugin
-     * could ever be made lazy — which is precisely what socle-init S4.5 does to six of them.
+     * could ever be made lazy — which is precisely what the lazy plugin registrations rely on.
      *
      * Optional — absent on reduced builds that don't wire the plugin registry.
      */

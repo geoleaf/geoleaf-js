@@ -6,7 +6,7 @@
  */
 /**
  * @fileoverview Core style loading and validation logic for GeoLeaf.
- * Extracted from style-loader.ts as part of Sprint 1 refactoring.
+ * Extracted from style-loader.ts.
  *
  * KERNEL S11 — `initStyleLoader`, `loadStyleLenient`, `preloadStyles` and `getCacheStats`
  * were removed: none had a production caller, only the test suite reached them. Their
@@ -19,7 +19,7 @@
 import { Log } from "../log/index.js";
 import { StyleValidator } from "../validators/style-validator.js";
 import { getGeoLeaf } from "../general/geoleaf-global.js";
-import { styleCache } from "./style-cache.js";
+import { styleCache, styleDocumentStore } from "./style-cache.js";
 import { extractLabelConfig, _ensureLabelVisibleByDefault } from "./label-extractor.js";
 
 /** Loaded-and-validated style result returned by the loader. */
@@ -140,6 +140,41 @@ function _buildStyleResult(
     };
 }
 
+/**
+ * Turns a raw style document into the envelope every consumer expects.
+ *
+ * 🛑 **Extracted so the two paths cannot drift.** The fetched path and the pre-seeded path
+ * must produce a structurally identical result; leaving the four steps inline in one of them
+ * would make that a resemblance rather than a guarantee. Skipping any of them is a real
+ * defect and not a theoretical one: without `_ensureStyleId`, the legend generator reads
+ * `styleData.id` and gets `undefined`, which is precisely why that step was written.
+ *
+ * @param styleData - The raw document, mutated in place by the normalisation steps.
+ * @param profileId - Profile ID.
+ * @param layerId - Layer ID.
+ * @param styleId - Style ID.
+ * @param stylePath - Path the document came from, or would have come from.
+ * @returns The loaded-style envelope.
+ */
+function _finalizeStyle(
+    styleData: unknown,
+    profileId: string,
+    layerId: string,
+    styleId: string,
+    stylePath: string
+): LoadedStyleResult {
+    _ensureLabelVisibleByDefault(
+        styleData as {
+            label?: { enabled?: boolean; visibleByDefault?: boolean; [key: string]: unknown };
+            [key: string]: unknown;
+        },
+        stylePath
+    );
+    _ensureStyleId(styleData, styleId);
+    _applyStyleValidation(styleData, stylePath, { profileId, layerId, styleId, stylePath });
+    return _buildStyleResult(styleData, profileId, layerId, styleId, stylePath);
+}
+
 function _throwStyleLoadError(error: unknown, ctx: Record<string, unknown>): never {
     const message = error instanceof Error ? error.message : String(error);
     const stack = error instanceof Error ? error.stack : undefined;
@@ -155,7 +190,7 @@ function _throwStyleLoadError(error: unknown, ctx: Record<string, unknown>): nev
 /**
  * Loads and validates a style file.
  *
- * This is the **single** style-fetching entry point since S5.2: `LayerConfigManager
+ * This is the **single** style-fetching entry point: `LayerConfigManager
  * .loadDefaultStyle` delegates here rather than issuing its own bare `fetch()`, so the boot
  * path fetches each style once instead of twice and every style now goes through
  * {@link _applyStyleValidation}. See that function's own note for the arbitration.
@@ -171,7 +206,7 @@ function _throwStyleLoadError(error: unknown, ctx: Record<string, unknown>): nev
  * @param {string} styleFileName - Style file name (e.g. "default.json").
  * @param {string} layerDirectory - Layer directory (e.g. "layers/tourism_poi_all").
  * @param {string} [styleDirectory="styles"] - Sub-directory holding the style files, i.e. the
- *   layer's documented `styles.directory`. It was hard-coded to `"styles"` until S5.2, which
+ *   layer's documented `styles.directory`. It was long hard-coded to `"styles"`, which
  *   made this the only fetch site and so had to honour the parameter both callers can set.
  * @returns {Promise<Object>} Loaded and validated style with extracted label config.
  * @throws {Error} If the file is invalid or not found.
@@ -188,6 +223,20 @@ export async function loadAndValidateStyle(
     if (styleCache.has(cacheKey)) return styleCache.get(cacheKey);
     const profilesBasePath = getProfilesBasePath();
     const stylePath = `${profilesBasePath}/${profileId}/${layerDirectory}/${styleDirectory}/${styleFileName}`;
+
+    // Cache → pre-seeded document → HTTP. Same order as `ThemeLoader.loadThemesConfig`, which
+    // is the doctrine this follows rather than a new one: declared in the profile ⟹ no request.
+    //
+    // ⚠️ `stylePath` is still computed above and still passed on: it is what the envelope's
+    // metadata reports and what an error message names. The document being in hand does not
+    // make the path meaningless — it makes it the path that was NOT requested.
+    if (styleDocumentStore.has(cacheKey)) {
+        const seeded = styleDocumentStore.get(cacheKey);
+        const result = _finalizeStyle(seeded, profileId, layerId, styleId, stylePath);
+        styleCache.set(cacheKey, result);
+        return result;
+    }
+
     try {
         const response = await fetch(stylePath);
         if (!response.ok)
@@ -201,16 +250,7 @@ export async function loadAndValidateStyle(
             stylePath,
             httpStatus: response.status,
         });
-        _ensureLabelVisibleByDefault(
-            styleData as {
-                label?: { enabled?: boolean; visibleByDefault?: boolean; [key: string]: unknown };
-                [key: string]: unknown;
-            },
-            stylePath
-        );
-        _ensureStyleId(styleData, styleId);
-        _applyStyleValidation(styleData, stylePath, { profileId, layerId, styleId, stylePath });
-        const result = _buildStyleResult(styleData, profileId, layerId, styleId, stylePath);
+        const result = _finalizeStyle(styleData, profileId, layerId, styleId, stylePath);
         styleCache.set(cacheKey, result);
         return result;
     } catch (error: unknown) {

@@ -1,44 +1,46 @@
 /**
  * @file doc-capability-config.guard.test.js
- * @description Test-garde — la table `## Configuration` de chaque fiche
- * `docs/specs/capacites/<id>.md` dit la vérité sur le code qu'elle décrit.
+ * @description Guard test — each `docs/specs/capacites/<id>.md` sheet's
+ * `## Configuration` table tells the truth about the code it describes.
  *
- * Pourquoi ce garde existe (refonte documentaire V3, §2.4, 27/07/2026)
+ * Why this guard exists (documentation rework, 27/07/2026)
  * --------------------------------------------------------------------
- * Le §Verdict de `travail/roadmaps/roadmap_documentation-v3.md` mesure une chose : dans tout
- * `_docs_projet/`, les seuls régimes documentaires qui ont produit des documents encore vrais
- * sont « généré + gaté », « gelé sous RFC » et « lu par un programme ». Le quatrième — la
- * discipline de fin de session — est le seul qui ait échoué, et il couvrait presque tout le
- * corpus. Les 21 fiches de capacités + 13 fiches de plugins à écrire tomberaient dans ce
- * quatrième régime si rien ne les lisait.
+ * The documentation rework measured one thing: across the whole working
+ * corpus, the only documentation regimes that produced still-true documents
+ * are "generated + gated", "frozen under RFC" and "read by a program". The
+ * fourth — end-of-session discipline — is the only one that failed, and it
+ * covered almost the whole corpus. The 21 capability sheets + 13 plugin
+ * sheets to write would fall into that fourth regime if nothing read them.
  *
- * Le contenu le PLUS falsifiable d'une fiche de capacité est sa table de configuration :
- * « paramètre | type | défaut | où c'est lu ». Et il est le seul dont la source soit lisible
- * par une machine — `configSchema` de la déclaration, et la valeur que le lecteur matérialise.
- * Ce garde ferme donc la chaîne :
+ * The MOST falsifiable content of a capability sheet is its configuration
+ * table: "parameter | type | default | where it is read". And it is the only
+ * one whose source is machine-readable — the declaration's `configSchema`,
+ * and the value the reader materialises. This guard thus closes the chain:
  *
- *     configSchema (annoncé)  ←→  DEFAULTS via le lecteur (appliqué)
- *         ↑ gardé par `__tests__/capabilities/config-schema-defaults.test.js`
- *         ↓ gardé ICI
- *     table `## Configuration` de la fiche (documenté)
+ *     configSchema (announced)  ←→  DEFAULTS via the reader (applied)
+ *         ↑ guarded by `__tests__/capabilities/config-schema-defaults.test.js`
+ *         ↓ guarded HERE
+ *     the sheet's `## Configuration` table (documented)
  *
- * Ce qu'il ne peut pas juger : la VÉRACITÉ des phrases de la fiche. « Met en cache 5 minutes »
- * sur une fonction qui en cache 10 reste indiscernable — c'est la règle ⛔ de `CLAUDE.md`, et
- * elle reste à l'humain. Ce garde ne prétend qu'à la partie mécanisable, et la couvre dans les
- * DEUX sens (un paramètre documenté inexistant, comme une clé de schéma non documentée).
+ * What it cannot judge: the sheet's sentences' TRUTH. "Caches for 5 minutes"
+ * on a function caching 10 stays indistinguishable — `CLAUDE.md`'s ⛔ rule,
+ * and it stays with the human. This guard only claims the mechanisable part,
+ * and covers it BOTH ways (a documented parameter that does not exist, as
+ * well as an undocumented schema key).
  *
- * ## La liste des sujets n'est pas écrite, elle est LUE
+ * ## The subject list is not written, it is READ
  *
- * Même parti que `scaffold-taxonomy.test.js` : les sujets sont les fiches présentes sur le
- * disque. Une 5ᵉ fiche livrée entre donc dans le garde sans qu'on l'y inscrive — c'est ce qui
- * fait que les 33 fiches restantes du §2.4 NAISSENT gatées au lieu d'être rattrapées.
+ * Same stance as `scaffold-taxonomy.test.js`: the subjects are the sheets on
+ * disk. A 5th shipped sheet thus enters the guard without being enrolled —
+ * which is what makes the remaining sheets BE BORN gated instead of caught up.
  *
- * ## Une garde jamais vue rouge ne garde rien
+ * ## A guard never seen red guards nothing
  *
- * Deux assertions anti-garde-vide ci-dessous (au moins une fiche, au moins une ligne parsée),
- * parce que ce dépôt a déjà mesuré trois fois le cas : la regex de `verify-core-standalone`
- * serait sortie verte en ne gardant plus rien après un renommage de répertoire, et la sonde
- * de boot est restée verte avec un marqueur supprimé.
+ * Two anti-empty-guard assertions below (at least one sheet, at least one
+ * parsed line), because this repo has already measured the case three times:
+ * `verify-core-standalone`'s regex would have come out green guarding
+ * nothing after a directory rename, and the boot probe stayed green with a
+ * removed marker.
  */
 import fs from "node:fs";
 import { createRequire } from "node:module";
@@ -48,9 +50,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "../../../..");
-// La racine de la doc vient de `scripts/lib/docs-paths.cjs`, jamais d'un littéral : un
-// chemin en dur ne casse pas au déplacement du répertoire, il rend 0 fiche — donc 0 test,
-// donc VERT. Le module JETTE si sa racine est absente.
+// The docs root comes from `scripts/lib/docs-paths.cjs`, never a literal: a
+// hardcoded path does not break when the directory moves, it yields 0 sheets
+// — hence 0 tests, hence GREEN. The module THROWS if its root is absent.
 const docsPaths = createRequire(import.meta.url)(
     path.join(REPO_ROOT, "scripts/lib/docs-paths.cjs")
 );
@@ -72,46 +74,48 @@ const DECLARATION_MODULES = import.meta.glob("../../src/capabilities/*/*-capabil
 const CONFIG_MODULES = import.meta.glob("../../src/capabilities/*/config.ts");
 
 /**
- * Capacités dont la fiche NE PORTE PAS de table de paramètres, avec le motif de chacune et
- * la source de configuration réelle que la fiche doit nommer.
+ * Capabilities whose sheet DOES NOT carry a parameter table, with each one's
+ * motive and the real configuration source the sheet must name.
  *
- * Contrairement au reste de ce garde, cette liste ne se dérive pas : elle dépend d'OÙ vient la
- * configuration, ce que le code ne déclare nulle part. Elle est donc explicite — et c'est le
- * but : une capacité sans `configSchema` fera rougir ce garde tant que personne n'aura écrit
- * ici pourquoi elle a le droit de s'en passer, et où sa configuration vit vraiment.
+ * Unlike the rest of this guard, this list does not derive: it depends on
+ * WHERE the configuration comes from, which the code declares nowhere. It is
+ * therefore explicit — and that is the goal: a capability without a
+ * `configSchema` will turn this guard red until someone has written here why
+ * it may do without one, and where its configuration really lives.
  *
- * Même patron que `NO_CONFIG_ACCESSOR` dans `capabilities/scaffold-taxonomy.test.js`.
+ * Same pattern as `NO_CONFIG_ACCESSOR` in `capabilities/scaffold-taxonomy.test.js`.
  */
 const NO_CAPABILITY_CONFIG = {
     "vector-tiles": {
         motif: "config PAR COUCHE (`data.vectorTiles`), pas app-globale : aucun bloc `modules.*`, donc ni `gate` ni `configSchema`",
-        /** Chaîne que la fiche DOIT contenir — sa vraie source de vérité. */
+        /** String the sheet MUST contain — its real source of truth. */
         source: "layer-config.schema.json",
     },
 };
 
-/** Sentinelle : la fiche déclare explicitement « aucun défaut » (cellule `—`). */
+/** Sentinel: the sheet explicitly declares "no default" (`—` cell). */
 const NO_DEFAULT = Symbol("no-default");
 
 /**
- * Divergences ANNONCÉ ≠ APPLIQUÉ déjà connues du dépôt, **lues** dans le garde qui les
- * possède — `capabilities/config-schema-defaults.test.js` → `KNOWN_DEFAULT_DRIFT`.
+ * ANNOUNCED ≠ APPLIED divergences already known to the repo, **read** from
+ * the guard that owns them —
+ * `capabilities/config-schema-defaults.test.js` → `KNOWN_DEFAULT_DRIFT`.
  *
- * Pourquoi lire son source plutôt que recopier la liste : le jour où ce garde-là en solde une
- * entrée, celui-ci doit **immédiatement** exiger la clé dans la fiche. Deux copies dériveraient,
- * et la fiche continuerait de documenter une divergence réparée — exactement le régime que la
- * refonte documentaire répare.
+ * Why read its source rather than copy the list: the day that guard settles
+ * an entry, this one must **immediately** require the key in the sheet. Two
+ * copies would drift, and the sheet would keep documenting a repaired
+ * divergence — exactly the regime the documentation rework repairs.
  *
- * Ces entrées ne dispensent PAS la fiche de documenter la clé : elle doit y figurer avec le
- * défaut que le schéma ANNONCE. Seule la comparaison au défaut APPLIQUÉ est suspendue, puisque
- * l'accesseur ne le matérialise pas encore.
+ * These entries do NOT excuse the sheet from documenting the key: it must
+ * appear with the default the schema ANNOUNCES. Only the comparison with the
+ * APPLIED default is suspended, since the accessor does not materialise it yet.
  */
 const KNOWN_DEFAULT_DRIFT = (() => {
     const sibling = path.join(__dirname, "../capabilities/config-schema-defaults.test.js");
     const src = fs.readFileSync(sibling, "utf8");
     const m = /KNOWN_DEFAULT_DRIFT\s*=\s*new Set\(\[([\s\S]*?)\]\)/.exec(src);
-    // Jamais de repli silencieux : un ensemble vide par accident rendrait ce garde plus
-    // strict sans qu'on le sache, et un ensemble « tout permis » le rendrait aveugle.
+    // Never a silent fallback: an accidentally empty set would make this
+    // guard stricter unknowingly, and an "everything allowed" set would blind it.
     if (!m) {
         throw new Error(
             "doc-capability-config.guard: KNOWN_DEFAULT_DRIFT introuvable dans " +
@@ -127,13 +131,13 @@ function declarationExportName(id) {
     return `${id.toUpperCase().replace(/-/g, "_")}_CAPABILITY`;
 }
 
-/** Charge le module dont le chemin contient `/<id>/`, ou `null`. */
+/** Loads the module whose path contains `/<id>/`, or `null`. */
 async function loadFor(modules, id) {
     const key = Object.keys(modules).find((p) => p.includes(`/${id}/`));
     return key ? modules[key]() : null;
 }
 
-/** Les fiches présentes sur le disque — la liste n'est pas écrite, elle est lue. */
+/** The sheets present on disk — the list is not written, it is read. */
 function readFiches() {
     if (!fs.existsSync(FICHES_DIR)) return [];
     return fs
@@ -148,7 +152,7 @@ function readFiches() {
         }));
 }
 
-/** Valeur d'une clé du frontmatter YAML de tête (lecture volontairement minimale). */
+/** Value of a key from the leading YAML frontmatter (deliberately minimal read). */
 function frontmatterValue(text, key) {
     const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
     if (!fm) return null;
@@ -161,7 +165,7 @@ function frontmatterValue(text, key) {
         : null;
 }
 
-/** Découpe une ligne de tableau markdown en cellules déjà rognées. */
+/** Splits a markdown table row into already-trimmed cells. */
 function cells(row) {
     return row
         .replace(/^\s*\|/, "")
@@ -170,17 +174,18 @@ function cells(row) {
         .map((c) => c.trim());
 }
 
-/** Retire les accents graves d'une cellule (`` `false` `` → `false`). */
+/** Removes a cell's backticks (`` `false` `` → `false`). */
 function unbacktick(cell) {
     return cell.replace(/^`|`$/g, "").trim();
 }
 
 /**
- * Extrait la table GATÉE de la section `## Configuration` : celle dont l'en-tête porte
- * `Paramètre`. Le choix de l'en-tête, et non « la première table de la section », est
- * délibéré — une fiche peut porter d'autres tables sous ce titre (les deux étages de gate de
- * `theme-toggle`, les champs récoltés de `profile-switcher`, le schéma de couche de
- * `vector-tiles`), et viser la première les aurait attrapées.
+ * Extracts the GATED table of the `## Configuration` section: the one whose
+ * header carries `Paramètre`. Choosing the header, and not "the section's
+ * first table", is deliberate — a sheet may carry other tables under that
+ * title (`theme-toggle`'s two gate tiers, `profile-switcher`'s harvested
+ * fields, `vector-tiles`'s layer schema), and aiming at the first would have
+ * caught them.
  *
  * @returns {{ rows: Array<{param: string, type: string, default: unknown|symbol, line: number}> }|null}
  */
@@ -203,7 +208,7 @@ function extractConfigTable(text) {
         if (iType === -1 || iDefault === -1) return { rows: [], malformedHeader: true };
 
         const rows = [];
-        // +2 : la ligne d'en-tête, puis la ligne de séparation `| --- |`.
+        // +2: the header row, then the `| --- |` separator row.
         for (let j = i + 2; j < end; j += 1) {
             if (!/^\s*\|/.test(lines[j])) break;
             const c = cells(lines[j]);
@@ -221,7 +226,7 @@ function extractConfigTable(text) {
     return { rows: [] };
 }
 
-/** Une cellule de défaut est un littéral JSON entre accents graves — sinon `undefined`. */
+/** A default cell is a JSON literal between backticks — otherwise `undefined`. */
 function parseDefault(raw) {
     try {
         return JSON.parse(unbacktick(raw));
@@ -230,7 +235,7 @@ function parseDefault(raw) {
     }
 }
 
-/** Champs de premier niveau du `configSchema` portant un `default`, en `{ clé: défaut }`. */
+/** Top-level `configSchema` fields carrying a `default`, as `{ key: default }`. */
 function advertisedDefaults(configSchema) {
     const out = {};
     for (const [key, field] of Object.entries(configSchema ?? {})) {
@@ -244,15 +249,16 @@ const FICHES = readFiches();
 describe("test-garde — la table `## Configuration` des fiches specs/capacites/ dit vrai", () => {
     beforeEach(() => {
         configGet.mockReset();
-        // « Aucun bloc `modules.<id>` » — ce que rend `Config.get(path, {})` pour un profil
-        // qui ne déclare pas la capacité. C'est l'état dans lequel les défauts documentés
-        // sont ceux qu'on observe.
+        // "No `modules.<id>` block" — what `Config.get(path, {})` returns for
+        // a profile not declaring the capability. The state in which the
+        // documented defaults are the ones observed.
         configGet.mockReturnValue({});
     });
 
-    // ── Anti-garde-vide ─────────────────────────────────────────────────────────
-    // Sans ces deux assertions, le garde sortirait VERT le jour où le répertoire est
-    // renommé, où le titre `## Configuration` change, ou où l'en-tête `Paramètre` bouge.
+    // ── Anti-empty-guard ────────────────────────────────────────────────────────
+    // Without these two assertions, the guard would come out GREEN the day
+    // the directory is renamed, the `## Configuration` title changes, or the
+    // `Paramètre` header moves.
     it("trouve au moins une fiche (sinon ce garde ne garde rien)", () => {
         expect(FICHES.length, `aucune fiche .md dans ${FICHES_DIR}`).toBeGreaterThan(0);
     });
@@ -392,10 +398,10 @@ describe("test-garde — la table `## Configuration` des fiches specs/capacites/
 
             it("documente le défaut APPLIQUÉ par le lecteur de configuration", async () => {
                 const mod = await loadFor(CONFIG_MODULES, fiche.id);
-                // Une capacité peut n'avoir pas de `config.ts` tout en déclarant un
-                // configSchema (config poussée par l'installeur : offline, pwa…). Le
-                // motif de chacune vit dans `scaffold-taxonomy.test.js`
-                // (`NO_CONFIG_ACCESSOR`) ; il n'est pas redupliqué ici.
+                // A capability may have no `config.ts` while declaring a
+                // configSchema (installer-pushed config: offline, pwa…). Each
+                // one's motive lives in `scaffold-taxonomy.test.js`
+                // (`NO_CONFIG_ACCESSOR`); it is not duplicated here.
                 if (!mod) return;
                 const read = Object.entries(mod).find(
                     ([name, v]) => /^get[A-Za-z]+Config$/.test(name) && typeof v === "function"
@@ -408,10 +414,11 @@ describe("test-garde — la table `## Configuration` des fiches specs/capacites/
                 const applied = read();
                 const wrong = [];
                 for (const row of extractConfigTable(fiche.text).rows) {
-                    // Divergence connue et quarantainée par le garde code↔code : la fiche doit
-                    // documenter le défaut ANNONCÉ (vérifié plus haut), mais l'accesseur ne le
-                    // matérialise pas encore. Quand l'entrée sortira de sa quarantaine, cette
-                    // ligne redeviendra vérifiée sans qu'on touche ici.
+                    // Divergence known and quarantined by the code↔code
+                    // guard: the sheet must document the ANNOUNCED default
+                    // (checked above), but the accessor does not materialise
+                    // it yet. When the entry leaves quarantine, this line
+                    // becomes checked again with no change here.
                     if (KNOWN_DEFAULT_DRIFT.has(`${fiche.id}.${row.param}`)) continue;
                     const hasApplied = Object.hasOwn(applied, row.param);
                     if (row.default === NO_DEFAULT) {

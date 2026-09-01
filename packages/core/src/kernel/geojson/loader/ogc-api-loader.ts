@@ -49,6 +49,19 @@ interface GeoJSONFeature {
 interface GeoJSONFeatureCollection {
     type: "FeatureCollection";
     features: GeoJSONFeature[];
+    /**
+     * Present, and only present, when the cap cut the result short.
+     *
+     * 🛑 **The point of this member is that a truncated collection was INDISTINGUISHABLE from a
+     * complete one.** The loader logged a warning and returned a subset; every caller received
+     * a perfectly ordinary FeatureCollection, and a map drawn from it looks right. A silent
+     * subset is a wrong map that looks correct — which is worse than an error.
+     *
+     * A foreign member is the right channel here: RFC 7946 permits them, it reaches every
+     * caller without changing a signature, and it survives serialisation. `limit` and `fetched`
+     * are both carried because "it was capped" alone does not say by how much it was missed.
+     */
+    truncated?: { limit: number; fetched: number };
 }
 
 // Minimal map interface for autoRefresh (avoids direct MapLibre import)
@@ -98,6 +111,40 @@ function _buildRequestUrl(
         url.searchParams.set("offset", String(offset));
     }
     return url.toString();
+}
+
+/**
+ * Resolves the next-page cursor from a dotted path declared in the profile.
+ *
+ * 🛑 **The value is treated as a URL, never as a token.** `validateUrl()` is this
+ * path's only anti-SSRF guard; accepting a bare token to re-inject into a query
+ * parameter would require one more key AND a page bound, and neither is decided. A
+ * value that is not an absolute http(s) URL therefore stops pagination — and says
+ * so, naming the path AND the start of the value: without both, an integrator who
+ * mis-declared their path cannot know which of the two is at fault.
+ *
+ * @param response - The response envelope, as received.
+ * @param dotPath - The declared path, e.g. `"pagination.next_cursor"`.
+ * @returns The next page's URL, or `null` — which stops the loop.
+ */
+function _resolveCursor(response: unknown, dotPath: string): string | null {
+    let node: unknown = response;
+    for (const key of dotPath.split(".")) {
+        if (!node || typeof node !== "object") return null;
+        node = (node as Record<string, unknown>)[key];
+    }
+    if (typeof node !== "string" || node.length === 0) return null;
+    if (!/^https?:\/\//i.test(node)) {
+        // The logger is obtained by injection in this module — never imported directly.
+        getLog().warn(
+            `[OgcApiLoader] cursorPath "${dotPath}" resolved to a value that is not an ` +
+                `absolute http(s) URL — pagination stops here. Value starts with: ` +
+                `"${node.slice(0, 24)}". A bare cursor token is not supported: it would have ` +
+                `to be re-injected into a query parameter, which no declared key describes.`
+        );
+        return null;
+    }
+    return node;
 }
 
 function _extractNextUrl(response: OgcFeatureCollection): string | null {
@@ -242,15 +289,37 @@ export async function fetchOgcApiFeatures(
 
         if (accumulated.length >= maxFeatures) {
             Log.warn(
-                `[OgcApiLoader] maxFeatures limit reached (${maxFeatures}). Stopping pagination.`
+                `[OgcApiLoader] maxFeatures limit reached (${maxFeatures}). Stopping pagination. ` +
+                    `The result is a SUBSET of the source: ${accumulated.length} feature(s) were ` +
+                    `accumulated and it is cut to ${maxFeatures}. Read the collection's ` +
+                    `\`truncated\` member — nothing else distinguishes this from a complete set.`
             );
             break;
         }
 
-        nextUrl = _extractNextUrl(page);
+        // The declared cursor goes BEFORE the standard link relation: a profile
+        // declaring `cursorPath` has a reason to, and the `next` relation may be
+        // absent from its envelope. Without a declaration, nothing changes.
+        nextUrl = config.cursorPath
+            ? _resolveCursor(page, config.cursorPath)
+            : _extractNextUrl(page);
     }
 
-    return { type: "FeatureCollection", features: accumulated };
+    // 🛑 THE CAP IS EXACT HERE, and it was not: the loop stopped after accumulating
+    // a WHOLE PAGE, so `maxFeatures: 15` with `limit: 10` yielded **20** entities. A
+    // cap that yields more than its bound is not a cap.
+    //
+    // ⚠️ The cut already existed — but **in a single caller**, the offline pull,
+    // which redid it on its own account and exposed its own indicator. The DISPLAY
+    // path, meanwhile, received the overflow unknowingly. Fixing at the source makes
+    // the caller's compensation redundant (cutting an already-cut list has no
+    // effect) and serves both paths in one gesture.
+    const fetched = accumulated.length;
+    const features = fetched > maxFeatures ? accumulated.slice(0, maxFeatures) : accumulated;
+
+    return fetched > maxFeatures
+        ? { type: "FeatureCollection", features, truncated: { limit: maxFeatures, fetched } }
+        : { type: "FeatureCollection", features };
 }
 
 // ─── Auto-refresh ─────────────────────────────────────────────────────────────
@@ -285,6 +354,6 @@ export function setupAutoRefresh(
         reloadFn(bbox);
     }, ms);
 
-    map.on("moveend", handler as () => void);
-    return () => map.off("moveend", handler as () => void);
+    map.on("moveend", handler);
+    return () => map.off("moveend", handler);
 }

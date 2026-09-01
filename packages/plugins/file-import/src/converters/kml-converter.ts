@@ -14,7 +14,7 @@
  * https://geoleaf.dev
  */
 import type { Geometry, FeatureCollection } from "geojson";
-import type { IFileConverter, ConvertResult, GeoJSONFeatureCollection } from "./i-converter.js";
+import type { IFileConverter, ConvertResult } from "./i-converter.js";
 import { emptyFC } from "./i-converter.js";
 
 // @tmcw/togeojson — built-in TypeScript typings, zero runtime dependencies
@@ -22,9 +22,16 @@ import { kml as kmlToGeoJSON } from "@tmcw/togeojson";
 
 // ─── Enrichment helpers ───────────────────────────────────────────────────────
 
-/** Strip HTML tags from a description string (simple regex approach — no DOM). */
+/**
+ * Strip HTML tags from a description string via a real HTML parse.
+ * `convert()` already relies on DOMParser, so this adds no capability requirement —
+ * and unlike a `/<[^>]*>/g` regex it does not leave `<script>` bodies as text, nor
+ * break on a `>` inside a quoted attribute value.
+ */
 function _stripHtml(html: string): string {
-    return html.replace(/<[^>]*>/g, "").trim();
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    doc.body.querySelectorAll("script, style").forEach((el) => el.remove());
+    return (doc.body.textContent ?? "").trim();
 }
 
 /** Extract folder path for a Placemark by walking up parent <Folder> elements. */
@@ -164,7 +171,7 @@ export const kmlConverter: IFileConverter = {
                 }
             }
 
-            return { data: fc as GeoJSONFeatureCollection, warnings };
+            return { data: fc, warnings };
         } catch (err) {
             return {
                 data: emptyFC(),

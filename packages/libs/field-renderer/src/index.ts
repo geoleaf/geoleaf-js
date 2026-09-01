@@ -48,15 +48,15 @@ export type {
     ModalOpenOptions,
     HeaderSlot,
 } from "./ui/responsive-modal.js";
-// ── Décision W3 / A4″ (Sprint 6, S6b) — `createFocusTrap` et `confirmDialog` sont PARTIS ──
+// ── `createFocusTrap` and `confirmDialog` are GONE ──
 //
-// Ils vivent désormais dans `@geoleaf/host-runtime`, qui possède la plomberie UI. Ce paquet
-// possède la SAISIE, et rien d'autre.
+// They now live in `@geoleaf/host-runtime`, which owns the UI plumbing. This
+// package owns INPUT, and nothing else.
 //
-// ⚠️ **Aucun ré-export de compatibilité, délibérément** : A16 (« aucun legacy, aucune
-// migration, aucune dépréciation ») — l'application n'a pas d'utilisateurs, un alias serait
-// du code à écrire, tester et supprimer plus tard pour zéro bénéficiaire. C'est un cassant
-// direct, et il est assumé comme tel.
+// ⚠️ **No compatibility re-export, deliberately** ("no legacy, no migration,
+// no deprecation") — the application has no users, an alias would be code to
+// write, test and later delete for zero beneficiaries. A direct breaking
+// change, owned as such.
 
 // ── Bridge ───────────────────────────────────────────────────────────────────
 export { createFieldRendererBridge } from "./field-renderer-bridge.js";
@@ -68,8 +68,9 @@ export { _el, _getLabel } from "./helpers.js";
 // ── Security ─────────────────────────────────────────────────────────────────
 export { escapeHtml, validateUrl, safeUrl } from "./sanitize.js";
 
-// ── Stratégie de téléversement d'image (tâche 5.1-d) ────────────────────────
-// Seul membre de `types/field-media.ts` exporté : le reste y est interne. Il l'est
-// parce qu'un hôte doit pouvoir changer le TRANSPORT sans cloner le composant.
+// ── Image upload strategy ───────────────────────────────────────────────────
+// The only exported member of `types/field-media.ts`: the rest is internal
+// there. It is exported because a host must be able to change the TRANSPORT
+// without cloning the component.
 export { setImageUploadStrategy } from "./types/field-media.js";
 export type { ImageUploadStrategy } from "./types/field-media.js";

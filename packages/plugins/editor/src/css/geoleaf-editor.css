@@ -23,7 +23,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /*
- * B-12 — les QUATRE propriétés d'ancrage, pas deux.
+ * Les QUATRE propriétés d'ancrage, pas deux.
  *
  * Ce bloc ne déclarait que `top` et `left`, alors que `_applyPosition`
  * (sub-menu/floating-menu.ts) propose quatre ancrages. Pour `top-right`,

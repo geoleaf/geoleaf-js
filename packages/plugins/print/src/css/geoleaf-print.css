@@ -1,4 +1,4 @@
-/* plugin-print styles — Sprint 3+ */
+/* plugin-print styles */
 
 /* ===== Emprise Selector Overlay ===================================================
    Sits above the map (z-index 500), captures all pointer events while active.
@@ -109,7 +109,7 @@
     outline-offset: 2px;
 }
 
-/* ===== Print Preview Modal (Sprint 5) ======================================
+/* ===== Print Preview Modal ======================================
    Fixed full-screen overlay, z-index 9000 (above the map toolbar z-500).
    Sizing : 80 vw × 80 vh. Colors follow the active GeoLeaf theme via
    the --gl-color-* CSS custom properties defined in geoleaf-theme.css.

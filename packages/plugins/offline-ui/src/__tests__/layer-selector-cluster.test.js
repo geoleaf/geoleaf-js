@@ -1,16 +1,16 @@
 /**
- * Unit tests — le cluster LayerSelector (LS), couverture réelle (chantier R.31).
+ * Unit tests — the LayerSelector (LS) cluster, real coverage.
  *
- * `cache/layer-selector/{core,data-fetching,row-rendering,selection-cache}.ts` était
- * mesuré entre 1,7 % et 24 % : un seul test en citait la FORME (`init` existe), aucun ne
- * FAISAIT tourner `populate()` — le liant qui construit la table, les lignes, les tailles,
- * les icônes de cache et sauve la sélection. Il n'a pourtant besoin d'aucune carte réelle :
- * DOM + `fetch` + `Config.get` + le singleton `StorageContract`, tous contrôlables.
+ * `cache/layer-selector/{core,data-fetching,row-rendering,selection-cache}.ts`
+ * measured between 1.7% and 24%: a single test cited its SHAPE (`init` exists),
+ * none RAN `populate()` — the binder that builds the table, rows, sizes, cache
+ * icons and saves the selection. Yet it needs no real map: DOM + `fetch` +
+ * `Config.get` + the `StorageContract` singleton, all controllable.
  *
- * On assemble le vrai `LS` (les 4 modules `Object.assign`-ent le même singleton importé de
- * `core.js`), on injecte le stockage via `_installGeoLeafStorage()`, et on pilote d'abord le
- * chemin nominal de `populate()` — qui traverse à lui seul les 6 fichiers — puis les
- * branches qu'il n'atteint pas (paliers d'avertissement, zone vectorielle, erreurs).
+ * We assemble the real `LS` (the 4 modules `Object.assign` the same singleton
+ * imported from `core.js`), inject storage via `_installGeoLeafStorage()`, and
+ * drive first `populate()`'s nominal path — which alone crosses the 6 files —
+ * then the branches it does not reach (warning steps, vector zone, errors).
  */
 import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
 
@@ -20,16 +20,17 @@ import "../cache/layer-selector/row-rendering.js";
 import "../cache/layer-selector/selection-cache.js";
 import { renderCacheCell } from "../cache/layer-selector/cache-cell.js";
 
-// API publique S4.4 — les tests plantent `GeoLeaf.Storage` comme le fait la PRODUCTION.
-// Ils pilotaient `StorageContract.init()`, c'est-à-dire une SECONDE instance du singleton
-// que le bundle embarquait et que rien n'initialisait : ils validaient un canal mort.
+// The tests plant `GeoLeaf.Storage` the way PRODUCTION does. They used to drive
+// `StorageContract.init()`, i.e. a SECOND instance of the singleton the bundle
+// embedded and nothing initialised: they validated a dead channel.
 function _installGeoLeafStorage(api) {
     globalThis.GeoLeaf = globalThis.GeoLeaf ?? {};
-    // Le helper reproduit ce que `StorageContract.init()` fournissait, parce que la façade
-    // du core le fournit aussi : `isPluginLoaded()` = « un moteur s'est enregistré », et
-    // `isAvailable()` = « et sa base est ouverte ». L'adaptateur du plugin DÉLÈGUE ces deux
-    // méthodes — il ne les recalcule pas —, donc un objet planté qui ne les porte pas
-    // rendrait `false` là où le test attend `true`. Un appelant qui les fournit garde la main.
+    // The helper reproduces what `StorageContract.init()` provided, because the
+    // core's facade provides it too: `isPluginLoaded()` = "an engine registered",
+    // and `isAvailable()` = "and its database is open". The plugin's adapter
+    // DELEGATES these two methods — it does not recompute them — so a planted
+    // object not carrying them would return `false` where the test expects
+    // `true`. A caller providing them keeps the hand.
     globalThis.GeoLeaf.Storage =
         api === null || api === undefined
             ? null
@@ -46,7 +47,7 @@ import {
     beginCacheStatusPass,
 } from "../cache/layer-selector/config-cache.js";
 
-// ── Contrôle de la configuration (coreConfigGet lit globalThis.GeoLeaf.Config.get) ──
+// ── Configuration control (coreConfigGet reads globalThis.GeoLeaf.Config.get) ──
 let CONFIG = {};
 function setConfig(overrides = {}) {
     CONFIG = {
@@ -62,7 +63,7 @@ function setConfig(overrides = {}) {
     };
 }
 
-// ── Stockage injecté dans le singleton StorageContract ──────────────────────────────
+// ── Storage injected into the StorageContract singleton ─────────────────────────────
 function installStorage({ cacheResources = [], savedSelection = null } = {}) {
     const saveLayerSelection = vi.fn(async () => {});
     const loadLayerSelection = vi.fn(async () => savedSelection);
@@ -89,7 +90,7 @@ function installFetch({ profile, layerConfig, headSize = "2097152", profileOk = 
         if (String(url).endsWith("profile.json")) {
             return { ok: profileOk, status: profileOk ? 200 : 404, json: async () => profile };
         }
-        // Tout le reste = config JSON d'une couche.
+        // Everything else = a layer's JSON config.
         return { ok: true, status: 200, json: async () => layerConfig };
     });
     globalThis.fetch = fetchMock;
@@ -103,8 +104,8 @@ let container;
 
 beforeEach(() => {
     seq += 1;
-    // Profil unique par test : les paths de config alimentent un memo de module
-    // (`_configCache`) qui vit au-delà du test ; un id distinct évite tout report.
+    // One profile per test: the config paths feed a module memo (`_configCache`)
+    // that lives beyond the test; a distinct id avoids any carry-over.
     setConfig({ "data.activeProfile": `prof-${seq}` });
     beginCacheStatusPass();
 
@@ -125,7 +126,7 @@ afterEach(() => {
 });
 
 // ════════════════════════════════════════════════════════════════════════════════════
-// populate() — le chemin nominal traverse les 6 fichiers du cluster
+// populate() — the nominal path crosses the cluster's 6 files
 // ════════════════════════════════════════════════════════════════════════════════════
 
 describe("populate — nominal (1 couche + 1 fond)", () => {
@@ -168,13 +169,13 @@ describe("populate — nominal (1 couche + 1 fond)", () => {
 
         expect(container.querySelector("table.gl-cache-layers__table")).toBeTruthy();
         expect(container.querySelector("thead")).toBeTruthy();
-        // 6 colonnes d'en-tête (checkbox, nom, géométrie, style, taille, cache)
+        // 6 header columns (checkbox, name, geometry, style, size, cache)
         expect(container.querySelectorAll("thead th").length).toBe(6);
         // 2 lignes de corps (couche + fond)
         expect(container.querySelectorAll("tbody .gl-cache-layers__row").length).toBe(2);
-        // la case « tout sélectionner » a été posée
+        // the "select all" checkbox was set
         expect(LS._selectAllCheckbox).toBeTruthy();
-        // les tableaux d'état sont peuplés
+        // the state arrays are populated
         expect(LS._layers).toHaveLength(1);
         expect(LS._basemaps).toHaveLength(1);
     });
@@ -188,7 +189,7 @@ describe("populate — nominal (1 couche + 1 fond)", () => {
         expect(nameCell.textContent).toBe("Routes");
 
         const geomCell = container.querySelector(".gl-cache-layers__td-geometry");
-        // LineString → libellé "ligne" (clé i18n, repli sur la clé)
+        // LineString → "ligne" label (i18n key, falls back to the key)
         expect(geomCell.textContent).not.toBe("~");
 
         const sizeCell = container.querySelector(".gl-cache-layers__td-size");
@@ -204,7 +205,7 @@ describe("populate — nominal (1 couche + 1 fond)", () => {
         const select = container.querySelector(".gl-cache-layers__style-select");
         expect(select).toBeTruthy();
         expect(select.querySelectorAll("option").length).toBe(2);
-        // l'option "default" est présélectionnée
+        // the "default" option is preselected
         expect(select.value).toBe("default");
     });
 
@@ -216,7 +217,7 @@ describe("populate — nominal (1 couche + 1 fond)", () => {
         expect(store.saveLayerSelection).toHaveBeenCalledTimes(1);
         const [profileId, selection] = store.saveLayerSelection.mock.calls[0];
         expect(profileId).toBe(`prof-${seq}`);
-        // couche + fond cochés par défaut (pas de sélection sauvegardée)
+        // layer + basemap checked by default (no saved selection)
         expect(selection.layers).toContain("roads");
         expect(selection.basemaps).toContain("sat");
     });
@@ -296,11 +297,11 @@ describe("populate — gardes et erreurs", () => {
 });
 
 // ════════════════════════════════════════════════════════════════════════════════════
-// saveSelection — reconstruit la sélection depuis le DOM
+// saveSelection — rebuilds the selection from the DOM
 // ════════════════════════════════════════════════════════════════════════════════════
 
 describe("saveSelection", () => {
-    /** Monte un conteneur de lignes avec cases + sélecteurs de style. */
+    /** Mounts a row container with checkboxes + style selectors. */
     function buildRows({ layerChecked = true, basemapChecked = true, withStyle = false } = {}) {
         container.innerHTML = "";
         const mkRow = () => {
@@ -390,7 +391,7 @@ describe("saveSelection", () => {
 
         const selection = saveLayerSelection.mock.calls[0][1];
         expect(selection.vectorZone).toEqual(vectorZone);
-        // estimateVectorZone(zone).bytes > 0 → ajouté au total
+        // estimateVectorZone(zone).bytes > 0 → added to the total
         expect(selection.totalEstimatedSize).toBeGreaterThan(0);
     });
 
@@ -480,7 +481,7 @@ describe("select-all", () => {
 });
 
 // ════════════════════════════════════════════════════════════════════════════════════
-// updateWarning — les paliers d'avertissement
+// updateWarning — the warning steps
 // ════════════════════════════════════════════════════════════════════════════════════
 
 describe("updateWarning", () => {
@@ -493,7 +494,7 @@ describe("updateWarning", () => {
         downloadBtn = document.createElement("button");
         downloadBtn.id = "gl-cache-download";
         document.body.append(warningEl, downloadBtn);
-        // pas de quota par défaut
+        // no quota by default
         delete navigator.storage;
     });
 
@@ -641,7 +642,7 @@ describe("refreshCacheIcons", () => {
             layerConfig: {},
         });
 
-        // Une ligne préexistante avec sa case + cellule de cache.
+        // A pre-existing row with its checkbox + cache cell.
         const row = document.createElement("div");
         row.className = "gl-cache-layers__row";
         const cb = document.createElement("input");
@@ -687,10 +688,11 @@ describe("estimateLayerSize", () => {
         const f = installFetch({ profile: {}, layerConfig: {}, headSize: "42" });
         const size = await LS.estimateLayerSize({ id: "a", dataFile: "a.geojson" });
         expect(size).toBe(42);
-        // ⚠️ L'init porte désormais un `signal` (tâche 3.8 — la requête est BORNÉE), donc
-        // l'égalité stricte sur l'objet ne tient plus. Ce que ce test vérifie est l'URL
-        // CONSTRUITE, pas la forme de l'init : on asserte donc l'URL et la méthode, et on
-        // vérifie en plus que l'échéance est bien là — c'est une garantie de plus, pas de moins.
+        // ⚠️ The init now carries a `signal` (the request is BOUNDED), so strict
+        // object equality no longer holds. What this test verifies is the BUILT
+        // URL, not the init's shape: we assert the URL and method, and
+        // additionally check the deadline is there — one more guarantee, not
+        // less.
         expect(f).toHaveBeenCalledWith(
             expect.stringContaining("a.geojson"),
             expect.objectContaining({ method: "HEAD", signal: expect.anything() })
@@ -819,7 +821,7 @@ describe("config-cache", () => {
         const layer = { id: "b", configFile: "layers/b.json" };
 
         expect(await getLayerConfig(layer)).toBeNull();
-        // l'entrée nulle a été purgée → un second appel refait le fetch
+        // the null entry was purged → a second call redoes the fetch
         ok = true;
         expect(await getLayerConfig(layer)).toEqual({ label: "B" });
     });
@@ -846,7 +848,7 @@ describe("config-cache", () => {
 });
 
 // ════════════════════════════════════════════════════════════════════════════════════
-// cache-cell : le glyphe d'état
+// cache-cell: the state glyph
 // ════════════════════════════════════════════════════════════════════════════════════
 
 describe("renderCacheCell", () => {

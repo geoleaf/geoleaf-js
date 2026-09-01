@@ -8,9 +8,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
 const { CapabilityRegistry } = await import("../../../src/kernel/api/capability-registry.ts");
-const { CLUSTER_CAPABILITY } = await import(
-    "../../../src/capabilities/cluster/cluster-capability.ts"
-);
+const { CLUSTER_CAPABILITY } =
+    await import("../../../src/capabilities/cluster/cluster-capability.ts");
 const { Introspection } = await import("../../../src/api/geoleaf.introspection.ts");
 
 /** Mirrors the capConfig adapter created in boot.ts for the gate. */

@@ -10,7 +10,7 @@
         "`_proprietaires` est REPRIS de ce fichier à chaque régénération, et élagué des",
         "specifiers qui n'ont plus d'entrée. Un motif écrit ici survit donc à l'outil.",
         "",
-        "📌 Elle est tombée à ZÉRO le 10/08/2026 (B-212) : la classe `geojson` — 6 `.d.ts`",
+        "📌 Elle est tombée à ZÉRO le 10/08/2026 : la classe `geojson` — 6 `.d.ts`",
         "publiés d'editor, file-import et flatgeobuf — a été soldée en déclarant",
         "`@types/geojson` en `dependencies` sur les trois manifestes. Une entrée qui",
         "réapparaîtrait ici serait donc une RÉGRESSION, pas une première observation."

@@ -1,38 +1,45 @@
 /**
  * @file no-own-namespace.js
- * @description Les plugins qui ne montent AUCUN namespace propre — la liste, le motif de chacun,
- * et la surface qu'ils PILOTENT à la place.
+ * @description The plugins mounting NO namespace of their own — the list,
+ * each one's motive, and the surface they DRIVE instead.
  *
- * ## Pourquoi cette liste vit ici, et non dans l'un des deux gardes qui la lisent
+ * ## Why this list lives here, and not in one of the two guards reading it
  *
- * Le fait qu'elle énonce — « ce plugin ne pose pas de façade » — n'appartient à aucun des deux.
- * `guards/plugin-namespace-declared.guard.test.js` en tire une **dispense de déclaration** dans
- * `GeoLeafGlobal` ; `guards/doc-plugin-manifest.guard.test.js` en tire ce que la **fiche** doit
- * écrire dans sa ligne `namespace`. Deux copies dériveraient — et le jour où l'une solderait une
- * entrée, l'autre continuerait de dispenser. C'est le motif déjà écrit pour `KNOWN_DEFAULT_DRIFT`,
- * que `doc-capability-config.guard.test.js` **lit à sa source** au lieu de la recopier.
+ * The fact it states — "this plugin sets no facade" — belongs to neither.
+ * `guards/plugin-namespace-declared.guard.test.js` draws from it a
+ * **declaration exemption** in `GeoLeafGlobal`;
+ * `guards/doc-plugin-manifest.guard.test.js` draws what the **spec sheet**
+ * must write in its `namespace` line. Two copies would drift — and the day
+ * one settled an entry, the other would keep exempting. The motive already
+ * written for `KNOWN_DEFAULT_DRIFT`, which
+ * `doc-capability-config.guard.test.js` **reads at its source** instead of
+ * copying it.
  *
- * ⚠️ **Ce fichier n'est pas une suite de tests.** `packages/core/vitest.config.ts` ne collecte que
- * les fichiers en `.test.js` : un helper sous `__tests__/_helpers/` n'y devient pas un fichier de
- * test vide, il reste un module importable. Deux voisins suivent déjà ce patron
- * (`load-wired-config.js`, `dom-create-double.js`).
+ * ⚠️ **This file is not a test suite.** `packages/core/vitest.config.ts`
+ * only collects `.test.js` files: a helper under `__tests__/_helpers/` does
+ * not become an empty test file there, it stays an importable module. Two
+ * neighbours already follow this pattern (`load-wired-config.js`,
+ * `dom-create-double.js`).
  *
- * ## Ce qui rend une entrée FALSIFIABLE — et pourquoi `motif` ne suffisait pas
+ * ## What makes an entry FALSIFIABLE — and why `motif` was not enough
  *
- * Jusqu'au 28/07/2026 cette liste ne portait qu'un `motif`, c'est-à-dire de la **prose que rien
- * ne lisait**. Une entrée était donc indistinguable d'une dispense de complaisance : n'importe
- * quel plugin ayant *oublié* sa façade pouvait y être inscrit et faire taire le garde.
+ * Until 28/07/2026 this list only carried a `motif`, i.e. **prose nothing
+ * read**. An entry was thus indistinguishable from a complacency exemption:
+ * any plugin having *forgotten* its facade could be inscribed and silence
+ * the guard.
  *
- * Les deux champs ajoutés ferment ce trou, et ils ne sont pas décoratifs — le garde propriétaire
- * les VÉRIFIE :
+ * The two added fields close that hole, and they are not decorative — the
+ * owning guard VERIFIES them:
  *
- *  - `drives` — la surface du CORE que le plugin pilote à la place de la sienne. Le garde exige
- *    que l'`entry.ts` l'atteigne réellement. Un plugin qui a simplement oublié sa façade ne
- *    pilote **rien**, donc ne peut pas satisfaire cette assertion.
- *  - `owner` — le fichier du core qui POSE cette surface. Le garde exige qu'il existe. Une
- *    exemption qui pointe un fichier disparu dispense encore, mais ne renseigne plus.
+ *  - `drives` — the CORE surface the plugin drives instead of its own. The
+ *    guard requires the `entry.ts` to really reach it. A plugin that simply
+ *    forgot its facade drives **nothing**, hence cannot satisfy this assertion.
+ *  - `owner` — the core file that SETS this surface. The guard requires it
+ *    to exist. An exemption pointing at a vanished file still exempts, but
+ *    no longer informs.
  *
- * Même patron que `NO_CONFIG_ACCESSOR` (`__tests__/capabilities/scaffold-taxonomy.test.js`) et
+ * Same pattern as `NO_CONFIG_ACCESSOR`
+ * (`__tests__/capabilities/scaffold-taxonomy.test.js`) and
  * `NO_CAPABILITY_CONFIG` (`__tests__/guards/doc-capability-config.guard.test.js`).
  */
 "use strict";
@@ -41,9 +48,9 @@
 export const NO_OWN_NAMESPACE = {
     "offline-ui": {
         motif: "ne monte aucun namespace propre : il PILOTE `GeoLeaf.Storage`, une façade du CORE (capacité `offline`). Son `healthCheck` interroge donc volontairement une surface qu'il n'a pas posée, et son `entry.ts` l'écrit en toutes lettres",
-        /** Surface du core réellement pilotée — vérifiée présente dans son `entry.ts`. */
+        /** Core surface really driven — verified present in its `entry.ts`. */
         drives: "GeoLeaf.Storage",
-        /** Qui pose cette surface — vérifié existant sur le disque. */
+        /** Who sets this surface — verified existing on disk. */
         owner: "packages/core/src/kernel/storage/facade.ts",
     },
 };

@@ -1,17 +1,18 @@
 /**
- * Tâche 4.4 — L'ÉCRITURE OPTIMISTE, et le premier écrivain de l'`outbox`.
+ * THE OPTIMISTIC WRITE, and the `outbox`'s first writer.
  *
- * L'`outbox` existe depuis 3.4 et comptait **zéro producteur**, core et plugins confondus.
- * Ces tests éprouvent les trois propriétés qui ne se lisent pas dans le code :
+ * The `outbox` existed and counted **zero producers**, core and plugins
+ * together. These tests exercise the three properties that cannot be read off
+ * the code:
  *
- *  1. l'entité ET l'entrée de file atterrissent ensemble, ou pas du tout ;
- *  2. la coalescence ne perd aucune édition et n'en empile aucune en double ;
- *  3. l'invariant S6 tient — le rapatriement ne confère jamais l'éditabilité.
+ *  1. the entity AND the queue entry land together, or not at all;
+ *  2. coalescing loses no edit and stacks none in duplicate;
+ *  3. the editability invariant holds — pulling never confers editability.
  *
- * Tourne contre `fake-indexeddb` : la transaction inter-stores, l'index composé
- * `[layerId, localId]` et l'index UNIQUE sur `id` sont exactement ce que le mock maison ne
- * sait pas rendre — et c'est sur eux que tout repose. Import différé pour la même raison que
- * `sync-entry-id.test.js`.
+ * Runs against `fake-indexeddb`: the cross-store transaction, the composite
+ * `[layerId, localId]` index and the UNIQUE index on `id` are exactly what
+ * the home-made mock cannot render — and everything rests on them. Deferred
+ * import for the same reason as `sync-entry-id.test.js`.
  */
 
 const DB_NAME = "geoleaf-edit-test";
@@ -51,29 +52,30 @@ describe("4.4 — écriture optimiste", () => {
         open = [];
         layerConfigs = [
             { id: "sites", edition: { create: true, update: true, delete: true } },
-            // Couche rapatriable en LECTURE seule — le sujet de l'invariant S6.
+            // Pullable READ-only layer — the editability invariant's subject.
             { id: "villes", offline: { enabled: true }, edition: { create: false } },
-            // Éditable, mais sans droit de suppression — ce que `enableEditionFull` gouvernait
-            // réellement, quoi que son nom ait laissé croire.
+            // Editable, but without delete rights — what `enableEditionFull`
+            // really governed, whatever its name suggested.
             { id: "readonly_delete", edition: { create: true, update: true } },
-            // 🛑 Les trois fixtures de la sûreté-par-défaut (5.9 / V1). Elles sont distinctes
-            // parce qu'elles tombent sur des branches distinctes, et qu'une seule d'entre
-            // elles laisserait passer la mutation des deux autres.
-            /** Aucun bloc `edition` : rien n'est accordé. */
+            // 🛑 The three safe-by-default fixtures. They are distinct
+            // because they land on distinct branches, and any single one
+            // would let the other two's mutation through.
+            /** No `edition` block: nothing is granted. */
             { id: "muette" },
-            /** Bloc présent mais VIDE : déclarer ne vaut pas accorder. */
+            /** Block present but EMPTY: declaring is not granting. */
             { id: "vide", edition: {} },
-            /** N'accorde QUE `update` : ne doit conférer ni `create` ni `delete`. */
+            /** Grants ONLY `update`: must confer neither `create` nor `delete`. */
             { id: "update_seul", edition: { update: true } },
         ];
         globalThis.GeoLeaf = {
             Config: { getActiveProfile: () => ({ layers: layerConfigs }) },
         };
-        // ⚠️ `close()` et non `_db = null` : la façade CACHE les instances de sous-modules
-        // dans `_modules`, liées à la connexion qui les a créées. Remettre `_db` à la main
-        // laisse ce cache en place, et un autre fichier de test qui ouvre sa propre base
-        // écrit alors dans la connexion PRÉCÉDENTE. `close()` vide les deux — c'est
-        // l'invariant que la façade tient déjà, et le contourner l'a fait mentir.
+        // ⚠️ `close()` and not `_db = null`: the facade CACHES the sub-module
+        // instances in `_modules`, bound to the connection that created them.
+        // Resetting `_db` by hand leaves that cache in place, and another test
+        // file opening its own base then writes into the PREVIOUS connection.
+        // `close()` clears both — the invariant the facade already holds, and
+        // bypassing it made it lie.
         IndexedDB.close();
         IndexedDB._dbName = DB_NAME;
         await IndexedDB.init();
@@ -96,7 +98,7 @@ describe("4.4 — écriture optimiste", () => {
         });
     });
 
-    // ── ① les deux moitiés atterrissent ensemble ──────────────────────────────────────────
+    // ── ① both halves land together ──────────────────────────────────────────────────────
     test("une création écrit l'entité ET l'entrée de file, avec une identité cliente frappée", async () => {
         const report = await applyEdit({
             layerId: "sites",
@@ -120,12 +122,12 @@ describe("4.4 — écriture optimiste", () => {
         expect(outbox[0].localId).toBe(report.localId);
         expect(outbox[0].state).toBe("pending");
 
-        // Et la lecture locale de 4.3 la rend : « l'utilisateur voit sa propre saisie ».
+        // And the local read returns it: "the user sees their own capture".
         const collection = await IndexedDB.getLayerFeatureCollection("sites");
         expect(collection.features).toHaveLength(1);
     });
 
-    // ── ② la coalescence, ligne par ligne ─────────────────────────────────────────────────
+    // ── ② coalescing, line by line ───────────────────────────────────────────────────────
     test("create puis update → l'entrée reste un `create`, et il porte l'état le plus récent", async () => {
         const created = await applyEdit({
             layerId: "sites",
@@ -146,8 +148,8 @@ describe("4.4 — écriture optimiste", () => {
         expect(outbox).toHaveLength(1);
         expect(outbox[0].kind).toBe("create");
 
-        // 🛑 Ce qui rend la fusion correcte : l'entrée ne porte PAS la charge utile, elle
-        // référence `localId`. La charge est l'enregistrement, et il est à jour.
+        // 🛑 What makes the merge correct: the entry does NOT carry the
+        // payload, it references `localId`. The payload is the record, and it is current.
         const features = await readAll("features");
         expect(features[0].feature.properties.title).toBe("v2");
     });
@@ -183,8 +185,8 @@ describe("4.4 — écriture optimiste", () => {
         });
 
         expect(deleted.annulled).toBe(true);
-        // Le serveur ne l'a jamais vue : pousser un DELETE sur une identité inconnue de lui
-        // serait au mieux du bruit, au pire une erreur qui bloque la file.
+        // The server never saw it: pushing a DELETE on an identity unknown to
+        // it would be noise at best, a queue-blocking error at worst.
         expect(await readAll("outbox")).toHaveLength(0);
         expect(await readAll("features")).toHaveLength(0);
     });
@@ -221,19 +223,20 @@ describe("4.4 — écriture optimiste", () => {
             feature: feature("q"),
         });
 
-        // Fusionner ferait diverger ce qui part sur le fil de ce que la file croit envoyer.
+        // Merging would let what goes on the wire diverge from what the queue believes it sends.
         const all = await readAll("outbox");
         expect(all).toHaveLength(2);
         expect(all.map((e) => e.state).sort()).toEqual(["inFlight", "pending"]);
     });
 
     test("deux entrées frappées dans la MÊME milliseconde ne collisionnent pas", async () => {
-        // 🛑 L'index `id` de l'`outbox` est UNIQUE : une collision JETTE au lieu d'écraser
-        // (correctif B-03). C'est le bon comportement, et c'est lui qui a démasqué un
-        // identifiant composé du seul `Date.now()` — deux éditions de la même entité dans la
-        // même milliseconde frappaient le même id, et la transaction échouait sur un cas
-        // parfaitement légitime. Le défaut ne se voyait que sous la suite complète, assez
-        // rapide pour que les deux appels tombent dans la même milliseconde.
+        // 🛑 The `outbox`'s `id` index is UNIQUE: a collision THROWS instead
+        // of overwriting (intended fix). The right behaviour, and the one
+        // that unmasked an id composed of `Date.now()` alone — two edits of
+        // the same entity in the same millisecond struck the same id, and the
+        // transaction failed on a perfectly legitimate case. The defect only
+        // showed under the full suite, fast enough for both calls to land in
+        // the same millisecond.
         vi.spyOn(Date, "now").mockReturnValue(1_700_000_000_000);
         try {
             await applyEdit({
@@ -261,11 +264,11 @@ describe("4.4 — écriture optimiste", () => {
         }
     });
 
-    // ── ②bis — une édition PARTIELLE ne détruit pas ce qu'elle n'apporte pas ─────────────
+    // ── ②bis — a PARTIAL edit does not destroy what it does not bring ────────────────────
     test("une modification sans géométrie CONSERVE celle du magasin", async () => {
-        // 🛑 Le cas réel, mesuré dans le produit : `updateExistingPoi` journalise « missing
-        // geometry » et met en file quand même. Renommer un point ne renvoie pas sa position ;
-        // écraser avec `undefined` la ferait disparaître.
+        // 🛑 The real case, measured in the product: `updateExistingPoi` logs
+        // "missing geometry" and enqueues anyway. Renaming a point does not
+        // resend its position; overwriting with `undefined` would make it vanish.
         const features = IndexedDB._ensureModule("Features");
         await features.put({
             layerId: "sites",
@@ -288,9 +291,10 @@ describe("4.4 — écriture optimiste", () => {
     });
 
     test("une CRÉATION sans position est refusée — garde sur un état inatteignable", async () => {
-        // Le formulaire porte un champ `latlng`, alimenté par le clic de placement : une
-        // création sans position n'existe pas dans le produit. Refuser ici ne perd donc aucune
-        // saisie — c'est ce qui distingue cette garde d'un refus de mise en file.
+        // The form carries a `latlng` field, fed by the placement click: a
+        // creation without a position does not exist in the product. Refusing
+        // here therefore loses no capture — what distinguishes this guard
+        // from an enqueue refusal.
         const report = await applyEdit({
             layerId: "sites",
             kind: "create",
@@ -301,7 +305,7 @@ describe("4.4 — écriture optimiste", () => {
         expect(await readAll("features")).toHaveLength(0);
     });
 
-    // ── ③ la suppression locale disparaît de la carte, sans perdre son `serverId` ─────────
+    // ── ③ the local deletion leaves the map, without losing its `serverId` ───────────────
     test("une suppression en attente sort de la lecture locale, mais garde son `serverId`", async () => {
         const features = IndexedDB._ensureModule("Features");
         await features.put({
@@ -316,19 +320,20 @@ describe("4.4 — écriture optimiste", () => {
 
         await applyEdit({ layerId: "sites", kind: "delete", localId: "srv:42" });
 
-        // Hors de la carte…
+        // Off the map…
         const collection = await IndexedDB.getLayerFeatureCollection("sites");
         expect(collection.features).toHaveLength(0);
 
-        // …mais toujours en base : l'entrée d'outbox ne porte que le `localId`, donc
-        // l'enregistrement est le SEUL endroit où le push trouvera quoi supprimer.
+        // …but still in the base: the outbox entry only carries the
+        // `localId`, so the record is the ONLY place the push will find what to delete.
         const stored = await readAll("features");
         expect(stored).toHaveLength(1);
         expect(stored[0].serverId).toBe("42");
-        // ⚠️ ET L'ENTITÉ ELLE-MÊME SURVIT. Cette ligne manquait à la première rédaction : la
-        // mutation qui remplaçait la géométrie conservée par `input.feature` — `undefined`
-        // pour une suppression — sortait VERTE. Le test n'éprouvait que le `serverId`, donc
-        // une suppression pouvait effacer la donnée en silence sans qu'il bronche.
+        // ⚠️ AND THE ENTITY ITSELF SURVIVES. This line was missing from the
+        // first draft: the mutation replacing the kept geometry with
+        // `input.feature` — `undefined` for a deletion — came out GREEN. The
+        // test only exercised the `serverId`, so a deletion could silently
+        // erase the data without it flinching.
         expect(stored[0].feature).toBeTruthy();
         expect(stored[0].feature.properties.title).toBe("rapatriée");
     });
@@ -364,15 +369,15 @@ describe("4.4 — écriture optimiste", () => {
         expect(ko.refused).toBe("deleteNotPermitted");
     });
 
-    // ── 5.9 / décision V1 — la sûreté par défaut, en trois gardes indissociables ─────────
+    // ── safe by default, in three inseparable guards ─────────────────────────────────────
     //
-    // 🛑 Elles ne se remplacent pas l'une l'autre, et c'est vérifié par mutation :
-    //   · la garde « muette » sort VERTE si le défaut devient `edition ? (x ?? true) : false`
-    //     — il faut « vide » pour l'attraper ;
-    //   · la garde « vide » sort VERTE si le défaut devient `!== false` — il faut « muette » ;
-    //   · ni l'une ni l'autre ne voit une clé qui en implique une autre — il faut
-    //     « update_seul ».
-    // Écrire une seule des trois donnerait une garde qui prétend tenir ce qu'elle ne tient pas.
+    // 🛑 They do not replace one another, and that is mutation-verified:
+    //   · the "muette" guard comes out GREEN if the default becomes
+    //     `edition ? (x ?? true) : false` — "vide" is needed to catch it;
+    //   · the "vide" guard comes out GREEN if the default becomes `!== false`
+    //     — "muette" is needed;
+    //   · neither sees a key implying another — "update_seul" is needed.
+    // Writing only one of the three would give a guard claiming to hold what it does not.
 
     test("une couche SANS bloc `edition` n'accorde rien — ni create, ni update, ni delete", async () => {
         const created = await applyEdit({

@@ -11,7 +11,7 @@ import "../cache/layer-selector/data-fetching.js";
 import "../cache/layer-selector/row-rendering.js";
 import { DownloadHandler } from "./download-handler.js";
 
-// Shared contract (S6.6) — the interfaces live in ./cache-control-types so every
+// Shared contract — the interfaces live in ./cache-control-types so every
 // sub-module imports them from a leaf, not from this assembler.
 import type { CacheControlOptions, CacheControlState } from "./cache-control-types.js";
 
@@ -64,7 +64,7 @@ function createCacheControl(options: CacheControlOptions = {}): IControl | null 
         _progressText: null,
 
         // Bind sub-module functions to this state instance.
-        // S6.6: command delegations (download/clear/sync) call the managers directly
+        // Command delegations (download/clear/sync) call the managers directly
         // from the assembler — cache-control-state no longer imports them.
         _buildStructure: () => buildStructure(self),
         _attachEventListeners: () => attachEventListeners(self),
@@ -122,7 +122,7 @@ function createCacheControl(options: CacheControlOptions = {}): IControl | null 
                     });
             }, 100);
 
-            return self._container!;
+            return self._container;
         },
 
         onRemove(_map: unknown): void {

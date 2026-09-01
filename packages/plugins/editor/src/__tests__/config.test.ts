@@ -181,16 +181,18 @@ describe("getEditorConfig — enabledTools filtering", () => {
     });
 });
 
-describe("B-161 — `getEditableLayers` lit la géométrie sur `geometry` COMME sur `geometryType`", () => {
+describe("`getEditableLayers` lit la géométrie sur `geometry` COMME sur `geometryType`", () => {
     /**
-     * 🛑 Le mode d'échec est celui que le TSDoc de `_acceptsGeometry` décrit lui-même comme
-     * dangereux. Il lisait `layer.geometryType` seul ; le schéma pose `geometryType` comme
-     * « alias of `geometry` » (ANO-007) et **18 des 24** configs du dépôt ne déclarent que
-     * `geometry`. Pour toutes celles-là `own` était falsy, la fonction retombait sur
-     * `return true`, et une couche POLYGONE devenait candidate au placement d'un POINT.
+     * 🛑 The failure mode is the one `_acceptsGeometry`'s own TSDoc describes
+     * as dangerous. It read `layer.geometryType` alone; the schema sets
+     * `geometryType` as "alias of `geometry`" (ANO-007) and **18 of the 24**
+     * configs in the repo declare only `geometry`. For all of those `own` was
+     * falsy, the function fell back to `return true`, and a POLYGON layer
+     * became a candidate for placing a POINT.
      *
-     * ⚠️ Chaque cas porte son témoin en `geometryType` : sans lui, la garde passerait aussi
-     * bien sur un filtre qui n'accepterait plus rien du tout.
+     * ⚠️ Each case carries its witness as `geometryType`: without it, the
+     * guard would pass just as well on a filter that no longer accepted
+     * anything at all.
      */
     const layer = (id: string, geom: Record<string, string>): Record<string, unknown> => ({
         id,
@@ -210,7 +212,7 @@ describe("B-161 — `getEditableLayers` lit la géométrie sur `geometry` COMME 
         ]);
 
         const ids = getEditableLayers("Point").map((l) => l.id);
-        // Le témoin était déjà écarté ; l'alias ne l'était PAS — c'était le défaut.
+        // The witness was already discarded; the alias was NOT — that was the defect.
         expect(ids).not.toContain("temoin_polygone");
         expect(ids).not.toContain("alias_polygone");
     });

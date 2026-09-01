@@ -10,20 +10,20 @@
  * and form builders enumerate active modules and capabilities, and read their declared
  * schemas, without coupling to the internal registries.
  *
- * Split rationale (S13.1): moved out of `modules/geoleaf.introspection.ts`, which is a
+ * Split rationale: moved out of `modules/geoleaf.introspection.ts`, which is a
  * public facade and must carry no logic (ARCHITECTURE.md §"Façades publiques"). The
  * `_registry` lookup below is that logic.
  *
  * ## Three seams, deliberately kept different
  *
- * The five methods are not homogeneous, and that is intentional — the S13.1 move was
+ * The five methods are not homogeneous, and that is intentional — the move was
  * iso-behaviour and did not unify them:
  *
  *  - **module queries** go through the late-bound `_registry` lookup, so they degrade
  *    to `null` / `[]` before boot completes (`app/boot-install.ts` writes it);
  *  - **capability queries** delegate straight to `CapabilityRegistry`, which is
  *    populated at declaration time and needs no pre-boot tolerance;
- *  - **the status query** (`getCapabilityStatus`, socle-init S9.4) delegates to
+ *  - **the status query** (`getCapabilityStatus`) delegates to
  *    `CapabilityRegistry` like the pair above, but hands it a late-bound config reader.
  *    It does not unify the first two seams — it composes a third, because "is it switched
  *    on?" is the only question here that needs both a registry and a config.
@@ -33,7 +33,7 @@
  * on the direct delegation (they call `CapabilityRegistry._reset()` then read back
  * through `Introspection`).
  *
- * ⚠️ This module holds the `kernel/ → app/` import that the S13.4 boundary study
+ * ⚠️ This module holds the `kernel/ → app/` import that a boundary study
  * records. It was not introduced here: it moved verbatim from the facade. The study's
  * conclusion is that `CapabilityRegistry` is misplaced rather than the boundary porous
  * — relocating it is deferred to S14, which rules on directory placement.

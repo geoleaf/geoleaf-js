@@ -1,58 +1,58 @@
 /**
- * Guard MFC — le manifeste livré embarque TOUTES les capacités in-core, et il le prouve
- * contre le disque plutôt que contre un nombre écrit à la main.
+ * Guard MFC — the shipped manifest embarks ALL the in-core capabilities, and
+ * it proves it against the disk rather than a hand-written number.
  *
- * ## Le défaut, mesuré
+ * ## The defect, measured
  *
- * Quatre en-têtes du dépôt annonçaient le nombre de capacités in-core, et **aucun n'était
- * juste** : `presets/manifest.full.ts` disait « 18 », `app/boot.ts` disait « 17 », et le
- * vrai compte était **21** (B-43, qui a retiré les deux). Restaient au 07/08/2026 —
- * socle-init 7.1 — `bundle-esm-entry.ts` (« all 18 ») et `kernel-exports.ts` (« all 17 »),
- * plus un cas pire : `kernel-exports.ts:37` annonçait **9** capacités à côté du nom de
- * `examples/minimal/entry.ts`, qui en embarque **6** — 9 étant le compte de `consumer`.
- * Une ligne qui pointe un fichier et donne le nombre d'un autre.
+ * Four headers in the repo announced the in-core capability count, and **none
+ * was right**: `presets/manifest.full.ts` said "18", `app/boot.ts` said "17",
+ * and the true count was **21** — both are removed. Remained on 07/08/2026 —
+ * `bundle-esm-entry.ts` ("all 18") and `kernel-exports.ts` ("all 17"), plus a
+ * worse case: `kernel-exports.ts` announced **9** capabilities next to the
+ * name of `examples/minimal/entry.ts`, which embarks **6** — 9 being
+ * `consumer`'s count. A line pointing at one file and giving another's number.
  *
- * ## Pourquoi une garde, et pas une correction de plus
+ * ## Why a guard, and not one more fix
  *
- * Un nombre en prose est une **seconde source de vérité** : il ne peut que diverger, et sa
- * divergence est indiscernable de la justesse pour tout outil du dépôt. La doctrine B-43 est
- * donc de **ne pas l'écrire** — c'est ce que font désormais les quatre en-têtes. Ce qui reste
- * à tenir, c'est la promesse elle-même : *« l'entrée livrée embarque tout »*. Elle se tient
- * ici, contre `readdirSync`.
+ * A number in prose is a **second source of truth**: it can only diverge, and
+ * its divergence is indistinguishable from correctness for every tool in the
+ * repo. The doctrine is therefore **not to write it** — which the four
+ * headers now do. What remains to hold is the promise itself: *"the shipped
+ * entry embarks everything"*. It is held here, against `readdirSync`.
  *
- * ⚠️ Ce que la garde attrape vraiment n'est pas le commentaire — c'est **une capacité qui
- * existe sur le disque et que le manifeste n'embarque pas**. Elle serait alors absente du
- * bundle livré, silencieusement : aucun test de capacité ne rougit pour une capacité qu'on
- * n'a jamais installée.
+ * ⚠️ What the guard really catches is not the comment — it is **a capability
+ * that exists on disk and the manifest does not embark**. It would then be
+ * absent from the shipped bundle, silently: no capability test turns red for
+ * a capability never installed.
  *
- * ## Les trois règles
+ * ## The three rules
  *
- *   MFC-01  **Aucune capacité orpheline.** Tout répertoire de `src/capabilities/` portant un
- *           `install.ts` doit voir son installer dans `FULL.capabilities`.
- *   MFC-02  **Aucun installer fantôme.** Réciproquement, tout membre de `FULL.capabilities`
- *           doit venir d'un `install.ts` présent sur le disque — sinon le manifeste embarque
- *           une capacité que le répertoire ne porte plus.
- *   MFC-03  **Le corpus ne peut pas être vide.** Une garde verte qui n'a rien scanné est le
- *           pire des résultats — même classe que DIST-03, JTD-03 et EOD-03. Ici le piège est
- *           réel : un glob qui cesse de matcher rendrait `{}`, et les deux règles au-dessus
- *           passeraient sur l'ensemble vide.
+ *   MFC-01  **No orphan capability.** Every `src/capabilities/` directory
+ *           carrying an `install.ts` must see its installer in `FULL.capabilities`.
+ *   MFC-02  **No ghost installer.** Reciprocally, every member of
+ *           `FULL.capabilities` must come from an `install.ts` present on
+ *           disk — otherwise the manifest embarks a capability the directory
+ *           no longer carries.
+ *   MFC-03  **The corpus cannot be empty.** A green guard that scanned
+ *           nothing is the worst outcome — same class as DIST-03, JTD-03 and
+ *           EOD-03. Here the trap is real: a glob that stops matching would
+ *           return `{}`, and the two rules above would pass on the empty set.
  *
- * ## Preuve par mutation — à rejouer avant de croire cette garde
+ * ## Proof by mutation — to replay before believing this guard
  *
  * `mkdir packages/core/src/capabilities/__fake22__ && cp …/scale/install.ts …/__fake22__/`
- * doit faire rougir **MFC-01** en nommant `__fake22__`. Vu rouge le 07/08/2026 à la pose.
- * Le retrait d'une ligne de `FULL.capabilities` doit le faire rougir de même.
+ * must turn **MFC-01** red naming `__fake22__`. Seen red on 07/08/2026 at the
+ * pose. Removing a line from `FULL.capabilities` must turn it red likewise.
  *
- * @see roadmap_socle-init.md 📦 (archivée le 09/08/2026) §Sprint 7, tâche 7.1
  * @see packages/core/src/presets/manifest.full.ts — le sujet
  */
 import { describe, expect, it } from "vitest";
 
 const { FULL } = await import("../../src/presets/manifest.full.ts");
 
-// Glob statique : les modules sont énumérés au transform, donc un répertoire de capacité qui
-// disparaît ne peut pas être silencieusement sauté par un import dynamique qui échoue. Même
-// patron que `doc-capability-config.guard.test.js`.
+// Static glob: the modules are enumerated at transform, so a vanishing
+// capability directory cannot be silently skipped by a failing dynamic
+// import. Same pattern as `doc-capability-config.guard.test.js`.
 const INSTALL_MODULES = import.meta.glob("../../src/capabilities/*/install.ts");
 
 /** `../../src/capabilities/<nom>/install.ts` → `<nom>`. */
@@ -61,11 +61,12 @@ function capabilityDirOf(globKey) {
 }
 
 /**
- * L'unique installer exporté par un `install.ts`.
+ * The single installer an `install.ts` exports.
  *
- * Chacun n'en exporte qu'un (`<NOM>_INSTALLER`), mais on ne se fie pas au NOM : le dériver du
- * répertoire re-introduirait exactement la convention implicite que cette garde existe pour
- * ne pas avoir à supposer. On prend l'export qui porte une `declaration`.
+ * Each exports only one (`<NAME>_INSTALLER`), but we do not trust the NAME:
+ * deriving it from the directory would reintroduce exactly the implicit
+ * convention this guard exists not to have to assume. We take the export
+ * carrying a `declaration`.
  */
 function installerOf(mod, dir) {
     const found = Object.values(mod).filter(
@@ -81,9 +82,9 @@ function installerOf(mod, dir) {
 
 describe("MFC — manifeste livré ↔ répertoires de capacités (lus sur le disque)", () => {
     it("MFC-03 — le corpus scanné n'est pas vide", () => {
-        // Anti-gate-vide : si le glob cesse de matcher (déplacement de `capabilities/`,
-        // renommage de `install.ts`), les deux règles suivantes passeraient sur l'ensemble
-        // vide et cette garde sortirait verte en ne gardant plus rien.
+        // Anti-empty-gate: if the glob stops matching (`capabilities/` moved,
+        // `install.ts` renamed), the next two rules would pass on the empty
+        // set and this guard would come out green guarding nothing any more.
         expect(Object.keys(INSTALL_MODULES).length).toBeGreaterThan(0);
         expect(FULL.capabilities.length).toBeGreaterThan(0);
     });
@@ -124,9 +125,114 @@ describe("MFC — manifeste livré ↔ répertoires de capacités (lus sur le di
     });
 
     it("les deux ensembles ont donc la même taille — le compte n'est écrit nulle part", () => {
-        // ⚠️ Cette assertion n'écrit PAS le nombre (B-43). Elle le dérive des deux côtés, ce
-        // qui est précisément la différence entre « structurellement vrai » et « vrai le jour
-        // où quelqu'un l'a tapé ».
+        // ⚠️ This assertion does NOT write the number. It derives it from both
+        // sides, which is precisely the difference between "structurally
+        // true" and "true the day someone typed it".
         expect(FULL.capabilities.length).toBe(Object.keys(INSTALL_MODULES).length);
+    });
+
+    /**
+     * MFC-04 — the THIRD extractor of `FULL.capabilities` is finally cross-checked.
+     *
+     * 🛑 The repo carries **three** independent extractors of the same array,
+     * and until now only two held each other:
+     *   ① `manifestOrder()` from `scripts/gen-entry.cjs` — TEXTUAL read of
+     *      `manifest.full.ts`, bounded by bracket depth, comments removed;
+     *   ② `capabilitiesImportedBy()` from `scripts/check-example-bundle.cjs`
+     *      — regex over the `capabilities/<id>/install.js` imports;
+     *   ③ the real import of `FULL.capabilities`, above.
+     * **GEN-04 holds ① against ③. ② was held by nothing** — exactly the kind
+     * of oracle that diverges with nothing turning red.
+     *
+     * ⚠️ **The function is IMPORTED, not reimplemented.** Rewriting its logic
+     * here would create a **fourth** extractor — the very defect this rule
+     * treats. `require()` of the script is side-effect free: its execution is
+     * gated by `require.main === module`.
+     *
+     * 🔗 **Prerequisite of publishing the preset.** Publishing the preset
+     * moves `check-example-bundle.cjs`'s reference point. One does not move
+     * an oracle known to have two other unaligned peers: they get aligned first.
+     *
+     * 📌 What this rule concretely catches: ② does **not** strip comments,
+     * where ① deliberately does. A `capabilities/<id>/install.js` cited in a
+     * `manifest.full.ts` comment — a `@see`, an example, a history line —
+     * would over-count ② with neither of the other two moving. Measured at
+     * the pose: **0** such mentions today, the 21 occurrences all being real imports.
+     */
+    it("MFC-04 — l'extracteur de `check-example-bundle.cjs` voit le même manifeste que l'import", async () => {
+        const { createRequire } = await import("node:module");
+        const path = await import("node:path");
+        const fs = await import("node:fs");
+
+        // ⚠️ Resolution by cwd, NOT by `import.meta.url`: under Vitest the
+        // latter is not a `file:` URL (Vite serves the modules), and
+        // `fileURLToPath` throws `ERR_INVALID_URL_SCHEME`. Measured at the
+        // pose, on 17/08/2026.
+        //
+        // 🛑 BUT THE CWD IS NOT `packages/core` EVERYWHERE, and the first
+        // draft assumed it. `turbo run test` launches vitest PER PACKAGE (cwd
+        // = the package); `ci.yml` launches `npx vitest run` in workspace
+        // mode FROM THE ROOT. The `../..` climb then exited two levels ABOVE
+        // the repo — measured on 18/08/2026 on the runner:
+        // `/home/runner/work/scripts/check-example-bundle.cjs`, not found.
+        //
+        // ⚠️ And the guard had never been EXERCISED remotely: the previous
+        // runs died before reaching the unit tests. It had thus been red
+        // since its pose, with nothing able to say so. The root is now
+        // SEARCHED for, no longer assumed: we climb to `turbo.json`, which
+        // exists only at the repo root (verified).
+        const findRepoRoot = (from: string): string => {
+            let dir = from;
+            for (;;) {
+                if (fs.existsSync(path.join(dir, "turbo.json"))) return dir;
+                const up = path.dirname(dir);
+                if (up === dir) {
+                    throw new Error(
+                        `racine du dépôt introuvable depuis ${from} — aucun \`turbo.json\` en remontant. ` +
+                            `Sans elle, cette règle comparerait deux listes vides et sortirait verte.`
+                    );
+                }
+                dir = up;
+            }
+        };
+        const REPO = findRepoRoot(process.cwd());
+        const CORE = path.join(REPO, "packages", "core");
+        const SCRIPT_CJS = path.join(REPO, "scripts", "check-example-bundle.cjs");
+        const MANIFEST_ABS = path.join(CORE, "src", "presets", "manifest.full.ts");
+
+        // Both paths are ASSERTED: a wrong path would yield two empty lists,
+        // and this rule would come out green having cross-checked nothing at all.
+        expect(fs.existsSync(SCRIPT_CJS), `script introuvable : ${SCRIPT_CJS}`).toBe(true);
+        expect(fs.existsSync(MANIFEST_ABS), `manifeste introuvable : ${MANIFEST_ABS}`).toBe(true);
+
+        const requireCjs = createRequire(path.join(CORE, "package.json"));
+        const { capabilitiesImportedBy } = requireCjs(SCRIPT_CJS);
+
+        /** ② — what the tree-shaking proof script's extractor sees. */
+        const parLeTexte = [...capabilitiesImportedBy(MANIFEST_ABS)].sort();
+
+        /** ③ — the directories whose installer really is in `FULL.capabilities`. */
+        const embarques = new Set(FULL.capabilities);
+        const parLImport = [];
+        for (const [key, load] of Object.entries(INSTALL_MODULES)) {
+            const dir = capabilityDirOf(key);
+            if (embarques.has(installerOf(await load(), dir))) parLImport.push(dir);
+        }
+        parLImport.sort();
+
+        // Anti-empty-gate: without it, a wrong path to the script or the
+        // manifest would yield two empty lists and this rule would come out
+        // green having cross-checked nothing at all.
+        expect(parLeTexte.length).toBeGreaterThan(0);
+
+        expect(
+            parLeTexte,
+            `Les deux extracteurs de \`FULL.capabilities\` ne voient pas la même chose.\n` +
+                `  ② par le TEXTE (check-example-bundle.cjs) : ${parLeTexte.join(", ")}\n` +
+                `  ③ par l'IMPORT (ce fichier)                : ${parLImport.join(", ")}\n` +
+                `Le script de preuve de tree-shaking juge donc un univers de capacités différent ` +
+                `de celui que le bundle embarque réellement — son verdict porte sur autre chose ` +
+                `que ce qu'il annonce.`
+        ).toEqual(parLImport);
     });
 });

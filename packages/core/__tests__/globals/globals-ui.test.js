@@ -19,10 +19,11 @@ vi.mock("../../src/kernel/layer-manager/style-selector.ts", () => ({
 }));
 vi.mock("../../src/kernel/themes/theme-cache.ts", () => ({ ThemeCache: stub }));
 vi.mock("../../src/kernel/themes/theme-loader.ts", () => ({ ThemeLoader: stub }));
-// theme-selector migrated to capabilities/theme-selector/install.ts (S2 Lot 8).
-// ⚠️ Même cas qu'à `globals-geojson.test.js` : `ThemeApplierCore` est importé par le module
-// sous test, le mock vide le rendait `undefined` via le shim `require()`, et le mocker natif
-// refuse un export non déclaré. L'intention du mock vide est de neutraliser.
+// theme-selector migrated to capabilities/theme-selector/install.ts.
+// ⚠️ Same case as in `globals-geojson.test.js`: `ThemeApplierCore` is
+// imported by the module under test, the empty mock returned it `undefined`
+// through the `require()` shim, and the native mocker refuses an undeclared
+// export. The empty mock's intent is to neutralise.
 vi.mock("../../src/kernel/themes/theme-applier/core.ts", () => ({
     ThemeApplierCore: undefined,
 }));

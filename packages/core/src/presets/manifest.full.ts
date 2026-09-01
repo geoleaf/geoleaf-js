@@ -8,15 +8,15 @@
 /**
  * Runtime manifest of the **shipped bundle** — every in-core capability, in load order.
  *
- * ⚠️ The count is deliberately NOT written here (B-43): this file IS the registry, so any
+ * ⚠️ The count is deliberately NOT written here: this file IS the registry, so any
  * number in its own header is a second source of truth that can only drift from the array
  * below. It said « 18 » for 21 entries.
  *
  * The ordered list of capability installers `dist/geoleaf.esm.js` composes on top of the
- * le noyau fixe (**6 modules** enregistrés par `app/boot-install.ts` : `core-map`, `config`,
- * `shared`, `geojson`, `ui`, `theme-engine` — ARCHI S5 (5.4) : ce bloc annonçait « 8 »,
- * en y comptant `api` et `security`, qui sont des sous-systèmes de façade seule et non
- * des modules du registre). `bootWithPreset()` iterates it in a single 2-pass loop (declarations,
+ * the fixed kernel (**6 modules** registered by `app/boot-install.ts`: `core-map`, `config`,
+ * `shared`, `geojson`, `ui`, `theme-engine` — this block used to say "8", counting
+ * `api` and `security`, which are facade-only subsystems and not registry modules).
+ * `bootWithPreset()` iterates it in a single 2-pass loop (declarations,
  * then gated modules), and `SharedModule` walks it for the app-global lifecycles.
  *
  * **This is the only manifest GeoLeaf ships, and it embarks everything** — the library is
@@ -31,7 +31,7 @@
  *   - `theme-selector` last — same Kahn tie-break (deps `["geojson"]`, like legend and
  *     filter), which keeps the `geoleaf:app:ready` listener order stable.
  *
- * ⚠️ The count is gone from that line too (B-43, same reason as the header above): the list IS
+ * ⚠️ The count is gone from that line too (same reason as the header above): the list IS
  * the registry, and « three distinct ways » was a second copy of it that had already drifted
  * once — see the two notes below. Writing « two » would reproduce the defect one notch along.
  *
@@ -94,21 +94,21 @@ import { THEME_PALETTE_INSTALLER } from "../capabilities/theme-palette/install.j
 export const FULL: PresetManifest = {
     id: "full",
     capabilities: [
-        // ── S2 Batch 1 ──
+        // ── Batch 1 ──
         LABELS_INSTALLER,
-        // ── S2 Batch 2 (simple UI controls: 5 map controls) ──
+        // ── Batch 2 (simple UI controls: 5 map controls) ──
         BRANDING_INSTALLER,
         COORDINATES_INSTALLER,
         THEME_TOGGLE_INSTALLER,
         SCALE_INSTALLER,
         GEOLOCATION_INSTALLER,
-        // ── S2 Batch 3 (simple API capabilities) — order mirrors the historical boot declaration
+        // ── Batch 3 (simple API capabilities) — order mirrors the historical boot declaration
         // block (taxonomy → feature-info → cluster), so introspection insertion-order
         // is byte-identical. `cluster` carries no createModule (policy capability).
         TAXONOMY_INSTALLER,
         FEATURE_INFO_INSTALLER,
         CLUSTER_INSTALLER,
-        // ── S2 Batch 4 (multi-layer) — toast-renderer BEFORE legend: mirrors the legacy
+        // ── Batch 4 (multi-layer) — toast-renderer BEFORE legend: mirrors the legacy
         // relative order of both their declarations and their gated modules. Note the
         // migrated pair now precedes the still-legacy filter / theme-selector / route
         // (Pass 1 runs before the legacy block) — no test or runtime consumer depends
@@ -118,14 +118,14 @@ export const FULL: PresetManifest = {
         // not a consequence of this list. See the ⚠️ note in the file header.)
         TOAST_RENDERER_INSTALLER,
         LEGEND_INSTALLER,
-        // ── S2 Batch 5 — route BEFORE filter: the legacy boot registered the route module
+        // ── Batch 5 — route BEFORE filter: the legacy boot registered the route module
         // first (boot.ts gate block), and the Kahn topo-sort tie-breaks on registration
         // order (both depend on `geojson`) → keeping this order keeps the init order
         // byte-identical. (ROUTE_INSTALLER used to also contribute `filterRouteList` to a
-        // filter seam at import time; that seam left with `GeoLeaf.Filters` at S4.5.)
+        // filter seam at import time; that seam left with `GeoLeaf.Filters`.)
         ROUTE_INSTALLER,
         FILTER_INSTALLER,
-        // ── S2 Batch 6 — permalink here: it carries share's module, and the legacy boot
+        // ── Batch 6 — permalink here: it carries share's module, and the legacy boot
         // registered ShareModule last.
         // ⚠️ Its position is NO LONGER load-bearing. The reason written here was « the mobile
         // toolbar renders its pills in ModuleRegistry insertion order […] → keeping share last
@@ -134,38 +134,38 @@ export const FULL: PresetManifest = {
         // `mobile-toolbar-pill.ts` reads instead. Kept where it is because moving it buys
         // nothing, not because moving it would break the toolbar.
         PERMALINK_INSTALLER,
-        // ── S2 Batch 7 — app-global capabilities with no ICoreModule: their lifecycles are
+        // ── Batch 7 — app-global capabilities with no ICoreModule: their lifecycles are
         // driven by `shared.module` (#7 pwa → #8 offline), untouched. Position is free
         // (no module, no mobileIcon). OFFLINE_INSTALLER also carries the static edge to
         // `geoleaf.sync.ts`, whose import-time self-mount `GeoLeaf.Sync` must stay in the
         // closure (data plugins register their sync handler before boot completes).
         PWA_INSTALLER,
         OFFLINE_INSTALLER,
-        // ── S2 Batch 8 (closing batch) — theme-selector LAST: the legacy boot registered its
+        // ── Batch 8 (closing batch) — theme-selector LAST: the legacy boot registered its
         // declaration and its module after every other one, and the Kahn topo-sort
         // tie-breaks on registration order (deps ["geojson"], like legend and filter) →
         // keeping it last keeps the `geoleaf:app:ready` listener order byte-identical.
         THEME_SELECTOR_INSTALLER,
-        // ── S5 — vector-tiles, appended AFTER theme-selector on purpose. It owns no module
+        // ── vector-tiles, appended AFTER theme-selector on purpose. It owns no module
         // and no mobileIcon, so its position is free for both the topo-sort and the toolbar;
         // appending keeps every other capability's registration index unchanged (introspection
         // insertion order is observable). Policy capability, like `cluster`: the GeoJSON loader
         // pulls it through the service locator, and falls back to plain GeoJSON without it.
         VECTOR_TILES_INSTALLER,
-        // ── S1 sélecteurs UI — profile-switcher, appended LAST for the same reason
+        // ── UI selectors — profile-switcher, appended LAST for the same reason
         // vector-tiles was: it declares no mobileIcon, and its module only subscribes to
         // the layer-manager panel seam (deps ["geojson"], like legend and filter), so its
         // position is free for both the topo-sort and the toolbar. Appending keeps every
         // other capability's registration index unchanged — introspection insertion order
         // is observable, and the golden-master asserts on it.
         PROFILE_SWITCHER_INSTALLER,
-        // ── S2 sélecteurs UI — language-switcher, appended after profile-switcher for the
+        // ── UI selectors — language-switcher, appended after profile-switcher for the
         // same reason: no mobileIcon, module deps ["geojson"], so its position is free and
         // appending leaves every prior registration index untouched.
         LANGUAGE_SWITCHER_INSTALLER,
-        // ── S3 sélecteurs UI — theme-palette, appendu en dernier. Même raison : aucun
-        // mobileIcon, module deps ["geojson"], donc position libre et aucun index
-        // antérieur ne bouge.
+        // ── UI selectors — theme-palette, appended last. Same reason: no mobileIcon,
+        // module deps ["geojson"], so its position is free and no prior registration
+        // index moves.
         THEME_PALETTE_INSTALLER,
     ],
 };

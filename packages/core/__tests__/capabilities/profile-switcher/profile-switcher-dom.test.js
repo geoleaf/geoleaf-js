@@ -10,15 +10,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { Config } = await import("../../../src/kernel/config/config-primitives.ts");
-const { createProfileSelect, syncProfileSelect, PROFILE_SWITCHER_CLASS } = await import(
-    "../../../src/capabilities/profile-switcher/profile-select.ts"
-);
-const { switchToProfile, PROFILE_STORAGE_KEY } = await import(
-    "../../../src/capabilities/profile-switcher/profile-switch.ts"
-);
-const { ProfileSwitcherLifecycle } = await import(
-    "../../../src/capabilities/profile-switcher/lifecycle.ts"
-);
+const { createProfileSelect, syncProfileSelect, PROFILE_SWITCHER_CLASS } =
+    await import("../../../src/capabilities/profile-switcher/profile-select.ts");
+const { switchToProfile, PROFILE_STORAGE_KEY } =
+    await import("../../../src/capabilities/profile-switcher/profile-switch.ts");
+const { ProfileSwitcherLifecycle } =
+    await import("../../../src/capabilities/profile-switcher/lifecycle.ts");
 const { emitLayerManagerPanel } = await import("../../../src/kernel/layer-manager/panel-seam.ts");
 
 const PROFILES = [

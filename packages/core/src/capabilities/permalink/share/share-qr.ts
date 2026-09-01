@@ -36,8 +36,9 @@ async function _loadQrcode(): Promise<QrFactory> {
             // qrcode-generator v2 ships dual ESM/CJS: the ESM build exposes the
             // factory as the default export. Fall back to the namespace itself
             // for bundlers that surface it directly (CJS interop edge cases).
-            const factory = ((mod as unknown as { default?: QrFactory }).default ??
-                (mod as unknown as QrFactory)) as QrFactory;
+            const factory =
+                (mod as unknown as { default?: QrFactory }).default ??
+                (mod as unknown as QrFactory);
             _qrcodeFactory = factory;
             return factory;
         });

@@ -2,62 +2,71 @@
 /**
  * BUILD-DET: two identical builds must produce identical artefacts.
  *
- * ## Ce que ce gate surveille
+ * ## What this gate watches
  *
- * Le build de `@geoleaf/core` produisait 7 chunks dont le NOM changeait à chaque
- * build, pour un contenu byte-à-byte identique (`.js` et `.js.map`). Cause :
- * `rollup-plugin-postcss@4.0.2` sérialise une **Map** dans son `augmentChunkHash`,
- * donc dans l'ordre de transformation des modules CSS — qui n'est pas stable.
- * Rollup ajoute cette valeur au hash de CHAQUE chunk.
+ * The `@geoleaf/core` build produced 7 chunks whose NAME changed at every build,
+ * for byte-for-byte identical content (`.js` and `.js.map`). Cause:
+ * `rollup-plugin-postcss@4.0.2` serialises a **Map** in its `augmentChunkHash`,
+ * hence in the CSS modules' transformation order — which is not stable. Rollup
+ * adds that value to EVERY chunk's hash.
  *
- * Le correctif vit dans `packages/build-config/rollup.mjs` (`withStableChunkHash`).
- * Ce gate existe parce qu'un correctif de non-déterminisme ne se voit pas : rien ne
- * casse quand il disparaît, le build reste vert, et on ne le remarque qu'en
- * observant des caches qui n'accrochent plus.
+ * The fix lives in `packages/build-config/rollup.mjs` (`withStableChunkHash`).
+ * This gate exists because a non-determinism fix cannot be seen: nothing breaks
+ * when it disappears, the build stays green, and one only notices by observing
+ * caches that no longer hit.
  *
- * ## Ce que le non-déterminisme coûte, et pourquoi ça vaut un gate
+ * ## What non-determinism costs, and why it is worth a gate
  *
- *  - cache Turborepo invalidé à chaque build (rien n'est jamais réutilisable) ;
- *  - `deploy/` qui diffère à chaque génération sans un seul changement de code —
- *    donc un diff de déploiement illisible ;
- *  - cache navigateur cassé sur des chunks identiques, soit l'inverse exact de ce
- *    à quoi sert un hash de contenu ;
- *  - toute vérification « dist byte-à-byte identique » devient impossible, et c'est
- *    précisément l'outil qui a prouvé la neutralité des refactos ARCHI S9.
+ *  - Turborepo cache invalidated at every build (nothing ever reusable);
+ *  - a `deploy/` differing at every generation without a single code change —
+ *    hence an unreadable deployment diff;
+ *  - browser cache broken on identical chunks, the exact inverse of what a
+ *    content hash is for;
+ *  - any "dist byte-for-byte identical" verification becomes impossible, and it
+ *    is precisely the tool that proved the refactors' neutrality.
  *
  * ## Usage
  *
- *   node scripts/check-build-determinism.cjs            # 2 builds, compare tout
+ *   node scripts/check-build-determinism.cjs            # 2 builds, compares everything
  *   node scripts/check-build-determinism.cjs --package @geoleaf-plugins/table
  *   node scripts/check-build-determinism.cjs --deploy    # 2 `build:deploy`, compare `deploy/`
- *   node scripts/check-build-determinism.cjs --deploy --reuse-built   # 1 seul build (câblé en CI)
+ *   node scripts/check-build-determinism.cjs --deploy --reuse-built   # 1 single build (wired in ci:local)
  *
- * ## Le mode `--deploy` (S5.8)
+ * ⚠️ **"wired in CI" was WRONG until 2026-08-26, and in the direction that misleads.**
+ * This gate is wired in `ci:local` only (`package.json` → `check:determinism:deploy:ci`,
+ * `ci-local.cjs`); `grep -n determinism .github/workflows/ci.yml` renders **nothing**.
+ * It is a deliberate local-only leaf — exactly what the CI-parity gate reports in its
+ * non-blocking direction — not an omission. Reading "CI" as the remote workflow made
+ * one believe a determinism regression would be caught on push. It would not.
  *
- * 🛑 **Le mode par défaut ne voit JAMAIS `deploy/`** — il bâtit `@geoleaf/core` par
- * `npx rollup -c` et compare `packages/core/dist/`. Or le non-déterminisme le plus coûteux ne
- * vivait pas là : `build-deploy.cjs` posait un `?v=<Date.now()>` sur l'entrée et les plugins,
- * et un `CACHE_VERSION` horodaté sur le service worker. Deux déploiements de la même source
- * produisaient donc des URL différentes pour des octets identiques — ~101 Ko gz re-téléchargés
- * à chaque mise en ligne, et un pré-cache intégralement reconstitué à chaque `activate`.
+ * ## The `--deploy` mode
  *
- * ⚠️ **La gate annoncée à la roadmap ne regardait que les `?v=`, et elle serait sortie VERTE
- * sur un déploiement toujours cassé** : le `CACHE_VERSION` aurait continué de changer, donc
- * `activate` de purger, donc l'install de tout refetcher — le gain du `?v=` haché annulé, sans
- * qu'aucune assertion ne bouge. Ce mode compare **tout le déployé**, `sw-core.js` compris.
+ * 🛑 **The default mode NEVER sees `deploy/`** — it builds `@geoleaf/core` through
+ * `npx rollup -c` and compares `packages/core/dist/`. Yet the costliest
+ * non-determinism did not live there: `build-deploy.cjs` set a `?v=<Date.now()>`
+ * on the entry and the plugins, and a timestamped `CACHE_VERSION` on the service
+ * worker. Two deployments of the same source thus produced different URLs for
+ * identical bytes — ~101 KB gz re-downloaded at every release, and a pre-cache
+ * fully rebuilt at every `activate`.
  *
- * Coûteux par construction (deux builds complets), donc PAS câblé en pre-commit — ni, pour la
- * même raison, dans le chemin par défaut de `ci:local` : `--deploy` enchaîne deux
- * `build:deploy` entiers, ce qui ajouterait plusieurs minutes à chaque run.
+ * ⚠️ **The gate as first announced looked only at the `?v=`, and it would have
+ * gone GREEN on a still-broken deployment**: the `CACHE_VERSION` would have kept
+ * changing, hence `activate` purging, hence the install refetching everything —
+ * the hashed `?v=` gain cancelled, with no assertion moving. This mode compares
+ * **the whole deploy**, `sw-core.js` included.
  *
- * ⚠️ **Une gate que personne ne lance ne garde rien.** Les deux moments où celle-ci doit être
- * exécutée, et où son absence coûterait le plus :
- *   - avant une release / une mise en ligne — c'est là que le non-déterminisme se paie, en
- *     re-téléchargements inutiles chez tous les visiteurs ;
- *   - après toute modification de `rollup.config.mjs`, de `build-deploy.cjs` ou de
- *     `lib/bundle-profiles.cjs` — les trois endroits d'où sont venues les trois sources de
- *     non-déterminisme trouvées à ce jour.
- * Elle est portée par la revue finale de la roadmap socle-init (S11).
+ * Costly by construction (two full builds), hence NOT wired in pre-commit — nor,
+ * for the same reason, in `ci:local`'s default path: `--deploy` chains two full
+ * `build:deploy`, which would add several minutes to every run.
+ *
+ * ⚠️ **A gate nobody launches guards nothing.** The two moments where this one
+ * must be executed, and where its absence would cost the most:
+ *   - before a release / going live — that is where non-determinism gets paid,
+ *     in useless re-downloads for every visitor;
+ *   - after any change to `rollup.config.mjs`, `build-deploy.cjs` or
+ *     `lib/bundle-profiles.cjs` — the three places the three known
+ *     non-determinism sources came from.
+ * It is carried by the final release review.
  */
 
 "use strict";
@@ -74,17 +83,18 @@ const C = { r: "\x1b[31m", g: "\x1b[32m", d: "\x1b[2m", c: "\x1b[36m", x: "\x1b[
 const DEPLOY_MODE = process.argv.includes("--deploy");
 
 /**
- * Prend le `deploy/` PRÉSENT comme premier build, au lieu d'en faire un.
+ * Takes the PRESENT `deploy/` as the first build, instead of making one.
  *
- * 🛑 **C'est ce qui rend la gate câblable.** En deux builds elle coûte ~100 s ; `ci:local`
- * bâtit DÉJÀ `deploy/` à l'étape « Build deploy variants », juste avant. Repartir de ce
- * résultat ramène le coût à **un seul build (~50 s)** — la différence entre une gate qu'on
- * câble et une gate qu'on réserve à un drapeau, c'est-à-dire qu'on n'exécute jamais.
+ * 🛑 **This is what makes the gate wirable.** At two builds it costs ~100 s;
+ * `ci:local` ALREADY builds `deploy/` at the "Build deploy variants" step, right
+ * before. Starting from that result brings the cost to **a single build
+ * (~50 s)** — the difference between a gate one wires and a gate reserved to a
+ * flag, i.e. never executed.
  *
- * ⚠️ **N'a de sens qu'IMMÉDIATEMENT après un build.** Sur un `deploy/` périmé, la comparaison
- * oppose l'ancien au neuf : le rouge serait réel (le déployé ne correspond pas aux sources)
- * mais son message parlerait de déterminisme, ce qui enverrait chercher au mauvais endroit.
- * Hors de ce couplage, employer `--deploy` seul.
+ * ⚠️ **Only makes sense IMMEDIATELY after a build.** On a stale `deploy/`, the
+ * comparison pits old against new: the red would be real (the deploy does not
+ * match the sources) but its message would speak of determinism, sending the
+ * search to the wrong place. Outside that coupling, use `--deploy` alone.
  */
 const REUSE_BUILT = process.argv.includes("--reuse-built");
 
@@ -138,13 +148,13 @@ function build(label) {
 const DEPLOY_DIR = path.join(registry.ROOT, "deploy");
 
 /**
- * Empreinte de `deploy/`, hors artefacts pré-compressés.
+ * `deploy/`'s fingerprint, pre-compressed artifacts excluded.
  *
- * ⚠️ `.gz`/`.br` sont exclus : leur en-tête peut porter un horodatage selon l'implémentation,
- * ce qui rendrait la gate rouge sur une propriété qui n'est pas celle qu'on mesure. Leur source
- * est comparée, donc une divergence réelle se voit quand même.
- * ⚠️ `deploy-coverage/` est exclu : il est produit par un AUTRE script, à partir d'un build
- * instrumenté, et n'est pas ce que `build:deploy` génère.
+ * ⚠️ `.gz`/`.br` are excluded: their header can carry a timestamp depending on
+ * the implementation, which would redden the gate on a property that is not the
+ * measured one. Their source is compared, so a real divergence still shows.
+ * ⚠️ `deploy-coverage/` is excluded: it is produced by ANOTHER script, from an
+ * instrumented build, and is not what `build:deploy` generates.
  */
 function snapshotDeploy() {
     /** @type {Record<string,string>} */
@@ -204,7 +214,7 @@ if (DEPLOY_MODE) {
 }
 
 if (Object.keys(a).length === 0) {
-    // Anti-gate-vide : deux répertoires vides sont « identiques » et ne prouvent rien.
+    // Anti-empty-gate: two empty directories are "identical" and prove nothing.
     console.error(`${C.r}✗ BUILD-DET : aucun fichier scanné — le périmètre est vide.${C.x}`);
     process.exit(1);
 }

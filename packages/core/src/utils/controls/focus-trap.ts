@@ -21,11 +21,11 @@
  * lets it through. The two are NOT merged on purpose — `packages/core` depends
  * on neither, so merging changes the dependency graph, and the visibility
  * difference cannot be verified under happy-dom (see the `offsetParent` note
- * below). Blocked on the browser verification pass (roadmap_backlog-residuel
- * R.7). The full comparison lives in the host-runtime file's header.
+ * below). Blocked on a browser verification pass. The full comparison lives in
+ * the host-runtime file's header.
  *
  * ⚠️ This paragraph said `@geoleaf/field-renderer` until 06/08/2026: decision W3
- * (Sprint 6, S6b / B-144) moved that trap to `host-runtime`, which owns the UI
+ * moved that trap to `host-runtime`, which owns the UI
  * plumbing. The motive for keeping the two apart is unchanged — only the address
  * moved. Corrected here because a comment that names a file which no longer holds
  * what it describes is the C5 counter of the completeness clause, and no gate can

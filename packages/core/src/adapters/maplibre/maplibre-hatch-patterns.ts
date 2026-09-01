@@ -170,7 +170,7 @@ export function registerHatchPattern(
  * still return `null` from `getContext("2d")` for want of a 2D backend (happy-dom ≥ 20.11.0
  * does exactly this without a `canvasAdapter`). {@link generateHatchImage} asserts the context
  * non-null, so existence-only detection turned that case into a `TypeError`. Measured
- * 15/08/2026, backlog B-258. Repeating `getContext("2d")` on one surface returns the same
+ * 15/08/2026. Repeating `getContext("2d")` on one surface returns the same
  * context — the probe is free and side-effect-free.
  */
 function _createCanvas(width: number, height: number): OffscreenCanvas | HTMLCanvasElement {

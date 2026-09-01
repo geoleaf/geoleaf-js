@@ -75,15 +75,18 @@ async function configureAndLogin(page) {
     await page.fill("#gc-login", "demo-user");
     await page.fill("#gc-password", "demo-pass"); // test fixture, not a real secret
     await overlay.locator('button[type="submit"]').click();
-    // ⚠️ DEUX DÉFAUTS SUPERPOSÉS ICI, et corriger l'un sans l'autre AGGRAVE la situation.
+    // ⚠️ TWO SUPERIMPOSED DEFECTS HERE, and fixing one without the other
+    // makes things WORSE.
     //
-    // 1. B-100 — la signature est `waitForFunction(fn, arg, options)`. Le `{ timeout: 5000 }`
-    //    partait en 2ᵉ position, donc comme ARGUMENT de la fonction de page : il était
-    //    silencieusement ignoré, et l'attente retombait sur `actionTimeout` (10 s).
-    // 2. B-99 — 5 s ne suffisent de toute façon pas sur un runner 2-4 cœurs.
+    // 1. The signature is `waitForFunction(fn, arg, options)`. The
+    //    `{ timeout: 5000 }` left in 2nd position, hence as the page
+    //    function's ARGUMENT: it was silently ignored, and the wait fell
+    //    back to `actionTimeout` (10 s).
+    // 2. 5 s do not suffice anyway on a 2-4 core runner.
     //
-    // Réparer la signature seule aurait RÉDUIT le budget effectif de 10 s à 5 s et rendu
-    // l'échec PLUS fréquent. Les deux se corrigent donc ensemble : forme juste, budget mesuré.
+    // Fixing the signature alone would have REDUCED the effective budget
+    // from 10 s to 5 s and made the failure MORE frequent. So both are
+    // fixed together: right shape, measured budget.
     await page.waitForFunction(() => /** @type {any} */ (window).__authed !== null, null, {
         timeout: 30000,
     });
@@ -93,17 +96,20 @@ test.describe("11-connector", () => {
     // Neutralize the machine-specific, git-ignored dev bootstrap (connector.local.js).
     // init.js imports it BEFORE GeoLeaf.boot() and, when present, calls configure() in
     // getToken mode before the profile loads — which sets _currentInstance and thereby
-    // suppresses the profile's ui.showCredentialButton auto-bootstrap (documented finding,
-    // S4). Stubbing it to an empty module makes these tests validate the connector's
+    // suppresses the profile's ui.showCredentialButton auto-bootstrap (documented
+    // finding). Stubbing it to an empty module makes these tests validate the connector's
     // intrinsic behavior reproducibly, whether or not the dev file exists on the host.
     //
-    // ⚠️ CE STUB EST DEVENU REDONDANT LE 09/08/2026, ET IL RESTE. `build-deploy.cjs` n'écrit
-    // plus que le talon inerte dans les variantes livrables — celles que ce spec vise —, donc
-    // `window.GEOLEAF_DEV_CONNECTOR` est déjà `undefined` au boot. Le retirer ferait dépendre
-    // la reproductibilité de ces tests d'une propriété d'un AUTRE script : le jour où quelqu'un
-    // vise `deploy-local` depuis ce fichier, ou rétablit une copie du bootstrap, les tests
-    // redeviendraient sensibles à ce qui traîne sur le poste, sans qu'une ligne ne le dise.
-    // Une redondance qui coûte deux lignes et supprime un couplage n'est pas une redondance.
+    // ⚠️ THIS STUB BECAME REDUNDANT ON 2026-08-09, AND IT STAYS.
+    // `build-deploy.cjs` no longer writes anything but the inert stub into the
+    // deliverable variants — the ones this spec targets —, so
+    // `window.GEOLEAF_DEV_CONNECTOR` is already `undefined` at boot. Removing
+    // it would make these tests' reproducibility depend on a property of
+    // ANOTHER script: the day someone targets `deploy-local` from this file,
+    // or restores a copy of the bootstrap, the tests would become sensitive
+    // again to whatever lies on the host, without a line saying so. A
+    // redundancy that costs two lines and removes a coupling is not a
+    // redundancy.
     test.beforeEach(async ({ page }) => {
         await page.route("**/connector.local.js", (route) =>
             route.fulfill({ status: 200, contentType: "application/javascript", body: "" })

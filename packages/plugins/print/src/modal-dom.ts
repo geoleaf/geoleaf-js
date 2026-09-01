@@ -19,8 +19,8 @@ import type { PrintConfig } from "./config.js";
 import type { PrintFlowOptions } from "./types.js";
 import { formatScaleDenominator } from "./scale-format.js";
 
-// STRUCT S2 (F4) — `_el` était la 4e copie du même helper (measure, print/internal,
-// field-renderer) ; elle vient maintenant du paquet partagé, sous son nom local.
+// `_el` was the 4th copy of the same helper (measure, print/internal,
+// field-renderer); it now comes from the shared package, under its local name.
 import { createEl as _el } from "@geoleaf/host-runtime";
 
 // ---------------------------------------------------------------------------

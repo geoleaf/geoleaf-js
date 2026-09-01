@@ -23,10 +23,11 @@ describe("capabilities/filter/engine/nested-value", () => {
         });
     });
 
-    // Les 7 cas `getSearchFieldsFromProfile` sont partis avec la fonction (API S4.5) :
-    // son unique appelant était `route-filter.ts`, et le mécanisme lui-même est supersédé
-    // par les `searchFields` du descripteur de filtre (`engine/predicate.ts:95`).
-    // `extractRouteCoords` est parti avec le moteur route-filter (API S4.5) : son unique
-    // appelant était le prédicat de proximité de `route-filter.ts`, supprimé avec
-    // `GeoLeaf.Filters`. Les 4 cas qui le couvraient ici sont retirés avec lui.
+    // The 7 `getSearchFieldsFromProfile` cases left with the function: its
+    // only caller was `route-filter.ts`, and the mechanism itself is
+    // superseded by the filter descriptor's `searchFields`
+    // (`engine/predicate.ts`). `extractRouteCoords` left with the
+    // route-filter engine: its only caller was `route-filter.ts`'s proximity
+    // predicate, deleted with `GeoLeaf.Filters`. The 4 cases covering it here
+    // are removed with it.
 });

@@ -1,57 +1,60 @@
 /**
- * `routeRequest` — le routage PAR DÉCLARATION du Service Worker (tâches 3.9 et 8.2).
+ * `routeRequest` — the Service Worker's routing BY DECLARATION.
  *
- * 🛑 **Ce routage n'avait AUCUN test.** Mesuré au pré-vol 8.2 : `grep routeRequest|dataOrigins`
- * sur `__tests__/` ne rendait rien. C'est pourtant lui qui décide ce qui entre en cache et ce
- * qui n'y entre pas — la pièce centrale de la tâche 3.9, et la cause opérante de B-119 comme de
- * B-120. Le même angle mort que `resolveProfileLayers` à la tâche 8.9 : la fonction qui porte
- * la décision est celle que personne n'éprouve.
+ * 🛑 **This routing had NO test.** Measured at the preflight:
+ * `grep routeRequest|dataOrigins` over `__tests__/` returned nothing. Yet it
+ * is what decides what enters the cache and what does not — the routing's
+ * central piece, and the operative cause of both cache defects. The same
+ * blind spot as `resolveProfileLayers`: the function carrying the decision is
+ * the one nobody exercises.
  *
- * Ce que cette suite garde :
+ * What this suite guards:
  *
- *  1. **L'invariant** — déclarer une origine REFUSE toutes les autres. Le silence d'une
- *     déclaration est un refus, pas une permission.
- *  2. **Son exception, et sa BORNE** — l'origine qui sert l'application est cachable sans
- *     être déclarée, parce qu'elle change à chaque déploiement et qu'aucun profil portable ne
- *     peut l'écrire (B-119). Mais l'exception couvre la COQUILLE, pas la donnée : une API
- *     servie depuis la même origine reste une origine de données et doit se déclarer. Sans
- *     cette borne, une réponse authentifiée same-origin serait mise en cache par défaut —
- *     on aurait ouvert B-120 en fermant B-119.
+ *  1. **The invariant** — declaring one origin REFUSES all others. A
+ *     declaration's silence is a refusal, not a permission.
+ *  2. **Its exception, and its BOUND» — the origin serving the application is
+ *     cacheable without being declared, because it changes at every
+ *     deployment and no portable profile can write it. But the exception
+ *     covers the SHELL, not the data: an API served from the same origin
+ *     stays a data origin and must declare itself. Without that bound, an
+ *     authenticated same-origin response would be cached by default — one
+ *     defect opened while closing the other.
  *
- * L'observable est `caches.open` : une stratégie de cache l'appelle avec son magasin, un
- * passage réseau direct (`fetchBounded`) ne l'appelle jamais.
+ * The observable is `caches.open`: a cache strategy calls it with its store,
+ * a direct network pass (`fetchBounded`) never does.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const APP_ORIGIN = "https://demo.geoleaf.test";
 
-/** Les origines que le profil déclare, lues par le worker dans IndexedDB. */
+/** The origins the profile declares, read by the worker from IndexedDB. */
 type Declared = Array<{ origin: string; roles: string[]; cacheable: boolean }>;
 
 interface Harness {
     fetchHandler: (event: unknown) => void;
-    /** Magasins OUVERTS — une stratégie de cache en ouvre un, `fetchBounded` jamais. */
+    /** OPENED stores — a cache strategy opens one, `fetchBounded` never. */
     cacheOpens: string[];
     /**
-     * URLs réellement ÉCRITES en cache.
+     * URLs really WRITTEN to cache.
      *
-     * ⚠️ Distinct de `cacheOpens`, et la distinction a été trouvée en se trompant :
-     * `networkFirstStrategy` ouvre son magasin AVANT de tester la cachabilité de la réponse.
-     * Mesurer l'ouverture répond à « une stratégie de cache a-t-elle été choisie », pas à
-     * « quelque chose a-t-il été mis en cache ». Les deux questions sont utiles — la première
-     * distingue le routage (8.2), la seconde le refus d'écriture (8.3) — mais les confondre
-     * fait mesurer un test à côté de ce qu'il énonce.
+     * ⚠️ Distinct from `cacheOpens`, and the distinction was found by getting
+     * it wrong: `networkFirstStrategy` opens its store BEFORE testing the
+     * response's cacheability. Measuring the opening answers "was a cache
+     * strategy chosen", not "was anything cached". Both questions are useful
+     * — the first tells the routing, the second the write refusal — but
+     * confusing them makes a test measure beside what it states.
      */
     cachePuts: string[];
     networkCalls: string[];
 }
 
 /**
- * Monte un worker NEUF avec les origines déclarées données.
+ * Mounts a FRESH worker with the given declared origins.
  *
- * ⚠️ `vi.resetModules()` est porteur : `_dataOrigins` est mémorisé au niveau module (pour ne
- * pas relire IndexedDB à chaque requête), donc deux cas partageant le module partageraient
- * aussi sa déclaration — le second sortirait vert en éprouvant l'état du premier.
+ * ⚠️ `vi.resetModules()` is load-bearing: `_dataOrigins` is memoised at
+ * module level (so IndexedDB is not reread per request), so two cases sharing
+ * the module would also share its declaration — the second would come out
+ * green exercising the first's state.
  */
 async function mountWorker(
     declared: Declared,
@@ -139,7 +142,7 @@ async function mountWorker(
     return { fetchHandler: handlers["fetch"]!, cacheOpens, cachePuts, networkCalls };
 }
 
-/** Joue une requête GET et rend la promesse que le worker a passée à `respondWith`. */
+/** Plays a GET request and returns the promise the worker passed to `respondWith`. */
 async function route(
     h: Harness,
     url: string,
@@ -161,7 +164,7 @@ async function route(
         },
     });
     if (responded) await (responded as Promise<unknown>).catch(() => undefined);
-    // Les stratégies enchaînent des micro-tâches après `respondWith` ; laisser tourner.
+    // The strategies chain microtasks after `respondWith`; let them run.
     await new Promise((r) => setTimeout(r, 5));
 }
 
@@ -196,16 +199,16 @@ describe("routeRequest — l'invariant : le silence d'une déclaration est un re
     });
 });
 
-describe("routeRequest — l'exception B-119, et sa BORNE", () => {
+describe("routeRequest — l'exception coquille, et sa BORNE", () => {
     let h: Harness;
     beforeEach(async () => {
         h = await mountWorker(DECLARED);
     });
 
     it("la COQUILLE same-origin est cachée sans être déclarée — le profil ne peut pas l'écrire", async () => {
-        // 🛑 Sans cette exception, un profil qui déclare ses origines de données perd le cache
-        // de sa propre application : tout-ou-rien, où le « rien » n'était atteignable qu'en
-        // ne déclarant rien du tout.
+        // 🛑 Without this exception, a profile declaring its data origins
+        // loses its own application's cache: all-or-nothing, where "nothing"
+        // was only reachable by declaring nothing at all.
         await route(h, `${APP_ORIGIN}/profiles/tourism/profile.json`);
         expect(h.cacheOpens.length, "la ressource de profil same-origin doit être cachée").toBe(1);
     });
@@ -216,10 +219,11 @@ describe("routeRequest — l'exception B-119, et sa BORNE", () => {
     });
 
     it("🛑 une API same-origin N'EST PAS cachée — la coquille n'est pas la donnée", async () => {
-        // C'est la BORNE, et elle est le cœur de l'arbitrage. Élargir l'exception à « la même
-        // origine » mettrait en cache une réponse authentifiée par défaut : on fermerait B-119
-        // en ouvrant B-120. Une API de données servie depuis notre propre origine reste une
-        // origine de DONNÉES, et elle se déclare comme toutes les autres.
+        // The BOUND, and it is the arbitration's core. Widening the exception
+        // to "the same origin" would cache an authenticated response by
+        // default: one defect closed by opening the other. A data API served
+        // from our own origin stays a DATA origin, and declares itself like
+        // all the others.
         await route(h, `${APP_ORIGIN}/collections/pois/items`);
         expect(h.cacheOpens, "une API same-origin non déclarée doit rester hors cache").toEqual([]);
     });
@@ -232,9 +236,9 @@ describe("routeRequest — l'exception B-119, et sa BORNE", () => {
 
 describe("routeRequest — sans aucune déclaration, le routage historique s'applique", () => {
     it("un profil qui ne déclare rien garde le comportement d'amorçage", async () => {
-        // ⚠️ Témoin nécessaire : c'est l'état de TOUS les profils du dépôt aujourd'hui (0 en
-        // déclare). Si ce cas cassait, l'exception B-119 aurait changé le comportement par
-        // défaut au lieu de le préserver.
+        // ⚠️ Necessary witness: the state of ALL the repo's profiles today (0
+        // declare any). If this case broke, the shell exception would have
+        // changed the default behaviour instead of preserving it.
         const h = await mountWorker([]);
         await route(h, `${APP_ORIGIN}/profiles/tourism/profile.json`);
         expect(h.cacheOpens.length).toBeGreaterThan(0);
@@ -242,24 +246,26 @@ describe("routeRequest — sans aucune déclaration, le routage historique s'app
 });
 
 /**
- * B-120 / tâche 8.3 — une réponse de RAPATRIEMENT n'entre pas dans un cache partagé.
+ * A PULL response does not enter a shared cache.
  *
- * 🛑 **Écrits AVANT le correctif et vus rouges**, comme la ligne 8.3 l'exige. Le chemin
- * d'amorçage — aucun profil du dépôt ne déclare ses origines — envoie toute URL inconnue sur
- * `networkFirstStrategy(request, CACHE_RUNTIME)`, qui met en cache **toute** réponse à 200.
+ * 🛑 **Written BEFORE the fix and seen red**, as required. The bootstrap path
+ * — no repo profile declares its origins — sends any unknown URL to
+ * `networkFirstStrategy(request, CACHE_RUNTIME)`, which caches **every** 200
+ * response.
  *
- * Deux conséquences, toutes deux silencieuses :
- *  - une réponse **authentifiée** (le connector patche le `fetch` de la page, le jeton est sur
- *    la requête que le worker voit) atterrit dans un cache PARTAGÉ ;
- *  - chaque page de rapatriement est cachée sous une URL distincte (`limit`/`offset`/`bbox`
- *    sont dans la query), donc le volume croît à chaque pull.
+ * Two consequences, both silent:
+ *  - an **authenticated** response (the connector patches the page's `fetch`,
+ *    the token is on the request the worker sees) lands in a SHARED cache;
+ *  - each pull page is cached under a distinct URL (`limit`/`offset`/`bbox`
+ *    are in the query), so the volume grows at every pull.
  *
- * ⚠️ **8.2 ne suffit pas à fermer la classe.** Elle protège le profil qui DÉCLARE ses origines
- * (`publishDataOrigins` force `cacheable: false` sur toute origine `authenticated`). Le chemin
- * d'amorçage, lui, n'atteint jamais cette règle — et c'est l'état de tous les profils livrés.
- * La garde ci-dessous vaut **quelle que soit la déclaration**, c'est ce qui la rend utile.
+ * ⚠️ **The declaration path does not suffice to close the class.» It protects
+ * the profile that DECLARES its origins (`publishDataOrigins` forces
+ * `cacheable: false` on any `authenticated` origin). The bootstrap path never
+ * reaches that rule — and that is the state of every shipped profile. The
+ * guard below holds **whatever the declaration**, which is what makes it useful.
  */
-describe("8.3 / B-120 — ce qui porte des identifiants n'entre pas en cache", () => {
+describe("ce qui porte des identifiants n'entre pas en cache", () => {
     it("une requête portant `Authorization` n'est PAS mise en cache (amorçage)", async () => {
         const h = await mountWorker([]);
         await route(h, "https://qgis.geoleaf.dev/ogc/collections/sites/items?limit=50", {
@@ -267,7 +273,7 @@ describe("8.3 / B-120 — ce qui porte des identifiants n'entre pas en cache", (
         });
         expect(
             h.cachePuts,
-            "une réponse authentifiée dans un cache PARTAGÉ — c'est le défaut B-120"
+            "une réponse authentifiée dans un cache PARTAGÉ — c'est le défaut même"
         ).toEqual([]);
     });
 
@@ -280,32 +286,32 @@ describe("8.3 / B-120 — ce qui porte des identifiants n'entre pas en cache", (
     });
 
     it("une réponse `Cache-Control: no-store` n'est PAS mise en cache", async () => {
-        // Le serveur a le droit de refuser le cache, et un cache partagé doit l'honorer.
+        // The server has the right to refuse caching, and a shared cache must honour it.
         const h = await mountWorker([], { "Cache-Control": "no-store" });
         await route(h, "https://qgis.geoleaf.dev/ogc/collections/sites/items");
         expect(h.cachePuts).toEqual([]);
     });
 
     it("une réponse `Cache-Control: private` n'est PAS mise en cache", async () => {
-        // `private` vise exactement le cas d'un cache PARTAGÉ entre utilisateurs, ce qu'est
-        // le cache d'un Service Worker sur un appareil de terrain partagé.
+        // `private` targets exactly the case of a cache SHARED between users,
+        // which a Service Worker's cache on a shared field device is.
         const h = await mountWorker([], { "Cache-Control": "private, max-age=60" });
         await route(h, "https://qgis.geoleaf.dev/ogc/collections/sites/items");
         expect(h.cachePuts).toEqual([]);
     });
 
     it("témoin : la MÊME requête SANS identifiant ni interdiction reste cachée", async () => {
-        // 🛑 Sans ce témoin, les quatre cas ci-dessus seraient verts si le worker cessait de
-        // cacher quoi que ce soit — la garde mesurerait le vide.
+        // 🛑 Without this witness, the four cases above would be green if the
+        // worker stopped caching anything — the guard would measure emptiness.
         const h = await mountWorker([]);
         await route(h, "https://qgis.geoleaf.dev/ogc/collections/sites/items");
         expect(h.cachePuts.length).toBeGreaterThan(0);
     });
 
     it("la règle vaut AUSSI pour une origine déclarée cachable", async () => {
-        // Une origine peut être déclarée cachable en toute bonne foi et servir, sur un chemin,
-        // une réponse authentifiée. La déclaration porte sur l'ORIGINE, l'identifiant sur la
-        // REQUÊTE : les deux niveaux doivent tenir.
+        // An origin can be declared cacheable in good faith and serve, on one
+        // path, an authenticated response. The declaration bears on the
+        // ORIGIN, the credential on the REQUEST: both levels must hold.
         const h = await mountWorker([
             { origin: "https://qgis.geoleaf.dev", roles: ["layerData"], cacheable: true },
         ]);

@@ -1,11 +1,11 @@
 /**
- * Unit tests — `cache/layer-selector/row-rendering.ts`, couverture des BRANCHES (R.31).
+ * Unit tests — `cache/layer-selector/row-rendering.ts`, BRANCH coverage.
  *
- * `layer-selector-cluster.test.js` couvre le chemin nominal de `populate()` mais pas les
- * variantes de RENDU DE LIGNE : fond volumineux (palier GB vs MB), cache de tuiles désactivé,
- * fond sans config offline, couche à cache profil désactivé, et le sélecteur de style (config
- * absente, aucun style, style sauvegardé présélectionné). On appelle les constructeurs de
- * ligne directement sur le `LS` assemblé.
+ * `layer-selector-cluster.test.js` covers `populate()`'s nominal path but not
+ * the ROW RENDERING variants: large basemap (GB vs MB step), tile cache
+ * disabled, basemap without offline config, layer with profile cache disabled,
+ * and the style selector (config absent, no style, saved style preselected). We
+ * call the row constructors directly on the assembled `LS`.
  */
 import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
 
@@ -14,16 +14,17 @@ import "../cache/layer-selector/data-fetching.js";
 import "../cache/layer-selector/row-rendering.js";
 import "../cache/layer-selector/selection-cache.js";
 
-// API publique S4.4 — les tests plantent `GeoLeaf.Storage` comme le fait la PRODUCTION.
-// Ils pilotaient `StorageContract.init()`, c'est-à-dire une SECONDE instance du singleton
-// que le bundle embarquait et que rien n'initialisait : ils validaient un canal mort.
+// The tests plant `GeoLeaf.Storage` the way PRODUCTION does. They used to drive
+// `StorageContract.init()`, i.e. a SECOND instance of the singleton the bundle
+// embedded and nothing initialised: they validated a dead channel.
 function _installGeoLeafStorage(api) {
     globalThis.GeoLeaf = globalThis.GeoLeaf ?? {};
-    // Le helper reproduit ce que `StorageContract.init()` fournissait, parce que la façade
-    // du core le fournit aussi : `isPluginLoaded()` = « un moteur s'est enregistré », et
-    // `isAvailable()` = « et sa base est ouverte ». L'adaptateur du plugin DÉLÈGUE ces deux
-    // méthodes — il ne les recalcule pas —, donc un objet planté qui ne les porte pas
-    // rendrait `false` là où le test attend `true`. Un appelant qui les fournit garde la main.
+    // The helper reproduces what `StorageContract.init()` provided, because the
+    // core's facade provides it too: `isPluginLoaded()` = "an engine registered",
+    // and `isAvailable()` = "and its database is open". The plugin's adapter
+    // DELEGATES these two methods — it does not recompute them — so a planted
+    // object not carrying them would return `false` where the test expects
+    // `true`. A caller providing them keeps the hand.
     globalThis.GeoLeaf.Storage =
         api === null || api === undefined
             ? null
@@ -47,7 +48,7 @@ const flush = () => new Promise((r) => setTimeout(r, 0));
 
 beforeEach(() => {
     setConfig();
-    // isBasemapCached / isLayerCached lisent le manifeste : renvoyer « rien en cache »
+    // isBasemapCached / isLayerCached read the manifest: return "nothing cached"
     _installGeoLeafStorage({
         isAvailable: () => true,
         CacheManager: { getCacheStatus: vi.fn(async () => ({ resources: [] })) },
@@ -67,7 +68,7 @@ afterEach(() => {
 });
 
 // ════════════════════════════════════════════════════════════════════════════════════
-// createBasemapRow — les paliers de taille et les états de cache
+// createBasemapRow — the size steps and cache states
 // ════════════════════════════════════════════════════════════════════════════════════
 
 describe("createBasemapRow", () => {
@@ -135,7 +136,7 @@ describe("createBasemapRow", () => {
 });
 
 // ════════════════════════════════════════════════════════════════════════════════════
-// createLayerRow — cache profil désactivé
+// createLayerRow — profile cache disabled
 // ════════════════════════════════════════════════════════════════════════════════════
 
 describe("createLayerRow", () => {
@@ -156,14 +157,15 @@ describe("createLayerRow", () => {
         expect(cb.checked).toBe(false);
     });
 
-    // ── Chemins d'échec du handler de case (Q1.4) ────────────────────────────────
+    // ── Checkbox handler failure paths ───────────────────────────────────────────
     //
-    // Le handler était `async () => { … }` posé directement sur `addEventListener` :
-    // il RENDAIT une promesse là où un `void` est attendu, et son rejet n'allait nulle
-    // part. Il est désormais scindé en une partie async et un wrapper synchrone qui
-    // capte — la référence du wrapper restant stable, puisqu'elle sert aussi à la
-    // désinscription (`_eventListeners`). Ces deux tests exercent le wrapper ET son
-    // `.catch()`, sans quoi ils ne sont que du code livré jamais joué.
+    // The handler was an `async () => { … }` set directly on `addEventListener`:
+    // it RETURNED a promise where a `void` is expected, and its rejection went
+    // nowhere. It is now split into an async part and a synchronous wrapper
+    // that catches — the wrapper's reference staying stable, since it also
+    // serves unsubscription (`_eventListeners`). These two tests exercise the
+    // wrapper AND its `.catch()`, without which they are only shipped code
+    // never played.
 
     test("un changement de case qui échoue à l'enregistrement ne casse pas l'événement", async () => {
         _installGeoLeafStorage({
@@ -194,10 +196,10 @@ describe("createLayerRow", () => {
 
         const cb = tbody.querySelector('input[data-layer-id="roads"]');
         const entry = LS._eventListeners.find((e) => e.element === cb && e.event === "change");
-        // Régression Q1.4 : scinder le handler en deux fonctions ne doit PAS faire
-        // diverger la référence stockée de celle réellement attachée, sinon le cleanup
-        // ne retire plus rien — et le défaut serait invisible (removeEventListener sur
-        // une référence inconnue est un no-op silencieux).
+        // Regression: splitting the handler in two functions must NOT make the
+        // stored reference diverge from the really attached one, otherwise
+        // cleanup removes nothing any more — and the defect would be invisible
+        // (removeEventListener on an unknown reference is a silent no-op).
         expect(entry).toBeDefined();
         expect(typeof entry.handler).toBe("function");
     });
@@ -215,7 +217,7 @@ describe("createStyleSelector", () => {
     }
 
     test("config absente → tiret", async () => {
-        // getLayerConfig → null (couche sans configFile)
+        // getLayerConfig → null (layer without configFile)
         const td = parent();
         await LS.createStyleSelector(td, { id: "x" }, null);
         expect(td.textContent).toBe("-");
@@ -252,7 +254,7 @@ describe("createStyleSelector", () => {
         );
         const select = td.querySelector("select");
         expect(select.querySelectorAll("option").length).toBe(2);
-        // le changement déclenche saveSelection + updateWarning sans jeter
+        // the change triggers saveSelection + updateWarning without throwing
         select.dispatchEvent(new Event("change"));
         await flush();
     });

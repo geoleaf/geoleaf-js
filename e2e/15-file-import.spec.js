@@ -1,9 +1,10 @@
 // @ts-check
-// E2E: 15-file-import (@geoleaf-plugins/file-import) — deploy-core (port 8766), PARESSEUX.
+// E2E: 15-file-import (@geoleaf-plugins/file-import) — deploy-core (port 8766), LAZY.
 //
-// Sprint S9 (plugin-validation). ⚠️ Cet en-tête a dit « EAGER … no `plugins.load` needed »
-// jusqu'au 07/08/2026 : socle-init S4.5 a retiré sa balise <script> d'index.html (17,9 Ko gz).
-// API pure, sans écouteur ni créneau — le consommateur la charge, comme le fait cette suite.
+// Plugin-validation suite. ⚠️ This header said "EAGER … no `plugins.load`
+// needed" until 2026-08-07: the plugin's <script> tag left index.html
+// (17.9 KB gz). Pure API, no listener and no slot — the consumer loads it,
+// as this suite does.
 //
 // The plugin is API-only (no UI, no toolbar, no config). The host app wires a file
 // input → GeoLeaf.FileImport. This spec reproduces that: it injects a hidden
@@ -43,9 +44,10 @@ const pluginErrors = (arr) => arr.filter((t) => !SW_NOISE.test(t));
  * collectors.
  *
  * @param {import('@playwright/test').Page} page
- * @param {{ waitForMap?: boolean }} [opts] `waitForMap` n'est vrai que pour le SEUL parcours
- *   qui touche la carte (`importAsLayer`). Partout ailleurs, l'attendre n'est pas neutre —
- *   voir le bloc ci-dessous : c'est elle qui rendait les `convert()` instables.
+ * @param {{ waitForMap?: boolean }} [opts] `waitForMap` is only true for the
+ *   ONE journey that touches the map (`importAsLayer`). Everywhere else,
+ *   waiting for it is not neutral — see the block below: it is what made the
+ *   `convert()` tests unstable.
  */
 async function boot(page, { waitForMap = false } = {}) {
     const errors = [];
@@ -55,45 +57,51 @@ async function boot(page, { waitForMap = false } = {}) {
         if (msg.type() === "error") consoleErrors.push(msg.text());
     });
     await page.goto("/");
-    // Garde de page (la div est dans le markup) — pas une attente d'état : elle échoue vite
-    // si le document servi n'est pas l'application, et ne dit rien de ce qui a booté.
+    // Page guard (the div is in the markup) — not a state wait: it fails fast
+    // if the served document is not the application, and says nothing about
+    // what booted.
     await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 15000 });
 
-    // ⚠️ ATTENDRE L'ÉTAT UTILISÉ — LE RÉSOLVEUR PARESSEUX — ET SURTOUT PAS LA CARTE.
+    // ⚠️ WAIT FOR THE STATE ACTUALLY USED — THE LAZY RESOLVER — AND ABOVE ALL
+    // NOT THE MAP.
     //
-    // Ce qui était attendu ici jusqu'au 08/08/2026 : `native.loaded()`, puis `#gl-loader`
-    // masqué. Les deux sont des PROXYS, et le premier ment sur son nom. Mesuré sur ce
-    // déployé (21 chargements) : `loaded()` rend `true` dès ~130-230 ms sur un style qui
-    // porte 0 à 3 couches SUR 18 et ZÉRO écouteur `error` — c'est-à-dire sur une carte
-    // VIDE, avant même `geoleaf:app:ready` (~250-440 ms). `SourceCache.loaded()` est vrai
-    // quand aucune tuile n'est encore demandée : « chargée » y veut dire « rien à charger ».
-    // Le second, lui, se termine par `.catch(() => {})` : il ne garantit rien du tout, il
-    // ATTEND — ~1,1 s des ~1,3 s que ce boot coûtait, par accident.
+    // What was awaited here until 2026-08-08: `native.loaded()`, then
+    // `#gl-loader` hidden. Both are PROXIES, and the first lies about its
+    // name. Measured on this deploy (21 loads): `loaded()` returns `true` from
+    // ~130-230 ms on a style carrying 0 to 3 layers OUT OF 18 and ZERO `error`
+    // listener — i.e. on an EMPTY map, before even `geoleaf:app:ready`
+    // (~250-440 ms). `SourceCache.loaded()` is true when no tile is requested
+    // yet: "loaded" there means "nothing to load". The second ends in
+    // `.catch(() => {})`: it guarantees nothing at all, it WAITS — ~1.1 s of
+    // the ~1.3 s this boot cost, by accident.
     //
-    // Or `convert()` ne touche PAS la carte : c'est une API pure (cf. l'en-tête de ce
-    // fichier). L'état dont elle dépend est le résolveur `file-import`, enregistré par
-    // l'IIFE d'`init.js` AVANT `GeoLeaf.boot()` — donc avant que la carte existe. Attendre
-    // la carte, c'était attendre plus tard et moins bien.
+    // Yet `convert()` does NOT touch the map: it is a pure API (see this
+    // file's header). The state it depends on is the `file-import` resolver,
+    // registered by `init.js`'s IIFE BEFORE `GeoLeaf.boot()` — hence before
+    // the map exists. Waiting for the map was waiting later and worse.
     //
-    // 🛑 ET CE N'EST PAS QU'UNE PERTE DE TEMPS — c'est ce qui faisait rougir ce test.
-    // `boot({ config })` applique le fond de plan EN DERNIER (`setBaseLayer:
-    // terrain-terrarium`, puis `Terrain 3D activated`, dernières lignes du boot). Le profil
-    // `tourism` tire ses tuiles de TIERS : `*.tile.opentopomap.org`, `s3.amazonaws.com`
-    // (DEM terrarium), `earthquake.usgs.gov`. Premier tir tiers mesuré à ~390-660 ms, rafale
-    // de ~30 requêtes ensuite. Les trois `toEqual([])` de ce fichier concluaient donc sur une
-    // fenêtre qui CONTIENT du réseau tiers — et Chromium journalise ses échecs réseau en
-    // `console.error` (« Failed to load resource: net::ERR_… »), qu'aucun écouteur applicatif
-    // ne peut intercepter. Mesuré : 2 chargements sur 25 en ont produit, sans le moindre
-    // défaut du plugin. En suite complète ces hôtes encaissent ~213 chargements — c'est
-    // l'état partagé que l'isolation par contexte de Playwright ne voit pas, parce qu'il est
-    // HORS du navigateur, et c'est pourquoi ce test ne tombe jamais isolément.
+    // 🛑 AND IT IS NOT JUST LOST TIME — it is what reddened this test.
+    // `boot({ config })` applies the basemap LAST (`setBaseLayer:
+    // terrain-terrarium`, then `Terrain 3D activated`, the boot's last lines).
+    // The `tourism` profile pulls its tiles from THIRD PARTIES:
+    // `*.tile.opentopomap.org`, `s3.amazonaws.com` (terrarium DEM),
+    // `earthquake.usgs.gov`. First third-party shot measured at ~390-660 ms,
+    // then a burst of ~30 requests. This file's three `toEqual([])` thus
+    // concluded over a window CONTAINING third-party network — and Chromium
+    // logs its network failures as `console.error`
+    // ("Failed to load resource: net::ERR_…"), which no application listener
+    // can intercept. Measured: 2 loads out of 25 produced some, with no plugin
+    // defect whatsoever. Over a full suite these hosts take ~213 loads — the
+    // shared state Playwright's per-context isolation cannot see, because it
+    // is OUTSIDE the browser, and why this test never fails in isolation.
     //
-    // Mesure du geste (6 runs par bras, même poste, même cible) : la fenêtre passe de
-    // ~1 300 ms à ~230 ms, et de 1-10 requêtes tierces émises avant la conclusion à 0-1.
-    // Ce n'est pas « un délai plus court » — c'est un ORDRE : le résolveur est posé par
-    // l'IIFE d'`init.js`, qui court avant `GeoLeaf.boot()`, donc avant qu'un fond de plan
-    // puisse exister. Ne PAS remettre l'attente carte ici « par sécurité » : c'est elle
-    // qu'on retire.
+    // Measure of the gesture (6 runs per arm, same host, same target): the
+    // window drops from ~1,300 ms to ~230 ms, and from 1-10 third-party
+    // requests emitted before the conclusion to 0-1. This is not "a shorter
+    // delay" — it is an ORDER: the resolver is set by `init.js`'s IIFE, which
+    // runs before `GeoLeaf.boot()`, hence before a basemap can exist. Do NOT
+    // put the map wait back here "to be safe": it is the very thing being
+    // removed.
     await page.waitForFunction(
         () => {
             const p = /** @type {any} */ (window).GeoLeaf?.plugins;
@@ -108,8 +116,9 @@ async function boot(page, { waitForMap = false } = {}) {
     );
 
     if (waitForMap) {
-        // Réservé au parcours `importAsLayer`, qui LIT la carte (`getStyle()`, delta de
-        // sources). Attentes et ordre inchangés pour lui — seul son domicile change.
+        // Reserved for the `importAsLayer` journey, which READS the map
+        // (`getStyle()`, source delta). Waits and order unchanged for it —
+        // only their home moves.
         await page.waitForFunction(
             () => {
                 const m = /** @type {any} */ (window).GeoLeaf?.Core?.getMap?.()?.getNativeMap?.();
@@ -132,13 +141,14 @@ async function boot(page, { waitForMap = false } = {}) {
         inp.style.cssText = "position:fixed;left:-9999px;top:0";
         document.body.appendChild(inp);
     }, INPUT_ID);
-    // socle-init S4.5 — `file-import` n'est plus eager (17,9 Ko gz retirés du premier
-    // chargement). API pure, sans écouteur ni créneau : le consommateur la charge.
+    // `file-import` is no longer eager (17.9 KB gz removed from the first
+    // load). Pure API, no listener and no slot: the consumer loads it.
     //
-    // Ce `await` suffit, et il n'appelle pas d'attente supplémentaire sur `GeoLeaf.FileImport` :
-    // `entry.ts` monte le namespace À L'ÉVALUATION du module, donc le `import()` que
-    // `PluginRegistry.load()` attend ne résout QU'APRÈS le montage. Une attente de plus ici
-    // serait décorative — et ce fichier n'en veut pas.
+    // This `await` suffices, and it calls for no extra wait on
+    // `GeoLeaf.FileImport`: `entry.ts` mounts the namespace AT MODULE
+    // EVALUATION, so the `import()` that `PluginRegistry.load()` awaits only
+    // resolves AFTER the mount. One more wait here would be decorative — and
+    // this file wants none.
     await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.plugins.load("file-import"));
     return { errors, consoleErrors };
 }
@@ -211,23 +221,24 @@ for (const c of CASES) {
     });
 }
 
-// ── importAsLayer() — CDC Parcours 1 (map rendering), S9 correctif ───────────────
+// ── importAsLayer() — CDC Parcours 1 (map rendering), the rendering fix ──────────
 //
-// S9 correctif: importAsLayer() renders through the core map adapter
+// The fix: importAsLayer() renders through the core map adapter
 // (GeoLeaf.Core.getMap().addGeoJSONLayer) — the working MapLibre path the core layer
 // loader uses — instead of the dead GeoLeaf.GeoJSON.addData (a no-op:
 // `state.geoJsonLayer` is never instantiated). It now returns a layer id, creates a
 // `gl-src-<id>` source + sub-layers on the native map, and no longer logs "Module
 // not initialized". (The layer renders but is NOT registered in the layer-manager
-// panel — that path is core-internal.) See CDC §Correctif S9.
+// panel — that path is core-internal.) See FI-11 in
+// docs/specs/plugins/CDC_file-import.md.
 
 test("importAsLayer(sample.kml): renders a GeoJSON layer on the map (S9 correctif)", async ({
     page,
 }) => {
-    // `waitForMap: true` — LE SEUL parcours du fichier qui lit la carte (delta de sources,
-    // `getStyle()`), donc le seul qui doit l'attendre. Les attentes sont celles que `boot()`
-    // imposait à tout le monde avant le 08/08/2026 ; elles n'ont pas changé, elles ont
-    // seulement rejoint le test qui en a besoin.
+    // `waitForMap: true` — the file's ONLY journey that reads the map (source
+    // delta, `getStyle()`), hence the only one that must wait for it. The
+    // waits are those `boot()` imposed on everyone before 2026-08-08; they did
+    // not change, they only joined the test that needs them.
     const { errors } = await boot(page, { waitForMap: true });
     const warns = [];
     page.on("console", (msg) => {

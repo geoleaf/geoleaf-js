@@ -3,6 +3,17 @@
  * publish-plugins.cjs
  * Publishes plugin workspaces to their configured npm registry.
  * Usage: node scripts/publish-plugins.cjs [--dry-run]
+ *
+ * 🔏 PROVENANCE — a (re)publication SHOULD go through `.github/workflows/publish.yml`
+ * (tag `v*` or workflow_dispatch), NOT this script at a terminal. The workflow carries
+ * `id-token: write` and upgrades npm to >= 11.5.1, so trusted publishing AUTO-emits an
+ * SLSA provenance attestation with NO flag — measured present on the packages published
+ * that way, absent on those published by hand (a version is immutable, so provenance
+ * cannot be added retroactively). Do NOT set `publishConfig.provenance: true` nor add
+ * `--provenance` here: outside CI, `npm publish` then fails on "Provenance generation
+ * not supported", breaking the manual EOTP fallback documented below. The provenance of
+ * the hand-published packages resolves on their next real bump via the workflow.
+ * Verify: `npm view <pkg> --json | jq .dist.attestations`.
  */
 "use strict";
 
@@ -10,45 +21,56 @@ const { execSync } = require("child_process");
 const registry = require("./lib/packages.cjs");
 const { alreadyPublished } = require("./lib/npm-registry.cjs");
 
-// Identified by npm NAME, not by workspace path (ARCHI S9.4). A name is the stable
+// Identified by npm NAME, not by workspace path. A name is the stable
 // identity of a package: ARCHI S10 moves these directories under `packages/plugins/`
 // and `npm publish --workspace=<name>` keeps working, where a path would not.
 //
 // ⚠️ This list is a POLICY, deliberately narrower than `registry.publishable()`
-// (14 packages — mesuré le 09/08/2026 : 17 workspaces moins les 3 `private`, à savoir
-// `@geoleaf/app`, `@geoleaf/build-config` et `@geoleaf/host-runtime`. Le « 15 » écrit ici
-// jusque-là n'a jamais correspondu à rien de mesurable ; il se re-dérive en une ligne :
+// (14 packages — measured on 2026-08-09: 17 workspaces minus the 3 `private` ones,
+// namely `@geoleaf/app`, `@geoleaf/build-config` and `@geoleaf/host-runtime`. The
+// "15" written here until then never matched anything measurable; it re-derives in
+// one line:
 // `node -e "console.log(require('./scripts/lib/packages.cjs').publishable().length)"`).
 // Publishing is externally visible and hard to walk back, so widening it is a decision to
 // take explicitly — never a side effect of a package ceasing to be private. Note the
 // divergence: the comment below says every plugin is MIT on npmjs, yet only these two are
 // pushed by this script.
 //
-// 🛑 Roadmap `roadmap_passage-public-npm.md`, tâche 2.8 — décision du 09/08/2026, écrite ici
-// pour qu'elle ne soit pas indiscernable d'un oubli. La tâche demandait de « dériver la
-// politique de `packages.cjs` » : c'est EXACTEMENT le side-effect que le paragraphe ci-dessus
-// interdit, et remplacer ce littéral par un appel de fonction élargirait la surface de
-// publication de 2 à 14 paquets sans qu'aucune ligne ne porte la décision. **La liste reste
-// écrite à la main.** L'élargissement aux 14 est prévu, mais il appartient à la tâche 10.5,
-// où il est une décision de publication assumée — pas un effet de bord de refactorisation.
+// 🛑 Decision of 2026-08-09, written here so it is not indistinguishable from an
+// oversight. The ask was to "derive the policy from `packages.cjs`": that is EXACTLY
+// the side effect the paragraph above forbids, and replacing this literal with a
+// function call would widen the publication surface from 2 to 14 packages with no
+// line carrying the decision. **The list stays hand-written.** The widening to 14 was
+// planned, as an assumed publication decision — not a refactoring side effect.
 //
-// ✅ **ÉLARGISSEMENT EXÉCUTÉ le 11/08/2026 — tâche 10.5, décision de Mattieu.** La liste passe
-// de 2 à **12**, et elle reste **écrite à la main**, nom par nom : c'est la forme que le
-// paragraphe ci-dessus exige, et la substituer par `publishable().filter(…)` aurait rendu la
-// surface de publication dépendante d'un `private: true` qu'on retire ailleurs.
+// ✅ **WIDENING EXECUTED on 2026-08-11 — Mattieu's decision.** The list goes from 2 to
+// **12**, and it stays **hand-written**, name by name: the shape the paragraph above
+// demands, and substituting `publishable().filter(…)` would have made the publication
+// surface depend on a `private: true` someone removes elsewhere.
 //
-// ⚠️ **12 et non 14** : ce script ne publie que les PLUGINS. `@geoleaf/core` (tâche 10.3) et
-// `@geoleaf/field-renderer` (10.4) se publient séparément et AVANT — les 12 déclarent le core
-// en `^3.0.0`, et `editor` déclare en plus `field-renderer`. Les publier ici les ferait partir
-// avant leurs dépendances.
+// ⚠️ **12 and not 14**: this script only publishes the PLUGINS. `@geoleaf/core` and
+// `@geoleaf/field-renderer` publish separately and FIRST — the 12 declare the core at
+// `^3.0.0`, and `editor` additionally declares `field-renderer`. Publishing them here
+// would send them off before their dependencies.
 //
-// 📌 **L'ordre entre les 12 est indifférent, et c'est mesuré** : aucun plugin ne dépend d'un
-// autre plugin (0 arête inter-plugins au 11/08/2026). L'ordre alphabétique n'est donc pas un
-// ordre de publication, c'est une commodité de lecture.
+// 📌 **The order among the 12 is indifferent, and that is measured**: no plugin
+// depends on another plugin (0 inter-plugin edges as of 2026-08-11). The alphabetical
+// order is thus not a publication order, it is a reading convenience.
 //
-// Ce qui EST dérivé de `packages.cjs`, en revanche, c'est le CONTRÔLE de cohérence
-// ci-dessous : un nom de cette liste qui cesserait d'exister doit faire JETER le script,
-// jamais publier une liste plus courte en silence.
+// What IS derived from `packages.cjs`, however, is the coherence CHECK below: a name
+// of this list that ceased to exist must make the script THROW, never publish a
+// shorter list in silence.
+// ✅ **SECOND WIDENING, 2026-09-01 — Mattieu's decision, asked for in those words.** The
+// list goes from **12 to 15**: `navigation`, `position-share` and `routing` join it. Same
+// shape as the first widening, and for the same reason — hand-written, name by name. The
+// three were `publishable()` since they were written yet published by nothing, and an audit
+// on 2026-08-31 first read that as a defect of the guard. **It was not**: the paragraphs
+// above say in full that narrowness is a POLICY and that widening is a decision, never a
+// side effect. The guard was doing exactly its job; what was missing was this line.
+//
+// 📌 The three were ready on their own terms before joining: `v1.0.0`, `@geoleaf/core` at
+// `^3.0.0` (satisfied by the registry), `publishConfig.access: public`, `files[]`, MIT
+// `LICENSE`. Nothing about them was bumped for this — joining the list is the whole change.
 const PUBLISHED_PLUGINS = [
     "@geoleaf-plugins/cog",
     "@geoleaf-plugins/connector",
@@ -57,9 +79,12 @@ const PUBLISHED_PLUGINS = [
     "@geoleaf-plugins/flatgeobuf",
     "@geoleaf-plugins/geocoding",
     "@geoleaf-plugins/measure",
+    "@geoleaf-plugins/navigation",
     "@geoleaf-plugins/offline-ui",
+    "@geoleaf-plugins/position-share",
     "@geoleaf-plugins/print",
     "@geoleaf-plugins/realtime-layer",
+    "@geoleaf-plugins/routing",
     "@geoleaf-plugins/table",
     "@geoleaf-plugins/websocket",
 ];
@@ -84,41 +109,44 @@ for (const name of PUBLISHED_PLUGINS) {
 }
 
 /**
- * La version de ce paquet est-elle DÉJÀ sur le registre ?
+ * Is this package's version ALREADY on the registry?
  *
- * 🛑 **C'est l'élargissement de 2 à 12 qui rend ce contrôle nécessaire, pas une prudence de
- * principe.** À deux paquets, un échec au second se reprend à la main sans y penser. À douze,
- * un échec au septième laisse **six paquets publiés** et cinq non — et un simple re-run mourait
- * alors en `403 You cannot publish over the previously published versions` sur le premier des
- * six, sans jamais atteindre les cinq qui restent à faire. Le script devenait non rejouable au
- * pire moment : au milieu d'une opération irréversible.
+ * 🛑 **The widening from 2 to 12 is what makes this check necessary, not caution on
+ * principle.** At two packages, a failure on the second is retaken by hand without a
+ * thought. At twelve, a failure on the seventh leaves **six packages published** and
+ * five not — and a simple re-run then died with
+ * `403 You cannot publish over the previously published versions` on the first of the
+ * six, never reaching the five left to do. The script became non-replayable at the
+ * worst moment: in the middle of an irreversible operation.
  *
- * Ici, un paquet déjà publié à cette version est **sauté en le disant**, et le run continue.
+ * Here, a package already published at this version is **skipped while saying so**,
+ * and the run continues.
  *
- * ⚠️ Ne PAS confondre avec un vert : sauter n'est pas publier. Le décompte final distingue les
- * deux, sans quoi « 12/12 » se lirait comme douze publications alors qu'il pourrait n'y avoir
- * eu que cinq.
+ * ⚠️ Do NOT mistake it for a green: skipping is not publishing. The final tally
+ * separates the two, otherwise "12/12" would read as twelve publications when there
+ * may have been only five.
  *
- * ✅ **Le corps vit désormais dans `lib/npm-registry.cjs`** (15/08/2026), parce qu'il en
- * fallait un SECOND appelant : les étapes `@geoleaf/core` et `@geoleaf/field-renderer` de
- * `publish.yml` étaient des `npm publish` nus et mouraient en `E403` sur une version déjà
- * publiée — le workflow n'atteignait donc jamais les 12 plugins d'en dessous. Recopier ce
- * corps aurait fait diverger deux définitions de « déjà publié », dans un geste irréversible.
+ * ✅ **The body now lives in `lib/npm-registry.cjs`** (2026-08-15), because a SECOND
+ * caller was needed: the `@geoleaf/core` and `@geoleaf/field-renderer` steps of
+ * `publish.yml` were bare `npm publish` calls and died in `E403` on an
+ * already-published version — the workflow thus never reached the 12 plugins below.
+ * Copying this body would have let two definitions of "already published" diverge, in
+ * an irreversible move.
  */
 
 let published = 0;
 let skipped = 0;
 
 for (const workspace of PUBLISHED_PLUGINS) {
-    // 🛑 `.manifest.version`, et c'est un CORRECTIF — cette ligne lisait `.version`, que
-    // `byName()` n'expose pas : elle rendait `undefined`, `npm view <nom>@undefined` échouait,
-    // et `alreadyPublished()` concluait donc TOUJOURS « pas publié ».
+    // 🛑 `.manifest.version`, and it is a FIX — this line read `.version`, which
+    // `byName()` does not expose: it returned `undefined`, `npm view <name>@undefined`
+    // failed, and `alreadyPublished()` thus ALWAYS concluded "not published".
     //
-    // ⚠️ Conséquence, mesurée le 15/08/2026 : la rejouabilité que les vingt lignes de
-    // commentaire ci-dessus documentent **n'a jamais fonctionné**. Une reprise après échec
-    // partiel n'aurait rien sauté et serait morte en `E403` sur le premier paquet déjà publié
-    // — précisément le scénario que ce contrôle existe pour éviter. La gate n'avait jamais été
-    // vue mordre, et elle ne mordait pas.
+    // ⚠️ Consequence, measured on 2026-08-15: the replayability the twenty comment
+    // lines above document **never worked**. A resume after partial failure would
+    // have skipped nothing and died in `E403` on the first already-published package
+    // — precisely the scenario this check exists to avoid. The guard had never been
+    // seen biting, and it did not bite.
     const version = registry.byName(workspace).manifest.version;
     if (!dryRun && alreadyPublished(workspace, version)) {
         console.log(`\n↷ ${workspace}@${version} — DÉJÀ au registre, sauté (reprise de run).`);
@@ -144,22 +172,29 @@ for (const workspace of PUBLISHED_PLUGINS) {
         );
         console.error(
             `  Le script est REJOUABLE : les paquets déjà au registre seront sautés.\n` +
-                `  ⚠️ Si l'échec est \`EOTP\`, npm réclame un code d'authenticator. Ce script publie\n` +
-                `     par \`execSync\` en \`stdio: "inherit"\` : lancé depuis un VRAI TERMINAL, npm\n` +
-                `     hérite du tty et pose la question — répondre, un code par paquet. Ce n'est que\n` +
-                `     depuis une session automatisée (sans tty) qu'il ne peut pas y répondre.\n` +
-                `     🛑 Ce message a dit l'inverse jusqu'au 12/08/2026 — « publie sans TTY et ne peut\n` +
-                `     pas y répondre », sans distinguer les deux cas — et il a envoyé chercher un\n` +
-                `     contournement (bascule 2FA, jeton granulaire) là où il suffisait de le lancer\n` +
-                `     à la main. Aucun des deux n'a levé l'EOTP : npm le réclame quel que soit le\n` +
-                `     type de jeton, et \`auth-only\` n'y change rien.`
+                `  ⚠️ Si l'échec est \`EOTP\`, npm exige une confirmation 2FA. LE REMÈDE EST UNE\n` +
+                `     VARIABLE, PAS UN CODE — relancer avec un navigateur nommé :\n` +
+                `         BROWSER=wslview node scripts/publish-plugins.cjs\n` +
+                `     npm ouvre alors un onglet de confirmation PAR PAQUET, on clique, il continue.\n` +
+                `     \`BROWSER=echo\` marche aussi : npm imprime l'URL et attend, on la colle à la main.\n` +
+                `     Sans variable, npm meurt sur « Set the BROWSER environment variable » — un\n` +
+                `     message qui ne nomme ni EOTP ni 2FA, d'où la confusion.\n` +
+                `     🛑 CE MESSAGE A ENVOYÉ CHERCHER UN AUTHENTICATOR JUSQU'AU 01/09/2026, et c'est\n` +
+                `     sa TROISIÈME version fausse sur ce même sujet. Il disait « npm hérite du tty et\n` +
+                `     pose la question — un code par paquet » : npm ne pose pas cette question, il\n` +
+                `     propose un flux WEB. Mesuré ce jour-là, depuis un vrai terminal, en publiant 5\n` +
+                `     paquets sans taper un seul code. La version d'avant le 12/08 disait l'inverse\n` +
+                `     symétrique (« sans tty, ne peut pas y répondre »).\n` +
+                `     📌 Ce qui RESTE vrai des versions précédentes : aucun type de jeton ne lève\n` +
+                `     l'exigence de 2FA, et \`auth-only\` n'y change rien. Ce qui était faux, c'est la\n` +
+                `     FORME que prend cette exigence.`
         );
         process.exit(1);
     }
 }
 
-// ⚠️ Le décompte SÉPARE publiés et sautés, délibérément : « 12/12 » sur une reprise de run
-// laisserait croire à douze publications là où il n'y en a peut-être eu que cinq.
+// ⚠️ The tally SEPARATES published and skipped, deliberately: "12/12" on a resumed
+// run would suggest twelve publications where there may have been only five.
 console.log(
     `\n${dryRun ? "[dry-run] " : ""}${published} publié(s), ${skipped} déjà au registre ` +
         `(sauté), sur ${PUBLISHED_PLUGINS.length} plugin(s).`

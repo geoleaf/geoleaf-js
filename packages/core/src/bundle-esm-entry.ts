@@ -48,7 +48,7 @@ import "./app/boot.js";
 export * from "./kernel-exports.js";
 
 // ── Capability facades — this entry embarks ALL in-core capabilities ──
-// The count is deliberately NOT written here (B-43, same reason as `presets/manifest.full.ts`
+// The count is deliberately NOT written here (same reason as `presets/manifest.full.ts`
 // and `app/boot.ts`): a number in a header is a second source of truth that can only drift
 // from the manifest. It said « 18 » for 21. What holds the promise is the guard
 // `__tests__/guards/manifest-full-completeness.guard.test.ts`, which ties `FULL.capabilities`
@@ -71,7 +71,7 @@ export * from "./kernel-exports.js";
 // Text search engine removed (dead module, 0 consumer, never wired). BREAKING:
 // the named `Search` export was dropped; text search lives in the in-core filter capability.
 export { Legend } from "./api/geoleaf.legend.js";
-// `Filters` removed at API publique S4.5 — BREAKING on this root entry. It exposed one
+// `Filters` removed — BREAKING on this root entry. It exposed one
 // method, `filterRouteList`, with zero caller in the repo, under a name one letter from
 // `Filter` (a different object, 8 members). No replacement: list filtering is the
 // integrator's own `Array.filter`.

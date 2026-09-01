@@ -26,7 +26,7 @@ import type {
 const _GeoJSONCore = GeoJSONCore as unknown as LabelsGeoJSONCore;
 
 function _buildLabelToggleButton(): HTMLButtonElement {
-    const labelToggle = domCreate("button", "gl-layer-manager__label-toggle") as HTMLButtonElement;
+    const labelToggle = domCreate("button", "gl-layer-manager__label-toggle");
     labelToggle.type = "button";
     labelToggle.setAttribute("aria-label", getLabel("aria.labels.toggle"));
     labelToggle.disabled = true;
@@ -93,15 +93,13 @@ const LabelButtonManager: LabelButtonManagerApi = {
         if (!layerId) return;
         let button = document.querySelector(
             `[data-layer-id="${layerId}"] .gl-layer-manager__label-toggle`
-        ) as HTMLElement | null;
+        );
         if (!button) {
             const layerItem = document.querySelector(`[data-layer-id="${layerId}"]`);
             if (!layerItem) return;
             const controlsContainer = layerItem.querySelector(".gl-layer-manager__item-controls");
             if (controlsContainer) {
-                button = controlsContainer.querySelector(
-                    ".gl-layer-manager__label-toggle"
-                ) as HTMLElement | null;
+                button = controlsContainer.querySelector(".gl-layer-manager__label-toggle");
                 if (!button) button = this.createButton(layerId, controlsContainer as HTMLElement);
             }
         }

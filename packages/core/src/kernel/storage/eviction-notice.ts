@@ -7,43 +7,46 @@
 
 /**
  * @file eviction-notice.ts
- * @description L'unique écouteur in-core de `geoleaf:cache:evicted` — B-163.
+ * @description The single in-core listener of `geoleaf:cache:evicted`.
  *
- * 🛑 POURQUOI CE FICHIER EXISTE. Le core ÉMET l'alerte d'éviction depuis deux endroits
- * et ne l'écoutait nulle part : le seul `addEventListener` du dépôt vivait dans
- * `offline-ui`, un plugin **gaté, absent de `deploy-core`**. Sur cette variante — celle
- * qui part chez un client — l'avis partait dans le vide depuis toujours. Ce n'est pas du
- * poids, c'est de la perte de données : l'utilisateur ne savait pas que la place manquait.
+ * 🛑 WHY THIS FILE EXISTS. The core EMITS the eviction alert from two places and
+ * listened to it nowhere: the repo's only `addEventListener` lived in `offline-ui`,
+ * a **gated** plugin, **absent from `deploy-core`**. On that variant — the one that
+ * ships to a client — the notice went into the void from the start. Not weight,
+ * data loss: the user did not know space was running out.
  *
- * ## Les deux émetteurs, et pourquoi UN écouteur suffit
+ * ## The two emitters, and why ONE listener suffices
  *
- *   1. `kernel/storage/sw-register.ts` — le pont `_wireEvictionBridge()`, qui retransforme
- *      le message du Service Worker en événement DOM (éviction sous pression du quota).
- *   2. `capabilities/offline/cache/cache-manager.ts` — `_enforceCacheQuota()`, **in-core et
- *      hors de tout worker** (éviction sur budget `maxCacheBytes`), donc **aussi hors PWA**.
+ *   1. `kernel/storage/sw-register.ts` — the `_wireEvictionBridge()` bridge, which
+ *      turns the Service Worker's message back into a DOM event (eviction under
+ *      quota pressure).
+ *   2. `capabilities/offline/cache/cache-manager.ts` — `_enforceCacheQuota()`,
+ *      **in-core and outside any worker** (eviction on the `maxCacheBytes` budget),
+ *      hence **also outside PWA**.
  *
- * Les deux dispatchent le MÊME nom sur le MÊME `document` : un écouteur unique les couvre.
- * 🛑 **Ne pas en ajouter un second** — c'est le nombre d'écouteurs qui était à zéro, pas le
- * nombre d'émetteurs qui est à corriger.
+ * Both dispatch the SAME name on the SAME `document`: a single listener covers
+ * them. 🛑 **Do not add a second one** — the listener count is what was at zero,
+ * not the emitter count that needs fixing.
  *
- * ## ⚠️ POURQUOI LE CÂBLAGE N'EST PAS DANS `_wireEvictionBridge()`
+ * ## ⚠️ WHY THE WIRING IS NOT IN `_wireEvictionBridge()`
  *
- * Ce pont n'est appelé qu'**après** `navigator.serviceWorker.register()` — « jamais sur une
- * page qui n'a pas de worker », dit son propre commentaire. Y poser l'écouteur le rendrait
- * aveugle à l'émetteur n° 2, précisément le chemin hors-PWA. Le câblage doit donc être sur un
- * chemin **inconditionnel** : il l'est, via `setupStorage()` (B8).
+ * That bridge is only called **after** `navigator.serviceWorker.register()` —
+ * "never on a page with no worker", its own comment says. Placing the listener
+ * there would make it blind to emitter no. 2, precisely the non-PWA path. The
+ * wiring must therefore be on an **unconditional** path: it is, via
+ * `setupStorage()` (B8).
  *
  * ## ⚠️ POURQUOI `notifyPrimitive` ET NON `GeoLeaf.UI.notify`
  *
- * Les deux surfaces ne dégradent PAS de la même façon quand `toast-renderer` est absent ou
- * coupé — et une seule des deux convient ici :
+ * The two surfaces do NOT degrade the same way when `toast-renderer` is absent or
+ * disabled — and only one of the two fits here:
  *
  *   · `GeoLeaf.UI.notify.*` lit `_UINotifications` en `?.` → **no-op silencieux** ;
  *   · `notifyPrimitive.notify()` porte un `_consoleFallback` → **`console.warn`**.
  *
- * Passer par la surface riche reproduirait le silence que ce fichier corrige. Avec la
- * primitive, un profil qui coupe le renderer perd le toast mais **pas le signal** : le
- * message est perdu bruyamment, jamais en silence.
+ * Going through the rich surface would reproduce the silence this file corrects.
+ * With the primitive, a profile that disables the renderer loses the toast but
+ * **not the signal**: the message is lost loudly, never silently.
  *
  * © 2026 Mattieu Pottier
  * Licensed under the MIT License
@@ -56,37 +59,39 @@ import { formatFileSize } from "../../utils/general/formatters.js";
 import { notifyPrimitive } from "../../utils/notify/notify.primitive.js";
 
 /**
- * L'écouteur posé ? `setupStorage()` est re-callable (il est lié au cycle de vie du module
- * `shared`), donc un second appel ne doit pas empiler un second écouteur — ce qui doublerait
- * l'avis affiché. Drapeau au niveau MODULE, comme celui du pont d'éviction.
+ * Listener in place? `setupStorage()` is re-callable (it is tied to the `shared`
+ * module's lifecycle), so a second call must not stack a second listener — which
+ * would double the displayed notice. MODULE-level flag, like the eviction
+ * bridge's.
  */
 let _evictionNoticeWired = false;
 
 /**
- * Rend l'avis d'éviction visible sur TOUTES les variantes, `deploy-core` comprise.
+ * Makes the eviction notice visible on EVERY variant, `deploy-core` included.
  *
- * 🛑 Sortie en tête si rien n'a été évincé. `_enforceCacheQuota()` n'émet que lorsque des
- * enregistrements SONT retirés, mais un détail à zéro reste possible ; une notification
- * « 0 entrée retirée » apprend à l'utilisateur à ne plus les lire.
+ * 🛑 Early exit when nothing was evicted. `_enforceCacheQuota()` only emits when
+ * records ARE removed, but a zero detail stays possible; a "0 entries removed"
+ * notification teaches the user to stop reading them.
  *
- * ⚠️ **LES DEUX PRODUCTEURS NE PORTENT PAS LE MÊME DÉTAIL**, et c'est ce qui gouverne le garde
- * ci-dessous :
- *   · IndexedDB (`_enforceCacheQuota` → `db/eviction.ts`) — détail complet, `freedBytes`
- *     renseigné, comptes exprimés en OCTETS ;
- *   · Cache API (le Service Worker, relayé par `sw-register.ts`) — **pas de `freedBytes`** :
- *     la Cache API n'expose la taille d'aucune entrée, et `totalBefore` / `totalAfter` y
- *     comptent des ENTRÉES, pas des octets.
+ * ⚠️ **THE TWO PRODUCERS DO NOT CARRY THE SAME DETAIL**, and that governs the guard
+ * below:
+ *   · IndexedDB (`_enforceCacheQuota` → `db/eviction.ts`) — full detail,
+ *     `freedBytes` set, counts expressed in BYTES;
+ *   · Cache API (the Service Worker, relayed by `sw-register.ts`) — **no
+ *     `freedBytes`**: the Cache API exposes no entry's size, and `totalBefore` /
+ *     `totalAfter` count ENTRIES there, not bytes.
  *
- * Fabriquer un nombre pour homogénéiser les deux producteurs afficherait une quantité fausse ;
- * l'avis se prononce donc sans taille quand elle manque.
+ * Fabricating a number to homogenise the two producers would display a false
+ * quantity; the notice therefore speaks without a size when it is missing.
  *
- * 🛑 **LE GARDE PORTE SUR LE NOMBRE BRUT, PAS SUR LA CHAÎNE FORMATÉE — et c'est un correctif,
- * pas une transposition.** L'écouteur d'origine (`offline-ui`) testait `formatFileSize(...)`,
- * en s'appuyant sur un commentaire qui affirmait qu'il « rend `""` » quand la mesure manque.
- * **C'était vrai du proxy du plugin seulement lorsque le seam du core est ABSENT** ; dès que
- * le core répond, `formatFileSize(undefined)` rend `"0 B"` — une chaîne **truthy**. Le chemin
- * Cache API affichait donc « (0 B) » à chaque éviction du worker. Garder sur le nombre supprime
- * la classe entière.
+ * 🛑 **THE GUARD BEARS ON THE RAW NUMBER, NOT THE FORMATTED STRING — a fix, not a
+ * transposition.** The original listener (`offline-ui`) tested
+ * `formatFileSize(...)`, leaning on a comment claiming it "returns `""`" when the
+ * measurement is missing. **That was true of the plugin's proxy only when the
+ * core's seam is ABSENT**; as soon as the core answers, `formatFileSize(undefined)`
+ * returns `"0 B"` — a **truthy** string. The Cache API path therefore displayed
+ * "(0 B)" on every worker eviction. Guarding on the number removes the whole
+ * class.
  */
 function _onEvicted(event: Event): void {
     const detail = (event as CustomEvent<GeoLeafCacheEvictedDetail>).detail ?? {};
@@ -98,19 +103,20 @@ function _onEvicted(event: Event): void {
     const freed =
         typeof freedBytes === "number" && freedBytes > 0 ? formatFileSize(freedBytes) : "";
 
-    // `{0}` et non `{count}` : `getLabel()` interpole positionnellement. `offline-ui` porte la
-    // même clé en `{count}` parce qu'il fait un `.replace()` manuel — ce n'est pas la
-    // convention du moteur, et recopier sa graphie afficherait « {count} » à l'écran.
+    // `{0}` and not `{count}`: `getLabel()` interpolates positionally. `offline-ui`
+    // carries the same key with `{count}` because it does a manual `.replace()` —
+    // not the engine's convention, and copying its spelling would display "{count}"
+    // on screen.
     const base = getLabel("storage.notif.cacheEvicted", String(count));
 
     notifyPrimitive.notify(freed ? `${base} (${freed})` : base, "warning");
 }
 
 /**
- * Câble l'unique écouteur in-core de `geoleaf:cache:evicted`.
+ * Wires the single in-core listener of `geoleaf:cache:evicted`.
  *
- * Appelée par `setupStorage()` (B8) — un chemin de boot **inconditionnel**, volontairement
- * indépendant de l'enregistrement du Service Worker (voir l'en-tête du fichier). Idempotente.
+ * Called by `setupStorage()` (B8) — an **unconditional** boot path, deliberately
+ * independent of Service Worker registration (see the file header). Idempotent.
  */
 export function wireEvictionNotice(): void {
     if (_evictionNoticeWired) return;
@@ -121,11 +127,12 @@ export function wireEvictionNotice(): void {
 }
 
 /**
- * Retire l'écouteur posé par {@link wireEvictionNotice}.
+ * Removes the listener set by {@link wireEvictionNotice}.
  *
- * ⚠️ **Exportée pour le harnais de test**, qui doit pouvoir re-câbler entre deux cas sans
- * empiler d'écouteurs — le drapeau module rendrait sinon tout second `wireEvictionNotice()`
- * inopérant, et un test vert n'éprouverait rien.
+ * ⚠️ **Exported for the test harness**, which must be able to re-wire between two
+ * cases without stacking listeners — the module flag would otherwise make any
+ * second `wireEvictionNotice()` inoperative, and a green test would prove
+ * nothing.
  */
 export function unwireEvictionNotice(): void {
     if (!_evictionNoticeWired) return;

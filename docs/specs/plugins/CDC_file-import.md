@@ -148,10 +148,10 @@ réellement praticable : l'intégrateur type son convertisseur contre l'interfac
 
 `packages/core/src/global.d.ts` déclare `FileImport?: unknown`. Une faute de frappe sur le nom du
 namespace ne compile donc pas ; **la forme des appels, en revanche, n'est pas vérifiée** — c'est la
-traîne de membre que suit le backlog **B-13**.
+traîne de membre encore ouverte.
 
 ⚠️ **Ce n'était pas le cas quand cette fiche a été écrite, et c'est elle qui a levé le défaut.**
-L'interface `GeoLeafGlobal` n'a plus de traîne de premier niveau depuis B-13 ; **cinq** namespaces
+L'interface `GeoLeafGlobal` n'a plus de traîne de premier niveau ; **cinq** namespaces
 de plugins n'y avaient pas été déclarés — `FileImport`, `Measure`, `Print`, `Editor`, `Ws` —, de
 sorte qu'un intégrateur compilant contre les types publiés recevait :
 
@@ -159,10 +159,10 @@ sorte qu'un intégrateur compilant contre les types publiés recevait :
 GeoLeaf.FileImport.convert(file)   →  TS2339 : la propriété n'existe pas
 ```
 
-Les deux effets de B-13 venaient du **même geste** — huit API fantômes documentées tombées d'un
+Les deux effets venaient du **même geste** — huit API fantômes documentées tombées d'un
 côté, cinq plugins publiés fermés de l'autre. Seul le premier était voulu.
 
-✅ **Soldé le 27/07/2026 (B-52)** : les cinq sont déclarés, le symptôme a été **vérifié
+✅ **Soldé le 27/07/2026** : les cinq sont déclarés, le symptôme a été **vérifié
 empiriquement avant et après** par une sonde compilée contre `dist/types/` à travers l'exports map
 — cinq erreurs, puis zéro —, et une **gate ferme désormais la classe** :
 `packages/core/__tests__/guards/plugin-namespace-declared.guard.test.js` vérifie que tout namespace
@@ -236,7 +236,7 @@ convertisseur GPX est le plus gros fichier du paquet.
 
 Le CDC `CDC_plugin-file-import.md` a été **consommé** en écrivant cette fiche, puis retiré du
 dossier de tri — trace au §Journal des décisions de
-`roadmap_documentation-v3.md`.
+la refonte documentaire V3.
 
 | Énoncé du CDC                                | Ce que dit le dépôt                                                                                         |
 | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |

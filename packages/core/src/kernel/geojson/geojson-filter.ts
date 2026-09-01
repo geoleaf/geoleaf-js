@@ -7,7 +7,7 @@
 
 /**
  * GeoLeaf GeoJSON — Feature Filter Helpers
- * Extracted from geojson/core.ts — Sprint 1 refactoring.
+ * Extracted from geojson/core.ts.
  * Handles geometry-type filtering and per-feature visibility for filterFeatures().
  */
 
@@ -102,7 +102,7 @@ function _isClusteredLayer(layerData: GeoJSONLayerEntry): boolean {
 
 /** Reads a feature's `properties.id` (the field `["get","id"]` resolves), else null. */
 function _readPropId(feature: GeoJSONFeature): string | number | null {
-    const pid = (feature.properties as Record<string, unknown> | null | undefined)?.id;
+    const pid = feature.properties?.id;
     return typeof pid === "string" || typeof pid === "number" ? pid : null;
 }
 
@@ -197,7 +197,7 @@ export function _applyFeatureVisibilityForLayer(
 
 /**
  * Returns all loaded features, each shallow-tagged with its owning layer id.
- * Reads directly from state.layers (featureCache removed in Sprint 1).
+ * Reads directly from state.layers (featureCache removed).
  *
  * @param options - Optional narrowing by geometry type and/or layer id.
  * @returns GeoJSON features enriched with `{ _layerId }`.

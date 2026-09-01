@@ -40,22 +40,24 @@ function buildShareButton(): HTMLButtonElement {
     const label = getLabel("share.toolbar.button");
     btn.setAttribute("aria-label", label);
     btn.title = label;
-    // ⚠️ Émission BRUTE, et non `dispatchToolbarAction()` — décision de l'API publique S3.3,
-    // prise après l'avoir substituée puis annulée.
+    // ⚠️ RAW emission, not `dispatchToolbarAction()` — a public-API-review decision,
+    // taken after substituting it then reverting.
     //
-    // C'est le seul des 3 déclencheurs de toolbar à ne pas passer par la fabrique canonique
-    // (`mobile-toolbar.ts:191` et `desktop-panel-slots.ts:81` l'appellent). Le passage par
-    // le helper est pourtant refusé ici : `toolbar-dispatch.ts` n'est ni un barrel, ni un
-    // `*-seam.ts`, ni un `*-types.ts`, donc l'importer depuis `capabilities/` viole la
-    // frontière `no-restricted-imports` du backlog R.8 — ESLint l'a dit, ce n'est pas une
-    // supposition. Et passer par le barrel `kernel/ui/index.js` tirerait `components.js`,
-    // `pill-search.js` et `theme.js` dans la clôture de la capacité permalink : un coût de
-    // bundle réel pour une déduplication sans effet fonctionnel.
+    // This is the only one of the 3 toolbar triggers not going through the canonical
+    // factory (`mobile-toolbar.ts` and `desktop-panel-slots.ts` call it). The
+    // helper is nonetheless refused here: `toolbar-dispatch.ts` is neither a barrel,
+    // nor a `*-seam.ts`, nor a `*-types.ts`, so importing it from `capabilities/`
+    // violates the `no-restricted-imports` boundary — ESLint said so, this is not a
+    // supposition. And going through the `kernel/ui/index.js` barrel would pull
+    // `components.js`, `pill-search.js` and `theme.js` into the permalink
+    // capability's closure: a real bundle cost for a deduplication with no functional
+    // effect.
     //
-    // La divergence est donc inerte et mesurée : la seule chose que le helper ajoute est la
-    // branche lazy, et `share` est une capacité in-core qui n'est jamais lazy. Rendre
-    // `toolbar-dispatch` importable en le qualifiant de seam est la vraie correction — elle
-    // relève d'un arbitrage de couche, pas de ce sprint. Versée au backlog.
+    // The divergence is therefore inert and measured: the only thing the helper adds
+    // is the lazy branch, and `share` is an in-core capability that is never lazy.
+    // Making `toolbar-dispatch` importable by qualifying it as a seam is the real
+    // fix — it belongs to a layering arbitration, not to this pass. Filed in the
+    // backlog.
     btn.addEventListener("click", () => {
         document.dispatchEvent(
             new CustomEvent("geoleaf:toolbar:action", {

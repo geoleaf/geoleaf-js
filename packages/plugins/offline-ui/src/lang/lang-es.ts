@@ -42,6 +42,16 @@ const langStorageEs: StorageLangDict = {
     "storage.zone.title": "Área sin conexión",
     "storage.zone.useCurrentView": "Usar la vista actual",
     "storage.zone.useProfileArea": "Área del perfil",
+    "storage.zone.useRouteCorridor": "Corredor de la ruta",
+    "storage.zone.corridorSummary": "Corredor",
+    "storage.zone.corridor.no-engine": "El motor sin conexión no está disponible.",
+    "storage.zone.corridor.no-route": "No se ha preparado ninguna ruta.",
+    "storage.zone.corridor.degenerate-line":
+        "La ruta guardada es demasiado corta para un corredor.",
+    "storage.zone.corridor.over-quota":
+        "Demasiado grande para el espacio restante. Reduzca uno de los dos:",
+    "storage.zone.lever.zoom": "zoom",
+    "storage.zone.lever.buffer": "margen (m)",
     "storage.zone.zoomCeiling": "Zoom máximo",
     "storage.zone.note": "Más alto = más nítido pero más pesado.",
     "storage.zone.noZone": "Ninguna área seleccionada.",
@@ -101,8 +111,8 @@ const langStorageEs: StorageLangDict = {
     "storage.notif.clear.success": "Caché vaciada",
     "storage.notif.clear.error": "Error al vaciar",
     "storage.notif.resourcesDeleted": "recursos eliminados",
-    // Signaux du MOTEUR rendus visibles (B-72) — le quota est une ERREUR (une écriture
-    // a été REFUSÉE), l'éviction un AVERTISSEMENT (des données demandées ne sont plus là).
+    // ENGINE signals made visible — the quota is an ERROR (a write was REFUSED),
+    // eviction a WARNING (requested data is no longer there).
     "storage.notif.quotaExceeded": "Almacenamiento lleno: no se pudo guardar el último elemento",
     "storage.notif.cacheEvicted":
         "{count} elemento(s) sin conexión eliminados para liberar espacio",

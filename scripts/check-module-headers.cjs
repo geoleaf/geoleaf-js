@@ -34,15 +34,27 @@
  * the tags pointed somewhere that did not exist.**
  *
  * And nothing read them. `moduleTag` was written into the inventory and consumed by
- * NOTHING; `packages/core/typedoc.json` is `entryPointStrategy: "resolve"`, which walks
- * imports from one entry point and never reads a per-file `@module` — verified against
- * the generated output, where no tag value appears at all. The tag's only remaining
- * function was orienting a human, and it misled 43 % of the time.
+ * NOTHING; `packages/core/typedoc.json` was, AT THE TIME OF THE REMOVAL (9745cad7,
+ * 26/07/2026), `entryPointStrategy: "resolve"`, which walks imports from one entry point
+ * and never reads a per-file `@module` — verified against the generated output, where no
+ * tag value appeared at all. The tag's only remaining function was orienting a human, and
+ * it misled 43 % of the time.
  *
  * A tag required to equal its own file's path carries no information: its only two
- * states are "correct" and "drifted". So it is banned, not synchronised. Restoring it
- * later, should TypeDoc ever move to `expand`, is a script that regenerates 514 tags
- * from 514 paths — the option is deferred at low cost, not lost.
+ * states are "correct" and "drifted". So it is banned, not synchronised.
+ *
+ * ⚠️ **THE CONDITION THIS FILE WROTE FOR ITS OWN REOPENING IS ALREADY MET, AND HAS BEEN
+ * SINCE 29/07/2026.** The sentence below used to read « should TypeDoc ever move to
+ * `expand` » — `packages/core/typedoc.json` moved to `expand` in 53e5afb7, **three days
+ * after** the tags were removed. This header nonetheless kept asserting `resolve` in the
+ * PRESENT TENSE until 17/08/2026, in two places (here and in the DIAGNOSTIC message
+ * printed to whoever trips MH-03), so anyone checking the stated condition read that it
+ * was unmet — while the config said otherwise.
+ *
+ * 🛑 **The ban is NOT lifted by this correction, and the distinction matters.** What fell
+ * is the *motive as written*, not the decision. Re-attaching 514 tags is a judgement about
+ * what a generated doc should carry, and it belongs to whoever makes it. What is
+ * fixed here is that the file now says something true about the config it depends on.
  *
  * ⚠️ Out of scope, knowingly: `scripts/*.cjs` (the gate reads `collect()`, which is
  * packages-only by default) and `.d.ts` / `__tests__` files, which `collect()` skips.
@@ -161,10 +173,14 @@ if (withModuleTag.length > 0) {
     for (const rel of withModuleTag) console.error(`  ${rel}`);
     console.error("");
     console.error(
-        "`@module` is banned in this repo, not maintained (STRUCT S5): nothing reads it — " +
-            'TypeDoc runs `entryPointStrategy: "resolve"` and never looks at a per-file tag — ' +
-            "and 204 of the 478 tags named a path that did not exist. Delete the line. " +
-            "The file's path already says where the file is."
+        "`@module` is banned in this repo, not maintained (STRUCT S5): 204 of the 478 tags " +
+            "named a path that did not exist, and a tag required to equal its own file's path " +
+            "carries no information. Delete the line — the file's path already says where the " +
+            "file is.\n" +
+            '⚠️ This message used to add « TypeDoc runs `entryPointStrategy: "resolve"` and ' +
+            "never looks at a per-file tag ». That has been FALSE since 29/07/2026: the config " +
+            "is `expand`, and a bare `@module` DOES render. The ban stands on the 204 wrong " +
+            "paths, not on TypeDoc's strategy — the re-attachment question stays open."
     );
 }
 

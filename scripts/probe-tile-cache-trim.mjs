@@ -1,45 +1,47 @@
 #!/usr/bin/env node
 /**
- * TILE-CACHE TRIM PROBE — VOIR l'éviction s'exécuter, dans un vrai navigateur.
+ * TILE-CACHE TRIM PROBE — SEE the eviction execute, in a real browser.
  *
- * POURQUOI ELLE EXISTE. La tâche 1.2 de `roadmap_socle-init.md` borne `CACHE_TILES`, et sa
- * propre section de vérification pose la condition : « **Voir le trim s'exécuter** : forcer le
- * seuil bas, naviguer, et voir le nombre de clés redescendre. ⚠️ *Une éviction jamais vue
- * s'exécuter ne borne rien* — même exigence que pour les gates. »
+ * WHY IT EXISTS. The bounding of `CACHE_TILES` is decided, and its own
+ * verification section sets the condition: "**See the trim execute**: force the
+ * threshold low, navigate, and watch the key count come back down. ⚠️ *An eviction
+ * never seen executing bounds nothing* — same requirement as for gates."
  *
- * Les suites unitaires exécutent le worker contre une Cache API simulée. Elles prouvent la
- * logique ; elles ne prouvent pas que `cache.keys()` rend l'ordre d'insertion dans un moteur
- * réel, ni que `cache.delete()` sur des milliers de clés aboutit, ni que le worker DÉPLOYÉ —
- * copié, patché par regex, minifié — porte encore le code qu'on a écrit. C'est ce que cette
- * sonde regarde.
+ * The unit suites run the worker against a simulated Cache API. They prove the
+ * logic; they do not prove that `cache.keys()` returns insertion order in a real
+ * engine, nor that `cache.delete()` over thousands of keys completes, nor that the
+ * DEPLOYED worker — copied, regex-patched, minified — still carries the code that
+ * was written. That is what this probe looks at.
  *
- * CE QU'ELLE MESURE, dans l'ordre :
- *   T0 — le worker déployé porte-t-il le bornage ? (sinon les mesures suivantes n'ont pas de
- *        sujet, et un déployé périmé sort vert en n'ayant rien éprouvé)
- *   T1 — semer `geoleaf-data-tiles` AU-DESSUS du plafond LIVRÉ, pas d'un plafond de test :
- *        ce qui est éprouvé est la configuration que l'intégrateur reçoit.
- *   T2 — le cache durable SURVIT à une ré-inscription du worker (re-preuve de la tâche 3.5 :
- *        son nom ne porte pas de version, donc `activate` ne peut pas le raser).
- *   T3 — après une navigation qui fait écrire une tuile, le compte REDESCEND, et il redescend
- *        à la marge basse (80 % du plafond), pas à zéro.
+ * WHAT IT MEASURES, in order:
+ *   T0 — does the deployed worker carry the bounding? (else the next measurements
+ *        have no subject, and a stale deploy goes green having proven nothing)
+ *   T1 — seed `geoleaf-data-tiles` ABOVE the SHIPPED ceiling, not a test ceiling:
+ *        what is proven is the configuration the integrator receives.
+ *   T2 — the durable cache SURVIVES a worker re-registration (re-proof: its name
+ *        carries no version, so `activate` cannot raze it).
+ *   T3 — after a navigation that makes a tile write, the count COMES DOWN, and it
+ *        comes down to the low-water mark (80 % of the ceiling), not to zero.
  *
- * 🛑 POURQUOI UNE RÉ-INSCRIPTION AU MILIEU. Le contrôle est amorti : il tourne au premier
- * `put` de tuile de chaque démarrage de worker, puis par lots de 50. Un worker déjà chaud a un
- * compteur dans un état inconnu, donc une mesure non déterministe. Désinscrire puis recharger
- * donne un worker neuf — et comme `CACHE_TILES` n'est pas versionné, les entrées semées
- * traversent l'opération. La sonde fait donc d'une pierre deux coups.
+ * 🛑 WHY A RE-REGISTRATION IN THE MIDDLE. The check is amortised: it runs at each
+ * worker start's first tile `put`, then in batches of 50. An already-warm worker
+ * has a counter in an unknown state, hence a non-deterministic measurement.
+ * Unregistering then reloading gives a fresh worker — and since `CACHE_TILES` is
+ * unversioned, the seeded entries survive the operation. The probe thus kills two
+ * birds with one stone.
  *
- * ELLE VALIDE, ELLE NE GARDE PAS — même statut que `probe-tile-cache-arbitration.mjs` : elle
- * exige un déployé à jour et le nginx de dev, donc elle n'est ni dans `ci:local` ni dans
- * `package.json`.
+ * IT VALIDATES, IT DOES NOT GUARD — same status as
+ * `probe-tile-cache-arbitration.mjs`: it requires an up-to-date deploy and the dev
+ * nginx, so it is neither in `ci:local` nor in `package.json`.
  *
- * ⚠️ Régénérer le déployé avant de croire un run — en TROIS temps, le premier n'est pas
- * optionnel : `npx turbo run build`, puis `npm run build:deploy`, puis
- * `node scripts/build-deploy-coverage.cjs`. `build-deploy.cjs` assemble depuis les `dist/`
- * existants, **il ne compile rien** : l'enchaîner seul produit un déployé périmé EN SORTANT 0.
+ * ⚠️ Regenerate the deploy before believing a run — in THREE steps, the first not
+ * optional: `npx turbo run build`, then `npm run build:deploy`, then
+ * `node scripts/build-deploy-coverage.cjs`. `build-deploy.cjs` assembles from the
+ * existing `dist/`, **it compiles nothing**: chaining it alone produces a stale
+ * deploy WHILE EXITING 0.
  *
  * Usage : E2E_TARGET=nginx node scripts/probe-tile-cache-trim.mjs
- * Exit  : 0 = le trim a été VU s'exécuter · 1 = il ne s'est pas exécuté · 2 = erreur de sonde
+ * Exit  : 0 = the trim was SEEN executing · 1 = it did not execute · 2 = probe error
  */
 
 import { readFileSync } from "node:fs";
@@ -53,7 +55,7 @@ const TILE_CACHE = "geoleaf-data-tiles";
 
 const say = (label, detail) => console.log(`▸ ${label}\n     → ${detail}\n`);
 
-/** Le plafond LIVRÉ, lu dans le worker déployé — jamais recopié en prose ici. */
+/** The SHIPPED ceiling, read in the deployed worker — never copied into prose here. */
 function deployedCeiling() {
     const src = readFileSync(
         new URL(`../deploy/deploy-${VARIANT}/sw-core.js`, import.meta.url),
@@ -68,7 +70,7 @@ function deployedCeiling() {
     };
 }
 
-/** Compte les clés de `CACHE_TILES` depuis la page. */
+/** Counts `CACHE_TILES` keys from the page. */
 const countTiles = (page) =>
     page.evaluate(async (name) => {
         if (!(await caches.keys()).includes(name)) return -1;
@@ -76,7 +78,7 @@ const countTiles = (page) =>
     }, TILE_CACHE);
 
 const run = async () => {
-    // ── T0 — le déployé porte-t-il le sujet ? ───────────────────────────────────────────
+    // ── T0 — does the deploy carry the subject? ─────────────────────────────────────────
     const { hasTrim, max, ratio } = deployedCeiling();
     say(
         "T0 — le worker DÉPLOYÉ porte le bornage",
@@ -87,7 +89,7 @@ const run = async () => {
     if (!hasTrim || !max) return 2;
 
     const browser = await chromium.launch({ args: [...SOFTWARE_GL_ARGS, ...hostResolverArgs] });
-    // Aucun `serviceWorkers: "block"` : le worker EST le sujet.
+    // No `serviceWorkers: "block"`: the worker IS the subject.
     const context = await browser.newContext({ ignoreHTTPSErrors: true });
     const page = await context.newPage();
     console.log(
@@ -100,13 +102,13 @@ const run = async () => {
             timeout: 25000,
         });
 
-        // ── T1 — semer AU-DESSUS du plafond livré ───────────────────────────────────────
+        // ── T1 — seed ABOVE the shipped ceiling ─────────────────────────────────────────
         const seedTarget = max + 100;
         const seeded = await page.evaluate(
             async ({ name, target }) => {
                 const cache = await caches.open(name);
                 const already = (await cache.keys()).length;
-                // Par lots : quelques milliers de `put` séquentiels sont bien plus lents.
+                // In batches: a few thousand sequential `put` are far slower.
                 for (let i = already; i < target; i += 200) {
                     await Promise.all(
                         Array.from({ length: Math.min(200, target - i) }, (_, k) =>
@@ -130,8 +132,8 @@ const run = async () => {
             return 2;
         }
 
-        // ── T2 — worker NEUF, et le cache durable doit traverser ────────────────────────
-        // Compteur amorti : seul un worker fraîchement démarré vérifie dès son premier `put`.
+        // ── T2 — FRESH worker, and the durable cache must cross over ────────────────────
+        // Amortised counter: only a freshly started worker checks at its first `put`.
         await page.evaluate(async () => {
             const regs = await navigator.serviceWorker.getRegistrations();
             await Promise.all(regs.map((r) => r.unregister()));
@@ -149,9 +151,9 @@ const run = async () => {
                 : `⚠️ ${survived} au lieu de ${seeded} — quelque chose a purgé un cache non versionné`
         );
 
-        // ── T3 — naviguer, et VOIR le compte redescendre ────────────────────────────────
-        // Le trim se déclenche sur une ÉCRITURE de tuile par le worker. On laisse la carte
-        // charger son fond, puis on la déplace pour en demander d'autres.
+        // ── T3 — navigate, and SEE the count come down ──────────────────────────────────
+        // The trim fires on a tile WRITE by the worker. Let the map load its
+        // background, then move it to request more.
         await page
             .waitForFunction(
                 () => {
@@ -187,7 +189,7 @@ const run = async () => {
                     : `❌ AUCUNE éviction : le trim ne s'est pas déclenché`)
         );
 
-        // Ce que le worker a dit de lui-même — la console du worker n'est pas celle de la page.
+        // What the worker said of itself — the worker's console is not the page's.
         const swLogs = [];
         context.on("console", (m) => swLogs.push(m.text()));
         say(

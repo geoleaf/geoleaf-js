@@ -1,23 +1,6 @@
 {
-    "_comment": "API publique S4.2 — clés de EXPECTED_FACADE_KEYS que GeoLeafGlobal (packages/core/src/global.d.ts) ne type pas, ou type de façon VIDE (unknown/any/object/{}/Record<string, unknown> — HOST-06). Cette liste ne peut que RÉTRÉCIR (HOST-05) : déclarez le membre, puis retirez sa ligne. Ne jamais y ajouter à la main — une clé neuve doit naître typée (HOST-04). Les clés `_` restantes relèvent de la dette D-14 (service-locator) et sortent du namespace, elles ne se typent pas.",
+    "_comment": "Clés de EXPECTED_FACADE_KEYS que GeoLeafGlobal (packages/core/src/global.d.ts) ne type pas, ou type de façon VIDE (unknown/any/object/{}/Record<string, unknown> — HOST-06). Cette liste ne peut que RÉTRÉCIR (HOST-05) : déclarez le membre, puis retirez sa ligne. Ne jamais y ajouter à la main — une clé neuve doit naître typée (HOST-04). ⚠️ Les clés `_` restantes relèvent de la dette D-14 (service-locator) et ont vocation à SORTIR du namespace — mais c'est un chantier d'architecture qui touche la séquence de boot B1→B11, pas un préalable au typage. Ce commentaire a dit « elles ne se typent pas » jusqu'au 23/08/2026, et c'était FAUX : huit clés `_` portent déjà une forme réelle dans global.d.ts, dont `_VectorTiles` et `_Cluster`, qui sont précisément deux des clés de D-14. Un `typeof import(...)` est type-only, effacé à la compilation : il n'ajoute aucune arête statique et n'entrave donc pas l'optionalité des capacités. Typer DÉCRIT ce qui existe, cela ne sanctionne rien — le `@internal` dit déjà que ce n'est pas une API d'intégrateur —, et cela retire un `unknown` d'un contrat PUBLIÉ.",
     "_generated": "node scripts/check-namespace-typing-coverage.cjs --update-baseline",
-    "count": 16,
-    "keys": [
-        "_APIController",
-        "_Cluster",
-        "_ConfigLoader",
-        "_DataConverter",
-        "_GeoJSONLayerConfig",
-        "_GeoJSONLayerManager",
-        "_GeoJSONLoader",
-        "_LabelButtonManager",
-        "_LabelRenderer",
-        "_LayerManagerControl",
-        "_LayerManagerStyleSelector",
-        "_OfflineDetector",
-        "_UIComponents",
-        "_Validators",
-        "_app",
-        "_registry"
-    ]
+    "count": 0,
+    "keys": []
 }

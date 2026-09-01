@@ -148,7 +148,7 @@
             "severity": null,
             "description": "Façade `GeoLeaf.Filter` : instancie la surface de lecture et de restauration du filtre attributaire générique, sous-API de proximité comprise",
             "confidence": "haute",
-            "rationale": "37 LOC, 1 importeur (`capabilities/filter/install.ts`). L'en-tête levait l'ambiguïté avec `GeoLeaf.Filters` (pluriel) ; cette ambiguïté n'existe plus — API publique S4.5 a supprimé le pluriel, qui portait 1 méthode sans aucun appelant. Cette façade est désormais la seule surface de filtrage du namespace."
+            "rationale": "37 LOC, 1 importeur (`capabilities/filter/install.ts`). L'en-tête levait l'ambiguïté avec `GeoLeaf.Filters` (pluriel) ; cette ambiguïté n'existe plus — la revue d'API a supprimé le pluriel, qui portait 1 méthode sans aucun appelant. Cette façade est désormais la seule surface de filtrage du namespace."
         },
         "packages/core/src/api/geoleaf.geolocation.ts": {
             "kind": "file",

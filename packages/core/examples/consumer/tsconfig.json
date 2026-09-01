@@ -18,7 +18,70 @@
         // core program still enforces both. `noImplicitReturns`/`noImplicitOverride`/
         // `verbatimModuleSyntax` stay on; they do not conflict with this pattern.
         "noUnusedLocals": false,
-        "noUnusedParameters": false
+        "noUnusedParameters": false,
+        "skipLibCheck": false,
+
+        // 🛑 `rootDir` N'EST PAS UN RÉGLAGE D'ÉMISSION ICI — ce programme est en `noEmit`.
+        // Il est la DÉSAMBIGUÏSATION que TypeScript réclame nommément à partir de la 5.9 :
+        //
+        //     error TS2209: The project root is ambiguous, but is required to resolve export
+        //     map entry '.' … Supply the `rootDir` compiler option to disambiguate.
+        //
+        // Le motif : cette fixture vit DANS le paquet qu'elle prétend consommer de l'extérieur.
+        // Sans `package.json` propre, le compilateur remonte jusqu'à `packages/core/package.json`
+        // pour résoudre `@geoleaf/core` — donc il ne peut pas décider si c'est une
+        // auto-référence à travers `exports` ou une dépendance. `rootDir` tranche.
+        //
+        // ⚠️ Un intégrateur réel N'A PAS ce problème : sa racine de projet est son propre
+        // `package.json`, sans ambiguïté. Le défaut est dans le PLACEMENT de la fixture, pas
+        // dans la carte `exports` publiée — ce qui est aussi la limite de fidélité de ce témoin.
+        //
+        // Mesuré dans les deux sens le 24/08/2026, `cwd = packages/core` comme le fait le
+        // script npm : TS 5.9.3 rend **11 TS2209** sans cette ligne et **0** avec ; TS 5.6.3,
+        // la version que le lock épingle aujourd'hui, rend **0** dans les deux cas — elle ne
+        // diagnostique pas encore l'ambiguïté. C'est pourquoi `ci:local` sortait vert sur un
+        // défaut réel : le lock est en retard sur ce que les manifestes déclarent.
+        "rootDir": "."
+
+        // ✅ `skipLibCheck: false` EST POSÉ (ligne ci-dessus), ET IL TIENT — R11/0.1 close le
+        // 17/08/2026. Le récit ci-dessous est celui du premier passage, où il a dû être retiré ;
+        // il est conservé parce qu'il porte le motif, et parce que la condition qui l'a fait
+        // retirer est exactement celle qui vient d'être levée.
+        //
+        // **Ce qui a changé** : `scripts/emit-css-type-stubs.cjs` émet désormais un stub
+        // `<nom>.css.d.ts` à côté de chaque import CSS des `.d.ts` publiés, câblé dans le build
+        // du core ET dans le build racine. Mesuré dans les deux sens : sans les stubs,
+        // `typecheck:consumer` rend **23 `TS2882`** ; avec, **0** ; en les retirant puis les
+        // replaçant, **23 → 0 → 23 → 0**. Le témoin est donc VOYANT et VERT en même temps.
+        //
+        // ⚠️ Le stub est relatif, jamais un `declare module "*.css"` ambiant : l'ambiant
+        // fuirait chez l'intégrateur et y silencerait ses propres imports CSS.
+        //
+        // 🛑 `skipLibCheck: false` A ÉTÉ POSÉ ICI LE 17/08/2026, MESURÉ, PUIS
+        // RETIRÉ une première fois — et ce qu'il a rendu est écrit ci-dessous plutôt que perdu.
+        //
+        // Le drapeau est bien la CONDITION DE VISIBILITÉ de ce témoin : hérité à `true` de
+        // `build-config/tsconfig.base.json:121`, il fait sauter la vérification des `.d.ts`,
+        // c'est-à-dire **exactement ce que ce fichier regarde**. Le témoin résout les chemins
+        // par la carte `exports`, puis ne lit pas ce qu'il y trouve.
+        //
+        // ✅ **L'instrument EST prouvé** : sous `false`, `npm run typecheck:consumer` rend
+        // **23 erreurs, toutes `TS2882`**, toutes de la même classe — « Cannot find module or
+        // type declarations for side-effect import of `./css/*.css` ». Les `.d.ts` PUBLIÉS
+        // portent des imports CSS que rien ne résout, dans `@geoleaf/core` (12), les deux libs
+        // et 6 plugins. Un intégrateur qui compile en `skipLibCheck: false` — réglage strict
+        // banal — les reçoit toutes.
+        //
+        // 🛑 POURQUOI LE DRAPEAU N'EST PAS RESTÉ : `typecheck:consumer` est une gate de
+        // `ci:local` (`scripts/ci-local.cjs:104`). Le poser rend la gate rouge tant que les 23
+        // ne sont pas traitées — et **aucune tâche de R11 ne les traite** : sa première étape pose
+        // le drapeau et mesure, la suivante étend le témoin. Le correctif (des stubs
+        // `<nom>.css.d.ts` émis à côté des `.d.ts`, ou l'exclusion des imports CSS de
+        // l'émission de types) est un chantier à part, sans domicile. Consigné en `N-04`.
+        //
+        // ⚠️ Ne pas conclure de ce retrait que le témoin est bon tel quel : il est VOYANT
+        // seulement sous `false`. Ce qu'il garde aujourd'hui est la résolution des chemins,
+        // pas le contenu de ce qu'ils désignent.
     },
     // `published-types.ts` (ARCHI S6) resolves every OTHER workspace package through its own
     // exports map. It is type-only, so it is compiled here but never bundled by

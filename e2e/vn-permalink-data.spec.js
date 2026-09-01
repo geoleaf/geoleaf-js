@@ -1,21 +1,23 @@
 // @ts-check
-// VÉRIFICATION NAVIGATEUR — famille E (permalink), scénarios E.1, E.2, E.4 de
-// `_docs_projet/travail/rapports/rapport_table-verification-navigateur.md` (backlog R.7b).
+// BROWSER VERIFICATION — family E (permalink), scenarios E.1, E.2, E.4 of the
+// internal browser-verification table.
 //
-// Ces scénarios empruntent des chemins de données que seul un vrai navigateur exécute :
-// `btoa`/`atob`, `TextEncoder`/`TextDecoder`, et la synchronisation d'URL débouncée sur
-// `moveend` — happy-dom n'a ni l'un ni l'autre de façon fidèle.
+// These scenarios take data paths only a real browser executes: `btoa`/`atob`,
+// `TextEncoder`/`TextDecoder`, and the URL sync debounced on `moveend` —
+// happy-dom has neither faithfully.
 //
-// ⚠️ E.3 (liste blanche `modules.permalink.fields` sur le chemin compact) n'est PAS ici :
-// pré-vol 24/07 — aucun profil livré ne restreint `fields` (tourism expose `{enabled, mode}`),
-// donc l'exclusion n'a rien à exclure sur le déployé. Et c'est une décision de PURE
-// sérialisation, que happy-dom tranche : elle est déjà couverte au tier unitaire
-// (`__tests__/ui/permalink.test.js` « omits layers when 'layers' not in fields »,
-// `__tests__/security/permalink-injection.test.js` « truncates text fields from compact
-// mode »). La ranger ici aurait été un test sans objet, doublon d'un test unitaire vert.
+// ⚠️ E.3 (the `modules.permalink.fields` whitelist on the compact path) is NOT
+// here: pre-flight 2026-07-24 — no shipped profile restricts `fields` (tourism
+// exposes `{enabled, mode}`), so the exclusion has nothing to exclude on the
+// deploy. And it is a PURE serialisation decision, which happy-dom settles: it
+// is already covered at the unit tier (`__tests__/ui/permalink.test.js`
+// "omits layers when 'layers' not in fields",
+// `__tests__/security/permalink-injection.test.js` "truncates text fields from
+// compact mode"). Housing it here would have been a subject-less test,
+// duplicate of a green unit test.
 //
-// Ancrages STABLES (mesurés, pas devinés) : l'API `GeoLeaf.Permalink.getState()`, le hash
-// réel, et le centre natif maplibregl. Pas d'assertion pixel.
+// STABLE anchors (measured, not guessed): the `GeoLeaf.Permalink.getState()`
+// API, the real hash, and the native maplibregl centre. No pixel assertion.
 
 import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
@@ -23,12 +25,14 @@ import { bootMap, waitMapLoaded, captureConsole } from "./helpers/boot.js";
 
 test.use({ baseURL: baseURL("core"), serviceWorkers: "block" });
 
-// Filtre CJK assez long pour que la sérialisation verbeuse dépasse le seuil d'auto-compaction
-// (200 caractères, `permalink-url.ts:AUTO_COMPACT_THRESHOLD`) : c'est ce qui force le chemin
-// `#gl=<base64>`, donc `_encodeCompact`, donc l'ex-`btoa` qui jetait au-delà du latin-1.
+// CJK filter long enough for the verbose serialisation to exceed the
+// auto-compaction threshold (200 characters,
+// `permalink-url.ts:AUTO_COMPACT_THRESHOLD`): what forces the `#gl=<base64>`
+// path, hence `_encodeCompact`, hence the former `btoa` that threw beyond
+// latin-1.
 const CJK_FILTER = "東京タワー・スカイツリー・浅草寺・明治神宮・皇居・上野公園".repeat(4);
 
-/** Décode un hash compact `#gl=<base64>` en UTF-8 — la lecture qu'un lien post-B.43 attend. */
+/** Decodes a compact `#gl=<base64>` hash as UTF-8 — the read a post-fix link expects. */
 function decodeCompactHash(hash) {
     const m = hash.match(/[#&]gl=([^&]+)/);
     if (!m) return null;
@@ -39,15 +43,17 @@ function decodeCompactHash(hash) {
 
 test.describe("VN — permalink et données (E.1, E.2, E.4)", () => {
     // ── E.1 🔴 ────────────────────────────────────────────────────────────────────────
-    // Contre-épreuve B.43 : `_encodeCompact` était `btoa(JSON.stringify(state))`, et `btoa`
-    // JETTE sur tout point de code > 255 — un filtre en CJK ou cyrillique faisait échouer
-    // l'encodage. Où ça mordait : `startSync._doWrite` **avale** le throw
-    // (`permalink-sync.ts`), donc l'URL cessait de suivre la carte EN SILENCE.
+    // Counter-proof: `_encodeCompact` was `btoa(JSON.stringify(state))`, and
+    // `btoa` THROWS on any code point > 255 — a CJK or Cyrillic filter made
+    // the encoding fail. Where it bit: `startSync._doWrite` **swallows** the
+    // throw (`permalink-sync.ts`), so the URL stopped following the map
+    // SILENTLY.
     //
-    // Le test reproduit exactement ce chemin : filtre CJK long (⇒ compact) + déplacement, puis
-    // il DÉCODE le compact écrit pour prouver que le filtre CJK y a survécu — un `btoa` qui
-    // jette ne produit rien à décoder, et l'URL resterait figée. Asserter seulement « l'URL a
-    // changé » ne suffirait pas : il faut prouver que le contenu non-latin-1 a été encodé.
+    // The test reproduces exactly that path: long CJK filter (⇒ compact) +
+    // move, then it DECODES the written compact to prove the CJK filter
+    // survived in it — a throwing `btoa` produces nothing to decode, and the
+    // URL would stay frozen. Asserting only "the URL changed" would not
+    // suffice: the non-latin-1 content must be proven encoded.
     test("E.1 — un filtre CJK n'empêche pas l'URL compacte de suivre la carte", async ({
         page,
     }) => {
@@ -57,11 +63,13 @@ test.describe("VN — permalink et données (E.1, E.2, E.4)", () => {
         await bootMap(page);
         await waitMapLoaded(page);
 
-        // ⚠️ Attendre que le RESTORE permalink soit terminé avant de bouger. Le restore est
-        // différé au `geoleaf:theme:applied` du boot et ré-applique la vue de l'URL (zoom 8) ;
-        // s'en aller trop tôt fait écraser le déplacement par ce restore tardif — mesuré, c'est
-        // ce qui rendait ce test intermittent (zoom capté = 8 au lieu de 6). La réinjection du
-        // filtre CJK dans le champ de recherche est le signal que le restore a fini.
+        // ⚠️ Wait for the permalink RESTORE to finish before moving. The
+        // restore is deferred to the boot's `geoleaf:theme:applied` and
+        // re-applies the URL's view (zoom 8); leaving too early gets the move
+        // overwritten by that late restore — measured, it is what made this
+        // test intermittent (captured zoom = 8 instead of 6). The CJK filter's
+        // re-injection into the search field is the signal the restore is
+        // done.
         await page.waitForFunction(
             () =>
                 document
@@ -74,12 +82,13 @@ test.describe("VN — permalink et données (E.1, E.2, E.4)", () => {
         const console_ = captureConsole(page);
         await page.evaluate(() => window.GeoLeaf.Core.getMap().setView({ lat: -45, lng: -60 }, 6));
 
-        // L'écriture est débouncée (~400 ms) ET le boot ré-écrit lui-même l'URL en compact :
-        // attendre « le hash a changé » ne suffit pas — cette condition est satisfaite par la
-        // ré-compaction du boot, avant que le DÉPLACEMENT soit sérialisé. On attend donc la
-        // vraie condition : le zoom déplacé (6) présent dans le compact décodé. C'est aussi ce
-        // qui prouve que l'encodage a bien eu lieu — un `btoa` qui jette ne produirait jamais
-        // un compact décodable portant le nouveau zoom.
+        // The write is debounced (~400 ms) AND the boot itself rewrites the URL
+        // in compact form: waiting for "the hash changed" does not suffice —
+        // that condition is met by the boot's re-compaction, before the MOVE
+        // is serialised. So the real condition is awaited: the moved zoom (6)
+        // present in the decoded compact. Which is also what proves the
+        // encoding happened — a throwing `btoa` would never produce a
+        // decodable compact carrying the new zoom.
         await expect
             .poll(
                 async () => {
@@ -106,18 +115,19 @@ test.describe("VN — permalink et données (E.1, E.2, E.4)", () => {
     });
 
     // ── E.2 🔴 ────────────────────────────────────────────────────────────────────────
-    // Contre-épreuve B.43 : les liens émis AVANT le correctif portent un base64 latin-1
-    // (`btoa(JSON.stringify(...))`). `_decodeCompact` accepte les deux encodages — remplacer
-    // le décodeur aurait cassé tout permalink déjà partagé. La discrimination est décisive :
-    // le décodage UTF-8 en mode `fatal` jette sur un octet haut isolé (`é` = `0xE9`, invalide
-    // en UTF-8 seul) et retombe sur la lecture latin-1.
+    // Counter-proof: links emitted BEFORE the fix carry latin-1 base64
+    // (`btoa(JSON.stringify(...))`). `_decodeCompact` accepts both encodings —
+    // replacing the decoder would have broken every permalink already shared.
+    // The discrimination is decisive: UTF-8 decoding in `fatal` mode throws on
+    // an isolated high byte (`é` = `0xE9`, invalid as lone UTF-8) and falls
+    // back to the latin-1 read.
     //
-    // On forge donc un lien LEGACY à la main — `Buffer(..., "latin1")`, ce que faisait `btoa`
-    // à l'époque — et on vérifie qu'il se restaure à l'identique.
+    // So a LEGACY link is forged by hand — `Buffer(..., "latin1")`, what
+    // `btoa` did at the time — and verified to restore identically.
     test("E.2 — un lien compact legacy (café en latin-1) se restaure à l'identique", async ({
         page,
     }) => {
-        // btoa(JSON.stringify(state)) de l'époque = base64 des octets LATIN-1.
+        // The era's btoa(JSON.stringify(state)) = base64 of the LATIN-1 bytes.
         const legacyState = { lat: -48, lng: -58, zoom: 8, filter: "café" };
         const legacyPayload = Buffer.from(JSON.stringify(legacyState), "latin1").toString("base64");
 
@@ -133,13 +143,13 @@ test.describe("VN — permalink et données (E.1, E.2, E.4)", () => {
     });
 
     // ── E.4 🟠 ────────────────────────────────────────────────────────────────────────
-    // Contre-épreuve B.37 : `params.get("gl_lat")` rend `""` pour un `gl_lat=` présent-mais-
-    // vide, et `Number("")` vaut `0`, ce qui passait sous la garde `=== null` et recentrait la
-    // carte sur 0,0 (au large du golfe de Guinée). `_parseRequiredNumber` rejette désormais la
-    // chaîne vide ou blanche.
+    // Counter-proof: `params.get("gl_lat")` returns `""` for a
+    // present-but-empty `gl_lat=`, and `Number("")` is `0`, which slipped
+    // under the `=== null` guard and recentred the map on 0,0 (off the Gulf of
+    // Guinea). `_parseRequiredNumber` now rejects the empty or blank string.
     //
-    // Observable : un `gl_lat=` vide doit laisser `getState()` null (aucune vue à restaurer)
-    // ET la carte sur la vue du profil — surtout PAS sur 0,0.
+    // Observable: an empty `gl_lat=` must leave `getState()` null (no view to
+    // restore) AND the map on the profile's view — above all NOT on 0,0.
     test("E.4 — une URL avec gl_lat= vide ouvre sur la vue du profil, pas sur 0,0", async ({
         page,
     }) => {
@@ -154,8 +164,9 @@ test.describe("VN — permalink et données (E.1, E.2, E.4)", () => {
             const c = window.GeoLeaf.Core.getMap().getNativeMap().getCenter();
             return { lng: c.lng, lat: c.lat };
         });
-        // La vue du profil tourism est dans l'hémisphère sud-ouest (~-40, -63) ; 0,0 est le
-        // symptôme d'origine. On rejette explicitement le voisinage de l'origine.
+        // The tourism profile's view is in the south-west hemisphere
+        // (~-40, -63); 0,0 is the original symptom. The origin's neighbourhood
+        // is explicitly rejected.
         expect(
             Math.abs(center.lat) + Math.abs(center.lng),
             `la carte a ouvert près de 0,0 (${center.lat}, ${center.lng}) — Number("") = 0 ?`

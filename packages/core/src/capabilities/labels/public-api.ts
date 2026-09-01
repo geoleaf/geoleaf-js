@@ -10,8 +10,9 @@
  *
  * Returns the full `Labels` runtime singleton augmented with capability read
  * helpers (`isEnabled` / `getConfig`). Mounted on `GeoLeaf.Labels` via
- * `geoleaf.labels.ts` — Full build only (labels are excluded from the Lite build,
- * PERF-02, so this façade is never pulled into the Lite graph).
+ * `geoleaf.labels.ts`.
+ *
+ * ⚠️ This header named the « Lite build » until 2026-08-19. **That build no longer exists** — its removal is motivated where it happened, in the bundle configuration, and the alternate mounting site these headers implied does not exist either. A build distinction that is gone does not read as stale: it reads as a live constraint, and a reader plans around it. Here it announced an EXCLUSION — a reader would look for the graph it names.
  *
  * The full singleton is re-exported (not a thin read-only wrapper): the kernel
  * and the layer manager consume `initializeLayerLabels` / `enableLabels` /

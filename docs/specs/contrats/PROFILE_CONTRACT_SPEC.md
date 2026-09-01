@@ -132,7 +132,12 @@ RFC 2119 (équivalents français de MUST / MUST NOT / SHOULD / SHOULD NOT / MAY)
 > _**La cellule n'est PAS réécrite** : §1 est en Partie I, et le régime §10 réserve son édition à
 > une RFC acceptée. C'est un compte qui a dérivé, pas un invariant qui change — la voie est une RFC
 > mineure, ou le retrait du compte au profit de la commande. Le noter ici est le geste que la
-> gouvernance autorise ; le corriger en silence ne l'est pas._ |
+> gouvernance autorise ; le corriger en silence ne l'est pas._
+>
+> _✅ **Mise à jour du 19/08/2026 — l'écart « 9 chargés sur 10 » est fermé.** `geoleaf-config` est
+> entré dans `SCHEMA_NAMES` : les dix schémas du disque sont désormais tous appliqués. Le compte
+> reste à MESURER et non à recopier — `ls profiles/schemas/*.schema.json` d'un côté,
+> `SCHEMA_NAMES` de l'autre —, précisément parce que c'est un compte recopié qui a dérivé ici._ |
 
 ---
 
@@ -275,7 +280,7 @@ Source de vérité du schéma : `profiles/schemas/profile.schema.json`.
 >
 > 🛑 **Troisième entrée périmée, relevée le 11/08/2026 (relecture 6.11) — `addpoi.json`.** L'arbre
 > de §3 et l'exemple de §4 déclarent tous deux `config/plugins/addpoi.json` → `modules.addpoi`.
-> **Le plugin `addpoi` a fusionné dans `editor` au Sprint 5 (05/08/2026)** : `packages/plugins/addpoi/`
+> **Le plugin `addpoi` a fusionné dans `editor` le 05/08/2026** : `packages/plugins/addpoi/`
 > n'existe plus, et **aucun des trois profils du dépôt ne déclare ce module** — ils déclarent
 > `offline`, `geocoding`, `table`, `theme-selector`, `legend`, `taxonomy`, `feature-info`,
 > `cluster`, `filter`, `route`. Ce sont deux **exemples copiables** qui nomment un plugin
@@ -341,7 +346,7 @@ plugin **DOIT** être isolée :
 > **Conséquence sur la validation.** Le validateur de profils (Annexe B) **ne valide pas** le contenu de
 > `config/plugins/<id>.json` contre un schéma-contrat du core (il n'en existe pas, par construction). Il se
 > limite à vérifier que le fichier déclaré dans `Files.modules.<id>` **existe** et est un JSON valide. La
-> conformité **fonctionnelle** d'un plugin relève de `roadmap_feature-plugin-validation.md`, pas de ce contrat.
+> conformité **fonctionnelle** d'un plugin relève d'un chantier à part, pas de ce contrat.
 
 Le repli rétrocompatibilité « clés racine legacy ↔ `modules.<id>` » a été **retiré en S14** du Plugin
 Contract v1 : `modules.<id>` est l'**unique** forme supportée (PRF-NOLEGACY).
@@ -402,7 +407,7 @@ pur**, et une entrée ne peut pas survivre à la couche qu'elle décrit.
 
 ⚠️ **`action` n'est PAS un composant de `field-renderer`** — le paquet n'en a aucun. C'est un widget
 de **lecture, propre au core** : un bouton qui émet `geoleaf:popup:action`. Il a été **ajouté au
-pré-vol du Sprint 2**, parce que le contrat figé la veille l'avait omis alors que l'événement est
+pré-vol du 02/08/2026**, parce que le contrat figé la veille l'avait omis alors que l'événement est
 émis, typé et enseigné à trois endroits publiés depuis le 29/07. Sans lui, migrer une couche aurait
 rendu un champ `action` **indéclarable** — et rien n'aurait rougi, puisqu'aucun profil n'en déclare.
 
@@ -521,11 +526,11 @@ héritée `FieldStyle` en déclarait 29 ; **3** seulement sont branchées dans l
 portent un modifieur CSS. Les 26 autres ne produisent **ni branche ni classe** — elles ne sont donc
 pas reprises.
 
-⚠️ **Ce bloc a été ajouté au pré-vol du Sprint 2 (02/08/2026).** Le descripteur figé la veille ne
+⚠️ **Ce bloc a été ajouté au pré-vol du 02/08/2026.** Le descripteur figé la veille ne
 pouvait porter **79 déclarations vivantes** des profils sur disque — `accordion` 35, `defaultOpen`
 32, `emphasis` 12, `hero` 4. Étant `additionalProperties: false`, il aurait fait **échouer** la
 migration plutôt que la dégrader en silence : c'est le bon mode d'échec, mais le trou était réel.
-La commande qui l'a trouvé est au §Le pré-vol de `roadmap_collecte-terrain-offline`.
+La commande qui l'a trouvé est consignée au pré-vol du chantier.
 
 #### La règle d'édition (schéma pur, aucun script)
 
@@ -761,7 +766,7 @@ des schémas au-delà de la règle de durcissement, et l'état du **validateur**
 ### Processus RFC (léger)
 
 1. Créer `docs/specs/rfc/RFC_{NNN}_{slug}.md` (cycle : Brouillon → En revue → Acceptée / Rejetée → Appliquée).
-    > ⚠️ _Corrigé le 11/08/2026 (tâche 6.11) : ce chemin disait `_docs_projet/rfc/`, répertoire
+    > ⚠️ _Corrigé le 11/08/2026 (tâche 6.11) : ce chemin disait un répertoire d'atelier, répertoire
     > qui n'est pas dans ce dépôt. Les RFC vivent sous `docs/specs/rfc/` depuis la refonte
     > documentaire V3 du 27/07/2026 — [`PLUGIN_ARCHITECTURE_SPEC.md`](PLUGIN_ARCHITECTURE_SPEC.md) portait déjà la correction
     > pour son propre processus RFC ; celui-ci était resté en arrière. Le processus est inchangé,
@@ -814,26 +819,32 @@ des schémas au-delà de la règle de durcissement, et l'état du **validateur**
 > 📐 **Le modèle attributaire par couche** — bloc `attributes`, deux colonnes de type, liste blanche
 > des couples, règle d'édition et contrôle d'échantillon — est spécifié au **§7**.
 
-| Fichier de profil                         | Schéma                                                   | Appliqué par le validateur ?                                                                               |
-| ----------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `profile.json`                            | `profile.schema.json`                                    | ✅                                                                                                         |
-| `config/core/layers.json`                 | `layers.schema.json`                                     | ✅                                                                                                         |
-| `config/core/ui.json`                     | `ui.schema.json`                                         | ✅                                                                                                         |
-| `config/core/basemaps.json`               | `basemaps.schema.json`                                   | ✅                                                                                                         |
-| `config/core/themes.json`                 | `themes.schema.json`                                     | ✅                                                                                                         |
-| `config/core/features.json`               | `features.schema.json`                                   | ✅                                                                                                         |
-| `config/core/mapping.json` (légacy)       | `mapping.schema.json`                                    | ✅                                                                                                         |
-| `layers/<id>/<id>_config.json`            | `layer-config.schema.json`                               | ✅                                                                                                         |
-| `layers/<id>/styles/<style>.json`         | `style.schema.json`                                      | ✅                                                                                                         |
-| ~~`config/core/taxonomy.json`~~           | ~~`taxonomy.schema.json`~~                               | ⛔ **retiré au Lot 2** — ni le fichier ni le schéma n'existent                                             |
-| racine `geoleaf.config.json`              | `geoleaf-config.schema.json`                             | ❌ **toujours pas appliqué** — le schéma existe, le validateur ne le charge pas (absent de `SCHEMA_NAMES`) |
-| `config/plugins/<id>.json`                | **schéma embarqué du plugin** (hors `profiles/schemas/`) | ⏭️ **délibérément sauté** (propriété du plugin, §6 / scope B7)                                             |
-| ~~`profile.json → panels.detail.layout`~~ | `geoleaf-profile.schema.json`                            | **hors-contrat / orphelin** (§7)                                                                           |
-| `sidepanelConfig.detailLayout[]`          | `detail-blocks.schema.json`                              | ⚠️ **schéma présent, absent de cette annexe jusqu'au 27/07/2026** — à qualifier                            |
+| Fichier de profil                         | Schéma                                                   | Appliqué par le validateur ?                                                                                                                                                                 |
+| ----------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `profile.json`                            | `profile.schema.json`                                    | ✅                                                                                                                                                                                           |
+| `config/core/layers.json`                 | `layers.schema.json`                                     | ✅                                                                                                                                                                                           |
+| `config/core/ui.json`                     | `ui.schema.json`                                         | ✅                                                                                                                                                                                           |
+| `config/core/basemaps.json`               | `basemaps.schema.json`                                   | ✅                                                                                                                                                                                           |
+| `config/core/themes.json`                 | `themes.schema.json`                                     | ✅                                                                                                                                                                                           |
+| `config/core/features.json`               | `features.schema.json`                                   | ✅                                                                                                                                                                                           |
+| `config/core/mapping.json` (légacy)       | `mapping.schema.json`                                    | ✅                                                                                                                                                                                           |
+| `layers/<id>/<id>_config.json`            | `layer-config.schema.json`                               | ✅                                                                                                                                                                                           |
+| `layers/<id>/styles/<style>.json`         | `style.schema.json`                                      | ✅                                                                                                                                                                                           |
+| ~~`config/core/taxonomy.json`~~           | ~~`taxonomy.schema.json`~~                               | ⛔ **retiré au Lot 2** — ni le fichier ni le schéma n'existent                                                                                                                               |
+| racine `geoleaf.config.json`              | `geoleaf-config.schema.json`                             | ✅ **appliqué depuis le 19/08/2026** — le 10ᵉ schéma est entré dans `SCHEMA_NAMES` ; il était sur le disque depuis sa création sans qu'aucun validateur ne le lise                           |
+| `config/plugins/<id>.json`                | **schéma embarqué du plugin** (hors `profiles/schemas/`) | ⏭️ **délibérément sauté** (propriété du plugin, §6 / scope B7)                                                                                                                               |
+| ~~`profile.json → panels.detail.layout`~~ | `geoleaf-profile.schema.json`                            | **hors-contrat / orphelin** (§7)                                                                                                                                                             |
+| ~~`sidepanelConfig.detailLayout[]`~~      | ~~`detail-blocks.schema.json`~~                          | ⛔ **le schéma N'EXISTE PLUS** — supprimé comme orphelin, avec son chargeur, en même temps que `geoleaf-profile.schema.json`. La ligne « schéma présent, à qualifier » a survécu à son sujet |
 
-> ⚠️ **Deux écarts restent ouverts, mesurés** et non tranchés par ce document :
-> `geoleaf.config.json` a un schéma-contrat que le validateur n'applique pas, et
-> `detail-blocks.schema.json` n'était cartographié nulle part. Versés au backlog, pas corrigés ici.
+> ✅ **LES DEUX ÉCARTS DE CETTE NOTE SONT FERMÉS, et ils l'étaient déjà à moitié sans que rien
+> ne le dise.** Le premier — `geoleaf.config.json` a un schéma-contrat que le validateur
+> n'applique pas — est traité le 19/08/2026 : le schéma entre dans `SCHEMA_NAMES`, et la
+> configuration racine est validée dans **chaque** racine parcourue. Le second —
+> `detail-blocks.schema.json` n'est cartographié nulle part — est mort d'une autre main : **le
+> fichier a été supprimé** comme orphelin, avec son chargeur. 🛑 **Il n'y avait donc plus rien à
+> cartographier depuis ce jour-là, et cette note a continué d'annoncer un écart ouvert.** C'est
+> le mode d'échec où le travail a été fait entre-temps : il ne se voit pas au grep du nom, qui
+> rend des résultats dans les documents qui en parlent, mais en cherchant le FICHIER.
 >
 > ⚠️ **La docstring de `scripts/validate-profiles.cjs` a été périmée dans le même sens** : elle
 > listait `taxonomy` parmi les fichiers `config/core/`, alors que `CORE_SCHEMA_BY_FILE` ne l'a
@@ -849,9 +860,16 @@ des schémas au-delà de la règle de durcissement, et l'état du **validateur**
   `layers/<id>/<id>_config.json` et `layers/<id>/styles/*.json`. Les schémas chargés sont
   énumérés par `SCHEMA_NAMES` — les compter là, pas ici. **Branché** dans `ci:local` et
   `pre-commit`. ⏭️ `config/plugins/*.json` est **délibérément sauté** (propriété du plugin, scope B7).
-  ❌ `geoleaf.config.json` n'est **pas** validé — son schéma existe mais n'est pas dans `SCHEMA_NAMES`.
-- ~~**État cible S2**~~ — atteint, sauf les deux écarts nommés en Annexe A (`geoleaf.config.json`,
-  `detail-blocks.schema.json`). La mention « CI gelée jusqu'au 2026-07-01 » est caduque : la CI est dégelée.
+  ✅ `geoleaf.config.json` **est validé** depuis le 19/08/2026, dans chaque racine parcourue.
+- 🔺 **Et le validateur ne lit plus seulement la source.** Depuis le 19/08/2026 il parcourt
+  `profiles/` **puis chaque variante présente sous `deploy/`**. Le motif est un défaut mesuré : le
+  build INJECTE dans les artefacts des clés que la source ne porte pas, et en RETIRE d'autres ;
+  le schéma étant `additionalProperties: false`, il produisait à chaque exécution des artefacts que
+  le schéma du dépôt interdit — **pendant que le dépôt sortait vert**. Ce n'était pas un oubli de
+  câblage mais un choix de périmètre, et c'est la classe « la gate sort verte en n'ayant pas
+  scanné le bon corpus ». ⚠️ `deploy/` étant git-ignoré, son absence est NOMMÉE dans la sortie et
+  n'est jamais lue comme un vert ; la moitié source, elle, refuse de conclure sur zéro profil.
+- ~~**État cible S2**~~ — atteint. La mention « CI gelée jusqu'au 2026-07-01 » est caduque : la CI est dégelée.
 - **Garde-fou complémentaire (phase B) :** `scripts/check-config-coverage.cjs` — échoue si une clé présente
   dans le code ou un schéma n'a pas d'entrée d'inventaire.
 
@@ -863,11 +881,11 @@ des schémas au-delà de la règle de durcissement, et l'état du **validateur**
 - [`inventaire_config_parametres.md`](../../reference/inventaire_config_parametres.md) — inventaire **par valeur** (phases B/C).
 
 > ⚠️ **Liste ré-ancrée le 11/08/2026 (tâche 6.11) — elle portait quatre renvois, aucun atteignable.**
-> Les quatre visaient `_docs_projet/`, l'atelier interne, **qui n'est pas dans ce dépôt** : une liste
+> Les quatre visaient l'atelier interne, **qui n'est pas dans ce dépôt** : une liste
 > intitulée « Renvois » dont aucune entrée ne se suit est plus trompeuse qu'une liste vide.
 > Mesuré : [`inventaire_config_parametres.md`](../../reference/inventaire_config_parametres.md) existe bel et bien, mais sous `docs/reference/` — il est
 > **public**, et c'est le lien ci-dessus. Les trois autres — `CDC_technique.md` §P2-15,
-> `registre_anomalies_config.md`, `roadmap_config-contract.md` — **n'existent plus nulle part** ;
+> `registre_anomalies_config.md` et consorts — **n'existent plus nulle part** ;
 > ils sont nommés ici sans lien, comme trace de ce que ce contrat a consommé, et non comme
 > destinations. Le comportement du chargeur de profils que décrivait `CDC_technique.md` §P2-15 se
 > lit désormais dans [`CDC_kernel.md`](../CDC_kernel.md) et dans l'Annexe B ci-dessus.

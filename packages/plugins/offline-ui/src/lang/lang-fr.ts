@@ -40,6 +40,16 @@ const langStorageFr = {
     "storage.zone.title": "Zone hors ligne",
     "storage.zone.useCurrentView": "Utiliser la vue actuelle",
     "storage.zone.useProfileArea": "Zone du profil",
+    "storage.zone.useRouteCorridor": "Corridor de l'itinéraire",
+    "storage.zone.corridorSummary": "Corridor",
+    "storage.zone.corridor.no-engine": "Le moteur hors-ligne n'est pas disponible.",
+    "storage.zone.corridor.no-route": "Aucun itinéraire préparé.",
+    "storage.zone.corridor.degenerate-line":
+        "L'itinéraire enregistré est trop court pour un corridor.",
+    "storage.zone.corridor.over-quota":
+        "Trop volumineux pour l'espace restant. Baissez l'un des deux :",
+    "storage.zone.lever.zoom": "zoom",
+    "storage.zone.lever.buffer": "tampon (m)",
     "storage.zone.zoomCeiling": "Plafond de zoom",
     "storage.zone.note": "Plus haut = plus net mais plus volumineux.",
     "storage.zone.noZone": "Aucune zone sélectionnée.",
@@ -100,8 +110,8 @@ const langStorageFr = {
     "storage.notif.clear.success": "Cache vidé",
     "storage.notif.clear.error": "Erreur d'effacement",
     "storage.notif.resourcesDeleted": "ressources supprimées",
-    // Signaux du MOTEUR rendus visibles (B-72) — le quota est une ERREUR (une écriture
-    // a été REFUSÉE), l'éviction un AVERTISSEMENT (des données demandées ne sont plus là).
+    // ENGINE signals made visible — the quota is an ERROR (a write was REFUSED),
+    // eviction a WARNING (requested data is no longer there).
     "storage.notif.quotaExceeded":
         "Stockage plein : la dernière donnée n'a pas pu être enregistrée",
     "storage.notif.cacheEvicted":

@@ -25,7 +25,7 @@ interface ExportLogicLike {
 /**
  * Structural mirror of host-runtime's `FocusTrap`, declared LOCALLY on purpose.
  *
- * ⚠️ SHIP-SPEC (passage public S1.3): importing the type — `import { createFocusTrap, type
+ * ⚠️ SHIP-SPEC: importing the type — `import { createFocusTrap, type
  * FocusTrap }` — put `FocusTrap` in the annotation of `_trap` below, so `tsc` emitted
  * `import { type FocusTrap } from "@geoleaf/host-runtime"` into the PUBLISHED
  * `packages/plugins/offline-ui/dist/types/ui/cache-button/modal-manager.d.ts`. That package is

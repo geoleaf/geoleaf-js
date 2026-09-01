@@ -14,7 +14,7 @@
  * - GeoLeaf.Log (optional)
  * - `ThemeLoader` / `ThemeApplierCore` — ESM imports through the `kernel/themes/` barrel.
  *   ⚠️ NOT namespace keys: `GeoLeaf._ThemeLoader` and `GeoLeaf._ThemeApplier` were removed at
- *   API S4.3 (see `globals/globals.ui.ts`, the B7 block). This header announced them for a
+ *   the namespace trim (see `globals/globals.ui.ts`). This header announced them for a
  *   month after the fact — no gate reads a `DEPENDENCIES:` block, so nothing contradicted it.
  * - `Config` (`kernel/config/config-primitives.js`), ESM too — and only its `ui` block, through
  *   the `ConfigLike` narrowing below.
@@ -318,7 +318,7 @@ const ThemeSelector = {
         }
 
         // Clear DOM/data references so a destroy → recreate cycle never operates on
-        // detached nodes from the previous instance (roadmap cleanup Sprint 3, PA-2).
+        // detached nodes from the previous instance.
         _state.profileId = null;
         _state.config = null;
         _state.themes = [];

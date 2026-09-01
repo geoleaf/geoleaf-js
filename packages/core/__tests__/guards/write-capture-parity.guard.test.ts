@@ -1,25 +1,25 @@
 /**
- * `write.properties` ≡ les champs réellement CAPTURÉS — tâche 7.2.
+ * `write.properties` ≡ the fields really CAPTURED.
  *
- * Deux listes de noms de champs cohabitent sur une couche éditable :
- *  - `write.properties`, la liste blanche d'EXPÉDITION — ce qui n'y figure pas n'est
- *    jamais envoyé au backend ;
- *  - les entrées de `attributes.fields[]` portant `edit`, la liste de SAISIE — ce que
- *    le formulaire présente.
+ * Two field-name lists cohabit on an editable layer:
+ *  - `write.properties`, the SHIPPING whitelist — what is not in it is never
+ *    sent to the backend;
+ *  - the `attributes.fields[]` entries carrying `edit`, the INPUT list —
+ *    what the form presents.
  *
- * 🛑 Rien ne les réconciliait. Les deux modes d'échec sont silencieux, et opposés :
- *  - un champ saisi mais absent de `write.properties` est rempli par l'utilisateur puis
- *    JETÉ à l'expédition, sans erreur ni trace ;
- *  - une propriété expédiable que rien ne capture est une colonne morte, du genre que
- *    7.1b a retiré par 24.
+ * 🛑 Nothing reconciled them. Both failure modes are silent, and opposite:
+ *  - a field captured but absent from `write.properties` is filled by the
+ *    user then DISCARDED at shipping, with no error and no trace;
+ *  - a shippable property nothing captures is a dead column, of the kind an
+ *    earlier sweep removed two dozen of.
  *
- * ⚠️ C'est exactement la classe de défaut que `formSchema` entretenait jusqu'à 7.2 : une
- * SECONDE liste de champs, parallèle et jamais confrontée à la première. La supprimer ne
- * suffit pas — encore faut-il que la liste survivante soit opposable à celle qui décide
- * ce qui part sur le réseau. C'est ce que fait cette garde.
+ * ⚠️ Exactly the defect class `formSchema` maintained until then: a SECOND
+ * field list, parallel and never confronted with the first. Deleting it is
+ * not enough — the surviving list must still be enforceable against the one
+ * deciding what goes on the network. That is what this guard does.
  *
- * Les sujets sont LUS SUR LE DISQUE : une couche neuve entre dans le périmètre sans que
- * personne l'inscrive nulle part.
+ * The subjects are READ FROM DISK: a new layer enters the perimeter without
+ * anyone enrolling it anywhere.
  */
 import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync, existsSync } from "node:fs";
@@ -31,18 +31,19 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(__dirname, "../../../..");
 const PROFILES = resolve(REPO, "profiles");
 
-/** La forme minimale qu'une config de couche doit avoir pour cette garde. */
+/** The minimal shape a layer config must have for this guard. */
 interface LayerConfig {
     write?: { properties?: string[] };
     attributes?: { fields?: Array<{ field: string; edit?: unknown }> };
 }
 
 /**
- * Toutes les configs de couche du dépôt, tous profils confondus.
+ * Every layer config in the repo, all profiles together.
  *
- * ⚠️ `schemas/` est écarté : ce n'est pas un profil. Un `readdirSync` non filtré le
- * prendrait pour un profil sans couche et sortirait vert en n'ayant rien lu de plus —
- * inoffensif ici, mais c'est le patron qui rend une gate aveugle ailleurs.
+ * ⚠️ `schemas/` is set aside: it is not a profile. An unfiltered
+ * `readdirSync` would take it for a layerless profile and come out green
+ * having read nothing more — harmless here, but the pattern that blinds a
+ * gate elsewhere.
  */
 function layerConfigs(): Array<{ id: string; config: LayerConfig }> {
     const out: Array<{ id: string; config: LayerConfig }> = [];
@@ -63,11 +64,11 @@ function layerConfigs(): Array<{ id: string; config: LayerConfig }> {
     return out;
 }
 
-/** Le préfixe `properties.` de tête tombe — même règle que l'adaptateur de saisie. */
+/** The leading `properties.` prefix drops — same rule as the input adapter. */
 const strip = (path: string): string =>
     path.startsWith("properties.") ? path.slice("properties.".length) : path;
 
-/** Les noms de champs qu'une couche déclare capturables. */
+/** The field names a layer declares capturable. */
 const capturedFields = (config: LayerConfig): string[] =>
     (config.attributes?.fields ?? []).filter((f) => f.edit).map((f) => strip(f.field));
 
@@ -77,8 +78,9 @@ const WITH_CAPTURE = ALL.filter(({ config }) => capturedFields(config).length > 
 
 describe("WRITE-CAPTURE — la liste d'expédition ≡ la liste de saisie", () => {
     it("garde anti-gate-vide : des couches sont bien lues, et certaines capturent", () => {
-        // Sans ces trois bornes, un `profiles/` déplacé ou un filtre trop large ferait
-        // sortir tout le balayage ci-dessous vert en n'ayant confronté aucune couche.
+        // Without these three bounds, a moved `profiles/` or a too-wide
+        // filter would let the whole sweep below come out green having
+        // confronted no layer.
         expect(ALL.length, "aucune config de couche lue — le périmètre est cassé").toBeGreaterThan(
             10
         );
@@ -113,9 +115,9 @@ describe("WRITE-CAPTURE — la liste d'expédition ≡ la liste de saisie", () =
     );
 
     it("une couche qui capture sans déclarer où écrire est déjà refusée par A14", () => {
-        // Ceinture et bretelles : A14 l'exprime en JSON Schema pur et `validate:profiles`
-        // le fait rougir. On le reconstate ici pour que le lien entre les deux règles
-        // soit écrit quelque part plutôt que su.
+        // Belt and braces: the schema rule expresses it in pure JSON Schema
+        // and `validate:profiles` turns it red. It is re-observed here so the
+        // link between the two rules is written somewhere rather than known.
         const captureSansWrite = WITH_CAPTURE.filter(({ config }) => !config.write);
         expect(captureSansWrite.map(({ id }) => id)).toEqual([]);
     });

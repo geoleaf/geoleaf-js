@@ -78,7 +78,7 @@ function _syntheticFeature(featureId: string): EditorFeature {
  * Creates a REST-backed {@link EditorPersistenceAdapter}.
  */
 export function createRestAdapter(opts: RestAdapterOptions): EditorPersistenceAdapter {
-    const doFetch = opts.fetchImpl ?? (globalThis.fetch as typeof fetch);
+    const doFetch = opts.fetchImpl ?? globalThis.fetch;
 
     return {
         async save(feature: EditorFeature, layerId: string): Promise<SavedFeature> {

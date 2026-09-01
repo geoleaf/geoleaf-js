@@ -1,6 +1,6 @@
 /**
  * @file security-comprehensive.test.js
- * Sprint 3.1 — Comprehensive tests for the Security module
+ * Comprehensive tests for the Security module
  */
 
 import {

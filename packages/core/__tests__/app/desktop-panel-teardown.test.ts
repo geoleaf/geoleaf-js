@@ -1,14 +1,16 @@
 /**
- * Sprint 2, tâches 2.9 puis 2.8 — le panneau desktop survivait-il à `Core.destroy()` ?
+ * Did the desktop panel survive `Core.destroy()`?
  *
- * 🛑 Ce fichier existe parce qu'un test qui appelle `destroyDesktopPanel()` EN DIRECT sort
- * vert et ne prouve rien : c'est déjà ce que fait `desktop-panel-branches.test.js`, et la
- * fonction faisait correctement son travail. Le défaut n'était pas dans la fonction, il était
- * que **personne ne l'appelait** — aucun des inscrits de `kernel/shared/lifecycle.ts`.
+ * 🛑 This file exists because a test calling `destroyDesktopPanel()`
+ * DIRECTLY comes out green and proves nothing: that is already what
+ * `desktop-panel-branches.test.js` does, and the function did its job
+ * correctly. The defect was not in the function, it was that **nobody
+ * called it** — none of `kernel/shared/lifecycle.ts`'s registrants.
  *
- * L'assertion doit donc passer par `Core.destroy()`, seul chemin qui déclenche
- * `runLifecycleTeardowns()`. Rouge avant la tâche 2.8, vert après, et la mutation témoin est
- * le retrait de la ligne `registerLifecycleTeardown(...)` de `desktop-panel.ts`.
+ * The assertion must therefore go through `Core.destroy()`, the only path
+ * that triggers `runLifecycleTeardowns()`. Red before the fix, green after,
+ * and the witness mutation is removing the `registerLifecycleTeardown(...)`
+ * line from `desktop-panel.ts`.
  */
 "use strict";
 
@@ -42,7 +44,7 @@ vi.mock("../../src/kernel/map/theme.js", () => ({
     getTheme: vi.fn(() => "light"),
 }));
 
-// ── matchMedia : le panneau ne s'active qu'au-dessus du point de rupture desktop ─────────
+// ── matchMedia: the panel only activates above the desktop breakpoint ────────────────────
 const mockMql = {
     matches: true,
     media: "(min-width: 1440px)",
@@ -56,8 +58,8 @@ Object.defineProperty(window, "matchMedia", {
     value: vi.fn(() => mockMql),
 });
 
-// Compte les `disconnect()` de TOUS les MutationObserver construits pendant le test.
-// `desktop-panel.ts` en pose trois : `_filterObserver`, `_legendObserver`, `_themeObserver`.
+// Counts the `disconnect()`s of ALL MutationObservers built during the test.
+// `desktop-panel.ts` sets three: `_filterObserver`, `_legendObserver`, `_themeObserver`.
 const disconnectSpy = vi.fn();
 const NativeMutationObserver = globalThis.MutationObserver;
 class CountingMutationObserver extends NativeMutationObserver {
@@ -81,7 +83,7 @@ beforeAll(async () => {
         await import("../../src/kernel/ui/desktop/desktop-panel.js"));
 });
 
-/** Monte la coquille DOM que `initDesktopPanel` attend, plus les cibles des 3 observers. */
+/** Mounts the DOM shell `initDesktopPanel` expects, plus the 3 observers' targets. */
 function mountShell() {
     document.body.innerHTML = "";
     const glMain = document.createElement("div");
@@ -124,7 +126,7 @@ describe("Core.destroy() démonte le panneau desktop (tâches 2.9 / 2.8)", () =>
 
     it("les 3 MutationObserver du panneau sont déconnectés", () => {
         bootPanel("map-teardown-2");
-        disconnectSpy.mockClear(); // ignorer les auto-déconnexions de la phase d'activation
+        disconnectSpy.mockClear(); // ignore the activation phase's self-disconnects
 
         Core.destroy("map-teardown-2");
 

@@ -1,6 +1,6 @@
 /**
- * R4 — Tests du module d'enregistrement Service Worker (sw-register.ts).
- * Mock de navigator.serviceWorker et Log.
+ * Tests of the Service Worker registration module (sw-register.ts).
+ * Mocks navigator.serviceWorker and Log.
  */
 "use strict";
 
@@ -33,16 +33,18 @@ describe("sw-register (R4)", () => {
     let registration;
     let SWRegister;
 
-    // Déféré PORTEUR : le hook installe `navigator.serviceWorker` avant de charger. Cible
-    // inerte ou non, la séquence est voulue — `await import()` la préserve.
+    // LOAD-BEARING deferral: the hook installs `navigator.serviceWorker`
+    // before loading. Inert target or not, the sequence is intended —
+    // `await import()` preserves it.
     beforeAll(async () => {
         if (!global.navigator) global.navigator = {};
         global.navigator.serviceWorker = {
             register: mockRegister,
-            // ⚠️ AJOUTÉ à la tâche 1.4, et le manque était un trou du HARNAIS, pas du code :
-            // `ServiceWorkerContainer` est un `EventTarget` dans tout navigateur réel. Le mock
-            // n'en portait rien, donc `register()` jetait dès qu'on y a posé le pont
-            // d'éviction. Un mock plus pauvre que la plateforme fait échouer du code juste.
+            // ⚠️ ADDED with the eviction bridge, and the lack was a HARNESS
+            // hole, not a code one: `ServiceWorkerContainer` is an
+            // `EventTarget` in every real browser. The mock carried none of
+            // it, so `register()` threw as soon as the eviction bridge was
+            // set on it. A mock poorer than the platform fails correct code.
             addEventListener: vi.fn(),
         };
         ({ SWRegister } = await import("../../src/kernel/storage/sw-register.js"));
@@ -68,10 +70,11 @@ describe("sw-register (R4)", () => {
             const result = await SWRegister.register();
             expect(mockRegister).toHaveBeenCalledWith("sw-core.js", { scope: "/" });
             expect(result).toBe(registration);
-            // ⚠️ Lu sur `_registration` et non par `getRegistration()`, retiré à la tâche
-            // 3.13 avec `update()` et `unregister()` — trois membres à zéro appelant de
-            // production. Ce que ce test garde n'a pas changé : la registration est
-            // MÉMORISÉE, ce dont dépend l'écoute `updatefound` ci-dessous.
+            // ⚠️ Read on `_registration` and not through `getRegistration()`,
+            // removed with `update()` and `unregister()` — three members with
+            // zero production callers. What this test guards has not changed:
+            // the registration is MEMOISED, which the `updatefound` listening
+            // below depends on.
             expect(SWRegister._registration).toBe(registration);
         });
 
@@ -86,15 +89,17 @@ describe("sw-register (R4)", () => {
         });
     });
 
-    // ⚠️ LES BLOCS `update`, `unregister` ET `getRegistration` SONT RETIRÉS (tâche 3.13) —
-    // les trois membres n'avaient aucun appelant de production, et leurs tests les auraient
-    // donc SURVÉCUS (compteur C6).
+    // ⚠️ THE `update`, `unregister` AND `getRegistration` BLOCKS ARE REMOVED —
+    // the three members had no production caller, and their tests would thus
+    // have OUTLIVED them.
     //
-    // 🛑 Ce qui rend le retrait sûr et non optimiste : la désinscription réelle ne passait
-    // pas par `unregister()`. `capabilities/pwa/lifecycle.ts` (`_unregisterAll`) itère
-    // `navigator.serviceWorker.getRegistrations()` et désinscrit tout, sans jamais lire
-    // `_registration` — deux chemins de désinscription, un seul qui s'exécutait, et celui
-    // qui reste ne dépendait en rien de celui qui part. Ses tests vivent dans
+    // 🛑 What makes the removal safe and not optimistic: real unregistration
+    // did not go through `unregister()`. `capabilities/pwa/lifecycle.ts`
+    // (`_unregisterAll`) iterates
+    // `navigator.serviceWorker.getRegistrations()` and unregisters
+    // everything, never reading `_registration` — two unregistration paths,
+    // only one running, and the one that stays depended in nothing on the one
+    // that leaves. Its tests live in
     // `__tests__/capabilities/pwa-offline-installers.test.js`.
 
     describe("updatefound listener", () => {
@@ -143,19 +148,19 @@ describe("sw-register (R4)", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════════════
-// Tâche 1.4 — le PONT d'éviction : ce que le worker ne peut pas dire lui-même
+// The eviction BRIDGE: what the worker cannot say itself
 // ═══════════════════════════════════════════════════════════════════════════════════════
 //
-// 🛑 CE QUE CE PONT PORTE. Un Service Worker n'a pas de `document` : il ne peut pas
-// dispatcher `geoleaf:cache:evicted`. Il ne peut pas non plus importer le bus — il est copié
-// tel quel dans chaque variante de déploiement, sans bundler. Sans ce pont, une éviction sous
-// pression du quota d'origine — le moment précis où l'utilisateur a besoin de savoir que la
-// place manque — reste dans la console d'un worker que personne n'ouvre.
+// 🛑 WHAT THIS BRIDGE CARRIES. A Service Worker has no `document`: it cannot
+// dispatch `geoleaf:cache:evicted`. Nor can it import the bus — it is copied
+// as-is into each deployment variant, unbundled. Without this bridge, an
+// eviction under origin-quota pressure — the precise moment the user needs
+// to know space is short — stays in the console of a worker nobody opens.
 //
-// ⚠️ `_evictionBridgeWired` est un drapeau de MODULE : chaque cas remonte un module neuf.
+// ⚠️ `_evictionBridgeWired` is a MODULE flag: each case remounts a fresh module.
 
 describe("1.4 — pont d'éviction du Service Worker", () => {
-    /** Monte un module neuf et rend le gestionnaire de message effectivement posé. */
+    /** Mounts a fresh module and returns the message handler actually set. */
     async function mountBridge() {
         vi.resetModules();
         const listeners = [];
@@ -182,7 +187,7 @@ describe("1.4 — pont d'éviction du Service Worker", () => {
 
     it("un message d'éviction du worker devient `geoleaf:cache:evicted` sur `document`", async () => {
         const { onMessage, dispatched } = await mountBridge();
-        expect(onMessage).toBeTypeOf("function"); // témoin : le pont est bien posé
+        expect(onMessage).toBeTypeOf("function"); // witness: the bridge is indeed set
 
         onMessage({
             data: {
@@ -203,8 +208,9 @@ describe("1.4 — pont d'éviction du Service Worker", () => {
     });
 
     it("un message d'un AUTRE type ne devient rien", async () => {
-        // ⚠️ `navigator.serviceWorker` reçoit les messages de tout worker du scope :
-        // re-dispatcher sans discriminer ferait de n'importe quel message un signal d'éviction.
+        // ⚠️ `navigator.serviceWorker` receives messages from every worker in
+        // scope: re-dispatching without discriminating would turn any message
+        // into an eviction signal.
         const { onMessage, dispatched } = await mountBridge();
 
         onMessage({ data: { type: "SOMETHING_ELSE", detail: { evicted: 5 } } });
@@ -215,7 +221,7 @@ describe("1.4 — pont d'éviction du Service Worker", () => {
     });
 
     it("une éviction à ZÉRO entrée n'émet pas", async () => {
-        // Un signal vide apprend à ses écouteurs à se méfier du signal.
+        // An empty signal teaches its listeners to distrust the signal.
         const { onMessage, dispatched } = await mountBridge();
 
         onMessage({ data: { type: "GEOLEAF_CACHE_EVICTED", detail: { evicted: 0 } } });
@@ -224,7 +230,7 @@ describe("1.4 — pont d'éviction du Service Worker", () => {
     });
 
     it("le pont n'est posé QU'UNE fois, même si `register()` est rappelé", async () => {
-        // Deux écouteurs feraient deux avis pour une seule éviction.
+        // Two listeners would make two notices for one eviction.
         vi.resetModules();
         const listeners = [];
         global.navigator.serviceWorker = {

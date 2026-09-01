@@ -1,5 +1,5 @@
-﻿/**
- * Tests pour le module GeoLeaf.GeoJSON (architecture multi-couches)
+/**
+ * Tests for the GeoLeaf.GeoJSON module (multi-layer architecture)
  * ESM: import GeoJSON + global.GeoLeaf for runtime module compatibility.
  */
 
@@ -77,7 +77,11 @@ describe("GeoLeaf.GeoJSON - Multi-Layer Architecture", () => {
                 openSidePanel: vi.fn(),
             },
             Legend: {
-                addSection: vi.fn(),
+                // `addSection` exists on no surface and in no source. The
+                // REAL seam the loader calls is
+                // `loadLayerLegend(layerId, styleId, config)` —
+                // `kernel/geojson/layer-config-manager.ts` and `layers/integration.ts`.
+                loadLayerLegend: vi.fn(),
             },
             Core: {
                 getMap: vi.fn(() => ({
@@ -251,7 +255,22 @@ describe("GeoLeaf.GeoJSON - Multi-Layer Architecture", () => {
             expect(result).toEqual([]);
         });
 
-        test("should register with Legend if layers loaded", async () => {
+        // 🛑 This test was titled "should register with Legend if layers
+        // loaded" and its ONLY assertion was
+        // `expect(GeoLeaf.Legend.addSection).toBeDefined()` — a tautology on
+        // its own fixture, moreover carrying a member existing on no surface
+        // and in no source.
+        //
+        // ⚠️ Replacing it with the REAL oracle (`Legend.loadLayerLegend`, the
+        // loader's only legend seam) makes it FAIL: that seam is called from
+        // `LayerConfigManager.loadLayerLegend`, not from
+        // `loadFromActiveProfile`. The test thus NEVER exercised its title,
+        // and the tautology hid it. Measured on 20/08/2026.
+        //
+        // 🖐 The title is corrected to what the test does; **legend
+        // registration on this path stays uncovered**, and that is logged
+        // rather than simulated.
+        test("un layer déclarant un bloc `legend` se charge comme les autres", async () => {
             global.fetch.mockResolvedValue({
                 ok: true,
                 json: async () => ({
@@ -282,8 +301,8 @@ describe("GeoLeaf.GeoJSON - Multi-Layer Architecture", () => {
                 ],
             });
 
-            await GeoLeaf.GeoJSON.loadFromActiveProfile();
-            expect(GeoLeaf.Legend.addSection).toBeDefined();
+            const result = await GeoLeaf.GeoJSON.loadFromActiveProfile();
+            expect(Array.isArray(result)).toBe(true);
         });
     });
 
@@ -391,7 +410,7 @@ describe("GeoLeaf.GeoJSON - Multi-Layer Architecture", () => {
             GeoLeaf.GeoJSON.init({});
         });
 
-        // Helper pour create une feature de test
+        // Helper to create a test feature
         const createFeature = (properties) => ({
             type: "Feature",
             properties: properties,
@@ -495,7 +514,7 @@ describe("GeoLeaf.GeoJSON - Multi-Layer Architecture", () => {
                         stats: { count: 100 },
                     },
                 });
-                // Test que les fields nested can be resolved
+                // Tests that nested fields can be resolved
                 expect(feature.properties.metadata.priority).toBe("haute");
                 expect(feature.properties.metadata.stats.count).toBe(100);
             });

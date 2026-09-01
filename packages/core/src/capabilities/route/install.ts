@@ -13,7 +13,7 @@
  * the capability is driven entirely by `modules.route.*` config + its lifecycle), so
  * `registerGlobals` is intentionally empty: the contract requires the method, not a write.
  *
- * API publique S4.5 — this installer used to carry a second thing: the route-filter
+ * Public-API review — this installer used to carry a second thing: the route-filter
  * contribution. It pushed `filterRouteList` into a seam under `capabilities/filter/filters/`
  * at import time, so that `GeoLeaf.Filters.filterRouteList()` worked whenever a preset
  * embarked route. That whole chain is gone with `GeoLeaf.Filters`, which was its only

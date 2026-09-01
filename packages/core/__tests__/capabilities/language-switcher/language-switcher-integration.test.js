@@ -1,23 +1,20 @@
 /**
  * Integration tests — language-switcher wiring (S2).
  *
- * Vérifie les jointures qu'un test unitaire ne voit pas : l'installer est bien porté par
- * le manifeste livré, sa forme respecte le contrat, et le bandeau d'onglets desktop
- * émet réellement le seam auquel la capacité s'abonne.
+ * Verifies the joins a unit test does not see: the installer is carried by
+ * the shipped manifest, its shape respects the contract, and the desktop tab
+ * strip really emits the seam the capability subscribes to.
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const { FULL } = await import("../../../src/presets/manifest.full.ts");
-const { LANGUAGE_SWITCHER_INSTALLER } = await import(
-    "../../../src/capabilities/language-switcher/install.ts"
-);
-const { LanguageSwitcherModule } = await import(
-    "../../../src/capabilities/language-switcher/module.ts"
-);
-const { initDesktopPanel, destroyDesktopPanel } = await import(
-    "../../../src/kernel/ui/desktop/desktop-panel.ts"
-);
+const { LANGUAGE_SWITCHER_INSTALLER } =
+    await import("../../../src/capabilities/language-switcher/install.ts");
+const { LanguageSwitcherModule } =
+    await import("../../../src/capabilities/language-switcher/module.ts");
+const { initDesktopPanel, destroyDesktopPanel } =
+    await import("../../../src/kernel/ui/desktop/desktop-panel.ts");
 
 describe("preset manifest wiring", () => {
     it("ships the language-switcher installer", () => {
@@ -25,8 +22,8 @@ describe("preset manifest wiring", () => {
     });
 
     it("est APPENDU après les capacités préexistantes", () => {
-        // Même invariant qu'au S1 : ce qui compte est qu'aucun index ANTÉRIEUR ne bouge,
-        // pas d'être la toute dernière entrée (un sprint suivant appendra derrière).
+        // Same invariant as before: what matters is that no EARLIER index
+        // moves, not being the very last entry (later work will append behind).
         const ids = FULL.capabilities.map((c) => c.declaration.id);
         expect(ids.indexOf("language-switcher")).toBeGreaterThan(ids.indexOf("vector-tiles"));
     });
@@ -67,8 +64,8 @@ describe("le kernel émet réellement le seam du bandeau d'onglets", () => {
     });
 
     it("dispatche geoleaf:desktop-panel:tabs-ready à la construction du panneau", () => {
-        // Un seam que personne n'émet laisserait tous les tests unitaires verts pendant
-        // que le bouton n'apparaît jamais.
+        // A seam nobody emits would leave every unit test green while the
+        // button never appears.
         const glMain = document.createElement("div");
         glMain.className = "gl-main";
         document.body.appendChild(glMain);
@@ -77,8 +74,8 @@ describe("le kernel émet réellement le seam du bandeau d'onglets", () => {
 
         expect(received).toBeDefined();
         expect(received.tabs.classList.contains("gl-rp-tabs")).toBe(true);
-        // Le point d'insertion dont dépend la capacité : le toggle de thème est présent,
-        // et le bouton de langue se place juste avant lui.
+        // The insertion point the capability depends on: the theme toggle is
+        // present, and the language button goes right before it.
         expect(received.tabs.querySelector(".gl-rp-theme-toggle")).not.toBeNull();
     });
 });

@@ -69,28 +69,40 @@ describe("GeoLeaf API", () => {
                 set: vi.fn(),
                 loadUrl: vi.fn().mockResolvedValue({}),
             },
-            POI: {
-                init: vi.fn(),
-                loadPois: vi.fn(),
-            },
+            // 🗑️ A `POI: { init, loadPois }` was mounted here, and the
+            // "should have POI namespace" test below verified it existed —
+            // the fixture attested its own making. The POI subsystem is
+            // **long dissolved**: `kernel/api/module-catalog.ts`
+            // declares it by name, and its comment `:56` says
+            // `getModule("POI")` must return `null`. Removed on 17/08/2026;
+            // the assertion is flipped to attest the absence, not the fixture.
             GeoJSON: {
                 init: vi.fn(),
-                loadGeoJSON: vi.fn().mockResolvedValue({}),
+                // `loadGeoJSON` removed on 20/08/2026: the `GeoJSON` facade
+                // carries 27 members, neither `load` nor `loadGeoJSON`. The
+                // neighbour `load` exists elsewhere in the repo but NOT on
+                // this facade — the "homonym seam" false positive.
             },
-            Baselayers: {
-                init: vi.fn(),
-                setBaselayer: vi.fn(),
-            },
+            // 🗑️ A `Baselayers: { init, setBaselayer }` was mounted here. It
+            // carried a member the facade does not know (it carries
+            // `setBaseLayer`, capital `L`), and the motive written in place
+            // said rewiring it "changes what the test exercises". MEASURED:
+            // it changes NOTHING. `globals.api.ts` does
+            // `_gl.Baselayers = Baselayers` — the real facade OVERWRITES
+            // this double before the first assertion, and
+            // `GeoLeaf.Baselayers.setBaselayer` is `undefined` in this
+            // suite. The double was not exercised: it was dead and invisible.
             Legend: {
                 init: vi.fn(),
             },
         };
 
-        // ⚠️ socle-init 7.7 — le faux contrôleur doit être un ACCESSEUR, pas une valeur.
-        // `kernel/api/controller.ts` n'installe le sien que s'il n'en trouve pas déjà un
-        // (`getOwnPropertyDescriptor(...).get`) ; un faux posé en valeur simple ne le retient
-        // donc pas et se fait écraser dès que la chaîne `globals/` est chargée. C'est aussi la
-        // forme RÉELLE en production — le test gagne en fidélité, il ne contourne rien.
+        // ⚠️ The fake controller must be an ACCESSOR, not a value.
+        // `kernel/api/controller.ts` only installs its own if it does not
+        // already find one (`getOwnPropertyDescriptor(...).get`); a fake set
+        // as a plain value does not hold it back and gets overwritten as
+        // soon as the `globals/` chain loads. It is also the REAL production
+        // shape — the test gains fidelity, it works around nothing.
         const _fakeController = global.GeoLeaf._APIController;
         Object.defineProperty(global.GeoLeaf, "_APIController", {
             get: () => _fakeController,
@@ -235,16 +247,17 @@ describe("GeoLeaf API", () => {
         });
 
         it("monte la VRAIE façade Core, elle n'hérite pas de ce que l'appelant avait posé", async () => {
-            // 🛑 Requalifié à socle-init 7.7. Cette assertion s'écrivait
+            // 🛑 Requalified. This assertion read
             // `GeoLeaf.Core.getMap(); expect(global.GeoLeaf.Core.getMap).toHaveBeenCalled();`
-            // — une TAUTOLOGIE : `GeoLeaf` EST `global.GeoLeaf`, donc elle vérifiait qu'appeler
-            // un espion l'appelle. Elle ne passait que parce que l'ancien `geoleaf-api.js` ne
-            // touchait pas à `Core` et laissait donc le faux du harnais en place.
+            // — a TAUTOLOGY: `GeoLeaf` IS `global.GeoLeaf`, so it verified
+            // that calling a spy calls it. It only passed because the old
+            // `geoleaf-api.js` did not touch `Core` and thus left the
+            // harness's fake in place.
             //
-            // Ce qui est vrai, et qui vaut d'être gardé : `assignApiFacades` monte la façade
-            // RÉELLE, en écrasant ce que le harnais avait posé. C'est la classe de défaut de
-            // `get BaseLayers` (API S4.2) prise par le bon bout — qui écrit quoi sur le
-            // namespace, et est-ce bien la référence attendue.
+            // What is true, and worth guarding: `assignApiFacades` mounts
+            // the REAL facade, overwriting what the harness had set. The
+            // `get BaseLayers` defect class taken by the right end — who
+            // writes what on the namespace, and is it the expected reference.
             const { Core } = await import("../../src/api/geoleaf.core.js");
             expect(GeoLeaf.Core).toBe(Core);
             expect(typeof GeoLeaf.Core.getMap).toBe("function");
@@ -264,8 +277,15 @@ describe("GeoLeaf API", () => {
             expect(GeoLeaf.Config).toBeDefined();
         });
 
-        it("should have POI namespace", () => {
-            expect(GeoLeaf.POI).toBeDefined();
+        it("n'a PAS de namespace POI — dissous au S9, et l'absence est le contrat", () => {
+            // 🛑 This assertion is the inverse of the one it replaces, and
+            // that is the fact the old one could not render: it verified an
+            // object the fixture three screens up had just made. The real
+            // contract lives in `kernel/api/module-catalog.ts` — `POI` is in
+            // `PUBLIC_MODULES` with its motive (POI subsystem dissolved, no
+            // installer mounts this key), so an integrator still querying
+            // that name receives `null` and not an error.
+            expect(GeoLeaf.POI).toBeUndefined();
         });
 
         it("should have GeoJSON namespace", () => {
@@ -277,8 +297,12 @@ describe("GeoLeaf API", () => {
         });
 
         it("should have BaseLayers alias", () => {
-            // BaseLayers is an alias for Baselayers
-            expect(GeoLeaf.Baselayers).toBeDefined();
+            // ⚠️ This assertion read `GeoLeaf.Baselayers` — the canonical
+            // name, not the alias: it passed without `BaseLayers` existing.
+            // `globals.api.ts` mounts both on the SAME object, and that
+            // identity is what makes the alias.
+            expect(GeoLeaf.BaseLayers).toBeDefined();
+            expect(GeoLeaf.BaseLayers).toBe(GeoLeaf.Baselayers);
         });
     });
 

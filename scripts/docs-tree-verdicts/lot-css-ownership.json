@@ -1,0 +1,22 @@
+{
+    "schemaVersion": 2,
+    "lot": "css-ownership",
+    "scope": ["scripts/check-css-class-ownership.cjs"],
+    "verdicts": {
+        "scripts/check-css-class-ownership.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "CCO-01…03 — une classe CSS écrite par un paquet et définie par un autre est un couplage DÉCLARÉ avec son motif (convention de propriété), les accidentels gelés en liste décroissante",
+            "confidence": "haute",
+            "rationale": "Câblé dans ci:local et ci.yml à la pose. Tient la convention : 26 couplages inter-paquets mesurés (l'entrée en nommait UN), soit une bibliothèque de styles de fait jamais déclarée — et les sourcemaps JS sont structurellement aveugles au CSS (l'instrument le plus fiable du balayage rendait zéro ici avec l'air d'avoir cherché). L'instrument est CELUI DE LA LIGNE, jamais reformulé : quatre positions syntaxiques (createEl/_el 2e arg, classList.add/remove/toggle, .className=). Convention : une classe appartient au paquet dont la feuille la définit ; l'écrire ailleurs est un usage déclaré (20 assumés avec motif) ou une erreur. Les 6 accidentels (host-runtime → field-renderer, la couche basse écrivant les classes d'une lib posée au-dessus, sans arête déclarée) sont gelés shrink-only, leur retrait instruit mais soumis à preuve DOM (C-D4). VU ROUGE SUR TROIS MUTATIONS (couplage neuf non déclaré, entrée retirée encore observée, entrée fantôme jamais observée), restaurations par empreinte OK. Plancher CCO-03 à 300 positions contre le corpus cassé.",
+            "generatedBy": null
+        }
+    }
+}

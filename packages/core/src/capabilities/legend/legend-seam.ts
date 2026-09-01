@@ -24,9 +24,21 @@
  * The `Legend` facade (geoleaf.legend.js) depends on the init runtime; this
  * contract encapsulates the initialization guard and provides a typed entry
  * point without exposing the global namespace.
+ *
+ * ⚠️ `isAvailable()` tests the REAL init, not the presence of a method — and that
+ * distinction is the whole point of this file. The facade methods exist from
+ * `registerGlobals` onward, so a presence test is true long before `Legend.init`
+ * runs. Both callers below fire while the theme engine applies its layers, i.e.
+ * strictly BEFORE the `geoleaf:app:ready` mount that `LegendLifecycle` waits on —
+ * that event is itself CAUSED by the end of the theme apply. A presence-only guard
+ * therefore let one call through per themed layer, each landing on the `!_map`
+ * branch of `loadLayerLegend` and logging "[Legend] Module not initialized".
+ * Stopping them costs nothing: `LegendLifecycle` loads every configured layer's
+ * legend immediately after `init`.
  */
 
 import { Legend as _Legend } from "../../api/geoleaf.legend.js";
+import { isLegendInitialized } from "./legend.js";
 import type { LegendLayerConfig } from "../../contracts/legend.contract.js";
 
 /**
@@ -54,10 +66,14 @@ const Legend = _Legend as LegendModuleLike;
 const LegendContract = {
     /**
      * Returns true when Legend is initialized (map loaded).
+     *
+     * Both conjuncts are load-bearing: the first covers a build where the capability was
+     * never embarked, the second covers the window before `init`. Dropping either one
+     * reopens a defect the other cannot catch.
      * @returns {boolean}
      */
     isAvailable() {
-        return !!Legend && typeof Legend.loadLayerLegend === "function";
+        return !!Legend && typeof Legend.loadLayerLegend === "function" && isLegendInitialized();
     },
 
     /**

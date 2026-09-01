@@ -1,4 +1,4 @@
-﻿/*!
+/*!
  * @geoleaf/core
  * © 2026 Mattieu Pottier
  * Released under the MIT License
@@ -13,6 +13,7 @@ import { domState, getDefaultSheetTitles } from "./mobile-toolbar-state.js";
 import { createSvgIcon, refreshFilterButtonState } from "./mobile-toolbar-pill.js";
 import { getLabel } from "../../../utils/i18n/i18n.js";
 import { handleFocusTrap } from "../../../utils/controls/focus-trap.js";
+import { getPanelPane, listPanelPanes, preparePane, registerPaneHost } from "../panel-panes.js";
 
 // C1: guard — only one document-level Escape listner at a time
 let _escapeListenerAdded = false;
@@ -110,6 +111,17 @@ function injectSheetContent(sheetId: string): void {
     } else if (sheetId === "legend") {
         const legendEl = document.querySelector(".gl-map-legend") as HTMLElement | null;
         if (legendEl) moveNodeToSheetBody(legendEl);
+    } else {
+        // A pane registered from outside the kernel. Same gesture as the three above — the
+        // node is MOVED and restored on close — but the selector comes from the registry
+        // rather than from a literal here, which is what lets the kernel host a panel it
+        // does not name.
+        const pane = getPanelPane(sheetId);
+        if (pane) {
+            // The owner builds on demand — see `PanelPane.onOpen`.
+            preparePane(sheetId);
+            moveNodeToSheetBody(document.querySelector<HTMLElement>(pane.selector));
+        }
     }
 }
 
@@ -130,7 +142,10 @@ function restoreMovedNodes(): void {
 /** Opens the sheet overlay for the given sheetId. */
 export function openSheet(sheetId: string): void {
     const titles = { ...getDefaultSheetTitles(), ...(domState.options?.sheetTitles ?? {}) };
-    const title = titles[sheetId] ?? sheetId;
+    const registered = getPanelPane(sheetId);
+    // A host override wins over the registered label, so an integrator keeps the last word;
+    // the pane resolves its own i18n key otherwise, and only then do we fall back to the id.
+    const title = titles[sheetId] ?? (registered ? getLabel(registered.labelKey) : sheetId);
     if (domState.panelTitle) domState.panelTitle.textContent = title;
     if (domState.panelBody) domState.panelBody.innerHTML = ""; // SAFE: empty string — clears element, no user data
     domState.activeSheetId = sheetId;
@@ -140,13 +155,45 @@ export function openSheet(sheetId: string): void {
     domState.overlay?.setAttribute("aria-labelledby", "gl-sheet-panel-title");
     const openedBtn = domState.toolbar?.querySelector(`[data-gl-sheet="${sheetId}"]`);
     if (openedBtn instanceof HTMLElement) openedBtn.setAttribute("aria-expanded", "true");
-    if (["filters", "layers", "legend"].includes(sheetId)) {
+    if (["filters", "layers", "legend"].includes(sheetId) || registered) {
         injectSheetContent(sheetId);
     }
     const sheetCloseBtn = domState.overlay?.querySelector<HTMLElement>(".gl-sheet-panel__close");
     sheetCloseBtn?.focus();
     refreshFilterButtonState();
 }
+
+/**
+ * Marks the pill button of every registered pane as having a desktop equivalent.
+ *
+ * ⚠️ Reuses the EXISTING `data-gl-desktop-slot` contract rather than inventing a rule: the
+ * kernel stylesheet already hides `.gl-map-toolbar__btn[data-gl-desktop-slot]` above 1440px,
+ * where the side panel shows the same content as a tab. Without this, a pane owner would get
+ * both a tab and a pill on a wide screen — two controls for one panel.
+ */
+export function markPillsWithPane(): void {
+    for (const pane of listPanelPanes()) {
+        const btn = domState.toolbar?.querySelector<HTMLElement>(
+            "[data-gl-sheet='" + pane.id + "']"
+        );
+        btn?.setAttribute("data-gl-desktop-slot", "");
+    }
+}
+
+// The mobile sheet offers itself as a pane host, BEHIND the desktop panel — see the priority
+// note there. Below 1440px the desktop host is inactive and this one answers.
+registerPaneHost({
+    id: "mobile-sheet",
+    priority: 10,
+    isActive: () => domState.overlay !== null,
+    sync: () => markPillsWithPane(),
+    open: (paneId) => {
+        if (!getPanelPane(paneId)) return false;
+        openSheet(paneId);
+        return true;
+    },
+    close: () => closeSheet(),
+});
 
 /** Closes the sheet overlay and restores any moved nodes. */
 export function closeSheet(): void {

@@ -6,7 +6,7 @@
 
 > **Rôle de ce document :** recommandations de durcissement à appliquer **côté hébergeur/intégrateur** lors du déploiement de GeoLeaf. Le cœur applique déjà une défense en profondeur (échappement HTML, validation des URL au sink, aucune origine tierce au chargement, filtrage anti-prototype-pollution) ; ce guide couvre ce qui relève de **votre infrastructure** et de **votre back-office**, hors du contrôle de la bibliothèque.
 >
-> Référence : `_docs_projet/travail/audits/audit-securite_complet.md` (modèle de menace « profil non fiable »). Recommandation R12.
+> Référence : l'audit sécurité interne (modèle de menace « profil non fiable »).
 
 ---
 
@@ -35,7 +35,7 @@ Cette défense protège le **rendu navigateur**. Elle ne remplace pas les contr�
 
 L'application (`apps/geoleaf-app/index.html`) expose une CSP de référence en `<meta http-equiv>`. En production, **servez-la en en-tête HTTP** (prioritaire sur la balise meta, et seule forme prise en compte pour `frame-ancestors`).
 
-⚠️ **Ce document a recommandé jusqu'au 08/08/2026 une politique PLUS PERMISSIVE que celle qui est livrée**, et il portait deux énoncés faux : une origine `https://unpkg.com` que le document ne charge plus (MapLibre est auto-hébergé depuis S5.4), deux domaines Google que rien ne consomme (Google Fonts supprimé en S5.5), et un `'sha256-…'` présenté comme « le hash du bootstrap inline » **alors qu'`index.html` n'a aucun script inline** — ses quatre `<script>` sont tous externes, et le document le dit lui-même en commentaire. Un guide de durcissement plus laxiste que le produit qu'il durcit se fait suivre à la lettre, et élargit la surface au lieu de la réduire.
+⚠️ **Ce document a recommandé jusqu'au 08/08/2026 une politique PLUS PERMISSIVE que celle qui est livrée**, et il portait deux énoncés faux : une origine `https://unpkg.com` que le document ne charge plus (MapLibre est auto-hébergé), deux domaines Google que rien ne consomme (Google Fonts supprimé), et un `'sha256-…'` présenté comme « le hash du bootstrap inline » **alors qu'`index.html` n'a aucun script inline** — ses quatre `<script>` sont tous externes, et le document le dit lui-même en commentaire. Un guide de durcissement plus laxiste que le produit qu'il durcit se fait suivre à la lettre, et élargit la surface au lieu de la réduire.
 
 Politique recommandée (durcie — `style-src` **sans** `unsafe-inline` : GeoLeaf applique ses styles dynamiques via le CSSOM, non soumis à `style-src`) :
 
@@ -44,7 +44,7 @@ Content-Security-Policy:
   default-src 'self';
   script-src 'self' blob:;
   style-src 'self';
-  img-src 'self' data: https:;
+  img-src 'self' data: blob: https:;
   connect-src 'self' https:;
   font-src 'self' data:;
   worker-src 'self' blob:;
@@ -62,6 +62,27 @@ Points d'attention :
 - **`script-src`** : `'self' blob:`, sans aucune origine tierce — MapLibre est servi depuis votre propre origine (`vendor/maplibre-gl/`). Aucun hash n'est requis : le document ne porte aucun script inline. ⚠️ `blob:` est conservé parce que MapLibre crée son worker par Blob ; en CSP3 cela relève de `worker-src` (déjà présent) avec `child-src` en repli CSP2, donc `blob:` y est probablement superflu — mais le retirer se vérifie en navigateur avant d'être publié comme recommandation.
 - **`'wasm-unsafe-eval'` non requis** : le plugin `realtime-layer` charge son décodeur GTFS-RT — et sa dépendance `protobufjs`/`long`, dont l'initialisation sonde WebAssembly — par **import dynamique à la première utilisation**. La sonde ne s'exécute donc jamais au boot : sans couche GTFS-RT active, **0 violation**. Conservez `script-src` **sans** `'wasm-unsafe-eval'`. Même avec une couche GTFS-RT, la sonde est rattrapée et le décodage bascule sur un chemin JS pur (fonctionnel sans WebAssembly) ; ne l'ajoutez que si vous voulez supprimer la violation `wasm-eval` purement cosmétique à la première utilisation d'une telle couche — c'est un assouplissement **étroit** (n'autorise que la compilation WebAssembly, **pas** `eval()`/`new Function()`).
 - **`frame-ancestors`** : n'a d'effet qu'en **en-tête HTTP** (ignoré en `<meta>`). Voir §3.
+
+### Mode strict optionnel — resserrer `connect-src` / `img-src`
+
+La politique de référence garde `connect-src 'self' https:` et `img-src 'self' data: blob: https:` **large en `https:` à dessein** : GeoLeaf est piloté par profils, et les origines de tuiles, de données et de photos POI sont déclarées **à l'exécution** — ce sont les VÔTRES, inconnues au build de la bibliothèque. Comme `script-src` reste `'self'` (aucun `'unsafe-inline'`/`'unsafe-eval'`, gaté par `APP-09`), une injection de script est impossible : un `connect-src` large n'est donc **pas** un amplificateur d'XSS, et le resserrer est une **défense en profondeur** (contre l'exfiltration), pas une correction.
+
+Si vous voulez néanmoins restreindre à vos seules origines :
+
+1. **Servez une CSP en en-tête HTTP** énumérant vos origines. Elle **s'intersecte** avec le `<meta>` de la page (les deux s'appliquent, la plus étroite l'emporte — voir le contrat serveur livré avec le déployé), donc la plus étroite des deux vaut :
+
+    ```
+    connect-src 'self' https://tuiles.example https://data.example;
+    img-src 'self' data: blob: https://tuiles.example https://photos.example;
+    ```
+
+    Gardez `data:` (sprites inline) et `blob:` (canvas du plugin `cog`).
+
+2. **Où trouver vos origines** : les champs `url`/`tiles`/`sprite`/`glyphs` de vos basemaps, `url`/`endpoint` de vos couches, `offline.source.url`, plus les hôtes des photos POI de vos données.
+
+3. ⚠️ **Profile-switcher** : si vous livrez plusieurs profils, l'en-tête doit couvrir l'**union** de leurs origines — la CSP est parsée une fois et ne se relâche pas après un changement de profil à l'exécution.
+
+4. **Vérifiez au navigateur** (console + événement `securitypolicyviolation`) qu'aucune violation ne casse tuiles ou données, sur **chaque** profil livré.
 
 ---
 
@@ -163,4 +184,4 @@ Si vous stockez ou éditez des profils via un back-office, traitez-les comme des
 
 ⚠️ **La dernière puce a été ajoutée le 08/08/2026 parce qu'`index.html` la citait déjà.** Son commentaire (`apps/geoleaf-app/index.html`, bloc Open Graph) renvoyait l'intégrateur à « la checklist du guide de sécurité » pour cette instruction — qui ne s'y trouvait pas. Un renvoi vers un item inexistant est pire qu'une consigne absente : il envoie chercher, et la relecture conclut que l'instruction n'existe plus.
 
-🛑 **Et la première puce a demandé « `script-src` avec le hash du bootstrap » jusqu'au 08/08/2026**, alors que le §2 de ce même document réfute ce hash à deux endroits (`:38` et le point d'attention `script-src`). Le commit de clôture de S5.6 a réécrit l'item **immédiatement suivant** — celui sur la SRI — et sauté celui-là : l'édition a procédé item par item, donc corriger un seul item ne prouve rien sur ses voisins.
+🛑 **Et la première puce a demandé « `script-src` avec le hash du bootstrap » jusqu'au 08/08/2026**, alors que le §2 de ce même document réfute ce hash à deux endroits (`:38` et le point d'attention `script-src`). Le commit de clôture a réécrit l'item **immédiatement suivant** — celui sur la SRI — et sauté celui-là : l'édition a procédé item par item, donc corriger un seul item ne prouve rien sur ses voisins.

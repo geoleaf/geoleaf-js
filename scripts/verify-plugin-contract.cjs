@@ -4,8 +4,7 @@
  *
  * Verifies every plugin package against the frozen architecture spec
  * (docs/specs/contrats/PLUGIN_ARCHITECTURE_SPEC.md §2/§9)
- * and the convergence roadmap
- * (_docs_projet/archives/roadmap_feature-plugin-architecture.md).
+ * and the convergence roadmap.
  *
  * Checks (PC-*):
  *   PC-01 src/entry.ts exists                          (§8)
@@ -21,8 +20,9 @@
  *   PC-11 version token in register()                  (INV-REG §4)
  *   PC-12 Rollup output geoleaf-<name>.plugin.js, ESM  (§7)
  *   PC-13 CSS via CSSOM — no <style>/postcss inject:true (INV-CSS)
+ *   PC-14 profileKey under modules.<pluginId>          (INV-CONFIG §5)
  *
- *   PC-04-WIDE (Q2.4, roadmap_qualite-lint-typage-esm) — pure ESM across the WHOLE
+ *   PC-04-WIDE — pure ESM across the WHOLE
  *         repo, not just plugins/src/: registry.all() × full package dir (tests and
  *         mocks included, not excluded), plus e2e/ and root-level *.js. The narrower
  *         PC-04 above stays as-is (scoped exclusion is deliberate for that check —
@@ -52,7 +52,7 @@ const path = require("path");
 const ROOT = path.resolve(__dirname, "..");
 
 // ─── Scanned plugins ──────────────────────────────────────────────────────────
-// Derived from package.json#workspaces via the single registry (ARCHI S9.4), not
+// Derived from package.json#workspaces via the single registry, not
 // hand-typed. The previous 13-entry literal was one of SEVEN copies of this list
 // in the repo, and they had already drifted (knip.json still declared two packages
 // deleted months earlier). The registry cannot disagree with npm, because npm and
@@ -327,6 +327,42 @@ function checkCssInjection(plugin, ctx, findings) {
     }
 }
 
+function checkProfileKeyBranch(plugin, ctx, findings) {
+    // PC-14 — INV-CONFIG (Plugin Contract v1 §5, frozen): a plugin's configuration
+    // lives under `modules.<pluginId>`, never elsewhere.
+    //
+    // 🛑 WHY THIS CHECK DID NOT EXIST, AND WHAT THAT COST. `INV-CONFIG` was the ONLY
+    // line of the §9 checklist without an enforceable number beside it — `INV-CSS`
+    // carries `(PC-13)`, it carried nothing. Result measured on 2026-08-17: **five
+    // plugins out of six** declared their button under `ui.show<Name>`, outside the
+    // required branch. A "frozen" rule nothing executes disciplines nobody — it
+    // only teaches to ignore rules.
+    //
+    // 📌 The most instructive case was `offline-ui`, whose comment aligned
+    // explicitly on `ui.showAddPoi` — a capability since DELETED. The convention
+    // perpetuated by mimicry of a dead example, which no re-reading catches.
+    //
+    // ⚠️ `legacyProfileKey` is EXEMPT, and that is the point: it carries the old key
+    // so already-written profiles keep working (fallback in `ui-slot-builder.ts`).
+    // The check thus targets only `profileKey`, the key that RULES.
+    const files = [];
+    collectSources(ctx.srcPath, /\.(ts|js)$/, files, ["__tests__", "__mocks__"]);
+    for (const file of files) {
+        const lines = fs.readFileSync(file, "utf8").split("\n");
+        lines.forEach((line, i) => {
+            if (isCommentOnly(line)) return;
+            const m = /(?<!legacy)(?<!Legacy)\bprofileKey\s*:\s*["']([^"']+)["']/.exec(line);
+            if (!m) return;
+            if (m[1].startsWith("modules.")) return;
+            findings.push({
+                check: "PC-14",
+                level: "violation",
+                message: `profileKey "${m[1]}" hors de \`modules.<pluginId>\` at ${rel(file)}:${i + 1} — INV-CONFIG exige \`modules.${plugin}.<clé>\`. Pour préserver un profil existant, garder l'ancienne clé dans \`legacyProfileKey\` (repli, ui-slot-builder.ts).`,
+            });
+        });
+    }
+}
+
 function checkPackageJson(plugin, ctx, findings) {
     // PC-05
     if (!fs.existsSync(ctx.pkgPath)) {
@@ -450,7 +486,7 @@ function checkTests(plugin, ctx, findings) {
 }
 
 // ─── PC-04-WIDE — ESM purity, whole repo ──────────────────────────────────────
-// Q2.4 (roadmap_qualite-lint-typage-esm). registry.all() covers packages that PLUGINS
+// registry.all() covers packages that PLUGINS
 // never did — core, the 2 internal libs, build-config, apps/geoleaf-app — and the full
 // package directory, not just src/: __tests__ and __mocks__ ARE in scope here, unlike
 // checkSources' PC-04. e2e/ and root-level *.js are scanned too — the two other CJS
@@ -528,6 +564,7 @@ function scanPlugin(plugin) {
     checkEntry(plugin, ctx, findings);
     checkSources(plugin, ctx, findings);
     checkCssInjection(plugin, ctx, findings);
+    checkProfileKeyBranch(plugin, ctx, findings);
     const pkg = checkPackageJson(plugin, ctx, findings);
     checkRollup(plugin, ctx, pkg, findings);
     checkTests(plugin, ctx, findings);

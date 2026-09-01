@@ -46,7 +46,7 @@ Static token — scenario S6 in the table below, for development and public demo
 | S1       | `getToken: () => 'static'`                  | Development / smoke test without a server |
 | S2       | `auth: { endpoint, ui: true }`              | Login modal + JWT + auto refresh (IDB)    |
 | S3       | `getToken: () => localStorage.getItem(...)` | Existing SSO — external token             |
-| S4       | `getToken: async () => await myAuth.get()`  | Async provider (Keycloak, Auth0, etc.)    |
+| S4       | `getToken: async () => await myAuth.get()`  | Async provider (any identity SDK)         |
 | S5       | `auth: { endpoint, ui: false }`             | Token preloaded in IDB — silent           |
 | S6       | `getToken: () => 'STATIC_DEV_TOKEN'`        | Non-sensitive data, public demo           |
 

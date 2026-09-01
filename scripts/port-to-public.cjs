@@ -1,43 +1,45 @@
 #!/usr/bin/env node
 /**
- * Porter l'état de l'atelier vers le dépôt public `geoleaf/geoleaf-js`.
+ * Port the workshop's state to the public repo `geoleaf/geoleaf-js`.
  *
- * Usage :
- *   node scripts/port-to-public.cjs              # dry-run : mesure et décrit, n'écrit rien
- *   node scripts/port-to-public.cjs --apply      # copie, commite et pousse
- *   node scripts/port-to-public.cjs --apply --no-push   # copie et commite, sans pousser
- *   node scripts/port-to-public.cjs --keep-clone <dir>  # réutilise/garde un clone à cet endroit
+ * Usage:
+ *   node scripts/port-to-public.cjs              # dry-run: measures and describes, writes nothing
+ *   node scripts/port-to-public.cjs --apply      # copies, commits and pushes
+ *   node scripts/port-to-public.cjs --apply --no-push   # copies and commits, no push
+ *   node scripts/port-to-public.cjs --keep-clone <dir>  # reuses/keeps a clone there
  *
- * ## Pourquoi ce script existe
+ * ## Why this script exists
  *
- * Le portage était un `cp` à la main. Mesuré le 11/08/2026 : le dépôt public était **15 commits
- * en retard**, dont sept touchant de la doc publique — les 45 fiches `docs/specs/` relues, le
- * corpus d'exemples passé de 88 à 148 fichiers, et un bloc de configuration copiable qui
- * déclarait sept clés racine mortes. **Rien ne l'a signalé**, parce qu'aucun mécanisme ne
- * comparait les deux dépôts.
+ * Porting used to be a hand `cp`. Measured on 2026-08-11: the public repo was
+ * **15 commits behind**, seven of them touching public docs — the 45 `docs/specs/`
+ * sheets re-read, the example corpus grown from 88 to 148 files, and a copyable
+ * configuration block declaring seven dead root keys. **Nothing flagged it**,
+ * because no mechanism compared the two repos.
  *
- * ⚠️ Et la cause est structurelle, pas un oubli : le clone public **n'existe nulle part sur le
- * disque**. Il est créé, poussé, supprimé. Un script qui supposerait un clone permanent aurait
- * le même défaut. Celui-ci **clone à chaque portage**, ce qui règle la divergence par
- * construction — on part toujours de l'état réel du distant, jamais d'une copie qui a dérivé.
+ * ⚠️ And the cause is structural, not an oversight: the public clone **exists
+ * nowhere on disk**. It is created, pushed, deleted. A script assuming a permanent
+ * clone would have the same defect. This one **clones at every port**, which settles
+ * the divergence by construction — we always start from the remote's real state,
+ * never from a copy that drifted.
  *
- * ## Ce qu'il refuse de faire
+ * ## What it refuses to do
  *
- * - tourner sur un arbre de travail sale (le lot dérive de `git ls-files`, qui ne décrit pas
- *   les modifications non commitées — le décompte imprimé mentirait) ;
- * - écrire un lot sous le plancher de vraisemblance, ou dont un motif de partition n'a rien
- *   retiré (`public-partition.cjs`) ;
- * - commiter un clone dont `git ls-files` contient encore un chemin d'atelier.
+ * - run on a dirty working tree (the batch derives from `git ls-files`, which does
+ *   not describe uncommitted modifications — the printed tally would lie);
+ * - write a batch under the plausibility floor, or whose partition pattern removed
+ *   nothing (`public-partition.cjs`);
+ * - commit a clone whose `git ls-files` still contains a workshop path.
  *
- * Chacun de ces trois refus a été VU mordre avant que le script soit cru — cf. la tâche
- * d'épreuve, deux mutations et une assertion.
+ * Each of these three refusals was SEEN biting before the script was believed — a
+ * proving pass, two mutations and one assertion.
  *
- * ## L'ordre des étapes n'est pas arbitraire
+ * ## The step order is not arbitrary
  *
- * `ARBORESCENCE_QUALIFIEE.md` est régénéré **après** le `git add`, jamais avant : son générateur
- * lit `git ls-files` (`lib/source-inventory.cjs:87`), pas le disque. Un arbre régénéré avant
- * l'indexation décrit le lot précédent en sortant 0 — c'est ce que les commits publics
- * `18ccd025` et `ed7bbaf2` ont dû rattraper à la main, deux fois de suite.
+ * `ARBORESCENCE_QUALIFIEE.md` is regenerated **after** the `git add`, never before:
+ * its generator reads `git ls-files` (`lib/source-inventory.cjs`), not the disk.
+ * A tree regenerated before indexing describes the previous batch while exiting 0 —
+ * what the public commits `18ccd025` and `ed7bbaf2` had to catch up by hand, twice
+ * in a row.
  */
 
 "use strict";
@@ -52,7 +54,7 @@ const partition = require("./lib/public-partition.cjs");
 
 const ROOT = registry.ROOT;
 const PUBLIC_REMOTE = "https://github.com/geoleaf/geoleaf-js.git";
-/** Le dépôt attendu au bout du remote, en forme `<orga>/<nom>`, pour l'assertion d'identité. */
+/** The repo expected at the remote's end, as `<org>/<name>`, for the identity assertion. */
 const PUBLIC_SLUG = "geoleaf/geoleaf-js";
 
 const argv = process.argv.slice(2);
@@ -62,12 +64,12 @@ const keepCloneIdx = argv.indexOf("--keep-clone");
 const keepClone = keepCloneIdx !== -1 ? argv[keepCloneIdx + 1] : null;
 
 /**
- * Lancer une commande, en jetant sur échec plutôt qu'en poursuivant.
+ * Runs a command, throwing on failure rather than carrying on.
  *
- * @param {string} cmd Exécutable.
- * @param {string[]} args Arguments, non interprétés par un shell.
+ * @param {string} cmd Executable.
+ * @param {string[]} args Arguments, not shell-interpreted.
  * @param {{cwd?: string, quiet?: boolean}} [opts]
- * @returns {string} La sortie standard, ébarbée.
+ * @returns {string} The standard output, trimmed.
  */
 function run(cmd, args, opts = {}) {
     const res = spawnSync(cmd, args, {
@@ -87,9 +89,9 @@ function run(cmd, args, opts = {}) {
 }
 
 /**
- * Les fichiers suivis par git, chemins repo-relatifs POSIX.
+ * The files git tracks, repo-relative POSIX paths.
  *
- * @param {string} cwd Racine du dépôt à interroger.
+ * @param {string} cwd Root of the repo to query.
  * @returns {string[]}
  */
 function trackedFiles(cwd) {
@@ -98,12 +100,12 @@ function trackedFiles(cwd) {
 }
 
 /**
- * Refuser de porter depuis un arbre sale.
+ * Refuse to port from a dirty tree.
  *
- * ⚠️ Ce n'est pas de la propreté de principe. Le lot est dérivé de `git ls-files`, qui décrit
- * **l'index**, pas le disque : un fichier modifié non commité serait copié dans son état
- * courant alors que le décompte imprimé le décrit comme la version commitée. Le portage
- * partirait juste et le message de commit serait faux.
+ * ⚠️ This is not cleanliness on principle. The batch derives from `git ls-files`,
+ * which describes **the index**, not the disk: an uncommitted modified file would be
+ * copied in its current state while the printed tally describes it as the committed
+ * version. The port would leave right and the commit message would be wrong.
  */
 function assertCleanWorktree() {
     const dirty = run("git", ["status", "--porcelain"], { quiet: true });
@@ -118,7 +120,7 @@ function assertCleanWorktree() {
 }
 
 /**
- * Cloner le dépôt public, et vérifier que c'est bien lui.
+ * Clones the public repo, and verifies it really is it.
  *
  * @returns {{dir: string, ephemeral: boolean}}
  */
@@ -136,7 +138,7 @@ function clonePublic() {
         run("git", ["clone", "--quiet", PUBLIC_REMOTE, dir], { cwd: ROOT });
     }
 
-    // Assertion d'identité : écraser le mauvais dépôt serait irréversible.
+    // Identity assertion: overwriting the wrong repo would be irreversible.
     const remote = run("git", ["remote", "get-url", "origin"], { cwd: dir, quiet: true });
     if (!remote.includes(PUBLIC_SLUG)) {
         throw new Error(
@@ -147,18 +149,20 @@ function clonePublic() {
 }
 
 /**
- * Rendre le clone identique au lot public : copier ce qui doit être là, retirer le reste.
+ * Makes the clone identical to the public batch: copy what must be there, remove
+ * the rest.
  *
- * @param {string} cloneDir Racine du clone.
- * @param {string[]} publicFiles Chemins repo-relatifs POSIX à porter.
+ * @param {string} cloneDir Root of the clone.
+ * @param {string[]} publicFiles Repo-relative POSIX paths to port.
  * @returns {{copied: number, removed: string[]}}
  */
 function syncClone(cloneDir, publicFiles) {
     const wanted = new Set(publicFiles);
 
-    // ① Retirer du clone tout fichier suivi qui n'est plus dans le lot. Sans cette passe, un
-    //    fichier supprimé ici survivrait indéfiniment là-bas — la forme silencieuse de la
-    //    divergence, et la plus difficile à voir puisqu'elle n'apparaît dans aucun diff.
+    // ① Remove from the clone every tracked file no longer in the batch. Without
+    //    this pass, a file deleted here would survive there indefinitely — the
+    //    silent form of divergence, and the hardest to see since it appears in no
+    //    diff.
     const removed = [];
     for (const file of trackedFiles(cloneDir)) {
         if (wanted.has(file)) continue;
@@ -167,7 +171,7 @@ function syncClone(cloneDir, publicFiles) {
         removed.push(file);
     }
 
-    // ② Copier le lot. `copyFileSync` traite binaires et textes de la même façon.
+    // ② Copy the batch. `copyFileSync` treats binaries and texts the same way.
     let copied = 0;
     for (const file of publicFiles) {
         const src = path.join(ROOT, file);
@@ -181,30 +185,30 @@ function syncClone(cloneDir, publicFiles) {
 }
 
 /**
- * Ajouter le bloc d'appareil interne au `.gitignore` du clone.
+ * Appends the internal-apparatus block to the clone's `.gitignore`.
  *
- * ⚠️ **Après** la copie, jamais avant : l'étape ② vient d'écraser le `.gitignore` du clone par
- * celui de l'atelier, qui ne porte pas ces règles — et ne doit pas les porter (voir le module
- * de partition). Poser le fragment d'abord reviendrait à le supprimer.
+ * ⚠️ **After** the copy, never before: step ② just overwrote the clone's
+ * `.gitignore` with the workshop's, which does not carry these rules — and must not
+ * (see the partition module). Laying the fragment first would amount to deleting it.
  *
- * @param {string} cloneDir Racine du clone.
+ * @param {string} cloneDir Root of the clone.
  */
 function appendGitignoreFragment(cloneDir) {
     const target = path.join(cloneDir, ".gitignore");
     const current = fs.existsSync(target) ? fs.readFileSync(target, "utf8") : "";
-    if (current.includes("Appareil INTERNE")) return; // déjà posé, portage idempotent
+    if (current.includes("Appareil INTERNE")) return; // already laid, idempotent port
     fs.writeFileSync(target, current + partition.gitignoreFragment(), "utf8");
 }
 
 /**
- * Dernier filet : aucun chemin d'atelier ne doit être indexé côté clone.
+ * Last net: no workshop path may be indexed on the clone side.
  *
- * C'est la seule assertion qui juge le RÉSULTAT plutôt que l'intention. Les précédentes
- * vérifient que la partition a mordu sur la liste ; celle-ci vérifie ce que git s'apprête
- * réellement à commiter — la seule chose qui parte.
+ * The only assertion judging the RESULT rather than the intent. The previous ones
+ * verify the partition bit on the list; this one verifies what git is actually about
+ * to commit — the only thing that leaves.
  *
- * @param {string} cloneDir Racine du clone.
- * @throws {Error} Si un fichier interne a survécu.
+ * @param {string} cloneDir Root of the clone.
+ * @throws {Error} If an internal file survived.
  */
 function assertNoInternalLeak(cloneDir) {
     const leaked = trackedFiles(cloneDir).filter((f) => partition.isInternal(f));
@@ -231,8 +235,9 @@ function main() {
     const parts = partition.split(trackedFiles(ROOT));
     partition.assertPartitionSane(parts);
 
-    // ⚠️ Le décompte s'imprime AVANT toute écriture, et il ventile par motif : un total seul
-    // ne distingue pas « 39 fichiers retirés » de « 39 fichiers qu'un seul motif a happés ».
+    // ⚠️ The tally prints BEFORE any write, and it breaks down by pattern: a total
+    // alone cannot tell "39 files removed" from "39 files one single pattern
+    // snatched".
     console.log(
         `Atelier @ ${head} — ${parts.publicFiles.length + parts.internalFiles.length} fichiers suivis`
     );
@@ -256,8 +261,9 @@ function main() {
         appendGitignoreFragment(cloneDir);
         console.log(`\n✓ ${copied} fichier(s) copié(s), ${removed.length} retiré(s) du clone.`);
 
-        // L'indexation précède la régénération de l'arbre : le générateur lit `git ls-files`,
-        // donc un arbre produit avant le `git add` décrit le lot PRÉCÉDENT en sortant 0.
+        // Indexing precedes the tree's regeneration: the generator reads
+        // `git ls-files`, so a tree produced before the `git add` describes the
+        // PREVIOUS batch while exiting 0.
         run("git", ["add", "-A"], { cwd: cloneDir });
 
         console.log("↻ Régénération de l'arbre côté public…");

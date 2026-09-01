@@ -100,10 +100,11 @@ describe("createCollectionRestAdapter — errors & create-only", () => {
         await expect(n.save(FEATURE, "L")).rejects.toBeInstanceOf(PersistenceError);
     });
 
-    // 🛑 B-138 À L'IDENTIQUE, SI ON L'OUBLIAIT. Les deux dialectes partageaient une queue de
-    // mapping byte-à-byte : c'est ainsi que le 501 sortait en `"network"` DES DEUX CÔTÉS à la
-    // fois. Corriger un seul chemin aurait reproduit le défaut que B-138 nomme. La politique a
-    // désormais un domicile unique (`statusError`), et ce test garde le second chemin.
+    // 🛑 THE SAME DEFECT, IDENTICALLY, IF WE FORGOT IT. The two dialects shared
+    // a byte-for-byte mapping tail: that is how the 501 came out as `"network"`
+    // on BOTH sides at once. Fixing one path only would have reproduced "the
+    // fix true on one path out of two". The policy now has a single home
+    // (`statusError`), and this test guards the second path.
     it("maps 501 to 'capability' — l'autre dialecte, même politique", async () => {
         const c = createCollectionRestAdapter({
             baseUrl: "https://ogc.example.org",

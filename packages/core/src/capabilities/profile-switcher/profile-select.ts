@@ -62,7 +62,7 @@ export function createProfileSelect(
     }
 
     select.addEventListener("change", () => {
-        const chosen = (select as HTMLSelectElement).value;
+        const chosen = select.value;
         // Re-selecting the active profile would reload for nothing.
         if (!chosen || chosen === activeId) return;
         onSwitch(chosen);

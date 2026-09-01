@@ -1,131 +1,135 @@
 #!/usr/bin/env node
 /**
- * @fileoverview SHIP-SPEC — les specifiers NUS que le tarball emporte doivent se résoudre
- * chez l'intégrateur, pas seulement dans ce monorepo.
+ * @fileoverview SHIP-SPEC — the BARE specifiers the tarball carries must resolve on
+ * the integrator's side, not only in this monorepo.
  *
- * ## Le défaut que cette gate existe pour attraper
+ * ## The defect this gate exists to catch
  *
- * Six `.d.ts` publiables importaient des paquets qui rendent **404 sur npm**. Aucune gate ne
- * pouvait le voir, et la raison est structurelle : **les liens symboliques des workspaces npm
- * masquent la classe entière.** `@geoleaf/host-runtime` résout parfaitement ici — il est dans
- * `node_modules/` par symlink — et il n'existe nulle part sur le registre. Vert en local,
- * `TS2307` chez l'intégrateur.
+ * Six publishable `.d.ts` imported packages that return **404 on npm**. No gate could
+ * see it, and the reason is structural: **npm workspaces' symlinks mask the entire
+ * class.** `@geoleaf/host-runtime` resolves perfectly here — it sits in
+ * `node_modules/` via symlink — and it exists nowhere on the registry. Green locally,
+ * `TS2307` on the integrator's side.
  *
- * Les deux gates voisines passent à côté, chacune pour son propre motif, et il faut les avoir
- * en tête pour ne pas croire que celle-ci fait double emploi :
+ * The two neighbouring gates miss it, each for its own reason, and one must keep them
+ * in mind not to believe this one is redundant:
  *
- *   - `verify-published-types.cjs` (PUB-TYPES) **ne compile rien** : il lit `package.json` et le
- *     disque. Il vérifie l'ATTEIGNABILITÉ de l'entrée `types`, jamais la RÉSOLVABILITÉ de ses
- *     imports transitifs.
- *   - `typecheck:consumer` compile bien, mais il compile depuis `packages/core/examples/`, donc
- *     **à l'intérieur du monorepo** : les symlinks y sont, et `@geoleaf/host-runtime` s'y résout.
- *     Le compilateur ne peut pas voir ce qui ne sera absent que chez quelqu'un d'autre.
+ *   - `verify-published-types.cjs` (PUB-TYPES) **compiles nothing**: it reads
+ *     `package.json` and the disk. It verifies the `types` entry's REACHABILITY,
+ *     never the RESOLVABILITY of its transitive imports.
+ *   - `typecheck:consumer` does compile, but it compiles from
+ *     `packages/core/examples/`, hence **inside the monorepo**: the symlinks are
+ *     there, and `@geoleaf/host-runtime` resolves. The compiler cannot see what will
+ *     only be absent at someone else's.
  *
- * La seule façon de trancher hors ligne est de comparer le specifier au CONTRAT que le paquet
- * publie — ses `dependencies` — et à ce que le dépôt sait de la cible : un workspace `private`
- * ne sera jamais sur le registre, quelle que soit la façon dont on le déclare.
+ * The only way to decide offline is to compare the specifier to the CONTRACT the
+ * package publishes — its `dependencies` — and to what the repo knows of the target:
+ * a `private` workspace will never be on the registry, however it is declared.
  *
- * ## 🛑 LE RECOUVREMENT DES GATES DU TARBALL — écrit ICI, et nulle part ailleurs (B-87, B-232)
+ * ## 🛑 THE TARBALL GATES' OVERLAP — written HERE, and nowhere else
  *
- * Quatre instruments jugent ce qui part dans un tarball. **Aucun ne disait ce qu'il NE couvre
- * PAS**, et c'est ce silence qui a coûté : on lit un vert, on en déduit une garantie plus large
- * que la sienne. Le tableau est ici parce que ce fichier est le plus récent des quatre et le
- * seul qui compare déjà ses voisins ; les trois autres y renvoient.
+ * Four instruments judge what ships in a tarball. **None said what it does NOT
+ * cover**, and that silence is what cost: one reads a green, one infers a guarantee
+ * wider than its own. The table is here because this file is the most recent of the
+ * four and the only one already comparing its neighbours; the other three point here.
  *
- * | Gate | La question qu'elle pose | Ce qu'elle ne peut PAS voir |
+ * | Gate | The question it asks | What it CANNOT see |
  * | --- | --- | --- |
- * | **SHIP-SPEC** (ici) | un specifier NU d'un fichier atteignable se résout-il chez l'intégrateur ? | la VISIBILITÉ d'un symbole — un type non exporté qui atteint le `.d.ts` publié ne fait apparaître aucun specifier étranger |
- * | **PUB-TYPES** (`verify-published-types.cjs`) | l'entrée `types` est-elle atteignable ? | ce que cette entrée IMPORTE, transitivement — elle ne compile rien |
- * | **check 4** (`check-versions.cjs`) | les cartes de dépendances sont-elles cohérentes ? | les `.d.ts` — elle lit des `package.json`, jamais du code émis |
- * | **`typecheck:consumer`** | le paquet compile-t-il chez un consommateur ? | ce qui n'est absent que HORS du monorepo : elle compile depuis `packages/core/examples/`, où les symlinks de workspace résolvent tout |
+ * | **SHIP-SPEC** (here) | does a BARE specifier of a reachable file resolve on the integrator's side? | a symbol's VISIBILITY — an unexported type reaching the published `.d.ts` surfaces no foreign specifier |
+ * | **PUB-TYPES** (`verify-published-types.cjs`) | is the `types` entry reachable? | what that entry IMPORTS, transitively — it compiles nothing |
+ * | **check 4** (`check-versions.cjs`) | are the dependency maps coherent? | the `.d.ts` — it reads `package.json` files, never emitted code |
+ * | **`typecheck:consumer`** | does the package compile for a consumer? | what is only absent OUTSIDE the monorepo: it compiles from `packages/core/examples/`, where workspace symlinks resolve everything |
  *
- * ⚠️ **LA CASE VIDE EST B-87, ET AUCUNE QUATRIÈME GATE NE LA REMPLIRA PAR ADDITION.** Un type
- * interne non exporté qui atteint la déclaration publiée est invisible à SHIP-SPEC **par
- * construction** — il n'introduit aucun specifier étranger, donc son zéro n'en dit rien. La
- * baseline vide de SHIP-SPEC (`entries: 0`) peut donc coexister avec la classe entière de B-87
- * ouverte : **deux questions différentes sur le même fichier**, l'une sur la CIBLE d'un import,
- * l'autre sur la VISIBILITÉ d'un symbole.
+ * ⚠️ **THE EMPTY CELL IS KNOWN, AND NO FOURTH GATE WILL FILL IT BY ADDITION.** An
+ * internal, unexported type reaching the published declaration is invisible to
+ * SHIP-SPEC **by construction** — it introduces no foreign specifier, so its zero
+ * says nothing about it. SHIP-SPEC's empty baseline (`entries: 0`) can thus coexist
+ * with that entire class open: **two different questions on the same file**, one
+ * about an import's TARGET, the other about a symbol's VISIBILITY.
  *
- * 📌 Ce tableau est le geste que B-87 demandait — « c'est le recouvrement lui-même qu'il faut
- * écrire, pas une quatrième gate ». Un vert ne vaut que ce que sa question vaut, et une question
- * qu'on ne peut pas lire se lit comme une garantie.
+ * 📌 This table is the requested move — "the overlap itself is what must be written,
+ * not a fourth gate". A green is only worth what its question is worth, and a
+ * question one cannot read reads as a guarantee.
  *
- * ## Les trois règles
+ * ## The three rules
  *
- *   SHIP-SPEC-01  Tout specifier NU d'un fichier ATTEIGNABLE doit être déclaré dans les
- *                 dépendances d'exécution du paquet (`dependencies`, `peerDependencies`,
- *                 `optionalDependencies`). Un specifier absent des trois n'est résolu chez
- *                 l'intégrateur que par chance — un hissage transitif qu'aucun contrat ne
- *                 promet. Cliquet : baseline qui ne peut que RÉTRÉCIR.
- *                 ⚠️ UNE seule équivalence, et elle est CONDITIONNÉE au type de fichier :
- *                 dans un fichier de DÉCLARATION (`.d.ts`/`.d.mts`/`.d.cts`), déclarer
- *                 `@types/X` satisfait le specifier `X`. Voir « L'équivalence DefinitelyTyped »
- *                 ci-dessous — sans elle, la gate réclamait une chose IMPOSSIBLE.
- *   SHIP-SPEC-02  Aucun fichier atteignable ne peut nommer un workspace `private: true`.
- *                 **Aucune baseline, aucune exemption** : cette cible n'ira jamais sur le
- *                 registre, donc la déclarer en `dependencies` ne réparerait rien — ça
- *                 satisferait 01 en rendant le paquet non installable. C'est très exactement
- *                 la fausse issue que 02 ferme, et c'est pourquoi les deux règles existent
- *                 séparément plutôt qu'en une seule.
- *   SHIP-SPEC-03  Plancher de corpus. Une gate qui sort verte en n'ayant rien scanné est le
- *                 pire des résultats — et ici le risque est concret : le corpus est `dist/`,
- *                 qui n'existe pas avant un build. Sans plancher, un run pré-build annoncerait
- *                 « 0 fuite » en lisant zéro octet.
+ *   SHIP-SPEC-01  Every BARE specifier of a REACHABLE file must be declared in the
+ *                 package's runtime dependencies (`dependencies`, `peerDependencies`,
+ *                 `optionalDependencies`). A specifier absent from all three only
+ *                 resolves on the integrator's side by luck — a transitive hoist no
+ *                 contract promises. Ratchet: a baseline that can only SHRINK.
+ *                 ⚠️ ONE single equivalence, and it is CONDITIONED on the file type:
+ *                 in a DECLARATION file (`.d.ts`/`.d.mts`/`.d.cts`), declaring
+ *                 `@types/X` satisfies the specifier `X`. See "The DefinitelyTyped
+ *                 equivalence" below — without it, the gate demanded something
+ *                 IMPOSSIBLE.
+ *   SHIP-SPEC-02  No reachable file may name a `private: true` workspace.
+ *                 **No baseline, no exemption**: that target will never be on the
+ *                 registry, so declaring it in `dependencies` would repair nothing —
+ *                 it would satisfy 01 while making the package uninstallable. It is
+ *                 exactly the false exit 02 closes, and why the two rules exist
+ *                 separately rather than as one.
+ *   SHIP-SPEC-03  Corpus floor. A gate going green having scanned nothing is the
+ *                 worst outcome — and here the risk is concrete: the corpus is
+ *                 `dist/`, which does not exist before a build. Without a floor, a
+ *                 pre-build run would announce "0 leaks" reading zero bytes.
  *
- * ## Ce qui définit le corpus, et pourquoi ce n'est PAS `files[]`
+ * ## What defines the corpus, and why it is NOT `files[]`
  *
- * Le corpus est DÉRIVÉ de la carte `exports` de chaque paquet : la racine de chaque cible
- * (`./dist/types/index.d.ts` → `dist/`). C'est l'ensemble de ce qu'un consommateur peut
- * atteindre, et c'est ce qui donne son sens au verdict.
+ * The corpus is DERIVED from each package's `exports` map: the root of each target
+ * (`./dist/types/index.d.ts` → `dist/`). It is the set of what a consumer can reach,
+ * and it is what gives the verdict its meaning.
  *
- * `files[]` est plus large, et la différence n'est pas un détail : **13 des 14 paquets
- * publiables embarquent `src/` dans leur tarball**, où 82 fichiers importent
- * `@geoleaf/host-runtime`. Mesuré le 09/08/2026 : **aucun de ces 14 paquets n'expose de
- * sous-chemin `./src/*`** — leur carte `exports` ne porte que `.` et `./package.json`. Ces 82
- * fichiers sont donc du POIDS DE TARBALL, pas des fuites de types : ni `tsc` (en résolution
- * `node16`/`bundler`) ni Node ne peuvent les ouvrir. Les confondre reviendrait à annoncer 84
- * fuites là où le compilateur d'un intégrateur n'en rencontre que 2.
+ * `files[]` is wider, and the difference is not a detail: **13 of the 14 publishable
+ * packages ship `src/` in their tarball**, where 82 files import
+ * `@geoleaf/host-runtime`. Measured on 2026-08-09: **none of those 14 packages
+ * exposes a `./src/*` subpath** — their `exports` map only carries `.` and
+ * `./package.json`. Those 82 files are thus TARBALL WEIGHT, not type leaks: neither
+ * `tsc` (in `node16`/`bundler` resolution) nor Node can open them. Conflating them
+ * would mean announcing 84 leaks where an integrator's compiler meets only 2.
  *
- * ⚠️ La distinction est SURVEILLÉE, pas supposée : le compte des fichiers embarqués-mais-non-
- * atteignables portant un specifier douteux est imprimé à chaque run, et le jour où un paquet
- * exposerait `./src/*`, la dérivation ci-dessus élargit le corpus toute seule — sans qu'on ait
- * à y penser. Le sort de `src/` dans le tarball est une décision du Sprint 2 (tâches 2.10-2.12),
- * pas de celui-ci.
+ * ⚠️ The distinction is WATCHED, not assumed: the count of shipped-but-unreachable
+ * files carrying a dubious specifier prints at every run, and the day a package
+ * exposed `./src/*`, the derivation above widens the corpus on its own — without
+ * anyone having to think of it. The fate of `src/` in the tarball is a separate
+ * decision, not this gate's.
  *
- * ## Pourquoi les paquets PRIVÉS sont scannés eux aussi
+ * ## Why PRIVATE packages are scanned too
  *
- * Le filtre naturel serait `registry.publishable()` — un paquet privé n'a pas de tarball. Le
- * corpus est pourtant `registry.all()`, pour deux raisons, et la première est de fond :
- * **`@geoleaf/host-runtime` est BUNDLÉ INLINE dans les 12 plugins publiés.** Un specifier 404
- * dans SES sources voyage donc jusque dans des bundles publiés, sans jamais apparaître dans son
- * propre tarball — qui n'existe pas. Le restreindre aux publiables laisserait ce chemin sans
- * gardien. Mesuré le 09/08/2026 : l'élargissement ajoute 18 fichiers et **0 violation**, il ne
- * coûte donc rien aujourd'hui et ferme un chemin réel.
- * La seconde raison est instrumentale : elle rend la gate SONDABLE. La sonde
- * `probe-gate-visibility.cjs` plante un paquet `private: true` ; avec le filtre étroit, la
- * fixture aurait été invisible et l'assertion aurait passé au vert sans rien prouver.
+ * The natural filter would be `registry.publishable()` — a private package has no
+ * tarball. The corpus is nonetheless `registry.all()`, for two reasons, the first
+ * substantive: **`@geoleaf/host-runtime` is BUNDLED INLINE into the 12 published
+ * plugins.** A 404 specifier in ITS sources thus travels into published bundles,
+ * without ever appearing in its own tarball — which does not exist. Restricting to
+ * publishables would leave that path unguarded. Measured on 2026-08-09: the widening
+ * adds 18 files and **0 violations** — it costs nothing today and closes a real path.
+ * The second reason is instrumental: it makes the gate PROBEABLE. The
+ * `probe-gate-visibility.cjs` probe plants a `private: true` package; with the narrow
+ * filter, the fixture would have been invisible and the assertion would have passed
+ * green proving nothing.
  *
- * ## AST, jamais grep — et ce n'est pas une préférence de style
+ * ## AST, never grep — and it is not a style preference
  *
- * Un relevé au grep sur ce même corpus remonte `@geoleaf-plugins/table` comme import non déclaré
- * de `@geoleaf/core` — c'est-à-dire une violation de la frontière que `CLAUDE.md` appelle non
- * négociable. **C'est un faux positif** : les cinq sites sont des `import('@geoleaf-plugins/table')`
- * à l'intérieur d'un `@example` TSDoc. Un stripper de commentaires suffirait, mais celui du dépôt
- * (`lib/test-load-sites.cjs`) blanchit aussi le CONTENU des chaînes — correct pour son usage,
- * fatal pour celui-ci, où la chaîne EST la donnée. Le lecteur TypeScript n'a ni l'un ni l'autre
- * défaut : il ne voit pas les commentaires, et il rend le specifier tel quel.
+ * A grep census on this same corpus surfaces `@geoleaf-plugins/table` as an
+ * undeclared import of `@geoleaf/core` — i.e. a violation of the boundary the project
+ * instructions call non-negotiable. **It is a false positive**: the five sites are
+ * `import('@geoleaf-plugins/table')` inside a TSDoc `@example`. A comment stripper
+ * would suffice, but the repo's (`lib/test-load-sites.cjs`) also blanks string
+ * CONTENT — correct for its use, fatal for this one, where the string IS the data.
+ * The TypeScript reader has neither defect: it does not see comments, and it returns
+ * the specifier as-is.
  *
  * ## Usage
  *
  *        node scripts/check-shipped-specifiers.cjs
  *        node scripts/check-shipped-specifiers.cjs --update-baseline
  *
- * ⚠️ Tourne APRÈS un build — le corpus est `dist/`. `--update-baseline` se lance APRÈS avoir
- * corrigé, jamais pour faire taire : chaque entrée doit porter son propriétaire dans
- * `_proprietaires`, faute de quoi la liste devient un permis au lieu d'un registre.
- * Ce champ est REPRIS du fichier à chaque régénération et élagué des specifiers soldés —
- * il l'était depuis un gabarit codé ici jusqu'au 10/08/2026, ce qui a silencieusement annulé
- * la correction de propriétaire écrite à la main au Sprint 2 (voir le bloc `if (UPDATE)`).
+ * ⚠️ Runs AFTER a build — the corpus is `dist/`. `--update-baseline` runs AFTER
+ * fixing, never to silence: each entry must carry its owner in `_proprietaires`,
+ * failing which the list becomes a permit instead of a register. That field is TAKEN
+ * BACK from the file at each regeneration and pruned of settled specifiers — it came
+ * from a template coded here until 2026-08-10, which silently cancelled the
+ * hand-written owner correction (see the `if (UPDATE)` block).
  */
 
 "use strict";
@@ -145,31 +149,33 @@ const err = (m) => console.error(`${C.r}${m}${C.x}`);
 const dim = (m) => console.error(`${C.d}${m}${C.x}`);
 
 /**
- * Planchers témoins — mesure du 09/08/2026 : 15 paquets contributeurs, 1 361 fichiers de corpus.
+ * Witness floors — 2026-08-09 measurement: 15 contributing packages, 1,361 corpus
+ * files.
  *
- * Délibérément SOUS la mesure : ils détectent un EFFONDREMENT (corpus vide, registre qui cesse
- * d'énumérer, build absent), pas une unité en moins. Un plancher au ras de la mesure se
- * recliquette à chaque build et finit par être remonté sans qu'on y pense — c'est-à-dire désarmé.
+ * Deliberately BELOW the measurement: they detect a COLLAPSE (empty corpus, registry
+ * ceasing to enumerate, absent build), not one unit fewer. A floor flush with the
+ * measurement gets re-ratcheted at every build and ends up raised without a thought —
+ * i.e. disarmed.
  *
- * ⚠️ C'est ce plancher, et non une fixture, qui garde la CÉCITÉ AUX PAQUETS IMBRIQUÉS. 14 des 15
- * contributeurs vivent sous `packages/plugins/**` ou `packages/libs/**` : le jour où le registre
- * cesserait de les énumérer, `packagesScanned` tomberait à 1 et le plancher rougirait au lieu
- * d'annoncer « 0 fuite » sur un corpus amputé.
+ * ⚠️ This floor, and not a fixture, is what guards the BLINDNESS TO NESTED PACKAGES.
+ * 14 of the 15 contributors live under `packages/plugins/**` or `packages/libs/**`:
+ * the day the registry stopped enumerating them, `packagesScanned` would drop to 1
+ * and the floor would go red instead of announcing "0 leaks" on an amputated corpus.
  */
 const FLOOR = { packages: 12, files: 800 };
 
-/** Extensions d'un module que TypeScript ou Node peuvent ouvrir. `.map` et `.css` sont hors sujet. */
+/** Extensions of a module TypeScript or Node can open. `.map` and `.css` are out of scope. */
 const CODE_EXT = /\.(d\.[cm]?ts|[cm]?ts|[cm]?js)$/;
 
 // ─── Corpus ──────────────────────────────────────────────────────────────────
 
 /**
- * Toutes les cibles d'une carte `exports`, quelle qu'en soit la forme (chaîne, objet de
- * conditions, sous-chemins, tableaux de secours).
+ * Every target of an `exports` map, whatever its shape (string, condition object,
+ * subpaths, fallback arrays).
  *
- * @param {unknown} node Une valeur d'`exports`.
- * @param {string[]} [out] Accumulateur.
- * @returns {string[]} Les chemins relatifs cibles, `./` compris.
+ * @param {unknown} node An `exports` value.
+ * @param {string[]} [out] Accumulator.
+ * @returns {string[]} The relative target paths, `./` included.
  */
 function exportTargets(node, out = []) {
     if (typeof node === "string") {
@@ -183,15 +189,15 @@ function exportTargets(node, out = []) {
 }
 
 /**
- * Les répertoires qu'un consommateur peut atteindre par la carte `exports`.
+ * The directories a consumer can reach through the `exports` map.
  *
- * On remonte à la RACINE de chaque cible (`./dist/types/index.d.ts` → `dist`) plutôt que de
- * suivre la clôture des imports : suivre la clôture ferait dépendre le corpus d'une résolution
- * qui, précisément, est ce qu'on met en doute. Prendre le répertoire est plus large, donc plus
- * sûr — une gate ne doit jamais rétrécir son corpus par raffinement.
+ * We climb to each target's ROOT (`./dist/types/index.d.ts` → `dist`) rather than
+ * follow the imports' closure: following the closure would make the corpus depend on
+ * a resolution which is, precisely, what is in doubt. Taking the directory is wider,
+ * hence safer — a gate must never shrink its corpus through refinement.
  *
- * @param {object} manifest Le `package.json` du paquet.
- * @returns {Set<string>} Racines relatives, séparateurs POSIX (ex. `"dist"`).
+ * @param {object} manifest The package's `package.json`.
+ * @returns {Set<string>} Relative roots, POSIX separators (e.g. `"dist"`).
  */
 function reachableRoots(manifest) {
     const roots = new Set();
@@ -216,17 +222,17 @@ function walk(dir, out = []) {
     return out;
 }
 
-// ─── Lecture des specifiers ──────────────────────────────────────────────────
+// ─── Reading the specifiers ──────────────────────────────────────────────────
 
 /**
- * Tous les specifiers de module d'un fichier, lus sur l'AST.
+ * Every module specifier of a file, read off the AST.
  *
- * Cinq formes portent un specifier, et les cinq comptent — un `.d.ts` n'en utilise pas les
- * mêmes qu'un bundle. `import("x").T` (`ImportTypeNode`) est la forme la plus facile à oublier :
- * c'est celle qu'émet `tsc` quand il inline un type importé.
+ * Five forms carry a specifier, and all five count — a `.d.ts` does not use the same
+ * ones as a bundle. `import("x").T` (`ImportTypeNode`) is the easiest form to forget:
+ * it is the one `tsc` emits when inlining an imported type.
  *
- * @param {string} file Chemin absolu.
- * @returns {string[]} Les specifiers, dans l'ordre de lecture.
+ * @param {string} file Absolute path.
+ * @returns {string[]} The specifiers, in reading order.
  */
 function specifiersOf(file) {
     const text = fs.readFileSync(file, "utf8");
@@ -257,58 +263,58 @@ function specifiersOf(file) {
 }
 
 /**
- * Builtins sans préfixe `node:` — un paquet ne les déclare jamais.
+ * Builtins without the `node:` prefix — a package never declares them.
  *
- * DÉRIVÉE de Node lui-même, jamais recopiée : une liste écrite à la main vieillit en silence,
- * et le jour où elle rate un nom la gate réclame une `dependencies` sur un module du cœur.
+ * DERIVED from Node itself, never copied: a hand-written list ages in silence, and
+ * the day it misses a name the gate demands a `dependencies` on a core module.
  */
 const NODE_BUILTINS = new Set(require("node:module").builtinModules);
 
 /**
- * L'équivalence DefinitelyTyped — `geojson` ⇐ `@types/geojson`.
+ * The DefinitelyTyped equivalence — `geojson` ⇐ `@types/geojson`.
  *
- * ## Pourquoi cette fonction existe, et ce qu'elle RÉPARE
+ * ## Why this function exists, and what it REPAIRS
  *
- * Mesuré le 10/08/2026 (B-212) : la gate comparait le specifier `geojson` aux CLÉS de
- * `dependencies`, où le paquet à déclarer s'appelle `@types/geojson`. Les deux chaînes ne
- * peuvent pas être égales — **le geste que le message d'erreur prescrivait ne pouvait donc
- * PAS faire verdir la gate**, et les 6 entrées de baseline seraient restées à demeure quoi
- * qu'on déclare. Ce n'est pas un assouplissement : c'est la règle de résolution que la gate
- * prétendait modéliser. `tsc` résout `import type { … } from "geojson"` en ouvrant
- * `node_modules/@types/geojson` — le contrat correct est donc bien `@types/geojson` en
- * `dependencies`, et c'est ce que cette fonction rend reconnaissable.
+ * Measured on 2026-08-10: the gate compared the `geojson` specifier to the KEYS of
+ * `dependencies`, where the package to declare is named `@types/geojson`. The two
+ * strings can never be equal — **the move the error message prescribed thus could
+ * NOT make the gate green**, and the 6 baseline entries would have stayed for good
+ * whatever one declared. This is not a loosening: it is the resolution rule the gate
+ * claimed to model. `tsc` resolves `import type { … } from "geojson"` by opening
+ * `node_modules/@types/geojson` — the correct contract is indeed `@types/geojson` in
+ * `dependencies`, and that is what this function makes recognizable.
  *
- * ## 🛑 Ce qu'elle ne fait PAS, et pourquoi la restriction est le cœur de la règle
+ * ## 🛑 What it does NOT do, and why the restriction is the rule's core
  *
- * Elle n'est consultée que pour les fichiers de DÉCLARATION. `@types/X` ne publie **aucun
- * runtime** : un `require("geojson")` dans un `.js` embarqué reste une violation, et il DOIT
- * le rester — sinon la ligne ci-dessous serait une échappatoire qui blanchirait, sur tout le
- * corpus, la classe même que SHIP-SPEC-01 existe pour attraper. La restriction est éprouvée
- * par mutation : un `.js` plantant `require("geojson")` dans un paquet qui déclare
- * `@types/geojson` fait rougir la gate (témoin anti-échappatoire, B-212).
+ * It is only consulted for DECLARATION files. `@types/X` publishes **no runtime**: a
+ * `require("geojson")` in a shipped `.js` remains a violation, and it MUST — otherwise
+ * the line below would be an escape hatch that would whitewash, over the whole corpus,
+ * the very class SHIP-SPEC-01 exists to catch. The restriction is proven by mutation:
+ * a `.js` planting `require("geojson")` in a package declaring `@types/geojson` makes
+ * the gate go red (anti-escape witness).
  *
- * @param {string} name Nom de paquet (`"geojson"`, `"@scope/nom"`).
- * @returns {string} Le nom DefinitelyTyped correspondant (`"@types/geojson"`,
- *   `"@types/scope__nom"`) — la convention de nommage de DefinitelyTyped.
+ * @param {string} name Package name (`"geojson"`, `"@scope/nom"`).
+ * @returns {string} The matching DefinitelyTyped name (`"@types/geojson"`,
+ *   `"@types/scope__nom"`) — DefinitelyTyped's naming convention.
  */
 function typesPackageOf(name) {
     return name.startsWith("@") ? `@types/${name.slice(1).replace("/", "__")}` : `@types/${name}`;
 }
 
-/** Un fichier de DÉCLARATION — le seul endroit où l'équivalence `@types/` vaut. */
+/** A DECLARATION file — the only place where the `@types/` equivalence holds. */
 const DECL_EXT = /\.d\.[cm]?ts$/;
 
 /**
- * Le NOM DE PAQUET d'un specifier, ou `null` s'il n'en désigne aucun.
+ * A specifier's PACKAGE NAME, or `null` if it designates none.
  *
- * @param {string} spec Specifier brut.
- * @returns {string|null} `"@scope/nom"`, `"nom"`, ou `null` (relatif, absolu, builtin, URL).
+ * @param {string} spec Raw specifier.
+ * @returns {string|null} `"@scope/nom"`, `"nom"`, or `null` (relative, absolute, builtin, URL).
  */
 function packageOf(spec) {
     if (!spec) return null;
-    // `#imports` = imports internes (`package.json#imports`) : jamais un paquet du registre.
+    // `#imports` = internal imports (`package.json#imports`): never a registry package.
     if (spec.startsWith(".") || spec.startsWith("/") || spec.startsWith("#")) return null;
-    // `node:fs`, `data:…`, `https://…` — un protocole, pas un paquet.
+    // `node:fs`, `data:…`, `https://…` — a protocol, not a package.
     if (/^[a-z][a-z0-9.+-]*:/i.test(spec)) return null;
     const parts = spec.split("/");
     const name = spec.startsWith("@") ? parts.slice(0, 2).join("/") : parts[0];
@@ -329,14 +335,14 @@ const privateWorkspaces = new Set(
 const violations02 = [];
 /** @type {string[]} */
 const found01 = [];
-/** @type {Map<string, string>} clé 01 → message lisible. */
+/** @type {Map<string, string>} 01 key → readable message. */
 const detail01 = new Map();
-/** @type {string[]} Paquets dont une racine atteignable manque sur le disque. */
+/** @type {string[]} Packages with a reachable root missing on disk. */
 const missingRoots = [];
 
 let packagesScanned = 0;
 let filesScanned = 0;
-/** Fichiers EMBARQUÉS mais NON atteignables portant un specifier douteux — voir l'en-tête. */
+/** SHIPPED yet UNREACHABLE files carrying a dubious specifier — see the header. */
 let shippedUnreachable = 0;
 
 for (const pkg of registry.all()) {
@@ -353,7 +359,7 @@ for (const pkg of registry.all()) {
     for (const root of roots) {
         const abs = path.join(pkg.absDir, root);
         if (!fs.existsSync(abs)) {
-            // Une cible d'`exports` peut être un FICHIER (`./package.json`) — normal.
+            // An `exports` target can be a FILE (`./package.json`) — normal.
             if (!/\.[a-z]+$/i.test(root)) missingRoots.push(`${pkg.dir}/${root}`);
             continue;
         }
@@ -379,8 +385,8 @@ for (const pkg of registry.all()) {
                 });
                 continue;
             }
-            // L'équivalence DefinitelyTyped, CONDITIONNÉE au fichier de déclaration —
-            // voir `typesPackageOf` pour le motif et pour ce qu'elle refuse de couvrir.
+            // The DefinitelyTyped equivalence, CONDITIONED on the declaration file —
+            // see `typesPackageOf` for the rationale and what it refuses to cover.
             const viaTypes = DECL_EXT.test(file) && declared.has(typesPackageOf(name));
 
             if (!declared.has(name) && !viaTypes) {
@@ -398,7 +404,7 @@ for (const pkg of registry.all()) {
         }
     }
 
-    // ── Le hors-corpus, compté et nommé (jamais bloquant ici) ────────────────
+    // ── The out-of-corpus, counted and named (never blocking here) ───────────
     const shippedRoots = new Set(
         (manifest.files || [])
             .filter((f) => typeof f === "string" && !f.startsWith("!"))
@@ -422,7 +428,7 @@ for (const pkg of registry.all()) {
     }
 }
 
-// ─── SHIP-SPEC-03 — le plancher, AVANT tout verdict ──────────────────────────
+// ─── SHIP-SPEC-03 — the floor, BEFORE any verdict ────────────────────────────
 
 if (missingRoots.length > 0) {
     err(
@@ -442,24 +448,24 @@ if (packagesScanned < FLOOR.packages || filesScanned < FLOOR.files) {
     process.exit(1);
 }
 
-// ─── Régénération de la baseline ─────────────────────────────────────────────
+// ─── Baseline regeneration ───────────────────────────────────────────────────
 
 if (UPDATE) {
     const entries = [...new Set(found01)].sort();
 
-    // ── `_proprietaires` : REPRIS du fichier, jamais réécrit depuis un gabarit ──
+    // ── `_proprietaires`: TAKEN BACK from the file, never rewritten from a template ──
     //
-    // 🛑 Ce bloc était CODÉ EN DUR ici, et c'est un piège qui a mordu. Le Sprint 2 avait
-    // corrigé à la main le propriétaire de la classe `geojson` DANS le JSON — le pointeur
-    // « Sprint 2, tâches 2.3/2.6 » était faux, relu chez le destinataire. La première
-    // régénération l'a silencieusement remplacé par le gabarit d'origine, donc par l'énoncé
-    // faux : une correction documentaire annulée par un `--update-baseline`, sans un mot.
-    // Un champ que l'outil réécrit ne peut pas porter un fait que l'humain corrige.
+    // 🛑 This block was HARD-CODED here, and it is a trap that bit. The owner of the
+    // `geojson` class had been corrected by hand IN the JSON — the original pointer
+    // was wrong, re-read at the recipient's. The first regeneration silently replaced
+    // it with the original template, hence with the false statement: a documentary
+    // correction cancelled by an `--update-baseline`, without a word. A field the
+    // tool rewrites cannot carry a fact the human corrects.
     //
-    // Et la reprise seule ne suffirait pas : un propriétaire dont la dette est SOLDÉE
-    // deviendrait un commentaire qui décrit un état disparu — exactement la classe que
-    // `CLAUDE.md` §règle documentaire nomme. D'où l'élagage : un propriétaire ne survit
-    // que tant qu'au moins une entrée le concerne.
+    // And the carry-over alone would not suffice: an owner whose debt is SETTLED
+    // would become a comment describing a vanished state — exactly the documented
+    // staleness class. Hence the pruning: an owner only survives while at least one
+    // entry concerns it.
     let proprietaires = {};
     if (fs.existsSync(BASELINE)) {
         try {
@@ -488,7 +494,7 @@ if (UPDATE) {
                     "`_proprietaires` est REPRIS de ce fichier à chaque régénération, et élagué des",
                     "specifiers qui n'ont plus d'entrée. Un motif écrit ici survit donc à l'outil.",
                     "",
-                    "📌 Elle est tombée à ZÉRO le 10/08/2026 (B-212) : la classe `geojson` — 6 `.d.ts`",
+                    "📌 Elle est tombée à ZÉRO le 10/08/2026 : la classe `geojson` — 6 `.d.ts`",
                     "publiés d'editor, file-import et flatgeobuf — a été soldée en déclarant",
                     "`@types/geojson` en `dependencies` sur les trois manifestes. Une entrée qui",
                     "réapparaîtrait ici serait donc une RÉGRESSION, pas une première observation.",
@@ -562,6 +568,6 @@ console.log(
 console.log(
     `${C.d}   ${shippedUnreachable} fichier(s) EMBARQUÉ(S) mais non atteignable(s) par \`exports\` ` +
         `portent un specifier douteux — poids de tarball, pas fuite de types ; le sort de \`src/\` ` +
-        `dans le tarball est tranché au Sprint 2 (tâches 2.10-2.12).${C.x}`
+        `dans le tarball est tranché à part.${C.x}`
 );
 process.exit(0);

@@ -18,7 +18,7 @@
             "severity": null,
             "description": "Capacité in-core de rendu d'attributs (infobulle, popup, panneau latéral), 24 fichiers et 4 130 lignes, reclassée depuis un ancien plugin",
             "confidence": "haute",
-            "rationale": "E4(c) testée et NON déclenchée : 4 130 LOC > plugin moyen (~3 086 LOC sur les 13 plugins), mais le couplage kernel est réel et triple — module ICoreModule dépendant de `geojson`, écoute du seam `geoleaf:feature:click/hover`, implémentation de `contracts/sidepanel-renderer.contract.ts` (S9) — plus la façade `api/geoleaf.featureinfo.ts`. Point d'entrée public par le glob `./capabilities/*` du manifeste (T6 §6)."
+            "rationale": "E4(c) testée et NON déclenchée : 4 130 LOC > plugin moyen (~3 086 LOC sur les 13 plugins), mais le couplage kernel est réel et triple — module ICoreModule dépendant de `geojson`, écoute du seam `geoleaf:feature:click/hover`, implémentation d'`ISidePanelRenderer` (S9 ; son homonyme inerte `contracts/sidepanel-renderer.contract.ts` a été supprimé le 19/08/2026 — c'est `feature-info/types.ts` qui portait la forme vivante) — plus la façade `api/geoleaf.featureinfo.ts`. Point d'entrée public par le glob `./capabilities/*` du manifeste (T6 §6)."
         },
         "packages/core/src/capabilities/feature-info/css": {
             "kind": "dir",
@@ -354,7 +354,7 @@
             "severity": null,
             "description": "Surface panneau latéral : tiroir droit autonome ajouté au `body`, avec piège de focus, fermeture au clic extérieur et à Échap",
             "confidence": "haute",
-            "rationale": "189 LOC, 3 importeurs — c'est la surface qui implémente `ISidePanelRenderer`, le contrat injecté dans le core au S9. T3 signale que `contracts/sidepanel-renderer.contract.ts` duplique cette forme sans test d'assignabilité, mais le contrat est hors de mon périmètre et sa copie ici est imposée par la frontière plugin/core."
+            "rationale": "189 LOC, 3 importeurs — c'est la surface qui implémente `ISidePanelRenderer`, le contrat injecté dans le core au S9. T3 signalait que `contracts/sidepanel-renderer.contract.ts` dupliquait cette forme sans test d'assignabilité ; ce doublon a été SUPPRIMÉ le 19/08/2026 — il n'était atteignable par aucun specifier de la carte `exports` et n'avait aucun importeur, tandis que sa copie ici est imposée par la frontière plugin/core."
         },
         "packages/core/src/capabilities/feature-info/surfaces/tooltip.ts": {
             "kind": "file",

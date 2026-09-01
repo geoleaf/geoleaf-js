@@ -89,7 +89,7 @@ function querySelector(selector: string, parent: ParentNode = document): Element
  * @example
  * ```js
  * const elements = GeoLeaf.Helpers.querySelectorAll(".poi-marker");
- * // Returns: Element[] (toujours un array, jamais null)
+ * // Returns: Element[] (always an array, never null)
  * ```
  */
 function querySelectorAll(selector: string, parent: ParentNode = document): Element[] {
@@ -159,7 +159,7 @@ function removeClass(element: Element | null | undefined, ...classNames: string[
  * @example
  * ```js
  * const added = GeoLeaf.Helpers.toggleClass(element, "active");
- * // Returns: true si ajoutée, false si supprimée
+ * // Returns: true when added, false when removed
  * ```
  */
 function toggleClass(
@@ -224,7 +224,7 @@ function removeElement(element: Node | null | undefined): void {
  * @example
  * ```js
  * GeoLeaf.Helpers.requestFrame(() => {
- *     // Animation ou modification DOM optimisée
+ *     // Optimised animation or DOM modification
  *     element.style.transform = `translateX(${x}px)`;
  * });
  * // Returns: number (animation frame ID)
@@ -310,10 +310,10 @@ function createAbortController(timeout?: number): AbortController {
  * @example
  * ```js
  * const img = document.querySelector(".poi-image");
- * // `querySelector` rend `Element | null` : le garde est nécessaire, pas décoratif.
+ * // `querySelector` yields `Element | null`: the guard is necessary, not decorative.
  * if (img instanceof HTMLImageElement) {
  *     GeoLeaf.Helpers.lazyLoadImage(img, {
- *         threshold: 0.1, // charger à 10% de visibilité
+ *         threshold: 0.1, // load at 10% visibility
  *     });
  * }
  * ```
@@ -386,7 +386,7 @@ function lazyExecute(callback: () => void, timeout: number = 100): void {
  * ```js
  * const cache = { key1: "val1", key2: "val2" };
  * GeoLeaf.Helpers.clearObject(cache);
- * // cache === {} (même référence, contenu vidé)
+ * // cache === {} (same reference, content emptied)
  * ```
  */
 function clearObject(obj: Record<string, unknown> | null | undefined): void {
@@ -485,7 +485,7 @@ function addEventListener(
  *     mouseleave: () => console.log("leave"),
  * });
  *
- * // Nettoyer tous les listeners
+ * // Clean up all the listeners
  * cleanup();
  * ```
  */
@@ -523,9 +523,9 @@ function addEventListeners(
  *
  * @example
  * ```js
- * // Écouter tous les markers POI, même ceux ajoutés dynamiquement
+ * // Listen to every POI marker, even those added dynamically
  * GeoLeaf.Helpers.delegateEvent(document.body, "click", ".gl-poi-marker", function (e) {
- *     // `this` est typé `Element` ; `dataset` vit sur `HTMLElement`.
+ *     // `this` is typed `Element`; `dataset` lives on `HTMLElement`.
  *     if (this instanceof HTMLElement) {
  *         console.log("POI cliqué:", this.dataset.poiId);
  *     }
@@ -544,7 +544,7 @@ function delegateEvent(
             handler.call(target, e);
         }
     };
-    return addEventListener(parent, event, delegatedHandler as EventListener);
+    return addEventListener(parent, event, delegatedHandler);
 }
 
 /**
@@ -566,7 +566,7 @@ function delegateEvent(
  * const clone = GeoLeaf.Helpers.deepClone(original);
  *
  * clone.tags.push("c");
- * console.log(original.tags); // ['a', 'b'] — original non modifié
+ * console.log(original.tags); // ['a', 'b'] — original unmodified
  * console.log(clone.tags); // ['a', 'b', 'c']
  * ```
  */
@@ -671,14 +671,14 @@ function wait(ms: number): Promise<void> {
  *         if (!response.ok) throw new Error("Erreur réseau");
  *         return response.json();
  *     },
- *     3, // nombre total de tentatives (défaut : 3)
- *     1000 // délai initial en ms (défaut : 1000)
+ *     3, // total attempt count (default: 3)
+ *     1000 // initial delay in ms (default: 1000)
  * );
  *
- * // Séquence pour maxRetries = 3 :
- * // 1. Échec → attendre 1 000 ms
- * // 2. Échec → attendre 2 000 ms (1000 * 2^1)
- * // 3. Échec → l'erreur de cette tentative est relancée (aucune attente finale)
+ * // Sequence for maxRetries = 3:
+ * // 1. Failure → wait 1,000 ms
+ * // 2. Failure → wait 2,000 ms (1000 * 2^1)
+ * // 3. Failure → that attempt's error is rethrown (no final wait)
  * ```
  */
 async function retryWithBackoff<T>(

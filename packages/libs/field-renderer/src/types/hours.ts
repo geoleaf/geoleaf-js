@@ -233,7 +233,7 @@ function validator(value: HoursValue, fieldConfig: FieldConfig): string | null {
  */
 export const hoursComponent: ComponentDefinition<HoursValue> = {
     id: "hours",
-    defaults: Object.fromEntries(DAYS.map((d) => [d, [_emptyDay()]])) as HoursValue,
+    defaults: Object.fromEntries(DAYS.map((d) => [d, [_emptyDay()]])),
     formRender,
     validator,
 };

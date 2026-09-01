@@ -1,50 +1,50 @@
 /*!
- * GeoLeaf — fabrique de configuration Rollup partagée (ARCHI S9.2)
+ * GeoLeaf — shared Rollup configuration factory
  * © 2026 Mattieu Pottier — MIT License
  */
 
 /**
  * @description
- * Assemble la pile de plugins Rollup commune aux packages du monorepo.
+ * Assembles the Rollup plugin stack shared by the monorepo's packages.
  *
- * ## Ce que la fabrique absorbe — et ce qu'elle laisse délibérément aux feuilles
+ * ## What the factory absorbs — and what it deliberately leaves to the leaves
  *
- * Elle absorbe les imports, la lecture du `package.json` et l'assemblage ordonné
- * des plugins. Une config de plugin passe ainsi de ~45 à ~18 lignes.
+ * It absorbs the imports, the `package.json` read and the ordered plugin
+ * assembly. A plugin config thus goes from ~45 to ~18 lines.
  *
- * Elle ne touche PAS à `input`, `output` ni `external` : ces trois-là restent
- * écrits en littéral dans chaque feuille. **Ce n'est pas un choix esthétique.**
- * `scripts/verify-plugin-contract.cjs` vérifie le contrat en lisant le TEXTE de
- * `rollup.config.mjs` :
+ * It does NOT touch `input`, `output` nor `external`: those three stay written
+ * literally in each leaf. **This is not an aesthetic choice.**
+ * `scripts/verify-plugin-contract.cjs` verifies the contract by reading the TEXT
+ * of `rollup.config.mjs`:
  *
- *   PC-12 → `content.includes("geoleaf-<nom>.plugin.js")` et `/format:\s*["']es["']/`
- *   PC-10 → `/maplibre-gl/` pour l'externalisation
+ *   PC-12 → `content.includes("geoleaf-<name>.plugin.js")` and `/format:\s*["']es["']/`
+ *   PC-10 → `/maplibre-gl/` for the externalisation
  *   PC-13 → `/\binject\s*:\s*true\b/` (forme interdite)
  *
- * Une fabrique qui DÉRIVERAIT le nom de sortie ferait tomber PC-12 sur les 13
- * plugins d'un coup — et ce gate tourne en `--fail` en pre-commit, dans
- * `ci:local` ET dans `ci.yml`. Masquer `'maplibre-gl'` derrière un drapeau
- * désarmerait PC-10 en silence. La règle est donc : **tout ce qu'un gate lit au
- * texte reste dans la feuille.**
+ * A factory that DERIVED the output name would take PC-12 down on the 13
+ * plugins at once — and that gate runs `--fail` in pre-commit, in `ci:local` AND
+ * in `ci.yml`. Masking `'maplibre-gl'` behind a flag would disarm PC-10 in
+ * silence. The rule is therefore: **everything a gate reads at the text stays in
+ * the leaf.**
  *
- * ## Ordre des plugins
+ * ## Plugin order
  *
  * `nodeResolve → commonjs? → json? → replace? → postcss? → typescript → minify?`
  *
- * Cet ordre n'est pas arbitraire : il est celui des 15 configs d'origine, vérifié
- * une par une avant l'extraction. Le modifier changerait les bundles.
+ * This order is not arbitrary: it is that of the 15 original configs, verified
+ * one by one before extraction. Changing it would change the bundles.
  *
- * ## Périmètre
+ * ## Perimeter
  *
- * 15 configs. `core` (543 l., 4 entrées, export tableau), `plugin-addpoi` (148 l.)
- * et `plugin-storage` (207 l.) portent des plugins Rollup maison qui indexent
- * `../core/src` : ils ne reçoivent que le changement d'import de `cspStyleInject`.
+ * 15 configs. `core` (543 l., 4 entries, array export), `plugin-addpoi` (148 l.)
+ * and `plugin-storage` (207 l.) carry home-grown Rollup plugins that index
+ * `../core/src`: they only receive the `cspStyleInject` import change.
  *
- * ⚠️ Ces trois-là déclarent `@rollup/plugin-commonjs@^29.0.0`, alors que les 10
- * packages servis par cette fabrique sont sur `^28.0.3` (copies imbriquées en
- * 28.0.9, vérifiées sur disque). C'est pourquoi `build-config` déclare `^28.0.3`
- * et non la version de la racine : importer depuis ici résout depuis ICI, et
- * déclarer `^29` ferait basculer 10 bundles de version majeure sans un mot.
+ * ⚠️ Those three declare `@rollup/plugin-commonjs@^29.0.0`, while the 10 packages
+ * served by this factory are on `^28.0.3` (nested copies at 28.0.9, verified on
+ * disk). That is why `build-config` declares `^28.0.3` and not the root's
+ * version: importing from here resolves from HERE, and declaring `^29` would
+ * flip 10 bundles a major version without a word.
  */
 
 import typescript from "@rollup/plugin-typescript";
@@ -60,26 +60,27 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
-// La forme canonique du bandeau vit dans `scripts/lib/license-banner.cjs` — un seul endroit,
-// lu par le générateur `--write`, par la gate LIC-HEADERS et par cette fabrique. Chargé par
-// `createRequire` parce qu'il est CommonJS : le patron existe déjà dans ce paquet
-// (`vitest/resolve-js-to-ts.mjs`). Le duplicater ici ferait diverger la bannière POSÉE de la
-// bannière EXIGÉE, et le désaccord se lirait comme « la gate rougit sur un bundle qu'on vient
-// de bannériser ».
+// The banner's canonical form lives in `scripts/lib/license-banner.cjs` — one
+// place, read by the `--write` generator, by the LIC-HEADERS gate and by this
+// factory. Loaded through `createRequire` because it is CommonJS: the pattern
+// already exists in this package (`vitest/resolve-js-to-ts.mjs`). Duplicating it
+// here would make the SET banner diverge from the REQUIRED banner, and the
+// disagreement would read as "the gate reddens on a bundle we just bannered".
 const { bundleBanner } = createRequire(import.meta.url)("../../scripts/lib/license-banner.cjs");
 
-// `core`, `plugin-addpoi` et `plugin-storage` sont hors périmètre de la fabrique et
-// importent l'injecteur directement depuis `@geoleaf/build-config/csp-style-inject.mjs`.
-// Pas de ré-export ici : il ne servirait personne.
+// `core`, `plugin-addpoi` and `plugin-storage` are outside the factory's
+// perimeter and import the injector directly from
+// `@geoleaf/build-config/csp-style-inject.mjs`. No re-export here: it would
+// serve nobody.
 import { cspStyleInject } from "./csp-style-inject.mjs";
 
 /**
- * Rend déterministe le `augmentChunkHash` de `rollup-plugin-postcss`.
+ * Makes `rollup-plugin-postcss`'s `augmentChunkHash` deterministic.
  *
- * ## Le défaut
+ * ## The defect
  *
- * `rollup-plugin-postcss@4.0.2` (dernière publication en 2021, projet non
- * maintenu) implémente :
+ * `rollup-plugin-postcss@4.0.2` (last published in 2021, unmaintained project)
+ * implements:
  *
  *     augmentChunkHash() {
  *         if (extracted.size === 0) return;
@@ -87,34 +88,35 @@ import { cspStyleInject } from "./csp-style-inject.mjs";
  *         return JSON.stringify(extractedValue);
  *     }
  *
- * `extracted` est une **Map**, remplie dans le hook `transform` — donc dans
- * l'ordre où Rollup transforme les modules CSS, qui n'est pas stable d'un run à
- * l'autre. La sérialisation dépend de cet ordre d'insertion : même contenu, chaîne
- * différente, **donc hash différent**.
+ * `extracted` is a **Map**, filled in the `transform` hook — hence in the order
+ * Rollup transforms the CSS modules, which is not stable run to run. The
+ * serialisation depends on that insertion order: same content, different string,
+ * **hence different hash**.
  *
- * Rollup ajoute cette valeur au hash de CHAQUE chunk. Conséquence mesurée sur
- * `@geoleaf/core` : les 7 chunks changeaient de nom à chaque build alors que leur
- * contenu — `.js` ET `.js.map` — était byte-à-byte identique. Diagnostic confirmé
- * en instrumentant le hook : run A commençait par `feature-info-sidepanel.css`,
- * run B par `branding.css`.
+ * Rollup adds this value to EVERY chunk's hash. Measured consequence on
+ * `@geoleaf/core`: the 7 chunks changed name at each build while their content —
+ * `.js` AND `.js.map` — was byte-identical. Diagnosis confirmed by instrumenting
+ * the hook: run A started with `feature-info-sidepanel.css`, run B with
+ * `branding.css`.
  *
- * Coût réel : cache Turborepo invalidé à chaque build, `deploy/` qui diffère à
- * chaque génération sans changement de code, et cache navigateur cassé sur des
- * chunks identiques — l'inverse exact de ce que le hash de contenu sert à faire.
+ * Real cost: Turborepo cache invalidated at every build, a `deploy/` differing
+ * at every generation without a code change, and browser cache broken on
+ * identical chunks — the exact inverse of what a content hash serves.
  *
- * ## Le correctif
+ * ## The fix
  *
- * On ne corrige pas `node_modules` (écrasé au prochain `npm install`) et on ne
- * retire pas `[hash]` des noms de chunks (ce serait perdre le cache-busting pour
- * contourner un bug de tri). On réordonne : un plugin Rollup est un objet simple,
- * donc son hook se remplace. L'INTENTION du hook est conservée — si le CSS extrait
- * change, les hashes changent — seule la **sensibilité à l'ordre** disparaît.
+ * We do not fix `node_modules` (overwritten at the next `npm install`) and we do
+ * not remove `[hash]` from chunk names (that would lose cache-busting to work
+ * around a sort bug). We reorder: a Rollup plugin is a plain object, so its hook
+ * can be replaced. The hook's INTENT is preserved — if the extracted CSS
+ * changes, the hashes change — only the **order sensitivity** disappears.
  *
- * Sans effet sur les autres packages : la fabrique les configure en
- * `extract: false`, donc `extracted.size === 0` et le hook sort avant de sérialiser.
+ * No effect on the other packages: the factory configures them with
+ * `extract: false`, so `extracted.size === 0` and the hook exits before
+ * serialising.
  *
- * @param {import('rollup').Plugin} plugin Instance de `postcss(...)` à assainir.
- * @returns {import('rollup').Plugin} La même instance, hook trié.
+ * @param {import('rollup').Plugin} plugin The `postcss(...)` instance to sanitise.
+ * @returns {import('rollup').Plugin} The same instance, sorted hook.
  */
 export function withStableChunkHash(plugin) {
     const original = plugin.augmentChunkHash;
@@ -140,13 +142,13 @@ export function withStableChunkHash(plugin) {
 }
 
 /**
- * Lit le `package.json` situé à côté du fichier de config appelant.
+ * Reads the `package.json` sitting beside the calling config file.
  *
- * Remplace le bloc `__dirname` + `readFileSync` recopié dans 16 configs. Prend
- * `import.meta.url` de l'appelant plutôt que `process.cwd()` : le résultat ne
- * dépend alors pas du répertoire depuis lequel Rollup est lancé.
+ * Replaces the `__dirname` + `readFileSync` block copied into 16 configs. Takes
+ * the caller's `import.meta.url` rather than `process.cwd()`: the result then
+ * does not depend on the directory Rollup is launched from.
  *
- * @param {string} importMetaUrl `import.meta.url` du `rollup.config.mjs` appelant.
+ * @param {string} importMetaUrl The calling `rollup.config.mjs`'s `import.meta.url`.
  * @returns {{ name: string, version: string, [k: string]: unknown }}
  */
 export function readPackageJson(importMetaUrl) {
@@ -159,49 +161,53 @@ export function readPackageJson(importMetaUrl) {
 }
 
 /**
- * La bannière de licence du bundle — posée APRÈS le minifieur, et c'est tout le sujet.
+ * The bundle's licence banner — set AFTER the minifier, and that is the whole
+ * subject.
  *
- * ## Pourquoi pas `output.banner`
+ * ## Why not `output.banner`
  *
- * Parce qu'elle ne sort pas. Mesuré : `plugins/offline-ui/rollup.config.mjs` DÉCLARAIT une
- * `output.banner` complète, et son bundle livré commençait par `var Xe=Object.defineProperty`.
- * Rollup préfixe la bannière avant les hooks `renderChunk`, `minify()` de
- * `rollup-plugin-esbuild` EST un `renderChunk`, et son `legalComments: "none"` supprime tout
- * `/*!`. Déclarer ne suffit donc pas — il faut mesurer que ça sort (tâche 3.3).
+ * Because it does not come out. Measured:
+ * `plugins/offline-ui/rollup.config.mjs` DECLARED a full `output.banner`, and
+ * its shipped bundle started with `var Xe=Object.defineProperty`. Rollup
+ * prefixes the banner before the `renderChunk` hooks, `rollup-plugin-esbuild`'s
+ * `minify()` IS a `renderChunk`, and its `legalComments: "none"` deletes every
+ * `/*!`. Declaring is thus not enough — that it comes out must be measured.
  *
- * ## Pourquoi pas `legalComments: "inline"` non plus
+ * ## Why not `legalComments: "inline"` either
  *
- * Ce serait l'autre correctif possible, et il coûte cher pour rien : `"inline"` conserve TOUS
- * les commentaires légaux de l'entrée, donc les ~650 bandeaux `/*!` des sources remonteraient
- * dans chaque bundle minifié. On veut UNE notice en tête du fichier livré, pas six cents
- * dispersées dedans.
+ * That would be the other possible fix, and it costs dearly for nothing:
+ * `"inline"` keeps ALL the input's legal comments, so the sources' ~650 `/*!`
+ * banners would surface in each minified bundle. We want ONE notice at the head
+ * of the shipped file, not six hundred scattered inside.
  *
- * ## Pourquoi `generateBundle` et pas `renderChunk`
+ * ## Why `generateBundle` and not `renderChunk`
  *
- * `generateBundle` passe après tous les `renderChunk`, donc après le minifieur, sans dépendre
- * de l'ordre du tableau de plugins. Et surtout, la sourcemap y est déjà produite : préfixer N
- * lignes de code revient EXACTEMENT à préfixer N `;` aux `mappings`, ce qui décale chaque
- * entrée d'autant de lignes sans en perdre une seule. Un `renderChunk` qui rendrait la chaîne
- * seule ferait glisser toute la carte de N lignes en silence — et cette carte est lue par
- * `verify-e2e-coverage.cjs` et par `npm run size` pour attribuer les octets aux sources.
+ * `generateBundle` runs after all the `renderChunk`, hence after the minifier,
+ * without depending on the plugin array's order. And above all, the sourcemap is
+ * already produced there: prefixing N lines of code amounts EXACTLY to prefixing
+ * N `;` to the `mappings`, which shifts each entry by that many lines without
+ * losing one. A `renderChunk` that returned the string alone would slide the
+ * whole map by N lines in silence — and that map is read by
+ * `verify-e2e-coverage.cjs` and by `npm run size` to attribute bytes to sources.
  *
- * 🛑 **La carte ÉCRITE n'est PAS `chunk.map`** — et le croire a produit un décalage de six
- * lignes qui sortait vert. Rollup sérialise la carte en **ASSET** du bundle (`<fichier>.map`,
- * `type: "asset"`) AVANT d'appeler `generateBundle` ; `chunk.map` n'est qu'une vue en mémoire
- * que plus personne ne relit. Mesuré à la sonde : muter `chunk.map.mappings` se voit dans
- * `bundle.generate()` et **disparaît** dans `bundle.write()`. C'est donc la `source` de
- * l'asset qu'il faut reprendre — et les deux sont mises à jour, pour qu'un consommateur de
- * `generate()` ne lise pas une carte incohérente avec celle du disque.
+ * 🛑 **The WRITTEN map is NOT `chunk.map`** — and believing it produced a
+ * six-line shift that came out green. Rollup serialises the map as a bundle
+ * **ASSET** (`<file>.map`, `type: "asset"`) BEFORE calling `generateBundle`;
+ * `chunk.map` is only an in-memory view nobody re-reads. Measured by probe:
+ * mutating `chunk.map.mappings` shows in `bundle.generate()` and **disappears**
+ * in `bundle.write()`. So it is the asset's `source` that must be reworked — and
+ * both are updated, so a `generate()` consumer does not read a map inconsistent
+ * with the disk's.
  *
- * ## Les chunks 100 % tiers sont SAUTÉS
+ * ## 100 %-third-party chunks are SKIPPED
  *
- * Écrire « © 2026 Mattieu Pottier — Released under the MIT License » en tête de
- * `geoleaf-print.jspdf-*.js` serait une fausse attribution : ce fichier est du jsPDF. La
- * décision se dérive du graphe (`chunk.modules` tous sous `node_modules/`), jamais d'une liste
- * de noms — et la gate LIC-04 applique la MÊME dérivation sur la sourcemap, en imprimant les
- * exemptés à chaque run.
+ * Writing "© 2026 Mattieu Pottier — Released under the MIT License" at the head
+ * of `geoleaf-print.jspdf-*.js` would be a false attribution: that file is
+ * jsPDF. The decision derives from the graph (`chunk.modules` all under
+ * `node_modules/`), never from a name list — and the LIC-04 gate applies the
+ * SAME derivation on the sourcemap, printing the exempted at every run.
  *
- * @param {{name: string, version: string}} pkg Le manifeste du paquet, via `readPackageJson`.
+ * @param {{name: string, version: string}} pkg The package manifest, via `readPackageJson`.
  * @returns {import('rollup').Plugin}
  */
 export function licenseBanner(pkg) {
@@ -218,9 +224,9 @@ export function licenseBanner(pkg) {
                 if (file.code.startsWith("/*!")) continue;
                 file.code = `${banner}\n${file.code}`;
 
-                // La vue en mémoire…
+                // The in-memory view…
                 if (file.map) file.map.mappings = shift + file.map.mappings;
-                // …ET l'asset, qui est ce qui atterrit sur le disque.
+                // …AND the asset, which is what lands on disk.
                 const asset = bundle[`${file.fileName}.map`];
                 if (asset && asset.type === "asset" && typeof asset.source === "string") {
                     const map = JSON.parse(asset.source);
@@ -233,34 +239,35 @@ export function licenseBanner(pkg) {
 }
 
 /**
- * Construit la pile de plugins d'un package.
+ * Builds a package's plugin stack.
  *
- * Chaque option correspond à un plugin réellement utilisé par au moins un
- * package ; aucune n'a été inventée « au cas où ». La répartition mesurée sur les
- * 15 configs d'origine : nodeResolve 15/15, replace 13/15, commonjs 10/15,
+ * Each option corresponds to a plugin really used by at least one package; none
+ * was invented "just in case". The distribution measured over the 15 original
+ * configs: nodeResolve 15/15, replace 13/15, commonjs 10/15,
  * postcss 7/15, json 4/15, minify 1/15.
  *
  * @param {object}  [options]
- * @param {object}  [options.resolve]   Options de `nodeResolve`. `{}` ⇒ appel nu.
+ * @param {object}  [options.resolve]   `nodeResolve` options. `{}` ⇒ bare call.
  *                                      Valeur usuelle : `{ preferBuiltins: false }`.
- * @param {boolean} [options.commonjs]  Ajoute `@rollup/plugin-commonjs`.
- * @param {boolean} [options.json]      Ajoute `@rollup/plugin-json` (après commonjs).
- * @param {string}  [options.version]   Si fourni, injecte `__GEOLEAF_VERSION__` via
- *                                      `@rollup/plugin-replace`. Valeur NUE, jamais
- *                                      `JSON.stringify` : le jeton apparaît déjà à
- *                                      l'intérieur d'un littéral de chaîne dans
+ * @param {boolean} [options.commonjs]  Adds `@rollup/plugin-commonjs`.
+ * @param {boolean} [options.json]      Adds `@rollup/plugin-json` (after commonjs).
+ * @param {string}  [options.version]   If provided, injects `__GEOLEAF_VERSION__`
+ *                                      via `@rollup/plugin-replace`. BARE value,
+ *                                      never `JSON.stringify`: the token already
+ *                                      appears inside a string literal in
  *                                      `entry.ts` (`_VERSION = "__GEOLEAF_VERSION__"`),
- *                                      donc ajouter des guillemets produirait `""1.2.3""`.
- * @param {boolean} [options.css]       Ajoute `rollup-plugin-postcss` avec l'injecteur
- *                                      CSP (`cspStyleInject`). Jamais `inject: true`,
- *                                      forme interdite par PC-13.
- * @param {object}  [options.typescript] Options fusionnées dans `@rollup/plugin-typescript`
- *                                      (le `tsconfig` local est toujours conservé).
- * @param {boolean} [options.minify]    Ajoute `minify()` de `rollup-plugin-esbuild`.
- * @param {{name: string, version: string}} [options.pkg] Le manifeste, pour la bannière de
- *                                      licence (npm S3). Son ABSENCE ne casse rien ici — c'est
- *                                      LIC-04 qui rougit sur le bundle non bannérisé, et c'est
- *                                      le bon endroit : la fabrique pose, la gate juge.
+ *                                      so adding quotes would produce `""1.2.3""`.
+ * @param {boolean} [options.css]       Adds `rollup-plugin-postcss` with the CSP
+ *                                      injector (`cspStyleInject`). Never
+ *                                      `inject: true`, the form PC-13 forbids.
+ * @param {object}  [options.typescript] Options merged into `@rollup/plugin-typescript`
+ *                                      (the local `tsconfig` is always kept).
+ * @param {boolean} [options.minify]    Adds `rollup-plugin-esbuild`'s `minify()`.
+ * @param {{name: string, version: string}} [options.pkg] The manifest, for the
+ *                                      licence banner. Its ABSENCE breaks nothing
+ *                                      here — LIC-04 is what reddens on the
+ *                                      unbannered bundle, and that is the right
+ *                                      place: the factory sets, the gate judges.
  * @returns {import('rollup').Plugin[]}
  */
 export function pluginStack({
@@ -279,7 +286,9 @@ export function pluginStack({
     if (useJson) plugins.push(json());
 
     if (version !== undefined) {
-        plugins.push(replace({ preventAssignment: true, values: { __GEOLEAF_VERSION__: version } }));
+        plugins.push(
+            replace({ preventAssignment: true, values: { __GEOLEAF_VERSION__: version } })
+        );
     }
 
     if (css) {
@@ -290,13 +299,37 @@ export function pluginStack({
 
     plugins.push(typescript({ tsconfig: "./tsconfig.json", ...tsOptions }));
 
-    // Même moteur et même cible que @geoleaf/core, pour que le bundle publié tienne
-    // le budget du CDC. Le `src/` granulaire reste publié non minifié.
-    if (useMinify) plugins.push(minify({ target: "es2015", legalComments: "none" }));
+    // 🛑 **`es2022`, and the motive it replaces was CIRCULAR.** This line carried `es2015`
+    // until 2026-08-27, justified as "same engine and target as `@geoleaf/core`" — while the
+    // core carried the same line with the same sentence. Two files handed each other a reason
+    // neither of them gave.
+    //
+    // The real constraint is measurable, and was measured on 2026-08-27:
+    //   · the PUBLIC README states browser support as "derived from the ES2022 compilation
+    //     target declared in the repository's tsconfig files";
+    //   · `maplibre-gl@6.5`, a MANDATORY peer, already ships static blocks, `??=`, `?.` and
+    //     `??` — strict ES2022. A browser that cannot read that renders no map, hence no
+    //     application;
+    //   · the granular `dist/esm/` entry is published UNMINIFIED, so an integrator already
+    //     receives ES2022.
+    // Downlevelling therefore protected nobody: its only beneficiary would have been a browser
+    // unable to run the mandatory dependency.
+    //
+    // ⚠️ **What the target actually changes, PROBED on the output rather than inferred from
+    // the name**: esbuild stopped rewriting `async`/`await` into generator state machines. The
+    // `es2022` output contains NO static block, NO private field and NO top-level await — its
+    // effective syntax floor is `?.`/`??`, i.e. Chrome 80 / Safari 13.1, well below the
+    // Chrome 90+ the README announces.
+    //
+    // Measured across the 15 plugins plus the core: **20.84 KB gz (−4.9 %)**. ⚠️ `es2020`
+    // returned 19.42: the two are NOT equivalent, contrary to what a first measurement on a
+    // single package suggested.
+    if (useMinify) plugins.push(minify({ target: "es2022", legalComments: "none" }));
 
-    // Dernier de la pile, et son hook `generateBundle` passe de toute façon après tous les
-    // `renderChunk` : la bannière survit au minifieur par construction, pas par convention
-    // d'ordre. `legalComments` reste `"none"` — voir le commentaire de `licenseBanner`.
+    // Last of the stack, and its `generateBundle` hook runs after every
+    // `renderChunk` anyway: the banner survives the minifier by construction, not
+    // by ordering convention. `legalComments` stays `"none"` — see
+    // `licenseBanner`'s comment.
     if (pkg) plugins.push(licenseBanner(pkg));
 
     return plugins;

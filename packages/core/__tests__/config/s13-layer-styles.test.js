@@ -3,8 +3,8 @@
  *
  * Read path: geojson/layer-config-manager.ts (LayerConfigManager) exposes the exported
  * seams that read styles.{directory,default} (loadDefaultStyle) and legends.{directory,default}
- * (loadLayerLegend → Legend module). styles.available (layer-manager/style-selector.ts:56) and
- * search.indexingFields (ui/filter-panel/applier.ts:28) are DOM/state-coupled readers exercised
+ * (loadLayerLegend → Legend module). styles.available (layer-manager/style-selector.ts) and
+ * search.indexingFields (ui/filter-panel/applier.ts) are DOM/state-coupled readers exercised
  * end-to-end by e2e/cfg-c4 — locked here as it.todo with their consumer site so coverage is
  * traceable. (The per-layer `table.*` binding is now consumed by the `@geoleaf-plugins/table`
  * plugin and covered by its own suites — no longer a core reader.)
@@ -19,7 +19,7 @@ import { styleCache } from "../../src/utils/loaders/style-cache.js";
 /**
  * Minimal style file that satisfies the GeoLeaf schema.
  *
- * ⚠️ The fixtures here were `{ circle: { radius: 4 } }` and `{}` until S5.2. Neither is a
+ * ⚠️ The fixtures here were `{ circle: { radius: 4 } }` and `{}`. Neither is a
  * style this codebase can consume — the schema requires a `style` or `defaultStyle` block —
  * and they passed only because this read path did not validate. It does now (it delegates to
  * the shared loader), so a fixture has to be a real style. The URL assertions, which are what

@@ -1,16 +1,16 @@
 /**
- * Tâche 4.5 — LE PUSH, et la réconciliation d'identité.
+ * THE PUSH, and identity reconciliation.
  *
- * 4.4 a donné à l'`outbox` son premier écrivain ; ces tests éprouvent son premier lecteur
- * réel. Quatre propriétés qui ne se lisent pas dans le code :
+ * The `outbox` got its first writer earlier; these tests exercise its first
+ * real reader. Four properties that cannot be read off the code:
  *
- *  1. l'identité CLIENTE part sur le fil — sans elle, aucun rejeu ne peut être idempotent ;
- *  2. un **409 est un SUCCÈS** : le serveur dit « je l'ai déjà » ;
- *  3. l'identifiant serveur revient DANS L'ENREGISTREMENT, pas dans la file ;
- *  4. un échec laisse la saisie en file — `failed` n'est pas terminal.
+ *  1. the CLIENT identity goes on the wire — without it, no replay can be idempotent;
+ *  2. a **409 is a SUCCESS**: the server says "I already have it";
+ *  3. the server id comes back INTO THE RECORD, not into the queue;
+ *  4. a failure leaves the capture queued — `failed` is not terminal.
  *
- * Tourne contre `fake-indexeddb` avec un `fetch` sous contrôle : ce qui est asserté est le
- * corps réellement envoyé et l'état réellement persisté, jamais l'écho d'un mock.
+ * Runs against `fake-indexeddb` with a controlled `fetch`: what is asserted
+ * is the body really sent and the state really persisted, never a mock's echo.
  */
 
 const DB_NAME = "geoleaf-push-test";
@@ -41,7 +41,7 @@ describe("4.5 — push et réconciliation d'identité", () => {
     const readAll = (store) =>
         request(IndexedDB._db.transaction([store], "readonly").objectStore(store).getAll());
 
-    /** Un serveur sous contrôle : statut et charge décidés par le test. */
+    /** A controlled server: status and payload decided by the test. */
     function serve(handler) {
         fetchSpy = vi.fn(async (url, init) => {
             const outcome = handler(String(url), init) ?? {};
@@ -78,17 +78,18 @@ describe("4.5 — push et réconciliation d'identité", () => {
                     properties: ["title"],
                 },
             },
-            // Éditable, mais sans cible d'écriture déclarée.
+            // Editable, but with no declared write target.
             { id: "orphan", edition: { create: true, update: true, delete: true } },
         ];
         globalThis.GeoLeaf = {
             Config: { getActiveProfile: () => ({ layers: layerConfigs }) },
         };
-        // ⚠️ `close()` et non `_db = null` : la façade CACHE les instances de sous-modules
-        // dans `_modules`, liées à la connexion qui les a créées. Remettre `_db` à la main
-        // laisse ce cache en place, et un autre fichier de test qui ouvre sa propre base
-        // écrit alors dans la connexion PRÉCÉDENTE. `close()` vide les deux — c'est
-        // l'invariant que la façade tient déjà, et le contourner l'a fait mentir.
+        // ⚠️ `close()` and not `_db = null`: the facade CACHES the sub-module
+        // instances in `_modules`, bound to the connection that created them.
+        // Resetting `_db` by hand leaves that cache in place, and another test
+        // file opening its own base then writes into the PREVIOUS connection.
+        // `close()` clears both — the invariant the facade already holds, and
+        // bypassing it made it lie.
         IndexedDB.close();
         IndexedDB._dbName = DB_NAME;
         await IndexedDB.init();
@@ -112,7 +113,7 @@ describe("4.5 — push et réconciliation d'identité", () => {
         });
     });
 
-    // ── ① l'identité cliente part, et la liste blanche tient ─────────────────────────────
+    // ── ① the client identity leaves, and the whitelist holds ────────────────────────────
     test("le corps porte `local_id` et RIEN hors de la liste blanche", async () => {
         const created = await applyEdit({
             layerId: "sites",
@@ -124,25 +125,26 @@ describe("4.5 — push et réconciliation d'identité", () => {
         await pushOutbox();
 
         const body = bodyOf(fetchSpy.mock.calls[0]);
-        // 🛑 Sans cette clé, aucun rejeu ne peut être idempotent : c'est elle que la
-        // contrainte UNIQUE du serveur refuse une seconde fois.
+        // 🛑 Without this key, no replay can be idempotent: it is the one the
+        // server's UNIQUE constraint refuses a second time.
         expect(body.local_id).toBe(created.localId);
         expect(body.title).toBe("Nouveau site");
         expect(body.geom).toEqual({ type: "Point", coordinates: [-60.64, -32.94] });
-        // La liste blanche est une liste blanche.
+        // The whitelist is a whitelist.
         expect(body.secret).toBeUndefined();
     });
 
-    // ── ①bis L'ORDRE DE REJEU (B-126) ────────────────────────────────────────────────
+    // ── ①bis THE REPLAY ORDER ───────────────────────────────────────────────
     test("🛑 une entrée `failed` PLUS ANCIENNE part AVANT une `pending` plus récente", async () => {
-        // Le drain lisait `[...listByState("pending"), ...listByState("failed")]` — deux
-        // lectures d'index mises bout à bout, donc TOUTES les `pending` avant TOUTES les
-        // `failed`, quel que soit leur rang de saisie. C'est la forme exacte que B-03 avait
-        // fait corriger sur la file v3, revenue sur l'outbox.
+        // The drain read `[...listByState("pending"), ...listByState("failed")]`
+        // — two index reads laid end to end, hence ALL `pending` before ALL
+        // `failed`, whatever their capture rank. The exact shape already fixed
+        // once on the v3 queue, returned on the outbox.
         //
-        // ⚠️ Le cas se produit par la fenêtre `inFlight`, qui n'est PAS fusionnable : une
-        // édition faite pendant qu'un push est en vol empile une seconde entrée, et si ce
-        // push échoue l'entité porte une `failed` de rang N et une `pending` de rang N+1.
+        // ⚠️ The case arises through the `inFlight` window, which is NOT
+        // mergeable: an edit made while a push is in flight stacks a second
+        // entry, and if that push fails the entity carries a `failed` of rank
+        // N and a `pending` of rank N+1.
         const first = await applyEdit({
             layerId: "sites",
             kind: "create",
@@ -155,7 +157,7 @@ describe("4.5 — push et réconciliation d'identité", () => {
             feature: feature("Saisie 2"),
         });
 
-        // On met la PREMIÈRE en `failed` : elle garde son `seq`, donc son rang de saisie.
+        // We set the FIRST to `failed`: it keeps its `seq`, hence its capture rank.
         const outbox = IndexedDB._ensureModule("Outbox");
         const queued = await outbox.list();
         const older = queued.find((e) => e.localId === first.localId);
@@ -164,15 +166,16 @@ describe("4.5 — push et réconciliation d'identité", () => {
         serve(() => ({ status: 201, body: [{ id: 1 }] }));
         await pushOutbox();
 
-        // L'ordre des requêtes EST l'ordre de saisie — pas l'ordre des états.
+        // The request order IS the capture order — not the state order.
         const sent = fetchSpy.mock.calls.map((c) => JSON.parse(c[1].body).local_id);
         expect(sent).toEqual([first.localId, second.localId]);
     });
 
-    // ── ①ter LE BUDGET DE REJEU (B-125) ─────────────────────────────────────────────
+    // ── ①ter THE REPLAY BUDGET ──────────────────────────────────────────────
     test("🛑 trois échecs mettent l'entrée en QUARANTAINE — et ne la détruisent PAS", async () => {
-        // Sans plafond, une entrée qui échoue est rejouée indéfiniment et `quarantined` n'est
-        // atteint par aucun chemin : trois `QuarantineReason` déclarés, zéro producteur.
+        // Without a cap, a failing entry replays indefinitely and
+        // `quarantined` is reached by no path: three declared
+        // `QuarantineReason`s, zero producers.
         await applyEdit({ layerId: "sites", kind: "create", feature: feature("Obstinée") });
         serve(() => ({ status: 500, body: {} }));
 
@@ -184,24 +187,26 @@ describe("4.5 — push et réconciliation d'identité", () => {
         expect(rows, "le contrat interdit de détruire une entrée").toHaveLength(1);
         expect(rows[0].state).toBe("quarantined");
         expect(rows[0].attempts).toBe(3);
-        // 🛑 LE MOTIF SUIT LE DERNIER ÉCHEC, il ne dit pas seulement « budget épuisé ».
+        // 🛑 THE REASON FOLLOWS THE LAST FAILURE, it does not just say "budget exhausted".
         //
-        // ⚠️ **CETTE ASSERTION ATTENDAIT `rejectedByServer`, ET ELLE VERROUILLAIT UN DÉFAUT
-        // (B-199).** Son commentaire disait « ici le serveur a REFUSÉ trois fois (500) » — or un
-        // 500 n'est pas un refus, c'est une panne. `pushOne` n'avait alors qu'une seule branche
-        // pour tout le spectre non-409/non-404, donc le mot « refusé » y était vrai par
-        // construction et faux en fait. Comme `rejectedByServer` est exclu de `REQUEUEABLE`, ce
-        // test gravait la perte : une maintenance serveur rendait la saisie indéracinable
-        // autrement qu'en la détruisant. Le motif attendu suit maintenant la CLASSE du statut.
+        // ⚠️ **THIS ASSERTION EXPECTED `rejectedByServer`, AND IT LOCKED A
+        // DEFECT IN.** Its comment said "here the server REFUSED three times
+        // (500)" — but a 500 is not a refusal, it is an outage. `pushOne`
+        // then had a single branch for the whole non-409/non-404 spectrum, so
+        // the word "refused" was true there by construction and false in
+        // fact. Since `rejectedByServer` is excluded from `REQUEUEABLE`, this
+        // test engraved the loss: a server maintenance made the capture
+        // unrecoverable other than by destroying it. The expected reason now
+        // follows the status CLASS.
         expect(rows[0].quarantine).toBe("retryBudgetExhausted");
     });
 
     test("🛑 un 404 sur un `update` = l'entité a disparu côté serveur, quarantaine IMMÉDIATE", async () => {
-        // Rejouer trois fois une entité que le serveur a supprimée ne peut ni la recréer ni la
-        // modifier. C'est une décision de produit, pas un incident de transport : elle doit
-        // remonter maintenant. `deletedOnServer` était le dernier `QuarantineReason` déclaré
-        // sans producteur — le contrat qualifie lui-même un tel membre d'« indiscernable d'une
-        // faute de frappe ».
+        // Replaying three times an entity the server deleted can neither
+        // recreate nor modify it. A product decision, not a transport
+        // incident: it must surface now. `deletedOnServer` was the last
+        // `QuarantineReason` declared without a producer — the contract
+        // itself calls such a member "indistinguishable from a typo".
         const created = await applyEdit({
             layerId: "sites",
             kind: "create",
@@ -226,8 +231,9 @@ describe("4.5 — push et réconciliation d'identité", () => {
     });
 
     test("🛑 un 404 sur un `create` n'est PAS une suppression serveur — c'est l'endpoint", async () => {
-        // La contre-épreuve : sans elle, tout 404 deviendrait `deletedOnServer` et une couche
-        // mal configurée serait mise en quarantaine sous un motif qui accuse le serveur.
+        // The counter-proof: without it, every 404 would become
+        // `deletedOnServer` and a misconfigured layer would be quarantined
+        // under a reason accusing the server.
         await applyEdit({ layerId: "sites", kind: "create", feature: feature("Endpoint faux") });
         serve(() => ({ status: 404, body: {} }));
 
@@ -239,8 +245,8 @@ describe("4.5 — push et réconciliation d'identité", () => {
     });
 
     test("🛑 un réseau MUET épuisé ne se nomme pas comme un refus serveur", async () => {
-        // La contre-épreuve du motif : sans elle, `rejectedByServer` pourrait être écrit dans
-        // les deux cas et le test ci-dessus passerait quand même. Deux causes, deux noms.
+        // The reason's counter-proof: without it, `rejectedByServer` could be
+        // written in both cases and the test above would still pass. Two causes, two names.
         await applyEdit({ layerId: "sites", kind: "create", feature: feature("Muette") });
         fetchSpy.mockRejectedValue(new Error("network down"));
 
@@ -254,8 +260,8 @@ describe("4.5 — push et réconciliation d'identité", () => {
     });
 
     test("🛑 une entrée en quarantaine N'EST PLUS rejouée", async () => {
-        // La contre-épreuve : sans elle, un plafond qui marque sans écarter passerait le test
-        // ci-dessus tout en laissant l'entrée boucler.
+        // The counter-proof: without it, a cap that marks without setting
+        // aside would pass the test above while letting the entry loop.
         await applyEdit({ layerId: "sites", kind: "create", feature: feature("Écartée") });
         serve(() => ({ status: 500, body: {} }));
         await pushOutbox();
@@ -270,11 +276,11 @@ describe("4.5 — push et réconciliation d'identité", () => {
     });
 
     test("🛑 une couche sans cible d'écriture part en quarantaine IMMÉDIATEMENT", async () => {
-        // Rejouer trois fois une couche qui a perdu son bloc `write` ne fait qu'attendre trois
-        // fois. `layerNoLongerWritable` existe exactement pour ça — et c'est son PREMIER
-        // producteur : le contrat le déclarait depuis l'Étape 1bis sans que rien ne l'écrive.
-        // `orphan` est éditable et ne déclare AUCUNE cible d'écriture — le harnais la porte
-        // déjà pour ce cas précis.
+        // Replaying three times a layer that lost its `write` block only
+        // waits three times. `layerNoLongerWritable` exists exactly for this
+        // — and this is its FIRST producer: the contract had declared it with
+        // nothing writing it. `orphan` is editable and declares NO write
+        // target — the harness already carries it for this precise case.
         await applyEdit({ layerId: "orphan", kind: "create", feature: feature("Orpheline") });
 
         const report = await pushOutbox();
@@ -286,20 +292,21 @@ describe("4.5 — push et réconciliation d'identité", () => {
         expect(rows[0].quarantine).toBe("layerNoLongerWritable");
     });
 
-    // ── ①quater LA CLASSE DU STATUT HTTP DÉCIDE (B-199) ──────────────────────────────────
+    // ── ①quater THE HTTP STATUS CLASS DECIDES ────────────────────────────────────
     //
-    // 🛑 Jusqu'au 09/08/2026, `pushOne` avait UNE SEULE branche pour tout ce qui n'est ni 409
-    // ni 404 : `rejectedByServer`. Un 503 de maintenance et un 403 définitif y étaient le même
-    // fait. Comme ce motif est exclu de `REQUEUEABLE`, une panne serveur transitoire épuisait
-    // le budget puis rendait la saisie NON REJOUABLE — sa seule sortie devenait
-    // `discardQuarantined`, c'est-à-dire la destruction. Les trois tests ci-dessous tiennent
-    // les trois classes, et le troisième est la contre-épreuve sans laquelle un correctif qui
-    // rendrait TOUT rejouable passerait les deux premiers.
+    // 🛑 Until 09/08/2026, `pushOne` had ONE branch for everything neither 409
+    // nor 404: `rejectedByServer`. A maintenance 503 and a definitive 403
+    // were the same fact there. Since that reason is excluded from
+    // `REQUEUEABLE`, a transient server outage exhausted the budget then made
+    // the capture NON-REPLAYABLE — its only exit became `discardQuarantined`,
+    // i.e. destruction. The three tests below hold the three classes, and the
+    // third is the counter-proof without which a fix making EVERYTHING
+    // replayable would pass the first two.
 
     test("🛑 un 503 épuisé est un budget épuisé, PAS un refus — l'entrée reste rejouable", async () => {
-        // Le cas qui porte le coût : maintenance serveur, ou un opérateur qui appuie trois fois
-        // sur « Réessayer ». `attempts` est persistant et cumulatif, donc les trois échecs
-        // peuvent s'étaler sur des jours.
+        // The case carrying the cost: server maintenance, or an operator
+        // pressing "Retry" three times. `attempts` is persistent and
+        // cumulative, so the three failures can spread over days.
         await applyEdit({ layerId: "sites", kind: "create", feature: feature("Maintenance") });
         serve(() => ({ status: 503, body: {} }));
 
@@ -310,17 +317,19 @@ describe("4.5 — push et réconciliation d'identité", () => {
         const rows = await readAll("outbox");
         expect(rows[0].state).toBe("quarantined");
         expect(rows[0].attempts).toBe(3);
-        // Le motif décide de la SORTIE : `retryBudgetExhausted` est dans `REQUEUEABLE`,
-        // `rejectedByServer` ne l'est pas. Écrire le second ici condamnait la saisie.
+        // The reason decides the EXIT: `retryBudgetExhausted` is in
+        // `REQUEUEABLE`, `rejectedByServer` is not. Writing the second here
+        // condemned the capture.
         expect(rows[0].quarantine).toBe("retryBudgetExhausted");
     });
 
     test("🛑 un 501 ne consomme PAS le budget — le serveur ne connaît pas le verbe", async () => {
-        // Rejouer trois fois un verbe que le serveur déclare ne pas implémenter ne fait
-        // qu'attendre trois fois — même argument que le 404 sur `update`. Le motif est
-        // néanmoins REJOUABLE : la levée de cause est la mise à jour du serveur, invérifiable
-        // localement, donc confiée à l'opérateur. C'est le miroir exact du carve-out du
-        // dialecte `rest`, qui traite un « non implémenté » CÔTÉ CLIENT comme rejouable.
+        // Replaying three times a verb the server declares unimplemented only
+        // waits three times — same argument as the 404 on `update`. The
+        // reason is nevertheless REPLAYABLE: the cause lifts when the server
+        // updates, unverifiable locally, hence left to the operator. The
+        // exact mirror of the `rest` dialect's carve-out, which treats a
+        // CLIENT-side "not implemented" as replayable.
         await applyEdit({ layerId: "sites", kind: "create", feature: feature("Verbe inconnu") });
         serve(() => ({ status: 501, body: {} }));
 
@@ -330,13 +339,14 @@ describe("4.5 — push et réconciliation d'identité", () => {
         expect(rows[0].state).toBe("quarantined");
         expect(rows[0].attempts, "le budget est COURT-CIRCUITÉ, pas consommé").toBe(1);
         expect(rows[0].quarantine).toBe("notImplementedByServer");
-        // L'assertion qui porte le grief d'origine : UN aller-retour, pas trois.
+        // The assertion carrying the original grievance: ONE round trip, not three.
         expect(fetchSpy.mock.calls.length, "un seul envoi, pas trois").toBe(1);
     });
 
     test("🛑 un 403 épuisé RESTE un refus — la contre-épreuve du correctif", async () => {
-        // Sans elle, rendre tout rejouable passerait les deux tests ci-dessus en sortant vert.
-        // Un refus définitif garde son motif, et garde donc son absence de requeue.
+        // Without it, making everything replayable would pass the two tests
+        // above while coming out green. A definitive refusal keeps its
+        // reason, hence keeps its absence of requeue.
         await applyEdit({ layerId: "sites", kind: "create", feature: feature("Interdite") });
         serve(() => ({ status: 403, body: {} }));
 
@@ -348,18 +358,20 @@ describe("4.5 — push et réconciliation d'identité", () => {
         expect(rows[0].state).toBe("quarantined");
         expect(rows[0].attempts).toBe(3);
         expect(rows[0].quarantine).toBe("rejectedByServer");
-        // 🛑 B-200 — LE DIAGNOSTIC VOYAGE AVEC L'ENTRÉE. `rejectedByServer` seul ne distingue
-        // pas un droit manquant (403, que l'exploitant corrige) d'une requête malformée (400,
-        // qui est notre bug). Le statut était connu au point de décision et ne vivait que dans
-        // un `Log.warn` — volatil, et personne n'ouvre une console sur le terrain.
+        // 🛑 THE DIAGNOSIS TRAVELS WITH THE ENTRY. `rejectedByServer` alone
+        // cannot tell a missing right (403, which the operator fixes) from a
+        // malformed request (400, which is our bug). The status was known at
+        // the decision point and lived only in a `Log.warn` — volatile, and
+        // nobody opens a console in the field.
         expect(rows[0].quarantineStatus).toBe(403);
     });
 
-    test("B-200 — une quarantaine SANS réponse serveur ne porte AUCUN statut", async () => {
-        // ⚠️ La contre-épreuve, et elle est nécessaire : sans elle, le cas ci-dessus ne
-        // distinguerait pas « le statut voyage » de « un statut est fabriqué à chaque
-        // quarantaine ». Un réseau muet n'a pas de statut — un `0` dirait « le serveur a
-        // répondu 0 », ce qui est faux et indiscernable d'une mesure.
+    test("une quarantaine SANS réponse serveur ne porte AUCUN statut", async () => {
+        // ⚠️ The counter-proof, and it is necessary: without it, the case
+        // above could not tell "the status travels" from "a status is
+        // fabricated at every quarantine". A mute network has no status — a
+        // `0` would say "the server answered 0", which is false and
+        // indistinguishable from a measurement.
         await applyEdit({ layerId: "sites", kind: "create", feature: feature("Muette") });
         serve(() => {
             throw new Error("réseau muet");
@@ -375,7 +387,7 @@ describe("4.5 — push et réconciliation d'identité", () => {
         expect(rows[0].quarantineStatus).toBeUndefined();
     });
 
-    // ── ② la réconciliation d'identité ────────────────────────────────────────────────────
+    // ── ② identity reconciliation ────────────────────────────────────────────────────────
     test("l'identifiant serveur revient DANS L'ENREGISTREMENT, et la file se vide", async () => {
         await applyEdit({ layerId: "sites", kind: "create", feature: feature("A") });
         serve(() => ({ status: 201, body: [{ id: 77 }] }));
@@ -386,26 +398,26 @@ describe("4.5 — push et réconciliation d'identité", () => {
         const records = await readAll("features");
         expect(records[0].serverId).toBe("77");
         expect(records[0].syncState).toBe("synced");
-        // La file ne référence que `localId` et disparaît une fois poussée : si l'identité
-        // serveur n'était pas écrite ici, elle serait perdue.
+        // The queue only references `localId` and vanishes once pushed: if
+        // the server identity were not written here, it would be lost.
         expect(await readAll("outbox")).toHaveLength(0);
     });
 
-    // ── ③ un 409 est un SUCCÈS ────────────────────────────────────────────────────────────
+    // ── ③ a 409 is a SUCCESS ─────────────────────────────────────────────────────────────
     test("un 409 sur l'identité cliente vaut « déjà présent », pas un échec", async () => {
         await applyEdit({ layerId: "sites", kind: "create", feature: feature("B") });
         serve(() => ({ status: 409, body: { code: "23505" } }));
 
         const report = await pushOutbox();
 
-        // Le traiter en échec ferait boucler la file sur une entrée que le serveur a acceptée.
+        // Treating it as a failure would loop the queue on an entry the server accepted.
         expect(report.pushed).toBe(1);
         expect(report.alreadyPresent).toBe(1);
         expect(report.failed).toBe(0);
         expect(await readAll("outbox")).toHaveLength(0);
     });
 
-    // ── ④ un échec garde la saisie ────────────────────────────────────────────────────────
+    // ── ④ a failure keeps the capture ────────────────────────────────────────────────────
     test("un 500 laisse l'entrée en file, en `failed` — qui n'est pas terminal", async () => {
         await applyEdit({ layerId: "sites", kind: "create", feature: feature("C") });
         serve(() => ({ status: 500 }));
@@ -417,7 +429,7 @@ describe("4.5 — push et réconciliation d'identité", () => {
         const queue = await readAll("outbox");
         expect(queue).toHaveLength(1);
         expect(queue[0].state).toBe("failed");
-        // Et la saisie est toujours là — c'est tout l'objet du contrat.
+        // And the capture is still there — the contract's whole point.
         expect(await readAll("features")).toHaveLength(1);
     });
 
@@ -444,7 +456,7 @@ describe("4.5 — push et réconciliation d'identité", () => {
         expect(await readAll("features")).toHaveLength(1);
     });
 
-    // ── ⑤ la suppression ferme le cycle ───────────────────────────────────────────────────
+    // ── ⑤ deletion closes the cycle ──────────────────────────────────────────────────────
     test("une suppression poussée retire l'entité du magasin", async () => {
         const features = IndexedDB._ensureModule("Features");
         await features.put({
@@ -470,7 +482,7 @@ describe("4.5 — push et réconciliation d'identité", () => {
         expect(await readAll("outbox")).toHaveLength(0);
     });
 
-    // ── ⑥ les refus nommés ────────────────────────────────────────────────────────────────
+    // ── ⑥ named refusals ─────────────────────────────────────────────────────────────────
     test("une couche sans cible d'écriture ne part pas, et ne disparaît pas", async () => {
         await applyEdit({ layerId: "orphan", kind: "create", feature: feature("F") });
         serve(() => ({ status: 201 }));
@@ -482,8 +494,8 @@ describe("4.5 — push et réconciliation d'identité", () => {
     });
 
     test("le dialecte `rest` est refusé par son NOM, pas envoyé en corps plat", async () => {
-        // Envoyer un corps `collection` à un endpoint REST enverrait la mauvaise forme en
-        // silence — la classe de défaut exacte que ce sprint ferme.
+        // Sending a `collection` body to a REST endpoint would send the wrong
+        // shape silently — the exact defect class being closed.
         layerConfigs[0].write.dialect = "rest";
         await applyEdit({ layerId: "sites", kind: "create", feature: feature("G") });
         serve(() => ({ status: 201 }));
@@ -504,7 +516,7 @@ describe("4.5 — push et réconciliation d'identité", () => {
         expect(report.refused).toBe("engineUnavailable");
     });
 
-    // ── ⑥bis — 4.6 : le conflit devient DÉTECTABLE, et l'issue est DÉCLARÉE ──────────────
+    // ── ⑥bis — the conflict becomes DETECTABLE, and the outcome is DECLARED ─────────────
     test("le marqueur de base part comme FILTRE — sans lui, aucun conflit n'est observable", async () => {
         const features = IndexedDB._ensureModule("Features");
         await features.put({
@@ -528,8 +540,8 @@ describe("4.5 — push et réconciliation d'identité", () => {
 
         const url = String(fetchSpy.mock.calls[0][0]);
         expect(url).toContain("id=eq.4");
-        // ⚠️ Le `+` du fuseau DOIT être encodé : mesuré contre PostgREST, un `+` nu est lu
-        // comme une espace et rend `400 invalid input syntax for type timestamp`.
+        // ⚠️ The timezone `+` MUST be encoded: measured against PostgREST, a
+        // bare `+` reads as a space and yields `400 invalid input syntax for type timestamp`.
         expect(url).toContain("updated_at=eq.2026-08-03T20%3A41%3A05.130076%2B00%3A00");
     });
 
@@ -551,8 +563,8 @@ describe("4.5 — push et réconciliation d'identité", () => {
             feature: feature("terrain"),
         });
 
-        // 1er appel : filtré sur un marqueur périmé → 200 [] (mesuré sur le vrai PostgREST).
-        // 2e appel : sans filtre → la version locale écrase.
+        // 1st call: filtered on a stale marker → 200 [] (measured on real PostgREST).
+        // 2nd call: unfiltered → the local version overwrites.
         let call = 0;
         serve(() =>
             ++call === 1 ? { status: 200, body: [] } : { status: 200, body: [{ id: 6 }] }
@@ -561,25 +573,27 @@ describe("4.5 — push et réconciliation d'identité", () => {
         const report = await pushOutbox();
 
         expect(report.conflicts).toBe(1);
-        // 🛑 L'ISSUE NE CHANGE PAS — c'est tout le sujet. `lastWriteWins` était déjà le
-        // comportement, mais par accident et sans trace. Le gain est qu'il est maintenant
-        // DÉTECTÉ et JOURNALISÉ avant d'être appliqué.
+        // 🛑 THE OUTCOME DOES NOT CHANGE — the whole subject. `lastWriteWins`
+        // was already the behaviour, but by accident and without a trace. The
+        // gain is that it is now DETECTED and LOGGED before being applied.
         expect(report.pushed).toBe(1);
         expect(fetchSpy).toHaveBeenCalledTimes(2);
-        // Le second envoi ne porte plus le filtre : c'est lui qui écrase.
+        // The second send no longer carries the filter: it is the one that overwrites.
         expect(String(fetchSpy.mock.calls[1][0])).not.toContain("updated_at=eq.");
         expect((await readAll("features"))[0].syncState).toBe("synced");
     });
 
     test("une MISE À JOUR sans marqueur n'invente pas de conflit sur une réponse vide", async () => {
-        // ⚠️ CE TEST A ÉTÉ RÉÉCRIT PARCE QU'IL NE COUVRAIT PAS CE QU'IL ANNONÇAIT. La première
-        // rédaction faisait un `create` — or la détection est déjà gardée par
-        // `kind === "update"`, donc retirer la garde `baseVersion` ne la faisait pas rougir.
+        // ⚠️ THIS TEST WAS REWRITTEN BECAUSE IT DID NOT COVER WHAT IT
+        // ANNOUNCED. The first draft did a `create` — yet the detection is
+        // already gated by `kind === "update"`, so removing the `baseVersion`
+        // guard did not turn it red.
         //
-        // Le vrai cas : une entité créée hors ligne n'a AUCUN marqueur (`version: null`), et
-        // une mise à jour ultérieure part donc sans filtre. Si le serveur répond avec un corps
-        // vide — 204, ou une représentation absente — compter « zéro ligne » comme un conflit
-        // en inventerait un à chaque fois, et déclencherait un second envoi pour rien.
+        // The real case: an entity created offline has NO marker
+        // (`version: null`), so a later update leaves without a filter. If
+        // the server answers with an empty body — 204, or an absent
+        // representation — counting "zero rows" as a conflict would invent
+        // one every time, and trigger a second send for nothing.
         const features = IndexedDB._ensureModule("Features");
         await features.put({
             layerId: "sites",
@@ -605,14 +619,14 @@ describe("4.5 — push et réconciliation d'identité", () => {
         expect(String(fetchSpy.mock.calls[0][0])).not.toContain("updated_at=eq.");
     });
 
-    // ── ⑦ le cycle complet, bout en bout ──────────────────────────────────────────────────
+    // ── ⑦ the full cycle, end to end ─────────────────────────────────────────────────────
     test("créer hors réseau puis pousser : l'entité porte son identifiant serveur", async () => {
         const created = await applyEdit({
             layerId: "sites",
             kind: "create",
             feature: feature("terrain"),
         });
-        // Édition supplémentaire avant le push : elle coalesce, donc UNE seule requête.
+        // An extra edit before the push: it coalesces, hence ONE request.
         await applyEdit({
             layerId: "sites",
             kind: "update",
@@ -625,7 +639,7 @@ describe("4.5 — push et réconciliation d'identité", () => {
 
         expect(fetchSpy).toHaveBeenCalledTimes(1);
         expect(report.pushed).toBe(1);
-        // Et c'est bien l'état CORRIGÉ qui est parti — la charge est l'enregistrement.
+        // And it is the CORRECTED state that left — the payload is the record.
         expect(bodyOf(fetchSpy.mock.calls[0]).title).toBe("terrain corrigé");
         expect((await readAll("features"))[0].serverId).toBe("99");
     });

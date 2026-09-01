@@ -71,7 +71,7 @@ export interface CaptureOptions {
     /** Override centre point [lng, lat]. Default: computed from bbox or current viewport. */
     center?: [number, number];
     /**
-     * Locked scale denominator — set by openPrintFlow (Sprint 5) to freeze the scale.
+     * Locked scale denominator — set by openPrintFlow to freeze the scale.
      * When provided, the bbox is recomputed from this scale + format rather than
      * inferred from the input extent.
      */
@@ -153,17 +153,11 @@ export interface ExporterFn {
 /**
  * Composition slot — allows external code to inject content at named positions
  * on the composed canvas (title, legend, footer, or overlay corners).
- * Registered via `GeoLeaf.Print.registerSlot(slot)` (Sprint 5+).
+ * Registered via `GeoLeaf.Print.registerSlot(slot)`.
  */
 export interface ComposeSlot {
     id: string;
     placement:
-        | "title"
-        | "legend"
-        | "footer"
-        | "overlay-tl"
-        | "overlay-tr"
-        | "overlay-bl"
-        | "overlay-br";
+        "title" | "legend" | "footer" | "overlay-tl" | "overlay-tr" | "overlay-bl" | "overlay-br";
     render(ctx: CanvasRenderingContext2D, rectPx: Rect, data: unknown): void;
 }

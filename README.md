@@ -330,8 +330,15 @@ it, so nothing here can go stale unnoticed:
 - **Plugin bundles** — `npm run size:plugins`, one budget per plugin
 - **Weight actually served by the shipped application** — `npm run size:app`, measured on
   `deploy/deploy-core/` and `deploy/deploy-full/` after the deploy output is regenerated
-- **Browser Support**: Chrome 90+, Firefox 88+, Safari 14+, Edge 90+ — derived from the `ES2022`
-  compilation target declared in the repository's `tsconfig` files
+- **Browser Support**: Chrome 94+, Firefox 93+, Safari 16.4+, Edge 94+ — **set by the mandatory
+  `maplibre-gl` peer, not by our own compilation target**. Measured on 2026-08-27: the shipped
+  `maplibre-gl@6.5` bundle contains static blocks, `??=`, `?.` and `??`. A browser below that
+  floor renders no map, hence no application.
+  ⚠️ This line read "Chrome 90+, Firefox 88+, Safari 14+, Edge 90+ — derived from the `ES2022`
+  compilation target". The derivation was the wrong one: our bundles are the LOOSER of the two
+  constraints — their effective syntax floor is `?.`/`??`, i.e. Chrome 80 — so deriving support
+  from them understated the real requirement by fourteen Chrome versions. A support matrix is set
+  by the strictest link in the chain, and here that link is a dependency
 - **Offline** — an in-core capability, enabled per profile; what the browser actually executes at
   boot is measured by `node scripts/verify-e2e-coverage.cjs`
 

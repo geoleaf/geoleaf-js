@@ -33,28 +33,7 @@ describe("GeoLeaf API Extended", () => {
                 get: vi.fn().mockReturnValue({ data: "config" }),
                 getActiveProfile: vi.fn().mockReturnValue({}),
             },
-            POI: {
-                addPoi: vi.fn().mockReturnValue({ marker: "mockMarker" }),
-                add: vi.fn().mockImplementation((poi) => {
-                    if (!poi) throw new Error("invalid input");
-                    const p = { ...poi };
-                    if (Array.isArray(poi.latlng)) {
-                        p.lat = poi.latlng[0];
-                        p.lng = poi.latlng[1];
-                    }
-                    return global.GeoLeaf.POI.addPoi(p);
-                }),
-                removePoi: vi.fn().mockReturnValue(true),
-                remove: vi.fn().mockImplementation(() => {
-                    global.GeoLeaf.Log.warn("[POI.remove] Not yet implemented");
-                }),
-                filterPoi: vi.fn().mockReturnValue([]),
-                filter: vi.fn().mockImplementation((opts) => {
-                    if (global.GeoLeaf.POI.setFilter) global.GeoLeaf.POI.setFilter(opts);
-                }),
-                setFilter: vi.fn(),
-                centerOn: vi.fn(),
-            },
+            // 🗑️ The full POI mounting (9 members) is removed with the suites exercising it.
             GeoJSON: {
                 load: vi.fn().mockImplementation(() => {
                     throw new Error("loadUrl not available");
@@ -107,11 +86,12 @@ describe("GeoLeaf API Extended", () => {
             detail: opts?.detail,
         }));
 
-        // ⚠️ socle-init 7.7 — le faux contrôleur doit être un ACCESSEUR, pas une valeur.
-        // `kernel/api/controller.ts` n'installe le sien que s'il n'en trouve pas déjà un
-        // (`getOwnPropertyDescriptor(...).get`) ; un faux posé en valeur simple ne le retient
-        // donc pas et se fait écraser dès que la chaîne `globals/` est chargée. C'est aussi la
-        // forme RÉELLE en production — le test gagne en fidélité, il ne contourne rien.
+        // ⚠️ The fake controller must be an ACCESSOR, not a value.
+        // `kernel/api/controller.ts` only installs its own if it does not
+        // already find one (`getOwnPropertyDescriptor(...).get`); a fake set
+        // as a plain value does not hold it back and gets overwritten as
+        // soon as the `globals/` chain loads. It is also the REAL production
+        // shape — the test gains fidelity, it works around nothing.
         const _fakeController = global.GeoLeaf._APIController;
         Object.defineProperty(global.GeoLeaf, "_APIController", {
             get: () => _fakeController,
@@ -265,73 +245,28 @@ describe("GeoLeaf API Extended", () => {
         });
     });
 
-    describe("GeoLeaf.POI.add()", () => {
-        test("should be defined", () => {
-            expect(typeof GeoLeafAPI.POI.add).toBe("function");
-        });
-
-        test("should call POI.addPoi", () => {
-            GeoLeafAPI.POI.add({
-                id: "poi-1",
-                latlng: [45, 5],
-                label: "Test POI",
-            });
-            expect(global.GeoLeaf.POI.addPoi).toHaveBeenCalled();
-        });
-
-        test("should convert latlng array to lat/lng", () => {
-            GeoLeafAPI.POI.add({
-                id: "poi-1",
-                latlng: [45, 5],
-            });
-            expect(global.GeoLeaf.POI.addPoi).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    lat: 45,
-                    lng: 5,
-                })
-            );
-        });
-
-        test("should throw on invalid input", () => {
-            expect(() => GeoLeafAPI.POI.add()).toThrow();
-        });
-    });
-
-    describe("GeoLeaf.POI.remove()", () => {
-        test("should be defined", () => {
-            expect(typeof GeoLeafAPI.POI.remove).toBe("function");
-        });
-
-        test("should log warning (not yet implemented)", () => {
-            GeoLeafAPI.POI.remove("poi-1");
-            // API is defined but logs a warning that it's not yet implemented
-            expect(global.GeoLeaf.Log.warn).toHaveBeenCalled();
-        });
-    });
-
-    describe("GeoLeaf.POI.filter()", () => {
-        test("should be defined", () => {
-            expect(typeof GeoLeafAPI.POI.filter).toBe("function");
-        });
-
-        test("should call POI.setFilter when available", () => {
-            global.GeoLeaf.POI.setFilter = vi.fn();
-            GeoLeafAPI.POI.filter({ category: "restaurant" });
-            expect(global.GeoLeaf.POI.setFilter).toHaveBeenCalled();
-        });
-    });
-
-    describe("GeoLeaf.POI.centerOn()", () => {
-        test("should be defined", () => {
-            expect(typeof GeoLeafAPI.POI.centerOn).toBe("function");
-        });
-
-        test("should call POI.centerOn with id", () => {
-            GeoLeafAPI.POI.centerOn("poi-1");
-            expect(global.GeoLeaf.POI.centerOn).toHaveBeenCalledWith("poi-1");
-        });
-    });
-
+    // 🗑️ FOUR suites removed on 20/08/2026 — the POI facades `add`,
+    // `remove`, `filter` and `centerOn` — because they ACTIVELY exercised a
+    // **long-dissolved** subsystem.
+    //
+    // 🛑 They were green by TAUTOLOGY: the `beforeEach` does
+    // `GeoLeafAPI = global.GeoLeaf` and the fixture itself set the POI
+    // mounting on that very object. Checking a member there is "function"
+    // thus only asserted the fixture, and the rest verified that a mock
+    // called a mock.
+    //
+    // The OPPOSITE contract is written in `src/kernel/api/module-catalog.ts`:
+    // `CATALOG_EXPECTED_ABSENT` carries the POI entry with its motive, and
+    // `getModule` must return `null` on it. Nothing is lost in the removal —
+    // that absence is already guarded by
+    // `__tests__/api/module-discovery.characterisation.test.js`, which
+    // requires a catalogue entry absent from the namespace to carry a
+    // motive, and confronts each motive.
+    //
+    // ⚠️ There is NO useful "negative" equivalent to write here, unlike
+    // `api.test.js` where the assertion could flip into a useful absence
+    // test: a suite exercising the methods of an absent subsystem has
+    // nothing to flip.
     describe("GeoLeaf.GeoJSON.load()", () => {
         test("should be defined", () => {
             expect(typeof GeoLeafAPI.GeoJSON.load).toBe("function");
@@ -366,28 +301,33 @@ describe("GeoLeaf API Extended", () => {
     });
 
     /**
-     * 🛑 SIX TESTS D'API FANTÔME, TROUVÉS ET REQUALIFIÉS À SOCLE-INIT 7.7.
+     * 🛑 SIX GHOST-API TESTS, FOUND AND REQUALIFIED.
      *
-     * Ce bloc contenait `GeoLeaf.Baselayers.add()`, `.set()` et `.list()` — trois « should be
-     * defined » et trois délégations. **Aucune des trois méthodes n'existe.** La façade réelle
-     * (`kernel/basemaps/facade.ts`) expose `registerBaseLayer`, `setBaseLayer`, `getBaseLayers`
-     * et leurs alias ; `add`, `set` et `list` n'étaient définies que par le faux `Baselayers` du
-     * harnais, quelques centaines de lignes plus haut.
+     * This block contained `GeoLeaf.Baselayers.add()`, `.set()` and
+     * `.list()` — three "should be defined" and three delegations. **None
+     * of the three methods exists.** The real facade
+     * (`kernel/basemaps/facade.ts`) exposes `registerBaseLayer`,
+     * `setBaseLayer`, `getBaseLayers` and their aliases; `add`, `set` and
+     * `list` were only defined by the harness's fake `Baselayers`, a few
+     * hundred lines above.
      *
-     * Ces tests **s'assertaient eux-mêmes**. Ils passaient parce que l'ancien `geoleaf-api.js` ne
-     * touchait pas à `Baselayers` et laissait le mock en place ; ils ont rougi à la seconde où le
-     * fichier a été repointé sur `globals/globals.api.js`, qui monte la façade RÉELLE.
+     * These tests **asserted themselves**. They passed because the old
+     * `geoleaf-api.js` did not touch `Baselayers` and left the mock in
+     * place; they turned red the second the file was repointed to
+     * `globals/globals.api.js`, which mounts the REAL facade.
      *
-     * C'est exactement la classe `GeoLeaf.Events` que ce dépôt a déjà payée (cf. la note de
-     * `globals.api.ts`) : une surface documentée et testée, jamais montée. Sauf qu'ici l'oracle
-     * était le mock, ce qui la rendait indétectable — un test vert sur une API qui n'existe pas.
+     * Exactly the `GeoLeaf.Events` class this repo already paid for (cf.
+     * `globals.api.ts`'s note): a surface documented and tested, never
+     * mounted. Except here the oracle was the mock, which made it
+     * undetectable — a green test on an API that does not exist.
      */
     describe("GeoLeaf.Baselayers — la façade RÉELLE, pas celle du harnais", () => {
         test("le namespace porte la façade importée, pas le faux du harnais", async () => {
             const { Baselayers } = await import("../../src/api/geoleaf.baselayers.js");
             expect(GeoLeafAPI.Baselayers).toBe(Baselayers);
-            // L'alias historique pointe la MÊME référence — c'est le défaut `get BaseLayers` de
-            // l'API S4.2, où `Object.assign` écrivait `undefined` par-dessus.
+            // The historical alias points at the SAME reference — the
+            // `get BaseLayers` defect of the API review, where
+            // `Object.assign` wrote `undefined` over it.
             expect(GeoLeafAPI.BaseLayers).toBe(GeoLeafAPI.Baselayers);
         });
 
@@ -438,12 +378,13 @@ describe("GeoLeaf API Extended", () => {
         });
     });
 
-    // Les 4 tests `GeoLeaf.Filters.apply/reset` sont partis avec `Filters` (API S4.5).
-    // Ils étaient tautologiques deux fois : `geoleaf-api.ts` fait `Object.assign(existing, …)`
-    // où `existing === globalThis.GeoLeaf`, donc ils testaient le mock contre lui-même ; et
-    // le mock déclarait `apply`/`reset`/`get`, trois méthodes que le vrai `Filters` n'a
-    // jamais portées (il n'avait que `filterRouteList`). Ils seraient restés VERTS après la
-    // suppression du module.
+    // The 4 `GeoLeaf.Filters.apply/reset` tests left with `Filters`.
+    // They were tautological twice: `geoleaf-api.ts` does
+    // `Object.assign(existing, …)` where `existing === globalThis.GeoLeaf`,
+    // so they tested the mock against itself; and the mock declared
+    // `apply`/`reset`/`get`, three methods the real `Filters` never carried
+    // (it only had `filterRouteList`). They would have stayed GREEN after
+    // the module's deletion.
 
     describe("Module Checks", () => {
         test("should handle missing Core module", async () => {

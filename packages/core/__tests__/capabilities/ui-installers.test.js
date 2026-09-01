@@ -23,9 +23,8 @@ const coordinatesMod = await import("../../src/capabilities/coordinates/module.t
 const coordinatesFacade = await import("../../src/api/geoleaf.coordinates.ts");
 
 const themeToggle = await import("../../src/capabilities/theme-toggle/install.ts");
-const themeToggleCap = await import(
-    "../../src/capabilities/theme-toggle/theme-toggle-capability.ts"
-);
+const themeToggleCap =
+    await import("../../src/capabilities/theme-toggle/theme-toggle-capability.ts");
 const themeToggleMod = await import("../../src/capabilities/theme-toggle/module.ts");
 const themeToggleFacade = await import("../../src/api/geoleaf.theme-toggle.ts");
 
@@ -42,9 +41,8 @@ const geolocationFacade = await import("../../src/api/geoleaf.geolocation.ts");
 // S2 Lot 8 — theme-selector, the last capability to migrate (its deterministic mount
 // coverage now lives in __tests__/capabilities/theme-selector/mount.test.js).
 const themeSelector = await import("../../src/capabilities/theme-selector/install.ts");
-const themeSelectorCap = await import(
-    "../../src/capabilities/theme-selector/theme-selector-capability.ts"
-);
+const themeSelectorCap =
+    await import("../../src/capabilities/theme-selector/theme-selector-capability.ts");
 const themeSelectorMod = await import("../../src/capabilities/theme-selector/module.ts");
 const themeSelectorFacade = await import("../../src/capabilities/theme-selector/theme-selector.ts");
 

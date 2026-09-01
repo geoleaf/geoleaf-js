@@ -14,8 +14,8 @@ import langPt from "./lang/lang-pt.js";
 import langIt from "./lang/lang-it.js";
 import langDe from "./lang/lang-de.js";
 
-// Forme du seam toolbar importée du contrat publié (API publique S3) au lieu d'une
-// re-déclaration locale : les 7 plugins en portaient 4 formes divergentes.
+// Toolbar seam shape imported from the published contract instead of a local
+// re-declaration: the 7 plugins carried 4 divergent shapes of it.
 import type { GeoLeafRawEventMap } from "@geoleaf/core";
 // Replaced at build time by rollup/replace — must be a plain string literal.
 const _VERSION = "__GEOLEAF_VERSION__";
@@ -57,19 +57,33 @@ const _MEASURE_ICON =
     "</svg>";
 
 // 4 & 5 — Register toolbar slot + wire event listener (skipped if enabled === false).
+// The slot is declared only on the EAGER path — before `boot()`, where this call is the ONLY
+// declaration (no `init.js` at an integrator's). After `init()` the toolbar is already built:
+// the registration would be stored, never drawn, and would log a warning with no reachable
+// audience. `!== true` so a host without `isInitialized` still gets its slot.
 if (getMeasureConfig().enabled !== false) {
-    getGeoLeaf()?.registry?.register?.({
-        id: "measure",
-        ui: {
-            mobileIcon: {
-                icon: _MEASURE_ICON,
-                labelKey: "measure.toolbar.button",
-                profileKey: "ui.showMeasure",
-                requiresPlugin: "measure",
-                action: "measure",
+    // ── The SLOT DECLARATIONS only — guarded since 21/08/2026 (eager path is their only
+    // reader: after init() the toolbar is built and a stored slot is never drawn). `!== true`
+    // so a host without `isInitialized` still gets its slots.
+    // ⚠️ Scope fixed on 25/08/2026: this guard once wrapped the WHOLE block below — listeners
+    // and map-ready wiring included — so on the LAZY path (isInitialized === true) the plugin
+    // mounted its API and never wired its UI: no root, no handler, no error. The guard must
+    // cover the registers alone; everything after it runs on BOTH paths.
+    if (getGeoLeaf()?.registry?.isInitialized?.() !== true) {
+        getGeoLeaf()?.registry?.register?.({
+            id: "measure",
+            ui: {
+                mobileIcon: {
+                    icon: _MEASURE_ICON,
+                    labelKey: "measure.toolbar.button",
+                    profileKey: "modules.measure.showButton",
+                    legacyProfileKey: "ui.showMeasure",
+                    requiresPlugin: "measure",
+                    action: "measure",
+                },
             },
-        },
-    });
+        });
+    }
 
     if (typeof document !== "undefined") {
         document.addEventListener("geoleaf:toolbar:action", (e: Event) => {

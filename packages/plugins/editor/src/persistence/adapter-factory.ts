@@ -76,13 +76,14 @@ export function createPersistenceAdapter(
 ): EditorPersistenceAdapter {
     const online = createOnlineAdapter(cfg, hooks);
 
-    // 🛑 LA GARDE DE PERMISSION ENVELOPPE LES QUATRE SORTIES, ET C'EST LE POINT (tâche 8.7).
+    // 🛑 THE PERMISSION GUARD WRAPS ALL FOUR EXITS, AND THAT IS THE POINT.
     //
-    // Elle n'est PAS dans `createAutoAdapter` : ce chemin-ci rend l'adaptateur REST **nu** en
-    // `mode: "online"` et sur le dialecte `collection`, sans jamais construire l'automatique.
-    // Une garde posée au routage aurait donc laissé ouverts exactement les modes connectés —
-    // ceux qui portaient le trou de B-138, la permission n'étant appliquée jusqu'ici que par
-    // le chemin hors ligne.
+    // It is NOT in `createAutoAdapter`: this path returns the **bare** REST
+    // adapter in `mode: "online"` and on the `collection` dialect, without
+    // ever building the auto one. A guard set at the routing would thus have
+    // left open exactly the connected modes — the ones carrying the
+    // authorisation hole, the permission having been applied until now only
+    // through the offline path.
     if (cfg.persistence?.dialect === "collection") return withEditionPermissions(online);
 
     const mode = cfg.persistence?.mode ?? "auto";

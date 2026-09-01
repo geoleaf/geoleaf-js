@@ -133,8 +133,7 @@ export async function importAsLayer(file: File, options?: ImportLayerOptions): P
     }
 
     const gl = (globalThis as Record<string, unknown>).GeoLeaf as
-        | { Core?: { getMap?: () => MapAdapterLike | null } }
-        | undefined;
+        { Core?: { getMap?: () => MapAdapterLike | null } } | undefined;
 
     const adapter = gl?.Core?.getMap?.();
     if (!adapter?.addGeoJSONLayer) {

@@ -890,14 +890,14 @@ describe("geojson/loader/profile — clustering normalisation (R.40)", () => {
 });
 
 /**
- * S5.1 — the Phase 1 batching DEFAULTS, which gate the reveal.
+ * The Phase 1 batching DEFAULTS, which gate the reveal.
  *
  * ⚠️ These call `_loadLayersByBatch` with NO arguments on purpose. The pre-existing suite always
  * passed `(tasks, 2, 0)`, so it exercised the mechanism while leaving the shipped values — the
  * only ones that ever run — untested. That is how a 200 ms serialisation survived on the reveal
  * path unnoticed: the delay had a test in its name and none in its assertions.
  */
-describe("geojson/loader/profile — Phase 1 batching defaults (S5.1)", () => {
+describe("geojson/loader/profile — Phase 1 batching defaults", () => {
     it("runs six tasks concurrently, not three", async () => {
         const started = [];
         let releaseFirstBatch;

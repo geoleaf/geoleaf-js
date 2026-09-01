@@ -27,7 +27,7 @@ describe("layer-manager/control (step 3.4)", () => {
         expect(typeof LMControl.create).toBe("function");
     });
 
-    // Sprint 6: LMControl now uses addTo(adapter) instead of onAdd(map) — adapter pattern.
+    // LMControl now uses addTo(adapter) instead of onAdd(map) — adapter pattern.
     it("create retourne un controle valide quand L.Control est present", () => {
         const ctrl = LMControl.create({});
         expect(ctrl).not.toBeNull();

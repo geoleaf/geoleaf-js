@@ -53,36 +53,36 @@ function isSourceFile(name, extensions = [".ts"]) {
     return extensions.some((ext) => name.endsWith(ext));
 }
 
-// ─── Corpus depuis l'INDEX (B-102) ───────────────────────────────────────────
+// ─── Corpus from the INDEX ───────────────────────────────────────────
 //
-// ⚠️ POURQUOI CE SECOND CHEMIN EXISTE, et pourquoi il n'est PAS le défaut.
+// ⚠️ WHY THIS SECOND PATH EXISTS, and why it is NOT the default.
 //
-// Le parcours par `readdirSync` ci-dessous lit le DISQUE. Un artefact généré à partir de
-// lui reflète donc le worktree AU MOMENT de la génération, modifications non commitées
-// comprises — et `generate-docs-tree.cjs --check` compare ensuite le fichier commité
-// **octet à octet**. Sur un dépôt à sessions concurrentes, l'artefact ne peut alors JAMAIS
-// correspondre à un clone frais de HEAD.
+// The `readdirSync` walk below reads the DISK. An artifact generated from it therefore
+// reflects the worktree AT GENERATION TIME, uncommitted modifications included — and
+// `generate-docs-tree.cjs --check` then compares the committed file **byte for byte**.
+// On a repo with concurrent sessions, the artifact can then NEVER match a fresh clone of
+// HEAD.
 //
-// Mesuré le 01/08/2026 par le deuxième run de `ci:push` : **+251 lignes** d'écart sur
-// 6 fichiers, tous modifiés par une autre session et non commités.
+// Measured on 2026-08-01 by the second `ci:push` run: **+251 lines** of drift across
+// 6 files, all modified by another session and uncommitted.
 //
 //     scripts/check-dead-links.cjs        429 → 559   (+130)
 //     scripts/lib/tsdoc-examples.cjs      112 → 194   (+82)
 //     …
 //
-// L'INDEX est la bonne référence, et pas HEAD : il est exactement « ce qui va être
-// commité ». On stage, on régénère, on commite les deux — cohérent. Contre HEAD, il
-// faudrait régénérer APRÈS avoir commité, donc committer deux fois. C'est aussi la
-// doctrine que `verify-ci-scripts-tracked.cjs` applique déjà, en interrogeant l'index
-// « précisément pour voir le défaut AVANT le push ».
+// The INDEX is the right reference, not HEAD: it is exactly "what is about to be
+// committed". Stage, regenerate, commit both — coherent. Against HEAD, one would have to
+// regenerate AFTER committing, hence commit twice. It is also the doctrine
+// `verify-ci-scripts-tracked.cjs` already applies, querying the index "precisely to see
+// the defect BEFORE the push".
 //
-// ⚠️ MAIS CE N'EST PAS LE DÉFAUT, délibérément. Deux GATES lisent cet inventaire
-// (`check-module-headers.cjs`, `verify-repo-hygiene.cjs`) et doivent continuer à voir un
-// fichier NEUF non encore stagé — le basculer les rendrait aveugles à ce qui vient
-// d'arriver, ce qui est exactement leur raison d'être. Seul le GÉNÉRATEUR d'artefact
-// comparé à l'octet a besoin de l'index.
+// ⚠️ BUT IT IS NOT THE DEFAULT, deliberately. Two GATES read this inventory
+// (`check-module-headers.cjs`, `verify-repo-hygiene.cjs`) and must keep seeing a NEW,
+// not-yet-staged file — switching them would blind them to what just arrived, which is
+// exactly their reason to exist. Only the byte-compared artifact GENERATOR needs the
+// index.
 
-/** Chemins suivis par git, filtrés comme le parcours disque — même corpus, autre source. */
+/** Paths tracked by git, filtered like the disk walk — same corpus, other source. */
 function indexPaths(relDir, extensions) {
     const res = spawnSync("git", ["ls-files", "-z", "--", relDir], {
         cwd: ROOT,
@@ -104,14 +104,14 @@ function indexPaths(relDir, extensions) {
 }
 
 /**
- * Contenu de plusieurs blobs de l'index, en UN seul processus.
+ * Content of several index blobs, in ONE process.
  *
- * ⚠️ `git cat-file --batch` annonce des tailles en OCTETS. La lecture se fait donc sur des
- * `Buffer` et le découpage par offsets d'octets ; décoder en UTF-8 avant de découper
- * décalerait tout dès le premier caractère non-ASCII — et ce dépôt en est plein.
+ * ⚠️ `git cat-file --batch` announces sizes in BYTES. Reading is thus done on `Buffer`s
+ * and slicing by byte offsets; decoding to UTF-8 before slicing would shift everything
+ * from the first non-ASCII character on — and this repo is full of them.
  *
- * @param {string[]} rels Chemins relatifs à la racine, séparateur `/`.
- * @returns {Map<string, string>} Chemin → contenu décodé.
+ * @param {string[]} rels Root-relative paths, `/` separator.
+ * @returns {Map<string, string>} Path → decoded content.
  */
 function readIndexBlobs(rels) {
     const out = new Map();
@@ -130,15 +130,15 @@ function readIndexBlobs(rels) {
         const nl = buf.indexOf(0x0a, off);
         if (nl === -1) throw new Error(`source-inventory: sortie tronquée à \`${rel}\``);
         const head = buf.toString("utf8", off, nl);
-        // « <oid> missing » : un chemin listé par ls-files et absent de l'index n'arrive pas,
-        // mais le silence sur ce cas rendrait le corpus plus petit sans le dire.
+        // "<oid> missing": a path listed by ls-files yet absent from the index does not
+        // happen, but silence on that case would shrink the corpus without saying so.
         if (/ missing$/.test(head)) {
             throw new Error(`source-inventory: \`${rel}\` est suivi mais absent de l'index`);
         }
         const size = Number(head.split(" ")[2]);
         const start = nl + 1;
         out.set(rel, buf.toString("utf8", start, start + size));
-        off = start + size + 1; // le saut de ligne que git ajoute après le blob
+        off = start + size + 1; // the newline git appends after the blob
     }
     return out;
 }
@@ -157,16 +157,16 @@ function walk(dir, acc, extensions = [".ts"]) {
 }
 
 /**
- * Lignes de LICENCE d'une bannière `/*!` — retirées avant d'y chercher de la prose.
+ * LICENSE lines of a `/*!` banner — removed before looking for prose in it.
  *
- * ⚠️ Cette liste est le cœur du correctif de B-28 : sans elle, le copyright de chaque fichier
- * suffirait à le déclarer documenté, et la gate deviendrait un vert universel. Avec elle, seule
- * la prose RÉELLEMENT écrite sous la bannière compte.
+ * ⚠️ This list is the heart of the banner fix: without it, each file's copyright would
+ * suffice to declare it documented, and the gate would become a universal green. With it,
+ * only the prose ACTUALLY written under the banner counts.
  */
 const BANNER_LICENSE_RE =
     /^(@geoleaf|©|\(c\)|Copyright|Released under|Licensed under|SPDX|https?:|GeoLeaf\s*$)/i;
 
-/** Prose d'un bloc de commentaire : décorations retirées, tags et licence écartés. */
+/** A comment block's prose: decorations removed, tags and license set aside. */
 function _proseOf(raw) {
     return raw
         .split("\n")
@@ -190,17 +190,18 @@ function extractHeader(source) {
     const withoutBanner = source.replace(/^\s*\/\*![\s\S]*?\*\//, "");
     const match = withoutBanner.match(/^\s*\/\*\*([\s\S]*?)\*\//);
 
-    // 🛑 B-28, SECONDE FORME — LA DOC ÉCRITE DANS LA BANNIÈRE ÉTAIT JETÉE AVEC ELLE.
+    // 🛑 SECOND SHAPE — THE DOC WRITTEN INSIDE THE BANNER WAS THROWN AWAY WITH IT.
     //
-    // Le retrait du bloc `/*!` est nécessaire : sans lui, TOUT fichier du dépôt passerait
-    // pour documenté par sa ligne de copyright — c'est ce que dit le commentaire ci-dessus, et
-    // c'est juste. Mais le retrait était TOTAL, alors que 161 fichiers écrivent leur
-    // description **à l'intérieur** de cette bannière, sous les lignes de licence (mesuré le
-    // 16/08/2026 sur les 273 entrées de la baseline : **59 % étaient faux**).
+    // Stripping the `/*!` block is necessary: without it, EVERY file in the repo would
+    // pass for documented through its copyright line — that is what the comment above
+    // says, and it is right. But the strip was TOTAL, while 161 files write their
+    // description **inside** that banner, under the license lines (measured on
+    // 2026-08-16 over the baseline's 273 entries: **59 % were wrong**).
     //
-    // ✅ La bannière n'est donc plus jetée en bloc : ses lignes de LICENCE sont retirées, et ce
-    // qui reste est de la prose comme une autre. C'est la distinction que le retrait total ne
-    // faisait pas — « une bannière » et « ce qu'on a écrit dedans » ne sont pas la même chose.
+    // ✅ The banner is therefore no longer thrown away wholesale: its LICENSE lines are
+    // removed, and what remains is prose like any other. That is the distinction the
+    // total strip did not draw — "a banner" and "what was written inside it" are not the
+    // same thing.
     if (!match && bannerMatch) {
         const bannerProse = _proseOf(bannerMatch[1]);
         if (bannerProse.replace(/\s/g, "").length >= MIN_PROSE_CHARS) {
@@ -319,11 +320,11 @@ function leadingComment(source) {
 function collect(options = {}) {
     const extensions = options.extensions || [".ts"];
     const includeScripts = options.includeScripts === true;
-    // B-102 — voir le bandeau « Corpus depuis l'INDEX » plus haut. Option, jamais le défaut.
+    // See the "Corpus from the INDEX" banner above. An option, never the default.
     const fromIndex = options.fromIndex === true;
     const files = [];
     const dirs = new Set();
-    /** Contenus de l'index, préchargés en un seul `git cat-file` quand `fromIndex`. */
+    /** Index contents, preloaded in a single `git cat-file` when `fromIndex`. */
     let indexBlobs = null;
 
     /** @param {string} abs @param {string} pkgName @param {string} pkgDir @param {string} baseAbs */
@@ -364,7 +365,7 @@ function collect(options = {}) {
         dirs.add(path.dirname(rel));
     }
 
-    // Le corpus, dans les deux régimes : mêmes filtres, source différente.
+    // The corpus, in both regimes: same filters, different source.
     /** @type {Array<{abs: string, pkgName: string, pkgDir: string, baseAbs: string}>} */
     const corpus = [];
     for (const pkg of registry.all()) {

@@ -1,16 +1,19 @@
 /*!
- * Tests — tâche 5.1-f : la moitié `AddForm`, absente d'`editor` jusqu'ici
+ * Tests — the `AddForm` half, absent from `editor` until now
  *
- * ⚠️ Les doubles REPRODUISENT trois contraintes mesurées, ils ne les contournent pas :
+ * ⚠️ The doubles REPRODUCE three measured constraints, they do not bypass them:
  *
- * 1. **`getWiring` est un FOURNISSEUR qui peut rendre `null`.** C'est le cas réel d'un boot
- *    sans carte, et surtout celui que le câblage d'`events.ts` produisait : son `_wiring`
- *    n'est posé qu'au chargement PARESSEUX de Terra Draw, donc un POI posé sans jamais
- *    armer d'outil serait parti dans le vide. La sauvegarde doit échouer FORT.
- * 2. **Le rappel de placement est RÉPÉTÉ** — `placement-mode.ts` garde le marqueur après le
- *    tap et son `dragend` rejoue le rappel. Le double appelle donc deux fois.
- * 3. **`submitFeature` rend une promesse** dont le rejet laisse la modale ouverte pour que
- *    l'utilisateur retente. Le double la rend, il ne la remplace pas par un booléen.
+ * 1. **`getWiring` is a PROVIDER that may return `null`.** The real case of a
+ *    boot without a map, and above all the one `events.ts`'s wiring produced:
+ *    its `_wiring` is only set at Terra Draw's LAZY load, so a POI placed
+ *    without ever arming a tool would have gone into the void. The save must
+ *    fail LOUDLY.
+ * 2. **The placement callback is REPEATED** — `placement-mode.ts` keeps the
+ *    marker after the tap and its `dragend` replays the callback. The double
+ *    therefore calls twice.
+ * 3. **`submitFeature` returns a promise** whose rejection leaves the modal
+ *    open so the user can retry. The double returns it, it does not replace
+ *    it with a boolean.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
@@ -49,9 +52,8 @@ vi.mock("../config.js", () => ({
     getEditorConfig: () => _cfg,
 }));
 
-const { initAddForm, destroyAddForm, openAddForm, startPoiCapture, buildAddFormApi } = await import(
-    "../add-form/placement-form.js"
-);
+const { initAddForm, destroyAddForm, openAddForm, startPoiCapture, buildAddFormApi } =
+    await import("../add-form/placement-form.js");
 
 /** Captures the options handed to the modal, so the test can drive onSave/onCancel. */
 let opened: Record<string, unknown>[] = [];
@@ -104,7 +106,7 @@ describe("openAddForm", () => {
     });
 });
 
-// --- la ré-entrance du glisser ---------------------------------------------------
+// --- drag re-entrance --------------------------------------------------------------
 
 describe("Le rappel répété du marqueur glissé", () => {
     it("NE rouvre PAS le formulaire au second appel", () => {
@@ -131,7 +133,7 @@ describe("Le rappel répété du marqueur glissé", () => {
     });
 });
 
-// --- la sauvegarde ---------------------------------------------------------------
+// --- the save --------------------------------------------------------------------
 
 describe("La sauvegarde", () => {
     it("passe par submitFeature en création, sur la couche choisie", async () => {
@@ -165,7 +167,7 @@ describe("La sauvegarde", () => {
         await expect(onSave({ nom: "perdu" }, "c")).rejects.toThrow(/wiring/i);
         expect(_submitFeature).not.toHaveBeenCalled();
         expect(_notify).toHaveBeenCalledWith("error", "editor.addform.unavailable");
-        // La saisie reste dans la modale : rien n'est retiré, l'utilisateur peut retenter.
+        // The capture stays in the modal: nothing is removed, the user can retry.
         expect(_clearMarker).not.toHaveBeenCalled();
     });
 
@@ -237,7 +239,7 @@ describe("startPoiCapture", () => {
     });
 });
 
-// --- la façade -------------------------------------------------------------------
+// --- the facade ------------------------------------------------------------------
 
 describe("buildAddFormApi", () => {
     it("expose openAddForm sous la clé que le créneau appelle", () => {

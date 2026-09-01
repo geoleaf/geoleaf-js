@@ -20,9 +20,8 @@ vi.mock("../../../src/utils/general/geoleaf-global.js", () => ({
     getGeoLeaf: () => ({ Config: { getActiveProfileId: () => mockProfileId } }),
 }));
 
-const { ThemeSelectorLifecycle } = await import(
-    "../../../src/capabilities/theme-selector/lifecycle.ts"
-);
+const { ThemeSelectorLifecycle } =
+    await import("../../../src/capabilities/theme-selector/lifecycle.ts");
 
 /** Adds the two theme containers to the DOM; returns a cleanup function. */
 function addContainers() {

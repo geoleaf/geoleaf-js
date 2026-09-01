@@ -72,7 +72,7 @@ jobs:
             # rebâtit qu'une PARTIE de ce qu'il copie : son étape 2 ne tire que le core et ses
             # dépendances, or les plugins dépendent de lui et non l'inverse — 10 des 12
             # garderaient leur `dist/` d'avant. L'enchaîner seul produit un déployé PÉRIMÉ en
-            # sortant 0 (mesuré le 01/08/2026, B-105).
+            # sortant 0 (mesuré le 01/08/2026).
             - run: npx turbo run build
             - run: npm run build:deploy
 

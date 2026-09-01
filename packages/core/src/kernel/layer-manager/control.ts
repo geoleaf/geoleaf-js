@@ -111,7 +111,7 @@ function createLayerManagerControl(options: LMControlOptions): LMControlInstance
                 emitLayerManagerPanel({
                     container: this._container!,
                     mainWrapper,
-                    headerWrapper: headerWrapper as HTMLElement,
+                    headerWrapper: headerWrapper,
                 });
             }
         },

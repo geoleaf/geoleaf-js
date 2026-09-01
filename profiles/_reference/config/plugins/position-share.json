@@ -1,0 +1,13 @@
+{
+    "enabled": false,
+    "mode": "manual",
+    "transport": "http",
+    "endpoint": "https://example.invalid/positions",
+    "intervalMs": 30000,
+    "minDistanceM": 10,
+    "showButton": true,
+    "receive": {
+        "enabled": false,
+        "layerId": "positions_terrain"
+    }
+}

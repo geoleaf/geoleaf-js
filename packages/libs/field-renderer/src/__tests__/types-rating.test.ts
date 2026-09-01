@@ -1,12 +1,13 @@
 /**
- * `types/rating.ts` — couverture des branches (backlog COUVERTURE, suite R.2).
+ * `types/rating.ts` — branch coverage.
  *
- * Le composant était à **58,7 % de branches** : le test existant exerce le rendu nominal
- * (5 étoiles pleines, clic simple) mais aucune de ses paires manquantes — la demi-étoile,
- * `maxStars` fourni, la valeur nulle, `required`, `readOnly`, le clic HORS d'une étoile et
- * le survol HORS d'une étoile. Ce sont exactement ces branches-là que ce fichier couvre.
+ * The component sat at **58.7% branches**: the existing test exercises the
+ * nominal render (5 full stars, simple click) but none of its missing pairs
+ * — the half star, `maxStars` provided, null value, `required`, `readOnly`,
+ * a click OUTSIDE a star and a hover OUTSIDE a star. Exactly those branches
+ * are what this file covers.
  *
- * ⚠️ Fichier séparé de `field-renderer.test.ts` — voir l'en-tête de `types-contact.test.ts`.
+ * ⚠️ File separate from `field-renderer.test.ts` — see the header of `types-contact.test.ts`.
  */
 import { describe, it, expect, vi } from "vitest";
 
@@ -20,12 +21,12 @@ function field(overrides: Partial<FieldConfig> = {}): FieldConfig {
     return { id: "note", type: "rating", label: "Note", ...overrides };
 }
 
-/** Rejoue un événement de souris sur une cible (bubbles pour atteindre le listener délégué). */
+/** Replays a mouse event on a target (bubbles to reach the delegated listener). */
 function fire(target: Element, type: string, bubbles = true) {
     target.dispatchEvent(new globalThis.MouseEvent(type, { bubbles }));
 }
 
-// ─── buildStarDisplay — les trois classes de segment ─────────────────────────────
+// ─── buildStarDisplay — the three segment classes ────────────────────────────────
 
 describe("buildStarDisplay — pleine / demie / vide", () => {
     it("une note entière ne produit que des étoiles pleines et vides", () => {
@@ -40,7 +41,7 @@ describe("buildStarDisplay — pleine / demie / vide", () => {
         expect(el.querySelectorAll(".gl-rating__star--filled").length).toBe(3);
         expect(el.querySelectorAll(".gl-rating__star--half").length).toBe(1);
         expect(el.querySelectorAll(".gl-rating__star--empty").length).toBe(1);
-        // le glyphe demi accompagne la classe demi
+        // the half glyph goes with the half class
         expect(el.textContent).toContain("⯨");
     });
 
@@ -89,7 +90,7 @@ describe("rating.formRender — mode entier (défaut)", () => {
         const onChange = vi.fn();
         const el = ratingComponent.formRender!(0, field(), onChange, CTX);
         const stars = el.querySelector(".gl-form-rating__stars")!;
-        fire(stars, "click"); // la cible n'a pas d'ancêtre [data-val]
+        fire(stars, "click"); // the target has no [data-val] ancestor
         expect(onChange).not.toHaveBeenCalled();
     });
 
@@ -117,7 +118,7 @@ describe("rating.formRender — mode entier (défaut)", () => {
     });
 });
 
-// ─── formRender — mode demi-étoiles ──────────────────────────────────────────────
+// ─── formRender — half-star mode ─────────────────────────────────────────────────
 
 describe("rating.formRender — mode demi-étoiles (`halfStars`)", () => {
     it("produit deux boutons par étoile (demi-gauche + pleine)", () => {

@@ -1,29 +1,31 @@
 // @ts-check
 /**
- * 31 — LE SECOND CHARGEMENT HORS LIGNE (roadmap socle-init, S3.3)
+ * 31 — THE SECOND LOAD, OFFLINE
  *
- * L'application se déclare PWA — manifeste, `installPrompt`, Service Worker — et **ne
- * pouvait pas booter hors ligne**. `STATIC_ASSETS` portait trois entrées écrites à la main
- * là où un premier chargement en demande une vingtaine : le shell était pré-caché, le
- * bundle d'entrée aussi, et **rien de ce que ce bundle importe**. Au second chargement hors
- * ligne, l'entrée sortait du cache et ses quatre imports statiques échouaient.
+ * The application declares itself a PWA — manifest, `installPrompt`, Service
+ * Worker — and **could not boot offline**. `STATIC_ASSETS` carried three
+ * hand-written entries where a first load requests some twenty: the shell was
+ * pre-cached, the entry bundle too, and **nothing that bundle imports**. At the
+ * second load offline, the entry came out of the cache and its four static
+ * imports failed.
  *
- * 🛑 ET LA TROISIÈME ENTRÉE ÉTAIT MORTE. Elle pré-cachait
- * `dist/geoleaf-main.min.css?v=<horodatage>` pendant que le document demande le chemin NU —
- * le patch de cache-busting ne couvre que l'ESM et les plugins. `sw-core.js` appelle
- * `cache.match(request)` **sans `ignoreSearch`**, donc la query fait partie de la clé : la
- * feuille de style n'a jamais été servie depuis ce cache. Sur trois entrées, deux servaient.
+ * 🛑 AND THE THIRD ENTRY WAS DEAD. It pre-cached
+ * `dist/geoleaf-main.min.css?v=<timestamp>` while the document requests the
+ * BARE path — the cache-busting patch only covers the ESM and the plugins.
+ * `sw-core.js` calls `cache.match(request)` **without `ignoreSearch`**, so the
+ * query is part of the key: the stylesheet was never served from that cache. Of
+ * three entries, two served.
  *
- * ═══ CE QUE CE SPEC ÉPROUVE, ET QU'AUCUNE SUITE UNITAIRE NE PEUT ÉPROUVER ═══
+ * ═══ WHAT THIS SPEC PROVES, AND THAT NO UNIT SUITE CAN ═══
  *
- * Les tests unitaires exécutent le worker contre une Cache API **simulée**, et la dérivation
- * de `build-deploy.cjs` contre un `outDir` de fixture. Ni l'un ni l'autre ne dit ce que fait
- * le déployé — copié, patché par regex, minifié — dans un vrai moteur. C'est le seul endroit
- * où les deux moitiés se rencontrent.
+ * The unit tests run the worker against a **simulated** Cache API, and
+ * `build-deploy.cjs`'s derivation against a fixture `outDir`. Neither says what
+ * the deploy — copied, regex-patched, minified — does in a real engine. This is
+ * the only place where the two halves meet.
  *
- * ⚠️ AUCUNE URL N'EST ÉCRITE ICI. Les noms de chunks sont hachés par le contenu et changent
- * à chaque build : le spec les lit dans le document servi, exactement comme le navigateur.
- * Un spec qui les écrirait mesurerait le build d'un jour donné, puis se tairait.
+ * ⚠️ NO URL IS WRITTEN HERE. Chunk names are content-hashed and change at every
+ * build: the spec reads them in the served document, exactly like the browser.
+ * A spec that wrote them would measure one day's build, then fall silent.
  */
 
 import { test, expect } from "@playwright/test";
@@ -33,9 +35,10 @@ import { bootMap } from "./helpers/boot.js";
 const ORIGIN = baseURL("full");
 
 /**
- * Attend que le worker CONTRÔLE la page. `activated` ne suffit pas : un worker actif qui
- * n'a pas encore réclamé ses clients n'intercepte rien, et un rechargement lancé dans cette
- * fenêtre éprouverait le réseau en croyant éprouver le cache.
+ * Waits for the worker to CONTROL the page. `activated` does not suffice: an
+ * active worker that has not yet claimed its clients intercepts nothing, and a
+ * reload launched in that window would prove the network believing it proves
+ * the cache.
  * @param {import('@playwright/test').Page} page
  */
 async function waitForController(page) {
@@ -45,7 +48,7 @@ async function waitForController(page) {
 }
 
 /**
- * Rend les URL que le document déclare précharger, telles qu'écrites dans le markup.
+ * Returns the URLs the document declares for preload, as written in the markup.
  * @param {import('@playwright/test').Page} page
  * @returns {Promise<string[]>}
  */
@@ -58,51 +61,57 @@ function readPreloadedChunks(page) {
 }
 
 /**
- * Motif du saut du SEUL test qui exige un cache de RUNTIME, ou `null` s'il peut jouer.
- * Mesuré une fois, asserté par le témoin. B-237.
+ * Skip motive of the ONLY test requiring a RUNTIME cache, or `null` if it can
+ * play. Measured once, asserted by the witness.
  * @type {string | null}
  */
 let skipReason = null;
 
-/** Le `Cache-Control` que le harnais sert réellement. `null` = pas encore mesuré. */
+/** The `Cache-Control` the harness really serves. `null` = not yet measured. */
 let cacheControlMesure = null;
 
 /**
- * 🛑 CE SAUT EST MESURÉ, PAS DÉCRÉTÉ — et il se réactive SEUL.
+ * 🛑 THIS SKIP IS MEASURED, NOT DECREED — and it re-arms ITSELF.
  *
- * Le worker HONORE `Cache-Control: no-store` (durcissement S8/8.3, motif écrit dans
- * `isCacheableResponse` → `refusesSharedCache`). Or les deux serveurs de ce dépôt l'envoient
- * sur TOUTES les ressources : `http-server -c-1`, que `playwright.config.js` démarre pour la
- * cible `ports`, répond `no-cache, no-store, must-revalidate` ; le nginx de dev pose
- * `add_header Cache-Control "no-store" always` sur ses quatre vhosts. Aucune ressource de même
- * origine n'entre donc en cache **au runtime** dans ce harnais — seul le pré-cache survit,
- * parce que `cache.addAll()` ne passe pas par `isCacheableResponse`.
+ * The worker HONOURS `Cache-Control: no-store` (a deliberate hardening, motive
+ * written in `isCacheableResponse` → `refusesSharedCache`). Yet both servers of
+ * this repo send it on ALL resources: `http-server -c-1`, which
+ * `playwright.config.js` starts for the `ports` target, answers
+ * `no-cache, no-store, must-revalidate`; the dev nginx sets
+ * `add_header Cache-Control "no-store" always` on its four vhosts. No
+ * same-origin resource thus enters the cache **at runtime** in this harness —
+ * only the pre-cache survives, because `cache.addAll()` does not go through
+ * `isCacheableResponse`.
  *
- * Le test du second chargement a besoin du profil, qui est de la DONNÉE et n'est pas pré-caché.
- * Il éprouve donc un scénario que sa propre configuration rend impossible.
+ * The second-load test needs the profile, which is DATA and is not pre-cached.
+ * It thus proves a scenario its own configuration makes impossible.
  *
- * ✅ **Le produit, lui, fonctionne** : `SERVEUR.md` §8 — qui PART CHEZ LE CLIENT — prescrit
- * `no-cache` ou `max-age=3600` pour `profiles/**` et avertit nommément : « ne pas reprendre le
- * `no-store` du serveur de développement du projet : il est délibéré, et local ».
+ * ✅ **The product itself works**: `SERVEUR.md` §8 — which SHIPS TO THE CLIENT —
+ * prescribes `no-cache` or `max-age=3600` for `profiles/**` and warns by name:
+ * "do not take up the project's development server's `no-store`: it is
+ * deliberate, and local".
  *
- * ⚠️ **Ne pas "réparer" le produit pour verdir ce test.** Le seul geste qui le rendrait vert
- * sans toucher au harnais serait de pré-cacher le profil, c'est-à-dire élargir un `addAll`
- * TOUT-OU-RIEN à des données — ce que le §« Ce que ce fichier ne garde pas » met en garde de
- * faire, et que B-237 écarte explicitement.
+ * ⚠️ **Do not "repair" the product to green this test.** The only gesture that
+ * would green it without touching the harness would be pre-caching the profile,
+ * i.e. widening an ALL-OR-NOTHING `addAll` to data — what the §"what this file
+ * does not guard" warns against, and what the arbitration explicitly rules out.
  *
- * QUAND IL SE RÉACTIVE : le jour où le harnais cesse d'envoyer `no-store`. Aucune intervention
- * n'est requise — la condition est RE-MESURÉE à chaque run, ce qui est la différence entre ce
- * saut et un `.skip` qu'il faudrait penser à retirer.
+ * WHEN IT RE-ARMS: the day the harness stops sending `no-store`. No
+ * intervention required — the condition is RE-MEASURED at every run, which is
+ * the difference between this skip and a `.skip` one would have to remember to
+ * remove.
  *
- * ✅ **ÉPROUVÉ DANS LES DEUX SENS le 13/08/2026, et un saut conditionnel jamais vu se LEVER est
- * indiscernable d'un `.skip` nu.** En remplaçant `-c-1` par `-c3600` sur le serveur de
- * `deploy-full` dans `playwright.config.js` : le témoin bascule sur sa branche « pas de saut »,
- * ce test JOUE, et il **PASSE en 3,9 s**. Configuration restaurée aussitôt.
+ * ✅ **PROVEN IN BOTH DIRECTIONS on 2026-08-13, and a conditional skip never
+ * seen LIFTING is indistinguishable from a bare `.skip`.** Replacing `-c-1`
+ * with `-c3600` on `deploy-full`'s server in `playwright.config.js`: the
+ * witness flips to its "no skip" branch, this test PLAYS, and it **PASSES in
+ * 3.9 s**. Configuration restored immediately.
  *
- * 🛑 Ce second sens dit plus que la mécanique du saut : il établit que **le produit n'a aucun
- * défaut ici**. Le second chargement hors ligne fonctionne dès que le serveur ne réclame pas
- * `no-store` — c'est-à-dire dans la configuration que `SERVEUR.md` prescrit à l'intégrateur.
- * Sans cette mesure, « en production ça marche » serait resté une inférence.
+ * 🛑 That second direction says more than the skip's mechanics: it establishes
+ * that **the product has no defect here**. The second load offline works as
+ * soon as the server does not demand `no-store` — i.e. in the configuration
+ * `SERVEUR.md` prescribes to the integrator. Without that measurement, "it
+ * works in production" would have stayed an inference.
  */
 test.beforeAll(async ({ request }) => {
     try {
@@ -116,13 +125,14 @@ test.beforeAll(async ({ request }) => {
         skipReason =
             `le harnais répond \`Cache-Control: ${cacheControlMesure}\` et le worker HONORE ` +
             `\`no-store\` : aucun cache de runtime ici, donc le profil ne peut pas être servi ` +
-            `hors ligne. Défaut du HARNAIS, pas du produit — voir B-237 et \`SERVEUR.md\` §8. ` +
+            `hors ligne. Défaut du HARNAIS, pas du produit — voir \`SERVEUR.md\` §8. ` +
             `Se réactive seul quand le harnais cessera d'envoyer \`no-store\`.`;
     }
 });
 
-// 🛑 SANS CE TÉMOIN, LE SAUT SERAIT SILENCIEUX. Un test sauté est indiscernable, dans un rapport
-// lu vite, d'un test vert — c'est exactement ce que `e2e/30-sync-cycle.spec.js` a consigné.
+// 🛑 WITHOUT THIS WITNESS, THE SKIP WOULD BE SILENT. A skipped test is
+// indistinguishable, in a quickly-read report, from a green one — exactly what
+// `e2e/30-sync-cycle.spec.js` recorded.
 test("TÉMOIN — si le second chargement se saute, le motif est MESURÉ et NOMMÉ", async () => {
     expect(
         cacheControlMesure,
@@ -132,10 +142,10 @@ test("TÉMOIN — si le second chargement se saute, le motif est MESURÉ et NOMM
     if (skipReason) {
         test.info().annotations.push({ type: "skip-reason", description: skipReason });
         expect(skipReason.length, "un saut doit porter un motif lisible").toBeGreaterThan(40);
-        expect(skipReason, "le motif doit nommer sa ligne de registre").toContain("B-237");
+        expect(skipReason, "le motif doit nommer sa source durable").toContain("SERVEUR.md");
         return;
     }
-    // Pas de saut ⇒ l'affirmation inverse doit tenir, et être vérifiée plutôt que supposée.
+    // No skip ⇒ the inverse claim must hold, and be verified rather than assumed.
     expect(
         cacheControlMesure,
         "sans `no-store`, le test du second chargement DOIT jouer"
@@ -151,29 +161,30 @@ test.describe("31 — le second chargement hors ligne", () => {
 
         const preloaded = await readPreloadedChunks(page);
 
-        // Le document doit déclarer les chunks que l'entrée importe STATIQUEMENT — et eux
-        // seuls. `dist/chunks/` en porte davantage : précharger un chunk paresseux irait
-        // chercher d'avance exactement ce que son `import()` existe pour différer.
+        // The document must declare the chunks the entry imports STATICALLY — and
+        // them alone. `dist/chunks/` carries more: preloading a lazy chunk would
+        // fetch in advance exactly what its `import()` exists to defer.
         expect(preloaded.length).toBeGreaterThan(0);
         for (const href of preloaded) {
             expect(href).toMatch(/^dist\/chunks\/.+\.js$/);
         }
 
-        // `caches.match` balaie tous les caches de l'origine : le spec n'a donc pas à
-        // connaître le nom du cache, qui porte la version du paquet.
+        // `caches.match` sweeps all the origin's caches: the spec thus need not
+        // know the cache's name, which carries the package version.
         const verdict = await page.evaluate(async (chunks) => {
             const probe = async (url) => ({ url, hit: !!(await caches.match(url)) });
             return {
                 shell: await probe("index.html"),
-                // ⚠️ LA CLÉ NUE, celle que porte le <link rel="stylesheet"> du document.
-                // C'est l'entrée qui était morte : elle était pré-cachée avec un `?v=`.
+                // ⚠️ THE BARE KEY, the one the document's <link rel="stylesheet">
+                // carries. The entry that was dead: it was pre-cached with a `?v=`.
                 css: await probe("dist/geoleaf-main.min.css"),
                 config: await probe("profiles/geoleaf.config.json"),
                 chunks: await Promise.all(chunks.map(probe)),
-                // Le MOTEUR, en entier. Depuis MapLibre 6 il n'est plus un fichier mais un
-                // graphe : le document ne nomme que le shim, qui importe l'entrée, qui importe
-                // le chunk partagé, qui instancie le worker. Trois des quatre ne sont nommés
-                // NULLE PART dans le markup — donc aucune dérivation naïve ne les voit.
+                // The ENGINE, in full. Since MapLibre 6 it is no longer a file but
+                // a graph: the document names only the shim, which imports the
+                // entry, which imports the shared chunk, which instantiates the
+                // worker. Three of the four are named NOWHERE in the markup — so
+                // no naive derivation sees them.
                 engine: await Promise.all(
                     [
                         "vendor/maplibre-gl/global.mjs",
@@ -204,34 +215,38 @@ test.describe("31 — le second chargement hors ligne", () => {
     });
 
     // ═══════════════════════════════════════════════════════════════════════════════════
-    // GARDE DE CLASSE — B-236. Elle ne garde pas UNE entrée, elle garde l'invariant.
+    // CLASS GUARD. It does not guard ONE entry, it guards the invariant.
     // ═══════════════════════════════════════════════════════════════════════════════════
     test("CLASSE — chaque entrée du pré-cache est SERVIE hors ligne, par le ROUTEUR", async ({
         page,
         context,
     }) => {
-        // 🛑 CE QUE CETTE GARDE AJOUTE AU TEST DU DESSUS, ET POURQUOI IL LA FALLAIT.
+        // 🛑 WHAT THIS GUARD ADDS TO THE TEST ABOVE, AND WHY IT WAS NEEDED.
         //
-        // Le test de pré-cache interroge `caches.match()`, qui BALAIE TOUS les caches de
-        // l'origine. Il répond donc « le fichier est quelque part », ce qui est vrai et
-        // insuffisant : le worker, lui, lit dans UN seau nommé, choisi par sa route. B-236 est
-        // né exactement dans cet écart — `profiles/geoleaf.config.json` était pré-caché dans
-        // `CACHE_STATIC` et la route le cherchait dans un `…-profile-geoleaf.config.json` vide,
-        // créé par le `caches.open()` de la stratégie elle-même. Le test du dessus était VERT
-        // pendant que l'application ne bootait pas.
+        // The pre-cache test queries `caches.match()`, which SWEEPS ALL the
+        // origin's caches. It thus answers "the file is somewhere", which is
+        // true and insufficient: the worker reads from ONE named bucket, chosen
+        // by its route. The class was born exactly in that gap —
+        // `profiles/geoleaf.config.json` was pre-cached in `CACHE_STATIC` and
+        // the route looked for it in an empty `…-profile-geoleaf.config.json`,
+        // created by the strategy's own `caches.open()`. The test above was
+        // GREEN while the application did not boot.
         //
-        // Ici on ne regarde aucun cache : on COUPE le réseau et on demande la ressource. Ce qui
-        // répond est le routeur, ou rien. C'est la seule question qui compte pour un intégrateur.
+        // Here no cache is looked at: the network is CUT and the resource
+        // requested. What answers is the router, or nothing. The only question
+        // that counts for an integrator.
         //
-        // ⚠️ Cette garde peut rougir sur PLUSIEURS entrées d'un coup. C'est de l'information :
-        // chaque rouge est une entrée pré-cachée que personne ne sait servir.
+        // ⚠️ This guard can redden on SEVERAL entries at once. That is
+        // information: each red is a pre-cached entry nobody knows how to
+        // serve.
         await page.goto(ORIGIN, { waitUntil: "domcontentloaded" });
         await waitForController(page);
         await bootMap(page);
         await page.waitForTimeout(2000);
 
-        // La liste n'est PAS écrite ici : elle est injectée dans le worker au build, et les
-        // noms de chunks sont hachés par le contenu. On la lit là où le navigateur la lit.
+        // The list is NOT written here: it is injected into the worker at build,
+        // and chunk names are content-hashed. It is read where the browser reads
+        // it.
         const assets = await page.evaluate(async () => {
             const src = await (await fetch("sw-core.js")).text();
             const m = src.match(/STATIC_ASSETS\s*=\s*\[([\s\S]*?)\]/);
@@ -242,7 +257,7 @@ test.describe("31 — le second chargement hors ligne", () => {
                 .filter(Boolean);
         });
 
-        // Plancher de non-vacuité : une liste vide rendrait cette garde verte sans rien éprouver.
+        // Non-emptiness floor: an empty list would render this guard green having proven nothing.
         expect(assets, "STATIC_ASSETS illisible dans le worker servi").not.toBeNull();
         expect(assets.length, "pré-cache vide — la garde ne garderait rien").toBeGreaterThan(5);
 
@@ -270,33 +285,37 @@ test.describe("31 — le second chargement hors ligne", () => {
     });
 
     test("hors ligne, un second chargement affiche la carte", async ({ page, context }) => {
-        // B-237 — saut MESURÉ, jamais décrété. Motif, précédent et condition de réactivation :
-        // voir le bandeau de `skipReason` en tête de fichier. Ce saut ne couvre QUE ce test :
-        // le pré-cache et la garde de classe jouent dans tous les cas.
+        // MEASURED skip, never decreed. Motive, precedent and re-arming
+        // condition: see the `skipReason` banner at the file's head. This skip
+        // covers ONLY this test: the pre-cache and the class guard play in every
+        // case.
         test.skip(skipReason !== null, skipReason ?? "");
 
-        // ── 1er passage : le worker s'INSTALLE pendant que l'application démarre ──────────
+        // ── 1st pass: the worker INSTALLS while the application starts ────────────────────
         await page.goto(ORIGIN, { waitUntil: "domcontentloaded" });
         await waitForController(page);
         await bootMap(page);
         await page.waitForTimeout(2000);
 
-        // ── 2e passage EN LIGNE, ET IL N'EST PAS FACULTATIF ───────────────────────────────
+        // ── 2nd pass ONLINE, AND IT IS NOT OPTIONAL ───────────────────────────────────────
         //
-        // 🛑 LA TOUTE PREMIÈRE VISITE NE PEUT PAS PEUPLER LE CACHE DE RUNTIME, et ce n'est pas
-        // un défaut : l'application demande sa configuration AVANT que le worker n'ait réclamé
-        // ses clients. Ces requêtes-là ne traversent donc pas le worker et ne sont écrites nulle
-        // part. `waitForController` atteste que le contrôle finit par arriver, pas qu'il était
-        // là quand le config est parti.
+        // 🛑 THE VERY FIRST VISIT CANNOT POPULATE THE RUNTIME CACHE, and that is
+        // no defect: the application requests its configuration BEFORE the
+        // worker has claimed its clients. Those requests thus do not traverse
+        // the worker and are written nowhere. `waitForController` attests
+        // control eventually arrives, not that it was there when the config
+        // left.
         //
-        // Mesuré le 13/08/2026, sur trois chargements : après le 1er, `profile.json` est
-        // ABSENT de tous les caches ; après le 2e EN LIGNE, il est présent sous `?t=0` ; au 3e,
-        // hors ligne, la carte s'affiche et AUCUNE requête n'échoue.
+        // Measured on 2026-08-13, over three loads: after the 1st,
+        // `profile.json` is ABSENT from all caches; after the 2nd ONLINE, it is
+        // present under `?t=0`; at the 3rd, offline, the map displays and NO
+        // request fails.
         //
-        // ⚠️ Ce passage manquait, et son absence a produit un rouge qu'on a d'abord pris pour
-        // un défaut du produit. Le scénario réel d'un utilisateur est bien celui-ci : il ouvre
-        // l'application une première fois (le worker s'installe), revient, PUIS part sur le
-        // terrain. La promesse hors ligne commence au second chargement — pas au premier.
+        // ⚠️ This pass was missing, and its absence produced a red first taken
+        // for a product defect. A user's real scenario is indeed this one: they
+        // open the application a first time (the worker installs), come back,
+        // THEN go into the field. The offline promise starts at the second
+        // load — not the first.
         await page.reload({ waitUntil: "domcontentloaded" });
         await bootMap(page);
         await page.waitForTimeout(2000);
@@ -304,28 +323,33 @@ test.describe("31 — le second chargement hors ligne", () => {
         await context.setOffline(true);
         await page.reload({ waitUntil: "domcontentloaded" });
 
-        // La seule assertion qui vaut : une `maplibregl.Map` native, avec un style vivant.
-        // Le document peut très bien s'afficher — c'est le shell — pendant que le bundle
-        // manque. Exiger la carte, c'est exiger que la clôture des imports ait résolu.
+        // The only assertion that is worth it: a native `maplibregl.Map`, with a
+        // live style. The document can well display — that is the shell — while
+        // the bundle is missing. Requiring the map is requiring the import
+        // closure to have resolved.
         await bootMap(page);
     });
 
-    // ⚠️ CE QUE CE FICHIER NE GARDE PAS, ET POURQUOI — à lire avant d'ajouter un test ici.
+    // ⚠️ WHAT THIS FILE DOES NOT GUARD, AND WHY — to read before adding a test
+    // here.
     //
-    // Le test ci-dessus charge la page EN LIGNE avant de couper. Ce premier passage remplit les
-    // caches au fil de l'eau, si bien qu'un asset ABSENT de `STATIC_ASSETS` répond quand même :
-    // il éprouve donc le cache tel qu'il est APRÈS une visite, pas le pré-cache lui-même.
+    // The test above loads the page ONLINE before cutting. That first pass
+    // fills the caches along the way, so an asset ABSENT from `STATIC_ASSETS`
+    // still answers: it thus proves the cache as it is AFTER a visit, not the
+    // pre-cache itself.
     //
-    // Un troisième test a été tenté au passage à MapLibre 6 pour combler cet angle — installer
-    // le worker sans jamais demander le moteur, ou le réinstaller après purge, puis couper. Il
-    // a été RETIRÉ : dans les deux variantes il sortait vert sur un pré-cache amputé de trois
-    // modules sur cinq, donc il ne gardait rien tout en ayant l'air de garder. Deux causes,
-    // toutes deux mesurées : `isStaticAsset()` reconnaissant `.mjs`, `cacheFirstStrategy` ÉCRIT
-    // les modules manquants dans `CACHE_STATIC` dès le premier chargement en ligne ; et une
-    // réinstallation par `unregister()` + `register()` ne rejoue pas `cache.addAll()` de façon
-    // observable dans la fenêtre du test.
+    // A third test was attempted at the MapLibre 6 move to fill that angle —
+    // install the worker without ever requesting the engine, or reinstall it
+    // after a purge, then cut. It was REMOVED: in both variants it came out
+    // green on a pre-cache missing three modules of five, so it guarded nothing
+    // while looking like it guarded. Two causes, both measured:
+    // `isStaticAsset()` recognising `.mjs`, `cacheFirstStrategy` WRITES the
+    // missing modules into `CACHE_STATIC` from the first online load; and a
+    // reinstallation via `unregister()` + `register()` does not replay
+    // `cache.addAll()` observably within the test's window.
     //
-    // La propriété visée — le pré-cache porte le moteur ENTIER — est donc assertée là où elle
-    // est déterministe : dans le premier test, qui lit le contenu réel du cache. Un test
-    // d'intégration qui ne peut pas rougir vaut moins qu'une assertion directe qui le peut.
+    // The targeted property — the pre-cache carries the WHOLE engine — is thus
+    // asserted where it is deterministic: in the first test, which reads the
+    // cache's real content. An integration test that cannot redden is worth
+    // less than a direct assertion that can.
 });

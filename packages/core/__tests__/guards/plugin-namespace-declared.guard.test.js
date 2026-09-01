@@ -1,111 +1,84 @@
 /**
  * @file plugin-namespace-declared.guard.test.js
- * @description Test-garde — tout namespace qu'un plugin MONTE est DÉCLARÉ dans
+ * @description Guard test — every namespace a plugin MOUNTS is DECLARED in
  * `GeoLeafGlobal` (`packages/core/src/global.d.ts`).
  *
- * Pourquoi ce garde existe (B-52, 27/07/2026)
+ * Why this guard exists (27/07/2026)
  * -------------------------------------------
- * B-13 a retiré la traîne `[key: string]: unknown` de `GeoLeafGlobal` et déclaré 7 namespaces
- * de plugins. **Cinq y manquaient** — `FileImport`, `Measure`, `Print`, `Editor`, `Ws` — et le
- * retrait de la traîne les a rendus **inatteignables au niveau des types** : un intégrateur
- * compilant contre les types publiés recevait TS2339 sur `GeoLeaf.FileImport`, alors que le
- * plugin le monte bien au runtime.
+ * The namespace's strict typing removed `GeoLeafGlobal`'s
+ * `[key: string]: unknown` tail and declared 7 plugin namespaces. **Five
+ * were missing** — `FileImport`, `Measure`, `Print`, `Editor`, `Ws` — and
+ * the tail's removal made them **unreachable at the type level**: an
+ * integrator compiling against the published types received TS2339 on
+ * `GeoLeaf.FileImport`, while the plugin does mount it at runtime.
  *
- * Les deux effets de B-13 venaient du MÊME geste — 8 API fantômes documentées tombées d'un
- * côté, 5 plugins publiés fermés de l'autre. Seul le premier était voulu, et **rien ne l'a
- * dit** : les plugins écrivent à travers `GeoLeafHost` (`@geoleaf/host-runtime`), qui porte
- * encore sa traîne, donc leur propre compilation reste verte. Les deux contrats ne sont pas au
- * même stade, et c'est ce décalage qui a rendu l'écart invisible pendant que `ci:local` sortait
- * 54/54.
+ * Both effects came from the SAME gesture — 8 documented ghost APIs dropped
+ * on one side, 5 published plugins closed off on the other. Only the first
+ * was intended, and **nothing said so**: plugins write through `GeoLeafHost`
+ * (`@geoleaf/host-runtime`), which still carries its tail, so their own
+ * compilation stays green. The two contracts are not at the same stage, and
+ * that offset is what made the gap invisible while `ci:local` came out 54/54.
  *
- * Ce garde ferme la classe, pas les cinq cas : un 14ᵉ plugin qui monterait un namespace non
- * déclaré rougirait ici, sans que personne ait à y penser.
+ * This guard closes the class, not the five cases: a 14th plugin mounting an
+ * undeclared namespace would turn red here, with nobody having to think of it.
  *
- * ## Ce qu'il ne vérifie PAS
+ * ## What it does NOT verify
  *
- * Ni la FORME de la surface montée (les membres sont déclarés `unknown` — c'est le gisement de
- * **B-13**, qui progresse par membre), ni l'inverse (une déclaration sans plugin qui la monte).
- * Le second sens serait souhaitable mais n'est pas symétrique : le core déclare légitimement
- * des membres que nul plugin ne monte.
+ * Neither the mounted surface's SHAPE (the members are declared `unknown` —
+ * the remaining deposit, progressing per member), nor the reverse (a
+ * declaration with no plugin mounting it). The second direction would be
+ * desirable but is not symmetric: the core legitimately declares members no
+ * plugin mounts.
  *
- * ## Pourquoi un TEST et non un script de `scripts/`
+ * ## Why a TEST and not a `scripts/` script
  *
- * Même raison que `doc-plugin-manifest.guard.test.js`, écrite dans son en-tête : un script neuf
- * est refusé tant qu'il n'est pas suivi par git ET inscrit dans `SCRIPTS_ALLOWLIST`, donc
- * `ci:local` resterait rouge jusqu'au commit. Contrepartie assumée : ce fichier lit des sources
- * de `packages/plugins/` depuis `core`, **en texte, jamais par import** — un `entry.ts` monte un
- * namespace global et branche des écouteurs à l'évaluation.
+ * Same reason as `doc-plugin-manifest.guard.test.js`, written in its header:
+ * a new script is refused until git-tracked AND enrolled in
+ * `SCRIPTS_ALLOWLIST`, so `ci:local` would stay red until the commit.
+ * Assumed trade-off: this file reads `packages/plugins/` sources from
+ * `core`, **as text, never by import** — an `entry.ts` mounts a global
+ * namespace and wires listeners at evaluation.
  *
- * ## Une garde jamais vue rouge ne garde rien
+ * ## The `GeoLeafGlobal` reader is SHARED since 19/08/2026
  *
- * Deux assertions anti-garde-vide, et **aucun repli silencieux** : si `GeoLeafGlobal` devient
- * introuvable ou si aucun `entry.ts` n'est lu, le garde jette au lieu de sortir vert.
+ * It lived here, by brace counting. `namespace-local-views.guard.test.js`
+ * needed the same — the other direction of the same question — and two
+ * copies drift. Extracted into `_helpers/geoleaf-global-keys.js`, and
+ * rewritten on the AST in passing: brace counting failed silently on a brace
+ * in a comment, a member over two lines or a quoted name, and a silent
+ * failure yields an INCOMPLETE set, hence a guard that exempts.
+ *
+ * ## A guard never seen red guards nothing
+ *
+ * Two anti-empty-guard assertions, and **no silent fallback**: if
+ * `GeoLeafGlobal` becomes unfindable or no `entry.ts` is read, the guard
+ * throws instead of coming out green.
  */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { NO_OWN_NAMESPACE } from "../_helpers/no-own-namespace.js";
+import { readGeoLeafGlobalKeys } from "../_helpers/geoleaf-global-keys.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "../../../..");
 const PLUGINS_DIR = path.join(REPO_ROOT, "packages/plugins");
 const GLOBAL_DTS = path.join(REPO_ROOT, "packages/core/src/global.d.ts");
 
-// La liste des plugins sans façade propre est PARTAGÉE avec
-// `doc-plugin-manifest.guard.test.js` : elle énonce un fait du dépôt qui n'appartient à aucun
-// des deux gardes, et deux copies dériveraient. Motif complet dans le helper.
-
-/** Les clés de PREMIER niveau de `interface GeoLeafGlobal`, par comptage d'accolades. */
-function readGeoLeafGlobalKeys() {
-    const src = fs.readFileSync(GLOBAL_DTS, "utf8");
-    const i = src.indexOf("interface GeoLeafGlobal");
-    if (i === -1) {
-        throw new Error(
-            "plugin-namespace-declared.guard: `interface GeoLeafGlobal` introuvable dans " +
-                "packages/core/src/global.d.ts — l'interface a été renommée. Re-pointer ce garde, " +
-                "ne pas l'assouplir : sortir vert ici signifierait « aucun namespace à vérifier »."
-        );
-    }
-    const open = src.indexOf("{", i);
-    let depth = 0;
-    let close = -1;
-    for (let k = open; k < src.length; k += 1) {
-        if (src[k] === "{") depth += 1;
-        else if (src[k] === "}") {
-            depth -= 1;
-            if (depth === 0) {
-                close = k;
-                break;
-            }
-        }
-    }
-    if (close === -1) throw new Error("plugin-namespace-declared.guard: interface non refermée");
-
-    // Profondeur 0 DANS le corps : on ne veut pas les membres des types imbriqués.
-    const keys = new Set();
-    let d = 0;
-    for (const line of src.slice(open + 1, close).split("\n")) {
-        if (d === 0) {
-            const m = /^\s*([A-Za-z_][A-Za-z0-9_]*)\??\s*:/.exec(line);
-            if (m) keys.add(m[1]);
-        }
-        for (const ch of line) {
-            if (ch === "{") d += 1;
-            else if (ch === "}") d -= 1;
-        }
-    }
-    return keys;
-}
+// The list of plugins without their own facade is SHARED with
+// `doc-plugin-manifest.guard.test.js`: it states a repo fact belonging to
+// neither guard, and two copies would drift. Full motive in the helper.
 
 /**
- * Le namespace monté par un `entry.ts`, ou `null`.
+ * The namespace an `entry.ts` mounts, or `null`.
  *
- * Deux formes coexistent, et il a fallu les mesurer : l'affectation directe
- * (`_g.GeoLeaf.COG = buildPublicApi()`, `_host.Table = …`) et — jusqu'au 27/07/2026 —
- * l'écriture par index derrière un transtypage (`(… as Record<string, unknown>)["AddPOI"] = …`).
- * La seconde a disparu avec B-52, mais elle est reconnue ici **exprès** : si elle réapparaissait,
- * le garde doit la voir plutôt que conclure « ce plugin ne monte rien ».
+ * Two forms coexist, and they had to be measured: direct assignment
+ * (`_g.GeoLeaf.COG = buildPublicApi()`, `_host.Table = …`) and — until
+ * 27/07/2026 — the indexed write behind a cast
+ * (`(… as Record<string, unknown>)["AddPOI"] = …`). The second is gone, but
+ * it is recognised here **on purpose**: if it reappeared, the guard must see
+ * it rather than conclude "this plugin mounts nothing".
  */
 function extractMountedNamespace(entrySource) {
     const direct = /\.([A-Z][A-Za-z0-9]*)\s*=\s*buildPublicApi\s*\(/.exec(entrySource);
@@ -123,7 +96,7 @@ const PLUGINS = fs
     .sort();
 
 describe("test-garde — tout namespace monté par un plugin est déclaré dans GeoLeafGlobal", () => {
-    const declared = readGeoLeafGlobalKeys();
+    const declared = readGeoLeafGlobalKeys(GLOBAL_DTS);
 
     // ── Anti-garde-vide ─────────────────────────────────────────────────────────
     it("lit au moins un plugin (sinon ce garde ne garde rien)", () => {
@@ -146,7 +119,7 @@ describe("test-garde — tout namespace monté par un plugin est déclaré dans 
             const ns = extractMountedNamespace(entry);
 
             if (ns === null) {
-                // Le plugin ne monte rien : l'exemption doit être écrite, avec son motif.
+                // The plugin mounts nothing: the exemption must be written, with its motive.
                 if (!NO_OWN_NAMESPACE[plugin]) {
                     missing.push(
                         `${plugin} : aucun namespace monté détecté, et aucune entrée dans ` +
@@ -169,13 +142,13 @@ describe("test-garde — tout namespace monté par un plugin est déclaré dans 
                 missing.push(
                     `${plugin} : monte \`GeoLeaf.${ns}\` mais \`${ns}\` n'est pas déclaré dans ` +
                         `packages/core/src/global.d.ts → un intégrateur compilant contre les types ` +
-                        `publiés reçoit TS2339 (B-52).`
+                        `publiés reçoit TS2339.`
                 );
             }
         }
 
-        // Troisième anti-garde-vide : sans au moins un namespace RÉELLEMENT confronté, la
-        // boucle ci-dessus pourrait passer en n'ayant rien comparé.
+        // Third anti-empty-guard: without at least one namespace REALLY
+        // confronted, the loop above could pass having compared nothing.
         expect(
             mountedCount,
             "aucun namespace monté n'a été confronté à global.d.ts"
@@ -183,25 +156,26 @@ describe("test-garde — tout namespace monté par un plugin est déclaré dans 
         expect(missing, missing.join("\n")).toEqual([]);
     });
 
-    // ── L'exemption doit être FALSIFIABLE ────────────────────────────────────────
-    // Sans ces deux vérifications, `NO_OWN_NAMESPACE` serait une dispense de complaisance :
-    // n'importe quel plugin ayant OUBLIÉ sa façade pourrait y être inscrit et faire taire le
-    // garde. Un plugin qui a oublié sa façade ne pilote RIEN — il ne peut donc pas satisfaire
-    // l'assertion `drives`, qui est ce qui distingue « pas de façade, par décision » de
-    // « façade oubliée ».
+    // ── The exemption must be FALSIFIABLE ───────────────────────────────────────
+    // Without these two checks, `NO_OWN_NAMESPACE` would be a courtesy
+    // dispensation: any plugin having FORGOTTEN its facade could be enrolled
+    // and silence the guard. A plugin that forgot its facade drives NOTHING
+    // — it thus cannot satisfy the `drives` assertion, which is what tells
+    // "no facade, by decision" from "forgotten facade".
     it("chaque exemption nomme une surface du core qu'elle pilote VRAIMENT", () => {
         const wrong = [];
         for (const [plugin, ex] of Object.entries(NO_OWN_NAMESPACE)) {
             if (!fs.existsSync(path.join(REPO_ROOT, ex.owner))) {
                 wrong.push(`${plugin} : \`owner\` introuvable — ${ex.owner}`);
             }
-            // ⚠️ Les COMMENTAIRES sont retirés AVANT la recherche, et ce n'est pas cosmétique :
-            // l'`entry.ts` d'`offline-ui` nomme `GeoLeaf.Storage` trois fois en prose pour
-            // expliquer sa propre exemption. Sans ce nettoyage, l'assertion se satisfaisait de
-            // ces mentions — mesuré : en re-pointant le `healthCheck` vers une autre surface,
-            // le garde restait VERT. Une exemption se prouve par ce que le code ATTEINT, pas
-            // par ce qu'il raconte.
-            // `?.` normalisé ensuite : `entry.ts` écrit `_g.GeoLeaf?.Storage`.
+            // ⚠️ COMMENTS are removed BEFORE the search, and that is not
+            // cosmetic: `offline-ui`'s `entry.ts` names `GeoLeaf.Storage`
+            // three times in prose to explain its own exemption. Without the
+            // cleanup, the assertion was satisfied by those mentions —
+            // measured: re-pointing the `healthCheck` to another surface left
+            // the guard GREEN. An exemption is proven by what the code
+            // REACHES, not by what it tells.
+            // `?.` normalised next: `entry.ts` writes `_g.GeoLeaf?.Storage`.
             const entry = fs
                 .readFileSync(path.join(PLUGINS_DIR, plugin, "src/entry.ts"), "utf8")
                 .replace(/\/\*[\s\S]*?\*\//g, " ")

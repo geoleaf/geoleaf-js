@@ -1,7 +1,7 @@
 /**
  * Centralized MapLibre GL JS mock for GeoLeaf-JS tests.
  *
- * Sprint 7 — single source of truth for all `maplibregl.*` mocks.
+ * Single source of truth for all `maplibregl.*` mocks.
  * Covers the full surface used by MaplibreAdapter (652 lines),
  * maplibre-poi-builders (332 lines), maplibre-primitives (165 lines),
  * and all MapLibre-dependent test files.
@@ -11,22 +11,24 @@
  * Uses `vi.fn()` throughout (shimmed to `jest.fn()` in setup.js).
  * ─────────────────────────────────────────────────────────────────────
  *
- * ## 🛑 CE QUE CE MOCK NE PEUT PAS GARDER — à lire avant de s'y fier
+ * ## 🛑 WHAT THIS MOCK CANNOT GUARD — read before relying on it
  *
- * Ce fichier décrit la forme de l'API telle que GeoLeaf l'appelle, PAS le moteur. Il reste
- * donc VERT sur n'importe quel changement de comportement, de sémantique ou de format de
- * distribution de MapLibre — et trois des quatre tiers du filet de boot passent par lui
- * (`bundle-boot-contract`, `api-controller-getter`, `boot-golden-master`).
+ * This file describes the API's shape as GeoLeaf calls it, NOT the engine.
+ * It thus stays GREEN on any change of MapLibre behaviour, semantics or
+ * distribution format — and three of the boot net's four tiers go through
+ * it (`bundle-boot-contract`, `api-controller-getter`, `boot-golden-master`).
  *
- * Mesuré lors du passage à MapLibre 6 (08/08/2026) : la suite unitaire est restée intégralement
- * verte pendant que la distribution passait en ESM-only, que le global `maplibregl` cessait
- * d'exister et que le pré-cache du service worker perdait trois modules sur quatre. Aucun de
- * ces défauts n'est descriptible ici, et vouloir « rendre le mock plus fidèle » ne le ferait
- * pas : un mock plus riche reste un mock.
+ * Measured at the MapLibre 6 migration (08/08/2026): the unit suite stayed
+ * entirely green while the distribution went ESM-only, the `maplibregl`
+ * global ceased to exist and the service worker's pre-cache lost three
+ * modules out of four. None of these defects is describable here, and
+ * wanting to "make the mock more faithful" would not do it: a richer mock
+ * is still a mock.
  *
- * Le seul tiers qui voit le moteur réel est `scripts/probe-boot-contract.mjs` (il le dit
- * lui-même en tête de fichier), avec la suite E2E. **Ne jamais conclure qu'une montée de
- * version passe sur la seule foi de `npm test`.**
+ * The only tier that sees the real engine is
+ * `scripts/probe-boot-contract.mjs` (it says so itself at the top), along
+ * with the E2E suite. **Never conclude that a version bump passes on the
+ * sole faith of `npm test`.**
  */
 
 /* eslint-disable max-lines-per-function, max-lines */

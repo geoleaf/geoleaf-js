@@ -1,5 +1,5 @@
 /**
- * Mock Log for plugin-storage tests (Sprint 4)
+ * Mock Log for plugin-storage tests
  * Plugin sources use: import { Log } from '../../log/index.js'
  */
 const Log = {

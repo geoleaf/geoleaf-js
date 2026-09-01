@@ -1,4 +1,4 @@
-﻿/*!
+/*!
  * GeoLeaf Core
  * © 2026 Mattieu Pottier
  * Released under the MIT License
@@ -6,7 +6,7 @@
  */
 /**
  * @fileoverview Aggregator for GeoLeaf style loader — re-exports from sub-modules.
- * Refactored in Sprint 1: 1549 lines split into style-cache.ts, label-extractor.ts,
+ * Refactored: 1549 lines split into style-cache.ts, label-extractor.ts,
  * style-loader-core.ts, style-from-layer.ts.
  *
  * KERNEL S11 — the façade went from 10 members to 4. `initStyleLoader`, `loadStyleLenient`,

@@ -147,7 +147,7 @@ describe("captureExtent — idle timeout", () => {
 
             // Fire all pending timers synchronously (triggers the idle backstop, whatever its
             // value — deliberately NOT restated here: it moved from 30 s to 90 s on 01/08/2026
-            // and this comment would have been the ninth stale copy of that number, cf. B-103)
+            // and this comment would have been the ninth stale copy of that number)
             vi.runAllTimers();
             // Drain the microtask queue so the rejection propagates
             await handled;

@@ -79,8 +79,10 @@ describe("GeoLeaf.GeoJSON Extended", () => {
                 mergeOptions: vi.fn((defaults, opts) => ({ ...defaults, ...opts })),
             },
             Legend: {
-                addSection: vi.fn(),
-                removeSection: vi.fn(),
+                // `addSection` / `removeSection` removed on 20/08/2026:
+                // neither exists on the `Legend` facade nor in any source.
+                // The real seam is `Legend.loadLayerLegend`, set below.
+                loadLayerLegend: vi.fn(),
             },
             CONSTANTS: {
                 GEOJSON_MAX_ZOOM_ON_FIT: 16,

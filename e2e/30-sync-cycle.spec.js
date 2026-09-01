@@ -1,96 +1,106 @@
 // @ts-check
 /**
- * 30 — LE CYCLE DE SYNCHRONISATION, CONTRE UN VRAI BACKEND (Sprint 4, tâche 4.H)
+ * 30 — THE SYNC CYCLE, AGAINST A REAL BACKEND
  *
- * Le critère de preuve du Sprint 4 :
+ * The cycle's proof criterion:
  *
- *   > Coupure réseau → édition d'une entité **rapatriée** → rechargement de la page →
- *   > **l'édition est toujours visible** → retour du réseau → push → **l'entité porte son
- *   > identifiant serveur**, et une seconde synchronisation ne produit **aucune** requête.
+ *   > Network cut → edit of a **pulled** entity → page reload → **the edit is
+ *   > still visible** → network back → push → **the entity carries its server
+ *   > identifier**, and a second synchronisation produces **no** request.
  *
- * ✅ **CE FICHIER PROUVE CE PARCOURS, DE BOUT EN BOUT.** Il ne l'a pas toujours fait, et ce
- * qui lui manquait a CHANGÉ DE NATURE en cours de sprint : d'abord le cycle lui-même (4.1,
- * 4.3, 4.4, 4.5), puis — les quatre livrées — un **PRODUCTEUR**, les deux plugins d'édition
- * écrivant encore la file v3. C'est 4.4b qui l'a levé. Distinguer « il manque du code » de
- * « il manque un appelant » a demandé trois tentatives.
+ * ✅ **THIS FILE PROVES THAT JOURNEY, END TO END.** It did not always, and what
+ * it lacked CHANGED IN NATURE mid-work: first the cycle itself (pull, local
+ * read, optimistic write, push), then — those four delivered — a **PRODUCER**,
+ * the two editing plugins still writing the v3 queue. The producer switch is
+ * what lifted it. Distinguishing "code is missing" from "a caller is missing"
+ * took three attempts.
  *
- * ✅ **4.1 et 4.3 SONT livrées, et leur `fixme` est devenu un test vivant** : le store
- * `features` a désormais son écrivain (`GeoLeaf.Storage.pullLayer`) et son lecteur. ⚠️ Ses
- * attendus se **mesurent dans le run**, ils ne se recopient pas : les deux tests de push
- * ci-dessous insèrent des lignes que l'`afterAll` seul nettoie, donc un décompte écrit en dur
- * passe isolément et rougit dans le fichier complet. C'est arrivé à la 1ʳᵉ rédaction.
+ * ✅ **Pull and local read ARE delivered, and their `fixme` became a living
+ * test**: the `features` store now has its writer (`GeoLeaf.Storage.pullLayer`)
+ * and its reader. ⚠️ Its expected values are **measured in the run**, never
+ * copied: the two push tests below insert rows that only the `afterAll` cleans,
+ * so a hard-coded count passes in isolation and reddens in the full file. It
+ * happened at the 1st draft.
  *
- * Ce que ce fichier prouve **aujourd'hui**, c'est l'autre moitié du problème : que le backend
- * de la preuve existe, qu'il tient les propriétés dont 4.4/4.5/4.6 dépendront, et que la page
- * l'atteint **avec le connector actif**. Sans ça, écrire 4.4 puis 4.5 reviendrait à coder
- * contre un serveur supposé — et c'est précisément ce que le pré-vol 4.0 a trouvé : le
- * backend que le critère exige n'existait pas, `qgis.geoleaf.dev` répondait 404, et le seul
- * E2E authentifié du dépôt (`11-connector.spec.js`) mockait chaque réponse.
+ * What this file proves **today** is the problem's other half: that the proof's
+ * backend exists, that it holds the properties the next steps will depend on,
+ * and that the page reaches it **with the connector active**. Without that,
+ * writing the next steps would amount to coding against an assumed server — and
+ * that is precisely what the preflight found: the backend the criterion
+ * requires did not exist, `qgis.geoleaf.dev` answered 404, and the repo's only
+ * authenticated E2E (`11-connector.spec.js`) mocked every response.
  *
- * ═══ POURQUOI CE SPEC PILOTE LE CONNECTOR AU LIEU DE LE LAISSER S'AMORCER ═══
+ * ═══ WHY THIS SPEC DRIVES THE CONNECTOR INSTEAD OF LETTING IT BOOTSTRAP ═══
  *
- * `apps/geoleaf-app/init.js` restreint le bootstrap dev à `localhost|127.0.0.1` et au vhost de
- * `deploy-local`, pour qu'un jeton ne s'active jamais sur une origine livrée. Le piloter depuis
- * le test est le patron que `11-connector.spec.js` a établi — la différence ici est qu'il vise
- * un backend RÉEL et non des `page.route()`.
+ * `apps/geoleaf-app/init.js` restricts the dev bootstrap to
+ * `localhost|127.0.0.1` and `deploy-local`'s vhost, so a token never activates
+ * on a shipped origin. Driving it from the test is the pattern
+ * `11-connector.spec.js` established — the difference here is that it targets a
+ * REAL backend and not `page.route()` mocks.
  *
- * ⚠️ Ce paragraphe a nommé `demo.addpoi.geoleaf.local.test` jusqu'au 09/08/2026 : ce vhost
- * est parti avec la variante au Sprint 5, ce que ce fichier écrit pourtant lui-même 100 lignes
- * plus bas. Un motif juste adossé à un exemple mort se relit comme une preuve.
+ * ⚠️ This paragraph named `demo.addpoi.geoleaf.local.test` until 2026-08-09:
+ * that vhost left with the variant, which this very file writes 100 lines
+ * lower. A correct motive leaning on a dead example re-reads as a proof.
  *
- * 🛑 DEPUIS LE 09/08/2026, LE BOOTSTRAP NE S'ACTIVE PLUS SUR AUCUNE CIBLE DE CE SPEC, ET C'EST
- * UN GAIN. `build-deploy.cjs` n'écrit plus que le talon inerte dans les variantes livrables —
- * `deploy-full`, que ce fichier vise, en est une. La cible `ports` la servait depuis
- * `localhost`, donc le bootstrap S'Y ACTIVAIT, quand il ne s'activait jamais sous `nginx` :
- * les deux cibles n'éprouvaient pas le même état de départ, et le test « point 5 » plus bas ne
- * mesurait pas un état mais une fenêtre de course. Elles partent désormais du même endroit.
+ * 🛑 SINCE 2026-08-09, THE BOOTSTRAP NO LONGER ACTIVATES ON ANY TARGET OF THIS
+ * SPEC, AND THAT IS A GAIN. `build-deploy.cjs` now writes only the inert stub
+ * into shippable variants — `deploy-full`, which this file targets, is one. The
+ * `ports` target served it from `localhost`, so the bootstrap ACTIVATED there,
+ * while it never activated under `nginx`: the two targets did not prove the
+ * same starting state, and the "point 5" test below measured not a state but a
+ * race window. They now start from the same place.
  *
- * Le jeton est lu côté Node dans `apps/geoleaf-app/connector.local.js` (git-ignoré), jamais
- * écrit dans ce fichier. Un test qui porterait un JWT en dur serait committé avec.
+ * The token is read Node-side in `apps/geoleaf-app/connector.local.js`
+ * (git-ignored), never written into this file. A test carrying a hard-coded
+ * JWT would be committed with it.
  *
- * ═══ CE QUE LA SONDE A MESURÉ AVANT QUE CE FICHIER SOIT ÉCRIT ═══
+ * ═══ WHAT THE PROBE MEASURED BEFORE THIS FILE WAS WRITTEN ═══
  *
- * 🛑 **`configure()` patche le `fetch` DE LA PAGE, donc TOUTE requête vers `baseUrl` porte le
- * jeton ensuite** — y compris celles qu'on croyait anonymes. Une première rédaction de la
- * sonde asserait « POST sans bearer → 401 » **après** avoir appelé `configure()`, et lisait
- * **201**. L'assertion était fausse, pas le serveur.
+ * 🛑 **`configure()` patches the PAGE's `fetch`, so EVERY request to `baseUrl`
+ * carries the token afterwards** — including those believed anonymous. A first
+ * draft of the probe asserted "POST without bearer → 401" **after** calling
+ * `configure()`, and read **201**. The assertion was wrong, not the server.
  *
- * C'est ce qui donne au test « point 5 du contrat » ci-dessous sa forme : la **même** requête,
- * avant puis après `configure()`. C'est aussi la démonstration directe de pourquoi le rejeu
- * doit tourner **sur la page** et non dans le Service Worker — le patch n'atteint jamais le
- * worker, et c'est le motif qui a fait supprimer le chemin Background Sync.
+ * That is what gives the "point 5 of the contract" test below its shape: the
+ * **same** request, before then after `configure()`. It is also the direct
+ * demonstration of why the replay must run **on the page** and not in the
+ * Service Worker — the patch never reaches the worker, and that is the motive
+ * that got the Background Sync path deleted.
  *
- * ⚠️ `serviceWorkers: "block"`, comme `11-connector`. Sans blocage, le worker pourrait
- * s'interposer et on mesurerait le worker en croyant mesurer le réseau.
+ * ⚠️ `serviceWorkers: "block"`, like `11-connector`. Without blocking, the
+ * worker could interpose and we would measure the worker believing we measure
+ * the network.
  *
- * 🛑 **AUCUN profil du dépôt ne déclare de `modules.offline.dataOrigins`** — mesuré, zéro
- * occurrence dans `profiles/`. Le contrat est figé depuis E1b.5, le Service Worker sait les
- * lire depuis 3.9, la gate de config connaît la clé, mais **personne ne lui en donne** : il
- * tourne toujours sur son routage d'AMORÇAGE, le chemin heuristique que 3.9 devait rendre
- * exceptionnel.
+ * 🛑 **NO profile of the repo declares `modules.offline.dataOrigins`** —
+ * measured, zero occurrences in `profiles/`. The contract has been frozen for a
+ * while, the Service Worker knows how to read them, the config gate knows the
+ * key, but **nobody feeds it one**: it still runs on its BOOTSTRAP routing, the
+ * heuristic path that was meant to become exceptional.
  *
- * ⚠️ **Et déclarer n'est PAS une ligne à ajouter — essayé le 03/08, mesuré, RETIRÉ.**
- * `routeRequest` (`sw-core.js:233-239`) bascule en mode déclaratif dès qu'UNE origine est
- * déclarée, et toute origine non déclarée cesse alors d'être mise en cache : « le silence
- * d'une déclaration est un refus, pas une permission ». Déclarer la seule origine du backend
- * a donc coupé le cache de l'origine de l'application elle-même, et `27-offline-idb.spec.js`
- * l'a attrapé (contrôle négatif rouge, vert dès le retrait). **La déclaration est
- * tout-ou-rien**, et l'origine propre de l'app n'est pas déclarable dans un profil portable —
- * elle change à chaque déploiement. Suivi en **B-119**.
+ * ⚠️ **And declaring is NOT a line to add — tried on 08-03, measured, REMOVED.**
+ * `routeRequest` (`sw-core.js`) switches to declarative mode as soon as
+ * ONE origin is declared, and every undeclared origin then stops being cached:
+ * "a declaration's silence is a refusal, not a permission". Declaring the
+ * backend's single origin thus cut the cache of the application's own origin,
+ * and `27-offline-idb.spec.js` caught it (negative control red, green on
+ * removal). **The declaration is all-or-nothing**, and the app's own origin is
+ * not declarable in a portable profile — it changes at every deployment.
+ * Tracked in the origins register.
  *
- * ⚠️ **Ce n'était pas non plus « câbler `matchDataOrigin` »**, comme trois documents l'ont
- * écrit avant le pré-vol du 03/08 : la fonction est privée, a déjà un consommateur
- * (`publishDataOrigins`), et son TSDoc réserve son export à 4.1/4.5 — « exporter pour un
- * appelant du Sprint 4 qui n'existe pas encore est exactement la posture que ce sprint
- * reproche ailleurs ».
+ * ⚠️ **Nor was it "wire `matchDataOrigin`"**, as three documents wrote before
+ * the 08-03 preflight: the function is private, already has a consumer
+ * (`publishDataOrigins`), and its TSDoc reserves its export for the pull work —
+ * "exporting for a caller that does not yet exist is exactly the posture this
+ * work reproaches elsewhere".
  *
- * ═══ LE BACKEND N'EXISTE QUE SUR LA MACHINE DE DEV ═══
+ * ═══ THE BACKEND ONLY EXISTS ON THE DEV MACHINE ═══
  *
- * Les conteneurs sont ceux de `docker-compose.dev.yml` (`docker/backend/README.md`). Sur un
- * runner GitHub il n'y en a aucun. Ce fichier **se saute intégralement** quand le backend ne
- * répond pas — mais il le fait **bruyamment** : le motif est nommé, et l'unique test qui
- * survit au saut asserte que la raison du saut a bien été relevée. Un fichier qui sortirait
- * vert en n'ayant rien joué serait la forme même du défaut que ce chantier combat.
+ * The containers are those of `docker-compose.dev.yml`
+ * (`docker/backend/README.md`). On a GitHub runner there are none. This file
+ * **skips itself entirely** when the backend does not answer — but it does so
+ * **loudly**: the motive is named, and the single test that survives the skip
+ * asserts the skip's reason was recorded. A file coming out green having played
+ * nothing would be the very form of the defect this work fights.
  */
 
 import fs from "node:fs";
@@ -98,29 +108,30 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
+import { layerConfigPath } from "./helpers/profiles.js";
 import { goOffline, goOnline, settleNetwork, assertZeroNetwork } from "./helpers/offline.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..");
 
-/** Origine du backend de preuve — la même que celle de `connector.local.js`. */
+/** The proof backend's origin — the same as `connector.local.js`'s. */
 const API = "https://qgis.geoleaf.dev";
-/** Surface OGC API Features (pygeoapi), lue par `ogc-api-loader.ts` à la tâche 4.1. */
+/** OGC API Features surface (pygeoapi), read by `ogc-api-loader.ts` for the pull. */
 const OGC = `${API}/ogc/collections/sites_rosario/items`;
-/** Surface d'écriture (PostgREST), dialecte `collection` des adaptateurs. */
+/** Write surface (PostgREST), the adapters' `collection` dialect. */
 const REST = `${API}/sites_rosario`;
 
 /**
- * Préfixe de toutes les identités clientes que ce fichier crée. Sert au nettoyage : ce spec
- * écrit dans une base partagée, et laisser ses lignes derrière lui ferait dériver le décompte
- * sur lequel la pagination est assertée (27 lignes, 3 pages).
+ * Prefix of every client identity this file creates. Serves the cleanup: this
+ * spec writes into a shared database, and leaving its rows behind would drift
+ * the count the pagination is asserted on (27 rows, 3 pages).
  */
 const LOCAL_ID_PREFIX = "e2e30-";
 
 /**
- * Lit le bootstrap dev pour en extraire l'origine et le jeton.
- * @returns {{ baseUrl: string, token: string } | null} `null` si le fichier est absent —
- *   c'est le cas nominal sur un runner, pas une anomalie.
+ * Reads the dev bootstrap to extract the origin and the token.
+ * @returns {{ baseUrl: string, token: string } | null} `null` if the file is
+ *   absent — the nominal case on a runner, not an anomaly.
  */
 function readDevConnector() {
     const p = path.join(ROOT, "apps", "geoleaf-app", "connector.local.js");
@@ -134,20 +145,23 @@ function readDevConnector() {
 const DEV = readDevConnector();
 
 /**
- * Motif du saut, ou `null` si tout est réuni. Calculé une fois, asserté par le test témoin.
+ * The skip's motive, or `null` if everything is in place. Computed once,
+ * asserted by the witness test.
  * @type {string | null}
  */
 let skipReason = null;
 
-// ⚠️ 5.5 — `deploy-addpoi` a disparu avec le plugin fusionné ; `deploy-full` est désormais
-// la seule variante portant l'édition ET `offline-ui`, donc la seule où ce cycle existe.
+// ⚠️ `deploy-addpoi` vanished with the merged plugin; `deploy-full` is now the
+// only variant carrying editing AND `offline-ui`, hence the only one where this
+// cycle exists.
 test.use({ baseURL: baseURL("full"), serviceWorkers: "block" });
 
-// 🛑 CE HOOK EST AU SCOPE DU FICHIER, PAS DU `describe`, ET C'EST LE TÉMOIN QUI L'EXIGE.
-// Placé dans le `describe`, il s'exécutait bien — mais le `beforeEach` qui l'accompagnait
-// sautait AUSSI le témoin, et le fichier sortait « 9 skipped » sans qu'une seule ligne ne dise
-// pourquoi. Mesuré en arrêtant les conteneurs : c'était très exactement le silence que ce
-// fichier prétend empêcher, et il était dans le mécanisme censé l'empêcher.
+// 🛑 THIS HOOK IS AT FILE SCOPE, NOT THE `describe`'s, AND THE WITNESS DEMANDS
+// IT. Placed inside the `describe`, it did execute — but its companion
+// `beforeEach` ALSO skipped the witness, and the file came out "9 skipped" with
+// not one line saying why. Measured by stopping the containers: that was very
+// exactly the silence this file claims to prevent, and it sat inside the
+// mechanism meant to prevent it.
 test.beforeAll(async ({ request }) => {
     if (!DEV) {
         skipReason =
@@ -162,22 +176,24 @@ test.beforeAll(async ({ request }) => {
     }
     if (skipReason) return;
 
-    // ── 3e condition — la VARIANTE SERVIE déclare-t-elle encore une source de rapatriement ?
+    // ── 3rd condition — does the SERVED VARIANT still declare a pull source?
     //
-    // 🛑 AJOUTÉE LE 09/08/2026, ET C'EST UN SAUT DE PLUS ASSUMÉ, PAS UNE RÉGRESSION MASQUÉE.
-    // Depuis cette date, `build-deploy.cjs` (étape 9a) retire des variantes LIVRABLES les
-    // liaisons vers le backend de preuve : `qgis.geoleaf.dev` ne résout que sur ce poste, et il
-    // partait tel quel chez un client. Or ce fichier vise `deploy-full`, qui EST un livrable, et
-    // `pullLayer()` lit `offline.source.url` dans le profil servi — sans override possible
-    // (`capabilities/offline/pull/layer-pull.ts`). Sans cette condition, les tests de
-    // rapatriement rougiraient sur un déployé pourtant CORRECT.
+    // 🛑 ADDED ON 2026-08-09, AND IT IS ONE MORE ASSUMED SKIP, NOT A MASKED
+    // REGRESSION. Since that date, `build-deploy.cjs` (step 9a) removes the
+    // proof-backend bindings from SHIPPABLE variants: `qgis.geoleaf.dev` only
+    // resolves on this machine, and it shipped as-is to a client. Yet this file
+    // targets `deploy-full`, which IS a deliverable, and `pullLayer()` reads
+    // `offline.source.url` in the served profile — with no possible override
+    // (`capabilities/offline/pull/layer-pull.ts`). Without this condition, the
+    // pull tests would redden on a deploy that is CORRECT.
     //
-    // ⚠️ Les deux conditions ci-dessus mesurent la MACHINE (bootstrap, conteneurs) ; celle-ci
-    // mesure l'ARTEFACT. Un backend qui répond ne dit rien de ce que la variante servie déclare
-    // — c'est précisément l'écart qui rendait le diagnostic illisible sans elle.
+    // ⚠️ The two conditions above measure the MACHINE (bootstrap, containers);
+    // this one measures the ARTIFACT. A backend that answers says nothing of
+    // what the served variant declares — precisely the gap that made the
+    // diagnosis unreadable without it.
     try {
         const cfg = await request.get(
-            `${baseURL("full")}/profiles/tourism/layers/sites_rosario/sites_rosario_config.json`,
+            `${baseURL("full")}${layerConfigPath("tourism", "sites_rosario")}`,
             { timeout: 8000 }
         );
         const declaresSource = cfg.ok() && Boolean((await cfg.json())?.offline?.source?.url);
@@ -195,11 +211,11 @@ test.beforeAll(async ({ request }) => {
 });
 
 test("TÉMOIN — si ce fichier se saute, le motif est NOMMÉ et non silencieux", async () => {
-    // ⚠️ HORS du `describe`, donc hors de portée de son `beforeEach` : c'est le seul test du
-    // fichier qui doit s'exécuter même sans backend. Sa valeur n'est pas d'asserter que le
-    // backend tourne — c'est d'empêcher que ce fichier passe pour « vert » alors qu'il n'a
-    // rien joué. Un fichier entièrement sauté est indiscernable, dans un rapport lu vite,
-    // d'un fichier entièrement vert.
+    // ⚠️ OUTSIDE the `describe`, hence out of its `beforeEach`'s reach: the only
+    // test of the file that must execute even without a backend. Its value is
+    // not asserting the backend runs — it is preventing this file from passing
+    // as "green" while it played nothing. A fully skipped file is
+    // indistinguishable, in a quickly-read report, from a fully green one.
     if (skipReason) {
         test.info().annotations.push({ type: "skip-reason", description: skipReason });
         expect(skipReason.length, "un saut doit porter un motif lisible").toBeGreaterThan(20);
@@ -214,9 +230,10 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
     });
 
     test.afterAll(async ({ request }) => {
-        // Nettoyage de TOUT ce que ce fichier a pu écrire, y compris après un échec en cours
-        // de route. Sans lui, une exécution répétée ferait grossir la table et le décompte de
-        // pagination (27) cesserait d'être vrai — un test qui casse le test d'à côté.
+        // Cleanup of EVERYTHING this file may have written, including after a
+        // mid-route failure. Without it, repeated execution would grow the table
+        // and the pagination count (27) would stop being true — a test breaking
+        // the test next door.
         if (skipReason || !DEV) return;
         await request
             .delete(`${REST}?local_id=like.${LOCAL_ID_PREFIX}*`, {
@@ -226,7 +243,7 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
     });
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Ce qui est PROUVÉ aujourd'hui — les propriétés dont 4.1 à 4.6 dépendront.
+    // What is PROVEN today — the properties the rest of the cycle depends on.
     // ─────────────────────────────────────────────────────────────────────────
 
     test("4.1 (transport) — la surface OGC a la forme que `ogc-api-loader` exige", async ({
@@ -250,9 +267,9 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
             };
         }, OGC);
 
-        // Ces trois-là sont exactement ce que `_validateOgcResponse` contrôle, et ce que
-        // `_extractNextUrl` cherche. Les asserter ici, c'est asserter que 4.1 n'aura AUCUN
-        // code de transport à écrire — la promesse du point 6 du contrat.
+        // These three are exactly what `_validateOgcResponse` checks, and what
+        // `_extractNextUrl` looks for. Asserting them here is asserting the pull
+        // will have NO transport code to write — the contract's point-6 promise.
         expect(shape.status).toBe(200);
         expect(shape.type).toBe("FeatureCollection");
         expect(shape.featuresIsArray).toBe(true);
@@ -268,9 +285,9 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
         await page.goto("/", { waitUntil: "domcontentloaded" });
         await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
 
-        // Marche identique à celle de `fetchOgcApiFeatures` : suivre `links[rel=next]` jusqu'à
-        // épuisement. Le plafond de 10 tours n'est pas un réglage, c'est un garde-fou : sans
-        // lui, un backend qui renverrait toujours le même `next` boucherait le runner.
+        // Same walk as `fetchOgcApiFeatures`: follow `links[rel=next]` to
+        // exhaustion. The 10-turn cap is no tuning, it is a guard-rail: without
+        // it, a backend always returning the same `next` would jam the runner.
         const walk = await page.evaluate(async (url) => {
             let next = `${url}?f=json&limit=10`;
             let pages = 0;
@@ -287,11 +304,12 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
             return { pages, total, matched };
         }, OGC);
 
-        // 🛑 `pages > 1` est l'assertion qui compte, et elle est là pour une raison mesurée :
-        // pg_featureserv 1.3.1 — le premier serveur monté à la tâche 4.H — sert `bbox` et
-        // `limit` correctement mais n'émet AUCUN lien `next`. La marche s'y arrêtait à la
-        // première page en rendant un total plausible. Un test qui n'asserterait que le total
-        // serait passé au vert contre un serveur incapable de paginer.
+        // 🛑 `pages > 1` is the assertion that counts, and it is there for a
+        // measured reason: pg_featureserv 1.3.1 — the first server mounted —
+        // serves `bbox` and `limit` correctly but emits NO `next` link. The walk
+        // stopped at the first page returning a plausible total. A test
+        // asserting only the total would have passed green against a server
+        // unable to paginate.
         expect(walk.pages, "une seule page ⇒ le lien `next` n'est pas suivi").toBeGreaterThan(1);
         expect(walk.total).toBe(walk.matched);
     });
@@ -300,15 +318,16 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
         await page.goto("/", { waitUntil: "domcontentloaded" });
         await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
 
-        // 🛑 `numberMatched` ET NON `features.length`. La première rédaction comptait les
-        // features rendues avec `limit=1000`, et lisait **10 contre 10** : pygeoapi ÉCRÊTE la
-        // taille de page à son `server.limit` (10 ici, choisi petit exprès pour que la
-        // pagination reste testable). Les deux mesures comparaient donc deux pages tronquées
-        // identiques, et le test rougissait en accusant l'emprise.
+        // 🛑 `numberMatched` AND NOT `features.length`. The first draft counted
+        // rendered features with `limit=1000`, and read **10 versus 10**:
+        // pygeoapi CLIPS the page size to its `server.limit` (10 here, chosen
+        // small on purpose so pagination stays testable). The two measurements
+        // thus compared two identical truncated pages, and the test reddened
+        // blaming the extent.
         //
-        // ⚠️ L'instrument portait le biais qu'il mesurait : compter une PAGE pour prouver un
-        // filtre sur un ENSEMBLE. `numberMatched` est le cardinal du résultat, pas de la page —
-        // 27 sans emprise, 12 avec.
+        // ⚠️ The instrument carried the bias it measured: counting a PAGE to
+        // prove a filter on a SET. `numberMatched` is the result's cardinal, not
+        // the page's — 27 without extent, 12 with.
         const counts = await page.evaluate(async (url) => {
             const at = async (q) =>
                 (await (await fetch(`${url}?f=json&limit=1${q}`)).json()).numberMatched;
@@ -318,8 +337,8 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
             };
         }, OGC);
 
-        // Une emprise qui ne retire rien ne prouve pas qu'elle filtre — elle prouve seulement
-        // qu'elle n'a pas provoqué d'erreur.
+        // An extent that removes nothing does not prove it filters — it only
+        // proves it caused no error.
         expect(counts.inBbox).toBeGreaterThan(0);
         expect(counts.inBbox).toBeLessThan(counts.all);
     });
@@ -327,27 +346,31 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
     test("POINT 5 DU CONTRAT — le connector patche le `fetch` DE LA PAGE, et c'est ce qui autorise l'écriture", async ({
         page,
     }) => {
-        // 🛑 CAPTURER `fetch` AVANT TOUT SCRIPT DE PAGE — sans quoi ce test serait une COURSE.
+        // 🛑 CAPTURE `fetch` BEFORE ANY PAGE SCRIPT — without which this test
+        // would be a RACE.
         //
-        // ⚠️ L'HISTORIQUE VAUT D'ÊTRE GARDÉ, PARCE QUE LA FORME DU TEST EN DÉCOULE. Jusqu'au
-        // 09/08/2026, `deploy-full` embarquait le VRAI `connector.local.js` : sur la cible
-        // `ports` — celle de `ci:local` — l'origine est `localhost`, donc le bootstrap dev
-        // s'activait et configurait le connector au boot, quand sous `E2E_TARGET=nginx` il ne
-        // s'activait jamais. La mesure « avant `configure()` » ne mesurait alors pas un état
-        // mais une FENÊTRE : elle ne valait que si elle gagnait la course contre ce bootstrap.
-        // Vue basculer le 08/08/2026 au passage à MapLibre 6, dont le boot ajoute deux requêtes
-        // sérialisées (`global.mjs` → `maplibre-gl.mjs` → `-shared.mjs`) et décale la fenêtre —
-        // la v6 n'a rien cassé, elle a révélé que l'assertion reposait sur un timing.
+        // ⚠️ THE HISTORY IS WORTH KEEPING, BECAUSE THE TEST'S SHAPE FOLLOWS FROM
+        // IT. Until 2026-08-09, `deploy-full` embarked the REAL
+        // `connector.local.js`: on the `ports` target — `ci:local`'s — the
+        // origin is `localhost`, so the dev bootstrap activated and configured
+        // the connector at boot, while under `E2E_TARGET=nginx` it never
+        // activated. The "before `configure()`" measurement thus measured not a
+        // state but a WINDOW: it only held if it won the race against that
+        // bootstrap. Seen flipping on 2026-08-08 at the MapLibre 6 move, whose
+        // boot adds two serialised requests (`global.mjs` → `maplibre-gl.mjs` →
+        // `-shared.mjs`) and shifts the window — v6 broke nothing, it revealed
+        // the assertion rested on timing.
         //
-        // La course a disparu à sa racine : les variantes livrables ne reçoivent plus que le
-        // talon inerte, donc `window.GEOLEAF_DEV_CONNECTOR` est `undefined` au boot sur les
-        // DEUX cibles.
+        // The race vanished at its root: shippable variants now receive only the
+        // inert stub, so `window.GEOLEAF_DEV_CONNECTOR` is `undefined` at boot
+        // on BOTH targets.
         //
-        // `addInitScript` reste néanmoins, et ce n'est pas de la ceinture-bretelles : il
-        // s'exécute avant tout script du document, donc la référence capturée ici n'est JAMAIS
-        // patchée. Le « avant » devient vrai par CONSTRUCTION plutôt que par une propriété du
-        // build — ce qui rend au test ce qu'il prétend prouver : c'est bien le patch de `fetch`
-        // qui autorise l'écriture, et non l'ordre dans lequel deux scripts se sont chargés.
+        // `addInitScript` nonetheless stays, and it is not belt-and-braces: it
+        // executes before any script of the document, so the reference captured
+        // here is NEVER patched. The "before" becomes true by CONSTRUCTION
+        // rather than by a build property — which gives the test back what it
+        // claims to prove: it really is the `fetch` patch that authorises the
+        // write, and not the order in which two scripts loaded.
         await page.addInitScript(() => {
             /** @type {any} */ (window).__origFetch = window.fetch.bind(window);
         });
@@ -360,12 +383,12 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
             geom: "SRID=4326;POINT(-60.655 -32.945)",
         };
 
-        // AVANT `configure()` — aucun jeton n'est injecté, PostgREST retombe sur
-        // `geoleaf_anon`, qui n'a que le SELECT. C'est l'invariant S6 tenu côté SQL :
-        // le rapatriement ne confère jamais l'écriture.
+        // BEFORE `configure()` — no token is injected, PostgREST falls back on
+        // `geoleaf_anon`, which has only SELECT. The invariant held SQL-side:
+        // pulling never confers writing.
         const before = await page.evaluate(
             async ({ url, payload }) => {
-                // `__origFetch` — la référence d'avant tout patch (voir `addInitScript`).
+                // `__origFetch` — the reference from before any patch (see `addInitScript`).
                 const r = await /** @type {any} */ (window).__origFetch(url, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -377,8 +400,9 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
         );
         expect(before, "sur un `fetch` NON patché, l'écriture doit être REFUSÉE").toBe(401);
 
-        // APRÈS `configure()` — la MÊME requête, sur la même page, sans qu'aucun en-tête ne
-        // soit posé par l'appelant. C'est le connector qui l'ajoute, en patchant `fetch`.
+        // AFTER `configure()` — the SAME request, on the same page, with no
+        // header set by the caller. The connector is what adds it, by patching
+        // `fetch`.
         const after = await page.evaluate(
             async ({ url, payload, api, tok }) => {
                 const w = /** @type {any} */ (window);
@@ -398,10 +422,10 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
 
         expect(after.status, "avec connector, la MÊME requête doit passer").toBe(201);
 
-        // 🛑 C'est ici que se joue la raison d'être du point 5 : ce patch vit dans la PAGE. Le
-        // Service Worker ne le voit pas, et c'est pour ça que le rejeu depuis le worker ne
-        // pouvait pas résoudre l'authentification — le chemin Background Sync a été supprimé
-        // pour ce motif, pas par hygiène.
+        // 🛑 This is where point 5's reason to exist plays out: this patch lives
+        // in the PAGE. The Service Worker does not see it, and that is why the
+        // replay from the worker could not solve authentication — the Background
+        // Sync path was deleted for this motive, not for hygiene.
         expect(after.rows?.[0]?.local_id).toBe(body.local_id);
     });
 
@@ -411,11 +435,12 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
         await page.goto("/", { waitUntil: "domcontentloaded" });
         await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
 
-        // ⚠️ ATTENDRE le plugin, pas un proxy. `connector` est PARESSEUX (`init.js` →
-        // `registerLazy`), donc `#geoleaf-map` visible ne dit RIEN de sa disponibilité :
-        // `GeoLeaf.Connector` était encore `undefined` ici, par intermittence. Attendre l'état
-        // qu'on va utiliser est la seule forme qui ne dépende pas du temps de boot — lequel a
-        // changé au passage à MapLibre 6 (deux requêtes sérialisées de plus).
+        // ⚠️ WAIT for the plugin, not a proxy. `connector` is LAZY (`init.js` →
+        // `registerLazy`), so `#geoleaf-map` visible says NOTHING of its
+        // availability: `GeoLeaf.Connector` was still `undefined` here,
+        // intermittently. Waiting on the state about to be used is the only form
+        // that does not depend on boot time — which changed at the MapLibre 6
+        // move (two more serialised requests).
         await page.waitForFunction(
             () => typeof window.GeoLeaf?.Connector?.configure === "function",
             null,
@@ -450,10 +475,10 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
         );
 
         expect(pushed.status).toBe(201);
-        // `localId` → `serverId` : c'est LA donnée que 4.5 devra reporter dans l'enregistrement.
+        // `localId` → `serverId`: THE datum the push must carry into the record.
         expect(typeof pushed.row?.id, "le serveur doit rendre son identifiant").toBe("number");
         expect(pushed.row?.local_id).toBe(`${LOCAL_ID_PREFIX}push`);
-        // Le marqueur de version relevé au push — matière de la détection de conflit (4.6).
+        // The version marker read at push — the conflict detection's matter.
         expect(pushed.row?.updated_at, "sans marqueur, un conflit est indétectable").toBeTruthy();
     });
 
@@ -463,11 +488,12 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
         await page.goto("/", { waitUntil: "domcontentloaded" });
         await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
 
-        // ⚠️ ATTENDRE le plugin, pas un proxy. `connector` est PARESSEUX (`init.js` →
-        // `registerLazy`), donc `#geoleaf-map` visible ne dit RIEN de sa disponibilité :
-        // `GeoLeaf.Connector` était encore `undefined` ici, par intermittence. Attendre l'état
-        // qu'on va utiliser est la seule forme qui ne dépende pas du temps de boot — lequel a
-        // changé au passage à MapLibre 6 (deux requêtes sérialisées de plus).
+        // ⚠️ WAIT for the plugin, not a proxy. `connector` is LAZY (`init.js` →
+        // `registerLazy`), so `#geoleaf-map` visible says NOTHING of its
+        // availability: `GeoLeaf.Connector` was still `undefined` here,
+        // intermittently. Waiting on the state about to be used is the only form
+        // that does not depend on boot time — which changed at the MapLibre 6
+        // move (two more serialised requests).
         await page.waitForFunction(
             () => typeof window.GeoLeaf?.Connector?.configure === "function",
             null,
@@ -502,41 +528,47 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
         );
 
         expect(replay.first).toBe(201);
-        // 409 sur la contrainte UNIQUE. L'idempotence que 4.5 doit tenir n'est donc pas une
-        // discipline d'appelant — un rejeu accidentel ne PEUT pas dupliquer.
+        // 409 on the UNIQUE constraint. The idempotence the push must hold is
+        // thus not caller discipline — an accidental replay CANNOT duplicate.
         expect(replay.second, "un rejeu doit collisionner, pas dupliquer").toBe(409);
         expect(replay.rows, "une seule ligne, quoi qu'il arrive").toBe(1);
     });
 
     // ─────────────────────────────────────────────────────────────────────────
-    // ✅ PLUS AUCUN `fixme` DANS CE FICHIER. Il en portait deux, un par tâche non livrée ;
-    // les deux sont devenus des tests vivants — 4.1 d'abord, puis le parcours complet une
-    // fois les producteurs basculés (4.4b). C'était leur seul rôle : rougir à la livraison.
+    // ✅ NO `fixme` LEFT IN THIS FILE. It carried two, one per undelivered
+    // piece; both became living tests — the pull first, then the full journey
+    // once the producers switched. That was their only role: redden at
+    // delivery.
     // ─────────────────────────────────────────────────────────────────────────
 
-    // ⚠️ CE TEST ÉTAIT UN `fixme` JUSQU'À LA TÂCHE 4.1 — il est vivant depuis.
+    // ⚠️ THIS TEST WAS A `fixme` UNTIL THE PULL LANDED — it has been alive
+    // since.
     //
-    // Trois choses ont changé en le réveillant, et aucune n'est cosmétique :
+    // Three things changed in waking it, none cosmetic:
     //
-    //  1. `GeoLeaf.Offline.pullLayer` N'A JAMAIS EXISTÉ et n'existera pas : le rapatriement
-    //     est monté sur `GeoLeaf.Storage`, la façade du moteur hors-ligne, plutôt que dans un
-    //     namespace neuf. Le `fixme` le disait — « le nom est une hypothèse, pas un contrat ».
-    //  2. L'appel PERD SON CHAÎNAGE OPTIONNEL. `w.GeoLeaf?.Offline?.pullLayer?.(…)` ne
-    //     jetait pas quand rien ne répondait : il ne faisait RIEN, et le test n'aurait accusé
-    //     que le décompte. Un appel qui doit avoir lieu s'écrit sans `?.`.
-    //  3. Le critère monte. « `features` n'est plus vide » se satisfait d'un seul
-    //     enregistrement vide de sens ; on assert ici que les entités portent leur identité
-    //     serveur et leur marqueur de version — ce que 4.6 comparera —, et surtout qu'une
-    //     EMPRISE borne réellement le lot (11 des 27, mesuré).
+    //  1. `GeoLeaf.Offline.pullLayer` NEVER EXISTED and will not: the pull is
+    //     mounted on `GeoLeaf.Storage`, the offline engine's facade, rather
+    //     than a new namespace. The `fixme` said so — "the name is a
+    //     hypothesis, not a contract".
+    //  2. The call LOSES ITS OPTIONAL CHAINING. `w.GeoLeaf?.Offline?.pullLayer?.(…)`
+    //     did not throw when nothing answered: it did NOTHING, and the test
+    //     would only have blamed the count. A call that must happen is written
+    //     without `?.`.
+    //  3. The criterion rises. "`features` is no longer empty" is satisfied by
+    //     one meaningless record; here we assert the entities carry their
+    //     server identity and their version marker — what conflict detection
+    //     will compare — and above all that an EXTENT really bounds the batch
+    //     (11 of the 27, measured).
     test("4.1 — le rapatriement borné ÉCRIT dans `features`, et l'emprise le BORNE", async ({
         page,
         request,
     }) => {
-        // 🛑 LES ATTENDUS SE MESURENT DANS LE MÊME RUN, ILS NE SE RECOPIENT PAS.
-        // La graine vaut 27 lignes — mais les deux tests de push ci-dessus en INSÈRENT, et
-        // leur nettoyage n'a lieu qu'en `afterAll`. Un `toBe(27)` écrit ici passe seul et
-        // rougit dans le fichier complet : c'est ce qui s'est produit à la 1ʳᵉ rédaction.
-        // On demande donc son propre décompte au serveur, et la preuve devient l'ÉCART.
+        // 🛑 THE EXPECTED VALUES ARE MEASURED IN THE SAME RUN, NEVER COPIED.
+        // The seed is 27 rows — but the two push tests above INSERT some, and
+        // their cleanup only happens in `afterAll`. A `toBe(27)` written here
+        // passes alone and reddens in the full file: what happened at the 1st
+        // draft. So the server is asked for its own count, and the proof
+        // becomes the GAP.
         const numberMatched = async (bbox) => {
             const response = await request.get(
                 `${OGC}?f=json&limit=1${bbox ? `&bbox=${bbox}` : ""}`
@@ -550,14 +582,16 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
         await page.goto("/", { waitUntil: "domcontentloaded" });
         await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
 
-        // Le moteur de stockage est un chunk DIFFÉRÉ : sans cette attente, on mesurerait
-        // l'attente bornée de la façade au lieu du rapatriement (tâche 4.3, même piège).
+        // The storage engine is a DEFERRED chunk: without this wait, we would
+        // measure the facade's bounded wait instead of the pull (same trap as
+        // the local-read work).
         await page.waitForFunction(() => !!window.GeoLeaf?.Storage?.DB, null, { timeout: 20000 });
 
         /**
-         * Lit le store. Garde `objectStoreNames.contains` (une base v3 lèverait
-         * `NotFoundError`) et `onerror` sur la requête — sans lui la promesse ne résout
-         * jamais, et le symptôme est un timeout Playwright au lieu d'un rouge lisible.
+         * Reads the store. Guards `objectStoreNames.contains` (a v3 database
+         * would throw `NotFoundError`) and `onerror` on the request — without
+         * it the promise never resolves, and the symptom is a Playwright
+         * timeout instead of a readable red.
          */
         const readStore = async () =>
             page.evaluate(
@@ -600,16 +634,18 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
             onServer
         );
         expect(stored.withServerId, "chaque entité porte son identité serveur").toBe(onServer);
-        // Le marqueur relevé DÈS le premier pull : c'est lui, et rien d'autre, qui rendra le
-        // conflit détectable en 4.6. Le relever plus tard aurait imposé une migration.
+        // The marker read FROM the first pull: it, and nothing else, is what
+        // will make conflicts detectable. Reading it later would have imposed a
+        // migration.
         expect(stored.withVersion, "chaque entité porte son VersionMarker").toBe(onServer);
-        // Invariant S6 — le rapatriement ne confère JAMAIS l'éditabilité.
+        // Standing invariant — pulling NEVER confers editability.
         expect(stored.states).toEqual(["synced"]);
 
-        // ── L'emprise BORNE, et le contrôle est discriminant ────────────────────────────
-        // L'emprise est passée à la page, jamais réécrite : la chaîne interrogée au serveur et
-        // le tableau donné au rapatriement doivent être le MÊME littéral, sinon la comparaison
-        // porte sur deux emprises différentes sans que rien ne le dise.
+        // ── The extent BOUNDS, and the check is discriminating ──────────────────────────
+        // The extent is passed to the page, never rewritten: the string queried
+        // at the server and the array given to the pull must be the SAME
+        // literal, else the comparison bears on two different extents with
+        // nothing saying so.
         const bounded = await page.evaluate(async (bboxText) => {
             await new Promise((resolve) => {
                 const q = indexedDB.open("geoleaf-db");
@@ -629,10 +665,10 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
             });
         }, BBOX);
 
-        // ⚠️ Le contrôle qui fait la preuve : une emprise qui rendrait TOUT ne prouverait
-        // rien. On asserte d'abord qu'elle discrimine réellement, PUIS que le rapatriement
-        // s'y tient. Sans la première ligne, la seconde resterait verte le jour où la donnée
-        // se déplace hors de l'emprise.
+        // ⚠️ The check that makes the proof: an extent returning EVERYTHING
+        // would prove nothing. First assert it really discriminates, THEN that
+        // the pull sticks to it. Without the first line, the second would stay
+        // green the day the data moves out of the extent.
         expect(
             onServerBounded,
             "l'emprise doit DISCRIMINER, sinon la mesure ne prouve rien"
@@ -642,19 +678,20 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
     });
 
     /**
-     * LE CRITÈRE DE PREUVE DU SPRINT 4, joué de bout en bout.
+     * THE CYCLE'S PROOF CRITERION, played end to end.
      *
-     * 🛑 CE TEST A ÉTÉ UN `fixme` PENDANT TOUT LE SPRINT, ET CE QUI LUI MANQUAIT A CHANGÉ DE
-     * NATURE EN COURS DE ROUTE. Au départ il manquait le cycle : rapatrier (4.1), lire local
-     * (4.3), écrire optimiste (4.4), pousser (4.5). Une fois ces quatre livrées il manquait
-     * encore quelque chose — non pas du code de cycle, mais un PRODUCTEUR : les deux plugins
-     * d'édition écrivaient toujours la file v3, chacun dans son vocabulaire. C'est 4.4b qui
-     * l'a levé. Le distinguer a demandé trois tentatives.
+     * 🛑 THIS TEST WAS A `fixme` FOR THE WHOLE EFFORT, AND WHAT IT LACKED
+     * CHANGED IN NATURE ALONG THE WAY. At first the cycle was missing: pull,
+     * local read, optimistic write, push. Once those four were delivered
+     * something was still missing — not cycle code, but a PRODUCER: the two
+     * editing plugins still wrote the v3 queue, each in its own vocabulary. The
+     * producer switch lifted it. Telling the two apart took three attempts.
      *
-     * ⚠️ Il édite une entité RAPATRIÉE, pas une entité créée : c'est le mot du critère, et
-     * c'est le cas qui a du sens — une identité serveur existe déjà, donc la réconciliation
-     * porte sur quelque chose. Il restaure le titre d'origine en sortant : ce spec écrit dans
-     * une base partagée, et laisser dériver la graine ferait mentir les décomptes des autres.
+     * ⚠️ It edits a PULLED entity, not a created one: that is the criterion's
+     * word, and the case that makes sense — a server identity already exists,
+     * so reconciliation bears on something. It restores the original title on
+     * the way out: this spec writes into a shared database, and letting the
+     * seed drift would make the other tests' counts lie.
      */
     test("PREUVE DU SPRINT 4 — édition hors réseau, rechargement, push, identité réconciliée", async ({
         page,
@@ -662,25 +699,26 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
     }) => {
         const LAYER = "sites_rosario";
         const EDITED = `hors-réseau-${Date.now()}`;
-        /** Tout ce qui n'est PAS le backend est toléré : l'étape 9 ne parle que de LUI. */
+        /** Everything that is NOT the backend is tolerated: step 9 speaks only of IT. */
         const ONLY_BACKEND = [/^(?!.*qgis\.geoleaf\.dev).*/];
 
         const bootAndConfigure = async () => {
             await page.goto("/", { waitUntil: "domcontentloaded" });
             await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
 
-            // ⚠️ ATTENDRE le plugin, pas un proxy. `connector` est PARESSEUX (`init.js` →
-            // `registerLazy`), donc `#geoleaf-map` visible ne dit RIEN de sa disponibilité :
-            // `GeoLeaf.Connector` était encore `undefined` ici, par intermittence. Attendre l'état
-            // qu'on va utiliser est la seule forme qui ne dépende pas du temps de boot — lequel a
-            // changé au passage à MapLibre 6 (deux requêtes sérialisées de plus).
+            // ⚠️ WAIT for the plugin, not a proxy. `connector` is LAZY (`init.js`
+            // → `registerLazy`), so `#geoleaf-map` visible says NOTHING of its
+            // availability: `GeoLeaf.Connector` was still `undefined` here,
+            // intermittently. Waiting on the state about to be used is the only
+            // form that does not depend on boot time — which changed at the
+            // MapLibre 6 move (two more serialised requests).
             await page.waitForFunction(
                 () => typeof window.GeoLeaf?.Connector?.configure === "function",
                 null,
                 { timeout: 20000 }
             );
-            // Le moteur de stockage est un chunk DIFFÉRÉ — sans cette attente on mesurerait
-            // l'attente bornée de la façade au lieu du cycle.
+            // The storage engine is a DEFERRED chunk — without this wait we
+            // would measure the facade's bounded wait instead of the cycle.
             await page.waitForFunction(() => !!window.GeoLeaf?.Storage?.DB, null, {
                 timeout: 20000,
             });
@@ -725,20 +763,21 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
                 { layer: LAYER, id: localId }
             );
 
-        // ── 1. RAPATRIER ────────────────────────────────────────────────────────────────
+        // ── 1. PULL ─────────────────────────────────────────────────────────────────────
         await bootAndConfigure();
         const pull = await page.evaluate((l) => window.GeoLeaf.Storage.pullLayer(l), LAYER);
         expect(pull.refused, "le rapatriement doit avoir lieu").toBeNull();
         expect(pull.written).toBeGreaterThan(0);
 
-        // L'entité éditée est une entité RAPATRIÉE : son identité locale est dérivée de son
-        // identité serveur par 4.1, et c'est ce qui rendra la réconciliation vérifiable.
+        // The edited entity is a PULLED one: its local identity is derived from
+        // its server identity by the pull, and that is what will make
+        // reconciliation verifiable.
         const localId = "srv:1";
         const before = await readRecord(localId);
         expect(before?.serverId, "l'entité rapatriée porte son identité serveur").toBe("1");
         const originalTitle = before.feature.properties.title;
 
-        // ── 2. COUPER · 3. ÉDITER ───────────────────────────────────────────────────────
+        // ── 2. CUT · 3. EDIT ────────────────────────────────────────────────────────────
         await goOffline(context, page);
         const edit = await page.evaluate(
             async ({ layer, id, title }) => {
@@ -769,10 +808,11 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
         );
         expect(edit.refused, "éditer hors réseau ne doit rien refuser").toBeNull();
 
-        // ── 4. RECHARGER · 5. L'ÉDITION EST TOUJOURS LÀ ─────────────────────────────────
-        // 🛑 LE CŒUR DU CRITÈRE. C'est ici que la chaîne casse si l'écriture optimiste n'a pas
-        // atterri dans `features`, ou si la lecture locale de 4.3 ne la relit pas : une saisie
-        // de terrain qui disparaît au rechargement est le défaut que ce sprint existe à fermer.
+        // ── 4. RELOAD · 5. THE EDIT IS STILL THERE ──────────────────────────────────────
+        // 🛑 THE CRITERION'S HEART. This is where the chain breaks if the
+        // optimistic write did not land in `features`, or if the local read
+        // does not re-read it: a field entry that vanishes at reload is the
+        // defect this work exists to close.
         await goOnline(context, page);
         await bootAndConfigure();
         const afterReload = await readRecord(localId);
@@ -790,7 +830,7 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
             "et le magasin la SERT — c'est ce que « toujours visible » veut dire"
         ).toBe(true);
 
-        // ── 6. RÉTABLIR (déjà fait) · 7. POUSSER · 8. IDENTITÉ RÉCONCILIÉE ──────────────
+        // ── 6. RESTORE (already done) · 7. PUSH · 8. IDENTITY RECONCILED ────────────────
         const push = await page.evaluate(() => window.GeoLeaf.Storage.pushOutbox());
         expect(push.refused).toBeNull();
         expect(push.pushed, "l'édition part au serveur").toBeGreaterThan(0);
@@ -799,11 +839,12 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
         expect(afterPush.serverId, "l'entité porte son identifiant serveur").toBe("1");
         expect(afterPush.syncState, "et elle n'est plus due").toBe("synced");
 
-        // ── 9. UNE SECONDE SYNCHRONISATION NE PRODUIT AUCUNE REQUÊTE ────────────────────
-        // ⚠️ Scopé sur l'origine du backend, et précédé de `settleNetwork` : sur une page de
-        // carte le réseau n'est JAMAIS calme (les tuiles arrivent bien après le boot), et
-        // conclure « zéro requête tout court » sur une variante puis l'appliquer à une autre
-        // est la faute que le helper documente. L'instrument compte des INITIATIONS.
+        // ── 9. A SECOND SYNCHRONISATION PRODUCES NO REQUEST ─────────────────────────────
+        // ⚠️ Scoped to the backend's origin, and preceded by `settleNetwork`: on
+        // a map page the network is NEVER quiet (tiles arrive well after boot),
+        // and concluding "zero requests at all" on one variant then applying it
+        // to another is the mistake the helper documents. The instrument counts
+        // INITIATIONS.
         await settleNetwork(page);
         await assertZeroNetwork(
             page,
@@ -814,7 +855,7 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
             { allow: ONLY_BACKEND }
         );
 
-        // Remise en état de la graine — ce spec écrit dans une base partagée.
+        // Seed restoration — this spec writes into a shared database.
         await page.evaluate(
             async ({ url, title }) => {
                 await fetch(`${url}?id=eq.1`, {

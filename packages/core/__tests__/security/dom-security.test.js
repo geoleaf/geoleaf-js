@@ -13,8 +13,8 @@ vi.mock("../../src/utils/log/index.js", () => ({
 }));
 
 import { DOMSecurity } from "../../src/kernel/security/dom-security.js";
-// Le fichier liait ce même export sous DEUX noms locaux : `Security` dans le beforeAll,
-// `security` dans deux `it()`. Les deux liaisons sont conservées telles quelles.
+// The file bound this same export under TWO local names: `Security` in the
+// beforeAll, `security` in two `it()`s. Both bindings are kept as they are.
 import { Security, Security as security } from "../../src/kernel/security/index.js";
 
 describe("DOMSecurity", () => {

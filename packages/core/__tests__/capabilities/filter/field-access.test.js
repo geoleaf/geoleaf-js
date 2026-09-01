@@ -1,10 +1,11 @@
 /**
  * Unit tests — `capabilities/filter/engine/field-access.ts` (couverture, gisement kernel).
  *
- * Fichier à 54 % : lecture d'attributs par chemin pointé, géométrie-agnostique, et centroïde
- * représentatif. Pur — aucune dépendance mockable (réutilise `getNestedValue`/`normalizeTags`
- * réels). On couvre les deux niveaux de résolution (racine puis `properties`), la normalisation
- * en tags, et toutes les branches de `featureCentroid` (GeoJSON imbriqué, repli POI, non-fini).
+ * File at 54%: dotted-path attribute reading, geometry-agnostic, and
+ * representative centroid. Pure — no mockable dependency (reuses the real
+ * `getNestedValue`/`normalizeTags`). We cover both resolution levels (root
+ * then `properties`), tag normalisation, and all `featureCentroid` branches
+ * (nested GeoJSON, POI fallback, non-finite).
  */
 import { describe, test, expect } from "vitest";
 

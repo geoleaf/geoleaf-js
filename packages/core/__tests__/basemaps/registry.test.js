@@ -1,6 +1,6 @@
 /**
  */
-/* Sprint 3 — src/kernel/basemaps/registry.ts (MapLibre native API) */
+/* src/kernel/basemaps/registry.ts (MapLibre native API) */
 
 const Log = vi.hoisted(() => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
 vi.mock("../../src/utils/log/index.js", () => ({
@@ -51,7 +51,7 @@ function makeMockMap({ loaded = true, styleLoaded = true } = {}) {
     };
 }
 
-describe("basemaps/registry — Sprint 3 (MapLibre native)", () => {
+describe("basemaps/registry (MapLibre native)", () => {
     let mockMap;
 
     beforeEach(() => {
@@ -301,35 +301,36 @@ describe("basemaps/registry — Sprint 3 (MapLibre native)", () => {
         expect(notLoadedMap.once).toHaveBeenCalledWith("idle", expect.any(Function));
     });
 
-    // ⚠️ R.7b — le report `once('idle')` ÉCRASAIT un choix plus récent.
+    // ⚠️ The `once('idle')` deferral OVERWROTE a more recent choice.
     //
-    // Mesuré au navigateur (profil `tourism`, 8/8) : `setBaseLayer("positron")` s'appliquait
-    // (`Active basemap: positron`), puis ~500 ms plus tard le fond revenait à
-    // `terrain-terrarium` — la clé du BOOT, capturée par un report encore en attente. Aucune
-    // erreur console : la bascule était refusée en silence, et les labels de la couche étaient
-    // perdus sans être reconstruits.
+    // Measured in a browser (`tourism` profile, 8/8):
+    // `setBaseLayer("positron")` applied (`Active basemap: positron`), then
+    // ~500 ms later the basemap went back to `terrain-terrarium` — the
+    // BOOT's key, captured by a deferral still pending. No console error:
+    // the switch was refused silently, and the layer's labels were lost
+    // without being rebuilt.
     //
-    // La cause : le report capture `key` à l'appel et se ré-applique sans jamais vérifier
-    // qu'une demande postérieure l'a remplacé. Le module avait déjà `_styleGeneration` pour
-    // exactement cette classe de course, mais il ne gardait que `style.load` et le chemin WMTS
-    // — pas ce report-ci.
+    // The cause: the deferral captures `key` at call time and re-applies
+    // itself without ever checking that a later request replaced it. The
+    // module already had `_styleGeneration` for exactly this race class, but
+    // it only guarded `style.load` and the WMTS path — not this deferral.
     it("un report sur idle n'écrase PAS une activation plus récente (R.7b)", () => {
         const map = makeMockMap({ styleLoaded: false });
         setMap(map);
         registerBaseLayer("boot", { tiles: ["https://tile.example/boot/{z}/{x}/{y}.png"] });
         registerBaseLayer("choix", { tiles: ["https://tile.example/choix/{z}/{x}/{y}.png"] });
 
-        // 1 — activation du boot : la carte n'est pas prête, elle est reportée sur `idle`.
+        // 1 — boot activation: the map is not ready, it is deferred to `idle`.
         setBaseLayer("boot", { silent: true });
         const deferred = map.once.mock.calls.find(([evt]) => evt === "idle")?.[1];
         expect(deferred, "aucun report armé sur idle").toBeTypeOf("function");
 
-        // 2 — la carte devient prête et l'utilisateur choisit un AUTRE fond, qui s'applique.
+        // 2 — the map becomes ready and the user picks ANOTHER basemap, which applies.
         map.isStyleLoaded.mockReturnValue(true);
         setBaseLayer("choix");
         expect(getActiveKey()).toBe("choix");
 
-        // 3 — le report du boot se déclenche enfin. Il doit se reconnaître périmé.
+        // 3 — the boot's deferral finally fires. It must recognise itself stale.
         deferred();
 
         expect(
@@ -340,12 +341,13 @@ describe("basemaps/registry — Sprint 3 (MapLibre native)", () => {
 
     // ─── setBaseLayer — switcher ──────────────────────────────────────────────
 
-    // ─── raster→raster : muter plutôt que détruire (N-2) ──────────────────────
-    // `RasterTileSource.setTiles()` ne mute QUE les tuiles. Tout le reste (tileSize,
-    // attribution, bornes de zoom) est figé à la création de la source : dès qu'une de ces
-    // propriétés change, il FAUT reconstruire, sinon l'ancienne valeur survit en silence.
+    // ─── raster→raster: mutate rather than destroy ─────────────────────────────
+    // `RasterTileSource.setTiles()` mutates ONLY the tiles. Everything else
+    // (tileSize, attribution, zoom bounds) is frozen at source creation: as
+    // soon as one of those properties changes, rebuilding is REQUIRED,
+    // otherwise the old value survives silently.
 
-    /** Source raster vivante, telle que MapLibre l'expose (avec setTiles). */
+    /** Live raster source, as MapLibre exposes it (with setTiles). */
     const liveRasterSource = () => ({ setTiles: vi.fn() });
 
     function primeSwitch(source) {
@@ -398,12 +400,12 @@ describe("basemaps/registry — Sprint 3 (MapLibre native)", () => {
     });
 
     it("setBaseLayer raster→raster: retombe sur remove+re-add si la source n'a pas setTiles", () => {
-        // Filet : une source qui n'expose pas la mutation (ou un moteur plus ancien) doit
-        // continuer de fonctionner par le chemin historique.
+        // Net: a source not exposing the mutation (or an older engine) must
+        // keep working through the historical path.
         setMap(mockMap);
         registerBaseLayer("a", { tiles: ["https://a.example/{z}/{x}/{y}.png"] });
         registerBaseLayer("b", { tiles: ["https://b.example/{z}/{x}/{y}.png"] });
-        primeSwitch({}); // pas de setTiles
+        primeSwitch({}); // no setTiles
 
         setBaseLayer("b");
 
@@ -414,7 +416,7 @@ describe("basemaps/registry — Sprint 3 (MapLibre native)", () => {
     });
 
     it("setBaseLayer raster→raster: reconstruit toujours pour un type image (ImageSource)", () => {
-        // `image` n'est pas une RasterTileSource : elle n'a pas de setTiles.
+        // `image` is not a RasterTileSource: it has no setTiles.
         setMap(mockMap);
         registerBaseLayer("a", { tiles: ["https://a.example/{z}/{x}/{y}.png"] });
         registerBaseLayer("img", {
@@ -437,7 +439,7 @@ describe("basemaps/registry — Sprint 3 (MapLibre native)", () => {
     });
 
     it("setBaseLayer raster→raster: dispatche le changement même en mutant", () => {
-        // La mutation ne doit pas court-circuiter la comptabilité du switch.
+        // The mutation must not short-circuit the switch's bookkeeping.
         setMap(mockMap);
         registerBaseLayer("a", { tiles: ["https://a.example/{z}/{x}/{y}.png"] });
         registerBaseLayer("b", { tiles: ["https://b.example/{z}/{x}/{y}.png"] });

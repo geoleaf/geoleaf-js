@@ -3,6 +3,16 @@
  * © 2026 Mattieu Pottier — MIT License
  * https://geoleaf.dev
  */
+
+/**
+ * Config reader for `__PLUGIN_PKG__`.
+ *
+ * Single door onto the plugin's branch of the profile: `DEFAULTS` states what the plugin does
+ * when the profile says nothing, and `getPluginConfig()` merges any override over it. Every
+ * other module reads the configuration through here, never through `coreConfigGet` directly —
+ * a second reader is a second set of defaults, and the two diverge without a word.
+ */
+
 import { coreConfigGet } from "@geoleaf/host-runtime";
 
 const DEFAULTS = {
@@ -17,7 +27,16 @@ const DEFAULTS = {
     /* </ui> */
 } as const;
 
+/**
+ * The plugin's configuration, as read from `modules.__PLUGIN_NAME__` in the active profile.
+ *
+ * ⚠️ This interface is the ORACLE of the plugin's README: `check-plugin-readme-config.cjs`
+ * requires every member here to be documented there. Adding a key without documenting it
+ * reddens that gate — deliberately, because a key read at runtime and written down nowhere is
+ * a setting an integrator cannot find.
+ */
 export interface PluginConfig {
+    /** Mounts the plugin when `true`. The profile may switch it off without unloading it. */
     enabled: boolean;
     /* <ui> */
     showButton: boolean;

@@ -16,7 +16,7 @@
  * Reads the current offset from the root's inline CSS custom properties.
  * Defaults to 10px on both axes, matching the pre-consolidation behaviour.
  *
- * ⚠️ B-12 — an EDGE-ANCHORED root carries `auto` here. The editor pill can be
+ * ⚠️ An EDGE-ANCHORED root carries `auto` here. The editor pill can be
  * anchored right or bottom (`--gl-editor-left: auto`), and `"auto"` is truthy, so the
  * `|| "10"` fallback never fired and `parseFloat("auto")` returned **NaN** — every
  * subsequent offset became `NaNpx` and the drag did nothing at all.

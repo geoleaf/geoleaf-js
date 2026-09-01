@@ -6,8 +6,8 @@
  *   - extractRawLayers(payload)       → the layers[] array (id/configFile/layerManagerId/label/order/defaultVisible)
  *   - expandLayerTemplates(reg, file) → layerTemplates[] expanded into inline LayerRefs
  *   - validateFiles / validateFilesModules → the profile.json Files manifest (incl. layersFile)
- * The downstream HTTP fetch of each {id}_config.json (profile-loader.ts:257-297) and the
- * layerManager order sort (layer-manager-api.ts:359,463) are integration/DOM and are
+ * The downstream HTTP fetch of each {id}_config.json (profile-loader.ts) and the
+ * layerManager order sort (layer-manager-api.ts) are integration/DOM and are
  * exercised by e2e/cfg-c4 — here we lock the index wiring.
  *
  * Consumer: packages/core/src/kernel/config/profile-loader-helpers.ts. Inventory B5.

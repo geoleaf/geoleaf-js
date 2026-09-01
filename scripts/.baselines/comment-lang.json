@@ -1,0 +1,9 @@
+{
+    "_comment": "CLANG-01/02 — commentaires FRANÇAIS par fichier de code PUBLIC (détection par stop-words, >= 2 distincts par commentaire — jamais par accent, le piège nommé de la roadmape), gelés à la pose. DÉCROISSANT : traduire un fichier (une traduction se RELIT, elle ne se substitue pas — les commentaires portent des motifs mesurés), puis --update-baseline.",
+    "_generated": "node scripts/check-comment-lang.cjs --update-baseline",
+    "files": 1,
+    "comments": 1,
+    "entries": {
+        "scripts/probe-position-share.mjs": 1
+    }
+}
