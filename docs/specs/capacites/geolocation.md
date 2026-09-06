@@ -11,7 +11,7 @@ date: 1er septembre 2026
 # geolocation — le suivi GPS de la position de l'utilisateur
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/geolocation/` ·
-**Vérifié contre :** `2fcbba8a` (01/09/2026)
+**Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >

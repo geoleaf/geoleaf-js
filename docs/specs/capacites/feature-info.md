@@ -11,7 +11,7 @@ date: 1er septembre 2026
 # feature-info — le rendu attributaire, et ses trois surfaces
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/feature-info/` ·
-**Vérifié contre :** `2fcbba8a` (01/09/2026) — ⚠️ cette ligne portait `6238592c` (02/08/2026)
+**Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`. — ⚠️ cette ligne portait `6238592c` (02/08/2026)
 alors que le frontmatter était passé à `817af7a0` : la re-vérification avait mis à jour l'en-tête
 YAML seul. Un lecteur y lisait la fiche pour **plus périmée qu'elle n'est**.
 

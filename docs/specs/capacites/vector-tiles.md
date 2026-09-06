@@ -11,7 +11,7 @@ date: 27 juillet 2026
 # vector-tiles — les couches métier en tuiles vectorielles MVT
 
 **Type :** capacité in-core (**de politique**) · **Code :** `packages/core/src/capabilities/vector-tiles/` ·
-**Vérifié contre :** `5224e0a27` (18/08/2026)
+**Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >

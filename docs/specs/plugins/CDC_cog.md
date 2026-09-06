@@ -4,14 +4,14 @@ title: cog — l'affichage direct de Cloud Optimized GeoTIFF sur la carte
 plugin_id: cog
 package: "@geoleaf-plugins/cog"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: fab770b1
+verifie_contre: f0a3997f2
 date: 1er septembre 2026
 ---
 
 # cog — l'affichage direct de Cloud Optimized GeoTIFF sur la carte
 
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/cog` ·
-**Code :** `packages/plugins/cog/` · **Vérifié contre :** `fab770b1` (01/09/2026)
+**Code :** `packages/plugins/cog/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >

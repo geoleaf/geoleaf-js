@@ -11,7 +11,7 @@ date: 4 septembre 2026
 # editor — le plugin d'édition UNIQUE
 
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/editor` ·
-**Code :** `packages/plugins/editor/` · **Vérifié contre :** `bc4516cac` (04/09/2026)
+**Code :** `packages/plugins/editor/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
 > ⚠️ **Ce que cette estampille couvre, et il faut le lire avant de s'y fier.** Le commit qui l'a
 > rendue nécessaire touche **ED-05b** (le garde de doublon), **ED-08** (l'annulation),

@@ -11,7 +11,7 @@ date: 1er septembre 2026
 # file-import — la conversion de fichiers géographiques vers GeoJSON
 
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/file-import` ·
-**Code :** `packages/plugins/file-import/` · **Vérifié contre :** `fab770b1` (01/09/2026)
+**Code :** `packages/plugins/file-import/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >

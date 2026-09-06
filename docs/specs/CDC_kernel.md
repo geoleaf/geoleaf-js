@@ -9,7 +9,7 @@ date: 6 septembre 2026
 
 # kernel — le substrat que tout le reste suppose
 
-**Type :** kernel · **Code :** `packages/core/src/` · **Vérifié contre :** voir `verifie_contre` en tête — ⚠️ cette ligne portait une SECONDE empreinte, non gatée : `SPECS-FRESH` ne lit que le frontmatter. Retirée le 06/09/2026 avec celles de quatre fiches voisines, après avoir mesuré que celle de `docs/specs/capacites/offline.md` avait déjà divergé. Deux surfaces pour un seul fait, dont une non gatée, se contredisent toujours dans le sens où c'est la non gatée qui ment.
+**Type :** kernel · **Code :** `packages/core/src/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
 > ⚠️ **Ce que l'estampille de `349cf2a3a` couvre — et pour une fois elle est MÉRITÉE, pas
 > collatérale.** Le commit ajoute trois membres à la surface publique (`Layers.create`,

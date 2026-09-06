@@ -4,14 +4,14 @@ title: realtime-layer — les couches qui se mettent à jour toutes seules
 plugin_id: realtime-layer
 package: "@geoleaf-plugins/realtime-layer"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: fab770b1
+verifie_contre: f0a3997f2
 date: 1er septembre 2026
 ---
 
 # realtime-layer — les couches qui se mettent à jour toutes seules
 
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/realtime-layer` ·
-**Code :** `packages/plugins/realtime-layer/` · **Vérifié contre :** `fab770b1` (01/09/2026)
+**Code :** `packages/plugins/realtime-layer/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >

@@ -11,7 +11,7 @@ date: 6 septembre 2026
 # labels — les étiquettes de texte par couche
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/labels/` ·
-**Vérifié contre :** `5195fbca5` (06/09/2026)
+**Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
 > 🧭 **Contrat ici, mode d'emploi ailleurs.** Cette fiche dit ce que le sujet **doit**
 > faire : périmètre, table de configuration gatée, contrat exposé, frontières. Les recettes

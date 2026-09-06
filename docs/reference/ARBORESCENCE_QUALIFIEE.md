@@ -30,7 +30,7 @@ awk -F'|' '$5 ~ /déplacer/ {print $1, $6}' ARBORESCENCE_QUALIFIEE.md
 | Packages | 20 |
 | Répertoires | 192 |
 | Fichiers | **1167** — 940 `.ts` · 52 `.css` · 175 `scripts/` |
-| Lignes de code | 232 181 |
+| Lignes de code | 232 191 |
 | Artefacts qualifiés | **1359 / 1359** (100.0 %) |
 
 | Verdict | Artefacts |
@@ -2052,7 +2052,7 @@ Outillage du dépôt : 62 exécutables à la racine et 8 modules partagés sous 
 ├── check-dead-code.cjs                 |  291 |  ok |  ok | justifié  | Enveloppe knip : relance l'analyse en reporter JSON, compte les vraies…
 ├── check-dead-links.cjs                |  608 |  ok |  ok | justifié  | Balaie la documentation Markdown publiée et signale les liens internes…
 ├── check-dist-integrity.cjs            |  245 |  ok |  ok | justifié  | (en-tête absent — fichier de données ou baril)
-├── check-doc-ceilings.cjs              |  225 |  ok |  ok | justifié  | (en-tête absent — fichier de données ou baril)
+├── check-doc-ceilings.cjs              |  235 |  ok |  ok | justifié  | (en-tête absent — fichier de données ou baril)
 ├── check-doc-config-examples.cjs       |  440 |  ok |  ok | justifié  | (en-tête absent — fichier de données ou baril)
 ├── check-doc-versions.cjs              |  243 |  ok |  ok | justifié  | Gate DOC-VERSIONS : le `version:` du frontmatter d'un document d'atelier…
 ├── check-dynamic-key-writes.cjs        |  456 |  ok |  ok | justifié  | Cliquet anti-pollution de prototype : recense les écritures à clé…

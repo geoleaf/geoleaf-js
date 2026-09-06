@@ -4,14 +4,14 @@ title: websocket — le transport temps réel, et sa reconnexion
 plugin_id: websocket
 package: "@geoleaf-plugins/websocket"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: fab770b1
+verifie_contre: f0a3997f2
 date: 1er septembre 2026
 ---
 
 # websocket — le transport temps réel, et sa reconnexion
 
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/websocket` ·
-**Code :** `packages/plugins/websocket/` · **Vérifié contre :** `fab770b1` (01/09/2026)
+**Code :** `packages/plugins/websocket/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >

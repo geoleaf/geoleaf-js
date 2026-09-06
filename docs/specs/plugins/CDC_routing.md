@@ -11,7 +11,7 @@ date: 27 août 2026
 # routing — le calcul d'itinéraire, utilisable sans le guidage
 
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/routing` ·
-**Code :** `packages/plugins/routing/` · **Vérifié contre :** voir `verifie_contre` en tête — ⚠️ cette ligne portait un second empreinte, `66a48f8b0`, qui a divergé de trois commits du frontmatter sans que rien ne le voie : `SPECS-FRESH` ne lit que l'en-tête. Deux surfaces pour un seul fait, dont une non gatée, se contredisent toujours dans le sens où c'est la non gatée qui ment.
+**Code :** `packages/plugins/routing/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >

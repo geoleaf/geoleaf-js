@@ -11,7 +11,7 @@ date: 4 septembre 2026
 # host-runtime — l'accès typé au namespace, et les seams que les plugins partagent
 
 **Type :** bibliothèque partagée **interne** · **Paquet :** `@geoleaf/host-runtime` ·
-**Code :** `packages/libs/host-runtime/` · **Vérifié contre :** `bc4516cac` (04/09/2026)
+**Code :** `packages/libs/host-runtime/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >

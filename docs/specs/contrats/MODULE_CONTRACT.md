@@ -2,7 +2,7 @@
 
 **Version produit :** GeoLeaf Platform V3
 **Source de vérité :** `packages/core/src/contracts/`
-**Vérifié contre :** `16e5a451` (27/07/2026)
+**Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
 📌 **Ancrage des chemins.** Un chemin cité sans racine se lit depuis `packages/core/src/`. Les
 noms nus du squelette de plugin (`entry.ts`, `public-api.ts`…) désignent une **forme**, pas un

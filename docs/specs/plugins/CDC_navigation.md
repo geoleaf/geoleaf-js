@@ -11,7 +11,7 @@ date: 27 août 2026
 # navigation — le guidage temps réel, et les trois adaptateurs qui le rendent portable
 
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/navigation` ·
-**Code :** `packages/plugins/navigation/` · **Vérifié contre :** `b4cc844b1` (27/08/2026)
+**Code :** `packages/plugins/navigation/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
 > ⚠️ **Ce corps a annoncé `f92421820` pendant que le frontmatter disait `3307070d0`** — deux
 > attestations contradictoires dans le même fichier, et c'est le frontmatter que la gate lit.

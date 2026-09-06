@@ -4,14 +4,14 @@ title: measure — la mesure éphémère, et ses annotations
 plugin_id: measure
 package: "@geoleaf-plugins/measure"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 1d0f5312
+verifie_contre: f0a3997f2
 date: 1er septembre 2026
 ---
 
 # measure — la mesure éphémère, et ses annotations
 
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/measure` ·
-**Code :** `packages/plugins/measure/` · **Vérifié contre :** `1d0f5312` (01/09/2026)
+**Code :** `packages/plugins/measure/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >

@@ -62,6 +62,25 @@ const BASELINE = path.join(__dirname, ".baselines", "doc-ceilings.json");
 /** The aim, in bytes. Named in every message so a green never hides the goal. */
 const TARGET = 15 * 1024;
 
+// 🛑 BEFORE the two constants below, and the order is EVERYTHING — it cost a red public CI.
+// `NO_COUNTS` and `ROTATING` both call `docsPaths.internal()`, which THROWS when the workshop
+// root is missing; this guard used to live UNDER them, so it was never reached on the only
+// corpus where it does anything. The skip was written, and `ci.yml` carried a comment saying
+// this step skips where its subjects do not ship — and it was dead all the same: the mirror
+// crashed on a stack trace instead of skipping. A guard never SEEN doing its job guards
+// nothing. Locked by `__tests__/guards/workshop-gates-skip-public.guard.test.ts`.
+//
+// ⚠️ `internalRootExists()` never throws, by contract (`lib/docs-paths.cjs`) — which is
+// precisely why it is the one call that may precede everything else.
+if (!docsPaths.internalRootExists()) {
+    console.log("⏭️  [DOC-CEIL] SAUTÉ — la racine d'atelier est absente.");
+    console.log(
+        "    Ce n'est pas un vert : aucun fichier n'a été pesé. Sur le clone public c'est\n" +
+            "    le comportement attendu — ces documents n'y partent pas."
+    );
+    process.exit(0);
+}
+
 /** Files whose prose must carry no ratio. See DOC-CEIL-02 above for the exemption. */
 const NO_COUNTS = new Set(["CLAUDE.md", docsPaths.rel(docsPaths.internal("ETAT.md"))]);
 
@@ -80,15 +99,6 @@ const NO_COUNTS = new Set(["CLAUDE.md", docsPaths.rel(docsPaths.internal("ETAT.m
  * on growth.
  */
 const ROTATING = new Map([[docsPaths.rel(docsPaths.internal("POSTMORTEMS.md")), 24 * 1024]]);
-
-if (!docsPaths.internalRootExists()) {
-    console.log("⏭️  [DOC-CEIL] SAUTÉ — la racine d'atelier est absente.");
-    console.log(
-        "    Ce n'est pas un vert : aucun fichier n'a été pesé. Sur le clone public c'est\n" +
-            "    le comportement attendu — ces documents n'y partent pas."
-    );
-    process.exit(0);
-}
 
 if (!fs.existsSync(BASELINE)) {
     console.error(`❌ [DOC-CEIL] baseline absente : ${path.relative(ROOT, BASELINE)}`);

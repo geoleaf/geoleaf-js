@@ -11,7 +11,7 @@ date: 4 septembre 2026
 # table — la vue tabulaire des couches, et son pont vers la carte
 
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/table` ·
-**Code :** `packages/plugins/table/` · **Vérifié contre :** `349cf2a3a` (04/09/2026)
+**Code :** `packages/plugins/table/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
 > 🧭 **Contrat ici, mode d'emploi ailleurs.** Cette fiche dit ce que le sujet **doit**
 > faire : périmètre, table de configuration gatée, contrat exposé, frontières. Les recettes

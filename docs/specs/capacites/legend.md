@@ -11,7 +11,7 @@ date: 1er septembre 2026
 # legend — la légende cartographique, déduite des fichiers de style
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/legend/` ·
-**Vérifié contre :** `fab770b1` (01/09/2026)
+**Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
 > 🧭 **Contrat ici, mode d'emploi ailleurs.** Cette fiche dit ce que le sujet **doit**
 > faire : périmètre, table de configuration gatée, contrat exposé, frontières. Les recettes

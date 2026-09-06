@@ -11,7 +11,7 @@ date: 1er septembre 2026
 # scale — l'échelle graphique, l'échelle numérique éditable et le niveau de zoom
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/scale/` ·
-**Vérifié contre :** `e52f91de` (01/09/2026)
+**Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
 > 🧭 **Contrat ici, mode d'emploi ailleurs.** Cette fiche dit ce que le sujet **doit**
 > faire : périmètre, table de configuration gatée, contrat exposé, frontières. Les recettes

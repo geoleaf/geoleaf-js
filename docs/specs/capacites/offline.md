@@ -11,7 +11,7 @@ date: 4 septembre 2026
 # offline — le moteur hors ligne, et la façade que pilote son interface
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/offline/` ·
-**Vérifié contre :** voir `verifie_contre` en tête — ⚠️ cette ligne portait une SECONDE empreinte, non gatée : `SPECS-FRESH` ne lit que le frontmatter. Retirée le 06/09/2026 avec celles de quatre fiches voisines, après avoir mesuré que celle de `docs/specs/capacites/offline.md` avait déjà divergé. Deux surfaces pour un seul fait, dont une non gatée, se contredisent toujours dans le sens où c'est la non gatée qui ment.
+**Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
 > ⚠️ **Ce que cette estampille couvre, et ce qu'elle ne couvre pas.** Elle couvre les **cinq
 > mécanismes du drain** réécrits le 02/09/2026 — les quatre trous bouchés, plus la session

@@ -11,7 +11,7 @@ date: 2 septembre 2026
 # connector — l'authentification et l'injection de jeton
 
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/connector` ·
-**Code :** `packages/plugins/connector/` · **Vérifié contre :** `6cf15e822` (02/09/2026)
+**Code :** `packages/plugins/connector/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
 > ⚠️ **Ce que cette estampille couvre.** Le **cycle de session** réécrit le 02/09/2026 : le
 > renouvellement rendu atteignable après péremption (CN-28), le point d'authentification sorti du
