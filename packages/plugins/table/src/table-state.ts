@@ -18,14 +18,14 @@ import type {
     TableFeature,
     TableGeoJSONApi,
     TableMap,
-    TableVisibilityManager,
+    TableLayersApi,
 } from "./types.js";
 
 /** Subset of the `GeoLeaf` global namespace the table reads at runtime. */
 interface GeoLeafTableNamespace {
     GeoJSON?: TableGeoJSONApi;
     Config?: TableConfigApi;
-    _LayerVisibilityManager?: TableVisibilityManager;
+    Layers?: TableLayersApi;
     [key: string]: unknown;
 }
 

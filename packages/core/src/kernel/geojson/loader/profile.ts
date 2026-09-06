@@ -135,9 +135,17 @@ function _applyVectorTilesConfig(nd: Record<string, unknown>, d: Record<string, 
 function _buildNormalizedDef(
     d: Record<string, unknown>,
     profile: ProfileLike,
-    layerUrl: string
+    layerUrl: string | null
 ): Record<string, unknown> {
     const nd = { ...d, url: layerUrl } as Record<string, unknown>;
+    // The public key hands over to the loader's internal one, and does NOT stay
+    // alongside it: `_loadSingleLayer` deletes its copy once converted, so keeping
+    // `inlineData` here would be the only thing retaining a full collection on the
+    // stored definition.
+    if (nd.inlineData !== undefined) {
+        nd._cachedData = nd.inlineData;
+        delete nd.inlineData;
+    }
     nd._profileId = profile.id;
     nd._layerDirectory = (d._layerDirectory as string) || null;
     const clusteringPatch = resolveClusteringNormalization(d.clustering);
@@ -197,7 +205,7 @@ function _buildLayerDefParams(
     d: Record<string, unknown>,
     profile: ProfileLike,
     state: GeoJSONState,
-    layerUrl: string
+    layerUrl: string | null
 ): { normalizedDef: Record<string, unknown>; layerId: string; layerLabel: string } {
     const normalizedDef = _buildNormalizedDef(d, profile, layerUrl);
     const layerId = (d.id as string) || "geojson-layer-" + state.layerIdCounter++;
@@ -270,12 +278,19 @@ async function _processLayerDef(
         return _dispatchPluginLayer(d, index, profile, Log);
     }
     const layerUrl = _resolveLayerUrl(d, profile, self);
-    if (!layerUrl) {
-        Log.warn("[GeoLeaf.GeoJSON] GeoJSON descriptor without URL or dataFile, ignored :", {
-            index,
-            id: d.id,
-            label: d.label,
-        });
+    // A caller-supplied payload stands IN FOR the URL: `_loadSingleLayer` already
+    // serves it without touching the network (`_getDataPromise`, `fromCache`), and
+    // `def.url` is read only inside the fetch that path skips. The guard therefore
+    // asks "is there a source at all?", not "is there a URL".
+    if (!layerUrl && d.inlineData === undefined) {
+        Log.warn(
+            "[GeoLeaf.GeoJSON] GeoJSON descriptor without URL, dataFile or inlineData, ignored :",
+            {
+                index,
+                id: d.id,
+                label: d.label,
+            }
+        );
         return null;
     }
     const params = _buildLayerDefParams(d, profile, state, layerUrl);
@@ -293,6 +308,51 @@ async function _processLayerDef(
         });
         return null;
     }
+}
+
+/**
+ * Loads one layer from a caller-supplied definition, through the very path a
+ * profile-declared layer takes.
+ *
+ * Backs the public `Layers.create()` seam. There is deliberately no second
+ * pipeline here: the definition is handed to the same per-layer processor the
+ * profile loop uses, so it inherits the whole contract — the `active: false`
+ * skip, the plugin dispatch by id, source resolution (`url`, `dataFile`,
+ * `data.dataUrl`, `data.vectorTiles`), clustering normalisation and the load
+ * itself. A layer created this way is therefore indistinguishable, once loaded,
+ * from one the profile declared.
+ *
+ * Resolution happens against the ACTIVE profile, so a relative `dataFile` names
+ * the same location it would name inside that profile. With no active profile,
+ * only definitions carrying an absolute source resolve — the others are skipped
+ * by the processor, which logs why.
+ *
+ * ⚠️ It also REGISTERS the layer with the layer manager, exactly as the profile
+ * loop does once its batch lands. Skipping that step is the silent half of this
+ * path: the layer would render on the map, hold its features, and have no row —
+ * so nothing errors and the user simply cannot toggle it. A layer created here
+ * must be indistinguishable from a profile-declared one, and a missing row is a
+ * difference.
+ *
+ * @param def - A layer definition, in the shape a profile's layer entry carries.
+ * @returns The loaded layer, or `null` when the definition names no resolvable
+ *   source or was skipped (`active: false`).
+ */
+export async function loadLayerDefinition(def: unknown): Promise<LoadedLayerResult | null> {
+    const Log = getLog();
+    const profile = (_deps?.getConfig()?.getActiveProfile?.() as ProfileLike | null) ?? {};
+    const loaded = (await _processLayerDef(
+        def,
+        0,
+        profile,
+        getState(),
+        Loader,
+        {},
+        Log
+    )) as LoadedLayerResult | null;
+    // Same guard as the profile loop's: register only when something landed.
+    if (loaded) _registerLayerManager([loaded]);
+    return loaded ?? null;
 }
 
 interface LoaderShape {

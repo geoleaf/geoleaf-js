@@ -170,7 +170,14 @@ export interface EditorMapMouseEvent {
 
 /** A rendered feature returned by {@link EditorMap.queryRenderedFeatures} (MapLibre subset). */
 export interface EditorRenderedFeature {
-    id: string | number | undefined;
+    /**
+     * The feature's promoted id — **absent on every non-point layer**, because the core sets
+     * `promoteId` on POINT sources only. Optional rather than `T | undefined`: the second form
+     * makes the key present-and-undefined, which a spread merge then uses to overwrite a
+     * default (`check-exact-optional-debt`). The identity is resolved through `feature-id.ts`,
+     * never read raw.
+     */
+    id?: string | number;
     geometry: { type: string; coordinates: unknown };
     layer: { id: string };
     properties: Record<string, unknown>;

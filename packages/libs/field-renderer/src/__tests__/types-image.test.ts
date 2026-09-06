@@ -13,6 +13,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 import type { FieldConfig, RenderCtx } from "../contract.js";
 import { imageComponent } from "../types/image.js";
+import { setImageUploadStrategy } from "../types/field-media.js";
 
 const CTX: RenderCtx = { lang: "fr" };
 const CTX_RO: RenderCtx = { lang: "fr", readOnly: true };
@@ -79,13 +80,15 @@ describe("image.formRender — aperçu", () => {
         expect(el.querySelector(".gl-form-image__preview")).toBeNull();
     });
 
-    it("un clic sur l'aperçu ouvre la visionneuse", () => {
+    // ⚠️ Both the preview `src` and the lightbox now go through the host's preview resolver,
+    // because an offline capture is held as an opaque token only the host can read. That
+    // makes them ASYNCHRONOUS — a synchronous assertion here measures the tick, not the code.
+    it("un clic sur l'aperçu ouvre la visionneuse", async () => {
         const el = imageComponent.formRender!("https://example.com/a.jpg", field(), vi.fn(), CTX);
         document.body.appendChild(el);
 
         el.querySelector(".gl-form-image__preview")!.dispatchEvent(new Event("click"));
-
-        expect(document.querySelector(".gl-lightbox")).not.toBeNull();
+        await vi.waitFor(() => expect(document.querySelector(".gl-lightbox")).not.toBeNull());
     });
 
     it("marque le libellé requis", () => {
@@ -157,7 +160,7 @@ describe("image.formRender — zone de dépôt", () => {
         expect(zone.classList.contains("is-over")).toBe(false);
     });
 
-    it("accepte un fichier déposé directement", () => {
+    it("accepte un fichier déposé directement", async () => {
         const onChange = vi.fn();
         const el = imageComponent.formRender!("", field(), onChange, CTX);
         const zone = el.querySelector<HTMLElement>(".gl-form-image__drop-zone")!;
@@ -168,7 +171,7 @@ describe("image.formRender — zone de dépôt", () => {
         drop.dataTransfer = { files: [imageFile()] };
         zone.dispatchEvent(drop);
 
-        expect(onChange).toHaveBeenCalledWith("blob:local/preview");
+        await vi.waitFor(() => expect(onChange).toHaveBeenCalledWith("blob:local/preview"));
     });
 
     it("un dépôt sans fichier ne fait rien", () => {
@@ -197,14 +200,34 @@ describe("image.formRender — zone de dépôt", () => {
 // ─── formRender — file loading ───────────────────────────────────────────────────
 
 describe("image.formRender — chargement", () => {
-    it("sans endpoint : crée une URL d'objet et rend l'aperçu", () => {
+    // ⚠️ THE NO-ENDPOINT BRANCH NOW GOES THROUGH THE SAME PATH AS THE REST, hence the await:
+    // it hands `null` to the upload seam so a HOST can keep the file, instead of writing an
+    // object URL straight into the attribute — a value that dies with the document, so the
+    // photo was gone at the next reload and anything sent to a server designated nothing.
+    // With no host strategy registered, the library's own fallback is unchanged.
+    it("sans endpoint : crée une URL d'objet et rend l'aperçu", async () => {
         const onChange = vi.fn();
         const el = imageComponent.formRender!("", field(), onChange, CTX);
 
         pickFile(el, imageFile());
 
-        expect(onChange).toHaveBeenCalledWith("blob:local/preview");
+        await vi.waitFor(() => expect(onChange).toHaveBeenCalledWith("blob:local/preview"));
         expect(el.querySelector(".gl-form-image__preview")).not.toBeNull();
+    });
+
+    // 🛑 The point of routing it through the seam: a host that CAN keep the file is asked,
+    // and it is told there is no endpoint rather than left to guess from a missing argument.
+    it("🛑 sans endpoint, la stratégie de l'hôte est appelée — avec `null`", async () => {
+        const strategy = vi.fn(async () => "gl-img:i1");
+        setImageUploadStrategy(strategy);
+        const onChange = vi.fn();
+        const el = imageComponent.formRender!("", field(), onChange, CTX);
+
+        pickFile(el, imageFile());
+
+        await vi.waitFor(() => expect(onChange).toHaveBeenCalledWith("gl-img:i1"));
+        expect(strategy).toHaveBeenCalledWith(expect.any(File), null, "photo");
+        setImageUploadStrategy(null);
     });
 
     it("refuse un type hors whitelist sans notifier", () => {

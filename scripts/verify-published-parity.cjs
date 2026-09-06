@@ -52,7 +52,9 @@
  *   PUB-02  RED — a package diverges at an EQUAL version and is not in the baseline.
  *   PUB-03  RED — a baseline entry that no longer diverges. A negative list holding a
  *           falsehood gets ignored wholesale, so it is an error until removal (the invariant
- *           of CC-05 and MH-02, and their wording on purpose).
+ *           of CC-05 and MH-02, and their wording on purpose). Asked PER DIMENSION.
+ *   PUB-04  RED — a declaration this repo would ship is ABSENT from the published tarball at
+ *           an equal version. Judged on PRESENCE, never on bytes, and ratcheted like PUB-02.
  *
  * Usage:
  *   node scripts/verify-published-parity.cjs
@@ -81,6 +83,28 @@ const UPDATE = process.argv.includes("--update-baseline");
 function classify(rel) {
     if (rel === "package.json") return "pkgjson";
     return rel.startsWith("dist/") ? "dist" : "source";
+}
+
+/**
+ * A shipped DECLARATION — judged on PRESENCE, never on bytes.
+ *
+ * 🛑 This is the hole the "dist is derived, never judged" rule left open, and it cost a
+ * published tarball. `@geoleaf/core@3.1.0` shipped **0** `*.css.d.ts` against **21** on
+ * disk, because `npm publish` ran a `prepublishOnly` that purged `dist/` and rebuilt
+ * without the stub emitter. Every gate stayed green: this one because it does not judge
+ * `dist/`, and `npm pack --dry-run` because it triggers `prepack`, not `prepublishOnly` —
+ * so the `dist/` it measures is never the one a publish reconstructs.
+ *
+ * ⚠️ The bytes stay unjudged, and that part of the rule was right: two identical sources
+ * legitimately emit different declarations months apart. What is NOT legitimate is a
+ * declaration that exists here and is ABSENT there — the consumer then gets `TS2882` or
+ * `TS7016` on a file we believe we shipped. Presence is toolchain-independent; bytes are not.
+ *
+ * ⚠️ One direction only. "Published but no longer local" is a normal consequence of a
+ * refactor between two versions and would make this noisy for nothing.
+ */
+function isShippedDeclaration(rel) {
+    return rel.startsWith("dist/types/") && rel.endsWith(".d.ts");
 }
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "geoleaf-pub-"));
@@ -123,22 +147,42 @@ try {
         compared++;
         const seen = new Set([...local.keys(), ...published.keys()]);
         const diverged = { source: [], dist: 0, pkgjson: 0 };
+        /** Declarations we would ship and the registry does not carry. */
+        const absentes = [];
         for (const rel of seen) {
+            // PUB-04 — presence, and it is asked BEFORE the hash test: a file absent from
+            // the tarball also "differs", and the `dist` class would have swallowed it
+            // into an unjudged counter. That is exactly how 21 missing stubs came out green.
+            if (isShippedDeclaration(rel) && local.has(rel) && !published.has(rel)) {
+                absentes.push(rel);
+            }
             if (local.get(rel) === published.get(rel)) continue;
             const cls = classify(rel);
             if (cls === "source") diverged.source.push(rel);
             else diverged[cls]++;
         }
         diverged.source.sort();
-        measured[name] = { version, source: diverged.source.length, files: diverged.source };
+        absentes.sort();
+        measured[name] = {
+            version,
+            source: diverged.source.length,
+            files: diverged.source,
+            absentes,
+        };
 
         const shipsSource = [...local.keys()].some((f) => f.startsWith("src/"));
         const surface = shipsSource ? "" : " (ne publie pas `src/` — surface source réduite)";
-        const mark = diverged.source.length > 0 ? `${C.y}⚠${C.x}` : `${C.g}✓${C.x}`;
+        const mark =
+            absentes.length > 0
+                ? `${C.r}✘${C.x}`
+                : diverged.source.length > 0
+                  ? `${C.y}⚠${C.x}`
+                  : `${C.g}✓${C.x}`;
         console.log(
             `  ${mark} ${name.padEnd(32)} ${version.padEnd(7)} ` +
                 `source:${String(diverged.source.length).padStart(3)} · ` +
-                `${C.d}dist:${diverged.dist} pkgjson:${diverged.pkgjson}${C.x}${surface}`
+                `${C.d}dist:${diverged.dist} pkgjson:${diverged.pkgjson} ` +
+                `decl-absentes:${absentes.length}${C.x}${surface}`
         );
     }
 } finally {
@@ -170,7 +214,16 @@ if (unreachable > 0) {
 if (UPDATE) {
     const frozen = {};
     for (const [name, m] of Object.entries(measured)) {
-        if (m.source > 0) frozen[name] = { version: m.version, source: m.source };
+        const decls = m.absentes ? m.absentes.length : 0;
+        // Two dimensions, one entry — a package can carry either, or both. Writing the
+        // key only when it is non-zero keeps the baseline readable AND makes PUB-03's
+        // question well-posed: an absent key means "nothing was frozen here", never
+        // "zero was frozen here".
+        if (m.source > 0 || decls > 0) {
+            frozen[name] = { version: m.version };
+            if (m.source > 0) frozen[name].source = m.source;
+            if (decls > 0) frozen[name].declarations = decls;
+        }
     }
     fs.writeFileSync(
         BASELINE,
@@ -178,6 +231,10 @@ if (UPDATE) {
             {
                 _comment:
                     "Divergences GELÉES entre le dépôt et le tarball publié, à version ÉGALE. " +
+                    "`source` = fichiers authorés dont le contenu diverge (PUB-02). " +
+                    "`declarations` = déclarations que le dépôt livrerait et que le tarball " +
+                    "publié n'a PAS (PUB-04) — dette d'avant le correctif des stubs CSS du " +
+                    "18/08/2026, plus les modules d'un paquet dont le contenu a bougé sans bump. " +
                     "Cette liste ne peut que RÉTRÉCIR : y ajouter une entrée à la main est le " +
                     "geste qui désarme la gate. Le remède d'une entrée est de bumper la version " +
                     "et de publier — pas de la re-geler.",
@@ -205,6 +262,48 @@ if (!fs.existsSync(BASELINE)) {
 }
 
 const baseline = JSON.parse(fs.readFileSync(BASELINE, "utf8")).packages ?? {};
+
+// ── PUB-04 — a shipped declaration is MISSING from the published tarball ──────────────────
+//
+// 🛑 RATCHETED like PUB-02, and this paragraph first said the opposite. It claimed the
+// state was "EMPTY at laying, so there is nothing to freeze" — written BEFORE running it.
+// The first run measured **4 packages, 8 declarations**: `geocoding@1.0.0`,
+// `measure@1.0.3`, `print@1.2.2` and `offline-ui@1.4.0`, all published on 12 or 15/08/2026,
+// i.e. BEFORE the CSS stub emitter was fixed on the 18th. Their tarballs are pre-fix debt,
+// not a live regression, and a hard red would sit on packages nobody is about to bump —
+// permanently red, hence disarmed within the week. The exact outcome PUB-02's header
+// describes, which I was about to re-commit one code below it.
+//
+// ⚠️ Two distinct classes come out of the same measurement, and the ratchet holds both:
+//   • missing STUBS (6 of the 8) — the class `--ignore-scripts` and the emitter close;
+//   • missing MODULES (`offline-ui`'s `corridor-selection.d.ts` and `corridor-tiles.d.ts`)
+//     — content that moved without a version bump, i.e. PUB-02's own subject seen from
+//     the declaration side. That package already carries 54 source files in the baseline.
+//
+// Remedy for any entry, and it is the same as PUB-02's: bump the version and publish.
+// ⚠️ NEVER re-freeze. If a NEW entry appears, the cause is upstream — `--ignore-scripts`
+// having left `publish-one.cjs`, or the CSS stub step having left `publish.yml`. Read those
+// two before touching this file.
+for (const [name, m] of Object.entries(measured)) {
+    const count = m.absentes ? m.absentes.length : 0;
+    if (count === 0) continue;
+    const known = baseline[name];
+    const gele = known && typeof known.declarations === "number" ? known.declarations : 0;
+    if (count <= gele) continue;
+    errors.push(
+        `[PUB-04] ${name}@${m.version} — ${count} déclaration(s) que le dépôt livrerait sont ` +
+            `ABSENTES du tarball publié, à version égale` +
+            (gele > 0
+                ? ` (${gele} gelée(s) en baseline, la dette GROSSIT)`
+                : ` et rien n'est gelé`) +
+            `.\n        L'intégrateur qui compile en \`skipLibCheck: false\` reçoit un TS2882 ` +
+            `ou un TS7016 sur un fichier que nous croyons avoir expédié.\n` +
+            `        ${m.absentes.slice(0, 5).join(", ")}` +
+            (count > 5 ? ` … +${count - 5}` : "") +
+            `\n        ⚠️ La cause est en AMONT : \`--ignore-scripts\` retiré de ` +
+            `\`publish-one.cjs\`, ou l'étape « Stubs de type CSS » retirée de \`publish.yml\`.`
+    );
+}
 
 // ── PUB-02 — entering ratchet ─────────────────────────────────────────────────────────────
 for (const [name, m] of Object.entries(measured)) {
@@ -234,11 +333,23 @@ for (const [name, m] of Object.entries(measured)) {
 for (const [name, known] of Object.entries(baseline)) {
     const m = measured[name];
     if (m === undefined) continue; // not compared this run (PUB-00/PUB-01 said why)
-    if (m.source === 0) {
+    // ⚠️ Asked PER DIMENSION, and it has to be: a package frozen on both, whose sources
+    // have realigned while its declarations have not, would have gone unnoticed under a
+    // single test — the half-truth surviving inside an entry that still looks justified.
+    const stale = [];
+    if (typeof known.source === "number" && known.source > 0 && m.source === 0) {
+        stale.push(`${known.source} divergence(s) source`);
+    }
+    const decls = m.absentes ? m.absentes.length : 0;
+    if (typeof known.declarations === "number" && known.declarations > 0 && decls === 0) {
+        stale.push(`${known.declarations} déclaration(s) absente(s)`);
+    }
+    if (stale.length > 0) {
         errors.push(
-            `[PUB-03] ${name} est en baseline pour ${known.source} divergence(s) mais n'en a ` +
-                `PLUS aucune. Retirez son entrée : une liste négative qui contient un faux se ` +
-                `fait ignorer en bloc, donc c'est une erreur jusqu'au retrait.`
+            `[PUB-03] ${name} est en baseline pour ${stale.join(" et ")}, ` +
+                `mais ne les a PLUS. Corrigez ou retirez son entrée : une liste négative qui ` +
+                `contient un faux se fait ignorer en bloc, donc c'est une erreur jusqu'au ` +
+                `retrait. \`--update-baseline\` fait descendre le cliquet.`
         );
     }
 }
@@ -251,8 +362,15 @@ if (errors.length > 0) {
     process.exit(1);
 }
 
-const dette = Object.values(measured).filter((m) => m.source > 0).length;
+const dette = Object.values(measured).filter(
+    (m) => m.source > 0 || (m.absentes && m.absentes.length > 0)
+).length;
+const declDette = Object.values(measured).reduce(
+    (n, m) => n + (m.absentes ? m.absentes.length : 0),
+    0
+);
 console.log(
     `${C.g}✓ ${TAG}${C.x} — ${compared} paquet(s) confronté(s) au registre ; ` +
-        `${dette} en dette gelée, aucune divergence neuve.`
+        `${dette} en dette gelée (dont ${declDette} déclaration(s) absente(s) des tarballs ` +
+        `publiés), aucune divergence neuve.`
 );

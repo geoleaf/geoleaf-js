@@ -37,8 +37,6 @@ function _applyStyleResult(
     styleId: string,
     res: { styleData: unknown; metadata: unknown }
 ): void {
-    layerData.currentStyle = res.styleData;
-    layerData.currentStyleMetadata = res.metadata;
     // Extract the nested `style` object from the style file JSON.
     // Style files have the shape { id, label, style: { fillColor, … }, styleRules: [...], legend }.
     // normalizeToFlat() is a shallow copy — passing the root object would leave
@@ -53,6 +51,24 @@ function _applyStyleResult(
     }
     if (typeof GeoJSONCore.setLayerStyle === "function") {
         GeoJSONCore.setLayerStyle(layerId, paintData);
+    }
+    // Restore the FULL style document on the REGISTERED entry, and do it after
+    // `setLayerStyle` — same order as the theme applier's `_onStyleLoaded`, for the same
+    // two reasons. `setLayerStyle` assigns `currentStyle = paintData`, the flattened paint
+    // it hands the adapter, which carries no `label`; and `getLayerData()` returns a
+    // five-field PROJECTION, so writing here instead would land on a throwaway object.
+    // Both consumers of the label config — `Labels.initializeLayerLabels()` just below and
+    // the 🏷️ toggle's `_getState()` — read `currentStyle.label.enabled` off this entry.
+    // `typeof` guard, like `setLayerStyle` above: this function is reached with partial
+    // GeoJSON cores (tests, lite hosts), and a missing member must degrade, not throw —
+    // throwing here would skip the label init and the button repaint that follow.
+    const registered =
+        typeof GeoJSONCore.getLayerById === "function"
+            ? (GeoJSONCore.getLayerById(layerId) as ResolvedLayerData | null)
+            : null;
+    if (registered) {
+        registered.currentStyle = res.styleData;
+        registered.currentStyleMetadata = res.metadata;
     }
     const GeoLeaf = getGeoLeaf();
     (GeoLeaf?.Labels as LabelsLike | undefined)?.initializeLayerLabels?.(layerId);

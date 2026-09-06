@@ -4,14 +4,14 @@ title: host-runtime — l'accès typé au namespace, et les seams que les plugin
 lib_id: host-runtime
 package: "@geoleaf/host-runtime"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: fab770b1
-date: 1er septembre 2026
+verifie_contre: bc4516cac
+date: 4 septembre 2026
 ---
 
 # host-runtime — l'accès typé au namespace, et les seams que les plugins partagent
 
 **Type :** bibliothèque partagée **interne** · **Paquet :** `@geoleaf/host-runtime` ·
-**Code :** `packages/libs/host-runtime/` · **Vérifié contre :** `fab770b1` (01/09/2026)
+**Code :** `packages/libs/host-runtime/` · **Vérifié contre :** `bc4516cac` (04/09/2026)
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -70,19 +70,19 @@ confirmation, piège de focus) et des primitives HTTP.
 
 Exportée par `src/index.ts`. Trois familles, plus les primitives HTTP.
 
-| Famille                   | Exports                                                                                                                                                                                                                                                                           |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Accès à l'hôte**        | `getGeoLeaf()` · `ensureGeoLeaf()` · `coreConfigGet(...)` · types `GeoLeafHost`, `PluginRegisterOptions`                                                                                                                                                                          |
-| **Seam notifications**    | `getUINotifications()` · type `UINotificationsSeam`                                                                                                                                                                                                                               |
-| **Seam journalisation**   | `Log`                                                                                                                                                                                                                                                                             |
-| **Seam i18n**             | `tLabel(...)` · `getActiveLang()`                                                                                                                                                                                                                                                 |
-| **Seam utilitaires core** | `getNestedValue(...)` · `createSVGIcon(...)` · `clearElementFast(...)` · type `IconOptions`                                                                                                                                                                                       |
-| **Seam carte**            | `getNativeMap()` · `warnNoCore(...)`                                                                                                                                                                                                                                              |
-| **Seam DOM**              | `createEl(...)` · `applyStyleText(...)`                                                                                                                                                                                                                                           |
-| **Téléchargement**        | `downloadBlob(...)`                                                                                                                                                                                                                                                               |
-| **Interface partagée**    | `adoptStylesheet(...)` · `wireDrag(...)` · `wireTouchDrag(...)` · `wireTooltips(...)` · `showTooltip(...)` · `hideTooltip(...)` · `positionMenuNear(...)` + type `MenuPositionOptions`                                                                                            |
-| **Surfaces modales**      | `createModalShell(...)` · `confirmDialog(...)` · `createFocusTrap(...)` + types `ModalShell`, `ModalShellOptions`, `ConfirmDialogOptions`, `FocusTrap` — arrivées de `field-renderer` le 06/08/2026 (`src/ui/modal-shell.ts`, `src/ui/confirm-dialog.ts`, `src/ui/focus-trap.ts`) |
-| **HTTP**                  | `jsonHeaders(...)` · `bearer(...)` · `fetchWithTimeout(...)` · `parseJsonBody(...)` · `isSameOrigin(...)` · `HttpFetchError` + deux types                                                                                                                                         |
+| Famille                   | Exports                                                                                                                                                                                                |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Accès à l'hôte**        | `getGeoLeaf()` · `ensureGeoLeaf()` · `coreConfigGet(...)` · types `GeoLeafHost`, `PluginRegisterOptions`                                                                                               |
+| **Seam notifications**    | `getUINotifications()` · type `UINotificationsSeam`                                                                                                                                                    |
+| **Seam journalisation**   | `Log`                                                                                                                                                                                                  |
+| **Seam i18n**             | `tLabel(...)` · `getActiveLang()`                                                                                                                                                                      |
+| **Seam utilitaires core** | `getNestedValue(...)` · `createSVGIcon(...)` · `clearElementFast(...)` · type `IconOptions`                                                                                                            |
+| **Seam carte**            | `getNativeMap()` · `warnNoCore(...)`                                                                                                                                                                   |
+| **Seam DOM**              | `createEl(...)` · `applyStyleText(...)`                                                                                                                                                                |
+| **Téléchargement**        | `downloadBlob(...)`                                                                                                                                                                                    |
+| **Interface partagée**    | `adoptStylesheet(...)` · `wireDrag(...)` · `wireTouchDrag(...)` · `wireTooltips(...)` · `showTooltip(...)` · `hideTooltip(...)` · `positionMenuNear(...)` + type `MenuPositionOptions`                 |
+| **Surfaces modales**      | `createModalShell(...)` · `chooseDialog(...)` · `confirmDialog(...)` · `createFocusTrap(...)` + types `ModalShell`, `ModalShellOptions`, `ChooseDialogOptions`, `DialogChoice`, `ConfirmDialogOptions` |
+| **HTTP**                  | `jsonHeaders(...)` · `bearer(...)` · `fetchWithTimeout(...)` · `parseJsonBody(...)` · `isSameOrigin(...)` · `HttpFetchError` + deux types                                                              |
 
 ⚠️ **Deux fonctions de glissement ne sont PAS ré-exportées** par l'entrée, bien qu'exportées par leur
 module : la lecture et l'application du décalage. ⚠️ **Elles ne sont PAS « atteignables par
@@ -91,6 +91,23 @@ sous-chemin »**, ce que cette ligne a affirmé : la carte `exports` du `package
 l'honore, et `rollup.config.mjs` n'émet qu'un seul fichier de sortie. Ce ne sont donc pas des exports
 en demi-état mais des helpers **internes au paquet** — leur seul consommateur est `src/ui/touch-drag.ts`,
 qui partage la géométrie avec le chemin souris pour qu'ils ne divergent pas.
+
+### `chooseDialog` — pourquoi deux issues ne suffisaient pas (04/09/2026)
+
+`confirmDialog` rend un booléen, et il reste la forme courante : sur une question fermée,
+« je n'ai pas répondu » et « non » veulent dire la même chose, donc l'abandon peut sans dommage
+se replier sur l'annulation.
+
+🛑 **Le garde-fou de doublon de l'éditeur a cassé cette hypothèse.** Il doit offrir « modifier
+l'existant », « créer quand même » **et** une sortie. Replier la troisième sur un booléen oblige à
+faire d'Échap et du clic hors cadre une **action** — et la seule candidate est « créer ». Un geste
+de renoncement aurait donc produit exactement le doublon que le garde existe pour empêcher.
+**Un dialogue dont la sortie sûre exécute quelque chose n'est pas un dialogue.**
+
+`chooseDialog` prend N actions et rend l'identifiant de celle qui a été prise, ou `dismissValue`
+(`null` par défaut) sur tout abandon. `confirmDialog` en est devenu le cas à deux actions — même
+DOM, mêmes classes, mêmes tests —, si bien que ses quatre appelants n'ont pas bougé. La **première**
+action prend le focus initial : l'appelant doit donc la garder sûre.
 
 ---
 

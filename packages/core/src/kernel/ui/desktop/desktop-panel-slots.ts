@@ -93,10 +93,18 @@ function _buildDesktopTabButton(
         dispatchToolbarAction(btnDef.action ?? id, btn);
     });
     if (btnDef.variant === "tab") {
-        // Vertical-text tab matching the built-in Filtrer/Couches/Légende tabs.
-        // Label is plain text (textContent) — the icon is intentionally ignored.
-        btn.className = "gl-rp-tab gl-rp-registry-tab-btn";
-        btn.textContent = label;
+        // Icon tab matching the built-in Filtrer/Couches/Légende tabs.
+        //
+        // 🛑 **THE ICON WAS DECLARED AND THROWN AWAY**, with a comment saying so on purpose:
+        // the strip rendered these as vertical text, so `btnDef.icon` had no use here. It has
+        // one now — the strip went to icons because six spelled-out tabs overflowed a laptop
+        // viewport — and the declaration was already there, in every plugin, unused.
+        //
+        // ⚠️ `aria-label` and `title` are posted above, before this branch, so the word is
+        // still the button's accessible name.
+        btn.className = "gl-rp-tab gl-rp-tab--icon gl-rp-registry-tab-btn";
+        // @security Route module-provided SVG through sanitizer
+        DOMSecurity.setSafeHTML(btn, btnDef.icon, UI_SLOT_SVG_TAGS);
     } else {
         // Default: icon button in the bottom stack.
         btn.className = "gl-rp-tab-btn gl-rp-registry-tab-btn";
@@ -122,7 +130,14 @@ function _healStaleLabels(tabs: HTMLElement): void {
         if (label === key) return; // still unresolved — nothing to heal yet
         if (btn.getAttribute("aria-label") === key) btn.setAttribute("aria-label", label);
         if (btn.title === key) btn.title = label;
-        if (btn.classList.contains("gl-rp-tab") && btn.textContent === key) {
+        // ⚠️ Text tabs only. An icon tab has no text content to heal — its name lives in the
+        // two attributes above — and writing `label` into it would REPLACE the glyph with a
+        // word, which is exactly the overflow this strip stopped having.
+        if (
+            btn.classList.contains("gl-rp-tab") &&
+            !btn.classList.contains("gl-rp-tab--icon") &&
+            btn.textContent === key
+        ) {
             btn.textContent = label;
         }
     });

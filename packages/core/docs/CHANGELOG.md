@@ -13,7 +13,114 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ## [Unreleased]
 
-_Nothing yet._
+### Fixed — the offline drain no longer loses, orphans or condemns a field capture
+
+Four defects on the same nominal path — a capture, a network cut, a return of network — each of
+which lost or condemned a capture **without saying so**.
+
+**An entry left `inFlight` by a dead session is now reclaimed.** `inFlight` is written before the
+call and cleared by its outcome; a tab killed in between — the ordinary case on a phone that sleeps
+mid-sync — left the entry in a state nothing replays and no gesture exits. The capture was never
+lost, which is the worse half: the operator watched a due count that would not go down, on a queue
+whose "Retry" did nothing for that entry. The drain reclaims it in head of pass, and it is the
+entry's AGE that decides (new `OutboxEntry.inFlightAt`): a young one belongs to another tab that is
+sending it, and re-sending a `DELETE` earns a 404 — an immediate quarantine on an operation that had
+succeeded.
+
+**A `409` on a create now re-reads the server identity.** A 409 says "I already have it"; it does
+not say WHICH row. The entry left the queue with `serverId` still `null`, so the entity was reputed
+synchronised locally and unreachable server-side, every later update filtering on `id=eq.null`. The
+create now re-reads through `local_id` — the key the UNIQUE constraint refused. If no row comes
+back, the 409 came from another constraint and nothing was written, so it is a refusal; if the
+re-read cannot conclude, nothing is decided and the entry stays replayable.
+
+**The second send of a `lastWriteWins` conflict is verified.** The re-send drops the freshness
+filter, and that outcome was never checked: a `200 []` — the form in which this server says "zero
+rows" — emptied the queue while nothing had been written. Unfiltered, zero rows means the row is
+GONE, so it takes the same motive a 404 does. A `null` body still proves nothing and is not read as
+zero.
+
+**The replay budget counts time, not gestures.** Three total attempts is defensible for a network
+coming back and absurd for three drains fired inside one minute — and the drain fires on network
+return _and_ on the "Retry" button, with `attempts` persisted. Each failure now writes a
+`nextAttemptAt` on the entry (30 s, then ×4, capped at 8 min) that the drain walks past. Re-editing
+a failed capture resets its budget: a correction is a new intention, not a replay.
+
+### Fixed — an expired session no longer destroys field captures
+
+A token that expires during a tour was **unrecoverable**, and the loss was silent. Three
+mechanisms had to be wrong at once, and they were.
+
+**The refresh could not be reached.** On a 401 the interceptor cleared the token — RAM _and_
+IndexedDB — _before_ attempting anything; the re-read that followed found nothing, so the refresh
+delegate was never called. And the delegate itself read a cache that **evicts expired entries**, so
+even when reached it gave up before the network, in exactly the case it exists for. The renewal is
+now attempted first and the token erased only after it fails; the delegate reads the stored record,
+expiry included — the server is the one that arbitrates.
+
+**The renewal request was being intercepted by the patch it travels through**, which would have
+made it await its own in-flight promise and would have overwritten the `Authorization` header it
+carries — the expired token it exists to present. The authentication endpoint is now out of the
+interception perimeter.
+
+**A 401 was reported as `rejectedByServer`**, the one quarantine motive the contract defines as
+"replay cannot fix" — so a capture was set aside with destruction as its only exit, for a cause
+that lifts by itself. It now takes the new `authRequired` motive, which is replayable, and it
+**halts the drain**: everything queued behind meets the same dead session, and in token mode the
+requests that follow no longer carry an `Authorization` header at all. `403` deliberately stays out
+of this: a known identity lacking a right is not fixed by signing back in.
+
+**And the drain reported a complete pass over a queue it had barely touched.** `skipped` was hard
+`0` under a comment stating the drain "skips nothing" — true when written, false since the retry
+backoff landed. It now reports what was walked past.
+
+### Added
+
+- `GeoLeaf.Connector.logout()` — ending a session was impossible: the surface carried `configure`
+  and `openLoginModal` only, and a device handed back kept a valid Bearer until expiry. It is a
+  no-op in `getToken` mode, where the host owns the token and the plugin holds no copy.
+- `geoleaf:connector:signed-out` — its counterpart `:auth-error` says the session DIED; this one
+  says it was closed. A host must be able to tell them apart: one calls for a login window.
+- Guided reconnection: `:auth-error` had two emitters and **no listener**, so the session ended in
+  silence at the worst moment. The login window now reopens — once per failure, and only when
+  `auth.ui` was asked for.
+- `QuarantineReason.authRequired`, requeueable, and `pushOutbox()` reports `haltedBy`.
+- `GeoLeaf.Storage.requeueAll(reason?)` — the batch exit from quarantine. The per-entry
+  `requeueQuarantined(id)` takes a contract identifier that nothing displays, which is why it had no
+  caller; yet what produces quarantines is never one entry. It delegates to the per-entry exit, so
+  the rule that decides keeps one author, and what that rule refuses is counted in `skipped`.
+- `pushOutbox()` reports `deferred` — entries walked past because their retry delay had not elapsed.
+  Without it, a drain that does nothing is indistinguishable from an empty queue.
+- `OutboxEntry.inFlightAt` and `OutboxEntry.nextAttemptAt`, both optional and additive.
+
+### Fixed — a locally-held photo has a return address, and the store can be read back
+
+`local_images` records now carry `endpoint`, `layerId`, `localId` and `fieldPath`, and the module
+gains `bindLocalImage(id, owner)` and `getLocalImage(id)`. No schema version change: these are
+unindexed fields on an existing store.
+
+**`storeImageLocally` rebuilt its record field by field**, so `endpoint` — which the edit plugin did
+pass — was dropped in silence. Its retry loop opens with `if (!img.endpoint) continue`, so it
+skipped **every** image and reported a successful pass having attempted nothing. And no record
+referenced the feature carrying it, so an upload that did succeed had nowhere to send the resulting
+URL back to — which is why that URL used to be discarded.
+
+The address is written **after the fact**, and it cannot be otherwise: a photo is taken while the
+form is open, hence before the feature exists — off-network its client identity is only minted when
+the edit is enqueued. Binding an image the caller no longer knows about is a no-op rather than an
+error: a token pointing at an already-purged record is an ordinary outcome of a long session, and
+raising there would fail a save.
+
+**`getLocalImage` had been removed on 08/08/2026** as redundant with the base64 data-URL
+`storeImageLocally` also wrote into the entity's data. That data-URL is gone — it was the defect,
+since it put the whole photo inside the attribute — so this read is no longer a second path to the
+bytes: it is the only one.
+
+**`updateImageUploadStatus` takes an object**, and its relay declared the parameter `string`. The
+module reads `status.uploaded` and `status.url`; a caller passing the literal `"uploaded"` therefore
+wrote the record back as still pending, never stored the URL, and left `cleanUploadedImages` — a
+cursor over the index at `1` — with nothing to reclaim, indefinitely. The same photo left again on
+every reconnection and every boot.
 
 ## [3.1.0] - 2026-09-01
 

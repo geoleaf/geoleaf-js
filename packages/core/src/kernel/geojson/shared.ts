@@ -12,6 +12,7 @@
 import { registerLifecycleTeardown } from "../shared/lifecycle.js";
 import { STYLE_OPERATORS } from "./style-operators.js";
 import type { GeoJSONAdapter, GeoJSONLayerEntry, GeoJSONNativeMap } from "./core-types.js";
+import type { GeoJSONFeature } from "./geojson-types.js";
 
 const _g =
     typeof globalThis !== "undefined" ? globalThis : typeof window !== "undefined" ? window : {};
@@ -99,6 +100,33 @@ const GeoJSONShared = {
 
     getLayerById(layerId: string): GeoJSONLayerEntry | undefined {
         return GeoJSONShared.state.layers.get(layerId);
+    },
+
+    /**
+     * Records, on the layer entry, the collection the map source now holds.
+     *
+     * 🛑 THE STORE IS THE TRUTH OF WHAT THE SOURCE CONTAINS, and this function is the
+     * one place that says so. Every writer of a whole collection goes through it, so a
+     * reader of `entry.features` never has to ask which of the two is ahead.
+     *
+     * ⚠️ **The invariant was not free before, it was merely SELF-HEALING.** A writer that
+     * fed the source without recording it here left the store stale — and the next
+     * `setData` re-pushed the whole store collection, so the two agreed again (the
+     * store winning, the other write lost). That repair disappears the moment a
+     * mutation is expressed as a DIFF: the source keeps what it was fed, the store
+     * keeps what it had, and the two never re-converge. Measured case:
+     * `applyOgcRefreshedData` fed the source an `autoRefresh` result straight off the
+     * network, which the store never saw.
+     *
+     * Not exported as a free function on purpose — it belongs to the state it writes,
+     * beside `getLayerById`, which is what readers of that state already reach for.
+     */
+    setLayerCollection(layerId: string, data: unknown): void {
+        const entry = GeoJSONShared.state.layers.get(layerId);
+        if (!entry) return;
+        entry.geojson = data;
+        const fc = data as { features?: GeoJSONFeature[] } | null | undefined;
+        if (fc && Array.isArray(fc.features)) entry.features = fc.features;
     },
 };
 

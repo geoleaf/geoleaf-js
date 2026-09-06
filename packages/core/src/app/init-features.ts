@@ -260,6 +260,7 @@ function _buildDesktopPanelOptions({ GeoLeaf, cfg, glMain }: DesktopPanelBuilder
         showFilters: cfg.modules?.filter?.enabled !== false,
         showLayers: ui.showLayerManager !== false,
         showLegend: cfg.modules?.legend?.enabled !== false,
+        showThemeToggle: ui.showPanelThemeToggle !== false,
         getFilterActiveState: () => GeoLeaf.Filter?.hasActiveFilters?.() ?? false,
     };
 }

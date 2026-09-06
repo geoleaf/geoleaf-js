@@ -22,6 +22,7 @@ import type {
     GeoLeafControlPosition,
     GeoLeafControl,
     GeoLeafMarkerHandle,
+    LayerDataDiff,
     VectorTileLayerSpec,
     VectorTileStyleInput,
 } from "../../contracts/map-adapter.contract.ts";
@@ -54,6 +55,7 @@ import {
     withGeometryGuard,
 } from "./maplibre-primitives.js";
 import { buildGeoJSONLayer, buildClusterGroup } from "./maplibre-layer-builders.js";
+import { isDiffableSource, toSourceDiff } from "./maplibre-source-diff.js";
 import { buildMarker, dropMarker, moveMarker, turnMarker } from "./maplibre-markers.js";
 import {
     buildVectorTileLayer,
@@ -379,6 +381,34 @@ export class MaplibreAdapter implements IMapAdapter {
         if (source && typeof source.setData === "function") {
             source.setData(data);
         }
+    }
+
+    /**
+     * Applies a partial update to an existing source, and reports whether it took it.
+     *
+     * Returns `false` — never throws, never falls back on its own — whenever the live
+     * source cannot address features by id. The caller owns the fallback because the
+     * caller owns the whole collection; see the contract's note on why that placement
+     * is what makes the fallback observable.
+     *
+     * ⚠️ The promise from `updateData` is dropped, exactly as `setData`'s already is
+     * (it is `Promise<void>` too in MapLibre 6). The `catch` is a guard against a
+     * FUTURE version rejecting: today `_dispatchWorkerUpdate` swallows everything into
+     * an `ErrorEvent`, so this handler cannot fire. Said plainly here so the next
+     * reader does not mistake it for a covered case.
+     */
+    applyDataDiff(id: string, diff: LayerDataDiff): boolean {
+        const map = this._requireMap();
+        const entry = this._layerRegistry.get(id);
+        if (!entry) return false;
+        const source = map.getSource(entry.sourceId) as GeoJSONSourceLike | undefined;
+        if (!isDiffableSource(source)) return false;
+        const sourceDiff = toSourceDiff(diff);
+        if (!sourceDiff) return false;
+        void source
+            ?.updateData?.(sourceDiff)
+            .catch((err: unknown) => Log.error("[MaplibreAdapter] updateData rejected", err));
+        return true;
     }
 
     /**

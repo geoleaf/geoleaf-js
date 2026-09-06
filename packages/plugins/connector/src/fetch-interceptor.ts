@@ -39,6 +39,18 @@ function _extractUrl(input: RequestInfo | URL): string {
 function _shouldIntercept(url: string): boolean {
     if (!_config) return false;
     if (!isSameOrigin(url, _config.baseUrl)) return false;
+    // 🛑 THE AUTHENTICATION ENDPOINT IS OUT OF SCOPE, and it is not a convenience.
+    // `AuthClient` posts to `${endpoint}` and `${endpoint}/refresh` through the GLOBAL
+    // `fetch`, i.e. through this very patch. Intercepting it commits two faults at once:
+    //   • it resolves a token — which, on the recovery path, means AWAITING the refresh
+    //     promise that this very request is meant to settle. A deadlock, and one that no
+    //     timeout of ours would name correctly;
+    //   • it OVERWRITES the `Authorization` header the request already carries — the
+    //     expired token it exists to present. The renewal would go out bearing the
+    //     header of a token it is trying to replace.
+    // Excluding it here rather than reaching for the pre-patch `fetch` keeps the rule
+    // where the perimeter is decided, in one readable predicate.
+    if (_config.auth?.endpoint && isSameOrigin(url, _config.auth.endpoint)) return false;
     const fmt = detectFormat(url);
     return fmt !== "pmtiles" && fmt !== "mvt";
 }
@@ -69,9 +81,22 @@ async function _handleUnauthorized(input: RequestInfo | URL, init: RequestInit):
             // App-managed token — simply re-call; it is the app's responsibility to rotate it
             newToken = await Promise.resolve(_config.getToken());
         } else {
-            // Force IDB re-read by clearing RAM cache entry
-            await TokenStore.clear(_config.baseUrl);
-            newToken = await TokenStore.getTokenAsync(_config.baseUrl);
+            // 🛑 REFRESH FIRST, ERASE ONLY AFTER — the order IS the fix.
+            //
+            // This branch used to call `TokenStore.clear()` under a comment claiming it
+            // "forces an IDB re-read by clearing the RAM cache". It clears BOTH, so the
+            // re-read that followed found nothing, `getTokenAsync` fell to its "no token
+            // at all" branch, and the refresh delegate was never reached. A session was
+            // therefore unrecoverable the moment it expired — and worse for a field
+            // drain: from that entry on, no request carried an `Authorization` header at
+            // all, so the rest of the queue burned its budget against a server that
+            // could only answer 401.
+            newToken = await TokenStore.forceRefresh(_config.baseUrl);
+            if (!newToken) {
+                // Now — and only now — the stored token is proven dead. Keeping it would
+                // have it presented indefinitely on every later request.
+                await TokenStore.clear(_config.baseUrl);
+            }
         }
     } catch {
         // ignore — fall through to error dispatch

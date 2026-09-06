@@ -141,6 +141,18 @@ const lang_it: LangDict = {
     // \u2500\u2500 UI texts / Offline \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
     "ui.offline.badge": "\u26a0\ufe0f Non in linea",
     "aria.offline.badge_title": "Modalit\u00e0 offline attiva",
+    // ── UI texts / Sync banner (R7) ───────────────────────────────────────────
+    "ui.sync.online": "Online",
+    "ui.sync.offline": "Offline",
+    "ui.sync.pending_one": "1 in attesa",
+    "ui.sync.pending_many": "{0} in attesa",
+    "ui.sync.all_sent": "Tutto inviato",
+    "ui.sync.quarantined": "{0} bloccate",
+    "ui.sync.last_never": "mai sincronizzato",
+    "ui.sync.last_at": "sincronizzato {0}",
+    "ui.sync.action": "Sincronizza",
+    "ui.sync.dismiss": "Nascondi questa barra",
+    "aria.sync.banner": "Stato della sincronizzazione",
     "ui.theme.select_placeholder": "Seleziona un tema...",
     "ui.themes.nav_prev_char": "\u276e",
     "ui.themes.nav_next_char": "\u276f",

@@ -28,14 +28,12 @@ The **Label Button Manager** is a centralized controller for label toggle button
 1. **Create** label buttons during first render of a layer in Layer Manager
 2. **Synchronize** button state (enabled/disabled, active/inactive)
 3. **Apply** consistent decision logic across all layers
-4. **Manage** debouncing to prevent excessive updates
 
 ### Key Design Principles
 
 - **Single Responsibility**: One module handles ALL label button logic
-- **Centralized State**: No scattered button management code
-- **Debounced Updates**: 300ms debounce for non-critical updates
-- **Immediate Sync**: Optional immediate updates for critical changes (layer visibility)
+- **Stateless**: nothing is cached — each repaint derives the button from live state
+- **Synchronous**: a repaint happens on the call, with no timer between the two
 - **Defensive Coding**: Handles missing DOM elements gracefully
 
 ### Source file structure
@@ -102,22 +100,20 @@ const button = GeoLeaf._LabelButtonManager.createButton("poi-restaurants", contr
 #### `sync(layerId)` — does not exist
 
 ::: danger
-`sync()` is not part of the public surface. `_LabelButtonManager` exposes `createButton`,
+`sync()` is not part of the surface. `_LabelButtonManager` exposes `createButton`,
 `syncImmediate` and `removeButtons`, plus the private `_doSync` / `_getState` / `_applyState`.
 There is no `sync`. Inside the core, `kernel/themes/theme-applier/visibility.ts` calls
 `syncImmediate`.
-
-The debounced path described below does exist, but it is `_doSync`, which is private. An external
-caller only has `syncImmediate`.
 :::
 
-::: warning
-`GeoLeafGlobal` declares `_LabelButtonManager?: unknown`, so calls made through it are not
-type-checked: a wrong method name surfaces at runtime only.
+::: danger NO DEBOUNCE EXISTS — corrected 04/09/2026
+This page described, in three places, a debounced path with a 300 ms timer and a
+`_syncTimeouts` map. **None of it is in the code, and none of it ever was measured to be.**
+`label-button-manager.ts` is 168 lines and contains no `setTimeout`, no `clearTimeout` and no
+timer state at all; `_doSync` finds the button and repaints it, synchronously. Whoever read
+this page and staggered their calls to avoid "bursts of DOM updates" was pacing around a
+mechanism that does not exist.
 :::
-
-**Behaviour of `_doSync` (private)**: cancels the pending sync for that layer, schedules a new one
-300 ms later, and avoids bursts of DOM updates.
 
 **Use Cases:**
 
@@ -130,7 +126,19 @@ type-checked: a wrong method name surfaces at runtime only.
 
 #### `syncImmediate(layerId)`
 
-Synchronizes button state immediately without debouncing.
+::: tip USE THE PUBLIC ROUTE — `GeoLeaf.Labels.syncLayerControl(layerId)`
+Since 04/09/2026 this repaint has a **public** name. `_LabelButtonManager` is internal: it
+exists on the mounted object, so the type contract has to declare it, but nothing promises it
+survives a refactor. This page taught the internal key by name for a long time, which is how
+integrators came to depend on it; the repository's migration table
+(`docs/reference/consumers/INTERNAL_MEMBER_MIGRATION.md`) records the route for each
+internal member. It is cited rather than linked on purpose: this page is built as part
+of the documentation site, whose root stops at `packages/core/docs/`, so a link
+climbing out of it resolves on disk and is dead in the published site.
+The description below documents the internal method; the public route delegates to it.
+:::
+
+Synchronizes button state immediately.
 
 **Parameters:**
 
@@ -140,15 +148,14 @@ Synchronizes button state immediately without debouncing.
 
 **Behavior:**
 
-- Cancels any pending debounced sync
-- Executes sync immediately
-- Use for critical updates requiring instant feedback
+- Re-reads the layer's state and repaints the button, synchronously
+- No-op on an empty `layerId`, or when the layer has no row on screen
 
 **Example:**
 
 ```javascript
-// Called after layer visibility toggle (urgent)
-GeoLeaf._LabelButtonManager.syncImmediate("poi-restaurants");
+// Called after layer visibility toggle
+GeoLeaf.Labels.syncLayerControl("poi-restaurants");
 ```
 
 **Use Cases:**
@@ -250,31 +257,20 @@ ELSE:
 
 ## State Management
 
-### Button Registry
+### The module holds NO state
 
-The module maintains internal state for each button:
+This section described a `_syncTimeouts: Map<layerId, timeoutId>` with a create / cancel /
+delete lifecycle. **That map does not exist** (corrected 04/09/2026), and neither does the
+debounce it served.
 
-```javascript
-{
-  _syncTimeouts: Map<layerId, timeoutId>
-}
-```
-
-**Purpose:**
-
-- Track pending debounced syncs
-- Allow cancellation before execution
-- Prevent duplicate updates
-
-**Lifecycle:**
-
-- Timeout created on a `_doSync()` call — private, internal to the module
-- Timeout cancelled if a new `_doSync()` is called before execution
-- Timeout deleted after execution or cancellation
+The module is stateless by design, which the [Key Design Principles](#key-design-principles)
+above already said and this section contradicted: the button's appearance is derived, on each
+call, from state read live elsewhere — see [State Sources](#state-sources) just below. Nothing
+is cached, so nothing can go stale, and there is no pending work to cancel.
 
 ::: warning
-`sync()` does not exist. The debounced path is `_doSync`, which is private. An external caller
-only has `syncImmediate()`, and that method **cancels** the timeout instead of creating one.
+`sync()` does not exist either. An external caller uses `GeoLeaf.Labels.syncLayerControl()`,
+which repaints synchronously.
 :::
 
 ---
@@ -410,11 +406,8 @@ async function loadStyle(layerId, styleId) {
     // Apply style to layer
     applyStyle(layerId, styleData);
 
-    // Sync label button — `syncImmediate` is the ONLY public path; the debounced
-    // variant (`_doSync`) is private.
-    if (GeoLeaf._LabelButtonManager) {
-        GeoLeaf._LabelButtonManager.syncImmediate(layerId);
-    }
+    // Repaint the label control through the public route.
+    GeoLeaf.Labels?.syncLayerControl(layerId);
 }
 ```
 
@@ -497,9 +490,8 @@ The test suite covers:
     - Returns null for invalid parameters
 
 2. **State Synchronization**
-    - `_doSync()` (private) debounces updates (300 ms)
-    - `syncImmediate()` — the only public path — executes without delay
-    - Cancels pending syncs correctly
+    - `_doSync()` (private) finds the button, reads the state, repaints
+    - `syncImmediate()` delegates to it; `GeoLeaf.Labels.syncLayerControl()` is the public route
     - Handles missing buttons gracefully
 
 3. **Decision Logic**
@@ -560,32 +552,32 @@ describe("LabelButtonManager", () => {
 ### Which method to call
 
 ::: warning
-There is only one public synchronisation method: `syncImmediate()`. The "debounced" row below
-describes `_doSync`, which is private and unreachable from outside. The table therefore separates
-intents, not two entry points.
+There is **one** synchronisation path, and every row below names the same one. This table used
+to separate "urgent" from "debounced" scenarios; since the debounce does not exist, the
+distinction it drew was between two intents, not two entry points — and it read as a choice.
 :::
 
-| Scenario                   | Path                  | Reason                                  |
-| -------------------------- | --------------------- | --------------------------------------- |
-| Style file loaded          | `syncImmediate()`     | Not urgent, but it is the only path     |
-| Theme changed              | `syncImmediate()`     | What `theme-applier/visibility.ts` does |
-| Configuration updated      | `syncImmediate()`     | Same                                    |
-| Layer visibility toggled   | `syncImmediate()`     | User action, instant feedback           |
-| Button clicked             | internal              | Handled by the click handler            |
-| Layer removed from the map | `syncImmediate()`     | Critical state change                   |
-| _(300 ms debounce)_        | `_doSync()` — private | Internal to the module, not an API      |
+| Scenario                   | Path                        | Reason                                  |
+| -------------------------- | --------------------------- | --------------------------------------- |
+| Style file loaded          | `Labels.syncLayerControl()` | The public route                        |
+| Theme changed              | `Labels.syncLayerControl()` | What `theme-applier/visibility.ts` does |
+| Configuration updated      | `Labels.syncLayerControl()` | Same                                    |
+| Layer visibility toggled   | `Labels.syncLayerControl()` | Same                                    |
+| Button clicked             | internal                    | Handled by the click handler            |
+| Layer removed from the map | `Labels.syncLayerControl()` | Same                                    |
 
 ### Performance Tips
 
-1. **There is a single public path: `syncImmediate()`**
+1. **There is a single public path: `GeoLeaf.Labels.syncLayerControl()`**
 
-    The 300 ms debounce exists, but it is internal: it lives in `_doSync`, which is private.
-    An integrator therefore has no way to debounce, and grouping calls is the only measure
-    available on the caller side.
+    Each call repaints one layer's control on the spot — there is no timer anywhere in the
+    module, so nothing coalesces a burst on your behalf. A repaint is a handful of DOM reads
+    and class toggles on a single element, so a batch is cheap; if a caller ever needs to
+    coalesce, that is the caller's own job.
 
     ```javascript
-    // The only public path, for a batch as much as for a single layer.
-    layerIds.forEach((id) => manager.syncImmediate(id));
+    // The public path, for a batch as much as for a single layer.
+    layerIds.forEach((id) => GeoLeaf.Labels.syncLayerControl(id));
     ```
 
 2. **Trust the decision logic**

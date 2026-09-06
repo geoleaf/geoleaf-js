@@ -189,6 +189,113 @@ describe("geoleaf:connector:auth-error on failed retry", () => {
     });
 });
 
+// ─── token mode: a 401 must RENEW, not destroy ───────────────────────────────
+//
+// 🛑 Every 401 test above goes through `getToken`, i.e. the mode where the HOST holds
+// the token. The `auth.endpoint` mode — the one where the plugin holds it and knows how
+// to renew it — was covered by NO test, and that is exactly where recovery was dead:
+// `TokenStore.clear()` wipes RAM **and** IndexedDB before any attempt, so the re-read
+// that follows finds nothing and the refresh delegate is never reached.
+
+describe("mode jeton — un 401 tente le renouvellement AVANT d'effacer quoi que ce soit", () => {
+    let interceptor: InterceptorModule;
+    let store: Record<string, ReturnType<typeof vi.fn>>;
+    let order: string[];
+    /** The raw mock, kept apart: after `install()` the global IS the patched function. */
+    let rawFetch: ReturnType<typeof vi.fn>;
+
+    function makeStore(refreshResult: string | null) {
+        return {
+            forceRefresh: vi.fn(async () => {
+                order.push("refresh");
+                return refreshResult;
+            }),
+            clear: vi.fn(async () => {
+                order.push("clear");
+            }),
+            getTokenAsync: vi.fn().mockResolvedValue(TOKEN),
+            getTokenSync: vi.fn().mockReturnValue(TOKEN),
+            load: vi.fn().mockResolvedValue({ token: TOKEN, expiresAt: Date.now() - 1000 }),
+            save: vi.fn().mockResolvedValue(undefined),
+            _setRefreshFn: vi.fn(),
+        };
+    }
+
+    beforeEach(() => {
+        order = [];
+    });
+
+    afterEach(() => {
+        interceptor?.uninstall();
+        vi.unstubAllGlobals();
+        vi.doUnmock("../token-store.js");
+    });
+
+    async function mount(refreshResult: string | null, fetchImpl: () => Promise<Response>) {
+        vi.resetModules();
+        store = makeStore(refreshResult);
+        vi.doMock("../token-store.js", () => ({ TokenStore: store }));
+        rawFetch = vi.fn().mockImplementation(fetchImpl);
+        vi.stubGlobal("fetch", rawFetch);
+        interceptor = await import("../fetch-interceptor.js");
+        interceptor.install({ baseUrl: BASE_URL, auth: { endpoint: `${BASE_URL}/auth` } });
+    }
+
+    it("🛑 tente le renouvellement, et n'efface pas avant de l'avoir tenté", async () => {
+        await mount(null, async () => makeOkResponse(401));
+
+        await globalThis.fetch(`${BASE_URL}/data.geojson`);
+
+        expect(store["forceRefresh"]).toHaveBeenCalledWith(BASE_URL);
+        // The ORDER is the property: erasing first makes the renewal impossible.
+        expect(order[0]).toBe("refresh");
+    });
+
+    it("le renouvellement RÉUSSI rejoue la requête avec le jeton neuf, sans rien effacer", async () => {
+        let call = 0;
+        await mount("neuf.token.sig", async () => makeOkResponse(++call === 1 ? 401 : 200));
+
+        const response = await globalThis.fetch(`${BASE_URL}/data.geojson`);
+
+        expect(response.status).toBe(200);
+        expect(store["clear"]).not.toHaveBeenCalled();
+    });
+
+    it("le renouvellement ÉCHOUÉ efface le jeton — la contre-épreuve", async () => {
+        // Without it, "do not erase before" would become "never erase", and a dead
+        // token would sit in the store being presented for ever.
+        await mount(null, async () => makeOkResponse(401));
+
+        const response = await globalThis.fetch(`${BASE_URL}/data.geojson`);
+
+        expect(response.status).toBe(401);
+        expect(store["clear"]).toHaveBeenCalledWith(BASE_URL);
+        expect(order).toEqual(["refresh", "clear"]);
+    });
+
+    it("🛑 le point de renouvellement n'est PAS intercepté — sinon il s'attend lui-même", async () => {
+        // `AuthClient.refresh` posts to `${endpoint}/refresh` through the GLOBAL
+        // `fetch`, hence through this very patch. Intercepting it commits two faults: it
+        // would resolve a token — i.e. await the in-flight refresh promise, a deadlock —
+        // and it would OVERWRITE the `Authorization` header the request already carries,
+        // the expired token it exists to present.
+        await mount(null, async () => makeOkResponse(200));
+        rawFetch.mockClear();
+        store["getTokenAsync"].mockClear();
+
+        await globalThis.fetch(`${BASE_URL}/auth/refresh`, {
+            method: "POST",
+            headers: { Authorization: "Bearer perime.token.sig" },
+        });
+
+        expect(store["getTokenAsync"]).not.toHaveBeenCalled();
+        const init = rawFetch.mock.calls[0]?.[1] as RequestInit | undefined;
+        expect((init?.headers as Record<string, string>)?.Authorization).toBe(
+            "Bearer perime.token.sig"
+        );
+    });
+});
+
 // ─── static token warning ─────────────────────────────────────────────────────
 
 describe("static token warning", () => {

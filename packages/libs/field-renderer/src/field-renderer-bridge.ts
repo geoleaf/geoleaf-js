@@ -21,8 +21,17 @@ export interface FieldRendererBridge {
     getValues(): Record<string, unknown>;
     setValues(values: Record<string, unknown>): void;
     /** Runs all validators. Returns true when the form is valid. */
+    /** Runs all validators, PAINTS the outcome per field, and returns true when valid. */
     validate(): boolean;
     getErrors(): Record<string, string | null>;
+    /**
+     * The control of the first field currently in error, for the caller to focus.
+     *
+     * Reflects the last {@link FieldRendererBridge.validate} call, so calling it before one
+     * returns `null`. The modal uses it to answer a refused save with something the user
+     * can see AND reach — the two halves of "the form said no".
+     */
+    firstInvalidControl(): HTMLElement | null;
     destroy(): void;
 }
 
@@ -77,6 +86,73 @@ function writeAt(values: Record<string, unknown>, id: string, v: unknown): void 
     cur[last] = v;
 }
 
+/** Control a field's error message describes, whatever component rendered it. */
+function _controlOf(wrap: HTMLElement): HTMLElement | null {
+    return wrap.querySelector<HTMLElement>("input, select, textarea, fieldset");
+}
+
+/**
+ * Gives one field's error slot a resolvable identity, once, at build time.
+ *
+ * ⚠️ **Done here and not in `types/field-base.ts`**, because 13 components hand-roll their
+ * own `.gl-form-error` span instead of calling `_errorSlot()` — `tags`, `table`, `gallery`,
+ * `dropdown`, `image`, `coordinates`, `hours`… Wiring it per component would mean 17 sites
+ * and 17 chances to forget one; the wrapper is the one place they all share.
+ *
+ * @param wrap    - The field wrapper the component returned.
+ * @param fieldId - Schema id, which may be a dotted path (`properties.photo`).
+ */
+function _wireErrorSlot(wrap: HTMLElement, fieldId: string): void {
+    wrap.dataset["glField"] = fieldId;
+    const slot = wrap.querySelector<HTMLElement>(".gl-form-error");
+    if (!slot) return;
+    slot.id = `gl-field-${fieldId}-error`;
+    // `polite`, not `assertive`: the message appears on a deliberate submit, so it must be
+    // announced without cutting off whatever the user is already hearing.
+    slot.setAttribute("aria-live", "polite");
+    const ctl = _controlOf(wrap);
+    if (!ctl) return;
+    ctl.setAttribute("aria-describedby", slot.id);
+    ctl.setAttribute("aria-invalid", "false");
+}
+
+/**
+ * Clears a field's error as soon as the user edits inside it.
+ *
+ * ONE delegated listener rather than one per field. `types/field-base.ts` already hides its
+ * own slot on `input`, but it knows nothing of `aria-invalid` nor of the error map — leaving
+ * those behind would make the screen and `getErrors()` disagree.
+ *
+ * @param container - The bridge's field container.
+ * @param errors    - The error map to keep in step with the screen.
+ */
+function _wireErrorClearing(container: HTMLElement, errors: Map<string, string | null>): void {
+    const clear = (e: Event) => {
+        const wrap = (e.target as Element | null)?.closest?.<HTMLElement>("[data-gl-field]");
+        const id = wrap?.dataset["glField"];
+        if (!id || !wrap) return;
+        errors.set(id, null);
+        _paintField(wrap, null);
+    };
+    container.addEventListener("input", clear);
+    container.addEventListener("change", clear);
+}
+
+/**
+ * Shows or hides one field's error.
+ *
+ * @param wrap    - The field wrapper.
+ * @param message - Resolved message, or `null` to clear.
+ */
+function _paintField(wrap: HTMLElement, message: string | null): void {
+    const slot = wrap.querySelector<HTMLElement>(".gl-form-error");
+    if (slot) {
+        slot.textContent = message ?? "";
+        slot.hidden = message === null;
+    }
+    _controlOf(wrap)?.setAttribute("aria-invalid", message === null ? "false" : "true");
+}
+
 /**
  * Iterates `schema` and calls `ComponentRegistry.get(type).formRender()` for each field.
  * Maintains an internal value map updated via each component's `onChange` callback.
@@ -86,6 +162,11 @@ function writeAt(values: Record<string, unknown>, id: string, v: unknown): void 
  * ⚠️ Values are addressed through {@link readAt} / {@link writeAt}, so a
  * dotted `id` designates a path in the object and not a literal key — unless
  * that key exists.
+ *
+ * @param schema        - The fields to render, in order.
+ * @param initialValues - Values the form opens on.
+ * @param ctx           - Rendering context (language, read-only).
+ * @returns the bridge handle — element, values, validation and teardown.
  */
 export function createFieldRendererBridge(
     schema: FieldConfig[],
@@ -93,7 +174,12 @@ export function createFieldRendererBridge(
     ctx: RenderCtx
 ): FieldRendererBridge {
     const values: Record<string, unknown> = { ...initialValues };
-    const errors: Record<string, string | null> = {};
+    // 🛑 A `Map`, AND NOT A PLAIN OBJECT. The clear-on-input handler keys off a `data-`
+    // attribute read from the DOM, so `errors[id] = null` is a write by a key the code does
+    // not choose — with `__proto__` it re-parents the object instead of storing anything.
+    // `check-dynamic-key-writes` bit on exactly that line; a Map has no such key, so the
+    // hazard is removed rather than declared. `getErrors()` still hands back a plain record.
+    const errors = new Map<string, string | null>();
     const container = _el("div", "gl-editor-form-fields");
     const renderedEls = new Map<string, HTMLElement>();
 
@@ -115,8 +201,11 @@ export function createFieldRendererBridge(
         );
         container.appendChild(el);
         renderedEls.set(field.id, el);
-        errors[field.id] = null;
+        errors.set(field.id, null);
+        _wireErrorSlot(el, field.id);
     });
+
+    _wireErrorClearing(container, errors);
 
     // Wire cascade: fields with dependsOn + optionsByCategory filter their options
     // when the parent field's select changes.
@@ -167,24 +256,45 @@ export function createFieldRendererBridge(
             Object.assign(values, incoming);
         },
 
+        /**
+         * Runs every validator AND paints the outcome.
+         *
+         * 🛑 THE PAINTING IS NOT A SIDE EFFECT ADDED FOR CONVENIENCE — it is what the
+         * function was missing. It filled this map and showed nothing, so an invalid form
+         * answered "Enregistrer" with silence, and `getErrors()` had no production caller
+         * at all. `types/field-base.ts` already promised in its own TSDoc that the slot is
+         * "revealed by the component **or the bridge** on validation"; the bridge never did.
+         */
         validate(): boolean {
             let valid = true;
             schema.forEach((field) => {
                 const component =
                     ComponentRegistry.get(field.type) ?? ComponentRegistry.get("text");
                 const errKey = component?.validator?.(readAt(values, field.id), field) ?? null;
-                if (errKey) {
-                    errors[field.id] = _getLabel(errKey);
-                    valid = false;
-                } else {
-                    errors[field.id] = null;
-                }
+                const message = errKey ? _getLabel(errKey) : null;
+                errors.set(field.id, message);
+                if (message) valid = false;
+                const el = renderedEls.get(field.id);
+                if (el) _paintField(el, message);
             });
             return valid;
         },
 
+        firstInvalidControl(): HTMLElement | null {
+            for (const field of schema) {
+                if (!errors.get(field.id)) continue;
+                const el = renderedEls.get(field.id);
+                const ctl = el?.querySelector<HTMLElement>("input, select, textarea");
+                if (ctl) return ctl;
+                if (el) return el;
+            }
+            return null;
+        },
+
         getErrors(): Record<string, string | null> {
-            return { ...errors };
+            // `fromEntries` defines OWN properties, so a field literally named `__proto__`
+            // lands as data rather than re-parenting the result.
+            return Object.fromEntries(errors);
         },
 
         destroy(): void {

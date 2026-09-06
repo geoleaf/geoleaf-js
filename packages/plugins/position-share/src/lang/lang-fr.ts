@@ -15,7 +15,7 @@
 // `satisfies Record<string, string>` makes that a compile error rather than a
 // runtime surprise; keep it.
 const langTemplateFr = {
-    "position-share.toolbar.button": "Partager ma position",
+    "position-share.toolbar.button": "Partager",
     "position-share.status.emitting": "Partage de ma position en cours",
 } satisfies Record<string, string>;
 

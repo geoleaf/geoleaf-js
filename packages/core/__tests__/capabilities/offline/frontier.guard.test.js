@@ -36,8 +36,11 @@ const OFFLINE = join(SRC, "capabilities", "offline");
 // has already been caught out this way: `pull/` was created without being
 // added, and the guard covered one directory fewer without a word. `report/`
 // added later.
-const ENGINE_DIRS = ["core", "db", "cache", "poi-restore", "pull", "report", "write"].map((d) =>
-    join(OFFLINE, d)
+// `ui/` added 05/09/2026 (R7, the sync banner). The list above is exactly what this
+// file's own comment demands of a new directory: declared, or the guard stays GREEN by
+// covering one directory fewer — which has already happened twice (`pull/`, `report/`).
+const ENGINE_DIRS = ["core", "db", "cache", "poi-restore", "pull", "report", "write", "ui"].map(
+    (d) => join(OFFLINE, d)
 );
 const ENGINE_ENTRY = join(OFFLINE, "offline-engine-entry.ts");
 

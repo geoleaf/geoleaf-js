@@ -34,6 +34,8 @@ interface PanelHostFacade {
         labelKey: string;
         selector: string;
         order?: number;
+        /** SVG markup for the desktop tab; the host sanitises it. Optional — see below. */
+        icon?: string;
         onOpen?(): void;
     }): void;
     openPane?(paneId: string): boolean;
@@ -61,6 +63,17 @@ export function registerPane(pane: {
     id: string;
     labelKey: string;
     selector: string;
+    /**
+     * SVG markup for the desktop tab strip, sanitised by the host.
+     *
+     * ⚠️ **Optional on the kernel's side too, and that is what makes this narrowing safe.**
+     * The strip renders tabs as icons since six spelled-out ones overflowed a laptop viewport;
+     * a pane that declares none keeps a text tab rather than a blank square. Adding it here
+     * was NOT optional though: this file re-declares the pane shape rather than importing
+     * `PanelPane`, so a field the kernel accepts is a field this package refuses until it is
+     * written twice — which is exactly what turned `ci:local` red.
+     */
+    icon?: string;
     onOpen?(): void;
 }): boolean {
     const register = ui()?.registerPanelPane;

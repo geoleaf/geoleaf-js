@@ -62,6 +62,12 @@ function createMockMap() {
                 id,
                 ...config,
                 setData: vi.fn(),
+                // Present because the REAL source has it, and its absence is not neutral:
+                // `isDiffableSource` guards on `typeof source.updateData === "function"`, so a
+                // mock without it sends every consumer down the full re-feed path — green, and
+                // measuring nothing about the path it believes it exercises.
+                // `promoteId` arrives through the `...config` spread, as in production.
+                updateData: vi.fn().mockResolvedValue(undefined),
                 getClusterExpansionZoom: vi.fn().mockResolvedValue(15),
             };
         }),

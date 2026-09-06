@@ -28,6 +28,7 @@ import type {
     GeoLeafControlPosition,
     GeoLeafControl,
     GeoLeafMarkerHandle,
+    LayerDataDiff,
 } from "./map-adapter.types.js";
 import type { VectorTileLayerSpec, VectorTileStyleInput } from "./vector-tiles.contract.js";
 
@@ -226,6 +227,37 @@ export interface IMapAdapter {
      * @param data - New GeoJSON data (`FeatureCollection`, `Feature`, or `Geometry`).
      */
     updateLayerData(id: string, data: unknown): void;
+
+    /**
+     * Applies a {@link LayerDataDiff} to an existing layer — what MOVED, instead of
+     * the whole collection — and reports whether it took it.
+     *
+     * 🛑 **The return value is the whole point, and it is a BOOLEAN, not a promise.**
+     * The only question the caller has is "did you take it?", and that is decidable
+     * synchronously: the source is present or it is not, it can identify its features
+     * or it cannot. `false` means the caller must fall back to
+     * {@link IMapAdapter.updateLayerData} with the full collection — which the caller
+     * holds and the adapter deliberately does not. Keeping the fallback on the caller's
+     * side is what makes it OBSERVABLE from a test with a fake adapter, and a fallback
+     * nobody can see fire is a fallback that silently becomes the only path.
+     *
+     * ⚠️ **Not a promise, even though the underlying write is asynchronous.** None of
+     * the public write methods promises completion today — `setData` is already
+     * asynchronous underneath and its promise is already dropped — so returning one
+     * here would widen a contract nobody asked to widen.
+     *
+     * ⚠️ **Optional (`?`), like `setFeatureState`.** One real adapter implements this
+     * interface, but a number of narrower structural look-alikes stand in for it; a
+     * required member would redden each of them and force an engine with no diff
+     * primitive to fake one out of `setData`, which is exactly the silent
+     * always-fallback this seam exists to prevent.
+     *
+     * @param id - Layer identifier.
+     * @param diff - The change to apply.
+     * @returns `true` when the diff was applied; `false` when the caller must re-feed
+     *   the whole collection.
+     */
+    applyDataDiff?(id: string, diff: LayerDataDiff): boolean;
 
     /**
      * Sets feature-state on a layer's source feature, targeted by its promoted

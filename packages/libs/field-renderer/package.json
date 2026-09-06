@@ -1,6 +1,6 @@
 {
     "name": "@geoleaf/field-renderer",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "type": "module",
     "license": "MIT",
     "description": "GeoLeaf Field Renderer — Generic field catalog (23 components, bi-mode read/edit), responsive modal, focus-trap, validators",

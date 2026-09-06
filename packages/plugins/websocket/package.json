@@ -1,6 +1,6 @@
 {
     "name": "@geoleaf-plugins/websocket",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "type": "module",
     "license": "MIT",
     "description": "GeoLeaf WebSocket Plugin — Generic real-time transport infrastructure for GeoLeaf JS",

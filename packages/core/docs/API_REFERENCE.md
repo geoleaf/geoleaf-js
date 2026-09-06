@@ -39,9 +39,10 @@ title: "GeoLeaf-JS — API Reference"
 23. [Notifications — toast notifications](#notifications--toast-notifications)
 24. [Popup — popup action buttons](#popup--popup-action-buttons)
 25. [PWA — install prompt](#pwa--install-prompt)
-26. [Composing a lighter bundle](#composing-a-lighter-bundle)
-27. [Global namespace (window.GeoLeaf.\*)](#global-namespace-windowgeoleaf)
-28. [TypeScript types](#typescript-types)
+26. [Labels — layer labels](#labels--layer-labels)
+27. [Composing a lighter bundle](#composing-a-lighter-bundle)
+28. [Global namespace (window.GeoLeaf.\*)](#global-namespace-windowgeoleaf)
+29. [TypeScript types](#typescript-types)
 
 ---
 
@@ -296,12 +297,109 @@ A layer id is the one declared in the profile (`config/core/layers.json`).
 | `listLayerIds`    | `() => string[]`                   | Ids of every layer known to the store.                      |
 | `hasLayer`        | `(layerId) => boolean`             | `true` when a layer with this id exists.                    |
 
+**Read — visibility**
+
+| Method             | Signature              | Description                                                                                                             |
+| ------------------ | ---------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `isVisible`        | `(layerId) => boolean` | **Physical**: the layer is painted right now. A zoom range can force this `false` while the layer is still switched on. |
+| `isEnabled`        | `(layerId) => boolean` | **Intent**: the layer is switched on, whatever the map is painting. This is what a visibility toggle must reflect.      |
+| `isUserOverridden` | `(layerId) => boolean` | **Authorship**: a user action set this state, rather than a theme, a zoom threshold or the initial load.                |
+
+> **Three accessors answering three different questions, and picking the wrong one is the
+> mistake this split exists to prevent.** Ask `isVisible` for "what is on screen" — populating a
+> list of layers the user can currently see, for instance. Ask `isEnabled` to drive a toggle: it
+> does not flip on its own when the viewer zooms out of the layer's range, so a control bound to
+> it stays where the user put it. Ask `isUserOverridden` before letting an automatic rule move a
+> layer: it says whether a human already decided, which the other two cannot.
+
+**Write — visibility**
+
+| Method          | Signature                               | Description                                                           |
+| --------------- | --------------------------------------- | --------------------------------------------------------------------- |
+| `setVisibility` | `(layerId, visible, source) => boolean` | Switches a layer **and names who is asking**. `true` when it changed. |
+
+`source` is one of `"user"`, `"theme"`, `"zoom"`, `"system"`, and it is **required**.
+
+> **Most callers want `GeoLeaf.GeoJSON.showLayer` / `hideLayer` / `toggleLayer`, not this.** The
+> trio carries the user's own actions and records them as `"user"`; it is the right route for a
+> click. `setVisibility` exists for the one thing the trio cannot express — attributing a change
+> to something else: restoring a saved state as `"system"`, applying your own rule as `"theme"`.
+> The distinction is not cosmetic: a layer switched on as `"user"` is marked as overridden, and
+> automatic rules will then leave it alone. Restoring a session as `"user"` would silently pin
+> every layer it touched.
+
+⚠️ The physical state is recomputed against the current zoom before the call returns, so a layer
+outside its zoom range records its intent without being painted — the same two-step the trio
+performs. A `false` return means the layer is unknown, or a higher-priority source already holds
+it.
+
+```js
+// Restoring a saved session — the map must not read this as the user's own doing.
+for (const [layerId, visible] of Object.entries(savedLayerState)) {
+    GeoLeaf.Layers.setVisibility(layerId, visible, "system");
+}
+```
+
 **Write — base dataset**
 
-| Method    | Signature                     | Description                                               |
-| --------- | ----------------------------- | --------------------------------------------------------- |
-| `setData` | `(layerId, features) => void` | Replaces the base features, re-renders the source, emits. |
-| `clear`   | `(layerId) => void`           | Empties a layer (same as `setData(layerId, [])`).         |
+| Method    | Signature                              | Description                                                     |
+| --------- | -------------------------------------- | --------------------------------------------------------------- |
+| `create`  | `(def) => Promise<CreatedLayer\|null>` | Creates a layer the active profile does not declare. See below. |
+| `setData` | `(layerId, features) => void`          | Replaces the base features, re-renders the source, emits.       |
+| `clear`   | `(layerId) => void`                    | Empties a layer (same as `setData(layerId, [])`).               |
+
+**Creating a layer at runtime**
+
+`create` takes the **same layer definition a profile declares** — `id`, an optional `label`, and
+a source (`url`, `dataFile`, or a `data` block) — and loads it through the same path, so the
+result is indistinguishable from a profile-declared layer once mounted. A relative `dataFile`
+resolves against the active profile.
+
+It is a create, not an upsert: an id that already names a layer **throws** rather than being
+silently overwritten. Use `setData` to rewrite the features of a layer that exists.
+
+**When you hold the data yourself — `inlineData`**
+
+A source does not have to be a URL. `inlineData` carries the payload itself, in the shape a
+fetched `url` would have returned, and replaces `url`/`dataFile` entirely — for a layer whose
+features the host fetches on its own (a bounding-box query against its own backend, say). It goes
+through the same mapping, conversion and rendering, and the layer lands in the layer manager like
+any other, so it can be toggled.
+
+> **`inlineData` is runtime-only, and a profile may not carry it.** Every other key of a layer
+> definition is shared between profiles and runtime; this one is not, because a profile is a
+> static document and a payload inlined there would be data frozen into configuration — which is
+> what `dataFile` exists to avoid. The restriction is enforced, not just advised: the layer schema
+> rejects unknown keys, so a profile declaring it fails validation.
+
+⚠️ Without any of the four — `url`, `dataFile`, a `data` block or `inlineData` — the definition
+has no source, and `create` resolves to `null` rather than throwing. Check the result: a `null`
+here means the source did not resolve, which is a property of the data, not a caller error.
+
+```js
+// A layer the host fills itself — no URL for GeoLeaf to fetch.
+document.addEventListener("geoleaf:app:ready", async () => {
+    const collection = await myBackend.fetchWithinBounds(GeoLeaf.Core.getMap().getBounds());
+    const layer = await GeoLeaf.Layers.create({
+        id: "assets-in-view",
+        label: "Assets in view",
+        geometry: "point",
+        inlineData: collection,
+    });
+    if (!layer) console.warn("layer not created — no resolvable source");
+});
+```
+
+```js
+document.addEventListener("geoleaf:app:ready", async () => {
+    await GeoLeaf.Layers.create({
+        id: "interventions-du-jour",
+        label: "Interventions du jour",
+        url: "/data/interventions-2026-09-04.geojson",
+        geometry: "point",
+    });
+});
+```
 
 **Write — unit mutations**
 
@@ -844,6 +942,34 @@ GeoLeaf.PWA.init({ installPrompt: { enabled: true } });
 
 ---
 
+## Labels — layer labels
+
+```js
+GeoLeaf.Labels.syncLayerControl("hebergements");
+```
+
+`GeoLeaf.Labels` drives the text labels a layer paints, and the 🏷️ control that the layer
+manager shows for it. Gated by `modules.labels`.
+
+| Method             | Signature              | Description                                                                               |
+| ------------------ | ---------------------- | ----------------------------------------------------------------------------------------- |
+| `isEnabled`        | `() => boolean`        | `true` unless `modules.labels.enabled` is `false`.                                        |
+| `getConfig`        | `() => object`         | The resolved `modules.labels` block, merged over the defaults.                            |
+| `areLabelsEnabled` | `(layerId) => boolean` | `true` when this layer is currently showing its labels.                                   |
+| `toggleLabels`     | `(layerId) => boolean` | Flips the labels of one layer; returns the new state (`false` if the style forbids them). |
+| `refreshLabels`    | `(layerId) => void`    | Re-renders the labels themselves after their source or style changed.                     |
+| `syncLayerControl` | `(layerId) => void`    | Repaints the layer row's 🏷️ **control** so it agrees with the layer. See below.           |
+
+**When to call `syncLayerControl`**
+
+The rest of this facade drives the label _state_; `syncLayerControl` drives the _control_ that
+displays it. The two part company whenever a host changes a layer's visibility or style through
+its own path rather than through this facade: the state is right, and the button still shows what
+was true before. Calling it puts the button back in agreement with the layer. It is idempotent,
+synchronous, and a no-op on a layer with no row on screen.
+
+`refreshLabels` is not a substitute — it re-renders the labels on the map, never the toggle.
+
 ## Composing a lighter bundle
 
 > **REMOVED in v3** — `GeoLeaf._loadModule()` and `GeoLeaf._loadAllSecondaryModules()` no
@@ -902,7 +1028,7 @@ Most are opt-out (active unless set to `false`); check the individual section.
 | `GeoLeaf.Share`         | `modules.permalink.share` | Share dialog                                       |
 | `GeoLeaf.Notifications` | `modules.toast-renderer`  | Rich toast surface                                 |
 | `GeoLeaf.PWA`           | `modules.pwa`             | PWA install prompt                                 |
-| `GeoLeaf.Labels`        | `modules.labels`          | Layer labels                                       |
+| `GeoLeaf.Labels`        | `modules.labels`          | [Layer labels](#labels--layer-labels)              |
 
 **3. Plugin namespaces — after their script has loaded**
 

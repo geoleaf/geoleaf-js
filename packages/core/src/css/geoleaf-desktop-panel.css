@@ -84,12 +84,32 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    /* 🛑 `flex-start` ET PAS `center`, et le centrage était le défaut lui-même. La bande fait
+       exactement la hauteur du viewport (`#gl-right-panel` est `fixed; top:0; bottom:0`) et
+       ne peut ni comprimer ses onglets ni défiler. Tant que le contenu rentre, le
+       `margin-top: auto` du séparateur absorbe l'espace libre — onglets en haut, icônes en
+       bas — et le centrage ne se voyait pas. Dès qu'il débordait, l'espace libre devenait
+       négatif, la marge auto tombait à 0, et un débordement en colonne CENTRÉE se répartit
+       à parts ÉGALES aux deux bouts : le premier onglet sortait par le haut, la dernière
+       icône par le bas, et `body { overflow: hidden }` coupait les deux sans ascenseur.
+       Avec `flex-start` le rendu du cas normal est identique — les marges auto priment
+       toujours sur `justify-content` quand il reste de la place — et un débordement futur
+       ne mordrait plus que par le bas, du côté atteignable.
+       ⚠️ Ne pas confondre avec les deux autres `justify-content: center` de ce fichier
+       (`.gl-rp-tab`, `.gl-rp-tab-btn`) : ceux-là centrent le contenu DANS un bouton. */
+    justify-content: flex-start;
     background: var(--gl-color-bg-surface);
     border-left: 1px solid var(--gl-color-border-soft);
     box-shadow: -2px 0 8px rgba(0, 0, 0, 0.06);
     width: 34px;
-    padding: 0;
+    /* 🛑 `8px 0` ET PAS `padding-block: 8px` PLUS HAUT — écrit ainsi d'abord, et le
+       `padding: 0` qui vivait ICI l'écrasait deux lignes plus bas. La sonde navigateur l'a
+       montré : marge en bas, rien en haut, le premier onglet à ras du bord. Une seule
+       déclaration, donc plus de cascade à arbitrer.
+       Le premier onglet affleurait le bord haut et la dernière icône le bord bas — ce qui se
+       lit comme « passée sous la barre de tâches » alors que `position: fixed` se cale sur le
+       viewport et jamais sur l'écran. */
+    padding: 8px 0;
     gap: 4px;
     flex-shrink: 0;
     pointer-events: auto;
@@ -125,6 +145,30 @@
     font-family: inherit;
     user-select: none;
     -webkit-user-select: none;
+}
+
+/* --------------------------------------------------------------------------
+   Onglet en ICÔNE — la forme par défaut depuis que six onglets épelés
+   débordaient un viewport d'ordinateur portable. Une classe MODIFICATRICE et non
+   une réécriture de `.gl-rp-tab` : le repli texte reste possible (un pane tiers
+   peut ne déclarer aucune icône), et `.gl-is-active`, `.has-filters` et
+   `:focus-visible` doivent continuer de s'appliquer aux deux formes.
+   -------------------------------------------------------------------------- */
+.gl-rp-tab--icon {
+    /* Annule le `writing-mode: vertical-rl` de `.gl-rp-tab` : il n'a de sens que
+       pour du texte, et il fausserait la boîte du SVG. */
+    writing-mode: horizontal-tb;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    /* Hauteur FIXE quelle que soit la langue — c'est tout l'objet de la bascule. */
+    flex: 0 0 auto;
+}
+
+.gl-rp-tab--icon svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
 }
 
 .gl-rp-tab:hover {
@@ -288,9 +332,29 @@
     flex-shrink: 0;
 }
 
-/* Surcharge : pas de marge basse — le toggle thème est le tout dernier élément */
+/* Surcharge : pas de marge basse. Le toggle thème est le dernier élément QUAND il est
+   affiché — `ui.showPanelThemeToggle` peut le retirer, d'où la règle `:last-child`
+   ci-dessous, qui reprend la même annulation pour le bouton qui se retrouve dernier. */
 .gl-rp-theme-toggle {
     margin: 0 auto;
+}
+
+/* Sans le toggle, le dernier bouton de la pile basse garderait le margin-bottom de 6px
+   de .gl-rp-tab-btn. */
+.gl-rp-tabs > .gl-rp-tab-btn:last-child {
+    margin-bottom: 0;
+}
+
+/* Séparateur orphelin (pile basse vide) : on l'efface visuellement SANS le sortir du flux.
+   🛑 Jamais `display: none` — il ne générerait plus de boîte, et son `margin-top: auto` est
+   ce qui POUSSE la pile d'icônes contre le bord bas. Sans lui, onglets et icônes se
+   collent les uns aux autres en haut de la bande.
+   ⚠️ La version précédente de cette phrase concluait « et `justify-content: center`
+   recentrerait tout le bandeau » : elle était juste tant que la bande était centrée, ce
+   qu'elle n'est plus (`justify-content: flex-start`, cf. `.gl-rp-tabs`). La conséquence
+   a changé, la règle non. */
+.gl-rp-tabs > .gl-rp-theme-separator:last-child {
+    background: transparent;
 }
 
 /* Le variant mobile est masqué sur desktop — le tab strip prend le relais */

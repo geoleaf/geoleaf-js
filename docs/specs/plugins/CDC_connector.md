@@ -4,14 +4,21 @@ title: connector — l'authentification et l'injection de jeton
 plugin_id: connector
 package: "@geoleaf-plugins/connector"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 1d0f5312
-date: 1er septembre 2026
+verifie_contre: 6cf15e822
+date: 2 septembre 2026
 ---
 
 # connector — l'authentification et l'injection de jeton
 
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/connector` ·
-**Code :** `packages/plugins/connector/` · **Vérifié contre :** `1d0f5312` (01/09/2026)
+**Code :** `packages/plugins/connector/` · **Vérifié contre :** `6cf15e822` (02/09/2026)
+
+> ⚠️ **Ce que cette estampille couvre.** Le **cycle de session** réécrit le 02/09/2026 : le
+> renouvellement rendu atteignable après péremption (CN-28), le point d'authentification sorti du
+> périmètre d'interception (CN-29), `logout()` (CN-30) et la reconnexion guidée (CN-31). Chacun est
+> adossé à un test vu rouge avant le correctif, puis re-vu rouge par mutation du correctif. Le
+> reste de la fiche est repris de la vérification du **01/09/2026** (`1d0f5312`) et n'a **pas** été
+> re-mesuré.
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -135,6 +142,10 @@ imbriqué ne résoudrait rien. Les entrées françaises reproduisent exactement 
 | CN-25 | Jeton non conforme signalé                          | Jeton sans point (donc non JWT)                       | Avertissement console **non bloquant** — utile en démonstration, visible en production                                     | `fetch-interceptor.ts`                                                               |
 | CN-26 | Instance isolée pour intégrateur avancé             | `createConnector(config)`                             | Une instance **sans mutation de l'état global** ; son `destroy()` neutralise ses lectures de jeton                         | `connector-api.ts`                                                                   |
 | CN-27 | Six événements de cycle de vie                      | Authentification, renouvellement, clic, erreur, liens | Émis sur le document ; **deux sont annulables** — les demandes d'inscription et de mot de passe oublié                     | `login-ui.ts`, `credential-button.ts`, `fetch-interceptor.ts`                        |
+| CN-28 | Le renouvellement est ATTEIGNABLE après péremption  | 401 sur une requête interceptée, mode `auth.endpoint` | Le renouvellement est tenté **avant** tout effacement, et le jeton n'est effacé qu'après son échec                         | `fetch-interceptor.ts`, `token-store.ts`                                             |
+| CN-29 | Le point de renouvellement n'est pas intercepté     | Requête vers `auth.endpoint`                          | Hors périmètre : l'intercepter attendrait sa propre promesse (interblocage) et écraserait l'en-tête qu'il porte            | `fetch-interceptor.ts`                                                               |
+| CN-30 | Fin de session explicite                            | `logout()`                                            | Jeton effacé (mémoire et base indexée), `geoleaf:connector:signed-out` émis ; **no-op** en mode `getToken`                 | `connector-api.ts`                                                                   |
+| CN-31 | Reconnexion guidée, une seule fenêtre               | `auth-error` et `auth.ui: true`                       | La fenêtre de connexion se rouvre ; un verrou garantit **une** fenêtre même sur une file entière en échec                  | `connector-api.ts`                                                                   |
 
 ⚠️ **Les deux appels au point d'accès d'authentification sont BORNÉS DANS LE TEMPS**, et cela ne se
 lit nulle part ailleurs dans cette fiche. `AuthClient.login` et `AuthClient.refresh` ne passent pas
@@ -303,8 +314,28 @@ Construit par `public-api.ts` → `buildPublicApi()`, monté par `entry.ts`.
 | ------------------- | --------------------------------------------------------------------- |
 | `configure(config)` | Le point d'entrée : valide, pose les trois chemins, résout un jeton   |
 | `openLoginModal()`  | Ouvre la fenêtre à la demande ; **rejette** si l'utilisateur la ferme |
+| `logout()`          | Termine la session : le jeton stocké est effacé, l'hôte est prévenu   |
 
-⚠️ **La façade ne porte que deux membres, et son propre en-tête dit pourquoi elle existe.** La gate
+#### `logout()` — la fin de session, qui n'existait pas
+
+_Ajouté le 02/09/2026._
+
+🛑 **Il n'y avait AUCUN geste pour terminer une session.** La façade ne portait que `configure` et
+`openLoginModal` ; `TokenStore.clear` n'avait qu'un appelant — le chemin du 401 — alors que l'en-tête
+du magasin écrit lui-même que « la déconnexion doit l'effacer ici, et pas seulement en mémoire ». Un
+appareil rendu, prêté ou perdu gardait un jeton porteur valide jusqu'à sa péremption, sans qu'aucun
+geste local puisse le révoquer.
+
+⚠️ **En mode `getToken`, il n'efface RIEN, et ce n'est pas un manque.** C'est l'hôte qui détient le
+jeton et le plugin n'en garde aucune copie — la propriété que la décision ⑧ défend en refusant
+`setToken`. Vider un magasin qu'il ne possède pas serait du théâtre, et appeler cela une déconnexion
+nommerait mal ce qui s'est passé.
+
+⚠️ **Il ne purge PAS les données de terrain mises en cache** : c'est une décision distincte, avec sa
+propre confirmation à obtenir — une file d'écriture peut porter des saisies qu'aucun serveur n'a
+encore reçues. Elle est nommée ici plutôt qu'à moitié faite.
+
+⚠️ **La façade ne porte que trois membres, et son propre en-tête dit pourquoi elle existe.** La gate
 de pureté des façades énumère ses sujets **par existence de fichier** : un paquet sans
 `src/public-api.ts` lui échappe entièrement. Ce plugin montait son namespace par un objet écrit dans
 `entry.ts` — donc hors du champ de la gate. **Créer le fichier est ce qui fait entrer le paquet dans

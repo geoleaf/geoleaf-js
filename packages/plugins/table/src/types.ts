@@ -214,8 +214,19 @@ export interface TableConfigApi {
     [key: string]: unknown;
 }
 
-/** The `GeoLeaf._LayerVisibilityManager` surface the table depends on. */
-export interface TableVisibilityManager {
-    getVisibilityState?: (layerId: string) => { current?: boolean } | null | undefined;
+/**
+ * The `GeoLeaf.Layers` surface the table depends on.
+ *
+ * ⚠️ Reads `isVisible` — the PHYSICAL state — and that is the right one here: the
+ * table lists the layers actually painted, so a layer switched on but outside its
+ * zoom range must not appear. `isEnabled` answers the other question (what the
+ * user asked for) and is what a toggle would read.
+ *
+ * This replaced a structural view of `GeoLeaf._LayerVisibilityManager` on
+ * 2026-09-04: a published plugin reaching into an underscore-prefixed key of the
+ * core had no stability promise, in either direction.
+ */
+export interface TableLayersApi {
+    isVisible?: (layerId: string) => boolean;
     [key: string]: unknown;
 }

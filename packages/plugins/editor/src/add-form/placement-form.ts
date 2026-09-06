@@ -52,13 +52,24 @@ import { submitFeature } from "../persistence/submit.js";
 import { applyComputedFields } from "../drawing/geo-compute.js";
 import { PlacementMode } from "../drawing/placement-mode.js";
 import { buildPlacementApi } from "../drawing/placement-api.js";
-import { getEditorConfig } from "../config.js";
+import { getEditorConfig, accuracyFieldOf } from "../config.js";
 import { _getLabel, _notify } from "../internal.js";
 
 /** A geographic position, in the shape both the core and the placement mode use. */
 export interface LatLng {
     lat: number;
     lng: number;
+    /**
+     * Horizontal accuracy in metres, present only when the position came from the device's
+     * geolocation.
+     *
+     * ⚠️ This field was MISSING from the local type, and the omission was load-bearing: the
+     * core's `GeolocationStateSnapshot` carries `accuracy`, but `startPoiCapture` re-typed
+     * the snapshot to `{ lat; lng }` when reading it, so the value was invisible to the
+     * compiler and dropped without a word. A field position with no recorded precision
+     * cannot be told apart from a surveyed one.
+     */
+    accuracy?: number;
 }
 
 /** Collaborators injected by `entry.ts` — see constraint 1 in the module header. */
@@ -72,6 +83,16 @@ export interface AddFormDeps {
      * read at call time, so a snapshot taken at init would freeze a null.
      */
     getWiring: () => EditorWiringContext | null;
+    /**
+     * Opens an EXISTING feature for editing — the duplicate guard's "modify the existing
+     * one" answer.
+     *
+     * ⚠️ Injected like `openForm`, and for the same reason: arming the select tool and
+     * loading the feature needs the lazily-created Terra Draw adapter, which only `entry.ts`
+     * holds. Resolves `false` when the feature could not be opened, so the caller can say so
+     * instead of leaving the surveyor in front of a map that did nothing.
+     */
+    editExisting: (layerId: string, featureId: string) => Promise<boolean>;
 }
 
 let _deps: AddFormDeps | null = null;
@@ -125,7 +146,11 @@ function _endCapture(): void {
  */
 export function openAddForm(latlng: LatLng): void {
     const wasCapturing = _pending !== null;
-    _pending = { lat: latlng.lat, lng: latlng.lng };
+    _pending = {
+        lat: latlng.lat,
+        lng: latlng.lng,
+        ...(latlng.accuracy !== undefined && { accuracy: latlng.accuracy }),
+    };
     // A drag correction: the modal is already open on this capture, and reopening it
     // would discard whatever the user has typed.
     if (wasCapturing) return;
@@ -154,7 +179,10 @@ export function openAddForm(latlng: LatLng): void {
             // `_pendingGeometry()` is read HERE, not captured above: a marker dragged while
             // the form was open must save at its corrected position.
             return submitFeature(buildSubmitContext(wiring), {
-                feature: { geometry: _pendingGeometry(), properties: values },
+                feature: {
+                    geometry: _pendingGeometry(),
+                    properties: _withAccuracy(values, layerId),
+                },
                 layerId,
                 isUpdate: false,
             }).then(_endCapture);
@@ -178,8 +206,13 @@ export function openAddForm(latlng: LatLng): void {
  */
 export function startPoiCapture(map?: unknown, onSettled?: () => void): void {
     const cfg = getEditorConfig();
+    // ⚠️ Read through the CORE's shape, `accuracy` included. Re-typing the snapshot to
+    // `{ lat; lng }` here is what silently dropped the precision of every GPS-sourced
+    // capture — the compiler had nothing to say because the narrower type was legal.
     const userPosition = (
-        getGeoLeaf()?.Geolocation as { getState?: () => { userPosition?: LatLng | null } }
+        getGeoLeaf()?.Geolocation as {
+            getState?: () => { userPosition?: LatLng | null };
+        }
     )?.getState?.()?.userPosition;
 
     if (userPosition && cfg.poiAddDefaultPosition === "geolocation") {
@@ -188,9 +221,54 @@ export function startPoiCapture(map?: unknown, onSettled?: () => void): void {
     }
 
     buildPlacementApi().activate(map ?? null, (result) => {
-        if (result?.latlng) openAddForm(result.latlng);
-        else onSettled?.();
+        // 🛑 THE THREE OUTCOMES ARE HANDLED SEPARATELY, and that is the fix. This callback
+        // used to read `result?.latlng` alone and open a CREATION form on it — including
+        // when the placement had been snapped onto an existing feature, which manufactured
+        // perfectly superimposed duplicates.
+        if (result?.intent === "edit" && result.snapped?.id) {
+            void _openExisting(result.snapped.layerId, result.snapped.id, onSettled);
+            return;
+        }
+        if (result?.intent === "create" && result.latlng) {
+            // ⚠️ A map tap carries NO accuracy, and none is invented: attributing a GPS
+            // precision to a finger-placed point would be a false measurement, which is
+            // worse than a missing one.
+            openAddForm(result.latlng);
+            return;
+        }
+        onSettled?.();
     });
+}
+
+/** Routes the duplicate guard's "modify the existing one" to the editor, or says it failed. */
+async function _openExisting(
+    layerId: string,
+    featureId: string,
+    onSettled?: () => void
+): Promise<void> {
+    const opened = (await _deps?.editExisting?.(layerId, featureId)) ?? false;
+    if (!opened) _notify("error", _getLabel("editor.placement.editUnavailable"));
+    onSettled?.();
+}
+
+/**
+ * Adds the capture's GPS accuracy to the saved properties, when the profile asked for it.
+ *
+ * 🛑 IT IS DECLARATIVE, AND IT HAS TO BE. `buildCollectionBody` only copies the keys the
+ * layer's `write.properties` whitelists, so a property nobody declared is dropped on the
+ * wire — writing one under a magic name would look like it worked and reach no server.
+ * `edition.accuracyField` names the property to fill; unset, nothing is written.
+ *
+ * @param values  - The form's values.
+ * @param layerId - Target layer, whose profile config carries the field name.
+ * @returns the values, with the accuracy added when there is both a field and a measure.
+ */
+function _withAccuracy(values: Record<string, unknown>, layerId: string): Record<string, unknown> {
+    const accuracy = _pending?.accuracy;
+    if (accuracy === undefined) return values;
+    const field = accuracyFieldOf(layerId);
+    if (!field) return values;
+    return { ...values, [field]: accuracy };
 }
 
 /** The `GeoLeaf.Editor.AddForm` surface. */

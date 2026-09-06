@@ -38,7 +38,7 @@
  * and `external` in `rollup.config.mjs`). `Marker` is read off `globalThis` — same seam as
  * `addpoi/poi-placement.ts` and `print/offscreen-render.ts`.
  */
-import { Log, getUINotifications } from "@geoleaf/host-runtime";
+import { Log, getUINotifications, chooseDialog } from "@geoleaf/host-runtime";
 import { _getLabel, _getNativeMap } from "../internal.js";
 import { findNearbyFeature, type SnappedFeature } from "./poi-snap.js";
 import type { EditorMap, EditorMapMouseEvent } from "../types.js";
@@ -74,10 +74,27 @@ const _maplibregl = (): MapLibreLike | undefined =>
 
 /** Handed back to the caller once the user has picked a position. */
 export interface PlacementResult {
-    /** Chosen coordinates — snapped onto an existing feature when one was close enough. */
+    /**
+     * Chosen coordinates.
+     *
+     * 🛑 THE TAP COORDINATE IS KEPT ON `"create"`, and that is the fix. It used to be
+     * OVERWRITTEN by the neighbour's whenever one sat within the snap radius, and the flow
+     * then opened a CREATION form on it — so the duplicate guard manufactured duplicates,
+     * perfectly superimposed and therefore indistinguishable downstream.
+     */
     latlng: { lat: number; lng: number };
-    /** The existing feature that was snapped onto, or `null` for a fresh position. */
+    /** The existing feature found within the snap radius, or `null` for a fresh position. */
     snapped: SnappedFeature | null;
+    /**
+     * What the user decided when the duplicate guard found a neighbour. Always `"create"`
+     * when it found none — the question is only asked when there is something to ask about.
+     *
+     * ⚠️ Spelled INLINE rather than behind an exported alias: the alias would be an export
+     * with no consumer of its own (`check-orphan-exports`), and de-exporting it is not an
+     * option — `tsc` refuses to emit a declaration whose member type is not exported. Naming
+     * it below through `PlacementResult["intent"]` costs nothing and adds no surface.
+     */
+    intent: "create" | "edit" | "abandon";
 }
 
 /** Options accepted by {@link PlacementMode.activate}. */
@@ -194,12 +211,12 @@ function _removeMarker(): void {
  * `placement-mode.test.ts` on its first run.
  */
 function _createTemporaryMarker(
+    map: EditorMap | null,
     latlng: { lat: number; lng: number },
     snapped: boolean,
     callback: ((result: PlacementResult) => void) | null,
     snapMeters: number
 ): void {
-    const map = _state.map;
     const mlgl = _maplibregl();
     if (!map || !mlgl?.Marker) {
         if (!mlgl?.Marker) Log?.debug?.("[editor/placement] MapLibre absent — marker skipped");
@@ -228,17 +245,62 @@ function _createTemporaryMarker(
         // Re-run the guard at the new position: dragging AWAY from a duplicate must clear
         // the snap, and dragging ONTO one must raise it. Reporting the original verdict
         // would let a corrected position keep an identity it no longer sits on.
+        // The drag corrects a position the user already committed to creating, so the intent
+        // does not reopen: re-asking on every drag would make the guard unusable.
         callback?.({
             latlng: next,
             snapped: findNearbyFeature(next, snapMeters),
+            intent: "create",
         });
     });
 }
 
 /**
- * Handles the single tap that ends placement.
+ * Asks what to do about a feature already sitting where the user tapped.
+ *
+ * 🛑 THREE OUTCOMES, NOT TWO, AND THE THIRD IS THE POINT. Folding "neither" onto one of the
+ * two actions would make Escape or a backdrop click perform something — and since the only
+ * candidate is "create", a gesture of renunciation would have produced the duplicate this
+ * guard exists to prevent. Hence `chooseDialog` rather than `confirmDialog`, and hence
+ * `cancel` FIRST so it also takes the initial focus.
+ *
+ * @param snapped - The neighbour found within the snap radius.
+ * @returns the intent the user settled on.
  */
-function _handleMapClick(e: EditorMapMouseEvent): void {
+async function _askAboutNeighbour(snapped: SnappedFeature): Promise<PlacementResult["intent"]> {
+    const title = snapped.title ?? _getLabel("editor.placement.duplicateUnnamed");
+    const message = _getLabel("editor.placement.duplicateBody")
+        .replace("{title}", title)
+        .replace("{d}", String(Math.round(snapped.distanceMeters)));
+
+    const answer = await chooseDialog({
+        title: _getLabel("editor.placement.duplicateTitle"),
+        message,
+        choices: [
+            { id: "cancel", label: _getLabel("editor.modal.btn.cancel") },
+            {
+                id: "edit",
+                label: _getLabel("editor.placement.duplicateEdit"),
+                tone: "primary",
+            },
+            {
+                id: "create",
+                label: _getLabel("editor.placement.duplicateCreate"),
+                tone: "danger",
+            },
+        ],
+    });
+    return answer === "edit" || answer === "create" ? answer : "abandon";
+}
+
+/**
+ * Handles the single tap that ends placement.
+ *
+ * ⚠️ Asynchronous since the duplicate guard asks a question. `map.on("click", …)` ignores
+ * the returned promise, which is fine — nothing downstream waits on it — but a TEST that
+ * does not await it observes a handler still mid-flight.
+ */
+async function _handleMapClick(e: EditorMapMouseEvent): Promise<void> {
     const lngLat = e.lngLat;
     if (!lngLat) {
         Log?.warn?.("[editor/placement] Map click carried no lngLat — ignored");
@@ -246,25 +308,46 @@ function _handleMapClick(e: EditorMapMouseEvent): void {
     }
     const tap = { lat: lngLat.lat, lng: lngLat.lng };
     const snapped = findNearbyFeature(tap, _state.snapMeters);
-    const chosen = snapped ? snapped.latlng : tap;
 
-    if (snapped) {
-        Log?.debug?.("[editor/placement] Snapped onto existing feature:", snapped.id);
-        getUINotifications()?.info?.(
-            `${_getLabel("editor.placement.existingDetected")} ${snapped.title ?? ""}`.trim()
-        );
-    }
-
+    // 🛑 CAPTURED BEFORE ANY DISARM. `deactivate()` nulls `_state.callback` AND `_state.map`,
+    // and the marker is planted AFTER the question is answered — reading either back off the
+    // shared state at that point yields null, so the marker silently never appears.
     const callback = _state.callback;
     const snapMeters = _state.snapMeters;
-    _createTemporaryMarker(chosen, !!snapped, callback, snapMeters);
+    const map = _state.map;
 
-    // Disarm BEFORE calling back: the callback typically opens the capture form, and a
-    // still-armed mode would treat the next tap as a second placement.
-    // ⚠️ `deactivate()` clears `_state.callback`, so it is captured above.
-    PlacementMode.deactivate({ keepMarker: true });
+    if (!snapped) {
+        // Disarm BEFORE calling back: the callback typically opens the capture form, and a
+        // still-armed mode would treat the next tap as a second placement.
+        _createTemporaryMarker(map, tap, false, callback, snapMeters);
+        PlacementMode.deactivate({ keepMarker: true });
+        _report(callback, { latlng: tap, snapped: null, intent: "create" });
+        return;
+    }
 
-    if (callback) callback({ latlng: chosen, snapped });
+    Log?.debug?.("[editor/placement] Existing feature within reach:", snapped.id);
+    // Disarmed BEFORE the question, and with NO marker: the dialog is modal, but a stray tap
+    // reaching the map underneath must not read as a second placement, and a marker planted
+    // before the user has answered would designate a position they may well refuse.
+    PlacementMode.deactivate({ keepMarker: false });
+
+    const intent = await _askAboutNeighbour(snapped);
+    if (intent === "abandon") {
+        _report(callback, { latlng: tap, snapped, intent });
+        return;
+    }
+
+    const chosen = intent === "edit" ? snapped.latlng : tap;
+    _createTemporaryMarker(map, chosen, intent === "edit", callback, snapMeters);
+    _report(callback, { latlng: chosen, snapped, intent });
+}
+
+/** Hands the outcome to the caller, or says loudly that there is nobody to hand it to. */
+function _report(
+    callback: ((result: PlacementResult) => void) | null,
+    result: PlacementResult
+): void {
+    if (callback) callback(result);
     else Log?.error?.("[editor/placement] No callback registered");
 }
 
@@ -316,7 +399,13 @@ export const PlacementMode = {
             _state.dragWasDisabled = true;
         }
 
-        _state.clickHandler = (e: EditorMapMouseEvent) => _handleMapClick(e);
+        // ⚠️ `void`, not a bare arrow: `_handleMapClick` is async since the duplicate guard
+        // asks a question, and MapLibre's listener slot expects a void return. Handing it a
+        // promise it never awaits is what `no-misused-promises` refuses — the rejection would
+        // become an unhandled one, with no user-visible trace.
+        _state.clickHandler = (e: EditorMapMouseEvent) => {
+            void _handleMapClick(e);
+        };
         resolved.on("click", _state.clickHandler);
 
         getUINotifications()?.info?.(_getLabel("editor.placement.prompt"));

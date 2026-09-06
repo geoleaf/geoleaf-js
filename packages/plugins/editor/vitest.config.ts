@@ -42,7 +42,8 @@ export default packageConfig({
     // up, NEVER down.
     //
     // What stays under the bar and makes the next step, not a regression:
-    // `terra-draw-adapter.ts` (branches 46,66), `placement-api.ts` (50/100/50/50),
-    // `auto-adapter.ts` (fonctions 63,15).
+    // `terra-draw-adapter.ts` (branches 46,66), `placement-api.ts` (50/100/50/50).
+    // ⚠️ `auto-adapter.ts` (functions 63,15) LEFT this list with the file itself, removed by
+    // R7: its reachability-based decision rule was what manufactured the duplicate.
     thresholds: { branches: 80, functions: 87, lines: 93, statements: 91 },
 });

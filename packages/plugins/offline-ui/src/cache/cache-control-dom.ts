@@ -8,6 +8,7 @@
 import { Log } from "@geoleaf/host-runtime";
 import { createElement } from "../utils/dom-helpers.js";
 import { buildZoneSelectionSection } from "./cache-control-zone.js";
+import { buildSyncStatusBlock } from "./sync-status-block.js";
 
 import type { CacheControlState } from "./cache-control-types.js";
 
@@ -70,6 +71,18 @@ export function buildStructure(self: CacheControlState): void {
 /** Builds the cache content (status rows, layer section, sync section, actions, progress). */
 function buildContent(self: CacheControlState): void {
     const bodyEl = self._bodyEl!;
+
+    // 🛑 FIRST, so it lands ABOVE the STATUT accordion — and built here rather than inserted
+    // into `#gl-cache-modal-body` from outside. Both tab initialisers call
+    // `clearElementFast()` on that node, so anything posted there is wiped by the first tab
+    // switch; and a round trip through Export rebuilds this body wholesale, which is exactly
+    // the path a one-shot insertion would not survive.
+    //
+    // ⚠️ It answers a different question from the accordion below it. That one reports the
+    // CACHE — profile, size, quota, what was downloaded. This one reports what has not yet
+    // LEFT, which no part of this modal said without the editor plugin loaded.
+    buildSyncStatusBlock(self, bodyEl);
+
     const statusSection = createElement("div", "gl-cache-status", bodyEl);
 
     // Header with toggle button

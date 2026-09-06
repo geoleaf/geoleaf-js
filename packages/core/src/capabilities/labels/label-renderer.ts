@@ -130,6 +130,74 @@ const PT_TO_PX = 96 / 72;
 /** `text-size` used when a profile authors no point size. */
 const DEFAULT_LABEL_SIZE_PX = 12;
 
+/** `label.offset.distancePx` used when a placement is set without a distance. */
+const DEFAULT_LABEL_OFFSET_PX = 12;
+
+/**
+ * Public `label.offset.placement` → MapLibre `text-anchor`.
+ *
+ * ⚠️ INVERTED ON PURPOSE, and it is not a typo. `text-anchor` names the edge of the TEXT
+ * pinned to the anchor point, so a label sitting ABOVE its feature anchors by its `bottom`.
+ * The public key names where the LABEL goes; this table is the only place the two
+ * vocabularies meet. Verified branch by branch against `evaluateVariableOffset` in
+ * maplibre-gl's own `variable_text_anchor` module, whose `fromRadialOffset`
+ * reads `case "left": x = radialOffset` — anchor `left`, text to the RIGHT.
+ */
+const _PLACEMENT_TO_ANCHOR: Readonly<Record<string, string>> = {
+    top: "bottom",
+    bottom: "top",
+    left: "right",
+    right: "left",
+    "top-left": "bottom-right",
+    "top-right": "bottom-left",
+    "bottom-left": "top-right",
+    "bottom-right": "top-left",
+};
+
+/**
+ * Builds the `text-anchor` / `text-radial-offset` pair for `label.offset`, or `null` to
+ * leave the label centred on its feature.
+ *
+ * `text-radial-offset` is paired with a FIXED anchor deliberately, and it works outside the
+ * variable-anchor path: `symbol_layout` reads it whenever it is non-zero and then ignores
+ * `text-offset` entirely. Three things come with it that a raw `text-offset` does not give —
+ * the distance is measured to the EDGE of the text box (so `distancePx` is the gap an author
+ * can reason about), it stays euclidean on the diagonals, and the engine applies its own
+ * baseline correction instead of leaving it to the caller.
+ *
+ * 🛑 Returning `null` rather than an explicit centred pair is what keeps the emitted layout
+ * IDENTICAL to the pre-offset one for every profile that sets no placement. And the trigger
+ * is `distancePx`, never `style.offset` itself: the inline `enableLabels()` path always
+ * materialises `{ distancePx: 0 }`, so testing for the object would offset every layer
+ * coming through it.
+ *
+ * @param style - Resolved label style; `offset` may be absent, partial or unrecognised.
+ * @param textSize - The layer's `text-size` in pixels, the unit `distancePx` converts against.
+ * @returns The two layout properties, or `null` to emit none.
+ */
+function _buildLabelOffsetLayout(
+    style: LabelStyleLike,
+    textSize: number
+): Record<string, unknown> | null {
+    const placement = style.offset?.placement;
+    if (!placement || placement === "center") return null;
+    // Own-property lookup: a bare index would answer "constructor" or "toString" through the
+    // prototype chain and emit that as a text-anchor. Testing the RESOLVED value also narrows
+    // it away from `undefined`, which `noUncheckedIndexedAccess` would otherwise let through.
+    const anchor = Object.prototype.hasOwnProperty.call(_PLACEMENT_TO_ANCHOR, placement)
+        ? _PLACEMENT_TO_ANCHOR[placement]
+        : undefined;
+    if (!anchor) return null;
+    const distancePx = style.offset?.distancePx ?? DEFAULT_LABEL_OFFSET_PX;
+    // Guard the division. `sizePt` reaches the inline path unvalidated by any schema, where a
+    // non-numeric or sub-pixel value rounds `textSize` to 0 or NaN.
+    if (typeof distancePx !== "number" || !Number.isFinite(distancePx) || distancePx <= 0)
+        return null;
+    if (!Number.isFinite(textSize) || textSize <= 0) return null;
+    // `text-radial-offset` is expressed in ems of `text-size`; profiles author pixels.
+    return { "text-anchor": anchor, "text-radial-offset": distancePx / textSize };
+}
+
 /** Builds the MapLibre symbol `layout` for a label text layer. */
 function _buildLabelSymbolLayout(
     labelConfig: LabelConfigLike,
@@ -145,6 +213,8 @@ function _buildLabelSymbolLayout(
         "text-allow-overlap": false,
         "text-ignore-placement": false,
         "text-font": textFont,
+        // Spreading null is a no-op: a centred label emits exactly the five keys above.
+        ..._buildLabelOffsetLayout(style, textSize),
     };
 }
 

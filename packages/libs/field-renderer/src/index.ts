@@ -74,3 +74,8 @@ export { escapeHtml, validateUrl, safeUrl } from "./sanitize.js";
 // without cloning the component.
 export { setImageUploadStrategy } from "./types/field-media.js";
 export type { ImageUploadStrategy } from "./types/field-media.js";
+// The counterpart of the upload strategy: a host that answers an upload with an opaque
+// token — because the file is only stored locally so far — must also be able to render it,
+// and only the host can read its own store.
+export { setImagePreviewResolver } from "./types/field-media.js";
+export type { ImagePreviewResolver } from "./types/field-media.js";

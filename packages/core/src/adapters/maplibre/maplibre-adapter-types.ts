@@ -114,12 +114,44 @@ export type MaplibreSourceSpec = Parameters<MaplibreMap["addSource"]>[1];
 export type MaplibreLayerSpec = Parameters<MaplibreMap["addLayer"]>[0];
 
 /**
- * Structural view of a MapLibre GeoJSON source's mutating method. The registry
+ * Structural view of a MapLibre GeoJSON source's mutating methods. The registry
  * stores generic `Source` handles; the adapter narrows to this shape (guarded
  * by `typeof source.setData === "function"`) before replacing layer data.
  */
 export interface GeoJSONSourceLike {
     setData(data: unknown): void;
+    /**
+     * Applies a partial update. Optional: the guard `typeof source.updateData ===
+     * "function"` is what decides the diff path, and a test double that omits it
+     * legitimately exercises the fallback.
+     */
+    updateData?(diff: MaplibreSourceDiff): Promise<void>;
+    /**
+     * Which feature property the engine promoted to the feature id, when any.
+     *
+     * Read rather than mirrored in the layer registry, and that is deliberate: the
+     * source IS the record of this fact, it answers in O(1), and a mirror would drift —
+     * `transformStyle` recreates every source on a basemap switch.
+     */
+    readonly promoteId?: unknown;
+}
+
+/**
+ * The engine's own diff shape, structurally mirrored so the adapter can hand one to
+ * `GeoJSONSource.updateData` without importing MapLibre's type into the layer that
+ * declares the neutral {@link LayerDataDiff}.
+ */
+export interface MaplibreSourceDiff {
+    removeAll?: boolean;
+    remove?: (string | number)[];
+    add?: GeoJSON.Feature[];
+    update?: {
+        id: string | number;
+        newGeometry?: GeoJSON.Geometry;
+        removeAllProperties?: boolean;
+        removeProperties?: string[];
+        addOrUpdateProperties?: { key: string; value: unknown }[];
+    }[];
 }
 
 /**

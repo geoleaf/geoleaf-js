@@ -55,6 +55,49 @@ export const OFFLINE_CAPABILITY: ICapabilityDeclaration = {
                 "exclusion. An undeclared origin is not routed to any cache.",
             default: [],
         },
+        banner: {
+            type: "object",
+            description:
+                "The permanent sync strip mounted at the top of the app shell: network, " +
+                "how many writes are owed, when the server last accepted something, how " +
+                "many entries are set aside. It is the CORE's chrome — the live counter " +
+                "that existed before it lived in the editor plugin's floating menu and " +
+                "left with it.",
+            properties: {
+                enabled: {
+                    type: "boolean",
+                    default: true,
+                    description:
+                        "Mount the strip. On by default WITH the engine: an offline " +
+                        "capability whose queue nothing represents is the defect this " +
+                        "closes. `false` mounts nothing — the drain is unaffected.",
+                },
+            },
+        },
+        drain: {
+            type: "object",
+            description:
+                "Tuning of the outbox drain triggers. The triggers themselves are not " +
+                "optional — `online`, tab wake-up and storage readiness always fire — this " +
+                "only tunes the periodic retry that makes the write backoff effective.",
+            properties: {
+                pollIntervalMs: {
+                    type: "number",
+                    // 60 s — DERIVED from the engine's backoff scale (30 s base, ×4, 8 min
+                    // cap), not chosen: twice the base step and an eighth of the cap, which
+                    // bounds lateness past `nextAttemptAt` at one minute on every rung. The
+                    // literal is duplicated from `write/outbox-drain-triggers.ts` for the
+                    // same reason as `maxCacheBytes` below: this declaration is registered
+                    // at boot and importing the constant would drag the deferred engine
+                    // into the boot closure the `loader` exists to keep it out of.
+                    default: 60000,
+                    description:
+                        "Period of the drain retry tick, in ms. `0` disables the tick — the " +
+                        "other three triggers keep working, but an entry deferred by the " +
+                        "retry backoff then waits for a network transition or a tab wake-up.",
+                },
+            },
+        },
         cache: {
             type: "object",
             description:

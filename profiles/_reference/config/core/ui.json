@@ -7,7 +7,8 @@
         "showLayerManager": true,
         "showCacheButton": true,
         "showCredentialButton": true,
-        "showEditor": true
+        "showEditor": true,
+        "showPanelThemeToggle": false
     },
     "layerManagerConfig": {
         "title": "Couches",

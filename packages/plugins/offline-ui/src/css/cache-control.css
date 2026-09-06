@@ -15,6 +15,91 @@
  */
 
 /* ========================================================================
+   Sync status strip — the four facts, permanently, above the STATUS accordion
+
+   🛑 NO `display: none` HERE, unlike the core's `.gl-sync-banner`. That strip hides
+   itself when it has nothing to say, because it costs chrome over the map; this one is
+   the place one OPENS to ask the question, so it answers even when the answer is
+   "everything sent". The two are the same four facts with opposite visibility rules,
+   and that asymmetry is the design, not an oversight.
+   ======================================================================== */
+.gl-cache-sync-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--gl-color-text-main, #1f2937);
+    background: var(--gl-color-bg-surface-muted, #f9fafb);
+    border: 1px solid var(--gl-color-border-soft, rgba(15, 23, 42, 0.08));
+    border-radius: 6px;
+    /* The row never wraps; on a narrow modal it scrolls sideways instead of becoming a
+       two-line status bar nobody reads. */
+    white-space: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.gl-cache-sync-status::-webkit-scrollbar {
+    display: none;
+}
+
+.gl-cache-sync-status__dot {
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--gl-color-success, #16a34a);
+}
+
+.gl-cache-sync-status[data-network="offline"] .gl-cache-sync-status__dot {
+    background: var(--gl-color-danger, #dc2626);
+}
+
+.gl-cache-sync-status__net {
+    font-weight: 600;
+}
+
+.gl-cache-sync-status__sep {
+    color: var(--gl-color-border-strong, #9ca3af);
+}
+
+.gl-cache-sync-status__last {
+    color: var(--gl-color-text-muted, #6b7280);
+}
+
+.gl-cache-sync-status__quarantine {
+    color: var(--gl-color-danger, #dc2626);
+    font-weight: 600;
+}
+
+.gl-cache-sync-status__action {
+    flex: 0 0 auto;
+    min-height: 28px;
+    margin-inline-start: auto;
+    padding: 4px 12px;
+    font: inherit;
+    font-weight: 600;
+    color: var(--gl-color-bg-surface, #ffffff);
+    background: var(--gl-color-accent, #f97316);
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.gl-cache-sync-status__action:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.gl-cache-sync-status__action:focus-visible {
+    outline: 2px solid var(--gl-color-focus-ring, currentColor);
+    outline-offset: 2px;
+}
+
+/* ========================================================================
    Status accordion
    ======================================================================== */
 .gl-cache-status {

@@ -603,29 +603,33 @@ declare global {
             [key: string]: unknown;
         };
         /**
-         * `GeoLeaf._LayerVisibilityManager` — **a contract of fact, deliberately NOT
-         * promoted.**
+         * `GeoLeaf._LayerVisibilityManager` — internal, and **no longer the only route
+         * to the visibility state**.
          *
-         * Its promotion to `GeoLeaf.Layers.getVisibilityState()` was examined and set
-         * aside, for two measured reasons:
+         * 🔻 **The refusal written here on 2026-08 is OVERTURNED on 2026-09-04, and one
+         * of its two reasons is why the replacement has the shape it has.** It read:
          *
-         * 1. **It would have removed no key.** The announced motive was "promote, then
-         *    remove `_LayerVisibilityManager` from the namespace" — impossible: the CORE
-         *    itself re-reads it through the global at **5 sites**, with 3 different
-         *    methods (`kernel/geojson/layers/visibility.ts` and
-         *    `capabilities/legend/legend.ts`). Promotion only bought a typed path for
-         *    `plugin-table`, at the price of one more public entry.
+         * 1. *"It would have removed no key"* — the core re-reads this manager through
+         *    the global at 5 sites, so promoting it could not retire the key. **Still
+         *    true, and it never was the question.** It answers "can we DELETE this?";
+         *    what was asked is "does a consumer have a SUPPORTED route?". A published
+         *    plugin of this repo — `plugin-table` — had none, and reached into an
+         *    underscore key of the core to get one. The key stays; the reach is gone.
          *
-         * 2. **The shape is a trap, and publishing would engrave it.**
-         *    `getVisibilityState()` returns 6 fields, among them `current` — the PHYSICAL
-         *    visibility, which zoom forces to `false` — and `logicalState`, the user's
-         *    intent. Reading `current` to drive a toggle is a bug that was ALREADY
-         *    committed once. And `plugin-table`'s 2 sites read exactly `current`.
-         *    Publishing into `LayerDataApi` is irreversible (rule: subpaths are added,
-         *    never removed).
+         * 2. *"The shape is a trap, and publishing would engrave it"* — `getVisibilityState()`
+         *    returns 6 fields, among them `current` (PHYSICAL visibility, which zoom
+         *    forces to `false`) and `logicalState` (the user's intent); reading `current`
+         *    to drive a toggle is a defect that was ALREADY committed once. **This one
+         *    holds entirely, and it is the reason nothing of this shape was published.**
+         *    It condemns the FORM, not the need. What went public instead is two NAMED
+         *    booleans — `Layers.isVisible()` for the physical state, `Layers.isEnabled()`
+         *    for the intent — which make the confusion unstateable at the call site
+         *    rather than merely warned against. The 6-field object is still not public,
+         *    and the irreversibility rule (subpaths are added, never removed) is what
+         *    made publishing two accessors rather than one object the only safe move.
          *
-         * De-facto readers, outside the core: `packages/plugins/table/src/panel.ts`
-         * and `src/table-layer.ts`. They stay on this key, knowingly.
+         * De-facto readers outside the core: **none**. `plugin-table` moved to
+         * `GeoLeaf.Layers.isVisible()` on 2026-09-04 (`panel.ts`, `table-layer.ts`).
          */
         _LayerVisibilityManager?: {
             getVisibilityState: (layerId: string) => { current?: boolean } | null;
@@ -653,7 +657,16 @@ declare global {
             getHandler(
                 id: string
             ): import("./kernel/shared/sync-handler-seam.js").SyncHandler | undefined;
-            /** Every registered handler, in registration order. */
+            /**
+             * Registers a step to run BEFORE each outbox drain; `null` removes it.
+             *
+             * A DIFFERENT registry from {@link registerHandler}: a handler DRIVES a replay,
+             * a step must FINISH before one. See `kernel/shared/drain-hooks-seam.ts`.
+             */
+            registerBeforeDrain(
+                id: string,
+                step: import("./kernel/shared/drain-hooks-seam.js").BeforeDrainStep | null
+            ): void;
         };
         /** Theme switch bar — in-core `theme-selector` capability (see above). */
         ThemeSelector?: GeoLeafThemeSelector;
@@ -1079,6 +1092,16 @@ declare global {
             getSyncReport?(): Promise<
                 ReadonlyArray<import("./contracts/sync.contract.js").LayerSyncReport>
             >;
+            /**
+             * The write queue as a whole — network, entries owed, entries set aside, and
+             * the last accepted push.
+             *
+             * Distinct from `getSyncReport` above, which answers per layer. This one
+             * answers the question a field user asks before closing the application, and
+             * that question has no layer in it. Does not throw — with no engine wired, it
+             * answers zeros, which is what "there is no queue here" looks like.
+             */
+            getSyncStatus?(): Promise<import("./contracts/sync.contract.js").SyncStatus>;
             [key: string]: unknown;
         };
         /**

@@ -38,6 +38,15 @@
     flex-direction: column;
     position: relative;
     min-height: 0; /* Pour éviter les débordements flex */
+
+    /* 🛑 CE JETON EST LE CONTRAT DE LA BANDE HAUTE, et il vaut `0px` tant que personne ne
+       l'occupe. `.gl-main` est le bloc conteneur de la carte (`inset: 0`) ET de toutes les
+       surfaces posées en absolu contre son bord haut. Une surface qui s'y installe en flux
+       ne les pousse donc pas : elle les RECOUVRE. Elle publie ici sa hauteur mesurée, et
+       celles qui s'ancrent en haut l'ajoutent à leur `top`.
+       ⚠️ Écrit ici et pas chez le producteur : le défaut doit exister même quand aucun
+       producteur n'est chargé, sinon chaque consommateur porte son propre repli. */
+    --gl-map-top-inset: 0px;
 }
 
 /* Carte plein écran dans la zone principale */

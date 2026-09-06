@@ -9,12 +9,18 @@ import { vi, test, expect, beforeEach } from "vitest";
 
 // vi.hoisted: vi.mock's factory is hoisted to the top; the variables it
 // references must be too, otherwise "Cannot access before initialization".
-const { getLabelsConfig } = vi.hoisted(() => ({ getLabelsConfig: vi.fn() }));
+const { getLabelsConfig, syncImmediate } = vi.hoisted(() => ({
+    getLabelsConfig: vi.fn(),
+    syncImmediate: vi.fn(),
+}));
 
 vi.mock("../../../src/capabilities/labels/labels.js", () => ({
     Labels: { enableLabels: vi.fn(), toggleLabels: vi.fn() },
 }));
 vi.mock("../../../src/capabilities/labels/config.js", () => ({ getLabelsConfig }));
+vi.mock("../../../src/capabilities/labels/label-button-manager.js", () => ({
+    LabelButtonManager: { syncImmediate },
+}));
 
 import { buildPublicApi } from "../../../src/capabilities/labels/public-api.js";
 
@@ -42,4 +48,22 @@ test("isEnabled : vrai sauf enabled === false", () => {
 test("getConfig rend la config résolue", () => {
     getLabelsConfig.mockReturnValue({ enabled: true, size: 14 });
     expect(api.getConfig()).toEqual({ enabled: true, size: 14 });
+});
+
+// ── R3 · 0.2 — `syncLayerControl`, the public route to the button repaint ──────
+//
+// `Labels.*` drives the label STATE; nothing public re-synchronised the layer
+// row's 🏷️ control, so the only route was the internal manager — which the
+// shipped `docs/labels/LABEL_BUTTON_MANAGER.md` was teaching by name.
+// `refreshLabels` is the nearest neighbour and re-renders the labels themselves,
+// not the DOM toggle: it is not a substitute.
+
+test("syncLayerControl repeint le contrôle de la couche nommée", () => {
+    api.syncLayerControl("poi-restaurants");
+    expect(syncImmediate).toHaveBeenCalledWith("poi-restaurants");
+});
+
+test("syncLayerControl ignore un layerId vide sans appeler le gestionnaire", () => {
+    api.syncLayerControl("");
+    expect(syncImmediate).not.toHaveBeenCalled();
 });

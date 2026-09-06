@@ -1,6 +1,6 @@
 {
     "name": "@geoleaf-plugins/offline-ui",
-    "version": "1.4.0",
+    "version": "1.5.0",
     "type": "module",
     "license": "MIT",
     "description": "GeoLeaf offline UI plugin — cache button, layer selector, sync panel (the offline engine is in-core)",

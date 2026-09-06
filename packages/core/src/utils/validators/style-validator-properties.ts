@@ -82,6 +82,26 @@ export function validateLabelComponent(
  * Validates the label field (either a string or a label config object)
  */
 
+/**
+ * Accepted values of `label.offset.placement`.
+ *
+ * ⚠️ The same list lives in `profiles/schemas/style.schema.json` (which is what rejects a
+ * bad profile) and, minus `center`, in the anchor table of `capabilities/labels/label-renderer.ts`
+ * (which is what renders it). The three must be changed together; the schema lock test
+ * `s14-styles-anomalies-lock` and the renderer test each hold their own end.
+ */
+const _LABEL_PLACEMENTS: readonly string[] = [
+    "center",
+    "top",
+    "bottom",
+    "left",
+    "right",
+    "top-left",
+    "top-right",
+    "bottom-left",
+    "bottom-right",
+];
+
 function _validateLabelOffset(
     labelObj: Record<string, unknown>,
     errors: ValidationErrorItem[],
@@ -89,6 +109,16 @@ function _validateLabelOffset(
 ): void {
     if (!labelObj.offset) return;
     const offset = labelObj.offset as Record<string, unknown>;
+    if (
+        typeof offset.placement !== "undefined" &&
+        !_LABEL_PLACEMENTS.includes(offset.placement as string)
+    ) {
+        errors.push({
+            field: "label.offset.placement",
+            message: `placement must be one of: ${_LABEL_PLACEMENTS.join(", ")}`,
+            context: { received: offset.placement, ...context },
+        });
+    }
     if (typeof offset.distancePx === "undefined") return;
     if (typeof offset.distancePx !== "number") {
         errors.push({

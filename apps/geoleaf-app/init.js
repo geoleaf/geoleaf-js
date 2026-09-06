@@ -303,8 +303,8 @@
         '<circle cx="12" cy="12" r="8"/>' +
         "</svg>";
     gl.I18n.registerDict("position-share", {
-        fr: { "position-share.toolbar.button": "Partager ma position" },
-        en: { "position-share.toolbar.button": "Share my position" },
+        fr: { "position-share.toolbar.button": "Partager" },
+        en: { "position-share.toolbar.button": "Share" },
     });
     gl.plugins.registerLazy(
         "position-share",

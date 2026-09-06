@@ -2,8 +2,10 @@
     "schemaVersion": 2,
     "lot": "B36-scripts",
     "scope": [
+        "scripts/atelier-check.cjs",
         "scripts/check-app-payload.cjs",
         "scripts/check-dist-integrity.cjs",
+        "scripts/check-doc-ceilings.cjs",
         "scripts/check-doc-config-examples.cjs",
         "scripts/check-e2e-wait-signature.cjs",
         "scripts/check-exact-optional-debt.cjs",
@@ -25,6 +27,7 @@
         "scripts/lib/dev-backend.cjs",
         "scripts/lib/docs-paths.cjs",
         "scripts/lib/event-names.cjs",
+        "scripts/lib/gate-ledger.cjs",
         "scripts/lib/geojson-slim.cjs",
         "scripts/lib/license-banner.cjs",
         "scripts/lib/npm-registry.cjs",
@@ -43,6 +46,7 @@
         "scripts/probe-tile-cache-trim.mjs",
         "scripts/publish-one.cjs",
         "scripts/purge-dist.cjs",
+        "scripts/release-check.cjs",
         "scripts/verify-ci-parity.cjs",
         "scripts/verify-consumer-contract.cjs",
         "scripts/verify-deploy-no-secrets.cjs",
@@ -588,6 +592,20 @@
             "confidence": "haute",
             "rationale": "Câblage MESURÉ, pas affirmé : requis par `scripts/verify-repo-hygiene.cjs`. La description est celle de l'en-tête du fichier lui-même, dérivée par le générateur d'arbre — elle décrit donc ce que le module dit de lui, pas une supposition. Verdict « justifié » par défaut de la RUBRIC §0 : l'artefact est un instrument vivant du dépôt, atteint par au moins un runner ou un consommateur nommé ; la charge de la preuve pèserait sur un verdict actionnable, et rien dans le nom, l'emplacement ou le câblage ne la porte."
         },
+        "scripts/release-check.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "RELEASE-CHECK — the gate sequence that stands between this repo and an IMMUTABLE tarball.",
+            "confidence": "haute",
+            "rationale": "Câblage MESURÉ, pas affirmé : atteint par `package.json` (`release:check`) et par le job `verify` de `.github/workflows/publish.yml`, dont le job `publish` dépend — donc aucun tarball ne part sans lui. Il ne double aucune gate : il REJOUE le sous-ensemble de `ci-local.cjs` marqué `release: true`, dérivé de la table et jamais recopié, à un moment que `ci:local` ne connaît pas (juste avant un acte irréversible). Verdict « justifié » par la RUBRIC §0 : instrument vivant, atteint par deux consommateurs nommés, et la charge de la preuve pèserait sur un verdict actionnable que ni le nom, ni l'emplacement, ni le câblage ne portent."
+        },
         "scripts/publish-one.cjs": {
             "kind": "file",
             "name": "ok",
@@ -783,6 +801,48 @@
             "description": "PUB — is what the registry carries still what this repo says it is?",
             "confidence": "haute",
             "rationale": "Câblage MESURÉ, pas affirmé : feuille de `scripts/ci-local.cjs` et étape de `.github/workflows/ci.yml`, exposée en `npm run check:published-parity`. Verdict « justifié » par la RUBRIC §0 : seul instrument du dépôt qui confronte un tarball PUBLIÉ au contenu local à version ÉGALE — la direction que `check-versions.cjs` ne regarde pas, n'ayant aucun contact avec le registre. Saute explicitement sans accès réseau."
+        },
+        "scripts/atelier-check.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "(en-tête absent — fichier de données ou baril)",
+            "confidence": "haute",
+            "rationale": "Câblage MESURÉ, pas affirmé : exposé par `npm run atelier:check`, second vert exigé par le protocole de push. Sous-ensemble DÉRIVÉ de `ci-local.cjs` par le drapeau `workshop: true`, sur le patron de `release-check.cjs`. Verdict « justifié » par défaut de la RUBRIC §0 : l'artefact est un instrument vivant du dépôt, atteint par un runner nommé ; rien dans le nom, l'emplacement ou le câblage ne porte un verdict actionnable."
+        },
+        "scripts/lib/gate-ledger.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "(en-tête absent — fichier de données ou baril)",
+            "confidence": "haute",
+            "rationale": "Câblage MESURÉ, pas affirmé : requis par `scripts/ci-local.cjs` et `scripts/atelier-check.cjs`, rendu par `ci:local --report`. Son magasin vit hors du dépôt — la mesure est une propriété du poste, pas du dépôt. Verdict « justifié » par défaut de la RUBRIC §0 : l'artefact est un instrument vivant du dépôt, atteint par au moins un runner nommé ; rien dans le nom, l'emplacement ou le câblage ne porte un verdict actionnable."
+        },
+        "scripts/check-doc-ceilings.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "(en-tête absent — fichier de données ou baril)",
+            "confidence": "haute",
+            "rationale": "Câblage MESURÉ, pas affirmé : cité par `atelier:check` et `ci.yml`, drapeau `workshop: true` validé par PARITY-14. Cliquet décroissant sur la taille des documents lus avant toute source, plus l'interdit de compte recopié dans ceux que chaque session charge. Verdict « justifié » par défaut de la RUBRIC §0 : l'artefact est un instrument vivant du dépôt, atteint par au moins un runner nommé ; rien dans le nom, l'emplacement ou le câblage ne porte un verdict actionnable."
         }
     }
 }

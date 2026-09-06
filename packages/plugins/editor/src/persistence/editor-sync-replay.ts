@@ -12,8 +12,6 @@
  * The Storage façade is read at call time (`globalThis.GeoLeaf.Storage`).
  * https://geoleaf.dev
  */
-import { _getLabel, _notify } from "../internal.js";
-import { type EditorPersistenceAdapter } from "./adapter-interface.js";
 import { storageDb, storageFacade } from "./storage-seam.js";
 import { dispatchEditorEvent } from "../editor-events.js";
 
@@ -34,17 +32,19 @@ export interface EditorQueueEntry {
     createdAt?: number;
 }
 
-/** Collaborators injected by entry.ts. */
-interface SyncReplayDeps {
-    /** Online adapter used to replay queued ops (REST or collection). */
-    rest: EditorPersistenceAdapter;
-    /** Called after a flush so the UI (pending badge) can refresh. */
-    onChange?: () => void;
-}
-
-let _deps: SyncReplayDeps | null = null;
-let _onlineListener: (() => void) | null = null;
-let _flushing = false;
+/**
+ * 🛑 **THIS MODULE NO LONGER HOLDS ANY STATE, AND THAT IS THE POINT OF R7.**
+ *
+ * It used to own three things the core has taken back: the `online` listener (the repo's
+ * ONLY automatic drain trigger — an application without this plugin never emptied its
+ * queue, and the plugin being lazily loaded, a reopened session waited for the editor to
+ * come back), the `_flushing` re-entrance lock (which, as its own comment said, "only
+ * guards what goes through here" — three production callers do not), and the pre-drain
+ * step that uploads held photos (which therefore applied to one caller out of four).
+ *
+ * What is left is the two things a PLUGIN legitimately owns: a manual gesture
+ * ({@link flushNow}, the modal's "Retry"), and the reading of the queue its badge shows.
+ */
 
 /**
  * The pending entries, read from the core's `outbox`.
@@ -99,26 +99,42 @@ export async function getPendingCount(): Promise<number> {
  * killed the replay silently.
  */
 export async function flushNow(): Promise<void> {
-    if (!_deps) return;
     await drainOutbox();
 }
 
-/** The tally the core's drain returns, as consumers read it. */
+/**
+ * The tally the core's drain returns, as consumers read it.
+ *
+ * ⚠️ **Reduced to what is READ, and the two optional members say why.** This shape is
+ * structural — `INV-NS` forbids importing the core — so it cannot be derived, only kept
+ * in step. `deferred` and `haltedBy` are optional because an older core does not carry
+ * them, and their absence genuinely means "none" / "not halted". They are declared
+ * because a consumer now reads them: reporting a drain that stopped, or one that walked
+ * past most of its queue, as a complete pass is the defect this fixes.
+ */
 export interface DrainReport {
     attempted: number;
     pushed: number;
     failed: number;
     conflicts: number;
+    /** Entries walked past, their retry delay not yet elapsed. */
+    deferred?: number;
+    /** What stopped the drain before the end of the queue, or `null`. */
+    haltedBy?: string | null;
 }
 
 /**
  * Drains the outbox and RETURNS the tally.
  *
- * 🛑 **This body was extracted from {@link flushNow}, and the motive is the
- * lock.** The `Sync` seam's `"poi"` handler must drain too, for `offline-ui`'s
- * replay button. If it called `pushOutbox` on its own side, two drains could
- * overlap: `_flushing` only guards what goes **through here**. One entry
- * point, one lock.
+ * 🛑 **THIS DOC USED TO SAY "one entry point, one lock", AND THE LOCK HAS MOVED.** It was
+ * extracted from {@link flushNow} so that the `Sync` seam's `"poi"` handler — `offline-ui`'s
+ * replay button — could not overlap with it. That reasoning was sound and too narrow: the
+ * flag only guarded what came through this function, while the console, the E2E suite and
+ * the core's own triggers reach `Storage.pushOutbox()` directly. The lock now lives in the
+ * drain itself, where every caller meets it.
+ *
+ * What is left here is a plugin-side gesture: refuse to try off-network, delegate, and tell
+ * the badge.
  *
  * ⚠️ **The receiver is mandatory.** `pushOutbox` reads `this._modules` on the
  * core's facade; calling it detached throws `TypeError … reading '_modules'`.
@@ -128,29 +144,27 @@ export interface DrainReport {
  * core expresses. `facade.pushOutbox()` is a METHOD call — the receiver is
  * bound there by construction, and it must stay so.
  *
- * @returns the tally, or `null` when the drain did not happen (off-network,
- *   drain already running, or storage facade absent). ⚠️ `null` is NOT
- *   `{pushed: 0}`: the first says "nothing was attempted", the second
- *   "attempted, nothing left".
+ * @returns the tally, or `null` when the drain did not happen — off-network, or storage
+ *   facade absent. ⚠️ **"A drain is already running" is no longer one of those cases**: the
+ *   core coalesces, so a concurrent call now comes back with the running pass's tally
+ *   rather than `null`. `null` is NOT `{pushed: 0}`: the first says "nothing was
+ *   attempted", the second "attempted, nothing left".
  */
 export async function drainOutbox(): Promise<DrainReport | null> {
-    if (_flushing) return null;
     // Replaying off-network would fail every entry; we wait for reconnection.
     if (typeof navigator !== "undefined" && !navigator.onLine) return null;
     const facade = storageFacade();
     if (!facade?.pushOutbox) return null;
 
-    _flushing = true;
-    try {
-        const report = await facade.pushOutbox();
-        if (report.pushed > 0 || report.failed > 0) {
-            _dispatchFlushed(report);
-            _deps?.onChange?.();
-        }
-        return report;
-    } finally {
-        _flushing = false;
-    }
+    // 🛑 NEITHER THE LOCK NOR THE PRE-DRAIN STEP LIVE HERE ANY MORE — both are the core's.
+    // The lock because `_flushing` only guarded what came through this function, and three
+    // production callers do not; the step (uploading held photos so the reconciling
+    // `update` coalesces into the pending `create`) for the same reason, one caller out of
+    // four. `pushOutbox` serialises itself and runs the steps registered on
+    // `GeoLeaf.Sync.registerBeforeDrain` inside its own lock.
+    const report = await facade.pushOutbox();
+    if (report.pushed > 0 || report.failed > 0) _dispatchFlushed(report);
+    return report;
 }
 
 /**
@@ -175,31 +189,11 @@ function _dispatchFlushed(report: { pushed: number; failed: number }): void {
     });
 }
 
-/**
- * Registers the `online` listener and attempts an initial flush. Idempotent: a
- * second call replaces the stored deps without stacking listeners.
- */
-export function initSyncReplay(deps: SyncReplayDeps): void {
-    _deps = deps;
-    if (typeof window === "undefined") return;
-    if (!_onlineListener) {
-        _onlineListener = () => {
-            void flushNow();
-        };
-        window.addEventListener("online", _onlineListener);
-    }
-    // Opportunistic flush at init when already online (e.g. queue left from a prior session).
-    if (typeof navigator === "undefined" || navigator.onLine) {
-        void flushNow();
-    }
-}
-
-/** Removes the `online` listener and resets module state. */
-export function destroySyncReplay(): void {
-    if (_onlineListener && typeof window !== "undefined") {
-        window.removeEventListener("online", _onlineListener);
-    }
-    _onlineListener = null;
-    _deps = null;
-    _flushing = false;
-}
+// 🛑 `initSyncReplay` AND `destroySyncReplay` ARE GONE, and their removal is the point
+// of the lot rather than a side effect. The first registered a `window "online"` listener
+// and fired an opportunistic flush at mount; the core does both now, for every
+// application and without waiting for this plugin to be loaded
+// (`capabilities/offline/write/outbox-drain-triggers.ts`). Keeping them would have left
+// TWO armers of the same drain — precisely the objection the sheet
+// `docs/specs/capacites/offline.md` raised against moving it in-core, which is why the
+// move and this deletion belong to the same commit.

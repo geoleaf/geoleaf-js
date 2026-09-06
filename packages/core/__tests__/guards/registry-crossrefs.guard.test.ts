@@ -112,9 +112,20 @@ describe.skipIf(!present)("REGISTRY-CROSSREFS — les renvois internes des regis
         // out left five assertions green, including a first draft of this
         // one, which looked for files YIELDING ZERO — yet a removed file does
         // not appear at all, hence does not yield zero.
-        const ATTENDUS = ["backlog_technique.md", "dette_technique.md", "CLAUDE.md"];
+        // 🛑 `CLAUDE.md` dropped to ZERO pointers on 2026-09-05, and that is WANTED: the
+        // rewrite removed every `B-nnn` from it, which is exactly what the file's first
+        // interdict forbids. Demanding "> 0" there would demand the very thing the repo
+        // bans — an assertion that, taken literally, forces the defect back in.
+        // What it MEANT is preserved: the file was READ. A file removed from `CORPUS` has
+        // no key at all, which is what separates "read, zero references" from "no longer
+        // guarded" — and that distinction, not the count, was always the point.
+        const AVEC_RENVOIS = ["backlog_technique.md", "dette_technique.md"];
+        const LUS = [...AVEC_RENVOIS, "CLAUDE.md"];
         const perFile = lib.scan().perFile;
-        const manquants = ATTENDUS.filter((f) => !(perFile[f] > 0));
+        const manquants = [
+            ...AVEC_RENVOIS.filter((f) => !(perFile[f] > 0)),
+            ...LUS.filter((f) => !(f in perFile)),
+        ];
         expect(
             manquants,
             `fichier(s) attendu(s) que la gate ne lit pas :\n  ${manquants.join("\n  ")}\n` +

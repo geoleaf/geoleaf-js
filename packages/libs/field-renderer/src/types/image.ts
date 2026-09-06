@@ -18,9 +18,8 @@ import { _el, _getLabel } from "../helpers.js";
 
 import {
     ACCEPTED_ACCEPT,
-    _createObjectUrl,
-    _openLightbox,
-    _safeImageSrc,
+    _openLightboxResolved,
+    _resolveImageSrc,
     _uploadFile,
     _validateFile,
 } from "./field-media.js";
@@ -56,12 +55,18 @@ function formRender(
         previewWrap.innerHTML = "";
         if (!currentUrl) return;
         const img = _el("img");
-        // Protocol-checked like the side-panel path.
-        img.src = _safeImageSrc(currentUrl);
+        // Protocol-checked like the side-panel path, and resolved through the host first: an
+        // offline capture is held as an opaque token, and only the host can read its store.
+        // ⚠️ The `src` is set asynchronously, so it is guarded against a preview rebuilt
+        // while the read was in flight — otherwise a removed photo could reappear.
+        const shown = currentUrl;
+        void _resolveImageSrc(shown).then((src) => {
+            if (currentUrl === shown) img.src = src;
+        });
         img.className = "gl-form-image__preview";
         img.alt = "";
         img.style.cursor = "zoom-in";
-        img.addEventListener("click", () => _openLightbox(currentUrl));
+        img.addEventListener("click", () => void _openLightboxResolved(currentUrl));
         const removeBtn = _el("button");
         removeBtn.type = "button";
         removeBtn.className = "gl-form-image__remove";
@@ -108,7 +113,7 @@ function formRender(
         if (endpoint) {
             dropZone.classList.add("is-uploading");
             try {
-                currentUrl = await _uploadFile(toSend, endpoint);
+                currentUrl = await _uploadFile(toSend, endpoint, fieldConfig.id);
                 onChange(currentUrl);
                 renderPreview();
             } catch {
@@ -117,10 +122,21 @@ function formRender(
                 dropZone.classList.remove("is-uploading");
             }
         } else {
-            // Fallback: use object URL (not persisted — caller must handle)
-            currentUrl = _createObjectUrl(toSend);
-            onChange(currentUrl);
-            renderPreview();
+            // 🛑 NO ENDPOINT — AND THIS BRANCH USED TO LOSE THE PHOTO. It wrote a
+            // `URL.createObjectURL` value straight into the attribute; an object URL dies
+            // with the document, so the image was gone at the next reload and anything sent
+            // to a server was a string designating nothing. It now goes through the same
+            // path as the rest: the host strategy is given `null` and keeps the file.
+            dropZone.classList.add("is-uploading");
+            try {
+                currentUrl = await _uploadFile(toSend, null, fieldConfig.id);
+                onChange(currentUrl);
+                renderPreview();
+            } catch {
+                showError("form.error.uploadFailed");
+            } finally {
+                dropZone.classList.remove("is-uploading");
+            }
         }
     }
 

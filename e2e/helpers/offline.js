@@ -21,9 +21,13 @@
 //    `requestfailed` (`net::ERR_INTERNET_DISCONNECTED`). Recording only successful requests
 //    would score a path that *did* reach for the network as clean. Both events are recorded.
 //
-// ⚠️ `navigator.onLine` IS THE ONLY SIGNAL AVAILABLE. `modules.pwa.offlineDetector.enabled`
-// is `false` in `profiles/geoleaf.config.json`, so `geoleaf:offline` / `geoleaf:online` are
-// NOT emitted by the deployed app. Do not wait on them — they will never come.
+// ⚠️ `geoleaf:offline` / `geoleaf:online` ARE emitted again — since 05/09/2026 (R7), which
+// turned `modules.pwa.offlineDetector.enabled` on in `profiles/geoleaf.config.json`. This
+// comment said the opposite for as long as the flag was `false`, and it was TRUE then: the
+// detector was never initialised, so nothing emitted them. Read as guidance rather than as
+// a dated fact, it had become the harness organising itself AROUND a defect instead of
+// reporting it. ⚠️ `navigator.onLine` remains the signal these helpers act on — the events
+// are a page-level notification, not a transport fact, and a captive portal fools both.
 
 /**
  * Resolves a Page or BrowserContext to the BrowserContext that observes ALL of its traffic,

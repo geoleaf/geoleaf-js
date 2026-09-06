@@ -17,6 +17,22 @@
  * backlog/debt ids (`B-nnn`, `D-nn`), sprint markers (`Sprint N`, `S4.3`), roadmap names
  * (`roadmap_*`), and workshop paths (`_docs_projet/`). Markdown counts too: `docs/` ships.
  *
+ * ✅ **And, since 02/09/2026, the names of NEIGHBOURING REPOSITORIES and of the backend a
+ * consumer happens to run.** This library is standalone and knows no backend: naming one
+ * in a shipped file writes a dependency that does not exist, points a public reader at a
+ * repository they cannot open, and quietly turns one integrator's stack into part of the
+ * product's description.
+ *
+ * ⚠️ **The deposit was three files, and the third is the reason this family joined the
+ * gate rather than a review habit.** `lib/consumer-manifest.cjs` explained, in prose, why
+ * NO default path may be written — "it would write the name of a private repo into
+ * `scripts/`" — and wrote that name in the example illustrating the rule. A rule broken by
+ * its own statement is not a rule anyone can follow; only a counter can hold it.
+ *
+ * ⚠️ **The pattern is CASE-SENSITIVE and deliberately narrow.** `GeoLeaf_core_README.md` is
+ * this repository's own file and must not match, which one careless `/i` would break —
+ * measured before the pattern was written, on the whole tracked corpus.
+ *
  *   WREF-01  a file with MORE tokens than its frozen count (or absent from the baseline
  *            with tokens) → ERROR. The deposit must never grow.
  *   WREF-02  a file now BELOW its frozen count → ERROR until tightened (shrink-only).
@@ -41,7 +57,7 @@ const UPDATE = process.argv.includes("--update-baseline");
 // One pattern per token family. `S4.3`-style sprint-task markers require the dot so a
 // lone `S3` (storage, AWS) never matches; `Sprint N` requires the capital word.
 const TOKEN =
-    /\bB-[0-9]{2,3}\b|\bD-[0-9]{2}\b|\bSprint [0-9]+\b|\bS[0-9]+\.[0-9]+\b|\broadmap_[a-z0-9-]+|_docs_projet\//g;
+    /\bB-[0-9]{2,3}\b|\bD-[0-9]{2}\b|\bSprint [0-9]+\b|\bS[0-9]+\.[0-9]+\b|\broadmap_[a-z0-9-]+|_docs_projet\/|geoleaf-(?:maintenance|shared)|\bgeoleaf_(?:core|itinerary|realtime|contribution|review|website)\b|\b[Oo]doo\b|\bODOO\b/g;
 
 function trackedFiles() {
     return execFileSync("git", ["ls-files"], { cwd: ROOT, encoding: "utf8" })
@@ -137,7 +153,13 @@ if (grown.length) {
     console.error(`❌ [WREF-01] ${grown.length} fichier(s) dont le compte de jetons AUGMENTE :`);
     for (const g of grown.slice(0, 15)) console.error(`   + ${g}`);
     console.error(
-        `   Un renvoi d'atelier est mort pour le lecteur public — écrire le motif en clair.`
+        `   Deux familles, deux gestes — le jeton fautif est imprimé ci-dessus.\n` +
+            `   • Renvoi d'ATELIER : mort pour le lecteur public, qui n'a pas le document.\n` +
+            `     Écrire le motif en clair à sa place.\n` +
+            `   • NOM d'un dépôt voisin ou d'un backend : inscrit une dépendance qui n'existe\n` +
+            `     pas. Cette bibliothèque est autonome et ne connaît aucun backend — nommer le\n` +
+            `     mécanisme, « le consommateur », « son dépôt », jamais le produit.\n` +
+            `   ⚠️ Ce message ne cite AUCUN exemple nommé, à dessein : il se compterait lui-même.`
     );
 }
 const shrunk = Object.entries(baseline).filter(([f, n]) => (observed.get(f) ?? 0) < n);

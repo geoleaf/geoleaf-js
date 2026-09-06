@@ -15,12 +15,34 @@
 
 import { Log } from "../../../utils/log/index.js";
 
+/**
+ * What a caller hands in to store an image locally.
+ *
+ * 🛑 THE FOUR LAST FIELDS ARE THE RETURN ADDRESS, AND THEY WERE MISSING. `storeImageLocally`
+ * rebuilt the record field by field from this shape, so `endpoint` — which the editor plugin
+ * DID pass — was silently dropped, and its retry loop (`if (!img?.endpoint) continue`)
+ * skipped every image forever: not one photo was ever re-uploaded. Nothing referenced the
+ * entity either, so even a successful upload had nowhere to send the resulting URL back to.
+ * A local image without a return address is a file nobody can ever finish delivering.
+ */
 interface LocalImageData {
     id: string;
     blob: Blob;
     filename: string;
     type: string;
     size: number;
+    /**
+     * Where to POST the file. `null` when the field declared no `uploadEndpoint`: the image
+     * is then kept for display only and NEVER retried — a distinct state from "the endpoint
+     * was lost", which must stay loud.
+     */
+    endpoint?: string | null;
+    /** Layer the owning feature belongs to. */
+    layerId?: string;
+    /** Client identity of the owning feature, so the reconciling edit can find it. */
+    localId?: string;
+    /** Schema path of the field holding the token (e.g. `properties.photo_principale`). */
+    fieldPath?: string;
 }
 
 /**
@@ -52,6 +74,28 @@ interface LocalImageRecord {
     timestamp: number;
     uploaded: UploadedFlag;
     url: string | null;
+    /** See {@link LocalImageData.endpoint}. `null` means "display only, never retry". */
+    endpoint: string | null;
+    /** See {@link LocalImageData.layerId}. */
+    layerId: string | null;
+    /** See {@link LocalImageData.localId}. */
+    localId: string | null;
+    /** See {@link LocalImageData.fieldPath}. */
+    fieldPath: string | null;
+}
+
+/**
+ * The feature a stored image belongs to — its return address.
+ *
+ * 🛑 WRITTEN AFTER THE FACT, AND IT HAS TO BE. A photo is captured while the form is open,
+ * BEFORE the feature exists: off-network the client identity is only minted when the edit is
+ * enqueued. So the image is stored first with the field path alone, and bound to its feature
+ * at save time — without that second step the upload has nowhere to send the resulting URL,
+ * which is exactly why the URL used to be thrown away.
+ */
+interface ImageOwner {
+    layerId: string;
+    localId: string;
 }
 
 interface ImageUploadStatus {
@@ -80,11 +124,14 @@ interface ImageStats {
  * ⚠️ WHAT WAS REMOVED FROM HERE, AND WHAT WAS KEPT — measurement split an inventory
  * line that announced "local images chain, 0 callers, delete".
  *
- * **Removed**: `getLocalImage(id)`. Its sole consumer was
- * `addpoi/image-upload.ts` → `getLocalImageUrl()`, itself redundant:
- * `storeImageLocally` ALSO writes a base64 data-URL into the POI's data, "so images
- * display in popups/panels without IndexedDB retrieval". Two read paths for one
- * role, one never taken.
+ * **Removed on 08/08/2026, RESTORED on 04/09/2026 — and the removal's own motive is what
+ * restored it.** `getLocalImage(id)` went because it was redundant with the base64 data-URL
+ * `storeImageLocally` also wrote into the POI's data: two read paths for one role, one never
+ * taken. That data-URL is now GONE — it was the defect, since it put the whole photo inside
+ * the feature's attribute and shipped it to the server inside the create. With the value in
+ * the attribute reduced to an opaque token, this read is no longer a second path: it is the
+ * ONLY one, and without it `storeImageLocally` becomes exactly the write-only store the
+ * paragraph below says must not exist.
  *
  * 🛑 **Kept, and the bet held — but not by the announced sprint.** The motive was
  * that the PRODUCER (`storeImageLocally`, repaired: the blob and `uploaded: 0`) is
@@ -123,8 +170,10 @@ export interface ImagesDBInstance {
     init(db: IDBDatabase): ImagesDBInstance;
     _ensureInitialized(): void;
     storeImageLocally(imageData: LocalImageData): Promise<void>;
+    getLocalImage(id: string): Promise<LocalImageRecord | null>;
     getPendingImages(): Promise<LocalImageRecord[]>;
     updateImageUploadStatus(id: string, status: ImageUploadStatus): Promise<void>;
+    bindLocalImage(id: string, owner: ImageOwner): Promise<void>;
     deleteLocalImage(id: string): Promise<void>;
     cleanUploadedImages(): Promise<number>;
     getImageStats(): Promise<ImageStats>;
@@ -168,6 +217,10 @@ const ImagesDB: ImagesDBInstance = {
      * @param {string} imageData.filename - File name
      * @param {string} imageData.type - Type MIME
      * @param {number} imageData.size - Taille en octets
+     * @param {string|null} [imageData.endpoint] - Upload target, `null` for display-only
+     * @param {string} [imageData.layerId] - Layer of the owning feature
+     * @param {string} [imageData.localId] - Client identity of the owning feature
+     * @param {string} [imageData.fieldPath] - Schema path of the field holding the token
      * @returns {Promise<void>}
      */
     async storeImageLocally(imageData: LocalImageData) {
@@ -178,7 +231,7 @@ const ImagesDB: ImagesDBInstance = {
             const transaction = db.transaction(["local_images"], "readwrite");
             const store = transaction.objectStore("local_images");
 
-            const entry = {
+            const entry: LocalImageRecord = {
                 id: imageData.id,
                 blob: imageData.blob,
                 filename: imageData.filename,
@@ -187,6 +240,13 @@ const ImagesDB: ImagesDBInstance = {
                 timestamp: Date.now(),
                 uploaded: 0 as UploadedFlag,
                 url: null,
+                // ⚠️ The return address. Rebuilding the record field by field is what dropped
+                // it: these four are written EXPLICITLY so a caller passing them keeps them,
+                // and `?? null` so an old caller that does not is still a valid record.
+                endpoint: imageData.endpoint ?? null,
+                layerId: imageData.layerId ?? null,
+                localId: imageData.localId ?? null,
+                fieldPath: imageData.fieldPath ?? null,
             };
 
             const request = store.put(entry);
@@ -224,6 +284,78 @@ const ImagesDB: ImagesDBInstance = {
 
             request.onerror = () => {
                 reject(new Error(`[ImagesDB] Failed to get pending images: ${request.error}`));
+            };
+        });
+    },
+
+    /**
+     * Reads one stored image back.
+     *
+     * @param {string} id - Image ID
+     * @returns {Promise<Object|null>} The record, or `null` when it is not there.
+     */
+    async getLocalImage(id: string) {
+        this._ensureInitialized();
+        const db = this._db!;
+
+        return new Promise<LocalImageRecord | null>((resolve, reject) => {
+            const transaction = db.transaction(["local_images"], "readonly");
+            const store = transaction.objectStore("local_images");
+            const request = store.get(id);
+
+            request.onsuccess = () => {
+                resolve((request.result as LocalImageRecord | undefined) ?? null);
+            };
+            request.onerror = () => {
+                reject(new Error(`[ImagesDB] Failed to read image: ${request.error}`));
+            };
+        });
+    },
+
+    /**
+     * Binds a stored image to the feature that carries it.
+     *
+     * Idempotent and forgiving: an image the caller no longer knows about is a NO-OP, not an
+     * error. The caller scans a form's values for tokens, and a token pointing at a record
+     * already purged is an ordinary outcome, not a failure worth propagating into a save.
+     *
+     * @param {string} id - Image ID
+     * @param {Object} owner - The feature the image belongs to
+     * @param {string} owner.layerId - Layer of the feature
+     * @param {string} owner.localId - Client identity of the feature
+     * @returns {Promise<void>}
+     */
+    async bindLocalImage(id: string, owner: ImageOwner) {
+        this._ensureInitialized();
+        const db = this._db!;
+
+        return new Promise<void>((resolve, reject) => {
+            const transaction = db.transaction(["local_images"], "readwrite");
+            const store = transaction.objectStore("local_images");
+            const getRequest = store.get(id);
+
+            getRequest.onsuccess = () => {
+                const entry = getRequest.result as LocalImageRecord | undefined;
+                if (!entry) {
+                    Log.debug(`[ImagesDB] bindLocalImage: unknown image, ignored: ${id}`);
+                    resolve();
+                    return;
+                }
+                entry.layerId = owner.layerId;
+                entry.localId = owner.localId;
+
+                const putRequest = store.put(entry);
+                putRequest.onsuccess = () => {
+                    Log.debug(`[ImagesDB] Bound image ${id} to ${owner.layerId}/${owner.localId}`);
+                    resolve();
+                };
+                putRequest.onerror = () => {
+                    reject(new Error(`[ImagesDB] Failed to bind image: ${putRequest.error}`));
+                };
+            };
+
+            getRequest.onerror = () => {
+                reject(new Error(`[ImagesDB] Failed to read image: ${getRequest.error}`));
             };
         });
     },

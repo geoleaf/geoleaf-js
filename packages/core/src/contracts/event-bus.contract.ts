@@ -332,6 +332,67 @@ interface GeoLeafEditorSyncQueuedDetail {
     entryId: string;
 }
 
+/**
+ * Detail payload for `geoleaf:offline:outbox-queued` — an edit reached the write queue.
+ *
+ * 🛑 **Its twin, and for the same reason**: see {@link GeoLeafOutboxDrainedDetail}. Between
+ * the two, the core can now describe its whole write cycle — something entered, something
+ * left — without a plugin having to speak for it.
+ *
+ * ⚠️ **Emitted on coalescence and on annulment too.** A merge changes what will be sent, and
+ * an annulled create/delete pair lowers the depth: both are changes an indicator must not
+ * miss. `queued` says whether a NEW entry was appended; `annulled` whether the pair
+ * cancelled out.
+ */
+interface GeoLeafOutboxQueuedDetail {
+    layerId: string;
+    localId: string;
+    kind: "create" | "update" | "delete";
+    /** `true` when a new entry was appended, `false` when the edit merged into one. */
+    queued: boolean;
+    /** `true` when a create and its delete cancelled out — the queue got SHORTER. */
+    annulled: boolean;
+}
+
+/**
+ * Detail payload for `geoleaf:offline:outbox-drained` — a drain pass just finished.
+ *
+ * 🛑 **THE CORE'S OWN CHANNEL, AND ITS ABSENCE IS WHAT MADE THE QUEUE A PLUGIN
+ * CONCERN.** Until it existed, the only signal that the write queue had moved was
+ * `geoleaf:editor:feature-sync-flushed`, emitted by the editor plugin. Anything wanting
+ * to show what is still owed to the server therefore depended on a plugin being loaded
+ * — including the core itself, which paints nothing without it. The drain lives in the
+ * core (`capabilities/offline/write/push-engine.ts`); its announcement belongs there too.
+ *
+ * ⚠️ **These are the numbers of the PASS, never the remaining depth.** `pushed + failed`
+ * does not describe the queue afterwards: entries can quarantine mid-pass, and deferred
+ * ones were never touched. A listener that needs the depth reads it — the editor's
+ * pending badge already does exactly that.
+ *
+ * Emitted on `document`, on **every completed pass including the empty one**: a listener
+ * told only about non-empty drains cannot tell "nothing was owed" from "nobody drained".
+ *
+ * ⚠️ NOT exported, like its `geoleaf:editor:*` neighbours and unlike
+ * `GeoLeafCacheEvictedDetail`: nothing imports it BY NAME today, and an export with no
+ * importer is what `check-orphan-exports` counts. Integrators reach it through
+ * `GeoLeafEventMap["geoleaf:offline:outbox-drained"]`, which is the same type. It becomes
+ * an export the day a module imports it — not a day earlier.
+ */
+interface GeoLeafOutboxDrainedDetail {
+    /** Entries the pass actually took in hand. */
+    attempted: number;
+    /** Entries the server accepted, hence removed from the queue. */
+    pushed: number;
+    /** Entries left owed, their attempt counter spent. */
+    failed: number;
+    /** Entries walked past, their retry delay not yet elapsed. */
+    deferred: number;
+    /** Conflicts detected then settled by `lastWriteWins`. */
+    conflicts: number;
+    /** What stopped the pass before the end of the queue, or `null`. */
+    haltedBy: "authRequired" | null;
+}
+
 /** Detail payload for `geoleaf:editor:feature-sync-flushed`. */
 interface GeoLeafEditorSyncFlushedDetail {
     pushed: number;
@@ -727,6 +788,12 @@ export interface GeoLeafEventMap {
     // INTERFACE signal the day it triggers a toast. One fewer entry in the untyped
     // baseline (39 → 38).
     "geoleaf:cache:evicted": GeoLeafCacheEvictedDetail;
+    // Storage — a drain pass finished. Typed at BIRTH rather than added to the untyped
+    // baseline: the baseline only shrinks, and an event born inside it would have to be
+    // paid for twice.
+    // Storage — an edit reached the write queue. Typed at birth, same motive.
+    "geoleaf:offline:outbox-queued": GeoLeafOutboxQueuedDetail;
+    "geoleaf:offline:outbox-drained": GeoLeafOutboxDrainedDetail;
     // ── Entered the domain after renaming — they were called `gl:` and `print:` ──────────
     //
     // 🛑 These three were not "untyped": they were **structurally invisible**.
@@ -776,11 +843,19 @@ export interface GeoLeafEventMap {
     "geoleaf:table:highlightSelection": GeoLeafTableHighlightDetail;
     "geoleaf:table:exportSelection": GeoLeafTableExportSelectionDetail;
     "geoleaf:table:exportLayer": GeoLeafTableExportLayerDetail;
-    // Connector seam — six names that lived outside the `geoleaf:` prefix, thus outside
+    // Connector seam — names that lived outside the `geoleaf:` prefix, thus outside
     // EM-01's measured field. See the shape block above: they are emitted as RAW
     // `CustomEvent`s, and two of them cannot do otherwise.
     "geoleaf:connector:token-refreshed": GeoLeafConnectorBaseUrlDetail;
     "geoleaf:connector:authenticated": GeoLeafConnectorBaseUrlDetail;
+    /**
+     * The session was ended deliberately — `Connector.logout()`.
+     *
+     * ⚠️ Its counterpart `:auth-error` says the session DIED; this one says it was
+     * closed. A host that clears its own view on sign-out must be able to tell the two
+     * apart: one calls for a login window, the other precisely does not.
+     */
+    "geoleaf:connector:signed-out": GeoLeafConnectorBaseUrlDetail;
     "geoleaf:connector:auth-error": GeoLeafConnectorAuthErrorDetail;
     "geoleaf:connector:credential-button-clicked": GeoLeafConnectorCredentialClickDetail;
     /** ⚠️ **Cancelable** — `preventDefault()` prevents the navigation to `url`. */

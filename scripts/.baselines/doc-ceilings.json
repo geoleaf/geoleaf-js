@@ -1,0 +1,9 @@
+{
+    "_comment": "Plafonds de taille (octets), par NOM LOGIQUE (la gate resout les chemins). DÉCROISSANTS uniquement (DOC-CEIL-01) : ne jamais les remonter à la main. Cible : 15360 o par fichier. Régénérer avec --update-baseline APRÈS avoir allégé, jamais pour faire taire. ⚠️ Les valeurs sont celles du contenu FORMATÉ par Prettier — voir l en-tête de la gate.",
+    "_generated": "node scripts/check-doc-ceilings.cjs --update-baseline",
+    "_target": 15360,
+    "ceilings": {
+        "claude": 31331,
+        "etat": 38318
+    }
+}

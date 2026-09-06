@@ -30,7 +30,7 @@
  * does bite: the ORDER of the two buttons in the DOM.
  */
 import { describe, it, expect, afterEach } from "vitest";
-import { confirmDialog } from "../ui/confirm-dialog.js";
+import { confirmDialog, chooseDialog } from "../ui/confirm-dialog.js";
 
 const OPTS = {
     title: "Confirmation de suppression",
@@ -151,5 +151,78 @@ describe("confirmDialog — les issues", () => {
         void confirmDialog({ ...OPTS, destructive: false });
         expect(document.body.querySelector(".gl-form-modal__btn-save")).not.toBeNull();
         expect(document.body.querySelector(".gl-form-modal__btn-delete")).toBeNull();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// chooseDialog — la forme générale
+// ---------------------------------------------------------------------------
+
+/**
+ * 🛑 THE CASE THAT REQUIRED THREE OUTCOMES. The editor's duplicate guard must offer
+ * "modify the existing one", "create anyway" and a way out. On a boolean, the third has to
+ * be folded onto one of the other two — so Escape would have created a duplicate. These
+ * tests hold the property that makes that impossible: DISMISSAL RESOLVES ITS OWN VALUE.
+ */
+describe("chooseDialog — N issues", () => {
+    const THREE = {
+        message: "Une entité existe à 12 m.",
+        choices: [
+            { id: "cancel", label: "Annuler" },
+            { id: "edit", label: "Modifier l'existant", tone: "primary" as const },
+            { id: "create", label: "Créer quand même", tone: "danger" as const },
+        ],
+    };
+
+    it("rend un bouton par choix, dans l'ordre déclaré", () => {
+        void chooseDialog(THREE);
+        const labels = [...document.body.querySelectorAll(".gl-form-modal__btn")].map(
+            (b) => b.textContent
+        );
+        expect(labels).toEqual(["Annuler", "Modifier l'existant", "Créer quand même"]);
+    });
+
+    it("résout l'id du bouton activé", async () => {
+        const p = chooseDialog(THREE);
+        btn("gl-form-modal__btn-save").click();
+        await expect(p).resolves.toBe("edit");
+        expect(overlay()).toBeNull();
+    });
+
+    it("🛑 Échap résout `null` par défaut — PAS une des actions offertes", async () => {
+        const p = chooseDialog(THREE);
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        await expect(p).resolves.toBeNull();
+    });
+
+    it("🛑 un clic sur le FOND résout `null` par défaut", async () => {
+        const p = chooseDialog(THREE);
+        (overlay() as HTMLElement).click();
+        await expect(p).resolves.toBeNull();
+    });
+
+    it("`dismissValue` redirige la sortie — mais il faut le DEMANDER", async () => {
+        const p = chooseDialog({ ...THREE, dismissValue: "cancel" });
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        await expect(p).resolves.toBe("cancel");
+    });
+
+    it("le focus initial va sur le PREMIER choix, que l'appelant doit garder sûr", () => {
+        void chooseDialog(THREE);
+        expect(document.activeElement).toBe(btn("gl-form-modal__btn-cancel"));
+    });
+
+    it("chaque `tone` porte sa classe", () => {
+        void chooseDialog(THREE);
+        expect(btn("gl-form-modal__btn-cancel").textContent).toBe("Annuler");
+        expect(btn("gl-form-modal__btn-save").textContent).toBe("Modifier l'existant");
+        expect(btn("gl-form-modal__btn-delete").textContent).toBe("Créer quand même");
+    });
+
+    // A dialog with no action is a lock: the user cannot answer and the promise never
+    // settles. Failing loudly at the call site is the only honest outcome.
+    it("🛑 refuse une liste de choix VIDE plutôt que de monter une impasse", () => {
+        expect(() => chooseDialog({ message: "?", choices: [] })).toThrow(/choices/);
+        expect(overlay()).toBeNull();
     });
 });

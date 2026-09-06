@@ -80,6 +80,21 @@ async function clickPoiUntil(page, selector) {
     );
 }
 
+/**
+ * Budget for the routing panel to open.
+ *
+ * 🛑 IT WAS 3 s, AND THIS FILE HAD ALREADY PAID THAT LESSON ONCE — its own comment below
+ * recounts an earlier version that was "FLAKY for a reason that says nothing about the
+ * feature": below 1440px the host is the mobile sheet, which slides up over ~0.2s. Measured
+ * across four full passes: `:102` and `:150` go red IN THE SUITE and pass IN ISOLATION (16/16,
+ * twice), with and without the sync banner, with and without the drain tick — i.e. what varies
+ * is not the product but the machine.
+ *
+ * ⚠️ The property under test does not change: the panel OPENS. What changes is that we stop
+ * timing the CPU. A budget calibrated on an idle machine is a budget that measures load.
+ */
+const PANEL_TIMEOUT = 10000;
+
 test.describe("① le plugin est chargé — le bouton EXISTE et ouvre l'itinéraire", () => {
     test("le plugin s'est enregistré au boot, en EAGER", async ({ page }) => {
         // Its `<script type="module">` tag is in index.html, not a
@@ -96,7 +111,7 @@ test.describe("① le plugin est chargé — le bouton EXISTE et ouvre l'itinér
         await bootMapUntilLoaded(page);
         await clickPoiUntil(page, ".gl-fi-popup-ml");
         const btn = page.locator(`.gl-poi-popup__action[data-gl-action-id="${ACTION_ID}"]`);
-        await expect(btn).toBeVisible({ timeout: 3000 });
+        await expect(btn).toBeVisible({ timeout: PANEL_TIMEOUT });
     });
 
     test("le clic ouvre le panneau avec le POI en DESTINATION", async ({ page }) => {
@@ -105,7 +120,7 @@ test.describe("① le plugin est chargé — le bouton EXISTE et ouvre l'itinér
         await page.locator(`.gl-poi-popup__action[data-gl-action-id="${ACTION_ID}"]`).click();
 
         const panel = page.locator(".gl-routing-panel");
-        await expect(panel).toBeVisible({ timeout: 3000 });
+        await expect(panel).toBeVisible({ timeout: PANEL_TIMEOUT });
 
         // 🛑 `toBeVisible()` IS NOT ENOUGH, and this file proved it the hard way. Playwright
         // calls an element visible when it has a non-empty bounding box — being INSIDE the
@@ -153,7 +168,7 @@ test.describe("① le plugin est chargé — le bouton EXISTE et ouvre l'itinér
         await bootMapUntilLoaded(page);
         await clickPoiUntil(page, ".gl-fi-popup-ml");
         await page.locator(`.gl-poi-popup__action[data-gl-action-id="${ACTION_ID}"]`).click();
-        await expect(page.locator(".gl-routing-panel")).toBeVisible({ timeout: 3000 });
+        await expect(page.locator(".gl-routing-panel")).toBeVisible({ timeout: PANEL_TIMEOUT });
         await expect(page.locator(".gl-fi-popup-ml")).toHaveCount(0);
     });
 });

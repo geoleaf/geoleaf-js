@@ -47,6 +47,32 @@ interface LabelScaleConfig {
 }
 
 /**
+ * Where a label sits relative to the feature it names.
+ *
+ * ⚠️ This is the AUTHOR's vocabulary, never MapLibre's: `top` means the label is drawn
+ * above the feature. MapLibre's `text-anchor` names the opposite thing — the edge of the
+ * text pinned to the point — and the two are converted in `label-renderer.ts`.
+ */
+type LabelPlacement =
+    | "center"
+    | "top"
+    | "bottom"
+    | "left"
+    | "right"
+    | "top-left"
+    | "top-right"
+    | "bottom-left"
+    | "bottom-right";
+
+/** Label placement relative to the feature: which side, and how far from it. */
+interface LabelOffsetConfig {
+    placement?: LabelPlacement;
+    /** Gap in CSS pixels between the feature and the nearest edge of the text box. */
+    distancePx?: number;
+    [key: string]: unknown;
+}
+
+/**
  * Resolved label style passed to the renderer. Built either from an integrated
  * (style-embedded) label or from a free-standing `labelConfig`. Permissive on
  * purpose — profile authors add arbitrary keys.
@@ -63,7 +89,7 @@ export interface LabelStyleLike {
     opacity?: number;
     buffer?: LabelBufferConfig;
     background?: { enabled?: boolean; [key: string]: unknown };
-    offset?: { distancePx?: number; [key: string]: unknown };
+    offset?: LabelOffsetConfig;
     textTransform?: string;
     visibleByDefault?: boolean;
     labelScale?: LabelScaleConfig;
@@ -91,7 +117,7 @@ export interface LabelUserConfig {
     opacity?: number;
     buffer?: LabelBufferConfig;
     background?: { enabled?: boolean; [key: string]: unknown };
-    offset?: { distancePx?: number; [key: string]: unknown };
+    offset?: LabelOffsetConfig;
     minZoom?: number;
     maxZoom?: number;
     [key: string]: unknown;
@@ -403,17 +429,24 @@ export interface LabelButtonManagerApi {
     _applyState(button: HTMLButtonElement, state: LabelButtonSyncState): void;
 
     /**
-     * Re-reads a layer's state and repaints its button now, bypassing the debounce.
+     * Re-reads a layer's state and repaints its button, synchronously.
      *
-     * The urgent path, for changes the user just caused — a visibility toggle, a theme
-     * switch. The debounced counterpart is the private `_doSync`.
+     * ⚠️ This said "bypassing the debounce" and named `_doSync` as "the debounced
+     * counterpart" until 04/09/2026. **There is no debounce** — this module holds no
+     * timer and no pending-sync state, and `_doSync` repaints on the spot. The claim
+     * came from the shipped `docs/labels/` page, which described a 300 ms timer and a
+     * `_syncTimeouts` map that were never in the code; both are corrected.
+     *
+     * ⚠️ Internal. The public route is `GeoLeaf.Labels.syncLayerControl()`, which
+     * delegates here — prefer it, and see the migration table under
+     * `docs/reference/consumers/`.
      *
      * @param layerId - Layer whose button is repainted.
      *
      * @example
      * ```js
-     * // Called after layer visibility toggle (urgent)
-     * GeoLeaf._LabelButtonManager?.syncImmediate("poi-restaurants");
+     * // Called after a layer visibility toggle.
+     * GeoLeaf.Labels.syncLayerControl("poi-restaurants");
      * ```
      */
     syncImmediate(layerId: string): void;

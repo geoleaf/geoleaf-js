@@ -17,7 +17,7 @@ import { events as _events } from "./utils/events.js";
 import { TableContract } from "./table-seam.js";
 import { tLabel as getLabel } from "@geoleaf/host-runtime";
 import { createResizeHandle } from "./panel-resize.js";
-import type { TableConfig, TableLayerData, TableMap, TableVisibilityManager } from "./types.js";
+import type { TableConfig, TableLayerData, TableLayersApi, TableMap } from "./types.js";
 import type { EventCleanup } from "./event-cleanups.js";
 
 /** Public surface of the table panel object (`GeoLeaf` table panel singleton). */
@@ -205,15 +205,21 @@ function createLayerSelector() {
     return wrapper;
 }
 
+/**
+ * Whether a layer is painted, hence eligible for the selector.
+ *
+ * The three branches are kept as they were when this read the core's internal
+ * visibility manager: the seam first, the layer's own metadata second, and
+ * "assume visible" last. That last default is why the order matters — it is a
+ * degraded mode for a host with no layer seam at all, not the normal answer, and
+ * flipping it would silently drop layers from the selector.
+ */
 function _isLayerVisible(
     layerId: string,
     layerData: TableLayerData,
-    VisibilityManager: TableVisibilityManager | undefined
+    Layers: TableLayersApi | undefined
 ): boolean {
-    if (VisibilityManager && typeof VisibilityManager.getVisibilityState === "function") {
-        const visState = VisibilityManager.getVisibilityState(layerId);
-        return visState?.current === true;
-    }
+    if (Layers && typeof Layers.isVisible === "function") return Layers.isVisible(layerId);
     if (layerData._visibility) return layerData._visibility.current === true;
     return true;
 }
@@ -235,7 +241,7 @@ function populateLayerSelector(select: HTMLSelectElement) {
         return;
     }
 
-    const VisibilityManager = _g.GeoLeaf._LayerVisibilityManager;
+    const Layers = _g.GeoLeaf.Layers;
 
     // Collect existing option values to avoid duplicates
     const existingValues = new Set<string>();
@@ -249,7 +255,7 @@ function populateLayerSelector(select: HTMLSelectElement) {
         if (!layerId) continue;
         const layerData = (geojson?.getLayerById?.(layerId) ?? entry) as TableLayerData;
         if (!_isTableLayer(layerData)) continue;
-        if (!_isLayerVisible(layerId, layerData, VisibilityManager)) continue;
+        if (!_isLayerVisible(layerId, layerData, Layers)) continue;
         if (existingValues.has(layerId)) continue;
 
         const option = document.createElement("option");

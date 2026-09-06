@@ -194,7 +194,7 @@ function resolveInvokedScripts() {
     };
 
     const walkNpm = (name, from, hostCmd) => {
-        const key = `${name} ${(hostCmd.match(WORKSPACE_RE) || [, ""])[1]}`;
+        const key = `${name}\\0${(hostCmd.match(WORKSPACE_RE) || [, ""])[1]}`;
         if (visitedNpm.has(key)) return;
         visitedNpm.add(key);
         const cmd = bodyOf(name, hostCmd);

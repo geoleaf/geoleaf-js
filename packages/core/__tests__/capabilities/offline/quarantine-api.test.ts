@@ -21,6 +21,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { StorageContract } from "../../../src/kernel/shared/index.js";
 import {
     requeueQuarantined,
+    requeueAll,
     discardQuarantined,
 } from "../../../src/capabilities/offline/write/quarantine-api.js";
 
@@ -119,7 +120,10 @@ describe("requeueQuarantined — la cause levée, et seulement elle", () => {
                 // entry keeping "403" would carry a stale diagnosis about a
                 // replay that has not happened yet — more misleading than an
                 // absence, since it looks like a measurement.
-                { attempts: 0, quarantine: null, quarantineStatus: null },
+                // ⚠️ And `nextAttemptAt` clears with the budget it belonged to: a
+                // "Retry" that silently waits out a delay computed for the failure the
+                // operator just declared over is, for them, a Retry that does not work.
+                { attempts: 0, quarantine: null, quarantineStatus: null, nextAttemptAt: 0 },
             ],
         ]);
     });
@@ -143,6 +147,16 @@ describe("requeueQuarantined — la cause levée, et seulement elle", () => {
         expect(updates).toEqual([]);
     });
 
+    it("🛑 `authRequired` est rejouable — une session revient, c'est même tout ce qu'elle fait", async () => {
+        // The cause lifts when the operator signs back in — unobservable from the core,
+        // which knows nothing of the connector: the gesture IS the observation, exactly
+        // as for a spent budget. What matters is that it is not `rejectedByServer`,
+        // whose only exit is destruction.
+        mountOutbox([quarantined({ quarantine: "authRequired", attempts: 1 })]);
+        expect(await requeueQuarantined("create:sites:loc:abc:1")).toEqual({ ok: true });
+        expect(updates.map((u) => u[1])).toEqual(["pending"]);
+    });
+
     it("`notImplementedByServer` est rejouable — le serveur peut avoir été mis à jour", async () => {
         // The cause lifts when a verb-aware version deploys: nothing here can
         // observe it — the only way would be to redo the call, i.e. the
@@ -160,7 +174,10 @@ describe("requeueQuarantined — la cause levée, et seulement elle", () => {
                 // entry keeping "403" would carry a stale diagnosis about a
                 // replay that has not happened yet — more misleading than an
                 // absence, since it looks like a measurement.
-                { attempts: 0, quarantine: null, quarantineStatus: null },
+                // ⚠️ And `nextAttemptAt` clears with the budget it belonged to: a
+                // "Retry" that silently waits out a delay computed for the failure the
+                // operator just declared over is, for them, a Retry that does not work.
+                { attempts: 0, quarantine: null, quarantineStatus: null, nextAttemptAt: 0 },
             ],
         ]);
     });
@@ -193,6 +210,73 @@ describe("requeueQuarantined — la cause levée, et seulement elle", () => {
         mountOutbox(null);
         expect(await requeueQuarantined("create:sites:loc:abc:1")).toEqual({
             ok: false,
+            refused: "engineUnavailable",
+        });
+    });
+});
+
+describe("requeueAll — le geste qu'un opérateur peut réellement faire", () => {
+    // 🛑 The single-entry exit had NO caller, and its shape is why: it takes a contract
+    // id, a value nothing displays. Meanwhile what produces quarantines is never one
+    // entry — an expired token, a maintenance window or a radio hole sets aside a whole
+    // tour at once. An exit that must be repeated forty times is an exit nobody takes.
+
+    it("remet en file toutes les entrées rejouables, et LAISSE les autres", async () => {
+        mountOutbox([
+            quarantined({ id: "a", quarantine: "retryBudgetExhausted" }),
+            quarantined({ id: "b", quarantine: "notImplementedByServer" }),
+            // Not requeueable: replaying would recreate what the server deleted.
+            quarantined({ id: "c", quarantine: "deletedOnServer" }),
+            // Not quarantined at all — the drain already holds it.
+            quarantined({ id: "d", state: "failed", quarantine: "retryBudgetExhausted" }),
+        ]);
+
+        expect(await requeueAll()).toEqual({ ok: true, requeued: 2, skipped: 0 });
+        expect(updates.map((u) => u[0])).toEqual(["a", "b"]);
+    });
+
+    it("restreinte à un motif, elle ne touche que lui", async () => {
+        mountOutbox([
+            quarantined({ id: "a", quarantine: "retryBudgetExhausted" }),
+            quarantined({ id: "b", quarantine: "notImplementedByServer" }),
+        ]);
+
+        expect(await requeueAll("retryBudgetExhausted")).toEqual({
+            ok: true,
+            requeued: 1,
+            skipped: 0,
+        });
+        expect(updates.map((u) => u[0])).toEqual(["a"]);
+    });
+
+    it("🛑 ce que la règle refuse est COMPTÉ, jamais avalé", async () => {
+        // The batch delegates to `requeueQuarantined`, so the verifiable cause — does
+        // the layer write again? — still decides, one entry at a time. A batch that
+        // decided for itself would be a second authority, free to diverge on exactly
+        // the point the 07/08/2026 arbitration settled.
+        mountOutbox([
+            quarantined({ id: "a", quarantine: "retryBudgetExhausted" }),
+            quarantined({ id: "b", quarantine: "layerNoLongerWritable", layerId: "sites" }),
+        ]);
+
+        expect(await requeueAll()).toEqual({ ok: true, requeued: 1, skipped: 1 });
+        expect(
+            updates.map((u) => u[0]),
+            "la couche muette n'est pas remise en file"
+        ).toEqual(["a"]);
+    });
+
+    it("une file sans quarantaine rend un compte nul plutôt qu'un refus", async () => {
+        mountOutbox([]);
+        expect(await requeueAll()).toEqual({ ok: true, requeued: 0, skipped: 0 });
+    });
+
+    it("sans moteur câblé, elle refuse plutôt que de rendre un zéro muet", async () => {
+        mountOutbox(null);
+        expect(await requeueAll()).toEqual({
+            ok: false,
+            requeued: 0,
+            skipped: 0,
             refused: "engineUnavailable",
         });
     });

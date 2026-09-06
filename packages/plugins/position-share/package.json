@@ -1,6 +1,6 @@
 {
     "name": "@geoleaf-plugins/position-share",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "type": "module",
     "license": "MIT",
     "description": "GeoLeaf Position Share Plugin — emits the user's GPS position over a pluggable transport, and displays the other users",

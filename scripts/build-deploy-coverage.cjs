@@ -381,15 +381,35 @@ if (cleanBuild.status !== 0) {
         log.err("dist/geoleaf.esm.js absent de deploy-coverage.");
         process.exit(1);
     }
-    if (!fs.readFileSync(entry, "utf8").includes("__coverage__")) {
+    // 🛑 THE MARKER IS LOOKED FOR IN WHAT IS SERVED, NOT IN THE ENTRY — and this assertion
+    // read the entry. The variant's ESM entry file is a ~1 KB RE-EXPORT: it imports nothing
+    // but chunks, and `src/bundle-esm-entry.ts` is not even in the istanbul plugin's
+    // `include` globs. It could therefore NEVER carry `__coverage__`, and this script exited
+    // 1 at its last step while the variant was perfectly instrumented — five chunks out of
+    // five. Found on 2026-09-05 while running the four-step regeneration protocol.
+    //
+    // ⚠️ The fault was not in the claim, which is right and important, but in the FILE READ:
+    // the very class this repo watches under the name "a gate that does not bite where it
+    // announces". And it survived because a `| tail` masks the exit code — the "bare
+    // command" rule applies to builds just as it does to `ci:local`.
+    const instrumented = [];
+    (function scan(dir) {
+        for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+            const p = path.join(dir, e.name);
+            if (e.isDirectory()) scan(p);
+            else if (e.name.endsWith(".js") && fs.readFileSync(p, "utf8").includes("__coverage__"))
+                instrumented.push(path.relative(DEPLOY_COV, p));
+        }
+    })(path.join(DEPLOY_COV, "dist"));
+    if (instrumented.length === 0) {
         log.err(
-            "dist/geoleaf.esm.js ne porte AUCUN marqueur d'instrumentation. La " +
-                "variante servirait un bundle propre, et `verify-e2e-coverage` rendrait 0 % " +
-                "sans qu'aucune erreur ne le signale."
+            "AUCUN fichier de `dist/` ne porte de marqueur d'instrumentation. La variante " +
+                "servirait un bundle propre, et `verify-e2e-coverage` rendrait 0 % sans " +
+                "qu'aucune erreur ne le signale."
         );
         process.exit(1);
     }
-    log.ok("aucun pré-compressé, et l'entrée est instrumentée");
+    log.ok(`aucun pré-compressé, et ${instrumented.length} fichier(s) servis sont instrumentés`);
 }
 
 log.section("✅ deploy/deploy-coverage ready (port 8769)");

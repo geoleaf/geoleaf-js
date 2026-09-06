@@ -10,7 +10,12 @@
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
 
-import { createStorageQueueAdapter } from "../persistence/storage-queue-adapter.js";
+const _claimImages = vi.fn(async () => undefined);
+vi.mock("../persistence/image-store.js", () => ({
+    claimImages: (...a: unknown[]) => _claimImages(...(a as [])),
+}));
+
+const { createStorageQueueAdapter } = await import("../persistence/storage-queue-adapter.js");
 
 function mountStorage(report = { entryId: "op-1", refused: null as string | null }) {
     const applyEdit = vi.fn().mockResolvedValue(report);
@@ -27,6 +32,7 @@ const FEATURE = {
 describe("createStorageQueueAdapter — écriture par le core", () => {
     afterEach(() => {
         delete (globalThis as Record<string, unknown>).GeoLeaf;
+        _claimImages.mockClear();
     });
 
     it("save → `create`, avec l'entité en GeoJSON", async () => {
@@ -122,5 +128,40 @@ describe("createStorageQueueAdapter — écriture par le core", () => {
     it("sans moteur de stockage, l'écriture jette au lieu d'avaler la saisie", async () => {
         (globalThis as Record<string, unknown>).GeoLeaf = { Storage: {} };
         await expect(createStorageQueueAdapter().save(FEATURE, "l1")).rejects.toThrow();
+    });
+});
+
+/**
+ * 🛑 THE ONLY MOMENT THE BINDING CAN HAPPEN. A photo is captured while the form is open,
+ * BEFORE the entity exists: off-network its client identity is minted by this very call.
+ * Until then the stored image knows its field and not its feature — so the upload that
+ * eventually succeeded had nowhere to send the resulting URL back to, and the URL was
+ * dropped.
+ */
+describe("createStorageQueueAdapter — les photos trouvent leur entité", () => {
+    afterEach(() => {
+        delete (globalThis as Record<string, unknown>).GeoLeaf;
+        _claimImages.mockClear();
+    });
+
+    it("lie les photos à l'identité que le core vient de frapper", async () => {
+        mountStorage({ entryId: "op-1", localId: "loc:abc", refused: null } as never);
+        await createStorageQueueAdapter().save(FEATURE, "l1");
+
+        expect(_claimImages).toHaveBeenCalledWith({ title: "T" }, "l1", "loc:abc");
+    });
+
+    // A delete carries no entity, so there is nothing to bind — and calling with an
+    // `undefined` property bag would silently do nothing while looking like it worked.
+    it("ne lie rien sur une suppression", async () => {
+        mountStorage({ entryId: "op-1", localId: "loc:abc", refused: null } as never);
+        await createStorageQueueAdapter().delete("f1", "l1");
+        expect(_claimImages).not.toHaveBeenCalled();
+    });
+
+    it("ne lie rien quand le core ne rend aucune identité", async () => {
+        mountStorage();
+        await createStorageQueueAdapter().save(FEATURE, "l1");
+        expect(_claimImages).not.toHaveBeenCalled();
     });
 });

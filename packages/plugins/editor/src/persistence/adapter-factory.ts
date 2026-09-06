@@ -11,7 +11,7 @@ import type { EditorConfig } from "../types.js";
 import { createRestAdapter } from "./rest-adapter.js";
 import { createCollectionRestAdapter } from "./collection-rest-adapter.js";
 import { createStorageQueueAdapter } from "./storage-queue-adapter.js";
-import { createAutoAdapter } from "./auto-adapter.js";
+import { createQueueFirstAdapter } from "./queue-first-adapter.js";
 import { withEditionPermissions } from "./permission-gate.js";
 import type { ConflictEventDetail, EditorPersistenceAdapter } from "./adapter-interface.js";
 
@@ -39,7 +39,11 @@ function _buildApiOptions(cfg: EditorConfig): {
  * dialect). Exposed so the offline replay handler can reuse the exact same online
  * adapter — including its conflict wiring — to flush the queue on reconnect.
  */
-export function createOnlineAdapter(
+// ⚠️ NOT exported since R7 (05/09/2026): `entry.ts` was its last production importer,
+// for the replay's `rest` collaborator — which the core's drain made pointless, and which
+// was in fact never read. Its only caller is `createPersistenceAdapter` below, and the
+// factory is the right door: a test reaching past it asserted a wiring nobody used.
+function createOnlineAdapter(
     cfg: EditorConfig,
     hooks: PersistenceHooks = {}
 ): EditorPersistenceAdapter {
@@ -61,38 +65,43 @@ export function createOnlineAdapter(
 }
 
 /**
- * Builds the persistence adapter for the resolved editor config, mapping
- * `persistence.mode` to the concrete backend:
- *  - `"online"`  → online adapter (REST/collection);
- *  - `"offline"` → Storage queue (write-through);
- *  - `"auto"`    → {@link createAutoAdapter} switching on reachability.
+ * Builds the persistence adapter — ONE write path whenever this device can hold the write.
  *
- * The `collection` dialect is online-only for now (create-only backend), so it
- * ignores the offline/auto modes and always returns the online adapter.
+ * 🛑 **`persistence.mode` AND `persistence.dialect` NO LONGER CHOOSE A TRANSPORT.** They
+ * did, and the routing was the defect: `"collection"` returned the online adapter *whatever
+ * the mode*, so a layer declared in that dialect had no offline capability at all — in
+ * silence; `"auto"` (the default) chose by reachability and fell back into the queue on a
+ * transport failure, which is how a lost response after an accepted POST became a duplicate
+ * the server could not detect (the online path put no `local_id` on the wire, the drain
+ * does). What decides now is a CAPABILITY question asked before the write —
+ * `Storage.canQueueWrites(layerId)` — so a write never changes protocol mid-flight.
+ *
+ * ⚠️ **Neither key is removed**, and that is deliberate: a removed key makes
+ * `validatePersistence` warn and rewrites an integrator's profile for nothing. They are
+ * DEPRECATED, dated, and `layer.write.*` is the authority the core already reads
+ * (`push-engine.ts`, `resolveWriteTarget`).
+ *
+ * ⚠️ **The permission guard still wraps every exit**, and for the reason that put it there:
+ * it must cover the CONNECTED path, which is the one that carried the authorisation hole.
+ *
+ * @param cfg - The resolved editor config.
+ * @param hooks - Injected collaborators (the conflict-event dispatcher).
+ * @returns The adapter every call site depends on through its interface.
  */
 export function createPersistenceAdapter(
     cfg: EditorConfig,
     hooks: PersistenceHooks = {}
 ): EditorPersistenceAdapter {
     const online = createOnlineAdapter(cfg, hooks);
-
-    // 🛑 THE PERMISSION GUARD WRAPS ALL FOUR EXITS, AND THAT IS THE POINT.
-    //
-    // It is NOT in `createAutoAdapter`: this path returns the **bare** REST
-    // adapter in `mode: "online"` and on the `collection` dialect, without
-    // ever building the auto one. A guard set at the routing would thus have
-    // left open exactly the connected modes — the ones carrying the
-    // authorisation hole, the permission having been applied until now only
-    // through the offline path.
-    if (cfg.persistence?.dialect === "collection") return withEditionPermissions(online);
-
     const mode = cfg.persistence?.mode ?? "auto";
+
+    // The one mode that still names a transport, because it names the ABSENCE of the other:
+    // an integrator who declares `online` is saying "this deployment has no local store".
+    // ⚠️ Redefined rather than honoured literally elsewhere — see the header.
     if (mode === "online") return withEditionPermissions(online);
 
     const queue = createStorageQueueAdapter();
     if (mode === "offline") return withEditionPermissions(queue);
 
-    return withEditionPermissions(
-        createAutoAdapter({ rest: online, queue, baseUrl: cfg.api?.baseUrl ?? "" })
-    );
+    return withEditionPermissions(createQueueFirstAdapter({ queue, online }));
 }

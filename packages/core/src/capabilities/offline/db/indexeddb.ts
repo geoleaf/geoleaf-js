@@ -886,9 +886,26 @@ const StorageDB = {
         return undefined;
     },
 
-    // ⚠️ `getLocalImage()` removed from the facade: its sole consumer was
-    // `addpoi/image-upload.ts` → `getLocalImageUrl()`, redundant with the base64
-    // data-URL the same module writes into the POI's data. Both leave together.
+    // ⚠️ `getLocalImage()` was removed from the facade on 08/08/2026 as redundant with the
+    // base64 data-URL `storeImageLocally` also wrote into the POI's data — and 04/09/2026 RESTORED it
+    // for that same reason, inverted: the data-URL is gone (it was the defect, shipping whole
+    // photos inside the create), the attribute now holds an opaque token, so this read is no
+    // longer a second path to the bytes. It is the only one.
+    //
+    /**
+     * Reads one stored image back — the preview path for a locally-held capture.
+     *
+     * @param id - Local image id.
+     */
+    async getLocalImage(id: string): Promise<unknown> {
+        if (!this._db) await this.init();
+        const module = this._ensureModule("Images");
+        if (module) {
+            return module?.getLocalImage?.(id);
+        }
+        return undefined;
+    },
+
     //
     // ⚠️ `getPendingImages` and `updateImageUploadStatus` STAY, and it is no longer a
     // reservation: they are WIRED by `editor/persistence/image-store.ts`
@@ -905,11 +922,46 @@ const StorageDB = {
         return undefined;
     },
 
-    async updateImageUploadStatus(id: string, status: string): Promise<unknown> {
+    /**
+     * Marks a local image uploaded, and records the URL the server gave it.
+     *
+     * 🛑 THE `status` PARAMETER WAS TYPED `string`, AND THAT IS WHAT MADE THE BUG INVISIBLE.
+     * The module behind this relay reads `status.uploaded` and `status.url`; the editor
+     * plugin passed the STRING `"uploaded"`. `("uploaded").uploaded` is `undefined`, so the
+     * record was rewritten as still pending and the URL was never stored — the same photo
+     * left again on every reconnection and every boot, and `cleanUploadedImages` (a cursor
+     * over the index at `1`) found nothing to purge, forever. Three layers declared it loose:
+     * this signature, the plugin's own local interface, and `DBModuleAPI`'s index signature.
+     *
+     * @param id - Local image id.
+     * @param status - `{ uploaded, url? }` — an OBJECT, never a string.
+     */
+    async updateImageUploadStatus(
+        id: string,
+        status: { uploaded: boolean; url?: string }
+    ): Promise<unknown> {
         if (!this._db) await this.init();
         const module = this._ensureModule("Images");
         if (module) {
             return module?.updateImageUploadStatus?.(id, status);
+        }
+        return undefined;
+    },
+
+    /**
+     * Binds a stored image to the feature that carries it — see the module's `bindLocalImage`.
+     *
+     * @param id - Local image id.
+     * @param owner - Layer and client identity of the owning feature.
+     */
+    async bindLocalImage(
+        id: string,
+        owner: { layerId: string; localId: string }
+    ): Promise<unknown> {
+        if (!this._db) await this.init();
+        const module = this._ensureModule("Images");
+        if (module) {
+            return module?.bindLocalImage?.(id, owner);
         }
         return undefined;
     },

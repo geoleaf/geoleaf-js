@@ -2,21 +2,17 @@
     "_comment": "Contrat inverse — les TROIS listes NÉGATIVES (`lists`, cliquets CC-04 entrant / CC-05 sortant : elles ne peuvent que RÉTRÉCIR) et les DEUX listes POSITIVES (`positives`, cliquet CC-10 : `required.public` et `required.events` ne peuvent pas rétrécir sans annonce). ⚠️ Les deux moitiés se désarment DIFFÉREMMENT. Une négative se désarme en ajoutant une ligne à la main — une entrée n'en sort que quand le défaut qu'elle nomme est réparé. Une positive se désarme en RÉGÉNÉRANT après un retrait, ce qui fait passer une disparition pour un état de fait. C'est pourquoi `--update-baseline` REFUSE (exit 2 / CC-10) d'enregistrer une sortie que rien ne justifie : sur cette moitié-là, l'avertissement n'est plus en prose.",
     "_generated": "GEOLEAF_CONSUMERS=<dir> node scripts/verify-consumer-contract.cjs --update-baseline",
     "_consumer": "consumer-c7e43b05368f",
-    "_manifest_version": "1.22.0",
-    "_manifest_sha": "77685362ee70",
+    "_manifest_version": "1.25.0",
+    "_manifest_sha": "72810e8dcf44",
     "lists": {
         "private_tolerated": [
-            "_GeoJSONLayerConfig",
-            "_GeoJSONLayerManager",
             "_GeoJSONLoader._loadSingleLayer",
             "_GeoJSONLoader.loadAllLayersConfigsForLayerManager",
-            "_LabelButtonManager.syncImmediate",
             "_LayerVisibilityManager"
         ],
         "requested": [
             "Capabilities.declareUnavailable",
             "Capabilities.onUnavailable",
-            "LegendGenerator …#17202c00d112",
             "_RETIRE_ Layers.setPopupBinding — demande SANS O …#9ddf0b158291",
             "plugins …#1a82f08ddbae"
         ],
@@ -121,6 +117,10 @@
                 },
                 {
                     "path": "Labels.refreshLabels",
+                    "provider": "core"
+                },
+                {
+                    "path": "Labels.syncLayerControl",
                     "provider": "core"
                 },
                 {

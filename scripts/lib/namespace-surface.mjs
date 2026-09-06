@@ -487,22 +487,36 @@ export const EXPECTED_FACADE_KEYS = [
  * fields are erased at runtime, so the oracle would redden at the first internal
  * refactor. That reason does not apply here, and two measurements say so: the facade
  * returns **3 stable members** (`createButton`, `removeButtons`, `syncImmediate`), and
- * **the downstream depends on one of them** — `syncImmediate` is called by
- * `geoleaf_core/mixin_symbols_labels.js`, a `private_tolerated` entry of the manifest. A
+ * **the downstream depends on one of them** — `syncImmediate` is a `private_tolerated`
+ * entry of the consumption manifest, i.e. a member some consumer calls today. A
  * member a consumer depends on is precisely what gets frozen; freezing it elsewhere would
  * be zeal, not freezing it here would be letting it go the way of the nine keys that
  * produced this work.
  *
- * ⚠️ **And `_GeoJSONLoader` does NOT enter, for a measured reason and not by symmetry.**
- * The downstream entry is `_GeoJSONLoader._loadSingleLayer`, whose member is
- * `_`-prefixed: `walkNamespace` filters it at depth 2 **by construction**. 2026-08-10
- * measurement — the descent returns `loadAllLayersConfigsForLayerManager` and
- * `loadFromActiveProfile`, not `_loadSingleLayer`. Adding it to this list would thus make
- * nothing verifiable: it would be freezing that guards nothing while looking like it
- * does. The manifest's three other `_` entries (`_LayerVisibilityManager`,
- * `_GeoJSONLayerConfig`, `_GeoJSONLayerManager`) are named at **depth 1** by the
- * downstream, so the head oracle suffices — descending would add internal-refactor red
- * without adding a guard.
+ * 🛑 **`_GeoJSONLoader` ENTERS on 2026-09-04 — and the reasoning that kept it out was right
+ * about the entry it named, and only about that one.** It read: "the downstream entry is
+ * `_GeoJSONLoader._loadSingleLayer`, whose member is `_`-prefixed, so `walkNamespace` filters
+ * it at depth 2 by construction — adding the facade would make NOTHING verifiable." The first
+ * half still holds and always will: `memberNames` drops any `_`-prefixed name, so
+ * `_loadSingleLayer` can never be measured here, and CC-02 must keep SAYING so rather than
+ * greening it.
+ *
+ * What changed is the second half. The manifest carries a SECOND entry under the same head —
+ * `loadAllLayersConfigsForLayerManager` — which is **not** `_`-prefixed and which the very
+ * measurement quoted above listed as returned by the descent. "Nothing verifiable" was thus
+ * true of one entry and false of the pair. Admission then rests on the same criterion as
+ * `_LabelButtonManager`: the downstream depends on that member, the facade returns **2 stable
+ * members** (measured twice, 2026-08-10 and 2026-09-04, identical), and it is not a
+ * `ModuleRegistry` whose `private` fields are erased at runtime — so the internal-refactor
+ * objection does not apply.
+ *
+ * ⚠️ **The measurement was made BY the oracle, not before it**: the facade was added with an
+ * empty member list, and the golden master named the two. Writing a list then asking the gate
+ * to agree is how a guess gets frozen as if it were a measurement.
+ *
+ * ⚠️ The manifest's three other `_` entries (`_LayerVisibilityManager`, `_GeoJSONLayerConfig`,
+ * `_GeoJSONLayerManager`) stay out: they are named at **depth 1** by the downstream, so the
+ * head oracle suffices — descending would add internal-refactor red without adding a guard.
  */
 export const DEPTH2_FACADES = [
     "Baselayers",
@@ -525,17 +539,19 @@ export const DEPTH2_FACADES = [
     "ThemeSelector",
     "UI",
     "Utils",
+    "_GeoJSONLoader",
     "_LabelButtonManager",
     "events",
     "plugins",
 ];
 
 /**
- * Depth-2 membership of the façades listed in {@link DEPTH2_FACADES} — 258 members.
+ * Depth-2 membership of the façades listed in {@link DEPTH2_FACADES}.
  *
- * ⚠️ **This number was 83 until 2026-08-10** (8 facades). It is **derived**, not copied
- * — and the command is below, because a count written in prose next to the list it counts
- * is a count that will diverge:
+ * 🛑 **THE COUNT IS NOT WRITTEN HERE, AND THE REASON IS THIS VERY LINE.** It used to say
+ * "258 members", right above the list it counted, with a paragraph explaining that such a
+ * count diverges — and it had diverged by twenty-one before anyone read it again. The
+ * paragraph was right and the number was wrong, which is the whole lesson. It derives:
  *
  *     node -e 'import("./scripts/lib/namespace-surface.mjs").then(m => console.log(
  *       Object.values(m.EXPECTED_FACADE_MEMBERS).reduce((a, b) => a + b.length, 0)))'
@@ -669,6 +685,12 @@ export const EXPECTED_FACADE_MEMBERS = {
         "initializeLayerLabels",
         "isEnabled",
         "refreshLabels",
+        // Admitted 2026-09-04 (R3 · 0.2). The label STATE was public and its
+        // CONTROL was not, so the only route to the toggle repaint was the
+        // internal manager — which the shipped `docs/labels/` page taught by
+        // name. Named by the oracle, not guessed: the member was written first
+        // and this list was extended with what the golden master reported.
+        "syncLayerControl",
         "toggleLabels",
     ],
     // ⚠️ Only 2 members, and that is the measurement. A short facade is the case where
@@ -676,20 +698,32 @@ export const EXPECTED_FACADE_MEMBERS = {
     // empty descent is exactly what the `LayerManager` key of `DEPTH2_FACADES` makes
     // verifiable.
     LayerManager: ["init", "refresh"],
+    // ⚠️ Three members admitted 2026-09-04 (R3 · 0.2), named by the oracle rather
+    // than guessed — the code was written first and this list extended with what
+    // the golden master reported. `create` is the only route to a layer the active
+    // profile does not declare; `isVisible` / `isEnabled` promote the READ of the
+    // visibility state, whose WRITE side was already public on `GeoJSON`. The two
+    // booleans are separate on purpose: see the contract, and the rewritten note on
+    // `_LayerVisibilityManager` in `global.d.ts`.
     Layers: [
         "addFeature",
         "clear",
         "clearVisibleSubset",
+        "create",
         "getFeatureById",
         "getFeatureCount",
         "getFeatures",
         "hasLayer",
+        "isEnabled",
+        "isUserOverridden",
+        "isVisible",
         "listLayerIds",
         "mergeFeatures",
         "patchFeature",
         "removeFeature",
         "setData",
         "setFeatureState",
+        "setVisibility",
         "setVisibleSubset",
         "updateFeatureId",
     ],
@@ -728,6 +762,7 @@ export const EXPECTED_FACADE_MEMBERS = {
         "applyEdit",
         "cache",
         "cacheManager",
+        "canQueueWrites",
         "clearAll",
         "close",
         "db",
@@ -735,6 +770,7 @@ export const EXPECTED_FACADE_MEMBERS = {
         "getOfflineProfiles",
         "getStats",
         "getSyncReport",
+        "getSyncStatus",
         "init",
         "isAvailable",
         "isOffline",
@@ -743,11 +779,12 @@ export const EXPECTED_FACADE_MEMBERS = {
         "mayEdit",
         "pullLayer",
         "pushOutbox",
+        "requeueAll",
         "requeueQuarantined",
         "whenReady",
         "wireModules",
     ],
-    Sync: ["getHandler", "registerHandler"],
+    Sync: ["getHandler", "registerBeforeDrain", "registerHandler"],
     Taxonomy: [
         "ensureSprite",
         "getCategories",
@@ -845,6 +882,11 @@ export const EXPECTED_FACADE_MEMBERS = {
     // The only `_` facade frozen at depth 2 — rationale written on `DEPTH2_FACADES`: the
     // downstream calls `syncImmediate`, and that is the only thing justifying a descent
     // here.
+    // Admitted on 2026-09-04, on the SAME criterion as `_LabelButtonManager` below: the
+    // downstream calls `loadAllLayersConfigsForLayerManager`, and a member a consumer depends
+    // on is what gets frozen. Measured by the oracle itself rather than guessed — the facade
+    // was added with an EMPTY list and the golden master named its two members.
+    _GeoJSONLoader: ["loadAllLayersConfigsForLayerManager", "loadFromActiveProfile"],
     _LabelButtonManager: ["createButton", "removeButtons", "syncImmediate"],
     // `events` and `Events` measure the same 3 members — the same facade under two keys,
     // and both are frozen because the downstream manifest calls `events.on` /

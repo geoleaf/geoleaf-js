@@ -117,6 +117,12 @@ const lang_en: Record<string, string> = {
     "editor.placement.existingDetected": "Existing feature detected:",
     "editor.placement.markerNew": "New point (drag to adjust)",
     "editor.placement.markerExisting": "Existing point (drag to adjust)",
+    "editor.placement.duplicateTitle": "A feature already exists here",
+    "editor.placement.duplicateBody": "{title} is {d} m from your point. What do you want to do?",
+    "editor.placement.duplicateEdit": "Edit the existing one",
+    "editor.placement.duplicateCreate": "Create anyway",
+    "editor.placement.duplicateUnnamed": "A feature",
+    "editor.placement.editUnavailable": "Could not open the existing feature.",
     // 5.1-f — the "add a POI" flow, moved down from the core with the button it serves.
     "editor.toolbar.poi_add": "Add POI",
     "editor.addform.unavailable": "The editor is not ready — try again in a moment.",

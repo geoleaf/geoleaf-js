@@ -18,7 +18,7 @@ import type {
     TableGeoJSONApi,
     TableLayerData,
     TableMapEvent,
-    TableVisibilityManager,
+    TableLayersApi,
 } from "./types.js";
 
 /** Reads the `GeoLeaf.GeoJSON` accessor surface from the global namespace. */
@@ -96,14 +96,10 @@ export function getAvailableLayers(): TableAvailableLayer[] {
 /** Returns the layers that are available AND visible on the map. */
 export function getAvailableVisibleLayers(): TableAvailableLayer[] {
     const available = getAvailableLayers();
-    const VisibilityManager = _g.GeoLeaf._LayerVisibilityManager as
-        TableVisibilityManager | undefined;
+    const Layers = _g.GeoLeaf.Layers as TableLayersApi | undefined;
     const geojson = _getGeoJSON();
     return available.filter((layer: TableAvailableLayer) => {
-        if (VisibilityManager && typeof VisibilityManager.getVisibilityState === "function") {
-            const visState = VisibilityManager.getVisibilityState(layer.id);
-            return visState && visState.current === true;
-        }
+        if (Layers && typeof Layers.isVisible === "function") return Layers.isVisible(layer.id);
         const layerData = geojson?.getLayerData?.(layer.id);
         return layerData && layerData._visibility && layerData._visibility.current === true;
     });

@@ -78,7 +78,14 @@ beforeEach(() => {
         addControl: vi.fn(),
         removeControl: vi.fn(),
         addSource: vi.fn((id, config) => {
-            _sources[id] = { id, ...config, setData: vi.fn() };
+            // `updateData` present for the same reason as in `__mocks__/maplibre-gl.cjs`:
+            // omitting it silently routes every write through the full re-feed.
+            _sources[id] = {
+                id,
+                ...config,
+                setData: vi.fn(),
+                updateData: vi.fn().mockResolvedValue(undefined),
+            };
         }),
         removeSource: vi.fn((id) => {
             delete _sources[id];
@@ -617,8 +624,72 @@ describe("MaplibreAdapter — Popups", () => {
     });
 });
 
+describe("MaplibreAdapter — promoteId on the source spec (R6)", () => {
+    // ⚠️ NOTHING in this repo asserted `promoteId` before R6, on any path — so the rule
+    // that decides it was free to change without a single red. These four cases pin it.
+    let adapter;
+    beforeEach(() => {
+        adapter = createInitedAdapter();
+    });
+
+    const sourceOf = (id) => mockMapInstance.getSource(`gl-src-${id}`);
+
+    it("promotes `id` on point, line, polygon and empty layers alike", () => {
+        // 🛑 The guard used to be `geomTypes.has("Point")`, so a line or polygon layer had
+        // no promoted id at all: `setFeatureState` resolved nothing on it and a partial
+        // source update was impossible by construction. Point stays covered too — a test
+        // that only checked the new cases could not tell a fix from a regression.
+        adapter.addGeoJSONLayer("pts", {
+            type: "FeatureCollection",
+            features: [{ geometry: { type: "Point" } }],
+        });
+        adapter.addGeoJSONLayer("lines", {
+            type: "FeatureCollection",
+            features: [{ geometry: { type: "LineString" } }],
+        });
+        adapter.addGeoJSONLayer("polys", {
+            type: "FeatureCollection",
+            features: [{ geometry: { type: "Polygon" } }],
+        });
+        adapter.addGeoJSONLayer("empty", { type: "FeatureCollection", features: [] });
+
+        for (const id of ["pts", "lines", "polys", "empty"]) {
+            expect(sourceOf(id).promoteId, `layer ${id}`).toBe("id");
+        }
+    });
+});
+
+describe("MaplibreAdapter — applyDataDiff (R6)", () => {
+    let adapter;
+    beforeEach(() => {
+        adapter = createInitedAdapter();
+        adapter.addGeoJSONLayer("live", {
+            type: "FeatureCollection",
+            features: [{ geometry: { type: "Point" }, properties: { id: "a" } }],
+        });
+    });
+
+    it("hands the translated diff to updateData, and never touches setData", () => {
+        const source = mockMapInstance.getSource("gl-src-live");
+        expect(adapter.applyDataDiff("live", { remove: ["a"] })).toBe(true);
+        expect(source.updateData).toHaveBeenCalledWith({ remove: ["a"] });
+        expect(source.setData).not.toHaveBeenCalled();
+    });
+
+    it("reports false — without touching the source — for an unknown layer or an untranslatable diff", () => {
+        // Paired with the acceptance above: an implementation returning a constant fails
+        // one of the two, never neither.
+        const source = mockMapInstance.getSource("gl-src-live");
+        expect(adapter.applyDataDiff("ghost", { remove: ["a"] })).toBe(false);
+        const anonymous = { type: "Feature", geometry: null, properties: {} };
+        expect(adapter.applyDataDiff("live", { add: [anonymous] })).toBe(false);
+        expect(source.updateData).not.toHaveBeenCalled();
+        expect(source.setData).not.toHaveBeenCalled();
+    });
+});
+
 describe("MaplibreAdapter — Contract", () => {
-    it("has all 33 IMapAdapter methods", () => {
+    it("exposes every IMapAdapter method", () => {
         const adapter = new MaplibreAdapter();
         const expected = [
             "init",
@@ -641,6 +712,7 @@ describe("MaplibreAdapter — Contract", () => {
             "showLayer",
             "hideLayer",
             "updateLayerData",
+            "applyDataDiff",
             "setLayerStyle",
             "setLayerFilter",
             "createMarker",

@@ -66,6 +66,10 @@ export { positionMenuNear, type MenuPositionOptions } from "./ui/menu-position.j
 // `offline-ui` loses its dependency on `field-renderer`, now only inlined by `editor`.
 export { createFocusTrap, type FocusTrap } from "./ui/focus-trap.js";
 export { confirmDialog, type ConfirmDialogOptions } from "./ui/confirm-dialog.js";
+// The N-action form of the same dialog. Two outcomes could not express "modify the
+// existing one / create anyway / neither", and folding the third onto a boolean would
+// have made Escape perform an action.
+export { chooseDialog, type ChooseDialogOptions, type DialogChoice } from "./ui/confirm-dialog.js";
 export { createModalShell, type ModalShell, type ModalShellOptions } from "./ui/modal-shell.js";
 export {
     jsonHeaders,

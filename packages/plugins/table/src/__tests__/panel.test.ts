@@ -4,7 +4,7 @@
  * Ported from the core suite (`__tests__/table/panel.test.js`).
  * Adaptation: import paths point at the plugin's flat `src/` layout; the GeoJSON /
  * visibility seams are driven on the runtime `_g.GeoLeaf.*` namespace (panel.ts reads
- * `_g.GeoLeaf.GeoJSON.getAllLayers/getLayerById` and `_g.GeoLeaf._LayerVisibilityManager`).
+ * `_g.GeoLeaf.GeoJSON.getAllLayers/getLayerById` and `_g.GeoLeaf.Layers`).
  * The source stubbed `GeoJSONShared.getLayers()` (a `Map`) and `global.GeoLeaf.GeoJSON`;
  * here the same data is exposed through `getAllLayers` (Map → array) + `getLayerById`.
  */
@@ -112,9 +112,7 @@ describe("GeoLeaf._TablePanel", () => {
         _g.GeoLeaf.Log = mockLogFns;
         _g.GeoLeaf.Table = mockTableFns;
         installGeoJSONSeam(defaultLayers);
-        _g.GeoLeaf._LayerVisibilityManager = {
-            getVisibilityState: vi.fn(() => ({ current: true })),
-        } as any;
+        _g.GeoLeaf.Layers = { isVisible: vi.fn(() => true) } as any;
 
         TablePanel._eventCleanups = [];
     });

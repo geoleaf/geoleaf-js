@@ -12,6 +12,7 @@ import {
     canRedo,
     clearHistory,
     discardLastOperation,
+    sealOperations,
     topUndoType,
     topRedoType,
     getUndoDepth,
@@ -350,5 +351,103 @@ describe("shortcuts", () => {
         detachShortcuts();
         _key({ key: "z", ctrlKey: true });
         expect(onUndo).not.toHaveBeenCalled();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// undo-stack — a SUBMITTED operation leaves the stack
+// ---------------------------------------------------------------------------
+
+/**
+ * 🛑 THE DEFECT. The stack was purely graphical: `_applyInverse` only ever calls
+ * `removeFeatures` / `addFeature` / `updateFeatureGeometry` on the drawing adapter, and it
+ * imports nothing from persistence. So undoing a deletion already sent to the server — or
+ * already sitting in the outbox — put the feature back ON SCREEN and nowhere else, while
+ * the tooltip said, in as many words, "Annuler : suppression". The button promised
+ * something the code could not do.
+ *
+ * ⚠️ The fix is NOT a remote rollback, and that distinction is the whole design: undoing a
+ * write that has left is a different feature (it needs a compensating write, an outbox entry
+ * to withdraw, a conflict story). What is asked for here is that a submitted operation STOP BEING
+ * OFFERED. So it leaves the stack, the button greys out, and the tooltip stops lying.
+ */
+describe("undo-stack — le scellement des opérations soumises", () => {
+    beforeEach(() => {
+        clearSelection();
+        initUndoStack(_mockAdapter(), _cfg());
+        clearHistory();
+    });
+
+    it("retire de la pile l'opération soumise, et elle seule", () => {
+        pushOperation(_op({ type: "create", terradrawId: "td-1" }));
+        pushOperation(
+            _op({ type: "move", terradrawId: "td-2", oldGeom: _POINT, newGeom: _POINT2 })
+        );
+
+        sealOperations("td-1");
+
+        expect(getUndoDepth()).toBe(1);
+        expect(topUndoType()).toBe("move");
+    });
+
+    it("scelle TOUTES les opérations portant le même identifiant de dessin", () => {
+        pushOperation(
+            _op({ type: "move", terradrawId: "td-1", oldGeom: _POINT, newGeom: _POINT2 })
+        );
+        pushOperation(_op({ type: "vertex-add", terradrawId: "td-1" }));
+        pushOperation(_op({ type: "create", terradrawId: "td-9" }));
+
+        sealOperations("td-1");
+
+        expect(getUndoDepth()).toBe(1);
+        expect(topUndoType()).toBe("create");
+    });
+
+    // A sealed operation must not come back through redo either: "resubmitted by Ctrl+Y"
+    // is the same lie under another shortcut.
+    it("vide AUSSI la pile de rétablissement de cette opération", () => {
+        pushOperation(_op({ type: "create", terradrawId: "td-1" }));
+        undo();
+        expect(canRedo()).toBe(true);
+
+        sealOperations("td-1");
+
+        expect(canRedo()).toBe(false);
+    });
+
+    it("prévient l'interface — le bouton doit se griser sans qu'on y pense", () => {
+        const onChange = vi.fn();
+        initUndoStack(_mockAdapter(), _cfg(), onChange);
+        clearHistory();
+        pushOperation(_op({ terradrawId: "td-1" }));
+        onChange.mockClear();
+
+        sealOperations("td-1");
+        expect(onChange).toHaveBeenCalledTimes(1);
+        expect(canUndo()).toBe(false);
+    });
+
+    // 🛑 THE COUNTER-PROOF, without which "empty the stack on every save" would pass every
+    // test above. Sealing an id nobody pushed must change nothing at all — including not
+    // notifying, or the UI would repaint on every unrelated write.
+    it("ne touche à rien — et ne notifie pas — pour un identifiant inconnu", () => {
+        const onChange = vi.fn();
+        initUndoStack(_mockAdapter(), _cfg(), onChange);
+        clearHistory();
+        pushOperation(_op({ terradrawId: "td-1" }));
+        onChange.mockClear();
+
+        sealOperations("td-inconnu");
+
+        expect(getUndoDepth()).toBe(1);
+        expect(onChange).not.toHaveBeenCalled();
+    });
+
+    // The form-cancel path must keep working: nothing was submitted there, so the entry is
+    // discarded rather than sealed, and the two must not collapse into one another.
+    it("laisse `discardLastOperation` intact — annuler un formulaire n'est pas soumettre", () => {
+        pushOperation(_op({ terradrawId: "td-1" }));
+        discardLastOperation();
+        expect(getUndoDepth()).toBe(0);
     });
 });

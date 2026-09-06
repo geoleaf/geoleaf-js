@@ -8,7 +8,7 @@
  * Adaptation: `panel.js` / `renderer.js` are replaced via `vi.doMock` + a dynamic
  * `import("../table-api.js")` (the orchestrator statically imports them); the GeoJSON
  * and visibility seams are driven on `globalThis.GeoLeaf.*` (the plugin reads
- * `_g.GeoLeaf.GeoJSON` / `_g.GeoLeaf._LayerVisibilityManager` at call time).
+ * `_g.GeoLeaf.GeoJSON` / `_g.GeoLeaf.Layers` at call time).
  */
 import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 
@@ -453,19 +453,15 @@ describe("modules/table/table-api", () => {
         vi.useRealTimers();
     });
 
-    it("_getAvailableVisibleLayers uses VisibilityManager when available", () => {
+    it("_getAvailableVisibleLayers uses the Layers seam when available", () => {
         globalThis.GeoLeaf.GeoJSON = {
             getAllLayers: () => [{ id: "ly1" }],
             getLayerData: () => ({ config: { table: { enabled: true } } }),
         };
-        globalThis.GeoLeaf._LayerVisibilityManager = {
-            getVisibilityState: vi.fn((id) =>
-                id === "ly1" ? { current: true } : { current: false }
-            ),
-        };
+        globalThis.GeoLeaf.Layers = { isVisible: vi.fn((id) => id === "ly1") } as any;
         const layers = TableModule._getAvailableVisibleLayers();
         expect(layers.length).toBeGreaterThanOrEqual(0);
-        delete globalThis.GeoLeaf._LayerVisibilityManager;
+        delete globalThis.GeoLeaf.Layers;
     });
 
     it("map event geoleaf:geojson:visibility-changed with e.visible false switches layer", () => {
@@ -491,11 +487,7 @@ describe("modules/table/table-api", () => {
                       }
                     : null,
         };
-        globalThis.GeoLeaf._LayerVisibilityManager = {
-            getVisibilityState: vi.fn((id) =>
-                id === "ly2" ? { current: true } : { current: false }
-            ),
-        };
+        globalThis.GeoLeaf.Layers = { isVisible: vi.fn((id) => id === "ly2") } as any;
         const visCall = mockMap.on.mock.calls.find(
             (c) => c[0] === "geoleaf:geojson:visibility-changed"
         );
@@ -505,7 +497,7 @@ describe("modules/table/table-api", () => {
         expect(TableModule._currentLayerId).toBe("ly2");
         expect(select.value).toBe("ly2");
         select.remove();
-        delete globalThis.GeoLeaf._LayerVisibilityManager;
+        delete globalThis.GeoLeaf.Layers;
         vi.useRealTimers();
     });
 
@@ -521,9 +513,7 @@ describe("modules/table/table-api", () => {
             getAllLayers: () => [],
             getLayerData: () => null,
         };
-        globalThis.GeoLeaf._LayerVisibilityManager = {
-            getVisibilityState: () => ({ current: false }),
-        };
+        globalThis.GeoLeaf.Layers = { isVisible: () => false } as any;
         const visCall = mockMap.on.mock.calls.find(
             (c) => c[0] === "geoleaf:geojson:visibility-changed"
         );
@@ -531,7 +521,7 @@ describe("modules/table/table-api", () => {
         vi.advanceTimersByTime(250);
         expect(TableModule._currentLayerId).toBeNull();
         select.remove();
-        delete globalThis.GeoLeaf._LayerVisibilityManager;
+        delete globalThis.GeoLeaf.Layers;
         vi.useRealTimers();
     });
 

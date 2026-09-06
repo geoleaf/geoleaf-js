@@ -33,7 +33,7 @@
 import { Log } from "../../utils/log/index.js";
 import { StorageContract } from "../shared/storage-contract.js";
 import { mayEditLayer } from "../shared/edition-permissions.js";
-import type { LayerSyncReport } from "../../contracts/sync.contract.js";
+import type { LayerSyncReport, SyncStatus } from "../../contracts/sync.contract.js";
 
 interface GeoLeafStorageGlobal {
     GeoLeaf?: {
@@ -59,6 +59,7 @@ interface EditLike {
     pushOutbox: () => Promise<StoragePushReport>;
     /** Sorties de quarantaine — voir `write/quarantine-api.ts`. */
     requeueQuarantined: (id: string) => Promise<StorageQuarantineOutcome>;
+    requeueAll: (reason?: string) => Promise<StorageBatchRequeueOutcome>;
     discardQuarantined: (id: string, confirmedLocalId: string) => Promise<StorageQuarantineOutcome>;
     applyEdit: (input: {
         layerId: string;
@@ -67,6 +68,29 @@ interface EditLike {
         feature?: unknown;
         baseVersion?: { kind: "etag" | "timestamp"; value: string } | null;
     }) => Promise<StorageEditReport>;
+    /**
+     * Drain triggers — `write/outbox-drain-triggers.ts`.
+     *
+     * ⚠️ **Optional, unlike their neighbours.** An engine built before these existed wires
+     * a bag without them, and the facade must stay typable against it: this interface
+     * describes what the deferred chunk INJECTS, and injection is a runtime fact.
+     */
+    armOutboxDrain?: (options?: { pollIntervalMs?: number }) => void;
+    disarmOutboxDrain?: () => void;
+    requestDrain?: (cause: string) => Promise<void>;
+    /** Can this device hold a write to that layer? See `write/local-edit-api.ts`. */
+    canHoldWrites?: (layerId: string) => boolean;
+}
+
+/**
+ * The capability's own UI, injected by the deferred chunk (`ui/sync-banner.ts`).
+ *
+ * Structural, like {@link EditLike}: the facade lives in the boot graph, the strip reads
+ * the outbox and therefore lives with it.
+ */
+interface OfflineUiLike {
+    mountSyncBanner?: (options?: { enabled?: boolean }) => void;
+    unmountSyncBanner?: () => void;
 }
 
 /**
@@ -81,9 +105,26 @@ interface StorageQuarantineOutcome {
     readonly refused?: string;
 }
 
+/**
+ * Report of a batch requeue — mirror of `write/quarantine-api.ts`.
+ *
+ * `skipped` counts what the rule refused, so a partial outcome is never a silent
+ * difference between what was asked and what happened.
+ */
+interface StorageBatchRequeueOutcome {
+    readonly ok: boolean;
+    readonly requeued: number;
+    readonly skipped: number;
+    readonly refused?: string;
+}
+
 /** Report returned by {@link Storage.pushOutbox} — mirrors `capabilities/offline/write/push-engine.ts`. */
 interface StoragePushReport {
     readonly attempted: number;
+    /** Entries walked past, their retry delay not yet elapsed — see the drain. */
+    readonly deferred: number;
+    /** What stopped the drain before the end of the queue, or `null`. */
+    readonly haltedBy: string | null;
     readonly pushed: number;
     readonly failed: number;
     readonly alreadyPresent: number;
@@ -132,6 +173,15 @@ interface PullLike {
  */
 interface ReportLike {
     buildSyncReport: (now?: number) => Promise<readonly LayerSyncReport[]>;
+    /**
+     * The queue as a whole — see `write/sync-status.ts`.
+     *
+     * ⚠️ **Optional, like the drain triggers next door and for the same reason.** An engine
+     * built before this existed wires a bag without it, and the facade must stay typable
+     * against that bag: this interface describes what the deferred chunk INJECTS, and
+     * injection is a runtime fact.
+     */
+    readSyncStatus?: () => Promise<SyncStatus>;
 }
 
 /** Report returned by {@link Storage.pullLayer} — mirrors `capabilities/offline/pull/layer-pull.ts`. */
@@ -207,6 +257,7 @@ const Storage = {
         pull?: PullLike;
         report?: ReportLike;
         edit?: EditLike;
+        ui?: OfflineUiLike;
     },
 
     /**
@@ -220,6 +271,7 @@ const Storage = {
         pull?: unknown;
         report?: unknown;
         edit?: unknown;
+        ui?: unknown;
     }): void {
         this._modules = modules as {
             db?: DBLike;
@@ -228,6 +280,7 @@ const Storage = {
             pull?: PullLike;
             report?: ReportLike;
             edit?: EditLike;
+            ui?: OfflineUiLike;
         };
     },
 
@@ -541,6 +594,8 @@ const Storage = {
             Log.warn("[GeoLeaf.Storage] pushOutbox — moteur hors-ligne non câblé.");
             return {
                 attempted: 0,
+                deferred: 0,
+                haltedBy: null,
                 pushed: 0,
                 failed: 0,
                 alreadyPresent: 0,
@@ -549,6 +604,78 @@ const Storage = {
             };
         }
         return edit.pushOutbox();
+    },
+
+    /**
+     * Arms the drain triggers — lifecycle only, hence the underscore.
+     *
+     * 🛑 **UNDERSCORED ON PURPOSE, AND IT IS NOT SHYNESS.** `namespace-surface.mjs` drops
+     * `_`-prefixed members from the measured surface, so the golden master and
+     * `EXPECTED_FACADE_MEMBERS` do not move for a lifecycle concern. A public
+     * `armOutboxDrain()` would be a promise to integrators that arming is theirs to make —
+     * it is not: the capability arms once its storage is ready, and calling it from
+     * outside could only duplicate that.
+     *
+     * @param options - `{ pollIntervalMs }`, from `modules.offline.drain`.
+     */
+    _armOutboxDrain(options?: { pollIntervalMs?: number }): void {
+        this._modules.edit?.armOutboxDrain?.(options);
+    },
+
+    /**
+     * Can a write to `layerId` be HELD here, to be sent later?
+     *
+     * 🛑 **THE PREDICATE THAT MAKES ONE WRITE PATH SAFE — and its first draft asked the
+     * wrong question.** It asked whether the DRAIN could push the layer, and answered
+     * `false` when the layer declared no `write` target, so a caller sent those writes down
+     * its own online path. The E2E suite refuted it on the shipped bundle: deliverables have
+     * their write endpoints stripped, so nothing was holdable there and an offline save
+     * stopped reaching the outbox. **Holding beats losing** — a held capture is visible,
+     * counted, and eventually set aside with a named motive; one sent to a dead endpoint is
+     * gone.
+     *
+     * `false` when the engine is not wired at all — the capability is opt-in, so a caller
+     * must be able to learn that the queue simply does not exist here.
+     *
+     * @param layerId - The layer about to be written to.
+     * @returns `true` when a local write will be accepted and kept.
+     * @example
+     * const held = GeoLeaf?.Storage?.canQueueWrites?.("sites_rosario") ?? false;
+     * if (!held) console.warn("no local queue for this layer");
+     */
+    canQueueWrites(layerId: string): boolean {
+        return this._modules.edit?.canHoldWrites?.(layerId) === true;
+    },
+
+    /** Releases the drain triggers — the capability's teardown owes this. */
+    _disarmOutboxDrain(): void {
+        this._modules.edit?.disarmOutboxDrain?.();
+    },
+
+    /**
+     * Mounts the permanent sync strip — lifecycle only, hence the underscore.
+     *
+     * @param options - `{ enabled }`, from `modules.offline.banner`.
+     */
+    _mountSyncBanner(options?: { enabled?: boolean }): void {
+        this._modules.ui?.mountSyncBanner?.(options);
+    },
+
+    /** Removes the sync strip and its listeners. */
+    _unmountSyncBanner(): void {
+        this._modules.ui?.unmountSyncBanner?.();
+    },
+
+    /**
+     * Asks for a drain now — used by a write that has just landed in the queue.
+     *
+     * ⚠️ Fire-and-forget by design: a caller that awaited it would tie its own latency to
+     * the network, which is the very coupling the outbox exists to break.
+     *
+     * @param cause - What asked, for the log.
+     */
+    _requestOutboxDrain(cause = "write"): void {
+        void this._modules.edit?.requestDrain?.(cause);
     },
 
     /**
@@ -572,6 +699,33 @@ const Storage = {
             return { ok: false, refused: "engineUnavailable" };
         }
         return edit.requeueQuarantined(id);
+    },
+
+    /**
+     * Requeues EVERY requeueable quarantined entry, in one gesture.
+     *
+     * 🛑 **The per-entry exit takes a contract id, which nothing displays** — so the
+     * only way to use it was to list the queue in a console. Yet what produces
+     * quarantines is never one entry: an expired token or a maintenance window sets
+     * aside a whole tour's captures at once.
+     *
+     * The rule that decides stays {@link Storage.requeueQuarantined}'s — motive
+     * requeueable, cause observed as lifted — so what it refuses is COUNTED in
+     * `skipped`, never silently taken.
+     *
+     * @param reason - Restrict to this motive; omitted, every requeueable entry.
+     * @returns How many came back, how many the rule left, or the refusal.
+     * @example
+     * const out = await GeoLeaf?.Storage?.requeueAll?.("retryBudgetExhausted");
+     * console.info(`${out?.requeued ?? 0} saisie(s) remise(s) en file`);
+     */
+    async requeueAll(reason?: string): Promise<StorageBatchRequeueOutcome> {
+        const edit = this._modules.edit;
+        if (!edit) {
+            Log.warn("[GeoLeaf.Storage] requeueAll — moteur hors-ligne non câblé.");
+            return { ok: false, requeued: 0, skipped: 0, refused: "engineUnavailable" };
+        }
+        return edit.requeueAll(reason);
     },
 
     /**
@@ -627,6 +781,39 @@ const Storage = {
             return [];
         }
         return report.buildSyncReport();
+    },
+
+    /**
+     * What the write queue still owes, as a whole.
+     *
+     * 🛑 **THE SINGLE READ, AND IT IS PUBLIC BECAUSE A PLUGIN NEEDED IT.** The sync strip had
+     * its own private version; `offline-ui`'s modal has to show the same four numbers, and it
+     * cannot reach that one — deep imports of `@geoleaf/core` are bundled as a COPY, whose
+     * `StorageContract` singleton nothing in the plugin's graph initialises, so the copy would
+     * read an outbox that stays empty forever. Publishing the read is what stops the two from drifting.
+     *
+     * ⚠️ **`owed` and `quarantined` are disjoint.** An entry set aside is blocked, not owed;
+     * adding them would report work the drain will never do.
+     *
+     * Never throws. With no engine wired it answers zeros and `null` — which is what "there is
+     * no queue on this device" actually looks like, the capability being opt-in.
+     *
+     * @returns Network state, entries owed, entries set aside, and the last accepted push.
+     * @example
+     * const s = await GeoLeaf?.Storage?.getSyncStatus?.();
+     * if (s?.owed) console.warn(`${s.owed} écriture(s) encore dues`);
+     */
+    async getSyncStatus(): Promise<SyncStatus> {
+        const read = this._modules.report?.readSyncStatus;
+        if (!read) {
+            return {
+                online: typeof navigator === "undefined" || navigator.onLine !== false,
+                owed: 0,
+                quarantined: 0,
+                lastSyncAt: null,
+            };
+        }
+        return read();
     },
 
     /**

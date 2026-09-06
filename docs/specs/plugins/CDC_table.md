@@ -4,14 +4,14 @@ title: table — la vue tabulaire des couches, et son pont vers la carte
 plugin_id: table
 package: "@geoleaf-plugins/table"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 1d0f5312
-date: 1er septembre 2026
+verifie_contre: 349cf2a3a
+date: 4 septembre 2026
 ---
 
 # table — la vue tabulaire des couches, et son pont vers la carte
 
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/table` ·
-**Code :** `packages/plugins/table/` · **Vérifié contre :** `1d0f5312` (01/09/2026)
+**Code :** `packages/plugins/table/` · **Vérifié contre :** `349cf2a3a` (04/09/2026)
 
 > 🧭 **Contrat ici, mode d'emploi ailleurs.** Cette fiche dit ce que le sujet **doit**
 > faire : périmètre, table de configuration gatée, contrat exposé, frontières. Les recettes
@@ -326,6 +326,20 @@ node -e "const p=require('./packages/plugins/table/package.json'); console.log({
 ```
 
 **Aucune dépendance vers un autre plugin**, ce que le manifeste dit correctement.
+
+**Ce que le plugin lit sur le namespace** — `GeoLeaf.Table` (le sien), `GeoLeaf.GeoJSON`,
+`GeoLeaf.Config`, `GeoLeaf.Log`, `GeoLeaf.I18n`, et `GeoLeaf.Layers` pour savoir quelles couches
+sont peintes (`isVisible`). 🔻 **Ce dernier était `GeoLeaf._LayerVisibilityManager` jusqu'au
+04/09/2026** : un paquet publié atteignait une clé `_`-préfixée du core, c'est-à-dire une surface
+sans promesse de stabilité dans un sens comme dans l'autre — le core pouvait la remanier sans le
+savoir, et le plugin en dépendait sans que rien ne le dise. La lecture passe désormais par la
+couture publique. Deux sites de source, `panel.ts` et `table-layer.ts` ; les deux gardent leur
+repli distinct sur `_visibility` — `panel.ts` conclut « visible » quand rien ne répond,
+`table-layer.ts` conclut « masquée », et cette asymétrie est délibérée, pas un oubli.
+
+```bash
+grep -rn "_g.GeoLeaf\.\|globalThis.GeoLeaf\." packages/plugins/table/src --include=*.ts | grep -v __tests__
+```
 
 ⚠️ **`README.md` n'est PAS dans `files[]`** — il n'est donc pas dans l'archive npm. ⚠️ Cette ligne
 citait `addpoi` comme compagnon d'infortune : **ce paquet n'existe plus**, il a fusionné dans

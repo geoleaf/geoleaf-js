@@ -213,6 +213,18 @@ const lang_fr: LangDict = {
     // ── UI texts / Offline ───────────────────────────────────────────────────
     "ui.offline.badge": "\u26a0\ufe0f Hors ligne",
     "aria.offline.badge_title": "Mode hors ligne actif",
+    // ── UI texts / Sync banner (R7) ───────────────────────────────────────────
+    "ui.sync.online": "En ligne",
+    "ui.sync.offline": "Hors ligne",
+    "ui.sync.pending_one": "1 en attente",
+    "ui.sync.pending_many": "{0} en attente",
+    "ui.sync.all_sent": "Tout est envoyé",
+    "ui.sync.quarantined": "{0} bloquée(s)",
+    "ui.sync.last_never": "jamais synchronisé",
+    "ui.sync.last_at": "synchro {0}",
+    "ui.sync.action": "Synchroniser",
+    "ui.sync.dismiss": "Masquer ce bandeau",
+    "aria.sync.banner": "État de la synchronisation",
     // ── UI texts / Themes ────────────────────────────────────────────────────
     "ui.theme.select_placeholder": "S\u00e9lectionner un th\u00e8me...",
 

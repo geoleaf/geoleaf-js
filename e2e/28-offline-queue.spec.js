@@ -258,10 +258,33 @@ test.describe("28 — la file hors-ligne rejoue ce qu'elle doit", () => {
         // Off-network, the three sends fail as `networkError`: the path the
         // budget exists for — a failure that CAN be transient, so it is
         // replayed, but not forever.
+        //
+        // 🛑 THE BUDGET COUNTS TIME, NOT GESTURES — and this loop asserted the opposite until
+        // 2026-09-04. Three `pushOutbox()` back to back used to mean three attempts; since the
+        // retry backoff landed, the first failure writes a `nextAttemptAt` (30 s, then ×4,
+        // capped at 8 min) that the next two drains WALK PAST. `attempts` therefore stayed at
+        // 1, the cap was never reached, and the entries sat in `failed` forever.
+        //
+        // ⚠️ That is the behaviour the backoff exists for — "three attempts is defensible for a
+        // network coming back and absurd for three drains fired inside one minute" — so the
+        // test is what had to follow, not the engine. Clearing `nextAttemptAt` between drains
+        // is what ELAPSED TIME does; sleeping the real delays would cost eight minutes and
+        // measure the clock.
+        //
+        // ⚠️ Only `nextAttemptAt` is cleared. Touching `attempts` would hand the test the very
+        // counter it is here to observe.
         await context.setOffline(true);
         await page.evaluate(async () => {
             const gl = /** @type {any} */ (globalThis).GeoLeaf;
-            for (let i = 0; i < 3; i += 1) await gl.Storage.pushOutbox();
+            const outbox = gl.Storage.DB._ensureModule("Outbox");
+            for (let i = 0; i < 3; i += 1) {
+                await gl.Storage.pushOutbox();
+                const rows = await outbox.list();
+                for (const r of rows) {
+                    if (r.state === "failed")
+                        await outbox.updateState(r.id, "failed", { nextAttemptAt: null });
+                }
+            }
         });
         await context.setOffline(false);
 

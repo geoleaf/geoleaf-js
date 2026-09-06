@@ -18,9 +18,13 @@ import { getLabel } from "../../../utils/i18n/i18n.js";
 import { dispatchGeoLeafEvent } from "../../events/event-bus.js";
 import {
     buildThemeToggleBtn as _buildThemeToggleBtn,
+    appendTabsSeparator as _appendTabsSeparator,
     appendThemeToggleToTabs as _appendThemeToggleToTabs,
 } from "./desktop-panel-theme.js";
 import { emitDesktopTabsReady } from "./desktop-tabs-seam.js";
+import { ICON_FILTERS, ICON_LAYERS, ICON_LEGEND } from "./desktop-panel-icons.js";
+import { DOMSecurity } from "../../security/dom-security.js";
+import { UI_SLOT_SVG_TAGS } from "../ui-slot-builder.js";
 import { appendRegistryTabButtons as _appendRegistryTabButtons } from "./desktop-panel-slots.js";
 import { resolveRovingIndex } from "../roving-tabindex.js";
 import { registerLifecycleTeardown } from "../../shared/lifecycle.js";
@@ -40,6 +44,8 @@ interface DesktopPanelOptions {
     showFilters?: boolean;
     showLayers?: boolean;
     showLegend?: boolean;
+    /** Toggle this panel owns, BOTH placements. Default true. Outside the `show` bag on purpose. */
+    showThemeToggle?: boolean;
     getFilterActiveState?: () => boolean;
 }
 
@@ -68,6 +74,7 @@ let _filterObserver: MutationObserver | null = null;
 let _getFilterActiveState: (() => boolean) | null = null;
 
 let _mobileThemeToggle: HTMLButtonElement | null = null;
+let _showThemeToggle = true;
 
 let _themeObserver: MutationObserver | null = null;
 
@@ -111,17 +118,27 @@ function _tryInjectMobile(): void {
  * wiring here is five attributes that have to agree with `buildContentDom`, and a second
  * hand-written copy would drift from this one without anything comparing them.
  *
+ * ⚠️ **With an icon, `label` becomes the ACCESSIBLE NAME rather than disappearing.** The
+ * text used to BE the button's name; rendering a glyph without posting `aria-label` and
+ * `title` would leave six anonymous buttons in a `tablist`, and the E2E axe scan says so.
+ *
+ * ⚠️ **Without one, it still renders text** — and that fallback is not decoration either: a
+ * third party can register a pane (`registerPanelPane`) without declaring an icon, and
+ * silently giving it a blank 28 px square would be worse than a word.
+ *
  * @param panel - The side-panel root the click handler drives.
  * @param id - Pane identifier; yields `gl-rp-tab-<id>` and `aria-controls=gl-rp-pane-<id>`.
  * @param label - Visible text, already resolved in the interface language.
  * @param isFirst - Whether this tab is the keyboard entry point (B4: roving tabindex).
+ * @param icon - SVG markup; sanitised. Omitted, the tab falls back to vertical text.
  * @returns The button, not yet mounted.
  */
 function makeTabButton(
     panel: HTMLElement,
     id: string,
     label: string,
-    isFirst: boolean
+    isFirst: boolean,
+    icon?: string
 ): HTMLButtonElement {
     const btn = document.createElement("button");
     btn.type = "button";
@@ -132,7 +149,16 @@ function makeTabButton(
     btn.setAttribute("aria-controls", "gl-rp-pane-" + id);
     btn.setAttribute("aria-selected", "false");
     btn.setAttribute("tabindex", isFirst ? "0" : "-1"); // B4: roving tabindex
-    btn.textContent = label;
+    // The name is posted either way: as the visible text, or as the label of a glyph.
+    btn.setAttribute("aria-label", label);
+    btn.title = label;
+    if (icon) {
+        btn.classList.add("gl-rp-tab--icon");
+        // @security Same sanitising route as the icons plugins provide through the registry.
+        DOMSecurity.setSafeHTML(btn, icon, UI_SLOT_SVG_TAGS);
+    } else {
+        btn.textContent = label;
+    }
     btn.addEventListener("click", () => handleTabClick(panel, id));
     return btn;
 }
@@ -163,18 +189,21 @@ function buildTabsDom(
     tabs.setAttribute("role", "tablist");
     tabs.setAttribute("aria-label", getLabel("aria.panel.nav"));
     const allDefs = [
-        { id: "filters", label: titles.filters, visible: show.filters },
-        { id: "layers", label: titles.layers, visible: show.layers },
-        { id: "legend", label: titles.legend, visible: show.legend },
+        { id: "filters", label: titles.filters, visible: show.filters, icon: ICON_FILTERS },
+        { id: "layers", label: titles.layers, visible: show.layers, icon: ICON_LAYERS },
+        { id: "legend", label: titles.legend, visible: show.legend, icon: ICON_LEGEND },
     ];
     const defs = allDefs.filter((d) => d.visible);
     for (const [i, def] of defs.entries()) {
-        tabs.appendChild(makeTabButton(panel, def.id, def.label, i === 0));
+        tabs.appendChild(makeTabButton(panel, def.id, def.label, i === 0, def.icon));
     }
     // Registered panes come after the built-ins and before the theme separator, which
     // carries `margin-top: auto` and pushes the icon stack to the bottom of the strip.
+    // ⚠️ `pane.icon` is OPTIONAL: a pane that declares none keeps a text tab rather than a
+    // blank square — the registry is a public seam, and a third party's pane must not
+    // vanish because this strip changed its own shape.
     for (const pane of listPanelPanes()) {
-        tabs.appendChild(makeTabButton(panel, pane.id, getLabel(pane.labelKey), false));
+        tabs.appendChild(makeTabButton(panel, pane.id, getLabel(pane.labelKey), false, pane.icon));
     }
     // B3: arrow key navigation (roving focus, no auto-select)
     tabs.addEventListener("keydown", (e: KeyboardEvent) => {
@@ -187,8 +216,10 @@ function buildTabsDom(
         btns[next]?.focus();
     });
     panel.appendChild(tabs);
+    // UNCONDITIONAL — it carries the strip's only `margin-top: auto`. See its TSDoc.
+    _appendTabsSeparator(tabs);
     // Inject theme toggle at bottom of tab strip (above credential button if present)
-    _appendThemeToggleToTabs(tabs);
+    if (_showThemeToggle) _appendThemeToggleToTabs(tabs);
     // Inject registry-declared desktop buttons (e.g. print) — above share
     _appendRegistryTabButtons(tabs);
     // Announce the tab strip so capabilities (e.g. share) inject their bottom buttons
@@ -439,13 +470,15 @@ function activatePanel(): void {
     for (const pane of listPanelPanes()) {
         adoptPane(pane);
     }
-    // Inject theme toggle into mobile toolbar
-    _tryInjectMobile();
-    if (!_mobileThemeToggle) {
-        _themeObserver = new MutationObserver(() => {
-            _tryInjectMobile();
-        });
-        _themeObserver.observe(document.body, { childList: true, subtree: true });
+    // ONE block: gating just the injection would leave the observer armed for nothing.
+    if (_showThemeToggle) {
+        _tryInjectMobile();
+        if (!_mobileThemeToggle) {
+            _themeObserver = new MutationObserver(() => {
+                _tryInjectMobile();
+            });
+            _themeObserver.observe(document.body, { childList: true, subtree: true });
+        }
     }
     document.body.classList.add("gl-right-panel-open");
 }
@@ -521,6 +554,8 @@ export function initDesktopPanel(options: DesktopPanelOptions): void {
     const { glMain } = options;
     _getFilterActiveState = options.getFilterActiveState ?? null;
     if (document.getElementById(PANEL_ID)) return;
+    // AFTER the early return: a second call must not desync the flag from the built DOM.
+    _showThemeToggle = options.showThemeToggle !== false;
     const titles = {
         filters: options.titleFilters || "Filtres",
         layers: options.titleLayers || "Couches",
@@ -624,6 +659,8 @@ export function destroyDesktopPanel(): void {
     _panel = null;
     _isActive = false;
     _restoreEntries = [];
+    // The node lives OUTSIDE the panel removed here, and the gate never evicts.
+    _mobileThemeToggle?.remove();
     _mobileThemeToggle = null;
 }
 
@@ -658,7 +695,7 @@ function syncRegisteredPanes(): void {
     if (!tabs || !content) return;
     for (const pane of listPanelPanes()) {
         if (_panel.querySelector("[data-gl-rp-tab='" + pane.id + "']")) continue;
-        const btn = makeTabButton(_panel, pane.id, getLabel(pane.labelKey), false);
+        const btn = makeTabButton(_panel, pane.id, getLabel(pane.labelKey), false, pane.icon);
         // Before the separator, which carries `margin-top: auto`: appending past it would
         // drop the tab into the bottom icon stack, among buttons of a different shape.
         const separator = tabs.querySelector(".gl-rp-theme-separator");

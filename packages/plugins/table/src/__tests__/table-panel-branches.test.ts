@@ -8,7 +8,7 @@
  * Adaptation: import paths point at the plugin's flat `src/` layout; the GeoJSON /
  * visibility seams are driven on the runtime `_g.GeoLeaf.*` namespace (panel.ts reads
  * `_g.GeoLeaf.GeoJSON.getAllLayers/getLayerById` and
- * `_g.GeoLeaf._LayerVisibilityManager.getVisibilityState`). The source built a `Map`
+ * `_g.GeoLeaf.Layers.isVisible`). The source built a `Map`
  * of layers and stubbed `GeoJSONShared.getLayers`; here the same `Map` data is exposed
  * through `getAllLayers` (entries → array) + `getLayerById` (map lookup).
  */
@@ -66,10 +66,10 @@ function installGeoJSONSeam(layers: Map<string, any>) {
 }
 
 /** Installs the visibility seam on `_g.GeoLeaf` and returns the vi.fn handle. */
-function installVisibilitySeam(impl: (id: string) => { current?: boolean } | null) {
-    const getVisibilityState = vi.fn(impl);
-    _g.GeoLeaf._LayerVisibilityManager = { getVisibilityState } as any;
-    return getVisibilityState;
+function installVisibilitySeam(impl: (id: string) => boolean) {
+    const isVisible = vi.fn(impl);
+    _g.GeoLeaf.Layers = { isVisible } as any;
+    return isVisible;
 }
 
 describe("table/panel — branch coverage", () => {
@@ -166,7 +166,7 @@ describe("table/panel — branch coverage", () => {
             config: { table: { enabled: true } },
         });
         installGeoJSONSeam(layers);
-        installVisibilitySeam(() => ({ current: true }));
+        installVisibilitySeam(() => true);
         TablePanel.refreshLayerSelector();
         const select = document.querySelector("[data-table-layer-select]") as HTMLSelectElement;
         // 1 default + 1 layer
@@ -190,7 +190,7 @@ describe("table/panel — branch coverage", () => {
             config: { table: { enabled: true } },
         });
         installGeoJSONSeam(layers);
-        installVisibilitySeam(() => ({ current: false }));
+        installVisibilitySeam(() => false);
         TablePanel.refreshLayerSelector();
         const select = document.querySelector("[data-table-layer-select]") as HTMLSelectElement;
         expect(select.options.length).toBe(1);
@@ -208,7 +208,7 @@ describe("table/panel — branch coverage", () => {
             config: { table: { enabled: true } },
         });
         installGeoJSONSeam(layers);
-        installVisibilitySeam(() => ({ current: true }));
+        installVisibilitySeam(() => true);
         TablePanel.refreshLayerSelector();
         const select = document.querySelector("[data-table-layer-select]") as HTMLSelectElement;
         select.value = "lyr2";
@@ -225,7 +225,7 @@ describe("table/panel — branch coverage", () => {
             config: { table: { enabled: true } },
         });
         installGeoJSONSeam(layers);
-        installVisibilitySeam(() => ({ current: true }));
+        installVisibilitySeam(() => true);
         TablePanel.refreshLayerSelector();
         const select = document.querySelector("[data-table-layer-select]") as HTMLSelectElement;
         select.value = "lyr1";
@@ -252,8 +252,8 @@ describe("table/panel — branch coverage", () => {
             _visibility: { current: true },
         });
         installGeoJSONSeam(layers);
-        // getVisibilityState returns null → visState?.current === true → false → hidden
-        installVisibilitySeam(() => null);
+        // The seam reports the layer as not painted → hidden from the selector.
+        installVisibilitySeam(() => false);
         TablePanel.refreshLayerSelector();
         const select = document.querySelector("[data-table-layer-select]") as HTMLSelectElement;
         expect(select.options.length).toBe(1); // only default, layer is hidden

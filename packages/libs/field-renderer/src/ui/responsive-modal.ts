@@ -123,6 +123,11 @@ export function createResponsiveModal(opts: ResponsiveModalOptions): ResponsiveM
     let trap = { activate: () => {}, deactivate: () => {} };
     let currentOptions: ModalOpenOptions | null = null;
     let fieldBridge: ReturnType<typeof createFieldRendererBridge> | null = null;
+    /**
+     * The values the CURRENT bridge was seeded with — the only honest baseline for
+     * {@link isDirty}. Re-set on every bridge construction, including a layer reload.
+     */
+    let seededValues: Record<string, unknown> = {};
     let headerSlot: HeaderSlot | null = null;
     let mediaQuery: MediaQueryList | null = null;
 
@@ -130,11 +135,19 @@ export function createResponsiveModal(opts: ResponsiveModalOptions): ResponsiveM
         return mediaQuery ? mediaQuery.matches : window.innerWidth < breakpointPx;
     }
 
+    /**
+     * True when the form holds something the user typed.
+     *
+     * 🛑 THE BASELINE IS THE SEED, NOT `initialValues`. The bridge is built on
+     * `seedValues(schema, initialValues)` — the caller's values WITH the computed ones
+     * layered over them. Comparing against `initialValues` alone made every schema carrying
+     * a `computed` field dirty the instant it opened, so closing an untouched form raised
+     * "supprimer la saisie ?". A confirmation that fires when nothing is at stake is one
+     * people learn to dismiss, which costs exactly the case it exists to protect.
+     */
     function isDirty(): boolean {
         if (!fieldBridge || !currentOptions) return false;
-        const initial = currentOptions.initialValues ?? {};
-        const current = fieldBridge.getValues();
-        return JSON.stringify(current) !== JSON.stringify(initial);
+        return JSON.stringify(fieldBridge.getValues()) !== JSON.stringify(seededValues);
     }
 
     /** Opens the styled "discard unsaved input?" confirm. Resolves true to proceed. */
@@ -254,11 +267,10 @@ export function createResponsiveModal(opts: ResponsiveModalOptions): ResponsiveM
             base: Record<string, unknown>
         ): Record<string, unknown> => ({ ...base, ...(options.computeValues?.(schema) ?? {}) });
 
-        fieldBridge = createFieldRendererBridge(
-            initialSchema,
-            seedValues(initialSchema, options.initialValues ?? {}),
-            { lang: getCurrentLang() }
-        );
+        seededValues = seedValues(initialSchema, options.initialValues ?? {});
+        fieldBridge = createFieldRendererBridge(initialSchema, seededValues, {
+            lang: getCurrentLang(),
+        });
         body.appendChild(fieldBridge.el);
 
         // Reload the bridge whenever the header slot layer changes.
@@ -275,7 +287,10 @@ export function createResponsiveModal(opts: ResponsiveModalOptions): ResponsiveM
             const reloadBridge = (layerId: string): void => {
                 if (fieldBridge) fieldBridge.el.remove();
                 const schema = opts.getSchemaForLayer!(layerId);
-                fieldBridge = createFieldRendererBridge(schema, seedValues(schema, {}), {
+                // The baseline follows the bridge: after a layer change the new form starts
+                // clean, and `isDirty` must say so.
+                seededValues = seedValues(schema, {});
+                fieldBridge = createFieldRendererBridge(schema, seededValues, {
                     lang: getCurrentLang(),
                 });
                 body.appendChild(fieldBridge.el);
@@ -388,7 +403,18 @@ export function createResponsiveModal(opts: ResponsiveModalOptions): ResponsiveM
          */
         async function handleSave(): Promise<void> {
             if (!fieldBridge || !overlay) return;
-            if (!fieldBridge.validate()) return;
+            if (!fieldBridge.validate()) {
+                // 🛑 THIS RETURN WAS BARE, AND IT IS THE DEFECT. `validate()` filled an error
+                // map nothing read, so clicking "Enregistrer" on an invalid form produced
+                // strictly nothing on screen — no message, no focus move, no busy state: the
+                // modal simply stayed open, identical, and read as an unresponsive interface.
+                // `validate()` now paints; what is left here is to take the user TO the
+                // message, since a field painted below the fold is still a silent refusal.
+                const first = fieldBridge.firstInvalidControl();
+                first?.scrollIntoView({ block: "nearest" });
+                first?.focus?.();
+                return;
+            }
             const values = fieldBridge.getValues();
             const layerId = headerSlot?.getValue() ?? "";
             const onSave = currentOptions?.onSave;

@@ -189,7 +189,10 @@ const OfflineDetector = {
         const container = _createOfflineBadgeContainer();
         const cleanups: (() => void)[] = [];
         blockMapPropagation(container, cleanups);
-        this._badgeControlHandle = map.addControl(container, "topleft");
+        // ⚠️ It read `"topleft"` HARD-CODED while `badgePosition` sat in the config,
+        // documented and defaulted — an option that decided nothing, which is worse than
+        // an absent one: a reader sets it, sees no effect, and doubts the whole block.
+        this._badgeControlHandle = map.addControl(container, this._config.badgePosition);
         this._badge = container;
         this._badgeCleanups = cleanups;
 

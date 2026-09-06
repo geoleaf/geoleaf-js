@@ -26,7 +26,7 @@
  *      **version below the floor** → **exit 2**, refusal to conclude.
  *
  * ⚠️ **The third outcome is not zeal, it answers a measured risk.** The v1.4.0 manifest
- * lives on an UNMERGED branch of the `geoleaf-maintenance` repo. Its on-disk content thus
+ * lives on an UNMERGED branch of the CONSUMER's own repository. Its on-disk content thus
  * follows THAT repo's current branch: anyone running `git checkout main` there puts v1.3.0
  * back under this gate's feet, **which would go green reading a different file than the one
  * it was written against**. That is exactly the blind-spot class `probe-gate-visibility.cjs`
@@ -41,10 +41,12 @@
  *
  * ## Why NO default path
  *
- * A default like `../geoleaf-maintenance/ci` would write the name of a private repo into
- * `scripts/`, which ships **in full** to the public clone with the public split — and it
- * would then have to be stripped there, i.e. one more moving part on a non-reversible
- * switch. The hook is therefore the **only** entrance: without it, we skip. An accepted
+ * Any default path would write the location — hence the NAME — of a private third-party
+ * repository into `scripts/`, which ships **in full** to the public clone with the public
+ * split, and it would then have to be stripped there: one more moving part on a
+ * non-reversible switch. ⚠️ **This paragraph itself carried such a name until
+ * 02/09/2026**, in an example illustrating why not to write one — the rule was right and
+ * its own prose broke it, which is the quietest way a rule dies. The hook is therefore the **only** entrance: without it, we skip. An accepted
  * consequence, not a defect: on a development machine this gate only bites if the operator
  * names the directory. What keeps it from swallowing everything is the probe
  * (`probe-gate-visibility.cjs`), which plants a FIXTURE manifest and demands to see the

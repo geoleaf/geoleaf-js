@@ -120,6 +120,21 @@ export interface UIConfig {
     showMeasure?: boolean;
     /** Show the geometry editor button (requires @geoleaf-plugins/editor). Default false. */
     showEditor?: boolean;
+    /**
+     * Show the light/dark theme toggle owned by the desktop side panel. Default true (opt-out).
+     *
+     * Governs BOTH of its placements — the bottom of the tab strip and the copy injected into
+     * the mobile toolbar — because they are one logical control in two layouts.
+     *
+     * It governs none of the three other theme settings: the map control
+     * (`modules.theme-toggle.enabled`), an integrator-supplied `[data-gl-role="theme-toggle"]`
+     * button, and the initial theme (`ui.theme`).
+     *
+     * ⚠️ Hiding the button does not reclaim the theme: the stored choice keeps priority over
+     * `ui.theme`, so a visitor who already toggled stays where they are — with no UI trigger
+     * left to come back if the map control is also off.
+     */
+    showPanelThemeToggle?: boolean;
     // `showAddPoi`, `showPoiExport` and `showPoiSubmit` are removed. The last two
     // were declared in NO schema while `ui.schema.json` is
     // `additionalProperties: false`: they were unreachable, so their buttons could

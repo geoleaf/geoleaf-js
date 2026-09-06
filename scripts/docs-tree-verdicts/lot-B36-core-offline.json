@@ -14,8 +14,13 @@
         "packages/core/src/capabilities/offline/report/pull-state.ts",
         "packages/core/src/capabilities/offline/report/sync-report.ts",
         "packages/core/src/capabilities/offline/tile-budget.ts",
+        "packages/core/src/capabilities/offline/ui",
+        "packages/core/src/capabilities/offline/ui/css",
+        "packages/core/src/capabilities/offline/ui/css/sync-banner.css",
+        "packages/core/src/capabilities/offline/ui/sync-banner.ts",
         "packages/core/src/capabilities/offline/write",
         "packages/core/src/capabilities/offline/write/local-edit-api.ts",
+        "packages/core/src/capabilities/offline/write/outbox-drain-triggers.ts",
         "packages/core/src/capabilities/offline/write/push-engine.ts",
         "packages/core/src/capabilities/offline/write/quarantine-api.ts",
         "packages/core/src/contracts/attributes.contract.ts",
@@ -29,6 +34,20 @@
         "packages/core/src/utils/general/layer-data-path.ts"
     ],
     "verdicts": {
+        "packages/core/src/capabilities/feature-info/attributes-binding.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "GeoLeaf Core (feature-info capability) — Reading the `attributes` block Projects a layer's root `attributes` block onto the render model, one surface at a time.",
+            "confidence": "haute",
+            "rationale": "Fichier du chantier hors-ligne v4 (write/db/report/pull de la capacité offline), livré par le run navigation clos le 24/08/2026 et mergé dans main. L'en-tête de module (dont la description ci-contre est dérivée) porte le contrat du fichier ; la structure suit le rangement canonique des capacités (RUBRIC §0 : justifié par défaut sur un périmètre sain — 3 arêtes inverses sur 2 451 dans le dépôt). Nom et emplacement prédisent le contenu : sous-répertoire par rôle (db/, write/, pull/, report/), un fichier par module d'état ou de flux."
+        },
         "packages/core/src/capabilities/feature-info/render/widget-dispatch.ts": {
             "kind": "file",
             "name": "ok",
@@ -43,7 +62,7 @@
             "confidence": "haute",
             "rationale": "Fichier du chantier hors-ligne v4 (write/db/report/pull de la capacité offline), livré par le run navigation clos le 24/08/2026 et mergé dans main. L'en-tête de module (dont la description ci-contre est dérivée) porte le contrat du fichier ; la structure suit le rangement canonique des capacités (RUBRIC §0 : justifié par défaut sur un périmètre sain — 3 arêtes inverses sur 2 451 dans le dépôt). Nom et emplacement prédisent le contenu : sous-répertoire par rôle (db/, write/, pull/, report/), un fichier par module d'état ou de flux."
         },
-        "packages/core/src/capabilities/feature-info/attributes-binding.ts": {
+        "packages/core/src/capabilities/offline/data-origins.ts": {
             "kind": "file",
             "name": "ok",
             "nameTarget": null,
@@ -53,7 +72,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "GeoLeaf Core (feature-info capability) — Reading the `attributes` block Projects a layer's root `attributes` block onto the render model, one surface at a time.",
+            "description": "Declared data origins — routing by DECLARATION instead of by guesswork (task 3.9).",
             "confidence": "haute",
             "rationale": "Fichier du chantier hors-ligne v4 (write/db/report/pull de la capacité offline), livré par le run navigation clos le 24/08/2026 et mergé dans main. L'en-tête de module (dont la description ci-contre est dérivée) porte le contrat du fichier ; la structure suit le rangement canonique des capacités (RUBRIC §0 : justifié par défaut sur un périmètre sain — 3 arêtes inverses sur 2 451 dans le dépôt). Nom et emplacement prédisent le contenu : sous-répertoire par rôle (db/, write/, pull/, report/), un fichier par module d'état ou de flux."
         },
@@ -169,6 +188,76 @@
             "confidence": "haute",
             "rationale": "Fichier du chantier hors-ligne v4 (write/db/report/pull de la capacité offline), livré par le run navigation clos le 24/08/2026 et mergé dans main. L'en-tête de module (dont la description ci-contre est dérivée) porte le contrat du fichier ; la structure suit le rangement canonique des capacités (RUBRIC §0 : justifié par défaut sur un périmètre sain — 3 arêtes inverses sur 2 451 dans le dépôt). Nom et emplacement prédisent le contenu : sous-répertoire par rôle (db/, write/, pull/, report/), un fichier par module d'état ou de flux."
         },
+        "packages/core/src/capabilities/offline/tile-budget.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Publishes the Service Worker's opportunistic tile-cache ceiling.",
+            "confidence": "haute",
+            "rationale": "Fichier du chantier hors-ligne v4 (write/db/report/pull de la capacité offline), livré par le run navigation clos le 24/08/2026 et mergé dans main. L'en-tête de module (dont la description ci-contre est dérivée) porte le contrat du fichier ; la structure suit le rangement canonique des capacités (RUBRIC §0 : justifié par défaut sur un périmètre sain — 3 arêtes inverses sur 2 451 dans le dépôt). Nom et emplacement prédisent le contenu : sous-répertoire par rôle (db/, write/, pull/, report/), un fichier par module d'état ou de flux."
+        },
+        "packages/core/src/capabilities/offline/ui": {
+            "kind": "dir",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "(en-tête absent — répertoire)",
+            "confidence": "haute",
+            "rationale": "Bandeau de synchronisation permanent, livré par R7 le 05/09/2026 : le deuxième axe du produit — une journée sans réseau — n'avait aucune représentation permanente dans le chrome DU CORE. Un compteur vivant existait, dans le menu flottant du plugin `editor`, donc il partait avec lui. Emplacement contraint : `ui/` est déclaré dans `ENGINE_DIRS` de `frontier.guard.test.js`, ce qui met le module dans le chunk différé (il lit l'outbox, il appartient là où l'outbox vit) et l'autorise à importer `write/push-engine.js`. Le nom dit la surface, pas le mécanisme."
+        },
+        "packages/core/src/capabilities/offline/ui/css": {
+            "kind": "dir",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "(en-tête absent — répertoire)",
+            "confidence": "haute",
+            "rationale": "Bandeau de synchronisation permanent, livré par R7 le 05/09/2026 : le deuxième axe du produit — une journée sans réseau — n'avait aucune représentation permanente dans le chrome DU CORE. Un compteur vivant existait, dans le menu flottant du plugin `editor`, donc il partait avec lui. Emplacement contraint : `ui/` est déclaré dans `ENGINE_DIRS` de `frontier.guard.test.js`, ce qui met le module dans le chunk différé (il lit l'outbox, il appartient là où l'outbox vit) et l'autorise à importer `write/push-engine.js`. Le nom dit la surface, pas le mécanisme. Le CSS est une FEUILLE et non du style en ligne : l'app livrée sert `style-src 'self'` sans `'unsafe-inline'`, contrainte gardée par `e2e/18-security.spec.js`."
+        },
+        "packages/core/src/capabilities/offline/ui/css/sync-banner.css": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Feuille du bandeau de synchronisation — tokens `--gl-*`, cible tactile 44 px.",
+            "confidence": "haute",
+            "rationale": "Bandeau de synchronisation permanent, livré par R7 le 05/09/2026 : le deuxième axe du produit — une journée sans réseau — n'avait aucune représentation permanente dans le chrome DU CORE. Un compteur vivant existait, dans le menu flottant du plugin `editor`, donc il partait avec lui. Emplacement contraint : `ui/` est déclaré dans `ENGINE_DIRS` de `frontier.guard.test.js`, ce qui met le module dans le chunk différé (il lit l'outbox, il appartient là où l'outbox vit) et l'autorise à importer `write/push-engine.js`. Le nom dit la surface, pas le mécanisme. ⚠️ Le badge de connectivité voisin se construit, lui, par `applyCssText` ; celui-ci ne le peut pas et ne doit pas être « simplifié » ainsi plus tard."
+        },
+        "packages/core/src/capabilities/offline/ui/sync-banner.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "A permanent strip saying what is still owed to the server.",
+            "confidence": "haute",
+            "rationale": "Bandeau de synchronisation permanent, livré par R7 le 05/09/2026 : le deuxième axe du produit — une journée sans réseau — n'avait aucune représentation permanente dans le chrome DU CORE. Un compteur vivant existait, dans le menu flottant du plugin `editor`, donc il partait avec lui. Emplacement contraint : `ui/` est déclaré dans `ENGINE_DIRS` de `frontier.guard.test.js`, ce qui met le module dans le chunk différé (il lit l'outbox, il appartient là où l'outbox vit) et l'autorise à importer `write/push-engine.js`. Le nom dit la surface, pas le mécanisme."
+        },
         "packages/core/src/capabilities/offline/write": {
             "kind": "dir",
             "name": "ok",
@@ -197,6 +286,20 @@
             "confidence": "haute",
             "rationale": "Fichier du chantier hors-ligne v4 (write/db/report/pull de la capacité offline), livré par le run navigation clos le 24/08/2026 et mergé dans main. L'en-tête de module (dont la description ci-contre est dérivée) porte le contrat du fichier ; la structure suit le rangement canonique des capacités (RUBRIC §0 : justifié par défaut sur un périmètre sain — 3 arêtes inverses sur 2 451 dans le dépôt). Nom et emplacement prédisent le contenu : sous-répertoire par rôle (db/, write/, pull/, report/), un fichier par module d'état ou de flux."
         },
+        "packages/core/src/capabilities/offline/write/outbox-drain-triggers.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "QUAND l'outbox est drainé — les quatre déclencheurs in-core (R7, 05/09/2026).",
+            "confidence": "haute",
+            "rationale": "Le moteur de drain (`push-engine.ts`) a toujours été in-core ; son seul déclencheur automatique vivait dans `@geoleaf-plugins/editor`, si bien qu'une application sans ce plugin ne vidait jamais sa file. Ce fichier reprend le déclenchement : `online` natif, `visibilitychange`, l'initialisation du stockage (l'armement lui-même) et un tic périodique qui rend effectif le recul exponentiel posé par R1. Emplacement contraint et non choisi : `write/` est déjà dans `ENGINE_DIRS` de `frontier.guard.test.js`, donc le fichier est hors de la clôture statique du boot (hors budget) ET peut importer `push-engine.js` directement — un fichier à la racine de la capacité aurait l'inverse des deux. Le nom dit le sujet : les déclencheurs, pas le drain."
+        },
         "packages/core/src/capabilities/offline/write/push-engine.ts": {
             "kind": "file",
             "name": "ok",
@@ -222,34 +325,6 @@
             "rule": "N/A",
             "severity": null,
             "description": "Les DEUX sorties de quarantaine.",
-            "confidence": "haute",
-            "rationale": "Fichier du chantier hors-ligne v4 (write/db/report/pull de la capacité offline), livré par le run navigation clos le 24/08/2026 et mergé dans main. L'en-tête de module (dont la description ci-contre est dérivée) porte le contrat du fichier ; la structure suit le rangement canonique des capacités (RUBRIC §0 : justifié par défaut sur un périmètre sain — 3 arêtes inverses sur 2 451 dans le dépôt). Nom et emplacement prédisent le contenu : sous-répertoire par rôle (db/, write/, pull/, report/), un fichier par module d'état ou de flux."
-        },
-        "packages/core/src/capabilities/offline/data-origins.ts": {
-            "kind": "file",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Declared data origins — routing by DECLARATION instead of by guesswork (task 3.9).",
-            "confidence": "haute",
-            "rationale": "Fichier du chantier hors-ligne v4 (write/db/report/pull de la capacité offline), livré par le run navigation clos le 24/08/2026 et mergé dans main. L'en-tête de module (dont la description ci-contre est dérivée) porte le contrat du fichier ; la structure suit le rangement canonique des capacités (RUBRIC §0 : justifié par défaut sur un périmètre sain — 3 arêtes inverses sur 2 451 dans le dépôt). Nom et emplacement prédisent le contenu : sous-répertoire par rôle (db/, write/, pull/, report/), un fichier par module d'état ou de flux."
-        },
-        "packages/core/src/capabilities/offline/tile-budget.ts": {
-            "kind": "file",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Publishes the Service Worker's opportunistic tile-cache ceiling.",
             "confidence": "haute",
             "rationale": "Fichier du chantier hors-ligne v4 (write/db/report/pull de la capacité offline), livré par le run navigation clos le 24/08/2026 et mergé dans main. L'en-tête de module (dont la description ci-contre est dérivée) porte le contrat du fichier ; la structure suit le rangement canonique des capacités (RUBRIC §0 : justifié par défaut sur un périmètre sain — 3 arêtes inverses sur 2 451 dans le dépôt). Nom et emplacement prédisent le contenu : sous-répertoire par rôle (db/, write/, pull/, report/), un fichier par module d'état ou de flux."
         },

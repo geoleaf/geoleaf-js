@@ -257,6 +257,27 @@ interface ProfileLayer {
     editableGeometryTypes?: string[];
 }
 
+/**
+ * Name of the property a layer wants its capture accuracy written into.
+ *
+ * 🛑 DECLARATIVE ON PURPOSE, and inert until declared. The GPS accuracy of a capture is
+ * worth recording, but a property the layer's `write.properties` does not whitelist is
+ * dropped by `buildCollectionBody` on its way to the server — so an undeclared magic key
+ * would look like it worked and reach nothing. Naming the field in the profile is what makes
+ * the intent, the whitelist and the column line up.
+ *
+ * @param layerId - Profile layer id.
+ * @returns the property name, or `null` when the layer asks for none.
+ * @example
+ * // in a layer config: "edition": { "create": true, "accuracyField": "precision_gps_m" }
+ * const field = accuracyFieldOf("candelabres"); // "precision_gps_m"
+ */
+export function accuracyFieldOf(layerId: string): string | null {
+    const layer = getEditableLayers().find((l) => l.id === layerId);
+    const field = (layer?.edition as { accuracyField?: unknown } | undefined)?.accuracyField;
+    return typeof field === "string" && field !== "" ? field : null;
+}
+
 /** Profile `geometryType` → GeoJSON geometry name. The two vocabularies differ (ANO-007). */
 const _GEOJSON_FOR_PROFILE_TYPE: Record<string, string> = {
     point: "Point",

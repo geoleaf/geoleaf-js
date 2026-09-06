@@ -216,6 +216,26 @@ async function getTokenAsync(baseUrl: string): Promise<string | null> {
     return null;
 }
 
+/**
+ * Refreshes unconditionally, whatever the store holds.
+ *
+ * 🛑 **`getTokenAsync` CANNOT reach the refresh once a token is gone.** Its third branch
+ * is guarded by `if (record || cached)`, so the 401 path — which used to clear the store
+ * first — landed on branch 4 and returned `null` without ever trying. That guard is
+ * right for a READ (nothing to renew when nothing was ever stored); it is wrong for a
+ * caller who KNOWS a session existed and wants it renewed.
+ *
+ * ⚠️ It goes through `_refreshToken`, never `_doRefresh`, so concurrent callers still
+ * join the SAME in-flight promise — the anti-concurrency property must not be paid for
+ * by the recovery path.
+ *
+ * @param baseUrl - The API this token authenticates against.
+ * @returns The new token, or `null` when no refresh delegate is wired or it failed.
+ */
+async function forceRefresh(baseUrl: string): Promise<string | null> {
+    return _refreshToken(baseUrl);
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
@@ -230,6 +250,7 @@ export const TokenStore = {
     clear,
     getTokenSync,
     getTokenAsync,
+    forceRefresh,
 
     /**
      * Injects a refresh delegate.

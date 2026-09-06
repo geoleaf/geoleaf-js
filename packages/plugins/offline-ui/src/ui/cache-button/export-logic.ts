@@ -24,6 +24,34 @@ import { ButtonControl } from "./button-control.js";
 import { tLabel as t } from "@geoleaf/host-runtime";
 
 /**
+ * Releases the CacheControl currently mounted in the modal body, if any.
+ *
+ * 🛑 **THE MODAL NEVER CALLS `onRemove` ON ITS OWN, AND THAT WAS HARMLESS ONLY WHILE NOTHING
+ * IN THIS PANEL SUBSCRIBED TO ANYTHING.** `ModalManager.destroy()` has no caller; closing is
+ * `display: none`. Meanwhile a round trip Import → Export → Import drops `data-initialized`,
+ * clears the body and builds a SECOND control — the first one being simply forgotten, along
+ * with whatever it had registered. The sync-status block listens to the two outbox events and
+ * to the native network pair, so without this release each round trip would add a listener
+ * set, and a single capture would end up triggering N database reads.
+ *
+ * ⚠️ Called for its side effect on the OLD control, before the body is cleared — after the
+ * clear, the node is gone and the reference with it.
+ *
+ * @param body - `#gl-cache-modal-body`.
+ */
+function _releaseCacheControl(body: HTMLElement): void {
+    const holder = body as HTMLElement & { _cacheControl?: { onRemove?(map: unknown): void } };
+    try {
+        holder._cacheControl?.onRemove?.(null);
+    } catch (e) {
+        // A teardown that throws must not stop the rebuild: the panel would stay blank, and
+        // the leak this function prevents is cheaper than a modal that will not open.
+        if (Log) Log.warn("[CacheButton.ExportLogic] libération du contrôle de cache :", e);
+    }
+    delete holder._cacheControl;
+}
+
+/**
  * Export & Sync Logic Module
  * Handles business logic for cache content, export, and synchronization
  */
@@ -70,6 +98,11 @@ const ExportLogic = {
         }
 
         try {
+            // Defensive: `data-initialized` can be dropped without this module clearing the
+            // body (the Export tab does exactly that). Releasing a control that is not there
+            // costs nothing; keeping one that is costs a listener set per round trip.
+            _releaseCacheControl(body);
+
             // Create cache control
             const cacheControl = CacheControl.create({
                 position: "topright",
@@ -140,7 +173,8 @@ const ExportLogic = {
         const body = document.getElementById("gl-cache-modal-body");
         if (!body) return;
 
-        // Reset content
+        // Reset content — the OLD control first, or its listeners outlive its DOM.
+        _releaseCacheControl(body);
         body.removeAttribute("data-initialized");
         DOMSecurity.clearElementFast(body);
 

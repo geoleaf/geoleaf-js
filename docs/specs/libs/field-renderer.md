@@ -4,14 +4,14 @@ title: field-renderer — les composants de champ, la modale et le pont de formu
 lib_id: field-renderer
 package: "@geoleaf/field-renderer"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: fab770b1
-date: 1er septembre 2026
+verifie_contre: bc4516cac
+date: 4 septembre 2026
 ---
 
 # field-renderer — les composants de champ, la modale et le pont de formulaire
 
 **Type :** bibliothèque partagée · **Paquet :** `@geoleaf/field-renderer` ·
-**Code :** `packages/libs/field-renderer/` · **Vérifié contre :** `fab770b1` (01/09/2026)
+**Code :** `packages/libs/field-renderer/` · **Vérifié contre :** `bc4516cac` (04/09/2026)
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -98,7 +98,7 @@ hôtes qui en poseraient un chacun se donneraient un résultat dépendant de l'o
 | **Modale**           | `createResponsiveModal(...)` + ses types                                                                                                                                                                          |
 | **⚠️ Retirés**       | `createFocusTrap` et `confirmDialog` ne sont **plus exportés** — déplacés dans `@geoleaf/host-runtime` le 06/08/2026, **sans ré-export de compatibilité** ; la rupture est assumée et motivée dans `src/index.ts` |
 | **Pont**             | `createFieldRendererBridge(schema, values, ctx)`                                                                                                                                                                  |
-| **Téléversement**    | `setImageUploadStrategy(fn \| null)` + le type `ImageUploadStrategy` — 5.1-d                                                                                                                                      |
+| **Téléversement**    | `setImageUploadStrategy(fn \| null)` · `setImagePreviewResolver(fn \| null)` + les types `ImageUploadStrategy`, `ImagePreviewResolver` — 5.1-d, puis le passage par jeton du 04/09/2026                           |
 | **Libellés**         | Catalogue **interne** `src/lang/` — 43 clés `form.*` × 6 locales (5.1c, **D6**). Aucun export : c'est `_getLabel` qui le sert                                                                                     |
 | **Aides DOM**        | `_el(tag, className?)` · `_getLabel(key)`                                                                                                                                                                         |
 | **Sécurité**         | `escapeHtml(...)` · `validateUrl(...)` · `safeUrl(...)`                                                                                                                                                           |
@@ -112,6 +112,18 @@ registre.
 ⚠️ **Ce qui est délibérément NON exporté** : l'application de texte CSS, et la **classe**
 d'implémentation du registre — seule l'instance singleton l'est. Un consommateur ne peut donc pas
 construire un second registre, ce qui est le point : voir §Décisions.
+
+✅ **Un export neuf le 04/09/2026 : `setImagePreviewResolver`** — la contrepartie de la stratégie de
+téléversement. Un hôte qui répond à un envoi par un **jeton opaque**, parce que le fichier n'est
+encore que local, doit aussi savoir le peindre : lui seul peut lire son propre magasin. Sans ce
+second seam, le premier oblige l'hôte à rendre une valeur affichable — c'est-à-dire une data-URL,
+c'est-à-dire la photo entière dans l'attribut de l'entité.
+
+⚠️ **La signature de `ImageUploadStrategy` s'est élargie le même jour**, et les deux ajouts portent chacun un
+défaut réparé : `endpoint` devient `string | null` — quatre couches livrées déclarent un champ image
+**sans** `uploadEndpoint`, cas que la bibliothèque traitait par une URL d'objet écrite dans
+l'attribut, morte au rechargement du document — et `fieldPath` est passé pour que l'hôte puisse
+rattacher le fichier gardé au champ qui le porte.
 
 ### Les 23 composants
 
@@ -139,6 +151,40 @@ a déjà coûté un défaut :
    n'a donc **jamais** masqué le composant intégré.
 
 ---
+
+## Le formulaire DIT ce qu'il refuse (04/09/2026)
+
+`validate()` calculait la carte d'erreurs et **ne la peignait jamais** ; `getErrors()` n'avait
+**aucun appelant de production** ; et la modale répondait à un formulaire invalide par un `return`
+sec — pas de message, pas de focus déplacé, pas d'état occupé : le clic sur « Enregistrer » ne
+produisait **strictement rien**, ce qui se lit comme une interface qui ne répond pas.
+
+Presque tout était déjà là, et c'est ce qui rend le correctif court : un emplacement d'erreur caché
+par champ, son CSS, le message déjà résolu en langue, la carte `id → élément`. Seul le câblage
+manquait — le TSDoc de `_errorSlot()` promettait d'ailleurs, en toutes lettres, une révélation
+« par le composant **ou le pont** ».
+
+- `validate()` **peint**, et c'est ce qui donne enfin un rôle à `getErrors()`.
+- **Une seule voie de peinture, aucun changement par composant** : treize composants écrivent leur
+  emplacement à la main plutôt que d'appeler `_errorSlot()`, mais tous utilisent la même classe dans
+  le même conteneur. Câbler par composant, c'était dix-sept endroits et dix-sept occasions d'en
+  oublier un.
+- `aria-invalid` et un `aria-describedby` qui **résout** — un pointeur vers un identifiant inexistant
+  est pire que rien : le lecteur d'écran n'annonce rien et aucun outil ne dit pourquoi.
+- La modale amène l'utilisateur **au** message : un champ peint hors de l'écran reste un refus muet.
+
+⚠️ **La carte d'erreurs est une `Map`, pas un objet.** L'effacement à la saisie est déclenché par un
+attribut `data-` lu dans le DOM, donc `errors[id] = null` écrit par une clé que le code ne choisit
+pas — et `__proto__` y re-parente l'objet au lieu d'y ranger quoi que ce soit. La gate
+`check-dynamic-key-writes` a mordu exactement là. `getErrors()` rend toujours un enregistrement
+simple, construit par `Object.fromEntries`, qui définit des propriétés **propres**.
+
+⚠️ **`isDirty()` comparait au mauvais témoin.** Le pont est construit sur
+`{...initialValues, ...computeValues(schema)}` et la comparaison se faisait contre `initialValues`
+**seul** : tout schéma portant un champ `computed` se déclarait sale à l'instant de son ouverture,
+donc fermer un formulaire jamais touché demandait « supprimer la saisie ? ». Une confirmation qui se
+déclenche quand rien n'est en jeu est une confirmation qu'on apprend à écarter — elle cesse de
+protéger le cas pour lequel elle existe.
 
 ## Décisions de conception
 

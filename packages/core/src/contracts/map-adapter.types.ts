@@ -297,6 +297,69 @@ export interface GeoLeafControl {
     remove(): void;
 }
 
+// ─── Layer data diff ──────────────────────────────────────────────────────────
+
+/**
+ * One property assignment inside a {@link LayerFeatureDiff}.
+ *
+ * A list of key/value pairs rather than an object, because the order in which a
+ * feature's properties are applied is part of the diff's meaning: `removeProperties`
+ * runs first, then these, and a key appearing twice resolves to its last entry.
+ */
+export interface LayerFeaturePropertyEntry {
+    readonly key: string;
+    readonly value: unknown;
+}
+
+/** A change to ONE already-present feature, addressed by its stable id. */
+export interface LayerFeatureDiff {
+    /** Stable feature id — the same id space `setFeatureState` targets. */
+    readonly id: string | number;
+    /** Replacement geometry, when the feature moved or was reshaped. */
+    readonly newGeometry?: GeoJSON.Geometry;
+    /** Drops every property before the additions below are applied. */
+    readonly removeAllProperties?: boolean;
+    /** Property keys to drop. */
+    readonly removeProperties?: readonly string[];
+    /** Properties to set or overwrite. */
+    readonly addOrUpdateProperties?: readonly LayerFeaturePropertyEntry[];
+}
+
+/**
+ * A change to a layer's features, expressed as what MOVED rather than as the
+ * resulting collection — the input of {@link IMapAdapter.applyDataDiff}.
+ *
+ * **Applied in the order `removeAll` → `remove` → `add` → `update`.** The order is
+ * part of the contract, not an implementation detail: it is what lets a single diff
+ * express an id change (`remove` the old, `add` the new) and what makes an `update`
+ * on a feature added by the same diff meaningful.
+ *
+ * 🛑 **Every feature named here must carry a UNIQUE, RESOLVABLE id** — an engine
+ * addresses a feature by id and by nothing else. A diff naming a feature the layer
+ * cannot identify is not an error the caller will be told about; it is a feature
+ * silently skipped. Deciding eligibility BEFORE building a diff is therefore the
+ * caller's job, and `GeoJSONCore` is where that decision lives.
+ *
+ * ⚠️ **Declared here rather than imported from the engine, deliberately.** A
+ * type-only import of MapLibre's own diff type is permitted by the lint rules
+ * (`allowTypeImports`), so this is not a rule being obeyed — it is ADR-01 one level
+ * up. `IMapAdapter` is the seam that makes the engine replaceable; typing one of its
+ * parameters with an engine type would make the SHAPE of the seam depend on that
+ * engine's `.d.ts`, and would oblige any second adapter to satisfy MapLibre's type.
+ * The translation belongs in the adapter, which is the only place that knows an
+ * engine at all.
+ */
+export interface LayerDataDiff {
+    /** Removes every feature. Mutually exclusive in practice with the fields below. */
+    readonly removeAll?: boolean;
+    /** Ids of features to remove. */
+    readonly remove?: readonly (string | number)[];
+    /** Whole features to add. */
+    readonly add?: readonly GeoJSON.Feature[];
+    /** In-place changes to features already present. */
+    readonly update?: readonly LayerFeatureDiff[];
+}
+
 /**
  * Handle on a marker previously created through `IMapAdapter.createMarker()`,
  * returned by `IMapAdapter.getMarkerHandle()`.

@@ -31,6 +31,7 @@
  * `createFileInput`.
  */
 import { Log, downloadBlob } from "@geoleaf/host-runtime";
+import { resolveFeatureId } from "../feature-id.js";
 
 /** Identifiers of the entities created since the page loaded. */
 const _sessionIds = new Set<string>();
@@ -130,10 +131,11 @@ export function collectSessionFeatures(): Record<string, unknown>[] {
             continue;
         }
         for (const raw of features) {
-            const f = raw as { id?: unknown; properties?: Record<string, unknown> | null };
-            const rawId = f.id ?? f.properties?.id;
-            if (rawId === undefined || rawId === null) continue;
-            if (!_sessionIds.has(String(rawId))) continue;
+            const f = raw as { id?: string | number; properties?: Record<string, unknown> | null };
+            // Same reading order as the picker and the duplicate guard — `../feature-id.js`.
+            const rawId = resolveFeatureId(f);
+            if (rawId === "") continue;
+            if (!_sessionIds.has(rawId)) continue;
             out.push(_strip(f as Parameters<typeof _strip>[0]));
         }
     }

@@ -330,6 +330,40 @@ describe("style-validator — label configuration branches", () => {
         expect(r.warnings.some((w) => w.field === "label.field")).toBe(true);
     });
 
+    it("rejects a label.offset.placement outside the accepted set", () => {
+        const r = validateStyle({
+            id: "s1",
+            style: {},
+            scaleConfig: { minScale: 0, maxScale: 100 },
+            label: { enabled: true, field: "name", offset: { placement: "sideways" } },
+        });
+        expect(r.errors.some((e) => e.field === "label.offset.placement")).toBe(true);
+    });
+
+    it("accepts every documented label.offset.placement", () => {
+        // The list is spelled out in three places — schema, validator, renderer table. This
+        // asserts the validator's copy against the same nine values the other two carry.
+        for (const placement of [
+            "center",
+            "top",
+            "bottom",
+            "left",
+            "right",
+            "top-left",
+            "top-right",
+            "bottom-left",
+            "bottom-right",
+        ]) {
+            const r = validateStyle({
+                id: "s1",
+                style: {},
+                scaleConfig: { minScale: 0, maxScale: 100 },
+                label: { enabled: true, field: "name", offset: { placement, distancePx: 12 } },
+            });
+            expect(r.errors.some((e) => e.field === "label.offset.placement")).toBe(false);
+        }
+    });
+
     it("validates font config in label — non-object font", () => {
         const r = validateStyle({
             id: "s1",

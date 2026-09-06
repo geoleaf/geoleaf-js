@@ -85,18 +85,55 @@ export interface StorageWriteFacade {
      * see `permission-gate.ts`, which REFUSES when it cannot query.
      */
     mayEdit?(layerId: string, kind: "create" | "update" | "delete"): boolean;
+    /**
+     * Can this device HOLD a write to that layer and send it later?
+     *
+     * 🛑 **THE PREDICATE THAT MAKES ONE WRITE PATH SAFE.** Routing every edit to the outbox
+     * "because the engine is loaded" condemns any layer the core's drain cannot push — no
+     * `write` block on the layer means an immediate quarantine on every capture. Asking
+     * first is what turns "a single write path" from a slogan into a property.
+     *
+     * ⚠️ Optional for the same reason as {@link mayEdit}: this plugin redeclares the global
+     * surface it expects. Its ABSENCE means "no queue here" — an older core, or the offline
+     * capability simply not enabled — and the caller must then use its own online path.
+     */
+    canQueueWrites?(layerId: string): boolean;
+    /**
+     * Asks the core to drain the outbox now — after a write, in practice.
+     *
+     * ⚠️ Underscored because it is a LIFECYCLE handle, not an integrator's API: the core
+     * decides when to drain, and this only says "something just landed". Fire-and-forget by
+     * contract — awaiting it would tie a form's closing to the network.
+     */
+    _requestOutboxDrain?(cause: string): void;
     applyEdit?(input: {
         layerId: string;
         kind: "create" | "update" | "delete";
         localId?: string;
         feature?: unknown;
-    }): Promise<{ entryId: string | null; refused: string | null }>;
+        /**
+         * ⚠️ `localId` IS IN THE REPORT, and nothing read it until 04/09/2026. The core mints it for
+         * a create, and it is the only handle a later edit has on an entity that has no
+         * server identity yet — which is exactly what a photo's reconciliation needs.
+         */
+    }): Promise<{ entryId: string | null; localId?: string; refused: string | null }>;
     pushOutbox?(): Promise<{
         attempted: number;
         pushed: number;
         failed: number;
         conflicts: number;
         refused: string | null;
+        /**
+         * Entries the drain walked past — their retry delay had not elapsed.
+         *
+         * ⚠️ Optional because this seam is STRUCTURAL (INV-NS forbids importing the
+         * core): an older core simply does not carry it, and reading `undefined` as
+         * "none" is right. It is declared because the plugin now READS it — until then
+         * it reported `skipped: 0` on a drain that had skipped.
+         */
+        deferred?: number;
+        /** What stopped the drain before the end of the queue, or `null`. */
+        haltedBy?: string | null;
     }>;
 }
 

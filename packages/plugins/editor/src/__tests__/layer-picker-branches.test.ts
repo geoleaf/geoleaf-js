@@ -19,6 +19,25 @@ vi.mock("terra-draw", () => ({
 }));
 vi.mock("terra-draw-maplibre-gl-adapter", () => ({ TerraDrawMapLibreGLAdapter: vi.fn() }));
 
+// The host surface the picker now reads to recover the SOURCE geometry. Declared through
+// `vi.hoisted` because the factory below closes over it and `vi.mock` is hoisted above the
+// imports. ⚠️ The double REPRODUCES the real constraint: `Layers.getFeatureById` THROWS for a
+// layer declared in the profile but never loaded — what the core does, and the reason
+// `poi-snap.ts` guards its own read. A more permissive double would let through exactly what
+// a browser sees on the first click.
+const _host = vi.hoisted(
+    () =>
+        ({}) as {
+            Layers?: { getFeatureById?(layerId: string, id: string | number): unknown };
+        }
+);
+
+vi.mock("@geoleaf/host-runtime", () => ({
+    getGeoLeaf: () => _host,
+    coreConfigGet: () => undefined,
+    Log: { debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
 // Control of the editable layers — the picker reads them via getEditableLayers().
 vi.mock("../config.js", async (importActual) => ({
     ...(await importActual()),
@@ -70,7 +89,10 @@ function feat(over: Record<string, unknown> = {}) {
     };
 }
 
-beforeEach(() => clearSelection());
+beforeEach(() => {
+    clearSelection();
+    delete _host.Layers;
+});
 afterEach(() => destroyLayerPicker());
 
 describe("_handleClick — les gardes", () => {
@@ -145,12 +167,50 @@ describe("_handleClick — le chemin nominal", () => {
         ).toEqual([2.352, 48.857]);
     });
 
-    it("une feature sans id donne un featureId vide (`hit.id != null` faux)", () => {
+    // 🛑 THIS TEST USED TO LOCK THE DEFECT. It read "une feature sans id donne un featureId
+    // vide (`hit.id != null` faux)" and passed a fixture carrying NEITHER `id` NOR
+    // `properties.id` — so it stayed green whichever of the two the picker read, and it was
+    // the only coverage of that branch. Requalified: what must hold is that a feature with no
+    // identity AT ALL yields "", and it now has the counter-example below to mean something.
+    it("une feature sans AUCUNE identité donne un featureId vide", () => {
         const a = adapter();
         const map = mapCapture([feat({ id: undefined })]);
         initLayerPicker(a, map as never);
         map.click();
         expect(getSelection()?.featureId).toBe("");
+    });
+
+    // The whole point of the fix: the core sets `promoteId` only on POINT sources
+    // (`maplibre-layer-builders.ts`), so on a line or polygon layer MapLibre hands back no
+    // top-level `id` at all — and every downstream gate is guarded on `featureId`.
+    it("résout l'identifiant depuis `properties.id` quand la feature n'a pas d'`id` de premier niveau", () => {
+        const a = adapter();
+        const onHostFeatureSelected = vi.fn();
+        const map = mapCapture([
+            feat({
+                id: undefined,
+                geometry: {
+                    type: "LineString",
+                    coordinates: [
+                        [1, 2],
+                        [3, 4],
+                    ],
+                },
+                properties: { id: "cable-7", name: "x" },
+            }),
+        ]);
+        initLayerPicker(a, map as never, { onHostFeatureSelected });
+        map.click();
+        expect(getSelection()?.featureId).toBe("cable-7");
+        expect(onHostFeatureSelected).toHaveBeenCalledWith("roads", "cable-7");
+    });
+
+    it("préfère l'`id` de premier niveau quand les deux sont présents", () => {
+        const a = adapter();
+        const map = mapCapture([feat({ id: "top", properties: { id: "prop" } })]);
+        initLayerPicker(a, map as never);
+        map.click();
+        expect(getSelection()?.featureId).toBe("top");
     });
 
     it("résout aussi une couche éditable à id BRUT (sans préfixe `gl-`)", () => {
@@ -179,6 +239,105 @@ describe("_handleClick — le chemin nominal", () => {
         const coords = (a.addFeature as ReturnType<typeof vi.fn>).mock.calls[0][0].geometry
             .coordinates;
         expect(coords[0][0]).toBe(1.123456789); // arrondi à 9 décimales
+    });
+});
+
+describe("_handleClick — la géométrie chargée dans Terra Draw", () => {
+    /** A tile-clipped line: what `queryRenderedFeatures` hands back. */
+    const TILE = {
+        type: "LineString",
+        coordinates: [
+            [3, 3],
+            [4, 4],
+        ],
+    };
+    /** The same line in the source: what the profile actually carries. */
+    const SOURCE = {
+        type: "LineString",
+        coordinates: [
+            [1, 1],
+            [2, 2],
+            [3, 3],
+            [4, 4],
+            [5, 5],
+        ],
+    };
+
+    function lineHit() {
+        return feat({ id: undefined, geometry: TILE, properties: { id: "cable-7" } });
+    }
+    function geomOf(a: TerraDrawAdapterInstance) {
+        return (a.addFeature as ReturnType<typeof vi.fn>).mock.calls[0][0].geometry;
+    }
+
+    // `queryRenderedFeatures` returns the geometry MapLibre RASTERISED, clipped to about
+    // 1.5 tile. Editing that copy and saving it truncates the feature in the store — silently,
+    // because the shape that comes back looks perfectly valid.
+    it("charge la géométrie SOURCE, pas celle de la tuile", () => {
+        const a = adapter();
+        _host.Layers = { getFeatureById: vi.fn(() => ({ geometry: SOURCE })) };
+        const map = mapCapture([lineHit()]);
+        initLayerPicker(a, map as never);
+        map.click();
+
+        expect(_host.Layers.getFeatureById).toHaveBeenCalledWith("roads", "cable-7");
+        expect(geomOf(a).coordinates).toEqual(SOURCE.coordinates);
+        expect(getSelection()?.originalGeom).toMatchObject({ coordinates: SOURCE.coordinates });
+    });
+
+    // A vector-tile layer keeps `features: []` in the core, so the source is unreachable by
+    // construction. The tile copy is then the only thing there is — the repli must stay.
+    it("retombe sur la géométrie de tuile quand la source ne rend rien (couche VT, non chargée)", () => {
+        const a = adapter();
+        _host.Layers = { getFeatureById: vi.fn(() => null) };
+        const map = mapCapture([lineHit()]);
+        initLayerPicker(a, map as never);
+        map.click();
+        expect(geomOf(a).coordinates).toEqual(TILE.coordinates);
+    });
+
+    it("retombe sur la géométrie de tuile quand la lecture JETTE (couche déclarée jamais chargée)", () => {
+        const a = adapter();
+        _host.Layers = {
+            getFeatureById: vi.fn(() => {
+                throw new Error("layer not loaded");
+            }),
+        };
+        const map = mapCapture([lineHit()]);
+        initLayerPicker(a, map as never);
+        map.click();
+        expect(geomOf(a).coordinates).toEqual(TILE.coordinates);
+    });
+
+    // Without an identity there is nothing to look the source up BY — which is why the
+    // geometry fix depends on the identifier fix and not the other way round.
+    it("ne consulte même pas la source quand aucune identité n'est résolue", () => {
+        const a = adapter();
+        _host.Layers = { getFeatureById: vi.fn(() => ({ geometry: SOURCE })) };
+        const map = mapCapture([feat({ id: undefined, geometry: TILE })]);
+        initLayerPicker(a, map as never);
+        map.click();
+        expect(_host.Layers.getFeatureById).not.toHaveBeenCalled();
+        expect(geomOf(a).coordinates).toEqual(TILE.coordinates);
+    });
+
+    it("arrondit AUSSI la géométrie source — Terra Draw refuse une précision excessive", () => {
+        const a = adapter();
+        _host.Layers = {
+            getFeatureById: vi.fn(() => ({
+                geometry: {
+                    type: "LineString",
+                    coordinates: [
+                        [1.1234567891234, 2],
+                        [3, 4],
+                    ],
+                },
+            })),
+        };
+        const map = mapCapture([lineHit()]);
+        initLayerPicker(a, map as never);
+        map.click();
+        expect(geomOf(a).coordinates[0][0]).toBe(1.123456789);
     });
 });
 

@@ -5,11 +5,11 @@
  * Adaptation: import paths point at the plugin's flat `src/` layout; the GeoJSON /
  * visibility seams are driven on the runtime `_g.GeoLeaf.*` namespace (panel.ts reads
  * `_g.GeoLeaf.GeoJSON.getAllLayers/getLayerById` and
- * `_g.GeoLeaf._LayerVisibilityManager.getVisibilityState`). The source built a `Map`
+ * `_g.GeoLeaf.Layers.isVisible`). The source built a `Map`
  * of layers and stubbed `GeoJSONShared.getLayers`; here the same `Map` data is exposed
  * through `getAllLayers` (entries → array) + `getLayerById` (map lookup). The
  * `LayerVisibilityManager` and `Log` references taken inside test bodies map to the
- * installed `_g.GeoLeaf._LayerVisibilityManager` handle and the mocked `Log` import.
+ * installed `_g.GeoLeaf.Layers` handle and the mocked `Log` import.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -62,17 +62,17 @@ const getLayers = vi.fn(() => new Map<string, any>());
 
 /** (Re)installs the GeoJSON + visibility seams on `_g.GeoLeaf` from `getLayers()`. */
 function installSeams() {
-    const visibility = { getVisibilityState: vi.fn(() => ({ current: true })) };
+    const visibility = { isVisible: vi.fn(() => true) };
     _g.GeoLeaf.GeoJSON = {
         getAllLayers: () =>
             Array.from(getLayers().entries(), ([id, data]) => ({ id, ...(data as object) })),
         getLayerById: (id: string) => getLayers().get(id) ?? null,
     } as any;
-    _g.GeoLeaf._LayerVisibilityManager = visibility as any;
+    _g.GeoLeaf.Layers = visibility as any;
     return visibility;
 }
 
-let visibilitySeam = { getVisibilityState: vi.fn(() => ({ current: true })) };
+let visibilitySeam = { isVisible: vi.fn(() => true) };
 
 describe("modules/table/panel (Phase 4.11)", () => {
     beforeEach(() => {
@@ -259,7 +259,7 @@ describe("modules/table/panel (Phase 4.11)", () => {
 
     it("populateLayerSelector skips layer when visibility false", () => {
         const LayerVisibilityManager = visibilitySeam;
-        LayerVisibilityManager.getVisibilityState.mockReturnValue({ current: false });
+        LayerVisibilityManager.isVisible.mockReturnValue(false);
         const map = new Map();
         map.set("ly1", {
             config: { table: { enabled: true } },
@@ -352,7 +352,7 @@ describe("modules/table/panel — T22 branch coverage", () => {
         _g.GeoLeaf = {};
         visibilitySeam = installSeams();
         const LayerVisibilityManager = visibilitySeam;
-        LayerVisibilityManager.getVisibilityState.mockReturnValue({ current: true });
+        LayerVisibilityManager.isVisible.mockReturnValue(true);
     });
 
     it("refreshLayerSelector returns early when no select in DOM (branch 45.0)", () => {

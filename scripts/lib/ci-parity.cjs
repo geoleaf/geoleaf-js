@@ -311,7 +311,16 @@ function parseStep(lines, start, end, itemIndent, file, err) {
         // stay out of the `push` path.
         else if (key === "if") {
             step.hasIf = true;
-            step.ifCond = stripTrailingComment(rest).trim();
+            // 🛑 `readScalar`, and it is a FIX measured on 04/09/2026. This line read
+            // `stripTrailingComment(rest)`, which on a folded condition
+            // (`if: >-` then the expression on the next lines) captured the literal
+            // `>-` and nothing else. PARITY-11 then judged the string ">-", concluded
+            // "no workflow_dispatch" and turned red — accidentally right, for a reason
+            // that had nothing to do with the step. Symmetrically, a folded condition
+            // that DID reopen the push path would have been judged on ">-" too, i.e.
+            // on nothing. `run:` already went through `readScalar`; `if:` did not, and
+            // a condition is exactly the place where reading half the value is worst.
+            step.ifCond = readScalar(lines, i, rest, keyIndent);
         } else if (key === "env") step.hasEnv = true;
         // `with:`, `id:`, `continue-on-error:`… — without effect on the perimeter.
     }
@@ -609,6 +618,107 @@ const ACTION_EXEMPTIONS = {
 };
 
 /**
+ * Is this step's `if:` enough to keep it OFF the atelier's `push` path?
+ *
+ * 🛑 THIS REPLACED A SUBSTRING TEST, and the substring test was seen passing on a
+ * condition that reopened the hole. It was `/github\.event_name\s*==\s*['"]workflow_dispatch['"]/`
+ * — true of `github.event_name == 'workflow_dispatch'`, and just as true of
+ * `github.event_name == 'workflow_dispatch' || github.event_name == 'push'`. Measured on
+ * 04/09/2026: that second condition, which literally puts the E2E suite back on every push,
+ * came out GREEN. A guard that cannot distinguish its own subject from its own negation is
+ * the "gate never seen red" the repo forbids, one layer up from where it was looking.
+ *
+ * ## Why a CLOSED VOCABULARY rather than an expression evaluator
+ *
+ * GitHub's expression language has functions, contexts and operators; parsing it properly
+ * would be a second implementation of someone else's semantics, and every gap in it would
+ * be a silent pass. So the rule is inverted: the condition is decomposed into fragments
+ * this module RECOGNISES, and **anything left over is a red**. A new form does not slip
+ * through — it stops the run and asks for a decision. That is the wanted default in front
+ * of a gate whose failure mode is a quota bill or a false green.
+ *
+ * The vocabulary, and nothing else:
+ *   • `github.event_name == '<evt>'` with `<evt>` in {`workflow_dispatch`, `schedule`};
+ *   • `github.repository == '<slug>'`, the repository guard;
+ *   • `failure()`, `success()` — the artefact-upload steps need them;
+ *   • `&&`, `||`, parentheses, whitespace.
+ *
+ * Two extra rules, each closing a way of being formally in-vocabulary and materially wrong:
+ *   • a `!=` on `event_name` is refused — a negative admits every OTHER event, `push`
+ *     included, which is the exact opposite of what is being asserted;
+ *   • `schedule` without a `github.repository ==` guard is refused: a cron with no
+ *     repository guard runs on the atelier too, and the whole point of the 04/09/2026
+ *     change is that it must not.
+ *
+ * ⚠️ `always()` is NOT in the vocabulary, deliberately: it is the historical mutation this
+ * gate was laid against (01/08/2026), and it stays red by construction rather than by a
+ * special case.
+ *
+ * @param {string|undefined} cond The step's `if:`, as read by the parser (folded scalars included).
+ * @returns {{ok: boolean, why: string}} `why` is empty when `ok`.
+ */
+function offAtelierPushPath(cond) {
+    const raw = (cond || "").trim();
+    if (!raw) return { ok: false, why: "l'étape ne porte aucun `if:`" };
+
+    const events = [];
+    let hasRepoGuard = false;
+    let rest = raw;
+
+    rest = rest.replace(/github\.event_name\s*(===?|!==?)\s*['"]([^'"]+)['"]/g, (_m, op, evt) => {
+        events.push({ op, evt });
+        return " \u2022 ";
+    });
+    rest = rest.replace(/github\.repository\s*==\s*['"][^'"]+['"]/g, () => {
+        hasRepoGuard = true;
+        return " \u2022 ";
+    });
+    rest = rest.replace(/\b(?:failure|success)\(\)/g, " \u2022 ");
+
+    const leftover = rest.replace(/\u2022|&&|\|\||\(|\)|\s+/g, "");
+    if (leftover.length > 0) {
+        return {
+            ok: false,
+            why:
+                `la condition porte « ${leftover} », hors du vocabulaire fermé que cette ` +
+                `gate sait juger (event_name ==, repository ==, failure(), success(), && || ()). ` +
+                `Un fragment non reconnu n'est PAS toléré : il pourrait rouvrir le chemin push`,
+        };
+    }
+    if (events.length === 0) {
+        return { ok: false, why: "la condition ne teste aucun `github.event_name`" };
+    }
+    const negatif = events.find((e) => e.op.startsWith("!"));
+    if (negatif) {
+        return {
+            ok: false,
+            why:
+                `elle teste \`event_name ${negatif.op} '${negatif.evt}'\` — un négatif admet ` +
+                `TOUS les autres événements, \`push\` compris`,
+        };
+    }
+    const interdit = events.find((e) => !ALLOWED_E2E_EVENTS.has(e.evt));
+    if (interdit) {
+        return {
+            ok: false,
+            why: `elle admet l'événement \`${interdit.evt}\`, qui n'est pas un déclencheur manuel ou planifié`,
+        };
+    }
+    if (events.some((e) => e.evt === "schedule") && !hasRepoGuard) {
+        return {
+            ok: false,
+            why:
+                "elle admet `schedule` SANS garde `github.repository ==` — un cron non gardé " +
+                "tourne aussi sur l'atelier, dont le quota Actions est rare",
+        };
+    }
+    return { ok: true, why: "" };
+}
+
+/** The only events under which a `--e2e` leaf may run remotely. See {@link offAtelierPushPath}. */
+const ALLOWED_E2E_EVENTS = new Set(["workflow_dispatch", "schedule"]);
+
+/**
  * `ci.yml` steps `ci:local` only covers under `--e2e`.
  *
  * The set is DERIVED (membership of `E2E_STEPS`); this table is its
@@ -619,9 +729,17 @@ const ACTION_EXEMPTIONS = {
  * While `ci.yml` launched them at every push and `ci:local` reserved them
  * for `--e2e`, this table documented the only structural hole in the
  * "local green ⟹ push green" promise: the flag is local, GitHub does not
- * know it, and no discipline could fill that. The three steps now carry
- * `if: github.event_name == 'workflow_dispatch'` on the workflow side —
- * both sides are thus manual, and the gap is closed BY CONSTRUCTION.
+ * know it, and no discipline could fill that. The three steps carry an
+ * `if:` that keeps them off the atelier's push path — both sides are thus
+ * out of the automatic path, and the gap is closed BY CONSTRUCTION.
+ *
+ * ⚠️ **Since 04/09/2026 that `if:` is no longer a bare `workflow_dispatch`**,
+ * and this paragraph said it was: the three steps also run on the nightly
+ * `schedule`, GUARDED BY `github.repository` so the cron only ever fires on
+ * the public repo, where Actions are free. The atelier's push path is
+ * untouched — which is the property, and it is now verified by
+ * {@link offAtelierPushPath} rather than by a substring test that could not
+ * tell that property from its negation.
  *
  * The price is named in `ci.yml` beside the step: the runner was the only
  * place exercising the suite on a fresh clone AND on 2-4 cores.
@@ -979,11 +1097,95 @@ function classify() {
     }
     corpus.ciLeaves = ciLeaves.size;
 
-    const { STEPS, E2E_STEPS } = require("../ci-local.cjs");
+    // ⚠️ `STEPS` is the FULL declared table, not what `ci:local` runs. Since the
+    // 05/09/2026 partition it is the union of `PRODUCT_STEPS` and `WORKSHOP_STEPS`,
+    // and reading it here is what keeps `ci.yml ⊆ ci:local ∪ atelier:check` true BY
+    // CONSTRUCTION. Swapping it for `PRODUCT_STEPS` would orphan five `ci.yml` leaves
+    // at once and invite a table of exemptions to silence them — the repair that
+    // would have made the partition cost more than it saves.
+    const { STEPS, PRODUCT_STEPS, WORKSHOP_STEPS, E2E_STEPS } = require("../ci-local.cjs");
     corpus.localSteps = STEPS.length;
     corpus.e2eSteps = E2E_STEPS.length;
     const localLeaves = leavesOfSteps(STEPS);
     const e2eLeaves = leavesOfSteps(E2E_STEPS);
+
+    // ── PARITY-14 — the workshop flag still describes the scripts ────────────────
+    //
+    // The partition rests on a flag typed by hand on a step. The flag can stop being
+    // true in two ways, and only one of them is visible:
+    //
+    //   • a WORKSHOP gate left in the product set — `ci:local` keeps paying for a gate
+    //     that can only skip on the public clone. Visible as cost, harmless otherwise.
+    //   • a PRODUCT gate flagged `workshop` — it LEAVES the push path, and nothing
+    //     says so. A green `ci:local` then covers less than the day before, and the
+    //     count 106/106 reads exactly like 107/107 did.
+    //
+    // 🛑 The second is why this exists. The criterion is re-DERIVED, never restated: a
+    // gate is a workshop gate iff the script it invokes conditions itself on
+    // `docsPaths.internalRootExists()`. That predicate is read from the script's SOURCE,
+    // so the flag is checked against the thing it claims about instead of against a
+    // second list — which is the shape this repo has measured diverging seven times.
+    //
+    // ⚠️ A step whose leaves reach NO `scripts/` file — `npm test` fanning out through
+    // turbo, `npm run lint` — counts as NOT conditioned rather than being skipped, and
+    // that is deliberate. The criterion is "the invoked script conditions itself on the
+    // workshop root"; no script means no condition, so such a step can never justify
+    // `workshop: true`. Skipping them left the dangerous direction wide open: 57 of the
+    // 106 product steps name no `scripts/` file, so more than half of them could have been
+    // flagged `workshop` and walked off the push path in silence. Measured by mutating
+    // `npm run lint`, which is the only way it could have been found.
+    for (const { set, expected } of [
+        { set: PRODUCT_STEPS, expected: false },
+        { set: WORKSHOP_STEPS, expected: true },
+    ]) {
+        for (const step of set) {
+            // ⚠️ The LEAF, never `step.run`: `--source` lives in the npm script body,
+            // so `npm run check:specs-paths` carries no argument at all. Reading the
+            // step's argv classified the four PUBLIC corpora as workshop gates and
+            // would have taken them off the push path — the dangerous direction, found
+            // by this very check on the run that laid it.
+            const leaves = [...leavesOfSteps([step])].filter((leaf) =>
+                /scripts\/[\w.-]+\.(?:cjs|mjs)/.test(leaf)
+            );
+            const conditioned = leaves.some((leaf) => {
+                const rel = leaf.match(/scripts\/[\w.-]+\.(?:cjs|mjs)/)[0];
+                try {
+                    const src = fs.readFileSync(path.join(ROOT, rel), "utf8");
+                    if (!src.includes("internalRootExists()")) return false;
+                    // 🛑 One script serves SIX corpora with TWO regimes, and a
+                    // file-level predicate cannot tell them apart:
+                    // `audit-report-freshness.cjs` guards its skip with
+                    // `NEEDS_INTERNAL_ROOT`, an exemption list of PUBLIC sources.
+                    // Asking only "does the file mention the predicate" classified
+                    // CORE-DOCS-PATHS and COMMENT-PATHS as workshop gates — they are
+                    // not, and flagging them would have taken two PUBLIC corpora off
+                    // the push path. The exemption list is therefore read FROM THAT
+                    // SCRIPT rather than restated here: one source of truth, parsed
+                    // where it lives. A shape change makes the match fail, the source
+                    // counts as conditioned, and the gate reddens — the safe direction.
+                    const exempt = src.match(/NEEDS_INTERNAL_ROOT\s*=\s*!\[([^\]]*)\]/);
+                    if (!exempt) return true;
+                    const publicSources = [...exempt[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+                    const declared = (leaf.match(/--source[= ]([\w,-]+)/) || [])[1];
+                    if (!declared) return true;
+                    return !declared.split(",").every((one) => publicSources.includes(one.trim()));
+                } catch {
+                    return false;
+                }
+            });
+            if (conditioned === expected) continue;
+            problems.push({
+                code: "PARITY-14",
+                message: expected
+                    ? `« ${step.name} » porte \`workshop: true\` mais son script ne se conditionne ` +
+                      `pas à la racine d'atelier.\n      Il TOURNERAIT sur le clone public — et il ` +
+                      `vient de quitter le chemin de push sans que rien ne le dise.`
+                    : `« ${step.name} » se conditionne à la racine d'atelier mais ne porte pas ` +
+                      `\`workshop: true\`.\n      \`ci:local\` le paie à chaque run pour une gate qui ` +
+                      `ne peut mordre que dans l'atelier — poser le drapeau, ou retirer la condition.`,
+            });
+        }
+    }
 
     const ctx = { ciLeaves: new Set(ciLeaves.keys()), localLeaves, e2eLeaves, firstLeaf };
 
@@ -1191,7 +1393,7 @@ function classify() {
         }
     }
 
-    // PARITY-11 — the steps deferred to `--e2e` must stay OUT of the `push` path.
+    // PARITY-11 — the steps deferred to `--e2e` must stay OUT of the atelier's `push` path.
     //
     // ⚠️ The witness of the "ci:local green ⟹ push green" promise, and
     // without it that promise would be a sentence. While `ci.yml` launched
@@ -1202,21 +1404,30 @@ function classify() {
     // DEFERRED_TO_E2E table would keep announcing "3 under --e2e" as if
     // nothing happened. An excuse whose condition is not verified is an
     // excuse that rots.
-    const DISPATCH_RE = /github\.event_name\s*==\s*['"]workflow_dispatch['"]/;
+    //
+    // 🛑 And the verification ITSELF rotted, which is why it is no longer a
+    // regex here. The substring test that lived on this line came out GREEN
+    // on `… || github.event_name == 'push'` — a condition that puts the
+    // suite back on every push. Measured 04/09/2026, on the very change
+    // that needed the rule to be right. See {@link offAtelierPushPath}.
     for (const leaf of Object.keys(DEFERRED_TO_E2E)) {
         for (const s of ciLeafSteps.get(leaf) || []) {
-            if (DISPATCH_RE.test(s.ifCond || "")) continue;
+            const verdict = offAtelierPushPath(s.ifCond);
+            if (verdict.ok) continue;
             problems.push({
                 code: "PARITY-11",
                 message:
                     `« ${leaf} » est déclarée dans DEFERRED_TO_E2E — donc NON lancée par ` +
                     `\`ci:local\` sans \`--e2e\` — mais son étape « ${s.name || "(anonyme)"} » ` +
-                    `de ci.yml tourne sur le chemin \`push\`` +
-                    (s.ifCond ? ` (if: ${s.ifCond})` : " (aucun `if:`)") +
+                    `de ci.yml n'est pas tenue HORS du chemin \`push\` de l'atelier : ` +
+                    `${verdict.why}` +
+                    (s.ifCond ? `\n      if: ${s.ifCond}` : "\n      (aucun `if:`)") +
                     `.\n      C'est le trou exact que le 01/08/2026 a fermé : un push exécute ` +
-                    `alors une gate qu'aucun vert local n'a éprouvée.\n      Deux issues : ` +
-                    `poser \`if: github.event_name == 'workflow_dispatch'\` sur l'étape, ou ` +
-                    `sortir la feuille de E2E_STEPS pour que \`ci:local\` la lance par défaut.`,
+                    `alors une gate qu'aucun vert local n'a éprouvée.\n      Trois issues : ` +
+                    `poser \`if: github.event_name == 'workflow_dispatch'\` sur l'étape ; ` +
+                    `ajouter un déclencheur du vocabulaire fermé ci-dessus (et, pour ` +
+                    `\`schedule\`, sa garde \`github.repository ==\`) ; ou sortir la feuille de ` +
+                    `E2E_STEPS pour que \`ci:local\` la lance par défaut.`,
             });
         }
     }

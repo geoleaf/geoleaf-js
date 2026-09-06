@@ -77,6 +77,11 @@
                 "delete": {
                     "type": "boolean",
                     "description": "Right to delete a feature — what `enableEditionFull` actually gated."
+                },
+                "accuracyField": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Property the capture's GPS accuracy (metres) is written into, when the position came from the device rather than a map tap. ⚠️ DECLARATIVE ON PURPOSE, and inert until set: `buildCollectionBody` only copies the keys `write.properties` whitelists, so a property no profile declared is dropped on the wire — an undeclared magic key would look like it worked and reach nothing. Naming the field here is what makes the intent, the whitelist and the server column line up. ⚠️ Nothing is written for a point placed by tapping the map: attributing a GPS precision to a finger-placed position would be a false measurement, which is worse than a missing one. The value must also appear in `write.properties` for it to reach the server."
                 }
             }
         },

@@ -142,6 +142,18 @@ const lang_es: LangDict = {
     // \u2500\u2500 UI texts / Offline \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
     "ui.offline.badge": "\u26a0\ufe0f Sin conexi\u00f3n",
     "aria.offline.badge_title": "Modo sin conexi\u00f3n activo",
+    // ── UI texts / Sync banner (R7) ───────────────────────────────────────────
+    "ui.sync.online": "En línea",
+    "ui.sync.offline": "Sin conexión",
+    "ui.sync.pending_one": "1 pendiente",
+    "ui.sync.pending_many": "{0} pendientes",
+    "ui.sync.all_sent": "Todo enviado",
+    "ui.sync.quarantined": "{0} bloqueada(s)",
+    "ui.sync.last_never": "nunca sincronizado",
+    "ui.sync.last_at": "sincronizado {0}",
+    "ui.sync.action": "Sincronizar",
+    "ui.sync.dismiss": "Ocultar esta barra",
+    "aria.sync.banner": "Estado de sincronización",
     "ui.theme.select_placeholder": "Seleccionar un tema...",
     "ui.themes.nav_prev_char": "\u276e",
     "ui.themes.nav_next_char": "\u276f",

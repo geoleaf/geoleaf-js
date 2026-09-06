@@ -4,7 +4,7 @@ title: routing — le calcul d'itinéraire, utilisable sans le guidage
 plugin_id: routing
 package: "@geoleaf-plugins/routing"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: ad74ec1f8
+verifie_contre: 96519fa3e
 date: 27 août 2026
 ---
 
@@ -267,6 +267,7 @@ qu'on modifie les étapes.
 | Identifiant               | `routing` — aussi `gl-rp-tab-routing` / `gl-rp-pane-routing`       |
 | Élément adopté            | `.gl-routing-panel`, monté sur `document.body`, masqué par son CSS |
 | Construction à la demande | `onOpen` du pane → `ensurePanel()`                                 |
+| Icône de l'onglet         | `icon: _ICON` — le même glyphe que le `mobileIcon`                 |
 | Ouverture                 | `GeoLeaf.UI.openPane("routing")`, jamais `openPanel`               |
 
 🛑 **Il était bâti sur `createModalShell`, et il était INVISIBLE.** Ce helper écrit
@@ -283,6 +284,14 @@ sur un POI n'a pas à savoir quelle surface la largeur courante implique.
 ⚠️ **Aucun `desktopTabButton`.** L'enregistrement du pane fournit déjà l'onglet ; en déclarer un
 en plus produisait **deux contrôles côte à côte pour un seul panneau**. Le `mobileIcon` demeure,
 et le cœur lui pose `data-gl-desktop-slot` pour le masquer là où l'onglet le remplace.
+
+⚠️ **L'`icon` du pane est OPTIONNELLE côté cœur, et obligatoire ici depuis le 06/09.** La bande
+desktop rend ses onglets en icônes — six libellés en texte vertical débordaient un viewport
+d'ordinateur portable —, et un pane qui n'en déclare pas retombe sur un onglet texte. Ce plugin en
+fournit une pour ne pas être le seul mot au milieu de six glyphes. ⚠️ `src/ui-seam.ts`
+**re-déclare** la forme du pane au lieu d'importer `PanelPane` : un champ que le cœur accepte est
+refusé ici tant qu'il n'est pas écrit dans les DEUX déclarations locales — omission qui a rendu
+`ci:local` rouge au typecheck.
 
 🛑 **Fermer n'est pas détruire.** `close()` demande à l'hôte de masquer ; l'itinéraire saisi
 survit. `destroy()` détache. Perdre son point de départ en repliant un onglet serait la même faute

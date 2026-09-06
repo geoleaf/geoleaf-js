@@ -126,6 +126,42 @@ export function discardLastOperation(): void {
     if (_undo.pop()) _notify();
 }
 
+/**
+ * Removes every operation on the given drawing feature — it has been SUBMITTED.
+ *
+ * 🛑 WHY THE STACK GIVES UP RATHER THAN ROLLS BACK. This stack is purely graphical:
+ * {@link undo} applies inverses through the drawing adapter and this module imports nothing
+ * from persistence. So undoing a deletion already sent — or already sitting in the outbox —
+ * put the feature back ON SCREEN and nowhere else, while the tooltip said "Annuler :
+ * suppression" in as many words. The button promised what the code could not do.
+ *
+ * ⚠️ Undoing a write that has left is a DIFFERENT feature: it needs a compensating write, an
+ * outbox entry to withdraw and a conflict story. What is fixed here is the lie — a submitted
+ * operation stops being offered, so the button greys out and the tooltip stops naming it.
+ *
+ * ⚠️ Not to be confused with {@link discardLastOperation}, which drops an entry because
+ * NOTHING was submitted (a cancelled creation form). The two must stay apart: collapsing
+ * them would make a cancel and a save indistinguishable to the stack.
+ *
+ * @param terradrawId - Drawing-side id of the feature whose operations are now committed.
+ * @example
+ * void adapter.update(feature, layerId).then(() => sealOperations(terradrawId));
+ */
+export function sealOperations(terradrawId: string): void {
+    const before = _undo.length + _redo.length;
+    _keepOthers(_undo, terradrawId);
+    _keepOthers(_redo, terradrawId);
+    // Notify ONLY on a real change: repainting the toolbar on every unrelated write would
+    // make the callback meaningless, and it is what drives the button's disabled state.
+    if (_undo.length + _redo.length !== before) _notify();
+}
+
+/** Filters a stack IN PLACE — the module holds these arrays by reference. */
+function _keepOthers(stack: Operation[], terradrawId: string): void {
+    const kept = stack.filter((op) => op.terradrawId !== terradrawId);
+    if (kept.length !== stack.length) stack.splice(0, stack.length, ...kept);
+}
+
 /** Empties both stacks (called on plugin destroy). */
 export function clearHistory(): void {
     _undo.length = 0;

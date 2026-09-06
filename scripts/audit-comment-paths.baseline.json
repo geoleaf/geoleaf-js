@@ -1,6 +1,6 @@
 {
     "_comment": "Chemins morts CONNUS dans les commentaires NON-TSDoc du code suivi, figés par `audit-report-freshness.cjs --source comments --gate`. Clé = `<fichier citant>→<chemin cité>`. Le gate rougit sur une entrée ABSENTE d'ici (COMMENT-PATHS-01) ET sur une entrée d'ici qui n'existe plus (COMMENT-PATHS-02) : la baseline ne peut que RÉTRÉCIR. Régénérer via `--update-baseline` après avoir corrigé un lot.",
-    "generatedCount": 147,
+    "generatedCount": 146,
     "paths": [
         "e2e/04-core-ui-features.spec.js→app/lazy-module-loader.ts",
         "e2e/10-lifecycle.spec.js→map/index.ts",
@@ -69,7 +69,6 @@
         "packages/core/src/api/geoleaf.api.ts→dist/esm/kernel-exports.js",
         "packages/core/src/capabilities/legend/install.ts→./index.js",
         "packages/core/src/capabilities/offline/cache/tile-math.ts→dist/esm/.../tile-math.js",
-        "packages/core/src/capabilities/offline/db/indexeddb.ts→addpoi/image-upload.ts",
         "packages/core/src/capabilities/offline/db/indexeddb.ts→addpoi/sync-handler-backup.ts",
         "packages/core/src/capabilities/offline/db/indexeddb.ts→db/sync.ts",
         "packages/core/src/globals/globals.core.ts→utils/general/map-helpers.ts",

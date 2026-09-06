@@ -70,6 +70,7 @@ interface OutboxModule {
             attempts?: number;
             quarantine?: QuarantineReason | null;
             quarantineStatus?: number | null;
+            nextAttemptAt?: number | null;
         }
     ): Promise<void>;
     remove(id: string): Promise<void>;
@@ -89,6 +90,10 @@ const REQUEUEABLE: readonly QuarantineReason[] = [
     "retryBudgetExhausted",
     "layerNoLongerWritable",
     "notImplementedByServer",
+    // A session comes back — that is the whole of what a session does. The core cannot
+    // observe it (it knows nothing of the connector), so the operator's gesture is the
+    // observation, exactly as for a spent budget.
+    "authRequired",
 ];
 
 /**
@@ -207,9 +212,68 @@ export async function requeueQuarantined(id: string): Promise<QuarantineOutcome>
         attempts: 0,
         quarantine: null,
         quarantineStatus: null,
+        // 🛑 The deferral is erased WITH the budget it belonged to. Keeping it would
+        // make the operator's gesture wait out a delay computed for the failure they
+        // just declared over — a "Retry" that does nothing for eight minutes is
+        // indistinguishable, for them, from one that does not work.
+        nextAttemptAt: 0,
     });
     Log.info(`[Offline.Quarantine] ${id} — remise en file (cause « ${reason} » levée).`);
     return { ok: true };
+}
+
+/**
+ * Puts EVERY requeueable quarantined entry back in the queue, in one gesture.
+ *
+ * 🛑 **THE SINGLE-ENTRY EXIT HAD NO CALLER, AND THE SHAPE IS WHY.** `requeueQuarantined`
+ * takes one contract id — a value nothing displays — so the only way to use it was to
+ * list the queue in a console and paste an identifier. Meanwhile the case that produces
+ * quarantines is never a lone entry: an expired token, a maintenance window or a radio
+ * hole sets aside a whole tour's captures at once. An exit that must be repeated forty
+ * times is an exit nobody takes.
+ *
+ * ⚠️ **It DELEGATES to {@link requeueQuarantined} rather than reimplementing it**, so
+ * the rule that decides — motive requeueable, cause observed as lifted — has exactly one
+ * author. A batch that decided for itself would be a second authority, free to diverge
+ * on the very point the arbitration of 07/08/2026 settled: an undifferentiated "retry"
+ * recreates entities the server deleted.
+ *
+ * @param reason - Restrict to this motive. Omitted, every requeueable entry is taken.
+ * @returns How many came back and how many were left, or the refusal when the engine
+ *   is not wired. `skipped` counts what the rule refused — never a silent difference.
+ *
+ * @example
+ * ```ts
+ * // "Retry everything the network held up", once the network is back.
+ * const out = await requeueAll("retryBudgetExhausted");
+ * if (out.ok) console.info(`${out.requeued} saisie(s) remise(s) en file`);
+ * ```
+ */
+export async function requeueAll(
+    reason?: QuarantineReason
+): Promise<{ ok: boolean; requeued: number; skipped: number; refused?: QuarantineRefusal }> {
+    const outbox = _outbox();
+    if (!outbox) return { ok: false, requeued: 0, skipped: 0, refused: "engineUnavailable" };
+
+    const targets = (await outbox.list()).filter(
+        (entry) =>
+            entry.state === "quarantined" &&
+            !!entry.quarantine &&
+            (reason ? entry.quarantine === reason : REQUEUEABLE.includes(entry.quarantine))
+    );
+
+    let requeued = 0;
+    let skipped = 0;
+    for (const entry of targets) {
+        const outcome = await requeueQuarantined(entry.id);
+        if (outcome.ok) requeued += 1;
+        else skipped += 1;
+    }
+    Log.info(
+        `[Offline.Quarantine] remise en file groupée : ${requeued} rejouée(s), ${skipped} laissée(s)` +
+            (reason ? ` (motif « ${reason} »).` : ".")
+    );
+    return { ok: true, requeued, skipped };
 }
 
 /**

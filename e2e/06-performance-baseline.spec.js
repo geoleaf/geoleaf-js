@@ -8,6 +8,7 @@ import { baseURL } from "./helpers/base-url.js";
 import { scanPage } from "./helpers/axe-config.js";
 import { useHardwareGl } from "./helpers/launch-options.js";
 import { injectWebVitals, readWebVitals } from "./helpers/web-vitals.js";
+import { installFeatureFactory, makeFeatureCollection } from "./helpers/feature-factory.js";
 import {
     baselineIsCaptured,
     geojsonCeilingMs,
@@ -115,6 +116,14 @@ function writeBaseline(data) {
 
 // ─── 6.2.1 — Init time measurement ─────────────────────────────────────────
 
+// The synthetic-feature generator is mounted on EVERY page of this file, before any
+// navigation — `addInitScript` applies to the next `goto`, and `waitForMap` is the goto.
+// One hook rather than a call per block: five blocks build features, and five call sites
+// is exactly how the file ended up with five divergent inline loops in the first place.
+test.beforeEach(async ({ page }) => {
+    await installFeatureFactory(page);
+});
+
 test.describe("6.2.1 — Init time", () => {
     test.use({ baseURL: baseURL("core") });
 
@@ -191,30 +200,23 @@ test.describe("6.2.2 — GeoJSON render time", () => {
             const results = await page.evaluate((n) => {
                 const times = [];
                 const ITERATIONS = 3;
-                const map = window.GeoLeaf.Core.getMap().getNativeMap();
+                // One cast per callback rather than one unchecked member access per line:
+                // `window.GeoLeaf` and the injected factory are untyped in this tooling
+                // project, and TOOLING-TS counts every occurrence.
+                const win = /** @type {any} */ (window);
+                const map = win.GeoLeaf.Core.getMap().getNativeMap();
 
                 for (let iter = 0; iter < ITERATIONS; iter++) {
-                    // Generate random points within map bounds
-                    const bounds = map.getBounds();
-                    const west = bounds.getWest(),
-                        east = bounds.getEast();
-                    const south = bounds.getSouth(),
-                        north = bounds.getNorth();
-                    const features = [];
-                    for (let i = 0; i < n; i++) {
-                        features.push({
-                            type: "Feature",
-                            geometry: {
-                                type: "Point",
-                                coordinates: [
-                                    west + Math.random() * (east - west),
-                                    south + Math.random() * (north - south),
-                                ],
-                            },
-                            properties: { id: i, name: "Pt " + i },
-                        });
-                    }
-                    const geojson = { type: "FeatureCollection", features };
+                    // Points within the map's current bounds. `properties: 1` reproduces the
+                    // `{ id, name }` payload this block has always measured — the shared
+                    // factory replaces the loop, not the dose.
+                    const b = map.getBounds();
+                    const geojson = win.__geoleafMakeFeatures({
+                        count: n,
+                        properties: 1,
+                        seed: iter + 1,
+                        bounds: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()],
+                    });
 
                     const sourceId = "_perf_geojson_" + iter + "_" + Date.now();
                     const t0 = performance.now();
@@ -344,23 +346,16 @@ test.describe("6.2.3 — FPS during zoom", () => {
 
                 // --- Clustered markers (MapLibre GeoJSON cluster source) ---
                 const clusterSrcId = "_perf_cluster_" + Date.now();
-                const clusterFeatures = [];
-                for (let i = 0; i < n; i++) {
-                    clusterFeatures.push({
-                        type: "Feature",
-                        geometry: {
-                            type: "Point",
-                            coordinates: [
-                                west + Math.random() * (east - west),
-                                south + Math.random() * (north - south),
-                            ],
-                        },
-                        properties: { id: i },
-                    });
-                }
+                // `properties: 0` reproduces the `{ id }` payload this block has always used.
+                const clusterData = /** @type {any} */ (window).__geoleafMakeFeatures({
+                    count: n,
+                    properties: 0,
+                    seed: 7,
+                    bounds: [west, south, east, north],
+                });
                 map.addSource(clusterSrcId, {
                     type: "geojson",
-                    data: { type: "FeatureCollection", features: clusterFeatures },
+                    data: clusterData,
                     cluster: true,
                     clusterMaxZoom: 14,
                 });
@@ -628,24 +623,17 @@ test.describe("6.2.4 — Heap memory", () => {
                 east = bounds.getEast();
             const south = bounds.getSouth(),
                 north = bounds.getNorth();
-            const features = [];
-            for (let i = 0; i < n; i++) {
-                features.push({
-                    type: "Feature",
-                    geometry: {
-                        type: "Point",
-                        coordinates: [
-                            west + Math.random() * (east - west),
-                            south + Math.random() * (north - south),
-                        ],
-                    },
-                    properties: { id: i, name: "Pt " + i, category: "test" },
-                });
-            }
-            adapter.addGeoJSONLayer("_perf_mem_" + Date.now(), {
-                type: "FeatureCollection",
-                features,
-            });
+            // `properties: 2` reproduces the `{ id, name, category }` payload the band in
+            // `perf-gate.js` was calibrated on — the loop moves, the dose does not.
+            adapter.addGeoJSONLayer(
+                "_perf_mem_" + Date.now(),
+                /** @type {any} */ (window).__geoleafMakeFeatures({
+                    count: n,
+                    properties: 2,
+                    seed: 3,
+                    bounds: [west, south, east, north],
+                })
+            );
         }, HEAP_FEATURES);
 
         await page.waitForTimeout(1000);
@@ -794,23 +782,16 @@ test.describe("6.2.6 — Memory leak detection", () => {
             const south = bounds.getSouth(),
                 north = bounds.getNorth();
             const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-            const collection = () => {
-                const features = [];
-                for (let i = 0; i < 10000; i++) {
-                    features.push({
-                        type: "Feature",
-                        geometry: {
-                            type: "Point",
-                            coordinates: [
-                                west + Math.random() * (east - west),
-                                south + Math.random() * (north - south),
-                            ],
-                        },
-                        properties: { id: i },
-                    });
-                }
-                return { type: "FeatureCollection", features };
-            };
+            // A FRESH collection per cycle, as before: the churn must allocate, or it would
+            // measure nothing. The seed varies with the cycle for the same reason.
+            let seed = 0;
+            const collection = () =>
+                /** @type {any} */ (window).__geoleafMakeFeatures({
+                    count: 10000,
+                    properties: 0,
+                    seed: ++seed,
+                    bounds: [west, south, east, north],
+                });
 
             // Fast-interval instance — startMonitoring() forces collection regardless of
             // dev-mode; samples land in the shared module-level performanceData singleton.
@@ -996,3 +977,269 @@ test.describe("6.2.7 — Web Vitals", () => {
 // with `transformStyle` (a `setStyle` option since v5), which preserves the GeoLeaf sources/layers
 // natively. There is no `geoleaf:basemap-rebuild` measure to record anymore, so
 // the F-RENDER-1 spike is moot and the block was removed.
+
+// ─── 6.2.9 — Scale, through the REAL loader (R6, task 2.1) ──────────────────
+//
+// WHAT THIS BLOCK MEASURES THAT NO OTHER ONE DOES. Every block above builds its
+// features and hands them to the map DIRECTLY: §6.2.2 calls native
+// `map.addSource`/`addLayer` through `getNativeMap()`, §6.2.4 and §6.2.6 call
+// `adapter.addGeoJSONLayer`. None of them crosses the loader. So the pipeline a
+// profile actually goes through — fetch in the GeoJSON worker, chunked reassembly,
+// `applyDataMapping`, POI taxonomy symbol injection, cluster strategy resolution,
+// adapter options, sub-layer construction, label initialisation, `state.layers` —
+// has never been timed at any dose. This block enters through
+// `GeoLeaf.Layers.create()`, which is that whole path.
+//
+// THE ORACLE IS A RATIO, NOT A DURATION, and the choice is the point. An absolute
+// millisecond budget under SwiftShader on a virtualised GPU is the mistake this file
+// has already paid for twice (the FPS gate, the frozen-heap gate): a threshold inside
+// the noise band. What R6 changed is a SHAPE — the cost of one unit mutation stopped
+// being proportional to the layer's size — and a shape shows up as a ratio between two
+// gestures measured back to back on the same page, at the same dose, on the same
+// machine. `setData` re-feeds N features; `addFeature` sends a diff of one. The
+// quotient is machine-independent, GL-independent, and it collapses to ~1 the moment
+// the diff path stops being taken — which is precisely the silent failure mode.
+//
+// ⚠️ WHAT IT DOES NOT SEE, named rather than implied:
+//   - Which TILES were reloaded. Both gestures are timed to the worker's answer, so
+//     the re-index is included; but `shouldReloadTile` decides tile reloads after that
+//     event, and nothing here counts them.
+//   - Any cost paid after `sourcedata`/`content` — repaint, symbol collision. The
+//     figure is a data-path cost, not a frame budget.
+//   - CPU degradation beyond the main thread. `Emulation.setCPUThrottlingRate` throttles
+//     the JS thread while SwiftShader keeps rasterising in parallel — measured in this
+//     repo (see `playwright.config.js`: 2 cores + ×4 costs 8 093 ms where 24 cores + ×8
+//     costs 1 887 ms, on the same action). The throttle is applied because R6 asks for
+//     it and because it degrades the thread the ratio is measured on; the honest
+//     degradation is `taskset -c 0,1` on the whole run, which is a shell decision, not
+//     a spec one.
+
+/** URL the bench's layer is fetched from — intercepted, never a file on disk. */
+const SCALE_URL = "**/__geoleaf_scale_bench.geojson";
+
+/**
+ * Doses. 30 000 is gated: twice the largest layer this repo ships (14 725 features),
+ * and the order of magnitude the product is aimed at.
+ *
+ * 100 000 is MEASURED BUT NOT GATED, behind `GEOLEAF_SCALE=full`. The report asks for
+ * both figures and both are produced; gating the higher one would put a permanent red
+ * on a horizon nobody has dated (question 7 of the report's §11 is still open), and a
+ * gate that reddens on a parc no user has is a gate that gets disarmed within the week.
+ * That trade has already been paid here twice.
+ */
+const SCALE_DOSES = [
+    { count: 30_000, gated: true },
+    ...(process.env.GEOLEAF_SCALE === "full" ? [{ count: 100_000, gated: false }] : []),
+];
+
+test.describe("6.2.9 — Scale through the real loader", () => {
+    // Mobile viewport: the target device, and the one whose label collision and
+    // sub-layer work is heaviest per visible feature.
+    test.use({ baseURL: baseURL("core"), viewport: { width: 390, height: 844 } });
+
+    for (const { count, gated } of SCALE_DOSES) {
+        test(`${count} features through GeoLeaf.Layers.create, then one unit mutation`, async ({
+            page,
+        }) => {
+            // The suite's 60 s default is a budget for interactions, not for parsing tens
+            // of megabytes of GeoJSON under a ×4 throttle.
+            test.setTimeout(count >= 100_000 ? 600_000 : 240_000);
+
+            const layerId = `_scale_${count}`;
+            // Generated per run, never committed: 30 000 features with 11 properties is
+            // ~10 MB of JSON, 100 000 is ~34 MB. The seed is what makes that safe — the
+            // bytes are reproducible without being stored.
+            const body = JSON.stringify(
+                makeFeatureCollection({ count, seed: 1, clumps: Math.ceil(count / 150) })
+            );
+
+            // Routed on the CONTEXT, not the page: the loader fetches through the GeoJSON
+            // Web Worker, and worker requests do not reliably cross a page-level route.
+            // Getting this wrong would not fail — it would silently serve a 404 and time
+            // the error path.
+            await page
+                .context()
+                .route(SCALE_URL, (route) =>
+                    route.fulfill({ contentType: "application/geo+json", body })
+                );
+            await waitForMap(page);
+
+            const client = await page.context().newCDPSession(page);
+            await client.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+
+            const before = await retainedHeapBytes(client, page);
+
+            const result = await page.evaluate(
+                async ({ id, url }) => {
+                    const win = /** @type {any} */ (window);
+                    const t0 = performance.now();
+                    const created = await win.GeoLeaf.Layers.create({ id, label: id, url });
+                    const loadMs = performance.now() - t0;
+
+                    const map = win.GeoLeaf.Core.getMap().getNativeMap();
+                    const sourceId = `gl-src-${id}`;
+
+                    // 🛑 EACH GESTURE IS TIMED TO COMPLETION, and the first version of this
+                    // block was not — it timed the CALL. `GeoJSONSource.setData` and
+                    // `.updateData` both hand their work to a promise chain and return, so a
+                    // full re-feed of 30 000 features measured **0.2 ms**: two empty calls,
+                    // and a ratio between them would have been a number about nothing. The
+                    // anti-hollow floor below is what caught it.
+                    //
+                    // `sourcedata` with `sourceDataType === "content"` is what
+                    // `_dispatchWorkerUpdate` fires once the worker has answered — so this
+                    // captures the structured clone, the re-index and the tile decision,
+                    // which is where the whole cost lives.
+                    const settled = () =>
+                        new Promise((resolve) => {
+                            const onData = (e) => {
+                                if (e.sourceId !== sourceId || e.sourceDataType !== "content")
+                                    return;
+                                map.off("sourcedata", onData);
+                                resolve();
+                            };
+                            map.on("sourcedata", onData);
+                        });
+
+                    const mutate = async (n) => {
+                        const f = win.__geoleafMakeFeatures({ count: 1, seed: n }).features[0];
+                        f.id = `${id}-x${n}`;
+                        f.properties.id = f.id;
+                        const t = performance.now();
+                        const done = settled();
+                        win.GeoLeaf.Layers.addFeature(id, f);
+                        await done;
+                        return performance.now() - t;
+                    };
+
+                    // 🛑 THE FIRST DIFF AND THE ONES AFTER IT ARE DIFFERENT OBJECTS, and
+                    // measuring only the first is how this bench first got the wrong answer.
+                    // `_applyDiffToSource` converts the whole collection into an id-keyed map
+                    // the first time a diff reaches a source (`toUpdateable`), on both sides
+                    // of the worker boundary — an O(N) price paid ONCE per source. Averaging
+                    // it into the steady state would report a diff as slower than a re-feed,
+                    // which is true of the first mutation and false of every one after it.
+                    // Both are recorded: the conversion is a real cost the product pays.
+                    const firstDiffMs = await mutate(1);
+                    const steady = [];
+                    for (let i = 2; i <= 6; i++) steady.push(await mutate(i));
+                    steady.sort((a, b) => a - b);
+                    const diffMs = steady[Math.floor(steady.length / 2)];
+
+                    const all = win.GeoLeaf.Layers.getFeatures(id);
+                    const t2 = performance.now();
+                    const refeedDone = settled();
+                    win.GeoLeaf.Layers.setData(id, all);
+                    await refeedDone;
+                    const refeedMs = performance.now() - t2;
+
+                    return {
+                        loadMs,
+                        firstDiffMs,
+                        diffMs,
+                        refeedMs,
+                        featureCount: created?.featureCount ?? 0,
+                    };
+                },
+                { id: layerId, url: "/__geoleaf_scale_bench.geojson" }
+            );
+
+            const after = await retainedHeapBytes(client, page);
+            await client.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+
+            const heapMb = Math.round(((after - before) / (1024 * 1024)) * 100) / 100;
+            const ratio = result.refeedMs / Math.max(result.diffMs, 0.001);
+            console.log(
+                `[perf] scale ${count}: load=${result.loadMs.toFixed(0)}ms ` +
+                    `first-diff=${result.firstDiffMs.toFixed(1)}ms ` +
+                    `diff=${result.diffMs.toFixed(3)}ms refeed=${result.refeedMs.toFixed(3)}ms ` +
+                    `ratio=${ratio.toFixed(1)}x heap=${heapMb}MB`
+            );
+
+            const baseline = readBaseline();
+            baseline.runtime.scale = baseline.runtime.scale || {};
+            baseline.runtime.scale[String(count)] = {
+                loadMs: Math.round(result.loadMs),
+                firstDiffMs: Math.round(result.firstDiffMs * 10) / 10,
+                diffMs: Math.round(result.diffMs * 1000) / 1000,
+                refeedMs: Math.round(result.refeedMs * 1000) / 1000,
+                ratio: Math.round(ratio * 10) / 10,
+                heapDelta_mb: heapMb,
+                _instrument: "GeoLeaf.Layers.create through the loader, CPU throttle x4, 390x844",
+            };
+            writeBaseline(baseline);
+
+            // The loader actually ran, and ran on the whole dose. Without this the three
+            // timings below could all be measuring a 404.
+            expect(result.featureCount).toBe(count);
+
+            if (!gated) return;
+
+            // ANTI-HOLLOW FLOOR. A ratio between two numbers that are both noise is not a
+            // measurement. `setData` re-feeds `count` features; if that costs nothing
+            // measurable, the instrument is not resolving the quantity and everything below
+            // means nothing. This floor has already earned its place: the first version of
+            // this block timed the CALLS rather than their completion, and a full re-feed of
+            // 30 000 features came back at **0.2 ms**. The floor is what said so.
+            expect(
+                result.refeedMs,
+                `re-feeding ${count} features must cost something measurable`
+            ).toBeGreaterThan(1);
+
+            // 🛑 WHAT THIS BLOCK MEASURED, AND WHAT IT REFUTED. Five runs, 04/09/2026,
+            // throttle ×4, viewport 390×844, software GL, nginx target:
+            //
+            //     N = 30 000    load 1 002–1 243 ms · first diff 102–149 ms
+            //                   steady diff 44–65 ms · re-feed 37–59 ms · ratio 0.8–1.1×
+            //     N = 100 000   load 2 797–3 512 ms · first diff 411–465 ms
+            //                   steady diff 93–108 ms · re-feed 142–154 ms · ratio 1.3–1.6×
+            //
+            // 📌 **The gain GROWS with N, and at 30 000 there is none.** That is the opposite
+            // of what "a mutation becomes independent of N" predicts, and it is the single
+            // most useful thing this block produces.
+            //
+            // The premise this bench was written to verify — "a unit mutation becomes
+            // independent of N once it goes through `updateData`" — is **FALSE at this dose**,
+            // and only a measurement could have said so. The reason is in the engine, not in
+            // GeoLeaf: `GeoJSONVTIndex.updateIndex` invalidates only the affected tiles, then
+            // rebuilds the ROOT TILE from the whole source (`createTile(source, 0, 0, 0)`);
+            // the clustered index is blunter still and re-runs `initialize(features)`. So
+            // `updateData` saves the structured clone across the worker boundary and the
+            // re-parse — real work, and all of it main-thread — but not the re-index, which
+            // dominates at 30 000.
+            //
+            // The gain R6 does buy is therefore MAIN-THREAD and deterministic: no fresh array
+            // of N+1 per mutation, no full collection serialised per mutation. That is
+            // asserted exactly, without a stopwatch, by the array-identity test in
+            // `packages/core/__tests__/geojson/layers-public-api-diff.test.ts`.
+            //
+            // ⚠️ **The `ratio > 5` this block first asserted was therefore a threshold on a
+            // premise, not on a measurement.** It is replaced by two guards that bear on
+            // mechanisms this bench can actually see.
+
+            // GUARD 1 — the conversion is amortised, not repeated. The first diff on a source
+            // pays `toUpdateable` over the whole collection, on both sides of the worker
+            // boundary; every later one must not. Measured steady ÷ first over five runs:
+            // 0.49 · 0.35 · 0.43 · 0.49 · 0.31 at 30 000, and 0.24 · 0.21 · 0.24 · 0.21 at
+            // 100 000 — worst case 0.49, so the 0.85 ceiling sits ×1.7 clear of it. A
+            // regression that reset `_data.updateable` between writes — or a fallback
+            // silently re-feeding and re-converting — drives the quotient to 1.0.
+            expect(
+                result.diffMs,
+                "the one-off updateable conversion must be amortised, not paid per mutation"
+            ).toBeLessThan(result.firstDiffMs * 0.85);
+
+            // GUARD 2 — a unit mutation never costs dramatically more than restating the whole
+            // layer. Measured 0.8–1.1× at 30 000 and 1.3–1.6× at 100 000; the floor at 0.5
+            // sits ×1.6 below the worst reading, far enough to redden on a real change rather
+            // than on a slow afternoon.
+            // 🛑 Do not raise it to "prove" the diff is faster: at this dose it is not, and a
+            // threshold that asserts something the measurement denies is the fault this file
+            // has already paid for twice.
+            expect(
+                ratio,
+                `a unit mutation on ${count} features must not cost more than a full re-feed`
+            ).toBeGreaterThan(0.5);
+        });
+    }
+});

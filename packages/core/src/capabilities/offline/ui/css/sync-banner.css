@@ -1,0 +1,145 @@
+/*!
+ * GeoLeaf Core (offline capability) — Sync banner
+ * © 2026 Mattieu Pottier — MIT License
+ *
+ * 🛑 A STYLESHEET AND NOT INLINE STYLE, AND THAT IS NOT A PREFERENCE. The delivered app
+ * ships `style-src 'self'` with NO `'unsafe-inline'` (`apps/geoleaf-app/index.html`,
+ * guarded by `e2e/18-security.spec.js`). The connectivity badge next door builds itself
+ * with `applyCssText`; this one may not, and must not be "simplified" that way later.
+ */
+
+.gl-sync-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 12px;
+    font-family: inherit;
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--gl-color-text-main, #1f2937);
+    background: var(--gl-color-bg-surface, #ffffff);
+    border-bottom: 1px solid var(--gl-color-border-soft, #e5e7eb);
+    box-shadow: var(--gl-shadow-soft, 0 1px 2px rgba(0, 0, 0, 0.06));
+    /* Above the map, and out of its gesture surface. */
+    position: relative;
+    z-index: 2;
+    /* A field device holds this in one hand: the strip never wraps to two rows. */
+    white-space: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.gl-sync-banner::-webkit-scrollbar {
+    display: none;
+}
+
+/* 🛑 HIDDEN, NOT UNMOUNTED — the listeners keep running, so the strip returns on the very
+   event that gives it something to say. Two attributes because they are two facts: nothing
+   to report, or someone read it and closed it. `display: none` and not `visibility: hidden`:
+   the point is to give the ~43 px back to the map, not to leave a blank band. */
+.gl-sync-banner[data-idle="true"],
+.gl-sync-banner[data-dismissed="true"] {
+    display: none;
+}
+
+.gl-sync-banner__close {
+    flex: 0 0 auto;
+    /* 28 px of target next to the 32 px action, and no `margin-inline-start: auto` — the
+       action already carries it, so this one sits tight against it rather than at the far
+       edge, where the tab strip overlaps at ≥ 1440 px. */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    font: inherit;
+    font-size: 14px;
+    line-height: 1;
+    color: var(--gl-color-text-muted, #6b7280);
+    background: transparent;
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.gl-sync-banner__close:hover {
+    color: var(--gl-color-text-main, #1f2937);
+    background: color-mix(in srgb, var(--gl-color-text-main, #1f2937) 8%, transparent);
+}
+
+.gl-sync-banner__close:focus-visible {
+    outline: 2px solid var(--gl-color-focus-ring, currentColor);
+    outline-offset: 2px;
+}
+
+.gl-sync-banner__dot {
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--gl-color-success, #16a34a);
+}
+
+.gl-sync-banner[data-network="offline"] .gl-sync-banner__dot {
+    background: var(--gl-color-danger, #dc2626);
+}
+
+.gl-sync-banner__net {
+    font-weight: 600;
+}
+
+.gl-sync-banner__sep {
+    color: var(--gl-color-border-strong, #9ca3af);
+}
+
+.gl-sync-banner__last {
+    color: var(--gl-color-text-muted, #6b7280);
+}
+
+.gl-sync-banner__quarantine {
+    color: var(--gl-color-danger, #dc2626);
+    font-weight: 600;
+}
+
+.gl-sync-banner__action {
+    /* 44 px of touch target, kept legible at 12 px of text — the strip is read on a
+       phone held in one hand, and a 20 px button there is a button nobody presses. */
+    min-height: 32px;
+    margin-inline-start: auto;
+    padding: 6px 14px;
+    font: inherit;
+    font-weight: 600;
+    color: var(--gl-color-bg-surface, #ffffff);
+    background: var(--gl-color-accent, #f97316);
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.gl-sync-banner__action:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+@media (pointer: coarse) {
+    .gl-sync-banner__action {
+        min-height: 44px;
+        padding-inline: 18px;
+    }
+
+    .gl-sync-banner__close {
+        width: 44px;
+        height: 44px;
+    }
+}
+
+/* 🛑 THE RIGHT EDGE RUNS UNDER THE TAB STRIP, which is `position: fixed; right: 0` at 34 px
+   wide with `z-index: 950` against this strip's 2. Nothing about the strip can win that
+   stacking contest — and it should not try, the strip being the newcomer — so it stops
+   short instead. Below the breakpoint the strip has no such neighbour. */
+@media (min-width: 1440px) {
+    .gl-sync-banner {
+        padding-right: 46px;
+    }
+}

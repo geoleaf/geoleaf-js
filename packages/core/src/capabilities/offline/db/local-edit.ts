@@ -121,6 +121,29 @@ function mintEntryId(input: LocalEditInput, now: number): string {
 }
 
 /**
+ * Puts the absorbing entry back at the start of its budget.
+ *
+ * 🛑 **A NEW EDIT IS A NEW INTENTION, NOT A REPLAY.** The entry that absorbs a fresh
+ * edit used to keep the `attempts` its previous failures had spent: an operator who
+ * corrected their capture saw it set aside one attempt later, for failures that PREDATE
+ * the correction — and that the correction may well have fixed. The deferral goes with
+ * it, for the same reason: the delay belonged to the failure, not to the entry.
+ *
+ * ⚠️ **The SAME `seq` is rewritten** (the object comes from the index, key included), so
+ * the replay order does not move because a state changed — the invariant `updateState`
+ * holds. And `inFlight` never coalesces (`COALESCIBLE`), so this can never re-arm an
+ * entry that is on the wire.
+ *
+ * @param outbox - The queue store, inside the caller's transaction.
+ * @param absorber - The mergeable entry the edit lands on.
+ */
+function _rearmAbsorber(outbox: IDBObjectStore, absorber: OutboxEntry & { seq: number }): void {
+    const spent = absorber.state !== "pending" || (absorber.attempts ?? 0) > 0;
+    if (!spent && !absorber.nextAttemptAt) return;
+    outbox.put({ ...absorber, state: "pending", attempts: 0, nextAttemptAt: 0 });
+}
+
+/**
  * Initialises the optimistic-write module.
  *
  * @param db - An open IndexedDB connection.
@@ -209,6 +232,21 @@ function init(db: IDBDatabase): LocalEditDBInstance {
                                 : mergeable[0];
 
                         if (absorber) {
+                            // 🛑 A NEW EDIT IS A NEW INTENTION, NOT A REPLAY — so the
+                            // absorbing entry starts its budget over. Until now it kept
+                            // the `attempts` its previous failures had spent: an
+                            // operator who corrected their capture saw it set aside one
+                            // attempt later, for failures that PREDATE the correction
+                            // and that the correction may well have fixed. The deferral
+                            // goes with it, for the same reason — the delay belonged to
+                            // the failure, not to the entry.
+                            //
+                            // ⚠️ Rewriting the SAME `seq` (the object comes from the
+                            // index, key included): the replay order does not move
+                            // because a state changed, exactly as `updateState` holds.
+                            // And `inFlight` never coalesces (`COALESCIBLE`), so this
+                            // can never reset an entry that is on the wire.
+                            _rearmAbsorber(outbox, absorber);
                             tally = { ...tally, entryId: absorber.id, coalescedInto: absorber.id };
                             return;
                         }

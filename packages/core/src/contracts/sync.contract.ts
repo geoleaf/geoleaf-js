@@ -131,7 +131,29 @@ export type QuarantineReason =
      * 408, 429. Its sentence already covered them ("without the server ever answering in a
      * way replay could act on"): upstream classification just was not sending them here.
      */
-    | "retryBudgetExhausted";
+    | "retryBudgetExhausted"
+    /**
+     * The session is over — the server answered 401 or 403 on a write.
+     *
+     * 🛑 **ADDED on 02/09/2026, and it closes the same asymmetry as
+     * `notImplementedByServer`.** A 401 landed on `rejectedByServer`, the one motive this
+     * contract defines as "a reason replay cannot fix" — while an expired token is the
+     * exact case replay DOES fix, as soon as the operator signs back in. A field capture
+     * was therefore set aside with destruction as its only contractual exit, for a cause
+     * that lifts by itself.
+     *
+     * ⚠️ **It names a state of the SESSION, not a refusal by the server**, and that is
+     * why it is not a sub-case of `rejectedByServer`: in the connector's token mode the
+     * 401 the drain sees is even SYNTHETIC — the interceptor produces it after failing to
+     * renew. Same status code, opposite meanings; the motive follows the meaning.
+     *
+     * It is set IMMEDIATELY — replaying with a dead token only waits three times, the
+     * argument of `deletedOnServer` and `notImplementedByServer` — and it IS replayable:
+     * the lifting of the cause is a new sign-in, which nothing in the core can observe
+     * (it knows nothing of the connector), so it is entrusted to the operator exactly
+     * like `retryBudgetExhausted`.
+     */
+    | "authRequired";
 
 /* -------------------------------------------------------------------------- */
 /* The v4 store — one record per entity                                        */
@@ -222,6 +244,45 @@ export interface OutboxEntry {
      * loss the user has no way to know happened, nor why.
      */
     readonly quarantineStatus?: number;
+    /**
+     * When the entry went on the wire, milliseconds since epoch. Present only while
+     * `state` is `inFlight`.
+     *
+     * 🛑 **IT EXISTS BECAUSE AN ENTRY IN FLIGHT HAD NO WAY BACK.** `inFlight` is written
+     * before the call and cleared by its outcome; a session that dies in between — a tab
+     * killed while the device sleeps mid-sync, the normal case on a phone — left the entry
+     * in a state NO path replays (`REPLAYABLE` holds `pending` and `failed`) and no gesture
+     * exits. The capture stayed visible, counted as due, and definitively stuck.
+     *
+     * ⚠️ **A timestamp and not a flag, because "in flight" is not decidable without one.**
+     * Two tabs share the database, not the network: reclaiming every `inFlight` would
+     * re-send what another tab has on the wire, and a second `DELETE` gets a 404 — i.e. an
+     * immediate quarantine on a push that had succeeded. Only its AGE separates "the
+     * session died" from "another tab is sending it", and the transport gives the
+     * threshold: `fetchBounded` caps at 15 s, so past a wide multiple of that, nothing is
+     * still in flight.
+     *
+     * ⚠️ **Absent means abandoned**, and that is not an omission: an entry stamped by no
+     * writer predates this field, hence a previous session. Reading its absence as "just
+     * departed" would keep exactly the entries this field exists to free.
+     */
+    readonly inFlightAt?: number;
+    /**
+     * Earliest date this entry may be replayed, milliseconds since epoch. Absent when it
+     * is replayable now.
+     *
+     * 🛑 **WITHOUT IT, THE BUDGET WAS NOT A BUDGET.** `MAX_REPLAY_ATTEMPTS` counts three
+     * TOTAL attempts and `attempts` persists in the database, while the drain fires on
+     * network return **and** on the operator's "Retry" button. Three clicks inside a
+     * maintenance window therefore spent a field capture's whole budget in under a minute
+     * and set it aside — the cap measured a number of gestures, never a duration.
+     *
+     * ⚠️ **The deferral belongs to the ENTRY, never to the transport.** `fetchBounded` is
+     * deliberately retry-free (`push-engine.ts` says why: two retry authorities count each
+     * other). Waiting inside the send would put the delay back into the transport and make
+     * the drain block on a queue it should be walking past.
+     */
+    readonly nextAttemptAt?: number;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -514,6 +575,29 @@ export interface LayerSyncReport {
     readonly quarantinedCount: number;
     /** Last successful pull, milliseconds since epoch; null if never. */
     readonly lastPullAt: number | null;
+}
+
+/**
+ * The write queue as a whole — the four facts every surface showing it must agree on.
+ *
+ * 🛑 **DELIBERATELY NOT PER-LAYER, and that is the difference with {@link LayerSyncReport}.**
+ * The question this answers is the one a field user asks before closing the application —
+ * "is anything of mine still not sent?" — and it has no layer in it. Splitting it per layer
+ * would force every caller to re-aggregate, and each would choose its own set of "owed"
+ * states; three such choices already existed in this repository, and they disagreed.
+ *
+ * `owed` and `quarantined` are disjoint: an entry set aside is blocked, not owed. Summing
+ * them would make a drain look idle while captures sat unsent under a named motive.
+ */
+export interface SyncStatus {
+    /** `false` only when the browser positively says so. */
+    readonly online: boolean;
+    /** Entries still owed to the server — `pending`, `failed` and `inFlight` together. */
+    readonly owed: number;
+    /** Entries set aside with a named motive; blocked rather than owed. */
+    readonly quarantined: number;
+    /** Epoch ms of the last accepted push, or `null` when the server never accepted one. */
+    readonly lastSyncAt: number | null;
 }
 
 /**

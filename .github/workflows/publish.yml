@@ -1,28 +1,39 @@
 name: Publish to npm
 
-# Publication des 14 paquets par TRUSTED PUBLISHING (OIDC) — sans jeton, sans OTP.
+# Publication des paquets publiables par TRUSTED PUBLISHING (OIDC) — sans jeton, sans OTP.
 #
 # ## Pourquoi ce workflow existe
 #
 # La publication manuelle du 12/08/2026 a coûté 14 codes d'authenticator, et npm réclame un
-# `EOTP` pour toute écriture de ce compte — quel que soit le type de jeton, `auth-only` ou non
-# (quatre hypothèses éprouvées, quatre réfutées : cf. roadmap `passage-public-npm`, conduite S10).
+# `EOTP` pour toute écriture de ce compte — quel que soit le type de jeton, `auth-only` ou non :
+# quatre hypothèses ont été éprouvées, les quatre réfutées.
 # Le trusted publishing supprime le problème à la racine : GitHub Actions présente un jeton
 # OIDC éphémère, npm vérifie qu'il vient bien de CE dépôt et de CE fichier de workflow.
 #
 # 🛑 PRÉREQUIS QUI COMMANDE L'ORDRE — mesuré, non supposé : « The package you're configuring
 # must already exist on the npm registry » (docs.npmjs.com/cli/v11/commands/npm-trust).
-# On ne déclare pas un éditeur de confiance pour un paquet inexistant. Les 14 doivent donc
-# être publiés UNE fois à la main avant que ce workflow puisse servir. C'est le prix d'entrée,
+# On ne déclare pas un éditeur de confiance pour un paquet inexistant. Chaque paquet doit donc
+# être publié UNE fois à la main avant que ce workflow puisse le servir. C'est le prix d'entrée,
 # et il ne se repaie pas.
+# ⚠️ Ne pas recopier ici un NOMBRE de paquets : il a dit « 14 » pendant que le corps disait
+# « 15 » et que `packages.cjs` en comptait 17. Il se dérive — `npm run versions:check`.
 #
 # ## Ce que ce workflow N'EST PAS
 #
-# Ce n'est pas une gate. `scripts/lib/ci-parity.cjs` scanne TOUT `.github/workflows/` et
-# compare chaque commande à `ci:local` — la propriété « ci:local ⊇ CI » vaut pour ce qui
-# VÉRIFIE, pas pour ce qui LIVRE. Poser ce fichier tel quel fait donc rougir la parité sur des
-# commandes qui n'ont rien à faire en local. À trancher avant de le brancher (voir la note de
-# conception à côté de ce fichier).
+# Ce n'est pas une gate de parité. `scripts/lib/ci-parity.cjs` lit TOUT `.github/workflows/`,
+# mais classe en LIVRAISON tout fichier déclenché par `tags:` sans `branches:` — celui-ci en
+# est —, et le sort de la comparaison avec `ci:local`. La propriété « ci:local ⊇ CI » vaut pour
+# ce qui VÉRIFIE, pas pour ce qui LIVRE.
+#
+# ## Ce qu'il EST devenu le 04/09/2026 (R5) — une garde devant l'acte irréversible
+#
+# Jusqu'à cette date il franchissait **une seule** gate bloquante avant son premier tarball
+# (`check-dist-integrity.cjs`), vérifiait les types APRÈS publication — et sur le monorepo, pas
+# sur ce qui était parti —, installait `npm@latest` non épinglé sous `id-token: write`, et rien
+# ne reliait le tag publié à un CI vert. Un tarball npm est IMMUABLE : il ne se corrige pas, il
+# se remplace, et tout consommateur qui a installé le mauvais le garde jusqu'à son prochain bump.
+#
+# Le job `verify` porte désormais ces contrôles, et `publish` en dépend.
 
 on:
     push:
@@ -31,15 +42,28 @@ on:
     # Déclenchement manuel : la publication est un acte irréversible, on doit pouvoir la
     # relancer sans forger un tag.
     workflow_dispatch:
+        inputs:
+            dry_run:
+                description: "Répétition à blanc — traverse verify puis tous les `npm publish --dry-run`, sans rien publier"
+                type: boolean
+                default: false
 
 permissions:
     # ⚠️ LA ligne qui rend l'OIDC possible. Sans elle, npm refuse et le run meurt sur un EOTP
     # que personne ne pourra satisfaire depuis un runner.
     id-token: write
     contents: read
+    # Lecture de l'historique des runs — le job `verify` demande si CE SHA porte un `ci.yml` vert.
+    actions: read
 
 jobs:
-    publish:
+    # ── verify — tout ce qui peut encore être repris ────────────────────────────────
+    #
+    # 🛑 Il tourne AVANT `publish` et non dans le même job, et le `needs:` est le sujet :
+    # ce qui échoue ici n'a rien publié. Le prix est un build de plus (les jobs ne
+    # partagent pas de disque) ; il se paie une fois par publication, c'est-à-dire
+    # rarement, contre un tarball faux qui, lui, ne se reprend jamais.
+    verify:
         runs-on: ubuntu-latest
         steps:
             # Les `uses:` sont épinglés par SHA, jamais par étiquette — une étiquette est
@@ -54,13 +78,106 @@ jobs:
                   registry-url: "https://registry.npmjs.org"
                   cache: "npm"
 
-            # 🛑 Node 22 embarque npm 10.9.x, et le trusted publishing exige **npm ≥ 11.5.1**
-            # (docs.npmjs.com/trusted-publishers). Sans cette montée, le run échoue sur une
-            # authentification classique — c'est-à-dire sur l'EOTP qu'on cherche à éviter.
-            # Mesuré le 12/08/2026 : `node v22.23.1` → `npm 10.9.8`.
-            - name: npm ≥ 11.5.1 (requis par le trusted publishing)
+            # 🛑 Le SHA publié doit porter un `ci.yml` VERT, et c'est la première étape parce
+            # qu'elle échoue en secondes — un rouge découvert après le build aurait coûté le
+            # build. Rien ne reliait le tag au CI jusqu'au 04/09/2026 : un tag posé sur une
+            # branche jamais éprouvée publiait.
+            #
+            # ⚠️ L'ORACLE FILTRE PAR WORKFLOW, JAMAIS PAR COMMIT SEUL. `gh api
+            # .../commits/<sha>/check-runs → total_count` est FAUX sur ce dépôt et faux dans le
+            # sens dangereux : mesuré le 10/08/2026, il rend 5 sur un push qui n'a déclenché
+            # AUCUN run de `ci.yml` — quatre runs Dependabot plus un contrôle de configuration.
+            # Le lecteur y lit « le CI a tourné » et conclut l'inverse de la vérité.
+            #
+            # 🛑 ET `--commit` EXIGE LE SHA COMPLET, sans le dire. Mesuré le 04/09/2026 sur un
+            # commit dont le run est vert : le SHA court rend **0**, le SHA de 40 caractères rend
+            # **1**. `$GITHUB_SHA` est toujours complet, donc cette étape est juste — mais une
+            # réécriture qui y passerait un SHA abrégé produirait un refus PERMANENT et
+            # inexplicable, sur une requête qui a l'air correcte. L'échec est fermé (on refuse de
+            # publier), donc il ne perd rien ; il coûte juste très cher à diagnostiquer.
+            #
+            # ⚠️ `set -e` fait AUSSI partie de la garde : si `gh` échoue (jeton, quota, réseau),
+            # l'étape meurt au lieu de conclure. Un oracle indisponible n'est pas un oracle vert.
+            - name: Ce SHA porte-t-il un `ci.yml` vert ?
+              env:
+                  GH_TOKEN: ${{ github.token }}
               run: |
-                  npm install -g npm@latest
+                  set -euo pipefail
+                  verts=$(gh run list --workflow=ci.yml --commit "$GITHUB_SHA" \
+                      --json conclusion --jq '[.[] | select(.conclusion=="success")] | length')
+                  echo "runs ci.yml verts sur $GITHUB_SHA : $verts"
+                  if [ "$verts" -lt 1 ]; then
+                      echo "::error::Aucun run VERT de ci.yml sur $GITHUB_SHA — rien ne prouve que cet arbre passe les gates."
+                      echo "Remède : déclencher ci.yml sur ce SHA (onglet Actions → CI → Run workflow) et attendre le vert."
+                      echo "⚠️ Un push portant un marqueur de saut de CI n'a JAMAIS déclenché de run : c'est le cas le plus fréquent ici."
+                      exit 1
+                  fi
+
+            # 🛑 `npm` ÉPINGLÉ, et par DÉRIVATION plutôt que par recopie. Le trusted publishing
+            # exige npm ≥ 11.5.1 (docs.npmjs.com/trusted-publishers) là où Node 22 embarque
+            # 10.9.x — d'où cette montée. Elle était `npm@latest` jusqu'au 04/09/2026 : une
+            # version non épinglée, installée globalement sous `id-token: write`, qui valait
+            # déjà 12.0.2 alors que le dépôt déclare `npm@11.6.2` dans `packageManager`.
+            # Lire le champ à l'exécution rend la divergence IMPOSSIBLE ; l'écrire ici en
+            # créerait une seconde source qui se périmerait au premier bump.
+            - name: npm épinglé sur `packageManager` (requis ≥ 11.5.1)
+              run: |
+                  set -euo pipefail
+                  pm=$(node -p "require('./package.json').packageManager || ''")
+                  case "$pm" in
+                      npm@[0-9]*) ;;
+                      *) echo "::error::\`packageManager\` vaut « $pm » — attendu \`npm@<semver>\`."; exit 1 ;;
+                  esac
+                  ver=${pm#npm@}
+                  major=${ver%%.*}
+                  reste=${ver#*.}
+                  minor=${reste%%.*}
+                  if [ "$major" -lt 11 ] || { [ "$major" -eq 11 ] && [ "$minor" -lt 5 ]; }; then
+                      echo "::error::npm $ver < 11.5.1 — le trusted publishing exige 11.5.1 ; le run mourrait sur un EOTP qu'aucun runner ne peut satisfaire."
+                      exit 1
+                  fi
+                  npm install -g "$pm"
+                  npm --version
+
+            - run: npm ci
+
+            # 🛑 LA garde de R5. Elle joue le sous-ensemble de `ci:local` marqué
+            # `release: true` — dérivé, jamais recopié —, plus l'assertion finale sur les
+            # stubs CSS. Son en-tête dit ce qu'un vert ici ne dit PAS : `GEOLEAF_CONSUMERS`
+            # n'existe sur aucun runner, donc le contrat inverse SAUTE et le résumé le
+            # NOMME. Le protocole de publication exige, avant de déclencher ce workflow :
+            #     GEOLEAF_CONSUMERS=<dir> npm run release:check -- --strict
+            - name: release:check — les gates devant un acte irréversible
+              run: npm run release:check
+
+    # ── publish — à partir d'ici, rien ne se reprend ────────────────────────────────
+    publish:
+        needs: verify
+        runs-on: ubuntu-latest
+        env:
+            # Répétition à blanc : `publish-one.cjs` et `publish-plugins.cjs` acceptent tous
+            # deux `--dry-run`. Vide sur un tag, donc la publication réelle reste le
+            # comportement par défaut et le mode sec un choix explicite.
+            DRY: ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && '--dry-run' || '' }}
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version-file: ".nvmrc"
+                  registry-url: "https://registry.npmjs.org"
+                  cache: "npm"
+
+            # 🔗 Même épinglage dérivé que dans `verify` — le motif y est écrit une fois.
+            - name: npm épinglé sur `packageManager` (requis ≥ 11.5.1)
+              run: |
+                  set -euo pipefail
+                  pm=$(node -p "require('./package.json').packageManager || ''")
+                  case "$pm" in
+                      npm@[0-9]*) ;;
+                      *) echo "::error::\`packageManager\` vaut « $pm » — attendu \`npm@<semver>\`."; exit 1 ;;
+                  esac
+                  npm install -g "$pm"
                   npm --version
 
             - run: npm ci
@@ -78,13 +195,32 @@ jobs:
             - name: Stubs de type CSS (.d.ts publiés)
               run: node scripts/emit-css-type-stubs.cjs
 
+            # 🛑 ET L'ORACLE DE L'ÉTAPE PRÉCÉDENTE, parce qu'elle a déjà été DÉFAITE par la
+            # suite. Jusqu'au 04/09/2026, `npm publish` déclenchait le `prepublishOnly` du
+            # core — `rimraf dist` puis un rebuild qui n'appelle jamais l'émetteur — et le
+            # tarball partait sans ses 21 stubs. Mesuré au registre sur `@geoleaf/core@3.1.0` :
+            # 0 `*.css.d.ts` publié contre 21 sur le disque. La cause est fermée par
+            # `--ignore-scripts` dans `publish-one.cjs` ; cette étape est ce qui rend la
+            # fermeture VÉRIFIABLE, ici, sur l'arbre qui va être empaqueté.
+            - name: Stubs de type CSS — état final de dist/ (CSS-STUBS --check)
+              run: node scripts/emit-css-type-stubs.cjs --check
+
             # Le tarball est immuable : un chunk orphelin publié l'est définitivement.
             - name: Intégrité de dist/ avant tout pack
               run: node scripts/check-dist-integrity.cjs
 
+            # ⚠️ Cette étape était la DERNIÈRE du workflow jusqu'au 04/09/2026, sous un
+            # commentaire qui affirmait juger « ce qui vient d'être publié, et non le
+            # monorepo ». C'était faux : `verify-published-types.cjs` ne contacte jamais le
+            # registre — il itère sur `registry.all()` et résout des cibles SUR LE DISQUE, son
+            # propre docblock le dit. Elle ne vérifiait donc ni les tarballs, ni au bon moment.
+            # Remise à sa place : avant le premier pack, où ce qu'elle mesure a un sens.
+            - name: Les déclarations livrées sont atteignables (PUB-TYPES)
+              run: node scripts/verify-published-types.cjs
+
             # ── Publication, dans l'ordre imposé par le graphe de dépendances ──
             #
-            # Le core d'abord : les 15 plugins le déclarent en `^3.0.0`, donc sans lui leurs
+            # Le core d'abord : les plugins le déclarent en `^3.0.0`, donc sans lui leurs
             # installs échouent toutes. `field-renderer` ensuite : `editor` en dépend.
             # 🛑 PAS un `npm publish` NU, et le motif est mesuré. Ces deux étapes l'étaient
             # jusqu'au 15/08/2026 : `core@3.0.0` et `field-renderer@1.0.0` étant au registre
@@ -98,20 +234,15 @@ jobs:
             # les plugins l'étaient. `publish-one.cjs` saute ce que le registre porte déjà
             # EN LE DISANT — sauter n'est pas publier, et la sortie ne laisse pas confondre.
             - name: "@geoleaf/core"
-              run: node scripts/publish-one.cjs @geoleaf/core
+              run: node scripts/publish-one.cjs @geoleaf/core $DRY
 
             - name: "@geoleaf/field-renderer"
-              run: node scripts/publish-one.cjs @geoleaf/field-renderer
+              run: node scripts/publish-one.cjs @geoleaf/field-renderer $DRY
 
-            # Les 15 plugins (12 jusqu'au 01/09/2026 — élargissement décidé, voir le docblock de
-            # `publish-plugins.cjs`). Le script est REJOUABLE : un paquet déjà au registre est sauté
-            # en le disant, et son décompte final sépare publiés et sautés — sans quoi
-            # « 15/15 » se lirait comme quinze publications là où il pourrait n'y en avoir eu
-            # que trois.
-            - name: Les 15 plugins
-              run: npm run publish:plugins
-
-            # L'épreuve que les liens symboliques npm ne masquent pas — sur ce qui vient
-            # d'être publié, et non sur le monorepo.
-            - name: Vérifier ce qui est parti
-              run: node scripts/verify-published-types.cjs
+            # Les plugins de `PUBLISHED_PLUGINS` — une liste de POLITIQUE, écrite à la main,
+            # dont le docblock interdit l'élargissement par effet de bord. Le script est
+            # REJOUABLE : un paquet déjà au registre est sauté en le disant, et son décompte
+            # final sépare publiés et sautés — sans quoi « n/n » se lirait comme n publications
+            # là où il pourrait n'y en avoir eu que trois.
+            - name: Les plugins publiables
+              run: npm run publish:plugins -- $DRY

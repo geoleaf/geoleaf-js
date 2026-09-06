@@ -38,6 +38,11 @@
 
 import { getGeoLeaf } from "@geoleaf/host-runtime";
 
+// `type`-only, through the published subpath with no `import` condition — erased at build,
+// exactly like `core/sync-seam.ts` does for `SyncHandler`. Re-declaring the shape here is
+// what this whole file exists to stop: the four diverging copies of the toolbar seam.
+import type { SyncStatus } from "@geoleaf/core/contracts/sync.contract.js";
+
 /** The core namespace, or `undefined` before boot. */
 function _gl(): Record<string, unknown> | undefined {
     // `@geoleaf/host-runtime`'s canonical accessor rather than a local
@@ -158,6 +163,15 @@ export interface StorageContractShape {
         outbox?: { count: number };
         layers?: { count: number };
     }>;
+    /**
+     * What the write queue still owes — the core's single read, published on the facade.
+     *
+     * 🛑 **AND IT IS A CALL INTO THE CORE RATHER THAN A COUNT DONE HERE.** This panel could
+     * add up `listPendingEdits()` itself, and that is precisely the mistake: three tallies
+     * of "what is owed" already existed in this repository and they disagreed, because each
+     * picked its own set of states. The core owns the set; this package asks.
+     */
+    getSyncStatus(): Promise<SyncStatus>;
     readonly DB: StorageContractDB;
     readonly CacheManager: StorageContractCacheManager;
     readonly Cache: StorageContractCache;
@@ -193,6 +207,20 @@ export const StorageContract = {
         // A panel that cannot count displays zero rather than refusing to open;
         // the facade itself never throws, we keep the same promise here.
         return fn ? fn.call(_storage()) : Promise.resolve({});
+    },
+    getSyncStatus(): Promise<SyncStatus> {
+        const fn = _storage()?.["getSyncStatus"] as (() => Promise<SyncStatus>) | undefined;
+        // An older core has no such member. Answering "nothing owed" is the same arbitration
+        // as `getStats` above — a panel that cannot count shows zero rather than refusing to
+        // open — and it matches what the facade itself answers with no engine wired.
+        return fn
+            ? fn.call(_storage())
+            : Promise.resolve({
+                  online: typeof navigator === "undefined" || navigator.onLine !== false,
+                  owed: 0,
+                  quarantined: 0,
+                  lastSyncAt: null,
+              });
     },
     whenReady(): Promise<void> {
         const fn = _storage()?.["whenReady"] as (() => Promise<void>) | undefined;

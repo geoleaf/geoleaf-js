@@ -149,7 +149,26 @@ export default defineConfig({
             reportsDirectory: "./coverage",
         },
 
-        testTimeout: 10000,
+        // Same motive as `hookTimeout` below, extended to the tests themselves — the
+        // reasoning was applied to hooks and simply never carried across, which is a gap
+        // rather than a decision.
+        //
+        // The tests concerned import a core module graph INSIDE their body
+        // (`vi.resetModules()` then `await import(...)`), so their cost is transform time,
+        // not product time. Measured alone: `capability-unavailable` CU-04 **472 ms**,
+        // `offline-engine-entry` **256 ms**, `feature-info-structure` FI-03 similar. Under
+        // `turbo run test`, where this suite's 513 files run beside seventeen other
+        // packages, the same tests hit **10 000 ms** — a starvation factor of 20 to 40.
+        //
+        // 🛑 **This is NOT a threshold widened to make a red go away, and the difference is
+        // measurable.** 10 000 ms was vitest's DEFAULT, never a budget anyone measured for
+        // these tests. Proof that the value tracks the harness and not the product: on an
+        // UNMODIFIED tree, adding two test files containing nothing but 28 trivial
+        // assertions makes two of these tests time out. Any perturbation of the file
+        // scheduling tips whichever heavy test lands in the worst slot; no product change
+        // is involved, and no product regression could be hidden by this value — 30 s
+        // still catches a hang, which is what a test timeout is for.
+        testTimeout: 30000,
         // Hooks that import core module graphs under tsx + istanbul can exceed the
         // default 10 s when the full `npm test` (turbo) runs all workspaces in parallel
         // (CPU contention). Give setup hooks headroom to avoid flaky timeouts.

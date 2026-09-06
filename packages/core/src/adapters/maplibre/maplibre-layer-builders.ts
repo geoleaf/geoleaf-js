@@ -36,16 +36,26 @@ import { dispatchGeoLeafEvent } from "../../kernel/events/event-bus.js";
  * Builds the MapLibre GeoJSON source spec, applying clustering options when the
  * layer config requests it. Extracted to keep `buildGeoJSONLayer` ≤ 20 complexity.
  */
-function buildSourceOptions(
-    data: unknown,
-    options?: GeoLeafLayerOptions,
-    geomTypes?: ReadonlySet<string>
-): Record<string, unknown> {
+function buildSourceOptions(data: unknown, options?: GeoLeafLayerOptions): Record<string, unknown> {
     const sourceOptions: Record<string, unknown> = { type: "geojson", data };
-    // Promote the `id` property to the feature id on POINT sources so
-    // setFeatureState() (sync badge, hover/selection) and GPU id-filters can
-    // target a feature by its stable id. Inert until a consumer sets state.
-    if (geomTypes?.has("Point")) sourceOptions.promoteId = "id";
+    // Promote the `id` property to the feature id, so setFeatureState() (sync badge,
+    // hover/selection) and `updateData` diffs can target a feature by its stable id.
+    // Inert when the property is absent — `getFeatureId` then yields `undefined`.
+    //
+    // 🛑 UNCONDITIONAL, and it was `geomTypes.has("Point")` until R6. A line or polygon
+    // layer therefore had no promoted id at all: `setFeatureState` resolved nothing on
+    // it, and a partial source update was impossible by construction.
+    //
+    // ⚠️ **Do not "improve" this by conditioning it on the data's ids being unique.**
+    // `promoteId` is part of the SOURCE SPEC — frozen at `addSource` and never replayed,
+    // exactly like the sub-layer set (invariant K-06) — whereas uniqueness is a property
+    // of the DATA, which changes on every write. Conditioning a creation-time spec on a
+    // run-time-variable property would engrave the shape of the very first dataset into
+    // the layer forever; that is the same failure K-06 already documents for
+    // `geometryType`, where a narrow declaration would permanently drop the sub-layers a
+    // later write needs. The spec says "if there is an id, it is `properties.id`"; whether
+    // the features actually carry unique ids today is decided per write, by the kernel.
+    sourceOptions.promoteId = "id";
     if (options?.cluster === true) {
         sourceOptions.cluster = true;
         sourceOptions.clusterRadius =
@@ -110,7 +120,7 @@ export function buildGeoJSONLayer(
 
     // Add GeoJSON source (with or without clustering)
     const shouldCluster = options?.cluster === true;
-    map.addSource(sourceId, buildSourceOptions(data, options, geomTypes) as MaplibreSourceSpec);
+    map.addSource(sourceId, buildSourceOptions(data, options) as MaplibreSourceSpec);
 
     // Resolve style + zoom/geometry params (extracted to resolveLayerParams to keep
     // this function under the complexity budget). Values feed the sub-layer builders.

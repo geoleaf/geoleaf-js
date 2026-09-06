@@ -15,6 +15,8 @@
 
 import { ProgressTracker } from "../../../src/capabilities/offline/cache/progress-tracker.js";
 import { Downloader } from "../../../src/capabilities/offline/cache/downloader.js";
+import { pushOutbox } from "../../../src/capabilities/offline/write/push-engine.js";
+import { StorageContract } from "../../../src/kernel/shared/storage-contract.js";
 
 describe("offline engine — DOM event emission is guarded on `document`", () => {
     let CacheStorage;
@@ -83,6 +85,33 @@ describe("offline engine — DOM event emission is guarded on `document`", () =>
             Downloader.init({ enableProfileCache: true });
             const summary = await Downloader.cacheProfile("tourism", {}, []);
             expect(summary).toMatchObject({ profileId: "tourism", successful: 0, failed: 0 });
+        });
+    });
+
+    // ── The drain joined this family the day it got a channel of its own ────────────
+    //
+    // 🛑 It emits `geoleaf:offline:outbox-drained` at the end of EVERY completed pass,
+    // empty ones included — so a DOM-less host (worker, prerender, the Service Worker
+    // context sharing these modules) would meet the emitter on its very first drain.
+    // The queue is left empty here on purpose: the announcement is what is under test,
+    // not the sending.
+    test("pushOutbox announces its pass without a document", async () => {
+        const engine = {
+            _ensureModule: (name) =>
+                name === "Outbox"
+                    ? { list: async () => [], updateState: async () => {}, remove: async () => {} }
+                    : { put: async () => {}, get: async () => null, remove: async () => {} },
+        };
+        StorageContract.init({
+            get DB() {
+                return engine;
+            },
+            isAvailable: () => true,
+        });
+
+        await withoutDocument(async () => {
+            const report = await pushOutbox();
+            expect(report).toMatchObject({ attempted: 0, pushed: 0, refused: null });
         });
     });
 

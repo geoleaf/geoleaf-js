@@ -1,5 +1,5 @@
 {
-    "_comment": "NONNULL-ASSERTION-DEBT — assertions `!` et `as unknown` gelées. Cette liste ne peut que RÉTRÉCIR (NNA-02). Elle NE contient PAS les `arr[i]!` : ceux-là sont interdits sans exception (NNA-04), parce qu'une lecture indexée assertée est une erreur `noUncheckedIndexedAccess` qu'on a tue. Le reste est de la dette `strictNullChecks` (palier Q3), instruite au registre de dette interne. Régénérer avec --update-baseline UNIQUEMENT après avoir corrigé, jamais pour faire taire.",
+    "_comment": "NONNULL-ASSERTION-DEBT — assertions `!` et `as unknown` gelées. Cette liste ne peut que RÉTRÉCIR (NNA-02). Elle NE contient PAS les `arr[i]!` : ceux-là sont interdits sans exception (NNA-04), parce qu'une lecture indexée assertée est une erreur `noUncheckedIndexedAccess` qu'on a tue. Le reste est de la dette `strictNullChecks` (palier Q3), instruite dans le registre de dette interne. Régénérer avec --update-baseline UNIQUEMENT après avoir corrigé, jamais pour faire taire.",
     "_generated": "node scripts/check-nonnull-assertion-debt.cjs --update-baseline",
     "count": 257,
     "entries": [
@@ -110,12 +110,12 @@
         "packages/core/src/kernel/config/profile.ts::profiles::!::self._config",
         "packages/core/src/kernel/events/event-bus.ts::_sanitizePayload::as-unknown::safe",
         "packages/core/src/kernel/geojson/core.ts::adapter::as-unknown::mapOrAdapter",
-        "packages/core/src/kernel/geojson/layers-public-api.ts::addFeature::as-unknown::feature",
-        "packages/core/src/kernel/geojson/layers-public-api.ts::getFeatureById::as-unknown::found",
+        "packages/core/src/kernel/geojson/layers-public-api.ts::added::as-unknown::feature",
         "packages/core/src/kernel/geojson/layers-public-api.ts::getFeatures::as-unknown::GeoJSONCore.getFeatures({ layerIds: [layerId] })",
         "packages/core/src/kernel/geojson/layers-public-api.ts::incoming::as-unknown::features",
         "packages/core/src/kernel/geojson/layers-public-api.ts::setData::as-unknown::features",
         "packages/core/src/kernel/geojson/layers-public-api.ts::setVisibleSubset::as-unknown::f",
+        "packages/core/src/kernel/geojson/layers-public-api.ts::toContractFeature::as-unknown::f",
         "packages/core/src/kernel/geojson/layers/integration.ts::_getActiveThemeLayers::as-unknown::l",
         "packages/core/src/kernel/geojson/layers/zoom-range-sync.ts::syncZoomRanges::!::adapter.setLayerZoomRange",
         "packages/core/src/kernel/geojson/loader/adapter-options.ts::buildSingleLayerAdapterOptions::as-unknown::def",

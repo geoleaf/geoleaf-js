@@ -43,7 +43,8 @@
                 "enabled": true
             },
             "offlineDetector": {
-                "enabled": false
+                "_comment": "ACTIVÉ le 05/09/2026 (R7). Il était à false, et c'était le SECOND verrou du badge « Hors ligne » : le premier — la branche moteur de lifecycle.ts passant `offline: {}` — le rendait inconstructible, celui-ci empêchait le détecteur d'être initialisé du tout. Conséquence en cascade, écrite noir sur blanc dans e2e/helpers/offline.js : `geoleaf:online` et `geoleaf:offline` n'étaient JAMAIS émis par l'application déployée, si bien que le harnais E2E s'était organisé autour du défaut plutôt que de le signaler. Réparer le premier verrou sans celui-ci aurait laissé le badge muet là où il compte.",
+                "enabled": true
             }
         }
     }

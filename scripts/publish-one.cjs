@@ -24,6 +24,14 @@
  *
  * ⚠️ It is no shortcut to publish anything: it refuses a workspace unknown to
  * `packages.cjs`, and a `private` workspace.
+ *
+ * 🛑 USE IT TO INSPECT A TARBALL TOO — a bare `npm publish --workspace=@geoleaf/core
+ * --dry-run` is NOT a harmless dry run. It triggers `prepublishOnly`, hence
+ * `rimraf dist`, so it silently STRIPS the workshop's 21 CSS stubs from disk and hands
+ * back a file list that has none. Measured 2026-09-04: 0 `*.css.d.ts` that way, 21
+ * through this script. "Nothing was published" is true; "nothing changed" is not.
+ * Recovering costs one `node scripts/emit-css-type-stubs.cjs`, and knowing to run it
+ * costs more.
  */
 "use strict";
 
@@ -75,7 +83,38 @@ function main() {
     console.log(`→ Publishing ${name}@${version}${dryRun ? " (dry-run)" : ""}…`);
     // Explicit `--access public` rather than inherited from `publishConfig`: a
     // scoped package goes `restricted` when the flag is absent.
-    const cmd = `npm publish --workspace=${name} --access public${dryRun ? " --dry-run" : ""}`;
+    //
+    // 🛑 `--ignore-scripts` IS LOAD-BEARING, and the proof is at the REGISTRY, not in
+    // this file. Without it npm runs the published workspace's `prepublishOnly`, which
+    // for `@geoleaf/core` is `npm run build` = `rimraf dist && rollup … && tsc …` — a
+    // chain that never calls `emit-css-type-stubs.cjs`. The publish therefore UNDOES
+    // the workflow step that declares itself to decide the tarballs' content
+    // (`publish.yml`, "Stubs de type CSS"), one step after it ran.
+    //
+    // Measured on `@geoleaf/core@3.1.0`, the `latest` at the time: **0** `*.css.d.ts`
+    // in the published tarball against **21** on disk. Every consumer compiling with
+    // `skipLibCheck: false` got TS2882 on the shipped `.d.ts`.
+    //     curl -s "https://data.jsdelivr.com/v1/packages/npm/@geoleaf/core@3.1.0?structure=flat"
+    // ⚠️ The core is the ONLY package whose build purges `dist/` — the others run a
+    // bare `rollup -c`, so their own stubs survive their own `prepublishOnly`. Do not
+    // read that as "the others are fine": measured the same day, four ALREADY-PUBLISHED
+    // packages are missing declarations from their tarball at an equal version, for a
+    // different reason — they were published before the stub emitter was fixed, and
+    // never republished. `PUB-04` carries that debt and blocks any new occurrence.
+    //
+    // ⚠️ NOT the `ignore-scripts` the security remediation ruled out on 2026-08-31:
+    // that one was `npm ci` — INSTALL time, esbuild's postinstall and husky's
+    // `prepare`. This is PACK time, and it skips only the published workspace's own
+    // lifecycle. Same word, different subject.
+    //
+    // ⚠️ THE COUNTERPART, and it must be read before removing the flag: the build is
+    // now the CALLER's responsibility. `publish.yml` builds, emits the stubs and
+    // re-asserts them (`--check`) before this runs; `release:check` does the same
+    // locally. A manual publication goes through THIS script — which is why the root
+    // `publish:*` scripts were routed here rather than kept as bare `npm publish`.
+    const cmd =
+        `npm publish --workspace=${name} --access public --ignore-scripts` +
+        `${dryRun ? " --dry-run" : ""}`;
     try {
         execSync(cmd, { stdio: "inherit" });
     } catch {

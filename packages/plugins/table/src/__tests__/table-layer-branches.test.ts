@@ -173,33 +173,32 @@ describe("table/table-layer.ts — branch coverage", () => {
             };
         }
 
-        it("uses VisibilityManager when available", () => {
+        it("uses the Layers seam when available", () => {
             setupLayers();
-            _g.GeoLeaf._LayerVisibilityManager = {
-                getVisibilityState: vi.fn(() => ({ current: true })),
+            _g.GeoLeaf.Layers = {
+                isVisible: vi.fn(() => true),
             };
             expect(getAvailableVisibleLayers()).toHaveLength(1);
         });
 
-        it("filters out invisible layers via VisibilityManager", () => {
+        it("filters out the layers the seam reports as not painted", () => {
             setupLayers();
-            _g.GeoLeaf._LayerVisibilityManager = {
-                getVisibilityState: vi.fn(() => ({ current: false })),
-            };
+            _g.GeoLeaf.Layers = { isVisible: vi.fn(() => false) };
             expect(getAvailableVisibleLayers()).toHaveLength(0);
         });
 
-        it("handles null from VisibilityManager", () => {
+        // The seam's contract says boolean, and the previous key could answer
+        // `null`. Keep the coercion covered rather than trusting the contract:
+        // a host that mounts a partial `Layers` still must not paint the row.
+        it("treats a non-boolean falsy answer from the seam as not painted", () => {
             setupLayers();
-            _g.GeoLeaf._LayerVisibilityManager = {
-                getVisibilityState: vi.fn(() => null),
-            };
+            _g.GeoLeaf.Layers = { isVisible: vi.fn(() => null) };
             expect(getAvailableVisibleLayers()).toHaveLength(0);
         });
 
-        it("falls back to layerData._visibility when no VisibilityManager", () => {
+        it("falls back to layerData._visibility when the Layers seam is absent", () => {
             setupLayers();
-            _g.GeoLeaf._LayerVisibilityManager = undefined;
+            _g.GeoLeaf.Layers = undefined;
             expect(getAvailableVisibleLayers()).toHaveLength(1);
         });
 
@@ -211,7 +210,7 @@ describe("table/table-layer.ts — branch coverage", () => {
                     _visibility: { current: false },
                 })),
             };
-            _g.GeoLeaf._LayerVisibilityManager = undefined;
+            _g.GeoLeaf.Layers = undefined;
             expect(getAvailableVisibleLayers()).toHaveLength(0);
         });
 
@@ -227,7 +226,7 @@ describe("table/table-layer.ts — branch coverage", () => {
                     return null;
                 }),
             };
-            _g.GeoLeaf._LayerVisibilityManager = undefined;
+            _g.GeoLeaf.Layers = undefined;
             expect(getAvailableVisibleLayers()).toHaveLength(0);
         });
     });
@@ -342,8 +341,8 @@ describe("table/table-layer.ts — branch coverage", () => {
                     _visibility: { current: true },
                 })),
             };
-            _g.GeoLeaf._LayerVisibilityManager = {
-                getVisibilityState: vi.fn(() => ({ current: true })),
+            _g.GeoLeaf.Layers = {
+                isVisible: vi.fn(() => true),
             };
             const setLayerCb = vi.fn();
             attachMapEvents(vi.fn(), setLayerCb);
@@ -365,7 +364,7 @@ describe("table/table-layer.ts — branch coverage", () => {
                 getAllLayers: vi.fn(() => []),
                 getLayerData: vi.fn(() => null),
             };
-            _g.GeoLeaf._LayerVisibilityManager = undefined;
+            _g.GeoLeaf.Layers = undefined;
             const setLayerCb = vi.fn();
             attachMapEvents(vi.fn(), setLayerCb);
             const visHandler = onFn.mock.calls.find(

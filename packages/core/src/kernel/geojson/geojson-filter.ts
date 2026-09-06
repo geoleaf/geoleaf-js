@@ -100,16 +100,30 @@ function _isClusteredLayer(layerData: GeoJSONLayerEntry): boolean {
     );
 }
 
-/** Reads a feature's `properties.id` (the field `["get","id"]` resolves), else null. */
+/**
+ * Reads a feature's `properties.id` (the field `["get","id"]` resolves), else null.
+ *
+ * Exported under a public name below as `readFeaturePropId` — the diff path addresses
+ * features in this same id space, and reading it a second way would let the two drift.
+ */
 function _readPropId(feature: GeoJSONFeature): string | number | null {
     const pid = feature.properties?.id;
     return typeof pid === "string" || typeof pid === "number" ? pid : null;
 }
 
 /**
- * True when every feature carries a **unique** `properties.id` — the precondition
- * for GPU id-filtering. Missing or duplicate ids would filter the wrong features,
- * so those layers use the `setData` re-feed path instead.
+ * True when every feature carries a **unique** `properties.id`.
+ *
+ * The precondition for GPU id-filtering — missing or duplicate ids would filter the
+ * wrong features, so those layers use the `setData` re-feed path instead — and, since
+ * R6, the precondition for partial source updates as well: MapLibre addresses a
+ * feature by id and by nothing else.
+ *
+ * 🛑 **ONE definition, deliberately shared** (exported below as
+ * `canIdentifyFeatures`). Two subsystems now decide "can this layer be addressed by
+ * id?", and a second, separately-written predicate would eventually disagree with this
+ * one on some layer — at which point the GPU filter and the diff would hold different
+ * beliefs about the same features, and the symptom would be features that vanish.
  * @internal
  */
 function _canFilterById(features: GeoJSONFeature[]): boolean {
@@ -227,4 +241,21 @@ export function getFeatures(options: GetFeaturesOptions = {}): TaggedFeature[] {
         });
     });
     return result;
+}
+
+/**
+ * Public name for the layer-identifiability predicate — see `_canFilterById`.
+ *
+ * The kernel calls it once per whole-collection write, caches the answer on the layer
+ * entry, and reads that cache on every unit mutation. That placement is the whole
+ * economy of the diff path: the predicate is O(N), so paying it per mutation would
+ * cost exactly what the diff was introduced to save.
+ */
+export function canIdentifyFeatures(features: GeoJSONFeature[]): boolean {
+    return _canFilterById(features);
+}
+
+/** Public name for `_readPropId` — the id space a diff addresses features in. */
+export function readFeaturePropId(feature: GeoJSONFeature): string | number | null {
+    return _readPropId(feature);
 }

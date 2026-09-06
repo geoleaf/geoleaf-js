@@ -120,6 +120,13 @@ const lang_de: Record<string, string> = {
     "editor.placement.existingDetected": "Vorhandenes Objekt erkannt:",
     "editor.placement.markerNew": "Neuer Punkt (zum Anpassen ziehen)",
     "editor.placement.markerExisting": "Vorhandener Punkt (zum Anpassen ziehen)",
+    "editor.placement.duplicateTitle": "Hier existiert bereits ein Objekt",
+    "editor.placement.duplicateBody":
+        "{title} ist {d} m von Ihrem Punkt entfernt. Was möchten Sie tun?",
+    "editor.placement.duplicateEdit": "Vorhandenes bearbeiten",
+    "editor.placement.duplicateCreate": "Trotzdem erstellen",
+    "editor.placement.duplicateUnnamed": "Ein Objekt",
+    "editor.placement.editUnavailable": "Das vorhandene Objekt konnte nicht geöffnet werden.",
     "editor.toolbar.poi_add": "POI hinzufügen",
     "editor.addform.unavailable": "Der Editor ist nicht bereit — bitte gleich erneut versuchen.",
     "editor.export.session": "Diese Sitzung exportieren",

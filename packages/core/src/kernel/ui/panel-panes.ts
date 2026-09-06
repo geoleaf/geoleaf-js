@@ -45,6 +45,17 @@ export interface PanelPane {
     /** i18n key resolved at render time — never a literal, so the tab follows the language. */
     readonly labelKey: string;
     /**
+     * SVG markup for the desktop tab, sanitised by the host before insertion.
+     *
+     * ⚠️ **Optional, and it stays optional.** The desktop strip went from vertical text to
+     * icons because six spelled-out tabs overflowed the viewport; a pane registered by a
+     * third party that predates that change has no icon to give, and must keep a readable
+     * tab rather than a blank square. The host falls back to `labelKey`.
+     *
+     * ⚠️ The mobile sheet ignores it — it lists panes by name, where length costs nothing.
+     */
+    readonly icon?: string;
+    /**
      * CSS selector for the element the host adopts.
      *
      * ⚠️ The host MOVES this node rather than cloning it: one node, one set of listeners, and

@@ -141,6 +141,15 @@
     --gl-border-radius: 6px;
     --gl-color-danger: #d32f2f;
     --gl-color-danger-alpha: rgba(211, 47, 47, 0.1);
+
+    /* 🛑 THE COUNTERPART OF `danger`, AND IT WAS MISSING WHILE BEING USED. The sync strip's
+       connectivity dot has read `var(--gl-color-success, #16a34a)` since R7, and that token
+       was defined NOWHERE: the dot fell back to its hard-coded green in every theme, so the
+       one element whose whole job is to be noticed was the one element the theme could not
+       reach. It went unseen because `verify-css-tokens.cjs` walks plugins and libs, and the
+       strip is in the core — the defect surfaced only when a plugin referenced the same
+       token. Defined here, next to its opposite, both sites become theme-driven. */
+    --gl-color-success: #2e7d32;
 }
 
 /* PC 10″ (769–1024px) : side panel légèrement réduit pour laisser plus de carte visible */

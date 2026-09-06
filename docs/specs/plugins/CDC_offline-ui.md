@@ -4,14 +4,14 @@ title: offline-ui — l'interface du hors-ligne, sur un moteur qu'elle ne contie
 plugin_id: offline-ui
 package: "@geoleaf-plugins/offline-ui"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 1d0f5312
+verifie_contre: 96519fa3e
 date: 1er septembre 2026
 ---
 
 # offline-ui — l'interface du hors-ligne, sur un moteur qu'elle ne contient pas
 
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/offline-ui` ·
-**Code :** `packages/plugins/offline-ui/` · **Vérifié contre :** `1d0f5312` (01/09/2026) — ⚠️ cette ligne portait `1a8f7137` (28/07/2026),
+**Code :** `packages/plugins/offline-ui/` · **Vérifié contre :** voir `verifie_contre` en tête — ⚠️ cette ligne portait une SECONDE empreinte, non gatée : `SPECS-FRESH` ne lit que le frontmatter. Retirée le 06/09/2026 avec celles de quatre fiches voisines, après avoir mesuré que celle de `docs/specs/capacites/offline.md` avait déjà divergé. Deux surfaces pour un seul fait, dont une non gatée, se contredisent toujours dans le sens où c'est la non gatée qui ment. — ⚠️ cette ligne portait `1a8f7137` (28/07/2026),
 dix jours plus tôt que le frontmatter.
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
@@ -150,22 +150,48 @@ profil qui n'active pas le hors-ligne attendrait un signal qui ne viendra jamais
 
 ## Fonctionnalités
 
-| ID    | Fonctionnalité                                       | Entrée                                                   | Sortie observable                                                                                           | Code                                                           |
-| ----- | ---------------------------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| OU-01 | Bouton de cache, deux surfaces                       | Barre mobile et bandeau de bureau                        | **Invisible par défaut** — il faut l'activer par profil                                                     | `ui/cache-button/toolbar-registration.ts`                      |
-| OU-02 | Fenêtre de gestion du cache                          | Clic sur le bouton                                       | État, quota, actions                                                                                        | `ui/cache-button/modal-manager.ts`, `cache/cache-control-*.ts` |
-| OU-03 | Sélecteur de couches à télécharger                   | Profil actif                                             | Une ligne par couche, avec son état de cache — quelle que soit sa PROVENANCE, voir sous la table            | `cache/layer-selector/`                                        |
-| OU-04 | Sélection persistée entre sessions                   | Choix de l'utilisateur                                   | Relue au chargement suivant, par le cache du core                                                           | `cache/layer-selector/selection-cache.ts`                      |
-| OU-05 | Estimation d'une zone de tuiles vectorielles         | Emprise et niveaux                                       | Un volume annoncé avant de télécharger                                                                      | `sync/vector-zone-estimate.ts`                                 |
-| OU-06 | Suivi de progression                                 | Signaux du core                                          | Remplissage et vidage suivis séparément                                                                     | `cache/cache-control-events.ts`                                |
-| OU-07 | Annulation d'un téléchargement                       | Bouton d'annulation                                      | Relayée au gestionnaire du core                                                                             | `cache/cache-control-state.ts`                                 |
-| OU-08 | Purge du cache d'un profil                           | Action de vidage                                         | Avec confirmation, et progression                                                                           | `cache/download-handler.ts`                                    |
-| OU-09 | Panneau de synchronisation                           | File en attente                                          | Liste, déclenchement, et résultat                                                                           | `sync/sync-manager.ts`                                         |
-| OU-10 | Rejeu par le gestionnaire d'un autre plugin          | `Sync.getHandler("poi")`                                 | Le plugin déclenche ce qu'[`editor`](CDC_editor.md) a déposé — sans jamais l'importer                       | `core/sync-seam.ts`                                            |
-| OU-11 | Export de la file en attente                         | Action d'export                                          | Lue depuis la base du core, puis vidée entrée par entrée                                                    | `ui/cache-button/export-logic.ts`                              |
-| OU-12 | Détection de disponibilité sans attente infinie      | Profil sans hors-ligne                                   | Rend `false` tout de suite — voir §La seule voie                                                            | `core/engine-ready.ts`                                         |
-| OU-13 | Sélecteur de zone de téléchargement, **trois** modes | Vue courante · emprise du profil · corridor d'itinéraire | Une emprise et un plafond de zoom persistés dans la sélection sauvegardée                                   | `cache/cache-control-zone.ts`                                  |
-| OU-14 | Corridor d'un itinéraire persisté                    | Tracé lu dans le magasin `routes` de la base du core     | Un corridor estimé, **ou un refus qui nomme ses deux leviers** — plafond de zoom et tampon, avec leur effet | `cache/corridor-selection.ts`, `sync/corridor-tiles.ts`        |
+| ID    | Fonctionnalité                                       | Entrée                                                   | Sortie observable                                                                                                                                         | Code                                                           |
+| ----- | ---------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| OU-01 | Bouton de cache, deux surfaces                       | Barre mobile et bandeau de bureau                        | **Invisible par défaut** — il faut l'activer par profil                                                                                                   | `ui/cache-button/toolbar-registration.ts`                      |
+| OU-02 | Fenêtre de gestion du cache                          | Clic sur le bouton                                       | État, quota, actions                                                                                                                                      | `ui/cache-button/modal-manager.ts`, `cache/cache-control-*.ts` |
+| OU-03 | Sélecteur de couches à télécharger                   | Profil actif                                             | Une ligne par couche, avec son état de cache — quelle que soit sa PROVENANCE, voir sous la table                                                          | `cache/layer-selector/`                                        |
+| OU-04 | Sélection persistée entre sessions                   | Choix de l'utilisateur                                   | Relue au chargement suivant, par le cache du core                                                                                                         | `cache/layer-selector/selection-cache.ts`                      |
+| OU-05 | Estimation d'une zone de tuiles vectorielles         | Emprise et niveaux                                       | Un volume annoncé avant de télécharger                                                                                                                    | `sync/vector-zone-estimate.ts`                                 |
+| OU-06 | Suivi de progression                                 | Signaux du core                                          | Remplissage et vidage suivis séparément                                                                                                                   | `cache/cache-control-events.ts`                                |
+| OU-07 | Annulation d'un téléchargement                       | Bouton d'annulation                                      | Relayée au gestionnaire du core                                                                                                                           | `cache/cache-control-state.ts`                                 |
+| OU-08 | Purge du cache d'un profil                           | Action de vidage                                         | Avec confirmation, et progression                                                                                                                         | `cache/download-handler.ts`                                    |
+| OU-09 | Panneau de synchronisation                           | File en attente                                          | Liste, déclenchement, et résultat                                                                                                                         | `sync/sync-manager.ts`                                         |
+| OU-10 | Rejeu par le gestionnaire d'un autre plugin          | `Sync.getHandler("poi")`                                 | Le plugin déclenche ce qu'[`editor`](CDC_editor.md) a déposé — sans jamais l'importer                                                                     | `core/sync-seam.ts`                                            |
+| OU-11 | Export de la file en attente                         | Action d'export                                          | Lue depuis la base du core, puis vidée entrée par entrée                                                                                                  | `ui/cache-button/export-logic.ts`                              |
+| OU-12 | Détection de disponibilité sans attente infinie      | Profil sans hors-ligne                                   | Rend `false` tout de suite — voir §La seule voie                                                                                                          | `core/engine-ready.ts`                                         |
+| OU-13 | Sélecteur de zone de téléchargement, **trois** modes | Vue courante · emprise du profil · corridor d'itinéraire | Une emprise et un plafond de zoom persistés dans la sélection sauvegardée                                                                                 | `cache/cache-control-zone.ts`                                  |
+| OU-14 | Corridor d'un itinéraire persisté                    | Tracé lu dans le magasin `routes` de la base du core     | Un corridor estimé, **ou un refus qui nomme ses deux leviers** — plafond de zoom et tampon, avec leur effet                                               | `cache/corridor-selection.ts`, `sync/corridor-tiles.ts`        |
+| OU-15 | Statut de synchronisation permanent dans la modale   | La file d'écriture, lue par `Storage.getSyncStatus()`    | Réseau, écritures dues, mises à l'écart, dernière synchro acceptée et un bouton de drain — **au-dessus de l'accordéon STATUT, et sans se taire au repos** | `cache/sync-status-block.ts`                                   |
+
+```callout warn label="OU-15 — la moitié que la bande du core a délibérément abandonnée"
+La bande `.gl-sync-banner` du core ne s'affiche plus que lorsqu'elle porte une information : sur un
+profil de consultation elle répétait « Tout est envoyé » toute une session, par-dessus les pastilles
+de thème, et sur un livrable c'est le seul état atteignable (`build-deploy` retire les cibles
+d'écriture). **Il fallait donc que quelque chose réponde quand elle se tait**, et « est-ce que tout
+est bien parti ? » est exactement la question pour laquelle on ouvre cette modale. D'où ce bloc :
+mêmes quatre faits, **permanents, sans bouton de renvoi**.
+
+🛑 **Il ne COMPTE rien.** Il appelle `Storage.getSyncStatus()`, la lecture unique du core. Trois
+décomptes de « ce qui est dû » coexistaient déjà dans ce dépôt et divergeaient, chacun ayant choisi
+son propre ensemble d'états ; le core possède cet ensemble désormais.
+
+🛑 **Il n'emprunte pas le chemin de l'onglet Export.** Le bouton `storage.sync.btn` de
+`sync/sync-manager.ts` passe par le gestionnaire qu'enregistre [`editor`](CDC_editor.md) et affiche
+`storage.sync.unavailable` sans lui. Ce bloc-ci demande un drain au core (`_requestOutboxDrain`) —
+c'est tout l'intérêt de dire vrai sur une application qui n'embarque pas ce plugin.
+
+⚠️ **Le montage se fait dans `buildContent`, jamais par insertion dans `#gl-cache-modal-body`** :
+les deux initialisateurs d'onglet vident ce nœud, et un aller-retour Import → Export → Import
+reconstruit ce corps entièrement. Corollaire : les écouteurs sont enregistrés dans
+`self._eventCleanups`, et `initializeExportContent` relâche le contrôle précédent — la modale
+n'appelle jamais `onRemove` d'elle-même, donc sans cela chaque aller-retour empilerait un jeu
+d'écouteurs de plus.
+```
 
 ```callout info label="OU-03 — une couche vaut une couche, quelle que soit la PROVENANCE de sa config"
 Une couche déclare sa configuration de **deux** façons : par un fichier (`configFile`) ou en ligne
@@ -253,6 +279,8 @@ ce qui évite que deux écouteurs du même paquet ne divergent sur une chaîne.
 | `geoleaf:cache:cancelled`        | La capacité [`offline`](../capacites/offline.md) — `CacheManager.cancelDownload()`, depuis le 03/08/2026 |
 | `geoleaf:storage:quota-exceeded` | La capacité [`offline`](../capacites/offline.md) — écouté par `core/engine-signals.ts`                   |
 | `geoleaf:toolbar:action`         | Le kernel                                                                                                |
+| `geoleaf:offline:outbox-queued`  | La capacité [`offline`](../capacites/offline.md) — OU-15, depuis le 06/09/2026                           |
+| `geoleaf:offline:outbox-drained` | idem                                                                                                     |
 
 ⚠️ **L'inventaire se dérive, il ne se recopie pas.** Ce que la capacité émet :
 `grep -rn "dispatchEvent\|CustomEvent(" packages/core/src/capabilities/offline/ --include=*.ts | grep -o "geoleaf:[a-z:-]*" | sort -u`.

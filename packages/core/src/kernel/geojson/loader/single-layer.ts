@@ -599,12 +599,26 @@ async function _doLoadSingleLayerMapLibre(
  * optional call silently no-op'd and every autoRefresh result was discarded —
  * the OGC layer never updated on `moveend`. Resolving the correct method here
  * (covered by a unit test) prevents that regression.
+ *
+ * 🛑 AND THE STORE IS RECORDED, which it was not. This function fed the source a
+ * collection straight off the network that `state.layers` never saw. Benign while
+ * every mutation re-pushed the whole store collection — the next `setData` made the
+ * two agree again, the store winning and this refresh being silently lost. It stops
+ * being benign the moment a mutation is expressed as a diff: the source then keeps
+ * the refreshed features, the store keeps the pre-refresh ones, and nothing ever
+ * re-converges them. The readers that would diverge are named in
+ * `GeoJSONShared.setLayerCollection`.
+ *
+ * ⚠️ Not routed through `GeoJSONCore.updateLayerData` — that would import the core
+ * into a loader it is imported BY. The shared state's writer is the seam both sides
+ * can reach without a cycle.
  */
 export function applyOgcRefreshedData(state: GeoJSONState, layerId: string, fc: unknown): void {
     const adapter = (state.adapter || _deps?.getCore()?.getMap?.()) as {
         updateLayerData?: (id: string, data: unknown) => void;
     } | null;
     adapter?.updateLayerData?.(layerId, fc);
+    GeoJSONShared.setLayerCollection(layerId, fc);
 }
 
 async function _loadFromOgcApi(

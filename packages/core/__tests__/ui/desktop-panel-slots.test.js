@@ -52,8 +52,12 @@ describe("appendRegistryTabButtons() — label resolution", () => {
 
         const btn = tabs.querySelector('[data-gl-desktop-tab="table"]');
         expect(btn).not.toBeNull();
-        expect(btn.textContent).toBe("Tableau");
+        // ⚠️ THE ACCESSIBLE NAME, no longer `textContent`: a `variant: "tab"` button now
+        // renders the icon its slot already declared and this branch used to throw away. The
+        // word did not vanish, it changed carrier — the assertion follows the label.
         expect(btn.getAttribute("aria-label")).toBe("Tableau");
+        expect(btn.title).toBe("Tableau");
+        expect(btn.querySelector("svg")).not.toBeNull();
     });
 
     it("self-heals the label on geoleaf:app:ready when registerDict races the button build", async () => {
@@ -75,15 +79,19 @@ describe("appendRegistryTabButtons() — label resolution", () => {
 
         appendRegistryTabButtons(tabs);
         const btn = tabs.querySelector('[data-gl-desktop-tab="table"]');
-        expect(btn.textContent).toBe("table.toolbar.button");
+        expect(btn.getAttribute("aria-label")).toBe("table.toolbar.button");
 
         // The plugin script finishes registering its dict late (race), then boot
         // reaches geoleaf:app:ready — the button must heal without a page reload.
         i18n.registerDict("table", { fr: { "table.toolbar.button": "Tableau" } });
         document.dispatchEvent(new CustomEvent("geoleaf:app:ready"));
 
-        expect(btn.textContent).toBe("Tableau");
         expect(btn.getAttribute("aria-label")).toBe("Tableau");
+        expect(btn.title).toBe("Tableau");
+        // 🛑 And the icon is STILL there. The label healing rewrote `textContent` for every
+        // `.gl-rp-tab`: applied to an icon tab it would have REPLACED the glyph with the word
+        // — that is, restored the overflow this change just removed.
+        expect(btn.querySelector("svg")).not.toBeNull();
     });
 
     it("does not touch an already-correct label on geoleaf:app:ready", async () => {
@@ -104,10 +112,11 @@ describe("appendRegistryTabButtons() — label resolution", () => {
         });
         appendRegistryTabButtons(tabs);
         const btn = tabs.querySelector('[data-gl-desktop-tab="table"]');
-        expect(btn.textContent).toBe("Tableau");
+        expect(btn.getAttribute("aria-label")).toBe("Tableau");
 
         document.dispatchEvent(new CustomEvent("geoleaf:app:ready"));
 
-        expect(btn.textContent).toBe("Tableau");
+        expect(btn.getAttribute("aria-label")).toBe("Tableau");
+        expect(btn.querySelector("svg")).not.toBeNull();
     });
 });

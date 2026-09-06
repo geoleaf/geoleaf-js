@@ -92,6 +92,36 @@
                                 },
                                 "sizePx": { "type": "number", "minimum": 0, "default": 2 }
                             }
+                        },
+                        "offset": {
+                            "type": "object",
+                            "description": "Label placement relative to the feature — LIVE (mapped to MapLibre text-anchor + text-radial-offset by _buildLabelOffsetLayout). Absent, or placement 'center', renders exactly as before: no anchor property is emitted at all.",
+                            "additionalProperties": false,
+                            "patternProperties": { "^_comment": {} },
+                            "properties": {
+                                "placement": {
+                                    "type": "string",
+                                    "enum": [
+                                        "center",
+                                        "top",
+                                        "bottom",
+                                        "left",
+                                        "right",
+                                        "top-left",
+                                        "top-right",
+                                        "bottom-left",
+                                        "bottom-right"
+                                    ],
+                                    "default": "center",
+                                    "description": "Side the LABEL sits on, NOT the MapLibre anchor (whose vocabulary is the opposite: a label above its feature anchors by its 'bottom'). The renderer holds the conversion table."
+                                },
+                                "distancePx": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "default": 12,
+                                    "description": "Gap in CSS pixels between the feature and the nearest edge of the text box; converted to ems of text-size. Ignored when placement is 'center'. Rule of thumb: at least the marker radius plus 3 px, or half the drawn icon height. Below roughly 0.3 x text-size the engine's baseline correction cancels it out."
+                                }
+                            }
                         }
                     }
                 }

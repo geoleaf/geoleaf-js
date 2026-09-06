@@ -1,0 +1,53 @@
+{
+    "schemaVersion": 2,
+    "lot": "184-bandeau-et-rail",
+    "scope": [
+        "packages/core/src/capabilities/offline/write/sync-status.ts",
+        "packages/core/src/kernel/ui/desktop/desktop-panel-icons.ts",
+        "packages/plugins/offline-ui/src/cache/sync-status-block.ts"
+    ],
+    "verdicts": {
+        "packages/core/src/capabilities/offline/write/sync-status.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Lecture unique des quatre faits de la file d'écriture — réseau, écritures dues, entrées mises à l'écart, dernière synchro acceptée",
+            "confidence": "haute",
+            "rationale": "Règle ➎ : aucun déclencheur. 104 lignes, 2 consommateurs — le bandeau du cœur et la façade `Storage.getSyncStatus`, elle-même appelée par la modale d'`offline-ui`. Le nom dit ce que le fichier rend, l'emplacement suit celui de son voisin `push-engine.ts` dont il tient la clé de préférence. Sous `write/` et non `ui/` : il lit l'outbox, il ne peint rien. Sa raison d'être est de ne PAS être dupliqué — trois décomptes de « ce qui est dû » coexistaient et divergeaient."
+        },
+        "packages/core/src/kernel/ui/desktop/desktop-panel-icons.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Les trois icônes SVG des onglets natifs de la bande latérale desktop — filtres, couches, légende",
+            "confidence": "haute",
+            "rationale": "Règle ➎, et règle 3 lue avant de juger : `desktop-panel.ts` porte l'en-tête « Extracted from desktop-panel.ts to keep it within the 700-line limit » et mesure 699 lignes brutes. Un quatrième extrait suit donc une décision documentée, pas une préférence. 49 lignes, 1 consommateur. Voisin de `desktop-panel-theme.ts`, extrait pour le même motif."
+        },
+        "packages/plugins/offline-ui/src/cache/sync-status-block.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Bloc permanent de statut de synchronisation en tête de la modale du cache, au-dessus de l'accordéon STATUT",
+            "confidence": "haute",
+            "rationale": "Règle ➎ avec invariant surclassant : `fusionner` avec `capabilities/offline/ui/sync-banner.ts` du cœur est impossible — `verify-plugin-core-boundary` interdit au plugin d'importer les sources du cœur, et son `rollup.config.mjs:63` externalise `@geoleaf/core` par une regex qui ne matche que le spécificateur nu, donc un import profond serait bundlé en COPIE avec un `StorageContract` jamais initialisé. La non-duplication est obtenue autrement : les deux surfaces appellent `Storage.getSyncStatus()`. 156 lignes, 1 consommateur (`cache-control-dom.ts`), rangé avec les autres pièces de `cache/`."
+        }
+    }
+}

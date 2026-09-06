@@ -34,9 +34,9 @@
  * rejects any other declaration.
  */
 
-import { configure, openLoginModal } from "./connector-api.js";
+import { configure, openLoginModal, logout } from "./connector-api.js";
 
 /** @internal Returns the plugin's public surface, in the shape mounted on the namespace. */
 export function buildPublicApi() {
-    return { configure, openLoginModal };
+    return { configure, openLoginModal, logout };
 }

@@ -895,7 +895,13 @@ const ALLOWLIST = {
     "capabilities/branding/public-api.ts": ["BrandingPublicApi", "BrandingReadApi"],
     "capabilities/coordinates/public-api.ts": ["CoordinatesPublicApi", "CoordinatesReadApi"],
     "capabilities/geolocation/public-api.ts": ["GeolocationStateSnapshot"],
-    "capabilities/labels/public-api.ts": ["LabelsPublicApi", "LabelsReadApi"],
+    // `LabelsControlApi` joined on 2026-09-04, same class and same motive as its
+    // two neighbours: it names the shape of a member of `GeoLeaf.Labels`
+    // (`syncLayerControl`) and is composed into `LabelsPublicApi`. It is kept
+    // SEPARATE from `LabelsReadApi` rather than merged into it because it is not
+    // a read — it acts on the DOM — and merging would have made that interface's
+    // name a lie.
+    "capabilities/labels/public-api.ts": ["LabelsControlApi", "LabelsPublicApi", "LabelsReadApi"],
     "capabilities/permalink/share/public-api.ts": ["SharePublicApi", "ShareReadApi"],
     "capabilities/scale/public-api.ts": ["ScalePublicApi", "ScaleReadApi"],
     "capabilities/theme-toggle/public-api.ts": ["ThemeTogglePublicApi"],

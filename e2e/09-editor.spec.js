@@ -54,6 +54,7 @@
 import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
 import { scanPage } from "./helpers/axe-config.js";
+import { GEOLEAF_DB, readStore } from "./helpers/idb.js";
 
 const TERRA_DRAW_CHUNK = /geoleaf-editor\.terra-draw-[^/]+\.js$/;
 const POINT_BTN = 'button.gl-editor-tool-btn[data-tool="point"]';
@@ -350,7 +351,21 @@ test("[editor] drawing a point fires feature-created and opens the form modal", 
     await expect(page.locator(".gl-form-modal-panel")).toBeVisible({ timeout: 5000 });
 });
 
-test("[editor] picking a layer renders its schema and saving submits via the REST adapter", async ({
+/**
+ * 🛑 THIS TEST ASSERTED "saving submits via the REST adapter", AND R7 REVERSED THAT RULE.
+ *
+ * It was faithful to the code: the factory routed by REACHABILITY, so a save made online
+ * went straight to the network. That is the path which put NO client identity on the wire
+ * and which, on a lost response, fell back into the queue with an identity the first request
+ * never carried — the duplicate no server could detect. Routing now asks a capability
+ * question BEFORE the write ("can this device hold it?"), and the answer here is yes.
+ *
+ * ⚠️ The subject is unchanged and it is the one that matters: picking a layer renders its
+ * schema, and pressing Save PERSISTS. What changed is WHERE it lands — and the sibling test
+ * below already proves the queue path off-network, so this one proves it ON-network, which
+ * is precisely what the reversal claims.
+ */
+test("[editor] picking a layer renders its schema and saving reaches the outbox — online too", async ({
     page,
 }) => {
     await armEditor(page);
@@ -365,16 +380,19 @@ test("[editor] picking a layer renders its schema and saving submits via the RES
     await title.fill("E2E editor point");
     await expect(title).toHaveValue("E2E editor point");
 
-    // Saving routes through the persistence submit → REST adapter POST …/features
-    // (built by the factorized rest-wire-mapping). Assert the request fires; the 405 from
-    // the static host is irrelevant to validating the wiring.
-    const post = page.waitForRequest(
-        (r) => /\/features(\?|$)/.test(r.url()) && r.method() === "POST",
-        { timeout: 8000 }
-    );
+    // The save goes through the persistence submit → the queue-first routing → the core's
+    // write cycle. What is asserted is what LANDED, never a mock's echo.
     await page.locator(".gl-form-modal__btn-save").click();
-    const req = await post;
-    expect(req.method()).toBe("POST");
+
+    await expect
+        .poll(
+            async () => {
+                const rows = await readStore(page, { db: GEOLEAF_DB, store: "outbox" });
+                return rows.filter((r) => r.layerId === "sites_rosario").length;
+            },
+            { timeout: 10000, message: "aucune écriture n'a atteint l'outbox" }
+        )
+        .toBeGreaterThan(0);
 });
 
 test("[editor] offline, saving a drawn point enqueues it to the Storage sync queue", async ({

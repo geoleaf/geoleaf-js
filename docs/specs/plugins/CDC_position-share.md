@@ -4,14 +4,14 @@ title: position-share — la position du terrain qui remonte, et celle des autre
 plugin_id: position-share
 package: "@geoleaf-plugins/position-share"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 7619149f6
+verifie_contre: 96519fa3e
 date: 31 août 2026
 ---
 
 # position-share — la position du terrain qui remonte, et celle des autres qui s'affiche
 
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/position-share` ·
-**Code :** `packages/plugins/position-share/` · **Vérifié contre :** `7619149f6` (31/08/2026)
+**Code :** `packages/plugins/position-share/` · **Vérifié contre :** voir `verifie_contre` en tête — ⚠️ cette ligne portait une SECONDE empreinte, non gatée : `SPECS-FRESH` ne lit que le frontmatter. Retirée le 06/09/2026 avec celles de quatre fiches voisines, après avoir mesuré que celle de `docs/specs/capacites/offline.md` avait déjà divergé. Deux surfaces pour un seul fait, dont une non gatée, se contredisent toujours dans le sens où c'est la non gatée qui ment.
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >

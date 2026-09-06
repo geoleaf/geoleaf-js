@@ -37,11 +37,11 @@ export function setGeoJSON(api: unknown): void {
 }
 
 /**
- * Installs the `GeoLeaf._LayerVisibilityManager` surface.
- * Shape (TableVisibilityManager): `getVisibilityState(id) -> { current?: boolean }`.
+ * Installs the `GeoLeaf.Layers` surface.
+ * Shape (TableLayersApi): `isVisible(id) -> boolean`.
  */
 export function setVisibility(mgr: unknown): void {
-    g.GeoLeaf._LayerVisibilityManager = mgr;
+    g.GeoLeaf.Layers = mgr;
 }
 
 /** Merges extra members (Core, I18n, Log, plugins, registry…) into the namespace. */

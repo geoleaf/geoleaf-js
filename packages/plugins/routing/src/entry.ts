@@ -160,6 +160,10 @@ function declarePane(): boolean {
     return registerPane({
         id: PANE_ID,
         labelKey: "routing.toolbar.button",
+        // The same glyph the mobile pill uses. The desktop strip renders tabs as icons since
+        // six spelled-out ones overflowed a laptop viewport; the label stays as the tab's
+        // accessible name, posted by the host.
+        icon: _ICON,
         // Built on demand, and this is what makes the tab work at all: the panel is not
         // constructed until something asks for it, and a click on the tab goes to the KERNEL,
         // never to this plugin. Without this hook the tab opened on an empty pane — measured

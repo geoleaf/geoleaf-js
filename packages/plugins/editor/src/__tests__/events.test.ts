@@ -504,6 +504,32 @@ describe("events bridge — persistence wiring (S10)", () => {
             coordinates: [9, 9],
         });
         expect(_mockDraw.removeFeatures).toHaveBeenCalledWith(["td1"]);
+        // 🛑 The gestures behind this update have LEFT. Keeping them undoable would offer to
+        // move the shape back on screen while the write stayed where it was — which is
+        // exactly what the "Annuler : déplacement" tooltip promised and could not do.
+        expect(getUndoDepth()).toBe(0);
+    });
+
+    it("🛑 un update qui ÉCHOUE laisse le geste annulable — rien n'est parti", async () => {
+        persist.update.mockRejectedValueOnce(new Error("réseau"));
+        setSelection({
+            terradrawId: "td1",
+            featureId: "f1",
+            layerId: "L",
+            originalGeom: { type: "Point", coordinates: [0, 0] },
+        });
+        _mockDraw.getSnapshotFeature.mockReturnValue({
+            geometry: { type: "Point", coordinates: [1, 1] },
+            properties: { id: "f1", mode: "point" },
+        });
+        adapterCallbacks.onFinish("td1", "Point", "dragFeature");
+        expect(getUndoDepth()).toBe(1);
+        adapterCallbacks.onDeselect("td1");
+        await flush();
+
+        // The counter-proof of the seal above: sealing unconditionally would take away
+        // real work every time the network hiccuped.
+        expect(getUndoDepth()).toBe(1);
     });
 
     it("deselect of a CLEAN host feature → restore + drop copy, no update", () => {

@@ -4,7 +4,7 @@ title: pwa — l'application installable
 capability_id: pwa
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 2fcbba8a
+verifie_contre: 7d8e5a978
 date: 1er septembre 2026
 ---
 
@@ -105,16 +105,16 @@ celles lues seulement à la construction.
 Bloc `modules.pwa` d'un profil. Conformité de cette table au code gardée par
 `__tests__/guards/doc-capability-config.guard.test.js`.
 
-| Paramètre          | Type      | Défaut  | Où c'est lu                                                                                         |
-| ------------------ | --------- | ------- | --------------------------------------------------------------------------------------------------- |
-| `enabled`          | `boolean` | `false` | `lifecycle.ts` → `init()`, sur le bloc reçu de l'étape #7. **Opt-in** — rien ne se produit sans lui |
-| `name`             | `string`  | —       | **Runtime ET construction** : repli du nom de bannière, et champ `name` du manifeste déployé        |
-| `short_name`       | `string`  | —       | **Runtime ET construction** : nom de bannière préféré, et champ `short_name` du manifeste           |
-| `description`      | `string`  | —       | **Construction seulement** — `scripts/build-deploy.cjs`. Aucun code d'exécution ne la lit           |
-| `theme_color`      | `string`  | —       | **Construction seulement** — idem                                                                   |
-| `background_color` | `string`  | —       | **Construction seulement** — idem                                                                   |
-| `installPrompt`    | `object`  | —       | `lifecycle.ts` → `init()`. Porte `enabled` (défaut `false`)                                         |
-| `offlineDetector`  | `object`  | —       | **Lu par la capacité `offline`**, pas par celle-ci. Porte `enabled` (défaut `false`)                |
+| Paramètre          | Type      | Défaut  | Où c'est lu                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------------ | --------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`          | `boolean` | `false` | `lifecycle.ts` → `init()`, sur le bloc reçu de l'étape #7. **Opt-in** — rien ne se produit sans lui                                                                                                                                                                                                                                                                                                                                                                     |
+| `name`             | `string`  | —       | **Runtime ET construction** : repli du nom de bannière, et champ `name` du manifeste déployé                                                                                                                                                                                                                                                                                                                                                                            |
+| `short_name`       | `string`  | —       | **Runtime ET construction** : nom de bannière préféré, et champ `short_name` du manifeste                                                                                                                                                                                                                                                                                                                                                                               |
+| `description`      | `string`  | —       | **Construction seulement** — `scripts/build-deploy.cjs`. Aucun code d'exécution ne la lit                                                                                                                                                                                                                                                                                                                                                                               |
+| `theme_color`      | `string`  | —       | **Construction seulement** — idem                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `background_color` | `string`  | —       | **Construction seulement** — idem                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `installPrompt`    | `object`  | —       | `lifecycle.ts` → `init()`. Porte `enabled` (défaut `false`)                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `offlineDetector`  | `object`  | —       | **Lu par la capacité `offline`**, pas par celle-ci. Porte `enabled` (défaut `false`) et `badgePosition` (défaut `topleft`). ⚠️ Les deux étaient **inertes en mode moteur** jusqu'au 05/09/2026 : `lifecycle.ts` passait `offline: {}` à la façade, donc `showBadge` gardait son défaut `false` — le badge ne pouvait apparaître QUE dans le mode où le hors-ligne n'existe pas. Et `badgePosition` n'était lu par personne, `_createBadge` posant un `"topleft"` en dur |
 
 ⚠️ **Trois lecteurs, et un seul est visible à l'exécution.** C'est la table qu'il faut avoir en tête
 avant de modifier une clé :

@@ -48,8 +48,10 @@ vi.mock("@geoleaf/host-runtime", () => ({
 }));
 
 let _cfg: Record<string, unknown> = {};
+let _accuracyField: string | null = null;
 vi.mock("../config.js", () => ({
     getEditorConfig: () => _cfg,
+    accuracyFieldOf: () => _accuracyField,
 }));
 
 const { initAddForm, destroyAddForm, openAddForm, startPoiCapture, buildAddFormApi } =
@@ -59,11 +61,15 @@ const { initAddForm, destroyAddForm, openAddForm, startPoiCapture, buildAddFormA
 let opened: Record<string, unknown>[] = [];
 const wiring = { adapter: {}, strategy: "prompt" } as unknown;
 
+/** The "modify the existing one" seam, injected by `entry.ts` in production. */
+const _editExisting = vi.fn(async () => true);
+
 function mount(getWiring: () => unknown = () => wiring) {
     opened = [];
     initAddForm({
         openForm: (o: unknown) => opened.push(o as Record<string, unknown>),
         getWiring: getWiring as () => never,
+        editExisting: _editExisting,
     });
 }
 
@@ -72,6 +78,8 @@ beforeEach(() => {
     _clearMarker.mockReset();
     _activate.mockReset();
     _notify.mockReset();
+    _editExisting.mockReset().mockResolvedValue(true);
+    _accuracyField = null;
     _cfg = { poiAddDefaultPosition: "placement-mode" };
     mount();
 });
@@ -189,11 +197,50 @@ describe("startPoiCapture", () => {
         expect(opened).toHaveLength(0);
     });
 
-    it("ouvre le formulaire quand le tap rend une position", () => {
+    it("ouvre le formulaire quand le tap rend une position libre", () => {
         startPoiCapture(null);
         const cb = _activate.mock.calls[0]![1] as (r: unknown) => void;
-        cb({ latlng: { lat: 5, lng: 6 }, snapped: null });
+        cb({ latlng: { lat: 5, lng: 6 }, snapped: null, intent: "create" });
         expect(opened).toHaveLength(1);
+    });
+
+    // 🛑 THE DEFECT THIS REPLACES. This callback used to read `result?.latlng` alone, so a
+    // placement SNAPPED onto an existing feature opened a CREATION form on that feature's
+    // own coordinates — two records at the same point, indistinguishable in the ERP.
+    it("« modifier l'existant » ouvre l'entité voisine et n'ouvre AUCUN formulaire de création", async () => {
+        startPoiCapture(null);
+        const cb = _activate.mock.calls[0]![1] as (r: unknown) => void;
+        cb({
+            latlng: { lat: 5, lng: 6 },
+            snapped: { latlng: { lat: 5, lng: 6 }, layerId: "candelabres", id: "c-7" },
+            intent: "edit",
+        });
+        await vi.waitFor(() => expect(_editExisting).toHaveBeenCalledWith("candelabres", "c-7"));
+        expect(opened).toHaveLength(0);
+    });
+
+    it("dit franchement que l'entité existante n'a pas pu être ouverte", async () => {
+        _editExisting.mockResolvedValue(false);
+        startPoiCapture(null);
+        const cb = _activate.mock.calls[0]![1] as (r: unknown) => void;
+        cb({
+            latlng: { lat: 5, lng: 6 },
+            snapped: { latlng: { lat: 5, lng: 6 }, layerId: "candelabres", id: "c-7" },
+            intent: "edit",
+        });
+        await vi.waitFor(() =>
+            expect(_notify).toHaveBeenCalledWith("error", "editor.placement.editUnavailable")
+        );
+    });
+
+    it("« abandon » n'ouvre rien et rend la main", () => {
+        const settled = vi.fn();
+        startPoiCapture(null, settled);
+        const cb = _activate.mock.calls[0]![1] as (r: unknown) => void;
+        cb({ latlng: { lat: 5, lng: 6 }, snapped: { id: "c-7" }, intent: "abandon" });
+        expect(opened).toHaveLength(0);
+        expect(_editExisting).not.toHaveBeenCalled();
+        expect(settled).toHaveBeenCalledTimes(1);
     });
 
     it("rend la main à l'appelant quand la capture est abandonnée", () => {
@@ -212,6 +259,60 @@ describe("startPoiCapture", () => {
         startPoiCapture(null);
         expect(_activate).not.toHaveBeenCalled();
         expect(opened).toHaveLength(1);
+    });
+
+    // --- la précision GPS -------------------------------------------------
+    //
+    // 🛑 The core measures `accuracy` and this module used to DROP it, in a way the compiler
+    // could not see: `startPoiCapture` re-typed the core's snapshot to `{ lat; lng }` when
+    // reading it. A field position with no recorded precision cannot be told apart from a
+    // surveyed one.
+
+    it("écrit la précision GPS quand le profil a nommé le champ", async () => {
+        _cfg = { poiAddDefaultPosition: "geolocation" };
+        _accuracyField = "precision_gps_m";
+        (globalThis as Record<string, unknown>).GeoLeaf = {
+            Geolocation: { getState: () => ({ userPosition: { lat: 7, lng: 8, accuracy: 4.2 } }) },
+        };
+        startPoiCapture(null);
+        await (opened[0]!["onSave"] as (v: unknown, l: string) => Promise<void>)(
+            { nom: "L7" },
+            "candelabres"
+        );
+        expect(_submitFeature.mock.calls[0]![1].feature.properties).toEqual({
+            nom: "L7",
+            precision_gps_m: 4.2,
+        });
+    });
+
+    // 🛑 `buildCollectionBody` only copies the keys the layer whitelists, so a property no
+    // profile declared is dropped on the wire. Writing one anyway would look like it worked.
+    it("n'écrit RIEN quand le profil n'a nommé aucun champ", async () => {
+        _cfg = { poiAddDefaultPosition: "geolocation" };
+        _accuracyField = null;
+        (globalThis as Record<string, unknown>).GeoLeaf = {
+            Geolocation: { getState: () => ({ userPosition: { lat: 7, lng: 8, accuracy: 4.2 } }) },
+        };
+        startPoiCapture(null);
+        await (opened[0]!["onSave"] as (v: unknown, l: string) => Promise<void>)(
+            { nom: "L7" },
+            "candelabres"
+        );
+        expect(_submitFeature.mock.calls[0]![1].feature.properties).toEqual({ nom: "L7" });
+    });
+
+    // 🛑 A tap carries no measurement. Attributing a GPS precision to a finger-placed point
+    // would be a FALSE value, which is worse than a missing one.
+    it("n'invente aucune précision pour un point posé au doigt sur la carte", async () => {
+        _accuracyField = "precision_gps_m";
+        startPoiCapture(null);
+        const cb = _activate.mock.calls[0]![1] as (r: unknown) => void;
+        cb({ latlng: { lat: 5, lng: 6 }, snapped: null, intent: "create" });
+        await (opened[0]!["onSave"] as (v: unknown, l: string) => Promise<void>)(
+            { nom: "L7" },
+            "candelabres"
+        );
+        expect(_submitFeature.mock.calls[0]![1].feature.properties).toEqual({ nom: "L7" });
     });
 
     it("🛑 retombe sur le placement quand le GPS n'a pas de point, sans échouer", () => {

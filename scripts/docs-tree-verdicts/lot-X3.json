@@ -324,6 +324,20 @@
             "description": "Validation au boot des couches `fill-extrusion` : échec rapide sur configuration invalide, avertissements sur les valeurs suspectes",
             "confidence": "haute",
             "rationale": "Renommé au STRUCT S4. 64 LOC, 1 export, 1 importeur (`maplibre-vector-tiles.ts:40`). Deux mesures concordantes justifiaient le geste : il était le SEUL des 20 fichiers du dossier sans préfixe `maplibre-`, et le nom antéposait le rôle générique au domaine. Le pin de ligne du commentaire de test (`maplibre-vector-tiles.test.js:313`, « style-validator-extrusion.ts:39,45 ») a été RE-MESURÉ avant réécriture : les lignes 39 et 45 portent bien les deux `if` de validation. Aucune gate ne lit ce commentaire — seule sa justesse le protégeait."
+        },
+        "packages/core/src/adapters/maplibre/maplibre-source-diff.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Traduction d'un diff de couche neutre vers la forme attendue par `GeoJSONSource.updateData`, et prédicat d'aptitude d'une source vivante",
+            "confidence": "haute",
+            "rationale": "122 LOC, 2 exports (`toSourceDiff`, `isDiffableSource`), 1 importeur (`maplibre-adapter.ts`, à 755 lignes donc au-dessus du plafond de 700 : y ajouter aurait aggravé). L'extraction n'est pas un émiettement mais la frontière ADR-01 elle-même — c'est le seul endroit qui connaît À LA FOIS le vocabulaire neutre du contrat et celui du moteur, et les deux défauts de `updateData` qu'il contourne (le diff muté en place, le hachage de `add` sur l'id de premier niveau) sont des faits MapLibre qui n'ont rien à faire dans le noyau"
         }
     }
 }

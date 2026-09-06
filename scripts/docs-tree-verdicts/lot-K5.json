@@ -3,11 +3,12 @@
     "lot": "K5",
     "scope": [
         "packages/core/src/kernel/api",
+        "packages/core/src/kernel/introspection",
         "packages/core/src/kernel/layer-manager",
         "packages/core/src/kernel/security",
-        "packages/core/src/kernel/storage",
         "packages/core/src/kernel/shared",
-        "packages/core/src/kernel/introspection"
+        "packages/core/src/kernel/shared/drain-hooks-seam.ts",
+        "packages/core/src/kernel/storage"
     ],
     "verdicts": {
         "packages/core/src/kernel/api": {
@@ -206,6 +207,20 @@
             "confidence": "moyenne",
             "rationale": "11 fichiers / 1644 LOC. ⚠️ N6 : homonymie de dossier avec packages/core/src/kernel/geojson/layer-manager/ (5 fichiers de CRUD sur l'état GeoJSON), aux rôles distincts. Ce dossier-ci possède le nom (façade api/geoleaf.layer-manager.ts, namespace GeoLeaf.LayerManager, CSS .gl-layer-manager__*, et l'en-tête de geojson/layer-manager/integration.ts dit « Layer Manager UI registration », donc s'y intègre) : le renommage doit porter sur l'autre, hors périmètre K5, cible packages/core/src/kernel/geojson/layers/."
         },
+        "packages/core/src/kernel/layer-manager/attach-toggle.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Attache le gestionnaire de clic sur la bascule d'une couche (affichage, chargement paresseux, bouton libellé)",
+            "confidence": "haute",
+            "rationale": "Renommé au STRUCT S4 depuis `toggle-handler.ts`. 172 LOC, 1 importeur, exporte la seule fonction `attachToggleHandler` — aucun objet ni classe éponyme, motif N7 re-vérifié. ⚠️ DEUX fichiers de test distincts couvraient cette même source (`__tests__/layers/` et `__tests__/layer-manager/`), campagnes successives jamais fusionnées : les deux sont renommés, aucun n’est fusionné — la redondance est hors périmètre et relève de S7 (réalignement du miroir de tests)."
+        },
         "packages/core/src/kernel/layer-manager/basemap-selector.ts": {
             "kind": "file",
             "name": "ok",
@@ -233,6 +248,48 @@
             "description": "Contrôle personnalisé du panneau LayerManager, indépendant de l'adaptateur : en-tête, corps et repli",
             "confidence": "haute",
             "rationale": "130 LOC, exporte LMControl, monté sur GeoLeaf._LayerManagerControl par globals.ui.ts:100. Homonyme control.ts avec geocoding/src/control.ts, autre package → T5 §6.2 ok."
+        },
+        "packages/core/src/kernel/layer-manager/css": {
+            "kind": "dir",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Feuilles de style du panneau de gestion des couches, coloquées avec lui",
+            "confidence": "haute",
+            "rationale": "✅ Créé au STRUCT S8 (26/07/2026) — répertoire de colocalisation CSS de la feature, ouvert par E6. Reprend le patron des 11 `capabilities/*/css/`, déclaré référence du dépôt par T7."
+        },
+        "packages/core/src/kernel/layer-manager/css/layer-manager-controls.css": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Feuille des petits contrôles intégrés à une ligne du gestionnaire de couches : rangée d'item, conteneur de contrôles à droite, largeurs fixes",
+            "confidence": "haute",
+            "rationale": "✅ FERMÉ au STRUCT S8 (26/07/2026) — E6, colocalisation des assets. La feuille rejoint la feature qu'elle habille : les 11 `capabilities/*/css/` étaient déjà coloqués, `css/components/**` était l'îlot restant. Le répertoire `css/components/` disparaît, et ses 4 clés de RÉPERTOIRE avec — elles ne se requalifient pas. ⚠️ Le contre-argument de la cascade `@layer` a été pesé PUIS mesuré : les 5 `@import` de `geoleaf-main.css:40-45` sont tous en `layer(gl.kernel)` et seuls leurs CHEMINS changent — ordre et couche identiques. Le fichier documente lui-même à `:20-23` (écrit au S6) qu'« il ne dépend plus de l'ordre des @import ». Preuve à l'octet : boot payload **177,8 KB gz / 602,2 KB raw avant ET après**, `geoleaf-main.min.css` 16,2 / 24 KB gz. `verify-purgecss` a été VU rougir sur **exactement 53** sélecteurs — le compte attendu ; un chemin mal réécrit l'aurait fait dévier. Baseline régénérée à 75."
+        },
+        "packages/core/src/kernel/layer-manager/css/layer-manager-panel.css": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Feuille du panneau de gestion des couches : conteneur, en-tête, bouton de repli, corps, sections et items en nomenclature BEM `.gl-layer-manager__*`",
+            "confidence": "haute",
+            "rationale": "✅ FERMÉ au STRUCT S8 (26/07/2026) — E6, colocalisation des assets. La feuille rejoint la feature qu'elle habille : les 11 `capabilities/*/css/` étaient déjà coloqués, `css/components/**` était l'îlot restant. Le répertoire `css/components/` disparaît, et ses 4 clés de RÉPERTOIRE avec — elles ne se requalifient pas. ⚠️ Le contre-argument de la cascade `@layer` a été pesé PUIS mesuré : les 5 `@import` de `geoleaf-main.css:40-45` sont tous en `layer(gl.kernel)` et seuls leurs CHEMINS changent — ordre et couche identiques. Le fichier documente lui-même à `:20-23` (écrit au S6) qu'« il ne dépend plus de l'ordre des @import ». Preuve à l'octet : boot payload **177,8 KB gz / 602,2 KB raw avant ET après**, `geoleaf-main.min.css` 16,2 / 24 KB gz. `verify-purgecss` a été VU rougir sur **exactement 53** sélecteurs — le compte attendu ; un chemin mal réécrit l'aurait fait dévier. Baseline régénérée à 75."
         },
         "packages/core/src/kernel/layer-manager/item-controls-seam.ts": {
             "kind": "file",
@@ -290,20 +347,6 @@
             "confidence": "moyenne",
             "rationale": "228 LOC, 5 importeurs tous intra-dossier — le plus consommé du répertoire. T5 §3 classe -helpers « toléré, non canonique » et ne le retient pas dans les 13 suffixes à corriger ; il porte 8 types LM* en plus des 5 fonctions, donc il fait aussi office de hub de types."
         },
-        "packages/core/src/kernel/layer-manager/renderer.ts": {
-            "kind": "file",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Orchestrateur de rendu LMRenderer : délègue le rendu des sections et resynchronise les bascules",
-            "confidence": "haute",
-            "rationale": "91 LOC, exporte l'objet éponyme LMRenderer → suffixe -renderer conforme (N7). L'en-tête documente la suppression S4 des wrappers _render* devenus sans appelant."
-        },
         "packages/core/src/kernel/layer-manager/render-sections.ts": {
             "kind": "file",
             "name": "ok",
@@ -318,6 +361,20 @@
             "confidence": "haute",
             "rationale": "Renommé au STRUCT S4 depuis `section-renderer.ts`. 89 LOC, 1 importeur, exporte la seule fonction `renderSections` — aucun objet ni classe éponyme, motif N7 re-vérifié. Le nom d’action rend le fichier prédictible face au voisin `renderer.ts`, lui conforme : c’était l’ambiguïté que T5 §3 visait en le comptant parmi les 4 emplois creux de `-renderer`."
         },
+        "packages/core/src/kernel/layer-manager/renderer.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Orchestrateur de rendu LMRenderer : délègue le rendu des sections et resynchronise les bascules",
+            "confidence": "haute",
+            "rationale": "91 LOC, exporte l'objet éponyme LMRenderer → suffixe -renderer conforme (N7). L'en-tête documente la suppression S4 des wrappers _render* devenus sans appelant."
+        },
         "packages/core/src/kernel/layer-manager/style-selector.ts": {
             "kind": "file",
             "name": "ok",
@@ -331,20 +388,6 @@
             "description": "Sélecteur de style par couche : applique le style choisi puis resynchronise légende et libellés",
             "confidence": "moyenne",
             "rationale": "224 LOC, 3 importeurs ; @module « _LayerManagerStyleSelector » désigne bien une clé vivante du namespace (globals.ui.ts:102), ce n'est pas un chemin mort. ⚠️ Porte la 2e arête remontante du lot (E3, ligne 12 → capabilities/legend/legend-contract.js), mais via une membrane runtime gardée dont l'en-tête documente qu'elle est volontairement hors de contracts/."
-        },
-        "packages/core/src/kernel/layer-manager/attach-toggle.ts": {
-            "kind": "file",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Attache le gestionnaire de clic sur la bascule d'une couche (affichage, chargement paresseux, bouton libellé)",
-            "confidence": "haute",
-            "rationale": "Renommé au STRUCT S4 depuis `toggle-handler.ts`. 172 LOC, 1 importeur, exporte la seule fonction `attachToggleHandler` — aucun objet ni classe éponyme, motif N7 re-vérifié. ⚠️ DEUX fichiers de test distincts couvraient cette même source (`__tests__/layers/` et `__tests__/layer-manager/`), campagnes successives jamais fusionnées : les deux sont renommés, aucun n’est fusionné — la redondance est hors périmètre et relève de S7 (réalignement du miroir de tests)."
         },
         "packages/core/src/kernel/layer-manager/visibility-checker.ts": {
             "kind": "file",
@@ -387,6 +430,20 @@
             "description": "Gestionnaire de jetons CSRF : génération, stockage en cookie sécurisé et validation",
             "confidence": "haute",
             "rationale": "311 LOC, exporte CSRFToken ; @module security/csrf-token exact. Le commentaire du baril documente son rattachement au S14 (backlog B.16) pour faire de index.ts la source unique de GeoLeaf.Security."
+        },
+        "packages/core/src/kernel/security/dom-security.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Enveloppes DOM sans XSS : `setTextContent`, `setSafeHTML` délégué au sanitiseur, `clearElement`, fabrique d'icônes SVG et table de 20 glyphes",
+            "confidence": "haute",
+            "rationale": "STRUCT S6 — geste E3 EXÉCUTÉ (26/07/2026) : le fichier a rejoint kernel/security/, l'arête montante utils/ → kernel/ est supprimée et la surface XSS n'est plus coupée en deux dossiers. Trois faits que le verdict d'origine n'avait pas vus. (1) Le déplacement FERMAIT un cycle : dom-security importait { Security } du baril de ce même répertoire, qui le ré-exporte désormais — l'import a été redescendu sur la feuille ./sanitizers.js, dont seul sanitizeHTML était utilisé. (2) Les importeurs de capabilities/ sont 7 et non 6 (geolocation, legend, share ×2, theme-selector ×2, theme-toggle) ; les 7 ont été VUS rougir sur le bloc eslint 6ter ter avant que le baril soit élargi, puis routés par lui. (3) Il y avait un 17e importeur invisible : utils/general/dom-helpers.ts:9 importait \"./dom-security\" SANS extension .js, donc hors de portée de tout grep sur dom-security.js — celui de l'audit comme celui du pré-vol du sprint. L'audit a de ce fait sous-compté les arêtes E3 de utils/general/. Ce site conserve une arête utils/ → kernel/security (délégation de repli sur clearElement), de même forme que celle de fetch-helper.ts que le corpus juge sans cible : aucun symbole partagé à descendre. Deux hashs de seam re-épinglés dans le même commit (verify-seam-drift) : celui de ce fichier, et celui de kernel/ui/pill-search.ts — un seam core ↔ geocoding qui a rougi sans être visé, parce qu'il importe dom-security."
         },
         "packages/core/src/kernel/security/escaping.ts": {
             "kind": "file",
@@ -457,6 +514,20 @@
             "description": "Seams partagés inter-modules du kernel : alias ESM de l'état GeoJSON, registre de teardown et contrats Storage et Sync",
             "confidence": "moyenne",
             "rationale": "6 fichiers / 392 LOC. Le nom appartient à la liste N3, mais les 5 responsabilités ont un dénominateur commun explicite (seams d'inversion de dépendance brisant les cycles) et le nom est porteur : geojson-state.ts et storage-contract.ts sont épinglés dans la baseline de verify-plugin-core-boundary sous @core/kernel/shared/*, et storage-contract.ts l'est aussi dans SEAMS — le renommer imposerait d'éditer la gate et addpoi/tsconfig.json#paths pour zéro gain."
+        },
+        "packages/core/src/kernel/shared/drain-hooks-seam.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "In-core registry seam for **pre-drain steps** — work a plugin must finish before the push.",
+            "confidence": "haute",
+            "rationale": "Seam posé par R7 le 05/09/2026, et DISTINCT de `sync-handler-seam.ts` par nécessité : ce dernier n'expose que `getHandler(id)` — son accesseur pluriel a été retiré en rupture 3.1.0 avec motif écrit — et un `SyncHandler` PILOTE un rejeu, si bien que l'itérer dans le drain serait une ré-entrance par construction. Un crochet, lui, doit FINIR avant. Le suffixe `-seam.ts` est l'exemption que la règle d'import R.8 nomme déjà, ce qui évite d'élargir le baril `kernel/shared/index.ts` pour un registre que seule la capacité `offline` lit."
         },
         "packages/core/src/kernel/shared/geojson-state.ts": {
             "kind": "file",
@@ -556,6 +627,20 @@
             "confidence": "haute",
             "rationale": "4 fichiers / 1028 LOC, tous montés au bloc de boot B8 par globals/globals.storage.ts ; facade.ts est épinglé dans la baseline de verify-globals-ownership. Le moteur lourd reste hors du kernel, dans capabilities/offline/ chargé dynamiquement — la séparation est documentée dans l'en-tête de la façade."
         },
+        "packages/core/src/kernel/storage/eviction-notice.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "L'unique ecouteur in-core de geoleaf:cache:evicted - rend l'avis d'eviction visible sur TOUTES les variantes, deploy-core comprise",
+            "confidence": "haute",
+            "rationale": "Ne du cablage d'eviction, seul P1 du registre. Le core EMETTAIT l'alerte depuis deux endroits et ne l'ecoutait nulle part : le seul addEventListener du depot vivait dans offline-ui, plugin gate absent de deploy-core - la variante qui part chez un client. Ce n'est pas du poids, c'est de la perte de donnees. Le cablage est dans setupStorage() (B8) et NON dans _wireEvictionBridge(), qui n'est appele qu'apres l'enregistrement d'un Service Worker : y poser l'ecouteur l'aurait rendu aveugle au second emetteur, cache-manager, qui tourne hors PWA. Il appelle notifyPrimitive.notify() et non GeoLeaf.UI.notify : seule la primitive porte un repli console.*, l'autre est un no-op silencieux - passer par elle aurait reproduit le silence corrige."
+        },
         "packages/core/src/kernel/storage/facade.ts": {
             "kind": "file",
             "name": "ok",
@@ -611,76 +696,6 @@
             "description": "Enregistrement et cycle de vie du Service Worker : register, update, unregister",
             "confidence": "haute",
             "rationale": "129 LOC, 2 importeurs dont 1 intra-dossier (le baril) : E1 exige ≥ 80 % d'importeurs externes concentrés ailleurs, on est à 50 %. Le SW lite sw-core.js est enregistré inconditionnellement au boot, ce qui ancre le fichier dans le kernel."
-        },
-        "packages/core/src/kernel/security/dom-security.ts": {
-            "kind": "file",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Enveloppes DOM sans XSS : `setTextContent`, `setSafeHTML` délégué au sanitiseur, `clearElement`, fabrique d'icônes SVG et table de 20 glyphes",
-            "confidence": "haute",
-            "rationale": "STRUCT S6 — geste E3 EXÉCUTÉ (26/07/2026) : le fichier a rejoint kernel/security/, l'arête montante utils/ → kernel/ est supprimée et la surface XSS n'est plus coupée en deux dossiers. Trois faits que le verdict d'origine n'avait pas vus. (1) Le déplacement FERMAIT un cycle : dom-security importait { Security } du baril de ce même répertoire, qui le ré-exporte désormais — l'import a été redescendu sur la feuille ./sanitizers.js, dont seul sanitizeHTML était utilisé. (2) Les importeurs de capabilities/ sont 7 et non 6 (geolocation, legend, share ×2, theme-selector ×2, theme-toggle) ; les 7 ont été VUS rougir sur le bloc eslint 6ter ter avant que le baril soit élargi, puis routés par lui. (3) Il y avait un 17e importeur invisible : utils/general/dom-helpers.ts:9 importait \"./dom-security\" SANS extension .js, donc hors de portée de tout grep sur dom-security.js — celui de l'audit comme celui du pré-vol du sprint. L'audit a de ce fait sous-compté les arêtes E3 de utils/general/. Ce site conserve une arête utils/ → kernel/security (délégation de repli sur clearElement), de même forme que celle de fetch-helper.ts que le corpus juge sans cible : aucun symbole partagé à descendre. Deux hashs de seam re-épinglés dans le même commit (verify-seam-drift) : celui de ce fichier, et celui de kernel/ui/pill-search.ts — un seam core ↔ geocoding qui a rougi sans être visé, parce qu'il importe dom-security."
-        },
-        "packages/core/src/kernel/layer-manager/css/layer-manager-panel.css": {
-            "kind": "file",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Feuille du panneau de gestion des couches : conteneur, en-tête, bouton de repli, corps, sections et items en nomenclature BEM `.gl-layer-manager__*`",
-            "confidence": "haute",
-            "rationale": "✅ FERMÉ au STRUCT S8 (26/07/2026) — E6, colocalisation des assets. La feuille rejoint la feature qu'elle habille : les 11 `capabilities/*/css/` étaient déjà coloqués, `css/components/**` était l'îlot restant. Le répertoire `css/components/` disparaît, et ses 4 clés de RÉPERTOIRE avec — elles ne se requalifient pas. ⚠️ Le contre-argument de la cascade `@layer` a été pesé PUIS mesuré : les 5 `@import` de `geoleaf-main.css:40-45` sont tous en `layer(gl.kernel)` et seuls leurs CHEMINS changent — ordre et couche identiques. Le fichier documente lui-même à `:20-23` (écrit au S6) qu'« il ne dépend plus de l'ordre des @import ». Preuve à l'octet : boot payload **177,8 KB gz / 602,2 KB raw avant ET après**, `geoleaf-main.min.css` 16,2 / 24 KB gz. `verify-purgecss` a été VU rougir sur **exactement 53** sélecteurs — le compte attendu ; un chemin mal réécrit l'aurait fait dévier. Baseline régénérée à 75."
-        },
-        "packages/core/src/kernel/layer-manager/css/layer-manager-controls.css": {
-            "kind": "file",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Feuille des petits contrôles intégrés à une ligne du gestionnaire de couches : rangée d'item, conteneur de contrôles à droite, largeurs fixes",
-            "confidence": "haute",
-            "rationale": "✅ FERMÉ au STRUCT S8 (26/07/2026) — E6, colocalisation des assets. La feuille rejoint la feature qu'elle habille : les 11 `capabilities/*/css/` étaient déjà coloqués, `css/components/**` était l'îlot restant. Le répertoire `css/components/` disparaît, et ses 4 clés de RÉPERTOIRE avec — elles ne se requalifient pas. ⚠️ Le contre-argument de la cascade `@layer` a été pesé PUIS mesuré : les 5 `@import` de `geoleaf-main.css:40-45` sont tous en `layer(gl.kernel)` et seuls leurs CHEMINS changent — ordre et couche identiques. Le fichier documente lui-même à `:20-23` (écrit au S6) qu'« il ne dépend plus de l'ordre des @import ». Preuve à l'octet : boot payload **177,8 KB gz / 602,2 KB raw avant ET après**, `geoleaf-main.min.css` 16,2 / 24 KB gz. `verify-purgecss` a été VU rougir sur **exactement 53** sélecteurs — le compte attendu ; un chemin mal réécrit l'aurait fait dévier. Baseline régénérée à 75."
-        },
-        "packages/core/src/kernel/layer-manager/css": {
-            "kind": "dir",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Feuilles de style du panneau de gestion des couches, coloquées avec lui",
-            "confidence": "haute",
-            "rationale": "✅ Créé au STRUCT S8 (26/07/2026) — répertoire de colocalisation CSS de la feature, ouvert par E6. Reprend le patron des 11 `capabilities/*/css/`, déclaré référence du dépôt par T7."
-        },
-        "packages/core/src/kernel/storage/eviction-notice.ts": {
-            "kind": "file",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "L'unique ecouteur in-core de geoleaf:cache:evicted - rend l'avis d'eviction visible sur TOUTES les variantes, deploy-core comprise",
-            "confidence": "haute",
-            "rationale": "Ne du cablage d'eviction, seul P1 du registre. Le core EMETTAIT l'alerte depuis deux endroits et ne l'ecoutait nulle part : le seul addEventListener du depot vivait dans offline-ui, plugin gate absent de deploy-core - la variante qui part chez un client. Ce n'est pas du poids, c'est de la perte de donnees. Le cablage est dans setupStorage() (B8) et NON dans _wireEvictionBridge(), qui n'est appele qu'apres l'enregistrement d'un Service Worker : y poser l'ecouteur l'aurait rendu aveugle au second emetteur, cache-manager, qui tourne hors PWA. Il appelle notifyPrimitive.notify() et non GeoLeaf.UI.notify : seule la primitive porte un repli console.*, l'autre est un no-op silencieux - passer par elle aurait reproduit le silence corrige."
         }
     }
 }

@@ -22,6 +22,7 @@ import {
     _resolveGeometryFilteredIds,
     _applyFeatureVisibilityForLayer,
     getFeatures as _getFeatures,
+    canIdentifyFeatures,
 } from "./geojson-filter.js";
 import { dispatchGeoLeafEvent } from "../events/event-bus.js";
 import {
@@ -47,6 +48,7 @@ import type {
     GeoJSONSharedState,
 } from "./core-types.js";
 import type { GeoJSONFeature } from "./geojson-types.js";
+import type { LayerDataDiff } from "../../contracts/map-adapter.contract.js";
 import type { CoreLayerManagerLike, CoreLoaderLike } from "./loader/loader-types.js";
 
 /** Minimal Utils surface read during init() for map resolution / option merging. */
@@ -62,6 +64,89 @@ interface InitUtils {
 // ──────────────────────────────────────────
 //   LAZY GETTERS FOR SUB-MODULES
 // ──────────────────────────────────────────
+
+/**
+ * Applies a unit mutation: the change goes to the engine as a DIFF when the layer can be
+ * addressed by id, and as a whole-collection re-feed when it cannot.
+ *
+ * `features` is the array the caller has ALREADY mutated in place — the store's own array,
+ * not a copy. That is the point of the whole path: `addFeature` on a layer of 100 000 costs
+ * one `push` and a diff of one, instead of a fresh array of 100 001 and a full
+ * re-serialisation to the worker.
+ *
+ * 🛑 **The fallback lives HERE, not in the adapter, and that is what makes it observable.**
+ * Re-feeding needs the whole collection, which this layer holds and the adapter deliberately
+ * does not. Keeping the decision on this side means a unit test with a fake adapter can
+ * assert *which* of the two paths ran — and a fallback nobody can see fire is a fallback
+ * that quietly becomes the only path, which is how a diff optimisation dies without a
+ * single test turning red.
+ *
+ * 🛑 **A free function, NOT a member of `GeoJSONCore` — and that is not a style choice.**
+ * `globals.geojson.ts` mounts that object wholesale as `GeoLeaf.GeoJSON`, so a member here
+ * would be public API: typed, documented, frozen by the semver ratchet and owed to
+ * integrators forever, for a seam whose only two callers are in this directory. The boot
+ * golden master caught the first attempt, which is what it is for.
+ *
+ * @param layerId - Layer whose features changed.
+ * @param diff - The change, expressed as what moved.
+ * @param features - The layer's features AFTER the mutation.
+ */
+export function applyLayerDiff(
+    layerId: string,
+    diff: LayerDataDiff,
+    features: GeoJSONFeature[]
+): void {
+    const state = getState();
+    if (!state) return;
+    const entry = state.layers?.get(layerId);
+    if (entry) {
+        entry.features = features;
+        const fc = entry.geojson as { type?: unknown; features?: unknown } | null | undefined;
+        // Republish the envelope only when it no longer wraps this very array —
+        // `getLayerData()` reads it, and rebuilding it per mutation would allocate an object
+        // per keystroke for no reader's benefit.
+        if (!fc || fc.type !== "FeatureCollection" || fc.features !== features) {
+            entry.geojson = { type: "FeatureCollection", features };
+        }
+    }
+    const adapter = state.adapter;
+    if (entry && _isDiffable(entry, layerId) && adapter?.applyDataDiff?.(layerId, diff) === true) {
+        return;
+    }
+    adapter?.updateLayerData?.(layerId, { type: "FeatureCollection", features });
+}
+
+/**
+ * Answers "can this layer's features be addressed one by one?", computing it at most
+ * once per collection.
+ *
+ * 🛑 **LAZY, and the laziness is the economy.** The predicate is O(N). Running it on
+ * every whole-collection write would tax the paths that never diff — boot, profile
+ * loads, filter re-feeds, OGC refreshes — for an answer most layers never consult;
+ * measured at ~6 % of the core suite's wall time when it was eager, which under a
+ * parallel CI load was enough to push the three slowest boot tests past their budget.
+ * Writing a collection now merely INVALIDATES the answer (`undefined` = not yet asked),
+ * and the first unit mutation on that layer pays for it, once.
+ *
+ * ⚠️ A layer that cannot be identified is NAMED, once per collection, rather than
+ * quietly degraded: missing or duplicate `properties.id` costs it GPU filtering AND
+ * partial updates at the same time, and both failures are invisible from outside — the
+ * map keeps working, more slowly, forever. Warning here rather than at write time also
+ * means it fires only when it has a consequence.
+ */
+function _isDiffable(entry: GeoJSONLayerEntry, layerId: string): boolean {
+    const cached = entry._diffable;
+    if (typeof cached === "boolean") return cached;
+    const now = canIdentifyFeatures(entry.features || []);
+    entry._diffable = now;
+    if (!now) {
+        Log.warn(
+            `[GeoJSON] Layer "${layerId}": features lack a unique properties.id — GPU filtering ` +
+                "and partial source updates both fall back to full re-feeds."
+        );
+    }
+    return now;
+}
 
 const getState = (): GeoJSONSharedState => SharedModule.state;
 
@@ -260,15 +345,13 @@ const GeoJSONModule = {
         if (adapter && typeof adapter.updateLayerData === "function") {
             adapter.updateLayerData(layerId, data);
         }
-        // Keep in-memory state consistent so getLayerData() returns fresh data
-        const layerEntry = state.layers?.get(layerId);
-        if (layerEntry) {
-            layerEntry.geojson = data;
-            const fc = data as { features?: GeoJSONFeature[] } | null | undefined;
-            if (fc && Array.isArray(fc.features)) {
-                layerEntry.features = fc.features;
-            }
-        }
+        // Keep in-memory state consistent so getLayerData() returns fresh data.
+        // Delegated to the shared state's own writer — see its header for why every
+        // whole-collection write must pass through exactly one place.
+        SharedModule.setLayerCollection(layerId, data);
+        // Invalidate, never recompute: see `_isDiffable`.
+        const written = state.layers?.get(layerId);
+        if (written) written._diffable = undefined;
     },
 
     getAllLayers(): unknown[] {

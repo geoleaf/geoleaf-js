@@ -12,7 +12,11 @@
 
     #gl-theme-primary-container {
         position: absolute;
-        top: 10px;
+        /* Décalé par la bande haute quand une surface l'occupe — le jeton vaut `0px` sinon.
+           ⚠️ Le producteur n'est nommé nulle part ici, et c'est la réciproque de la note du
+           bas de ce fichier : le kernel n'a pas à connaître ce conteneur, ce conteneur n'a
+           pas à connaître qui occupe la bande. */
+        top: calc(10px + var(--gl-map-top-inset, 0px));
         left: 50%;
         transform: translateX(-50%);
         z-index: 1001;
@@ -25,7 +29,7 @@
 
     #gl-theme-secondary-container {
         position: absolute;
-        top: 10px;
+        top: calc(10px + var(--gl-map-top-inset, 0px));
         right: 70px;
         z-index: 1000;
         pointer-events: none;
@@ -253,7 +257,7 @@
         }
 
         #gl-theme-secondary-container {
-            top: 55px;
+            top: calc(55px + var(--gl-map-top-inset, 0px));
             right: 10px;
         }
 
@@ -298,7 +302,7 @@
     /* Fixes the primary/secondary overlap on narrow non-mobile viewports                 */
     @media (min-width: 769px) and (max-width: 1024px) {
         #gl-theme-secondary-container {
-            top: 60px;
+            top: calc(60px + var(--gl-map-top-inset, 0px));
             right: auto;
             left: 50%;
             transform: translateX(-50%);
@@ -308,7 +312,7 @@
     /* 15" desktop (>=1440px): secondary on the SAME row as primary + toggle. */
     @media (min-width: 1440px) {
         #gl-theme-secondary-container {
-            top: 10px;
+            top: calc(10px + var(--gl-map-top-inset, 0px));
             right: 76px; /* toggle right:10px + width:3.6rem (~58px) = edge at 68px, 8px gap */
             left: auto;
             transform: none;
@@ -332,7 +336,7 @@
         /* Tab open: the secondary bar no longer fits on the same row — it drops
    under the primary one, centred (as in tablet mode). */
         body.gl-right-panel-open:has(#gl-right-panel.gl-has-active) #gl-theme-secondary-container {
-            top: 58px;
+            top: calc(58px + var(--gl-map-top-inset, 0px));
             right: auto;
             left: 50%;
             transform: translateX(-50%);

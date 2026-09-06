@@ -117,6 +117,15 @@ export const PWA_CAPABILITY: ICapabilityDeclaration = {
                     default: false,
                     description: "Show a connectivity status badge.",
                 },
+                badgePosition: {
+                    type: "string",
+                    default: "topleft",
+                    description:
+                        "MapLibre control corner the badge is mounted in. ⚠️ The option " +
+                        "existed and was IGNORED until 05/09/2026 — `_createBadge` passed a " +
+                        'hard-coded `"topleft"` — so a profile could set it, see nothing ' +
+                        "happen, and rightly doubt the whole block.",
+                },
             },
         },
     },

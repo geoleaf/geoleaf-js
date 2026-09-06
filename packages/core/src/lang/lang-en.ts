@@ -141,6 +141,18 @@ const lang_en: LangDict = {
     // \u2500\u2500 UI texts / Offline \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
     "ui.offline.badge": "\u26a0\ufe0f Offline",
     "aria.offline.badge_title": "Offline mode active",
+    // ── UI texts / Sync banner (R7) ───────────────────────────────────────────
+    "ui.sync.online": "Online",
+    "ui.sync.offline": "Offline",
+    "ui.sync.pending_one": "1 pending",
+    "ui.sync.pending_many": "{0} pending",
+    "ui.sync.all_sent": "Everything sent",
+    "ui.sync.quarantined": "{0} blocked",
+    "ui.sync.last_never": "never synced",
+    "ui.sync.last_at": "synced {0}",
+    "ui.sync.action": "Sync now",
+    "ui.sync.dismiss": "Dismiss this bar",
+    "aria.sync.banner": "Synchronisation status",
     "ui.theme.select_placeholder": "Select a theme...",
     "ui.themes.nav_prev_char": "\u276e",
     "ui.themes.nav_next_char": "\u276f",

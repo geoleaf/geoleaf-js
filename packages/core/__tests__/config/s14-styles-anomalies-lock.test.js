@@ -59,6 +59,34 @@ describe("config B6 — label oneOf (selector string OR text-config object)", ()
         expect(validate(doc({ label: { enabled: true, field: "properties.name" } }))).toBe(true));
     it("object label WITHOUT enabled rejected (oneOf matches neither branch)", () =>
         expect(validate(doc({ label: {} }))).toBe(false));
+
+    // label.offset — RE-declared (it had been removed as unmapped). The schema is the only
+    // thing that stops a bad profile reaching the renderer, so it is asserted in both
+    // directions: the canonical shape passes, and each way of getting it wrong fails.
+    it("label.offset accepted in its canonical shape", () =>
+        expect(
+            validate(
+                doc({
+                    label: { enabled: true, offset: { placement: "top-right", distancePx: 14 } },
+                })
+            )
+        ).toBe(true));
+    it("label.offset accepted with either key alone", () => {
+        expect(validate(doc({ label: { enabled: true, offset: { placement: "left" } } }))).toBe(
+            true
+        );
+        expect(validate(doc({ label: { enabled: true, offset: { distancePx: 0 } } }))).toBe(true);
+    });
+    it("label.offset.placement outside the enum is rejected", () =>
+        expect(validate(doc({ label: { enabled: true, offset: { placement: "sideways" } } }))).toBe(
+            false
+        ));
+    it("negative label.offset.distancePx is rejected", () =>
+        expect(validate(doc({ label: { enabled: true, offset: { distancePx: -1 } } }))).toBe(
+            false
+        ));
+    it("unknown key under label.offset is rejected (additionalProperties:false)", () =>
+        expect(validate(doc({ label: { enabled: true, offset: { angleDeg: 45 } } }))).toBe(false));
 });
 
 describe("config B6 — styleRules operator enum is hardened", () => {

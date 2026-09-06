@@ -90,10 +90,33 @@ export interface OutboxDBInstance {
             quarantine?: QuarantineReason | null;
             /** HTTP status of the refusal. `null` erases it on requeue. */
             quarantineStatus?: number | null;
+            /**
+             * When the entry went on the wire. Written WITH the `inFlight` state, never
+             * after: a state saying "in flight" without the date that dates it is exactly
+             * the entry no reclaim can tell from one another tab is sending.
+             */
+            inFlightAt?: number | null;
+            /** Earliest replay date. `0` or `null` makes the entry replayable now. */
+            nextAttemptAt?: number | null;
         }
     ): Promise<void>;
     remove(id: string): Promise<void>;
     count(): Promise<number>;
+    /**
+     * How many entries are replayable RIGHT NOW — `pending` or `failed`, and past their
+     * retry delay.
+     *
+     * 🛑 **`count()` cannot answer this question, and using it would be worse than not
+     * asking.** It counts everything the store holds, `quarantined` included — an entry
+     * that is by definition NOT replayable. A periodic trigger reading `count()` would
+     * therefore wake the device forever after the first quarantine, on a queue nothing
+     * can move. And it ignores `nextAttemptAt`, so it also wakes for entries the drain
+     * would walk straight past.
+     *
+     * @param now - The clock the deferral is judged against, passed in so the caller
+     *   holds ONE reading for its whole decision.
+     */
+    countDue(now: number): Promise<number>;
 }
 
 const STORE = "outbox";
@@ -206,6 +229,19 @@ function init(db: IDBDatabase): OutboxDBInstance {
             return read(
                 (store) => store.count(),
                 (r) => (r as number) ?? 0
+            );
+        },
+
+        countDue(now) {
+            // Two index reads and a filter rather than a full scan: the replayable states
+            // are exactly the two the drain replays, and the store's `state` index already
+            // separates them. `getAll` on the index yields the rows, which is what the
+            // deferral needs — a `count()` on the index would answer without
+            // `nextAttemptAt`, i.e. the very approximation this method exists to refuse.
+            const due = (rows: StoredOutboxEntry[]) =>
+                rows.filter((entry) => (entry.nextAttemptAt ?? 0) <= now).length;
+            return Promise.all([this.listByState("pending"), this.listByState("failed")]).then(
+                ([pending, failed]) => due(pending) + due(failed)
             );
         },
     };

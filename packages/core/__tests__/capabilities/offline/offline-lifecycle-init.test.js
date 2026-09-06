@@ -47,6 +47,114 @@ describe("OfflineLifecycle.init — mode moteur", () => {
         expect(markReady).toHaveBeenCalled();
     });
 
+    // ── R7: the offline badge was UNREACHABLE in engine mode ────────────────────────
+    test("🛑 mode moteur : `showBadge` est TRANSMIS au détecteur, pas noyé dans un objet vide", async () => {
+        vi.spyOn(CapabilityRegistry, "ensureLoaded").mockResolvedValue(undefined);
+        const storage = { init: vi.fn(() => Promise.resolve()) };
+
+        OfflineLifecycle.init(
+            { storage },
+            { enabled: true, pwaEnabled: true, offlineDetectorEnabled: true }
+        );
+        await flush();
+
+        // The engine branch passed `offline: {}`: the facade spreads what it gets onto the
+        // detector's defaults, where `showBadge` is `false`. The badge could therefore only
+        // ever appear in the one mode where offline does not exist.
+        expect(storage.init.mock.calls[0][0].offline).toMatchObject({ showBadge: true });
+    });
+
+    test("détecteur désactivé → le badge reste éteint, sans que rien d'autre change", async () => {
+        vi.spyOn(CapabilityRegistry, "ensureLoaded").mockResolvedValue(undefined);
+        const storage = { init: vi.fn(() => Promise.resolve()) };
+
+        OfflineLifecycle.init(
+            { storage },
+            { enabled: true, pwaEnabled: true, offlineDetectorEnabled: false }
+        );
+        await flush();
+
+        expect(storage.init.mock.calls[0][0].offline).toMatchObject({ showBadge: false });
+    });
+
+    test("`badgePosition` du profil arrive jusqu'au détecteur", async () => {
+        vi.spyOn(CapabilityRegistry, "ensureLoaded").mockResolvedValue(undefined);
+        const storage = { init: vi.fn(() => Promise.resolve()) };
+
+        OfflineLifecycle.init(
+            { storage },
+            {
+                enabled: true,
+                pwaEnabled: true,
+                offlineDetectorEnabled: true,
+                badgePosition: "bottomright",
+            }
+        );
+        await flush();
+
+        expect(storage.init.mock.calls[0][0].offline).toMatchObject({
+            badgePosition: "bottomright",
+        });
+    });
+
+    // ── R7: the lifecycle ARMS the drain, and at a precise instant ──────────────────
+    test("🛑 arme le drain APRÈS `_markReady`, jamais avant", async () => {
+        vi.spyOn(CapabilityRegistry, "ensureLoaded").mockResolvedValue(undefined);
+        const order = [];
+        vi.spyOn(StorageContract, "_markReady").mockImplementation(() => order.push("markReady"));
+        const storage = {
+            init: vi.fn(() => Promise.resolve()),
+            _armOutboxDrain: vi.fn(() => order.push("arm")),
+        };
+
+        OfflineLifecycle.init({ storage }, { enabled: true, pwaEnabled: true });
+        await flush();
+
+        // ⚠️ The ORDER is the subject, not merely the call. Arming is itself the "storage
+        // initialised" trigger — the function ends on a first pass. Firing it before the
+        // contract declares the engine drivable would drain a database the rest of the
+        // application does not yet know is open.
+        expect(order).toEqual(["markReady", "arm"]);
+    });
+
+    test("la période de tic du profil est transmise telle quelle", async () => {
+        vi.spyOn(CapabilityRegistry, "ensureLoaded").mockResolvedValue(undefined);
+        const storage = { init: vi.fn(() => Promise.resolve()), _armOutboxDrain: vi.fn() };
+
+        OfflineLifecycle.init(
+            { storage },
+            { enabled: true, pwaEnabled: true, drain: { pollIntervalMs: 0 } }
+        );
+        await flush();
+
+        expect(storage._armOutboxDrain).toHaveBeenCalledWith({ pollIntervalMs: 0 });
+    });
+
+    test("🛑 `_reset` DÉSARME — sinon un minuteur survit à la capacité", async () => {
+        vi.spyOn(CapabilityRegistry, "ensureLoaded").mockResolvedValue(undefined);
+        const storage = {
+            init: vi.fn(() => Promise.resolve()),
+            _armOutboxDrain: vi.fn(),
+            _disarmOutboxDrain: vi.fn(),
+        };
+        OfflineLifecycle.init({ storage }, { enabled: true, pwaEnabled: true });
+        await flush();
+
+        OfflineLifecycle._reset();
+
+        expect(storage._disarmOutboxDrain).toHaveBeenCalledTimes(1);
+    });
+
+    test("moteur non chargé (pwa absent) → le drain n'est JAMAIS armé", async () => {
+        vi.spyOn(CapabilityRegistry, "ensureLoaded").mockResolvedValue(undefined);
+        const storage = { init: vi.fn(), _armOutboxDrain: vi.fn() };
+
+        OfflineLifecycle.init({ storage }, { enabled: true, pwaEnabled: false });
+        await flush();
+
+        expect(storage._armOutboxDrain).not.toHaveBeenCalled();
+    });
+
     test("enabled sans pwa → PAS de mode moteur (dépendance gardée)", async () => {
         const ensure = vi.spyOn(CapabilityRegistry, "ensureLoaded").mockResolvedValue(undefined);
         OfflineLifecycle.init({ storage: { init: vi.fn() } }, { enabled: true, pwaEnabled: false });

@@ -21,6 +21,15 @@ const state = vi.hoisted(() => ({
 vi.mock("../../src/kernel/geojson/shared.js", () => ({
     GeoJSONShared: {
         state,
+        // Faithful to the real one: records the collection on the layer entry. Stubbing it
+        // to a no-op would hide the very fact the OGC test below now asserts — that a
+        // refresh reaches the STORE, not only the source.
+        setLayerCollection: (layerId, data) => {
+            const entry = state.layers?.get(layerId);
+            if (!entry) return;
+            entry.geojson = data;
+            if (Array.isArray(data?.features)) entry.features = data.features;
+        },
     },
 }));
 
@@ -897,10 +906,19 @@ describe("geojson/loader/single-layer — OGC autoRefresh (RM-P2 #1)", () => {
             type: "FeatureCollection",
             features: [{ type: "Feature", geometry: null, properties: {} }],
         };
+        const entry = { config: {}, features: [] };
+        state.layers.set("ogc-lyr", entry);
         applyOgcRefreshedData({ adapter: { updateLayerData } }, "ogc-lyr", fc);
         // Regression guard: the former call used the non-existent `updateGeoJSONSource`,
         // so the optional-chained call was a silent no-op and the refresh was discarded.
         expect(updateLayerData).toHaveBeenCalledWith("ogc-lyr", fc);
+        // R6 — and the STORE sees it too. It did not, and that was survivable only while
+        // every mutation re-fed the whole collection: the next `setData` re-synchronised
+        // the two by overwriting the source with the store, silently discarding this
+        // refresh. Once a mutation is a diff, the source keeps the refreshed features and
+        // the store keeps the pre-refresh ones, and nothing re-converges them.
+        expect(entry.features).toBe(fc.features);
+        expect(entry.geojson).toBe(fc);
     });
 
     it("falls back to the core map adapter when state.adapter is null", () => {

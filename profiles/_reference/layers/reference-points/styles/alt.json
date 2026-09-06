@@ -20,6 +20,10 @@
             "color": "#ffffff",
             "opacity": 1,
             "sizePx": 2
+        },
+        "offset": {
+            "placement": "top-right",
+            "distancePx": 14
         }
     },
     "description": "Style alternatif (surface/ligne) — S14 B6",

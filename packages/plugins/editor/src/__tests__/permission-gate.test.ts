@@ -119,9 +119,11 @@ describe("un refus de permission n'est pas réessayable", () => {
 
         expect(err).toBeInstanceOf(PersistenceError);
         expect((err as PersistenceError).kind).toBe("forbidden");
-        // ⚠️ The half that matters: `auto-adapter._isTransportError` only
-        // recognises `network`/`timeout`. Typed `network`, this refusal would
-        // be requeued indefinitely.
+        // ⚠️ The half that matters, and it OUTLIVED the adapter that motivated it:
+        // `auto-adapter._isTransportError` recognised `network`/`timeout` and would have
+        // requeued a refusal typed `network` indefinitely. That adapter is gone (R7 — there
+        // is no fallback left to requeue into), but the typing still decides how the CORE's
+        // drain treats the refusal, so the assertion keeps its subject.
         expect((err as PersistenceError).kind).not.toBe("network");
     });
 

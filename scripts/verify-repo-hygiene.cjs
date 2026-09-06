@@ -6,6 +6,9 @@
  * Categories checked:
  *   1. Throwaway scripts tracked in git (fix_*.py, tmp_*, analyze_*.py, etc.), and
  *      any `.cjs`/`.mjs` in root `scripts/` absent from SCRIPTS_ALLOWLIST.
+ *   1c. SCRIPTS_ALLOWLIST entries naming a file that no longer exists — the register
+ *      must describe the disk in BOTH directions, or it silently becomes a list of
+ *      names designating nothing.
  *   1b. `.cjs`/`.mjs` files OUTSIDE root `scripts/` with no declared owner (T3.5).
  *      Corpus is the index AND the untracked worktree — see getGitVisibleFiles().
  *   2. Build/test artifacts tracked in git (coverage*.txt, *_cov_run.txt, coverage-e2e/)
@@ -243,6 +246,13 @@ const SCRIPTS_ALLOWLIST = new Set([
     // talks to the registry and publishes, which no gate must do.
     "publish-one.cjs",
     "publish-plugins.cjs",
+    // The gate sequence standing between this repo and an IMMUTABLE tarball. It runs
+    // the `release: true` subset of `ci-local.cjs`'s STEPS — DERIVED, so it holds no
+    // list of its own — plus a final assertion on the CSS stubs. DELIBERATELY outside
+    // `ci:local`: it is not an extra gate but a RE-RUN of a subset of them, at a moment
+    // `ci:local` knows nothing about. It is the content of `publish.yml`'s `verify` job,
+    // and the local protocol before any publication (`-- --strict`).
+    "release-check.cjs",
     // Ports the workshop to the public repo `geoleaf/geoleaf-js`.
     // DELIBERATELY outside ci:local: it talks to the network and writes to
     // a remote repo, which no gate must do. Its default `--dry-run`
@@ -304,6 +314,23 @@ const SCRIPTS_ALLOWLIST = new Set([
     // sync" comment, i.e. on nothing.
     "verify-ci-parity.cjs",
     "ci-parity.cjs", // scripts/lib/ — ci.yml parser + leaf resolver, also read by ci-local.cjs
+    // scripts/lib/ — the ledger of what each gate COSTS and how often it BITES,
+    // appended by `ci-local.cjs` and rendered by `ci:local --report`.
+    // 🛑 Its store is `~/.cache/geoleaf/`, OUTSIDE the repo: the measurement is a
+    // property of this workstation over time, not of the repository, and an in-tree
+    // file would be swept by the `git clean -xdf` used to reproduce a fresh clone.
+    // Recording can never fail a run — see the module header.
+    "gate-ledger.cjs",
+    // ATELIER-CHECK — the gates whose SUBJECT lives in the workshop root, taken off
+    // the push path. Subset DERIVED from `ci-local.cjs` through the `workshop: true`
+    // flag, on `release-check.cjs`'s exact pattern (floor + load-bearing commands
+    // re-derived from the selection). The push protocol now asks for TWO greens —
+    // that is the price of no longer paying for them on every run.
+    "atelier-check.cjs",
+    // DOC-CEIL — size ceiling of the documents loaded before any source, plus the ban on
+    // copied counts in them. Decreasing ratchet; skips on the public clone, hence a
+    // workshop gate (`atelier:check`).
+    "check-doc-ceilings.cjs",
     // ci.yml's gitleaks gate replayed locally through its BINARY (the
     // action itself is not reproducible). Pinned to the exact version the
     // action installs.
@@ -985,6 +1012,45 @@ for (const f of trackedFiles) {
     }
 }
 
+// ─── Check 1c — the register describes the disk, in the OTHER direction ──────
+//
+// Check 1 above holds "every script is registered". Nothing held the converse: an
+// entry naming a file that no longer exists stayed in the Set for ever, and the
+// register slowly became a list of names some of which designate nothing — the exact
+// shape `check-orphan-exports.cjs` had to grow `checkAllowlistFresh()` for, and the
+// shape the debt register already records for an inert allowlist entry.
+//
+// Measured on 05/09/2026, before laying this: 172 entries for 172 files on disk. The
+// parity was exact — and it was LUCK, not a property. Nothing would have said so had
+// it drifted, and a register at 172-for-170 reads exactly like one at 172-for-172.
+//
+// 🛑 This is what "allow-list dérivée" (roadmap 3.3) can actually mean here, and it is
+// not the list. The register's payload is 497 lines of PROSE for 172 entries — why a
+// script sits outside `ci:local`, why one touches the network, why one is uncached.
+// None of that is derivable from a directory listing, and a Set rebuilt from `ls`
+// would be a tautology that catches nothing while destroying the only place several of
+// those motives live. What IS derived is the register's CONFORMITY to the disk, in
+// both directions.
+//
+// ⚠️ Corpus is the INDEX, exactly like check 1 — the two directions of one register
+// must judge one corpus. Consequence, and it is the repo's standing trap: `git add`
+// THEN the gate. A script staged after this runs shows as a stale entry on a name
+// that is perfectly correct.
+const liveScriptBasenames = new Set(
+    trackedFiles
+        .filter((f) => f.startsWith("scripts/") && (f.endsWith(".cjs") || f.endsWith(".mjs")))
+        .map((f) => path.basename(f))
+);
+const staleAllowlistHits = [];
+for (const entry of SCRIPTS_ALLOWLIST) {
+    if (!liveScriptBasenames.has(entry)) {
+        staleAllowlistHits.push({
+            file: entry,
+            label: "entrée sans fichier — retirer du registre",
+        });
+    }
+}
+
 // ─── Check 1b — .cjs outside root scripts/ ───────────────────────────────────
 //
 // Check 1 above governs `scripts/` and nothing else. Nothing governed a `.cjs`
@@ -1141,6 +1207,11 @@ function reportCategory(label, hits, formatter) {
 reportCategory("Throwaway scripts tracked in git", throwawayHits, (h) => `${h.file}  [${h.label}]`);
 reportCategory("Unlisted modules outside scripts/", strayCjsHits, (h) => `${h.file}  [${h.label}]`);
 reportCategory(
+    "Stale SCRIPTS_ALLOWLIST entries",
+    staleAllowlistHits,
+    (h) => `${h.file}  [${h.label}]`
+);
+reportCategory(
     "Build/test artifacts tracked in git",
     artifactHits,
     (h) => `${h.file}  [${h.label}]`
@@ -1176,6 +1247,7 @@ reportCategory(
 const errors =
     throwawayHits.length +
     strayCjsHits.length +
+    staleAllowlistHits.length +
     artifactHits.length +
     bytecodeHits.length +
     bomHits.length +
@@ -1200,6 +1272,12 @@ const generatedStatus =
 const producerStatus = producerHits.length === 0 ? "OK" : producerHits.length + " ERROR(S)";
 console.log("  Throwaway scripts     " + throwawayStatus);
 console.log("  Stray modules         " + strayCjsStatus);
+console.log(
+    "  Registre scripts/     " +
+        (staleAllowlistHits.length === 0
+            ? "OK"
+            : staleAllowlistHits.length + " ERROR(S) — entrée(s) sans fichier")
+);
 console.log("  Build artifacts       " + artifactStatus);
 console.log("  Python bytecode       " + bytecodeStatus);
 console.log(

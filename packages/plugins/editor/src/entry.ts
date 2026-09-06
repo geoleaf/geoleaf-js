@@ -13,6 +13,7 @@ import {
     updateUndoRedoState,
     updatePendingQueueCount,
     getEditorActiveTool,
+    setEditorActiveTool,
     deactivateActiveTool,
 } from "./sub-menu/floating-menu.js";
 import { openPendingQueueModal } from "./sub-menu/pending-queue-modal.js";
@@ -25,18 +26,24 @@ import { createTerraDrawAdapter } from "./drawing/terra-draw-adapter.js";
 import type { TerraDrawAdapterInstance } from "./drawing/terra-draw-adapter.js";
 import { adapterCallbacks, initEventsBridge, dispatchFeatureConflict } from "./events.js";
 import type { EditorWiringContext } from "./events.js";
-import { initLayerPicker, destroyLayerPicker } from "./selection/layer-picker.js";
-import { getSelection, clearSelection } from "./selection/selection-state.js";
-import { createPersistenceAdapter, createOnlineAdapter } from "./persistence/adapter-factory.js";
 import {
-    initSyncReplay,
-    destroySyncReplay,
+    initLayerPicker,
+    destroyLayerPicker,
+    selectHostFeature,
+} from "./selection/layer-picker.js";
+import { getSelection, clearSelection } from "./selection/selection-state.js";
+import { createPersistenceAdapter } from "./persistence/adapter-factory.js";
+import {
     flushNow,
     getPendingCount,
     listPendingEditorEntries,
 } from "./persistence/editor-sync-replay.js";
-import { registerSyncHandler } from "./persistence/sync-handler.js";
-import { initImageUpload, destroyImageUpload } from "./persistence/image-store.js";
+import { registerSyncHandler, registerBeforeDrainStep } from "./persistence/sync-handler.js";
+import {
+    initImageUpload,
+    destroyImageUpload,
+    retryPendingImages,
+} from "./persistence/image-store.js";
 import {
     exportSessionFeatures,
     sessionFeatureCount,
@@ -55,6 +62,7 @@ import {
 } from "./selection/host-reconcile.js";
 import {
     initUndoStack,
+    sealOperations,
     pushOperation,
     undo,
     redo,
@@ -86,6 +94,7 @@ import { confirmDialog } from "@geoleaf/host-runtime";
 // Toolbar seam shape imported from the published contract instead of a local
 // re-declaration: the 7 plugins carried 4 diverging shapes of it.
 import type { GeoLeafRawEventMap } from "@geoleaf/core";
+import { resolveFeatureId } from "./feature-id.js";
 // Replaced at build time by rollup/replace — must be a plain string literal.
 const _VERSION = "__GEOLEAF_VERSION__";
 
@@ -171,10 +180,10 @@ function _reloadHostFeature(
     const sd = serverData as {
         id?: string | number;
         geometry?: unknown;
-        properties?: { id?: unknown };
+        properties?: Record<string, unknown>;
     } | null;
-    const fid =
-        sd?.id != null ? String(sd.id) : sd?.properties?.id != null ? String(sd.properties.id) : "";
+    // Same reading order as the picker — `./feature-id.js`.
+    const fid = resolveFeatureId(sd);
     if (fid && sd?.geometry) commitHostGeometry(deps, layerId, fid, sd.geometry);
     else showHostFeature(deps, layerId);
 }
@@ -240,9 +249,15 @@ function _doDelete(): void {
             .delete(featureId, layerId)
             .then(() => {
                 if (_reconcileDeps) removeHostFeature(_reconcileDeps, layerId, featureId);
+                // 🛑 The deletion has LEFT — server or outbox. Undo could only put the shape
+                // back on screen, while the tooltip read "Annuler : suppression". The entry
+                // is therefore withdrawn rather than left offering what it cannot do.
+                sealOperations(snap.terradrawId);
                 _notify("success", _getLabel("editor.toast.deleted"));
             })
             .catch(() => {
+                // ⚠️ NOT sealed: nothing left, the host is put back, so re-adding the shape
+                // through undo is still an honest offer.
                 _notify("error", _getLabel("editor.error.server"));
                 if (_reconcileDeps) showHostFeature(_reconcileDeps, layerId);
             });
@@ -310,6 +325,9 @@ function _initQueueBadgeSync(): void {
     if (typeof document !== "undefined") {
         document.addEventListener("geoleaf:editor:feature-sync-queued", _onQueueChanged);
         document.addEventListener("geoleaf:editor:feature-sync-flushed", _onQueueChanged);
+        // 🛑 The CORE's drain event: the line above only hears drains that went through
+        // THIS plugin, while the drain itself is `Storage.pushOutbox`. Both, idempotently.
+        document.addEventListener("geoleaf:offline:outbox-drained", _onQueueChanged);
     }
     // Show the initial count after the listeners are registered.
     _refreshQueueBadge();
@@ -341,6 +359,27 @@ function _ensureAdapter(): Promise<TerraDrawAdapterInstance | null> {
     if (_adapterPromise) return _adapterPromise;
     _adapterPromise = _loadAdapter();
     return _adapterPromise;
+}
+
+/**
+ * Opens an existing host feature for editing — what "modify the existing one" does.
+ *
+ * Arms the select tool (loading Terra Draw on first use) and hands the feature to the
+ * picker. ⚠️ The tool must be armed BOTH in the menu and on the adapter: the first syncs the
+ * button, the second is what makes Terra Draw's selection interactive. Setting only one
+ * leaves the feature loaded but not draggable, which reads as "nothing happened".
+ *
+ * @param layerId   - Profile layer the feature belongs to.
+ * @param featureId - Host identity of the feature.
+ * @returns whether the feature was really opened.
+ */
+async function _editExistingFeature(layerId: string, featureId: string): Promise<boolean> {
+    const adapter = await _ensureAdapter();
+    if (!adapter) return false;
+    setEditorActiveTool("select");
+    _setExclusiveMode(true);
+    adapter.setMode("select");
+    return selectHostFeature(layerId, featureId);
 }
 
 async function _loadAdapter(): Promise<TerraDrawAdapterInstance | null> {
@@ -394,19 +433,21 @@ function _initTerraDraw(): void {
     // lifecycle (addpoi's handler is POI-only). Runs eagerly so reconnection
     // works even before the user touches a drawing tool; the drawing engine
     // itself is loaded lazily on first tool activation (_ensureAdapter).
-    initSyncReplay({
-        rest: createOnlineAdapter(_cfg!, { onConflict: dispatchFeatureConflict }),
-        onChange: _refreshQueueBadge,
-    });
+    // 🛑 THE IMAGE RETRY MUST RUN BEFORE THE DRAIN — and it is now the CORE that holds
+    // that order, for every caller and not just this plugin's own wrapper. Full motive on
+    // `registerBeforeDrainStep`.
+    initImageUpload();
+    registerBeforeDrainStep(retryPendingImages);
+    // 🛑 NO `initSyncReplay` ANY MORE — the core arms the drain. This plugin's `online`
+    // listener was the repo's ONLY automatic trigger, so an application without the editor
+    // never emptied its queue, and this plugin being lazily loaded, a session reopened with
+    // captures owed drained only once the editor came back. See
+    // `capabilities/offline/write/outbox-drain-triggers.ts`.
     // The `Sync` seam handler, which `offline-ui`'s replay button reads under
     // the `"poi"` identifier. ⚠️ Made UNCONDITIONAL: it used to yield to
     // `addpoi`, and the takeover lived in the bridge, which left with it. Full
     // motive on `registerSyncHandler`.
     registerSyncHandler();
-    // The image upload strategy (network, then local storage as backup) and the
-    // retry on network return. ⚠️ The retry receives its first caller HERE: in
-    // `addpoi` it had none, so photos set aside were never re-sent.
-    initImageUpload();
     // The "add a POI" flow. ⚠️ Wiring goes through a PROVIDER, never a value: it
     // rebuilds at call time from `_cfg` / `_persistence` / `_reconcileDeps`, the
     // last two just set above. A snapshot taken here would freeze the state of a
@@ -415,6 +456,7 @@ function _initTerraDraw(): void {
         openForm: _openEditorForm,
         getWiring: () =>
             _cfg && _persistence ? _buildWiring(_cfg, _persistence, _reconcileDeps) : null,
+        editExisting: _editExistingFeature,
     });
 }
 
@@ -425,11 +467,12 @@ function _registerDestroyHook(): void {
             document.removeEventListener("keydown", _handleEnterKey);
             document.removeEventListener("geoleaf:editor:feature-sync-queued", _onQueueChanged);
             document.removeEventListener("geoleaf:editor:feature-sync-flushed", _onQueueChanged);
+            document.removeEventListener("geoleaf:offline:outbox-drained", _onQueueChanged);
         }
         // Restore core popups/tooltips if the editor is destroyed while a tool is armed.
         _setExclusiveMode(false);
         detachShortcuts();
-        destroySyncReplay();
+        registerBeforeDrainStep(null);
         destroyImageUpload();
         destroyAddForm();
         resetSessionTracking();

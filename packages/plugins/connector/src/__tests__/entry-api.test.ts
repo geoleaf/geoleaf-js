@@ -158,6 +158,37 @@ describe("createConnector()", () => {
         expect(calls.some((c: unknown[]) => typeof c[0] === "function")).toBe(true);
     });
 
+    it("🛑 the delegate reads the RAW token, so an EXPIRED one can still be refreshed", async () => {
+        // The whole point of a refresh is to trade an expired token for a fresh one.
+        // The delegate used to read `getTokenSync`, which EVICTS an expired entry and
+        // returns null — so it gave up before calling the network, exactly in the case
+        // it exists for. `load()` returns the record as stored, expiry included; the
+        // server is the one that arbitrates.
+        (TokenStore["load"] as ReturnType<typeof vi.fn>).mockResolvedValue({
+            token: "expired.token.sig",
+            expiresAt: Date.now() - 60_000,
+        });
+        (TokenStore["getTokenSync"] as ReturnType<typeof vi.fn>).mockReturnValue(null);
+
+        const { AuthClient } = (await import("../auth-client.js")) as unknown as {
+            AuthClient: Record<string, ReturnType<typeof vi.fn>>;
+        };
+        createConnector(AUTH_CONFIG);
+        const delegate = (TokenStore["_setRefreshFn"] as ReturnType<typeof vi.fn>).mock.calls
+            .map((c: unknown[]) => c[0])
+            .filter(
+                (f: unknown): f is (b: string) => Promise<string | null> => typeof f === "function"
+            )
+            .pop();
+        expect(delegate).toBeTypeOf("function");
+        await delegate!(AUTH_CONFIG.baseUrl);
+
+        expect(AuthClient["refresh"]).toHaveBeenCalledWith(
+            AUTH_CONFIG.auth!.endpoint,
+            "expired.token.sig"
+        );
+    });
+
     it("does NOT wire a refresh delegate when using getToken (no auth.endpoint)", () => {
         createConnector(GETTOKEN_CONFIG);
         const calls = (TokenStore["_setRefreshFn"] as ReturnType<typeof vi.fn>).mock.calls;
@@ -316,5 +347,152 @@ describe("GeoLeaf.Connector.openLoginModal()", () => {
 
         await Connector.openLoginModal();
         expect(showLoginModal).toHaveBeenCalledWith(AUTH_UI_CONFIG);
+    });
+});
+
+// ─── Guided reconnection ─────────────────────────────────────────────────────
+
+describe("reconnexion guidée — l'événement d'échec d'auth avait DEUX émetteurs et zéro écouteur", () => {
+    // 🛑 `geoleaf:connector:auth-error` was emitted by the interceptor AND by the store,
+    // and listened to by nobody: the session ended in silence at the worst moment — the
+    // return of network, when the outbox is waiting to be pushed. The component that
+    // reopens it already existed (`showLoginModal`); only the link was missing.
+    let Connector: { configure: (cfg: ConnectorConfig) => Promise<void> };
+    let TokenStore: Record<string, ReturnType<typeof vi.fn>>;
+    let showLoginModal: ReturnType<typeof vi.fn>;
+
+    beforeEach(async () => {
+        vi.resetModules();
+        vi.clearAllMocks();
+        ({ TokenStore } = (await import("../token-store.js")) as unknown as {
+            TokenStore: Record<string, ReturnType<typeof vi.fn>>;
+        });
+        TokenStore["getTokenAsync"].mockResolvedValue("tok");
+        ({ showLoginModal } = (await import("../login-ui.js")) as unknown as {
+            showLoginModal: ReturnType<typeof vi.fn>;
+        });
+        Connector = (await import("../connector-api.js")) as unknown as typeof Connector;
+    });
+
+    afterEach(() => {
+        delete (globalThis as Record<string, unknown>)["GeoLeaf"];
+    });
+
+    it("rouvre la fenêtre de connexion sur `auth-error` quand l'interface est autorisée", async () => {
+        await Connector.configure(AUTH_UI_CONFIG);
+        showLoginModal.mockClear();
+
+        document.dispatchEvent(
+            new CustomEvent("geoleaf:connector:auth-error", {
+                detail: { baseUrl: AUTH_UI_CONFIG.baseUrl },
+            })
+        );
+        await new Promise((r) => setTimeout(r, 0));
+
+        expect(showLoginModal).toHaveBeenCalledTimes(1);
+    });
+
+    it("🛑 ne la rouvre PAS quand `auth.ui` n'est pas demandée — le silence est le contrat", async () => {
+        // An absent `auth.ui` means "the host owns the interface": opening a window an
+        // integrator never asked for would be more intrusive than the defect being fixed.
+        await Connector.configure(AUTH_CONFIG);
+        showLoginModal.mockClear();
+
+        document.dispatchEvent(
+            new CustomEvent("geoleaf:connector:auth-error", {
+                detail: { baseUrl: AUTH_CONFIG.baseUrl },
+            })
+        );
+        await new Promise((r) => setTimeout(r, 0));
+
+        expect(showLoginModal).not.toHaveBeenCalled();
+    });
+
+    it("🛑 deux échecs rapprochés n'ouvrent qu'UNE fenêtre", async () => {
+        // A drain pushes the queue entry by entry: without the guard, a failed tour
+        // would open one window per capture.
+        await Connector.configure(AUTH_UI_CONFIG);
+        showLoginModal.mockClear();
+        let resolveModal!: () => void;
+        showLoginModal.mockReturnValue(new Promise<void>((r) => (resolveModal = r)));
+
+        for (let i = 0; i < 3; i += 1) {
+            document.dispatchEvent(
+                new CustomEvent("geoleaf:connector:auth-error", {
+                    detail: { baseUrl: AUTH_UI_CONFIG.baseUrl },
+                })
+            );
+        }
+        await new Promise((r) => setTimeout(r, 0));
+        resolveModal();
+
+        expect(showLoginModal).toHaveBeenCalledTimes(1);
+    });
+});
+
+// ─── End of session ──────────────────────────────────────────────────────────
+
+describe("logout() — la fin de session, qui n'existait pas", () => {
+    // 🛑 There was NO way to end a session: the public surface carried `configure` and
+    // `openLoginModal` only, `TokenStore.clear` had a single caller (the 401 path), and
+    // the store's own docblock states that "sign-out must clear it here". A handed-back,
+    // lent or lost device kept a valid Bearer until its expiry.
+    let Connector: {
+        configure: (cfg: ConnectorConfig) => Promise<void>;
+        logout: () => Promise<void>;
+    };
+    let TokenStore: Record<string, ReturnType<typeof vi.fn>>;
+
+    beforeEach(async () => {
+        vi.resetModules();
+        vi.clearAllMocks();
+        ({ TokenStore } = (await import("../token-store.js")) as unknown as {
+            TokenStore: Record<string, ReturnType<typeof vi.fn>>;
+        });
+        TokenStore["getTokenAsync"].mockResolvedValue("tok");
+        const api = await import("../connector-api.js");
+        Connector = api as unknown as typeof Connector;
+    });
+
+    afterEach(() => {
+        delete (globalThis as Record<string, unknown>)["GeoLeaf"];
+    });
+
+    it("efface le jeton du magasin — RAM et base indexée", async () => {
+        await Connector.configure(AUTH_CONFIG);
+        TokenStore["clear"].mockClear();
+
+        await Connector.logout();
+
+        expect(TokenStore["clear"]).toHaveBeenCalledWith(AUTH_CONFIG.baseUrl);
+    });
+
+    it("émet `geoleaf:connector:signed-out` — un hôte doit pouvoir réagir", async () => {
+        await Connector.configure(AUTH_CONFIG);
+        const seen: CustomEvent[] = [];
+        document.addEventListener("geoleaf:connector:signed-out", (e) =>
+            seen.push(e as CustomEvent)
+        );
+
+        await Connector.logout();
+
+        expect(seen.length).toBe(1);
+        expect(seen[0].detail.baseUrl).toBe(AUTH_CONFIG.baseUrl);
+    });
+
+    it("🛑 en mode `getToken`, elle n'efface RIEN : le secret appartient à l'hôte", async () => {
+        // The CDC's decision ⑧ makes `getToken` a PULL — no copy of the secret resides
+        // in the plugin. Clearing a store it does not own would be theatre, and calling
+        // it "logout" would lie about what happened.
+        await Connector.configure(GETTOKEN_CONFIG);
+        TokenStore["clear"].mockClear();
+
+        await Connector.logout();
+
+        expect(TokenStore["clear"]).not.toHaveBeenCalled();
+    });
+
+    it("sans configuration, elle ne jette pas", async () => {
+        await expect(Connector.logout()).resolves.toBeUndefined();
     });
 });

@@ -43,6 +43,22 @@
  *
  * The script rewrites the stubs at each pass and deletes none it did not write. It
  * runs **after** declaration emission, on `dist/types/` — never on `src/`.
+ *
+ * ## The `--check` mode, and why it exists apart from the emission
+ *
+ * `--check` writes NOTHING and exits 1 naming every stub that is missing or stale. It
+ * is the ORACLE of the emission, and it is needed because emitting and publishing are
+ * two moments that a `prepublishOnly` used to separate: `publish.yml` emitted the
+ * stubs, then `npm publish` ran the core's `prepublishOnly` — `rimraf dist` and a
+ * rebuild that does not call this script — and the tarball left without them.
+ * Measured at the registry on `@geoleaf/core@3.1.0`: **0** `*.css.d.ts` published
+ * against **21** on disk. `--ignore-scripts` closed the cause (see `publish-one.cjs`);
+ * this mode is what makes the closure VERIFIABLE, in `release:check` and right before
+ * the first tarball.
+ *
+ * ⚠️ A green `--check` says the stubs are there NOW, on this disk. It says nothing
+ * about a `dist/` a later step might purge — which is exactly why it runs late, and
+ * why it runs again inside the publishing workflow rather than only in `ci:local`.
  */
 
 "use strict";
@@ -85,11 +101,22 @@ function declarationFiles(dir) {
     return out;
 }
 
+/**
+ * `--check` : verify, write nothing, exit 1 naming what is missing.
+ *
+ * ⚠️ Read as a PREFIX, not with `includes("--check")` on a bare token, so that a
+ * future `--check=…` cannot silently fall through to emission — the failure mode
+ * would be a script that writes when it was asked to verify.
+ */
+const CHECK = process.argv.slice(2).some((a) => a === "--check" || a.startsWith("--check="));
+
 function main() {
     let scanned = 0;
     let imports = 0;
     let written = 0;
     const perPackage = [];
+    /** In `--check` mode: the stubs that are absent or stale, by absolute path. */
+    const absents = [];
 
     for (const pkg of packages.all()) {
         // ⚠️ `absDir`, NEVER `dir`. This script is launched from TWO different
@@ -115,13 +142,18 @@ function main() {
                 pkgImports += 1;
                 // The specifier is relative TO THE IMPORTING FILE: that is where the stub goes.
                 const target = path.resolve(path.dirname(file), match[1]) + ".d.ts";
-                fs.mkdirSync(path.dirname(target), { recursive: true });
                 const already =
                     fs.existsSync(target) && fs.readFileSync(target, "utf8") === STUB_BODY;
-                if (!already) {
-                    fs.writeFileSync(target, STUB_BODY);
-                    pkgWritten += 1;
+                if (already) continue;
+                if (CHECK) {
+                    // 🛑 No `mkdirSync` on this path either — a verification that
+                    // creates empty directories has changed the tree it judges.
+                    absents.push(target);
+                    continue;
                 }
+                fs.mkdirSync(path.dirname(target), { recursive: true });
+                fs.writeFileSync(target, STUB_BODY);
+                pkgWritten += 1;
             }
         }
 
@@ -169,10 +201,33 @@ function main() {
         return;
     }
 
-    console.log(
-        `✅ [CSS-STUBS] ${imports} import(s) CSS dans ${scanned} déclaration(s) — ` +
-            `${written} stub(s) écrit(s), ${imports - written} déjà à jour.`
-    );
+    if (CHECK && absents.length > 0) {
+        console.error(
+            `❌ [CSS-STUBS --check] ${absents.length} stub(s) manquant(s) ou périmé(s) sur ` +
+                `${imports} import(s) CSS :\n` +
+                absents.map((p) => `     • ${path.relative(packages.ROOT, p)}`).join("\n") +
+                `\n\n   Un \`.d.ts\` publié dont l'import CSS ne résout pas rend un TS2882 CHEZ\n` +
+                `   L'INTÉGRATEUR qui compile en \`skipLibCheck: false\` — jamais ici. Mesuré au\n` +
+                `   registre sur \`@geoleaf/core@3.1.0\` : 0 stub publié contre 21 sur le disque.\n` +
+                `   Remède : \`node scripts/emit-css-type-stubs.cjs\` APRÈS \`npx turbo run build\`\n` +
+                `   complet. Si l'écart réapparaît à la publication, c'est que \`--ignore-scripts\`\n` +
+                `   a quitté \`publish-one.cjs\` — c'est là qu'il faut regarder, pas ici.`
+        );
+        process.exitCode = 1;
+        return;
+    }
+
+    if (CHECK) {
+        console.log(
+            `✅ [CSS-STUBS --check] ${imports} import(s) CSS dans ${scanned} déclaration(s) — ` +
+                `tous les stubs sont présents et à jour.`
+        );
+    } else {
+        console.log(
+            `✅ [CSS-STUBS] ${imports} import(s) CSS dans ${scanned} déclaration(s) — ` +
+                `${written} stub(s) écrit(s), ${imports - written} déjà à jour.`
+        );
+    }
     if (perPackage.length > 0) console.log(`   ${perPackage.join(" · ")}`);
 }
 

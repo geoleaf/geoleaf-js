@@ -8,6 +8,12 @@
  *   node scripts/ci-local.cjs            # all gates except E2E (fast-ish)
  *   node scripts/ci-local.cjs --e2e      # also build deploy variants + Playwright
  *   node scripts/ci-local.cjs --bail     # stop at the first failing gate
+ *   node scripts/ci-local.cjs --report   # print the cost/bite ledger, run nothing
+ *
+ * ⚠️ A green here no longer covers the workshop gates: they moved to
+ * `npm run atelier:check`. The push protocol therefore asks for TWO greens — see
+ * CLAUDE.md. That is the price of not paying for them on every run, and it is
+ * written rather than left to be discovered.
  *
  * Exit code: 0 if every (required) gate passed, 1 otherwise. Each gate runs even
  * after a previous failure (unless --bail) so you get the full picture in one go.
@@ -65,6 +71,9 @@ const NPM_SHELL = process.platform === "win32";
 const args = process.argv.slice(2);
 const WITH_E2E = args.includes("--e2e");
 const BAIL = args.includes("--bail");
+// Reads the ledger and returns. It runs NO gate, so it never needs the refusals
+// below — and it must stay usable on a workstation where a gate would refuse.
+const REPORT = args.includes("--report");
 
 // ⚠️ THIS BLOCK MUST STAY ABOVE THE `@type` ANNOTATION THAT FOLLOWS. Set
 // between it and its declaration, it made it bear on THIS `const` —
@@ -86,9 +95,64 @@ const TYPECHECK_PKGS = (() => {
         ).length;
 })();
 
-/** @type {{name: string, run: string[]}[]} */
+/**
+ * The gate sequence.
+ *
+ * ## `release: true` — the subset that stands between the repo and an immutable tarball
+ *
+ * `scripts/release-check.cjs` runs the steps carrying this flag, and nothing else. The
+ * flag lives HERE, on the step itself, and that placement is the point: a second table
+ * listing release gates by name would be a copy, and two copies of a gate list diverge
+ * — this repo has measured that class seven times over (`packages.cjs` header).
+ *
+ * 🛑 What the flag does NOT protect against, hence the floor in `release-check.cjs`:
+ * a step being renamed or deleted takes its flag with it, silently SHRINKING the
+ * release subset. `release-check.cjs` therefore re-derives, from the selected
+ * commands, that a named set of load-bearing scripts is still present, and refuses to
+ * run on a subset below its witness floor. A publication gate that quietly stopped
+ * covering the tarball would be worse than no gate: it would be cited.
+ *
+ * The criterion for carrying the flag: **does this step judge what SHIPS?** The build
+ * and the CSS stubs decide the tarball's content; `size:consumer`, `check:side-effects`,
+ * PUB-TYPES, SUBPATH-RESOLVE, SHIP-SPEC and `typecheck:consumer` judge what an
+ * integrator resolves and compiles; LIC-HEADERS, `Package files[]`, DIST-INTEGRITY and
+ * ESM-PURITY judge the artefact itself; `versions:check`, PUB and CONSUMER-CONTRACT
+ * judge the relation between this repo, the registry and the downstream. Lint, tests
+ * and documentation gates do NOT carry it — they belong to `ci:local`, which is a
+ * prerequisite of the publication by another route (the `verify` job requires a green
+ * `ci.yml` run on the SHA).
+ *
+ * ## `workshop: true` — the gates whose SUBJECT does not exist on the public clone
+ *
+ * Five gates here judge the WORKSHOP ROOT. On the public clone that tree is absent
+ * BY DECISION, so each exits 0 with a named skip — `ci:local` pays for them on every
+ * run and they can only ever bite in the workshop. `npm run atelier:check` runs those,
+ * and `ci:local` no longer does.
+ *
+ * 🛑 **One declared table, two derived run-sets — and that is what keeps parity true.**
+ * `STEPS` below stays the FULL declared set: `PRODUCT_STEPS` and `WORKSHOP_STEPS` are
+ * derived from it, three lines down. Every reader that asks "which gates does this repo
+ * declare" — `ci-parity.cjs`, `verify-ci-scripts-tracked.cjs`, `release-check.cjs` —
+ * keeps reading `STEPS` and keeps getting the union, so `ci.yml ⊆ ci:local ∪
+ * atelier:check` holds BY CONSTRUCTION rather than by a comparison someone maintains.
+ * Moving the five into a second literal array would have orphaned sixteen `ci.yml`
+ * leaves at once (PARITY-03), and the repair would have been a table of exemptions.
+ *
+ * The criterion for carrying the flag is DERIVED, not judged: the invoked script
+ * conditions itself on `docsPaths.internalRootExists()`. `PARTITION-01`
+ * (`lib/ci-parity.cjs`) re-derives it at every run and reddens on either direction —
+ * a workshop gate left in the product set, or a product gate exiled from the push path.
+ * The second is the dangerous one: it leaves `ci:local` without anything saying so.
+ *
+ * ⚠️ `release: true` and `workshop: true` are exclusive in practice and nothing enforces
+ * it, because nothing needs to: `release-check.cjs` selects from the full `STEPS`, so a
+ * step carrying both would still be run by the publication gate. The exclusion is a fact
+ * about the corpus, not an invariant to defend.
+ *
+ * @type {{name: string, run: string[], release?: boolean, workshop?: boolean}[]}
+ */
 const STEPS = [
-    { name: "Build (turbo)", run: ["npx", "turbo", "run", "build"] },
+    { name: "Build (turbo)", release: true, run: ["npx", "turbo", "run", "build"] },
     // 🛑 AFTER the full build, and that is the whole subject. The call lived
     // in the CORE's build, which turbo runs before that of the plugins
     // depending on it: the libs' and 6 plugins' `dist/types/` did not exist
@@ -97,7 +161,11 @@ const STEPS = [
     // ⚠️ `ci:local` could NOT see the class: a workshop `dist/` keeps the
     // stubs of an earlier root `npm run build`. It took a fresh clone — 8
     // `TS2882` in CI on 18/08/2026. The runner's fifth bite on a green ci:local.
-    { name: "Stubs de type CSS (.d.ts publiés)", run: ["node", "scripts/emit-css-type-stubs.cjs"] },
+    {
+        name: "Stubs de type CSS (.d.ts publiés)",
+        release: true,
+        run: ["node", "scripts/emit-css-type-stubs.cjs"],
+    },
     {
         name: "Bundle exports validation",
         run: ["npm", "run", "test:bundle", "-w", "@geoleaf/core"],
@@ -115,9 +183,21 @@ const STEPS = [
     // S6 — the source graph tree-shaking (above) says nothing about the PUBLISHED package.
     // These two check the artifact an integrator actually downloads: the sideEffects field it
     // reads, and a witness bundle built through the real npm subpaths.
-    { name: "sideEffects honesty (check:side-effects)", run: ["npm", "run", "check:side-effects"] },
-    { name: "Published-package proof (size:consumer)", run: ["npm", "run", "size:consumer"] },
-    { name: "Published recipe typechecks", run: ["npm", "run", "typecheck:consumer"] },
+    {
+        name: "sideEffects honesty (check:side-effects)",
+        release: true,
+        run: ["npm", "run", "check:side-effects"],
+    },
+    {
+        name: "Published-package proof (size:consumer)",
+        release: true,
+        run: ["npm", "run", "size:consumer"],
+    },
+    {
+        name: "Published recipe typechecks",
+        release: true,
+        run: ["npm", "run", "typecheck:consumer"],
+    },
     // ARCHI S6 — the STRUCTURAL complement to the compile above. `typecheck:consumer`
     // proves the core's types are right; this proves every OTHER package's declarations
     // are reachable at all. 11 packages shipped .d.ts inside their tarball that no
@@ -128,6 +208,7 @@ const STEPS = [
     // after `default`). Check 1 is the one with teeth.
     {
         name: "Published types are reachable (PUB-TYPES)",
+        release: true,
         run: ["node", "scripts/verify-published-types.cjs"],
     },
     // API S2 — PUB-TYPES checks the `types` branch of `exports`; nothing checked the
@@ -138,6 +219,7 @@ const STEPS = [
     // it scanned nothing — its own prototype passed vacuously from the wrong cwd.
     {
         name: "Public subpaths resolve (SUBPATH-RESOLVE)",
+        release: true,
         run: ["node", "scripts/check-subpath-resolve.cjs"],
     },
     // The third question neither of the two gates above asks. PUB-TYPES
@@ -151,6 +233,7 @@ const STEPS = [
     // else's does not compile here.
     {
         name: "Shipped specifiers resolve off-monorepo (SHIP-SPEC)",
+        release: true,
         run: ["node", "scripts/check-shipped-specifiers.cjs"],
     },
     // Is the licence carried by what SHIPS? The root `LICENSE` requires the
@@ -164,6 +247,7 @@ const STEPS = [
     // ⚠️ Must run AFTER "Build (turbo)": LIC-04 reads `dist/`.
     {
         name: "License headers & notice (LIC-HEADERS)",
+        release: true,
         run: ["node", "scripts/check-license-headers.cjs"],
     },
     { name: "Lint (0 errors, 0 warnings enforced)", run: ["npm", "run", "lint"] },
@@ -575,6 +659,7 @@ const STEPS = [
     // a noisy gate learns to be ignored, which is worse than an absent one.
     {
         name: "Intégrité de dist/ (DIST-INTEGRITY — 0 chunk en double, 0 orphelin)",
+        release: true,
         run: ["npm", "run", "check:dist-integrity"],
     },
     // ESM-PURITY — a BARE specifier in a `dist/` is unresolvable in a
@@ -596,6 +681,7 @@ const STEPS = [
     // non-regression.
     {
         name: "Pureté ESM de dist/ (ESM-PURITY — 0 spécificateur nu hors allowlist)",
+        release: true,
         run: ["npm", "run", "check:esm-purity"],
     },
     // DOC-CONFIG-EXAMPLES — the two doc-example gates look at CODE:
@@ -650,6 +736,7 @@ const STEPS = [
     // from fossilising. Seen red on BOTH axes before being believed.
     {
         name: "Chemins cités par la prose des TSDoc (TSDOC-PATHS)",
+        workshop: true,
         run: ["npm", "run", "check:tsdoc-paths"],
     },
     // Same ratchet, another corpus — the references of the 45 `docs/specs/`
@@ -699,6 +786,7 @@ const STEPS = [
     // believed: 01 new dead path, 02 stale baseline.
     {
         name: "Chemins cités par _docs_projet/vision (VISION-PATHS)",
+        workshop: true,
         run: ["npm", "run", "check:vision-paths"],
     },
     // The 5th source, and the repo's most NORMATIVE corpus:
@@ -776,6 +864,7 @@ const STEPS = [
     // the repo, and empty corpus.
     {
         name: "Version d'un doc = sa dernière ligne de révision (DOC-VERSIONS)",
+        workshop: true,
         run: ["node", "scripts/check-doc-versions.cjs"],
     },
     // 🛑 DOC-VERSIONS' REVERSE, and it was guarded by nothing: a closed
@@ -786,8 +875,19 @@ const STEPS = [
     // archived copy (outside the repo); what it does is bring back into the
     // repo what git still knows. Seen red on its three axes: line removed,
     // marker removed, dead glob.
+    // DOC-CEIL — the files read BEFORE any source stay small, and carry no copied
+    // count. `CLAUDE.md` doubled in six weeks, DURING sessions that were closing
+    // recommendations, so no single moment ever looked like a decision. Decreasing
+    // ratchet: the ceiling is what the file measures, never a limit laid in advance —
+    // a gate red on the day it is laid gets disarmed, not satisfied.
+    {
+        name: "Plafond des documents chargés (DOC-CEIL, cliquet)",
+        workshop: true,
+        run: ["node", "scripts/check-doc-ceilings.cjs"],
+    },
     {
         name: "Clôture des roadmaps retirées (ROADMAP-CLOSURES)",
+        workshop: true,
         run: ["node", "scripts/check-roadmap-closures.cjs"],
     },
     // Same ratchet pattern as MOD-HEADERS, on another object: every
@@ -845,6 +945,7 @@ const STEPS = [
     // is read, it proves the gate STILL BITES.
     {
         name: "Contrat inverse — ce dont l'aval dépend (CONSUMER-CONTRACT)",
+        release: true,
         run: ["npm", "run", "check:consumer-contract"],
     },
     {
@@ -1027,7 +1128,11 @@ const STEPS = [
     // is what happened: 10 packages declared an absent LICENSE and addpoi listed
     // "LICENCE" (FR spelling), an entry that could never match. Build outputs are
     // exempt (git-ignored). Keep in sync with ci.yml and .husky/pre-commit.
-    { name: "Package files[] exist", run: ["node", "scripts/check-package-files.cjs"] },
+    {
+        name: "Package files[] exist",
+        release: true,
+        run: ["node", "scripts/check-package-files.cjs"],
+    },
     { name: "Repo hygiene", run: ["node", "scripts/verify-repo-hygiene.cjs"] },
     // What the `pre-commit` hook REALLY plays. Its 19th command skips at
     // every commit on this workstation — `GEOLEAF_CONSUMERS` is not in the
@@ -1211,6 +1316,7 @@ const STEPS = [
     },
     {
         name: "Config consumers (citations)",
+        workshop: true,
         run: ["npm", "run", "verify:config-consumers"],
     },
     {
@@ -1221,7 +1327,7 @@ const STEPS = [
         run: ["npm", "run", "check:template-layer-configs"],
     },
     { name: "Profile contract (validate:profiles)", run: ["npm", "run", "validate:profiles"] },
-    { name: "Version consistency", run: ["npm", "run", "versions:check"] },
+    { name: "Version consistency", release: true, run: ["npm", "run", "versions:check"] },
     // `versions:check` never contacts the registry — all its invariants are
     // intra-repo. The doctrine names only the LOUD direction (a version bumped
     // without a publication); the silent one is the version staying put while
@@ -1231,6 +1337,7 @@ const STEPS = [
     // registry access, so a network hiccup never reddens a local run.
     {
         name: "Parité dépôt ↔ registre npm (PUB)",
+        release: true,
         run: ["node", "scripts/verify-published-parity.cjs"],
     },
     // IMPL — SHIP-SPEC's and knip's counterpart for the class neither can
@@ -1302,7 +1409,35 @@ const E2E_STEPS = [
     },
 ];
 
-const ALL_STEPS = WITH_E2E ? [...STEPS, ...E2E_STEPS] : STEPS;
+/**
+ * What `ci:local` runs, and what `atelier:check` runs — both DERIVED from `STEPS`.
+ *
+ * @see the `workshop: true` block above `STEPS` for why the declaration stays single.
+ */
+const PRODUCT_STEPS = STEPS.filter((step) => step.workshop !== true);
+const WORKSHOP_STEPS = STEPS.filter((step) => step.workshop === true);
+
+const ALL_STEPS = WITH_E2E ? [...PRODUCT_STEPS, ...E2E_STEPS] : PRODUCT_STEPS;
+
+/**
+ * The commit the run judged, or `null` outside a worktree.
+ *
+ * Never throws and never fails the run: it labels a ledger row, and a row without a
+ * SHA is still a cost measurement.
+ *
+ * @returns {string|null} Short SHA, or null.
+ */
+function gitSha() {
+    try {
+        const r = spawnSync("git", ["rev-parse", "--short", "HEAD"], {
+            cwd: ROOT,
+            encoding: "utf8",
+        });
+        return r.status === 0 ? r.stdout.trim() : null;
+    } catch {
+        return null;
+    }
+}
 
 function runStep(step, index) {
     const label = `[${index + 1}/${ALL_STEPS.length}] ${step.name}`;
@@ -1355,7 +1490,7 @@ function refuseIfConsumerHookMissing() {
             "  Le contrat inverse SAUTERAIT en sortant 0, et le résumé annoncerait un vert\n" +
             "  complet sur une gate qui n'a lu aucun consommateur. Un vert qui compte une gate\n" +
             "  non jouée est pire qu'un rouge : il se cite.\n\n" +
-            "    export GEOLEAF_CONSUMERS=~/dev/projects/geoleaf-maintenance-v2/ci\n\n" +
+            "    export GEOLEAF_CONSUMERS=<répertoire contenant les *.consumer.json>\n\n" +
             "  ⚠️ Le hook `pre-commit` n'est PAS concerné : il lance la même gate et la laisse\n" +
             "  sauter, ce qui reste un arbitrage ouvert et non un oubli."
     );
@@ -1419,6 +1554,11 @@ function refuseIfWorkspaceDebris() {
 }
 
 function main() {
+    if (REPORT) {
+        for (const line of require("./lib/gate-ledger.cjs").formatReport()) console.log(line);
+        process.exit(0);
+    }
+
     refuseIfConsumerHookMissing();
     refuseIfWorkspaceDebris();
 
@@ -1432,6 +1572,25 @@ function main() {
         const r = runStep(ALL_STEPS[i], i);
         results.push(r);
         if (!r.ok && BAIL) break;
+    }
+
+    // ── The run, kept ────────────────────────────────────────────────────────
+    //
+    // Written BEFORE the summary and AFTER the loop: a `--bail` run records the
+    // gates it did play, which is the run whose cost is most worth knowing.
+    //
+    // 🛑 A failure to record NEVER changes the exit code. This is the last step of a
+    // run that may have cost twelve minutes; turning its green into a red because
+    // `$HOME` is read-only would make the instrument more expensive than what it
+    // measures. It says so on one line and gets out of the way.
+    const ledger = require("./lib/gate-ledger.cjs").record({
+        startedAt: new Date().toISOString(),
+        sha: gitSha(),
+        flags: [WITH_E2E ? "--e2e" : null, BAIL ? "--bail" : null].filter(Boolean),
+        results,
+    });
+    if (!ledger.ok) {
+        console.log(`  \x1b[33m⚠ registre de coût non écrit (${ledger.error})\x1b[0m`);
     }
 
     // ── Summary ──────────────────────────────────────────────────────────────
@@ -1515,7 +1674,7 @@ function main() {
 // visible without costing the summary — it printed the motive in place of
 // the statement, exactly what it is there for. Exporting first closes the
 // cycle on complete tables.
-module.exports = { STEPS, E2E_STEPS };
+module.exports = { STEPS, PRODUCT_STEPS, WORKSHOP_STEPS, E2E_STEPS };
 
 if (require.main === module) {
     main();

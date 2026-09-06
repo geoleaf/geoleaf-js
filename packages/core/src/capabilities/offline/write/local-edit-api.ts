@@ -140,6 +140,62 @@ function mintLocalId(): string {
     return `loc:${random ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`}`;
 }
 
+/** Layers already reported as having no write target — once each, not once per capture. */
+const _warnedNoTarget = new Set<string>();
+
+/**
+ * Says ONCE, at the first capture, that a layer's writes will not be able to leave.
+ *
+ * 🛑 **THE LOSS WAS SILENT, AND ITS ONLY WITNESS WAS INDEXEDDB.** A layer declaring no usable
+ * `write` block still accepts local edits — deliberately, because holding beats losing — but
+ * the drain then sets each entry aside as `layerNoLongerWritable`. Read at the end of a tour,
+ * that is a pile of quarantined captures whose cause nobody named at the time. This is the
+ * cheapest thing that turns a misconfiguration into a question someone can answer, and it is
+ * said at the FIRST capture rather than at the drain, i.e. before the day's work piles up.
+ *
+ * @param layerId - The layer being written to.
+ * @param config - Its profile declaration, already resolved by the caller.
+ */
+function _warnIfNotPushable(layerId: string, config: Record<string, unknown>): void {
+    const write = config["write"] as { enabled?: boolean; endpoint?: string } | undefined;
+    if (write?.enabled === true && write.endpoint) return;
+    if (_warnedNoTarget.has(layerId)) return;
+    _warnedNoTarget.add(layerId);
+    Log.warn(
+        `[Offline.Edit] "${layerId}" ne déclare aucune cible d'écriture (bloc \`write\` ` +
+            `absent, désactivé, ou sans \`endpoint\`) : la saisie est CONSERVÉE localement, ` +
+            "mais aucun drain ne pourra l'envoyer — elle finira mise à l'écart."
+    );
+}
+
+/**
+ * Can this device HOLD a write to `layerId` and send it later?
+ *
+ * 🛑 **THE QUESTION IS "CAN WE HOLD IT", NOT "CAN THE DRAIN PUSH IT", AND THE FIRST DRAFT
+ * ASKED THE SECOND.** It resolved the layer's `write` target and answered `false` when none
+ * was declared, so a caller routed those writes to its own online path. The E2E suite
+ * refuted it on the SHIPPED bundle: `dev-backend.cjs` (DNS-05) strips `write.endpoint` from
+ * every deliverable, so on the demo NO layer was holdable — and three specs that had always
+ * seen an offline save reach the outbox went red.
+ *
+ * The refutation is the right one, and it is a product argument rather than a test one:
+ * **holding beats losing.** A capture with no write target, once queued, is visible in the
+ * queue, counted by the sync banner, and eventually set aside with a NAMED motive
+ * (`layerNoLongerWritable`). Sent to a dead endpoint instead, it fails on the spot and is
+ * gone — which the offline contract's first property forbids.
+ *
+ * So the write target is the DRAIN's business, and this is the ENGINE's: is the store wired,
+ * and does the profile know this layer? That question also has the merit of being answerable
+ * without the network.
+ *
+ * @param layerId - The layer about to be written to.
+ * @returns `true` when a local write will be accepted and kept.
+ */
+export function canHoldWrites(layerId: string): boolean {
+    if (!StorageContract.DB) return false;
+    return coreProfileLayerConfig(layerId) !== null;
+}
+
 /**
  * Applies an edit locally and enqueues it — the edit plugins' entry point.
  *
@@ -205,6 +261,8 @@ export async function applyEdit(input: EditInput): Promise<EditReport> {
         };
     }
 
+    _warnIfNotPushable(input.layerId, config);
+
     const db = StorageContract.DB as EditWriter | null;
     if (!db?.applyLocalEdit) return { ...nothing, refused: "engineUnavailable" };
 
@@ -222,6 +280,33 @@ export async function applyEdit(input: EditInput): Promise<EditReport> {
         `[Offline.Edit] "${input.layerId}"/${localId} ${input.kind} —`,
         tally.annulled ? "annulée" : tally.queued ? "mise en file" : `fusionnée`
     );
+
+    // 🛑 THE CORE SAYS ITS OWN QUEUE MOVED — it had no way to, and that is why anything
+    // showing what is owed to the server depended on a PLUGIN being loaded. The only such
+    // signal was `geoleaf:editor:feature-sync-queued`, emitted by the editor: an edit made
+    // through this public API by any other caller changed the queue in silence.
+    //
+    // ⚠️ Announced on every edit that TOUCHED the queue, coalescence included — a merge
+    // changes what will be sent, hence what a reader must show. An annulled pair
+    // (create then delete) is announced too: the depth went DOWN, which is exactly the
+    // kind of change an indicator must not miss.
+    //
+    // ⚠️ Guarded on the EXISTENCE of `document`, like every other emitter of this engine
+    // (`__tests__/capabilities/offline/dom-event-guards.test.js`): it also runs where
+    // there is none.
+    if (typeof document !== "undefined") {
+        document.dispatchEvent(
+            new CustomEvent("geoleaf:offline:outbox-queued", {
+                detail: {
+                    layerId: input.layerId,
+                    localId,
+                    kind: input.kind,
+                    queued: tally.queued,
+                    annulled: tally.annulled,
+                },
+            })
+        );
+    }
 
     return {
         layerId: input.layerId,

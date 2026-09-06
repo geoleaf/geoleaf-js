@@ -68,18 +68,48 @@ export function buildThemeToggleBtn(variant: "desktop" | "mobile"): HTMLButtonEl
 }
 
 /**
+ * Appends the tab strip separator, once. Never conditional.
+ *
+ * The name says "theme", but the node stopped belonging to the theme toggle: it is the strip's
+ * layout anchor, and it must be appended even when the toggle is hidden.
+ *
+ * - This separator carries the only `margin-top: auto` in the strip, and that margin is what
+ *   pushes the bottom icon stack against the bottom edge. Drop it — or hide it with
+ *   `display: none`, which generates no box — and tabs and icons bunch up together at the
+ *   top, with the whole lower half of the strip empty.
+ *
+ *   ⚠️ **This paragraph used to open with "`.gl-rp-tabs` is a flex column WITH
+ *   `justify-content: center`", and read the margin as what CANCELLED that centring.** True
+ *   when it was written; the strip is `flex-start` now. The centring was itself a defect —
+ *   an overflow in a centred column is split evenly between both ends, so a strip too tall
+ *   for the viewport lost its first tab AND its last icon, cut by `body { overflow: hidden }`
+ *   with no scrollbar. The separator's job survives the change; the reason given for it did
+ *   not.
+ * - Two consumers anchor on it and never look at the toggle: the `"tab"` variant inserted by
+ *   `appendRegistryTabButtons` and the registered-pane sync in the desktop panel.
+ *
+ * @param tabs - The tab strip element.
+ */
+export function appendTabsSeparator(tabs: HTMLElement): void {
+    if (tabs.querySelector(".gl-rp-theme-separator")) return;
+    const separator = document.createElement("div");
+    separator.className = "gl-rp-theme-separator";
+    tabs.appendChild(separator);
+}
+
+/**
  * Appends the desktop theme toggle to a tab strip, once.
  *
  * Guarded against duplicates: the tab strip is rebuilt whenever the registry changes, and a
  * second toggle would both render twice and double-fire the theme change.
  *
+ * ⚠️ Appends the button ONLY. The separator is a layout anchor with its own lifetime and is
+ * posted unconditionally by {@link appendTabsSeparator} — call that one first, and call it
+ * even when this one is gated off by `ui.showPanelThemeToggle`.
+ *
  * @param tabs - The tab strip element.
  */
 export function appendThemeToggleToTabs(tabs: HTMLElement): void {
     if (tabs.querySelector(".gl-rp-theme-toggle")) return;
-    const separator = document.createElement("div");
-    separator.className = "gl-rp-theme-separator";
-    const btn = buildThemeToggleBtn("desktop");
-    tabs.appendChild(separator);
-    tabs.appendChild(btn);
+    tabs.appendChild(buildThemeToggleBtn("desktop"));
 }

@@ -25,7 +25,12 @@ import {
     type SelectionSnapshot,
 } from "./selection/selection-state.js";
 import { vertexCount, applyComputedFields } from "./drawing/geo-compute.js";
-import { pushOperation, discardLastOperation, type OperationType } from "./history/undo-stack.js";
+import {
+    pushOperation,
+    discardLastOperation,
+    sealOperations,
+    type OperationType,
+} from "./history/undo-stack.js";
 import { submitFeature, type SubmitContext } from "./persistence/submit.js";
 import type { ConflictStrategy } from "./persistence/conflict-resolution.js";
 import type {
@@ -219,6 +224,10 @@ function _handleCreate(
                 feature: _toEditorFeature(feature, values),
                 layerId,
                 isUpdate: false,
+            }).then(() => {
+                // Submitted — so the `create` entry stops being offered. Undoing it would
+                // have wiped the shape off the screen and left the write where it was.
+                sealOperations(id);
             });
         },
         onCancel: () => {
@@ -294,8 +303,15 @@ function _commitEditedHost(
         layerId,
         isUpdate: true,
     })
-        .then(() => adapter.removeFeatures([terradrawId]))
+        .then(() => {
+            adapter.removeFeatures([terradrawId]);
+            // The geometry gestures behind this update are now committed; keeping them
+            // undoable would offer to move a shape back on screen only.
+            sealOperations(terradrawId);
+        })
         .catch(() => {
+            // ⚠️ NOT sealed on failure, deliberately: nothing left, so the gestures are
+            // still genuinely undoable and taking them away would lose real work.
             _wiring?.commitHost(layerId, featureId, geom);
             adapter.removeFeatures([terradrawId]);
         });

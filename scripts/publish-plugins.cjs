@@ -157,9 +157,13 @@ for (const workspace of PUBLISHED_PLUGINS) {
     // --access public is explicit rather than inherited from publishConfig: every
     // plugin is MIT on npmjs since the all-MIT switch (04/07/2026), and a scoped
     // package defaults to restricted when the flag is absent.
+    //
+    // 🔗 `--ignore-scripts` — the measured motive is written ONCE, beside the same
+    // flag in `publish-one.cjs`. Read it before removing this: the build becomes the
+    // caller's responsibility, and the tarball's content depends on it.
     const cmd = dryRun
-        ? `npm publish --workspace=${workspace} --access public --dry-run`
-        : `npm publish --workspace=${workspace} --access public`;
+        ? `npm publish --workspace=${workspace} --access public --ignore-scripts --dry-run`
+        : `npm publish --workspace=${workspace} --access public --ignore-scripts`;
     try {
         execSync(cmd, { stdio: "inherit" });
         console.log(`✓ ${workspace} published.`);

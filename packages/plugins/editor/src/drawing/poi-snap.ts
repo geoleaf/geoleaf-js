@@ -25,6 +25,7 @@
  */
 import { getGeoLeaf, Log } from "@geoleaf/host-runtime";
 import { haversineDistance } from "./geo-compute.js";
+import { resolveFeatureId } from "../feature-id.js";
 import { getEditableLayers } from "../config.js";
 
 /** An existing feature close enough to the tapped position to be a probable duplicate. */
@@ -154,13 +155,16 @@ function _asCandidate(
 
     const [lng, lat] = coords;
     const props = feature.properties ?? {};
-    const rawId = feature.id ?? props.id;
+    // ⚠️ The reading order lives in ONE place now (`../feature-id.js`). It read
+    // `feature.id ?? props.id` inline here, which was right — and the picker's copy of the
+    // same idea was not, which is the whole reason the order got a domicile.
+    const rawId = resolveFeatureId(feature);
     const title = (props.title ?? props.name) as string | undefined;
     return {
         latlng: { lat, lng },
         distanceMeters: haversineDistance([tap.lng, tap.lat], [lng, lat]),
         layerId,
-        ...(rawId != null && { id: String(rawId) }),
+        ...(rawId !== "" && { id: rawId }),
         ...(title !== undefined && { title }),
     };
 }

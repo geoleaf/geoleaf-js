@@ -100,7 +100,10 @@ describe("initDesktopPanel()", () => {
     test("uses custom tab titles from options", () => {
         initPanel({ titleFilters: "MyFilters", titleLayers: "MyLayers" });
         const filterTab = document.getElementById("gl-rp-tab-filters");
-        expect(filterTab?.textContent).toBe("MyFilters");
+        // The three built-in tabs are icons: the profile's title is their accessible name
+        // and their tooltip, no longer their text.
+        expect(filterTab?.getAttribute("aria-label")).toBe("MyFilters");
+        expect(filterTab?.title).toBe("MyFilters");
     });
 });
 

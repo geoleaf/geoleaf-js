@@ -4,14 +4,14 @@ title: labels — les étiquettes de texte par couche
 capability_id: labels
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 2fcbba8a
-date: 1er septembre 2026
+verifie_contre: 5195fbca5
+date: 6 septembre 2026
 ---
 
 # labels — les étiquettes de texte par couche
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/labels/` ·
-**Vérifié contre :** `2fcbba8a` (01/09/2026)
+**Vérifié contre :** `5195fbca5` (06/09/2026)
 
 > 🧭 **Contrat ici, mode d'emploi ailleurs.** Cette fiche dit ce que le sujet **doit**
 > faire : périmètre, table de configuration gatée, contrat exposé, frontières. Les recettes
@@ -140,7 +140,25 @@ Les clés lues dans le style de couche :
 | `label.font.sizePt`              | Taille en **points**, convertie en pixels                                      |
 | `label.color` · `label.opacity`  | Couleur et opacité du texte                                                    |
 | `label.buffer.*`                 | Halo : `enabled`, `color`, `sizePx`                                            |
+| `label.offset.placement`         | Côté où se pose l'étiquette — `center` (défaut) n'émet **aucune** propriété    |
+| `label.offset.distancePx`        | Écart en pixels jusqu'au bord de la boîte de texte (défaut `12`)               |
 | `labelScale.{minScale,maxScale}` | Plage d'**échelle** — prime sur les bornes de zoom                             |
+
+⚠️ **Le décalage se traduit en `text-anchor` + `text-radial-offset`, jamais en `text-offset`.**
+Et `text-anchor` **est l'inverse** de ce que la clé publique nomme : il désigne le bord du TEXTE
+posé sur le point, donc une étiquette placée `top` s'ancre par son `bottom`. La table de
+conversion vit à un seul endroit — `_PLACEMENT_TO_ANCHOR` dans `label-renderer.ts` — et un test
+en verrouille le sens. Le radial est retenu parce qu'il mesure la distance au **bord de la boîte
+de texte** et applique lui-même la correction de ligne de base, ce qu'un `text-offset` brut
+laisse à l'appelant.
+
+🛑 **Le déclencheur est `distancePx > 0`, pas la présence de `label.offset`.** Le chemin
+`enableLabels()` matérialise **toujours** un `offset: { distancePx: 0 }`, donc tester l'objet
+décalerait toutes les couches qui passent par là :
+
+```bash
+grep -n "cfg.offset" packages/core/src/capabilities/labels/labels.ts
+```
 
 ⚠️ **`styleFile` est refusé, pas ignoré — mais dans la configuration d'APPEL, pas dans le style.**
 `enableLabels(layerId, { styleFile })` **jette** une erreur nommant la couche. C'est délibéré : la
@@ -181,14 +199,23 @@ restreinte les couperait de leur seul point d'accès.
 | `refreshLabels(layerId)`                            | Purge puis recrée, si la couche est visible et les étiquettes actives              |
 | `hasLabelConfig` · `areLabelsEnabled`               | Lectures d'état, par couche                                                        |
 | `isEnabled()` · `getConfig()`                       | Le gate de capacité et le bloc `modules.labels` fusionné sur les défauts           |
+| `syncLayerControl(layerId)`                         | Repeint le **contrôle** 🏷️ de la ligne de couche — délègue à `_LabelButtonManager` |
 | `destroy()`                                         | Purge toutes les couches et relâche l'abonnement `zoomend`                         |
+
+⚠️ **`syncLayerControl` est la seule entrée de cette table qui n'agit pas sur l'état des
+étiquettes mais sur le CONTRÔLE qui l'affiche** — et c'est pourquoi elle existe. Les deux
+divergent dès qu'un hôte change la visibilité ou le style d'une couche par sa propre voie :
+l'état est juste, le bouton montre encore l'avant. Ajoutée le 04/09/2026, parce que la seule
+route était jusque-là la clé interne `_LabelButtonManager`, que la page publiée
+`packages/core/docs/labels/LABEL_BUTTON_MANAGER.md` enseignait nommément.
 
 Deux autres clés sont montées par l'installeur : `_LabelButtonManager` et `_LabelRenderer`. Le
 préfixe `_` marque l'usage interne, **mais les deux ne sont pas du même genre** :
 
 - ⚠️ `_LabelButtonManager` a des **lecteurs vivants dans le kernel**, qui repeignent le bouton 🏷️
   en le lisant tardivement sur le namespace (`syncImmediate`) — retirer la clé casserait la
-  synchronisation du bouton, ce n'est pas un vestige ;
+  synchronisation du bouton, ce n'est pas un vestige. Elle reste donc montée ; ce qui a changé le
+  04/09/2026 est qu'un appelant hors du core n'a plus à passer par elle ;
 - `_LabelRenderer` n'a aucun lecteur hors de la capacité, qui l'importe statiquement. Lui n'est là
   que parce qu'il était déjà dans la surface publiée avant la migration.
 
@@ -311,6 +338,37 @@ Cinq fichiers du kernel pilotent les étiquettes, et **aucun n'importe la capaci
 
 C'est ce qui rend `labels` réellement élaguable : une entrée qui omet l'installeur n'a aucun
 écrivain pour le namespace, et les quatre sites dégradent en no-op.
+
+### 🛑 Ce dont la capacité DÉPEND sans pouvoir le garder : `currentStyle`
+
+Toute la configuration d'étiquette est lue sur `layerData.currentStyle.label`
+(`_resolveLabelStyleConfig`). La capacité ne l'écrit jamais — **deux chemins du kernel le font**,
+et ils doivent tous deux y reposer le **document de style complet**, jamais la peinture aplatie
+qu'ils viennent de passer à l'adaptateur :
+
+| Écrivain                                    | Ce qu'il doit reposer      |
+| ------------------------------------------- | -------------------------- |
+| `kernel/themes/theme-applier/visibility.ts` | le `styleConfig` complet   |
+| `kernel/layer-manager/style-selector.ts`    | le `res.styleData` complet |
+
+⚠️ **Le second ne le faisait pas, et le symptôme était entièrement dans cette capacité** : au
+premier changement de style, `setLayerStyle` réassignait `currentStyle` à la peinture — qui ne
+porte ni `id` ni `label` —, donc `hasLabelConfig()` passait à `false` et le bouton 🏷️ se
+grisait **définitivement**, y compris en revenant au style de départ. Le rattrapage
+(`initializeLayerLabels` juste après) était bien appelé : il lisait un style déjà amputé.
+
+🛑 **Et l'écriture qui aurait dû protéger visait un objet jetable.** `GeoJSONCore.getLayerData()`
+reconstruit une **projection à cinq champs** ; seul `getLayerById()` rend l'entrée enregistrée.
+Le type local du sélecteur déclarait pourtant `currentStyle`, ce qui faisait passer l'écriture au
+typecheck. Vérification :
+
+```bash
+grep -n "currentStyle" packages/core/src/kernel/layer-manager/style-selector.ts
+grep -n "getLayerData = function" -A 12 packages/core/src/kernel/geojson/layers/store.ts
+```
+
+Gardé par `packages/core/__tests__/layer-manager/style-selector-label-preservation.test.js`
+(vu rouge sur les trois cas avant correctif).
 
 ### Frontière côté CSS
 

@@ -8,6 +8,7 @@
         "packages/plugins/editor/src/drawing/placement-mode.ts",
         "packages/plugins/editor/src/drawing/poi-snap.ts",
         "packages/plugins/editor/src/editor-events.ts",
+        "packages/plugins/editor/src/feature-id.ts",
         "packages/plugins/editor/src/modal/attributes-to-form.ts",
         "packages/plugins/editor/src/persistence/image-store.ts",
         "packages/plugins/editor/src/persistence/permission-gate.ts",
@@ -168,6 +169,20 @@
             "description": "Le point d'émission UNIQUE des neuf événements publics de l'éditeur, typé contre `GeoLeafEventMap` — tâche 7.3.",
             "confidence": "haute",
             "rationale": "Fichier du plugin editor (drawing/, persistence/, add-form/), aligné sur le rangement que les shards P1 ont déjà jugé pour le reste du paquet — même convention, même granularité. La description est l'en-tête du module. RUBRIC §0 : justifié par défaut ; aucun signal de nom, d'emplacement ou de taille ne porte un verdict actionnable."
+        },
+        "packages/plugins/editor/src/feature-id.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Résout l'identité hôte d'une feature — `feature.id` puis `properties.id` —, ordre de lecture unique du plugin.",
+            "confidence": "haute",
+            "rationale": "Module feuille du plugin editor, au même niveau que ses autres sources de premier rang. Il existe parce que le core n'exporte aucune de ses six implémentations privées du même repli et que `kernel/shared/` n'a pas d'entrée dans la carte `exports` du paquet ; `packages/plugins/table/src/feature-id.ts` tient la même posture. RUBRIC §0 : justifié par défaut ; aucun doublon, aucun rangement contesté."
         }
     }
 }

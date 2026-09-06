@@ -62,6 +62,7 @@ export interface SyncResults {
 interface SyncSeam {
     registerHandler?(id: string, handler: unknown): void;
     getHandler?(id: string): unknown;
+    registerBeforeDrain?(id: string, step: (() => Promise<unknown> | unknown) | null): void;
 }
 
 function _syncSeam(): SyncSeam | null {
@@ -138,9 +139,17 @@ export const EditorSyncHandler = {
             total: report.attempted,
             synced: report.pushed,
             failed: report.failed,
-            // The core's drain skips nothing: it attempts, succeeds, fails or
-            // quarantines. The field is kept because `offline-ui` reads it.
-            skipped: 0,
+            // 🛑 THIS FIELD SAID `0` UNDER A COMMENT THAT HAD BECOME FALSE. It read
+            // "the core's drain skips nothing: it attempts, succeeds, fails or
+            // quarantines" — true when it was written, false since the drain gained a
+            // retry backoff: an entry whose delay has not elapsed is walked past, which
+            // is exactly what "skipped" means. Reporting `0` made the interface announce
+            // a complete pass over a queue it had barely touched.
+            //
+            // ⚠️ `?? 0` and not a bare read: this seam is structural (INV-NS forbids
+            // importing the core), so an older core carries no such member — and absent
+            // does mean none.
+            skipped: report.deferred ?? 0,
         };
     },
 };
@@ -175,5 +184,35 @@ export function registerSyncHandler(): boolean {
     }
     seam.registerHandler(SYNC_HANDLER_ID, EditorSyncHandler);
     Log?.debug?.(`[editor/sync-handler] registered "${SYNC_HANDLER_ID}"`);
+    return true;
+}
+
+/** The identifier under which the image step is registered on the core's drain. */
+const BEFORE_DRAIN_STEP_ID = "editor:images";
+
+/**
+ * Registers (or, with `null`, removes) the pre-drain step that uploads held photos.
+ *
+ * 🛑 **THE SEQUENCE MOVED INTO THE CORE, AND IT HAD TO.** The photos must go up BEFORE
+ * the outbox is pushed, so that the reconciling `update` is coalesced into the still
+ * pending `create` and the server never sees an image token it cannot resolve. That
+ * ordering used to be a `beforeDrain` option of this plugin's own drain wrapper — which
+ * means it applied to exactly one caller. Every other path to the drain (the console,
+ * the E2E suite, `offline-ui`'s replay button, and now the core's own triggers) pushed
+ * the token as it stood.
+ *
+ * ⚠️ **The `null` call is owed by `destroy`.** A registry entry outliving the plugin
+ * keeps a destroyed editor's images in the drain's path — a leak with a long fuse.
+ *
+ * @param step - The step, or `null` to unregister it.
+ * @returns `true` when the seam took it, `false` when `GeoLeaf.Sync` is absent.
+ */
+export function registerBeforeDrainStep(step: (() => Promise<unknown> | unknown) | null): boolean {
+    const seam = _syncSeam();
+    if (!seam?.registerBeforeDrain) {
+        Log?.debug?.("[editor/sync-handler] GeoLeaf.Sync.registerBeforeDrain absent — skipped");
+        return false;
+    }
+    seam.registerBeforeDrain(BEFORE_DRAIN_STEP_ID, step);
     return true;
 }

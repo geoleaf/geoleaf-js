@@ -21,6 +21,10 @@
                 "showCacheButton": { "type": "boolean" },
                 "showCredentialButton": { "type": "boolean" },
                 "showEditor": { "type": "boolean" },
+                "showPanelThemeToggle": {
+                    "type": "boolean",
+                    "description": "Show the light/dark theme toggle owned by the desktop side panel. Default true (opt-out). Governs BOTH of its placements: the bottom of the tab strip, and the copy injected into the mobile toolbar. Does NOT govern the map control (modules.theme-toggle.enabled), an integrator-supplied [data-gl-role=\"theme-toggle\"] button, or the initial theme (ui.theme). Hiding it does not reclaim a visitor who already toggled: the stored choice still wins."
+                },
                 "interactiveShapes": {
                     "type": "boolean",
                     "description": "Make GeoJSON shapes / accuracy circle interactive (clickable). Default false. Read by the GeoJSON style resolver, geolocation accuracy layer and route layers."

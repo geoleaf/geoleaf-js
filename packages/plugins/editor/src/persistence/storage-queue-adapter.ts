@@ -27,6 +27,7 @@ import {
     type SavedFeature,
 } from "./adapter-interface.js";
 import { dispatchEditorEvent } from "../editor-events.js";
+import { claimImages } from "./image-store.js";
 
 /** Emits `geoleaf:editor:feature-sync-queued` once an entry is persisted. */
 function _dispatchQueued(kind: string, layerId: string, entryId: string): void {
@@ -99,11 +100,12 @@ async function _enqueue(
         // 🛑 A PERMISSION REFUSAL IS NOT A NETWORK OUTAGE.
         //
         // This line typed EVERY refusal as `"network"`, `deleteNotPermitted` and
-        // `layerNotEditable` included. Yet `auto-adapter._isTransportError`
-        // treats `"network"` as **retryable**: the refusal was presented as a
+        // `layerNotEditable` included. The removed `auto-adapter._isTransportError`
+        // treated `"network"` as **retryable**: the refusal was presented as a
         // connectivity problem, i.e. as something that will work at the next
         // attempt. It never will, and the write went back into the queue on
-        // every try.
+        // every try. ⚠️ That adapter is gone (R7), and the typing still decides how the
+        // CORE's drain treats the refusal — the split below keeps its subject.
         //
         // ⚠️ The split follows what the motive SAYS, not its shape:
         // `engineUnavailable` and `malformedEdit` are not permission refusals
@@ -118,7 +120,25 @@ async function _enqueue(
         );
     }
     const entryId = report.entryId ?? "";
+    // 🛑 THE PHOTOS ARE BOUND TO THEIR FEATURE HERE, AND NOWHERE EARLIER. A capture happens
+    // while the form is open, BEFORE the entity exists: off-network its client identity is
+    // only minted by this very call. Until now the stored image knew its field and not its
+    // feature — so the upload that eventually succeeded had nowhere to send the resulting
+    // URL back to, and that URL was simply dropped.
+    if (feature && report.localId) {
+        await claimImages(feature.properties, layerId, report.localId);
+    }
     _dispatchQueued(kind, layerId, entryId);
+    // 🛑 ASK FOR A DRAIN NOW — this is what makes "everything goes through the queue"
+    // cost nothing when the network is there. Without it, a capture made in coverage
+    // would sit until the next trigger (a network transition, a tab wake-up, or up to a
+    // minute of the retry tick), and the queue-first routing would read as a regression:
+    // "it used to leave immediately".
+    //
+    // ⚠️ Fire-and-forget, deliberately: awaiting it would tie the form's closing latency
+    // to the network, which is the very coupling the outbox exists to break. The drain
+    // serialises itself, so a burst of captures produces one pass, not one per capture.
+    storageFacade()?._requestOutboxDrain?.("write");
     return entryId;
 }
 
@@ -137,10 +157,14 @@ function _optimisticSaved(feature: EditorFeature, layerId: string): SavedFeature
 }
 
 /**
- * Creates an offline {@link EditorPersistenceAdapter} that write-throughs to the
- * Storage sync queue. `isOnline()` is always `false`: this adapter never reaches
- * the backend directly — the {@link ./auto-adapter} decides when to use it and
- * the replay handler flushes it on reconnect.
+ * Creates an offline {@link EditorPersistenceAdapter} that write-throughs to the core's
+ * write cycle. `isOnline()` is always `false`: this adapter never reaches the backend
+ * directly — {@link ./queue-first-adapter} decides when to use it, and the core's own drain
+ * triggers empty the queue.
+ *
+ * ⚠️ This doc named `./auto-adapter` until R7 removed that file: it chose by REACHABILITY and
+ * fell back here on a transport error, which is how a lost response after an accepted POST
+ * became a duplicate. The routing now asks a capability question before the write.
  */
 export function createStorageQueueAdapter(): EditorPersistenceAdapter {
     return {

@@ -34,6 +34,11 @@ interface StorageFacadeLike {
         offline?: Record<string, unknown>;
         enableOfflineDetector?: boolean;
     }): Promise<unknown> | unknown;
+    /** Lifecycle-only handles on the drain triggers (see `kernel/storage/facade.ts`). */
+    _armOutboxDrain?(options?: { pollIntervalMs?: number }): void;
+    _disarmOutboxDrain?(): void;
+    _mountSyncBanner?(options?: { enabled?: boolean }): void;
+    _unmountSyncBanner?(): void;
 }
 
 /** Connectivity badge surface (`GeoLeaf._OfflineDetector`). */
@@ -52,6 +57,15 @@ interface OfflineDetectorLike {
  * global accessor here would be the one place breaking that.
  */
 let _detector: OfflineDetectorLike | undefined;
+
+/**
+ * The façade handed to the last `init()`, kept so `_reset()` can disarm the drain.
+ *
+ * Same motive as {@link _detector}, and the same failure it guards against: a teardown
+ * that cannot reach what `init` armed leaves a torn-down capability still reacting —
+ * here, a timer and two listeners still draining a queue nobody is watching.
+ */
+let _storage: StorageFacadeLike | undefined;
 
 /**
  * Runtime deps injected by `shared.module` (read off the live `GeoLeaf` global there).
@@ -75,6 +89,12 @@ interface OfflineLifecycleConfig {
     cache?: Record<string, unknown>;
     /** `modules.pwa.offlineDetector.enabled` — the connectivity badge toggle. */
     offlineDetectorEnabled?: boolean;
+    /** `modules.offline.drain` — the drain triggers' tuning; `pollIntervalMs: 0` disables the tick. */
+    drain?: { pollIntervalMs?: number };
+    /** `modules.pwa.offlineDetector.badgePosition` — MapLibre control corner for the badge. */
+    badgePosition?: string;
+    /** `modules.offline.banner` — the permanent sync strip; `enabled: false` mounts nothing. */
+    banner?: { enabled?: boolean };
     /**
      * `modules.offline.dataOrigins` — the origins the profile declares.
      *
@@ -96,6 +116,7 @@ export const OfflineLifecycle = {
         // Purely synchronous — it does not move the `ensureLoaded`-before-first-await
         // ordering below, which is a pinned invariant.
         _detector = deps.offlineDetector as OfflineDetectorLike | undefined;
+        _storage = storage;
 
         // Offline engine (B3): opt-in gate, guarded by the `pwa` dependency (NOT auto-
         // enforced by CapabilityRegistry). `ensureLoaded` dynamically imports the engine
@@ -124,7 +145,20 @@ export const OfflineLifecycle = {
                             // no. 2.
                             ...(cfg.cache ?? {}),
                         },
-                        offline: {},
+                        // 🛑 IT WAS `{}` — AND THAT EMPTY OBJECT MADE THE BADGE
+                        // UNREACHABLE IN THE ONLY MODE WHERE OFFLINE EXISTS. The
+                        // façade spreads what it gets onto the detector's defaults,
+                        // where `showBadge` is `false`; the core-only branch below
+                        // passes `showBadge: true`, and engine mode returns before
+                        // reaching it. So an app with the offline ENGINE on could not
+                        // display the connectivity badge, while an app without it
+                        // could. `enableOfflineDetector` already carries the operator's
+                        // intent — the detector's sole visible output IS the badge, so
+                        // asking for one and not the other means nothing.
+                        offline: {
+                            showBadge: cfg.offlineDetectorEnabled === true,
+                            badgePosition: cfg.badgePosition ?? "topleft",
+                        },
                         enableOfflineDetector: cfg.offlineDetectorEnabled === true,
                     });
                     const thenable = result as
@@ -135,6 +169,27 @@ export const OfflineLifecycle = {
                             // Engine loaded AND IndexedDB open → unblock the deferring UI.
                             StorageContract._markReady();
                             Log.info("[Offline] Storage engine initialized");
+
+                            // 🛑 ARM THE DRAIN — and HERE, right after the readiness
+                            // marker. Until this lot the outbox was emptied only by
+                            // `@geoleaf-plugins/editor`'s own `online` listener: an app
+                            // without that plugin never drained, and the plugin being
+                            // lazily loaded, a session reopened with captures owed
+                            // drained only once the editor came back.
+                            //
+                            // ⚠️ AFTER `_markReady()`, not before: arming is itself the
+                            // "storage initialised" trigger — it ends on a first pass —
+                            // and firing that pass before the contract declares the
+                            // engine drivable would drain a database the rest of the
+                            // application does not yet know is open.
+                            storage._armOutboxDrain?.(cfg.drain ?? {});
+
+                            // The permanent strip, mounted at the same instant and for the
+                            // same reason: it reads the outbox, so it may not exist before
+                            // the store does. ⚠️ It is the CORE's chrome — a live counter
+                            // already existed in the editor's floating menu, and it left
+                            // with the plugin.
+                            storage._mountSyncBanner?.(cfg.banner ?? {});
 
                             // 🛑 PUBLISH THE DECLARED ORIGINS, and HERE because this is
                             // the first instant the database is open — hence the first
@@ -195,5 +250,10 @@ export const OfflineLifecycle = {
         StorageContract._resetReady();
         _detector?.destroy?.();
         _detector = undefined;
+        // Symmetrical to the arming above: a `window "online"` listener and a timer that
+        // outlive the capability keep draining for an application that has gone.
+        _storage?._disarmOutboxDrain?.();
+        _storage?._unmountSyncBanner?.();
+        _storage = undefined;
     },
 };

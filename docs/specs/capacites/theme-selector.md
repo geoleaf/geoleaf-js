@@ -4,14 +4,14 @@ title: theme-selector — la barre de commutation des thèmes de carte
 capability_id: theme-selector
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 2fcbba8a
+verifie_contre: 96519fa3e
 date: 1er septembre 2026
 ---
 
 # theme-selector — la barre de commutation des thèmes de carte
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/theme-selector/` ·
-**Vérifié contre :** `2fcbba8a` (01/09/2026)
+**Vérifié contre :** voir `verifie_contre` en tête — ⚠️ cette ligne portait une SECONDE empreinte, non gatée : `SPECS-FRESH` ne lit que le frontmatter. Retirée le 06/09/2026 avec celles de quatre fiches voisines, après avoir mesuré que celle de `docs/specs/capacites/offline.md` avait déjà divergé. Deux surfaces pour un seul fait, dont une non gatée, se contredisent toujours dans le sens où c'est la non gatée qui ment.
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -346,6 +346,20 @@ l'installeur, comme pour toutes les capacités.
 (`globals.ui-lite.ts`) ».** Ce fichier **n'existe pas** et le build Lite **non plus** — son retrait
 est motivé sur place dans `packages/core/rollup.config.mjs`. Gisement complet versé au
 registre.
+
+🛑 **Les deux conteneurs ne sont plus posés à un `top` absolu, mais à `calc(<v> + var(--gl-map-top-inset, 0px))`.**
+`#gl-theme-primary-container` (z 1001) et `#gl-theme-secondary-container` (z 1000) vivent dans
+`.gl-main`, qui est aussi le bloc conteneur de la carte (`inset: 0`) : une surface qui s'installe en
+flux en tête de `.gl-main` ne les pousse pas, elle les **recouvre**. C'est arrivé le 05/09 avec la
+bande de synchronisation du hors-ligne, dont le `z-index: 2` passait sous ces deux-là — les
+pastilles peignaient par-dessus son texte et son bouton.
+
+⚠️ **Le remède est d'EMPILER, pas de monter un z-index**, et le dépôt l'avait déjà tranché une fois
+pour le bandeau de navigation contre le badge de partage de position. La surface qui occupe la bande
+haute publie sa hauteur **mesurée** dans `--gl-map-top-inset` ; les `top` de cette feuille
+l'ajoutent. Aucune des deux capacités ne nomme l'autre — le jeton porte le contrat, déclaré à `0px`
+par défaut sur `.gl-main` (`css/geoleaf-ui-base.css`). Si `:has()` manque, le jeton reste à `0px` et
+l'on retrouve exactement l'état antérieur : un repli qui échoue du bon côté.
 
 ---
 

@@ -11,6 +11,24 @@ on:
     # que GitHub ne connaît pas. Les trois étapes concernées portent désormais
     # `if: github.event_name == 'workflow_dispatch'` — voir leur commentaire pour le prix payé.
     workflow_dispatch:
+    # 🛑 CRON NOCTURNE — et il ne sert QUE sur le dépôt public. Ajouté le 04/09/2026 (R5).
+    #
+    # La suite E2E est la SEULE preuve navigateur du bundle livré, et elle ne tournait nulle
+    # part : ni sur push, ni sur PR, ni en cron, ni avant publication. Sur l'atelier
+    # (compte free, quota rare) elle coûte 2 h 12 par run, mesurées — impayable. Sur le
+    # public, les Actions sont gratuites : le cron y tourne, et le job entier est SAUTÉ
+    # ailleurs (voir l'`if:` de `build-and-test`). Un job sauté n'est pas facturé.
+    #
+    # ⚠️ Le rapport d'avis produit demandait « cron nocturne ET sur PR vers `main` sur le
+    # dépôt public ». Le volet PR est écarté avec son motif, mesuré : `port-to-public.cjs`
+    # pousse directement sur `main`, le public n'a donc pas de PR et le déclencheur y serait
+    # INERTE ; sur l'atelier, où les PR existent (Dependabot, hebdomadaire), il coûterait
+    # 2 h 12 par PR. La phrase ne faisait ce qu'elle voulait d'aucun des deux côtés.
+    #
+    # ⚠️ 03:17 UTC et non 03:00 : GitHub met en file les crons à l'heure pile, et un retard
+    # de plusieurs dizaines de minutes y est courant. Une minute impaire est servie plus tôt.
+    schedule:
+        - cron: "17 3 * * *"
 
 # ⚠️ SEUL UN ÉVÉNEMENT `pull_request` RÉEL POUVAIT L'APPRENDRE.
 #
@@ -46,6 +64,15 @@ permissions:
 
 jobs:
     build-and-test:
+        # 🛑 Le cron ne concerne QUE le dépôt public. Sans cette ligne il ferait tourner les
+        # 114 étapes chaque nuit sur l'atelier, dont le quota Actions est rare et a déjà été
+        # épuisé une fois (31/08/2026 — les runs sortaient « failure » en 1 s, sans qu'aucune
+        # gate n'ait tourné). Un job dont l'`if:` est faux est SAUTÉ, donc non facturé.
+        #
+        # ⚠️ La condition ne mentionne QUE `schedule` : les push, PR et déclenchements manuels
+        # gardent leur comportement des deux côtés. Élargir cette garde à d'autres événements
+        # rendrait l'atelier aveugle à ses propres pushes.
+        if: github.event_name != 'schedule' || github.repository == 'geoleaf/geoleaf-js'
         runs-on: ubuntu-latest
         steps:
             # ⚠️ `fetch-depth: 0` est EXIGÉ par la gate « Secret scan (gitleaks) », et son absence
@@ -341,6 +368,13 @@ jobs:
             # que git sait encore des roadmaps retirées et le fait rentrer dans le dépôt.
             # ⚠️ Corpus interne : sur un clone qui ne le porte pas, elle SAUTE en le disant.
             # Keep in sync with ci-local.cjs.
+            # Plafond de taille des documents lus avant toute source, et zéro compte
+            # recopié dans ceux que chaque session charge. Cliquet décroissant.
+            # SAUTE sur le clone public : ses sujets sont des fichiers d'atelier.
+            # Keep in sync with ci-local.cjs.
+            - name: Plafond des documents chargés (DOC-CEIL, cliquet)
+              run: node scripts/check-doc-ceilings.cjs
+
             - name: Clôture des roadmaps retirées (ROADMAP-CLOSURES)
               run: node scripts/check-roadmap-closures.cjs
 
@@ -944,7 +978,20 @@ jobs:
 
             # Scénarios critiques : chargement carte (01), storage/offline (02), POI (03)
             #
-            # ⚠️ MANUELLE, et c'est un choix assumé, pas un oubli.
+            # ⚠️ MANUELLE — ou NOCTURNE SUR LE DÉPÔT PUBLIC, et les deux sont des choix
+            # assumés, pas un oubli.
+            #
+            # 🛑 Le volet nocturne date du 04/09/2026 (R5) et ferme un constat mesuré : cette
+            # suite est la SEULE preuve navigateur du bundle livré, et elle ne tournait NULLE
+            # PART — ni sur push, ni sur PR, ni en cron, ni avant publication. Elle tourne
+            # désormais chaque nuit sur `geoleaf/geoleaf-js`, où les Actions sont gratuites ;
+            # la garde `github.repository` est ce qui l'empêche de tourner ici, sur un quota
+            # rare, à 2 h 12 le run.
+            # ⚠️ Ne pas « simplifier » cette condition : `scripts/lib/ci-parity.cjs`
+            # (PARITY-11) la juge sur un VOCABULAIRE FERMÉ, et rougit sur tout fragment
+            # inconnu, sur un `!=`, et sur un `schedule` sans garde de dépôt. La forme laxiste
+            # `… || github.event_name == 'push'` a été vue passer en vert sur l'ancienne règle :
+            # c'est ce qui a motivé la nouvelle.
             #
             # Cette étape était la seule cause structurelle de « ci:local vert, push rouge » :
             # `ci-local.cjs` ne lance l'E2E que sous `--e2e` (12 min ici), alors que ce workflow
@@ -959,9 +1006,11 @@ jobs:
             # ce workflow à la main, ou reproduire localement avec `taskset -c 0,1`
             # (cf. `playwright.config.js`).
             #
-            # Se déclenche depuis l'onglet Actions → « Run workflow ».
+            # Se déclenche depuis l'onglet Actions → « Run workflow », ou seule, chaque nuit,
+            # sur le dépôt public.
             - name: E2E Playwright (carte, storage offline, POI)
-              if: github.event_name == 'workflow_dispatch'
+              if: >-
+                  github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.repository == 'geoleaf/geoleaf-js')
               run: npm run build:deploy && node scripts/build-deploy-coverage.cjs && npx playwright install --with-deps chromium && npm run test:e2e
 
             # Chaque run E2E écrivait 2,8 Mo dans `.nyc_output/` que RIEN ne lisait :
@@ -981,7 +1030,8 @@ jobs:
             # rougir sur une mesure absente — un faux rouge, exactement ce que son plancher de
             # témoin est censé empêcher. Les deux se déclenchent ensemble ou pas du tout.
             - name: Couverture du boot du bundle livré (plancher + seuils nyc)
-              if: github.event_name == 'workflow_dispatch'
+              if: >-
+                  github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.repository == 'geoleaf/geoleaf-js')
               run: node scripts/verify-e2e-coverage.cjs
 
             # L'étape E2E est la DERNIÈRE du job, et RIEN n'uploadait son rapport : le dernier
@@ -1006,7 +1056,8 @@ jobs:
             # termes.
             - name: Upload Playwright report + traces (E2E, sur échec seulement)
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-              if: failure() && github.event_name == 'workflow_dispatch'
+              if: >-
+                  failure() && (github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.repository == 'geoleaf/geoleaf-js'))
               with:
                   name: playwright-e2e
                   path: |

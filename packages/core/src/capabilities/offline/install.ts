@@ -97,10 +97,22 @@ export const OFFLINE_INSTALLER: CapabilityInstaller = {
                 pwaEnabled: pwaCfg.enabled === true,
                 ...(cacheCfg && { cache: cacheCfg }),
                 offlineDetectorEnabled: detector.enabled === true,
+                ...(typeof detector.badgePosition === "string" && {
+                    badgePosition: detector.badgePosition,
+                }),
                 // Forwarded RAW: `parseDataOrigins` is the only place allowed to
                 // decide what a valid declaration is. Normalising here would make a
                 // second authority, and the second authority drifts.
                 dataOrigins: offlineCfg.dataOrigins,
+                // Same raw-forwarding rule as above: the triggers own the meaning of
+                // `pollIntervalMs` (including its `0` = disabled), and a normalisation
+                // here would be a second authority on it.
+                ...(asObject(offlineCfg.drain) && {
+                    drain: asObject(offlineCfg.drain) as { pollIntervalMs?: number },
+                }),
+                ...(asObject(offlineCfg.banner) && {
+                    banner: asObject(offlineCfg.banner) as { enabled?: boolean },
+                }),
             }
         );
     },

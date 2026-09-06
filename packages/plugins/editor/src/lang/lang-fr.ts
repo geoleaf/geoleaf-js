@@ -124,6 +124,13 @@ const lang_fr: Record<string, string> = {
     "editor.placement.existingDetected": "Entité existante détectée :",
     "editor.placement.markerNew": "Nouveau point (glissez pour ajuster)",
     "editor.placement.markerExisting": "Point existant (glissez pour ajuster)",
+    "editor.placement.duplicateTitle": "Une entité existe déjà ici",
+    "editor.placement.duplicateBody":
+        "{title} se trouve à {d} m de votre point. Que voulez-vous faire ?",
+    "editor.placement.duplicateEdit": "Modifier l'existant",
+    "editor.placement.duplicateCreate": "Créer quand même",
+    "editor.placement.duplicateUnnamed": "Une entité",
+    "editor.placement.editUnavailable": "Impossible d'ouvrir l'entité existante.",
     // The "add a POI" flow, moved down from the core with the button it serves.
     "editor.toolbar.poi_add": "Ajouter un POI",
     "editor.addform.unavailable": "L'éditeur n'est pas prêt — réessayez dans un instant.",

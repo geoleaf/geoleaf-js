@@ -30,7 +30,7 @@ export const ACCEPTED_ACCEPT = ACCEPTED_MIME.join(",");
 const _ownObjectUrls = new Set<string>();
 
 /** Creates a local preview URL and records it as trusted. */
-export function _createObjectUrl(file: File): string {
+export function _createObjectUrl(file: Blob): string {
     const url = URL.createObjectURL(file);
     _ownObjectUrls.add(url);
     return url;
@@ -74,7 +74,21 @@ export function _openLightbox(src: string): void {
  * @param endpoint - POST endpoint configured on the field.
  * @returns the URL under which the image is now readable.
  */
-export type ImageUploadStrategy = (file: File, endpoint: string) => Promise<string>;
+export type ImageUploadStrategy = (
+    file: File,
+    /**
+     * The field's `uploadEndpoint`, or `null` when it declared none.
+     *
+     * ⚠️ `null` is a REAL case, not a defensive one: four shipped layers carry a
+     * `widget: "image"` with no endpoint. The library used to answer it with an object URL
+     * written into the attribute — a value that dies with the document, so the photo was
+     * gone at the next reload and anything sent to a server designated nothing. A host
+     * strategy is given the case so it can keep the file instead.
+     */
+    endpoint: string | null,
+    /** Schema path of the field, so a host can tie the stored file back to it. */
+    fieldPath?: string
+) => Promise<string>;
 
 let _strategy: ImageUploadStrategy | null = null;
 
@@ -108,16 +122,73 @@ export function setImageUploadStrategy(fn: ImageUploadStrategy | null): void {
 }
 
 /**
+ * Turns a host-specific value into something an `<img>` can display, or `null`.
+ *
+ * The counterpart of {@link ImageUploadStrategy}: a host that answers an upload with an
+ * opaque token — because the file is only stored locally so far — must also be able to
+ * render it, and only the host can read its own store.
+ */
+export type ImagePreviewResolver = (value: string) => Promise<string | null>;
+
+let _previewResolver: ImagePreviewResolver | null = null;
+
+/**
+ * Registers how to display a value the host's upload strategy returned.
+ *
+ * @param fn - The resolver, or `null` to display values as-is.
+ * @example
+ * ```ts
+ * setImagePreviewResolver(async (token) => blobUrlFor(token));
+ * ```
+ */
+export function setImagePreviewResolver(fn: ImagePreviewResolver | null): void {
+    _previewResolver = fn;
+}
+
+/**
+ * Resolves a stored value to a displayable, protocol-checked `img.src`.
+ *
+ * ⚠️ Falls back to the value itself, so an ordinary server URL needs no resolver and the
+ * absence of one is not an outage.
+ *
+ * @param value - The value held by the field.
+ * @returns a safe `src`, or `""` when nothing can be displayed.
+ */
+export async function _resolveImageSrc(value: string): Promise<string> {
+    if (!value) return "";
+    const resolved = _previewResolver ? await _previewResolver(value) : null;
+    return _safeImageSrc(resolved ?? value);
+}
+
+/**
+ * Opens the lightbox on a value that may need resolving first.
+ *
+ * @param value - The value held by the field.
+ */
+export async function _openLightboxResolved(value: string): Promise<void> {
+    const src = await _resolveImageSrc(value);
+    if (src) _openLightbox(src);
+}
+
+/**
  * POSTs the file as multipart/form-data and returns the stored URL.
  *
  * Delegates to the host-set strategy when there is one; otherwise, multipart `fetch`.
  *
- * @param file     - File to upload.
- * @param endpoint - POST endpoint; response must be JSON `{ url: string }`.
+ * @param file      - File to upload.
+ * @param endpoint  - POST endpoint; response must be JSON `{ url: string }`. `null` when the
+ *   field declared none, in which case the built-in path falls back to a local object URL —
+ *   a host strategy is expected to do better, and the editor's does.
+ * @param fieldPath - Schema path of the field, forwarded to the host strategy.
  * @returns the stored URL; the promise **rejects** when the transport fails.
  */
-export async function _uploadFile(file: File, endpoint: string): Promise<string> {
-    if (_strategy) return _strategy(file, endpoint);
+export async function _uploadFile(
+    file: File,
+    endpoint: string | null,
+    fieldPath?: string
+): Promise<string> {
+    if (_strategy) return _strategy(file, endpoint, fieldPath);
+    if (!endpoint) return _createObjectUrl(file);
     const form = new FormData();
     form.append("file", file);
     const res = await fetch(endpoint, { method: "POST", body: form });

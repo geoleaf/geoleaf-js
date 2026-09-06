@@ -107,6 +107,81 @@ describe("ImagesDB — real IndexedDB key semantics", () => {
 
     // ── The fix, through the module's own API ──
 
+    // ── The return address ──
+    //
+    // 🛑 `storeImageLocally` REBUILT THE RECORD FIELD BY FIELD, so `endpoint` — which the
+    // editor plugin did pass — was silently dropped, and its retry loop
+    // (`if (!img.endpoint) continue`) then skipped every image forever: not one photo was
+    // ever re-uploaded, while the retry reported success. Nothing referenced the owning
+    // feature either, so even a successful upload had nowhere to send its URL back to.
+
+    test("storeImageLocally KEEPS the return address it is handed", async () => {
+        const db = await openAt(3);
+        DBImages.init(db);
+
+        await DBImages.storeImageLocally({
+            ...image("img-1"),
+            endpoint: "/api/upload",
+            fieldPath: "properties.photo",
+        });
+
+        const [rec] = await DBImages.getPendingImages();
+        expect(rec.endpoint).toBe("/api/upload");
+        expect(rec.fieldPath).toBe("properties.photo");
+        // Not bound yet: the feature does not exist while the form is still open.
+        expect(rec.layerId).toBeNull();
+        expect(rec.localId).toBeNull();
+    });
+
+    test("a caller passing nothing still writes a VALID record", async () => {
+        const db = await openAt(3);
+        DBImages.init(db);
+
+        await DBImages.storeImageLocally(image("img-1"));
+
+        const [rec] = await DBImages.getPendingImages();
+        expect(rec.endpoint).toBeNull();
+        expect(rec.layerId).toBeNull();
+    });
+
+    test("bindLocalImage writes the owning feature onto the record", async () => {
+        const db = await openAt(3);
+        DBImages.init(db);
+        await DBImages.storeImageLocally({ ...image("img-1"), endpoint: "/u" });
+
+        await DBImages.bindLocalImage("img-1", { layerId: "candelabres", localId: "loc:abc" });
+
+        const rec = await DBImages.getLocalImage("img-1");
+        expect(rec.layerId).toBe("candelabres");
+        expect(rec.localId).toBe("loc:abc");
+        // Binding must not disturb the upload state — it is a different axis.
+        expect(rec.uploaded).toBe(0);
+    });
+
+    // A token pointing at a record already purged is an ordinary outcome of a long session,
+    // not a failure worth propagating into a save.
+    test("bindLocalImage on an unknown image is a no-op, not a rejection", async () => {
+        const db = await openAt(3);
+        DBImages.init(db);
+        await expect(
+            DBImages.bindLocalImage("absent", { layerId: "L", localId: "loc:a" })
+        ).resolves.toBeUndefined();
+    });
+
+    test("getLocalImage returns the blob back, and null for what is gone", async () => {
+        const db = await openAt(3);
+        DBImages.init(db);
+        await DBImages.storeImageLocally(image("img-1"));
+
+        const rec = await DBImages.getLocalImage("img-1");
+        // ⚠️ NOT `toBeInstanceOf(Blob)`: fake-indexeddb structured-clones the value, and the
+        // clone does not carry this realm's `Blob` prototype. Asserting the class would be
+        // testing the polyfill, not the read — what matters is that the payload comes back.
+        expect(rec.id).toBe("img-1");
+        expect(rec.blob).toBeTruthy();
+        expect(await DBImages.getLocalImage("absent")).toBeNull();
+    });
+
     test("getPendingImages() returns freshly stored images", async () => {
         const db = await openAt(3);
         DBImages.init(db);

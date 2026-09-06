@@ -224,7 +224,13 @@ const FAMILIES = {
             "label.buffer.color",
             "label.buffer.opacity",
             "label.buffer.sizePx",
-            // label.background.* + label.offset.* removed from the schema (archi B.5 — dead).
+            "label.offset.placement",
+            "label.offset.distancePx",
+            // label.background.* stays removed from the schema (archi B.5 — dead). label.offset.*
+            // came BACK: the keys are declared again and are now rendered (text-anchor +
+            // text-radial-offset). ⚠️ These two entries are what makes the gate ask for their
+            // inventory rows at all — `label` sits in excludeTop, so flattenLeaves never reaches
+            // its leaves and forgetting them here goes GREEN in silence, not red.
             // style.* (flatStyle $ref)
             "style.extends",
             "style.fillColor",

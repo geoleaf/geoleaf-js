@@ -22,6 +22,7 @@
  */
 
 import { SyncHandlerContract, type SyncHandler } from "../kernel/shared/sync-handler-seam.js";
+import { DrainHooksContract, type BeforeDrainStep } from "../kernel/shared/drain-hooks-seam.js";
 import { ensureGeoLeaf } from "../utils/general/geoleaf-global.js";
 
 /** Public façade — mounted on `GeoLeaf.Sync`; all state lives in `SyncHandlerContract`. */
@@ -33,6 +34,27 @@ export const Sync = {
     /** @returns the handler registered under `id`, or `undefined`. */
     getHandler(id: string): SyncHandler | undefined {
         return SyncHandlerContract.getHandler(id);
+    },
+    /**
+     * Registers a step to run BEFORE each outbox drain; `null` removes it.
+     *
+     * 🛑 A different registry from {@link Sync.registerHandler}, and the distinction is
+     * the point: a handler DRIVES a replay (its `processSyncQueue` calls the drain), a
+     * step must FINISH before one. Iterating handlers inside the drain would be
+     * re-entrance by construction.
+     *
+     * The step is awaited under the drain's own lock, so a drain triggered while it runs
+     * cannot overtake it. ⚠️ Its failure is logged and the drain proceeds — a photo that
+     * cannot be uploaded is a photo still waiting, not a reason to hold every other
+     * capture hostage.
+     *
+     * @param id - Stable identifier, e.g. `"editor:images"`.
+     * @param step - The step, or `null` to unregister — which a plugin's `destroy` owes.
+     * @example
+     * GeoLeaf?.Sync?.registerBeforeDrain?.("editor:images", () => Promise.resolve());
+     */
+    registerBeforeDrain(id: string, step: BeforeDrainStep | null): void {
+        DrainHooksContract.register(id, step);
     },
     // BREAKING (3.1.0, 25/08/2026, pre-adoption window of VERSIONING_POLICY.md): the
     // plural accessor `getHandlers()` was removed from this façade and from the seam. It was

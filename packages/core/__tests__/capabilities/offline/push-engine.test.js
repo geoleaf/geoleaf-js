@@ -56,6 +56,22 @@ describe("4.5 — push et réconciliation d'identité", () => {
 
     const bodyOf = (call) => JSON.parse(call[1].body);
 
+    /**
+     * Makes every deferred entry replayable again — "the delay has elapsed".
+     *
+     * ⚠️ It rewrites `nextAttemptAt`, it does NOT fake the clock. The property under
+     * test is that the drain COMPARES that field to now; how a past value is obtained
+     * — by waiting, or by writing one — changes nothing to what is proven, and faking
+     * `Date` here would also move `createdAt` and the minted entry ids.
+     */
+    async function rewind() {
+        const outbox = IndexedDB._ensureModule("Outbox");
+        for (const row of await readAll("outbox")) {
+            if (row.nextAttemptAt)
+                await outbox.updateState(row.id, row.state, { nextAttemptAt: 0 });
+        }
+    }
+
     beforeAll(async () => {
         await import("fake-indexeddb/auto");
         ({ IndexedDB } = await import("../../../src/capabilities/offline/db/indexeddb.js"));
@@ -179,7 +195,15 @@ describe("4.5 — push et réconciliation d'identité", () => {
         await applyEdit({ layerId: "sites", kind: "create", feature: feature("Obstinée") });
         serve(() => ({ status: 500, body: {} }));
 
-        const reports = [await pushOutbox(), await pushOutbox(), await pushOutbox()];
+        // ⚠️ `rewind()` between the drains, and it is not a convenience: since the
+        // deferral exists, three drains fired back to back make ONE attempt — which is
+        // exactly the property the backoff adds. What this test measures is the CAP,
+        // so it lets the delay elapse; the drain-in-a-row case has its own test.
+        const reports = [];
+        for (let i = 0; i < 3; i += 1) {
+            await rewind();
+            reports.push(await pushOutbox());
+        }
 
         expect(reports.map((r) => r.failed)).toEqual([1, 1, 1]);
 
@@ -250,9 +274,10 @@ describe("4.5 — push et réconciliation d'identité", () => {
         await applyEdit({ layerId: "sites", kind: "create", feature: feature("Muette") });
         fetchSpy.mockRejectedValue(new Error("network down"));
 
-        await pushOutbox();
-        await pushOutbox();
-        await pushOutbox();
+        for (let i = 0; i < 3; i += 1) {
+            await rewind();
+            await pushOutbox();
+        }
 
         const rows = await readAll("outbox");
         expect(rows[0].state).toBe("quarantined");
@@ -264,9 +289,10 @@ describe("4.5 — push et réconciliation d'identité", () => {
         // aside would pass the test above while letting the entry loop.
         await applyEdit({ layerId: "sites", kind: "create", feature: feature("Écartée") });
         serve(() => ({ status: 500, body: {} }));
-        await pushOutbox();
-        await pushOutbox();
-        await pushOutbox();
+        for (let i = 0; i < 3; i += 1) {
+            await rewind();
+            await pushOutbox();
+        }
         const callsBefore = fetchSpy.mock.calls.length;
 
         const after = await pushOutbox();
@@ -310,9 +336,10 @@ describe("4.5 — push et réconciliation d'identité", () => {
         await applyEdit({ layerId: "sites", kind: "create", feature: feature("Maintenance") });
         serve(() => ({ status: 503, body: {} }));
 
-        await pushOutbox();
-        await pushOutbox();
-        await pushOutbox();
+        for (let i = 0; i < 3; i += 1) {
+            await rewind();
+            await pushOutbox();
+        }
 
         const rows = await readAll("outbox");
         expect(rows[0].state).toBe("quarantined");
@@ -350,9 +377,10 @@ describe("4.5 — push et réconciliation d'identité", () => {
         await applyEdit({ layerId: "sites", kind: "create", feature: feature("Interdite") });
         serve(() => ({ status: 403, body: {} }));
 
-        await pushOutbox();
-        await pushOutbox();
-        await pushOutbox();
+        for (let i = 0; i < 3; i += 1) {
+            await rewind();
+            await pushOutbox();
+        }
 
         const rows = await readAll("outbox");
         expect(rows[0].state).toBe("quarantined");
@@ -377,9 +405,10 @@ describe("4.5 — push et réconciliation d'identité", () => {
             throw new Error("réseau muet");
         });
 
-        await pushOutbox();
-        await pushOutbox();
-        await pushOutbox();
+        for (let i = 0; i < 3; i += 1) {
+            await rewind();
+            await pushOutbox();
+        }
 
         const rows = await readAll("outbox");
         expect(rows[0].state).toBe("quarantined");
@@ -404,8 +433,29 @@ describe("4.5 — push et réconciliation d'identité", () => {
     });
 
     // ── ③ a 409 is a SUCCESS ─────────────────────────────────────────────────────────────
-    test("un 409 sur l'identité cliente vaut « déjà présent », pas un échec", async () => {
-        await applyEdit({ layerId: "sites", kind: "create", feature: feature("B") });
+    test("un 409 sur une entité DÉJÀ identifiée vaut « déjà présent », sans relecture", async () => {
+        // ⚠️ **THIS TEST WAS REWRITTEN, AND ITS SUBJECT MOVED BY EXACTLY ONE BRANCH.**
+        // It used to answer 409 to everything, including the identity re-read that a
+        // create now performs — which is no longer "the server already has it" but "the
+        // re-read was refused too". The case where a 409 needs NO re-read is this one:
+        // the record already carries its server identity, so there is nothing to learn.
+        // The property under test — a 409 is a success, not a failure — is unchanged.
+        const features = IndexedDB._ensureModule("Features");
+        await features.put({
+            layerId: "sites",
+            localId: "loc:déjà-identifiée",
+            serverId: "64",
+            syncState: "pending",
+            updatedAt: 1,
+            version: null,
+            feature: feature("B"),
+        });
+        await applyEdit({
+            layerId: "sites",
+            kind: "create",
+            localId: "loc:déjà-identifiée",
+            feature: feature("B"),
+        });
         serve(() => ({ status: 409, body: { code: "23505" } }));
 
         const report = await pushOutbox();
@@ -414,6 +464,8 @@ describe("4.5 — push et réconciliation d'identité", () => {
         expect(report.pushed).toBe(1);
         expect(report.alreadyPresent).toBe(1);
         expect(report.failed).toBe(0);
+        // ONE round trip: knowing the identity is what makes the re-read pointless.
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
         expect(await readAll("outbox")).toHaveLength(0);
     });
 
@@ -433,10 +485,14 @@ describe("4.5 — push et réconciliation d'identité", () => {
         expect(await readAll("features")).toHaveLength(1);
     });
 
-    test("un `failed` repart au drain suivant", async () => {
+    test("un `failed` repart au drain suivant — une fois son report écoulé", async () => {
         await applyEdit({ layerId: "sites", kind: "create", feature: feature("D") });
         serve(() => ({ status: 500 }));
         await pushOutbox();
+        // ⚠️ The title said "at the NEXT drain" and that is no longer true of the
+        // instant that follows: a failure now defers its own replay. What stays true,
+        // and is the property this test holds, is that `failed` is not terminal.
+        await rewind();
 
         serve(() => ({ status: 201, body: [{ id: 88 }] }));
         const report = await pushOutbox();
@@ -619,6 +675,282 @@ describe("4.5 — push et réconciliation d'identité", () => {
         expect(String(fetchSpy.mock.calls[0][0])).not.toContain("updated_at=eq.");
     });
 
+    // ── ⑧ THE FOUR HOLES OF THE DRAIN — a field day that loses nothing ──────────────────
+    //
+    // The four defects below sit on the SAME nominal path: a capture, a cut, a return
+    // of network. Each one loses or condemns a capture WITHOUT SAYING SO, and none was
+    // visible from the suite: nothing killed a tab mid-push, nothing replied 409 to a
+    // create, nothing answered an unfiltered second send, and nothing measured what
+    // three drains in a row cost.
+
+    test("🛑 une entrée `inFlight` laissée par une session tuée EST reprise", async () => {
+        // The tab dies between `updateState(inFlight)` and the response. Until now no
+        // path brought that entry back: `REPLAYABLE` holds `pending` and `failed` only,
+        // so the capture stayed visible, counted as due, and unreplayable for ever.
+        await applyEdit({ layerId: "sites", kind: "create", feature: feature("interrompue") });
+        const outbox = IndexedDB._ensureModule("Outbox");
+        const [queued] = await readAll("outbox");
+        // No `inFlightAt`: the mark of a session that ended before writing one.
+        await outbox.updateState(queued.id, "inFlight");
+
+        serve(() => ({ status: 201, body: [{ id: 51 }] }));
+        const report = await pushOutbox();
+
+        expect(report.pushed).toBe(1);
+        expect((await readAll("features"))[0].serverId).toBe("51");
+        expect(await readAll("outbox")).toHaveLength(0);
+    });
+
+    test("🛑 une entrée `inFlight` RÉCENTE n'est PAS reprise — un second onglet ne double pas l'envoi", async () => {
+        // The counter-proof of the fix above, and the reason it is not "requeue every
+        // `inFlight`": two tabs share the database, not the network. Reclaiming an entry
+        // another tab has on the wire would send a DELETE twice — and the second gets a
+        // 404, i.e. an immediate quarantine on a push that succeeded.
+        await applyEdit({ layerId: "sites", kind: "create", feature: feature("en vol") });
+        const outbox = IndexedDB._ensureModule("Outbox");
+        const [queued] = await readAll("outbox");
+        await outbox.updateState(queued.id, "inFlight", { inFlightAt: Date.now() });
+
+        serve(() => ({ status: 201, body: [{ id: 52 }] }));
+        const report = await pushOutbox();
+
+        expect(fetchSpy).not.toHaveBeenCalled();
+        expect(report.attempted).toBe(0);
+        expect((await readAll("outbox"))[0].state).toBe("inFlight");
+    });
+
+    test("🛑 un 409 sur une CRÉATION relit l'identité serveur, sinon la mise à jour suivante part sur `id=eq.null`", async () => {
+        // A 409 is a success — the server says "I already have it". But it does not say
+        // WHICH row, so `serverId` stayed `null` while the queue emptied: the entity was
+        // then locally reputed synchronised and unreachable, every later update filtering
+        // on `id=eq.null`.
+        const created = await applyEdit({
+            layerId: "sites",
+            kind: "create",
+            feature: feature("déjà chez le serveur"),
+        });
+        serve((url, init) => {
+            if (init?.method === "POST") return { status: 409, body: { code: "23505" } };
+            // The re-read goes through the CLIENT identity — the only key both sides share.
+            expect(url).toContain(`local_id=eq.${encodeURIComponent(created.localId)}`);
+            return { status: 200, body: [{ id: 77 }] };
+        });
+
+        const report = await pushOutbox();
+
+        expect(report.pushed).toBe(1);
+        expect(report.alreadyPresent).toBe(1);
+        expect((await readAll("features"))[0].serverId).toBe("77");
+        expect(await readAll("outbox")).toHaveLength(0);
+    });
+
+    test("🛑 un 409 dont la relecture ne trouve RIEN n'est pas un succès : une AUTRE contrainte a refusé", async () => {
+        await applyEdit({ layerId: "sites", kind: "create", feature: feature("autre contrainte") });
+        serve((_url, init) =>
+            init?.method === "POST" ? { status: 409 } : { status: 200, body: [] }
+        );
+
+        const report = await pushOutbox();
+
+        // Declaring a success here would empty the queue on a row the server never wrote.
+        expect(report.pushed).toBe(0);
+        expect(report.failed).toBe(1);
+        expect((await readAll("outbox"))[0].state).toBe("failed");
+        expect(await readAll("features")).toHaveLength(1);
+    });
+
+    test("un 409 dont la relecture ÉCHOUE ne conclut pas — l'entrée reste rejouable", async () => {
+        await applyEdit({ layerId: "sites", kind: "create", feature: feature("relecture muette") });
+        serve((_url, init) => (init?.method === "POST" ? { status: 409 } : { status: 503 }));
+
+        const report = await pushOutbox();
+
+        // Neither "already present" nor "refused": we do not know. The entry comes back.
+        expect(report.pushed).toBe(0);
+        expect(report.failed).toBe(1);
+        const [row] = await readAll("outbox");
+        expect(row.state).toBe("failed");
+        expect(row.quarantine).toBeUndefined();
+    });
+
+    test("🛑 le SECOND envoi n'est pas cru sur parole : `200 []` non filtré = l'entité a disparu", async () => {
+        // `lastWriteWins` settles a conflict by re-sending WITHOUT the freshness filter.
+        // That second send was never checked: an empty array — the very form in which
+        // this server says "zero rows" — counted as a success and emptied the queue while
+        // the server had written nothing.
+        const features = IndexedDB._ensureModule("Features");
+        await features.put({
+            layerId: "sites",
+            localId: "srv:9",
+            serverId: "9",
+            syncState: "synced",
+            updatedAt: 1,
+            version: { kind: "timestamp", value: "2026-01-01T00:00:00+00:00" },
+            feature: feature("base"),
+        });
+        await applyEdit({
+            layerId: "sites",
+            kind: "update",
+            localId: "srv:9",
+            feature: feature("terrain"),
+        });
+        // Both sends answer `200 []`: the row is gone, not stale.
+        serve(() => ({ status: 200, body: [] }));
+
+        const report = await pushOutbox();
+
+        expect(fetchSpy).toHaveBeenCalledTimes(2);
+        expect(report.conflicts).toBe(1);
+        expect(report.pushed).toBe(0);
+        expect(report.failed).toBe(1);
+        const [row] = await readAll("outbox");
+        expect(row.state).toBe("quarantined");
+        // Same fact as a 404, said in this server's own words.
+        expect(row.quarantine).toBe("deletedOnServer");
+        expect(await readAll("features")).toHaveLength(1);
+    });
+
+    test("🛑 le budget ne se consomme plus en rafale : une entrée qui vient d'échouer est DIFFÉRÉE", async () => {
+        // Three attempts with no delay between them is not a budget: the drain fires on
+        // network return AND on the "Retry" button, and `attempts` persists. Three
+        // operator clicks during a maintenance window spent a field capture's whole
+        // budget in under a minute.
+        await applyEdit({ layerId: "sites", kind: "create", feature: feature("réseau instable") });
+        serve(() => ({ status: 500 }));
+
+        await pushOutbox();
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+        const again = await pushOutbox();
+
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+        // A drain that does nothing must not look like an empty queue.
+        expect(again.deferred).toBe(1);
+        expect(again.attempted).toBe(0);
+        const [row] = await readAll("outbox");
+        expect(row.attempts).toBe(1);
+        expect(row.nextAttemptAt).toBeGreaterThan(Date.now());
+    });
+
+    test("le report CROÎT d'un échec à l'autre", async () => {
+        await applyEdit({ layerId: "sites", kind: "create", feature: feature("recul") });
+        serve(() => ({ status: 500 }));
+
+        await pushOutbox();
+        const first = (await readAll("outbox"))[0].nextAttemptAt - Date.now();
+        await rewind();
+        await pushOutbox();
+        const second = (await readAll("outbox"))[0].nextAttemptAt - Date.now();
+
+        expect(first).toBeGreaterThan(0);
+        expect(second).toBeGreaterThan(first);
+    });
+
+    test("🛑 ré-éditer une saisie en échec REMET son budget à zéro — intention neuve, pas rejeu", async () => {
+        // Coalescing absorbs a new edit into the `failed` entry, which kept its spent
+        // budget: the operator corrected their capture and it went to quarantine one
+        // attempt later, for failures that predate the correction.
+        const created = await applyEdit({
+            layerId: "sites",
+            kind: "create",
+            feature: feature("première saisie"),
+        });
+        serve(() => ({ status: 500 }));
+        await pushOutbox();
+        expect((await readAll("outbox"))[0].attempts).toBe(1);
+
+        await applyEdit({
+            layerId: "sites",
+            kind: "update",
+            localId: created.localId,
+            feature: feature("saisie corrigée"),
+        });
+
+        const [row] = await readAll("outbox");
+        expect(row.attempts).toBe(0);
+        expect(row.state).toBe("pending");
+        // And it leaves at once: the deferral belonged to the failure, not to the entry.
+        serve(() => ({ status: 201, body: [{ id: 12 }] }));
+        expect((await pushOutbox()).pushed).toBe(1);
+    });
+
+    // ── ⑨ A DEAD SESSION IS NOT A REFUSAL — and it must not burn the whole tour ──────────
+    //
+    // A 401 used to land in `pushOne`'s default branch, i.e. `rejectedByServer` — the one
+    // motive the contract defines as "replay cannot fix" and that `REQUEUEABLE` excludes.
+    // An expired token is the exact opposite: replay fixes it as soon as the session is
+    // back. The capture was therefore quarantined with destruction as its only exit, for
+    // a cause that lifts by itself.
+
+    test("🛑 un 401 nomme une SESSION, pas un refus — quarantaine `authRequired` immédiate", async () => {
+        await applyEdit({ layerId: "sites", kind: "create", feature: feature("jeton mort") });
+        serve(() => ({ status: 401 }));
+
+        const report = await pushOutbox();
+
+        expect(report.failed).toBe(1);
+        const [row] = await readAll("outbox");
+        expect(row.state).toBe("quarantined");
+        expect(row.quarantine).toBe("authRequired");
+        expect(row.quarantineStatus).toBe(401);
+        // Budget SHORT-CIRCUITED, same argument as the 501: replaying three times with a
+        // dead token only waits three times.
+        expect(row.attempts).toBe(1);
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test("🛑 le drain S'ARRÊTE au premier 401 — les saisies suivantes gardent leur budget", async () => {
+        // Without the halt, a tour's whole queue is spent against a server that can only
+        // answer 401 — and in token mode the interceptor has by then erased the token, so
+        // the following requests do not even carry an `Authorization` header.
+        await applyEdit({ layerId: "sites", kind: "create", feature: feature("première") });
+        await applyEdit({ layerId: "sites", kind: "create", feature: feature("deuxième") });
+        await applyEdit({ layerId: "sites", kind: "create", feature: feature("troisième") });
+        serve(() => ({ status: 401 }));
+
+        const report = await pushOutbox();
+
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+        // A halted drain must not look like a queue that was fully attempted.
+        expect(report.attempted).toBe(1);
+        expect(report.haltedBy).toBe("authRequired");
+        const rows = await readAll("outbox");
+        expect(rows[0].state).toBe("quarantined");
+        // The two others were never touched: no attempt, no deferral.
+        expect(rows[1].state).toBe("pending");
+        expect(rows[1].attempts).toBe(0);
+        expect(rows[2].state).toBe("pending");
+    });
+
+    test("un drain SANS 401 ne nomme aucun arrêt", async () => {
+        await applyEdit({ layerId: "sites", kind: "create", feature: feature("nominale") });
+        serve(() => ({ status: 201, body: [{ id: 5 }] }));
+
+        const report = await pushOutbox();
+
+        expect(report.haltedBy).toBeNull();
+        expect(report.attempted).toBe(1);
+    });
+
+    test("🛑 un réseau MUET n'arrête PAS le drain — la contre-épreuve de l'arrêt", async () => {
+        // Halting on failure in general would be wrong and expensive: off-network, every
+        // entry must still be counted and deferred, which is what lets a whole tour come
+        // back at the next drain. Only a dead SESSION makes the rest pointless.
+        await applyEdit({ layerId: "sites", kind: "create", feature: feature("une") });
+        await applyEdit({ layerId: "sites", kind: "create", feature: feature("deux") });
+        globalThis.fetch = vi.fn(async () => {
+            throw new TypeError("Failed to fetch");
+        });
+
+        const report = await pushOutbox();
+
+        expect(report.failed).toBe(2);
+        expect(report.attempted).toBe(2);
+        expect(report.haltedBy).toBeNull();
+        const rows = await readAll("outbox");
+        expect(rows.map((r) => r.state)).toEqual(["failed", "failed"]);
+    });
+
     // ── ⑦ the full cycle, end to end ─────────────────────────────────────────────────────
     test("créer hors réseau puis pousser : l'entité porte son identifiant serveur", async () => {
         const created = await applyEdit({
@@ -642,5 +974,73 @@ describe("4.5 — push et réconciliation d'identité", () => {
         // And it is the CORRECTED state that left — the payload is the record.
         expect(bodyOf(fetchSpy.mock.calls[0]).title).toBe("terrain corrigé");
         expect((await readAll("features"))[0].serverId).toBe("99");
+    });
+
+    // ── ⑧ the core announces its own drain ───────────────────────────────────────────
+    //
+    // 🛑 Until this event existed, the only signal that the write queue had moved was
+    // `geoleaf:editor:feature-sync-flushed` — emitted by the editor PLUGIN. Anything
+    // showing what is still owed to the server therefore depended on a plugin being
+    // loaded, the core included, which paints nothing without it. The drain lives here;
+    // its announcement belongs here.
+    test("🛑 la fin d'un drain est annoncée sur `document`, avec le décompte de la passe", async () => {
+        await applyEdit({ layerId: "sites", kind: "create", feature: feature("annonce") });
+        serve(() => ({ status: 201, body: [{ id: 5 }] }));
+        const heard = [];
+        const listener = (e) => heard.push(e.detail);
+        document.addEventListener("geoleaf:offline:outbox-drained", listener);
+
+        try {
+            await pushOutbox();
+        } finally {
+            document.removeEventListener("geoleaf:offline:outbox-drained", listener);
+        }
+
+        expect(heard).toHaveLength(1);
+        expect(heard[0]).toEqual({
+            attempted: 1,
+            pushed: 1,
+            failed: 0,
+            deferred: 0,
+            conflicts: 0,
+            haltedBy: null,
+        });
+    });
+
+    // ── ⑨ can this device HOLD this write? ────────────────────────────────────────
+    //
+    // 🛑 THE PREDICATE ASKED THE WRONG QUESTION IN ITS FIRST DRAFT, AND THE E2E SUITE
+    // REFUTED IT ON THE SHIPPED BUNDLE. It resolved the layer's `write` target and answered
+    // `false` when none was declared, so the editor sent those writes down its online path.
+    // But deliverables have their write endpoints stripped (DNS-05), so on the demo NO layer
+    // was holdable and an offline save stopped reaching the outbox — three specs went red.
+    // Holding beats losing: a held capture is visible, counted, and set aside with a named
+    // motive; one sent to a dead endpoint is gone. The write target is the DRAIN's business.
+    test("🛑 une couche connue est TENABLE, même sans cible d'écriture", async () => {
+        const { canHoldWrites } =
+            await import("../../../src/capabilities/offline/write/local-edit-api.js");
+        expect(canHoldWrites("sites")).toBe(true);
+        // `orphan` is editable and declares no `write` block: the drain will set its entries
+        // aside, but refusing to HOLD them would lose the capture instead.
+        expect(canHoldWrites("orphan")).toBe(true);
+        expect(canHoldWrites("inexistante")).toBe(false);
+    });
+
+    test("une passe VIDE est annoncée elle aussi — sinon « rien à envoyer » et « personne n'a drainé » se confondent", async () => {
+        serve(() => ({ status: 200, body: [] }));
+        const heard = [];
+        const listener = (e) => heard.push(e.detail);
+        document.addEventListener("geoleaf:offline:outbox-drained", listener);
+
+        try {
+            await pushOutbox();
+        } finally {
+            document.removeEventListener("geoleaf:offline:outbox-drained", listener);
+        }
+
+        expect(fetchSpy).not.toHaveBeenCalled();
+        expect(heard).toEqual([
+            { attempted: 0, pushed: 0, failed: 0, deferred: 0, conflicts: 0, haltedBy: null },
+        ]);
     });
 });
