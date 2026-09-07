@@ -53,8 +53,8 @@
         "@geoleaf/core": "^3.0.0"
     },
     "devDependencies": {
-        "@geoleaf/core": "^3.0.0",
         "@geoleaf/build-config": "*",
+        "@geoleaf/core": "^3.0.0",
         "@geoleaf/host-runtime": "*",
         "@vitest/coverage-istanbul": "^4.1.11",
         "happy-dom": "^20.14.0",
