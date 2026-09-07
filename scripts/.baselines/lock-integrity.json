@@ -1,7 +1,7 @@
 {
     "_comment": "LI-01/02 — entrées de registre de package-lock.json SANS `integrity`, gelées à la pose. Liste DÉCROISSANTE : peupler l'intégrité (régénération délibérée du lock sous le packageManager déclaré) puis resserrer via --update-baseline. Clé = chemin du lock (stable au patch de version). Le gel ne prouve PAS que le reste est trivialement drainable — mesuré structurel (sous-arbre @algolia/*→docsearch→vitepress, DEV) le 31/08/2026 ; ce que la gate empêche, c'est la CROISSANCE de l'écart.",
     "_generated": "node scripts/check-lock-integrity.cjs --update-baseline",
-    "count": 800,
+    "count": 796,
     "entries": [
         "node_modules/@algolia/abtesting",
         "node_modules/@algolia/autocomplete-core",
@@ -87,8 +87,6 @@
         "node_modules/@rollup/plugin-typescript",
         "node_modules/@rollup/pluginutils",
         "node_modules/@rollup/pluginutils/node_modules/picomatch",
-        "node_modules/@rollup/rollup-linux-x64-gnu",
-        "node_modules/@rollup/rollup-linux-x64-musl",
         "node_modules/@shikijs/transformers",
         "node_modules/@shikijs/transformers/node_modules/@shikijs/core",
         "node_modules/@shikijs/transformers/node_modules/@shikijs/engine-javascript",
@@ -104,7 +102,6 @@
         "node_modules/@ts-graphviz/common",
         "node_modules/@ts-graphviz/core",
         "node_modules/@types/esrecurse",
-        "node_modules/@types/estree",
         "node_modules/@types/geojson",
         "node_modules/@types/hast",
         "node_modules/@types/json-schema",
@@ -614,7 +611,6 @@
         "node_modules/reusify",
         "node_modules/rfdc",
         "node_modules/rgbcolor",
-        "node_modules/rollup",
         "node_modules/rollup-plugin-esbuild",
         "node_modules/rollup-plugin-istanbul",
         "node_modules/rollup-plugin-postcss",

@@ -8,6 +8,7 @@
     "engines": {
         "node": ">=22.22.1"
     },
+    "_rollupNote": "`rollup` est déclaré ICI, à la racine, le 07/09/2026, et le motif n'est pas le même que celui de `tsx`. Sans cette ligne, la racine porte une copie ANCIENNE installée pour le `peerOptional` large de `@rollup/plugin-*` (`^1||^2||^3||^4`), pendant que les 20 workspaces résolvent leur plage déclarée en copies NICHÉES : mesuré, 20 copies et 76 paquets de binaires de plateforme en double. Dependabot proposait alors de monter la seule copie racine, à CHAQUE push sur le miroir public — mesuré une fois : PR fermée à 17h30, recréée à 18h15. La déclaration effondre les 20 en 1 et fait taire la PR pour une vraie raison. ⚠️ Elle NE fige PAS la version : la prochaine montée arrive normalement et monte la racine avec les workspaces. 📌 Contrairement à `tsx`, elle ne coûte AUCUNE exemption knip — `rollup` est importé par les configs de build. Vérifié : `npm run dead-code` vert sans rien ajouter à `knip.js`.",
     "_tsxNote": "`tsx` est déclaré ICI, à la racine, et ce n'est pas une commodité. Il est chargé sans être importé — injecté dans NODE_OPTIONS par `build-config/vitest/ensure-tsx-node-options.mjs` — donc la gate IMPL exige que la copie DÉCLARÉE soit celle qui S'EXÉCUTE (identité de CHEMIN, pas de version). Mesure du 07/09/2026 : dès que `core` et `build-config` déclarent une plage que la copie hissée ne satisfait plus, npm leur donne chacun une copie NICHÉE, l'exécution part de celle de `build-config`, et la déclaration de `core` devient décorative — exactement la classe happy-dom qui a fait naître IMPL. La déclaration racine force une copie unique et ferme la classe, là où reculer la plage n'aurait fermé que l'instance. 🛑 NE PAS la retirer sans rejouer `node scripts/verify-implicit-deps.cjs` et VOIR IMPL-02 rester verte.",
     "description": "GeoLeaf — Monorepo v3. MapLibre GL JS engine. Packages: @geoleaf/core, @geoleaf-plugins/*.",
     "workspaces": [
@@ -228,6 +229,7 @@
         "postcss-import": "^16.1.1",
         "prettier": "^3.9.6",
         "purgecss": "^8.0.0",
+        "rollup": "^4.63.1",
         "rollup-plugin-esbuild": "^6.2.1",
         "serve": "^14.2.4",
         "tsx": "^4.23.13",
