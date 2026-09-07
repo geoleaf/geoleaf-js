@@ -47,10 +47,10 @@
         "prepublishOnly": "npm run build"
     },
     "dependencies": {
-        "@turf/distance": "^7.4.0",
         "@turf/area": "^7.4.0",
-        "@turf/circle": "^7.4.0",
         "@turf/centroid": "^7.4.0",
+        "@turf/circle": "^7.4.0",
+        "@turf/distance": "^7.4.0",
         "@turf/helpers": "^7.1.0"
     },
     "peerDependencies": {
@@ -58,8 +58,8 @@
         "maplibre-gl": "^6.0.0"
     },
     "devDependencies": {
-        "@geoleaf/core": "^3.0.0",
         "@geoleaf/build-config": "*",
+        "@geoleaf/core": "^3.0.0",
         "@geoleaf/host-runtime": "*",
         "@vitest/coverage-istanbul": "^4.1.11",
         "rimraf": "^6.1.3",

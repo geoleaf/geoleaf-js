@@ -47,8 +47,8 @@
         "prepublishOnly": "npm run build"
     },
     "dependencies": {
-        "@types/geojson": "^7946.0.16",
         "@tmcw/togeojson": "^7.0.0",
+        "@types/geojson": "^7946.0.16",
         "fflate": "^0.8.2",
         "papaparse": "^5.6.0",
         "topojson-client": "^3.1.0"
@@ -57,8 +57,8 @@
         "@geoleaf/core": "^3.0.0"
     },
     "devDependencies": {
-        "@geoleaf/core": "^3.0.0",
         "@geoleaf/build-config": "*",
+        "@geoleaf/core": "^3.0.0",
         "@geoleaf/host-runtime": "*",
         "@types/papaparse": "^5.3.14",
         "@types/topojson-client": "^3.1.4",
