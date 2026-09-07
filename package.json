@@ -210,7 +210,7 @@
         "@typescript-eslint/eslint-plugin": "^8.69.0",
         "@typescript-eslint/parser": "^8.61.0",
         "@vitest/coverage-istanbul": "^4.1.11",
-        "cssnano": "^8.0.7",
+        "cssnano": "^9.0.2",
         "depcheck": "^1.4.7",
         "eslint": "^10.9.1",
         "eslint-plugin-security": "^4.0.1",
