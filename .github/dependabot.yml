@@ -25,6 +25,29 @@
 # install` prend la plus récente qui satisfait. Sur ce même lot, `eslint` et `lint-staged`
 # avaient déjà dépassé la cible de la PR au moment de la reprise.
 #
+# ── La PR « bump rollup à la racine » — décidée le 07/09/2026, elle REVIENDRA ────────────
+#
+# Une PR qui ne monte QUE la copie hissée à la racine (`rollup` 4.59.0 → 4.63.1, publique #16)
+# se ferme, et le motif n'est pas structurel : il est de fond.
+#
+# La racine porte une copie ANCIENNE de `rollup` pour le `peerOptional` large de
+# `@rollup/plugin-*` (`^1||^2||^3||^4`), pendant que les 20 workspaces résolvent leur `^4.63.1`
+# déclaré en copies NICHÉES. Les effondrer est de l'hygiène, pas une correction : aucune gate
+# ne l'exige. `IMPL` ne couvre que ce qui est chargé SANS être importé — `rollup` est importé,
+# donc knip et SHIP-SPEC le voient déjà.
+#
+# 🛑 Et le changement NE TIENT PAS. Rien ne déclare `rollup` à la racine : la prochaine montée
+# de rollup re-scindera à l'identique. Prendre le lock seul achète un état qui se défait tout
+# seul, et rejoue cette PR chaque mois.
+#
+# 📌 La version durable serait une déclaration racine — le geste posé le même jour pour `tsx`
+# (cf. `_tsxNote` dans le `package.json` racine). Mais là, c'était `IMPL-02` qui l'EXIGEAIT.
+# Ici elle coûterait une seconde exemption knip sans qu'aucune gate ne la réclame. Cela se
+# décide donc pour soi, jamais au détour d'une PR de montée.
+#
+# ⚠️ Cette note existe parce que le motif vivait dans un commentaire de PR fermée, sur un
+# miroir que personne ne relit — et que la question se reposerait à neuf à chaque montée.
+#
 # Le motif est mécanique et il se reproduira : Dependabot régénère le lock EN ENTIER, y compris
 # les binaires optionnels de toutes les plateformes (`cpu: ["wasm32"]` et consorts), et il
 # déplace certains de leurs nœuds hors de la racine. `npm ci` re-résout alors une plage vers une
