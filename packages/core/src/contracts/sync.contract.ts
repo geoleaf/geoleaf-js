@@ -563,7 +563,23 @@ export interface DataOriginDeclaration {
  * to the moment the network drops.
  */
 export type LayerOfflineStatus =
-    "notDeclared" | "declaredNeverPulled" | "pulled" | "pulledStale" | "pullFailed";
+    | "notDeclared"
+    | "declaredNeverPulled"
+    | "pulled"
+    /**
+     * A pull reached the source and wrote, but did not finish — the caller aborted, or
+     * the hard cap cut it short.
+     *
+     * 🛑 **Added by R9, when the pull started committing PAGE BY PAGE.** Before that a
+     * pull was atomic in practice: one transaction, so it either landed whole or not at
+     * all, and two statuses sufficed. Committing per page makes "partly filled" a real,
+     * durable state of the store — and reporting it as `pulled` would be the exact defect
+     * the `truncated` member exists to prevent, one level up: a partial local copy that
+     * looks complete.
+     */
+    | "pulledPartial"
+    | "pulledStale"
+    | "pullFailed";
 
 /** What the sync report exposes for one layer. */
 export interface LayerSyncReport {

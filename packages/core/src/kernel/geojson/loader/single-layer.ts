@@ -34,6 +34,7 @@ import { injectSymbolIds } from "./symbol-injector.js";
 import { buildSingleLayerAdapterOptions } from "./adapter-options.js";
 import { bindFeatureInteractionEvents } from "../feature-interaction.js";
 import { notifyPrimitive } from "../../../utils/notify/notify.primitive.js";
+import { announceTruncation } from "./truncation-notice.js";
 
 const getState = () => GeoJSONShared.state;
 
@@ -647,6 +648,27 @@ async function _loadFromOgcApi(
     const local = _readsOffline(def) ? await _readFromOfflineStore(layerId) : null;
     const featureCollection: unknown =
         local ?? (await fetchOgcApiFeatures(ogcConfig, controller.signal));
+
+    // 🛑 THE CUT IS ANNOUNCED HERE AND NOT IN THE `autoRefresh` CALLBACK BELOW, and the
+    // asymmetry is the point. This is the layer's FIRST load — the moment a user can act
+    // on "you are seeing a third of your parc", by raising `maxFeatures` or narrowing the
+    // extent. The refresh callback re-fetches on every pan; announcing there would fire
+    // the same warning on each map move, and a warning that repeats is dismissed unread.
+    //
+    // ⚠️ `local` short-circuits it, correctly: a collection read from the `features` store
+    // carries no `truncated` member at all, and the truncation that may have produced it
+    // was announced by the PULL, which knows the cap that bit.
+    if (!local) {
+        announceTruncation(
+            layerId,
+            layerLabel,
+            (
+                featureCollection as {
+                    truncated?: { limit: number; fetched: number; matched?: number };
+                }
+            ).truncated
+        );
+    }
 
     const result = await _doLoadSingleLayerMapLibre(
         featureCollection,

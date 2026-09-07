@@ -11,7 +11,7 @@
         "debug": {
             "type": "boolean",
             "default": false,
-            "description": "Enable verbose debug logging and cache-bust (?t=timestamp) on config requests."
+            "description": "Enable verbose debug logging, a CLOCK-based cache-bust (?t=<epoch ms>) on config requests, and skipBundle (the pre-built profile bundle is ignored, so section files edited in a deployed profile are picked up without a rebuild). \u26a0\ufe0f The clock TAKES PRECEDENCE over `data.profileVersion`: it is a debugging mode, and it defeats every cache on every load \u2014 including the browser cache and the service worker's. It is not the answer to a stale profile in production; `data.profileVersion` is."
         },
         "data": {
             "type": "object",
@@ -51,6 +51,12 @@
                     "type": "string",
                     "default": "profiles",
                     "description": "Base path to the profiles directory."
+                },
+                "profileVersion": {
+                    "type": ["string", "number"],
+                    "default": 0,
+                    "description": "Empreinte de CONTENU du profil, ajoutée en `?t=` à chaque requête de ressource de profil — `profile.json`, `mapping.json`, les fichiers de section, les configs de couche et le bundle. ⚠️ Opaque, et JAMAIS une date : la valeur n'est ni lue ni comparée ni ordonnée, seul importe qu'elle change quand le contenu change — une empreinte, un compteur de révision, un identifiant de déploiement. Une horloge défait le mécanisme, puisqu'elle change à chaque chargement et fait re-télécharger ce qui n'a pas bougé. Fournie par l'APPLICATION INTÉGRANTE, seule à savoir quand son profil a changé ; l'écrire dans `profile.json` est trop tard, le jeton est résolu avant que ce fichier soit requêté. Absente, le jeton vaut `0` — URL fixe, comportement historique conservé, mais un serveur envoyant un `max-age` long épingle alors le profil et toutes ses annexes pour la durée de cet en-tête.",
+                    "$comment": "Déclarée ici parce que le bloc est `additionalProperties: false`. Le défaut `0` est le comportement d'avant l'introduction de la clé : la rétro-compatibilité est portée par le défaut, pas par une branche. ⚠️ Dans un DÉPLOYÉ elle est ÉCRITE PAR LE BUILD — `build-deploy.cjs` y pose l'empreinte de contenu de l'arbre `profiles/` (`lib/profile-fingerprint.cjs`) — donc absente de la source et présente dans l'artefact, comme `availableProfiles`. 🛑 Le fichier qui la porte doit être servi `no-cache` : on ne peut pas invalider par un jeton le fichier qui porte ce jeton (gate SC-05, recettes serveur émises avec le livrable)."
                 },
                 "profileBundle": {
                     "type": "object",

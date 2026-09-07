@@ -90,7 +90,7 @@ import { _UITheme } from "../kernel/ui/theme.js";
 // panel on `geoleaf:app:ready` (capabilities/filter/lifecycle.ts). Consumers read the
 // `GeoLeaf.Filter` contract (S13 — the former `_UIFilterPanel*` shims + the
 // `ui/filter-panel/**` builder were removed).
-import { initMobileToolbar } from "../kernel/ui/mobile/mobile-toolbar.js";
+import { initMobileToolbar, destroyMobileToolbar } from "../kernel/ui/mobile/mobile-toolbar.js";
 import { registerPanelPane, openPane, closePane } from "../kernel/ui/panel-panes.js";
 import { setImmersive, isImmersive } from "../kernel/ui/immersive.js";
 import {
@@ -243,6 +243,7 @@ export function setupUIKernel(): void {
     // filter-panel: the in-core `filter` capability mounts the panel on
     // `geoleaf:app:ready`; the mobile toolbar reads the `GeoLeaf.Filter` contract (S13).
     ui.initMobileToolbar = initMobileToolbar;
+    ui.destroyMobileToolbar = destroyMobileToolbar;
     ui.initDesktopPanel = initDesktopPanel;
     ui.activateDesktopPanel = activateDesktopPanel;
     ui.destroyDesktopPanel = destroyDesktopPanel;

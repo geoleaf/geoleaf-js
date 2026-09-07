@@ -334,12 +334,251 @@ describe("4.1 — rapatriement borné vers le store `features`", () => {
 
         const report = await pullLayer("sites_rosario", { signal: controller.signal });
 
-        // `fetchOgcApiFeatures` returns a partial collection through the SAME
-        // path as a success, unmarked: `aborted` is re-read from the signal,
-        // never derived from the return.
+        // ⚠️ **THIS COMMENT SAID THE OPPOSITE UNTIL R9**, and it was right at the
+        // time: `fetchOgcApiFeatures` handed a partial collection back through the
+        // SAME path as a complete one, unmarked, so `aborted` had to be re-read from
+        // the signal. `streamOgcApiFeatures` reports what the run observed, so it is
+        // now derived from the return — and the difference is not cosmetic: a signal
+        // raised AFTER the source was exhausted no longer makes a complete batch call
+        // itself partial.
         expect(report.aborted).toBe(true);
         expect(report.fetched).toBe(10);
         expect(report.written).toBe(10);
+    });
+
+    // ── ⑩ R9 — une page, une transaction, un tic de progression ──────────────────────────
+    //
+    // 🛑 WHAT THESE CASES HOLD IS NOT "IT STILL WORKS", it is the shape of the writing.
+    // Every assertion above stays green against the previous single-transaction pull:
+    // same entities, same tallies, same marker. The change is invisible to all of them,
+    // and it is precisely the change that decides whether a 30 000-entity layer is
+    // usable — hence a spy on the number of batches, not on their content.
+
+    /** Counts calls to the batch writer, and lets the real one run. */
+    function countBatches() {
+        const real = IndexedDB.putLayerFeatures.bind(IndexedDB);
+        const sizes = [];
+        vi.spyOn(IndexedDB, "putLayerFeatures").mockImplementation(async (records) => {
+            sizes.push(records.length);
+            return real(records);
+        });
+        return sizes;
+    }
+
+    test("une page SOURCE = une transaction — 40 entités par 10 en font quatre, pas une", async () => {
+        serveFeatures(
+            Array.from({ length: 40 }, (_, i) => ogcFeature(i + 1)),
+            10
+        );
+        const sizes = countBatches();
+
+        const report = await pullLayer("sites_rosario");
+
+        // Four batches of ten. The single-transaction shape gave `[40]`, and every
+        // other assertion in this file is blind to the difference.
+        expect(sizes).toEqual([10, 10, 10, 10]);
+        expect(report.written).toBe(40);
+        expect(await readFeatures()).toHaveLength(40);
+    });
+
+    test("chaque page publie sa progression, et le total est celui de la SOURCE", async () => {
+        const seen = [];
+        const onProgress = (e) => seen.push(e.detail);
+        document.addEventListener("geoleaf:offline:pull-progress", onProgress);
+        try {
+            serveFeatures(
+                Array.from({ length: 25 }, (_, i) => ogcFeature(i + 1)),
+                10
+            );
+            await pullLayer("sites_rosario");
+        } finally {
+            document.removeEventListener("geoleaf:offline:pull-progress", onProgress);
+        }
+
+        expect(seen.map((d) => d.current)).toEqual([10, 20, 25]);
+        // `numberMatched` is served by the harness, as pygeoapi serves it: the bar
+        // shows a fraction of a KNOWN whole rather than a count that keeps growing.
+        expect(seen.every((d) => d.totalIsKnown && d.total === 25)).toBe(true);
+        expect(seen.map((d) => d.percentage)).toEqual([40, 80, 100]);
+        expect(seen.every((d) => d.layerId === "sites_rosario")).toBe(true);
+    });
+
+    test("sans `numberMatched`, la progression COMPTE au lieu de prétendre une fraction", async () => {
+        // A server omitting the total is not a server with a total of zero. The bar
+        // must say "so far", never a percentage of something nobody measured.
+        const all = Array.from({ length: 15 }, (_, i) => ogcFeature(i + 1));
+        fetchSpy = vi.fn(async (url) => {
+            const parsed = new URL(String(url));
+            const offset = Number(parsed.searchParams.get("offset") ?? 0);
+            const page = all.slice(offset, offset + 10);
+            const next = offset + 10 < all.length;
+            parsed.searchParams.set("offset", String(offset + 10));
+            return {
+                ok: true,
+                status: 200,
+                json: async () => ({
+                    type: "FeatureCollection",
+                    features: page,
+                    links: next ? [{ rel: "next", href: parsed.toString() }] : [],
+                }),
+            };
+        });
+        globalThis.fetch = fetchSpy;
+
+        const seen = [];
+        const onProgress = (e) => seen.push(e.detail);
+        document.addEventListener("geoleaf:offline:pull-progress", onProgress);
+        try {
+            await pullLayer("sites_rosario");
+        } finally {
+            document.removeEventListener("geoleaf:offline:pull-progress", onProgress);
+        }
+
+        expect(seen.map((d) => d.totalIsKnown)).toEqual([false, false]);
+        expect(seen.map((d) => d.total)).toEqual([10, 15]);
+    });
+
+    test("un abandon en cours de route LAISSE les pages commises, et le marqueur le dit", async () => {
+        // 🛑 The property the single transaction did NOT have. An abort used to roll
+        // the whole batch back — or, when it landed after the write, to keep it all;
+        // either way the store held "all or nothing" and the marker said `ok`. Now it
+        // holds what was committed, and the marker says the run did not finish.
+        const controller = new AbortController();
+        serveFeatures(
+            Array.from({ length: 40 }, (_, i) => ogcFeature(i + 1)),
+            10
+        );
+        const wrapped = fetchSpy;
+        let served = 0;
+        globalThis.fetch = vi.fn(async (url, init) => {
+            const response = await wrapped(url, init);
+            if (++served === 2) controller.abort();
+            return response;
+        });
+
+        const report = await pullLayer("sites_rosario", { signal: controller.signal });
+
+        expect(report.aborted).toBe(true);
+        expect(report.written).toBe(20);
+        expect(await readFeatures()).toHaveLength(20);
+
+        const state = await IndexedDB.getPreference(PULL_STATE_KEY, null);
+        // Not `ok`: half a layer under a status meaning "complete" is the defect the
+        // `truncated` member exists to prevent, one level up.
+        expect(state?.sites_rosario).toMatchObject({ outcome: "partial", written: 20 });
+    });
+
+    test("une saisie locale à cheval sur deux tranches est TOUJOURS préservée", async () => {
+        // The rule lives inside `putManyPreservingLocal`, hence inside ONE transaction.
+        // Chunking multiplies the transactions, so the property has to be re-measured
+        // on a record that lands in the second batch, not the first.
+        serveFeatures(
+            Array.from({ length: 20 }, (_, i) => ogcFeature(i + 1)),
+            10
+        );
+        await IndexedDB.applyLocalEdit({
+            layerId: "sites_rosario",
+            localId: "srv:15",
+            serverId: "15",
+            feature: ogcFeature(15, { title: "relevé terrain" }),
+        });
+
+        const report = await pullLayer("sites_rosario");
+
+        expect(report.preserved).toBe(1);
+        expect(report.written).toBe(19);
+        const kept = (await readFeatures()).find((r) => r.localId === "srv:15");
+        expect(kept.feature.properties.title).toBe("relevé terrain");
+        expect(kept.syncState).not.toBe("synced");
+    });
+
+    test("le marqueur est écrit PENDANT la course, pas seulement à la fin", async () => {
+        // 🛑 THIS CASE EXISTS BECAUSE A MUTATION FOUND NOTHING. Deleting the per-page
+        // `writePullState` left every other assertion green — the epilogue writes the
+        // same marker at the end, so the two are indistinguishable from outside. But a
+        // tab killed mid-pull runs NO epilogue, and that is the whole point of writing
+        // as we go: what is in the store when the process dies is what the next session
+        // reads. Observing the marker from INSIDE the run is the only way to see it.
+        const observed = [];
+        const onProgress = () => {
+            observed.push(IndexedDB.getPreference(PULL_STATE_KEY, null));
+        };
+        document.addEventListener("geoleaf:offline:pull-progress", onProgress);
+        try {
+            serveFeatures(
+                Array.from({ length: 30 }, (_, i) => ogcFeature(i + 1)),
+                10
+            );
+            await pullLayer("sites_rosario");
+        } finally {
+            document.removeEventListener("geoleaf:offline:pull-progress", onProgress);
+        }
+
+        const states = await Promise.all(observed);
+        // Three ticks, and the marker already carried the running tally at each one —
+        // under `partial`, never under a status meaning the layer is complete.
+        expect(states.map((st) => st?.sites_rosario?.written)).toEqual([10, 20, 30]);
+        expect(states.every((st) => st?.sites_rosario?.outcome === "partial")).toBe(true);
+    });
+
+    test("une source qui tombe en route persiste `failed` AVEC ce qui est déjà écrit", async () => {
+        // ⚠️ `written: 0` would describe a store that does not exist: the pages committed
+        // before the failure are in it. The marker says "we tried, it broke, and this
+        // much is here" — the third half is what a re-pull needs to not look like a
+        // first pull.
+        serveFeatures(
+            Array.from({ length: 40 }, (_, i) => ogcFeature(i + 1)),
+            10
+        );
+        const wrapped = fetchSpy;
+        let served = 0;
+        globalThis.fetch = vi.fn(async (url, init) => {
+            if (++served === 3) throw new Error("network down");
+            return wrapped(url, init);
+        });
+
+        const report = await pullLayer("sites_rosario");
+
+        expect(report.refused).toBe("sourceUnreachable");
+        expect(report.written).toBe(20);
+        expect(await readFeatures()).toHaveLength(20);
+
+        const state = await IndexedDB.getPreference(PULL_STATE_KEY, null);
+        expect(state?.sites_rosario).toMatchObject({ outcome: "failed", written: 20 });
+    });
+
+    test("un lot tronqué est ANNONCÉ à l'utilisateur, pas seulement rapporté", async () => {
+        // 🛑 `capped: true` is a field of a report nothing displays. The cap that bit
+        // here is `offline.maxFeatures`, and the DISPLAY path cannot announce it: a
+        // layer with `offline.enabled` reads the local store, whose collection carries
+        // no `truncated` member — it looks complete by construction. This is the only
+        // moment anyone knows the parc was cut.
+        const { resetTruncationNotices } =
+            await import("../../../src/kernel/geojson/loader/truncation-notice.js");
+        resetTruncationNotices();
+        const seen = [];
+        const { notifyPrimitive } = await import("../../../src/utils/notify/notify.primitive.js");
+        const spy = vi.spyOn(notifyPrimitive, "notify").mockImplementation((m, lvl) => {
+            seen.push([m, lvl]);
+        });
+
+        layerConfigs[0].offline.maxFeatures = 15;
+        serveFeatures(
+            Array.from({ length: 40 }, (_, i) => ogcFeature(i + 1)),
+            10
+        );
+
+        const report = await pullLayer("sites_rosario");
+
+        expect(report.capped).toBe(true);
+        expect(seen).toHaveLength(1);
+        expect(seen[0][1]).toBe("warning");
+        expect(seen[0][0]).toContain("sites_rosario");
+        // The harness serves `numberMatched: 40`, so the message can name the real
+        // total rather than the 20 the loop had accumulated when the cap stopped it.
+        expect(seen[0][0]).toContain("40");
+        expect(seen[0][0]).toContain("15");
+        spy.mockRestore();
     });
 
     // ── the pull marker ──────────────────────────────────────────────────────────────────

@@ -677,6 +677,102 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
         expect((await readStore()).total).toBe(onServerBounded);
     });
 
+    // ⚠️ R9 — THE HALF OF THE DOWNLOAD THAT PULLED NOTHING.
+    //
+    // 🛑 The test above has been green since 04/08/2026 and has never proved anything about
+    // the APPLICATION: it calls `pullLayer` itself. In the product that path had no caller
+    // at all — the "Télécharger" button filled the `layers` store and left `features`
+    // empty, so a profile declaring `offline.source` showed a bar reaching 100 % without a
+    // single entity pulled. Only a test going through the DOWNLOAD can see the difference.
+    //
+    // ⚠️ It goes through `CacheManager.cacheProfile` rather than the click: the button
+    // lives in `offline-ui`, absent from `deploy-core`, and the wiring exercised here is
+    // precisely the CORE's. The click is covered by the plugin's DOM chain, in unit tests.
+    test("2.3 — le TÉLÉCHARGEMENT rapatrie les entités, et publie sa progression", async ({
+        page,
+    }) => {
+        await page.goto("/", { waitUntil: "domcontentloaded" });
+        await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
+        await page.waitForFunction(
+            () => !!(/** @type {any} */ (window).GeoLeaf?.Storage?.CacheManager),
+            null,
+            { timeout: 20000 }
+        );
+
+        const outcome = await page.evaluate(async () => {
+            // Empty `features` first: without this, an earlier pull would make the final
+            // count indistinguishable from "the download wrote nothing".
+            await new Promise((resolve) => {
+                const q = indexedDB.open("geoleaf-db");
+                q.onerror = () => resolve(null);
+                q.onsuccess = () => {
+                    const db = q.result;
+                    const tx = db.transaction("features", "readwrite");
+                    tx.objectStore("features").clear();
+                    tx.oncomplete = tx.onerror = () => {
+                        db.close();
+                        resolve(null);
+                    };
+                };
+            });
+
+            const ticks = [];
+            const onTick = (e) => ticks.push(e.detail);
+            document.addEventListener("geoleaf:offline:pull-progress", onTick);
+
+            const profileId = /** @type {any} */ (window).GeoLeaf.Config.get(
+                "data.activeProfile",
+                ""
+            );
+            // ⚠️ Narrow selection and no tiles: this test exercises the WIRING, not the
+            // downloader's throughput. Without it, it would pull a whole region of tiles.
+            const result = await /** @type {any} */ (
+                window
+            ).GeoLeaf.Storage.CacheManager.cacheProfile(profileId, {
+                selection: { layers: ["sites_rosario"], basemaps: [], includeTiles: false },
+            });
+            document.removeEventListener("geoleaf:offline:pull-progress", onTick);
+
+            const stored = await new Promise((resolve) => {
+                const q = indexedDB.open("geoleaf-db");
+                q.onerror = () => resolve(-1);
+                q.onsuccess = () => {
+                    const db = q.result;
+                    const all = db.transaction("features").objectStore("features").getAll();
+                    all.onerror = () => {
+                        db.close();
+                        resolve(-1);
+                    };
+                    all.onsuccess = () => {
+                        const rows = all.result ?? [];
+                        db.close();
+                        resolve(rows.length);
+                    };
+                };
+            });
+
+            return { pulledLayers: result?.pulledLayers ?? null, ticks, stored };
+        });
+
+        expect(
+            outcome.pulledLayers,
+            "le téléchargement rapporte ce qu'il a rapatrié"
+        ).not.toBeNull();
+        expect(outcome.pulledLayers[0].layerId).toBe("sites_rosario");
+        expect(outcome.pulledLayers[0].refused).toBeNull();
+        expect(
+            outcome.stored,
+            "`features` n'est plus vide après un TÉLÉCHARGEMENT"
+        ).toBeGreaterThan(0);
+        // Progress is the second deliverable of 2.3: without it, pulling 30 000 entities is
+        // a frozen interface for several minutes.
+        expect(outcome.ticks.length, "au moins un tic de progression").toBeGreaterThan(0);
+        expect(outcome.ticks.at(-1).current).toBe(outcome.stored);
+        // pygeoapi serves `numberMatched`: the bar shows a fraction of a measured whole,
+        // not a counter that keeps climbing.
+        expect(outcome.ticks.at(-1).totalIsKnown).toBe(true);
+    });
+
     /**
      * THE CYCLE'S PROOF CRITERION, played end to end.
      *
@@ -808,18 +904,64 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
         );
         expect(edit.refused, "éditer hors réseau ne doit rien refuser").toBeNull();
 
-        // ── 4. RELOAD · 5. THE EDIT IS STILL THERE ──────────────────────────────────────
-        // 🛑 THE CRITERION'S HEART. This is where the chain breaks if the
-        // optimistic write did not land in `features`, or if the local read
-        // does not re-read it: a field entry that vanishes at reload is the
-        // defect this work exists to close.
+        // ── 4. THE RETURN TO COVERAGE — AND THE CORE SENDS BY ITSELF ────────────────────
+        //
+        // 🛑 **THIS BLOCK ASSERTED THE OPPOSITE UNTIL 06/09/2026, AND IT WAS RIGHT
+        // WHEN IT WAS WRITTEN.** It went back online, reloaded, asserted the entry was still
+        // `pending`, then called `pushOutbox()` itself and asserted the push had work to do.
+        // That premise died with R7 (05/09/2026): the drain moved out of the lazily-loaded
+        // `editor` plugin and INTO the core, armed by four triggers — `window "online"` among
+        // them. The connector is still configured on this page, so the moment coverage
+        // returns the core sends the capture on its own, and the test's own push then finds
+        // an empty queue. Measured: `push.pushed` came back 0, and the previous revision of
+        // this file reddened one assertion earlier, on a record already `synced`.
+        //
+        // ⚠️ **It went unseen for a day because this whole file SKIPS on a normal build** —
+        // `build-deploy` strips the proof backend's bindings — so R7 never ran it. A guard
+        // that skips half its corpus comes out green without lying.
+        //
+        // 🖐 **What the rewrite gives up, and where that property now lives.** The old step 5
+        // proved "an unsynced capture survives a reload". That is a real property, and it is
+        // NOT lost: it is owned by `29-offline-proof.spec.js` (CRITÈRE 1, "une saisie hors
+        // ligne se relit AVEC SA CHARGE UTILE après rechargement"), which needs no backend
+        // and therefore runs on every suite instead of skipping. Re-proving it here required
+        // reloading while still owed — a race against the very drain this test now asserts,
+        // and unreachable offline anyway since `serviceWorkers: "block"` leaves no shell to
+        // reload from. What stays here is what only THIS file can prove: the same cycle
+        // against a REAL server.
+        const drainSeen = page.evaluate(
+            () =>
+                new Promise((resolve) => {
+                    const timer = setTimeout(() => resolve(null), 15000);
+                    document.addEventListener(
+                        "geoleaf:offline:outbox-drained",
+                        (e) => {
+                            clearTimeout(timer);
+                            resolve(/** @type {any} */ (e).detail ?? {});
+                        },
+                        { once: true }
+                    );
+                })
+        );
         await goOnline(context, page);
+
+        // The listener is armed BEFORE the network returns — installing it after would race
+        // the very drain it observes, and a `null` would then mean "too late", not "never".
+        const drained = await drainSeen;
+        expect(drained, "le cœur draine DE LUI-MÊME au retour du réseau (R7)").not.toBeNull();
+
+        // ── 5. RELOAD · 6. THE IDENTITY IS RECONCILED, AND PERSISTED ────────────────────
+        // 🛑 The reload is what makes this an identity assertion rather than a memory one:
+        // `serverId` read from a fresh IndexedDB connection is what the next edit of this
+        // entity will address, and a reconciliation that lived only in RAM would send the
+        // following write to `?id=eq.null` — the 409 defect R1 closed.
         await bootAndConfigure();
         const afterReload = await readRecord(localId);
         expect(afterReload?.feature?.properties?.title, "l'édition survit au rechargement").toBe(
             EDITED
         );
-        expect(afterReload.syncState, "elle est toujours due au serveur").toBe("pending");
+        expect(afterReload.serverId, "l'entité porte son identifiant serveur").toBe("1");
+        expect(afterReload.syncState, "et elle n'est plus due").toBe("synced");
 
         const served = await page.evaluate(
             (l) => window.GeoLeaf.Storage.DB.getLayerFeatureCollection(l),
@@ -830,14 +972,53 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
             "et le magasin la SERT — c'est ce que « toujours visible » veut dire"
         ).toBe(true);
 
-        // ── 6. RESTORE (already done) · 7. PUSH · 8. IDENTITY RECONCILED ────────────────
+        // ── 7. SECOND ORACLE — a manual send now finds NOTHING LEFT ────────────────────
+        //
+        // ⚠️ **Kept, with its assertion INVERTED** — that is the whole arbitration.
+        // A manual call demanding leftover work measured a world in which nothing
+        // drains by itself; one demanding zero measures that the in-core drain did the job.
+        //
+        // 🛑 **AND THE EMPTINESS IS READ IN THE STORE, NOT IN THE REPORT — two mutations
+        // were needed to find that out, and neither was wasted.** Removing `outbox.remove`
+        // from a successful push left this case GREEN on `pushed`, then green again on
+        // `attempted` and `deferred`. The motive is in the engine and it is DELIBERATE: a
+        // push marks its entry `inFlight` before going on the wire, and `reclaimStaleInFlight`
+        // only takes back entries that have been there a while — the threshold is what stops
+        // two tabs from replaying each other. A freshly abandoned entry is therefore invisible
+        // to the next drain BY DESIGN, so no figure `pushOutbox` returns can tell "queue
+        // emptied" from "queue holding a fresh inFlight". Only the store can.
         const push = await page.evaluate(() => window.GeoLeaf.Storage.pushOutbox());
         expect(push.refused).toBeNull();
-        expect(push.pushed, "l'édition part au serveur").toBeGreaterThan(0);
+        expect(push.pushed, "le drain in-core a déjà tout envoyé").toBe(0);
 
-        const afterPush = await readRecord(localId);
-        expect(afterPush.serverId, "l'entité porte son identifiant serveur").toBe("1");
-        expect(afterPush.syncState, "et elle n'est plus due").toBe("synced");
+        const outboxRows = await page.evaluate(
+            () =>
+                new Promise((resolve) => {
+                    const q = indexedDB.open("geoleaf-db");
+                    q.onerror = () => resolve(-1);
+                    q.onsuccess = () => {
+                        const db = q.result;
+                        if (!db.objectStoreNames.contains("outbox")) {
+                            db.close();
+                            resolve(-1);
+                            return;
+                        }
+                        const all = db.transaction("outbox").objectStore("outbox").getAll();
+                        all.onerror = () => {
+                            db.close();
+                            resolve(-1);
+                        };
+                        all.onsuccess = () => {
+                            const rows = all.result ?? [];
+                            db.close();
+                            resolve(rows.length);
+                        };
+                    };
+                })
+        );
+        expect(outboxRows, "et la file est VIDE dans le magasin, pas seulement silencieuse").toBe(
+            0
+        );
 
         // ── 9. A SECOND SYNCHRONISATION PRODUCES NO REQUEST ─────────────────────────────
         // ⚠️ Scoped to the backend's origin, and preceded by `settleNetwork`: on

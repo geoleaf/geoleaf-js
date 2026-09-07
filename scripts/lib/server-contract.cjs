@@ -150,6 +150,45 @@ function missingSecurityHeaders(body) {
     ).map(({ name }) => name);
 }
 
+/**
+ * Does the recipe forbid a long cache on the profiles ROOT config (SC-05)?
+ *
+ * 🛑 **The one cache rule that is not a preference.** `profiles/geoleaf.config.json` carries
+ * `data.profileVersion`, the fingerprint that invalidates every other profile resource. A token
+ * cannot invalidate the file that CARRIES the token: pinned, it defeats the whole mechanism —
+ * profile, sections, layer configs and bundle all keep being served from the browser cache for
+ * as long as the integrator's header lasts.
+ *
+ * Measured on 06/09/2026: at an integrator whose server sent `max-age=604800` on its static
+ * files, a changed setting was served correctly — verified by `curl` — and stayed invisible in
+ * the page for SEVEN DAYS. Neither a server-side cache flush nor a regeneration changed it.
+ *
+ * ⚠️ **`SERVEUR.md` §8 stated this rule long before either recipe implemented it**, and that
+ * divergence is what this predicate exists to make impossible: a table that prescribes and two
+ * recipes that do not is worse than silence, because the integrator copies the recipe and reads
+ * the table as confirmation that they are covered.
+ *
+ * Same discipline as {@link declaresMjsType}: comments are stripped first — otherwise the better
+ * documented the recipe, the less the gate bites. The file name and `no-cache` must sit in the
+ * SAME directive block: both emitted forms open a block naming the file and put `no-cache` on a
+ * following line, so the window is the block, and it stops at the block's close — a `no-cache`
+ * belonging to a later block cannot satisfy this one.
+ *
+ * @param {string} body Raw content of an `nginx.conf.example` or a `.htaccess`.
+ * @returns {boolean} True when the profiles root config is declared `no-cache`.
+ */
+function declaresProfilesRootNoCache(body) {
+    const active = body.split("\n").filter((line) => !/^\s*#/.test(line));
+    for (let i = 0; i < active.length; i += 1) {
+        if (!/geoleaf\\?\.config\\?\.json/.test(active[i])) continue;
+        for (let j = i; j < active.length; j += 1) {
+            if (active[j].includes("no-cache")) return true;
+            if (j > i && /^\s*(\}|<\/FilesMatch>)/.test(active[j])) break;
+        }
+    }
+    return false;
+}
+
 const SERVEUR_MD = `# Servir ce dossier — contrat serveur
 
 > Émis automatiquement par \`build-deploy.cjs\` avec la variante. Ne pas éditer sur place :
@@ -326,7 +365,22 @@ puis \`; preload\`, quasi irréversible) se décide séparément et après coup.
 | \`dist/**\`, \`vendor/**\` | \`public, max-age=31536000, immutable\` | noms empreintés, jamais réécrits |
 | \`index.html\`, \`init.js\`, \`manifest.json\` | \`no-cache\` | référencent les artefacts empreintés |
 | \`sw-core.js\` | \`no-cache\` | le navigateur doit voir les mises à jour du worker |
-| \`profiles/**\` | \`no-cache\` ou \`max-age=3600\` | données métier, selon votre fréquence |
+| \`profiles/geoleaf.config.json\` | **\`no-cache\`, obligatoire** | il porte \`data.profileVersion\` — voir l'encadré |
+| \`profiles/**\` (autres) | \`max-age=3600\` (ou \`no-cache\`) | données métier, selon votre fréquence |
+
+🛑 **Le fichier racine des profils ne se met JAMAIS en cache longtemps, et ce n'est pas une
+préférence.** \`profiles/geoleaf.config.json\` porte \`data.profileVersion\`, l'empreinte qui
+déclenche le rafraîchissement de tout le reste du profil. **On ne peut pas invalider par un jeton
+le fichier qui PORTE ce jeton** : s'il est épinglé, la nouvelle empreinte n'arrive jamais et
+l'ensemble du mécanisme est défait — profil, sections, configs de couche et bundle restent servis
+depuis le cache du navigateur aussi longtemps que dure votre en-tête.
+
+⚠️ **Mesuré, et le symptôme ne ressemble pas à sa cause** : chez un intégrateur dont le serveur
+envoyait \`max-age=604800\` sur ses fichiers statiques, un réglage modifié était servi
+correctement par le serveur — vérifié au \`curl\` — et restait invisible dans la page **sept
+jours**. Ni un vidage de cache serveur ni une régénération n'y changeaient rien ; seule la
+navigation privée montrait la vérité. Les deux recettes fournies posent la règle ; si vous
+écrivez la vôtre, ne l'omettez pas.
 
 ⚠️ Ne pas reprendre le \`no-store\` du serveur de développement du projet : il est délibéré, et
 local.
@@ -433,6 +487,29 @@ server {
         add_header Strict-Transport-Security "max-age=31536000" always;
     }
 
+    # 🛑 Racine des profils : JAMAIS de cache long. Ce fichier porte \`data.profileVersion\`,
+    # l'empreinte qui invalide tout le reste du profil — on ne peut pas invalider par un jeton
+    # le fichier qui porte ce jeton. Épinglé, il défait le mécanisme entier (SERVEUR.md §8).
+    # ⚠️ Ce bloc doit rester AVANT le suivant : nginx retient la PREMIÈRE regex qui matche.
+    location ~* /profiles/geoleaf\\.config\\.json$ {
+        add_header Cache-Control "no-cache" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Content-Security-Policy "frame-ancestors 'self'" always;
+        add_header Strict-Transport-Security "max-age=31536000" always;
+    }
+
+    # Données de profil : revalidées à l'heure. Sans ce bloc elles tombent dans \`location /\`
+    # SANS aucun \`Cache-Control\`, et le navigateur applique alors son heuristique — plusieurs
+    # jours sur un fichier ancien, ce qui est exactement le défaut que §8 décrit.
+    location ~* /profiles/.*\\.(json|geojson)$ {
+        add_header Cache-Control "public, max-age=3600" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Content-Security-Policy "frame-ancestors 'self'" always;
+        add_header Strict-Transport-Security "max-age=31536000" always;
+    }
+
     # Point d'entrée, bootstrap, manifeste et service worker : toujours revalidés, ils
     # référencent les artefacts empreintés ci-dessus.
     location ~* /(index\\.html|init\\.js|manifest\\.json|sw-core\\.js)$ {
@@ -516,7 +593,21 @@ AddType application/json .json.gz
     <FilesMatch "\\.(mjs|js|css|woff2?|png|svg)$">
         Header set Cache-Control "public, max-age=31536000, immutable"
     </FilesMatch>
+    # Données de profil : revalidées à l'heure. Sans cette règle elles n'ont AUCUN
+    # \`Cache-Control\` et le navigateur applique son heuristique — plusieurs jours sur un
+    # fichier ancien (SERVEUR.md §8).
+    <FilesMatch "\\.(json|geojson)$">
+        Header set Cache-Control "public, max-age=3600"
+    </FilesMatch>
+    # ⚠️ Apache applique les blocs DANS L'ORDRE et le dernier l'emporte : celui-ci doit rester
+    # APRÈS le précédent, sinon \`manifest.json\` repasserait en cache d'une heure.
     <FilesMatch "^(index\\.html|init\\.js|manifest\\.json|sw-core\\.js)$">
+        Header set Cache-Control "no-cache"
+    </FilesMatch>
+    # 🛑 Racine des profils : elle porte \`data.profileVersion\`, l'empreinte qui invalide tout
+    # le reste. On ne peut pas invalider par un jeton le fichier qui porte ce jeton — épinglé,
+    # il défait le mécanisme entier. Ce bloc est le DERNIER pour cette raison.
+    <FilesMatch "^geoleaf\\.config\\.json$">
         Header set Cache-Control "no-cache"
     </FilesMatch>
 </IfModule>
@@ -546,6 +637,7 @@ module.exports = {
     SERVER_CONTRACT_FILES,
     MJS_MIME_TOKEN,
     declaresMjsType,
+    declaresProfilesRootNoCache,
     SECURITY_HEADER_TOKENS,
     missingSecurityHeaders,
     serverContractFiles,

@@ -14,6 +14,8 @@ const lang_es: LangDict = {
     "toast.geoloc.error.timeout": "Tiempo de geolocalizaci\u00f3n agotado",
     "toast.init.loading": "Cargando datos, espere por favor.",
     "toast.profile.loaded": "{0} cargado",
+    "toast.layer.truncated.known": "{0}: {1} entidades mostradas de {2} — la capa está truncada.",
+    "toast.layer.truncated.unknown": "{0}: {1} entidades mostradas, la capa contiene más.",
     "toast.theme.applied": 'Tema "{0}" cargado ({1} capas visibles)',
     "aria.geoloc.toggle": "Geolocalizaci\u00f3n ON/OFF",
     "aria.geoloc.toggle_label": "Activar/Desactivar seguimiento GPS",

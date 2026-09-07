@@ -417,6 +417,35 @@ export interface GeoLeafGeolocationStateChangeDetail {
 }
 
 /**
+ * Detail payload for `geoleaf:offline:pull-progress` — one page of a layer pull landed.
+ *
+ * 🛑 **A SEPARATE EVENT FROM `geoleaf:cache:progress`, and the motive is measured.** The
+ * tile/resource download reports through `cache/progress-tracker.ts`, whose state is a
+ * MODULE-LEVEL singleton re-initialised per run. The feature pull runs after that run has
+ * already emitted its 100 %: feeding the same tracker would either reset a finished bar or
+ * make two producers share one mutable state. Two phases of one gesture, two signals.
+ *
+ * ⚠️ **`total` is the SOURCE's total only when the source served it.** OGC API Features
+ * carries `numberMatched`; a server omitting it leaves the loader with nothing but its own
+ * running count, and `total` then equals `current` — a bar that fills as it goes rather
+ * than a fraction of a known whole. `totalIsKnown` says which of the two the consumer is
+ * looking at, because a progress bar that reaches 100 % three times is worse than one that
+ * never announces a percentage.
+ */
+export interface GeoLeafOfflinePullProgressDetail {
+    /** Layer being pulled. */
+    layerId: string;
+    /** Entities written so far, this page included. */
+    current: number;
+    /** The source's total when known, otherwise `current` — see `totalIsKnown`. */
+    total: number;
+    /** `false` when the server served no `numberMatched`: `total` is then a running count. */
+    totalIsKnown: boolean;
+    /** 0-100, already scaled — consumers display it, they do not recompute it. */
+    percentage: number;
+}
+
+/**
  * Detail payload for `geoleaf:cache:evicted` — a cache made room for itself.
  *
  * 🛑 THERE ARE **TWO** PRODUCERS, AND THAT IS DELIBERATE. The pattern recommended
@@ -794,6 +823,9 @@ export interface GeoLeafEventMap {
     // Storage — an edit reached the write queue. Typed at birth, same motive.
     "geoleaf:offline:outbox-queued": GeoLeafOutboxQueuedDetail;
     "geoleaf:offline:outbox-drained": GeoLeafOutboxDrainedDetail;
+    // Storage — a page of a layer pull landed. Typed at birth, same motive: the untyped
+    // baseline only shrinks, so an event born inside it would have to be paid for twice.
+    "geoleaf:offline:pull-progress": GeoLeafOfflinePullProgressDetail;
     // ── Entered the domain after renaming — they were called `gl:` and `print:` ──────────
     //
     // 🛑 These three were not "untyped": they were **structurally invisible**.

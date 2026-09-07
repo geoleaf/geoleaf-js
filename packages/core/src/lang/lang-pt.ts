@@ -14,6 +14,8 @@ const lang_pt: LangDict = {
     "toast.geoloc.error.timeout": "Tempo de geolocali\u00e7\u00e3o esgotado",
     "toast.init.loading": "A carregar dados, aguarde.",
     "toast.profile.loaded": "{0} carregado",
+    "toast.layer.truncated.known": "{0}: {1} entidades exibidas de {2} — a camada está truncada.",
+    "toast.layer.truncated.unknown": "{0}: {1} entidades exibidas, a camada contém mais.",
     "toast.theme.applied": 'Tema "{0}" carregado ({1} camadas vis\u00edveis)',
     "aria.geoloc.toggle": "Geolocali\u00e7\u00e3o ON/OFF",
     "aria.geoloc.toggle_label": "Ativar/Desativar rastreamento GPS",

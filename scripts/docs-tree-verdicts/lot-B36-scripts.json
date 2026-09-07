@@ -31,6 +31,7 @@
         "scripts/lib/geojson-slim.cjs",
         "scripts/lib/license-banner.cjs",
         "scripts/lib/npm-registry.cjs",
+        "scripts/lib/profile-fingerprint.cjs",
         "scripts/lib/public-partition.cjs",
         "scripts/lib/server-contract.cjs",
         "scripts/lib/ts-decl-read.cjs",
@@ -843,6 +844,20 @@
             "description": "(en-tête absent — fichier de données ou baril)",
             "confidence": "haute",
             "rationale": "Câblage MESURÉ, pas affirmé : cité par `atelier:check` et `ci.yml`, drapeau `workshop: true` validé par PARITY-14. Cliquet décroissant sur la taille des documents lus avant toute source, plus l'interdit de compte recopié dans ceux que chaque session charge. Verdict « justifié » par défaut de la RUBRIC §0 : l'artefact est un instrument vivant du dépôt, atteint par au moins un runner nommé ; rien dans le nom, l'emplacement ou le câblage ne porte un verdict actionnable."
+        },
+        "scripts/lib/profile-fingerprint.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "profile-fingerprint.cjs — one opaque token for the CONTENT of a deployed profiles tree.",
+            "confidence": "haute",
+            "rationale": "Câblage MESURÉ : requis par `scripts/build-deploy.cjs` (étape 6c, écriture de `data.profileVersion` dans la config racine de chaque variante) et par `packages/core/__tests__/guards/profile-fingerprint.guard.test.ts`, qui l'éprouve sur un arbre temporaire — donc sans dépendre d'un `deploy/` présent, même partage que la garde de récolte du profile-switcher. Sa place en `lib/` est celle de tout calcul partagé entre un script de build et une garde : l'inliner dans `build-deploy.cjs` le rendrait inéprouvable autrement qu'en construisant. Verdict « justifié » par la RUBRIC §0."
         }
     }
 }

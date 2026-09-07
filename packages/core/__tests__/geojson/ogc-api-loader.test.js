@@ -46,11 +46,13 @@ vi.mock("../../src/utils/general/di-accessors.js", () => ({
 
 let fetchOgcApiFeatures;
 let setupAutoRefresh;
+let streamOgcApiFeatures;
 
 beforeAll(async () => {
     const mod = await import("../../src/kernel/geojson/loader/ogc-api-loader.ts");
     fetchOgcApiFeatures = mod.fetchOgcApiFeatures;
     setupAutoRefresh = mod.setupAutoRefresh;
+    streamOgcApiFeatures = mod.streamOgcApiFeatures;
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -434,5 +436,220 @@ describe("pagination par curseur déclaré", () => {
         // is at fault.
         const said = warn.mock.calls.map((c) => c.map(String).join(" ")).join("\n");
         expect(said).toContain("pagination.next_cursor");
+    });
+});
+
+// ─── streamOgcApiFeatures — R9, tâche 2.3 ─────────────────────────────────────
+//
+// 🛑 THE POINT OF THESE CASES IS THE EQUIVALENCE, not the stream. `fetchOgcApiFeatures`
+// is now a thin accumulator over `streamOgcApiFeatures`, so the twenty cases above are
+// already the regression net for the walk itself. What they CANNOT see is the property
+// the split exists for: the same features, in the same order, delivered without the
+// accumulator ever existing.
+
+describe("streamOgcApiFeatures — la marche, séparée de l'accumulation", () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    /** Collects everything the stream hands over, in order. */
+    async function drain(config, signal, bbox) {
+        const pages = [];
+        const outcome = await streamOgcApiFeatures(
+            config,
+            (page) => {
+                pages.push(page);
+            },
+            signal,
+            bbox
+        );
+        return { pages, outcome };
+    }
+
+    it("rend les mêmes entités, dans le même ordre, que l'accumulateur", async () => {
+        const build = () => [
+            {
+                body: makeFeatureCollection(
+                    [
+                        { type: "Feature", geometry: null, properties: { id: 1 } },
+                        { type: "Feature", geometry: null, properties: { id: 2 } },
+                    ],
+                    { links: [{ rel: "next", href: "https://api.example.com/items?offset=2" }] }
+                ),
+            },
+            {
+                body: makeFeatureCollection([
+                    { type: "Feature", geometry: null, properties: { id: 3 } },
+                ]),
+            },
+        ];
+
+        mockFetch(build());
+        const accumulated = await fetchOgcApiFeatures({ url: "https://api.example.com/items" });
+
+        mockFetch(build());
+        const { pages, outcome } = await drain({ url: "https://api.example.com/items" });
+
+        expect(pages.map((p) => p.features.map((f) => f.properties.id))).toEqual([[1, 2], [3]]);
+        expect(pages.flatMap((p) => [...p.features])).toEqual(accumulated.features);
+        expect(outcome.delivered).toBe(3);
+        expect(outcome.fetched).toBe(3);
+        expect(outcome.aborted).toBe(false);
+        expect(outcome.lastCursor).toBeNull();
+    });
+
+    it("COUPE PAR PAGE — jamais plus d'une page au-dessus de la borne n'est rendue", async () => {
+        // 5 entities on the first page, a cap of 3: the accumulator used to build the
+        // five and slice at the end. Streaming must hand over three and no more —
+        // otherwise a consumer writing what it receives would store the overflow.
+        const features = Array.from({ length: 5 }, (_, i) => ({
+            type: "Feature",
+            geometry: null,
+            properties: { i },
+        }));
+        mockFetch([
+            {
+                body: makeFeatureCollection(features, {
+                    links: [{ rel: "next", href: "https://api.example.com/items?offset=5" }],
+                }),
+            },
+        ]);
+
+        const { pages, outcome } = await drain({
+            url: "https://api.example.com/items",
+            maxFeatures: 3,
+        });
+
+        expect(pages).toHaveLength(1);
+        expect(pages[0].features).toHaveLength(3);
+        expect(outcome.delivered).toBe(3);
+        // `fetched` stays the RAW count — it is what says by how much the source was
+        // missed, and the break is anchored on it, exactly where it was.
+        expect(outcome.fetched).toBe(5);
+        expect(outcome.truncated).toEqual({ limit: 3, fetched: 5 });
+        // The cursor is NOT followed, and NOT reported: a page we decided not to fetch
+        // is not a resume point, it is the end of a truncated run.
+        expect(pages[0].nextUrl).toBeNull();
+        expect(outcome.lastCursor).toBeNull();
+    });
+
+    it("porte le total de la SOURCE quand le serveur le sert — et rien quand il ne le sert pas", async () => {
+        const features = Array.from({ length: 4 }, (_, i) => ({
+            type: "Feature",
+            geometry: null,
+            properties: { i },
+        }));
+
+        mockFetch([
+            {
+                body: makeFeatureCollection(features, {
+                    numberMatched: 31337,
+                    links: [{ rel: "next", href: "https://api.example.com/items?offset=4" }],
+                }),
+            },
+        ]);
+        const served = await drain({ url: "https://api.example.com/items", maxFeatures: 2 });
+        // 🛑 The honest "M" of an "N out of M". `fetched` is 4 here — one page past the
+        // bound — and reading THAT as the collection's size would announce "2 out of 4"
+        // for a layer holding 31 337.
+        expect(served.outcome.truncated).toEqual({ limit: 2, fetched: 4, matched: 31337 });
+        expect(served.pages[0].matched).toBe(31337);
+
+        mockFetch([
+            {
+                body: makeFeatureCollection(features, {
+                    links: [{ rel: "next", href: "https://api.example.com/items?offset=4" }],
+                }),
+            },
+        ]);
+        const silent = await drain({ url: "https://api.example.com/items", maxFeatures: 2 });
+        // Absent, never guessed: a total that cannot be measured is not invented.
+        expect(silent.outcome.truncated).toEqual({ limit: 2, fetched: 4 });
+        expect("matched" in silent.outcome.truncated).toBe(false);
+        expect(silent.pages[0].matched).toBeUndefined();
+    });
+
+    it("donne le curseur de la page SUIVANTE — le point de reprise du consommateur", async () => {
+        mockFetch([
+            {
+                body: makeFeatureCollection(
+                    [{ type: "Feature", geometry: null, properties: { id: 1 } }],
+                    { links: [{ rel: "next", href: "https://api.example.com/items?offset=1" }] }
+                ),
+            },
+            {
+                body: makeFeatureCollection([
+                    { type: "Feature", geometry: null, properties: { id: 2 } },
+                ]),
+            },
+        ]);
+
+        const { pages } = await drain({ url: "https://api.example.com/items" });
+
+        expect(pages[0].nextUrl).toBe("https://api.example.com/items?offset=1");
+        expect(pages[1].nextUrl).toBeNull();
+        expect(pages.map((p) => p.index)).toEqual([0, 1]);
+    });
+
+    it("ATTEND le consommateur avant de demander la page suivante", async () => {
+        // ⚠️ This is the property that bounds memory, and it is invisible in a
+        // synchronous consumer: without the await, the loop would fetch page 2 while
+        // page 1 is still being written, and the peak this split exists to cut comes
+        // straight back.
+        const order = [];
+        global.fetch = vi.fn().mockImplementation(async () => {
+            order.push("fetch");
+            const call = order.filter((o) => o === "fetch").length;
+            return {
+                ok: true,
+                status: 200,
+                json: async () =>
+                    makeFeatureCollection(
+                        [{ type: "Feature", geometry: null, properties: { call } }],
+                        call === 1
+                            ? { links: [{ rel: "next", href: "https://api.example.com/x?p=2" }] }
+                            : {}
+                    ),
+            };
+        });
+
+        await streamOgcApiFeatures({ url: "https://api.example.com/items" }, async () => {
+            await new Promise((r) => setTimeout(r, 5));
+            order.push("consumed");
+        });
+
+        expect(order).toEqual(["fetch", "consumed", "fetch", "consumed"]);
+    });
+
+    it("un signal levé entre deux pages rend `aborted`, et ce qui est rendu reste rendu", async () => {
+        const controller = new AbortController();
+        mockFetch([
+            {
+                body: makeFeatureCollection(
+                    [{ type: "Feature", geometry: null, properties: { id: 1 } }],
+                    { links: [{ rel: "next", href: "https://api.example.com/items?offset=1" }] }
+                ),
+            },
+            {
+                body: makeFeatureCollection([
+                    { type: "Feature", geometry: null, properties: { id: 2 } },
+                ]),
+            },
+        ]);
+
+        const pages = [];
+        const outcome = await streamOgcApiFeatures(
+            { url: "https://api.example.com/items" },
+            (page) => {
+                pages.push(page);
+                controller.abort();
+            },
+            controller.signal
+        );
+
+        expect(pages).toHaveLength(1);
+        expect(outcome.aborted).toBe(true);
+        // The unfollowed cursor is what a resumable consumer persists.
+        expect(outcome.lastCursor).toBe("https://api.example.com/items?offset=1");
     });
 });

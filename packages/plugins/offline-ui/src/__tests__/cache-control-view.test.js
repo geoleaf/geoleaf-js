@@ -40,6 +40,7 @@ import { buildStructure } from "../cache/cache-control-dom.js";
 import {
     updateStatus,
     updateProgress,
+    updatePullProgress,
     updateClearProgress,
     handleCancelled,
 } from "../cache/cache-control-state.js";
@@ -118,6 +119,7 @@ function makeSelf(options = {}) {
     self._handleCancelled = vi.fn();
     self._toggleCollapsed = vi.fn();
     self._updateProgress = vi.fn();
+    self._updatePullProgress = vi.fn();
     self._updateClearProgress = vi.fn();
     self._cleanup = vi.fn();
     return self;
@@ -431,6 +433,75 @@ describe("updateStatus", () => {
     });
 });
 
+// ─── updatePullProgress — R9, the download's second phase ───────────────────────
+//
+// 🛑 THE BAR HAD ONE PHASE AND THE DOWNLOAD HAS TWO. `updateProgress` reads BYTES over a
+// set of resources whose size was estimated beforehand; a feature pull counts ENTITIES and
+// may have no denominator at all. Feeding one into the other printed "3000 / 1 files".
+
+describe("updatePullProgress", () => {
+    // ⚠️ **The dictionary is PLANTED, not stubbed with a copy.** `tLabel` resolves through
+    // `GeoLeaf.I18n.getLabel`, which is absent under test, so every key echoes back and a
+    // message assertion would be true against a broken renderer. Planting the real French
+    // dictionary is what makes the interpolation observable — and keeps the assertion from
+    // freezing a second copy of a string the dictionary owns.
+    let _i18n;
+    beforeEach(async () => {
+        const dict = (await import("../lang/lang-fr.js")).default;
+        globalThis.GeoLeaf = globalThis.GeoLeaf ?? {};
+        _i18n = globalThis.GeoLeaf.I18n;
+        globalThis.GeoLeaf.I18n = { getLabel: (key) => dict[key] ?? key };
+    });
+    afterEach(() => {
+        globalThis.GeoLeaf.I18n = _i18n;
+    });
+
+    test("ne fait rien quand la barre n'est pas construite", () => {
+        expect(() =>
+            updatePullProgress(makeSelf(), { layerId: "sites", current: 1, total: 2 })
+        ).not.toThrow();
+    });
+
+    test("déplace la barre et COMPTE quand la source a donné son total", () => {
+        const self = mount(makeSelf());
+
+        updatePullProgress(self, {
+            layerId: "sites_rosario",
+            current: 3000,
+            total: 30000,
+            totalIsKnown: true,
+            percentage: 10,
+        });
+
+        // The percentage is displayed, never recomputed: the emitter already scaled it.
+        expect(self._progressFill.style.width).toBe("10%");
+        expect(self._progressText.textContent).toContain("sites_rosario");
+        expect(self._progressText.textContent).toContain("3000");
+        expect(self._progressText.textContent).toContain("30000");
+    });
+
+    test("NE BOUGE PAS la barre quand le serveur n'a servi aucun total", () => {
+        const self = mount(makeSelf());
+        self._progressFill.style.width = "42%";
+
+        updatePullProgress(self, {
+            layerId: "sites",
+            current: 1000,
+            total: 1000,
+            totalIsKnown: false,
+            percentage: 100,
+        });
+
+        // 🛑 Without `numberMatched`, `total` equals `current`: a ratio of 1 that would
+        // slam the bar to 100 % at the first page and hold it there, once per page. The
+        // text still counts — counting is true — but the bar keeps what the resource
+        // phase left it.
+        expect(self._progressFill.style.width).toBe("42%");
+        expect(self._progressText.textContent).toContain("1000");
+        expect(self._progressText.textContent).not.toContain("100%");
+    });
+});
+
 // ─── updateProgress / updateClearProgress ───────────────────────────────────────
 
 describe("updateProgress", () => {
@@ -639,6 +710,23 @@ describe("attachEventListeners", () => {
         document.dispatchEvent(new CustomEvent("geoleaf:cache:progress", { detail }));
 
         expect(self._updateProgress).toHaveBeenCalledWith(detail);
+    });
+
+    test("la progression du RAPATRIEMENT a son propre canal (R9)", () => {
+        // 🛑 A listener that is not attached is a silence, and a silence passes every
+        // other test in this file. The core dispatches this event on `document` whether a
+        // plugin listens or not — on `deploy-core` nothing does, deliberately — so the
+        // only thing that proves the bar is fed is this dispatch.
+        const self = mount(makeSelf());
+        attachEventListeners(self);
+
+        const detail = { layerId: "sites_rosario", current: 10, total: 30, totalIsKnown: true };
+        document.dispatchEvent(new CustomEvent("geoleaf:offline:pull-progress", { detail }));
+
+        // ⚠️ And it must reach `_updatePullProgress`, NOT `_updateProgress`: the byte
+        // renderer would print "10 / 30 files" for a count of entities.
+        expect(self._updatePullProgress).toHaveBeenCalledWith(detail);
+        expect(self._updateProgress).not.toHaveBeenCalled();
     });
 
     test("la progression de purge a son propre canal", () => {

@@ -56,6 +56,15 @@ vi.mock("../../src/kernel/geojson/loader/ogc-api-loader.js", () => ({
     setupAutoRefresh: vi.fn(() => () => {}),
 }));
 
+// R9 — the truncation notice. Mocked at its own module: the subject imports it directly,
+// and asserting on the toast primitive instead would tie this case to the message's
+// wording, which `truncation-notice.test.js` already owns.
+const announceTruncation = vi.hoisted(() => vi.fn());
+vi.mock("../../src/kernel/geojson/loader/truncation-notice.js", () => ({
+    announceTruncation,
+    resetTruncationNotices: vi.fn(),
+}));
+
 function createMockAdapter() {
     return {
         addGeoJSONLayer: vi.fn(),
@@ -1076,5 +1085,55 @@ describe("geojson/loader/single-layer — style/data overlap", () => {
         await pending;
         expect(loadDefaultStyle).toHaveBeenCalledTimes(1);
         ogcGate.promise = null;
+    });
+
+    // ── R9, task 2.4 — the cut stops being mute on the DISPLAY path ─────────────────
+    //
+    // 🛑 THE MEMBER EXISTED AND NOBODY READ IT. `ogc-api-loader.ts` has set `truncated`
+    // since 19/08/2026, with a comment saying a truncated collection is
+    // "INDISTINGUISHABLE from a complete one" — and the display path passed the
+    // collection straight to the adapter without ever looking at it. Only a test that
+    // crosses `_loadFromOgcApi` with a cut collection can see the difference.
+    it("ANNONCE la troncature quand le chargeur a coupé", async () => {
+        withHeldData().releaseData();
+        announceTruncation.mockClear();
+        const { fetchOgcApiFeatures } =
+            await import("../../src/kernel/geojson/loader/ogc-api-loader.js");
+        fetchOgcApiFeatures.mockResolvedValueOnce({
+            type: "FeatureCollection",
+            features: [],
+            truncated: { limit: 10, fetched: 25, matched: 900 },
+        });
+
+        await LoaderSingleLayer._loadSingleLayer(
+            "lyrCut",
+            "Couche coupée",
+            { data: { ogcApi: { url: "https://ogc.test/collections/x/items" } } },
+            {}
+        );
+
+        expect(announceTruncation).toHaveBeenCalledTimes(1);
+        expect(announceTruncation).toHaveBeenCalledWith("lyrCut", "Couche coupée", {
+            limit: 10,
+            fetched: 25,
+            matched: 900,
+        });
+    });
+
+    it("se tait quand rien n'a été coupé", async () => {
+        withHeldData().releaseData();
+        announceTruncation.mockClear();
+
+        await LoaderSingleLayer._loadSingleLayer(
+            "lyrWhole",
+            "Couche entière",
+            { data: { ogcApi: { url: "https://ogc.test/collections/x/items" } } },
+            {}
+        );
+
+        // Called, but with `undefined`: the module owns the "nothing to say" decision, so
+        // the caller does not duplicate it — and a caller that stopped calling would be
+        // caught by the case above.
+        expect(announceTruncation).toHaveBeenCalledWith("lyrWhole", "Couche entière", undefined);
     });
 });

@@ -4,8 +4,8 @@ title: offline — le moteur hors ligne, et la façade que pilote son interface
 capability_id: offline
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 96519fa3e
-date: 4 septembre 2026
+verifie_contre: 1543249da
+date: 6 septembre 2026
 ---
 
 # offline — le moteur hors ligne, et la façade que pilote son interface
@@ -13,8 +13,17 @@ date: 4 septembre 2026
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/offline/` ·
 **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
-> ⚠️ **Ce que cette estampille couvre, et ce qu'elle ne couvre pas.** Elle couvre les **cinq
-> mécanismes du drain** réécrits le 02/09/2026 — les quatre trous bouchés, plus la session
+> ⚠️ **Ce que cette estampille couvre, et ce qu'elle ne couvre pas.** Elle couvre le
+> **rapatriement par tranches** de R9 (06/09/2026) et les sections qui le décrivent — §`pullLayer()`
+> et ses trois propriétés, §Le rapatriement par TRANCHES, §Le branchement dans le TÉLÉCHARGEMENT, la
+> ligne `pulledPartial` de la table des statuts et la ligne `geoleaf:offline:pull-progress` de la
+> table des signaux. **Deux phrases de cette fiche y sont devenues fausses et ont été reprises** :
+> le pull ne consomme plus `fetchOgcApiFeatures`, et la coupe locale « conservée à dessein » a été
+> retirée avec son motif. 22 mutations vues rouges ; la suite qui les porte est
+> [`layer-pull.test.js`](../../../packages/core/__tests__/capabilities/offline/layer-pull.test.js),
+> section ⑩.
+>
+> Elle couvre aussi les **cinq mécanismes du drain** réécrits le 02/09/2026 — les quatre trous bouchés, plus la session
 > morte qui prend son propre motif et arrête le drain — et les sections qui les décrivent — budget de rejeu
 > et report, reprise des entrées `inFlight`, lecture d'un 409, vérification du second envoi, et la
 > ligne `requeueAll()` du §Contrat exposé. Chacun est adossé à un test **vu rouge avant le
@@ -593,28 +602,104 @@ Posé par la tâche 4.1, le 04/08/2026. Le store `features` existait depuis 3.4 
 lecteur en 4.3 : `DBFeatures.put` comptait **zéro appelant** dans les sources.
 
 Il applique `PullGranularity = "bboxCapped"` du contrat de synchronisation — emprise plus plafond —
-et **n'écrit aucun code de transport** : `fetchOgcApiFeatures` portait déjà la pagination par lien
-`next`, le `bbox`, `maxFeatures` et l'`AbortSignal`. Trois propriétés qui ne se lisent pas dans le
-code et qui sont chacune tenues par un test **vu rougir** :
+et **n'écrit aucun code de transport** : le chargeur portait déjà la pagination par lien `next`, le
+`bbox`, `maxFeatures` et l'`AbortSignal`. ⚠️ **Depuis R9 il consomme `streamOgcApiFeatures` et non
+plus `fetchOgcApiFeatures`** — la marche plutôt que l'accumulateur ; voir §Le rapatriement par
+TRANCHES ci-dessous. Trois propriétés qui ne se lisent pas dans le code et qui sont chacune tenues
+par un test **vu rougir** :
 
 - **Le plafond est DUR — et il a CHANGÉ DE CÔTÉ le 19/08/2026.** `ogc-api-loader` coupait _après_
   avoir accumulé une page entière et ne tronquait jamais : `pull/layer-pull.ts` compensait, **seul**,
   pendant que le chemin d'**affichage** recevait le dépassement sans le savoir. La coupe est donc
   passée à la source, ce qui sert les deux appelants ; le chargeur coupe à la borne exacte et pose
-  un membre `truncated` sur la collection. La coupe de l'orchestrateur devient **redondante et non
-  fausse**, conservée à dessein pour le cas où la collection viendrait d'un autre chemin.
-  🛑 **Et `capped` se lit maintenant des DEUX côtés — l'oublier aurait éteint le témoin.** Déduit de
-  la seule comparaison locale, il ne pouvait plus jamais être vrai : le rapport aurait cessé de dire
-  qu'un rapatriement était partiel **le jour même où la coupe est devenue fiable**. De même,
-  `fetched` rapporte ce que la **source** a rendu avant la coupe (`truncated.fetched`) et non ce qui
-  a survécu — sans quoi le rapport dirait que la source tenait exactement dans la borne, l'inverse
-  de ce qu'il constate.
+  un membre `truncated` sur la collection. La coupe de l'orchestrateur est alors devenue
+  **redondante et non fausse**, et elle a été conservée « pour le cas où la collection viendrait
+  d'un autre chemin ».
+  🛑 **R9 l'a retirée, parce que ce cas a cessé d'exister.** Ce module ne reçoit plus de collection
+  du tout : il consomme une marche qu'il démarre lui-même, depuis le seul marcheur qui existe. Une
+  moitié de prédicat gardée au cas où et qu'aucun chemin n'atteint n'est pas de la redondance, c'est
+  une branche qu'aucun test ne peut couvrir — `capped` lit désormais **une** source,
+  `outcome.truncated`, au lieu de deux.
+  ⚠️ **Ce que la clause de 2026-08 avait bien vu reste vrai** : déduit de la seule comparaison
+  locale, `capped` ne pouvait plus jamais être vrai — le rapport aurait cessé de dire qu'un
+  rapatriement était partiel **le jour même où la coupe est devenue fiable**. C'est le témoin qu'il
+  fallait garder, pas la comparaison. De même, `fetched` rapporte ce que la **source** a rendu avant
+  la coupe et non ce qui a survécu, sans quoi le rapport dirait que la source tenait exactement dans
+  la borne, l'inverse de ce qu'il constate.
+  🛑 **Et `truncated.fetched` n'est PAS la taille de la collection**, ce que R9 a dû mesurer pour
+  écrire un message honnête : c'est l'accumulé au moment de l'arrêt, au plus une page au-dessus de
+  la borne. Le vrai total est `numberMatched`, servi par la source, capté sur la première page et
+  reporté dans `truncated.matched` — **absent quand le serveur ne le sert pas**, parce qu'un total
+  qu'on ne peut pas mesurer ne s'invente pas.
 - **Une saisie locale n'est jamais écrasée.** La décision vit dans `db/features.ts`
   (`putManyPreservingLocal`), dans **une** transaction : un enregistrement dont `syncState` n'est pas
   `synced` est sauté et compté `preserved`. Lire l'état dans l'orchestrateur puis écrire aurait laissé
   une fenêtre où l'écriture optimiste de 4.4 se glisse — la propriété n'aurait tenu que par le timing.
+  🛑 **Le découpage de R9 ne l'a PAS relâchée, et la lire comme « une transaction pour tout le
+  rapatriement » ferait passer le changement pour un risque.** Ce que ce module tient, c'est que la
+  lecture de l'état d'un enregistrement et l'écriture qui la suit sont dans la **même** transaction.
+  Cela vaut **par appel** : N appels le tiennent N fois. Ce que le découpage abandonne est
+  l'atomicité **entre** les pages — qui n'a jamais été une propriété énoncée, ni vraie en aval :
+  un rapatriement abandonné laissait déjà le magasin à moitié rempli, il n'avait simplement aucun
+  moyen de le dire.
 - **L'invariant S6 tient.** Les enregistrements sortent en `syncState: "synced"`, et rien n'est écrit
   dans l'`outbox` : le rapatriement ne confère jamais l'éditabilité.
+
+#### Le rapatriement par TRANCHES — R9, tâche 2.3 (06/09/2026)
+
+Avant R9, `pullLayer` consommait la source comme **un tableau** : `fetchOgcApiFeatures` accumulait
+toutes les pages en mémoire, l'orchestrateur en construisait une seconde copie intégrale sous forme
+d'enregistrements, et écrivait le tout dans **une seule** transaction IndexedDB. À la cible du lot 2
+— 30 000 entités — cela fait de l'ordre de 90 000 requêtes sérialisées d'un bloc, sans progression,
+et rien de conservé en cas d'interruption.
+
+**Une page OGC est désormais un lot, une transaction et un tic de progression.** La taille de tranche
+n'est pas une constante inventée ici : c'est `DEFAULT_LIMIT`, la taille de page du chargeur, à 1 000.
+
+- **La marche est séparée de l'accumulation.** `streamOgcApiFeatures` (`kernel/geojson/loader/`)
+  rend page par page ; `fetchOgcApiFeatures` est devenu un mince accumulateur par-dessus. Une seule
+  autorité sur la pagination, donc le chemin d'affichage ne peut pas diverger de celui du pull.
+  Le `onPage` est **attendu** : la boucle sérialise lecture → écriture → lecture, ce qui borne le pic
+  mémoire que le découpage existe pour couper.
+- **La coupe passe par page**, là où elle était un `slice` final sur un tableau entièrement construit.
+  Le compte `fetched` reste **brut** : c'est lui qui dit de combien la source a été manquée.
+- **La progression est un événement**, `geoleaf:offline:pull-progress`, typé au contrat. Un rappel
+  aurait exigé un paramètre de plus sur la façade **et** sur `cacheProfile` ; un événement atteint
+  `offline-ui` sans toucher ni l'une ni l'autre, et sur `deploy-core` il ne coûte qu'un dispatch que
+  personne n'écoute.
+- **Le marqueur est écrit à CHAQUE page**, pas seulement à la fin (`outcome: "partial"`), et c'est
+  tout l'intérêt d'écrire en avançant : un onglet tué en cours de route n'exécute aucun épilogue.
+  Ce que le magasin contient à cet instant est ce que la session suivante lira.
+
+🛑 **Et le point de reprise n'est PAS un curseur — la clause est délibérée et mesurée.** Persister le
+lien `next` non suivi pour repartir de là ressemble à l'achèvement naturel du découpage, et c'est
+**faux** : sur la plupart des déploiements ce lien est un `offset`, donc une ligne insérée avant lui
+entre deux exécutions pousse des entités hors de la fenêtre et elles ne sont **jamais** rapatriées,
+en silence. C'est exactement le défaut que ce sous-système existe pour empêcher, réintroduit par la
+réparation. Ce qui rend un re-rapatriement bon marché n'est pas un curseur mais l'**idempotence** —
+`putManyPreservingLocal` écrit par identité. La reprise honnête est donc : reprendre depuis le début,
+et laisser le marqueur dire que la dernière course n'est pas allée au bout.
+
+#### Le branchement dans le TÉLÉCHARGEMENT — R9, tâche 2.3
+
+`pullLayer` n'avait **aucun appelant de production**. La façade le relayait, l'E2E l'appelait, les
+sondes aussi — et le bouton « Télécharger » d'`offline-ui` remplissait le magasin `layers` sans
+jamais toucher `features`. Un profil pouvait donc déclarer `offline.source`, l'utilisateur voir une
+barre monter à 100 %, et repartir sans une entité. Pire : l'interface savait déjà **purger**
+`features`, en justifiant le geste par « toute entité `synced` se re-rapatrie via `pullLayer()` » —
+une prémisse fausse tant qu'aucun chemin d'interface ne l'appelait.
+
+`cache/pull-declared-layers.ts` ferme cela **dans le core** : `cacheProfile()` rapatrie, après les
+ressources et avant le manifeste, les entités de chaque couche sélectionnée déclarant `offline.source`.
+Le motif du placement est celui d'`eviction-notice.ts` — un branchement côté plugin serait absent de
+`deploy-core`, la variante qui part chez un client.
+
+- Le prédicat est `offline.source`, **pas** `offline.enabled` : le premier dit d'où les entités
+  viennent, le second dit que le chargeur lit le magasin local.
+- Un `refused` **ne fait jamais échouer** le téléchargement : perdre des dizaines de mégaoctets de
+  tuiles parce qu'une source OGC a répondu 503 serait pire que l'état partiel dont on protégerait.
+- Un profil qui n'est pas le profil **actif** ne rapatrie rien, et le dit : `pullLayer` résout ses
+  couches sur le profil actif tandis que `cacheProfile` reçoit un identifiant.
 
 ⚠️ **L'attente du moteur est BORNÉE à 3 s**, comme la lecture de 4.3 — `whenReady()` ne résout jamais
 quand `modules.offline` est désactivé. Mais contrairement à la lecture, il n'y a **aucun repli
@@ -646,8 +731,15 @@ lieu. Il daterait l'édition, pas le rapatriement.
 | `notDeclared`         | la couche ne porte pas `offline.enabled`                         |
 | `declaredNeverPulled` | déclarée, **aucune entrée** dans `offline.pullState`             |
 | `pullFailed`          | dernière tentative en `outcome: "failed"`                        |
+| `pulledPartial`       | dernière tentative en `outcome: "partial"` — R9                  |
 | `pulledStale`         | `outcome: "ok"` **et** `now - at > offline.maxAgeMs` **déclaré** |
 | `pulled`              | `outcome: "ok"`, sinon                                           |
+
+⚠️ **`pulledPartial` passe AVANT la péremption, et l'ordre n'est pas arbitraire.** Une course
+inachevée est un fait plus fort qu'une course ancienne : elle a laissé des trous dans le magasin, et
+la dire `pulledStale` décrirait son âge en cachant sa forme. Le statut est né avec le découpage de
+R9 — avant lui, un rapatriement était atomique en pratique (une transaction, donc tout ou rien) et
+deux statuts suffisaient.
 
 ⚠️ **`pulledStale` ne se devine pas.** Sans `offline.maxAgeMs` déclaré, une couche rapatriée reste
 `pulled` indéfiniment. Un seuil par défaut ferait lever des alertes de péremption qu'aucun
@@ -713,15 +805,16 @@ le rejouer.
 
 ### Événements — sept émis, un seul déclaré au contrat
 
-| Signal                           | Émis par                   |
-| -------------------------------- | -------------------------- |
-| `geoleaf:storage:quota-exceeded` | Écriture refusée           |
-| `geoleaf:cache:progress`         | Progression du remplissage |
-| `geoleaf:cache:completed`        | Fin de téléchargement      |
-| `geoleaf:cache:cleared`          | Cache vidé                 |
-| `geoleaf:cache:clear-progress`   | Progression du vidage      |
-| `geoleaf:cache:evicted`          | Éviction par budget        |
-| `geoleaf:cache:cancelled`        | Téléchargement interrompu  |
+| Signal                           | Émis par                                                                                                                                                                         |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `geoleaf:storage:quota-exceeded` | Écriture refusée                                                                                                                                                                 |
+| `geoleaf:cache:progress`         | Progression du remplissage                                                                                                                                                       |
+| `geoleaf:offline:pull-progress`  | Progression du RAPATRIEMENT des entités — seconde phase d'un même téléchargement, canal distinct parce que `ProgressTracker` est un singleton déjà à 100 % quand le pull démarre |
+| `geoleaf:cache:completed`        | Fin de téléchargement                                                                                                                                                            |
+| `geoleaf:cache:cleared`          | Cache vidé                                                                                                                                                                       |
+| `geoleaf:cache:clear-progress`   | Progression du vidage                                                                                                                                                            |
+| `geoleaf:cache:evicted`          | Éviction par budget                                                                                                                                                              |
+| `geoleaf:cache:cancelled`        | Téléchargement interrompu                                                                                                                                                        |
 
 🛑 **`geoleaf:cache:cancelled` A ÉTÉ AJOUTÉ à la clôture de S3c, et ce n'était pas un ajout de
 confort.** Il avait **deux écouteurs et zéro émetteur** — le pré-vol E3.5 avait relevé le même

@@ -67,7 +67,6 @@
         "kernel/geojson/loader/single-layer.ts::applyOgcRefreshedData",
         "kernel/geojson/style-resolver.ts::GeoJSONStyleResolver",
         "kernel/layer-manager/item-controls.ts::renderToggleControls",
-        "kernel/ui/mobile/mobile-toolbar-sheet.ts::closeSheet",
         "packages/libs/field-renderer/src/lang/index.ts::builtinLangs",
         "packages/libs/field-renderer/src/types/field-media.ts::ACCEPTED_MIME",
         "packages/libs/field-renderer/src/types/image-compress.ts::BASE_QUALITY",

@@ -244,6 +244,41 @@ describe("config/profile-loader", () => {
             expect(result.layers[0].id).toBe("L1");
         });
 
+        test("the bundle URL carries the cache token", async () => {
+            // Until 06/09/2026 this URL was fetched NAKED — the one request a deployed
+            // profile makes outside debug mode, and the only one no token could reach. A
+            // server sending a long `max-age` pinned the whole profile through it.
+            fetchJsonMock.mockResolvedValue({ themes: null, layersFile: { layers: [] } });
+
+            const profile = { id: "p1", bundleFile: "profile-bundle.json", layers: [] };
+            await ProfileLoader.loadModularProfile(profile, "data/profiles/p1", "p1", "a1b2c3d");
+
+            expect(fetchJsonMock).toHaveBeenCalledWith(
+                "data/profiles/p1/profile-bundle.json?t=a1b2c3d",
+                expect.any(Object)
+            );
+        });
+
+        test("the cascade fallback reuses the token instead of inventing a clock", async () => {
+            // The fallback used to pass a literal `Date.now()`, ignoring both the debug mode
+            // and the caller's token: outside debug every URL carried `0` except these, so a
+            // 404 on the bundle quietly defeated the profile cache on every single load.
+            fetchJsonMock.mockRejectedValueOnce(new Error("bundle 404"));
+            fetchJsonMock.mockResolvedValue({});
+
+            const profile = {
+                id: "p1",
+                bundleFile: "profile-bundle.json",
+                layers: [],
+                Files: { uiFile: "config/core/ui.json" },
+            };
+            await ProfileLoader.loadModularProfile(profile, "data/profiles/p1", "p1", "a1b2c3d");
+
+            const cascadeUrls = fetchJsonMock.mock.calls.slice(1).map((c) => c[0]);
+            expect(cascadeUrls.length).toBeGreaterThan(0);
+            for (const url of cascadeUrls) expect(url).toContain("?t=a1b2c3d");
+        });
+
         test("bundle with inline layerTemplate instances expands them", async () => {
             const bundle = {
                 themes: null,

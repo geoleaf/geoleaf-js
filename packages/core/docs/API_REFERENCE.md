@@ -265,7 +265,12 @@ if (Core && !Core.isAttached("main")) {
 - `hasMap()` says the **registry** holds an entry; `isAttached()` says that entry is still wired into the page. They diverge where it matters: a host that removes the map's subtree without calling `destroy()` leaves a registered map that renders nowhere, and `hasMap()` still returns `true`.
 - `reattach()` re-parents the **whole container**, never its children one by one. MapLibre memorises the element it was constructed with, so moving the children would leave `map.getContainer()` pointing at the old node. It calls the adapter's optional `resize()` afterwards, so the WebGL canvas picks up the new container size.
 
-> ⚠️ **The panels do not follow the map.** `#gl-right-panel` and its siblings live in the shell, not inside the map container, so `reattach()` leaves them where they are. Rebuilding them at the new location is the host's call: `GeoLeaf.UI.destroyDesktopPanel()` → `initDesktopPanel()` → `activateDesktopPanel()`, all three already public. Making the panels follow would tie this API to the shell's DOM — exactly the coupling it exists to remove.
+> ⚠️ **The shell does not follow the map.** `#gl-right-panel` and the mobile pill live in the shell, not inside the map container, so `reattach()` leaves them where they are. Making them follow would tie this API to the shell's DOM — exactly the coupling it exists to remove. Rebuilding them at the new location is the host's call, and there are **two** recipes, one per surface:
+>
+> - **side panel** — `GeoLeaf.UI.destroyDesktopPanel()` → `initDesktopPanel()` → `activateDesktopPanel()`;
+> - **mobile pill and sheet** — `GeoLeaf.UI.destroyMobileToolbar()` → `initMobileToolbar()`. When the shell itself survives, re-initialising alone is enough: the init is idempotent per shell and tears a stale toolbar down by itself.
+>
+> 🛑 **Run the destroys BEFORE dropping the old shell.** Both give back nodes they had moved elsewhere — the mobile sheet holds the filter panel, the legend and the layer manager while it is open — and they can only give them back to a parent that still exists.
 
 ---
 

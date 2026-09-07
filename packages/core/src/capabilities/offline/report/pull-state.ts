@@ -36,8 +36,23 @@ export const PULL_STATE_KEY = "offline.pullState";
 export interface LayerPullState {
     /** Local timestamp of the attempt, in milliseconds. */
     readonly at: number;
-    /** `ok` when the source answered — even returning zero entities. */
-    readonly outcome: "ok" | "failed";
+    /**
+     * `ok` when the source answered and the run went to its end — even returning zero
+     * entities. `partial` when it wrote and stopped short. `failed` when the source
+     * said nothing usable.
+     *
+     * 🛑 **`partial` IS THE MARKER'S RESUME POINT, and it is deliberately not a cursor.**
+     * R9 made the pull commit page by page, so an interrupted run now leaves entities
+     * behind — durably. Persisting the unfollowed `next` link and restarting from it
+     * looks like the natural completion of that, and it is **unsound**: an OGC `next`
+     * link is an offset in most deployments, so a row inserted before it between two
+     * runs pushes entities past the window and they are **never fetched**, silently.
+     * That is the very defect this subsystem exists to prevent, reintroduced by the
+     * repair. What makes a re-pull cheap is not a cursor but idempotence —
+     * `putManyPreservingLocal` writes by identity — so the honest resume is: re-pull
+     * from the start, and let this marker say the last run did not finish.
+     */
+    readonly outcome: "ok" | "partial" | "failed";
     /** Entities written during this attempt. Always 0 when `outcome` is `failed`. */
     readonly written: number;
 }
@@ -64,7 +79,7 @@ function isLayerPullState(value: unknown): value is LayerPullState {
     const v = value as Record<string, unknown>;
     return (
         typeof v.at === "number" &&
-        (v.outcome === "ok" || v.outcome === "failed") &&
+        (v.outcome === "ok" || v.outcome === "partial" || v.outcome === "failed") &&
         typeof v.written === "number"
     );
 }

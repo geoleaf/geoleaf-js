@@ -115,6 +115,12 @@ Starts downloading a complete profile for offline access. It runs a **quota pre-
 download known to be too large is not attempted. Progress is available through the
 `geoleaf:cache:progress` event.
 
+It has **two phases**. The first caches the profile's resources — configuration files, icons, static
+GeoJSON, tiles. The second pulls the **entities** of every selected layer declaring `offline.source`
+into the `features` store, and reports through `geoleaf:offline:pull-progress`; those layers are
+listed back in `result.pulledLayers`, absent when the profile declares no pull source. A source that
+cannot be reached is reported there, never raised: it does not undo the resources already cached.
+
 ### `GeoLeaf.Storage.clearAll()` → `Promise<void>`
 
 Removes the whole cache and empties the `preferences` and `metadata` tables.
@@ -127,16 +133,17 @@ Removes the whole cache and empties the `preferences` and `metadata` tables.
 
 ## DOM events
 
-| Event                         | Detail                                         | Fired when                   |
-| ----------------------------- | ---------------------------------------------- | ---------------------------- |
-| `geoleaf:online`              | `{ timestamp }`                                | Connectivity returns         |
-| `geoleaf:offline`             | `{ timestamp }`                                | Connectivity is lost         |
-| `geoleaf:cache:progress`      | `{ profileId, downloaded, total, percentage }` | Caching progresses           |
-| `geoleaf:cache:completed`     | `{ profileId }`                                | A download finishes          |
-| `geoleaf:cache:cleared`       | `{ profileId }`                                | A profile's cache is removed |
-| `geoleaf:poi:synced`          | `{ results }`                                  | The sync queue has been sent |
-| `geoleaf:storage:initialized` | —                                              | Storage is initialised       |
-| `geoleaf:storage:cleared`     | —                                              | All storage has been removed |
+| Event                           | Detail                                                  | Fired when                                                                                                                                               |
+| ------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `geoleaf:online`                | `{ timestamp }`                                         | Connectivity returns                                                                                                                                     |
+| `geoleaf:offline`               | `{ timestamp }`                                         | Connectivity is lost                                                                                                                                     |
+| `geoleaf:cache:progress`        | `{ profileId, downloaded, total, percentage }`          | Caching progresses                                                                                                                                       |
+| `geoleaf:offline:pull-progress` | `{ layerId, current, total, totalIsKnown, percentage }` | One page of a layer's entities landed. `totalIsKnown` is `false` when the source served no `numberMatched`: `total` is then a running count, not a whole |
+| `geoleaf:cache:completed`       | `{ profileId }`                                         | A download finishes                                                                                                                                      |
+| `geoleaf:cache:cleared`         | `{ profileId }`                                         | A profile's cache is removed                                                                                                                             |
+| `geoleaf:poi:synced`            | `{ results }`                                           | The sync queue has been sent                                                                                                                             |
+| `geoleaf:storage:initialized`   | —                                                       | Storage is initialised                                                                                                                                   |
+| `geoleaf:storage:cleared`       | —                                                       | All storage has been removed                                                                                                                             |
 
 ```javascript
 document.addEventListener("geoleaf:online", () => {

@@ -299,12 +299,21 @@ function isAttached(mapId: string): boolean {
  * the old node and every subsequent measurement wrong. Integrators who lacked a handle
  * on the map did move the children, and inherited exactly that bug.
  *
- * ⚠️ **The panels do not follow.** `#gl-right-panel` and its siblings live in the shell
- * (`glMain`), not inside the map container, so they stay where they are. Rebuilding them
- * around the new location is the host's call, through three already-public exports:
- * `GeoLeaf.UI.destroyDesktopPanel()` → `initDesktopPanel()` → `activateDesktopPanel()`.
- * Making them follow would tie this API to the shell's DOM — the very coupling it exists
- * to remove.
+ * ⚠️ **The shell does not follow.** `#gl-right-panel` and the mobile pill live in
+ * `glMain`, not inside the map container, so they stay where they are. Making them follow
+ * would tie this API to the shell's DOM — the very coupling it exists to remove. Rebuilding
+ * them around the new location is the host's call, and it is TWO recipes, one per surface:
+ *
+ * - side panel — `GeoLeaf.UI.destroyDesktopPanel()` → `initDesktopPanel()` →
+ *   `activateDesktopPanel()`;
+ * - mobile pill and its sheet — `GeoLeaf.UI.destroyMobileToolbar()` →
+ *   `initMobileToolbar()`. Re-initialising alone is enough when the shell survives: the
+ *   init is idempotent per shell and tears a stale toolbar down on its own.
+ *
+ * 🛑 **Both destroys must run BEFORE the old shell is dropped, not after.** Each gives back
+ * DOM nodes it had moved elsewhere — the sheet holds the filter panel, the legend and the
+ * layer manager while open — and it can only give them back to a parent that still exists.
+ * A host that destroys `glMain` first has already lost them.
  *
  * @param mapId - The id of the map to move.
  * @param parent - The element that should receive the map container.

@@ -16,6 +16,9 @@ const lang_de: LangDict = {
     "toast.geoloc.error.timeout": "Zeitlimit f\u00fcr Geolokalisierung \u00fcberschritten",
     "toast.init.loading": "Daten werden geladen, bitte warten.",
     "toast.profile.loaded": "{0} geladen",
+    "toast.layer.truncated.known":
+        "{0}: {1} von {2} Objekten angezeigt — die Ebene ist abgeschnitten.",
+    "toast.layer.truncated.unknown": "{0}: {1} Objekte angezeigt, die Ebene enthält mehr.",
     "toast.theme.applied": 'Thema "{0}" geladen ({1} sichtbare Ebenen)',
     "aria.geoloc.toggle": "Geolokalisierung AN/AUS",
     "aria.geoloc.toggle_label": "GPS-Tracking aktivieren/deaktivieren",

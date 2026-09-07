@@ -27,6 +27,7 @@ import {
 import {
     updateStatus,
     updateProgress,
+    updatePullProgress,
     updateClearProgress,
     handleStop,
     handleCancelled,
@@ -70,6 +71,7 @@ function createCacheControl(options: CacheControlOptions = {}): IControl | null 
         _attachEventListeners: () => attachEventListeners(self),
         _updateStatus: () => updateStatus(self),
         _updateProgress: (p) => updateProgress(self, p),
+        _updatePullProgress: (p) => updatePullProgress(self, p),
         _updateClearProgress: (p) => updateClearProgress(self, p),
         _populateLayerSelection: () => populateLayerSelection(),
         _cleanup: () => cleanup(self),

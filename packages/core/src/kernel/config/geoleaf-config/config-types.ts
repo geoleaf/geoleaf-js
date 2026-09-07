@@ -43,6 +43,27 @@ export interface DataConfig {
     activeProfile?: string;
     /** Base path to the profiles directory. Default "profiles". */
     profilesBasePath?: string;
+    /**
+     * Content fingerprint of the profile, appended to every profile resource request.
+     *
+     * **Opaque, and never a date.** The value is not read, compared or ordered — it is
+     * percent-encoded and interpolated into the `?t=` parameter of each configuration URL.
+     * What matters is only that it CHANGES when the profile's content changes: a hash, a
+     * revision counter, a deployment id. A clock defeats the purpose, since it changes on
+     * every load and makes the browser and the service worker re-fetch resources that did
+     * not move.
+     *
+     * Supplied by the embedding application, which alone knows when its profile changed —
+     * either in `geoleaf.config.json` or pushed into the store before boot. Writing it in
+     * `profile.json` is too late to have any effect: the token is resolved before that file
+     * is requested.
+     *
+     * Absent ⟹ the token is `0`, a fixed URL. That is the historical behaviour, and it is
+     * kept as the default — but a server sending a long `max-age` then pins the profile and
+     * all its sections for the lifetime of that header, which no cache flush on the server
+     * side can undo.
+     */
+    profileVersion?: string | number;
     /** Enable POI mapping from active profile. */
     enableProfilePoiMapping?: boolean;
     /**

@@ -10,7 +10,11 @@ import { events } from "../utils/core-utils.js";
 import { LayerSelectorCore } from "./layer-selector/core.js";
 
 import { CACHE_EVENTS } from "./cache-control-types.js";
-import type { CacheControlState, CacheProgressDetail } from "./cache-control-types.js";
+import type {
+    CacheControlState,
+    CacheProgressDetail,
+    PullProgressDetail,
+} from "./cache-control-types.js";
 
 // ─── Event binding ───────────────────────────────────────────────────
 
@@ -108,6 +112,16 @@ export function attachEventListeners(self: CacheControlState): void {
                 "CacheControl.clearProgress"
             )
         );
+        pushId(
+            events.on(
+                document,
+                CACHE_EVENTS.PULL_PROGRESS,
+                (e: Event) =>
+                    self._updatePullProgress((e as CustomEvent<PullProgressDetail>).detail),
+                false,
+                "CacheControl.pullProgress"
+            )
+        );
     } else {
         // Fallback without cleanup (log warning)
         Log?.warn(
@@ -137,6 +151,9 @@ export function attachEventListeners(self: CacheControlState): void {
         );
         document.addEventListener(CACHE_EVENTS.CLEAR_PROGRESS, (e: Event) =>
             self._updateClearProgress((e as CustomEvent<CacheProgressDetail>).detail)
+        );
+        document.addEventListener(CACHE_EVENTS.PULL_PROGRESS, (e: Event) =>
+            self._updatePullProgress((e as CustomEvent<PullProgressDetail>).detail)
         );
     }
 }

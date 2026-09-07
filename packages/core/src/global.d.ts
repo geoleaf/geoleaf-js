@@ -229,6 +229,8 @@ declare global {
         // it. The function name, on the other hand, does not drift.
         /** Mounts the mobile toolbar. Set by `setupUIKernel()` in `globals/globals.ui.ts`. */
         initMobileToolbar?: typeof import("./kernel/ui/mobile/mobile-toolbar.js").initMobileToolbar;
+        /** Tears the mobile toolbar down. Set by `setupUIKernel()`. */
+        destroyMobileToolbar?: typeof import("./kernel/ui/mobile/mobile-toolbar.js").destroyMobileToolbar;
         /** Mounts the desktop side-panel. Set by `setupUIKernel()`. */
         initDesktopPanel?: typeof import("./kernel/ui/desktop/desktop-panel.js").initDesktopPanel;
         /** Reveals the desktop side-panel. Set by `setupUIKernel()`. */
@@ -992,9 +994,13 @@ declare global {
              * element, so moving its children would leave `getContainer()` pointing at
              * the old node.
              *
-             * ⚠️ **The panels do not follow**: they live in `glMain`, not in the map
-             * container. Remounting them is the host's job —
-             * `UI.destroyDesktopPanel()` → `initDesktopPanel()` → `activateDesktopPanel()`.
+             * ⚠️ **The shell does not follow**: the side panel and the mobile pill live
+             * in `glMain`, not in the map container. Remounting them is the host's job,
+             * and it is two recipes — `UI.destroyDesktopPanel()` → `initDesktopPanel()` →
+             * `activateDesktopPanel()` for the panel, `UI.destroyMobileToolbar()` →
+             * `initMobileToolbar()` for the pill. 🛑 Run either destroy BEFORE dropping
+             * the old shell: both give back nodes they had moved, and only to a parent
+             * that still exists.
              */
             reattach(mapId: string, parent: HTMLElement): boolean;
             /**

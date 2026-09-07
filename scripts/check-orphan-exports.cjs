@@ -423,8 +423,11 @@ const CLASS_C = [
 /**
  * A — intra-file usage: the symbol lives, its `export` is superfluous. The
  * six `setup*` are called in their own `globals.*.ts` (e.g.
- * `globals.api.ts`); `closeSheet` by its three listeners
- * (`mobile-toolbar-sheet.ts`).
+ * `globals.api.ts`).
+ *
+ * ⚠️ `closeSheet` LEFT this list: `destroyMobileToolbar` imports it from
+ * `mobile-toolbar.ts` to give the sheet's moved nodes back before removing
+ * the overlay, so the export is now load-bearing across files.
  */
 const CLASS_A = [
     "globals/globals.api.ts::setupAPIKernel",
@@ -433,7 +436,6 @@ const CLASS_A = [
     "globals/globals.geojson.ts::setupGeoJSONKernel",
     "globals/globals.storage.ts::setupStorage",
     "globals/globals.ui.ts::setupUIKernel",
-    "kernel/ui/mobile/mobile-toolbar-sheet.ts::closeSheet",
 ];
 
 /**

@@ -4,8 +4,8 @@ title: offline-ui — l'interface du hors-ligne, sur un moteur qu'elle ne contie
 plugin_id: offline-ui
 package: "@geoleaf-plugins/offline-ui"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 96519fa3e
-date: 1er septembre 2026
+verifie_contre: 1543249da
+date: 6 septembre 2026
 ---
 
 # offline-ui — l'interface du hors-ligne, sur un moteur qu'elle ne contient pas
@@ -157,7 +157,7 @@ profil qui n'active pas le hors-ligne attendrait un signal qui ne viendra jamais
 | OU-03 | Sélecteur de couches à télécharger                   | Profil actif                                             | Une ligne par couche, avec son état de cache — quelle que soit sa PROVENANCE, voir sous la table                                                          | `cache/layer-selector/`                                        |
 | OU-04 | Sélection persistée entre sessions                   | Choix de l'utilisateur                                   | Relue au chargement suivant, par le cache du core                                                                                                         | `cache/layer-selector/selection-cache.ts`                      |
 | OU-05 | Estimation d'une zone de tuiles vectorielles         | Emprise et niveaux                                       | Un volume annoncé avant de télécharger                                                                                                                    | `sync/vector-zone-estimate.ts`                                 |
-| OU-06 | Suivi de progression                                 | Signaux du core                                          | Remplissage et vidage suivis séparément                                                                                                                   | `cache/cache-control-events.ts`                                |
+| OU-06 | Suivi de progression                                 | Signaux du core                                          | Remplissage, **rapatriement des entités** et vidage suivis séparément — trois canaux, une barre (voir sous la table)                                      | `cache/cache-control-events.ts`                                |
 | OU-07 | Annulation d'un téléchargement                       | Bouton d'annulation                                      | Relayée au gestionnaire du core                                                                                                                           | `cache/cache-control-state.ts`                                 |
 | OU-08 | Purge du cache d'un profil                           | Action de vidage                                         | Avec confirmation, et progression                                                                                                                         | `cache/download-handler.ts`                                    |
 | OU-09 | Panneau de synchronisation                           | File en attente                                          | Liste, déclenchement, et résultat                                                                                                                         | `sync/sync-manager.ts`                                         |
@@ -167,6 +167,25 @@ profil qui n'active pas le hors-ligne attendrait un signal qui ne viendra jamais
 | OU-13 | Sélecteur de zone de téléchargement, **trois** modes | Vue courante · emprise du profil · corridor d'itinéraire | Une emprise et un plafond de zoom persistés dans la sélection sauvegardée                                                                                 | `cache/cache-control-zone.ts`                                  |
 | OU-14 | Corridor d'un itinéraire persisté                    | Tracé lu dans le magasin `routes` de la base du core     | Un corridor estimé, **ou un refus qui nomme ses deux leviers** — plafond de zoom et tampon, avec leur effet                                               | `cache/corridor-selection.ts`, `sync/corridor-tiles.ts`        |
 | OU-15 | Statut de synchronisation permanent dans la modale   | La file d'écriture, lue par `Storage.getSyncStatus()`    | Réseau, écritures dues, mises à l'écart, dernière synchro acceptée et un bouton de drain — **au-dessus de l'accordéon STATUT, et sans se taire au repos** | `cache/sync-status-block.ts`                                   |
+
+```callout warn label="OU-06 — le rapatriement est la seconde phase, pas un second téléchargement"
+Depuis R9 (06/09/2026), le bouton « Télécharger » fait deux choses : les **ressources** (fichiers de
+configuration, icônes, blobs statiques, tuiles) puis les **entités** des couches déclarant
+`offline.source`. Le second temps a son propre canal, `geoleaf:offline:pull-progress`, et son propre
+rendu — `updateProgress` lit des OCTETS sur un ensemble dont la taille avait été estimée d'avance,
+un rapatriement compte des ENTITÉS et peut n'avoir aucun dénominateur. Passer l'un dans l'autre
+affichait « 3000 / 1 files ».
+
+🛑 **Et la barre ne bouge que si la source a servi son total.** Sans `numberMatched`, le
+dénominateur vaut le compteur : un rapport de 1 qui collerait la barre à 100 % dès la première page
+et l'y maintiendrait. Le texte compte quand même — compter est vrai —, la barre garde ce que la
+phase des ressources y a laissé.
+
+⚠️ **Le rapatriement lui-même n'est PAS ici.** Il est dans le core (`cache/pull-declared-layers.ts`),
+et le §« Ce qu'il ne fait pas » reste donc exact : le plugin ne télécharge toujours rien lui-même. Le
+motif est celui d'`eviction-notice.ts` — sur `deploy-core`, où ce plugin n'existe pas, le
+rapatriement a quand même lieu ; seule la barre manque.
+```
 
 ```callout warn label="OU-15 — la moitié que la bande du core a délibérément abandonnée"
 La bande `.gl-sync-banner` du core ne s'affiche plus que lorsqu'elle porte une information : sur un
@@ -269,18 +288,19 @@ Le motif est écrit dans `entry.ts`.
 Le vocabulaire du plugin est centralisé dans une constante unique (`cache/cache-control-types.ts`) —
 ce qui évite que deux écouteurs du même paquet ne divergent sur une chaîne.
 
-| Signal                           | Émetteur                                                                                                 |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `geoleaf:cache:completed`        | La capacité [`offline`](../capacites/offline.md)                                                         |
-| `geoleaf:cache:cleared`          | idem                                                                                                     |
-| `geoleaf:cache:progress`         | idem                                                                                                     |
-| `geoleaf:cache:clear-progress`   | idem                                                                                                     |
-| `geoleaf:profile:loaded`         | Le core, hors de la capacité                                                                             |
-| `geoleaf:cache:cancelled`        | La capacité [`offline`](../capacites/offline.md) — `CacheManager.cancelDownload()`, depuis le 03/08/2026 |
-| `geoleaf:storage:quota-exceeded` | La capacité [`offline`](../capacites/offline.md) — écouté par `core/engine-signals.ts`                   |
-| `geoleaf:toolbar:action`         | Le kernel                                                                                                |
-| `geoleaf:offline:outbox-queued`  | La capacité [`offline`](../capacites/offline.md) — OU-15, depuis le 06/09/2026                           |
-| `geoleaf:offline:outbox-drained` | idem                                                                                                     |
+| Signal                           | Émetteur                                                                                                                                                                                          |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `geoleaf:cache:completed`        | La capacité [`offline`](../capacites/offline.md)                                                                                                                                                  |
+| `geoleaf:cache:cleared`          | idem                                                                                                                                                                                              |
+| `geoleaf:cache:progress`         | idem                                                                                                                                                                                              |
+| `geoleaf:cache:clear-progress`   | idem                                                                                                                                                                                              |
+| `geoleaf:offline:pull-progress`  | idem — la SECONDE phase d'un téléchargement, le rapatriement des entités (R9). Rendu par `updatePullProgress`, distinct de `updateProgress` qui compte des OCTETS sur des ressources pré-estimées |
+| `geoleaf:profile:loaded`         | Le core, hors de la capacité                                                                                                                                                                      |
+| `geoleaf:cache:cancelled`        | La capacité [`offline`](../capacites/offline.md) — `CacheManager.cancelDownload()`, depuis le 03/08/2026                                                                                          |
+| `geoleaf:storage:quota-exceeded` | La capacité [`offline`](../capacites/offline.md) — écouté par `core/engine-signals.ts`                                                                                                            |
+| `geoleaf:toolbar:action`         | Le kernel                                                                                                                                                                                         |
+| `geoleaf:offline:outbox-queued`  | La capacité [`offline`](../capacites/offline.md) — OU-15, depuis le 06/09/2026                                                                                                                    |
+| `geoleaf:offline:outbox-drained` | idem                                                                                                                                                                                              |
 
 ⚠️ **L'inventaire se dérive, il ne se recopie pas.** Ce que la capacité émet :
 `grep -rn "dispatchEvent\|CustomEvent(" packages/core/src/capabilities/offline/ --include=*.ts | grep -o "geoleaf:[a-z:-]*" | sort -u`.

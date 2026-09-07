@@ -27,6 +27,10 @@ const lang_fr: LangDict = {
     // ── Toasts / Init ────────────────────────────────────────────────────────
     "toast.init.loading": "Chargement des donn\u00e9es\u2026",
     "toast.profile.loaded": "{0} charg\u00e9",
+    "toast.layer.truncated.known":
+        "{0} : {1} entit\u00e9s affich\u00e9es sur {2} \u2014 la couche est tronqu\u00e9e.",
+    "toast.layer.truncated.unknown":
+        "{0} : {1} entit\u00e9s affich\u00e9es, la couche en contient davantage.",
     "toast.theme.applied":
         "Th\u00e8me \u00ab\u202f{0}\u202f\u00bb appliqu\u00e9 ({1} couches visibles)",
 

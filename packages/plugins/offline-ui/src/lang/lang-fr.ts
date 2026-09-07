@@ -92,6 +92,7 @@ const langStorageFr = {
     "storage.warn.btn.ready": "Télécharger le profil pour une utilisation hors ligne",
     // Download / clear (S7)
     "storage.download.inProgress": "Téléchargement...",
+    "storage.download.pullProgress": "Rapatriement de « {0} » : {1} / {2} entités",
     "storage.download.btn": "Télécharger le profil",
     "storage.download.resources": "ressources",
     "storage.download.done": "ressources téléchargées",

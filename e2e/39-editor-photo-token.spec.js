@@ -20,6 +20,7 @@
 
 import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
+import { layerConfigPath } from "./helpers/profiles.js";
 import { readStore, GEOLEAF_DB } from "./helpers/idb.js";
 
 test.use({ baseURL: baseURL("full") });
@@ -186,7 +187,40 @@ test("[editor] hors réseau, l'outbox porte un JETON — jamais la base64 de la 
 test("[editor] la configuration LIVRÉE — sans endpoint — garde quand même la photo", async ({
     page,
     context,
+    request,
 }) => {
+    // 🛑 THE PRECONDITION IS DECLARED, AND IT REDDENED FOR A DAY BECAUSE IT WAS NOT.
+    //
+    // This case's subject is *the absence of an endpoint in the shipped artefact* — and the
+    // artefact is not always the same. `GEOLEAF_BACKEND_BASE_URL=<host> npm run build:deploy`
+    // RE-HOSTS the key instead of stripping it (`scripts/lib/dev-backend.cjs`), which is the
+    // build `30-sync-cycle.spec.js` requires in order to run at all. Under that build this
+    // test's own subject does not exist, and it failed announcing a lost photo when the truth
+    // was that the deploy had an endpoint.
+    //
+    // ⚠️ The skip is NARROW on purpose: it triggers only when the served config actually
+    // declares an `uploadEndpoint`. On a plain deliverable — what CI builds — nothing changes
+    // and this case runs exactly as before. A broader guard would be a way of never running.
+    //
+    // 🖐 Symmetric with `30-sync-cycle.spec.js`, which skips for the opposite reason on the
+    // opposite build. Neither file can be green on both, and saying so is better than one of
+    // them lying.
+    const served = await request.get(
+        `${baseURL("full")}${layerConfigPath("tourism", "sites_rosario")}`,
+        { timeout: 8000 }
+    );
+    const declared = served.ok()
+        ? ((await served.json())?.attributes?.fields ?? []).some(
+              (/** @type {any} */ f) => f?.options?.uploadEndpoint
+          )
+        : false;
+    test.skip(
+        declared,
+        "la variante servie a été bâtie avec GEOLEAF_BACKEND_BASE_URL : son `uploadEndpoint` " +
+            "est RÉ-HÉBERGÉ, pas retiré, donc le sujet de ce cas — la configuration livrée SANS " +
+            "endpoint — n'existe pas sur cet artefact. Reconstruire avec `npm run build:deploy` nu."
+    );
+
     // No `armUploadEndpoint` here: the subject IS what the deploy ships.
     await captureAPhotoOffNetwork(page, context);
 

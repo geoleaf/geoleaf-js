@@ -19,7 +19,8 @@
  *   - Filter-panel: _UIFilterPanelShared, _UIFilterPanelStateReader, _UIFilterPanelApplier,
  *     _UIFilterPanelRenderer, _UIFilterPanelProximity, _UIFilterPanelLazyLoader,
  *     _UIFilterPanelAccordion, _UIFilterPanel, FilterPanel
- *   - Toolbar: UI.initMobileToolbar, UI.initDesktopPanel, UI.activateDesktopPanel, UI.destroyDesktopPanel
+ *   - Toolbar: UI.initMobileToolbar, UI.destroyMobileToolbar, UI.initDesktopPanel,
+ *     UI.activateDesktopPanel, UI.destroyDesktopPanel
  *
  * Strategy: vi.hoisted() + vi.mock(). ESM static import ensures Istanbul
  * instruments globals.ui.ts.
@@ -87,6 +88,7 @@ const mocks = vi.hoisted(() => {
 
     // B9 — toolbar
     const initMobileToolbar = vi.fn();
+    const destroyMobileToolbar = vi.fn();
     const initDesktopPanel = vi.fn();
     const activateDesktopPanel = vi.fn();
     const destroyDesktopPanel = vi.fn();
@@ -140,6 +142,7 @@ const mocks = vi.hoisted(() => {
         loadAccordionContentIfNeeded,
         FilterPanelAggregator,
         initMobileToolbar,
+        destroyMobileToolbar,
         initDesktopPanel,
         activateDesktopPanel,
         destroyDesktopPanel,
@@ -204,6 +207,10 @@ vi.mock("../../src/kernel/ui/theme.js", () => ({ _UITheme: mocks._UITheme }));
 // toolbar
 vi.mock("../../src/kernel/ui/mobile/mobile-toolbar.js", () => ({
     initMobileToolbar: mocks.initMobileToolbar,
+    // ⚠️ A factory missing an export that `globals.ui.ts` imports does not fail that one
+    // `it` — Vitest throws "No <name> export is defined on the mock" and the WHOLE file
+    // falls. Every import of this module has to be listed here.
+    destroyMobileToolbar: mocks.destroyMobileToolbar,
 }));
 vi.mock("../../src/kernel/ui/desktop/desktop-panel.js", () => ({
     initDesktopPanel: mocks.initDesktopPanel,
@@ -336,6 +343,10 @@ describe("globals.ui.ts — B9 registrations (UI components)", () => {
 
     it("registers GeoLeaf.UI.initMobileToolbar", () => {
         expect(GL.UI.initMobileToolbar).toBe(mocks.initMobileToolbar);
+    });
+
+    it("registers GeoLeaf.UI.destroyMobileToolbar", () => {
+        expect(GL.UI.destroyMobileToolbar).toBe(mocks.destroyMobileToolbar);
     });
 
     it("registers GeoLeaf.UI.initDesktopPanel", () => {

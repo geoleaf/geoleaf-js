@@ -8,6 +8,23 @@
 # `npm install` en local, et vérifier par `npm run ci:push` (qui fait un `npm ci` réel) avant
 # de pousser.
 #
+# 🛑 SECONDE RÈGLE, et elle vaut pour le dépôt PUBLIC : **une PR Dependabot ne s'y merge
+# jamais.** Le public est un miroir à sens unique — `port-to-public.cjs` recopie sur son clone
+# chaque fichier porté depuis l'amont (`syncClone`, passe ②). Un `package.json` mergé là-bas
+# est donc écrasé au portage suivant : le merge se défait tout seul, sans que rien ne rougisse.
+# Le geste est mort par construction, pas risqué.
+#
+# 📌 Mais la PR publique n'est pas sans valeur — elle vaut comme **pré-vol gratuit**. Son run
+# de CI éprouve les montées sur un CLONE FRAIS à 2-4 cœurs, conditions que le local ne rend
+# pas. Mesuré le 07/09/2026 sur un lot de 13 montées : 98 gates jouées, une seule rouge, et
+# c'était le cliquet d'intégrité du lock demandant à être resserré.
+#
+# ⚠️ Portée exacte de cet oracle, et elle est étroite : il prouve que ces VERSIONS passent, et
+# **pas** que le lock régénéré en amont passera — celui-là reste à éprouver par `ci:push`. Il
+# ne prouve pas non plus les versions qu'on installera : les plages sont en `^`, et `npm
+# install` prend la plus récente qui satisfait. Sur ce même lot, `eslint` et `lint-staged`
+# avaient déjà dépassé la cible de la PR au moment de la reprise.
+#
 # Le motif est mécanique et il se reproduira : Dependabot régénère le lock EN ENTIER, y compris
 # les binaires optionnels de toutes les plateformes (`cpu: ["wasm32"]` et consorts), et il
 # déplace certains de leurs nœuds hors de la racine. `npm ci` re-résout alors une plage vers une
@@ -32,9 +49,24 @@ updates:
       open-pull-requests-limit: 10
       labels:
           - "dependencies"
-          - "security"
-      # ⚠️ Un label absent du dépôt est ignoré EN SILENCE par Dependabot — la PR arrive nue et
-      # rien ne le signale. Les deux ci-dessus doivent exister dans les labels du dépôt.
+      # 🛑 `security` a été RETIRÉ de cette liste le 07/09/2026, et ce n'est pas un allègement :
+      # étiqueter `security` **toute** montée de version rend une vraie PR d'avis de sécurité
+      # indistinguable du bruit hebdomadaire. Le label y perdrait exactement ce qui en fait un
+      # signal. Il n'existe donc dans aucun des deux dépôts, délibérément.
+      #
+      # ⚠️ Un label absent du dépôt ne bloque pas la PR : elle arrive NUE, et Dependabot le
+      # signale par e-mail (« The following labels could not be found: … »). La phrase qui
+      # tenait ici jusqu'au 07/09 affirmait l'inverse — « ignoré EN SILENCE, rien ne le
+      # signale » — et elle était fausse. Elle a tenu parce que personne ne l'avait éprouvée :
+      # mesuré ce jour-là, les 30 PR Dependabot des deux dépôts, depuis la première, portaient
+      # `labels=[]`. Ce bloc n'avait JAMAIS rien fait.
+      #
+      # 📌 Rien ici ne le vérifie, et c'est assumé : une gate devrait interroger l'API GitHub,
+      # donc sortir du périmètre hors-ligne de `ci:local` et devenir instable. Le contrôle est
+      # manuel, au prochain changement de labels :
+      #     gh label list -R <dépôt> --json name --jq '[.[].name]'
+      # Les labels nommés dans ce fichier doivent y figurer — dans les DEUX dépôts, ce fichier
+      # étant porté à l'octet près et la partition ne sachant pas le faire diverger.
       #
       # 📌 Aucun `reviewers:` ici, délibérément. La désignation des relecteurs vit dans
       # `.github/CODEOWNERS`, qui est le mécanisme natif de GitHub et couvre **toutes** les PR,

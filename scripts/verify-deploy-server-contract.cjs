@@ -44,6 +44,17 @@
  *            carried the headers it ships FOR, so a silent removal went green.
  *            HSTS is excluded on purpose — a cautious integrator may hold it back
  *            until their HTTPS is stable (see the recipe's own note).
+ *   SC-05  the 2 server recipes declare `no-cache` on `profiles/geoleaf.config.json`.
+ *          → that file carries `data.profileVersion`, the fingerprint invalidating
+ *            every other profile resource, and A TOKEN CANNOT INVALIDATE THE FILE
+ *            THAT CARRIES IT. Pinned, it defeats the whole mechanism in silence:
+ *            the server serves the new content, `curl` confirms it, and the page
+ *            keeps showing the old one for as long as the header lasts — measured
+ *            at SEVEN DAYS on 06/09/2026.
+ *          → ⚠️ `SERVEUR.md` §8 prescribed this rule while NEITHER recipe
+ *            implemented it. A table that prescribes and a recipe that does not is
+ *            worse than silence: the integrator copies the recipe and reads the
+ *            table as confirmation of a coverage they do not have.
  *
  * ⚠️ **SC-02 re-reads the disk, it does not compare the generator to itself.**
  * Verifying that `serverContractFiles()` contains what `serverContractFiles()`
@@ -57,6 +68,12 @@
  *   • `mjs` line removed from the emitted `nginx.conf.example` → SC-02 red
  *   • gate pointed at a variant without `.mjs`          → SC-03 red
  *   • a security header removed from the emitted recipe → SC-04 red
+ *
+ * ## And again for SC-05 (2026-09-06)
+ *
+ *   • the predicate run against the recipes AS THEY WERE — before either carried the
+ *     rule — returned false on all 4 files, and the wired gate reddened on all 4.
+ *     The rule was then emitted, and the gate went green on the rebuilt deliverables.
  */
 
 const fs = require("node:fs");
@@ -66,6 +83,7 @@ const {
     SERVER_CONTRACT_FILES,
     MJS_MIME_TOKEN,
     declaresMjsType,
+    declaresProfilesRootNoCache,
     missingSecurityHeaders,
     carriesServerContract,
 } = require("./lib/server-contract.cjs");
@@ -178,6 +196,30 @@ for (const variant of variantDirs) {
                     `scripts/lib/server-contract.cjs.`
             );
         }
+
+        // ── SC-05 — the recipes forbid a long cache on the profiles ROOT config ──
+        //
+        // 🛑 Not a preference. That file carries `data.profileVersion`, the fingerprint that
+        // invalidates every other profile resource — and a token cannot invalidate the file
+        // that CARRIES it. Pinned, the whole mechanism is defeated in silence: the server
+        // serves the new content, `curl` confirms it, and the page keeps showing the old one
+        // for as long as the header lasts.
+        //
+        // ⚠️ `SERVEUR.md` §8 prescribed this rule while NEITHER recipe implemented it. A table
+        // that prescribes and a recipe that does not is worse than silence — the integrator
+        // copies the recipe and reads the table as confirmation. This gate closes that gap in
+        // the only place it can be closed: what actually TRAVELS with the folder.
+        if (!declaresProfilesRootNoCache(body)) {
+            errors.push(
+                `SC-05 ${variant}/${name} — la recette ne déclare pas \`no-cache\` sur ` +
+                    `\`profiles/geoleaf.config.json\`. Ce fichier porte \`data.profileVersion\`, ` +
+                    `l'empreinte qui invalide TOUT le reste du profil : on ne peut pas invalider ` +
+                    `par un jeton le fichier qui porte ce jeton. Épinglé, il fait servir profil, ` +
+                    `sections, configs de couche et bundle depuis le cache aussi longtemps que ` +
+                    `dure l'en-tête de l'intégrateur — mesuré à sept jours. Émission : ` +
+                    `scripts/lib/server-contract.cjs.`
+            );
+        }
     }
 
     // ── SC-03 (2/2) — the recipe still has a subject ─────────────────────────
@@ -224,6 +266,6 @@ if (errors.length) {
 
 console.log(
     `${C.green}✔ DEPLOY-SERVER-CONTRACT${C.x} : chaque livrable emporte sa recette serveur — ` +
-        `4 invariants tenus (présence, type MIME .mjs déclaré, triade d'en-têtes de sécurité, ` +
-        `scan non vide).\n  ${C.dim}Scanné : ${scanned}${C.x}`
+        `5 invariants tenus (présence, type MIME .mjs déclaré, triade d'en-têtes de sécurité, ` +
+        `scan non vide, racine des profils en no-cache).\n  ${C.dim}Scanné : ${scanned}${C.x}`
 );

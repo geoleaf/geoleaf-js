@@ -55,8 +55,8 @@ interface ReportStore {
  *
  * The test order is the reading order, and it is not commutative: `notDeclared`
  * trumps everything (an undeclared layer has no offline state to report), then the
- * absent marker, then the failure, and staleness only comes last — on a pull that
- * succeeded.
+ * absent marker, then the failure, then the unfinished run, and staleness only comes
+ * last — on a pull that succeeded AND finished.
  *
  * @param declared - True when the layer carries `offline.enabled`.
  * @param state - The persisted marker, or `undefined` when no pull ever happened.
@@ -73,6 +73,10 @@ export function deriveStatus(
     if (!declared) return "notDeclared";
     if (!state) return "declaredNeverPulled";
     if (state.outcome === "failed") return "pullFailed";
+    // ⚠️ BEFORE staleness, and the order is not arbitrary: an unfinished pull is a
+    // stronger fact than an old one. A run cut short an hour ago left holes in the
+    // store; calling it `pulledStale` would describe its age and hide its shape.
+    if (state.outcome === "partial") return "pulledPartial";
     if (typeof maxAgeMs === "number" && maxAgeMs > 0 && now - state.at > maxAgeMs) {
         return "pulledStale";
     }

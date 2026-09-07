@@ -13,7 +13,11 @@ import { getUINotifications } from "@geoleaf/host-runtime";
 import { confirmDialog } from "@geoleaf/host-runtime";
 import { tLabel as t } from "@geoleaf/host-runtime";
 
-import type { CacheControlState, CacheProgressDetail } from "./cache-control-types.js";
+import type {
+    CacheControlState,
+    CacheProgressDetail,
+    PullProgressDetail,
+} from "./cache-control-types.js";
 
 const ConfigGet = { get: coreConfigGet };
 
@@ -109,6 +113,40 @@ export function updateProgress(self: CacheControlState, progress: CacheProgressD
     }
 
     self._progressText.textContent = text;
+}
+
+/**
+ * Renders the SECOND phase of a download: the entities of a pulled layer.
+ *
+ * 🛑 **WHY A SECOND RENDERER AND NOT A REUSE OF {@link updateProgress}.** That one reads
+ * `downloadedSize` / `totalSize` and falls back to `current / total` — quantities in
+ * BYTES, over a set of resources whose size was estimated before the download. A feature
+ * pull knows neither: it counts entities, and its denominator may not exist at all. Feeding
+ * it into the byte renderer would print "3000 / 1 files".
+ *
+ * ⚠️ **The bar is only moved when the source served a total.** Without `numberMatched`,
+ * `total` equals `current` — a ratio of 1 that would slam the bar to 100 % at the first
+ * page and hold it there. The text still counts, because counting is true; the bar stays
+ * where the resource phase left it.
+ *
+ * @param self - Shared control state.
+ * @param progress - What the core reported for one page.
+ */
+export function updatePullProgress(self: CacheControlState, progress: PullProgressDetail): void {
+    if (!self._progressEl || !self._progressFill || !self._progressText || !progress) return;
+
+    const current = progress.current ?? 0;
+    const total = progress.total ?? 0;
+
+    if (progress.totalIsKnown && typeof progress.percentage === "number") {
+        // Already scaled to 0-100 by the emitter — displayed, never recomputed.
+        self._progressFill.style.width = `${progress.percentage}%`;
+    }
+
+    self._progressText.textContent = t("storage.download.pullProgress")
+        .replace("{0}", String(progress.layerId ?? ""))
+        .replace("{1}", String(current))
+        .replace("{2}", progress.totalIsKnown ? String(total) : "\u2026");
 }
 
 /** Updates clear progress. */

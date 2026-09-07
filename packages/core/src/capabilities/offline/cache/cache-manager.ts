@@ -19,6 +19,7 @@ import { CacheStorage } from "./storage.js";
 import { formatFileSize } from "../../../utils/general/formatters.js";
 import { IndexedDB } from "../db/indexeddb.js";
 import { evictToQuota } from "../db/eviction.js";
+import { pullDeclaredLayers, type DeclaredPullReport } from "./pull-declared-layers.js";
 
 /**
  * Default byte budget for the persistent offline layer/tile cache. Generous
@@ -72,6 +73,14 @@ interface CacheResult {
     duration?: number;
     error?: string;
     profileId?: string;
+    /**
+     * One entry per layer whose entities were pulled — see `pull-declared-layers.ts`.
+     *
+     * ⚠️ **Absent, not empty, when nothing declared a source.** A caller can then tell
+     * "this profile pulls no entities" from "the pull was attempted and wrote nothing",
+     * which is the same distinction the sync report exists for one level down.
+     */
+    pulledLayers?: DeclaredPullReport[];
 }
 
 interface EnumerateResource {
@@ -213,6 +222,24 @@ const CacheManager = {
                 resources,
                 options as { onProgress?: (p: Record<string, unknown>) => void }
             );
+
+            // ── The download's other half: the ENTITIES ─────────────────────────────
+            //
+            // 🛑 AFTER the resources and BEFORE the manifest, and both halves of that
+            // placement are decided. After, because a pull is worthless without the
+            // configuration and style files that render what it writes — and because
+            // the resource download is the one the quota pre-check above sized. Before
+            // the manifest, so a download that pulled entities is recorded as one
+            // gesture rather than two.
+            //
+            // It cannot fail the download: `pullDeclaredLayers` reports, it does not
+            // throw. Losing tens of megabytes of tiles because one OGC source answered
+            // 503 would be a worse outcome than the partial state it is protecting from.
+            const pulled = await pullDeclaredLayers(
+                profileId,
+                options.selection as { layers?: unknown } | null | undefined
+            );
+            if (pulled.length > 0) result.pulledLayers = pulled;
 
             await this._saveManifest(profileId, result);
 

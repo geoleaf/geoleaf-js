@@ -90,6 +90,7 @@ const langStorageEn: StorageLangDict = {
     "storage.warn.btn.ready": "Download the profile for offline use",
     // Download / clear (S7)
     "storage.download.inProgress": "Downloading...",
+    "storage.download.pullProgress": "Pulling \u201c{0}\u201d: {1} / {2} entities",
     "storage.download.btn": "Download profile",
     "storage.download.resources": "resources",
     "storage.download.done": "resources downloaded",

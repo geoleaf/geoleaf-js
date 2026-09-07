@@ -35,6 +35,12 @@ vi.mock("../../../src/capabilities/offline/cache/metrics.js", () => ({
 }));
 vi.mock("../../../src/capabilities/offline/db/eviction.js", () => ({ evictToQuota }));
 
+// ⚠️ `pull/layer-pull.js` and NOT `cache/pull-declared-layers.js`: the module under test
+// here is the WIRING, and mocking the wrapper would leave its selection predicate — the
+// half that decides which layers are pulled — exercised by nothing.
+const pullLayer = vi.fn();
+vi.mock("../../../src/capabilities/offline/pull/layer-pull.js", () => ({ pullLayer }));
+
 let CacheManager;
 
 beforeEach(async () => {
@@ -256,5 +262,141 @@ describe("_fallbackEstimation", () => {
         // 100K + 500K + 500K + 15K + 10K
         expect(est.totalSize).toBe((100 + 500 + 500 + 15 + 10) * 1024);
         expect(est.resourceCounts.total).toBe(5);
+    });
+});
+
+// ── R9, task 2.3 — the button finally pulls the ENTITIES ────────────────────────────────
+//
+// 🛑 WHAT THIS DESCRIBE HOLDS IS A CONNECTION, not a behaviour. `pullLayer` was complete,
+// tested against a real IndexedDB, and called by NOTHING in the application: the download
+// filled the `layers` store and left `features` empty, so a profile declaring
+// `offline.source` shipped a progress bar to 100 % and no entities. Every assertion above
+// stayed green throughout. Only a test of the wiring can see it.
+describe("cacheProfile — le rapatriement des entités déclarées (R9)", () => {
+    const layers = [
+        { id: "sites_rosario", offline: { enabled: true, source: { url: "https://b.test/ogc" } } },
+        { id: "villes_principales", offline: { enabled: true } },
+        { id: "fond_statique" },
+    ];
+
+    beforeEach(() => {
+        loadProfileConfig.mockResolvedValue({ id: "tourism" });
+        enumerateAll.mockResolvedValue([{ url: "a", type: "config" }]);
+        downloaderCacheProfile.mockResolvedValue({ ok: true });
+        saveManifest.mockResolvedValue(undefined);
+        evictToQuota.mockResolvedValue({ evicted: 0 });
+        vi.spyOn(CacheManager, "estimateProfileSize").mockResolvedValue({
+            totalSize: 1,
+            totalSizeFormatted: "1 B",
+        });
+        vi.spyOn(CacheManager, "getStorageQuota").mockResolvedValue({
+            usage: 0,
+            quota: 10,
+            percentage: 0,
+            available: 9,
+        });
+        globalThis.GeoLeaf = {
+            ...(globalThis.GeoLeaf ?? {}),
+            Config: {
+                getActiveProfile: () => ({ layers }),
+                get: (key, dflt) => (key === "data.activeProfile" ? "tourism" : dflt),
+            },
+        };
+        pullLayer.mockResolvedValue({
+            layerId: "sites_rosario",
+            fetched: 12,
+            written: 12,
+            preserved: 0,
+            skipped: 0,
+            capped: false,
+            aborted: false,
+            refused: null,
+        });
+    });
+
+    test("rapatrie la couche qui déclare une SOURCE, et elle seule", async () => {
+        const result = await CacheManager.cacheProfile("tourism");
+
+        // ⚠️ `offline.source` and not `offline.enabled`: `villes_principales` declares the
+        // second without the first, and pulling it would only ever produce a
+        // `refused: "noSource"` on a profile that is not misconfigured.
+        expect(pullLayer).toHaveBeenCalledTimes(1);
+        expect(pullLayer).toHaveBeenCalledWith("sites_rosario", {});
+        expect(result.pulledLayers).toEqual([
+            {
+                layerId: "sites_rosario",
+                written: 12,
+                capped: false,
+                aborted: false,
+                refused: null,
+            },
+        ]);
+    });
+
+    test("APRÈS les ressources — un rapatriement sans sa configuration ne rend rien", async () => {
+        const order = [];
+        downloaderCacheProfile.mockImplementation(async () => {
+            order.push("resources");
+            return { ok: true };
+        });
+        pullLayer.mockImplementation(async () => {
+            order.push("pull");
+            return { written: 0, capped: false, aborted: false, refused: null };
+        });
+        saveManifest.mockImplementation(async () => {
+            order.push("manifest");
+        });
+
+        await CacheManager.cacheProfile("tourism");
+
+        expect(order).toEqual(["resources", "pull", "manifest"]);
+    });
+
+    test("la sélection de l'utilisateur est une LISTE BLANCHE, comme pour les ressources", async () => {
+        await CacheManager.cacheProfile("tourism", {
+            selection: { layers: ["villes_principales"] },
+        });
+        expect(pullLayer).not.toHaveBeenCalled();
+
+        await CacheManager.cacheProfile("tourism", { selection: { layers: ["sites_rosario"] } });
+        expect(pullLayer).toHaveBeenCalledTimes(1);
+    });
+
+    test("une source injoignable NE FAIT PAS échouer le téléchargement", async () => {
+        // 🛑 Losing tens of megabytes of tiles because one OGC endpoint answered 503 is a
+        // worse outcome than the partial state it would be protecting from. The refusal
+        // is reported, never raised.
+        pullLayer.mockResolvedValue({
+            written: 0,
+            capped: false,
+            aborted: false,
+            refused: "sourceUnreachable",
+        });
+
+        const result = await CacheManager.cacheProfile("tourism");
+
+        expect(result.error).toBeUndefined();
+        expect(result.pulledLayers[0].refused).toBe("sourceUnreachable");
+        expect(saveManifest).toHaveBeenCalledTimes(1);
+    });
+
+    test("un profil qui n'est PAS le profil actif ne rapatrie rien", async () => {
+        // `pullLayer` resolves its layers through the ACTIVE profile, while `cacheProfile`
+        // takes an id. Pulling here would write the active profile's entities under
+        // another profile's name — right-looking marker, wrong store.
+        const result = await CacheManager.cacheProfile("autre_profil");
+
+        expect(pullLayer).not.toHaveBeenCalled();
+        expect(result.pulledLayers).toBeUndefined();
+    });
+
+    test("un profil sans aucune source ne pose PAS de compte vide", async () => {
+        globalThis.GeoLeaf.Config.getActiveProfile = () => ({ layers: [{ id: "fond_statique" }] });
+
+        const result = await CacheManager.cacheProfile("tourism");
+
+        // Absent, not `[]`: "this profile pulls no entities" and "the pull ran and wrote
+        // nothing" are opposite situations, and one field must not say both.
+        expect("pulledLayers" in result).toBe(false);
     });
 });

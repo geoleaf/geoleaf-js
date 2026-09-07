@@ -95,7 +95,9 @@ const ProfileLoader = {
      * @param profile - The base profile object (Files manifest, or inline themes/layers properties).
      * @param baseUrl - Base URL for resolving relative file paths.
      * @param profileId - Identifier used for logging and the enriched profile metadata.
-     * @param timestamp - Cache-busting timestamp appended to fetch URLs. Defaults to `Date.now()`.
+     * @param timestamp - Opaque cache token appended to every fetched URL, percent-encoded by
+     *   the caller. NOT necessarily a date: nominally a content fingerprint, so that the token
+     *   changes when the profile changes and only then. Defaults to `Date.now()`.
      * @param fetchOptions - Optional fetch configuration (headers, strictContentType).
      * @param skipBundle - When true (debug mode), ignores `profile.bundleFile` and loads the
      *   modular cascade — section edits in a deployed profile are picked up without a rebuild.
@@ -105,7 +107,7 @@ const ProfileLoader = {
         profile: ProfileWithFiles,
         baseUrl: string,
         profileId: string,
-        timestamp: number = Date.now(),
+        timestamp: string | number = Date.now(),
         fetchOptions: LoadUrlOptions = {},
         skipBundle: boolean = false
     ): Promise<Record<string, unknown>> {
@@ -117,7 +119,14 @@ const ProfileLoader = {
             Log.info(`[ProfileLoader] ${profileId} — debug mode, bundle ignored (cascade)`);
         }
         if (bundleFile && !skipBundle) {
-            return this._loadBundledProfile(profile, baseUrl, profileId, bundleFile, fetchOptions);
+            return this._loadBundledProfile(
+                profile,
+                baseUrl,
+                profileId,
+                bundleFile,
+                timestamp,
+                fetchOptions
+            );
         }
         try {
             return await this._loadModularProfileCascade(
@@ -137,14 +146,14 @@ const ProfileLoader = {
      * Fetches the themes file or returns the inline themes from the profile.
      * @param profile - The profile object.
      * @param baseUrl - Base URL for resolving the themes file path.
-     * @param timestamp - Cache-busting timestamp.
+     * @param timestamp - Opaque cache token appended to fetch URLs. Not necessarily a date.
      * @param fetchOptions - Optional fetch configuration.
      * @returns The themes record, or null if unavailable.
      */
     async _loadThemes(
         profile: ProfileWithFiles,
         baseUrl: string,
-        timestamp: number,
+        timestamp: string | number,
         fetchOptions: LoadUrlOptions
     ): Promise<Record<string, unknown> | null> {
         const Loader = ConfigLoader;
@@ -169,14 +178,14 @@ const ProfileLoader = {
      * Fetches the layers index file defined in `profile.Files.layersFile`.
      * @param profile - The profile object.
      * @param baseUrl - Base URL for resolving the layers file path.
-     * @param timestamp - Cache-busting timestamp.
+     * @param timestamp - Opaque cache token appended to fetch URLs. Not necessarily a date.
      * @param fetchOptions - Optional fetch configuration.
      * @returns The layers file record, or null if no `layersFile` is defined.
      */
     async _loadLayersFile(
         profile: ProfileWithFiles,
         baseUrl: string,
-        timestamp: number,
+        timestamp: string | number,
         fetchOptions: LoadUrlOptions
     ): Promise<Record<string, unknown> | null> {
         const Loader = ConfigLoader;
@@ -203,7 +212,7 @@ const ProfileLoader = {
      * @param profile - The profile object.
      * @param fileKey - Key in `profile.Files` pointing to the section file name.
      * @param baseUrl - Base URL for resolving the file path.
-     * @param timestamp - Cache-busting timestamp.
+     * @param timestamp - Opaque cache token appended to fetch URLs. Not necessarily a date.
      * @param fetchOptions - Optional fetch configuration.
      * @returns The section record, or null if unavailable.
      */
@@ -211,7 +220,7 @@ const ProfileLoader = {
         profile: ProfileWithFiles,
         fileKey: keyof NonNullable<ProfileWithFiles["Files"]>,
         baseUrl: string,
-        timestamp: number,
+        timestamp: string | number,
         fetchOptions: LoadUrlOptions
     ): Promise<Record<string, unknown> | null> {
         const Loader = ConfigLoader;
@@ -235,14 +244,14 @@ const ProfileLoader = {
      * and is skipped (the module simply has no file-based config).
      * @param profile - The profile object.
      * @param baseUrl - Base URL for resolving plugin config file paths.
-     * @param timestamp - Cache-busting timestamp.
+     * @param timestamp - Opaque cache token appended to fetch URLs. Not necessarily a date.
      * @param fetchOptions - Optional fetch configuration.
      * @returns The module config bag, or null when `Files.modules` is absent/empty.
      */
     async _loadModuleFiles(
         profile: ProfileWithFiles,
         baseUrl: string,
-        timestamp: number,
+        timestamp: string | number,
         fetchOptions: LoadUrlOptions
     ): Promise<Record<string, unknown> | null> {
         const Loader = ConfigLoader;
@@ -282,14 +291,14 @@ const ProfileLoader = {
      * Supports inline configs generated from template expansion (no HTTP fetch).
      * @param layersSource - Array of layer references with optional `configFile` or `inlineConfig`.
      * @param baseUrl - Base URL for resolving layer config file paths.
-     * @param timestamp - Cache-busting timestamp.
+     * @param timestamp - Opaque cache token appended to fetch URLs. Not necessarily a date.
      * @param fetchOptions - Optional fetch configuration.
      * @returns Array of layer config results with resolved config objects and layer directories.
      */
     async _loadLayerConfigs(
         layersSource: LayerRef[],
         baseUrl: string,
-        timestamp: number,
+        timestamp: string | number,
         fetchOptions: LoadUrlOptions
     ): Promise<LayerConfigResult[]> {
         const Loader = ConfigLoader;
@@ -348,6 +357,8 @@ const ProfileLoader = {
      * @param baseUrl     - Base URL for resolving the bundle file path.
      * @param profileId   - Identifier used for logging and metadata.
      * @param bundleFile  - Filename of the bundle (e.g. `"profile-bundle.json"`).
+     * @param timestamp   - Opaque cache token appended to the bundle URL, and handed to the
+     *   cascade if the bundle fails to load.
      * @param fetchOptions - Optional fetch configuration.
      * @returns The enriched profile record, equivalent to the result of `loadModularProfile()`.
      */
@@ -356,24 +367,29 @@ const ProfileLoader = {
         baseUrl: string,
         profileId: string,
         bundleFile: string,
+        timestamp: string | number,
         fetchOptions: LoadUrlOptions
     ): Promise<Record<string, unknown>> {
         if (!ConfigLoader) throw new Error("GeoLeaf._ConfigLoader not available");
         Log.info(`[ProfileLoader] ${profileId} — loading bundle: ${bundleFile}`);
         try {
             const bundle = (await ConfigLoader.fetchJson(
-                `${baseUrl}/${bundleFile}`,
+                `${baseUrl}/${bundleFile}?t=${timestamp}`,
                 fetchOptions
             )) as Record<string, unknown>;
             return this._processBundle(bundle, profile, baseUrl, profileId);
         } catch (error) {
             Log.error("[ProfileLoader] Error loading bundle, falling back to cascade:", error);
-            // Fall back to cascade on bundle load failure
+            // Fall back to cascade on bundle load failure, WITH THE SAME TOKEN. This line
+            // used to invent a `Date.now()`, which ignored both the debug mode and the
+            // caller's token: outside debug the code produced `0` everywhere except here,
+            // so a 404 on the bundle silently defeated the service worker's profile cache
+            // on every load. One token, one source.
             return this._loadModularProfileCascade(
                 profile,
                 baseUrl,
                 profileId,
-                Date.now(),
+                timestamp,
                 fetchOptions
             );
         }
@@ -460,7 +476,7 @@ const ProfileLoader = {
         profile: ProfileWithFiles,
         baseUrl: string,
         profileId: string,
-        timestamp: number,
+        timestamp: string | number,
         fetchOptions: LoadUrlOptions
     ): Promise<Record<string, unknown>> {
         const [

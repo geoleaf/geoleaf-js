@@ -410,6 +410,13 @@ const SCRIPTS_ALLOWLIST = new Set([
     // "declaring the type" means. One corpus, two readers (build-deploy +
     // the gate) — `boot-assets.cjs`'s pattern.
     "server-contract.cjs",
+    // lib/ — the cache token of a deployed profiles tree, written into each
+    // variant's root config by build-deploy.cjs (step 6c). Lives here rather
+    // than inline because a guard proves it on a temp tree, without a
+    // `deploy/` on disk — the split `profile-harvest.guard.test.ts` already
+    // documents. Excludes the file it is written into: a token cannot
+    // measure the file that carries it.
+    "profile-fingerprint.cjs",
     // lib/ — removal of the PROOF-backend bindings (`qgis.geoleaf.dev`)
     // from shippable variants, guarded by DNS-05. ⚠️ Names the dev hosts,
     // NEVER a supplier allowlist: that would silently remove a client

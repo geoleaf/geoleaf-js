@@ -100,7 +100,7 @@ function _resolveProfileStep1(
     isPoiMappingEnabled: boolean,
     Loader: typeof ConfigLoader,
     baseUrl: string,
-    timestamp: number,
+    timestamp: string | number,
     fetchOptions: LoadUrlOptions,
     self: typeof ProfileModule
 ): Promise<ProfileFetchResult> {
@@ -181,7 +181,7 @@ function _resolveProfileStep2(
 function _fetchAndResolveProfile(
     Loader: typeof ConfigLoader,
     baseUrl: string,
-    timestamp: number,
+    timestamp: string | number,
     fetchOptions: LoadUrlOptions,
     isPoiMappingEnabled: boolean,
     self: typeof ProfileModule
@@ -374,8 +374,31 @@ const ProfileModule = {
             profileId,
             baseUrl,
         });
+        // ── The cache token of every profile resource ────────────────────────────────
+        //
+        // Outside debug mode this used to be the literal `0` — a FIXED URL. Measured on a
+        // deployment whose server sends `Cache-Control: max-age=604800` on its static
+        // files: the profile and every section it points to stayed pinned for a week in an
+        // already-open browser. A setting written server-side was served correctly and
+        // stayed invisible in the page; no cache flush and no server-side regeneration
+        // changed it, and only a private window showed the truth. The only lever was
+        // `debug: true`, which is a debugging mode and not an answer.
+        //
+        // ⚠️ The token is percent-encoded HERE, once. It travels into a query string on
+        // eight sites, and a fingerprint carrying `&`, `#` or a space would break the URL on
+        // every one of them — encoding at the source keeps each site a plain interpolation
+        // instead of eight occasions to forget it. `Date.now()` and `0` are numbers and pass
+        // through untouched.
         const isDebug = !!(this._config as Record<string, unknown>)?.debug;
-        const timestamp = isDebug ? Date.now() : 0;
+        const declared = (dataCfg as { profileVersion?: string | number | null }).profileVersion;
+        // `null` falls back like `undefined`: the store is populated programmatically by the
+        // embedding application, which bypasses schema validation — a `x || null` upstream
+        // would otherwise stringify into the literal token `"null"`.
+        const timestamp: string | number = isDebug
+            ? Date.now()
+            : declared === undefined || declared === null
+              ? 0
+              : encodeURIComponent(String(declared));
         return _fetchAndResolveProfile(
             Loader,
             baseUrl,
@@ -389,7 +412,7 @@ const ProfileModule = {
     _loadModularProfile(
         profile: Record<string, unknown>,
         baseUrl: string,
-        timestamp: number,
+        timestamp: string | number,
         fetchOptions: LoadUrlOptions
     ): Promise<GeoLeafConfig> {
         const profileId = this._config!.data?.activeProfile as string;

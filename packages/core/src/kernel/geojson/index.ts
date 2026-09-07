@@ -37,5 +37,20 @@ export { bindFeatureInteractionEvents } from "./feature-interaction.js";
  * `loader/single-layer.ts` already imports `fetchOgcApiFeatures` **statically**,
  * so `ogc-api-loader.js` has long been in the geojson chunk's eager closure. This
  * re-export adds no module to it.
+ *
+ * `streamOgcApiFeatures` joined it for the chunked pull (R9): the pull consumes the
+ * collection page by page instead of materialising it, so it needs the walk, not the
+ * accumulator. Same module, same chunk, same zero cost.
  */
-export { fetchOgcApiFeatures } from "./loader/ogc-api-loader.js";
+export { fetchOgcApiFeatures, streamOgcApiFeatures } from "./loader/ogc-api-loader.js";
+export type { OgcApiPage, OgcApiStreamOutcome } from "./loader/ogc-api-loader.js";
+
+/**
+ * Truncation notice — mediated for the same reason, and for the same importer.
+ *
+ * The offline pull is the only caller of `announceTruncation` outside `kernel/`, and it
+ * reaches it through the dynamic import above rather than a static one: the notice is
+ * needed at pull time, and putting it in the offline chunk's eager graph would undo what
+ * that dynamic import buys.
+ */
+export { announceTruncation, resetTruncationNotices } from "./loader/truncation-notice.js";

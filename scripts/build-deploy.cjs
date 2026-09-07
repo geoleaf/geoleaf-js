@@ -114,6 +114,7 @@ const { spawnSync } = require("node:child_process");
 // WEIGH the same set. A second extractor would have diverged, and whichever
 // of the two goes unmaintained exits green measuring something else. One
 // corpus, two consumers — `lib/tsdoc-examples.cjs`'s pattern.
+const { profileContentFingerprint } = require("./lib/profile-fingerprint.cjs");
 const {
     APP_SHELL_DEPLOY_PATH,
     ROOT_CONFIG_DEPLOY_PATH,
@@ -1700,6 +1701,26 @@ function main() {
             // `activeProfile`, because it describes WHICH datasets exist — not how the
             // switcher looks, which is `modules.profile-switcher`.
             if (cfgJson.data) cfgJson.data.availableProfiles = availableProfiles;
+            // Content fingerprint of everything just copied under `profiles/`. It becomes the
+            // `?t=` of every profile resource request — profile, sections, layer configs AND
+            // the bundle. Without it the token is the literal `0`, a FIXED URL: a server
+            // sending a long `max-age` then pins the whole profile in an already-open browser
+            // for the lifetime of that header, and no server-side flush undoes it.
+            //
+            // 🛑 Computed HERE and not earlier: it must cover the bundles written at 6b, and
+            // this is the first point where the tree is complete. It excludes the file being
+            // written — hashing it would make the input depend on the output — which is why
+            // that one file must be served `no-cache` (SC-05, carried by both recipes).
+            //
+            // ⚠️ A CONTENT hash, not a build id, and the difference is the point: a rebuild at
+            // identical sources yields the same token, so clients keep their cache. A clock
+            // here would defeat the browser cache AND the service worker on every deployment —
+            // the very cost this mechanism exists to avoid.
+            if (cfgJson.data) {
+                cfgJson.data.profileVersion = profileContentFingerprint(
+                    path.join(outDir, "profiles")
+                );
+            }
             ensureDir(path.join(outDir, "profiles"));
             fs.writeFileSync(
                 path.join(outDir, ROOT_CONFIG_DEPLOY_PATH),
@@ -1707,7 +1728,9 @@ function main() {
                 "utf-8"
             );
             log.ok(
-                `${ROOT_CONFIG_DEPLOY_PATH} (profilesBasePath → ./profiles, ${availableProfiles.length} profils récoltés)`
+                `${ROOT_CONFIG_DEPLOY_PATH} (profilesBasePath → ./profiles, ` +
+                    `${availableProfiles.length} profils récoltés, ` +
+                    `empreinte ${cfgJson.data ? cfgJson.data.profileVersion : "—"})`
             );
         } else {
             log.err("profiles/geoleaf.config.json not found!");

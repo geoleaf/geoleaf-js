@@ -824,6 +824,7 @@ export const EXPECTED_FACADE_MEMBERS = {
         "closePane",
         "closePanel",
         "destroyDesktopPanel",
+        "destroyMobileToolbar",
         "getCurrentTheme",
         "getModuleStatus",
         "getOpenPanel",

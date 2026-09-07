@@ -93,6 +93,7 @@ const langStorageDe: StorageLangDict = {
     "storage.warn.btn.ready": "Profil für die Offline-Nutzung herunterladen",
     // Download / clear (S7)
     "storage.download.inProgress": "Wird heruntergeladen...",
+    "storage.download.pullProgress": "Abruf von \u201e{0}\u201c: {1} / {2} Objekte",
     "storage.download.btn": "Profil herunterladen",
     "storage.download.resources": "Ressourcen",
     "storage.download.done": "Ressourcen heruntergeladen",

@@ -1,0 +1,38 @@
+{
+    "schemaVersion": 2,
+    "lot": "R9-rapatriement",
+    "scope": [
+        "packages/core/src/capabilities/offline/cache/pull-declared-layers.ts",
+        "packages/core/src/kernel/geojson/loader/truncation-notice.ts"
+    ],
+    "verdicts": {
+        "packages/core/src/capabilities/offline/cache/pull-declared-layers.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "La moitié du téléchargement qui ne rapatriait rien — les entités des couches sélectionnées déclarant `offline.source`",
+            "confidence": "haute",
+            "rationale": "Règle ➎ : aucun déclencheur. 140 lignes, 1 consommateur (`cache/cache-manager.ts`, dans `cacheProfile`). Le nom dit ce qu'il fait et sur quel critère il choisit ; l'emplacement suit son unique appelant, sous `cache/`, parce que son sujet est le TÉLÉCHARGEMENT — pas le pull, qui reste sous `pull/`. Extrait de `cache-manager.ts` plutôt qu'inline : ce dernier est déjà l'orchestrateur documenté « lightweight », et sa méthode `cacheProfile` porte le pré-contrôle de quota, l'énumération, le téléchargement, le manifeste et l'éviction. Sa raison d'être est que `pullLayer` n'avait AUCUN appelant de production : le contrat du plugin ne l'exposait pas, et l'interface savait déjà purger le magasin `features` en s'appuyant sur un re-rapatriement inexistant."
+        },
+        "packages/core/src/kernel/geojson/loader/truncation-notice.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Unique autorité qui DIT à l'utilisateur qu'une couche est servie tronquée — une fois par couche et par session",
+            "confidence": "haute",
+            "rationale": "Règle ➎ : aucun déclencheur. 105 lignes, 2 consommateurs — `loader/single-layer.ts` (chemin d'affichage) et `capabilities/offline/pull/layer-pull.ts` (chemin de rapatriement, par le baril `kernel/geojson/index.ts`, R.8). Voisin de `ogc-api-loader.ts`, qui produit le membre `truncated` qu'il consomme ; l'emplacement est celui de son producteur, pas d'un de ses deux lecteurs. Un fichier plutôt qu'un appel dupliqué chez chacun : la déduplication « une fois par couche » est un état de module, et deux copies en tiendraient deux. Patron explicite de `kernel/storage/eviction-notice.ts`, dont il reprend aussi le choix de `notifyPrimitive` sur `GeoLeaf.UI.notify`."
+        }
+    }
+}

@@ -14,6 +14,8 @@ const lang_en: LangDict = {
     "toast.geoloc.error.timeout": "Geolocation timed out",
     "toast.init.loading": "Loading data, please wait.",
     "toast.profile.loaded": "{0} loaded",
+    "toast.layer.truncated.known": "{0}: {1} entities shown out of {2} — the layer is truncated.",
+    "toast.layer.truncated.unknown": "{0}: {1} entities shown, the layer holds more.",
     "toast.theme.applied": 'Theme "{0}" loaded ({1} visible layers)',
     "aria.geoloc.toggle": "Geolocation ON/OFF",
     "aria.geoloc.toggle_label": "Enable/Disable GPS tracking",

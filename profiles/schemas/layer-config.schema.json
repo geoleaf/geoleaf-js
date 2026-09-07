@@ -487,6 +487,9 @@
                 "^_comment": {}
             },
             "required": ["enabled"],
+            "$comment": "`maxFeatures` est requis DÈS QUE `enabled` est vrai, et le motif n'est pas la rigueur : sans la clé, le chargeur retombe sur son plafond par défaut de 10 000 (`kernel/geojson/loader/ogc-api-loader.ts`, DEFAULT_MAX_FEATURES) et une couche de 30 000 entités est SILENCIEUSEMENT servie au tiers. Ce n'est pas un défaut de configuration visible : la carte est complète à l'œil. Exiger la déclaration force l'intégrateur à trancher le plafond au moment où il active le hors-ligne, plutôt qu'à le subir. Ancré sur `enabled` et non sur `source` délibérément — une couche qui lit le magasin local subit la même troncature que celle qui le remplit. ⚠️ Les deux couches hors-ligne livrées déclarent déjà la clé : cette règle sort VERTE sur le dépôt, donc son cas négatif ne vit que dans `packages/core/__tests__/config/offline-maxfeatures-opposability.test.js`.",
+            "if": { "properties": { "enabled": { "const": true } }, "required": ["enabled"] },
+            "then": { "required": ["maxFeatures"] },
             "properties": {
                 "enabled": {
                     "type": "boolean",
@@ -495,7 +498,7 @@
                 "maxFeatures": {
                     "type": "integer",
                     "minimum": 1,
-                    "description": "Hard cap on entities pulled for this layer (LayerSyncConfig.maxFeatures). Enforced by the pull as a HARD truncation: the OGC loader stops only after accumulating a whole page and never truncates, so without this cut a cap of 15 with a server page of 10 would store 20."
+                    "description": "Hard cap on entities pulled for this layer (LayerSyncConfig.maxFeatures), and REQUIRED as soon as `enabled` is true. Without it the OGC loader falls back to its own default of 10 000 and a larger layer is truncated in silence. ⚠️ This description claimed until R9 that the loader \"stops only after accumulating a whole page and never truncates\" — true until 19/08/2026, when the exact cut moved into the loader, which now cuts at the bound and reports it through the collection's `truncated` member. The pull no longer cuts anything itself; it reads that member."
                 },
                 "maxAgeMs": {
                     "type": "integer",

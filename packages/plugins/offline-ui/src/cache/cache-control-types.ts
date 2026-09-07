@@ -21,6 +21,15 @@ export const CACHE_EVENTS = {
     CANCELLED: "geoleaf:cache:cancelled",
     PROGRESS: "geoleaf:cache:progress",
     CLEAR_PROGRESS: "geoleaf:cache:clear-progress",
+    /**
+     * Second phase of one download: the ENTITIES of the layers declaring a pull source.
+     *
+     * 🛑 A distinct name from `PROGRESS`, and the motive is in the core: the resource
+     * download reports through a module-level `ProgressTracker` singleton that has
+     * already emitted its 100 % by the time the pull starts. Sharing the event would
+     * mean sharing that state. Two phases, two signals, one bar.
+     */
+    PULL_PROGRESS: "geoleaf:offline:pull-progress",
     PROFILE_LOADED: "geoleaf:profile:loaded",
 } as const;
 
@@ -48,6 +57,23 @@ export interface CacheProgressDetail {
     totalSize?: number;
     speed?: number;
     eta?: number;
+}
+
+/**
+ * Payload of a feature-pull progress event — mirrors the core's
+ * `GeoLeafOfflinePullProgressDetail`.
+ *
+ * ⚠️ **`totalIsKnown` is not decoration.** OGC API Features carries `numberMatched`, but a
+ * server omitting it leaves the loader with nothing but its own running count, and `total`
+ * then equals `current`. Rendering a percentage from that would show a bar reaching 100 %
+ * once per page — worse than a bar that never claims a fraction.
+ */
+export interface PullProgressDetail {
+    layerId?: string;
+    current?: number;
+    total?: number;
+    totalIsKnown?: boolean;
+    percentage?: number;
 }
 
 /** Shared state object passed to every sub-module function. */
@@ -82,6 +108,7 @@ export interface CacheControlState {
     _attachEventListeners(): void;
     _updateStatus(): Promise<void>;
     _updateProgress(progress: CacheProgressDetail): void;
+    _updatePullProgress(progress: PullProgressDetail): void;
     _updateClearProgress(progress: CacheProgressDetail): void;
     _populateLayerSelection(): Promise<void>;
     _cleanup(): void;

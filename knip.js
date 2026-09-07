@@ -326,6 +326,25 @@ const workspaces = {
             // or push toward re-declaring `sharp` — which would reopen both
             // defects at once.
             "sharp",
+            // ⚠️ `tsx` is imported by nothing, and that is structural: it is
+            // injected into `NODE_OPTIONS` by
+            // `build-config/vitest/ensure-tsx-node-options.mjs`. A command-line
+            // option is not a module-graph edge, so knip CANNOT see it — the same
+            // blindness `verify-implicit-deps.cjs` was written for, and its header
+            // names knip explicitly.
+            //
+            // It is declared AT THE ROOT to satisfy IMPL-02 ("declared =
+            // executed", an identity of PATH, not of version). Measured on
+            // 2026-09-07: without the root declaration, `core` and `build-config`
+            // each receive a NESTED copy as soon as their range outruns the
+            // hoisted one, execution comes from `build-config`'s, and `core`'s
+            // declaration goes decorative — the happy-dom class that made IMPL
+            // exist.
+            //
+            // 🛑 Removing this line "cleans" nothing: it turns `dead-code` red, or
+            // pushes toward dropping the root declaration, which reopens IMPL-02
+            // at the next `tsx` bump.
+            "tsx",
             // ⚠️ THESE FIVE ARE IMPORTED BY NOTHING, AND THAT IS THEIR WHOLE
             // PURPOSE (2026-08-09).
             //

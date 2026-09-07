@@ -395,6 +395,9 @@ function _appendRegistryIcons(scroll: HTMLElement): void {
 export function createToolbarDom(): HTMLElement {
     const wrapper = document.createElement("div");
     wrapper.className = "gl-map-toolbar-wrapper";
+    // Held for the teardown and for the idempotence guard — this is the node the
+    // orchestrator appends to `glMain`, and the one a host's DOM contract names.
+    domState.toolbarWrapper = wrapper;
 
     const navUp = document.createElement("button");
     navUp.type = "button";
@@ -443,6 +446,10 @@ export function createToolbarDom(): HTMLElement {
     if (typeof ResizeObserver !== "undefined") {
         const ro = new ResizeObserver(() => updateNavVisibility());
         ro.observe(scroll);
+        // Held so the teardown can disconnect it. An observer whose only reference is
+        // this local keeps observing for the life of the page — and a second init adds
+        // a second one, because nothing can reach the first to stop it.
+        domState.resizeObserver = ro;
     }
 
     // Roving tabindex for keyboard navigation within role=toolbar (1.5.5)

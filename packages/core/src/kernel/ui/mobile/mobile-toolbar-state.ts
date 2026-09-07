@@ -79,6 +79,11 @@ export function getDefaultSheetTitles(): Record<string, string> {
 export const domState = {
     overlay: null as HTMLElement | null,
     toolbar: null as HTMLElement | null,
+    // The node actually appended to `glMain` — `toolbar` is the element INSIDE it.
+    // Held because the teardown must remove what init appended, and because the
+    // idempotence guard tests ownership (`parentElement === glMain`) rather than
+    // presence in the document: a shell mounted in ANOTHER `.gl-main` must rebuild.
+    toolbarWrapper: null as HTMLElement | null,
     filterGroup: null as HTMLElement | null,
     filterBtn: null as HTMLElement | null,
     resetBtn: null as HTMLElement | null,
@@ -101,4 +106,13 @@ export const domState = {
     // sheet restore
     restoreOnClose: [] as RestoreEntry[],
     lastFocusedElement: null as HTMLElement | null,
+    // ── Teardown handles ─────────────────────────────────────────────────────
+    // Both exist so `destroyMobileToolbar()` never has to RE-DERIVE its targets.
+    // 🛑 `geolocTarget` in particular: the listener sits on the MAP container, and
+    // `Core.destroy()` destroys the adapter BEFORE running the teardowns — calling
+    // `map.getContainer()` at that point throws (the adapter's readiness guard, see
+    // `kernel/map/facade.ts`), and `runLifecycleTeardowns()` only warns on a throw.
+    // The teardown would leak the listener AND abort halfway, with nothing going red.
+    resizeObserver: null as ResizeObserver | null,
+    geolocTarget: null as HTMLElement | null,
 };

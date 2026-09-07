@@ -326,7 +326,7 @@ import { _UITheme } from "ui/theme.ts"; // use GeoLeaf.UI.applyTheme()
 | **Theme**         | `getCurrentTheme()`, `applyTheme()`, `toggleTheme()`, `initThemeToggle()`, `initAutoTheme()` | This README                          |
 | **Controls**      | `initGeolocationControl()`, `initThemeToggleControl()`                                       | This README                          |
 | **Notifications** | `notify()`, `Notifications.success()`, `.error()`, `.warning()`, `.info()`, `.clearAll()`    | This README                          |
-| **Mobile**        | `initMobileToolbar()`                                                                        | This README                          |
+| **Mobile**        | `initMobileToolbar()`, `destroyMobileToolbar()`                                              | This README                          |
 | **Init**          | `init()`                                                                                     | This README                          |
 | ~~**Filters**~~   | moved — see `GeoLeaf.Filter` (`filter` capability)                                           | [API_REFERENCE](../API_REFERENCE.md) |
 | ~~**Content**~~   | moved — see the `feature-info` capability                                                    | [API_REFERENCE](../API_REFERENCE.md) |

@@ -93,6 +93,7 @@ const langStorageEs: StorageLangDict = {
     "storage.warn.btn.ready": "Descargar el perfil para uso sin conexión",
     // Download / clear (S7)
     "storage.download.inProgress": "Descargando...",
+    "storage.download.pullProgress": "Descargando «{0}»: {1} / {2} entidades",
     "storage.download.btn": "Descargar perfil",
     "storage.download.resources": "recursos",
     "storage.download.done": "recursos descargados",
