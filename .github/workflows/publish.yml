@@ -113,31 +113,42 @@ jobs:
                       exit 1
                   fi
 
-            # 🛑 `npm` ÉPINGLÉ, et par DÉRIVATION plutôt que par recopie. Le trusted publishing
-            # exige npm ≥ 11.5.1 (docs.npmjs.com/trusted-publishers) là où Node 22 embarque
-            # 10.9.x — d'où cette montée. Elle était `npm@latest` jusqu'au 04/09/2026 : une
-            # version non épinglée, installée globalement sous `id-token: write`, qui valait
-            # déjà 12.0.2 alors que le dépôt déclare `npm@11.6.2` dans `packageManager`.
-            # Lire le champ à l'exécution rend la divergence IMPOSSIBLE ; l'écrire ici en
-            # créerait une seconde source qui se périmerait au premier bump.
-            - name: npm épinglé sur `packageManager` (requis ≥ 11.5.1)
+            # 🛑 `npm` ÉPINGLÉ sur une version DÉDIÉE à la publication — et NON plus dérivé de
+            # `packageManager`, parce que cette dérivation a cassé l'OIDC. Mesuré le 08/09/2026.
+            #
+            # Le motif du 04/09 était juste — ne pas installer `npm@latest` sous `id-token:
+            # write` — mais son moyen a RÉTROGRADÉ npm : `packageManager` vaut `npm@11.6.2`
+            # (posé en février, jamais remonté) là où `npm@latest` valait déjà 12.0.2. Or les
+            # trois publications OIDC réussies de ce dépôt — 15/08 (editor, measure, print,
+            # table) et 01/09 (file-import) — ont toutes tourné sous npm 12, et leur log porte
+            # « Signed provenance statement … from GitHub Actions ». Le PREMIER run sous
+            # 11.6.2, le 08/09, n'a pas même tenté l'OIDC : `PUT` non authentifié, `E404`, deux
+            # fois, depuis l'atelier puis depuis le public.
+            #
+            # ⚠️ Personne ne l'avait vu, et la raison vaut d'être écrite : `@geoleaf/core` est
+            # la PREMIÈRE étape de publication, et il a été SAUTÉ dans tous les runs antérieurs,
+            # déjà au registre à la version du moment. Le seuil « ≥ 11.5.1 » de la doc npm n'a
+            # donc jamais été éprouvé ici — il est nécessaire, il n'est pas suffisant.
+            #
+            # ⚠️ Une SECONDE source de version est assumée, contre l'argument du 04/09.
+            # `packageManager` gouverne le CI et le lockfile du dépôt entier ; la publication a
+            # une exigence propre — le trusted publishing à permissions granulaires est une
+            # fonctionnalité npm 12 — qui ne doit pas commander les 105 autres gates. Le
+            # plancher ci-dessous refuse tout majeur < 12 : cette source ne peut donc pas
+            # dériver vers le bas en silence, ce qui est exactement ce qui vient d'arriver.
+            - name: npm épinglé pour la publication (npm 12 — trusted publishing)
+              env:
+                  NPM_PUBLISH_VERSION: "12.0.2"
               run: |
                   set -euo pipefail
-                  pm=$(node -p "require('./package.json').packageManager || ''")
-                  case "$pm" in
-                      npm@[0-9]*) ;;
-                      *) echo "::error::\`packageManager\` vaut « $pm » — attendu \`npm@<semver>\`."; exit 1 ;;
-                  esac
-                  ver=${pm#npm@}
+                  npm install -g "npm@${NPM_PUBLISH_VERSION}"
+                  ver=$(npm --version)
                   major=${ver%%.*}
-                  reste=${ver#*.}
-                  minor=${reste%%.*}
-                  if [ "$major" -lt 11 ] || { [ "$major" -eq 11 ] && [ "$minor" -lt 5 ]; }; then
-                      echo "::error::npm $ver < 11.5.1 — le trusted publishing exige 11.5.1 ; le run mourrait sur un EOTP qu'aucun runner ne peut satisfaire."
+                  if [ "$major" -lt 12 ]; then
+                      echo "::error::npm $ver — majeur < 12. Le trusted publishing ne s'active pas : le PUT partirait NON AUTHENTIFIÉ et npm rendrait un E404 (mesuré le 08/09/2026, deux fois)."
                       exit 1
                   fi
-                  npm install -g "$pm"
-                  npm --version
+                  echo "npm $ver
 
             - run: npm ci
 
@@ -168,17 +179,20 @@ jobs:
                   registry-url: "https://registry.npmjs.org"
                   cache: "npm"
 
-            # 🔗 Même épinglage dérivé que dans `verify` — le motif y est écrit une fois.
-            - name: npm épinglé sur `packageManager` (requis ≥ 11.5.1)
+            # 🔗 Même épinglage que dans `verify` — le motif y est écrit une fois.
+            - name: npm épinglé pour la publication (npm 12 — trusted publishing)
+              env:
+                  NPM_PUBLISH_VERSION: "12.0.2"
               run: |
                   set -euo pipefail
-                  pm=$(node -p "require('./package.json').packageManager || ''")
-                  case "$pm" in
-                      npm@[0-9]*) ;;
-                      *) echo "::error::\`packageManager\` vaut « $pm » — attendu \`npm@<semver>\`."; exit 1 ;;
-                  esac
-                  npm install -g "$pm"
-                  npm --version
+                  npm install -g "npm@${NPM_PUBLISH_VERSION}"
+                  ver=$(npm --version)
+                  major=${ver%%.*}
+                  if [ "$major" -lt 12 ]; then
+                      echo "::error::npm $ver — majeur < 12. Le trusted publishing ne s'active pas : le PUT partirait NON AUTHENTIFIÉ et npm rendrait un E404 (mesuré le 08/09/2026, deux fois)."
+                      exit 1
+                  fi
+                  echo "npm $ver
 
             - run: npm ci
 
