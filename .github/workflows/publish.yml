@@ -148,7 +148,7 @@ jobs:
                       echo "::error::npm $ver — majeur < 12. Le trusted publishing ne s'active pas : le PUT partirait NON AUTHENTIFIÉ et npm rendrait un E404 (mesuré le 08/09/2026, deux fois)."
                       exit 1
                   fi
-                  echo "npm $ver
+                  echo "npm $ver"
 
             - run: npm ci
 
@@ -192,7 +192,7 @@ jobs:
                       echo "::error::npm $ver — majeur < 12. Le trusted publishing ne s'active pas : le PUT partirait NON AUTHENTIFIÉ et npm rendrait un E404 (mesuré le 08/09/2026, deux fois)."
                       exit 1
                   fi
-                  echo "npm $ver
+                  echo "npm $ver"
 
             - run: npm ci
 
