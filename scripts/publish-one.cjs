@@ -73,10 +73,24 @@ function main() {
     // (see there).
     const { version } = pkg.manifest;
 
-    if (!dryRun && alreadyPublished(name, version)) {
+    // 🛑 The skip applies to the DRY RUN TOO, and the `!dryRun` that used to stand here
+    // is what made the rehearsal unfaithful on the one point it exists to rehearse.
+    // `npm publish --dry-run` still asks the registry, and still answers `E403 You
+    // cannot publish over the previously published versions` — so a package already at
+    // this version turned the rehearsal RED while the real publication would have
+    // skipped it and carried on. Seen on run 34173334174 (2026-09-08), which died on
+    // `@geoleaf-plugins/file-import@1.0.5`, at parity with the registry.
+    //
+    // ⚠️ What the old form ALSO cost, and it is worse than the red: the skip branch was
+    // never exercised by a rehearsal, so nothing could catch it going wrong — which is
+    // how it stayed broken from its own writing until 2026-08-15 (see the comment above
+    // on `pkg.manifest`).
+    if (alreadyPublished(name, version)) {
         // ⚠️ Skipped, NOT published — and the output must say so, else a green run
         // reads as a publication that did not happen.
-        console.log(`${C.y}↷ ${name}@${version} — DÉJÀ au registre, sauté (reprise de run).${C.x}`);
+        console.log(
+            `${C.y}↷ ${name}@${version} — DÉJÀ au registre, sauté${dryRun ? " (répétition à blanc)" : " (reprise de run)"}.${C.x}`
+        );
         process.exit(0);
     }
 

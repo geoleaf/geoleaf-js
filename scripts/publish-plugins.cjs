@@ -148,8 +148,15 @@ for (const workspace of PUBLISHED_PLUGINS) {
     // — precisely the scenario this check exists to avoid. The guard had never been
     // seen biting, and it did not bite.
     const version = registry.byName(workspace).manifest.version;
-    if (!dryRun && alreadyPublished(workspace, version)) {
-        console.log(`\n↷ ${workspace}@${version} — DÉJÀ au registre, sauté (reprise de run).`);
+    // 🛑 Applies to the DRY RUN TOO — see the twin comment in `publish-one.cjs`. The
+    // `!dryRun` that used to stand here made the rehearsal red on a package at parity
+    // with the registry (`npm publish --dry-run` still gets `E403`), while the real
+    // publication would have skipped it. Run 34173334174 died exactly there.
+    if (alreadyPublished(workspace, version)) {
+        console.log(
+            `\n↷ ${workspace}@${version} — DÉJÀ au registre, sauté` +
+                `${dryRun ? " (répétition à blanc)" : " (reprise de run)"}.`
+        );
         skipped++;
         continue;
     }
