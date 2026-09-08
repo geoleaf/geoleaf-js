@@ -3,6 +3,15 @@
     "version": "1.0.0",
     "type": "module",
     "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/geoleaf/geoleaf-js.git",
+        "directory": "packages/plugins/navigation"
+    },
+    "homepage": "https://geoleaf.dev",
+    "bugs": {
+        "url": "https://github.com/geoleaf/geoleaf-js/issues"
+    },
     "description": "GeoLeaf navigation plugin",
     "main": "dist/geoleaf-navigation.plugin.js",
     "module": "dist/geoleaf-navigation.plugin.js",

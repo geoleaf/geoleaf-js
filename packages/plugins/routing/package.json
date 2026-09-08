@@ -3,6 +3,15 @@
     "version": "1.0.1",
     "type": "module",
     "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/geoleaf/geoleaf-js.git",
+        "directory": "packages/plugins/routing"
+    },
+    "homepage": "https://geoleaf.dev",
+    "bugs": {
+        "url": "https://github.com/geoleaf/geoleaf-js/issues"
+    },
     "description": "GeoLeaf routing plugin",
     "main": "dist/geoleaf-routing.plugin.js",
     "module": "dist/geoleaf-routing.plugin.js",

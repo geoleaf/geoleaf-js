@@ -3,6 +3,15 @@
     "version": "1.0.1",
     "type": "module",
     "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/geoleaf/geoleaf-js.git",
+        "directory": "packages/plugins/position-share"
+    },
+    "homepage": "https://geoleaf.dev",
+    "bugs": {
+        "url": "https://github.com/geoleaf/geoleaf-js/issues"
+    },
     "description": "GeoLeaf Position Share Plugin — emits the user's GPS position over a pluggable transport, and displays the other users",
     "geoleaf": {
         "bundle": "geoleaf-position-share.plugin.js",
