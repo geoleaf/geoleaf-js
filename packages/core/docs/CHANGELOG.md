@@ -13,6 +13,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ## [Unreleased]
 
+_Nothing yet._
+
+---
+
+## [3.2.0] - 2026-09-08
+
 ### Fixed — the offline drain no longer loses, orphans or condemns a field capture
 
 Four defects on the same nominal path — a capture, a network cut, a return of network — each of
@@ -76,6 +82,19 @@ backoff landed. It now reports what was walked past.
 
 ### Added
 
+- `GeoLeaf.UI.destroyMobileToolbar()` — the mobile pill had no teardown, and therefore no path back.
+  `Core.reattach()` documented a rebuild recipe for `#gl-right-panel` only, while writing "and its
+  siblings": those siblings are four nodes `initMobileToolbar` appends to the same shell, and a host
+  following the recipe repaired the right half and broke the left. There are now **two** recipes,
+  one per surface — `destroyDesktopPanel()` → `initDesktopPanel()` → `activateDesktopPanel()` for
+  the panel, `destroyMobileToolbar()` → `initMobileToolbar()` for the pill.
+  🛑 **Call either destroy BEFORE dropping the shell**: both hand back nodes they had moved
+  elsewhere — the mobile sheet holds the filter panel, the legend and the layer manager while open —
+  and they can only hand them back to a parent that still exists.
+- `initMobileToolbar()` is now idempotent per shell. The guard tests **ownership**
+  (`parentElement === glMain`), not presence in the document: a host that mounts a new view before
+  unmounting the old leaves two live shells, and a presence guard would find the old pill, do
+  nothing, and leave the new view without a toolbar.
 - `GeoLeaf.Connector.logout()` — ending a session was impossible: the surface carried `configure`
   and `openLoginModal` only, and a device handed back kept a valid Bearer until expiry. It is a
   no-op in `getToken` mode, where the host owns the token and the plugin holds no copy.

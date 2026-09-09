@@ -4,7 +4,7 @@ title: navigation — le guidage temps réel, et les trois adaptateurs qui le re
 plugin_id: navigation
 package: "@geoleaf-plugins/navigation"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: b4cc844b1
+verifie_contre: 8bed714f2
 date: 27 août 2026
 ---
 

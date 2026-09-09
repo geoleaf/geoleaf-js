@@ -4,7 +4,7 @@ title: position-share — la position du terrain qui remonte, et celle des autre
 plugin_id: position-share
 package: "@geoleaf-plugins/position-share"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 96519fa3e
+verifie_contre: 8bed714f2
 date: 31 août 2026
 ---
 
