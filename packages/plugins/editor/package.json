@@ -50,7 +50,7 @@
     "dependencies": {
         "@geoleaf/field-renderer": "^1.0.0",
         "@types/geojson": "^7946.0.16",
-        "terra-draw": "^1.32.2",
+        "terra-draw": "^1.33.0",
         "terra-draw-maplibre-gl-adapter": "^1.4.1"
     },
     "peerDependencies": {
