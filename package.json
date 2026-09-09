@@ -226,7 +226,7 @@
         "maplibre-gl": "^6.7.0",
         "nyc": "^18.0.0",
         "postcss": "^8.5.28",
-        "postcss-import": "^16.1.1",
+        "postcss-import": "^17.0.0",
         "prettier": "^3.9.6",
         "purgecss": "^8.0.0",
         "rollup": "^4.63.1",
