@@ -56,7 +56,9 @@ const cogErrors = (arr) => arr.filter((t) => /cog|geotiff|tiff/i.test(t) && !SW_
  * geotiff.js (fromUrl, allowFullFile:false) exercises its real partial-read path.
  */
 async function routeCog(page) {
-    await page.route("**/sample-cog.tif", (route) => {
+    // Trailing `*`: a string glob is anchored, so any query string would let the
+    // request escape to the network. Gated by `scripts/check-e2e-route-glob.cjs`.
+    await page.route("**/sample-cog.tif*", (route) => {
         const range = route.request().headers()["range"];
         const total = COG_BYTES.length;
         const baseHeaders = {

@@ -4,8 +4,8 @@ title: print — la carte à l'échelle, composée puis exportée
 plugin_id: print
 package: "@geoleaf-plugins/print"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: f0a3997f2
-date: 1er septembre 2026
+verifie_contre: f9d2fc86c
+date: 9 septembre 2026
 ---
 
 # print — la carte à l'échelle, composée puis exportée
@@ -195,12 +195,12 @@ modifier le paquet.
 
 ### Événements
 
-**Deux émis, sur `document`** — et cette ligne a dit « aucun » jusqu'ici, alors que la suite E2E s'en
-sert déjà d'oracle. `offscreen-render.ts` encadre chaque rendu hors écran de
+**Trois émis, sur `document`** — et cette ligne a dit « aucun » jusqu'au 01/09/2026, alors que la
+suite E2E s'en sert déjà d'oracle. `offscreen-render.ts` encadre chaque rendu hors écran de
 `geoleaf:print:render:start` / `geoleaf:print:render:end` (fonction `_emit`) ; ils pilotent le spinner
-de la fenêtre (`modal-open.ts`, qui les pose AVANT de créer la session) et servent de condition
-d'attente à `e2e/14-print.spec.js` (`withRenderSettled`). Les sites d'émission se relèvent à la
-commande : `grep -n '_emit("' packages/plugins/print/src/offscreen-render.ts`.
+de la fenêtre (`modal-open.ts`, qui les pose AVANT de créer la session). `modal-open.ts` émet le
+troisième, `geoleaf:print:preview:ready`. Les sites d'émission se relèvent à la commande :
+`grep -rn 'dispatchEvent(new CustomEvent("geoleaf:print' packages/plugins/print/src/`.
 
 ⚠️ **Ils portaient le préfixe nu `print:render:*` jusqu'au 16/08/2026** (la gate `EVENT-MAP` rend impossible un
 événement de domaine hors préfixe `geoleaf:`) : toute recette d'intégrateur restée sur l'ancien nom
@@ -209,6 +209,23 @@ n'entend plus rien, sans erreur.
 🛑 **`…:end` est émis depuis un `finally`**, donc il n'arrive qu'APRÈS l'épuisement du garde-fou
 d'attente `idle` : une attente E2E calée sur la même valeur que ce garde-fou ne peut jamais l'observer
 — les deux budgets sont EN SÉRIE, pas en parallèle (motif écrit dans `offscreen-render.ts`).
+
+🛑 **`…:render:end` NE VEUT PAS DIRE « l'aperçu est prêt », et cette fiche l'a laissé croire.** Elle
+décrivait le `finally` et la mise en série, mais pas ce qui reste À FAIRE quand l'événement part :
+la copie de la capture, `createComposedCanvas` et le `toDataURL` — environ 17 Mpx **synchrones** en
+A3@300 dpi. Une attente calée sur `…:render:end` reprend donc la main AU MILIEU du bloc le plus
+lourd, sur un fil principal qui ne rend plus aucun accusé d'événement. Mesuré sur trois crons
+nocturnes consécutifs du dépôt public (dernier : run 34327527370) : un `uncheck()` qui suivait cette
+attente s'est bloqué à `performing click action` pendant les 30 s d'`actionTimeout`, trois tentatives
+sur trois. **`geoleaf:print:preview:ready` est l'oracle de la fin de composition** — il part quand
+`previewImg.src` porte une image — et c'est lui qu'attend `withRenderSettled`. ⚠️ Il n'est PAS émis
+depuis un `finally` : une composition qui échoue ne l'émet pas, et le plugin journalise alors l'échec
+au lieu de le taire.
+
+⚠️ **Les recompositions sont amorties (`DEBOUNCE_MS`, 150 ms) sur les quatre cases, le titre et la
+description**, et plus seulement sur le sélecteur de format. Motif : recomposer depuis le gestionnaire
+lui-même exécutait ces ~17 Mpx **dans la distribution de l'événement**. Et `input` se déclenche à
+chaque frappe — un titre de trente caractères coûtait trente compositions pleine page.
 
 Écouté : `geoleaf:toolbar:action`, filtré sur `print`.
 

@@ -1299,6 +1299,15 @@ const STEPS = [
         name: "E2E wait signature (E2E-WAIT-SIG)",
         run: ["node", "scripts/check-e2e-wait-signature.cjs"],
     },
+    // A route glob anchored on a filename stops biting the day the URL gains a
+    // query string, and it stops in SILENCE — no error, no warning, the real
+    // resource served. Measured: `08-realtime`'s SSE spec fell on three nightly
+    // crons in a row for that reason, and its symptom ("polling" instead of
+    // "sse") sat three files away from its cause.
+    {
+        name: "E2E route glob (E2E-ROUTE-GLOB)",
+        run: ["node", "scripts/check-e2e-route-glob.cjs"],
+    },
     // S7 — these four run in ci.yml but were missing here, so `ci:local` could be green
     // while CI failed. That defeats the whole "ci:local green before push" protocol, whose
     // point is to never burn a run of a scarce free-tier quota: a mirror that omits gates

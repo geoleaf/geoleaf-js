@@ -89,78 +89,98 @@ function resourceLoaded(page, re) {
 }
 
 /**
- * Runs `fn`, then waits for the print re-render it triggers to finish.
+ * Arms a one-shot latch on `geoleaf:print:preview:ready`.
+ *
+ * ⚠️ ARMED BEFORE THE ACTION, always: arming afterwards would run after the event, and on
+ * a fast machine it would already have passed.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+async function armPreviewReady(page) {
+    await page.evaluate(() => {
+        const w = /** @type {any} */ (window);
+        w.__glPreviewReady = false;
+        document.addEventListener(
+            "geoleaf:print:preview:ready",
+            () => {
+                w.__glPreviewReady = true;
+            },
+            { once: true }
+        );
+    });
+}
+
+/**
+ * Waits for the latch armed by `armPreviewReady`.
+ *
+ * ⚠️ 240 s, and this budget MUST stay STRICTLY ABOVE the print plugin's `IDLE_TIMEOUT_MS`
+ * (180 s today) — the two are IN SERIES, not an independent setting. A slow off-screen
+ * render consumes the plugin's own budget FIRST, and only then does the composition run.
+ * Setting them equal (both at 90 s, 2026-08-01) makes the event unobservable and has the
+ * suite return an opaque "wait timeout" INSTEAD of the console error which does say what
+ * really happened.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+async function waitPreviewReady(page) {
+    await page.waitForFunction(() => /** @type {any} */ (window).__glPreviewReady === true, null, {
+        timeout: 240000,
+    });
+}
+
+/**
+ * Runs `fn`, then waits for the print re-composition it triggers to ACTUALLY finish.
  *
  * ⚠️ WHY THIS IS NOT A FLAKE, AND WHY A LONGER TIMEOUT DOES NOT SUFFICE.
  *
- * Changing the format debounces 150 ms, then launches an off-screen map
- * capture + a composition. On a 2-4 core runner that work SATURATES THE MAIN
- * THREAD for several seconds, and the next interaction expires on
- * `actionTimeout` WITHOUT THE ELEMENT HAVING MOVED.
+ * Changing the format debounces 150 ms, then launches an off-screen map capture + a
+ * composition. On a 2-4 core runner that work SATURATES THE MAIN THREAD for several
+ * seconds, and the next interaction expires on `actionTimeout` WITHOUT THE ELEMENT HAVING
+ * MOVED.
  *
  * Measured on 2026-08-01, and both measurements count:
- *   • the checkbox does NOT move after the format change (0 movement over
- *     6 s, sampled every 80 ms) — the "layout shift" hypothesis is FALSE;
- *   • under ×8 CPU throttling, `uncheck()` fails at **10,005 ms**, exactly
- *     the CI signature; with this wait, the recomposition settles in ~7.5 s
- *     then the interaction passes.
+ *   • the checkbox does NOT move after the format change (0 movement over 6 s, sampled
+ *     every 80 ms) — the "layout shift" hypothesis is FALSE;
+ *   • under ×8 CPU throttling, `uncheck()` fails at **10,005 ms**, exactly the CI
+ *     signature; with this wait, the recomposition settles then the interaction passes.
  *
- * ⚠️ At WHICH STAGE it blocks exactly: this entry first claimed the
- * actionability check could not confirm "stable", `requestAnimationFrame`
- * being starved. **That explanation was never verified on a call log, and
- * the evidence contradicts it**: the 5 clicks that fell in CI on 08-01 (run
- * 30703087739) all print
+ * ⚠️ AT WHICH STAGE IT BLOCKS — established on 2026-09-09, and the earlier entry had it
+ * WRONG BY OMISSION rather than by mistake. The 5 clicks that fell in CI on 08-01 (run
+ * 30703087739) all printed
  *
  *     - element is visible, enabled and stable      ← the stability check PASSES
  *     - performing click action                     ← the block is HERE
  *
- * — so the latency is in the renderer's DISPATCH ack, not in actionability.
- * No call log of the `uncheck` above survived, so its own stage stays **not
- * established**; it is not assumed identical. What is measured holds (the
- * two bullets), the internal mechanics do not.
+ * so the latency is in the renderer's DISPATCH ack, not in actionability. That entry then
+ * said no call log of the `uncheck` had survived, so its own stage stayed "not
+ * established". Run 34327527370 established it: the `uncheck` prints the SAME five lines
+ * and stops at the same one, three attempts in a row.
  *
- * ⚠️ And "A LONGER TIMEOUT DOES NOT SUFFICE" stays true for a reason
- * independent of the stage: waiting for the real signal
- * (`geoleaf:print:render:end`) is correct by construction, where a wider
- * budget only bets on a duration. `actionTimeout` was moreover raised to
- * 30 s the same day — complementary, not redundant.
+ * 🛑 AND THE ORACLE WAS THE DEFECT. This helper waited on `geoleaf:print:render:end`,
+ * which fires from `OffscreenSession.resize()`'s `finally` — i.e. when the off-screen
+ * MapLibre goes idle, while `_copyCanvas`, `createComposedCanvas` and `toDataURL` are all
+ * still ahead (~17 Mpx of synchronous work in A3@300dpi). The wait therefore RETURNED
+ * INTO the heaviest block. Waiting for the real signal is correct by construction, where a
+ * wider budget only bets on a duration — but the signal has to mean what it says, and that
+ * one did not. `geoleaf:print:preview:ready` fires when `previewImg.src` carries an image.
  *
- * The listener is armed BEFORE the action: arming it after would run after
- * the event, and on a fast machine it would already have passed.
+ * ⚠️ The product side of the same finding: the band toggles now debounce like the format
+ * selector, so a checkbox click no longer runs a full composition inside its own event
+ * dispatch. `actionTimeout` was moreover raised to 30 s on 08-01 — complementary, not
+ * redundant.
+ *
+ * ⚠️ The real durations, measured under `taskset -c 0,1`, and the FIRST switch dominates:
+ *     A4→A3 (1st) 109,280 ms · A3→A4 28,062 ms · A4→A3 (2nd) 34,819 ms
+ * A budget set on a warm sample (~36 s) was already laid here, then disproven by the cold
+ * measurement. Calibrate on the COLD switch, never on an average.
  *
  * @param {import('@playwright/test').Page} page
  * @param {() => Promise<unknown>} fn Action triggering the recomposition.
  */
 async function withRenderSettled(page, fn) {
-    await page.evaluate(() => {
-        const w = /** @type {any} */ (window);
-        w.__glRenderEnded = false;
-        document.addEventListener(
-            "geoleaf:print:render:end",
-            () => {
-                w.__glRenderEnded = true;
-            },
-            { once: true }
-        );
-    });
+    await armPreviewReady(page);
     await fn();
-    // ⚠️ 240 s, and this budget MUST stay STRICTLY ABOVE the print plugin's
-    // `IDLE_TIMEOUT_MS` (180 s today) — the two are IN SERIES, not an
-    // independent setting. `geoleaf:print:render:end` is emitted from a
-    // `finally`: it thus only fires AFTER the plugin has exhausted its own
-    // budget. Setting them equal (both at 90 s, 2026-08-01) makes the event
-    // unobservable and has the suite return an opaque "wait timeout" INSTEAD
-    // of the console error which does say what really happened.
-    //
-    // ⚠️ The real durations, measured under `taskset -c 0,1`, and the FIRST
-    // switch dominates:
-    //     A4→A3 (1st) 109,280 ms · A3→A4 28,062 ms · A4→A3 (2nd) 34,819 ms
-    // A budget set on a warm sample (~36 s) was already laid here, then
-    // disproven by the cold measurement. Calibrate on the COLD switch, never
-    // on an average.
-    await page.waitForFunction(() => /** @type {any} */ (window).__glRenderEnded === true, null, {
-        timeout: 240000,
-    });
+    await waitPreviewReady(page);
 }
 
 /** Returns the bounding box of the map canvas. */
@@ -283,7 +303,13 @@ test.describe("[print] emprise → modal (real pointer)", () => {
         // docblock), plus boot, extent and modal. The global 60 s of
         // `playwright.config.js` cannot contain that, and the other 38 specs
         // need not pay this ceiling.
-        test.setTimeout(300000);
+        //
+        // ⚠️ RAISED from 300 s on 2026-09-09, and it is a MISE EN SÉRIE, not a
+        // margin bought to make a red go green: `waitPreviewReady` may itself
+        // spend 240 s (strictly above the plugin's 180 s `IDLE_TIMEOUT_MS`, see
+        // its docblock), and boot, extent, modal and the 30 s `actionTimeout` of
+        // the `uncheck` all come ON TOP. 300 s could no longer contain the sum.
+        test.setTimeout(360000);
 
         const errors = await boot(page);
         await openEmprise(page);
@@ -397,27 +423,41 @@ test.describe("[print] jsPDF lazy chunk & export", () => {
         // rendering". On the runner (~5× slower than this host) 60 s do not
         // suffice. Budget carried by the test, not globally: the other 38
         // have no reason to pay for this one.
-        test.setTimeout(180000);
+        //
+        // ⚠️ RAISED from 180 s on 2026-09-09, and 180 was STRUCTURALLY WRONG: it
+        // was EQUAL to the plugin's `IDLE_TIMEOUT_MS`, the very trap this file
+        // already documents for the 90/90 pair — a budget equal to the one it
+        // waits behind makes the signal unobservable and returns an opaque wait
+        // instead of the error that says what happened. The sum here is
+        // `waitPreviewReady` (up to 240 s) + the 90 s download wait + boot,
+        // extent and modal.
+        test.setTimeout(420000);
         const errors = await boot(page);
         await openEmprise(page);
-        await drawEmpriseAndOpenModal(page);
 
         // Wait for the off-screen render to populate the preview (export needs the
         // cached map canvas). A data: preview src also proves the canvas is NOT
-        // CORS-tainted → the export's toDataURL will succeed too. Bounded long —
-        // headless software-WebGL renders the off-screen map slowly.
-        await expect
-            .poll(
-                () =>
-                    page.evaluate(() => {
-                        const img = /** @type {HTMLImageElement|null} */ (
-                            document.querySelector(".gl-print-preview-img")
-                        );
-                        return !!img && typeof img.src === "string" && img.src.startsWith("data:");
-                    }),
-                { timeout: 45000 }
-            )
-            .toBe(true);
+        // CORS-tainted → the export's toDataURL will succeed too.
+        //
+        // 🛑 A SIGNAL, NOT A POLL. This was `expect.poll(..., { timeout: 45000 })`,
+        // and 45 s is BELOW the product's own documented floor: `offscreen-render.ts`
+        // measures 109,280 ms for a cold composition on 2 cores and carries a 180 s
+        // backstop. It was a budget calibrated on a warm machine — exactly the fault
+        // `withRenderSettled`'s docblock describes and then forbids. It cost three
+        // nightly crons, and the symptom (`Expected: true / Received: false`) named
+        // nothing. Armed BEFORE the modal opens: `_bootSession` paints the first
+        // preview, so the event fires during `drawEmpriseAndOpenModal`.
+        await armPreviewReady(page);
+        await drawEmpriseAndOpenModal(page);
+        await waitPreviewReady(page);
+        expect(
+            await page.evaluate(() => {
+                const img = /** @type {HTMLImageElement|null} */ (
+                    document.querySelector(".gl-print-preview-img")
+                );
+                return !!img && typeof img.src === "string" && img.src.startsWith("data:");
+            })
+        ).toBe(true);
 
         expect(await resourceLoaded(page, JSPDF_CHUNK)).toBe(false);
 
@@ -430,8 +470,14 @@ test.describe("[print] jsPDF lazy chunk & export", () => {
         expect(download.suggestedFilename()).toMatch(/\.pdf$/);
         expect(await resourceLoaded(page, JSPDF_CHUNK)).toBe(true);
 
-        // The tainted-canvas branch surfaces as a caught console.warn, never an
+        // The tainted-canvas branch surfaces as a caught console.error/warn, never an
         // uncaught error — the page must stay clean throughout.
+        //
+        // ⚠️ This sentence was FALSE until 2026-09-09 and nothing could tell: neither
+        // `_recompose` nor `_bootSession` had a `catch`, and both were called as
+        // `void …`, so a SecurityError was swallowed whole — empty preview, spinner
+        // hidden all the same (`render:end` fires from a `finally`), not one word
+        // logged. It is true now because the plugin reports it.
         expect(errors.filter((e) => !/favicon|chrome-extension/.test(e))).toHaveLength(0);
     });
 });

@@ -46,6 +46,10 @@
  * arguments following parentheses, braces and strings — a `{` in a string
  * literal or a nested brace does not fool it.
  *
+ * ⚠️ That splitter moved to `lib/js-call-args.cjs` when E2E-ROUTE-GLOB became its
+ * second reader, byte-for-byte and with the measurement above. This gate's numbers
+ * are unchanged by the move — that was the move's success criterion.
+ *
  * ## Seeing it red
  *
  *     printf '\nawait page.waitForFunction(() => true, { timeout: 5000 });\n' >> e2e/07-boot-sequence.spec.js
@@ -57,6 +61,7 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const { callArgs } = require("./lib/js-call-args.cjs");
 
 const ROOT = path.resolve(__dirname, "..");
 const DIRS = ["e2e", "e2e/helpers"];
@@ -70,43 +75,6 @@ const DIRS = ["e2e", "e2e/helpers"];
 const MIN_CALLS = 40;
 
 const C = { r: "\x1b[31m", g: "\x1b[32m", d: "\x1b[2m", b: "\x1b[1m", x: "\x1b[0m" };
-
-/**
- * Splits a call's top-level arguments, following the delimiters.
- *
- * @param {string} src Full source.
- * @param {number} open Index of the opening parenthesis.
- * @returns {string[]} The arguments, as-is.
- */
-function callArgs(src, open) {
-    let depth = 0;
-    let quote = null;
-    let start = open + 1;
-    const out = [];
-    for (let i = open; i < src.length; i++) {
-        const c = src[i];
-        if (quote) {
-            if (c === quote && src[i - 1] !== "\\") quote = null;
-            continue;
-        }
-        if (c === '"' || c === "'" || c === "`") {
-            quote = c;
-            continue;
-        }
-        if ("([{".includes(c)) depth++;
-        else if (")]}".includes(c)) {
-            depth--;
-            if (depth === 0) {
-                out.push(src.slice(start, i));
-                return out;
-            }
-        } else if (c === "," && depth === 1) {
-            out.push(src.slice(start, i));
-            start = i + 1;
-        }
-    }
-    return out;
-}
 
 /**
  * Reads `actionTimeout` in `playwright.config.js` — the budget a trapped site falls back on.

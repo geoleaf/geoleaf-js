@@ -13,7 +13,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **`geoleaf:print:preview:ready`** joins the typed event map (`GeoLeafEventMap`). Emitted by
+  `@geoleaf-plugins/print` when the preview image is actually painted.
+
+    ⚠️ **It is not a synonym of `geoleaf:print:render:end`, and the distinction matters if you
+    automate the print modal.** `render:end` fires when the off-screen map goes idle, while the
+    capture copy, the page composition and the JPEG encoding are all still ahead — around 17 Mpx
+    of synchronous work at A3/300 dpi. Code that waited on `render:end` to mean "the preview is
+    ready" resumed inside that block. Wait for `preview:ready` instead. `render:start` /
+    `render:end` are unchanged and keep bracketing the off-screen render.
 
 ---
 

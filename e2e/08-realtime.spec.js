@@ -406,6 +406,7 @@ test.describe("08-realtime", () => {
     test("SSE: bundled EventSource source applies a decoded FeatureCollection", async ({
         page,
     }) => {
+        const LAYER_SSE = "epicentres_seismes";
         const logs = captureConsole(page);
 
         // Deterministic SSE: a fake EventSource emits one message; no real stream.
@@ -442,19 +443,45 @@ test.describe("08-realtime", () => {
         await selectProfile(page, "tourism");
 
         // Inject an SSE realtime block onto epicentres_seismes via the profile bundle.
-        await page.route("**/tourism/profile-bundle.json", async (route) => {
-            const resp = await route.fetch();
-            const bundle = await resp.json();
-            bundle.layerConfigs.epicentres_seismes.data.realtime = {
-                enabled: true,
-                source: "sse",
-                decoder: "json",
-                url: "http://sse.test/stream",
-                updateMode: "replace",
-                idField: "id",
-            };
-            await route.fulfill({ response: resp, json: bundle });
-        });
+        //
+        // ⚠️ A PREDICATE, and `routeGtfsFixture` above uses the same one for the same
+        // reason: the kernel requests the bundle as `profile-bundle.json?t=<fingerprint>`
+        // (`profile-loader.ts`), and Playwright ANCHORS a string glob. The glob this call
+        // used to carry stopped matching the day that token landed — in silence, since a
+        // route that never fires raises nothing. Gated by `scripts/check-e2e-route-glob.cjs`.
+        await page.route(
+            (u) => u.href.includes("/profiles/tourism/profile-bundle.json"),
+            async (route) => {
+                const resp = await route.fetch();
+                const bundle = await resp.json();
+                const cfg = bundle.layerConfigs?.[LAYER_SSE];
+                if (!cfg) {
+                    // Refuse to serve a bundle we did not manage to patch — the same guard
+                    // `routeGtfsFixture` carries, and it is what was missing here. An
+                    // unpatched bundle keeps the profile's own `source: "polling"`, and the
+                    // assertion below then fails 12 s and three files away from its cause.
+                    throw new Error(
+                        `fixture SSE : couche « ${LAYER_SSE} » absente du bundle servi`
+                    );
+                }
+                cfg.data.realtime = {
+                    enabled: true,
+                    source: "sse",
+                    decoder: "json",
+                    url: "http://sse.test/stream",
+                    updateMode: "replace",
+                    idField: "id",
+                };
+                // status/contentType/body rather than `{ response: resp, json }`: `resp`
+                // carries the ORIGINAL Content-Length, which the rewritten bundle no longer
+                // matches. Aligned on `routeGtfsFixture`.
+                await route.fulfill({
+                    status: 200,
+                    contentType: "application/json",
+                    body: JSON.stringify(bundle),
+                });
+            }
+        );
         await page.route(
             (u) => u.href.includes("earthquake.usgs.gov"),
             (r) =>

@@ -3,7 +3,7 @@
  *
  * Covers: modal opens, Échap closes, overlay click closes,
  * "Redéfinir" returns "redefine", checkbox change triggers recompose without
- * re-render, format change triggers session.resize.
+ * re-render (after its debounce), format change triggers session.resize.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -197,6 +197,10 @@ describe("openModal", () => {
         expect(scaleCheckbox).not.toBeNull();
         scaleCheckbox.checked = !scaleCheckbox.checked;
         scaleCheckbox.dispatchEvent(new Event("change", { bubbles: true }));
+        // Flush the 150 ms debounce — band toggles are debounced like the format
+        // selector since 2026-09-09: recomposing straight from the handler ran ~17 Mpx
+        // inside the event dispatch, and the browser returned no ack until it was done.
+        await new Promise((r) => setTimeout(r, 200));
         await flushMicrotasks();
 
         expect(createComposedCanvasMock.mock.calls.length).toBeGreaterThan(callsBefore);
@@ -214,6 +218,9 @@ describe("openModal", () => {
         expect(titleInput).not.toBeNull();
         titleInput.value = "New title";
         titleInput.dispatchEvent(new Event("input", { bubbles: true }));
+        // Flush the 150 ms debounce — `input` fires per keystroke, so an undebounced
+        // handler cost one full-page composition per character typed.
+        await new Promise((r) => setTimeout(r, 200));
         await flushMicrotasks();
 
         expect(createComposedCanvasMock.mock.calls.length).toBeGreaterThan(callsBefore);
@@ -303,6 +310,8 @@ describe("openModal", () => {
         expect(annotCheckbox).not.toBeNull();
         annotCheckbox.checked = !annotCheckbox.checked;
         annotCheckbox.dispatchEvent(new Event("change", { bubbles: true }));
+        // Flush the 150 ms debounce (see the scale-checkbox test above).
+        await new Promise((r) => setTimeout(r, 200));
         await flushMicrotasks();
 
         expect(createComposedCanvasMock.mock.calls.length).toBeGreaterThan(callsBefore);

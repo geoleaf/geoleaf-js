@@ -167,6 +167,7 @@ const SCRIPTS_ALLOWLIST = new Set([
     "check-dead-code.cjs",
     "check-dead-links.cjs",
     "check-e2e-wait-signature.cjs", // E2E-WAIT-SIG — timeout lost in 2nd position
+    "check-e2e-route-glob.cjs", // E2E-ROUTE-GLOB — route glob anchored on a filename
     "check-i18n-dict-shape.cjs", // i18n dictionary shape net — CI + ci-local
     "check-orphan-exports.cjs", // the core's anti-dead-code net (B3) — CI + ci-local + pre-commit
     // PLATFORM-ISO — `@geoleaf-plugins/navigation`'s three adapters are the
@@ -689,6 +690,12 @@ const SCRIPTS_ALLOWLIST = new Set([
     // needed all four. Same rule, same motive: a second reader triggers the
     // extraction.
     "event-names.cjs",
+    // lib/ — top-level argument splitting for a JS call site, extracted from
+    // `check-e2e-wait-signature.cjs` the day E2E-ROUTE-GLOB became its second
+    // reader. Same rule, same motive: a second reader triggers the extraction,
+    // because two copies of a reader drift and the drift stays invisible as
+    // long as both gates come out green.
+    "js-call-args.cjs",
     // lib/ — Markdown code-fence state tracking, CommonMark-conformant.
     // Extracted because the toggle pattern was DUPLICATED in
     // `check-dead-links.cjs` (link AND anchor extraction): fixing one site

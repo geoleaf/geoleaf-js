@@ -19,9 +19,10 @@ Trois contraintes, chacune capable de le rendre silencieux si on l'oublie :
 - ⚠️ **Un `testIgnore` de projet ÉCRASE celui du niveau config**, il ne s'y ajoute pas. Le
   `**/.claude/**` est donc **recopié** dans les deux projets — sans quoi les copies de worktree
   reviennent et le chargeur casse.
-- ⚠️ **Les specs tactiles restent à plat dans `e2e/`.** `scripts/check-e2e-wait-signature.cjs` lit
-  le répertoire par un `readdirSync` **non récursif** : un `e2e/touch/` échapperait à la gate **en
-  silence**. C'est le motif du suffixe plutôt que d'un sous-répertoire.
+- ⚠️ **Les specs tactiles restent à plat dans `e2e/`.** `scripts/check-e2e-wait-signature.cjs` et
+  `scripts/check-e2e-route-glob.cjs` lisent le répertoire par un `readdirSync` **non récursif** :
+  un `e2e/touch/` échapperait aux deux gates **en silence**. C'est le motif du suffixe plutôt que
+  d'un sous-répertoire.
 - ⚠️ **`page.touchscreen` n'expose que `tap(x, y)`** — ni drag, ni swipe. Le glissement passe par
   `e2e/helpers/touch.js`, qui appelle CDP `Input.dispatchTouchEvent` : c'est littéralement le canal
   que Playwright utilise lui-même pour `tap()`, donc des événements `isTrusted` dont le navigateur

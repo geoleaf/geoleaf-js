@@ -960,6 +960,14 @@ jobs:
             - name: E2E wait signature (E2E-WAIT-SIG)
               run: node scripts/check-e2e-wait-signature.cjs
 
+            # Gate de FORME également, même famille et même motif de placement. Playwright
+            # ANCRE un glob de chaîne : le jour où l'URL gagne un « ?t=… », l'interception
+            # cesse de mordre SANS rien dire, et le test continue en mesurant autre chose.
+            # Mesuré : la spec SSE de `08-realtime` est tombée sur trois crons nocturnes
+            # d'affilée pour cette seule raison. Keep in sync with scripts/ci-local.cjs.
+            - name: E2E route glob (E2E-ROUTE-GLOB)
+              run: node scripts/check-e2e-route-glob.cjs
+
             # Sonde d'ÉTALONNAGE : elle ne mesure pas la couverture du dépôt, elle vérifie que
             # l'instrument qui la mesure attribue au bon endroit. Témoin à 4 fonctions, un test
             # qui n'en appelle qu'une, assertion que le rapport crédite celle-là et pas les

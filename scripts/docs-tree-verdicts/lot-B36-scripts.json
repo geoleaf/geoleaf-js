@@ -858,6 +858,34 @@
             "description": "profile-fingerprint.cjs — one opaque token for the CONTENT of a deployed profiles tree.",
             "confidence": "haute",
             "rationale": "Câblage MESURÉ : requis par `scripts/build-deploy.cjs` (étape 6c, écriture de `data.profileVersion` dans la config racine de chaque variante) et par `packages/core/__tests__/guards/profile-fingerprint.guard.test.ts`, qui l'éprouve sur un arbre temporaire — donc sans dépendre d'un `deploy/` présent, même partage que la garde de récolte du profile-switcher. Sa place en `lib/` est celle de tout calcul partagé entre un script de build et une garde : l'inliner dans `build-deploy.cjs` le rendrait inéprouvable autrement qu'en construisant. Verdict « justifié » par la RUBRIC §0."
+        },
+        "scripts/check-e2e-route-glob.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "(en-tête absent — fichier de données ou baril)",
+            "confidence": "haute",
+            "rationale": "Câblage MESURÉ, pas affirmé : cité par `ci:local`, `ci.yml`, et inscrite au registre d'hygiène. Gate E2E-ROUTE-GLOB, née le 09/09/2026 et VUE ROUGIR sur trois sites réels avant d'être câblée. Classe fermée : un glob de route ancré sur un nom de fichier cesse de mordre en silence dès que l'URL gagne une query string — mesuré sur trois crons nocturnes consécutifs du dépôt public. Verdict « justifié » par la RUBRIC §0 : instrument vivant, atteint par deux runners nommés."
+        },
+        "scripts/lib/js-call-args.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "(en-tête absent — fichier de données ou baril)",
+            "confidence": "haute",
+            "rationale": "Câblage MESURÉ : requis par `check-e2e-wait-signature.cjs` et `check-e2e-route-glob.cjs`, et inscrit au registre des modules de `scripts/` (`verify-repo-hygiene.cjs`). Extraction déclenchée par le SECOND lecteur, règle du dépôt dont le motif est écrit dans le fichier — deux copies d'un lecteur divergent, et la dérive reste invisible tant que les deux gates sortent vertes. Refactor à zéro comportement, prouvé et non supposé : E2E-WAIT-SIG rend les mêmes nombres avant et après (67 fichiers, 121 appels)."
         }
     }
 }

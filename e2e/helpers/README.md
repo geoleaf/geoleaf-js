@@ -311,6 +311,14 @@ Créer un nouveau fichier `helpers/{nom}.js` en **ESM**, avec `// @ts-check` en 
   arguments `(fn, {timeout})` fait passer le timeout pour un argument de la fonction : il est
   **ignoré**, et l'attente retombe sur le timeout par défaut. `check-e2e-wait-signature.cjs`
   (E2E-WAIT-SIG) scanne `e2e/` **et** `e2e/helpers/`. Écrire `(fn, null, { timeout })`.
+- **Un glob de `route()` est ANCRÉ** — Playwright lui ajoute un `$`. Donc
+  `"**/config.json"` cesse de mordre le jour où l'URL gagne un `?t=…`, **sans erreur ni
+  avertissement** : la vraie ressource est servie et le test continue en mesurant autre
+  chose. Suffixer `*`, ou passer au prédicat `(u) => u.href.includes(…)`.
+  `check-e2e-route-glob.cjs` (E2E-ROUTE-GLOB) le refuse, et scanne les deux mêmes
+  répertoires. ⚠️ **Une interception qui ne se déclenche pas ne lève rien** : quand le
+  patch d'une fixture est nécessaire au sujet du test, jeter si le patch n'a pas pu être
+  appliqué (patron : `routeGtfsFixture`, `e2e/08-realtime.spec.js`).
 - **Les helpers ne portent pas d'assertion `expect`** sauf à être explicitement des
   assertions (`assertZeroNetwork`) : un helper qui assert en silence rend le rouge illisible
   depuis le spec qui l'appelle.

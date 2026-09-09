@@ -111,7 +111,10 @@ test.describe("11-connector", () => {
     // redundancy that costs two lines and removes a coupling is not a
     // redundancy.
     test.beforeEach(async ({ page }) => {
-        await page.route("**/connector.local.js", (route) =>
+        // Trailing `*`: Playwright anchors a string glob, so a cache-busting query
+        // would silently kill this intercept — and the paragraph above says exactly
+        // what that costs. Gated by `scripts/check-e2e-route-glob.cjs`.
+        await page.route("**/connector.local.js*", (route) =>
             route.fulfill({ status: 200, contentType: "application/javascript", body: "" })
         );
     });

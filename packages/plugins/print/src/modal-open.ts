@@ -51,7 +51,17 @@ interface ModalState {
     /** Last off-screen capture; null until the session is ready. */
     mapCanvas: HTMLCanvasElement | null;
     session: OffscreenSession | null;
+    /** Debounces the format change, which re-renders the map off-screen. */
     debounceTimer: ReturnType<typeof setTimeout> | null;
+    /**
+     * Debounces everything that only RECOMPOSES — the four band toggles, the title and the
+     * description — as opposed to the format change, which re-renders the map off-screen.
+     *
+     * ⚠️ A timer of its OWN, and that is not a detail: sharing `debounceTimer` would let a
+     * checkbox click CANCEL a pending format change, so the preview would keep showing A4
+     * while the selector reads A3.
+     */
+    composeTimer: ReturnType<typeof setTimeout> | null;
 }
 
 /** Signature of a format exporter registered on `GeoLeaf.Print._getExporter`. */
@@ -79,6 +89,27 @@ function _composeInputs(state: ModalState): ComposeInputs {
     };
 }
 
+/**
+ * Signals that `previewImg.src` now carries an image.
+ *
+ * ⚠️ THIS EXISTS BECAUSE `geoleaf:print:render:end` DOES NOT MEAN THIS, and the gap is
+ * where the whole cost lives. That one fires from `OffscreenSession.resize()`'s `finally`
+ * — when the off-screen MapLibre goes idle — while `_copyCanvas`, `createComposedCanvas`
+ * and `toDataURL` are still ahead: about 17 Mpx of SYNCHRONOUS work in A3@300dpi.
+ * Anything that waits on `render:end` therefore resumes squarely INSIDE the heaviest
+ * block, on a main thread that returns no event ack.
+ *
+ * Measured on the public repo's nightly cron (run 34327527370): an `uncheck()` that
+ * followed a `render:end` wait blocked at `performing click action` for the full 30 s
+ * `actionTimeout`, three attempts in a row.
+ *
+ * `render:start` / `render:end` keep their own meaning — the off-screen map — and keep
+ * driving the spinner.
+ */
+function _emitPreviewReady(): void {
+    document.dispatchEvent(new CustomEvent("geoleaf:print:preview:ready"));
+}
+
 /** Recomposes the page from the cached capture and refreshes the preview image. */
 async function _recompose(state: ModalState): Promise<void> {
     if (!state.mapCanvas) return;
@@ -91,6 +122,30 @@ async function _recompose(state: ModalState): Promise<void> {
         args.composeOpts
     );
     state.dom.previewImg.src = composed.toDataURL("image/jpeg", 0.7);
+    _emitPreviewReady();
+}
+
+/**
+ * Runs `_recompose` and REPORTS a failure instead of dropping it.
+ *
+ * ⚠️ Both call sites used to be `void _recompose(state)` / `void _bootSession(...)`, so a
+ * rejection was swallowed whole. `toDataURL` throws a `SecurityError` on a canvas tainted
+ * by a non-CORS tile source, and `drawNorthArrow` rejects on an image error: in both cases
+ * the spinner still hid — `render:end` fires from a `finally` — and the user was left with
+ * an EMPTY preview and not one word anywhere. A failure that says nothing is
+ * indistinguishable from one that never happened.
+ */
+async function _safeRecompose(state: ModalState): Promise<void> {
+    try {
+        await _recompose(state);
+    } catch (err) {
+        console.error(
+            "[GeoLeaf.Print] Preview composition failed — the preview stays empty. " +
+                "A SecurityError here means the off-screen canvas is tainted by a " +
+                "non-CORS tile source:",
+            err
+        );
+    }
 }
 
 /**
@@ -111,6 +166,18 @@ async function _rerender(state: ModalState): Promise<void> {
     await state.session.resize(view.widthPx, view.heightPx, view.center, view.zoom);
     state.mapCanvas = state.session.getCanvas();
     await _recompose(state);
+}
+
+/** `_rerender` with the same reporting as `_safeRecompose` — see there for the why. */
+async function _safeRerender(state: ModalState): Promise<void> {
+    try {
+        await _rerender(state);
+    } catch (err) {
+        console.error(
+            "[GeoLeaf.Print] Format re-render failed — the preview keeps the previous page:",
+            err
+        );
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -237,17 +304,32 @@ function _wireInteractions(
         close("redefine");
     };
 
-    dom.titleInput.addEventListener("input", () => void _recompose(state));
-    dom.descArea.addEventListener("input", () => void _recompose(state));
+    // ⚠️ DEBOUNCED — the four band toggles, the title and the description — like the
+    // format selector below, and for a reason the format one already had:
+    // `createComposedCanvas` is synchronous until `drawNorthArrow` (`createElement`,
+    // `fillRect`, `drawImage` — ~17 Mpx in A3@300dpi). Called straight from the handler it
+    // ran INSIDE the event dispatch, so the browser returned no ack until it was done.
+    // Posting a timer instead returns immediately.
+    //
+    // And it is worth far more than an event ack: `input` fires PER KEYSTROKE, so typing a
+    // thirty-character title used to cost thirty full-page compositions. Three boxes ticked
+    // in a row cost three. They now cost one each way.
+    const _scheduleRecompose = () => {
+        if (state.composeTimer) clearTimeout(state.composeTimer);
+        state.composeTimer = setTimeout(() => void _safeRecompose(state), DEBOUNCE_MS);
+    };
+
+    dom.titleInput.addEventListener("input", _scheduleRecompose);
+    dom.descArea.addEventListener("input", _scheduleRecompose);
 
     for (const chk of [dom.legend, dom.scale, dom.north, dom.annot]) {
-        chk?.input.addEventListener("change", () => void _recompose(state));
+        chk?.input.addEventListener("change", _scheduleRecompose);
     }
 
     dom.formatSelect.addEventListener("change", () => {
         state.format = dom.formatSelect.value;
         if (state.debounceTimer) clearTimeout(state.debounceTimer);
-        state.debounceTimer = setTimeout(() => void _rerender(state), DEBOUNCE_MS);
+        state.debounceTimer = setTimeout(() => void _safeRerender(state), DEBOUNCE_MS);
     });
 
     for (const { format, btn } of dom.exportButtons) {
@@ -341,6 +423,7 @@ export async function openModal(
         mapCanvas: null,
         session: null,
         debounceTimer: null,
+        composeTimer: null,
     };
 
     return new Promise<ModalResult>((resolve) => {
@@ -359,6 +442,7 @@ export async function openModal(
 
         function close(result: ModalResult): void {
             if (state.debounceTimer) clearTimeout(state.debounceTimer);
+            if (state.composeTimer) clearTimeout(state.composeTimer);
             state.session?.destroy();
             state.session = null;
             document.removeEventListener("keydown", _keyHandler);
@@ -380,6 +464,11 @@ export async function openModal(
         document.body.classList.add("gl-print-modal-open");
         requestAnimationFrame(() => dom.titleInput.focus());
 
-        void _bootSession(state, nativeMap, () => close(null));
+        void _bootSession(state, nativeMap, () => close(null)).catch((err) => {
+            console.error(
+                "[GeoLeaf.Print] Off-screen session failed — the preview stays empty:",
+                err
+            );
+        });
     });
 }

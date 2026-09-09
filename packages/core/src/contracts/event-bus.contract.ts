@@ -843,6 +843,12 @@ export interface GeoLeafEventMap {
     // Print — bracket an off-screen render, and drive the modal's spinner.
     "geoleaf:print:render:start": Record<string, never>;
     "geoleaf:print:render:end": Record<string, never>;
+    // ⚠️ NOT a synonym of `render:end`, and the distinction is the whole point: `render:end`
+    // fires when the off-screen MapLibre goes idle, while the capture copy, the page
+    // composition and the `toDataURL` are all still ahead — ~17 Mpx of synchronous work in
+    // A3@300dpi. This one fires when `previewImg.src` actually carries an image. Whoever
+    // waits for "the preview is ready" wants THIS one.
+    "geoleaf:print:preview:ready": Record<string, never>;
     // Plugins
     "geoleaf:plugin:loaded": GeoLeafPluginLoadedDetail;
     "geoleaf:plugin:lazy-loaded": GeoLeafPluginLazyLoadedDetail;
