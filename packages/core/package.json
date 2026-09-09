@@ -1,6 +1,6 @@
 {
     "name": "@geoleaf/core",
-    "version": "3.2.0",
+    "version": "3.3.0",
     "description": "GeoLeaf — Modular JavaScript mapping library built on MapLibre GL JS. v2.0: WebGL rendering, native vector tiles, GPU clustering. Features: Security (XSS protection), Performance (WebGL pipeline), Typed Errors, Validators, and comprehensive TypeScript support.",
     "homepage": "https://geoleaf.dev",
     "repository": {

@@ -13,6 +13,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ## [Unreleased]
 
+_Nothing yet._
+
+---
+
+## [3.3.0] - 2026-09-09
+
 ### Added
 
 - **`geoleaf:print:preview:ready`** joins the typed event map (`GeoLeafEventMap`). Emitted by
