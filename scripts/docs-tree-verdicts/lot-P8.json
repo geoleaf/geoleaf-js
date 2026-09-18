@@ -41,7 +41,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Client HTTP de l'endpoint d'authentification : login, refresh et traduction des codes de réponse en AuthError, le mot de passe n'étant jamais conservé",
+            "description": "Client HTTP de l'endpoint d'authentification : connexion (codes traduits en AuthError, mot de passe jamais conservé) et renouvellement classé en verdict — renouvelé, refusé ou indisponible — sur un échange borné, corps compris",
             "confidence": "haute",
             "rationale": "104 LOC, 2 importeurs internes (entry.ts, login-ui.ts) ; exporte l'objet éponyme AuthClient + AuthError → suffixe -client conforme au test N7 (objet éponyme exporté). Aucune dépendance hors @geoleaf/http-helpers"
         },
@@ -99,7 +99,7 @@
             "severity": null,
             "description": "Monkey-patch de globalThis.fetch : injecte l'en-tête Authorization sur les URL du baseUrl, rejoue une fois la requête après un 401, et sert les en-têtes du worker",
             "confidence": "haute",
-            "rationale": "174 LOC, 1 importeur (entry.ts) ; 3 exports (install, uninstall, getWorkerHeaders). MVT et PMTiles sont explicitement routés vers maplibre-bridge.ts par detectFormat — la frontière entre les deux fichiers est énonçable en une phrase, X2b ne se déclenche pas"
+            "rationale": "174 LOC, 1 importeur (entry.ts) ; 3 exports (install, uninstall, getWorkerHeaders). les tuiles MVT sont laissées à maplibre-bridge.ts par detectFormat, les archives PMTiles restent ici (la bibliothèque pmtiles les lit par ce fetch) — la frontière entre les deux fichiers est énonçable en une phrase, X2b ne se déclenche pas"
         },
         "packages/plugins/connector/src/format-detector.ts": {
             "kind": "file",
@@ -111,7 +111,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Fonction pure déduisant le format de données d'une URL et d'un Content-Type, employée pour router MVT et PMTiles hors du patch de fetch",
+            "description": "Fonction pure déduisant le format de données d'une URL et d'un Content-Type, employée pour laisser les tuiles MVT au pont MapLibre — les archives PMTiles, lues par le fetch global, restent interceptées",
             "confidence": "haute",
             "rationale": "40 LOC, 1 export (detectFormat), 1 importeur (fetch-interceptor.ts). Homonyme de packages/plugins/file-import/src/format-detector.ts, mais T1 §1 l'écarte après hachage : exports disjoints (detectConverter, registerConverter, isKmz, getSupportedExtensions côté file-import) — pas un fork, et les deux chemins qualifient déjà le domaine (N5 non déclenché)"
         },
@@ -199,6 +199,20 @@
             "confidence": "haute",
             "rationale": "24 LOC, 1 importeur (entry.ts) ; renommé en lang-de.ts au STRUCT S1 — N1 soldé sur les 54 dictionnaires (9 dossiers, 6 locales). 94 sites de résolution réécrits, dont 2 imports dynamiques à template littéral invisibles au grep, et 4 gates ré-épinglées : la regex de collecte de check-i18n-dict-shape (vue rouge en exit 2 avant correction), la sonde de probe-gate-visibility, la baseline module-headers et les 54 clés de ce corpus."
         },
+        "packages/plugins/connector/src/host-token.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Le jeton de l'hôte (mode `getToken`) tiré pour l'ouvrier GeoJSON et le pont de tuiles : jamais d'exception ni de rejet — un échec vaut « pas de jeton » —, et la temporalité du fournisseur conservée (synchrone s'il l'est)",
+            "confidence": "haute",
+            "rationale": "2 importeurs (fetch-interceptor.ts pour le crochet de l'ouvrier, maplibre-bridge.ts pour les tuiles) ; exporte pullHostToken et isThenable. Le fichier existe parce que ces deux chemins ne peuvent PAS propager l'échec du fournisseur — une exception dans `transformRequest` ou dans le gestionnaire d'ouvrier du cœur ferait échouer un chargement pour une raison qui n'est pas le réseau — alors que le `fetch` de la page le propage, et doit continuer (le drain le lit comme une panne réseau). Le PULL est conservé : aucune copie du jeton, relu à chaque requête. Détection par `then` et non `instanceof Promise` : un SDK d'identité peut rendre un thenable d'un autre royaume"
+        },
         "packages/plugins/connector/src/login-ui.ts": {
             "kind": "file",
             "name": "ok",
@@ -223,7 +237,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Pose setTransformRequest sur la carte native pour injecter le jeton dans les tuiles MVT et PMTiles, avec pose différée au map:ready et réinstallation au changement de fond",
+            "description": "Pose setTransformRequest sur la carte native pour injecter le jeton — du magasin, ou de l'hôte en mode `getToken` — dans les tuiles vectorielles, avec pose différée au map:ready et réinstallation au changement de fond",
             "confidence": "haute",
             "rationale": "132 LOC, 1 importeur (entry.ts), 1 export. Le préfixe maplibre- n'est pas un défaut (RUBRIC §2) et INV-ENGINE / ADR-01 n'est pas franchi : aucun import de maplibre-gl, la carte est reconnue par une garde structurelle _isMaplibreMap. Aucun import de @geoleaf/core non plus (en-tête l.12)"
         },
@@ -576,6 +590,20 @@
             "description": "Adaptateur typé sur `GeoLeaf.Storage` — 6 interfaces décrivant la forme concrète de la façade",
             "confidence": "haute",
             "rationale": "131 LOC, 16 importeurs. Il RÉ-EXPORTAIT le singleton `StorageContract` du core, avec pour justification « runtime object is unchanged (same core singleton) ». C'était faux dans le paquet publié : l'état du contrat est un `let` de portée module, et un plugin chargé en `<script type=\"module\">` a son propre graphe — la copie n'était jamais initialisée, donc `isAvailable()` rendait `false` pour toujours et `whenReady()` ne résolvait jamais. Toute l'UI hors-ligne passant par `ensureEngineReady()` était morte à l'exécution. Il ADAPTE désormais la façade du core, lue sur le namespace ; ses accès sont des ACCESSEURS et non des valeurs capturées, `GeoLeaf.Storage` n'existant pas encore à l'évaluation du module. Le seam `verify-seam-drift` qui l'épinglait a été retiré : il n'y a plus deux copies à tenir synchrones."
+        },
+        "packages/plugins/connector/src/renewal-retry.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Relance du renouvellement après une panne passagère : écoute `online`, le retour au premier plan et `geoleaf:offline:outbox-queued`, attend le renouvellement en vol puis retente une fois, jusqu'à un verdict conclusif",
+            "confidence": "haute",
+            "rationale": "2 importeurs (fetch-interceptor.ts, qui l'arme sur un 401 dont le renouvellement n'a pas conclu ; connector-api.ts, qui l'arme au démarrage et la désarme à configure() et logout()) ; exporte armRenewalRetry/disarmRenewalRetry. Le fichier existe parce que, pendant l'arrêt du drain sur `authRequired`, le CŒUR fait taire ses propres déclencheurs jusqu'au retour de la session — qu'il ne peut pas provoquer, ne connaissant aucune session : ces moments n'avaient personne. Sibling de session-resume.ts (la reprise de la FILE) : celui-ci est la reprise de la SESSION, et les deux se composent par `token-refreshed`. Écouteurs tenus sur le global comme ceux de la reprise et de la reconnexion guidée. Aucun minuteur : le résidu (en ligne, au premier plan, sans saisie) est écrit dans l'en-tête plutôt que couvert par un intervalle non mesuré"
         },
         "packages/plugins/connector/src/session-resume.ts": {
             "kind": "file",

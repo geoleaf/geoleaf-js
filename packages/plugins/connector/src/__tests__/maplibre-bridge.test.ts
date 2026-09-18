@@ -25,6 +25,12 @@ type ListenerEntry = {
 const BASE_URL = "https://api.example.com";
 const TOKEN = "eyJhbGciOiJIUzI1NiJ9.payload.sig";
 const VALID_CONFIG = { baseUrl: BASE_URL, getToken: () => TOKEN };
+/**
+ * The mode where the plugin holds the token. ⚠️ The memory-cache tests below ran under
+ * `VALID_CONFIG` — the `getToken` mode — and thereby asserted the defect: a host-provided token
+ * never reached the tiles, since the bridge read only the store the host never fills.
+ */
+const AUTH_CONFIG = { baseUrl: BASE_URL, auth: { endpoint: `${BASE_URL}/auth` } };
 
 function makeMapMock() {
     let _installedFn: ((url: string) => unknown) | null = null;
@@ -158,11 +164,11 @@ describe("deferred install — map not available at configure() time", () => {
 
 // ─── setTransformRequest callback behavior ───────────────────────────────────
 
-describe("setTransformRequest callback", () => {
+describe("setTransformRequest callback — mode auth.endpoint (le magasin de jetons)", () => {
     it("returns undefined for URLs that do not match baseUrl", () => {
         const mapMock = makeMapMock();
         mockGeoLeafCore(mapMock);
-        installMapLibreBridge(VALID_CONFIG);
+        installMapLibreBridge(AUTH_CONFIG);
         const result = mapMock.callTransformRequest("https://other.example.com/tile.mvt");
         expect(result).toBeUndefined();
     });
@@ -172,7 +178,7 @@ describe("setTransformRequest callback", () => {
         mockGeoLeafCore(mapMock);
         // Populate RAM cache (same TokenStore instance used by the bridge)
         await TokenStore.save(BASE_URL, TOKEN, Date.now() + 3_600_000);
-        installMapLibreBridge(VALID_CONFIG);
+        installMapLibreBridge(AUTH_CONFIG);
         const url = `${BASE_URL}/tiles/14/100/200.mvt`;
         const result = mapMock.callTransformRequest(url);
         expect(result).toEqual({
@@ -184,7 +190,7 @@ describe("setTransformRequest callback", () => {
     it("returns undefined for matching URL when no token is in RAM cache", () => {
         const mapMock = makeMapMock();
         mockGeoLeafCore(mapMock);
-        installMapLibreBridge(VALID_CONFIG);
+        installMapLibreBridge(AUTH_CONFIG);
         const result = mapMock.callTransformRequest(`${BASE_URL}/tiles/14/100/200.mvt`);
         expect(result).toBeUndefined();
     });
@@ -196,7 +202,7 @@ describe("setTransformRequest callback", () => {
         mockGeoLeafCore(mapMock);
         // Token IS available — so a reject here can only come from the origin guard.
         await TokenStore.save(BASE_URL, TOKEN, Date.now() + 3_600_000);
-        installMapLibreBridge(VALID_CONFIG);
+        installMapLibreBridge(AUTH_CONFIG);
         // `${BASE_URL}.evil.net` starts with BASE_URL but is a different origin.
         const result = mapMock.callTransformRequest(`${BASE_URL}.evil.net/tiles/14/100/200.mvt`);
         expect(result).toBeUndefined();
@@ -206,12 +212,100 @@ describe("setTransformRequest callback", () => {
         const mapMock = makeMapMock();
         mockGeoLeafCore(mapMock);
         await TokenStore.save(BASE_URL, TOKEN, Date.now() + 3_600_000);
-        installMapLibreBridge(VALID_CONFIG);
+        installMapLibreBridge(AUTH_CONFIG);
         const url = `${BASE_URL}/tiles/14/100/200.mvt`;
         expect(mapMock.callTransformRequest(url)).toEqual({
             url,
             headers: { Authorization: `Bearer ${TOKEN}` },
         });
+    });
+});
+
+// ─── getToken mode: the host's token reaches the tiles ───────────────────────
+
+describe("setTransformRequest callback — mode getToken (le jeton de l'hôte)", () => {
+    const TILE = `${BASE_URL}/tiles/14/100/200.pbf`;
+
+    function install(getToken: () => string | null | Promise<string | null>) {
+        const mapMock = makeMapMock();
+        mockGeoLeafCore(mapMock);
+        installMapLibreBridge({ baseUrl: BASE_URL, getToken });
+        return mapMock;
+    }
+
+    afterEach(() => {
+        delete (globalThis as { maplibregl?: unknown }).maplibregl;
+    });
+
+    it("🛑 un getToken synchrone : { url, headers } du jeton de l'hôte", () => {
+        const mapMock = install(() => "host.tok.1");
+        expect(mapMock.callTransformRequest(TILE)).toEqual({
+            url: TILE,
+            headers: { Authorization: "Bearer host.tok.1" },
+        });
+    });
+
+    it("🛑 un getToken asynchrone sur un moteur qui attend la transformation : une promesse de { url, headers }", async () => {
+        (globalThis as { maplibregl?: unknown }).maplibregl = { getVersion: () => "6.7.0" };
+        const mapMock = install(async () => "host.tok.1");
+        const result = mapMock.callTransformRequest(TILE);
+        expect(result).toBeInstanceOf(Promise);
+        expect(await result).toEqual({
+            url: TILE,
+            headers: { Authorization: "Bearer host.tok.1" },
+        });
+    });
+
+    it("un getToken asynchrone qui rend null : une promesse de { url } — jamais undefined", async () => {
+        // MapLibre applies its `|| { url }` fallback to the returned value, not to what a
+        // promise resolves to: a promise of undefined would become the request itself.
+        (globalThis as { maplibregl?: unknown }).maplibregl = { getVersion: () => "6.7.0" };
+        const mapMock = install(async () => null);
+        expect(await mapMock.callTransformRequest(TILE)).toEqual({ url: TILE });
+    });
+
+    it("un getToken qui rejette (hôte sans réseau) : { url }, sans exception", async () => {
+        (globalThis as { maplibregl?: unknown }).maplibregl = { getVersion: () => "6.7.0" };
+        const mapMock = install(async () => {
+            throw new Error("host session unreachable");
+        });
+        expect(await mapMock.callTransformRequest(TILE)).toEqual({ url: TILE });
+    });
+
+    it("🛑 un moteur antérieur à 5.21 ne reçoit jamais de promesse : undefined", () => {
+        // Before 5.21, MapLibre used the returned value AS the request: a promise there breaks
+        // every same-origin resource, authenticated or not.
+        (globalThis as { maplibregl?: unknown }).maplibregl = { getVersion: () => "5.20.2" };
+        const mapMock = install(async () => "host.tok.1");
+        expect(mapMock.callTransformRequest(TILE)).toBeUndefined();
+    });
+
+    it("🛑 le jeton de l'hôte est relu à chaque tuile — l'hôte le fait tourner, rien ne le copie", () => {
+        let token = "host.tok.1";
+        const mapMock = install(() => token);
+        expect(mapMock.callTransformRequest(TILE)).toMatchObject({
+            headers: { Authorization: "Bearer host.tok.1" },
+        });
+        token = "host.tok.2";
+        expect(mapMock.callTransformRequest(TILE)).toMatchObject({
+            headers: { Authorization: "Bearer host.tok.2" },
+        });
+    });
+
+    it("🛑 en mode getToken, le magasin de jetons n'est plus sollicité par tuile", () => {
+        const read = vi.spyOn(TokenStore, "getTokenAsync");
+        const mapMock = install(() => "host.tok.1");
+        mapMock.callTransformRequest(TILE);
+        expect(read).not.toHaveBeenCalled();
+    });
+
+    it("une URL d'une autre origine : undefined, sans solliciter l'hôte", () => {
+        const getToken = vi.fn(() => "host.tok.1");
+        const mapMock = install(getToken);
+        expect(
+            mapMock.callTransformRequest("https://other.example.com/tiles/1/2/3.pbf")
+        ).toBeUndefined();
+        expect(getToken).not.toHaveBeenCalled();
     });
 });
 

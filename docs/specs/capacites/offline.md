@@ -438,8 +438,9 @@ répare dès que l'opérateur se reconnecte. La saisie de terrain partait donc e
 destruction pour seule sortie contractuelle, pour une cause qui se lève d'elle-même.
 
 Le motif `authRequired` nomme un **état de la session**, pas un refus du serveur — et la nuance est
-mesurable : en mode jeton du connecteur, le 401 que voit le drain est **synthétique**, fabriqué par
-l'intercepteur après un renouvellement manqué. Même code de statut, sens opposés.
+mesurable : en mode jeton du connecteur, le 401 que voit le drain est **synthétique** dès qu'un
+renouvellement a été tenté et manqué — refusé, ou injoignable —, fabriqué par l'intercepteur ; sans
+session stockée, c'est celui du serveur. Même code de statut, sens opposés.
 
 ⚠️ **403 n'y est PAS, et l'exclusion est la moitié intéressante.** Une première rédaction l'y
 mettait, au motif que « les deux se lèvent avec une session qui porte le droit ». C'est faux : 401
@@ -451,8 +452,9 @@ motif qui avale sa propre contre-épreuve n'est plus vérifiable.
 
 🛑 **Et c'est le seul échec qui ARRÊTE le drain.** Tout ce qui est en file derrière rencontrera la
 même session morte : le rejouer dépense un budget pour rien — et en mode jeton, les requêtes qui
-suivent ne portent même plus d'en-tête d'autorisation, l'intercepteur ayant effacé le jeton. Un
-réseau muet est le cas opposé : chaque entrée doit être tentée puis différée, c'est ce qui ramène
+suivent présentent le jeton que le serveur vient de refuser, ou plus aucun si le renouvellement a été
+refusé et le jeton effacé. La session revient par le connecteur, qui retente le renouvellement aux
+moments que le drain arrêté n'écoute plus. Un réseau muet est le cas opposé : chaque entrée doit être tentée puis différée, c'est ce qui ramène
 une tournée entière au drain suivant. Le rapport porte donc `haltedBy`, sans quoi un drain arrêté
 est indiscernable d'un drain qui a fini — et `attempted` est désormais **compté dans la boucle** :
 un chiffre dérivé du filtre annoncerait comme tentées des entrées jamais touchées.

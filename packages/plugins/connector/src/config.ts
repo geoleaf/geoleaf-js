@@ -27,10 +27,19 @@ export interface ConnectorConfig {
      * ## It is a PULL, and that is the security property
      *
      * The plugin calls this on **every intercepted request** (`fetch-interceptor.ts`,
-     * `_resolveToken`), and again when a 401 sends it through the retry path. The host
-     * therefore always returns the token that is current *at that instant*: it never has to
-     * predict expiry, and there is no stale copy of the token anywhere in the plugin.
+     * `_resolveToken`), again when a 401 sends it through the retry path, and for **every tile**
+     * and **every GeoJSON load the worker makes** (`maplibre-bridge.ts`, `getWorkerHeaders`).
+     * The host therefore always returns the token that is current *at that instant*: it never
+     * has to predict expiry, and there is no stale copy of the token anywhere in the plugin.
      * Caching and refreshing stay on the host side, which is where the credential lives.
+     *
+     * ## Synchronous or not, and what a failure does
+     *
+     * A synchronous provider reaches every path. One that answers with a promise reaches the
+     * tiles on MapLibre 5.21 or later, and the worker on a core that announces it takes one
+     * (`@geoleaf/core` 3.4.0); on older ones those requests go without a token. A provider
+     * that throws or rejects fails the page's request with its error, while tiles and worker
+     * loads go without a token — the next request asks again.
      *
      * ## Why there is no `Connector.setToken` nor `onTokenExpiring`
      *

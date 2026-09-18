@@ -38,7 +38,7 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const { execFileSync, execSync } = require("child_process");
+const { execFileSync, spawnSync } = require("child_process");
 
 /**
  * Comparable hashes of a package's files: `comparable path → sha256`, plus `originals`
@@ -48,7 +48,86 @@ const { execFileSync, execSync } = require("child_process");
  */
 
 /**
+ * What the registry said about one version of one package — an answer, or the lack of one.
+ *
+ * - `published` — the registry lists this version;
+ * - `version-absent` — it lists the package's versions, and this one is not among them;
+ * - `package-absent` — it answered E404: it does not know the package;
+ * - `unknown` — no answer: a refused connection, an authentication error, an output nobody
+ *   can read. `code` names it.
+ *
+ * @typedef {{ state: "published" | "version-absent" | "package-absent" } |
+ *   { state: "unknown", code: string }} RegistryAnswer
+ */
+
+/**
+ * Reads the output of `npm view <name> versions --json` for one version.
+ *
+ * 🛑 ONLY A LIST OF VERSIONS OR AN E404 IS AN ANSWER. This lib used to read every failure of
+ * `npm view` as "not published": a refused connection, an authentication error, a registry
+ * answering 404 for everything — all of them "a version awaiting publication". On 09/09/2026 the
+ * parity gate thus skipped its whole corpus on the publication runner and exited 0.
+ *
+ * The shape is the one npm 10.9.8 and npm 12.0.2 print, measured on 18/09/2026 on the seventeen
+ * public packages: an ARRAY of versions — a single version included —, or an error object whose
+ * `code` is `E404` when the registry does not know the package. Anything else is `unknown`,
+ * never a guess (the same rule as {@link packEntry}).
+ *
+ * @param {string} stdout What `npm view <name> versions --json` printed on stdout.
+ * @param {string} version The version asked about.
+ * @returns {RegistryAnswer} The answer, or `unknown` with its code.
+ * @example
+ * readRegistryAnswer('["3.2.0", "3.3.0"]', "3.3.0"); // → { state: "published" }
+ * readRegistryAnswer('{"error":{"code":"ECONNREFUSED"}}', "3.3.0");
+ * // → { state: "unknown", code: "ECONNREFUSED" }
+ */
+function readRegistryAnswer(stdout, version) {
+    let parsed;
+    try {
+        parsed = JSON.parse(stdout);
+    } catch {
+        return { state: "unknown", code: "unreadable" };
+    }
+    if (Array.isArray(parsed)) {
+        return { state: parsed.includes(version) ? "published" : "version-absent" };
+    }
+    const code = parsed?.error?.code;
+    if (code === "E404") return { state: "package-absent" };
+    return {
+        state: "unknown",
+        code: typeof code === "string" && code !== "" ? code : "unreadable",
+    };
+}
+
+/**
+ * Asks the registry about one version of one package.
+ *
+ * @param {string} name npm name of the package (`@geoleaf/core`).
+ * @param {string} version Version declared in its manifest.
+ * @returns {RegistryAnswer} What the registry said — see {@link readRegistryAnswer}.
+ * @example
+ * const answer = registryAnswer("@geoleaf/core", "3.3.0");
+ * if (answer.state === "unknown") console.log(`no answer (${answer.code})`);
+ */
+function registryAnswer(name, version) {
+    const res = spawnSync("npm", ["view", name, "versions", "--json"], {
+        stdio: ["ignore", "pipe", "ignore"],
+        encoding: "utf8",
+    });
+    if (res.error) {
+        // `spawnSync` types its error as a bare `Error`; a failed spawn carries the errno code.
+        const code = /** @type {NodeJS.ErrnoException} */ (res.error).code;
+        return { state: "unknown", code: code ?? "spawn" };
+    }
+    return readRegistryAnswer(res.stdout ?? "", version);
+}
+
+/**
  * Does the registry ALREADY carry exactly this version of this package?
+ *
+ * ⚠️ `false` covers every other case, a registry that did not answer included. A publisher can
+ * live with that: it then attempts the publication, and the registry refuses an existing version
+ * loudly. The parity gate cannot — it reads {@link registryAnswer} instead.
  *
  * @param {string} name npm name of the package (`@geoleaf/core`).
  * @param {string} version Version declared in its manifest.
@@ -60,19 +139,44 @@ const { execFileSync, execSync } = require("child_process");
  * }
  */
 function alreadyPublished(name, version) {
-    try {
-        const out = execSync(`npm view ${name}@${version} version --json`, {
-            stdio: ["ignore", "pipe", "ignore"],
-            encoding: "utf8",
-        }).trim();
-        // ⚠️ `npm view` returns an EMPTY string — not an error — when the package exists
-        // but not that version. Testing only for the absence of an exception would say
-        // "published" on a version that is not, hence skip a real publication.
-        return out.length > 0 && out !== "undefined";
-    } catch {
-        // `npm view` errors out on an E404 — the package or the version does not exist.
-        return false;
+    return registryAnswer(name, version).state === "published";
+}
+
+/**
+ * The single package entry of one `npm pack --dry-run --json` output, whatever the npm major.
+ *
+ * 🛑 THE ROOT SHAPE CHANGED WITH npm 12, AND ONLY THE PUBLICATION RUNNER RUNS npm 12.
+ * Measured 18/09/2026 on `@geoleaf-plugins/cog`: npm 10 prints an ARRAY, `[ { name, files } ]`;
+ * npm 12.0.2 prints an OBJECT keyed by package name, `{ "<name>": { name, files } }` — the entry
+ * itself is identical. `publish.yml` pins npm 12 for trusted publishing while a workstation runs
+ * whatever it has, so `JSON.parse(out)[0]` read `undefined` on the one machine that publishes:
+ * the parity gate died on a `TypeError` in front of the irreversible act, after passing locally.
+ *
+ * ⚠️ Any other shape THROWS rather than returning `null`. `localFileHashes`' caller reads `null`
+ * as a package not built — PUB-00, a named skip that reddens only under `release:check` —; an
+ * unknown output read that way would pass everywhere else for a package nobody built, when it is
+ * an instrument that cannot read its own tool.
+ * Exactly one entry is required in either shape: `npm pack` runs in ONE package's directory.
+ *
+ * @param {unknown} parsed The parsed JSON that `npm pack --dry-run --json` printed.
+ * @returns {{ files: { path: string }[] }} The package entry.
+ * @throws {Error} Named `PackShapeError` when neither known shape yields one `files` array.
+ */
+function packEntry(parsed) {
+    let entries = [];
+    if (Array.isArray(parsed)) entries = parsed;
+    else if (parsed !== null && typeof parsed === "object") entries = Object.values(parsed);
+    const entry = entries.length === 1 ? entries[0] : undefined;
+    if (!entry || !Array.isArray(entry.files)) {
+        const err = new Error(
+            "`npm pack --dry-run --json` printed a shape this instrument does not know — " +
+                "neither `[ { files } ]` (npm ≤ 11) nor `{ <name>: { files } }` (npm 12), " +
+                "with exactly one package"
+        );
+        err.name = "PackShapeError";
+        throw err;
     }
+    return entry;
 }
 
 /**
@@ -129,20 +233,24 @@ function publishedFileHashes(name, version, tmpDir) {
  * @param {string} absDir Absolute directory of the package.
  * @returns {ComparableHashes|null} `comparable path → sha256`, its `originals` and `root` —
  *   the package directory itself — or `null` when `npm pack` failed.
- * @throws {Error} Named `ChunkNameCollisionError` — see `publishedFileHashes`.
+ * @throws {Error} Named `ChunkNameCollisionError` — see `publishedFileHashes` — or
+ *   `PackShapeError` when `npm pack` printed a shape `packEntry` does not know.
  */
 function localFileHashes(absDir) {
-    let listed;
+    let parsed;
     try {
         const out = execFileSync("npm", ["pack", "--dry-run", "--json"], {
             cwd: absDir,
             encoding: "utf8",
             stdio: ["ignore", "pipe", "ignore"],
         });
-        listed = JSON.parse(out)[0];
+        parsed = JSON.parse(out);
     } catch {
         return null;
     }
+    // OUTSIDE the `try` on purpose: an output this instrument cannot read must throw, not
+    // become the `null` above — see `packEntry`.
+    const listed = packEntry(parsed);
     const entries = [];
     for (const f of listed.files) {
         const abs = path.join(absDir, f.path);
@@ -268,8 +376,11 @@ function hashTree(root) {
 
 module.exports = {
     alreadyPublished,
+    readRegistryAnswer,
+    registryAnswer,
     publishedFileHashes,
     localFileHashes,
+    packEntry,
     normalizeChunkHashes,
     hashEntries,
 };

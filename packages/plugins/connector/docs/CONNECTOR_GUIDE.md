@@ -24,10 +24,10 @@ title: "GeoLeaf — Authentification HTTP avec @geoleaf-plugins/connector"
 **Fonctionnalités :**
 
 - Monkey-patch `window.fetch` — toutes les requêtes vers `baseUrl` reçoivent le header
-- JWT : détection d'expiration + refresh automatique
+- JWT : détection d'expiration + refresh automatique ; une panne du point de renouvellement garde la session, seul un refus l'efface
 - Persistance du token en IndexedDB (survit au rechargement de page)
 - Modal de connexion accessible (aucune dépendance CSS externe)
-- Intercept MapLibre `transformRequest` pour les tuiles vectorielles (MVT/PMTiles)
+- Intercept MapLibre `transformRequest` pour les tuiles vectorielles (MVT) ; les archives PMTiles passent par `window.fetch`, que la bibliothèque `pmtiles` emploie
 
 ---
 
@@ -37,7 +37,7 @@ title: "GeoLeaf — Authentification HTTP avec @geoleaf-plugins/connector"
 npm install @geoleaf-plugins/connector
 ```
 
-> **Prérequis :** `@geoleaf/core` ≥ 2.0.0 (peer dependency).
+> **Prérequis :** `@geoleaf/core` ≥ 3.0.0 (peer dependency) ; ≥ 3.4.0 pour qu'un `getToken` asynchrone atteigne l'ouvrier GeoJSON.
 
 ---
 
@@ -125,9 +125,13 @@ await GeoLeaf.Connector.configure({
 });
 ```
 
-Le connector vérifie d'abord IndexedDB. Si aucun token valide n'est trouvé, la modal de connexion s'affiche. Le token obtenu est persisté en IDB et rafraîchi automatiquement avant expiration.
+Le connector vérifie d'abord IndexedDB. Si aucune session n'est stockée, ou si son renouvellement est refusé, la modal de connexion s'affiche. Le token obtenu est persisté en IDB et rafraîchi automatiquement avant expiration.
+
+Une session dont le renouvellement ne peut pas **aboutir** — hors réseau, délai dépassé, `503` — n'est pas une absence : elle est gardée, `configure()` se résout sans modal (avec ou sans `ui`), et le renouvellement est retenté au retour du réseau, au retour au premier plan et à chaque saisie mise en file.
 
 ### S4 — Provider async (SDK d'identité tiers)
+
+Le fournisseur est appelé à **chaque** requête qui a besoin du jeton : chaque `fetch` intercepté, chaque tuile vectorielle, chaque chargement GeoJSON de l'ouvrier. Une promesse atteint les tuiles avec MapLibre ≥ 5.21 et l'ouvrier avec `@geoleaf/core` ≥ 3.4.0. Un fournisseur qui jette ou rejette fait échouer la requête de la page ; tuiles et chargements de l'ouvrier partent alors sans jeton, jusqu'à ce qu'il réponde de nouveau.
 
 ```js
 await GeoLeaf.Connector.configure({
@@ -171,18 +175,24 @@ const conn = createConnector({
 });
 
 const token = await conn.getTokenAsync();
-conn.destroy(); // Retire les intercepteurs fetch
+conn.destroy(); // Neutralise les lectures de jeton de l'instance
 ```
+
+L'instance n'installe ni interception de `fetch`, ni crochet d'ouvrier, ni pont de tuiles. ⚠️ Elle
+ne possède pas le renouvellement : le magasin de jetons tient **un** délégué pour toute la page.
+Avec `auth.endpoint`, `createConnector()` installe le sien à la place de celui de `configure()`, et
+`destroy()` le retire quel qu'en soit l'auteur — jusqu'au `configure()` suivant, un 401 en mode
+`auth.endpoint` met alors fin à la session.
 
 ---
 
 ## Événements DOM
 
-| Événement                           | Détail               | Déclenché quand                |
-| ----------------------------------- | -------------------- | ------------------------------ |
-| `geoleaf:connector:authenticated`   | `{ baseUrl }`        | Login modal réussi             |
-| `geoleaf:connector:token-refreshed` | `{ baseUrl }`        | Refresh automatique JWT        |
-| `geoleaf:connector:auth-error`      | `{ baseUrl, error }` | 401 après tentative de refresh |
+| Événement                           | Détail               | Déclenché quand          |
+| ----------------------------------- | -------------------- | ------------------------ |
+| `geoleaf:connector:authenticated`   | `{ baseUrl }`        | Login modal réussi       |
+| `geoleaf:connector:token-refreshed` | `{ baseUrl }`        | Renouvellement réussi    |
+| `geoleaf:connector:auth-error`      | `{ baseUrl, error }` | Session terminée : refus |
 
 ```js
 document.addEventListener("geoleaf:connector:authenticated", (e) => {
@@ -203,7 +213,7 @@ document.addEventListener("geoleaf:connector:auth-error", (e) => {
 - Les mots de passe sont effacés de la mémoire après utilisation (OWASP A02)
 - `baseUrl` doit utiliser HTTPS en production (erreur levée sinon)
 - Sanitisation XSS de la modal : `textContent` uniquement — aucun `innerHTML` avec données utilisateur
-- MVT / PMTiles : interceptés via `map.setTransformRequest()` (MapLibre bridge), pas via `window.fetch`
+- Tuiles vectorielles (MVT) : jeton via `map.setTransformRequest()` (MapLibre bridge) ; archives PMTiles : via `window.fetch`, que la bibliothèque `pmtiles` emploie
 
 ---
 

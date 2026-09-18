@@ -6,10 +6,12 @@ import type { ConnectorConfig } from "../config.js";
 vi.mock("../token-store.js", () => ({
     TokenStore: {
         save: vi.fn().mockResolvedValue(undefined),
+        saveIfCurrent: vi.fn().mockResolvedValue(true),
         load: vi.fn().mockResolvedValue(null),
         clear: vi.fn().mockResolvedValue(undefined),
         getTokenSync: vi.fn().mockReturnValue(null),
         getTokenAsync: vi.fn().mockResolvedValue(null),
+        resolveSession: vi.fn().mockResolvedValue({ token: null, verdict: "absent" }),
         _setRefreshFn: vi.fn(),
     },
 }));
@@ -17,7 +19,8 @@ vi.mock("../token-store.js", () => ({
 vi.mock("../auth-client.js", () => ({
     AuthClient: {
         login: vi.fn(),
-        refresh: vi.fn().mockResolvedValue(null),
+        // A renewal that did not conclude — the verdict shape `refresh()` returns.
+        refresh: vi.fn().mockResolvedValue({ verdict: "unavailable", reason: "network" }),
     },
     AuthError: class AuthError extends Error {
         constructor(message: string) {
@@ -176,9 +179,7 @@ describe("createConnector()", () => {
         createConnector(AUTH_CONFIG);
         const delegate = (TokenStore["_setRefreshFn"] as ReturnType<typeof vi.fn>).mock.calls
             .map((c: unknown[]) => c[0])
-            .filter(
-                (f: unknown): f is (b: string) => Promise<string | null> => typeof f === "function"
-            )
+            .filter((f: unknown): f is (b: string) => Promise<unknown> => typeof f === "function")
             .pop();
         expect(delegate).toBeTypeOf("function");
         await delegate!(AUTH_CONFIG.baseUrl);
@@ -268,31 +269,59 @@ describe("GeoLeaf.Connector.configure()", () => {
     });
 
     it("with auth.endpoint and token found in store — does NOT open the login modal", async () => {
-        TokenStore["getTokenAsync"].mockResolvedValue("cached-tok");
+        TokenStore["resolveSession"].mockResolvedValue({ token: "cached-tok" });
         await Connector.configure(AUTH_CONFIG);
         expect(showLoginModal).not.toHaveBeenCalled();
     });
 
     it("with auth.endpoint, no token, and auth.ui=true — opens the login modal", async () => {
-        TokenStore["getTokenAsync"].mockResolvedValue(null);
+        TokenStore["resolveSession"].mockResolvedValue({ token: null, verdict: "absent" });
         await Connector.configure(AUTH_UI_CONFIG);
         expect(showLoginModal).toHaveBeenCalledWith(AUTH_UI_CONFIG);
     });
 
     it("with auth.endpoint, no token, and auth.ui omitted — throws ConfigError", async () => {
-        TokenStore["getTokenAsync"].mockResolvedValue(null);
+        TokenStore["resolveSession"].mockResolvedValue({ token: null, verdict: "absent" });
         await expect(Connector.configure(AUTH_CONFIG)).rejects.toThrow(/No valid token found/);
     });
 
+    it.each([AUTH_UI_CONFIG, AUTH_CONFIG])(
+        "🛑 une session stockée dont le renouvellement est injoignable : ni fenêtre ni ConfigError",
+        async (config: ConnectorConfig) => {
+            TokenStore["resolveSession"].mockResolvedValue({ token: null, verdict: "unavailable" });
+            await expect(Connector.configure(config)).resolves.toBeUndefined();
+            expect(showLoginModal).not.toHaveBeenCalled();
+        }
+    );
+
+    it("un renouvellement refusé au démarrage ouvre la fenêtre", async () => {
+        TokenStore["resolveSession"].mockResolvedValue({ token: null, verdict: "refused" });
+        await Connector.configure(AUTH_UI_CONFIG);
+        expect(showLoginModal).toHaveBeenCalledWith(AUTH_UI_CONFIG);
+    });
+
+    it("🛑 installe les trois chemins AVANT de décider de la session", async () => {
+        // A login window closed by the user rejects `configure()`. Installed after it, the
+        // interceptor would be missing — and a token obtained later through `openLoginModal()`
+        // would be injected nowhere.
+        TokenStore["resolveSession"].mockResolvedValue({ token: null, verdict: "absent" });
+        showLoginModal.mockRejectedValueOnce(new Error("Modal closed by user"));
+        await expect(Connector.configure(AUTH_UI_CONFIG)).rejects.toThrow("Modal closed by user");
+        expect(install).toHaveBeenCalledWith(AUTH_UI_CONFIG);
+        expect(installMapLibreBridge).toHaveBeenCalledWith(AUTH_UI_CONFIG);
+    });
+
     it("warms up TokenStore from IDB when auth.endpoint is configured", async () => {
-        TokenStore["getTokenAsync"].mockResolvedValue("warm-tok");
+        TokenStore["resolveSession"].mockResolvedValue({ token: "warm-tok" });
         await Connector.configure(AUTH_CONFIG);
-        // getTokenAsync is called for warmup and then for token resolution
-        expect(TokenStore["getTokenAsync"]).toHaveBeenCalledWith(AUTH_CONFIG.baseUrl);
+        // ONE read warms the cache and decides the session — the former warm-up ran before the
+        // renewal delegate existed, so it could never renew an expired token.
+        expect(TokenStore["resolveSession"]).toHaveBeenCalledTimes(1);
+        expect(TokenStore["resolveSession"]).toHaveBeenCalledWith(AUTH_CONFIG.baseUrl);
     });
 
     it("calling configure() twice destroys the previous instance", async () => {
-        TokenStore["getTokenAsync"].mockResolvedValue("tok");
+        TokenStore["resolveSession"].mockResolvedValue({ token: "tok" });
         await Connector.configure(AUTH_CONFIG);
         install.mockClear();
         uninstallCredentialButton.mockClear();
@@ -341,7 +370,7 @@ describe("GeoLeaf.Connector.openLoginModal()", () => {
     });
 
     it("calls showLoginModal when auth is configured", async () => {
-        TokenStore["getTokenAsync"].mockResolvedValue("tok");
+        TokenStore["resolveSession"].mockResolvedValue({ token: "tok" });
         await Connector.configure(AUTH_UI_CONFIG);
         showLoginModal.mockClear();
 
@@ -367,7 +396,7 @@ describe("reconnexion guidée — l'événement d'échec d'auth avait DEUX émet
         ({ TokenStore } = (await import("../token-store.js")) as unknown as {
             TokenStore: Record<string, ReturnType<typeof vi.fn>>;
         });
-        TokenStore["getTokenAsync"].mockResolvedValue("tok");
+        TokenStore["resolveSession"].mockResolvedValue({ token: "tok" });
         ({ showLoginModal } = (await import("../login-ui.js")) as unknown as {
             showLoginModal: ReturnType<typeof vi.fn>;
         });
@@ -449,7 +478,7 @@ describe("logout() — la fin de session, qui n'existait pas", () => {
         ({ TokenStore } = (await import("../token-store.js")) as unknown as {
             TokenStore: Record<string, ReturnType<typeof vi.fn>>;
         });
-        TokenStore["getTokenAsync"].mockResolvedValue("tok");
+        TokenStore["resolveSession"].mockResolvedValue({ token: "tok" });
         const api = await import("../connector-api.js");
         Connector = api as unknown as typeof Connector;
     });

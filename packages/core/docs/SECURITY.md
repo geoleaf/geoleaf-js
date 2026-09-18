@@ -176,15 +176,27 @@ The plugin manages the token through a three-level cache cycle:
 
 | Phase               | Behaviour                                                                           |
 | ------------------- | ----------------------------------------------------------------------------------- |
-| `configure()`       | Warms the IndexedDB cache → RAM (non-blocking access)                               |
-| Synchronous access  | RAM only — used by the MapLibre bridge (`setTransformRequest`)                      |
+| `configure()`       | Reads the session once: IndexedDB → RAM, and renews an expired token                |
+| Synchronous access  | RAM only — the MapLibre bridge and the worker hook, in `auth.endpoint` mode         |
 | Asynchronous access | RAM → IDB → refresh if expiry < 5 min                                               |
 | Proactive refresh   | Triggered in the background if expiry < 5 min, without blocking the current request |
-| Expiry              | Forced refresh; `connector:auth-error` event if the refresh fails                   |
+| Expiry              | Forced refresh; `connector:auth-error` only if the renewal is **refused**           |
 | `401` retry         | One retry at most after a refresh attempt; synthetic `401` response on failure      |
+| Outage              | A renewal that cannot conclude keeps the session and fires nothing (see below)      |
 
 **Persistence:** IndexedDB, database `geoleaf-connector`, store `auth-tokens`, key `baseUrl`.  
 The token survives page reloads but **not** navigation to another origin.
+
+**Only a refusal ends a session.** A renewal the server refuses — a `401`, a `403`, no renewal
+offered, a `501`, an answer received whole but unusable — erases the stored token and fires
+`connector:auth-error`. A renewal that cannot **conclude** — no network, the time budget spent
+(the whole exchange is bounded, body included), a `408`, `429`, `500`, `502`, `503` or `504`, a
+body cut in transit — keeps the session: the request gets its `401`, `configure()` resolves
+instead of blocking, and the renewal is tried again when the network returns, when the page
+comes back to the foreground, and when a capture enters the offline queue. A renewed token is
+stored, and a refused one erased, only if it is still the one the renewal presented — a sign-in
+or a sign-out made meanwhile wins. With no stored session at all, a `401` is returned as the
+server sent it, without a renewal and without `connector:auth-error`.
 
 **Security constraints enforced by the code:**
 
@@ -202,11 +214,11 @@ The token survives page reloads but **not** navigation to another origin.
 
 `getToken` and `auth` are **mutually exclusive** — a `ConfigError` is thrown if both are provided.
 
-| Mode                   | Configuration                   | Use case                                                                                                                         |
-| ---------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| **Standalone + modal** | `auth: { endpoint, ui: true }`  | Own backend returning `{ token, expiresIn }`; the modal is handled by the plugin                                                 |
-| **Silent standalone**  | `auth: { endpoint, ui: false }` | Token preloaded into IDB during an earlier session — no modal. If no valid token is found at startup, a `ConfigError` is thrown. |
-| **Async callback**     | `getToken: async () => token`   | External SSO through an identity SDK running in the page — the plugin delegates resolution                                       |
+| Mode                   | Configuration                   | Use case                                                                                                                                                                                                                            |
+| ---------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Standalone + modal** | `auth: { endpoint, ui: true }`  | Own backend returning `{ token, expiresIn }`; the modal is handled by the plugin                                                                                                                                                    |
+| **Silent standalone**  | `auth: { endpoint, ui: false }` | Token preloaded into IDB during an earlier session — no modal. If no session is stored, or its renewal is refused, a `ConfigError` is thrown; a stored session whose renewal cannot be reached is kept, and `configure()` resolves. |
+| **Async callback**     | `getToken: async () => token`   | External SSO through an identity SDK running in the page — the plugin delegates resolution                                                                                                                                          |
 
 ---
 
@@ -229,6 +241,12 @@ await GeoLeaf.Connector.configure({
 **Returning `null` is meaningful**: it makes the connector emit `connector:auth-error`, the same
 path a `401` takes. Never return an expired token to avoid a `null` — a silent `401` is harder to
 diagnose than an explicit auth error.
+
+The provider is called for every request that needs the token — each intercepted `fetch`, each
+vector tile, each GeoJSON load the worker makes — and nothing keeps a copy. A provider that
+answers with a promise reaches the tiles on MapLibre 5.21 or later and the worker on
+`@geoleaf/core` 3.4.0 or later. One that throws or rejects fails the page's request with its
+error; tiles and worker loads go without a token until it answers again.
 
 A JWT signed with RS256 is passed straight into `Authorization: Bearer`, unchanged.
 

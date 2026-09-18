@@ -14,6 +14,8 @@
  *   - Communication postMessage / onmessage
  *   - Transparent fallback to a main-thread fetch when the Worker is unavailable
  *   - Automatic Worker teardown after an idle delay
+ *   - Per-URL request headers from a plugin's hook (`__GEOLEAF_WORKER_HEADERS_HOOK__`), which
+ *     may answer with a promise — see `WorkerHeadersHook` below
  */
 
 import { getLog } from "../../utils/general/di-accessors.js";
@@ -67,8 +69,32 @@ interface WorkerMessage {
     message?: string;
 }
 
-/** Optional connector hook returning per-URL auth headers. */
-type WorkerHeadersHook = (url: string) => Record<string, string> | undefined;
+/** Per-URL request headers a plugin attaches to the worker's requests — plain, cloneable data. */
+type WorkerHeaders = Record<string, string>;
+
+/** What the core tells the header hook it can take. */
+interface WorkerHeadersHookCapabilities {
+    /** The hook may answer with a promise: the request is posted once it settles. */
+    readonly acceptsPromise: true;
+}
+
+/**
+ * The hook a plugin sets on `globalThis.__GEOLEAF_WORKER_HEADERS_HOOK__` to authenticate the
+ * worker's requests — the connector does — without the core ever importing it.
+ *
+ * ⚠️ **It may answer with a promise, and the core says so in `capabilities`.** It was read
+ * synchronously, right before `postMessage`: a token provider that answers asynchronously — an
+ * identity SDK — could not reach the worker, and a GeoJSON layer loaded by URL left without its
+ * token. A hook should answer with a promise only when told: a core that predates the argument
+ * hands the answer straight to `postMessage`, which cannot clone a promise.
+ */
+type WorkerHeadersHook = (
+    url: string,
+    capabilities?: WorkerHeadersHookCapabilities
+) => WorkerHeaders | undefined | PromiseLike<WorkerHeaders | undefined>;
+
+/** Passed to every hook call — frozen, one instance. */
+const HOOK_CAPABILITIES: WorkerHeadersHookCapabilities = Object.freeze({ acceptsPromise: true });
 
 /** Delay before an idle Worker is terminated (ms) */
 const IDLE_TIMEOUT = 30000;
@@ -181,6 +207,78 @@ function _resetIdleTimer() {
             getLog().debug("[WorkerManager] Worker terminated after inactivity");
         }
     }, IDLE_TIMEOUT);
+}
+
+/** True for anything a `then` can be chained on — a promise, or any other thenable. */
+function _isThenable(value: unknown): value is PromiseLike<unknown> {
+    return (
+        typeof value === "object" &&
+        value !== null &&
+        typeof (value as { then?: unknown }).then === "function"
+    );
+}
+
+/**
+ * Asks the plugin's hook for `url`'s headers, then posts through `post` — at once when the hook
+ * answers synchronously, as it always did; once settled when it answers with a promise.
+ *
+ * - No hook, or a hook that throws or rejects: posted WITHOUT headers. The request still goes —
+ *   whether it is authorised is the server's answer, not the hook's.
+ * - A deferred post happens only if `entry` is still the one pending for `layerId`. `dispose()`
+ *   and a worker error clear the pending map (and reject the entry); a newer load of the same
+ *   layer replaces it — that one is rejected here, instead of never settling.
+ * - A deferred post that throws — an answer `postMessage` cannot clone — rejects the load
+ *   instead of leaving it pending.
+ *
+ * ⚠️ The hook's promise is not bounded in time, symmetrically with the page's `fetch`, whose
+ * token provider is not bounded either: a provider that never answers holds its load.
+ */
+function _postWithHookHeaders(
+    url: string,
+    layerId: string,
+    entry: PendingEntry,
+    post: (headers: WorkerHeaders | undefined) => void
+): void {
+    const hook = (globalThis as { __GEOLEAF_WORKER_HEADERS_HOOK__?: WorkerHeadersHook })
+        .__GEOLEAF_WORKER_HEADERS_HOOK__;
+    let answer: ReturnType<WorkerHeadersHook> = undefined;
+    try {
+        answer = typeof hook === "function" ? hook(url, HOOK_CAPABILITIES) : undefined;
+    } catch (err: unknown) {
+        getLog().warn(
+            "[WorkerManager] Header hook threw — the request goes without its headers:",
+            err instanceof Error ? err.message : err
+        );
+    }
+    if (!_isThenable(answer)) {
+        post(answer as WorkerHeaders | undefined);
+        return;
+    }
+
+    const postDeferred = (headers: WorkerHeaders | undefined): void => {
+        if (_state.pending.get(layerId) !== entry) {
+            // Superseded by a newer load of this layer, or already settled by `dispose()` or a
+            // worker error — rejecting an already rejected promise is a no-op.
+            entry.reject(new Error("Superseded before its request was sent"));
+            return;
+        }
+        try {
+            post(headers);
+        } catch (err: unknown) {
+            _state.pending.delete(layerId);
+            entry.reject(err instanceof Error ? err : new Error(String(err)));
+        }
+    };
+    Promise.resolve(answer).then(
+        (headers) => postDeferred(headers ?? undefined),
+        (err: unknown) => {
+            getLog().warn(
+                "[WorkerManager] Header hook rejected — the request goes without its headers:",
+                err instanceof Error ? err.message : err
+            );
+            postDeferred(undefined);
+        }
+    );
 }
 
 // ─── Worker message handlers ────────────────────────────────────
@@ -320,6 +418,10 @@ const WorkerManager = {
      * @param {number} [options.chunkSize=500] - Number of features per chunk
      * @param {Function} [options.onChunk] - Callback(features[], chunkIndex, totalFeatures)
      * @returns {Promise<Object>} - Resolved with a complete FeatureCollection
+     *
+     * The worker's request carries the headers a plugin's hook
+     * (`__GEOLEAF_WORKER_HEADERS_HOOK__`) gives for `url`; when the hook answers with a promise,
+     * the request leaves once it settles.
      */
     fetchGeoJSON: function (
         url: string,
@@ -354,29 +456,25 @@ const WorkerManager = {
         }
 
         return new Promise(function (resolve, reject) {
-            _state.pending.set(layerId, {
+            const entry: PendingEntry = {
                 resolve: resolve,
                 reject: reject,
                 features: [],
                 onChunk: options.onChunk || null,
+            };
+            _state.pending.set(layerId, entry);
+
+            // Auth headers from a plugin's hook (the connector's), synchronous or not.
+            _postWithHookHeaders(absoluteUrl, layerId, entry, function (headers) {
+                worker.postMessage({
+                    type: "fetch",
+                    url: absoluteUrl,
+                    layerId: layerId,
+                    chunkSize: options.chunkSize || DEFAULT_CHUNK_SIZE,
+                    headers: headers,
+                });
+                _resetIdleTimer();
             });
-
-            // Read connector auth headers if @geoleaf-plugins/connector is installed
-            const _headersHook = (
-                globalThis as { __GEOLEAF_WORKER_HEADERS_HOOK__?: WorkerHeadersHook }
-            ).__GEOLEAF_WORKER_HEADERS_HOOK__;
-            const headers: Record<string, string> | undefined =
-                typeof _headersHook === "function" ? _headersHook(absoluteUrl) : undefined;
-
-            worker.postMessage({
-                type: "fetch",
-                url: absoluteUrl,
-                layerId: layerId,
-                chunkSize: options.chunkSize || DEFAULT_CHUNK_SIZE,
-                headers: headers,
-            });
-
-            _resetIdleTimer();
         });
     },
 
@@ -388,6 +486,8 @@ const WorkerManager = {
      * @param {string} url - Text file URL
      * @param {string} layerId - Unique layer id
      * @returns {Promise<string>} - Resolved with raw text
+     *
+     * Same headers hook as {@link WorkerManager.fetchGeoJSON}.
      */
     fetchText: function (url: string, layerId: string): Promise<unknown> {
         // Resolve relative URLs to absolute (same reason as fetchGeoJSON)
@@ -414,28 +514,24 @@ const WorkerManager = {
         }
 
         return new Promise(function (resolve, reject) {
-            _state.pending.set(layerId, {
+            const entry: PendingEntry = {
                 resolve: resolve,
                 reject: reject,
                 features: [], // unused for text, kept for consistency
                 onChunk: null,
+            };
+            _state.pending.set(layerId, entry);
+
+            // Auth headers from a plugin's hook (the connector's), synchronous or not.
+            _postWithHookHeaders(absoluteUrl, layerId, entry, function (headers) {
+                worker.postMessage({
+                    type: "fetch-text",
+                    url: absoluteUrl,
+                    layerId: layerId,
+                    headers: headers,
+                });
+                _resetIdleTimer();
             });
-
-            // Read connector auth headers if @geoleaf-plugins/connector is installed
-            const _headersHook = (
-                globalThis as { __GEOLEAF_WORKER_HEADERS_HOOK__?: WorkerHeadersHook }
-            ).__GEOLEAF_WORKER_HEADERS_HOOK__;
-            const headers: Record<string, string> | undefined =
-                typeof _headersHook === "function" ? _headersHook(absoluteUrl) : undefined;
-
-            worker.postMessage({
-                type: "fetch-text",
-                url: absoluteUrl,
-                layerId: layerId,
-                headers: headers,
-            });
-
-            _resetIdleTimer();
         });
     },
 

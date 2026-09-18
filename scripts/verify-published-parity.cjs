@@ -50,7 +50,10 @@
  *
  * ## Codes
  *
- *   PUB-00  SKIP, explicit and named — no registry access, or a package not built.
+ *   PUB-00  SKIP, explicit and named — a package NOT CONFRONTED: no answer from the registry,
+ *           a tarball that would not download, or a package not built. Under `release:check`
+ *           (`GEOLEAF_RELEASE_CHECK=1`) a REFUSAL instead — and so is a registry that knows none
+ *           of the public packages.
  *   PUB-01  NOTE — repo version ≠ registry version. A legitimate state (bumped, awaiting
  *           publication, or never published). Named, never red.
  *   PUB-02  RED — a package diverges at an EQUAL version and is not in the baseline.
@@ -77,7 +80,7 @@ const path = require("node:path");
 
 const registry = require("./lib/packages.cjs");
 const {
-    alreadyPublished,
+    registryAnswer,
     publishedFileHashes,
     localFileHashes,
     normalizeChunkHashes,
@@ -89,6 +92,8 @@ const C = { r: "\x1b[31m", g: "\x1b[32m", y: "\x1b[33m", d: "\x1b[2m", x: "\x1b[
 const ROOT = path.resolve(__dirname, "..");
 const BASELINE = path.join(ROOT, "scripts", ".baselines", "published-parity.json");
 const UPDATE = process.argv.includes("--update-baseline");
+/** Set by `release-check.cjs` for every gate it runs: this run stands in front of a publication. */
+const RELEASE = process.env.GEOLEAF_RELEASE_CHECK === "1";
 
 /** `dist/**` and `package.json` are derived or rewritten — see the header. */
 function classify(rel) {
@@ -134,8 +139,12 @@ const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "geoleaf-pub-"));
 const notes = [];
 const errors = [];
 const measured = {};
-let unreachable = 0;
+/** Public packages this run did NOT confront, each with its reason — PUB-00. */
+const notConfronted = [];
 let compared = 0;
+let publicCount = 0;
+/** At least one public package answered with its list of versions. */
+let registryKnowsUs = false;
 
 console.log(`${C.d}── ${TAG} — le registre porte-t-il encore ce que le dépôt dit ? ──${C.x}`);
 
@@ -143,12 +152,30 @@ try {
     for (const pkg of registry.all()) {
         if (pkg.private) continue;
         const { name, version } = pkg.manifest;
+        publicCount++;
 
-        if (!alreadyPublished(name, version)) {
+        // 🛑 Only a list of versions or an E404 is an answer (`readRegistryAnswer`). Every other
+        // failure of `npm view` used to read as "not published", so a registry that could not
+        // be read looked like a corpus of versions awaiting publication — and was skipped.
+        const answer = registryAnswer(name, version);
+        if (answer.state === "unknown") {
+            notConfronted.push(`${name} (registre : ${answer.code})`);
+            continue;
+        }
+        if (answer.state !== "package-absent") registryKnowsUs = true;
+        if (answer.state === "version-absent") {
             notes.push(
                 `[PUB-01] ${name} — le dépôt déclare ${version}, que le registre ne porte pas. ` +
-                    `Version bumpée en attente de publication, ou paquet jamais publié : ` +
-                    `les deux sont légitimes, et c'est la direction que la doctrine nomme déjà.`
+                    `Version bumpée en attente de publication : légitime, et c'est la direction ` +
+                    `que la doctrine nomme déjà.`
+            );
+            continue;
+        }
+        if (answer.state === "package-absent") {
+            notes.push(
+                `[PUB-01] ${name} — le registre ne connaît pas ce paquet (E404). Paquet jamais ` +
+                    `publié, ou registre qui n'est pas celui de la publication : seul le premier ` +
+                    `est légitime.`
             );
             continue;
         }
@@ -161,21 +188,20 @@ try {
         } catch (err) {
             // 🛑 A normalization collision is not a network failure: reading it as PUB-00
             // would skip the package in silence. The instrument refuses to conclude, loudly.
-            if (err && err.name === "ChunkNameCollisionError") {
+            // Same for an `npm pack` output it cannot read — the class that crashed this gate
+            // under npm 12, on the publication runner only (see `packEntry`).
+            if (err && (err.name === "ChunkNameCollisionError" || err.name === "PackShapeError")) {
                 errors.push(`[PUB-05] ${name}@${version} — ${err.message}. Rien n'a été comparé.`);
                 continue;
             }
             throw err;
         }
         if (published === null) {
-            unreachable++;
+            notConfronted.push(`${name} (téléchargement du tarball publié)`);
             continue;
         }
         if (local === null || local.size === 0) {
-            notes.push(
-                `[PUB-00] ${name} — \`npm pack --dry-run\` n'a rien rendu : le paquet n'est ` +
-                    `pas construit. Ce n'est PAS un vert — rien n'a été comparé.`
-            );
+            notConfronted.push(`${name} (\`npm pack --dry-run\` n'a rien rendu : pas construit)`);
             continue;
         }
 
@@ -257,24 +283,70 @@ try {
     fs.rmSync(tmpRoot, { recursive: true, force: true });
 }
 
-// ── PUB-00 — the skip must be LOUD, and it must be the whole run's verdict ────────────────
+// ── PUB-00 — a package not confronted is not verified ────────────────────────────────────
 //
-// A gate whose network was down and which prints a green tick is indistinguishable from one
-// that compared everything. `verify-consumer-contract.cjs` learned this the same way: it says
-// what it did not read, and exits 0 without claiming anything.
+// 🛑 UNDER `release:check`, A REFUSAL — NOT A SKIP. `release-check.cjs` runs its gates with
+// `GEOLEAF_RELEASE_CHECK=1`: this run then stands in front of an act that cannot be taken back,
+// and "nothing could be compared" is the one thing it must not conclude on. On 09/09/2026 the
+// publication runner skipped its whole corpus here, and exited 0.
+//
+// Two refusals, and the second is the one no error code shows: a registry answering 404 for
+// EVERYTHING — a mirror that does not carry these scopes, a mistyped registry — reads, package by
+// package, exactly like a set of first publications. The corpus tells them apart: a registry that
+// knows none of the public packages is not the one they were published to. One that knows them
+// at other versions is the legitimate empty case — every package bumped at once, the remedy
+// PUB-05 prescribes for a toolchain change — and it passes.
+//
+// ⚠️ Outside `release:check` the skip stays a loud exit 0: an offline workstation proves
+// nothing, and a gate red for want of network would be disarmed within the week.
+if (RELEASE) {
+    let refusal = null;
+    if (notConfronted.length > 0) {
+        refusal =
+            `[PUB-00] ${notConfronted.length} paquet(s) non confronté(s) au registre — ` +
+            `${notConfronted.join(", ")}. Devant une publication, un paquet non confronté n'est ` +
+            `pas vérifié : relancer, et ne rien publier avant que la gate ait tout lu.`;
+    } else if (publicCount > 0 && !registryKnowsUs) {
+        refusal =
+            `[PUB-00] le registre ne connaît aucun des ${publicCount} paquet(s) public(s) — E404 ` +
+            `partout. Registre mal configuré, ou miroir qui ne porte pas ces portées : devant une ` +
+            `publication, ce vide n'est jamais légitime.`;
+    }
+    if (refusal !== null) {
+        for (const n of notes) console.log(`${C.d}   ${n}${C.x}`);
+        console.error(
+            `\n${C.r}✘ ${TAG}${C.x} : refus de conclure (release:check) —\n\n  • ${refusal}\n`
+        );
+        process.exit(1);
+    }
+}
+
 if (compared === 0) {
+    for (const n of notes) console.log(`${C.d}   ${n}${C.x}`);
+    if (notConfronted.length === 0 && registryKnowsUs) {
+        // Every public package at a version the registry does not carry yet: nothing to
+        // compare, and nothing missed.
+        console.log(
+            `${C.g}✓ ${TAG}${C.x} — aucun paquet à confronter : chaque paquet public est à une ` +
+                `version que le registre ne porte pas encore (PUB-01).`
+        );
+        process.exit(0);
+    }
+    const why =
+        notConfronted.length > 0
+            ? `${notConfronted.length} non confronté(s) : ${notConfronted.join(", ")}`
+            : `il ne connaît aucun des ${publicCount} paquet(s) public(s)`;
     console.log(
-        `⏭️  [${TAG}/PUB-00] SAUTÉ — aucun paquet n'a pu être confronté au registre ` +
-            `(${unreachable} téléchargement(s) en échec).\n` +
-            `    Ce n'est pas un vert : hors ligne, ou sans accès au registre npm, cette gate ` +
-            `ne peut rien\n    établir. Sur le dépôt public c'est le comportement attendu.`
+        `⏭️  [${TAG}/PUB-00] SAUTÉ — aucun paquet n'a pu être confronté au registre (${why}).\n` +
+            `    Ce n'est pas un vert : sans réponse du registre, cette gate ne peut rien ` +
+            `établir.\n    Sous release:check, ce saut est un refus.`
     );
     process.exit(0);
 }
-if (unreachable > 0) {
+if (notConfronted.length > 0) {
     notes.push(
-        `[PUB-00] ${unreachable} paquet(s) non téléchargeable(s) — non comparés, donc ni verts ` +
-            `ni rouges. Un réseau intermittent suffit ; relancer avant de conclure.`
+        `[PUB-00] ${notConfronted.length} paquet(s) non confronté(s) — ${notConfronted.join(", ")} ` +
+            `: ni verts ni rouges. Un réseau intermittent suffit ; relancer avant de conclure.`
     );
 }
 

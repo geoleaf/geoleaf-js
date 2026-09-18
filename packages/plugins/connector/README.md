@@ -76,6 +76,13 @@ await GeoLeaf.Connector.configure({
 
 `getToken` and `auth` are mutually exclusive.
 
+With `getToken`, the provider is called for **every** request that needs the token: each
+intercepted `fetch`, each vector tile, each GeoJSON load the worker makes. Nothing keeps a copy.
+A provider that answers with a promise reaches the tiles on MapLibre 5.21 or later, and the
+GeoJSON worker on `@geoleaf/core` 3.4.0 or later; older versions send those requests without a
+token. A provider that throws or rejects fails the page's request with its error, while tiles
+and worker loads go without a token until it answers again.
+
 ### `GeoLeaf.Connector.openLoginModal()`
 
 Opens the login modal manually. Requires a prior `configure()` call carrying `auth`.
@@ -96,18 +103,24 @@ const token = await conn.getTokenAsync();
 conn.destroy();
 ```
 
+The instance installs no fetch interception, worker hook or tile bridge, and `destroy()` only
+deactivates its token reads. ⚠️ It does not own the renewal: the token store keeps **one** renewal
+delegate per page. With `auth.endpoint`, `createConnector()` installs its delegate in place of the
+one `configure()` installed, and `destroy()` removes it, whoever installed it — until the next
+`configure()`, a 401 in `auth.endpoint` mode then ends the session.
+
 ---
 
 ## DOM events
 
-| Event                                         | Detail                       | Fired when                       | Cancelable |
-| --------------------------------------------- | ---------------------------- | -------------------------------- | ---------- |
-| `geoleaf:connector:authenticated`             | `{ baseUrl }`                | Login modal succeeded            | No         |
-| `geoleaf:connector:token-refreshed`           | `{ baseUrl }`                | Automatic refresh (JWT expiring) | No         |
-| `geoleaf:connector:auth-error`                | `{ baseUrl, error }`         | 401 after a refresh attempt      | No         |
-| `geoleaf:connector:credential-button-clicked` | `{ baseUrl, authenticated }` | Credential button clicked        | No         |
-| `geoleaf:connector:signup-requested`          | `{ url }`                    | "Create an account" clicked      | **Yes**    |
-| `geoleaf:connector:forgot-password-requested` | `{ url }`                    | "Forgot password" clicked        | **Yes**    |
+| Event                                         | Detail                       | Fired when                  | Cancelable |
+| --------------------------------------------- | ---------------------------- | --------------------------- | ---------- |
+| `geoleaf:connector:authenticated`             | `{ baseUrl }`                | Login modal succeeded       | No         |
+| `geoleaf:connector:token-refreshed`           | `{ baseUrl }`                | Automatic renewal succeeded | No         |
+| `geoleaf:connector:auth-error`                | `{ baseUrl, error }`         | The session ended: refused  | No         |
+| `geoleaf:connector:credential-button-clicked` | `{ baseUrl, authenticated }` | Credential button clicked   | No         |
+| `geoleaf:connector:signup-requested`          | `{ url }`                    | "Create an account" clicked | **Yes**    |
+| `geoleaf:connector:forgot-password-requested` | `{ url }`                    | "Forgot password" clicked   | **Yes**    |
 
 The `cancelable` events let the host application intercept the default behaviour through
 `preventDefault()`:
@@ -124,6 +137,19 @@ document.addEventListener("geoleaf:connector:authenticated", (e) => {
     console.log("Authenticated on", e.detail.baseUrl);
 });
 ```
+
+### When the authentication server cannot be reached
+
+`auth-error` means the session **ended**: the renewal was refused (a `401`, a `403`, no renewal
+offered, an answer that cannot be used). A renewal that could not **conclude** — no network, a
+time-out, a `503`, a body cut in transit — keeps the session and fires nothing:
+
+- a request that met a `401` gets it back, and the core's drain waits for the session;
+- `configure()` resolves when a stored session cannot be renewed right now — with or without
+  `auth.ui` — instead of opening a login window that needs the missing network;
+- the renewal is tried again when the network returns, when the application comes back to the
+  foreground, and when a capture enters the offline queue. Online, in the foreground and with no
+  new capture, it waits for the next of those moments.
 
 ### What a returning session does to the offline queue
 
@@ -147,8 +173,8 @@ offline capability, there is nothing to resume and nothing happens.
 - Passwords are wiped from memory after use (`OWASP A02`).
 - `baseUrl` must use HTTPS in production (an error is raised otherwise).
 - The modal's XSS sanitisation relies on `textContent` — no `innerHTML` with user data.
-- MVT / PMTiles are intercepted through `map.setTransformRequest()` (MapLibre bridge), not through
-  `window.fetch`.
+- Vector tiles (MVT) get the token through `map.setTransformRequest()` (MapLibre bridge); PMTiles
+  archives through `window.fetch`, which the `pmtiles` library reads them with.
 
 ---
 

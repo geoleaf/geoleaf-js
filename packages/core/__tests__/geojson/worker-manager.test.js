@@ -358,3 +358,140 @@ describe("geojson/worker-manager — Worker paths (T19)", () => {
         });
     });
 });
+
+// ── The header hook a plugin may set — and answer with a promise ─────────────
+//
+// A plugin authenticates the worker's requests through `__GEOLEAF_WORKER_HEADERS_HOOK__`, read
+// on the global so that the core never imports it. It was read synchronously, right before
+// `postMessage`: a token provider that answers with a promise — an identity SDK — could not
+// reach the worker, and every GeoJSON layer loaded by URL left without its token.
+describe("geojson/worker-manager — the header hook a plugin may answer", () => {
+    let WM;
+    let worker;
+    const URL_A = "https://ex.com/a.json";
+    /** Lets a settled hook and the deferred post run. */
+    const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    beforeEach(async () => {
+        worker = null;
+        global.Worker = vi.fn(function () {
+            this.postMessage = vi.fn();
+            this.terminate = vi.fn();
+            this.onmessage = null;
+            this.onerror = null;
+            worker = this;
+        });
+        vi.resetModules();
+        WM = (await import("../../src/kernel/geojson/worker-manager.js")).WorkerManager;
+    });
+
+    afterEach(() => {
+        WM.dispose();
+        delete global.Worker;
+        delete globalThis.__GEOLEAF_WORKER_HEADERS_HOOK__;
+        vi.clearAllTimers();
+    });
+
+    it("tells the hook it may answer with a promise", () => {
+        const hook = vi.fn(() => undefined);
+        globalThis.__GEOLEAF_WORKER_HEADERS_HOOK__ = hook;
+        WM.fetchGeoJSON(URL_A, "l1").catch(() => undefined);
+        expect(hook).toHaveBeenCalledWith(URL_A, { acceptsPromise: true });
+    });
+
+    it("a synchronous answer is still posted synchronously", () => {
+        globalThis.__GEOLEAF_WORKER_HEADERS_HOOK__ = () => ({ Authorization: "Bearer s" });
+        WM.fetchGeoJSON(URL_A, "l1").catch(() => undefined);
+        expect(worker.postMessage).toHaveBeenCalledWith(
+            expect.objectContaining({ type: "fetch", headers: { Authorization: "Bearer s" } })
+        );
+    });
+
+    it("🛑 an answer that is a promise is posted once settled, with the headers it resolves to", async () => {
+        globalThis.__GEOLEAF_WORKER_HEADERS_HOOK__ = () =>
+            Promise.resolve({ Authorization: "Bearer p" });
+        WM.fetchGeoJSON(URL_A, "l1").catch(() => undefined);
+        await flush();
+        expect(worker.postMessage).toHaveBeenCalledTimes(1);
+        expect(worker.postMessage).toHaveBeenCalledWith(
+            expect.objectContaining({ type: "fetch", headers: { Authorization: "Bearer p" } })
+        );
+    });
+
+    it("🛑 a promise that rejects: the load is posted without headers", async () => {
+        globalThis.__GEOLEAF_WORKER_HEADERS_HOOK__ = () =>
+            Promise.reject(new Error("host session unreachable"));
+        WM.fetchGeoJSON(URL_A, "l1").catch(() => undefined);
+        await flush();
+        expect(worker.postMessage).toHaveBeenCalledWith(
+            expect.objectContaining({ type: "fetch", headers: undefined })
+        );
+    });
+
+    it("🛑 a hook that throws: the load is posted without headers", () => {
+        globalThis.__GEOLEAF_WORKER_HEADERS_HOOK__ = () => {
+            throw new Error("broken hook");
+        };
+        WM.fetchGeoJSON(URL_A, "l1").catch(() => undefined);
+        expect(worker.postMessage).toHaveBeenCalledWith(
+            expect.objectContaining({ type: "fetch", headers: undefined })
+        );
+    });
+
+    it("disposed while the hook answers: nothing is posted, and the load stays rejected", async () => {
+        let answer;
+        globalThis.__GEOLEAF_WORKER_HEADERS_HOOK__ = () => new Promise((r) => (answer = r));
+        const outcome = WM.fetchGeoJSON(URL_A, "l1").then(
+            () => "resolved",
+            (e) => e.message
+        );
+        const disposed = worker;
+        WM.dispose();
+        answer({ Authorization: "Bearer late" });
+        await flush();
+        expect(disposed.postMessage).not.toHaveBeenCalled();
+        expect(await outcome).toBe("WorkerManager disposed");
+    });
+
+    it("a load superseded while its hook answers is rejected — not left pending", async () => {
+        const answers = [];
+        globalThis.__GEOLEAF_WORKER_HEADERS_HOOK__ = () => new Promise((r) => answers.push(r));
+        const first = WM.fetchGeoJSON(URL_A, "l1").then(
+            () => "resolved",
+            () => "rejected"
+        );
+        WM.fetchGeoJSON("https://ex.com/b.json", "l1").catch(() => undefined);
+        for (const answer of answers) answer({ Authorization: "Bearer x" });
+        await flush();
+        expect(await first).toBe("rejected");
+        expect(worker.postMessage).toHaveBeenCalledTimes(1);
+        expect(worker.postMessage).toHaveBeenCalledWith(
+            expect.objectContaining({ url: "https://ex.com/b.json" })
+        );
+    });
+
+    it("a deferred post that throws rejects the load instead of leaving it pending", async () => {
+        globalThis.__GEOLEAF_WORKER_HEADERS_HOOK__ = () =>
+            Promise.resolve({ Authorization: "Bearer p" });
+        const outcome = WM.fetchGeoJSON(URL_A, "l1").then(
+            () => "resolved",
+            (e) => e.message
+        );
+        worker.postMessage.mockImplementation(() => {
+            throw new Error("DataCloneError: could not be cloned");
+        });
+        await flush();
+        expect(await outcome).toMatch(/DataCloneError/);
+    });
+
+    it("fetchText: the same hook, promise included", async () => {
+        const hook = vi.fn(() => Promise.resolve({ Authorization: "Bearer t" }));
+        globalThis.__GEOLEAF_WORKER_HEADERS_HOOK__ = hook;
+        WM.fetchText("https://ex.com/trace.gpx", "g1").catch(() => undefined);
+        await flush();
+        expect(hook).toHaveBeenCalledWith("https://ex.com/trace.gpx", { acceptsPromise: true });
+        expect(worker.postMessage).toHaveBeenCalledWith(
+            expect.objectContaining({ type: "fetch-text", headers: { Authorization: "Bearer t" } })
+        );
+    });
+});

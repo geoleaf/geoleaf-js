@@ -58,6 +58,14 @@
  * ⚠️ Why `--strict` is not the default, and this is the same arbitration the repo made
  * for CC-10 and for PARITY-13: a hard red on a structural skip would be red on every
  * runner, permanently — and a permanently red gate gets disarmed, not fixed.
+ *
+ * ## A skip that is NOT structural becomes a refusal here
+ *
+ * Every gate runs with `GEOLEAF_RELEASE_CHECK=1`. A gate whose skip depends on the moment —
+ * a registry that did not answer — reads it and refuses instead of skipping: the parity gate
+ * (PUB-00) skipped its whole corpus on the publication runner on 09/09/2026, and exited 0.
+ * Unlike the contract's missing manifest, that skip is not permanent on a runner: a re-run
+ * clears it, so refusing costs a re-run, never a disarmed gate.
  */
 
 "use strict";
@@ -198,6 +206,8 @@ function runStep(step, index, total) {
     const start = process.hrtime.bigint();
     const res = spawnSync(step.run[0], step.run.slice(1), {
         cwd: ROOT,
+        // Every gate learns that it stands in front of a publication — see the header.
+        env: { ...process.env, GEOLEAF_RELEASE_CHECK: "1" },
         stdio: "inherit",
         shell: NPM_SHELL,
     });

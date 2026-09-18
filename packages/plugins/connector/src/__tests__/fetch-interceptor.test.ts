@@ -92,7 +92,7 @@ describe("URL matching and header injection", () => {
     it("injects Authorization: Bearer header for URLs matching baseUrl", async () => {
         await globalThis.fetch(`${BASE_URL}/data/layer.geojson`);
         const callInit = backendFetch.mock.calls[0][1];
-        expect(callInit.headers.Authorization).toBe(`Bearer ${TOKEN}`);
+        expect(new Headers(callInit.headers).get("authorization")).toBe(`Bearer ${TOKEN}`);
     });
 
     it("passes through without modification for URLs not matching baseUrl", async () => {
@@ -108,16 +108,125 @@ describe("URL matching and header injection", () => {
         expect(callInit?.headers?.Authorization).toBeUndefined();
     });
 
-    it("does not intercept .pmtiles URLs (routed to MapLibre bridge)", async () => {
-        await globalThis.fetch(`${BASE_URL}/map.pmtiles`);
-        const callInit = backendFetch.mock.calls[0][1];
-        expect(callInit?.headers?.Authorization).toBeUndefined();
+    it("🛑 intercepts a PMTiles archive, and keeps its Range header", async () => {
+        // The `pmtiles` library reads the archive through THIS `fetch`, on the main thread, with
+        // `Range` carried by a `Headers` object; the MapLibre bridge only ever sees the
+        // `pmtiles://` URL. Excluded here "because the bridge handles it", the archive carried
+        // a token in NEITHER mode — and spreading `init.headers` as an object would have lost
+        // `Range` the day it was intercepted.
+        await globalThis.fetch(`${BASE_URL}/map.pmtiles`, {
+            headers: new Headers({ range: "bytes=0-16383" }),
+        });
+        const headers = new Headers(backendFetch.mock.calls[0][1]?.headers);
+        expect(headers.get("authorization")).toBe(`Bearer ${TOKEN}`);
+        expect(headers.get("range")).toBe("bytes=0-16383");
+    });
+
+    it("🛑 a Headers object on an ordinary request keeps its entries", async () => {
+        await globalThis.fetch(`${BASE_URL}/data/layer.geojson`, {
+            headers: new Headers({ Accept: "application/geo+json" }),
+        });
+        const headers = new Headers(backendFetch.mock.calls[0][1]?.headers);
+        expect(headers.get("accept")).toBe("application/geo+json");
+        expect(headers.get("authorization")).toBe(`Bearer ${TOKEN}`);
+    });
+
+    it("🛑 a Request keeps its own headers, as fetch would", async () => {
+        await globalThis.fetch(
+            new Request(`${BASE_URL}/data/layer.geojson`, { headers: { "X-Trace": "t-1" } })
+        );
+        const headers = new Headers(backendFetch.mock.calls[0][1]?.headers);
+        expect(headers.get("x-trace")).toBe("t-1");
+        expect(headers.get("authorization")).toBe(`Bearer ${TOKEN}`);
     });
 
     it("does not intercept .pbf URLs (routed to MapLibre bridge)", async () => {
         await globalThis.fetch(`${BASE_URL}/tiles/14/100/200.pbf`);
         const callInit = backendFetch.mock.calls[0][1];
         expect(callInit?.headers?.Authorization).toBeUndefined();
+    });
+});
+
+// ─── PMTiles in auth.endpoint mode ────────────────────────────────────────────
+
+describe("mode auth.endpoint — une archive PMTiles porte le jeton stocké", () => {
+    it("🛑 l'archive reçoit le jeton du magasin, et garde son Range", async () => {
+        vi.resetModules();
+        const backendFetch = vi.fn().mockResolvedValue(makeOkResponse(200));
+        vi.stubGlobal("fetch", backendFetch);
+        const interceptor = await import("../fetch-interceptor.js");
+        const { TokenStore } = await import("../token-store.js");
+        await TokenStore.save(BASE_URL, TOKEN, Date.now() + 3_600_000);
+        interceptor.install({ baseUrl: BASE_URL, auth: { endpoint: `${BASE_URL}/auth` } });
+        try {
+            await globalThis.fetch(`${BASE_URL}/map.pmtiles`, {
+                headers: new Headers({ range: "bytes=0-16383" }),
+            });
+            const headers = new Headers(backendFetch.mock.calls[0]?.[1]?.headers);
+            expect(headers.get("authorization")).toBe(`Bearer ${TOKEN}`);
+            expect(headers.get("range")).toBe("bytes=0-16383");
+        } finally {
+            interceptor.uninstall();
+            await TokenStore.clear(BASE_URL);
+            vi.unstubAllGlobals();
+        }
+    });
+});
+
+// ─── The 401 replay keeps what the request carried ────────────────────────────
+
+describe("le rejeu du 401 garde ce que la requête portait", () => {
+    let interceptor: InterceptorModule;
+    let backendFetch: ReturnType<typeof vi.fn>;
+
+    beforeEach(async () => {
+        vi.resetModules();
+        let call = 0;
+        backendFetch = vi.fn(async (input: RequestInfo | URL) => {
+            // A real `fetch` spends a Request's body: reading it twice fails.
+            if (input instanceof Request) await input.text();
+            return makeOkResponse(++call === 1 ? 401 : 200);
+        });
+        vi.stubGlobal("fetch", backendFetch);
+        interceptor = await import("../fetch-interceptor.js");
+        let n = 0;
+        interceptor.install({ baseUrl: BASE_URL, getToken: () => `tok.${++n}` });
+    });
+
+    afterEach(() => {
+        interceptor.uninstall();
+        vi.unstubAllGlobals();
+    });
+
+    it.each([
+        ["un objet", { "Content-Type": "application/json", Prefer: "return=representation" }],
+        [
+            "un objet Headers",
+            new Headers({ "Content-Type": "application/json", Prefer: "return=representation" }),
+        ],
+    ])(
+        "🛑 %s : Content-Type et Prefer survivent au rejeu",
+        async (_label: string, sent: HeadersInit) => {
+            // A renewed write that loses `Prefer: return=representation` gets no row back, and one
+            // that loses `Content-Type` is refused — a refusal the drain does not replay.
+            const response = await globalThis.fetch(`${BASE_URL}/data/rows`, {
+                method: "PATCH",
+                headers: sent,
+                body: "{}",
+            });
+            expect(response.status).toBe(200);
+            const replay = new Headers(backendFetch.mock.calls[1]?.[1]?.headers);
+            expect(replay.get("content-type")).toBe("application/json");
+            expect(replay.get("prefer")).toBe("return=representation");
+            expect(replay.get("authorization")).toBe("Bearer tok.3");
+        }
+    );
+
+    it("🛑 une Request porteuse d'un corps se rejoue — elle n'est pas dépensée par son premier envoi", async () => {
+        const response = await globalThis.fetch(
+            new Request(`${BASE_URL}/data/rows`, { method: "POST", body: '{"a":1}' })
+        );
+        expect(response.status).toBe(200);
     });
 });
 
@@ -204,14 +313,24 @@ describe("mode jeton — un 401 tente le renouvellement AVANT d'effacer quoi que
     /** The raw mock, kept apart: after `install()` the global IS the patched function. */
     let rawFetch: ReturnType<typeof vi.fn>;
 
-    function makeStore(refreshResult: string | null) {
+    /** What the renewal concluded, in the store's vocabulary. */
+    type Outcome =
+        | { verdict: "renewed"; token: string }
+        | { verdict: "refused"; presented: string }
+        | { verdict: "unavailable" | "absent" | "superseded" };
+
+    function makeStore(outcome: Outcome) {
         return {
             forceRefresh: vi.fn(async () => {
                 order.push("refresh");
-                return refreshResult;
+                return outcome;
             }),
             clear: vi.fn(async () => {
                 order.push("clear");
+            }),
+            declareSessionDead: vi.fn(async () => {
+                order.push("declare");
+                return true;
             }),
             getTokenAsync: vi.fn().mockResolvedValue(TOKEN),
             getTokenSync: vi.fn().mockReturnValue(TOKEN),
@@ -231,9 +350,9 @@ describe("mode jeton — un 401 tente le renouvellement AVANT d'effacer quoi que
         vi.doUnmock("../token-store.js");
     });
 
-    async function mount(refreshResult: string | null, fetchImpl: () => Promise<Response>) {
+    async function mount(outcome: Outcome, fetchImpl: () => Promise<Response>) {
         vi.resetModules();
-        store = makeStore(refreshResult);
+        store = makeStore(outcome);
         vi.doMock("../token-store.js", () => ({ TokenStore: store }));
         rawFetch = vi.fn().mockImplementation(fetchImpl);
         vi.stubGlobal("fetch", rawFetch);
@@ -242,7 +361,7 @@ describe("mode jeton — un 401 tente le renouvellement AVANT d'effacer quoi que
     }
 
     it("🛑 tente le renouvellement, et n'efface pas avant de l'avoir tenté", async () => {
-        await mount(null, async () => makeOkResponse(401));
+        await mount({ verdict: "refused", presented: TOKEN }, async () => makeOkResponse(401));
 
         await globalThis.fetch(`${BASE_URL}/data.geojson`);
 
@@ -253,24 +372,61 @@ describe("mode jeton — un 401 tente le renouvellement AVANT d'effacer quoi que
 
     it("le renouvellement RÉUSSI rejoue la requête avec le jeton neuf, sans rien effacer", async () => {
         let call = 0;
-        await mount("neuf.token.sig", async () => makeOkResponse(++call === 1 ? 401 : 200));
+        await mount({ verdict: "renewed", token: "neuf.token.sig" }, async () =>
+            makeOkResponse(++call === 1 ? 401 : 200)
+        );
 
         const response = await globalThis.fetch(`${BASE_URL}/data.geojson`);
 
         expect(response.status).toBe(200);
         expect(store["clear"]).not.toHaveBeenCalled();
+        expect(store["declareSessionDead"]).not.toHaveBeenCalled();
     });
 
-    it("le renouvellement ÉCHOUÉ efface le jeton — la contre-épreuve", async () => {
-        // Without it, "do not erase before" would become "never erase", and a dead
-        // token would sit in the store being presented for ever.
-        await mount(null, async () => makeOkResponse(401));
+    it("le renouvellement REFUSÉ déclare la session morte, pour le jeton refusé — la contre-épreuve", async () => {
+        // Without it, "do not erase before" would become "never erase", and a dead token
+        // would sit in the store being presented for ever.
+        await mount({ verdict: "refused", presented: TOKEN }, async () => makeOkResponse(401));
 
         const response = await globalThis.fetch(`${BASE_URL}/data.geojson`);
 
         expect(response.status).toBe(401);
-        expect(store["clear"]).toHaveBeenCalledWith(BASE_URL);
-        expect(order).toEqual(["refresh", "clear"]);
+        expect(store["declareSessionDead"]).toHaveBeenCalledWith(
+            BASE_URL,
+            TOKEN,
+            expect.any(String)
+        );
+        expect(order).toEqual(["refresh", "declare"]);
+    });
+
+    it.each(["unavailable", "superseded"] as const)(
+        "🛑 un renouvellement « %s » n'efface rien et ne déclare rien",
+        async (verdict: "unavailable" | "superseded") => {
+            await mount({ verdict }, async () => makeOkResponse(401));
+
+            const response = await globalThis.fetch(`${BASE_URL}/data.geojson`);
+
+            expect(response.status).toBe(401);
+            expect(store["clear"]).not.toHaveBeenCalled();
+            expect(store["declareSessionDead"]).not.toHaveBeenCalled();
+        }
+    );
+
+    it("🛑 sans session stockée : la réponse d'origine, sans effacement ni auth-error", async () => {
+        const original = makeOkResponse(401);
+        await mount({ verdict: "absent" }, async () => original);
+        const events: Event[] = [];
+        const listener = (e: Event): void => {
+            events.push(e);
+        };
+        document.addEventListener("geoleaf:connector:auth-error", listener);
+
+        const response = await globalThis.fetch(`${BASE_URL}/data.geojson`);
+
+        document.removeEventListener("geoleaf:connector:auth-error", listener);
+        expect(response).toBe(original);
+        expect(store["declareSessionDead"]).not.toHaveBeenCalled();
+        expect(events).toHaveLength(0);
     });
 
     it("🛑 le point de renouvellement n'est PAS intercepté — sinon il s'attend lui-même", async () => {
@@ -279,7 +435,7 @@ describe("mode jeton — un 401 tente le renouvellement AVANT d'effacer quoi que
         // would resolve a token — i.e. await the in-flight refresh promise, a deadlock —
         // and it would OVERWRITE the `Authorization` header the request already carries,
         // the expired token it exists to present.
-        await mount(null, async () => makeOkResponse(200));
+        await mount({ verdict: "absent" }, async () => makeOkResponse(200));
         rawFetch.mockClear();
         store["getTokenAsync"].mockClear();
 
@@ -328,50 +484,60 @@ describe("static token warning", () => {
 });
 
 // ─── getWorkerHeaders ─────────────────────────────────────────────────────────
+//
+// The GeoJSON worker's path. ⚠️ Its first test here was titled "returns Authorization header"
+// and asserted `undefined` — the defect written down as expected: in `getToken` mode the hook
+// read the plugin's store, which the host never fills. The seam itself (the hook `configure()`
+// installs, as the core calls it) is proven in `host-token-paths.test.ts`.
 
 describe("getWorkerHeaders", () => {
     let interceptor: InterceptorModule;
+    let store: (typeof import("../token-store.js"))["TokenStore"];
+    const LAYER = `${BASE_URL}/data.geojson`;
 
     beforeEach(async () => {
         vi.resetModules();
-        vi.stubGlobal("fetch", vi.fn());
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(makeOkResponse(200)));
         interceptor = await import("../fetch-interceptor.js");
+        store = (await import("../token-store.js")).TokenStore;
     });
 
-    afterEach(() => {
+    afterEach(async () => {
+        await store.clear(BASE_URL);
         interceptor.uninstall();
         vi.unstubAllGlobals();
     });
 
-    it("returns Authorization header for a URL matching baseUrl when token is in RAM cache", async () => {
-        // Install with a getToken callback so the token is resolvable synchronously
-        // We need the RAM cache populated for getWorkerHeaders (sync path)
-        // Since getToken is used, getWorkerHeaders will call TokenStore.getTokenSync
-        // which reads from RAM cache — we must use the auth.endpoint path to populate IDB
-        // Instead, test via the __GEOLEAF_WORKER_HEADERS_HOOK__ directly
-        interceptor.install({ baseUrl: BASE_URL, getToken: () => TOKEN });
+    it("mode getToken : l'en-tête du jeton de l'hôte", () => {
+        const headers = interceptor.getWorkerHeaders(LAYER, {
+            baseUrl: BASE_URL,
+            getToken: () => TOKEN,
+        });
+        expect(headers).toEqual({ Authorization: `Bearer ${TOKEN}` });
+    });
 
-        // The hook is installed on globalThis by entry.ts, but fetch-interceptor
-        // exposes getWorkerHeaders directly for testing
-        const headers = interceptor.getWorkerHeaders(`${BASE_URL}/data.geojson`, BASE_URL);
-        // With getToken mode, getWorkerHeaders uses TokenStore.getTokenSync which reads RAM cache.
-        // RAM cache is empty at this point since save() was never called.
-        // getWorkerHeaders returns undefined when no RAM cache entry exists.
+    it("mode getToken : une URL d'une autre origine n'a pas d'en-tête", () => {
+        const headers = interceptor.getWorkerHeaders("https://other.example.com/data.geojson", {
+            baseUrl: BASE_URL,
+            getToken: () => TOKEN,
+        });
         expect(headers).toBeUndefined();
     });
 
-    it("returns undefined for a URL that does not match baseUrl", async () => {
-        interceptor.install({ baseUrl: BASE_URL, getToken: () => TOKEN });
-        const headers = interceptor.getWorkerHeaders(
-            "https://other.example.com/data.geojson",
-            BASE_URL
-        );
-        expect(headers).toBeUndefined();
+    it("mode auth.endpoint : l'en-tête du cache mémoire", async () => {
+        await store.save(BASE_URL, TOKEN, Date.now() + 3_600_000);
+        const headers = interceptor.getWorkerHeaders(LAYER, {
+            baseUrl: BASE_URL,
+            auth: { endpoint: `${BASE_URL}/auth` },
+        });
+        expect(headers).toEqual({ Authorization: `Bearer ${TOKEN}` });
     });
 
-    it("returns undefined when no token is in the RAM cache", async () => {
-        interceptor.install({ baseUrl: BASE_URL, getToken: () => TOKEN });
-        const headers = interceptor.getWorkerHeaders(`${BASE_URL}/data.geojson`, BASE_URL);
+    it("mode auth.endpoint : rien en cache, pas d'en-tête", () => {
+        const headers = interceptor.getWorkerHeaders(LAYER, {
+            baseUrl: BASE_URL,
+            auth: { endpoint: `${BASE_URL}/auth` },
+        });
         expect(headers).toBeUndefined();
     });
 });

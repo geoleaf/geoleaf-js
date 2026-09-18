@@ -44,6 +44,7 @@
 import { validateConfig, ConfigError } from "./config.js";
 import type { ConnectorConfig } from "./config.js";
 import { TokenStore } from "./token-store.js";
+import type { RefreshOutcome, SessionState } from "./token-store.js";
 import {
     install as installFetchInterceptor,
     uninstall as uninstallFetchInterceptor,
@@ -53,22 +54,31 @@ import { installMapLibreBridge } from "./maplibre-bridge.js";
 import { AuthClient } from "./auth-client.js";
 import { showLoginModal } from "./login-ui.js";
 import { armSessionResume, disarmSessionResume } from "./session-resume.js";
+import { armRenewalRetry, disarmRenewalRetry } from "./renewal-retry.js";
 import { installCredentialButton, uninstallCredentialButton } from "./credential-button.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 /**
- * A configured connector — the object an integrator receives after wiring a backend.
+ * A configured connector — the object an integrator receives from {@link createConnector}.
  *
- * One instance per backend: it carries its own credentials and endpoints, so two connectors
- * can coexist without their sessions interfering.
+ * It reads the token of ITS `baseUrl`. ⚠️ What it does not own is the renewal: the token store
+ * keeps ONE renewal delegate for the page, whatever the API. An instance built with
+ * `auth.endpoint` installs its delegate in place of the one already there — the `configure()`
+ * singleton's included — and every session of the page is then renewed against its endpoint.
  */
 export interface ConnectorInstance {
     /** Synchronous token read from RAM cache. Returns null if not loaded yet. */
     getTokenSync(): string | null;
     /** Async token read (IDB → RAM cache). Returns null if not authenticated. */
     getTokenAsync(): Promise<string | null>;
-    /** Restores window.fetch, clears RAM cache. Does NOT clear IndexedDB. */
+    /**
+     * Deactivates this instance: its token reads return `null` from then on.
+     *
+     * ⚠️ It also removes the page's renewal delegate, whoever installed it. Until the next
+     * `configure()`, a 401 in `auth.endpoint` mode finds nothing to renew the session with, and
+     * ends it. It touches neither `window.fetch` nor the stored tokens.
+     */
     destroy(): void;
 }
 
@@ -140,7 +150,7 @@ function _wireGuidedReconnect(config: ConnectorConfig): void {
  */
 function _wireRefreshDelegate(config: ConnectorConfig): void {
     if (!config.auth?.endpoint) return;
-    TokenStore._setRefreshFn(async (baseUrl: string) => {
+    TokenStore._setRefreshFn(async (baseUrl: string): Promise<RefreshOutcome> => {
         // 🛑 THE RAW RECORD, NOT `getTokenSync`. The whole point of a refresh is to
         // trade an EXPIRED token for a fresh one — and `getTokenSync` evicts an expired
         // entry and returns `null`, so the delegate gave up before reaching the network
@@ -148,29 +158,35 @@ function _wireRefreshDelegate(config: ConnectorConfig): void {
         // expiry included: the server is the one that arbitrates, and that is what a
         // refresh endpoint is FOR.
         const stored = await TokenStore.load(baseUrl);
-        const current = stored?.token;
-        if (!current || !config.auth?.endpoint) return null;
-        const result = await AuthClient.refresh(config.auth.endpoint, current);
-        if (result) {
-            const expiresAt = Date.now() + result.expiresIn * 1000;
-            await TokenStore.save(baseUrl, result.token, expiresAt);
-            if (typeof document !== "undefined") {
-                document.dispatchEvent(
-                    new CustomEvent("geoleaf:connector:token-refreshed", { detail: { baseUrl } })
-                );
-            }
-            return result.token;
+        const presented = stored?.token;
+        if (!presented || !config.auth?.endpoint) return { verdict: "absent" };
+        const result = await AuthClient.refresh(config.auth.endpoint, presented);
+        if (result.verdict === "refused") return { verdict: "refused", presented };
+        if (result.verdict === "unavailable") return { verdict: "unavailable" };
+
+        // ⚠️ Stored only if the session is still the one this renewal presented: a sign-out
+        // (or a sign-in) completed during the flight wins, and nothing is announced.
+        const expiresAt = Date.now() + result.expiresIn * 1000;
+        if (!(await TokenStore.saveIfCurrent(baseUrl, presented, result.token, expiresAt))) {
+            return { verdict: "superseded" };
         }
-        return null;
+        if (typeof document !== "undefined") {
+            document.dispatchEvent(
+                new CustomEvent("geoleaf:connector:token-refreshed", { detail: { baseUrl } })
+            );
+        }
+        return { verdict: "renewed", token: result.token };
     });
 }
 
 // ─── createConnector — ESM named export ──────────────────────────────────────
 
 /**
- * Creates a ConnectorInstance from a validated config without mutating the
- * global GeoLeaf.Connector state.
- * Intended for use by @geoleaf-plugins/suite-connector and advanced integrators.
+ * Creates a ConnectorInstance from a validated config, outside the `GeoLeaf.Connector`
+ * singleton: it installs no fetch interception, no worker hook and no tile bridge.
+ *
+ * ⚠️ With `auth.endpoint`, it installs its renewal delegate in place of the page's one — see
+ * {@link ConnectorInstance}. Intended for advanced integrators.
  */
 export function createConnector(config: ConnectorConfig): ConnectorInstance {
     validateConfig(config);
@@ -211,10 +227,12 @@ export function createConnector(config: ConnectorConfig): ConnectorInstance {
 /**
  * Initializes the Connector singleton.
  * Installs window.fetch monkey-patch and Worker headers hook.
- * If auth.ui is true and no token is found, shows the login modal.
+ * If auth.ui is true and no session is stored (or it was refused), shows the login modal.
  */
 export async function configure(config: ConnectorConfig): Promise<void> {
     validateConfig(config);
+    // A relaunch armed for the previous session must not renew this one.
+    disarmRenewalRetry();
 
     // Destroy the existing instance if any
     if (_currentInstance) {
@@ -228,58 +246,78 @@ export async function configure(config: ConnectorConfig): Promise<void> {
 
     _currentConfig = config;
 
-    // Warm up RAM cache from IDB (required before MapLibre bridge reads sync cache)
-    if (config.auth?.endpoint) {
-        await TokenStore.getTokenAsync(config.baseUrl);
-
-        // Wire refresh delegate for the singleton
-        _wireRefreshDelegate(config);
-    }
+    // ⚠️ THE DELEGATE COMES FIRST. The warm-up that read the store used to run before it was
+    // wired, so an expired token could not be renewed by it; the session is now read ONCE,
+    // with the renewal possible from that very read.
+    if (config.auth?.endpoint) _wireRefreshDelegate(config);
 
     _wireGuidedReconnect(config);
     // The captures a dead session set aside come back when the operator does — the core
-    // cannot see that moment, this plugin can (`session-resume.ts`).
+    // cannot see that moment, this plugin can (`session-resume.ts`). ⚠️ ARMED BEFORE THE
+    // SESSION IS READ: a renewal at boot emits `token-refreshed`, and the queue the previous
+    // session set aside must hear it.
     armSessionResume();
+
+    // Warm up RAM cache from IDB (required before the MapLibre bridge and the worker hook,
+    // which read it synchronously) — and learn what the session is.
+    const session = config.auth?.endpoint ? await TokenStore.resolveSession(config.baseUrl) : null;
 
     // Install fetch monkey-patch
     installFetchInterceptor(config);
 
     // Install Worker headers hook on globalThis
     // worker-manager.ts reads this via __GEOLEAF_WORKER_HEADERS_HOOK__ (no import of this plugin)
+    // It hands the core's capabilities over: whether an asynchronous `getToken` may answer
+    // with a promise depends on the core that calls it (`getWorkerHeaders`).
     (globalThis as Record<string, unknown>)["__GEOLEAF_WORKER_HEADERS_HOOK__"] = (
-        url: string
-    ): Record<string, string> | undefined => {
+        url: string,
+        capabilities?: { readonly acceptsPromise?: boolean }
+    ): ReturnType<typeof getWorkerHeaders> => {
         if (!_currentConfig) return undefined;
-        return getWorkerHeaders(url, _currentConfig.baseUrl);
+        return getWorkerHeaders(url, _currentConfig, capabilities);
     };
 
-    // Install MapLibre bridge (Phase 1 stub — no-op until Phase 2)
+    // Install the MapLibre bridge — the token's path for tiles loaded in MapLibre's worker
     installMapLibreBridge(config);
 
-    // Resolve current token status
-    let token: string | null = null;
-    if (config.getToken) {
-        token = await config.getToken();
-    } else if (config.auth?.endpoint) {
-        token = await TokenStore.getTokenAsync(config.baseUrl);
-    }
-
-    // No token + auth configured → show login modal or throw
-    if (!token && config.auth) {
-        if (config.auth.ui) {
-            await showLoginModal(config);
-        } else {
-            throw new ConfigError(
-                "[GeoLeaf Connector] No valid token found and auth.ui is not enabled. " +
-                    "Configure auth.ui: true to show the login modal, or provide a valid token."
-            );
-        }
-    }
+    // ⚠️ DECIDED AFTER INSTALLING. A login window the user closes rejects `configure()`;
+    // installed after it, nothing would inject a token obtained later by `openLoginModal()`.
+    if (config.getToken) await config.getToken();
+    else if (session) await _settleSession(config, session);
 
     // Install credential button (idempotent, no-op if not enabled)
     installCredentialButton(config);
 
     _currentInstance = createConnector(config);
+}
+
+/**
+ * What `configure()` does with the session it found, in `auth.endpoint` mode.
+ *
+ * 🛑 **A stored session whose renewal cannot be reached is NOT an absence** — with or without
+ * `auth.ui`. Opening the application with no network, the token expired in the night, used to
+ * block on a login window that needs the very network that is missing; closing it rejected
+ * `configure()`, and without `auth.ui` the host received the same `ConfigError` as a device
+ * never signed in. The session is kept instead, and the next request — or the network's return
+ * — renews it.
+ *
+ * No session at all, or one the server refused: the login window when `auth.ui` asks for it,
+ * else the `ConfigError` that names the problem where it is (CN-16).
+ */
+async function _settleSession(config: ConnectorConfig, session: SessionState): Promise<void> {
+    if (session.token !== null) return;
+    if (session.verdict === "unavailable") {
+        armRenewalRetry(config.baseUrl);
+        return;
+    }
+    if (config.auth?.ui) {
+        await showLoginModal(config);
+        return;
+    }
+    throw new ConfigError(
+        "[GeoLeaf Connector] No valid token found and auth.ui is not enabled. " +
+            "Configure auth.ui: true to show the login modal, or provide a valid token."
+    );
 }
 
 // ─── Surface consumed by the public namespace ────────────────────────────────
@@ -333,6 +371,8 @@ export async function openLoginModal(): Promise<void> {
 export async function logout(): Promise<void> {
     const config = _currentConfig;
     if (!config || config.getToken) return;
+    // Before the erasure: a relaunch firing in between would renew the session being ended.
+    disarmRenewalRetry();
     await TokenStore.clear(config.baseUrl);
     if (typeof document !== "undefined") {
         document.dispatchEvent(

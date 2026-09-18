@@ -12,8 +12,9 @@ type DataFormat = "geojson" | "flatgeobuf" | "kml" | "csv" | "pmtiles" | "oapif"
 /**
  * Detects the data format from a URL and optional Content-Type header.
  *
- * Used by fetch-interceptor to route MVT/PMTiles requests to the MapLibre bridge
- * instead of the window.fetch monkey-patch.
+ * Used by fetch-interceptor to leave vector tiles (`mvt`) to the MapLibre bridge — MapLibre
+ * loads them in its own worker. PMTiles archives stay on the `window.fetch` patch: the
+ * `pmtiles` library reads them through it, on the main thread.
  *
  * @param url - Request URL (query params are ignored)
  * @param contentType - Optional Content-Type header value

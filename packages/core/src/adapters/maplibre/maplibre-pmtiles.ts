@@ -32,9 +32,11 @@
  *
  * ## What this deliberately does NOT do
  *
- * No URL rewriting, no validation of the archive, no fetch interception: the connector's
- * format detector already delegates `pmtiles`/`mvt` to the MapLibre bridge
- * (`fetch-interceptor.ts`), and that delegation is exactly what this registration completes.
+ * No URL rewriting, no validation of the archive, no fetch interception. The archive's bytes are
+ * read by the `pmtiles` library through the page's global `fetch`, on the main thread — which is
+ * where an authentication plugin reaches them (the connector intercepts `.pmtiles` requests).
+ * MapLibre's `transformRequest` only ever sees the `pmtiles://` URL, and the protocol ignores a
+ * request's headers: a token cannot travel that way.
  */
 
 /** Module guard — MapLibre keeps the last handler registered for a scheme; one is enough. */

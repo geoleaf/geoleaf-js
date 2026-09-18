@@ -17,7 +17,7 @@ _Nothing yet._
 
 ---
 
-## [3.4.0] - 2026-09-17
+## [3.4.0] - 2026-09-11
 
 ### Added
 
@@ -49,6 +49,19 @@ _Nothing yet._
   is true for **before** the click; without this read every surface would hard-code the list,
   and a plugin cannot import the core.
 
+- **The GeoJSON worker's header hook may answer with a promise.** A plugin authenticates the
+  worker's requests through `globalThis.__GEOLEAF_WORKER_HEADERS_HOOK__`, which the core read
+  synchronously, right before posting to the worker: a token provider that answers
+  asynchronously — an identity SDK — could not reach it, and a GeoJSON layer loaded by URL left
+  without its token. The core now passes `{ acceptsPromise: true }` as the hook's second
+  argument and, when the hook answers with a promise, posts the request once it settles. A
+  synchronous answer is still posted at once; a hook that throws or rejects lets the request go
+  without headers. `@geoleaf-plugins/connector` 1.3.1 relies on it in `getToken` mode.
+
+    ⚠️ **A hook should answer with a promise only when told.** An older core hands the answer
+    straight to `postMessage`, which cannot clone a promise — the connector answers with one
+    only after reading the capability, and gives no header otherwise.
+
 ### Fixed
 
 - **GeoLeaf no longer unregisters service workers it did not register.** With the `pwa` capability
@@ -64,6 +77,29 @@ _Nothing yet._
 
     ⚠️ **Integrators who relied on the sweep to clear an unrelated worker must do it themselves.**
     Nothing in GeoLeaf's own deployments depended on it: the variants ship exactly one worker.
+
+- **`@geoleaf-plugins/connector` 1.3.1 — a renewal that cannot conclude no longer ends the
+  session.** In `auth.endpoint` mode the renewal answered `null` for any failure, and the session
+  was erased on it: one minute of an unavailable authentication server signed the device out. Only
+  a refusal ends a session now — a non-2xx other than 408, 429, 500, 502, 503 and 504 (the
+  statuses the write drain waits out), or a 2xx received whole but unusable. A renewal that could
+  not conclude keeps the session: the request gets its `401`, and the renewal is tried again when
+  the network returns, when the page comes back to the foreground and when a capture enters the
+  offline queue — a success resumes the queue as before.
+
+    ⚠️ **`configure()` no longer throws, nor opens the login window, for a stored session whose
+    renewal cannot be reached** — offline at start-up with an expired token, for instance. It
+    resolves, with or without `auth.ui`; a `ConfigError` still names the absence of any session,
+    or a refusal. An integrator without `auth.ui` who relied on that `ConfigError` offline now gets
+    a resolved `configure()`, and a session renewed when the network returns.
+
+- **`@geoleaf-plugins/connector` 1.3.1 — the host's token reaches every loading path.** In
+  `getToken` mode, GeoJSON layers loaded by the worker and vector tiles left without the host's
+  token: both paths read a store only the `auth.endpoint` mode fills. They now pull the host's
+  provider at each request — a promise reaches the tiles on MapLibre 5.21 or later, and the worker
+  through the header hook's new capability. PMTiles archives carried a token in NEITHER mode: the
+  `pmtiles` library reads them through the page's `fetch`, which the connector excluded for them.
+  They are intercepted now, their `Range` header kept.
 
 - **A device that went through the offline write cycle can now clear its quarantine.**
   `requeueQuarantined` and `discardQuarantined` had existed since 02/08/2026 with **no caller

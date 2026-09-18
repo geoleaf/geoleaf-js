@@ -9,7 +9,10 @@
 import { bearer, isSameOrigin } from "@geoleaf/host-runtime";
 import type { ConnectorConfig } from "./config.js";
 import { TokenStore } from "./token-store.js";
+import type { RefreshOutcome } from "./token-store.js";
 import { detectFormat } from "./format-detector.js";
+import { armRenewalRetry } from "./renewal-retry.js";
+import { isThenable, pullHostToken } from "./host-token.js";
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
@@ -29,7 +32,14 @@ function _extractUrl(input: RequestInfo | URL): string {
 
 /**
  * Returns true if the request URL should have a token injected via window.fetch.
- * MVT and PMTiles are routed to the MapLibre bridge instead.
+ * Vector tiles (`mvt`, `pbf`) are left to the MapLibre bridge: MapLibre loads them in its own
+ * worker, which this patch never sees.
+ *
+ * 🛑 **PMTiles archives are NOT — they were, and carried a token in neither mode.** The
+ * `pmtiles` library reads an archive through THIS `fetch`, on the main thread; the bridge only
+ * ever sees its `pmtiles://` URL, whose origin is `"null"` to `isSameOrigin`, and the protocol
+ * ignores a request's headers anyway. Excluded here "because the bridge handles it", the archive
+ * was handled by nobody.
  *
  * Origin validation is delegated to `isSameOrigin` (@geoleaf/host-runtime), the
  * single guard shared by every credential-injection point — window.fetch here,
@@ -51,8 +61,7 @@ function _shouldIntercept(url: string): boolean {
     // Excluding it here rather than reaching for the pre-patch `fetch` keeps the rule
     // where the perimeter is decided, in one readable predicate.
     if (_config.auth?.endpoint && isSameOrigin(url, _config.auth.endpoint)) return false;
-    const fmt = detectFormat(url);
-    return fmt !== "pmtiles" && fmt !== "mvt";
+    return detectFormat(url) !== "mvt";
 }
 
 /**
@@ -67,62 +76,122 @@ async function _resolveToken(): Promise<string | null> {
     return TokenStore.getTokenAsync(_config.baseUrl);
 }
 
+/** The answer a request gets when its session could not be renewed. */
+function _unauthorized(): Response {
+    return new Response(null, { status: 401, statusText: "Unauthorized" });
+}
+
 /**
  * Handles a 401 response: attempts one token refresh, retries the request.
- * Never loops — if refresh fails, emits connector:auth-error and returns a synthetic 401.
+ * Never loops — a renewal is attempted once per request, and its verdict decides the session.
+ *
+ * @param input - The request, as the caller passed it.
+ * @param init - Its init, the rejected `Authorization` included.
+ * @param response - The 401 itself — returned untouched when there is no session at all.
  */
-async function _handleUnauthorized(input: RequestInfo | URL, init: RequestInit): Promise<Response> {
-    if (!_config) return new Response(null, { status: 401, statusText: "Unauthorized" });
+async function _handleUnauthorized(
+    input: RequestInfo | URL,
+    init: RequestInit,
+    response: Response
+): Promise<Response> {
+    if (!_config) return _unauthorized();
 
-    let newToken: string | null = null;
-
-    try {
-        if (_config.getToken) {
-            // App-managed token — simply re-call; it is the app's responsibility to rotate it
+    if (_config.getToken) {
+        // App-managed token — simply re-call; it is the app's responsibility to rotate it
+        let newToken: string | null = null;
+        try {
             newToken = await Promise.resolve(_config.getToken());
-        } else {
-            // 🛑 REFRESH FIRST, ERASE ONLY AFTER — the order IS the fix.
-            //
-            // This branch used to call `TokenStore.clear()` under a comment claiming it
-            // "forces an IDB re-read by clearing the RAM cache". It clears BOTH, so the
-            // re-read that followed found nothing, `getTokenAsync` fell to its "no token
-            // at all" branch, and the refresh delegate was never reached. A session was
-            // therefore unrecoverable the moment it expired — and worse for a field
-            // drain: from that entry on, no request carried an `Authorization` header at
-            // all, so the rest of the queue burned its budget against a server that
-            // could only answer 401.
-            newToken = await TokenStore.forceRefresh(_config.baseUrl);
-            if (!newToken) {
-                // Now — and only now — the stored token is proven dead. Keeping it would
-                // have it presented indefinitely on every later request.
-                await TokenStore.clear(_config.baseUrl);
-            }
+        } catch {
+            // ignore — fall through to error dispatch
         }
-    } catch {
-        // ignore — fall through to error dispatch
-    }
-
-    if (newToken) {
-        const headers: Record<string, string> = {
-            ...(init.headers as Record<string, string>),
-            Authorization: bearer(newToken),
-        };
-        return _originalFetch(input, { ...init, headers });
-    }
-
-    // Refresh failed — notify and return 401 without looping
-    if (typeof document !== "undefined") {
-        document.dispatchEvent(
-            new CustomEvent("geoleaf:connector:auth-error", {
-                detail: {
-                    baseUrl: _config.baseUrl,
-                    error: "Authentication failed — 401 after token refresh attempt.",
-                },
-            })
+        if (newToken) return _retryWith(input, init, newToken);
+        // The host has no token to give after a 401: its session is gone.
+        _dispatchAuthError(
+            _config.baseUrl,
+            "Authentication failed — 401 after token refresh attempt."
         );
+        return _unauthorized();
     }
 
-    return new Response(null, { status: 401, statusText: "Unauthorized" });
+    // 🛑 REFRESH FIRST, AND ERASE ONLY ON A REFUSAL — the order was the first fix, the verdict
+    // is the second.
+    //
+    // This branch used to call `TokenStore.clear()` BEFORE any renewal, so the re-read that
+    // followed found nothing and the refresh delegate was never reached: a session was
+    // unrecoverable the moment it expired. It then erased on ANY failed renewal — a network
+    // error or a 503 as surely as a refusal — so one minute of an unavailable authentication
+    // server signed the device out. Only an explicit refusal ends a session now; a renewal
+    // that could not conclude keeps it, and the 401 goes back to the caller (the core's drain
+    // reads it as `authRequired` and waits for the session to come back).
+    let outcome: RefreshOutcome;
+    try {
+        outcome = await TokenStore.forceRefresh(_config.baseUrl);
+    } catch {
+        // An exception proves nothing about the session — it is not a refusal.
+        outcome = { verdict: "unavailable" };
+    }
+
+    switch (outcome.verdict) {
+        case "renewed":
+            return _retryWith(input, init, outcome.token);
+        case "refused":
+            await TokenStore.declareSessionDead(
+                _config.baseUrl,
+                outcome.presented,
+                "Authentication failed — 401, and the renewal was refused."
+            );
+            return _unauthorized();
+        case "absent":
+            // No session is stored: nothing to renew, and nothing died — `auth-error` would
+            // reopen the login window on every protected request after a sign-out.
+            return response;
+        case "unavailable":
+            // Kept — and retried at the moments the halted drain no longer listens to.
+            armRenewalRetry(_config.baseUrl);
+            return _unauthorized();
+        case "superseded":
+            return _unauthorized();
+    }
+}
+
+/**
+ * The init a request is sent with once `token` is injected — with the semantics of `fetch`
+ * itself: `init.headers` when given (they REPLACE a `Request`'s own, as `fetch` would), else
+ * the `Request`'s headers; then `Authorization`.
+ *
+ * 🛑 The headers used to be spread as a plain object, `{ ...init.headers }` — which EMPTIES a
+ * `Headers` instance. Invisible while nothing intercepted sent one; fatal for a PMTiles archive,
+ * whose `Range` travels in a `Headers` object: without it the server sends the whole archive,
+ * and the reader refuses it. And a `Request`'s own headers were replaced by `Authorization`
+ * alone.
+ */
+function _withAuthorization(
+    input: RequestInfo | URL,
+    init: RequestInit,
+    token: string
+): RequestInit {
+    const headers = new Headers(
+        init.headers !== undefined
+            ? init.headers
+            : input instanceof Request
+              ? input.headers
+              : undefined
+    );
+    headers.set("Authorization", bearer(token));
+    return { ...init, headers };
+}
+
+/** Replays a request once, with a new token — every other header it carried kept. */
+function _retryWith(input: RequestInfo | URL, init: RequestInit, token: string): Promise<Response> {
+    return _originalFetch(input, _withAuthorization(input, init, token));
+}
+
+/** Tells the host its session ended — `geoleaf:connector:auth-error`. */
+function _dispatchAuthError(baseUrl: string, error: string): void {
+    if (typeof document === "undefined") return;
+    document.dispatchEvent(
+        new CustomEvent("geoleaf:connector:auth-error", { detail: { baseUrl, error } })
+    );
 }
 
 // ─── Install / Uninstall ──────────────────────────────────────────────────────
@@ -143,18 +212,14 @@ export function install(config: ConnectorConfig): void {
 
         if (_shouldIntercept(url)) {
             const token = await _resolveToken();
-            if (token) {
-                init = {
-                    ...init,
-                    headers: {
-                        ...(init.headers as Record<string, string>),
-                        Authorization: bearer(token),
-                    },
-                };
-            }
+            // A `Request` carrying a body is spent by its first send: the 401 replay needs a
+            // fresh one, taken BEFORE that send.
+            const replayable =
+                input instanceof Request && input.body !== null ? input.clone() : input;
+            if (token) init = _withAuthorization(input, init, token);
             const response = await _originalFetch(input, init);
             if (response.status === 401) {
-                return _handleUnauthorized(input, init);
+                return _handleUnauthorized(replayable, init, response);
             }
             return response;
         }
@@ -185,23 +250,50 @@ export function install(config: ConnectorConfig): void {
 
 /**
  * Restores window.fetch to its original implementation and removes the Worker hook.
- * Called by ConnectorInstance.destroy().
+ * Called by `configure()` when it replaces the connector already installed.
  */
 export function uninstall(): void {
     globalThis.fetch = _originalFetch;
-    // Remove Worker headers hook installed by entry.ts
+    // Remove the Worker headers hook `configure()` installed
     delete (globalThis as Record<string, unknown>)["__GEOLEAF_WORKER_HEADERS_HOOK__"];
     _config = null;
+}
+
+/** What the core says its worker header hook can take — the hook's second argument. */
+interface HookCapabilities {
+    /** Set by a core that posts the worker's request once a promised answer settles. */
+    readonly acceptsPromise?: boolean;
+}
+
+/** The `Authorization` header for `token`, or none. */
+function _authorization(token: string | null): Record<string, string> | undefined {
+    return token ? { Authorization: bearer(token) } : undefined;
 }
 
 /**
  * Returns Authorization headers for a given URL if it falls within the baseUrl scope.
  * Called via the __GEOLEAF_WORKER_HEADERS_HOOK__ global hook from worker-manager.ts.
- * Uses only the RAM cache (sync) — IDB is never accessed in this path.
+ *
+ * - `auth.endpoint` mode: the memory cache only — IndexedDB is never read on this path.
+ * - `getToken` mode: the host's token, PULLED at each load (it read the plugin's store, which
+ *   the host never fills: every GeoJSON layer loaded by URL left without the host's token). A
+ *   synchronous provider answers synchronously; an asynchronous one yields a promise — but ONLY
+ *   to a core that announced it takes one: an older core hands the answer to `postMessage`,
+ *   which cannot clone a promise, and gets no header instead.
+ *
+ * @param url - The URL the worker is about to fetch.
+ * @param config - The connector's configuration.
+ * @param capabilities - What the calling core accepts (its second argument to the hook).
+ * @returns The headers, a promise of them, or `undefined` for a URL out of scope.
  */
-export function getWorkerHeaders(url: string, baseUrl: string): Record<string, string> | undefined {
-    if (!isSameOrigin(url, baseUrl)) return undefined;
-    const token = TokenStore.getTokenSync(baseUrl);
-    if (!token) return undefined;
-    return { Authorization: bearer(token) };
+export function getWorkerHeaders(
+    url: string,
+    config: ConnectorConfig,
+    capabilities?: HookCapabilities
+): Record<string, string> | undefined | Promise<Record<string, string> | undefined> {
+    if (!isSameOrigin(url, config.baseUrl)) return undefined;
+    if (!config.getToken) return _authorization(TokenStore.getTokenSync(config.baseUrl));
+    const pulled = pullHostToken(config.getToken);
+    if (!isThenable(pulled)) return _authorization(pulled);
+    return capabilities?.acceptsPromise === true ? pulled.then(_authorization) : undefined;
 }

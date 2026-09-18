@@ -15,9 +15,10 @@
  * https://geoleaf.dev
  */
 
-import { isSameOrigin } from "@geoleaf/host-runtime";
+import { bearer, isSameOrigin } from "@geoleaf/host-runtime";
 import type { ConnectorConfig } from "./config.js";
 import { TokenStore } from "./token-store.js";
+import { isThenable, pullHostToken } from "./host-token.js";
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
@@ -45,13 +46,65 @@ function _resolveNativeMap(): unknown {
     return (adapter["getNativeMap"] as () => unknown)();
 }
 
+/** Warned once per page: an engine too old for an asynchronous provider stays so. */
+let _oldEngineReported = false;
+
+/**
+ * True when the engine AWAITS what `transformRequest` returns — MapLibre 5.21 and later.
+ *
+ * ⚠️ Before 5.21 the returned value WAS the request: a promise there breaks every same-origin
+ * resource, authenticated or not. The core's peer range once admitted MapLibre 5, so the engine
+ * is read, not assumed. Unreadable counts as too old.
+ */
+function _engineAwaitsTransform(): boolean {
+    const version = (
+        globalThis as { maplibregl?: { getVersion?: () => string } }
+    ).maplibregl?.getVersion?.();
+    const [major = 0, minor = 0] = String(version ?? "")
+        .split(".")
+        .map(Number);
+    return major > 5 || (major === 5 && minor >= 21);
+}
+
+/**
+ * The tile request carrying the HOST's token — `getToken` mode.
+ *
+ * Pulled at each tile, never kept. A synchronous provider answers synchronously; an asynchronous
+ * one yields a promise of the request, which always resolves to one (`{ url }` without a token):
+ * MapLibre's `|| { url }` fallback applies to the returned value, not to what a promise resolves
+ * to.
+ */
+function _hostTokenRequest(
+    url: string,
+    getToken: NonNullable<ConnectorConfig["getToken"]>
+): unknown {
+    const pulled = pullHostToken(getToken);
+    if (!isThenable(pulled)) {
+        return pulled ? { url, headers: { Authorization: bearer(pulled) } } : undefined;
+    }
+    if (!_engineAwaitsTransform()) {
+        if (!_oldEngineReported) {
+            _oldEngineReported = true;
+            console.warn(
+                "[GeoLeaf Connector] An asynchronous getToken cannot reach the tiles on this " +
+                    "MapLibre version (5.21 or later awaits them): tiles go without a token."
+            );
+        }
+        return undefined;
+    }
+    return pulled.then((token) =>
+        token ? { url, headers: { Authorization: bearer(token) } } : { url }
+    );
+}
+
 /**
  * Applies map.setTransformRequest() with the token injection callback.
  * Returns true on success, false if m is not a valid MapLibre instance.
  *
- * The callback uses TokenStore.getTokenSync() (RAM cache only) because
- * transformRequest is synchronous in MapLibre GL JS.
- * getTokenAsync() is called non-blocking to keep the RAM cache warm.
+ * - `auth.endpoint` mode: TokenStore.getTokenSync() (RAM cache only), with a non-blocking
+ *   getTokenAsync() to keep that cache warm and renew it before expiry.
+ * - `getToken` mode: the host's token, pulled at each tile — see {@link _hostTokenRequest}. The
+ *   store is not read: in this mode the host never fills it.
  */
 function _install(m: unknown, config: ConnectorConfig): boolean {
     if (!_isMaplibreMap(m)) return false;
@@ -61,14 +114,16 @@ function _install(m: unknown, config: ConnectorConfig): boolean {
         // which leaked the bearer to a suffix host (bug no. 4). See isSameOrigin.
         if (!isSameOrigin(url, config.baseUrl)) return undefined;
 
+        if (config.getToken) return _hostTokenRequest(url, config.getToken);
+
         const token = TokenStore.getTokenSync(config.baseUrl);
 
         // Non-blocking proactive refresh — updates RAM cache before expiry.
-        // The return value is discarded; connector:auth-error is emitted on failure.
+        // The return value is discarded; a refusal is handled where the session is decided.
         TokenStore.getTokenAsync(config.baseUrl).catch(() => {});
 
         if (!token) return undefined;
-        return { url, headers: { Authorization: `Bearer ${token}` } };
+        return { url, headers: { Authorization: bearer(token) } };
     });
 
     return true;

@@ -1,7 +1,7 @@
 /*!
  * GeoLeaf Connector — Entry Point
  * Boot, GeoLeaf.Connector global API, plugin registration.
- * ESM named export createConnector() for suite-connector.
+ * ESM named export createConnector() for advanced integrators.
  * © 2026 Mattieu Pottier
  * Released under the MIT License
  * https://geoleaf.dev

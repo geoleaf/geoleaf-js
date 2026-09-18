@@ -21,24 +21,28 @@ en-tête, et comment le pont MapLibre se raccroche à une carte qui n'existe pas
 
 Rôle seulement — les exports se lisent dans le fichier.
 
-| Fichier                | Rôle                                                                  |
-| ---------------------- | --------------------------------------------------------------------- |
-| `entry.ts`             | Point d'entrée — boot, auto-bootstrap du bouton, ré-exports ESM       |
-| `connector-api.ts`     | **L'orchestrateur** — `configure()`, le singleton global, la fabrique |
-| `public-api.ts`        | Construction du namespace `GeoLeaf.Connector`                         |
-| `config.ts`            | Types et validation de `ConnectorConfig`                              |
-| `auth-client.ts`       | Appels HTTP vers l'endpoint d'authentification                        |
-| `token-store.ts`       | Persistance IndexedDB + cache RAM + refresh JWT silencieux            |
-| `fetch-interceptor.ts` | Monkey-patch `window.fetch` — injection de l'en-tête `Authorization`  |
-| `maplibre-bridge.ts`   | `map.setTransformRequest()` pour les tuiles MVT / PMTiles             |
-| `credential-button.ts` | Injection du bouton credential (desktop + mobile)                     |
-| `login-ui.ts`          | Modal de connexion accessible (feuille de style adoptée)              |
-| `format-detector.ts`   | Détection du format de données depuis une URL — fonction pure         |
-| `lang/`                | Dictionnaires i18n de la modal                                        |
+| Fichier                | Rôle                                                                                                                         |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `entry.ts`             | Point d'entrée — boot, auto-bootstrap du bouton, ré-exports ESM                                                              |
+| `connector-api.ts`     | **L'orchestrateur** — `configure()`, le singleton global, la fabrique                                                        |
+| `public-api.ts`        | Construction du namespace `GeoLeaf.Connector`                                                                                |
+| `config.ts`            | Types et validation de `ConnectorConfig`                                                                                     |
+| `auth-client.ts`       | Appels HTTP vers l'endpoint d'authentification ; le renouvellement rend un verdict (renouvelé, refusé, indisponible)         |
+| `token-store.ts`       | Persistance IndexedDB + cache RAM + refresh JWT silencieux ; verdict de session, comparer-et-échanger, pause après une panne |
+| `fetch-interceptor.ts` | Monkey-patch `window.fetch` — injection de l'en-tête `Authorization`, archives PMTiles comprises                             |
+| `maplibre-bridge.ts`   | `map.setTransformRequest()` pour les tuiles vectorielles (MVT)                                                               |
+| `host-token.ts`        | Le jeton de l'hôte (`getToken`) tiré pour l'ouvrier et les tuiles, sans jamais jeter                                         |
+| `session-resume.ts`    | Reprise de la file d'écriture quand une session revient                                                                      |
+| `renewal-retry.ts`     | Relance du renouvellement après une panne : réseau, premier plan, saisie en file                                             |
+| `credential-button.ts` | Injection du bouton credential (desktop + mobile)                                                                            |
+| `login-ui.ts`          | Modal de connexion accessible (feuille de style adoptée)                                                                     |
+| `format-detector.ts`   | Détection du format de données depuis une URL — fonction pure                                                                |
+| `lang/`                | Dictionnaires i18n de la modal                                                                                               |
 
 ⚠️ **L'orchestrateur est `connector-api.ts`, pas `entry.ts`.** C'est l'erreur que l'ancien arbre des
-dépendances portait, et elle induit en erreur sur le point qui compte : `entry.ts` n'importe que
-quatre modules et délègue ; c'est `connector-api.ts` qui en tire sept et tient l'état.
+dépendances portait, et elle induit en erreur sur le point qui compte : `entry.ts` délègue ; c'est
+`connector-api.ts` qui importe le reste et tient l'état. Le décompte se lit dans ses `import`, il ne
+s'écrit pas ici.
 
 ---
 
@@ -48,48 +52,75 @@ quatre modules et délègue ; c'est `connector-api.ts` qui en tire sept et tient
 flowchart TD
     A["GeoLeaf.Connector.configure(config)"] --> B["validateConfig(config)\nconfig.ts"]
     B -->|ConfigError| ERR["throw ConfigError"]
-    B -->|valide| R{"une instance\nexiste déjà ?"}
+    B -->|valide| R0["disarmRenewalRetry()\nla relance de la session précédente"]
+    R0 --> R{"une instance\nexiste déjà ?"}
     R -->|oui| R2["uninstallCredentialButton()\ndestroy() + uninstallFetchInterceptor()"]
     R -->|non| C{"auth.endpoint\nprésent ?"}
     R2 --> C
-    C -->|oui| D["TokenStore.getTokenAsync()\nwarm du cache IDB\n+ délégué de refresh"]
-    C -->|non| E["pas de warm-up IDB"]
-    D --> G["installFetchInterceptor(config)\n+ hook worker-headers"]
-    E --> G
+    C -->|oui| D["délégué de refresh"]
+    C -->|non| W["reconnexion guidée\n+ reprise de la file armées"]
+    D --> W
+    W --> S{"auth.endpoint ?"}
+    S -->|oui| S2["TokenStore.resolveSession()\nwarm du cache + ce qu'est la session"]
+    S -->|non| G["installFetchInterceptor(config)\n+ hook worker-headers"]
+    S2 --> G
     G --> H["installMapLibreBridge(config)\nmaplibre-bridge.ts"]
-    H --> I{"un token a-t-il\nété obtenu ?"}
-    I -->|non, et auth.ui = true| J["showLoginModal()\nlogin-ui.ts"]
-    I -->|oui| K["installCredentialButton(config)"]
+    H --> I{"la session ?"}
+    I -->|jeton, ou getToken| K["installCredentialButton(config)"]
+    I -->|renouvellement injoignable| RR["armRenewalRetry()\nni fenêtre ni ConfigError"]
+    I -->|absente ou refusée, auth.ui| J["showLoginModal()\nlogin-ui.ts"]
+    I -->|absente ou refusée, sans ui| ERR2["throw ConfigError"]
+    RR --> K
     J --> K
     K --> L["createConnector(config)\n→ ConnectorInstance"]
 ```
 
-Deux étapes sont faciles à manquer en lisant le code de haut en bas :
+Quatre étapes sont faciles à manquer en lisant le code de haut en bas :
 
 - **`configure()` est ré-entrant.** Un second appel démonte l'instance précédente avant tout le
   reste — bouton, `destroy()`, interception `fetch`. Sans quoi deux monkey-patches se
   superposeraient sur `window.fetch`.
 - **Le hook worker.** L'interception pose aussi `__GEOLEAF_WORKER_HEADERS_HOOK__` sur le global :
-  un Worker n'hérite pas du `window.fetch` patché, il doit demander ses en-têtes.
+  un Worker n'hérite pas du `window.fetch` patché, il doit demander ses en-têtes. En `getToken`, il
+  rend le jeton de l'hôte — une promesse seulement à un cœur qui l'annonce (`acceptsPromise`).
+- **La reprise est armée AVANT la lecture de la session** : un renouvellement au démarrage émet
+  `token-refreshed`, que la reprise de la file doit entendre.
+- **La décision vient APRÈS l'installation** : une fenêtre fermée par l'utilisateur rejette
+  `configure()`, et un jeton obtenu ensuite par `openLoginModal()` doit trouver l'intercepteur en
+  place.
 
 ---
 
 ## Routage des requêtes
 
-| Format détecté                                 | Canal d'injection                                    |
-| ---------------------------------------------- | ---------------------------------------------------- |
-| `geojson`, `flatgeobuf`, `kml`, `csv`, `oapif` | monkey-patch de `window.fetch`                       |
-| `mvt`, `pmtiles`                               | `map.setTransformRequest()` via `maplibre-bridge.ts` |
+| Format détecté                                            | Canal d'injection                                    |
+| --------------------------------------------------------- | ---------------------------------------------------- |
+| `geojson`, `flatgeobuf`, `kml`, `csv`, `oapif`, `pmtiles` | monkey-patch de `window.fetch`                       |
+| `mvt`                                                     | `map.setTransformRequest()` via `maplibre-bridge.ts` |
 
-La séparation est **nécessaire**, pas esthétique : MapLibre gère ses requêtes de tuiles en interne
-et n'utilise pas `window.fetch`. Le partage se lit dans `fetch-interceptor.ts`, sur une seule
-condition — l'intercepteur se retire pour `pmtiles` et `mvt`, et le pont les reprend.
+La séparation est **nécessaire**, pas esthétique : MapLibre charge ses tuiles vectorielles dans son
+propre ouvrier, qui n'utilise pas le `window.fetch` patché. Le partage se lit dans
+`fetch-interceptor.ts`, sur une seule condition — l'intercepteur se retire pour `mvt`, et le pont le
+reprend.
 
-⚠️ **`transformRequest` est SYNCHRONE**, donc le pont lit le token par `getTokenSync()` — le cache
-RAM seul. Conséquence à connaître avant de s'étonner : **si la RAM est froide, la requête de tuile
-part SANS en-tête.** Le pont déclenche au passage un `getTokenAsync()` non bloquant, qui réchauffe
-le cache pour les requêtes suivantes ; le warm IDB au début de `configure()` réduit la fenêtre, il
-ne la ferme pas.
+⚠️ **Les archives PMTiles restent sur `window.fetch`, et c'est ce qui les authentifie.** La
+bibliothèque `pmtiles` lit l'archive par le `fetch` global, sur le fil principal ; le pont ne voit que
+l'URL `pmtiles://…`, dont l'origine est `"null"`, et le protocole ignore les en-têtes d'une requête.
+Longtemps exclues « parce que le pont s'en charge », elles ne recevaient le jeton dans aucun mode.
+Leur `Range` voyage dans un objet `Headers` : l'injection construit donc ses en-têtes avec la
+sémantique de `fetch`, jamais en les étalant comme un objet.
+
+⚠️ **En mode `auth.endpoint`, le pont lit le token par `getTokenSync()`** — le cache RAM seul.
+Conséquence à connaître avant de s'étonner : **si la RAM est froide, la requête de tuile part SANS
+en-tête.** Le pont déclenche au passage un `getTokenAsync()` non bloquant, qui réchauffe le cache
+pour les requêtes suivantes ; le warm IDB au début de `configure()` réduit la fenêtre, il ne la
+ferme pas.
+
+⚠️ **En mode `getToken`, le pont tire le jeton de l'hôte à chaque tuile** (`host-token.ts`), sans
+lire le magasin, que l'hôte ne remplit jamais. Un fournisseur synchrone répond synchrone ; un
+fournisseur asynchrone donne une promesse de la requête — que MapLibre attend depuis la 5.21 —, qui
+se résout toujours en une requête (`{ url }` sans jeton). Sur un moteur plus ancien, la valeur rendue
+ÉTAIT la requête : la tuile part alors sans jeton, et un avertissement le dit une fois.
 
 ---
 

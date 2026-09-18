@@ -258,7 +258,7 @@ export function installCredentialButton(config: ConnectorConfig): void {
 
 /**
  * Removes injected credential buttons and disconnects the MutationObserver.
- * Called by entry.ts destroy().
+ * Called by `configure()` when it replaces the connector already installed.
  */
 export function uninstallCredentialButton(): void {
     _observer?.disconnect();

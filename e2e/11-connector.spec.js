@@ -17,6 +17,7 @@
 import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
 import { scanComponent } from "./helpers/axe-config.js";
+import { readConnectorToken } from "./helpers/connector.js";
 
 // serviceWorkers:'block' — deploy-core ships a PWA SW that intercepts fetch; without
 // blocking it, page.route() does not see the connector's requests (they fail "Failed to
@@ -293,11 +294,16 @@ test.describe("11-connector", () => {
         expect(seen[0]).not.toBe(seen[1]); // token rotated on retry
     });
 
-    test("token mode: 401 clears token and emits geoleaf:connector:auth-error (CDC §15/§24)", async ({
+    test("token mode: 401 + refused renewal clears token and emits geoleaf:connector:auth-error (CDC §15/§24)", async ({
         page,
     }) => {
         await mockAuth(page);
         await page.route(BASE + "/p.json", (route) => route.fulfill({ status: 401, body: "" }));
+        // ⚠️ THE RENEWAL MUST BE REFUSED, EXPLICITLY. This test used to leave `${AUTH}/refresh`
+        // unrouted: the renewal then failed on DNS — a network failure — and the clearing it
+        // asserted was the defect of a session destroyed by an outage. Only a refusal ends a
+        // session now; an unreachable renewal keeps it (`47-connector-refresh-outage.spec.js`).
+        await page.route(AUTH + "/refresh*", (route) => route.fulfill({ status: 401, body: "" }));
         await page.goto("/");
         await bootReady(page);
         await page.evaluate(() => {
@@ -316,6 +322,8 @@ test.describe("11-connector", () => {
         });
         const detail = await page.evaluate(() => /** @type {any} */ (window).__authErr);
         expect(detail.baseUrl).toBe(BASE);
+        // The title promised the clearing; nothing checked it.
+        expect(await readConnectorToken(page, BASE)).toBeNull();
     });
 
     test("[a11y] login modal passes WCAG 2.1 AA (CDC §6)", async ({ page }) => {
