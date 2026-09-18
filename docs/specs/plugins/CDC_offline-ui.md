@@ -4,8 +4,8 @@ title: offline-ui — l'interface du hors-ligne, sur un moteur qu'elle ne contie
 plugin_id: offline-ui
 package: "@geoleaf-plugins/offline-ui"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 1543249da
-date: 6 septembre 2026
+verifie_contre: 02068cc6a
+date: 13 septembre 2026
 ---
 
 # offline-ui — l'interface du hors-ligne, sur un moteur qu'elle ne contient pas
@@ -43,6 +43,10 @@ de couches à télécharger, l'état d'occupation, et un panneau de synchronisat
 ### Ce qu'il ne fait pas
 
 - **Il ne télécharge rien lui-même.** Il appelle le gestionnaire de cache du core.
+- **Il ne décide pas quelles origines se préparent.** La règle est celle du core (`prefetchVerdict`,
+  fiche [`offline.md`](../capacites/offline.md)). ⚠️ Son sélecteur propose encore un fond
+  `offline: true` dont l'origine n'est pas déclarée préparable : le téléchargement le saute avec un
+  avertissement de console, et l'interface n'en dit rien.
 - **Il ne monte aucun namespace.** Ni `public-api.ts`, ni façade — voir la section dédiée.
 - **Il ne lit aucun bloc de profil qui lui soit propre.** Pas de `config.ts` : il lit des clés du
   core, ponctuellement. La table de configuration du système est dans

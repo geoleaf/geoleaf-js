@@ -6,7 +6,7 @@ title: "GeoLeaf.Log — Logging module documentation"
 
 **Applies to**: @geoleaf/core v3.x
 
-**Source**: `src/modules/utils/log/` (logger.ts, log-config.ts, index.ts)
+**Source**: `src/utils/log/` (logger.ts, log-record.ts, redact.ts, index.ts)
 
 ---
 
@@ -34,6 +34,8 @@ It also allows verbosity to be driven from the external JSON configuration (`log
     - Legend
 5. Integrate with the external JSON configuration to enable or disable log levels automatically.
 6. Reduce noise in quiet mode (`quietMode`): repetitive messages are grouped and filtered.
+7. Keep a bounded, redacted record of recent entries — readable without developer tools, and
+   carried by the boot failure diagnostic (§15).
 
 ---
 
@@ -50,6 +52,8 @@ The module exposes four log levels, control methods and a quiet mode:
 - `GeoLeaf.Log.getLevelName()`
 - `GeoLeaf.Log.setQuietMode(enabled)`
 - `GeoLeaf.Log.showSummary()`
+- `GeoLeaf.Log.getEntries()`
+- `GeoLeaf.Log.exportDiagnostic()`
 
 ---
 
@@ -291,7 +295,41 @@ GeoLeaf.Log.setLevel("production");
 
 ---
 
-## 15. Quick summary of the Logging API
+## 15. The log's record — `getEntries()` and `exportDiagnostic()`
+
+The console is not a record: on a field device there are no developer tools. `GeoLeaf.Log` also
+keeps the **latest 500 entries** in memory (`src/utils/log/log-record.ts`):
+
+- **warnings and errors always**, whatever the level — what a quiet production level keeps off the
+  console is exactly what a diagnostic needs;
+- `info` and `debug` **when they reach the console** (level first, then quiet-mode grouping);
+- the boot logger's lines and, from `GeoLeaf.boot()` on, uncaught errors and unhandled promise
+  rejections.
+
+Each entry is `{ time, level, source, message }`, where `source` is `log`, `app` (the boot logger)
+or `global` (an uncaught error). The message is formatted **when recorded**, into bounded text: an
+`Error` becomes its name, its message and three stack frames; a GeoJSON feature `[Feature id=…]`,
+its attributes left out; any other object a depth- and size-bounded summary. No reference to a live
+object is kept.
+
+**Secrets are redacted when entries are read**: the userinfo of a URL, query or fragment parameters
+named like a secret (`key`, `code`, `token`, `access_token`, `password`, `signature`…), `Bearer`
+credentials and `Basic` ones that look encoded, JSON Web Tokens, JSON members whose key names a
+secret (`password`, `apiKey`, `authorization`…), and e-mail addresses. The `t` cache token is kept.
+⚠️ Redaction is a net, not a proof: a secret written in a sentence with none of these markers stays.
+
+```js
+const errors = GeoLeaf.Log.getEntries().filter((entry) => entry.level === "error");
+const report = GeoLeaf.Log.exportDiagnostic();
+```
+
+`exportDiagnostic()` returns `{ format: "geoleaf-log", formatVersion: 1, time, level, entries }` as
+pretty-printed JSON. The boot failure screen's diagnostic (« Copy », « Download ») carries the same
+entries.
+
+---
+
+## 16. Quick summary of the Logging API
 
 | Method               | Role                                             |
 | -------------------- | ------------------------------------------------ |
@@ -304,10 +342,12 @@ GeoLeaf.Log.setLevel("production");
 | `getLevelName()`     | Returns the active level (string)                |
 | `setQuietMode(bool)` | Enables quiet mode (filters repetitive messages) |
 | `showSummary()`      | Prints the recap of grouped messages             |
+| `getEntries()`       | Returns the recent entries, redacted             |
+| `exportDiagnostic()` | Returns the recent entries as a JSON document    |
 
 ---
 
-## 16. Best practices
+## 17. Best practices
 
 ### In development
 

@@ -3,9 +3,14 @@
  * 38 — EDITING AN EXISTING LINE REALLY PERSISTS
  *
  * 🛑 THE DEFECT THIS SPEC EXISTS FOR. The picker resolved a feature's identity by `hit.id`
- * alone, and the core sets `promoteId` on POINT sources only — so on a line or polygon layer
- * MapLibre hands back NO top-level id. `featureId` was `""`, every downstream gate is guarded
+ * alone, and the core then set `promoteId` on POINT sources only — so on a line or polygon layer
+ * MapLibre handed back NO top-level id. `featureId` was `""`, every downstream gate is guarded
  * on it, and "select → edit → save" therefore persisted NOTHING, without an error.
+ *
+ * ⚠️ TWO FIXES CLOSE IT NOW, AND EITHER ALONE IS ENOUGH. The picker reads `properties.id` too,
+ * and the core has since promoted `id` on EVERY layer source (`maplibre-layer-builders.ts`).
+ * Measured on 12/09/2026: reverting one site leaves this spec green; it turns red — with its
+ * polygon sibling `43-editor-polygon-edit.spec.js` — only when BOTH are reverted.
  *
  * ⚠️ THE SUITE COULD NOT HAVE SEEN IT. It declares no editable line layer anywhere and never
  * arms the selection tool. This spec supplies both by INTERCEPTION rather than by editing
@@ -33,6 +38,7 @@ import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
 import { readStore, GEOLEAF_DB } from "./helpers/idb.js";
 import { goOffline } from "./helpers/offline.js";
+import { armEditor } from "./helpers/editor.js";
 
 test.use({ baseURL: baseURL("full") });
 
@@ -84,8 +90,8 @@ async function armEditableLine(page) {
                 features: [
                     {
                         type: "Feature",
-                        // 🛑 NO top-level `id` — the whole point. The core promotes an id on
-                        // POINT sources only, so this is what a real line layer looks like.
+                        // 🛑 NO top-level `id` — the whole point: identity lives in
+                        // `properties`, as on every real line layer of this profile.
                         properties: { id: LINE_ID, nom: "Câble 7" },
                         geometry: line.geometry,
                     },
@@ -97,34 +103,6 @@ async function armEditableLine(page) {
 
 /** The layer the substitute line takes the place of — loaded at boot, and linear. */
 const LAYER = "routes_principales";
-
-/** Loads the lazy editor plugin and waits for its API — same gesture as the toolbar action. */
-async function armEditor(page) {
-    await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.plugins.load("editor"));
-    await page.waitForFunction(
-        () => typeof (/** @type {any} */ (window).GeoLeaf?.Editor) === "object",
-        null,
-        { timeout: 15000 }
-    );
-    // 🛑 THROUGH THE MENU, not `Editor.setActiveTool`. That API sets the pill's active tool
-    // and nothing else: the adapter is loaded by the menu's `onToolSelect`, so calling it
-    // directly leaves Terra Draw unloaded and every later gesture lands on nothing.
-    await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.Editor.toggleMenu());
-    await page.locator('button.gl-editor-tool-btn[data-tool="select"]').click();
-    // Terra Draw arms asynchronously; `td-point` in the style proves `start()` has run.
-    await page.waitForFunction(
-        () => {
-            const native = /** @type {any} */ (window).GeoLeaf?.Core?.getMap?.()?.getNativeMap?.();
-            try {
-                return !!native?.getLayer?.("td-point");
-            } catch {
-                return false;
-            }
-        },
-        null,
-        { timeout: 20000 }
-    );
-}
 
 /**
  * Screen position of the loaded line's MIDDLE vertex, through the live map's own projection.
@@ -250,10 +228,14 @@ test("[editor] éditer une ligne SANS `id` de premier niveau atteint bien l'outb
     expect(entry.kind).toBe("update");
     // 🛑 THE IDENTITY ON THE WIRE. `""` here is the defect in its final form: an update
     // addressed to nothing, which the server cannot apply and no error announces.
-    expect(entry.localId).toBe(LINE_ID);
+    // ⚠️ The key is `srv:<id>` since 17/09/2026: the picker names the SERVER identity, and the
+    // store resolves it to the key a download would have used — which is what lets the push
+    // filter on `id=eq.<id>` instead of `id=eq.null`.
+    expect(entry.localId).toBe(`srv:${LINE_ID}`);
 
     const features = await readStore(page, { db: GEOLEAF_DB, store: "features" });
-    const stored = features.find((f) => f.localId === LINE_ID);
+    const stored = features.find((f) => f.serverId === LINE_ID);
     expect(stored, "l'entité éditée n'est pas dans le magasin local").toBeTruthy();
+    expect(stored.localId).toBe(`srv:${LINE_ID}`);
     expect(stored.feature.geometry.type).toBe("LineString");
 });

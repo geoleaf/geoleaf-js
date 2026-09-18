@@ -55,7 +55,7 @@ bundle-esm-entry.ts
     └── globals.ts  (orchestrator — imports in order)
             │
             ├── B1+B2  globals.core.ts
-            │     ├── B1: Log, Errors, CONSTANTS, Security, CSRFToken
+            │     ├── B1: Log, Errors, CONSTANTS, Security
             │     └── B2: Utils (DOMSecurity, ErrorLogger,
             │               EventListenerManager, EventBus,
             │               FetchHelper, MapHelpers,
@@ -243,7 +243,7 @@ Loaded in the ESM bundle (`geoleaf.esm.js`). No additional network import is req
 | `Log`                       | `utils/log/`                      | Internal logging system                         |
 | `Errors`                    | `utils/errors/`                   | 9 typed error classes                           |
 | `CONSTANTS`                 | `utils/constants/`                | Global constants                                |
-| `Security`                  | `security/`                       | XSS, CSRF and DOM sanitisation                  |
+| `Security`                  | `security/`                       | XSS and DOM sanitisation                        |
 | `Utils`                     | `utils/general/`                  | ~15 utilities (fetch, animation, lazy, perf, …) |
 | `Config`                    | `built-in/config/`                | Profile loading, taxonomy, normalisation        |
 | `Core`                      | `geoleaf.core.ts`                 | MapLibre map creation, base layers              |
@@ -348,7 +348,7 @@ After boot, `window.GeoLeaf` contains:
 | `GeoLeaf.CONSTANTS`                    | Object | Application constants                                  |
 | `GeoLeaf.Log`                          | Object | Logging system                                         |
 | `GeoLeaf.Errors`                       | Object | 9 typed error classes                                  |
-| `GeoLeaf.Security`                     | Object | XSS/CSRF helpers                                       |
+| `GeoLeaf.Security`                     | Object | XSS helpers                                            |
 | `GeoLeaf.Storage`                      | Object | Storage namespace (populated by the plugin at runtime) |
 | `GeoLeaf.plugins`                      | Object | Plugin query/registration (PluginRegistry)             |
 | `GeoLeaf.registry`                     | Object | Public ModuleRegistry (third-party self-registration)  |
@@ -447,14 +447,12 @@ exposes it. The facade is mounted on the global namespace at boot; that is the o
 ```ts
 // through the global namespace (CDN as well as bundler, once the core is initialised):
 GeoLeaf.Security.sanitizeHTML(htmlString); // XSS sanitisation — the member is `sanitizeHTML`
-GeoLeaf.Security.CSRFToken.get(); // CSRF token helper
 ```
 
 **Key utilities:**
 
 - `Security.sanitize()` — XSS sanitisation (strips dangerous HTML)
 - `DOMSecurity` — Safe DOM helpers
-- `CSRFToken` — CSRF token management
 - `src/kernel/security/dom-security.ts` — Safe DOM operations; the XSS surface is gathered in a single directory
 
 ---

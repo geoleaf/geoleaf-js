@@ -58,6 +58,19 @@ export function _resolveBasemapType(definition: BasemapDefinition): BasemapRende
 // ─── Raster basemap builders ─────────────────────────────────────────────────
 
 /**
+ * The credit a basemap declares — `attribution`, or the Leaflet-era `options.attribution`.
+ *
+ * One reader for both paths: the raster builders set it on the source they build, and a vector
+ * basemap hands it to the style transform, which sets it on the incoming style's sources.
+ *
+ * @param definition - The basemap definition.
+ * @returns The declared credit, or `""`.
+ */
+export function declaredAttribution(definition: BasemapDefinition): string {
+    return definition.attribution ?? definition.options?.attribution ?? "";
+}
+
+/**
  * Builds a MapLibre raster source spec and layer spec from a basemap definition.
  * Pure factory — does not call any map API.
  */
@@ -67,7 +80,7 @@ export function _buildRasterSourceSpec(definition: BasemapDefinition): {
 } {
     const tiles = normalizeTilesArray(definition);
     const tileSize = typeof definition.tileSize === "number" ? definition.tileSize : 256;
-    const attribution = definition.attribution ?? definition.options?.attribution ?? "";
+    const attribution = declaredAttribution(definition);
 
     const sourceSpec: Record<string, unknown> = {
         type: "raster",

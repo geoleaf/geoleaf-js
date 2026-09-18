@@ -420,7 +420,7 @@ Declares the available tile sources. Each entry is keyed by its ID.
             "maxZoom": 19,
             "tileSize": 256,
             "defaultBasemap": true,
-            "offline": true
+            "offline": false
         },
         "maplibre_vector": {
             "id": "maplibre_vector",
@@ -447,7 +447,7 @@ Declares the available tile sources. Each entry is keyed by its ID.
 | `attribution`    | string                                                                        | Attribution HTML                                                                                                                                      |
 | `tileSize`       | number                                                                        | Tile size in pixels. Defaults to `256`.                                                                                                               |
 | `defaultBasemap` | boolean                                                                       | Basemap active at startup                                                                                                                             |
-| `offline`        | boolean                                                                       | Offline cache support                                                                                                                                 |
+| `offline`        | boolean                                                                       | Downloadable by the offline preparation — another origin only when declared `prefetch: true` in `modules.offline.dataOrigins`                         |
 | `terrain`        | object                                                                        | 3D terrain configuration (see [PROFILE_JSON_REFERENCE.md — terrain.\*](PROFILE_JSON_REFERENCE.md#basemapsidterrain-object-optional))                  |
 | `imageSource`    | object                                                                        | Georeferenced image config — `type: "image"` only (see below)                                                                                         |
 | `hillshade`      | object                                                                        | Terrain shading config — `type: "hillshade"` only (see below)                                                                                         |

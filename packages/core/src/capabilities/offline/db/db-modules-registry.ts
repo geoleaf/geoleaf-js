@@ -22,6 +22,7 @@
  *     const api = mod.init(db);
  * }
  */
+import { DBConflicts } from "./conflicts.js";
 import { DBFeatures } from "./features.js";
 import { DBImages } from "./images.js";
 import { DBLayers } from "./layers.js";
@@ -29,6 +30,7 @@ import { DBLocalEdit } from "./local-edit.js";
 import { DBOutbox } from "./outbox.js";
 import { DBPreferences } from "./preferences.js";
 import { DBRoutes, type RoutesAPI } from "./routes.js";
+import type { ConflictsDBInstance } from "./conflicts.js";
 import type { FeaturesDBInstance } from "./features.js";
 import type { ImagesDBInstance } from "./images.js";
 import type { LayersDBInstance } from "./layers.js";
@@ -42,6 +44,7 @@ import type { PreferencesAPI } from "./preferences.js";
  * (they are otherwise only reachable through type inference).
  */
 type DBModuleInstance =
+    | ConflictsDBInstance
     | FeaturesDBInstance
     | ImagesDBInstance
     | LayersDBInstance
@@ -55,6 +58,7 @@ type DBModuleInstance =
  * @type {Record<string, {init: function(IDBDatabase): object}>}
  */
 const DBModulesRegistry = {
+    Conflicts: DBConflicts,
     Features: DBFeatures,
     Images: DBImages,
     Layers: DBLayers,

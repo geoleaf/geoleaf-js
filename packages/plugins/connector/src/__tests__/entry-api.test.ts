@@ -496,3 +496,42 @@ describe("logout() — la fin de session, qui n'existait pas", () => {
         await expect(Connector.logout()).resolves.toBeUndefined();
     });
 });
+
+// ─── The queue resuming once a session came back ────────────────────────────
+
+describe("reprise de la file — le module de reprise a-t-il un appelant ?", () => {
+    // 🛑 A resume module `configure()` never arms would be one more orphan — and "nobody calls
+    // it" is exactly the defect this line closes.
+    let Connector: { configure: (cfg: ConnectorConfig) => Promise<void> };
+    const requeueAll = vi.fn().mockResolvedValue({ requeued: 1 });
+    const pushOutbox = vi.fn().mockResolvedValue({ pushed: 1 });
+
+    beforeEach(async () => {
+        vi.resetModules();
+        vi.clearAllMocks();
+        (globalThis as Record<string, unknown>)["GeoLeaf"] = {
+            Storage: { requeueAll, pushOutbox },
+        };
+        Connector = (await import("../connector-api.js")) as unknown as typeof Connector;
+    });
+
+    afterEach(async () => {
+        const { disarmSessionResume } = await import("../session-resume.js");
+        disarmSessionResume();
+        delete (globalThis as Record<string, unknown>)["GeoLeaf"];
+    });
+
+    it("après `configure()`, une connexion réussie remet en file puis draine", async () => {
+        await Connector.configure(GETTOKEN_CONFIG);
+
+        document.dispatchEvent(
+            new CustomEvent("geoleaf:connector:authenticated", {
+                detail: { baseUrl: GETTOKEN_CONFIG.baseUrl },
+            })
+        );
+        await new Promise((r) => setTimeout(r, 0));
+
+        expect(requeueAll).toHaveBeenCalledWith("authRequired");
+        expect(pushOutbox).toHaveBeenCalledTimes(1);
+    });
+});

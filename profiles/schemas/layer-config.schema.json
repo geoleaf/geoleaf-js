@@ -411,13 +411,13 @@
                 "dialect": {
                     "type": "string",
                     "enum": ["rest", "collection"],
-                    "default": "rest",
-                    "description": "`rest`: POST {poi, timestamp} envelope, CSRF header. `collection`: flat {...properties, geom} body (OGC API Features style), auth delegated to the connector. Exactly the two the code dispatches on — a third value would be indistinguishable from a typo."
+                    "default": "collection",
+                    "description": "`collection` (the default, and the one the core writes): flat {...properties, geom} body, OGC API Features style, auth delegated to the connector. `rest`: POST {poi, timestamp} envelope, spoken by the editor plugin ONLINE only — a layer declaring it has its offline writes set aside under `dialectNotSupported`. Exactly the two the code dispatches on: a third value would be indistinguishable from a typo."
                 },
                 "auth": {
                     "type": "string",
-                    "enum": ["csrf", "bearer", "none"],
-                    "description": "How the endpoint is authenticated."
+                    "enum": ["bearer", "none"],
+                    "description": "How the endpoint is authenticated — declarative only: no code reads it. Writes are authenticated by the connector plugin, which adds its bearer token to the requests it intercepts. `csrf` was removed in core 3.4.0 with the CSRF module, which no server could verify."
                 },
                 "geometryProperty": {
                     "type": "string",
@@ -599,7 +599,7 @@
         },
         "attributeOptions": {
             "type": "object",
-            "description": "Per-widget extras. Every key here is read by a field-renderer component, EXCEPT `locale` (date) and `format` (number), which are declared by the contract and land with the rendering slice, and the five `action` keys, which are read by the core popup renderer — field-renderer has no action component. `additionalProperties: false` is what turns a typo into a build error instead of silence.",
+            "description": "Per-widget extras. Every key here is read by a field-renderer component, EXCEPT `locale` (date) and `format` (number), which are declared by the contract and land with the rendering slice, and the six `action` keys, which are read by the core popup renderer — field-renderer has no action component. `additionalProperties: false` is what turns a typo into a build error instead of silence.",
             "$comment": "⚠️ Known asymmetry, measured 02/08/2026: this definition is FLAT, so the schema checks 'is this key known at all', not 'is this key legal for this widget'. The TS contract IS per-widget (AttributeWidgetOptions[W]). Only `action` carries a per-widget constraint below, because its `actionId` is load-bearing. Closing the general case means 23 more branches — versé au backlog, pas fait au passage.",
             "additionalProperties": false,
             "properties": {
@@ -628,6 +628,11 @@
                 "requiresPlugin": {
                     "type": "string",
                     "description": "`action` only — the button is NOT rendered when the named plugin is absent."
+                },
+                "variant": {
+                    "type": "string",
+                    "enum": ["primary", "secondary", "danger"],
+                    "description": "`action` only — visual weight of the button: `primary` is the filled accent button (also the look of a button declaring none), `secondary` and `danger` are outlined. Rendered as the `gl-poi-popup__action--<variant>` modifier plus `data-gl-variant`; the legacy `capabilities.feature-info` descriptor carries the same key flat."
                 },
                 "columns": {
                     "type": "array",

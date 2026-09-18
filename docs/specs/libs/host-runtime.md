@@ -4,7 +4,7 @@ title: host-runtime — l'accès typé au namespace, et les seams que les plugin
 lib_id: host-runtime
 package: "@geoleaf/host-runtime"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: bc4516cac
+verifie_contre: 7c38efb2c
 date: 4 septembre 2026
 ---
 

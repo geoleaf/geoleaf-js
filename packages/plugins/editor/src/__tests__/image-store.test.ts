@@ -49,7 +49,12 @@ vi.mock("../persistence/storage-seam.js", () => ({
     storageFacade: () => ({ applyEdit: _applyEdit }),
 }));
 const _log = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
-vi.mock("@geoleaf/host-runtime", () => ({ Log: _log }));
+// ⚠️ Only `Log` is replaced: the upload's timeout is the real `fetchWithTimeout`, so the cases
+// below exercise the budget the module actually computes.
+vi.mock("@geoleaf/host-runtime", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@geoleaf/host-runtime")>()),
+    Log: _log,
+}));
 
 const {
     uploadImage,
@@ -247,15 +252,17 @@ describe("uploadImage — réseau d'abord, local en secours", () => {
         expect((_stored[0] as { endpoint: unknown }).endpoint).toBeNull();
     });
 
-    it("🛑 pose le jeton CSRF quand le core en fournit un", async () => {
+    it("🛑 n'envoie aucun jeton CSRF, même si un core plus ancien en expose un", async () => {
+        // The core's CSRF module minted its token in the browser: no server could verify it.
+        // It is gone from the core (3.4.0), and the upload no longer carries its header — a
+        // core that still exposes the old namespace must not bring it back.
         mountCore({ csrf: "tok-42" });
         vi.mocked(fetch).mockResolvedValue({
             ok: true,
             json: () => Promise.resolve({ url: "u" }),
         } as Response);
         await uploadImage(imageFile(), "/api/up");
-        const init = vi.mocked(fetch).mock.calls[0][1] as RequestInit;
-        expect((init.headers as Record<string, string>)["X-CSRF-Token"]).toBe("tok-42");
+        expect((vi.mocked(fetch).mock.calls[0][1] as RequestInit).headers).toBeUndefined();
     });
 
     it("n'invente pas d'en-tête quand il n'y a pas de jeton", async () => {
@@ -266,6 +273,53 @@ describe("uploadImage — réseau d'abord, local en secours", () => {
         } as Response);
         await uploadImage(imageFile(), "/api/up");
         expect((vi.mocked(fetch).mock.calls[0][1] as RequestInit).headers).toBeUndefined();
+    });
+
+    describe("un POST qui ne répond jamais", () => {
+        /** A request that settles only when its signal aborts — a stalled uplink. */
+        function stalled() {
+            vi.mocked(fetch).mockImplementation(
+                (_url, init) =>
+                    new Promise<Response>((_resolve, reject) => {
+                        init?.signal?.addEventListener("abort", () =>
+                            reject(new DOMException("aborted", "AbortError"))
+                        );
+                    })
+            );
+        }
+        const signalOfFirstCall = () =>
+            (vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit | undefined)?.signal;
+
+        beforeEach(() => vi.useFakeTimers());
+        afterEach(() => vi.useRealTimers());
+
+        // 🛑 The upload carried no signal: on a stalled uplink its promise never settled, so
+        // the photo was neither sent nor set aside, and closing the form lost it. The gate
+        // counting cancellable fetches took the old CSRF header spread for a signal.
+        it("🛑 finit par abandonner — et la photo est gardée localement", async () => {
+            mountCore();
+            stalled();
+            const pending = uploadImage(imageFile(), "/api/up");
+            await vi.advanceTimersByTimeAsync(0);
+            expect(signalOfFirstCall()).toBeInstanceOf(AbortSignal);
+            await vi.advanceTimersByTimeAsync(10 * 60_000);
+            expect(await pending).toMatch(TOKEN);
+            expect(_stored).toHaveLength(1);
+        });
+
+        // ⚠️ The retry runs under the same budget: one too short for a large photo on a slow
+        // uplink would fail it at EVERY attempt, and the photo would wait forever. A 5 MB
+        // photo gets at least what a 256 kbit/s uplink (32 kB/s) needs to send it.
+        it("🛑 laisse à une grande photo le temps d'une liaison lente", async () => {
+            mountCore();
+            stalled();
+            const big = new File([new Uint8Array(5_000_000)], "big.jpg", { type: "image/jpeg" });
+            const pending = uploadImage(big, "/api/up");
+            await vi.advanceTimersByTimeAsync((5_000_000 / 32_000) * 1000);
+            expect(signalOfFirstCall()?.aborted).toBe(false);
+            await vi.advanceTimersByTimeAsync(10 * 60_000);
+            expect(await pending).toMatch(TOKEN);
+        });
     });
 
     it("accepte `path` quand le serveur ne rend pas `url`", async () => {

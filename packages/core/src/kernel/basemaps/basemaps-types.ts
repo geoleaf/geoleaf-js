@@ -156,7 +156,9 @@ export interface BasemapsCoreSurface {
     getMap?: () => NativeMapHolder | null | undefined;
     getAdapter?: () =>
         | {
-              buildStyleChangeTransform?: () => StyleTransform | null;
+              buildStyleChangeTransform?: (options?: {
+                  attribution?: string;
+              }) => StyleTransform | null;
               reregisterStyleImages?: () => void;
           }
         | null

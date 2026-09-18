@@ -122,6 +122,8 @@ export type {
     IUISlotModule,
     IModuleRegistry,
     IModuleUISlot,
+    ModuleInitFailure,
+    ModuleInitOptions,
 } from "./contracts/core-module.contract.js";
 export type {
     ICapabilityDeclaration,

@@ -4,7 +4,7 @@ title: routing — le calcul d'itinéraire, utilisable sans le guidage
 plugin_id: routing
 package: "@geoleaf-plugins/routing"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 8bed714f2
+verifie_contre: ed53df0bd
 date: 27 août 2026
 ---
 
@@ -638,6 +638,11 @@ Le contrôle d'attribution du moteur de rendu affiche ce que ses **sources** dé
 par laquelle ce plugin publie — `GeoLeaf.Layers.setData` — porte des entités, pas des métadonnées de
 source. Passer outre pour atteindre la carte native ferait du plugin le second écrivain de ses
 sources, ce que `publish.ts` existe précisément pour éviter.
+
+⚠️ **Deux mentions, un seul coin.** Depuis 3.4.0, le core affiche le contrôle d'attribution de
+MapLibre en bas à droite, là où la mention du plugin était posée. Elle se place au-dessus
+(`css/geoleaf-routing.css`, `bottom: 3rem`), et s'écarte au bureau du panneau droit du core
+(bande d'onglets, puis contenu ouvert), comme le coin bas-droit de MapLibre.
 
 ⚠️ **Une garde de SOURCE couvre l'adaptateur qui n'existe pas encore.** Les deux actuels sont
 éprouvés par des tests de comportement ; le troisième, ajouté dans six mois, ne le serait pas — et

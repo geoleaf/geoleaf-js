@@ -94,6 +94,17 @@ The prompt is **disabled by default** (`enabled: false`). To enable it:
 
 `GeoLeaf.PWA.init()` is called automatically once the configuration has loaded (in `app/boot.ts`).
 
+### When the capability is disabled
+
+With `modules.pwa.enabled` absent or not `true`, GeoLeaf **unregisters its own service worker** at
+boot — otherwise a worker registered during an earlier visit would keep controlling the page
+indefinitely, and switching the capability off would have no observable effect.
+
+🛑 **Only `sw-core.js` is unregistered.** If you embed GeoLeaf inside a host application that
+registers its own service worker — for offline support, for an app install — that worker is left
+untouched, at boot and at teardown alike. The match is made on the last path segment of each
+registration's `scriptURL`, so a worker of yours named `vendor-sw-core.js` is not mistaken for ours.
+
 ### Per-platform behaviour
 
 | Platform                    | Behaviour                                                                                                                            |

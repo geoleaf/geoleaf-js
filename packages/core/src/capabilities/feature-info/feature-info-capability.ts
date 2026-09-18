@@ -33,6 +33,21 @@ export const FEATURE_INFO_CAPABILITY: ICapabilityDeclaration = {
             default: true,
             description: "Enable attribute rendering (tooltip / popup / side-panel) globally.",
         },
+        popup: {
+            type: "object",
+            description:
+                "Options of the click popup surface. A surface setting rather than a layer " +
+                "one: every layer's popup is the same MapLibre popup.",
+            properties: {
+                closeButton: {
+                    type: "boolean",
+                    default: false,
+                    description:
+                        "Show MapLibre's close cross. Off unless exactly `true` — Escape and " +
+                        "a click on the map close the popup either way.",
+                },
+            },
+        },
     },
     // No loader: feature-info is inline (quasi-universal). Gated via isEnabled().
 };

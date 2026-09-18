@@ -620,7 +620,8 @@ describe("4.5 — push et réconciliation d'identité", () => {
         });
 
         // 1st call: filtered on a stale marker → 200 [] (measured on real PostgREST).
-        // 2nd call: unfiltered → the local version overwrites.
+        // 2nd call: the RE-READ of what is about to be crushed (v6, 17/09/2026).
+        // 3rd call: unfiltered → the local version overwrites.
         let call = 0;
         serve(() =>
             ++call === 1 ? { status: 200, body: [] } : { status: 200, body: [{ id: 6 }] }
@@ -633,9 +634,12 @@ describe("4.5 — push et réconciliation d'identité", () => {
         // was already the behaviour, but by accident and without a trace. The
         // gain is that it is now DETECTED and LOGGED before being applied.
         expect(report.pushed).toBe(1);
-        expect(fetchSpy).toHaveBeenCalledTimes(2);
-        // The second send no longer carries the filter: it is the one that overwrites.
-        expect(String(fetchSpy.mock.calls[1][0])).not.toContain("updated_at=eq.");
+        // Red on 17/09/2026 at the v6 store: expected "vi.fn()" to be called 2 times, but got
+        // 3 times. The garde was right to pin the number — a third request appeared, and it
+        // is the re-read that keeps the crushed version.
+        expect(fetchSpy).toHaveBeenCalledTimes(3);
+        // The THIRD send no longer carries the filter: it is the one that overwrites.
+        expect(String(fetchSpy.mock.calls[2][0])).not.toContain("updated_at=eq.");
         expect((await readAll("features"))[0].syncState).toBe("synced");
     });
 
@@ -794,12 +798,15 @@ describe("4.5 — push et réconciliation d'identité", () => {
             localId: "srv:9",
             feature: feature("terrain"),
         });
-        // Both sends answer `200 []`: the row is gone, not stale.
+        // Every call answers `200 []`: the row is gone, not stale — the re-read included,
+        // which therefore establishes `absent` rather than a crushed version.
         serve(() => ({ status: 200, body: [] }));
 
         const report = await pushOutbox();
 
-        expect(fetchSpy).toHaveBeenCalledTimes(2);
+        // Red on 17/09/2026 at the v6 store: expected "vi.fn()" to be called 2 times, but got
+        // 3 times — the re-read sits between the two sends.
+        expect(fetchSpy).toHaveBeenCalledTimes(3);
         expect(report.conflicts).toBe(1);
         expect(report.pushed).toBe(0);
         expect(report.failed).toBe(1);

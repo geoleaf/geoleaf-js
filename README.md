@@ -2,7 +2,7 @@
 
 **Applies to:** `@geoleaf/core` v3.x
 **License:** MIT
-**Description:** Modern TypeScript mapping library built on MapLibre GL JS with advanced features for interactive web mapping applications.
+**Description:** A field mapping client built on MapLibre GL JS — one JSON profile defines the whole application, edits are recorded offline and replayed to any server that honours its contracts, and what a page loads at boot is measured and capped. Agnostic of any backend and of any business domain. What it is, and what it is not: [Direction](packages/core/docs/DIRECTION.md).
 
 [![npm version](https://img.shields.io/npm/v/@geoleaf/core.svg)](https://www.npmjs.com/package/@geoleaf/core)
 [![npm downloads](https://img.shields.io/npm/dm/@geoleaf/core.svg)](https://www.npmjs.com/package/@geoleaf/core)
@@ -21,18 +21,28 @@ Get started with GeoLeaf in less than 5 minutes:
 **Via NPM (recommended — ESM):**
 
 ```bash
-npm install @geoleaf/core
+npm install @geoleaf/core maplibre-gl
 ```
 
 ```javascript
 // ES Modules (recommended)
+import * as maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { Core } from "@geoleaf/core";
 import "@geoleaf/core/style.css";
 
-Core.init({
-    map: { target: "map", center: [46.5, 2.5], zoom: 6 },
-});
+// GeoLeaf reads the engine from `globalThis.maplibregl`, which MapLibre 6 no longer sets
+Object.assign(globalThis, { maplibregl });
+
+// `mapId` is the id of the container element; `center` is [lat, lng]
+Core.init({ mapId: "map", center: [46.5, 2.5], zoom: 6 });
 ```
+
+> [!NOTE]
+> `Core.init()` returns the map adapter, or `null` after logging why — a missing `mapId`, a
+> container not found, or no engine on `globalThis.maplibregl`. It creates a map and nothing
+> else: an application driven by a JSON profile starts with `GeoLeaf.boot()` instead — see
+> [GETTING_STARTED](packages/core/docs/GETTING_STARTED.md).
 
 > [!WARNING]
 > Two things that catch people out. `POI` and `Filters` are **not exported** — a POI is now a
@@ -154,13 +164,11 @@ advertised a version the registry had never seen.
         <script type="module">
             import GeoLeaf from "/dist/geoleaf.esm.js";
 
-            // Initialize map — `center` is [lat, lng]
+            // Initialize map — `mapId` is the container's id, `center` is [lat, lng]
             GeoLeaf.Core.init({
-                map: {
-                    target: "map",
-                    center: [46.5, 2.5],
-                    zoom: 6,
-                },
+                mapId: "map",
+                center: [46.5, 2.5],
+                zoom: 6,
             });
         </script>
     </body>
@@ -180,33 +188,25 @@ advertised a version the registry had never seen.
 
 ---
 
-## Why GeoLeaf?
+## What GeoLeaf is for
 
-### GeoLeaf vs Popular Alternatives
+GeoLeaf is a **field mapping client**: a map application defined by a JSON profile, used on a phone
+or a tablet to consult data and to edit it, with or without network. The profile — not the code —
+decides what the application is about, which is why GeoLeaf is agnostic of any backend and of any
+business domain. It is not a general-purpose GIS library, and it does not try to replace one.
 
-| Feature                       | Google Maps | Mapbox GL   | MapLibre GL | **GeoLeaf**      |
-| ----------------------------- | ----------- | ----------- | ----------- | ---------------- |
-| **Security (XSS Protection)** | Built-in    | Basic       | Basic       | Advanced         |
-| **GeoJSON Multi-Style**       | Full        | Full        | Full        | Full             |
-| **Offline Support**           | No          | Partial     | No          | Full (IndexedDB) |
-| **POI Clustering**            | Built-in    | Built-in    | Built-in    | Built-in         |
-| **Label System**              | Built-in    | Built-in    | Built-in    | Built-in         |
-| **Business Profiles**         | No          | No          | No          | Multi-profile    |
-| **Open Source**               | Proprietary | Proprietary | BSD-3       | MIT              |
-| **Free for Production**       | Paid API    | Paid        | Yes         | Yes              |
-| **Offline-First Ready**       | No          | No          | No          | Yes              |
-| **TypeScript Support**        | Official    | Official    | Official    | Full             |
+It develops four things, and treats them as the product:
 
-### Best For
+- **Profiles** — one JSON profile defines the whole application: layers, styles, themes,
+  taxonomy, modules.
+- **The offline write cycle** — an edit is recorded locally, queued, and replayed to the server
+  when the network returns, idempotently.
+- **Prepared offline** — the data and tiles a field day needs are declared in the profile and
+  downloaded ahead of time.
+- **The weight budget** — what a page loads at boot is measured and capped.
 
-**Choose GeoLeaf if you need:**
-
-- Security-first mapping (XSS protection built-in)
-- Offline-first applications (mobile, unreliable networks)
-- Business context switching (profiles)
-- Complex styling rules per layer
-- Open source with MIT licensing
-- Professional mapping without vendor lock-in
+What it guarantees — scale, devices, authentication, conflicts — and what it deliberately does not
+develop: [Direction](packages/core/docs/DIRECTION.md).
 
 ---
 
@@ -214,7 +214,7 @@ advertised a version the registry had never seen.
 
 ### Multi-Profile System
 
-Switch between different business contexts (Tourism, Custom...) with dedicated configurations, taxonomies, and UI presets.
+Switch between business contexts, each defined by its own profile — configuration, taxonomy and UI presets.
 
 ### Advanced POI Management
 
@@ -259,7 +259,6 @@ _(through the [`@geoleaf-plugins/offline-ui`](packages/plugins/offline-ui/README
 - Tag-based filtering
 - Full-text search
 - Proximity/radius filtering
-- Result counters
 
 ### Data Table
 
@@ -386,13 +385,15 @@ See [Architecture Guide](packages/core/docs/ARCHITECTURE_GUIDE.md) for structure
 
 ## Use Cases
 
-### Tourism & Heritage
+### Editing in the field
 
-Display points of interest, tourist routes, climate data, and protected areas with category-based filtering and rich popups.
+Consult a dataset on the move, edit points, lines and polygons, attach photos, and keep
+working without network: edits wait in a local queue and reach the server when it comes back.
 
-### Custom Applications
+### Demonstration profiles
 
-Build your own business-specific mapping application using the flexible profile system.
+The repository ships demonstration profiles — `tourism` among them — to show the profile model at
+work: layers, taxonomy, filters, popups. They are showcases, not the product's target.
 
 ---
 
@@ -554,7 +555,7 @@ import "@geoleaf/core/style.css";
 
 - **Unit tests:** Vitest (ESM, Istanbul coverage) — the installed version is declared in the root
   `devDependencies` rather than restated here
-- **E2E tests:** Playwright (Chromium)
+- **E2E tests:** Playwright — Chromium, plus bounded WebKit projects for the editor and form specs, named one by one in `playwright.config.js`
 - **Coverage:** per-package thresholds, gated and ratcheted upwards only — `npm run test:coverage:all`
 
 ```bash

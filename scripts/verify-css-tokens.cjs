@@ -63,6 +63,11 @@ const RUNTIME_SET = {
         "packages/plugins/editor/src/sub-menu/floating-menu.ts:242, :511 (+ host-runtime/src/ui/drag.ts:65)",
     "--gl-editor-right": "packages/plugins/editor/src/sub-menu/floating-menu.ts:243, :512",
     "--gl-editor-bottom": "packages/plugins/editor/src/sub-menu/floating-menu.ts:244, :510",
+    // The form overlay pinned to the visual viewport — all four written by one `sync()`.
+    "--gl-form-viewport-top": "packages/libs/field-renderer/src/ui/visual-viewport.ts:65",
+    "--gl-form-viewport-left": "packages/libs/field-renderer/src/ui/visual-viewport.ts:66",
+    "--gl-form-viewport-width": "packages/libs/field-renderer/src/ui/visual-viewport.ts:67",
+    "--gl-form-viewport-height": "packages/libs/field-renderer/src/ui/visual-viewport.ts:68",
 };
 
 const PKG = path.join(ROOT, "packages");

@@ -300,7 +300,6 @@ No `@ts-nocheck`, and no `any` where a real type exists. Shared interface patter
 
 - Never bypass `escapeHtml` / `sanitizeHtml` from `packages/core/src/kernel/security/`.
 - Never use `innerHTML` without a `// SAFE: <justification>` comment.
-- CSRF tokens: always `secure: true` in non-HTTP-only contexts.
 
 ### Generated artefacts — never edited by hand
 

@@ -111,12 +111,16 @@ function _handleClick(adapter: TerraDrawAdapterInstance, e: EditorMapMouseEvent)
     });
     if (!hit || !layerId) return;
 
-    // 🛑 `hit.id` ALONE RESOLVED TO NOTHING ON EVERY LINE AND POLYGON LAYER. The core sets
-    // `promoteId` on POINT sources only, so MapLibre hands back no top-level id there — and
+    // 🛑 `hit.id` ALONE RESOLVED TO NOTHING ON EVERY LINE AND POLYGON LAYER while the core set
+    // `promoteId` on POINT sources only: MapLibre handed back no top-level id there — and
     // `featureId` guards the deselect commit (`events.ts`), the dirty flag, the three
     // host-reconcile entry points and `submit`. "Select → edit → save" therefore persisted
     // NOTHING, without an error. `host-reconcile` already read both spellings; the picker
     // was the one place that did not.
+    //
+    // ⚠️ The core now promotes `id` on every layer source, so for `properties.id` this is a
+    // SECOND line of defence: reverting it alone leaves the E2E proofs green (measured). Keep it —
+    // the two fixes are independent, and the proofs only turn red when both are gone.
     const featureId = resolveFeatureId(hit);
 
     // Prefer the SOURCE geometry over the one `queryRenderedFeatures` handed back: the

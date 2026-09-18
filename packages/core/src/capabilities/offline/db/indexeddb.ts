@@ -30,10 +30,11 @@ interface DBModuleAPI {
 }
 
 /**
- * The storage report as `DB.Preferences` returns it — three stores counted.
+ * The storage report as `DB.Preferences` returns it — four stores counted.
  *
  * `featuresCount` and `outboxCount` exist since 03/08/2026: without them, a pull of
- * 27 entities left `getStats()` reporting 0.
+ * 27 entities left `getStats()` reporting 0. `conflictsCount` joins them with the v6 store,
+ * on the same argument: a store nothing counts is a store nothing notices filling up.
  */
 interface StorageStatsReport {
     used: number;
@@ -42,6 +43,7 @@ interface StorageStatsReport {
     layersCount: number;
     featuresCount: number;
     outboxCount: number;
+    conflictsCount: number;
 }
 
 /**
@@ -53,6 +55,7 @@ interface StorageStatsReport {
  * - metadata : Cache metadata (key, value, timestamp)
  * - features : one record per entity, keyed `[layerId, localId]` (v4)
  * - outbox : write queue, `seq` autoIncrement (v4)
+ * - conflicts : one settled conflict per entity, keyed `[layerId, localId]` (v6)
  * - local_images : images held for deferred upload
  *
  * ⚠️ This list used to cite `sync_queue` and omit `features`, `outbox` and
@@ -117,7 +120,12 @@ const StorageDB = {
     // `sw-core.test.js` refuses any call carrying one, witness included. A versioned
     // worker would refuse to open a database the engine upgraded — that named risk is
     // ruled out by construction rather than by discipline.
-    _dbVersion: 5,
+    // ⚠️ 5 → 6: the `conflicts` store. Additive in the same way, and the FIRST bump made
+    // while a field device could already hold data — which is why it is the first to be
+    // proven against a real base of the previous version
+    // (`__tests__/capabilities/offline/schema-v6-migration.test.ts`). Decision of
+    // 17/09/2026: it carries NO zone index, and no index at all.
+    _dbVersion: 6,
 
     /**
      * Database instance
@@ -369,6 +377,28 @@ const StorageDB = {
             // Composite: serves coalescing and the join towards `features`.
             outbox.createIndex("localId", ["layerId", "localId"], { unique: false });
             Log.info("[StorageDB] Created 'outbox' object store (v4)");
+        }
+
+        // ── v6 — what a settled conflict leaves behind (`ConflictRecord` contract) ──
+        //
+        // 🛑 ONE RECORD PER ENTITY, AND THE KEY IS THE BOUND. This store is UNREACHABLE by
+        // eviction for the same reason `features` is — `db/eviction.ts` knows one store name
+        // — so nothing will ever purge it. Keying by entity caps it at one row per entity,
+        // i.e. bounded by the layer it describes. A journal would have needed a ceiling, and
+        // a ceiling here would be a number posted in the noise band.
+        //
+        // 🛑 NO INDEX, AND NOT EVEN A ZONE ONE (decision of 17/09/2026). Reading a layer from
+        // disk costs 0,45 to 0,8 s at 30 000 entities, measured — it does not justify one. And
+        // the composite key already gives per-layer traversal by key range, the reasoning
+        // `db/features.ts` carries in full: a companion index would be a second truth for the
+        // same question.
+        //
+        // ⚠️ First bump made while a field device could hold data: unlike the v4 stores, this
+        // one arrives NEXT TO records that must survive it. `schema-v6-migration.test.ts`
+        // opens a real v5 base and checks exactly that.
+        if (!db.objectStoreNames.contains("conflicts")) {
+            db.createObjectStore("conflicts", { keyPath: ["layerId", "localId"] });
+            Log.info("[StorageDB] Created 'conflicts' object store (v6)");
         }
 
         // v3 — rewrite `local_images.uploaded` from boolean to 0/1.
@@ -807,7 +837,7 @@ const StorageDB = {
      * the degraded path thus received an object with two fields missing without the
      * type saying so.
      *
-     * @returns Quota, usage, and the tallies of the three data-bearing stores.
+     * @returns Quota, usage, and the tallies of the four data-bearing stores.
      */
     async getStorageStats(): Promise<StorageStatsReport> {
         if (!this._db) await this.init();
@@ -819,6 +849,7 @@ const StorageDB = {
             layersCount: 0,
             featuresCount: 0,
             outboxCount: 0,
+            conflictsCount: 0,
         };
         if (module) {
             return (module?.getStorageStats?.() as StorageStatsReport | undefined) ?? empty;

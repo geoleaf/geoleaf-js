@@ -1,0 +1,38 @@
+{
+    "schemaVersion": 2,
+    "lot": "197-bloc-tactile",
+    "scope": [
+        "packages/libs/field-renderer/src/css/form-touch.css",
+        "packages/libs/field-renderer/src/ui/visual-viewport.ts"
+    ],
+    "verdicts": {
+        "packages/libs/field-renderer/src/css/form-touch.css": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Bloc tactile du formulaire — 16 px sur les contrôles de saisie, 44 px sur les cibles, sous `@media (pointer: coarse)`",
+            "confidence": "haute",
+            "rationale": "Un fichier et non une section d'une feuille existante : le bloc couvre les classes des DEUX feuilles de la bibliothèque et doit être importé en dernier par `ui/responsive-modal.ts` pour gagner les égalités de cascade — un nom qui dit ce qu'il porte rend cet ordre lisible. Dans `field-renderer` et non dans `host-runtime`, dont la copie des règles de modale est inlinée aussi dans `offline-ui` : la toucher aurait imposé de republier ce plugin."
+        },
+        "packages/libs/field-renderer/src/ui/visual-viewport.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Suivi du visual viewport par la modale du formulaire — l'overlay épinglé à ce que l'utilisateur voit, le champ focalisé ramené dans le corps",
+            "confidence": "haute",
+            "rationale": "À côté de `ui/responsive-modal.ts`, son seul appelant, et séparé de lui : le suivi a son propre cycle de vie — écouteurs posés à la construction, libérés à la sortie unique `teardown()` — et se teste sans monter un formulaire. Non exporté par le baril de la bibliothèque : aucun consommateur n'a à suivre le visual viewport pour elle."
+        }
+    }
+}

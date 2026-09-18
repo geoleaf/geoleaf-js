@@ -27,13 +27,12 @@
         "test:coverage": "vitest run --coverage",
         "prepublishOnly": "npm run build"
     },
-    "dependencies": {
-        "@geoleaf/core": "^3.0.0"
-    },
     "peerDependencies": {
+        "@geoleaf/core": "^3.0.0",
         "maplibre-gl": "^6.0.0"
     },
     "devDependencies": {
+        "@geoleaf/core": "^3.0.0",
         "@geoleaf/build-config": "*",
         "@geoleaf/host-runtime": "*",
         "@vitest/coverage-istanbul": "^4.1.11",

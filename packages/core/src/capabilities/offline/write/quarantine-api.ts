@@ -94,6 +94,8 @@ const REQUEUEABLE: readonly QuarantineReason[] = [
     // observe it (it knows nothing of the connector), so the operator's gesture is the
     // observation, exactly as for a spent budget.
     "authRequired",
+    // A layer's declaration changes, and that IS observable here — verified below.
+    "dialectNotSupported",
 ];
 
 /**
@@ -147,10 +149,11 @@ async function _findQuarantined(
 /**
  * Is a quarantine's cause lifted?
  *
- * `layerNoLongerWritable` is the only motive whose lifting is OBSERVABLE here: has the
- * layer found a write target again? We verify it rather than believe it — requeueing
- * an entry whose layer still does not write would send it back to quarantine at the
- * first drain, spending its budget for nothing.
+ * Two motives have a lifting that is OBSERVABLE here, and both are read in the layer's
+ * declaration: `layerNoLongerWritable` — has the layer found a write target again? — and
+ * `dialectNotSupported` — does it still declare a dialect the core does not speak? We verify
+ * them rather than believe them: requeueing an entry whose layer has not changed would send
+ * it back to quarantine at the first drain, spending its budget for nothing.
  *
  * `retryBudgetExhausted` names no locally verifiable fact: the server never answered.
  * The operator's gesture IS the observation — they are the one who knows the network
@@ -165,9 +168,42 @@ async function _findQuarantined(
  * @returns `true` when the cause is lifted (or unverifiable, hence entrusted to the operator).
  */
 function _causeIsLifted(entry: QuarantinedEntry): boolean {
-    if (entry.quarantine !== "layerNoLongerWritable") return true;
-    const cfg = coreProfileLayerConfig(entry.layerId ?? "") as { write?: { enabled?: boolean } };
-    return cfg?.write?.enabled === true;
+    const verifiable =
+        entry.quarantine === "layerNoLongerWritable" || entry.quarantine === "dialectNotSupported";
+    if (!verifiable) return true;
+    const write = (
+        coreProfileLayerConfig(entry.layerId ?? "") as {
+            write?: { enabled?: boolean; dialect?: string };
+        } | null
+    )?.write;
+    if (entry.quarantine === "dialectNotSupported") return write?.dialect !== "rest";
+    return write?.enabled === true;
+}
+
+/**
+ * The motives an operator's gesture can lift — {@link REQUEUEABLE}, as a copy.
+ *
+ * 🛑 **IT EXISTS SO THE RULE KEEPS ONE AUTHOR.** An interface offering "retry all" per motive
+ * has to know which motives that sentence is true for, BEFORE the click: a button that does
+ * nothing when pressed teaches the user to stop pressing it, which is the argument
+ * `offline-ui`'s status block already states in its own words. Without this read, every
+ * surface would hard-code the list — and a plugin cannot import the core (`INV-NS`), so its
+ * copy would be free to diverge on the exact point the arbitration of 07/08/2026 settled, and
+ * no gate could see it.
+ *
+ * ⚠️ **A COPY, and frozen**: `REQUEUEABLE` is this module's decision, not a shared mutable.
+ *
+ * ⚠️ It does NOT say an entry will come back — {@link requeueQuarantined} still verifies that
+ * the cause is OBSERVED as lifted for the two motives where that is checkable. It says which
+ * motives have an exit at all.
+ *
+ * @returns The requeueable motives, in the order this module declares them.
+ * @example
+ * const exits = GeoLeaf?.Storage?.requeueableReasons?.() ?? [];
+ * if (exits.includes(entry.quarantine)) showRetryButton(entry);
+ */
+export function requeueableReasons(): readonly QuarantineReason[] {
+    return Object.freeze([...REQUEUEABLE]);
 }
 
 /**

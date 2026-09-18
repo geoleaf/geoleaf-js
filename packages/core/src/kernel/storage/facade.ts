@@ -61,6 +61,13 @@ interface EditLike {
     requeueQuarantined: (id: string) => Promise<StorageQuarantineOutcome>;
     requeueAll: (reason?: string) => Promise<StorageBatchRequeueOutcome>;
     discardQuarantined: (id: string, confirmedLocalId: string) => Promise<StorageQuarantineOutcome>;
+    /**
+     * The motives an operator's gesture can lift — `write/quarantine-api.ts`.
+     *
+     * ⚠️ Optional for the reason the drain triggers are: an engine built before it existed
+     * wires a bag without it.
+     */
+    requeueableReasons?: () => readonly string[];
     applyEdit: (input: {
         layerId: string;
         kind: "create" | "update" | "delete";
@@ -80,6 +87,36 @@ interface EditLike {
     requestDrain?: (cause: string) => Promise<void>;
     /** Can this device hold a write to that layer? See `write/local-edit-api.ts`. */
     canHoldWrites?: (layerId: string) => boolean;
+    /**
+     * The v6 conflict archive — `write/conflict-store.ts`.
+     *
+     * ⚠️ Optional for the reason the drain triggers are: an engine built before the store
+     * existed wires a bag without them, and this interface describes what the deferred chunk
+     * INJECTS, which is a runtime fact.
+     */
+    listConflicts?: (layerId?: string) => Promise<StorageConflictRecord[]>;
+    clearConflicts?: (layerId?: string) => Promise<boolean>;
+}
+
+/**
+ * One archived conflict, as the facade hands it out.
+ *
+ * Structural like its neighbours — the facade lives in the boot graph and must not import
+ * the deferred chunk's types. It mirrors `ConflictRecord` of `contracts/sync.contract.ts`,
+ * which stays the single definition of the record's meaning.
+ */
+interface StorageConflictRecord {
+    layerId: string;
+    localId: string;
+    serverId: string | null;
+    kind: "create" | "update" | "delete";
+    entryId: string;
+    detectedAt: number;
+    baseVersion: { kind: "etag" | "timestamp"; value: string } | null;
+    serverVersion: { kind: "etag" | "timestamp"; value: string } | null;
+    serverFeature: Record<string, unknown> | null;
+    readOutcome: "read" | "absent" | "unreadable";
+    settledBy: "lastWriteWins";
 }
 
 /**
@@ -218,6 +255,7 @@ interface DBLike {
         layersCount?: number;
         featuresCount?: number;
         outboxCount?: number;
+        conflictsCount?: number;
     }>;
     getLayersByProfile?: (profileId: string) => Promise<unknown[]>;
 }
@@ -501,8 +539,10 @@ const Storage = {
      * chunk is deferred, and `whenReady()` never resolves without
      * `modules.offline`.
      *
-     * @param input - The layer, operation kind, local identity and entity.
-     * @returns The report: entry created, merged, or cancelled; `refused` carries the motive.
+     * @param input - The layer, operation kind, identity and entity. For an existing entity the
+     *   identity may be the server one the map shows: the store resolves it to its own key.
+     * @returns The report: entry created, merged, or cancelled; `localId` is the key the edit
+     *   landed on; `refused` carries the motive.
      * @example
      * const report = await GeoLeaf?.Storage?.applyEdit?.({
      *     layerId: "sites_rosario", kind: "update", localId: "loc:abc", feature
@@ -757,6 +797,86 @@ const Storage = {
     },
 
     /**
+     * Which quarantine motives an operator's gesture can lift.
+     *
+     * 🛑 **ONE AUTHOR FOR THE RULE.** A window offering "retry all (motive X)" must know
+     * which motives that sentence is true for BEFORE the click — a button that does nothing
+     * when pressed teaches the user to stop pressing it. Without this read every surface
+     * would hard-code the list, and a plugin cannot import the core (`INV-NS`), so its copy
+     * would diverge unfalsifiably.
+     *
+     * ⚠️ It does NOT promise an entry will come back: {@link Storage.requeueQuarantined}
+     * still verifies that the cause is observed as lifted where that is checkable. It says
+     * which motives have an exit at all — the others exit through
+     * {@link Storage.discardQuarantined}.
+     *
+     * @returns The requeueable motives — empty when the offline engine is not wired.
+     * @example
+     * const exits = GeoLeaf?.Storage?.requeueableReasons?.() ?? [];
+     * if (exits.includes(entry.quarantine)) showRetryButton(entry);
+     */
+    requeueableReasons(): readonly string[] {
+        const edit = this._modules.edit;
+        if (!edit?.requeueableReasons) {
+            Log.warn("[GeoLeaf.Storage] requeueableReasons — moteur hors-ligne non câblé.");
+            return [];
+        }
+        return edit.requeueableReasons();
+    },
+
+    /**
+     * The versions a settled conflict CRUSHED, and that the device kept (v6 store).
+     *
+     * 🛑 **`lastWriteWins` overwrites, and until 17/09/2026 it overwrote BLIND.** The drain
+     * detected the conflict and logged it, then re-sent the write unfiltered without ever
+     * reading the row it was about to destroy. After a settled update the server still holds
+     * a row; after a settled DELETE it holds nothing, and neither did anything else.
+     *
+     * ⚠️ **One record per entity**: a second conflict on the same entity replaces the first.
+     * That is the store's bound — nothing evicts it, so the key is what keeps it finite.
+     *
+     * ⚠️ `readOutcome` says how much of the crushed row could be established. `"unreadable"`
+     * means the overwrite happened anyway and the version is lost — recorded rather than
+     * invented, because making the write depend on a read the server may not grant would
+     * repeal the policy in silence.
+     *
+     * @param layerId - Restrict to this layer; omitted, every layer.
+     * @returns The archived conflicts — empty when the offline engine is not wired.
+     * @example
+     * const crushed = await GeoLeaf?.Storage?.listConflicts?.("sites");
+     * console.info(`${crushed?.length ?? 0} version(s) écrasée(s) conservée(s)`);
+     */
+    async listConflicts(layerId?: string): Promise<StorageConflictRecord[]> {
+        const edit = this._modules.edit;
+        if (!edit?.listConflicts) {
+            Log.warn("[GeoLeaf.Storage] listConflicts — moteur hors-ligne non câblé.");
+            return [];
+        }
+        return edit.listConflicts(layerId);
+    },
+
+    /**
+     * Drops the archived conflicts of one layer, or all of them.
+     *
+     * ⚠️ **The only purge there is, and its being manual is deliberate.** `db/eviction.ts`
+     * names one store (`layers`), so nothing reclaims this one on its own — the same
+     * property that keeps unsynchronised work out of eviction's reach.
+     *
+     * @param layerId - Restrict to this layer; omitted, every layer.
+     * @returns `true` when the purge ran, `false` when the engine is not wired.
+     * @example
+     * await GeoLeaf?.Storage?.clearConflicts?.("sites");
+     */
+    async clearConflicts(layerId?: string): Promise<boolean> {
+        const edit = this._modules.edit;
+        if (!edit?.clearConflicts) {
+            Log.warn("[GeoLeaf.Storage] clearConflicts — moteur hors-ligne non câblé.");
+            return false;
+        }
+        return edit.clearConflicts(layerId);
+    },
+
+    /**
      * Reports, layer by layer, what offline really has at hand.
      *
      * 🛑 **The case it exists to make visible**: a layer declared offline but never
@@ -840,8 +960,8 @@ const Storage = {
      * {@link StorageDB.getSyncCounts}, which yields `pendingCount` and
      * `quarantinedCount` per layer.
      *
-     * @returns storage quota/usage, layer counts (total + per profile), entity/outbox counts,
-     * cached profile ids and the online flag.
+     * @returns storage quota/usage, layer counts (total + per profile), entity, outbox and
+     * conflict counts, cached profile ids and the online flag.
      * @remarks Never throws — errors are logged and partial stats returned.
      */
     async getStats(): Promise<{
@@ -849,6 +969,13 @@ const Storage = {
         layers: { count: number; byProfile: Record<string, number> };
         features: { count: number };
         outbox: { count: number };
+        /**
+         * Versions a settled conflict crushed and the device kept (v6).
+         *
+         * ⚠️ Counted for the reason `features` and `outbox` are: nothing evicts this store,
+         * so it is the second one whose growth no quota mechanism will ever report.
+         */
+        conflicts: { count: number };
         cache: { profiles: string[] };
         online: boolean;
     }> {
@@ -857,6 +984,7 @@ const Storage = {
             layers: { count: 0, byProfile: {} as Record<string, number> },
             features: { count: 0 },
             outbox: { count: 0 },
+            conflicts: { count: 0 },
             cache: { profiles: [] as string[] },
             online: true,
         };
@@ -870,6 +998,7 @@ const Storage = {
                 stats.layers.count = dbStats.layersCount ?? 0;
                 stats.features.count = dbStats.featuresCount ?? 0;
                 stats.outbox.count = dbStats.outboxCount ?? 0;
+                stats.conflicts.count = dbStats.conflictsCount ?? 0;
             }
 
             if (this.CacheManager) {

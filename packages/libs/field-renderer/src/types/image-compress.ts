@@ -10,7 +10,7 @@
  *
  * Absorbed from `@geoleaf-plugins/addpoi` (`image-upload.ts`), under the
  * rule: what is **pure** moves up into the lib, what carries **state**
- * (offline storage, retry queue, CSRF token) stays in the plugin. Nothing
+ * (offline storage, retry queue) stays in the plugin. Nothing
  * here touches the network, storage or global configuration — hence its place
  * in a published package.
  *

@@ -104,7 +104,6 @@ export interface GeoLeafHost {
     Storage?: { DB?: Record<string, unknown>; [key: string]: unknown };
     /** Security helpers façade (`GeoLeaf.Security`). */
     Security?: {
-        CSRFToken?: unknown;
         escapeHtml?(s: unknown): string;
         [key: string]: unknown;
     };

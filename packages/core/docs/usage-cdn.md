@@ -115,6 +115,10 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { Core } from "@geoleaf/core";
 import "@geoleaf/core/style.css";
 
+// GeoLeaf reads the engine from `globalThis.maplibregl`: importing MapLibre is not enough, and
+// MapLibre 6 no longer sets the global itself
+Object.assign(globalThis, { maplibregl });
+
 Core.init({
     mapId: "geoleaf-map",
     center: [-32.95, -60.65], // [lat, lng] — GeoLeaf; MapLibre expects [lng, lat], conversion is internal

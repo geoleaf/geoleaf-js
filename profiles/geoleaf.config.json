@@ -27,7 +27,7 @@
         "branding": {
             "_comment": "Branding capability. Migrated from the former app-global root `branding` key. enabled = master gate (opt-in).",
             "enabled": true,
-            "text": "Propulsé par © GeoLeaf with MapLibre - Données © OpenStreetMap contributors",
+            "text": "Propulsé par © GeoLeaf with MapLibre",
             "position": "bottomleft"
         },
         "pwa": {

@@ -3,13 +3,51 @@ type: spec-kernel
 title: kernel — @geoleaf/core
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: f9d2fc86c
-date: 9 septembre 2026
+verifie_contre: 3d50daf78
+date: 17 septembre 2026
 ---
 
 # kernel — le substrat que tout le reste suppose
 
 **Type :** kernel · **Code :** `packages/core/src/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
+
+> ⚠️ **Ce que l'estampille du 17/09/2026 couvre — collatérale elle aussi, et c'est la même forme
+> qu'en août.** Les quatre commits du cycle d'écriture ne touchent du cœur que la capacité
+> `offline` — dont la fiche est [`capacites/offline.md`](capacites/offline.md), estampillée sur le
+> même commit avec le détail —, plus deux fichiers que CETTE fiche décrit : le **contrat de
+> synchronisation**, qui gagne un membre d'union (`dialectNotSupported`) et deux phrases de
+> documentation, et la **façade `Storage`**, dont seule la TSDoc d'`applyEdit` change. Les sections
+> que ces deux zones pourraient périmer ont été relues — §Séquence de boot (B8 inchangé), §Les 13
+> sous-systèmes (`shared/` et `storage/` inchangés), §Contrat exposé, §Contrats — et aucune ne
+> bouge, **par construction** : cette fiche ne recopie ni signature ni liste de membres, et le
+> compte de sous-chemins `contracts/` ne change pas, un membre ajouté à une union existante n'en
+> créant aucun. Mesuré plutôt qu'affirmé : le golden master de la surface publique serait rouge, il
+> ne l'est pas.
+
+> ⚠️ **Ce que l'estampille du magasin de conflits couvre — collatérale, et elle ne l'est PAS tout à
+> fait de la même façon.** Les correctifs du magasin de conflits ne touchent du cœur que la
+> capacité `offline` — dont la fiche est [`capacites/offline.md`](capacites/offline.md) —, plus
+> trois fichiers que CETTE fiche décrit : le **contrat de synchronisation** (`ConflictRecord` et
+> `ConflictReadOutcome`, deux types neufs dans un fichier existant), le **contrat de bus**
+> (`geoleaf:offline:write-conflict`, une clé de plus dans `GeoLeafEventMap`) et la **façade
+> `Storage`**, qui gagne **trois membres** — `requeueableReasons`, `listConflicts`,
+> `clearConflicts`.
+>
+> 🛑 **C'est la première fois que la liste des membres de la façade change depuis que ce bloc
+> existe, et le golden master l'a DIT** : `boot-golden-master.test.js` est sorti rouge — « GeoLeaf.Storage
+> — membres APPARUS : clearConflicts, listConflicts », puis une seconde fois sur
+> `requeueableReasons`. C'est exactement ce que cette fiche annonce : elle ne recopie aucune liste
+> de membres, donc elle ne périme pas — c'est le gel de `scripts/lib/namespace-surface.mjs` qui
+> porte la liste, et il a mordu. Les sections que ces trois zones pourraient périmer ont été
+> relues — §Séquence de boot (B8 inchangé, la façade s'auto-monte comme avant), §Les 13
+> sous-systèmes (`shared/` et `storage/` inchangés), §Contrat exposé, §Contrats — et aucune ne
+> bouge : le compte de sous-chemins `contracts/` ne change pas, deux types ajoutés à un fichier
+> existant n'en créant aucun.
+>
+> ⚠️ **Ce qui bouge et qui n'est PAS dans cette fiche** : la base locale passe en **v6**. Le
+> numéro de version n'existe qu'à un seul endroit du dépôt — `db/indexeddb.ts` — et le Service
+> Worker ne le lit pas, par construction (il ouvre `geoleaf-db` sans second argument). Cette
+> fiche n'en a donc jamais porté de trace, et n'a pas à en prendre une.
 
 > ⚠️ **Ce que l'estampille de `1543249da` (R9) couvre — et elle est COLLATÉRALE, ce qui se dit.**
 > Le commit touche quatre fichiers du kernel, tous sous `geojson/loader/` : la pagination y est
@@ -135,7 +173,7 @@ en-tête de module — est **généré** : [`docs/reference/ARBORESCENCE_QUALIFI
 | K-02 | Chargement et fusion de la configuration                                     | `geoleaf.config.json` + `profile.json` + compagnons           | `GeoLeaf.Config.get(...)`, config consolidée                                                                                                                                                                                                                                                          | `kernel/config/`                                          |
 | K-03 | Abstraction du moteur cartographique                                         | appels métier engine-agnostic                                 | carte MapLibre pilotée sans référence `maplibregl.*` hors adapter                                                                                                                                                                                                                                     | `contracts/map-adapter.contract.ts`, `adapters/maplibre/` |
 | K-04 | Carte, conteneur, thème de carte, **cycle de vie du registre**               | config `map` du profil                                        | carte montée, `geoleaf:map:ready` ; registre à clé (`init`/`destroy`/`hasMap`/`listMaps`) et **déplacement d'une carte vivante** (`isAttached`/`reattach`, cf. **ADR-15**) — un seul registre, celui de `Core` : `GeoLeaf.getMap`/`getAllMaps` y délèguent depuis la 3.1.0                            | `kernel/map/`                                             |
-| K-05 | Fonds de carte (raster, vectoriel, WMS/WMTS, hillshade, image géoréférencée) | `config/core/basemaps.json`                                   | sélecteur de fonds, `geoleaf:basemap:change`                                                                                                                                                                                                                                                          | `kernel/basemaps/`                                        |
+| K-05 | Fonds de carte (raster, vectoriel, WMS/WMTS, hillshade, image géoréférencée) | `config/core/basemaps.json`                                   | sélecteur de fonds, `geoleaf:basemap:change` ; crédit du fond affiché par le contrôle d'attribution de MapLibre — celui d'un fond vectoriel compris, porté par la transformation de style (3.4.0)                                                                                                     | `kernel/basemaps/`                                        |
 | K-06 | Couches GeoJSON — chargement, conversion, styles conditionnels, labels       | `config/core/layers.json` + `layers/<id>/`                    | couches rendues, `geoleaf:layer:added`. 🛑 **Un geste = UN événement** : un clic sur une entité émet exactement un `geoleaf:feature:click`, quelle que soit la géométrie et quel que soit le nombre de sous-couches qui la rendent — le clic et le survol partagent la même précédence de sélection   | `kernel/geojson/`                                         |
 | K-07 | Moteur de thèmes (presets de visibilité)                                     | `config/core/themes.json`                                     | thème appliqué, `geoleaf:theme:applied`                                                                                                                                                                                                                                                               | `kernel/themes/`                                          |
 | K-08 | Coquille UI — panneau desktop, barre mobile, composants partagés             | `config/core/ui.json`                                         | DOM de la coquille, `geoleaf:toolbar:action`                                                                                                                                                                                                                                                          | `kernel/ui/`                                              |
@@ -368,13 +406,45 @@ phase A. Ils ne portaient qu'un nœud de graphe.
 Séquence, dans `app/boot-core.ts` :
 
 ```
-loadConfig()                       → config de base (pré-fusion)
+beginBoot()                        (surveillance : watchdog armé, échecs signalés)
+loadConfig()                       → config de base (pré-fusion)          ✗ failBoot("config")
 Pass 1  registerPresetDeclarations (déclarations + façades des capacités, NON gatées)
 Pass 2  registerPresetModules      (TOUS les modules de cycle de vie, chacun EMBALLÉ dans sa gate)
-loadActiveProfileResources()       → config effective (profil fusionné)
-hook beforeBoot                    (gate d'authentification ; jeter interrompt le boot)
-registry.init(adapter, effectiveCfg)
+loadActiveProfileResources()       → config effective (profil fusionné)   ✗ failBoot("profile")
+hook beforeBoot                    (gate d'authentification ; watchdog SUSPENDU ; jeter interrompt le boot)
+registry.init(adapter, effectiveCfg, { onModuleError })                   ✗ failBoot("module"), ou module isolé
 ```
+
+**Un démarrage qui ne peut pas aboutir est SIGNALÉ, jamais un spinner muet** (`app/boot-failure.ts`,
+`app/boot-failure-screen.ts`). Avant, chaque étape en échec finissait sur une ligne de console et un
+`return` : le voile `#gl-loader`, que seul `revealApp()` masque et que seul `UIModule` arme, restait
+levé indéfiniment, et aucun événement n'atteignait l'hôte.
+
+- **`failBoot()`** — le premier échec terminal l'emporte : `geoleaf:boot:failed` (annulable), une
+  entrée `Log.error`, le watchdog désarmé, et l'écran d'échec dessiné DANS le voile si aucun hôte
+  n'a annulé. Une page sans voile ne reçoit aucun DOM. La table des raisons vit dans
+  [`contrats/INITIALIZATION_FLOW.md`](contrats/INITIALIZATION_FLOW.md) §Gestion d'erreurs.
+- **Les ressources DÉCLARÉES du profil** qu'un chargeur n'a pas obtenues sont consignées par
+  `kernel/config/profile-load-report.ts`. Le kernel n'importe pas `app/` : c'est `boot-core` qui
+  lit le rapport. `profile.json` en échec est fatal ; toute autre ressource déclarée retient la
+  révélation sur un écran « Continuer quand même », qui n'existe que parce qu'une carte peut alors
+  s'afficher — l'écran apparaît au moment où l'application serait révélée.
+- **Le watchdog** (`BootOptions.watchdogMs`, 45 s par défaut) est SUSPENDU pendant `beforeBoot` :
+  une passerelle d'authentification attend un humain. Son expiration est provisoire, et une
+  révélation tardive retire l'écran.
+- **Un module qui jette est jugé par le graphe** — `ModuleRegistry.init(…, { onModuleError })`,
+  additif : sans l'option, `init()` rejette comme il l'a toujours fait. Dans la chaîne d'interface
+  (`ui`, ou un module dont `ui` dépend), le boot échoue et nomme le module. Ailleurs, le module est
+  isolé : `geoleaf:module:failed` (annulable), ses dépendants sautés et absents de
+  `getActiveModules()`, la révélation retenue sur l'écran d'attention — ou un avertissement si
+  l'application est déjà révélée.
+- **Le diagnostic porte le journal.** `utils/log/log-record.ts` garde les dernières entrées de
+  `GeoLeaf.Log`, du logger du boot et, depuis `GeoLeaf.boot()`, des erreurs non capturées ; chacune
+  est mise en forme bornée à l'enregistrement et **rédigée à la lecture** par `utils/log/redact.ts`,
+  qui n'importe rien — `kernel/security` journalise par `utils/log`, l'importer fermerait un cycle.
+  Les deux restent hors du baril `utils/log`, que les tests simulent avec les quatre méthodes de log.
+- **Les sites sans exception** (étendue absente, carte nulle) signalent et gardent leur `return` :
+  lever sauterait tous les modules suivants, et le golden master boote sans étendue exprès.
 
 ⚠️ **La Pass 2 ne lit plus AUCUNE config**, et c'est un renversement, pas une nuance. Elle
 recevait `toCapConfig(baseCfg)` — une vue PRÉ-fusion —, si bien qu'un profil écrivant
@@ -920,18 +990,27 @@ Deux cartes, et la distinction est porteuse :
 
 - **`GeoLeafEventMap`** — les événements typés du bus assaini. Ils survivent au
   `JSON.parse(JSON.stringify())` que le bus applique.
-- **`GeoLeafRawEventMap`** — **trois** clés y vivent, et volontairement : `geoleaf:toolbar:action`
-  (`element: HTMLElement`), `geoleaf:layer-manager:panel` (trois nœuds) et, depuis le 14/08/2026,
-  `geoleaf:popup:action` (`button`, plus `setBusy()` et `close()`). Aucune ne survit à la
-  sérialisation. Les placer dans la première carte aurait rendu `dispatchGeoLeafEvent` type-légal
-  et **runtime-faux**.
+- **`GeoLeafRawEventMap`** — **quatre** clés y vivent, et volontairement : `geoleaf:toolbar:action`
+  (`element: HTMLElement`), `geoleaf:layer-manager:panel` (trois nœuds), depuis le 14/08/2026
+  `geoleaf:popup:action` (`button`, plus `setBusy()` et `close()`), et depuis le 11/09/2026
+  `geoleaf:boot:aborted` (`reason` : ce que le hook `beforeBoot` a levé, le plus souvent une
+  `Error`). Aucune ne survit à la sérialisation. Les placer dans la première carte aurait rendu
+  `dispatchGeoLeafEvent` type-légal et **runtime-faux**.
   ⚠️ Cette ligne disait « `geoleaf:toolbar:action` y vit **seul** » jusqu'au 14/08/2026, et elle
   était **déjà fausse à deux clés** avant qu'une fusion n'en ajoute une troisième — le critère
   d'admission n'est d'ailleurs pas « le payload n'est pas clonable » mais « **au moins un champ**
   ne l'est pas », `popup:action` en portant cinq qui le sont.
 
 `Events.on/off/once` accepte les deux cartes ; **l'émission par `dispatchGeoLeafEvent` reste
-sérialisable, celle des clés brutes se fait en `CustomEvent` nu.** Le reliquat non
+sérialisable, celle des clés brutes se fait en `CustomEvent` nu.** Depuis 3.4.0, `on` et `once`
+rendent la fonction qui retire l'écouteur — la moitié abonnement du contrat publié `IEventBus`,
+dont `on` promettait déjà ce retour. Elle retire la référence même que la façade a posée, sans
+enveloppe : `off(event, handler)` retire donc toujours ce que `on` a ajouté. Le témoin de conformité
+au contrat vit dans `packages/core/__tests__/events/events-unsubscribe.test.ts`, pas en `satisfies` sur la
+façade, qui refuserait `once` comme propriété en excès. `geoleaf:boot:failed`,
+`geoleaf:profile:failed` et `geoleaf:module:failed` appartiennent à la première carte — leur charge est sérialisable — mais
+sont émis par **`dispatchCancelableGeoLeafEvent`** : même copie assainie, `cancelable: true`, et le
+verdict rendu, parce que leur action par défaut est l'écran d'échec qu'un hôte peut remplacer. Le reliquat non
 typé est **borné et décroissant**, tenu par la baseline
 `scripts/.baselines/event-map-coverage.json` et la gate `check-event-map-coverage.cjs`. Les
 comptes des deux côtés se lisent là :
@@ -1161,6 +1240,8 @@ npm run size
 
 | Version   | Date               | Auteur        | Modifications                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | --------- | ------------------ | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **4.3.9** | 11 septembre 2026  | Claude Opus 5 | **Le module qui jette cesse d'emporter les suivants, et le diagnostic emporte le journal.** ✅ **Ce qui est entré** (§Phase B, §Événements) : `ModuleRegistry.init(…, { onModuleError })`, additif, et la décision du boot tirée du graphe — chaîne d'interface fatale, tout autre module isolé et signalé par `geoleaf:module:failed` ; `utils/log/log-record.ts` (anneau borné, capture des erreurs globales posée par `GeoLeaf.boot()`) et `utils/log/redact.ts` (pur, hors de `kernel/security` pour ne pas fermer de cycle), tous deux hors du baril `utils/log`. 🖐 Relecture du **delta**, pas balayage de la fiche.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| **4.3.8** | 11 septembre 2026  | Claude Opus 5 | **Le démarrage qui échoue entre dans la fiche, et la phase B cesse de mentir par omission.** Elle décrivait une séquence dont chaque étape en échec finissait sur un `return` muet, voile levé à vie — vrai du code, et c'était précisément le défaut. ✅ **Ce qui est entré** (§Phase B, §Événements) : `app/boot-failure.ts` et son écran, le rapport `kernel/config/profile-load-report.ts` lu par `boot-core` (le kernel n'importe pas `app/`), le watchdog suspendu pendant `beforeBoot`, `geoleaf:boot:aborted` typé dans la carte brute, et l'émission annulable. 🖐 Relecture du **delta**, pas balayage de la fiche.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | **4.3.7** | 7 septembre 2026   | Claude Opus 5 | **ADR-15 disait une recette là où il en fallait deux, et l'écart était VISIBLE dans sa propre phrase.** Il écrivait « `#gl-right-panel` et ses voisins ne suivent pas », puis ne donnait de chemin de reconstruction que pour `#gl-right-panel`. Les voisins sont **quatre nœuds** appendus par `initMobileToolbar` dans le même `glMain` : ni `destroyMobileToolbar` ni garde d'idempotence n'existaient, donc un hôte suivant la recette réparait la moitié droite et cassait la gauche. ✅ **Ce qui est entré** : la seconde recette (`UI.destroyMobileToolbar()` → `initMobileToolbar()`), et la contrainte d'ORDRE que ni l'une ni l'autre ne portait — les deux destroys se lancent **avant** que la coquille tombe, chacun rendant des nœuds qu'il avait déplacés à un parent qui doit encore exister. ⚠️ **La décision d'ADR-15 elle-même n'a PAS bougé et a été re-vérifiée contre le code** : les panneaux ne suivent toujours pas la carte, pour les deux motifs d'origine (MapLibre mémorise son élément de construction ; faire suivre la coquille coupleraient l'API à son DOM). Ce qui manquait n'était pas la décision, c'était la moitié de son mode d'emploi. 🖐 Re-vérification du **delta** d'un commit, pas balayage de la fiche.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | **4.3.6** | 6 septembre 2026   | Claude Opus 5 | **La révision 4.3.5, écrite la veille, reposait sur une prémisse qui est tombée le lendemain.** Elle énonçait — justement, à l'heure où elle l'écrivait — que `.gl-rp-tabs` est « une colonne flex **avec** `justify-content: center` » et que la marge `auto` du séparateur annule ce centrage. 🛑 **Ce centrage était lui-même le défaut** : un débordement en colonne centrée se répartit à parts ÉGALES aux deux bouts, donc un bandeau trop haut pour le viewport perdait son PREMIER onglet ET sa DERNIÈRE icône, coupés par `body { overflow: hidden }` sans ascenseur — mesuré dans un Chromium réel sur une fenêtre de 700 px, hors plein écran. Le bandeau est en `flex-start` depuis `96519fa3e`. ✅ **Ce qui est corrigé** : la prémisse du §registre de panes (le séparateur pousse désormais la pile d'icônes vers le bas, il n'annule plus rien), et la signature de `registerPanelPane()`, qui gagne un `icon?`. ✅ **Ce qui est ajouté** : les onglets du bandeau sont des ICÔNES avec repli texte, le libellé restant le nom accessible — six libellés verticaux incompressibles débordaient l'écran, et un pane tiers sans icône doit garder un mot plutôt qu'un carré vide. 📌 **La ligne 12 portait une SECONDE empreinte `Vérifié contre`, non gatée** : retirée ici et dans quatre fiches voisines, après avoir mesuré que celle de `docs/specs/capacites/offline.md` avait déjà divergé de son frontmatter. 🖐 Re-vérification du **delta** de `96519fa3e`, pas balayage des 1104 lignes.                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | **4.3.5** | 6 septembre 2026   | Claude Opus 5 | **Re-vérification du commit qui rend masquable la bascule de thème du bandeau** (`e86a7e6ec`), et une SECTION A ÉTÉ AJOUTÉE plutôt que corrigée. ✅ **Ce qui est entré** : au §Le registre de panes, le fait que `.gl-rp-theme-separator` est une **ancre de layout inconditionnelle** et non un ornement du bouton — `.gl-rp-tabs` est une colonne flex **avec** `justify-content: center`, et ce séparateur porte sa seule marge `auto`. Sans cette phrase, un nettoyage futur le retire comme orphelin et recentre tout le bandeau ; c'est exactement la régression que la mutation du commit a fait voir rouge. ✅ **Ce qui a été relu et jugé INTACT, contre le code et non sur parole** : la phrase « le desktop lit `showFilters`/`showLayers`/`showLegend` » (§registre de panes) reste vraie **parce que** `showThemeToggle` a été délibérément tenu HORS du sac `show` — ce sac alimente le prédicat « aucun onglet ⇒ pas de panneau », qui ne doit pas compter le toggle ; **ADR-15** tient, et son triplet `destroyDesktopPanel()` → `initDesktopPanel()` → `activateDesktopPanel()` est même rendu plus correct par le `remove()` ajouté au teardown, qui fermait un trou de remontage. 📌 **Rien dans cette fiche ne décrivait `UIConfig` ni la table des clés `ui.*`** (vérifié au grep) : la clé neuve n'y fait donc pas trou — elle est documentée là où elle appartient, au guide intégrateur et à l'inventaire. 🖐 Re-vérification du **delta** d'un commit, pas balayage des 1104 lignes.                                                                                                                                                                                                                                                                                                                                                                                                                                         |

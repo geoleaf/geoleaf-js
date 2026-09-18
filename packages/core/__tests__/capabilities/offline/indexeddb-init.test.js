@@ -48,26 +48,28 @@ describe("StorageDB.init — success", () => {
 
         expect(db).toBeInstanceOf(IDBDatabase);
         expect(db.name).toBe(DB_NAME);
-        expect(db.version).toBe(5);
+        expect(db.version).toBe(6);
         expect(IndexedDB._db).toBe(db);
     });
 
-    // The v4 schema's fine shape (keys, indexes, uniqueness) is exercised by
+    // The schema's fine shape (keys, indexes, uniqueness) is exercised by
     // `schema-v4.test.js`; here we only keep the inventory, which belongs to
     // the boot contract.
-    test("creates the seven object stores the engine expects (v5)", async () => {
+    test("creates the eight object stores the engine expects (v6)", async () => {
         // ⚠️ Eight until recently: `sync_queue` and `sync_backups` (the backup
         // chain) are no longer created. The test guarding their ABSENCE lives
         // in `schema-v4.test.js` — this one counts what exists, the other
         // refuses what comes back.
         //
-        // ⚠️ SIX before `routes`, which takes the base to v5. The assertion
-        // stays EXHAUSTIVE: it is what would catch an eighth store appearing
+        // ⚠️ SIX before `routes` (v5), SEVEN before `conflicts` (v6). The assertion
+        // stays EXHAUSTIVE: it is what would catch a ninth store appearing
         // by accident, and loosening it to `arrayContaining` would make
-        // invisible exactly what it guards.
+        // invisible exactly what it guards. It was seen RED on the v6 bump —
+        // expected [ 'conflicts', 'features', …(6) ] to deeply equal [ 'features', …(5) ].
         const db = await IndexedDB.init();
 
         expect([...db.objectStoreNames].sort()).toEqual([
+            "conflicts",
             "features",
             "layers",
             "local_images",
@@ -158,6 +160,7 @@ describe("StorageDB.init — degradation when IndexedDB is unavailable", () => {
             layersCount: 0,
             featuresCount: 0,
             outboxCount: 0,
+            conflictsCount: 0,
         });
     });
 

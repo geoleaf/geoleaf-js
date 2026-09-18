@@ -105,8 +105,8 @@ Basemaps are defined in `profiles/{id}/basemaps.json`:
         },
         "street": {
             "id": "street",
-            "label": "Street",
-            "url": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            "label": "Street (self-hosted)",
+            "url": "https://tiles.example.com/street/{z}/{x}/{y}.png",
             "attribution": "&copy; OpenStreetMap contributors",
             "minZoom": 4,
             "maxZoom": 19,
@@ -126,25 +126,32 @@ Basemaps are defined in `profiles/{id}/basemaps.json`:
 
 ### 4.1 Basemap properties
 
-| Property         | Type    | Required | Description                                        |
-| ---------------- | ------- | -------- | -------------------------------------------------- |
-| `id`             | string  | Yes      | Unique identifier                                  |
-| `label`          | string  | Yes      | Name shown in the UI                               |
-| `type`           | string  | No       | `"raster"` (default) or `"maplibre"` (vector)      |
-| `url`            | string  | No       | Raster tile URL template `{z}/{x}/{y}`             |
-| `style`          | string  | No       | MapLibre GL JSON style URL (maplibre type)         |
-| `fallbackUrl`    | string  | No       | Raster fallback URL for the maplibre type          |
-| `tiles`          | array   | No       | List of alternative tile URLs                      |
-| `attribution`    | string  | No       | Attribution text                                   |
-| `minZoom`        | number  | No       | Minimum zoom                                       |
-| `maxZoom`        | number  | No       | Maximum zoom                                       |
-| `defaultBasemap` | boolean | No       | Default basemap                                    |
-| `offline`        | boolean | No       | Cache for offline use                              |
-| `offlineBounds`  | object  | No       | Geographic area to cache (`north/south/east/west`) |
-| `cacheMinZoom`   | number  | No       | Minimum zoom of the offline cache                  |
-| `cacheMaxZoom`   | number  | No       | Maximum zoom of the offline cache                  |
+| Property         | Type    | Required | Description                                         |
+| ---------------- | ------- | -------- | --------------------------------------------------- |
+| `id`             | string  | Yes      | Unique identifier                                   |
+| `label`          | string  | Yes      | Name shown in the UI                                |
+| `type`           | string  | No       | `"raster"` (default) or `"maplibre"` (vector)       |
+| `url`            | string  | No       | Raster tile URL template `{z}/{x}/{y}`              |
+| `style`          | string  | No       | MapLibre GL JSON style URL (maplibre type)          |
+| `fallbackUrl`    | string  | No       | Raster fallback URL for the maplibre type           |
+| `tiles`          | array   | No       | List of alternative tile URLs                       |
+| `attribution`    | string  | No       | Attribution text                                    |
+| `minZoom`        | number  | No       | Minimum zoom                                        |
+| `maxZoom`        | number  | No       | Maximum zoom                                        |
+| `defaultBasemap` | boolean | No       | Default basemap                                     |
+| `offline`        | boolean | No       | Downloadable by the offline preparation (see below) |
+| `offlineBounds`  | object  | No       | Geographic area to cache (`north/south/east/west`)  |
+| `cacheMinZoom`   | number  | No       | Minimum zoom of the offline cache                   |
+| `cacheMaxZoom`   | number  | No       | Maximum zoom of the offline cache                   |
 
 > **maplibre type**: when `type: "maplibre"`, the `style` property points to a MapLibre GL JSON style file. The `url` property (or `fallbackUrl`) is used as a raster fallback when the MapLibre style cannot be loaded.
+
+> **Offline preparation**: `offline: true` makes the basemap downloadable over `offlineBounds` and the
+> cache zooms. Tiles from an origin other than the application's own are only downloaded when that
+> origin is declared `cacheable: true` and `prefetch: true` in `modules.offline.dataOrigins` — declare
+> one only if you operate it or its terms allow downloading ahead of use (OpenStreetMap forbids offline
+> use of `tile.openstreetmap.org`). The `street` example above points at a self-hosted server, and
+> needs `{ "origin": "https://tiles.example.com", "roles": ["tiles"], "cacheable": true, "prefetch": true }`.
 
 ---
 

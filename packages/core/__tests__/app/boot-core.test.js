@@ -248,7 +248,11 @@ describe("bootWithPreset — effective config", () => {
         await bootWithPreset(preset(), ctx);
 
         expect(ctx.GeoLeaf.Config.loadActiveProfileResources).toHaveBeenCalledTimes(1);
-        expect(ctx.registry.init).toHaveBeenCalledWith(expect.anything(), merged);
+        // The third argument is the module failure policy, passed since a module that throws
+        // stopped taking every later module down — `boot-module-failure.test.ts` pins it.
+        expect(ctx.registry.init).toHaveBeenCalledWith(expect.anything(), merged, {
+            onModuleError: expect.any(Function),
+        });
     });
 
     it("falls back to the pre-merge config when there is no profile loader", async () => {
@@ -257,10 +261,15 @@ describe("bootWithPreset — effective config", () => {
 
         await bootWithPreset(preset(), ctx);
 
-        expect(ctx.registry.init).toHaveBeenCalledWith(expect.anything(), base);
+        expect(ctx.registry.init).toHaveBeenCalledWith(expect.anything(), base, {
+            onModuleError: expect.any(Function),
+        });
     });
 
-    it("falls back to the pre-merge config when profile loading throws", async () => {
+    // ⚠️ This case pinned « falls back to the pre-merge config » until the boot failure surface
+    // existed: a map booted without its profile, and nothing said so. Reversed on purpose —
+    // `boot-failure-signal.test.ts` pins the signal itself.
+    it("fails the boot, and never runs the registry, when profile loading throws", async () => {
         const base = { debug: true };
         const ctx = makeCtx({ cfg: base });
         ctx.GeoLeaf.Config.loadActiveProfileResources = vi.fn(() =>
@@ -273,7 +282,7 @@ describe("bootWithPreset — effective config", () => {
             expect.stringContaining("Error loading profile resources"),
             expect.any(Error)
         );
-        expect(ctx.registry.init).toHaveBeenCalledWith(expect.anything(), base);
+        expect(ctx.registry.init).not.toHaveBeenCalled();
     });
 });
 

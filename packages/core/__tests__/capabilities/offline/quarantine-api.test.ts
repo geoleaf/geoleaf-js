@@ -26,10 +26,13 @@ import {
 } from "../../../src/capabilities/offline/write/quarantine-api.js";
 
 vi.mock("../../../src/capabilities/offline/config-seam.js", () => ({
-    coreProfileLayerConfig: (layerId: string) =>
-        layerId === "couche-ecrivable"
-            ? { write: { enabled: true } }
-            : { write: { enabled: false } },
+    coreProfileLayerConfig: (layerId: string) => {
+        if (layerId === "couche-ecrivable") return { write: { enabled: true } };
+        // The dialect the core does not speak: its quarantine lifts when the declaration
+        // changes, and that is observable here.
+        if (layerId === "couche-rest") return { write: { enabled: true, dialect: "rest" } };
+        return { write: { enabled: false } };
+    },
 }));
 
 interface Entry {
@@ -145,6 +148,24 @@ describe("requeueQuarantined — la cause levée, et seulement elle", () => {
             refused: "causeStillPresent",
         });
         expect(updates).toEqual([]);
+    });
+
+    it("🛑 `dialectNotSupported` est REFUSÉE tant que la couche déclare ce dialecte", async () => {
+        // Same verifiable shape as `layerNoLongerWritable`: the declaration is readable here,
+        // so we observe the cause lifted instead of spending the entry's budget to learn it.
+        mountOutbox([quarantined({ quarantine: "dialectNotSupported", layerId: "couche-rest" })]);
+        expect(await requeueQuarantined("create:sites:loc:abc:1")).toEqual({
+            ok: false,
+            refused: "causeStillPresent",
+        });
+        expect(updates).toEqual([]);
+    });
+
+    it("🛑 `dialectNotSupported` repart quand la couche ne déclare plus ce dialecte", async () => {
+        mountOutbox([
+            quarantined({ quarantine: "dialectNotSupported", layerId: "couche-ecrivable" }),
+        ]);
+        expect(await requeueQuarantined("create:sites:loc:abc:1")).toEqual({ ok: true });
     });
 
     it("🛑 `authRequired` est rejouable — une session revient, c'est même tout ce qu'elle fait", async () => {

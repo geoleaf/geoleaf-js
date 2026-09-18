@@ -293,6 +293,63 @@
     color: var(--gl-color-text-muted, #6b7280);
 }
 
+/* The state and its motive — empty for `pending`, so the row collapses to two fields.
+   ⚠️ `--gl-color-text-secondary` and NOT an invented warning token: the theme defines no
+   warning colour (measured), and a `var(--gl-color-warning-text, …)` would have fallen back
+   to its hard-coded hex in silence — dead in dark mode and under every alternate theme. This
+   line INFORMS; the one that alarms is the discard warning below, and it uses `danger`. */
+.gl-editor-queue-detail__state {
+    color: var(--gl-color-text-secondary, #6b7280);
+    font-size: 0.78rem;
+    text-align: right;
+}
+
+/* Quarantine section: one block per motive, batch on the left, gesture on the right. */
+.gl-editor-queue-detail__quarantine {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--gl-color-border-soft, #e5e7eb);
+}
+
+.gl-editor-queue-detail__quarantine-title {
+    margin: 0 0 8px;
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--gl-color-text-main, #111827);
+}
+
+.gl-editor-queue-detail__group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 6px 0;
+}
+
+.gl-editor-queue-detail__group-label {
+    font-size: 0.82rem;
+    color: var(--gl-color-text-muted, #6b7280);
+}
+
+.gl-editor-queue-detail__discard-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ⚠️ The warning sits BESIDE the confirm button, never inside it: a destructive control
+   whose own label carries the warning is read as one string and clicked as one gesture. */
+.gl-editor-queue-detail__discard-warn {
+    font-size: 0.78rem;
+    color: var(--gl-color-danger, #d32f2f);
+}
+
+.gl-editor-queue-detail__discard-confirm {
+    background: var(--gl-color-danger, #dc2626);
+    color: #ffffff;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    JS-positioned tooltip div (avoids overflow:hidden clipping on the menu)
    ═══════════════════════════════════════════════════════════════════════════ */

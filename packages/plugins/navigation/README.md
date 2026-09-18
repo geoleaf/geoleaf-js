@@ -4,9 +4,10 @@ Turn-by-turn guidance plugin for [GeoLeaf JS](https://github.com/geoleaf/geoleaf
 the user's position along a route computed by [`@geoleaf-plugins/routing`](https://www.npmjs.com/package/@geoleaf-plugins/routing),
 announces the next manoeuvre, and recomputes when the user leaves the path.
 
-> **Status** — This package is a **shell**. It mounts its namespace and declares its contract; it
-> guides no one yet. `GeoLeaf.Navigation.getConfig()` is the only method that exists today.
-> This paragraph disappears when it stops being true.
+Guidance is entered from the itinerary panel of `@geoleaf-plugins/routing`, once a route is
+computed. `GeoLeaf.Navigation` exposes the session (`start`, `stop`, `isGuiding`), its progress
+(`onProgress`) and the spoken announcements (`setVoiceEnabled`, `isVoiceEnabled`,
+`isVoiceAvailable`).
 
 ---
 
@@ -28,8 +29,11 @@ npm install @geoleaf-plugins/navigation @geoleaf-plugins/routing
 import "@geoleaf-plugins/routing";
 import "@geoleaf-plugins/navigation";
 
-// After GeoLeaf.boot() — GeoLeaf.Navigation is available on globalThis.GeoLeaf
-const cfg = GeoLeaf.Navigation.getConfig();
+// After GeoLeaf.boot() — GeoLeaf.Navigation is available on globalThis.GeoLeaf.
+// A listener may subscribe before any session: it is wired when guidance starts.
+const unsubscribe = GeoLeaf.Navigation.onProgress((progress) => {
+    console.log(progress);
+});
 ```
 
 Unlike `routing`, this plugin is meant to be **loaded on demand**. Guidance is only ever entered

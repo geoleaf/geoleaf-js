@@ -56,6 +56,16 @@
  * It therefore skips **saying so**, on `journal-numbering.guard.test.ts`'s
  * pattern. The skip is riskless: the registers only exist in the workshop,
  * the only place the property can be false.
+ *
+ * ## RX-04 and RX-05 — the titles themselves
+ *
+ * RX-01…03 trust the titles; these two check them. **RX-04**: no identifier
+ * titles two sections — a collision resolves like one section, so every
+ * reference to it designates two objects while RX-01 stays green. **RX-05**:
+ * every open backlog title carries its priority mark, the register's own
+ * rule, which its prose check had stopped holding. Each is preceded by a
+ * witness on a synthetic sample, so that neither goes green by no longer
+ * recognising a title.
  */
 import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
@@ -83,6 +93,10 @@ interface CrossRefs {
     calloutZoneWitness(): { file: string; callout: number; prose: number; zone: string }[];
     patternWitnesses(): { form: string; sample: string; matched: boolean }[];
     readBaseline(): { count: number; entries: string[] };
+    duplicateSectionIds(
+        sources?: { file: string; text: string }[]
+    ): { id: string; sites: string[] }[];
+    backlogTitlesWithoutPriority(text?: string): { line: number; title: string }[];
 }
 
 const lib: CrossRefs = requireCjs("../../../../scripts/lib/registry-crossrefs.cjs");
@@ -234,6 +248,57 @@ describe.skipIf(!present)("REGISTRY-CROSSREFS — les renvois internes des regis
             `entrée(s) du gel qui ne désignent plus rien :\n  ${stale.join("\n  ")}\n` +
                 `  C'est une BONNE nouvelle — la prose a été corrigée. Geste : ` +
                 `node scripts/lib/registry-crossrefs.cjs --update-baseline`
+        ).toEqual([]);
+    });
+
+    // 🛑 Each title check is preceded by its witness on a synthetic sample: without it, a
+    // title pattern that stopped recognising anything would leave RX-04 and RX-05 green
+    // while reading nothing. Single-digit identifiers on purpose — they sit outside the
+    // token shape the public-file workshop ratchet counts.
+    it("RX-04 témoin — le détecteur de doublon mord sur son exemple canonique", () => {
+        const found = lib.duplicateSectionIds([
+            { file: "a.md", text: "## D-7 — une section\n### ~~D-7 (énoncé d'origine)~~\n" },
+            { file: "b.md", text: "## D-7 — la même, allouée deux fois\n## B-4 — seule\n" },
+        ]);
+        expect(
+            found,
+            `le détecteur ne rend pas le doublon canonique (le titre barré doit être ignoré, ` +
+                `la collision entre fichiers doit être vue).`
+        ).toEqual([{ id: "D-7", sites: ["a.md:1", "b.md:1"] }]);
+    });
+
+    it("RX-04 — aucun identifiant ne titre deux sections", () => {
+        const dups = lib.duplicateSectionIds().map((d) => `${d.id} → ${d.sites.join(", ")}`);
+        expect(
+            dups,
+            `identifiant(s) alloué(s) deux fois :\n  ${dups.join("\n  ")}\n` +
+                `  Chaque renvoi vers lui désigne désormais deux objets, et RX-01 reste vert. ` +
+                `Geste : renuméroter la section la plus RÉCENTE au maximum MESURÉ + 1 — sur les ` +
+                `registres, le journal et git log, un identifiant retiré restant pris — puis ` +
+                `corriger les renvois qui la visaient.`
+        ).toEqual([]);
+    });
+
+    it("RX-05 témoin — le contrôle de priorité mord sur son exemple canonique", () => {
+        const found = lib.backlogTitlesWithoutPriority(
+            "## B-4 — sans marque\n## B-5 — marquée 🟢 P3\n### ~~B-6~~ — soldée\n"
+        );
+        expect(
+            found.map((f) => f.line),
+            `le contrôle ne rend pas le titre canonique sans marque (un titre barré n'est pas ` +
+                `une ligne ouverte et doit être ignoré).`
+        ).toEqual([1]);
+    });
+
+    it("RX-05 — tout titre de ligne ouverte du backlog porte sa priorité", () => {
+        const missing = lib
+            .backlogTitlesWithoutPriority()
+            .map((t) => `l.${t.line} · ${t.title.slice(0, 100)}`);
+        expect(
+            missing,
+            `titre(s) de ligne ouverte sans priorité :\n  ${missing.join("\n  ")}\n` +
+                `  L'en-tête du registre exige la marque DANS le titre (P1, P2, P3 ou 🔵) : un ` +
+                `balayage ne lit que les titres, et une priorité portée ailleurs y est invisible.`
         ).toEqual([]);
     });
 });

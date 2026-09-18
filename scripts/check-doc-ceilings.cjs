@@ -190,29 +190,30 @@ for (const rel of SUBJECTS_ALL) {
 }
 
 if (UPDATE) {
-    const next = { ...ceilings };
-    for (const [rel, size] of Object.entries(measured)) {
-        if (ROTATING.has(rel)) continue;
-        next[rel] = Math.min(next[rel], size);
+    // 🛑 Written back under the key each ceiling was READ under — its logical name — never
+    // under the path it resolves to. This block used to spread the RESOLVED map: one
+    // `--update-baseline`, the gesture this gate recommends, rewrote every key as a workshop
+    // path and replaced the file's own warning about formatted sizes. The reader above still
+    // accepted the result (an unknown key falls through as-is), which is exactly why nothing
+    // turned red. Locked by `__tests__/guards/doc-ceilings-update-baseline.guard.test.ts`.
+    //
+    // A key already written as a path is brought back to its logical name, and the header
+    // fields are kept as the file carries them: regenerating a tight baseline changes no byte.
+    const LOGICAL = new Map(Object.entries(SUBJECTS).map(([name, rel]) => [rel, name]));
+    const next = {};
+    for (const [key, ceiling] of Object.entries(baseline.ceilings)) {
+        const rel = SUBJECTS[key] || key;
+        const size = measured[rel];
+        const tightened =
+            ROTATING.has(rel) || size === undefined ? ceiling : Math.min(ceiling, size);
+        next[SUBJECTS[key] ? key : LOGICAL.get(key) || key] = tightened;
     }
     fs.writeFileSync(
         BASELINE,
-        JSON.stringify(
-            {
-                _comment:
-                    "Plafonds de taille (octets) des documents lus avant toute source. DÉCROISSANTS " +
-                    "uniquement (DOC-CEIL-01) : ne jamais les remonter à la main. Cible : 15360 o par " +
-                    "fichier. Régénérer avec --update-baseline APRÈS avoir allégé, jamais pour faire taire.",
-                _generated: "node scripts/check-doc-ceilings.cjs --update-baseline",
-                _target: TARGET,
-                ceilings: next,
-            },
-            null,
-            4
-        ) + "\n"
+        JSON.stringify({ ...baseline, _target: TARGET, ceilings: next }, null, 4) + "\n"
     );
     console.log("✅ [DOC-CEIL] plafonds resserrés :");
-    for (const [rel, size] of Object.entries(next)) console.log(`   ${rel} → ${size} o`);
+    for (const [key, size] of Object.entries(next)) console.log(`   ${key} → ${size} o`);
     process.exit(0);
 }
 

@@ -83,6 +83,28 @@ liaisons — `offline.source`, `write.endpoint`,
 
 ---
 
+## Le voile `#gl-loader` — surface de chargement, et d'échec
+
+`index.html` déclare `<div id="gl-loader"></div>`, et `packages/core/src/css/geoleaf-loader.css` le
+dessine plein écran. Deux chemins du core le touchent, et eux seuls :
+
+- **la révélation** (`packages/core/src/app/init-reveal.ts`) le masque quand l'application est
+  prête ;
+- **l'échec du démarrage** (`packages/core/src/app/boot-failure-screen.ts`) le transforme en écran
+  d'échec — Recharger, un diagnostic à copier ou télécharger, et « Continuer quand même » quand des
+  ressources déclarées du profil manquent, ou qu'un module hors de la chaîne d'interface a échoué,
+  alors qu'une carte peut s'afficher.
+
+🛑 **Ne jamais renommer l'id.** Il est écrit dans ces deux fichiers et dans la feuille de style ; un
+id renommé ne casse rien au build — le spinner tourne, et un démarrage en échec redevient muet.
+
+Une application qui dessine sa propre interface d'échec annule `geoleaf:boot:failed` — et, pour
+l'écran d'attention, `geoleaf:profile:failed` et `geoleaf:module:failed` — par `preventDefault()` ;
+une page sans voile ne reçoit jamais de DOM du core. Détail et table des
+raisons : [`INITIALIZATION_FLOW.md`](INITIALIZATION_FLOW.md) §Gestion d'erreurs.
+
+---
+
 ## Les marqueurs fonctionnels — six paires, à garder au caractère près
 
 `scripts/build-deploy.cjs` patche ces deux fichiers par regex `/gm` **sans** `/s` côté HTML, et par

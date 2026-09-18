@@ -15,7 +15,7 @@
  *
  * Taking the repo public splits `_docs_projet/` in two:
  *
- *   `docs/`           PUBLIC    — `specs/`, `reference/`, `guides/`
+ *   `docs/`           PUBLIC    — `specs/`, `reference/`, `guides/`, `presentation/`
  *   `_docs_projet/`   INTERNAL  — `ETAT`, `JOURNAL`, `INDEX`, the 2 checklists,
  *                                 `registres/`, `travail/`, `vision/`
  *
@@ -164,6 +164,15 @@ const specs = (...seg) => docs("specs", ...seg);
 const guides = (...seg) => docs("guides", ...seg);
 
 /**
+ * A path under `docs/presentation/` — the PRÉSENTATION regime, opened 2026-09-17.
+ *
+ * Its reader is the technical decision-maker, and it is the fourth PUBLIC sub-root:
+ * `DOCS_SOURCE_AND_SYNC.md` §1 carries the regime and, above all, its boundary — a
+ * presentation page documents no usage and specifies no contract, it REFERS to both.
+ */
+const presentation = (...seg) => docs("presentation", ...seg);
+
+/**
  * A path under the INTERNAL root — what does not ship to the public repo.
  *
  * ⚠️ **THIS is where the internal root is asserted**, at first call and not at module
@@ -231,6 +240,7 @@ module.exports = {
     reference,
     specs,
     guides,
+    presentation,
     internal,
     internalRootExists,
     rel,

@@ -34,6 +34,35 @@ const lang_fr: LangDict = {
     "toast.theme.applied":
         "Th\u00e8me \u00ab\u202f{0}\u202f\u00bb appliqu\u00e9 ({1} couches visibles)",
 
+    // ── Boot failure screen ──────────────────────────────────────────────────
+    "boot.failure.title": "Le d\u00e9marrage a \u00e9chou\u00e9",
+    "boot.failure.attention.title": "Des ressources du profil sont manquantes",
+    "boot.failure.attention.message":
+        "La carte peut d\u00e9marrer sans elles, mais des couches ou des r\u00e9glages risquent de manquer.",
+    "boot.failure.attention.module_title":
+        "Des composants de l\u2019application n\u2019ont pas d\u00e9marr\u00e9",
+    "boot.failure.attention.module_message":
+        "La carte peut s\u2019afficher, mais les fonctions de ces composants seront indisponibles.",
+    "boot.failure.module_warning":
+        "Le composant \u00ab\u202f{0}\u202f\u00bb n\u2019a pas pu d\u00e9marrer\u202f: certaines fonctions sont indisponibles.",
+    "boot.failure.reason.config":
+        "La configuration de l\u2019application est introuvable ou invalide.",
+    "boot.failure.reason.profile": "Le profil de donn\u00e9es est introuvable ou invalide.",
+    "boot.failure.reason.webgl":
+        "Ce navigateur ne peut pas afficher la carte\u202f: WebGL2 est indisponible (acc\u00e9l\u00e9ration graphique d\u00e9sactiv\u00e9e ou non prise en charge).",
+    "boot.failure.reason.map": "La carte n\u2019a pas pu \u00eatre cr\u00e9\u00e9e.",
+    "boot.failure.reason.module":
+        "Un composant de l\u2019application n\u2019a pas pu d\u00e9marrer.",
+    "boot.failure.reason.timeout":
+        "Le d\u00e9marrage ne progresse plus. Le r\u00e9seau est peut-\u00eatre lent ou coup\u00e9.",
+    "boot.failure.reason.internal": "Une erreur interne a interrompu le d\u00e9marrage.",
+    "boot.failure.action.reload": "Recharger",
+    "boot.failure.action.continue": "Continuer quand m\u00eame",
+    "boot.failure.action.copy": "Copier le diagnostic",
+    "boot.failure.action.download": "T\u00e9l\u00e9charger le diagnostic",
+    "boot.failure.copied": "Diagnostic copi\u00e9.",
+    "boot.failure.copy_manual": "Copie impossible\u202f: s\u00e9lectionnez le texte ci-dessous.",
+
     // ── Toasts / Cache ───────────────────────────────────────────────────────
 
     // ── Aria / Fullscreen ────────────────────────────────────────────────────

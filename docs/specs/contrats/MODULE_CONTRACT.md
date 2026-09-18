@@ -1,4 +1,4 @@
-# GeoLeaf-JS — Module Contract (v3.0.0)
+# GeoLeaf-JS — Module Contract (v3.1.0)
 
 **Version produit :** GeoLeaf Platform V3
 **Source de vérité :** `packages/core/src/contracts/`
@@ -222,6 +222,36 @@ L'inventaire exhaustif des paramètres est dans
 
 ---
 
+## Un module qui échoue au démarrage
+
+`ModuleRegistry.init(adapter, config)` rejette au premier `init()` qui jette, et aucun module
+suivant ne démarre — y compris ceux qui ne dépendent pas de lui. C'est le contrat sans option, et
+il ne bouge pas. **`init(adapter, config, { onModuleError })`** laisse l'appelant décider, module
+par module :
+
+```typescript
+await registry.init(adapter, config, {
+    onModuleError: ({ id, error, skipped }) => (skipped.includes("ui") ? "abort" : "continue"),
+});
+```
+
+- **`"continue"`** isole l'échec : les modules qui dépendent de `id`, directement ou non
+  (`skipped`, dans l'ordre d'initialisation), ne démarrent pas ; `getActiveModules()` ne liste ni
+  eux ni `id` ; `destroy()` démonte `id` — son `init()` a pu tourner en partie — mais jamais un
+  module qui n'a pas démarré ; tous les autres modules démarrent.
+- **`"abort"`** rejette `init()` avec l'erreur du module, comme sans l'option.
+
+Le boot passe cette option : un module de la chaîne d'interface (`ui`, ou un module dont `ui`
+dépend) fait échouer le démarrage et le nomme ; tout autre est isolé, et l'hôte le reçoit par
+`geoleaf:module:failed`. La table des échecs vit dans
+[`INITIALIZATION_FLOW.md`](INITIALIZATION_FLOW.md) §Gestion d'erreurs.
+
+⚠️ **Déclarer ses `dependencies` n'est pas une formalité.** C'est le graphe qui décide ce qu'un
+échec emporte : un module qui lit l'état d'un autre sans le déclarer continue de démarrer quand
+celui-ci tombe, et le lit à moitié initialisé.
+
+---
+
 ## Voir aussi
 
 - [`PLUGIN_ARCHITECTURE_SPEC.md`](PLUGIN_ARCHITECTURE_SPEC.md) — le contrat **figé** (invariants `INV-*`, gouvernance RFC)
@@ -234,5 +264,6 @@ L'inventaire exhaustif des paramètres est dans
 
 | Version   | Date       | Modifications                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | --------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **3.0.0** | 27/07/2026 | **Réécrit contre le code.** La couche « Extensions lazy » (12 clés `_loadModule()`, `src/lazy/*.ts`, `_loadAllSecondaryModules()`, procédure d'ajout en 4 étapes) est **supprimée** : l'API est retirée depuis le S5 et le répertoire n'existe pas. Les trois niveaux deviennent **kernel / capacité in-core / plugin**. Table « Modules Core » retirée — elle citait `src/modules/built-in/*` (racine éclatée), `GeoLeaf.Filters` (supprimé depuis) et des internes `_GeoJSON*` ; remplacée par les commandes qui listent. Table « Modules Plugin » retirée — elle en connaissait **2 sur 13**, dont `storage` renommé `offline-ui`. Les interfaces TypeScript recopiées sont remplacées par un renvoi (elles sont dérivables). `ICoreModule` documenté comme **union**. Désactivation par profil réécrite en `modules.<id>` (les clés racine montrées étaient toutes retirées). Règles de dépendances réécrites avec leur gate. |
+| **3.1.0** | 11/09/2026 | **Un module qui échoue au démarrage** : `init(adapter, config, { onModuleError })` — l'isolement additif, ce qu'il retire de `getActiveModules()` et de `destroy()`, et la décision du boot tirée du graphe. Le contrat sans option — rejet au premier échec — est inchangé.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| 3.0.0     | 27/07/2026 | **Réécrit contre le code.** La couche « Extensions lazy » (12 clés `_loadModule()`, `src/lazy/*.ts`, `_loadAllSecondaryModules()`, procédure d'ajout en 4 étapes) est **supprimée** : l'API est retirée depuis le S5 et le répertoire n'existe pas. Les trois niveaux deviennent **kernel / capacité in-core / plugin**. Table « Modules Core » retirée — elle citait `src/modules/built-in/*` (racine éclatée), `GeoLeaf.Filters` (supprimé depuis) et des internes `_GeoJSON*` ; remplacée par les commandes qui listent. Table « Modules Plugin » retirée — elle en connaissait **2 sur 13**, dont `storage` renommé `offline-ui`. Les interfaces TypeScript recopiées sont remplacées par un renvoi (elles sont dérivables). `ICoreModule` documenté comme **union**. Désactivation par profil réécrite en `modules.<id>` (les clés racine montrées étaient toutes retirées). Règles de dépendances réécrites avec leur gate. |
 | 2.0.0     | 01/04/2026 | Version Platform V2 — archivée par la réécriture ci-dessus.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |

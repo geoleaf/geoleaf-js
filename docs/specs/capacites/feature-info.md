@@ -4,8 +4,8 @@ title: feature-info — le rendu attributaire, et ses trois surfaces
 capability_id: feature-info
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 2fcbba8a
-date: 1er septembre 2026
+verifie_contre: 77b24edeb
+date: 11 septembre 2026
 ---
 
 # feature-info — le rendu attributaire, et ses trois surfaces
@@ -97,12 +97,14 @@ par les gardes transverses — dont celui de cette fiche.
 Bloc `modules.feature-info` d'un profil. Conformité de cette table au code gardée par
 `__tests__/guards/doc-capability-config.guard.test.js`.
 
-| Paramètre | Type      | Défaut | Où c'est lu                                                                                                           |
-| --------- | --------- | ------ | --------------------------------------------------------------------------------------------------------------------- |
-| `enabled` | `boolean` | `true` | `config.ts` → `getFeatureInfoConfig()`, relu **à chaque événement** par `lifecycle.ts` et par l'API publique. Opt-out |
+| Paramètre | Type      | Défaut | Où c'est lu                                                                                                                                                                                                                                                                    |
+| --------- | --------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `enabled` | `boolean` | `true` | `config.ts` → `getFeatureInfoConfig()`, relu **à chaque événement** par `lifecycle.ts` et par l'API publique. Opt-out                                                                                                                                                          |
+| `popup`   | `object`  | —      | `surfaces/popup.ts` → `getFeatureInfoConfig()`, relu **à chaque ouverture**. Une seule clé, `closeButton` (défaut **`false`**) : la croix de fermeture de MapLibre. Allumée par `true` exact et par rien d'autre — `Échap` et le clic carte ferment la bulle dans tous les cas |
 
-**C'est le seul paramètre de niveau capacité, et c'est délibéré** : tout le reste est déclaré **par
-couche**, pas globalement.
+**Ce sont les deux seuls paramètres de niveau capacité, et c'est délibéré** : `popup` règle une
+**surface**, que toutes les couches partagent ; ce qu'une couche montre est déclaré **par couche**,
+pas globalement.
 
 ### La vraie surface de configuration est ailleurs — et elle est par couche
 
@@ -110,7 +112,7 @@ Le bloc racine **`attributes`** de la config de couche, lu par le seam
 `GeoLeaf.GeoJSON.getLayerConfig(id)`. Types : `packages/core/src/contracts/attributes.contract.ts`.
 
 ⚠️ **Cette table n'est PAS gatée** par le garde de cette fiche : il ne lit que le `configSchema` de
-la capacité, qui ne porte qu'`enabled`. L'en-tête dit `Sous-clé` et non `Paramètre` pour cette raison
+la capacité, qui ne porte qu'`enabled` et `popup`. L'en-tête dit `Sous-clé` et non `Paramètre` pour cette raison
 exacte — c'est ce mot qui décide quelle table est lue. La couverture de ces clés relève du schéma de
 couche et de `scripts/check-config-coverage.cjs`, pas d'ici.
 
@@ -311,18 +313,37 @@ fermant aussi sur clic carte et sur `Escape`) et `lngLat` en tuple `[number, num
 porte `{lat, lng}`, comme `geoleaf:feature:click` — changer la forme sous la même clé serait une
 rupture silencieuse).
 
-| Champ de configuration   | Effet                                                             |
-| ------------------------ | ----------------------------------------------------------------- |
-| `actionId`               | Identifiant **opaque au core**, émis tel quel                     |
-| `label`                  | Texte du bouton                                                   |
-| `requiresPlugin`         | Le bouton **n'est pas rendu** si le plugin nommé n'est pas chargé |
-| `confirm` / `confirmKey` | Confirmation avant émission                                       |
-| `payloadFields`          | **Liste blanche** des propriétés jointes                          |
+| Champ de configuration   | Effet                                                                                                                                                                                   |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `actionId`               | Identifiant **opaque au core**, émis tel quel                                                                                                                                           |
+| `label`                  | Texte du bouton                                                                                                                                                                         |
+| `requiresPlugin`         | Le bouton **n'est pas rendu** si le plugin nommé n'est pas chargé                                                                                                                       |
+| `confirm` / `confirmKey` | Confirmation avant émission                                                                                                                                                             |
+| `payloadFields`          | **Liste blanche** des propriétés jointes                                                                                                                                                |
+| `variant`                | Poids visuel : modificateur `gl-poi-popup__action--<variant>` et `data-gl-variant` (`primary`, `secondary`, `danger`). Toute autre valeur garde le style par défaut et avertit une fois |
 
 ⚠️ **Sans `payloadFields`, AUCUNE propriété n'est jointe.** Le défaut va vers la confidentialité,
 pas vers la commodité : le contrat qualifie cette liste de « perf + privacy », et un défaut « tout
 envoyer » ferait fuiter le sac de propriétés complet dans un événement de document que **n'importe
 quel script de la page** peut écouter.
+
+#### Poids visuel et rangée d'actions — rétablis le 11/09/2026
+
+🛑 **`variant` n'avait aucun lecteur depuis l'extraction du popup.** Le cœur d'avant émettait
+`gl-poi-popup__action--primary|secondary|danger` et groupait les actions consécutives dans
+`.gl-poi-popup__actions` ; l'extraction a gardé les autres noms de classe du popup et perdu ces
+deux-là. Une couche déclarant des actions de création et de consultation obtenait des boutons
+identiques, empilés un par ligne — sans avertissement.
+
+- **La variante** est lue par `render/action-variant.ts`, qu'appelle `renderActionButton` : sur **les
+  deux surfaces**, puisque la table de rendu est partagée. Le vocabulaire vit une seule fois, au
+  contrat (`ActionVariant`). La table d'exécution est un `Record` indexé par l'union, que TypeScript
+  refuse incomplet comme augmenté, et le test rend chaque valeur de l'`enum` du schéma.
+- **La rangée** relève de la **mise en page**, donc de la bulle seule (`render/popup-content.ts`,
+  même tampon que les badges). Le panneau latéral garde la sienne. Une rangée où aucun bouton n'a
+  rendu n'est pas posée.
+- **Le style** : `--primary` redit le bouton plein par défaut, pour que la classe demandée ait
+  toujours sa règle ; `--secondary` et `--danger` sont en contour, comme avant l'extraction.
 
 ### Stockage écrit
 

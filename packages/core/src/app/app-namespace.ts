@@ -15,6 +15,7 @@
  */
 import { ensureGeoLeaf } from "../utils/general/geoleaf-global.js";
 import type { AppNamespace } from "./app-types.js";
+import { recordLogEntry } from "../utils/log/log-record.js";
 import { notifyPrimitive } from "../utils/notify/notify.primitive.js";
 import type { GeoLeafConfig } from "../kernel/config/geoleaf-config/config-types.js";
 
@@ -31,21 +32,27 @@ const _app = (GeoLeaf._app = GeoLeaf._app || {}) as AppNamespace;
 // ============================================================
 // Production logging system
 // ============================================================
+// Every line it prints also goes to the log's record (`GeoLeaf.Log.getEntries()`), with
+// `source: "app"`: the boot's own messages are what a boot failure diagnostic needs most.
 _app.AppLog = {
     log(...args: unknown[]) {
         if (location.search.includes("debug=true")) {
             // eslint-disable-next-line no-console -- intentional debug output when ?debug=true
             console.debug("[GeoLeaf]", ...args);
+            recordLogEntry("debug", "app", args);
         }
     },
     info(...args: unknown[]) {
         console.info("[GeoLeaf]", ...args);
+        recordLogEntry("info", "app", args);
     },
     error(...args: unknown[]) {
         console.error("[GeoLeaf]", ...args);
+        recordLogEntry("error", "app", args);
     },
     warn(...args: unknown[]) {
         console.warn("[GeoLeaf]", ...args);
+        recordLogEntry("warn", "app", args);
     },
 };
 

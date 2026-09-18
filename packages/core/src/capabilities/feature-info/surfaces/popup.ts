@@ -15,6 +15,7 @@ import type { RenderField } from "../render/dom.js";
 import { hasFields, resolveSurfaceFields, toRenderFields } from "../convert.js";
 import { openSidePanel } from "./sidepanel.js";
 import type { GeoLeafFeatureClickDetail, SidePanelLayout } from "../types.js";
+import { getFeatureInfoConfig } from "../config.js";
 
 /** Structural view of the runtime `maplibregl.Popup` (never imported as a value). */
 interface MaplibrePopupLike {
@@ -83,6 +84,9 @@ export function closePopup(): void {
  * Handles a `geoleaf:feature:click` event and opens / replaces the popup.
  * `layout` — when given — fully overrides the auto-resolved layer binding
  * (no merge). No-op when MapLibre or the map is unavailable.
+ *
+ * The close cross follows `modules.feature-info.popup.closeButton`, read at each
+ * opening — shown only when the value is exactly `true`.
  */
 export function handleClick(detail: GeoLeafFeatureClickDetail, layout?: SidePanelLayout): void {
     const mgl = getMaplibre();
@@ -133,7 +137,10 @@ export function handleClick(detail: GeoLeafFeatureClickDetail, layout?: SidePane
     _currentDetail = detail;
     _currentLayout = layout;
     _popup = new mgl.Popup({
-        closeButton: false,
+        // A setting since 11/09/2026, and off unless it is exactly `true`: the default
+        // does not move under a host that never asked. Escape and a map click close the
+        // popup either way.
+        closeButton: getFeatureInfoConfig().popup?.closeButton === true,
         closeOnClick: true,
         maxWidth: "320px",
         className: "gl-fi-popup-ml",

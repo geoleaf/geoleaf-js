@@ -1,0 +1,53 @@
+{
+    "schemaVersion": 2,
+    "lot": "195-echec-demarrage",
+    "scope": [
+        "packages/core/src/app/boot-failure.ts",
+        "packages/core/src/app/boot-failure-screen.ts",
+        "packages/core/src/kernel/config/profile-load-report.ts"
+    ],
+    "verdicts": {
+        "packages/core/src/app/boot-failure.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Surface d'échec du démarrage — premier échec terminal gagnant, `geoleaf:boot:failed` annulable, watchdog suspendu pendant `beforeBoot`, révélation retenue sur les ressources déclarées du profil",
+            "confidence": "haute",
+            "rationale": "Dans `app/` et non dans `kernel/` : il orchestre le boot, et ESLint interdit à `kernel/` d'importer `app/`. Séparé de `boot-core.ts` parce que quatre sites l'appellent — la séquence, l'installation du boot, la révélation et le cycle de vie de la carte — et que les deux derniers ne peuvent pas importer la séquence sans cycle. Il décide ; le dessin vit à part, dans `boot-failure-screen.ts`."
+        },
+        "packages/core/src/app/boot-failure-screen.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Écran d'échec par défaut, dessiné DANS le voile `#gl-loader` — Recharger, Continuer quand même, diagnostic à copier ou à télécharger",
+            "confidence": "haute",
+            "rationale": "Séparé du service d'échec : la décision n'a pas à porter le DOM, et c'est ce fichier que purgecss lit pour garder les règles de `css/geoleaf-loader.css`, dont les classes y sont écrites en toutes lettres. Aucun `innerHTML` (`domCreate` et `textContent`). Un seul importeur, le service d'échec."
+        },
+        "packages/core/src/kernel/config/profile-load-report.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Rapport de chargement du profil — les ressources que le profil DÉCLARE et qu'aucun chargeur n'a obtenues, et l'émission unique de `geoleaf:profile:failed`",
+            "confidence": "haute",
+            "rationale": "Dans `kernel/config/`, à côté des deux chargeurs qui y consignent (`profile.ts`, `profile-loader.ts`) : le kernel n'importe pas `app/`, c'est donc `boot-core` qui lit le rapport. Hors du baril restreint de `kernel/config` : aucune capacité ne le consomme. État de module comme `ProfileManager`, remis à zéro par `ProfileManager.reset()`."
+        }
+    }
+}

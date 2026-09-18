@@ -14,7 +14,7 @@
  * had gone from 1217 to 1234. Nothing had reinstalled them.
  *
  * 🛑 **THE ASYMMETRY IS WHAT MAKES THIS GUARD NECESSARY, AND IT COMPOSES AT THE
- * WORST.** `ci.yml` runs `npx playwright install --with-deps chromium` **before
+ * WORST.** `ci.yml` runs `npx playwright install --with-deps chromium webkit` **before
  * every** E2E run; locally, **nothing** does (`package.json` has only
  * `prepare: husky`). The side that works is thus the one whose E2E steps sit
  * under `workflow_dispatch`, which nobody triggers; the side one launches is the
@@ -67,24 +67,46 @@
 "use strict";
 
 const fs = require("node:fs");
+const path = require("node:path");
+const { pathToFileURL } = require("node:url");
 const { spawnSync } = require("node:child_process");
 
 const TAG = "PW-BROWSERS";
-
-/**
- * Browsers whose binaries are required.
- *
- * `playwright.config.js` declares a single project, `chromium` — also the only
- * one `ci.yml` installs. Widening this list without widening the other two places
- * would produce a guard demanding what nobody installs.
- */
-const BROWSERS = ["chromium"];
+const ROOT = path.resolve(__dirname, "..");
 
 /** Tooling exit — never 0, never 1: being able to play is a prerequisite, not a verdict. */
 function refuse(lignes) {
     console.error(`\x1b[31m✗\x1b[0m [${TAG}] La suite E2E NE PEUT PAS être jouée.`);
     for (const l of lignes) console.error(l);
     process.exit(2);
+}
+
+/**
+ * The browsers the suite needs, each with the launch options its first project plays it with —
+ * read from the projects `playwright.config.js` declares.
+ *
+ * 🛑 DERIVED, NOT LISTED. This read `const BROWSERS = ["chromium"]` beside a comment saying the
+ * config declared a single project, while it declared two — and it now declares WebKit ones too.
+ * A list kept here is a second copy of a fact that already has a home, and it had already rotted.
+ *
+ * @returns {Promise<Map<string, object>>} browser name → launch options
+ */
+async function navigateursDeclares() {
+    const config = (await import(pathToFileURL(path.join(ROOT, "playwright.config.js")).href))
+        .default;
+    const navigateurs = new Map();
+    for (const project of config.projects ?? []) {
+        // Playwright merges `use` key by key: a project's value replaces the config's.
+        const use = { ...(config.use ?? {}), ...(project.use ?? {}) };
+        const browser = use.browserName ?? use.defaultBrowserType ?? "chromium";
+        if (!navigateurs.has(browser)) navigateurs.set(browser, use.launchOptions ?? {});
+    }
+    if (navigateurs.size === 0) {
+        refuse([
+            "  `playwright.config.js` ne déclare aucun projet — rien à vérifier, donc rien à conclure.",
+        ]);
+    }
+    return navigateurs;
 }
 
 /**
@@ -119,11 +141,54 @@ function cheminsAttendus(browser) {
     return chemins;
 }
 
-function main() {
+/**
+ * Launches `browser` once and asks it for a WebGL2 context — what every map spec needs first.
+ *
+ * 🛑 THE DIRECTORY CHECK ALONE WAS BLIND TO THIS, AND IT WAS MEASURED. WebKit downloaded, its
+ * system libraries absent: every path `--dry-run webkit` printed existed, this guard said the
+ * suite could be played, and `browserType.launch` threw "Host system is missing dependencies"
+ * on the first spec. Being installed is not being able to start.
+ *
+ * @param {string} browser
+ * @param {object} launchOptions - the options its project launches it with
+ */
+async function sonderLancement(browser, launchOptions) {
+    let instance;
+    try {
+        instance = await require("@playwright/test")[browser].launch(launchOptions);
+    } catch (e) {
+        refuse([
+            `  ${browser} est installé mais NE DÉMARRE PAS :`,
+            `  ${String(e?.message ?? e)
+                .split("\n")
+                .slice(0, 8)
+                .join("\n  ")}`,
+            "",
+            `  Le geste : \x1b[1msudo npx playwright install-deps ${browser}\x1b[0m`,
+        ]);
+    }
+    try {
+        const page = await instance.newPage();
+        const webgl2 = await page.evaluate(
+            () => !!document.createElement("canvas").getContext("webgl2")
+        );
+        if (!webgl2) {
+            refuse([
+                `  ${browser} démarre, mais n'offre aucun contexte WebGL2 : MapLibre ne peut pas créer`,
+                "  de carte, et chaque spec rougirait sur le moteur, pas sur le produit.",
+            ]);
+        }
+    } finally {
+        await instance.close();
+    }
+}
+
+async function main() {
+    const navigateurs = await navigateursDeclares();
     const manquants = [];
     const vus = [];
 
-    for (const browser of BROWSERS) {
+    for (const browser of navigateurs.keys()) {
         for (const chemin of cheminsAttendus(browser)) {
             // ⚠️ EVERY printed path is tested, no name filter: the missing
             // directory is `chromium_headless_shell-*`, not `chromium-*`.
@@ -150,14 +215,18 @@ function main() {
             "  ⚠️ Sans ce refus, la suite se lancerait et rendrait ~215 rouges IDENTIQUES en 1,2 min —",
             "     ce qui ressemble à une régression du produit, pas à un répertoire absent.",
             "",
-            `  Le geste : \x1b[1mnpx playwright install ${BROWSERS.join(" ")}\x1b[0m`,
+            `  Le geste : \x1b[1mnpx playwright install ${[...navigateurs.keys()].join(" ")}\x1b[0m`,
         ]);
     }
 
+    for (const [browser, launchOptions] of navigateurs) {
+        await sonderLancement(browser, launchOptions);
+    }
+
     console.log(
-        `\x1b[32m✓\x1b[0m [${TAG}] ${vus.length} artefact(s) présent(s) — la suite peut être jouée.`
+        `\x1b[32m✓\x1b[0m [${TAG}] ${vus.length} artefact(s) présent(s), ${navigateurs.size} navigateur(s) démarré(s) avec WebGL2 — la suite peut être jouée.`
     );
     for (const c of vus) console.log(`\x1b[2m    ${c}\x1b[0m`);
 }
 
-main();
+main().catch((e) => refuse([`  sonde interrompue : ${String(e?.message ?? e)}`]));

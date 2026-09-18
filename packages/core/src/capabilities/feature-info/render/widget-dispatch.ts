@@ -67,6 +67,7 @@ import {
     renderText,
 } from "./fields.js";
 import { renderGallery, renderImage } from "./media.js";
+import { applyActionVariant } from "./action-variant.js";
 
 export type { RenderSurface } from "./dom.js";
 
@@ -317,7 +318,7 @@ function _setActionBusy(btn: HTMLButtonElement, busy: boolean): void {
 /**
  * Renders an action button emitting `geoleaf:popup:action` on click.
  *
- * Four option keys are honoured, and each is read from the descriptor rather than
+ * Five option keys are honoured, and each is read from the descriptor rather than
  * from prose:
  *
  * - `actionId` — opaque to the core, forwarded verbatim. Absent, nothing renders;
@@ -327,7 +328,9 @@ function _setActionBusy(btn: HTMLButtonElement, busy: boolean): void {
  * - `confirm` / `confirmKey` — confirmation before emitting;
  * - `payloadFields` — strict whitelist of properties joined to the event. **Without
  *   it, NO property is joined**: the default goes to confidentiality, not
- *   convenience, because this is a document event any script on the page can hear.
+ *   convenience, because this is a document event any script on the page can hear;
+ * - `variant` — the button's visual weight (`primary`, `secondary`, `danger`), dressed
+ *   by `applyActionVariant`. An unknown value keeps the default look and warns once.
  *
  * ⚠️ Since 14/08/2026 the detail also carries `button`, `setBusy()` and `close()` — a live node
  * and two closures — so the event is dispatched as a **raw `CustomEvent`** and its key lives in
@@ -361,6 +364,7 @@ function renderActionButton(
     btn.className = "gl-poi-popup__action";
     btn.dataset["glActionId"] = actionId;
     btn.textContent = String(field.label ?? actionId);
+    applyActionVariant(btn, field.variant, actionId, ctx.layerId);
 
     btn.addEventListener("click", () => {
         const confirmText = field.confirmKey

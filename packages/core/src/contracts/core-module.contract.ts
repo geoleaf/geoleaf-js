@@ -416,6 +416,39 @@ export type ICoreModule = ILifecycleModule | IUISlotModule;
 // ─── IModuleRegistry ──────────────────────────────────────────────────────────
 
 /**
+ * A module whose `init()` threw or rejected, as `IModuleRegistry.init()` reports it to
+ * {@link ModuleInitOptions.onModuleError}.
+ */
+export interface ModuleInitFailure {
+    /** The id of the module that failed. */
+    readonly id: string;
+    /** What its `init()` threw, or the reason it rejected with. */
+    readonly error: unknown;
+    /**
+     * Every module that depends on it, directly or not, in initialisation order. None of them
+     * has run — and with `"continue"`, none of them will.
+     */
+    readonly skipped: readonly string[];
+}
+
+/** Options of `IModuleRegistry.init()`. */
+export interface ModuleInitOptions {
+    /**
+     * Decides what a module whose `init()` fails does to the rest of the initialisation.
+     *
+     * `"continue"` isolates the failure: the modules that depend on it are not initialised,
+     * `getActiveModules()` lists neither them nor the failed module, `destroy()` never calls a
+     * module that did not run — the failed one is still torn down, its `init()` may have run in
+     * part — and every other module is initialised. `"abort"` rejects `init()` with the module's
+     * error, which is also what happens without this option.
+     *
+     * @param failure - The module that failed, and the modules that depend on it.
+     * @returns `"continue"` or `"abort"`.
+     */
+    readonly onModuleError?: (failure: ModuleInitFailure) => "continue" | "abort";
+}
+
+/**
  * Orchestrates the GeoLeaf module lifecycle.
  *
  * The registry is the single entry point for module management:
@@ -444,10 +477,12 @@ export interface IModuleRegistry {
     /**
      * Registers a module descriptor with the registry.
      *
-     * Registration is only allowed before `init()` has been called.
-     * Throws a `GeoLeafError` if:
-     * - A module with the same `id` is already registered.
-     * - `init()` has already been called on this registry instance.
+     * Idempotent: a module already registered under the same `id` wins, and a second call is a
+     * no-op. Registering after `init()` stores the module but never runs it — neither its
+     * `init()` nor its UI slot, both built once at boot — and logs a warning that says so.
+     *
+     * Throws a `GeoLeafError` when the module is neither a lifecycle module (`init` and
+     * `destroy`, both functions) nor a UI-only slot (`{ id, ui }`).
      *
      * @param module - The module to register.
      */
@@ -457,17 +492,21 @@ export interface IModuleRegistry {
      * Resolves the dependency graph and initialises all registered modules
      * in topological order.
      *
-     * Throws a `GeoLeafError` if a circular dependency is detected.
-     * The error message includes the full cycle path (e.g. `"A → B → A"`).
+     * Rejects with a `GeoLeafError` if a circular dependency is detected — the message
+     * includes the full cycle path (e.g. `"A → B → A"`) — or if a module declares a
+     * dependency that is not registered.
      *
      * Returns a Promise that resolves when all modules have completed `init()`.
      * If any module's `init()` rejects, the returned Promise rejects with
-     * that error (subsequent modules are not initialised).
+     * that error (subsequent modules are not initialised) — unless
+     * `options.onModuleError` answers `"continue"`: the failure is then isolated to that
+     * module and to the modules that depend on it (see {@link ModuleInitOptions}).
      *
      * @param adapter - Engine-agnostic map adapter.
      * @param config - Read-only configuration access.
+     * @param options - `onModuleError`, to isolate a module failure instead of rejecting.
      */
-    init(adapter: IMapAdapter, config: IGeoLeafConfig): Promise<void>;
+    init(adapter: IMapAdapter, config: IGeoLeafConfig, options?: ModuleInitOptions): Promise<void>;
 
     /**
      * Retrieves a registered module by its id, cast to type `T`.
@@ -523,7 +562,9 @@ export interface IModuleRegistry {
      *
      * Each module's `destroy()` is called exactly once. Errors in individual
      * `destroy()` calls are logged but do not interrupt the teardown sequence —
-     * all modules are destroyed regardless of individual failures.
+     * all modules are destroyed regardless of individual failures. A module skipped
+     * because a module it depends on failed (see {@link ModuleInitOptions}) is not
+     * destroyed: it never ran.
      */
     destroy(): void;
 
@@ -540,10 +581,13 @@ export interface IModuleRegistry {
     getModuleSchema(id: string): IModuleSchema | null;
 
     /**
-     * Returns a read-only snapshot of all registered modules in insertion order.
+     * Returns a read-only snapshot of the modules that are running, in insertion order.
      *
      * Includes both built-in modules (registered before `init()`) and lazily
-     * registered plugin modules (registered after `init()`).
+     * registered plugin modules (registered after `init()`). Leaves out a module whose
+     * capability gate (`isEnabled()`) answers `false` and — under
+     * `onModuleError: () => "continue"` — a module whose `init()` failed and the modules
+     * skipped because they depend on it.
      */
     getActiveModules(): readonly IModuleInfo[];
 }

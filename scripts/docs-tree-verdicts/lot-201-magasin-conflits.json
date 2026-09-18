@@ -1,0 +1,53 @@
+{
+    "schemaVersion": 2,
+    "lot": "201-magasin-conflits",
+    "scope": [
+        "packages/core/src/capabilities/offline/db/conflicts.ts",
+        "packages/core/src/capabilities/offline/write/conflict-store.ts",
+        "packages/plugins/editor/src/sub-menu/queue-detail.ts"
+    ],
+    "verdicts": {
+        "packages/core/src/capabilities/offline/db/conflicts.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Conflicts Module — ce qu'un conflit tranché LAISSE DERRIÈRE LUI, un enregistrement par entité (v6)",
+            "confidence": "haute",
+            "rationale": "Un module de magasin par store, comme ses six voisins de `db/` : le nom et l'emplacement prédisent le contenu, et le rangement par rôle (db/, write/, pull/, report/) est celui de la capacité. Il existe parce que `lastWriteWins` écrasait sans jamais LIRE ce qu'il écrasait — après une suppression tranchée, la ligne serveur ne survivait nulle part. Sa clé `[layerId, localId]` est son bornage : `db/eviction.ts` ne nomme qu'un store (`layers`), donc rien ne purgera jamais celui-ci, et une clé par entité le plafonne à la taille de la couche sans poser de chiffre. Aucun index, décision du 17/09/2026 — la lecture par couche vient de la clé composée, comme dans `db/features.ts`."
+        },
+        "packages/core/src/capabilities/offline/write/conflict-store.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "La ligne serveur RELUE AVANT D'ÊTRE ÉCRASÉE — et conservée",
+            "confidence": "haute",
+            "rationale": "Rangé sous `write/` avec le reste du cycle d'écriture, à côté du drain qui l'appelle ; la dépendance est à sens unique (`push-engine` importe ce module, jamais l'inverse), ce qui garde `markerOf` à un seul auteur. Il existe séparément plutôt que dans `push-engine.ts` pour deux raisons mesurées : ce fichier fait 1 274 lignes contre un plafond de 700, et la relecture est un objet distinct de l'envoi — elle ne décide jamais si l'écriture a lieu, elle dit seulement ce qui a été détruit. Trois exports lus hors du fichier : `readServerVersion` et `recordConflict` par le drain, `listConflicts`/`clearConflicts` par la façade via `offline-engine-entry`."
+        },
+        "packages/plugins/editor/src/sub-menu/queue-detail.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Ce que la fenêtre des saisies en attente peut FAIRE, câblé à la file du cœur",
+            "confidence": "haute",
+            "rationale": "Rangé sous `sub-menu/` à côté de la fenêtre qu'il câble, et séparé d'elle comme le rendu l'est du branchement partout ailleurs dans ce plugin. Il existe séparément d'`entry.ts` pour un motif mesuré, pas de confort : les trois gestes de quarantaine y portaient la racine de composition à 721 lignes contre les 700 du contrat de plugin (PC-08, vue rouge). Une racine qui grossit à chaque geste qu'elle câble cesse d'être une racine. Deux exports, dont un seul public : `openQueueDetail`, passé à `initEditorMenu` comme rappel du badge."
+        }
+    }
+}

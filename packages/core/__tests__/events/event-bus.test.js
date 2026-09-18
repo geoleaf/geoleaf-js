@@ -109,7 +109,7 @@ describe("event-bus — dispatchGeoLeafEvent", () => {
         document.addEventListener("geoleaf:filter:apply", handler);
 
         dispatchGeoLeafEvent("geoleaf:filter:apply", {
-            layerIds: ["tourisme", "patrimoine"],
+            layerIds: ["layer-a", "layer-b"],
             geometryType: "Point",
             activeCount: 7,
         });
@@ -117,7 +117,7 @@ describe("event-bus — dispatchGeoLeafEvent", () => {
         document.removeEventListener("geoleaf:filter:apply", handler);
 
         expect(detail).not.toBeNull();
-        expect(detail.layerIds).toEqual(["tourisme", "patrimoine"]);
+        expect(detail.layerIds).toEqual(["layer-a", "layer-b"]);
         expect(detail.geometryType).toBe("Point");
         expect(detail.activeCount).toBe(7);
     });

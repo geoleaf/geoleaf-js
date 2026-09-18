@@ -5,7 +5,7 @@
     /* ==========================================================================
    GeoLeaf.Coordinates — cursor coordinates readout
    ==========================================================================
-   Shows the cursor coordinates at the bottom right, next to the legend.
+   Shows the cursor coordinates at the bottom left, in the corner grid laid out by branding.css.
    - Root container : .gl-coordinates-display
    - Content        : .gl-coordinates__content
    ========================================================================== */

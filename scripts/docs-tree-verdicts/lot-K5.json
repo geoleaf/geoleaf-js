@@ -413,23 +413,9 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Sous-système de sécurité du kernel : échappement, validation, désinfection HTML/SVG et jetons CSRF",
+            "description": "Sous-système de sécurité du kernel : échappement, validation, désinfection HTML/SVG et enveloppes DOM sans XSS",
             "confidence": "haute",
-            "rationale": "5 fichiers / 1041 LOC. sanitizers.ts est l'un des 6 fichiers épinglés par la table SEAMS de verify-seam-drift.cjs (seam sanitize core ↔ field-renderer) ; le baril est cité nommément dans eslint.config.mjs 6ter ter comme « patron security/index.ts »."
-        },
-        "packages/core/src/kernel/security/csrf-token.ts": {
-            "kind": "file",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Gestionnaire de jetons CSRF : génération, stockage en cookie sécurisé et validation",
-            "confidence": "haute",
-            "rationale": "311 LOC, exporte CSRFToken ; @module security/csrf-token exact. Le commentaire du baril documente son rattachement au S14 (backlog B.16) pour faire de index.ts la source unique de GeoLeaf.Security."
+            "rationale": "5 fichiers / 905 LOC. sanitizers.ts est l'un des 6 fichiers épinglés par la table SEAMS de verify-seam-drift.cjs (seam sanitize core ↔ field-renderer) ; le baril est cité nommément dans eslint.config.mjs 6ter ter comme « patron security/index.ts »."
         },
         "packages/core/src/kernel/security/dom-security.ts": {
             "kind": "file",

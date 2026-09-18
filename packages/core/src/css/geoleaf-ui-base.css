@@ -13,14 +13,18 @@
 /* ========================================================================== */
 
 /* Conteneur principal : la page GeoLeaf occupe toute la hauteur.
-   height: 100vh (pas min-height) pour que flex: 1 fonctionne correctement
+   height (pas min-height) pour que flex: 1 fonctionne correctement
    sur les enfants (notamment .gl-main > #geoleaf-map).
+   100dvh, et non 100vh seul : 100vh est la PLUS GRANDE fenêtre, barre du navigateur
+   mobile repliée — la bande basse de la page passait dessous, inatteignable dans un onglet.
+   100vh reste en repli pour un moteur sans dvh.
    Déclaration unique : geoleaf-core.css portait un bloc .gl-page redondant
    (sous-ensemble strict de celui-ci, même layer, importé avant) — retiré. */
 .gl-page {
     display: flex;
     flex-direction: column;
     height: 100vh;
+    height: 100dvh;
     background: var(--gl-color-bg-page);
     color: var(--gl-color-text-main);
     font-family:

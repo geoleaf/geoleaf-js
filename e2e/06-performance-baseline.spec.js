@@ -16,6 +16,7 @@ import {
     heapRetentionBandMb,
 } from "./helpers/perf-gate.js";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -1021,11 +1022,11 @@ const SCALE_URL = "**/__geoleaf_scale_bench.geojson";
  * Doses. 30 000 is gated: twice the largest layer this repo ships (14 725 features),
  * and the order of magnitude the product is aimed at.
  *
- * 100 000 is MEASURED BUT NOT GATED, behind `GEOLEAF_SCALE=full`. The report asks for
- * both figures and both are produced; gating the higher one would put a permanent red
- * on a horizon nobody has dated (question 7 of the report's §11 is still open), and a
- * gate that reddens on a parc no user has is a gate that gets disarmed within the week.
- * That trade has already been paid here twice.
+ * 100 000 is MEASURED BUT NOT GATED, behind `GEOLEAF_SCALE=full`. Both figures are
+ * produced; gating the higher one would put a permanent red on a volume the product does
+ * not promise — `packages/core/docs/DIRECTION.md` guarantees 30 000 and calls anything
+ * larger a margin — and a gate that reddens on a parc no user has is a gate that gets
+ * disarmed within the week. That trade has already been paid here twice.
  */
 const SCALE_DOSES = [
     { count: 30_000, gated: true },
@@ -1240,6 +1241,217 @@ test.describe("6.2.9 — Scale through the real loader", () => {
                 ratio,
                 `a unit mutation on ${count} features must not cost more than a full re-feed`
             ).toBeGreaterThan(0.5);
+        });
+    }
+});
+
+// ─── 6.2.10 — Local read at scale ───────────────────────────────────────────
+//
+// WHAT THIS BLOCK MEASURES THAT §6.2.9 DOES NOT. An offline layer is not fetched: the loader
+// asks the engine for it (`kernel/geojson/loader/single-layer.ts` →
+// `Storage.DB.getLayerFeatureCollection`), and that read has no cursor and no extent. It reads
+// the WHOLE layer (`getAll` on the layer index), then the WHOLE outbox (`pendingDeletions`, to
+// hide what was deleted on the device), then filters. Its cost grows with the parc, and it is
+// paid before the first pixel — which is the question that decides whether a spatial key is
+// worth a schema migration.
+//
+// 🛑 THE DATABASE IS ON DISK, AND THAT IS WHY THIS BLOCK OPENS ITS OWN CONTEXT. Playwright's
+// default context is incognito-like, and Chromium keeps an off-the-record profile's IndexedDB
+// IN MEMORY: a read timed there is not the read a phone performs. Measured side by side on
+// 17/09/2026 under the same throttle: the disk-backed database, reopened by a fresh browser,
+// read 30 000 entities in 658 ms where the in-memory one took 474 ms, and 1 739 ms against
+// 1 310 ms at 100 000. So the entities are written by one persistent context, the browser is
+// closed, and a second one opens the same profile COLD before anything is timed.
+//
+// ⚠️ WHAT IT DOES NOT SEE, named rather than implied:
+//   - The display. The figures stop when the engine hands the collection back; what the map
+//     does with it is §6.2.9's measurement, and the two add up on a real boot.
+//   - A phone's storage. The profile lives on this machine's disk, and the OS page cache may
+//     still hold its files after the first browser closed.
+//   - The writer's cost under throttle. Seeding goes through the pull's own writer
+//     (`putLayerFeatures`) at full speed: its duration is reported, not budgeted.
+//
+// The block is INFORMATIVE: no ceiling. A duration on a shared machine is the threshold this
+// file has already paid for twice; the anti-hollow floor below is what keeps it honest.
+
+/** A busy day's queue: entries the read must scan, none of which the drain will touch. */
+const LOCAL_READ_OUTBOX = 500;
+
+const LOCAL_READ_DOSES = [30_000, ...(process.env.GEOLEAF_SCALE === "full" ? [100_000] : [])];
+
+/**
+ * Opens the deployed app and waits for the offline engine — the read's only door.
+ *
+ * @param {import("@playwright/test").Page} page
+ */
+async function openOfflineEngine(page) {
+    await installFeatureFactory(page);
+    await page.goto("/", { waitUntil: "networkidle" });
+    await page.waitForFunction(
+        () =>
+            typeof (/** @type {any} */ (window).GeoLeaf?.Storage?.DB?.getLayerFeatureCollection) ===
+            "function",
+        null,
+        { timeout: MAP_TIMEOUT }
+    );
+}
+
+test.describe("6.2.10 — Local read at scale", () => {
+    test.use({ baseURL: baseURL("full"), viewport: { width: 390, height: 844 } });
+
+    for (const count of LOCAL_READ_DOSES) {
+        test(`${count} stored entities read back by the offline engine`, async ({
+            playwright,
+            browserName,
+            launchOptions,
+            baseURL: origin,
+            ignoreHTTPSErrors,
+            serviceWorkers,
+            viewport,
+        }) => {
+            test.skip(browserName !== "chromium", "CDP throttling is Chromium-only");
+            test.setTimeout(count >= 100_000 ? 900_000 : 300_000);
+
+            const layerId = `_local_read_${count}`;
+            const profile = fs.mkdtempSync(path.join(os.tmpdir(), "geoleaf-local-read-"));
+            const open = () =>
+                playwright.chromium.launchPersistentContext(profile, {
+                    ...launchOptions,
+                    baseURL: origin,
+                    ignoreHTTPSErrors,
+                    serviceWorkers,
+                    viewport,
+                });
+
+            try {
+                // ── 1. Write the layer and the queue, then close the browser ──────────
+                let context = await open();
+                let page = context.pages()[0] ?? (await context.newPage());
+                await openOfflineEngine(page);
+                const seeded = await page.evaluate(
+                    async ({ id, n, queued }) => {
+                        const win = /** @type {any} */ (window);
+                        const db = win.GeoLeaf.Storage.DB;
+                        const fc = win.__geoleafMakeFeatures({
+                            count: n,
+                            seed: 1,
+                            clumps: Math.ceil(n / 150),
+                        });
+                        const now = Date.now();
+                        const t0 = performance.now();
+                        // One page of the pull at a time: the writer's own batch size.
+                        for (let i = 0; i < n; i += 1000) {
+                            await db.putLayerFeatures(
+                                fc.features.slice(i, i + 1000).map((feature) => ({
+                                    layerId: id,
+                                    localId: `srv:${feature.id}`,
+                                    serverId: String(feature.id),
+                                    syncState: "synced",
+                                    updatedAt: now,
+                                    version: { kind: "timestamp", value: "2026-09-01T08:00:00Z" },
+                                    feature,
+                                }))
+                            );
+                        }
+                        const writeMs = performance.now() - t0;
+                        // ⚠️ QUARANTINED, so the drain the page arms at boot leaves them alone:
+                        // a pass writing to the outbox while the read is timed would measure
+                        // contention. `pendingDeletions` still reads every one of them.
+                        await new Promise((resolve, reject) => {
+                            const tx = db._db.transaction(["outbox"], "readwrite");
+                            const store = tx.objectStore("outbox");
+                            for (let i = 0; i < queued; i++) {
+                                store.add({
+                                    id: `bench:${i}`,
+                                    kind: i % 4 === 0 ? "delete" : "update",
+                                    layerId: id,
+                                    localId: `srv:${i}`,
+                                    baseVersion: null,
+                                    state: "quarantined",
+                                    quarantine: "rejectedByServer",
+                                    attempts: 3,
+                                    createdAt: now,
+                                });
+                            }
+                            tx.oncomplete = () => resolve(undefined);
+                            tx.onerror = () => reject(tx.error);
+                        });
+                        return { writeMs };
+                    },
+                    { id: layerId, n: count, queued: LOCAL_READ_OUTBOX }
+                );
+                await context.close();
+
+                // ── 2. A fresh browser, the same profile: the read is timed cold ───────
+                context = await open();
+                page = context.pages()[0] ?? (await context.newPage());
+                await openOfflineEngine(page);
+                const client = await context.newCDPSession(page);
+                await client.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+                const result = await page.evaluate(
+                    async ({ id }) => {
+                        const db = /** @type {any} */ (window).GeoLeaf.Storage.DB;
+                        const edits = db._ensureModule("LocalEdit");
+                        const median = (/** @type {number[]} */ a) =>
+                            [...a].sort((x, y) => x - y)[Math.floor(a.length / 2)];
+                        const reads = [];
+                        let returned = 0;
+                        for (let i = 0; i < 5; i++) {
+                            const t = performance.now();
+                            const fc = await db.getLayerFeatureCollection(id);
+                            reads.push(performance.now() - t);
+                            returned = fc ? fc.features.length : 0;
+                        }
+                        const scans = [];
+                        for (let i = 0; i < 5; i++) {
+                            const t = performance.now();
+                            await edits.pendingDeletions(id);
+                            scans.push(performance.now() - t);
+                        }
+                        return {
+                            coldMs: reads[0],
+                            warmMs: median(reads.slice(1)),
+                            scanMs: median(scans),
+                            returned,
+                        };
+                    },
+                    { id: layerId }
+                );
+                await client.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+                await context.close();
+
+                console.log(
+                    `[perf] local read ${count}: cold=${result.coldMs.toFixed(0)}ms ` +
+                        `warm=${result.warmMs.toFixed(0)}ms ` +
+                        `outbox-scan(${LOCAL_READ_OUTBOX})=${result.scanMs.toFixed(1)}ms ` +
+                        `write=${seeded.writeMs.toFixed(0)}ms (unthrottled)`
+                );
+
+                const baseline = readBaseline();
+                baseline.runtime.localRead = baseline.runtime.localRead || {};
+                baseline.runtime.localRead[String(count)] = {
+                    coldMs: Math.round(result.coldMs),
+                    warmMs: Math.round(result.warmMs),
+                    outboxScanMs: Math.round(result.scanMs * 10) / 10,
+                    outboxEntries: LOCAL_READ_OUTBOX,
+                    writeMs: Math.round(seeded.writeMs),
+                    _instrument:
+                        "Storage.DB.getLayerFeatureCollection, disk-backed profile reopened cold, CPU throttle x4, 390x844",
+                };
+                writeBaseline(baseline);
+
+                // The read returned the whole layer: the queued deletions are quarantined, so
+                // none of them hides an entity. Without this, every figure above could be the
+                // cost of reading an empty store.
+                expect(result.returned).toBe(count);
+                // ANTI-HOLLOW FLOOR — reading `count` records must cost something measurable.
+                expect(
+                    result.warmMs,
+                    `reading ${count} stored entities must cost something measurable`
+                ).toBeGreaterThan(1);
+            } finally {
+                fs.rmSync(profile, { recursive: true, force: true });
+            }
         });
     }
 });

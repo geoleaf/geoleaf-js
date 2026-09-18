@@ -386,8 +386,8 @@ here means the source did not resolve, which is a property of the data, not a ca
 document.addEventListener("geoleaf:app:ready", async () => {
     const collection = await myBackend.fetchWithinBounds(GeoLeaf.Core.getMap().getBounds());
     const layer = await GeoLeaf.Layers.create({
-        id: "assets-in-view",
-        label: "Assets in view",
+        id: "features-in-view",
+        label: "Features in view",
         geometry: "point",
         inlineData: collection,
     });
@@ -886,9 +886,7 @@ GeoLeaf.Events.on("geoleaf:popup:action", async (e) => {
     if (actionId !== "host:open-form") return;
     await fetch("/api/poi/open", {
         method: "POST",
-        headers: GeoLeaf.Security.CSRFToken.addTokenToHeaders({
-            "Content-Type": "application/json",
-        }),
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: featureId, layerId }),
     });
 });
@@ -943,7 +941,13 @@ it returns `false` even on an installable Chrome. iOS is unaffected.
 GeoLeaf.PWA.init({ installPrompt: { enabled: true } });
 ```
 
-> **Note:** PWA features are opt-in. Without `installPrompt.enabled: true`, `init()` is a no-op.
+> **Note:** PWA features are opt-in. Without `installPrompt.enabled: true`, `GeoLeaf.PWA.init()`
+> is a no-op.
+>
+> ⚠️ The capability's own boot gate (`modules.pwa.enabled`) is **not** a no-op when closed: it
+> unregisters GeoLeaf's service worker, so that a returning visitor really gets "no SW". It
+> unregisters **only** `sw-core.js` — a service worker your own application registered is never
+> touched, at boot or at teardown.
 
 ---
 
@@ -1007,11 +1011,11 @@ internal v2.x refactor had silently removed: the surface available at import wen
 | `GeoLeaf.LayerManager`                   | Layer management                                   |
 | `GeoLeaf.Baselayers`                     | Base tile layers                                   |
 | `GeoLeaf.Helpers` · `GeoLeaf.Validators` | Helpers, input validators                          |
-| `GeoLeaf.Events`                         | DOM event bus                                      |
+| `GeoLeaf.Events`                         | DOM event bus (`on()` returns its unsubscribe)     |
 | `GeoLeaf.I18n`                           | `registerDict` / `getLabel` / `t`                  |
 | `GeoLeaf.Utils` · `GeoLeaf.CONSTANTS`    | Utilities, constants                               |
 | `GeoLeaf.Log` · `GeoLeaf.Errors`         | Logging, typed error classes                       |
-| `GeoLeaf.Security`                       | XSS/CSRF protection                                |
+| `GeoLeaf.Security`                       | XSS protection                                     |
 | `GeoLeaf.Config`                         | Config access                                      |
 | `GeoLeaf.Introspection`                  | Capability schemas, and their activation verdict   |
 | `GeoLeaf.plugins`                        | Plugin registry                                    |

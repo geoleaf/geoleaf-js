@@ -14,6 +14,7 @@ import { Log } from "../../../utils/log/index.js";
 import { fetchBounded } from "../../../utils/general/fetch-bounded.js";
 import { layerDataPath } from "../../../utils/general/layer-data-path.js";
 import { coreConfigGet } from "../config-seam.js";
+import { parseDataOrigins, prefetchVerdict } from "../data-origins.js";
 import { CacheStorage } from "./storage.js";
 import { CacheCalculator } from "./calculator.js";
 import { StyleResolver, type ResolverZone } from "./style-resolver.js";
@@ -99,6 +100,45 @@ function _tilesRequested(selection: LayerSelection | null | undefined): boolean 
     const declared = coreConfigGet("modules.offline.cache.enableTileCache", true) as boolean;
     if (declared === false) return false;
     return selection?.includeTiles ?? true;
+}
+
+/**
+ * Keeps the resources the offline preparation may download — the tile-origin rule.
+ *
+ * 🛑 WHY THIS EXISTS. The deliberate download fetched every resource of a basemap flagged
+ * `offline: true`, whatever its origin: the only check on the path was the URL scheme
+ * (`url-guard.ts`). A profile following the published guides — an OpenStreetMap raster at
+ * `offline: true` — offered a download over `tile.openstreetmap.org`, whose usage policy
+ * forbids offline use. The rule itself, and why `prefetch` is not `cacheable`, are written
+ * on `prefetchVerdict` (`../data-origins.ts`). `enableTileCache` keeps its default: this rule
+ * is what makes that default safe.
+ *
+ * Refused resources are NAMED, once per origin per call — a preparation that skips a basemap
+ * in silence sends a technician out with no background map.
+ *
+ * @param resources - Resources enumerated for one basemap or one tiled layer.
+ * @param source - What they belong to, for the warning (`basemap street`, `layer l1`).
+ * @returns The resources whose origin allows the preparation.
+ */
+function _keepPrefetchable<T extends { url: string }>(resources: T[], source: string): T[] {
+    if (resources.length === 0) return resources;
+    const origins = parseDataOrigins(coreConfigGet("modules.offline.dataOrigins", []));
+    const pageUrl = typeof location === "undefined" ? undefined : location.href;
+    const refused = new Set<string>();
+    const kept = resources.filter((resource) => {
+        const { allowed, origin } = prefetchVerdict(resource.url, origins, pageUrl);
+        if (!allowed) refused.add(origin);
+        return allowed;
+    });
+    for (const origin of refused) {
+        Log.warn(
+            `[ResourceEnumerator] ${source}: nothing downloaded from ${origin} — the origin is ` +
+                "not declared for offline preparation. If its terms allow downloading ahead of " +
+                'use, declare it in modules.offline.dataOrigins with "cacheable": true and ' +
+                '"prefetch": true.'
+        );
+    }
+    return kept;
 }
 
 const ResourceEnumerator = {
@@ -308,9 +348,12 @@ const ResourceEnumerator = {
                 });
             }
 
-            // Add tiles if tiled layer
+            // Add tiles if tiled layer — only those of an origin that allows the preparation
             if (layer.type === "tile" && _tilesRequested(selection)) {
-                const tiles = await this._enumerateTiles(layer, profileId);
+                const tiles = _keepPrefetchable(
+                    await this._enumerateTiles(layer, profileId),
+                    `layer ${layer.id}`
+                );
                 Log.info(`[ResourceEnumerator] Layer ${layer.id}: ${tiles.length} tiles`);
                 resources.push(...tiles);
             }
@@ -564,9 +607,22 @@ const ResourceEnumerator = {
             // Vector (MapLibre style) basemap → resolve style/tiles/glyphs/sprite (S3).
             // Raster basemap → enumerate XYZ tiles from the URL template.
             const isVector = basemap.type === "maplibre" || (!!basemap.style && !basemap.url);
-            const tiles = isVector
-                ? await this._addVectorBasemapResources(basemap, selection)
-                : await this._enumerateTiles(basemap, profileId);
+            // A style on an origin that refuses the preparation is not even fetched: resolving
+            // it is already a request to that origin, made only to prepare what is refused.
+            if (
+                isVector &&
+                basemap.style &&
+                !_keepPrefetchable([{ url: basemap.style, type: "style" }], `basemap ${basemap.id}`)
+                    .length
+            ) {
+                continue;
+            }
+            const tiles = _keepPrefetchable(
+                isVector
+                    ? await this._addVectorBasemapResources(basemap, selection)
+                    : await this._enumerateTiles(basemap, profileId),
+                `basemap ${basemap.id}`
+            );
 
             Log.info(`[ResourceEnumerator] Basemap ${basemap.id}: ${tiles.length} resources`);
             resources.push(...tiles);

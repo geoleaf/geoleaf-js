@@ -235,7 +235,7 @@ describe("PlacementMode — le clic résout le placement", () => {
     // 🛑 THIS TEST LOCKED THE DEFECT, and it is worth saying what it asserted: that a tap
     // near an existing feature RESOLVES TO THE NEIGHBOUR'S COORDINATES. Downstream, that
     // position opened a CREATION form — so the guard against duplicates built duplicates,
-    // perfectly superimposed and therefore indistinguishable in the ERP. What it verified
+    // perfectly superimposed and therefore indistinguishable in the server's records. What it verified
     // was faithful to the code; the code was wrong. Replaced by the three outcomes below.
     const NEAR = {
         latlng: { lat: -21.2, lng: 55.6 },
@@ -279,7 +279,7 @@ describe("PlacementMode — le clic résout le placement", () => {
 
     // 🛑 THE HEART OF THE FIX. Deliberately creating next to an existing feature must land
     // where the finger landed. Snapping onto the neighbour is what produced two records at
-    // the exact same coordinates, which no ERP can tell apart afterwards.
+    // the exact same coordinates, which no server can tell apart afterwards.
     it("« Créer quand même » garde la coordonnée du TAP, pas celle du voisin", async () => {
         _findNearbyFeature.mockReturnValue(NEAR);
         _choose.mockResolvedValue("create");

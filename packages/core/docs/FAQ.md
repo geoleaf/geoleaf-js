@@ -98,26 +98,34 @@ tiles are handled by MapLibre's own vector sources.
 **ESM/npm:**
 
 ```ts
+import * as maplibregl from "maplibre-gl";
 import { Core } from "@geoleaf/core";
+
+// GeoLeaf reads the engine from `globalThis.maplibregl`, which MapLibre 6 no longer sets
+Object.assign(globalThis, { maplibregl });
 Core.init({ mapId: "map", center: [48.8566, 2.3522], zoom: 12 });
 ```
 
 ### How do I load a JSON profile?
 
+With `GeoLeaf.boot()`, from the configuration file that names the profile (`data.activeProfile`,
+`data.profilesBasePath`):
+
 ```js
-GeoLeaf.Core.init({
-    mapId: "map",
-    configUrl: "/profiles/my-profile.json",
+GeoLeaf.boot({ configUrl: "/geoleaf.config.json" });
+```
+
+Or, when the configuration is already in memory — no request is issued for it:
+
+```js
+GeoLeaf.boot({
+    // The profile is read from `${profilesBasePath}/${activeProfile}/profile.json`
+    config: { data: { activeProfile: "my-profile", profilesBasePath: "/profiles" } },
 });
 ```
 
-Or using the `loadConfig` method:
-
-```js
-await GeoLeaf.loadConfig("/profiles/my-profile.json");
-// or with an inline object:
-await GeoLeaf.loadConfig({ map: { center: [48.8566, 2.3522], zoom: 12 } });
-```
+`Core.init()` does not load a profile: it creates a map and reads no configuration, and a
+`configUrl` passed to it is ignored without a word.
 
 ---
 

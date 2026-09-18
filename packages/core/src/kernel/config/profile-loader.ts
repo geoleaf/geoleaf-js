@@ -14,6 +14,7 @@ import { ConfigLoader } from "./loader.js";
 import { seedStyleDocuments } from "../../utils/loaders/style-cache.js";
 import { isUnsafeKey } from "../../utils/general/object-path-guard.js";
 import { layerDataPath } from "../../utils/general/layer-data-path.js";
+import { recordProfileFailure } from "./profile-load-report.js";
 import {
     validateFiles as _validateFiles,
     validateBasemaps as _validateBasemaps,
@@ -168,6 +169,12 @@ const ProfileLoader = {
                 );
             } catch (err) {
                 Log.warn("[ProfileLoader] Error loading themes.json:", err);
+                recordProfileFailure({
+                    resource: "Files.themesFile",
+                    url: `${baseUrl}/${themesFile}?t=${timestamp}`,
+                    required: true,
+                    error: err,
+                });
                 return null;
             }
         }
@@ -200,6 +207,12 @@ const ProfileLoader = {
                 );
             } catch (err) {
                 Log.warn("[ProfileLoader] Error loading layers.json:", err);
+                recordProfileFailure({
+                    resource: "Files.layersFile",
+                    url: `${baseUrl}/${layersFile}?t=${timestamp}`,
+                    required: true,
+                    error: err,
+                });
                 return null;
             }
         }
@@ -208,7 +221,8 @@ const ProfileLoader = {
 
     /**
      * Fetches an optional section file referenced in `profile.Files` (e.g. basemapsFile, uiFile).
-     * Returns null silently if the file is not declared or fails to load.
+     * Returns null when the file is not declared, or when it fails to load — a failure that is
+     * then recorded in the profile load report (`profile-load-report.ts`).
      * @param profile - The profile object.
      * @param fileKey - Key in `profile.Files` pointing to the section file name.
      * @param baseUrl - Base URL for resolving the file path.
@@ -233,6 +247,14 @@ const ProfileLoader = {
             );
         } catch (err) {
             Log.warn(`[ProfileLoader] Error loading ${String(fileKey)} (${fileName}):`, err);
+            recordProfileFailure({
+                resource: `Files.${String(fileKey)}`,
+                url: `${baseUrl}/${fileName}?t=${timestamp}`,
+                // The profile contract requires `basemaps` and `ui`; `features` and `mapping` are
+                // optional — declared, they are still reported, and flagged as optional.
+                required: fileKey === "basemapsFile" || fileKey === "uiFile",
+                error: err,
+            });
             return null;
         }
     },
@@ -240,8 +262,8 @@ const ProfileLoader = {
     /**
      * Fetches every plugin config file declared in `Files.modules` (profile
      * layout v2) and returns the resulting bag `{ moduleId: config }`.
-     * Files are fetched in parallel; a missing or invalid file logs a warning
-     * and is skipped (the module simply has no file-based config).
+     * Files are fetched in parallel; a missing or invalid file logs a warning, is recorded in
+     * the profile load report, and is skipped (the module simply has no file-based config).
      * @param profile - The profile object.
      * @param baseUrl - Base URL for resolving plugin config file paths.
      * @param timestamp - Opaque cache token appended to fetch URLs. Not necessarily a date.
@@ -271,6 +293,12 @@ const ProfileLoader = {
                     return [moduleId, config ?? null] as const;
                 } catch (err) {
                     Log.warn(`[ProfileLoader] Error loading Files.modules.${moduleId}:`, err);
+                    recordProfileFailure({
+                        resource: `Files.modules.${moduleId}`,
+                        url: `${baseUrl}/${filePath}?t=${timestamp}`,
+                        required: false,
+                        error: err,
+                    });
                     return [moduleId, null] as const;
                 }
             })
@@ -335,6 +363,12 @@ const ProfileLoader = {
                 };
             } catch (err) {
                 Log.error(`[ProfileLoader] Error loading ${layerRef.configFile}:`, err);
+                recordProfileFailure({
+                    resource: layerRef.configFile ?? layerRef.id,
+                    url: `${baseUrl}/${layerRef.configFile}?t=${timestamp}`,
+                    required: true,
+                    error: err,
+                });
                 return {
                     id: layerRef.id,
                     config: null,
@@ -392,6 +426,63 @@ const ProfileLoader = {
                 timestamp,
                 fetchOptions
             );
+        }
+    },
+
+    /**
+     * Records every resource the profile DECLARES that the bundle does not carry.
+     *
+     * The bundle compiler skips a declared file it cannot read, without a word
+     * (`scripts/lib/bundle-profiles.cjs`), and `_processBundle` merges whatever is there — so on
+     * the production path a missing section was not even an error. The cascade records its
+     * failures where they happen; this is the bundle path's equivalent.
+     *
+     * @param profile - The base profile (`profile.json`), which declares the files.
+     * @param bundle - The bundle payload.
+     * @param expandedLayers - The layers after template expansion.
+     * @param layerConfigsMap - The bundle's layer configurations, by layer id.
+     * @param baseUrl - The profile's base URL, for the reported URLs.
+     */
+    _recordBundleGaps(
+        profile: ProfileWithFiles,
+        bundle: Record<string, unknown>,
+        expandedLayers: LayerRef[],
+        layerConfigsMap: Record<string, Record<string, unknown>>,
+        baseUrl: string
+    ): void {
+        const files = profile.Files;
+        if (!files) return;
+        const absent = (resource: string, file: string, required: boolean): void =>
+            recordProfileFailure({
+                resource,
+                url: `${baseUrl}/${file}`,
+                required,
+                error: "declared, but absent from the profile bundle",
+            });
+        const sections = [
+            ["themesFile", "themes", true],
+            ["layersFile", "layersFile", true],
+            ["basemapsFile", "basemaps", true],
+            ["uiFile", "ui", true],
+            ["featuresFile", "features", false],
+            ["mappingFile", "mapping", false],
+        ] as const;
+        for (const [key, section, required] of sections) {
+            const file = files[key];
+            if (file && bundle[section] === undefined) absent(`Files.${key}`, file, required);
+        }
+        const bundledModules = (bundle.modules ?? {}) as Record<string, unknown>;
+        for (const [moduleId, file] of Object.entries(files.modules ?? {})) {
+            if (isUnsafeKey(moduleId) || !file) continue;
+            if (!Object.hasOwn(bundledModules, moduleId)) {
+                absent(`Files.modules.${moduleId}`, file, false);
+            }
+        }
+        for (const layer of expandedLayers) {
+            if (layer.inlineConfig || !layer.configFile) continue;
+            if (!Object.hasOwn(layerConfigsMap, layer.id)) {
+                absent(layer.configFile, layer.configFile, true);
+            }
         }
     },
 
@@ -460,6 +551,9 @@ const ProfileLoader = {
             layersSource: expandedLayers,
             layersConfigs,
         });
+        // Recorded LAST: a throw above sends `_loadBundledProfile` to the cascade, which
+        // reports its own failures — gaps recorded before it would describe a bundle not used.
+        this._recordBundleGaps(profile, bundle, expandedLayers, layerConfigsMap, baseUrl);
         Log.info("[ProfileLoader] bundle loaded", {
             profileId,
             hasThemes: !!enrichedProfile.themes,

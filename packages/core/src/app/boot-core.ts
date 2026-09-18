@@ -21,7 +21,7 @@
  *   Pass 2  registerPresetModules       (every lifecycle module, each wrapping its gate)
  *   loadActiveProfileResources()        → effectiveCfg (profile merged in)
  *   beforeBoot hook                     (auth gate; throwing aborts)
- *   registry.init(adapter, effectiveCfg)
+ *   registry.init(adapter, effectiveCfg, { onModuleError })
  * ```
  *
  * Everything that belongs to **module-eval** — the `?perf=1` latch, the kernel module
@@ -50,8 +50,25 @@
 
 import { MaplibreAdapter } from "../adapters/maplibre/maplibre-adapter.js";
 import { CapabilityRegistry } from "../kernel/api/capability-registry.js";
+import {
+    getProfileLoadReport,
+    resetProfileLoadReport,
+    type ProfileLoadReport,
+} from "../kernel/config/profile-load-report.js";
+import {
+    abortBoot,
+    beginBoot,
+    failBoot,
+    noteModuleFailure,
+    noteProfileFailures,
+    pauseWatchdog,
+    resumeWatchdog,
+    setBootPhase,
+} from "./boot-failure.js";
+import { hideBootVeil } from "./init-reveal.js";
 import { registerPresetDeclarations, registerPresetModules } from "../presets/apply-preset.js";
 import { PROFILE_STORAGE_KEY, SELECTED_PROFILE_STORAGE_KEY } from "../kernel/shared/index.js";
+import type { ModuleInitFailure } from "../contracts/core-module.contract.js";
 import type { PresetManifest } from "../contracts/preset.contract.js";
 import type { ModuleRegistry } from "./module-registry.js";
 import type { AppNamespace, BootOptions } from "./app-types.js";
@@ -192,19 +209,59 @@ function _resolveConfigSource(
         : { url: explicitUrl ?? profilesPath + "geoleaf.config.json" };
 }
 
+/** The message of whatever was thrown: a failure detail carries text, never the object. */
+function _errorMessage(err: unknown): string {
+    return err instanceof Error ? err.message : String(err);
+}
+
+/**
+ * What a module that throws does to the boot — decided by what depends on it.
+ *
+ * The interface chain is fatal: without `ui` the application is never revealed, so the boot
+ * fails and names the module. Any other module is isolated: the registry skips the modules that
+ * depend on it, and the rest of the application starts without them.
+ *
+ * @param failure - The module that failed, as the registry reports it.
+ * @param AppLog - The boot logger: the raw error, stack included, goes to the console.
+ * @returns `"abort"` for the interface chain, `"continue"` otherwise.
+ */
+function _onModuleError(
+    failure: ModuleInitFailure,
+    AppLog: AppNamespace["AppLog"]
+): "continue" | "abort" {
+    AppLog.warn(`[Registry] module '${failure.id}' failed in init():`, failure.error);
+    const message = _errorMessage(failure.error);
+    if (failure.id === "ui" || failure.skipped.includes("ui")) {
+        failBoot({ reason: "module", phase: "registry", message, module: failure.id });
+        return "abort";
+    }
+    noteModuleFailure({ module: failure.id, message, skipped: failure.skipped });
+    return "continue";
+}
+
 /**
  * Loads the configuration, composes the preset's capabilities and hands over to the
- * `ModuleRegistry`. Resolves once every module's `init()` has run (or has failed —
- * a registry failure is logged, not thrown, exactly as before).
+ * `ModuleRegistry`. Resolves once every module's `init()` has run, or once the boot has
+ * failed — never with a throw.
  *
- * Returns early — without side effects — when the namespace is unusable, when
- * `GeoLeaf.loadConfig` is missing, on a second boot call, or when the `beforeBoot`
- * hook rejects.
+ * A failure is never silent: the configuration, the profile and the registry each report
+ * theirs through `app/boot-failure.ts` (`geoleaf:boot:failed`, and the failure screen in the
+ * `#gl-loader` veil unless a host cancels the event), and a watchdog reports a boot that stops
+ * progressing. Declared profile resources that failed while a map can still show hold the
+ * reveal on a screen that names them. A module that throws is judged by what depends on it: in
+ * the interface chain (`ui`, or a module `ui` depends on) the boot fails and names it; anywhere
+ * else it is isolated — `geoleaf:module:failed`, the modules that depend on it skipped, and the
+ * reveal held on a screen that names it.
+ *
+ * Returns early — before any signal — when the namespace is unusable, when
+ * `GeoLeaf.loadConfig` is missing, or on a second boot call. A `beforeBoot` hook that rejects
+ * aborts the boot: `geoleaf:boot:aborted`, and the veil is hidden for the host.
  *
  * @param preset - The active preset manifest (the capabilities this bundle embarks).
  * @param ctx - The boot collaborators (see {@link BootContext}).
  * @param options - Caller options. `config` / `configUrl` decide where the configuration
  *   comes from (see {@link _resolveConfigSource}); absent, the historical path is used.
+ *   `watchdogMs` sets the watchdog (default 45 s, `0` disables it).
  */
 /* eslint-disable max-lines-per-function -- boot sequence: ordering IS the contract
    `bootWithPreset` is ~170 linear lines whose VALUE is the order of its steps (B1→B11,
@@ -248,6 +305,11 @@ export async function bootWithPreset(
     }
     _app._appStarted = true;
 
+    // From here on the boot is under watch: a failure is SIGNALLED (`boot-failure.ts`), and a
+    // boot that stops progressing is reported by the watchdog — never a spinner that turns
+    // forever. After the double-boot guard, so a refused second call cannot reset the first.
+    beginBoot(options, GeoLeaf._version);
+
     // perf 5 — start bound of `geoleaf:startup-total`. UNCONDITIONAL on purpose, and it
     // must stay that way: the matching `geoleaf:initApp:ready` mark and the `measure()`
     // that consumes both live in `init-reveal.ts` and are unconditional too. Only
@@ -280,16 +342,21 @@ export async function bootWithPreset(
     const configSource = _resolveConfigSource(options, profilesPath, AppLog);
 
     // perf 5.4: wrap loadConfig (callback) in a Promise to enable chaining
+    setBootPhase("config");
     _pm("geoleaf:boot:loadConfig:start");
     const loadConfig = asFn(GeoLeaf.loadConfig);
     const configPromise = new Promise((resolve, reject) => {
-        loadConfig?.call(GeoLeaf, {
+        const pending = loadConfig?.call(GeoLeaf, {
             ...configSource,
             profileId: selectedProfile,
             autoEvent: true,
             onLoaded: resolve,
             onError: reject,
         });
+        // `GeoLeaf.loadConfig` returns its loading promise. A configuration that fails
+        // validation rejects it WITHOUT calling `onError`: that rejection used to be dropped,
+        // and the boot waited forever for a callback that never came.
+        if (pending instanceof Promise) pending.then(undefined, reject);
     });
 
     let cfg;
@@ -298,6 +365,7 @@ export async function bootWithPreset(
         AppLog.log("Config loaded via GeoLeaf.loadConfig:", cfg || {});
     } catch (err) {
         AppLog.error("Error loading config via GeoLeaf.loadConfig:", err);
+        failBoot({ reason: "config", phase: "config", message: _errorMessage(err) });
         return;
     }
     _pm("geoleaf:boot:loadConfig:end");
@@ -335,20 +403,49 @@ export async function bootWithPreset(
     let effectiveCfg: Record<string, unknown> = baseCfg;
     const loadActiveProfileResources = asFn(member(GeoLeaf.Config, "loadActiveProfileResources"));
     if (loadActiveProfileResources) {
+        setBootPhase("profile");
+        // A clean report even when the loader is not the kernel's: the boot must never read
+        // the record of a load it did not start.
+        resetProfileLoadReport();
         try {
             _pm("geoleaf:boot:profileResources:start");
             const profileCfg = await loadActiveProfileResources.call(GeoLeaf.Config);
             _pm("geoleaf:boot:profileResources:end");
-            AppLog.info("Active profile resources loaded.");
             effectiveCfg = asObject(profileCfg) || baseCfg;
         } catch (err) {
+            // It used to continue on the base configuration: a map without its profile, and
+            // not a word about it.
             AppLog.warn("Error loading profile resources:", err);
+            failBoot({ reason: "profile", phase: "profile", message: _errorMessage(err) });
+            return;
         }
+        const report: ProfileLoadReport = getProfileLoadReport();
+        if (report.fatal) {
+            const cause = report.failures[0];
+            failBoot({
+                reason: "profile",
+                phase: "profile",
+                message: cause
+                    ? `${cause.resource}: ${cause.message}`
+                    : "The active profile could not be loaded.",
+            });
+            return;
+        }
+        // Declared resources that failed while a map can still show: the reveal is held on a
+        // screen that names them — unless a host cancelled `geoleaf:profile:failed`.
+        if (report.failures.length > 0) {
+            noteProfileFailures(report.failures, { hold: !report.prevented });
+        }
+        AppLog.info("Active profile resources loaded.");
     }
 
     // ── beforeBoot hook (A.5.1): auth gate before map creation ──────────────
     // Receives the merged profile config. Throwing aborts boot.
     if (typeof GeoLeaf._beforeBootCallback === "function") {
+        setBootPhase("before-boot");
+        // PAUSED, not stretched: an authentication gate waits on a human, and no duration is
+        // long enough for that. The watchdog resumes, for a full period, once the hook returns.
+        pauseWatchdog();
         try {
             await (
                 GeoLeaf._beforeBootCallback as (ctx: {
@@ -357,6 +454,7 @@ export async function bootWithPreset(
             )({ config: effectiveCfg as Readonly<Record<string, unknown>> });
         } catch (err) {
             AppLog.warn("[beforeBoot] Auth hook rejected — boot aborted:", err);
+            abortBoot();
             document.dispatchEvent(
                 new CustomEvent("geoleaf:boot:aborted", {
                     detail: { reason: err },
@@ -364,26 +462,38 @@ export async function bootWithPreset(
                     cancelable: false,
                 })
             );
+            // The host refused the boot and owns what comes next: the veil used to stay up
+            // forever, over whatever the host draws.
+            hideBootVeil();
             return;
         }
+        resumeWatchdog();
     }
     // ─────────────────────────────────────────────────────────────────────────
 
     // ── registry.init() is the sole runtime orchestrator. ────────────────────
     // Modules receive the complete merged config; CoreMapModule.init() creates
     // the map, UIModule.init() wires UI + features + fires geoleaf:app:ready.
+    setBootPhase("registry");
     const _adapter = new MaplibreAdapter();
 
     try {
         _pm("geoleaf:boot:registry:start");
-        await _registry.init(_adapter, effectiveCfg as unknown as IGeoLeafConfig);
+        await _registry.init(_adapter, effectiveCfg as unknown as IGeoLeafConfig, {
+            onModuleError: (failure) => _onModuleError(failure, AppLog),
+        });
         _pm("geoleaf:boot:registry:end");
         AppLog.log(
             "[Registry] Modules initialized:",
             _registry.getAll().map((m) => m.id)
         );
     } catch (err) {
+        // Two roads lead here. A module of the interface chain threw: `_onModuleError` has
+        // already failed the boot and named it, so the call below is ignored. Or the registry
+        // refused the graph before any module ran — a dependency cycle, or a dependency that is
+        // not registered.
         AppLog.warn("[Registry] init() failed:", err);
+        failBoot({ reason: "module", phase: "registry", message: _errorMessage(err) });
     }
     // ─────────────────────────────────────────────────────────────────────────
 }

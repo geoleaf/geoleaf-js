@@ -52,7 +52,12 @@ export const OFFLINE_CAPABILITY: ICapabilityDeclaration = {
                 "Origins the profile declares, with what each may serve and whether it is " +
                 "cacheable. REPLACES routing by guesswork in the Service Worker — hostname " +
                 "substrings, path sniffing, a hardcoded provider domain and a blanket `/api/` " +
-                "exclusion. An undeclared origin is not routed to any cache.",
+                "exclusion. An undeclared origin is not routed to any cache. Each entry: " +
+                "`origin`, `roles`, an explicit `cacheable`, optional `authenticated`, and " +
+                "optional `prefetch` — true when the origin's terms allow downloading AHEAD of " +
+                "use. The offline preparation downloads basemap and tiled-layer resources only " +
+                "from the application's own origin or from an origin declared `cacheable: true` " +
+                "and `prefetch: true`.",
             default: [],
         },
         banner: {
@@ -111,7 +116,11 @@ export const OFFLINE_CAPABILITY: ICapabilityDeclaration = {
                 enableTileCache: {
                     type: "boolean",
                     default: true,
-                    description: "Cache the raster/vector map tiles.",
+                    description:
+                        "Download the raster/vector map tiles of offline basemaps and tiled " +
+                        "layers. A veto: `false` wins over any selection. At `true`, tiles come " +
+                        "only from the application's own origin or from an origin declared " +
+                        "`prefetch: true` in `dataOrigins` — never from an undeclared third party.",
                 },
                 maxCacheBytes: {
                     type: "number",

@@ -1,7 +1,7 @@
 # Tests E2E Playwright — variantes de déploiement
 
-**Deux projets Playwright** — `chromium` (souris, l'immense majorité) et `chromium-touch`
-(14/08/2026). Chaque spec vise **une variante de déploiement**, désignée par son nom logique —
+**Projets Playwright** — `chromium` (souris, l'immense majorité), `chromium-touch`
+(14/08/2026), `webkit` et `webkit-touch` (12/09/2026, bornés). Chaque spec vise **une variante de déploiement**, désignée par son nom logique —
 jamais par un port. ⚠️ **Ni le nombre de tests ni le nombre de fichiers ne sont recopiés ici** :
 les deux divergent à chaque commit. `npx playwright test --list` les rend, et
 `ls e2e/*.spec.js | wc -l` compte les fichiers.
@@ -28,6 +28,41 @@ Trois contraintes, chacune capable de le rendre silencieux si on l'oublie :
   que Playwright utilise lui-même pour `tap()`, donc des événements `isTrusted` dont le navigateur
   dérive les `pointer*`. Un `new TouchEvent()` dispatché depuis la page n'en dérive **aucun**, et
   ne peut donc pas éprouver un moteur de dessin qui n'écoute que les Pointer Events.
+
+### Les projets `webkit` et `webkit-touch`
+
+WebKit est le moteur de tout navigateur iOS, et aucune spec ne l'avait jamais exécuté : les verdicts
+mobiles de la suite étaient des déductions que rien dans le dépôt ne pouvait confirmer. Les deux
+projets sont **bornés** — leur `testMatch` NOMME les specs éprouvées sur ce moteur :
+
+- ⚠️ **Une spec n'y entre qu'après y avoir été vue verte**, jamais par motif : la suite a été écrite
+  contre Chromium, et un premier passage sous WebKit est une mesure, pas une gate.
+- 🛑 **`launchOptions: {}` est obligatoire.** Le `use.launchOptions` du niveau config porte des
+  drapeaux Chromium (SwiftShader, `--host-resolver-rules`), et Playwright fusionne `use` clé par
+  clé : sans cette surcharge, WebKit les recevrait.
+- ⚠️ **`webkit-touch` prend l'user-agent de Safari desktop**, pas un préréglage iPhone : un UA iOS
+  ouvre la bannière d'installation PWA, un tiroir posé sur ce que les specs mesurent.
+- ⚠️ **Pas de CDP sous WebKit** : `helpers/touch.js` refuse tout autre moteur par son nom, donc
+  `33-measure-drag.touch.spec.js` ne peut pas rejoindre `webkit-touch`.
+- ⚠️ **Sous la cible `nginx`**, WebKit résout les vhosts par le résolveur système, sans
+  `--host-resolver-rules` : `demo.` et `demo.full.` se résolvent sur le poste, `demo.coverage.`
+  non. Aucune spec visant `coverage` dans ces projets.
+- 🛑 **Hors ligne, ce WebKit ne lit plus AUCUN Blob ni File local** — mesuré le 12/09/2026. Sous
+  `context.setOffline(true)`, `FileReader` rejette en `NotReadableError` et `fetch(blob:)` échoue,
+  en contexte éphémère comme persistant ; la lecture revient en ligne, et Chromium les lit hors
+  ligne comme tout navigateur réel. S'y ajoute un second trait : ses contextes sont non persistants,
+  et IndexedDB y refuse les valeurs Blob/File. `39-editor-photo-token.spec.js`, qui joint sa photo
+  hors réseau, est donc **hors** du projet `webkit` — le motif est écrit dans `playwright.config.js`.
+- ⚠️ **`(pointer: coarse)` correspond sous `webkit-touch`** (mesuré le 12/09/2026) : `hasTouch` et
+  `isMobile` suffisent, la précondition du cas T2 de la spec 42 tient sans rien ajouter.
+- ⚠️ **Le service worker s'enregistre sous `nginx` SANS drapeau** : le `ignoreHTTPSErrors` du contexte
+  suffit à WebKit, là où Chromium exige `--ignore-certificate-errors` (`helpers/base-url.js`). Il prend
+  la page — mais les requêtes que les specs de l'éditeur interceptent au boot partent avant (mesuré :
+  `page.route` voit une fois `profile-bundle.json` et le GeoJSON du polygone). Une interception plus
+  tardive lui échapperait : `serviceWorkers: "block"` en est alors le remède.
+- 📌 **Premier passage vert le 12/09/2026, sous la cible `nginx` seulement.** `ports`, la référence,
+  ne l'a pas joué : démarrer un serveur est interdit en session. Le cron E2E du dépôt public, qui
+  installe WebKit et lance tous les projets sur `ports`, le jouera une fois ce travail porté.
 
 > 🛑 Cette ligne a annoncé « **41 fichiers de specs** » jusqu'au 08/08/2026, dans la phrase même
 > qui refusait de recopier le décompte des tests — mesure du jour : **42**. Le 41 avait été posé le
@@ -80,6 +115,16 @@ avant de conclure. `ports` est la cible contre laquelle les assertions ont été
 ```bash
 npx turbo run build && npm run build:deploy:all && node scripts/build-deploy-coverage.cjs
 ```
+
+WebKit demande en plus ses **bibliothèques système**, une fois par poste :
+
+```bash
+sudo npx playwright install-deps webkit
+```
+
+Sans elles, WebKit est téléchargé mais ne démarre pas. `scripts/verify-playwright-browsers.cjs`, le
+préambule de `ci:local --e2e`, lance chaque navigateur déclaré et lui demande un contexte WebGL2 :
+il refuse — sortie 2 — en nommant cette commande.
 
 🛑 **Ce bloc a omis `turbo run build` jusqu'au 08/08/2026, et l'omission ne se voit pas : elle sort
 en code 0.** `build-deploy.cjs` **assemble** depuis les `dist/` existants et n'en rebâtit qu'une

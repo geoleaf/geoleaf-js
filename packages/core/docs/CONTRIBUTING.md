@@ -355,7 +355,7 @@ export function mainFeature(data: unknown): unknown {
 - [ ] **Input validation** — every user input validated
     - `JSON.parse()` wrapped in try/catch
     - No `Object.assign()` with untrusted data (prototype pollution)
-- [ ] **CSRF protection** — CSRF tokens for forms and mutations
+- [ ] **Authenticated writes** — through the connector's bearer token, never a token minted in the browser
 - [ ] **No-plugin-in-core** — no reference to `@geoleaf-plugins/*` inside `packages/core/src/`
 
 #### Tests & Coverage

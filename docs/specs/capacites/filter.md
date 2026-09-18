@@ -4,7 +4,7 @@ title: filter — le filtre attributaire générique, et son contrat sérialisab
 capability_id: filter
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 2fcbba8a
+verifie_contre: 77b24edeb
 date: 1er septembre 2026
 ---
 

@@ -14,12 +14,15 @@
  * - Detects circular dependencies at `init()` time and throws a `GeoLeafError`
  *   with the full cycle path (e.g. `"A → B → A"`).
  * - Calls each module's `init()` in dependency order, `destroy()` in reverse.
+ * - With `onModuleError`, isolates a module whose `init()` throws: the modules that depend on
+ *   it are skipped, and every other module still runs.
  */
 
 import type {
     ICoreModule,
     IModuleRegistry,
     IModuleUISlot,
+    ModuleInitOptions,
 } from "../contracts/core-module.contract.ts";
 import type { IMapAdapter } from "../contracts/map-adapter.contract.ts";
 import type { IGeoLeafConfig } from "../contracts/config.contract.ts";
@@ -49,6 +52,13 @@ export class ModuleRegistry implements IModuleRegistry {
 
     /** Guards against double-init and late registration. */
     private _initialized = false;
+
+    /**
+     * Modules whose `init()` failed under `onModuleError: () => "continue"`, and the modules
+     * skipped because they depend on one — neither is running. Cleared by `destroy()`.
+     */
+    private readonly _failed = new Set<string>();
+    private readonly _skipped = new Set<string>();
 
     // ── register ──────────────────────────────────────────────────────────────
 
@@ -114,7 +124,11 @@ export class ModuleRegistry implements IModuleRegistry {
 
     // ── init ──────────────────────────────────────────────────────────────────
 
-    async init(adapter: IMapAdapter, config: IGeoLeafConfig): Promise<void> {
+    async init(
+        adapter: IMapAdapter,
+        config: IGeoLeafConfig,
+        options: ModuleInitOptions = {}
+    ): Promise<void> {
         if (this._initialized) {
             // Safe to call twice (idempotent guard — no-op on second call).
             return;
@@ -125,12 +139,50 @@ export class ModuleRegistry implements IModuleRegistry {
         this._initialized = true;
 
         for (const id of order) {
+            // A module it depends on failed, and the caller chose to go on: it never runs.
+            if (this._skipped.has(id)) continue;
             const mod = this._modules.get(id)!;
             // UI-only slots (no init) are tolerated if present in the order — skip them.
             if (typeof mod.init === "function") {
-                await Promise.resolve(mod.init(adapter, config));
+                try {
+                    await Promise.resolve(mod.init(adapter, config));
+                } catch (error) {
+                    this._isolateFailure(id, error, options);
+                }
             }
         }
+    }
+
+    /**
+     * Isolates a module whose `init()` failed, when the caller asked to go on: the module is
+     * marked failed, and every module that depends on it is marked skipped.
+     *
+     * Without `onModuleError`, or when it answers anything but `"continue"`, the module's error
+     * is rethrown — `init()` rejects with it, as it always has.
+     *
+     * @throws The module's own error, unless `onModuleError` answers `"continue"`.
+     */
+    private _isolateFailure(id: string, error: unknown, options: ModuleInitOptions): void {
+        const onModuleError = options.onModuleError;
+        if (!onModuleError) throw error;
+        const skipped = this._dependentsOf(id);
+        if (onModuleError({ id, error, skipped }) !== "continue") throw error;
+        this._failed.add(id);
+        for (const dependent of skipped) this._skipped.add(dependent);
+    }
+
+    /** Every module that depends on `id`, directly or not, in initialisation order. */
+    private _dependentsOf(id: string): string[] {
+        const found = new Set<string>();
+        const pending = [id];
+        for (let current = pending.pop(); current !== undefined; current = pending.pop()) {
+            for (const mod of this._modules.values()) {
+                if (found.has(mod.id) || !(mod.dependencies ?? []).includes(current)) continue;
+                found.add(mod.id);
+                pending.push(mod.id);
+            }
+        }
+        return this._initOrder.filter((candidate) => found.has(candidate));
     }
 
     // ── get / has / getAll / getUISlots ───────────────────────────────────────
@@ -202,9 +254,16 @@ export class ModuleRegistry implements IModuleRegistry {
      *
      * ⚠️ A wrapper answers `false` until its `init()` has run. Called mid-boot, this method
      * lists the kernel only — which is the honest answer: nothing else has started yet.
+     *
+     * ## A module that failed is not active, whatever its gate says
+     *
+     * Under `init(…, { onModuleError: () => "continue" })`, a module whose `init()` threw, and
+     * every module skipped because it depends on one, are left out: a gate says whether a
+     * capability is switched on, not whether it started.
      */
     getActiveModules(): readonly IModuleInfo[] {
         return Array.from(this._modules.values())
+            .filter((mod) => !this._failed.has(mod.id) && !this._skipped.has(mod.id))
             .filter((mod) => {
                 const gated = mod as { isEnabled?: unknown };
                 return typeof gated.isEnabled === "function"
@@ -223,6 +282,9 @@ export class ModuleRegistry implements IModuleRegistry {
     destroy(): void {
         const reverseOrder = [...this._initOrder].reverse();
         for (const id of reverseOrder) {
+            // Skipped because a module it depends on failed: it never ran, so there is nothing to
+            // tear down. The module that failed IS torn down — its `init()` may have run in part.
+            if (this._skipped.has(id)) continue;
             const mod = this._modules.get(id);
             if (!mod) continue;
             // UI-only slots (no destroy) are tolerated if present in the order — skip them.
@@ -242,6 +304,8 @@ export class ModuleRegistry implements IModuleRegistry {
         // left to walk instead of destroying every module twice.
         this._initOrder = [];
         this._initialized = false;
+        this._failed.clear();
+        this._skipped.clear();
 
         // `_modules` is deliberately NOT cleared: the 6 kernel modules are registered once, at
         // bundle eval (`boot-install.ts`). Purging them would leave an empty registry

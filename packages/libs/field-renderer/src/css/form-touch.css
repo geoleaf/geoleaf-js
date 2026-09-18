@@ -1,0 +1,84 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   @geoleaf/field-renderer — Touch block
+   The ONE place the form adapts to a finger. Imported last by `ui/responsive-modal.ts`,
+   so it wins the ties inside this package.
+
+   - 16px on every text control: WebKit zooms the page into a focused control under 16px,
+     and the user has to zoom back out after every field.
+   - 44×44px on every target. A cross keeps its small glyph; its BOX grows — with negative
+     margins where it sits inside a chip — so the layout does not jump.
+   - `min-width` / `min-height` on the buttons, never `width` / `height`: the dialog sheet of
+     `@geoleaf/host-runtime`, adopted later in the page, sets `height: 36px` on the same
+     classes, and a minimum wins over a height whatever the order of the sheets.
+
+   Keyed on `(pointer: coarse)`, not on the drawer's width: a tablet shows the centred modal
+   and still has a finger; a narrow desktop window shows the drawer and has a mouse.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (pointer: coarse) {
+    /* The doubled selectors match the two overrides that shrink these controls. */
+    .gl-form-input,
+    .gl-form-modal__layer .gl-form-input,
+    .gl-form-table__editor .gl-form-input,
+    .gl-form-tags__input {
+        font-size: 16px;
+        min-height: 44px;
+    }
+
+    .gl-form-modal__btn--close,
+    .gl-form-modal__btn-cancel,
+    .gl-form-modal__btn-save,
+    .gl-form-modal__btn-delete,
+    .gl-form-list__add,
+    .gl-form-list__remove,
+    .gl-form-table__add-row,
+    .gl-form-table__remove-row,
+    .gl-form-coordinates__capture,
+    .gl-form-badge__color,
+    .gl-form-rating__star,
+    .gl-form-hours__copy-all,
+    .gl-form-reviews__add,
+    .gl-form-reviews__remove {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .gl-form-radio__item,
+    .gl-form-checkbox__item,
+    .gl-form-tags__wrap {
+        min-height: 44px;
+    }
+
+    .gl-form-tags__wrap {
+        row-gap: 12px;
+    }
+
+    /* A chip's cross: a 44px box around the same small glyph, pulled into the chip by negative
+       margins, so the chip grows to 32px rather than to 44px. */
+    .gl-form-tag {
+        min-height: 32px;
+    }
+
+    .gl-form-tag__remove {
+        min-width: 44px;
+        min-height: 44px;
+        margin: -6px -10px -6px -4px;
+    }
+
+    /* A thumbnail's cross: a 44px box whose painted disc stays small. */
+    .gl-form-image__remove,
+    .gl-form-gallery__remove {
+        top: 0;
+        right: 0;
+        width: 44px;
+        height: 44px;
+        padding: 10px;
+        background-clip: content-box;
+    }
+
+    .gl-form-gallery__item,
+    .gl-form-gallery__add-slot {
+        width: 96px;
+        height: 96px;
+    }
+}

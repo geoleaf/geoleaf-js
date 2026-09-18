@@ -72,8 +72,13 @@
  *     and it is a CONDITIONED refusal, whose reopening condition is the
  *     first announcement whose `since` designates a published version.
  *   • **"surviving at least one published `minor`"** requires knowing the
- *     PUBLISHED versions, which this repo reads nowhere. `removeIn` = next
- *     MAJOR is that duration's verifiable half, and it is the one held.
+ *     PUBLISHED versions, which this repo reads nowhere. `removeIn` = a LATER
+ *     minor of the current line is that duration's verifiable half, and it is
+ *     the one held (`lib/deprecation-timing.cjs` — no other major line is
+ *     planned, so a `x.0.0` would name a version that never comes).
+ *   • **Whether the pre-adoption window is still open** — the policy allows a
+ *     removal only while it is — is a fact about downstream consumers, and it
+ *     is not read either.
  *   • **`deprecated_since` in the manifest** is a DOWNSTREAM
  *     acknowledgement. Requiring it would turn the gate red for a gesture
  *     upstream cannot make.
@@ -92,6 +97,7 @@ const cm = require("./lib/consumer-manifest.cjs");
 const ev = require("./lib/event-names.cjs");
 const docsPaths = require("./lib/docs-paths.cjs");
 const { readInterfaceMembers } = require("./lib/ts-decl-read.cjs");
+const { judgeTiming } = require("./lib/deprecation-timing.cjs");
 
 const ROOT = registry.ROOT;
 const TAG = cm.TAG;
@@ -487,7 +493,6 @@ function jugerAnnonce(chemin, a, ctx) {
     const out = [];
     const pre = `\`${chemin}\` : l'annonce de \`${docsPaths.rel(DEPRECATIONS)}\``;
     const push = (msg) => out.push({ code: "CC-10", msg: `${pre} ${msg}` });
-    const semver = (v) => (/^\d+\.\d+\.\d+$/.test(String(v)) ? String(v) : null);
 
     const manquants = CHAMPS_ANNONCE.filter(
         (k) => !Object.prototype.hasOwnProperty.call(a, k) || a[k] === null || a[k] === ""
@@ -501,33 +506,10 @@ function jugerAnnonce(chemin, a, ctx) {
         return out;
     }
 
-    // `removeIn` — a MAJOR strictly above the current one. An announcement
-    // dated in the PRESENT is not an announcement: it is a removal warned
-    // about after the fact.
+    // `since` and `removeIn` — WHEN the removal may land. The rule lives in its own lib, where
+    // its guard test exercises it without a manifest, a register and a source tree.
     const courant = registry.requireByDirName("core").manifest.version;
-    const majCourant = Number(String(courant).split(".")[0]);
-    const mr = /^(\d+)\.0\.0$/.exec(String(a.removeIn));
-    if (!mr || Number(mr[1]) <= majCourant) {
-        push(
-            `porte \`removeIn: "${a.removeIn}"\` — attendu un MAJEUR de la forme \`x.0.0\` ` +
-                `STRICTEMENT supérieur au courant (${courant}). Une annonce datée du présent ` +
-                "n'est pas une annonce."
-        );
-    }
-    // `since` — in the current major line, and never at or after the removal.
-    if (!semver(a.since)) {
-        push(`porte \`since: "${a.since}"\`, illisible — attendu \`x.y.z\`.`);
-    } else if (Number(String(a.since).split(".")[0]) !== majCourant) {
-        push(
-            `annonce \`since: "${a.since}"\` hors de la ligne majeure courante (${courant}) — ` +
-                "l'annonce se fait dans la ligne qui la publie."
-        );
-    } else if (mr && cm.cmpVersion(a.since, a.removeIn, docsPaths.rel(DEPRECATIONS)) >= 0) {
-        push(
-            `annonce \`since\` (${a.since}) au niveau ou après \`removeIn\` (${a.removeIn}) — ` +
-                "une version qui annonce ET retire n'annonce rien."
-        );
-    }
+    for (const msg of judgeTiming(a, courant)) push(msg);
 
     // `replacement` — THREE recognised shapes, a fourth REFUSED rather than guessed.
     const r = String(a.replacement);

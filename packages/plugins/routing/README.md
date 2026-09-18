@@ -4,10 +4,14 @@ Route computation plugin for [GeoLeaf JS](https://github.com/geoleaf/geoleaf-js)
 external routing provider for an itinerary between two or more points, and normalises the answer
 into a single model whatever the provider.
 
-> **Status** — This package is **not usable yet**. Its shell is published so that the API surface
-> and the plugin contract are fixed in the open; route computation itself lands in a following
-> release. `GeoLeaf.Routing.getConfig()` is the only method that exists today. This paragraph
-> disappears when it stops being true.
+Routes are computed by the plugin's **itinerary panel**, which the profile's "Route to here" action
+opens (see _Load it eagerly_ below). `GeoLeaf.Routing` exposes the rest: the providers
+(`registerProvider`, `getProvider`, `listProviders`), the composition of waypoints (`addWaypoint`,
+`removeWaypoint`, `moveWaypoint`, `clearWaypoints`, `isRoutable`, `maxWaypoints`), the reading of a
+computed route (`legSummaries`, `routeFeatures`) and its display (`publishRoute`, `clearRoute`).
+
+> **Note** — There is no `GeoLeaf.Routing.route()` yet: a route is computed by the panel, from the
+> provider the profile configures. A route you compute elsewhere is displayed with `publishRoute()`.
 
 ---
 
@@ -27,7 +31,9 @@ npm install @geoleaf-plugins/routing
 import "@geoleaf-plugins/routing";
 
 // After GeoLeaf.boot() — GeoLeaf.Routing is available on globalThis.GeoLeaf
-const cfg = GeoLeaf.Routing.getConfig();
+const provider = GeoLeaf.Routing.getProvider(); // { id, attribution } of the configured engine
+// The profile's feature-info action widget must declare this id to open the panel:
+const actionId = GeoLeaf.Routing.actionId();
 ```
 
 ### Load it eagerly, not on demand

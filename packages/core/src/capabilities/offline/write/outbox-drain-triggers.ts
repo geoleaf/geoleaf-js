@@ -29,6 +29,10 @@
  * | `visibilitychange` → visible | the device wakes with the radio already back |
  * | periodic tick | **the retry backoff R1 introduced, which nothing re-fired** |
  *
+ * ⚠️ **All four stop while a pass has halted on a dead session**, and only a pass that ends
+ * without that halt starts them again — see {@link _authHalted}. A manual send is never
+ * gated: it is the operator saying the session is back.
+ *
  * 🛑 **The fourth is not a comfort, it is the completion of R1.** That lot gave failures an
  * exponential deferral (30 s → 2 min → 8 min) written on the entry and READ by the drain,
  * which walks past without waiting. Nothing re-triggered afterwards: an entry deferred with
@@ -105,9 +109,27 @@ let _again = false;
  * strictly narrower than the one before R7, when nothing polled at all.
  */
 let _maybeOwed = true;
+/**
+ * `true` while a pass has stopped on a dead session.
+ *
+ * 🛑 **WITHOUT IT, A DEAD SESSION COST ONE CAPTURE A MINUTE.** The drain stops at the first
+ * 401 and sets that entry aside, which is right; but every trigger afterwards met the same
+ * dead session and set aside the NEXT entry. A tour of forty captures went to quarantine
+ * forty minutes later, one by one, and nothing said why.
+ *
+ * ⚠️ **Read from the pass's own announcement, never from a call's return value**, because the
+ * passes this module must learn from include the ones it did not start: `Storage.pushOutbox()`
+ * from a host, from the console, from `offline-ui`'s replay button. A pass that ends without
+ * that halt lifts the pause — which is what makes signing back in enough.
+ *
+ * ⚠️ **The manual gesture is never gated.** An operator pressing "send now" is telling the
+ * device something it cannot observe; the automatic triggers are the ones that must wait.
+ */
+let _authHalted = false;
 let _onOnline: (() => void) | null = null;
 let _onVisibility: (() => void) | null = null;
 let _onQueued: (() => void) | null = null;
+let _onDrained: ((event: Event) => void) | null = null;
 
 /** `false` only when the browser positively says so — an unknown state is treated as online. */
 function _online(): boolean {
@@ -138,6 +160,12 @@ function _outbox(): { countDue?(now: number): Promise<number> } | null {
  * @param cause - What asked. Logged.
  */
 export async function requestDrain(cause: DrainCause): Promise<void> {
+    // The arming pass is the session's first: a new page has no halt to respect, and it is
+    // what empties a queue left by a previous one.
+    if (_authHalted && cause !== "storageReady") {
+        Log.debug(`[Offline.Drain] « ${cause} » ignoré — session à rétablir.`);
+        return;
+    }
     if (_draining) {
         _again = true;
         return;
@@ -173,6 +201,8 @@ export async function requestDrain(cause: DrainCause): Promise<void> {
  */
 async function _tick(): Promise<void> {
     if (!_online()) return;
+    // Cheaper than the queue read below, and it is the whole point of the pause.
+    if (_authHalted) return;
     // The cheapest gate of all, and it is INSIDE the timer rather than replacing it: when the
     // last drain left nothing and nothing has been queued since, the tick costs zero I/O.
     if (!_maybeOwed) return;
@@ -251,6 +281,13 @@ export function armOutboxDrain(deps: DrainTriggerDeps = {}): void {
             _maybeOwed = true;
         };
         document.addEventListener("geoleaf:offline:outbox-queued", _onQueued);
+        // Every completed pass says whether it stopped on a dead session — including the
+        // passes this module did not start.
+        _onDrained = (event: Event) => {
+            const detail = (event as CustomEvent<{ haltedBy?: string | null }>).detail;
+            _authHalted = detail?.haltedBy === "authRequired";
+        };
+        document.addEventListener("geoleaf:offline:outbox-drained", _onDrained);
     }
     if (typeof document === "undefined" || document.visibilityState === "visible") _startTimer();
     void requestDrain("storageReady");
@@ -264,11 +301,14 @@ export function disarmOutboxDrain(): void {
     if (typeof document !== "undefined") {
         if (_onVisibility) document.removeEventListener("visibilitychange", _onVisibility);
         if (_onQueued) document.removeEventListener("geoleaf:offline:outbox-queued", _onQueued);
+        if (_onDrained) document.removeEventListener("geoleaf:offline:outbox-drained", _onDrained);
     }
     _onOnline = null;
     _onVisibility = null;
     _onQueued = null;
+    _onDrained = null;
     _maybeOwed = true;
+    _authHalted = false;
     _stopTimer();
     _armed = false;
     _lastDrainAt = 0;

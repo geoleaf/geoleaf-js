@@ -243,7 +243,7 @@ GeoLeaf.createMap(targetId, options); // → IMapAdapter (multi-carte)
 - ModuleRegistry (orchestration modules internes)
 - Guards de compatibilité (`checkPlugins`)
 - Adaptateur MapLibre via `IMapAdapter`
-- Sécurité (XSS, CSRF)
+- Sécurité (XSS)
 
 ### Offline UI
 

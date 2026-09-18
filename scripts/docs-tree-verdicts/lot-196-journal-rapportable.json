@@ -1,0 +1,35 @@
+{
+    "schemaVersion": 2,
+    "lot": "196-journal-rapportable",
+    "scope": ["packages/core/src/utils/log/log-record.ts", "packages/core/src/utils/log/redact.ts"],
+    "verdicts": {
+        "packages/core/src/utils/log/log-record.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Registre du journal — anneau borné des dernières entrées de `GeoLeaf.Log`, du logger du boot et des erreurs non capturées, mises en forme bornée à l'enregistrement et rédigées à la lecture",
+            "confidence": "haute",
+            "rationale": "À côté de `logger.ts`, son premier appelant, mais séparé de lui : l'anneau, la mise en forme bornée et la capture des erreurs globales sont une responsabilité distincte de la façade console. Hors du baril `utils/log`, comme `error-logger.ts` : les fichiers de test simulent ce baril avec les quatre méthodes de log, et un lecteur du registre y lirait un mock. Importé par `logger.ts`, `app/app-namespace.ts` (logger du boot), `app/boot-install.ts` (capture posée par `GeoLeaf.boot()`) et `app/boot-failure.ts` (diagnostic)."
+        },
+        "packages/core/src/utils/log/redact.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Rédaction des secrets dans un texte qui quitte l'application — entrées du journal relues et diagnostic d'échec du démarrage",
+            "confidence": "haute",
+            "rationale": "Dans `utils/log/` et non dans `kernel/security/` : `kernel/security` journalise par `utils/log`, et le journal l'important fermerait un cycle d'import. Module pur, sans aucun import. Lu par `log-record.ts` à la lecture des entrées et par `app/boot-failure.ts` sur chaque chaîne du diagnostic."
+        }
+    }
+}

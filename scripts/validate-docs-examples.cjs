@@ -6,9 +6,11 @@
  *
  * Rules applied per language:
  *   json  — JSON.parse() validity check
- *   js/ts — phantom API patterns, wrong package names, stale CDN URLs
+ *   js/ts — phantom API patterns, wrong package names, stale CDN URLs; `Core.init` options
+ *           (DOCS-CORE-INIT) and the engine global of npm recipes (DOCS-NPM-ENGINE)
  *   bash  — wrong npm install package names
- *   html  — stale CDN script/link src attributes
+ *   html  — stale CDN script/link src attributes; MapLibre loaded (HTML-04); `Core.init`
+ *           options in inline scripts (DOCS-CORE-INIT)
  *
  * Exit code 0 — no violations
  * Exit code 1 — one or more violations detected
@@ -32,6 +34,11 @@ const dirArgIdx = args.indexOf("--dir");
 const ROOT = process.cwd();
 // The default comes from the registry (which throws); the `--dir` argument stays king.
 const { extractTsdocExamples, sourceFiles, productDocsFiles } = require("./lib/tsdoc-examples.cjs");
+const { readInterfaceMembers } = require("./lib/ts-decl-read.cjs");
+const registry = require("./lib/packages.cjs");
+// The cast makes the `ts.is*` guards narrow under checkJs — same reason as in
+// `typecheck-docs-examples.cjs`.
+const ts = /** @type {typeof import("typescript")} */ (require("typescript"));
 
 // 2026-07-31 — the perimeter goes from ONE directory to the PRODUCT surfaces, and it is
 // derived in `lib/tsdoc-examples.cjs` so `typecheck-docs-examples` reads exactly the
@@ -167,6 +174,19 @@ const JS_TS_RULES = [
         pattern: /GeoLeaf\s*\.\s*POI\s*\./,
         message:
             "Phantom API: GeoLeaf.POI was removed from the core at S9 (POI dissolution) — a POI is now a plain GeoJSON point layer. Read/mutate through GeoLeaf.Layers.getFeatures / getFeatureById / addFeature / mergeFeatures / setData; style and click-render per layer via layers.<id>.capabilities.{taxonomy,cluster,feature-info}. For interactive point creation use GeoLeaf.Editor.AddForm / GeoLeaf.Editor.PlacementMode (@geoleaf-plugins/editor).",
+        severity: "error",
+    },
+    // ── The CSRF module, removed in 3.4.0 ──
+    //
+    // Its token was minted and checked in the browser: no server could verify it, so it
+    // protected nothing while reading like a protection. The day it was removed, five code
+    // blocks on the published docs still called it — two of them in a popup action handler
+    // an integrator would copy as is. Same scope as the POI rule above, for the same reason:
+    // the CHANGELOG must keep naming the removed API in prose.
+    {
+        pattern: /\bCSRFToken\b/,
+        message:
+            "Removed API: GeoLeaf.Security.CSRFToken was removed in 3.4.0 — its token was minted and checked in the browser, so no server could verify it. Authenticate writes with the bearer token of @geoleaf-plugins/connector, which adds it to the requests it intercepts.",
         severity: "error",
     },
     {
@@ -370,6 +390,190 @@ function checkMapLibrePresence(code) {
 }
 
 // ---------------------------------------------------------------------------
+// DOCS-CORE-INIT and DOCS-NPM-ENGINE — a Quick Start that returns `null`
+// ---------------------------------------------------------------------------
+//
+// 🛑 Measured on 2026-09-12: the first example of BOTH READMEs returned `null`, for two
+// independent reasons, and this gate — whose corpus has carried both READMEs since 07-31 —
+// said nothing about either.
+//
+//   1. `Core.init({ map: { target } })`. `Core.init` reads `mapId`: the `map` shape belongs to
+//      `GeoLeaf.init()`, which normalises it. Same class in COOKBOOK and FAQ, with another key:
+//      `Core.init({ mapId, configUrl })`, where `configUrl` is a `GeoLeaf.boot()` option the
+//      facade ignores without a word — the map is created, no profile is ever loaded.
+//   2. An npm recipe that never puts the engine on `globalThis.maplibregl`. The package reads
+//      MapLibre ONLY from that global and imports no MapLibre value, so `new maplibregl.Map`
+//      throws, the facade catches it, and `Core.init` returns `null` WITH a correct `mapId`.
+//      HTML-04 guards the same absence, but only in `html` blocks citing `geoleaf.esm.js`: an
+//      npm recipe never names the bundle, so it sat outside that rule by construction.
+//
+// ⚠️ Why a rule HERE and not in `typecheck-docs-examples.cjs`: that gate compiles `ts` blocks
+// only, and the README blocks are `javascript` and `html`. Even compiled, the first defect
+// would pass — `{ map }` yields TS2353 (excess property), which is not one of its defect
+// codes. Compiling `js` blocks is a separate decision; this gate already READS them.
+//
+// ⚠️ The allowed keys are READ from the facade (`NormalizedInitOptions`), never copied here: a
+// key list written in this file would go stale the day an option is added, and the rule
+// would then redden on a correct example.
+
+const CORE_INIT_CALL = /\bCore\s*\.\s*init\s*\(/;
+
+/** A block declaring itself a fragment in JS: it leaves DOCS-NPM-ENGINE's field. */
+const JS_FRAGMENT_MARKER = /\/\/\s*geoleaf:docs:fragment\b/;
+
+/**
+ * A VALUE import of the package or one of its subpaths — `import type` loads nothing at
+ * runtime. Flat on purpose: an optional subpath group holding a `*` is the nested quantifier
+ * `security/detect-unsafe-regex` refuses, and this file's suppression debt only shrinks.
+ */
+const IMPORTS_CORE_VALUE = /^\s*import\s+(?!type\b)[^;]*?from\s+["']@geoleaf\/core[^"']*["']/m;
+
+/** The two shapes that put the engine where GeoLeaf reads it. */
+const SETS_ENGINE_GLOBAL =
+    /globalThis\s*\.\s*maplibregl\s*=|Object\s*\.\s*assign\s*\(\s*globalThis\s*,\s*\{[^}]*\bmaplibregl\b/;
+
+/** @type {Set<string> | null} */
+let coreInitKeys = null;
+
+/**
+ * The option keys `Core.init` reads, from the facade's own declaration (private `_` keys
+ * excluded). Resolved through the package registry, which throws on a missing package; the
+ * reader exits 2 when the interface cannot be found.
+ * @returns {Set<string>}
+ */
+function readCoreInitKeys() {
+    if (coreInitKeys) return coreInitKeys;
+    const core = registry.byName("@geoleaf/core");
+    if (!core) {
+        console.error(
+            "[validate-docs-examples] @geoleaf/core is absent from the package registry."
+        );
+        process.exit(2);
+    }
+    const facade = path.join(core.absDir, "src", "kernel", "map", "facade.ts");
+    const members = /** @type {Set<string>} */ (
+        readInterfaceMembers(facade, "NormalizedInitOptions", { tag: "DOCS-CORE-INIT" })
+    );
+    coreInitKeys = new Set([...members].filter((key) => !key.startsWith("_")));
+    return coreInitKeys;
+}
+
+/**
+ * `Core.init` or `<anything>.Core.init`.
+ * @param {import("typescript").Expression} expr
+ * @returns {boolean}
+ */
+function isCoreInitCallee(expr) {
+    if (!ts.isPropertyAccessExpression(expr) || expr.name.text !== "init") return false;
+    const owner = expr.expression;
+    if (ts.isIdentifier(owner)) return owner.text === "Core";
+    return ts.isPropertyAccessExpression(owner) && owner.name.text === "Core";
+}
+
+/**
+ * DOCS-CORE-INIT — every `Core.init({…})` names `mapId` and only keys the facade reads.
+ *
+ * Parsed, not matched: an option spread over several lines, a nested object and a comment
+ * mentioning `map:` are all read for what they are. A spread (`...options`, or the `...` of a
+ * deliberate fragment) makes the key set unknowable, so only the NAMED keys are judged then.
+ *
+ * @param {string} code - JS/TS source — an html block's inline scripts are passed one by one.
+ * @returns {{ message: string; severity: string; matchedText: string }[]}
+ */
+function checkCoreInitCalls(code) {
+    if (!CORE_INIT_CALL.test(code)) return [];
+    const allowed = readCoreInitKeys();
+    const sf = ts.createSourceFile(
+        "block.ts",
+        code,
+        ts.ScriptTarget.ES2022,
+        true,
+        ts.ScriptKind.TS
+    );
+    const violations = [];
+    /** @param {import("typescript").Node} node */
+    const visit = (node) => {
+        const arg = ts.isCallExpression(node) ? node.arguments[0] : undefined;
+        if (arg && ts.isCallExpression(node) && isCoreInitCallee(node.expression)) {
+            if (ts.isObjectLiteralExpression(arg)) {
+                let spread = false;
+                const keys = [];
+                for (const prop of arg.properties) {
+                    if (ts.isSpreadAssignment(prop)) spread = true;
+                    else if (
+                        prop.name &&
+                        (ts.isIdentifier(prop.name) || ts.isStringLiteral(prop.name))
+                    ) {
+                        keys.push(prop.name.text);
+                    }
+                }
+                const unknown = keys.filter((key) => !allowed.has(key));
+                const known = [...allowed].map((key) => `\`${key}\``).join(", ");
+                if (unknown.length > 0) {
+                    violations.push({
+                        message:
+                            `DOCS-CORE-INIT — \`Core.init()\` ne lit pas ${unknown.map((k) => `\`${k}\``).join(", ")} : ` +
+                            `il l'ignore sans un mot. Clés lues (NormalizedInitOptions) : ${known}. La forme ` +
+                            "`{ map: { target } }` est celle de `GeoLeaf.init()` ; `configUrl` est une option " +
+                            "de `GeoLeaf.boot()`.",
+                        severity: "error",
+                        matchedText: arg.getText(sf).slice(0, 80),
+                    });
+                }
+                if (!spread && !keys.includes("mapId")) {
+                    violations.push({
+                        message:
+                            "DOCS-CORE-INIT — `Core.init()` sans `mapId` journalise une erreur et rend " +
+                            "`null` : l'exemple ne crée aucune carte.",
+                        severity: "error",
+                        matchedText: arg.getText(sf).slice(0, 80),
+                    });
+                }
+            }
+        }
+        ts.forEachChild(node, visit);
+    };
+    visit(sf);
+    return violations;
+}
+
+/**
+ * The bodies of an html block's INLINE scripts — a `<script src>` runs nothing written here.
+ * @param {string} html
+ * @returns {string[]}
+ */
+function inlineScripts(html) {
+    return [...html.matchAll(/<script\b(?![^>]*\ssrc=)[^>]*>([\s\S]*?)<\/script>/gi)].map(
+        (m) => m[1]
+    );
+}
+
+/**
+ * DOCS-NPM-ENGINE — HTML-04's twin for npm recipes: a js/ts block importing the package and
+ * booting a map puts the engine on `globalThis.maplibregl`.
+ * @param {string} code
+ * @returns {{ message: string; severity: string; matchedText: string }[]}
+ */
+function checkNpmEngineGlobal(code) {
+    if (JS_FRAGMENT_MARKER.test(code) || !IMPORTS_CORE_VALUE.test(code)) return [];
+    const bare = stripComments(code);
+    if (!BOOTS_A_MAP.test(bare) || SETS_ENGINE_GLOBAL.test(bare)) return [];
+    return [
+        {
+            message:
+                "DOCS-NPM-ENGINE — cette recette importe `@geoleaf/core` et boote une carte sans " +
+                "poser le moteur sur `globalThis.maplibregl`, le seul endroit où GeoLeaf le lit : " +
+                "`new maplibregl.Map` jette et `Core.init` rend `null`, même avec `mapId`. Ajouter " +
+                '`import * as maplibregl from "maplibre-gl";` puis `Object.assign(globalThis, { maplibregl });` ' +
+                "(la forme qui compile aussi en TypeScript). Si ce bloc est un fragment délibéré, le " +
+                "déclarer par `// geoleaf:docs:fragment — motif`.",
+            severity: "error",
+            matchedText: (bare.match(BOOTS_A_MAP) || ["Core.init("])[0],
+        },
+    ];
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -507,6 +711,8 @@ for (const mdFile of mdFiles) {
         // --- JS/TS blocks: phantom API + package name checks ---
         if (lang === "js" || lang === "javascript" || lang === "ts" || lang === "typescript") {
             violations = violations.concat(applyRules(block.code, JS_TS_RULES));
+            violations = violations.concat(checkCoreInitCalls(block.code));
+            violations = violations.concat(checkNpmEngineGlobal(block.code));
         }
 
         // --- HTML blocks: CDN URL checks ---
@@ -514,8 +720,12 @@ for (const mdFile of mdFiles) {
             violations = violations.concat(applyRules(block.code, HTML_RULES));
             // Also check for JS inside HTML
             violations = violations.concat(applyRules(block.code, JS_TS_RULES));
-            // HTML-04 — the file's only rule guarding an ABSENCE (see its block)
+            // HTML-04 — guards the engine's ABSENCE in a recipe (see its block)
             violations = violations.concat(checkMapLibrePresence(block.code));
+            // DOCS-CORE-INIT reads the inline scripts, the only JS the block runs
+            for (const script of inlineScripts(block.code)) {
+                violations = violations.concat(checkCoreInitCalls(script));
+            }
         }
 
         // --- Bash/shell blocks: npm install package name check ---
@@ -561,7 +771,9 @@ for (const srcFile of tsdocFiles) {
         blockNum++;
         tsdocBlocks++;
         totalBlocks++;
-        const violations = applyRules(ex.code, JS_TS_RULES);
+        const violations = applyRules(ex.code, JS_TS_RULES)
+            .concat(checkCoreInitCalls(ex.code))
+            .concat(checkNpmEngineGlobal(ex.code));
         if (violations.length > 0) {
             allViolations.push({
                 file: relFile,

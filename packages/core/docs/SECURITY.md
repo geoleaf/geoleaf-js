@@ -50,7 +50,6 @@ GeoLeaf implements several independent layers of protection:
 | Layer              | Module                               | Key functions                                                                                                                              |
 | ------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | XSS protection     | `kernel/security/`                   | `escapeHtml()`, `escapeAttribute()`, `sanitizeHTML()`, `sanitizeSvgContent()`                                                              |
-| CSRF protection    | `kernel/security/csrf-token.ts`      | Token generation (32 crypto-random bytes), automatic rotation, `Secure; SameSite=Strict` cookie                                            |
 | DOM security       | `kernel/security/dom-security.ts`    | `DOMSecurity.setTextContent()`, `DOMSecurity.setSafeHTML()` — no direct `innerHTML`                                                        |
 | Input validation   | `kernel/security/validators.ts`      | URL protocol allowlist (`https:`, `http:`, `data:image/*`), coordinate bounds, GeoJSON structure                                           |
 | Fetch security     | `utils/general/fetch-helper.ts`      | URL validation + rate limiting (50 requests / 10 s / domain)                                                                               |
@@ -67,15 +66,9 @@ For the full inventory with source files and tests, see [security/SECURITY_CONTR
 
 ---
 
-## 3. CSRF — v2.0.0 breaking change note
+## 3. CSRF — no client-side module
 
-`CSRFToken.setSecureCookie()` defaults to `secure: true` since v2.0.0.
-
-On an HTTP-only deployment (local development, intranets) this produces a console warning but does not prevent operation. To silence the warning:
-
-```typescript
-CSRFToken.setSecureCookie("my-cookie", value, { secure: false });
-```
+`GeoLeaf.Security.CSRFToken` was removed in 3.4.0. It minted its token in the browser and checked it in the same context, so no server could verify it: it protected nothing while reading like a protection. GeoLeaf authenticates writes with the bearer token of `@geoleaf-plugins/connector`, which adds it to the requests it intercepts — and a browser never attaches a bearer token on its own, which is the condition a CSRF attack relies on.
 
 ---
 
@@ -107,7 +100,7 @@ GeoLeaf follows a **coordinated disclosure** model. Please allow time for the vu
 
 ### Scope
 
-**In scope:** XSS in the security module, CSRF bypass, prototype pollution, unsafe HTML injection through the DOM, URL validation bypass, dependency vulnerabilities with a direct exploitation path.
+**In scope:** XSS in the security module, prototype pollution, unsafe HTML injection through the DOM, URL validation bypass, dependency vulnerabilities with a direct exploitation path.
 
 **Out of scope:** vulnerabilities in MapLibre GL JS or other dependencies (report them to those projects directly), physical access, social engineering, unsupported versions (any major release earlier than the current one), denial of service.
 

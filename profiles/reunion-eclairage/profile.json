@@ -33,7 +33,8 @@
             "legend": "config/plugins/legend.json",
             "taxonomy": "config/plugins/taxonomy.json",
             "feature-info": "config/plugins/feature-info.json",
-            "filter": "config/plugins/filter.json"
+            "filter": "config/plugins/filter.json",
+            "offline": "config/plugins/offline.json"
         }
     }
 }

@@ -21,7 +21,6 @@ vi.mock("../../src/kernel/security/index.ts", async (importActual) => ({
     ...(await importActual()),
     Security: stub,
 }));
-vi.mock("../../src/kernel/security/csrf-token.ts", () => ({ CSRFToken: stub }));
 vi.mock("../../src/utils/general/utils-base.ts", () => ({
     Utils: stub,
     validateUrl: fn,

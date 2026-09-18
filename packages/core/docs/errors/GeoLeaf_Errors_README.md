@@ -98,9 +98,10 @@ throw new GeoLeaf.Errors.ValidationError("Latitude must be between -90 and 90", 
     expected: "Range: -90 to 90",
 });
 
-// Targeted catch
+// Targeted catch — around YOUR code that throws it, like the line above.
+// `GeoLeaf.Core.init()` never throws: a failed initialisation logs and returns `null`.
 try {
-    GeoLeaf.Core.init({/* options */});
+    checkCoordinates(95, -73); // your own validation, throwing the ValidationError above
 } catch (error) {
     if (error instanceof GeoLeaf.Errors.ValidationError) {
         console.error("Validation error:", error.context);

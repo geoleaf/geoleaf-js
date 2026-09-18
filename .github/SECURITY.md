@@ -53,7 +53,6 @@ This policy covers the whole `GeoLeaf-Js` monorepo — every package it publishe
 ### In scope
 
 - Cross-Site Scripting (XSS) vulnerabilities in the security module
-- CSRF token bypass
 - Prototype pollution
 - Unsafe HTML injection via the DOM
 - URL validation bypass allowing dangerous protocol execution
@@ -78,7 +77,6 @@ sat outside their perimeter until that date.
 
 - **XSS protection**: `kernel/security/escaping.ts` — `escapeHtml()`, `escapeAttribute()` ·
   `kernel/security/sanitizers.ts` — `sanitizeHTML()`, `sanitizeSvgContent()`
-- **CSRF protection**: `kernel/security/csrf-token.ts` — token generation and validation for POST operations
 - **DOM security**: `kernel/security/dom-security.ts` — replaces all direct `innerHTML` usage
 - **Input validation**: `kernel/security/validators.ts` — URL whitelist and the exact `data:`
   MIME allow-list. `https:`, `http:` and image `data:` URLs pass by default; `isValidUrl()`

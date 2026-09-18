@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "js-alpha-equivalence",
+    "scope": ["scripts/lib/js-alpha-equivalence.cjs"],
+    "verdicts": {
+        "scripts/lib/js-alpha-equivalence.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Comparateur de JavaScript à renommage près des liaisons locales — le second régime de PUB-05",
+            "confidence": "haute",
+            "rationale": "1 lecteur réel — verify-published-parity.cjs (PUB-05) — et un test de garde dédié. Séparé de npm-registry.cjs parce que ce n'est pas une question de registre mais d'égalité de programmes : l'y loger aurait donné au module un nom faux. LE DÉFAUT QU'IL REND JUGEABLE : un paquet qui publie src/ inline des libs d'espace de travail privées, et un changement dans l'une d'elles atteint ses consommateurs publiés sans qu'aucune de leurs sources ne bouge — PUB-02 ne peut pas le voir, et les octets ne peuvent pas le juger, un minifieur redistribuant les noms locaux dès que l'inliné bouge. 🛑 CE QUI FAIT SA VALEUR EST CE QU'IL NE NUMÉROTE PAS : noms de propriétés, noms importés et exportés (y compris ceux qu'une déclaration export déclare) et identifiants libres restent tels quels. Une première esquisse numérotait tout et aurait égalé GeoLeaf.I18n et GeoLeaf.Lang — une égalité de programmes différents sort verte sans rien dire. Parseur : rollup/parseAst, dépendance déjà déclarée à la racine. ⚠️ Approximation assumée et écrite sur place : une liaison se reconnaît par son NOM sur tout le bundle, pas par portée — elle ne peut qu'élargir ce qui est renommé, jamais égaler un littéral, un opérateur ou une structure changés."
+        }
+    }
+}

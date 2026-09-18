@@ -40,7 +40,13 @@ import { buildSyncReport } from "./report/sync-report.js";
 import { readSyncStatus } from "./write/sync-status.js";
 import { applyEdit, canHoldWrites } from "./write/local-edit-api.js";
 import { pushOutbox } from "./write/push-engine.js";
-import { requeueQuarantined, requeueAll, discardQuarantined } from "./write/quarantine-api.js";
+import {
+    requeueQuarantined,
+    requeueAll,
+    discardQuarantined,
+    requeueableReasons,
+} from "./write/quarantine-api.js";
+import { listConflicts, clearConflicts } from "./write/conflict-store.js";
 import { armOutboxDrain, disarmOutboxDrain, requestDrain } from "./write/outbox-drain-triggers.js";
 import { mountSyncBanner, unmountSyncBanner } from "./ui/sync-banner.js";
 
@@ -102,10 +108,13 @@ if (_g.GeoLeaf?.Storage) {
             requeueQuarantined,
             requeueAll,
             discardQuarantined,
+            requeueableReasons,
             armOutboxDrain,
             disarmOutboxDrain,
             requestDrain,
             canHoldWrites,
+            listConflicts,
+            clearConflicts,
         },
     });
     // D5 (POI dissolution, inverse merge): push queued offline POIs onto their host

@@ -153,7 +153,21 @@ export type QuarantineReason =
      * (it knows nothing of the connector), so it is entrusted to the operator exactly
      * like `retryBudgetExhausted`.
      */
-    | "authRequired";
+    | "authRequired"
+    /**
+     * The layer declares a write dialect the core does not speak — `rest` today.
+     *
+     * 🛑 **A CLIENT-SIDE HOLE, AND IT USED TO BE SILENT.** The drain refused the dialect by
+     * name but returned an ordinary failure: the entry spent its replay budget against a
+     * hole no replay can fill, then landed on `retryBudgetExhausted` — a motive that says
+     * "the server never answered", when no request had ever been made. The operator could
+     * requeue it, and it went round again.
+     *
+     * It is set IMMEDIATELY, like `layerNoLongerWritable`, and its lifting is just as
+     * OBSERVABLE: the layer's declaration changes, or it does not. That is why it is
+     * requeueable and yet verified — see `write/quarantine-api.ts`.
+     */
+    | "dialectNotSupported";
 
 /* -------------------------------------------------------------------------- */
 /* The v4 store — one record per entity                                        */
@@ -183,7 +197,11 @@ export interface FeatureRecord {
     readonly syncState: SyncState;
     /** Local modification time, milliseconds since epoch. */
     readonly updatedAt: number;
-    /** Marker observed at the last pull. Null for an entity created offline. */
+    /**
+     * Marker observed at the last pull, or returned by the server with the last accepted
+     * write. Null when neither named one: an entity created offline, or a row without the
+     * marker column.
+     */
     readonly version: VersionMarker | null;
     /** The GeoJSON feature itself. */
     readonly feature: unknown;
@@ -214,7 +232,11 @@ export interface OutboxEntry {
     readonly kind: SyncOperationKind;
     readonly layerId: string;
     readonly localId: LocalId;
-    /** Marker the edit was based on, sent back at push so the server can detect a conflict. */
+    /**
+     * Marker the edit was based on, sent back at push so the server can detect a conflict.
+     * An entry stacked while a write of the same entity was on the wire is based on that
+     * write: it moves to the marker the write returned.
+     */
     readonly baseVersion: VersionMarker | null;
     readonly state: SyncState;
     /** Replay attempts so far. A `failed` entry keeps its count when it is requeued. */
@@ -283,6 +305,96 @@ export interface OutboxEntry {
      * the drain block on a queue it should be walking past.
      */
     readonly nextAttemptAt?: number;
+}
+
+/* -------------------------------------------------------------------------- */
+/* The v6 store — what a settled conflict leaves behind                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * What the drain could learn of the server's row before crushing it.
+ *
+ * 🛑 **THE ABSENCE IS ITSELF AN OBSERVATION, which is why this is three values and not a
+ * nullable feature.** A conflict whose re-read failed and a conflict on a row the server no
+ * longer holds are different facts, and reading both as "no server version" would make the
+ * store say something false about the second. Same arbitration as `OutboxEntry.quarantineStatus`,
+ * whose ABSENCE carries "the server never answered".
+ */
+export type ConflictReadOutcome =
+    /** The row was read: `serverFeature` and `serverVersion` carry what was crushed. */
+    | "read"
+    /** The server answered in representation and holds NO such row — nothing was crushed. */
+    | "absent"
+    /**
+     * The re-read could not conclude — mute network, refusal, unreadable body.
+     *
+     * ⚠️ **The overwrite happens ANYWAY, and that is a decision (17/09/2026), not an
+     * oversight.** Making the write depend on a read the server may not grant — `UPDATE`
+     * without `SELECT` is an ordinary permission split — would turn every conflict into a
+     * quarantine, i.e. silently repeal the `lastWriteWins` policy. The record is written
+     * with this outcome so the gap is visible rather than invented.
+     */
+    | "unreadable";
+
+/**
+ * One settled conflict — keyed `[layerId, localId]`, **one record per entity**.
+ *
+ * 🛑 **WHY THE STORE EXISTS.** `lastWriteWins` is the policy, and it was made OBSERVABLE on
+ * 17/09/2026 — detected, logged, then settled by an unfiltered re-send. What no part of the
+ * cycle did was LOOK at the row it was about to crush. After an overwritten update the
+ * server still holds a row; after an overwritten **delete** it holds nothing, and neither did
+ * anything else: that is the only irrecoverable loss of the whole write cycle.
+ *
+ * 🛑 **THE KEY IS THE BOUND, and it is derived rather than invented.** `db/eviction.ts` knows
+ * a single store name (`layers`), so this store is UNREACHABLE by eviction exactly as
+ * `features` is — nothing will ever purge it. Keying by entity caps it at one row per entity,
+ * so its size is bounded by the layer it describes. A journal would have needed a ceiling,
+ * and a ceiling here would be a number posted in the noise band — something this repository
+ * has paid for twice. The cost is stated rather than hidden: an entity that conflicts twice
+ * keeps only the most recently crushed version.
+ *
+ * ⚠️ **It carries no zone index, and no index at all** (decision of 17/09/2026). Reading a
+ * layer costs 0,45 to 0,8 s at 30 000 entities from disk, which does not justify one, and the
+ * composite key already yields per-layer traversal by key range — `IDBKeyRange.bound([layerId],
+ * [layerId, []])`, the reasoning `db/features.ts` carries in full.
+ *
+ * ⚠️ **The server's row is EVIDENCE, never a source.** Nothing writes it back into `features`:
+ * doing so would overwrite what the operator captured, which is the sixth defect closed on
+ * 17/09/2026 reappearing in a new place.
+ */
+export interface ConflictRecord {
+    readonly layerId: string;
+    readonly localId: LocalId;
+    /** The row's server identity, when the record had one. */
+    readonly serverId: ServerId | null;
+    /** The operation that met the conflict. */
+    readonly kind: SyncOperationKind;
+    /** The queue entry it came from — the handle a report needs to name the capture. */
+    readonly entryId: string;
+    /** When the conflict was settled, milliseconds since epoch. */
+    readonly detectedAt: number;
+    /** The marker the local edit was based on — the filter that matched nothing. */
+    readonly baseVersion: VersionMarker | null;
+    /** The marker the crushed row carried. `null` unless {@link readOutcome} is `"read"`. */
+    readonly serverVersion: VersionMarker | null;
+    /**
+     * The crushed row, as the server returned it. `null` unless {@link readOutcome} is `"read"`.
+     *
+     * ⚠️ Stored as the server's own shape, not as a GeoJSON `Feature`: converting it would
+     * mean guessing which column is the geometry on a row nothing will ever re-send. What is
+     * kept is what was there.
+     */
+    readonly serverFeature: Record<string, unknown> | null;
+    /** What the re-read could establish — see {@link ConflictReadOutcome}. */
+    readonly readOutcome: ConflictReadOutcome;
+    /**
+     * How it was settled.
+     *
+     * A single value today, and declared rather than implied for the reason
+     * {@link ConflictPolicy} gives: the record must say which policy produced it, or a later
+     * policy would make every archived record ambiguous.
+     */
+    readonly settledBy: ConflictPolicy;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -476,8 +588,15 @@ export interface LayerSyncConfig {
  */
 export type WriteDialect = "rest" | "collection";
 
-/** How a write endpoint is authenticated. */
-export type WriteAuth = "csrf" | "bearer" | "none";
+/**
+ * How a write endpoint is authenticated — DECLARATIVE ONLY.
+ *
+ * ⚠️ No code reads this value: the drain sends no authentication header of its own, and a
+ * write is authenticated by the connector plugin, which adds its bearer token to the requests
+ * it intercepts. `"csrf"` was removed in 3.4.0 with the core's CSRF module, which no server
+ * could verify.
+ */
+export type WriteAuth = "bearer" | "none";
 
 /**
  * Where a layer's edits are pushed.
@@ -549,6 +668,19 @@ export interface DataOriginDeclaration {
     readonly cacheable: boolean;
     /** True when requests to this origin carry credentials and must never be cached. */
     readonly authenticated?: boolean;
+    /**
+     * True when this origin's terms allow its resources to be downloaded AHEAD of use — the
+     * deliberate offline preparation of a basemap or a tiled layer. Absent means refused.
+     *
+     * ⚠️ Distinct from `cacheable`, which only lets a response the page already requested be
+     * kept. Tile providers ask for the first and some forbid the second — OpenStreetMap's
+     * policy: "Offline use is not permitted on tile.openstreetmap.org". Only operate or license
+     * an origin before declaring it here.
+     *
+     * Honoured only with `cacheable: true`; dropped from an `authenticated` declaration. The
+     * application's own origin needs no declaration.
+     */
+    readonly prefetch?: boolean;
 }
 
 /* -------------------------------------------------------------------------- */

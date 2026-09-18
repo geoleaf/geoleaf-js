@@ -7,11 +7,14 @@
 
 import "../css/form-modal-base.css";
 import "../css/form-field-components.css";
+// Last on purpose: the touch block wins the ties inside this package.
+import "../css/form-touch.css";
 import type { FieldConfig } from "../contract.js";
 import { _el, _getLabel } from "../helpers.js";
 import { createFocusTrap } from "@geoleaf/host-runtime";
 import { confirmDialog } from "@geoleaf/host-runtime";
 import { createFieldRendererBridge } from "../field-renderer-bridge.js";
+import { followVisualViewport } from "./visual-viewport.js";
 
 const _g = globalThis as { GeoLeaf?: { I18n?: { lang?: string } } };
 
@@ -114,6 +117,10 @@ function label(key: string, labelKeys?: Record<string, string>): string {
  * Creates a responsive modal bound to `opts`.
  * On desktop (≥ `opts.desktopBreakpointPx`): centred dialog.
  * On mobile (< breakpoint): bottom drawer that slides up.
+ *
+ * In both modes the overlay follows the visual viewport while the modal is open
+ * (`followVisualViewport`): an on-screen keyboard shrinks the space the form is laid out in, so
+ * Cancel and Save stay above the keyboard and the focused field stays in view.
  */
 export function createResponsiveModal(opts: ResponsiveModalOptions): ResponsiveModal {
     const breakpointPx = opts.desktopBreakpointPx ?? 768;
@@ -130,6 +137,8 @@ export function createResponsiveModal(opts: ResponsiveModalOptions): ResponsiveM
     let seededValues: Record<string, unknown> = {};
     let headerSlot: HeaderSlot | null = null;
     let mediaQuery: MediaQueryList | null = null;
+    /** Releases the visual viewport tracking of the CURRENT overlay — a no-op while closed. */
+    let releaseViewport: () => void = () => {};
 
     function isMobile(): boolean {
         return mediaQuery ? mediaQuery.matches : window.innerWidth < breakpointPx;
@@ -167,6 +176,8 @@ export function createResponsiveModal(opts: ResponsiveModalOptions): ResponsiveM
     function teardown(reason: "cancel" | "save"): void {
         if (!overlay) return;
         trap.deactivate();
+        releaseViewport();
+        releaseViewport = () => {};
         mediaQuery?.removeEventListener("change", onBreakpointChange);
         const onCancel = currentOptions?.onCancel;
         overlay.remove();
@@ -348,6 +359,8 @@ export function createResponsiveModal(opts: ResponsiveModalOptions): ResponsiveM
         panel.appendChild(footer);
         overlay.appendChild(panel);
         document.body.appendChild(overlay);
+        // A keyboard shrinks the VISUAL viewport, not the layout one: see visual-viewport.ts.
+        releaseViewport = followVisualViewport(overlay, body);
 
         // ── Event wiring ─────────────────────────────────────────────────────
         trap = createFocusTrap(panel, () => doClose(false));

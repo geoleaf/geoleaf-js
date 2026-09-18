@@ -15,7 +15,7 @@
  * must be the **first** sub-module executed.
  *
  * Registers:
- *   - **B1** — `Log`, `Errors`, `CONSTANTS`, `Security`, `CSRFToken`
+ *   - **B1** — `Log`, `Errors`, `CONSTANTS`, `Security`
  *   - **B2** — `Utils` (DOM, events, fetch, map helpers, object utils,
  *     performance, scale, timers)
  *
@@ -55,7 +55,7 @@ declare const __GEOLEAF_VERSION__: string | undefined;
 
 /**
  * B1 — foundational services: version flag, `Log`, `Errors`, `CONSTANTS`,
- * `Security`, `CSRFToken`. Re-callable; bound to the `security` module lifecycle.
+ * `Security`. Re-callable; bound to the `security` module lifecycle.
  */
 export function setupSecurity(): void {
     const _gl = ensureGeoLeaf();
@@ -69,9 +69,8 @@ export function setupSecurity(): void {
     _gl.CONSTANTS = CONSTANTS;
     if (!_gl.Security) _gl.Security = {};
     const security = _gl.Security as Record<string, unknown>;
-    // `CSRFToken` used to be grafted here, one line below this assign. The barrel now
-    // carries it (backlog B.16), so `security/index.ts` is the single definition of the
-    // namespace instead of "the barrel, plus whatever the boot bolts on".
+    // `security/index.ts` is the single definition of the namespace: nothing is grafted onto
+    // it here, below the barrel it copies.
     Object.assign(security, Security);
 }
 

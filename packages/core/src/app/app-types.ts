@@ -57,6 +57,12 @@ export interface BootOptions {
         startupTotalMs: number | null;
         capturedAt: string;
     }) => void;
+    /**
+     * Milliseconds without a reveal before the boot is reported as stalled: a PROVISIONAL
+     * `geoleaf:boot:failed` (`reason: "timeout"`) and a « Reload » screen, which a late reveal
+     * removes. Default 45 000; `0` disables it. Paused while `beforeBoot` runs.
+     */
+    watchdogMs?: number;
 }
 
 /**

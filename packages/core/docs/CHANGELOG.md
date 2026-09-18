@@ -17,6 +17,251 @@ _Nothing yet._
 
 ---
 
+## [3.4.0] - 2026-09-17
+
+### Added
+
+- **A settled conflict now KEEPS the version it crushed.** `lastWriteWins` is the policy and
+  it is unchanged — what the device holds wins, a deletion included. What changed is that the
+  drain **reads the server's row before overwriting it**, stores it in a new `conflicts`
+  object store, and emits `geoleaf:offline:write-conflict` naming the entry. Until now the
+  overwrite was blind: after a settled update the server still held a row, but after a settled
+  **delete** it held nothing and neither did anything else — the only irrecoverable loss of
+  the write cycle.
+
+    ⚠️ **The re-read never decides whether the write happens.** A server granting `UPDATE`
+    without `SELECT` is an ordinary permission split; making the overwrite conditional on the
+    read would turn every conflict into a spent budget and then a quarantine. When the read
+    cannot conclude, the record is stored with `readOutcome: "unreadable"` and the overwrite
+    proceeds — the gap is recorded rather than invented.
+
+    ⚠️ **The local database moves to version 6.** The upgrade is additive and was proven
+    against a real v5 base: the seven existing stores, their indexes and the outbox's
+    `autoIncrement` generator all survive it. No integrator action is required.
+
+- **`Storage.listConflicts(layerId?)` and `Storage.clearConflicts(layerId?)`** — the archive
+  is readable and purgeable. One record per entity, keyed `[layerId, localId]`: a second
+  conflict on the same entity replaces the first. That key is also the store's bound, since
+  nothing evicts it. `Storage.getStats()` gains a `conflicts.count` tally for the same reason.
+
+- **`Storage.requeueableReasons()`** — which quarantine motives an operator's gesture can
+  lift. An interface offering "retry all (motive X)" has to know which motives that sentence
+  is true for **before** the click; without this read every surface would hard-code the list,
+  and a plugin cannot import the core.
+
+### Fixed
+
+- **GeoLeaf no longer unregisters service workers it did not register.** With the `pwa` capability
+  disabled, boot used to call `getRegistrations()` and unregister **every** worker on the origin.
+  Mounted inside a host web application, that took down the **host's** service worker: measured on
+  a real host, which lost its offline mode and its app install with no message on either side. The
+  selection is now made on each registration's `scriptURL` — only `sw-core.js`, GeoLeaf's own
+  worker, is unregistered, at boot and at `_reset()` alike.
+
+    ⚠️ **The match is on the last path segment, not on a suffix.** A host worker named
+    `vendor-sw-core.js` is not ours and stays registered. Sub-path deploys are unaffected: the scope
+    is `"./"`, so the origin still has to be enumerated — what changed is which entries are kept.
+
+    ⚠️ **Integrators who relied on the sweep to clear an unrelated worker must do it themselves.**
+    Nothing in GeoLeaf's own deployments depended on it: the variants ship exactly one worker.
+
+- **A device that went through the offline write cycle can now clear its quarantine.**
+  `requeueQuarantined` and `discardQuarantined` had existed since 02/08/2026 with **no caller
+  in any interface**: the only way to use them was to list the queue in a console and paste an
+  identifier. `@geoleaf-plugins/editor` 1.4.0 wires both into the pending-operations window.
+
+- **`dialectNotSupported` joins `QuarantineReason`.** A layer declaring `write.dialect: "rest"`
+  — a dialect the core does not write — used to spend its entries' replay budget against a
+  hole no replay fills, then set them aside under `retryBudgetExhausted`, which says the server
+  never answered although no request had been made. Such an entry is now set aside at once
+  under its own motive, and `Storage.requeueQuarantined` accepts it only once the layer has
+  stopped declaring that dialect.
+- **An action button's visual weight reaches the DOM.** `variant` on an `action` field —
+  `"primary"`, `"secondary"` or `"danger"`, flat on the legacy descriptor and under
+  `options.variant` in the `attributes` block — sets the `gl-poi-popup__action--<variant>`
+  modifier and a `data-gl-variant` attribute, on the popup and the side panel alike. Any other
+  value keeps the default look and warns once. No earlier release read the key: every action
+  rendered the same button.
+- **Consecutive actions share one row in the popup** — `.gl-poi-popup__actions`, a wrapping flex
+  row. They used to stack one per line.
+
+    ⚠️ **The buttons are no longer direct children of `.gl-poi-popup__body`.** A stylesheet that
+    reached them with a child selector (`.gl-poi-popup__body > .gl-poi-popup__action`) no longer
+    matches: target them through the row, or with a descendant selector.
+
+- **`modules.feature-info.popup.closeButton`** shows MapLibre's close cross on the popup. The
+  default is unchanged (`false`): Escape and a click on the map still close it.
+- **A boot that cannot complete says so.** `geoleaf:boot:failed` is dispatched — `reason`
+  `config`, `profile`, `webgl`, `map`, `module`, `timeout` or `internal` — and the app shell's
+  `#gl-loader` veil turns into a failure screen offering « Reload » and a diagnostic to copy or
+  download. The event is cancelable: an application that calls `preventDefault()` draws its own
+  interface, and a page without the veil gets no DOM at all. Before, every one of these failures
+  left the loading spinner turning forever.
+- **A profile resource that fails is named.** `geoleaf:profile:failed` lists the resources the
+  profile declares and could not obtain — an HTTP error, invalid JSON, or a declared section the
+  profile bundle does not carry. When a map can still show, the reveal is held on a screen that
+  names them, with « Continue anyway ». A resource the profile does not declare is never
+  reported.
+- **A missing WebGL2 is named.** MapLibre's `GPUInitializationError` now reaches the boot
+  (`MaplibreAdapter.initError`, `MaplibreAdapter.isGpuInitializationError`) and becomes
+  `reason: "webgl"`, with a message the user can act on.
+- **A boot watchdog** — `GeoLeaf.boot({ watchdogMs })`, default 45 s, `0` disables it, paused
+  while `beforeBoot` runs. A boot that stops progressing gets a provisional `timeout` and a
+  « Reload » screen, which a late reveal removes.
+- **A module that throws no longer takes every later module down.** `ModuleRegistry.init()`
+  accepts `{ onModuleError }` (`ModuleInitOptions`, `ModuleInitFailure`): answering `"continue"`
+  skips the failed module's dependents — left out of `getActiveModules()`, never destroyed — and
+  starts every other module. Without the option, `init()` still rejects at the first failure. The
+  boot passes it: a module the interface depends on fails the boot (`geoleaf:boot:failed`,
+  `reason: "module"`, `module` naming it); any other is reported by `geoleaf:module:failed`
+  (cancelable), and the reveal is held on a screen that names it — or, once the application is
+  revealed, a warning names it.
+- **The log keeps a record support can read.** `GeoLeaf.Log.getEntries()` returns the latest 500
+  entries — warnings and errors whatever the level, `info` and `debug` when they reach the
+  console, the boot logger's lines and, from `GeoLeaf.boot()` on, uncaught errors and unhandled
+  rejections — formatted into bounded text and redacted when read: URL credentials, parameters
+  named like a secret, `Bearer` and encoded `Basic` credentials, JSON Web Tokens, JSON members
+  whose key names a secret, e-mail addresses (the `t` cache token is kept).
+  `GeoLeaf.Log.exportDiagnostic()` returns them as a JSON document. The boot failure screen's
+  diagnostic now carries these entries and the modules that failed, every string redacted.
+- **`GeoLeaf.Events.on()` and `once()` return the function that removes the listener** — what
+  the published `IEventBus.on` contract already promised, while the facade returned `undefined`.
+  An anonymous handler can now be removed; the function returned by `once()` cancels a listener
+  that has not fired yet. It removes the very handler reference the call registered, so
+  `off(event, handler)` keeps working unchanged. Without a `document`, the function does nothing.
+- **`prefetch` on a declared data origin** (`modules.offline.dataOrigins[].prefetch`,
+  `DataOriginDeclaration.prefetch`) — the integrator's statement that an origin's terms allow its
+  resources to be downloaded ahead of use. It is distinct from `cacheable`, which only keeps what
+  the page already requested; it is ignored without `cacheable: true` and dropped from an
+  `authenticated` declaration.
+
+### Changed
+
+- **A profile's `write.dialect` now defaults to `collection`, the dialect the core writes.**
+  The schema announced `rest`, which the offline drain refuses: a layer that did not name a
+  dialect was documented as one whose writes the core would set aside. No profile of this
+  repository declares one, and a declared value is unchanged.
+- **A profile whose `profile.json` fails no longer boots on the base configuration.** The boot
+  stops on the failure screen instead of starting a map without its profile, in silence.
+- **A module that throws during the boot no longer stops the modules that do not depend on it.**
+  They used to be skipped with it, with nothing more than a console warning. Its dependents are
+  still skipped; when the interface depends on it, the boot fails and names it.
+- **A `beforeBoot` hook that throws now hides the `#gl-loader` veil.** It used to stay up
+  forever, over whatever the application drew next. `geoleaf:boot:aborted` is unchanged, and is
+  now typed in `GeoLeafRawEventMap`.
+- **The offline preparation no longer downloads tiles from an undeclared third-party origin.** A
+  basemap flagged `offline: true`, or a tiled layer, used to be downloaded whatever its origin —
+  including `tile.openstreetmap.org`, whose usage policy states that offline use is not permitted.
+  Its tiles, style, glyphs and sprite now come only from the page's own origin, or from an origin
+  declared with `cacheable: true` and `prefetch: true`; anything else is skipped, with a warning
+  naming the origin, and a refused style is not even fetched. `enableTileCache` keeps its default.
+
+    ⚠️ **Migration**: an application that prepares tiles served from another origin — its own tile
+    server on a separate host, or a provider it holds a licence for — adds
+    `{ "origin": "https://…", "roles": ["tiles"], "cacheable": true, "prefetch": true }` to
+    `modules.offline.dataOrigins`. Declare an origin only if its terms allow downloading ahead of
+    use.
+
+- **The coordinates readout is no longer shown under a coarse pointer unless the profile asks for
+  it.** It follows the mouse only: on a touch screen it showed « Lat : --, Lng : -- » for good.
+  An absent `modules.coordinates.enabled` now means shown on a fine pointer and not under
+  `(pointer: coarse)`; `true` shows it everywhere, `false` hides it everywhere.
+  `GeoLeaf.Coordinates.isEnabled()` and `getConfig().enabled` report that resolved value.
+- **The basemap credit is displayed.** The map was created with MapLibre's attribution control
+  turned off, and nothing replaced it: the `attribution` of a basemap never reached the screen,
+  although tile providers require it. MapLibre's control is now on, in the bottom-right corner —
+  a button below 640 px wide (expanded at load, collapsed at the first drag), expanded where it
+  fits. The `attribution` a profile declares on a vector basemap (`type: "maplibre"`), read by no
+  code until now, is added to the incoming style's sources that declare none. From 1440 px wide,
+  the corner steps out of the right-hand panel. `IMapAdapter.buildStyleChangeTransform` accepts
+  `{ attribution }`.
+
+    ⚠️ **An application that displayed the credit itself** — through `modules.branding.text`, for
+    instance — now shows it twice: drop its own copy.
+
+### Removed
+
+- **BREAKING — `GeoLeaf.Security.CSRFToken` and the `csrf` write authentication.** The module
+  minted its token in the browser and checked it in the same context: no server could verify it,
+  so it protected nothing while reading like a protection. Removed with it: the
+  `geoleaf:csrf:refreshed` and `geoleaf:csrf:rotated` events, and the `"csrf"` value of
+  `WriteAuth` and of the profile schema's `write.auth`, a value no code read.
+  `@geoleaf-plugins/editor` no longer sends an `X-CSRF-Token` header with an image upload.
+
+    ⚠️ **Removed without a prior announcement** — an exception to the versioning policy, decided
+    on 2026-09-13: nothing the module did could be relied on. **Migration**: authenticate writes
+    with the bearer token of `@geoleaf-plugins/connector`, which adds it to the requests it
+    intercepts. A profile that declared `write.auth: "csrf"` no longer validates: use `"bearer"` or
+    `"none"` — the key is declarative, and no code reads it.
+
+### Fixed
+
+- **Modifying or deleting an existing entity reaches its server row.** With the offline
+  capability on, `@geoleaf-plugins/editor` queues every write, and it names an existing entity
+  by the id the map shows — its server identity. The store keyed that entity differently, so
+  the edit landed on a second record with no server identity and the request went out as
+  `?id=eq.null`: every modification and deletion of an existing entity missed its row, whether
+  the layer had been downloaded or not. `Storage.applyEdit` now resolves such an identity to the
+  stored entity of the same layer, or files a never-downloaded one under `srv:<id>`; its report
+  returns the key the edit landed on. A modified entity is no longer drawn twice offline, a
+  deleted one leaves the offline map, and a modification whose entity has no server row yet is
+  no longer sent.
+
+    ⚠️ **Captures already set aside by this defect** carry the server's refusal
+    (`rejectedByServer`), which is not requeueable. Editing the entity again sends a fresh edit
+    that does reach the row; the old entry is then discarded through
+    `Storage.discardQuarantined`. A device that had them keeps one extra record per entity —
+    the one the defect wrote — and a downloaded layer draws that entity twice until it is
+    removed.
+
+- **A dead session no longer sets aside one capture a minute.** The drain stops at the first
+  `401`, which is right, but every trigger afterwards met the same dead session and set the
+  next capture aside: a tour went to quarantine one entry at a time, and nothing brought them
+  back. The core's automatic triggers — network return, wake-up, periodic tick, a fresh write —
+  now wait while a pass has stopped that way, and start again on the first pass that does not.
+  A send asked for by hand is never gated. `@geoleaf-plugins/connector` 1.3.1 closes the loop:
+  on a successful sign-in or a renewed token it calls `Storage.requeueAll("authRequired")` then
+  `Storage.pushOutbox()` — the two public gestures an application that signs in by its own
+  means makes too.
+- **A deletion that meets a concurrent change is no longer lost in silence.** The zero-row
+  answer was read for a modification only, so a filtered `DELETE` answered `200 []` — the row
+  had changed since the capture — came out a plain success: the entry left the queue, the
+  record left the store, and the row stayed on the server until the next download brought the
+  entity back. The conflict is now detected and logged for a deletion as it is for a
+  modification, then settled by the same policy — `lastWriteWins`, so the deletion is sent
+  again without its filter and wins.
+- **A write no longer turns the next one into a conflict.** The record kept the freshness
+  marker it had before being sent, while the server moves it on every write: the next
+  modification of the same entity was filtered on a stale marker and counted the device's own
+  write as someone else's. The record now takes the marker returned with the written row, and an
+  edit made while the previous write was on the wire is based on that write.
+- **An edit made while its entity was being sent is kept.** The drain wrote back the copy of
+  the record it had read before the request, so a correction made during the request was
+  overwritten, marked as sent, and the queued correction then sent the old state.
+- **The Quick Start of the README creates a map.** It passed `Core.init()` the
+  `{ map: { target } }` shape, which only `GeoLeaf.init()` reads, and never put the engine on
+  `globalThis.maplibregl`, the one place GeoLeaf reads it from: the call logged an error and
+  returned `null`. It now installs `maplibre-gl`, sets `Object.assign(globalThis, { maplibregl })`
+  and passes `mapId`. The npm recipes of the documentation had the second defect, and the
+  COOKBOOK and FAQ loaded a profile through `Core.init({ configUrl })`, an option `Core.init`
+  ignores — they now use `GeoLeaf.boot({ configUrl })`. `Core.init` itself gains the TSDoc its
+  declaration was published without.
+- **`.gl-poi-popup__hero` has a rule** — full width, height capped at 160 px, cover crop, rounded
+  corners. The class was emitted with no stylesheet.
+- **An invalid inline configuration no longer hangs the boot.** It rejected the loading promise
+  of `GeoLeaf.loadConfig` without calling `onError`, and the boot waited forever for a callback.
+- **Full-height panels fit a mobile browser tab.** `.gl-page`, the feature side panel, the filter
+  panel and the share dialog were sized in `100vh` — the LARGEST viewport, browser toolbar hidden
+  — so their bottom band sat under the toolbar, out of reach. They now use `100dvh`, with `100vh`
+  kept as the fallback.
+- **A stalled photo upload no longer loses the photo.** `@geoleaf-plugins/editor` sent it with no
+  time limit: on a network that stopped answering, the upload never ended, the photo was neither
+  sent nor kept, and closing the form lost it. The upload now gives up after 30 s plus the time a
+  256 kbit/s uplink needs to send the file, and the photo is kept on the device and sent again
+  later, as after any other failure.
+
+---
+
 ## [3.3.0] - 2026-09-09
 
 ### Added

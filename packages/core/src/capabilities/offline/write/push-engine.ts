@@ -45,11 +45,13 @@ import { StorageContract } from "../../../kernel/shared/index.js";
 import { DrainHooksContract } from "../../../kernel/shared/drain-hooks-seam.js";
 import { fetchBounded } from "../../../utils/general/fetch-bounded.js";
 import { coreProfileLayerConfig } from "../config-seam.js";
+import { markerOf, readServerVersion, recordConflict } from "./conflict-store.js";
 import { isUnsafeKey } from "../../../utils/general/object-path-guard.js";
 import type {
     FeatureRecord,
     OutboxEntry,
     QuarantineReason,
+    VersionMarker,
 } from "../../../contracts/sync.contract.js";
 
 /** Property carrying the client identity on the wire. Shared with the backend schema. */
@@ -261,6 +263,11 @@ interface PushOutcome {
     failure?: PushFailure;
     /** Status of the refusal, when the server answered — it travels with the entry. */
     httpStatus?: number;
+    /**
+     * The freshness marker the server returned with the written row — `null` when the answer
+     * carried none. Absent when the outcome says nothing about the row (a 409 settlement).
+     */
+    version?: VersionMarker | null;
 }
 
 /** Write target resolved from the layer declaration. */
@@ -292,6 +299,7 @@ interface OutboxModule {
             quarantineStatus?: number;
             inFlightAt?: number | null;
             nextAttemptAt?: number | null;
+            baseVersion?: VersionMarker | null;
         }
     ): Promise<void>;
     remove(id: string): Promise<void>;
@@ -598,6 +606,47 @@ async function settleAlreadyPresent(
 }
 
 /**
+ * Settles a detected conflict — `lastWriteWins`, DECLARED rather than suffered.
+ *
+ * The outcome is the same as before the detection existed: what the device holds wins. What
+ * changed is that the conflict is DETECTED and LOGGED before being settled — until then it
+ * was indistinguishable from a normal write, and "the strategy" boiled down to an
+ * `X-Force-Update` header that NO server in the repo reads.
+ *
+ * The motive is the field, and it is in the contract: an operator is the authority on what
+ * they just observed, and a dialog raised off-network, alone on site, gets clicked at random.
+ * A deletion follows the same rule — the operator saw the asset was gone.
+ *
+ * @param entry - The queue entry whose send met a conflict.
+ * @param record - The entity it names.
+ * @param target - The layer's write target.
+ * @returns The outcome of the unfiltered re-send.
+ */
+async function settleByLastWrite(
+    entry: OutboxEntry,
+    record: FeatureRecord,
+    target: WriteTarget
+): Promise<PushOutcome> {
+    const settles =
+        entry.kind === "delete" ? "la suppression l'emporte." : "la version locale écrase.";
+    Log.warn(
+        `[Offline.Push] ${entry.id} — CONFLIT : "${entry.layerId}"/${entry.localId} a changé côté serveur depuis la saisie. Politique lastWriteWins : ${settles}`
+    );
+    // 🛑 READ BEFORE CRUSHING, and the read NEVER decides whether the write happens. A server
+    // granting `UPDATE` without `SELECT` is an ordinary permission split: making the overwrite
+    // conditional on this read would spend every conflict's budget and then quarantine it —
+    // i.e. repeal the arbitrated policy without a single gate noticing. What the read cannot
+    // establish is RECORDED as unestablished (`readOutcome`), never invented.
+    const snapshot = await readServerVersion(record, target);
+    const result = await pushOne(entry, record, target, false);
+    // ⚠️ AFTER the overwrite, and only when it landed. A conflict archived for a write that
+    // never happened would be an observation about nothing — and the entry is still queued at
+    // that point, so it comes back and is settled again.
+    if (result.ok) await recordConflict(entry, record, snapshot);
+    return result;
+}
+
+/**
  * Pushes one entry, and returns the server identity when the server provides one.
  *
  * @param entry - The queue entry.
@@ -666,8 +715,8 @@ async function pushOne(
     }
 
     const payload = (await response.json().catch(() => null)) as
-        { id?: unknown } | Array<{ id?: unknown }> | null;
-    // 🛑 ZERO ROWS TOUCHED ON AN UPDATE — and what it MEANS depends on the filter.
+        Record<string, unknown> | Array<Record<string, unknown>> | null;
+    // 🛑 ZERO ROWS TOUCHED ON AN UPDATE OR A DELETE — and what it MEANS depends on the filter.
     //
     // Measured: PostgREST yields `200 []`, the only form in which this server says
     // "nothing matched". A JSON **array** is what proves it answered in representation;
@@ -682,27 +731,108 @@ async function pushOne(
     // matches on `id=eq.<serverId>` alone — zero rows then says the row is GONE, not
     // stale. That is the same fact a 404 carries, said in this server's own words, so
     // it takes the same motive.
-    if (entry.kind === "update" && Array.isArray(payload) && payload.length === 0) {
+    //
+    // 🛑 **AND THE DELETE WAS NOT READ AT ALL.** The test named `update` alone, so a
+    // filtered `DELETE` answered `200 []` — the row changed since the capture — came out a
+    // plain success: the entry left the queue, the record left the store, and the row stayed
+    // on the server until the next pull brought it back. A deletion is a decision; losing it
+    // in silence is the one thing this cycle must not do.
+    if (entry.kind !== "create" && Array.isArray(payload) && payload.length === 0) {
         if (conditional && entry.baseVersion) return { ok: false, conflicted: true };
-        Log.warn(
-            `[Offline.Push] ${entry.id} — zéro ligne touchée SANS filtre : l'entité n'existe plus côté serveur.`
-        );
-        return { ok: false, failure: "deletedOnServer", httpStatus: response.status };
+        if (entry.kind === "update") {
+            Log.warn(
+                `[Offline.Push] ${entry.id} — zéro ligne touchée SANS filtre : l'entité n'existe plus côté serveur.`
+            );
+            return { ok: false, failure: "deletedOnServer", httpStatus: response.status };
+        }
+        // An unfiltered DELETE that matched nothing has nothing left to delete: the row is
+        // already gone, which is exactly what the entry asked for.
+        Log.debug(`[Offline.Push] ${entry.id} — la ligne à supprimer n'existe déjà plus.`);
+        return { ok: true, version: null };
     }
 
     const row = Array.isArray(payload) ? payload[0] : payload;
     const serverId = row?.id;
-    return serverId != null ? { ok: true, serverId: String(serverId) } : { ok: true };
+    return {
+        ok: true,
+        version: markerOf(row, target.versionProperty),
+        ...(serverId != null ? { serverId: String(serverId) } : {}),
+    };
+}
+
+/**
+ * The record to write back once the server accepted an entry.
+ *
+ * 🛑 **RE-READ, NEVER THE COPY THE SEND STARTED FROM.** The drain read the record before the
+ * request and wrote that copy back after it. An edit made while the request was on the wire
+ * — the operator correcting what they had just saved — was overwritten, marked `synced`, and
+ * its own queued entry then sent the OLD state: the correction was lost on the server too.
+ *
+ * ⚠️ **What changed meanwhile stays owed.** A record edited during the send keeps `pending`;
+ * its own entry carries the edit.
+ *
+ * @param features - The entity store.
+ * @param entry - The entry the server accepted.
+ * @param sent - The record the request was built from.
+ * @param result - What the server answered.
+ * @returns The record to store, and whether it was edited during the send.
+ */
+async function settledRecord(
+    features: FeaturesModule,
+    entry: OutboxEntry,
+    sent: FeatureRecord,
+    result: PushOutcome
+): Promise<{ record: FeatureRecord; editedMeanwhile: boolean }> {
+    const latest = (await features.get(entry.layerId, entry.localId)) ?? sent;
+    const editedMeanwhile = latest.updatedAt !== sent.updatedAt;
+    return {
+        editedMeanwhile,
+        record: {
+            ...latest,
+            serverId: result.serverId ?? latest.serverId,
+            syncState: editedMeanwhile ? "pending" : "synced",
+            version: result.version === undefined ? latest.version : result.version,
+        },
+    };
+}
+
+/** States an entry stacked behind a send can be in when that send returns. */
+const FOLLOWS: ReadonlySet<string> = new Set(["pending", "failed"]);
+
+/**
+ * Moves the entries stacked behind an accepted one onto the marker it returned.
+ *
+ * 🛑 **AN EDIT STACKED DURING A SEND IS BASED ON THAT SEND.** The operator edited what the
+ * device showed, their own write included; the entry still carried the marker from before
+ * it. Sent as is, it matched nothing on the server and took the device's own write for a
+ * conflict. Only entries that shared the accepted one's base move: an entry based on
+ * anything else is not this write's follower.
+ *
+ * @param outbox - The queue module.
+ * @param accepted - The entry the server just accepted.
+ * @param version - The marker it returned.
+ */
+async function rebaseFollowers(
+    outbox: OutboxModule,
+    accepted: OutboxEntry,
+    version: VersionMarker | null
+): Promise<void> {
+    for (const entry of await outbox.list()) {
+        if (entry.id === accepted.id || !FOLLOWS.has(entry.state)) continue;
+        if (entry.layerId !== accepted.layerId || entry.localId !== accepted.localId) continue;
+        if ((entry.baseVersion?.value ?? null) !== (accepted.baseVersion?.value ?? null)) continue;
+        await outbox.updateState(entry.id, entry.state, { baseVersion: version });
+    }
 }
 
 /**
  * Resolves what one entry needs to be sent — or why it cannot be.
  *
- * ⚠️ **Three refusals, and only one of them is the entry's own fault.** A layer that
- * lost its write target will not find it back by replaying, so it is set aside at once;
- * the `rest` dialect is a hole in the CORE, so the entry keeps its budget and a lasting
- * hole surfaces as a quarantine rather than an endless loop; a record gone from the
- * store names an entry with nothing left to send.
+ * ⚠️ **Four refusals, and they do not weigh the same.** A layer that lost its write target
+ * will not find it back by replaying, and neither will a dialect the core does not speak —
+ * both are set aside at once, under their own motive; a record gone from the store names an
+ * entry with nothing left to send; a modification whose entity knows no server row yet has
+ * nothing to address, and waits.
  *
  * @param entry - The queue entry.
  * @param features - The entity store.
@@ -725,15 +855,32 @@ async function prepareSend(
         return { ok: false, immediate: "layerNoLongerWritable" };
     }
     // NAMED refusal rather than a flat body sent to a REST endpoint: see `buildRequest`.
+    //
+    // 🛑 IMMEDIATE, AND UNDER ITS OWN MOTIVE. The refusal used to return an ordinary
+    // failure: the entry spent its budget against a hole in the CORE that no replay fills,
+    // then landed on `retryBudgetExhausted` — "the server never answered", while no request
+    // had been made. `dialectNotSupported` says what happened, and its cause lifts the day
+    // the layer declares another dialect, which `quarantine-api.ts` verifies.
     if (target.dialect === "rest") {
         Log.warn(
-            `[Offline.Push] ${entry.id} — dialecte "rest" non implémenté côté core ; l'entrée reste en file.`
+            `[Offline.Push] ${entry.id} — la couche "${entry.layerId}" déclare le dialecte "rest", que le core n'écrit pas ; l'entrée est mise à l'écart.`
         );
-        return { ok: false };
+        return { ok: false, immediate: "dialectNotSupported" };
     }
     const record = await features.get(entry.layerId, entry.localId);
     if (!record) {
         Log.warn(`[Offline.Push] ${entry.id} — l'entité nommée a disparu du magasin.`);
+        return { ok: false };
+    }
+    // 🛑 NO ROW, NO REQUEST. A modification or a deletion addresses a row by its server
+    // identity; without one the request went out as `?id=eq.null`, which a server reads as
+    // a malformed filter or as "nothing matched". The ordinary case waits one pass — an
+    // edit stacked while its entity's `create` was on the wire — and the entry spends its
+    // budget like any failure the next pass may lift.
+    if (entry.kind !== "create" && record.serverId == null) {
+        Log.warn(
+            `[Offline.Push] ${entry.id} — l'entité ne connaît encore aucune ligne serveur ; rien n'est envoyé.`
+        );
         return { ok: false };
     }
     return { ok: true, target, record };
@@ -1044,22 +1191,9 @@ async function _drainOnce(): Promise<PushReport> {
         await outbox.updateState(entry.id, "inFlight", { inFlightAt: now });
         let result = await pushOne(entry, record, target);
 
-        // ── `lastWriteWins`, DECLARED rather than suffered ─────────────────────────
-        //
-        // The outcome is the same as before: the local version wins. What changes is
-        // that the conflict was DETECTED and LOGGED before being settled — until now
-        // it was indistinguishable from a normal write, and "the strategy" boiled down
-        // to an `X-Force-Update` header that NO server in the repo reads.
-        //
-        // The motive is the field, and it is in the contract: an operator is the
-        // authority on what they just observed, and a dialog raised off-network, alone
-        // on site, gets clicked at random.
         if (result.conflicted) {
             conflicts += 1;
-            Log.warn(
-                `[Offline.Push] ${entry.id} — CONFLIT : "${entry.layerId}"/${entry.localId} a changé côté serveur depuis la saisie. Politique lastWriteWins : la version locale écrase.`
-            );
-            result = await pushOne(entry, record, target, false);
+            result = await settleByLastWrite(entry, record, target);
         }
 
         if (!result.ok) {
@@ -1101,11 +1235,11 @@ async function _drainOnce(): Promise<PushReport> {
             // The entity finished its cycle: the queue lets it go, and so does the store.
             await features.remove(entry.layerId, entry.localId);
         } else {
-            await features.put({
-                ...record,
-                serverId: result.serverId ?? record.serverId,
-                syncState: "synced",
-            });
+            const settled = await settledRecord(features, entry, record, result);
+            await features.put(settled.record);
+            if (settled.editedMeanwhile) {
+                await rebaseFollowers(outbox, entry, settled.record.version);
+            }
         }
         await outbox.remove(entry.id);
         pushed += 1;

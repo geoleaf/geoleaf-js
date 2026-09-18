@@ -376,3 +376,24 @@
         display: none !important;
     }
 }
+
+/* 🛑 MAPLIBRE'S BOTTOM-RIGHT CORNER RUNS UNDER THIS PANEL, and it carries the basemap credit — a
+   licence obligation, not decoration. The map is not narrowed when the panel shows, so the
+   corner steps out of the tab strip, and out of the open content too. The offsets are the BOXES,
+   measured in Chromium: 34 px plus the strip's 1 px border (35), then 320 px plus the content's
+   1 px border (356) — the widths alone left a 1 px and a 2 px overlap.
+   Same two states as the secondary palette in theme-selector.css.
+   ⚠️ `!important`, and it is not a specificity fight: this file is imported into
+   `layer(gl.kernel)`, while maplibre-gl.css is UNLAYERED and declares `right: 0` on this
+   container — an unlayered declaration beats any normal layered one, whatever its specificity.
+   Measured in Chromium: without the flag, the credit stayed under the strip. branding.css
+   carries the same two flags for the bottom-left corner, for the same reason. */
+@media (min-width: 1440px) {
+    body.gl-right-panel-open .maplibregl-ctrl-bottom-right {
+        right: 35px !important;
+    }
+
+    body.gl-right-panel-open:has(#gl-right-panel.gl-has-active) .maplibregl-ctrl-bottom-right {
+        right: 356px !important;
+    }
+}

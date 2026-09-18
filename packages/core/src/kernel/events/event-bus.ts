@@ -108,3 +108,35 @@ export function dispatchGeoLeafEvent<K extends keyof GeoLeafEventMap>(
         Log?.warn(`[GeoLeaf.Events] Failed to dispatch "${name}":`, err);
     }
 }
+
+/**
+ * Dispatches a typed GeoLeaf event that listeners may CANCEL, and reports whether one did.
+ *
+ * Same sanitised copy as {@link dispatchGeoLeafEvent}; the only differences are
+ * `cancelable: true` and the returned verdict. It exists for the events whose default
+ * action is a piece of interface a host may want to replace — the boot failure screen.
+ *
+ * @param name - Event name (must be a key of `GeoLeafEventMap`).
+ * @param detail - Typed payload for the event.
+ * @returns `false` when a listener called `preventDefault()`; `true` otherwise — including
+ *   when `document` is unavailable or the dispatch itself failed, so that the default action
+ *   still happens.
+ */
+export function dispatchCancelableGeoLeafEvent<K extends keyof GeoLeafEventMap>(
+    name: K,
+    detail: GeoLeafEventMap[K]
+): boolean {
+    if (typeof document === "undefined") return true;
+    try {
+        return document.dispatchEvent(
+            new CustomEvent(name, {
+                detail: _sanitizePayload(detail),
+                bubbles: false,
+                cancelable: true,
+            })
+        );
+    } catch (err) {
+        Log?.warn(`[GeoLeaf.Events] Failed to dispatch "${name}":`, err);
+        return true;
+    }
+}

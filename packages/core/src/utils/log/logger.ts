@@ -12,10 +12,19 @@
  * - replace every console.log/console.warn/... across the project
  * - provide a configurable verbosity level via JSON config
  * - ensure each message has a normalized prefix [GeoLeaf.X]
+ * - feed the log's record (`log-record.ts`) — what support reads without developer tools,
+ *   through `getEntries()` and `exportDiagnostic()`
  */
 
 /* eslint-disable no-console */ // This module IS the logger — console calls are intentional
 
+import { getLogEntries, recordLogEntry, type LogEntry } from "./log-record.js";
+
+/**
+ * The level names {@link LogImplInterface.setLevel} recognises, case-insensitively.
+ *
+ * ⚠️ `"production"` is a mode, not a level: it sets the threshold to `warn` and turns quiet mode on.
+ */
 export type LogLevelName = "debug" | "info" | "warn" | "error" | "production";
 
 /**
@@ -143,6 +152,9 @@ const handleGroupedMessage = (message: string, _args: unknown[]): boolean => {
  * a **grouping** counter that suppresses them after a few occurrences and reports the totals
  * through {@link LogImplInterface.showSummary}. A message can therefore be dropped even at a
  * permissive level.
+ *
+ * What reaches the console is also recorded — and warnings and errors always are, whatever the
+ * level: {@link LogImplInterface.getEntries} reads that record back.
  */
 export interface LogImplInterface {
     /**
@@ -276,6 +288,37 @@ export interface LogImplInterface {
      * ```
      */
     error(...args: unknown[]): void;
+
+    /**
+     * The recent entries of the log's record, oldest first — at most 500, secrets redacted.
+     *
+     * Warnings and errors are recorded whatever the level; `info` and `debug` when they reach the
+     * console. The boot logger feeds the same record, and so do uncaught errors and unhandled
+     * rejections from `GeoLeaf.boot()` on. Unlike the console, the record is readable without
+     * developer tools: it is what the boot failure screen hands over in its diagnostic.
+     *
+     * @returns A copy: changing it changes nothing in the record.
+     *
+     * @example
+     * ```js
+     * const errors = GeoLeaf.Log.getEntries().filter((entry) => entry.level === "error");
+     * ```
+     */
+    getEntries(): LogEntry[];
+
+    /**
+     * The recent entries as a JSON document, ready to hand to support.
+     *
+     * @returns `{ format: "geoleaf-log", formatVersion: 1, time, level, entries }`, pretty-printed,
+     *   where `level` is the current threshold and `entries` what
+     *   {@link LogImplInterface.getEntries} returns.
+     *
+     * @example
+     * ```js
+     * const report = GeoLeaf.Log.exportDiagnostic();
+     * ```
+     */
+    exportDiagnostic(): string;
 }
 
 /**
@@ -337,6 +380,24 @@ const _LogImpl: LogImplInterface = {
         }
     },
 
+    getEntries(): LogEntry[] {
+        return getLogEntries();
+    },
+
+    exportDiagnostic(): string {
+        return JSON.stringify(
+            {
+                format: "geoleaf-log",
+                formatVersion: 1,
+                time: new Date().toISOString(),
+                level: _LogImpl.getLevelName(),
+                entries: getLogEntries(),
+            },
+            null,
+            2
+        );
+    },
+
     debug(...args: unknown[]): void {
         if (currentLevel <= LEVELS.DEBUG) {
             const message = args.map((a) => String(a)).join(" ");
@@ -344,6 +405,7 @@ const _LogImpl: LogImplInterface = {
                 if (!handleGroupedMessage(message, args)) return;
             }
             console.debug(formatPrefix("DEBUG"), ...args);
+            recordLogEntry("debug", "log", args);
         }
     },
 
@@ -356,6 +418,7 @@ const _LogImpl: LogImplInterface = {
                 // Always surface the critical messages
                 if (isCriticalMessage(message)) {
                     console.info(formatPrefix("INFO"), ...args);
+                    recordLogEntry("info", "log", args);
                     return;
                 }
 
@@ -366,16 +429,21 @@ const _LogImpl: LogImplInterface = {
             }
 
             console.info(formatPrefix("INFO"), ...args);
+            recordLogEntry("info", "log", args);
         }
     },
 
+    // Warnings and errors are RECORDED whatever the level: what a diagnostic needs most is
+    // exactly what a quiet production level keeps off the console.
     warn(...args: unknown[]): void {
+        recordLogEntry("warn", "log", args);
         if (currentLevel <= LEVELS.WARN) {
             console.warn(formatPrefix("WARN"), ...args);
         }
     },
 
     error(...args: unknown[]): void {
+        recordLogEntry("error", "log", args);
         if (currentLevel <= LEVELS.ERROR) {
             console.error(formatPrefix("ERROR"), ...args);
         }

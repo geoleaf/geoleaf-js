@@ -192,22 +192,37 @@ function _warnIfOutOfDomain(event: string): void {
 export const Events = {
     /**
      * Registers a listener for a GeoLeaf event.
-     * The listener is called every time the event fires until `off()` is called.
+     * The listener is called every time the event fires until it is removed — by the
+     * function this call returns, or by `off()` with the same handler.
      *
      * @param event - Event name (see module docs for full reference).
      * @param handler - Callback receiving the `CustomEvent` with typed `detail`.
+     * @returns A function that removes this listener. It is `off(event, handler)` bound to
+     *   this subscription: calling it twice is harmless, and since the DOM registers one
+     *   listener per handler reference, it also removes an identical earlier `on()`. Without a
+     *   `document` (SSR), nothing is registered and the function does nothing.
      *
      * @example
-     * ```js
-     * GeoLeaf.Events.on("geoleaf:poi:panel:open", (e) => {
-     *     console.log("Panneau POI ouvert :", e.detail.poiId);
+     * ```ts
+     * import { Events } from "@geoleaf/core";
+     *
+     * // An anonymous handler can only be removed through the returned function.
+     * const unsubscribe = Events.on("geoleaf:layer:toggle", (e) => {
+     *     console.log(e.detail.layerId, e.detail.visible);
      * });
+     *
+     * // On teardown:
+     * unsubscribe();
      * ```
      */
-    on<K extends keyof GeoLeafListenableEventMap>(event: K, handler: GeoLeafEventHandler<K>): void {
-        if (typeof document === "undefined") return;
+    on<K extends keyof GeoLeafListenableEventMap>(
+        event: K,
+        handler: GeoLeafEventHandler<K>
+    ): () => void {
+        if (typeof document === "undefined") return () => {};
         _warnIfOutOfDomain(event as string);
         document.addEventListener(event, handler as EventListener);
+        return () => document.removeEventListener(event, handler as EventListener);
     },
 
     /**
@@ -219,7 +234,8 @@ export const Events = {
      *
      * @example
      * ```js
-     * // The handler must be NAMED: an anonymous function can never be removed.
+     * // With off(), the handler must be NAMED — an anonymous one is removed through the
+     * // function on() returns.
      * const handlePoiPanel = (e) => {
      *     console.log(e.detail.poiId);
      * };
@@ -244,6 +260,9 @@ export const Events = {
      *
      * @param event - Event name.
      * @param handler - Callback called at most once.
+     * @returns A function that cancels the listener if it has not fired yet — the teardown of
+     *   a component unmounted before the event arrives. Calling it after the listener fired is
+     *   harmless. Without a `document` (SSR), the function does nothing.
      *
      * @example
      * ```js
@@ -255,9 +274,12 @@ export const Events = {
     once<K extends keyof GeoLeafListenableEventMap>(
         event: K,
         handler: GeoLeafEventHandler<K>
-    ): void {
-        if (typeof document === "undefined") return;
+    ): () => void {
+        if (typeof document === "undefined") return () => {};
         _warnIfOutOfDomain(event as string);
         document.addEventListener(event, handler as EventListener, { once: true });
+        // `removeEventListener` matches on type, handler and capture — `once` is not part of
+        // the key, so this removes the pending listener registered just above.
+        return () => document.removeEventListener(event, handler as EventListener);
     },
 };

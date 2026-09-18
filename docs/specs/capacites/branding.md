@@ -4,7 +4,7 @@ title: branding — la ligne de marque posée en surimpression sur la carte
 capability_id: branding
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: e52f91de
+verifie_contre: 744132ca0
 date: 1er septembre 2026
 ---
 
@@ -36,9 +36,10 @@ natif via l'adaptateur, et en expose le pilotage impératif (`show` / `hide` / `
 
 ### Ce qu'elle ne fait pas
 
-- **Elle n'affiche pas l'attribution cartographique.** L'attribution MapLibre est désactivée à
-  la source (`adapters/maplibre/maplibre-adapter.ts`) ; le texte par défaut de branding _mentionne_
-  MapLibre, mais ce n'est pas un mécanisme d'attribution.
+- **Elle n'affiche pas l'attribution cartographique.** Depuis 3.4.0, c'est le contrôle natif de
+  MapLibre qui la porte, dans le coin opposé — bas-droit (`adapters/maplibre/maplibre-adapter.ts`) ;
+  le texte par défaut de branding _mentionne_ MapLibre, mais ce n'est pas un mécanisme
+  d'attribution. Un profil qui recopiait le crédit du fond dans `text` l'affiche désormais deux fois.
 - **Elle n'a pas de contenu riche.** Le texte est posé en `textContent`, jamais en HTML : pas de
   lien, pas d'image, pas de balise.
 - **Elle ne dit pas non plus « configure-moi ».** L'ancienne boîte de rappel affichée quand la clé

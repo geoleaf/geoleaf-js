@@ -290,6 +290,20 @@ export interface AttributeTableColumn {
 }
 
 /**
+ * Visual weight of an `action` button — which of several buttons the reader is meant to
+ * press first.
+ *
+ * - `primary` — the filled accent button, which is also the look of a button declaring
+ *   no variant;
+ * - `secondary` — outlined and neutral, for a consultation beside a creation;
+ * - `danger` — outlined in the danger colour, for a destructive gesture.
+ *
+ * Rendered as the `gl-poi-popup__action--<variant>` modifier plus a `data-gl-variant`
+ * attribute. A value outside this list keeps the default look and warns once.
+ */
+export type ActionVariant = "primary" | "secondary" | "danger";
+
+/**
  * Options of the `action` widget.
  *
  * Every key here is derived from what `renderActionButton` actually reads — not from
@@ -319,6 +333,11 @@ export interface ActionOptions {
      * property bag.
      */
     readonly payloadFields?: readonly string[];
+    /**
+     * Visual weight of the button. Absent, the button keeps its default filled look —
+     * the look `primary` names, without the modifier.
+     */
+    readonly variant?: ActionVariant;
 }
 
 /** Options of the `badge` widget. */

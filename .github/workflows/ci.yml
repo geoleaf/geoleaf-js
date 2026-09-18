@@ -1019,7 +1019,7 @@ jobs:
             - name: E2E Playwright (carte, storage offline, POI)
               if: >-
                   github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.repository == 'geoleaf/geoleaf-js')
-              run: npm run build:deploy && node scripts/build-deploy-coverage.cjs && npx playwright install --with-deps chromium && npm run test:e2e
+              run: npm run build:deploy && node scripts/build-deploy-coverage.cjs && npx playwright install --with-deps chromium webkit && npm run test:e2e
 
             # Chaque run E2E écrivait 2,8 Mo dans `.nyc_output/` que RIEN ne lisait :
             # `report:e2e` n'était appelé ni ici, ni par ci-local.cjs, ni par le hook. La

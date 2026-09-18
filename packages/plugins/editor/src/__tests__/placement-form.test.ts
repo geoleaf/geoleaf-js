@@ -206,7 +206,7 @@ describe("startPoiCapture", () => {
 
     // 🛑 THE DEFECT THIS REPLACES. This callback used to read `result?.latlng` alone, so a
     // placement SNAPPED onto an existing feature opened a CREATION form on that feature's
-    // own coordinates — two records at the same point, indistinguishable in the ERP.
+    // own coordinates — two records at the same point, indistinguishable in the server's records.
     it("« modifier l'existant » ouvre l'entité voisine et n'ouvre AUCUN formulaire de création", async () => {
         startPoiCapture(null);
         const cb = _activate.mock.calls[0]![1] as (r: unknown) => void;

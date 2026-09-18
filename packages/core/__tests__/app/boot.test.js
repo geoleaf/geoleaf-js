@@ -79,7 +79,10 @@ describe("app/boot (R5)", () => {
                             [1, 1],
                         ],
                     }),
-                })
+                }),
+                // The module failure policy, passed since a module that throws stopped taking
+                // every later module down — `boot-module-failure.test.ts` pins what it decides.
+                { onModuleError: expect.any(Function) }
             );
         });
         it("uses loadActiveProfileResources if Config is present (registry.init avec profileCfg)", async () => {
@@ -108,7 +111,8 @@ describe("app/boot (R5)", () => {
                             [1, 1],
                         ],
                     }),
-                })
+                }),
+                { onModuleError: expect.any(Function) }
             );
         });
     });
@@ -190,7 +194,10 @@ describe("app/boot (R5)", () => {
             );
             errorSpy.mockRestore();
         });
-        it("warn si loadActiveProfileResources throw → registry.init appelé avec baseCfg", async () => {
+        // ⚠️ This case pinned « registry.init called with baseCfg » until the boot failure
+        // surface existed: a map booted without its profile, and nothing said so. Reversed on
+        // purpose — `boot-failure-signal.test.ts` pins the signal itself.
+        it("warn si loadActiveProfileResources throw → le boot échoue, registry.init jamais appelé", async () => {
             GeoLeaf.loadConfig = vi.fn((opts) => setTimeout(() => opts.onLoaded({}), 0));
             GeoLeaf.Config = {
                 loadActiveProfileResources: vi.fn().mockRejectedValue(new Error("profile error")),
@@ -204,7 +211,7 @@ describe("app/boot (R5)", () => {
                 expect.stringContaining("Error loading profile resources"),
                 expect.any(Error)
             );
-            expect(GeoLeaf._registry.init).toHaveBeenCalledWith(expect.anything(), {});
+            expect(GeoLeaf._registry.init).not.toHaveBeenCalled();
             warnSpy.mockRestore();
         });
     });

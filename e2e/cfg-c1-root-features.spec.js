@@ -34,6 +34,19 @@ test.describe("cfg-c1 — racine/features (effets visibles)", () => {
         await expect(branding).toContainText("Propulsé par");
     });
 
+    test("fond de carte → son crédit est affiché par le contrôle natif de MapLibre", async ({
+        page,
+    }) => {
+        // The map was created with `attributionControl: false` until 3.4.0: the credit a basemap
+        // sets on its source never reached the screen. deploy-core boots the tourism profile,
+        // whose default basemap credits OpenStreetMap.
+        await page.goto("/");
+        await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
+        const attribution = page.locator(".maplibregl-ctrl-attrib");
+        await expect(attribution).toBeVisible({ timeout: 15000 });
+        await expect(attribution).toContainText("OpenStreetMap", { timeout: 15000 });
+    });
+
     test("modules.branding.enabled:false → aucun bandeau (effet du flag)", async ({ page }) => {
         // Patch the geoleaf.config.json response before boot to disable branding.
         //

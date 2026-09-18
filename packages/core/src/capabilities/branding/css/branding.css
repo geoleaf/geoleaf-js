@@ -17,8 +17,8 @@
    `coordinates.css` uses it as an ancestor). MapLibre declares `{pointer-events;
    position;z-index}` then `{bottom:0;left:0}` on it, and `{float;margin}` on its
    `.maplibregl-ctrl` DESCENDANTS — a class no child here carries: GeoLeaf controls are
-   added unwrapped (`maplibre-adapter.ts:585-590`) and MapLibre's own attribution control
-   is disabled (`maplibre-adapter.ts:139`). So 32 of the 34 fought nothing.
+   added unwrapped by the adapter, and MapLibre's own attribution control lives in the
+   OPPOSITE corner (`bottom-right`). So 32 of the 34 fought nothing.
 
    The margin cluster had to come out as ONE set, not declaration by declaration: the
    filter-panel shift (l.93) beat `margin:0` only through `!important`, and cancelling it

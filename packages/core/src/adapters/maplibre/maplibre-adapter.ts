@@ -36,7 +36,11 @@ import {
     hasProfileSprite,
     ensureLayerSpriteIcons,
 } from "./maplibre-poi-icons.js";
-import { buildGeoLeafStyleTransform, type StyleTransform } from "./maplibre-style-transform.js";
+import {
+    buildGeoLeafStyleTransform,
+    type StyleTransform,
+    type StyleTransformOptions,
+} from "./maplibre-style-transform.js";
 import { flushMapCleanups } from "./maplibre-event-subscriptions.js";
 import { registerPmtilesProtocol } from "./maplibre-pmtiles.js";
 import {
@@ -87,6 +91,8 @@ interface PluginsRegistryLike {
 export class MaplibreAdapter implements IMapAdapter {
     private _map: MaplibreMap | null = null;
     private _ready = false;
+    /** What the MapLibre constructor threw in `init()` — read through `initError`. */
+    private _initError: unknown = null;
     private _prevZoom = 0;
     private _controlIdCounter = 0;
     private readonly _controls: Map<string, MaplibreControl> = new Map();
@@ -133,23 +139,39 @@ export class MaplibreAdapter implements IMapAdapter {
         // Also honoured via explicit opt-in `mapOptions.preserveDrawingBuffer`.
         const _plugins = getGeoLeaf()?.plugins as PluginsRegistryLike | undefined;
         const _printRegistered = _plugins?.isLoaded?.("print") === true;
-        this._map = new maplibregl.Map({
-            container: options.container,
-            style: { version: 8 as const, sources: {}, layers: [] },
-            center: options.center ? toMapLibreLngLat(options.center) : [0, 0],
-            zoom: options.zoom ?? 5,
-            // `MapOptions` is declared outside this repo: we cannot widen it, so we build
-            // by conditional insertion — the idiom this literal already uses three lines
-            // below for `preserveDrawingBuffer`.
-            ...(options.minZoom !== undefined && { minZoom: options.minZoom }),
-            ...(options.maxZoom !== undefined && { maxZoom: options.maxZoom }),
-            maxPitch: options.maxPitch ?? 80,
-            ...(maxBoundsRaw && { maxBounds: toMapLibreBounds(maxBoundsRaw) }),
-            attributionControl: false,
-            ...((options.preserveDrawingBuffer || _printRegistered) && {
-                preserveDrawingBuffer: true,
-            }),
-        });
+        try {
+            this._map = new maplibregl.Map({
+                container: options.container,
+                style: { version: 8 as const, sources: {}, layers: [] },
+                center: options.center ? toMapLibreLngLat(options.center) : [0, 0],
+                zoom: options.zoom ?? 5,
+                // `MapOptions` is declared outside this repo: we cannot widen it, so we build
+                // by conditional insertion — the idiom this literal already uses three lines
+                // below for `preserveDrawingBuffer`.
+                ...(options.minZoom !== undefined && { minZoom: options.minZoom }),
+                ...(options.maxZoom !== undefined && { maxZoom: options.maxZoom }),
+                maxPitch: options.maxPitch ?? 80,
+                ...(maxBoundsRaw && { maxBounds: toMapLibreBounds(maxBoundsRaw) }),
+                // 🛑 THE BASEMAP CREDIT IS SHOWN — `false` here, copied from the Leaflet-era
+                // adapter with no motive, left the credit a basemap sets on its source unseen,
+                // although providers require it. MapLibre's own control renders it and
+                // sanitises its HTML.
+                // ⚠️ `{}` and NOT an omitted key: the map's default is `{ compact: true }` plus a
+                // MapLibre link, i.e. a button at every width. With no `compact`, the control
+                // collapses only below 640 px — expanded at load, collapsed at the first drag —
+                // and stays expanded where it fits, which is what the providers' terms ask for.
+                attributionControl: {},
+                ...((options.preserveDrawingBuffer || _printRegistered) && {
+                    preserveDrawingBuffer: true,
+                }),
+            });
+        } catch (err) {
+            // Kept, then rethrown: the facade reduces a failed construction to `null`, and this
+            // is what still lets the boot say WHY — MapLibre 6 throws `GPUInitializationError`
+            // when the browser cannot create a WebGL2 context.
+            this._initError = err;
+            throw err;
+        }
         if (options.bounds)
             this._map.fitBounds(toMapLibreBounds(options.bounds), { animate: false });
         this._ready = true;
@@ -158,6 +180,35 @@ export class MaplibreAdapter implements IMapAdapter {
 
     isReady(): boolean {
         return this._ready;
+    }
+
+    /**
+     * The error the MapLibre constructor threw during `init()`, or `null`.
+     *
+     * The facade turns a failed construction into `null`; this is what lets the boot still
+     * name the cause.
+     */
+    get initError(): unknown {
+        return this._initError;
+    }
+
+    /**
+     * Whether `error` is MapLibre's `GPUInitializationError` — thrown when the browser cannot
+     * create the WebGL2 context MapLibre 6 requires.
+     *
+     * The class is matched when the MapLibre global exposes it; the `name` is the fallback for
+     * a build or a test double that does not.
+     *
+     * @param error - Whatever the map construction threw.
+     * @returns `true` for a WebGL2 context failure.
+     */
+    static isGpuInitializationError(error: unknown): boolean {
+        // The ambient global the adapter builds with. A test double or another MapLibre build
+        // may lack the class, hence the lookup before `instanceof` — and no assertion needed.
+        const ctor: unknown =
+            typeof maplibregl === "undefined" ? undefined : maplibregl.GPUInitializationError;
+        if (typeof ctor === "function" && error instanceof ctor) return true;
+        return error instanceof Error && error.name === "GPUInitializationError";
     }
 
     /** Destroys the map instance and releases all resources. After destroy(), no other method may be called. */
@@ -707,12 +758,17 @@ export class MaplibreAdapter implements IMapAdapter {
      *
      * Snapshots ownership from the layer registry (GeoJSON sub-layers + sources),
      * the POI cluster ids, and the sentinel z-anchor. Returns `null` when nothing
-     * is owned yet (e.g. a switch before any data layer exists), letting the caller
-     * fall back to a plain `setStyle()`.
+     * is owned yet (e.g. a switch before any data layer exists) AND the incoming basemap
+     * declares no credit, letting the caller fall back to a plain `setStyle()`.
      *
      * Called by the basemap registry immediately before `setStyle()`.
+     *
+     * @param options - The incoming basemap's declared credit — a transform is built for it
+     *   even when nothing is owned, since it must reach the very first style load.
+     * @returns The transform, or `null` when it would change nothing.
      */
-    buildStyleChangeTransform(): StyleTransform | null {
+    buildStyleChangeTransform(options: StyleTransformOptions = {}): StyleTransform | null {
+        const credit = typeof options.attribution === "string" ? options.attribution.trim() : "";
         const layerIds = new Set<string>();
         const sourceIds = new Set<string>();
         for (const layerId of this._layerRegistry.getAllLayerIds()) {
@@ -728,8 +784,11 @@ export class MaplibreAdapter implements IMapAdapter {
         // The sentinel is added directly (not via the registry) but must be carried
         // over so its z-order boundary between GeoJSON and POI layers is preserved.
         if (this._sentinelCreated) layerIds.add(SENTINEL_POI);
-        if (layerIds.size === 0) return null;
-        return buildGeoLeafStyleTransform({ layerIds, sourceIds });
+        if (layerIds.size === 0 && !credit) return null;
+        return buildGeoLeafStyleTransform(
+            { layerIds, sourceIds },
+            credit ? { attribution: credit } : {}
+        );
     }
 
     /**

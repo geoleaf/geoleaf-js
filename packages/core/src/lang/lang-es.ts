@@ -17,6 +17,31 @@ const lang_es: LangDict = {
     "toast.layer.truncated.known": "{0}: {1} entidades mostradas de {2} — la capa está truncada.",
     "toast.layer.truncated.unknown": "{0}: {1} entidades mostradas, la capa contiene más.",
     "toast.theme.applied": 'Tema "{0}" cargado ({1} capas visibles)',
+    "boot.failure.title": "El inicio ha fallado",
+    "boot.failure.attention.title": "Faltan recursos del perfil",
+    "boot.failure.attention.message":
+        "El mapa puede iniciarse sin ellos, pero pueden faltar capas o ajustes.",
+    "boot.failure.attention.module_title": "Algunos componentes de la aplicación no se iniciaron",
+    "boot.failure.attention.module_message":
+        "El mapa puede mostrarse, pero las funciones de estos componentes no estarán disponibles.",
+    "boot.failure.module_warning":
+        "El componente «{0}» no pudo iniciarse: algunas funciones no están disponibles.",
+    "boot.failure.reason.config":
+        "La configuración de la aplicación no se encuentra o no es válida.",
+    "boot.failure.reason.profile": "El perfil de datos no se encuentra o no es válido.",
+    "boot.failure.reason.webgl":
+        "Este navegador no puede mostrar el mapa: WebGL2 no está disponible (aceleración gráfica desactivada o no compatible).",
+    "boot.failure.reason.map": "No se ha podido crear el mapa.",
+    "boot.failure.reason.module": "Un componente de la aplicación no ha podido iniciarse.",
+    "boot.failure.reason.timeout":
+        "El inicio ha dejado de avanzar. La red puede estar lenta o cortada.",
+    "boot.failure.reason.internal": "Un error interno ha interrumpido el inicio.",
+    "boot.failure.action.reload": "Recargar",
+    "boot.failure.action.continue": "Continuar de todos modos",
+    "boot.failure.action.copy": "Copiar el diagnóstico",
+    "boot.failure.action.download": "Descargar el diagnóstico",
+    "boot.failure.copied": "Diagnóstico copiado.",
+    "boot.failure.copy_manual": "No se puede copiar: seleccione el texto de abajo.",
     "aria.geoloc.toggle": "Geolocalizaci\u00f3n ON/OFF",
     "aria.geoloc.toggle_label": "Activar/Desactivar seguimiento GPS",
     "aria.geoloc.recenter": "Volver a mi posici\u00f3n",

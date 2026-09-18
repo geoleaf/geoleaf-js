@@ -25,6 +25,7 @@
 
         width: min(320px, calc(100% - 2rem));
         height: 100vh;
+        height: 100dvh;
 
         display: flex;
         flex-direction: column;

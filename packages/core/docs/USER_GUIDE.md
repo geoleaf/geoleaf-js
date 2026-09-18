@@ -90,9 +90,13 @@ npm install @geoleaf/core maplibre-gl
 ```
 
 ```typescript
+import * as maplibregl from "maplibre-gl";
 import { Core } from "@geoleaf/core";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "@geoleaf/core/style.css";
+
+// GeoLeaf reads the engine from `globalThis.maplibregl`, which MapLibre 6 no longer sets
+Object.assign(globalThis, { maplibregl });
 
 Core.init({
     mapId: "map",

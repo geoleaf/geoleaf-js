@@ -99,6 +99,8 @@ export default defineConfig({
         actionTimeout: 30 * 1000,
         navigationTimeout: 30 * 1000,
         // Force software WebGL on GPU-less hosts (CI/WSL); opt out with E2E_HW_GL=1.
+        // 🛑 CHROMIUM-ONLY FLAGS. Playwright merges `use` key by key, so every other engine's
+        // project must override `launchOptions` — the WebKit projects below set `{}`.
         // `hostResolverArgs` is empty on the default target — spreading it is a no-op there.
         launchOptions: {
             ...launchOptions,
@@ -157,6 +159,58 @@ export default defineConfig({
                 // an Android UA, yet product code already branches on the UA
                 // (cf. `23-pwa-install-banner.spec.js`).
                 deviceScaleFactor: 1,
+            },
+        },
+        {
+            // WebKit — the engine behind every iOS browser, and one no spec had ever run: the
+            // mobile verdicts of the suite were deductions nothing in the repository could
+            // confirm.
+            //
+            // ⚠️ BOUNDED, like `chromium-touch`: `testMatch` NAMES the specs proven on this
+            // engine. A spec joins after it has been seen green here, never by pattern — the suite
+            // was written against Chromium, and a first WebKit run is a measurement, not a gate.
+            //
+            // 🛑 `launchOptions: {}` IS REQUIRED. The top-level `use.launchOptions` carries
+            // Chromium-only flags, and Playwright merges `use` key by key: without this override
+            // WebKit would be handed SwiftShader and `--host-resolver-rules`.
+            //
+            // ⚠️ Under `E2E_TARGET=nginx` WebKit resolves the vhosts through the system resolver.
+            // `demo.` and `demo.full.geoleaf.local.test` resolve on the workstation;
+            // `demo.coverage.` does not — never admit a spec that targets `coverage`.
+            //
+            // 🛑 `e2e/39-editor-photo-token.spec.js` IS OUT, and not for a product reason. Measured
+            // on 2026-09-12: under `context.setOffline(true)` this WebKit fails EVERY local Blob/File
+            // read — `FileReader` rejects with `NotReadableError`, `fetch(blob:)` fails — in an
+            // ephemeral and in a persistent context alike, and reads again once back online.
+            // Chromium reads them offline, as a real browser does. That spec attaches its photo
+            // off-network, so the capture cannot even be read, and the form reports a failed upload.
+            // A second trait stacks on it: these contexts are non-persistent, and IndexedDB refuses
+            // Blob/File values there ("Error preparing Blob/File data to be stored in object store").
+            // Re-admit it only once a WebKit run reads a File offline — and re-measure the store.
+            name: "webkit",
+            testMatch: ["e2e/38-editor-line-edit.spec.js", "e2e/43-editor-polygon-edit.spec.js"],
+            testIgnore: ["**/.claude/**"],
+            use: { ...devices["Desktop Safari"], deviceScaleFactor: 1, launchOptions: {} },
+        },
+        {
+            // WebKit with a finger — same bounds and same override as `webkit` above.
+            //
+            // ⚠️ Desktop Safari's user agent, NOT an iPhone preset: an iOS user agent opens the
+            // PWA install banner, a bottom sheet over exactly what these specs measure. The
+            // phone is the viewport, the touch input and `isMobile`, as in `chromium-touch`.
+            //
+            // ⚠️ `e2e/33-measure-drag.touch.spec.js` cannot join: its drags go through CDP
+            // (`e2e/helpers/touch.js`), which WebKit does not have.
+            name: "webkit-touch",
+            testMatch: ["e2e/42-form-drawer-keyboard.touch.spec.js"],
+            testIgnore: ["**/.claude/**"],
+            use: {
+                ...devices["Desktop Safari"],
+                viewport: { width: 390, height: 844 },
+                hasTouch: true,
+                isMobile: true,
+                deviceScaleFactor: 1,
+                launchOptions: {},
             },
         },
     ],

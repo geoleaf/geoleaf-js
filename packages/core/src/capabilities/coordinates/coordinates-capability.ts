@@ -35,7 +35,8 @@ export const COORDINATES_CAPABILITY: ICapabilityDeclaration = {
         enabled: {
             type: "boolean",
             default: true,
-            description: "Show the cursor coordinates readout (opt-out).",
+            description:
+                "Show the cursor coordinates readout (opt-out). Absent: shown on a fine pointer, not under `(pointer: coarse)`; `true` shows it everywhere.",
         },
         position: {
             type: "string",

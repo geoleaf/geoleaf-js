@@ -119,7 +119,8 @@ export interface GeoLeafFeatureGeometry {
  * Detail payload for `geoleaf:feature:click`.
  *
  * Dispatched when a user clicks an interactive GeoJSON / vector-tile feature.
- * Cluster aggregates and POI markers are excluded (POI emits `geoleaf:poi:click`).
+ * Cluster aggregates are excluded. `geoleaf:poi:click` is not the POI counterpart of this
+ * event: it is declared in the map and emitted by nothing (see its detail type above).
  * Lets the `feature-info` capability open the popup / side-panel without the
  * kernel knowing how attributes are rendered.
  */
@@ -391,6 +392,46 @@ interface GeoLeafOutboxDrainedDetail {
     conflicts: number;
     /** What stopped the pass before the end of the queue, or `null`. */
     haltedBy: "authRequired" | null;
+}
+
+/**
+ * Detail payload for `geoleaf:offline:write-conflict`.
+ *
+ * 🛑 **THE DRAIN ONLY EVER SAID A NUMBER.** {@link GeoLeafOutboxDrainedDetail} carries a
+ * `conflicts` tally, which tells a banner that something was settled and tells no one WHAT.
+ * The repository's other conflict signal, `geoleaf:editor:feature-conflict`, belongs to the
+ * editor's ONLINE adapter and its 409 — it never fires for a queued write. A host wanting to
+ * show what was crushed had no signal at all.
+ *
+ * ⚠️ Emitted AFTER the overwrite landed, once per settled conflict, and it carries the
+ * crushed row so a host can act without re-reading the store.
+ *
+ * ⚠️ NOT exported, like its neighbours: integrators reach it through
+ * `GeoLeafEventMap["geoleaf:offline:write-conflict"]`, which is the same type.
+ */
+interface GeoLeafOfflineWriteConflictDetail {
+    layerId: string;
+    localId: string;
+    /** The row's server identity, when the record had one. */
+    serverId: string | null;
+    kind: "create" | "update" | "delete";
+    /** The queue entry the conflict came from. */
+    entryId: string;
+    /** When it was settled, milliseconds since epoch. */
+    detectedAt: number;
+    /** The marker the local edit was based on — the filter that matched nothing. */
+    baseVersion: { kind: "timestamp"; value: string } | null;
+    /** The marker the crushed row carried. `null` unless `readOutcome` is `"read"`. */
+    serverVersion: { kind: "timestamp"; value: string } | null;
+    /** The crushed row, as the server returned it. `null` unless `readOutcome` is `"read"`. */
+    serverFeature: Record<string, unknown> | null;
+    /**
+     * What the re-read could establish — `"read"`, `"absent"` (the server holds no such row),
+     * or `"unreadable"` (it could not conclude, and the overwrite happened anyway).
+     */
+    readOutcome: "read" | "absent" | "unreadable";
+    /** The policy that settled it. */
+    settledBy: "lastWriteWins";
 }
 
 /** Detail payload for `geoleaf:editor:feature-sync-flushed`. */
@@ -744,6 +785,64 @@ export interface GeoLeafEventMap {
     // Lifecycle
     "geoleaf:app:ready": { version?: string; timestamp?: number };
     "geoleaf:map:ready": undefined;
+    /**
+     * The boot could not complete. Emitted by `app/boot-failure.ts`, the first terminal
+     * failure winning. A watchdog expiry is the one PROVISIONAL case: a late reveal may still
+     * follow it, and `geoleaf:app:ready` is then the recovery signal.
+     *
+     * ⚠️ Dispatched CANCELABLE: a host that renders its own failure interface calls
+     * `preventDefault()`, and the default screen is not drawn in `#gl-loader`. The payload is
+     * JSON-safe, which is what places the key in this map. Subscribe BEFORE `GeoLeaf.boot()`.
+     */
+    "geoleaf:boot:failed": {
+        reason: "config" | "profile" | "webgl" | "map" | "module" | "timeout" | "internal";
+        phase: "config" | "profile" | "before-boot" | "registry" | "map";
+        /** English, meant for logs and support — not a user-facing string. */
+        message: string;
+        module?: string;
+        /** `true` only for `reason: "timeout"`: the boot may still complete. */
+        provisional: boolean;
+        timestamp: number;
+    };
+    /**
+     * Resources the active profile DECLARES could not be obtained — an HTTP error, invalid
+     * JSON, or a declared section absent from the profile bundle. A file the profile does not
+     * declare is never reported. Emitted before `geoleaf:profile:loaded`; `fatal: true` means
+     * `profile.json` itself failed, and `geoleaf:profile:loaded` does not follow.
+     *
+     * ⚠️ Cancelable, like `geoleaf:boot:failed`: `preventDefault()` suppresses the default
+     * screen that names the failed resources, and the reveal then proceeds untouched.
+     */
+    "geoleaf:profile:failed": {
+        profileId: string;
+        fatal: boolean;
+        failures: {
+            /** `profile.json`, a `Files.*` key (`Files.uiFile`, `Files.modules.legend`) or a layer `configFile`. */
+            resource: string;
+            /** The requested URL, query string removed except the `t` cache token. */
+            url: string;
+            /** Whether the profile contract marks the resource as required. */
+            required: boolean;
+            message: string;
+        }[];
+    };
+    /**
+     * A module's `init()` threw during the boot, and the application goes on without it and
+     * without the modules that depend on it (`skipped`). Emitted by `app/boot-failure.ts`. A
+     * failure the interface cannot survive is not this event: it is `geoleaf:boot:failed` with
+     * `reason: "module"`.
+     *
+     * ⚠️ Cancelable: `preventDefault()` suppresses the default signal — the screen that holds the
+     * reveal and names the module, or the warning once the application is revealed.
+     */
+    "geoleaf:module:failed": {
+        module: string;
+        /** English, meant for logs and support — not a user-facing string. */
+        message: string;
+        /** The modules that did not run because they depend on it, in initialisation order. */
+        skipped: string[];
+        timestamp: number;
+    };
     /** Emitted once when the legend control is first mounted on the map (S10 F2). */
     "geoleaf:legend:ready": { position?: string; layerCount?: number };
     "geoleaf:basemap:change": { key: string; previousKey?: string | null };
@@ -823,6 +922,9 @@ export interface GeoLeafEventMap {
     // Storage — an edit reached the write queue. Typed at birth, same motive.
     "geoleaf:offline:outbox-queued": GeoLeafOutboxQueuedDetail;
     "geoleaf:offline:outbox-drained": GeoLeafOutboxDrainedDetail;
+    // Storage — a conflict was settled by `lastWriteWins`, and what it crushed was kept
+    // (v6 store). Typed at birth, same motive as the two above.
+    "geoleaf:offline:write-conflict": GeoLeafOfflineWriteConflictDetail;
     // Storage — a page of a layer pull landed. Typed at birth, same motive: the untyped
     // baseline only shrinks, so an event born inside it would have to be paid for twice.
     "geoleaf:offline:pull-progress": GeoLeafOfflinePullProgressDetail;
@@ -991,6 +1093,15 @@ export interface GeoLeafRawEventMap {
      * @see GeoLeafPopupActionDetail — the payload, and the confidentiality rule on `properties`.
      */
     "geoleaf:popup:action": GeoLeafPopupActionDetail;
+    /**
+     * The `beforeBoot` hook threw: the host refused the boot — typically an authentication
+     * gate. Emitted by `app/boot-core.ts`, which then hides the loading veil and draws no
+     * failure screen: that interface belongs to the host.
+     *
+     * Lives HERE because `reason` is whatever the hook threw — usually an `Error`, which the
+     * sanitising bus would flatten to `{}`.
+     */
+    "geoleaf:boot:aborted": { reason: unknown };
 }
 
 /*

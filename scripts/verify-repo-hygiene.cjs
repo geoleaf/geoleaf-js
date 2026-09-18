@@ -285,6 +285,12 @@ const SCRIPTS_ALLOWLIST = new Set([
     // `publish-one.cjs`). ⚠️ Copying it would let two definitions of
     // "already published" diverge inside an irreversible gesture.
     "npm-registry.cjs",
+    // lib/ — is this JavaScript the same program up to a renaming of LOCAL bindings? PUB-05's
+    // second regime, in one home so the gate and its guard test read a single rule.
+    "js-alpha-equivalence.cjs",
+    // lib/ — WHEN an announced removal may land (CC-10's `since`/`removeIn`). Its own home so the
+    // guard test reads the gate's rule without a manifest, a register and a source tree around it.
+    "deprecation-timing.cjs",
     // lib/ — THE canonical shape of the licence banner, and its single
     // home: the `--write` generator, the LIC-01/02/04 gate and the bundles'
     // output banner (`build-config/rollup.mjs`) all three read it here. A

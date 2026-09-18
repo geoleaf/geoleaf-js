@@ -503,13 +503,16 @@ export interface IMapAdapter {
     /**
      * Builds a `transformStyle` callback (`setStyle` option, depuis MapLibre v5) that
      * preserves the adapter-owned sources and layers across a basemap style swap,
-     * so they survive natively rather than being torn down and re-injected.
-     * Returns `null` when nothing is owned yet.
+     * so they survive natively rather than being torn down and re-injected, and
+     * carries the incoming basemap's declared credit onto its sources. Returns `null`
+     * when nothing is owned yet and no credit is declared.
      *
      * Called by the basemap registry immediately before `setStyle()`. The return
      * type is intentionally opaque here to keep the contract engine-agnostic.
+     *
+     * @param options - `attribution`: the incoming basemap's declared credit.
      */
-    buildStyleChangeTransform?(): unknown;
+    buildStyleChangeTransform?(options?: { attribution?: string }): unknown;
 
     /**
      * Re-registers runtime images (e.g. POI sprite icons) wiped by

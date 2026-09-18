@@ -47,7 +47,7 @@ basemaps.json — basemap tile source definitions for a GeoLeaf profile. Hardene
 | `basemaps.{id}.label` | string | — | — | — | Display label. |
 | `basemaps.{id}.maxZoom` | number | — | — | — | — |
 | `basemaps.{id}.minZoom` | number | — | — | — | — |
-| `basemaps.{id}.offline` | boolean | — | — | — | Whether this basemap supports offline tile caching. |
+| `basemaps.{id}.offline` | boolean | — | — | — | Whether the offline preparation downloads this basemap. Its resources are only downloaded from the application's own origin or from an origin declared `cacheable: true` and `prefetch: true` in `modules.offline.dataOrigins` - declare a third-party origin only if its terms allow downloading ahead of use (OpenStreetMap forbids offline use of tile.openstreetmap.org). |
 | `basemaps.{id}.offlineBounds` | object | — | — | — | Geographic bounds for offline caching. |
 | `basemaps.{id}.offlineBounds.east` | number | oui | — | — | — |
 | `basemaps.{id}.offlineBounds.north` | number | oui | — | — | — |
@@ -183,6 +183,7 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `attributes.fields[].edit.options.suffix` | string | — | — | — | — |
 | `attributes.fields[].edit.options.unit` | string | — | — | — | — |
 | `attributes.fields[].edit.options.uploadEndpoint` | string | — | — | — | — |
+| `attributes.fields[].edit.options.variant` | string | — | — | "primary" \| "secondary" \| "danger" | `action` only — visual weight of the button: `primary` is the filled accent button (also the look of a button declaring none), `secondary` and `danger` are outlined. Rendered as the `gl-poi-popup__action--<variant>` modifier plus `data-gl-variant`; the legacy `capabilities.feature-info` descriptor carries the same key flat. |
 | `attributes.fields[].edit.required` | boolean | — | — | — | — |
 | `attributes.fields[].edit.widget` | string | — | — | "badge" \| "checkbox" \| "coordinates" \| "date" \| "dropdown" \| "email" \| "gallery" \| "hours" \| "image" \| "link" \| "list" \| "longtext" \| "metric" \| "number" \| "phone" \| "price" \| "radio" \| "rating" \| "reviews" \| "table" \| "tags" \| "text" \| "url" | Capture widget, when it differs from the reading one. `action` is absent from this list on purpose: field-renderer registers no action component, so it has no capture form at all. |
 | `attributes.fields[].field` | string | oui | — | — | Dotted path to the value inside the feature (e.g. "properties.statut"). |
@@ -230,6 +231,7 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `attributes.fields[].options.suffix` | string | — | — | — | — |
 | `attributes.fields[].options.unit` | string | — | — | — | — |
 | `attributes.fields[].options.uploadEndpoint` | string | — | — | — | — |
+| `attributes.fields[].options.variant` | string | — | — | "primary" \| "secondary" \| "danger" | `action` only — visual weight of the button: `primary` is the filled accent button (also the look of a button declaring none), `secondary` and `danger` are outlined. Rendered as the `gl-poi-popup__action--<variant>` modifier plus `data-gl-variant`; the legacy `capabilities.feature-info` descriptor carries the same key flat. |
 | `attributes.fields[].primitive` | string | oui | — | "string" \| "number" \| "boolean" \| "string[]" \| "object" \| "object[]" | What the value IS in the GeoJSON. ⚠️ `badge`, `link` and `price` hold OBJECTS, not scalars — handing one to a plain text renderer is what produces `[object Object]`. |
 | `attributes.fields[].widget` | string | oui | — | "action" \| "badge" \| "checkbox" \| "coordinates" \| "date" \| "dropdown" \| "email" \| "gallery" \| "hours" \| "image" \| "link" \| "list" \| "longtext" \| "metric" \| "number" \| "phone" \| "price" \| "radio" \| "rating" \| "reviews" \| "table" \| "tags" \| "text" \| "url" | 23 components registered by field-renderer, plus `action` — which is NOT one: field-renderer has no action component. It is a core-only reading widget, a button emitting `geoleaf:popup:action`. This list is the reference vocabulary; the core render tables align on it. |
 | `attributes.titleField` | string | — | — | — | Dotted path of the field whose value titles the popup and the side panel. |
@@ -317,8 +319,8 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `table.searchFields` | array | — | — | — | — |
 | `type` | string | — | — | — | Optional layer type tag (semantics under inventory — see anomaly registry). |
 | `write` | object | — | — | — | Per-layer write target: where this layer's edits are pushed. Declared per layer because on many backends each layer is a distinct collection. ⚠️ Was `additionalProperties: true` and set by 0 layers on 48 until 02/08/2026 — a block with no shape that nobody filled. Shape mirrors contracts/sync.contract.ts (LayerWriteTarget) and what the persistence adapters actually read. |
-| `write.auth` | string | — | — | "csrf" \| "bearer" \| "none" | How the endpoint is authenticated. |
-| `write.dialect` | string | — | `"rest"` | "rest" \| "collection" | `rest`: POST {poi, timestamp} envelope, CSRF header. `collection`: flat {...properties, geom} body (OGC API Features style), auth delegated to the connector. Exactly the two the code dispatches on — a third value would be indistinguishable from a typo. |
+| `write.auth` | string | — | — | "bearer" \| "none" | How the endpoint is authenticated — declarative only: no code reads it. Writes are authenticated by the connector plugin, which adds its bearer token to the requests it intercepts. `csrf` was removed in core 3.4.0 with the CSRF module, which no server could verify. |
+| `write.dialect` | string | — | `"collection"` | "rest" \| "collection" | `collection` (the default, and the one the core writes): flat {...properties, geom} body, OGC API Features style, auth delegated to the connector. `rest`: POST {poi, timestamp} envelope, spoken by the editor plugin ONLINE only — a layer declaring it has its offline writes set aside under `dialectNotSupported`. Exactly the two the code dispatches on: a third value would be indistinguishable from a typo. |
 | `write.enabled` | boolean | oui | — | — | Gate. A layer whose write target is disabled has no outbox. |
 | `write.endpoint` | string | — | — | — | URL edits are pushed to. |
 | `write.geometryProperty` | string | — | `"geom"` | — | Property key carrying the geometry in a `collection` body. |

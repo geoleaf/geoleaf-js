@@ -18,8 +18,9 @@
 // recognition, trusted events, derived pointer events.
 //
 // Requires `hasTouch: true` on the project: the renderer only accepts touch input once
-// Playwright has issued `Emulation.setTouchEmulationEnabled`. CDP is Chromium-only, which
-// is the only channel this repo has (see `playwright.config.js` projects).
+// Playwright has issued `Emulation.setTouchEmulationEnabled`. CDP is Chromium-only: a WebKit
+// project cannot use this helper, and `_session` refuses any other engine BY NAME rather than
+// letting a drag fail deep inside on an opaque "CDP session is only available in Chromium".
 
 /**
  * CDP sessions are per-page and cannot be opened twice, so they are memoised.
@@ -32,6 +33,13 @@ const _sessions = new WeakMap();
  * @returns {Promise<import('@playwright/test').CDPSession>}
  */
 function _session(page) {
+    const engine = page.context().browser()?.browserType().name();
+    if (engine !== "chromium") {
+        throw new Error(
+            `[e2e/helpers/touch.js] le glisser passe par CDP, que ${engine ?? "ce moteur"} n'a pas : ` +
+                "une spec qui l'emploie ne peut pas rejoindre un projet non Chromium."
+        );
+    }
     let s = _sessions.get(page);
     if (!s) {
         s = page.context().newCDPSession(page);

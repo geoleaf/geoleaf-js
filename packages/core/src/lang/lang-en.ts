@@ -17,6 +17,30 @@ const lang_en: LangDict = {
     "toast.layer.truncated.known": "{0}: {1} entities shown out of {2} — the layer is truncated.",
     "toast.layer.truncated.unknown": "{0}: {1} entities shown, the layer holds more.",
     "toast.theme.applied": 'Theme "{0}" loaded ({1} visible layers)',
+    "boot.failure.title": "Startup failed",
+    "boot.failure.attention.title": "Some profile resources are missing",
+    "boot.failure.attention.message":
+        "The map can start without them, but layers or settings may be missing.",
+    "boot.failure.attention.module_title": "Some application components did not start",
+    "boot.failure.attention.module_message":
+        "The map can be shown, but the features of these components will be unavailable.",
+    "boot.failure.module_warning":
+        "The component {0} failed to start: some features are unavailable.",
+    "boot.failure.reason.config": "The application configuration is missing or invalid.",
+    "boot.failure.reason.profile": "The data profile is missing or invalid.",
+    "boot.failure.reason.webgl":
+        "This browser cannot display the map: WebGL2 is unavailable (hardware acceleration disabled or unsupported).",
+    "boot.failure.reason.map": "The map could not be created.",
+    "boot.failure.reason.module": "An application component failed to start.",
+    "boot.failure.reason.timeout":
+        "Startup has stopped progressing. The network may be slow or down.",
+    "boot.failure.reason.internal": "An internal error interrupted startup.",
+    "boot.failure.action.reload": "Reload",
+    "boot.failure.action.continue": "Continue anyway",
+    "boot.failure.action.copy": "Copy diagnostic",
+    "boot.failure.action.download": "Download diagnostic",
+    "boot.failure.copied": "Diagnostic copied.",
+    "boot.failure.copy_manual": "Copy unavailable: select the text below.",
     "aria.geoloc.toggle": "Geolocation ON/OFF",
     "aria.geoloc.toggle_label": "Enable/Disable GPS tracking",
     "aria.geoloc.recenter": "Back to my position",

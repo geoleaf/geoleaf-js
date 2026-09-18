@@ -21,9 +21,15 @@ import type { CoordinatesControl } from "./types.js";
 
 /** Read helpers added to the CoordinatesDisplay control for integrators / studio. */
 export interface CoordinatesReadApi {
-    /** Returns `true` when the readout is enabled (`modules.coordinates.enabled !== false`). */
+    /**
+     * Returns `true` when the readout is enabled — `modules.coordinates.enabled` RESOLVED against
+     * the pointer: an absent key is `true` on a fine pointer and `false` under `(pointer: coarse)`.
+     */
     isEnabled(): boolean;
-    /** Returns the resolved `modules.coordinates` config (merged over the built-in defaults). */
+    /**
+     * Returns the `modules.coordinates` config merged over the built-in defaults, with `enabled`
+     * resolved against the pointer (see {@link CoordinatesReadApi.isEnabled}).
+     */
     getConfig(): CoordinatesCapabilityConfig;
 }
 

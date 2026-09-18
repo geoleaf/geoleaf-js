@@ -2,8 +2,11 @@
 
 **Applies to:** `@geoleaf/core` v3.x · **License:** MIT
 
-A TypeScript interactive mapping library built on **MapLibre GL JS**. Fully configurable through
-JSON profiles — GeoJSON layers, styles, themes, taxonomy — with no application-side development.
+A field mapping client built on **MapLibre GL JS**, agnostic of any backend and of any business
+domain. A JSON profile defines the whole application — GeoJSON layers, styles, themes, taxonomy —
+with no application-side development, and edits made without network are recorded and replayed to
+any server that honours its contracts. What it is, and what it is not:
+[Direction](https://www.geoleaf.dev/docs/DIRECTION.html).
 
 [![npm version](https://img.shields.io/npm/v/@geoleaf/core.svg)](https://www.npmjs.com/package/@geoleaf/core)
 [![npm downloads](https://img.shields.io/npm/dm/@geoleaf/core.svg)](https://www.npmjs.com/package/@geoleaf/core)
@@ -32,14 +35,21 @@ package, or `node -p "require('@geoleaf/core/package.json').engines.node"` for t
 installed.
 
 ```javascript
+import * as maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { Core } from "@geoleaf/core";
 import "@geoleaf/core/style.css";
 
-// `center` is [lat, lng] — the `coordinates` of a GeoJSON feature stay [lng, lat]
-Core.init({
-    map: { target: "map", center: [46.5, 2.5], zoom: 6 },
-});
+// GeoLeaf reads the engine from `globalThis.maplibregl`, which MapLibre 6 no longer sets
+Object.assign(globalThis, { maplibregl });
+
+// `mapId` is the container's id; `center` is [lat, lng] — the `coordinates` of a GeoJSON
+// feature stay [lng, lat]
+Core.init({ mapId: "map", center: [46.5, 2.5], zoom: 6 });
 ```
+
+`Core.init()` returns the map adapter, or `null` after logging why: a missing `mapId`, a container
+not found, or no engine on `globalThis.maplibregl`.
 
 > **Warning** — The stylesheet is imported through the declared `@geoleaf/core/style.css` subpath.
 > A `@geoleaf/core/dist/…` specifier throws `ERR_PACKAGE_PATH_NOT_EXPORTED` — the `exports` map
@@ -109,6 +119,7 @@ not shipped inside the npm tarball, which carries only `dist/`, this README and 
 
 | To…                                        | Read                                                                                                  |
 | ------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| know what GeoLeaf is for                   | [Direction](https://www.geoleaf.dev/docs/DIRECTION.html)                                              |
 | get started in 5 minutes                   | [Getting Started](https://www.geoleaf.dev/docs/GETTING_STARTED.html)                                  |
 | follow a step-by-step tutorial             | [Quickstart Tutorial](https://www.geoleaf.dev/docs/QUICKSTART_TUTORIAL.html)                          |
 | learn the full usage                       | [User Guide](https://www.geoleaf.dev/docs/USER_GUIDE.html)                                            |
@@ -117,7 +128,7 @@ not shipped inside the npm tarball, which carries only `dist/`, this README and 
 | look up the API                            | [API Reference](https://www.geoleaf.dev/docs/API_REFERENCE.html)                                      |
 | look up the events                         | [Events API](https://www.geoleaf.dev/docs/EVENTS_API.html)                                            |
 | understand the architecture and boot order | [Architecture Guide](https://www.geoleaf.dev/docs/ARCHITECTURE_GUIDE.html)                            |
-| write a plugin                             | [Plugin Development](https://www.geoleaf.dev/docs/PLUGIN_DEVELOPMENT_GUIDE.html)                      |
+| contribute a plugin to the repository      | [Plugin Development](https://www.geoleaf.dev/docs/PLUGIN_DEVELOPMENT_GUIDE.html)                      |
 | find recipes                               | [Cookbook](https://www.geoleaf.dev/docs/COOKBOOK.html) · [FAQ](https://www.geoleaf.dev/docs/FAQ.html) |
 | review security                            | [Security](https://www.geoleaf.dev/docs/SECURITY.html)                                                |
 | review accessibility                       | [Accessibility](https://www.geoleaf.dev/docs/ACCESSIBILITY.html)                                      |
@@ -134,7 +145,9 @@ packages are all MIT, each with its own version and its own documentation.
 Browse the published list on npm:
 [`@geoleaf-plugins`](https://www.npmjs.com/search?q=%40geoleaf-plugins).
 
-To write your own: [Plugin Development](https://www.geoleaf.dev/docs/PLUGIN_DEVELOPMENT_GUIDE.html).
+Plugins are first-party: they are written in the GeoLeaf repository, against build tooling that is
+not published. Writing one outside it is not a supported path — see
+[Direction](https://www.geoleaf.dev/docs/DIRECTION.html).
 
 ---
 

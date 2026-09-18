@@ -86,10 +86,11 @@ export interface RoutingPublicApi {
 /**
  * Builds the object mounted on `GeoLeaf.Routing`.
  *
- * ⚠️ The surface is deliberately narrow at this stage: route computation lands with the
- * provider contract, and a method advertised before it resolves is worse than an absent
- * one — an integrator reading `GeoLeaf.Routing.route` would find a function that answers
- * nothing. Facade methods delegate; they never hold logic (`check-facade-purity`).
+ * ⚠️ No `route()` member YET: a route is computed by the itinerary panel, from the provider the
+ * profile configures, and a route computed elsewhere is displayed with `publishRoute()`. A method
+ * advertised before its contract is fixed would be worse than an absent one — an integrator
+ * reading `GeoLeaf.Routing.route` would find a function that answers nothing. Facade methods
+ * delegate; they never hold logic (`check-facade-purity`).
  *
  * @returns The plugin's public surface.
  */

@@ -44,9 +44,13 @@ npm install @geoleaf/core maplibre-gl
 ```
 
 ```ts
+import * as maplibregl from "maplibre-gl";
 import { Core } from "@geoleaf/core";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "@geoleaf/core/style.css";
+
+// GeoLeaf reads the engine from `globalThis.maplibregl`, which MapLibre 6 no longer sets
+Object.assign(globalThis, { maplibregl });
 
 Core.init({
     mapId: "map",
@@ -109,18 +113,16 @@ Core.init({
 Load a full JSON configuration profile. All layers, styles, POI taxonomy,
 and UI settings are defined in the profile — no additional code required.
 
-```js
-await GeoLeaf.loadConfig("/profiles/my-app.json");
-```
-
-Or pass directly in `init`:
+The profile is started by `GeoLeaf.boot()`, from the configuration file that names it
+(`data.activeProfile`, `data.profilesBasePath` — see
+[QUICKSTART_TUTORIAL.md](QUICKSTART_TUTORIAL.md), step 3):
 
 ```js
-GeoLeaf.Core.init({
-    mapId: "map",
-    configUrl: "/profiles/my-app.json",
-});
+GeoLeaf.boot({ configUrl: "/geoleaf.config.json" });
 ```
+
+> `Core.init()` is not the way in: it creates a map and reads no configuration. A `configUrl`
+> passed to it is ignored without a word — the map appears, and no profile is ever loaded.
 
 See [PROFILES_GUIDE.md](PROFILES_GUIDE.md) for profile structure.
 

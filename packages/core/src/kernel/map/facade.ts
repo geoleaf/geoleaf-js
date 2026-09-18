@@ -112,21 +112,6 @@ function _buildInitOptions(container: HTMLElement, options: NormalizedInitOption
     };
 }
 
-// ── Public API ────────────────────────────────────────────────────────────────
-
-/**
- * Initialises the map with the given options.
- * Resolves the container element, creates a MaplibreAdapter,
- * and applies the UI theme.
- *
- * @param options - Normalised map options.
- * @param options.mapId - DOM element id for the map container.
- * @param options.center - Initial center as `[lat, lng]`.
- * @param options.zoom - Initial zoom level.
- * @param options.theme - UI theme identifier (e.g. `"light"`, `"dark"`).
- * @param options.mapOptions - Additional engine options (minZoom, maxZoom, maxBounds).
- * @returns The active `IMapAdapter` instance, or `null` on error.
- */
 /** Forwards an init error to the optional Core.onError() callback, guarding against throws. */
 function _notifyError(err: unknown): void {
     if (typeof _g.GeoLeaf?.Core?.onError !== "function") return;
@@ -156,6 +141,42 @@ function _createInstance(id: string, options: NormalizedInitOptions): IMapAdapte
     return adapter;
 }
 
+// ── Public API ────────────────────────────────────────────────────────────────
+
+/**
+ * Creates a map in the container whose id is `options.mapId`, and returns its adapter.
+ *
+ * Resolves the container, builds a `MaplibreAdapter` on the engine found at
+ * `globalThis.maplibregl`, and applies the UI theme to the first map only. A second call with
+ * the same `mapId` returns the existing adapter. It reads no configuration and loads no
+ * profile: a profile-driven application starts with `GeoLeaf.boot()`.
+ *
+ * Never throws. Every failure is logged and returns `null` — a missing `mapId`, a container
+ * not found, no engine on the global, an engine error; the last three also reach
+ * `GeoLeaf.Core.onError()` when one is registered.
+ *
+ * @param options - Map options. Other keys are ignored without a word: the
+ *   `{ map: { target } }` shape belongs to `GeoLeaf.init()`, which normalises it into this one.
+ * @param options.mapId - Id of the container element. **Required** — without it, `null`.
+ * @param options.center - Initial center as `[lat, lng]`.
+ * @param options.zoom - Initial zoom level.
+ * @param options.theme - UI theme identifier (e.g. `"light"`, `"dark"`), first map only.
+ * @param options.mapOptions - Additional engine options (minZoom, maxZoom, maxPitch, maxBounds,
+ *   preserveDrawingBuffer).
+ * @returns The map's `IMapAdapter`, or `null` on failure.
+ *
+ * @example
+ * ```ts
+ * import * as maplibregl from "maplibre-gl";
+ * import { Core } from "@geoleaf/core";
+ *
+ * // The engine is read from `globalThis.maplibregl`, which MapLibre 6 no longer sets.
+ * Object.assign(globalThis, { maplibregl });
+ *
+ * const map = Core.init({ mapId: "map", center: [46.5, 2.5], zoom: 6 });
+ * if (!map) console.error("No map: the reason has been logged.");
+ * ```
+ */
 function init(options: NormalizedInitOptions = {}): IMapAdapter | null {
     const context = "[GeoLeaf.Core]";
     const id = options.mapId;

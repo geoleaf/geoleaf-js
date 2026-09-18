@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "194-variante-action",
+    "scope": ["packages/core/src/capabilities/feature-info/render/action-variant.ts"],
+    "verdicts": {
+        "packages/core/src/capabilities/feature-info/render/action-variant.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Poids visuel d'un bouton d'action — lit la `variant` déclarée, pose le modificateur BEM et `data-gl-variant`, avertit une fois sur une valeur inconnue",
+            "confidence": "haute",
+            "rationale": "Règle ➎, et règle 3 lue avant de juger : l'en-tête dit pourquoi le module n'est pas dans `widget-dispatch.ts` — l'identité, la confirmation et la charge utile du bouton y vivent, son apparence est une autre question avec son propre avertissement. 96 lignes, 1 export (`applyActionVariant`), 1 importeur (`render/widget-dispatch.ts`, 694 lignes après l'appel, sous la limite de 700). `fusionner` le ferait passer au-dessus."
+        }
+    }
+}

@@ -12,18 +12,18 @@ title: "GeoLeaf — Plugin configuration in a profile"
 
 Some configuration keys in `profile.json` and `ui.json` only take effect once the matching plugin is loaded. Without the plugin, the key is **read without error and silently ignored**. This design makes it possible to declare configurations up front and load plugins optionally, depending on the environment.
 
-| Profile key                      | Required plugin                   | Effect once the plugin is loaded              |
-| -------------------------------- | --------------------------------- | --------------------------------------------- |
-| `ui.showCacheButton`             | `@geoleaf-plugins/offline-ui`     | Shows the offline cache management button     |
-| `modules.editor.showAddPoi`      | `@geoleaf-plugins/editor`         | Shows the add-POI button                      |
-| `storage`                        | `@geoleaf-plugins/offline-ui`     | Configures the offline cache (tiles, profile) |
-| `layer.attributes.fields[].edit` | `@geoleaf-plugins/editor`         | Makes the field editable, per layer           |
-| _(no key)_                       | `@geoleaf-plugins/connector`      | fetch interceptor — enabled on import         |
-| _(no key)_                       | `@geoleaf-plugins/file-import`    | Enables the `GeoLeaf.FileImport.*` API        |
-| _(no key)_                       | `@geoleaf-plugins/flatgeobuf`     | Enables the `GeoLeaf.FlatGeobuf.*` API        |
-| _(no key)_                       | `@geoleaf-plugins/cog`            | Enables the `GeoLeaf.COG.*` API               |
-| _(no key)_                       | `@geoleaf-plugins/websocket`      | Real-time POI stream over WebSocket (planned) |
-| _(no key)_                       | `@geoleaf-plugins/realtime-layer` | Auto-refreshing layers (planned)              |
+| Profile key                      | Required plugin                                                    | Effect once the plugin is loaded                                |
+| -------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------- |
+| `ui.showCacheButton`             | `@geoleaf-plugins/offline-ui`                                      | Shows the offline cache management button                       |
+| `modules.editor.showAddPoi`      | `@geoleaf-plugins/editor`                                          | Shows the add-POI button                                        |
+| `modules.offline`                | _(in-core engine; its interface is `@geoleaf-plugins/offline-ui`)_ | Configures the offline cache (tiles, profile, declared origins) |
+| `layer.attributes.fields[].edit` | `@geoleaf-plugins/editor`                                          | Makes the field editable, per layer                             |
+| _(no key)_                       | `@geoleaf-plugins/connector`                                       | fetch interceptor — enabled on import                           |
+| _(no key)_                       | `@geoleaf-plugins/file-import`                                     | Enables the `GeoLeaf.FileImport.*` API                          |
+| _(no key)_                       | `@geoleaf-plugins/flatgeobuf`                                      | Enables the `GeoLeaf.FlatGeobuf.*` API                          |
+| _(no key)_                       | `@geoleaf-plugins/cog`                                             | Enables the `GeoLeaf.COG.*` API                                 |
+| _(no key)_                       | `@geoleaf-plugins/websocket`                                       | Real-time POI stream over WebSocket (planned)                   |
+| _(no key)_                       | `@geoleaf-plugins/realtime-layer`                                  | Auto-refreshing layers (planned)                                |
 
 ---
 
@@ -43,27 +43,42 @@ In `ui.json` → the `ui` section:
 
 Without this flag set to `true`, the button does not appear, even when the plugin is loaded.
 
-### The `storage` block in `profile.json`
+### The `modules.offline` block — `config/plugins/offline.json`
 
-Configures the behaviour of the offline cache:
+Configures the offline cache. The file is referenced by `Files.modules.offline` in `profile.json`, and its content becomes `modules.offline`. The offline engine is in the core, opt-in, and requires `modules.pwa.enabled`; this plugin provides its interface.
 
 ```json
 {
-    "storage": {
-        "enableOfflineDetector": true,
-        "cache": {
-            "enableProfileCache": true,
-            "enableTileCache": true
+    "enabled": true,
+    "cache": {
+        "enableProfileCache": true,
+        "enableTileCache": true
+    },
+    "dataOrigins": [
+        {
+            "origin": "https://tiles.example.com",
+            "roles": ["tiles"],
+            "cacheable": true,
+            "prefetch": true
         }
-    }
+    ]
 }
 ```
 
-| Key                        | Type    | Default | Description                                                 |
-| -------------------------- | ------- | ------- | ----------------------------------------------------------- |
-| `enableOfflineDetector`    | boolean | `false` | Watches network connectivity and shows an offline indicator |
-| `cache.enableProfileCache` | boolean | `true`  | Caches the profile files (config JSON, taxonomy, and so on) |
-| `cache.enableTileCache`    | boolean | `true`  | Caches the map tiles (raster + vector)                      |
+| Key                        | Type    | Default | Description                                                                        |
+| -------------------------- | ------- | ------- | ---------------------------------------------------------------------------------- |
+| `enabled`                  | boolean | `false` | Loads the offline engine (requires `modules.pwa.enabled`)                          |
+| `cache.enableProfileCache` | boolean | `true`  | Enables the profile download — configuration files and layer data                  |
+| `cache.enableTileCache`    | boolean | `true`  | Downloads the tiles of offline basemaps. A veto: `false` wins over any selection   |
+| `dataOrigins`              | array   | `[]`    | Declared origins — `prefetch: true` lets the preparation download from that origin |
+
+> ⚠️ **A tile from another origin is only downloaded when that origin is declared `cacheable: true`
+> and `prefetch: true`.** Downloading ahead of use is not viewing, and several free providers forbid
+> it — OpenStreetMap: « Offline use is not permitted on tile.openstreetmap.org ». Declare an origin
+> only if you operate it or its terms allow it. Tiles served by the application's own origin need no
+> declaration. A basemap refused by this rule is skipped, with a warning that names its origin.
+>
+> The network indicator is no longer part of this block: it is `modules.pwa.offlineDetector.enabled`.
 
 ### Per-layer cache (in `basemaps.json`)
 
@@ -72,10 +87,10 @@ Cache configuration can be refined for each basemap:
 ```json
 {
     "basemaps": {
-        "osm": {
-            "label": "OpenStreetMap",
+        "own-tiles": {
+            "label": "Our tile server",
             "type": "tile",
-            "url": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+            "url": "https://tiles.example.com/{z}/{x}/{y}.png",
             "offline": true,
             "cacheMinZoom": 8,
             "cacheMaxZoom": 16,
@@ -90,12 +105,12 @@ Cache configuration can be refined for each basemap:
 }
 ```
 
-| Key             | Description                                                   |
-| --------------- | ------------------------------------------------------------- |
-| `offline`       | Allows offline caching for this basemap                       |
-| `cacheMinZoom`  | Lowest zoom level to pre-fetch                                |
-| `cacheMaxZoom`  | Highest zoom level to pre-fetch                               |
-| `offlineBounds` | Geographic extent to cache (`north`, `south`, `east`, `west`) |
+| Key             | Description                                                     |
+| --------------- | --------------------------------------------------------------- |
+| `offline`       | Makes the basemap downloadable — from a declared origin (above) |
+| `cacheMinZoom`  | Lowest zoom level to pre-fetch                                  |
+| `cacheMaxZoom`  | Highest zoom level to pre-fetch                                 |
+| `offlineBounds` | Geographic extent to cache (`north`, `south`, `east`, `west`)   |
 
 ---
 
@@ -488,19 +503,14 @@ Layers with `data.realtime.enabled: true` start automatically on the `geoleaf:ap
         "basemapsFile": "config/core/basemaps.json",
         "uiFile": "config/core/ui.json",
         "modules": {
-            "cluster": "config/plugins/cluster.json"
-        }
-    },
-
-    "storage": {
-        "enableOfflineDetector": true,
-        "cache": {
-            "enableProfileCache": true,
-            "enableTileCache": true
+            "cluster": "config/plugins/cluster.json",
+            "offline": "config/plugins/offline.json"
         }
     }
 }
 ```
+
+`config/plugins/offline.json` carries the `modules.offline` block shown above.
 
 ### `ui.json`
 
@@ -540,7 +550,7 @@ Layers with `data.realtime.enabled: true` start automatically on the `geoleaf:ap
 ```js
 import "@geoleaf/core";
 import "@geoleaf-plugins/connector"; // optional — when an authenticated API is required
-import "@geoleaf-plugins/offline-ui"; // unlocks showCacheButton + storage.*
+import "@geoleaf-plugins/offline-ui"; // unlocks showCacheButton, the offline cache interface
 import "@geoleaf-plugins/editor"; // unlocks modules.editor.* (POI editing and capture)
 
 GeoLeaf.init({
@@ -657,10 +667,10 @@ This behaviour is intentional: it allows a single profile to serve several envir
 ```js
 // List of loaded plugins
 GeoLeaf.plugins.getLoadedPlugins();
-// → ["core", "connector", "storage", "addpoi", "file-import", "flatgeobuf", "cog"]
+// → ["core", "connector", "offline-ui", "editor", "file-import", "flatgeobuf", "cog"]
 
 // Check one specific plugin
-GeoLeaf.plugins.isLoaded("storage"); // → true / false
+GeoLeaf.plugins.isLoaded("offline-ui"); // → true / false
 GeoLeaf.plugins.isLoaded("file-import"); // → true / false
 GeoLeaf.plugins.isLoaded("flatgeobuf"); // → true / false
 GeoLeaf.plugins.isLoaded("cog"); // → true / false
@@ -670,7 +680,7 @@ GeoLeaf.plugins.isLoaded("cog"); // → true / false
 
 ## See also
 
-- [PLUGIN_DEVELOPMENT_GUIDE.md](PLUGIN_DEVELOPMENT_GUIDE.md) — build a custom plugin
+- [PLUGIN_DEVELOPMENT_GUIDE.md](PLUGIN_DEVELOPMENT_GUIDE.md) — the plugin pattern, for contributors to the repository (plugins are first-party)
 - `CONNECTOR_GUIDE.md` — HTTP authentication with `@geoleaf-plugins/connector`. The guide ships
   **with the plugin package** (`docs/CONNECTOR_GUIDE.md` of `@geoleaf-plugins/connector`), not
   with the core: it documents the plugin

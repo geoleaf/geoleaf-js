@@ -113,24 +113,24 @@ The "styles" row above covers the only path where they are copied.
 | `DOMSecurity.createElement(tag, attrs, children)` | Tag, attributes, children         | Element created through the safe DOM API                              | Element creation   |
 | `DOMSecurity.createSVGIcon(w, h, path, opts)`     | Dimensions plus path data         | An SVGElement built with `createElementNS` (not `innerHTML`)          | Internal SVG icons |
 
-### CSRF protection
+### No CSRF module
 
-| Function                                     | Description                                           |
-| -------------------------------------------- | ----------------------------------------------------- |
-| `CSRFToken.init()`                           | Generates a crypto-random token (32 bytes, base64url) |
-| `CSRFToken.getToken()`                       | Returns the current token, regenerating it if expired |
-| `CSRFToken.validateToken(token)`             | Validates a token by equality, checks expiry          |
-| `CSRFToken.rotateToken()`                    | Manual rotation plus a `geoleaf:csrf:rotated` event   |
-| `CSRFToken.addTokenToHeaders(opts)`          | Adds `X-CSRF-Token` to the headers                    |
-| `CSRFToken.addTokenToForm(form)`             | Adds `<input type="hidden" name="csrf_token">`        |
-| `CSRFToken.setSecureCookie(name, val, opts)` | Cookie with `Secure` and `SameSite` (see note)        |
+`GeoLeaf.Security.CSRFToken` was removed in 3.4.0. It minted its token in the browser and checked it in the same context, so no server could verify it: it protected nothing while reading like a protection. GeoLeaf authenticates writes with the bearer token of `@geoleaf-plugins/connector`, which adds it to the requests it intercepts — and a browser never attaches a bearer token on its own, which is the condition a CSRF attack relies on.
 
-⚠️ **`validateToken` compares by direct equality, not in constant time**, and
-**`setSecureCookie` cannot set `HttpOnly`** — that flag is server-only (`Set-Cookie`) and
-unreachable from `document.cookie`. Both are deliberate, not oversights: the CSRF token is
-minted and checked in the same browser (no cross-origin timing oracle to exploit), and a
-cookie that must be hidden from JavaScript has to be set by the server. For a JS-inaccessible
-token, use a server-set `HttpOnly` cookie rather than this helper.
+### Diagnostic redaction (internal)
+
+A diagnostic leaves the application by hand — copied or downloaded from the boot failure screen,
+or exported with `GeoLeaf.Log.exportDiagnostic()` — and travels to support by mail or chat. What it
+carries was logged by code that handled URLs, headers and payloads.
+
+| Function              | Input    | Guarantee                                                                                                                                                                               | Usage                                          |
+| --------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `redactSecrets(text)` | Any text | URL userinfo, secret-named query or fragment parameters, `Bearer` and encoded `Basic` credentials, JSON Web Tokens, secret-named JSON members and e-mail addresses become `[redacted…]` | Log entries when read, every diagnostic string |
+
+⚠️ **Pattern-based: a net, not a proof.** A secret written in a sentence with none of these markers
+stays — do not log one. The `t` cache token is kept on purpose. The function is not on
+`GeoLeaf.Security`: it lives in `src/utils/log/redact.ts`, because the security module logs through
+`utils/log` and the reverse import would close a cycle.
 
 ---
 
@@ -223,28 +223,31 @@ rendering.
 - [ ] **Does the new test fail when the guard is neutralised?** Manual mutation protocol: make
       `isUnsafeKey` return `false`, check that the test turns red, then restore. A security test that
       has never been seen failing proves nothing.
+- [ ] Does anything new that leaves the application — a diagnostic, an export, a report — go
+      through `redactSecrets`?
 - [ ] Do all `__tests__/security/` tests pass?
 
 ---
 
 ## 6. Security test files
 
-| File                                          | Tests | Coverage                                                                                                                                   |
-| --------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `security/security.test.js`                   | 42    | escapeHtml, escapeAttribute, validateUrl, validateCoordinates                                                                              |
-| `security/sprint1-sink-hardening.test.js`     | 12    | Guards wired at the sink: sprite loader (M1), Config `deepMerge`/`set`/`merge` (M3), `setValueByPath` — **real StorageHelper, not mocked** |
-| `security/csrf-token.test.js`                 | 23    | Full CSRFToken lifecycle                                                                                                                   |
-| `security/security-comprehensive.test.js`     | ~60   | Extended coverage of escapeHtml and coordinates                                                                                            |
-| `security/security-extended.test.js`          | ~50   | sanitizeSvgContent, validateNumber, parseHtmlSafely                                                                                        |
-| `security/security.esm.test.js`               | ~70   | ESM tests across all functions                                                                                                             |
-| `security/prototype-pollution.test.js`        | 6     | The real `normalizePoiWithMapping` → `setValueByPath` pipeline, **with no mock** of the sink                                               |
-| `security/xss-prevention.test.js`             | 12    | Browser DOM escaping only — the file has **no `import`** and loads no GeoLeaf code. To rewrite against a real sink from 1.1, or to delete  |
-| `security/xss-injection-vectors.test.js`      | ~90   | The **primitives only** (`Security`, `DOMSecurity`, its sole imports at `:17-18`). Reaches **none** of the 1.1 vectors                     |
-| `security/permalink-injection.test.js`        | ~30   | URL parameter injection plus compact mode                                                                                                  |
-| `security/file-validator.test.js`             | ~25   | Safe upload (size, extension, MIME)                                                                                                        |
-| `security/dom-security.test.js`               | 24    | Full DOMSecurity wrapper                                                                                                                   |
-| `capabilities/feature-info/tooltip.test.js`   | —     | `:94-100` injects `<b>x</b>` and asserts `querySelector("b")` is null. A real test on the live path                                        |
-| `capabilities/feature-info/renderers.test.js` | —     | `:60,122,184` — `javascript:` payloads                                                                                                     |
+| File                                          | Tests | Coverage                                                                                                                                    |
+| --------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `security/security.test.js`                   | 42    | escapeHtml, escapeAttribute, validateUrl, validateCoordinates                                                                               |
+| `security/sprint1-sink-hardening.test.js`     | 12    | Guards wired at the sink: sprite loader (M1), Config `deepMerge`/`set`/`merge` (M3), `setValueByPath` — **real StorageHelper, not mocked**  |
+| `security/security-comprehensive.test.js`     | ~60   | Extended coverage of escapeHtml and coordinates                                                                                             |
+| `security/security-extended.test.js`          | ~50   | sanitizeSvgContent, validateNumber, parseHtmlSafely                                                                                         |
+| `security/security.esm.test.js`               | ~70   | ESM tests across all functions                                                                                                              |
+| `security/prototype-pollution.test.js`        | 6     | The real `normalizePoiWithMapping` → `setValueByPath` pipeline, **with no mock** of the sink                                                |
+| `security/xss-prevention.test.js`             | 12    | Browser DOM escaping only — the file has **no `import`** and loads no GeoLeaf code. To rewrite against a real sink from 1.1, or to delete   |
+| `security/xss-injection-vectors.test.js`      | ~90   | The **primitives only** (`Security`, `DOMSecurity`, its sole imports at `:17-18`). Reaches **none** of the 1.1 vectors                      |
+| `security/permalink-injection.test.js`        | ~30   | URL parameter injection plus compact mode                                                                                                   |
+| `security/file-validator.test.js`             | ~25   | Safe upload (size, extension, MIME)                                                                                                         |
+| `security/dom-security.test.js`               | 24    | Full DOMSecurity wrapper                                                                                                                    |
+| `log/redact.test.ts`                          | 8     | `redactSecrets`: URL userinfo, secret parameters (the `t` token kept), fragments, Bearer/Basic, JWT, JSON members, e-mails, plain text kept |
+| `log/log-buffer.test.ts`                      | —     | Redaction on the read path: `Log.getEntries()` and `Log.exportDiagnostic()` never return the raw secret                                     |
+| `capabilities/feature-info/tooltip.test.js`   | —     | `:94-100` injects `<b>x</b>` and asserts `querySelector("b")` is null. A real test on the live path                                         |
+| `capabilities/feature-info/renderers.test.js` | —     | `:60,122,184` — `javascript:` payloads                                                                                                      |
 
 ### 6.1 Vectors that are protected but not tested
 

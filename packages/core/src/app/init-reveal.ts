@@ -16,6 +16,7 @@
 import type { RevealDeps } from "./app-types.js";
 import { asFn, buildFitBoundsOptions, member } from "./app-types.js";
 import { dispatchGeoLeafEvent } from "../kernel/events/event-bus.js";
+import { holdReveal } from "./boot-failure.js";
 
 /**
  * Whether the active profile declares a default theme. Drives the boot reveal signal:
@@ -40,8 +41,39 @@ function _profileHasDefaultTheme(GeoLeaf: GeoLeafGlobal): boolean {
 }
 
 /**
+ * Fades the app shell's `#gl-loader` veil out, then takes it out of the flow.
+ *
+ * Called by the reveal below, and by the boot when a `beforeBoot` hook aborts it — the host
+ * owns what comes next, and a veil left up would cover it. A page without a veil (a host
+ * embedding the library) is left untouched.
+ */
+export function hideBootVeil(): void {
+    const loader = document.getElementById("gl-loader");
+    if (!loader) return;
+    loader.classList.add("gl-loader--fade");
+    // Remove from DOM after the CSS transition (400ms)
+    // { once: true } ensures hide() is not called multiple times
+    loader.addEventListener(
+        "transitionend",
+        function () {
+            loader.style.display = "none";
+        },
+        { once: true }
+    );
+    // Fallback if transitionend does not fire — 800ms > transition duration
+    // (value > transition duration to let transitionend execute first)
+    setTimeout(function () {
+        loader.style.display = "none";
+    }, 800);
+}
+
+/**
  * Wires the loader reveal: applies stored permalink state, then reveals the app
  * on `geoleaf:theme:applied` (or a 5 s safety timeout).
+ *
+ * The reveal asks `holdReveal()` (`boot-failure.ts`) first: a failed boot keeps its failure
+ * screen, and declared profile resources that failed hold the reveal on a screen whose
+ * « Continue » replays it.
  * @param deps Shared boot dependencies passed by `initApp`.
  */
 export function setupReveal({
@@ -62,25 +94,9 @@ export function setupReveal({
     let _appRevealed = false;
     function revealApp(reason: string) {
         if (_appRevealed) return;
+        if (holdReveal(() => revealApp(reason))) return;
         _appRevealed = true;
-        const loader = document.getElementById("gl-loader");
-        if (loader) {
-            loader.classList.add("gl-loader--fade");
-            // Remove from DOM after the CSS transition (400ms)
-            // { once: true } ensures hide() is not called multiple times
-            loader.addEventListener(
-                "transitionend",
-                function () {
-                    loader.style.display = "none";
-                },
-                { once: true }
-            );
-            // Fallback if transitionend does not fire — 800ms > transition duration
-            // (value > transition duration to let transitionend execute first)
-            setTimeout(function () {
-                loader.style.display = "none";
-            }, 800);
-        }
+        hideBootVeil();
 
         // After removing the loader, tell the engine to recalculate its container
         // size and re-fit the profile bounds (unless permalink state overrides).

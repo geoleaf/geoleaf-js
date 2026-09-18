@@ -16,11 +16,7 @@ const mocks = vi.hoisted(() => {
     const Log = { error: vi.fn(), warn: vi.fn(), info: vi.fn() };
     const Errors = { GeoLeafError: class GeoLeafError extends Error {} };
     const CONSTANTS = { VERSION: "test" };
-    const CSRFToken = { generate: vi.fn() };
-    // `CSRFToken` is part of the `security/index.js` barrel; it is no
-    // longer grafted separately by `globals.core.ts`. The barrel's mock must
-    // therefore carry it, otherwise a shape production no longer has is tested.
-    const Security = { sanitize: vi.fn(), CSRFToken };
+    const Security = { sanitize: vi.fn() };
 
     const perfProfilerInst = {
         mark: vi.fn(),
@@ -54,7 +50,6 @@ const mocks = vi.hoisted(() => {
         Errors,
         CONSTANTS,
         Security,
-        CSRFToken,
         Utils,
         createElement,
         applyCssText,
@@ -96,10 +91,6 @@ vi.mock("../../src/utils/constants/constants.js", () => ({
 vi.mock("../../src/kernel/security/index.js", async (importActual) => ({
     ...(await importActual()),
     Security: mocks.Security,
-    CSRFToken: mocks.CSRFToken,
-}));
-vi.mock("../../src/kernel/security/csrf-token.js", () => ({
-    CSRFToken: mocks.CSRFToken,
 }));
 vi.mock("../../src/utils/general/utils-base.js", () => ({ Utils: mocks.Utils }));
 vi.mock("../../src/utils/general/dom-helpers.js", () => ({
@@ -165,10 +156,6 @@ describe("globals.core.ts — B1+B2 registrations", () => {
     it("registers GeoLeaf.Security with Security properties", () => {
         expect(GL.Security).toBeDefined();
         expect(GL.Security.sanitize).toBe(mocks.Security.sanitize);
-    });
-
-    it("registers GeoLeaf.Security.CSRFToken", () => {
-        expect(GL.Security.CSRFToken).toBe(mocks.CSRFToken);
     });
 
     it("sets GeoLeaf._version fallback when __GEOLEAF_VERSION__ is undefined", () => {
@@ -306,7 +293,7 @@ describe("globals.core.ts — B1+B2 registrations", () => {
         // The namespace was pre-existing (set by a previous assertion run in this file).
         // The guard ensures existing references are preserved, then Object.assign merges.
         expect(GL.Security).toBeDefined();
-        expect(GL.Security.CSRFToken).toBe(mocks.CSRFToken);
+        expect(GL.Security.sanitize).toBe(mocks.Security.sanitize);
     });
 
     // ── Guard: Utils namespace pre-initialized ────────────────────────────────

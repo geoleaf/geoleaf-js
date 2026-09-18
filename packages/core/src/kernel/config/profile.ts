@@ -10,6 +10,13 @@ import { ConfigLoader } from "./loader.js";
 import { ProfileLoader as ModularProfileLoader } from "./profile-loader.js";
 import { mergeModulesBag } from "./geoleaf-config/module-config.js";
 import { registerLifecycleTeardown } from "../shared/lifecycle.js";
+import {
+    beginProfileLoad,
+    emitProfileFailuresOnce,
+    markProfileLoadFatal,
+    recordProfileFailure,
+    resetProfileLoadReport,
+} from "./profile-load-report.js";
 import type { GeoLeafConfig } from "./geoleaf-config/config-types.js";
 import type { LoadUrlOptions } from "./geoleaf-config/config-types.js";
 
@@ -128,6 +135,12 @@ function _resolveProfileStep1(
                           "[GeoLeaf.Config.Profile] mapping.json required (normalized:false) but not found or invalid.",
                           err
                       );
+                      recordProfileFailure({
+                          resource: "mapping.json",
+                          url: `${baseUrl}/mapping.json?t=${timestamp}`,
+                          required: true,
+                          error: err,
+                      });
                       return null;
                   }
               )
@@ -169,6 +182,7 @@ function _resolveProfileStep2(
         routes: [],
         mapping: self._activeProfileData.mapping,
     };
+    emitProfileFailuresOnce();
     self._fireProfileLoadedEvent(profileId, {
         profile: self._activeProfile,
         poi: [],
@@ -187,22 +201,58 @@ function _fetchAndResolveProfile(
     self: typeof ProfileModule
 ): Promise<GeoLeafConfig> {
     const profileId = self._config!.data?.activeProfile as string;
-    return Loader.fetchJson(`${baseUrl}/profile.json?t=${timestamp}`, fetchOptions)
-        .then((profile) => {
-            _validateProfileStructure(profile, profileId);
-            return _resolveProfileStep1(
-                profile,
-                isPoiMappingEnabled,
-                Loader,
-                baseUrl,
-                timestamp,
-                fetchOptions,
-                self
-            );
-        })
+    const profileUrl = `${baseUrl}/profile.json?t=${timestamp}`;
+    // Set when `profile.json` itself is the cause, so the final catch does not report the
+    // same failure a second time under a vaguer name.
+    let profileJsonFailed = false;
+    const recordProfileJson = (err: unknown): void => {
+        profileJsonFailed = true;
+        recordProfileFailure({
+            resource: "profile.json",
+            url: profileUrl,
+            required: true,
+            error: err,
+        });
+    };
+    return Loader.fetchJson(profileUrl, fetchOptions)
+        .then(
+            (profile) => {
+                try {
+                    _validateProfileStructure(profile, profileId);
+                } catch (err) {
+                    recordProfileJson(err);
+                    throw err;
+                }
+                return _resolveProfileStep1(
+                    profile,
+                    isPoiMappingEnabled,
+                    Loader,
+                    baseUrl,
+                    timestamp,
+                    fetchOptions,
+                    self
+                );
+            },
+            (err: unknown) => {
+                recordProfileJson(err);
+                throw err;
+            }
+        )
         .then((result) => _resolveProfileStep2(result, profileId, self))
         .catch((err) => {
             Log.error("[GeoLeaf.Config.Profile] Error loading active profile resources:", err);
+            // Whatever reaches this catch left the profile UNAPPLIED, and the boot would go on
+            // with the base configuration — exactly what must not stay silent. Fatal.
+            if (!profileJsonFailed) {
+                recordProfileFailure({
+                    resource: "profile",
+                    url: baseUrl,
+                    required: true,
+                    error: err,
+                });
+            }
+            markProfileLoadFatal();
+            emitProfileFailuresOnce();
             return self._config!;
         });
 }
@@ -241,6 +291,7 @@ function _applyModularEnrichedProfile(
         routes: [],
         mapping: self._activeProfileData.mapping,
     };
+    emitProfileFailuresOnce();
     self._fireProfileLoadedEvent(profileId, {
         profile: self._activeProfile,
         poi: [],
@@ -294,7 +345,8 @@ const ProfileModule = {
     /**
      * Resets the active-profile state to its initial values. Called on map
      * teardown (lifecycle seam + `ConfigModule.destroy()`) so a destroy →
-     * recreate cycle does not keep a stale active profile or its POIs/routes.
+     * recreate cycle does not keep a stale active profile or its POIs/routes — nor the
+     * failures its load recorded (`profile-load-report.ts`).
      *
      * `_config` (the Config singleton wiring) is intentionally preserved — it is
      * a foundation reference, not per-map business state.
@@ -303,6 +355,7 @@ const ProfileModule = {
         this._activeProfileId = null;
         this._activeProfile = null;
         this._activeProfileData = { mapping: null };
+        resetProfileLoadReport();
     },
 
     isProfilePoiMappingEnabled(): boolean {
@@ -325,12 +378,16 @@ const ProfileModule = {
     ): Promise<GeoLeafConfig> {
         const dataCfg = this._config?.data as Record<string, unknown> | undefined;
         if (!dataCfg || !dataCfg.activeProfile) {
+            beginProfileLoad(null);
             Log.info(
                 "[GeoLeaf.Config.Profile] No active profile defined in config.data.activeProfile; no profile loading performed."
             );
             return Promise.resolve(this._config!);
         }
         const { profileId, baseUrl, fetchOptions } = _buildProfileDispatchArgs(dataCfg, options);
+        // Every loader below records the declared resources it cannot obtain
+        // (`profile-load-report.ts`); the boot reads the record once this promise settles.
+        beginProfileLoad(profileId);
 
         // ── The profile handed over in the configuration ──────────────────────────────
         //
@@ -351,13 +408,27 @@ const ProfileModule = {
         const injected = dataCfg.profileBundle as
             { profile?: Record<string, unknown>; bundle?: Record<string, unknown> } | undefined;
         if (injected?.profile && injected.bundle && ModularProfileLoader) {
-            const enriched = ModularProfileLoader._processBundle(
-                injected.bundle,
-                injected.profile as never,
-                baseUrl,
-                profileId
-            );
-            return Promise.resolve(_applyModularEnrichedProfile(enriched, profileId, this));
+            try {
+                const enriched = ModularProfileLoader._processBundle(
+                    injected.bundle,
+                    injected.profile as never,
+                    baseUrl,
+                    profileId
+                );
+                return Promise.resolve(_applyModularEnrichedProfile(enriched, profileId, this));
+            } catch (err) {
+                // The handed-over profile could not be applied: as fatal as a `profile.json`
+                // that does not parse, and reported the same way.
+                recordProfileFailure({
+                    resource: "data.profileBundle",
+                    url: baseUrl,
+                    required: true,
+                    error: err,
+                });
+                markProfileLoadFatal();
+                emitProfileFailuresOnce();
+                return Promise.reject(err);
+            }
         }
 
         const Loader = ConfigLoader;

@@ -12,6 +12,12 @@
  * the built-in defaults. Migrated from the former profile-level `ui.showCoordinates`
  * flag. Opt-out (`enableWhenAbsent: true`): active unless a profile sets
  * `modules.coordinates.enabled: false`.
+ *
+ * 🛑 **An ABSENT `enabled` depends on the pointer.** The readout follows `mousemove` only: under
+ * `(pointer: coarse)` it would show « Lat : --, Lng : -- » for good. So an absent key means
+ * "shown on a fine pointer, not under a coarse one", while an explicit `true` shows it everywhere
+ * and an explicit `false` hides it everywhere. This works because the capability's `configSchema`
+ * injects no default into the running config: the RAW block still tells an absent key from `true`.
  */
 
 import { Config } from "../../kernel/config/config-primitives.js";
@@ -25,7 +31,10 @@ const _Config = Config as ConfigLike;
 
 /** The `modules.coordinates` capability config block. */
 export interface CoordinatesCapabilityConfig {
-    /** Capability gate — inert when `false`. Opt-out (absent → active). */
+    /**
+     * Capability gate — inert when `false`. Opt-out: absent → active on a fine pointer, not under
+     * `(pointer: coarse)`; `true` → active everywhere.
+     */
     enabled: boolean;
     /** Control position on the map (standalone fallback). */
     position: string;
@@ -41,11 +50,30 @@ const DEFAULTS: CoordinatesCapabilityConfig = {
 };
 
 /**
+ * Whether the primary pointer is coarse (a finger). `false` where `matchMedia` does not exist.
+ *
+ * @returns `true` under `(pointer: coarse)`.
+ */
+function _coarsePointer(): boolean {
+    return (
+        typeof globalThis.matchMedia === "function" &&
+        globalThis.matchMedia("(pointer: coarse)").matches
+    );
+}
+
+/**
  * Reads `modules.coordinates.*` from the running core config and merges it over the
- * built-in defaults.
+ * built-in defaults, with `enabled` RESOLVED against the pointer.
+ *
+ * @returns The effective config: `enabled` is `false` under a coarse pointer unless the profile
+ *   sets it to `true`, and `false` everywhere when the profile sets it to `false`.
+ * @example
+ * // profile without `modules.coordinates.enabled`, on a phone
+ * getCoordinatesConfig().enabled; // false
  */
 export function getCoordinatesConfig(): CoordinatesCapabilityConfig {
     const raw =
         _Config.get?.<Partial<CoordinatesCapabilityConfig>>("modules.coordinates", {}) ?? {};
-    return { ...DEFAULTS, ...raw };
+    const enabled = typeof raw.enabled === "boolean" ? raw.enabled : !_coarsePointer();
+    return { ...DEFAULTS, ...raw, enabled };
 }

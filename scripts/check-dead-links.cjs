@@ -203,6 +203,29 @@ const SCOPES =
                   label: "guides",
                   mustNotBeEmpty: true,
               },
+              // ── 2026-09-17 — the PRÉSENTATION regime enters, and the scope comes
+              // WITH it, not after it.
+              //
+              // `DOCS_SOURCE_AND_SYNC.md` §1 opens a fourth public sub-root for the
+              // technical decision-maker. The gate's class ("a dead relative link in a
+              // published doc") was already closed — only its corpus was short, so the
+              // scope is WIDENED rather than a new gate added.
+              //
+              // 🛑 Why it could not wait: a sub-root absent from SCOPES is not half
+              // guarded, it is unguarded — and it exits 0 saying nothing, exactly the
+              // failure the three assertions above were added for. `mustNotBeEmpty`
+              // carries the other half: `walkDir` returns `[]` on an absent directory,
+              // so without it a renamed `presentation/` would go green over 0 files.
+              //
+              // SEEN reddening before being believed: a deliberate dead link in
+              // `CARTE_FONCTIONNEMENT.md` made it print the file, the line and the
+              // unresolved target; removing the link brought it back to green.
+              {
+                  dir: docsPaths.presentation(),
+                  depth: Infinity,
+                  label: "presentation",
+                  mustNotBeEmpty: true,
+              },
               // ── 2026-07-31 — the PRODUCT surfaces (see the header, second half)
               //
               // Two SYNTHETIC scopes: their file list is computed from the registry

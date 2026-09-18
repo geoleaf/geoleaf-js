@@ -48,6 +48,16 @@ export interface StyleSpecLike {
     [key: string]: unknown;
 }
 
+/** Options of {@link buildGeoLeafStyleTransform}. */
+export interface StyleTransformOptions {
+    /**
+     * The incoming basemap's declared credit (`basemaps.{id}.attribution`). Set on every source of
+     * the incoming style that carries none, so MapLibre's attribution control shows it; a source's
+     * own credit is never replaced.
+     */
+    readonly attribution?: string;
+}
+
 /**
  * A MapLibre `transformStyle` callback: given the previous and next style specs,
  * returns the style to actually apply.
@@ -70,11 +80,24 @@ export type StyleTransform = (
  * `visibility`), and GeoJSON sources keep their serialized `data` — hence the
  * rebuild is unnecessary.
  *
+ * A declared basemap credit is set on the incoming style's own sources FIRST, before the merge,
+ * so it never lands on a GeoLeaf data source. It applies on the first style load too — which is
+ * why the adapter builds a transform for it even when GeoLeaf owns nothing yet.
+ *
  * @param owned - The source/layer ids GeoLeaf owns at swap time.
+ * @param options - The incoming basemap's declared credit, if any.
  * @returns A `transformStyle` callback for `map.setStyle(next, { transformStyle })`.
+ * @example
+ * const transform = buildGeoLeafStyleTransform(owned, { attribution: "© Provider" });
+ * map.setStyle(styleUrl, { diff: true, transformStyle: transform });
  */
-export function buildGeoLeafStyleTransform(owned: OwnedStyleIds): StyleTransform {
-    return (previous, next) => {
+export function buildGeoLeafStyleTransform(
+    owned: OwnedStyleIds,
+    options: StyleTransformOptions = {}
+): StyleTransform {
+    const credit = typeof options.attribution === "string" ? options.attribution.trim() : "";
+    return (previous, incoming) => {
+        const next = credit ? _withCredit(incoming, credit) : incoming;
         // First style load (no previous) or nothing to preserve → apply next as-is.
         if (!previous || owned.layerIds.size === 0) return next;
 
@@ -104,4 +127,28 @@ export function buildGeoLeafStyleTransform(owned: OwnedStyleIds): StyleTransform
 
         return { ...next, sources: mergedSources, layers: [...nextLayers, ...layersToAppend] };
     };
+}
+
+/**
+ * Sets a credit on the sources of a style that carry none.
+ *
+ * Built with `Object.fromEntries` — the keys come from a style fetched from a server, and a
+ * computed-key assignment is the prototype-pollution shape this repository refuses.
+ *
+ * @param style - The incoming basemap style.
+ * @param credit - The declared credit, trimmed and non-empty.
+ * @returns The same style when every source already carries a credit, a copy otherwise.
+ */
+function _withCredit(style: StyleSpecLike, credit: string): StyleSpecLike {
+    const entries = Object.entries(style.sources ?? {});
+    const bare = (spec: unknown): boolean =>
+        !!spec && typeof spec === "object" && !(spec as { attribution?: unknown }).attribution;
+    if (!entries.some(([, spec]) => bare(spec))) return style;
+    const sources = Object.fromEntries(
+        entries.map(([id, spec]) => [
+            id,
+            bare(spec) ? { ...(spec as object), attribution: credit } : spec,
+        ])
+    );
+    return { ...style, sources };
 }

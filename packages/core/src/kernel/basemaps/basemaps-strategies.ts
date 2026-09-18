@@ -40,6 +40,7 @@ import { applyHillshadeBasemap } from "./hillshade.js";
 import { buildWmsUrl, resolveWmtsTilesUrl } from "./wmts-resolver.js";
 import {
     _buildRasterSourceSpec,
+    declaredAttribution,
     insertBelow,
     BASEMAP_SOURCE_ID,
     BASEMAP_LAYER_ID,
@@ -86,7 +87,7 @@ function _applyWmsBasemap(nativeMap: NativeMap, definition: BasemapDefinition): 
     }
 
     const tileSize = typeof definition.wms?.tileSize === "number" ? definition.wms.tileSize : 256;
-    const attribution = definition.attribution ?? "";
+    const attribution = declaredAttribution(definition);
 
     const sourceSpec: Record<string, unknown> = {
         type: "raster",
@@ -210,10 +211,16 @@ export function _applyViaStyleChange(
     const styleTarget = targetType === "vector" ? definition.style : EMPTY_STYLE;
 
     // Snapshot the transform BEFORE setStyle so the GeoLeaf sources/layers are
-    // carried into the incoming style (null when nothing is owned yet → plain
-    // setStyle, matching the first-load path).
+    // carried into the incoming style (null when nothing is owned yet and no credit is
+    // declared → plain setStyle, matching the first-load path).
+    //
+    // 🛑 A VECTOR basemap's declared credit travels HERE, and only here: the raster paths set it
+    // on the source they build, but a vector style brings its own sources, so the credit can
+    // only reach MapLibre's attribution control through the incoming style.
     const adapter = _core()?.getAdapter?.();
-    const transform = adapter?.buildStyleChangeTransform?.() ?? null;
+    const attribution = targetType === "vector" ? declaredAttribution(definition) : "";
+    const transform =
+        adapter?.buildStyleChangeTransform?.(attribution ? { attribution } : undefined) ?? null;
 
     // Register the listener BEFORE calling setStyle(). For inline style
     // objects (e.g. EMPTY_STYLE) MapLibre may fire `style.load` synchronously

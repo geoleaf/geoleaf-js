@@ -6,12 +6,15 @@
  * (`queryRenderedFeatures`, `GeoLeaf.Layers`, a server response).
  *
  * 🛑 WHY THIS MODULE EXISTS, AND WHY IT IS NOT IN THE CORE. The core's convention is
- * `properties.id`: `promoteId` is set on POINT sources only
- * (`adapters/maplibre/maplibre-layer-builders.ts`), so on a line or polygon layer
- * MapLibre hands back NO top-level `feature.id` at all. Reading `hit.id` alone therefore
- * resolved to nothing on every non-point layer, and every downstream gate is guarded on
- * that identity — the edit was dropped in silence. The core carries six private
- * implementations of this same fallback (`kernel/geojson/feature-interaction.ts`,
+ * `properties.id`, and it used to set `promoteId` on POINT sources only
+ * (`adapters/maplibre/maplibre-layer-builders.ts`): on a line or polygon layer MapLibre
+ * handed back NO top-level `feature.id` at all. Reading `hit.id` alone therefore resolved
+ * to nothing on every non-point layer, and every downstream gate is guarded on that
+ * identity — the edit was dropped in silence. The core now promotes `id` on every GeoJSON
+ * source it creates, so a rendered hit carries it whenever `properties.id` exists; this
+ * reading order stays, for the picker as a second line of defence and for the surfaces
+ * that are not rendered hits at all (`GeoLeaf.Layers`, a server response). The core carries
+ * six private implementations of this same fallback (`kernel/geojson/feature-interaction.ts`,
  * `layers-public-api.ts`, `feature-validator.ts`, `capabilities/route/endpoint-deriver.ts`…)
  * and exports NONE of them; `kernel/shared/` has no entry in the package's `exports` map.
  * There is thus nothing to import, and the plugin `table` already keeps its own

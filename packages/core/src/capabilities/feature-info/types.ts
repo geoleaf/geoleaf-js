@@ -19,7 +19,11 @@
  * measured at the pre-flight; this removes two of them.
  */
 
-import type { AttributeEmphasis, AttributeWidget } from "../../contracts/attributes.contract.js";
+import type {
+    ActionVariant,
+    AttributeEmphasis,
+    AttributeWidget,
+} from "../../contracts/attributes.contract.js";
 
 /**
  * Field list for a single surface: hidden, or an explicit list.
@@ -58,11 +62,19 @@ export interface FeatureInfoFieldConfig {
      */
     readonly style?: AttributeEmphasis;
     /**
-     * Pre-type presentation hint carried verbatim from the authored config;
-     * normalized by the render engine (legacy parity): `hero` (image → hero),
-     * `title` (text → title emphasis), `multiline` (text → longtext).
+     * Pre-type hint carried verbatim from the authored config, read according to the
+     * field's `type`:
+     *
+     * - image and text — normalized by the render engine (legacy parity): `hero`
+     *   (image → hero), `title` (text → title emphasis), `multiline` (text → longtext);
+     * - `action` — the button's visual weight, `ActionVariant` (`primary`, `secondary`,
+     *   `danger`).
+     *
+     * ⚠️ One flat key for two meanings, because this legacy descriptor is flat by
+     * construction. The `attributes` block types the second meaning per widget, as
+     * `ActionOptions.variant`.
      */
-    readonly variant?: "hero" | "title" | "multiline";
+    readonly variant?: "hero" | "title" | "multiline" | ActionVariant;
     /** When `true`, the field is never rendered. */
     readonly hidden?: boolean;
     /** Identifier dispatched with `geoleaf:popup:action` for `type: "action"`. */
@@ -89,6 +101,14 @@ export interface FeatureInfoLayerBinding {
 export interface FeatureInfoConfig {
     /** Gate — the capability is inert when `false` or absent. */
     readonly enabled: boolean;
+    /**
+     * Options of the click popup surface.
+     *
+     * `closeButton` shows MapLibre's close cross, and only when it is exactly `true`:
+     * Escape and a click on the map already close the popup, and the default must not
+     * move under a host that never asked.
+     */
+    readonly popup?: { readonly closeButton?: boolean };
 }
 
 /** `geoleaf:feature:click` kernel seam event detail. */

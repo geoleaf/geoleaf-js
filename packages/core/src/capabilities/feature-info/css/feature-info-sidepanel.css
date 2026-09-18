@@ -68,6 +68,7 @@
         top: 0;
         right: 0;
         height: 100vh;
+        height: 100dvh;
         width: var(--gl-sidepanel-width);
         max-width: 100vw;
         background: var(--gl-color-bg-surface);

@@ -19,9 +19,10 @@
 //   - popup     → `.gl-fi-popup-ml`     (MapLibre envelope, surfaces/popup.ts)
 //                 containing `.gl-poi-popup` (content root, render/popup-content.ts)
 //   - close     → Escape key            (surfaces/popup.ts)
-// The popup is built with `closeButton: false` (popup.ts): there IS NO
-// close button. The `.gl-fi-popup` and `.gl-fi-close` classes this spec used
-// to target are emitted NOWHERE (grep = 0) — those three tests could not
+// The popup is built with `closeButton: false` by default (popup.ts, setting
+// `modules.feature-info.popup.closeButton`): there is NO close button unless a
+// profile asks for one. The `.gl-fi-popup` and `.gl-fi-close` classes this spec
+// used to target are emitted NOWHERE (grep = 0) — those three tests could not
 // pass.
 //
 // Target: deploy-coverage (port 8769), `tourism` profile
@@ -184,5 +185,100 @@ test.describe("feature-info (capacité core) — surfaces GeoJSON", () => {
         // mere "not visible".
         await page.keyboard.press("Escape");
         await expect(page.locator(".gl-fi-popup-ml")).toHaveCount(0);
+    });
+
+    test("les actions portent leur poids et partagent une rangée — styles calculés", async ({
+        page,
+    }) => {
+        await bootMapUntilLoaded(page);
+
+        // Opened through the public façade with a layout override: the shipped profiles are a
+        // shop window, not a fixture, and none of them declares an action variant.
+        // ⚠️ Computed styles, not `toBeVisible()`: this repo has twice shipped an element
+        // invisible under a green visibility assertion, and a class with no rule is "visible"
+        // all the same.
+        await page.waitForFunction(
+            () =>
+                typeof (/** @type {any} */ (window).GeoLeaf?.FeatureInfo?.openPopup) === "function"
+        );
+        await page.evaluate((layer) => {
+            /** @type {any} */ (window).GeoLeaf.FeatureInfo.openPopup(
+                {
+                    layerId: layer,
+                    featureId: "pt-1",
+                    properties: { Name: "Poste 12" },
+                    geometry: null,
+                    lngLat: { lat: 42.9, lng: 0.1 },
+                    point: { x: 300, y: 300 },
+                },
+                {
+                    layerId: layer,
+                    fields: [
+                        { field: "Name", type: "text" },
+                        {
+                            field: "Name",
+                            type: "action",
+                            actionId: "e2e:create",
+                            label: "Créer",
+                            variant: "primary",
+                        },
+                        {
+                            field: "Name",
+                            type: "action",
+                            actionId: "e2e:view",
+                            label: "Voir",
+                            variant: "secondary",
+                        },
+                        {
+                            field: "Name",
+                            type: "action",
+                            actionId: "e2e:remove",
+                            label: "Retirer",
+                            variant: "danger",
+                        },
+                    ],
+                }
+            );
+        }, LAYER);
+
+        const row = page.locator(".gl-fi-popup-ml .gl-poi-popup__actions");
+        await expect(row).toHaveCount(1);
+        await expect(row.locator("button.gl-poi-popup__action")).toHaveCount(3);
+
+        const measured = await page.evaluate(() => {
+            const rowEl = /** @type {HTMLElement} */ (
+                document.querySelector(".gl-fi-popup-ml .gl-poi-popup__actions")
+            );
+            const button = (/** @type {string} */ id) =>
+                /** @type {HTMLElement} */ (rowEl.querySelector(`[data-gl-action-id="${id}"]`));
+            // The danger colour as the cascade resolves it HERE, so the oracle does not
+            // hard-code a theme value.
+            const probe = document.createElement("span");
+            probe.style.color = "var(--gl-color-danger, #c0392b)";
+            rowEl.appendChild(probe);
+            const expectedDanger = getComputedStyle(probe).color;
+            probe.remove();
+            return {
+                display: getComputedStyle(rowEl).display,
+                flexWrap: getComputedStyle(rowEl).flexWrap,
+                primaryBg: getComputedStyle(button("e2e:create")).backgroundColor,
+                secondaryBg: getComputedStyle(button("e2e:view")).backgroundColor,
+                dangerColor: getComputedStyle(button("e2e:remove")).color,
+                expectedDanger,
+                sameRow:
+                    button("e2e:create").getBoundingClientRect().top ===
+                    button("e2e:view").getBoundingClientRect().top,
+            };
+        });
+
+        expect(measured.display).toBe("flex");
+        expect(measured.flexWrap).toBe("wrap");
+        expect(measured.secondaryBg).toBe("rgba(0, 0, 0, 0)");
+        expect(measured.primaryBg).not.toBe(measured.secondaryBg);
+        expect(measured.dangerColor).toBe(measured.expectedDanger);
+        expect(measured.sameRow).toBe(true);
+
+        // The default is kept: no close cross unless the profile asks for one.
+        await expect(page.locator(".gl-fi-popup-ml .maplibregl-popup-close-button")).toHaveCount(0);
     });
 });

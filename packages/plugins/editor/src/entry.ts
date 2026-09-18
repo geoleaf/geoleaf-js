@@ -16,7 +16,7 @@ import {
     setEditorActiveTool,
     deactivateActiveTool,
 } from "./sub-menu/floating-menu.js";
-import { openPendingQueueModal } from "./sub-menu/pending-queue-modal.js";
+import { openQueueDetail } from "./sub-menu/queue-detail.js";
 import { createEditorFormModal } from "./modal/editor-form-modal.js";
 import type { ModalOpenOptions } from "./modal/editor-form-modal.js";
 import { createLayerDropdown } from "./modal/layer-dropdown.js";
@@ -33,11 +33,7 @@ import {
 } from "./selection/layer-picker.js";
 import { getSelection, clearSelection } from "./selection/selection-state.js";
 import { createPersistenceAdapter } from "./persistence/adapter-factory.js";
-import {
-    flushNow,
-    getPendingCount,
-    listPendingEditorEntries,
-} from "./persistence/editor-sync-replay.js";
+import { getPendingCount } from "./persistence/editor-sync-replay.js";
 import { registerSyncHandler, registerBeforeDrainStep } from "./persistence/sync-handler.js";
 import {
     initImageUpload,
@@ -218,13 +214,6 @@ function _refreshQueueBadge(): void {
         });
 }
 
-// Opens the pending-operations detail modal (badge click).
-function _openQueueDetail(): void {
-    void listPendingEditorEntries().then((entries) =>
-        openPendingQueueModal(entries, { onRetry: () => void flushNow() })
-    );
-}
-
 function _doDelete(): void {
     const snap = getSelection();
     if (!snap || !_adapter) return;
@@ -346,7 +335,7 @@ function _initMenu(): void {
         onUndo: undo,
         onRedo: redo,
         onDelete: _onDelete,
-        onPendingBadgeClick: _openQueueDetail,
+        onPendingBadgeClick: openQueueDetail,
     });
 }
 

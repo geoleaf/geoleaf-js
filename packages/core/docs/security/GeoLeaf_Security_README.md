@@ -6,13 +6,12 @@ title: "GeoLeaf.Security — Security module documentation"
 
 **Applies to:** `@geoleaf/core` v3.x
 **Source file (monorepo)**: `packages/core/src/kernel/security/index.ts`
-**CSRF module**: `packages/core/src/kernel/security/csrf-token.ts`
 
 ---
 
 ## Overview
 
-The **GeoLeaf.Security** module provides centralised security functions that protect the application against XSS (Cross-Site Scripting) vulnerabilities, malicious injections and CSRF attacks.
+The **GeoLeaf.Security** module provides centralised security functions that protect the application against XSS (Cross-Site Scripting) vulnerabilities and malicious injections.
 
 ### Main responsibilities
 
@@ -23,7 +22,6 @@ The **GeoLeaf.Security** module provides centralised security functions that pro
 - **HTML sanitisation** — parses HTML against a tag allowlist, injects into the DOM safely
 - **SVG sanitisation** — strips scripts and event handlers from external SVGs
 - **Number validation** — rejects NaN, Infinity and out-of-range values
-- **CSRF tokens** — generation, validation and rotation of anti-CSRF tokens
 
 ---
 
@@ -306,45 +304,9 @@ GeoLeaf.Security.sanitizeHTML(container, htmlContent, {
 
 ---
 
-## CSRF module (`csrf-token.ts`)
+## No CSRF module
 
-### `GeoLeaf.Security.CSRF` / `CSRFToken`
-
-Anti-CSRF token manager built on `crypto.getRandomValues`.
-
-**API**:
-
-| Method                                         | Description                                          |
-| ---------------------------------------------- | ---------------------------------------------------- |
-| `CSRFToken.init()`                             | Generates the initial token and starts auto-refresh  |
-| `CSRFToken.getToken()`                         | Returns the current token (regenerated if expired)   |
-| `CSRFToken.validateToken(token)`               | Validates a received token                           |
-| `CSRFToken.addTokenToData(data)`               | Adds the token to an object or FormData              |
-| `CSRFToken.addTokenToHeaders(options)`         | Adds `X-CSRF-Token` to the fetch headers             |
-| `CSRFToken.createTokenInput()`                 | Creates an `<input type="hidden" name="csrf_token">` |
-| `CSRFToken.addTokenToForm(form)`               | Adds the token to an HTML form                       |
-| `CSRFToken.validateFormToken(data)`            | Validates the token from a FormData/object           |
-| `CSRFToken.setSecureCookie(name, value, opts)` | Sets a cookie with `Secure`, `SameSite`, `HttpOnly`  |
-| `CSRFToken.rotateToken()`                      | Manual token rotation                                |
-| `CSRFToken.getTokenInfo()`                     | Returns `{ hasToken, expiresIn, isValid }`           |
-| `CSRFToken.destroy()`                          | Destroys the token and stops auto-refresh            |
-
-**Example**:
-
-```js
-// Add CSRF token to a fetch request
-const options = CSRFToken.addTokenToHeaders({ method: "POST", body: JSON.stringify(data) });
-fetch("/api/poi", options);
-
-// Validate token on form submit
-form.addEventListener("submit", (e) => {
-    const data = new FormData(form);
-    if (!CSRFToken.validateFormToken(data)) {
-        e.preventDefault();
-        console.error("Invalid CSRF token");
-    }
-});
-```
+`GeoLeaf.Security.CSRFToken` was removed in 3.4.0. It minted its token in the browser and checked it in the same context, so no server could verify it: it protected nothing while reading like a protection. GeoLeaf authenticates writes with the bearer token of `@geoleaf-plugins/connector`, which adds it to the requests it intercepts — and a browser never attaches a bearer token on its own, which is the condition a CSRF attack relies on.
 
 ---
 

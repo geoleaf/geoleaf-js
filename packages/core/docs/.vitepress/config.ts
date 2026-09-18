@@ -89,6 +89,7 @@ export default defineConfig({
             {
                 text: "Concepts",
                 items: [
+                    { text: "Direction", link: "/DIRECTION" },
                     { text: "Architecture", link: "/ARCHITECTURE_GUIDE" },
                     { text: "User Guide", link: "/USER_GUIDE" },
                 ],
@@ -143,7 +144,6 @@ export default defineConfig({
                 text: "Plugins & Extensions",
                 items: [
                     { text: "Plugin Development", link: "/PLUGIN_DEVELOPMENT_GUIDE" },
-                    { text: "Core Extension", link: "/CORE_EXTENSION_GUIDE" },
                     // ⚠️ "Connector Guide" removed on 2026-08-10 — the page moved
                     // to `packages/plugins/connector/docs/`, outside this site's
                     // `srcDir` (which is `packages/core/docs`). Leaving it would

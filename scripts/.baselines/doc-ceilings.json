@@ -3,7 +3,7 @@
     "_generated": "node scripts/check-doc-ceilings.cjs --update-baseline",
     "_target": 15360,
     "ceilings": {
-        "claude": 31331,
-        "etat": 38318
+        "claude": 31323,
+        "etat": 27944
     }
 }

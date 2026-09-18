@@ -1,5 +1,5 @@
 /**
- * Schema v4 — `features` and `outbox`.
+ * The schema's SHAPE — `features` and `outbox` (v4), `routes` (v5), `conflicts` (v6).
  *
  * Three things are exercised here, and only one is structural:
  *  1. the schema's shape (stores, keys, indexes);
@@ -32,17 +32,20 @@ afterEach(async () => {
     });
 });
 
-// ⚠️ The FILE keeps its `schema-v4` name although the base moved to v5, and
+// ⚠️ The FILE keeps its `schema-v4` name although the base moved to v6, and
 // that is not an oversight: it is cited by `docs/specs/capacites/offline.md`
 // (twice) and frozen in `scripts/.baselines/js-test-debt.json`. Renaming
 // would make three references diverge for a readability gain this comment
 // makes unnecessary. What the file guards is not ONE version, it is the
 // schema's SHAPE — and what must not come back into it.
-describe("la forme du schéma — v5", () => {
-    test("la base s'ouvre en v5 avec les sept stores", async () => {
+describe("la forme du schéma — v6", () => {
+    // Red on 17/09/2026 at the v6 bump: expected 6 to be 5. The garde did its job — it is
+    // the reason the store count is written down rather than derived.
+    test("la base s'ouvre en v6 avec les huit stores", async () => {
         const db = await IndexedDB.init();
-        expect(db.version).toBe(5);
+        expect(db.version).toBe(6);
         expect(Array.from(db.objectStoreNames).sort()).toEqual([
+            "conflicts",
             "features",
             "layers",
             "local_images",
@@ -51,6 +54,23 @@ describe("la forme du schéma — v5", () => {
             "preferences",
             "routes",
         ]);
+    });
+
+    /**
+     * 🛑 THE SHAPE ON A FRESH BASE, and `schema-v6-migration.test.ts` asserts the same on an
+     * UPGRADED one. The duplication is deliberate: a store created from nothing and a store
+     * created beside existing data are two code paths through the same guard, and a schema
+     * that differs between them is precisely the defect class this file exists for.
+     *
+     * The absence of index is the decision of 17/09/2026 — reading a layer costs 0,45 to
+     * 0,8 s at 30 000 entities from disk, which does not justify one, and the composite key
+     * already gives per-layer traversal by key range.
+     */
+    test("`conflicts` porte une clé COMPOSÉE et aucun index (v6)", async () => {
+        const db = await IndexedDB.init();
+        const store = db.transaction("conflicts", "readonly").objectStore("conflicts");
+        expect(store.keyPath).toEqual(["layerId", "localId"]);
+        expect(Array.from(store.indexNames)).toEqual([]);
     });
 
     test("🛑 `sync_queue` et `sync_backups` ne sont PLUS créés (4.11)", async () => {

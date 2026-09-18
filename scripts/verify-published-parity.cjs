@@ -18,20 +18,24 @@
  *
  * Contents, never tarballs: gzip and mtimes are not reproducible, so a byte comparison of
  * two archives says nothing. `npm pack --dry-run` resolves exactly what a publish would send;
- * the published tarball is fetched and extracted; both sides are hashed file by file.
+ * the published tarball is fetched and extracted; both sides are hashed file by file, with
+ * Rollup's chunk hashes stripped from `dist/` names and bytes (`normalizeChunkHashes`).
  *
  * Three classes come out of that, and conflating them would make the gate unusable:
  *
  *   - **source** — `src/`, `README.md`, `LICENSE`, anything authored. THIS is the subject.
  *   - **dist** — derived. Its bytes depend on the toolchain version at publish time, so two
- *     identical sources legitimately yield different output months apart. Counted, printed,
- *     never judged.
+ *     identical sources legitimately yield different output months apart. Counted and printed
+ *     — and judged by PUB-05 in two regimes: all of it for a package that ships no `src/`,
+ *     where it is the only observable of the source; its JavaScript, beyond a renaming of
+ *     local bindings, for a package whose sources did not move.
  *   - **package.json** — npm REWRITES it at publish (it materialises workspace dependency
  *     ranges, and drops keys it does not know). It differs on every package, always, and it
  *     would drown the signal. Counted, printed, never judged.
  *
  * ⚠️ A package that ships no `src/` (`@geoleaf/core`: `files: ["dist/", …]`) has almost no
- * source surface here. The gate says so per package rather than reporting a quiet zero.
+ * source surface here. The gate says so per package rather than reporting a quiet zero —
+ * and, since PUB-05, judges that package through its `dist/` instead.
  *
  * ## Why a RATCHET and not a red
  *
@@ -55,6 +59,11 @@
  *           of CC-05 and MH-02, and their wording on purpose). Asked PER DIMENSION.
  *   PUB-04  RED — a declaration this repo would ship is ABSENT from the published tarball at
  *           an equal version. Judged on PRESENCE, never on bytes, and ratcheted like PUB-02.
+ *   PUB-05  RED — delivered content diverges from the published tarball at an equal version,
+ *           Rollup's chunk hashes stripped from names and bytes: the whole `dist/` of a
+ *           package that ships no `src/`; the JavaScript of any other package whose sources
+ *           did not move, compared up to a renaming of local bindings
+ *           (`js-alpha-equivalence.cjs`). Not ratcheted: nothing diverged the day it was laid.
  *
  * Usage:
  *   node scripts/verify-published-parity.cjs
@@ -71,7 +80,9 @@ const {
     alreadyPublished,
     publishedFileHashes,
     localFileHashes,
+    normalizeChunkHashes,
 } = require("./lib/npm-registry.cjs");
+const { alphaHash } = require("./lib/js-alpha-equivalence.cjs");
 
 const TAG = "PUB";
 const C = { r: "\x1b[31m", g: "\x1b[32m", y: "\x1b[33m", d: "\x1b[2m", x: "\x1b[0m" };
@@ -95,8 +106,9 @@ function classify(rel) {
  * `dist/`, and `npm pack --dry-run` because it triggers `prepack`, not `prepublishOnly` —
  * so the `dist/` it measures is never the one a publish reconstructs.
  *
- * ⚠️ The bytes stay unjudged, and that part of the rule was right: two identical sources
- * legitimately emit different declarations months apart. What is NOT legitimate is a
+ * ⚠️ The bytes stay unjudged here, and that part of the rule was right: two identical sources
+ * legitimately emit different declarations months apart (PUB-05 judges them only for a package
+ * that ships no `src/`, where they are the only observable). What is NOT legitimate is a
  * declaration that exists here and is ABSENT there — the consumer then gets `TS2882` or
  * `TS7016` on a file we believe we shipped. Presence is toolchain-independent; bytes are not.
  *
@@ -105,6 +117,17 @@ function classify(rel) {
  */
 function isShippedDeclaration(rel) {
     return rel.startsWith("dist/types/") && rel.endsWith(".d.ts");
+}
+
+/**
+ * A delivered file's text with its chunk hashes stripped — the form PUB-05 compares.
+ *
+ * @param {string} root The directory `rel` is relative to.
+ * @param {string} rel The file's real, package-relative path.
+ * @returns {string} The normalized text.
+ */
+function readComparable(root, rel) {
+    return normalizeChunkHashes(fs.readFileSync(path.join(root, rel), "utf8"));
 }
 
 const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "geoleaf-pub-"));
@@ -130,12 +153,24 @@ try {
             continue;
         }
 
-        const published = publishedFileHashes(name, version, tmpRoot);
+        let published;
+        let local;
+        try {
+            published = publishedFileHashes(name, version, tmpRoot);
+            local = published === null ? null : localFileHashes(pkg.absDir);
+        } catch (err) {
+            // 🛑 A normalization collision is not a network failure: reading it as PUB-00
+            // would skip the package in silence. The instrument refuses to conclude, loudly.
+            if (err && err.name === "ChunkNameCollisionError") {
+                errors.push(`[PUB-05] ${name}@${version} — ${err.message}. Rien n'a été comparé.`);
+                continue;
+            }
+            throw err;
+        }
         if (published === null) {
             unreachable++;
             continue;
         }
-        const local = localFileHashes(pkg.absDir);
         if (local === null || local.size === 0) {
             notes.push(
                 `[PUB-00] ${name} — \`npm pack --dry-run\` n'a rien rendu : le paquet n'est ` +
@@ -146,7 +181,7 @@ try {
 
         compared++;
         const seen = new Set([...local.keys(), ...published.keys()]);
-        const diverged = { source: [], dist: 0, pkgjson: 0 };
+        const diverged = { source: [], dist: [], distKeys: [], pkgjson: 0 };
         /** Declarations we would ship and the registry does not carry. */
         const absentes = [];
         for (const rel of seen) {
@@ -159,21 +194,54 @@ try {
             if (local.get(rel) === published.get(rel)) continue;
             const cls = classify(rel);
             if (cls === "source") diverged.source.push(rel);
-            else diverged[cls]++;
+            else if (cls === "dist") {
+                // The real path, not the normalized key: the reader must find the file.
+                diverged.dist.push(local.originals.get(rel) ?? published.originals.get(rel) ?? rel);
+                diverged.distKeys.push(rel);
+            } else diverged.pkgjson++;
         }
         diverged.source.sort();
+        diverged.dist.sort();
         absentes.sort();
+        const shipsSource = [...local.keys()].some((f) => f.startsWith("src/"));
+        // PUB-05, second regime — see its block below. Judged here, while the extracted tarball
+        // still exists: `tmpRoot` is removed when the loop ends.
+        /** @type {string[]} */
+        const distJs = [];
+        if (shipsSource && diverged.source.length === 0) {
+            for (const key of diverged.distKeys) {
+                if (!/\.m?js$/.test(key)) continue;
+                const lr = local.originals.get(key);
+                const pr = published.originals.get(key);
+                if (!lr || !pr) {
+                    distJs.push(lr ?? pr ?? key);
+                    continue;
+                }
+                try {
+                    const here = alphaHash(readComparable(local.root, lr));
+                    if (here !== alphaHash(readComparable(published.root, pr))) distJs.push(lr);
+                } catch (err) {
+                    errors.push(
+                        `[PUB-05] ${name}@${version} — ${lr} ne se compare pas ` +
+                            `(${err instanceof Error ? err.message : String(err)}). Refus de ` +
+                            `conclure : un fichier illisible n'est ni une divergence ni un accord.`
+                    );
+                }
+            }
+        }
         measured[name] = {
             version,
             source: diverged.source.length,
             files: diverged.source,
             absentes,
+            shipsSource,
+            distFiles: diverged.dist,
+            distJs,
         };
 
-        const shipsSource = [...local.keys()].some((f) => f.startsWith("src/"));
-        const surface = shipsSource ? "" : " (ne publie pas `src/` — surface source réduite)";
+        const surface = shipsSource ? "" : " (ne publie pas `src/` — jugé sur son `dist/`, PUB-05)";
         const mark =
-            absentes.length > 0
+            absentes.length > 0 || (!shipsSource && diverged.dist.length > 0) || distJs.length > 0
                 ? `${C.r}✘${C.x}`
                 : diverged.source.length > 0
                   ? `${C.y}⚠${C.x}`
@@ -181,7 +249,7 @@ try {
         console.log(
             `  ${mark} ${name.padEnd(32)} ${version.padEnd(7)} ` +
                 `source:${String(diverged.source.length).padStart(3)} · ` +
-                `${C.d}dist:${diverged.dist} pkgjson:${diverged.pkgjson} ` +
+                `${C.d}dist:${diverged.dist.length} pkgjson:${diverged.pkgjson} ` +
                 `decl-absentes:${absentes.length}${C.x}${surface}`
         );
     }
@@ -305,6 +373,75 @@ for (const [name, m] of Object.entries(measured)) {
     );
 }
 
+// ── PUB-05 — delivered content at an equal version, judged in two regimes ────────────────
+//
+// PUB-02 compares authored files, and a package publishing only `dist/` has almost none: its
+// `source: 0` is then trivially true, not measured. A published core whose type map was one
+// key short of the repository's, at an equal version, came out of this gate all green — the
+// case the first regime exists for.
+//
+// ⚠️ The raw `dist` counter could not become the criterion: Rollup names chunks by content
+// hash, and the hash differs between two machines building the same sources. Measured on
+// 2026-09-10 against `@geoleaf/core@3.3.0`: 15 raw divergences, ALL of them hash noise, and
+// ZERO once the hashes are stripped from names and bytes — over every declaration and every
+// JavaScript file. The rule is born green on a measured state, hence no baseline: the remedy
+// for an entry is to bump the version (PUB-01 then notes it), never to freeze it.
+//
+// 🛑 The second regime: a package that ships its `src/`, whose sources did not move. PUB-02
+// judges its authored files — but its bundle also inlines PRIVATE workspace libraries
+// (`@geoleaf/host-runtime` everywhere, and a plugin can inline another), so a change in one of
+// them reaches the published consumers with no authored change of their own. Bytes cannot judge
+// that: a minifier hands local bindings out differently as soon as anything inlined moves.
+// Measured on 2026-09-10 on `@geoleaf-plugins/navigation@1.0.0`: forty-eight characters apart,
+// every one a minified identifier — the same program. So the JavaScript is compared up to a
+// renaming of LOCAL bindings (`js-alpha-equivalence.cjs`), which still sees a changed literal, a
+// renamed property, a renamed free global. Born green the same day: 538 JavaScript files over
+// the 17 packages, 537 identical bytes, the 538th equal up to renaming. Source maps,
+// declarations and styles stay printed as a note: a map embeds the inlined library's text, and
+// would redden every consumer at each of its commits.
+//
+// ⚠️ Accepted risk, and its remedy: a toolchain upgrade that changes the generated CODE — not
+// just names — reddens every package at once. Nothing of the kind was observed across the
+// Rollup upgrade of 2026-09-07; if it happens, the remedy is the same bump, never a freeze.
+for (const [name, m] of Object.entries(measured)) {
+    const count = m.distFiles ? m.distFiles.length : 0;
+    if (count === 0) continue;
+    const list = m.distFiles.slice(0, 5).join(", ") + (count > 5 ? ` … +${count - 5}` : "");
+    if (m.shipsSource) {
+        const js = m.distJs ?? [];
+        if (js.length > 0) {
+            errors.push(
+                `[PUB-05] ${name}@${m.version} — ${js.length} fichier(s) JavaScript livré(s) ` +
+                    `divergent du tarball PUBLIÉ au-delà d'un renommage de liaisons locales, à ` +
+                    `version ÉGALE.\n` +
+                    `        Aucune source de ce paquet n'a bougé : c'est typiquement une lib ` +
+                    `d'espace de travail inlinée dont le changement atteint le code exécuté.\n` +
+                    `        ${js.slice(0, 5).join(", ")}` +
+                    (js.length > 5 ? ` … +${js.length - 5}` : "") +
+                    `\n        Remède : bumper la version (PUB-01 le notera ensuite). Jamais re-geler.`
+            );
+        }
+        if (count > js.length) {
+            notes.push(
+                `[PUB-05] ${name}@${m.version} — dist:${count} à version égale, dont ` +
+                    `${count - js.length} non jugé(s) : maps, déclarations, styles, ou ` +
+                    `JavaScript égal à renommage près` +
+                    (m.source > 0 ? ` (sources divergentes : PUB-02 est le juge)` : "") +
+                    ` — ${list}`
+            );
+        }
+        continue;
+    }
+    errors.push(
+        `[PUB-05] ${name}@${m.version} — ${count} fichier(s) livré(s) divergent du tarball ` +
+            `PUBLIÉ, à version ÉGALE, noms de chunks normalisés.\n` +
+            `        Ce paquet ne publie pas \`src/\` : son \`dist/\` est la seule trace de sa ` +
+            `source, et un intégrateur qui installe ${m.version} reçoit autre chose que ce dépôt.\n` +
+            `        ${list}\n` +
+            `        Remède : bumper la version (PUB-01 le notera ensuite). Jamais re-geler.`
+    );
+}
+
 // ── PUB-02 — entering ratchet ─────────────────────────────────────────────────────────────
 for (const [name, m] of Object.entries(measured)) {
     if (m.source === 0) continue;
@@ -369,8 +506,11 @@ const declDette = Object.values(measured).reduce(
     (n, m) => n + (m.absentes ? m.absentes.length : 0),
     0
 );
+const distJudged = Object.values(measured).filter((m) => !m.shipsSource).length;
+const jsJudged = Object.values(measured).filter((m) => m.shipsSource && m.source === 0).length;
 console.log(
     `${C.g}✓ ${TAG}${C.x} — ${compared} paquet(s) confronté(s) au registre ; ` +
         `${dette} en dette gelée (dont ${declDette} déclaration(s) absente(s) des tarballs ` +
-        `publiés), aucune divergence neuve.`
+        `publiés) ; PUB-05 : ${distJudged} jugé(s) sur leur dist/ normalisé, ${jsJudged} sur ` +
+        `leur JavaScript à renommage près ; aucune divergence neuve.`
 );

@@ -1,35 +1,72 @@
-# Configuration Storage / Offline — `profile.json`
+# Configuration hors-ligne — `modules.offline` et `modules.pwa`
 
-> **Plugin requis :** `@geoleaf-plugins/offline-ui` (licence MIT)
+> **Plugin :** `@geoleaf-plugins/offline-ui` (licence MIT) — l'**interface** de la préparation hors-ligne.
+> Le moteur (IndexedDB, cache, téléchargement, synchronisation) est **dans le core**, opt-in.
+> Référence complète des paramètres :
+> [GEOLEAF-JS_GUIDE_CONFIGURATIONS_COMPLET.md §19](../../../../docs/reference/GEOLEAF-JS_GUIDE_CONFIGURATIONS_COMPLET.md).
 > Voir aussi : [OVERVIEW.md](OVERVIEW.md) · [API_REFERENCE.md](API_REFERENCE.md) · [INSTALLATION.md](INSTALLATION.md)
 
 ---
 
-## Paramètres `profile.json > storage`
+## Les clés `storage.*` n'existent plus
 
-| #   | Paramètre                          | Type    | Description              | Description longue                                                                                                                                                                                                                                                                                                                                                                             |
-| --- | ---------------------------------- | ------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 248 | `storage.enableOfflineDetector`    | boolean | Détection online/offline | Active la détection automatique de l'état de connexion réseau. Quand activé, GeoLeaf affiche un badge visuel quand l'utilisateur perd la connexion et adapte son comportement (utilise les données en cache au lieu de tenter des téléchargements réseau qui échoueraient). Des événements sont émis à chaque changement d'état pour que l'application puisse réagir.                          |
-| 249 | `storage.enableServiceWorker`      | boolean | Service Worker           | Active le Service Worker qui intercepte les requêtes réseau pour servir les ressources depuis le cache quand elles sont disponibles. Le SW utilise 4 stratégies de cache (cache-first, network-first, stale-while-revalidate, cache-only) selon le type de ressource. Indispensable pour un vrai mode offline où l'application fonctionne sans aucune connexion. Requiert HTTPS en production. |
-| 250 | `storage.cache.enableProfileCache` | boolean | Cache du profil          | Active la sauvegarde complète du profil (fichiers JSON de configuration, taxonomie, thèmes, couches) dans IndexedDB. Au prochain chargement, si les fichiers sont en cache et que l'utilisateur est offline, GeoLeaf utilise les données cachées au lieu de les télécharger. Réduit aussi le temps de chargement en mode online (cache-first).                                                 |
-| 251 | `storage.cache.enableTileCache`    | boolean | Cache des tuiles         | Active la mise en cache des tuiles de fond de carte (basemap) dans IndexedDB. L'utilisateur peut télécharger à l'avance les tuiles d'une zone géographique définie dans `offlineBounds` pour consulter la carte sans réseau. Le volume de données dépend de la zone et des niveaux de zoom cachés.                                                                                             |
+Le bloc `storage` de `profile.json` a été remplacé. Le schéma du profil le **refuse** désormais
+(`additionalProperties: false` à la racine) :
+
+| Ancienne clé                       | Clé actuelle                               | Fichier                       |
+| ---------------------------------- | ------------------------------------------ | ----------------------------- |
+| `storage.enableOfflineDetector`    | `modules.pwa.offlineDetector.enabled`      | `geoleaf.config.json`         |
+| `storage.enableServiceWorker`      | `modules.pwa.enabled`                      | `geoleaf.config.json`         |
+| `storage.cache.enableProfileCache` | `modules.offline.cache.enableProfileCache` | `config/plugins/offline.json` |
+| `storage.cache.enableTileCache`    | `modules.offline.cache.enableTileCache`    | `config/plugins/offline.json` |
+
+`config/plugins/offline.json` est référencé par `Files.modules.offline` dans `profile.json` ; son
+contenu devient `modules.offline`. Le moteur ne se charge qu'avec `modules.offline.enabled: true` **et**
+`modules.pwa.enabled: true`.
 
 ---
 
 ## Exemple de configuration minimale
 
+`config/plugins/offline.json` :
+
 ```json
 {
-    "storage": {
-        "enableOfflineDetector": true,
-        "enableServiceWorker": true,
-        "cache": {
-            "enableProfileCache": true,
-            "enableTileCache": false
-        }
+    "enabled": true,
+    "cache": {
+        "enableProfileCache": true,
+        "enableTileCache": false
     }
 }
 ```
+
+---
+
+## Fonds de carte hors-ligne : seules les origines déclarées se préparent
+
+`enableTileCache: true` rend téléchargeables les fonds `offline: true`. Une tuile qui ne vient pas de
+l'origine de l'application n'est pourtant rapatriée **que si son origine est déclarée**
+`cacheable: true` **et** `prefetch: true` dans `modules.offline.dataOrigins` :
+
+```json
+{
+    "enabled": true,
+    "cache": { "enableTileCache": true },
+    "dataOrigins": [
+        {
+            "origin": "https://tiles.example.com",
+            "roles": ["tiles"],
+            "cacheable": true,
+            "prefetch": true
+        }
+    ]
+}
+```
+
+⚠️ **Télécharger à l'avance n'est pas consulter.** Plusieurs fournisseurs gratuits l'interdisent —
+OpenStreetMap : « Offline use is not permitted on tile.openstreetmap.org ». Ne déclarez `prefetch`
+que pour une origine que vous exploitez, ou dont les conditions l'autorisent. Un fond refusé est sauté
+au téléchargement, avec un avertissement qui nomme son origine.
 
 ---
 

@@ -1,10 +1,17 @@
 ---
-title: "GeoLeaf — Plugin development guide"
+title: "GeoLeaf — Plugin development guide (repository contributors)"
 ---
 
-# GeoLeaf — Plugin development guide
+# GeoLeaf — Plugin development guide (repository contributors)
 
 **Package:** `@geoleaf/core`
+
+::: warning
+**Plugins are first-party.** This guide is for contributors working **inside the GeoLeaf
+repository**, where `npm run create:plugin` scaffolds a package against the repository's own build
+tooling, which is not published. Writing a plugin outside the repository is not a supported path —
+see [Direction](DIRECTION.md). What follows is the pattern every plugin of the repository follows.
+:::
 
 ---
 
@@ -24,7 +31,7 @@ The system is deliberately simple: no base class, no framework — a single entr
 
 ## Prerequisites
 
-- Node.js ≥ 18
+- Node.js ≥ 22
 - `@geoleaf/core` in `peerDependencies`
 - Pure ESM is mandatory: `"type": "module"` in `package.json`
 - No `require()`, no `module.exports`
@@ -45,7 +52,7 @@ my-plugin/
 
 ```json
 {
-    "name": "@my-scope/my-plugin",
+    "name": "@geoleaf-plugins/my-plugin",
     "version": "1.0.0",
     "type": "module",
     "main": "./dist/my-plugin.js",
@@ -54,10 +61,10 @@ my-plugin/
         ".": "./dist/my-plugin.js"
     },
     "peerDependencies": {
-        "@geoleaf/core": "^2.0.0"
+        "@geoleaf/core": "^3.0.0"
     },
     "devDependencies": {
-        "@geoleaf/core": "^2.0.0",
+        "@geoleaf/core": "^3.0.0",
         "rollup": "^4.0.0",
         "typescript": "^5.0.0"
     }
@@ -133,7 +140,7 @@ if (_g.GeoLeaf) {
 if (_g.GeoLeaf?.plugins?.register) {
     _g.GeoLeaf.plugins.register("my-plugin", {
         version: _g.GeoLeaf._version, // core version (for compatibility)
-        requires: [], // required plugins (e.g. ["storage"])
+        requires: [], // required plugins (e.g. ["routing"])
         optional: [], // optional plugins
         label: "My Plugin (description)",
         healthCheck: () => !!_g.GeoLeaf?.MyPlugin?.myMethod,
@@ -304,7 +311,7 @@ import {
 ## Namespace rules
 
 - **Prefix your namespace** to avoid collisions: `GeoLeaf.MyOrg_MyPlugin` or `GeoLeaf.MyPlugin`
-- **Do not overwrite** existing namespaces: `GeoLeaf.POI`, `GeoLeaf.Core`, `GeoLeaf.UI`, and so on
+- **Do not overwrite** existing namespaces: `GeoLeaf.Layers`, `GeoLeaf.Core`, `GeoLeaf.UI`, and so on
 - **Keep the healthCheck light**: it is called at boot for the start-up report
 
 ---
@@ -315,17 +322,17 @@ If your plugin requires another plugin:
 
 ```typescript
 _g.GeoLeaf.plugins.register("my-plugin", {
-    requires: ["storage"], // will be checked by canActivate()
-    optional: ["addpoi"], // documented but not blocking
-    healthCheck: () => GeoLeaf.plugins.isLoaded("storage") && !!_g.GeoLeaf?.MyPlugin,
+    requires: ["routing"], // will be checked by canActivate()
+    optional: ["offline-ui"], // documented but not blocking
+    healthCheck: () => GeoLeaf.plugins.isLoaded("routing") && !!_g.GeoLeaf?.MyPlugin,
 });
 ```
 
 Check before using an optional dependency:
 
 ```typescript
-if (GeoLeaf.plugins.isLoaded("storage")) {
-    // Use the Storage API
+if (GeoLeaf.plugins.isLoaded("offline-ui")) {
+    // Use what the offline-ui plugin mounts
 }
 ```
 

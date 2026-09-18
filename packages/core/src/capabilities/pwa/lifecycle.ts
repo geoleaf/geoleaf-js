@@ -17,9 +17,12 @@
  *               deploys), request origin-level persistent storage, and, when
  *               `installPrompt.enabled`, wire the browser install prompt (Android
  *               banner / iOS instructions).
- *  - disabled → unregister EVERY service worker on the origin so a returning visitor
- *               honours "no SW" (a registered SW survives reloads until explicitly
- *               unregistered).
+ *  - disabled → unregister GEOLEAF'S OWN service worker so a returning visitor honours
+ *               "no SW" (a registered SW survives reloads until explicitly unregistered).
+ *               🛑 Never the origin's others: this bundle is mounted inside third-party host
+ *               applications, and sweeping `getRegistrations()` took down the HOST's worker
+ *               — measured on a real host, which lost its offline mode and its app install
+ *               silently, on both sides.
  *
  * The lifecycle holds no state of its own — `shared.module` calls `init` exactly once per
  * boot (the registry guarantees a single module init), so it needs no idempotency guard.
@@ -36,13 +39,58 @@ import type { PWAConfig } from "./pwa-manager.js";
 /** The `modules.pwa` block subset that PwaLifecycle acts on — derived, not redeclared. */
 type PwaLifecycleConfig = Pick<PWAConfig, "enabled" | "installPrompt" | "name" | "short_name">;
 
-/** Best-effort unregistration of every service worker on the origin (residual sweep). */
-function _unregisterAll(): void {
+/**
+ * Filename of the service worker GeoLeaf registers — the same literal `SWRegister._swPath`
+ * hands to `navigator.serviceWorker.register()`.
+ *
+ * ⚠️ Written twice ON PURPOSE. `kernel/storage/index.ts` is a narrow mediation barrel that
+ * exposes `SWRegister` alone (`CDC_kernel.md` §barils kernel), and widening the
+ * `capabilities/ → kernel/` boundary for one string costs more than the duplication. Its
+ * source guard is therefore a test, not the type system: `lifecycle-sw-ownership.test.ts`
+ * builds every fixture FROM `SWRegister._swPath`, so the two cannot drift apart while staying
+ * green.
+ *
+ * ⚠️ Known limit, assumed: `SWRegister.register()` accepts an `options.path` that no caller
+ * passes (stated at its `@param`). A worker registered under some other name would escape
+ * this predicate — and be left alone, which is the safe direction.
+ */
+const GEOLEAF_SW_FILENAME = "sw-core.js";
+
+/**
+ * Is this registration carrying GeoLeaf's own worker?
+ *
+ * All three slots are read because a registration is ours from the moment it is `installing`,
+ * long before it is `active` — and `_reset()` can land in that window.
+ */
+function _isOwnRegistration(reg: ServiceWorkerRegistration): boolean {
+    for (const worker of [reg.active, reg.waiting, reg.installing]) {
+        const url = worker?.scriptURL;
+        if (typeof url !== "string") continue;
+        // Compare the LAST PATH SEGMENT, query and hash stripped. A plain `endsWith()` would
+        // also match a host's `vendor-sw-core.js`, and a sub-path deploy moves the prefix.
+        const path = url.split(/[?#]/)[0] ?? "";
+        if (path.slice(path.lastIndexOf("/") + 1) === GEOLEAF_SW_FILENAME) return true;
+    }
+    return false;
+}
+
+/**
+ * Best-effort unregistration of GEOLEAF'S service workers on this origin.
+ *
+ * 🛑 The `filter` is the whole point, and it closes a blocking defect: this function used to
+ * unregister every registration `getRegistrations()` returned. Mounted in a host application
+ * with the PWA gate closed, GeoLeaf thereby unregistered the HOST's worker at boot.
+ *
+ * `getRegistrations()` remains the right call — our own scope is `"./"`, hence unknown ahead
+ * of time on a sub-path deploy, so the origin still has to be enumerated. What changed is the
+ * selection, not the sweep.
+ */
+function _unregisterOwn(): void {
     const sw = typeof navigator !== "undefined" ? navigator.serviceWorker : undefined;
     if (!sw || typeof sw.getRegistrations !== "function") return;
     void sw
         .getRegistrations()
-        .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+        .then((regs) => Promise.all(regs.filter(_isOwnRegistration).map((r) => r.unregister())))
         .catch(() => {
             /* best-effort — nothing to unregister */
         });
@@ -113,8 +161,9 @@ const SW_REGISTER_IDLE_CEILING_MS = 3000;
 export const PwaLifecycle = {
     init(pwaConfig?: PwaLifecycleConfig): void {
         if (!pwaConfig || pwaConfig.enabled !== true) {
-            // Opt-in gate off: ensure no residual SW keeps controlling the page.
-            _unregisterAll();
+            // Opt-in gate off: ensure no residual GeoLeaf SW keeps controlling the page.
+            // Ours only — the host's workers are not ours to revoke.
+            _unregisterOwn();
             return;
         }
 
@@ -161,12 +210,15 @@ export const PwaLifecycle = {
     },
 
     /**
-     * Registry destroy / test seam: unregisters any active service worker AND tears down
+     * Registry destroy / test seam: unregisters GeoLeaf's own service worker AND tears down
      * the install sub-flows. The SW is stateless per boot, but the install-prompt
      * and iOS banner hold global listeners / a pending timer that must be released.
+     *
+     * ⚠️ Same narrowing as `init()`'s closed gate: a teardown must not revoke a worker the
+     * host application installed.
      */
     _reset(): void {
         PWAManager._reset();
-        _unregisterAll();
+        _unregisterOwn();
     },
 };

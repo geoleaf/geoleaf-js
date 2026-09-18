@@ -237,7 +237,9 @@ The full structure is shown below (every block is optional except `map`):
 6. Call to the `onLoaded(config)` callback
 7. Dispatch of `geoleaf:config:loaded` (when `autoEvent = true`)
 8. The `geoleaf.boot.ts` facade then chains:
-    - `GeoLeaf.Core.init(config.map)` → creates the MapLibre GL map
+    - `GeoLeaf.init({ map: { target, center, zoom, mapOptions }, ui })` — `target` read from
+      `map.target`, then `map.id`, default `"geoleaf-map"` — normalised into
+      `GeoLeaf.Core.init({ mapId, … })`, which creates the MapLibre GL map
     - initialisation of the UI, the layers, the POIs and the plugins
 
 ---

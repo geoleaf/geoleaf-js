@@ -125,6 +125,20 @@ document.addEventListener("geoleaf:connector:authenticated", (e) => {
 });
 ```
 
+### What a returning session does to the offline queue
+
+When the session had died, the core's drain stopped at the first `401` and set that capture
+aside; it cannot see a sign-in, so it waits. On `authenticated` and on `token-refreshed`, this
+plugin therefore asks the core to take them back, through two public calls:
+
+```javascript
+await GeoLeaf.Storage.requeueAll("authRequired");
+await GeoLeaf.Storage.pushOutbox();
+```
+
+An application that signs in by its own means makes exactly those two calls. Without the
+offline capability, there is nothing to resume and nothing happens.
+
 ---
 
 ## Security

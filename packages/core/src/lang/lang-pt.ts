@@ -17,6 +17,31 @@ const lang_pt: LangDict = {
     "toast.layer.truncated.known": "{0}: {1} entidades exibidas de {2} — a camada está truncada.",
     "toast.layer.truncated.unknown": "{0}: {1} entidades exibidas, a camada contém mais.",
     "toast.theme.applied": 'Tema "{0}" carregado ({1} camadas vis\u00edveis)',
+    "boot.failure.title": "A inicializa\u00e7\u00e3o falhou",
+    "boot.failure.attention.title": "Faltam recursos do perfil",
+    "boot.failure.attention.message":
+        "O mapa pode iniciar sem eles, mas podem faltar camadas ou configura\u00e7\u00f5es.",
+    "boot.failure.attention.module_title": "Alguns componentes do aplicativo n\u00e3o iniciaram",
+    "boot.failure.attention.module_message":
+        "O mapa pode ser exibido, mas as fun\u00e7\u00f5es desses componentes ficar\u00e3o indispon\u00edveis.",
+    "boot.failure.module_warning":
+        "O componente \u00ab{0}\u00bb n\u00e3o p\u00f4de iniciar: algumas fun\u00e7\u00f5es est\u00e3o indispon\u00edveis.",
+    "boot.failure.reason.config":
+        "A configura\u00e7\u00e3o do aplicativo est\u00e1 ausente ou \u00e9 inv\u00e1lida.",
+    "boot.failure.reason.profile": "O perfil de dados est\u00e1 ausente ou \u00e9 inv\u00e1lido.",
+    "boot.failure.reason.webgl":
+        "Este navegador n\u00e3o consegue exibir o mapa: o WebGL2 est\u00e1 indispon\u00edvel (acelera\u00e7\u00e3o gr\u00e1fica desativada ou n\u00e3o suportada).",
+    "boot.failure.reason.map": "N\u00e3o foi poss\u00edvel criar o mapa.",
+    "boot.failure.reason.module": "Um componente do aplicativo n\u00e3o conseguiu iniciar.",
+    "boot.failure.reason.timeout":
+        "A inicializa\u00e7\u00e3o parou de avan\u00e7ar. A rede pode estar lenta ou indispon\u00edvel.",
+    "boot.failure.reason.internal": "Um erro interno interrompeu a inicializa\u00e7\u00e3o.",
+    "boot.failure.action.reload": "Recarregar",
+    "boot.failure.action.continue": "Continuar mesmo assim",
+    "boot.failure.action.copy": "Copiar o diagn\u00f3stico",
+    "boot.failure.action.download": "Baixar o diagn\u00f3stico",
+    "boot.failure.copied": "Diagn\u00f3stico copiado.",
+    "boot.failure.copy_manual": "N\u00e3o foi poss\u00edvel copiar: selecione o texto abaixo.",
     "aria.geoloc.toggle": "Geolocali\u00e7\u00e3o ON/OFF",
     "aria.geoloc.toggle_label": "Ativar/Desativar rastreamento GPS",
     "aria.geoloc.recenter": "Voltar \u00e0 minha posi\u00e7\u00e3o",

@@ -48,7 +48,6 @@ export { DOMSecurity } from "./dom-security.js";
 
 import { escapeHtml, escapeAttribute, createSafeElement } from "./escaping.js";
 import { validateUrl, validateCoordinates, validateNumber } from "./validators.js";
-import { CSRFToken } from "./csrf-token.js";
 import {
     containsDangerousHtml,
     stripHtml,
@@ -60,11 +59,11 @@ import {
 // ── Aggregate export (facade) ──
 
 /**
- * The `GeoLeaf.Security` façade — sanitisation, URL vetting and CSRF.
+ * The `GeoLeaf.Security` façade — sanitisation and URL vetting.
  *
  * ⚠️ Every DOM write that carries data from a profile or a server must pass through here.
  * The helpers exist precisely so `innerHTML` is never reached for directly. This directory is
- * the XSS/CSRF surface of the kernel: bypassing them, or reaching for `innerHTML` without
+ * the XSS surface of the kernel: bypassing them, or reaching for `innerHTML` without
  * going through them, is the one thing that is never acceptable here.
  */
 export const Security = {
@@ -79,12 +78,8 @@ export const Security = {
     validateNumber,
     parseHtmlSafely,
     sanitizeHTML,
-    // Part of the barrel since KERNEL S14 (backlog B.16). It used to be grafted onto the
-    // namespace separately, in `globals.core.ts` — so this barrel, which every reader
-    // treats as the definition of `GeoLeaf.Security`, was NOT its single source: importing
-    // it gave a namespace one member short of the runtime one. No cycle: `csrf-token.ts`
-    // imports only `Log`.
-    CSRFToken,
+    // 🛑 No `CSRFToken` any more (removed in 3.4.0). It minted its token in the browser and
+    // checked it in the same context: no server could verify it, so it protected nothing
+    // while reading like a protection. Writes are authenticated by the connector's bearer
+    // token, where CSRF does not apply.
 };
-
-export { CSRFToken } from "./csrf-token.js";

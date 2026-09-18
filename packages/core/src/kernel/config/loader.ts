@@ -90,7 +90,7 @@ function _doFetch(
  * Module Config.Loader
  *
  * Responsibilities:
- * - HTTP loading through fetch(), with CSRF/XSS validation
+ * - HTTP loading through fetch(), from a URL vetted by `Security.validateUrl`
  * - Validation Content-Type stricte
  * - Custom header handling
  * - Helper generic _fetchJson()

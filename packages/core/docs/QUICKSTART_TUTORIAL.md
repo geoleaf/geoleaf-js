@@ -524,4 +524,4 @@ The map shows the businesses clustered, with a filter panel (search + categories
 | Vector tiles (MVT)                           | [MVT_GUIDE.md](geojson/MVT_GUIDE.md)                                   |
 | Enable the offline cache (Storage plugin)    | [PLUGIN_CONFIGURATION_GUIDE.md](PLUGIN_CONFIGURATION_GUIDE.md)         |
 | Backend API authentication                   | `docs/CONNECTOR_GUIDE.md` in `@geoleaf-plugins/connector`              |
-| Develop a custom plugin                      | [PLUGIN_DEVELOPMENT_GUIDE.md](PLUGIN_DEVELOPMENT_GUIDE.md)             |
+| Contribute a plugin to the repository        | [PLUGIN_DEVELOPMENT_GUIDE.md](PLUGIN_DEVELOPMENT_GUIDE.md)             |

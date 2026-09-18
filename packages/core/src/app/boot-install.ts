@@ -35,6 +35,8 @@ import { GeoJSONModule } from "./boot-modules/geojson.module.js";
 import { UIModule } from "./boot-modules/ui.module.js";
 import { ThemeEngineModule } from "./boot-modules/theme-engine.module.js";
 import { bootWithPreset } from "./boot-core.js";
+import { failBoot } from "./boot-failure.js";
+import { captureGlobalErrors } from "../utils/log/log-record.js";
 import type { PresetManifest } from "../contracts/preset.contract.js";
 import type { AppNamespace, BootOptions } from "./app-types.js";
 import { asFn, member, perfWindow } from "./app-types.js";
@@ -149,15 +151,22 @@ export function installBoot(preset: PresetManifest): BootInstallation {
      * Lazy ones (editor, table, print…) declare their toolbar slot instead and load on
      * first use — they must NOT be waited on here.
      *
+     * From this call on, uncaught errors and unhandled promise rejections are recorded in the
+     * log's record (`GeoLeaf.Log.getEntries()`), which the boot failure diagnostic carries.
+     *
      * @param options - Optional boot options.
      * @param options.beforeBoot - Async hook called after config load, before map creation.
-     *   Return void to proceed, throw to abort boot (emits `geoleaf:boot:aborted`).
+     *   Return void to proceed, throw to abort boot: `geoleaf:boot:aborted` is emitted and the
+     *   `#gl-loader` veil is hidden, so that whatever the host draws next is not covered.
      *   Use case: SSO / external auth gate (any identity provider) without the connector plugin.
      * @param options.onPerformanceMetrics - Callback to receive runtime metrics after geoleaf:app:ready.
      * @param options.config - A configuration object handed over in memory. When present, the
      *   boot applies it directly and issues no request for it. Wins over `configUrl`.
      * @param options.configUrl - An explicit URL to fetch the configuration from. Used when
      *   `config` is absent. Without either, the path is derived from the host page — unchanged.
+     * @param options.watchdogMs - Milliseconds without a reveal before the boot is reported as
+     *   stalled (`geoleaf:boot:failed`, `reason: "timeout"`, provisional). Default 45 000; `0`
+     *   disables it. Paused while `beforeBoot` runs.
      * @example
      * GeoLeaf.boot();
      * // Configuration handed over in memory — no request is issued for it. An embedding
@@ -177,6 +186,8 @@ export function installBoot(preset: PresetManifest): BootInstallation {
      * GeoLeaf.boot({ onPerformanceMetrics: (m) => console.log(m.timeToMapReadyMs) });
      */
     GeoLeaf.boot = function (options?: BootOptions) {
+        // From the boot call on — never at import: loading the bundle attaches nothing to the page.
+        captureGlobalErrors();
         if (options?.beforeBoot) {
             GeoLeaf._beforeBootCallback = options.beforeBoot;
         }
@@ -199,6 +210,12 @@ export function installBoot(preset: PresetManifest): BootInstallation {
         const _startApp = () => {
             _app.startApp(options).catch((e: unknown) => {
                 console.error("[GeoLeaf] Boot sequence failed:", e);
+                // A throw outside every step's own handling is still a boot that did not
+                // complete — and still owed a signal and a screen.
+                failBoot({
+                    reason: "internal",
+                    message: e instanceof Error ? e.message : String(e),
+                });
             });
         };
 

@@ -95,10 +95,10 @@ describe("ConfigLoader.loadUrl()", () => {
     it("passes custom headers to fetch", async () => {
         global.fetch.mockReturnValue(mockFetchResponse({ json: {} }));
         await ConfigLoader.loadUrl("https://example.com/config.json", {
-            headers: { "X-CSRF-Token": "my-token" },
+            headers: { "X-Custom-Header": "my-value" },
         });
         const fetchCall = global.fetch.mock.calls[0];
-        expect(fetchCall[1].headers["X-CSRF-Token"]).toBe("my-token");
+        expect(fetchCall[1].headers["X-Custom-Header"]).toBe("my-value");
     });
 });
 

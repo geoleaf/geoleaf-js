@@ -435,5 +435,5 @@ npm test -- validators
 ## See also
 
 - `GeoLeaf.Errors` — typed errors used by Validators (`ValidationError`, `SecurityError`, `ConfigError`)
-- `GeoLeaf.Security` — XSS/CSRF security validation
+- `GeoLeaf.Security` — XSS security validation
 - `GeoLeaf.Core` — used during initialisation

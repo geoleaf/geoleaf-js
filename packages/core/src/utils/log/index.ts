@@ -26,3 +26,7 @@ export { Log } from "./logger.js";
 // concluding a barrel is dead, check WHO imports it: a single importer can be the
 // expected outcome". Side benefit: `error-logger.ts` keeps its `Log` through this
 // barrel, so existing mocks keep intercepting it, and no cycle forms.
+//
+// `log-record.ts` (the record of recent entries) and `redact.ts` stay off this barrel
+// for the same reason, and one more: their readers — the boot failure diagnostic, the
+// boot logger — would otherwise read a mock, and find no record in it.

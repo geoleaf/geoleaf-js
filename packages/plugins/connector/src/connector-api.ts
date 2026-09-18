@@ -52,6 +52,7 @@ import {
 import { installMapLibreBridge } from "./maplibre-bridge.js";
 import { AuthClient } from "./auth-client.js";
 import { showLoginModal } from "./login-ui.js";
+import { armSessionResume, disarmSessionResume } from "./session-resume.js";
 import { installCredentialButton, uninstallCredentialButton } from "./credential-button.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -218,6 +219,7 @@ export async function configure(config: ConnectorConfig): Promise<void> {
     // Destroy the existing instance if any
     if (_currentInstance) {
         uninstallCredentialButton();
+        disarmSessionResume();
         _currentInstance.destroy();
         uninstallFetchInterceptor();
         _currentInstance = null;
@@ -235,6 +237,9 @@ export async function configure(config: ConnectorConfig): Promise<void> {
     }
 
     _wireGuidedReconnect(config);
+    // The captures a dead session set aside come back when the operator does — the core
+    // cannot see that moment, this plugin can (`session-resume.ts`).
+    armSessionResume();
 
     // Install fetch monkey-patch
     installFetchInterceptor(config);

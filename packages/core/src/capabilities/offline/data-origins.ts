@@ -89,11 +89,24 @@ function normaliseOrigin(entry: unknown): DataOriginDeclaration | null {
         return null;
     }
 
+    // `prefetch` is reconciled HERE, where the enumerator reads it: a credentialed origin is
+    // never downloaded ahead of use, and a non-cacheable one keeps nothing it could download.
+    // Both are said rather than silently corrected.
+    let prefetch = raw.prefetch === true;
+    if (prefetch && raw.authenticated === true) {
+        Log.warn(`[DataOrigins] \`prefetch\` dropped — the origin is authenticated: ${origin}`);
+        prefetch = false;
+    } else if (prefetch && raw.cacheable !== true) {
+        Log.warn(`[DataOrigins] \`prefetch\` ignored — it requires \`cacheable: true\`: ${origin}`);
+        prefetch = false;
+    }
+
     return {
         origin,
         roles,
         cacheable: raw.cacheable,
         ...(raw.authenticated === true ? { authenticated: true } : {}),
+        ...(prefetch ? { prefetch: true } : {}),
     };
 }
 
@@ -120,10 +133,10 @@ export function parseDataOrigins(declared: unknown): DataOriginDeclaration[] {
 /**
  * Does `url` belong to a declared origin, and may it be cached?
  *
- * ⚠️ NOT exported. It has one consumer today — the duplicate detection below — and
- * exporting for a caller that does not yet exist is exactly the posture criticised
- * elsewhere. It will be exported the day a consumer needs it. Its behaviour stays
- * PROVEN, through `publishDataOrigins`.
+ * ⚠️ NOT exported. Its two consumers live in this file — the duplicate detection and
+ * {@link prefetchVerdict} — and exporting for a caller that does not yet exist is exactly the
+ * posture criticised elsewhere. Its behaviour stays PROVEN, through `publishDataOrigins` and
+ * `prefetchVerdict`.
  *
  * @param url - Absolute URL of the request.
  * @param origins - Normalised declarations.
@@ -153,6 +166,49 @@ function matchDataOrigin(
         return d;
     }
     return null;
+}
+
+/**
+ * May `url` be downloaded AHEAD of use — during the offline preparation — and from which
+ * origin does it come?
+ *
+ * Allowed when the URL is on the page's own origin (no third party is involved, and that
+ * origin cannot be written portably in a profile), or when its origin is declared with
+ * `cacheable: true` and `prefetch: true`. Anything else is refused: an undeclared origin, a
+ * declaration that only allows caching what was already served, an unparsable URL.
+ *
+ * ⚠️ Roles are NOT consulted. They route the Service Worker's cache; `prefetch` is the
+ * integrator's statement that the origin's terms allow downloading ahead of use, and it covers
+ * everything the profile needs from that origin — tiles, style, glyphs, sprite.
+ *
+ * @param url - Resource URL, absolute or relative to `pageUrl`.
+ * @param origins - Normalised declarations ({@link parseDataOrigins}).
+ * @param pageUrl - The page's URL, which resolves a relative `url` and defines "own origin".
+ *   Absent (no `location`), only a declared origin is allowed.
+ * @returns `origin` — the parsed origin, or the raw URL when it does not parse — and `allowed`.
+ * @example
+ * const origins = parseDataOrigins(configGet("modules.offline.dataOrigins", []));
+ * const { allowed, origin } = prefetchVerdict(tileUrl, origins, globalThis.location?.href);
+ * if (!allowed) Log.warn(`Not downloaded: ${origin} is not declared for offline use`);
+ */
+export function prefetchVerdict(
+    url: string,
+    origins: readonly DataOriginDeclaration[],
+    pageUrl?: string
+): { allowed: boolean; origin: string } {
+    let resolved: URL;
+    try {
+        resolved = new URL(url, pageUrl);
+    } catch {
+        return { allowed: false, origin: url };
+    }
+    const origin = resolved.origin;
+    if (pageUrl !== undefined && origin === new URL(pageUrl).origin) {
+        return { allowed: true, origin };
+    }
+    const declared = matchDataOrigin(resolved.href, origins);
+    const allowed = declared?.cacheable === true && declared.prefetch === true;
+    return { allowed, origin };
 }
 
 /**

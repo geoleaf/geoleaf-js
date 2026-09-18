@@ -4,8 +4,8 @@ title: offline — le moteur hors ligne, et la façade que pilote son interface
 capability_id: offline
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 1543249da
-date: 6 septembre 2026
+verifie_contre: 0ac36844d
+date: 17 septembre 2026
 ---
 
 # offline — le moteur hors ligne, et la façade que pilote son interface
@@ -191,18 +191,52 @@ _Posé le 02/08/2026. Tout ce qui suit est gaté par
 
 **Les magasins se comptent, ils ne se recopient pas** :
 `grep -c 'createObjectStore(' packages/core/src/capabilities/offline/db/indexeddb.ts`. Quatre
-hérités — `layers`, `preferences`, `metadata`, `local_images` —, les deux de la v4, et `routes`
-depuis la **v5** (tâche 5.2, 22/08/2026) :
+hérités — `layers`, `preferences`, `metadata`, `local_images` —, les deux de la v4, `routes`
+depuis la **v5** (tâche 5.2, 22/08/2026), et `conflicts` depuis la **v6** (17/09/2026) :
 
 ⚠️ **Il y en avait HUIT jusqu'au 04/08/2026.** `sync_queue` et `sync_backups` sont retirés à la
 tâche **4.11** ; le décompte est gardé dans les deux sens — `packages/core/__tests__/capabilities/offline/indexeddb-init.test.js` compte ce qui
 existe, `packages/core/__tests__/capabilities/offline/schema-v4.test.js` refuse ce qui reviendrait.
 
-| Store      | Clé                       | Ce qu'il porte                                                                          |
-| ---------- | ------------------------- | --------------------------------------------------------------------------------------- |
-| `features` | `[layerId, localId]`      | Une **entité** par enregistrement (contrat `FeatureRecord`)                             |
-| `outbox`   | `seq` (**autoIncrement**) | La file d'écritures (contrat `OutboxEntry`)                                             |
-| `routes`   | `id`, index `timestamp`   | Un itinéraire persisté, sa **ligne DÉCODÉE**, et l'identité du corridor téléchargé (v5) |
+| Store       | Clé                                   | Ce qu'il porte                                                                                  |
+| ----------- | ------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `features`  | `[layerId, localId]`                  | Une **entité** par enregistrement (contrat `FeatureRecord`)                                     |
+| `outbox`    | `seq` (**autoIncrement**)             | La file d'écritures (contrat `OutboxEntry`)                                                     |
+| `routes`    | `id`, index `timestamp`               | Un itinéraire persisté, sa **ligne DÉCODÉE**, et l'identité du corridor téléchargé (v5)         |
+| `conflicts` | `[layerId, localId]`, **aucun index** | Ce qu'un conflit tranché a écrasé — un enregistrement par entité (contrat `ConflictRecord`, v6) |
+
+### La v6 : `conflicts`, et pourquoi sa clé EST son bornage (17/09/2026)
+
+_Gaté par `__tests__/capabilities/offline/schema-v6-migration.test.ts`, qui ouvre une base
+**v5 réelle** et vérifie ce que la montée préserve._
+
+🛑 **PREMIÈRE MONTÉE FAITE ALORS QU'UN APPAREIL POUVAIT DÉJÀ PORTER DES DONNÉES.** Les deux
+stores de la v4 arrivaient dans une base que personne n'avait ; celui-ci arrive **à côté**
+d'enregistrements qui doivent lui survivre. Le dépôt n'avait **aucun test unitaire de
+migration** — mesuré au pré-vol du 17/09 —, le seul chemin éprouvé étant l'E2E depuis le dump
+v3, qui prouve que la montée tourne et rien de ce qu'elle PRÉSERVE. La base v5 du test est
+écrite à la main plutôt que lue d'un dump : ce qui est sous test est la **forme** que la v5
+laisse, pas les données d'un appareil.
+
+🛑 **LA CLÉ EST LE BORNAGE, et il est DÉRIVÉ, pas inventé.** `db/eviction.ts` ne connaît qu'un
+nom de store (`layers`) : `conflicts` lui est **inatteignable**, exactement comme `features`,
+donc rien ne le purgera jamais. Une clé par entité le plafonne à une ligne par entité, soit à
+la taille de la couche. Un journal aurait exigé un plafond, et un plafond ici aurait été un
+chiffre posé dans la bande de bruit — le dépôt l'a payé deux fois. **Le coût s'écrit plutôt
+qu'il ne se cache** : une entité qui conflicte deux fois ne garde que la version écrasée la
+plus récente.
+
+⚠️ **AUCUN index, et pas même un index de zone** (décision du 17/09/2026). Lire une couche
+depuis le disque coûte 0,45 à 0,8 s à 30 000 entités — mesuré avant d'ouvrir le chantier —, ce qui n'en
+justifie pas un ; et la clé composée donne déjà le parcours par couche en plage de clé
+(`IDBKeyRange.bound([layerId], [layerId, []])`), le raisonnement que `db/features.ts` porte en
+entier. Un index compagnon serait une seconde source de vérité pour la même question.
+
+⚠️ **La seule purge est manuelle** (`Storage.clearConflicts`), et c'est délibéré : c'est la
+contrepartie exacte de la propriété qui met le travail non synchronisé hors d'atteinte de
+l'éviction. `getStats()` compte donc ce magasin — rien ne l'évince, c'est le second dont
+aucun mécanisme de quota ne rapportera jamais la croissance, et **un store que rien ne compte
+est un store que personne ne voit se remplir**.
 
 ### `local_images` porte désormais une ADRESSE DE RETOUR (04/09/2026)
 
@@ -492,6 +526,111 @@ appartiennent à 4.4/4.5, avec les producteurs de l'outbox.
 ⚠️ **Aucune migration de données** — décision **A16** : l'application n'a pas d'utilisateurs.
 Cette décision se périme au premier déploiement terrain et doit être relue à ce moment-là.
 
+### L'identité, le marqueur et la session — cinq défauts fermés le 17/09/2026
+
+_Série de correctifs du 17/09/2026 sur le cycle d'écriture. Prouvés avant correctif par
+`__tests__/capabilities/offline/write-cycle-defects.test.ts`, et sur le bundle livré par
+`e2e/44-editor-update-reaches-row.spec.js`._
+
+🛑 **L'ÉCRIVAIN NE CONNAÎT PAS LES CLÉS DU MAGASIN, et rien ne les lui traduisait.** Un plugin
+d'édition nomme une entité existante par l'identifiant que la carte affiche — `properties.id`,
+l'identité SERVEUR —, alors que le rapatriement range l'enregistrement sous `properties.local_id`
+ou `srv:<id>`. `applyLocalEdit` créait donc un SECOND enregistrement, sans identité serveur, et
+l'envoi partait en `?id=eq.null`. Le moteur tenant toute écriture en file, cela manquait la ligne
+pour **toute** modification et **toute** suppression d'une entité existante — rapatriée ou non.
+
+`db/local-edit.ts#resolveEntity` résout l'identité AVANT toute lecture par clé, dans la même
+transaction : clé du magasin, sinon enregistrement de la même couche portant cet identifiant
+serveur, sinon `srv:<id>` — la clé que le rapatriement lui donnerait. L'identité `loc:` d'une
+entité que le magasin ne tient plus reste telle quelle, et le drain **n'envoie rien** quand
+l'enregistrement ne connaît aucune ligne serveur.
+
+⚠️ **Conséquences visibles fermées avec lui** : une entité modifiée n'est plus dessinée deux fois
+hors ligne (un seul enregistrement), et une entité supprimée quitte la carte (la suppression est
+rangée sous la clé que la lecture locale filtre).
+
+⚠️ **Ce qu'un appareil déjà passé par le défaut garde** : un enregistrement de trop par entité,
+celui que le défaut a écrit, et son entrée en quarantaine `rejectedByServer` — non rejouable.
+Rééditer l'entité envoie une écriture qui, elle, atteint la ligne.
+
+🛑 **UNE SUPPRESSION EN CONFLIT PASSAIT POUR UN SUCCÈS.** Le test « zéro ligne touchée » ne visait
+que les modifications : un `DELETE` filtré auquel le serveur répond `200 []` sortait en succès,
+l'entrée quittait la file, et la ligne serveur revenait au rapatriement suivant. La lecture vaut
+désormais pour les deux verbes, et le conflit est réglé par la politique déclarée —
+`lastWriteWins`, donc la suppression repart sans filtre et l'emporte (arbitré le 17/09/2026).
+
+🛑 **LE MARQUEUR DE FRAÎCHEUR NE SUIVAIT PAS L'ÉCRITURE.** L'enregistrement gardait celui d'avant
+l'envoi, quand le serveur le déplace à chaque écriture : la modification suivante partait filtrée
+sur un marqueur périmé et comptait l'écriture de l'appareil pour celle d'un autre — un faux
+conflit, qu'un journal de conflits enregistrerait comme réel. L'enregistrement prend le marqueur
+rendu avec la ligne écrite, et une entrée empilée pendant l'envoi est recalée sur lui.
+
+🛑 **ET L'ENVOI RÉÉCRIVAIT CE QU'IL AVAIT LU AVANT.** Une correction faite pendant la requête
+était écrasée par la copie d'avant, marquée `synced`, puis renvoyée telle quelle au serveur par
+l'entrée empilée : la correction était perdue des deux côtés. L'enregistrement est relu après la
+réponse, et ce qui a changé entre-temps reste dû.
+
+🛑 **LE DIALECTE `rest` USAIT LE BUDGET D'UN TROU DU CORE.** Refusé par son nom mais rendu comme un
+échec ordinaire, il épuisait les trois essais puis tombait sous `retryBudgetExhausted` — « le
+serveur n'a jamais répondu », alors qu'aucune requête n'était partie. Le motif `dialectNotSupported`
+le dit, la mise à l'écart est immédiate, et le rejeu n'est accepté que si la couche ne déclare plus
+ce dialecte. Le défaut du schéma passe à `collection`.
+
+🛑 **UNE SESSION MORTE COÛTAIT UNE SAISIE PAR MINUTE.** Le drain s'arrête au premier 401 et écarte
+CETTE saisie ; chaque déclencheur suivant rencontrait la même session morte et écartait la
+suivante. Les quatre déclencheurs se taisent tant qu'une passe s'est arrêtée ainsi, et repartent à
+la première passe qui ne s'arrête plus — l'état se lit dans l'annonce de fin de passe, donc les
+passes lancées ailleurs comptent aussi. Un envoi demandé à la main n'est jamais retenu.
+
+⚠️ **Le retour de session appartient au connecteur**, et le contrat le disait déjà : le cœur ne
+sait pas ce qu'est une connexion. `@geoleaf-plugins/connector` appelle
+`Storage.requeueAll("authRequired")` puis `Storage.pushOutbox()` — les deux gestes publics qu'une
+application qui se connecte par ses propres moyens fait aussi.
+
+### Le conflit RELIT ce qu'il écrase, et le garde — 17/09/2026
+
+_Gaté par `__tests__/capabilities/offline/conflict-store.test.ts`, et sur le bundle livré par
+`e2e/45-conflict-keeps-losing-version.spec.js`._
+
+🛑 **LA POLITIQUE ÉTAIT DÉCLARÉE ET AVEUGLE.** `lastWriteWins` est devenue observable le
+17/09 : le drain détecte le conflit, le journalise, puis renvoie l'écriture sans filtre. Ce
+qu'aucune partie du cycle ne faisait était **REGARDER** la ligne qu'elle allait détruire. Après
+une modification tranchée le serveur porte encore une ligne ; après une **suppression**
+tranchée il n'en porte plus, et rien d'autre non plus — la seule perte irrécupérable de tout le
+cycle d'écriture.
+
+`write/conflict-store.ts` relit la ligne par son identité serveur, puis `settleByLastWrite`
+envoie l'écriture non filtrée, puis — **et seulement si elle a atterri** — archive ce qui vient
+d'être détruit. Un conflit consigné pour une écriture qui n'a pas eu lieu serait une
+observation sur rien, et l'entrée est encore en file à ce moment-là : elle reviendra et sera
+tranchée à nouveau.
+
+🛑 **LA RELECTURE NE DÉCIDE JAMAIS SI L'ÉCRITURE A LIEU.** Un serveur qui accorde `UPDATE` sans
+`SELECT` est un partage de droits ordinaire : conditionner l'écrasement à cette lecture ferait
+dépenser le budget de tout conflit puis le mettrait en quarantaine — c'est-à-dire **abroger en
+silence** la politique arbitrée le 17/09. Ce que la lecture n'établit pas est CONSIGNÉ comme
+non établi, jamais inventé :
+
+| `readOutcome` | Ce qu'il dit                                             | `serverFeature` |
+| ------------- | -------------------------------------------------------- | --------------- |
+| `read`        | la ligne a été lue — c'est elle qui a été écrasée        | la ligne        |
+| `absent`      | le serveur ne portait AUCUNE ligne : rien n'a été écrasé | `null`          |
+| `unreadable`  | la relecture n'a pas conclu, et l'écrasement a eu lieu   | `null`          |
+
+C'est l'idiome que `quarantineStatus` applique déjà : **l'absence porte l'information**, un
+`null` posé « pour remplir » dirait quelque chose de faux.
+
+⚠️ **La ligne serveur est une PREUVE, jamais une source.** Rien ne la réécrit dans `features` :
+le faire écraserait ce que l'opérateur a saisi — le défaut corrigé le 17/09/2026 sous « l'envoi
+réécrivait ce qu'il avait lu avant », revenu ailleurs. Une garde le tient, vue rouge sur la mutation — « expected 'vu du bureau' to
+be 'relevé sur le terrain' ».
+
+⚠️ **`markerOf` a DÉMÉNAGÉ** de `write/push-engine.ts` vers `write/conflict-store.ts`. Le drain
+lit le marqueur que le serveur rend après une écriture, ce module celui qu'il rend avant d'être
+écrasé : deux copies auraient été deux définitions de « ce qui compte comme marqueur », et la
+moitié du cycle qui dérive comparerait contre ce que l'autre n'écrit jamais. La dépendance est
+à sens unique — le drain importe ce module, jamais l'inverse.
+
 ### Côté Service Worker
 
 - **Il ne porte AUCUNE version** (décision T2′, tâche 3.1). `indexedDB.open("geoleaf-db")` sans
@@ -530,7 +669,7 @@ Bloc `modules.offline` d'un profil. Conformité de cette table au code gardée p
 
 | Paramètre     | Type      | Défaut  | Où c'est lu                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | ------------- | --------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `dataOrigins` | array     | `[]`    | `capabilities/offline/install.ts` → `lifecycle.ts` → `data-origins.ts` (normalisation), publié dans le store `preferences` et **relu par le Service Worker**. Remplace le routage par devinette : sous-chaînes de hostname, reniflage de chemin, domaine en dur et exclusion `/api/`. La forme d'un élément est `DataOriginDeclaration` (`contracts/sync.contract.ts`) — figée là, jamais dupliquée ici                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `dataOrigins` | array     | `[]`    | `capabilities/offline/install.ts` → `lifecycle.ts` → `data-origins.ts` (normalisation), publié dans le store `preferences` et **relu par le Service Worker**. Remplace le routage par devinette : sous-chaînes de hostname, reniflage de chemin, domaine en dur et exclusion `/api/`. La forme d'un élément est `DataOriginDeclaration` (`contracts/sync.contract.ts`) — figée là, jamais dupliquée ici. Depuis 3.4.0 un élément peut porter `prefetch` : **la préparation hors-ligne ne rapatrie une origine tierce que déclarée `cacheable: true` ET `prefetch: true`** (`cache/resource-enumerator.ts` → `prefetchVerdict`, voir « La préparation ne rapatrie qu'une origine qui l'autorise »)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `banner`      | `object`  | —       | `capabilities/offline/install.ts` → `lifecycle.ts` → `ui/sync-banner.ts`. Une seule clé, `enabled` (défaut **`true`**) : la bande posée en tête de `.gl-main` — réseau, profondeur de la file, dernière synchro acceptée, quarantaine, un bouton « Synchroniser » et un bouton de renvoi. 🛑 **Elle est montée en permanence et ABONNÉE en permanence, mais ne s'AFFICHE que lorsqu'elle porte une information** — file non vide, entrée mise à l'écart, ou réseau tombé. Motif mesuré : sur un profil de consultation elle ne quittait jamais l'état « En ligne · Tout est envoyé · jamais synchronisé », pour ~43 px de chrome par-dessus les pastilles de thème ; et sur un livrable c'est le SEUL état atteignable, `build-deploy` retirant les cibles d'écriture. `enabled: false` ne monte rien du tout, écouteurs compris. ⚠️ **Le renvoi acquitte ce qui a été VU, pas ce qui arrivera** : la bande revient dès que la situation empire — une écriture due de plus, une mise à l'écart de plus, ou le réseau qui tombe. Rien n'est persisté : un acquittement d'hier ne dit rien de la file d'aujourd'hui. ⚠️ **La copie permanente, elle, vit dans la modale du cache** (`@geoleaf-plugins/offline-ui`, au-dessus de l'accordéon STATUT) : c'est là qu'on vient poser la question quand la bande s'est tue, donc elle répond même au repos et n'a pas de bouton de renvoi. ⚠️ **La bande publie son encombrement** dans `--gl-map-top-inset`, mesuré et non supposé : la carte est `inset: 0` dans `.gl-main`, donc la bande la RECOUVRE au lieu de la pousser, et les surfaces ancrées en haut ajoutent ce jeton à leur `top`. Le remède est d'EMPILER, jamais de monter un z-index — la bande n'y nomme personne. ⚠️ **Le détail entrée par entrée n'y est PAS**, et c'est une frontière : cette liste est la modale du plugin `editor`, donc une surface de plugin. Le core la reproduire serait la dupliquer, l'atteindre serait le faire dépendre d'un plugin — l'appui fait donc ce qui n'a pas d'autre domicile, demander un drain. ⚠️ La bande **prend un arrêt de tabulation** (`tabindex="0"`) : elle ne se replie jamais sur deux lignes, donc elle défile sur un écran étroit, et le scan axe classe « serious » une région qui défile sans jamais prendre le focus — un utilisateur au clavier ne peut pas en lire la fin |
 | `drain`       | `object`  | —       | `capabilities/offline/install.ts` → `lifecycle.ts` → `write/outbox-drain-triggers.ts`. Une seule clé, `pollIntervalMs` (défaut **60 000**, `0` désactive) : la période du tic de réessai. ⚠️ Elle ne gouverne **pas** les trois autres déclencheurs (`online`, réveil d'onglet, stockage prêt), qui ne sont pas optionnels. Le défaut est **dérivé** de l'échelle de recul du drain (30 s de base, ×4, plafond 8 min) : deux fois le pas de base et un huitième du plafond, ce qui borne à une minute le retard sur `nextAttemptAt` à n'importe quel barreau 🛑 **Le tic ne LIT la base que s'il peut y avoir quelque chose.** Ses trois portes étaient `navigator.onLine` puis `countDue()`, si bien qu'une application à file vide — la quasi-totalité du temps — ouvrait une transaction IndexedDB par minute et par onglet pour apprendre à chaque fois qu'il n'y avait rien à faire. Un drapeau tenu par les faits que le core connaît déjà (une passe qui n'a rien tenté ET rien laissé de côté ; l'événement `geoleaf:offline:outbox-queued` qui le rallume) rend le tic gratuit au repos. ⚠️ `deferred > 0` le garde ALLUMÉ — ces entrées attendent leur délai, et le tic est ce qui reviendra pour elles ; et le drapeau démarre à VRAI, « je ne sais pas » devant vouloir dire « regarde ».                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `enabled`     | `boolean` | `false` | `install.ts` → étape de cycle de vie partagé. **Opt-in**, et conditionné à `modules.pwa.enabled`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
@@ -549,11 +688,11 @@ niveau** du `configSchema`. `cache.enableTileCache` y serait rejeté comme « pa
 absent du configSchema ». L'en-tête dit `Sous-clé` et non `Paramètre` pour cette raison exacte —
 c'est ce mot qui décide quelle table est lue.
 
-| Sous-clé             | Type      | Défaut | Effet                                                                      |
-| -------------------- | --------- | ------ | -------------------------------------------------------------------------- |
-| `enableProfileCache` | `boolean` | `true` | Mettre en cache les couches du profil                                      |
-| `enableTileCache`    | `boolean` | `true` | Mettre en cache les tuiles                                                 |
-| `maxCacheBytes`      | `number`  | 250 Mo | Budget d'octets. **`0` désactive l'éviction**, il ne la rend pas immédiate |
+| Sous-clé             | Type      | Défaut | Effet                                                                                                                                     |
+| -------------------- | --------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `enableProfileCache` | `boolean` | `true` | Mettre en cache les couches du profil                                                                                                     |
+| `enableTileCache`    | `boolean` | `true` | Télécharger les tuiles des fonds hors-ligne et des couches tuilées — un **veto** ; une origine tierce seulement déclarée `prefetch: true` |
+| `maxCacheBytes`      | `number`  | 250 Mo | Budget d'octets. **`0` désactive l'éviction**, il ne la rend pas immédiate                                                                |
 
 ⚠️ **Le défaut de `maxCacheBytes` est une duplication DÉLIBÉRÉE** d'une constante de
 `cache/cache-manager.ts`, qui n'est pas exportée — précisément pour que le gestionnaire de cache
@@ -580,8 +719,11 @@ capacité, elle, y **injecte** ses modules quand son moteur arrive.
 | `isPluginLoaded()` · `whenReady()` | **Délégués au contrat partagé** — voir ci-dessous                                                              |
 | `pullLayer(layerId, options?)`     | **Rapatriement borné** (tâche 4.1) — voir ci-dessous                                                           |
 | `getSyncReport()`                  | **Rapport par couche** (tâche 4.8) — voir ci-dessous                                                           |
-| `getStats()`                       | Décomptes agrégés — compte les magasins **v4**                                                                 |
+| `getStats()`                       | Décomptes agrégés — `layers`, les deux magasins **v4**, et `conflicts` (v6)                                    |
 | `requeueAll(reason?)`              | **Sortie de quarantaine groupée** (02/09/2026) — voir ci-dessous                                               |
+| `requeueableReasons()`             | **Les motifs qu'un geste d'opérateur lève** (17/09/2026) — voir ci-dessous                                     |
+| `listConflicts(layerId?)`          | **Les versions qu'un conflit tranché a écrasées** (v6, 17/09/2026)                                             |
+| `clearConflicts(layerId?)`         | La purge de ce magasin — **la seule, et manuelle à dessein**                                                   |
 
 #### `requeueAll()` — parce qu'une sortie qu'on répète quarante fois n'est prise par personne
 
@@ -595,6 +737,32 @@ de couverture en écarte une tournée entière d'un coup.
 rejouable, cause observée comme levée — garde exactement un auteur. Un traitement par lot qui
 déciderait pour lui-même serait une seconde autorité, libre de diverger sur le point même que
 l'arbitrage du 07/08/2026 a tranché. Ce que la règle refuse est **compté** (`skipped`), jamais avalé.
+
+#### `requeueableReasons()` — parce qu'un bouton qui ne fait rien apprend à ne plus l'enfoncer
+
+🛑 **LA RÈGLE DU REJEU DOIT GARDER UN SEUL AUTEUR.** Une interface qui offre « tout réessayer
+(motif X) » doit savoir **avant le clic** pour quels motifs cette phrase est vraie. Sans cette
+lecture, chaque surface coderait la liste en dur — et un plugin ne peut pas importer le cœur
+(`INV-NS`), donc sa copie serait libre de diverger sur le point même qu'a tranché l'arbitrage
+du 07/08/2026, sans qu'aucune gate puisse confronter les deux.
+
+⚠️ **Elle ne promet PAS qu'une entrée reviendra** : `requeueQuarantined` vérifie toujours que
+la cause est OBSERVÉE comme levée là où c'est vérifiable. Elle dit quels motifs ont une sortie
+**du tout** — les deux autres sortent par `discardQuarantined`, c'est-à-dire par la
+destruction.
+
+#### `listConflicts()` et `clearConflicts()` — un magasin sans lecteur EST le défaut
+
+⚠️ **Le précédent est dans cette fiche**, plus haut : `local_images` a passé un mois en écriture
+seule, sa lecture ayant été retirée comme « redondante » avec une data-URL qui était elle-même
+le défaut — et un téléversement réussi n'avait **nulle part** où renvoyer son URL. Une archive
+de conflits que rien ne peut énumérer serait la même forme : la version écrasée serait gardée
+et inatteignable, ce qui est indiscernable de ne pas la garder.
+
+⚠️ **La purge est manuelle, et c'est la contrepartie exacte** de la propriété qui met le travail
+non synchronisé hors d'atteinte de l'éviction : `db/eviction.ts` ne nomme qu'un store, donc rien
+ne reprend celui-ci tout seul. La clé le borne à une ligne par entité ; ceci le vide une fois
+que l'opérateur a regardé ce qui a été écrasé.
 
 #### `pullLayer()` — le premier ÉCRIVAIN du store `features`
 
@@ -803,13 +971,14 @@ le rejouer.
 
 **Il n'y a pas de façade `geoleaf.offline.ts`.**
 
-### Événements — sept émis, un seul déclaré au contrat
+### Événements — ce qui est émis, et ce qui est typé au contrat
 
 | Signal                           | Émis par                                                                                                                                                                         |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `geoleaf:storage:quota-exceeded` | Écriture refusée                                                                                                                                                                 |
 | `geoleaf:cache:progress`         | Progression du remplissage                                                                                                                                                       |
 | `geoleaf:offline:pull-progress`  | Progression du RAPATRIEMENT des entités — seconde phase d'un même téléchargement, canal distinct parce que `ProgressTracker` est un singleton déjà à 100 % quand le pull démarre |
+| `geoleaf:offline:write-conflict` | Un conflit tranché par `lastWriteWins` — il NOMME l'entrée et porte la ligne écrasée (v6, 17/09/2026)                                                                            |
 | `geoleaf:cache:completed`        | Fin de téléchargement                                                                                                                                                            |
 | `geoleaf:cache:cleared`          | Cache vidé                                                                                                                                                                       |
 | `geoleaf:cache:clear-progress`   | Progression du vidage                                                                                                                                                            |
@@ -840,11 +1009,30 @@ quand le panneau de cache est **fermé**. ⚠️ Une éviction à **zéro** entr
 élément supprimé » apprend à l'utilisateur à ne plus lire les notifications. 3 mutations vues
 rouges. **Le compteur C2 du périmètre hors-ligne est à zéro.**
 
-⚠️ **Aucun des sept n'est déclaré** dans `contracts/event-bus.contract.ts` — mesuré, zéro occurrence
-de ce vocabulaire dans le fichier. Ils vivent dans la baseline non typée
-(`scripts/.baselines/event-map-coverage.json`), que `scripts/check-event-map-coverage.cjs` tient
-sous cliquet. **Ce n'est donc pas une découverte** : c'est un gisement suivi, et cette fiche s'y
-réfère plutôt que d'ouvrir une ligne.
+🛑 **CE TITRE PORTAIT DEUX CHIFFRES — « sept émis, un seul déclaré au contrat » — ET LES DEUX
+ÉTAIENT FAUX — re-mesurés le 17/09/2026.** Le paragraphe ci-dessous affirmait « aucun des sept n'est
+déclaré […] zéro occurrence de ce vocabulaire dans le fichier », alors que la fiche écrit
+elle-même, quatre cents lignes plus haut, que la progression du rapatriement est « typée au
+contrat » depuis la tâche 2.3. **Elle se contredisait donc**, exactement comme elle le consigne
+pour OF-07 — et l'énoncé était vrai à sa date, ce qui est le mode d'échec n°3 du pré-vol dans
+une fiche qui décrit son propre module.
+
+**Le décompte se dérive, il ne se recopie pas :**
+
+```bash
+grep -c '"geoleaf:\(offline\|cache\|storage\):' packages/core/src/contracts/event-bus.contract.ts
+```
+
+Mesuré ce jour : `geoleaf:offline:pull-progress`, `geoleaf:cache:evicted` et
+`geoleaf:offline:write-conflict` sont déclarés ; les six autres vivent dans la baseline non
+typée (`scripts/.baselines/event-map-coverage.json`), que `scripts/check-event-map-coverage.cjs`
+tient sous cliquet. **Ce n'est donc pas une découverte** : c'est un gisement suivi, et cette
+fiche s'y réfère plutôt que d'ouvrir une ligne.
+
+⚠️ **Le titre ne porte plus de compte**, et c'est le remède : un chiffre qu'on ne re-mesure pas
+ne se périme pas, il se fossilise. **Un signal NEUF n'a plus le choix** — `EM-01` refuse tout nom
+absent de `GeoLeafEventMap`, et la baseline ne peut que rétrécir : un événement né dedans se
+paierait deux fois.
 
 **Écoutés** : `geoleaf:layers:initial-loaded` et `geoleaf:app:ready`, tous deux par l'amorce de
 restauration, et tous deux détachés ensuite.
@@ -852,7 +1040,8 @@ restauration, et tous deux détachés ensuite.
 ### Stockage écrit
 
 **C'est la seule capacité du dépôt qui écrit une base de données.** Couches, images, préférences,
-entités (`features`), file d'écritures (`outbox`) et itinéraires (`routes`).
+entités (`features`), file d'écritures (`outbox`), itinéraires (`routes`) et conflits tranchés
+(`conflicts`).
 
 ⚠️ Cette phrase a listé « sauvegardes » et « file de synchronisation » : les deux magasins qui les
 portaient — `sync_backups` et `sync_queue` — sont partis à la tâche **4.11**, la chaîne de
@@ -930,7 +1119,8 @@ ne sont pas du code** :
     du **format** — un fond vectoriel est parsé par MapLibre, donc requêté en mode `cors` —, pas du
     serveur, et aucun `Access-Control-Allow-Origin: *` mesuré ne l'établit. La capacité tient donc
     à **un seul fond dans un seul profil** : le retirer la referme, et c'est la garde ci-dessus,
-    qui **dérive son périmètre du disque**, qui le dira ;
+    qui **dérive son périmètre du disque**, qui le dira. Depuis 3.4.0 elle tient aussi à la
+    déclaration `prefetch` de son origine dans ce même profil, que la garde exige également ;
 
 3. ~~les tuiles **vectorielles** exigent en plus une `vectorZone` **dessinée par
    l'utilisateur**, qu'aucun profil ne peut déclarer.~~ — 🛑 **ÉNONCÉ FAUX, corrigé le
@@ -956,7 +1146,8 @@ c'est ce que la garde vérifie, et elle a été vue rougir exactement sur cette 
 ⚠️ **Et une conséquence produit qu'A7 ne disait pas** : A7 supprime le cache **opportuniste**.
 Aujourd'hui, se promener sur la carte rend ces tuiles disponibles hors réseau ; sous A7, une tuile
 n'est hors ligne que si elle a été **explicitement téléchargée**, sur un fond déclaré
-`offline: true`, avec une zone dessinée.
+`offline: true`, d'une origine préparable (§La préparation ne rapatrie qu'une origine qui
+l'autorise), avec une zone dessinée.
 
 🛑 **La troisième voie est nommée pour être ÉCARTÉE** : faire écrire le Service Worker dans
 IndexedDB au vol unifierait le magasin _et_ garderait l'opportunisme — mais elle contredit **T2′**,
@@ -985,6 +1176,44 @@ appelle `CacheManager.cacheProfile()` **sans interface**.
 hôte sans l'UI télécharge les tuiles même avec le drapeau à `false` ». Mesuré en navigateur : sans
 sélection persistée, `selection` valait `null`, donc `includeTiles` était indéfini, donc **aucune
 tuile n'était énumérée** — l'inverse exactement. Mode d'échec n° 2, porté sur l'effet.
+
+#### La préparation ne rapatrie qu'une origine qui l'autorise (3.4.0)
+
+🛑 **Le chemin du téléchargement délibéré ne contrôlait que le SCHÉMA d'URL** (`cache/url-guard.ts`) :
+tout fond `offline: true` était rapatrié, quelle que soit son origine. Or quatre guides publiés
+enseignaient `offline: true` sur `tile.openstreetmap.org`, dont la politique d'usage dit : « Offline
+use is not permitted on tile.openstreetmap.org ». Le dépôt le savait — le job de démonstration
+refuse `enableTileCache: true` par un grep — sans que le produit, le schéma ni les guides le disent.
+
+**La règle**, portée par `prefetchVerdict` (`data-origins.ts`) et appliquée par
+`ResourceEnumerator` aux deux sites qui préparent — fonds et couches tuilées : une ressource entre
+dans le téléchargement si son URL est de **l'origine de la page**, ou si son origine est déclarée
+`cacheable: true` **et** `prefetch: true`. Le refus est **nommé** — un avertissement par origine, qui
+cite le fond ou la couche et la déclaration à écrire.
+
+- ⚠️ **`prefetch` n'est pas `cacheable`, et c'est le cœur de la règle.** Garder ce qui a été servi,
+  les fournisseurs le demandent ; télécharger avant usage, certains l'interdisent. Un seul drapeau
+  aurait obligé qui veut le premier à autoriser le second.
+- ⚠️ **L'origine de la page est implicite**, pour la raison de l'arbitrage du 07/08/2026 : elle
+  change à chaque déploiement et aucun profil portable ne peut l'écrire. Ce choix ne tranche PAS le
+  rapatriement de données authentifiées de même origine, classe préexistante et distincte.
+- Le **style** d'une origine refusée n'est pas même récupéré, et l'estimation de taille — qui envoie
+  des requêtes `HEAD` — passe par la même énumération : elle ne voit plus ces URL.
+- `prefetch` est ignoré sans `cacheable: true` et retiré d'une origine `authenticated`, en le disant.
+- `enableTileCache` **garde son défaut `true`** : c'est la règle d'origine qui le rend sûr.
+- Les **fonds par défaut du core** (OpenStreetMap, OpenTopoMap, imagerie Esri) ne passent jamais par
+  `Config.get("basemaps")` : ils servent la consultation et n'entrent jamais dans la préparation.
+
+Preuves : `__tests__/capabilities/offline/tile-prefetch-origin.test.ts`, vu rouge sur l'état
+d'origine ; et la garde `offline-basemap-declared` exige qu'au moins un fond vectoriel hors-ligne
+livré soit **préparable** sous les déclarations de son profil. Vue rouge sur `reunion-eclairage`
+avant sa déclaration de `https://data.geopf.fr` (`profiles/reunion-eclairage/config/plugins/offline.json`, motif écrit dans le
+fichier). Sans cette clause, la garde serait restée verte sur un chemin redevenu inatteignable.
+
+⚠️ **Ce que la règle ne règle pas** : le cache opportuniste du Service Worker garde les tuiles
+consultées, y compris tierces — arbitrage du 12/08/2026, il réduit le trafic vers le fournisseur au
+lieu de l'augmenter ; l'interface `offline-ui` propose encore un fond non préparable, qui ne
+rapatrie rien ; et aucune attribution de fond n'est affichée (`attributionControl: false`).
 
 Le plafond est un **budget total déclaré**, explicitement sous le quota d'origine, **scindé en deux
 classes d'éviction** :

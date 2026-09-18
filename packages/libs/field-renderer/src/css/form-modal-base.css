@@ -52,17 +52,42 @@
     color: var(--gl-color-text-main, #0f172a);
 }
 
-.gl-form-modal-panel--drawer {
+/* The class is doubled on purpose. `@geoleaf/host-runtime` adopts its own copy of
+   `.gl-form-modal-panel` (`position: relative`) when its first dialog opens — AFTER this sheet —
+   and a rule of equal specificity loses to the later sheet: from the first confirmation on, the
+   drawer let go of the bottom of the screen. (0,2,0) wins whatever the adoption order. */
+.gl-form-modal-panel.gl-form-modal-panel--drawer {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
     max-width: 100% !important;
     max-height: 85vh;
+    max-height: 85dvh;
     /* Drawer top corners — larger than the shared token on purpose (see panel). */
     border-radius: 12px 12px 0 0;
     border-bottom: none;
     animation: gl-modal-slide-up 0.22s ease;
+}
+
+/* The overlay pinned to the VISUAL viewport (`ui/visual-viewport.ts`): when a keyboard opens, the
+   box shrinks and what it holds rises with it. Without `visualViewport` the modifier is never set,
+   and `inset: 0` stands. */
+.gl-form-modal-overlay.gl-form-modal-overlay--viewport {
+    inset: auto;
+    top: var(--gl-form-viewport-top, 0px);
+    left: var(--gl-form-viewport-left, 0px);
+    width: var(--gl-form-viewport-width, 100%);
+    height: var(--gl-form-viewport-height, 100%);
+}
+
+.gl-form-modal-overlay--viewport > .gl-form-modal-panel {
+    max-height: 90%;
+}
+
+.gl-form-modal-overlay--viewport > .gl-form-modal-panel.gl-form-modal-panel--drawer {
+    position: absolute;
+    max-height: 85%;
 }
 
 .gl-form-modal__header {

@@ -45,6 +45,8 @@ import type { MapConfig } from "../../kernel/config/geoleaf-config/config-types.
 import { events } from "../../utils/general/event-listener-manager.js";
 import { padBounds } from "../../kernel/map/map-container.js";
 import { ensureGeoLeaf } from "../../utils/general/geoleaf-global.js";
+import { MaplibreAdapter } from "../../adapters/maplibre/maplibre-adapter.js";
+import { failBoot } from "../boot-failure.js";
 import {
     asFn,
     asGeoLeafConfig,
@@ -294,7 +296,17 @@ export const CoreMapLifecycle = {
         // #5 — resolve extent, build options, create.
         const cfgMap: MapConfig = cfg.map ?? {};
         const extent = resolveProfileExtent(cfgMap, AppLog);
-        if (!extent) return;
+        if (!extent) {
+            // Signalled, NOT thrown: a throw would skip every module after this one, and the
+            // boot golden master — which boots with no extent on purpose — pins the clean stop.
+            failBoot({
+                reason: "map",
+                phase: "map",
+                message:
+                    "The active profile defines no valid map extent (map.bounds, or map.center with map.zoom).",
+            });
+            return;
+        }
 
         const boundsMargin =
             typeof cfgMap.boundsMargin === "number" ? cfgMap.boundsMargin : DEFAULT_BOUNDS_MARGIN;
@@ -314,7 +326,20 @@ export const CoreMapLifecycle = {
             AppLog,
             mark
         );
-        if (!map) return;
+        if (!map) {
+            // The facade reduces a failed construction to `null`; the adapter kept the cause.
+            // WebGL2 is named apart because it is the one failure the user can act on.
+            const cause = adapter instanceof MaplibreAdapter ? adapter.initError : null;
+            failBoot({
+                reason: MaplibreAdapter.isGpuInitializationError(cause) ? "webgl" : "map",
+                phase: "map",
+                message:
+                    cause instanceof Error
+                        ? cause.message
+                        : "GeoLeaf.init() did not return a valid map.",
+            });
+            return;
+        }
 
         // #6 — (removed, S5) Secondary-module preload. This used to fire
         // `GeoLeaf._loadAllSecondaryModules()` here and await it in `UIModule.init()`.

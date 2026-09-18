@@ -43,6 +43,11 @@ export interface PreferencesAPI {
  * because `sync_queue` "still carries backup restoration", in `addpoi`'s backup
  * module: that was its last use, and that module is deleted with the whole chain. A
  * counter for a removed store counts nothing.
+ *
+ * ✅ **`conflictsCount` joins them with the v6 store (17/09/2026)**, on the argument that
+ * opened this paragraph: nothing evicts `conflicts` — `db/eviction.ts` names one store — so
+ * it is the second store whose growth no quota mechanism will ever report. A store nothing
+ * counts is a store nothing notices filling up.
  */
 interface StorageStats {
     used: number;
@@ -51,6 +56,7 @@ interface StorageStats {
     layersCount: number;
     featuresCount: number;
     outboxCount: number;
+    conflictsCount: number;
 }
 
 /**
@@ -76,6 +82,7 @@ function init(db: IDBDatabase): PreferencesAPI {
                 layersCount: 0,
                 featuresCount: 0,
                 outboxCount: 0,
+                conflictsCount: 0,
             };
 
             try {
@@ -96,12 +103,17 @@ function init(db: IDBDatabase): PreferencesAPI {
                     stats.percentage = stats.quota > 0 ? (stats.used / stats.quota) * 100 : 0;
                 }
 
-                // Counts the three data-bearing stores: the layer cache, and the two
-                // v4 stores. The last two were missing, so a pull of 27 entities left
-                // `getStats()` reporting 0.
+                // Counts the four data-bearing stores: the layer cache, the two v4
+                // stores, and the v6 one. The v4 pair was missing, so a pull of 27 entities
+                // left `getStats()` reporting 0.
                 // ⚠️ `sync_queue` used to be among them — the store is removed, and
-                // counting it here would throw on a fresh database.
-                const transaction = db.transaction(["layers", "features", "outbox"], "readonly");
+                // counting it here would throw on a fresh database. `conflicts` is safe for
+                // the opposite reason: no engine opens a base older than the version that
+                // creates it, the connection being opened at `_dbVersion`.
+                const transaction = db.transaction(
+                    ["layers", "features", "outbox", "conflicts"],
+                    "readonly"
+                );
 
                 const layersStore = transaction.objectStore("layers");
                 const layersRequest = layersStore.count();
@@ -112,11 +124,15 @@ function init(db: IDBDatabase): PreferencesAPI {
                 const outboxStore = transaction.objectStore("outbox");
                 const outboxRequest = outboxStore.count();
 
+                const conflictsStore = transaction.objectStore("conflicts");
+                const conflictsRequest = conflictsStore.count();
+
                 await new Promise<void>((resolve, reject) => {
                     transaction.oncomplete = () => {
                         stats.layersCount = layersRequest.result;
                         stats.featuresCount = featuresRequest.result;
                         stats.outboxCount = outboxRequest.result;
+                        stats.conflictsCount = conflictsRequest.result;
                         resolve();
                     };
                     transaction.onerror = () => reject(transaction.error);
@@ -125,7 +141,8 @@ function init(db: IDBDatabase): PreferencesAPI {
                 Log.debug(
                     `[DB.Preferences] Storage stats: ${(stats.used / 1024 / 1024).toFixed(2)} MB used, ` +
                         `${stats.layersCount} layers, ` +
-                        `${stats.featuresCount} features, ${stats.outboxCount} outbox`
+                        `${stats.featuresCount} features, ${stats.outboxCount} outbox, ` +
+                        `${stats.conflictsCount} conflicts`
                 );
             } catch (error) {
                 Log.error(

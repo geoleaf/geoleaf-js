@@ -58,7 +58,10 @@ The `Core` object exports the following methods:
 ### 2.1 `GeoLeaf.Core.init(options)`
 
 Main initialisation function.
-It resolves the DOM container, creates a `MaplibreAdapter`, applies the UI theme and initialises the legend.
+It resolves the DOM container, creates a `MaplibreAdapter` and applies the UI theme (first map only).
+The legend is not mounted here: it mounts on `geoleaf:app:ready`.
+The engine is read from `globalThis.maplibregl` — an npm build must put it there
+(`Object.assign(globalThis, { maplibregl })`), or the call returns `null`.
 
 ```js
 const adapter = GeoLeaf.Core.init(options);
@@ -195,11 +198,11 @@ HTML example:
 - `mapId` must be a non-empty string.
 - A DOM element carrying that `id` must exist when the call is made.
 
-If either fails (`mapId` missing, or DOM element not found):
+If either fails, `Core.init()` does **not** throw — it logs an error and returns `null`:
 
-- `Core.init()` throws an exception, caught internally.
-- An error is logged: `[GeoLeaf.Core] ERROR: The required 'mapId' option is missing.`
-- `null` is returned.
+- `mapId` missing: `[GeoLeaf.Core] init() requires options.mapId`.
+- DOM element not found: `[GeoLeaf.Core] init failed for "<mapId>": No DOM element found for mapId='<mapId>'.`
+  — this failure is also passed to `GeoLeaf.Core.onError()` when one is registered (§7.2).
 
 ---
 
@@ -410,28 +413,47 @@ GeoLeaf.boot({
 
 ```ts
 GeoLeaf.boot(options?: {
+    /** A configuration object handed over in memory — no request is issued for it. Wins over `configUrl`. */
+    config?: Record<string, unknown>;
+    /** An explicit URL to fetch the configuration from, used when `config` is absent. */
+    configUrl?: string;
+    /** Runs after the configuration loads, before the map. Throwing aborts the boot. */
+    beforeBoot?: (context: { config: Readonly<Record<string, unknown>> }) => Promise<void> | void;
     onPerformanceMetrics?: (metrics: {
         timeToMapReadyMs: number | null;
         timeToAppReadyMs: number | null;
         startupTotalMs: number | null;
         capturedAt: string;
     }) => void;
+    /** Milliseconds without a reveal before the boot is reported as stalled. Default 45 000; `0` disables it. */
+    watchdogMs?: number;
 }): void
 ```
+
+⚠️ This block listed `onPerformanceMetrics` alone until 11/09/2026, while `config`, `configUrl` and
+`beforeBoot` already existed.
+
+A boot that cannot complete is never silent: `geoleaf:boot:failed` is dispatched and, when the page
+declares the `#gl-loader` veil, the veil turns into a failure screen offering « Reload » and a
+diagnostic to copy or download. Subscribe before calling `boot()`, and call `preventDefault()` on
+the event to draw your own interface instead — see [EVENTS_API.md](../EVENTS_API.md).
 
 ### 5.4 Lifecycle events
 
 The boot system emits the following events on `document`:
 
-| Event                    | Emitted when                                      | `detail` payload            |
-| ------------------------ | ------------------------------------------------- | --------------------------- |
-| `geoleaf:theme:applying` | A theme starts loading (layers still being added) | —                           |
-| `geoleaf:theme:applied`  | A theme has finished loading (all layers visible) | `{ themeName, layerCount }` |
-| `geoleaf:profile:loaded` | The JSON profile has been loaded and parsed       | `{ profileId, data }`       |
-| `geoleaf:map:ready`      | Map visible, loader removed, fitBounds done       | —                           |
-| `geoleaf:app:ready`      | Application fully initialised                     | `{ version, timestamp }`    |
-| `geoleaf:map:move`       | End of a map movement                             | `{ center, zoom }`          |
-| `geoleaf:map:zoom`       | End of a zoom change                              | `{ zoom }`                  |
+| Event                    | Emitted when                                                      | `detail` payload                                              |
+| ------------------------ | ----------------------------------------------------------------- | ------------------------------------------------------------- |
+| `geoleaf:profile:failed` | Resources the profile declares could not be obtained — cancelable | `{ profileId, fatal, failures }`                              |
+| `geoleaf:boot:failed`    | The boot cannot complete — cancelable                             | `{ reason, phase, message, module?, provisional, timestamp }` |
+| `geoleaf:boot:aborted`   | `beforeBoot` threw — the veil is hidden                           | `{ reason }`                                                  |
+| `geoleaf:theme:applying` | A theme starts loading (layers still being added)                 | —                                                             |
+| `geoleaf:theme:applied`  | A theme has finished loading (all layers visible)                 | `{ themeName, layerCount }`                                   |
+| `geoleaf:profile:loaded` | The JSON profile has been loaded and parsed                       | `{ profileId, data }`                                         |
+| `geoleaf:map:ready`      | Map visible, loader removed, fitBounds done                       | —                                                             |
+| `geoleaf:app:ready`      | Application fully initialised                                     | `{ version, timestamp }`                                      |
+| `geoleaf:map:move`       | End of a map movement                                             | `{ center, zoom }`                                            |
+| `geoleaf:map:zoom`       | End of a zoom change                                              | `{ zoom }`                                                    |
 
 ```js
 // Listen for app ready
@@ -585,14 +607,15 @@ GeoLeaf.Core favours explicit behaviour (clear logs) over silent failure.
 
 ### 7.1 Summary of the main cases
 
-| Situation                            | Log emitted                                                            | Return value      |
-| ------------------------------------ | ---------------------------------------------------------------------- | ----------------- |
-| `mapId` missing                      | `[GeoLeaf.Core] ERROR: The required 'mapId' option is missing.`        | `null`            |
-| DOM element not found for `mapId`    | `[GeoLeaf.Core] ERROR: No DOM element found for mapId='...'`           | `null`            |
-| `map.bounds` absent from the profile | `[GeoLeaf] Active profile does not define valid map.bounds`            | —                 |
-| Unknown `theme` value                | `[GeoLeaf.Core] setTheme() → {value}`                                  | theme unchanged   |
-| `Core.init()` already called         | `[GeoLeaf.Core] Map already initialized. Recycling existing instance.` | existing instance |
-| MapLibre engine exception            | `[GeoLeaf.Core] ERROR: {message}`                                      | `null`            |
+| Situation                                | Log emitted                                                                      | Return value      |
+| ---------------------------------------- | -------------------------------------------------------------------------------- | ----------------- |
+| `mapId` missing                          | `[GeoLeaf.Core] init() requires options.mapId`                                   | `null`            |
+| DOM element not found for `mapId`        | `[GeoLeaf.Core] init failed for "<mapId>": No DOM element found for mapId='…'.`  | `null`            |
+| No engine on `globalThis.maplibregl`     | `[GeoLeaf.Core] init failed for "<mapId>": …` (the `ReferenceError`'s message)   | `null`            |
+| `map.bounds` absent from the profile     | `[GeoLeaf] Active profile does not define valid map.bounds`                      | —                 |
+| Unknown `theme` value                    | `[GeoLeaf.Core] setTheme() ignored an invalid theme: {value}`                    | theme unchanged   |
+| `Core.init()` already called for `mapId` | `[GeoLeaf.Core] Map "<mapId>" already initialized. Returning existing instance.` | existing instance |
+| MapLibre engine exception                | `[GeoLeaf.Core] init failed for "<mapId>": {message}`                            | `null`            |
 
 ### 7.2 Optional error callback
 

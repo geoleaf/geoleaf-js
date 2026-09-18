@@ -30,6 +30,17 @@ export interface EditorQueueEntry {
     localId: string;
     state?: string;
     createdAt?: number;
+    /**
+     * Why the entry was set aside, when it was — a `QuarantineReason` of the core's contract.
+     *
+     * 🛑 **THE WINDOW LISTED SET-ASIDE ENTRIES WITHOUT SAYING SO.** It showed the operation
+     * and the layer, and its single "Retry now" button called the drain — which replays
+     * `pending` and `failed` only. The one gesture the window offered had, by construction,
+     * no effect on the entries the user had opened it for.
+     */
+    quarantine?: string;
+    /** Attempts already spent — `undefined` on an engine that predates the counter. */
+    attempts?: number;
 }
 
 /**
@@ -71,6 +82,61 @@ export async function listPendingEditorEntries(): Promise<EditorQueueEntry[]> {
 /** Number of editor operations currently pending in the queue. */
 export async function getPendingCount(): Promise<number> {
     return (await listPendingEditorEntries()).length;
+}
+
+/**
+ * The quarantine motives an operator's gesture can lift, as the core declares them.
+ *
+ * 🛑 **READ FROM THE CORE, never declared here.** The rule has one author —
+ * `write/quarantine-api.ts` — and `INV-NS` forbids this plugin from importing it: a copy on
+ * this side would be free to diverge on the exact point the arbitration of 07/08/2026
+ * settled, with no gate able to confront the two.
+ *
+ * @returns The motives, or an empty list when the engine is older or absent — in which case
+ *   the window offers no quarantine gesture rather than one that silently does nothing.
+ */
+export function requeueableReasons(): readonly string[] {
+    return storageFacade()?.requeueableReasons?.() ?? [];
+}
+
+/**
+ * Puts every entry set aside under one motive back in the queue, then drains.
+ *
+ * ⚠️ **The drain comes after, and it is the point.** Requeueing writes `pending` back onto
+ * the entries; nothing sends them until a pass runs, and the operator who pressed "retry all"
+ * is asking for the send, not for a state change they cannot see.
+ *
+ * @param reason - The motive to lift; omitted, every requeueable one.
+ * @returns How many came back, and how many the core's rule left where they were.
+ * @example
+ * const { requeued, skipped } = await requeueByReason("authRequired");
+ */
+export async function requeueByReason(
+    reason?: string
+): Promise<{ requeued: number; skipped: number }> {
+    const facade = storageFacade();
+    const out = await facade?.requeueAll?.(reason);
+    if (out?.requeued) await drainOutbox();
+    return { requeued: out?.requeued ?? 0, skipped: out?.skipped ?? 0 };
+}
+
+/**
+ * Destroys one set-aside entry no replay can repair.
+ *
+ * 🛑 **`confirmedLocalId` IS THE GUARANTEE, not a formality.** The core demands the entry's
+ * `localId` — a value the caller only knows by having LISTED it — so that it is structurally
+ * true that the capture was enumerated before being lost. Passing the entry object here is
+ * what keeps that property on this side too: nothing can discard an id it did not read.
+ *
+ * @param entry - The entry, as the window listed it.
+ * @returns `true` when the core accepted the destruction.
+ * @example
+ * if (await discardEntry(entry)) refreshBadge();
+ */
+export async function discardEntry(entry: EditorQueueEntry): Promise<boolean> {
+    const facade = storageFacade();
+    const out = await facade?.discardQuarantined?.(entry.id, entry.localId);
+    return out?.ok === true;
 }
 
 /**

@@ -22,8 +22,8 @@ Documentation for the **GeoLeaf Core** library (MIT only). This index covers the
 | [Configuration Guide](CONFIGURATION_GUIDE.md)           | JSON configuration reference — v3.0.0                     |
 | [API Reference](API_REFERENCE.md)                       | Public API — facades & ESM exports — v3.0.0               |
 | [Architecture Guide](ARCHITECTURE_GUIDE.md)             | Design, boot sequence, modules — v3.0.0                   |
-| [Plugin Development Guide](PLUGIN_DEVELOPMENT_GUIDE.md) | Build a custom plugin — v3.0.0                            |
-| [Core Extension Guide](CORE_EXTENSION_GUIDE.md)         | Add an internal core module (MIT fork) — v3.0.0           |
+| [Direction](DIRECTION.md)                               | What GeoLeaf is for, and what it guarantees — v3.x        |
+| [Plugin Development Guide](PLUGIN_DEVELOPMENT_GUIDE.md) | Plugin pattern, for repository contributors — v3.0.0      |
 | Connector Guide → shipped by the plugin                 | HTTP authentication (@geoleaf-plugins/connector) — v3.0.0 |
 | [Contributing](CONTRIBUTING.md)                         | Contribution guidelines — v3.0.0                          |
 
@@ -49,8 +49,8 @@ Documentation for the **GeoLeaf Core** library (MIT only). This index covers the
 ## Developer
 
 - [Architecture Guide](ARCHITECTURE_GUIDE.md) — Boot sequence, in-core capabilities, plugin registry — v3.0.0
-- [Plugin Development Guide](PLUGIN_DEVELOPMENT_GUIDE.md) — Build a custom plugin (ESM pattern, globalThis bridge, PluginRegistry) — v3.0.0
-- [Core Extension Guide](CORE_EXTENSION_GUIDE.md) — Add a new internal module to a forked core (boot sequence, ICoreModule, facades) — v3.0.0
+- [Direction](DIRECTION.md) — What GeoLeaf is for, what it is not, and what it guarantees — v3.x
+- [Plugin Development Guide](PLUGIN_DEVELOPMENT_GUIDE.md) — The plugin pattern, for contributors inside the repository (ESM pattern, globalThis bridge, PluginRegistry) — v3.0.0
 - Connector Guide — Transparent HTTP authentication with @geoleaf-plugins/connector (MIT) — v3.0.0. **The guide is not part of this package**: it ships with the plugin package, at `docs/CONNECTOR_GUIDE.md` (repository: `packages/plugins/connector/docs/CONNECTOR_GUIDE.md`)
 - [Contributing](CONTRIBUTING.md) — Monorepo workflow, conventions, TSDoc — v3.0.0
 - [Versioning Policy](VERSIONING_POLICY.md) — SemVer policy — v3.0.0

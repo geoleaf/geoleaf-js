@@ -1,6 +1,6 @@
 {
     "_comment": "Chemins morts CONNUS dans les renvois de `packages/core/docs/`, figés par `audit-report-freshness.cjs --source core-docs --gate`. Clé = `<fichier citant>→<chemin cité>`. Le gate rougit sur une entrée ABSENTE d'ici (CORE-DOCS-PATHS-01) ET sur une entrée d'ici qui n'existe plus (CORE-DOCS-PATHS-02) : la baseline ne peut que RÉTRÉCIR. Régénérer via `--update-baseline` après avoir corrigé un lot.",
-    "generatedCount": 74,
+    "generatedCount": 73,
     "paths": [
         "packages/core/docs/API_REFERENCE.md→packages/core/docs/api/variables/Core.html",
         "packages/core/docs/CHANGELOG.md→./facades/legend.js",
@@ -21,7 +21,6 @@
         "packages/core/docs/CHANGELOG.md→poi/feature-info-bridge.ts",
         "packages/core/docs/CONFIGURATION_GUIDE.md→config/plugins/editor.json",
         "packages/core/docs/CONFIGURATION_GUIDE.md→data-normalizer.md",
-        "packages/core/docs/CORE_EXTENSION_GUIDE.md→src/modules/geoleaf.analytics.ts",
         "packages/core/docs/GETTING_STARTED.md→./profiles/mon-profil/profile.json",
         "packages/core/docs/GETTING_STARTED.md→deploy/index.html",
         "packages/core/docs/PLUGIN_CONFIGURATION_GUIDE.md→CONNECTOR_GUIDE.md",

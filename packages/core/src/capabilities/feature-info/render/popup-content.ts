@@ -6,10 +6,10 @@
  *
  * ⚠️ This file used to hold a 17-entry dispatch table of its own. It holds none
  * now — every widget is rendered by `./widget-dispatch.js`, and what remains here
- * is LAYOUT: where the hero image goes, how consecutive badges are grouped, where
- * the "see details" affordance lands. That separation is the point of the
- * refactor: a widget renders the same way on every surface, and a surface decides
- * only where the rendered nodes land.
+ * is LAYOUT: where the hero image goes, how consecutive badges and consecutive
+ * actions are grouped, where the "see details" affordance lands. That separation
+ * is the point of the refactor: a widget renders the same way on every surface,
+ * and a surface decides only where the rendered nodes land.
  *
  * The `gl-poi-popup*` class names and element nesting of the pre-extraction core
  * are preserved exactly.
@@ -69,6 +69,21 @@ function renderHeroImage(field: RenderField, value: unknown): HTMLElement | null
 }
 
 /**
+ * Widgets whose consecutive fields share one row container instead of stacking in the
+ * body's column, and the container each one gets.
+ *
+ * ⚠️ `action` joined `badge` on 11/09/2026. The pre-extraction core grouped consecutive
+ * actions in `.gl-poi-popup__actions`; the extraction kept the popup's other class names
+ * and dropped that one, so the buttons became direct children of a flex COLUMN and
+ * stacked one per line. A `Map` rather than an object literal: the key is a profile's
+ * `type`, and `"constructor"` would read a function off `Object.prototype`.
+ */
+const ROW_CONTAINERS: ReadonlyMap<string, string> = new Map([
+    ["badge", "gl-poi-popup__badges"],
+    ["action", "gl-poi-popup__actions"],
+]);
+
+/**
  * Builds the popup content element for a set of resolved fields.
  *
  * ```
@@ -77,15 +92,17 @@ function renderHeroImage(field: RenderField, value: unknown): HTMLElement | null
  *   <div class="gl-poi-popup__body">
  *     <div class="gl-poi-popup__badges">…</div>   ← consecutive badges grouped
  *     [field nodes from the shared widget dispatch]
+ *     <div class="gl-poi-popup__actions">…</div>  ← consecutive actions grouped
  *     <a class="gl-poi-popup__link">…</a>         ← last, only when hasSidepanel
  *   </div>
  * </div>
  * ```
  *
- * Only two widgets get special treatment, and both for LAYOUT reasons rather than
- * rendering ones: a hero image closes the current body and attaches to the root,
- * and consecutive badges are buffered into one row instead of being interleaved
- * with the text around them.
+ * Three widgets get special treatment, all for LAYOUT reasons rather than rendering
+ * ones: a hero image closes the current body and attaches to the root, and consecutive
+ * badges — like consecutive actions — are buffered into a row of their own instead of
+ * stacking in the body's column. A row nothing rendered into is not attached: an action
+ * with no `actionId` renders nothing, and an empty container would still take its margin.
  *
  * @param fields - Render descriptors, in display order.
  * @param rawProperties - The feature's properties as they came from the source.
@@ -105,17 +122,26 @@ export function buildPopupContent(
     const root = el("div", "gl-poi-popup");
 
     let body: HTMLElement | null = null;
-    let badgesContainer: HTMLElement | null = null;
+    // The row being filled: which widget it groups, and its container.
+    let row: { widget: string; container: HTMLElement } | null = null;
 
-    const flushBadges = (): void => {
-        if (badgesContainer && body) {
-            body.appendChild(badgesContainer);
-            badgesContainer = null;
-        }
+    const flushRow = (): void => {
+        if (row && body && row.container.childElementCount > 0) body.appendChild(row.container);
+        row = null;
     };
     const ensureBody = (): HTMLElement => {
         if (!body) body = createBody();
         return body;
+    };
+    // Opens a new row when the widget changes, and hands back the one being filled.
+    // ⚠️ A closure, like the two above: `row` is reassigned inside them, and a local copy
+    // narrowed in the loop is refused by TypeScript as circular (TS7022, then TS2502).
+    const rowFor = (widget: string, rowClass: string): HTMLElement => {
+        if (row === null || row.widget !== widget) {
+            flushRow();
+            row = { widget, container: el("div", rowClass) };
+        }
+        return row.container;
     };
 
     for (const field of fields) {
@@ -125,7 +151,7 @@ export function buildPopupContent(
 
         if (field.type === "image" && field.variant === "hero") {
             // A hero lives outside the body — flush and close the body first.
-            flushBadges();
+            flushRow();
             if (body) {
                 root.appendChild(body);
                 body = null;
@@ -135,22 +161,24 @@ export function buildPopupContent(
             continue;
         }
 
-        if (field.type === "badge") {
+        const widget = field.type;
+        const rowClass = widget === undefined ? undefined : ROW_CONTAINERS.get(widget);
+        if (widget !== undefined && rowClass !== undefined) {
             ensureBody();
-            if (!badgesContainer) badgesContainer = el("div", "gl-poi-popup__badges");
-            const badgeEl = renderFieldNode(field, value, ctx, "popup", rawProperties);
-            if (badgeEl) badgesContainer.appendChild(badgeEl);
+            const container = rowFor(widget, rowClass);
+            const node = renderFieldNode(field, value, ctx, "popup", rawProperties);
+            if (node) container.appendChild(node);
             continue;
         }
 
         const b = ensureBody();
-        flushBadges();
+        flushRow();
         const fieldEl = renderFieldNode(field, value, ctx, "popup", rawProperties);
         if (fieldEl) b.appendChild(fieldEl);
     }
 
     const b = ensureBody();
-    flushBadges();
+    flushRow();
     if (opts.hasSidepanel) b.appendChild(buildVoirPlusLink());
     root.appendChild(b);
 

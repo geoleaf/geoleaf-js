@@ -17,6 +17,31 @@ const lang_it: LangDict = {
     "toast.layer.truncated.known": "{0}: {1} entità visualizzate su {2} — il livello è troncato.",
     "toast.layer.truncated.unknown": "{0}: {1} entità visualizzate, il livello ne contiene altre.",
     "toast.theme.applied": 'Tema "{0}" caricato ({1} livelli visibili)',
+    "boot.failure.title": "Avvio non riuscito",
+    "boot.failure.attention.title": "Mancano alcune risorse del profilo",
+    "boot.failure.attention.message":
+        "La mappa può avviarsi senza di esse, ma potrebbero mancare livelli o impostazioni.",
+    "boot.failure.attention.module_title":
+        "Alcuni componenti dell’applicazione non sono stati avviati",
+    "boot.failure.attention.module_message":
+        "La mappa può essere mostrata, ma le funzioni di questi componenti non saranno disponibili.",
+    "boot.failure.module_warning":
+        "Il componente «{0}» non è riuscito ad avviarsi: alcune funzioni non sono disponibili.",
+    "boot.failure.reason.config": "La configurazione dell’applicazione è assente o non valida.",
+    "boot.failure.reason.profile": "Il profilo dati è assente o non valido.",
+    "boot.failure.reason.webgl":
+        "Questo browser non può visualizzare la mappa: WebGL2 non è disponibile (accelerazione grafica disattivata o non supportata).",
+    "boot.failure.reason.map": "Impossibile creare la mappa.",
+    "boot.failure.reason.module": "Un componente dell’applicazione non è riuscito ad avviarsi.",
+    "boot.failure.reason.timeout":
+        "L’avvio non procede più. La rete potrebbe essere lenta o assente.",
+    "boot.failure.reason.internal": "Un errore interno ha interrotto l’avvio.",
+    "boot.failure.action.reload": "Ricarica",
+    "boot.failure.action.continue": "Continua comunque",
+    "boot.failure.action.copy": "Copia la diagnostica",
+    "boot.failure.action.download": "Scarica la diagnostica",
+    "boot.failure.copied": "Diagnostica copiata.",
+    "boot.failure.copy_manual": "Copia non disponibile: seleziona il testo qui sotto.",
     "aria.geoloc.toggle": "Geolocalizzazione ON/OFF",
     "aria.geoloc.toggle_label": "Attiva/Disattiva tracciamento GPS",
     "aria.geoloc.recenter": "Torna alla mia posizione",

@@ -12,8 +12,8 @@
  * ⚠️ THIS HEADER DESCRIBED THREE FICTIONS, since corrected:
  *   · "Handles SW lifecycle: register, update, unregister" — `update()` and
  *     `unregister()` had no production caller and are removed; real unregistration
- *     is done by `capabilities/pwa/lifecycle.ts` (`_unregisterAll`), which iterates
- *     `getRegistrations()` without reading `_registration`;
+ *     is done by `capabilities/pwa/lifecycle.ts` (`_unregisterOwn`), which enumerates
+ *     `getRegistrations()` and keeps the ones whose `scriptURL` names `sw-core.js`;
  *   · "The plugin SW (sw.js) replaces it" — no `sw.js` exists in this repo;
  *   · "storage.enableServiceWorker = true in the profile" — that key is set by NO
  *     profile, and it was removed by the same fix.
@@ -171,11 +171,18 @@ const SWRegister = {
     // measurement is worth writing: none of the three had a production caller.
     //
     // 🛑 WHAT MAKES THE DELETION SAFE rather than optimistic: REAL unregistration
-    // did not go through here. `capabilities/pwa/lifecycle.ts` (`_unregisterAll`)
-    // iterates `navigator.serviceWorker.getRegistrations()` and unregisters
-    // everything, without ever reading `_registration`. There were thus two
-    // unregistration paths, only one of which ran — and the one that remains
-    // depended in nothing on the one removed.
+    // did not go through here. `capabilities/pwa/lifecycle.ts` (`_unregisterOwn`)
+    // enumerates `navigator.serviceWorker.getRegistrations()` itself, without ever
+    // reading `_registration`. There were thus two unregistration paths, only one of
+    // which ran — and the one that remains depended in nothing on the one removed.
+    //
+    // ⚠️ AND THE SURVIVING PATH WAS WRONG, unnoticed for as long as this note said
+    // merely that it existed. It unregistered EVERY registration on the origin, so a
+    // bundle mounted in a host application took down the HOST's worker at boot —
+    // measured on a real host. It now keeps only the registrations whose `scriptURL`
+    // names `_swPath`. That predicate is a SECOND COPY of this file's literal; its
+    // source guard is `__tests__/capabilities/pwa/lifecycle-sw-ownership.test.ts`,
+    // which builds its fixtures from `_swPath` so the two cannot drift silently.
     //
     // `_registration` stays set by `register()`: it carries the update listener.
 };

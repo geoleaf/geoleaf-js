@@ -97,11 +97,11 @@ Injecté **globalement** via `use.launchOptions` dans `playwright.config.js` →
 
 **Exports :**
 
-| Symbole            | Type                  | Description                                                                 |
-| ------------------ | --------------------- | --------------------------------------------------------------------------- |
-| `launchOptions`    | `{ args?: string[] }` | À étaler dans un bloc `use` Playwright. Vide si `E2E_HW_GL=1`.              |
-| `useHardwareGl`    | `boolean`             | `true` si `E2E_HW_GL=1` — sert aussi de garde d'écriture du perf-baseline.  |
-| `SOFTWARE_GL_ARGS` | `string[]`            | Les 4 flags Chromium (swiftshader / angle / unsafe / ignore-gpu-blocklist). |
+| Symbole            | Type                  | Description                                                                                                                                |
+| ------------------ | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `launchOptions`    | `{ args?: string[] }` | À étaler dans un bloc `use` Playwright — **projets Chromium seulement** : un autre moteur pose `launchOptions: {}`. Vide si `E2E_HW_GL=1`. |
+| `useHardwareGl`    | `boolean`             | `true` si `E2E_HW_GL=1` — sert aussi de garde d'écriture du perf-baseline.                                                                 |
+| `SOFTWARE_GL_ARGS` | `string[]`            | Les 4 flags Chromium (swiftshader / angle / unsafe / ignore-gpu-blocklist).                                                                |
 
 ### Recapture de la perf-baseline (`E2E_HW_GL=1`)
 
@@ -207,6 +207,8 @@ Mesure **LCP / INP / CLS** dans la spec 06 via la librairie [`web-vitals`](https
 
 Réservé au projet **`chromium-touch`** de `playwright.config.js` : le renderer n'accepte l'entrée
 tactile qu'après le `Emulation.setTouchEmulationEnabled` que Playwright émet sous `hasTouch: true`.
+Chromium seulement : CDP n'existe pas sous WebKit, et `_session` refuse tout autre moteur **par son
+nom** — une spec qui emploie ce helper ne peut pas rejoindre `webkit-touch`.
 
 | Fonction                                    | Rôle                                                                                                |
 | ------------------------------------------- | --------------------------------------------------------------------------------------------------- |

@@ -18,10 +18,10 @@
  * A `ci.yml` step can chain several commands, and they do not fall into
  * the same category. The E2E step chains four:
  *
- *     node scripts/build-deploy.cjs           → equivalent to `build:deploy:all` (witness)
- *     node scripts/build-deploy-coverage.cjs  → covered, but under `--e2e` only
- *     playwright install --with-deps chromium → environment, not a gate
- *     playwright test                         → covered, but under `--e2e` only
+ *     node scripts/build-deploy.cjs                  → equivalent to `build:deploy:all` (witness)
+ *     node scripts/build-deploy-coverage.cjs         → covered, but under `--e2e` only
+ *     playwright install --with-deps chromium webkit → environment, not a gate
+ *     playwright test                                → covered, but under `--e2e` only
  *
  * A per-step classification would have declared it "covered" on two leaves
  * out of four and lost the other two silently. The per-leaf classification
@@ -522,7 +522,7 @@ const EXEMPTIONS = {
         // changed enough for this excuse to deserve rereading rather than renewal.
         temoin: (ctx) => ctx.firstLeaf === "npm ci",
     },
-    "playwright install --with-deps chromium": {
+    "playwright install --with-deps chromium webkit": {
         classe: "ENV",
         gateReelle: false,
         motif: "runner neuf à chaque run ; le poste local présuppose les navigateurs installés.",

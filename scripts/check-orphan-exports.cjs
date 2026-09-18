@@ -943,11 +943,6 @@ const ALLOWLIST = {
     // function, itself, is called by `e2e/18-security.spec.js` on
     // `deploy-full` — the variant that never carried `addpoi`.
     "utils/general/poi-to-feature.ts": ["PoiToFeatureInput"],
-    // Same constraint: `CSRFToken` is part of the barrel's `Security`
-    // object, so TypeScript must be able to NAME its type to emit
-    // `Security`'s declaration. No consumer imports it by name — a
-    // structural false positive, not a dead export.
-    "kernel/security/csrf-token.ts": ["CSRFTokenInternal"],
 
     // Same case, introduced by the `ui/components.ts` split:
     // `_UIComponents` aggregates `_LegendSymbols` + `_UIWidgets` by spread,

@@ -207,7 +207,7 @@ npm run test:e2e
 npm run test:e2e:ui
 ```
 
-La suite E2E utilise Chromium et teste trois variantes de déploiement :
+La suite E2E utilise Chromium — et WebKit sur les specs de l'éditeur et du formulaire, nommées une à une dans `playwright.config.js` — et teste trois variantes de déploiement :
 
 | Spec file                    | Variant                 | Port |
 | ---------------------------- | ----------------------- | ---- |
@@ -349,11 +349,11 @@ allowed in plugin source files.
 
 ### Extending the core (fork only)
 
-To add a new **internal module** to `@geoleaf/core` (requires a fork of the MIT repository), follow the boot sequence integration guide:
+To add a new **internal module** to `@geoleaf/core` (requires a fork of the MIT repository), read the kernel specification, which describes the code as it is:
 
-→ [CORE_EXTENSION_GUIDE.md](../../../packages/core/docs/CORE_EXTENSION_GUIDE.md)
+→ [CDC_kernel.md](../../specs/CDC_kernel.md) — boot sequence, module registry, placement doctrine (§Dépendances et frontières).
 
-Covers: B1→B11 sequence, `ICoreModule` contract, facade pattern (`geoleaf.*.ts`), ESM export conventions, and pre-merge checklist.
+The former core extension guide was removed on 2026-09-17: it described a `src/modules/` tree that no longer exists.
 
 ---
 

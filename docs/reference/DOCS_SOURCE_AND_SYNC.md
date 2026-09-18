@@ -8,19 +8,29 @@
 
 ---
 
-## 1. La règle — trois régimes, trois lieux, et rien ne se dit deux fois
+## 1. La règle — quatre régimes, quatre lieux, et rien ne se dit deux fois
 
-| Régime        | Lieu                                                 | Lecteur             | Ce qu'on y écrit                                                                    |
-| ------------- | ---------------------------------------------------- | ------------------- | ----------------------------------------------------------------------------------- |
-| **USAGE**     | `packages/core/docs/` → site `www.geoleaf.dev/docs/` | l'**intégrateur**   | démarrage, tutoriels, recettes, guides de configuration, README de module           |
-| **CONTRAT**   | `docs/specs/`                                        | le **contributeur** | périmètre, table de configuration, API exposée, décisions, frontières               |
-| **RÉFÉRENCE** | **générée, jamais rédigée**                          | les deux            | TypeDoc + les 6 artefacts de `docs/reference/` (voir §3)                            |
-| _(interne)_   | `_docs_projet/`                                      | l'atelier           | journal, état, registres, roadmaps, rapports — **ne part pas dans le dépôt public** |
-| _(partagé)_   | `_docs_communs/`                                     | l'atelier           | conventions et gabarits inter-projets — jonction NTFS, non versionnée ici           |
+| Régime           | Lieu                                                 | Lecteur                   | Ce qu'on y écrit                                                                                       |
+| ---------------- | ---------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------ |
+| **USAGE**        | `packages/core/docs/` → site `www.geoleaf.dev/docs/` | l'**intégrateur**         | démarrage, tutoriels, recettes, guides de configuration, README de module                              |
+| **CONTRAT**      | `docs/specs/`                                        | le **contributeur**       | périmètre, table de configuration, API exposée, décisions, frontières                                  |
+| **RÉFÉRENCE**    | **générée, jamais rédigée**                          | les deux                  | TypeDoc + les 6 artefacts de `docs/reference/` (voir §3)                                               |
+| **PRÉSENTATION** | `docs/presentation/`                                 | le **décideur technique** | ce que le produit est, à quoi il sert, comment il fonctionne en une vue ; ses garanties et ses limites |
+| _(interne)_      | `_docs_projet/`                                      | l'atelier                 | journal, état, registres, roadmaps, rapports — **ne part pas dans le dépôt public**                    |
+| _(partagé)_      | `_docs_communs/`                                     | l'atelier                 | conventions et gabarits inter-projets — jonction NTFS, non versionnée ici                              |
 
-**La clause qui gouverne les quatre : ce dont on n'est pas sûr n'est pas publié.** Il reste suivi
+**La clause qui gouverne les cinq : ce dont on n'est pas sûr n'est pas publié.** Il reste suivi
 dans le dépôt de travail et bascule après vérification. Publier une page douteuse coûte plus que
 de ne pas la publier : un tarball npm est immuable, et un dépôt public ne se dé-publie pas.
+
+⚠️ **PRÉSENTATION est le régime le plus récent (17/09/2026), et c'est celui qui peut tout
+absorber** — il s'adresse au seul lecteur qui a besoin d'une vue d'ensemble, donc tout y a l'air
+à sa place. Sa frontière : une page de présentation **ne documente aucun usage** (→ USAGE) et
+**ne spécifie aucun contrat** (→ CONTRAT) ; elle **renvoie** aux deux. Sans cette ligne, le
+quatrième régime devient l'endroit où tout se redit, et le corollaire « un sujet, un lieu »
+tombe. Motif de l'ouverture : les trois régimes existants ont chacun un lecteur qui n'est pas le
+décideur, et `docs/reference/` est _générée, jamais rédigée_ — y déposer une plaquette aurait
+violé la règle au lieu de l'étendre.
 
 ### Les deux corollaires qui évitent le doublon
 

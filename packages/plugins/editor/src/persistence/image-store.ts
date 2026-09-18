@@ -11,15 +11,15 @@
  * `@geoleaf/field-renderer` (`types/image-compress.ts`), which applies it
  * before calling the transport. This module is that transport: it tries the
  * network, and **falls back to local storage** when the network is missing. It
- * pulls IndexedDB and the core's CSRF token, which a field-rendering library
- * has no business knowing how to do.
+ * pulls IndexedDB, which a field-rendering library has no business knowing how
+ * to do.
  *
  * 🛑 **IT PLUGS IN BY STRATEGY, NOT COMPONENT OVERRIDE.** `addpoi` registered
  * an `"addpoi-image"` of **229 lines to change 4 calls**, of which ~225
  * re-implemented a component `field-renderer` already carries.
  * `setImageUploadStrategy` replaces all of it.
  */
-import { Log } from "@geoleaf/host-runtime";
+import { Log, fetchWithTimeout } from "@geoleaf/host-runtime";
 import { setImageUploadStrategy, setImagePreviewResolver } from "@geoleaf/field-renderer";
 import { storageFacade } from "./storage-seam.js";
 
@@ -70,16 +70,8 @@ function _imageIdOfToken(value: unknown): string | null {
 }
 
 function _imagesDb(): ImagesDb | null {
-    const g = Reflect.get(globalThis, "GeoLeaf") as
-        | { Storage?: { DB?: ImagesDb }; Security?: { CSRFToken?: { getToken?(): string | null } } }
-        | undefined;
+    const g = Reflect.get(globalThis, "GeoLeaf") as { Storage?: { DB?: ImagesDb } } | undefined;
     return g?.Storage?.DB ?? null;
-}
-
-function _csrfToken(): string | null {
-    const g = Reflect.get(globalThis, "GeoLeaf") as
-        { Security?: { CSRFToken?: { getToken?(): string | null } } } | undefined;
-    return g?.Security?.CSRFToken?.getToken?.() ?? null;
 }
 
 /** A pending image, as `getPendingImages` returns it. */
@@ -94,8 +86,37 @@ interface PendingImage {
     fieldPath?: string | null;
 }
 
+/** Time any upload is given, whatever its size. */
+const UPLOAD_BASE_MS = 30_000;
+/** Slowest uplink an upload is budgeted for: 256 kbit/s, a weak 3G one. */
+const UPLOAD_FLOOR_BYTES_PER_S = 32_000;
+
 /**
- * Uploads to the server, CSRF token included.
+ * How long an upload may run before it is abandoned and the photo kept locally.
+ *
+ * ⚠️ Proportional to the file, not fixed. The budget covers sending the body, and `fetch`
+ * reports no upload progress, so it cannot stop only on a stall. A fixed budget short enough
+ * to matter would fail a large photo on a slow uplink at EVERY retry — the retry runs under
+ * the same budget — and the photo would wait forever.
+ *
+ * @param file - The file about to be sent.
+ * @returns the budget, in milliseconds.
+ */
+function _uploadBudgetMs(file: Blob): number {
+    return UPLOAD_BASE_MS + Math.ceil((file.size / UPLOAD_FLOOR_BYTES_PER_S) * 1000);
+}
+
+/**
+ * Uploads to the server.
+ *
+ * 🛑 **Abandoned after {@link _uploadBudgetMs}.** Without a signal, a stalled uplink left the
+ * promise pending for good: the photo was neither sent nor set aside, and closing the form
+ * lost it. The rejection sends the caller to its local fallback.
+ *
+ * 🛑 **No `X-CSRF-Token` header any more.** It carried a token the core minted in the
+ * browser, which no server could verify; the core's CSRF module is gone (3.4.0). A backend
+ * that authenticates uploads does so through the connector's bearer token, added to the
+ * requests it intercepts.
  *
  * ⚠️ `fetch` and not `XMLHttpRequest` — `addpoi` used XHR for its **progress
  * bar**, which `field-renderer`'s component does not display. Porting XHR would
@@ -104,16 +125,18 @@ interface PendingImage {
  * @param file     - File to send.
  * @param endpoint - POST endpoint.
  * @returns the URL the server returned.
+ * @throws {HttpFetchError} on a timeout or a network failure; `Error` on a refusal or a
+ *   response carrying no URL.
  */
 async function _postToServer(file: File, endpoint: string): Promise<string> {
     const form = new FormData();
     form.append("file", file);
-    const token = _csrfToken();
-    const res = await fetch(endpoint, {
-        method: "POST",
-        body: form,
-        ...(token && { headers: { "X-CSRF-Token": token } }),
-    });
+    const res = await fetchWithTimeout(
+        fetch,
+        endpoint,
+        { method: "POST", body: form },
+        _uploadBudgetMs(file)
+    );
     if (!res.ok) throw new Error(`Upload failed: HTTP ${res.status}`);
     const data = (await res.json()) as { url?: string; path?: string };
     const url = data.url ?? data.path;

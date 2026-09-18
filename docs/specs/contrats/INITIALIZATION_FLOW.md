@@ -401,15 +401,42 @@ GeoLeaf.boot({
 
 ## Gestion d'erreurs
 
-### Config introuvable
+Un démarrage qui ne peut pas aboutir **le dit** : `geoleaf:boot:failed`, et l'écran d'échec
+dessiné dans le voile `#gl-loader` (`app/boot-failure.ts`, `app/boot-failure-screen.ts`). Avant,
+chacun des cas ci-dessous finissait par une ligne de console et un `return` : le spinner tournait
+indéfiniment.
 
-```javascript
-// En cas d'échec de loadConfig() → startApp() retourne (abort)
-// Vérifier :
-// 1. URL de geoleaf.config.json correcte
-// 2. CORS configuré sur le serveur
-// 3. Content-Type: application/json
-```
+L'événement est **annulable** : un hôte qui appelle `preventDefault()` dessine sa propre
+interface, et une page sans voile ne reçoit aucun DOM. S'abonner **avant** `GeoLeaf.boot()`.
+
+| Échec                                                                              | `reason`                        | Écran                | Ensuite                                                               |
+| ---------------------------------------------------------------------------------- | ------------------------------- | -------------------- | --------------------------------------------------------------------- |
+| `geoleaf.config.json` introuvable ou invalide, ou promesse de `loadConfig` rejetée | `config`                        | Recharger            | le boot s'arrête                                                      |
+| `profile.json` introuvable, JSON invalide ou structure refusée                     | `profile`                       | Recharger            | `geoleaf:profile:failed` (`fatal: true`) ; le boot s'arrête           |
+| Ressource **déclarée** du profil en échec — cascade, ou absente du bundle          | —                               | Continuer quand même | `geoleaf:profile:failed` (`fatal: false`) ; la révélation est retenue |
+| WebGL2 indisponible (`GPUInitializationError`)                                     | `webgl`                         | Recharger            | aucune carte                                                          |
+| Étendue absente, ou construction de la carte en échec                              | `map`                           | Recharger            | aucune carte                                                          |
+| Un module de la chaîne d'interface jette (`ui`, ou un module dont `ui` dépend)     | `module` (`module` le nomme)    | Recharger            | les modules suivants ne démarrent pas                                 |
+| Le registre refuse le graphe (dépendance circulaire, dépendance non enregistrée)   | `module`                        | Recharger            | aucun module ne démarre                                               |
+| Tout autre module jette pendant `registry.init()`                                  | —                               | Continuer quand même | `geoleaf:module:failed` ; ses dépendants sautés, les autres démarrent |
+| Aucune révélation après `watchdogMs` (45 s par défaut)                             | `timeout` (`provisional: true`) | Recharger            | une révélation tardive retire l'écran                                 |
+| Exception hors de toute étape                                                      | `internal`                      | Recharger            | —                                                                     |
+
+- **Le watchdog est suspendu pendant `beforeBoot`**, qui peut attendre un humain (passerelle
+  d'authentification) ; il repart pour une période complète ensuite.
+- **« Continuer » n'existe que si une carte peut s'afficher** : l'écran d'attention apparaît au
+  moment où l'application serait révélée, donc une fois la carte construite.
+- **Une ressource que le profil ne déclare pas n'est jamais signalée** ; un bundle en échec que
+  la cascade rattrape non plus.
+- **Un module qui jette est jugé par ce qui dépend de lui** (`ModuleRegistry.init(…, { onModuleError })`).
+  Isolé, il n'apparaît plus dans `getActiveModules()`, pas plus que ses dépendants, et `destroy()`
+  n'appelle pas ceux qui n'ont pas démarré. Une fois l'application révélée, l'écran cède la place à
+  un avertissement qui nomme le module.
+- **Le diagnostic** (Copier, Télécharger) porte les dernières entrées du journal — `GeoLeaf.Log`,
+  le logger du boot et, depuis `GeoLeaf.boot()`, les erreurs non capturées — **rédigées** : identifiants
+  d'URL, paramètres secrets, `Bearer` et `Basic`, JWT, membres JSON sensibles, adresses e-mail.
+- **`beforeBoot` qui lève n'est pas un échec** : `geoleaf:boot:aborted`, le voile est masqué, et
+  aucun écran n'est dessiné — l'hôte possède cette interface.
 
 ### ModuleRegistry — dépendance circulaire
 

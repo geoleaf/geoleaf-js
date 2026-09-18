@@ -41,9 +41,11 @@ The object is exported as `Object.freeze({...})` — it is **read-only** at runt
 **Usage**:
 
 ```ts
+// geoleaf:docs:fragment — shows a constant; the engine setup is in GETTING_STARTED.md
 import { CONSTANTS } from "@geoleaf/core";
 
 GeoLeaf.Core.init({
+    mapId: "map",
     zoom: CONSTANTS.DEFAULT_ZOOM,
 });
 ```
@@ -62,6 +64,7 @@ GeoLeaf.Core.init({
 
 ```ts
 GeoLeaf.Core.init({
+    mapId: "map",
     center: CONSTANTS.DEFAULT_CENTER,
 });
 ```
@@ -219,10 +222,12 @@ map.fitBounds(bounds, {
 ### Example 1: initialisation with constants
 
 ```ts
+// geoleaf:docs:fragment — shows a constant; the engine setup is in GETTING_STARTED.md
 import { CONSTANTS } from "@geoleaf/core";
 
 // Prefer the constants over hard-coded values
 GeoLeaf.Core.init({
+    mapId: "map",
     center: CONSTANTS.DEFAULT_CENTER,
     zoom: CONSTANTS.DEFAULT_ZOOM,
 });
@@ -272,6 +277,7 @@ CONSTANTS.DEFAULT_ZOOM = 10;
 
 // Instead: pass the custom value directly
 GeoLeaf.Core.init({
+    mapId: "map",
     zoom: 10,
 });
 ```

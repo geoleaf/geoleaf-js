@@ -49,8 +49,20 @@ import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve, join } from "node:path";
 
+import {
+    parseDataOrigins,
+    prefetchVerdict,
+} from "../../../src/capabilities/offline/data-origins.ts";
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../..");
 const PROFILES = join(ROOT, "profiles");
+
+/**
+ * A page URL for the origin rule. A shipped profile never knows the origin it is served from,
+ * so a relative style counts as the application's own and an absolute one must be declared —
+ * exactly the enumerator's reading once deployed.
+ */
+const APP_PAGE = "https://app.invalid/index.html";
 
 /**
  * A `basemaps.json` entry, reduced to what this guard reads from it.
@@ -93,6 +105,28 @@ function deployedBasemaps(): Array<{ profileId: string; key: string; entry: Base
         }
     }
     return out;
+}
+
+/**
+ * The raw `modules.offline.dataOrigins` of a shipped profile — inline in `profile.json`, or in
+ * the file `Files.modules.offline` names, which the loader merges into `modules.offline`.
+ * Normalised by the caller through `parseDataOrigins`, the one place allowed to decide what a
+ * valid declaration is.
+ */
+function profileDataOrigins(profileId: string): unknown {
+    const profileFile = join(PROFILES, profileId, "profile.json");
+    if (!existsSync(profileFile)) return [];
+    const doc = JSON.parse(readFileSync(profileFile, "utf8")) as {
+        modules?: { offline?: { dataOrigins?: unknown } };
+        Files?: { modules?: Record<string, unknown> };
+    };
+    const inline = doc.modules?.offline?.dataOrigins;
+    const rel = doc.Files?.modules?.["offline"];
+    if (typeof rel !== "string") return inline ?? [];
+    const offline = JSON.parse(readFileSync(join(PROFILES, profileId, rel), "utf8")) as {
+        dataOrigins?: unknown;
+    };
+    return offline.dataOrigins ?? inline ?? [];
 }
 
 /**
@@ -143,5 +177,26 @@ describe("8.1 / A7′ — le hors-ligne a un fond qu'il peut réellement servir"
                 /^https?:\/\//
             );
         }
+    });
+
+    it("au moins un fond vectoriel hors-ligne est PRÉPARABLE sous les déclarations de son profil", () => {
+        const prefetchable = deployedBasemaps().filter(
+            ({ profileId, entry }) =>
+                entry.offline === true &&
+                isVector(entry) &&
+                !!entry.style &&
+                prefetchVerdict(
+                    entry.style,
+                    parseDataOrigins(profileDataOrigins(profileId)),
+                    APP_PAGE
+                ).allowed
+        );
+        expect(
+            prefetchable.map(({ profileId, key }) => `${profileId}/${key}`),
+            "aucun fond vectoriel hors-ligne livré n'est préparable : son origine n'est pas déclarée " +
+                "`prefetch: true` dans `modules.offline.dataOrigins` de son profil, et " +
+                "`ResourceEnumerator` refuse désormais une origine tierce non déclarée — le chemin " +
+                "de préparation d'un fond serait inatteignable depuis un profil réel"
+        ).not.toHaveLength(0);
     });
 });

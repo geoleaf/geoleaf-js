@@ -180,9 +180,10 @@ describe("_handleClick — le chemin nominal", () => {
         expect(getSelection()?.featureId).toBe("");
     });
 
-    // The whole point of the fix: the core sets `promoteId` only on POINT sources
-    // (`maplibre-layer-builders.ts`), so on a line or polygon layer MapLibre hands back no
-    // top-level `id` at all — and every downstream gate is guarded on `featureId`.
+    // The whole point of the fix: while the core set `promoteId` on POINT sources only
+    // (`maplibre-layer-builders.ts`), a line or polygon layer got no top-level `id` from MapLibre
+    // at all — and every downstream gate is guarded on `featureId`. The core now promotes `id` on
+    // every layer source; this case keeps the picker's own fallback proven on its own.
     it("résout l'identifiant depuis `properties.id` quand la feature n'a pas d'`id` de premier niveau", () => {
         const a = adapter();
         const onHostFeatureSelected = vi.fn();

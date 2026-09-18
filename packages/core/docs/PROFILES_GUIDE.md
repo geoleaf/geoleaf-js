@@ -154,7 +154,7 @@ profiles/
             "minZoom": 3,
             "maxZoom": 19,
             "defaultBasemap": true,
-            "offline": true
+            "offline": false
         },
         "satellite": {
             "id": "satellite",
@@ -185,6 +185,12 @@ profiles/
     }
 }
 ```
+
+> **Offline** — `offline: true` makes a basemap downloadable by the offline preparation. A tile
+> origin other than the application's own is only downloaded when it is declared `cacheable: true`
+> and `prefetch: true` in `modules.offline.dataOrigins`. OpenStreetMap forbids offline use of
+> `tile.openstreetmap.org`, hence `false` above: an offline basemap is one you host, or one whose
+> terms allow it — see [PLUGIN_CONFIGURATION_GUIDE](PLUGIN_CONFIGURATION_GUIDE.md).
 
 > **3D terrain** — `default3D: true` turns 3D relief on as soon as this basemap is selected. There is no UI toggle: switching to a basemap without terrain turns the relief off. The `map.maxPitch` key in `profile.json` caps the maximum allowed tilt (GeoLeaf default: 80°). See the [full reference for the `terrain.*` fields](PROFILE_JSON_REFERENCE.md#basemapsidterrain-object-optional).
 

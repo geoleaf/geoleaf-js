@@ -58,6 +58,19 @@
  *
  * **Code blocks** are exempt too: `grep -E '^#{2,3} B-[0-9]+'` is a command, not a
  * reference.
+ *
+ * ## Two TITLE checks ride along — why here, and not in a new gate
+ *
+ * Both registers already pass through this module's title reader, so two defects of the
+ * titles themselves are checked where titles are read — widening a gate before adding one:
+ *
+ *   - **a collision** (`duplicateSectionIds`, RX-04) — one identifier titling two sections.
+ *     `sectionIds()` is a `Set`, so the collision resolves like a single section. Measured
+ *     on 2026-09-10: one had lived four days, noticed in writing twice and left twice — a
+ *     prose warning does not stop a collision, a count does.
+ *   - **an open backlog title without its priority mark** (`backlogTitlesWithoutPriority`,
+ *     RX-05) — the register's own rule, checked by a grep that "must render nothing" and
+ *     that rendered every open title.
  */
 const fs = require("node:fs");
 const path = require("node:path");
@@ -166,6 +179,68 @@ function sectionIds() {
             if (m) out.add(m[1]);
         }
     }
+    return out;
+}
+
+/** The registers as `{file, text}` pairs — the shape the two title checks take. */
+const registrySources = () =>
+    REGISTRIES.map((p) => ({ file: path.basename(p), text: fs.readFileSync(p, "utf8") }));
+
+/** A priority mark — the very alternation of the grep the backlog's head prescribes. */
+const PRIORITY = /P1|P2|P3|🔵/u;
+
+/**
+ * Identifiers that title MORE THAN ONE section, all registers merged.
+ *
+ * `sectionIds()` is a `Set`, which is right for resolving and wrong for this: a `Set`
+ * swallows a collision whole. Two sections under one identifier resolve like one, every
+ * reference to it silently designates two objects, and RX-01 stays green.
+ *
+ * Struck titles are skipped: an original statement kept, struck through, under its
+ * requalified section is the documented convention, not a collision.
+ *
+ * @param {{file: string, text: string}[]} [sources] Defaults to the registers on disk.
+ * @returns {{id: string, sites: string[]}[]} Each duplicated identifier with its
+ *   `file:line` sites, in reading order.
+ * @example
+ * duplicateSectionIds([{ file: "a.md", text: "## D-7 — x\n## D-7 — y\n" }]);
+ * // → [{ id: "D-7", sites: ["a.md:1", "a.md:2"] }]
+ */
+function duplicateSectionIds(sources = registrySources()) {
+    /** @type {Map<string, string[]>} */
+    const sites = new Map();
+    for (const { file, text } of sources) {
+        text.split("\n").forEach((line, i) => {
+            const m = TITLE.exec(line);
+            if (!m || /^#{2,3}\s+~~/.test(line)) return;
+            sites.set(m[1], [...(sites.get(m[1]) ?? []), `${file}:${i + 1}`]);
+        });
+    }
+    return [...sites].filter(([, s]) => s.length > 1).map(([id, s]) => ({ id, sites: s }));
+}
+
+/**
+ * Open backlog titles that carry NO priority mark.
+ *
+ * The backlog's head states the rule — the priority lives IN the title, because the title
+ * is what a sweep reads — and checks it with a grep that "must render nothing". A rule
+ * held by a sentence did not hold: measured on 2026-09-10, not one open title carried the
+ * mark. This is that grep, made able to redden. Debt titles are not held to it; their
+ * register never asked.
+ *
+ * @param {string} [text] Backlog content. Defaults to the register on disk.
+ * @returns {{line: number, title: string}[]} 1-indexed line and trimmed title.
+ * @example
+ * backlogTitlesWithoutPriority("## B-4 — unmarked\n## B-5 — marked 🟢 P3\n");
+ * // → [{ line: 1, title: "## B-4 — unmarked" }]
+ */
+function backlogTitlesWithoutPriority(text = fs.readFileSync(REGISTRIES[0], "utf8")) {
+    const out = [];
+    text.split("\n").forEach((line, i) => {
+        if (/^#{2,3}\s+B-\d+\b/.test(line) && !PRIORITY.test(line)) {
+            out.push({ line: i + 1, title: line.trim() });
+        }
+    });
     return out;
 }
 
@@ -440,6 +515,8 @@ module.exports = {
     rel,
     registriesPresent,
     sectionIds,
+    duplicateSectionIds,
+    backlogTitlesWithoutPriority,
     calloutZoneWitness,
     patternWitnesses,
     scan,

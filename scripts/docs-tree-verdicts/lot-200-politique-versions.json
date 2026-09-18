@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "200-politique-versions",
+    "scope": ["scripts/lib/deprecation-timing.cjs"],
+    "verdicts": {
+        "scripts/lib/deprecation-timing.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Règle de calendrier d'une annonce de retrait (CC-10) — `since` dans la ligne 3.x, `removeIn` sur une mineure ultérieure",
+            "confidence": "haute",
+            "rationale": "1 lecteur réel — verify-consumer-contract.cjs (CC-10) — et un test de garde dédié qui l'exerce sans manifeste de consommation, registre ni arbre de sources. Extrait le jour où la politique de versions a déclaré qu'aucune autre ligne majeure n'est prévue : la règle exigeait un `removeIn` de la forme `x.0.0`, donc une version qui n'arrivera jamais. C'est la partie de la politique la plus susceptible de bouger ; la loger à part rend son changement testable. Pur : aucune lecture de fichier, aucun `process.exit`."
+        }
+    }
+}

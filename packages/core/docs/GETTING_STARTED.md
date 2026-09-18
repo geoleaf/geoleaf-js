@@ -234,8 +234,12 @@ flowchart TD
 ### ESM (npm/bundler)
 
 ```ts
+import * as maplibregl from "maplibre-gl";
 import { Core } from "@geoleaf/core";
 import "@geoleaf/core/style.css";
+
+// GeoLeaf reads the engine from `globalThis.maplibregl`, which MapLibre 6 no longer sets
+Object.assign(globalThis, { maplibregl });
 
 Core.init({
     mapId: "map",
@@ -265,7 +269,11 @@ For projects with profile-configured GeoJSON layers, filters, theme and clusteri
 
 ```ts
 // ESM (npm)
+import * as maplibregl from "maplibre-gl";
 import GeoLeaf from "@geoleaf/core";
+
+// GeoLeaf reads the engine from `globalThis.maplibregl`, which MapLibre 6 no longer sets
+Object.assign(globalThis, { maplibregl });
 
 GeoLeaf.init({
     map: { target: "map" },
@@ -317,7 +325,11 @@ Plugins (`@geoleaf-plugins/table`, `…/addpoi`, `…/storage`…) are separate 
 GeoLeaf-JS is written in TypeScript and ships type declarations.
 
 ```ts
+import * as maplibregl from "maplibre-gl";
 import { Core, UI, Helpers } from "@geoleaf/core";
+
+// GeoLeaf reads the engine from `globalThis.maplibregl`, which MapLibre 6 no longer sets
+Object.assign(globalThis, { maplibregl });
 
 Core.init({
     mapId: "map",
@@ -353,16 +365,16 @@ See [ARCHITECTURE_GUIDE.md](ARCHITECTURE_GUIDE.md) for the detailed architecture
 
 ## Next steps
 
-| Goal                                  | Document                                                       |
-| ------------------------------------- | -------------------------------------------------------------- |
-| Full project from scratch             | [QUICKSTART_TUTORIAL.md](QUICKSTART_TUTORIAL.md)               |
-| Configuring a profile                 | [PROFILES_GUIDE.md](PROFILES_GUIDE.md)                         |
-| Complete JSON reference               | [PROFILE_JSON_REFERENCE.md](PROFILE_JSON_REFERENCE.md)         |
-| Developing a custom plugin            | [PLUGIN_DEVELOPMENT_GUIDE.md](PLUGIN_DEVELOPMENT_GUIDE.md)     |
-| Configuring plugins (Storage, AddPOI) | [PLUGIN_CONFIGURATION_GUIDE.md](PLUGIN_CONFIGURATION_GUIDE.md) |
-| Backend API authentication            | `docs/CONNECTOR_GUIDE.md` in `@geoleaf-plugins/connector`      |
-| Complete API reference                | [API_REFERENCE.md](API_REFERENCE.md)                           |
-| Architecture and boot                 | [ARCHITECTURE_GUIDE.md](ARCHITECTURE_GUIDE.md)                 |
-| Detailed CDN integration              | [usage-cdn.md](usage-cdn.md)                                   |
-| Common recipes                        | [COOKBOOK.md](COOKBOOK.md)                                     |
-| PWA support                           | [pwa/pwa.md](pwa/pwa.md)                                       |
+| Goal                                    | Document                                                       |
+| --------------------------------------- | -------------------------------------------------------------- |
+| Full project from scratch               | [QUICKSTART_TUTORIAL.md](QUICKSTART_TUTORIAL.md)               |
+| Configuring a profile                   | [PROFILES_GUIDE.md](PROFILES_GUIDE.md)                         |
+| Complete JSON reference                 | [PROFILE_JSON_REFERENCE.md](PROFILE_JSON_REFERENCE.md)         |
+| Contributing a plugin to the repository | [PLUGIN_DEVELOPMENT_GUIDE.md](PLUGIN_DEVELOPMENT_GUIDE.md)     |
+| Configuring plugins (Storage, AddPOI)   | [PLUGIN_CONFIGURATION_GUIDE.md](PLUGIN_CONFIGURATION_GUIDE.md) |
+| Backend API authentication              | `docs/CONNECTOR_GUIDE.md` in `@geoleaf-plugins/connector`      |
+| Complete API reference                  | [API_REFERENCE.md](API_REFERENCE.md)                           |
+| Architecture and boot                   | [ARCHITECTURE_GUIDE.md](ARCHITECTURE_GUIDE.md)                 |
+| Detailed CDN integration                | [usage-cdn.md](usage-cdn.md)                                   |
+| Common recipes                          | [COOKBOOK.md](COOKBOOK.md)                                     |
+| PWA support                             | [pwa/pwa.md](pwa/pwa.md)                                       |

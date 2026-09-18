@@ -20,6 +20,30 @@ const lang_de: LangDict = {
         "{0}: {1} von {2} Objekten angezeigt — die Ebene ist abgeschnitten.",
     "toast.layer.truncated.unknown": "{0}: {1} Objekte angezeigt, die Ebene enthält mehr.",
     "toast.theme.applied": 'Thema "{0}" geladen ({1} sichtbare Ebenen)',
+    "boot.failure.title": "Der Start ist fehlgeschlagen",
+    "boot.failure.attention.title": "Profilressourcen fehlen",
+    "boot.failure.attention.message":
+        "Die Karte kann ohne sie starten, es können jedoch Ebenen oder Einstellungen fehlen.",
+    "boot.failure.attention.module_title": "Einige Anwendungskomponenten wurden nicht gestartet",
+    "boot.failure.attention.module_message":
+        "Die Karte kann angezeigt werden, aber die Funktionen dieser Komponenten sind nicht verfügbar.",
+    "boot.failure.module_warning":
+        "Die Komponente „{0}“ konnte nicht starten: Einige Funktionen sind nicht verfügbar.",
+    "boot.failure.reason.config": "Die Anwendungskonfiguration fehlt oder ist ungültig.",
+    "boot.failure.reason.profile": "Das Datenprofil fehlt oder ist ungültig.",
+    "boot.failure.reason.webgl":
+        "Dieser Browser kann die Karte nicht anzeigen: WebGL2 ist nicht verfügbar (Hardwarebeschleunigung deaktiviert oder nicht unterstützt).",
+    "boot.failure.reason.map": "Die Karte konnte nicht erstellt werden.",
+    "boot.failure.reason.module": "Eine Komponente der Anwendung konnte nicht starten.",
+    "boot.failure.reason.timeout":
+        "Der Start kommt nicht mehr voran. Das Netzwerk ist möglicherweise langsam oder unterbrochen.",
+    "boot.failure.reason.internal": "Ein interner Fehler hat den Start unterbrochen.",
+    "boot.failure.action.reload": "Neu laden",
+    "boot.failure.action.continue": "Trotzdem fortfahren",
+    "boot.failure.action.copy": "Diagnose kopieren",
+    "boot.failure.action.download": "Diagnose herunterladen",
+    "boot.failure.copied": "Diagnose kopiert.",
+    "boot.failure.copy_manual": "Kopieren nicht möglich: Markieren Sie den Text unten.",
     "aria.geoloc.toggle": "Geolokalisierung AN/AUS",
     "aria.geoloc.toggle_label": "GPS-Tracking aktivieren/deaktivieren",
     "aria.geoloc.recenter": "Zur\u00fcck zu meiner Position",

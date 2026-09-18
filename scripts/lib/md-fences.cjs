@@ -26,10 +26,10 @@
  * new: **0 files change, 0 lines change**. No document exercises the defect to date.
  *
  * 🛑 **And one hypothesis was refuted along the way, which is worth writing down.**
- * `packages/core/docs/CORE_EXTENSION_GUIDE.md` does open a **four**-backtick block
- * containing a three-backtick pair — the textbook case. Yet it bites neither before nor
- * after: the nested fences there are **prefixed with ` * `**, being inside a TSDoc
- * comment, so neither pattern sees them. **An example that looks like the defect is not an
+ * The core extension guide (a documentation page, removed on 2026-09-17) opened a
+ * **four**-backtick block containing a three-backtick pair — the textbook case. Yet it bit
+ * neither before nor after: the nested fences there were **prefixed with ` * `**, being
+ * inside a TSDoc comment, so neither pattern saw them. **An example that looks like the defect is not an
  * instance of the defect**; only the full sweep says so.
  *
  * ✅ **The fix remains right, and its value is double**: the toggle was wrong against

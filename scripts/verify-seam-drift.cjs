@@ -209,7 +209,13 @@ const SEAMS = [
             "aucune des TROIS fonctions appariées n'est touchée, `git diff` ne rend que ce " +
             "membre et son commentaire. Et le sens est celui que HOST-03 autorise — le core " +
             "déclare déjà `registry?: IModuleRegistry`, qui porte `isInitialized()` ; l'hôte " +
-            "était plus ÉTROIT et le devient moins, il ne devient pas plus large.",
+            "était plus ÉTROIT et le devient moins, il ne devient pas plus large. " +
+            "⚠️ 17/09/2026 — CINQUIÈME fois, sur un TYPE et par SOUSTRACTION : " +
+            "`GeoLeafHost.Security` perd `CSRFToken?: unknown`, parce que le core a supprimé " +
+            "son module CSRF (3.4.0) — l'hôte décrivait un membre qui n'existe plus. RELU avant " +
+            "ré-épinglage : `git diff` ne rend que cette ligne, aucune des TROIS fonctions " +
+            "appariées n'est touchée, et l'hôte devient plus étroit, ce qui laisse HOST-03 " +
+            "(tout membre nommé de l'hôte existe côté core) vrai.",
         files: [
             {
                 pkg: "core",
@@ -241,7 +247,10 @@ const SEAMS = [
                 // member), and the direction is the one HOST-03 allows — the host was
                 // narrower than the core, it now is less so. TARGETED re-pin on this one
                 // hash, never a global `SEAM_PIN=1`.
-                hash: "bd9a10374e3c7f8f10a4308e81c5059a0e51c6547b142a580060d32cf3bb7e1e",
+                // ⚠️ 2026-09-17 — re-pinned for a REMOVED type member: `Security.CSRFToken`,
+                // whose module the core deleted. `git diff` renders that one line; the three
+                // paired functions did not move. Targeted re-pin again.
+                hash: "7b26edfe20c83f5ec2b4a69fba6fc779a8c2eee09dfa2ae3e07fcb0ef6d9b682",
             },
         ],
     },

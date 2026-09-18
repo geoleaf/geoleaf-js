@@ -65,6 +65,17 @@ export interface OutboxRow {
     localId: string;
     state?: string;
     createdAt?: number;
+    /**
+     * Why the entry was set aside — a `QuarantineReason` of the core's contract.
+     *
+     * ⚠️ Typed `string` and not a union, for the reason every shape here is structural:
+     * `INV-NS` forbids importing the core, so a union copied here would be a second list of
+     * motives, free to fall behind the one `contracts/sync.contract.ts` declares. The modal
+     * maps what it knows and shows nothing for the rest.
+     */
+    quarantine?: string;
+    /** Attempts already spent — `undefined` on an engine that predates the counter. */
+    attempts?: number;
 }
 
 /** The core's write cycle, the queue's only writer. */
@@ -106,6 +117,29 @@ export interface StorageWriteFacade {
      * contract — awaiting it would tie a form's closing to the network.
      */
     _requestOutboxDrain?(cause: string): void;
+    /**
+     * Quarantine exits — `capabilities/offline/write/quarantine-api.ts`.
+     *
+     * ⚠️ Optional like everything on this interface: the plugin redeclares the global surface
+     * it expects, and their ABSENCE means an older core. The window then offers no quarantine
+     * gesture rather than one that silently does nothing.
+     */
+    requeueAll?(reason?: string): Promise<{ ok: boolean; requeued: number; skipped: number }>;
+    /**
+     * Destroys one set-aside entry, on explicit confirmation.
+     *
+     * ⚠️ `confirmedLocalId` is the guarantee, not a formality: the core demands a value the
+     * caller only knows by having LISTED the entry, so that it is structurally true the
+     * capture was enumerated before being lost.
+     */
+    discardQuarantined?(id: string, confirmedLocalId: string): Promise<{ ok: boolean }>;
+    /**
+     * Which motives an operator's gesture can lift.
+     *
+     * 🛑 **READ, never known here.** The rule has one author — the core — and a copy on this
+     * side could diverge unfalsifiably, `INV-NS` making it impossible to confront.
+     */
+    requeueableReasons?(): readonly string[];
     applyEdit?(input: {
         layerId: string;
         kind: "create" | "update" | "delete";

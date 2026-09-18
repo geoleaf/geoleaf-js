@@ -576,6 +576,20 @@
             "description": "Adaptateur typé sur `GeoLeaf.Storage` — 6 interfaces décrivant la forme concrète de la façade",
             "confidence": "haute",
             "rationale": "131 LOC, 16 importeurs. Il RÉ-EXPORTAIT le singleton `StorageContract` du core, avec pour justification « runtime object is unchanged (same core singleton) ». C'était faux dans le paquet publié : l'état du contrat est un `let` de portée module, et un plugin chargé en `<script type=\"module\">` a son propre graphe — la copie n'était jamais initialisée, donc `isAvailable()` rendait `false` pour toujours et `whenReady()` ne résolvait jamais. Toute l'UI hors-ligne passant par `ensureEngineReady()` était morte à l'exécution. Il ADAPTE désormais la façade du core, lue sur le namespace ; ses accès sont des ACCESSEURS et non des valeurs capturées, `GeoLeaf.Storage` n'existant pas encore à l'évaluation du module. Le seam `verify-seam-drift` qui l'épinglait a été retiré : il n'y a plus deux copies à tenir synchrones."
+        },
+        "packages/plugins/connector/src/session-resume.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Reprise de la file d'écriture quand une session revient : écoute `authenticated` et `token-refreshed`, puis `Storage.requeueAll(\"authRequired\")` et `Storage.pushOutbox()`",
+            "confidence": "haute",
+            "rationale": "115 LOC, 1 importeur (connector-api.ts, armé par configure() et désarmé à sa relève) ; exporte armSessionResume/disarmSessionResume. Le fichier existe parce que le CŒUR ne peut pas voir une session revenir — son contrat de quarantaine le dit : le motif `authRequired` est rejouable, mais sa levée est une connexion, que le core ne connaît pas. La surface du cœur est REDÉCLARÉE, jamais importée (INV-NS), et son absence est tolérée : une application sans capacité hors ligne ne fait rien. L'écouteur est tenu sur le global comme celui de la reconnexion guidée — mesuré : un écouteur par module ré-importé produisait dix-huit drains pour un événement. Nom hors des familles de rôle creuses recensées (T5 §3)"
         }
     }
 }

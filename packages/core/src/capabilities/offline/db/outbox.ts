@@ -46,7 +46,11 @@
  */
 
 import { Log } from "../../../utils/log/index.js";
-import type { OutboxEntry, QuarantineReason } from "../../../contracts/sync.contract.js";
+import type {
+    OutboxEntry,
+    QuarantineReason,
+    VersionMarker,
+} from "../../../contracts/sync.contract.js";
 
 /**
  * An {@link OutboxEntry} as stored, i.e. carrying the key the database minted.
@@ -98,6 +102,11 @@ export interface OutboxDBInstance {
             inFlightAt?: number | null;
             /** Earliest replay date. `0` or `null` makes the entry replayable now. */
             nextAttemptAt?: number | null;
+            /**
+             * The marker the entry's filter is built from. Moved when the write it was
+             * stacked behind returned a new one (`push-engine.ts#rebaseFollowers`).
+             */
+            baseVersion?: VersionMarker | null;
         }
     ): Promise<void>;
     remove(id: string): Promise<void>;

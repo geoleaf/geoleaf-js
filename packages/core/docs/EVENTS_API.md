@@ -35,17 +35,21 @@ writing `events` keeps working unchanged.
 ### `GeoLeaf.Events.on(event, handler)`
 
 ```ts
-GeoLeaf.Events.on("geoleaf:poi:click", (e) => {
-    console.log("POI clicked:", e.detail.poiId);
+const unsubscribe = GeoLeaf.Events.on("geoleaf:poi:panel:open", (e) => {
+    console.log("POI panel opened:", e.detail.poiId);
 });
 ```
 
-Registers a listener for `event`. Called on every dispatch until `off()`.
+Registers a listener for `event`, called on every dispatch until it is removed. **Returns the
+function that removes it** — the only way to remove an anonymous handler. Calling it twice is
+harmless. It is `off(event, handler)` bound to this subscription: the DOM keeps one listener per
+handler reference, so two `on()` calls with the same function register it once, and either
+returned function removes it.
 
 ### `GeoLeaf.Events.off(event, handler)`
 
 ```ts
-GeoLeaf.Events.off("geoleaf:poi:click", myHandler);
+GeoLeaf.Events.off("geoleaf:poi:panel:open", myHandler);
 ```
 
 Removes a previously registered listener. The **same function reference** must be passed.
@@ -53,12 +57,22 @@ Removes a previously registered listener. The **same function reference** must b
 ### `GeoLeaf.Events.once(event, handler)`
 
 ```ts
-GeoLeaf.Events.once("geoleaf:app:ready", () => {
+const cancel = GeoLeaf.Events.once("geoleaf:app:ready", () => {
     console.log("App ready");
 });
 ```
 
-Listener fired **once**, then removed automatically.
+Listener fired **once**, then removed automatically. **Returns a function that cancels it** if it
+has not fired yet — the teardown of a component unmounted before the event arrives.
+
+::: info
+
+**Since 3.4.0.** Before, `on()` and `once()` returned `undefined`, although the published
+`IEventBus.on` contract already promised the unsubscribe function. Code that removes its listeners
+with `off()` keeps working unchanged. Without a `document` (server-side rendering), nothing is
+registered and the returned function does nothing.
+
+:::
 
 ---
 
@@ -69,9 +83,13 @@ Listener fired **once**, then removed automatically.
 | `geoleaf:app:ready`          | App fully initialised             | `version`, `timestamp`                                                                        |
 | `geoleaf:map:ready`          | MapLibre map created              | —                                                                                             |
 | `geoleaf:profile:loaded`     | JSON profile fully loaded         | `profileId`, `data`                                                                           |
+| `geoleaf:profile:failed`     | Declared profile resources failed | `profileId`, `fatal`, `failures[]` (`resource`, `url`, `required`, `message`) — cancelable    |
+| `geoleaf:boot:failed`        | The boot cannot complete          | `reason`, `phase`, `message`, `module?`, `provisional`, `timestamp` — cancelable              |
+| `geoleaf:module:failed`      | A module failed, the app goes on  | `module`, `message`, `skipped[]`, `timestamp` — cancelable                                    |
+| `geoleaf:boot:aborted`       | `beforeBoot` refused the boot     | `reason` — whatever the hook threw                                                            |
 | `geoleaf:basemap:change`     | Basemap changed                   | `key`, `previousKey`                                                                          |
 | `geoleaf:theme:applied`      | Theme applied (layers loaded)     | `themeName`, `layerCount`                                                                     |
-| `geoleaf:poi:click`          | POI marker clicked                | `poiId`, `layerId`, `source`                                                                  |
+| `geoleaf:poi:click`          | 🛑 **Declared, never emitted**    | `poiId`, `layerId`, `source` — subscribing to it triggers nothing                             |
 | `geoleaf:poi:panel:open`     | Side panel opened on a POI        | `poiId`, `poiName`                                                                            |
 | `geoleaf:poi:panel:close`    | Side panel closed                 | `poiId`                                                                                       |
 | `geoleaf:panel:opened`       | Desktop tab panel opened a tab    | `tabId`                                                                                       |
@@ -94,6 +112,21 @@ Listener fired **once**, then removed automatically.
 >
 > ⚠️ `geoleaf:poi:panel:*` fires only for a feature carrying a **stable id**: `poiId` is typed
 > `string`, and a layer whose source has no id emits nothing rather than a forged identifier.
+>
+> ⚠️ **`geoleaf:boot:failed`, `geoleaf:profile:failed` and `geoleaf:module:failed` fire DURING
+> `GeoLeaf.boot()`, and they are cancelable.** Subscribe before calling `boot()`. Calling `event.preventDefault()` keeps the
+> default screen out of the app shell's `#gl-loader` veil — your application then owns that
+> interface; a page without the veil never gets one. `reason` is `config`, `profile`, `webgl`,
+> `map`, `module`, `timeout` or `internal`, and `message` is English, meant for logs and support.
+> `provisional: true` exists only for `timeout`: the boot may still complete, and
+> `geoleaf:app:ready` then follows. `geoleaf:profile:failed` precedes `geoleaf:profile:loaded`;
+> with `fatal: true`, `profile.json` itself failed and `geoleaf:profile:loaded` does not follow.
+> `geoleaf:module:failed` means a module threw and the application goes on without it and without
+> the modules that depend on it (`skipped`): the reveal is held on a screen that names it, or a
+> warning names it once the application is revealed. A module the interface depends on fails the
+> boot instead — `geoleaf:boot:failed`, `reason: "module"`, with `module` naming it. The screens'
+> diagnostic carries the log's recent entries, redacted: the record `GeoLeaf.Log.getEntries()`
+> reads.
 >
 > ⚠️ `geoleaf:geojson:visibility-changed` is typed too, but it is the **historical** form of
 > `geoleaf:layer:toggle` and carries the same payload. New integrations take `layer:toggle`:
@@ -166,8 +199,8 @@ GeoLeaf.Events.on("geoleaf:popup:action", (e) => {
 ### Analytics — Matomo
 
 ```ts
-GeoLeaf.Events.on("geoleaf:poi:click", (e) => {
-    _paq.push(["trackEvent", "Map", "POI Click", e.detail.poiId]);
+GeoLeaf.Events.on("geoleaf:poi:panel:open", (e) => {
+    _paq.push(["trackEvent", "Map", "POI Panel", e.detail.poiId]);
 });
 GeoLeaf.Events.on("geoleaf:filter:apply", (e) => {
     _paq.push(["trackEvent", "Map", "Filter Apply", e.detail.activeCount.toString()]);
@@ -188,13 +221,24 @@ GeoLeaf.Events.on("geoleaf:layer:toggle", (e) => {
 ### Removing listeners
 
 ```ts
-const handlePoiClick = (e) => {
+// With the returned function — works for an anonymous handler too
+const unsubscribe = GeoLeaf.Events.on("geoleaf:poi:panel:open", (e) => {
     /* ... */
-};
-GeoLeaf.Events.on("geoleaf:poi:click", handlePoiClick);
+});
 
 // Later:
-GeoLeaf.Events.off("geoleaf:poi:click", handlePoiClick);
+unsubscribe();
+```
+
+```ts
+// With off() — the handler must be the same function reference
+const handlePoiPanel = (e) => {
+    /* ... */
+};
+GeoLeaf.Events.on("geoleaf:poi:panel:open", handlePoiPanel);
+
+// Later:
+GeoLeaf.Events.off("geoleaf:poi:panel:open", handlePoiPanel);
 ```
 
 ---

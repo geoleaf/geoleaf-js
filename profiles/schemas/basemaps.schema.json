@@ -101,7 +101,7 @@
                 },
                 "offline": {
                     "type": "boolean",
-                    "description": "Whether this basemap supports offline tile caching."
+                    "description": "Whether the offline preparation downloads this basemap. Its resources are only downloaded from the application's own origin or from an origin declared `cacheable: true` and `prefetch: true` in `modules.offline.dataOrigins` - declare a third-party origin only if its terms allow downloading ahead of use (OpenStreetMap forbids offline use of tile.openstreetmap.org)."
                 },
                 "offlineBounds": {
                     "type": "object",

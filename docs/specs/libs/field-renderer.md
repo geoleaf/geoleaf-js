@@ -4,8 +4,8 @@ title: field-renderer — les composants de champ, la modale et le pont de formu
 lib_id: field-renderer
 package: "@geoleaf/field-renderer"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: bc4516cac
-date: 4 septembre 2026
+verifie_contre: 7c38efb2c
+date: 12 septembre 2026
 ---
 
 # field-renderer — les composants de champ, la modale et le pont de formulaire
@@ -185,6 +185,42 @@ simple, construit par `Object.fromEntries`, qui définit des propriétés **prop
 donc fermer un formulaire jamais touché demandait « supprimer la saisie ? ». Une confirmation qui se
 déclenche quand rien n'est en jeu est une confirmation qu'on apprend à écarter — elle cesse de
 protéger le cas pour lequel elle existe.
+
+## Le formulaire au doigt et au clavier (12/09/2026)
+
+Trois défauts, un seul geste : remplir une fiche sur un téléphone.
+
+- **Le clavier recouvrait Annuler et Enregistrer.** Un navigateur mobile ne rétrécit pas la fenêtre
+  de mise en page quand son clavier s'ouvre : il rétrécit le **visual viewport**. Le tiroir, ancré en
+  bas d'un overlay `position: fixed; inset: 0`, restait dessous. `ui/visual-viewport.ts`
+  (`followVisualViewport`) épingle l'overlay au visual viewport par quatre variables
+  (`--gl-form-viewport-{top,left,width,height}`) : le tiroir y passe en `absolute` et se pose sur le
+  clavier, la boîte centrée reste au milieu de ce que l'utilisateur voit, et le champ focalisé est
+  ramené dans le corps par `scrollTop` — jamais `scrollIntoView`, qui ferait défiler le document
+  sous la modale sur iOS. Branché dans `build()`, libéré dans `teardown()`, la sortie unique ; sans
+  `visualViewport`, rien n'est suivi et `inset: 0` demeure.
+- **Les champs à 14 px faisaient zoomer WebKit au focus, et les cibles tenaient sous 44 px.** Le bloc
+  tactile vit dans **un seul fichier**, `css/form-touch.css`, importé en dernier, sous
+  `@media (pointer: coarse)` — un critère d'entrée, pas de largeur : une tablette montre la boîte
+  centrée et a un doigt. 16 px sur tout contrôle de saisie, `min-width`/`min-height` de 44 px sur
+  toute cible ; une croix garde son glyphe, c'est sa boîte qui grandit.
+- **Après le premier dialogue de confirmation, le tiroir lâchait le bas de l'écran.**
+  `@geoleaf/host-runtime` adopte sa propre copie de `.gl-form-modal-panel` (`position: relative`) à
+  l'ouverture de son premier dialogue, APRÈS la feuille de cette bibliothèque : à spécificité égale,
+  la copie gagnait. La règle du tiroir double sa classe (0,2,0), et les tailles tactiles passent par
+  des minimums, que le `height: 36px` de la copie ne peut pas défaire.
+
+⚠️ **`host-runtime` n'est pas touché, délibérément** : sa copie est inlinée aussi dans `offline-ui`,
+qu'il aurait fallu republier. Aucune gate ne garde l'équivalence de ces copies — le « byte-equivalent »
+de `modal-shell.lazy.css` n'est qu'un commentaire.
+
+**Preuves.** `src/__tests__/modal-viewport.test.ts` : suivi, libération sur chacune des sorties, champ
+ramené — deux mutants vus rouges. `e2e/42-form-drawer-keyboard.touch.spec.js` : occultation sous
+clavier simulé, 16 px et 44 px sans chevauchement, ancrage après confirmation avec et sans
+`visualViewport`, `dvh` des panneaux du core — rouge sur le code d'origine, et le cas sans
+`visualViewport` rouge quand la classe du tiroir n'est plus doublée. Verte sous Chromium
+(`chromium-touch`) et, depuis le 12/09/2026, sous WebKit (`webkit-touch`), où `(pointer: coarse)`
+correspond bien : les tailles tactiles y sont mesurées, pas supposées.
 
 ## Décisions de conception
 

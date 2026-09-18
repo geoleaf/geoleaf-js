@@ -4,7 +4,7 @@ title: coordinates — le relevé en temps réel des coordonnées du curseur
 capability_id: coordinates
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 2fcbba8a
+verifie_contre: e44fd091c
 date: 1er septembre 2026
 ---
 
@@ -84,11 +84,11 @@ Les tests qui couvrent ces lignes : `packages/core/__tests__/capabilities/coordi
 Bloc `modules.coordinates` d'un profil. Conformité de cette table au code gardée par
 `__tests__/guards/doc-capability-config.guard.test.js`.
 
-| Paramètre  | Type      | Défaut         | Où c'est lu                                                                                          |
-| ---------- | --------- | -------------- | ---------------------------------------------------------------------------------------------------- |
-| `enabled`  | `boolean` | `true`         | `config.ts` → `getCoordinatesConfig()` ; gate **opt-out**, revérifié tardivement par `lifecycle.ts`  |
-| `position` | `string`  | `"bottomleft"` | `coordinates.ts` → `_createStandaloneControl`. **N'a d'effet qu'en mode autonome** — voir ci-dessous |
-| `decimals` | `number`  | `6`            | `constants.ts` → `DEFAULT_COORDINATES_DECIMALS`, appliqué par `_onMouseMove`                         |
+| Paramètre  | Type      | Défaut         | Où c'est lu                                                                                                       |
+| ---------- | --------- | -------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `enabled`  | `boolean` | `true`         | `config.ts` → `getCoordinatesConfig()`, **résolu selon le pointeur** ; gate opt-out, revérifié par `lifecycle.ts` |
+| `position` | `string`  | `"bottomleft"` | `coordinates.ts` → `_createStandaloneControl`. **N'a d'effet qu'en mode autonome** — voir ci-dessous              |
+| `decimals` | `number`  | `6`            | `constants.ts` → `DEFAULT_COORDINATES_DECIMALS`, appliqué par `_onMouseMove`                                      |
 
 ### `position` ne s'applique qu'au repli
 
@@ -103,8 +103,20 @@ c'est à lire littéralement.
 d'avant la migration de l'ancien drapeau `ui.showCoordinates`. Contrairement à
 [`theme-toggle`](theme-toggle.md), les deux étages **disent la même chose** ici : le gate de
 déclaration enregistre le module, et le gate tardif du cycle de vie revérifie `enabled !== false`
-sur la configuration fusionnée. Le second n'est pas redondant : il attrape un profil qui désactive
+sur la configuration fusionnée et résolue selon le pointeur (ci-dessous). Le second n'est pas redondant : il attrape un profil qui désactive
 la capacité dans une couche fusionnée après le gate pré-fusion.
+
+### Au doigt, un `enabled` absent ne monte rien
+
+Le relevé ne suit que `mousemove` : sous `(pointer: coarse)`, il affichait « Lat : --, Lng : -- »
+en permanence, sur la cible déclarée du produit. Depuis 3.4.0 (décidé le 13/09/2026),
+`getCoordinatesConfig()` résout `enabled` : **absent**, il vaut `true` sur un pointeur fin et
+`false` sous un pointeur grossier ; `true` monte le relevé partout ; `false` le retire partout. Sans
+`matchMedia`, l'absent reste `true`. Cela ne tient que parce que le `configSchema` n'injecte aucun
+défaut dans la configuration courante : le bloc brut distingue encore une clé absente d'un `true`.
+
+⚠️ Le gate de déclaration, lui, ne regarde que la clé brute : la capacité reste **enregistrée** au
+doigt, et l'introspection la dit active. C'est le montage que la résolution retient.
 
 ### Les trois copies du nombre de décimales
 
@@ -126,12 +138,12 @@ identiques par construction.
 Sa forme est **le contrôle runtime augmenté** (`Object.assign`), comme [`branding`](branding.md) :
 `CoordinatesPublicApi = CoordinatesControl & CoordinatesReadApi`.
 
-| Membre               | Origine            | Rend / fait                                                         |
-| -------------------- | ------------------ | ------------------------------------------------------------------- |
-| `init(map, options)` | contrôle           | Monte le relevé (appelé par le cycle de vie, pas par l'intégrateur) |
-| `destroy()`          | contrôle           | Démonte et annule tout ce qui est en vol                            |
-| `isEnabled()`        | helper de capacité | `true` quand `modules.coordinates.enabled !== false`                |
-| `getConfig()`        | helper de capacité | Le bloc `modules.coordinates` fusionné sur les défauts              |
+| Membre               | Origine            | Rend / fait                                                              |
+| -------------------- | ------------------ | ------------------------------------------------------------------------ |
+| `init(map, options)` | contrôle           | Monte le relevé (appelé par le cycle de vie, pas par l'intégrateur)      |
+| `destroy()`          | contrôle           | Démonte et annule tout ce qui est en vol                                 |
+| `isEnabled()`        | helper de capacité | `true` quand `enabled`, résolu selon le pointeur, n'est pas `false`      |
+| `getConfig()`        | helper de capacité | Le bloc `modules.coordinates` fusionné sur les défauts, `enabled` résolu |
 
 ⚠️ **`isEnabled()` teste `!== false`**, comme [`cluster`](cluster.md) : c'est la traduction fidèle
 d'un gate opt-out. Les capacités opt-in de ce palier testent `=== true`. Ne pas aligner les deux

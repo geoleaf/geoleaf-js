@@ -91,7 +91,11 @@ type EditRefusal =
 interface EditInput {
     readonly layerId: string;
     readonly kind: SyncOperationKind;
-    /** Required except for a `create`, where it is minted here. */
+    /**
+     * Required except for a `create`, where it is minted here. For an existing entity it may
+     * be the SERVER identity the map shows: the store resolves it to its own key, and the
+     * report returns that key.
+     */
     readonly localId?: string;
     /** The entity after the edit. Unneeded for a `delete`. */
     readonly feature?: unknown;
@@ -276,8 +280,11 @@ export async function applyEdit(input: EditInput): Promise<EditReport> {
 
     if (!tally) return { ...nothing, refused: "engineUnavailable" };
 
+    // The key the store resolved the identity to — see `db/local-edit.ts#resolveEntity`.
+    const heldAs = tally.localId;
+
     Log.debug(
-        `[Offline.Edit] "${input.layerId}"/${localId} ${input.kind} —`,
+        `[Offline.Edit] "${input.layerId}"/${heldAs} ${input.kind} —`,
         tally.annulled ? "annulée" : tally.queued ? "mise en file" : `fusionnée`
     );
 
@@ -299,7 +306,7 @@ export async function applyEdit(input: EditInput): Promise<EditReport> {
             new CustomEvent("geoleaf:offline:outbox-queued", {
                 detail: {
                     layerId: input.layerId,
-                    localId,
+                    localId: heldAs,
                     kind: input.kind,
                     queued: tally.queued,
                     annulled: tally.annulled,
@@ -310,7 +317,7 @@ export async function applyEdit(input: EditInput): Promise<EditReport> {
 
     return {
         layerId: input.layerId,
-        localId,
+        localId: heldAs,
         kind: input.kind,
         entryId: tally.entryId,
         queued: tally.queued,

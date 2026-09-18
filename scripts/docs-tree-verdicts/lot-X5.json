@@ -454,7 +454,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Pont B1 et B2 : monte Log, Errors, CONSTANTS, Security et CSRFToken, puis le namespace Utils et les raccourcis DOMSecurity, fetch, mark et measure",
+            "description": "Pont B1 et B2 : monte Log, Errors, CONSTANTS et Security, puis le namespace Utils et les raccourcis DOMSecurity, fetch, mark et measure",
             "confidence": "haute",
             "rationale": "131 LOC, 1 importeur. Doit rester le premier exécuté (en-tête : « must be the first sub-module executed ») — ADR-08. L'en-tête acte aussi la suppression de l'indirection `setModuleSetup` au S6 Lot 5, ce qui rend périmée la justification qui blanchit ses deux `setup*` dans la baseline des exports orphelins"
         },

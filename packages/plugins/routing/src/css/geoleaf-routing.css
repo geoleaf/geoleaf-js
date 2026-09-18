@@ -336,7 +336,9 @@
 .gl-routing-attribution {
     position: absolute;
     right: 0.25rem;
-    bottom: 0.25rem;
+    /* Au-dessus du coin bas-droit de MapLibre, qui porte le crédit du fond de carte depuis que
+       le core l'affiche : les deux mentions sont des obligations, aucune ne masque l'autre. */
+    bottom: 3rem;
     padding: 0.1rem 0.4rem;
     background: var(--gl-color-bg-surface, #fff);
     color: var(--gl-color-text-muted, #555);
@@ -349,6 +351,18 @@
 
     /* Au-dessus du tracé, sous le bandeau de guidage (500) et sous les modales de plugin. */
     z-index: 400;
+}
+
+/* Au bureau, le panneau droit du core couvre le bord droit sans rétrécir la carte : la mention
+   s'en écarte comme le coin bas-droit de MapLibre (bande d'onglets, puis contenu ouvert). */
+@media (min-width: 1440px) {
+    body.gl-right-panel-open .gl-routing-attribution {
+        right: calc(35px + 0.25rem);
+    }
+
+    body.gl-right-panel-open:has(#gl-right-panel.gl-has-active) .gl-routing-attribution {
+        right: calc(356px + 0.25rem);
+    }
 }
 
 /* Le champ d'ajout d'étape — la SOURCE qui manquait au modèle. */

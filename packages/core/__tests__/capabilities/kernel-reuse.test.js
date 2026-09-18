@@ -104,7 +104,7 @@ describe("arête 2/4 — legend → capabilities/taxonomy/resolver (S4)", () => 
     const CATEGORIES = {
         CULTURES: { svgId: "culture" },
         nature: { svgId: "tree" },
-        PatriMoine: { svgId: "castle" },
+        MixedCase: { svgId: "mixed" },
     };
     const PREFIX = "cat-";
 
@@ -143,7 +143,7 @@ describe("arête 2/4 — legend → capabilities/taxonomy/resolver (S4)", () => 
         ["clé exacte", "CULTURES"],
         ["variante MAJUSCULE", "NATURE"],
         ["variante minuscule", "cultures"],
-        ["balayage insensible à la casse", "patrimoine"],
+        ["balayage insensible à la casse", "mixedcase"],
     ])("%s : legend résout la même clé que le resolver", (_label, value) => {
         // Expectation DERIVED from the kernel — never hardcoded: what makes
         // the test insensitive to the value and sensitive to the divergence.
