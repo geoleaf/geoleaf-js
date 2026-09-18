@@ -730,6 +730,7 @@ CallSignature | @geoleaf-plugins/print.emprise-selector.createEmpriseSelector.cr
 CallSignature | @geoleaf-plugins/print.flow.openPrintFlow.openPrintFlow | doc:6cf3f99847de
 CallSignature | @geoleaf-plugins/print.format-registry.registerExporter.registerExporter | doc:eeb8f6767f1c
 CallSignature | @geoleaf-plugins/print.internal._getNativeMap._getNativeMap | doc:98c3bc86bedb
+CallSignature | @geoleaf-plugins/print.internal._liveTransformRequest._liveTransformRequest | doc:9e00ed0b8477
 CallSignature | @geoleaf-plugins/print.internal._validateUrl._validateUrl | doc:f347f773e889
 CallSignature | @geoleaf-plugins/print.internal._warnNoCore._warnNoCore | doc:b46f16eaa3b2
 CallSignature | @geoleaf-plugins/print.layout-composer.createComposedCanvas.createComposedCanvas | doc:9f88d11eea52
@@ -4042,6 +4043,7 @@ Function | @geoleaf-plugins/print.emprise-selector.createEmpriseSelector | doc:-
 Function | @geoleaf-plugins/print.flow.openPrintFlow | doc:-
 Function | @geoleaf-plugins/print.format-registry.registerExporter | doc:-
 Function | @geoleaf-plugins/print.internal._getNativeMap | doc:-
+Function | @geoleaf-plugins/print.internal._liveTransformRequest | doc:-
 Function | @geoleaf-plugins/print.internal._validateUrl | doc:-
 Function | @geoleaf-plugins/print.internal._warnNoCore | doc:-
 Function | @geoleaf-plugins/print.layout-composer.createComposedCanvas | doc:-
@@ -8893,6 +8895,7 @@ Parameter | @geoleaf-plugins/print.emprise-selector.createEmpriseSelector.create
 Parameter | @geoleaf-plugins/print.flow.openPrintFlow.openPrintFlow.opts | doc:0b4827d9508b
 Parameter | @geoleaf-plugins/print.format-registry.registerExporter.registerExporter.fn | doc:6f24a1891403
 Parameter | @geoleaf-plugins/print.format-registry.registerExporter.registerExporter.format | doc:f750cc4cd178
+Parameter | @geoleaf-plugins/print.internal._liveTransformRequest._liveTransformRequest.nativeMap | doc:0bd2cbd4f925
 Parameter | @geoleaf-plugins/print.internal._validateUrl._validateUrl.url | doc:-
 Parameter | @geoleaf-plugins/print.internal._warnNoCore._warnNoCore.fnName | doc:-
 Parameter | @geoleaf-plugins/print.layout-composer.createComposedCanvas.createComposedCanvas._targetPixels | doc:-

@@ -195,9 +195,9 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Vocabulaire local mince au-dessus des seams partagés, plus _validateUrl qui reste local",
+            "description": "Vocabulaire local mince au-dessus des seams partagés, plus _validateUrl et _liveTransformRequest qui restent locaux",
             "confidence": "haute",
-            "rationale": "REQUALIFIÉ à STRUCT S2 (F4). `_warnNoCore` et `_getNativeMap` viennent de @geoleaf/host-runtime ; `_validateUrl` reste local — il n'a aucun jumeau et relève du domaine du plugin (schémas http/https des URL de tuiles à imprimer). Le fichier reste : les noms en underscore sont le vocabulaire du plugin sur 14 sites, et `_getNativeMap` détient le cast vers `maplibre-gl.Map`, que le seam générique ne peut pas faire"
+            "rationale": "REQUALIFIÉ à STRUCT S2 (F4). `_warnNoCore` et `_getNativeMap` viennent de @geoleaf/host-runtime ; `_validateUrl` reste local — il n'a aucun jumeau et relève du domaine du plugin (schémas http/https des URL de tuiles à imprimer). Le fichier reste : les noms en underscore sont le vocabulaire du plugin sur 14 sites, et `_getNativeMap` détient le cast vers `maplibre-gl.Map`, que le seam générique ne peut pas faire. Le 18/09/2026, `_liveTransformRequest` s'y ajoute : la carte hors écran de l'impression délègue ses requêtes à la transformation de la carte vivante, par les déclarations de MapLibre ; `modal-open.ts` et `offscreen-render.ts` s'en servent"
         },
         "packages/plugins/print/src/lang/lang-de.ts": {
             "kind": "file",

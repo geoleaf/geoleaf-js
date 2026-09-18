@@ -66,6 +66,7 @@ vi.mock("../server-fallback.js", () => ({
 // ---------------------------------------------------------------------------
 
 import { openModal } from "../modal-open.js";
+import { OffscreenSession } from "../offscreen-render.js";
 import type { EmpriseResult } from "../emprise-selector.js";
 
 // ---------------------------------------------------------------------------
@@ -120,6 +121,30 @@ describe("openModal", () => {
         openModal(makeEmpriseResult(), {});
         await flushMicrotasks();
         expect(document.body.classList.contains("gl-print-modal-open")).toBe(true);
+    });
+
+    it("🛑 la session hors écran reçoit une transformation qui interroge la carte VIVANTE", async () => {
+        const live = {
+            transformRequest: vi.fn((url: string) => ({
+                url,
+                headers: { Authorization: "Bearer live" },
+            })),
+        };
+        const nativeMap = { getStyle: vi.fn(() => ({})), _requestManager: live };
+        uninstallMockGeoLeaf();
+        installMockGeoLeaf({ nativeMap });
+
+        openModal(makeEmpriseResult(), {});
+        await flushMicrotasks();
+
+        const transform = vi.mocked(OffscreenSession).mock.calls[0]?.[1] as
+            ((url: string, type?: string) => unknown) | undefined;
+        expect(typeof transform).toBe("function");
+        expect(transform?.("https://api.example.com/t.pbf", "Tile")).toEqual({
+            url: "https://api.example.com/t.pbf",
+            headers: { Authorization: "Bearer live" },
+        });
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
     });
 
     it("resolves null on Escape key", async () => {

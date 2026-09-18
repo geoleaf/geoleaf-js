@@ -109,6 +109,14 @@ _Nothing yet._
   for `Storage.whenReady()`, lets the core's own arming pass end, then requeues and drains. One
   wait per page; a core without `whenReady` gets a single attempt, as before.
 
+- **`@geoleaf-plugins/print` 1.3.1 — a printed map asks for its tiles with the live map's
+  headers.** The off-screen map the print renders was always created without a request
+  transform: the plugin read a field of MapLibre's request manager that MapLibre does not write,
+  behind a cast that kept the compiler from seeing it. Tiles only a transform authenticates — the
+  vector tiles `@geoleaf-plugins/connector` authenticates, or an integrator's `transformRequest`
+  — went to print without their headers, and a protected layer printed empty. The off-screen map
+  now hands each request to the live map's transform, read at request time.
+
 - **A device that went through the offline write cycle can now clear its quarantine.**
   `requeueQuarantined` and `discardQuarantined` had existed since 02/08/2026 with **no caller
   in any interface**: the only way to use them was to list the queue in a console and paste an

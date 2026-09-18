@@ -112,17 +112,67 @@ describe("captureExtent — happy path", () => {
         expect(opts).toMatchObject({ bearing: 0, pitch: 0, preserveDrawingBuffer: true });
     });
 
-    it("passes transformRequest when nativeMap has _requestManager", async () => {
-        const transformFn = vi.fn();
+    // 🛑 THE SHAPE IS MAPLIBRE'S OWN: `_requestManager` holds a `RequestManager`, whose public
+    // method is `transformRequest(url, type)`. This fixture used to fabricate
+    // `{ _transformRequest }` — a field no MapLibre version writes (4.7.1 to 6.7.0 all name it
+    // `_transformRequestFn`) — so the test agreed with a read that never worked.
+    function liveManager() {
+        return {
+            transformRequest: vi.fn((url: string, type?: string) => ({
+                url,
+                headers: { Authorization: `Bearer live-${type}` },
+            })),
+        };
+    }
+
+    it("🛑 l'instance hors écran demande ses URL au gestionnaire de requêtes VIVANT de la carte", async () => {
+        const live = liveManager();
         const mapWithTransform = makeMockMaplibreMap();
-        mapWithTransform._requestManager = { _transformRequest: transformFn };
+        mapWithTransform._requestManager = live;
         installMockGeoLeaf({ nativeMap: mapWithTransform });
         ctorReturns(_mockMapCtor, makeMockMaplibreMap());
 
         await captureExtent(BBOX_PARIS, { format: "A4" });
 
         const opts = _mockMapCtor.mock.calls[0][0];
-        expect(opts.transformRequest).toBe(transformFn);
+        expect(typeof opts.transformRequest).toBe("function");
+        expect(opts.transformRequest("https://api.example.com/tiles/1/2/3.pbf", "Tile")).toEqual({
+            url: "https://api.example.com/tiles/1/2/3.pbf",
+            headers: { Authorization: "Bearer live-Tile" },
+        });
+        expect(live.transformRequest).toHaveBeenCalledWith(
+            "https://api.example.com/tiles/1/2/3.pbf",
+            "Tile"
+        );
+    });
+
+    it("suit la transformation de la carte AU MOMENT de la requête, pas celle de la copie", async () => {
+        const live = liveManager();
+        const mapWithTransform = makeMockMaplibreMap();
+        mapWithTransform._requestManager = live;
+        installMockGeoLeaf({ nativeMap: mapWithTransform });
+        ctorReturns(_mockMapCtor, makeMockMaplibreMap());
+
+        await captureExtent(BBOX_PARIS, { format: "A4" });
+        // The connector re-installs its transform when the basemap changes.
+        live.transformRequest.mockImplementation((url: string) => ({
+            url,
+            headers: { Authorization: "Bearer rotated" },
+        }));
+
+        const opts = _mockMapCtor.mock.calls[0][0];
+        expect(opts.transformRequest("https://api.example.com/t.pbf", "Tile").headers).toEqual({
+            Authorization: "Bearer rotated",
+        });
+    });
+
+    it("sans gestionnaire de requêtes, l'instance hors écran n'en reçoit aucun", async () => {
+        installMockGeoLeaf({ nativeMap: makeMockMaplibreMap() });
+        ctorReturns(_mockMapCtor, makeMockMaplibreMap());
+
+        await captureExtent(BBOX_PARIS, { format: "A4" });
+
+        expect(_mockMapCtor.mock.calls[0][0].transformRequest).toBeUndefined();
     });
 });
 

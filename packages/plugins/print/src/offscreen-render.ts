@@ -13,7 +13,7 @@
 
 import type * as MaplibreGL from "maplibre-gl";
 import type { CaptureOptions, CaptureResult, EmpriseBbox } from "./types.js";
-import { _getNativeMap } from "./internal.js";
+import { _getNativeMap, _liveTransformRequest } from "./internal.js";
 import { getPrintConfig } from "./config.js";
 import {
     METERS_PER_PIXEL_AT_ZOOM_0,
@@ -201,7 +201,7 @@ function _createOffscreenInstance(
     heightPx: number,
     center: [number, number],
     zoom: number,
-    transformRequest: unknown
+    transformRequest: MaplibreGL.RequestTransformFunction | undefined
 ): { map: MaplibreGL.Map; container: HTMLElement } {
     const container = document.createElement("div");
     Object.assign(container.style, {
@@ -276,12 +276,10 @@ export async function captureExtent(
     let containerEl: HTMLElement | null = null;
 
     try {
-        // Clone map style and (if present) the transformRequest for tile auth.
+        // Clone the map style, and delegate tile requests to the live map's transform (auth).
         // Inside try so geoleaf:print:render:end fires even if getStyle() throws.
         const style: unknown = nativeMap.getStyle?.() ?? {};
-        const transformRequest: unknown =
-            (nativeMap as { _requestManager?: { _transformRequest?: unknown } })._requestManager
-                ?._transformRequest ?? undefined;
+        const transformRequest = _liveTransformRequest(nativeMap);
 
         const { map, container } = _createOffscreenInstance(
             style,
@@ -390,7 +388,7 @@ export class OffscreenSession {
 
     constructor(
         style: unknown,
-        transformRequest: unknown,
+        transformRequest: MaplibreGL.RequestTransformFunction | undefined,
         widthPx: number,
         heightPx: number,
         center: [number, number],

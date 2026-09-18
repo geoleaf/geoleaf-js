@@ -18,7 +18,7 @@ import { getGeoLeaf } from "@geoleaf/host-runtime";
 import { OffscreenSession } from "./offscreen-render.js";
 import { createComposedCanvas } from "./layout-composer.js";
 import { getPrintConfig, type PrintConfig } from "./config.js";
-import { _getNativeMap } from "./internal.js";
+import { _getNativeMap, _liveTransformRequest } from "./internal.js";
 import { downloadBlob } from "@geoleaf/host-runtime";
 import { tryServerFallback, buildServerPayload } from "./server-fallback.js";
 import { MODAL_ID, buildModalDom, type ModalDom } from "./modal-dom.js";
@@ -364,9 +364,7 @@ async function _bootSession(
     }
 
     const style = nativeMap?.getStyle?.() ?? {};
-    const transformRequest = (
-        nativeMap as { _requestManager?: { _transformRequest?: unknown } } | null
-    )?._requestManager?._transformRequest;
+    const transformRequest = _liveTransformRequest(nativeMap);
 
     state.session = new OffscreenSession(
         style,
