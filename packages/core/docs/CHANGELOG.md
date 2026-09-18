@@ -101,6 +101,14 @@ _Nothing yet._
   `pmtiles` library reads them through the page's `fetch`, which the connector excluded for them.
   They are intercepted now, their `Range` header kept.
 
+- **`@geoleaf-plugins/connector` 1.3.1 — a session renewed before the offline engine is wired
+  still resumes the queue.** A `configure()` called before `GeoLeaf.boot()` renews an expired
+  session while `GeoLeaf.Storage` has no engine yet: `requeueAll` answered `engineUnavailable`,
+  and the capture a previous session set aside under `authRequired` stayed quarantined — the
+  core's arming pass replays pending and failed entries, never a quarantine. The resume now waits
+  for `Storage.whenReady()`, lets the core's own arming pass end, then requeues and drains. One
+  wait per page; a core without `whenReady` gets a single attempt, as before.
+
 - **A device that went through the offline write cycle can now clear its quarantine.**
   `requeueQuarantined` and `discardQuarantined` had existed since 02/08/2026 with **no caller
   in any interface**: the only way to use them was to list the queue in a console and paste an

@@ -165,6 +165,12 @@ await GeoLeaf.Storage.pushOutbox();
 An application that signs in by its own means makes exactly those two calls. Without the
 offline capability, there is nothing to resume and nothing happens.
 
+A session can also come back before the offline engine does: a `configure()` called before
+`GeoLeaf.boot()` renews an expired session while `GeoLeaf.Storage` has no engine yet, and both
+calls answer `engineUnavailable`. The plugin then waits for `GeoLeaf.Storage.whenReady()`, lets
+the core's own first pass end, and makes the two calls — once per page, however many renewals
+came before.
+
 ---
 
 ## Security

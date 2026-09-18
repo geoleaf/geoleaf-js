@@ -77,7 +77,7 @@ CallSignature | @geoleaf-plugins/connector.maplibre-bridge.installMapLibreBridge
 CallSignature | @geoleaf-plugins/connector.renewal-retry.armRenewalRetry.armRenewalRetry | doc:7bee5643775d
 CallSignature | @geoleaf-plugins/connector.renewal-retry.disarmRenewalRetry.disarmRenewalRetry | doc:658beb719d5e
 CallSignature | @geoleaf-plugins/connector.session-resume.armSessionResume.armSessionResume | doc:2824a4c8a4c6
-CallSignature | @geoleaf-plugins/connector.session-resume.disarmSessionResume.disarmSessionResume | doc:f262e2b17d84
+CallSignature | @geoleaf-plugins/connector.session-resume.disarmSessionResume.disarmSessionResume | doc:45f6dea94776
 CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type._setRefreshFn._setRefreshFn | doc:d0415c831867
 CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type.clear.__type.__type | doc:778f8a39a011
 CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type.declareSessionDead.__type.__type | doc:0a4170b239a7

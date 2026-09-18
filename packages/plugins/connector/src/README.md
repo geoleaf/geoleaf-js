@@ -84,7 +84,9 @@ Quatre étapes sont faciles à manquer en lisant le code de haut en bas :
   un Worker n'hérite pas du `window.fetch` patché, il doit demander ses en-têtes. En `getToken`, il
   rend le jeton de l'hôte — une promesse seulement à un cœur qui l'annonce (`acceptsPromise`).
 - **La reprise est armée AVANT la lecture de la session** : un renouvellement au démarrage émet
-  `token-refreshed`, que la reprise de la file doit entendre.
+  `token-refreshed`, que la reprise de la file doit entendre. Et si ce démarrage précède le boot,
+  le moteur hors ligne n'est pas encore câblé : la reprise attend alors `Storage.whenReady()`,
+  laisse finir la première passe du cœur, puis rejoue (CN-38).
 - **La décision vient APRÈS l'installation** : une fenêtre fermée par l'utilisateur rejette
   `configure()`, et un jeton obtenu ensuite par `openLoginModal()` doit trouver l'intercepteur en
   place.

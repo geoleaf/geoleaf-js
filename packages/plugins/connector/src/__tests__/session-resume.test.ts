@@ -111,3 +111,127 @@ describe("reprise de la file après une session retrouvée", () => {
         expect(pushOutbox).not.toHaveBeenCalled();
     });
 });
+
+/**
+ * A façade shaped like the core's before and after its offline engine is wired.
+ *
+ * Before: both gestures answer `refused: "engineUnavailable"`, as `Storage` does until the
+ * offline capability loads during boot. `wire()` then resolves `whenReady()`, and — as the
+ * core does at that instant — starts its own arming pass, which read the queue BEFORE any
+ * requeue.
+ */
+function unwiredEngine() {
+    let wired = false;
+    let ready!: () => void;
+    const readiness = new Promise<void>((resolve) => (ready = resolve));
+    const calls: string[] = [];
+    let armingPass: Promise<unknown> | null = null;
+    let endArmingPass!: () => void;
+    const requeue = vi.fn(async (reason?: string) => {
+        calls.push(wired ? `requeueAll:${reason}` : "requeueAll:refused");
+        return wired
+            ? { ok: true, requeued: 1, skipped: 0 }
+            : { ok: false, requeued: 0, skipped: 0, refused: "engineUnavailable" };
+    });
+    const push = vi.fn(async () => {
+        if (!wired) {
+            calls.push("pushOutbox:refused");
+            return { attempted: 0, refused: "engineUnavailable" };
+        }
+        // A caller arriving mid-pass gets the RUNNING pass — the core's lock.
+        if (armingPass) {
+            calls.push("pushOutbox:joined-arming-pass");
+            return armingPass;
+        }
+        calls.push("pushOutbox");
+        return { attempted: 1, pushed: 1 };
+    });
+    const whenReady = vi.fn(() => readiness);
+    return {
+        surface: { requeueAll: requeue, pushOutbox: push, whenReady },
+        calls,
+        wire() {
+            wired = true;
+            armingPass = new Promise<void>((resolve) => (endArmingPass = resolve)).then(() => {
+                armingPass = null;
+                return { attempted: 0 };
+            });
+            ready();
+        },
+        endArmingPass: () => endArmingPass(),
+    };
+}
+
+describe("reprise demandée AVANT que le moteur hors ligne soit câblé", () => {
+    it("🛑 un renouvellement émis avant le câblage est rejoué quand le moteur est prêt", async () => {
+        const engine = unwiredEngine();
+        mountStorage(engine.surface);
+        refreshed();
+        await settle();
+        engine.wire();
+        await settle();
+        engine.endArmingPass();
+        await settle();
+        expect(engine.calls).toContain("requeueAll:authRequired");
+        expect(engine.calls.at(-1)).toBe("pushOutbox");
+    });
+
+    it("🛑 le rejeu attend la fin de la passe d'armement, qui a lu la file avant la remise en file", async () => {
+        const engine = unwiredEngine();
+        mountStorage(engine.surface);
+        refreshed();
+        await settle();
+        engine.wire();
+        await settle();
+        expect(engine.calls).not.toContain("requeueAll:authRequired");
+        engine.endArmingPass();
+        await settle();
+        expect(engine.calls).toEqual([
+            "requeueAll:refused",
+            "pushOutbox:joined-arming-pass",
+            "requeueAll:authRequired",
+            "pushOutbox",
+        ]);
+    });
+
+    it("une seule attente par page, quel que soit le nombre de renouvellements", async () => {
+        const engine = unwiredEngine();
+        mountStorage(engine.surface);
+        refreshed();
+        await settle();
+        signIn();
+        await settle();
+        expect(engine.surface.whenReady).toHaveBeenCalledTimes(1);
+        engine.wire();
+        await settle();
+        engine.endArmingPass();
+        await settle();
+        expect(engine.calls.filter((c) => c === "requeueAll:authRequired")).toHaveLength(1);
+    });
+
+    it("désarmée avant que le moteur soit prêt, la reprise due n'est pas rejouée", async () => {
+        const engine = unwiredEngine();
+        mountStorage(engine.surface);
+        refreshed();
+        await settle();
+        disarmSessionResume();
+        engine.wire();
+        await settle();
+        engine.endArmingPass();
+        await settle();
+        expect(engine.calls).toEqual(["requeueAll:refused"]);
+    });
+
+    it("un cœur sans `whenReady` : un seul essai, aucun rejeu, aucune erreur", async () => {
+        const engine = unwiredEngine();
+        const { whenReady: _absent, ...older } = engine.surface;
+        mountStorage(older);
+        refreshed();
+        await settle();
+        engine.wire();
+        await settle();
+        engine.endArmingPass();
+        await settle();
+        expect(engine.calls).toEqual(["requeueAll:refused"]);
+    });
+});

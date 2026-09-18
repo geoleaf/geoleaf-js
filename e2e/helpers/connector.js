@@ -23,14 +23,32 @@ const CONNECTOR_DB = "geoleaf-connector";
 const CONNECTOR_STORE = "auth-tokens";
 
 /**
- * Boots the app shell and waits for a native map, then asserts that no Service Worker
- * controls the page (see the header).
+ * Boots the app shell and waits until it is READY — `geoleaf:app:ready`, not only a native map —
+ * then asserts that no Service Worker controls the page (see the header).
+ *
+ * 🛑 A NATIVE MAP IS NOT A BOOTED APPLICATION. The map exists before the profile's theme applies
+ * its layers, sprites and terrain; a spec that cuts the network right after it cut the boot
+ * itself. Measured on 18/09/2026 on `e2e/48`, under load: the profile's layers failed with
+ * `ERR_INTERNET_DISCONNECTED` — requested AFTER the cut — and the tiles the spec was waiting for
+ * were not requested within its five seconds, while MapLibre had started loading them. Alone,
+ * the same test passed eight times out of eight.
  * @param {import('@playwright/test').Page} page
  */
 async function bootWithoutServiceWorker(page) {
+    await page.addInitScript(() => {
+        document.addEventListener(
+            "geoleaf:app:ready",
+            () => {
+                /** @type {any} */ (window).__geoleafAppReady = true;
+            },
+            { once: true }
+        );
+    });
     await page.goto("/");
     await page.waitForFunction(
-        () => !!(/** @type {any} */ (window).GeoLeaf?.Core?.getMap?.()?.getNativeMap?.()),
+        () =>
+            /** @type {any} */ (window).__geoleafAppReady === true &&
+            !!(/** @type {any} */ (window).GeoLeaf?.Core?.getMap?.()?.getNativeMap?.()),
         null,
         { timeout: 30000 }
     );

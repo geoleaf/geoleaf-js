@@ -37,10 +37,12 @@ const RESUMING_EVENTS = [
     "geoleaf:connector:token-refreshed",
 ] as const;
 
-/** The two gestures the offline write cycle publishes, as this plugin expects them. */
+/** The gestures the offline write cycle publishes, as this plugin expects them. */
 interface OutboxSeam {
     requeueAll?: (reason?: string) => Promise<unknown>;
     pushOutbox?: () => Promise<unknown>;
+    /** Resolves once the offline engine is wired and its database open — never without it. */
+    whenReady?: () => Promise<void>;
 }
 
 /** The storage façade, or `null` when the application carries no offline write cycle. */
@@ -52,10 +54,64 @@ function _outbox(): OutboxSeam | null {
 }
 
 /**
+ * A resume asked for while the offline engine was not wired yet, and replayed once it is.
+ *
+ * 🛑 **A SESSION CAN COME BACK BEFORE THE ENGINE DOES.** `GeoLeaf.Storage` exists from the
+ * core's import, but its engine is only wired when the offline capability loads, during boot.
+ * A `configure()` called before `GeoLeaf.boot()` renews an expired session at that moment, and
+ * the two gestures then answer `refused: "engineUnavailable"`. The core's arming pass does not
+ * make up for it: it replays `pending` and `failed`, never a quarantine — so the capture the
+ * previous session set aside stayed quarantined while the session was back.
+ *
+ * ⚠️ One wait per page, whatever the number of renewals: `whenReady()` never resolves without
+ * the offline capability, and a waiter per renewal would pile up for nothing. Disarming drops
+ * it — the replay checks that its claim is still the one held.
+ */
+let _owed: object | null = null;
+
+/** True when the core answered that its offline engine is not wired yet. */
+function _engineUnavailable(answer: unknown): boolean {
+    return (
+        typeof answer === "object" &&
+        answer !== null &&
+        (answer as { refused?: unknown }).refused === "engineUnavailable"
+    );
+}
+
+/**
+ * Replays the resume once the engine is ready — if the core says when.
+ *
+ * ⚠️ **It first JOINS the core's arming pass.** The core drains the instant its engine is ready,
+ * and that pass read the queue before anything is requeued: requeued mid-pass, the captures
+ * would wait for the next trigger, which a quiet queue may not bring. `pushOutbox()` hands a
+ * caller the running pass, so awaiting it once is waiting for that pass to end.
+ *
+ * @param outbox - The storage façade.
+ * @param cause - The event that asked, for the log.
+ */
+function _oweUntilReady(outbox: OutboxSeam, cause: string): void {
+    if (!outbox.whenReady) return;
+    const claim = {};
+    _owed = claim;
+    void outbox.whenReady().then(async () => {
+        if (_owed !== claim) return;
+        _owed = null;
+        try {
+            await outbox.pushOutbox?.();
+        } catch {
+            // The arming pass reports its own failure; the replay below still runs.
+        }
+        await _resume(cause);
+    });
+}
+
+/**
  * Puts the session's captures back in the queue, then drains.
  *
  * ⚠️ **In that order, and the order is the point**: draining first would walk past entries
  * still marked quarantined, report nothing owed, and leave the core's triggers paused.
+ *
+ * ⚠️ **An engine not wired yet defers it** — see {@link _owed}.
  *
  * ⚠️ **It never throws.** This runs from an event listener, at the end of a sign-in the user
  * has just completed: a storage error must not surface as an unhandled rejection over the
@@ -65,9 +121,13 @@ function _outbox(): OutboxSeam | null {
  */
 async function _resume(cause: string): Promise<void> {
     const outbox = _outbox();
-    if (!outbox) return;
+    if (!outbox || _owed !== null) return;
     try {
-        await outbox.requeueAll?.(SESSION_MOTIVE);
+        const answer = await outbox.requeueAll?.(SESSION_MOTIVE);
+        if (_engineUnavailable(answer)) {
+            _oweUntilReady(outbox, cause);
+            return;
+        }
         await outbox.pushOutbox?.();
     } catch (error) {
         console.warn(`[GeoLeaf.Connector] reprise de la file après « ${cause} » en échec :`, error);
@@ -102,8 +162,9 @@ export function armSessionResume(): void {
     (globalThis as ListenerHost).__GEOLEAF_CONNECTOR_RESUME_LISTENER__ = listener;
 }
 
-/** Releases what {@link armSessionResume} took. Idempotent. */
+/** Releases what {@link armSessionResume} took, a resume still owed included. Idempotent. */
 export function disarmSessionResume(): void {
+    _owed = null;
     if (typeof document === "undefined") return;
     const host = globalThis as ListenerHost;
     const listener = host.__GEOLEAF_CONNECTOR_RESUME_LISTENER__;
