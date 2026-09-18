@@ -32,11 +32,12 @@
 
 import { TokenStore } from "./token-store.js";
 import type { RefreshOutcome } from "./token-store.js";
+import { concernsSession } from "./session-resume.js";
 
 /** The events that retry, on `document` — `online` is on `window`. */
 const DOCUMENT_TRIGGERS = ["visibilitychange", "geoleaf:offline:outbox-queued"] as const;
 
-/** A session that came back by another way: nothing left to retry. */
+/** A session that came back by another way: nothing left to retry — when it is THIS session. */
 const CONCLUSIVE_EVENTS = [
     "geoleaf:connector:authenticated",
     "geoleaf:connector:token-refreshed",
@@ -93,7 +94,9 @@ async function _retry(baseUrl: string): Promise<void> {
 }
 
 /**
- * Listens for the moments a renewal is worth retrying, until one concludes.
+ * Listens for the moments a renewal is worth retrying, until one concludes — or until THIS
+ * session comes back by another way: an `authenticated` or `token-refreshed` naming its
+ * `baseUrl`. Another session's does not ({@link concernsSession}).
  *
  * Idempotent: a second call replaces the listeners rather than adding to them.
  *
@@ -112,7 +115,10 @@ export function armRenewalRetry(baseUrl: string): void {
                 _running = null;
             });
     };
-    const conclude: EventListener = () => disarmRenewalRetry();
+    // Another API's session coming back leaves this one waiting (`concernsSession`).
+    const conclude: EventListener = (event) => {
+        if (concernsSession(event, baseUrl)) disarmRenewalRetry();
+    };
     window.addEventListener("online", trigger);
     for (const name of DOCUMENT_TRIGGERS) document.addEventListener(name, trigger);
     for (const name of CONCLUSIVE_EVENTS) document.addEventListener(name, conclude);

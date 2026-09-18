@@ -37,6 +37,27 @@ const RESUMING_EVENTS = [
     "geoleaf:connector:token-refreshed",
 ] as const;
 
+/**
+ * Whether a session event concerns the session of `baseUrl`.
+ *
+ * 🛑 **A SESSION IS A `baseUrl`, AND THE EVENTS NAME IT — THEY WERE READ WITHOUT IT.** The renewal
+ * of ANOTHER API's session — an instance of `createConnector()`, another copy of this plugin —
+ * resumed the singleton's queue, and disarmed its relaunch while its own session was still
+ * waiting. An event naming another session is therefore not ours.
+ *
+ * ⚠️ An event naming NO session still counts. The contract always names it and the connector
+ * always does; an event outside it keeps the behaviour it had — only what is known to be someone
+ * else's is silenced. Shared with `renewal-retry.ts`, so the two listeners cannot diverge.
+ *
+ * @param event - `geoleaf:connector:authenticated` or `geoleaf:connector:token-refreshed`.
+ * @param baseUrl - The session the listener serves.
+ * @returns `false` only when the event names another session.
+ */
+export function concernsSession(event: Event, baseUrl: string): boolean {
+    const named = (event as CustomEvent<{ baseUrl?: unknown } | null>).detail?.baseUrl;
+    return named === undefined || named === baseUrl;
+}
+
 /** The gestures the offline write cycle publishes, as this plugin expects them. */
 interface OutboxSeam {
     requeueAll?: (reason?: string) => Promise<unknown>;
@@ -149,15 +170,20 @@ interface ListenerHost {
 }
 
 /**
- * Listens for a session coming back, and empties what it had blocked.
+ * Listens for the session of `baseUrl` coming back, and empties what it had blocked.
  *
  * Idempotent: a second call replaces the listener rather than adding one — `configure()` may
  * run again on the same page.
+ *
+ * @param baseUrl - The session whose return resumes the queue — the singleton's. Another
+ *   session's return does not ({@link concernsSession}).
  */
-export function armSessionResume(): void {
+export function armSessionResume(baseUrl: string): void {
     if (typeof document === "undefined") return;
     disarmSessionResume();
-    const listener: EventListener = (event) => void _resume(event.type);
+    const listener: EventListener = (event) => {
+        if (concernsSession(event, baseUrl)) void _resume(event.type);
+    };
     for (const name of RESUMING_EVENTS) document.addEventListener(name, listener);
     (globalThis as ListenerHost).__GEOLEAF_CONNECTOR_RESUME_LISTENER__ = listener;
 }

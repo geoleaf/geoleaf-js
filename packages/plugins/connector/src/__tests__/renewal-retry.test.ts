@@ -96,6 +96,32 @@ describe("la relance — ce qu'un déclencheur fait du renouvellement en vol", (
         expect(store.forceRefresh).toHaveBeenCalledTimes(1);
     });
 
+    it("🛑 le retour d'une AUTRE session ne désarme pas la relance", async () => {
+        retry.armRenewalRetry(BASE);
+        document.dispatchEvent(
+            new CustomEvent("geoleaf:connector:token-refreshed", {
+                detail: { baseUrl: "https://other.example.org" },
+            })
+        );
+
+        window.dispatchEvent(new Event("online"));
+        await settled();
+
+        expect(store.forceRefresh).toHaveBeenCalledTimes(1);
+    });
+
+    it("contre-épreuve : le retour de SA session la désarme", async () => {
+        retry.armRenewalRetry(BASE);
+        document.dispatchEvent(
+            new CustomEvent("geoleaf:connector:token-refreshed", { detail: { baseUrl: BASE } })
+        );
+
+        window.dispatchEvent(new Event("online"));
+        await settled();
+
+        expect(store.forceRefresh).not.toHaveBeenCalled();
+    });
+
     it("🛑 armée par deux copies du module, un seul renouvellement par événement", async () => {
         // The handle lives on the global: the second copy's `arm` releases the first copy's
         // listeners, which a module-scoped handle could not reach.

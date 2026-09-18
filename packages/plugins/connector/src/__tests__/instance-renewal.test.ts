@@ -29,8 +29,8 @@ const OTHER_RENEWED = "eyJvdGhlclI.payload.sig";
 const HOST_TOKEN = "eyJob3N0.payload.sig";
 const HOUR = 3_600_000;
 
-/** Renewals received, per endpoint. */
-type Servers = { renewals: Record<string, number> };
+/** Renewals received, per endpoint; the endpoints that cannot be reached. */
+type Servers = { renewals: Record<string, number>; down: Set<string> };
 
 /**
  * The fake servers: one renewal endpoint per API, each answering its own token, and an API that
@@ -48,6 +48,7 @@ function serve(servers: Servers) {
         if (renewed !== undefined) {
             const endpoint = url.slice(0, -"/refresh".length);
             servers.renewals[endpoint] = (servers.renewals[endpoint] ?? 0) + 1;
+            if (servers.down.has(endpoint)) throw new TypeError("Failed to fetch");
             return new Response(JSON.stringify({ token: renewed, expiresIn: 3600 }), {
                 status: 200,
             });
@@ -57,7 +58,35 @@ function serve(servers: Servers) {
     });
 }
 
-const WATCHED = ["geoleaf:connector:auth-error", "geoleaf:connector:token-refreshed"] as const;
+const WATCHED = [
+    "geoleaf:connector:auth-error",
+    "geoleaf:connector:token-refreshed",
+    "geoleaf:connector:authenticated",
+] as const;
+
+/**
+ * Records the two public gestures of the queue resume, in order, on a stub `GeoLeaf.Storage`.
+ * @returns The order list, filled as the connector calls.
+ */
+function stubQueue(): string[] {
+    const order: string[] = [];
+    (globalThis as { GeoLeaf?: unknown }).GeoLeaf = {
+        Storage: {
+            requeueAll: vi.fn(async (reason?: string) => {
+                order.push(`requeueAll:${reason}`);
+                return { requeued: 1 };
+            }),
+            pushOutbox: vi.fn(async () => {
+                order.push("pushOutbox");
+                return { pushed: 1 };
+            }),
+        },
+    };
+    return order;
+}
+
+/** Lets the listeners, and whatever they start, run to completion. */
+const settled = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 20));
 
 describe("une instance de createConnector() et la session du singleton", () => {
     let api: ConnectorApi;
@@ -72,7 +101,7 @@ describe("une instance de createConnector() et la session du singleton", () => {
     async function mount(): Promise<void> {
         vi.resetModules();
         vi.stubGlobal("indexedDB", makeIDBDouble());
-        servers = { renewals: {} };
+        servers = { renewals: {}, down: new Set() };
         vi.stubGlobal("fetch", serve(servers));
         store = (await import("../token-store.js")).TokenStore;
         api = await import("../connector-api.js");
@@ -94,8 +123,94 @@ describe("une instance de createConnector() et la session du singleton", () => {
         for (const name of WATCHED) document.removeEventListener(name, record);
         // ⚠️ The queue resume is held on `globalThis`, so it survives `vi.resetModules()`.
         (await import("../session-resume.js")).disarmSessionResume();
+        (await import("../renewal-retry.js")).disarmRenewalRetry();
         delete (globalThis as { GeoLeaf?: unknown }).GeoLeaf;
         vi.unstubAllGlobals();
+    });
+
+    /** Another session comes back: an instance's own renewal, or another copy's sign-in. */
+    const otherSessionBack = [
+        [
+            "le renouvellement d'une instance d'une autre API",
+            async (): Promise<void> => {
+                await store.save(OTHER, OTHER_STORED, Date.now() - 60_000);
+                const instance = api.createConnector({
+                    baseUrl: OTHER,
+                    auth: { endpoint: OTHER_ENDPOINT },
+                });
+                expect(await instance.getTokenAsync()).toBe(OTHER_RENEWED);
+            },
+        ],
+        [
+            "la connexion d'une autre session",
+            async (): Promise<void> => {
+                document.dispatchEvent(
+                    new CustomEvent("geoleaf:connector:authenticated", {
+                        detail: { baseUrl: OTHER },
+                    })
+                );
+            },
+        ],
+    ] as const;
+
+    it.each(otherSessionBack)(
+        "🛑 %s ne relance pas la file du singleton",
+        async (_label, comeBack) => {
+            const order = stubQueue();
+            await mountSingleton();
+
+            await comeBack();
+            await settled();
+
+            // THE WITNESS: the other session's event did fire.
+            expect(
+                events.filter((e) => e !== "geoleaf:connector:auth-error"),
+                "aucun événement de session n'a été émis : le cas n'est pas reproduit"
+            ).not.toEqual([]);
+            // THE SUBJECT: the singleton's queue did not move.
+            expect(order).toEqual([]);
+        }
+    );
+
+    it.each(otherSessionBack)(
+        "🛑 %s ne désarme pas la relance du singleton",
+        async (_label, comeBack) => {
+            await mountSingleton();
+            // The singleton's authentication server is down: the session is kept, the relaunch armed.
+            servers.down.add(ENDPOINT);
+            expect((await fetch(`${BASE}/data/p.json`)).status).toBe(401);
+            expect(servers.renewals[ENDPOINT] ?? 0).toBe(1);
+
+            await comeBack();
+            await settled();
+
+            // Its server is back with the network: the relaunch must still be there to renew.
+            servers.down.delete(ENDPOINT);
+            window.dispatchEvent(new Event("online"));
+            await vi.waitFor(() => expect(servers.renewals[ENDPOINT] ?? 0).toBe(2));
+            await vi.waitFor(async () => expect((await store.load(BASE))?.token).toBe(RENEWED));
+        }
+    );
+
+    it("contre-épreuve : le renouvellement du singleton, lui, relance sa file", async () => {
+        // Without it, a filter that silences every event would pass the two cases above.
+        const order = stubQueue();
+        await mountSingleton();
+
+        expect((await fetch(`${BASE}/data/p.json`)).status).toBe(200);
+
+        await vi.waitFor(() => expect(order).toEqual(["requeueAll:authRequired", "pushOutbox"]));
+    });
+
+    it("un événement qui ne nomme aucune session compte encore — seule une AUTRE session est ignorée", async () => {
+        // The contract always names the session, and the connector always does. An event outside
+        // it keeps the behaviour it had: the filter silences what is known to be someone else's.
+        const order = stubQueue();
+        await mountSingleton();
+
+        document.dispatchEvent(new CustomEvent("geoleaf:connector:token-refreshed"));
+
+        await vi.waitFor(() => expect(order).toEqual(["requeueAll:authRequired", "pushOutbox"]));
     });
 
     it.each([

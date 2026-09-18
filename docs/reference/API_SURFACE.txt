@@ -74,9 +74,10 @@ CallSignature | @geoleaf-plugins/connector.host-token.pullHostToken.pullHostToke
 CallSignature | @geoleaf-plugins/connector.host-token.pullHostToken.pullHostToken.getToken.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/connector.login-ui.showLoginModal.showLoginModal | doc:fbf283380cb3
 CallSignature | @geoleaf-plugins/connector.maplibre-bridge.installMapLibreBridge.installMapLibreBridge | doc:22c53f5bdc7f
-CallSignature | @geoleaf-plugins/connector.renewal-retry.armRenewalRetry.armRenewalRetry | doc:7bee5643775d
+CallSignature | @geoleaf-plugins/connector.renewal-retry.armRenewalRetry.armRenewalRetry | doc:0e7cadf9664a
 CallSignature | @geoleaf-plugins/connector.renewal-retry.disarmRenewalRetry.disarmRenewalRetry | doc:658beb719d5e
-CallSignature | @geoleaf-plugins/connector.session-resume.armSessionResume.armSessionResume | doc:2824a4c8a4c6
+CallSignature | @geoleaf-plugins/connector.session-resume.armSessionResume.armSessionResume | doc:99931db0a53d
+CallSignature | @geoleaf-plugins/connector.session-resume.concernsSession.concernsSession | doc:8073042c56fe
 CallSignature | @geoleaf-plugins/connector.session-resume.disarmSessionResume.disarmSessionResume | doc:45f6dea94776
 CallSignature | @geoleaf-plugins/connector.token-store.RefreshFn.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type._setRefreshFn._setRefreshFn | doc:3d58e7654f8d
@@ -3701,6 +3702,7 @@ Function | @geoleaf-plugins/connector.maplibre-bridge.installMapLibreBridge | do
 Function | @geoleaf-plugins/connector.renewal-retry.armRenewalRetry | doc:-
 Function | @geoleaf-plugins/connector.renewal-retry.disarmRenewalRetry | doc:-
 Function | @geoleaf-plugins/connector.session-resume.armSessionResume | doc:-
+Function | @geoleaf-plugins/connector.session-resume.concernsSession | doc:-
 Function | @geoleaf-plugins/connector.session-resume.disarmSessionResume | doc:-
 Function | @geoleaf-plugins/editor.add-form/placement-form.buildAddFormApi | doc:-
 Function | @geoleaf-plugins/editor.add-form/placement-form.destroyAddForm | doc:-
@@ -8249,6 +8251,9 @@ Parameter | @geoleaf-plugins/connector.host-token.pullHostToken.pullHostToken.ge
 Parameter | @geoleaf-plugins/connector.login-ui.showLoginModal.showLoginModal.config | doc:-
 Parameter | @geoleaf-plugins/connector.maplibre-bridge.installMapLibreBridge.installMapLibreBridge.config | doc:2ca0b8aba98a
 Parameter | @geoleaf-plugins/connector.renewal-retry.armRenewalRetry.armRenewalRetry.baseUrl | doc:9d92c5ed97d2
+Parameter | @geoleaf-plugins/connector.session-resume.armSessionResume.armSessionResume.baseUrl | doc:d3228e2b1df7
+Parameter | @geoleaf-plugins/connector.session-resume.concernsSession.concernsSession.baseUrl | doc:7fc1684d7f0d
+Parameter | @geoleaf-plugins/connector.session-resume.concernsSession.concernsSession.event | doc:04b5946e3997
 Parameter | @geoleaf-plugins/connector.token-store.RefreshFn.__type.__type.baseUrl | doc:-
 Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type._setRefreshFn._setRefreshFn.fn | doc:-
 Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.clear.__type.__type.baseUrl | doc:-

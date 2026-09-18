@@ -15,6 +15,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { armSessionResume, disarmSessionResume } from "../session-resume.js";
 
+const BASE = "https://api.example.com";
+
 const requeueAll = vi.fn(async (_reason?: string) => ({ requeued: 1, refused: null }));
 const pushOutbox = vi.fn(async () => ({ pushed: 1 }));
 
@@ -28,14 +30,14 @@ const settle = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 const signIn = () =>
     document.dispatchEvent(
         new CustomEvent("geoleaf:connector:authenticated", {
-            detail: { baseUrl: "https://api.example.com" },
+            detail: { baseUrl: BASE },
         })
     );
 
 const refreshed = () =>
     document.dispatchEvent(
         new CustomEvent("geoleaf:connector:token-refreshed", {
-            detail: { baseUrl: "https://api.example.com" },
+            detail: { baseUrl: BASE },
         })
     );
 
@@ -43,7 +45,7 @@ beforeEach(() => {
     requeueAll.mockClear();
     pushOutbox.mockClear();
     mountStorage({ requeueAll, pushOutbox });
-    armSessionResume();
+    armSessionResume(BASE);
 });
 
 afterEach(() => {
@@ -89,6 +91,19 @@ describe("reprise de la file après une session retrouvée", () => {
         expect(pushOutbox).not.toHaveBeenCalled();
     });
 
+    it("🛑 le retour d'une AUTRE session ne relance rien", async () => {
+        // An instance of `createConnector()`, or another copy of the plugin, renewing the session
+        // of another API: the queue waits on this one.
+        document.dispatchEvent(
+            new CustomEvent("geoleaf:connector:token-refreshed", {
+                detail: { baseUrl: "https://other.example.org" },
+            })
+        );
+        await settle();
+        expect(requeueAll).not.toHaveBeenCalled();
+        expect(pushOutbox).not.toHaveBeenCalled();
+    });
+
     it("un cœur absent ne fait rien jeter non plus", async () => {
         mountStorage(null);
         signIn();
@@ -97,7 +112,7 @@ describe("reprise de la file après une session retrouvée", () => {
     });
 
     it("🛑 désarmé, il ne répond plus — deux configurations ne doivent pas empiler deux écouteurs", async () => {
-        armSessionResume();
+        armSessionResume(BASE);
         disarmSessionResume();
         signIn();
         await settle();

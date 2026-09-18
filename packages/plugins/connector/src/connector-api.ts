@@ -257,7 +257,7 @@ export async function configure(config: ConnectorConfig): Promise<void> {
     // cannot see that moment, this plugin can (`session-resume.ts`). ⚠️ ARMED BEFORE THE
     // SESSION IS READ: a renewal at boot emits `token-refreshed`, and the queue the previous
     // session set aside must hear it.
-    armSessionResume();
+    armSessionResume(config.baseUrl);
 
     // Warm up RAM cache from IDB (required before the MapLibre bridge and the worker hook,
     // which read it synchronously) — and learn what the session is.

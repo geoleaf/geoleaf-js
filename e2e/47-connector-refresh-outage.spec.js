@@ -23,6 +23,7 @@ import {
     readConnectorToken,
     recordConnectorEvents,
     connectorEvents,
+    spyQueueResume,
 } from "./helpers/connector.js";
 
 test.use({ baseURL: baseURL("core"), serviceWorkers: "block" });
@@ -123,32 +124,6 @@ function callApi(page, name) {
             ),
         `${BASE}/data/${name}`
     );
-}
-
-/**
- * Wraps the two public gestures the connector's queue resume makes, and records them in order.
- * Asserted installed: a spy that did not take would make the resume look absent.
- * @param {import('@playwright/test').Page} page
- */
-async function spyQueueResume(page) {
-    const installed = await page.evaluate(() => {
-        const w = /** @type {any} */ (window);
-        const storage = w.GeoLeaf?.Storage;
-        if (!storage?.requeueAll || !storage?.pushOutbox) return false;
-        w.__resume = [];
-        const requeueAll = storage.requeueAll.bind(storage);
-        const pushOutbox = storage.pushOutbox.bind(storage);
-        storage.requeueAll = (/** @type {string} */ reason) => {
-            w.__resume.push(`requeueAll:${reason}`);
-            return requeueAll(reason);
-        };
-        storage.pushOutbox = () => {
-            w.__resume.push("pushOutbox");
-            return pushOutbox();
-        };
-        return storage.requeueAll !== requeueAll;
-    });
-    expect(installed, "GeoLeaf.Storage is absent or could not be observed").toBe(true);
 }
 
 test.describe("47-connector-refresh-outage", () => {

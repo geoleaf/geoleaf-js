@@ -493,9 +493,11 @@ describe("après une panne passagère, la relance — les moments que le cœur l
     it("une connexion faite entre-temps désarme la relance", async () => {
         await afterOutage();
 
-        // The login window stores its token, then announces it — exactly so.
+        // The login window stores its token, then announces it, naming its session — exactly so.
         await store.save(BASE, FRESH, Date.now() + HOUR);
-        document.dispatchEvent(new CustomEvent("geoleaf:connector:authenticated"));
+        document.dispatchEvent(
+            new CustomEvent("geoleaf:connector:authenticated", { detail: { baseUrl: BASE } })
+        );
         window.dispatchEvent(new Event("online"));
         await settled();
 

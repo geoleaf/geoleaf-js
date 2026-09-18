@@ -119,6 +119,13 @@ _Nothing yet._
   `destroy()` only deactivates its reads. Only `configure()` installs and removes the page's
   renewal.
 
+- **`@geoleaf-plugins/connector` 1.3.1 — the queue resume and the renewal relaunch answer their
+  own session only.** Both listened to `geoleaf:connector:token-refreshed` and
+  `geoleaf:connector:authenticated` whatever API the event named: the renewal of another API's
+  session — an instance of `createConnector()`, another copy of the plugin — resumed the
+  singleton's offline queue, and disarmed its relaunch while its own session was still waiting
+  for the network. An event naming another `baseUrl` is now ignored; one naming none still counts.
+
 - **`@geoleaf-plugins/print` 1.3.1 — a printed map asks for its tiles with the live map's
   headers.** The off-screen map the print renders was always created without a request
   transform: the plugin read a field of MapLibre's request manager that MapLibre does not write,

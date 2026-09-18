@@ -154,8 +154,9 @@ time-out, a `503`, a body cut in transit — keeps the session and fires nothing
 ### What a returning session does to the offline queue
 
 When the session had died, the core's drain stopped at the first `401` and set that capture
-aside; it cannot see a sign-in, so it waits. On `authenticated` and on `token-refreshed`, this
-plugin therefore asks the core to take them back, through two public calls:
+aside; it cannot see a sign-in, so it waits. On `authenticated` and on `token-refreshed` naming
+its session — the `baseUrl` given to `configure()` — this plugin therefore asks the core to take
+them back, through two public calls:
 
 ```javascript
 await GeoLeaf.Storage.requeueAll("authRequired");
@@ -163,7 +164,8 @@ await GeoLeaf.Storage.pushOutbox();
 ```
 
 An application that signs in by its own means makes exactly those two calls. Without the
-offline capability, there is nothing to resume and nothing happens.
+offline capability, there is nothing to resume and nothing happens. The session of another API
+coming back — an instance of `createConnector()`, another copy of this plugin — resumes nothing.
 
 A session can also come back before the offline engine does: a `configure()` called before
 `GeoLeaf.boot()` renews an expired session while `GeoLeaf.Storage` has no engine yet, and both
