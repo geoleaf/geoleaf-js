@@ -14,7 +14,7 @@
  * had gone from 1217 to 1234. Nothing had reinstalled them.
  *
  * 🛑 **THE ASYMMETRY IS WHAT MAKES THIS GUARD NECESSARY, AND IT COMPOSES AT THE
- * WORST.** `ci.yml` runs `npx playwright install --with-deps chromium webkit` **before
+ * WORST.** `ci.yml` runs `npx playwright install --with-deps chromium` **before
  * every** E2E run; locally, **nothing** does (`package.json` has only
  * `prepare: husky`). The side that works is thus the one whose E2E steps sit
  * under `workflow_dispatch`, which nobody triggers; the side one launches is the

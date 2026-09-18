@@ -37,6 +37,12 @@ projets sont **bornés** — leur `testMatch` NOMME les specs éprouvées sur ce
 
 - ⚠️ **Une spec n'y entre qu'après y avoir été vue verte**, jamais par motif : la suite a été écrite
   contre Chromium, et un premier passage sous WebKit est une mesure, pas une gate.
+- 🛑 **Ils ne tournent que sous la cible `nginx`** — mesuré le 18/09/2026, au premier passage de
+  WebKit sur le runner public. La page déclare `upgrade-insecure-requests` : Chromium en exempte le
+  bouclage local, WebKit non. Sur la cible `ports`, servie en HTTP, il réécrit chaque sous-ressource
+  en `https://localhost`, chacune échoue en TLS, et aucun script ne démarre — `127.0.0.1` compris,
+  `bypassCSP` n'y change rien. `nginx` sert en HTTPS. Le runner n'installe donc plus WebKit, et un
+  rouge WebKit n'a **pas** de rejeu sur `ports`.
 - 🛑 **`launchOptions: {}` est obligatoire.** Le `use.launchOptions` du niveau config porte des
   drapeaux Chromium (SwiftShader, `--host-resolver-rules`), et Playwright fusionne `use` clé par
   clé : sans cette surcharge, WebKit les recevrait.
@@ -87,10 +93,10 @@ projets sont **bornés** — leur `testMatch` NOMME les specs éprouvées sur ce
 Les URLs ne sont plus écrites dans les specs : elles sont résolues par
 [`helpers/base-url.js`](helpers/base-url.js), qui expose `baseURL('core' | 'full' | 'coverage')` — et qui **jette** sur toute autre valeur.
 
-| Cible                | URLs                                                | Serveurs                                        | Usage                       |
-| -------------------- | --------------------------------------------------- | ----------------------------------------------- | --------------------------- |
-| `ports` **(défaut)** | `http://localhost:8766 / 8768 / 8769`               | **Démarrés par Playwright** (bloc `webServer`)  | CI, et run de **référence** |
-| `nginx`              | `https://demo[.full\|.coverage].geoleaf.local.test` | **Aucun** — le nginx de dev sert déjà `deploy/` | Boucle de développement     |
+| Cible                | URLs                                                | Serveurs                                        | Usage                                     |
+| -------------------- | --------------------------------------------------- | ----------------------------------------------- | ----------------------------------------- |
+| `ports` **(défaut)** | `http://localhost:8766 / 8768 / 8769`               | **Démarrés par Playwright** (bloc `webServer`)  | CI, et run de **référence** — sans WebKit |
+| `nginx`              | `https://demo[.full\|.coverage].geoleaf.local.test` | **Aucun** — le nginx de dev sert déjà `deploy/` | Boucle de développement                   |
 
 ```bash
 npm run test:e2e                                   # cible ports (référence)
@@ -108,7 +114,8 @@ serveurs, c'est-à-dire exactement ce que la cible existe pour éviter.
 frame-ancestors 'self'` ajoutés, `Cache-Control: no-store`, HTTP/2, origine HTTPS. Un test qui
 assertionne sur les en-têtes, le framing ou le temps peut légitimement diverger.
 **Un rouge vu seulement sous nginx est une piste, pas un verdict** — le re-jouer sur `ports`
-avant de conclure. `ports` est la cible contre laquelle les assertions ont été écrites.
+avant de conclure. `ports` est la cible contre laquelle les assertions ont été écrites. Seule
+exception : un rouge WebKit, qui n'a pas de cible `ports` (voir les projets WebKit, plus haut).
 
 ## Prérequis — les TROIS commandes vont ensemble, et la première n'est pas optionnelle
 

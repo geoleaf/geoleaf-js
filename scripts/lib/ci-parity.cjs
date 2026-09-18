@@ -20,7 +20,7 @@
  *
  *     node scripts/build-deploy.cjs                  → equivalent to `build:deploy:all` (witness)
  *     node scripts/build-deploy-coverage.cjs         → covered, but under `--e2e` only
- *     playwright install --with-deps chromium webkit → environment, not a gate
+ *     playwright install --with-deps chromium → environment, not a gate
  *     playwright test                                → covered, but under `--e2e` only
  *
  * A per-step classification would have declared it "covered" on two leaves
@@ -522,7 +522,7 @@ const EXEMPTIONS = {
         // changed enough for this excuse to deserve rereading rather than renewal.
         temoin: (ctx) => ctx.firstLeaf === "npm ci",
     },
-    "playwright install --with-deps chromium webkit": {
+    "playwright install --with-deps chromium": {
         classe: "ENV",
         gateReelle: false,
         motif: "runner neuf à chaque run ; le poste local présuppose les navigateurs installés.",

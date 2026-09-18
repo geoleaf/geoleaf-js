@@ -6,6 +6,76 @@ import { launchOptions } from "./e2e/helpers/launch-options.js";
 import { baseURL, isNginxTarget, hostResolverArgs } from "./e2e/helpers/base-url.js";
 import { e2eWorkers } from "./e2e/helpers/worker-budget.js";
 
+/**
+ * The WebKit projects — declared under the `nginx` target ONLY.
+ *
+ * 🛑 THE REASON IS MEASURED, NOT ASSUMED. The page declares `upgrade-insecure-requests`, and the
+ * default `ports` target serves plain HTTP. Chromium exempts the local loopback from that
+ * directive; WebKit does not: it rewrites every sub-resource of the page to `https://localhost`,
+ * and each fails its TLS handshake — no script of the application ever runs. That was the whole
+ * first WebKit night on the public runner: seven tests, seven times this signature. Replayed
+ * locally without any server, on a page served by Playwright's router: `127.0.0.1` is rewritten
+ * too, and `bypassCSP` does not prevent it. The `nginx` target serves HTTPS, where nothing is
+ * rewritten — it is where these projects were proven, and where they run.
+ *
+ * ⚠️ Consequence for the reading rule of the two targets: a WebKit red has NO `ports` replay.
+ * Giving WebKit an HTTPS origin on the runner is a harness change of its own, not a flag here.
+ */
+const WEBKIT_PROJECTS = [
+    {
+        // WebKit — the engine behind every iOS browser, and one no spec had ever run: the
+        // mobile verdicts of the suite were deductions nothing in the repository could
+        // confirm.
+        //
+        // ⚠️ BOUNDED, like `chromium-touch`: `testMatch` NAMES the specs proven on this
+        // engine. A spec joins after it has been seen green here, never by pattern — the suite
+        // was written against Chromium, and a first WebKit run is a measurement, not a gate.
+        //
+        // 🛑 `launchOptions: {}` IS REQUIRED. The top-level `use.launchOptions` carries
+        // Chromium-only flags, and Playwright merges `use` key by key: without this override
+        // WebKit would be handed SwiftShader and `--host-resolver-rules`.
+        //
+        // ⚠️ Under `E2E_TARGET=nginx` WebKit resolves the vhosts through the system resolver.
+        // `demo.` and `demo.full.geoleaf.local.test` resolve on the workstation;
+        // `demo.coverage.` does not — never admit a spec that targets `coverage`.
+        //
+        // 🛑 `e2e/39-editor-photo-token.spec.js` IS OUT, and not for a product reason. Measured
+        // on 2026-09-12: under `context.setOffline(true)` this WebKit fails EVERY local Blob/File
+        // read — `FileReader` rejects with `NotReadableError`, `fetch(blob:)` fails — in an
+        // ephemeral and in a persistent context alike, and reads again once back online.
+        // Chromium reads them offline, as a real browser does. That spec attaches its photo
+        // off-network, so the capture cannot even be read, and the form reports a failed upload.
+        // A second trait stacks on it: these contexts are non-persistent, and IndexedDB refuses
+        // Blob/File values there ("Error preparing Blob/File data to be stored in object store").
+        // Re-admit it only once a WebKit run reads a File offline — and re-measure the store.
+        name: "webkit",
+        testMatch: ["e2e/38-editor-line-edit.spec.js", "e2e/43-editor-polygon-edit.spec.js"],
+        testIgnore: ["**/.claude/**"],
+        use: { ...devices["Desktop Safari"], deviceScaleFactor: 1, launchOptions: {} },
+    },
+    {
+        // WebKit with a finger — same bounds and same override as `webkit` above.
+        //
+        // ⚠️ Desktop Safari's user agent, NOT an iPhone preset: an iOS user agent opens the
+        // PWA install banner, a bottom sheet over exactly what these specs measure. The
+        // phone is the viewport, the touch input and `isMobile`, as in `chromium-touch`.
+        //
+        // ⚠️ `e2e/33-measure-drag.touch.spec.js` cannot join: its drags go through CDP
+        // (`e2e/helpers/touch.js`), which WebKit does not have.
+        name: "webkit-touch",
+        testMatch: ["e2e/42-form-drawer-keyboard.touch.spec.js"],
+        testIgnore: ["**/.claude/**"],
+        use: {
+            ...devices["Desktop Safari"],
+            viewport: { width: 390, height: 844 },
+            hasTouch: true,
+            isMobile: true,
+            deviceScaleFactor: 1,
+            launchOptions: {},
+        },
+    },
+];
+
 export default defineConfig({
     // Deploy variants only (e2e/)
     testDir: ".",
@@ -161,58 +231,8 @@ export default defineConfig({
                 deviceScaleFactor: 1,
             },
         },
-        {
-            // WebKit — the engine behind every iOS browser, and one no spec had ever run: the
-            // mobile verdicts of the suite were deductions nothing in the repository could
-            // confirm.
-            //
-            // ⚠️ BOUNDED, like `chromium-touch`: `testMatch` NAMES the specs proven on this
-            // engine. A spec joins after it has been seen green here, never by pattern — the suite
-            // was written against Chromium, and a first WebKit run is a measurement, not a gate.
-            //
-            // 🛑 `launchOptions: {}` IS REQUIRED. The top-level `use.launchOptions` carries
-            // Chromium-only flags, and Playwright merges `use` key by key: without this override
-            // WebKit would be handed SwiftShader and `--host-resolver-rules`.
-            //
-            // ⚠️ Under `E2E_TARGET=nginx` WebKit resolves the vhosts through the system resolver.
-            // `demo.` and `demo.full.geoleaf.local.test` resolve on the workstation;
-            // `demo.coverage.` does not — never admit a spec that targets `coverage`.
-            //
-            // 🛑 `e2e/39-editor-photo-token.spec.js` IS OUT, and not for a product reason. Measured
-            // on 2026-09-12: under `context.setOffline(true)` this WebKit fails EVERY local Blob/File
-            // read — `FileReader` rejects with `NotReadableError`, `fetch(blob:)` fails — in an
-            // ephemeral and in a persistent context alike, and reads again once back online.
-            // Chromium reads them offline, as a real browser does. That spec attaches its photo
-            // off-network, so the capture cannot even be read, and the form reports a failed upload.
-            // A second trait stacks on it: these contexts are non-persistent, and IndexedDB refuses
-            // Blob/File values there ("Error preparing Blob/File data to be stored in object store").
-            // Re-admit it only once a WebKit run reads a File offline — and re-measure the store.
-            name: "webkit",
-            testMatch: ["e2e/38-editor-line-edit.spec.js", "e2e/43-editor-polygon-edit.spec.js"],
-            testIgnore: ["**/.claude/**"],
-            use: { ...devices["Desktop Safari"], deviceScaleFactor: 1, launchOptions: {} },
-        },
-        {
-            // WebKit with a finger — same bounds and same override as `webkit` above.
-            //
-            // ⚠️ Desktop Safari's user agent, NOT an iPhone preset: an iOS user agent opens the
-            // PWA install banner, a bottom sheet over exactly what these specs measure. The
-            // phone is the viewport, the touch input and `isMobile`, as in `chromium-touch`.
-            //
-            // ⚠️ `e2e/33-measure-drag.touch.spec.js` cannot join: its drags go through CDP
-            // (`e2e/helpers/touch.js`), which WebKit does not have.
-            name: "webkit-touch",
-            testMatch: ["e2e/42-form-drawer-keyboard.touch.spec.js"],
-            testIgnore: ["**/.claude/**"],
-            use: {
-                ...devices["Desktop Safari"],
-                viewport: { width: 390, height: 844 },
-                hasTouch: true,
-                isMobile: true,
-                deviceScaleFactor: 1,
-                launchOptions: {},
-            },
-        },
+        // WebKit only where it can load the page — see `WEBKIT_PROJECTS`.
+        ...(isNginxTarget ? WEBKIT_PROJECTS : []),
     ],
 
     // Auto-start servers, one per deploy variant under test (5.5 — 3, not 4):
