@@ -16,6 +16,6 @@
         "rollup-plugin-postcss": "^4.0.2",
         "tsx": "^4.23.13",
         "vite": "^8.2.2",
-        "vitest": "^4.1.8"
+        "vitest": "^5.0.0"
     }
 }
