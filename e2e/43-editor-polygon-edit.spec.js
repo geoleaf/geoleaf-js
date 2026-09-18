@@ -35,8 +35,14 @@ import { baseURL } from "./helpers/base-url.js";
 import { readStore, GEOLEAF_DB } from "./helpers/idb.js";
 import { goOffline } from "./helpers/offline.js";
 import { armEditor } from "./helpers/editor.js";
+import { serveBasemapTilesLocally } from "./helpers/basemap.js";
 
 test.use({ baseURL: baseURL("full") });
+
+// The basemap is not this spec's subject: its third-party latency must not decide it.
+test.beforeEach(async ({ context }) => {
+    await serveBasemapTilesLocally(context);
+});
 
 /** The layer the substitute polygon takes the place of — loaded at boot, filled, polygonal. */
 const LAYER = "aires_protegees_nationales_sib";

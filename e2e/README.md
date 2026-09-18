@@ -184,6 +184,15 @@ de navigation hors-ligne recevait seize appels réseau là où il en attendait u
 depuis. La leçon survit : **reproduire un instable sous `taskset -c 0,1`** avant de le déclarer
 irreproductible.
 
+🛑 **Une spec dont le sujet n'est pas le fond de carte en sert les tuiles localement** —
+`serveBasemapTilesLocally(context)` ([`helpers/basemap.js`](helpers/basemap.js)), dans un
+`beforeEach` déclaré AVANT toute navigation. Le fond par défaut du profil de démonstration vient
+d'un serveur de tuiles tiers ; quand il ralentit, le premier rendu attend, et Terra Draw ne pose
+pas ses couches dans les 20 s que lui laisse l'éditeur. Mesuré le 18/09/2026, sous Chromium comme
+sous WebKit : rouge avec des tuiles à 25 s, vert avec les mêmes tuiles servies localement. Les
+huit specs qui arment l'éditeur l'appellent. Le relief (`terrain.demUrl`) reste au réseau : une
+fausse altitude déplacerait ce que les specs cliquent.
+
 ## Débogage
 
 ```bash

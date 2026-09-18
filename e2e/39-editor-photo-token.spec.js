@@ -22,8 +22,14 @@ import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
 import { layerConfigPath } from "./helpers/profiles.js";
 import { readStore, GEOLEAF_DB } from "./helpers/idb.js";
+import { serveBasemapTilesLocally } from "./helpers/basemap.js";
 
 test.use({ baseURL: baseURL("full") });
+
+// The basemap is not this spec's subject: its third-party latency must not decide it.
+test.beforeEach(async ({ context }) => {
+    await serveBasemapTilesLocally(context);
+});
 
 /** A one-pixel PNG, so the field's MIME whitelist and size guard both accept it. */
 const PNG_1PX = Buffer.from(

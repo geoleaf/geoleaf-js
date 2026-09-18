@@ -39,8 +39,14 @@ import { baseURL } from "./helpers/base-url.js";
 import { readStore, GEOLEAF_DB } from "./helpers/idb.js";
 import { goOffline } from "./helpers/offline.js";
 import { armEditor } from "./helpers/editor.js";
+import { serveBasemapTilesLocally } from "./helpers/basemap.js";
 
 test.use({ baseURL: baseURL("full") });
+
+// The basemap is not this spec's subject: its third-party latency must not decide it.
+test.beforeEach(async ({ context }) => {
+    await serveBasemapTilesLocally(context);
+});
 
 /** Identity the substitute line carries — in `properties` ONLY, like every real line layer. */
 const LINE_ID = "cable-7";
