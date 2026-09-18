@@ -44,7 +44,7 @@
 import { validateConfig, ConfigError } from "./config.js";
 import type { ConnectorConfig } from "./config.js";
 import { TokenStore } from "./token-store.js";
-import type { RefreshOutcome, SessionState } from "./token-store.js";
+import type { RefreshFn, RefreshOutcome, SessionState } from "./token-store.js";
 import {
     install as installFetchInterceptor,
     uninstall as uninstallFetchInterceptor,
@@ -62,10 +62,10 @@ import { installCredentialButton, uninstallCredentialButton } from "./credential
 /**
  * A configured connector — the object an integrator receives from {@link createConnector}.
  *
- * It reads the token of ITS `baseUrl`. ⚠️ What it does not own is the renewal: the token store
- * keeps ONE renewal delegate for the page, whatever the API. An instance built with
- * `auth.endpoint` installs its delegate in place of the one already there — the `configure()`
- * singleton's included — and every session of the page is then renewed against its endpoint.
+ * It reads the token of ITS `baseUrl` and, with `auth.endpoint`, renews it against ITS endpoint.
+ * It installs nothing the page shares — no fetch interception, no worker hook, no tile bridge, no renewal
+ * delegate — so the `configure()` singleton's renewal is none of its business, and its
+ * `destroy()` cannot end a session.
  */
 export interface ConnectorInstance {
     /** Synchronous token read from RAM cache. Returns null if not loaded yet. */
@@ -73,11 +73,8 @@ export interface ConnectorInstance {
     /** Async token read (IDB → RAM cache). Returns null if not authenticated. */
     getTokenAsync(): Promise<string | null>;
     /**
-     * Deactivates this instance: its token reads return `null` from then on.
-     *
-     * ⚠️ It also removes the page's renewal delegate, whoever installed it. Until the next
-     * `configure()`, a 401 in `auth.endpoint` mode finds nothing to renew the session with, and
-     * ends it. It touches neither `window.fetch` nor the stored tokens.
+     * Deactivates this instance: its token reads return `null` from then on. It touches nothing
+     * else — neither `window.fetch`, nor the stored tokens, nor the page's renewal.
      */
     destroy(): void;
 }
@@ -141,16 +138,17 @@ function _wireGuidedReconnect(config: ConnectorConfig): void {
     document.addEventListener("geoleaf:connector:auth-error", listener);
 }
 
-// ─── Shared refresh-delegate wiring ──────────────────────────────────────────
+// ─── The renewal of a configuration ──────────────────────────────────────────
 
 /**
- * Wires the TokenStore refresh delegate for a config with an auth endpoint.
- * No-op when no auth.endpoint is set. Shared by createConnector() and the
- * global singleton _configure() so the refresh logic lives in one place.
+ * The renewal of a configuration's session, or `null` without `auth.endpoint`.
+ *
+ * Built for `configure()`, which installs it as the PAGE's, and for each `createConnector()`
+ * instance, which keeps it to itself — one body, so the renewal logic lives in one place.
  */
-function _wireRefreshDelegate(config: ConnectorConfig): void {
-    if (!config.auth?.endpoint) return;
-    TokenStore._setRefreshFn(async (baseUrl: string): Promise<RefreshOutcome> => {
+function _renewalFor(config: ConnectorConfig): RefreshFn | null {
+    if (!config.auth?.endpoint) return null;
+    return async (baseUrl: string): Promise<RefreshOutcome> => {
         // 🛑 THE RAW RECORD, NOT `getTokenSync`. The whole point of a refresh is to
         // trade an EXPIRED token for a fresh one — and `getTokenSync` evicts an expired
         // entry and returns `null`, so the delegate gave up before reaching the network
@@ -176,24 +174,26 @@ function _wireRefreshDelegate(config: ConnectorConfig): void {
             );
         }
         return { verdict: "renewed", token: result.token };
-    });
+    };
 }
 
 // ─── createConnector — ESM named export ──────────────────────────────────────
 
 /**
  * Creates a ConnectorInstance from a validated config, outside the `GeoLeaf.Connector`
- * singleton: it installs no fetch interception, no worker hook and no tile bridge.
+ * singleton: it installs no fetch interception, no worker hook, no tile bridge and no renewal
+ * delegate — its reads renew against its own `auth.endpoint` — and never opens the login
+ * window, `auth.ui` included. Intended for advanced integrators.
  *
- * ⚠️ With `auth.endpoint`, it installs its renewal delegate in place of the page's one — see
- * {@link ConnectorInstance}. Intended for advanced integrators.
+ * 🛑 An instance used to install its renewal in place of the PAGE's, and its `destroy()` to
+ * remove the page's whoever had installed it: the singleton's next 401 found nothing to renew
+ * with, and ended a session no server had refused. The page's renewal belongs to `configure()`.
  */
 export function createConnector(config: ConnectorConfig): ConnectorInstance {
     validateConfig(config);
     let _active = true;
-
-    // Wire refresh delegate if auth.endpoint is configured
-    _wireRefreshDelegate(config);
+    // Its own renewal, passed to its reads — `null` would mean none, never the page's.
+    const renew = _renewalFor(config);
 
     return {
         getTokenSync(): string | null {
@@ -212,12 +212,11 @@ export function createConnector(config: ConnectorConfig): ConnectorInstance {
             if (config.getToken) {
                 return config.getToken();
             }
-            return TokenStore.getTokenAsync(config.baseUrl);
+            return TokenStore.getTokenAsync(config.baseUrl, { renew });
         },
 
         destroy(): void {
             _active = false;
-            TokenStore._setRefreshFn(null);
         },
     };
 }
@@ -226,7 +225,8 @@ export function createConnector(config: ConnectorConfig): ConnectorInstance {
 
 /**
  * Initializes the Connector singleton.
- * Installs window.fetch monkey-patch and Worker headers hook.
+ * Installs window.fetch monkey-patch, Worker headers hook and the page's renewal — none without
+ * `auth.endpoint`; it alone installs and removes that one.
  * If auth.ui is true and no session is stored (or it was refused), shows the login modal.
  */
 export async function configure(config: ConnectorConfig): Promise<void> {
@@ -248,8 +248,9 @@ export async function configure(config: ConnectorConfig): Promise<void> {
 
     // ⚠️ THE DELEGATE COMES FIRST. The warm-up that read the store used to run before it was
     // wired, so an expired token could not be renewed by it; the session is now read ONCE,
-    // with the renewal possible from that very read.
-    if (config.auth?.endpoint) _wireRefreshDelegate(config);
+    // with the renewal possible from that very read. ⚠️ SET ON EVERY CALL, `null` without
+    // `auth.endpoint`: the page's renewal is this function's alone to install and to remove.
+    TokenStore._setRefreshFn(_renewalFor(config));
 
     _wireGuidedReconnect(config);
     // The captures a dead session set aside come back when the operator does — the core

@@ -55,11 +55,9 @@ flowchart TD
     B -->|valide| R0["disarmRenewalRetry()\nla relance de la session précédente"]
     R0 --> R{"une instance\nexiste déjà ?"}
     R -->|oui| R2["uninstallCredentialButton()\ndestroy() + uninstallFetchInterceptor()"]
-    R -->|non| C{"auth.endpoint\nprésent ?"}
-    R2 --> C
-    C -->|oui| D["délégué de refresh"]
-    C -->|non| W["reconnexion guidée\n+ reprise de la file armées"]
-    D --> W
+    R -->|non| D["délégué de renouvellement de la page\nposé — null sans auth.endpoint"]
+    R2 --> D
+    D --> W["reconnexion guidée\n+ reprise de la file armées"]
     W --> S{"auth.endpoint ?"}
     S -->|oui| S2["TokenStore.resolveSession()\nwarm du cache + ce qu'est la session"]
     S -->|non| G["installFetchInterceptor(config)\n+ hook worker-headers"]
@@ -79,7 +77,9 @@ Quatre étapes sont faciles à manquer en lisant le code de haut en bas :
 
 - **`configure()` est ré-entrant.** Un second appel démonte l'instance précédente avant tout le
   reste — bouton, `destroy()`, interception `fetch`. Sans quoi deux monkey-patches se
-  superposeraient sur `window.fetch`.
+  superposeraient sur `window.fetch`. Puis il pose le délégué de renouvellement de la page, `null`
+  sans `auth.endpoint` : c'est `configure()` seul qui le pose et le retire, jamais le `destroy()`
+  d'une instance — qui renouvelle ses propres lectures par sa propre fonction.
 - **Le hook worker.** L'interception pose aussi `__GEOLEAF_WORKER_HEADERS_HOOK__` sur le global :
   un Worker n'hérite pas du `window.fetch` patché, il doit demander ses en-têtes. En `getToken`, il
   rend le jeton de l'hôte — une promesse seulement à un cœur qui l'annonce (`acceptsPromise`).

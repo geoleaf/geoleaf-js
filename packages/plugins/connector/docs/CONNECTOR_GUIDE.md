@@ -178,11 +178,12 @@ const token = await conn.getTokenAsync();
 conn.destroy(); // Neutralise les lectures de jeton de l'instance
 ```
 
-L'instance n'installe ni interception de `fetch`, ni crochet d'ouvrier, ni pont de tuiles. ⚠️ Elle
-ne possède pas le renouvellement : le magasin de jetons tient **un** délégué pour toute la page.
-Avec `auth.endpoint`, `createConnector()` installe le sien à la place de celui de `configure()`, et
-`destroy()` le retire quel qu'en soit l'auteur — jusqu'au `configure()` suivant, un 401 en mode
-`auth.endpoint` met alors fin à la session.
+L'instance n'installe ni interception de `fetch`, ni crochet d'ouvrier, ni pont de tuiles, ni
+délégué de renouvellement, et n'ouvre jamais la fenêtre de connexion, `auth.ui` compris. Avec
+`auth.endpoint`, elle renouvelle ses propres lectures auprès de **son** point de renouvellement, et
+`destroy()` ne neutralise que ses lectures de jeton : la session du singleton, son renouvellement
+compris, n'est jamais la sienne. ⚠️ Une session reste celle d'une `baseUrl` : une instance et
+`configure()` sur la même API partagent le jeton stocké.
 
 ---
 

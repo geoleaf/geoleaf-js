@@ -55,11 +55,11 @@ CallSignature | @geoleaf-plugins/connector.auth-client.AuthClient.__type.login.l
 CallSignature | @geoleaf-plugins/connector.auth-client.AuthClient.__type.refresh.refresh | doc:a332acb5c907
 CallSignature | @geoleaf-plugins/connector.config.ConnectorConfig.getToken.__type.__type | doc:9742b2d89e05
 CallSignature | @geoleaf-plugins/connector.config.validateConfig.validateConfig | doc:4cc5f2b000e3
-CallSignature | @geoleaf-plugins/connector.connector-api.ConnectorInstance.destroy.destroy | doc:d05ba02d5b04
+CallSignature | @geoleaf-plugins/connector.connector-api.ConnectorInstance.destroy.destroy | doc:34bf1b8b3212
 CallSignature | @geoleaf-plugins/connector.connector-api.ConnectorInstance.getTokenAsync.getTokenAsync | doc:c18e504f5d2c
 CallSignature | @geoleaf-plugins/connector.connector-api.ConnectorInstance.getTokenSync.getTokenSync | doc:974ec04fa9c3
-CallSignature | @geoleaf-plugins/connector.connector-api.configure.configure | doc:b020247e9bed
-CallSignature | @geoleaf-plugins/connector.connector-api.createConnector.createConnector | doc:7490b79963c4
+CallSignature | @geoleaf-plugins/connector.connector-api.configure.configure | doc:4c5fea5b599d
+CallSignature | @geoleaf-plugins/connector.connector-api.createConnector.createConnector | doc:45436161a130
 CallSignature | @geoleaf-plugins/connector.connector-api.isConfigured.isConfigured | doc:12f3aa6e97f7
 CallSignature | @geoleaf-plugins/connector.connector-api.logout.logout | doc:4368b5ca361d
 CallSignature | @geoleaf-plugins/connector.connector-api.openLoginModal.openLoginModal | doc:52bb47b753bb
@@ -78,11 +78,12 @@ CallSignature | @geoleaf-plugins/connector.renewal-retry.armRenewalRetry.armRene
 CallSignature | @geoleaf-plugins/connector.renewal-retry.disarmRenewalRetry.disarmRenewalRetry | doc:658beb719d5e
 CallSignature | @geoleaf-plugins/connector.session-resume.armSessionResume.armSessionResume | doc:2824a4c8a4c6
 CallSignature | @geoleaf-plugins/connector.session-resume.disarmSessionResume.disarmSessionResume | doc:45f6dea94776
-CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type._setRefreshFn._setRefreshFn | doc:d0415c831867
+CallSignature | @geoleaf-plugins/connector.token-store.RefreshFn.__type.__type | doc:-
+CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type._setRefreshFn._setRefreshFn | doc:3d58e7654f8d
 CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type.clear.__type.__type | doc:778f8a39a011
 CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type.declareSessionDead.__type.__type | doc:0a4170b239a7
 CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type.forceRefresh.__type.__type | doc:1c3d093c22e0
-CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type.getTokenAsync.__type.__type | doc:69f343317093
+CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type.getTokenAsync.__type.__type | doc:dd065708fc53
 CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type.getTokenSync.__type.__type | doc:7d2ab3b0148f
 CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type.inflightRefresh.__type.__type | doc:9ad63442feae
 CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type.load.__type.__type | doc:f4d13ce2da04
@@ -5097,7 +5098,7 @@ Interface | @geoleaf-plugins/cog.types.CogLoadOptions | doc:2681ed81e99e
 Interface | @geoleaf-plugins/cog.types.CogRasterData | doc:d7cb12390b49
 Interface | @geoleaf-plugins/cog.types.MapLike | doc:43b90041d8e2
 Interface | @geoleaf-plugins/connector.config.ConnectorConfig | doc:7a7c9b254817
-Interface | @geoleaf-plugins/connector.connector-api.ConnectorInstance | doc:b36b3c293b6e
+Interface | @geoleaf-plugins/connector.connector-api.ConnectorInstance | doc:0e7429bc8b30
 Interface | @geoleaf-plugins/editor.add-form/placement-form.AddFormApi | doc:3071a633ec2a
 Interface | @geoleaf-plugins/editor.add-form/placement-form.AddFormDeps | doc:1ab700011a7d
 Interface | @geoleaf-plugins/editor.add-form/placement-form.LatLng | doc:8dbdbdfb724a
@@ -8248,6 +8249,7 @@ Parameter | @geoleaf-plugins/connector.host-token.pullHostToken.pullHostToken.ge
 Parameter | @geoleaf-plugins/connector.login-ui.showLoginModal.showLoginModal.config | doc:-
 Parameter | @geoleaf-plugins/connector.maplibre-bridge.installMapLibreBridge.installMapLibreBridge.config | doc:2ca0b8aba98a
 Parameter | @geoleaf-plugins/connector.renewal-retry.armRenewalRetry.armRenewalRetry.baseUrl | doc:9d92c5ed97d2
+Parameter | @geoleaf-plugins/connector.token-store.RefreshFn.__type.__type.baseUrl | doc:-
 Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type._setRefreshFn._setRefreshFn.fn | doc:-
 Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.clear.__type.__type.baseUrl | doc:-
 Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.declareSessionDead.__type.__type.baseUrl | doc:f22ece98bcb8
@@ -8255,11 +8257,13 @@ Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.declareSess
 Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.declareSessionDead.__type.__type.presented | doc:aa4f71fd5d88
 Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.forceRefresh.__type.__type.baseUrl | doc:3229a09a73a6
 Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.forceRefresh.__type.__type.options | doc:94a1aa60234a
-Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.getTokenAsync.__type.__type.baseUrl | doc:-
+Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.getTokenAsync.__type.__type.baseUrl | doc:f22ece98bcb8
+Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.getTokenAsync.__type.__type.options | doc:6f79b8b3acc0
 Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.getTokenSync.__type.__type.baseUrl | doc:-
 Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.inflightRefresh.__type.__type.baseUrl | doc:-
 Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.load.__type.__type.baseUrl | doc:-
 Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.resolveSession.__type.__type.baseUrl | doc:f22ece98bcb8
+Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.resolveSession.__type.__type.options | doc:6f79b8b3acc0
 Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.save.__type.__type.baseUrl | doc:-
 Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.save.__type.__type.expiresAt | doc:-
 Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.save.__type.__type.token | doc:-
@@ -17580,6 +17584,7 @@ Reference | GeoLeaf Core API.utils/validators.ValidatorOptions | doc:-
 Reference | GeoLeaf Core API.utils/validators.Validators | doc:-
 Reference | GeoLeaf Core API.utils/validators/style-validator.StyleValidationError | doc:-
 Reference | GeoLeaf Core API.utils/validators/style-validator.StyleValidationResult | doc:-
+TypeAlias | @geoleaf-plugins/connector.token-store.RefreshFn | doc:e262e92d7e77
 TypeAlias | @geoleaf-plugins/connector.token-store.RefreshOutcome | doc:a401865f7151
 TypeAlias | @geoleaf-plugins/connector.token-store.SessionState | doc:fc501cf29592
 TypeAlias | @geoleaf-plugins/editor.editor-events.EditorEventName | doc:78c431ebdc0f
@@ -17726,6 +17731,7 @@ TypeLiteral | @geoleaf-plugins/connector.lang/lang-es.default.__type | doc:-
 TypeLiteral | @geoleaf-plugins/connector.lang/lang-fr.default.__type | doc:-
 TypeLiteral | @geoleaf-plugins/connector.lang/lang-it.default.__type | doc:-
 TypeLiteral | @geoleaf-plugins/connector.lang/lang-pt.default.__type | doc:-
+TypeLiteral | @geoleaf-plugins/connector.token-store.RefreshFn.__type | doc:-
 TypeLiteral | @geoleaf-plugins/connector.token-store.TokenStore.__type | doc:-
 TypeLiteral | @geoleaf-plugins/connector.token-store.TokenStore.__type.clear.__type | doc:-
 TypeLiteral | @geoleaf-plugins/connector.token-store.TokenStore.__type.declareSessionDead.__type | doc:-

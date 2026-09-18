@@ -109,6 +109,16 @@ _Nothing yet._
   for `Storage.whenReady()`, lets the core's own arming pass end, then requeues and drains. One
   wait per page; a core without `whenReady` gets a single attempt, as before.
 
+- **`@geoleaf-plugins/connector` 1.3.1 — an instance of `createConnector()` no longer touches the
+  page's renewal.** The token store kept one renewal delegate for the page. An instance built with
+  `auth.endpoint` installed its own in place of the `configure()` singleton's — the singleton's
+  session was then renewed against the instance's endpoint — and its `destroy()` removed the page's
+  delegate whoever had installed it: the singleton's next `401` found nothing to renew with, and
+  the session ended, `auth-error` included, with no server having refused it. An instance now
+  renews its own reads against its own `auth.endpoint` and installs nothing the page shares;
+  `destroy()` only deactivates its reads. Only `configure()` installs and removes the page's
+  renewal.
+
 - **`@geoleaf-plugins/print` 1.3.1 — a printed map asks for its tiles with the live map's
   headers.** The off-screen map the print renders was always created without a request
   transform: the plugin read a field of MapLibre's request manager that MapLibre does not write,

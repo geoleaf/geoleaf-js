@@ -103,11 +103,11 @@ const token = await conn.getTokenAsync();
 conn.destroy();
 ```
 
-The instance installs no fetch interception, worker hook or tile bridge, and `destroy()` only
-deactivates its token reads. ⚠️ It does not own the renewal: the token store keeps **one** renewal
-delegate per page. With `auth.endpoint`, `createConnector()` installs its delegate in place of the
-one `configure()` installed, and `destroy()` removes it, whoever installed it — until the next
-`configure()`, a 401 in `auth.endpoint` mode then ends the session.
+The instance installs no fetch interception, worker hook, tile bridge or renewal delegate, and never
+opens the login window, `auth.ui` included. With `auth.endpoint`, it renews its own reads against
+**its** endpoint, and `destroy()` only deactivates its token reads: the `configure()` singleton's
+session, renewal included, is never its business. ⚠️ A session is still a `baseUrl`'s: an instance
+and `configure()` on the same API share the stored token.
 
 ---
 

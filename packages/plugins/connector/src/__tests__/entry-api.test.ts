@@ -149,16 +149,22 @@ describe("createConnector()", () => {
         expect(await inst.getTokenAsync()).toBe("store-token");
     });
 
-    it("destroy() calls TokenStore._setRefreshFn(null)", () => {
+    it("🛑 destroy() ne touche pas au renouvellement de la page", () => {
+        // It used to remove the page's delegate, whoever had installed it: the singleton's next
+        // 401 found nothing to renew with, and ended the session. The consequence is proven on
+        // the real store and interceptor in `instance-renewal.test.ts`; this pins the seam.
         const inst = createConnector(AUTH_CONFIG);
         inst.destroy();
-        expect(TokenStore["_setRefreshFn"]).toHaveBeenCalledWith(null);
+        expect(TokenStore["_setRefreshFn"]).not.toHaveBeenCalled();
     });
 
-    it("wires a refresh delegate when auth.endpoint is configured", () => {
-        createConnector(AUTH_CONFIG);
-        const calls = (TokenStore["_setRefreshFn"] as ReturnType<typeof vi.fn>).mock.calls;
-        expect(calls.some((c: unknown[]) => typeof c[0] === "function")).toBe(true);
+    it("avec auth.endpoint, ses lectures passent SA fonction de renouvellement, sans poser celle de la page", async () => {
+        const inst = createConnector(AUTH_CONFIG);
+        await inst.getTokenAsync();
+        expect(TokenStore["_setRefreshFn"]).not.toHaveBeenCalled();
+        expect(TokenStore["getTokenAsync"]).toHaveBeenCalledWith(AUTH_CONFIG.baseUrl, {
+            renew: expect.any(Function),
+        });
     });
 
     it("🛑 the delegate reads the RAW token, so an EXPIRED one can still be refreshed", async () => {
@@ -176,13 +182,12 @@ describe("createConnector()", () => {
         const { AuthClient } = (await import("../auth-client.js")) as unknown as {
             AuthClient: Record<string, ReturnType<typeof vi.fn>>;
         };
-        createConnector(AUTH_CONFIG);
-        const delegate = (TokenStore["_setRefreshFn"] as ReturnType<typeof vi.fn>).mock.calls
-            .map((c: unknown[]) => c[0])
-            .filter((f: unknown): f is (b: string) => Promise<unknown> => typeof f === "function")
-            .pop();
-        expect(delegate).toBeTypeOf("function");
-        await delegate!(AUTH_CONFIG.baseUrl);
+        await createConnector(AUTH_CONFIG).getTokenAsync();
+        const options = (TokenStore["getTokenAsync"] as ReturnType<typeof vi.fn>).mock.calls.at(
+            -1
+        )?.[1] as { renew?: (b: string) => Promise<unknown> } | undefined;
+        expect(options?.renew).toBeTypeOf("function");
+        await options!.renew!(AUTH_CONFIG.baseUrl);
 
         expect(AuthClient["refresh"]).toHaveBeenCalledWith(
             AUTH_CONFIG.auth!.endpoint,
@@ -192,9 +197,7 @@ describe("createConnector()", () => {
 
     it("does NOT wire a refresh delegate when using getToken (no auth.endpoint)", () => {
         createConnector(GETTOKEN_CONFIG);
-        const calls = (TokenStore["_setRefreshFn"] as ReturnType<typeof vi.fn>).mock.calls;
-        // Should not have been called with a function (only null from prior tests if any)
-        expect(calls.some((c: unknown[]) => typeof c[0] === "function")).toBe(false);
+        expect(TokenStore["_setRefreshFn"]).not.toHaveBeenCalled();
     });
 });
 

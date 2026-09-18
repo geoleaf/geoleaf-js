@@ -262,6 +262,36 @@ describe("TokenStore", () => {
             });
         });
 
+        it("🛑 une lecture qui passe sa fonction de renouvellement l'emploie, pas celle de la page", async () => {
+            // What an instance of `createConnector()` does: it renews ITS session against ITS
+            // endpoint, whatever the singleton installed for the page.
+            const page = vi.fn();
+            const own = vi.fn(async () => ({
+                verdict: "renewed" as const,
+                token: "own.token.sig",
+            }));
+            TokenStore._setRefreshFn(page);
+            idbMock._db.set(BASE_URL, { baseUrl: BASE_URL, token: TOKEN, expiresAt: EXPIRES_PAST });
+
+            expect(await TokenStore.resolveSession(BASE_URL, { renew: own })).toEqual({
+                token: "own.token.sig",
+            });
+            expect(own).toHaveBeenCalledWith(BASE_URL);
+            expect(page).not.toHaveBeenCalled();
+        });
+
+        it("🛑 `renew: null` ne renouvelle rien — jamais par la fonction de la page", async () => {
+            const page = vi.fn();
+            TokenStore._setRefreshFn(page);
+            idbMock._db.set(BASE_URL, { baseUrl: BASE_URL, token: TOKEN, expiresAt: EXPIRES_PAST });
+
+            expect(await TokenStore.resolveSession(BASE_URL, { renew: null })).toEqual({
+                token: null,
+                verdict: "refused",
+            });
+            expect(page).not.toHaveBeenCalled();
+        });
+
         it("un délégué qui rend une forme inconnue conclut « indisponible »", async () => {
             TokenStore._setRefreshFn((async () => "new.token.sig") as never);
             idbMock._db.set(BASE_URL, { baseUrl: BASE_URL, token: TOKEN, expiresAt: EXPIRES_PAST });

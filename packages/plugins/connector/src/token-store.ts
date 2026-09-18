@@ -43,8 +43,23 @@ export type SessionState =
     | { readonly token: string }
     | { readonly token: null; readonly verdict: "absent" | "refused" | "unavailable" };
 
-/** Refresh delegate — set by `connector-api.ts` when `auth.endpoint` is configured. */
-type RefreshFn = (baseUrl: string) => Promise<RefreshOutcome>;
+/**
+ * A renewal: trades the session stored for `baseUrl` for a new one, and says what came of it.
+ *
+ * The PAGE's renewal is installed by `configure()` alone (`_setRefreshFn`) — the singleton's 401
+ * path and its relaunch use it. An instance of `createConnector()` passes its own to the reads
+ * it makes (the `renew` option of `resolveSession`), and never touches the page's.
+ */
+export type RefreshFn = (baseUrl: string) => Promise<RefreshOutcome>;
+
+/** How a read of the session renews it. */
+interface SessionOptions {
+    /**
+     * The renewal to use instead of the page's: what an instance of `createConnector()` passes.
+     * `null` means none — never the page's. Left out, the page's is used.
+     */
+    readonly renew?: RefreshFn | null;
+}
 
 const UNAVAILABLE: RefreshOutcome = { verdict: "unavailable" };
 
@@ -275,15 +290,15 @@ function _reportOutage(baseUrl: string): void {
     );
 }
 
-async function _doRefresh(baseUrl: string): Promise<RefreshOutcome> {
-    if (!_refreshFn) {
+async function _doRefresh(baseUrl: string, renew: RefreshFn | null): Promise<RefreshOutcome> {
+    if (!renew) {
         // Nothing can renew this session. A stored token is then a refused one: the login
         // window must reopen, rather than a session nothing will ever bring back.
         const stored = await _storedToken(baseUrl);
         return stored ? { verdict: "refused", presented: stored } : { verdict: "absent" };
     }
     try {
-        return _asOutcome(await _refreshFn(baseUrl));
+        return _asOutcome(await renew(baseUrl));
     } catch (err) {
         // An exception proves nothing about the session — it is not an explicit refusal.
         console.warn("[GeoLeaf Connector] Renewal failed unexpectedly:", err);
@@ -294,14 +309,21 @@ async function _doRefresh(baseUrl: string): Promise<RefreshOutcome> {
 /**
  * Anti-concurrent refresh — callers join the in-flight promise; after an attempt that did not
  * conclude, no new one before the pause ends (see {@link _pausedUntil}).
+ *
+ * ⚠️ The in-flight promise is joined whoever started it: the session is the `baseUrl`'s, and a
+ * renewal of it concerns every reader of that session.
  */
-function _refreshToken(baseUrl: string, bypassPause = false): Promise<RefreshOutcome> {
+function _refreshToken(
+    baseUrl: string,
+    bypassPause = false,
+    renew: RefreshFn | null = _refreshFn
+): Promise<RefreshOutcome> {
     const inflight = _refreshPromise.get(baseUrl);
     if (inflight !== undefined) return inflight;
     if (!bypassPause && (_pausedUntil.get(baseUrl) ?? 0) > Date.now()) {
         return Promise.resolve(UNAVAILABLE);
     }
-    const p = _doRefresh(baseUrl)
+    const p = _doRefresh(baseUrl, renew)
         .then((outcome) => {
             if (outcome.verdict === "unavailable") {
                 _pausedUntil.set(baseUrl, Date.now() + EXCHANGE_TIMEOUT_MS);
@@ -337,15 +359,20 @@ function inflightRefresh(baseUrl: string): Promise<RefreshOutcome> | null {
  *  4. Nothing stored → `absent`
  *
  * @param baseUrl - The API the token authenticates against.
+ * @param options - `renew`: the renewal to use instead of the page's.
  * @returns The token, or why there is none.
  */
-async function resolveSession(baseUrl: string): Promise<SessionState> {
+async function resolveSession(
+    baseUrl: string,
+    options: SessionOptions = {}
+): Promise<SessionState> {
     const now = Date.now();
+    const renew = options.renew === undefined ? _refreshFn : options.renew;
 
     // 1. RAM cache — valid with >30s margin
     const cached = _cache.get(baseUrl);
     if (cached && cached.expiresAt > now + 30_000) {
-        if (cached.expiresAt - now < 300_000) void _refreshToken(baseUrl);
+        if (cached.expiresAt - now < 300_000) void _refreshToken(baseUrl, false, renew);
         return { token: cached.token };
     }
 
@@ -353,13 +380,13 @@ async function resolveSession(baseUrl: string): Promise<SessionState> {
     const record = await _idbGet(baseUrl);
     if (record && record.expiresAt > now + 30_000) {
         _cache.set(baseUrl, { token: record.token, expiresAt: record.expiresAt });
-        if (record.expiresAt - now < 300_000) void _refreshToken(baseUrl);
+        if (record.expiresAt - now < 300_000) void _refreshToken(baseUrl, false, renew);
         return { token: record.token };
     }
 
     // 3. Token expired or close to expiry — renew
     if (record || cached) {
-        const outcome = await _refreshToken(baseUrl);
+        const outcome = await _refreshToken(baseUrl, false, renew);
         switch (outcome.verdict) {
             case "renewed":
                 return { token: outcome.token };
@@ -385,9 +412,16 @@ async function resolveSession(baseUrl: string): Promise<SessionState> {
  * The token of {@link resolveSession}, for callers that only present it. ⚠️ Its `null` does not
  * say WHY — a caller that decides something from the absence of a token (`configure()`) reads
  * `resolveSession` instead.
+ *
+ * @param baseUrl - The API the token authenticates against.
+ * @param options - `renew`: the renewal to use instead of the page's.
+ * @returns The token, or `null`.
  */
-async function getTokenAsync(baseUrl: string): Promise<string | null> {
-    return (await resolveSession(baseUrl)).token;
+async function getTokenAsync(
+    baseUrl: string,
+    options: SessionOptions = {}
+): Promise<string | null> {
+    return (await resolveSession(baseUrl, options)).token;
 }
 
 /**
@@ -435,9 +469,11 @@ export const TokenStore = {
     inflightRefresh,
 
     /**
-     * Injects a refresh delegate.
-     * Called by `connector-api.ts` when auth.endpoint is configured.
-     * Pass null to disable refresh (e.g. when using getToken callback).
+     * Installs the PAGE's renewal — the one the singleton's 401 path and its relaunch use.
+     *
+     * Called by `configure()` alone, and on every call: `null` when the configuration has no
+     * `auth.endpoint`, so that a previous configuration's renewal does not outlive it. An
+     * instance of `createConnector()` never calls it: it passes its own renewal to its reads.
      */
     _setRefreshFn(fn: RefreshFn | null): void {
         _refreshFn = fn;
