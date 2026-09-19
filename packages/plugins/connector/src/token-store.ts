@@ -79,7 +79,8 @@ let _refreshFn: RefreshFn | null = null;
 const _refreshPromise = new Map<string, Promise<RefreshOutcome>>();
 
 /**
- * Until when no new renewal is attempted, after one that did not conclude.
+ * Until when no new renewal is attempted, after one that did not conclude — or after one whose
+ * token the server refused at once ({@link holdRenewals}).
  *
  * 🛑 **Deduplication only merges CONCURRENT attempts.** During an outage every request that met
  * a 401 started its own POST once the previous one had failed — a map pan meant dozens of them
@@ -280,6 +281,34 @@ function _asOutcome(value: unknown): RefreshOutcome {
         : UNAVAILABLE;
 }
 
+/**
+ * Holds the renewals of `baseUrl` for one exchange window: the server refused the token it had
+ * just issued.
+ *
+ * 🛑 **A SERVER THAT RENEWS AND REFUSES MADE THE QUEUE RESUME LOOP, AND NOTHING BOUNDED IT.** A
+ * signing key out of step between two nodes, an audience set wrong: every 401 renewed with
+ * success, `token-refreshed` resumed the queue, and the next 401 renewed again — as soon as the
+ * resume OPENED a pass instead of joining the running one, which a requeue slower than the replay
+ * of the refused request makes it do. Measured on the delivered bundle on 19/09/2026, with the
+ * requeue slowed by 50 ms: 142 to 147 renewals in ten seconds, until the page closed.
+ *
+ * A renewal whose token is refused at once is therefore treated as one that could not conclude:
+ * the session is kept, the queue waits, and the next renewal comes after the window — or at one
+ * of the relaunch's triggers, each a change of state. Storing a token ends the hold, as it ends an
+ * outage.
+ *
+ * @param baseUrl - The API whose server refused the token it had just renewed.
+ */
+function holdRenewals(baseUrl: string): void {
+    _pausedUntil.set(baseUrl, Date.now() + EXCHANGE_TIMEOUT_MS);
+    if (_outageReported.has(baseUrl)) return;
+    _outageReported.add(baseUrl);
+    console.warn(
+        "[GeoLeaf Connector] The server refused the token it had just renewed — the session is " +
+            "kept, and no renewal is tried again before the exchange window ends."
+    );
+}
+
 /** Reports an outage once per episode — the store never talks to the network, it only says so. */
 function _reportOutage(baseUrl: string): void {
     if (_outageReported.has(baseUrl)) return;
@@ -435,7 +464,8 @@ async function getTokenAsync(
  *
  * ⚠️ It goes through `_refreshToken`, never `_doRefresh`, so concurrent callers still
  * join the SAME in-flight promise — the anti-concurrency property must not be paid for
- * by the recovery path. The pause after an outage applies too, unless `bypassPause`.
+ * by the recovery path. The pause after an outage — or after a renewed token the server refused —
+ * applies too, unless `bypassPause`.
  *
  * @param baseUrl - The API this token authenticates against.
  * @param options - `bypassPause`: try now even within the pause — for a change of state.
@@ -467,6 +497,7 @@ export const TokenStore = {
     resolveSession,
     forceRefresh,
     inflightRefresh,
+    holdRenewals,
 
     /**
      * Installs the PAGE's renewal — the one the singleton's 401 path and its relaunch use.

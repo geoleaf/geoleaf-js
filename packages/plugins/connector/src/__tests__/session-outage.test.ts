@@ -33,6 +33,8 @@ interface Servers {
     renewals: number;
     /** When set, the renewal answers only once it settles — a renewal held in flight. */
     gate: Promise<void> | null;
+    /** The API refuses every token, the renewed one included — a server out of step with itself. */
+    refusesAll?: boolean;
 }
 
 /** The two fake servers: the renewal endpoint, and an API that accepts only the renewed token. */
@@ -59,7 +61,8 @@ function serve(state: Servers) {
             }
         }
         const authorization = new Headers(init?.headers).get("authorization");
-        return new Response("{}", { status: authorization === `Bearer ${RENEWED}` ? 200 : 401 });
+        const accepted = !state.refusesAll && authorization === `Bearer ${RENEWED}`;
+        return new Response("{}", { status: accepted ? 200 : 401 });
     });
 }
 
@@ -216,6 +219,68 @@ describe("une session sur un 401 — ce qui l'efface, et ce qui ne doit pas", ()
         vi.setSystemTime(Date.now() + 15_001);
         await fetch(`${BASE}/data/c.json`);
         expect(state.renewals).toBe(2);
+    });
+
+    it("🛑 un jeton refusé aussitôt renouvelé suspend le renouvellement une durée d'échange — la session est gardée", async () => {
+        // A server that renews, then refuses what it issued — a signing key out of step between
+        // two nodes, an audience set wrong. Every 401 renewed with success, and nothing bounded
+        // the next renewal.
+        vi.useFakeTimers({ toFake: ["Date"] });
+        await mount("renewed");
+        state.refusesAll = true;
+
+        expect((await fetch(`${BASE}/data/a.json`)).status).toBe(401);
+        expect(state.renewals).toBe(1);
+        expect((await fetch(`${BASE}/data/b.json`)).status).toBe(401);
+        expect(state.renewals).toBe(1);
+        expect((await store.load(BASE))?.token).toBe(RENEWED);
+        expect(events).not.toContain("geoleaf:connector:auth-error");
+
+        // The window over, one attempt again.
+        vi.setSystemTime(Date.now() + 15_001);
+        await fetch(`${BASE}/data/c.json`);
+        expect(state.renewals).toBe(2);
+    });
+
+    it("contre-épreuve : un jeton renouvelé que le serveur accepte ne suspend rien", async () => {
+        // Without it, a hold after ANY renewal would pass the two cases around it — and a server
+        // that retires the renewed token later would find the next renewal refused its turn.
+        await mount("renewed");
+        expect((await fetch(`${BASE}/data/a.json`)).status).toBe(200);
+
+        // Later, the server retires that token too: the next 401 renews at once.
+        state.refusesAll = true;
+        await fetch(`${BASE}/data/b.json`);
+        expect(state.renewals).toBe(2);
+    });
+
+    it("🛑 la reprise ne boucle pas sur un serveur qui renouvelle et refuse tout jeton", async () => {
+        // The race by construction: each resume OPENS a pass — what the core's drain does when
+        // the requeue outlasts the replay of the refused request. Every pass then renewed, and
+        // every renewal resumed the queue again. A pass yields a task first, as a real one waits
+        // on its database: a loop of microtasks alone would starve the suite before it failed.
+        let passes = 0;
+        (globalThis as { GeoLeaf?: unknown }).GeoLeaf = {
+            Storage: {
+                requeueAll: vi.fn(async () => ({ requeued: 1 })),
+                pushOutbox: vi.fn(async () => {
+                    passes += 1;
+                    await new Promise((resolve) => setTimeout(resolve, 0));
+                    await fetch(`${BASE}/data/pass-${passes}.json`);
+                    return { pushed: 0 };
+                }),
+            },
+        };
+        await mount("renewed");
+        state.refusesAll = true;
+
+        await fetch(`${BASE}/data/p.json`);
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        // THE WITNESS: the resume did open a pass, and that pass met a 401.
+        expect(passes).toBeGreaterThan(0);
+        // THE SUBJECT: one renewal — not one per pass.
+        expect(state.renewals).toBe(1);
     });
 
     it("une session gardée revient : token-refreshed, puis la file repart (requeueAll puis pushOutbox)", async () => {

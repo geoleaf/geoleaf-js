@@ -332,6 +332,7 @@ describe("mode jeton — un 401 tente le renouvellement AVANT d'effacer quoi que
                 order.push("declare");
                 return true;
             }),
+            holdRenewals: vi.fn(),
             getTokenAsync: vi.fn().mockResolvedValue(TOKEN),
             getTokenSync: vi.fn().mockReturnValue(TOKEN),
             load: vi.fn().mockResolvedValue({ token: TOKEN, expiresAt: Date.now() - 1000 }),
@@ -380,6 +381,19 @@ describe("mode jeton — un 401 tente le renouvellement AVANT d'effacer quoi que
 
         expect(response.status).toBe(200);
         expect(store["clear"]).not.toHaveBeenCalled();
+        expect(store["declareSessionDead"]).not.toHaveBeenCalled();
+        expect(store["holdRenewals"]).not.toHaveBeenCalled();
+    });
+
+    it("🛑 un jeton renouvelé que le serveur refuse aussitôt suspend le renouvellement, sans rien effacer", async () => {
+        await mount({ verdict: "renewed", token: "neuf.token.sig" }, async () =>
+            makeOkResponse(401)
+        );
+
+        const response = await globalThis.fetch(`${BASE_URL}/data.geojson`);
+
+        expect(response.status).toBe(401);
+        expect(store["holdRenewals"]).toHaveBeenCalledWith(BASE_URL);
         expect(store["declareSessionDead"]).not.toHaveBeenCalled();
     });
 

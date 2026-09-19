@@ -83,9 +83,10 @@ CallSignature | @geoleaf-plugins/connector.token-store.RefreshFn.__type.__type |
 CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type._setRefreshFn._setRefreshFn | doc:3d58e7654f8d
 CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type.clear.__type.__type | doc:778f8a39a011
 CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type.declareSessionDead.__type.__type | doc:0a4170b239a7
-CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type.forceRefresh.__type.__type | doc:1c3d093c22e0
+CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type.forceRefresh.__type.__type | doc:45f2eb6ef86a
 CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type.getTokenAsync.__type.__type | doc:dd065708fc53
 CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type.getTokenSync.__type.__type | doc:7d2ab3b0148f
+CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type.holdRenewals.__type.__type | doc:237d84644bf2
 CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type.inflightRefresh.__type.__type | doc:9ad63442feae
 CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type.load.__type.__type | doc:f4d13ce2da04
 CallSignature | @geoleaf-plugins/connector.token-store.TokenStore.__type.resolveSession.__type.__type | doc:a4ef48f9c407
@@ -8265,6 +8266,7 @@ Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.forceRefres
 Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.getTokenAsync.__type.__type.baseUrl | doc:f22ece98bcb8
 Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.getTokenAsync.__type.__type.options | doc:6f79b8b3acc0
 Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.getTokenSync.__type.__type.baseUrl | doc:-
+Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.holdRenewals.__type.__type.baseUrl | doc:d98da35ee0dd
 Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.inflightRefresh.__type.__type.baseUrl | doc:-
 Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.load.__type.__type.baseUrl | doc:-
 Parameter | @geoleaf-plugins/connector.token-store.TokenStore.__type.resolveSession.__type.__type.baseUrl | doc:f22ece98bcb8
@@ -12585,6 +12587,7 @@ Property | @geoleaf-plugins/connector.token-store.TokenStore.__type.forceRefresh
 Property | @geoleaf-plugins/connector.token-store.TokenStore.__type.forceRefresh.__type.__type.options.__type.bypassPause | doc:-
 Property | @geoleaf-plugins/connector.token-store.TokenStore.__type.getTokenAsync | doc:-
 Property | @geoleaf-plugins/connector.token-store.TokenStore.__type.getTokenSync | doc:-
+Property | @geoleaf-plugins/connector.token-store.TokenStore.__type.holdRenewals | doc:-
 Property | @geoleaf-plugins/connector.token-store.TokenStore.__type.inflightRefresh | doc:-
 Property | @geoleaf-plugins/connector.token-store.TokenStore.__type.load | doc:-
 Property | @geoleaf-plugins/connector.token-store.TokenStore.__type.resolveSession | doc:-
@@ -17744,6 +17747,7 @@ TypeLiteral | @geoleaf-plugins/connector.token-store.TokenStore.__type.forceRefr
 TypeLiteral | @geoleaf-plugins/connector.token-store.TokenStore.__type.forceRefresh.__type.__type.options.__type | doc:-
 TypeLiteral | @geoleaf-plugins/connector.token-store.TokenStore.__type.getTokenAsync.__type | doc:-
 TypeLiteral | @geoleaf-plugins/connector.token-store.TokenStore.__type.getTokenSync.__type | doc:-
+TypeLiteral | @geoleaf-plugins/connector.token-store.TokenStore.__type.holdRenewals.__type | doc:-
 TypeLiteral | @geoleaf-plugins/connector.token-store.TokenStore.__type.inflightRefresh.__type | doc:-
 TypeLiteral | @geoleaf-plugins/connector.token-store.TokenStore.__type.load.__type | doc:-
 TypeLiteral | @geoleaf-plugins/connector.token-store.TokenStore.__type.resolveSession.__type | doc:-

@@ -126,6 +126,14 @@ _Nothing yet._
   singleton's offline queue, and disarmed its relaunch while its own session was still waiting
   for the network. An event naming another `baseUrl` is now ignored; one naming none still counts.
 
+- **`@geoleaf-plugins/connector` 1.3.1 — a server that refuses the token it has just renewed no
+  longer makes the offline queue loop.** Every `401` renewed with success, `token-refreshed`
+  resumed the queue, and the next `401` renewed again: as soon as the resume opened a new pass —
+  which a requeue slower than the replay of the refused request makes it do — nothing bounded the
+  renewals. A renewed token the server refuses at once now holds the renewals for one exchange
+  window, as an outage does: the session is kept, the request gets its `401`, and the relaunch's
+  moments still retry.
+
 - **`@geoleaf-plugins/print` 1.3.1 — a printed map asks for its tiles with the live map's
   headers.** The off-screen map the print renders was always created without a request
   transform: the plugin read a field of MapLibre's request manager that MapLibre does not write,

@@ -151,6 +151,12 @@ time-out, a `503`, a body cut in transit — keeps the session and fires nothing
   foreground, and when a capture enters the offline queue. Online, in the foreground and with no
   new capture, it waits for the next of those moments.
 
+A server that renews the session and then refuses the token it has just issued — a signing key out
+of step between two nodes, a wrong audience — is treated the same way: the session is kept, the
+request gets its `401`, and no renewal is tried again for as long as one renewal exchange may take,
+except at the moments above. Without that pause, each refused request renewed again, and the
+offline queue's resume could loop on it.
+
 ### What a returning session does to the offline queue
 
 When the session had died, the core's drain stopped at the first `401` and set that capture

@@ -132,8 +132,13 @@ async function _handleUnauthorized(
     }
 
     switch (outcome.verdict) {
-        case "renewed":
-            return _retryWith(input, init, outcome.token);
+        case "renewed": {
+            const replayed = await _retryWith(input, init, outcome.token);
+            // The server refused the token it had just issued: no new renewal before the window
+            // ends — else every 401 renewed, and every renewal resumed the queue.
+            if (replayed.status === 401) TokenStore.holdRenewals(_config.baseUrl);
+            return replayed;
+        }
         case "refused":
             await TokenStore.declareSessionDead(
                 _config.baseUrl,
