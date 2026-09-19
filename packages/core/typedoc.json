@@ -23,5 +23,7 @@
     "categoryOrder": ["Core", "Modules", "Utilities", "*"],
     "sort": ["source-order"],
     "plugin": [],
-    "searchInComments": true
+    "searchInComments": true,
+    "sourceLinkTemplate": "https://github.com/geoleaf/geoleaf-js/blob/{gitRevision}/{path}#L{line}",
+    "gitRevision": "main"
 }

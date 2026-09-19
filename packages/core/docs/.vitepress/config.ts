@@ -22,7 +22,7 @@ export default defineConfig({
 
     lang: "en-US",
     title: "GeoLeaf",
-    description: "GeoLeaf documentation — @geoleaf/core v3.0.0",
+    description: "GeoLeaf documentation — @geoleaf/core v3",
 
     // Set to `false` once the 26 dead links were repaired. While it was `true`,
     // VitePress MASKED dead links at build: combined with a `check:links` wired

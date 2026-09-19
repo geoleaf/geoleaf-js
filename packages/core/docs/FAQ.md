@@ -36,13 +36,13 @@ npm install @geoleaf/core maplibre-gl
 <!-- GeoLeaf CSS -->
 <link
     rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.0.0/dist/geoleaf-main.min.css"
+    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf-main.min.css"
 />
 
 <!-- GeoLeaf JS (ESM) -->
 <script
     type="module"
-    src="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.0.0/dist/geoleaf.esm.js"
+    src="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf.esm.js"
 ></script>
 ```
 
@@ -54,8 +54,8 @@ npm install @geoleaf/core maplibre-gl
     import * as maplibregl from "https://unpkg.com/maplibre-gl@6/dist/maplibre-gl.mjs";
     globalThis.maplibregl = maplibregl;
 </script>
-<link rel="stylesheet" href="https://unpkg.com/@geoleaf/core@3.0.0/dist/geoleaf-main.min.css" />
-<script type="module" src="https://unpkg.com/@geoleaf/core@3.0.0/dist/geoleaf.esm.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/@geoleaf/core@3.4.0/dist/geoleaf-main.min.css" />
+<script type="module" src="https://unpkg.com/@geoleaf/core@3.4.0/dist/geoleaf.esm.js"></script>
 ```
 
 ### What are the required peer dependencies?
@@ -86,7 +86,7 @@ tiles are handled by MapLibre's own vector sources.
 
 <div id="map" style="height:500px"></div>
 <script type="module">
-    import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.0.0/dist/geoleaf.esm.js";
+    import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf.esm.js";
     Core.init({
         mapId: "map",
         center: [48.8566, 2.3522], // [lat, lng] — GeoLeaf; MapLibre expects [lng, lat], conversion is internal
@@ -260,7 +260,7 @@ JavaScript** is loaded before it — not only its stylesheet:
 </script>
 <link
     rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.0.0/dist/geoleaf-main.min.css"
+    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf-main.min.css"
 />
 <script type="module" src="geoleaf.esm.js"></script>
 ```

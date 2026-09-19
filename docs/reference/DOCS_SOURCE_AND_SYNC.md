@@ -94,9 +94,12 @@ vers `packages/core/docs/` — le relatif convient : ces fichiers ne sont pas se
 **`www.geoleaf.dev/docs/`** (HTTP 200), et le TypeDoc sur `www.geoleaf.dev/docs/api/` (200).
 Ne pas recopier ces mesures : `curl -sSI` les rend.
 
-⚠️ **Le rendu publié est en retard sur le dépôt** — il s'intitule « GeoLeaf Core API - v2.1.5 »
-au 11/08/2026. Le producteur est **vivant** (`scripts/deploy-docs.cjs`) ; il est simplement
-manuel et n'a pas été relancé. Ce n'est pas une chaîne cassée, c'est une chaîne non déclenchée.
+⚠️ **`npm run docs:deploy` n'est que la première moitié de la publication.** Il écrit dans le
+clone local du dépôt du site — privé, hors de ce dépôt — et rien n'est en ligne à sa sortie. La
+mise en ligne est le commit poussé de ce dépôt, après régénération de ses propres fichiers
+dérivés, dont les balises SEO de `docs/` que le redéploiement efface ; sa procédure est dans son
+README d'outillage. La version servie se lit, elle ne se recopie pas :
+`curl -sS https://www.geoleaf.dev/docs/api/index.html | grep -o '<title>[^<]*'`.
 
 ---
 
@@ -114,11 +117,15 @@ Aucun de ces fichiers ne s'édite à la main. Chacun a un `--check` câblé dans
 | `reference/reference_parametres_config.html`    | `npm run gen:config-reference`  | `gen:config-reference:check`  |
 | `packages/core/docs/api/` (TypeDoc)             | `npm run docs:api`              | **aucune** — voir ci-dessous  |
 
-⚠️ **Le rendu TypeDoc n'est pas gatable, et c'est délibéré** : il grave `git rev-parse HEAD` dans
-29 fichiers sur 54 mesurés, donc il n'a pas de point fixe — la gate rougirait au commit même qui
-vient de le régénérer. C'est **`API_SURFACE.txt`** qui porte la garde : un manifeste d'une ligne
-par réflexion, avec l'empreinte du TSDoc, insensible au re-wrap de Prettier. Il n'est pas fait
-pour être lu ; il est fait pour qu'aucun changement d'API ne passe inaperçu.
+⚠️ **Le rendu TypeDoc n'est pas gaté, et son motif d'origine est tombé.** Il gravait
+`git rev-parse HEAD` dans ses liens « Defined in », donc n'avait pas de point fixe — et ces liens
+visaient le dépôt de l'atelier, privé : 404 pour tout lecteur. Depuis le 19/09/2026,
+`packages/core/typedoc.json` fixe `sourceLinkTemplate` et `gitRevision: "main"` : les liens
+visent le dépôt public, et le rendu ne grave plus le sha — après `npm run docs:api`,
+`grep -rlF "$(git rev-parse HEAD)" packages/core/docs/api` ne rend rien. La garde reste
+**`API_SURFACE.txt`**, pour sa raison propre : un manifeste d'une ligne par réflexion, avec
+l'empreinte du TSDoc, insensible au re-wrap de Prettier. Il n'est pas fait pour être lu ; il est
+fait pour qu'aucun changement d'API ne passe inaperçu.
 
 ### Deux références restent RÉDIGÉES, et la raison est mesurée
 

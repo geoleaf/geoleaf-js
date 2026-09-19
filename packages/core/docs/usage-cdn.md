@@ -47,11 +47,11 @@ shim is a file.
 </script>
 
 <!-- GeoLeaf styles -->
-<link rel="stylesheet" href="https://unpkg.com/@geoleaf/core@3.0.0/dist/geoleaf-main.min.css" />
+<link rel="stylesheet" href="https://unpkg.com/@geoleaf/core@3.4.0/dist/geoleaf-main.min.css" />
 
 <!-- GeoLeaf ESM (via script type="module") -->
 <script type="module">
-    import { Core } from "https://unpkg.com/@geoleaf/core@3.0.0/dist/geoleaf.esm.js";
+    import { Core } from "https://unpkg.com/@geoleaf/core@3.4.0/dist/geoleaf.esm.js";
     // ...
 </script>
 ```
@@ -71,12 +71,12 @@ shim is a file.
 <!-- GeoLeaf styles -->
 <link
     rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.0.0/dist/geoleaf-main.min.css"
+    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf-main.min.css"
 />
 
 <!-- GeoLeaf ESM -->
 <script type="module">
-    import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.0.0/dist/geoleaf.esm.js";
+    import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf.esm.js";
     // ...
 </script>
 ```
@@ -152,7 +152,7 @@ Core.init({
         <!-- GeoLeaf styles -->
         <link
             rel="stylesheet"
-            href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.0.0/dist/geoleaf-main.min.css"
+            href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf-main.min.css"
         />
 
         <style>
@@ -172,7 +172,7 @@ Core.init({
         <div id="geoleaf-map"></div>
 
         <script type="module">
-            import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.0.0/dist/geoleaf.esm.js";
+            import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf.esm.js";
 
             document.addEventListener("DOMContentLoaded", () => {
                 Core.init({

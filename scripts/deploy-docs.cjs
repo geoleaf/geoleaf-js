@@ -342,7 +342,7 @@ function main() {
     // The target is named, never assumed: "geoleaf.dev/docs/" was hard-coded here
     // and would have become false as soon as GEOLEAF_DOCS_SITE_ROOT pointed
     // elsewhere — precisely what has just been made possible.
-    console.log(`  ✅ Deploy complete — ${DEPLOY_TARGET} updated`);
+    console.log(`  ✅ ${DEPLOY_TARGET} réécrit — pas en ligne avant le push du dépôt du site`);
     console.log("═══════════════════════════════════════════════\n");
 }
 

@@ -31,7 +31,33 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Current version — v3.0.0
+## Release v3.4.0 <Badge type="tip" text="2026-09-19" />
+
+A boot that fails now says so instead of leaving the spinner turning, and the offline write cycle
+no longer loses the server version it overwrites.
+
+**Highlights:**
+
+- **New** — `geoleaf:boot:failed` names why a boot could not complete, and the app shell's loading
+  veil becomes a failure screen with a **Reload** button and a diagnostic to copy. A watchdog,
+  `GeoLeaf.boot({ watchdogMs })`, catches a boot that stops progressing.
+- **New** — `GeoLeaf.Log.getEntries()` and `GeoLeaf.Log.exportDiagnostic()`: the latest log
+  entries, redacted when read.
+- **New** — a settled offline write conflict keeps the server version it overwrote, readable
+  through `Storage.listConflicts()` and purgeable through `Storage.clearConflicts()`.
+- **Changed** — the offline preparation no longer downloads tiles from an undeclared third-party
+  origin. An origin whose terms allow it is declared in `modules.offline.dataOrigins`, with
+  `cacheable: true` and `prefetch: true`.
+- **Changed** — the basemap credit is displayed.
+- **Removed (breaking)** — `GeoLeaf.Security.CSRFToken` and the `csrf` write authentication.
+- **Fixed** — GeoLeaf no longer unregisters service workers it did not register.
+
+Releases v3.1.0 (2026-09-01), v3.2.0 (2026-09-08) and v3.3.0 (2026-09-09) are described in the
+[changelog](CHANGELOG).
+
+---
+
+## Release v3.0.0 <Badge type="tip" text="2026-08-12" />
 
 Three new MIT plugins: `@geoleaf-plugins/file-import`, `@geoleaf-plugins/flatgeobuf`,
 `@geoleaf-plugins/cog`.

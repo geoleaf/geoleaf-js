@@ -63,7 +63,7 @@ Sources (packages/core, packages/plugins/*)
 - **Déploiement local / test** : `npm run build:deploy` produit en une fois **deploy/deploy-core/**, **deploy/deploy-storage/**, **deploy/deploy-storage-addpoi/** à partir des fichiers du dossier `demo/` (index.html, demo-header.html, init.js, demo.extensions.js). Tester depuis `deploy/` revient au même que tester la démo (même page, bundles de prod). Servir avec `npx serve deploy -p 8765` ou `node scripts/serve-test.cjs` (ports 3001–3003).
 - **Publication** : les 18 packages sur npmjs public. ⚠️ Plus aucune synchronisation vers les dépôts publics — les 3 miroirs sont supprimés.
 - **Docs** : le site se publie par `npm run docs:deploy`, **manuel**, sur `www.geoleaf.dev/docs/`. Voir [DOCS_SOURCE_AND_SYNC.md](DOCS_SOURCE_AND_SYNC.md) §2.
-    - ⚠️ **Cette ligne était fausse sur ses trois assertions, corrigée le 11/08/2026.** ① Les sources de `packages/core/docs/` **ne partent plus dans le tarball** : `docs/` a quitté les `files[]` ; un paquet n'emporte que `README.md` + `dist/`. ② **`docs.geoleaf.dev` rend NXDOMAIN** — le sous-domaine n'existe pas. ③ La chaîne n'est pas « coupée » : `scripts/deploy-docs.cjs` est **vivant**, il est simplement manuel et n'a pas été relancé — le rendu publié est à `v2.1.5`. Un site périmé appelle un geste, pas un constat.
+    - ⚠️ **Cette ligne était fausse sur ses trois assertions, corrigée le 11/08/2026.** ① Les sources de `packages/core/docs/` **ne partent plus dans le tarball** : `docs/` a quitté les `files[]` ; un paquet n'emporte que `README.md` + `dist/`. ② **`docs.geoleaf.dev` rend NXDOMAIN** — le sous-domaine n'existe pas. ③ La chaîne n'est pas « coupée » : `scripts/deploy-docs.cjs` est **vivant**, il est simplement manuel — et il n'est que la première moitié de la publication ; la version servie se mesure, voir [DOCS_SOURCE_AND_SYNC.md](DOCS_SOURCE_AND_SYNC.md) §2. Un site périmé appelle un geste, pas un constat.
 
 ---
 
@@ -128,7 +128,7 @@ git push
 
 The CI pipeline will build and test all packages.
 
-⚠️ **It no longer syncs anything.** The three mirror workflows were deleted — they were copying from a private repo to private repos. Distribution now goes through npm only, and `docs.geoleaf.dev` is frozen on its last build.
+⚠️ **It no longer syncs anything.** The three mirror workflows were deleted — they were copying from a private repo to private repos. Distribution now goes through npm only, and the documentation site (`www.geoleaf.dev/docs/`) is published by hand — `npm run docs:deploy`, see [DOCS_SOURCE_AND_SYNC.md](DOCS_SOURCE_AND_SYNC.md) §2.
 
 ---
 
@@ -329,10 +329,9 @@ Le secret `CORE_SYNC_TOKEN` n'est plus utilisé par aucun workflow ; il peut êt
 
 Les 3 dépôts satellites subsistent, figés. Leur sort se tranche avec le passage public du monorepo.
 
-### `deploy-docs.yml` — triggered in `GeoLeaf-Core` on push to `main`
+### ~~`deploy-docs.yml`~~ (dans `GeoLeaf-Core`) — **caduc**
 
-Steps (VM Ubuntu temporaire) : `npm install` → `npm run docs:build` (VitePress) → `actions/deploy-pages` → GitHub Pages
-Résultat : `docs.geoleaf.dev` mis à jour automatiquement. `docs-dist/` (racine — T4.4 l'a sorti de `packages/`) n'est jamais commité dans git.
+Il publiait `docs:build` sur GitHub Pages, sous `docs.geoleaf.dev`, depuis le dépôt satellite. Plus rien n'alimente ce dépôt depuis le retrait des miroirs, et le sous-domaine rend NXDOMAIN. La doc se publie désormais à la main : `npm run docs:deploy` — voir [DOCS_SOURCE_AND_SYNC.md](DOCS_SOURCE_AND_SYNC.md) §2. `docs-dist/` (racine — T4.4 l'a sorti de `packages/`) n'est jamais commité dans git.
 
 ---
 
