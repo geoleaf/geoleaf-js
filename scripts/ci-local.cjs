@@ -1344,6 +1344,17 @@ const STEPS = [
     // day this was wired: 13 published packages, 13 diverged, 264 source files.
     // Hence a ratchet on a baseline, not a red — and an explicit SKIP with no
     // registry access, so a network hiccup never reddens a local run.
+    // 🛑 THE STUBS AGAIN, RIGHT BEFORE PUB — not a duplicate of the gate after the build.
+    // "Build deploy variants" rebuilds the core through `build:all`, whose `clean` purges
+    // `dist/` and which never calls the stub emitter: on a fresh clone, PUB-05 then judged a
+    // `dist/` without the 22 `*.css.d.ts` the published tarball carries, and reddened on the
+    // first run after 3.4.0 reached the registry (19/09/2026). A workshop `dist/` keeps them
+    // through turbo's cache — the runner's bite on a green ci:local, again. PUB judges the
+    // `dist/` the publication ships.
+    {
+        name: "Stubs de type CSS — le dist/ que la publication livre (avant PUB)",
+        run: ["node", "scripts/emit-css-type-stubs.cjs"],
+    },
     {
         name: "Parité dépôt ↔ registre npm (PUB)",
         release: true,

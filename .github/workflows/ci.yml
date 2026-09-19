@@ -835,6 +835,14 @@ jobs:
             # Cliquet sur baseline, et SAUT explicite sans accès au registre : sur un runner
             # sans réseau sortant la gate n'établit rien et le dit, plutôt que de verdir.
             # Keep in sync with scripts/ci-local.cjs.
+            #
+            # 🛑 LES STUBS D'ABORD, JUSTE AVANT PUB — et ce n'est pas un doublon de l'étape du haut.
+            # `build:deploy:all` reconstruit le core par `build:all`, dont le `clean` vide `dist/`
+            # sans rappeler l'émetteur : sur ce clone frais, PUB-05 jugeait un `dist/` privé des
+            # 22 `*.css.d.ts` que le tarball publié porte, et rougissait au premier run après la
+            # mise au registre de 3.4.0 (19/09/2026). PUB juge le `dist/` que la publication livre.
+            - name: Stubs de type CSS — le dist/ que la publication livre (avant PUB)
+              run: node scripts/emit-css-type-stubs.cjs
             - name: Parité dépôt ↔ registre npm (PUB-00…PUB-03)
               run: node scripts/verify-published-parity.cjs
 

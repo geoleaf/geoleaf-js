@@ -119,9 +119,11 @@ function main() {
     const absents = [];
 
     for (const pkg of packages.all()) {
-        // ⚠️ `absDir`, NEVER `dir`. This script is launched from TWO different
-        // working directories — the root (root build) and `packages/core/` (core
-        // build, via turbo) — and `dir` is root-relative. Using it made the script
+        // ⚠️ `absDir`, NEVER `dir`. This script was launched from TWO different
+        // working directories — the root, and `packages/core/` while the core's
+        // build called it (it no longer does: the call moved after the full build,
+        // and `build:all` purges `dist/` without it) — and `dir` is root-relative.
+        // Using it made the script
         // look for `packages/core/packages/core/dist/types`, hence scan ZERO files
         // from the core. 🛑 Without the anti-empty-gate assertion below, the script
         // would have come out GREEN having read nothing, and the stubs would never
