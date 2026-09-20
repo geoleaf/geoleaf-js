@@ -60,7 +60,7 @@ Or from a CDN:
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css" />
 <link
     rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf-main.min.css"
+    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3/dist/geoleaf-main.min.css"
 />
 <script type="module">
     import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.mjs";
@@ -68,7 +68,7 @@ Or from a CDN:
 </script>
 <script
     type="module"
-    src="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf.esm.js"
+    src="https://cdn.jsdelivr.net/npm/@geoleaf/core@3/dist/geoleaf.esm.js"
 ></script>
 ```
 
@@ -96,7 +96,7 @@ In production, prefer self-hosting — see [`GETTING_STARTED.md`](GETTING_STARTE
         />
         <link
             rel="stylesheet"
-            href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf-main.min.css"
+            href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3/dist/geoleaf-main.min.css"
         />
         <style>
             body {
@@ -117,7 +117,7 @@ In production, prefer self-hosting — see [`GETTING_STARTED.md`](GETTING_STARTE
         </script>
         <script
             type="module"
-            src="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf.esm.js"
+            src="https://cdn.jsdelivr.net/npm/@geoleaf/core@3/dist/geoleaf.esm.js"
         ></script>
         <script type="module">
             // Full init with a profile

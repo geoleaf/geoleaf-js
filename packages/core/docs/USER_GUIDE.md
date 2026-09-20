@@ -122,7 +122,7 @@ GeoLeaf is distributed exclusively as **ESM**. Use `<script type="module">`:
 <!-- GeoLeaf styles -->
 <link
     rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf-main.min.css"
+    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3/dist/geoleaf-main.min.css"
 />
 ```
 
@@ -141,7 +141,7 @@ Before `</body>`:
 ```html
 <!-- geoleaf:docs:fragment — continues the `<head>` block above, which carries the MapLibre shim -->
 <script type="module">
-    import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf.esm.js";
+    import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3/dist/geoleaf.esm.js";
     Core.init({ mapId: "map", center: [48.8566, 2.3522], zoom: 12 });
 </script>
 ```
@@ -156,11 +156,11 @@ Or through jsDelivr:
 </script>
 <link
     rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf-main.min.css"
+    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3/dist/geoleaf-main.min.css"
 />
 
 <script type="module">
-    import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf.esm.js";
+    import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3/dist/geoleaf.esm.js";
     Core.init({ mapId: "map", center: [48.8566, 2.3522], zoom: 12 });
 </script>
 ```
@@ -221,7 +221,7 @@ console.log(GeoLeaf.version);
         </script>
         <link
             rel="stylesheet"
-            href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf-main.min.css"
+            href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3/dist/geoleaf-main.min.css"
         />
 
         <style>
@@ -236,7 +236,7 @@ console.log(GeoLeaf.version);
         <div id="map"></div>
 
         <script type="module">
-            import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf.esm.js";
+            import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3/dist/geoleaf.esm.js";
 
             GeoLeaf.Core.init({ mapId: "map", center: [46.2, 2.2], zoom: 6 });
 
@@ -1025,7 +1025,7 @@ Override the default styles by loading a custom CSS file after geoleaf-main.min.
 ```html
 <link
     rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf-main.min.css"
+    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3/dist/geoleaf-main.min.css"
 />
 <link rel="stylesheet" href="/my-custom-theme.css" />
 ```

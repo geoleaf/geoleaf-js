@@ -38,6 +38,11 @@ shim is a file.
 
 ## 1. Usage via UNPKG (CDN)
 
+> ℹ️ **The versions below are exact, and they are checked.** This page is the CDN reference: its
+> snippets name the version npm actually serves, and `npm run docs:deploy` refuses to publish this
+> site while they name a version the registry does not have — a pin ahead of a publication returns
+> 404 on the CDN. Everywhere else, the tutorials pin `@3`.
+
 ```html
 <!-- MapLibre GL JS (peer dependency — must be loaded before GeoLeaf) -->
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6/dist/maplibre-gl.css" />
@@ -47,11 +52,11 @@ shim is a file.
 </script>
 
 <!-- GeoLeaf styles -->
-<link rel="stylesheet" href="https://unpkg.com/@geoleaf/core@3.4.0/dist/geoleaf-main.min.css" />
+<link rel="stylesheet" href="https://unpkg.com/@geoleaf/core@3.5.0/dist/geoleaf-main.min.css" />
 
 <!-- GeoLeaf ESM (via script type="module") -->
 <script type="module">
-    import { Core } from "https://unpkg.com/@geoleaf/core@3.4.0/dist/geoleaf.esm.js";
+    import { Core } from "https://unpkg.com/@geoleaf/core@3.5.0/dist/geoleaf.esm.js";
     // ...
 </script>
 ```
@@ -71,12 +76,12 @@ shim is a file.
 <!-- GeoLeaf styles -->
 <link
     rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf-main.min.css"
+    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.5.0/dist/geoleaf-main.min.css"
 />
 
 <!-- GeoLeaf ESM -->
 <script type="module">
-    import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf.esm.js";
+    import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.5.0/dist/geoleaf.esm.js";
     // ...
 </script>
 ```
@@ -152,7 +157,7 @@ Core.init({
         <!-- GeoLeaf styles -->
         <link
             rel="stylesheet"
-            href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf-main.min.css"
+            href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.5.0/dist/geoleaf-main.min.css"
         />
 
         <style>
@@ -172,7 +177,7 @@ Core.init({
         <div id="geoleaf-map"></div>
 
         <script type="module">
-            import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf.esm.js";
+            import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.5.0/dist/geoleaf.esm.js";
 
             document.addEventListener("DOMContentLoaded", () => {
                 Core.init({
@@ -306,7 +311,10 @@ browser **refuses to execute it** and nothing boots.
 - Use **`<script type="module">`** — no classic script without `type="module"`.
 - Do not mix a CDN ESM build and a local bundle.
 - **Coordinates:** `Core.init({ center })` expects **`[lat, lng]`**. GeoJSON `coordinates` remain `[lng, lat]`.
-- Version the CDN URLs explicitly (for example `@3.0.0`, not `@latest`).
+- **In production, pin a full version** — the one you tested — and never `@latest`: what you tested
+  is what you serve. The other pages of this documentation pin the **major** (`@3`) instead, so a
+  copy-pasted tutorial cannot go stale — that is the right trade for a first map, and the wrong one
+  for a deployment.
 - Plan a local fallback in production.
 
 ---

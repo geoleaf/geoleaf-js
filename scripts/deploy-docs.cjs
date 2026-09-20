@@ -282,8 +282,18 @@ function main() {
     console.log(`  Target  : ${DEPLOY_TARGET}  ⚠ supprimé puis réécrit`);
     console.log("═══════════════════════════════════════════════\n");
 
+    // Step 0 — CDN pins: an exact pin must name a version npm SERVES
+    //
+    // 🛑 FIRST, and refusing rather than warning. The snippets of this site are copy-pasted:
+    // publishing a page whose pin is ahead of the registry distributes a 404, and one that lags
+    // distributes a version nobody tests any more. It is checked HERE because this is the moment
+    // it is actionable — see the header of `check-doc-cdn-pins.cjs` for why it is not in
+    // `ci:local`.
+    console.log("── Step 0 : épingles CDN ↔ registre ────────────");
+    run("node scripts/check-doc-cdn-pins.cjs");
+
     // Step 1 — Regenerate TypeDoc
-    console.log("── Step 1 : TypeDoc API reference ──────────────");
+    console.log("\n── Step 1 : TypeDoc API reference ──────────────");
     run("npm run docs:api", CORE);
     console.log(`  ✓ TypeDoc output: ${TYPEDOC_OUT}`);
 

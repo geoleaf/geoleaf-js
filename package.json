@@ -92,6 +92,7 @@
         "build:deploy-coverage": "node scripts/build-deploy-coverage.cjs",
         "report:e2e": "nyc report --nycrc-path nyc.config.cjs",
         "check:links": "node scripts/check-dead-links.cjs",
+        "check:cdn-pins": "node scripts/check-doc-cdn-pins.cjs",
         "check:docs-examples": "node scripts/validate-docs-examples.cjs",
         "check:npm-readme": "node scripts/verify-npm-readme-render.cjs",
         "check:docs-typecheck": "node scripts/typecheck-docs-examples.cjs",

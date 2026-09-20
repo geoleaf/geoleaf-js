@@ -141,7 +141,7 @@ Produces `dist/geoleaf.esm.js` (flat CDN bundle). Assigns `window.GeoLeaf.*` on 
 ```html
 <script
     type="module"
-    src="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf.esm.js"
+    src="https://cdn.jsdelivr.net/npm/@geoleaf/core@3/dist/geoleaf.esm.js"
 ></script>
 <!-- window.GeoLeaf is now available -->
 ```

@@ -76,7 +76,7 @@ En CDN :
 
 <script
     type="module"
-    src="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.0.0/dist/geoleaf.esm.js"
+    src="https://cdn.jsdelivr.net/npm/@geoleaf/core@3/dist/geoleaf.esm.js"
 ></script>
 <script type="module" src="geoleaf-connector.plugin.js"></script>
 <script type="module">

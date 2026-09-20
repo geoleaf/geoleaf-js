@@ -4,7 +4,7 @@ title: connector — l'authentification et l'injection de jeton
 plugin_id: connector
 package: "@geoleaf-plugins/connector"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 8c871eb94
+verifie_contre: 90d145b21
 date: 19 septembre 2026
 ---
 
@@ -13,8 +13,12 @@ date: 19 septembre 2026
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/connector` ·
 **Code :** `packages/plugins/connector/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
-> ⚠️ **L'estampille du 19/09/2026 est COLLATÉRALE, et ne couvre rien de neuf.** Le commit
-> qu'elle nomme n'ajoute qu'un renvoi dans `docs/CONNECTOR_GUIDE.md` vers la page du contrat
+> ⚠️ **L'estampille du 19/09/2026 est COLLATÉRALE, et ne couvre rien de neuf.** Elle a été
+> reportée deux fois sans qu'une ligne de `src/` bouge : l'épingle CDN de
+> `docs/CONNECTOR_GUIDE.md` est passée de `3.0.0` à la version publiée, puis à la majeure `@3`
+> avec tous les tutoriels — un extrait en `3.0.0` privait de jeton une couche GeoJSON chargée
+> par URL, le cœur n'annonçant `acceptsPromise` que depuis la 3.1. Auparavant, le commit
+> estampillé n'ajoutait qu'un renvoi dans `docs/CONNECTOR_GUIDE.md` vers la page du contrat
 > serveur, qui décrit désormais une fois le protocole que ce plugin attend d'un serveur (connexion,
 > `POST {endpoint}/refresh`, verdicts) — aucune ligne de `src/` ne bouge. La page a été écrite
 > contre `auth-client.ts`, `token-store.ts` et `fetch-interceptor.ts`, et ce qu'elle dit est ce que

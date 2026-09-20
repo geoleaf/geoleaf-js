@@ -74,7 +74,7 @@ Core.init({
         <!-- GeoLeaf styles -->
         <link
             rel="stylesheet"
-            href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf-main.min.css"
+            href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3/dist/geoleaf-main.min.css"
         />
         <style>
             #map {
@@ -94,7 +94,7 @@ Core.init({
             globalThis.maplibregl = maplibregl;
         </script>
         <script type="module">
-            import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.4.0/dist/geoleaf.esm.js";
+            import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3/dist/geoleaf.esm.js";
 
             Core.init({
                 mapId: "map",
