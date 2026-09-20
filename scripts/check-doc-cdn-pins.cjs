@@ -28,6 +28,10 @@
  *           → error, with `file:line`.
  *   PIN-02  The registry does not answer → refuse to conclude. An unanswered registry is not a
  *           green: it is the absence of a verdict, and this gate exists to stop a 404.
+ *   PIN-03  The release the documentation's landing page ANNOUNCES is the one npm serves. Same
+ *           class as a pin, other shape: the page said `Release v3.4.0` the day 3.5.0 went out.
+ *           A landing page that stops carrying the heading refuses too — a motif that no longer
+ *           bites is not a pass.
  *
  * ## Where it runs
  *
@@ -55,6 +59,10 @@ const ROOT = path.resolve(__dirname, "..");
 const PIN_RE =
     /(?:unpkg\.com|cdn\.jsdelivr\.net\/npm)\/(@geoleaf(?:-plugins)?\/[a-z0-9-]+)@(\d+\.\d+\.\d+)/g;
 const REGISTRY = "https://registry.npmjs.org";
+/** The package whose release the landing page announces. */
+const CORE = "@geoleaf/core";
+/** `## Release v3.5.0 <Badge …>` — the first one is the current release. */
+const RELEASE_RE = /^##\s+Release\s+v(\d+\.\d+\.\d+)/m;
 
 /**
  * Every exact pin of the product documentation, in reading order.
@@ -91,6 +99,26 @@ async function servedLatest(pkg) {
     if (typeof latest !== "string")
         throw new Error(`${pkg} — le registre ne dit pas de \`latest\``);
     return latest;
+}
+
+/**
+ * The release the documentation's landing page announces, and where it says it.
+ *
+ * ⚠️ Resolved through the package registry, never through a hard-coded `packages/core` — a
+ * hard-coded path stops matching on a move instead of breaking, and the gate would then pass
+ * having read nothing.
+ *
+ * @returns {{ version: string | null, file: string } | null} `null` when the page does not exist.
+ */
+function announcedRelease() {
+    const registry = require("./lib/packages.cjs");
+    const page = path.join(registry.requireByDirName("core").absDir, "docs", "index.md");
+    if (!fs.existsSync(page)) return null;
+    const match = RELEASE_RE.exec(fs.readFileSync(page, "utf8"));
+    return {
+        version: match ? match[1] : null,
+        file: path.relative(ROOT, page).replace(/\\/g, "/"),
+    };
 }
 
 async function main() {
@@ -135,7 +163,29 @@ async function main() {
         process.exit(1);
     }
 
-    console.log("\x1b[32m✓ CDN-PINS\x1b[0m — chaque épingle exacte nomme la version servie.");
+    const announced = announcedRelease();
+    if (announced) {
+        const expected = served.get(CORE);
+        if (announced.version === null) {
+            console.error(
+                `❌ [PIN-03] ${announced.file} ne porte plus de titre \`## Release vX.Y.Z\`.\n` +
+                    "   Un motif qui ne mord plus n'est pas un vert : soit la page a changé de forme, soit la règle a perdu son objet."
+            );
+            process.exit(1);
+        }
+        if (expected && announced.version !== expected) {
+            console.error(
+                `❌ [PIN-03] ${announced.file} annonce la release v${announced.version}, le registre sert ${expected}.\n` +
+                    "   La page d'accueil est ce qu'un intégrateur lit en premier : elle nomme la version publiée, ou rien."
+            );
+            process.exit(1);
+        }
+        console.log(`  page d'accueil : release v${announced.version}`);
+    }
+
+    console.log(
+        "\x1b[32m✓ CDN-PINS\x1b[0m — épingles exactes et release annoncée nomment la version servie."
+    );
 }
 
 main().catch((error) => {

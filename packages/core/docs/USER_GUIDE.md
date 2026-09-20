@@ -195,7 +195,7 @@ Open the browser console:
 
 ```javascript
 console.log(GeoLeaf.version);
-// Should output: "3.4.0"
+// Outputs the version you installed — the one npm served you, not a number this page froze.
 ```
 
 ---

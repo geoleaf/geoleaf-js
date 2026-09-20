@@ -30,7 +30,7 @@ awk -F'|' '$5 ~ /déplacer/ {print $1, $6}' ARBORESCENCE_QUALIFIEE.md
 | Packages | 20 |
 | Répertoires | 192 |
 | Fichiers | **1189** — 955 `.ts` · 53 `.css` · 181 `scripts/` |
-| Lignes de code | 241 550 |
+| Lignes de code | 241 600 |
 | Artefacts qualifiés | **1381 / 1381** (100.0 %) |
 
 | Verdict | Artefacts |
@@ -2068,7 +2068,7 @@ Outillage du dépôt : 62 exécutables à la racine et 8 modules partagés sous 
 ├── check-dead-code.cjs                 |  291 |  ok |  ok | justifié  | Enveloppe knip : relance l'analyse en reporter JSON, compte les vraies…
 ├── check-dead-links.cjs                |  631 |  ok |  ok | justifié  | Balaie la documentation Markdown publiée et signale les liens internes…
 ├── check-dist-integrity.cjs            |  245 |  ok |  ok | justifié  | (en-tête absent — fichier de données ou baril)
-├── check-doc-cdn-pins.cjs              |  145 |  ok |  ok | justifié  | Pré-vol de publication du site : une épingle CDN exacte nomme la version…
+├── check-doc-cdn-pins.cjs              |  195 |  ok |  ok | justifié  | Pré-vol de publication du site : épingles CDN exactes et release…
 ├── check-doc-ceilings.cjs              |  236 |  ok |  ok | justifié  | (en-tête absent — fichier de données ou baril)
 ├── check-doc-config-examples.cjs       |  440 |  ok |  ok | justifié  | (en-tête absent — fichier de données ou baril)
 ├── check-doc-versions.cjs              |  243 |  ok |  ok | justifié  | Gate DOC-VERSIONS : le `version:` du frontmatter d'un document d'atelier…

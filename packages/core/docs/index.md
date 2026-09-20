@@ -31,12 +31,24 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.4.0 <Badge type="tip" text="2026-09-19" />
+## Release v3.5.0 <Badge type="tip" text="2026-09-19" />
 
-A boot that fails now says so instead of leaving the spinner turning, and the offline write cycle
-no longer loses the server version it overwrites.
+A second download now converges on its source instead of rewriting everything, and « Stop »
+stops the whole download — the entities included.
 
 **Highlights:**
+
+- **New** — a second pull rewrites only what changed (`unchanged`), and an entity deleted on the
+  server leaves the device (`removed`). A layer can declare freshness and deletions —
+  `offline.source.delta` — and then only asks for what changed.
+- **New** — the download window's zone bounds the entity pull, not only the tiles: its extent
+  leaves with every pull as the OGC `bbox`.
+- **New** — the server contract page: what GeoLeaf asks of a server to pull, write and renew a
+  session, in one place.
+- **Fixed** — a photo written back after the fact no longer erases the entity that owns it.
+- **Fixed** — « Stop » reaches the entity pull, and its confirmation is clickable.
+
+Release v3.4.0 (2026-09-19) — the failure screen, the log export and the conflict store:
 
 - **New** — `geoleaf:boot:failed` names why a boot could not complete, and the app shell's loading
   veil becomes a failure screen with a **Reload** button and a diagnostic to copy. A watchdog,
