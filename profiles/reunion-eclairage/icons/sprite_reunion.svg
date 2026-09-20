@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+
+  <!-- Éclairage générique (lampadaire) -->
+  <symbol id="reunion-poi-cat-eclairage-generic" viewBox="0 0 24 24"
+          stroke="currentColor" stroke-width="1.7" fill="none"
+          stroke-linecap="round" stroke-linejoin="round">
+    <line x1="12" y1="21" x2="12" y2="7" />
+    <path d="M8 7 Q12 3 16 7" />
+    <circle cx="16" cy="7" r="1.5" fill="currentColor" stroke="none" />
+    <line x1="12" y1="21" x2="9" y2="21" />
+    <line x1="12" y1="21" x2="15" y2="21" />
+  </symbol>
+
+  <!-- Candélabre (mât + cercle lumineux) -->
+  <symbol id="reunion-poi-cat-candelabres" viewBox="0 0 24 24"
+          stroke="currentColor" stroke-width="1.7" fill="none"
+          stroke-linecap="round" stroke-linejoin="round">
+    <line x1="12" y1="21" x2="12" y2="9" />
+    <line x1="12" y1="21" x2="9" y2="21" />
+    <line x1="12" y1="21" x2="15" y2="21" />
+    <line x1="12" y1="9" x2="16" y2="9" />
+    <circle cx="17.5" cy="9" r="2" />
+  </symbol>
+
+  <!-- Armoire électrique (rectangle + éclair) -->
+  <symbol id="reunion-poi-cat-armoires" viewBox="0 0 24 24"
+          stroke="currentColor" stroke-width="1.7" fill="none"
+          stroke-linecap="round" stroke-linejoin="round">
+    <rect x="5" y="4" width="14" height="16" rx="1" />
+    <polyline points="13 4 10 12 14 12 11 20" />
+  </symbol>
+
+  <!-- Réseau câbles (ligne avec nœuds) -->
+  <symbol id="reunion-poi-cat-reseau" viewBox="0 0 24 24"
+          stroke="currentColor" stroke-width="1.7" fill="none"
+          stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 12 Q8 7 12 12 Q16 17 20 12" />
+    <circle cx="4"  cy="12" r="1.5" fill="currentColor" stroke="none" />
+    <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+    <circle cx="20" cy="12" r="1.5" fill="currentColor" stroke="none" />
+  </symbol>
+
+  <!-- Secteur / zone (polygone) -->
+  <symbol id="reunion-poi-cat-secteurs" viewBox="0 0 24 24"
+          stroke="currentColor" stroke-width="1.7" fill="none"
+          stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="12 4 20 9 20 15 12 20 4 15 4 9" />
+    <line x1="12" y1="4"  x2="12" y2="20" />
+    <line x1="4"  y1="9"  x2="20" y2="9" />
+    <line x1="4"  y1="15" x2="20" y2="15" />
+  </symbol>
+
+</svg>

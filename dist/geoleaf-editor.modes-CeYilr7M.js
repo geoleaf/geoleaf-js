@@ -1,0 +1,7 @@
+/*!
+ * @geoleaf-plugins/editor v1.4.0
+ * © 2026 Mattieu Pottier
+ * Released under the MIT License
+ * https://geoleaf.dev
+ */
+import{r as f,K as y,b as s,d as h,L as l,e as a,f as u,a as i,$ as g,M as r,g as m,I as E,h as d,i as b}from"./geoleaf-editor.terra-draw-BYdO89Jy.js";import{j as T,k as I}from"./geoleaf-editor.terra-draw-BYdO89Jy.js";function M(){return{toLine:!0,toCoordinate:!0}}function N(e){return new y({modeName:s,styles:h(e)})}function w(e){return new l({modeName:a,styles:u(e),finishOnNthCoordinate:2,showCoordinatePoints:!0,keyEvents:{finish:"Enter",cancel:"Escape"}})}function O(e){return new l({modeName:i,styles:u(e),showCoordinatePoints:!0,keyEvents:{finish:"Enter",cancel:"Escape"}})}function _(e,n,t){return new g({modeName:r,styles:m(e),snapping:n,pointerDistance:t,showCoordinatePoints:!0,keyEvents:{finish:"Enter",cancel:"Escape"}})}function L(e){const n=()=>({feature:{draggable:!0,coordinates:{draggable:!0,midpoints:{draggable:!0},deletable:!0}}});return new E({modeName:d,styles:b(e),flags:{[s]:{feature:{draggable:!0}},[a]:n(),[i]:n(),[r]:n()}})}function P(e){const n=f(),t=new Set(e.enabledTools??["point","line","polyline","polygon","select"]),p=M(),c=e.snapPx??12,o=[];return t.has("point")&&o.push(N(n)),t.has("line")&&o.push(w(n)),t.has("polyline")&&o.push(O(n)),t.has("polygon")&&o.push(_(n,p,c)),t.has("select")&&o.push(L(n)),o}export{a as MODE_LINE,s as MODE_POINT,r as MODE_POLYGON,i as MODE_POLYLINE,d as MODE_SELECT,P as buildTerraDrawModes,T as geometryTypeForMode,I as getModeNameForTool};

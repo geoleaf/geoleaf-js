@@ -1,0 +1,46 @@
+{
+    "ui": {
+        "theme": "light",
+        "language": "fr",
+        "showBaseLayerControls": false,
+        "showLayerManager": true,
+        "showCacheButton": true,
+        "showCredentialButton": true
+    },
+    "layerManagerConfig": {
+        "title": "Couches",
+        "collapsedByDefault": true,
+        "sections": [
+            {
+                "id": "data-tourism",
+                "label": "Données touristiques",
+                "order": 1,
+                "collapsedByDefault": false
+            },
+            {
+                "id": "data-climate",
+                "label": "Données climatiques",
+                "order": 2,
+                "collapsedByDefault": true
+            },
+            {
+                "id": "data-conservation",
+                "label": "Environnement",
+                "order": 3,
+                "collapsedByDefault": true
+            },
+            {
+                "id": "data-administration",
+                "label": "Découpage administratif",
+                "order": 4,
+                "collapsedByDefault": true
+            },
+            {
+                "id": "basemap",
+                "label": "Fonds de carte",
+                "order": 5,
+                "collapsedByDefault": true
+            }
+        ]
+    }
+}

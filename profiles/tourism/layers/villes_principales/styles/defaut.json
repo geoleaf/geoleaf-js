@@ -1,0 +1,44 @@
+{
+    "id": "defaut",
+    "label": {
+        "enabled": true,
+        "visibleByDefault": true,
+        "field": "ville",
+        "font": {
+            "family": "Lucida Sans",
+            "sizePt": 7,
+            "weight": 50,
+            "bold": false,
+            "italic": false
+        },
+        "color": "#323232",
+        "opacity": 1,
+        "buffer": {
+            "enabled": true,
+            "color": "#fafafa",
+            "opacity": 1,
+            "sizePx": 3.78
+        }
+    },
+    "description": "",
+    "scaleConfig": {
+        "minScale": 8000000,
+        "maxScale": 10000
+    },
+    "labelScale": {
+        "minScale": 3600000,
+        "maxScale": 1000
+    },
+    "style": {
+        "shape": "circle",
+        "radius": 2.27,
+        "fillColor": "#000000",
+        "fillOpacity": 1,
+        "color": "#000000",
+        "opacity": 1,
+        "weight": 0.76
+    },
+    "legend": {
+        "label": "Villes principales"
+    }
+}

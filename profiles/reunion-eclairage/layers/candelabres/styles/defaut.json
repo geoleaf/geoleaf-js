@@ -1,0 +1,31 @@
+{
+    "id": "defaut",
+    "label": {
+        "enabled": true,
+        "visibleByDefault": true,
+        "field": "id",
+        "font": {
+            "family": "Open Sans",
+            "sizePt": 7,
+            "weight": 50,
+            "bold": false,
+            "italic": false
+        },
+        "color": "#1f2937",
+        "opacity": 1,
+        "buffer": { "enabled": true, "color": "#ffffff", "opacity": 1, "sizePx": 2 },
+        "offset": { "placement": "right", "distancePx": 14 }
+    },
+    "description": "",
+    "labelScale": { "minScale": null, "maxScale": null },
+    "style": {
+        "shape": "circle",
+        "radius": 7,
+        "fillColor": "#facc15",
+        "fillOpacity": 1,
+        "color": "#333333",
+        "opacity": 1,
+        "weight": 1
+    },
+    "legend": { "label": "Candélabres" }
+}

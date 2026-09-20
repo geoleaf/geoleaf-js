@@ -1,0 +1,185 @@
+<!doctype html>
+<!-- `lang` is a starting value, not the truth: initI18n() replaces it with the resolved
+     language once the config is loaded. It must still carry a valid value here — a document
+     without `lang` is an accessibility violation for the whole boot window, JS failure included. -->
+<html lang="fr">
+    <head>
+        <meta charset="UTF-8" />
+        <title>GeoLeaf</title>
+        <link rel="icon" type="image/png" sizes="48x48" href="icons/fav.png" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta
+            name="description"
+            content="Cartographie interactive configurable — couches, thèmes et points d'intérêt pilotés par profil JSON, avec consultation et saisie hors-ligne."
+        />
+
+        <!-- Share preview. Values are static and NOT derived from the profile: preview crawlers
+             do not run JS, and a deploy carries several profiles chosen at runtime — so these
+             describe the application, which is the only statement true of every profile.
+             `og:url` is deliberately absent so crawlers fall back to the fetched URL, which is
+             what a permalink needs.
+
+             🛑 `og:image` A ÉTÉ RETIRÉE le 17/08/2026, et son absence est un CHOIX.
+             Elle valait `icons/icon-512.png` — un chemin RELATIF, alors qu'Open Graph
+             exige une URL absolue. Aucun agrégateur ne produisait donc d'aperçu : la balise ne
+             faisait rien, tout en donnant à lire que le sujet était traité. Une balise inopérante
+             vaut moins que son absence, parce qu'elle empêche de voir qu'il manque quelque chose.
+             ⚠️ La substitution au build a été écartée : le précédent existe
+             (`GEOLEAF_BACKEND_BASE_URL`) mais il fait varier un livrable selon la machine qui
+             construit — le piège déjà consigné pour `deploy-full`.
+             ➜ L'intégrateur qui veut un aperçu ajoute `og:image` avec SON origine absolue, ainsi
+             que `og:image:alt`. C'est une ligne, et elle lui appartient : l'origine n'est
+             connaissable que de lui.
+             📌 `twitter:card` repasse de `summary_large_image` à `summary` — sans image, la
+             grande carte n'a rien à montrer et l'agrégateur retombe sur le petit format. -->
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="GeoLeaf" />
+        <meta property="og:title" content="GeoLeaf — cartographie interactive" />
+        <meta
+            property="og:description"
+            content="Couches, thèmes et points d'intérêt pilotés par profil JSON, avec consultation et saisie hors-ligne."
+        />
+        <meta name="twitter:card" content="summary" />
+
+        <!-- PWA -->
+        <link rel="manifest" href="manifest.json" />
+        <meta name="theme-color" content="#2d6a4f" />
+        <!-- iOS/Android PWA -->
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="GeoLeaf" />
+        <link rel="apple-touch-icon" href="icons/icon-192.png" />
+
+        <!-- Security headers — validated for MapLibre GL JS v6 (no `unsafe-eval` needed, and no
+             third-party origin: the engine is self-hosted and there are no web fonts). The
+             engine's worker is a same-origin ESM module, so it is covered by `worker-src`, not
+             by `script-src blob:`. Gated by APP-09 (scripts/verify-app-template.cjs), which
+             compares a DECLARATION and not a behaviour: any change must also be checked by
+             hand, console open, on both variants. -->
+        <meta
+            http-equiv="Content-Security-Policy"
+            content="default-src 'self';
+                    script-src 'self';
+                    style-src 'self';
+                    img-src 'self' data: blob: https:;
+                    connect-src 'self' https:;
+                    font-src 'self' data:;
+                    worker-src 'self' blob:;
+                    child-src blob:;
+                    object-src 'none';
+                    base-uri 'self';
+                    form-action 'self';
+                    upgrade-insecure-requests;"
+        />
+
+        <!-- Do NOT add `X-Content-Type-Options` as a <meta>: no browser honours it outside an
+             HTTP response header, so the tag would only restore a false sense of protection.
+             The server sets it (docker/nginx.dev.conf), gated by NGINX-01.
+             `<meta name="referrer">` below IS valid as a tag — do not remove it by applying the
+             same lesson. -->
+        <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+        <link rel="stylesheet" href="dist/geoleaf-main.min.css" />
+
+        <link rel="modulepreload" href="dist/chunks/geoleaf-bundle-esm-entry-CDBjAVrx.js" />
+        <link rel="modulepreload" href="dist/chunks/geoleaf-chunk-core-utils-6S5I9Ntv.js" />
+        <link rel="modulepreload" href="dist/chunks/geoleaf-chunk-geojson-tgieXnRx.js" />
+        <link rel="modulepreload" href="dist/chunks/geoleaf-chunk-ui-controls-Ce4Nd7Np.js" />
+        <link rel="preload" as="fetch" type="application/json" crossorigin="anonymous" href="profiles/geoleaf.config.json" />
+    </head>
+    <body class="gl-theme-dark">
+        <!-- No inline `style=` or `<style>` in this block: the page CSP sets `style-src 'self'`
+             without `'unsafe-inline'`, so it would simply be blocked and the message would end
+             up unstyled with nothing reporting it. Bare semantic HTML renders with the browser
+             defaults, which are always present. -->
+        <noscript>
+            <h1>GeoLeaf nécessite JavaScript</h1>
+            <p>
+                Cette application construit la carte et ses couches dans le navigateur. Activez
+                JavaScript, puis rechargez la page.
+            </p>
+        </noscript>
+
+        <!-- Loading veil: hidden by the reveal, turned into the failure screen when the boot cannot complete — never rename this id -->
+        <div id="gl-loader"></div>
+
+        <div class="gl-page">
+            <main class="gl-main">
+                <!-- Filter panel toggle button -->
+                <button
+                    id="gl-filter-toggle"
+                    class="gl-filter-toggle"
+                    data-gl-role="filter-toggle"
+                    aria-label="Open filter panel"
+                    title="Filters"
+                >
+                    <span class="gl-filter-toggle__icon">
+                        <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="6"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <path d="M9 6l6 6-6 6"></path>
+                        </svg>
+                    </span>
+                </button>
+
+                <!-- #gl-filter-panel is built at runtime by the in-core filter capability
+                     (capabilities/filter/lifecycle.ts). No static placeholder: a pre-existing
+                     empty one gets adopted by the desktop panel and then removed by the dynamic
+                     mount, orphaning the real panel. -->
+
+                <!-- Containers for the theme selector -->
+                <div id="gl-theme-primary-container"></div>
+                <div id="gl-theme-secondary-container"></div>
+
+                <div id="geoleaf-map" class="gl-map"></div>
+            </main>
+        </div>
+
+        <!-- MapLibre GL JS v6 (WebGL rendering engine), SELF-HOSTED — build-deploy.cjs copies it
+             from node_modules via require.resolve, so the served version is the installed one.
+             No SRI: it would protect against a third party that no longer exists, and would
+             break on every version bump. `global.mjs` is a two-line shim that re-exposes the
+             `maplibregl` global the ESM-only v6 no longer publishes.
+             Execution order relies on document order for non-`async` module scripts — adding
+             `async` to either tag would break it, and silently. Gated by APP-10. -->
+        <link href="vendor/maplibre-gl/maplibre-gl.css" rel="stylesheet" />
+        <script type="module" src="vendor/maplibre-gl/global.mjs"></script>
+
+        <!-- GeoLeaf JS - ESM Bundle core -->
+        <script type="module" src="dist/geoleaf.esm.js?v=0c5e5872"></script>
+
+        <!-- taxonomy + feature-info are in-core capabilities gated by modules.<id> — no script. -->
+        <!-- connector, websocket, realtime-layer, file-import, flatgeobuf, geocoding, cog, table,
+             print, measure, editor: all lazy — see init.js. Four trigger families: explicit
+             `plugins.load(id)`; the core's `ensurePluginLoaded` seam for declarative layers;
+             `registerLazyForAction` for toolbar slots, which declares the button before the
+             bundle; and the `beforeBoot` hook for profile-dependent ones. -->
+
+        <!-- offline-ui stays EAGER on purpose: its `wireEngineSignals()` carries
+             QuotaExceededError and cache eviction up to the user. Loaded lazily the listener
+             would never exist, and unsynced field edits would be lost without a warning. -->
+        <!-- Optional plugins — variant-gated: stripped by build-deploy.cjs when unused -->
+        <script type="module" src="dist/geoleaf-offline-ui.plugin.js?v=7af182c9"></script>
+
+        <!-- routing stays EAGER, and the reason is a GUARD, not performance. Its entry point
+             is a profile-declared `action` widget of feature-info, whose visibility is gated on
+             `GeoLeaf.plugins.isLoaded()` ALONE — unlike toolbar slots, it does not consult
+             `isLazyAvailable()`. A lazily registered routing would therefore hide its own entry
+             point, and nothing would ever trigger the load that reveals it: no button, no error,
+             no trace. It is also the light half of the two navigation packages.
+             ⚠️ Do NOT "fix" the widget guard to make this lazy: that would change the meaning of
+             `requiresPlugin` for every existing profile. -->
+        <script type="module" src="dist/geoleaf-routing.plugin.js?v=7e76144c"></script>
+
+        <!-- Init: GeoLeaf bootstrap (external for CSP) -->
+        <script type="module" src="init.js"></script>
+    </body>
+</html>

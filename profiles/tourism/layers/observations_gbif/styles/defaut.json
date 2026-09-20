@@ -1,0 +1,49 @@
+{
+    "id": "defaut",
+    "scaleConfig": {
+        "minScale": 18444296,
+        "maxScale": 2252
+    },
+    "style": {
+        "radius": 5,
+        "fillColor": "#57cc99",
+        "fillOpacity": 0.85,
+        "color": "#264653",
+        "weight": 1
+    },
+    "styleRules": [
+        {
+            "when": {
+                "field": "properties.kingdom",
+                "operator": "==",
+                "value": "Animalia"
+            },
+            "label": "Faune",
+            "style": {
+                "fillColor": "#e76f51"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.kingdom",
+                "operator": "==",
+                "value": "Plantae"
+            },
+            "label": "Flore",
+            "style": {
+                "fillColor": "#2a9d8f"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.kingdom",
+                "operator": "==",
+                "value": "Fungi"
+            },
+            "label": "Champignons",
+            "style": {
+                "fillColor": "#e9c46a"
+            }
+        }
+    ]
+}

@@ -1,0 +1,45 @@
+{
+    "id": "eco_regions_fgb",
+    "label": "Éco-régions (FlatGeobuf)",
+    "plugin": "flatgeobuf",
+    "zIndex": 51,
+    "geometry": "polygon",
+    "data": {
+        "url": "layers/eco_regions_fgb/data/eco_regions.fgb",
+        "limit": 50000,
+        "autoRefresh": false
+    },
+    "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+            {
+                "id": "defaut",
+                "label": "défaut",
+                "file": "defaut.json"
+            }
+        ]
+    },
+    "table": {
+        "enabled": false
+    },
+    "clustering": {
+        "enabled": false,
+        "maxClusterRadius": 80,
+        "disableClusteringAtZoom": 12
+    },
+    "attributes": {
+        "titleField": "properties.ecorregion",
+        "fields": [
+            {
+                "field": "properties.ecorregion",
+                "label": "ecorregion",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip", "popup", "sidepanel"]
+                }
+            }
+        ]
+    }
+}

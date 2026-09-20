@@ -1,0 +1,67 @@
+{
+    "id": "zones",
+    "label": "Zones (démo édition)",
+    "zIndex": 42,
+    "geometry": "polygon",
+    "geometryType": "polygon",
+    "interactiveShape": true,
+    "data": {
+        "directory": "data",
+        "file": "zones.geojson"
+    },
+    "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+            {
+                "id": "defaut",
+                "label": "défaut",
+                "file": "defaut.json"
+            }
+        ]
+    },
+    "attributes": {
+        "titleField": "properties.nom",
+        "fields": [
+            {
+                "field": "properties.nom",
+                "label": "nom",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip", "popup"],
+                    "presentation": {
+                        "emphasis": "title"
+                    }
+                }
+            },
+            {
+                "field": "properties.categorie",
+                "label": "Catégorie",
+                "primitive": "string",
+                "widget": "badge",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"]
+                }
+            },
+            {
+                "field": "properties.surface_ha",
+                "label": "Surface (ha)",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"]
+                }
+            },
+            {
+                "field": "properties.description",
+                "label": "Description",
+                "primitive": "string",
+                "widget": "longtext",
+                "display": {
+                    "surfaces": ["sidepanel"]
+                }
+            }
+        ]
+    }
+}

@@ -1,0 +1,42 @@
+{
+    "id": "defaut",
+    "label": {
+        "enabled": true,
+        "visibleByDefault": false,
+        "field": "step",
+        "font": {
+            "family": "Open Sans",
+            "sizePt": 8,
+            "weight": 50,
+            "bold": true,
+            "italic": false
+        },
+        "color": "#7c2d92",
+        "opacity": 1,
+        "buffer": {
+            "enabled": true,
+            "color": "#fafafa",
+            "opacity": 1,
+            "sizePx": 3.78
+        }
+    },
+    "description": "",
+    "style": {
+        "_comment": "⚠️ Ce style porte DEUX familles de clés, et c'est délibéré : la couche est MIXTE. Le plugin y publie une LineString (le tracé) ET un Point par étape, dans la même source. `color` / `weight` / `casing` peignent le tracé ; `fillColor` / `fillOpacity` / `radius` peignent les étapes. Sans ces trois dernières, aucune propriété n'était émise et MapLibre appliquait ses propres défauts — un disque NOIR de rayon 5 — là où il fallait une pastille.",
+        "casing": {
+            "enabled": true,
+            "color": "#581c87",
+            "opacity": 1,
+            "widthPx": 1
+        },
+        "color": "#9333ea",
+        "opacity": 0.9,
+        "weight": 4,
+        "fillColor": "#ffffff",
+        "fillOpacity": 1,
+        "radius": 6
+    },
+    "legend": {
+        "label": "Itinéraire calculé"
+    }
+}

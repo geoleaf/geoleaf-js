@@ -1,0 +1,8 @@
+{
+    "_comment": "⚠️ `labelField` DOIT nommer la même propriété que le `payloadFields` du widget `action` déclaré sur la couche — ici `Name`, avec sa majuscule. La règle traverse deux fichiers et aucun schéma ne l'exprime : un profil valide des deux côtés rend un panneau dont la destination n'a pas de nom. Mesuré le 21/08/2026 par l'E2E du point d'entrée, qui a échoué exactement là, avec le défaut `name` du plugin contre le `Name` de la couche.",
+    "enabled": true,
+    "showButton": true,
+    "_comment3": "⚠️ Une LISTE depuis le 26/08/2026, et ce n'est pas une commodité. Le bouton se déclare PAR COUCHE dans le profil, alors que ce réglage est global au plugin — et les couches ne s'accordent pas sur le nom de leur libellé : `Name` (aires protégées), `NAME` (sites WDPA), `species` (GBIF), `place` (épicentres). Une valeur unique ne pouvait donc en nommer qu'une, les autres arrivant sans nom. La première propriété présente et non vide gagne ; la forme chaîne reste acceptée et vaut une liste d'un.",
+    "labelField": ["Name", "NAME", "species", "place"],
+    "_comment2": "🛑 `showButton` est passé à `true` le 23/08/2026, au sprint 2 du chantier des exigences manquantes. Il était à `false` avec un motif écrit dans le README du paquet — « un contrôle visible qui ne fait rien est pire qu'un absent, parce qu'il ne s'annonce pas : il se fait cliquer » — et ce motif était juste TANT QUE le panneau n'avait aucun moyen d'ajouter une étape. Il en a un depuis ce sprint, donc le bouton ouvre désormais quelque chose d'utilisable, et le laisser éteint rendrait le chemin de saisie inatteignable dans la démonstration — ce qui est le défaut que ce sprint corrige."
+}

@@ -1,0 +1,79 @@
+{
+    "id": "defaut",
+    "label": "Par magnitude",
+    "description": "Épicentres colorés par magnitude sismique",
+    "labelScale": {
+        "minScale": null,
+        "maxScale": null
+    },
+    "style": {
+        "radius": 5,
+        "fillColor": "#fca311",
+        "fillOpacity": 0.8,
+        "color": "#ffffff",
+        "opacity": 1,
+        "weight": 1
+    },
+    "styleRules": [
+        {
+            "when": {
+                "field": "properties.mag",
+                "operator": "<",
+                "value": 3
+            },
+            "style": {
+                "radius": 4,
+                "fillColor": "#57cc99",
+                "fillOpacity": 0.7
+            },
+            "legend": {
+                "label": "< 3.0 (faible)"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.mag",
+                "operator": ">=",
+                "value": 3
+            },
+            "style": {
+                "radius": 6,
+                "fillColor": "#fca311",
+                "fillOpacity": 0.8
+            },
+            "legend": {
+                "label": "3.0 – 4.9 (modéré)"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.mag",
+                "operator": ">=",
+                "value": 5
+            },
+            "style": {
+                "radius": 8,
+                "fillColor": "#e76f51",
+                "fillOpacity": 0.85
+            },
+            "legend": {
+                "label": "5.0 – 6.9 (fort)"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.mag",
+                "operator": ">=",
+                "value": 7
+            },
+            "style": {
+                "radius": 12,
+                "fillColor": "#d62828",
+                "fillOpacity": 0.95
+            },
+            "legend": {
+                "label": "≥ 7.0 (majeur)"
+            }
+        }
+    ]
+}

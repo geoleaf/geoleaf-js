@@ -1,0 +1,233 @@
+{
+    "id": "cultures",
+    "label": "Cultures",
+    "zIndex": 99,
+    "geometry": "point",
+    "interactiveShape": true,
+    "showIconsOnMap": true,
+    "data": {
+        "directory": "data",
+        "file": "cultures.geojson"
+    },
+    "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+            {
+                "id": "defaut",
+                "label": "défaut",
+                "file": "defaut.json"
+            }
+        ]
+    },
+    "table": {
+        "enabled": true,
+        "columns": [
+            {
+                "field": "properties.name",
+                "label": "Nom",
+                "sortable": true,
+                "width": "40%"
+            },
+            {
+                "field": "properties.fclass",
+                "label": "Type",
+                "sortable": true,
+                "width": "20%"
+            },
+            {
+                "field": "properties.categoryId",
+                "label": "Catégorie",
+                "sortable": true,
+                "width": "20%"
+            },
+            {
+                "field": "properties.subcategoryId",
+                "label": "Sous-catégorie",
+                "sortable": true,
+                "width": "20%"
+            }
+        ],
+        "searchFields": ["properties.name"],
+        "defaultSort": {
+            "field": "properties.name",
+            "order": "asc"
+        }
+    },
+    "clustering": {
+        "enabled": true,
+        "maxClusterRadius": 80,
+        "disableClusteringAtZoom": 12
+    },
+    "attributes": {
+        "titleField": "properties.name",
+        "fields": [
+            {
+                "field": "properties.NAME",
+                "label": "NAME",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip"]
+                }
+            },
+            {
+                "field": "properties.name",
+                "label": "Nom",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"],
+                    "presentation": {
+                        "emphasis": "title"
+                    }
+                }
+            },
+            {
+                "field": "properties.fclass",
+                "label": "Type",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["popup"]
+                }
+            },
+            {
+                "field": "properties.categoryId",
+                "label": "Catégorie",
+                "primitive": "string",
+                "widget": "badge",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"],
+                    "presentation": {
+                        "emphasis": "category"
+                    }
+                }
+            },
+            {
+                "field": "properties.subcategoryId",
+                "label": "Sous-catégorie",
+                "primitive": "string",
+                "widget": "badge",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"],
+                    "presentation": {
+                        "emphasis": "subcategory"
+                    }
+                }
+            },
+            {
+                "field": "attributes.reviews.rating",
+                "label": "Note globale",
+                "primitive": "number",
+                "widget": "rating",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"]
+                }
+            },
+            {
+                "field": "attributes.photo",
+                "label": "Image principale",
+                "primitive": "string",
+                "widget": "image",
+                "display": {
+                    "surfaces": ["sidepanel"],
+                    "presentation": {
+                        "hero": true
+                    }
+                }
+            },
+            {
+                "field": "properties.short_desc",
+                "label": "Résumé",
+                "primitive": "string",
+                "widget": "longtext",
+                "display": {
+                    "surfaces": ["sidepanel"],
+                    "presentation": {
+                        "accordion": true,
+                        "defaultOpen": true
+                    }
+                }
+            },
+            {
+                "field": "properties.informations",
+                "label": "Informations",
+                "primitive": "string[]",
+                "widget": "list",
+                "display": {
+                    "surfaces": ["sidepanel"],
+                    "presentation": {
+                        "accordion": true
+                    }
+                }
+            },
+            {
+                "field": "properties.highlights",
+                "label": "Points forts",
+                "primitive": "string[]",
+                "widget": "list",
+                "display": {
+                    "surfaces": ["sidepanel"],
+                    "presentation": {
+                        "accordion": true
+                    }
+                }
+            },
+            {
+                "field": "attributes.gallery",
+                "label": "Galerie photos",
+                "primitive": "string[]",
+                "widget": "gallery",
+                "display": {
+                    "surfaces": ["sidepanel"],
+                    "presentation": {
+                        "accordion": true
+                    }
+                }
+            },
+            {
+                "field": "properties.link_official",
+                "label": "Site officiel",
+                "primitive": "string",
+                "widget": "link",
+                "display": {
+                    "surfaces": ["sidepanel"]
+                }
+            },
+            {
+                "field": "properties.link_wikipedia",
+                "label": "Wikipedia",
+                "primitive": "string",
+                "widget": "link",
+                "display": {
+                    "surfaces": ["sidepanel"]
+                }
+            },
+            {
+                "field": "properties.tags",
+                "label": "Tags",
+                "primitive": "string[]",
+                "widget": "tags",
+                "display": {
+                    "surfaces": ["sidepanel"]
+                }
+            },
+            {
+                "field": "attributes.reviews.recent",
+                "label": "Avis récents",
+                "primitive": "object[]",
+                "widget": "reviews",
+                "options": {
+                    "maxCount": 5
+                },
+                "display": {
+                    "surfaces": ["sidepanel"],
+                    "presentation": {
+                        "accordion": true
+                    }
+                }
+            }
+        ]
+    }
+}

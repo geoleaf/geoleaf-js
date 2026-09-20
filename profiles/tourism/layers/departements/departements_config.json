@@ -1,0 +1,60 @@
+{
+    "id": "departements",
+    "label": "Départements",
+    "zIndex": 42,
+    "interactiveShape": false,
+    "geometry": "polygon",
+    "data": {
+        "directory": "data",
+        "file": "departements.geojson",
+        "vectorTiles": {
+            "_comment": "Vector tiles DISARMED (R.45/R.38 sprint — R.33, backlog résiduel S5, 25/07/2026). This block declared enabled:true without `tilesUrl`, which promised MVT the runtime never served: shouldUseVectorTiles() (capabilities/vector-tiles/vector-tiles.ts) requires an ABSOLUTE url and deliberately refuses the relative path derived from `tilesDirectory`, because the .pbf files may not exist. The layer therefore fell back to GeoJSON — silently, with no warning. The promise is disarmed rather than deleted: re-arming means adding a real `tilesUrl` and setting enabled back to true.",
+            "enabled": false,
+            "tilesDirectory": "tiles",
+            "layerName": "departements",
+            "minZoom": 0,
+            "maxNativeZoom": 14,
+            "maxZoom": 18,
+            "interactive": true
+        }
+    },
+    "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+            {
+                "id": "defaut",
+                "label": "défaut",
+                "file": "defaut.json"
+            }
+        ]
+    },
+    "table": {
+        "enabled": true,
+        "columns": [
+            {
+                "field": "properties.NAM",
+                "label": "Nom",
+                "sortable": true,
+                "width": "50%"
+            },
+            {
+                "field": "properties.GNA",
+                "label": "Type",
+                "sortable": true,
+                "width": "30%"
+            },
+            {
+                "field": "properties.IN1",
+                "label": "Code",
+                "sortable": true,
+                "width": "20%"
+            }
+        ],
+        "searchFields": ["properties.NAM"],
+        "defaultSort": {
+            "field": "properties.NAM",
+            "order": "asc"
+        }
+    }
+}
