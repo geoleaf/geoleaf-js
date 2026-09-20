@@ -81,6 +81,11 @@ interface CacheResult {
      * which is the same distinction the sync report exists for one level down.
      */
     pulledLayers?: DeclaredPullReport[];
+    /**
+     * True when « Stop » was pressed during this download. What was stored before the stop
+     * stays; a pull under way ended at its page and removed nothing.
+     */
+    cancelled?: boolean;
 }
 
 interface EnumerateResource {
@@ -132,6 +137,14 @@ const CacheManager = {
         maxCacheBytes: DEFAULT_MAX_CACHE_BYTES,
     } as CacheManagerConfig,
     _cachingProfiles: new Set<string>(),
+    /**
+     * The running download's controller: one per gesture, raised by `cancelDownload()`.
+     *
+     * 🛑 `Downloader` has its own, and it is not enough: created when the resources start and
+     * dropped when they end, it covers neither the enumeration before them nor the entities
+     * pull after them.
+     */
+    _downloadController: null as AbortController | null,
 
     init(options: CacheManagerConfig = {}) {
         // Merge over defaults instead of replacing, so a partial cache config keeps the
@@ -163,6 +176,8 @@ const CacheManager = {
         }
 
         this._cachingProfiles.add(profileId);
+        const controller = new AbortController();
+        this._downloadController = controller;
 
         try {
             Log.info(`[CacheManager] Starting cache for profile: ${profileId}`);
@@ -216,6 +231,10 @@ const CacheManager = {
             );
             Log.info(`[CacheManager] Found ${resources.length} resources to cache`);
 
+            // A stop pressed before the resources start reaches no downloader yet. Nothing is
+            // downloaded, and no manifest is written over the one an earlier download left.
+            if (controller.signal.aborted) return { cancelled: true, profileId };
+
             const result = await Downloader.cacheProfile(
                 profileId,
                 profile as Record<string, unknown>,
@@ -231,15 +250,7 @@ const CacheManager = {
             // the resource download is the one the quota pre-check above sized. Before
             // the manifest, so a download that pulled entities is recorded as one
             // gesture rather than two.
-            //
-            // It cannot fail the download: `pullDeclaredLayers` reports, it does not
-            // throw. Losing tens of megabytes of tiles because one OGC source answered
-            // 503 would be a worse outcome than the partial state it is protecting from.
-            const pulled = await pullDeclaredLayers(
-                profileId,
-                options.selection as { layers?: unknown } | null | undefined
-            );
-            if (pulled.length > 0) result.pulledLayers = pulled;
+            await this._pullEntities(profileId, options.selection, controller.signal, result);
 
             await this._saveManifest(profileId, result);
 
@@ -269,6 +280,7 @@ const CacheManager = {
             throw enhancedError;
         } finally {
             this._cachingProfiles.delete(profileId);
+            if (this._downloadController === controller) this._downloadController = null;
         }
     },
 
@@ -289,9 +301,16 @@ const CacheManager = {
      * ⚠️ Emitted here and not in `Downloader`: the orchestrator owns a profile
      * download's lifecycle, and `Downloader.cancelDownload()` is also called by
      * internal paths. An emitter per intent, not per mechanism.
+     *
+     * 🛑 **It stops the whole gesture, not only its resources.** The downloader's controller
+     * lives while the resources download, and no longer: a stop pressed during the entities
+     * pull reached nothing, and the pull ran to its end. The gesture's own controller is
+     * raised here too — the pull ends at its page, and the result of `cacheProfile` says
+     * `cancelled`.
      */
     cancelDownload() {
         Downloader.cancelDownload();
+        this._downloadController?.abort();
         document.dispatchEvent(new CustomEvent("geoleaf:cache:cancelled"));
     },
 
@@ -307,6 +326,39 @@ const CacheManager = {
             Log.error("[CacheManager] Failed to load profile config:", error);
             throw error;
         }
+    },
+
+    /**
+     * Pulls the entities of the selected layers that declare a source, and completes `result`.
+     *
+     * It cannot fail the download: `pullDeclaredLayers` reports, it does not throw. Losing
+     * tens of megabytes of tiles because one OGC source answered 503 would be a worse outcome
+     * than the partial state it is protecting from.
+     *
+     * 🛑 **The gesture's signal goes with it.** Without it, « Stop » reached the resources
+     * only: the pull ran to its end, and a complete pull removes what it did not return.
+     * Raised before the pull, the signal means no layer is attempted; during it, the pull ends
+     * at its page, keeps what it wrote and removes nothing.
+     *
+     * @param profileId - Profile being downloaded.
+     * @param selection - The saved selection, as the download handed it over.
+     * @param signal - The gesture's signal, raised by `cancelDownload()`.
+     * @param result - The download's result, completed in place with `pulledLayers` and
+     *   `cancelled`.
+     */
+    async _pullEntities(
+        profileId: string,
+        selection: unknown,
+        signal: AbortSignal,
+        result: CacheResult
+    ): Promise<void> {
+        const pulled = await pullDeclaredLayers(
+            profileId,
+            selection as { layers?: unknown } | null | undefined,
+            signal
+        );
+        if (pulled.length > 0) result.pulledLayers = pulled;
+        if (signal.aborted) result.cancelled = true;
     },
 
     async _saveManifest(profileId: string, result: CacheResult) {

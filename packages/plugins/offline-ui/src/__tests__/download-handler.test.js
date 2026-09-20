@@ -147,6 +147,28 @@ describe("handleDownload", () => {
         expect(elements.downloadBtn.disabled).toBe(false);
     });
 
+    test("🛑 un téléchargement ARRÊTÉ ne s'annonce pas réussi", async () => {
+        // « Arrêter » has already said so: on `geoleaf:cache:cancelled`, the control showed
+        // "stopped" and handed the button back. When `cacheProfile` resolves afterwards, its
+        // result says `cancelled` — a success announced over it contradicts what the user saw.
+        const store = installStorage({
+            cacheProfileResult: { cancelled: true, profileId: "prof-1", resourcesCount: 2 },
+        });
+        vi.useFakeTimers();
+
+        const p = DownloadHandler.handleDownload();
+        await vi.runAllTimersAsync();
+        await p;
+
+        expect(store.cacheProfile).toHaveBeenCalled();
+        expect(notif.success).not.toHaveBeenCalled();
+        expect(elements.progressText.textContent).not.toContain("✅");
+        // What a partial download stored still shows: the status and the icons are re-read.
+        expect(control._updateStatus).toHaveBeenCalled();
+        expect(store.refreshCacheIcons).toHaveBeenCalled();
+        expect(elements.downloadBtn.disabled).toBe(false);
+    });
+
     test("moteur indisponible → notifie et sort sans télécharger", async () => {
         const store = installStorage({ available: false });
         setConfig({ "modules.offline.enabled": false });

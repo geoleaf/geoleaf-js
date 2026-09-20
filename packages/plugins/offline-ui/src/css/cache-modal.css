@@ -13,7 +13,13 @@
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 10002;
+    /* 🛑 10002 until 19/09/2026 — and the confirmations THIS window opens (« Stop »,
+       « Clear cache ») are modal-shell overlays at 10000, so they opened UNDER it: their
+       « Confirm » was covered by this window's own rows, and only a keyboard could reach it,
+       blind. The value came with the February 2026 migration and carried no motive. On the same
+       layer they stack above, being appended to the body after this window; the toasts (10100)
+       and this window keep their order. Proven with a mouse on the shipped bundle: `e2e/55`. */
+    z-index: 10000;
     align-items: center;
     justify-content: center;
 }

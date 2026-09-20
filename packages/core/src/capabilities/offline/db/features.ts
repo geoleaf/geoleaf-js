@@ -31,14 +31,24 @@
  */
 
 import { Log } from "../../../utils/log/index.js";
-import type { FeatureRecord } from "../../../contracts/sync.contract.js";
+import type { FeatureRecord, VersionMarker } from "../../../contracts/sync.contract.js";
 
 /** What one bulk pull actually did to the store. */
 export interface PreservingPutTally {
-    /** Records inserted or refreshed. */
+    /** Records inserted, or rewritten because the source changed them. */
     readonly written: number;
     /** Records left untouched because they hold unsynchronised local work. */
     readonly preserved: number;
+    /** Records left untouched because the source serves them under the marker already stored. */
+    readonly unchanged: number;
+    /** Synchronised records removed because the source served them as tombstones. */
+    readonly removed: number;
+    /**
+     * The key of every record this batch named, once its identity was resolved — written,
+     * unchanged or preserved alike. What a complete pull never named is what `sweepSynced`
+     * may remove.
+     */
+    readonly seen: readonly string[];
 }
 
 /** Public API of the features store. */
@@ -61,10 +71,30 @@ export interface FeaturesDBInstance {
      * — and property 1 of the sync contract ("a capture never silently disappears") would
      * hold only by timing.
      *
-     * A record is skipped when it already exists with `syncState !== "synced"`. Everything
-     * else is inserted or refreshed.
+     * A record is skipped when it already exists with `syncState !== "synced"` (`preserved`),
+     * or when it is `synced` and the source serves it under the very marker already stored
+     * (`unchanged`). Everything else is inserted or rewritten.
+     *
+     * `tombstones` are entities the source served as DELETED: never written, their stored copy
+     * is removed when it is `synced` (`removed`) and kept when it holds local work
+     * (`preserved`) — in the same transaction, under the same identity resolution.
      */
-    putManyPreservingLocal(records: readonly FeatureRecord[]): Promise<PreservingPutTally>;
+    putManyPreservingLocal(
+        records: readonly FeatureRecord[],
+        tombstones?: readonly FeatureRecord[]
+    ): Promise<PreservingPutTally>;
+    /**
+     * Removes, in ONE transaction, every record of `layerId` that `keep` does not name, is
+     * `synced`, and carries a server identity — what a complete pull did not return.
+     *
+     * 🛑 **Local work is never removed, and neither is what has no server identity.** A record
+     * holding an unsynchronised capture is not `synced`; an entity created here has no row to
+     * be absent from. The state is read in the same transaction as the removal, for the reason
+     * `putManyPreservingLocal` gives: an optimistic write must not slip between the two.
+     *
+     * @returns How many records were removed.
+     */
+    sweepSynced(layerId: string, keep: ReadonlySet<string>): Promise<number>;
 }
 
 const STORE = "features";
@@ -149,26 +179,57 @@ function init(db: IDBDatabase): FeaturesDBInstance {
             return write((store) => store.delete([layerId, localId]));
         },
 
-        putManyPreservingLocal: (records) => putPreserving(db, records),
+        putManyPreservingLocal: (records, tombstones) => putPreserving(db, records, tombstones),
+
+        sweepSynced: (layerId, keep) => sweepSynced(db, layerId, keep),
     };
 }
 
 /**
+ * True when two freshness markers name the same version — same kind, same value, neither absent.
+ *
+ * ⚠️ **An absent marker never equals anything, itself included.** A row served without its
+ * marker says nothing about whether it changed; comparing `null` to `null` as equal would
+ * freeze such a row at its first pull forever.
+ *
+ * @param stored - The marker the record holds.
+ * @param served - The marker the source just served.
+ * @returns Whether the source serves the version already stored.
+ */
+function sameVersion(
+    stored: VersionMarker | null | undefined,
+    served: VersionMarker | null | undefined
+): boolean {
+    return !!stored && !!served && stored.kind === served.kind && stored.value === served.value;
+}
+
+/**
  * Writes a batch while preserving local captures — the contract's rule, in ONE
- * transaction.
+ * transaction. A record served under the marker already stored is not rewritten, and a
+ * tombstone removes its synchronised copy.
  *
  * Outside `init` to stay under the function-length ceiling, and because it captures
  * nothing from the closure beyond the connection: it receives it as a parameter.
  *
  * @param db - Open IndexedDB connection.
  * @param records - The pulled batch, in the order the source returned it.
+ * @param tombstones - What the same page served as deleted. Never written: the synchronised
+ *   copy is removed, a copy holding local work is kept.
  * @returns The real tally — never estimated from the batch size.
  */
 function putPreserving(
     db: IDBDatabase,
-    records: readonly FeatureRecord[]
+    records: readonly FeatureRecord[],
+    tombstones: readonly FeatureRecord[] = []
 ): Promise<PreservingPutTally> {
-    if (records.length === 0) return Promise.resolve({ written: 0, preserved: 0 });
+    // One walk over both lists: what to write, then what the source served as deleted.
+    const items = [
+        ...records.map((record) => ({ record, tombstone: false })),
+        ...tombstones.map((record) => ({ record, tombstone: true })),
+    ];
+    if (items.length === 0) {
+        return Promise.resolve({ written: 0, preserved: 0, unchanged: 0, removed: 0, seen: [] });
+    }
 
     return new Promise<PreservingPutTally>((resolve, reject) => {
         const tx = db.transaction([STORE], "readwrite");
@@ -176,19 +237,57 @@ function putPreserving(
         const byServerId = store.index("serverId");
         let written = 0;
         let preserved = 0;
+        let unchanged = 0;
+        let removed = 0;
         let index = 0;
+        const seen: string[] = [];
 
-        tx.oncomplete = () => resolve({ written, preserved });
+        tx.oncomplete = () => resolve({ written, preserved, unchanged, removed, seen });
         tx.onerror = () => reject(new Error(`[DB.Features] bulk write failed: ${tx.error}`));
         tx.onabort = () => reject(new Error(`[DB.Features] bulk write aborted: ${tx.error}`));
 
+        // A tombstone is never written: its synchronised copy goes, local work stays.
+        const bury = (current: FeatureRecord | undefined, key: [string, string]): void => {
+            if (!current) {
+                step();
+                return;
+            }
+            if (current.syncState !== "synced") {
+                preserved += 1;
+                step();
+                return;
+            }
+            store.delete(key).onsuccess = () => {
+                removed += 1;
+                step();
+            };
+        };
+
         // Decide, then write, under the localId settled by `resolveIdentity`.
-        const applyTo = (record: FeatureRecord, localId: string): void => {
+        const applyTo = (item: (typeof items)[number], localId: string): void => {
+            const { record } = item;
             const existing = store.get([record.layerId, localId]);
             existing.onsuccess = () => {
                 const current = existing.result as FeatureRecord | undefined;
+                if (item.tombstone) {
+                    bury(current, [record.layerId, localId]);
+                    return;
+                }
+                seen.push(localId);
                 if (current && current.syncState !== "synced") {
                     preserved += 1;
+                    step();
+                    return;
+                }
+                // 🛑 THE MARKER IS READ BACK, and it is what makes a second pull cheap. It was
+                // stored from the first pull on — for the conflict filter — and never compared
+                // here: every `synced` record was rewritten on every pull. A record the source
+                // serves under the marker already stored is left as it is.
+                if (
+                    current?.feature !== undefined &&
+                    sameVersion(current.version, record.version)
+                ) {
+                    unchanged += 1;
                     step();
                     return;
                 }
@@ -205,9 +304,10 @@ function putPreserving(
         // 4.5 has pushed a client identity the server echoes it back. Keying on the
         // fresh derivation would then insert a SECOND record for the same entity. The
         // established localId wins — it is the one the outbox references.
-        const resolveIdentity = (record: FeatureRecord): void => {
+        const resolveIdentity = (item: (typeof items)[number]): void => {
+            const { record } = item;
             if (record.serverId === null) {
-                applyTo(record, record.localId);
+                applyTo(item, record.localId);
                 return;
             }
             const twins = byServerId.getAll(record.serverId);
@@ -216,7 +316,7 @@ function putPreserving(
                 const twin = rows.find(
                     (r) => r.layerId === record.layerId && r.localId !== record.localId
                 );
-                applyTo(record, twin ? twin.localId : record.localId);
+                applyTo(item, twin ? twin.localId : record.localId);
             };
         };
 
@@ -225,12 +325,62 @@ function putPreserving(
         // Any request error goes unhandled and aborts it — a half-written store is the
         // one outcome that cannot be detected afterwards.
         const step = (): void => {
-            const next = records[index++];
+            const next = items[index++];
             if (!next) return;
             resolveIdentity(next);
         };
 
         step();
+    });
+}
+
+/**
+ * Removes what a complete pull did not return — the store-side half of the convergence.
+ *
+ * Outside `init` for the reason `putPreserving` is. The keys are listed first (keys only, no
+ * record read), then each candidate the pull did not name is read and removed only if it is
+ * still `synced` and carries a server identity — all in one transaction, each request issued
+ * from the previous one's callback so the transaction stays alive.
+ *
+ * @param db - Open IndexedDB connection.
+ * @param layerId - The layer the pull covered.
+ * @param keep - The keys the pull named (`PreservingPutTally.seen`, over every page).
+ * @returns How many records were removed.
+ */
+function sweepSynced(db: IDBDatabase, layerId: string, keep: ReadonlySet<string>): Promise<number> {
+    return new Promise<number>((resolve, reject) => {
+        const tx = db.transaction([STORE], "readwrite");
+        const store = tx.objectStore(STORE);
+        let removed = 0;
+
+        tx.oncomplete = () => resolve(removed);
+        tx.onerror = () => reject(new Error(`[DB.Features] sweep failed: ${tx.error}`));
+        tx.onabort = () => reject(new Error(`[DB.Features] sweep aborted: ${tx.error}`));
+
+        const keys = store.getAllKeys(layerRange(layerId));
+        keys.onsuccess = () => {
+            const candidates = ((keys.result as IDBValidKey[] | undefined) ?? []).filter(
+                (key) => !keep.has(String((key as [string, string])[1]))
+            );
+            let index = 0;
+            const step = (): void => {
+                const key = candidates[index++];
+                if (key === undefined) return;
+                const read = store.get(key);
+                read.onsuccess = () => {
+                    const record = read.result as FeatureRecord | undefined;
+                    if (record && record.syncState === "synced" && record.serverId !== null) {
+                        store.delete(key).onsuccess = () => {
+                            removed += 1;
+                            step();
+                        };
+                        return;
+                    }
+                    step();
+                };
+            };
+            step();
+        };
     });
 }
 

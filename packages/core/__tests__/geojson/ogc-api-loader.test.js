@@ -653,3 +653,73 @@ describe("streamOgcApiFeatures — la marche, séparée de l'accumulation", () =
         expect(outcome.lastCursor).toBe("https://api.example.com/items?offset=1");
     });
 });
+
+// ─── A cut that lands exactly on a page boundary ──────────────────────────────
+//
+// 🛑 THE LOOP STOPPED WITHOUT KNOWING. `capReached` is `fetched >= maxFeatures`, and it stops
+// the walk before the next page is asked for; `truncated` was set on `fetched > maxFeatures`
+// only. When the cap falls exactly on a page boundary, the two disagree: the walk stops on a
+// page that links to more, and the run reports itself complete. Every consumer then took a
+// subset for the whole collection — the truncation notice stayed silent, and a pull that
+// removes what the source no longer serves would remove what it simply never asked for.
+
+describe("streamOgcApiFeatures — une coupe qui tombe pile sur une fin de page", () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    const page = (ids, extra = {}) => ({
+        body: makeFeatureCollection(
+            ids.map((id) => ({ type: "Feature", geometry: null, properties: { id } })),
+            extra
+        ),
+    });
+
+    it("🛑 la page coupée annonce une suite : le lot est TRONQUÉ, et le dit", async () => {
+        mockFetch([
+            page([1, 2], {
+                numberMatched: 4,
+                links: [{ rel: "next", href: "https://api.example.com/items?offset=2" }],
+            }),
+            page([3, 4]),
+        ]);
+
+        const outcome = await streamOgcApiFeatures(
+            { url: "https://api.example.com/items", maxFeatures: 2 },
+            () => {}
+        );
+
+        expect(outcome.delivered).toBe(2);
+        expect(outcome.truncated).toEqual({ limit: 2, fetched: 2, matched: 4 });
+    });
+
+    it("🛑 idem pour un curseur déclaré (`cursorPath`)", async () => {
+        mockFetch([
+            page([1, 2], { pagination: { next_cursor: "https://api.example.com/items?c=2" } }),
+            page([3, 4]),
+        ]);
+
+        const outcome = await streamOgcApiFeatures(
+            {
+                url: "https://api.example.com/items",
+                maxFeatures: 2,
+                cursorPath: "pagination.next_cursor",
+            },
+            () => {}
+        );
+
+        expect(outcome.truncated).toMatchObject({ limit: 2, fetched: 2 });
+    });
+
+    it("une source qui tient EXACTEMENT dans le plafond n'est pas tronquée", async () => {
+        mockFetch([page([1, 2], { numberMatched: 2 })]);
+
+        const outcome = await streamOgcApiFeatures(
+            { url: "https://api.example.com/items", maxFeatures: 2 },
+            () => {}
+        );
+
+        expect(outcome.delivered).toBe(2);
+        expect(outcome.truncated).toBeUndefined();
+    });
+});

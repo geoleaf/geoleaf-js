@@ -1083,9 +1083,12 @@ declare global {
                 fetched: number;
                 written: number;
                 preserved: number;
+                unchanged: number;
+                removed: number;
                 skipped: number;
                 capped: boolean;
                 aborted: boolean;
+                mode: "full" | "delta" | null;
                 refused: string | null;
             }>;
             /**

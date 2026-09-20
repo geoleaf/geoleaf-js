@@ -4,14 +4,29 @@ title: offline — le moteur hors ligne, et la façade que pilote son interface
 capability_id: offline
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 0ac36844d
-date: 17 septembre 2026
+verifie_contre: 3bb6da6c4
+date: 19 septembre 2026
 ---
 
 # offline — le moteur hors ligne, et la façade que pilote son interface
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/offline/` ·
 **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
+
+> ⚠️ **Ce que l'estampille du 19/09/2026 ajoute.** La **convergence du rapatriement** et le **delta
+> déclaré** — §`pullLayer()` et ses cinq propriétés, §Le branchement dans le TÉLÉCHARGEMENT (la zone
+> qui borne), §La convergence et le delta déclaré — et la **fusion d'une édition partielle**
+> (§`local_images`). Chacun est adossé à un test vu rouge avant son correctif —
+> `pull-converges.test.ts`, `partial-edit-keeps-feature.test.ts`,
+> `cache-manager-orchestration.test.js`, `offline-delta-opposability.test.ts` —, les gardes neuves
+> re-vues rouges par mutation, et prouvé sur le bundle livré (`e2e/53`, `e2e/54`). Relues et
+> inchangées : §Configuration (aucune clé de `modules.offline` ne bouge ; la clé neuve est une clé
+> de COUCHE), §Événements (aucun événement neuf), §Le schéma de la base locale (aucune montée de
+> version : la marque vit dans `offline.pullState`, un magasin existant). Ré-estampillée sur
+> `694377e8c`, un correctif de typage sans effet de comportement : la relecture de `mark` et de
+> `scope` sans `as unknown`, le `@param tombstones` de l'écriture d'une page. Ré-estampillée sur
+> `3bb6da6c4` : « Arrêter » atteint le rapatriement — §Le branchement dans le TÉLÉCHARGEMENT et la
+> ligne OF-07 le disent, prouvé à la souris par `e2e/55`.
 
 > ⚠️ **Ce que cette estampille couvre, et ce qu'elle ne couvre pas.** Elle couvre le
 > **rapatriement par tranches** de R9 (06/09/2026) et les sections qui le décrivent — §`pullLayer()`
@@ -111,7 +126,7 @@ défaut _appliqué_, faute de lecteur à interroger — seul le défaut _annonc�
 | OF-04 | Téléchargement d'un profil complet              | `cacheProfile(profileId)`                 | ✅ **RÉSOLU (tâche 4.2, complétée par 8.9).** Tuiles, sprites, glyphes, icônes **et GeoJSON de couche** en base locale. Le chemin de donnée est résolu par `layerDataPath()`, qui accepte la forme **brute** (`data.directory` + `data.file`, celle des configs sur le disque) comme la forme **normalisée** (`dataFile`, produite par `packages/core/src/kernel/config/profile-loader.ts`) — la dérivation est centralisée là et non refaite sur place, précisément pour n'avoir pas deux endroits libres de diverger. ⚠️ Cette ligne a dit « **PAS les couches** […] jamais mis en cache » jusqu'au 08/08/2026 : vrai à sa date, périmé à la clôture de `collecte-terrain-offline`. La tâche **8.9** a ajouté la branche manquante — une instance de `layerTemplates` porte sa config **en ligne**, n'a donc aucun `configFile`, et traversait l'énumérateur sans produire une seule ressource                                                                                                                                                                                                                                                                                                                                                  | `cache/cache-manager.ts`, `cache/downloader.ts`, `utils/general/layer-data-path.ts`                                                                        |
 | OF-05 | Énumération des ressources avant téléchargement | Profil                                    | ✅ **RÉSOLU (tâche 4.2).** La liste est calculée d'abord et **inclut les couches** : le volume annoncé et la barre de progression portent la donnée métier. ⚠️ Cette ligne a dit le contraire — « exclut les couches », volume « systématiquement sous-évalué » — jusqu'au 08/08/2026, par simple dérivation d'OF-04 : elle était fausse **parce que** celle du dessus l'était, pas pour une cause propre                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | `cache/resource-enumerator.ts`, `cache/calculator.ts`                                                                                                      |
 | OF-06 | Progression, en deux régimes                    | Téléchargement, purge                     | Deux signaux distincts — un pour le remplissage, un pour le vidage                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | `cache/progress-tracker.ts`, `db/layers.ts`                                                                                                                |
-| OF-07 | Annulation d'un téléchargement en cours         | `cancelDownload()`                        | ✅ **RÉSOLU (clôture de S3c).** Le téléchargement s'arrête **et** l'interface en est informée : l'émetteur de production vit dans `packages/core/src/capabilities/offline/cache/cache-manager.ts`, aux côtés du commentaire qui raconte son ajout. ⚠️ Cette ligne a dit « **deux écouteurs et zéro émetteur de production** — le seul `dispatchEvent` du dépôt est dans un **test** » jusqu'au 08/08/2026, alors que le §Annulation de cette même fiche décrivait déjà l'ajout : **la fiche se contredisait elle-même**, et c'est la table qui avait tort                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | `cache/cache-manager.ts`, `cache/fetch-manager.ts`                                                                                                         |
+| OF-07 | Annulation d'un téléchargement en cours         | `cancelDownload()`                        | ✅ **RÉSOLU (clôture de S3c), ÉLARGI le 19/09/2026 au geste entier** — voir §Le branchement dans le TÉLÉCHARGEMENT : l'arrêt atteint aussi le rapatriement des entités, et la confirmation de la fenêtre est cliquable. Le téléchargement s'arrête **et** l'interface en est informée : l'émetteur de production vit dans `packages/core/src/capabilities/offline/cache/cache-manager.ts`, aux côtés du commentaire qui raconte son ajout. ⚠️ Cette ligne a dit « **deux écouteurs et zéro émetteur de production** — le seul `dispatchEvent` du dépôt est dans un **test** » jusqu'au 08/08/2026, alors que le §Annulation de cette même fiche décrivait déjà l'ajout : **la fiche se contredisait elle-même**, et c'est la table qui avait tort                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | `cache/cache-manager.ts`, `cache/fetch-manager.ts`                                                                                                         |
 | OF-08 | Reprise sur erreur réseau                       | Échec ponctuel                            | Nouvelle tentative avec temporisation croissante plutôt qu'abandon                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | `cache/retry-handler.ts`                                                                                                                                   |
 | OF-09 | Garde d'URL                                     | Ressource à récupérer                     | Les URL sont filtrées avant d'être demandées                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `cache/url-guard.ts`                                                                                                                                       |
 | OF-10 | Budget d'octets, avec **éviction**              | `maxCacheBytes`                           | Après chaque téléchargement, les enregistrements les moins récemment mis en cache sont évincés jusqu'à tenir dans le budget                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | `cache/cache-manager.ts`                                                                                                                                   |
@@ -263,6 +278,17 @@ issue ordinaire d'une longue session, et la faire remonter ferait échouer une s
 défaut, puisqu'elle mettait la photo entière dans l'attribut de l'entité. La lecture n'est donc plus
 un second chemin vers les octets : **c'est le seul**, et sans elle le magasin redevient exactement
 l'écriture-sans-lecture que le motif de conservation d'alors interdisait.
+
+🛑 **L'URL renvoyée ne remplace plus l'entité — 19/09/2026.** La réconciliation écrit l'URL par un
+`update` dont le `feature` ne porte que ce champ. `db/local-edit.ts` gardait
+`input.feature ?? current.feature` : absent, l'entité survivait ; présent mais PARTIEL, il la
+remplaçait. L'enregistrement local perdait sa position et ses autres attributs. Et comme le hook
+d'avant-drain envoie les photos AVANT le drain, la réconciliation fusionnait dans la création encore
+en file, qui partait avec l'URL et `local_id`, rien d'autre — observé sur le bundle livré
+(`e2e/53`), une fois l'instrument corrigé : une route Playwright répond même sous `setOffline(true)`,
+et la première version de la spec avait mesuré l'ordre inverse. `mergeEdit` fusionne désormais un
+`feature` partiel : les `properties` clé par clé, et la géométrie stockée gardée quand l'édition n'en
+porte pas.
 
 🛑 **`updateImageUploadStatus` prend un OBJET, et son relais le disait `string`.** Le module lit
 `status.uploaded` et `status.url` ; l'appelant passait la chaîne littérale `"uploaded"`, dont la
@@ -775,8 +801,11 @@ Il applique `PullGranularity = "bboxCapped"` du contrat de synchronisation — e
 et **n'écrit aucun code de transport** : le chargeur portait déjà la pagination par lien `next`, le
 `bbox`, `maxFeatures` et l'`AbortSignal`. ⚠️ **Depuis R9 il consomme `streamOgcApiFeatures` et non
 plus `fetchOgcApiFeatures`** — la marche plutôt que l'accumulateur ; voir §Le rapatriement par
-TRANCHES ci-dessous. Trois propriétés qui ne se lisent pas dans le code et qui sont chacune tenues
-par un test **vu rougir** :
+TRANCHES ci-dessous. ⚠️ **« Emprise plus plafond » n'a été vrai du téléchargement qu'à partir du
+19/09/2026** : `pullLayer` acceptait une `bbox` depuis le 04/08, et aucun appelant ne la lui passait
+— voir §Le branchement dans le TÉLÉCHARGEMENT. Cinq propriétés qui ne se lisent pas dans le code et
+qui sont chacune tenues par un test **vu rougir** — les deux dernières datent du 19/09/2026, voir
+§La convergence et le delta déclaré :
 
 - **Le plafond est DUR — et il a CHANGÉ DE CÔTÉ le 19/08/2026.** `ogc-api-loader` coupait _après_
   avoir accumulé une page entière et ne tronquait jamais : `pull/layer-pull.ts` compensait, **seul**,
@@ -814,6 +843,10 @@ par un test **vu rougir** :
   moyen de le dire.
 - **L'invariant S6 tient.** Les enregistrements sortent en `syncState: "synced"`, et rien n'est écrit
   dans l'`outbox` : le rapatriement ne confère jamais l'éditabilité.
+- **Ce qui n'a pas changé n'est pas réécrit** (`unchanged`) — le marqueur rangé est relu, dans la
+  même transaction que la règle de préservation.
+- **Ce que la source ne sert plus quitte l'appareil — après une course COMPLÈTE seulement**
+  (`removed`).
 
 #### Le rapatriement par TRANCHES — R9, tâche 2.3 (06/09/2026)
 
@@ -870,11 +903,78 @@ Le motif du placement est celui d'`eviction-notice.ts` — un branchement côté
   tuiles parce qu'une source OGC a répondu 503 serait pire que l'état partiel dont on protégerait.
 - Un profil qui n'est pas le profil **actif** ne rapatrie rien, et le dit : `pullLayer` résout ses
   couches sur le profil actif tandis que `cacheProfile` reçoit un identifiant.
+- 🛑 **La zone de la fenêtre borne le rapatriement — depuis le 19/09/2026.** La sélection que
+  `cacheProfile` reçoit porte la zone tracée (`vectorZone`) ; elle ne bornait que les tuiles
+  vectorielles, et chaque couche partait en collection entière sous son seul `maxFeatures`.
+  `zoneBbox()` la passe désormais en `bbox: [ouest, sud, est, nord]` à chaque `pullLayer`. Sans zone,
+  ou avec une zone dont les bornes ne sont pas des nombres finis, rien ne se devine : pas de `bbox`.
+  Le bouton « emprise du profil » de la fenêtre propose l'emprise DÉCLARÉE (`map.bounds`) — voir
+  OU-13 de [`CDC_offline-ui.md`](../plugins/CDC_offline-ui.md).
+- 🛑 **« Arrêter » arrête le geste ENTIER — depuis le 19/09/2026.** `cancelDownload()` ne levait
+  que le contrôleur du téléchargeur de ressources, qui naît avec elles et meurt avec elles : un
+  arrêt pressé pendant le rapatriement n'atteignait rien, et un rapatriement complet retire ce
+  qu'il n'a pas rendu — la zone qu'on venait de tracer remplaçait quand même l'ancienne.
+  `cacheProfile` ouvre désormais un contrôleur par geste, que `cancelDownload()` lève et qui part
+  avec `pullDeclaredLayers` : la course en cours finit à sa page, garde ce qu'elle a écrit et ne
+  balaie rien ; aucune couche n'est tentée après l'arrêt ; un arrêt pressé avant les ressources ne
+  télécharge rien et n'écrase pas le manifeste d'avant. Le résultat de `cacheProfile()` porte
+  `cancelled: true`. Prouvé à la souris sur le bundle livré (`e2e/55`).
 
 ⚠️ **L'attente du moteur est BORNÉE à 3 s**, comme la lecture de 4.3 — `whenReady()` ne résout jamais
 quand `modules.offline` est désactivé. Mais contrairement à la lecture, il n'y a **aucun repli
 réseau** : un rapatriement sans moteur _se dit_ (`refused: "engineUnavailable"`) plutôt que de rendre
 un zéro que rien ne distingue d'une couche vide.
+
+#### La convergence et le delta déclaré — 19/09/2026
+
+Le marqueur de fraîcheur était rangé sur chaque enregistrement dès le premier rapatriement — pour le
+filtre de conflit du drain — et **jamais relu par le rapatriement** : toute entité `synced` était
+réécrite à chaque passage. Et le rapatriement n'écrivait que dans un sens : une entité supprimée
+côté serveur restait sur l'appareil pour toujours. Décision Q2 du 13/09 : un socle imposé (pagination
+OGC, `bbox`), fraîcheur et suppressions **déclarées par couche**, repli sur le rapatriement complet.
+
+**Le repli — tout rapatriement.**
+
+- Un enregistrement `synced` servi sous le marqueur déjà rangé (même nature, même valeur, non nul)
+  n'est pas réécrit : `unchanged`. Un marqueur absent n'égale rien, pas même lui-même.
+- Une course **complète** — ni coupée par le plafond, ni abandonnée, ni en échec — retire les
+  enregistrements `synced` à identité serveur qu'aucune de ses pages n'a nommés : `removed`
+  (`db/features.ts` `sweepSynced`, une transaction, clés d'abord, état relu). Le travail local
+  n'est jamais retiré, ni ce qui n'a pas d'identité serveur.
+- 🛑 **La zone remplace** (décision du 19/09/2026) : bornée par une `bbox`, une course complète
+  définit le contenu synchronisé de la couche — ce qui est hors zone part aussi. Des rapatriements
+  successifs de zones différentes ne s'additionnent plus. Le coût écrit : changer de zone retire les
+  entités de l'ancienne, ses tuiles restant en cache.
+
+**Le delta — une couche qui déclare `offline.source.delta: { freshness: "datetime",
+deletedProperty }`.** Les deux clés ensemble, le schéma refusant l'une sans l'autre.
+
+- La première course est complète, et pose une **marque** dans `offline.pullState` : le plus grand
+  marqueur servi (`Date.parse`, gardé tel que le serveur l'a écrit), avec son `scope` — source,
+  propriété de marqueur, emprise.
+- Les suivantes, même scope, n'envoient que `datetime=<marque>/..` et rapportent `mode: "delta"`. Un
+  delta **ne balaie jamais** : ce qu'il ne rend pas n'a simplement pas changé.
+- Une entité servie dont `deletedProperty` est posée — ni absente, ni `null`, ni `false` — est une
+  **pierre tombale**, en delta comme au complet : jamais écrite, sa copie `synced` retirée dans la
+  transaction de la page, une copie qui porte du travail local gardée.
+- La marque s'efface — et la course suivante est complète — par `purgeCachedFeatures`
+  (`clearPullMarks`), un autre scope, un delta coupé, ou un marqueur qui n'est pas un instant
+  lisible. Une course abandonnée ou en échec la laisse telle quelle.
+
+⚠️ **Aucun serveur du dépôt ne parle le delta.** Le banc de preuve n'a ni `time_field` ni colonne de
+suppression : le mécanisme est prouvé contre une source à état (`pull-converges.test.ts`, `e2e/54`),
+jamais contre un vrai serveur — la falsification attend le contrat backend en CI publique. Ce que le
+serveur doit garantir — `datetime` sur le marqueur, visibilité monotone, rétention des pierres
+tombales — est écrit dans [la page du contrat serveur](../../../packages/core/docs/SERVER_CONTRACT.md).
+
+⚠️ **Trouvé en chemin : une coupe qui tombait pile sur une fin de page n'était pas signalée.** La
+marche s'arrêtait sur une page qui annonçait une suite et se disait complète — `capped: false` sur un
+sous-ensemble, que le balayage aurait vidé de ce qu'il n'avait jamais demandé. Corrigé dans la marche
+(`_capVerdict`, voir [`CDC_kernel.md`](../CDC_kernel.md)) avant que le balayage existe.
+
+⚠️ **Une couche que le balayage vide retombe sur le réseau** : `getLayerFeatureCollection` rend `null`
+sur un magasin vide. La classe préexiste — un rapatriement de zéro entité faisait déjà de même — et
+elle est versée au registre.
 
 #### `getSyncReport()` — rendre observable le cas qui ne l'était pas
 

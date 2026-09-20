@@ -521,6 +521,20 @@
             "confidence": "haute",
             "rationale": "✅ FERMÉ au STRUCT S8 (26/07/2026) — E1, cohésion par consommateur. Les 6 `cache-control*` vivaient sous `sync/` alors qu'ils pilotent le CACHE : leur consommateur réel est `cache/download-handler.ts` et `cache/layer-selector/`. `sync/` garde ce qui synchronise (`sync-manager.ts`, `vector-zone-estimate.ts`). ⚠️ Trois imports traversaient leur propre dossier après le déplacement (`../cache/…` depuis `cache/`) — ils RÉSOLVENT encore, aucune gate ne rougit : corrigés en `./`, piège muet du STRUCT S6. Et un import CASSÉ : `cache-control-zone.ts` demandait `./vector-zone-estimate.js`, resté dans `sync/`. ⚠️ L'alias `vitest.config.ts:249` a été VU MORT avant correction (2 tests rouges, le vrai `cache-control.ts` chargé au lieu du stub `empty-module`). Couverture re-mesurée des DEUX côtés : delta **0,00** sur les 4 métriques (93,32 / 75,05 / 80,93 / 93,96) — le regroupement par dossier bouge, la mesure non."
         },
+        "packages/plugins/offline-ui/src/cache/selection-writer.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "La porte unique par laquelle la sélection de téléchargement s'écrit : lire-modifier-écrire sérialisés",
+            "confidence": "haute",
+            "rationale": "73 LOC, 1 export, 2 importeurs — `cache/cache-control-zone.ts` (la zone) et `cache/layer-selector/selection-cache.ts` (la liste des couches). Posé le 19/09/2026 sur une mise à jour PERDUE mesurée sur le bundle livré : les deux écrivains lisaient, modifiaient et réécrivaient l'enregistrement entier sans s'attendre, et la zone disparaissait — le téléchargement repartait alors sans emprise. Un module plutôt qu'une méthode chez l'un des deux : la file est leur bien COMMUN, et la loger chez l'un en ferait l'arbitre de l'autre. ⚠️ Il sérialise cet onglet seulement, faute de compare-and-set dans le magasin, et son en-tête le dit."
+        },
         "packages/plugins/offline-ui/src/sync/sync-manager.ts": {
             "kind": "file",
             "name": "ok",

@@ -4,7 +4,7 @@ title: connector — l'authentification et l'injection de jeton
 plugin_id: connector
 package: "@geoleaf-plugins/connector"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 422795ba4
+verifie_contre: 8c871eb94
 date: 19 septembre 2026
 ---
 
@@ -12,6 +12,13 @@ date: 19 septembre 2026
 
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/connector` ·
 **Code :** `packages/plugins/connector/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
+
+> ⚠️ **L'estampille du 19/09/2026 est COLLATÉRALE, et ne couvre rien de neuf.** Le commit
+> qu'elle nomme n'ajoute qu'un renvoi dans `docs/CONNECTOR_GUIDE.md` vers la page du contrat
+> serveur, qui décrit désormais une fois le protocole que ce plugin attend d'un serveur (connexion,
+> `POST {endpoint}/refresh`, verdicts) — aucune ligne de `src/` ne bouge. La page a été écrite
+> contre `auth-client.ts`, `token-store.ts` et `fetch-interceptor.ts`, et ce qu'elle dit est ce que
+> cette fiche dit déjà.
 
 > ⚠️ **Ce que cette estampille couvre.** La **session en panne**, vérifiée le 18/09/2026 : les
 > verdicts du renouvellement et l'effacement sur refus seul (CN-28, CN-33), le démarrage à

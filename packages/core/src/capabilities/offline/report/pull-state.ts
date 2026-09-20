@@ -55,6 +55,18 @@ export interface LayerPullState {
     readonly outcome: "ok" | "partial" | "failed";
     /** Entities written during this attempt. Always 0 when `outcome` is `failed`. */
     readonly written: number;
+    /**
+     * The delta's starting point: the greatest freshness marker the last COMPLETE pull of a
+     * layer declaring `offline.source.delta` was served, kept as the server wrote it.
+     *
+     * 🛑 **It describes what the store holds, so it goes when that content goes.** A delta
+     * from it asks the source only for what changed since: valid only while the store still
+     * holds what the pull that set it wrote, for the same source and the same extent — hence
+     * `scope`. A purge of the store, a cut run, or a different scope means a complete pull next.
+     */
+    readonly mark?: string;
+    /** What `mark` was taken against — source, marker property and extent, serialised. */
+    readonly scope?: string;
 }
 
 /** The state of every layer, as persisted. */
@@ -85,6 +97,30 @@ function isLayerPullState(value: unknown): value is LayerPullState {
 }
 
 /**
+ * The entry as this code reads it: the three required fields, and the delta's starting point
+ * only when both its halves are strings.
+ *
+ * ⚠️ A `mark` without its `scope` — or either of another type — is dropped, never guessed: an
+ * unscoped mark could start a delta against a store it does not describe, and the cost of
+ * dropping it is one complete pull.
+ *
+ * @param v - An entry that passed {@link isLayerPullState}.
+ * @returns A fresh object holding only what is known.
+ */
+function sanitise(v: LayerPullState): LayerPullState {
+    // The type says `string | undefined`, the store may hold anything: the guard vouched for
+    // the three required fields only, so these two are tested here, at run time.
+    const { mark, scope } = v;
+    const scoped = typeof mark === "string" && typeof scope === "string";
+    return {
+        at: v.at,
+        outcome: v.outcome,
+        written: v.written,
+        ...(scoped ? { mark, scope } : {}),
+    };
+}
+
+/**
  * Re-reads the pull state of every layer.
  *
  * Never throws: unavailable persistence yields an empty state, and the report will
@@ -108,7 +144,7 @@ export async function readPullState(db: PreferenceStore | null | undefined): Pro
             // setter. The store is not a trusted source just because it is local — it
             // is written by code of several versions, and it survives deployments.
             if (isUnsafeKey(layerId)) continue;
-            if (isLayerPullState(value)) out[layerId] = value;
+            if (isLayerPullState(value)) out[layerId] = sanitise(value);
         }
         return out;
     } catch (err) {
@@ -156,5 +192,37 @@ export async function writePullState(
             `[Offline.PullState] "${layerId}" — écriture impossible :`,
             (err as Error).message
         );
+    }
+}
+
+/**
+ * Drops the delta's starting point of every layer, keeping the rest of each entry.
+ *
+ * 🛑 **Called when the store's content goes.** A mark says "the store holds what the source held
+ * up to here" — after a purge it holds nothing, and a delta from the old mark would bring back
+ * only what changed since: a layer rebuilt from its latest edits, the rest missing, and nothing
+ * to say so. Without a mark, the next pull is complete.
+ *
+ * Never throws, like {@link writePullState}: the purge it follows must not be reported as failed.
+ *
+ * @param db - The storage facade (`GeoLeaf.Storage.DB`).
+ * @returns Resolves once the write was attempted.
+ * @example
+ * await clearPullMarks(GeoLeaf?.Storage?.DB);
+ */
+export async function clearPullMarks(db: PreferenceStore | null | undefined): Promise<void> {
+    try {
+        const current = await readPullState(db);
+        // `Object.fromEntries` defines own properties: a key read back from IndexedDB never
+        // reaches a prototype setter — and `readPullState` already dropped the unsafe ones.
+        const unmarked = Object.fromEntries(
+            Object.entries(current).map(([layerId, state]) => [
+                layerId,
+                { at: state.at, outcome: state.outcome, written: state.written },
+            ])
+        );
+        await db?.setPreference?.(PULL_STATE_KEY, unmarked);
+    } catch (err) {
+        Log.warn("[Offline.PullState] Effacement des marques impossible :", (err as Error).message);
     }
 }

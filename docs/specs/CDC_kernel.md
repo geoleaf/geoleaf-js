@@ -3,13 +3,28 @@ type: spec-kernel
 title: kernel — @geoleaf/core
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 40eac0fcc
-date: 18 septembre 2026
+verifie_contre: 3bb6da6c4
+date: 19 septembre 2026
 ---
 
 # kernel — le substrat que tout le reste suppose
 
 **Type :** kernel · **Code :** `packages/core/src/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
+
+> ⚠️ **Ce que l'estampille du 19/09/2026 couvre — collatérale.** Le sprint du contrat serveur ne
+> touche du cœur que la capacité `offline` — fiche [`capacites/offline.md`](capacites/offline.md),
+> estampillée sur le même commit avec le détail — et trois fichiers que CETTE fiche décrit : la
+> **marche OGC** (`kernel/geojson/loader/ogc-api-loader.ts`) gagne l'argument `datetime` et signale
+> désormais une coupe tombée pile sur une fin de page (`_capVerdict`) ; la **façade `Storage`** voit
+> le rapport de `pullLayer` gagner trois champs (`unchanged`, `removed`, `mode`) et la TSDoc
+> d'`applyEdit` dire la fusion d'une édition partielle ; `global.d.ts` suit. Relues — §Séquence de
+> boot, §Les 13 sous-systèmes, §Contrat exposé, §Contrats — et aucune ne bouge, par construction :
+> cette fiche ne recopie ni signature ni liste de membres, les champs d'un rapport ne sont pas des
+> membres de namespace, et `contracts/` n'est pas touché. Mesuré : le golden master de la surface
+> reste vert, la suite du cœur entière aussi. Ré-estampillée sur `694377e8c`, qui ne touche que la
+> capacité `offline`, sans effet de comportement, puis sur `3bb6da6c4`, qui n'y touche encore que
+> le gestionnaire de cache de cette même capacité (le signal d'arrêt) : aucune section d'ici ne
+> bouge.
 
 > ⚠️ **Ce que l'estampille du 17/09/2026 couvre — collatérale elle aussi, et c'est la même forme
 > qu'en août.** Les quatre commits du cycle d'écriture ne touchent du cœur que la capacité

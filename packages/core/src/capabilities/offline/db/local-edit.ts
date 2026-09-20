@@ -67,7 +67,11 @@ export interface LocalEditInput {
      */
     readonly localId: string;
     readonly kind: SyncOperationKind;
-    /** The entity after the edit. Ignored for a `delete`, which keeps the stored version. */
+    /**
+     * What the edit brings. It is merged over the stored entity (`mergeEdit`): its
+     * `properties` override the stored ones key by key, and an absent geometry keeps the
+     * stored one — a partial entity never erases what it does not carry.
+     */
     readonly feature?: unknown;
     /** Marker the edit is based on, forwarded to the push to make the conflict detectable. */
     readonly baseVersion?: VersionMarker | null;
@@ -231,6 +235,46 @@ function serverIdentity(
         : localId;
 }
 
+/** True for a non-null, non-array object — the only shape a merge can read keys from. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * The entity an edit leaves behind: what the edit brings, over what the store already holds.
+ *
+ * 🛑 **A PARTIAL ENTITY USED TO REPLACE THE WHOLE ONE.** The rule "an edit does not destroy
+ * what it does not bring" held only when the edit brought NO entity at all. The photo
+ * reconciliation brings one that carries a single attribute — the URL the upload answered —
+ * and it replaced the stored entity: position and every other attribute gone from the device,
+ * and, while the create was still queued, a create sent with nothing but that URL.
+ *
+ * `properties` merge key by key: what the edit names wins, an explicit `null` included (a
+ * cleared attribute); what it does not name stays. The geometry is kept when the edit carries
+ * none (`undefined`); an explicit `null` is a value, and replaces it. Every other member of the
+ * edit (`type`, `id`…) overrides the stored one.
+ *
+ * ⚠️ Object spread, never assignment through a computed key: a stored `__proto__` becomes an
+ * own data property of the copy and never reaches a prototype.
+ *
+ * @param current - The entity already held, if any.
+ * @param incoming - What the edit brings, if anything.
+ * @returns The merged entity — `current` when the edit brings nothing, `incoming` when there is
+ *   nothing to merge it over.
+ */
+function mergeEdit(current: unknown, incoming: unknown): unknown {
+    if (incoming === undefined) return current;
+    if (!isRecord(current) || !isRecord(incoming)) return incoming;
+    const merged: Record<string, unknown> = { ...current, ...incoming };
+    if (incoming.geometry === undefined) merged.geometry = current.geometry;
+    if (isRecord(current.properties) && isRecord(incoming.properties)) {
+        merged.properties = { ...current.properties, ...incoming.properties };
+    } else if (incoming.properties === undefined) {
+        merged.properties = current.properties;
+    }
+    return merged;
+}
+
 /** The two stores an edit lands in, inside one transaction. */
 interface EditStores {
     readonly features: IDBObjectStore;
@@ -292,10 +336,10 @@ function landEdit(
         version: input.baseVersion !== undefined ? input.baseVersion : (current?.version ?? null),
         // 🛑 A PARTIAL EDIT DOES NOT DESTROY WHAT IT DOES NOT BRING. An attribute
         // modification does not necessarily resend the geometry — measured:
-        // `updateExistingPoi` logs "missing geometry" and enqueues anyway. Overwriting with
-        // `undefined` would make the position of an entity the user only wanted to rename
-        // disappear. The rule already held for deletions; it holds for every edit.
-        feature: input.feature ?? current?.feature,
+        // `updateExistingPoi` logs "missing geometry" and enqueues anyway — and the photo
+        // reconciliation sends one attribute and nothing else. Both are merged over the
+        // stored entity rather than written in its place (`mergeEdit`).
+        feature: mergeEdit(current?.feature, input.feature),
     };
     features.put(record);
 

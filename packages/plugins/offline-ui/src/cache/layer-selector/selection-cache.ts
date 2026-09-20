@@ -18,6 +18,7 @@ import { coreConfigGet as configGet } from "@geoleaf/host-runtime";
 import { resolveProfileLayers } from "@geoleaf/core/kernel/config/profile-layers.js";
 import { DOMSecurity } from "../../utils/core-utils.js";
 import { StorageContract } from "../../shared/storage-contract.js";
+import { updateSelection } from "../selection-writer.js";
 import { estimateVectorZone } from "../../sync/vector-zone-estimate.js";
 import { LS } from "./core.js";
 import { tLabel as t } from "@geoleaf/host-runtime";
@@ -117,8 +118,10 @@ Object.assign(LS, {
             const profileId = configGet("data.activeProfile", "") as string;
             if (!profileId) return;
 
-            // Preserve the download zone chosen in the ZONE accordion (S3): this
-            // writer rebuilds the selection from the DOM and would otherwise drop it.
+            // The download zone chosen in the ZONE accordion is read here for the ESTIMATE
+            // below; what is WRITTEN keeps the zone the store holds at the write's own turn —
+            // see `updateSelection`, which is what keeps the two writers from erasing each
+            // other's half.
             const prior = await this.loadSelection(profileId);
             const vectorZone = prior?.vectorZone;
 
@@ -206,14 +209,11 @@ Object.assign(LS, {
 
             selection.totalEstimatedSize = totalBytes;
 
-            const Storage = StorageContract.Cache?.Storage;
-            if (Storage) {
-                await (
-                    Storage as {
-                        saveLayerSelection: (id: string, s: SavedSelection) => Promise<void>;
-                    }
-                ).saveLayerSelection(profileId, selection);
-            }
+            await updateSelection(profileId, (current) => ({
+                ...selection,
+                // Its own half, as the store holds it now: this writer does not own the zone.
+                ...(current.vectorZone ? { vectorZone: current.vectorZone } : {}),
+            }));
 
             if (Log)
                 Log.debug(

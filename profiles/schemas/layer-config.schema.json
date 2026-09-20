@@ -412,7 +412,7 @@
                     "type": "string",
                     "enum": ["rest", "collection"],
                     "default": "collection",
-                    "description": "`collection` (the default, and the one the core writes): flat {...properties, geom} body, OGC API Features style, auth delegated to the connector. `rest`: POST {poi, timestamp} envelope, spoken by the editor plugin ONLINE only — a layer declaring it has its offline writes set aside under `dialectNotSupported`. Exactly the two the code dispatches on: a third value would be indistinguishable from a typo."
+                    "description": "`collection` (the default, and the only one the offline queue sends): rows addressed by query filters — `POST {endpoint}`, `PATCH` and `DELETE {endpoint}?id=eq.<id>` with the freshness marker as a filter — carrying a flat body of the whitelisted properties, the geometry under `geometryProperty` and the client identity `local_id`; authentication is the connector's. `rest`: spoken by the editor plugin's ONLINE adapter only — `POST|PUT|DELETE {api.baseUrl}/features[/<id>]?layerId=<layer>` with a `{ feature, layerId }` body, addressed by the plugin's own `api.baseUrl` — and a layer declaring it has its offline writes set aside under `dialectNotSupported`. Exactly the two the code dispatches on: a third value would be indistinguishable from a typo. The full wire contract is `packages/core/docs/SERVER_CONTRACT.md`."
                 },
                 "auth": {
                     "type": "string",
@@ -525,6 +525,28 @@
                         "versionProperty": {
                             "type": "string",
                             "description": "Feature property carrying the per-entity freshness marker recorded as VersionMarker (kind `timestamp`), which task 4.6 compares. Defaults to `updated_at`. Declarable because it varies by backend — the sync contract names `updated_at` and `write_date` among the forms it has seen."
+                        },
+                        "delta": {
+                            "type": "object",
+                            "description": "Declares that the source serves CHANGES and DELETIONS, so a pull after a complete one asks only for what changed. Absent, every pull is complete (the fallback): it rewrites only the entities whose `versionProperty` changed, and removes from the device the synchronised ones it no longer returns. Present, once a complete pull of the same source and extent has recorded the greatest marker it was served, the next pull sends OGC API Features `datetime=<marker>/..` and removes the tombstones it receives — it removes nothing else, since a delta answers only what changed. What the server must guarantee is written in `packages/core/docs/SERVER_CONTRACT.md`.",
+                            "$comment": "Les deux clés sont requises ensemble, et le motif n'est pas la rigueur : un filtre de fraîcheur sans pierres tombales ne verrait JAMAIS une suppression — la couche garderait pour toujours ce que le serveur a supprimé, sans rien qui le dise. `freshness` est une énumération à une valeur : `datetime` est le seul filtre temporel que la partie 1 d'OGC API Features impose à un serveur, et la clé reste ouverte à un second mécanisme sans renommage. Cas négatifs dans `packages/core/__tests__/config/offline-delta-opposability.test.ts`.",
+                            "additionalProperties": false,
+                            "patternProperties": {
+                                "^_comment": {}
+                            },
+                            "required": ["freshness", "deletedProperty"],
+                            "properties": {
+                                "freshness": {
+                                    "type": "string",
+                                    "enum": ["datetime"],
+                                    "description": "How the source filters by freshness. `datetime`: the OGC API Features Part 1 parameter, as an open interval `<marker>/..`, closed at its start. The server's temporal property for this collection must be the `versionProperty` marker."
+                                },
+                                "deletedProperty": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "description": "Property whose presence marks a served entity as DELETED — a tombstone. Set (anything but absent, `null` or `false`), the entity is never written, and its synchronised copy leaves the device; a copy holding local work is kept for the write queue."
+                                }
+                            }
                         }
                     }
                 }

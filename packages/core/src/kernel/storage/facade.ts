@@ -227,9 +227,13 @@ interface StorageLayerPullReport {
     readonly fetched: number;
     readonly written: number;
     readonly preserved: number;
+    readonly unchanged: number;
+    readonly removed: number;
     readonly skipped: number;
     readonly capped: boolean;
     readonly aborted: boolean;
+    /** `"delta"`, `"full"`, or `null` when the pull was refused before any request. */
+    readonly mode: "full" | "delta" | null;
     readonly refused: string | null;
 }
 
@@ -515,9 +519,12 @@ const Storage = {
                 fetched: 0,
                 written: 0,
                 preserved: 0,
+                unchanged: 0,
+                removed: 0,
                 skipped: 0,
                 capped: false,
                 aborted: false,
+                mode: null,
                 refused: "engineUnavailable",
             };
         }
@@ -540,7 +547,9 @@ const Storage = {
      * `modules.offline`.
      *
      * @param input - The layer, operation kind, identity and entity. For an existing entity the
-     *   identity may be the server one the map shows: the store resolves it to its own key.
+     *   identity may be the server one the map shows: the store resolves it to its own key. The
+     *   entity may be partial: its `properties` are merged over the stored ones, and the stored
+     *   geometry is kept when it carries none.
      * @returns The report: entry created, merged, or cancelled; `localId` is the key the edit
      *   landed on; `refused` carries the motive.
      * @example

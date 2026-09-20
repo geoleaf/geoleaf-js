@@ -9,6 +9,7 @@
 import { Log } from "@geoleaf/host-runtime";
 import { coreConfigGet as configGet } from "@geoleaf/host-runtime";
 import { StorageContract } from "../shared/storage-contract.js";
+import { updateSelection } from "./selection-writer.js";
 // LOCAL module: the symbol was pruned from the core's published bundle, which
 // calls it nowhere. See the header of `sync/vector-zone-estimate.ts`.
 import { estimateVectorZone } from "../sync/vector-zone-estimate.js";
@@ -58,6 +59,43 @@ function readBounds(b: MlBounds): SelectionBounds {
     }
     const p = b as { north: number; south: number; east: number; west: number };
     return { north: p.north, south: p.south, east: p.east, west: p.west };
+}
+
+/**
+ * The extent the profile DECLARES — `map.bounds`, `[[south, west], [north, east]]` — or `null`.
+ *
+ * 🛑 **The "profile area" button asked the MAP for it, and the map could not answer.** It read
+ * `getMaxBounds()`, which a raw MapLibre map has and the GeoLeaf map adapter this control
+ * receives does not (measured on the shipped bundle): the button fell back to `getBounds()`,
+ * i.e. the current VIEW, and the profile's extent was never offered. The declaration is read
+ * where it lives, in the configuration — unpadded, since `maxBounds` is the declared extent
+ * widened by `boundsMargin`, and what the button promises is the profile's own extent.
+ *
+ * A malformed value is not guessed at: the caller falls back to what the map can say.
+ *
+ * @returns The declared bounds, or `null` when the profile declares none that is usable.
+ */
+function declaredProfileBounds(): SelectionBounds | null {
+    // Explicit `unknown`: inferred from the `null` fallback, the value would be typed `null`.
+    const raw = configGet<unknown>("map.bounds", null);
+    if (!isArray(raw) || raw.length !== 2) return null;
+    const [sw, ne] = raw;
+    if (!isArray(sw) || !isArray(ne)) return null;
+    const [south, west] = sw;
+    const [north, east] = ne;
+    if (!isFiniteNumber(south) || !isFiniteNumber(west)) return null;
+    if (!isFiniteNumber(north) || !isFiniteNumber(east)) return null;
+    return { south, west, north, east };
+}
+
+/** `Array.isArray`, typed so that what is read from the array is `unknown`, never `any`. */
+function isArray(value: unknown): value is readonly unknown[] {
+    return Array.isArray(value);
+}
+
+/** True for a number that is neither `NaN` nor infinite. */
+function isFiniteNumber(value: unknown): value is number {
+    return typeof value === "number" && Number.isFinite(value);
 }
 
 // ─── DOM ─────────────────────────────────────────────────────────────
@@ -183,7 +221,10 @@ async function applyZone(self: CacheControlState, source: "view" | "profile"): P
         mlBounds = map.getBounds();
         minZoom = Math.min(Math.floor(map.getZoom()), ceiling);
     } else {
-        mlBounds = (map.getMaxBounds && map.getMaxBounds()) || map.getBounds();
+        // The profile's own declaration first; what the map can say only when it declares none.
+        mlBounds =
+            declaredProfileBounds() ??
+            ((map.getMaxBounds && map.getMaxBounds()) || map.getBounds());
         minZoom = Math.min(PROFILE_MIN_ZOOM, ceiling);
     }
 
@@ -329,21 +370,20 @@ async function loadSelection(): Promise<SavedSelection | null> {
     }
 }
 
-/** Read-modify-write: stores the zone without clobbering other selection fields. */
+/**
+ * Stores the zone without clobbering the rest of the selection — nor being clobbered by it.
+ *
+ * 🛑 It used to read, change and write the whole record on its own. The layer list does the
+ * same from its own side, reading at the start of its save and writing after its DOM work: a
+ * zone persisted in between was lost, and the download then left with no extent at all. Both go
+ * through `updateSelection` now, which runs them one after the other.
+ */
 async function persistZone(zone: VectorZone): Promise<void> {
     try {
         const profileId = configGet("data.activeProfile", "") as string;
-        const Storage = StorageContract.Cache?.Storage as
-            | {
-                  loadLayerSelection: (id: string) => Promise<SavedSelection | null>;
-                  saveLayerSelection: (id: string, s: SavedSelection) => Promise<void>;
-              }
-            | undefined;
-        if (!profileId || !Storage) return;
+        if (!profileId) return;
 
-        const selection = (await Storage.loadLayerSelection(profileId)) || {};
-        selection.vectorZone = zone;
-        await Storage.saveLayerSelection(profileId, selection);
+        await updateSelection(profileId, (current) => ({ ...current, vectorZone: zone }));
         Log?.debug(`[CacheControl] Vector zone saved (z${zone.cacheMinZoom}-${zone.cacheMaxZoom})`);
     } catch (error) {
         Log?.error(`[CacheControl] Failed to persist zone: ${(error as Error).message}`);

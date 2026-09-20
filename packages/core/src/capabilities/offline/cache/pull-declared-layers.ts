@@ -39,9 +39,37 @@ import { profileLayers } from "../../../kernel/shared/index.js";
 import { coreConfigGet } from "../config-seam.js";
 import { pullLayer } from "../pull/layer-pull.js";
 
-/** Layers the user kept in the download selection, or `null` for "all of them". */
+/** The two members of the saved download selection the pull reads. */
 interface SelectionLike {
+    /** Layers the user kept in the download selection; absent means "all of them". */
     layers?: unknown;
+    /** The download zone drawn in the download window — `{ bounds: {north, south, east, west} }`. */
+    vectorZone?: unknown;
+}
+
+/**
+ * The download zone's extent as `[west, south, east, north]`, or `undefined`.
+ *
+ * 🛑 **THE ZONE WAS HALF-READ.** It is drawn in the download window, persisted in the saved
+ * selection, and reaches `cacheProfile` whole — where it bounded the vector tiles and nothing
+ * else: every layer's entities still left as the whole collection, capped only by
+ * `offline.maxFeatures`. The zone the user declared is the extent the pull is sent with.
+ *
+ * ⚠️ Nothing is guessed. No zone, or one whose four bounds are not finite numbers, yields no
+ * `bbox` — the pull then covers the whole collection, as it always did without a zone.
+ *
+ * @param selection - The saved selection, as the download handed it over.
+ * @returns The extent in the order `pullLayer` and OGC API Features read it, or `undefined`.
+ */
+function zoneBbox(
+    selection: SelectionLike | null | undefined
+): [number, number, number, number] | undefined {
+    const zone = selection?.vectorZone as { bounds?: Record<string, unknown> } | undefined;
+    const b = zone?.bounds;
+    if (!b || typeof b !== "object") return undefined;
+    const bbox = [b.west, b.south, b.east, b.north];
+    if (!bbox.every((v) => typeof v === "number" && Number.isFinite(v))) return undefined;
+    return bbox as [number, number, number, number];
 }
 
 /** One layer's outcome, as the caller reports it alongside the resource tally. */
@@ -80,8 +108,11 @@ function declaresPullSource(layer: Record<string, unknown>): boolean {
  * store for no wall-clock gain worth the contention, and would make the progress signal
  * — which names one layer at a time — unreadable.
  *
+ * Each pull is bounded by the download zone when one was drawn — see `zoneBbox` above.
+ *
  * @param profileId - Profile being downloaded.
- * @param selection - The user's layer selection, or `null` when everything is selected.
+ * @param selection - The saved selection: its layer whitelist (absent means every layer) and
+ *   its download zone (absent means no extent). `null` when nothing was saved.
  * @param signal - Cooperative abort, forwarded to each pull.
  * @returns One report per layer attempted; `[]` when the profile declares no source.
  * @example
@@ -109,6 +140,7 @@ export async function pullDeclaredLayers(
     }
 
     const selected = Array.isArray(selection?.layers) ? (selection.layers as unknown[]) : null;
+    const bbox = zoneBbox(selection);
     const targets = profileLayers().filter((layer) => {
         if (!declaresPullSource(layer)) return false;
         // Same predicate as `ResourceEnumerator._addLayerResources`: an absent selection
@@ -125,7 +157,10 @@ export async function pullDeclaredLayers(
             Log.info(`[Offline.Pull] Abandon demandé — "${layerId}" non tenté.`);
             break;
         }
-        const report = await pullLayer(layerId, signal ? { signal } : {});
+        const report = await pullLayer(layerId, {
+            ...(signal ? { signal } : {}),
+            ...(bbox ? { bbox } : {}),
+        });
         reports.push({
             layerId,
             written: report.written,

@@ -12,6 +12,9 @@
 import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
 
 import { buildZoneSelectionSection } from "../cache/cache-control-zone.js";
+import { LS } from "../cache/layer-selector/core.js";
+// `saveSelection` is mixed into `LS` here, not in `core.js`.
+import "../cache/layer-selector/selection-cache.js";
 
 // The tests plant `GeoLeaf.Storage` the way PRODUCTION does. They used to drive
 // `StorageContract.init()`, i.e. a SECOND instance of the singleton the bundle
@@ -194,6 +197,66 @@ describe("applyZone — capture bbox", () => {
         expect(saved.vectorZone.bounds.north).toBe(5);
     });
 
+    // Red on the shipped bundle's shape before the fix: the adapter the control receives has
+    // NO `getMaxBounds` (measured: `typeof map.getMaxBounds === "undefined"`), so this button
+    // fell back to `getBounds()` — the current VIEW — and the profile's declared extent was
+    // never offered.
+    test("« zone du profil » sur l'adaptateur, sans getMaxBounds → l'emprise DÉCLARÉE du profil", async () => {
+        self._map = {
+            getBounds: () => ({ north: 19.3, south: -52.2, east: -6.7, west: -120.3 }),
+            getZoom: () => 4,
+        };
+        globalThis.GeoLeaf.Config = {
+            get: (k, fb) => {
+                if (k === "data.activeProfile") return "prof-1";
+                if (k === "map.bounds")
+                    return [
+                        [-55, -73.5],
+                        [-21.78, -53.5],
+                    ];
+                return fb;
+            },
+        };
+        const store = installStorage();
+        buildZoneSelectionSection(self, parent);
+        await flush();
+
+        zoneButtons()[1].click(); // profil
+        await flush();
+
+        const saved = store.saveLayerSelection.mock.calls.at(-1)[1];
+        expect(saved.vectorZone.source).toBe("profile");
+        expect(saved.vectorZone.bounds).toEqual({
+            south: -55,
+            west: -73.5,
+            north: -21.78,
+            east: -53.5,
+        });
+    });
+
+    test("« zone du profil » : une emprise déclarée malformée ne s'invente pas — repli", async () => {
+        self._map = {
+            getBounds: () => ({ north: 5, south: 4, east: 5, west: 4 }),
+            getZoom: () => 8,
+        };
+        globalThis.GeoLeaf.Config = {
+            get: (k, fb) => {
+                if (k === "data.activeProfile") return "prof-1";
+                if (k === "map.bounds") return [[-55, "x"], [-21.78]];
+                return fb;
+            },
+        };
+        const store = installStorage();
+        buildZoneSelectionSection(self, parent);
+        await flush();
+
+        zoneButtons()[1].click();
+        await flush();
+
+        const saved = store.saveLayerSelection.mock.calls.at(-1)[1];
+        expect(saved.vectorZone.bounds.north).toBe(5);
+    });
+
     test("sans carte → avertit, ne persiste rien", async () => {
         self._map = null;
         const store = installStorage();
@@ -293,5 +356,73 @@ describe("hydrateZone — restauration au montage", () => {
         await flush();
         // the summary stays on its initial text, no crash
         expect(self._zoneSummaryEl).toBeTruthy();
+    });
+});
+
+describe("La zone et la liste des couches écrivent la MÊME préférence", () => {
+    // 🛑 A LOST UPDATE, MEASURED ON THE SHIPPED BUNDLE. Both writers read the saved selection,
+    // change their own half and write the whole back. The layer list reads at the START of
+    // `saveSelection()` and writes after all its DOM work and its estimates: a zone persisted
+    // in between is overwritten — and the download then pulls the WHOLE collection, with no
+    // `bbox`, which is exactly what the zone exists to prevent. `populate()` calls
+    // `saveSelection()` on a profile with no saved selection, so the window's own opening is
+    // one of the racing writers. Seen on `e2e/54`: one run in two, a request without extent
+    // AFTER the witness had seen the zone persisted.
+
+    /** A store that answers with a SNAPSHOT, and whose first write can be held. */
+    function statefulStorage() {
+        let record = null;
+        let releaseFirstSave = () => {};
+        let firstSave = true;
+        const heldSave = new Promise((resolve) => (releaseFirstSave = resolve));
+        const loadLayerSelection = vi.fn(async () => (record ? { ...record } : null));
+        const saveLayerSelection = vi.fn(async (_id, selection) => {
+            if (firstSave) {
+                firstSave = false;
+                await heldSave;
+            }
+            record = { ...selection };
+        });
+        _installGeoLeafStorage({
+            isAvailable: () => true,
+            Cache: {
+                Storage: { loadLayerSelection, saveLayerSelection },
+                LayerSelector: {
+                    saveSelection: vi.fn(async () => {}),
+                    updateWarning: vi.fn(async () => {}),
+                },
+            },
+        });
+        return { current: () => record, releaseFirstSave, loadLayerSelection, saveLayerSelection };
+    }
+
+    test("🛑 une zone enregistrée pendant que la liste des couches écrit n'est pas perdue", async () => {
+        const store = statefulStorage();
+        const layersContent = document.createElement("div");
+        const box = document.createElement("input");
+        box.type = "checkbox";
+        box.checked = true;
+        box.dataset.layerId = "sites";
+        layersContent.appendChild(box);
+        LS.init({}, layersContent);
+        LS._basemaps = [];
+
+        // The layer list starts writing: it read a selection WITHOUT a zone.
+        const listWriting = LS.saveSelection();
+        await flush();
+
+        // The user picks the profile's extent while that write is still in flight.
+        self._map = plainMap();
+        buildZoneSelectionSection(self, parent);
+        await flush();
+        zoneButtons()[1].click();
+        await flush();
+
+        store.releaseFirstSave();
+        await listWriting;
+        await flush();
+
+        expect(store.current()?.layers).toEqual(["sites"]);
+        expect(store.current()?.vectorZone?.source).toBe("profile");
     });
 });

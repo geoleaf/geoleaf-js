@@ -4,8 +4,8 @@ title: offline-ui — l'interface du hors-ligne, sur un moteur qu'elle ne contie
 plugin_id: offline-ui
 package: "@geoleaf-plugins/offline-ui"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 02068cc6a
-date: 13 septembre 2026
+verifie_contre: 71ace541d
+date: 19 septembre 2026
 ---
 
 # offline-ui — l'interface du hors-ligne, sur un moteur qu'elle ne contient pas
@@ -13,6 +13,17 @@ date: 13 septembre 2026
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/offline-ui` ·
 **Code :** `packages/plugins/offline-ui/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 dix jours plus tôt que le frontmatter.
+
+> ⚠️ **Ce que l'estampille du 19/09/2026 couvre.** Le bouton « emprise du profil » du sélecteur de
+> zone (OU-13, et l'encadré qui le suit) : il lit l'emprise DÉCLARÉE du profil, `map.bounds`, au
+> lieu de retomber sur la vue — vu rouge avant correctif sur un faux au format de l'adaptateur, et
+> prouvé sur le bundle livré par `e2e/54`. Relu et inchangé : le reste de la fiche — le plugin ne
+> télécharge toujours rien lui-même, et la zone qu'il enregistre borne désormais aussi le
+> rapatriement des entités, côté cœur ([`offline.md`](../capacites/offline.md)). Ré-estampillée
+> sur `694377e8c` : la lecture de `map.bounds` passe par des gardes de type au lieu d'assertions,
+> avec les mêmes refus. Puis sur `71ace541d`, avec l'encadré « La fenêtre de téléchargement —
+> trois défauts d'un même geste » : la superposition de la confirmation, le succès annoncé après
+> un arrêt, et la zone perdue par la liste des couches.
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -168,9 +179,49 @@ profil qui n'active pas le hors-ligne attendrait un signal qui ne viendra jamais
 | OU-10 | Rejeu par le gestionnaire d'un autre plugin          | `Sync.getHandler("poi")`                                 | Le plugin déclenche ce qu'[`editor`](CDC_editor.md) a déposé — sans jamais l'importer                                                                     | `core/sync-seam.ts`                                            |
 | OU-11 | Export de la file en attente                         | Action d'export                                          | Lue depuis la base du core, puis vidée entrée par entrée                                                                                                  | `ui/cache-button/export-logic.ts`                              |
 | OU-12 | Détection de disponibilité sans attente infinie      | Profil sans hors-ligne                                   | Rend `false` tout de suite — voir §La seule voie                                                                                                          | `core/engine-ready.ts`                                         |
-| OU-13 | Sélecteur de zone de téléchargement, **trois** modes | Vue courante · emprise du profil · corridor d'itinéraire | Une emprise et un plafond de zoom persistés dans la sélection sauvegardée                                                                                 | `cache/cache-control-zone.ts`                                  |
+| OU-13 | Sélecteur de zone de téléchargement, **trois** modes | Vue courante · emprise du profil · corridor d'itinéraire | Une emprise et un plafond de zoom persistés dans la sélection sauvegardée — « emprise du profil » lit `map.bounds` DÉCLARÉ, voir sous la table            | `cache/cache-control-zone.ts`                                  |
 | OU-14 | Corridor d'un itinéraire persisté                    | Tracé lu dans le magasin `routes` de la base du core     | Un corridor estimé, **ou un refus qui nomme ses deux leviers** — plafond de zoom et tampon, avec leur effet                                               | `cache/corridor-selection.ts`, `sync/corridor-tiles.ts`        |
 | OU-15 | Statut de synchronisation permanent dans la modale   | La file d'écriture, lue par `Storage.getSyncStatus()`    | Réseau, écritures dues, mises à l'écart, dernière synchro acceptée et un bouton de drain — **au-dessus de l'accordéon STATUT, et sans se taire au repos** | `cache/sync-status-block.ts`                                   |
+
+```callout warn label="OU-13 — « emprise du profil » proposait la VUE, faute de pouvoir demander l'emprise à la carte"
+Le bouton lisait `getMaxBounds()` sur la carte qu'il reçoit. Or c'est l'adaptateur GeoLeaf, qui n'a
+pas cette méthode — mesuré sur le bundle livré : `typeof map.getMaxBounds === "undefined"`. Le bouton
+retombait donc sur `getBounds()`, la vue courante, et l'emprise du profil n'était jamais proposée. Le
+test unitaire passait parce que son faux, lui, portait `getMaxBounds`. Depuis 1.5.1, le bouton lit
+l'emprise DÉCLARÉE, `map.bounds` (`[[sud, ouest], [nord, est]]`), là où elle vit : dans la
+configuration. Elle est non gonflée, parce que `maxBounds` est cette emprise élargie de
+`boundsMargin`. `getMaxBounds()` ne sert plus que de repli, puis la vue. Une valeur malformée ne
+s'invente pas : elle rend la main au repli.
+```
+
+```callout warn label="La fenêtre de téléchargement — trois défauts d'un même geste, fermés le 19/09/2026"
+Trouvés en prouvant l'arrêt du rapatriement sur le bundle livré, et chacun invisible à toute autre
+mesure du dépôt.
+
+**① La confirmation s'ouvrait SOUS la fenêtre.** Les boîtes du `modal-shell` vivent à
+`z-index: 10000` et la fenêtre était à `10002` : toute confirmation qu'elle ouvre — « Arrêter »,
+« Clear cache » — passait dessous. Mesuré, `document.elementFromPoint` au centre de « Confirmer »
+rendait `.gl-cache-zone__row-label`, puis `.gl-cache-control__body`. Le focus arrivant sur
+« Annuler », le clavier pouvait encore confirmer, à l'aveugle ; la souris et le doigt, non. La
+fenêtre partage désormais cette couche, et les boîtes qu'elle ouvre, ajoutées au corps après elle,
+se placent au-dessus. La valeur `10002` venait de la migration de février 2026 et ne portait aucun
+motif. Éprouvé **à la souris** par `e2e/55`.
+
+**② Un téléchargement arrêté s'annonçait réussi.** Après « Arrêter », le contrôle affiche
+« stopped » et rend le bouton ; quand `cacheProfile()` se résolvait ensuite, le gestionnaire
+affichait quand même la barre à 100 %, le compte ✅ et une notification de succès. Il lit
+désormais le `cancelled` que porte le résultat, et se borne à relire le statut et les icônes.
+
+**③ La zone était perdue par la liste des couches.** Les deux moitiés de la sélection — les
+couches cochées et la zone — vivent dans un seul enregistrement, que deux chemins lisaient,
+modifiaient et réécrivaient sans s'attendre. La liste lit au DÉBUT de sa sauvegarde et écrit après
+tout son travail DOM : une zone enregistrée dans cet intervalle était écrasée, et le
+téléchargement repartait alors **sans emprise du tout**. L'ouverture de la fenêtre est elle-même
+un de ces écrivains (`populate()` sauvegarde l'état initial d'un profil qui n'en a pas). Les deux
+passent maintenant par `cache/selection-writer.ts`, qui enchaîne les lire-modifier-écrire : chacun
+relit ce que le précédent a écrit. ⚠️ La sérialisation vaut pour **cet onglet** — le magasin n'a
+pas de compare-and-set, et deux onglets du même profil peuvent encore s'écraser.
+```
 
 ```callout warn label="OU-06 — le rapatriement est la seconde phase, pas un second téléchargement"
 Depuis R9 (06/09/2026), le bouton « Télécharger » fait deux choses : les **ressources** (fichiers de

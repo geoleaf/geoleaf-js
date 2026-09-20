@@ -13,7 +13,130 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **The download zone bounds the entity pull.** The zone drawn in the download window
+  (`@geoleaf-plugins/offline-ui`) was persisted with the selection and reached
+  `CacheManager.cacheProfile()` whole, but it only bounded the vector tiles: each layer
+  declaring `offline.source` was still pulled as its whole collection, capped by
+  `offline.maxFeatures` alone. Its extent now leaves with every pull as the OGC `bbox`
+  parameter, `[west, south, east, north]`. Without a zone — or with one whose bounds are not
+  finite numbers — nothing is guessed and the pull covers the whole collection, as before.
+
+- **A second pull rewrites only what changed, and says so: `unchanged` on the pull report.**
+  The freshness marker read from `offline.source.versionProperty` was stored on every record
+  from the first pull on — for the write cycle's conflict filter — and never compared by the
+  pull itself: every synchronised record was rewritten on every pull, and counted `written`.
+  A record the source serves under the marker already stored is now left as it is, and
+  counted in the new `unchanged` field of `GeoLeaf.Storage.pullLayer()`'s report; `written`
+  counts only real writes. A row served without its marker is always rewritten — nothing says
+  it did not change.
+
+- **An entity deleted on the server leaves the device: `removed` on the pull report.** The pull
+  only ever wrote. An entity the source had stopped serving stayed in the local store forever —
+  still drawn on the offline map, with no row left for any edit of it to reach. A COMPLETE pull
+  (neither cut by `maxFeatures`, nor aborted, nor failed) now removes the synchronised records
+  carrying a server identity that its answer did not return, and counts them in the new
+  `removed` field. Local work is never removed — an edited entity the server deleted is left to
+  the write queue, which sets it aside as `deletedOnServer` — and neither is a record without a
+  server identity. A pull that is cut, aborted or failed removes nothing.
+
+- **Freshness and deletions declared per layer: `offline.source.delta`.** A layer whose source
+  serves changes and deletions declares both, together — `{ "freshness": "datetime",
+"deletedProperty": "<property>" }`, the schema refusing either half alone, since a freshness
+  filter never sees a deletion. Its first pull is complete; the next ones, for the same source
+  and extent, ask only for `datetime=<mark>/..` — the OGC API Features Part 1 temporal filter, the
+  mark being the greatest freshness marker already served — and report `mode: "delta"`. A served
+  entity whose declared property is set is a tombstone: never written, its synchronised copy
+  leaves the device. A delta removes nothing else. The mark is dropped — and the next pull is
+  complete again — by a purge of the local cache, a change of zone or source, a delta cut by
+  `maxFeatures`, or a marker that is not a readable instant. Without the declaration every pull
+  stays complete, and converges as described above. `streamOgcApiFeatures()` gains the optional
+  `datetime` argument this needs.
+
+    ⚠️ **No server of this repository speaks it yet.** The mechanism is proven against a source
+    with state in the unit suite and on the shipped bundle, never against a real server; what a
+    server must guarantee for it to hold is written in the server contract page.
+
+- **`pullLayer()` reports `mode`** — `"full"`, `"delta"`, or `null` when refused before any
+  request.
+
+### Changed
+
+- **A complete pull defines the layer's synchronised content — a bounded one included.** With a
+  `bbox` (the download zone, or `pullLayer(id, { bbox })`), the answer is what the source holds
+  for that extent, and what lies outside it leaves the device too: successive pulls of different
+  zones no longer accumulate, the last complete one wins. Decided with the convergence rule above;
+  a caller that pulled several zones in turn to build a union must pull their enclosing extent.
+
+### Fixed
+
+- **A photo written back after the fact no longer erases the entity that owns it.** A photo
+  taken off-network is uploaded when the network returns, and the editor then writes its URL
+  onto the entity with an edit that carries that one attribute. The local store took such an
+  edit as the WHOLE entity: the record kept the URL and lost its position and every other
+  attribute — the point vanished from the offline map. While the create was still queued, the
+  two coalesced and the create would have left with nothing but the URL and the client
+  identity. A partial edit is now MERGED over the stored entity: its `properties` override the
+  stored ones key by key, and the stored geometry is kept when the edit carries none. Observed on
+  the shipped bundle before the fix, in the order the field takes — the photo is uploaded before
+  the queue drains —: the create left with the URL and the client identity alone.
+
+    ⚠️ **What `GeoLeaf.Storage.applyEdit()` now does with a partial entity is the rule the
+    store already announced** ("the store keeps what the edit does not bring"). Omitting an
+    attribute no longer removes it from the local record — it never removed it from the server
+    row either, which a `PATCH` leaves untouched. To clear an attribute, send it with `null`.
+
+- **A cap that lands exactly on a page boundary is reported as a cut.** The OGC API Features
+  walk stops as soon as it holds `maxFeatures` entities, before asking for the next page — and
+  it flagged the result as truncated only when it held MORE than the cap. When the cap fell
+  exactly on a page end, the walk stopped on a page that announced more and reported itself
+  complete: the "N out of M" notice stayed silent on the display path, and the offline pull
+  reported `capped: false` for a subset. The page the walk stops on is now read for a next
+  page (the `next` relation, or the declared `cursorPath`), without following it.
+
+- **« Stop » now stops the entity pull too.** `CacheManager.cancelDownload()` only reached the
+  resource downloader, whose controller exists while the resources download and no longer. A
+  stop pressed while the entities of the layers declaring `offline.source` were being pulled
+  reached nothing: the panel said the download had stopped while the pull ran to its end. And a
+  complete pull removes what it did not return, so the zone just drawn still replaced the
+  previous one. A stop pressed while the resources were still being enumerated was lost the same
+  way, and every resource was downloaded. Each download now has its own controller, and
+  `cancelDownload()` raises it:
+    - a pull under way ends at its page, keeps what it wrote and removes nothing;
+    - after a stop, no further layer is pulled;
+    - a stop pressed before the resources start means nothing is downloaded, and the manifest an
+      earlier download left is not overwritten.
+
+    The result of `cacheProfile()` says `cancelled: true`.
+
+- **`@geoleaf-plugins/offline-ui` 1.5.1 — "profile area" offers the profile's extent, not the
+  current view.** The download window's zone selector asked the map for its `getMaxBounds()`,
+  and the map it receives — the GeoLeaf map adapter — has no such method: the button fell back
+  to `getBounds()`, the current view, and the profile's extent was never proposed. It now reads
+  the extent the profile declares, `map.bounds`, unpadded; `getMaxBounds()` and then the view
+  remain the fallbacks when a profile declares none, or declares one that is malformed.
+
+- **`@geoleaf-plugins/offline-ui` 1.5.1 — the download zone is no longer lost to the layer
+  list.** The window keeps its selection in one record, written by two paths that did not wait
+  for each other: the layer list reads it when its save starts and writes the whole record back
+  after its DOM work and its estimates, so a zone persisted in between was overwritten — and the
+  window itself starts one of those saves when a profile has no selection yet. The download then
+  left with no extent at all: the whole collection pulled, the whole map tiled. Both paths now go
+  through one serialised read-modify-write, each re-reading what the previous one wrote. It
+  serialises this tab only: two tabs on one profile can still overwrite each other, as before.
+
+- **`@geoleaf-plugins/offline-ui` 1.5.1 — the confirmation of « Stop » is reachable with a
+  mouse.** The window sat above the layer the confirmation dialogs use, so the confirmations it
+  opens — « Stop », « Clear cache » — opened UNDERNEATH it: their « Confirm » was covered by the
+  window's own rows, and only a keyboard could reach it, blind. The window now shares that layer,
+  and the dialogs it opens stack above it.
+
+- **`@geoleaf-plugins/offline-ui` 1.5.1 — a stopped download is no longer announced as a
+  success.** Once « Stop » had shown "stopped" and handed the button back, the download window
+  still announced a success when `cacheProfile()` resolved: the bar at 100 %, the ✅ count, a
+  success notice. It now reads the `cancelled` the result carries, and then only re-reads the
+  status and the icons of the cached layers.
 
 ---
 

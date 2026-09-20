@@ -90,6 +90,7 @@ export default defineConfig({
                 text: "Concepts",
                 items: [
                     { text: "Direction", link: "/DIRECTION" },
+                    { text: "Server contract", link: "/SERVER_CONTRACT" },
                     { text: "Architecture", link: "/ARCHITECTURE_GUIDE" },
                     { text: "User Guide", link: "/USER_GUIDE" },
                 ],

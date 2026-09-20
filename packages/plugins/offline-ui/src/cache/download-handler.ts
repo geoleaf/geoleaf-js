@@ -125,28 +125,12 @@ const DownloadHandler = {
                 selection: selection,
             });
 
-            if (this._progressFill) this._progressFill.style.width = "100%";
-            const resourceCount =
-                (result as { resourcesCount?: number; total?: number; cached?: unknown[] })
-                    .resourcesCount ??
-                (result as { total?: number }).total ??
-                (result as { cached?: unknown[] }).cached?.length ??
-                0;
-            if (this._progressText)
-                this._progressText.textContent = `✅ ${resourceCount} ${t("storage.download.done")}`;
-
-            const sizeStr = FormatUtils.formatBytes(
-                (result as { totalSize?: number }).totalSize ?? 0
-            );
-            getUINotifications()?.success(
-                `${t("storage.notif.download.success")} : ${sizeStr}`,
-                4000
-            );
-
-            setTimeout(() => {
-                if (this._progressEl) this._progressEl.style.display = "none";
-                if (this._progressFill) this._progressFill.style.width = "0%";
-            }, 3000);
+            // 🛑 A stopped download is not announced as a success. « Stop » already said so:
+            // on `geoleaf:cache:cancelled` the control showed "stopped" and handed the button
+            // back. A success announced here, once `cacheProfile` resolved, contradicted it.
+            if ((result as { cancelled?: boolean }).cancelled !== true) {
+                this._showDownloadSuccess(result);
+            }
 
             // Force a delay to let IndexedDB settle
             await new Promise((resolve) => setTimeout(resolve, 500));
@@ -180,6 +164,31 @@ const DownloadHandler = {
                 if (label) label.textContent = t("storage.download.btn");
             }
         }
+    },
+
+    /**
+     * Shows a completed download: the bar at 100 %, the resource count, a success notice.
+     *
+     * @param result - What `CacheManager.cacheProfile` resolved with.
+     */
+    _showDownloadSuccess(result: unknown): void {
+        if (this._progressFill) this._progressFill.style.width = "100%";
+        const resourceCount =
+            (result as { resourcesCount?: number; total?: number; cached?: unknown[] })
+                .resourcesCount ??
+            (result as { total?: number }).total ??
+            (result as { cached?: unknown[] }).cached?.length ??
+            0;
+        if (this._progressText)
+            this._progressText.textContent = `✅ ${resourceCount} ${t("storage.download.done")}`;
+
+        const sizeStr = FormatUtils.formatBytes((result as { totalSize?: number }).totalSize ?? 0);
+        getUINotifications()?.success(`${t("storage.notif.download.success")} : ${sizeStr}`, 4000);
+
+        setTimeout(() => {
+            if (this._progressEl) this._progressEl.style.display = "none";
+            if (this._progressFill) this._progressFill.style.width = "0%";
+        }, 3000);
     },
 
     /**

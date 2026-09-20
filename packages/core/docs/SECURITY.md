@@ -124,49 +124,20 @@ GeoLeaf follows a **coordinated disclosure** model. Please allow time for the vu
 
 ### 7.1 HTTP protocol expected by `@geoleaf-plugins/connector`
 
-The plugin imposes a strict HTTP contract on the backend, defined in `auth-client.ts`.
+The wire contract — the sign-in and renewal requests, the fields each answer must carry, and how
+every status is read — is written once, in §3 of the [server contract](./SERVER_CONTRACT.md). What
+it means for security:
 
-**Login endpoint (POST)**
-
-```
-POST {endpoint}
-Content-Type: application/json
-
-{ "login": "user@example.com", "password": "secret" }
-```
-
-Expected response:
-
-```json
-{ "token": "<jwt>", "expiresIn": 3600 }
-```
-
-| Field       | Type     | Description                                                   |
-| ----------- | -------- | ------------------------------------------------------------- |
-| `token`     | `string` | JWT or opaque token — passed as-is in `Authorization: Bearer` |
-| `expiresIn` | `number` | Validity period **in seconds**                                |
-
-Both fields are required — an `AuthError` is thrown if either is missing or of the wrong type.
-
-HTTP status codes interpreted by the plugin:
-
-| Status | Behaviour                                       |
-| ------ | ----------------------------------------------- |
-| `200`  | Token extracted and persisted                   |
-| `401`  | `AuthError("Invalid credentials")`              |
-| `404`  | `AuthError("Endpoint not found (404)")`         |
-| `5xx`  | `AuthError("Server error ({status})")`          |
-| Other  | `AuthError("Authentication failed ({status})")` |
-
-**Refresh endpoint (POST, optional)**
-
-```
-POST {endpoint}/refresh
-Authorization: Bearer {current_token}
-Content-Type: application/json
-```
-
-Response: the same `{ token, expiresIn }` format. The plugin degrades silently on `404` (refresh not supported) — no error is thrown, and the existing token stays in use until it expires.
+- The token travels in `Authorization: Bearer <token>`, never in a query string. GeoLeaf never
+  decodes it.
+- `expiresIn` is a lifetime **in seconds**, and sign-in fails without it.
+- **A renewal the server refuses ends the session** — a `404` included: the token is erased and
+  `geoleaf:connector:auth-error` is emitted. A server that offers no `POST {endpoint}/refresh`
+  therefore ends every session 30 seconds before its expiry. ⚠️ This page used to call the refresh
+  route "optional", and said a `404` "degrades silently" with the token staying in use until it
+  expires: the session does end then, and loudly.
+- Signing out calls no route: a token that must stop working before its expiry has to be revoked
+  by the server.
 
 ---
 
@@ -180,7 +151,7 @@ The plugin manages the token through a three-level cache cycle:
 | Synchronous access  | RAM only — the MapLibre bridge and the worker hook, in `auth.endpoint` mode         |
 | Asynchronous access | RAM → IDB → refresh if expiry < 5 min                                               |
 | Proactive refresh   | Triggered in the background if expiry < 5 min, without blocking the current request |
-| Expiry              | Forced refresh; `connector:auth-error` only if the renewal is **refused**           |
+| Expiry              | Forced refresh; `geoleaf:connector:auth-error` only if the renewal is **refused**   |
 | `401` retry         | One retry at most after a refresh attempt; synthetic `401` response on failure      |
 | Outage              | A renewal that cannot conclude keeps the session and fires nothing (see below)      |
 
@@ -189,14 +160,14 @@ The token survives page reloads but **not** navigation to another origin.
 
 **Only a refusal ends a session.** A renewal the server refuses — a `401`, a `403`, no renewal
 offered, a `501`, an answer received whole but unusable — erases the stored token and fires
-`connector:auth-error`. A renewal that cannot **conclude** — no network, the time budget spent
+`geoleaf:connector:auth-error`. A renewal that cannot **conclude** — no network, the time budget spent
 (the whole exchange is bounded, body included), a `408`, `429`, `500`, `502`, `503` or `504`, a
 body cut in transit — keeps the session: the request gets its `401`, `configure()` resolves
 instead of blocking, and the renewal is tried again when the network returns, when the page
 comes back to the foreground, and when a capture enters the offline queue. A renewed token is
 stored, and a refused one erased, only if it is still the one the renewal presented — a sign-in
 or a sign-out made meanwhile wins. With no stored session at all, a `401` is returned as the
-server sent it, without a renewal and without `connector:auth-error`.
+server sent it, without a renewal and without `geoleaf:connector:auth-error`.
 
 **Security constraints enforced by the code:**
 
@@ -238,9 +209,9 @@ await GeoLeaf.Connector.configure({
 });
 ```
 
-**Returning `null` is meaningful**: it makes the connector emit `connector:auth-error`, the same
-path a `401` takes. Never return an expired token to avoid a `null` — a silent `401` is harder to
-diagnose than an explicit auth error.
+**Returning `null` sends the request without a token.** If the server answers `401`, the connector
+asks once more, and a second `null` emits `geoleaf:connector:auth-error`. Never return an expired
+token to avoid a `null` — a silent `401` is harder to diagnose than an explicit auth error.
 
 The provider is called for every request that needs the token — each intercepted `fetch`, each
 vector tile, each GeoJSON load the worker makes — and nothing keeps a copy. A provider that
@@ -272,9 +243,9 @@ await GeoLeaf.Connector.configure({
 automatically — with the endpoint above, that is `/api/auth/login/refresh`.
 
 ⚠️ **`expiresIn` is frequently missing.** Many JWT libraries return only the token, and their
-default success response carries no lifetime. Without it the connector cannot schedule a refresh.
-If your library omits it, add it to the response payload — its own token-TTL setting is the value
-to expose.
+default success response carries no lifetime. Without it, sign-in fails ("Invalid server response:
+missing token or expiresIn"). If your library omits it, add it to the response payload — its own
+token-TTL setting is the value to expose.
 
 ---
 

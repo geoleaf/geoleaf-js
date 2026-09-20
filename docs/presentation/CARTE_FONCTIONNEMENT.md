@@ -181,6 +181,9 @@ sequenceDiagram
 
 C'est l'axe le plus différenciant du produit, et le moins lisible dans le code.
 
+Ce que le serveur doit faire de chaque requête, et comment chaque réponse est lue, est écrit une
+fois : [le contrat serveur](../../packages/core/docs/SERVER_CONTRACT.md).
+
 🛑 **Le chemin en ligne n'est PAS un repli.** La décision est prise **avant** l'écriture, sur la
 **capacité de l'appareil à tenir la file** — jamais sur la météo du réseau. Une écriture ne
 change donc **jamais de chemin en vol**. Le prédécesseur décidait par joignabilité et produisait
@@ -198,6 +201,7 @@ sequenceDiagram
     participant TR as drain-triggers
     participant PE as push-engine
     participant CX as connector (plugin)
+    participant UP as uploadEndpoint
     participant SV as write.endpoint
 
     U->>ED: dessine une géométrie, remplit le formulaire
@@ -221,20 +225,20 @@ sequenceDiagram
     TR->>PE: drain
 
     PE->>ED: itère les hooks d'avant-drain, UNE passe, en ordre
-    ED->>SV: téléverse d'abord les photos locales
+    ED->>UP: téléverse d'abord les photos locales
     Note over PE,SV: un hook qui échoue n'arrête JAMAIS le drain
     PE->>DB: lit l'outbox EN ENTIER — pending ET failed
     Note over LE,PE: ne lire que pending faisait qu'une saisie<br/>échouée une fois ne revenait jamais :<br/>le mode de perte le plus probable sur le terrain
     PE->>CX: fetch borné
     CX->>SV: la même requête, avec Authorization
-    Note over DB,SV: local_id part SUR LE FIL, hors liste blanche —<br/>c'est du protocole : le serveur refuse le doublon,<br/>et un 409 est un SUCCÈS
+    Note over DB,SV: local_id part SUR LE FIL, hors liste blanche —<br/>c'est du protocole : le serveur refuse le doublon (409),<br/>et le drain RELIT la ligne par local_id avant d'y voir un succès
     SV-->>PE: identité serveur, ou un statut d'échec
     PE->>DB: réconcilie serverId DANS L'ENREGISTREMENT
     Note over LE,PE: l'entrée de file ne référence que localId,<br/>puis elle disparaît
 
     rect rgb(250, 238, 235)
         Note over PE,SV: LE CAS SESSION MORTE
-        SV-->>PE: 401 / 403
+        SV-->>PE: 401 — un 403 est un refus, pas une session morte
         PE->>PE: haltedBy authRequired — le drain S'ARRÊTE
         PE-->>TR: les quatre déclencheurs s'éteignent
         Note over TR,PE: le core ne peut PAS voir une session revenir,<br/>et il le DIT. Sans cet arrêt, une session morte<br/>mettait une saisie à l'écart PAR MINUTE.

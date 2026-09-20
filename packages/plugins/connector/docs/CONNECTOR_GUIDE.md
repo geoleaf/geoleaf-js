@@ -129,6 +129,8 @@ Le connector vérifie d'abord IndexedDB. Si aucune session n'est stockée, ou si
 
 Une session dont le renouvellement ne peut pas **aboutir** — hors réseau, délai dépassé, `503` — n'est pas une absence : elle est gardée, `configure()` se résout sans modal (avec ou sans `ui`), et le renouvellement est retenté au retour du réseau, au retour au premier plan et à chaque saisie mise en file.
 
+Ce que le serveur doit répondre — la route de connexion, `POST {endpoint}/refresh`, les champs `token` et `expiresIn` (en secondes), et la lecture de chaque statut — est écrit dans [le contrat serveur](https://github.com/geoleaf/geoleaf-js/blob/main/packages/core/docs/SERVER_CONTRACT.md), §3.
+
 ### S4 — Provider async (SDK d'identité tiers)
 
 Le fournisseur est appelé à **chaque** requête qui a besoin du jeton : chaque `fetch` intercepté, chaque tuile vectorielle, chaque chargement GeoJSON de l'ouvrier. Une promesse atteint les tuiles avec MapLibre ≥ 5.21 et l'ouvrier avec `@geoleaf/core` ≥ 3.4.0. Un fournisseur qui jette ou rejette fait échouer la requête de la page ; tuiles et chargements de l'ouvrier partent alors sans jeton, jusqu'à ce qu'il réponde de nouveau.

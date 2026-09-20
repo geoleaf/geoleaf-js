@@ -104,7 +104,8 @@ function _buildRequestUrl(
     base: string,
     config: OgcApiConfig,
     bbox?: [number, number, number, number],
-    offset?: number
+    offset?: number,
+    datetime?: string
 ): string {
     // Use URL constructor to correctly merge any existing query params in base
     const url = new URL(base);
@@ -117,6 +118,11 @@ function _buildRequestUrl(
     }
     if (offset && offset > 0) {
         url.searchParams.set("offset", String(offset));
+    }
+    // OGC API Features Part 1 `datetime` — the only temporal filter the core standard imposes.
+    // Its value is used as given (an instant or an interval such as `<start>/..`).
+    if (datetime) {
+        url.searchParams.set("datetime", datetime);
     }
     return url.toString();
 }
@@ -153,6 +159,56 @@ function _resolveCursor(response: unknown, dotPath: string): string | null {
         return null;
     }
     return node;
+}
+
+/**
+ * True when a page says more pages follow — read, never followed, never warned about.
+ *
+ * 🛑 **Needed only where the walk stops on its cap.** There the cursor is deliberately not
+ * resolved (see the loop), so nothing else says whether the source held more. A page that
+ * links to a next one, by relation or by the declared path, did.
+ *
+ * @param response - The page the walk stopped on.
+ * @param cursorPath - The declared cursor path, if any.
+ * @returns Whether the source announces a next page.
+ */
+function _announcesMore(response: OgcFeatureCollection, cursorPath: string | undefined): boolean {
+    if (_extractNextUrl(response) !== null) return true;
+    if (!cursorPath) return false;
+    let node: unknown = response;
+    for (const key of cursorPath.split(".")) {
+        if (!node || typeof node !== "object") return false;
+        node = (node as Record<string, unknown>)[key];
+    }
+    return typeof node === "string" && node.length > 0;
+}
+
+/**
+ * Where the cap leaves the walk after one page: whether it stops, and whether stopping cuts
+ * the source short.
+ *
+ * 🛑 **A CUT THAT LANDS ON A PAGE BOUNDARY IS STILL A CUT.** `fetched > maxFeatures` used to be
+ * the only test of truncation, so a cap falling exactly on a page end stopped the walk on a page
+ * that links to more and reported the run complete — the notice stayed silent, and a consumer
+ * that removes what the source no longer serves would have removed what it never asked for.
+ *
+ * @param fetched - Features the source returned so far, this page included.
+ * @param maxFeatures - The cap.
+ * @param page - The page just received.
+ * @param cursorPath - The declared cursor path, if any.
+ * @returns `reached` — the walk stops here; `cut` — and the source held more than it delivered.
+ */
+function _capVerdict(
+    fetched: number,
+    maxFeatures: number,
+    page: OgcFeatureCollection,
+    cursorPath: string | undefined
+): { reached: boolean; cut: boolean } {
+    const reached = fetched >= maxFeatures;
+    return {
+        reached,
+        cut: fetched > maxFeatures || (reached && _announcesMore(page, cursorPath)),
+    };
 }
 
 function _extractNextUrl(response: OgcFeatureCollection): string | null {
@@ -315,6 +371,8 @@ export interface OgcApiStreamOutcome {
  * @param onPage - Called once per page, in order. Awaited.
  * @param signal - AbortSignal for cooperative cancellation, checked between pages.
  * @param bbox - Override bounding box (used by autoRefresh to inject viewport bbox).
+ * @param datetime - OGC `datetime` filter for the first request, e.g. `<instant>/..`. The pages
+ *   after it follow the server's `next` links, which carry the query as the server built them.
  * @returns What the run observed — counts, truncation, abort, and the unfollowed cursor.
  * @throws Error if the URL is invalid, the network request fails, or the response is malformed.
  * @example
@@ -327,7 +385,8 @@ export async function streamOgcApiFeatures(
     config: OgcApiConfig,
     onPage: (page: OgcApiPage) => void | Promise<void>,
     signal?: AbortSignal,
-    bbox?: [number, number, number, number]
+    bbox?: [number, number, number, number],
+    datetime?: string
 ): Promise<OgcApiStreamOutcome> {
     const Log = getLog();
     const maxFeatures = config.maxFeatures ?? DEFAULT_MAX_FEATURES;
@@ -338,7 +397,7 @@ export async function streamOgcApiFeatures(
     }
 
     const baseItemsUrl = _buildItemsUrl(config);
-    let nextUrl: string | null = _buildRequestUrl(baseItemsUrl, config, bbox);
+    let nextUrl: string | null = _buildRequestUrl(baseItemsUrl, config, bbox, undefined, datetime);
     const headers = config.headers ?? {};
 
     let fetched = 0;
@@ -347,6 +406,8 @@ export async function streamOgcApiFeatures(
     let matched: number | undefined;
     let aborted = false;
     let lastCursor: string | null = null;
+    // The cap stopped the walk while the source held more — see `_capVerdict`.
+    let cutShort = false;
 
     while (nextUrl !== null) {
         if (signal?.aborted) {
@@ -383,8 +444,10 @@ export async function streamOgcApiFeatures(
 
         Log.debug(`[OgcApiLoader] Page loaded: ${resolved.length} features (total: ${fetched})`);
 
-        const capReached = fetched >= maxFeatures;
-        if (capReached) {
+        const cap = _capVerdict(fetched, maxFeatures, page, config.cursorPath);
+        const capReached = cap.reached;
+        if (cap.cut) {
+            cutShort = true;
             Log.warn(
                 `[OgcApiLoader] maxFeatures limit reached (${maxFeatures}). Stopping pagination. ` +
                     `The result is a SUBSET of the source: ${fetched} feature(s) were ` +
@@ -432,7 +495,7 @@ export async function streamOgcApiFeatures(
     return {
         fetched,
         delivered,
-        ...(fetched > maxFeatures
+        ...(cutShort
             ? {
                   truncated: {
                       limit: maxFeatures,

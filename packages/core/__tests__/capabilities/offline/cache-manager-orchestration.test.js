@@ -321,7 +321,10 @@ describe("cacheProfile — le rapatriement des entités déclarées (R9)", () =>
         // second without the first, and pulling it would only ever produce a
         // `refused: "noSource"` on a profile that is not misconfigured.
         expect(pullLayer).toHaveBeenCalledTimes(1);
-        expect(pullLayer).toHaveBeenCalledWith("sites_rosario", {});
+        // The gesture's signal goes with every pull — see « Arrêter » below.
+        expect(pullLayer).toHaveBeenCalledWith("sites_rosario", {
+            signal: expect.any(AbortSignal),
+        });
         expect(result.pulledLayers).toEqual([
             {
                 layerId: "sites_rosario",
@@ -362,6 +365,36 @@ describe("cacheProfile — le rapatriement des entités déclarées (R9)", () =>
         expect(pullLayer).toHaveBeenCalledTimes(1);
     });
 
+    test("la zone tracée dans la fenêtre BORNE le rapatriement : sa `bbox` part à chaque couche", async () => {
+        // The zone the user drew is persisted in the selection and reaches `cacheProfile`
+        // whole — it bounded the vector tiles, and the entities still left as the whole
+        // collection. `[west, south, east, north]` is the order `pullLayer` and OGC read.
+        await CacheManager.cacheProfile("tourism", {
+            selection: {
+                layers: ["sites_rosario"],
+                vectorZone: {
+                    bounds: { north: -32.8, south: -33.1, east: -60.5, west: -60.8 },
+                    cacheMinZoom: 10,
+                    cacheMaxZoom: 14,
+                    source: "view",
+                },
+            },
+        });
+        expect(pullLayer).toHaveBeenCalledWith("sites_rosario", {
+            signal: expect.any(AbortSignal),
+            bbox: [-60.8, -33.1, -60.5, -32.8],
+        });
+    });
+
+    test("une zone malformée ne s'invente pas : le rapatriement part sans `bbox`", async () => {
+        await CacheManager.cacheProfile("tourism", {
+            selection: { layers: ["sites_rosario"], vectorZone: { bounds: { north: "x" } } },
+        });
+        expect(pullLayer).toHaveBeenCalledWith("sites_rosario", {
+            signal: expect.any(AbortSignal),
+        });
+    });
+
     test("une source injoignable NE FAIT PAS échouer le téléchargement", async () => {
         // 🛑 Losing tens of megabytes of tiles because one OGC endpoint answered 503 is a
         // worse outcome than the partial state it would be protecting from. The refusal
@@ -398,5 +431,112 @@ describe("cacheProfile — le rapatriement des entités déclarées (R9)", () =>
         // Absent, not `[]`: "this profile pulls no entities" and "the pull ran and wrote
         // nothing" are opposite situations, and one field must not say both.
         expect("pulledLayers" in result).toBe(false);
+    });
+
+    describe("« Arrêter » arrête aussi le rapatriement", () => {
+        // 🛑 `cancelDownload()` reached the resource downloader only. Its controller is
+        // already gone when the entities phase starts, and the pull was handed no signal at
+        // all: the panel said "stopped" while the pull ran to its end — and a complete pull
+        // REMOVES what it did not return, the new zone replacing the old one.
+        //
+        // Targets (`🛑`) were seen red before the fix; plain titles are guards, green before
+        // it, whose bite was seen by mutating the fix.
+
+        /** A pull held until the test releases it, reporting what its signal said then. */
+        function heldPull() {
+            let entered;
+            let release;
+            const inside = new Promise((resolve) => (entered = resolve));
+            const gate = new Promise((resolve) => (release = resolve));
+            const signals = [];
+            pullLayer.mockImplementation(async (layerId, options) => {
+                signals.push(options.signal);
+                entered();
+                await gate;
+                return {
+                    layerId,
+                    written: 0,
+                    capped: false,
+                    aborted: options.signal?.aborted === true,
+                    refused: null,
+                };
+            });
+            return { inside, release, signals };
+        }
+
+        /** The downloader as it ends on a cancel: its workers leave their loop, it returns. */
+        function stoppedDuringResources() {
+            downloaderCacheProfile.mockImplementationOnce(async () => {
+                CacheManager.cancelDownload();
+                return { ok: true };
+            });
+        }
+
+        test("🛑 pendant la phase des entités, le rapatriement en cours reçoit l'abandon", async () => {
+            const pull = heldPull();
+            const run = CacheManager.cacheProfile("tourism");
+            await pull.inside;
+
+            CacheManager.cancelDownload();
+            pull.release();
+            const result = await run;
+
+            expect(pull.signals[0]?.aborted).toBe(true);
+            expect(result.pulledLayers?.[0]?.aborted).toBe(true);
+        });
+
+        test("🛑 pendant la phase des ressources, le rapatriement n'est pas tenté", async () => {
+            stoppedDuringResources();
+
+            await CacheManager.cacheProfile("tourism");
+
+            expect(pullLayer).not.toHaveBeenCalled();
+        });
+
+        test("🛑 pendant la préparation, rien n'est téléchargé — et le manifeste reste celui d'avant", async () => {
+            // The downloader creates its controller when it starts: a stop pressed while the
+            // resources are still being enumerated reached nothing, and every one of them left.
+            enumerateAll.mockImplementationOnce(async () => {
+                CacheManager.cancelDownload();
+                return [{ url: "a", type: "config" }];
+            });
+
+            const result = await CacheManager.cacheProfile("tourism");
+
+            expect(downloaderCacheProfile).not.toHaveBeenCalled();
+            expect(pullLayer).not.toHaveBeenCalled();
+            // Nothing was downloaded: a manifest written now would list nothing, over the one
+            // an earlier download left.
+            expect(saveManifest).not.toHaveBeenCalled();
+            expect(result.cancelled).toBe(true);
+        });
+
+        test("🛑 le résultat dit que le geste a été arrêté", async () => {
+            stoppedDuringResources();
+
+            const result = await CacheManager.cacheProfile("tourism");
+
+            expect(result.cancelled).toBe(true);
+        });
+
+        test("un téléchargement que personne n'arrête ne se dit pas arrêté", async () => {
+            const result = await CacheManager.cacheProfile("tourism");
+
+            expect(pullLayer).toHaveBeenCalledTimes(1);
+            expect("cancelled" in result).toBe(false);
+        });
+
+        test("un arrêt ne survit pas à son geste : le téléchargement suivant rapatrie", async () => {
+            stoppedDuringResources();
+            await CacheManager.cacheProfile("tourism");
+            // Pressed once more, with nothing running.
+            CacheManager.cancelDownload();
+            pullLayer.mockClear();
+
+            const next = await CacheManager.cacheProfile("tourism");
+
+            expect(pullLayer).toHaveBeenCalledTimes(1);
+            expect("cancelled" in next).toBe(false);
+        });
     });
 });

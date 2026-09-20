@@ -97,7 +97,10 @@ interface EditInput {
      * report returns that key.
      */
     readonly localId?: string;
-    /** The entity after the edit. Unneeded for a `delete`. */
+    /**
+     * What the edit brings. Unneeded for a `delete`. It may be PARTIAL: the store merges its
+     * `properties` over the stored ones and keeps the stored geometry when it carries none.
+     */
     readonly feature?: unknown;
     /** Marker the edit is based on; forwarded to the push to detect a conflict. */
     readonly baseVersion?: VersionMarker | null;

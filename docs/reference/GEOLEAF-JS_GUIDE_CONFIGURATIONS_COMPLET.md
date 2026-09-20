@@ -1657,14 +1657,17 @@ La config `data.ogcApi` remplace `data.file` pour charger une couche depuis un s
 Déclare qu'une couche peut vivre **hors réseau** : ses entités sont rapatriées une fois dans la base
 locale, puis relues de là au lieu d'être refetchées.
 
-| Paramètre                        | Type    | Défaut                   | Description                                                                                                                                                                                                                                              |
-| -------------------------------- | ------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `offline.enabled`                | boolean | `false`                  | Le chargeur lit les entités du magasin local au lieu de refetcher. Un magasin vide retombe sur le réseau                                                                                                                                                 |
-| `offline.maxFeatures`            | integer | **requis dès `enabled`** | Plafond **dur** d'entités rapatriées : au-delà, le lot est tronqué, le rapport pose `capped: true` et l'utilisateur est averti. Obligatoire depuis R9 — sans lui le chargeur retombe sur 10 000 et une couche plus grande est servie tronquée en silence |
-| `offline.maxAgeMs`               | integer | —                        | Seuil de péremption. Au-delà, `GeoLeaf.Storage.getSyncReport()` rapporte la couche `pulledStale`                                                                                                                                                         |
-| `offline.source.url`             | string  | —                        | URL du service OGC API Features où `GeoLeaf.Storage.pullLayer()` va chercher les entités                                                                                                                                                                 |
-| `offline.source.collectionId`    | string  | id de couche             | Collection à rapatrier                                                                                                                                                                                                                                   |
-| `offline.source.versionProperty` | string  | `updated_at`             | Propriété portant l'horodatage de fraîcheur, relevé par entité pour rendre un conflit détectable                                                                                                                                                         |
+| Paramètre                              | Type    | Défaut                   | Description                                                                                                                                                                                                                                              |
+| -------------------------------------- | ------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `offline.enabled`                      | boolean | `false`                  | Le chargeur lit les entités du magasin local au lieu de refetcher. Un magasin vide retombe sur le réseau                                                                                                                                                 |
+| `offline.maxFeatures`                  | integer | **requis dès `enabled`** | Plafond **dur** d'entités rapatriées : au-delà, le lot est tronqué, le rapport pose `capped: true` et l'utilisateur est averti. Obligatoire depuis R9 — sans lui le chargeur retombe sur 10 000 et une couche plus grande est servie tronquée en silence |
+| `offline.maxAgeMs`                     | integer | —                        | Seuil de péremption. Au-delà, `GeoLeaf.Storage.getSyncReport()` rapporte la couche `pulledStale`                                                                                                                                                         |
+| `offline.source.url`                   | string  | —                        | URL du service OGC API Features où `GeoLeaf.Storage.pullLayer()` va chercher les entités                                                                                                                                                                 |
+| `offline.source.collectionId`          | string  | id de couche             | Collection à rapatrier                                                                                                                                                                                                                                   |
+| `offline.source.versionProperty`       | string  | `updated_at`             | Propriété portant l'horodatage de fraîcheur, relevé par entité pour rendre un conflit détectable                                                                                                                                                         |
+| `offline.source.delta`                 | object  | —                        | Déclare que la source sert les CHANGEMENTS et les SUPPRESSIONS. Absent : chaque rapatriement est complet. Voir sous la table                                                                                                                             |
+| `offline.source.delta.freshness`       | string  | requis dans le bloc      | `datetime`, seule valeur : le paramètre `datetime=<marque>/..` d'OGC API Features partie 1, intervalle fermé à son début. Le serveur doit filtrer `datetime` sur la propriété `versionProperty`                                                          |
+| `offline.source.delta.deletedProperty` | string  | requis dans le bloc      | Propriété qui marque une entité servie comme SUPPRIMÉE (pierre tombale) : posée — ni absente, ni `null`, ni `false` —, l'entité n'est jamais écrite et sa copie synchronisée quitte l'appareil                                                           |
 
 ⚠️ **`offline.enabled` déclare une LECTURE, jamais un droit d'écriture.** L'éditabilité reste décidée
 par les drapeaux d'édition de la couche : télécharger une couche ne la rend pas modifiable.
@@ -1689,9 +1692,34 @@ ne peut pas calculer ne se devine pas.
 ```
 
 Le rapatriement s'appelle depuis l'application : `await GeoLeaf.Storage.pullLayer("ma_couche")`, avec
-une emprise optionnelle `{ bbox: [ouest, sud, est, nord] }`. Il ne jette pas — il rend un rapport
-`{ fetched, written, preserved, skipped, capped, aborted, refused }`, où `refused` nomme le motif
-quand rien n'a été écrit.
+une emprise optionnelle `{ bbox: [ouest, sud, est, nord] }`. Le téléchargement de la fenêtre hors-ligne
+l'appelle avec l'emprise de la zone qui y est choisie, et sans emprise quand aucune zone ne l'est. Il ne
+jette pas — il rend un rapport
+`{ fetched, written, preserved, unchanged, removed, skipped, capped, aborted, mode, refused }`, où
+`refused` nomme le motif quand rien n'a été écrit.
+
+**Un rapatriement converge sur sa source.**
+
+- Une entité servie sous le marqueur de fraîcheur déjà rangé n'est pas réécrite (`unchanged`). Une
+  entité servie sans marqueur l'est toujours.
+- Un rapatriement **complet** retire de l'appareil les entités synchronisées qu'il n'a pas rendues
+  (`removed`), c'est-à-dire supprimées côté serveur ou sorties de l'emprise. Avec une emprise, la
+  dernière zone rapatriée remplace donc la précédente.
+- Le travail local n'est jamais retiré.
+- Un rapatriement coupé par `maxFeatures`, abandonné ou en échec ne retire rien.
+
+**Avec `offline.source.delta`**, le premier rapatriement est complet. Les suivants, pour la même
+source et la même emprise, ne demandent que `datetime=<marque>/..` (`mode: "delta"`). La marque est
+le plus grand marqueur déjà servi. Ils retirent les pierres tombales, et ne retirent rien d'autre.
+La marque s'efface, et le rapatriement suivant redevient complet, dans quatre cas :
+
+- une purge du cache local ;
+- un changement de zone ou de source ;
+- un delta coupé par le plafond ;
+- un marqueur qui n'est pas un instant lisible.
+
+Ce que le serveur doit garantir pour que cela tienne — marqueur, visibilité, pierres tombales — est
+écrit dans [le contrat serveur](../../packages/core/docs/SERVER_CONTRACT.md).
 
 ### En-têtes HTTP personnalisés (`data.headers`)
 

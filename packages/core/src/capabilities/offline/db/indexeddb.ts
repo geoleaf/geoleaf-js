@@ -18,6 +18,7 @@ import { Log } from "../../../utils/log/index.js";
 import { isUnsafeKey } from "../../../utils/general/object-path-guard.js";
 import { StorageHelperModule as StorageHelper } from "./storage-helper.js";
 import { DBModulesRegistry } from "./db-modules-registry.js";
+import { clearPullMarks } from "../report/pull-state.js";
 import type { PreservingPutTally } from "./features.js";
 import type { LocalEditInput, LocalEditTally } from "./local-edit.js";
 import type { FeatureRecord } from "../../../contracts/sync.contract.js";
@@ -564,13 +565,38 @@ const StorageDB = {
      * believing it has read.
      *
      * @param records - Complete records, `feature` included.
-     * @returns The real tally `{ written, preserved }`, or `null` when the module is absent.
+     * @param tombstones - Entities the source served as deleted: never written, their
+     *   synchronised copy removed. Optional.
+     * @returns The real tally — `written`, `preserved`, `unchanged`, `removed`, and the keys the
+     *   batch named (`seen`) — or `null` when the module is absent.
      */
-    async putLayerFeatures(records: readonly FeatureRecord[]): Promise<PreservingPutTally | null> {
+    async putLayerFeatures(
+        records: readonly FeatureRecord[],
+        tombstones: readonly FeatureRecord[] = []
+    ): Promise<PreservingPutTally | null> {
         if (!this._db) await this.init();
         const module = this._ensureModule("Features");
         if (!module?.putManyPreservingLocal) return null;
-        return (await module.putManyPreservingLocal(records)) as PreservingPutTally;
+        return (await module.putManyPreservingLocal(records, tombstones)) as PreservingPutTally;
+    },
+
+    /**
+     * Removes what a complete pull did not return — the second half of its convergence.
+     *
+     * Mirror of {@link IndexedDB.putLayerFeatures}: the facade delegates, it does not
+     * arbitrate. What is removed is decided in `db/features.ts` (`sweepSynced`), in one
+     * transaction: `synced` records carrying a server identity that `keep` does not name.
+     * Local work and records without a server identity are never touched.
+     *
+     * @param layerId - The layer the pull covered.
+     * @param keep - The keys every page of the pull named.
+     * @returns How many records were removed, or `null` when the module is absent.
+     */
+    async sweepLayerFeatures(layerId: string, keep: ReadonlySet<string>): Promise<number | null> {
+        if (!this._db) await this.init();
+        const module = this._ensureModule("Features");
+        if (!module?.sweepSynced) return null;
+        return (await module.sweepSynced(layerId, keep)) as number;
     },
 
     /**
@@ -768,6 +794,9 @@ const StorageDB = {
             await removeOne.call(features, record.layerId, record.localId);
             removed += 1;
         }
+        // 🛑 The delta's starting points go with what they described: after a purge, a delta
+        // from an old mark would refill the layer with its latest edits alone.
+        if (removed > 0) await clearPullMarks(this);
         return { removed, preserved };
     },
 
