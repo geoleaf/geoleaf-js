@@ -114,8 +114,22 @@ import { goOffline, goOnline, settleNetwork, assertZeroNetwork } from "./helpers
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, "..");
 
-/** The proof backend's origin — the same as `connector.local.js`'s. */
-const API = "https://qgis.geoleaf.dev";
+/**
+ * The proof backend's origin — the same as `connector.local.js`'s.
+ *
+ * ⚠️ DERIVED, and the default is the dev bench so the local recipe does not move. The bench
+ * has two topologies and they do not share a hostname: `https://qgis.geoleaf.dev` behind
+ * Traefik on the workstation, `http://localhost:<port>` on a runner that has neither TLS nor
+ * a `hosts` entry. Writing either one in is what would make the other unreachable.
+ */
+const API = (process.env.GEOLEAF_BACKEND_BASE_URL ?? "https://qgis.geoleaf.dev").replace(
+    /\/+$/,
+    ""
+);
+/** The bench's HOST, for the network allow-lists that must name it. */
+const API_HOST = new URL(API).host;
+/** The same host, escaped for interpolation into a RegExp. */
+const API_HOST_RE = API_HOST.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /** OGC API Features surface (pygeoapi), read by `ogc-api-loader.ts` for the pull. */
 const OGC = `${API}/ogc/collections/sites_rosario/items`;
 /** Write surface (PostgREST), the adapters' `collection` dialect. */
@@ -796,7 +810,7 @@ test.describe("30 — Cycle de synchronisation (backend réel, connector actif)"
         const LAYER = "sites_rosario";
         const EDITED = `hors-réseau-${Date.now()}`;
         /** Everything that is NOT the backend is tolerated: step 9 speaks only of IT. */
-        const ONLY_BACKEND = [/^(?!.*qgis\.geoleaf\.dev).*/];
+        const ONLY_BACKEND = [new RegExp(`^(?!.*${API_HOST_RE}).*`)];
 
         const bootAndConfigure = async () => {
             await page.goto("/", { waitUntil: "domcontentloaded" });

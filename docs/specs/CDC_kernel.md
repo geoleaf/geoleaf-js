@@ -3,7 +3,7 @@ type: spec-kernel
 title: kernel — @geoleaf/core
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 3bb6da6c4
+verifie_contre: d8615d59d
 date: 19 septembre 2026
 ---
 
@@ -24,7 +24,10 @@ date: 19 septembre 2026
 > reste vert, la suite du cœur entière aussi. Ré-estampillée sur `694377e8c`, qui ne touche que la
 > capacité `offline`, sans effet de comportement, puis sur `3bb6da6c4`, qui n'y touche encore que
 > le gestionnaire de cache de cette même capacité (le signal d'arrêt) : aucune section d'ici ne
-> bouge.
+> bouge. Puis sur `d8615d59d` : le chargeur de couche (`kernel/geojson/loader/single-layer.ts`)
+> ne retombe plus sur le réseau quand le magasin est vide APRÈS une course complète — sa prose
+> disait l'ancien contrat, elle est corrigée ; aucune branche du chargeur ne bouge, seul ce que
+> le magasin lui répond change.
 
 > ⚠️ **Ce que l'estampille du 17/09/2026 couvre — collatérale elle aussi, et c'est la même forme
 > qu'en août.** Les quatre commits du cycle d'écriture ne touchent du cœur que la capacité

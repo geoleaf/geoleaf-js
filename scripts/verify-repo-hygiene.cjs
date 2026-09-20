@@ -321,6 +321,13 @@ const SCRIPTS_ALLOWLIST = new Set([
     // its witness. The gate list rested until then on a "Keep this list in
     // sync" comment, i.e. on nothing.
     "verify-ci-parity.cjs",
+    // Plays the server contract against a REAL bench — four containers mounted by
+    // `docker-compose.ci.yml`, then the two specs that speak to PostgREST and pygeoapi
+    // rather than to a route. Reached by `ci.yml` and by `E2E_STEPS` of `ci-local.cjs`.
+    // 🛑 A SCRIPT rather than an inline `run:` block, and that is a measured verdict:
+    // `verify-ci-parity.cjs` shredded the inline version into eight unnameable leaves,
+    // and a step whose body cannot be named cannot be declared in parity.
+    "run-backend-contract.cjs",
     "ci-parity.cjs", // scripts/lib/ — ci.yml parser + leaf resolver, also read by ci-local.cjs
     // scripts/lib/ — the ledger of what each gate COSTS and how often it BITES,
     // appended by `ci-local.cjs` and rendered by `ci:local --report`.

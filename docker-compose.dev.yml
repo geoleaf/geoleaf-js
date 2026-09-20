@@ -170,7 +170,12 @@ services:
     # `geoleaf_auth`, pg_featureserv served `"collections": []` — which reads like a
     # configuration miss and is really a privilege one.
     geoleaf-featureserv:
-        image: geopython/pygeoapi:latest
+        # 🛑 ÉPINGLÉE PAR DIGEST, et sur une mesure. Le 20/09/2026, le conteneur est ressorti
+        # en `Exited (127)` et un `docker pull` a rendu une image NOUVELLE : `latest` avait
+        # bougé sous un banc qui sert de PREUVE DE CONTRAT. Une preuve dont le serveur change
+        # sans que rien ne le dise ne prouve pas ce qu'elle dit prouver.
+        # Dépingler = relancer e2e/31-delta-contract.spec.js et réécrire ce digest.
+        image: geopython/pygeoapi@sha256:a2a9bf25e0de205ff04255f764fcc2a05eade2f68f6e417c069a7442120c2ae1
         container_name: geoleaf-featureserv
         environment:
             GEOLEAF_PG_PASSWORD: ${GEOLEAF_PG_PASSWORD}
@@ -178,7 +183,11 @@ services:
             # `pygeoapi.config.yml` peut nommer l'hôte sans l'écrire — mais SEULEMENT si la
             # variable entre dans le conteneur. Sans cette ligne, `os.path.expandvars` laisse le
             # `${…}` tel quel et pygeoapi sert une base URL littérale, à l'octet près.
-            GEOLEAF_DEV_BACKEND_HOST: ${GEOLEAF_DEV_BACKEND_HOST:?GEOLEAF_DEV_BACKEND_HOST absent du .env — voir docker/backend/README.md}
+            # L'origine COMPLÈTE, schéma compris : le même fichier de config sert le banc de
+            # dev (https, derrière Traefik) et celui d'un runner (http://localhost, sans TLS).
+            GEOLEAF_BENCH_BASE_URL: https://${GEOLEAF_DEV_BACKEND_HOST:?GEOLEAF_DEV_BACKEND_HOST absent du .env — voir docker/backend/README.md}
+            # Le PostGIS est PARTAGÉ ici, apporté par le compose en CI — d'où la variable.
+            GEOLEAF_PG_HOST: shared-postgis-1
             PYGEOAPI_CONFIG: /pygeoapi/local.config.yml
             PYGEOAPI_OPENAPI: /pygeoapi/local.openapi.yml
         volumes:

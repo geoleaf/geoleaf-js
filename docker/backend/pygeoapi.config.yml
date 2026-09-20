@@ -25,13 +25,16 @@ server:
     # from an origin the browser cannot reach — a failure that reads as "pagination is
     # broken" and is really "base URL is wrong".
     #
-    # ⚠️ The host is NOT written here. `GEOLEAF_DEV_BACKEND_HOST` is expanded at load time
+    # ⚠️ Neither the host NOR THE SCHEME is written here, and the variable carries both:
+    # the dev bench answers on `https://` behind Traefik, a CI runner on `http://localhost`
+    # with no TLS at all. One file, two topologies — a second config file would drift.
+    # `GEOLEAF_BENCH_BASE_URL` is expanded at load time
     # by pygeoapi's `yaml_load` (`os.path.expandvars` over the whole file, same mechanism
     # as `${GEOLEAF_PG_PASSWORD}` below) and is passed into the container by
     # `docker-compose.dev.yml`. If it were ever missing there, `expandvars` leaves the
     # `${…}` verbatim — pygeoapi would then serve that literal as its base URL rather than
     # fail, which is why the compose side declares it with `:?` and refuses to start.
-    url: https://${GEOLEAF_DEV_BACKEND_HOST}/ogc
+    url: ${GEOLEAF_BENCH_BASE_URL}/ogc
     mimetype: application/json; charset=UTF-8
     encoding: utf-8
     languages:
@@ -54,7 +57,7 @@ metadata:
             - geoleaf
             - offline
         keywords_type: theme
-        url: https://${GEOLEAF_DEV_BACKEND_HOST}
+        url: ${GEOLEAF_BENCH_BASE_URL}
         # Required by the OpenAPI generator, which reads it unguarded
         # (`openapi.py:272`) and dies with KeyError rather than defaulting.
         terms_of_service: https://geoleaf.dev
@@ -84,7 +87,7 @@ resources:
             - type: feature
               name: PostgreSQL
               data:
-                  host: shared-postgis-1
+                  host: ${GEOLEAF_PG_HOST}
                   port: 5432
                   dbname: geoleaf
                   # Read-only AT THE DATABASE, not by convention — contract invariant S6
@@ -93,5 +96,44 @@ resources:
                   password: ${GEOLEAF_PG_PASSWORD}
                   search_path: [api, public]
               id_field: id
-              table: sites_rosario
+              table: sites_rosario_live
               geom_field: geom
+
+    # The collection that speaks the delta (SERVER_CONTRACT.md §1.3).
+    #
+    # 🛑 It is a SECOND collection and not a flag on the first, because the two answer
+    # different questions. `sites_rosario` serves complete pulls and must never hand out
+    # a tombstone: a client that declares no `deletedProperty` never consults one, so it
+    # would store the deletion as a live entity. This one carries them, and only a layer
+    # declaring `offline.source.delta` may read it.
+    #
+    # 🛑 `time_field` is guarantee 1 of §1.3 made executable: OGC API Features lets the
+    # server choose which temporal property `datetime` applies to, and the contract
+    # requires it to be `versionProperty`. Measured before it was set: pygeoapi answers
+    # `datetime` with HTTP 500 on a collection that declares no `time_field` — loudly,
+    # which is the safe failure. A server that answered it by IGNORING the filter would
+    # serve the whole collection to every delta, and the pull would look like a success.
+    sites_rosario_delta:
+        type: collection
+        title: Sites touristiques – Rosario (delta)
+        description: The same rows plus their tombstones, filtered by `datetime` on `updated_at` — what a layer declaring `offline.source.delta` pulls
+        keywords:
+            - poi
+        extents:
+            spatial:
+                bbox: [-61.0, -33.1, -60.4, -32.8]
+                crs: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+        providers:
+            - type: feature
+              name: PostgreSQL
+              data:
+                  host: ${GEOLEAF_PG_HOST}
+                  port: 5432
+                  dbname: geoleaf
+                  user: geoleaf_ogc
+                  password: ${GEOLEAF_PG_PASSWORD}
+                  search_path: [api, public]
+              id_field: id
+              table: sites_rosario_delta
+              geom_field: geom
+              time_field: updated_at

@@ -18,7 +18,7 @@ import { Log } from "../../../utils/log/index.js";
 import { isUnsafeKey } from "../../../utils/general/object-path-guard.js";
 import { StorageHelperModule as StorageHelper } from "./storage-helper.js";
 import { DBModulesRegistry } from "./db-modules-registry.js";
-import { clearPullMarks } from "../report/pull-state.js";
+import { clearPullMarks, readPullState } from "../report/pull-state.js";
 import type { PreservingPutTally } from "./features.js";
 import type { LocalEditInput, LocalEditTally } from "./local-edit.js";
 import type { FeatureRecord } from "../../../contracts/sync.contract.js";
@@ -63,6 +63,25 @@ interface StorageStatsReport {
  * `local_images` — it described the v2 schema. `sync_queue` has since been removed from
  * the schema, `sync_backups` goes with the backup chain.
  */
+/**
+ * True when a COMPLETE pull has concluded for this layer — the only state that lets an empty
+ * store speak for the layer instead of handing the read back to the network.
+ *
+ * ⚠️ `partial` (cut by the cap, or aborted) and `failed` are deliberately excluded: their store
+ * is empty because the run stopped, not because the source is.
+ *
+ * @param db - The storage facade, which is also where the pull state is read from.
+ * @param layerId - Layer identifier.
+ * @returns Whether a complete pull has spoken for this layer.
+ */
+async function concludedPull(
+    db: { getPreference?: (key: string, defaultValue?: unknown) => Promise<unknown> },
+    layerId: string
+): Promise<boolean> {
+    const state = await readPullState(db);
+    return state[layerId]?.outcome === "ok";
+}
+
 const StorageDB = {
     /**
      * Database name
@@ -487,13 +506,22 @@ const StorageDB = {
      * it, and diverging would force the seam to distinguish two shapes — the very
      * distinction this read exists to remove.
      *
-     * ⚠️ Returns `null` — not an EMPTY collection — when nothing is stored. An empty
-     * collection is indistinguishable from a genuinely empty layer, and the caller must
-     * be able to fall back to the network rather than display zero entities believing
-     * it has read.
+     * ⚠️ Returns `null` — not an EMPTY collection — when the layer was NEVER PULLED, so the
+     * caller can fall back to the network rather than display zero entities believing it has
+     * read.
+     *
+     * 🛑 **An empty store is not an unread one, and reading them alike showed STALE DATA.** A
+     * layer whose source no longer holds anything — or whose download zone holds nothing — left
+     * an empty store; the loader read that `null` as "never pulled" and fell back to `data.*`, a
+     * static display file possibly months old, presented as the user's own entities, silently.
+     * The convergence of 19/09/2026 made it frequent, a complete pull now removing what it did
+     * not return. The distinction lived in `offline.pullState` and nothing read it: a COMPLETE
+     * run (`outcome: "ok"`) speaks for the layer's content, empty included. A run that failed or
+     * was cut does not — its store is empty because it stopped — and the fallback stays.
      *
      * @param layerId - Layer identifier.
-     * @returns The collection, or `null` when the layer has no stored entity.
+     * @returns The collection — empty when a complete pull returned nothing — or `null` when no
+     *   pull ever concluded for this layer.
      */
     async getLayerFeatureCollection(
         layerId: string
@@ -505,7 +533,11 @@ const StorageDB = {
             feature?: unknown;
             localId?: string;
         }> | null;
-        if (!Array.isArray(records) || records.length === 0) return null;
+        if (!Array.isArray(records) || records.length === 0) {
+            return (await concludedPull(this, layerId))
+                ? { type: "FeatureCollection", features: [] }
+                : null;
+        }
 
         // 🛑 A LOCAL DELETION MUST DISAPPEAR FROM THE MAP.
         //

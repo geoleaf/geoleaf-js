@@ -147,3 +147,74 @@ END $$;
 
 GRANT USAGE ON SCHEMA api TO geoleaf_ogc;
 GRANT SELECT ON api.sites_rosario TO geoleaf_ogc;
+
+-- ── Declared freshness and deletions: the delta (SERVER_CONTRACT.md §1.3) ────
+--
+-- A layer declaring `offline.source.delta` asks for WHAT CHANGED SINCE AN INSTANT,
+-- DELETIONS INCLUDED. Two things the bench lacked make that answerable, and neither is
+-- guessable from the pull side:
+--
+--   * a deletion has to SURVIVE as a row -- a hard DELETE leaves nothing to serve, so a
+--     device that was offline when it happened never learns of it;
+--   * the collection serving deltas has to CARRY those rows while the collection serving
+--     complete pulls must NOT: a client that declares no `deletedProperty` never
+--     consults one, so a tombstone reaching it would be stored as a LIVE entity.
+--
+-- Hence one table and two faces, rather than one collection doing both jobs.
+--
+-- ⚠️ `deleted_at` is not a business column. It is the contract's `deletedProperty`, and
+-- the marker carries the instant of the deletion because the soft delete is an UPDATE,
+-- which fires `touch_updated_at`. Guarantee 2 of §1.3, held by construction.
+
+ALTER TABLE api.sites_rosario ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
+
+CREATE INDEX IF NOT EXISTS sites_rosario_deleted_at_idx ON api.sites_rosario (deleted_at);
+
+-- ⚠️ A BEFORE DELETE trigger on the TABLE lived here for one afternoon, on the way to
+-- the measurement written below. It is dropped by name rather than left to rot: this
+-- file is re-run on live databases, and a stale trigger from an earlier version of it
+-- would keep soft-deleting through the write endpoint while nothing in the file said so.
+DROP TRIGGER IF EXISTS sites_rosario_soft_delete ON api.sites_rosario;
+DROP FUNCTION IF EXISTS api.soft_delete_sites_rosario();
+
+-- The face that serves COMPLETE pulls: live rows only, so the existing collection keeps
+-- its meaning exactly. Repointed in pygeoapi.config.yml.
+DROP VIEW IF EXISTS api.sites_rosario_live;
+CREATE VIEW api.sites_rosario_live AS
+    SELECT * FROM api.sites_rosario WHERE deleted_at IS NULL;
+
+-- The face that serves DELTAS: every row, tombstones included. It is WRITABLE, and the
+-- layer declaring the delta both reads and writes it -- `{baseUrl}/{layerId}` makes the
+-- write endpoint follow the layer id, so the two faces never cross.
+--
+-- 🛑 The `INSTEAD OF DELETE` returns OLD, and that return is the whole point. MEASURED,
+-- both ways, on 20/09/2026:
+--
+--   * a `BEFORE DELETE` trigger on the TABLE returning NULL soft-deletes correctly, but
+--     PostgREST's `RETURNING` is then empty and the filtered DELETE answers `200 []` --
+--     which SERVER_CONTRACT.md §2.2 reads as a CONFLICT, not a success. The queue then
+--     re-reads the row, keeps the tombstone locally as a live entity, and resends
+--     unfiltered. The delete does land, after a detour that looks like a data race.
+--   * an `INSTEAD OF DELETE` on a VIEW returning OLD answers `200 [row]` -- §2.2's
+--     success, with no detour.
+--
+-- ⚠️ The contract does not say this anywhere, and the difference is invisible to any
+-- fake: it takes one real server wired both ways to see it. A soft-delete server that
+-- returns nothing is not refused by the contract, it is silently mis-read by it.
+DROP VIEW IF EXISTS api.sites_rosario_delta CASCADE;
+CREATE VIEW api.sites_rosario_delta AS
+    SELECT * FROM api.sites_rosario;
+
+CREATE OR REPLACE FUNCTION api.sites_rosario_delta_delete() RETURNS trigger AS $$
+BEGIN
+    UPDATE api.sites_rosario SET deleted_at = now() WHERE id = OLD.id;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER sites_rosario_delta_del INSTEAD OF DELETE ON api.sites_rosario_delta
+    FOR EACH ROW EXECUTE FUNCTION api.sites_rosario_delta_delete();
+
+GRANT SELECT ON api.sites_rosario_live TO geoleaf_ogc, geoleaf_anon, geoleaf_editor;
+GRANT SELECT ON api.sites_rosario_delta TO geoleaf_ogc, geoleaf_anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON api.sites_rosario_delta TO geoleaf_editor;

@@ -126,9 +126,25 @@ The mark is dropped, and the next pull is **complete** again, when:
 - a delta is cut by `maxFeatures`;
 - a served marker is not a readable instant.
 
-::: warning
-**No server of the GeoLeaf repository speaks the delta yet.** The mechanism is proven against a
-source with state — in the unit suite and on the shipped bundle — and never against a real server.
+::: info
+**Measured against a real server on 20/09/2026** — pygeoapi over PostgreSQL for the reads,
+PostgREST for the writes, on the repository's proof bench. What that run established, and what it
+did not:
+
+- `datetime` does filter on the freshness marker, once the collection declares which temporal
+  property it applies to (`time_field` in pygeoapi). A collection that declares none answers
+  `datetime` with a `500` — loudly, which is the safe failure: a server that answered by
+  _ignoring_ the filter would serve its whole collection to every delta, and the pull would
+  report success.
+- The `next` link does carry `datetime` through, URL-encoded. GeoLeaf follows that link verbatim
+  (§1.1), so a server dropping the parameter would answer page two with the entire collection.
+- The freshness marker the read side serves does select the row on the write side — **without the
+  two sides agreeing byte for byte**. That was the run's one surprise, and it took a second pair of
+  servers to surface it: see §2.3.
+
+It remains proven on **one** pair of servers, and a business backend is not one of them: what a
+given backend exposes as its synchronisation timestamp, and how it splits collections, is not
+exercised here.
 :::
 
 ### 1.4 How a pull is authenticated
@@ -196,8 +212,20 @@ a motive whose cause can be lifted — or discards it after seeing it.
   sent. An update answered without it leaves no marker, and the next edit goes out unfiltered.
 - **A filtered update or delete that matches nothing answers 2xx with `[]`** — not `412`, not `404`.
   A `404` sets the edit aside as deleted, and a `409` on an update counts as a success.
-- **The marker round-trips exactly**: the value served is the value compared by `eq.`; the server
-  must not normalise it between the two.
+- **The marker served by the read side selects the row on the write side.** GeoLeaf sends back
+  the exact string it was served, so the write endpoint must _parse_ it rather than compare it as
+  text. The two ends may serialise the same instant differently and still be correct — measured on
+  20/09/2026, pygeoapi pads microseconds to six digits (`…711140+00:00`) where PostgREST serves
+  PostgreSQL's canonical form (`…71114+00:00`), for roughly one row in ten. A write endpoint that
+  string-compared would lose the filter _silently_: §2.2 reads the empty answer as a conflict, and
+  the device wins every time.
+- **A delete answers with the row it deleted**, even when the deletion is a soft one. A server
+  that marks the row instead of removing it, and answers the delete with an empty body, is read by
+  §2.2 as a _conflict_ rather than a success: the queue re-reads the row, keeps that copy on the
+  device as a live entity, and sends the write again unfiltered. The deletion does land, after a
+  detour indistinguishable from a data race. Measured on 20/09/2026 — a PostgreSQL `BEFORE DELETE`
+  trigger that suppresses the delete empties PostgREST's `RETURNING`; an `INSTEAD OF DELETE` on a
+  view that returns the old row does not.
 - **The primary key is `id`, and `endpoint` carries no query string** — GeoLeaf appends its own.
 
 ### 2.4 An edit on an entity deleted on the server

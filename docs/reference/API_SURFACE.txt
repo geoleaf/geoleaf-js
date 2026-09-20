@@ -1791,7 +1791,7 @@ CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__t
 CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.close.close | doc:075d75cf1c98
 CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.deleteLocalImage.deleteLocalImage | doc:-
 CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.getLayer.getLayer | doc:-
-CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.getLayerFeatureCollection.getLayerFeatureCollection | doc:f264856d594c
+CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.getLayerFeatureCollection.getLayerFeatureCollection | doc:cb4ea4e8785a
 CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.getLayersByProfile.getLayersByProfile | doc:-
 CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.getLocalImage.getLocalImage | doc:33ce1bb532ee
 CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.getPendingImages.getPendingImages | doc:-

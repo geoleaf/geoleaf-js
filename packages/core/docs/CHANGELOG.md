@@ -11,6 +11,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **A layer a pull emptied no longer falls back to the display source.** The local store answered
+  `null` when it held nothing, and the loader read that as "never pulled": it fetched `data.*`
+  instead — a static display file, possibly months old — and presented it as the user's own
+  entities, silently. The case was rare while a pull only ever wrote; the convergence of 3.5.0
+  made it ordinary, a complete pull now removing what it did not return. An empty store left by a
+  COMPLETE pull now answers an empty collection, and the layer is displayed empty. A pull that
+  failed or was cut still hands the read back to the network: its store is empty because the run
+  stopped, not because the source is.
+
 ## [3.5.0] - 2026-09-19
 
 ### Added

@@ -1427,6 +1427,20 @@ const E2E_STEPS = [
         name: "Couverture du boot du bundle livré (plancher + seuils nyc)",
         run: ["node", "scripts/verify-e2e-coverage.cjs"],
     },
+    // LAST, and under `--e2e` rather than in the default path, for a reason that is not
+    // duration: this step needs DOCKER and a four-container bench. Putting it in the
+    // default path would make `ci:local` unrunnable wherever the daemon is absent — and a
+    // gate one cannot run is a gate one disables.
+    //
+    // ⚠️ It is what makes the runner's topology REPEATABLE HERE. The bench of
+    // `docker-compose.dev.yml` and the bench of `docker-compose.ci.yml` are not the same
+    // machine: the second brings its own database, serves on `localhost` behind a
+    // self-signed certificate, and has neither Traefik nor a `hosts` entry. Three defects
+    // showed up only on it — see the script's header.
+    {
+        name: "Contrat backend (banc de preuve, delta et cycle de synchronisation)",
+        run: ["node", "scripts/run-backend-contract.cjs"],
+    },
 ];
 
 /**

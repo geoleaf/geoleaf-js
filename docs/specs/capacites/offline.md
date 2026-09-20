@@ -4,7 +4,7 @@ title: offline — le moteur hors ligne, et la façade que pilote son interface
 capability_id: offline
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 3bb6da6c4
+verifie_contre: d8615d59d
 date: 19 septembre 2026
 ---
 
@@ -26,7 +26,9 @@ date: 19 septembre 2026
 > `694377e8c`, un correctif de typage sans effet de comportement : la relecture de `mark` et de
 > `scope` sans `as unknown`, le `@param tombstones` de l'écriture d'une page. Ré-estampillée sur
 > `3bb6da6c4` : « Arrêter » atteint le rapatriement — §Le branchement dans le TÉLÉCHARGEMENT et la
-> ligne OF-07 le disent, prouvé à la souris par `e2e/55`.
+> ligne OF-07 le disent, prouvé à la souris par `e2e/55`. Ré-estampillée sur `d8615d59d` : une
+> couche qu'un rapatriement complet laisse vide s'affiche vide au lieu de retomber sur `data.*`
+> — §La convergence et le delta déclaré le dit, et le contrat de `null` change avec.
 
 > ⚠️ **Ce que cette estampille couvre, et ce qu'elle ne couvre pas.** Elle couvre le
 > **rapatriement par tranches** de R9 (06/09/2026) et les sections qui le décrivent — §`pullLayer()`
@@ -961,20 +963,39 @@ deletedProperty }`.** Les deux clés ensemble, le schéma refusant l'une sans l'
   (`clearPullMarks`), un autre scope, un delta coupé, ou un marqueur qui n'est pas un instant
   lisible. Une course abandonnée ou en échec la laisse telle quelle.
 
-⚠️ **Aucun serveur du dépôt ne parle le delta.** Le banc de preuve n'a ni `time_field` ni colonne de
-suppression : le mécanisme est prouvé contre une source à état (`pull-converges.test.ts`, `e2e/54`),
-jamais contre un vrai serveur — la falsification attend le contrat backend en CI publique. Ce que le
-serveur doit garantir — `datetime` sur le marqueur, visibilité monotone, rétention des pierres
-tombales — est écrit dans [la page du contrat serveur](../../../packages/core/docs/SERVER_CONTRACT.md).
+✅ **Le banc de preuve parle le delta depuis le 20/09/2026.** Il porte une colonne `deleted_at`, une
+vue à pierres tombales et un `time_field` sur le marqueur (`docker/backend/01-schema.sql`,
+`pygeoapi.config.yml`) ; `e2e/31-delta-contract.spec.js` éprouve contre pygeoapi + PostgREST ce
+qu'aucun faux ne peut infirmer : que `datetime` filtre bien sur le marqueur, que le lien `next` le
+reporte, et que le marqueur fait l'aller-retour à l'octet entre les deux serveurs. Ce que le serveur
+doit garantir est écrit dans
+[la page du contrat serveur](../../../packages/core/docs/SERVER_CONTRACT.md).
+
+⚠️ **Ce que cette preuve ne couvre pas.** Elle tient sur **un** couple de serveurs, sur le poste : le
+job de CI publique reste à poser, et aucun backend métier n'est éprouvé — ce qu'un backend donné
+expose comme horodatage de synchronisation ne se voit pas ici.
+
+🛑 **Trouvé par cette preuve, et sur le chemin d'ÉCRITURE plutôt que sur le delta :** un serveur qui
+supprime en douceur doit répondre la ligne à la suppression. S'il répond un corps vide, §2.2 du
+contrat lit un **conflit** là où la suppression a eu lieu — la file relit la ligne, garde la pierre
+tombale sur l'appareil comme une entité vivante, et renvoie sans filtre. La suppression finit par
+passer, après un détour qu'on ne distingue pas d'une course. La clause manquait au contrat ; elle y
+est désormais (§2.3).
 
 ⚠️ **Trouvé en chemin : une coupe qui tombait pile sur une fin de page n'était pas signalée.** La
 marche s'arrêtait sur une page qui annonçait une suite et se disait complète — `capped: false` sur un
 sous-ensemble, que le balayage aurait vidé de ce qu'il n'avait jamais demandé. Corrigé dans la marche
 (`_capVerdict`, voir [`CDC_kernel.md`](../CDC_kernel.md)) avant que le balayage existe.
 
-⚠️ **Une couche que le balayage vide retombe sur le réseau** : `getLayerFeatureCollection` rend `null`
-sur un magasin vide. La classe préexiste — un rapatriement de zéro entité faisait déjà de même — et
-elle est versée au registre.
+🛑 **Une couche que le balayage vide s'affiche VIDE — depuis le 20/09/2026.** `getLayerFeatureCollection`
+rendait `null` sur un magasin vide, et le chargeur lisait ce `null` comme « jamais rapatriée » : il
+retombait sur `data.*`, un fichier d'affichage statique peut-être vieux de plusieurs mois, présenté
+comme les entités de l'utilisateur, en silence. La classe préexistait — un rapatriement de zéro
+entité faisait déjà de même — et le balayage l'a rendue ORDINAIRE. La distinction vivait déjà dans
+`offline.pullState` : seule une course **complète** (`outcome: "ok"`) parle pour le contenu de la
+couche, vide compris ; une course en échec ou coupée garde le repli réseau, son magasin étant vide
+parce qu'elle s'est arrêtée. `null` ne signifie donc plus « rien en magasin » mais « aucune course
+conclue ».
 
 #### `getSyncReport()` — rendre observable le cas qui ne l'était pas
 

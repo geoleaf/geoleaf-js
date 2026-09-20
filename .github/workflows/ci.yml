@@ -1049,6 +1049,36 @@ jobs:
             # `.nyc_output/` que l'étape E2E ci-dessus produit. La laisser au push la ferait
             # rougir sur une mesure absente — un faux rouge, exactement ce que son plancher de
             # témoin est censé empêcher. Les deux se déclenchent ensemble ou pas du tout.
+            # ── Le contrat backend, joué contre un VRAI serveur ────────────────────────
+            #
+            # 🛑 UNE ÉTAPE ET NON UN JOB, délibérément : un job séparé rejouerait checkout,
+            # `npm ci` et le build, pour gagner quelques minutes sur un run qui en coûte
+            # 2 h 12 — et il faudrait le garder en parité à part. La condition ci-dessous est
+            # ce qui empêche les conteneurs de monter sur un push d'atelier ; elle est
+            # RECOPIÉE MOT POUR MOT de l'étape E2E, et PARITY-11 la juge sur un vocabulaire
+            # fermé. Ne pas la réécrire.
+            #
+            # 🛑 `--workers=1` n'est pas un réglage : `e2e/helpers/worker-budget.js` REFUSE de
+            # démarrer au-delà quand `GEOLEAF_BACKEND_BASE_URL` est posé, parce que les trois
+            # specs qui écrivent dans le banc écriraient les mêmes lignes en concurrence — un
+            # rouge intermittent qu'on imputerait au commit sous test.
+            #
+            # 🛑 LE BANC EST EN HTTPS, et ce n'est pas un excès de zèle : la page servie
+            # déclare `connect-src 'self' https:`. Monté en clair sur une autre origine, le
+            # banc fait rendre « Failed to fetch » à tout `fetch` partant de la page, et
+            # seules les requêtes directes de Playwright passent. Mesuré le 20/09/2026.
+            #
+            # ⚠️ Le secret JWT est TIRÉ ICI et ne sort pas du runner : aucun secret de dépôt
+            # n'est nécessaire, et il n'y a donc rien à faire fuiter.
+            #
+            # ⚠️ La variante construite ici est DÉLIBÉRÉMENT NON LIVRABLE — `build-deploy.cjs`
+            # l'annonce (« liaisons REPOINTÉES »). Rien ne la publie : aucune étape d'upload
+            # ni de déploiement ne suit.
+            - name: Contrat backend (banc de preuve, delta et cycle de synchronisation)
+              if: >-
+                  github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.repository == 'geoleaf/geoleaf-js')
+              run: node scripts/run-backend-contract.cjs
+
             - name: Couverture du boot du bundle livré (plancher + seuils nyc)
               if: >-
                   github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.repository == 'geoleaf/geoleaf-js')

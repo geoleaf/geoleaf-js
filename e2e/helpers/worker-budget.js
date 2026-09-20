@@ -93,10 +93,11 @@ export function e2eWorkers() {
     // The single genuine collision, refused rather than hoped away.
     if (asked > 1 && backendBound()) {
         throw new Error(
-            `Refusing ${asked} workers: GEOLEAF_BACKEND_BASE_URL is set, which un-skips the second ` +
-                `backend-writing spec. 11-connector.spec.js and 30-sync-cycle.spec.js then write the same ` +
-                `rows concurrently, and the failure would be intermittent — blamed on whichever commit is ` +
-                `under test rather than on the concurrency. Run that combination with ${WORKERS_ENV}=1.`
+            `Refusing ${asked} workers: GEOLEAF_BACKEND_BASE_URL is set, which un-skips every ` +
+                `backend-writing spec. 11-connector.spec.js, 30-sync-cycle.spec.js and ` +
+                `31-delta-contract.spec.js then write the same rows concurrently, and the failure would ` +
+                `be intermittent — blamed on whichever commit is under test rather than on the ` +
+                `concurrency. Run that combination with ${WORKERS_ENV}=1.`
         );
     }
 

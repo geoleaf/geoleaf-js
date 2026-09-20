@@ -1,0 +1,125 @@
+# GeoLeaf — le banc de preuve SUR UN RUNNER.
+#
+# `docker-compose.dev.yml` est inutilisable ici, et pour quatre raisons qui ne se devinent
+# pas : ses deux réseaux sont `external: true`, il route par étiquettes Traefik, il exige
+# `GEOLEAF_DEV_BACKEND_HOST` (un nom qui ne résout que sur le poste), et son PostGIS est
+# PARTAGÉ — hors compose. Un runner n'a rien de tout cela : il apporte sa base, il n'a ni
+# TLS ni entrée `hosts`, et il sert sur `localhost`.
+#
+# Ce que les deux topologies partagent, et c'est délibéré : le SCHÉMA (`01-schema.sql`), la
+# GRAINE (`02-seed.sql`) et la CONFIG pygeoapi (`pygeoapi.config.yml`, paramétrée par
+# `GEOLEAF_BENCH_BASE_URL` et `GEOLEAF_PG_HOST`). Un second fichier de config aurait dérivé
+# du premier sans que rien ne le dise — et c'est la config qui porte `time_field`, donc la
+# garantie 1 du contrat.
+#
+# 🛑 `https://`, ET CE N'EST PAS UN CHOIX — c'est l'APPLICATION qui l'impose. Mesuré le
+# 20/09/2026 en montant d'abord le banc en clair : le connecteur l'aurait accepté (il tolère
+# le non-HTTPS sur `localhost`, §4 du contrat), mais la page servie déclare
+# `connect-src 'self' https:`, et un banc en clair sur une AUTRE ORIGINE n'est ni l'un ni
+# l'autre. Chaque `fetch` partant de la page rendait « Failed to fetch » ; les appels directs
+# de Playwright, eux, passaient — d'où dix rouges sur les seuls tests qui traversent la page.
+#
+# ⚠️ Le poste ne pouvait pas montrer ça : son banc est servi en HTTPS, donc il satisfait `https:`.
+# Servir le banc en clair aurait éprouvé une configuration qui NE PEUT PAS EXISTER en
+# production — le certificat auto-signé est donc plus fidèle, pas moins.
+# `ignoreHTTPSErrors` est global dans `playwright.config.js` : le navigateur l'accepte.
+#
+# 🛑 MONTER EN DEUX TEMPS, et le premier n'est pas optionnel :
+#
+#   docker compose -f docker-compose.ci.yml up -d --wait postgis
+#   …appliquer 01-schema.sql PUIS 02-seed.sql (même recette que le banc de dev)…
+#   docker compose -f docker-compose.ci.yml up -d
+#
+# Mesuré le 20/09/2026 en répétant ce montage sur le poste : tout monter d'un coup fait
+# démarrer PostgREST et pygeoapi AVANT que le schéma ait créé leurs rôles. PostgREST meurt
+# sur `password authentication failed for user "geoleaf_auth"`, pygeoapi sur
+# `ProviderConnectionError` — et il ne se rattrape pas, il génère son OpenAPI au démarrage.
+# Le healthcheck de `postgis` dit « la base accepte des connexions », jamais « le schéma
+# existe » : aucune condition `depends_on` ne peut porter cette différence.
+#
+# ⚠️ Ce défaut est INVISIBLE sur le poste, où la base est graine depuis des semaines et où
+# l'on ne monte jamais que les deux serveurs. Il n'apparaît que sur une base NEUVE — c'est
+# exactement ce qu'un runner apporte à chaque run.
+
+name: geoleaf-ci-bench
+
+services:
+    postgis:
+        # Épinglée : ce banc sert de PREUVE DE CONTRAT, et une preuve dont le serveur
+        # change sans que rien ne le dise ne prouve pas ce qu'elle dit prouver.
+        image: postgis/postgis:16-3.4
+        environment:
+            POSTGRES_USER: geoleaf_owner
+            POSTGRES_PASSWORD: ${GEOLEAF_PG_PASSWORD:?GEOLEAF_PG_PASSWORD absent}
+            POSTGRES_DB: geoleaf
+        healthcheck:
+            # `depends_on: service_healthy` en dépend : sans lui, PostgREST démarre avant
+            # que la base accepte les connexions, échoue, et le job lit « banc injoignable »
+            # là où il n'y a qu'une course au démarrage.
+            test: ["CMD-SHELL", "pg_isready -U geoleaf_owner -d geoleaf"]
+            interval: 2s
+            timeout: 3s
+            retries: 40
+
+    postgrest:
+        image: postgrest/postgrest:v12.2.3
+        environment:
+            PGRST_DB_URI: postgres://geoleaf_auth:${GEOLEAF_PG_PASSWORD:?}@postgis:5432/geoleaf
+            PGRST_DB_SCHEMAS: api
+            # Le rôle d'une requête SANS jeton. Il ne peut que SELECT — l'invariant S6 tenu
+            # côté SQL : le rapatriement ne confère jamais l'écriture.
+            PGRST_DB_ANON_ROLE: geoleaf_anon
+            PGRST_JWT_SECRET: ${GEOLEAF_JWT_SECRET:?GEOLEAF_JWT_SECRET absent}
+            PGRST_SERVER_PORT: 3000
+            PGRST_DB_PREPARED_STATEMENTS: "false"
+        depends_on:
+            postgis:
+                condition: service_healthy
+
+    pygeoapi:
+        image: geopython/pygeoapi@sha256:a2a9bf25e0de205ff04255f764fcc2a05eade2f68f6e417c069a7442120c2ae1
+        environment:
+            GEOLEAF_PG_PASSWORD: ${GEOLEAF_PG_PASSWORD:?}
+            GEOLEAF_PG_HOST: postgis
+            # L'origine que pygeoapi écrira dans ses liens `next` — et le contrat exige que
+            # GeoLeaf les suive TELS QUELS (§1.1). Une origine fausse ici casse la
+            # pagination du delta sans casser sa première page.
+            GEOLEAF_BENCH_BASE_URL: ${GEOLEAF_BENCH_BASE_URL:-https://localhost:8099}
+            PYGEOAPI_CONFIG: /pygeoapi/local.config.yml
+            PYGEOAPI_OPENAPI: /pygeoapi/local.openapi.yml
+        volumes:
+            - ./docker/backend/pygeoapi.config.yml:/pygeoapi/local.config.yml:ro
+        depends_on:
+            postgis:
+                condition: service_healthy
+
+    # Le certificat est fabriqué PAR le compose, et pas par une étape du job : la recette
+    # reste une seule commande, identique sur le poste et sur le runner. Un jour de validité
+    # suffit — il ne survit pas au `down`.
+    certgen:
+        image: alpine/openssl:3.3.2
+        volumes:
+            - certs:/certs
+        command: >-
+            req -x509 -nodes -newkey rsa:2048 -days 1
+            -subj "/CN=localhost"
+            -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+            -keyout /certs/bench.key -out /certs/bench.crt
+
+    gateway:
+        image: nginx:1.27-alpine
+        volumes:
+            - ./docker/nginx.ci.conf:/etc/nginx/conf.d/default.conf:ro
+            - certs:/etc/nginx/certs:ro
+        ports:
+            - "${GEOLEAF_BENCH_PORT:-8099}:443"
+        depends_on:
+            certgen:
+                condition: service_completed_successfully
+            postgrest:
+                condition: service_started
+            pygeoapi:
+                condition: service_started
+
+volumes:
+    certs:

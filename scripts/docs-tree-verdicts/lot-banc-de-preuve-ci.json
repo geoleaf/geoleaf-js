@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "banc-de-preuve-ci",
+    "scope": ["scripts/run-backend-contract.cjs"],
+    "verdicts": {
+        "scripts/run-backend-contract.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Joue le contrat serveur contre un banc réel — PostGIS, PostgREST, pygeoapi et une passerelle TLS montés par `docker-compose.ci.yml`, puis les deux specs qui parlent à un vrai serveur.",
+            "confidence": "haute",
+            "rationale": "Câblage MESURÉ, pas affirmé : cité par `ci.yml` (étape « Contrat backend ») et par `E2E_STEPS` de `scripts/ci-local.cjs`, donc atteint par `ci:local -- --e2e`. Son existence comme SCRIPT plutôt que comme bloc `run:` inline est elle-même un verdict mesuré : `verify-ci-parity.cjs` fragmentait le bloc inline en huit feuilles illisibles, dont aucune ne pouvait être déclarée. Verdict « justifié » par la RUBRIC §0 : instrument vivant, atteint par deux runners nommés, et rien dans le nom, l'emplacement ou le câblage ne porte de verdict actionnable."
+        }
+    }
+}

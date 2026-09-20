@@ -13,12 +13,18 @@ tournait, et `e2e/11-connector.spec.js` — le seul E2E authentifié — mockait
 
 ---
 
-## `GEOLEAF_DEV_BACKEND_HOST` — l'hôte n'est écrit nulle part dans le dépôt
+## `GEOLEAF_DEV_BACKEND_HOST` — l'hôte n'est pas écrit dans ce qui SERT à router
 
 Le nom d'hôte du backend de preuve est un nom d'**infrastructure de poste** : il ne résout que là où
-son entrée `hosts` et son certificat existent, et il n'a rien à faire dans un dépôt qui devient
-public. Il vit donc dans le `.env` de la racine (git-ignoré, à côté de `GEOLEAF_PG_PASSWORD` et
-`GEOLEAF_JWT_SECRET`), et **trois fichiers seulement** le lisent :
+son entrée `hosts` et son certificat existent. Il vit donc dans le `.env` de la racine (git-ignoré, à
+côté de `GEOLEAF_PG_PASSWORD` et `GEOLEAF_JWT_SECRET`), et **trois fichiers** le lisent pour router :
+
+⚠️ **Ce paragraphe a longtemps dit « écrit nulle part dans le dépôt », et c'était FAUX.** Mesuré le
+20/09/2026 : `git grep` rend une vingtaine d'occurrences suivies, dont
+`scripts/lib/dev-backend.cjs` — **par nécessité**, c'est la liste des hôtes que `build-deploy.cjs`
+doit reconnaître pour les RETIRER des livrables, et une liste qui ne nomme pas ne retire rien — et
+`e2e/30-sync-cycle.spec.js`, qui le porte en dur. La propriété vraie est plus étroite que celle qui
+était écrite : la variable évite l'hôte **dans la configuration de routage**, pas dans le dépôt.
 
 | Fichier                              | Ce qu'il en fait                                                       |
 | ------------------------------------ | ---------------------------------------------------------------------- |
@@ -79,11 +85,112 @@ pygeoapi est l'implémentation de référence et émet `next`/`prev` nativement.
 
 ---
 
+## Le même banc, sur un runner — `docker-compose.ci.yml`
+
+`docker-compose.dev.yml` ne monte nulle part ailleurs qu'ici : réseaux `external: true`,
+étiquettes Traefik, un hôte qui ne résout que sur ce poste, et un PostGIS **partagé**, hors
+compose. Le banc de CI apporte sa base, n'a ni TLS d'infrastructure ni entrée `hosts`, et sert
+sur `localhost`.
+
+Ce que les deux partagent est délibéré : le **schéma**, la **graine** et la **config pygeoapi**.
+Un second fichier de config aurait dérivé du premier sans que rien ne le dise — et c'est la config
+qui porte `time_field`, donc la garantie 1 du contrat. D'où deux variables
+(`GEOLEAF_BENCH_BASE_URL`, `GEOLEAF_PG_HOST`) plutôt qu'un fichier jumeau.
+
+**Une seule commande, ici comme sur le runner :**
+
+```bash
+node scripts/run-backend-contract.cjs
+```
+
+Elle monte le banc en deux temps, fabrique le bootstrap, reconstruit la variante repointée et
+joue `e2e/30-sync-cycle.spec.js` et `e2e/31-delta-contract.spec.js`. `ci:local -- --e2e` la
+lance aussi. Côté `ci.yml`, l'étape porte **la même condition que l'E2E** — donc rien ne monte
+sur un push d'atelier.
+
+### Trois défauts que SEUL le banc de CI a montrés
+
+| Ce qui a mordu                                                                                                       | Pourquoi le poste ne pouvait pas le voir                                                                               |
+| -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| PostgREST et pygeoapi meurent s'ils démarrent **avant** le schéma                                                    | ici la base est graine depuis des semaines ; un runner en apporte une **neuve** à chaque run                           |
+| Un banc **en clair** fait rendre « Failed to fetch » à tout `fetch` partant de la page — `connect-src 'self' https:` | le banc du poste est servi en HTTPS, donc il satisfait `https:` ; l'écart ne se voit que sur une autre origine en HTTP |
+| pygeoapi complète les microsecondes à six chiffres (`…711140`), PostgREST sert la forme canonique (`…71114`)         | ~1 ligne sur 10, et la ligne échantillonnée ici n'en était pas une. **Il a fallu un second couple de serveurs.**       |
+
+Le troisième a corrigé le **contrat** : ce qui compte n'est pas que les deux textes soient égaux,
+c'est que le marqueur servi par la lecture **sélectionne** la ligne à l'écriture. Il le fait,
+parce que PostgREST transtype au lieu de comparer des chaînes (§2.3 de `SERVER_CONTRACT.md`).
+
+⚠️ Le premier a aussi appris ceci : **nginx résout ses upstreams au DÉMARRAGE**. Avec un upstream
+littéral, la passerelle sortait `[emerg] host not found in upstream` — elle démarre plus vite que
+ce qu'elle sert, et `depends_on` n'attend pas leur DNS. D'où le `resolver` et le `proxy_pass` par
+variable de `docker/nginx.ci.conf`.
+
+---
+
+## Le delta — deux faces sur une table (20/09/2026)
+
+`offline.source.delta` demande au serveur **ce qui a changé depuis un instant, suppressions
+comprises**. Le banc ne savait pas le dire : ni colonne de suppression, ni `time_field`. Il le sait
+depuis le 20/09/2026, et la forme retenue n'est pas un détail de montage.
+
+| Face                            | Ce qu'elle sert                      | Qui la lit                                        |
+| ------------------------------- | ------------------------------------ | ------------------------------------------------- |
+| `api.sites_rosario` (table)     | l'écriture du dialecte `collection`  | PostgREST, `/sites_rosario`                       |
+| `api.sites_rosario_live` (vue)  | les lignes vivantes **seulement**    | collection pygeoapi `sites_rosario`               |
+| `api.sites_rosario_delta` (vue) | tout, pierres tombales **comprises** | collection `sites_rosario_delta`, et son écriture |
+
+🛑 **Deux collections et non un drapeau sur une seule.** Un client qui ne déclare pas de
+`deletedProperty` ne consulte jamais de pierre tombale : lui en servir une la lui ferait stocker
+comme une entité **vivante**. La face du complet ne doit donc jamais en porter.
+
+🛑 **`time_field: updated_at` est la garantie 1 du §1.3 rendue exécutable.** OGC API Features laisse
+le serveur choisir sur quelle propriété temporelle `datetime` s'applique ; le contrat exige que ce
+soit le marqueur de fraîcheur. Mesuré **avant** de le poser : pygeoapi répond **500** à un `datetime`
+sur une collection qui n'en déclare pas (`pygeoapi/provider/sql.py`, `time_field not enabled`). Un
+échec bruyant, donc le bon — un serveur qui aurait répondu en **ignorant** le filtre aurait servi sa
+collection entière à chaque delta, et le rapatriement serait sorti en succès.
+
+### 🛑 La suppression douce doit RENDRE la ligne — mesuré dans les deux sens
+
+C'est la trouvaille de ce montage, et elle est sur le chemin d'**écriture**, pas sur le delta.
+
+| Montage                                        | Réponse de PostgREST au `DELETE` filtré | Ce que §2.2 en lit |
+| ---------------------------------------------- | --------------------------------------- | ------------------ |
+| `BEFORE DELETE` sur la table, rendant `NULL`   | `200` avec `[]`                         | un **conflit**     |
+| `INSTEAD OF DELETE` sur une vue, rendant `OLD` | `200` avec `[ligne]`                    | un **succès**      |
+
+Les deux suppriment correctement. Mais avec le premier, la file relit la ligne, garde la pierre
+tombale sur l'appareil **comme une entité vivante**, et renvoie l'écriture sans filtre : la
+suppression finit par passer, après un détour qu'on ne distingue pas d'une course. Le contrat ne
+disait rien de ce cas ; la clause y est désormais (§2.3 de `SERVER_CONTRACT.md`).
+
+⚠️ **Aucun faux ne pouvait montrer ça.** Il y fallait un vrai serveur câblé des deux façons.
+
+### Re-mesurer
+
+```bash
+set -a; . ./.env; set +a
+CA=~/dev/infra/traefik/certs/rootCA.pem
+# le `next` reporte-t-il `datetime` ? (la clause qui a écarté pg_featureserv, sur le delta)
+curl -s -G --cacert $CA "https://$GEOLEAF_DEV_BACKEND_HOST/ogc/collections/sites_rosario_delta/items" \
+  --data-urlencode "f=json" --data-urlencode "limit=2" \
+  --data-urlencode "datetime=2000-01-01T00:00:00+00:00/.." \
+  | python3 -c "import sys,json;print([l['href'] for l in json.load(sys.stdin)['links'] if l['rel']=='next'])"
+```
+
+---
+
 ## Monter le backend
 
 ```bash
 docker compose -f docker-compose.dev.yml up -d geoleaf-postgrest geoleaf-featureserv
 ```
+
+🛑 **Après avoir touché `pygeoapi.config.yml`, RECRÉER — ne pas `docker restart`.** Mesuré le
+20/09/2026, trois fois de suite : `docker restart geoleaf-featureserv` rend `Exited (127)`, sans une
+ligne de log du nouveau démarrage, tandis que la commande ci-dessus repart proprement. Le symptôme
+est traître — le conteneur est mort, la sonde du `beforeAll` répond `404`, et `e2e/31` se **saute**
+au lieu de rougir : on lit « la mutation n'a rien cassé » là où rien n'a été joué.
 
 Prérequis, tous déjà en place sur la machine de dev :
 
@@ -121,12 +228,12 @@ aucune identité cliente.
 E2E_TARGET=nginx npx playwright test e2e/30-sync-cycle.spec.js
 ```
 
-⚠️ **Il ne prouve pas encore le parcours complet, et il le dit.** Les tâches 4.1, 4.3, 4.4 et
-4.5 ne sont pas livrées — les stores `features` et `outbox` n'ont aucun producteur —, donc le
-critère du sprint est porté par **deux `test.fixme` nommés** qui rougiront à leur livraison. Ce
-qui est vert aujourd'hui, ce sont les propriétés dont ces tâches dépendront : la forme OGC, la
-pagination réelle, l'emprise, le point 5 du contrat, l'identifiant serveur rendu au push, et
-l'idempotence du rejeu.
+✅ **Il prouve le parcours complet depuis le 19/09/2026**, et plus aucun `test.fixme` n'y subsiste :
+rapatriement, coupure, édition, retour du réseau, drain de lui-même, rechargement, identité serveur
+réconciliée, et une seconde synchronisation qui ne produit aucune requête. ⚠️ **Ce paragraphe a dit
+le contraire — « deux `test.fixme` nommés » — jusqu'au 20/09/2026** : les tâches qu'il citait ont été
+livrées sous une autre numérotation, et le fichier n'avait pas suivi. Un README qui décrit un spec
+ne se relit pas de mémoire.
 
 🛑 **Le spec se saute intégralement quand ce backend ne répond pas** — le cas d'un runner
 GitHub — mais il le fait **bruyamment** : un test témoin, hors de portée du saut, s'exécute
@@ -223,6 +330,6 @@ print((h+b'.'+p+b'.'+base64.urlsafe_b64encode(hmac.new(s.encode(),h+b'.'+p,hashl
   collections par modèle métier — ne se verra pas ici. **C'est la limite qui compte le plus de ce
   montage** : il prouve que le cycle tient, jamais que l'intégration tient.
 - **Il ne sert aucune tuile.** A7′ reste un sujet de cache, sans rapport avec ce backend.
-- **Il n'est pas dans la CI.** Les conteneurs vivent sur la machine de dev. Un E2E qui en dépend ne
-  tourne pas sur un runner GitHub — c'est à peser en écrivant `e2e/30-sync-cycle.spec.js`, et c'est
-  la raison pour laquelle les specs existantes mockent.
+- **Il ne parle à aucun backend métier réel** (déjà dit plus haut, et c'est sa limite principale).
+
+⚠️ **« Il n'est pas dans la CI » a cessé d'être vrai le 20/09/2026.** Voir ci-dessous.

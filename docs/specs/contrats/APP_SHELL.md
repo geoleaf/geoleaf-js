@@ -76,9 +76,12 @@ liaisons — `offline.source`, `write.endpoint`,
   cible, qui promettrait une écriture impossible et ferait perdre sa saisie à l'utilisateur.
 - **Porte de sortie**, pour éprouver le cycle hors-ligne complet sur `deploy-full` :
   `GEOLEAF_BACKEND_BASE_URL=https://<votre-backend> npm run build:deploy` — la recette vaut pour
-  n'importe quel hôte, et c'est pourquoi elle n'en nomme aucun. Éprouvée de bout en
-  bout le jour de sa pose — `e2e/30-sync-cycle.spec.js` repasse **9/9**, et saute avec un motif
-  nommé sans elle. ⚠️ Ne **jamais** faire dépendre ce défaut d'un fichier présent sur la machine
+  n'importe quel hôte, et c'est pourquoi elle n'en nomme aucun. Éprouvée de bout en bout le jour de
+  sa pose, et de nouveau le 20/09/2026 : sans elle, `e2e/30-sync-cycle.spec.js` et
+  `e2e/31-delta-contract.spec.js` sautent **avec un motif nommé** ; avec elle, ils passent. Le
+  décompte se mesure, il ne se recopie pas —
+  `E2E_TARGET=nginx npx playwright test e2e/30-sync-cycle.spec.js e2e/31-delta-contract.spec.js`.
+  ⚠️ Ce paragraphe a porté « repasse 9/9 » jusqu'au 20/09/2026, pour un fichier qui en compte dix. ⚠️ Ne **jamais** faire dépendre ce défaut d'un fichier présent sur la machine
   qui construit : ce serait un livrable dont le contenu varie selon qui lance le build.
 
 ---

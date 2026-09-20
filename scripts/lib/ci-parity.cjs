@@ -749,6 +749,11 @@ const DEFERRED_TO_E2E = {
         "construit l'application instrumentée Istanbul — une seconde build complète, hors du mode rapide.",
     "playwright test":
         "la suite E2E et ses navigateurs — le coût qui justifie l'existence du drapeau.",
+    "node scripts/run-backend-contract.cjs":
+        "monte un banc de QUATRE conteneurs (PostGIS, PostgREST, pygeoapi, passerelle TLS) et " +
+        "joue les deux specs qui parlent à un VRAI serveur. Exige Docker : dans le chemin par " +
+        "défaut, `ci:local` deviendrait injouable là où le démon manque — et une gate qu'on ne " +
+        "peut pas lancer est une gate qu'on désarme. Même déclencheur que l'E2E côté `ci.yml`.",
     "node scripts/verify-e2e-coverage.cjs":
         "⚠️ étape TOP-LEVEL de ci.yml, PAS un morceau de la chaîne E2E — mais elle en lit la " +
         "sortie (`.nyc_output/`), donc elle suit le même déclencheur manuel depuis le " +

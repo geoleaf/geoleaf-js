@@ -177,9 +177,10 @@ function _getDataPromise(
     // overwritten at the next load. A field capture that vanishes on reload is
     // exactly the defect this exists to close.
     //
-    // ⚠️ The network fallback stays for an EMPTY store — `getLayerFeatureCollection`
-    // returns `null` and not an empty collection, precisely so the two cases stay
-    // distinguishable.
+    // ⚠️ The network fallback is for a layer NO PULL EVER REACHED — the store answers `null`
+    // for that one alone. A layer a complete pull left empty answers an EMPTY collection, and
+    // it is displayed empty: falling back there would show `data.*`, a static file possibly
+    // months old, as the user's own entities (see `getLayerFeatureCollection`).
     if (_readsOffline(def)) {
         return _readFromOfflineStore(layerId).then((local) => {
             if (local) return local;

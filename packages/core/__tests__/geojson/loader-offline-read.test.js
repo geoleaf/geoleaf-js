@@ -4,7 +4,8 @@
  * Proves `_getDataPromise`'s four branches as the work leaves them:
  *
  *   1. layer declared offline + populated store  → the store serves, ZERO fetch
- *   2. layer declared offline + EMPTY store      → network fallback (the store returns `null`)
+ *   2. layer declared offline + UNREAD store     → network fallback (the store returns `null`;
+ *      a store a complete pull left EMPTY answers a collection instead — `indexeddb.ts`)
  *   3. layer NOT declared + populated store      → the network serves, the store is ignored
  *   4. local read that THROWS                    → network fallback, and the layer loads
  *
