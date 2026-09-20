@@ -13,6 +13,41 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ## [Unreleased]
 
+## [3.6.0] - 2026-09-20
+
+### Added
+
+- **`ui.syncDocumentLang` — a host can keep its own `<html lang>`.** `initI18n()` published the
+  resolved language to the document element unconditionally, the only guard being the absence of
+  `document`. That attribute is PAGE-wide and a map does not always own the page: embedded in a
+  host that sets it for its own session, a map mounted in a form rewrote the locale of everything
+  around it. Defaults to `true`, so a standalone application is unaffected, and opting out
+  suppresses only the write — `?lang=`, the stored preference and `ui.language` still resolve
+  exactly as before, labels included. The guard sits inside `_syncDocumentLang()` rather than at
+  the boot call site, because `getLabel()` re-enters `initI18n()` when a label is resolved before
+  boot and a guard placed around the boot call would leave that path writing.
+
+- **`Layers.getVisibilitySource(id)` — which authority set a layer's visibility.** Returns
+  `"user"`, `"theme"`, `"zoom"`, `"system"`, or `null` for an unknown layer. `isUserOverridden`
+  only answers "not the user", which leaves a theme indistinguishable from a zoom threshold, and
+  a caller reconstructing the value from it writes the same thing for both. The same value
+  already leaves the core on every change through the typed `geoleaf:layer:toggle` event; this is
+  the PULL route, for code that mounted after the change — a panel rebuilt on navigation, a host
+  re-attaching to a live map. ⚠️ The recorded source lags a REFUSED write: a change blocked
+  because a higher-ranking source holds the layer leaves the previous source in place. Read it as
+  "who decided what is displayed", not "who asked last".
+
+- **`Layers.getStyle(id)` — which style a layer wears, as `{ id, label }`.** A normalised
+  projection, and the narrowness is the contract: the runtime entry's `currentStyle` has two
+  shapes depending on which writer spoke last — the flattened paint handed to the adapter, which
+  carries no `id` and no `label`, or the full style document the style selector restores over it.
+  Reading that field directly gives one or the other with no way to tell, a defect already
+  shipped once where the labels toggle greyed out for good. Both fields are `string | null` and
+  always present; `label` is `null` when the applied style carries no display name, including
+  when the underlying field holds a map-label config object rather than a name. The paint
+  (`style`, `styleRules`) is deliberately not exposed — it is precisely the unstable part, and
+  published subpaths are added, never removed.
+
 ### Changed
 
 - **`@geoleaf-plugins/table` 1.1.0 — the table searches and selects on its MODEL, not on the

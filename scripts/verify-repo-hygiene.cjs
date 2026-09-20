@@ -162,6 +162,7 @@ const SCRIPTS_ALLOWLIST = new Set([
     "check-js-test-debt.cjs", // JS-TEST-DEBT — `.js` test-debt ratchet, CI + ci-local
     "check-doc-config-examples.cjs", // DOC-CONFIG-EXAMPLES — ratchet, CI + ci-local
     "check-doc-cdn-pins.cjs", // CDN-PINS — pré-vol de `docs:deploy`, hors ci-local (motif dans son en-tête)
+    "check-published-docs-parity.cjs", // DOCS-LIVE — dans `release:check`, hors ci-local (motif dans son en-tête)
     "check-dist-integrity.cjs", // DIST-INTEGRITY — 0 duplicate chunks, 0 orphans; CI + ci-local
     "purge-dist.cjs", // preventive side of stacked chunks — wired at the head of `npm run build`
     "check-build-determinism.cjs", // build determinism — costly (2 builds), outside pre-commit

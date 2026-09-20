@@ -157,7 +157,8 @@
         "create:plugin": "node scripts/create-plugin.cjs",
         "check:determinism": "node scripts/check-build-determinism.cjs",
         "check:determinism:deploy": "node scripts/check-build-determinism.cjs --deploy",
-        "check:determinism:deploy:ci": "node scripts/check-build-determinism.cjs --deploy --reuse-built"
+        "check:determinism:deploy:ci": "node scripts/check-build-determinism.cjs --deploy --reuse-built",
+        "check:docs-live": "node scripts/check-published-docs-parity.cjs"
     },
     "lint-staged": {
         "packages/**/src/**/*.{js,ts}": [

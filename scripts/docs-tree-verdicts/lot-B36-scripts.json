@@ -14,6 +14,7 @@
         "scripts/check-namespace-typing-coverage.cjs",
         "scripts/check-nonnull-assertion-debt.cjs",
         "scripts/check-plugin-readme-config.cjs",
+        "scripts/check-published-docs-parity.cjs",
         "scripts/check-shipped-specifiers.cjs",
         "scripts/check-template-layer-configs.cjs",
         "scripts/ci-push.cjs",
@@ -900,6 +901,20 @@
             "description": "(en-tête absent — fichier de données ou baril)",
             "confidence": "haute",
             "rationale": "Câblage MESURÉ : requis par `check-e2e-wait-signature.cjs` et `check-e2e-route-glob.cjs`, et inscrit au registre des modules de `scripts/` (`verify-repo-hygiene.cjs`). Extraction déclenchée par le SECOND lecteur, règle du dépôt dont le motif est écrit dans le fichier — deux copies d'un lecteur divergent, et la dérive reste invisible tant que les deux gates sortent vertes. Refactor à zéro comportement, prouvé et non supposé : E2E-WAIT-SIG rend les mêmes nombres avant et après (67 fichiers, 121 appels)."
+        },
+        "scripts/check-published-docs-parity.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "La doc EN LIGNE nomme la version que npm SERT — le sens que CDN-PINS ne peut pas voir",
+            "confidence": "haute",
+            "rationale": "213 LOC, 1 consommateur — `scripts/release-check.cjs`, avant-dernière assertion. Posée le 20/09/2026 sur une classe mesurée le soir même : `@geoleaf/core@3.6.0` est partie sur npm à 21h30 et le site a continué d'annoncer 3.5.0, sans que rien ne le dise. 🛑 `check-doc-cdn-pins.cjs` ferme l'autre sens et ne PEUT PAS fermer celui-ci : elle ne tourne que quand quelqu'un décide de déployer la doc, donc oublier de la déployer est exactement son angle mort. ⚠️ Et une troisième surface se cachait derrière : `news.json`, que lit la page d'accueil du site, DÉRIVE du `CHANGELOG.md`, qui n'avait pas de section `[3.6.0]` — le site aurait annoncé 3.5.0 même après un déploiement réussi. CDN-PINS juge l'arbre source ; celle-ci lit ce que le serveur public rend, d'où sa place. ⚠️ Hors `ci:local` délibérément, pour le motif écrit sur sa voisine : entre une publication et la mise à jour des pages elle serait rouge à chaque commit, la forme qui fait désarmer une gate dans la semaine ; elle est aussi liée au réseau, et `ci:local` doit rester jouable hors ligne. Dans `release:check` la question s'inverse et devient actionnable — avant de publier N, la doc de la version SERVIE est-elle en ligne ? ✅ Ses quatre règles vues mordre, codes de sortie mesurés NUS : DL-01 rouge (exit 1) sur un site en retard ET sur un site en avance, DL-03 refus de conclure (exit 2) sur un champ disparu et sur un document illisible, DL-00 refus de conclure (exit 2) sur un 404. 🛑 L'instrument portait d'abord le biais qu'il mesurait : quatre morsures sur cinq étaient fausses — le script n'utilise pas `-k` et le vhost d'épreuve est en certificat auto-signé, donc DL-00 mordait avant DL-01. Biais levé le temps de la mesure, instrument restauré : la version de production ne doit pas accepter un certificat non vérifié."
         }
     }
 }

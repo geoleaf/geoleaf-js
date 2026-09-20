@@ -31,12 +31,28 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.5.0 <Badge type="tip" text="2026-09-19" />
+## Release v3.6.0 <Badge type="tip" text="2026-09-20" />
 
-A second download now converges on its source instead of rewriting everything, and « Stop »
-stops the whole download — the entities included.
+Three seams a host application was missing: the map stops claiming the page's language, and the
+authority behind a layer's visibility — plus the style it wears — can now be read, not guessed.
 
 **Highlights:**
+
+- **New** — `ui.syncDocumentLang` lets a host keep its own `<html lang>`. The attribute is
+  page-wide, so a map embedded in a form used to rewrite the locale of everything around it.
+  Defaults to `true`: a standalone application behaves exactly as before, and opting out
+  suppresses only the write — the map still resolves its language normally.
+- **New** — `Layers.getVisibilitySource(id)` names _which_ authority last set a layer's
+  visibility (`"user"`, `"theme"`, `"zoom"`, `"system"`). `isUserOverridden` only answers "not
+  the user", which leaves a theme indistinguishable from a zoom threshold. The same value
+  already travelled on the `geoleaf:layer:toggle` event; this is the pull route, for code that
+  mounted after the change.
+- **New** — `Layers.getStyle(id)` returns which style a layer wears, as `{ id, label }`. A
+  normalised projection rather than the raw entry: the underlying field has two shapes depending
+  on which writer spoke last, and only these two survive both.
+
+Release v3.5.0 (2026-09-19) — a second download converges on its source instead of rewriting
+everything, and « Stop » stops the whole download, entities included:
 
 - **New** — a second pull rewrites only what changed (`unchanged`), and an entity deleted on the
   server leaves the device (`removed`). A layer can declare freshness and deletions —

@@ -143,6 +143,25 @@ const OUT_OF_REPO = [
     },
 ];
 
+/**
+ * The documentation actually SERVED must name the version npm serves.
+ *
+ * 🛑 It is here and not in `ci-local.cjs`, for the reason written on
+ * `check-doc-cdn-pins.cjs`: between a publication and the documentation update it would be
+ * red on every commit, for something no product change can fix — the shape that gets a gate
+ * disarmed within the week. At publication time the question is the opposite and perfectly
+ * actionable: **before shipping N, is the documentation of the version currently served
+ * online?** A red here means the previous release's docs were never deployed, which is
+ * exactly what happened on 2026-09-20 with 3.6.0 and went unnoticed.
+ *
+ * ⚠️ Network-bound, like `verify-published-parity.cjs` two steps above. That is acceptable
+ * HERE and nowhere else: a publication already requires the registry to answer.
+ */
+const DOCS_LIVE_ASSERTION = {
+    name: "La doc SERVIE nomme la version SERVIE (DOCS-LIVE)",
+    run: ["node", "scripts/check-published-docs-parity.cjs"],
+};
+
 /** The extra assertion this script owns, appended after the derived subset. */
 const FINAL_ASSERTION = {
     name: "Stubs de type CSS — état FINAL de dist/ (CSS-STUBS --check)",
@@ -191,7 +210,7 @@ function select() {
         process.exit(2);
     }
 
-    return [...chosen, FINAL_ASSERTION];
+    return [...chosen, DOCS_LIVE_ASSERTION, FINAL_ASSERTION];
 }
 
 /** The out-of-repo gates that this run cannot actually feed. */

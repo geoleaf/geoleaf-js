@@ -122,7 +122,19 @@ Aucun de ces fichiers ne s'édite à la main. Chacun a un `--check` câblé dans
 visaient le dépôt de l'atelier, privé : 404 pour tout lecteur. Depuis le 19/09/2026,
 `packages/core/typedoc.json` fixe `sourceLinkTemplate` et `gitRevision: "main"` : les liens
 visent le dépôt public, et le rendu ne grave plus le sha — après `npm run docs:api`,
-`grep -rlF "$(git rev-parse HEAD)" packages/core/docs/api` ne rend rien. La garde reste
+`grep -rlF "$(git rev-parse HEAD)" packages/core/docs/api` ne rend rien.
+
+📌 **Le rendu est donc devenu DÉTERMINISTE, et la question « faut-il le gater ? » a été rouverte
+le 20/09/2026 puis refermée — mesure à l'appui, pour qu'un prochain pré-vol ne la rouvre pas une
+troisième fois.** Un rendu local périmé n'a **aucune conséquence observable** : `docs:api` n'est
+appelé que par `deploy-docs.cjs` (étape 1), **sans condition**, donc toute publication de doc le
+régénère ; le répertoire est git-ignoré et absent de `files[]`, donc rien d'autre ne le lit. Une
+gate de fraîcheur garderait un état que personne ne consulte, contre la règle d'admission qui
+demande à une gate neuve de nommer ce qu'elle attrape que rien d'autre n'attrape. ⚠️ Le résidu
+réel est ailleurs, et il n'est pas gardé : si l'étape 1 de `deploy-docs.cjs` disparaissait, un
+rendu périmé partirait en ligne sans bruit.
+
+La garde reste
 **`API_SURFACE.txt`**, pour sa raison propre : un manifeste d'une ligne par réflexion, avec
 l'empreinte du TSDoc, insensible au re-wrap de Prettier. Il n'est pas fait pour être lu ; il est
 fait pour qu'aucun changement d'API ne passe inaperçu.
@@ -175,6 +187,8 @@ qu'on cite, jamais le chiffre qu'il a rendu un jour.
 | Table `## Manifeste` d'une fiche plugin ↔ `entry.ts`     | `doc-plugin-manifest.guard.test.js`                    |
 | Liens morts du site                                      | `docs:build` (`ignoreDeadLinks: false`)                |
 | Alertes GitHub dans un README **publié** sur npm         | `NPM-README` (`verify-npm-readme-render.cjs`)          |
+| Épingles CDN et release annoncée ↔ version SERVIE        | `CDN-PINS` — à la publication de la doc                |
+| Doc EN LIGNE ↔ version servie par npm                    | `DOCS-LIVE` — dans `release:check`, l'autre sens       |
 
 ⚠️ **Le corpus des trois premières est `productDocsFiles()`** (`scripts/lib/tsdoc-examples.cjs`) :
 **un seul corpus, trois consommateurs**. L'élargir les élargit toutes les trois — c'est voulu, et
