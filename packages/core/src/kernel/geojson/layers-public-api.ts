@@ -42,6 +42,7 @@ import type {
     LayerDataApi,
     LayerDefinition,
     LayerFeatureState,
+    LayerStyleInfo,
     VisibilitySource,
 } from "../../contracts/layer-data.contract.js";
 
@@ -64,11 +65,28 @@ function matchId(f: StoreFeature, id: string | number): boolean {
 
 /** The centralized visibility state, as this seam reads and writes it. */
 interface VisibilityStateReader {
-    getVisibilityState?: (
-        layerId: string
-    ) => { current?: boolean; logicalState?: boolean; userOverride?: boolean } | null | undefined;
+    getVisibilityState?: (layerId: string) =>
+        | {
+              current?: boolean;
+              logicalState?: boolean;
+              userOverride?: boolean;
+              source?: unknown;
+          }
+        | null
+        | undefined;
     setVisibility?: (layerId: string, visible: boolean, source: VisibilitySource) => boolean;
 }
+
+/**
+ * The four names a visibility source can take, as VALUES.
+ *
+ * ⚠️ A fourth structural copy of the union, and deliberately so. `VisibilitySource` is a
+ * TYPE — `contracts/` is type-pure and cannot ship a runtime value — so a reader that must
+ * reject anything else needs its own list. Widening it to `as VisibilitySource` instead
+ * would let whatever the manager happens to hold through the public contract unchecked,
+ * which is the one thing a narrowing read is for.
+ */
+const VISIBILITY_SOURCES: readonly VisibilitySource[] = ["user", "theme", "zoom", "system"];
 
 /**
  * The layer manager, for the ONE call the write must chain.
@@ -106,6 +124,45 @@ function visibilityFlag(
     if (!GeoJSONShared.state.layers.has(layerId)) return false;
     const manager = getGeoLeaf()?._LayerVisibilityManager as VisibilityStateReader | undefined;
     return manager?.getVisibilityState?.(layerId)?.[field] === true;
+}
+
+/**
+ * Reads the recorded visibility source — the body of
+ * {@link LayerDataApi.getVisibilitySource}.
+ *
+ * Returns `null`, not a default source, for a layer the store does not know, for one whose
+ * metadata has never been initialised, for a host without the visibility manager, and for a
+ * value that is not one of the four names. `null` is the only honest answer there: unlike
+ * the booleans above, where `false` means "nothing to paint", every source name asserts that
+ * somebody decided something, and inventing `"system"` would be that assertion without the
+ * fact behind it.
+ */
+function readVisibilitySource(layerId: string): VisibilitySource | null {
+    if (!GeoJSONShared.state.layers.has(layerId)) return null;
+    const manager = getGeoLeaf()?._LayerVisibilityManager as VisibilityStateReader | undefined;
+    const raw = manager?.getVisibilityState?.(layerId)?.source;
+    return VISIBILITY_SOURCES.find((s) => s === raw) ?? null;
+}
+
+/**
+ * Reads which style a layer wears — the body of {@link LayerDataApi.getStyle}.
+ *
+ * 🛑 The normalisation IS the function. `currentStyle` is written by two hands: applying a
+ * style assigns the flattened paint (no `id`, no `label`), the style selector restores the
+ * full document over it. Reading the raw field yields whichever spoke last. Here, a missing
+ * field simply becomes `null`, so both shapes answer the same way.
+ *
+ * ⚠️ `label` is polymorphic in the style-file format — a display name OR a map-label config
+ * object. Only a string is a name; anything else is reported as `null` rather than cast, which
+ * is how a label config ended up being read as a name once already.
+ */
+function readStyleInfo(layerId: string): LayerStyleInfo | null {
+    const current = GeoJSONShared.getLayerById(layerId)?.currentStyle;
+    if (!current) return null;
+    return {
+        id: typeof current.id === "string" ? current.id : null,
+        label: typeof current.label === "string" ? current.label : null,
+    };
 }
 
 /**
@@ -421,6 +478,12 @@ export function buildLayersPublicApi(): LayerDataApi {
         isUserOverridden(layerId: string): boolean {
             return visibilityFlag(layerId, "userOverride");
         },
+
+        getVisibilitySource: readVisibilitySource,
+
+        // ── style read ──
+
+        getStyle: readStyleInfo,
 
         // ── visibility write ──
 

@@ -304,18 +304,49 @@ A layer id is the one declared in the profile (`config/core/layers.json`).
 
 **Read — visibility**
 
-| Method             | Signature              | Description                                                                                                             |
-| ------------------ | ---------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `isVisible`        | `(layerId) => boolean` | **Physical**: the layer is painted right now. A zoom range can force this `false` while the layer is still switched on. |
-| `isEnabled`        | `(layerId) => boolean` | **Intent**: the layer is switched on, whatever the map is painting. This is what a visibility toggle must reflect.      |
-| `isUserOverridden` | `(layerId) => boolean` | **Authorship**: a user action set this state, rather than a theme, a zoom threshold or the initial load.                |
+| Method                | Signature                                                      | Description                                                                                                             |
+| --------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `isVisible`           | `(layerId) => boolean`                                         | **Physical**: the layer is painted right now. A zoom range can force this `false` while the layer is still switched on. |
+| `isEnabled`           | `(layerId) => boolean`                                         | **Intent**: the layer is switched on, whatever the map is painting. This is what a visibility toggle must reflect.      |
+| `isUserOverridden`    | `(layerId) => boolean`                                         | **Authorship**: a user action set this state, rather than a theme, a zoom threshold or the initial load.                |
+| `getVisibilitySource` | `(layerId) => "user" \| "theme" \| "zoom" \| "system" \| null` | **Which** authority set it. `null` for an unknown layer.                                                                |
 
-> **Three accessors answering three different questions, and picking the wrong one is the
+> **Four accessors answering four different questions, and picking the wrong one is the
 > mistake this split exists to prevent.** Ask `isVisible` for "what is on screen" — populating a
 > list of layers the user can currently see, for instance. Ask `isEnabled` to drive a toggle: it
 > does not flip on its own when the viewer zooms out of the layer's range, so a control bound to
 > it stays where the user put it. Ask `isUserOverridden` before letting an automatic rule move a
-> layer: it says whether a human already decided, which the other two cannot.
+> layer: it says whether a human already decided, which the other two cannot. Ask
+> `getVisibilitySource` when "not the user" is not precise enough — it is the only one that
+> tells a theme from a zoom threshold.
+
+> **`getVisibilitySource` is the PULL route, and the push one already exists.** Every change
+> emits `geoleaf:layer:toggle` carrying the same `source`, so a consumer subscribed from the
+> start can keep its own table. What no subscription gives is the source of the state as it
+> stands _now_, to code that mounted afterwards — a panel rebuilt on navigation, a host
+> re-attaching to a live map. ⚠️ The recorded source lags a **refused** write: a change blocked
+> because a higher-ranking source holds the layer leaves the previous source in place. Read it
+> as "who decided what is displayed", not "who asked last".
+
+**Read — style**
+
+| Method     | Signature                            | Description                                                                        |
+| ---------- | ------------------------------------ | ---------------------------------------------------------------------------------- |
+| `getStyle` | `(layerId) => { id, label } \| null` | Which style the layer wears. `null` when none is applied, or the layer is unknown. |
+
+Both fields are `string | null` and always present. `label` is `null` when the applied style
+carries no display name.
+
+> **A projection, and the narrowness is the point.** The runtime entry holds a `currentStyle`
+> whose shape depends on which writer spoke last: applying a style assigns the flattened paint
+> handed to the adapter, which carries no `id` and no `label`, while the style selector restores
+> the full style document over it. Reading that field directly gives you one or the other with
+> no way to tell — a defect already shipped once, where the labels toggle greyed out for good.
+> `getStyle` returns the two fields that survive both writers.
+>
+> ⚠️ **The paint is deliberately not exposed.** `style` and `styleRules` are precisely the part
+> whose shape is unstable, and published subpaths are added, never removed — engraving them here
+> would make that instability permanent.
 
 **Write — visibility**
 

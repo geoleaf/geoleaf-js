@@ -1256,7 +1256,15 @@ try {
             fs.readFileSync(path.join(ROOT, "scripts/.baselines/consumer-contract.json"), "utf8")
         );
         const posCC10 = (baselineCC10.positives ?? {})[baselineCC10._consumer];
-        const RETIRE = "Config.clearThemesCache";
+        // ⚠️ **The witness is a MOVING target, and it has already moved once.**
+        // It was `Config.clearThemesCache` until 2026-09-20, when downstream
+        // demoted it to `not_required` and the re-freeze dropped it from the
+        // baseline — the probe then refused to conclude, which is what the
+        // guard below is for. Replaced by `Core.getMap`: the most load-bearing
+        // seam downstream declares, hence the least likely to be given up. A
+        // witness is not chosen for being convenient but for being durable, and
+        // when it goes the answer is to pick another, never to soften the check.
+        const RETIRE = "Core.getMap";
 
         // The common template: the fixture IS the baseline's consumer,
         // minus (or not) the witness entry. `provider` is taken from the

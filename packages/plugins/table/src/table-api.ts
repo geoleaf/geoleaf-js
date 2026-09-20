@@ -37,9 +37,8 @@ import {
     exportSelection,
     exportLayerAll,
 } from "./table-selection.js";
-import { getNestedValue } from "@geoleaf/host-runtime";
-import { sortInPlace, nextSortState } from "./sort.js";
-import { resolveFeatureId } from "./export.js";
+import { nextSortState } from "./sort.js";
+import * as viewModel from "./view-model.js";
 import { TablePanel as _TablePanel } from "./panel.js";
 import { TableRenderer as _TableRenderer } from "./renderer.js";
 import { TableContract } from "./table-seam.js";
@@ -47,21 +46,20 @@ import { getPluginConfig } from "./config.js";
 import type { ExportFormat, ExportOptions } from "./export.js";
 import type {
     TableBounds,
-    TableFeature,
     TableGeometry,
     TableInitOptions,
     TableLayerData,
+    TableLayerTableConfig,
 } from "./types.js";
 
-function applySorting(): void {
-    sortInPlace(tableState._cachedData, tableState._sortState, (o: unknown, p: string) =>
-        getNestedValue(o as object | null | undefined, p)
-    );
-    Log.debug(
-        "[Table] Sort applied:",
-        tableState._sortState.field,
-        tableState._sortState.direction
-    );
+/**
+ * Reads a layer's `table` config block — the columns the search falls back on and the
+ * `searchFields` that narrow it. Mirrors what the renderer reads, from the same seam.
+ */
+function _layerTableConfig(layerId: string): TableLayerTableConfig | null {
+    const geojson = _g.GeoLeaf?.GeoJSON;
+    const layer = geojson?.getLayerById?.(layerId);
+    return layer?.config?.table ?? null;
 }
 
 /**
@@ -236,18 +234,19 @@ const TableModule = {
             return;
         }
         const features = getLayerFeatures(tableState._currentLayerId);
-        tableState._cachedData = features;
-        tableState._featureIdMap.clear();
-        let syntheticCounter = 0;
-        features.forEach((feature: TableFeature, index: number) => {
-            const id = resolveFeatureId(feature, syntheticCounter);
-            if (id.startsWith("__gl_row_")) syntheticCounter++;
-            tableState._featureIdMap.set(id, index);
-        });
+        const layerTable = _layerTableConfig(tableState._currentLayerId);
         Log.debug("[Table] Features retrieved:", features.length);
-        if (tableState._sortState.field && tableState._sortState.direction) {
-            applySorting();
-        }
+
+        // 🛑 ONE PASS, and the order matters. Identity is fixed on load order, the rows are
+        // then sorted, and only then are `_cachedData` and `_featureIdMap` derived — both
+        // from the same array. Keying the map BEFORE sorting, which is what this did until
+        // this change, left every entry pointing at a pre-sort position: `getSelectedFeatures()`
+        // — read by zoom, highlight and export-of-selection — handed back a different
+        // feature than the user had selected, on 300 entries out of 300.
+        viewModel.rebuild(features, layerTable?.columns ?? [], layerTable?.searchFields ?? null);
+        viewModel.sortRows(tableState._sortState);
+        tableState._cachedData = viewModel.orderedFeatures();
+        tableState._featureIdMap = new Map(viewModel.idIndexEntries());
         if (_TableRenderer && typeof _TableRenderer.render === "function") {
             _TableRenderer.render(tableState._container, {
                 layerId: tableState._currentLayerId,

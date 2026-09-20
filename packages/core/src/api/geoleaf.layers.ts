@@ -21,6 +21,11 @@
  * |---|---|
  * | `getFeatures(id)` / `getFeatureById` / `getFeatureCount` | Read a layer's features |
  * | `listLayerIds()` / `hasLayer(id)` | Enumerate / test layers |
+ * | `isVisible` / `isEnabled` | Visibility: what is painted, vs what is switched on |
+ * | `isUserOverridden` / `getVisibilitySource` | Visibility: whether a user decided, and which authority did |
+ * | `setVisibility` | Visibility write, naming its source (required) |
+ * | `getStyle` | Which style a layer wears — `{ id, label }`, a projection |
+ * | `create` | A layer the active profile does not declare |
  * | `setData` / `clear` / `addFeature` / `removeFeature` | Base-dataset writes |
  * | `updateFeatureId` / `patchFeature` | Unit feature mutations |
  * | `setVisibleSubset` / `clearVisibleSubset` | Filtered display (base untouched) |

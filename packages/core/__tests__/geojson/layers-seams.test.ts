@@ -183,3 +183,57 @@ describe("create — the layer reaches the layer manager, not only the map", () 
         expect(registerWithLayerManager).not.toHaveBeenCalled();
     });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// getStyle — a PROJECTION, because the field behind it has two shapes
+//
+// `currentStyle` is written by two hands. Applying a style assigns the FLATTENED
+// PAINT handed to the adapter, which carries no `id` and no `label`; the style
+// selector then restores the FULL DOCUMENT over it. A consumer reading the raw
+// field gets whichever spoke last and cannot tell which — that is how the labels
+// toggle greyed out for good, once.
+//
+// So the tests below are not about plumbing: each asserts that a DIFFERENT raw
+// shape produces the SAME contract.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Seeds a layer wearing the given raw `currentStyle`, whatever its shape. */
+function seedStyled(id: string, currentStyle: unknown) {
+    GeoJSONShared.state.layers.set(id, {
+        id,
+        config: {},
+        geometryType: "point",
+        features: [],
+        currentStyle,
+    } as never);
+}
+
+describe("getStyle — one contract over two raw shapes", () => {
+    it("reads the full style document", () => {
+        seedStyled("L1", { id: "risk", label: "Niveau de risque", style: { color: "#f00" } });
+        expect(api.getStyle("L1")).toEqual({ id: "risk", label: "Niveau de risque" });
+    });
+
+    it("reads the flattened paint, which carries neither id nor label", () => {
+        // Same layer, after `setLayerStyle` and before the selector restores the
+        // document. The consumer must not have to tell this state apart.
+        seedStyled("L1", { color: "#f00", weight: 2, styleRules: [] });
+        expect(api.getStyle("L1")).toEqual({ id: null, label: null });
+    });
+
+    it("reports a map-label CONFIG object as no name, rather than casting it", () => {
+        // 🛑 The polymorphic field. `label` is a display name OR a label config; only a
+        // string is a name. Reading the object as one is the original defect.
+        seedStyled("L1", { id: "risk", label: { enabled: true, visibleByDefault: false } });
+        expect(api.getStyle("L1")).toEqual({ id: "risk", label: null });
+    });
+
+    it("returns null for a layer no style has been applied to", () => {
+        seedLayer("L1", null);
+        expect(api.getStyle("L1")).toBeNull();
+    });
+
+    it("returns null for a layer the store does not know", () => {
+        expect(api.getStyle("ghost")).toBeNull();
+    });
+});

@@ -581,20 +581,20 @@ The table is now the MIT plugin `@geoleaf-plugins/table`. Its configuration live
 
 ### `modules.table` keys
 
-| Key                  | Type                                          | Default      | Description                                                                                    |
-| -------------------- | --------------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------- |
-| `enabled`            | `boolean`                                     | `true`       | Enables or disables the table module entirely.                                                 |
-| `defaultVisible`     | `boolean`                                     | `false`      | Opens the table panel when the profile loads.                                                  |
-| `pageSize`           | `number`                                      | `50`         | Number of rows per page (virtual pagination).                                                  |
-| `maxRowsPerLayer`    | `number`                                      | `5000`       | Limit of features loaded into the table per layer. Does not affect `Table.exportLayer()`.      |
-| `enableExportButton` | `boolean`                                     | `true`       | Shows the export buttons (selection + layer) in the toolbar.                                   |
-| `exportFormats`      | `('geojson'\|'csv'\|'kml'\|'gpx'\|'excel')[]` | every format | Restricts the formats offered in the export dropdowns. When absent, every format is available. |
-| `csvSeparator`       | `',' \| ';'`                                  | `','`        | Separator used for CSV export. Useful for Excel compatibility in locales that use `;`.         |
-| `csvIncludeGeometry` | `boolean`                                     | `false`      | Includes a `__geometry` column (WKT/GeoJSON) in the CSV export.                                |
-| `resizable`          | `boolean`                                     | `true`       | Allows vertical resizing of the table panel.                                                   |
-| `defaultHeight`      | `string`                                      | `'320px'`    | Initial height of the panel.                                                                   |
-| `minHeight`          | `string`                                      | `'180px'`    | Minimum height when resizing.                                                                  |
-| `maxHeight`          | `string`                                      | `'80vh'`     | Maximum height when resizing.                                                                  |
+| Key                  | Type                                          | Default      | Description                                                                                                                            |
+| -------------------- | --------------------------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`            | `boolean`                                     | `true`       | Enables or disables the table module entirely.                                                                                         |
+| `defaultVisible`     | `boolean`                                     | `false`      | Opens the table panel when the profile loads.                                                                                          |
+| `pageSize`           | `number`                                      | —            | **Deprecated, inert.** There is no pagination; the renderer windows by scroll.                                                         |
+| `maxRowsPerLayer`    | `number`                                      | `30000`      | Rows kept per layer; the cut warns the user once per layer and per session, and `0` means zero. Does not affect `Table.exportLayer()`. |
+| `enableExportButton` | `boolean`                                     | `true`       | Shows the export buttons (selection + layer) in the toolbar.                                                                           |
+| `exportFormats`      | `('geojson'\|'csv'\|'kml'\|'gpx'\|'excel')[]` | every format | Restricts the formats offered in the export dropdowns. When absent, every format is available.                                         |
+| `csvSeparator`       | `',' \| ';'`                                  | `','`        | Separator used for CSV export. Useful for Excel compatibility in locales that use `;`.                                                 |
+| `csvIncludeGeometry` | `boolean`                                     | `false`      | Includes a `__geometry` column (WKT/GeoJSON) in the CSV export.                                                                        |
+| `resizable`          | `boolean`                                     | `true`       | Allows vertical resizing of the table panel.                                                                                           |
+| `defaultHeight`      | `string`                                      | `'40%'`      | Initial height of the panel.                                                                                                           |
+| `minHeight`          | `string`                                      | `'180px'`    | Minimum height when resizing.                                                                                                          |
+| `maxHeight`          | `string`                                      | `'80vh'`     | Maximum height when resizing.                                                                                                          |
 
 ### Example — restrict the formats and force the `;` separator
 

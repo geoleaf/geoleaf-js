@@ -17,8 +17,13 @@ import { events as _events } from "./utils/events.js";
 import { TableContract } from "./table-seam.js";
 import { tLabel as getLabel } from "@geoleaf/host-runtime";
 import { createResizeHandle } from "./panel-resize.js";
+import { TableRenderer } from "./renderer.js";
+import * as viewModel from "./view-model.js";
 import type { TableConfig, TableLayerData, TableLayersApi, TableMap } from "./types.js";
 import type { EventCleanup } from "./event-cleanups.js";
+
+/** Search debounce, in milliseconds — long enough to skip intermediate keystrokes. */
+const SEARCH_DEBOUNCE_MS = 300;
 
 /** Public surface of the table panel object (`GeoLeaf` table panel singleton). */
 interface TablePanelApi {
@@ -287,49 +292,51 @@ function createSearchInput() {
     input.className = "gl-table-panel__search-input";
     input.setAttribute("data-table-search", "");
 
-    // Debounce the search to avoid too-frequent calls
+    const count = document.createElement("span");
+    count.className = "gl-table-panel__search-count";
+    count.setAttribute("data-table-search-count", "");
+    count.setAttribute("aria-live", "polite");
+
+    // Debounce the search to avoid too-frequent calls.
+    //
+    // ⚠️ Registered through the `_events` seam, not `addEventListener`. The raw listener
+    // this replaces never entered `_eventCleanups`, so `destroy()` left it bound to a
+    // detached input — and the pending timer with it.
     let timeout: ReturnType<typeof setTimeout> | undefined;
-    input.addEventListener("input", (e: Event) => {
+    const onInput = (e: Event) => {
         clearTimeout(timeout);
+        const raw = (e.target as HTMLInputElement)?.value ?? "";
         timeout = setTimeout(() => {
-            const searchText = ((e.target as HTMLInputElement)?.value ?? "").trim().toLowerCase();
-            filterTableRows(searchText);
-        }, 300);
-    });
+            viewModel.applySearch(raw);
+            TableRenderer.rerender();
+            _updateSearchCount(count);
+        }, SEARCH_DEBOUNCE_MS);
+    };
+    _TablePanel._eventCleanups.push(
+        _events.on(input, "input", onInput, false, "TablePanel.search"),
+        () => clearTimeout(timeout)
+    );
 
     wrapper.appendChild(input);
+    wrapper.appendChild(count);
     return wrapper;
 }
 
 /**
- * Filters the table rows based on the search text.
- * @param {string} searchText - Text to search for
- * @private
+ * Writes "n / total" beside the search field, or nothing when no search is active.
+ *
+ * 🛑 A filter that says nothing is half the defect this sprint closes — the cap is the other
+ * half, and it warns through `table-layer.ts`. Here the count is the only signal: a filtered
+ * table looks exactly like a small one.
  */
-function filterTableRows(searchText: string) {
-    const table = document.querySelector(".gl-table-panel__table tbody");
-    if (!table) return;
-
-    const rows = table.querySelectorAll("tr");
-    rows.forEach((row: Element) => {
-        const rowEl = row as HTMLElement;
-        if (!searchText) {
-            rowEl.style.display = "";
-            return;
-        }
-
-        const cells = row.querySelectorAll("td");
-        let match = false;
-
-        cells.forEach((cell: Element) => {
-            const text = (cell.textContent ?? "").toLowerCase();
-            if (text.includes(searchText)) {
-                match = true;
-            }
-        });
-
-        rowEl.style.display = match ? "" : "none";
-    });
+function _updateSearchCount(count: HTMLElement): void {
+    if (!viewModel.searchText()) {
+        count.textContent = "";
+        return;
+    }
+    count.textContent = getLabel("ui.table.searchCount")
+        .replace("{n}", String(viewModel.visibleCount()))
+        .replace("{total}", String(viewModel.totalCount()));
 }
 
 /**
@@ -578,6 +585,9 @@ _TablePanel.refreshLayerSelector = function () {
  * Cleanup all event listners
  */
 _TablePanel.destroy = function () {
+    // The view model outlives the panel, like `tableState` does: a stale search text and a
+    // stale selection anchor would otherwise describe rows that no longer exist.
+    viewModel.reset();
     if (_TablePanel._eventCleanups && _TablePanel._eventCleanups.length > 0) {
         _TablePanel._eventCleanups.forEach((cleanup: EventCleanup) => {
             if (typeof cleanup === "function") cleanup();

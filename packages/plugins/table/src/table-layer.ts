@@ -10,6 +10,7 @@
  */
 
 import { Log } from "@geoleaf/host-runtime";
+import { tLabel as getLabel } from "@geoleaf/host-runtime";
 import { tableState, _g } from "./table-state.js";
 import { TablePanel as _TablePanel } from "./panel.js";
 import type {
@@ -20,6 +21,47 @@ import type {
     TableMapEvent,
     TableLayersApi,
 } from "./types.js";
+
+/**
+ * Row cap applied when the profile declares none.
+ *
+ * 30 000 is the scale this repository gates and measures — the dose of the performance
+ * baseline's scale bench, and of the end-to-end proof that the table selects across a whole
+ * layer. A higher default would promise an order of magnitude nothing here measures: past
+ * this point the cost is no longer the render, which is windowed, but the O(N) search scan.
+ */
+const DEFAULT_MAX_ROWS = 30000;
+
+/**
+ * Layers already warned about, for this session.
+ *
+ * ⚠️ Per layer AND per page session, the shape `truncation-notice.ts` settled on at task
+ * 2.4: the table refreshes on map events, and a warning that fires on every refresh teaches
+ * the user to dismiss it without reading — a slower way of being silent. A reload re-arms
+ * it, because a reload is also when the integrator may have raised the cap. There is
+ * deliberately no reset hook: one would have no caller, and an exported function nothing
+ * calls is indistinguishable from a forgotten one.
+ */
+const _capNotified = new Set<string>();
+
+/**
+ * Tells the user their layer was cut short — the channel the cut never had.
+ *
+ * 🛑 Until this change the only witness was a `Log.warn`. A table reduced to its first rows
+ * looks exactly like a complete one, so an operator read a whole-looking parc that was a
+ * subset. The message names BOTH numbers because both are known here: the kept count and
+ * the total it RECEIVED — not the collection's, which this module does not know and does not
+ * invent: that was the lesson of 2.4, where a message almost announced "10 000 out of 10 999"
+ * for a layer of 31 337.
+ */
+function _noticeCap(layerId: string, total: number, kept: number): void {
+    if (_capNotified.has(layerId)) return;
+    _capNotified.add(layerId);
+    const message = getLabel("ui.table.capped")
+        .replace("{kept}", String(kept))
+        .replace("{total}", String(total));
+    _g.GeoLeaf?.notify?.(message, "warning");
+}
 
 /** Reads the `GeoLeaf.GeoJSON` accessor surface from the global namespace. */
 function _getGeoJSON(): TableGeoJSONApi | undefined {
@@ -54,14 +96,11 @@ export function getLayerFeatures(layerId: string): TableFeature[] {
         return [];
     }
     Log.debug("[Table] _getLayerFeatures - Nombre de features:", layerData.features.length);
-    const maxRows = tableState._config?.maxRowsPerLayer || 1000;
-    if (layerData.features.length > maxRows) {
-        Log.warn(
-            "[Table] Large dataset (" +
-                layerData.features.length +
-                " entities). Limited to " +
-                maxRows
-        );
+    const maxRows = tableState._config?.maxRowsPerLayer ?? DEFAULT_MAX_ROWS;
+    const total = layerData.features.length;
+    if (total > maxRows) {
+        Log.warn("[Table] Large dataset (" + total + " entities). Limited to " + maxRows);
+        _noticeCap(layerId, total, maxRows);
         return layerData.features.slice(0, maxRows);
     }
     return layerData.features || [];

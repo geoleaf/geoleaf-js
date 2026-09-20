@@ -25,16 +25,17 @@ const VIRTUAL_ROW_HEIGHT = 32;
 const VIRTUAL_BUFFER = 20;
 /** Beyond this row count, rendering switches to virtual scrolling. */
 export const VIRTUAL_THRESHOLD = 150;
-import type { TableColumnDef, TableFeature, TableLayerTableConfig } from "./types.js";
+import type { TableColumnDef, TableLayerTableConfig } from "./types.js";
+import type { TableRow } from "./view-model.js";
 
 type CreateRowFn = (
-    feature: TableFeature,
+    row: TableRow,
     columns: TableColumnDef[],
     selectedIds: Set<string>
 ) => HTMLElement;
 
 interface VirtualState {
-    features: TableFeature[];
+    rows: TableRow[];
     columns: TableColumnDef[];
     selectedIds: Set<string>;
     layerConfig: TableLayerTableConfig | null;
@@ -50,49 +51,53 @@ const _virtualState = new WeakMap<HTMLElement, VirtualState>();
  */
 export function initVirtualState(
     container: HTMLElement,
-    features: TableFeature[],
+    rows: TableRow[],
     columns: TableColumnDef[],
     selectedIds: Set<string>,
     layerConfig: TableLayerTableConfig | null,
     createRowFn: CreateRowFn
 ): void {
-    _virtualState.set(container, { features, columns, selectedIds, layerConfig, createRowFn });
+    _virtualState.set(container, { rows, columns, selectedIds, layerConfig, createRowFn });
 }
 
 /**
  * Creates a fixed-height tbody for virtual scrolling.
  * Only the initially visible window is populated; subsequent rows are rendered on scroll.
- * @param {Array} features - All features
- * @param {Array} columns - Column config
- * @param {Set} selectedIds - Selected IDs
- * @param {Function} createRowFn - Row factory from the main renderer
- * @returns {HTMLElement}
+ *
+ * ⚠️ The height is that of the **visible** row set, not of the layer: a search narrows the
+ * set, and a height left at the unfiltered count would leave the user scrolling through
+ * emptiness. It was posed once, at first render, until this change.
+ *
+ * @param rows - Every visible row, feature and identity together
+ * @param columns - Column config
+ * @param selectedIds - Selected IDs
+ * @param createRowFn - Row factory from the main renderer
  */
 export function createTableBodyVirtual(
-    features: TableFeature[],
+    rows: TableRow[],
     columns: TableColumnDef[],
     selectedIds: Set<string>,
     createRowFn: CreateRowFn
 ): HTMLElement {
     const tbody = $create("tbody") as HTMLElement;
     tbody.setAttribute("data-virtual", "true");
-    tbody.style.height = features.length * VIRTUAL_ROW_HEIGHT + "px";
-    updateVirtualRows(tbody, features, columns, selectedIds, 0, createRowFn);
+    tbody.style.height = rows.length * VIRTUAL_ROW_HEIGHT + "px";
+    updateVirtualRows(tbody, rows, columns, selectedIds, 0, createRowFn);
     return tbody;
 }
 
 /**
  * Fills tbody with a top spacer, visible rows, and a bottom spacer based on scrollTop.
  * @param {HTMLElement} tbody - Virtual tbody element
- * @param {Array} features - All features
- * @param {Array} columns - Column config
- * @param {Set} selectedIds - Selected IDs
- * @param {number} scrollTop - Current scroll position of the wrapper
- * @param {Function} createRowFn - Row factory from the main renderer
+ * @param rows - Every visible row, feature and identity together
+ * @param columns - Column config
+ * @param selectedIds - Selected IDs
+ * @param scrollTop - Current scroll position of the wrapper
+ * @param createRowFn - Row factory from the main renderer
  */
 export function updateVirtualRows(
     tbody: HTMLElement,
-    features: TableFeature[],
+    rows: TableRow[],
     columns: TableColumnDef[],
     selectedIds: Set<string>,
     scrollTop: number,
@@ -100,13 +105,13 @@ export function updateVirtualRows(
 ): void {
     const wrapper = tbody.closest(".gl-table-panel__wrapper");
     const clientHeight = wrapper ? wrapper.clientHeight : 400;
-    const total = features.length;
+    const total = rows.length;
     const startIndex = Math.max(0, Math.floor(scrollTop / VIRTUAL_ROW_HEIGHT) - VIRTUAL_BUFFER);
     const endIndex = Math.min(
         total,
         Math.ceil((scrollTop + clientHeight) / VIRTUAL_ROW_HEIGHT) + VIRTUAL_BUFFER
     );
-    const visibleFeatures = features.slice(startIndex, endIndex);
+    const windowRows = rows.slice(startIndex, endIndex);
     const colCount = columns && columns.length ? columns.length + 1 : 2;
 
     clearElementFast(tbody);
@@ -121,8 +126,8 @@ export function updateVirtualRows(
         fragment.appendChild(spacerTop);
     }
 
-    visibleFeatures.forEach((feature: TableFeature) => {
-        const tr = createRowFn(feature, columns, selectedIds);
+    windowRows.forEach((row: TableRow) => {
+        const tr = createRowFn(row, columns, selectedIds);
         tr.style.height = VIRTUAL_ROW_HEIGHT + "px";
         fragment.appendChild(tr);
     });
@@ -156,7 +161,7 @@ export function setupVirtualScroll(container: HTMLElement): void {
         if (!state) return;
         updateVirtualRows(
             tbody,
-            state.features,
+            state.rows,
             state.columns,
             state.selectedIds,
             wrapper.scrollTop,

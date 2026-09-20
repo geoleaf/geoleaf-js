@@ -19,10 +19,11 @@ import { Log } from "@geoleaf/host-runtime";
 import { $create } from "./utils/dom-helpers.js";
 import { getNestedValue } from "@geoleaf/host-runtime";
 import { clearElementFast } from "@geoleaf/host-runtime";
-import { _g } from "./table-state.js";
+import { _g, tableState } from "./table-state.js";
 import { events as _events } from "./utils/events.js";
 import { TableContract } from "./table-seam.js";
-import { resetSyntheticIdCounter, getFeatureId } from "./feature-id.js";
+import * as viewModel from "./view-model.js";
+import type { TableRow } from "./view-model.js";
 import { formatValue } from "./format-value.js";
 import { _eventCleanups } from "./event-cleanups.js";
 import {
@@ -40,7 +41,6 @@ import type { EventCleanup } from "./event-cleanups.js";
 import type {
     SortState,
     TableColumnDef,
-    TableFeature,
     TableLayerTableConfig,
     TableRenderOptions,
 } from "./types.js";
@@ -52,6 +52,7 @@ interface TableRendererApi {
     destroy(): void;
     render(container: HTMLElement | null, options: TableRenderOptions): void;
     updateSelection(container: HTMLElement | null, selectedIds: Set<string>): void;
+    rerender(): void;
     [key: string]: unknown;
 }
 
@@ -97,19 +98,19 @@ function _getLayerTableConfig(layerId: string): TableLayerTableConfig | null {
 
 function _renderTableBody(
     container: HTMLElement,
-    features: TableFeature[],
+    rows: TableRow[],
     columns: TableColumnDef[],
     selectedIds: Set<string>,
     layerConfig: TableLayerTableConfig | null,
     table: HTMLElement
 ): void {
-    if (features.length > VIRTUAL_THRESHOLD) {
-        const tbody = createTableBodyVirtual(features, columns, selectedIds, createTableRow);
+    if (rows.length > VIRTUAL_THRESHOLD) {
+        const tbody = createTableBodyVirtual(rows, columns, selectedIds, createTableRow);
         table.appendChild(tbody);
-        initVirtualState(container, features, columns, selectedIds, layerConfig, createTableRow);
+        initVirtualState(container, rows, columns, selectedIds, layerConfig, createTableRow);
         setupVirtualScroll(container);
     } else {
-        const tbody = createTableBody(features, columns, selectedIds);
+        const tbody = createTableBody(rows, columns, selectedIds);
         table.appendChild(tbody);
     }
 }
@@ -133,9 +134,6 @@ _TableRenderer.render = function (container: HTMLElement | null, options: TableR
 
     // Flush previous event cleanups before re-render
     _TableRenderer._flushEventCleanups();
-
-    // Reset the synthetic-ID counter on each render
-    resetSyntheticIdCounter();
 
     const { layerId, features, selectedIds, sortState } = options;
     Log.debug(
@@ -178,9 +176,15 @@ _TableRenderer.render = function (container: HTMLElement | null, options: TableR
     const thead = createTableHead(layerConfig.columns, sortState);
     table.appendChild(thead);
 
-    _renderTableBody(container, features, layerConfig.columns, selectedIds, layerConfig, table);
+    // The view model is the authority on identity and on what the search leaves visible.
+    // `syncTo` re-describes only when handed features it did not emit, so a direct
+    // `render()` call is covered while the sort applied by `refresh()` is not undone.
+    viewModel.syncTo(features, layerConfig.columns, layerConfig.searchFields ?? null);
+    const rows = viewModel.visibleRows();
 
-    Log.debug("[TableRenderer] Tableau rendu:", features.length, "lines");
+    _renderTableBody(container, rows, layerConfig.columns, selectedIds, layerConfig, table);
+
+    Log.debug("[TableRenderer] Tableau rendu:", rows.length, "lines");
 };
 
 function _buildCheckboxTh(): HTMLElement {
@@ -253,26 +257,26 @@ function createTableHead(columns: TableColumnDef[], sortState: SortState): HTMLE
 
 /**
  * Creates the table body (tbody).
- * @param {Array} features - Features to display
+ * @param {Array} rows - Visible rows to display, feature and identity together
  * @param {Array} columns - Columns configuration
  * @param {Set} selectedIds - Selected IDs
  * @returns {HTMLElement}
  * @private
  */
 function createTableBody(
-    features: TableFeature[],
+    rows: TableRow[],
     columns: TableColumnDef[],
     selectedIds: Set<string>
 ): HTMLElement {
-    Log.debug("[TableRenderer] createTableBody() - features:", features.length);
+    Log.debug("[TableRenderer] createTableBody() - rows:", rows.length);
 
     const tbody = $create("tbody") as HTMLElement;
 
     // Use DocumentFragment for batch DOM operations
     const fragment = document.createDocumentFragment();
 
-    features.forEach((feature: TableFeature) => {
-        const tr = createTableRow(feature, columns, selectedIds);
+    rows.forEach((row: TableRow) => {
+        const tr = createTableRow(row, columns, selectedIds);
         fragment.appendChild(tr);
     });
 
@@ -312,20 +316,24 @@ function _attachRowClickEvent(tr: HTMLElement, featureId: string): void {
 }
 
 /**
- * Creates a table row.
- * @param {Object} feature - GeoJSON feature
+ * Creates a table row from a view-model row — feature and identity together.
+ *
+ * ⚠️ The identity is RECEIVED, never minted here. A counter living in the renderer drifted
+ * the moment a second code path re-created rows without resetting it.
+ *
+ * @param {Object} row - The visible row: its feature and the id the DOM will carry
  * @param {Array} columns - Columns configuration
  * @param {Set} selectedIds - Selected IDs
  * @returns {HTMLElement}
  * @private
  */
 function createTableRow(
-    feature: TableFeature,
+    row: TableRow,
     columns: TableColumnDef[],
     selectedIds: Set<string>
 ): HTMLElement {
+    const { feature, id: featureId } = row;
     const tr = $create("tr") as HTMLElement;
-    const featureId = getFeatureId(feature);
     tr.setAttribute("data-feature-id", featureId);
     if (selectedIds.has(String(featureId))) {
         tr.classList.add("gl-is-selected");
@@ -379,14 +387,33 @@ _TableRenderer.updateSelection = function (
         ".gl-table-panel__checkbox-all"
     ) as HTMLInputElement | null;
     if (checkboxAll) {
-        // Count only feature rows (rows with data-feature-id) to exclude virtual-scroll spacers
-        const totalRows = tbody.querySelectorAll("tr[data-feature-id]").length;
+        // 🛑 Against the MODEL, never against the rendered rows. Counting the DOM compared
+        // a window to a whole selection: with everything selected on a virtual table the
+        // box read neither checked nor indeterminate, which is the one state that is false.
+        const totalRows = viewModel.visibleCount();
         const selectedCount = selectedIds.size;
-        checkboxAll.checked = totalRows > 0 && selectedCount === totalRows;
+        checkboxAll.checked = totalRows > 0 && selectedCount >= totalRows;
         checkboxAll.indeterminate = selectedCount > 0 && selectedCount < totalRows;
     }
 
     updateToolbarButtonsState();
+};
+
+/**
+ * Re-renders from the CURRENT model — what a search needs, and nothing more.
+ *
+ * It hands `render()` the very array the view model emitted, so `syncTo` recognises it and
+ * leaves the search and the sort in place. Re-reading the layer instead would cost a full
+ * identity pass on every keystroke, for a change that only moved which rows are visible.
+ */
+_TableRenderer.rerender = function (): void {
+    _TableRenderer.render(tableState._container, {
+        layerId: tableState._currentLayerId,
+        features: tableState._cachedData,
+        selectedIds: tableState._selectedIds,
+        sortState: tableState._sortState,
+        config: tableState._config,
+    });
 };
 
 const TableRenderer = _TableRenderer;

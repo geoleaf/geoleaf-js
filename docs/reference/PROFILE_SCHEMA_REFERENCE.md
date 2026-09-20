@@ -612,5 +612,6 @@ ui.json — UI controls, search/filter panel, layer manager and scale configurat
 | `ui.showEditor` | boolean | — | — | — | — |
 | `ui.showLayerManager` | boolean | — | — | — | — |
 | `ui.showPanelThemeToggle` | boolean | — | — | — | Show the light/dark theme toggle owned by the desktop side panel. Default true (opt-out). Governs BOTH of its placements: the bottom of the tab strip, and the copy injected into the mobile toolbar. Does NOT govern the map control (modules.theme-toggle.enabled), an integrator-supplied [data-gl-role="theme-toggle"] button, or the initial theme (ui.theme). Hiding it does not reclaim a visitor who already toggled: the stored choice still wins. |
+| `ui.syncDocumentLang` | boolean | — | — | — | Publish the resolved language to the page's `<html lang>` attribute. Default true (opt-out). Set false when GeoLeaf is embedded in a host that owns `<html lang>` for its own session — a map mounted in such a host would otherwise rewrite the attribute for the whole page. Does NOT change which language the map itself uses: `ui.language`, `?lang=` and the stored preference resolve exactly as before, only the document attribute stops being written. |
 | `ui.theme` | string | — | — | "light" \| "dark" \| "auto" | — |
 

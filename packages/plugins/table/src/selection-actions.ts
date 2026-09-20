@@ -12,6 +12,7 @@
 
 import { Log } from "@geoleaf/host-runtime";
 import { TableContract } from "./table-seam.js";
+import * as viewModel from "./view-model.js";
 
 /**
  * Updates the toolbar buttons state based on the number of selected rows.
@@ -58,12 +59,14 @@ export function handleRowSelection(
             TableContract.setSelection(newSelection, false);
         }
     } else {
-        // Single selection
+        // Single selection — and the one gesture that sets the range anchor.
         Log.debug("[TableRenderer] SIMPLE mode - Single selection");
         if (selected) {
             TableContract.setSelection([featureId], false);
+            viewModel.setAnchor(featureId);
         } else {
             TableContract.clearSelection();
+            viewModel.setAnchor(null);
         }
     }
 
@@ -71,63 +74,56 @@ export function handleRowSelection(
 }
 
 /**
- * Selects a range of rows (Shift+click) between the last selection and the target.
- * @param {string} targetId - Target feature ID
+ * Selects the range of VISIBLE rows between the anchor and the target (Shift+click).
+ *
+ * 🛑 Both ends are positions in the view model, never in the DOM. Reading the DOM meant
+ * the anchor had to still be rendered: past 150 rows a scroll pushed it out of the window,
+ * `findIndex` yielded -1 and the gesture returned silently. And what it called "the
+ * anchor" was the last entry of a `Set` — an insertion order, not a user gesture.
+ *
+ * @param targetId - The row the user shift-clicked.
  */
 export function selectRange(targetId: string): void {
-    const tbody = document.querySelector(".gl-table-panel__table tbody");
-    if (!tbody) return;
+    const targetPosition = viewModel.visiblePositionOfId(targetId);
+    if (targetPosition === -1) return;
 
-    const rows = Array.from(tbody.querySelectorAll("tr"));
-    const currentSelection = TableContract.getSelectedIds();
-    const lastSelected = currentSelection[currentSelection.length - 1];
-
-    const targetIndex = rows.findIndex((r) => r.getAttribute("data-feature-id") === targetId);
-    const lastIndex = rows.findIndex((r) => r.getAttribute("data-feature-id") === lastSelected);
-
-    if (targetIndex === -1 || lastIndex === -1) return;
-
-    const start = Math.min(targetIndex, lastIndex);
-    const end = Math.max(targetIndex, lastIndex);
-
-    const rangeIds = [];
-    for (let i = start; i <= end; i++) {
-        const id = rows[i]?.getAttribute("data-feature-id");
-        if (id) rangeIds.push(id);
+    const anchorPosition = viewModel.anchorVisiblePosition();
+    if (anchorPosition === -1) {
+        // No anchor — the gesture degrades to a single selection rather than to nothing.
+        // Returning silently is what it used to do, and a shift-click that does nothing
+        // is indistinguishable from a broken table.
+        TableContract.setSelection([targetId], false);
+        viewModel.setAnchor(targetId);
+        updateToolbarButtonsState();
+        return;
     }
 
-    TableContract.setSelection(rangeIds, false);
+    const start = Math.min(anchorPosition, targetPosition);
+    const end = Math.max(anchorPosition, targetPosition);
+    const visible = viewModel.visibleIds();
+    TableContract.setSelection(visible.slice(start, end + 1), false);
     updateToolbarButtonsState();
 }
 
 /**
- * Toggles all rows via the "select all" checkbox.
- * @param {boolean} checked - Checkbox state
+ * Selects or clears every VISIBLE row.
+ *
+ * 🛑 "Visible" means what the view model shows, not what the DOM holds. Walking the tbody
+ * took the rendered window: on a 30 000-row layer "select all" quietly selected a few
+ * dozen rows — and it took rows the search had hidden, because it never looked at
+ * `display`. Under an active search it now takes the RESULT, which is the only reading
+ * the header checkbox can honestly reflect.
+ *
+ * The DOM is not touched here: `setSelection` runs `TableRenderer.updateSelection`, which
+ * owns the classes and the checkboxes. Doing both was two authorities over one state.
+ *
+ * @param checked - Target state of the header checkbox.
  */
 export function toggleAllRows(checked: boolean): void {
-    const tbody = document.querySelector(".gl-table-panel__table tbody");
-    if (!tbody) return;
-
-    const rows = tbody.querySelectorAll("tr");
-    const ids: string[] = [];
-
-    rows.forEach((row: Element) => {
-        const id = row.getAttribute("data-feature-id");
-        if (id) {
-            ids.push(id);
-            row.classList.toggle("gl-is-selected", checked);
-            const checkbox = row.querySelector(
-                ".gl-table-panel__checkbox"
-            ) as HTMLInputElement | null;
-            if (checkbox) checkbox.checked = checked;
-        }
-    });
-
     if (checked) {
-        TableContract.setSelection(ids, false);
+        TableContract.setSelection(viewModel.visibleIds(), false);
     } else {
         TableContract.clearSelection();
     }
-
     updateToolbarButtonsState();
 }

@@ -17,6 +17,8 @@ const lang_es: Record<string, string> = {
     "ui.table.highlight": "Resaltar",
     "ui.table.exportSelection": "Exportar",
     "ui.table.exportLayer": "Capa",
+    "ui.table.searchCount": "{n} / {total} filas",
+    "ui.table.capped": "Capa truncada: {kept} filas mostradas de {total}.",
     "aria.table.hide": "Ocultar la tabla",
     "aria.table.show": "Mostrar la tabla",
     "aria.table.layerSelect": "Capa que mostrar en la tabla",

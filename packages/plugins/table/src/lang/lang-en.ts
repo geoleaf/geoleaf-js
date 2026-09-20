@@ -17,6 +17,8 @@ const lang_en: Record<string, string> = {
     "ui.table.highlight": "Highlight",
     "ui.table.exportSelection": "Export",
     "ui.table.exportLayer": "Layer",
+    "ui.table.searchCount": "{n} / {total} rows",
+    "ui.table.capped": "Layer truncated: {kept} rows shown out of {total}.",
     "aria.table.hide": "Hide table",
     "aria.table.show": "Show table",
     "aria.table.layerSelect": "Layer to display in the table",

@@ -92,7 +92,8 @@ function _readStoredLang(): string | null {
 /**
  * Initialize i18n from config. Called once after config is loaded.
  *
- * Also publishes the resolved language to `<html lang>` — see {@link _syncDocumentLang}.
+ * Also publishes the resolved language to `<html lang>`, unless `ui.syncDocumentLang` is
+ * `false` — see {@link _syncDocumentLang}.
  */
 export function initI18n(): void {
     const urlLang = new URLSearchParams(window.location.search).get("lang")?.toLowerCase() ?? null;
@@ -111,7 +112,7 @@ export function initI18n(): void {
 }
 
 /**
- * Publishes the resolved language to `<html lang>`.
+ * Publishes the resolved language to `<html lang>`, unless `ui.syncDocumentLang` is `false`.
  *
  * The deployed application shipped `<html lang="en">` hard-coded while serving six languages,
  * so a screen reader announced French content with English phonetics on every profile — and
@@ -124,9 +125,20 @@ export function initI18n(): void {
  * `al` is not a language subtag: writing it into `lang=` would produce an attribute no user
  * agent can interpret, which is worse than the hard-coded one it replaces. `getActiveLang()`
  * resolves back through the dictionary and yields the canonical `"de"`.
+ *
+ * 🛑 `ui.syncDocumentLang: false` opts OUT, and the reason it exists is that `<html lang>` is a
+ * PAGE-WIDE attribute the map does not always own. Embedded in a host that sets it for its own
+ * session, a map mounted in a form would rewrite the locale of everything around it. The opt-out
+ * suppresses only the write: the language still resolves normally, so `getActiveLang()` and every
+ * label are unaffected. Default `true` — the standalone application keeps the behaviour above.
+ *
+ * ⚠️ The guard is read HERE and not at the call site in {@link initI18n}, because `initI18n` has a
+ * second, lazy caller: {@link getLabel} re-enters it when a label is resolved before boot. A guard
+ * placed around the boot call would leave that path writing the attribute.
  */
 function _syncDocumentLang(): void {
     if (typeof document === "undefined") return;
+    if (ConfigGet.get?.<boolean>("ui.syncDocumentLang", true) === false) return;
     document.documentElement.lang = getActiveLang();
 }
 

@@ -49,6 +49,7 @@ vi.mock("../table-seam.js", () => ({
 }));
 
 import { TablePanel } from "../panel.js";
+import * as viewModel from "../view-model.js";
 import { _g } from "../table-state.js";
 
 /**
@@ -276,50 +277,44 @@ describe("table/panel — branch coverage", () => {
     });
 
     // ── filterTableRows (via search input) ───────────────────────────────
-    it("search input filters rows after debounce", async () => {
+    it("search input narrows the model after debounce", async () => {
+        // 🛑 REWRITTEN for this change — the search narrows the MODEL and the table
+        // re-renders; it no longer hides rendered rows with `style.display`. The panel's
+        // job is to drive the view model; the rendering belongs to the renderer, and
+        // `model-search-selection.test.ts` holds the chain end to end.
         TablePanel.create({} as any, {} as any);
-        const table = document.querySelector(".gl-table-panel__table") as HTMLElement;
-        const tbody = document.createElement("tbody");
-        const row1 = document.createElement("tr");
-        const td1 = document.createElement("td");
-        td1.textContent = "Paris";
-        row1.appendChild(td1);
-        tbody.appendChild(row1);
-        const row2 = document.createElement("tr");
-        const td2 = document.createElement("td");
-        td2.textContent = "Lyon";
-        row2.appendChild(td2);
-        tbody.appendChild(row2);
-        table.appendChild(tbody);
+        viewModel.rebuild(
+            [
+                { id: "p", properties: { city: "Paris" } },
+                { id: "l", properties: { city: "Lyon" } },
+            ],
+            [{ field: "properties.city", label: "City" }]
+        );
 
         const input = document.querySelector("[data-table-search]") as HTMLInputElement;
         input.value = "paris";
         input.dispatchEvent(new Event("input"));
-
-        // Wait for 350ms debounce
         await new Promise((resolve) => setTimeout(resolve, 350));
 
-        expect(row1.style.display).toBe("");
-        expect(row2.style.display).toBe("none");
+        expect(viewModel.visibleIds()).toEqual(["p"]);
     });
 
-    it("search input shows all rows when empty", async () => {
+    it("an empty search restores every row and clears the count", async () => {
         TablePanel.create({} as any, {} as any);
-        const table = document.querySelector(".gl-table-panel__table") as HTMLElement;
-        const tbody = document.createElement("tbody");
-        const row = document.createElement("tr");
-        const td = document.createElement("td");
-        td.textContent = "test";
-        row.appendChild(td);
-        row.style.display = "none";
-        tbody.appendChild(row);
-        table.appendChild(tbody);
+        viewModel.rebuild(
+            [{ id: "p", properties: { city: "Paris" } }],
+            [{ field: "properties.city", label: "City" }]
+        );
+        viewModel.applySearch("nothing-matches");
+        expect(viewModel.visibleCount()).toBe(0);
 
         const input = document.querySelector("[data-table-search]") as HTMLInputElement;
         input.value = "";
         input.dispatchEvent(new Event("input"));
-
         await new Promise((resolve) => setTimeout(resolve, 350));
-        expect(row.style.display).toBe("");
+
+        expect(viewModel.visibleCount()).toBe(1);
+        const count = document.querySelector("[data-table-search-count]") as HTMLElement;
+        expect(count.textContent).toBe("");
     });
 });

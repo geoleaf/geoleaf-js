@@ -53,6 +53,7 @@ vi.mock("../table-seam.js", () => ({
 }));
 
 import { TablePanel } from "../panel.js";
+import * as viewModel from "../view-model.js";
 import { _g } from "../table-state.js";
 import { Log } from "@geoleaf/host-runtime";
 
@@ -314,32 +315,32 @@ describe("modules/table/panel (Phase 4.11)", () => {
         expect(() => TablePanel.destroy()).not.toThrow();
     });
 
-    it("search input filterTableRows hides non-matching rows", () => {
+    it("search input narrows the model, and an empty one restores it", () => {
+        // 🛑 REWRITTEN for this change — the search narrows the MODEL and the table
+        // re-renders; it no longer hides rendered rows with `style.display`. The panel's
+        // job is to drive the view model; the rendering belongs to the renderer, and
+        // `model-search-selection.test.ts` holds the chain end to end.
         vi.useFakeTimers();
         TablePanel.create({} as any, { defaultHeight: "40%", resizable: false } as any);
-        const wrapper = document.querySelector(".gl-table-panel__wrapper") as HTMLElement;
-        const table = wrapper.querySelector(".gl-table-panel__table") as HTMLElement;
-        const tbody = document.createElement("tbody");
-        const tr1 = document.createElement("tr");
-        tr1.appendChild(document.createElement("td"));
-        tr1.cells[0].textContent = "hello";
-        const tr2 = document.createElement("tr");
-        tr2.appendChild(document.createElement("td"));
-        tr2.cells[0].textContent = "world";
-        tbody.appendChild(tr1);
-        tbody.appendChild(tr2);
-        table.appendChild(tbody);
+        viewModel.rebuild(
+            [
+                { id: "h", properties: { word: "hello" } },
+                { id: "w", properties: { word: "world" } },
+            ],
+            [{ field: "properties.word", label: "Word" }]
+        );
+
         const input = document.querySelector("[data-table-search]") as HTMLInputElement;
         expect(input).not.toBeNull();
         input.value = "hello";
         input.dispatchEvent(new Event("input", { bubbles: true }));
         vi.advanceTimersByTime(400);
-        expect(tr1.style.display).not.toBe("none");
-        expect(tr2.style.display).toBe("none");
+        expect(viewModel.visibleIds()).toEqual(["h"]);
+
         input.value = "";
         input.dispatchEvent(new Event("input", { bubbles: true }));
         vi.advanceTimersByTime(400);
-        expect(tr2.style.display).toBe("");
+        expect(viewModel.visibleIds()).toEqual(["h", "w"]);
         vi.useRealTimers();
     });
 });

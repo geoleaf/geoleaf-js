@@ -438,3 +438,74 @@ describe("initI18n() — <html lang> suit la langue résolue", () => {
         initI18n();
     });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// `ui.syncDocumentLang` — the opt-out
+//
+// `<html lang>` is a PAGE-WIDE attribute, and the map does not always own the
+// page. Embedded in a host that sets it for its own session, a map mounted in
+// a form rewrites the locale of everything around it.
+//
+// The property guarded here is that the opt-out suppresses the WRITE and
+// nothing else: an implementation that also skipped the resolution would pass
+// a test asserting only "lang did not change", so every case below asserts
+// `getActiveLang()` as well. The default stays `true`, which is why the block
+// above needed no edit — its mock returns the default for every key other
+// than `ui.language`.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("initI18n() — ui.syncDocumentLang", () => {
+    let initI18n, getActiveLang;
+
+    beforeAll(async () => {
+        ({ initI18n, getActiveLang } = await import("../../src/utils/i18n/i18n.ts"));
+    });
+
+    it("n'écrit pas <html lang> quand la clé vaut false — mais résout la langue", () => {
+        document.documentElement.lang = "en"; // the host's own value
+        mockConfigGet.mockImplementation((key, def) => {
+            if (key === "ui.syncDocumentLang") return false;
+            if (key === "ui.language") return "de";
+            return def;
+        });
+        initI18n();
+        expect(document.documentElement.lang).toBe("en"); // untouched
+        expect(getActiveLang()).toBe("de"); // resolution unaffected
+    });
+
+    it("écrit <html lang> quand la clé vaut true explicitement", () => {
+        document.documentElement.lang = "en";
+        mockConfigGet.mockImplementation((key, def) => {
+            if (key === "ui.syncDocumentLang") return true;
+            if (key === "ui.language") return "es";
+            return def;
+        });
+        initI18n();
+        expect(document.documentElement.lang).toBe("es");
+    });
+
+    // 🛑 The case that dictates WHERE the guard lives. `initI18n` has a second,
+    // lazy caller: `getLabel()` re-enters it when a label is resolved before
+    // boot. A guard placed around the boot call site would leave this path
+    // writing the attribute — so the module is re-imported fresh here, and the
+    // FIRST thing done to it is a label lookup, never `initI18n()`.
+    it("respecte l'opt-out sur le chemin paresseux de getLabel()", async () => {
+        vi.resetModules();
+        document.documentElement.lang = "en";
+        mockConfigGet.mockImplementation((key, def) => {
+            if (key === "ui.syncDocumentLang") return false;
+            if (key === "ui.language") return "it";
+            return def;
+        });
+        const fresh = await import("../../src/utils/i18n/i18n.ts");
+        fresh.getLabel("ui.filter_panel.apply"); // triggers the lazy initI18n()
+        expect(fresh.getActiveLang()).toBe("it"); // it really did initialise
+        expect(document.documentElement.lang).toBe("en"); // and did not write
+    });
+
+    afterAll(async () => {
+        vi.resetModules();
+        mockConfigGet.mockImplementation((key, def) => def);
+        const fresh = await import("../../src/utils/i18n/i18n.ts");
+        fresh.initI18n();
+    });
+});

@@ -17,6 +17,8 @@ const lang_de: Record<string, string> = {
     "ui.table.highlight": "Hervorheben",
     "ui.table.exportSelection": "Exportieren",
     "ui.table.exportLayer": "Ebene",
+    "ui.table.searchCount": "{n} / {total} Zeilen",
+    "ui.table.capped": "Ebene gekürzt: {kept} von {total} Zeilen angezeigt.",
     "aria.table.hide": "Tabelle ausblenden",
     "aria.table.show": "Tabelle einblenden",
     "aria.table.layerSelect": "Anzuzeigende Ebene",

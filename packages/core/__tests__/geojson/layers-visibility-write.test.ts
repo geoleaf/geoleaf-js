@@ -129,3 +129,50 @@ describe("setVisibility — the write that names its source", () => {
         expect(repaint).not.toHaveBeenCalled();
     });
 });
+
+describe("getVisibilitySource — the PULL the event cannot serve", () => {
+    it("names the source the write recorded, where isUserOverridden only says 'not the user'", () => {
+        // The gap this closes. Both layers were switched on by an automatic rule, so
+        // `isUserOverridden` is false for both and a caller reconstructing the value
+        // from it writes the same thing for a theme and for a zoom threshold.
+        seedLayer("byTheme", { current: false, logicalState: false, userOverride: false });
+        seedLayer("byZoom", { current: false, logicalState: false, userOverride: false });
+
+        api.setVisibility("byTheme", true, "theme");
+        api.setVisibility("byZoom", true, "zoom");
+
+        expect(api.isUserOverridden("byTheme")).toBe(false);
+        expect(api.isUserOverridden("byZoom")).toBe(false);
+
+        expect(api.getVisibilitySource("byTheme")).toBe("theme");
+        expect(api.getVisibilitySource("byZoom")).toBe("zoom");
+    });
+
+    it("answers after the fact, with no subscription — the whole reason it is a pull", () => {
+        // `geoleaf:layer:toggle` already carries `source` to whoever listens. This
+        // asserts the other case: the accessor is built AFTER the change, exactly as a
+        // panel rebuilt on navigation would be, and still answers.
+        seedLayer("L1", { current: false, logicalState: false, userOverride: false });
+        api.setVisibility("L1", true, "system");
+
+        const late = buildLayersPublicApi();
+        expect(late.getVisibilitySource("L1")).toBe("system");
+    });
+
+    it("returns null for a layer the store does not know", () => {
+        // null, not a source name: every name asserts somebody decided something, and
+        // there is no such fact here. This is where it parts company with the booleans.
+        expect(api.getVisibilitySource("ghost")).toBeNull();
+    });
+
+    it("returns null when the recorded value is not one of the four names", () => {
+        // The manager is reached through the global; nothing types what it hands back.
+        // A widening cast would let this reach the public contract unchecked.
+        seedLayer("L1", { current: true, logicalState: true, userOverride: false });
+        g.GeoLeaf._LayerVisibilityManager = {
+            getVisibilityState: () => ({ source: "poltergeist" }),
+        };
+
+        expect(api.getVisibilitySource("L1")).toBeNull();
+    });
+});

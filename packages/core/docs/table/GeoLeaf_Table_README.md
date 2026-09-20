@@ -708,8 +708,8 @@ GeoLeaf.Table (public API — table-api.ts)
 
 ### Do
 
-- Limit the number of rows through `maxRowsPerLayer` (default: 1000)
-- Enable virtual scrolling for large tables: `virtualScrolling: true`
+- Limit the number of rows through `maxRowsPerLayer` (default: 30000). The cut warns the user once per layer and per session; `0` means zero
+- Virtual scrolling needs no key: past a row-count threshold the renderer windows automatically. ⚠️ `virtualScrolling` is **deprecated and inert** — it never commanded the switch
 - Declare only the relevant columns in `columns`
 - Use `defaultSort` for a better initial experience
 - Debounce frequent calls to `refresh()`
@@ -726,7 +726,7 @@ GeoLeaf.Table (public API — table-api.ts)
 
 ### Built-in optimizations
 
-- **Automatic capping**: `maxRowsPerLayer` prevents overload
+- **Automatic capping**: `maxRowsPerLayer` prevents overload, and says so — a silently truncated table looks exactly like a complete one
 - **Virtual scrolling**: only the visible rows are rendered
 - **Data caching**: `_cachedData` avoids repeated queries
 - **Optimized sorting**: uses `localeCompare` for strings

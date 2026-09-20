@@ -372,6 +372,13 @@ const ANNONCES_GRAND_PERAGE = new Map([
             "au registre : une option sans effet n'a aucun `replacement`, donc ce n'est pas une " +
             "dépréciation au sens de la politique mais un défaut à réparer ou un champ à retirer",
     ],
+    [
+        "packages/plugins/table/src/types.ts#TableConfig.virtualScrolling",
+        "Jumelle exacte de `pageSize`, et traitée pareil au sprint 6 du lot 2 (tâche 2.7) : " +
+            "clé SANS EFFET — la virtualisation se décide sur un SEUIL de lignes, jamais sur " +
+            "cette clé —, sortie de `DEFAULTS` et des profils livrés, mais marquée plutôt que " +
+            "retirée du type publié. Pas de `replacement` possible, donc pas sa place au registre",
+    ],
 ]);
 
 /**

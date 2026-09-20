@@ -32,10 +32,6 @@ vi.mock("../table-seam.js", () => ({
         sortByField: vi.fn(),
     },
 }));
-vi.mock("../feature-id.js", () => ({
-    resetSyntheticIdCounter: vi.fn(),
-    getFeatureId: vi.fn((f) => f?.id ?? f?.properties?.id ?? "unknown"),
-}));
 vi.mock("../format-value.js", () => ({
     formatValue: vi.fn((v) => String(v ?? "")),
 }));
@@ -58,6 +54,7 @@ vi.mock("../selection-actions.js", () => ({
 }));
 
 import { TableRenderer as _TableRenderer } from "../renderer.js";
+import * as viewModel from "../view-model.js";
 import { _g } from "../table-state.js";
 import { events } from "../utils/events.js";
 import { _eventCleanups } from "../event-cleanups.js";
@@ -322,6 +319,10 @@ describe("table/renderer.ts — branch coverage", () => {
             tr1.appendChild(cb);
             tbody.appendChild(tr1);
             table.appendChild(tbody);
+            // The header checkbox reads the MODEL since this change — counting the rendered
+            // rows compared a window to a whole selection. The view model must therefore
+            // describe the rows this hand-built DOM shows.
+            viewModel.rebuild([{ id: "x" }], []);
             _TableRenderer.updateSelection(container, new Set(["x"]));
             expect(cbAll.checked).toBe(true);
         });
@@ -344,6 +345,7 @@ describe("table/renderer.ts — branch coverage", () => {
                 tbody.appendChild(tr);
             }
             table.appendChild(tbody);
+            viewModel.rebuild([{ id: "r1" }, { id: "r2" }], []);
             _TableRenderer.updateSelection(container, new Set(["r1"]));
             expect(cbAll.indeterminate).toBe(true);
         });

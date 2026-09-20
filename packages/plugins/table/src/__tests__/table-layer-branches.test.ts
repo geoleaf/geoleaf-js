@@ -76,10 +76,13 @@ describe("table/table-layer.ts — branch coverage", () => {
             expect(getLayerFeatures("x")).toEqual(features);
         });
 
-        it("slices features when exceeding default maxRows (1000)", () => {
-            const features = Array.from({ length: 1500 }, (_, i) => ({ id: i }));
+        it("slices features when exceeding the default maxRows (30000)", () => {
+            // 30 000 is the gated scale since this change; a 30 001-row layer is the smallest
+            // one that exercises the cut, and building it is cheaper than it reads.
+            tableState._config = null;
+            const features = Array.from({ length: 30001 }, (_, i) => ({ id: i }));
             _g.GeoLeaf.GeoJSON = { getLayerData: vi.fn(() => ({ features })) };
-            expect(getLayerFeatures("x")).toHaveLength(1000);
+            expect(getLayerFeatures("x")).toHaveLength(30000);
         });
 
         it("uses config maxRowsPerLayer when set", () => {
@@ -89,11 +92,15 @@ describe("table/table-layer.ts — branch coverage", () => {
             expect(getLayerFeatures("x")).toHaveLength(5);
         });
 
-        it("uses config maxRowsPerLayer = 0 falls back to 1000 (falsy)", () => {
+        it("honours maxRowsPerLayer = 0 — zero means zero", () => {
+            // 🛑 THIS TEST USED TO LOCK THE DEFECT. It asserted that a declared `0` fell
+            // back to 1 000, which is what `||` did: a value the integrator wrote and the
+            // code silently replaced. `??` was the whole fix; inverting the assertion is
+            // what stops the old behaviour from being restored as a "regression fix".
             tableState._config = { maxRowsPerLayer: 0 };
             const features = Array.from({ length: 10 }, (_, i) => ({ id: i }));
             _g.GeoLeaf.GeoJSON = { getLayerData: vi.fn(() => ({ features })) };
-            expect(getLayerFeatures("x")).toHaveLength(10);
+            expect(getLayerFeatures("x")).toHaveLength(0);
         });
     });
 

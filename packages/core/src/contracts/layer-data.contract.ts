@@ -66,6 +66,23 @@ export interface LayerFeatureState {
 export type VisibilitySource = "user" | "theme" | "zoom" | "system";
 
 /**
+ * Which style a layer currently wears, as {@link LayerDataApi.getStyle} reports it.
+ *
+ * Both fields are `string | null` and never absent: a caller must handle "no style
+ * applied yet" anyway, and an optional field would let it read `undefined` as a value.
+ *
+ * ⚠️ `label` is `null` when the applied style has no display name — including the case
+ * where the underlying field holds a map-label CONFIG object rather than a name, which
+ * the style-file format allows. A name is returned only when it is one.
+ */
+export interface LayerStyleInfo {
+    /** Identifier of the applied style file (`style.id`), or `null` when it carries none. */
+    id: string | null;
+    /** Display name of the applied style, or `null` when it carries none. */
+    label: string | null;
+}
+
+/**
  * A layer definition, in the shape a profile's layer entry carries.
  *
  * This is deliberately the SAME object an integrator already writes in a profile
@@ -189,6 +206,51 @@ export interface LayerDataApi {
      * whether an automatic rule may still override the layer, never to paint a toggle.
      */
     isUserOverridden(layerId: string): boolean;
+    /**
+     * WHO last set this layer's visibility — `"user"`, `"theme"`, `"zoom"` or `"system"` —
+     * or `null` for a layer the store does not know.
+     *
+     * ⚠️ This is the PULL route, and it exists only because the push one cannot answer
+     * for the past. `source` already leaves the core on every change, typed, through the
+     * `geoleaf:layer:toggle` event; a consumer subscribed from the start can keep its own
+     * table. What no subscription gives is the source of the state as it stands NOW, to a
+     * caller that mounted afterwards — a panel rebuilt on navigation, a host re-attaching
+     * to a live map. That is the only gap this fills.
+     *
+     * 🛑 Distinct from {@link LayerDataApi.isUserOverridden}, which answers "is the user's
+     * own decision still standing?" — a boolean over one source. This names the source
+     * itself, so `"theme"` and `"zoom"` stop being indistinguishable from each other, which
+     * is exactly what a caller reconstructing the value from `isUserOverridden` loses.
+     *
+     * ⚠️ **The recorded source lags a refused write**, and the contract says so rather than
+     * pretending otherwise: the manager writes the source only when the physical change goes
+     * through, while the intent flags are written unconditionally. A write refused because a
+     * higher-ranking source holds the layer leaves the previous source in place — which is
+     * the correct answer to "who decided what is displayed", and the wrong one to "who asked
+     * last". Read it as the former.
+     */
+    getVisibilitySource(layerId: string): VisibilitySource | null;
+
+    // ── style read ──
+
+    /**
+     * WHICH style is applied to a layer right now — or `null` for a layer the store does
+     * not know, and for one no style has been applied to yet.
+     *
+     * 🛑 **A projection, and the narrowness is the contract.** The runtime entry holds a
+     * `currentStyle` whose SHAPE depends on which writer spoke last: applying a style
+     * assigns the flattened paint handed to the adapter, which carries no `id` and no
+     * `label`, while the style selector restores the full style document over it. A
+     * consumer reading that field directly gets one or the other and cannot tell which —
+     * a defect already shipped once, where the labels toggle greyed out for good. This
+     * returns the two fields that survive both writers, normalised.
+     *
+     * ⚠️ **The paint is deliberately not exposed.** `style` and `styleRules` are the part
+     * whose shape is unstable, and published subpaths are added, never removed: engraving
+     * them in the contract would make the instability permanent. A caller needing to draw
+     * from the style should say what for — that is a separate decision, not an omission.
+     */
+    getStyle(layerId: string): LayerStyleInfo | null;
 
     // ── visibility write ──
 

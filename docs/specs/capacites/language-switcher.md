@@ -140,6 +140,16 @@ n'interprète. La valeur vient de `getActiveLang()` et non du code de résolutio
 est porté sur place, dans `_syncDocumentLang()`. La forme acceptée par `switchToLanguage` (deux lettres minuscules) laisse aussi passer
 `al`, bien qu'il ne soit pas offert dans le popover.
 
+🛑 **Cette publication est conditionnelle depuis `ui.syncDocumentLang`, et le motif n'est pas
+l'accessibilité — c'est la PROPRIÉTÉ de l'attribut.** `<html lang>` vaut pour la page entière,
+et une carte n'en est pas toujours propriétaire : intégrée dans un hôte qui pose l'attribut pour
+sa propre session, elle réécrivait la locale de tout ce qui l'entoure. La clé vaut `true` par
+défaut — l'application autonome garde le comportement ci-dessus, qui reste le bon pour elle.
+⚠️ **L'opt-out supprime l'écriture, rien d'autre** : `getActiveLang()`, `?lang=`, la préférence
+stockée et les libellés résolvent à l'identique. ⚠️ **La garde est lue dans `_syncDocumentLang()`
+et non au site d'appel** : `getLabel()` ré-entre dans `initI18n()` quand un libellé est résolu
+avant le boot, et une garde posée autour de l'appel du boot laisserait ce chemin écrire l'attribut.
+
 ### Endonymes, et pourquoi ce n'est pas un détail
 
 Chaque langue se nomme **dans sa propre langue**. Quelqu'un qui atterrit sur une page rédigée dans

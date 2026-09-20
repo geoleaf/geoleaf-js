@@ -713,6 +713,8 @@ export const EXPECTED_FACADE_MEMBERS = {
         "getFeatureById",
         "getFeatureCount",
         "getFeatures",
+        "getStyle",
+        "getVisibilitySource",
         "hasLayer",
         "isEnabled",
         "isUserOverridden",

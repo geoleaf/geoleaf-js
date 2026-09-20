@@ -63,6 +63,7 @@ vi.mock("../table-seam.js", () => ({
 
 import { TableRenderer } from "../renderer.js";
 import { _g } from "../table-state.js";
+import * as viewModel from "../view-model.js";
 
 const { getLayerById, setSelection, clearSelection, getSelectedIds, sortByField } = h;
 
@@ -244,7 +245,7 @@ describe("modules/table/renderer (Phase 4.10)", () => {
         expect(cells[1].classList.contains("gl-table-panel__td--number")).toBe(true);
     });
 
-    it("render uses getFeatureId from properties.fid when no id", () => {
+    it("render resolves the row id from properties.fid when no id", () => {
         getLayerById.mockReturnValue({
             config: { table: { columns: [{ field: "name", label: "Name" }] } },
         });
@@ -258,7 +259,7 @@ describe("modules/table/renderer (Phase 4.10)", () => {
         expect(tr.getAttribute("data-feature-id")).toBe("my-fid");
     });
 
-    it("render uses getFeatureId from properties.OBJECTID", () => {
+    it("render resolves the row id from properties.OBJECTID", () => {
         getLayerById.mockReturnValue({
             config: { table: { columns: [{ field: "name", label: "Name" }] } },
         });
@@ -272,7 +273,7 @@ describe("modules/table/renderer (Phase 4.10)", () => {
         expect(tr.getAttribute("data-feature-id")).toBe("obj-123");
     });
 
-    it("render uses getFeatureId from properties.osm_id", () => {
+    it("render resolves the row id from properties.osm_id", () => {
         getLayerById.mockReturnValue({
             config: { table: { columns: [{ field: "name", label: "Name" }] } },
         });
@@ -456,6 +457,11 @@ describe("modules/table/renderer (Phase 4.10)", () => {
                 sortState: {},
             });
             getSelectedIds.mockReturnValue(["f1"]);
+            // Since this change the range starts at a real ANCHOR — the last single click —
+            // not at the last entry of a `Set`, which was an insertion order rather than a
+            // user gesture. A shift-click with no anchor now degrades to a single
+            // selection instead of returning silently.
+            viewModel.setAnchor("f1");
             setSelection.mockClear();
             const rows = container.querySelectorAll("tbody tr");
             rows[1].dispatchEvent(new MouseEvent("click", { bubbles: true, shiftKey: true }));

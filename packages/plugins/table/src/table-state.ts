@@ -26,6 +26,19 @@ interface GeoLeafTableNamespace {
     GeoJSON?: TableGeoJSONApi;
     Config?: TableConfigApi;
     Layers?: TableLayersApi;
+    /**
+     * The notify PRIMITIVE, not `UI.notify`.
+     *
+     * ⚠️ The two degrade differently, and only one suits a warning that must not be lost:
+     * `GeoLeaf.UI.notify.*` reads `_UINotifications` through `?.` and silently no-ops when
+     * the toast capability is off, while the primitive carries a console fallback. Same
+     * reasoning as `kernel/geojson/loader/truncation-notice.ts`, reached here through the
+     * global rather than by a static core import.
+     *
+     * Declared rather than left to the trailing index signature: a member reached through
+     * `[key: string]: unknown` types as `unknown`, so its arity is checked by nothing.
+     */
+    notify?: (message: string, level?: "info" | "success" | "warning" | "error") => void;
     [key: string]: unknown;
 }
 

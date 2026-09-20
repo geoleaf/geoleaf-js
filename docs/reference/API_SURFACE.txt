@@ -937,8 +937,6 @@ CallSignature | @geoleaf-plugins/table.export.downloadFeatures.downloadFeatures 
 CallSignature | @geoleaf-plugins/table.export.downloadFile.downloadFile | doc:f7ec89544fcd
 CallSignature | @geoleaf-plugins/table.export.downloadGeoJSON.downloadGeoJSON | doc:138a27eaab2e
 CallSignature | @geoleaf-plugins/table.feature-id._str._str | doc:47224947f8a7
-CallSignature | @geoleaf-plugins/table.feature-id.getFeatureId.getFeatureId | doc:279d559e9287
-CallSignature | @geoleaf-plugins/table.feature-id.resetSyntheticIdCounter.resetSyntheticIdCounter | doc:5b3644d7ec55
 CallSignature | @geoleaf-plugins/table.feature-id.resolveFeatureId.resolveFeatureId | doc:894a32d6b082
 CallSignature | @geoleaf-plugins/table.format-value.formatValue.formatValue | doc:90f10f7da828
 CallSignature | @geoleaf-plugins/table.lazy/export-excel.buildExcelBuffer.buildExcelBuffer | doc:b3c1af90351b
@@ -963,8 +961,8 @@ CallSignature | @geoleaf-plugins/table.public-api.buildPublicApi.buildPublicApi.
 CallSignature | @geoleaf-plugins/table.public-api.buildPublicApi.buildPublicApi.__type.toggle.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/table.public-api.buildPublicApi.buildPublicApi.__type.zoomToSelection.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/table.selection-actions.handleRowSelection.handleRowSelection | doc:ca490f8d21a1
-CallSignature | @geoleaf-plugins/table.selection-actions.selectRange.selectRange | doc:82cfe039baaf
-CallSignature | @geoleaf-plugins/table.selection-actions.toggleAllRows.toggleAllRows | doc:eeb4921d0d99
+CallSignature | @geoleaf-plugins/table.selection-actions.selectRange.selectRange | doc:3512cd8f7323
+CallSignature | @geoleaf-plugins/table.selection-actions.toggleAllRows.toggleAllRows | doc:97be8fa2f635
 CallSignature | @geoleaf-plugins/table.selection-actions.updateToolbarButtonsState.updateToolbarButtonsState | doc:09d647593f41
 CallSignature | @geoleaf-plugins/table.sort.nextSortState.nextSortState | doc:3f08f67eb5ac
 CallSignature | @geoleaf-plugins/table.sort.sortInPlace.sortInPlace | doc:73897c88fc69
@@ -994,7 +992,7 @@ CallSignature | @geoleaf-plugins/table.table-layer.getAllLayerFeatures.getAllLay
 CallSignature | @geoleaf-plugins/table.table-layer.getAvailableLayers.getAvailableLayers | doc:c0f85ff91cdc
 CallSignature | @geoleaf-plugins/table.table-layer.getAvailableVisibleLayers.getAvailableVisibleLayers | doc:3c61cf676e98
 CallSignature | @geoleaf-plugins/table.table-layer.getLayerFeatures.getLayerFeatures | doc:69dec72684b9
-CallSignature | @geoleaf-plugins/table.table-renderer-virtual-scroll.createTableBodyVirtual.createTableBodyVirtual | doc:282bba30fe8f
+CallSignature | @geoleaf-plugins/table.table-renderer-virtual-scroll.createTableBodyVirtual.createTableBodyVirtual | doc:68707c490bba
 CallSignature | @geoleaf-plugins/table.table-renderer-virtual-scroll.initVirtualState.initVirtualState | doc:29119f65acce
 CallSignature | @geoleaf-plugins/table.table-renderer-virtual-scroll.setupVirtualScroll.setupVirtualScroll | doc:3043b83bcc4a
 CallSignature | @geoleaf-plugins/table.table-renderer-virtual-scroll.updateVirtualRows.updateVirtualRows | doc:9788641f8d85
@@ -1036,6 +1034,21 @@ CallSignature | @geoleaf-plugins/table.utils/dom-helpers.createElement.createEle
 CallSignature | @geoleaf-plugins/table.utils/events.events.__type.off.off | doc:49ac8d987d8f
 CallSignature | @geoleaf-plugins/table.utils/events.events.__type.on.on | doc:2604d8d0f73b
 CallSignature | @geoleaf-plugins/table.utils/events.events.__type.on.on.__type.__type | doc:-
+CallSignature | @geoleaf-plugins/table.view-model.anchorVisiblePosition.anchorVisiblePosition | doc:eeb9a61c8049
+CallSignature | @geoleaf-plugins/table.view-model.applySearch.applySearch | doc:7a8a26b63cb2
+CallSignature | @geoleaf-plugins/table.view-model.idIndexEntries.idIndexEntries | doc:332c75ab1906
+CallSignature | @geoleaf-plugins/table.view-model.orderedFeatures.orderedFeatures | doc:b0ea0427bd36
+CallSignature | @geoleaf-plugins/table.view-model.rebuild.rebuild | doc:ee7e2b8cd809
+CallSignature | @geoleaf-plugins/table.view-model.reset.reset | doc:2fe4aa699873
+CallSignature | @geoleaf-plugins/table.view-model.searchText.searchText | doc:5cd3cddda814
+CallSignature | @geoleaf-plugins/table.view-model.setAnchor.setAnchor | doc:1613af0f5f45
+CallSignature | @geoleaf-plugins/table.view-model.sortRows.sortRows | doc:be3fadb230ec
+CallSignature | @geoleaf-plugins/table.view-model.syncTo.syncTo | doc:5d03a4f6b305
+CallSignature | @geoleaf-plugins/table.view-model.totalCount.totalCount | doc:21f5b3b7f895
+CallSignature | @geoleaf-plugins/table.view-model.visibleCount.visibleCount | doc:7f5f800d5bb5
+CallSignature | @geoleaf-plugins/table.view-model.visibleIds.visibleIds | doc:e0ddea8999f7
+CallSignature | @geoleaf-plugins/table.view-model.visiblePositionOfId.visiblePositionOfId | doc:7df3d2cf37a3
+CallSignature | @geoleaf-plugins/table.view-model.visibleRows.visibleRows | doc:f1c25a97e21e
 CallSignature | @geoleaf-plugins/websocket.channel-manager.ChannelManager.attach.attach | doc:6522055a05a8
 CallSignature | @geoleaf-plugins/websocket.channel-manager.ChannelManager.clear.clear | doc:6b824e6dfdb9
 CallSignature | @geoleaf-plugins/websocket.channel-manager.ChannelManager.getSubscriptions.getSubscriptions | doc:67f4062689e8
@@ -2172,6 +2185,8 @@ CallSignature | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.crea
 CallSignature | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.getFeatureById.getFeatureById | doc:77e5bacb0f30
 CallSignature | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.getFeatureCount.getFeatureCount | doc:4c8e56af6c12
 CallSignature | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.getFeatures.getFeatures | doc:353293bed10f
+CallSignature | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.getStyle.getStyle | doc:69a93faecbfe
+CallSignature | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.getVisibilitySource.getVisibilitySource | doc:5fbd14bc15d9
 CallSignature | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.hasLayer.hasLayer | doc:833937691d6b
 CallSignature | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.isEnabled.isEnabled | doc:c7b01470a533
 CallSignature | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.isUserOverridden.isUserOverridden | doc:28af83c32e42
@@ -3349,7 +3364,7 @@ CallSignature | GeoLeaf Core API.utils/geo/haversine.haversineDistance.haversine
 CallSignature | GeoLeaf Core API.utils/geo/wkt-parser.wktToGeoJSON.wktToGeoJSON | doc:82adf77733e7
 CallSignature | GeoLeaf Core API.utils/i18n/i18n.getActiveLang.getActiveLang | doc:e7fbb5a38e73
 CallSignature | GeoLeaf Core API.utils/i18n/i18n.getLabel.getLabel | doc:7dbf96635116
-CallSignature | GeoLeaf Core API.utils/i18n/i18n.initI18n.initI18n | doc:f6e08827e4a6
+CallSignature | GeoLeaf Core API.utils/i18n/i18n.initI18n.initI18n | doc:b3c925d62d53
 CallSignature | GeoLeaf Core API.utils/i18n/i18n.registerDict.registerDict | doc:69c70977c765
 CallSignature | GeoLeaf Core API.utils/i18n/i18n.t.t | doc:028add956ad8
 CallSignature | GeoLeaf Core API.utils/loaders/label-extractor.extractLabelConfig.extractLabelConfig | doc:6f7013b6a0e2
@@ -4173,8 +4188,6 @@ Function | @geoleaf-plugins/table.export.downloadFeatures | doc:-
 Function | @geoleaf-plugins/table.export.downloadFile | doc:-
 Function | @geoleaf-plugins/table.export.downloadGeoJSON | doc:-
 Function | @geoleaf-plugins/table.feature-id._str | doc:-
-Function | @geoleaf-plugins/table.feature-id.getFeatureId | doc:-
-Function | @geoleaf-plugins/table.feature-id.resetSyntheticIdCounter | doc:-
 Function | @geoleaf-plugins/table.feature-id.resolveFeatureId | doc:-
 Function | @geoleaf-plugins/table.format-value.formatValue | doc:-
 Function | @geoleaf-plugins/table.lazy/export-excel.buildExcelBuffer | doc:-
@@ -4222,6 +4235,21 @@ Function | @geoleaf-plugins/table.table-selection.zoomToSelection | doc:-
 Function | @geoleaf-plugins/table.table-state.fireEvent | doc:-
 Function | @geoleaf-plugins/table.table-state.getSelectedFeatures | doc:-
 Function | @geoleaf-plugins/table.utils/dom-helpers.createElement | doc:-
+Function | @geoleaf-plugins/table.view-model.anchorVisiblePosition | doc:-
+Function | @geoleaf-plugins/table.view-model.applySearch | doc:-
+Function | @geoleaf-plugins/table.view-model.idIndexEntries | doc:-
+Function | @geoleaf-plugins/table.view-model.orderedFeatures | doc:-
+Function | @geoleaf-plugins/table.view-model.rebuild | doc:-
+Function | @geoleaf-plugins/table.view-model.reset | doc:-
+Function | @geoleaf-plugins/table.view-model.searchText | doc:-
+Function | @geoleaf-plugins/table.view-model.setAnchor | doc:-
+Function | @geoleaf-plugins/table.view-model.sortRows | doc:-
+Function | @geoleaf-plugins/table.view-model.syncTo | doc:-
+Function | @geoleaf-plugins/table.view-model.totalCount | doc:-
+Function | @geoleaf-plugins/table.view-model.visibleCount | doc:-
+Function | @geoleaf-plugins/table.view-model.visibleIds | doc:-
+Function | @geoleaf-plugins/table.view-model.visiblePositionOfId | doc:-
+Function | @geoleaf-plugins/table.view-model.visibleRows | doc:-
 Function | @geoleaf-plugins/websocket.config.applyDefaults | doc:-
 Function | @geoleaf-plugins/websocket.config.validateConfig | doc:-
 Function | @geoleaf-plugins/websocket.event-bus-bridge.emitAuthRequired | doc:-
@@ -5311,6 +5339,7 @@ Interface | @geoleaf-plugins/table.types.TableLayersApi | doc:785fb19c535a
 Interface | @geoleaf-plugins/table.types.TableMap | doc:a075e0e4dfb8
 Interface | @geoleaf-plugins/table.types.TableMapEvent | doc:9b74944c6da8
 Interface | @geoleaf-plugins/table.types.TableRenderOptions | doc:d117f20be9a9
+Interface | @geoleaf-plugins/table.view-model.TableRow | doc:3e9ff3c29f8c
 Interface | @geoleaf-plugins/websocket.config.HeartbeatConfig | doc:099771d8c778
 Interface | @geoleaf-plugins/websocket.config.ReconnectConfig | doc:e87d9ecacb27
 Interface | @geoleaf-plugins/websocket.config.ResolvedWsConfig | doc:c561d4f8691d
@@ -5583,6 +5612,7 @@ Interface | GeoLeaf Core API.contracts/layer-data.contract.CreatedLayer | doc:7f
 Interface | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi | doc:6c1abe647028
 Interface | GeoLeaf Core API.contracts/layer-data.contract.LayerDefinition | doc:84d11170a61d
 Interface | GeoLeaf Core API.contracts/layer-data.contract.LayerFeatureState | doc:2c86b4111ee3
+Interface | GeoLeaf Core API.contracts/layer-data.contract.LayerStyleInfo | doc:7b0328162df1
 Interface | GeoLeaf Core API.contracts/legend.contract.LegendLayerConfig | doc:bd2735b40fa8
 Interface | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter | doc:161163969639
 Interface | GeoLeaf Core API.contracts/map-adapter.types.GeoLeafBounds | doc:315e91683b52
@@ -6674,6 +6704,8 @@ Method | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.create | do
 Method | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.getFeatureById | doc:-
 Method | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.getFeatureCount | doc:-
 Method | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.getFeatures | doc:-
+Method | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.getStyle | doc:-
+Method | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.getVisibilitySource | doc:-
 Method | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.hasLayer | doc:-
 Method | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.isEnabled | doc:-
 Method | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.isUserOverridden | doc:-
@@ -7591,6 +7623,7 @@ Module | @geoleaf-plugins/table.table-state | doc:-
 Module | @geoleaf-plugins/table.types | doc:-
 Module | @geoleaf-plugins/table.utils/dom-helpers | doc:-
 Module | @geoleaf-plugins/table.utils/events | doc:-
+Module | @geoleaf-plugins/table.view-model | doc:-
 Module | @geoleaf-plugins/websocket | doc:-
 Module | @geoleaf-plugins/websocket.channel-manager | doc:-
 Module | @geoleaf-plugins/websocket.config | doc:-
@@ -9197,7 +9230,6 @@ Parameter | @geoleaf-plugins/table.export.downloadFile.downloadFile.mimeType | d
 Parameter | @geoleaf-plugins/table.export.downloadGeoJSON.downloadGeoJSON.geojson | doc:-
 Parameter | @geoleaf-plugins/table.export.downloadGeoJSON.downloadGeoJSON.layerId | doc:-
 Parameter | @geoleaf-plugins/table.feature-id._str._str.v | doc:-
-Parameter | @geoleaf-plugins/table.feature-id.getFeatureId.getFeatureId.feature | doc:-
 Parameter | @geoleaf-plugins/table.feature-id.resolveFeatureId.resolveFeatureId.feature | doc:-
 Parameter | @geoleaf-plugins/table.feature-id.resolveFeatureId.resolveFeatureId.syntheticIndex | doc:-
 Parameter | @geoleaf-plugins/table.format-value.formatValue.formatValue.type | doc:53d7c35acd66
@@ -9223,8 +9255,8 @@ Parameter | @geoleaf-plugins/table.selection-actions.handleRowSelection.handleRo
 Parameter | @geoleaf-plugins/table.selection-actions.handleRowSelection.handleRowSelection.isCheckbox | doc:e110ee519a47
 Parameter | @geoleaf-plugins/table.selection-actions.handleRowSelection.handleRowSelection.selected | doc:7d68dbb1cafc
 Parameter | @geoleaf-plugins/table.selection-actions.handleRowSelection.handleRowSelection.shiftKey | doc:732014848627
-Parameter | @geoleaf-plugins/table.selection-actions.selectRange.selectRange.targetId | doc:90727b3a0b02
-Parameter | @geoleaf-plugins/table.selection-actions.toggleAllRows.toggleAllRows.checked | doc:31f6464d5a6c
+Parameter | @geoleaf-plugins/table.selection-actions.selectRange.selectRange.targetId | doc:ec833a43ec58
+Parameter | @geoleaf-plugins/table.selection-actions.toggleAllRows.toggleAllRows.checked | doc:8152a71f8145
 Parameter | @geoleaf-plugins/table.sort.nextSortState.nextSortState.field | doc:-
 Parameter | @geoleaf-plugins/table.sort.nextSortState.nextSortState.sortState | doc:-
 Parameter | @geoleaf-plugins/table.sort.sortInPlace.sortInPlace.cachedData | doc:-
@@ -9252,18 +9284,18 @@ Parameter | @geoleaf-plugins/table.table-layer.getAllLayerFeatures.getAllLayerFe
 Parameter | @geoleaf-plugins/table.table-layer.getLayerFeatures.getLayerFeatures.layerId | doc:-
 Parameter | @geoleaf-plugins/table.table-renderer-virtual-scroll.createTableBodyVirtual.createTableBodyVirtual.columns | doc:ee68f1fc1697
 Parameter | @geoleaf-plugins/table.table-renderer-virtual-scroll.createTableBodyVirtual.createTableBodyVirtual.createRowFn | doc:eed74c8bdff2
-Parameter | @geoleaf-plugins/table.table-renderer-virtual-scroll.createTableBodyVirtual.createTableBodyVirtual.features | doc:808ce05268c8
+Parameter | @geoleaf-plugins/table.table-renderer-virtual-scroll.createTableBodyVirtual.createTableBodyVirtual.rows | doc:071b6259f063
 Parameter | @geoleaf-plugins/table.table-renderer-virtual-scroll.createTableBodyVirtual.createTableBodyVirtual.selectedIds | doc:bc7be1d99811
 Parameter | @geoleaf-plugins/table.table-renderer-virtual-scroll.initVirtualState.initVirtualState.columns | doc:-
 Parameter | @geoleaf-plugins/table.table-renderer-virtual-scroll.initVirtualState.initVirtualState.container | doc:-
 Parameter | @geoleaf-plugins/table.table-renderer-virtual-scroll.initVirtualState.initVirtualState.createRowFn | doc:-
-Parameter | @geoleaf-plugins/table.table-renderer-virtual-scroll.initVirtualState.initVirtualState.features | doc:-
 Parameter | @geoleaf-plugins/table.table-renderer-virtual-scroll.initVirtualState.initVirtualState.layerConfig | doc:-
+Parameter | @geoleaf-plugins/table.table-renderer-virtual-scroll.initVirtualState.initVirtualState.rows | doc:-
 Parameter | @geoleaf-plugins/table.table-renderer-virtual-scroll.initVirtualState.initVirtualState.selectedIds | doc:-
 Parameter | @geoleaf-plugins/table.table-renderer-virtual-scroll.setupVirtualScroll.setupVirtualScroll.container | doc:b6751caaa6dd
 Parameter | @geoleaf-plugins/table.table-renderer-virtual-scroll.updateVirtualRows.updateVirtualRows.columns | doc:ee68f1fc1697
 Parameter | @geoleaf-plugins/table.table-renderer-virtual-scroll.updateVirtualRows.updateVirtualRows.createRowFn | doc:eed74c8bdff2
-Parameter | @geoleaf-plugins/table.table-renderer-virtual-scroll.updateVirtualRows.updateVirtualRows.features | doc:808ce05268c8
+Parameter | @geoleaf-plugins/table.table-renderer-virtual-scroll.updateVirtualRows.updateVirtualRows.rows | doc:071b6259f063
 Parameter | @geoleaf-plugins/table.table-renderer-virtual-scroll.updateVirtualRows.updateVirtualRows.scrollTop | doc:6e994d4c7010
 Parameter | @geoleaf-plugins/table.table-renderer-virtual-scroll.updateVirtualRows.updateVirtualRows.selectedIds | doc:bc7be1d99811
 Parameter | @geoleaf-plugins/table.table-renderer-virtual-scroll.updateVirtualRows.updateVirtualRows.tbody | doc:bf27215272cb
@@ -9328,6 +9360,16 @@ Parameter | @geoleaf-plugins/table.utils/events.events.__type.on.on.handler | do
 Parameter | @geoleaf-plugins/table.utils/events.events.__type.on.on.options | doc:56506b7e14cb
 Parameter | @geoleaf-plugins/table.utils/events.events.__type.on.on.target | doc:b3ba817ccb5a
 Parameter | @geoleaf-plugins/table.utils/events.events.__type.on.on.type | doc:b18dabf6d329
+Parameter | @geoleaf-plugins/table.view-model.applySearch.applySearch.text | doc:4a4143000a07
+Parameter | @geoleaf-plugins/table.view-model.rebuild.rebuild.columns | doc:d2df63db1995
+Parameter | @geoleaf-plugins/table.view-model.rebuild.rebuild.features | doc:63a09c3e328d
+Parameter | @geoleaf-plugins/table.view-model.rebuild.rebuild.searchFields | doc:da9cb1ecdd9f
+Parameter | @geoleaf-plugins/table.view-model.setAnchor.setAnchor.id | doc:-
+Parameter | @geoleaf-plugins/table.view-model.sortRows.sortRows.sortState | doc:c6fbdbea523e
+Parameter | @geoleaf-plugins/table.view-model.syncTo.syncTo.columns | doc:-
+Parameter | @geoleaf-plugins/table.view-model.syncTo.syncTo.features | doc:-
+Parameter | @geoleaf-plugins/table.view-model.syncTo.syncTo.searchFields | doc:-
+Parameter | @geoleaf-plugins/table.view-model.visiblePositionOfId.visiblePositionOfId.id | doc:-
 Parameter | @geoleaf-plugins/websocket.channel-manager.ChannelManager.attach.attach.transport | doc:-
 Parameter | @geoleaf-plugins/websocket.channel-manager.ChannelManager.subscribe.subscribe.channel | doc:-
 Parameter | @geoleaf-plugins/websocket.channel-manager.ChannelManager.subscribe.subscribe.handler | doc:-
@@ -10687,6 +10729,8 @@ Parameter | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.getFeatu
 Parameter | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.getFeatureById.getFeatureById.layerId | doc:-
 Parameter | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.getFeatureCount.getFeatureCount.layerId | doc:-
 Parameter | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.getFeatures.getFeatures.layerId | doc:-
+Parameter | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.getStyle.getStyle.layerId | doc:-
+Parameter | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.getVisibilitySource.getVisibilitySource.layerId | doc:-
 Parameter | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.hasLayer.hasLayer.layerId | doc:-
 Parameter | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.isEnabled.isEnabled.layerId | doc:-
 Parameter | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.isUserOverridden.isUserOverridden.layerId | doc:-
@@ -14054,7 +14098,7 @@ Property | @geoleaf-plugins/table.types.TableConfig.minHeight | doc:-
 Property | @geoleaf-plugins/table.types.TableConfig.pageSize | doc:31b31705a5b2
 Property | @geoleaf-plugins/table.types.TableConfig.resizable | doc:-
 Property | @geoleaf-plugins/table.types.TableConfig.showButton | doc:96fb372a11db
-Property | @geoleaf-plugins/table.types.TableConfig.virtualScrolling | doc:-
+Property | @geoleaf-plugins/table.types.TableConfig.virtualScrolling | doc:c35285421c58
 Property | @geoleaf-plugins/table.types.TableDefaultSort.direction | doc:-
 Property | @geoleaf-plugins/table.types.TableDefaultSort.field | doc:-
 Property | @geoleaf-plugins/table.types.TableDefaultSort.order | doc:9b32a1974f80
@@ -14079,6 +14123,7 @@ Property | @geoleaf-plugins/table.types.TableLayerData.label | doc:-
 Property | @geoleaf-plugins/table.types.TableLayerTableConfig.columns | doc:-
 Property | @geoleaf-plugins/table.types.TableLayerTableConfig.defaultSort | doc:-
 Property | @geoleaf-plugins/table.types.TableLayerTableConfig.enabled | doc:-
+Property | @geoleaf-plugins/table.types.TableLayerTableConfig.searchFields | doc:55fdc97a8f9a
 Property | @geoleaf-plugins/table.types.TableLayerTableConfig.title | doc:-
 Property | @geoleaf-plugins/table.types.TableLayersApi.isVisible | doc:-
 Property | @geoleaf-plugins/table.types.TableMapEvent.layerId | doc:-
@@ -14088,6 +14133,8 @@ Property | @geoleaf-plugins/table.types.TableRenderOptions.features | doc:-
 Property | @geoleaf-plugins/table.types.TableRenderOptions.layerId | doc:-
 Property | @geoleaf-plugins/table.types.TableRenderOptions.selectedIds | doc:-
 Property | @geoleaf-plugins/table.types.TableRenderOptions.sortState | doc:-
+Property | @geoleaf-plugins/table.view-model.TableRow.feature | doc:-
+Property | @geoleaf-plugins/table.view-model.TableRow.id | doc:-
 Property | @geoleaf-plugins/websocket.config.HeartbeatConfig.enabled | doc:3502c4963730
 Property | @geoleaf-plugins/websocket.config.HeartbeatConfig.intervalMs | doc:5d0a39d46a6d
 Property | @geoleaf-plugins/websocket.config.HeartbeatConfig.timeoutMs | doc:377fbfc20be5
@@ -15490,6 +15537,8 @@ Property | GeoLeaf Core API.contracts/layer-data.contract.LayerDefinition.url | 
 Property | GeoLeaf Core API.contracts/layer-data.contract.LayerFeatureState.hover | doc:22f214d10242
 Property | GeoLeaf Core API.contracts/layer-data.contract.LayerFeatureState.selected | doc:812782ee1daa
 Property | GeoLeaf Core API.contracts/layer-data.contract.LayerFeatureState.syncStatus | doc:c00faf0c7dac
+Property | GeoLeaf Core API.contracts/layer-data.contract.LayerStyleInfo.id | doc:940395449a07
+Property | GeoLeaf Core API.contracts/layer-data.contract.LayerStyleInfo.label | doc:8862448fc167
 Property | GeoLeaf Core API.contracts/legend.contract.LegendLayerConfig.geometry | doc:-
 Property | GeoLeaf Core API.contracts/legend.contract.LegendLayerConfig.geometryType | doc:-
 Property | GeoLeaf Core API.contracts/legend.contract.LegendLayerConfig.label | doc:-
@@ -16242,6 +16291,7 @@ Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.UIConfig.s
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.UIConfig.showMeasure | doc:415186debf9a
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.UIConfig.showPanelThemeToggle | doc:b01b26a91129
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.UIConfig.showPrint | doc:73dcb6baddbc
+Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.UIConfig.syncDocumentLang | doc:22fe6724f362
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.UIConfig.theme | doc:1f91dd5f45af
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.WmsConfig.crs | doc:0375b577c5f8
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.WmsConfig.format | doc:a21438bc8495

@@ -78,6 +78,14 @@ export interface TableLayerTableConfig {
     title?: string;
     columns?: TableColumnDef[];
     defaultSort?: TableDefaultSort;
+    /**
+     * Properties the table's search interrogates. Absent or empty means every column.
+     *
+     * ⚠️ Declared here rather than left to the trailing index signature below: a member
+     * reached through `[key: string]: unknown` types as `{}`, which no consumer can use
+     * without a cast — and a cast is how a wrong arity gets in unseen.
+     */
+    searchFields?: string[];
     [key: string]: unknown;
 }
 
@@ -134,6 +142,17 @@ export interface TableConfig {
     maxRowsPerLayer?: number;
     enableExportButton?: boolean;
     exportFormats?: string[];
+    /**
+     * @deprecated No effect — virtualisation is decided by a row-count THRESHOLD
+     * (`VIRTUAL_THRESHOLD`, read by `renderer.ts`), never by this key.
+     *
+     * Declared with a default of `true` and **no read site**: a profile setting it to
+     * `false` got neither effect nor warning, and `profiles/_reference` declared exactly
+     * that while the virtual renderer kept running. Marked rather than removed, for the
+     * reason written on `pageSize` three fields up: the type is published, and deleting it
+     * would break the compilation of an integrator who wrote it. It left `DEFAULTS` and
+     * the shipped profiles, so nothing in this repository claims it any more.
+     */
     virtualScrolling?: boolean;
     defaultHeight?: string;
     minHeight?: string;

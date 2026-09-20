@@ -13,7 +13,53 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ## [Unreleased]
 
+### Changed
+
+- **`@geoleaf-plugins/table` 1.1.0 — the table searches and selects on its MODEL, not on the
+  rendered rows.** Past 150 rows the table renders only a window, while search and selection read
+  the DOM: on a 30 000-row layer "select all" took 33 rows, and a search evaporated on the first
+  scroll. Both now read the model the plugin already held. A range selection starts from a real
+  **anchor** — the last single click — instead of the last entry of a `Set`, and it no longer
+  no-ops when the anchor has scrolled out of view. The header checkbox compares the selection to
+  the visible count rather than to the rendered one. Under an active search, "select all" takes
+  the **result**, and a `n / total` counter says the view is a subset.
+
+- **A layer's `table.searchFields` is read.** It was accepted by the layer schema and read by
+  nobody, while the configuration guide promised that "only these properties are interrogated".
+  Both published shapes are accepted — `["properties.name"]` and `["name"]` — so neither document
+  is left false. Absent or empty still means every column.
+
+- **`maxRowsPerLayer` defaults to `30000`, and the cut now warns the user**, once per layer and
+  per session, naming both the kept count and the real total. Its only channel was a
+  `console.warn`: a table reduced to its first rows looks exactly like a complete one. A declared
+  `0` also means zero — `||` silently replaced it with the default.
+
+### Deprecated
+
+- **`modules.table.virtualScrolling` is inert and marked.** Virtualisation is decided by a
+  row-count threshold, never by this key; `profiles/_reference` declared it `false` while the
+  virtual renderer kept running. It left the defaults and the shipped profiles but stays in the
+  published `TableConfig` type, marked, because deleting a member of a published type breaks the
+  compilation of an integrator who wrote it. Same treatment as its twin `pageSize`, for the same
+  written reason. Neither has a replacement, so neither enters `DEPRECATIONS.json`.
+
 ### Fixed
+
+- **A table row's identity no longer drifts as you scroll.** The id written to `data-feature-id`
+  came from a module counter reset only by a full render, while the virtual scroller re-created
+  rows without that reset. After a scroll a row displaying one entity carried the id of another —
+  a key of the lookup map, but the wrong one, so selecting that row selected a different feature
+  and zoom flew elsewhere. Identity is now resolved once per load and travels with the row.
+
+- **A sort no longer desynchronises the selection from the data.** The id→index map was built
+  before the sort reordered the features in place, so every entry pointed at a pre-sort position:
+  zoom, highlight and export-of-selection all handed back different features than the user had
+  selected. Measured: 300 desynchronised entries out of 300. Order and index are now derived in
+  one pass.
+
+- **The table search input is unbound on teardown.** Its listener was registered with a raw
+  `addEventListener`, so `destroy()` left it — and its pending timer — attached to a detached
+  input.
 
 - **A layer a pull emptied no longer falls back to the display source.** The local store answered
   `null` when it held nothing, and the loader read that as "never pulled": it fetched `data.*`

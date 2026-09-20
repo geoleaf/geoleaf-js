@@ -17,6 +17,8 @@ const lang_pt: Record<string, string> = {
     "ui.table.highlight": "Realçar",
     "ui.table.exportSelection": "Exportar",
     "ui.table.exportLayer": "Camada",
+    "ui.table.searchCount": "{n} / {total} linhas",
+    "ui.table.capped": "Camada truncada: {kept} linhas exibidas de {total}.",
     "aria.table.hide": "Ocultar a tabela",
     "aria.table.show": "Mostrar a tabela",
     "aria.table.layerSelect": "Camada a exibir na tabela",

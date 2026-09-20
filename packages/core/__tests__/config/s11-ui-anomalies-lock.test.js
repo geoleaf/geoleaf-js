@@ -11,7 +11,13 @@
  *                                  `scaleConfig` + `map/scale-control`)
  *
  * Orphans ANO-038/039 (pageSize / virtualScrolling) migrated to modules.table
- * (plugin-table, extraction roadmap table S4). Plugin-consumed flags are it.todo here.
+ * (plugin-table, extraction roadmap table S4). Both are CLOSED since task 2.7 (sprint 6 of
+ * lot 2) — and closed by SPEECH, not by wiring: neither key had a consumer and neither ever
+ * will, virtualisation being decided by a row-count threshold and pagination not existing.
+ * They left `DEFAULTS` and the shipped profiles, stayed in the published type marked
+ * `@deprecated` so an integrator's compilation does not break, and are exempted by name in
+ * CC-10. Their lock lives in `plugins/table/src/__tests__/config-table.test.ts`.
+ * Other plugin-consumed flags remain it.todo here.
  */
 
 import { readFileSync } from "node:fs";
@@ -73,6 +79,22 @@ describe("config B3 — ui.* flags (live read + schema-accepted ; ANO-034/036 r�
         });
         it("schema: ui.interactiveShapes is now ACCEPTED (ANO-036 résolu — Archi S3)", () => {
             expect(validateUi({ ui: { interactiveShapes: true } })).toBe(true);
+        });
+    });
+
+    // ── ui.syncDocumentLang — opt-out from the `<html lang>` write ────────────
+    describe("ui.syncDocumentLang", () => {
+        // Same shape as the ANO-036 lock: prove the schema key HAS a reader, and
+        // that the schema accepts it. The reader is module-private and its runtime
+        // behaviour — including the lazy `getLabel()` path — is asserted in
+        // __tests__/i18n/i18n.test.js; here the lock only anchors the pair, so a
+        // key cannot be added to the schema and then quietly lose its consumer.
+        it("live: the i18n module reads ui.syncDocumentLang", () => {
+            const src = readFileSync(resolve(ROOT, "packages/core/src/utils/i18n/i18n.ts"), "utf8");
+            expect(src).toMatch(/\.get(?:\?\.)?(?:<[^>]*>)?\(\s*"ui\.syncDocumentLang"/);
+        });
+        it("schema: ui.syncDocumentLang is ACCEPTED", () => {
+            expect(validateUi({ ui: { syncDocumentLang: false } })).toBe(true);
         });
     });
 

@@ -5,7 +5,6 @@
     "pageSize": 25,
     "maxRowsPerLayer": 5000,
     "enableExportButton": true,
-    "virtualScrolling": false,
     "defaultHeight": "50%",
     "minHeight": "25%",
     "maxHeight": "75%",

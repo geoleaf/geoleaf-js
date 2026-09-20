@@ -77,22 +77,22 @@ You can also drive the table programmatically:
 
 ## Configuration (`modules.table.*`)
 
-| Key                  | Type       | Default                                     | Description                                                      |
-| -------------------- | ---------- | ------------------------------------------- | ---------------------------------------------------------------- |
-| `enabled`            | `boolean`  | `true`                                      | Mounts the module on `geoleaf:map:ready` when `true`.            |
-| `showButton`         | `boolean`  | `true`                                      | Shows the desktop tab + mobile icon (read by the core registry). |
-| `defaultVisible`     | `boolean`  | `false`                                     | Opens the panel at boot.                                         |
-| `pageSize`           | `number`   | `50`                                        | Page size. Currently inert at runtime.                           |
-| `maxRowsPerLayer`    | `number`   | `1000`                                      | Caps the number of rendered rows.                                |
-| `enableExportButton` | `boolean`  | `true`                                      | Shows the export buttons.                                        |
-| `exportFormats`      | `string[]` | `["geojson", "csv", "kml", "gpx", "excel"]` | Export buttons offered, in this order (`panel.ts`).              |
-| `virtualScrolling`   | `boolean`  | `true`                                      | Renders only visible rows. Does not paginate by `pageSize`.      |
-| `defaultHeight`      | `string`   | `"40%"`                                     | Initial bottom-sheet height.                                     |
-| `minHeight`          | `string`   | `"20%"`                                     | Minimum height (resize).                                         |
-| `maxHeight`          | `string`   | `"60%"`                                     | Maximum height (resize).                                         |
-| `resizable`          | `boolean`  | `true`                                      | Allows resizing via the drag handle.                             |
+| Key                  | Type       | Default                                     | Description                                                                                           |
+| -------------------- | ---------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `enabled`            | `boolean`  | `true`                                      | Mounts the module on `geoleaf:map:ready` when `true`.                                                 |
+| `showButton`         | `boolean`  | `true`                                      | Shows the desktop tab + mobile icon (read by the core registry).                                      |
+| `defaultVisible`     | `boolean`  | `false`                                     | Opens the panel at boot.                                                                              |
+| `pageSize`           | `number`   | —                                           | **Deprecated, inert.** No default, no read site.                                                      |
+| `maxRowsPerLayer`    | `number`   | `30000`                                     | Caps the rows kept per layer. The cut warns the user, once per layer and per session. `0` means zero. |
+| `enableExportButton` | `boolean`  | `true`                                      | Shows the export buttons.                                                                             |
+| `exportFormats`      | `string[]` | `["geojson", "csv", "kml", "gpx", "excel"]` | Export buttons offered, in this order (`panel.ts`).                                                   |
+| `virtualScrolling`   | `boolean`  | —                                           | **Deprecated, inert.** Virtualisation is decided by a row-count threshold, never by this key.         |
+| `defaultHeight`      | `string`   | `"40%"`                                     | Initial bottom-sheet height.                                                                          |
+| `minHeight`          | `string`   | `"20%"`                                     | Minimum height (resize).                                                                              |
+| `maxHeight`          | `string`   | `"60%"`                                     | Maximum height (resize).                                                                              |
+| `resizable`          | `boolean`  | `true`                                      | Allows resizing via the drag handle.                                                                  |
 
-**Per-layer** (`layer.config.table`, stays on the layer): `enabled`, `title`, `columns` (`field`, `label`, `width`, `sortable`, `type`), `defaultSort` (`field`, `direction`).
+**Per-layer** (`layer.config.table`, stays on the layer): `enabled`, `title`, `columns` (`field`, `label`, `width`, `sortable`, `type`), `defaultSort` (`field`, `direction`), `searchFields` (the properties the search interrogates; absent or empty means every column — both `["properties.name"]` and `["name"]` are accepted).
 
 ---
 
@@ -161,7 +161,11 @@ Before the extraction (`@geoleaf/core` ≤ v3), the table was part of the core: 
 ## Limitations
 
 - The panel mounts on the map returned by `GeoLeaf.Core.getMap()` — one map at a time (no per-`mapId` scoping yet).
-- `pageSize` / `virtualScrolling` are exposed but currently inert as paginators (the virtual renderer windows by scroll, not by `pageSize`).
+- `pageSize` and `virtualScrolling` are **deprecated and inert**. They are kept in the published
+  `TableConfig` type, marked, rather than removed: deleting a member of a published type breaks the
+  compilation of an integrator who wrote it, whereas deprecating it tells them. Neither has a
+  replacement — there is no pagination at all, and virtualisation is decided by a row-count
+  threshold — so neither is a deprecation in the sense of `VERSIONING_POLICY.md`.
 - The Excel writer is **write-only** (no read, no formulas) — sufficient for tabular export.
 
 ---

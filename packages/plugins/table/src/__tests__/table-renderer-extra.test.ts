@@ -53,6 +53,7 @@ vi.mock("../table-seam.js", () => ({
 }));
 
 import { handleRowSelection, selectRange, toggleAllRows } from "../selection-actions.js";
+import * as viewModel from "../view-model.js";
 import {
     updateVirtualRows,
     setupVirtualScroll,
@@ -106,53 +107,39 @@ describe("selection-actions — T22 branch coverage", () => {
         tableDiv.remove();
     });
 
-    it("toggleAllRows returns early when tbody is absent", () => {
-        document.body.innerHTML = "";
-        expect(() => toggleAllRows(true)).not.toThrow();
-        expect(setSelection).not.toHaveBeenCalled();
+    // 🛑 THE THREE DOM BRANCHES THAT USED TO LIVE HERE ARE GONE, not silenced. Until task
+    // 2.7 `toggleAllRows` walked the tbody, so it needed cases for "no tbody", "a row with
+    // no data-feature-id" and "a row with no checkbox". It now reads the view model and
+    // writes no DOM at all — `setSelection` runs `updateSelection`, which owns the classes
+    // and the boxes. Branches that no longer exist are replaced by the contract that does.
+
+    it("toggleAllRows takes every VISIBLE row of the model", () => {
+        viewModel.rebuild([{ id: "f1" }, { id: "f2" }, { id: "f3" }], []);
+        toggleAllRows(true);
+        expect(setSelection).toHaveBeenCalledWith(["f1", "f2", "f3"], false);
+    });
+
+    it("toggleAllRows under a search takes the RESULT, not the whole layer", () => {
+        viewModel.rebuild(
+            [
+                { id: "f1", properties: { label: "alpha" } },
+                { id: "f2", properties: { label: "beta" } },
+                { id: "f3", properties: { label: "alphabet" } },
+            ],
+            [{ field: "properties.label", label: "Label" }]
+        );
+        viewModel.applySearch("alpha");
+        toggleAllRows(true);
+        // The only reading the header checkbox can honestly reflect: it compares the
+        // selection against the VISIBLE count, so select-all must fill exactly that set.
+        expect(setSelection).toHaveBeenCalledWith(["f1", "f3"], false);
     });
 
     it("toggleAllRows with checked=false calls clearSelection", () => {
-        const tableDiv = document.createElement("div");
-        tableDiv.className = "gl-table-panel__table";
-        const tbody = document.createElement("tbody");
-        const tr = document.createElement("tr");
-        tr.dataset.featureId = "f1";
-        tbody.appendChild(tr);
-        tableDiv.appendChild(tbody);
-        document.body.appendChild(tableDiv);
+        viewModel.rebuild([{ id: "f1" }], []);
         clearSelection.mockClear();
         toggleAllRows(false);
         expect(clearSelection).toHaveBeenCalled();
-        tableDiv.remove();
-    });
-
-    it("toggleAllRows skips row without data-feature-id (id falsy branch)", () => {
-        const tableDiv = document.createElement("div");
-        tableDiv.className = "gl-table-panel__table";
-        const tbody = document.createElement("tbody");
-        const tr = document.createElement("tr"); // no data-feature-id
-        tbody.appendChild(tr);
-        tableDiv.appendChild(tbody);
-        document.body.appendChild(tableDiv);
-        toggleAllRows(true);
-        expect(setSelection).toHaveBeenCalledWith([], false); // empty ids — no valid rows
-        tableDiv.remove();
-    });
-
-    it("toggleAllRows handles row without .gl-table-panel__checkbox (checkbox falsy branch)", () => {
-        const tableDiv = document.createElement("div");
-        tableDiv.className = "gl-table-panel__table";
-        const tbody = document.createElement("tbody");
-        const tr = document.createElement("tr");
-        tr.dataset.featureId = "f1";
-        // No .gl-table-panel__checkbox child → checkbox = null
-        tbody.appendChild(tr);
-        tableDiv.appendChild(tbody);
-        document.body.appendChild(tableDiv);
-        toggleAllRows(true);
-        expect(setSelection).toHaveBeenCalledWith(["f1"], false);
-        tableDiv.remove();
     });
 });
 
@@ -234,7 +221,14 @@ describe("table-renderer-virtual-scroll — T22 branch coverage", () => {
         table.appendChild(tbody);
         container.appendChild(wrapper);
         container.appendChild(table);
-        initVirtualState(container, [{ id: "f1" }], [], new Set(), {}, createRowFn);
+        initVirtualState(
+            container,
+            [{ id: "f1", feature: { id: "f1" } }],
+            [],
+            new Set(),
+            {},
+            createRowFn
+        );
         expect(() => setupVirtualScroll(container)).not.toThrow();
         // Trigger scroll to test the onScroll callback path
         wrapper.dispatchEvent(new Event("scroll"));

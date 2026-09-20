@@ -17,6 +17,8 @@ const lang_fr: Record<string, string> = {
     "ui.table.highlight": "Surbrillance",
     "ui.table.exportSelection": "Exporter",
     "ui.table.exportLayer": "Couche",
+    "ui.table.searchCount": "{n} / {total} lignes",
+    "ui.table.capped": "Couche tronquée : {kept} lignes affichées sur {total}.",
     "aria.table.hide": "Masquer le tableau",
     "aria.table.show": "Afficher le tableau",
     "aria.table.layerSelect": "Couche à afficher dans le tableau",

@@ -129,6 +129,15 @@ export interface UIConfig {
     theme?: "light" | "dark" | "auto" | string;
     /** UI language code (e.g. "fr", "en"). */
     language?: string;
+    /**
+     * Publish the resolved language to the page's `<html lang>` attribute. Default true (opt-out).
+     *
+     * Set `false` when GeoLeaf is embedded in a host that owns `<html lang>` for its own session:
+     * the attribute is page-wide, so a map mounted inside such a host would otherwise rewrite the
+     * locale of everything around it. Suppresses only the write — the language still resolves from
+     * `?lang=`, the stored preference and {@link UIConfig.language} exactly as before.
+     */
+    syncDocumentLang?: boolean;
     /** Show the basemap switcher control. Default true. */
     showBaseLayerControls?: boolean;
     /** Show the layer manager panel. Default true. */

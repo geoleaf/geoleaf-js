@@ -64,6 +64,7 @@ vi.mock("../utils/events.js", () => ({
 
 import { TablePanel } from "../panel.js";
 import { _g } from "../table-state.js";
+import * as viewModel from "../view-model.js";
 
 /**
  * Installs the GeoJSON seam on `_g.GeoLeaf` from a Map of layers (the source's
@@ -505,39 +506,57 @@ describe("GeoLeaf._TablePanel", () => {
         });
 
         test("should filter rows based on search text", () => {
+            // 🛑 REWRITTEN for this change. The search no longer hides rendered rows with
+            // `style.display`: it narrows the MODEL and the table re-renders. Asserting on
+            // `display` would assert a mechanism that no longer exists — and the old one
+            // could only ever see the rendered window anyway. What the panel owns is
+            // driving the view model and reporting the count; the rendering is the
+            // renderer's, and `model-search-selection.test.ts` holds it end to end.
             vi.useFakeTimers();
+            viewModel.rebuild(
+                [
+                    { id: "a", properties: { name: "Apple" } },
+                    { id: "b", properties: { name: "Banana" } },
+                ],
+                [{ field: "properties.name", label: "Name" }]
+            );
             const searchInput = document.querySelector("[data-table-search]") as HTMLInputElement;
 
             searchInput.value = "apple";
             searchInput.dispatchEvent(new Event("input"));
-
-            // Advance past debounce
             vi.advanceTimersByTime(350);
             vi.useRealTimers();
 
-            const rows = document.querySelectorAll(".gl-table-panel__table tbody tr");
-            const visibleRows = Array.from(rows).filter(
-                (row) => (row as HTMLElement).style.display !== "none"
-            );
-            expect(visibleRows.length).toBe(1);
+            expect(viewModel.searchText()).toBe("apple");
+            expect(viewModel.visibleIds()).toEqual(["a"]);
+            // The count is asserted as PRESENT, not on its wording: no dictionary is
+            // registered in this suite, so `getLabel` returns the key — the core's
+            // documented fallback. Its rendered numbers are covered where i18n is live.
+            const count = document.querySelector("[data-table-search-count]") as HTMLElement;
+            expect(count.textContent).not.toBe("");
         });
 
         test("should show all rows when search is empty", () => {
             vi.useFakeTimers();
+            viewModel.rebuild(
+                [
+                    { id: "a", properties: { name: "Apple" } },
+                    { id: "b", properties: { name: "Banana" } },
+                ],
+                [{ field: "properties.name", label: "Name" }]
+            );
             const searchInput = document.querySelector("[data-table-search]") as HTMLInputElement;
 
             searchInput.value = "";
             searchInput.dispatchEvent(new Event("input"));
-
-            // Advance past debounce
             vi.advanceTimersByTime(350);
             vi.useRealTimers();
 
-            const rows = document.querySelectorAll(".gl-table-panel__table tbody tr");
-            const visibleRows = Array.from(rows).filter(
-                (row) => (row as HTMLElement).style.display !== "none"
-            );
-            expect(visibleRows.length).toBe(2);
+            expect(viewModel.visibleCount()).toBe(2);
+            // An empty search says nothing rather than "2 / 2": the count exists to warn
+            // that the view is a subset, and it is not one here.
+            const count = document.querySelector("[data-table-search-count]") as HTMLElement;
+            expect(count.textContent).toBe("");
         });
     });
 

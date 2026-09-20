@@ -16,6 +16,10 @@
             "properties": {
                 "theme": { "type": "string", "enum": ["light", "dark", "auto"] },
                 "language": { "type": "string" },
+                "syncDocumentLang": {
+                    "type": "boolean",
+                    "description": "Publish the resolved language to the page's `<html lang>` attribute. Default true (opt-out). Set false when GeoLeaf is embedded in a host that owns `<html lang>` for its own session — a map mounted in such a host would otherwise rewrite the attribute for the whole page. Does NOT change which language the map itself uses: `ui.language`, `?lang=` and the stored preference resolve exactly as before, only the document attribute stops being written."
+                },
                 "showBaseLayerControls": { "type": "boolean" },
                 "showLayerManager": { "type": "boolean" },
                 "showCacheButton": { "type": "boolean" },

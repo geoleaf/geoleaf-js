@@ -138,7 +138,7 @@ describe("config.ts — getPluginConfig", () => {
         const cfg = getPluginConfig();
         expect(cfg.enabled).toBe(true);
         expect(cfg.defaultHeight).toBe("40%");
-        expect(cfg.maxRowsPerLayer).toBe(1000);
+        expect(cfg.maxRowsPerLayer).toBe(30000);
     });
 
     it("merges modules.table overrides over the defaults", () => {
@@ -147,7 +147,7 @@ describe("config.ts — getPluginConfig", () => {
         expect(cfg.enabled).toBe(false);
         expect(cfg.defaultHeight).toBe("25%");
         // Untouched defaults survive the merge.
-        expect(cfg.maxRowsPerLayer).toBe(1000);
+        expect(cfg.maxRowsPerLayer).toBe(30000);
         expect(cfg.resizable).toBe(true);
     });
 

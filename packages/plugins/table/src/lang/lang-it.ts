@@ -17,6 +17,8 @@ const lang_it: Record<string, string> = {
     "ui.table.highlight": "Evidenzia",
     "ui.table.exportSelection": "Esporta",
     "ui.table.exportLayer": "Livello",
+    "ui.table.searchCount": "{n} / {total} righe",
+    "ui.table.capped": "Livello troncato: {kept} righe mostrate su {total}.",
     "aria.table.hide": "Nascondi la tabella",
     "aria.table.show": "Mostra la tabella",
     "aria.table.layerSelect": "Livello da visualizzare nella tabella",

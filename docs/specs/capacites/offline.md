@@ -971,9 +971,13 @@ reporte, et que le marqueur fait l'aller-retour à l'octet entre les deux serveu
 doit garantir est écrit dans
 [la page du contrat serveur](../../../packages/core/docs/SERVER_CONTRACT.md).
 
-⚠️ **Ce que cette preuve ne couvre pas.** Elle tient sur **un** couple de serveurs, sur le poste : le
-job de CI publique reste à poser, et aucun backend métier n'est éprouvé — ce qu'un backend donné
-expose comme horodatage de synchronisation ne se voit pas ici.
+✅ **Et elle tourne en CI publique depuis le 20/09/2026** — `scripts/run-backend-contract.cjs` monte
+le banc sur le runner (`docker-compose.ci.yml`) et joue les deux specs : 17 verts, mesuré sur le
+run `35526748990` de `geoleaf/geoleaf-js`. Coût de l'étape : **3 min 17** sur un run de 1 h 22.
+
+⚠️ **Ce que cette preuve ne couvre pas.** Aucun backend métier n'est éprouvé — ce qu'un backend
+donné expose comme horodatage de synchronisation, et la façon dont il découpe ses collections, ne
+se voient pas ici. Le banc prouve que le CYCLE tient, jamais que l'intégration tient.
 
 🛑 **Trouvé par cette preuve, et sur le chemin d'ÉCRITURE plutôt que sur le delta :** un serveur qui
 supprime en douceur doit répondre la ligne à la suppression. S'il répond un corps vide, §2.2 du
