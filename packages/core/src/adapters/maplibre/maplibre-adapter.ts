@@ -294,7 +294,21 @@ export class MaplibreAdapter implements IMapAdapter {
             }
         }
         if (options?.animate === false) mlOpts.animate = false;
-        this._requireMap().fitBounds(toMapLibreBounds(bounds), mlOpts);
+        const map = this._requireMap();
+        // 🛑 A FRAMING IS NOT A CHANGE OF VIEWPOINT. `fitBounds` computes a camera from scratch
+        // and, given no `pitch`/`bearing`, applies ZERO — silently redressing a tilted map and
+        // CUTTING any camera animation in flight. Measured on a plain boot: a basemap declaring
+        // `terrain.default3D` posts `easeTo({ pitch: 60 })`, the reveal's own re-framing lands
+        // ~120 ms later (`app/init-reveal.ts`), and the camera settled at the requested 60° once
+        // in six runs — at 6–9° the other five. The user's "Relief 3D" basemap stayed flat, with
+        // the terrain on and nothing logged. Carrying the current angle over makes a re-framing
+        // answer the question it is asked: WHAT is on screen, never from which angle.
+        //
+        // ⚠️ `init()` does NOT go through here, deliberately: it ESTABLISHES the first camera,
+        // where MapLibre's zero is the right answer.
+        if (typeof map.getPitch === "function") mlOpts.pitch = map.getPitch();
+        if (typeof map.getBearing === "function") mlOpts.bearing = map.getBearing();
+        map.fitBounds(toMapLibreBounds(bounds), mlOpts);
     }
 
     getBounds(): GeoLeafBounds {

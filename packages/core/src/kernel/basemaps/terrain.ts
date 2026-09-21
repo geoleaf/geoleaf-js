@@ -85,7 +85,20 @@ function _applyTerrainToMap(map: NativeMap, config: TerrainConfig, basemapKey: s
     }
 
     map.setTerrain({ source: TERRAIN_SOURCE_ID, exaggeration });
-    map.easeTo({ pitch, bearing });
+    // 🛑 POSTED INSTANTLY, NOT ANIMATED — an animated tilt gets CUT, and it was. `easeTo` is
+    // cancelled by any later camera command, and the application posts one at reveal
+    // (`app/init-reveal.ts` re-frames the profile bounds ~120 ms after the veil lifts). Measured
+    // on a plain boot with nothing acting on the page, basemap asking for `pitch: 60`:
+    //
+    //     618 fitBounds  →  629 easeTo{60}   final 60 ✅  — the tilt came last
+    //     471 easeTo{60} →  528 fitBounds    final 0–9 ❌ — the tilt was cut mid-flight
+    //
+    // The order is a race and it came out wrong five times in six: the "Relief 3D" basemap the
+    // user picked stayed essentially flat, terrain on, nothing logged. A camera posted instantly
+    // has nothing to cut, and at boot it sits behind the veil — there is no visible jump traded
+    // away. ⚠️ Nor does preserving the CURRENT angle in the re-framing fix this on its own: a
+    // camera mid-animation reads 0.024°, and preserving that freezes the transient.
+    map.jumpTo({ pitch, bearing });
 
     // Listen for DEM tile loading errors (CORS, 404, rate-limiting, etc.).
     // Without this, raster-dem failures are silently swallowed by MapLibre.

@@ -132,6 +132,8 @@ export interface NativeMap {
     getFilter(layerId: string): unknown;
     setFilter(layerId: string, filter: unknown): void;
     easeTo(options: { pitch?: number; bearing?: number }): void;
+    /** Posts the camera with NO animation — see `terrain.ts` on why the tilt cannot be animated. */
+    jumpTo(options: { pitch?: number; bearing?: number }): void;
     loaded(): boolean;
     isStyleLoaded(): boolean;
     on(type: string, listener: (e: NativeMapErrorEvent) => void): unknown;

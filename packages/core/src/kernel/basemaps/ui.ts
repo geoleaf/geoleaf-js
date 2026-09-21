@@ -186,8 +186,8 @@ export function createBaseLayerControlsUI(
  * ⚠️ The handlers are kept in refs rather than inlined **because** `destroyUI` resets that
  * flag: with anonymous listeners, a destroy/re-init cycle would re-add them and fire
  * `setBaseLayer` once per past cycle. The state subscription is what keeps a button
- * highlighted at boot — `setBaseLayer` defers until the map is idle, and that late
- * activation is silent, so nothing else would mark the control.
+ * highlighted at boot — `setBaseLayer` defers until the style is loaded, and that
+ * late activation is silent, so nothing else would mark the control.
  */
 export function bindUIOnce() {
     const doc = _g.document;
@@ -213,8 +213,8 @@ export function bindUIOnce() {
     };
     _g.addEventListener("resize", _resizeHandler);
     // Re-sync whenever a basemap actually becomes active. Without this the boot
-    // sequence leaves no button highlighted: `setBaseLayer` defers until the map
-    // is idle, so the `refreshUI()` that init() runs right after this sees a null
+    // sequence leaves no button highlighted: `setBaseLayer` defers until the style
+    // is loaded, so the `refreshUI()` that init() runs right after this sees a null
     // active key, and the later activation is `silent` (no public event) — the
     // control stayed unmarked until the user clicked. Subscribing to the state
     // setter covers the sync raster, WMTS and vector paths alike.

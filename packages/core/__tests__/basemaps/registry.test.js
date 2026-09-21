@@ -46,9 +46,27 @@ function makeMockMap({ loaded = true, styleLoaded = true } = {}) {
         getStyle: vi.fn(() => ({ layers: [] })),
         setStyle: vi.fn(),
         once: vi.fn(),
+        on: vi.fn(),
+        off: vi.fn(),
         loaded: vi.fn(() => loaded),
         isStyleLoaded: vi.fn(() => styleLoaded),
     };
+}
+
+/**
+ * Fires every handler the map registered for `event`, through `on` OR `once` — the caller
+ * should not have to know which one the code under test chose.
+ *
+ * @param {ReturnType<typeof makeMockMap>} map
+ * @param {string} event
+ * @returns {number} How many handlers ran — 0 means nothing was listening.
+ */
+function emit(map, event) {
+    const handlers = [...map.on.mock.calls, ...map.once.mock.calls]
+        .filter(([evt]) => evt === event)
+        .map(([, handler]) => handler);
+    for (const handler of handlers) handler();
+    return handlers.length;
 }
 
 describe("basemaps/registry (MapLibre native)", () => {
@@ -288,20 +306,110 @@ describe("basemaps/registry (MapLibre native)", () => {
 
     // ─── setBaseLayer — deferred (map not loaded) ─────────────────────────────
 
-    it("setBaseLayer defers activation via once('idle') when the style is not loaded", () => {
+    it("setBaseLayer defers on styledata + sourcedata + idle when the style is not loaded", () => {
         const notLoadedMap = makeMockMap({ styleLoaded: false });
         setMap(notLoadedMap);
         registerBaseLayer("st", { tiles: ["https://tile.example/{z}/{x}/{y}.png"] });
         setBaseLayer("st");
 
         // Should not apply immediately — gate on isStyleLoaded() (NOT loaded(), which is false
-        // while GeoJSON sources load). Defers on `idle` (fires once the map is fully settled at
-        // boot, without a user interaction), NOT the one-shot `load` which may already have fired.
+        // while GeoJSON sources load). Defers on the REPEATED `styledata`, not on the one-shot
+        // `load` (which may already have fired) nor on `idle` (which a rich profile may never
+        // reach — see the test below).
         expect(notLoadedMap.addSource).not.toHaveBeenCalled();
-        expect(notLoadedMap.once).toHaveBeenCalledWith("idle", expect.any(Function));
+        for (const evt of ["styledata", "sourcedata", "idle"])
+            expect(
+                notLoadedMap.on,
+                `le report n'écoute pas \`${evt}\` — il peut dormir jusqu'au premier geste`
+            ).toHaveBeenCalledWith(evt, expect.any(Function));
+        // And on NONE of them as a one-shot: a single miss would strand the basemap for good.
+        expect(
+            notLoadedMap.once.mock.calls.map(([evt]) => evt),
+            "un report one-shot rate son réveil s'il arrive trop tôt"
+        ).toEqual([]);
     });
 
-    // ⚠️ The `once('idle')` deferral OVERWROTE a more recent choice.
+    // 🛑 AND THE EVENT MUST STILL BE COMING WHEN THE PREDICATE FLIPS.
+    //
+    // The first version of this fix listened to `styledata` alone, on the reasoning that being
+    // emitted REPEATEDLY immunised it against `load`'s defect. The reasoning was wrong, and only
+    // a browser could say so. Measured on `deploy-full`, `tourism`, boot with no interaction:
+    //
+    //     232 / 275 / 291 / 429 / 489 ms   styledata   isStyleLoaded() === false
+    //     629 ms                           isStyleLoaded() flips — carried by `sourcedata`
+    //     804 / 1940 ms                    idle        isStyleLoaded() === true
+    //
+    // The LAST `styledata` lands 140 ms BEFORE the predicate flips, and none follows. Repetition
+    // never mattered: what matters is that an emission comes AFTER the flip. `isStyleLoaded()`
+    // covers the style AND its sources, and it is the sources — `sourcedata` — that carry it
+    // over the line. The deferral therefore listens to all three of `styledata`, `sourcedata`
+    // and `idle`, and re-tests the predicate on each.
+    //
+    // ⚠️ This test is written against the MEASURED order: `styledata` stops while the predicate
+    // is still false. A mock that keeps emitting `styledata` afterwards proves nothing — that is
+    // exactly the hole the first witness had.
+    it("le prédicat bascule APRÈS le dernier `styledata`, porté par `sourcedata`", () => {
+        const map = makeMockMap({ styleLoaded: false });
+        setMap(map);
+        registerBaseLayer("st", { tiles: ["https://tile.example/{z}/{x}/{y}.png"] });
+
+        setBaseLayer("st");
+
+        // The style events fire while the sources are still in flight — predicate still false.
+        emit(map, "styledata");
+        emit(map, "styledata");
+        expect(getActiveKey(), "appliqué alors que le style n'est pas chargé").toBe(null);
+
+        // `styledata` is DONE. The sources finish, and it is `sourcedata` that carries the flip.
+        map.isStyleLoaded.mockReturnValue(true);
+        const ran = emit(map, "sourcedata");
+
+        expect(
+            ran,
+            "rien n'écoutait `sourcedata` : le report reste sourd au vrai signal"
+        ).toBeGreaterThan(0);
+        expect(
+            getActiveKey(),
+            "le fond n'est jamais appliqué — `styledata` avait cessé avant que le prédicat bascule"
+        ).toBe("st");
+    });
+
+    // 🛑 A MAP THAT NEVER SETTLES NEVER GOT ITS BASEMAP, AND NOTHING SAID SO.
+    //
+    // Measured on the public nightly E2E run 35580569108 (21/09/2026), `tourism` profile,
+    // 43 layers and third-party tiles: `idle` — which fires only once style, sources, tiles
+    // and transitions are ALL settled — did not fire at boot. The first one of the run was
+    // provoked ~20 s later by the user's own first gesture, and the deferral then applied the
+    // basemap mid-drag, `terrain.default3D` tilting the camera to `pitch: 60` under the
+    // finger (`terrain.ts`, `map.easeTo`). The gesture was lost; the write persisted the
+    // UNMOVED geometry (`e2e/43-editor-polygon-edit.spec.js`).
+    //
+    // `idle` is strictly stronger than what this deferral needs: it waits for the map to stop
+    // moving, when all it wants is a LOADED STYLE. That surplus is the defect.
+    it("un style qui ne devient JAMAIS `idle` applique quand même le fond", () => {
+        const map = makeMockMap({ styleLoaded: false });
+        setMap(map);
+        registerBaseLayer("st", { tiles: ["https://tile.example/{z}/{x}/{y}.png"] });
+
+        setBaseLayer("st");
+        expect(getActiveKey(), "appliqué alors que le style n'est pas chargé").toBe(null);
+
+        // The style finishes loading and the map says so — but it NEVER settles, so `idle`
+        // never comes. This is the boot of a rich profile, not a pathological case.
+        map.isStyleLoaded.mockReturnValue(true);
+        const ran = emit(map, "styledata");
+
+        expect(
+            ran,
+            "rien n'écoutait `styledata` : le report ne peut pas se réveiller"
+        ).toBeGreaterThan(0);
+        expect(
+            getActiveKey(),
+            "le fond n'est jamais appliqué sans `idle` — il attend le premier geste de l'utilisateur"
+        ).toBe("st");
+    });
+
+    // ⚠️ The deferral OVERWROTE a more recent choice.
     //
     // Measured in a browser (`tourism` profile, 8/8):
     // `setBaseLayer("positron")` applied (`Active basemap: positron`), then
@@ -314,16 +422,16 @@ describe("basemaps/registry (MapLibre native)", () => {
     // itself without ever checking that a later request replaced it. The
     // module already had `_styleGeneration` for exactly this race class, but
     // it only guarded `style.load` and the WMTS path — not this deferral.
-    it("un report sur idle n'écrase PAS une activation plus récente (R.7b)", () => {
+    it("un report différé n'écrase PAS une activation plus récente (R.7b)", () => {
         const map = makeMockMap({ styleLoaded: false });
         setMap(map);
         registerBaseLayer("boot", { tiles: ["https://tile.example/boot/{z}/{x}/{y}.png"] });
         registerBaseLayer("choix", { tiles: ["https://tile.example/choix/{z}/{x}/{y}.png"] });
 
-        // 1 — boot activation: the map is not ready, it is deferred to `idle`.
+        // 1 — boot activation: the map is not ready, it is deferred to `styledata`.
         setBaseLayer("boot", { silent: true });
-        const deferred = map.once.mock.calls.find(([evt]) => evt === "idle")?.[1];
-        expect(deferred, "aucun report armé sur idle").toBeTypeOf("function");
+        const deferred = map.on.mock.calls.find(([evt]) => evt === "styledata")?.[1];
+        expect(deferred, "aucun report armé sur styledata").toBeTypeOf("function");
 
         // 2 — the map becomes ready and the user picks ANOTHER basemap, which applies.
         map.isStyleLoaded.mockReturnValue(true);
@@ -337,6 +445,9 @@ describe("basemaps/registry (MapLibre native)", () => {
             getActiveKey(),
             "le report du boot a écrasé le choix de l'utilisateur — c'est le défaut R.7b"
         ).toBe("choix");
+        // And it lets go: a stale deferral that stays subscribed wakes up on every later style
+        // change, for the lifetime of the map.
+        expect(map.off).toHaveBeenCalledWith("styledata", deferred);
     });
 
     // ─── setBaseLayer — switcher ──────────────────────────────────────────────

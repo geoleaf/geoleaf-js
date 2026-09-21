@@ -31,6 +31,8 @@ beforeEach(() => {
         }),
         jumpTo: vi.fn(),
         easeTo: vi.fn(),
+        getPitch: vi.fn().mockReturnValue(0),
+        getBearing: vi.fn().mockReturnValue(0),
         flyTo: vi.fn(),
         fitBounds: vi.fn(),
         getContainer: vi.fn().mockReturnValue(document.createElement("div")),
@@ -178,6 +180,34 @@ describe("MaplibreAdapter", () => {
             expect(() => adapter.getCenter()).toThrow("map is not ready");
         });
 
+        // 🛑 A FRAMING IS NOT A CHANGE OF VIEWPOINT, AND MAPLIBRE DISAGREES BY DEFAULT.
+        // `fitBounds` computes a camera from scratch: given no `pitch`/`bearing` it applies ZERO,
+        // silently redressing a tilted map. That is not a theoretical concern — it is measured.
+        // A basemap declaring `terrain.default3D` posts `setTerrain()` then `easeTo({pitch: 60})`,
+        // and the reveal's own `fitBounds` (120 ms later, `app/init-reveal.ts`) cuts that
+        // animation mid-flight. On a plain boot, no test touching the page, the camera settled at
+        // the requested 60° ONCE in six runs and at 6–9° the other five: the "Relief 3D" basemap
+        // the user selected stayed essentially flat, with the terrain on and nothing logged.
+        //
+        // ⚠️ `init()` is deliberately NOT covered by this: it ESTABLISHES the initial camera,
+        // where zero is the right answer. This is about every later RE-framing.
+        it("fitBounds preserves the camera angle — a framing does not redress the view", () => {
+            const adapter = createAdapter();
+            adapter.init({ container: "map" });
+            mockMapInstance.getPitch.mockReturnValue(60);
+            mockMapInstance.getBearing.mockReturnValue(12);
+
+            adapter.fitBounds({ north: 46, south: 44, east: -72, west: -74 }, { animate: false });
+
+            expect(mockMapInstance.fitBounds).toHaveBeenLastCalledWith(
+                [
+                    [-74, 44],
+                    [-72, 46],
+                ],
+                expect.objectContaining({ pitch: 60, bearing: 12 })
+            );
+        });
+
         it("init with bounds calls fitBounds on map", () => {
             const adapter = createAdapter();
             adapter.init({
@@ -278,7 +308,8 @@ describe("MaplibreAdapter", () => {
                     [-74, 44],
                     [-72, 46],
                 ],
-                {}
+                // The camera angle now rides along — see the dedicated test above.
+                { pitch: 0, bearing: 0 }
             );
         });
 
@@ -292,7 +323,7 @@ describe("MaplibreAdapter", () => {
                     [-74, 44],
                     [-72, 46],
                 ],
-                { padding: { top: 20, bottom: 20, left: 10, right: 10 } }
+                { padding: { top: 20, bottom: 20, left: 10, right: 10 }, pitch: 0, bearing: 0 }
             );
         });
 
@@ -306,7 +337,12 @@ describe("MaplibreAdapter", () => {
                     [-74, 44],
                     [-72, 46],
                 ],
-                { padding: { top: 20, bottom: 20, left: 10, right: 10 }, animate: false }
+                {
+                    padding: { top: 20, bottom: 20, left: 10, right: 10 },
+                    animate: false,
+                    pitch: 0,
+                    bearing: 0,
+                }
             );
         });
 

@@ -346,12 +346,18 @@ function _applySyncRasterSwitch(
  * If the map style is not yet loaded, activation is deferred until `load`.
  */
 /**
+ * The events a deferred activation re-tests `isStyleLoaded()` on. Their union is what makes the
+ * wake-up reliable — the reasoning, and the measurement behind it, is in `setBaseLayer`.
+ */
+const STYLE_READY_EVENTS = ["styledata", "sourcedata", "idle"] as const;
+
+/**
  * Activates a registered basemap.
  *
  * The switch takes one of two paths depending on the target: raster→raster mutates the
  * current style in place, while anything involving a vector basemap goes through a full
- * `setStyle()`. Either way the work is **deferred until the map is idle**, so the active key
- * is not guaranteed to have changed by the time this returns.
+ * `setStyle()`. Either way the work is **deferred until the style is loaded**, so the active
+ * key is not guaranteed to have changed by the time this returns.
  *
  * An unknown or missing key logs a warning and leaves the current basemap in place.
  *
@@ -393,26 +399,61 @@ export function setBaseLayer(key: string, options: SetBaseLayerOptions = {}) {
 
     // Boot regression (F0/S8): the profile GeoJSON layers now load earlier (GeoJSONModule.init,
     // phase B5), so at initBasemaps time (UI #17) those sources are still in flight and the map
-    // is not settled — `isStyleLoaded()` is false. Deferring on the one-shot `load` (or its
-    // predicate `loaded()`) is unreliable here: `load` may already have fired, so the handler
-    // never runs (basemap never applied). Defer instead on `idle` — the map fires it once it is
-    // fully settled (style + sources + tiles, no transitions), which happens at boot WITHOUT a
-    // user interaction, then re-run setBaseLayer (which now finds the style ready and applies).
+    // is not settled — `isStyleLoaded()` is false. The activation is therefore deferred, and
+    // WHICH EVENT IT WAITS ON IS THE WHOLE QUESTION. Two constraints bound the answer, and each
+    // one was paid for:
+    //
+    // 🛑 NOT the one-shot `load` (nor its predicate `loaded()`): it may ALREADY have fired when
+    // the deferral is armed, the handler then never runs, and the basemap is never applied.
+    //
+    // 🛑 NOT `idle` ALONE either, though it was the previous answer. `idle` fires once the map
+    // is FULLY settled — style, sources, tiles, no transition in flight — which is strictly
+    // stronger than what this deferral needs, and a rich profile may simply never reach it.
+    // Measured on the public nightly E2E run 35580569108 (21/09/2026), `tourism`, 43 layers and
+    // third-party tiles: no `idle` at boot at all. The run's first one was provoked ~20 s later
+    // by the user's own first gesture — and the basemap, applied at last, tilted the camera to
+    // `pitch: 60` through `terrain.default3D` IN THE MIDDLE OF THAT GESTURE (see `terrain.ts`,
+    // `map.easeTo`). The drag was lost and the edit persisted an unmoved geometry.
+    //
+    // 🛑 AND NOT `styledata` ALONE — the correction this replaces, measured wrong on
+    // `deploy-full`/`tourism` at boot, with no interaction:
+    //
+    //     232 / 275 / 291 / 429 / 489 ms   styledata   isStyleLoaded() === false
+    //     629 ms                           isStyleLoaded() flips — carried by `sourcedata`
+    //     804 / 1940 ms                    idle        isStyleLoaded() === true
+    //
+    // The last `styledata` lands 140 ms BEFORE the predicate flips, and none follows: the
+    // listener woke five times, read `false` five times, and was never called again. Being
+    // emitted repeatedly is NOT the property that matters — coming AFTER the flip is.
+    //
+    // Hence all three. `isStyleLoaded()` covers the style AND its sources, so the emission that
+    // carries it over the line is a `sourcedata` as often as a `styledata`; `idle` stays as a
+    // net for a map that settles without either. The listener re-tests the predicate on each
+    // emission and detaches from all three as soon as it applies.
     //
     // ⚠️ The ticket check is what makes the deferral safe (R.7b). Without it, this closure
-    // re-applies the key it captured whenever `idle` finally fires — including LONG after the
+    // re-applies the key it captured whenever it finally wakes — including LONG after the
     // user picked a different basemap, which it then silently overwrites. Measured on the
     // `tourism` profile: `positron` applied, then ~500 ms later the map snapped back to the
     // boot basemap `terrain-terrarium`, and the layer labels were destroyed by the round trip
     // without being rebuilt. Nothing was logged on either side.
     if (typeof _map.isStyleLoaded === "function" && !_map.isStyleLoaded()) {
-        _map.once("idle", () => {
+        const deferredMap = _map;
+        const detach = () => {
+            for (const evt of STYLE_READY_EVENTS) deferredMap.off?.(evt, onStyleReady);
+        };
+        const onStyleReady = () => {
             if (requestId !== _activationRequest) {
+                detach();
                 Log.info("[GeoLeaf.Baselayers] deferred activation superseded, skipping:", key);
                 return;
             }
+            if (typeof deferredMap.isStyleLoaded === "function" && !deferredMap.isStyleLoaded())
+                return;
+            detach();
             setBaseLayer(key, options);
-        });
+        };
+        for (const evt of STYLE_READY_EVENTS) deferredMap.on(evt, onStyleReady);
         return;
     }
 

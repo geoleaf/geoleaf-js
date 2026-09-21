@@ -56,8 +56,8 @@ export let _styleGeneration = 0;
  * APPLICATIONS (`_applyViaStyleChange` and the WMTS path).
  *
  * Exists because an activation can be DEFERRED: when the style is not loaded,
- * `setBaseLayer` re-arms itself on the map's `idle` event, capturing its key in
- * the closure. Nothing made that closure notice it had been superseded, so the
+ * `setBaseLayer` re-arms itself on the map's style-readiness events, capturing its
+ * key in the closure. Nothing made that closure notice it had been superseded, so the
  * boot basemap could re-apply itself **on top of a basemap the user had since
  * chosen** — measured at R.7b on the `tourism` profile: `positron` applied, then
  * ~500 ms later the map silently snapped back to `terrain-terrarium`, and the
@@ -88,7 +88,7 @@ const _activeKeyListeners = new Set<ActiveKeyListener>();
  * Subscribes to active-basemap-key changes. Returns an unsubscribe function.
  *
  * Exists because the UI cannot learn about activation any other way at boot:
- * `setBaseLayer` defers until the map is idle (style + sources still in flight),
+ * `setBaseLayer` defers until the style is loaded (sources still in flight),
  * and both boot call sites pass `silent: true`, which suppresses the public
  * `geoleaf:basemap:change` event. The UI therefore rendered its buttons, ran
  * `refreshUI()` against a still-null key, and never re-synced — leaving no

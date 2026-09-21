@@ -13,6 +13,41 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ## [Unreleased]
 
+## [3.6.1] - 2026-09-21
+
+### Fixed
+
+- **The default basemap could wait for the user's first gesture — and then tilt the camera into
+  it.** When `setBaseLayer` ran before the style had finished loading, it deferred the activation
+  onto the map's one-shot `idle` event. `idle` fires only once the map is FULLY settled — style,
+  sources, tiles, no transition in flight — which a rich profile may never reach: measured on a
+  43-layer profile with third-party tiles, no `idle` occurred at boot at all, and the first one
+  was provoked ~20 s later by the user's own first gesture. The basemap was applied at that
+  moment, and a basemap declaring `terrain.default3D` then ran `map.easeTo({ pitch: 60 })` —
+  tilting the map mid-gesture and losing it. The deferral now re-tests `isStyleLoaded()` on
+  `styledata`, `sourcedata` AND `idle`, and detaches from all three as soon as it applies. The
+  three are needed together: `isStyleLoaded()` covers the style and its sources, and measurement
+  shows the last `styledata` can land before the predicate flips — the flip is then carried by a
+  `sourcedata`, with `idle` left as a net. A deferral superseded by a later basemap choice still
+  stands down, and it now unsubscribes when it does.
+
+- **A 3D basemap stayed flat: the tilt was animated, and the animation was cut.** A basemap
+  declaring `terrain.default3D` posted `setTerrain()` and then `easeTo({ pitch })`. `easeTo` is
+  cancelled by ANY later camera command, and the application posts one when it reveals the app —
+  it re-frames the profile bounds shortly after the loading veil lifts. Whichever landed last
+  won, and the order was a race: measured on a plain boot with nothing acting on the page, a
+  basemap asking for `pitch: 60` reached it ONCE in six runs and stopped at 6–9° the other five.
+  The "Relief 3D" basemap the user had selected therefore rendered essentially flat, with the
+  terrain active and nothing logged. The tilt is now posted with `jumpTo`, which has no animation
+  to cut; at boot it happens behind the veil, so there is no visible jump. Measured after the
+  fix: 6 runs out of 6 at the requested angle.
+
+- **Re-framing the map no longer redresses the camera.** `fitBounds` computes a camera from
+  scratch and, given no `pitch`/`bearing`, applies zero — so any re-framing silently flattened a
+  tilted map. The adapter now carries the current angle over, which makes a re-framing answer
+  the question it is asked: what is on screen, never from which angle. ⚠️ `init()` is
+  deliberately unaffected — it establishes the first camera, where zero is right.
+
 ## [3.6.0] - 2026-09-20
 
 ### Added

@@ -109,7 +109,14 @@ services:
     gateway:
         image: nginx:1.27-alpine
         volumes:
-            - ./docker/nginx.ci.conf:/etc/nginx/conf.d/default.conf:ro
+            # 🛑 `docker/ci/`, PAS `docker/`. The dev compose mounts the WHOLE `docker/`
+            # directory into `conf.d` (deliberately — a directory mount lets `nginx -s
+            # reload` pick up host edits), and nginx includes `conf.d/*.conf`. A CI-only
+            # conf sitting there is therefore loaded by the DEV nginx too, where the
+            # certificate it names does not exist: measured 20/09/2026, the dev container
+            # sat in a restart loop for a day and all four local vhosts served 404. The
+            # include is not recursive, so a subdirectory is invisible to it.
+            - ./docker/ci/nginx.conf:/etc/nginx/conf.d/default.conf:ro
             - certs:/etc/nginx/certs:ro
         ports:
             - "${GEOLEAF_BENCH_PORT:-8099}:443"

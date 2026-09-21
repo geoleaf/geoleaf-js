@@ -231,6 +231,7 @@ describe("config B4 — basemaps[].terrain (terrain.ts)", () => {
             addSource: vi.fn(),
             setTerrain: vi.fn(),
             easeTo: vi.fn(),
+            jumpTo: vi.fn(),
             on: vi.fn(),
         };
         activateTerrain(map, { enabled: true, demUrl: "https://d.io/x.png" }, "k");
@@ -240,7 +241,9 @@ describe("config B4 — basemaps[].terrain (terrain.ts)", () => {
         );
         // defaults: exaggeration 1.5, pitch 45, bearing 0
         expect(map.setTerrain).toHaveBeenCalledWith({ source: "terrain-dem", exaggeration: 1.5 });
-        expect(map.easeTo).toHaveBeenCalledWith({ pitch: 45, bearing: 0 });
+        // Posted instantly, not animated: an animated tilt is cut at reveal — the
+        // measurement is in `terrain.ts` and in `__tests__/basemaps/terrain.test.js` (T01c).
+        expect(map.jumpTo).toHaveBeenCalledWith({ pitch: 45, bearing: 0 });
         expect(isTerrainActive()).toBe(true);
     });
 });

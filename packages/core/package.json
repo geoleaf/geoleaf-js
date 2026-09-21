@@ -1,6 +1,6 @@
 {
     "name": "@geoleaf/core",
-    "version": "3.6.0",
+    "version": "3.6.1",
     "description": "GeoLeaf — field mapping client built on MapLibre GL JS: an application defined by JSON profiles, edits recorded offline and replayed to any server that honours its contracts, a measured weight budget. Agnostic of any backend and of any business domain. TypeScript, MIT.",
     "homepage": "https://geoleaf.dev",
     "repository": {

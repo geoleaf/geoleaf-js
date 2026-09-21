@@ -123,7 +123,7 @@ parce que PostgREST transtype au lieu de comparer des chaînes (§2.3 de `SERVER
 ⚠️ Le premier a aussi appris ceci : **nginx résout ses upstreams au DÉMARRAGE**. Avec un upstream
 littéral, la passerelle sortait `[emerg] host not found in upstream` — elle démarre plus vite que
 ce qu'elle sert, et `depends_on` n'attend pas leur DNS. D'où le `resolver` et le `proxy_pass` par
-variable de `docker/nginx.ci.conf`.
+variable de `docker/ci/nginx.conf`.
 
 ---
 

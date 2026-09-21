@@ -47,6 +47,7 @@ function makeMockMap({ sourceExists = false } = {}) {
         getSource: vi.fn((id) => (id === TERRAIN_SOURCE_ID && sourceExists ? {} : null)),
         setTerrain: vi.fn(),
         easeTo: vi.fn(),
+        jumpTo: vi.fn(),
         on: vi.fn(),
         off: vi.fn(),
         once: vi.fn((event, cb) => {
@@ -88,7 +89,7 @@ describe("initial state", () => {
 // ─── activateTerrain ─────────────────────────────────────────────────────────
 
 describe("activateTerrain()", () => {
-    it("T01 – nominal: adds source, calls setTerrain, easeTo, sets state", () => {
+    it("T01 – nominal: adds source, calls setTerrain, jumpTo, sets state", () => {
         const map = makeMockMap();
 
         activateTerrain(map, validConfig, "ign-plan");
@@ -104,9 +105,38 @@ describe("activateTerrain()", () => {
             source: TERRAIN_SOURCE_ID,
             exaggeration: 1.5,
         });
-        expect(map.easeTo).toHaveBeenCalledWith({ pitch: 45, bearing: 0 });
+        // Posted instantly, not animated — see T01c for the measurement.
+        expect(map.jumpTo).toHaveBeenCalledWith({ pitch: 45, bearing: 0 });
         expect(isTerrainActive()).toBe(true);
         expect(getActiveTerrainBasemapKey()).toBe("ign-plan");
+    });
+
+    // 🛑 THE TILT MUST NOT BE ANIMATED — AN ANIMATION GETS CUT, AND IT WAS.
+    //
+    // `easeTo` is cancelled by ANY later camera command, and the application posts one at reveal
+    // (`app/init-reveal.ts` re-frames the profile bounds ~120 ms after the veil lifts). Measured
+    // on a plain boot, no test touching the page, basemap asking for `pitch: 60`:
+    //
+    //     618 fitBounds (pitch 0)  →  629 easeTo {pitch: 60}      final 60 ✅  (tilt came last)
+    //     471 easeTo {pitch: 60}   →  528 fitBounds               final 0–9 ❌ (tilt was cut)
+    //
+    // The order is a race, and it came out wrong five times in six: the "Relief 3D" basemap the
+    // user picked stayed essentially FLAT with the terrain on, and nothing was logged. A camera
+    // posted instantly has nothing to cut, and at boot it sits behind the veil, so there is no
+    // visible jump to trade away.
+    it("T01c – the tilt is posted instantly: an animated one gets cut at reveal", () => {
+        const map = makeMockMap();
+
+        activateTerrain(map, { ...validConfig, pitch: 60, bearing: 0 }, "relief");
+
+        expect(map.jumpTo, "l'inclinaison n'est pas posée d'un coup").toHaveBeenCalledWith({
+            pitch: 60,
+            bearing: 0,
+        });
+        expect(
+            map.easeTo,
+            "l'inclinaison passe encore par une animation, qu'un recadrage annule"
+        ).not.toHaveBeenCalled();
     });
 
     it("T02 – idempotent: does not call addSource if source already exists", () => {
@@ -159,7 +189,7 @@ describe("activateTerrain()", () => {
             expect.objectContaining({ encoding: "terrarium", tileSize: 256 })
         );
         expect(map.setTerrain).toHaveBeenCalledWith(expect.objectContaining({ exaggeration: 1.5 }));
-        expect(map.easeTo).toHaveBeenCalledWith({ pitch: 45, bearing: 0 });
+        expect(map.jumpTo).toHaveBeenCalledWith({ pitch: 45, bearing: 0 });
     });
 });
 

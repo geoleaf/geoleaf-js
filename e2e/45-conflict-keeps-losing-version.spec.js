@@ -25,6 +25,7 @@ import { test, expect } from "@playwright/test";
 import { baseURL } from "./helpers/base-url.js";
 import { readStore, seedStore, GEOLEAF_DB } from "./helpers/idb.js";
 import { armEditor } from "./helpers/editor.js";
+import { awaitSettledCamera } from "./helpers/camera.js";
 import { serveBasemapTilesLocally } from "./helpers/basemap.js";
 
 test.use({ baseURL: baseURL("full") });
@@ -104,6 +105,9 @@ async function projectMidVertex(page) {
                 page.evaluate((id) => {
                     const G = /** @type {any} */ (window).GeoLeaf;
                     const map = G.Core.getMap().getNativeMap();
+                    // A projection taken mid-animation is stale by the time the mouse acts on
+                    // it — spec 43 already carried this guard; see `helpers/camera.js`.
+                    if (map.isMoving?.()) return 0;
                     const coords = G.Layers.getFeatures(id)[0].geometry.coordinates;
                     if (map.getZoom() < 8) {
                         map.jumpTo({ center: coords[Math.floor(coords.length / 2)], zoom: 9 });
@@ -225,6 +229,10 @@ test("[offline] un conflit tranché conserve la version qu'il écrase", async ({
     expect(written, "l'entité rapatriée n'a pas été semée").toBe(1);
 
     await armEditor(page);
+
+    // 🛑 No gesture before the camera is posed: a basemap applied late tilts it to `pitch: 60`
+    // mid-drag, and the drag is lost in silence (see `helpers/camera.js`).
+    await awaitSettledCamera(page);
 
     // Select, move a vertex, commit — the gestures of spec 44, on a row that moved under us.
     const mid = await projectMidVertex(page);

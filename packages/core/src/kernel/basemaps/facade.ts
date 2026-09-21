@@ -38,7 +38,7 @@ export type { BaselayersInitOptions };
  * @param options - `map` is the MapLibre instance to drive; `defaultKey` selects the basemap
  *   activated at boot.
  * @returns The active key and the registered layers, as they stand at the end of the call —
- *   ⚠️ `activeKey` may still be `null`, activation being deferred until the map is idle.
+ *   ⚠️ `activeKey` may still be `null`, activation being deferred until the style is loaded.
  *
  * @example
  * ```js

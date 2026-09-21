@@ -35,6 +35,7 @@ import { baseURL } from "./helpers/base-url.js";
 import { readStore, GEOLEAF_DB } from "./helpers/idb.js";
 import { goOffline } from "./helpers/offline.js";
 import { armEditor } from "./helpers/editor.js";
+import { awaitSettledCamera } from "./helpers/camera.js";
 import { serveBasemapTilesLocally } from "./helpers/basemap.js";
 
 test.use({ baseURL: baseURL("full") });
@@ -174,7 +175,19 @@ async function projectInteriorPoint(page, target) {
                 .queryRenderedFeatures([p.x, p.y])
                 .some((/** @type {any} */ f) => f.layer.id.includes(id));
             if (!onFill) {
-                map.fitBounds(bounds, { animate: false, padding: 60 });
+                // 🛑 THE FRAMING MUST NOT REDRESS THE CAMERA. `fitBounds` computes a camera from
+                // scratch and, given no `pitch`/`bearing`, applies ZERO — undoing the tilt the
+                // basemap's `terrain.default3D` has just set. Measured on 21/09/2026, same
+                // bundle, one variable: with the camera flattened the whole-feature drag did not
+                // take at all (Terra Draw's own source kept the original ring, 0/1), while every
+                // run that kept the tilt took it (3/3, then 6/6 once the tilt was preserved
+                // here). The framing is about WHAT is on screen, never about the camera's angle.
+                map.fitBounds(bounds, {
+                    animate: false,
+                    padding: 60,
+                    pitch: map.getPitch(),
+                    bearing: map.getBearing(),
+                });
                 return null;
             }
             // `project()` is in CONTAINER coordinates; the mouse wants PAGE ones (spec 38).
@@ -185,6 +198,17 @@ async function projectInteriorPoint(page, target) {
         { timeout: 30000, polling: 500 }
     );
     return /** @type {{ x: number, y: number }} */ (await handle.jsonValue());
+}
+
+/**
+ * Deep equality for the small coordinate arrays this spec compares — `[lng, lat]`.
+ *
+ * @param {unknown} a
+ * @param {unknown} b
+ * @returns {boolean}
+ */
+function deepEqual(a, b) {
+    return JSON.stringify(a) === JSON.stringify(b);
 }
 
 test("[editor] éditer un polygone SANS `id` de premier niveau atteint bien l'outbox", async ({
@@ -218,6 +242,10 @@ test("[editor] éditer un polygone SANS `id` de premier niveau atteint bien l'ou
     await armEditor(page);
     await goOffline(context, page);
 
+    // 🛑 No gesture before the camera is posed: a basemap applied late tilts it to `pitch: 60`
+    // mid-drag, and the drag is lost in silence (see `helpers/camera.js`).
+    await awaitSettledCamera(page);
+
     const inside = await projectInteriorPoint(page, target);
     await page.mouse.click(inside.x, inside.y);
 
@@ -234,11 +262,64 @@ test("[editor] éditer un polygone SANS `id` de premier niveau atteint bien l'ou
         { timeout: 10000 }
     );
 
+    /** The first ring vertex Terra Draw currently holds — `null` when it holds nothing. */
+    const tdRing0 = () =>
+        page.evaluate(() => {
+            const map = /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap();
+            const src = map.getSource("td-polygon");
+            const data = src?.serialize?.()?.data ?? src?._data;
+            return data?.features?.[0]?.geometry?.coordinates?.[0]?.[0] ?? null;
+        });
+
     // Drag the WHOLE feature from inside the fill — the polygon's own gesture.
+    //
+    // 🛑 WHAT MADE THIS DRAG UNRELIABLE WAS NOT THE GESTURE, AND THE MEASUREMENT SAYS SO. Every
+    // lost drag — and they came in runs of three, which is a STATE and not a per-try race —
+    // showed the same page: `pitch: 0` with `terrain: true`. The active basemap declares
+    // `terrain.default3D`, whose `easeTo` runs AFTER the active key is set; a camera touched in
+    // that window (this spec's own `fitBounds`) wins the race and leaves the map flat, terrain
+    // on. In that state Terra Draw did not move the shape at all: `selected` was true and the
+    // `mousedown` point still hit `td-polygon`, yet the source kept the original ring.
+    //
+    // `awaitSettledCamera` now waits for the terrain to be POSTED, not merely due, and this
+    // spec's `fitBounds` preserves the angle. Measured after both: 8/8, then a full replay of
+    // the four editor specs. A 3-attempt retry stood here in between and was REMOVED once the
+    // cause was closed — it was a bandage, and it would have cost this spec its ability to see
+    // the class again.
+    //
+    // ⚠️ The amorce below stays: Terra Draw arms the feature drag on the FIRST pointer move after
+    // the `down`, so a short move before the real one is what a hand does anyway.
     await page.mouse.move(inside.x, inside.y);
     await page.mouse.down();
-    await page.mouse.move(inside.x + 30, inside.y + 20, { steps: 8 });
+    // A short first move, then the real one — what a hand does anyway.
+    await page.mouse.move(inside.x + 5, inside.y + 4, { steps: 2 });
+    await page.waitForTimeout(120);
+    await page.mouse.move(inside.x + 30, inside.y + 20, { steps: 16 });
     await page.mouse.up();
+    const moved = !deepEqual(await tdRing0(), shippedRing[0]);
+
+    const lost = await page.evaluate((pt) => {
+        const map = /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap();
+        const src = map.getSource("td-polygon");
+        const data = src?.serialize?.()?.data ?? src?._data;
+        const rect = map.getContainer().getBoundingClientRect();
+        return {
+            pitch: Math.round(map.getPitch()),
+            zoom: +map.getZoom().toFixed(2),
+            moving: map.isMoving(),
+            terrain: !!map.getTerrain?.(),
+            selected: data?.features?.[0]?.properties?.selected ?? null,
+            hit: map
+                .queryRenderedFeatures([pt.x - rect.left, pt.y - rect.top])
+                .map((/** @type {any} */ q) => q.layer.id)
+                .filter((/** @type {string} */ id) => id.startsWith("td-")),
+        };
+    }, inside);
+    expect(
+        moved,
+        `le drag n'a pas déplacé la forme DANS Terra Draw — le geste est perdu, ` +
+            `pas la persistance. État de la page : ${JSON.stringify(lost)}`
+    ).toBe(true);
 
     // Enter leaves select mode → deselect → commit.
     await page.keyboard.press("Enter");

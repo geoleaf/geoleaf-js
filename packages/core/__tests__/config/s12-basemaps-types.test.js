@@ -46,6 +46,7 @@ function makeNativeMap(overrides = {}) {
         setStyle: vi.fn(),
         setTerrain: vi.fn(),
         easeTo: vi.fn(),
+        jumpTo: vi.fn(),
         ...overrides,
     };
 }
@@ -166,7 +167,8 @@ describe("config B4 — basemaps[].type → layer created (basemaps/registry.ts)
         expect(map.setTerrain).toHaveBeenCalledWith(
             expect.objectContaining({ source: "terrain-dem", exaggeration: 1.5 })
         );
-        expect(map.easeTo).toHaveBeenCalledWith({ pitch: 60, bearing: 0 });
+        // Posted instantly, not animated — see `terrain.test.js` (T01c) for the measurement.
+        expect(map.jumpTo).toHaveBeenCalledWith({ pitch: 60, bearing: 0 });
     });
 
     // ── defaultBasemap flag is carried into the registry entry ────────────────

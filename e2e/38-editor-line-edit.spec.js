@@ -39,6 +39,7 @@ import { baseURL } from "./helpers/base-url.js";
 import { readStore, GEOLEAF_DB } from "./helpers/idb.js";
 import { goOffline } from "./helpers/offline.js";
 import { armEditor } from "./helpers/editor.js";
+import { awaitSettledCamera } from "./helpers/camera.js";
 import { serveBasemapTilesLocally } from "./helpers/basemap.js";
 
 test.use({ baseURL: baseURL("full") });
@@ -139,6 +140,9 @@ async function projectMidVertex(page, layerId) {
                 page.evaluate((id) => {
                     const G = /** @type {any} */ (window).GeoLeaf;
                     const map = G.Core.getMap().getNativeMap();
+                    // A projection taken mid-animation is stale by the time the mouse acts on
+                    // it — spec 43 already carried this guard; see `helpers/camera.js`.
+                    if (map.isMoving?.()) return 0;
                     const coords = G.Layers.getFeatures(id)[0].geometry.coordinates;
                     if (map.getZoom() < 8) {
                         map.jumpTo({ center: coords[Math.floor(coords.length / 2)], zoom: 9 });
@@ -190,6 +194,10 @@ test("[editor] éditer une ligne SANS `id` de premier niveau atteint bien l'outb
 
     await armEditor(page);
     await goOffline(context, page);
+
+    // 🛑 No gesture before the camera is posed: a basemap applied late tilts it to `pitch: 60`
+    // mid-drag, and the drag is lost in silence (see `helpers/camera.js`).
+    await awaitSettledCamera(page);
 
     // Click the middle of the line — a real click, so `queryRenderedFeatures` really hits.
     const mid = await projectMidVertex(page, LAYER);
