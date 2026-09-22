@@ -27,7 +27,7 @@
                     "properties": {
                         "enabled": {
                             "type": "boolean",
-                            "description": "Enable/disable labels for this style."
+                            "description": "Enable/disable these labels."
                         },
                         "visibleByDefault": {
                             "type": "boolean",

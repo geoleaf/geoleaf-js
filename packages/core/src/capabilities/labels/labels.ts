@@ -18,7 +18,7 @@ import {
     calculateMapScale as _calculateMapScale,
 } from "../../utils/general/scale-utils.js";
 import { Core } from "../../api/geoleaf.core.js";
-import { GeoJSONCore } from "../../kernel/geojson/index.js";
+import { GeoJSONCore, resolveLayerLabelConfig } from "../../kernel/geojson/index.js";
 import type {
     LabelLayerData,
     LabelsApi,
@@ -74,11 +74,13 @@ function _detachZoomListener(): void {
     _state.zoomListenerAttached = false;
 }
 
+/**
+ * The layer's declared label configuration — its style's `label` object, else its definition's
+ * `labels` block. See `resolveLayerLabelConfig`: every reader of this module asks there, never
+ * `currentStyle.label` alone, which is `null` when the style file is missing.
+ */
 function _getIntegratedLabel(layerData: LabelLayerData | null): LayerStyleLabel | null {
-    if (!layerData) return null;
-    if (!layerData.currentStyle) return null;
-    if (!layerData.currentStyle.label) return null;
-    return layerData.currentStyle.label;
+    return resolveLayerLabelConfig(layerData);
 }
 
 function _hasConfigLabel(labelConfig: LabelUserConfig): boolean {
@@ -329,15 +331,16 @@ const Labels: LabelsApi = {
         if (!layerData) return;
         this._hideLabelsForLayer(layerId);
         _state.layers.delete(layerId);
-        if (layerData.currentStyle?.label?.enabled !== true) {
+        const declared = _getIntegratedLabel(layerData);
+        if (declared?.enabled !== true) {
             if (Log)
                 Log.debug(
-                    "[Labels.initialize] Style without labels or labels disabled for",
+                    "[Labels.initialize] No label configuration, or labels disabled, for",
                     layerId
                 );
             return;
         }
-        const visibleByDefault = layerData.currentStyle.label.visibleByDefault === true;
+        const visibleByDefault = declared.visibleByDefault === true;
         if (!visibleByDefault) {
             if (Log) Log.debug("[Labels.initialize] Labels disabled by default for", layerId);
             return void this.enableLabels(layerId, {}, false);
@@ -402,7 +405,7 @@ const Labels: LabelsApi = {
         const layerState = _state.layers.get(layerId);
         if (!layerState) return false;
         const layerData = this._getLayerData(layerId);
-        if (layerData?.currentStyle?.label?.enabled !== true) return false;
+        if (_getIntegratedLabel(layerData)?.enabled !== true) return false;
         if (layerState.enabled) {
             this._hideLabelsForLayer(layerId);
             layerState.enabled = false;

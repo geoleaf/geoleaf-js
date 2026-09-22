@@ -11,6 +11,7 @@
  */
 
 import { GeoJSONShared } from "../shared.js";
+import { resolveLayerLabelConfig } from "../layer-labels.js";
 import { getAllLayerConfigs } from "../../shared/layer-configs-state.js";
 import { getLog } from "../../../utils/general/di-accessors.js";
 import { getGeoLeaf } from "../../../utils/general/geoleaf-global.js";
@@ -86,15 +87,11 @@ function _resolveLayerLabels(layerData: GeoJSONLayerEntry): {
     hasLabels: boolean;
     labelsConfig: unknown;
 } {
-    const labels = layerData.config.labels as { enabled?: boolean } | undefined;
-    if (labels && labels.enabled) {
-        return { hasLabels: true, labelsConfig: labels };
-    }
-    // `currentStyle.label` is polymorphic (`string | GeoJSONStyleLabelConfig`);
-    // here we read the label-config object form (`{ enabled }`).
-    const styleLabel = layerData.currentStyle?.label as { enabled?: boolean } | undefined;
-    if (styleLabel?.enabled) {
-        return { hasLabels: true, labelsConfig: { enabled: true } };
+    // Same answer as the labels module and the toggle: the style's `label` object, else the
+    // definition's `labels` block.
+    const declared = resolveLayerLabelConfig(layerData);
+    if (declared?.enabled === true) {
+        return { hasLabels: true, labelsConfig: declared };
     }
     return { hasLabels: false, labelsConfig: null };
 }

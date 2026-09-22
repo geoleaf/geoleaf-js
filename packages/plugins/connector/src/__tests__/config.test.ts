@@ -76,6 +76,35 @@ describe("validateConfig", () => {
             warn.mockRestore();
         });
 
+        // Development hosts: names no production page can carry. `.test` is reserved for
+        // testing by RFC 6761 — `*.local.test` is the case that did not start at all.
+        it.each(["x.local.test", "app.test", "api.localhost", "127.1.2.3", "[::1]", "localhost."])(
+            "warns (not throws) for http:// on the development host %s",
+            (host: string) => {
+                setHostname(host);
+                const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+                expect(() =>
+                    validateConfig({ baseUrl: `http://${host}/api`, getToken: () => "tok" })
+                ).not.toThrow();
+                expect(warn).toHaveBeenCalledWith(expect.stringContaining("[GeoLeaf Connector]"));
+                warn.mockRestore();
+            }
+        );
+
+        // The suffix is matched WITH its dot, and `.local` names real intranets: all refused.
+        it.each([
+            "latest",
+            "test.example.com",
+            "localhost.example.com",
+            "gis.corp.local",
+            "128.0.0.1",
+        ])("throws ConfigError for http:// on %s", (host: string) => {
+            setHostname(host);
+            expect(() =>
+                validateConfig({ baseUrl: `http://${host}/api`, getToken: () => "tok" })
+            ).toThrow(ConfigError);
+        });
+
         it("accepts https:// without warning", () => {
             const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
             expect(() => validateConfig(VALID_GETTOKEN)).not.toThrow();

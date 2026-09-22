@@ -660,6 +660,7 @@ export const EXPECTED_FACADE_MEMBERS = {
         "loadFromActiveProfile",
         "removeLayer",
         "setLayerStyle",
+        "setWorkerUrl",
         "showLayer",
         "toggleLayer",
         "updateLayerData",

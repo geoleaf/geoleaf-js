@@ -31,12 +31,25 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.6.0 <Badge type="tip" text="2026-09-20" />
+## Release v3.6.1 <Badge type="tip" text="2026-09-22" />
 
-Three seams a host application was missing: the map stops claiming the page's language, and the
-authority behind a layer's visibility — plus the style it wears — can now be read, not guessed.
+Three fixes to the camera and the basemap, all three visible on a 3D basemap: it no longer waits
+for the user's first gesture to apply — and then tilts the map under the finger —, it reaches the
+tilt it asks for, and re-framing the map keeps the angle instead of flattening it.
 
 **Highlights:**
+
+- **Fixed** — the default basemap could be applied only at the user's first gesture: the deferred
+  activation waited for the map's `idle` event, which a rich profile may never reach at boot. It
+  now applies as soon as the style has loaded.
+- **Fixed** — a basemap declaring `terrain.default3D` rendered essentially flat: its tilt was
+  animated, and the re-framing that follows the loading veil cut the animation. The tilt is now
+  set at once, behind the veil.
+- **Fixed** — re-framing the map (`fitBounds`) no longer resets a tilted camera to flat.
+
+Release v3.6.0 (2026-09-20) — three seams a host application was missing: the map stops claiming
+the page's language, and the authority behind a layer's visibility — plus the style it wears —
+can now be read, not guessed:
 
 - **New** — `ui.syncDocumentLang` lets a host keep its own `<html lang>`. The attribute is
   page-wide, so a map embedded in a form used to rewrite the locale of everything around it.

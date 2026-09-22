@@ -21,6 +21,10 @@
             "type": "string",
             "description": "Display label shown in the layer manager."
         },
+        "labels": {
+            "$ref": "#/definitions/labelConfig",
+            "description": "Map labels declared on the layer itself — the same object as a style file's `label`, with the same meaning. A style that carries its own `label` object keeps priority; this block applies otherwise, including when the default style file is missing. `visibleByDefault` defaults to false, as in a style file."
+        },
         "zIndex": {
             "type": "number",
             "description": "Rendering z-order. Higher values render on top."
@@ -592,6 +596,139 @@
         }
     ],
     "definitions": {
+        "labelConfig": {
+            "type": "object",
+            "description": "Label/text configuration for map features of this layer.",
+            "required": ["enabled"],
+            "additionalProperties": false,
+            "patternProperties": {
+                "^_comment": {}
+            },
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Enable/disable these labels."
+                },
+                "visibleByDefault": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Labels visible on layer load without user action."
+                },
+                "field": {
+                    "type": "string",
+                    "description": "GeoJSON properties field name to display as label text."
+                },
+                "font": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "patternProperties": {
+                        "^_comment": {}
+                    },
+                    "properties": {
+                        "family": {
+                            "type": "string",
+                            "default": "Arial"
+                        },
+                        "sizePt": {
+                            "type": "number",
+                            "minimum": 1,
+                            "maximum": 72,
+                            "default": 12,
+                            "description": "Label text size in points — LIVE (mapped to MapLibre text-size via _buildLabelSymbolLayout). The other font.* keys are not consumed by the MapLibre renderer."
+                        },
+                        "weight": {
+                            "type": "number",
+                            "minimum": 1,
+                            "maximum": 100,
+                            "default": 50
+                        },
+                        "bold": {
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "italic": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    }
+                },
+                "color": {
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$",
+                    "default": "#000000"
+                },
+                "opacity": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "default": 1
+                },
+                "buffer": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "patternProperties": {
+                        "^_comment": {}
+                    },
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "noFill": {
+                            "type": "boolean"
+                        },
+                        "color": {
+                            "type": "string",
+                            "pattern": "^#[0-9a-fA-F]{6}$",
+                            "default": "#ffffff"
+                        },
+                        "opacity": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 1
+                        },
+                        "sizePx": {
+                            "type": "number",
+                            "minimum": 0,
+                            "default": 2
+                        }
+                    }
+                },
+                "offset": {
+                    "type": "object",
+                    "description": "Label placement relative to the feature — LIVE (mapped to MapLibre text-anchor + text-radial-offset by _buildLabelOffsetLayout). Absent, or placement 'center', renders exactly as before: no anchor property is emitted at all.",
+                    "additionalProperties": false,
+                    "patternProperties": {
+                        "^_comment": {}
+                    },
+                    "properties": {
+                        "placement": {
+                            "type": "string",
+                            "enum": [
+                                "center",
+                                "top",
+                                "bottom",
+                                "left",
+                                "right",
+                                "top-left",
+                                "top-right",
+                                "bottom-left",
+                                "bottom-right"
+                            ],
+                            "default": "center",
+                            "description": "Side the LABEL sits on, NOT the MapLibre anchor (whose vocabulary is the opposite: a label above its feature anchors by its 'bottom'). The renderer holds the conversion table."
+                        },
+                        "distancePx": {
+                            "type": "number",
+                            "minimum": 0,
+                            "default": 12,
+                            "description": "Gap in CSS pixels between the feature and the nearest edge of the text box; converted to ems of text-size. Ignored when placement is 'center'. Rule of thumb: at least the marker radius plus 3 px, or half the drawn icon height. Below roughly 0.3 x text-size the engine's baseline correction cancels it out."
+                        }
+                    }
+                }
+            }
+        },
         "attributeChoice": {
             "type": "object",
             "additionalProperties": false,

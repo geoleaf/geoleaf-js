@@ -100,10 +100,13 @@
     cursor: pointer;
 }
 
+/* `--gl-color-on-accent` is defined by NO theme: it is a host hook. The role token is
+   `--gl-color-accent-contrast`, which every theme sets — reading the hook alone fell back
+   to white on every accent (1.46:1 on the light theme's). */
 .gl-boot-failure__button--primary {
     border-color: transparent;
     background: var(--gl-color-accent, #4fc3f7);
-    color: var(--gl-color-on-accent, #fff);
+    color: var(--gl-color-on-accent, var(--gl-color-accent-contrast, #fff));
 }
 
 .gl-boot-failure__button:focus-visible {

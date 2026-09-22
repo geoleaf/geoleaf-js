@@ -144,7 +144,12 @@ const GRANULAR_ENTRY = path.join(DIST, "esm", "bundle-esm-entry.js"); // bundler
 //
 // TWO budgets per plugin since 2026-08-02, because a plugin has TWO costs and
 // one number could not express both:
-//   - `boot`  — the ENTRY file alone: what a page pays to load the plugin.
+//   - `boot`  — the entry AND every chunk it imports statically: what a page pays to load the
+//               plugin. 🛑 It weighed the ENTRY ALONE until 22/09/2026, against the repo's own
+//               rule (the boot cost is the static closure, never the entry), and that blindness
+//               hid a lazy chunk that was not lazy: the editor's `manualChunks` predicate also
+//               captured its own adapter module, so the entry imported the whole Terra Draw chunk
+//               statically, from its first lazy-load commit on. The gate kept reading the entry.
 //   - `total` — every `.js` emitted in the plugin's `dist/`: what npm ships, lazy
 //               chunks included.
 // They are equal for the ten single-file plugins; they diverge for the three that split.
@@ -221,7 +226,12 @@ const PLUGIN_BUDGETS_GZ_KB = {
     // ⚠️ Was 48/55 against 47.9 measured — 0.1 KB from crying wolf, the tightest of the table.
     // A purge removed 337 LOC of dead read surface from `field-renderer`, which `editor`
     // is now the only package to inline — 47.9 → 47.0 boot, 94.3 → 93.4 total.
-    editor: { boot: { warn: 54, fail: 61 }, total: { warn: 108, fail: 122 } }, // 47.0 / 93.4
+    // 🛑 22/09/2026 — the boot became the static closure, and the "lazy" chunk was not: the
+    // entry imported it statically, 97.8 KB gz paid at load. The predicate fixed, the boot is
+    // the entry plus its own shared chunk; the adapter moved from the vendor chunk into it,
+    // hence the +1.5 KB, which was paid before too — inside the chunk. Budget NOT re-anchored:
+    // the bound was set for the entry the page really pays, and it still holds.
+    editor: { boot: { warn: 54, fail: 61 }, total: { warn: 108, fail: 122 } }, // 52.5 / 98.5
     // cog — geotiff.js. Minified at 6.3′: 161.8 → 99.7 KB gz.
     cog: { boot: { warn: 114, fail: 129 }, total: { warn: 114, fail: 129 } }, // 99.13
     // offline-ui (renamed from `storage` on 26/07/2026 — this key drifted for a
@@ -797,12 +807,17 @@ function checkOrphanStylesheets(name, file, log) {
 function checkPluginBundles(opts = {}) {
     const log = opts.log || defaultLog;
     assertBudgetKeysAlive();
-    log.section("📦 Budget bundle (plugins) — boot (entrée) + total (tout le dist/)");
+    log.section(
+        "📦 Budget bundle (plugins) — boot (entrée + imports statiques) + total (tout le dist/)"
+    );
 
     let allOk = true;
     for (const { name, file } of PLUGIN_BUNDLES) {
         const budget = PLUGIN_BUDGETS_GZ_KB[name] || PLUGIN_DEFAULT_GZ_KB;
-        const boot = gzipKB(file);
+        // The same walker as the core's boot: a static edge to a chunk is not laziness,
+        // whatever the chunk is called.
+        const eager = measureEagerBootAt(file, path.dirname(file));
+        const boot = eager ? eager.gz : null;
         if (boot == null) {
             log.warn(
                 `${name}: no built bundle at ${path.relative(ROOT, file)} — run a build first. Skipping.`
@@ -826,9 +841,14 @@ function checkPluginBundles(opts = {}) {
             ? ` [${weight.files.map((f) => `${f.name} ${f.gz.toFixed(1)}`).join(" · ")}]`
             : "";
 
+        // Which chunks the entry pulls in statically — "the boot is over" is not actionable,
+        // "the entry statically imports X" is.
+        const staticChunks = eager.chunkFiles.length
+            ? ` Statically imported: ${eager.chunkFiles.map((f) => path.basename(f)).join(", ")}.`
+            : "";
         if (bootVerdict === "fail") {
             log.err(
-                `${name}: boot ${boot.toFixed(1)} KB gz > ${budget.boot.fail} KB gz (fail). A heavy import likely leaked into the entry.${detail}`
+                `${name}: boot ${boot.toFixed(1)} KB gz > ${budget.boot.fail} KB gz (fail). A heavy import likely leaked into the entry.${staticChunks}${detail}`
             );
         } else if (bootVerdict === "warn") {
             log.warn(

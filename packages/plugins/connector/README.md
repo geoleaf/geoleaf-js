@@ -14,9 +14,8 @@ GeoJSON / WFS / REST fetch request.
 npm install @geoleaf-plugins/connector
 ```
 
-> **Important** — Requires `@geoleaf/core` v3.x. The core is declared in **`dependencies`**, not in
-> `peerDependencies`. This means npm may install a **second copy** of the core rather than reusing
-> yours; deduplicate if your bundler reports two instances.
+> **Important** — Requires `@geoleaf/core` v3.x, declared as a **peer dependency**: install it
+> yourself — the plugin uses your copy, and never bundles a second one.
 
 ---
 
@@ -49,6 +48,22 @@ Static token — scenario S6 in the table below, for development and public demo
 | S4       | `getToken: async () => await myAuth.get()`  | Async provider (any identity SDK)         |
 | S5       | `auth: { endpoint, ui: false }`             | Token preloaded in IDB — silent           |
 | S6       | `getToken: () => 'STATIC_DEV_TOKEN'`        | Non-sensitive data, public demo           |
+
+---
+
+## What the server must answer
+
+There are two modes, `getToken` and `auth`, and **no API-key mode**: a key is handed over by
+`getToken` and travels as `Authorization: Bearer <key>`. The exchange the `auth` mode expects —
+`POST {endpoint}` with `{ login, password }`, a `{ token, expiresIn }` answer, renewal at
+`POST {endpoint}/refresh` with the current token as Bearer, and how every status is read — is
+written once, in §3 of the
+[server contract](https://github.com/geoleaf/geoleaf-js/blob/main/packages/core/docs/SERVER_CONTRACT.md).
+
+A server that speaks another dialect — an OAuth 2 token endpoint answering `access_token`, a key
+read from a header of its own — is served in one of two ways, both described in §7.6 of the
+[security guide](https://github.com/geoleaf/geoleaf-js/blob/main/packages/core/docs/SECURITY.md):
+`getToken` with the page's own client, or a thin adapter on the server that answers the contract.
 
 ---
 
@@ -185,7 +200,9 @@ came before.
 
 - The token is **never** passed in a query string.
 - Passwords are wiped from memory after use (`OWASP A02`).
-- `baseUrl` must use HTTPS in production (an error is raised otherwise).
+- `baseUrl` must use HTTPS in production (an error is raised otherwise). `http://` is tolerated,
+  with a console warning, only when the page runs on a development host — `localhost`,
+  `*.localhost`, the loopback addresses, or a name under `.test`, reserved for testing (RFC 6761).
 - The modal's XSS sanitisation relies on `textContent` — no `innerHTML` with user data.
 - Vector tiles (MVT) get the token through `map.setTransformRequest()` (MapLibre bridge); PMTiles
   archives through `window.fetch`, which the `pmtiles` library reads them with.

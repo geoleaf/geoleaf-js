@@ -23,6 +23,7 @@ import { createLayerDropdown } from "./modal/layer-dropdown.js";
 import { attributesToFormSchema } from "./modal/attributes-to-form.js";
 import { dispatchEditorEvent } from "./editor-events.js";
 import { createTerraDrawAdapter } from "./drawing/terra-draw-adapter.js";
+import { loadOnce } from "./drawing/load-once.js";
 import type { TerraDrawAdapterInstance } from "./drawing/terra-draw-adapter.js";
 import { adapterCallbacks, initEventsBridge, dispatchFeatureConflict } from "./events.js";
 import type { EditorWiringContext } from "./events.js";
@@ -130,8 +131,9 @@ function _buildModalOpts(cfg: EditorConfig) {
 // Lazy instances — created on geoleaf:ready to avoid impacting TTI.
 let _formModal: ReturnType<typeof createEditorFormModal> | null = null;
 let _adapter: TerraDrawAdapterInstance | null = null;
-// Memoised loader promise so concurrent first-tool clicks load Terra Draw once.
-let _adapterPromise: Promise<TerraDrawAdapterInstance | null> | null = null;
+// Terra Draw is a lazy chunk, fetched on the first tool use: concurrent first clicks share one
+// attempt, and a failed one (offline, redeployed, no map yet) is forgotten — the next use retries.
+const _adapterLoader = loadOnce(() => _loadAdapter());
 let _persistence: EditorPersistenceAdapter | null = null;
 // Per-init context promoted to module scope so the extracted lifecycle helpers
 // below can read it at call time (closure on the variable, never a frozen value).
@@ -330,7 +332,9 @@ function _initMenu(): void {
             _setExclusiveMode(tool != null);
             // First activation lazy-loads Terra Draw (separate chunk); subsequent
             // calls resolve instantly. Arm the mode once the adapter is ready.
-            void _ensureAdapter().then((adapter) => adapter?.setMode(tool ?? null));
+            void _ensureAdapter()
+                .then((adapter) => adapter?.setMode(tool ?? null))
+                .catch(_onEngineUnavailable);
         },
         onUndo: undo,
         onRedo: redo,
@@ -342,12 +346,17 @@ function _initMenu(): void {
 // Lazily loads Terra Draw + creates and starts the adapter on first tool use.
 // Declared as a `function` statement (not a const arrow) so the menu's
 // onToolSelect closure can reference it regardless of textual position
-// (TDZ guard — see the lifecycle note above). Memoised via `_adapterPromise`
-// so concurrent first-tool clicks load the engine only once.
+// (TDZ guard — see the lifecycle note above). Shared through `_adapterLoader`:
+// concurrent first-tool clicks load the engine once, and a failure is retried.
 function _ensureAdapter(): Promise<TerraDrawAdapterInstance | null> {
-    if (_adapterPromise) return _adapterPromise;
-    _adapterPromise = _loadAdapter();
-    return _adapterPromise;
+    return _adapterLoader.get();
+}
+
+/** The engine's chunk could not be loaded: say so, and disarm the tool nothing would drive. */
+function _onEngineUnavailable(err: unknown): void {
+    console.warn("[editor] The drawing engine could not be loaded; try again once online.", err);
+    setEditorActiveTool(null);
+    _setExclusiveMode(false);
 }
 
 /**
@@ -363,7 +372,10 @@ function _ensureAdapter(): Promise<TerraDrawAdapterInstance | null> {
  * @returns whether the feature was really opened.
  */
 async function _editExistingFeature(layerId: string, featureId: string): Promise<boolean> {
-    const adapter = await _ensureAdapter();
+    const adapter = await _ensureAdapter().catch((err: unknown) => {
+        _onEngineUnavailable(err);
+        return null;
+    });
     if (!adapter) return false;
     setEditorActiveTool("select");
     _setExclusiveMode(true);
@@ -471,7 +483,7 @@ function _registerDestroyHook(): void {
         _adapter?.destroy();
         _formModal?.destroy();
         _adapter = null;
-        _adapterPromise = null;
+        _adapterLoader.reset();
         _formModal = null;
         _persistence = null;
         _reconcileDeps = null;

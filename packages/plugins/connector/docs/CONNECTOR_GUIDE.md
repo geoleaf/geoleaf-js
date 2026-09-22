@@ -214,7 +214,7 @@ document.addEventListener("geoleaf:connector:auth-error", (e) => {
 
 - Le token n'est **jamais** transmis en query string — uniquement via header `Authorization`
 - Les mots de passe sont effacés de la mémoire après utilisation (OWASP A02)
-- `baseUrl` doit utiliser HTTPS en production (erreur levée sinon)
+- `baseUrl` doit utiliser HTTPS en production (erreur levée sinon) ; `http://` n'est toléré, avec un avertissement, que si la page tourne sur un hôte de développement — `localhost`, `*.localhost`, boucle locale, ou un nom en `.test`, réservé aux tests (RFC 6761)
 - Sanitisation XSS de la modal : `textContent` uniquement — aucun `innerHTML` avec données utilisateur
 - Tuiles vectorielles (MVT) : jeton via `map.setTransformRequest()` (MapLibre bridge) ; archives PMTiles : via `window.fetch`, que la bibliothèque `pmtiles` emploie
 

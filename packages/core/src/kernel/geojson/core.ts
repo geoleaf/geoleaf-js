@@ -39,6 +39,7 @@ import {
 } from "./geojson-utils.ts";
 import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";
 import { bindZoomRangeSync } from "./layers/zoom-range-sync.js";
+import { WorkerManager } from "./worker-manager.js";
 import type {
     GeoJSONAdapter,
     GeoJSONInitOptions,
@@ -391,6 +392,42 @@ const GeoJSONModule = {
     loadFromActiveProfile(options: Record<string, unknown> = {}): Promise<unknown[]> {
         const Loader = getLoader();
         return Loader ? Loader.loadFromActiveProfile(options) : Promise.resolve([]);
+    },
+
+    // ──────────────────────────────────────────
+    //   WORKER
+    // ──────────────────────────────────────────
+
+    /**
+     * Sets the URL of the GeoJSON Web Worker script; `null` restores the default.
+     *
+     * By default the worker is `geojson-worker.js`, loaded from the directory of the GeoLeaf
+     * bundle as found once when the bundle loads — and the bundle's query string is not carried
+     * over. A host that serves its files under a content token (`?v=…`) with a long cache
+     * lifetime sets the worker's URL here, so that a new version of the library never runs
+     * against a cached worker from the previous one.
+     *
+     * - Call it once the bundle has loaded and before `GeoLeaf.boot()` to cover the first
+     *   worker. A URL set later applies to the next one: the worker is rebuilt after an idle
+     *   delay, and a running worker keeps its script until then.
+     * - The browser resolves the URL against the page, as `new Worker()` does, and it must be
+     *   same-origin: a browser refuses a cross-origin worker script, and GeoJSON is then fetched
+     *   on the main thread instead.
+     * - Setting a URL also clears an earlier worker failure, which had sent every later load to
+     *   the main thread for the rest of the session.
+     *
+     * Any other value than a non-empty string or `null` throws a `TypeError` — raised by the
+     * worker manager this member delegates to.
+     *
+     * @param url - A non-empty URL, or `null` for the default.
+     *
+     * @example
+     * ```js
+     * GeoLeaf?.GeoJSON?.setWorkerUrl("/assets/geoleaf/geojson-worker.js?v=3f9a2c");
+     * ```
+     */
+    setWorkerUrl(url: string | null): void {
+        WorkerManager.setWorkerUrl(url);
     },
 
     // ──────────────────────────────────────────

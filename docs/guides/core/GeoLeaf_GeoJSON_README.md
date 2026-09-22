@@ -7,10 +7,10 @@ Product Version: GeoLeaf Platform V3
 
 ---
 
-> **GeoJSON est un module INTERNE.**
-> Il n'existe pas de namespace public `GeoLeaf.GeoJSON` dans l'API.
-> Les couches GeoJSON sont configurées dans `profile.json` via la clé `geojsonLayers`
-> et gérées depuis l'API publique par `GeoLeaf.Legend`.
+> **Le module est interne ; sa façade, `GeoLeaf.GeoJSON`, est publique** — globale uniquement,
+> pas un export ESM nommé (voir la [référence d'API](../../../packages/core/docs/API_REFERENCE.md)).
+> Les couches se déclarent dans le profil : `layers.json` en dresse la liste, et chaque entrée
+> pointe le fichier de configuration de sa couche.
 
 ---
 
@@ -294,7 +294,9 @@ map.on("geoleaf:geojson:layers-loaded", (e) => {
 - Recommandation : 3–5 couches max pour performances optimales
 - Pas de limite technique de features, mais surveiller les performances si > 5 000 features/couche
 - Utiliser le clustering MapLibre natif pour les couches POI denses
-- Le Web Worker (`geojson-worker.ts`) traite les opérations lourdes (calcul de bounds, filtrage de features) hors du thread principal
+- Le Web Worker (`geojson-worker.ts`) récupère et parse le GeoJSON hors du thread principal, puis le
+  rend par tranches ; il ne calcule ni emprise ni filtre. Son URL se règle par
+  `GeoLeaf.GeoJSON.setWorkerUrl()` (3.7.0)
 
 ---
 

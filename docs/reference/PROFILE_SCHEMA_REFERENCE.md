@@ -285,6 +285,27 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `id` | string | oui | — | — | Unique layer identifier. Must match the key in layers.json. |
 | `interactiveShape` | boolean | — | — | — | Whether features are clickable/hoverable. |
 | `label` | string | — | — | — | Display label shown in the layer manager. |
+| `labels` | `labelConfig` | — | — | — | Map labels declared on the layer itself — the same object as a style file's `label`, with the same meaning. A style that carries its own `label` object keeps priority; this block applies otherwise, including when the default style file is missing. `visibleByDefault` defaults to false, as in a style file. |
+| `labels.buffer` | object | — | — | — | — |
+| `labels.buffer.color` | string | — | `"#ffffff"` | — | — |
+| `labels.buffer.enabled` | boolean | — | `false` | — | — |
+| `labels.buffer.noFill` | boolean | — | — | — | — |
+| `labels.buffer.opacity` | number | — | `1` | — | — |
+| `labels.buffer.sizePx` | number | — | `2` | — | — |
+| `labels.color` | string | — | `"#000000"` | — | — |
+| `labels.enabled` | boolean | oui | — | — | Enable/disable these labels. |
+| `labels.field` | string | — | — | — | GeoJSON properties field name to display as label text. |
+| `labels.font` | object | — | — | — | — |
+| `labels.font.bold` | boolean | — | `false` | — | — |
+| `labels.font.family` | string | — | `"Arial"` | — | — |
+| `labels.font.italic` | boolean | — | `false` | — | — |
+| `labels.font.sizePt` | number | — | `12` | — | Label text size in points — LIVE (mapped to MapLibre text-size via _buildLabelSymbolLayout). The other font.* keys are not consumed by the MapLibre renderer. |
+| `labels.font.weight` | number | — | `50` | — | — |
+| `labels.offset` | object | — | — | — | Label placement relative to the feature — LIVE (mapped to MapLibre text-anchor + text-radial-offset by _buildLabelOffsetLayout). Absent, or placement 'center', renders exactly as before: no anchor property is emitted at all. |
+| `labels.offset.distancePx` | number | — | `12` | — | Gap in CSS pixels between the feature and the nearest edge of the text box; converted to ems of text-size. Ignored when placement is 'center'. Rule of thumb: at least the marker radius plus 3 px, or half the drawn icon height. Below roughly 0.3 x text-size the engine's baseline correction cancels it out. |
+| `labels.offset.placement` | string | — | `"center"` | "center" \| "top" \| "bottom" \| "left" \| "right" \| "top-left" \| "top-right" \| "bottom-left" \| "bottom-right" | Side the LABEL sits on, NOT the MapLibre anchor (whose vocabulary is the opposite: a label above its feature anchors by its 'bottom'). The renderer holds the conversion table. |
+| `labels.opacity` | number | — | `1` | — | — |
+| `labels.visibleByDefault` | boolean | — | `false` | — | Labels visible on layer load without user action. |
 | `legends` | object | — | — | — | Legend file references for this layer (unused by current profiles). |
 | `legends.default` | string | — | — | — | Filename of the default legend. |
 | `legends.directory` | string | — | `"legends"` | — | Relative directory containing legend JSON files. |
@@ -451,7 +472,7 @@ Style definition for a GeoLeaf layer (flat format). Used in layers/*/styles/*.js
 | `label.buffer.opacity` | number | — | `1` | — | — |
 | `label.buffer.sizePx` | number | — | `2` | — | — |
 | `label.color` | string | — | `"#000000"` | — | — |
-| `label.enabled` | boolean | oui | — | — | Enable/disable labels for this style. |
+| `label.enabled` | boolean | oui | — | — | Enable/disable these labels. |
 | `label.field` | string | — | — | — | GeoJSON properties field name to display as label text. |
 | `label.font` | object | — | — | — | — |
 | `label.font.bold` | boolean | — | `false` | — | — |

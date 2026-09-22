@@ -159,28 +159,40 @@ npm install @geoleaf-plugins/connector
 
 ```js
 import "@geoleaf/core";
-import "@geoleaf-plugins/connector"; // interceptor active immediately
+import "@geoleaf-plugins/connector"; // mounts GeoLeaf.Connector — nothing is intercepted before configure()
 
-// Configure authentication for a source
-GeoLeaf.Connector.configure({
+// Mode 1 — the page owns the session and hands the token over at each request
+await GeoLeaf.Connector.configure({
     baseUrl: "https://api.example.com",
-    auth: {
-        type: "bearer",
-        token: () => localStorage.getItem("access_token"),
-    },
+    getToken: async () => identityClient.currentToken(),
+});
+
+// Mode 2 — a login route on the server, with the plugin's login window
+await GeoLeaf.Connector.configure({
+    baseUrl: "https://api.example.com",
+    auth: { endpoint: "https://api.example.com/auth/login", ui: true },
 });
 ```
 
 ### Configuration parameters
 
-| Parameter         | Type      | Description                                                       |
-| ----------------- | --------- | ----------------------------------------------------------------- |
-| `baseUrl`         | string    | Base URL to intercept                                             |
-| `auth.type`       | string    | `"bearer"` / `"apikey"` / `"cookie"`                              |
-| `auth.token`      | string/fn | Static token, or a function returning the token dynamically       |
-| `auth.headerName` | string    | Header name (default: `"Authorization"` for bearer, configurable) |
+| Parameter       | Type     | Description                                                                                                                                                                                               |
+| --------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `baseUrl`       | string   | Requests under this URL carry `Authorization: Bearer <token>`. HTTPS; `http://` is tolerated only when the page runs on a development host — `localhost`, `*.localhost`, the loopback addresses, `*.test` |
+| `getToken`      | function | Mode 1 — returns the token, or a promise of it, at each request; `null` sends none                                                                                                                        |
+| `auth.endpoint` | string   | Mode 2 — the login route: `POST { login, password }` answered by `{ token, expiresIn }`; renewal at `{endpoint}/refresh`                                                                                  |
+| `auth.ui`       | boolean  | Mode 2 — the plugin renders the login window                                                                                                                                                              |
 
-> The `auth.token` option accepts a static value or a synchronous/asynchronous function — useful for tokens that refresh automatically.
+> ⚠️ **`getToken` and `auth` are mutually exclusive, and there is no third mode.** An API key is
+> handed over by `getToken` and travels as `Authorization: Bearer <key>`; no option changes the
+> header. What the server must answer — sign-in, renewal, every status — is written once, in §3
+> of the [server contract](./SERVER_CONTRACT.md). A server that speaks another dialect — an OAuth 2
+> token endpoint, a key in a header of its own — goes through `getToken` with its own client, or
+> through a thin adapter on its side: §7.6 of the [security guide](./SECURITY.md).
+>
+> This section used to document `auth.type` (`"bearer"` / `"apikey"` / `"cookie"`), `auth.token`
+> and `auth.headerName`. **None of these options has ever existed**: such a configuration fails
+> with `auth.endpoint must be a non-empty string`.
 
 ---
 

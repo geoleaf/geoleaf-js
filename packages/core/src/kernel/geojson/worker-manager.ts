@@ -16,6 +16,8 @@
  *   - Automatic Worker teardown after an idle delay
  *   - Per-URL request headers from a plugin's hook (`__GEOLEAF_WORKER_HEADERS_HOOK__`), which
  *     may answer with a promise — see `WorkerHeadersHook` below
+ *   - A Worker URL the host sets (`setWorkerUrl`, public as `GeoLeaf.GeoJSON.setWorkerUrl`),
+ *     read at every construction; by default the script next to the bundle
  */
 
 import { getLog } from "../../utils/general/di-accessors.js";
@@ -144,6 +146,22 @@ function _detectScriptBase() {
 const _scriptBase = _detectScriptBase();
 
 /**
+ * The Worker URL a host set through {@link WorkerManager.setWorkerUrl}, or `null` for the
+ * default (`_scriptBase` + {@link WORKER_FILENAME}).
+ *
+ * ⚠️ Read at EVERY construction, never captured: the default is computed once, when this module
+ * loads, but a host only knows its own URL — the one carrying its content token (`?v=`) — once
+ * the bundle has loaded. The worker is also rebuilt after its idle teardown, and that rebuild must
+ * see a URL set in between.
+ */
+let _workerUrlOverride: string | null = null;
+
+/** The URL the next Worker is built from: the host's, else the one next to the bundle. */
+function _resolveWorkerUrl(): string {
+    return _workerUrlOverride ?? _scriptBase + WORKER_FILENAME;
+}
+
+/**
  * Internal manager state.
  * @private
  */
@@ -174,8 +192,9 @@ function _createWorker() {
     if (_state.worker) return _state.worker;
 
     try {
-        // Resolve the Worker URL relative to the GeoLeaf script (not the page HTML)
-        const workerUrl = _scriptBase + WORKER_FILENAME;
+        // The host's URL when it set one; otherwise resolved relative to the GeoLeaf script
+        // (not the page HTML).
+        const workerUrl = _resolveWorkerUrl();
         const worker = new Worker(workerUrl);
 
         worker.onmessage = _onMessage;
@@ -353,9 +372,7 @@ function _onMessage(event: MessageEvent) {
  */
 function _onError(err: ErrorEvent) {
     const details =
-        err.message ||
-        err.filename ||
-        "unknown (possible 404 on " + _scriptBase + WORKER_FILENAME + ")";
+        err.message || err.filename || "unknown (possible 404 on " + _resolveWorkerUrl() + ")";
     getLog().error("[WorkerManager] Worker error:", details);
     // Reject every in-flight request → fall back to the main thread
     _state.pending.forEach(function (entry: PendingEntry) {
@@ -541,6 +558,29 @@ const WorkerManager = {
      */
     isAvailable: function () {
         return _state.workerAvailable && typeof Worker !== "undefined";
+    },
+
+    /**
+     * Sets the URL the Worker is built from; `null` restores the default, next to the bundle.
+     *
+     * Applies to the NEXT construction: a Worker already running keeps its script until it is
+     * torn down (idle timeout, `dispose()`, or an error). A URL set here survives `dispose()` —
+     * it is configuration, not state. Setting one also clears an earlier failure: a Worker error
+     * had sent every later load to the main thread, and a new URL is a new attempt.
+     *
+     * @param url - A non-empty URL — resolved by the browser against the page, as `new Worker`
+     *   does — or `null`.
+     * @throws {TypeError} For any other value.
+     */
+    setWorkerUrl: function (url: string | null): void {
+        if (url !== null && (typeof url !== "string" || url.trim() === "")) {
+            throw new TypeError(
+                "[GeoLeaf.GeoJSON] setWorkerUrl() expects a non-empty string, or null to " +
+                    "restore the default."
+            );
+        }
+        _workerUrlOverride = url;
+        _state.workerAvailable = true;
     },
 
     /**

@@ -231,6 +231,9 @@
    Rendered by the SHARED dispatch table, so these rules must hold on both surfaces —
    hence no `.maplibregl-popup-content` ancestor here.
    ------------------------------------------------------------ */
+    /* `--gl-color-on-accent` is defined by NO theme: it is a host hook. The role token is
+       `--gl-color-accent-contrast`, which every theme sets — reading the hook alone fell back
+       to white on every accent (1.46:1 on the light theme's). */
     .gl-poi-popup__action {
         align-self: flex-start;
         margin-top: 0.35rem;
@@ -238,7 +241,7 @@
         font: inherit;
         font-size: 0.8rem;
         font-weight: 600;
-        color: var(--gl-color-on-accent, #fff);
+        color: var(--gl-color-on-accent, var(--gl-color-accent-contrast, #fff));
         background: var(--gl-color-accent);
         border: 1px solid transparent;
         border-radius: var(--gl-radius-small, 4px);
@@ -276,7 +279,7 @@
    the note above describes. `--secondary` and `--danger` are outlined, as they were before
    the extraction. */
     .gl-poi-popup__action--primary {
-        color: var(--gl-color-on-accent, #fff);
+        color: var(--gl-color-on-accent, var(--gl-color-accent-contrast, #fff));
         background: var(--gl-color-accent);
     }
 

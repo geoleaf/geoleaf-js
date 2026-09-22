@@ -11,6 +11,7 @@
  */
 
 import { GeoJSONShared } from "../shared.js";
+import { resolveLayerLabelConfig } from "../layer-labels.js";
 import { getLog } from "../../../utils/general/di-accessors.js";
 import { getGeoLeaf } from "../../../utils/general/geoleaf-global.js";
 import { calculateMapScale, isScaleInRange } from "../../../utils/general/scale-utils.js";
@@ -120,9 +121,7 @@ LayerManager.showLayer = function (layerId: string) {
         const Labels = GeoLeaf?.Labels as LabelsLike | undefined;
         if (Labels && Labels.hasLabelConfig(layerId)) {
             // Check whether visibleByDefault is true for those labels
-            const visibleByDefault =
-                (layerData.currentStyle?.label as { visibleByDefault?: boolean } | undefined)
-                    ?.visibleByDefault === true;
+            const visibleByDefault = resolveLayerLabelConfig(layerData)?.visibleByDefault === true;
 
             if (visibleByDefault) {
                 // Enable and show the labels straight away

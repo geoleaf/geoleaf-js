@@ -1123,6 +1123,13 @@ declare global {
             getLayerById?(id: string): unknown;
             getAllLayers(): unknown;
             getLayerData?(id: string): unknown;
+            /**
+             * Sets the URL of the GeoJSON Web Worker script — `null` restores the default, the
+             * `geojson-worker.js` next to the bundle. Applies to the next worker built; call it
+             * before `GeoLeaf.boot()` to cover the first one. Throws a `TypeError` on any value
+             * other than a non-empty string or `null`.
+             */
+            setWorkerUrl?(url: string | null): void;
             // ⚠️ `addData` was DECLARED HERE and NEVER existed on this facade
             // (removed on 09/08/2026). `kernel/geojson/core.ts` does not carry it, and
             // the post-boot oracle `namespace-surface.mjs` does not list it. Since

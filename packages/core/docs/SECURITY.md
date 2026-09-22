@@ -171,13 +171,13 @@ server sent it, without a renewal and without `geoleaf:connector:auth-error`.
 
 **Security constraints enforced by the code:**
 
-| Constraint                   | Behaviour                                                                                                        |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| HTTPS required in production | `ConfigError` thrown if `baseUrl` uses HTTP outside `localhost`/`127.0.0.1`                                      |
-| Token in the header only     | `Authorization: Bearer {token}` — never in a query string                                                        |
-| Password wiped after use     | String overwritten in memory post-login (OWASP A02)                                                              |
-| Non-JWT token                | `console.warn` if the token contains no `.` — **only in `getToken` callback mode** (not in `auth.endpoint` mode) |
-| Modal XSS                    | `textContent` only in the login modal — no `innerHTML` with user data                                            |
+| Constraint                   | Behaviour                                                                                                                                |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| HTTPS required in production | `ConfigError` thrown if `baseUrl` uses HTTP while the page is not on a development host — `localhost`, `*.localhost`, loopback, `*.test` |
+| Token in the header only     | `Authorization: Bearer {token}` — never in a query string                                                                                |
+| Password wiped after use     | String overwritten in memory post-login (OWASP A02)                                                                                      |
+| Non-JWT token                | `console.warn` if the token contains no `.` — **only in `getToken` callback mode** (not in `auth.endpoint` mode)                         |
+| Modal XSS                    | `textContent` only in the login modal — no `innerHTML` with user data                                                                    |
 
 ---
 

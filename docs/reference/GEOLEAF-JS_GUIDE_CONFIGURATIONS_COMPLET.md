@@ -528,6 +528,28 @@ permet de surcharger n'importe quel champ ») :
 | 108 | `clustering.maxClusterRadius`        | number  | Rayon de clustering   | Distance en pixels en deçà de laquelle deux marqueurs sont regroupés dans le même cluster. Une valeur élevée (ex. 120) regroupe plus agressivement, une valeur basse (ex. 40) laisse plus de marqueurs individuels. La valeur optimale dépend de la densité des données et de la taille de la carte.                                                     |
 | 109 | `clustering.disableClusteringAtZoom` | number  | Zoom de désactivation | Niveau de zoom à partir duquel le clustering est désactivé et tous les marqueurs sont affichés individuellement. Par exemple `18` signifie qu'au zoom maximum (niveau rue), chaque marqueur est visible. Cela garantit que l'utilisateur peut toujours accéder à chaque POI individuellement en zoomant suffisamment.                                    |
 
+### 7.10 Section `labels`
+
+Les libellés d'une couche se déclarent d'ordinaire dans son fichier de style (§8.4). Ils peuvent
+aussi se déclarer **sur la couche elle-même**, par un bloc `labels` : même objet, mêmes clés, même
+sens que le `label` d'un style.
+
+```json
+{
+    "id": "parcels",
+    "styles": { "default": "defaut.json" },
+    "labels": { "enabled": true, "field": "name", "visibleByDefault": true }
+}
+```
+
+| #    | Paramètre | Type   | Description           | Description longue                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ---- | --------- | ------ | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 109a | `labels`  | object | Libellés de la couche | Mêmes clés que le `label` d'un style (§8.4) : `enabled` (requis), `field`, `visibleByDefault`, `font`, `color`, `opacity`, `buffer`, `offset`. **Un style qui porte son propre objet `label` reste prioritaire** ; ce bloc s'applique sinon — y compris quand `styles.default` pointe un fichier absent et que la couche s'affiche en style neutre. `visibleByDefault` vaut `false` par défaut, comme dans un style : les libellés existent, et le bouton du gestionnaire de couches les affiche. |
+
+> ⚠️ **Avant 3.7.0, ce bloc ne faisait que déclencher l'initialisation des libellés**, puis n'était
+> lu par personne : une couche sans style n'affichait rien, et son bouton de libellés restait
+> grisé. L'échelle des libellés (`labelScale`, §8.3) reste une clé de style.
+
 ---
 
 ## 8. Configuration d'un style

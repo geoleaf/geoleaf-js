@@ -4,7 +4,7 @@ title: editor — le plugin d'édition UNIQUE : géométries, capture de POI, pe
 plugin_id: editor
 package: "@geoleaf-plugins/editor"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: d5e5cc6af
+verifie_contre: abb5c4b57
 date: 17 septembre 2026
 ---
 
@@ -60,6 +60,26 @@ Il porte **deux stratégies de capture**, choisies selon le besoin et non selon 
 | -------------- | ---------------------------------------------- | ----------------------------------------- |
 | **point**      | un marqueur natif, sans Terra Draw             | **zéro** dépendance de dessin             |
 | **Terra Draw** | ligne, polygone, sélection, édition de sommets | chargé **à la demande**, au premier outil |
+
+🛑 **« À la demande » n'était pas vrai avant la 1.4.1, et cette table le disait quand même.** Le
+source l'écrivait bien — `import()` dans `drawing/terra-draw-adapter.ts` —, mais le prédicat
+`manualChunks` de `rollup.config.mjs` (`id.includes("terra-draw")`) capturait aussi ce fichier du
+plugin, et avec lui ses dépendances : l'entrée l'important statiquement, elle importait tout le
+chunk du moteur, et l'`import()` interne se compilait en `Promise.resolve()`. Le prédicat est
+désormais ancré sur `node_modules`, et `size -- --plugins` pèse la clôture statique de l'entrée
+— c'est ce qui aurait vu le défaut dès le premier jour.
+
+⚠️ **Conséquences, écrites plutôt que découvertes :**
+
+- un hôte qui charge le greffon AVANT le boot (pour garder son créneau de barre d'outils) n'a plus
+  le moteur en mémoire : le premier tracé le télécharge, donc demande le réseau ou un cache ;
+- ce téléchargement peut échouer — hors réseau, ou chunk disparu après un redéploiement. Un échec
+  n'est plus mémorisé (`drawing/load-once.ts`) : il est signalé en console, l'outil armé est
+  désarmé, et l'usage suivant réessaie ;
+- l'entrée publiée `geoleaf-editor.plugin.js` est une façade vers un chunk `entry` à empreinte de
+  contenu : Rollup la crée parce que le chunk paresseux des modes partage des modules avec
+  l'entrée. Tout `dist/geoleaf-editor.*.js` doit donc être déployé ensemble — ce que
+  `build-deploy.cjs` fait déjà (`lazyChunks: true`).
 
 ⚠️ **Le « Terra Draw lite » n'a pas été écrit : il existait déjà** dans `addpoi`, sous la forme
 d'un placement par marqueur MapLibre natif. La fusion l'a **gardé** comme stratégie « point »

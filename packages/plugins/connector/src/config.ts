@@ -127,12 +127,42 @@ export function validateConfig(config: ConnectorConfig): void {
     _normalizeIconVariant(config);
 }
 
-/** True when running on a local dev host (localhost / 127.0.0.1), where http:// is tolerated. */
-function _isDevHost(): boolean {
+/**
+ * Whether `hostname` can only be a development host — never one a production page is served
+ * from — so that `http://` may be tolerated there.
+ *
+ * The rule exists to keep the token out of cleartext in production; it tolerates a name ONLY
+ * when no production host can carry it:
+ * - `localhost`, `*.localhost`, the IPv4 loopback range `127.0.0.0/8` and `::1` — the hosts a
+ *   browser itself treats as potentially trustworthy (secure contexts);
+ * - `*.test` — reserved for testing by RFC 6761 and never delegated in the public DNS, so a name
+ *   under it resolves only through the operator's own configuration.
+ *
+ * ⚠️ `.local` is deliberately NOT in the list: it names real intranets, production included.
+ * And the suffix is matched WITH its dot — `latest` or `localhost.example.com` are not hosts of
+ * development.
+ */
+function _isDevHostname(hostname: string): boolean {
+    const host = hostname.toLowerCase().replace(/\.$/, "");
     return (
-        typeof location !== "undefined" &&
-        (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+        host === "localhost" ||
+        host.endsWith(".localhost") ||
+        host.endsWith(".test") ||
+        _isLoopbackIPv4(host) ||
+        host === "[::1]" ||
+        host === "::1"
     );
+}
+
+/** `127.0.0.0/8` — split rather than one regex, which would nest a quantifier in a group. */
+function _isLoopbackIPv4(host: string): boolean {
+    const parts = host.split(".");
+    return parts.length === 4 && parts[0] === "127" && parts.every((p) => /^\d{1,3}$/.test(p));
+}
+
+/** True when the page runs on a development host (see `_isDevHostname`), where http:// is tolerated. */
+function _isDevHost(): boolean {
+    return typeof location !== "undefined" && _isDevHostname(location.hostname);
 }
 
 /** Validates `baseUrl`: non-empty string + HTTPS enforcement (OWASP A05). */
@@ -190,7 +220,7 @@ function _normalizeIconVariant(config: ConnectorConfig): void {
 
 /**
  * Validates an optional external URL field.
- * Must start with https:// in production. http:// allowed on localhost/127.0.0.1.
+ * Must start with https:// in production; http:// is tolerated on a development host.
  */
 function _validateExternalUrl(url: string | undefined, fieldName: string): void {
     if (url === undefined || url === null) return;

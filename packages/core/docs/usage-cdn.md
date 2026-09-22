@@ -52,11 +52,11 @@ shim is a file.
 </script>
 
 <!-- GeoLeaf styles -->
-<link rel="stylesheet" href="https://unpkg.com/@geoleaf/core@3.6.0/dist/geoleaf-main.min.css" />
+<link rel="stylesheet" href="https://unpkg.com/@geoleaf/core@3.6.1/dist/geoleaf-main.min.css" />
 
 <!-- GeoLeaf ESM (via script type="module") -->
 <script type="module">
-    import { Core } from "https://unpkg.com/@geoleaf/core@3.6.0/dist/geoleaf.esm.js";
+    import { Core } from "https://unpkg.com/@geoleaf/core@3.6.1/dist/geoleaf.esm.js";
     // ...
 </script>
 ```
@@ -76,12 +76,12 @@ shim is a file.
 <!-- GeoLeaf styles -->
 <link
     rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.6.0/dist/geoleaf-main.min.css"
+    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.6.1/dist/geoleaf-main.min.css"
 />
 
 <!-- GeoLeaf ESM -->
 <script type="module">
-    import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.6.0/dist/geoleaf.esm.js";
+    import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.6.1/dist/geoleaf.esm.js";
     // ...
 </script>
 ```
@@ -157,7 +157,7 @@ Core.init({
         <!-- GeoLeaf styles -->
         <link
             rel="stylesheet"
-            href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.6.0/dist/geoleaf-main.min.css"
+            href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.6.1/dist/geoleaf-main.min.css"
         />
 
         <style>
@@ -177,7 +177,7 @@ Core.init({
         <div id="geoleaf-map"></div>
 
         <script type="module">
-            import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.6.0/dist/geoleaf.esm.js";
+            import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.6.1/dist/geoleaf.esm.js";
 
             document.addEventListener("DOMContentLoaded", () => {
                 Core.init({
@@ -250,6 +250,15 @@ loaded through a URL at runtime, never through an `import`. Neither of the two e
 when absent looks like "a file is missing" — offline support simply stops working.
 
 :::
+
+`geojson-worker.js` is looked up next to `geoleaf.esm.js`, **without** its query string: a
+`?v=` on the bundle does not reach the worker. If you serve files under a content token with a
+long cache lifetime, set the worker's URL yourself, after the bundle has loaded and before
+`GeoLeaf.boot()`:
+
+```js
+GeoLeaf.GeoJSON.setWorkerUrl("/assets/geoleaf/geojson-worker.js?v=3f9a2c");
+```
 
 ::: danger
 

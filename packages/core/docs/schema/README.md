@@ -199,8 +199,8 @@ The `label` property in a style file can be either a string (display name) or an
             "paddingPx": 3
         },
         "offset": {
-            "distancePx": 8,
-            "angleDeg": 0
+            "placement": "top",
+            "distancePx": 8
         }
     }
 }

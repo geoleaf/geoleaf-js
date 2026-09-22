@@ -89,21 +89,22 @@ Enables labels for a layer. **Asynchronous method.**
 **Parameters**:
 
 - `layerId` (String) - ID of the GeoJSON layer
-- `labelConfig` (Object, optional) - Label configuration (see [Configuration in profile.json](#configuration-in-profilejson))
-- `showImmediately` (Boolean, optional) - Display immediately without waiting for the zoom (default: `false`)
+- `labelConfig` (Object, optional) - Used only when the layer DECLARES no label configuration
+  (neither in its style nor in its config — see [Configuration on the layer](#configuration-on-the-layer)):
+  `enabled` and `labelId` (the property displayed) are then required; `minZoom` and `maxZoom`
+  apply only together.
+- `showImmediately` (Boolean, optional) - Display at once (default: `true`). A declared
+  `visibleByDefault` takes precedence over it.
 
 ```js
-// Simple activation
+// A layer whose style or config declares its labels: nothing else to pass
 await GeoLeaf.Labels.enableLabels("poi_restaurants");
 
-// With an inline config
-await GeoLeaf.Labels.enableLabels("poi_restaurants", {
-    property: "name",
-    minZoom: 14,
-});
+// A layer that declares none: the inline configuration
+await GeoLeaf.Labels.enableLabels("poi_hotels", { enabled: true, labelId: "name" });
 
-// Immediate display
-await GeoLeaf.Labels.enableLabels("poi_hotels", { property: "name" }, true);
+// Prepared, but not shown until toggled
+await GeoLeaf.Labels.enableLabels("poi_hotels", { enabled: true, labelId: "name" }, false);
 ```
 
 ---
@@ -162,154 +163,84 @@ GeoLeaf.Labels.refreshLabels("poi_restaurants");
 
 ---
 
-## Configuration in profile.json
+## Configuration on the layer
 
-Labels can be configured directly in the profile file:
+Labels are usually declared in the layer's style file ([below](#label-configuration-in-style-files)).
+Since v3.7.0 a layer's config file (`layers/<id>/<id>_config.json`, or a `Layers.create()`
+definition) may also declare them itself, in a `labels` block — the **same object, with the same
+meaning**, as a style file's `label`:
 
 ```json
 {
-    "geojsonLayers": [
-        {
-            "id": "poi_restaurants",
-
-            "name": "Restaurants",
-
-            "source": "data/restaurants.geojson",
-
-            "labels": {
-                "enabled": true,
-
-                "property": "name",
-
-                "minZoom": 14,
-
-                "direction": "top",
-
-                "styleFile": "styles/labels/restaurants.css"
-            }
-        },
-
-        {
-            "id": "tourism_routes",
-
-            "name": "Itinéraires touristiques",
-
-            "source": "data/routes.geojson",
-
-            "labels": {
-                "enabled": true,
-
-                "template": "{name} - {distance}km",
-
-                "minZoom": 12,
-
-                "className": "route-label"
-            }
-        }
-    ]
+    "id": "poi_restaurants",
+    "styles": { "default": "defaut.json" },
+    "labels": {
+        "enabled": true,
+        "visibleByDefault": true,
+        "field": "name",
+        "offset": { "placement": "top", "distancePx": 8 }
+    }
 }
 ```
+
+- A style that carries its own `label` object **keeps priority**; the layer's block applies
+  otherwise — including when the default style file is missing and the layer is drawn with the
+  neutral style.
+- `visibleByDefault` defaults to `false`, as in a style file: the labels exist, and the layer
+  manager's labels button shows them.
+- The zoom window of labels (`labelScale`) stays a style-file key.
+
+> ⚠️ **An older form of this block was documented here, and none of it was ever read**:
+> `property`, `template`, `minZoom`, `direction`, `className` and `styleFile`, under a
+> `geojsonLayers` array. None of these keys reaches the renderer, and `styleFile` is refused
+> outright (`Obsolete configuration: labels.styleFile`). Before v3.7.0 the block itself only
+> TRIGGERED the labels' initialisation; nothing read its content.
 
 ---
 
 ## Usage examples
 
-### Example 1: simple labels
+### Example 1: labels declared by the style or the layer — nothing to call
+
+When a layer's style file declares its `label` object — or, since v3.7.0, its config declares a
+`labels` block ([above](#configuration-on-the-layer)) — the loader initialises the labels itself.
+No call is needed: the layer manager's labels button shows and hides them.
+
+### Example 2: labels on a layer that declares none
 
 ```js
-// Initialise the module
-
-GeoLeaf.Labels.init();
-
-// Load a GeoJSON layer
-
-/* GeoLeaf.GeoJSON is internal - configure through geojsonLayers in geoleaf.config.json */ // Enable labels on the cities layer
-
 await GeoLeaf.Labels.enableLabels("cities", {
-    property: "name",
+    enabled: true,
+    labelId: "name",
     minZoom: 10,
-    direction: "center",
+    maxZoom: 18,
 });
 ```
 
-### Example 2: labels with a function template
+- `enabled` and `labelId` are both required; `labelId` names the feature property displayed.
+- `minZoom` and `maxZoom` apply only when both are given.
+- The labels show at once, unless the third argument is `false`.
+- ⚠️ A label configuration the layer DECLARES — in its style or its config — takes precedence
+  over these options, and a declared `enabled: false` wins over them too.
+
+### Example 3: toggling from your own control
 
 ```js
-await GeoLeaf.Labels.enableLabels("poi_shops", {
-    template: (props) => {
-        const icon = props.type === "grocery" ? "🛒" : "🏪";
-        return `${icon} ${props.name}`;
-    },
-    minZoom: 15,
-    className: "shop-label",
-});
+const shown = GeoLeaf.Labels.toggleLabels("cities"); // true when now shown
 ```
 
-### Example 3: labels driven by zoom
-
-```js
-const map = GeoLeaf.Core.getMap();
-
-map.on("zoomend", () => {
-    const zoom = map.getZoom();
-
-    if (zoom >= 14) {
-        GeoLeaf.Labels.enableLabels("poi_restaurants", {
-            property: "name",
-        });
-    } else {
-        GeoLeaf.Labels.disableLabels("poi_restaurants");
-    }
-});
-```
-
-### Example 4: multilingual labels
-
-```js
-const currentLang = localStorage.getItem("language") || "fr";
-
-await GeoLeaf.Labels.enableLabels("poi_museums", {
-    template: (props) => props[`name_${currentLang}`] || props.name,
-    minZoom: 13,
-});
-```
+`toggleLabels` acts only on a layer whose labels are declared — by its style or its config.
 
 ---
 
-## Custom CSS styles
+## Label styling
 
-### Structure of a style file
-
-```css
-/* styles/labels/custom.css */
-
-/* Base label style (custom GeoLeaf class) */
-.gl-label.custom-label {
-    background: rgba(0, 0, 0, 0.8);
-    border: 2px solid #fff;
-    border-radius: 4px;
-    color: white;
-    font-weight: bold;
-    font-size: 12px;
-    padding: 4px 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-}
-
-.gl-label.custom-label.highlighted {
-    background: rgba(255, 140, 0, 0.9);
-    border-color: #ff8c00;
-}
-```
-
-### Applying the style
-
-```js
-await GeoLeaf.Labels.enableLabels("my_layer", {
-    property: "name",
-    styleFile: "styles/labels/custom.css",
-    className: "custom-label",
-});
-```
+Labels are rendered as a MapLibre symbol layer: their look is declared in the label object — the
+style file's `label`, or the layer's `labels` block — never in CSS. `font.sizePt`, `color`,
+`opacity`, `buffer` and `offset` reach the renderer; see the table below for the keys the schema
+accepts. There is no label stylesheet: `styleFile` is refused
+(`Obsolete configuration: labels.styleFile`), and `template`, `property`, `direction` and
+`className`, which older versions of this page taught, are not read.
 
 ---
 
@@ -478,17 +409,14 @@ GeoLeaf.init({
 
 GeoLeaf.Labels.init();
 
-// 3. Load GeoJSON data
-
-/* GeoLeaf.GeoJSON is internal - configure through geojsonLayers in geoleaf.config.json */ // 4. Enable labels with a custom style
+// 3. Layers are declared by the profile. A layer whose style or config declares its labels
+//    needs no call; for one that declares none, give the inline configuration:
 
 await GeoLeaf.Labels.enableLabels("restaurants", {
-    template: (props) => `${props.name} ⭐${props.rating}`,
+    enabled: true,
+    labelId: "name",
     minZoom: 14,
     maxZoom: 18,
-    direction: "top",
-    styleFile: "styles/labels/restaurants.css",
-    className: "restaurant-label",
 });
 
 // 5. Handle interactions
@@ -499,7 +427,7 @@ document.getElementById("toggle-labels").addEventListener("click", () => {
     // if (GeoLeaf.Labels.areLabelsEnabled("restaurants")) {
     //     GeoLeaf.Labels.disableLabels("restaurants");
     // } else {
-    //     GeoLeaf.Labels.enableLabels("restaurants", { property: "name" });
+    //     GeoLeaf.Labels.enableLabels("restaurants", { enabled: true, labelId: "name" });
     // }
 });
 ```
@@ -538,30 +466,30 @@ Map label configuration is defined in the style files (`styles/*.json`) of each 
             "paddingPx": 3
         },
         "offset": {
-            "distancePx": 8,
-            "angleDeg": 0
+            "placement": "top",
+            "distancePx": 8
         }
     }
 }
 ```
 
-| Property               | Type    | Description                                        |
-| ---------------------- | ------- | -------------------------------------------------- |
-| `enabled`              | boolean | Enable labels for this style                       |
-| `visibleByDefault`     | boolean | Show labels as soon as the layer is enabled        |
-| `field`                | string  | GeoJSON field to display (e.g. `"properties.nom"`) |
-| `font.family`          | string  | Font family                                        |
-| `font.sizePt`          | number  | Font size in points                                |
-| `font.weight`          | number  | Weight (0–900)                                     |
-| `font.bold` / `italic` | boolean | Text formatting                                    |
-| `color`                | string  | Text colour (hex/CSS)                              |
-| `opacity`              | number  | Text opacity (0–1)                                 |
-| `buffer.enabled`       | boolean | Enable the outline halo                            |
-| `buffer.color`         | string  | Halo colour                                        |
-| `buffer.sizePx`        | number  | Halo thickness in pixels                           |
-| `background.enabled`   | boolean | Enable the label background                        |
-| `background.paddingPx` | number  | Inner padding of the background, in pixels         |
-| `offset.distancePx`    | number  | Distance between the label and the feature         |
-| `offset.angleDeg`      | number  | Offset angle in degrees (0 = up)                   |
+| Property               | Type    | Description                                                                      |
+| ---------------------- | ------- | -------------------------------------------------------------------------------- |
+| `enabled`              | boolean | Enable labels for this style                                                     |
+| `visibleByDefault`     | boolean | Show labels as soon as the layer is enabled                                      |
+| `field`                | string  | GeoJSON field to display (e.g. `"properties.nom"`)                               |
+| `font.family`          | string  | Font family                                                                      |
+| `font.sizePt`          | number  | Font size in points                                                              |
+| `font.weight`          | number  | Weight (0–900)                                                                   |
+| `font.bold` / `italic` | boolean | Text formatting                                                                  |
+| `color`                | string  | Text colour (hex/CSS)                                                            |
+| `opacity`              | number  | Text opacity (0–1)                                                               |
+| `buffer.enabled`       | boolean | Enable the outline halo                                                          |
+| `buffer.color`         | string  | Halo colour                                                                      |
+| `buffer.sizePx`        | number  | Halo thickness in pixels                                                         |
+| `background.enabled`   | boolean | Enable the label background                                                      |
+| `background.paddingPx` | number  | Inner padding of the background, in pixels                                       |
+| `offset.distancePx`    | number  | Distance between the label and the feature                                       |
+| `offset.placement`     | string  | Side the label sits on (`center`, `top`, `bottom`, `left`, `right`, `top-left`…) |
 
 > See [schema/README.md](../schema/README.md) for the full specification.

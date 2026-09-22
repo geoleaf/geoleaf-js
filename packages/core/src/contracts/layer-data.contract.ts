@@ -128,6 +128,19 @@ export interface LayerDefinition {
     data?: Record<string, unknown>;
     /** Style references (`default`, `available`, `directory`). */
     styles?: Record<string, unknown>;
+    /**
+     * Map labels declared on the layer itself — the same object, with the same meaning, as a
+     * style file's `label` (`enabled` required; `field`, `visibleByDefault`, `font`, `color`,
+     * `opacity`, `buffer`, `offset`). A style that carries its own `label` object keeps priority;
+     * this block applies otherwise, including when the default style file is missing.
+     * `visibleByDefault` defaults to `false`, as in a style file. Since 3.7.0.
+     */
+    labels?: {
+        enabled: boolean;
+        field?: string;
+        visibleByDefault?: boolean;
+        [key: string]: unknown;
+    };
     /** Point-clustering configuration. */
     clustering?: Record<string, unknown>;
     /** Geometry type, when it cannot be inferred from the features. */

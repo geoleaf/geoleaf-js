@@ -79,7 +79,7 @@ import { applyCssText } from "@geoleaf/core"; // CSP-safe CSSOM style helper
 import { Config } from "@geoleaf/core"; // Config access
 
 // Capability system
-import { CapabilityRegistry } from "@geoleaf/core"; // Declare / gate a capability (since v3.31)
+import { CapabilityRegistry } from "@geoleaf/core"; // Declare / gate a capability
 
 // Capability facades (this entry bundles all 18 in-core capabilities)
 import { Legend } from "@geoleaf/core"; // Legend panel
@@ -103,16 +103,17 @@ export default GeoLeaf; // default export: window.GeoLeaf (CDN/global passthroug
 > does not work.
 
 > **`GeoJSON` is not a named ESM export — but `GeoLeaf.GeoJSON` does exist.** It is mounted on
-> `window.GeoLeaf` at boot, like the global-only facades above, and it is typed in
-> `GeoLeafHost` (`@geoleaf/host-runtime`) since v3.31. Use `GeoLeaf.Layers` for per-layer feature
-> data (`LayerDataApi`), and `GeoLeaf.GeoJSON` for layer-level operations (`getLayerById`,
-> `showLayer`, `setLayerStyle`…).
+> `window.GeoLeaf` as soon as the bundle is imported — before `GeoLeaf.boot()` — and typed in the
+> ambient declarations the package ships (`dist/types/global.d.ts`). Use `GeoLeaf.Layers` for
+> per-layer feature data (`LayerDataApi`), and `GeoLeaf.GeoJSON` for layer-level operations
+> (`getLayerById`, `showLayer`, `setLayerStyle`…) and for the URL of its worker
+> ([`setWorkerUrl`](#the-geojson-workers-url)).
 
 ---
 
 ## Extension contracts (TypeScript)
 
-_Since v3.31._ The interfaces a plugin must implement are published. Before that release they were
+_Since v3.0.0._ The interfaces a plugin must implement are published. Before that release they were
 reachable through **no channel at all**: a plugin implementing `ICoreModule` had to re-declare it,
 and the declaration drifted from the core's.
 
@@ -647,8 +648,31 @@ import { LayerManager } from "@geoleaf/core";
 LayerManager manages GeoJSON layers loaded from profiles. It is the primary way
 to work with GeoJSON data in GeoLeaf.
 
-> **Note:** `GeoLeaf.GeoJSON` does **not** exist as a public API. Data access
-> is exclusively through `LayerManager` and JSON profiles.
+> **Note:** `GeoLeaf.GeoJSON` is public too — global-only, not a named ESM export: layer-level
+> operations (`getLayerById`, `showLayer`, `setLayerStyle`…) and the URL of its worker, below.
+
+### The GeoJSON worker's URL
+
+```js
+GeoLeaf.GeoJSON.setWorkerUrl("/assets/geoleaf/geojson-worker.js?v=3f9a2c");
+```
+
+GeoJSON files are fetched and parsed off the main thread, in a Web Worker: `geojson-worker.js`,
+loaded by default from the directory of the GeoLeaf bundle — found once, when the bundle loads,
+and without the bundle's query string. A host that serves its files under a content token
+(`?v=…`) with a long cache lifetime sets the worker's URL itself, so that a new release never
+runs against a cached worker from the previous one.
+
+| Call                 | Effect                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------- |
+| `setWorkerUrl(url)`  | The next worker is built from `url`, resolved by the browser against the page — same-origin |
+| `setWorkerUrl(null)` | Back to the default                                                                         |
+| any other value      | `TypeError`                                                                                 |
+
+Call it once the bundle has loaded and before `GeoLeaf.boot()` to cover the first worker; a URL
+set later applies to the next one, since the worker is rebuilt after an idle delay. Setting a URL
+also clears an earlier worker failure — a `404` on the worker otherwise sends every later load to
+the main thread for the rest of the session. _Since v3.7.0._
 
 ---
 

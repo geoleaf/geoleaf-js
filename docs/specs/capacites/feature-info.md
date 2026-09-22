@@ -4,7 +4,7 @@ title: feature-info — le rendu attributaire, et ses trois surfaces
 capability_id: feature-info
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 77b24edeb
+verifie_contre: ad1a82ea2
 date: 11 septembre 2026
 ---
 

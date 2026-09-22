@@ -14,6 +14,8 @@
 
 import { Log } from "../../utils/log/index.js";
 import { GeoJSONCore } from "../geojson/core.js";
+import { resolveLayerLabelConfig } from "../geojson/layer-labels.js";
+import type { LabelSourceEntry } from "../geojson/layer-labels.js";
 import { ThemeApplierCore } from "../themes/theme-applier/core.js";
 
 type ToggleBtn = HTMLButtonElement & { _toggleHandlerAttached?: boolean; _isToggling?: boolean };
@@ -40,11 +42,9 @@ function _enableLabelBtnIfApplicable(labelBtn: Element, itemId: string) {
             ? GeoJSONCore.getLayerById(itemId)
             : null;
     if (!ld) return;
-    // `currentStyle.label` may carry a nested `{ enabled }` flag (style-file shape),
-    // narrowed structurally since the runtime entry types `label` loosely.
-    const labelCfg = (ld.currentStyle as { label?: { enabled?: boolean } } | null | undefined)
-        ?.label;
-    const labelEnabled = labelCfg?.enabled === true;
+    // The style's `label` object, else the definition's `labels` block — one resolver for every
+    // reader: `currentStyle` is `null` when the layer's style file is missing.
+    const labelEnabled = resolveLayerLabelConfig(ld as LabelSourceEntry)?.enabled === true;
     if (!labelEnabled) return;
     (labelBtn as HTMLButtonElement).disabled = false;
     labelBtn.classList.remove("gl-layer-manager__label-toggle--disabled");

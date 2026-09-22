@@ -90,6 +90,20 @@
             "confidence": "haute",
             "rationale": "158 L, 7 exports, 1 importeur (events.ts) ; aucun import runtime externe, cohérent avec l'en-tête « no external dependencies »"
         },
+        "packages/plugins/editor/src/drawing/load-once.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "loadOnce : une tentative partagée entre appelants concurrents, et seul le succès est retenu — le chargement du moteur de dessin, paresseux, est réessayé après un échec",
+            "confidence": "haute",
+            "rationale": "Un seul importeur (entry.ts, pour le chargement de Terra Draw) et une fonction pure testée à part ; rangé sous drawing/ à côté de l'adaptateur dont il porte le chargement, plutôt que dans entry.ts, que la couverture exclut"
+        },
         "packages/plugins/editor/src/drawing/mode-names.ts": {
             "kind": "file",
             "name": "ok",

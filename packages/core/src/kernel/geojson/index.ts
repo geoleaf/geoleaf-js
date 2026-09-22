@@ -26,6 +26,14 @@ export { VisibilityManager } from "./visibility-manager.js";
 export { bindFeatureInteractionEvents } from "./feature-interaction.js";
 
 /**
+ * A layer's label configuration — mediation for the `labels` capability, which reads it in three
+ * places (render, toggle, re-show) and may not import below this barrel (R.8). One resolver for
+ * every reader is the point: each of them used to test `currentStyle.label` alone.
+ */
+export { resolveLayerLabelConfig } from "./layer-labels.js";
+export type { LayerLabelConfig, LabelSourceEntry } from "./layer-labels.js";
+
+/**
  * OGC API Features transport — mediation added for the offline pull.
  *
  * The offline pull lives under `capabilities/offline/pull/` and must reach

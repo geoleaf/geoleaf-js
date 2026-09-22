@@ -464,6 +464,20 @@
             "description": "Convertit des tableaux de POI, de routes ou de zones en FeatureCollection GeoJSON, avec détection automatique du type d'entrée.",
             "confidence": "haute",
             "rationale": "✅ FERMÉ au STRUCT S8 (26/07/2026) — E1, cohésion par consommateur. 282 LOC avec ZÉRO import de son propre dossier, et son contrat était déclaré ailleurs : dans `kernel/geojson/loader/loader-types.ts`. Il rejoint le dossier dont il dépend et qui le décrit."
+        },
+        "packages/core/src/kernel/geojson/layer-labels.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "resolveLayerLabelConfig : la configuration de libellés d'une couche — le label OBJET du style courant, sinon le bloc labels de sa définition —, une seule réponse pour tous les lecteurs",
+            "confidence": "haute",
+            "rationale": "Lu par la capacité labels (rendu, bascule, bouton) via le baril geojson (R.8), et par trois modules du kernel (intégration au gestionnaire, ré-affichage, bouton de bascule) ; il lit une entrée de couche du kernel, donc il vit dans kernel/geojson et non dans la capacité, que le kernel ne doit pas importer"
         }
     }
 }

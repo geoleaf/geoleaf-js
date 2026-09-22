@@ -13,7 +13,69 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ## [Unreleased]
 
-## [3.6.1] - 2026-09-21
+### Added
+
+- **`GeoLeaf.GeoJSON.setWorkerUrl(url)` — a host sets the URL of the GeoJSON worker.** By default
+  the worker is `geojson-worker.js`, found once, when the bundle loads, in the bundle's directory —
+  and without the bundle's query string. A host serving its files under a content token (`?v=…`)
+  with a long cache lifetime therefore had no way to version the worker's URL: a new release could
+  run against a cached worker from the previous one, a `postMessage` protocol mismatch that nothing
+  reports. The URL set is read at every worker construction, so it may be set after the bundle has
+  loaded — before `GeoLeaf.boot()` to cover the first worker. `null` restores the default; any other
+  value throws a `TypeError`. Setting a URL also clears an earlier worker failure, which used to
+  send every later load to the main thread for the rest of the session. Without a call, nothing
+  changes.
+
+- **A layer's `labels` block is read — labels can be declared on the layer itself.** The block
+  takes the same object, with the same meaning, as a style file's `label`. A style that carries
+  its own `label` object keeps priority; the layer's block applies otherwise, including when the
+  default style file is missing. It was half-wired: `labels.enabled` made the loader initialise the
+  labels, and every reader after it looked at the style alone — so a layer whose style file 404'd
+  showed no labels, with its labels button greyed out. The key is now declared in
+  `layer-config.schema.json` and typed on `LayerDefinition`, so `Layers.create()` takes it too.
+  `visibleByDefault` defaults to `false`, as in a style file.
+
+### Fixed
+
+- **Three buttons read a colour token no theme defines.** The boot-failure screen's primary button
+  and the popup's action buttons took their text colour from `--gl-color-on-accent`, which is set
+  nowhere: they always fell back to white — 1.46:1 on the light theme's peach accent, about 2.8:1 on
+  the default orange. They now fall back to `--gl-color-accent-contrast`, the token every theme
+  sets for text on the accent. A host that defines `--gl-color-on-accent` keeps its value.
+
+- **`@geoleaf-plugins/editor` 1.4.1 — the drawing engine is really loaded on the first tool use.**
+  Its source already imported Terra Draw with `import()`, but the build's chunking rule also
+  captured the plugin's own adapter module, which the entry imports statically: the whole engine
+  chunk left with the plugin, on every page that loaded it — about 47 KB gz before anything was
+  drawn. The rule now captures the vendor packages only, and the plugin's entry no longer imports
+  the engine but through `import()`. Because the engine is now fetched when first needed, that
+  fetch can fail — offline, or after a redeploy: the failure is reported in the console, the armed
+  tool is disarmed, and the next tool use tries again instead of replaying the failure until a
+  reload.
+
+- **`@geoleaf-plugins/connector` 1.3.2 — `http://` is tolerated on every development host, not
+  only `localhost` and `127.0.0.1`.** The rule keeps the token out of cleartext in production, and
+  it refused any other name: a development instance served over HTTP under `*.test` threw at
+  `configure()`, so the map started without data. The tolerated names are now exactly those no
+  production host can carry — `localhost`, `*.localhost`, the loopback addresses (`127.0.0.0/8`,
+  `::1`), which a browser itself treats as secure contexts, and names under `.test`, reserved for
+  testing (RFC 6761). `.local` stays refused: it names real intranets. The page's host is judged,
+  as before.
+
+- **The connector's documentation described options that do not exist.** The plugin
+  configuration guide documented `auth.type` (`"bearer"` / `"apikey"` / `"cookie"`), `auth.token`
+  and `auth.headerName`: none exists, and such a configuration fails. There are two modes,
+  `getToken` and `auth`, and the connector's README now points to what the server must answer
+  (§3 of the server contract) and to the way out for a server speaking another dialect (§7.6 of
+  the security guide). It also said the core is a `dependency`: it is a peer dependency.
+
+- **The label documentation taught options that were never read.** `enableLabels()` examples used
+  `property`, `template`, `direction` and `styleFile` — the first three are not read, the last one
+  is refused — and a label `offset.angleDeg` that no schema accepts. The TSDoc of
+  `enableLabels()` also said `showImmediately` defaults to `false` (it is `true`) and that the call
+  is only asynchronous with a `styleFile` (it always returns a promise).
+
+## [3.6.1] - 2026-09-22
 
 ### Fixed
 

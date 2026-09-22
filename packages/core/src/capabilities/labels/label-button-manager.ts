@@ -11,7 +11,7 @@
 
 import { Log } from "../../utils/log/index.js";
 import { _UIComponents } from "../../kernel/ui/index.js";
-import { GeoJSONCore } from "../../kernel/geojson/index.js";
+import { GeoJSONCore, resolveLayerLabelConfig } from "../../kernel/geojson/index.js";
 import { Labels } from "./labels.js";
 import { getLabel } from "../../utils/i18n/i18n.js";
 import { domCreate } from "../../utils/general/dom-helpers.js";
@@ -50,7 +50,7 @@ function _buildLabelToggleHandler(
         try {
             const layerData: LabelLayerData | null | undefined =
                 _GeoJSONCore?.getLayerById?.(layerId);
-            const labelEnabled = layerData?.currentStyle?.label?.enabled === true;
+            const labelEnabled = resolveLayerLabelConfig(layerData)?.enabled === true;
             if (!labelEnabled) return;
             if (Labels?.toggleLabels) {
                 const newState = Labels.toggleLabels(layerId);
@@ -114,7 +114,7 @@ const LabelButtonManager: LabelButtonManagerApi = {
             layerId,
             layerExists: !!layerData,
             layerVisible: layerData?._visibility?.current === true,
-            labelEnabled: layerData?.currentStyle?.label?.enabled === true,
+            labelEnabled: resolveLayerLabelConfig(layerData)?.enabled === true,
             areLabelsActive: Labels?.areLabelsEnabled?.(layerId) || false,
         };
     },

@@ -23,8 +23,19 @@ export default {
         entryFileNames: "geoleaf-editor.plugin.js",
         chunkFileNames: "geoleaf-editor.[name]-[hash].js",
         // Consolidate the terra-draw vendor packages into a single lazy chunk.
+        //
+        // 🛑 ANCHORED ON `node_modules`, AND THE ANCHOR IS THE FIX. The predicate was
+        // `id.includes("terra-draw")`, which also matched THIS package's own
+        // `src/drawing/terra-draw-adapter.ts` — the module that holds the `import()`s. Rollup
+        // then pulled it, and its static dependencies (`mode-names.ts`, `styles.ts`), into the
+        // vendor chunk; the entry imports the adapter statically, so it imported the whole
+        // chunk statically too, and the `import("terra-draw")` inside compiled to a
+        // `Promise.resolve()`. The engine left with the plugin, on every page that loaded it,
+        // from the first lazy-load commit on — while this comment and the plugin's spec both
+        // said "on first tool activation". `size -- --plugins` now weighs the static closure
+        // of the entry, which is what would have seen it.
         manualChunks(id) {
-            if (id.includes("terra-draw")) return "terra-draw";
+            if (/[\\/]node_modules[\\/]terra-draw/.test(id)) return "terra-draw";
         },
     },
     // Core and maplibre-gl loaded separately by the host page.
