@@ -56,7 +56,22 @@ services:
             # `depends_on: service_healthy` en dépend : sans lui, PostgREST démarre avant
             # que la base accepte les connexions, échoue, et le job lit « banc injoignable »
             # là où il n'y a qu'une course au démarrage.
-            test: ["CMD-SHELL", "pg_isready -U geoleaf_owner -d geoleaf"]
+            #
+            # 🛑 PAR TCP (`-h 127.0.0.1`), JAMAIS PAR LE SOCKET. Pendant l'init, l'entrypoint de
+            # l'image lance un serveur TEMPORAIRE avec `listen_addresses=''` — socket seul, pas
+            # de TCP (`docker-entrypoint.sh:270` de `postgis/postgis:16-3.4`) — y joue
+            # `10_postgis.sh`, puis l'ARRÊTE pour lancer le vrai. Un `pg_isready` par socket
+            # répond « prêt » au serveur temporaire. Mesuré le 22/09/2026 sur un conteneur neuf :
+            #
+            #      672 ms   socket=ok  tcp=--    ← serveur temporaire : l'ancien test dit « prêt »
+            #     1873 ms   socket=--  tcp=--    ← il s'arrête : le trou
+            #     2217 ms   socket=ok  tcp=ok    ← le vrai serveur
+            #
+            # Le run public 35764341643 est tombé dans ce trou : `Healthy`, puis à l'instant
+            # suivant `psql: … .s.PGSQL.5432 … No such file or directory`. Intermittent — la
+            # sonde doit tomber dans la fenêtre temporaire, ce qu'un runner lent rend fréquent et
+            # un poste rapide rare. TCP n'est vrai qu'avec le vrai serveur.
+            test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U geoleaf_owner -d geoleaf"]
             interval: 2s
             timeout: 3s
             retries: 40
