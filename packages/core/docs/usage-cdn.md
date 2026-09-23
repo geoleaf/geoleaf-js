@@ -57,6 +57,10 @@ shim is a file.
 <!-- GeoLeaf ESM (via script type="module") -->
 <script type="module">
     import { Core } from "https://unpkg.com/@geoleaf/core@3.8.0/dist/geoleaf.esm.js";
+    // Optional — GeoJSON parsed off the main thread. A browser refuses a worker script from
+    // another origin, so the CDN's copy cannot be used: serve your own copy of
+    // dist/geojson-worker.js and point GeoLeaf at it before booting (see §7).
+    // GeoLeaf.GeoJSON.setWorkerUrl("/assets/geoleaf/geojson-worker.js");
     // ...
 </script>
 ```
@@ -82,6 +86,10 @@ shim is a file.
 <!-- GeoLeaf ESM -->
 <script type="module">
     import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.8.0/dist/geoleaf.esm.js";
+    // Optional — GeoJSON parsed off the main thread. A browser refuses a worker script from
+    // another origin, so the CDN's copy cannot be used: serve your own copy of
+    // dist/geojson-worker.js and point GeoLeaf at it before booting (see §7).
+    // GeoLeaf.GeoJSON.setWorkerUrl("/assets/geoleaf/geojson-worker.js");
     // ...
 </script>
 ```
@@ -101,6 +109,9 @@ shim is a file.
 <!-- Local GeoLeaf ESM -->
 <script type="module">
     import { Core } from "/dist/geoleaf.esm.js";
+    // An inline import gives GeoLeaf no <script src> to find the GeoJSON worker by: without this
+    // line it is looked up next to the PAGE, and GeoJSON is parsed on the main thread (see §7).
+    GeoLeaf.GeoJSON.setWorkerUrl("/dist/geojson-worker.js");
     // ...
 </script>
 ```
@@ -123,6 +134,11 @@ import "@geoleaf/core/style.css";
 // GeoLeaf reads the engine from `globalThis.maplibregl`: importing MapLibre is not enough, and
 // MapLibre 6 no longer sets the global itself
 Object.assign(globalThis, { maplibregl });
+
+// The GeoJSON worker is a separate file the bundler does not emit: copy
+// node_modules/@geoleaf/core/dist/geojson-worker.js into your public assets, and point GeoLeaf
+// at it — otherwise GeoJSON is parsed on the main thread (see §7).
+GeoLeaf?.GeoJSON?.setWorkerUrl("/geojson-worker.js");
 
 Core.init({
     mapId: "geoleaf-map",
@@ -178,6 +194,9 @@ Core.init({
 
         <script type="module">
             import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.8.0/dist/geoleaf.esm.js";
+            // Optional — GeoJSON off the main thread: serve your own copy of
+            // dist/geojson-worker.js (a browser refuses a cross-origin worker), then:
+            // GeoLeaf.GeoJSON.setWorkerUrl("/assets/geoleaf/geojson-worker.js");
 
             document.addEventListener("DOMContentLoaded", () => {
                 Core.init({
@@ -274,6 +293,10 @@ with a long cache lifetime; do it after the bundle has loaded and before `GeoLea
 GeoLeaf.GeoJSON.setWorkerUrl("/assets/geoleaf/geojson-worker.js?v=3f9a2c");
 ```
 
+The recipes above do it where it applies: §3 and §4 set it, §1, §2 and §5 — served from a CDN —
+show the call commented, to enable once a same-origin copy is served. Without it nothing breaks:
+the worker is tried at its default URL, and the GeoJSON is parsed on the main thread instead.
+
 ::: danger
 
 **`dist/chunks/` is part of the deliverable — self-hosting without it produces a dead
@@ -348,6 +371,9 @@ browser **refuses to execute it** and nothing boots.
 - [ ] MapLibre GL JS engine loaded (peer dependency)
 - [ ] GeoLeaf CSS loaded
 - [ ] GeoLeaf ESM imported (`type="module"`)
+- [ ] GeoJSON worker: a same-origin copy of `dist/geojson-worker.js`, and
+      `GeoLeaf.GeoJSON.setWorkerUrl(...)` before boot — unless the bundle is loaded by a
+      `<script type="module" src>` with the worker next to it (§7)
 - [ ] `window.GeoLeaf` defined
 - [ ] `Core.init()` available
 - [ ] Map visible in the DOM (CSS height set)
