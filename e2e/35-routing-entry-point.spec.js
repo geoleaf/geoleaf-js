@@ -57,7 +57,7 @@ const POI = {
 /**
  * Emits the click seam UNTIL `selector` appears.
  *
- * ⚠️ Taken verbatim from `22-feature-info.spec.js`, and the difference with a
+ * ⚠️ Taken from `22-feature-info.spec.js` — except for the anchoring below — and the difference with a
  * Node-side loop is not cosmetic: the dispatch and the check live in the SAME
  * page tick. The feature-info surfaces are created lazily at the first event,
  * and a dispatch sent before the capability is wired is **silently lost** — the
@@ -70,9 +70,23 @@ const POI = {
 async function clickPoiUntil(page, selector) {
     await page.waitForFunction(
         (arg) => {
-            document.dispatchEvent(
-                new CustomEvent("geoleaf:feature:click", { detail: arg.detail })
-            );
+            // 🛑 THE POI IS ANCHORED WHERE THE MAP LOOKS, not at its fixed coordinates. The
+            // popup opens at `lngLat`, and those coordinates lie far outside the profile's view:
+            // under the relief's 60° tilt the perspective drew them near the horizon, on screen;
+            // on a flat camera they fall off the map, and the popup's button with them —
+            // "element is outside of the viewport", 7 runs out of 51. The subject here is the
+            // routing entry point, not where the POI is.
+            const map = /** @type {any} */ (window).GeoLeaf?.Core?.getMap?.()?.getNativeMap?.();
+            const c = map?.getCenter?.();
+            const at = c && map.project(c);
+            const detail = c
+                ? {
+                      ...arg.detail,
+                      lngLat: { lat: c.lat, lng: c.lng },
+                      point: { x: Math.round(at.x), y: Math.round(at.y) },
+                  }
+                : arg.detail;
+            document.dispatchEvent(new CustomEvent("geoleaf:feature:click", { detail }));
             return !!document.querySelector(arg.selector);
         },
         { detail: POI, selector },

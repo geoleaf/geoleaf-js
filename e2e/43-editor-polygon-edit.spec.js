@@ -175,13 +175,10 @@ async function projectInteriorPoint(page, target) {
                 .queryRenderedFeatures([p.x, p.y])
                 .some((/** @type {any} */ f) => f.layer.id.includes(id));
             if (!onFill) {
-                // 🛑 THE FRAMING MUST NOT REDRESS THE CAMERA. `fitBounds` computes a camera from
-                // scratch and, given no `pitch`/`bearing`, applies ZERO — undoing the tilt the
-                // basemap's `terrain.default3D` has just set. Measured on 21/09/2026, same
-                // bundle, one variable: with the camera flattened the whole-feature drag did not
-                // take at all (Terra Draw's own source kept the original ring, 0/1), while every
-                // run that kept the tilt took it (3/3, then 6/6 once the tilt was preserved
-                // here). The framing is about WHAT is on screen, never about the camera's angle.
+                // The framing is about WHAT is on screen, never about the camera's angle: given no
+                // `pitch`/`bearing`, `fitBounds` would apply ZERO and flatten a tilted camera. ⚠️ The
+                // flattening was once blamed for the lost drags (21/09/2026); the cause was a press
+                // inside a handle's reach — see `pressPointClearOfHandles`.
                 map.fitBounds(bounds, {
                     animate: false,
                     padding: 60,
@@ -198,6 +195,71 @@ async function projectInteriorPoint(page, target) {
         { timeout: 30000, polling: 500 }
     );
     return /** @type {{ x: number, y: number }} */ (await handle.jsonValue());
+}
+
+/**
+ * Radius, in px, within which Terra Draw's select mode takes a press for a HANDLE rather than for
+ * the whole shape — the mode's `pointerDistance`, which the editor does not set, hence Terra Draw's
+ * default. Plus a margin.
+ */
+const HANDLE_CLEARANCE_PX = 40 + 16;
+
+/**
+ * Page coordinates of a point on the selected polygon's fill, clear of every handle the selection
+ * shows, nearest to `from`.
+ *
+ * 🛑 WHY THE PRESS POINT IS CHOSEN AFTER THE SELECTION, AND AWAY FROM THE HANDLES. In select mode,
+ * Terra Draw decides what a drag means in a fixed order — resize, vertex, EDGE MIDPOINT, then the
+ * whole shape — each within its `pointerDistance` of the press. A press 35-38 px from a midpoint
+ * handle therefore inserted a vertex there and dragged it, and the shape stayed put. Measured on
+ * 23/09/2026: that is every "lost" drag this spec ever recorded. The camera played a part only
+ * because the handles are placed in SCREEN space when the shape is selected: a tilted camera
+ * moved the long edge's handle out of reach (52.9 px at 60°), a flat one left it at 37.9 px. The
+ * handles exist only once the shape is selected, hence the order.
+ *
+ * @param {import("@playwright/test").Page} page
+ * @param {{ x: number, y: number }} from Page coordinates of the selection click.
+ * @returns {Promise<{ x: number, y: number }>}
+ */
+async function pressPointClearOfHandles(page, from) {
+    const handle = await page.waitForFunction(
+        ({ id, from, clearance }) => {
+            const map = /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap();
+            const src = map.getSource("td-point");
+            const points = src?.serialize?.()?.data?.features ?? src?._data?.features ?? [];
+            if (points.length === 0) return null;
+            const handles = points.map((/** @type {any} */ f) =>
+                map.project(f.geometry.coordinates)
+            );
+            const rect = map.getContainer().getBoundingClientRect();
+            const origin = { x: from.x - rect.left, y: from.y - rect.top };
+            const { width, height } = map.getContainer().getBoundingClientRect();
+            /** @type {{ x: number, y: number, d: number } | null} */
+            let best = null;
+            for (let x = 8; x < width - 8; x += 6) {
+                for (let y = 8; y < height - 8; y += 6) {
+                    if (
+                        handles.some(
+                            (/** @type {any} */ h) => Math.hypot(h.x - x, h.y - y) < clearance
+                        )
+                    )
+                        continue;
+                    const d = Math.hypot(x - origin.x, y - origin.y);
+                    if (best && d >= best.d) continue;
+                    const onFill = map
+                        .queryRenderedFeatures([x, y])
+                        .some((/** @type {any} */ f) => f.layer.id.includes(id));
+                    if (onFill) best = { x, y, d };
+                }
+            }
+            return best && { x: best.x + rect.left, y: best.y + rect.top };
+        },
+        { id: "td-polygon", from, clearance: HANDLE_CLEARANCE_PX },
+        { timeout: 10000, polling: 250 }
+    );
+    const found = /** @type {{ x: number, y: number } | null} */ (await handle.jsonValue());
+    if (!found) throw new Error("aucun point du remplissage n'est à l'écart des poignées");
+    return found;
 }
 
 /**
@@ -246,17 +308,6 @@ test("[editor] éditer un polygone SANS `id` de premier niveau atteint bien l'ou
     // mid-drag, and the drag is lost in silence (see `helpers/camera.js`).
     await awaitSettledCamera(page);
 
-    // 🛑 THE CAMERA IS TILTED ON PURPOSE: on a FLAT camera, this whole-shape drag is lost. Measured
-    // on 23/09/2026, relief off: `pitch: 0` → lost 4/4 (and 6/6 at the boot's own flat camera);
-    // `pitch: 30` or `60` → taken 4/4 each; relief on (`pitch: 60`) → taken 6/6. The relief is not
-    // the factor, the tilt is — and nothing explains it yet. This spec's subject is the id-less
-    // polygon reaching the outbox, not the drag: it poses the tilt it needs, which the suite's
-    // relief used to pose for it, and the defect is left visible here rather than hidden.
-    await page.evaluate(() =>
-        /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap().jumpTo({ pitch: 60 })
-    );
-    await awaitSettledCamera(page);
-
     const inside = await projectInteriorPoint(page, target);
     await page.mouse.click(inside.x, inside.y);
 
@@ -273,41 +324,36 @@ test("[editor] éditer un polygone SANS `id` de premier niveau atteint bien l'ou
         { timeout: 10000 }
     );
 
-    /** The first ring vertex Terra Draw currently holds — `null` when it holds nothing. */
-    const tdRing0 = () =>
+    /** The outer ring Terra Draw currently holds — `null` when it holds nothing. */
+    const tdRing = () =>
         page.evaluate(() => {
             const map = /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap();
             const src = map.getSource("td-polygon");
             const data = src?.serialize?.()?.data ?? src?._data;
-            return data?.features?.[0]?.geometry?.coordinates?.[0]?.[0] ?? null;
+            return data?.features?.[0]?.geometry?.coordinates?.[0] ?? null;
         });
 
-    // Drag the WHOLE feature from inside the fill — the polygon's own gesture.
-    //
-    // 🛑 WHAT MADE THIS DRAG UNRELIABLE WAS NOT THE GESTURE, AND THE MEASUREMENT SAYS SO. Every
-    // lost drag — and they came in runs of three, which is a STATE and not a per-try race —
-    // showed the same page: `pitch: 0` with `terrain: true`. The active basemap declares
-    // `terrain.default3D`, whose `easeTo` runs AFTER the active key is set; a camera touched in
-    // that window (this spec's own `fitBounds`) wins the race and leaves the map flat, terrain
-    // on. In that state Terra Draw did not move the shape at all: `selected` was true and the
-    // `mousedown` point still hit `td-polygon`, yet the source kept the original ring.
-    //
-    // `awaitSettledCamera` now waits for the terrain to be POSTED, not merely due, and this
-    // spec's `fitBounds` preserves the angle. Measured after both: 8/8, then a full replay of
-    // the four editor specs. A 3-attempt retry stood here in between and was REMOVED once the
-    // cause was closed — it was a bandage, and it would have cost this spec its ability to see
-    // the class again.
+    // Drag the WHOLE feature from inside the fill — the polygon's own gesture — from a point clear
+    // of the handles the selection shows (see `pressPointClearOfHandles`).
     //
     // ⚠️ The amorce below stays: Terra Draw arms the feature drag on the FIRST pointer move after
     // the `down`, so a short move before the real one is what a hand does anyway.
-    await page.mouse.move(inside.x, inside.y);
+    const press = await pressPointClearOfHandles(page, inside);
+    await page.mouse.move(press.x, press.y);
     await page.mouse.down();
     // A short first move, then the real one — what a hand does anyway.
-    await page.mouse.move(inside.x + 5, inside.y + 4, { steps: 2 });
+    await page.mouse.move(press.x + 5, press.y + 4, { steps: 2 });
     await page.waitForTimeout(120);
-    await page.mouse.move(inside.x + 30, inside.y + 20, { steps: 16 });
+    await page.mouse.move(press.x + 30, press.y + 20, { steps: 16 });
     await page.mouse.up();
-    const moved = !deepEqual(await tdRing0(), shippedRing[0]);
+    // 🛑 JUDGED ON THE WHOLE RING, not on its first vertex: a vertex inserted and dragged at a
+    // midpoint handle leaves `ring[0]` in place too, and reads exactly like a lost gesture. A
+    // whole-shape drag keeps the vertex count and moves EVERY vertex.
+    const dragged = await tdRing();
+    const moved =
+        Array.isArray(dragged) &&
+        dragged.length === shippedRing.length &&
+        dragged.every((c, i) => !deepEqual(c, shippedRing[i]));
 
     const lost = await page.evaluate((pt) => {
         const map = /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap();
@@ -315,6 +361,7 @@ test("[editor] éditer un polygone SANS `id` de premier niveau atteint bien l'ou
         const data = src?.serialize?.()?.data ?? src?._data;
         const rect = map.getContainer().getBoundingClientRect();
         return {
+            vertices: data?.features?.[0]?.geometry?.coordinates?.[0]?.length ?? null,
             pitch: Math.round(map.getPitch()),
             zoom: +map.getZoom().toFixed(2),
             moving: map.isMoving(),
@@ -325,10 +372,11 @@ test("[editor] éditer un polygone SANS `id` de premier niveau atteint bien l'ou
                 .map((/** @type {any} */ q) => q.layer.id)
                 .filter((/** @type {string} */ id) => id.startsWith("td-")),
         };
-    }, inside);
+    }, press);
     expect(
         moved,
-        `le drag n'a pas déplacé la forme DANS Terra Draw — le geste est perdu, ` +
+        `le drag n'a pas déplacé la forme ENTIÈRE dans Terra Draw (un sommet inséré compte aussi ` +
+            `pour un échec : ${shippedRing.length} sommets livrés) — ` +
             `pas la persistance. État de la page : ${JSON.stringify(lost)}`
     ).toBe(true);
 
