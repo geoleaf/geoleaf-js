@@ -31,21 +31,33 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.6.1 <Badge type="tip" text="2026-09-22" />
+## Release v3.7.0 <Badge type="tip" text="2026-09-23" />
 
-Three fixes to the camera and the basemap, all three visible on a 3D basemap: it no longer waits
-for the user's first gesture to apply — and then tilts the map under the finger —, it reaches the
-tilt it asks for, and re-framing the map keeps the angle instead of flattening it.
+Two seams a host application was missing, a GeoJSON worker whose failure no longer costs a page its
+first layers, and a drawing engine that finally waits to be needed.
 
 **Highlights:**
 
-- **Fixed** — the default basemap could be applied only at the user's first gesture: the deferred
-  activation waited for the map's `idle` event, which a rich profile may never reach at boot. It
-  now applies as soon as the style has loaded.
-- **Fixed** — a basemap declaring `terrain.default3D` rendered essentially flat: its tilt was
-  animated, and the re-framing that follows the loading veil cut the animation. The tilt is now
-  set at once, behind the veil.
-- **Fixed** — re-framing the map (`fitBounds`) no longer resets a tilted camera to flat.
+- **New** — `GeoLeaf.GeoJSON.setWorkerUrl(url)`. The GeoJSON worker's default URL is found once,
+  from the page's `<script src>` tags — against the page itself (or a plugin's directory) for a
+  bundle imported from an inline module script. A host can now point at the worker, and version
+  its URL (`?v=…`). The URL
+  set is read at every worker construction: set it once the bundle has loaded, before
+  `GeoLeaf.boot()`.
+- **New** — a layer's `labels` block is read: the same object as a style file's `label`. A style
+  that carries its own `label` keeps priority; the layer's block applies otherwise, including when
+  the default style file is missing.
+- **Fixed** — a GeoJSON worker that fails (its script did not load, or it crashed) no longer fails
+  the loads it was built for: the loads in flight are replayed on the main thread.
+- **Fixed** — `@geoleaf-plugins/editor` 1.4.1 loads Terra Draw on the first tool use, as it always
+  claimed to: the engine chunk was imported statically, about 47 KB gz paid on every page that
+  loaded the plugin.
+- **Fixed** — `@geoleaf-plugins/connector` 1.3.2 tolerates `http://` on every development host
+  (`*.localhost`, loopback, `*.test`), not only `localhost` and `127.0.0.1`.
+
+Release v3.6.1 (2026-09-22) — three fixes to the camera and the basemap, all three visible on a
+3D basemap: it no longer waits for the user's first gesture to apply, it reaches the tilt it asks
+for, and re-framing the map keeps the angle instead of flattening it.
 
 Release v3.6.0 (2026-09-20) — three seams a host application was missing: the map stops claiming
 the page's language, and the authority behind a layer's visibility — plus the style it wears —
