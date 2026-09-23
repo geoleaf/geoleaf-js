@@ -106,7 +106,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { layerConfigPath } from "./helpers/profiles.js";
 import { goOffline, goOnline, settleNetwork, assertZeroNetwork } from "./helpers/offline.js";

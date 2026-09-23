@@ -29,7 +29,7 @@
 // escaping) the fetch monkeypatch — same precaution as the plugin specs on
 // PWA variants.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { registerCoverageCollection } from "./helpers/coverage.js";
 import { bootMapUntilIdle } from "./helpers/boot.js";

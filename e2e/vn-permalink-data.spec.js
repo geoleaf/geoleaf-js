@@ -19,7 +19,7 @@
 // STABLE anchors (measured, not guessed): the `GeoLeaf.Permalink.getState()`
 // API, the real hash, and the native maplibregl centre. No pixel assertion.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { bootMap, waitMapLoaded, captureConsole } from "./helpers/boot.js";
 

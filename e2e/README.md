@@ -193,6 +193,29 @@ sous WebKit : rouge avec des tuiles à 25 s, vert avec les mêmes tuiles servies
 huit specs qui arment l'éditeur l'appellent. Le relief (`terrain.demUrl`) reste au réseau : une
 fausse altitude déplacerait ce que les specs cliquent.
 
+🛑 **Le relief 3D est ÉTEINT au boot dans la suite, sauf dans une spec qui le demande.** Les
+specs importent `test` et `expect` de [`helpers/test.js`](helpers/test.js), pas de
+`@playwright/test`. Ce `test` réécrit, dans la page, chaque `profile-bundle.json` reçu :
+`terrain.default3D` y passe à `false`. Le fond par défaut du profil de démonstration déclare un
+relief incliné à 60°, que le cœur applique au boot depuis la 3.6.1. Sous GL logiciel, son premier
+rendu occupait la page 12 à 19 s par chargement sur un runner 4 cœurs (cron public du 23/09/2026) ;
+toute attente de la carte le payait, et l'étape E2E était passée d'environ 56 min à plus d'une
+heure. Le relief reste déclaré : une spec peut encore l'activer.
+
+- Une spec dont le SUJET est le relief le garde : `test.use({ relief: true })` (le test
+  « terrain 3D » de `cfg-c3`).
+- ⚠️ La réécriture n'atteint que le `context` du test. Une page ouverte autrement
+  (`browser.newPage()`, `launchPersistentContext()`) démarre avec le relief, sauf appel de
+  `turnReliefOff(context)` avant sa première navigation — c'est ce que fait `06` §6.2.10. La page
+  de couverture de `07-boot-sequence` (`afterAll`) le garde exprès : elle mesure le boot réel.
+- ⚠️ La réécriture se fait **dans la page**, pas par une route : une spec qui intercepte elle-même
+  le bundle (`page.route` puis `route.fetch()`) contournerait une route posée avant la sienne.
+  Mesuré : la réécriture d'une route de contexte n'atteignait plus la page. La réécriture dans la
+  page compose avec toutes les routes, dans tous les ordres.
+- Témoin : `window.__glReliefOff` compte les fonds éteints. `cfg-c3` vérifie, une fois le fond
+  actif et la caméra posée, qu'il est positif, que le fond actif ne demande plus le relief, et
+  que la caméra est à plat sans relief.
+
 ## Débogage
 
 ```bash

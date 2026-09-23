@@ -19,7 +19,7 @@
 //
 // DOM signatures verified against packages/core/src/ source.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { scanPage } from "./helpers/axe-config.js";
 

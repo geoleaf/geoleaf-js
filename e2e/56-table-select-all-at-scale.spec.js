@@ -20,7 +20,7 @@
  * `verify-e2e-coverage.cjs`, which measures BOOT on `baseURL("coverage")`.
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { serveBasemapTilesLocally } from "./helpers/basemap.js";
 import { makeFeatureCollection } from "./helpers/feature-factory.js";

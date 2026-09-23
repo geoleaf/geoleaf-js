@@ -563,11 +563,13 @@ GeoLeaf.Table.show();
 The table synchronizes with filters automatically by listening to events:
 
 ```js
-// Apply a filter
-GeoLeaf.Filter.applyFilter({ category: "restaurant" });
+// Apply a filter — a state replaces the whole panel selection
+GeoLeaf.Filter.applyFilter({
+    fields: [{ id: "categories", kind: "taxonomy", values: ["restaurant"] }],
+});
 
 // The table updates itself automatically
-// (it listens to the geoleaf:filters:changed event internally)
+// (it listens to the geoleaf:filters:applied event internally)
 ```
 
 ### 5.3 Two-way map ↔ table synchronization

@@ -18,7 +18,7 @@
  * payload it carries is wrong.
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { layerConfigPath } from "./helpers/profiles.js";
 import { readStore, GEOLEAF_DB } from "./helpers/idb.js";

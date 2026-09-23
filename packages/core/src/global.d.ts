@@ -436,11 +436,15 @@ declare global {
             isEnabled(): boolean;
             /** The resolved filter configuration for the active profile. */
             getConfig(): unknown;
-            /** The filter state currently applied to the map. */
+            /**
+             * The panel's current selection, as a serialisable `{ fields }` state. A
+             * `taxonomy` field lists its checked categories and sub-categories in `values`,
+             * and names each checked sub-category's category in `subValues`.
+             */
             getActiveFilter(): unknown;
-            /** Applies a filter state (debounced — see {@link applyNow} to flush immediately). */
+            /** Writes a state back onto the panel's controls and applies it to the map, synchronously. */
             applyFilter(state: unknown): void;
-            /** Flushes the pending debounced filter immediately. */
+            /** Re-reads the panel and applies it to the map now, without waiting for the auto-apply delay. */
             applyNow(): void;
             /** Clears every active filter and restores the unfiltered view. */
             reset(): void;

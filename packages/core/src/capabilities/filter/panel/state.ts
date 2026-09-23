@@ -14,7 +14,7 @@
  * existing DOM hooks (tree checkboxes, tag badges, proximity data-attributes).
  */
 
-import type { FilterConfig, FilterFieldDescriptor } from "../types.js";
+import type { FilterConfig, FilterFieldDescriptor, TaxonomySubValue } from "../types.js";
 import type { ActiveField } from "../engine/types.js";
 import { kmToMetres } from "../units.js";
 
@@ -62,8 +62,14 @@ function _readText(group: HTMLElement, field: FilterFieldDescriptor): ActiveFiel
     return text ? { descriptor: field, text: text.toLowerCase() } : null;
 }
 
+/**
+ * `values` = the checked categories, then the checked sub-categories, flat. A sub-category
+ * id is unique only within its category, so each checked sub-category also yields a
+ * `subValues` entry naming the category it is listed under.
+ */
 function _readTaxonomy(group: HTMLElement, field: FilterFieldDescriptor): ActiveField | null {
     const values: string[] = [];
+    const subValues: TaxonomySubValue[] = [];
     group
         .querySelectorAll<HTMLInputElement>("input.gl-filter-tree__checkbox--category:checked")
         .forEach((el) => {
@@ -73,9 +79,17 @@ function _readTaxonomy(group: HTMLElement, field: FilterFieldDescriptor): Active
         .querySelectorAll<HTMLInputElement>("input.gl-filter-tree__checkbox--subcategory:checked")
         .forEach((el) => {
             const sub = el.getAttribute("data-gl-filter-subcategory-id");
-            if (sub) values.push(sub);
+            if (!sub) return;
+            // Pushed with its `values` twin under the same guard, never deduplicated: the
+            // checked categories are exactly `values` minus these entries.
+            values.push(sub);
+            const category = el.getAttribute("data-gl-filter-category-id") ?? "";
+            subValues.push({ value: sub, category });
         });
-    return values.length ? { descriptor: field, values } : null;
+    if (!values.length) return null;
+    const af: ActiveField = { descriptor: field, values };
+    if (subValues.length) af.subValues = subValues;
+    return af;
 }
 
 function _readTag(group: HTMLElement, field: FilterFieldDescriptor): ActiveField | null {

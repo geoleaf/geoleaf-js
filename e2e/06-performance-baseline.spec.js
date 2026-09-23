@@ -3,7 +3,7 @@
 // Measures init time, GeoJSON render, FPS, and heap memory under MapLibre GL JS.
 // Results populate perf-baseline.json — the post-migration performance contract.
 
-import { test, expect } from "@playwright/test";
+import { test, expect, turnReliefOff } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { scanPage } from "./helpers/axe-config.js";
 import { useHardwareGl } from "./helpers/launch-options.js";
@@ -140,7 +140,9 @@ test.describe("6.2.1 — Init time", () => {
             // burst kept each load busy for 12-19 s on a 4-core runner, and ten
             // `networkidle` loads overran the 120 s budget while `startup-total` stayed
             // at its usual ~1.2 s. Measured on 2 cores: 8 s a load with `networkidle`,
-            // 1 s with `load`, the same `startup-total` distribution either way.
+            // 1 s with `load`, the same `startup-total` distribution either way. The suite
+            // now turns that relief off at boot (`helpers/test.js`); `load` stays, because
+            // the test must not wait for whatever the basemap does next.
             await page.goto("/", { waitUntil: "load" });
             await page.locator(MAP_SELECTOR).waitFor({ state: "visible", timeout: MAP_TIMEOUT });
             // Wait for the startup-total measure to be recorded by init.ts
@@ -1321,14 +1323,19 @@ test.describe("6.2.10 — Local read at scale", () => {
 
             const layerId = `_local_read_${count}`;
             const profile = fs.mkdtempSync(path.join(os.tmpdir(), "geoleaf-local-read-"));
-            const open = () =>
-                playwright.chromium.launchPersistentContext(profile, {
+            // A context of its own, so the suite's fixture does not reach it: the relief is
+            // turned off here, as everywhere else — the subject is the local read, not the relief.
+            const open = async () => {
+                const ctx = await playwright.chromium.launchPersistentContext(profile, {
                     ...launchOptions,
                     baseURL: origin,
                     ignoreHTTPSErrors,
                     serviceWorkers,
                     viewport,
                 });
+                await turnReliefOff(ctx);
+                return ctx;
+            };
 
             try {
                 // ── 1. Write the layer and the queue, then close the browser ──────────

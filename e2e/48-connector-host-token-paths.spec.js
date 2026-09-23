@@ -13,7 +13,7 @@
 // Routing measured before writing, Service Worker blocked: `page.route` sees all three — see
 // `helpers/connector.js`. A cut network is an ABORTED route, not `setOffline` alone.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { withOffline } from "./helpers/offline.js";
 import { bootWithoutServiceWorker, seedConnectorToken } from "./helpers/connector.js";

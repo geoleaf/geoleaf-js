@@ -1,7 +1,7 @@
 // @ts-check
 // E2E: 01-core-only — map displays, zoom works, GeoJSON layers load
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { scanPage } from "./helpers/axe-config.js";
 

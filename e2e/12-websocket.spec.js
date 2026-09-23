@@ -34,7 +34,7 @@
 // event, but emitMessage is dead code (never called) — channel messages are delivered ONLY
 // through the subscribe(channel, handler) callback, not via a document event.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 
 // serviceWorkers:'block' — deploy-core ships a PWA SW; without blocking it the page can be

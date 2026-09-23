@@ -21,7 +21,7 @@
  * test would pass with no listener in existence. Hence the negative control: the queue is
  * seeded AFTER boot, and its state is asserted before anything is triggered.
  */
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { wipeOnOrigin } from "./helpers/db-seed.js";
 import { GEOLEAF_DB, readStore } from "./helpers/idb.js";

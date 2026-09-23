@@ -25,7 +25,7 @@
 // otherwise the scenario is wrong, never the bound.
 //
 // Target: deploy-coverage (port 8769) — the instrumented variant, like `35-routing-entry-point`.
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { bootMapUntilLoaded } from "./helpers/boot.js";
 

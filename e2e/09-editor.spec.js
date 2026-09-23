@@ -51,7 +51,7 @@
 // NOTE: the Playwright webServer block auto-starts http-server on deploy-full.
 // Run with `npx playwright test e2e/09-editor.spec.js` (build:deploy:all first).
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { scanPage } from "./helpers/axe-config.js";
 import { GEOLEAF_DB, readStore } from "./helpers/idb.js";

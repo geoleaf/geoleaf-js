@@ -2,7 +2,7 @@
  * Unit tests — capabilities/filter/serialize.ts (S13).
  *
  * ActiveField[] ⇄ SerializedFilterState mapping: descriptor stripping, km/metre
- * radius conversion, unknown-id and empty-selection dropping.
+ * radius conversion, unknown-id and empty-selection dropping, taxonomy `subValues`.
  */
 import { describe, expect, it } from "vitest";
 
@@ -60,6 +60,33 @@ describe("serializeActiveFilter", () => {
             { id: "surf", kind: "range" },
         ]);
     });
+
+    it("copies a taxonomy field's subValues as fresh { value, category } objects", () => {
+        const entry = { value: "LAC", category: "SPORT" };
+        const out = serializeActiveFilter([
+            { descriptor: byId.cats, values: ["LAC"], subValues: [entry] },
+        ]).fields;
+        expect(out).toStrictEqual([
+            {
+                id: "cats",
+                kind: "taxonomy",
+                values: ["LAC"],
+                subValues: [{ value: "LAC", category: "SPORT" }],
+            },
+        ]);
+        expect(out[0].subValues[0]).not.toBe(entry);
+    });
+
+    it("omits subValues when there is none (absent or empty)", () => {
+        const out = serializeActiveFilter([
+            { descriptor: byId.cats, values: ["MUSEE"], subValues: [] },
+            { descriptor: byId.cats, values: ["PLAGE"] },
+        ]).fields;
+        expect(out).toStrictEqual([
+            { id: "cats", kind: "taxonomy", values: ["MUSEE"] },
+            { id: "cats", kind: "taxonomy", values: ["PLAGE"] },
+        ]);
+    });
 });
 
 describe("deserializeActiveFilter", () => {
@@ -108,5 +135,70 @@ describe("deserializeActiveFilter", () => {
             ["tags", ["free"]],
             ["surf", { min: 12 }],
         ]);
+    });
+
+    it("round-trips a taxonomy subValues serialize → deserialize → serialize", () => {
+        const active = [
+            {
+                descriptor: byId.cats,
+                values: ["NATURE", "PARC", "LAC"],
+                subValues: [
+                    { value: "PARC", category: "NATURE" },
+                    { value: "LAC", category: "NATURE" },
+                ],
+            },
+        ];
+        const state = serializeActiveFilter(active);
+        const back = deserializeActiveFilter(state, CONFIG);
+        expect(back[0].subValues).toEqual(active[0].subValues);
+        expect(serializeActiveFilter(back)).toStrictEqual(state);
+    });
+
+    it("restores a taxonomy state without subValues exactly as before", () => {
+        const state = {
+            fields: [{ id: "cats", kind: "taxonomy", values: ["NATURE", "PARC", "LAC"] }],
+        };
+        expect(deserializeActiveFilter(state, CONFIG)).toStrictEqual([
+            { descriptor: byId.cats, values: ["NATURE", "PARC", "LAC"] },
+        ]);
+    });
+
+    it("keeps only the well-formed subValues entries, without throwing", () => {
+        const state = {
+            fields: [
+                {
+                    id: "cats",
+                    kind: "taxonomy",
+                    values: ["LAC"],
+                    subValues: [
+                        null,
+                        42,
+                        "LAC",
+                        { value: "LAC" },
+                        { value: "", category: "NATURE" },
+                        { value: 7, category: "NATURE" },
+                        { value: "LAC", category: "SPORT", extra: true },
+                    ],
+                },
+                { id: "tags", kind: "tag", values: ["free"], subValues: "LAC" },
+            ],
+        };
+        expect(deserializeActiveFilter(state, CONFIG)).toStrictEqual([
+            {
+                descriptor: byId.cats,
+                values: ["LAC"],
+                subValues: [{ value: "LAC", category: "SPORT" }],
+            },
+            { descriptor: byId.tags, values: ["free"] },
+        ]);
+    });
+
+    it("never treats subValues alone as a constraint", () => {
+        const state = {
+            fields: [
+                { id: "cats", kind: "taxonomy", subValues: [{ value: "LAC", category: "SPORT" }] },
+            ],
+        };
+        expect(deserializeActiveFilter(state, CONFIG)).toEqual([]);
     });
 });

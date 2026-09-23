@@ -763,9 +763,14 @@ GeoLeaf.LayerManager.refresh();
 **Programmatic filtering:**
 
 ```javascript
-// Drive the map's own filter panel
-GeoLeaf.Filter.applyFilter({ searchText: "easy" });
+// Drive the map's own filter panel. A state is `{ fields: [...] }`, one entry per
+// constrained field (`id` is the field's id in `modules.filter.fields`), and it replaces
+// the panel's selection: a panel field left out is cleared. Start from the current state.
 const active = GeoLeaf.Filter.getActiveFilter();
+const others = active.fields.filter((f) => f.id !== "searchText");
+GeoLeaf.Filter.applyFilter({
+    fields: [...others, { id: "searchText", kind: "text", text: "easy" }],
+});
 ```
 
 > **BREAKING (v3.1.0)** — the whole `GeoLeaf.Filters` namespace (plural) is removed, along
@@ -807,7 +812,7 @@ const active = GeoLeaf.Filter.getActiveFilter();
 // Read the filter panel state (including the text field), serialisable
 const state = GeoLeaf.Filter.getActiveFilter();
 
-// Apply a filter state without going through the DOM
+// Restore a state: it is written back onto the panel's controls, then applied to the map
 GeoLeaf.Filter.applyFilter(state);
 
 // Is a filter active?

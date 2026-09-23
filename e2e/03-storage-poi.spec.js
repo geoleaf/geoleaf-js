@@ -4,7 +4,7 @@
 // so this scenario validates the storage cache button alongside the editor toolbar
 // slot — not the legacy [data-gl-toolbar-action="poi-add"], which is absent here.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { scanPage } from "./helpers/axe-config.js";
 

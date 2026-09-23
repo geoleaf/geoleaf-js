@@ -185,6 +185,125 @@ describe("taxonomy tree — cascade, tri-state & expand", () => {
     });
 });
 
+describe("readActiveFilter — taxonomy sub-categories keep their category (subValues)", () => {
+    const SUB_CONFIG = {
+        enabled: true,
+        fields: [
+            { id: "cats", kind: "taxonomy", label: "Catégories", field: "cat", subField: "sub" },
+        ],
+    };
+    // LAC is listed under two categories: a sub-category id is unique only within its category.
+    const SUB_OPTIONS = {
+        cats: {
+            categories: {
+                NATURE: {
+                    label: "Nature",
+                    subcategories: { PARC: { label: "Parc" }, LAC: { label: "Lac" } },
+                },
+                SPORT: {
+                    label: "Sport",
+                    subcategories: { LAC: { label: "Lac" }, STADE: { label: "Stade" } },
+                },
+                MUSEE: { label: "Musée" },
+                PLAGE: { label: "Plage" },
+            },
+        },
+    };
+    const cat = (p, id) =>
+        [...p.querySelectorAll(".gl-filter-tree__checkbox--category")].find(
+            (el) => el.value === id
+        );
+    const sub = (p, c, s) =>
+        p.querySelector(
+            `.gl-filter-tree__checkbox--subcategory[data-gl-filter-category-id="${c}"][data-gl-filter-subcategory-id="${s}"]`
+        );
+    // Checks a box the way a click does, so the tree's cascade / tri-state runs.
+    const tick = (el) => {
+        el.checked = true;
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+    };
+    const read = (p) => readActiveFilter(p, SUB_CONFIG)[0];
+
+    it("a sub-category checked alone names its category", () => {
+        const p = renderFilterPanel(SUB_CONFIG, SUB_OPTIONS);
+        tick(sub(p, "NATURE", "PARC"));
+        const af = read(p);
+        expect(af.values).toEqual(["PARC"]);
+        expect(af.subValues).toEqual([{ value: "PARC", category: "NATURE" }]);
+        expect(cat(p, "NATURE").indeterminate).toBe(true);
+    });
+
+    it("a checked category cascades: one entry per sub-category, the category first in values", () => {
+        const p = renderFilterPanel(SUB_CONFIG, SUB_OPTIONS);
+        tick(cat(p, "NATURE"));
+        const af = read(p);
+        expect(af.values).toEqual(["NATURE", "PARC", "LAC"]);
+        expect(af.subValues).toEqual([
+            { value: "PARC", category: "NATURE" },
+            { value: "LAC", category: "NATURE" },
+        ]);
+        expect(af.values.slice(0, af.values.length - af.subValues.length)).toEqual(["NATURE"]);
+    });
+
+    it("categories without sub-categories leave no subValues key", () => {
+        const p = renderFilterPanel(SUB_CONFIG, SUB_OPTIONS);
+        tick(cat(p, "MUSEE"));
+        tick(cat(p, "PLAGE"));
+        const af = read(p);
+        expect(af.values).toEqual(["MUSEE", "PLAGE"]);
+        expect(af).not.toHaveProperty("subValues");
+    });
+
+    it("a sub-category id shared by two categories yields one entry, under the one checked", () => {
+        const p = renderFilterPanel(SUB_CONFIG, SUB_OPTIONS);
+        tick(sub(p, "SPORT", "LAC"));
+        const af = read(p);
+        expect(af.values).toEqual(["LAC"]);
+        expect(af.subValues).toEqual([{ value: "LAC", category: "SPORT" }]);
+        expect(sub(p, "NATURE", "LAC").checked).toBe(false);
+    });
+
+    it("entries follow the panel order, not the click order", () => {
+        const p = renderFilterPanel(SUB_CONFIG, SUB_OPTIONS);
+        tick(sub(p, "SPORT", "STADE"));
+        tick(sub(p, "NATURE", "PARC"));
+        const af = read(p);
+        expect(af.values).toEqual(["PARC", "STADE"]);
+        expect(af.subValues).toEqual([
+            { value: "PARC", category: "NATURE" },
+            { value: "STADE", category: "SPORT" },
+        ]);
+    });
+
+    it("never deduplicates: one entry per checked sub-category box", () => {
+        const p = renderFilterPanel(SUB_CONFIG, SUB_OPTIONS);
+        tick(sub(p, "NATURE", "LAC"));
+        tick(sub(p, "SPORT", "LAC"));
+        const af = read(p);
+        expect(af.values).toEqual(["LAC", "LAC"]);
+        expect(af.subValues).toEqual([
+            { value: "LAC", category: "NATURE" },
+            { value: "LAC", category: "SPORT" },
+        ]);
+        expect(af.values.length - af.subValues.length).toBe(0);
+    });
+
+    it("leaves values flat and unchanged: checked categories, then checked sub-categories", () => {
+        const single = renderFilterPanel(SUB_CONFIG, SUB_OPTIONS);
+        tick(sub(single, "NATURE", "PARC"));
+        expect(read(single).values).toEqual(["PARC"]);
+
+        const cascade = renderFilterPanel(SUB_CONFIG, SUB_OPTIONS);
+        tick(cat(cascade, "NATURE"));
+        expect(read(cascade).values).toEqual(["NATURE", "PARC", "LAC"]);
+
+        const mixed = renderFilterPanel(SUB_CONFIG, SUB_OPTIONS);
+        tick(sub(mixed, "SPORT", "STADE"));
+        tick(cat(mixed, "MUSEE"));
+        expect(read(mixed).values).toEqual(["MUSEE", "STADE"]);
+    });
+});
+
 describe("tag badges — auto-apply", () => {
     it("toggles the badge and bubbles a change (auto-apply parity)", () => {
         const panel = renderFilterPanel(CONFIG, OPTIONS);

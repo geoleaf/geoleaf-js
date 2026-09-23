@@ -17,7 +17,7 @@
 // fails and the branding is never mounted). The per-value coverage lives in
 // Vitest (__tests__/config/s10-*) and does not depend on the browser.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 
 test.use({ baseURL: baseURL("core") }); // deploy-core (profil tourism)

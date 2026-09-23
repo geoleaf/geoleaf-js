@@ -30,7 +30,7 @@
  * the pull report `sourceUnreachable` and hide what this spec measures.
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { readStore, readRecord, GEOLEAF_DB } from "./helpers/idb.js";
 import { serveBasemapTilesLocally } from "./helpers/basemap.js";

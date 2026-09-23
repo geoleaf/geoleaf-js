@@ -30,7 +30,7 @@
  * ray-casting test puts inside, the one farthest from every vertex — from the loaded geometry.
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { readStore, GEOLEAF_DB } from "./helpers/idb.js";
 import { goOffline } from "./helpers/offline.js";
@@ -244,6 +244,17 @@ test("[editor] éditer un polygone SANS `id` de premier niveau atteint bien l'ou
 
     // 🛑 No gesture before the camera is posed: a basemap applied late tilts it to `pitch: 60`
     // mid-drag, and the drag is lost in silence (see `helpers/camera.js`).
+    await awaitSettledCamera(page);
+
+    // 🛑 THE CAMERA IS TILTED ON PURPOSE: on a FLAT camera, this whole-shape drag is lost. Measured
+    // on 23/09/2026, relief off: `pitch: 0` → lost 4/4 (and 6/6 at the boot's own flat camera);
+    // `pitch: 30` or `60` → taken 4/4 each; relief on (`pitch: 60`) → taken 6/6. The relief is not
+    // the factor, the tilt is — and nothing explains it yet. This spec's subject is the id-less
+    // polygon reaching the outbox, not the drag: it poses the tilt it needs, which the suite's
+    // relief used to pose for it, and the defect is left visible here rather than hidden.
+    await page.evaluate(() =>
+        /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap().jumpTo({ pitch: 60 })
+    );
     await awaitSettledCamera(page);
 
     const inside = await projectInteriorPoint(page, target);

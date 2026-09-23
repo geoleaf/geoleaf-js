@@ -23,7 +23,7 @@
 //
 // The `vn-` prefix: browser verification outside the suite numbering.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { readFile } from "node:fs/promises";
 import { baseURL } from "./helpers/base-url.js";
 

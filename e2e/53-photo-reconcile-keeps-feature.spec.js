@@ -27,7 +27,7 @@
  * route, and one routed on the context is seen whoever sends it.
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { readStore, GEOLEAF_DB } from "./helpers/idb.js";
 import { serveBasemapTilesLocally } from "./helpers/basemap.js";

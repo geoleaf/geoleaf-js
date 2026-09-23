@@ -15,8 +15,9 @@
 //
 // The `cfg-` prefix marks the config-contract spec family.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
+import { awaitSettledCamera } from "./helpers/camera.js";
 
 test.use({ baseURL: baseURL("core") }); // deploy-core (profil tourism)
 
@@ -92,27 +93,59 @@ test.describe("cfg-c3 — basemaps/themes/taxonomy (état map/DOM réel)", () =>
     });
 
     // ── 3D terrain: the default basemap (terrain-terrarium, default3D) ──────────
-    test("terrain 3D: le relief est activé pour le basemap par défaut", async ({ page }) => {
+    // The suite turns the relief off at boot (`helpers/test.js`): THIS test is about it.
+    test.describe("relief", () => {
+        test.use({ relief: true });
+
+        test("terrain 3D: le relief est activé pour le basemap par défaut", async ({ page }) => {
+            await bootMapStyleReady(page);
+            // terrain-terrarium has default3D:true → setTerrain + raster-dem source "terrain-dem".
+            await page.waitForFunction(
+                () => {
+                    const native = /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap();
+                    const style = native.getStyle() || {};
+                    const hasDem = !!(style.sources && style.sources["terrain-dem"]);
+                    let terrain;
+                    try {
+                        terrain = native.getTerrain ? native.getTerrain() : null;
+                    } catch {
+                        terrain = null;
+                    }
+                    return hasDem || !!terrain;
+                },
+                undefined,
+                { timeout: 15000 }
+            );
+            const state = await readMapState(page);
+            expect(state.hasTerrain || state.sourceIds.includes("terrain-dem")).toBeTruthy();
+        });
+    });
+
+    // The witness of the suite's default: a fixture that stopped biting would bring the relief
+    // back into every spec — and its cost with it — without anything failing.
+    test("sans relief (le défaut de la suite) : aucun relief au boot, et la réécriture a mordu", async ({
+        page,
+    }) => {
         await bootMapStyleReady(page);
-        // terrain-terrarium has default3D:true → setTerrain + raster-dem source "terrain-dem".
-        await page.waitForFunction(
-            () => {
-                const native = /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap();
-                const style = native.getStyle() || {};
-                const hasDem = !!(style.sources && style.sources["terrain-dem"]);
-                let terrain;
-                try {
-                    terrain = native.getTerrain ? native.getTerrain() : null;
-                } catch {
-                    terrain = null;
-                }
-                return hasDem || !!terrain;
-            },
-            undefined,
-            { timeout: 15000 }
-        );
-        const state = await readMapState(page);
-        expect(state.hasTerrain || state.sourceIds.includes("terrain-dem")).toBeTruthy();
+        // The default basemap is applied LATER than the style: read the map only once it is
+        // active and the camera posed, or a relief still to come would read as absent.
+        await awaitSettledCamera(page);
+        const seen = await page.evaluate(() => {
+            const w = /** @type {any} */ (window);
+            const native = w.GeoLeaf.Core.getMap().getNativeMap();
+            return {
+                off: w.__glReliefOff,
+                wants3D: !!w.GeoLeaf.Baselayers.getActiveLayer?.()?.terrain?.default3D,
+                terrain: !!(native.getTerrain && native.getTerrain()),
+                pitch: Math.round(native.getPitch()),
+            };
+        });
+        expect(seen.off).toBeGreaterThan(0);
+        expect({ wants3D: seen.wants3D, terrain: seen.terrain, pitch: seen.pitch }).toEqual({
+            wants3D: false,
+            terrain: false,
+            pitch: 0,
+        });
     });
 
     // ── taxonomy.icons: sprite resolved/injected + icons registered ─────────────

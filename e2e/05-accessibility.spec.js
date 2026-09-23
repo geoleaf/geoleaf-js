@@ -9,7 +9,7 @@
 //   - packages/core/docs/ACCESSIBILITY.md — implemented ARIA patterns
 //   - Decision: full-page scans, MapLibre canvas excluded, runOnly wcag2aa
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { scanPage, scanComponent } from "./helpers/axe-config.js";
 

@@ -14,7 +14,7 @@
 // page.route() fulfills these at the network layer, below the captured _originalFetch,
 // so injected Authorization headers are observable via route.request().headers().
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { scanComponent } from "./helpers/axe-config.js";
 import { readConnectorToken } from "./helpers/connector.js";

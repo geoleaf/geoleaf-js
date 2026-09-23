@@ -41,7 +41,7 @@
 // degradation of the harvest. Neutralising this file without it would have
 // closed the red AND the eye.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 
 // Viewport ≥ 1440 px: the selector lives INSIDE the layer manager, and the

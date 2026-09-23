@@ -26,7 +26,7 @@
 // stores `{ geojson: data }`, so `_data` is no longer a FeatureCollection. `getData()`
 // resolves locally when the data is inline, so it introduces no worker round-trip.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { serveBasemapTilesLocally } from "./helpers/basemap.js";
 

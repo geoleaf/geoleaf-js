@@ -28,7 +28,7 @@
  * A spec that wrote them would measure one day's build, then fall silent.
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { bootMap } from "./helpers/boot.js";
 

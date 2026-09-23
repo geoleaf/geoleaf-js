@@ -14,7 +14,7 @@
 // `modules.language-switcher.enabled: true`. Red after a config change →
 // check that flag before the code.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 
 test.use({ baseURL: baseURL("core"), serviceWorkers: "block" });

@@ -31,7 +31,7 @@
  * `hostResolverArgs` (`e2e/helpers/base-url.js`), which documents the trap.
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import {
     seedDatabase,

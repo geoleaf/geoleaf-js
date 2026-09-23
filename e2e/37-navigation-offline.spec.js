@@ -34,7 +34,7 @@
  *
  * Target: deploy-coverage (port 8769).
  */
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { goOffline, recordRequests, settleNetwork } from "./helpers/offline.js";
 

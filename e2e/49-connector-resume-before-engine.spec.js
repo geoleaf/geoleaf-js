@@ -20,7 +20,7 @@
  * Service Workers are blocked: every request this spec fills is routed, and a worker would
  * serve the profile's `GET`s past the routes.
  */
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { readStore, seedStore, GEOLEAF_DB } from "./helpers/idb.js";
 import { seedConnectorToken } from "./helpers/connector.js";

@@ -11,6 +11,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **`GeoLeaf.Filter.getActiveFilter()` says under which category each checked sub-category is
+  checked.** A `taxonomy` field of the returned state now carries `subValues` beside `values`: one
+  `{ value, category }` per checked sub-category checkbox, in panel order — `value` the
+  sub-category id, `category` the id of the category it is listed under. The key is absent when no
+  sub-category is checked. `values` does not change: the checked categories, then the checked
+  sub-categories, flat — the map is still filtered on it, and a permalink still stores only it. A
+  sub-category id is unique only within its category, and the flat list could tell neither a
+  checked category from a checked sub-category, nor, for an id listed under two categories, which
+  one was checked. Nothing in `subValues` is deduplicated, so the checked categories are `values`
+  minus `subValues[].value`, counted with multiplicity. `applyFilter(state)` reads the key back: a
+  shared id is restored under the category it was checked under, where both used to be checked.
+  Entries that are not `{ value, category }` strings are ignored. A state without `subValues` —
+  saved by an earlier version, or restored from a permalink — restores exactly as before. The
+  entry type is exported as `TaxonomySubValue`.
+
 ## [3.7.0] - 2026-09-23
 
 ### Added

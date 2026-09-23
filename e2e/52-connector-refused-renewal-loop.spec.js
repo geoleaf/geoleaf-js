@@ -18,7 +18,7 @@
  *
  * Service Workers are blocked: every request this spec fills is routed.
  */
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { seedStore, GEOLEAF_DB } from "./helpers/idb.js";
 import {

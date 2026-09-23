@@ -4,7 +4,7 @@ title: filter — le filtre attributaire générique, et son contrat sérialisab
 capability_id: filter
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 77b24edeb
+verifie_contre: 8f82ea186
 date: 1er septembre 2026
 ---
 
@@ -72,9 +72,9 @@ publie cet état sous une forme **sérialisable et sans DOM**, qui est ce que le
 | FI-11 | Deux modes de proximité, un seul chemin de code         | Panneau ou barre d'outils                      | L'activation GPS et l'activation manuelle sont partagées entre les deux surfaces — elles étaient dupliquées                                      | `panel/proximity/proximity-gps-mode.ts`          |
 | FI-12 | Lecture d'attribut par chemin pointé                    | `properties.name`, `attributes.tags`, `fclass` | Essai à la racine de l'entité **puis** dans le sac de propriétés — donc un nom nu sous `properties` se lit sans le préfixer                      | `engine/field-access.ts` → `getFieldValue`       |
 | FI-13 | Application **anti-rebond**                             | Frappe au clavier, glissement de curseur       | Une seule application différée, pas une par événement de saisie                                                                                  | `lifecycle.ts` → `_wirePanel`                    |
-| FI-14 | Sérialisation sans DOM de l'état actif                  | `getActiveFilter()`                            | Identifiant + genre par champ contraint ; les champs vides sont **omis**. C'est ce que le permalien met dans l'URL                               | `serialize.ts`                                   |
-| FI-15 | Restauration sur les **vrais** contrôles                | `applyFilter(state)`                           | L'inverse exact de la lecture. Remplace l'injection de champs fantômes que le permalien pratiquait                                               | `panel/write.ts`                                 |
-| FI-16 | La restauration itère les identifiants **de confiance** | État venu d'une URL                            | La boucle parcourt `config.fields`, jamais les identifiants sérialisés — **aucune valeur non fiable n'atteint un sélecteur CSS**                 | `panel/write.ts` → `writePanelControls`          |
+| FI-14 | Sérialisation sans DOM de l'état actif                  | `getActiveFilter()`                            | Identifiant + genre par champ contraint, vides **omis**. Taxonomie : `values` à plat, plus `subValues` (sous-catégorie cochée → sa catégorie)    | `panel/state.ts`, `serialize.ts`                 |
+| FI-15 | Restauration sur les **vrais** contrôles                | `applyFilter(state)`                           | L'inverse de la lecture, sans champs fantômes. Avec `subValues`, une sous-catégorie n'est cochée que sous la catégorie nommée                    | `panel/write.ts`                                 |
+| FI-16 | La restauration itère les identifiants **de confiance** | État venu d'une URL ou d'un intégrateur        | La boucle parcourt `config.fields` ; `subValues` est comparé aux attributs lus — **aucune valeur non fiable n'atteint un sélecteur CSS**         | `panel/write.ts` → `writePanelControls`          |
 | FI-17 | Conversion d'unité nommée par direction                 | Rayon                                          | L'interface et l'URL portent des **kilomètres**, le moteur des **mètres**. Les deux sens sont des fonctions nommées, jamais un `* 1000` en ligne | `units.ts`                                       |
 | FI-18 | Signal d'application                                    | Appliquer, réinitialiser, restaurer            | `geoleaf:filters:applied` — l'onglet de bureau et le permalien s'en servent                                                                      | `apply.ts`, `public-api.ts`                      |
 | FI-19 | Démontage complet                                       | `FilterModule.destroy()`                       | Échéance annulée, écouteurs détachés, panneau retiré, et la proximité démontée **seulement si elle avait été montée**                            | `lifecycle.ts` → `_reset`                        |
@@ -190,6 +190,21 @@ glu : chaque membre délègue à un module de la capacité, il n'y a aucune logi
 | `hasActiveFilters()`                                   | Au moins un champ contraint                                                       |
 | `proximity.setRadius(km)` · `proximity.toggle(map, …)` | Le sous-ensemble piloté par la barre d'outils                                     |
 
+⚠️ **Pour une taxonomie, `subValues` complète `values`, il ne le remplace pas.** `values` reste à
+l'octet ce qu'il était — les catégories cochées puis les sous-catégories cochées, à plat : le moteur
+filtre dessus, le permalien le met dans `gl_cats`. Mais l'identifiant d'une sous-catégorie n'est
+unique que dans sa catégorie. `subValues` ajoute donc, pour chaque case de sous-catégorie cochée, la
+catégorie sous laquelle elle l'est — `{ value, category }`, dans l'ordre du panneau, sans
+dédoublonnage : les catégories cochées sont `values` moins `subValues[].value`, répétitions
+comprises. Le moteur ne lit pas la clé, le permalien ne la porte pas. À la restauration, une
+sous-catégorie n'est cochée que sous une catégorie que `subValues` nomme, et une catégorie se lit
+dans la différence ; une entrée malformée est ignorée. La clé est absente quand aucune
+sous-catégorie n'est cochée, et **cette absence est ambiguë** : un état qui ne coche que des
+catégories se restaure par le chemin historique, qui coche aussi une sous-catégorie portant
+l'identifiant de l'une d'elles — et, par le tri-état, peut en cocher la catégorie. Le cas exige qu'une catégorie et une sous-catégorie partagent un
+identifiant — et le moteur, qui compare les deux niveaux au même ensemble, ne les distingue pas
+davantage.
+
 ⚠️ **`GeoLeaf.Filters` — au pluriel — n'existe plus.** Elle portait une seule méthode, sans aucun
 appelant dans le dépôt hors sa propre définition, et sa distance d'**une lettre** avec `Filter` était
 un piège d'intégration : la typée n'était pas sur l'entrée ESM racine, l'autre si. Sa suppression a
@@ -244,6 +259,7 @@ permalien maintient. C'est la seule persistance, et elle appartient à l'autre c
 | **Inerte sans `fields`**                                       | La migration devait être **additive** : un profil non migré ne devait pas voir son panneau hérité remplacé par un panneau vide                                                                                                                                                                                                                                                              | Monter un panneau sans contrôles                |
 | **Les conversions d'unité sont des fonctions nommées**         | Le rayon traverse trois représentations. Le facteur vivait en ligne sur sept sites, la direction lisible seulement au contexte — et une fonction rendant des kilomètres a déjà été préférée à celle rendant des mètres, décalant le rayon d'un facteur mille selon l'ordre de chargement                                                                                                    | Un `* 1000` au site d'appel                     |
 | **La restauration écrit sur les VRAIS contrôles**              | Le permalien injectait des champs cachés. La donnée était filtrée, la boîte de recherche vide, et la première interaction remettait tout à zéro                                                                                                                                                                                                                                             | L'injection de champs fantômes                  |
+| **`subValues` s'ajoute à `values`, sans le remplacer**         | `values` est lu par le moteur, le permalien et des intégrateurs : changer sa forme les casserait tous. La catégorie voyage donc à côté, une entrée par case cochée et sans dédoublonnage, pour que la différence rende exactement les catégories cochées                                                                                                                                    | Préfixer la catégorie dans `values`             |
 | **La restauration itère les identifiants de la CONFIGURATION** | Les identifiants sérialisés viennent d'une URL. Les passer à un sélecteur CSS serait une injection ; ceux de la configuration sont de confiance                                                                                                                                                                                                                                             | Itérer l'état reçu                              |
 | **La proximité se démonte depuis son montage**                 | L'initialisation attache des écouteurs au **document**, plus un cercle et un marqueur. Enregistrer le démontage **là où le montage a eu lieu** garantit qu'il ne se déclenche jamais pour une proximité jamais montée                                                                                                                                                                       | Appeler `destroy()` depuis `_reset`             |
 | **Le panneau préexistant est retiré avant le rendu**           | Sinon deux nœuds portent le même identifiant, et tous les sélecteurs du dépôt visent le premier                                                                                                                                                                                                                                                                                             | Réutiliser le conteneur                         |

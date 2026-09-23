@@ -12,7 +12,7 @@
 // ⚠️ Opt-in: visible because `profiles/geoleaf.config.json` sets
 // `modules.theme-palette.enabled: true`.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 
 test.use({ baseURL: baseURL("core"), serviceWorkers: "block" });

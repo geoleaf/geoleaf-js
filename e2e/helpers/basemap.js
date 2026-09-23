@@ -13,7 +13,9 @@
  * ⚠️ DERIVED FROM THE PROFILE, NOT LISTED. The hosts are read from the raster templates of the
  * profile the specs load (`url`, with `{s}` read as any subdomain), so a basemap moved to another
  * provider is followed. The terrain DEM (`terrain.demUrl`) is deliberately LEFT ALONE: a stub PNG
- * would decode as an elevation, and a false relief would move what the specs click.
+ * would decode as an elevation, and a false relief would move what the specs click. The suite
+ * turns the relief off at boot anyway (`helpers/test.js`): in a context that fixture reaches, the
+ * DEM is requested only by a spec that asks for the relief.
  *
  * ⚠️ `context.route`, not `page.route`: a request the service worker emits never reaches
  * `page.route`, and under `deploy-full` the worker may serve the tiles.

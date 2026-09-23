@@ -13,7 +13,7 @@
  * special-casing. (The native-expression half was retired in S5/N-4 — see `taxonomy-options.ts`.)
  */
 
-import type { FilterFieldDescriptor } from "../types.js";
+import type { FilterFieldDescriptor, TaxonomySubValue } from "../types.js";
 
 /** Minimal structural view of a feature the engine reads (GeoJSON or POI bag). */
 export interface FeatureLike {
@@ -42,8 +42,14 @@ export interface RangeSelection {
 export interface ActiveField {
     /** The field descriptor this selection targets. */
     descriptor: FilterFieldDescriptor;
-    /** Selected values — `taxonomy` / `tag` / `enum`. */
+    /** Selected values — `taxonomy` / `tag`. */
     values?: string[];
+    /**
+     * Checked sub-categories with their category — `taxonomy` only, carried from the
+     * panel reader to serialisation. The engine does not read it (matching uses
+     * `values`), and the taxonomy expansion passes it through unchanged.
+     */
+    subValues?: TaxonomySubValue[];
     /** Numeric bounds — `range`. */
     range?: RangeSelection;
     /** Search query — `text`. */

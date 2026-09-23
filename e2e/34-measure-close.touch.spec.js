@@ -32,7 +32,7 @@
 // suite does not vary. Treat a report of "I cannot close a distance measurement on my
 // phone" as a NEW measurement, not as a regression of this test.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 
 const MENU_OPEN = ".gl-measure-menu:not(.gl-measure-menu--hidden)";

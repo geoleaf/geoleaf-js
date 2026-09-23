@@ -14,7 +14,7 @@
 //          ("It cannot be covered by a test […] Blocked on the browser
 //          verification pass"). This is precisely that pass.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { bootMap, waitMapLoaded } from "./helpers/boot.js";
 

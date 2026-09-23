@@ -25,7 +25,7 @@
  * connector. What is under test starts with the queue in that state.
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { readStore, seedStore, GEOLEAF_DB } from "./helpers/idb.js";
 import { armEditor } from "./helpers/editor.js";

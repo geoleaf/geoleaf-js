@@ -21,7 +21,7 @@
 //   2. iOS Safari not installed → iOS banner (the one behind the `setTimeout(1500)`)
 //   3. profile without `installPrompt.enabled` → NO banner
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 
 test.use({ baseURL: baseURL("core") });

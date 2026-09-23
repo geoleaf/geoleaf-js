@@ -43,7 +43,7 @@
  * than simplified.
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { wipeOnOrigin } from "./helpers/db-seed.js";
 import { GEOLEAF_DB, readStore } from "./helpers/idb.js";

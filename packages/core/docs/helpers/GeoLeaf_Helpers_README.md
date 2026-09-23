@@ -374,10 +374,10 @@ This is not a rename — both the entry point **and** the source of truth have c
 // The active filter panel exposes search through GeoLeaf.Filter (capability, singular).
 const searchInput = document.querySelector("#search");
 const debouncedSearch = GeoLeaf.Utils.debounce((query) => {
-    GeoLeaf.Filter.applyFilter({
-        searchText: query.toLowerCase(),
-        hasSearchText: query.length > 0,
-    });
+    // A state replaces the whole panel selection: keep the other fields as they are.
+    const others = GeoLeaf.Filter.getActiveFilter().fields.filter((f) => f.id !== "searchText");
+    const text = query ? [{ id: "searchText", kind: "text", text: query }] : [];
+    GeoLeaf.Filter.applyFilter({ fields: [...others, ...text] });
 }, 300);
 
 searchInput.addEventListener("input", (e) => {

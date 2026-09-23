@@ -245,8 +245,9 @@ const opts = Utils.mergeOptions({ zoom: 10, padding: 20 }, userOptions);
 
 // Debounce a search handler
 // The full-text engine is not part of the core: filtering goes through the `filter` capability.
+// A filter state is `{ fields: [...] }` and replaces the whole panel selection.
 const onSearch = Utils.debounce((query: string) => {
-    GeoLeaf.Filter?.applyFilter({ text: query });
+    GeoLeaf.Filter?.applyFilter({ fields: [{ id: "searchText", kind: "text", text: query }] });
 }, 250);
 
 // Compute distance between two coordinates

@@ -14,7 +14,7 @@
 // Service Worker blocked, `page.route` sees them all — see `helpers/connector.js`. The network
 // is cut by aborting the renewal route: `setOffline` alone still lets a routed request through.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { withOffline } from "./helpers/offline.js";
 import {

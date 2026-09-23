@@ -21,7 +21,7 @@
 // not a regression it restores. Mixing it with the commit assertion would mix two reds of
 // different natures.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { touchDrag, touchDragInspect } from "./helpers/touch.js";
 

@@ -56,7 +56,7 @@
  * proves the instrument does see something when there is something to see.
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { wipeOnOrigin } from "./helpers/db-seed.js";
 import { GEOLEAF_DB, seedStore, readStore, readBinary } from "./helpers/idb.js";

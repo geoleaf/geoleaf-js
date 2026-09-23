@@ -34,7 +34,7 @@
 // data/themes/plugins, not cleanly assertable here (e.g. the filter toggle
 // is `display:none` even with flag=true).
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 
 test.use({ baseURL: baseURL("core") }); // deploy-core (profil tourism)

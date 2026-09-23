@@ -32,7 +32,7 @@
 //
 // The `vn-` prefix: browser verification outside the suite numbering.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 
 test.use({ baseURL: baseURL("core"), serviceWorkers: "block" });

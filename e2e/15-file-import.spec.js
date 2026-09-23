@@ -20,7 +20,7 @@
 // NOTE: deploy-core ships a PWA service worker → serviceWorkers:'block'. Run after
 // `npm run build:deploy:all`.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

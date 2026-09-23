@@ -35,7 +35,7 @@
 // NO server (e2e/helpers/base-url.js); the `ports` default stays the
 // reference target, the CI one.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { registerCoverageCollection } from "./helpers/coverage.js";
 import { bootMapUntilLoaded } from "./helpers/boot.js";

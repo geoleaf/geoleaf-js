@@ -34,7 +34,7 @@
  * zoom, which would measure the zoom rather than the correction.
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { readStore, GEOLEAF_DB } from "./helpers/idb.js";
 import { goOffline } from "./helpers/offline.js";

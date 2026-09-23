@@ -20,7 +20,7 @@
  * Service Workers are blocked: every request this spec fills is routed (see
  * `helpers/connector.js`).
  */
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { withOffline } from "./helpers/offline.js";
 import {

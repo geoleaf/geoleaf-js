@@ -34,7 +34,7 @@
 // ones that would betray a real regression of a profile's boot.
 
 import { deliverableProfiles } from "./helpers/profiles.js";
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 
 test.use({ baseURL: baseURL("core"), serviceWorkers: "block" });

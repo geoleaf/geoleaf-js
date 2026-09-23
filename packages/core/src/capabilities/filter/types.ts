@@ -106,6 +106,18 @@ export interface FilterConfig {
 // ── Serialisation contract (S13) ─────────────────────────────────────────────
 
 /**
+ * One checked sub-category checkbox of a `taxonomy` field, paired with the category it
+ * is listed under. A sub-category id is unique only within its category — the same id
+ * can be listed under several — so the pair says which one was checked.
+ */
+export interface TaxonomySubValue {
+    /** Sub-category id (the checkbox's `data-gl-filter-subcategory-id`). */
+    value: string;
+    /** Id of the category it is listed under (the checkbox's `data-gl-filter-category-id`). */
+    category: string;
+}
+
+/**
  * One field's serialisable selection — the DOM-free, engine-agnostic form of an
  * `ActiveField`, keyed by descriptor `id`+`kind`. This is the stable shape the
  * `permalink` capability persists to / restores from the URL, replacing the former
@@ -116,8 +128,26 @@ export interface SerializedFilterField {
     id: string;
     /** Filter kind. */
     kind: FilterKind;
-    /** Selected values — `taxonomy` (categories + sub-categories, flat) / `tag`. */
+    /**
+     * Selected values — `taxonomy` / `tag`. For `taxonomy`: the checked categories, then
+     * the checked sub-categories, flat, each in panel order; a sub-category id checked
+     * under two categories appears twice. The filter engine and the permalink read this
+     * list; `subValues` says which entries are sub-categories, and under which category.
+     */
     values?: string[];
+    /**
+     * Checked sub-categories with their category — `taxonomy` only. One entry per checked
+     * sub-category checkbox, in panel order; absent when none is checked. Each `value` is
+     * also in `values` and nothing is deduplicated, so the checked categories are `values`
+     * minus `subValues[].value`, counted with multiplicity — in a state read from the
+     * panel, the first `values.length - subValues.length` entries of `values`.
+     *
+     * On restore, a sub-category is checked only if its id is in `values` and its pair is
+     * listed here. Malformed entries are ignored, and a state with no usable entry is
+     * restored from `values` alone, as before. The filter engine does not read this key,
+     * and the permalink does not carry it.
+     */
+    subValues?: TaxonomySubValue[];
     /** Search query — `text`. */
     text?: string;
     /** Numeric bounds — `range`. */
@@ -151,9 +181,17 @@ export interface FilterPublicApi {
     isEnabled(): boolean;
     /** The resolved `modules.filter` config (merged over defaults). */
     getConfig(): FilterConfig;
-    /** Reads the active filter as a serialisable state (permalink capture). */
+    /**
+     * Reads the active filter as a serialisable state (permalink capture). A `taxonomy`
+     * field lists its checked categories and sub-categories in `values`, and adds
+     * `subValues` — the category of each checked sub-category — when at least one is checked.
+     */
     getActiveFilter(): SerializedFilterState;
-    /** Restores a serialised state: reflects it in the panel and applies it (no ghost DOM). */
+    /**
+     * Restores a serialised state: reflects it in the panel and applies it (no ghost DOM).
+     * A `taxonomy` field's `subValues`, when given, checks a sub-category only under the
+     * categories it names; without it, the panel is restored from `values` alone.
+     */
     applyFilter(state: SerializedFilterState): void;
     /** Re-applies the current panel state (e.g. after a proximity radius change). */
     applyNow(): void;

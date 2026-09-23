@@ -29,7 +29,7 @@
 //      a `test.fixme` at the bottom of the file; no committed version ever
 //      carried one — the planned fixme became the passing A.1/A.3 test.)
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { bootMap, waitMapLoaded, captureConsole } from "./helpers/boot.js";
 

@@ -8,15 +8,28 @@
 /**
  * Filter panel — control writer (S13).
  *
- * The exact inverse of `panel/state.ts::readActiveFilter`: reflects a serialised
- * filter state onto the mounted panel controls (text inputs, taxonomy tree
- * checkboxes, tag badges, range slider, boolean checkbox). Replaces the former
- * permalink **ghost-injection** (hidden fake inputs) with a direct write on the real
- * controls. Iterates over `config.fields` (trusted ids) rather than the serialised
- * ids (URL-sourced) so no untrusted value ever reaches a CSS selector.
+ * The inverse of `panel/state.ts::readActiveFilter`: reflects a serialised filter
+ * state onto the mounted panel controls (text inputs, taxonomy tree checkboxes, tag
+ * badges, range slider, boolean checkbox). Replaces the former permalink
+ * **ghost-injection** (hidden fake inputs) with a direct write on the real controls.
+ * Iterates over `config.fields` (trusted ids) rather than the serialised ids
+ * (URL-sourced) so no untrusted value ever reaches a CSS selector; a taxonomy
+ * `subValues` is compared with the attributes read off the checkboxes, never
+ * interpolated into a selector.
+ *
+ * For a taxonomy, a state carrying `subValues` is restored exactly. A flat one — no
+ * sub-category checked, an earlier version, a permalink — cannot tell apart two
+ * checkboxes carrying the same id (a sub-category listed under two categories, or a
+ * sub-category and a category sharing an id) and checks all of them, as it always did.
  */
 
-import type { FilterConfig, SerializedFilterField, SerializedFilterState } from "../types.js";
+import { normalizeSubValues } from "../serialize.js";
+import type {
+    FilterConfig,
+    SerializedFilterField,
+    SerializedFilterState,
+    TaxonomySubValue,
+} from "../types.js";
 
 /**
  * Writes `state` onto the panel controls. The panel is assumed freshly rendered
@@ -63,18 +76,53 @@ function _writeText(group: HTMLElement, sf: SerializedFilterField | undefined): 
 
 function _writeTaxonomy(group: HTMLElement, sf: SerializedFilterField | undefined): void {
     const values = new Set(sf?.values ?? []);
+    // Without a usable `subValues`, `values` decides alone, as it always did. With it, a
+    // sub-category also needs its (category, sub-category) pair listed, and a category is
+    // read from `values` minus `subValues` (counted with multiplicity), so a sub-category id
+    // equal to a category id does not check that category. Categories that have
+    // sub-categories are re-derived by the tri-state either way.
+    const subValues = normalizeSubValues(sf?.subValues);
+    const pairs = subValues.length ? _pairsByCategory(subValues) : null;
+    const categories = pairs ? _categoryIds(sf?.values ?? [], subValues) : values;
     group
         .querySelectorAll<HTMLInputElement>("input.gl-filter-tree__checkbox--category")
         .forEach((el) => {
-            el.checked = values.has(el.value);
+            el.checked = categories.has(el.value);
         });
     group
         .querySelectorAll<HTMLInputElement>("input.gl-filter-tree__checkbox--subcategory")
         .forEach((el) => {
             const sub = el.getAttribute("data-gl-filter-subcategory-id");
-            el.checked = sub != null && values.has(sub);
+            const category = el.getAttribute("data-gl-filter-category-id") ?? "";
+            el.checked =
+                sub != null &&
+                values.has(sub) &&
+                (pairs === null || pairs.get(category)?.has(sub) === true);
         });
     _recomputeTristate(group);
+}
+
+/** Category id → the sub-category ids `subValues` lists under it. */
+function _pairsByCategory(subValues: TaxonomySubValue[]): Map<string, Set<string>> {
+    const pairs = new Map<string, Set<string>>();
+    for (const { value, category } of subValues) {
+        const subs = pairs.get(category) ?? new Set<string>();
+        subs.add(value);
+        pairs.set(category, subs);
+    }
+    return pairs;
+}
+
+/** The checked category ids of a taxonomy state: `values` minus one occurrence per `subValues` entry. */
+function _categoryIds(values: readonly string[], subValues: TaxonomySubValue[]): Set<string> {
+    const left = new Map<string, number>();
+    for (const v of values) left.set(v, (left.get(v) ?? 0) + 1);
+    for (const { value } of subValues) {
+        const n = left.get(value) ?? 0;
+        if (n > 1) left.set(value, n - 1);
+        else left.delete(value);
+    }
+    return new Set(left.keys());
 }
 
 /** Restores the parent category tri-state (checked / indeterminate) after a write. */

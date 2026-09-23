@@ -19,7 +19,7 @@
 // `GeoLeaf.Notifications.*` (rich facade, mounted by
 // capabilities/toast-renderer/install.ts).
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { bootMap, waitMapLoaded, captureConsole } from "./helpers/boot.js";
 

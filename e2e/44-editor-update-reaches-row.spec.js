@@ -25,7 +25,7 @@
  * this deliverable does not carry (`DNS-05` strips it), and what is under test starts after it.
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { readStore, seedStore, GEOLEAF_DB } from "./helpers/idb.js";
 import { armEditor } from "./helpers/editor.js";

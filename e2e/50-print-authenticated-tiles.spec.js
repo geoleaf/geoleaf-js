@@ -14,7 +14,7 @@
  * nothing else tells their requests apart — and the live map keeps asking for tiles after
  * `loaded()`: parent tiles among them, seen arriving once the capture had started.
  */
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { bootWithoutServiceWorker } from "./helpers/connector.js";
 import { serveBasemapTilesLocally } from "./helpers/basemap.js";

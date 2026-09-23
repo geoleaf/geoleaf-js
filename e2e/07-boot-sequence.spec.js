@@ -1,7 +1,7 @@
 // @ts-check
 // E2E: 07-boot-sequence — boot lifecycle, perf marks, deferred modules, coverage
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { collectCoverage } from "./helpers/coverage.js";
 import { captureConsole } from "./helpers/boot.js";
@@ -196,6 +196,8 @@ test.describe("07-boot-sequence", () => {
 });
 
 // Collect coverage data after all tests
+// ⚠️ This page comes from `browser.newPage()`, outside the suite's fixture: it boots with the
+// demo's relief ON, as a real boot does — which is what a coverage of the boot must measure.
 test.afterAll(async ({ browser }) => {
     const page = await browser.newPage();
     await page.addInitScript(() => {

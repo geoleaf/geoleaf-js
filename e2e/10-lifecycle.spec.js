@@ -15,7 +15,7 @@
 //     state", and counting canvases alone never gave it);
 //   - indicative heap snapshot (Chromium-only, logged — no hard gate).
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { scanPage } from "./helpers/axe-config.js";
 

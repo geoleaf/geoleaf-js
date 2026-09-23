@@ -100,6 +100,151 @@ describe("GeoLeaf.Filter — serialisation contract", () => {
     });
 });
 
+describe("GeoLeaf.Filter — taxonomy sub-categories (subValues)", () => {
+    const SUB_CONFIG = {
+        enabled: true,
+        fields: [{ id: "cats", kind: "taxonomy", field: "cat", subField: "sub" }],
+    };
+    // LAC is listed under two categories: a sub-category id is unique only within its category.
+    const SUB_OPTIONS = {
+        cats: {
+            categories: {
+                NATURE: { subcategories: { PARC: {}, LAC: {} } },
+                SPORT: { subcategories: { LAC: {}, STADE: {} } },
+                MUSEE: {},
+                PLAGE: {},
+            },
+        },
+    };
+    function mountSubPanel() {
+        const p = renderFilterPanel(SUB_CONFIG, SUB_OPTIONS);
+        document.body.appendChild(p);
+        return p;
+    }
+    const cat = (p, id) =>
+        [...p.querySelectorAll(".gl-filter-tree__checkbox--category")].find(
+            (el) => el.value === id
+        );
+    const sub = (p, c, s) =>
+        p.querySelector(
+            `.gl-filter-tree__checkbox--subcategory[data-gl-filter-category-id="${c}"][data-gl-filter-subcategory-id="${s}"]`
+        );
+    const tick = (el) => {
+        el.checked = true;
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+    };
+    /** Every tree box as [category, sub-category, checked, indeterminate]. */
+    const boxes = (p) =>
+        [...p.querySelectorAll(".gl-filter-tree__checkbox")].map((el) => [
+            el.getAttribute("data-gl-filter-category-id") ?? el.value,
+            el.getAttribute("data-gl-filter-subcategory-id") ?? "",
+            el.checked,
+            el.indeterminate,
+        ]);
+
+    it("getActiveFilter() names the category of a sub-category checked alone", () => {
+        configGet.mockReturnValue(SUB_CONFIG);
+        tick(sub(mountSubPanel(), "NATURE", "PARC"));
+        expect(buildPublicApi().getActiveFilter().fields).toEqual([
+            {
+                id: "cats",
+                kind: "taxonomy",
+                values: ["PARC"],
+                subValues: [{ value: "PARC", category: "NATURE" }],
+            },
+        ]);
+    });
+
+    it("getActiveFilter() lists every sub-category a checked category cascades to", () => {
+        configGet.mockReturnValue(SUB_CONFIG);
+        tick(cat(mountSubPanel(), "NATURE"));
+        expect(buildPublicApi().getActiveFilter().fields).toEqual([
+            {
+                id: "cats",
+                kind: "taxonomy",
+                values: ["NATURE", "PARC", "LAC"],
+                subValues: [
+                    { value: "PARC", category: "NATURE" },
+                    { value: "LAC", category: "NATURE" },
+                ],
+            },
+        ]);
+    });
+
+    it("getActiveFilter() adds no subValues key when only leaf categories are checked", () => {
+        configGet.mockReturnValue(SUB_CONFIG);
+        const p = mountSubPanel();
+        tick(cat(p, "MUSEE"));
+        tick(cat(p, "PLAGE"));
+        const [field] = buildPublicApi().getActiveFilter().fields;
+        expect(field).toEqual({ id: "cats", kind: "taxonomy", values: ["MUSEE", "PLAGE"] });
+        expect(field).not.toHaveProperty("subValues");
+    });
+
+    it("getActiveFilter() pairs a shared sub-category id with the category it was checked under", () => {
+        configGet.mockReturnValue(SUB_CONFIG);
+        tick(sub(mountSubPanel(), "SPORT", "LAC"));
+        expect(buildPublicApi().getActiveFilter().fields).toEqual([
+            {
+                id: "cats",
+                kind: "taxonomy",
+                values: ["LAC"],
+                subValues: [{ value: "LAC", category: "SPORT" }],
+            },
+        ]);
+    });
+
+    it.each([
+        ["a sub-category alone", (p) => tick(sub(p, "NATURE", "PARC"))],
+        ["a cascaded category", (p) => tick(cat(p, "NATURE"))],
+        ["a shared id under one category", (p) => tick(sub(p, "SPORT", "LAC"))],
+        [
+            "a shared id under both categories",
+            (p) => {
+                tick(sub(p, "NATURE", "LAC"));
+                tick(sub(p, "SPORT", "LAC"));
+            },
+        ],
+        [
+            "leaf categories and a sub-category",
+            (p) => {
+                tick(cat(p, "MUSEE"));
+                tick(sub(p, "SPORT", "STADE"));
+            },
+        ],
+    ])("applyFilter(getActiveFilter()) checks the same boxes on a fresh panel — %s", (_, act) => {
+        configGet.mockReturnValue(SUB_CONFIG);
+        const api = buildPublicApi();
+        const a = mountSubPanel();
+        act(a);
+        const before = boxes(a);
+        const state = JSON.parse(JSON.stringify(api.getActiveFilter()));
+
+        document.body.innerHTML = "";
+        const b = mountSubPanel();
+        api.applyFilter(state);
+        expect(boxes(b)).toEqual(before);
+        // The engine still filters on the flat `values` (the taxonomy expansion runs them
+        // through a Set; no taxonomy is registered here, so it adds nothing).
+        expect(applyToSources.mock.calls[0][0][0].values).toEqual([
+            ...new Set(state.fields[0].values),
+        ]);
+    });
+
+    it("applyFilter() restores a state without subValues exactly as before", () => {
+        configGet.mockReturnValue(SUB_CONFIG);
+        const p = mountSubPanel();
+        buildPublicApi().applyFilter({
+            fields: [{ id: "cats", kind: "taxonomy", values: ["LAC"] }],
+        });
+        // A flat state cannot tell the two LAC apart: both are checked, as they always were.
+        expect(sub(p, "NATURE", "LAC").checked).toBe(true);
+        expect(sub(p, "SPORT", "LAC").checked).toBe(true);
+        expect(cat(p, "NATURE").indeterminate).toBe(true);
+        expect(cat(p, "SPORT").indeterminate).toBe(true);
+    });
+});
+
 describe("GeoLeaf.Filter — imperative helpers", () => {
     it("applyNow() re-applies from the panel", () => {
         configGet.mockReturnValue(CONFIG);

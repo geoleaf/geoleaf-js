@@ -27,7 +27,7 @@
  * a run where it does not match would measure the desktop sizes and call them a regression.
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 
 test.use({ baseURL: baseURL("full") });

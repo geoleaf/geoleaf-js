@@ -26,7 +26,7 @@
  * the same day, as the drain race `30-sync-cycle.spec.js` carries the account of. Every wait is now on `state: "attached"`, and the visibility became a
  * SUBJECT instead of a precondition.
  */
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { wipeOnOrigin } from "./helpers/db-seed.js";
 

@@ -3,7 +3,7 @@
 // Selectors updated for the toolbar-slot cache button (data-gl-toolbar-action="offline-ui");
 // the legacy .gl-cache-button anchor was removed when the button became a core toolbar slot.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { scanPage } from "./helpers/axe-config.js";
 

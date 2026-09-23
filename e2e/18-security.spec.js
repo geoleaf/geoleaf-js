@@ -29,7 +29,7 @@
 // deploy-* ship a PWA service worker → serviceWorkers:'block'. Run after
 // `npm run build:deploy:all`.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL, isNginxTarget } from "./helpers/base-url.js";
 import { bootMapUntilIdle } from "./helpers/boot.js";
 

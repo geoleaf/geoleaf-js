@@ -574,11 +574,40 @@ Configured under `modules.filter` (`config/plugins/filter.json`), **opt-out** (a
 | `isEnabled`        | `() => boolean`         | Whether the capability is active.                               |
 | `getConfig`        | `() => object`          | The resolved `modules.filter` block.                            |
 | `getActiveFilter`  | `() => object`          | The active filter state — **serialisable** (used by permalink). |
-| `applyFilter`      | `(state) => void`       | Restores a filter state, without touching the DOM.              |
+| `applyFilter`      | `(state) => void`       | Writes a state onto the panel's controls, then applies it.      |
 | `applyNow`         | `() => void`            | Applies the current panel state immediately.                    |
 | `reset`            | `() => void`            | Clears all filters.                                             |
 | `hasActiveFilters` | `() => boolean`         | Whether any filter is currently narrowing the display.          |
 | `proximity`        | `{ setRadius, toggle }` | Geographic proximity sub-controls.                              |
+
+**The state `getActiveFilter()` returns** is `{ fields: [...] }`: one entry per constrained field,
+`{ id, kind }` plus the payload of its kind (`text`, `values`, `range`, `bool`, `proximity`). A
+`taxonomy` field carries:
+
+- `values` — the checked categories, then the checked sub-categories, flat. The map is filtered on
+  this list, and a permalink stores it.
+- `subValues` — only when at least one sub-category is checked: one `{ value, category }` per
+  checked sub-category, in panel order, `category` being the category it is listed under. A
+  sub-category id is unique only within its category, so the pair says which one was checked.
+  Every `value` is also in `values` and nothing is deduplicated: the checked categories are
+  `values` minus `subValues[].value`, counted with multiplicity.
+
+```js
+const { fields } = GeoLeaf.Filter.getActiveFilter();
+// "NATURE" checked, which checks its two sub-categories:
+// { id: "categories", kind: "taxonomy",
+//   values: ["NATURE", "PARC", "LAC"],
+//   subValues: [
+//     { value: "PARC", category: "NATURE" },
+//     { value: "LAC", category: "NATURE" },
+//   ] }
+```
+
+`applyFilter(state)` takes the same shape back. It sets the panel's controls to `state` — a panel
+field left out of it is cleared — and filters the map on `state` alone; the proximity toolbar is not
+touched. With `subValues`, a sub-category id listed under several categories is checked only under
+those named; without it — a state saved by an earlier version, or a permalink —
+the panel is restored from `values` alone, as before.
 
 ---
 

@@ -14,7 +14,7 @@
 // Here the real chain is confirmed through STABLE anchors (GeoLeaf.Permalink
 // API, native maplibregl state, DOM input value) — no pixel assertion.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 
 test.use({ baseURL: baseURL("core") }); // deploy-core (profil tourism)

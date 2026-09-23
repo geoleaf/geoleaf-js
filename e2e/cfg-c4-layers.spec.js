@@ -17,7 +17,7 @@
 //
 // The `cfg-` prefix marks the config-contract spec family.
 
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 
 test.use({ baseURL: baseURL("core") }); // deploy-core (profil tourism)
