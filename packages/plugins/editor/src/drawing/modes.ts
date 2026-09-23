@@ -101,6 +101,20 @@ function _polygonMode(
     });
 }
 
+/**
+ * Reach, in px, of the select mode's handles — a press this close to a vertex drags the vertex,
+ * this close to an edge's midpoint handle inserts a vertex there; anywhere else on the shape
+ * drags the whole shape.
+ *
+ * ⚠️ Terra Draw resolves a drag in a fixed order — resize, vertex, MIDPOINT, then the whole shape —
+ * each within `pointerDistance`, and defaults it to 40 px: eight times the drawn midpoint dot.
+ * Left at that default, pressing a selected shape near an edge inserted a vertex instead of moving
+ * the shape — about a third of a 122-vertex polygon's fill at zoom 6. 12 px is the drawing modes'
+ * radius. It is passed to the CONSTRUCTOR: Terra Draw copies it into each behaviour when the mode
+ * registers, so changing it on a started mode would not reach them.
+ */
+const SELECT_POINTER_DISTANCE_PX = 12;
+
 function _selectMode(c: ThemeColors): EditorMode {
     // Distinct literals per mode (no shared reference — Terra Draw owns the flags).
     const editable = () => ({
@@ -111,6 +125,7 @@ function _selectMode(c: ThemeColors): EditorMode {
     });
     return new TerraDrawSelectMode({
         modeName: MODE_SELECT,
+        pointerDistance: SELECT_POINTER_DISTANCE_PX,
         styles: buildSelectStyles(c),
         flags: {
             [MODE_POINT]: { feature: { draggable: true } },

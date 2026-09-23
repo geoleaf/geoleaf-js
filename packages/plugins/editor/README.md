@@ -34,7 +34,7 @@ Load in your HTML after `@geoleaf/core`:
 Once loaded, an **"Edit"** button appears in the pill toolbar. Clicking it opens a floating vertical sub-menu (draggable, top-left by default) with:
 
 1. **Point / Line / Polyline / Polygon** — drawing tools. Click to place vertices; `Enter` or double-click to finish.
-2. **Select** — click an editable feature to select it and edit its vertices (drag, add midpoint, delete vertex).
+2. **Select** — click an editable feature to select it and edit its vertices (drag, add midpoint, delete vertex). On a selected feature, a press within 12 px of a vertex drags that vertex, within 12 px of an edge's midpoint handle inserts a vertex there; anywhere else on the feature drags the whole feature.
 3. **Undo / Redo** — `Ctrl+Z` / `Ctrl+Shift+Z`.
 4. **Delete** — removes the selected feature (`Del`).
 

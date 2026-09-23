@@ -198,11 +198,10 @@ async function projectInteriorPoint(page, target) {
 }
 
 /**
- * Radius, in px, within which Terra Draw's select mode takes a press for a HANDLE rather than for
- * the whole shape — the mode's `pointerDistance`, which the editor does not set, hence Terra Draw's
- * default. Plus a margin.
+ * Radius, in px, within which the select mode takes a press for a HANDLE rather than for the whole
+ * shape — the editor's `pointerDistance` for that mode (`drawing/modes.ts`, 12 px) — plus a margin.
  */
-const HANDLE_CLEARANCE_PX = 40 + 16;
+const HANDLE_CLEARANCE_PX = 12 + 16;
 
 /**
  * Page coordinates of a point on the selected polygon's fill, clear of every handle the selection
@@ -210,12 +209,14 @@ const HANDLE_CLEARANCE_PX = 40 + 16;
  *
  * 🛑 WHY THE PRESS POINT IS CHOSEN AFTER THE SELECTION, AND AWAY FROM THE HANDLES. In select mode,
  * Terra Draw decides what a drag means in a fixed order — resize, vertex, EDGE MIDPOINT, then the
- * whole shape — each within its `pointerDistance` of the press. A press 35-38 px from a midpoint
- * handle therefore inserted a vertex there and dragged it, and the shape stayed put. Measured on
- * 23/09/2026: that is every "lost" drag this spec ever recorded. The camera played a part only
- * because the handles are placed in SCREEN space when the shape is selected: a tilted camera
- * moved the long edge's handle out of reach (52.9 px at 60°), a flat one left it at 37.9 px. The
- * handles exist only once the shape is selected, hence the order.
+ * whole shape — each within its `pointerDistance` of the press. At Terra Draw's default of 40 px,
+ * which the editor left unset until 1.4.2, a press 35-38 px from a midpoint handle inserted a
+ * vertex there and dragged it, and the shape stayed put. Measured on 23/09/2026: that is every
+ * "lost" drag this spec ever recorded. The camera played a part only because the handles are
+ * placed in SCREEN space when the shape is selected: a tilted camera moved the long edge's handle
+ * out of reach (52.9 px at 60°), a flat one left it at 37.9 px. The editor now sets 12 px; this
+ * spec still presses clear of every handle, because its subject is the outbox, not the radius.
+ * The handles exist only once the shape is selected, hence the order.
  *
  * @param {import("@playwright/test").Page} page
  * @param {{ x: number, y: number }} from Page coordinates of the selection click.

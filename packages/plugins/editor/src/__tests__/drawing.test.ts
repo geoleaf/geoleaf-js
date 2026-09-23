@@ -382,6 +382,20 @@ describe("modes", () => {
         expect(modes).toHaveLength(2);
     });
 
+    it("🛑 the select mode's handles reach 12 px, not Terra Draw's 40 — a press near an edge moves the shape", async () => {
+        // Terra Draw resolves a select-mode drag as resize, vertex, midpoint, then whole shape,
+        // each within `pointerDistance`: at its default of 40 px, a press 35-38 px from an edge's
+        // midpoint handle inserted a vertex instead of moving the shape. The value must reach the
+        // CONSTRUCTOR — the behaviours copy it when the mode registers.
+        const { TerraDrawSelectMode } = await import("terra-draw");
+        vi.mocked(TerraDrawSelectMode).mockClear();
+        buildTerraDrawModes(_cfg());
+        expect(TerraDrawSelectMode).toHaveBeenCalledTimes(1);
+        expect(TerraDrawSelectMode).toHaveBeenCalledWith(
+            expect.objectContaining({ pointerDistance: 12 })
+        );
+    });
+
     it("buildTerraDrawModes — no duplicate modes", () => {
         const modes = buildTerraDrawModes(_cfg());
         const names = modes.map((m) => (m as { mode: string }).mode);

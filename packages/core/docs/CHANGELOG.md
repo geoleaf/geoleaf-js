@@ -30,6 +30,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
   saved by an earlier version, or restored from a permalink — restores exactly as before. The
   entry type is exported as `TaxonomySubValue`.
 
+### Fixed
+
+- **`@geoleaf-plugins/editor` 1.4.2 — pressing a selected shape near an edge moves the shape,
+  instead of inserting a vertex.** Terra Draw resolves a drag on a selected shape in a fixed order — resize,
+  vertex, edge midpoint, then the whole shape — each within a capture radius the editor did not
+  set for this mode, hence Terra Draw's default of 40 px, eight times the drawn midpoint dot. A
+  press 35-38 px from an edge's midpoint therefore inserted a vertex there instead of moving the
+  shape — about a third of a 122-vertex polygon's fill at zoom 6, and more on a shape small on
+  screen. The select mode now reaches 12 px, the drawing modes' radius: within it, a vertex is
+  dragged or a vertex is inserted as before; anywhere else, the whole shape moves.
+
 ## [3.7.0] - 2026-09-23
 
 ### Added
