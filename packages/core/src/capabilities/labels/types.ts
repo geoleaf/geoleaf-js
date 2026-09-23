@@ -73,9 +73,10 @@ interface LabelOffsetConfig {
 }
 
 /**
- * Resolved label style passed to the renderer. Built either from an integrated
- * (style-embedded) label or from a free-standing `labelConfig`. Permissive on
- * purpose — profile authors add arbitrary keys.
+ * Resolved label style passed to the renderer. Built either from the layer's
+ * declared label (its style's `label` object, else its definition's `labels`
+ * block) or from a free-standing `labelConfig`. Permissive on purpose — profile
+ * authors add arbitrary keys.
  */
 export interface LabelStyleLike {
     enabled?: boolean;
@@ -105,10 +106,23 @@ export interface LabelConfigLike {
 }
 
 /**
- * The inline `labelConfig` accepted by `enableLabels()` — read only when the layer declares no
- * label configuration of its own. `enabled` and `labelId` (the feature property displayed) are
- * then required, `minZoom`/`maxZoom` apply only together, and `font.sizePt`, `color`, `opacity`,
- * `buffer` and `offset` shape the text. `styleFile` is refused.
+ * The inline `labelConfig` accepted by `enableLabels()`. When the call prepares labels, it is
+ * stored with the layer's label state and read at every render, until another `enableLabels()`
+ * call or a re-initialisation of the layer's labels (the loader, a style change) replaces that
+ * state. The core makes such a call itself when a layer whose declaration says
+ * `visibleByDefault: true` is shown again: its labels are prepared anew with an empty
+ * configuration, and what an earlier call passed here is no longer read.
+ *
+ * What is read from it depends on the layer:
+ * - a layer that DECLARES no label configuration — neither its style's `label` object nor its
+ *   definition's `labels` block: this object is the whole configuration. `enabled: true` and
+ *   `labelId` (the feature property displayed) are required; `font.sizePt`, `color`, `opacity`,
+ *   `buffer` and `offset` shape the text;
+ * - a layer that declares one: the declaration decides whether labels exist and how they look.
+ *   Only two things are still read here — `labelId`, when the declaration names no `field`, and
+ *   `minZoom`/`maxZoom`, when the layer's current style sets no `labelScale`.
+ *
+ * `minZoom` and `maxZoom` apply only together. `styleFile` is refused.
  */
 export interface LabelUserConfig {
     enabled?: boolean;
@@ -127,7 +141,10 @@ export interface LabelUserConfig {
 
 // ─── Layer entry (subset of GeoJSON layer entry labels reads) ───────────────
 
-/** The `currentStyle.label` object as the labels module reads it. */
+/**
+ * A declared label configuration — the `currentStyle.label` object, else the definition's
+ * `labels` block — as the labels module reads it.
+ */
 export interface LayerStyleLabel {
     enabled?: boolean;
     visibleByDefault?: boolean;
@@ -238,27 +255,30 @@ export interface LabelsNativeMap {
  */
 export interface LabelsApi {
     /**
-     * Brings the labels capability up and attaches its zoom listener.
+     * Lifecycle entry point of the module. It only logs.
      *
-     * @param options - Capability options, merged over `modules.labels` from the profile.
+     * It subscribes to nothing: the `zoomend` listener is attached later, once a layer's labels
+     * are prepared, and the loader drives labels by direct calls. The labels capability calls it
+     * when it mounts; an integrator has no need to.
+     *
+     * @param options - Ignored.
      *
      * @example
      * ```js
      * GeoLeaf.Labels.init();
-     * // ou avec options
-     * GeoLeaf.Labels.init({ defaultEnabled: false });
      * ```
      */
     init(options?: Record<string, unknown>): void;
 
     /**
-     * Applies a layer's declared label configuration, if it has one.
+     * Rebuilds a layer's labels from its declared label configuration, if it has one.
      *
-     * Called by the loader as each layer comes up. A layer's declared configuration is the
-     * `label` object of its current style, else — the style carrying none, or its file being
-     * missing — the `labels` block of its definition. A layer that declares neither is left
-     * alone: this is not the way to enable labels on it, use {@link LabelsApi.enableLabels} with
-     * an inline config for that.
+     * Called by the loader as a layer comes up, and again on a style change. A layer's declared
+     * configuration is the `label` object of its current style, else — the style carrying none,
+     * or its file being missing — the `labels` block of its definition. The layer's label state
+     * is purged first, so a layer that declares neither, or declares `enabled: false`, ends up
+     * with none — labels an inline {@link LabelsApi.enableLabels} call had set included. This is
+     * not the way to enable labels on such a layer: use `enableLabels()` with an inline config.
      *
      * @param layerId - Layer to initialise.
      *
@@ -270,29 +290,42 @@ export interface LabelsApi {
     initializeLayerLabels(layerId: string): void;
 
     /**
-     * Turns labels on for a layer, optionally with an inline configuration.
+     * Prepares a layer's labels — from its declared configuration, else from an inline one — and
+     * shows them unless told otherwise.
      *
      * It returns a promise — `await` it. A `labelConfig.styleFile` rejects it: label style files
      * are obsolete, the label object carries the look.
      *
+     * Labels set up from an inline configuration are switched on and off by your own calls to
+     * this method and {@link LabelsApi.disableLabels}: {@link LabelsApi.toggleLabels} and the
+     * layer manager's labels button act only on a layer whose style or definition declares
+     * labels. Hiding the layer — the layer manager's visibility toggle, `GeoJSON.hideLayer()`, a
+     * theme — turns them off as `disableLabels()` does, and showing it again does not bring them
+     * back: call `enableLabels()` again.
+     *
      * @param layerId - Layer to label.
-     * @param labelConfig - Read only when the layer DECLARES no label configuration — neither its
-     *   style's `label` object nor its definition's `labels` block: `enabled` and `labelId` (the
-     *   feature property displayed) are then required. A declared configuration takes precedence,
-     *   and a declared `enabled: false` disables the labels whatever is passed here.
-     * @param showImmediately - Render at once. Defaults to `true`; a declared `visibleByDefault`
-     *   takes precedence over it.
+     * @param labelConfig - On a layer that DECLARES no label configuration — neither its style's
+     *   `label` object nor its definition's `labels` block — the whole configuration, which then
+     *   requires `enabled: true` and `labelId` (the feature property displayed). On a layer that
+     *   declares one, the declaration wins, and a declared `enabled: false` disables the labels
+     *   whatever is passed here; only `labelId` (when the declaration names no `field`) and
+     *   `minZoom`/`maxZoom` (together, when the current style sets no `labelScale`) are still
+     *   read. See `LabelUserConfig`.
+     * @param showImmediately - Show the labels once prepared; they render only while the layer
+     *   is visible. Defaults to `true`. A declared `visibleByDefault` takes precedence over it,
+     *   and a definition's `labels` block that omits it counts as `visibleByDefault: false`.
      *
      * @example
      * ```js
-     * // A layer whose style or definition declares its labels
+     * // A layer whose style or definition declares its labels: nothing else to pass
      * await GeoLeaf.Labels.enableLabels("poi_restaurants");
      *
-     * // A layer that declares none: the inline configuration
+     * // A layer that declares none: the inline configuration, shown at once
+     * // (labels render only while the layer is visible)
      * await GeoLeaf.Labels.enableLabels("poi_hotels", { enabled: true, labelId: "name" });
      *
-     * // Prepared, but not shown until toggled
-     * await GeoLeaf.Labels.enableLabels("poi_hotels", { enabled: true, labelId: "name" }, false);
+     * // ...and turned off again. toggleLabels() would change nothing on this layer.
+     * GeoLeaf.Labels.disableLabels("poi_hotels");
      * ```
      */
     enableLabels(
@@ -304,8 +337,9 @@ export interface LabelsApi {
     /**
      * Turns labels off for a layer and removes the rendered ones.
      *
-     * The configuration is kept, so {@link LabelsApi.toggleLabels} can bring them back
-     * without re-supplying it.
+     * The prepared configuration is kept. On a layer that declares its labels,
+     * {@link LabelsApi.toggleLabels} brings them back without re-supplying it; labels set up
+     * from an inline configuration come back only through another `enableLabels()` call.
      *
      * @param layerId - Layer whose labels are removed.
      *
@@ -321,8 +355,9 @@ export interface LabelsApi {
      * Flips a layer's labels and reports the state it settled on.
      *
      * Acts only on a layer whose declared configuration — its style's `label` object, else its
-     * definition's `labels` block — enables labels; for any other it returns `false` and changes
-     * nothing.
+     * definition's `labels` block — enables labels, and whose labels are prepared; for any other
+     * it returns `false` and changes nothing. Labels set up from an inline `enableLabels()`
+     * configuration are not among them: drive those with `disableLabels()` / `enableLabels()`.
      *
      * @param layerId - Layer to toggle.
      * @returns `true` when labels are enabled after the call.
@@ -335,13 +370,13 @@ export interface LabelsApi {
     toggleLabels(layerId: string): boolean;
 
     /**
-     * Whether a layer carries a label configuration at all.
+     * Whether a layer's labels are prepared — by the loader, or by an `enableLabels()` call.
      *
-     * Distinct from {@link LabelsApi.areLabelsEnabled}: a layer can be configured and
-     * currently off. This is the test that decides whether a label button is worth rendering.
+     * Distinct from {@link LabelsApi.areLabelsEnabled}: prepared labels can be off. The layer
+     * manager's labels button does not read it: it reads the layer's declared configuration.
      *
      * @param layerId - Layer to inspect.
-     * @returns `true` when a configuration exists.
+     * @returns `true` when the module holds label state for the layer.
      *
      * @example
      * ```js
@@ -423,7 +458,9 @@ export interface LabelButtonManagerApi {
      *
      * @param layerId - Layer the button drives.
      * @param controlsContainer - Element the button is appended to.
-     * @returns The button, or `null` when the layer carries no label configuration.
+     * @returns The button — the container's existing one if it has one — or `null` when an
+     *   argument is missing. It is built for every layer, disabled; `syncImmediate()` enables it
+     *   while the layer declares labels and is visible.
      *
      * @example
      * ```js

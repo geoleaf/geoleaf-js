@@ -1124,10 +1124,13 @@ declare global {
             getAllLayers(): unknown;
             getLayerData?(id: string): unknown;
             /**
-             * Sets the URL of the GeoJSON Web Worker script — `null` restores the default, the
-             * `geojson-worker.js` next to the bundle. Applies to the next worker built; call it
-             * before `GeoLeaf.boot()` to cover the first one. Throws a `TypeError` on any value
-             * other than a non-empty string or `null`.
+             * Sets the URL of the GeoJSON Web Worker script — `null` restores the default. For a
+             * bundle run as a module, that is `geojson-worker.js` in the directory of the last
+             * `<script src>` of the page naming a `geoleaf…js` file (a plugin's included), or
+             * resolved against the page when none does (a bundle imported from an inline module
+             * script, with no plugin loaded by `<script src>`). Applies to the
+             * next worker built; call it before `GeoLeaf.boot()` to cover the first one. Throws a
+             * `TypeError` on any value other than a non-blank string or `null`.
              */
             setWorkerUrl?(url: string | null): void;
             // ⚠️ `addData` was DECLARED HERE and NEVER existed on this facade

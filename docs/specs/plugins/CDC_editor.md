@@ -4,7 +4,7 @@ title: editor — le plugin d'édition UNIQUE : géométries, capture de POI, pe
 plugin_id: editor
 package: "@geoleaf-plugins/editor"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: abb5c4b57
+verifie_contre: fa0459fb9
 date: 17 septembre 2026
 ---
 
@@ -73,9 +73,18 @@ désormais ancré sur `node_modules`, et `size -- --plugins` pèse la clôture s
 
 - un hôte qui charge le greffon AVANT le boot (pour garder son créneau de barre d'outils) n'a plus
   le moteur en mémoire : le premier tracé le télécharge, donc demande le réseau ou un cache ;
-- ce téléchargement peut échouer — hors réseau, ou chunk disparu après un redéploiement. Un échec
-  n'est plus mémorisé (`drawing/load-once.ts`) : il est signalé en console, l'outil armé est
-  désarmé, et l'usage suivant réessaie ;
+- ce téléchargement peut échouer — hors réseau, ou chunk disparu après un redéploiement. Le
+  greffon ne garde plus l'échec (`drawing/load-once.ts`) : il est signalé en console (avec
+  l'invite à recharger la page), l'outil armé est désarmé, et l'usage suivant relance le
+  chargement, `import()` compris. 🛑 **Ce qu'il ne garantit pas, c'est que le navigateur
+  retélécharge.** ① Après un redéploiement qui a retiré les anciens fichiers, la page ouverte
+  nomme toujours les anciens chunks à empreinte (`geoleaf-editor.terra-draw-<hash>.js`) : chaque
+  réessai échoue, dans tout navigateur, jusqu'au rechargement. ② Certains navigateurs gardent
+  un chargement de module échoué dans leur table des modules et rejettent aussitôt, sans
+  requête, tout `import()` ultérieur de la même URL, jusqu'au rechargement — le standard HTML a
+  cessé de mettre ces échecs en cache, mais les navigateurs l'adoptent à des dates différentes.
+  Le réessai ne rattrape donc une coupure passagère que là où le navigateur retélécharge
+  vraiment ;
 - l'entrée publiée `geoleaf-editor.plugin.js` est une façade vers un chunk `entry` à empreinte de
   contenu : Rollup la crée parce que le chunk paresseux des modes partage des modules avec
   l'entrée. Tout `dist/geoleaf-editor.*.js` doit donc être déployé ensemble — ce que

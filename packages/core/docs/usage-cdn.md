@@ -246,15 +246,29 @@ dist/
 ::: warning
 
 `sw-core.js` and `geojson-worker.js` are **workers**: they are not bundled but copied as is, and
-loaded through a URL at runtime, never through an `import`. Neither of the two errors they cause
-when absent looks like "a file is missing" — offline support simply stops working.
+loaded through a URL at runtime, never through an `import`. Without `sw-core.js`, offline support
+stops working; without a reachable `geojson-worker.js`, GeoJSON is fetched and parsed on the main
+thread instead.
 
 :::
 
-`geojson-worker.js` is looked up next to `geoleaf.esm.js`, **without** its query string: a
-`?v=` on the bundle does not reach the worker. If you serve files under a content token with a
-long cache lifetime, set the worker's URL yourself, after the bundle has loaded and before
-`GeoLeaf.boot()`:
+Where `geojson-worker.js` is looked up by default depends on how the page loads the bundle. The
+lookup runs once, when the bundle loads, over the page's `<script src>` tags:
+
+- **A `<script type="module">` whose `src` is `geoleaf.esm.js`** — next to it, **without**
+  its query string: a `?v=` on the bundle does not reach the worker.
+- **An inline `<script type="module">` that imports the bundle** — the form of every HTML recipe
+  on this page — adds no such tag: `geojson-worker.js` resolves against the **page**, unless a
+  plugin is loaded by `<script src>` (see below).
+- **A bundler build** (§4) — the result depends on the scripts the bundler emits.
+
+The lookup takes the **last** `<script src>` whose URL names a `geoleaf…js` file, and a plugin's
+`geoleaf-*.plugin.js` is one: when its tag is the last such one — after the core's, or with a core
+imported inline — the worker is looked up in the plugin's directory. And a
+browser refuses a cross-origin worker script, so a page loading GeoLeaf from a CDN cannot use the
+CDN's copy. Set the worker's URL yourself — a copy of `dist/geojson-worker.js` served by your own
+origin — whenever the default does not reach it, or when you serve files under a content token
+with a long cache lifetime; do it after the bundle has loaded and before `GeoLeaf.boot()`:
 
 ```js
 GeoLeaf.GeoJSON.setWorkerUrl("/assets/geoleaf/geojson-worker.js?v=3f9a2c");

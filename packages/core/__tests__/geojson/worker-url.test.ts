@@ -1,5 +1,6 @@
 /**
- * The GeoJSON Worker URL — the default next to the bundle, or the one a host sets.
+ * The GeoJSON Worker URL — the default (here, a page whose `<script src>` loads the bundle), or
+ * the one a host sets.
  *
  * `_scriptBase` is computed ONCE, when `worker-manager` loads, and keeps only the bundle's
  * directory: the query string a host puts on the bundle (`?v=<content hash>`) never reaches the
@@ -12,12 +13,18 @@
  * `_scriptBase + WORKER_FILENAME` again fails the eight cases that set a URL, and only them —
  * the two default cases hold; dropping `workerAvailable = true` from `setWorkerUrl` fails the
  * recovery case alone.
+ *
+ * ✅ And on 23/09/2026, for the error of a Worker built from a PREVIOUS URL: marking the manager
+ * unavailable whatever URL failed, or naming the current URL in the log instead of the failed one,
+ * each fails that case alone.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
+const log = vi.hoisted(() => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }));
+
 vi.mock("../../src/utils/general/di-accessors.js", () => ({
-    getLog: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
+    getLog: () => log,
 }));
 
 /** Where the page loaded the bundle from — the query must NOT reach the default worker URL. */
@@ -39,6 +46,7 @@ let WM: WorkerManagerApi;
 let workers: FakeWorker[];
 let WorkerCtor: ReturnType<typeof vi.fn>;
 let workerOrigine: unknown;
+let fetchOrigine: unknown;
 
 /** Loads `worker-manager` afresh, with the page's `<script>` list showing the bundle. */
 async function loadFresh(): Promise<void> {
@@ -58,6 +66,15 @@ function triggerWorker(layerId = "l1"): void {
 
 beforeEach(async () => {
     workers = [];
+    vi.clearAllMocks();
+    // A Worker error replays the pending loads on the main thread: they must not reach a network.
+    fetchOrigine = globalThis.fetch;
+    globalThis.fetch = vi.fn(() =>
+        Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ type: "FeatureCollection", features: [] }),
+        })
+    ) as unknown as typeof fetch;
     workerOrigine = (globalThis as { Worker?: unknown }).Worker;
     WorkerCtor = vi.fn(function (this: FakeWorker) {
         this.postMessage = vi.fn();
@@ -73,6 +90,7 @@ beforeEach(async () => {
 afterEach(() => {
     WM.dispose();
     (globalThis as { Worker?: unknown }).Worker = workerOrigine;
+    globalThis.fetch = fetchOrigine as typeof fetch;
     vi.clearAllTimers();
 });
 
@@ -128,5 +146,33 @@ describe("GeoJSON Worker URL", () => {
         triggerWorker("l2");
         expect(WorkerCtor).toHaveBeenCalledTimes(2);
         expect(WorkerCtor).toHaveBeenLastCalledWith(HOST_WORKER_URL);
+    });
+
+    it("an error of a Worker built from the PREVIOUS URL does not condemn the URL set since", () => {
+        triggerWorker("l1");
+        expect(WorkerCtor).toHaveBeenCalledWith(DEFAULT_WORKER_URL);
+        // The host sets its URL while the first Worker, built from the default, is still running;
+        // that Worker then fails.
+        WM.setWorkerUrl(HOST_WORKER_URL);
+        workers[0]!.onerror?.({ message: "" });
+
+        // The log names the URL that failed — not the one set since, never requested.
+        expect(log.error).toHaveBeenCalledWith(
+            "[WorkerManager] Worker error:",
+            `unknown (possible 404 on ${DEFAULT_WORKER_URL})`
+        );
+        expect(WM.isAvailable()).toBe(true);
+        triggerWorker("l2");
+        expect(WorkerCtor).toHaveBeenCalledTimes(2);
+        expect(WorkerCtor).toHaveBeenLastCalledWith(HOST_WORKER_URL);
+    });
+
+    it("an error of a Worker built from the CURRENT URL sends the later loads to the main thread", () => {
+        WM.setWorkerUrl(HOST_WORKER_URL);
+        triggerWorker("l1");
+        workers[0]!.onerror?.({ message: "" });
+        expect(WM.isAvailable()).toBe(false);
+        triggerWorker("l2");
+        expect(WorkerCtor).toHaveBeenCalledTimes(1);
     });
 });

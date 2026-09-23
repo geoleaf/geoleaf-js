@@ -3,7 +3,7 @@ type: spec-kernel
 title: kernel — @geoleaf/core
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 1b3804671
+verifie_contre: fa0459fb9
 date: 21 septembre 2026
 ---
 
@@ -1224,12 +1224,29 @@ argument** : un kernel antérieur la passerait telle quelle à `postMessage`, qu
 promesse. Le délai de réponse du crochet n'est pas borné, symétriquement du `fetch` de la page.
 
 **L'URL de l'ouvrier, elle, ne passe PAS par un crochet global : c'est une façade publique**
-(`GeoLeaf.GeoJSON.setWorkerUrl`, 3.7.0). Le défaut — `geojson-worker.js` dans le répertoire du
-bundle, trouvé une fois au chargement du module — perd la requête du bundle, donc le jeton de
-contenu (`?v=`) d'un hôte qui sert sous une longue durée de cache : un ouvrier périmé pouvait
-rester face à un chunk neuf, incompatibilité de protocole que rien ne signale. L'URL posée est
-relue à CHAQUE construction (l'ouvrier est reconstruit après son arrêt d'inactivité), survit à
-`dispose()`, et lève un échec antérieur — une URL neuve est un nouvel essai. ⚠️ Le crochet des
+(`GeoLeaf.GeoJSON.setWorkerUrl`, 3.7.0). Le défaut n'est PAS « à côté du bundle » : c'est
+`geojson-worker.js` dans le répertoire du DERNIER `<script src>` de la page dont l'URL nomme un
+fichier `geoleaf…js`, cherché une fois au chargement du module — `document.currentScript` y est
+toujours `null` —, sinon `""`, et l'URL se résout alors contre la PAGE. Un bundle chargé par
+`<script type="module" src>` trouve donc son répertoire, sauf si une telle balise d'un autre
+répertoire le suit (le `geoleaf-*.plugin.js` d'un plugin) ; un `import` depuis un
+`<script type="module">` en ligne — la forme de toutes les recettes HTML de `packages/core/docs/usage-cdn.md` — n'en
+pose aucune, et l'URL se résout contre la page, ou contre le répertoire d'un plugin chargé par
+`<script src>` ; un build par bundler dépend de ce qu'il émet (un script classique évalué de façon
+synchrone est vu par `document.currentScript`, un module jamais). `setWorkerUrl` est donc la façon dont ces hôtes
+désignent l'ouvrier, pas seulement un contournement de cache — même si le défaut perd aussi la
+requête du bundle, donc le jeton de contenu (`?v=`) d'un hôte qui sert sous une longue durée de
+cache : un ouvrier périmé pouvait rester face à un chunk neuf, incompatibilité de protocole que
+rien ne signale. L'URL posée est relue à CHAQUE construction (l'ouvrier est reconstruit après son
+arrêt d'inactivité), survit à `dispose()`, et lève un échec antérieur — une URL neuve est un
+nouvel essai. **Un ouvrier qui échoue** — script non chargé, ou plantage — fait REJOUER sur le fil
+principal les requêtes en vol dont aucune tranche n'est arrivée — y compris celles dont le crochet
+des en-têtes n'avait pas encore répondu ; une requête qui a reçu des
+tranches est rejetée, la rejouer livrerait deux fois les mêmes entités à `onChunk`. Les chargements
+suivants ne passent au fil principal que si l'URL en échec est encore celle de la prochaine
+construction : une URL posée après la construction de cet ouvrier est essayée au chargement
+suivant. Quand l'événement ne porte ni message ni fichier — le cas d'un script non chargé —, le
+journal nomme l'URL dont l'ouvrier en échec a été construit, pas l'URL courante. ⚠️ Le crochet des
 en-têtes appartient à un plugin et reste hors contrat ; l'URL appartient à l'hôte, et c'est
 pourquoi elle est typée, documentée et gelée par le golden master comme tout membre de façade.
 

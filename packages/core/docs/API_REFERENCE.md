@@ -107,7 +107,7 @@ export default GeoLeaf; // default export: window.GeoLeaf (CDN/global passthroug
 > ambient declarations the package ships (`dist/types/global.d.ts`). Use `GeoLeaf.Layers` for
 > per-layer feature data (`LayerDataApi`), and `GeoLeaf.GeoJSON` for layer-level operations
 > (`getLayerById`, `showLayer`, `setLayerStyle`…) and for the URL of its worker
-> ([`setWorkerUrl`](#the-geojson-workers-url)).
+> ([`setWorkerUrl`](#the-geojson-worker-url)).
 
 ---
 
@@ -651,17 +651,29 @@ to work with GeoJSON data in GeoLeaf.
 > **Note:** `GeoLeaf.GeoJSON` is public too — global-only, not a named ESM export: layer-level
 > operations (`getLayerById`, `showLayer`, `setLayerStyle`…) and the URL of its worker, below.
 
-### The GeoJSON worker's URL
+### The GeoJSON worker URL
 
 ```js
 GeoLeaf.GeoJSON.setWorkerUrl("/assets/geoleaf/geojson-worker.js?v=3f9a2c");
 ```
 
-GeoJSON files are fetched and parsed off the main thread, in a Web Worker: `geojson-worker.js`,
-loaded by default from the directory of the GeoLeaf bundle — found once, when the bundle loads,
-and without the bundle's query string. A host that serves its files under a content token
-(`?v=…`) with a long cache lifetime sets the worker's URL itself, so that a new release never
-runs against a cached worker from the previous one.
+GeoJSON files are fetched and parsed off the main thread, in a Web Worker built from
+`geojson-worker.js`. Its default URL is looked up once, when the bundle loads, in the page's
+`<script src>` tags: the **last** one whose URL names a `geoleaf…js` file gives the directory,
+without its query string; when none does, `geojson-worker.js` resolves against the **page**.
+
+- **A `<script type="module">` whose `src` is `geoleaf.esm.js`** — the bundle's own directory, unless
+  another such tag, from another directory, comes after it in the page (a plugin's
+  `geoleaf-*.plugin.js`).
+- **An inline `<script type="module">` that imports the bundle** — the form of every HTML recipe
+  in [usage-cdn.md](usage-cdn.md) — adds no such tag: the default resolves against the page,
+  unless the page loads a plugin by `<script src>` (`geoleaf-*.plugin.js`), whose directory is
+  then used.
+- **A bundler build** — the result depends on the scripts the bundler emits.
+
+`setWorkerUrl` is how a host whose default does not reach the worker points at it at all — and
+how a host that serves its files under a content token (`?v=…`) with a long cache lifetime keeps
+a new release from running against a cached worker from the previous one.
 
 | Call                 | Effect                                                                                      |
 | -------------------- | ------------------------------------------------------------------------------------------- |
@@ -669,10 +681,17 @@ runs against a cached worker from the previous one.
 | `setWorkerUrl(null)` | Back to the default                                                                         |
 | any other value      | `TypeError`                                                                                 |
 
-Call it once the bundle has loaded and before `GeoLeaf.boot()` to cover the first worker; a URL
-set later applies to the next one, since the worker is rebuilt after an idle delay. Setting a URL
-also clears an earlier worker failure — a `404` on the worker otherwise sends every later load to
-the main thread for the rest of the session. _Since v3.7.0._
+Call it once the bundle has loaded and before `GeoLeaf.boot()` to cover the first worker. A URL
+set later applies to the next worker built: a running worker keeps its script until it is torn
+down — after an idle delay, by `dispose()`, or by an error.
+
+When a worker fails — its script did not load (a `404`), or it crashed — the loads in flight
+none of whose chunks had arrived are replayed on the main thread; a load that had received chunks
+is rejected. A script that did not load is logged as a worker error naming the
+URL that worker was built from. Later loads go to the main thread for the rest of the session
+only if the URL that failed is still the current one: a URL set after that worker was built is
+tried at the next load, and any valid call to `setWorkerUrl` — a URL or `null` — clears an
+earlier failure. _Since v3.7.0._
 
 ---
 

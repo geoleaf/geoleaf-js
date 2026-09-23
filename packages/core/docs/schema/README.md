@@ -176,7 +176,7 @@ The `label` property in a style file can be either a string (display name) or an
     "label": {
         "enabled": true,
         "visibleByDefault": false,
-        "field": "properties.nom",
+        "field": "nom",
         "font": {
             "family": "Arial",
             "sizePt": 11,
@@ -192,12 +192,6 @@ The `label` property in a style file can be either a string (display name) or an
             "opacity": 0.8,
             "sizePx": 2
         },
-        "background": {
-            "enabled": false,
-            "color": "#ffffff",
-            "opacity": 0.9,
-            "paddingPx": 3
-        },
         "offset": {
             "placement": "top",
             "distancePx": 8
@@ -205,6 +199,10 @@ The `label` property in a style file can be either a string (display name) or an
     }
 }
 ```
+
+`field` names a feature property as it is (`"nom"`), not a `properties.` path. The keys the object
+accepts, and which of them are rendered, are listed in the
+[labels documentation](../labels/GeoLeaf_Labels_README.md#label-configuration-in-style-files).
 
 ---
 

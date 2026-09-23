@@ -16,11 +16,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 ### Added
 
 - **`GeoLeaf.GeoJSON.setWorkerUrl(url)` — a host sets the URL of the GeoJSON worker.** By default
-  the worker is `geojson-worker.js`, found once, when the bundle loads, in the bundle's directory —
-  and without the bundle's query string. A host serving its files under a content token (`?v=…`)
-  with a long cache lifetime therefore had no way to version the worker's URL: a new release could
-  run against a cached worker from the previous one, a `postMessage` protocol mismatch that nothing
-  reports. The URL set is read at every worker construction, so it may be set after the bundle has
+  the worker is `geojson-worker.js`, resolved once, when the bundle loads: next to the last
+  `<script src>` whose URL names a `geoleaf…js` file, without its query string — and against the
+  PAGE when there is none, which is the case of a bundle imported from an inline module script
+  with no plugin loaded by `<script src>`. A host loading the bundle that way had no way to point
+  at the worker, and a host serving its files
+  under a content token (`?v=…`) with a long cache lifetime had no way to version its URL: a new
+  release could run against a cached worker from the previous one, a `postMessage` protocol
+  mismatch that nothing reports. The URL set is read at every worker construction, so it may be set after the bundle has
   loaded — before `GeoLeaf.boot()` to cover the first worker. `null` restores the default; any other
   value throws a `TypeError`. Setting a URL also clears an earlier worker failure, which used to
   send every later load to the main thread for the rest of the session. Without a call, nothing
@@ -37,6 +40,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ### Fixed
 
+- **A GeoJSON worker that fails no longer fails the loads it was built for.** When the worker's
+  script did not load — a 404 fires its `error` only once the first loads are pending — or when
+  it crashed, the loads in flight were rejected, although the handler meant to send them to the
+  main thread: the layers of the first load of a page rendered nothing, and only the later ones
+  fell back. They are now replayed on the main thread, unless some of their chunks already reached
+  an `onChunk` callback — replaying would deliver those features twice, so that request is still
+  rejected. And the failure of a worker built from a previous URL no longer sends the later loads
+  to the main thread when a host has set another URL since: that URL is tried at the next load,
+  and the error log names the URL that actually failed.
+
 - **Three buttons read a colour token no theme defines.** The boot-failure screen's primary button
   and the popup's action buttons took their text colour from `--gl-color-on-accent`, which is set
   nowhere: they always fell back to white — 1.46:1 on the light theme's peach accent, about 2.8:1 on
@@ -49,9 +62,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
   chunk left with the plugin, on every page that loaded it — about 47 KB gz before anything was
   drawn. The rule now captures the vendor packages only, and the plugin's entry no longer imports
   the engine but through `import()`. Because the engine is now fetched when first needed, that
-  fetch can fail — offline, or after a redeploy: the failure is reported in the console, the armed
-  tool is disarmed, and the next tool use tries again instead of replaying the failure until a
-  reload.
+  fetch can fail — offline, or after a redeploy: the failure is reported in the console and the
+  armed tool is disarmed. The plugin does not keep the failure: the next tool use asks for the
+  engine again. Whether the browser fetches it again is not the plugin's to decide — some keep a
+  failed module fetch until the page reloads — and after a redeploy the old engine chunk no longer
+  exists: in both cases, only a reload recovers.
 
 - **`@geoleaf-plugins/connector` 1.3.2 — `http://` is tolerated on every development host, not
   only `localhost` and `127.0.0.1`.** The rule keeps the token out of cleartext in production, and
@@ -71,7 +86,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 - **The label documentation taught options that were never read.** `enableLabels()` examples used
   `property`, `template`, `direction` and `styleFile` — the first three are not read, the last one
-  is refused — and a label `offset.angleDeg` that no schema accepts. The TSDoc of
+  is refused — and a label `offset.angleDeg` and a `background` block that no schema accepts; its
+  label object also wrote `field` as `"properties.nom"`, which displays no text — a field names the
+  feature property as it is. The labels page also described the module of an earlier major
+  version (permanent tooltips, CSS style files, planned features); it now describes the MapLibre
+  `symbol` layer the labels are, and when `toggleLabels()` and the layer manager's button act. The TSDoc of
   `enableLabels()` also said `showImmediately` defaults to `false` (it is `true`) and that the call
   is only asynchronous with a `styleFile` (it always returns a promise).
 

@@ -132,7 +132,8 @@ function _buildModalOpts(cfg: EditorConfig) {
 let _formModal: ReturnType<typeof createEditorFormModal> | null = null;
 let _adapter: TerraDrawAdapterInstance | null = null;
 // Terra Draw is a lazy chunk, fetched on the first tool use: concurrent first clicks share one
-// attempt, and a failed one (offline, redeployed, no map yet) is forgotten — the next use retries.
+// attempt; a failed one (chunk unreachable, no map yet) is not kept, so the next use loads again.
+// Whether the browser really fetches the chunk again is not ours to decide: drawing/load-once.ts.
 const _adapterLoader = loadOnce(() => _loadAdapter());
 let _persistence: EditorPersistenceAdapter | null = null;
 // Per-init context promoted to module scope so the extracted lifecycle helpers
@@ -343,18 +344,17 @@ function _initMenu(): void {
     });
 }
 
-// Lazily loads Terra Draw + creates and starts the adapter on first tool use.
-// Declared as a `function` statement (not a const arrow) so the menu's
-// onToolSelect closure can reference it regardless of textual position
-// (TDZ guard — see the lifecycle note above). Shared through `_adapterLoader`:
-// concurrent first-tool clicks load the engine once, and a failure is retried.
+// Lazily loads Terra Draw + creates and starts the adapter on first tool use. Declared as a
+// `function` statement (not a const arrow) so the menu's onToolSelect closure can reference it
+// regardless of textual position (TDZ guard — see the lifecycle note above). Shared through
+// `_adapterLoader`: concurrent first-tool clicks load the engine once; a failure is not kept.
 function _ensureAdapter(): Promise<TerraDrawAdapterInstance | null> {
     return _adapterLoader.get();
 }
 
 /** The engine's chunk could not be loaded: say so, and disarm the tool nothing would drive. */
 function _onEngineUnavailable(err: unknown): void {
-    console.warn("[editor] The drawing engine could not be loaded; try again once online.", err);
+    console.warn("[editor] Drawing engine could not be loaded; the page may need a reload.", err);
     setEditorActiveTool(null);
     _setExclusiveMode(false);
 }

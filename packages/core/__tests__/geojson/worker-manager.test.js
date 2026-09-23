@@ -297,21 +297,69 @@ describe("geojson/worker-manager — Worker paths (T19)", () => {
     });
 
     // ── _onError — global Worker error ────────────────────────────
-    it("_onError rejects all pending promises and marks workerAvailable false", async () => {
+    // ⚠️ Inverted on 23/09/2026. This case pinned "_onError rejects all pending promises": the
+    // handler's own comment said "fall back to the main thread", and the loads the Worker was
+    // built for failed instead — a 404 on the worker's script fires `error` only once they are
+    // pending, so the first layers of a page rendered nothing.
+    it("_onError replays on the main thread the requests none of whose chunks arrived", async () => {
+        global.fetch = vi.fn((url) =>
+            Promise.resolve({
+                ok: true,
+                json: () =>
+                    Promise.resolve({
+                        type: "FeatureCollection",
+                        features: [{ type: "Feature", properties: { url } }],
+                    }),
+            })
+        );
         const p1 = WM.fetchGeoJSON("https://ex.com/a.json", "l1");
         const p2 = WM.fetchGeoJSON("https://ex.com/b.json", "l2");
         mockWorkerInst.onerror({ message: "worker crashed" });
-        await expect(p1).rejects.toThrow();
-        await expect(p2).rejects.toThrow();
-        // workerAvailable = false → next call uses fallback
+        await expect(p1).resolves.toMatchObject({
+            features: [{ properties: { url: "https://ex.com/a.json" } }],
+        });
+        await expect(p2).resolves.toMatchObject({
+            features: [{ properties: { url: "https://ex.com/b.json" } }],
+        });
+        // workerAvailable = false → next call uses the fallback, no second Worker
+        const result = await WM.fetchGeoJSON("https://ex.com/c.json", "l3");
+        expect(result.type).toBe("FeatureCollection");
+        expect(global.Worker).toHaveBeenCalledTimes(1);
+        expect(global.fetch).toHaveBeenCalledTimes(3);
+    });
+
+    it("_onError rejects a request that already received chunks — a replay would deliver them twice", async () => {
         global.fetch = vi.fn(() =>
             Promise.resolve({
                 ok: true,
                 json: () => Promise.resolve({ type: "FeatureCollection", features: [] }),
             })
         );
-        const result = await WM.fetchGeoJSON("https://ex.com/c.json", "l3");
-        expect(result.type).toBe("FeatureCollection");
+        const onChunk = vi.fn();
+        const p1 = WM.fetchGeoJSON("https://ex.com/a.json", "l1", { onChunk });
+        mockWorkerInst.onmessage({
+            data: {
+                type: "chunk",
+                layerId: "l1",
+                features: [{ type: "Feature" }],
+                index: 0,
+                total: 2,
+            },
+        });
+        mockWorkerInst.onerror({ message: "worker crashed" });
+        await expect(p1).rejects.toThrow("Worker error: worker crashed");
+        expect(onChunk).toHaveBeenCalledTimes(1);
+        expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it("_onError replays an in-flight text request on the main thread", async () => {
+        global.fetch = vi.fn(() =>
+            Promise.resolve({ ok: true, text: () => Promise.resolve("<gpx/>") })
+        );
+        const p = WM.fetchText("https://ex.com/t.gpx", "g1");
+        mockWorkerInst.onerror({ message: "" });
+        await expect(p).resolves.toBe("<gpx/>");
+        expect(global.fetch).toHaveBeenCalledWith("https://ex.com/t.gpx", expect.anything());
     });
 
     it("_onError uses filename when message absent", () => {
@@ -451,6 +499,35 @@ describe("geojson/worker-manager — the header hook a plugin may answer", () =>
         await flush();
         expect(disposed.postMessage).not.toHaveBeenCalled();
         expect(await outcome).toBe("WorkerManager disposed");
+    });
+
+    it("🛑 the worker fails while the hook answers: the load is replayed, not rejected as superseded", async () => {
+        let answer;
+        globalThis.__GEOLEAF_WORKER_HEADERS_HOOK__ = () => new Promise((r) => (answer = r));
+        const fetchOrigine = global.fetch;
+        global.fetch = vi.fn(() =>
+            Promise.resolve({
+                ok: true,
+                json: () =>
+                    Promise.resolve({ type: "FeatureCollection", features: [{ type: "Feature" }] }),
+            })
+        );
+        try {
+            const outcome = WM.fetchGeoJSON(URL_A, "l1").then(
+                (fc) => fc.features.length,
+                (e) => e.message
+            );
+            const failed = worker;
+            // The worker's script 404s before the host's token provider has answered.
+            failed.onerror({ message: "" });
+            answer({ Authorization: "Bearer late" });
+            await flush();
+            expect(failed.postMessage).not.toHaveBeenCalled();
+            expect(await outcome).toBe(1);
+            expect(global.fetch).toHaveBeenCalledWith(URL_A, expect.anything());
+        } finally {
+            global.fetch = fetchOrigine;
+        }
     });
 
     it("a load superseded while its hook answers is rejected — not left pending", async () => {

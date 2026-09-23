@@ -401,25 +401,35 @@ const GeoJSONModule = {
     /**
      * Sets the URL of the GeoJSON Web Worker script; `null` restores the default.
      *
-     * By default the worker is `geojson-worker.js`, loaded from the directory of the GeoLeaf
-     * bundle as found once when the bundle loads — and the bundle's query string is not carried
-     * over. A host that serves its files under a content token (`?v=…`) with a long cache
-     * lifetime sets the worker's URL here, so that a new version of the library never runs
-     * against a cached worker from the previous one.
+     * The default is `geojson-worker.js` in the directory of the LAST `<script src>` of the page
+     * whose URL names a `geoleaf…js` file, without that script's query string — looked up once,
+     * when the bundle loads. A bundle loaded by a `<script type="module">` whose `src` names
+     * `geoleaf.esm.js` thus finds its own directory — unless another such tag, from another directory, comes after
+     * it in the page: a plugin's `geoleaf-*.plugin.js`, say. A bundle imported from an inline
+     * `<script type="module">` has no such tag: the default then resolves against the PAGE, or
+     * against a plugin's directory if one is loaded by `<script src>`. A bundler build depends
+     * on the scripts it emits. This member is how those hosts point at the
+     * worker at all — and how a host that serves its files under a content token (`?v=…`) with a
+     * long cache lifetime keeps a new version of the library from running against a cached worker
+     * from the previous one.
      *
      * - Call it once the bundle has loaded and before `GeoLeaf.boot()` to cover the first
-     *   worker. A URL set later applies to the next one: the worker is rebuilt after an idle
-     *   delay, and a running worker keeps its script until then.
+     *   worker. A URL set later applies to the next worker built: a running worker keeps its
+     *   script until it is torn down — after an idle delay, by `dispose()`, or by an error.
      * - The browser resolves the URL against the page, as `new Worker()` does, and it must be
      *   same-origin: a browser refuses a cross-origin worker script, and GeoJSON is then fetched
      *   on the main thread instead.
-     * - Setting a URL also clears an earlier worker failure, which had sent every later load to
-     *   the main thread for the rest of the session.
+     * - When a worker fails — its script did not load, or it crashed — the loads in flight none
+     *   of whose chunks had arrived are replayed on the main thread; a load that had received
+     *   chunks is rejected. Later loads go to the main thread only if the URL that failed
+     *   is still the current one: a URL set after that worker was built is tried at the next load.
+     * - A valid call — a URL or `null` — also clears an earlier worker failure, which otherwise
+     *   sends every later load to the main thread for the rest of the session.
      *
-     * Any other value than a non-empty string or `null` throws a `TypeError` — raised by the
+     * Any other value than a non-blank string or `null` throws a `TypeError` — raised by the
      * worker manager this member delegates to.
      *
-     * @param url - A non-empty URL, or `null` for the default.
+     * @param url - A non-blank URL, or `null` for the default.
      *
      * @example
      * ```js

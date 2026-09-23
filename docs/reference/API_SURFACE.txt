@@ -1593,7 +1593,7 @@ CallSignature | GeoLeaf Core API.capabilities/labels/public-api.buildPublicApi.b
 CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelButtonManagerApi._applyState._applyState | doc:-
 CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelButtonManagerApi._doSync._doSync | doc:-
 CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelButtonManagerApi._getState._getState | doc:-
-CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelButtonManagerApi.createButton.createButton | doc:25c60221d79a
+CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelButtonManagerApi.createButton.createButton | doc:a8965d386bad
 CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelButtonManagerApi.removeButtons.removeButtons | doc:c46bb407ed7f
 CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelButtonManagerApi.syncImmediate.syncImmediate | doc:da0f59417ac4
 CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelsApi._calculateMapScale._calculateMapScale | doc:-
@@ -1605,13 +1605,13 @@ CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelsApi._hideLabels
 CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelsApi._isScaleInRange._isScaleInRange | doc:-
 CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelsApi.areLabelsEnabled.areLabelsEnabled | doc:8dea6c9bee8c
 CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelsApi.destroy.destroy | doc:-
-CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelsApi.disableLabels.disableLabels | doc:81972c0a88fe
-CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelsApi.enableLabels.enableLabels | doc:5e04d3d4e812
-CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelsApi.hasLabelConfig.hasLabelConfig | doc:f68719a40d78
-CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelsApi.init.init | doc:b967a0386807
-CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelsApi.initializeLayerLabels.initializeLayerLabels | doc:04becd3e64f3
+CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelsApi.disableLabels.disableLabels | doc:dc06732e6b63
+CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelsApi.enableLabels.enableLabels | doc:614e0b3c9ea0
+CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelsApi.hasLabelConfig.hasLabelConfig | doc:d646e4d1ba25
+CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelsApi.init.init | doc:5a8341600d8a
+CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelsApi.initializeLayerLabels.initializeLayerLabels | doc:18173ebd3b06
 CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelsApi.refreshLabels.refreshLabels | doc:3797812ab6dc
-CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelsApi.toggleLabels.toggleLabels | doc:182b2b5acd27
+CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelsApi.toggleLabels.toggleLabels | doc:794cf43633d9
 CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelsGeoJSONCore.getLayerById.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelsMapHandle.getLayerRegistry.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.capabilities/labels/types.LabelsMapHandle.getNativeMap.__type.__type | doc:-
@@ -2341,7 +2341,7 @@ CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Filter.__type.reset.reset 
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.GeoJSON.__type.getAllLayers.getAllLayers | doc:-
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.GeoJSON.__type.getLayerById.getLayerById | doc:-
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.GeoJSON.__type.getLayerData.getLayerData | doc:-
-CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.GeoJSON.__type.setWorkerUrl.setWorkerUrl | doc:310f04b54c53
+CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.GeoJSON.__type.setWorkerUrl.setWorkerUrl | doc:ae572435c314
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Helpers.__type.addClass.__type.__type | doc:7b71fb94ce9b
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Helpers.__type.addEventListener.__type.__type | doc:fa8b00980bc7
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Helpers.__type.addEventListener.__type.__type.__type.__type | doc:-
@@ -2828,7 +2828,7 @@ CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.isPolygo
 CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.loadFromActiveProfile.loadFromActiveProfile | doc:-
 CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.removeLayer.removeLayer | doc:-
 CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.setLayerStyle.setLayerStyle | doc:-
-CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.setWorkerUrl.setWorkerUrl | doc:0cd7658535ae
+CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.setWorkerUrl.setWorkerUrl | doc:f899102342d1
 CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.showLayer.showLayer | doc:-
 CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.toggleLayer.toggleLayer | doc:-
 CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.updateLayerData.updateLayerData | doc:3fb4954fda2f
@@ -2955,7 +2955,7 @@ CallSignature | GeoLeaf Core API.kernel/geojson/style-resolver.GeoJSONStyleResol
 CallSignature | GeoLeaf Core API.kernel/geojson/style-resolver.GeoJSONStyleResolver.__type.evaluateStyleRules.evaluateStyleRules | doc:-
 CallSignature | GeoLeaf Core API.kernel/geojson/style-resolver.GeoJSONStyleResolver.__type.getNestedValue.getNestedValue | doc:-
 CallSignature | GeoLeaf Core API.kernel/geojson/worker-manager.WorkerManager.__type.dispose.__type.__type | doc:-
-CallSignature | GeoLeaf Core API.kernel/geojson/worker-manager.WorkerManager.__type.fetchGeoJSON.__type.__type | doc:8103d289ac15
+CallSignature | GeoLeaf Core API.kernel/geojson/worker-manager.WorkerManager.__type.fetchGeoJSON.__type.__type | doc:4a93a9c3c561
 CallSignature | GeoLeaf Core API.kernel/geojson/worker-manager.WorkerManager.__type.fetchGeoJSON.__type.__type.options.__type.onChunk.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.kernel/geojson/worker-manager.WorkerManager.__type.fetchText.__type.__type | doc:5a81534d2641
 CallSignature | GeoLeaf Core API.kernel/geojson/worker-manager.WorkerManager.__type.isAvailable.__type.__type | doc:df8b688e5c4a
@@ -5454,14 +5454,14 @@ Interface | GeoLeaf Core API.capabilities/labels/types.LabelButtonManagerApi | d
 Interface | GeoLeaf Core API.capabilities/labels/types.LabelButtonSyncState | doc:7b7161837d64
 Interface | GeoLeaf Core API.capabilities/labels/types.LabelConfigLike | doc:78977d264de7
 Interface | GeoLeaf Core API.capabilities/labels/types.LabelLayerData | doc:e2d9b32eb99a
-Interface | GeoLeaf Core API.capabilities/labels/types.LabelStyleLike | doc:f62f69ab5c10
-Interface | GeoLeaf Core API.capabilities/labels/types.LabelUserConfig | doc:8afa180a1114
+Interface | GeoLeaf Core API.capabilities/labels/types.LabelStyleLike | doc:82bfada0db4c
+Interface | GeoLeaf Core API.capabilities/labels/types.LabelUserConfig | doc:1bae425243dd
 Interface | GeoLeaf Core API.capabilities/labels/types.LabelsApi | doc:8c2a75c53f5a
 Interface | GeoLeaf Core API.capabilities/labels/types.LabelsGeoJSONCore | doc:4d6e59b7b4a5
 Interface | GeoLeaf Core API.capabilities/labels/types.LabelsMapHandle | doc:8481fd61d063
 Interface | GeoLeaf Core API.capabilities/labels/types.LabelsNativeMap | doc:5a937b547321
 Interface | GeoLeaf Core API.capabilities/labels/types.LayerLabelState | doc:8a84d86e7a1f
-Interface | GeoLeaf Core API.capabilities/labels/types.LayerStyleLabel | doc:2ba7602c4872
+Interface | GeoLeaf Core API.capabilities/labels/types.LayerStyleLabel | doc:f351922aee51
 Interface | GeoLeaf Core API.capabilities/labels/types.RemovableTooltip | doc:759eed34ac37
 Interface | GeoLeaf Core API.capabilities/language-switcher/config.LanguageEntry | doc:c0ab7a38c985
 Interface | GeoLeaf Core API.capabilities/language-switcher/config.LanguageSwitcherCapabilityConfig | doc:614089850701
@@ -10099,11 +10099,11 @@ Parameter | GeoLeaf Core API.capabilities/labels/types.LabelsApi._isScaleInRange
 Parameter | GeoLeaf Core API.capabilities/labels/types.LabelsApi._isScaleInRange._isScaleInRange.minScale | doc:-
 Parameter | GeoLeaf Core API.capabilities/labels/types.LabelsApi.areLabelsEnabled.areLabelsEnabled.layerId | doc:c13d4b3e4b48
 Parameter | GeoLeaf Core API.capabilities/labels/types.LabelsApi.disableLabels.disableLabels.layerId | doc:642c6e3e69ba
-Parameter | GeoLeaf Core API.capabilities/labels/types.LabelsApi.enableLabels.enableLabels.labelConfig | doc:f956f2e6f014
+Parameter | GeoLeaf Core API.capabilities/labels/types.LabelsApi.enableLabels.enableLabels.labelConfig | doc:f5608152042b
 Parameter | GeoLeaf Core API.capabilities/labels/types.LabelsApi.enableLabels.enableLabels.layerId | doc:d3d0b26063ae
-Parameter | GeoLeaf Core API.capabilities/labels/types.LabelsApi.enableLabels.enableLabels.showImmediately | doc:7c31caf11950
+Parameter | GeoLeaf Core API.capabilities/labels/types.LabelsApi.enableLabels.enableLabels.showImmediately | doc:d8ccfad3b0e5
 Parameter | GeoLeaf Core API.capabilities/labels/types.LabelsApi.hasLabelConfig.hasLabelConfig.layerId | doc:c13d4b3e4b48
-Parameter | GeoLeaf Core API.capabilities/labels/types.LabelsApi.init.init.options | doc:f869cd7ccdfb
+Parameter | GeoLeaf Core API.capabilities/labels/types.LabelsApi.init.init.options | doc:7300831bbae1
 Parameter | GeoLeaf Core API.capabilities/labels/types.LabelsApi.initializeLayerLabels.initializeLayerLabels.layerId | doc:1714a9f85773
 Parameter | GeoLeaf Core API.capabilities/labels/types.LabelsApi.refreshLabels.refreshLabels.layerId | doc:95fd0b602941
 Parameter | GeoLeaf Core API.capabilities/labels/types.LabelsApi.toggleLabels.toggleLabels.layerId | doc:1f3b951e329e
@@ -11587,7 +11587,7 @@ Parameter | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.loadFromActi
 Parameter | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.removeLayer.removeLayer.layerId | doc:-
 Parameter | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.setLayerStyle.setLayerStyle.layerId | doc:-
 Parameter | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.setLayerStyle.setLayerStyle.styleConfig | doc:-
-Parameter | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.setWorkerUrl.setWorkerUrl.url | doc:143bdeb4ebb9
+Parameter | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.setWorkerUrl.setWorkerUrl.url | doc:10c9511728d0
 Parameter | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.showLayer.showLayer.layerId | doc:-
 Parameter | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.toggleLayer.toggleLayer.layerId | doc:-
 Parameter | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.updateLayerData.updateLayerData.data | doc:dc981b8d642c
@@ -12595,7 +12595,7 @@ Property | @geoleaf-plugins/connector.config.ConnectorConfig.auth.__type.endpoin
 Property | @geoleaf-plugins/connector.config.ConnectorConfig.auth.__type.forgotPasswordUrl | doc:3fef799a9a4b
 Property | @geoleaf-plugins/connector.config.ConnectorConfig.auth.__type.signupUrl | doc:64fce709e1e1
 Property | @geoleaf-plugins/connector.config.ConnectorConfig.auth.__type.ui | doc:fd2ca5f0003b
-Property | @geoleaf-plugins/connector.config.ConnectorConfig.baseUrl | doc:ae6ada2d9417
+Property | @geoleaf-plugins/connector.config.ConnectorConfig.baseUrl | doc:6246153bec55
 Property | @geoleaf-plugins/connector.config.ConnectorConfig.getToken | doc:e1ae31b47a20
 Property | @geoleaf-plugins/connector.lang/lang-de.default.__type.connector.error.emptyFields | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-de.default.__type.connector.error.generic | doc:-
@@ -16712,7 +16712,7 @@ Property | GeoLeaf Core API.kernel/geojson/worker-manager.WorkerManager.__type.f
 Property | GeoLeaf Core API.kernel/geojson/worker-manager.WorkerManager.__type.fetchGeoJSON.__type.__type.options.__type.onChunk | doc:ef7609d02585
 Property | GeoLeaf Core API.kernel/geojson/worker-manager.WorkerManager.__type.fetchText | doc:2e857fa9b997
 Property | GeoLeaf Core API.kernel/geojson/worker-manager.WorkerManager.__type.isAvailable | doc:4923c3caf6e8
-Property | GeoLeaf Core API.kernel/geojson/worker-manager.WorkerManager.__type.setWorkerUrl | doc:7ddba041c557
+Property | GeoLeaf Core API.kernel/geojson/worker-manager.WorkerManager.__type.setWorkerUrl | doc:83ade00246d8
 Property | GeoLeaf Core API.kernel/layer-manager/basemap-selector.BasemapSection.items | doc:87f512b1c7dc
 Property | GeoLeaf Core API.kernel/layer-manager/control.LMControl.__type.create | doc:-
 Property | GeoLeaf Core API.kernel/layer-manager/item-controls-seam.LayerItemControlsDetail.controlsContainer | doc:166de4e70dcc

@@ -774,15 +774,27 @@ const HOST_RUNTIME_SHEETS = [
  * `rollup-plugin-postcss` emits `export default <css>` either way and appends the injector all
  * the same.
  *
+ * ⚠️ **The count runs over the plugin's WHOLE output — every `.js` of its entry's directory, the
+ * corpus of the TOTAL budget — not over the entry alone.** It read the entry alone until
+ * 23/09/2026: when the editor's entry became a facade that re-exports a static chunk, the check
+ * read 261 bytes holding none of the plugin's code, and could no longer redden for that plugin.
+ * Counting over the whole output also keeps a seam whose stylesheet and code land in different
+ * chunks from reading as an orphan.
+ *
  * @param {string} name - The plugin's name, for the message.
- * @param {string} file - Path to its built bundle.
+ * @param {string} file - Path to its built entry; every `.js` file of its directory is read.
  * @param {typeof defaultLog} log - Where to report.
  * @returns {boolean} true when no orphaned stylesheet is present.
  */
 function checkOrphanStylesheets(name, file, log) {
+    const dir = path.dirname(file);
     let src;
     try {
-        src = fs.readFileSync(file, "utf8");
+        src = fs
+            .readdirSync(dir)
+            .filter((f) => f.endsWith(".js"))
+            .map((f) => fs.readFileSync(path.join(dir, f), "utf8"))
+            .join("\n");
     } catch {
         return true;
     }
@@ -791,7 +803,7 @@ function checkOrphanStylesheets(name, file, log) {
     );
     for (const { sheet, seam } of orphans) {
         log.err(
-            `${name}: la feuille \`${sheet}\` de host-runtime est dans le bundle, mais \`${seam}\` n'y est pas — ` +
+            `${name}: la feuille \`${sheet}\` de host-runtime est dans la sortie du greffon, mais \`${seam}\` n'y est pas — ` +
                 `une feuille adoptée au chargement pour un composant absent. Voir checkOrphanStylesheets.`
         );
     }
@@ -799,10 +811,15 @@ function checkOrphanStylesheets(name, file, log) {
 }
 
 /**
- * Checks each plugin against its per-plugin budgets — BOOT (entry alone) and TOTAL
- * (every emitted `.js`). See PLUGIN_BUDGETS_GZ_KB for why both are needed.
+ * Checks each plugin against its per-plugin budgets — BOOT (the entry plus every chunk it
+ * imports statically, walked by {@link measureEagerBootAt}; dynamic `import()` is not followed)
+ * and TOTAL (every `.js` file in the entry's directory). See PLUGIN_BUDGETS_GZ_KB for why both
+ * are needed. It also fails on an orphaned host-runtime stylesheet anywhere in the plugin's
+ * output ({@link checkOrphanStylesheets}, over the same files as TOTAL). A plugin with no built
+ * entry is skipped with a warning.
  * @param {{ log?: typeof defaultLog }} [opts]
- * @returns {boolean} true if no hard budget is breached (build may proceed)
+ * @returns {boolean} true if no hard budget is breached and no orphaned stylesheet is found
+ *   (build may proceed)
  */
 function checkPluginBundles(opts = {}) {
     const log = opts.log || defaultLog;

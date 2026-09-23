@@ -13,8 +13,10 @@
 export interface ConnectorConfig {
     /**
      * URL prefix. All requests starting with this URL will have the token injected.
-     * Must start with https:// in production.
-     * http:// triggers a console.warn on localhost / 127.0.0.1.
+     * Must start with https:// in production: `configure()` and `createConnector()` refuse any
+     * other value with a `ConfigError`.
+     * http:// is tolerated, with a console.warn, only when the PAGE is served from a development
+     * host — `localhost`, `*.localhost`, the loopback `127.0.0.0/8` or `::1`, or `*.test`.
      */
     baseUrl: string;
 
@@ -119,7 +121,7 @@ export function validateConfig(config: ConnectorConfig): void {
     _validateBaseUrl(config);
     _validateAuthMode(config);
 
-    // Validate external URLs (HTTPS in production, http allowed on localhost)
+    // Validate external URLs (HTTPS in production, http tolerated on a development host)
     _validateExternalUrl(config.auth?.signupUrl, "auth.signupUrl");
     _validateExternalUrl(config.auth?.forgotPasswordUrl, "auth.forgotPasswordUrl");
 

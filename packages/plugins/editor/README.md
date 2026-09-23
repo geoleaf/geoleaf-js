@@ -25,7 +25,7 @@ Load in your HTML after `@geoleaf/core`:
 ></script>
 ```
 
-> **Deploy note** — the plugin ships as one entry file **plus lazy chunks** (`geoleaf-editor.terra-draw-*.js`, `geoleaf-editor.modes-*.js`). All `dist/*.js` files must be deployed **together in the same directory**; the entry resolves the chunks relatively at runtime. The first time a drawing tool is activated, the browser fetches the Terra Draw chunk.
+> **Deploy note** — `geoleaf-editor.plugin.js` is a small facade that statically imports a content-hashed **entry chunk** (`geoleaf-editor.entry-*.js`): both load at boot. The drawing engine lives in two more chunks, `geoleaf-editor.terra-draw-*.js` and `geoleaf-editor.modes-*.js`, which the entry chunk requests with `import()` the first time a drawing tool is activated. Deploy **every** `dist/*.js` file, the entry chunk included, **together in the same directory** — the chunks resolve one another by relative URL. If a service worker precaches the plugin for offline use, precache all of them: the two engine chunks are not requested at boot. Chunk names change with their content: after a redeploy that removed the old files, a page opened before it still requests the old names, so unless a cache still holds them it cannot load the engine (if it had not loaded it yet) until it is reloaded.
 
 ---
 
@@ -255,11 +255,13 @@ repository policy in
 
 ## Bundle budget
 
-| Part              | Size (gzip) | Loaded                           |
-| ----------------- | ----------- | -------------------------------- |
-| Plugin entry      | ~35 KB      | At boot                          |
-| Terra Draw engine | ~45 KB      | Lazily, on first tool activation |
-| Modes chunk       | ~1 KB       | Lazily, with the engine          |
+| Part                                                       | Size (gzip, approx.) | Loaded                           |
+| ---------------------------------------------------------- | -------------------- | -------------------------------- |
+| Facade `geoleaf-editor.plugin.js` + entry chunk            | ~53 KB               | At boot                          |
+| Terra Draw engine chunk (`geoleaf-editor.terra-draw-*.js`) | ~45 KB               | Lazily, on first tool activation |
+| Modes chunk (`geoleaf-editor.modes-*.js`)                  | < 1 KB               | Lazily, with the engine          |
+
+Sizes are approximate and move with each release. In the GeoLeaf-JS repository, `npm run size -- --plugins` measures them on the built `dist/`: the boot (the facade plus every chunk it imports statically) and the total of all `dist/*.js` files — the lazy chunks are the difference.
 
 `maplibre-gl` is a peer dependency (host page), excluded from the bundle. `@geoleaf/core` is external.
 
