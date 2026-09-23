@@ -134,7 +134,14 @@ test.describe("6.2.1 — Init time", () => {
         const RUNS = 10;
 
         for (let i = 0; i < RUNS; i++) {
-            await page.goto("/", { waitUntil: "networkidle" });
+            // `load`, not `networkidle`: the subject is the `startup-total` measure awaited
+            // below, not the basemap. The demo profile's default basemap is 3D terrain
+            // (pitch 60, DEM tiles), active at boot; under software GL its first render
+            // burst kept each load busy for 12-19 s on a 4-core runner, and ten
+            // `networkidle` loads overran the 120 s budget while `startup-total` stayed
+            // at its usual ~1.2 s. Measured on 2 cores: 8 s a load with `networkidle`,
+            // 1 s with `load`, the same `startup-total` distribution either way.
+            await page.goto("/", { waitUntil: "load" });
             await page.locator(MAP_SELECTOR).waitFor({ state: "visible", timeout: MAP_TIMEOUT });
             // Wait for the startup-total measure to be recorded by init.ts
             await page.waitForFunction(
