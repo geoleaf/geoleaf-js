@@ -31,29 +31,25 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.7.0 <Badge type="tip" text="2026-09-23" />
+## Release v3.8.0 <Badge type="tip" text="2026-09-23" />
 
-Two seams a host application was missing, a GeoJSON worker whose failure no longer costs a page its
-first layers, and a drawing engine that finally waits to be needed.
+The filter says which category a checked sub-category belongs to, and a selected shape in the
+editor moves when it is pressed near an edge.
 
 **Highlights:**
 
-- **New** — `GeoLeaf.GeoJSON.setWorkerUrl(url)`. The GeoJSON worker's default URL is found once,
-  from the page's `<script src>` tags — against the page itself (or a plugin's directory) for a
-  bundle imported from an inline module script. A host can now point at the worker, and version
-  its URL (`?v=…`). The URL
-  set is read at every worker construction: set it once the bundle has loaded, before
-  `GeoLeaf.boot()`.
-- **New** — a layer's `labels` block is read: the same object as a style file's `label`. A style
-  that carries its own `label` keeps priority; the layer's block applies otherwise, including when
-  the default style file is missing.
-- **Fixed** — a GeoJSON worker that fails (its script did not load, or it crashed) no longer fails
-  the loads it was built for: the loads in flight are replayed on the main thread.
-- **Fixed** — `@geoleaf-plugins/editor` 1.4.1 loads Terra Draw on the first tool use, as it always
-  claimed to: the engine chunk was imported statically, about 47 KB gz paid on every page that
-  loaded the plugin.
-- **Fixed** — `@geoleaf-plugins/connector` 1.3.2 tolerates `http://` on every development host
-  (`*.localhost`, loopback, `*.test`), not only `localhost` and `127.0.0.1`.
+- **New** — `GeoLeaf.Filter.getActiveFilter()` returns, for a `taxonomy` field, `subValues`
+  beside `values`: one `{ value, category }` per checked sub-category, in panel order. A
+  sub-category id is unique only within its category; the flat `values` list could not tell which
+  one was checked. `applyFilter(state)` reads the key back, and a state without it restores as
+  before.
+- **Fixed** — `@geoleaf-plugins/editor` 1.4.2: pressing a selected shape near an edge moves the
+  shape instead of inserting a vertex. The select mode's handles now reach 12 px, the drawing
+  modes' radius, instead of Terra Draw's default of 40 px.
+
+Release v3.7.0 (2026-09-23) — a host sets the GeoJSON worker's URL, a layer declares its labels
+itself, a failed worker no longer fails a page's first layers, and the editor loads its drawing
+engine on the first tool use.
 
 Release v3.6.1 (2026-09-22) — three fixes to the camera and the basemap, all three visible on a
 3D basemap: it no longer waits for the user's first gesture to apply, it reaches the tilt it asks
