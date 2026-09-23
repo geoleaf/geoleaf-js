@@ -39,6 +39,28 @@ test.beforeEach(async ({ context }) => {
     await serveBasemapTilesLocally(context);
 });
 
+// 🛑 COUNTER-EXPERIMENT, FOR THE ONE PLACE THAT SHOWS THE DEFECT: THE CI RUNNER. There, the test
+// that FOLLOWS a test of this file in the same worker hung for 60 s creating its browser context
+// (`browser.newContext: Test ended`, or `Failed to find browser context for id`) — 9 full runs out
+// of 11 between 20 and 23/09/2026, never reproduced locally (12 passes, 9 of them on 2 cores). A
+// test of this file leaves an active service worker and ~28 MB of storage (4 caches, ~170
+// entries) for the browser to tear down when the context closes. This hook releases them itself —
+// storage AND service worker, awaited — before the context closes, and logs how long it took. If
+// the hangs stop over several runs, the teardown was the cause and this hook is the fix; if they
+// do not, the lead is refuted and the hook goes.
+test.afterEach(async ({ page, context, browserName }) => {
+    if (browserName !== "chromium") return;
+    try {
+        const origin = new URL(page.url()).origin;
+        const cdp = await context.newCDPSession(page);
+        const t0 = Date.now();
+        await cdp.send("Storage.clearDataForOrigin", { origin, storageTypes: "all" });
+        console.log(`[54-teardown] storage and service worker released in ${Date.now() - t0} ms`);
+    } catch (err) {
+        console.log(`[54-teardown] release skipped: ${err instanceof Error ? err.message : err}`);
+    }
+});
+
 /** Where the injected pull source lives. Fulfilled here, so every request is readable. */
 const OGC = "https://backend.test/ogc";
 const T1 = "2026-09-01T08:00:00+00:00";
