@@ -39,30 +39,21 @@ test.beforeEach(async ({ context }) => {
     await serveBasemapTilesLocally(context);
 });
 
-// 🛑 COUNTER-EXPERIMENT, FOR THE ONE PLACE THAT SHOWS THE DEFECT: THE CI RUNNER. There, the test
-// that FOLLOWS a test of this file in the same worker hangs for 60 s creating its browser context
-// (`browser.newContext: Test ended`, or `Failed to find browser context for id`) — 9 full runs out
-// of 11 between 20 and 23/09/2026, never reproduced locally (12 passes, 9 of them on 2 cores).
-//
-// ⚠️ FIRST LEAD, REFUTED. A test of this file leaves an active service worker and ~28 MB of
-// storage. Releasing both before the context closed (`Storage.clearDataForOrigin`, awaited: 10 to
-// 27 ms on the runner) changed nothing: the successor still hung in 4 runs out of 4 (23-24/09).
-//
-// SECOND LEAD, UNDER TEST: the page itself. This hook closes it — awaited, timed, and with room of
-// its own in the test's budget — before the context closes. If the successors stop hanging, the
-// page's teardown was what blocked the next context; if this test fails here instead, the log
-// says how long that teardown takes on the runner. If nothing changes, the lead is refuted and the
-// hook goes.
-test.afterEach(async ({ page }, testInfo) => {
-    testInfo.setTimeout(testInfo.timeout + 60_000);
-    const t0 = Date.now();
-    try {
-        await page.close();
-        console.log(`[54-teardown] page closed in ${Date.now() - t0} ms`);
-    } catch (err) {
-        const why = err instanceof Error ? err.message : String(err);
-        console.log(`[54-teardown] page close failed after ${Date.now() - t0} ms: ${why}`);
-    }
+// 🛑 THIS TEST CLOSES ITS PAGE ITSELF, AND WAITS — OR THE NEXT TEST IN THE WORKER CANNOT START.
+// On the CI runner (never locally: 12 passes, 9 of them on 2 cores), the test that FOLLOWED a test
+// of this file in the same worker hung for 60 s creating its browser context
+// (`browser.newContext: Test ended`, or `Failed to find browser context for id`) — 13 full runs
+// out of 15 between 20 and 24/09/2026; `cfg-b6` and `cfg-c1-root-features` were only collateral.
+// Two counter-experiments on the runner, one variable each:
+// - releasing the storage (~28 MB) and the service worker before the context closed changed
+//   nothing: 4 runs out of 4 still hung;
+// - closing the PAGE first, awaited, stopped it: 0 runs out of 3, the close taking 0.4 to 1.6 s
+//   there.
+// Why the fixture's own teardown — the context closed with this heavy page still open — leaves the
+// browser unable to create the next context is not established; closing the page first is what
+// was measured to prevent it.
+test.afterEach(async ({ page }) => {
+    await page.close();
 });
 
 /** Where the injected pull source lives. Fulfilled here, so every request is readable. */
