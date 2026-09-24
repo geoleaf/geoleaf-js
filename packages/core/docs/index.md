@@ -31,21 +31,27 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.8.0 <Badge type="tip" text="2026-09-23" />
+## Release v3.9.0 <Badge type="tip" text="2026-09-24" />
 
-The filter says which category a checked sub-category belongs to, and a selected shape in the
-editor moves when it is pressed near an edge.
+A layer can stay out of the layer manager, a vector basemap applied at startup keeps the layers
+created while its style downloads, and a host can unmount the map during its boot.
 
 **Highlights:**
 
-- **New** — `GeoLeaf.Filter.getActiveFilter()` returns, for a `taxonomy` field, `subValues`
-  beside `values`: one `{ value, category }` per checked sub-category, in panel order. A
-  sub-category id is unique only within its category; the flat `values` list could not tell which
-  one was checked. `applyFilter(state)` reads the key back, and a state without it restores as
-  before.
-- **Fixed** — `@geoleaf-plugins/editor` 1.4.2: pressing a selected shape near an edge moves the
-  shape instead of inserting a vertex. The select mode's handles now reach 12 px, the drawing
-  modes' radius, instead of Terra Draw's default of 40 px.
+- **New** — `showInLayerManager: false`, in a layer's config file or passed to
+  `GeoLeaf.Layers.create`, removes the layer's row from the layer manager, and nothing else: the
+  layer still loads, follows its theme and keeps its legend.
+- **New** — `@geoleaf-plugins/editor` 1.5.0: `GeoLeaf.Editor.discardDraft(featureId?)` abandons
+  the draft awaiting its form — nothing is persisted, no event is emitted.
+- **Fixed** — a vector basemap applied at startup no longer erases the layers created while its
+  style downloads: their sources and sub-layers stay in the style, and `GeoJSON.updateLayerData`
+  reaches them.
+- **Fixed** — `Core.destroy()` during the boot ends the boot instead of failing it, and right after
+  `geoleaf:app:ready` it no longer throws.
+- **Fixed** — `@geoleaf-plugins/measure` 1.0.5 keeps a measure finished just before a reload.
+
+Release v3.8.0 (2026-09-23) — the filter says which category a checked sub-category belongs to,
+and a selected shape in the editor moves when it is pressed near an edge.
 
 Release v3.7.0 (2026-09-23) — a host sets the GeoJSON worker's URL, a layer declares its labels
 itself, a failed worker no longer fails a page's first layers, and the editor loads its drawing
