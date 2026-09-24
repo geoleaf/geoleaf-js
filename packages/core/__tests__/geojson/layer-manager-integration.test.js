@@ -85,6 +85,54 @@ describe("geojson/layers/integration", () => {
         });
     });
 
+    // `showInLayerManager: false` keeps a layer out of the manager, and must do so on
+    // BOTH producers: they feed one idempotent sink that never removes a row, so a
+    // layer filtered by one path would be put back by the other — on the next theme
+    // switch, which replays the populate path.
+    describe("showInLayerManager: false", () => {
+        const registered = (spy) => spy.mock.calls.map(([id]) => id);
+        const sections = (spy) => spy.mock.calls.map(([, opts]) => opts.layerManagerId);
+
+        it("keeps a loaded layer out of the manager, and its section with it", () => {
+            const _registerGeoJsonLayer = vi.fn();
+            _g.GeoLeaf = { LayerManager: { _registerGeoJsonLayer } };
+            state.layers.set("shown", { label: "Shown", config: { zIndex: 1 } });
+            state.layers.set("snap", {
+                label: "Snap",
+                config: { layerManagerId: "technical", showInLayerManager: false },
+            });
+            LayerManagerIntegration.registerWithLayerManager();
+            expect(registered(_registerGeoJsonLayer)).toEqual(["shown"]);
+            expect(sections(_registerGeoJsonLayer)).not.toContain("technical");
+        });
+
+        it("lists a loaded layer that declares `true` or nothing", () => {
+            const _registerGeoJsonLayer = vi.fn();
+            _g.GeoLeaf = { LayerManager: { _registerGeoJsonLayer } };
+            state.layers.set("a", { label: "A", config: { showInLayerManager: true } });
+            state.layers.set("b", { label: "B", config: {} });
+            LayerManagerIntegration.registerWithLayerManager();
+            expect(registered(_registerGeoJsonLayer).sort()).toEqual(["a", "b"]);
+        });
+
+        it("keeps a configured layer out on the populate path too", () => {
+            const _registerGeoJsonLayer = vi.fn();
+            _g.GeoLeaf = { LayerManager: { _registerGeoJsonLayer, _updateContent: vi.fn() } };
+            setAllLayerConfigs([
+                { id: "shown", label: "Shown", layerManagerId: "sec" },
+                {
+                    id: "snap",
+                    label: "Snap",
+                    layerManagerId: "technical",
+                    showInLayerManager: false,
+                },
+            ]);
+            LayerManagerIntegration.populateLayerManagerWithAllConfigs(null);
+            expect(registered(_registerGeoJsonLayer)).toEqual(["shown"]);
+            expect(sections(_registerGeoJsonLayer)).not.toContain("technical");
+        });
+    });
+
     describe("_loadLayerLegend", () => {
         it("calls Legend.loadLayerLegend when Legend and styleId available", () => {
             const loadLayerLegend = vi.fn();

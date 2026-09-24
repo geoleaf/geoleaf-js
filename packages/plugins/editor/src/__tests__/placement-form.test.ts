@@ -56,6 +56,7 @@ vi.mock("../config.js", () => ({
 
 const { initAddForm, destroyAddForm, openAddForm, startPoiCapture, buildAddFormApi } =
     await import("../add-form/placement-form.js");
+const { discardDraft } = await import("../draft-state.js");
 
 /** Captures the options handed to the modal, so the test can drive onSave/onCancel. */
 let opened: Record<string, unknown>[] = [];
@@ -67,7 +68,11 @@ const _editExisting = vi.fn(async () => true);
 function mount(getWiring: () => unknown = () => wiring) {
     opened = [];
     initAddForm({
-        openForm: (o: unknown) => opened.push(o as Record<string, unknown>),
+        // Returns what the real modal hands back: a forced close, which fires the cancel.
+        openForm: (o: unknown) => {
+            opened.push(o as Record<string, unknown>);
+            return () => (o as { onCancel?: () => void }).onCancel?.();
+        },
         getWiring: getWiring as () => never,
         editExisting: _editExisting,
     });
@@ -85,6 +90,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+    discardDraft();
     destroyAddForm();
     delete (globalThis as Record<string, unknown>).GeoLeaf;
 });
@@ -348,5 +354,34 @@ describe("buildAddFormApi", () => {
         expect(typeof api.openAddForm).toBe("function");
         api.openAddForm({ lat: 1, lng: 2 });
         expect(opened).toHaveLength(1);
+    });
+});
+
+// --- abandon by the host ---------------------------------------------------------
+
+// A capture is a draft like a drawn shape, minus the id: nothing was drawn, so there is
+// no Terra Draw feature to name. The host abandons it with no argument.
+describe("discardDraft — une capture en cours", () => {
+    it("ferme le formulaire et retire le marqueur ; la capture suivante rouvre", () => {
+        openAddForm({ lat: 1, lng: 2 });
+        _clearMarker.mockClear();
+        expect(discardDraft()).toBe(true);
+        expect(_clearMarker).toHaveBeenCalledOnce();
+        openAddForm({ lat: 3, lng: 4 });
+        expect(opened).toHaveLength(2);
+    });
+
+    it("ne s'abandonne pas sous un identifiant : elle n'en a pas", () => {
+        openAddForm({ lat: 1, lng: 2 });
+        expect(discardDraft("abc")).toBe(false);
+        expect(_clearMarker).not.toHaveBeenCalled();
+    });
+
+    it("refuse pendant l'écriture", () => {
+        _submitFeature.mockReturnValue(new Promise(() => {}));
+        openAddForm({ lat: 1, lng: 2 });
+        const onSave = opened[0]!["onSave"] as (v: unknown, l: string) => Promise<void>;
+        void onSave({}, "layer-1");
+        expect(discardDraft()).toBe(false);
     });
 });

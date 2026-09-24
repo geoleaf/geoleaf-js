@@ -131,6 +131,38 @@ Tears down the plugin DOM (menu + modals) and event listeners.
 function destroy(): void;
 ```
 
+### `discardDraft(featureId?)`
+
+Abandons the draft awaiting its attribute form — a shape the user just finished drawing, or a
+point captured through `AddForm` — as the form's cancel button would, without its
+unsaved-changes confirmation. The form closes, the drawn geometry is removed together with its
+undo/redo entries, and a placement marker is retired. Nothing is persisted and no event is
+emitted.
+
+```typescript
+function discardDraft(featureId?: string | number): boolean;
+```
+
+- `featureId` — abandon only if the draft is this drawn feature (`detail.feature.id` of
+  `geoleaf:editor:feature-created`). Omitted: whatever draft is pending, including an `AddForm`
+  capture, which has no id.
+- Returns `true` when a draft was abandoned, `false` when none is pending, when it is not
+  `featureId`, or while its form is saving — a write in flight is never undone.
+
+It can be called from a `geoleaf:editor:feature-created` listener: the event is dispatched just
+before the form opens, and the form then never opens. That is the route for a host that
+persists new features by its own means:
+
+```js
+document.addEventListener("geoleaf:editor:feature-created", (e) => {
+    openMyOwnCreationDialog(e.detail.feature); // the host's persistence
+    GeoLeaf.Editor.discardDraft(e.detail.feature.id);
+});
+```
+
+It does not abandon a shape still being drawn, a geometry edit of an existing feature, or an
+armed placement (`GeoLeaf.Editor.PlacementMode.deactivate()` does that).
+
 ---
 
 ## Configuration (`editorConfig`)

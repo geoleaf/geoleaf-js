@@ -11,6 +11,44 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **A layer can stay out of the layer manager: `showInLayerManager: false`.** Declared in a
+  layer's config file or passed to `GeoLeaf.Layers.create`, it removes the layer's row from the
+  panel — and nothing else: the layer still loads, follows its theme's visibility, keeps its
+  legend and stays drivable through `GeoLeaf.GeoJSON.showLayer` / `hideLayer`. It holds across
+  theme switches, which re-list every configured layer. A section left with no listed layer is
+  not created, unless `layerManagerConfig.sections` declares it (its title then shows with no
+  rows). Absent or `true` lists the layer, as before.
+- **`@geoleaf-plugins/editor` 1.5.0 — `GeoLeaf.Editor.discardDraft(featureId?)` abandons the draft
+  awaiting its form.** A shape just drawn, or a point captured through `AddForm`: the form closes
+  without its unsaved-changes confirmation, the geometry and its undo/redo entries go, a placement
+  marker is retired — nothing is persisted, no event is emitted. It can be called from a
+  `geoleaf:editor:feature-created` listener, and the form then never opens: a host that persists
+  new features by its own means no longer has to simulate a click on the form's cancel button. It
+  returns `false` when no draft is pending, when the draft is not `featureId`, or while its form
+  is saving.
+
+### Fixed
+
+- **`@geoleaf-plugins/measure` 1.0.5 — a measure finished just before a reload was lost.** Measures
+  are saved to `localStorage` after a ~300 ms debounce, and a save still waiting for its timer when
+  the page unloaded never ran. A pending save is now written at once when the page is hidden or
+  unloaded (`pagehide`, or `visibilitychange` to `hidden`); the debounce is unchanged otherwise.
+- **`@geoleaf-plugins/editor` 1.5.0 — destroying the editor with its form open threw.** The form's
+  cancel removes its shape through the drawing engine, and the engine was stopped first: the
+  destroy threw "Terra Draw is not enabled" and the rest of the teardown never ran. The form is now
+  closed first.
+- **`@geoleaf-plugins/editor` 1.5.0 — cancelling a form after an undo threw, and dropped the wrong
+  history entry.** An undo reaching the stack while the form was open removed the drawn shape; the
+  cancel then asked the drawing engine to remove it again (which throws), and dropped whatever
+  entry topped the stack. The cancel now removes only a shape the engine still holds, and only
+  that shape's entries, from both the undo and redo stacks.
+
+---
+
 ## [3.8.0] - 2026-09-23
 
 ### Added

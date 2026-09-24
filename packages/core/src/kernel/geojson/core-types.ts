@@ -155,6 +155,8 @@ export type GeoJSONLayerDef = GeoJSONLayerOptions & {
     zIndex?: number;
     geometry?: string;
     showIconsOnMap?: boolean;
+    /** `false` keeps the layer out of the layer manager (`layers/integration.ts`). */
+    showInLayerManager?: boolean;
     styleRules?: GeoJSONStyleRule[];
     clusterRadius?: number;
     disableClusteringAtZoom?: number;

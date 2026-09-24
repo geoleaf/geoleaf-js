@@ -66,6 +66,7 @@ interface AllLayerConfigEntry {
     zIndex?: number;
     styles?: unknown;
     labels?: unknown;
+    showInLayerManager?: boolean;
 }
 
 /** `layerData` argument accepted by `_loadLayerLegend`. */
@@ -82,6 +83,16 @@ interface LayerManagerIntegrationShape {
 }
 
 const LayerManager = {} as LayerManagerIntegrationShape;
+
+/**
+ * Whether a layer gets a row in the layer manager. Only an explicit `false` keeps it out:
+ * the layer still loads, follows its theme and keeps its legend — it is only not offered as
+ * a toggle. Both producers below ask it BEFORE a section exists, so a section holding only
+ * such layers is never created.
+ */
+function _isListedInLayerManager(config: { showInLayerManager?: unknown } | undefined): boolean {
+    return config?.showInLayerManager !== false;
+}
 
 function _resolveLayerLabels(layerData: GeoJSONLayerEntry): {
     hasLabels: boolean;
@@ -155,6 +166,7 @@ LayerManager.registerWithLayerManager = function () {
     const sectionMap = new Map<string, Section>();
 
     state.layers.forEach((layerData, id) => {
+        if (!_isListedInLayerManager(layerData.config)) return;
         _processLayerForSection(layerData, id, sectionMap, Log);
     });
 
@@ -290,6 +302,7 @@ function _buildPopulateConfigSectionMap(
     const sectionMap = new Map<string, Section>();
 
     allConfigs.forEach((config) => {
+        if (!_isListedInLayerManager(config)) return;
         const sectionId = config.layerManagerId || "geojson-default";
 
         let section = sectionMap.get(sectionId);

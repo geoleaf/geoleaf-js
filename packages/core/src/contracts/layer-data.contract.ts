@@ -141,6 +141,13 @@ export interface LayerDefinition {
         visibleByDefault?: boolean;
         [key: string]: unknown;
     };
+    /**
+     * `false` keeps the layer out of the layer manager, and out of it only: the layer still
+     * loads, follows its theme's visibility, keeps its legend and stays drivable through
+     * `GeoLeaf.GeoJSON.showLayer` / `hideLayer`. It is simply not offered as a toggle — for a
+     * snapping support or a computation layer. Absent or `true` lists it. Since 3.9.0.
+     */
+    showInLayerManager?: boolean;
     /** Point-clustering configuration. */
     clustering?: Record<string, unknown>;
     /** Geometry type, when it cannot be inferred from the features. */

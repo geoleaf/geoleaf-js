@@ -117,13 +117,21 @@ export function redo(): void {
 }
 
 /**
- * Drops the most recent operation WITHOUT applying its inverse.
- * Used when a just-created feature is discarded (e.g. form cancelled): the
- * caller already removes the geometry, so the stale `create` entry must be
- * popped to keep the stack consistent.
+ * Removes every operation on the given drawing feature — it has been ABANDONED.
+ *
+ * Used when a draft is discarded (form cancelled, or abandoned by the host): nothing was
+ * submitted and the caller removes the geometry, so its entries must leave the stack
+ * WITHOUT an inverse being applied. They are found by id, on BOTH stacks: popping the top
+ * took the wrong entry as soon as another had been stacked above it, and after an undo the
+ * `create` waits on the redo stack, where a redo would draw the abandoned shape back.
+ *
+ * @param terradrawId - Drawing-side id of the abandoned feature.
+ * @example
+ * adapter.removeFeatures([terradrawId]);
+ * discardOperations(terradrawId);
  */
-export function discardLastOperation(): void {
-    if (_undo.pop()) _notify();
+export function discardOperations(terradrawId: string): void {
+    _dropOperationsOf(terradrawId);
 }
 
 /**
@@ -139,15 +147,20 @@ export function discardLastOperation(): void {
  * outbox entry to withdraw and a conflict story. What is fixed here is the lie — a submitted
  * operation stops being offered, so the button greys out and the tooltip stops naming it.
  *
- * ⚠️ Not to be confused with {@link discardLastOperation}, which drops an entry because
- * NOTHING was submitted (a cancelled creation form). The two must stay apart: collapsing
- * them would make a cancel and a save indistinguishable to the stack.
+ * ⚠️ Not to be confused with {@link discardOperations}, which drops the same entries because
+ * NOTHING was submitted (an abandoned draft). The removal is the same; the two names keep a
+ * cancel and a save distinguishable at every call site.
  *
  * @param terradrawId - Drawing-side id of the feature whose operations are now committed.
  * @example
  * void adapter.update(feature, layerId).then(() => sealOperations(terradrawId));
  */
 export function sealOperations(terradrawId: string): void {
+    _dropOperationsOf(terradrawId);
+}
+
+/** Removes a feature's operations from both stacks, WITHOUT applying any inverse. */
+function _dropOperationsOf(terradrawId: string): void {
     const before = _undo.length + _redo.length;
     _keepOthers(_undo, terradrawId);
     _keepOthers(_redo, terradrawId);

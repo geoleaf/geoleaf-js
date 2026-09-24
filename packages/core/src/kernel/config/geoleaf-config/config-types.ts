@@ -415,6 +415,8 @@ export interface LayerConfig {
     configFile?: string;
     /** Layer manager group/panel ID this layer belongs to. */
     layerManagerId?: string;
+    /** `false` keeps the layer out of the layer manager, and out of it only. Default true. */
+    showInLayerManager?: boolean;
     /** Whether the layer is visible on startup. Default true. */
     visible?: boolean;
     /** Active style ID applied to this layer. */

@@ -50,6 +50,18 @@
  *   3. **Boot traffic settles in ~2 s**, not 300 ms. `settleNetwork` before any
  *      zero assertion is thus no precaution, it is the condition.
  *
+ * ⚠️ AND FACT 3 WAS NOT ENOUGH — the calm is not the end of the boot. Seen on
+ * the runner (1 run in 18, 23/09/2026) and reproduced on demand since: the
+ * boot layers load in batches of six, the second batch starts only once the
+ * first is fetched AND parsed, and no request starts while a large file
+ * parses. The 800 ms of quiet ended between the two batches, and the second
+ * batch's files, plus the profile's sprite, were requested inside the offline
+ * window. A second, independent path: the realtime layer's live-feed call
+ * starts at `geoleaf:app:ready`; still in flight at the cut, it fails and
+ * falls back to a snapshot ON THE APP'S ORIGIN. So criterion 3 now waits for
+ * `geoleaf:app:ready` AND for nothing left in flight — and the slow-boot test
+ * below forces both conditions, because a fast machine never meets them.
+ *
  * ⚠️ WHAT WOULD PROVE NOTHING: an UNSCOPED `assertZeroNetwork`. A live map never
  * stops talking to the network; "zero requests" is only ever a statement about a
  * PERIMETER. The perimeter here is the write origin, and the negative control
@@ -64,9 +76,11 @@ import {
     goOffline,
     goOnline,
     settleNetwork,
+    trackInflight,
     assertZeroNetwork,
     recordRequests,
 } from "./helpers/offline.js";
+import { armAppReadyWitness, waitAppReadyWitness } from "./helpers/boot.js";
 
 /** The variant embarking BOTH editing and `offline-ui` — the only one where the
  *  restoration cycle is reachable end to end. ⚠️ It used to be `deploy-addpoi`;
@@ -97,13 +111,19 @@ const ORIGIN = baseURL("full");
 const NOT_APP_ORIGIN = new RegExp(`^(?!${ORIGIN.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`);
 
 /**
- * Boots the application and waits on the SURFACE, never an event.
+ * Boots the application: the write surface wired, then the application ready.
  *
  * ⚠️ The availability witness used to be `Storage.DB.addToSyncQueue`, removed
  * with the v3 queue. We now wait on `Storage.applyEdit` — the single write point
  * since the producer switch, i.e. what these tests really exercise.
+ *
+ * 🛑 That witness is NOT a booted application: `Storage.DB` is wired by the
+ * shared module, before the profile's layers even start loading. Hence the
+ * second wait, on `geoleaf:app:ready` — emitted once every batch of boot layers
+ * is loaded and the theme applied (see the header).
  */
 async function boot(page) {
+    await armAppReadyWitness(page);
     await page.goto(`${ORIGIN}/`, { waitUntil: "domcontentloaded" });
     await page.waitForFunction(
         // 🛑 The witness must prove the engine is WIRED, not merely that the
@@ -117,6 +137,106 @@ async function boot(page) {
         null,
         { timeout: 25000 }
     );
+    await waitAppReadyWitness(page);
+}
+
+/** Matches the boot layers' data files — every layer of the profile keeps its data there. */
+const LAYER_DATA = /\/profiles\/[^/]+\/layers\/[^/]+\/data\//;
+
+/**
+ * The tourism profile's realtime layer: its live feed (`realtime.url` of
+ * `epicentres_seismes`), polled from `geoleaf:app:ready` on. Off-origin — so
+ * outside the perimeter — but its failure falls back to a snapshot ON the origin.
+ */
+const LIVE_FEED = /^https:\/\/earthquake\.usgs\.gov\//;
+
+/**
+ * Criterion 3's body, shared by the nominal test and the slow-boot one.
+ *
+ * @param {import('@playwright/test').BrowserContext} context
+ * @param {import('@playwright/test').Page} page
+ * @param {import('./helpers/offline.js').InflightTracker} inflight started before the navigation
+ * @param {() => void} [onCut] called once the network is cut
+ */
+async function proveCriterion3(context, page, inflight, onCut = () => {}) {
+    // Without this, the assertion would redden on boot traffic: ~2 s of
+    // tiles, styles, glyphs and sprites that have nothing to do with the
+    // gesture being proven — and on a request still in flight, whose failure
+    // at the cut can send a fallback to the origin (see the header).
+    try {
+        await settleNetwork(context, { quietMs: 800, timeout: 30000, inflight });
+    } finally {
+        inflight.stop();
+    }
+
+    await goOffline(context, page);
+    onCut();
+
+    /** @type {{add: string, del: string, afterAdd: number, afterDel: number} | undefined} */
+    let queued;
+    await assertZeroNetwork(
+        context,
+        async () => {
+            queued = await page.evaluate(async () => {
+                const gl = /** @type {any} */ (globalThis).GeoLeaf;
+                const feature = {
+                    type: "Feature",
+                    geometry: { type: "Point", coordinates: [55.38, -21.07] },
+                    properties: { nom: "Saisie hors réseau" },
+                };
+                // ⚠️ `sites_rosario` and NOT `poi_tourisme`: `applyEdit`
+                // validates the layer (`layerUnknown` refusal), where the v3
+                // queue accepted any identifier. The `tourism` profile has
+                // only four editable layers, and this one is the only one
+                // carrying a `write` block.
+                const add = await gl.Storage.applyEdit({
+                    layerId: "sites_rosario",
+                    kind: "create",
+                    localId: "c3-poi",
+                    feature,
+                });
+                // State AFTER the creation alone: the entity is there, its entry too.
+                const afterAdd = await gl.Storage.DB.listPendingEdits();
+
+                const del = await gl.Storage.applyEdit({
+                    layerId: "sites_rosario",
+                    kind: "delete",
+                    localId: "c3-poi",
+                });
+                const afterDel = await gl.Storage.DB.listPendingEdits();
+                return {
+                    add: add.entryId,
+                    del: del.entryId,
+                    afterAdd: afterAdd.length,
+                    afterDel: afterDel.length,
+                };
+            });
+            // Give a late request time to show: an assertion closing its
+            // window too early does not prove absence, it proves impatience.
+            await page.waitForTimeout(1500);
+        },
+        { allow: [NOT_APP_ORIGIN] }
+    );
+
+    // 🛑 THE ASSERTION CARRYING THE CRITERION IS NOT "ZERO REQUESTS" ALONE.
+    // Zero requests is also what a gesture that did nothing would produce.
+    // The gesture must have LEFT A TRACE for the zero to mean "it stayed
+    // local".
+    //
+    // ⚠️ **PORTED TO THE v4 CYCLE, and the property CHANGED SHAPE.** In v3
+    // the two operations stayed stacked side by side, and the test read
+    // their order. The outbox **coalesces**: an entity created then deleted
+    // offline never existed server-side, so the two entries CANCEL OUT
+    // (`local-edit.ts`, the "annulation" case). Keeping the old assertion
+    // would have required disabling coalescence to measure it — i.e. testing
+    // the contract's opposite.
+    //
+    // The trace thus reads in two steps: the creation alone leaves ONE queue
+    // entry, the deletion that follows leaves NONE. An inert gesture would
+    // produce neither.
+    expect(queued?.add, "la création doit rendre un identifiant d'entrée").toBeTruthy();
+    expect(queued?.afterAdd, "une entrée après la création").toBe(1);
+    expect(queued?.afterDel, "ANNULATION — plus rien après la suppression").toBe(0);
 }
 
 test.describe("29 — critères de preuve n° 1, 3, 5 et 6", () => {
@@ -138,82 +258,52 @@ test.describe("29 — critères de preuve n° 1, 3, 5 et 6", () => {
         context,
         page,
     }) => {
+        const inflight = trackInflight(context);
         await boot(page);
-        // Without this, the assertion would redden on boot traffic: ~2 s of
-        // tiles, styles, glyphs and sprites that have nothing to do with the
-        // gesture being proven.
-        await settleNetwork(context, { quietMs: 800, timeout: 30000 });
+        await proveCriterion3(context, page, inflight);
+    });
 
-        await goOffline(context, page);
-
-        /** @type {{add: string, del: string, due: string[]}} */
-        let queued;
-        await assertZeroNetwork(
-            context,
-            async () => {
-                queued = await page.evaluate(async () => {
-                    const gl = /** @type {any} */ (globalThis).GeoLeaf;
-                    const feature = {
-                        type: "Feature",
-                        geometry: { type: "Point", coordinates: [55.38, -21.07] },
-                        properties: { nom: "Saisie hors réseau" },
-                    };
-                    // ⚠️ `sites_rosario` and NOT `poi_tourisme`: `applyEdit`
-                    // validates the layer (`layerUnknown` refusal), where the v3
-                    // queue accepted any identifier. The `tourism` profile has
-                    // only four editable layers, and this one is the only one
-                    // carrying a `write` block.
-                    const add = await gl.Storage.applyEdit({
-                        layerId: "sites_rosario",
-                        kind: "create",
-                        localId: "c3-poi",
-                        feature,
-                    });
-                    // State AFTER the creation alone: the entity is there, its entry too.
-                    const afterAdd = await gl.Storage.DB.listPendingEdits();
-
-                    const del = await gl.Storage.applyEdit({
-                        layerId: "sites_rosario",
-                        kind: "delete",
-                        localId: "c3-poi",
-                    });
-                    const afterDel = await gl.Storage.DB.listPendingEdits();
-                    return {
-                        add: add.entryId,
-                        del: del.entryId,
-                        afterAdd: afterAdd.length,
-                        afterDel: afterDel.length,
-                    };
-                });
-                // Give a late request time to show: an assertion closing its
-                // window too early does not prove absence, it proves impatience.
-                await page.waitForTimeout(1500);
-            },
-            { allow: [NOT_APP_ORIGIN] }
-        );
-
-        // 🛑 THE ASSERTION CARRYING THE CRITERION IS NOT "ZERO REQUESTS" ALONE.
-        // Zero requests is also what a gesture that did nothing would produce.
-        // The gesture must have LEFT A TRACE for the zero to mean "it stayed
-        // local".
+    test("CRITÈRE 3 — sous un boot lent, la garde tient : couches en retard, flux direct en vol à la coupure", async ({
+        context,
+        page,
+    }) => {
+        // The two conditions the runner met and a fast machine never does, forced.
+        // Seen red on the wait this spec had before (800 ms of quiet after the
+        // `Storage.DB` witness): the second layer batch and the sprite requested
+        // offline; and, with the `app:ready` wait alone, the live feed's fallback.
         //
-        // ⚠️ **PORTED TO THE v4 CYCLE, and the property CHANGED SHAPE.** In v3
-        // the two operations stayed stacked side by side, and the test read
-        // their order. The outbox **coalesces**: an entity created then deleted
-        // offline never existed server-side, so the two entries CANCEL OUT
-        // (`local-edit.ts`, the "annulation" case). Keeping the old assertion
-        // would have required disabling coalescence to measure it — i.e. testing
-        // the contract's opposite.
-        //
-        // The trace thus reads in two steps: the creation alone leaves ONE queue
-        // entry, the deletion that follows leaves NONE. An inert gesture would
-        // produce neither.
-        // @ts-expect-error — assigned in the callback above
-        expect(queued.add, "la création doit rendre un identifiant d'entrée").toBeTruthy();
-        // @ts-expect-error — assigned in the callback above
-        expect(queued.afterAdd, "une entrée après la création").toBe(1);
-        // @ts-expect-error — assigned in the callback above
-        expect(queued.afterDel, "ANNULATION — plus rien après la suppression").toBe(0);
+        // 1. Every boot layer file answers 1.5 s late — longer than the quiet
+        //    window, so a wait on quiet alone ends between two batches.
+        let delayedLayers = 0;
+        await context.route(LAYER_DATA, async (route) => {
+            delayedLayers++;
+            const response = await route.fetch();
+            await new Promise((r) => setTimeout(r, 1500));
+            await route.fulfill({ response });
+        });
+        // 2. The live feed stays in flight until the cut (2.5 s at most), then
+        //    fails as a cut request does. Held rather than delayed: a fixed delay
+        //    lands inside the window or not depending on the machine.
+        /** @type {() => void} */
+        let cut = () => {};
+        const cutDone = new Promise((/** @type {(v?: unknown) => void} */ r) => {
+            cut = r;
+        });
+        let heldFeed = 0;
+        await context.route(LIVE_FEED, async (route) => {
+            heldFeed++;
+            await Promise.race([new Promise((r) => setTimeout(r, 2500)), cutDone]);
+            await route.abort("internetdisconnected");
+        });
+
+        const inflight = trackInflight(context);
+        await boot(page);
+        await proveCriterion3(context, page, inflight, cut);
+
+        // The conditions must have BITTEN — otherwise this test is the nominal
+        // one under another name (a profile whose layers or feed moved).
+        expect(delayedLayers, "des fichiers de couches retardés").toBeGreaterThan(6);
+        expect(heldFeed, "l'appel du flux direct retenu").toBeGreaterThan(0);
     });
 
     test("CONTRÔLE NÉGATIF — l'instrument VOIT une requête quand il y en a une", async ({

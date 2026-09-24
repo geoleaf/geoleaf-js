@@ -150,3 +150,76 @@ describe("clearStorage", () => {
         expect(localStorage.getItem(KEY)).toBeNull();
     });
 });
+
+// ---------------------------------------------------------------------------
+
+describe("pending save flushed when the page goes away", () => {
+    // The debounce alone lost the last measure on a reload: the timer never ran once the
+    // page unloaded. These pin the flush that replaces it at that moment.
+
+    it("writes a pending save on pagehide, before the debounce elapses", () => {
+        const cfg = getMeasureConfig();
+        initPersistence(cfg);
+        scheduleSave(() => makeCollection(2));
+
+        window.dispatchEvent(new Event("pagehide"));
+
+        const stored = JSON.parse(localStorage.getItem(KEY)!);
+        expect(stored.features).toHaveLength(2);
+    });
+
+    it("writes a pending save when the document becomes hidden", () => {
+        const cfg = getMeasureConfig();
+        initPersistence(cfg);
+        scheduleSave(() => makeCollection(1));
+        vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+
+        document.dispatchEvent(new Event("visibilitychange"));
+
+        expect(JSON.parse(localStorage.getItem(KEY)!).features).toHaveLength(1);
+    });
+
+    it("does not write when the document becomes visible", () => {
+        const cfg = getMeasureConfig();
+        initPersistence(cfg);
+        scheduleSave(() => makeCollection(1));
+        vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+
+        document.dispatchEvent(new Event("visibilitychange"));
+
+        expect(localStorage.getItem(KEY)).toBeNull();
+    });
+
+    it("writes once: the flushed save does not run again when its timer would have", () => {
+        const cfg = getMeasureConfig();
+        initPersistence(cfg);
+        const getCollection = vi.fn(() => makeCollection(1));
+        scheduleSave(getCollection);
+
+        window.dispatchEvent(new Event("pagehide"));
+        vi.advanceTimersByTime(300);
+
+        expect(getCollection).toHaveBeenCalledTimes(1);
+    });
+
+    it("writes nothing on pagehide when no save is pending", () => {
+        const cfg = getMeasureConfig();
+        initPersistence(cfg);
+        const setSpy = vi.spyOn(Storage.prototype, "setItem");
+
+        window.dispatchEvent(new Event("pagehide"));
+
+        expect(setSpy).not.toHaveBeenCalled();
+    });
+
+    it("writes nothing on pagehide after clearStorage cancelled the pending save", () => {
+        const cfg = getMeasureConfig();
+        initPersistence(cfg);
+        scheduleSave(() => makeCollection(1));
+        clearStorage(cfg);
+
+        window.dispatchEvent(new Event("pagehide"));
+
+        expect(localStorage.getItem(KEY)).toBeNull();
+    });
+});

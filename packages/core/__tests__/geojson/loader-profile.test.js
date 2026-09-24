@@ -479,6 +479,23 @@ describe("geojson/loader/profile — T22 branch coverage", () => {
         expect(result[0].labels).toBeNull();
     });
 
+    // The projection is a WHITELIST: a key it does not copy never reaches the populate
+    // path, which re-lists every configured layer on each theme switch.
+    it("loadAllLayersConfigsForLayerManager: carries `showInLayerManager`, flat or nested", async () => {
+        globalThis.GeoLeaf = { _allLayerConfigs: null };
+        const result = await LoaderProfile.loadAllLayersConfigsForLayerManager({
+            layers: [
+                { id: "flat", showInLayerManager: false },
+                { id: "nested", config: { showInLayerManager: false } },
+                { id: "plain" },
+            ],
+        });
+        expect(result[0].showInLayerManager).toBe(false);
+        expect(result[1].showInLayerManager).toBe(false);
+        // Absent stays ABSENT — a key present with `undefined` overwrites in a spread merge.
+        expect("showInLayerManager" in result[2]).toBe(false);
+    });
+
     it("loadFromActiveProfile calls registerWithLayerManager when immediate layers loaded (branch 32.0)", async () => {
         const registerWithLayerManager = vi.fn();
         globalThis.GeoLeaf = {

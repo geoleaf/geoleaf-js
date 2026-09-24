@@ -140,6 +140,11 @@ function recordRequests(target, opts = {}) {
 }
 
 /**
+ * What {@link trackInflight} returns: the number and URLs of the requests still in flight.
+ * @typedef {{ size: () => number, urls: () => string[], stop: () => void }} InflightTracker
+ */
+
+/**
  * Waits until the context has made no network attempt for `quietMs` in a row.
  *
  * 🛑 CALL THIS BEFORE ANY ZERO-NETWORK ASSERTION. A freshly navigated page keeps fetching
@@ -148,13 +153,21 @@ function recordRequests(target, opts = {}) {
  * URLs**, none of them related to the scenario. `assertZeroNetwork` over that window is red
  * every time, and the red says nothing about the code under test.
  *
+ * ⚠️ QUIET IS NOT "NOTHING IN FLIGHT". Only request STARTS reset the clock: a request that
+ * started before the call and is still waiting for its response is invisible to it. Measured
+ * on `e2e/29` with the live-feed call of the realtime layer held in flight: the wait ended, the
+ * network was cut, the call failed — and its fallback went to the app's origin inside the
+ * window under assertion. Pass `inflight` (a {@link trackInflight} started BEFORE the
+ * navigation) to also require that nothing is left in flight.
+ *
  * @param {import('@playwright/test').Page | import('@playwright/test').BrowserContext} target
- * @param {{ quietMs?: number, timeout?: number }} [opts]
+ * @param {{ quietMs?: number, timeout?: number, inflight?: InflightTracker }} [opts]
  * @returns {Promise<void>} resolves on quiet; rejects if `timeout` elapses while still busy.
  */
 async function settleNetwork(target, opts = {}) {
     const quietMs = opts.quietMs ?? 800;
     const timeout = opts.timeout ?? 30000;
+    const inflight = opts.inflight;
     const context = _asContext(target);
 
     let last = Date.now();
@@ -163,17 +176,25 @@ async function settleNetwork(target, opts = {}) {
         last = Date.now();
         seen++;
     };
+    // With `inflight`, the quiet window counts from the last request that ENDED too.
+    const bumpEnd = () => {
+        last = Date.now();
+    };
     context.on("request", bump);
     context.on("requestfailed", bump);
+    if (inflight) context.on("requestfinished", bumpEnd);
 
     const started = Date.now();
     try {
         for (;;) {
-            if (Date.now() - last >= quietMs) return;
+            if (Date.now() - last >= quietMs && (!inflight || inflight.size() === 0)) return;
             if (Date.now() - started > timeout) {
+                const pending = inflight ? inflight.urls() : [];
                 throw new Error(
                     `le réseau ne s'est pas calmé en ${timeout} ms ` +
-                        `(${seen} requêtes, dernière il y a ${Date.now() - last} ms)`
+                        `(${seen} requêtes, dernière il y a ${Date.now() - last} ms` +
+                        (inflight ? `, ${pending.length} en vol : ${pending.join(", ")}` : "") +
+                        ")"
                 );
             }
             await new Promise((r) => setTimeout(r, 100));
@@ -181,7 +202,42 @@ async function settleNetwork(target, opts = {}) {
     } finally {
         context.off("request", bump);
         context.off("requestfailed", bump);
+        if (inflight) context.off("requestfinished", bumpEnd);
     }
+}
+
+/**
+ * Tracks the context's requests IN FLIGHT — started, and neither finished nor failed yet —
+ * pages and service workers alike. For {@link settleNetwork}'s `inflight` option.
+ *
+ * 🛑 START IT BEFORE THE NAVIGATION. A request whose start it did not see is not counted, and
+ * the one that matters is exactly the one that started early and is still waiting.
+ *
+ * @param {import('@playwright/test').Page | import('@playwright/test').BrowserContext} target
+ * @returns {InflightTracker}
+ */
+function trackInflight(target) {
+    const context = _asContext(target);
+    /** @type {Set<import('@playwright/test').Request>} */
+    const pending = new Set();
+    const onStart = (/** @type {import('@playwright/test').Request} */ req) => {
+        pending.add(req);
+    };
+    const onEnd = (/** @type {import('@playwright/test').Request} */ req) => {
+        pending.delete(req);
+    };
+    context.on("request", onStart);
+    context.on("requestfinished", onEnd);
+    context.on("requestfailed", onEnd);
+    return {
+        size: () => pending.size,
+        urls: () => [...pending].map((req) => req.url()),
+        stop: () => {
+            context.off("request", onStart);
+            context.off("requestfinished", onEnd);
+            context.off("requestfailed", onEnd);
+        },
+    };
 }
 
 /**
@@ -257,12 +313,17 @@ async function assertZeroNetwork(target, fn, opts = {}) {
         rec.stop();
     }
     if (rec.count() > 0) {
-        const detail = rec.entries
-            .slice(0, 10)
-            .map(
-                (e) =>
-                    `  ${e.phase === "failed" ? "✗" : "→"} ${e.url}${e.error ? ` (${e.error})` : ""}`
-            )
+        // One line per DISTINCT url, all of them. The message used to print the first ten
+        // ENTRIES: a request and its failure are two entries, often twice over (page, then
+        // worker), so a count of 4 URLs came with 3 of them named and the 4th cut off.
+        const detail = rec.urls
+            .map((url) => {
+                const mine = rec.entries.filter((e) => e.url === url);
+                const phases = mine
+                    .map((e) => (e.phase === "failed" ? `✗ ${e.error}` : "→"))
+                    .join(", ");
+                return `  ${url} [${phases}]`;
+            })
             .join("\n");
         throw new Error(
             `expected ZERO network traffic, saw ${rec.count()} distinct URL(s):\n${detail}\n` +
@@ -271,4 +332,12 @@ async function assertZeroNetwork(target, fn, opts = {}) {
     }
 }
 
-export { goOffline, goOnline, withOffline, settleNetwork, recordRequests, assertZeroNetwork };
+export {
+    goOffline,
+    goOnline,
+    withOffline,
+    settleNetwork,
+    trackInflight,
+    recordRequests,
+    assertZeroNetwork,
+};

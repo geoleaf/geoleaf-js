@@ -148,7 +148,10 @@ export function toggleEditorMenu(_anchorEl?: Element | null): void {
     _isOpen ? _close() : _open();
 }
 
-/** Arms the given drawing mode tool, or disarms all if null. */
+/**
+ * Highlights the given tool in the menu, or clears the highlight with `null`. The menu STATE
+ * only: unlike {@link deactivateActiveTool}, the drawing engine is neither armed nor disarmed.
+ */
 export function setEditorActiveTool(tool: EditorTool | null): void {
     _activeTool = tool;
     _syncActiveButton();

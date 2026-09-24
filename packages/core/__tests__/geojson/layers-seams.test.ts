@@ -169,6 +169,27 @@ describe("create — the layer reaches the layer manager, not only the map", () 
         expect(registerWithLayerManager).toHaveBeenCalledTimes(1);
     });
 
+    // The manager reads the key off the loaded layer's `config`, which is the
+    // definition as the loader received it: the key must survive the normalisation.
+    it("hands `showInLayerManager` to the loader with the definition", async () => {
+        const loadSingle = vi.fn(async () => ({ id: "snap", label: "Snap", featureCount: 1 }));
+        profileLoader.setupProfileDeps({
+            getConfig: () => ({ getActiveProfile: () => ({ id: "p1" }) }),
+            getLayerManager: () => ({ registerWithLayerManager: vi.fn() }),
+            getLoader: () => ({ _loadSingleLayer: loadSingle }),
+            setAllLayerConfigs: vi.fn(),
+        } as unknown as Parameters<typeof profileLoader.setupProfileDeps>[0]);
+
+        await api.create({
+            id: "snap",
+            url: "https://example.test/snap.geojson",
+            showInLayerManager: false,
+        });
+        expect(loadSingle.mock.calls[0]).toContainEqual(
+            expect.objectContaining({ showInLayerManager: false })
+        );
+    });
+
     it("does not register when the definition yielded no layer", async () => {
         const registerWithLayerManager = vi.fn();
         profileLoader.setupProfileDeps({

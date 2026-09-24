@@ -357,6 +357,66 @@ test("[editor] drawing a point fires feature-created and opens the form modal", 
     await expect(page.locator(".gl-form-modal-panel")).toBeVisible({ timeout: 5000 });
 });
 
+// A host that persists by its own means must be able to close the capture without
+// clicking the form's cancel button. These three run in the REAL drawing engine, which the
+// unit harness only mimics: it throws on an id it no longer holds, and once stopped.
+test("[editor] discardDraft closes the open form, and leaves nothing to discard", async ({
+    page,
+}) => {
+    await armEditor(page);
+    await activatePointTool(page);
+    await page.locator(".maplibregl-canvas").click({ position: { x: 250, y: 180 } });
+    await expect(page.locator(".gl-form-modal-panel")).toBeVisible({ timeout: 8000 });
+
+    const first = await page.evaluate(() =>
+        /** @type {any} */ (window).GeoLeaf.Editor.discardDraft()
+    );
+    expect(first).toBe(true);
+    await expect(page.locator(".gl-form-modal-overlay")).toHaveCount(0);
+    const second = await page.evaluate(() =>
+        /** @type {any} */ (window).GeoLeaf.Editor.discardDraft()
+    );
+    expect(second).toBe(false);
+});
+
+test("[editor] discardDraft from the feature-created listener: the form never opens", async ({
+    page,
+}) => {
+    await armEditor(page);
+    await page.evaluate(() => {
+        const w = /** @type {any} */ (window);
+        w.__edDiscarded = undefined;
+        document.addEventListener("geoleaf:editor:feature-created", (e) => {
+            const id = /** @type {CustomEvent} */ (e).detail.feature.id;
+            w.__edDiscarded = w.GeoLeaf.Editor.discardDraft(id);
+        });
+    });
+    await activatePointTool(page);
+    await page.locator(".maplibregl-canvas").click({ position: { x: 250, y: 180 } });
+    await page.waitForFunction(
+        () => /** @type {any} */ (window).__edDiscarded !== undefined,
+        null,
+        { timeout: 8000 }
+    );
+    expect(await page.evaluate(() => /** @type {any} */ (window).__edDiscarded)).toBe(true);
+    // The form opens in the same task as the event, right after it: were it going to open,
+    // it would already be in the DOM.
+    await expect(page.locator(".gl-form-modal-overlay")).toHaveCount(0);
+});
+
+test("[editor] destroying the editor with its form open closes the form without throwing", async ({
+    page,
+}) => {
+    await armEditor(page);
+    await activatePointTool(page);
+    await page.locator(".maplibregl-canvas").click({ position: { x: 250, y: 180 } });
+    await expect(page.locator(".gl-form-modal-panel")).toBeVisible({ timeout: 8000 });
+    // The form's cancel removes its shape through the drawing engine: destroying the engine
+    // first made that cancel throw, and the rest of the teardown never ran.
+    await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.Editor.destroy());
+    await expect(page.locator(".gl-form-modal-overlay")).toHaveCount(0);
+});
+
 /**
  * 🛑 THIS TEST ASSERTED "saving submits via the REST adapter", AND R7 REVERSED THAT RULE.
  *

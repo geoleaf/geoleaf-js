@@ -54,6 +54,7 @@ import { PlacementMode } from "../drawing/placement-mode.js";
 import { buildPlacementApi } from "../drawing/placement-api.js";
 import { getEditorConfig, accuracyFieldOf } from "../config.js";
 import { _getLabel, _notify } from "../internal.js";
+import { beginDraft } from "../draft-state.js";
 
 /** A geographic position, in the shape both the core and the placement mode use. */
 export interface LatLng {
@@ -74,8 +75,11 @@ export interface LatLng {
 
 /** Collaborators injected by `entry.ts` — see constraint 1 in the module header. */
 export interface AddFormDeps {
-    /** Opens the attribute form modal (injected to avoid a circular import). */
-    openForm: (options: ModalOpenOptions) => void;
+    /**
+     * Opens the attribute form modal (injected to avoid a circular import), and returns how
+     * to force it closed — which fires its cancel.
+     */
+    openForm: (options: ModalOpenOptions) => (() => void) | undefined;
     /**
      * Yields the live persistence wiring, or null when the map is unavailable.
      *
@@ -161,36 +165,43 @@ export function openAddForm(latlng: LatLng): void {
         return;
     }
 
-    deps.openForm({
-        // Empty title and schema: both are resolved per target layer inside the modal, by
-        // the layer dropdown and `getSchemaForLayer`. Same contract as a Terra Draw create.
-        title: "",
-        schema: [],
-        geometryType: "Point",
-        initialValues: {},
-        computeValues: (schema) => applyComputedFields(schema, _pendingGeometry()),
-        onSave: (values, layerId) => {
-            const wiring = deps.getWiring();
-            if (!wiring) {
-                // Loud, never silent: the entry is still in the form, and the user can retry.
-                _notify("error", _getLabel("editor.addform.unavailable"));
-                return Promise.reject(new Error("[editor/add-form] No persistence wiring"));
-            }
-            // `_pendingGeometry()` is read HERE, not captured above: a marker dragged while
-            // the form was open must save at its corrected position.
-            return submitFeature(buildSubmitContext(wiring), {
-                feature: {
-                    geometry: _pendingGeometry(),
-                    properties: _withAccuracy(values, layerId),
-                },
-                layerId,
-                isUpdate: false,
-            }).then(_endCapture);
-        },
-        // Nothing was drawn on the map, so there is no Terra Draw feature to remove and no
-        // undo entry to discard — only the temporary marker to retire.
-        onCancel: _endCapture,
-    });
+    // A capture is a draft until its form saves or cancels — one with no id, since nothing
+    // was drawn: the host abandons it with `discardDraft()` and no argument.
+    const draft = beginDraft(null, _endCapture);
+    draft.opened(
+        deps.openForm({
+            // Empty title and schema: both are resolved per target layer inside the modal, by
+            // the layer dropdown and `getSchemaForLayer`. Same contract as a Terra Draw create.
+            title: "",
+            schema: [],
+            geometryType: "Point",
+            initialValues: {},
+            computeValues: (schema) => applyComputedFields(schema, _pendingGeometry()),
+            onSave: (values, layerId) => {
+                const wiring = deps.getWiring();
+                if (!wiring) {
+                    // Loud, never silent: the entry is still in the form, and the user can retry.
+                    _notify("error", _getLabel("editor.addform.unavailable"));
+                    return Promise.reject(new Error("[editor/add-form] No persistence wiring"));
+                }
+                // `_pendingGeometry()` is read HERE, not captured above: a marker dragged while
+                // the form was open must save at its corrected position.
+                return draft.saving(
+                    submitFeature(buildSubmitContext(wiring), {
+                        feature: {
+                            geometry: _pendingGeometry(),
+                            properties: _withAccuracy(values, layerId),
+                        },
+                        layerId,
+                        isUpdate: false,
+                    }).then(_endCapture)
+                );
+            },
+            // Nothing was drawn on the map, so there is no Terra Draw feature to remove and no
+            // undo entry to discard — only the temporary marker to retire (`_endCapture`).
+            onCancel: draft.abandon,
+        })
+    );
 }
 
 /**

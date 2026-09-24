@@ -2,7 +2,8 @@
  * @geoleaf-plugins/editor — Public API facade
  * © 2026 Mattieu Pottier — MIT License
  *
- * Façade only (INV-FACADE): thin wrappers over `editor-api.ts` and the floating menu.
+ * Façade only (INV-FACADE): thin wrappers over `editor-api.ts`, the floating menu and the
+ * draft state.
  * Mounted on `GeoLeaf.Editor` by `entry.ts`.
  * https://geoleaf.dev
  */
@@ -14,6 +15,7 @@ import {
 import { toggleEditorMenu, destroyEditor } from "./editor-api.js";
 import { buildPlacementApi, type PlacementApi } from "./drawing/placement-api.js";
 import { buildAddFormApi, type AddFormApi } from "./add-form/placement-form.js";
+import { discardDraft } from "./draft-state.js";
 
 export { setDestroyHook, toggleEditorMenu } from "./editor-api.js";
 
@@ -22,7 +24,10 @@ export function buildPublicApi(): Record<string, unknown> {
     return {
         /** Opens or closes the editor floating sub-menu. */
         toggleMenu: (anchorEl?: Element | null): void => toggleEditorMenu(anchorEl),
-        /** Arms a drawing mode tool, or disarms all if null. */
+        /**
+         * Highlights a tool in the menu, or clears the highlight with `null`. The menu STATE
+         * only: the drawing engine is neither armed nor disarmed by this call.
+         */
         setActiveTool: setEditorActiveTool,
         /** Returns the currently armed tool identifier, or null. */
         getActiveTool: getEditorActiveTool,
@@ -30,6 +35,12 @@ export function buildPublicApi(): Record<string, unknown> {
         updateUndoRedoState,
         /** Destroys the plugin DOM (menu + modals). */
         destroy: (): void => destroyEditor(),
+        /**
+         * Abandons the draft awaiting its form — a shape just drawn, or an add-form capture:
+         * the form closes, the geometry and its history go. `true` if one was abandoned —
+         * see `draft-state.ts`.
+         */
+        discardDraft,
         /**
          * Programmatic point placement (task 5.1-a) — see `drawing/placement-api.ts`.
          *

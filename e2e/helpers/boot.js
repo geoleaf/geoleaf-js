@@ -277,3 +277,45 @@ export async function bootMapUntilIdle(page, budgetMs = DEFAULT_BOOT_BUDGET_MS) 
         .waitFor({ state: "hidden", timeout: 10_000 })
         .catch(() => {});
 }
+
+/**
+ * Arms a witness of `geoleaf:app:ready` on `page`. Call it BEFORE `goto` / `reload`: the event
+ * fires once per page load, and a listener attached after it has fired waits forever. The
+ * witness survives reloads (an init script runs on every navigation of the page).
+ *
+ * Pair it with {@link waitAppReadyWitness}.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+export async function armAppReadyWitness(page) {
+    await page.addInitScript(() => {
+        document.addEventListener(
+            "geoleaf:app:ready",
+            () => {
+                /** @type {any} */ (window).__geoleafAppReady = true;
+            },
+            { once: true }
+        );
+    });
+}
+
+/**
+ * Waits until the page has emitted `geoleaf:app:ready` — the theme applied, hence EVERY batch of
+ * the profile's boot layers loaded. Requires {@link armAppReadyWitness} before the navigation.
+ *
+ * 🛑 NEITHER A NATIVE MAP NOR A QUIET NETWORK IS A BOOTED APPLICATION. The boot layers load in
+ * batches, and a batch starts only once the previous one is fetched AND parsed: while a large
+ * file parses, no request starts, so a "no request for 800 ms" wait can end between two
+ * batches. Measured on the runner (`e2e/29`, criterion 3): the second batch's three files were
+ * requested after the network cut.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} [budgetMs] Defaults to 30 s.
+ * @returns {Promise<void>}
+ */
+export async function waitAppReadyWitness(page, budgetMs = 30_000) {
+    await page.waitForFunction(() => /** @type {any} */ (window).__geoleafAppReady === true, null, {
+        timeout: budgetMs,
+    });
+}

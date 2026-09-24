@@ -631,6 +631,7 @@ Loader.loadAllLayersConfigsForLayerManager = async function (
         configFile?: string;
         geometry?: string;
         geometryType?: string;
+        showInLayerManager?: boolean;
         config?: {
             zIndex?: number;
             themes?: unknown;
@@ -638,6 +639,7 @@ Loader.loadAllLayersConfigsForLayerManager = async function (
             geometryType?: string;
             styles?: unknown;
             labels?: unknown;
+            showInLayerManager?: boolean;
         };
         styles?: unknown;
         labels?: unknown;
@@ -647,6 +649,12 @@ Loader.loadAllLayersConfigsForLayerManager = async function (
     );
     const allConfigs = layers.map((layer) => {
         const { styles, labels } = _resolveStyleLabels(layer);
+        // This projection is a whitelist, and the populate path re-lists every layer it
+        // carries on each theme switch: a key left out here would put back, at the first
+        // switch, a layer the loaded path kept out of the manager. Inserted only when
+        // declared — a key present with `undefined` overwrites a default in a spread merge.
+        const showInLayerManager =
+            layer.showInLayerManager ?? (layer.config && layer.config.showInLayerManager);
         return {
             id: layer.id,
             label: layer.label,
@@ -662,6 +670,7 @@ Loader.loadAllLayersConfigsForLayerManager = async function (
             geometryType: layer.geometryType ?? (layer.config && layer.config.geometryType),
             styles,
             labels,
+            ...(showInLayerManager !== undefined && { showInLayerManager }),
         };
     });
     Log.info("[GeoLeaf.GeoJSON] " + allConfigs.length + " configurations ready for LayerManager");

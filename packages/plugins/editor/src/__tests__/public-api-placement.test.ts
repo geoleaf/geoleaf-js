@@ -43,6 +43,7 @@ vi.mock("../editor-api.js", () => ({
 }));
 
 const { buildPublicApi } = await import("../public-api.js");
+const { discardDraft } = await import("../draft-state.js");
 
 /** The facade slice under test, narrowed from the untyped façade bag. */
 function placement() {
@@ -130,5 +131,13 @@ describe("GeoLeaf.Editor.PlacementMode — le rayon du garde-fou", () => {
     it("transmet disableDrag quand il est passé", () => {
         placement().activate(null, vi.fn(), { disableDrag: true });
         expect(_activate.mock.calls[0][2]).toEqual({ snapMeters: 50, disableDrag: true });
+    });
+});
+
+// The facade hands out the implementation itself: a wrapper would be logic in a facade
+// (INV-FACADE), and a second function the draft state could drift from.
+describe("GeoLeaf.Editor.discardDraft — la surface", () => {
+    it("est exposée, et c'est la fonction de l'état des brouillons", () => {
+        expect(buildPublicApi().discardDraft).toBe(discardDraft);
     });
 });

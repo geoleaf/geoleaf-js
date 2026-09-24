@@ -11,7 +11,7 @@ import {
     canUndo,
     canRedo,
     clearHistory,
-    discardLastOperation,
+    discardOperations,
     sealOperations,
     topUndoType,
     topRedoType,
@@ -125,11 +125,11 @@ describe("undo-stack — push / undo / redo", () => {
         expect(canRedo()).toBe(false);
     });
 
-    it("discardLastOperation pops without applying an inverse", () => {
+    it("discardOperations drops a feature's entries without applying an inverse", () => {
         const adapter = _mockAdapter();
         initUndoStack(adapter, _cfg());
         pushOperation(_op({ feature: _POINT }));
-        discardLastOperation();
+        discardOperations("td-1");
         expect(canUndo()).toBe(false);
         expect(adapter.removeFeatures).not.toHaveBeenCalled();
     });
@@ -442,12 +442,42 @@ describe("undo-stack — le scellement des opérations soumises", () => {
         expect(getUndoDepth()).toBe(1);
         expect(onChange).not.toHaveBeenCalled();
     });
+});
 
-    // The form-cancel path must keep working: nothing was submitted there, so the entry is
-    // discarded rather than sealed, and the two must not collapse into one another.
-    it("laisse `discardLastOperation` intact — annuler un formulaire n'est pas soumettre", () => {
+// An abandoned draft drops ITS entries, wherever they sit. Popping the top blindly took
+// the wrong entry as soon as another one had been stacked above — and after an undo, the
+// abandoned creation waited on the REDO stack, where a redo would have drawn it back.
+describe("undo-stack — l'abandon d'un brouillon", () => {
+    beforeEach(() => {
+        clearSelection();
+        initUndoStack(_mockAdapter(), _cfg());
+    });
+
+    it("retire les entrées de CE brouillon, et laisse celles des autres", () => {
         pushOperation(_op({ terradrawId: "td-1" }));
-        discardLastOperation();
-        expect(getUndoDepth()).toBe(0);
+        pushOperation(
+            _op({ type: "move", terradrawId: "td-2", oldGeom: _POINT, newGeom: _POINT2 })
+        );
+        discardOperations("td-1");
+        expect(getUndoDepth()).toBe(1);
+        expect(topUndoType()).toBe("move");
+    });
+
+    it("vide aussi la pile de rétablissement : un abandon ne se rétablit pas", () => {
+        pushOperation(_op({ terradrawId: "td-1", feature: _POINT }));
+        undo();
+        expect(getRedoDepth()).toBe(1);
+        discardOperations("td-1");
+        expect(canRedo()).toBe(false);
+    });
+
+    it("ne touche à rien — et ne notifie pas — pour un identifiant inconnu", () => {
+        const onChange = vi.fn();
+        initUndoStack(_mockAdapter(), _cfg(), onChange);
+        pushOperation(_op({ terradrawId: "td-1" }));
+        onChange.mockClear();
+        discardOperations("td-inconnu");
+        expect(getUndoDepth()).toBe(1);
+        expect(onChange).not.toHaveBeenCalled();
     });
 });

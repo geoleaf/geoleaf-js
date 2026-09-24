@@ -65,6 +65,11 @@
             "type": "boolean",
             "description": "Show custom icons on the map (requires taxonomy icon config)."
         },
+        "showInLayerManager": {
+            "type": "boolean",
+            "default": true,
+            "description": "`false` keeps the layer out of the layer manager, and out of it only: the layer still loads, follows its theme's visibility, keeps its legend and stays drivable through `GeoLeaf.GeoJSON` / `GeoLeaf.Layers`. For a layer that must not be offered as a toggle (a snapping support, a computation layer). A section left with no listed layer is not created — unless `layerManagerConfig.sections` declares it, in which case its title shows with no rows."
+        },
         "edition": {
             "type": "object",
             "additionalProperties": false,

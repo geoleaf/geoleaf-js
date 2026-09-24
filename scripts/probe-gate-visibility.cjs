@@ -1309,6 +1309,92 @@ try {
         }
     }
 
+    // 6 to 11. CC-08 — the DOM contract, which no fixture had ever reached.
+    //
+    // The template carries `dom_contract: []`, so until these six the rule had
+    // never been seen red: a gate nobody has watched bite guards nothing. Each
+    // fixture targets ONE property of the corpus or of the needle, and every
+    // witness is a real literal of the repo — a planted file would prove the
+    // walker reads what the probe writes, not what ships.
+    //
+    //   • the `dataset` form: `[data-gl-action-id]` is placed only as
+    //     `dataset["glActionId"]`, its kebab literal is written nowhere;
+    //   • the declared provider: `.gl-form-modal-overlay` lives in a lib, not
+    //     in the core;
+    //   • absence: a selector nobody places;
+    //   • tests do not count: `data-testid` is placed by a lib's TEST only;
+    //   • a host is not a provider: the demo app places what a HOST places;
+    //   • declarations do not count: `.gl-routing-panel` is written in the
+    //     core's `global.d.ts` only, in a doc comment.
+    {
+        const anchor = (selector, provider) => (b) => {
+            b.required.dom_contract.push({
+                selector,
+                owner: "library",
+                ...(provider && { provider }),
+                readBy: ["sonde"],
+            });
+            return b;
+        };
+        consumerFixture(
+            "CC-08 : une ancre posée par `dataset` (forme camelCase)",
+            anchor("[data-gl-action-id]"),
+            "engagement(s) du contrat inverse",
+            0
+        );
+        consumerFixture(
+            "CC-08 : une ancre posée par une lib, fournisseur déclaré",
+            anchor(".gl-form-modal-overlay", "lib:field-renderer"),
+            "engagement(s) du contrat inverse",
+            0
+        );
+        consumerFixture(
+            "CC-08 : une ancre que personne ne pose",
+            anchor("#gl-sonde-cc08-absente"),
+            "gl-sonde-cc08-absente",
+            1
+        );
+        consumerFixture(
+            "CC-08 : une ancre posée par un TEST seulement",
+            anchor("[data-testid]", "lib:field-renderer"),
+            "data-testid",
+            1
+        );
+        consumerFixture(
+            "CC-08 : l'app de démo n'est pas un fournisseur (c'est un hôte)",
+            anchor(".gl-main", "lib:geoleaf-app"),
+            "lib:geoleaf-app",
+            2
+        );
+        consumerFixture(
+            "CC-08 : une ancre écrite dans un `.d.ts` seulement",
+            anchor(".gl-routing-panel"),
+            "gl-routing-panel",
+            1
+        );
+
+        // The two red fixtures above hold only while their witness is where
+        // they say. If it moves — the test stops placing `data-testid`, the
+        // selector leaves `global.d.ts` — the fixture reddens or greens for a
+        // foreign motive, and the probe must name that instead.
+        delete require.cache[require.resolve("./lib/packages.cjs")];
+        const registry = require("./lib/packages.cjs");
+        const witnessIn = (dirName, rel, needle) =>
+            assertThat(`consumer-contract : le témoin de CC-08 \`${needle}\` est encore là`, () => {
+                const file = path.join(registry.requireByDirName(dirName).absDir, rel);
+                const ok = fs.existsSync(file) && fs.readFileSync(file, "utf8").includes(needle);
+                return {
+                    ok,
+                    detail: ok
+                        ? `${dirName}/${rel}`
+                        : `absent de ${dirName}/${rel} — la fixture ne prouve plus rien, ` +
+                          "choisir un autre témoin",
+                };
+            });
+        witnessIn("field-renderer", "src/__tests__/modal.test.ts", "data-testid");
+        witnessIn("core", "src/global.d.ts", ".gl-routing-panel");
+    }
+
     // The throwaway patterns, on known-answer witnesses.
     //
     // Why a STRUCTURAL assertion and not a fixture, while everything else

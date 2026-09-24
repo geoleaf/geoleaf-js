@@ -129,6 +129,23 @@ The manager reads its configuration from `geoleaf.config.json` at start-up:
 }
 ```
 
+### Keeping a layer out of the panel
+
+A layer whose own config file (or `GeoLeaf.Layers.create` definition) sets
+`"showInLayerManager": false` gets no row in the panel. It still loads, follows its theme's
+visibility and keeps its legend: the key removes a toggle, not a layer. A section that would hold
+only such layers is not created — unless `layerManagerConfig.sections` declares it, in which case
+its title shows with no rows.
+
+```json
+{
+    "id": "snapping-support",
+    "label": "Snapping support",
+    "geometry": "polyline",
+    "showInLayerManager": false
+}
+```
+
 ---
 
 ## CSS — BEM classes

@@ -409,6 +409,14 @@ any other, so it can be toggled.
 > what `dataFile` exists to avoid. The restriction is enforced, not just advised: the layer schema
 > rejects unknown keys, so a profile declaring it fails validation.
 
+**Kept out of the layer manager — `showInLayerManager: false`**
+
+A definition carrying `showInLayerManager: false` gets no row in the layer manager. The layer is
+loaded and rendered exactly as without the key, and stays drivable through
+`GeoLeaf.GeoJSON.showLayer` / `hideLayer`: only the toggle is gone — for a layer the user is not
+meant to switch, such as a snapping support or a computation layer. A profile's layer file accepts
+the same key. Since 3.9.0.
+
 ⚠️ Without any of the four — `url`, `dataFile`, a `data` block or `inlineData` — the definition
 has no source, and `create` resolves to `null` rather than throwing. Check the result: a `null`
 here means the source did not resolve, which is a property of the data, not a caller error.

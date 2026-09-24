@@ -52,6 +52,20 @@ async function boot(page) {
     const errors = [];
     page.on("pageerror", (err) => errors.push(err.message));
     await page.goto("/");
+    await waitMapUsable(page);
+    return errors;
+}
+
+/**
+ * Waits until the application can be used: the native map loaded, then the boot veil gone.
+ *
+ * ⚠️ Called again after a `reload()`. A spec that acts on the reloaded page without it acts
+ * before the app exists — measured: a measure action fired before the native map exists is a
+ * silent no-op, and one fired before its style loads throws "Style is not done loading". A
+ * pointer user cannot get there (the `#gl-loader` veil covers the page until the app is
+ * ready); a spec can.
+ */
+async function waitMapUsable(page) {
     await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 15000 });
     // Wait until the native MapLibre map is loaded (drawing relies on project/unproject).
     await page.waitForFunction(
@@ -67,7 +81,6 @@ async function boot(page) {
         .locator("#gl-loader")
         .waitFor({ state: "hidden", timeout: 10000 })
         .catch(() => {});
-    return errors;
 }
 
 /** Loads the lazy measure plugin (what the toolbar action does) and waits for its API. */
@@ -367,10 +380,16 @@ test.describe("[measure] units, export, persistence, a11y", () => {
         await expect.poll(() => featureCount(page), { timeout: 8000 }).toBeGreaterThan(0);
         const before = await featureCount(page);
 
-        // localStorage write is debounced (~300 ms) — let it flush before reload.
-        await page.waitForTimeout(600);
+        // 🛑 NO WAIT BEFORE THE RELOAD, and that is the subject. The write is debounced
+        // (~300 ms); this test used to wait 600 ms "to let it flush", i.e. it proved the
+        // measure survives a reload only if the user waits. Under load the timer fires later
+        // than that — measured: 11 times out of 24 on two cores, the key was still absent
+        // 600 ms after the measure was finished — and on the runner the reload won the race
+        // 7 times out of 18. With no wait at all, the measure was lost every time: a real
+        // user drawing then reloading lost it. The plugin now flushes a pending write on
+        // `pagehide`; reloading at once is what proves it.
         await page.reload();
-        await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 15000 });
+        await waitMapUsable(page);
         await armMeasure(page);
         // Restoration from localStorage runs in _ensureMenu() (on first menu open /
         // tool use), not on plugin load — open the menu to trigger it.

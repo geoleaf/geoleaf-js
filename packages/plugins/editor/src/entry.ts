@@ -187,12 +187,11 @@ function _reloadHostFeature(
     else showHostFeature(deps, layerId);
 }
 
-/** Internal entry point for S7 Terra Draw integration — opens the attribute form. */
-export function _openEditorForm(options: ModalOpenOptions): void {
-    if (!_formModal) {
-        _formModal = createEditorFormModal(_buildModalOpts(getEditorConfig()));
-    }
-    _formModal.open(options);
+/** Opens the attribute form; returns its forced close, which fires the form's cancel. */
+export function _openEditorForm(options: ModalOpenOptions): () => void {
+    const modal = (_formModal ??= createEditorFormModal(_buildModalOpts(getEditorConfig())));
+    modal.open(options);
+    return () => modal.close(true);
 }
 
 // ── Editor lifecycle ────────────────────────────────────────────────────────
@@ -463,6 +462,8 @@ function _initTerraDraw(): void {
 
 function _registerDestroyHook(): void {
     setDestroyHook(() => {
+        // FIRST: an open form's cancel removes its shape through the drawing engine.
+        _formModal?.destroy();
         if (typeof document !== "undefined") {
             document.removeEventListener("keydown", _handleDeleteKey);
             document.removeEventListener("keydown", _handleEnterKey);
@@ -481,7 +482,6 @@ function _registerDestroyHook(): void {
         destroyLayerPicker();
         resetHostReconcile();
         _adapter?.destroy();
-        _formModal?.destroy();
         _adapter = null;
         _adapterLoader.reset();
         _formModal = null;

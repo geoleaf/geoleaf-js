@@ -142,13 +142,20 @@ const SKIP_DIRS = new Set([
 ]);
 const EXTS = new Set([".ts", ".tsx", ".js", ".mjs"]);
 
-function collectSources(dir, acc) {
+/**
+ * Walks `dir` for non-test sources, appending their absolute paths to `acc`.
+ *
+ * `exts` defaults to the script extensions, which is what the event rules read. The
+ * DOM-contract rule passes its own set: a node is also anchored by the stylesheet
+ * that targets it.
+ */
+function collectSources(dir, acc, exts = EXTS) {
     if (!fs.existsSync(dir)) return acc;
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         if (entry.isDirectory()) {
             if (SKIP_DIRS.has(entry.name)) continue;
-            collectSources(path.join(dir, entry.name), acc);
-        } else if (EXTS.has(path.extname(entry.name))) {
+            collectSources(path.join(dir, entry.name), acc, exts);
+        } else if (exts.has(path.extname(entry.name))) {
             const base = entry.name;
             if (base.includes(".test.") || base.includes(".spec.")) continue;
             acc.push(path.join(dir, entry.name));

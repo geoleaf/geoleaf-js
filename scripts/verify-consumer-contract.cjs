@@ -25,7 +25,8 @@
  *                                 `EXPECTED_FACADE_MEMBERS` at depth 2)
  *   • `provider: "plugin:<pkg>"` → the object returned by the package's `buildPublicApi()`, read at the AST;
  *                                 the package is resolved by `requireByDirName`, which **throws**
- *   • `dom_contract`             → a selector literal in the core's sources
+ *   • `dom_contract`             → a selector placed in the sources of the entry's `provider`
+ *                                 (the core by default) — `lib/dom-anchors.cjs`
  *
  * ⚠️ **The third resolver is not a comfort, it is the only route** for `Ws`
  * and `Measure.*`: `namespace-surface.contract.test.js` requires
@@ -45,7 +46,7 @@
  *   CC-05  OUTBOUND ratchet — a `broken` entry become false is an error until removed
  *   CC-06  MEASURED scope — an out-of-scope path exits 2, never green
  *   CC-07  every `required.events` is typed, emitted as a literal, and on the DOM bus
- *   CC-08  `dom_contract` — `library` has its literal in source, `host` is a host obligation
+ *   CC-08  `dom_contract` — `library` is placed by its provider's sources, `host` is a host obligation
  *   CC-09  anti-tautology — the oracle read here is still confronted with a real boot
  *   CC-10  DEPRECATION ratchet — an entry only leaves `required.public` / `required.events`
  *          under an announcement, and a `@deprecated` tag does not live undated
@@ -95,6 +96,7 @@ const ts = require("typescript");
 const registry = require("./lib/packages.cjs");
 const cm = require("./lib/consumer-manifest.cjs");
 const ev = require("./lib/event-names.cjs");
+const anchors = require("./lib/dom-anchors.cjs");
 const docsPaths = require("./lib/docs-paths.cjs");
 const { readInterfaceMembers } = require("./lib/ts-decl-read.cjs");
 const { judgeTiming } = require("./lib/deprecation-timing.cjs");
@@ -385,7 +387,8 @@ const ANNONCES_GRAND_PERAGE = new Map([
  * Enumerates the SHIPPED sources' `@deprecated` → `file#Owner.member`.
  *
  * Same corpus as CC-07 (`ev.shippedSources()`), deliberately: "shipped
- * source" must mean **one** thing in this gate. Read at the AST and not by
+ * source" must mean **one** thing in this gate. (CC-08 does not search it, on
+ * purpose: an anchor is searched in the ONE package that places it.) Read at the AST and not by
  * grep — a `@deprecated` written in a docblock's prose is not a tag, and
  * these sources are dense in prose that talks about deprecation.
  *
@@ -1295,14 +1298,18 @@ async function main() {
         //
         // Two owners, two DIFFERENT verifications, and confusing them would
         // green what was not read:
-        //   • `owner: "library"` → WE set the node: a literal must exist in
-        //     the core's sources, at the `literal` citation.
+        //   • `owner: "library"` → WE set the node: its selector must be found
+        //     in the sources of the package that places it — the entry's
+        //     `provider`, the core by default. What "found" means (the
+        //     `dataset` form, what the corpus leaves out) is `lib/dom-anchors.cjs`.
         //   • `owner: "host"`    → the HOST sets it (in its own template,
         //     the demo app in its `index.html`). There is nothing to search
         //     in our sources; what is verifiable is that the `readBy`
         //     citation exists, and it is downstream, hence not measurable
         //     here. The entry is then a declared OBLIGATION, not an assertion.
-        const coreSrc = path.join(registry.requireByDirName("core").absDir, "src");
+        //
+        // ⚠️ `literal` and `readBy` are downstream citations and are NOT read:
+        // the verdict rests on `selector` and `provider` alone.
         for (const entry of req.dom_contract ?? []) {
             if (typeof entry === "string") {
                 cm.refuse(
@@ -1316,6 +1323,12 @@ async function main() {
             if (!entry || typeof entry !== "object" || typeof entry.owner !== "string") {
                 cm.refuse(
                     `entrée \`dom_contract\` sans clé \`owner\` : ${JSON.stringify(entry)}`,
+                    "CC-08"
+                );
+            }
+            if (typeof entry.selector !== "string" || entry.selector === "") {
+                cm.refuse(
+                    `entrée \`dom_contract\` sans \`selector\` : ${JSON.stringify(entry)}`,
                     "CC-08"
                 );
             }
@@ -1334,18 +1347,26 @@ async function main() {
                 });
                 continue;
             }
-            // The selector carries `#` or `[data-…]`; the literal in source
-            // is the id or the attribute, without the `#`. The BARE form is
-            // searched, which is what is written.
-            const needle = entry.selector.replace(/^#/, "").replace(/^\[|\]$/g, "");
-            if (!grepSources(coreSrc, needle)) {
+            // A provider that designates no package is not a regression: the
+            // gate cannot say where to look, so it refuses to conclude.
+            const where = anchors.resolveAnchorProvider(entry.provider, registry);
+            if ("refusal" in where) {
+                cm.refuse(`\`${entry.selector}\` — ${where.refusal}`, "CC-08");
+                continue; // not reached — `refuse` exits; it narrows `where` for the checker
+            }
+            const needles = anchors.needlesOf(entry.selector);
+            if (!anchorSources(where.pkg).some((src) => anchors.isPlaced(src, needles))) {
+                const forms = needles.datasetKey
+                    ? `\`${needles.literal}\` ni écriture de \`dataset.${needles.datasetKey}\``
+                    : `\`${needles.literal}\``;
                 errors.push({
                     code: "CC-08",
                     msg:
-                        `\`${entry.selector}\` est déclaré \`owner: "library"\` mais aucun ` +
-                        `littéral \`${needle}\` n'existe dans les sources du cœur. Soit le ` +
-                        "nœud a changé de nom (rupture pour l'aval), soit il est désormais " +
-                        "posé par l'hôte et l'entrée doit changer de propriétaire.",
+                        `\`${entry.selector}\` est déclaré \`owner: "library"\` mais ni littéral ` +
+                        `${forms} n'existe dans les sources de \`${where.pkg.name}\`. Soit le ` +
+                        "nœud a changé de nom (rupture pour l'aval), soit un autre paquet le " +
+                        "pose (`provider`), soit il est désormais posé par l'hôte et l'entrée " +
+                        "doit changer de propriétaire.",
                 });
             }
         }
@@ -1638,22 +1659,27 @@ async function main() {
     process.exit(0);
 }
 
-/** Searches a literal in a directory's `.ts` sources. Returns `true` at the first hit. */
-function grepSources(dir, needle) {
-    const stack = [dir];
-    while (stack.length > 0) {
-        const cur = stack.pop();
-        for (const entry of fs.readdirSync(cur, { withFileTypes: true })) {
-            const p = path.join(cur, entry.name);
-            if (entry.isDirectory()) {
-                if (entry.name === "node_modules" || entry.name === "dist") continue;
-                stack.push(p);
-            } else if (entry.name.endsWith(".ts") || entry.name.endsWith(".css")) {
-                if (fs.readFileSync(p, "utf8").includes(needle)) return true;
-            }
-        }
+/**
+ * The sources an anchor of `pkg` is searched in, read once per package.
+ *
+ * Cached across the manifests and their entries: the corpus describes our sources, not a
+ * consumer. An EMPTY corpus refuses to conclude — a search over nothing would redden every
+ * entry of the package for a reason that is not theirs, or, worse, be read as "the package
+ * places nothing".
+ */
+const anchorCache = new Map();
+function anchorSources(pkg) {
+    if (anchorCache.has(pkg.dirName)) return anchorCache.get(pkg.dirName);
+    const files = anchors.anchorCorpus(pkg);
+    if (files.length === 0) {
+        cm.refuse(
+            `\`${pkg.name}\` : aucune source lisible sous \`src/\` — CC-08 ne lirait rien.`,
+            "CC-08"
+        );
     }
-    return false;
+    const sources = files.map((f) => ({ text: fs.readFileSync(f, "utf8") }));
+    anchorCache.set(pkg.dirName, sources);
+    return sources;
 }
 
 main().catch((err) => {

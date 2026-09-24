@@ -149,7 +149,9 @@ describe("events bridge — initEventsBridge", () => {
 
     it("onFinish — onCancel callback removes the drawn feature", () => {
         const feature = { id: "abc", geometry: { type: "Point", coordinates: [0, 0] } };
-        _mockDraw.getSnapshotFeature.mockReturnValueOnce(feature);
+        // Read twice: by the creation, then by the cancel, which removes only a shape the
+        // drawing engine still holds.
+        _mockDraw.getSnapshotFeature.mockReturnValueOnce(feature).mockReturnValueOnce(feature);
         adapterCallbacks.onFinish("abc", "Point", "draw");
         // Simulate user cancelling the form
         const opts = openForm.mock.calls[0][0];

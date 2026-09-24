@@ -1047,16 +1047,17 @@ await GeoLeaf.Theme.setActive("my-custom");
 
 #### Per-layer config `{layerId}_config.json`
 
-| Field              | Type   | Required | Description                                                                   |
-| ------------------ | ------ | -------- | ----------------------------------------------------------------------------- |
-| `id`               | string | Yes      | Unique identifier (must match the directory name)                             |
-| `label`            | string | Yes      | Display name of the layer                                                     |
-| `zIndex`           | number | No       | Render order (higher = drawn on top)                                          |
-| `geometry`         | string | Yes      | Geometry type: `"point"`, `"polyline"`, `"polygon"`, `"fill-extrusion"`       |
-| `data.directory`   | string | No       | Data subdirectory (default: `"data"`)                                         |
-| `data.file`        | string | Yes      | GeoJSON file (relative to the layer directory)                                |
-| `data.ogcApi`      | object | No       | OGC API Features source (see below). Replaces `data.file` / `data.directory`. |
-| `styles.directory` | string | No       | Styles subdirectory (default: `"styles"`)                                     |
+| Field                | Type    | Required | Description                                                                                                                |
+| -------------------- | ------- | -------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `id`                 | string  | Yes      | Unique identifier (must match the directory name)                                                                          |
+| `label`              | string  | Yes      | Display name of the layer                                                                                                  |
+| `zIndex`             | number  | No       | Render order (higher = drawn on top)                                                                                       |
+| `geometry`           | string  | Yes      | Geometry type: `"point"`, `"polyline"`, `"polygon"`, `"fill-extrusion"`                                                    |
+| `showInLayerManager` | boolean | No       | `false` keeps the layer out of the layer manager; it still loads, follows its theme and keeps its legend (default: `true`) |
+| `data.directory`     | string  | No       | Data subdirectory (default: `"data"`)                                                                                      |
+| `data.file`          | string  | Yes      | GeoJSON file (relative to the layer directory)                                                                             |
+| `data.ogcApi`        | object  | No       | OGC API Features source (see below). Replaces `data.file` / `data.directory`.                                              |
+| `styles.directory`   | string  | No       | Styles subdirectory (default: `"styles"`)                                                                                  |
 
 ### `data.ogcApi` — OGC API Features source
 

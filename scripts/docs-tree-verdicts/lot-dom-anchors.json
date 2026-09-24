@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "dom-anchors",
+    "scope": ["scripts/lib/dom-anchors.cjs"],
+    "verdicts": {
+        "scripts/lib/dom-anchors.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "CC-08 — OÙ une ancre DOM est posée : le paquet que l'entrée désigne (`provider`), et la forme `dataset` en position d'écriture",
+            "confidence": "haute",
+            "rationale": "Deux lecteurs : la règle CC-08 de `verify-consumer-contract.cjs` et son test de garde (`dom-anchors.guard.test.ts`), qui éprouve les fonctions PURES sans manifeste aval. Extrait parce que la règle a deux angles morts mesurés, qui rendaient une ancre vivante indéclarable : une ancre posée par `dataset` ne s'écrit jamais sous son nom `data-*`, et une ancre posée par une lib était cherchée dans le cœur. Le corpus reste UN paquet, par choix mesuré : élargi à tout le dépôt, 5 des 8 entrées du manifeste réel trouvaient des témoins étrangers (CSS d'un plugin, commentaires, même nom `data-*` sur un autre nœud) et seraient restées vertes si le cœur cessait de poser l'ancre. VU ROUGE sur six fixtures de `probe-gate-visibility.cjs`, dont quatre rouges avant le correctif, et sur six mutations restaurées au sha256."
+        }
+    }
+}

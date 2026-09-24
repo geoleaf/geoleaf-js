@@ -41,7 +41,7 @@ import type { LayerEditionPermissions, SyncOperationKind } from "../../contracts
  * 🛑 **Does NOT use `getAllLayerConfigs()`, and that is measured.** The neighbouring
  * barrel does expose that accessor, but `kernel/geojson/loader/profile.ts` fills it
  * with a **whitelist projection** — `id, label, layerManagerId, configFile, zIndex,
- * themes, geometry, geometryType, styles, labels`. Neither `edition`, nor
+ * themes, geometry, geometryType, styles, labels, showInLayerManager`. Neither `edition`, nor
  * `offline`, nor `data`, nor `write`. A permission reader going through it would
  * see `edition === undefined` for **every** layer and refuse everything, silently.
  *

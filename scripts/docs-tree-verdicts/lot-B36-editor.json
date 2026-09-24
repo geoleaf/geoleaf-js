@@ -13,7 +13,8 @@
         "packages/plugins/editor/src/persistence/image-store.ts",
         "packages/plugins/editor/src/persistence/permission-gate.ts",
         "packages/plugins/editor/src/persistence/session-export.ts",
-        "packages/plugins/editor/src/persistence/sync-handler.ts"
+        "packages/plugins/editor/src/persistence/sync-handler.ts",
+        "packages/plugins/editor/src/draft-state.ts"
     ],
     "verdicts": {
         "packages/plugins/editor/src/add-form": {
@@ -183,6 +184,20 @@
             "description": "Résout l'identité hôte d'une feature — `feature.id` puis `properties.id` —, ordre de lecture unique du plugin.",
             "confidence": "haute",
             "rationale": "Module feuille du plugin editor, au même niveau que ses autres sources de premier rang. Il existe parce que le core n'exporte aucune de ses six implémentations privées du même repli et que `kernel/shared/` n'a pas d'entrée dans la carte `exports` du paquet ; `packages/plugins/table/src/feature-id.ts` tient la même posture. RUBRIC §0 : justifié par défaut ; aucun doublon, aucun rangement contesté."
+        },
+        "packages/plugins/editor/src/draft-state.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Le brouillon qui attend son formulaire — une forme achevée ou une capture AddForm — et son abandon par l'hôte (`discardDraft`)",
+            "confidence": "haute",
+            "rationale": "Trois lecteurs : le pont d'événements (`events.ts`, forme achevée), la capture `add-form/placement-form.ts`, et la façade `public-api.ts`, qui expose `discardDraft` par référence. À la racine de `src/`, comme ses importeurs, et sur le patron de `selection/selection-state.ts` (un seul élément courant) ; pas de répertoire `drafts/` pour un fichier seul. Sans import : le nettoyage est fourni par l'appelant, ce qui garde le module testable seul. Son existence tient à une mesure : l'identité d'un brouillon doit être la POIGNÉE, pas l'id — un formulaire remplacé annule après le début du brouillon suivant, et une capture AddForm n'a pas d'id."
         }
     }
 }

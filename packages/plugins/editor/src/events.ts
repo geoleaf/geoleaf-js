@@ -27,10 +27,11 @@ import {
 import { vertexCount, applyComputedFields } from "./drawing/geo-compute.js";
 import {
     pushOperation,
-    discardLastOperation,
+    discardOperations,
     sealOperations,
     type OperationType,
 } from "./history/undo-stack.js";
+import { beginDraft } from "./draft-state.js";
 import { submitFeature, type SubmitContext } from "./persistence/submit.js";
 import type { ConflictStrategy } from "./persistence/conflict-resolution.js";
 import type {
@@ -110,6 +111,9 @@ export const adapterCallbacks: TerraDrawAdapterCallbacks = {
     onDeselect: () => {},
 };
 
+/** Opens the attribute form, and returns how to force it closed (firing its cancel). */
+type OpenForm = (options: ModalOpenOptions) => (() => void) | undefined;
+
 // Persistence wiring + per-selection dirty flag (set when a host feature's
 // geometry is edited; drives commit-vs-restore on deselect).
 let _wiring: EditorWiringContext | null = null;
@@ -125,14 +129,14 @@ let _editDirty = false;
  *
  * @param adapter  - The active TerraDrawAdapterInstance.
  * @param openForm - Opens the attribute form modal (injected from entry.ts to
- *                   avoid a circular import).
+ *                   avoid a circular import) and returns how to force it closed.
  * @param wiring   - Optional host hooks (layer resolution, persistence). When omitted the
  *                   bridge runs standalone: draws are handled, but nothing is written back
  *                   to a host layer.
  */
 export function initEventsBridge(
     adapter: TerraDrawAdapterInstance,
-    openForm: (options: ModalOpenOptions) => void,
+    openForm: OpenForm,
     wiring?: EditorWiringContext
 ): void {
     _wiring = wiring ?? null;
@@ -163,7 +167,7 @@ export function dispatchFeatureConflict(detail: ConflictEventDetail): void {
  */
 function _handleFinish(
     adapter: TerraDrawAdapterInstance,
-    openForm: (options: ModalOpenOptions) => void,
+    openForm: OpenForm,
     id: string,
     geometryType: string,
     action: string
@@ -178,7 +182,7 @@ function _handleFinish(
 
 function _handleCreate(
     adapter: TerraDrawAdapterInstance,
-    openForm: (options: ModalOpenOptions) => void,
+    openForm: OpenForm,
     id: string,
     geometryType: string
 ): void {
@@ -190,6 +194,10 @@ function _handleCreate(
 
     // Record the creation so it can be undone (geometry is already on the map).
     pushOperation({ type: "create", terradrawId: id, feature, ts: Date.now() });
+
+    // The shape is a draft until its form saves or cancels. Begun BEFORE the host is told,
+    // so a host that abandons it from its listener finds it — and the form then never opens.
+    const draft = beginDraft(id, () => _discardDrawn(adapter, id));
 
     // Notify host-page listeners.
     // ⚠️ `id` is inserted CONDITIONALLY rather than passed as-is. The drawing
@@ -203,40 +211,54 @@ function _handleCreate(
         feature: { ...drawnRest, ...(drawnId !== undefined && { id: drawnId }) },
         geometryType,
     });
+    if (draft.ended) return;
 
     // Open the attribute form so the user can fill in properties.
     // The layer dropdown header in the modal lets the user pick the target layer.
-    openForm({
-        title: "", // empty — modal title uses layer dropdown
-        schema: [], // schema resolved per target layer by the modal's getSchemaForLayer
-        geometryType,
-        initialValues: {},
-        // The schema is resolved per target layer inside the modal, so the ids of
-        // the `computed` fields are not knowable here — the modal calls back with
-        // the resolved schema instead, on open and on every layer change.
-        computeValues: (schema) =>
-            applyComputedFields(schema, feature.geometry as unknown as Geometry),
-        // Returns the persistence promise so the modal stays open (spinner) until
-        // it settles: closes on success, stays open on error for a retry.
-        onSave: (values, layerId) => {
-            if (!_wiring) return;
-            return submitFeature(buildSubmitContext(_wiring), {
-                feature: _toEditorFeature(feature, values),
-                layerId,
-                isUpdate: false,
-            }).then(() => {
-                // Submitted — so the `create` entry stops being offered. Undoing it would
-                // have wiped the shape off the screen and left the write where it was.
-                sealOperations(id);
-            });
-        },
-        onCancel: () => {
-            // Remove the drawn geometry from the map if user cancels the form,
-            // and drop the now-stale create entry from the undo stack.
-            adapter.removeFeatures([id]);
-            discardLastOperation();
-        },
-    });
+    draft.opened(
+        openForm({
+            title: "", // empty — modal title uses layer dropdown
+            schema: [], // schema resolved per target layer by the modal's getSchemaForLayer
+            geometryType,
+            initialValues: {},
+            // The schema is resolved per target layer inside the modal, so the ids of
+            // the `computed` fields are not knowable here — the modal calls back with
+            // the resolved schema instead, on open and on every layer change.
+            computeValues: (schema) =>
+                applyComputedFields(schema, feature.geometry as unknown as Geometry),
+            // Returns the persistence promise so the modal stays open (spinner) until
+            // it settles: closes on success, stays open on error for a retry.
+            onSave: (values, layerId) => {
+                // Nothing to write without persistence: the form closes as a save, the shape
+                // stays, and the draft ends with it.
+                if (!_wiring) return draft.saving(Promise.resolve());
+                return draft.saving(
+                    submitFeature(buildSubmitContext(_wiring), {
+                        feature: _toEditorFeature(feature, values),
+                        layerId,
+                        isUpdate: false,
+                    }).then(() => {
+                        // Submitted — so the `create` entry stops being offered. Undoing it would
+                        // have wiped the shape off the screen and left the write where it was.
+                        sealOperations(id);
+                    })
+                );
+            },
+            // Removes the drawn geometry and its undo entries (`_discardDrawn`).
+            onCancel: draft.abandon,
+        })
+    );
+}
+
+/**
+ * Removes an abandoned draft's shape and its history.
+ *
+ * The shape may already be gone — an undo reached the stack while the form was open — and
+ * the drawing engine throws on an id it does not hold, so it is looked up first.
+ */
+function _discardDrawn(adapter: TerraDrawAdapterInstance, id: string): void {
+    if (adapter.getFeature(id)) adapter.removeFeatures([id]);
+    discardOperations(id);
 }
 
 function _handleSelect(adapter: TerraDrawAdapterInstance, id: string): void {

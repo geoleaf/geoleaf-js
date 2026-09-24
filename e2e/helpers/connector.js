@@ -17,6 +17,7 @@
 // `setOffline` only for what it is: the `online` / `offline` events and `navigator.onLine`.
 
 import { expect } from "@playwright/test";
+import { armAppReadyWitness, waitAppReadyWitness } from "./boot.js";
 
 /** The connector's own database — `token-store.ts`, schema v1. */
 const CONNECTOR_DB = "geoleaf-connector";
@@ -35,20 +36,11 @@ const CONNECTOR_STORE = "auth-tokens";
  * @param {import('@playwright/test').Page} page
  */
 async function bootWithoutServiceWorker(page) {
-    await page.addInitScript(() => {
-        document.addEventListener(
-            "geoleaf:app:ready",
-            () => {
-                /** @type {any} */ (window).__geoleafAppReady = true;
-            },
-            { once: true }
-        );
-    });
+    await armAppReadyWitness(page);
     await page.goto("/");
+    await waitAppReadyWitness(page, 30000);
     await page.waitForFunction(
-        () =>
-            /** @type {any} */ (window).__geoleafAppReady === true &&
-            !!(/** @type {any} */ (window).GeoLeaf?.Core?.getMap?.()?.getNativeMap?.()),
+        () => !!(/** @type {any} */ (window).GeoLeaf?.Core?.getMap?.()?.getNativeMap?.()),
         null,
         { timeout: 30000 }
     );

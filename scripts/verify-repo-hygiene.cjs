@@ -293,6 +293,9 @@ const SCRIPTS_ALLOWLIST = new Set([
     // lib/ — WHEN an announced removal may land (CC-10's `since`/`removeIn`). Its own home so the
     // guard test reads the gate's rule without a manifest, a register and a source tree around it.
     "deprecation-timing.cjs",
+    // lib/ — WHERE a DOM anchor is placed (CC-08): the entry's `provider` package, and the
+    // `dataset` form in a write position. Its own home for the same reason as the line above.
+    "dom-anchors.cjs",
     // lib/ — THE canonical shape of the licence banner, and its single
     // home: the `--write` generator, the LIC-01/02/04 gate and the bundles'
     // output banner (`build-config/rollup.mjs`) all three read it here. A

@@ -323,6 +323,7 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `plugin` | string | — | — | — | Optional plugin tag associated with this layer. |
 | `realtimeLayer` | object | — | — | — | Per-layer realtime plugin block (realtime-layer/websocket) — plugin-owned, kept permissive. Architectural question (per-layer block vs modules.<id>) tracked in B7. |
 | `showIconsOnMap` | boolean | — | — | — | Show custom icons on the map (requires taxonomy icon config). |
+| `showInLayerManager` | boolean | — | `true` | — | `false` keeps the layer out of the layer manager, and out of it only: the layer still loads, follows its theme's visibility, keeps its legend and stays drivable through `GeoLeaf.GeoJSON` / `GeoLeaf.Layers`. For a layer that must not be offered as a toggle (a snapping support, a computation layer). A section left with no listed layer is not created — unless `layerManagerConfig.sections` declares it, in which case its title shows with no rows. |
 | `styles` | object | — | — | — | Style references for this layer. |
 | `styles.available` | array | — | — | — | All available styles for this layer. |
 | `styles.available[].file` | string | oui | — | — | — |

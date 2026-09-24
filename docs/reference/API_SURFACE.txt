@@ -105,6 +105,9 @@ CallSignature | @geoleaf-plugins/editor.add-form/placement-form.startPoiCapture.
 CallSignature | @geoleaf-plugins/editor.config.accuracyFieldOf.accuracyFieldOf | doc:cc8438017aea
 CallSignature | @geoleaf-plugins/editor.config.getEditableLayers.getEditableLayers | doc:3e395afed538
 CallSignature | @geoleaf-plugins/editor.config.getEditorConfig.getEditorConfig | doc:1b7646badb90
+CallSignature | @geoleaf-plugins/editor.draft-state.beginDraft.beginDraft | doc:5c04c736d9b7
+CallSignature | @geoleaf-plugins/editor.draft-state.beginDraft.beginDraft.cleanup.__type.__type | doc:-
+CallSignature | @geoleaf-plugins/editor.draft-state.discardDraft.discardDraft | doc:ade9762e6859
 CallSignature | @geoleaf-plugins/editor.drawing/geo-compute.applyComputedFields.applyComputedFields | doc:8d13fe21ce53
 CallSignature | @geoleaf-plugins/editor.drawing/geo-compute.centroid.centroid | doc:9aa5fc95a909
 CallSignature | @geoleaf-plugins/editor.drawing/geo-compute.geoCompute.geoCompute | doc:fa4166db4f02
@@ -163,7 +166,8 @@ CallSignature | @geoleaf-plugins/editor.editor-api.setDestroyHook.setDestroyHook
 CallSignature | @geoleaf-plugins/editor.editor-api.setDestroyHook.setDestroyHook.fn.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/editor.editor-api.toggleEditorMenu.toggleEditorMenu | doc:2e0e250eda2b
 CallSignature | @geoleaf-plugins/editor.editor-events.dispatchEditorEvent.dispatchEditorEvent | doc:30cc1300e8fc
-CallSignature | @geoleaf-plugins/editor.entry._openEditorForm._openEditorForm | doc:456469394739
+CallSignature | @geoleaf-plugins/editor.entry._openEditorForm._openEditorForm | doc:e4c547a5f1b7
+CallSignature | @geoleaf-plugins/editor.entry._openEditorForm._openEditorForm.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/editor.events.EditorWiringContext.commitHost.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/editor.events.EditorWiringContext.hideHost.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/editor.events.EditorWiringContext.reloadFeature.__type.__type | doc:-
@@ -172,21 +176,20 @@ CallSignature | @geoleaf-plugins/editor.events.EditorWiringContext.showHost.__ty
 CallSignature | @geoleaf-plugins/editor.events.buildSubmitContext.buildSubmitContext | doc:319f77e95e35
 CallSignature | @geoleaf-plugins/editor.events.dispatchFeatureConflict.dispatchFeatureConflict | doc:bdd5fa90381c
 CallSignature | @geoleaf-plugins/editor.events.initEventsBridge.initEventsBridge | doc:27df9a3ae014
-CallSignature | @geoleaf-plugins/editor.events.initEventsBridge.initEventsBridge.openForm.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/editor.feature-id.resolveFeatureId.resolveFeatureId | doc:5c2ab752b655
 CallSignature | @geoleaf-plugins/editor.history/shortcuts.attachShortcuts.attachShortcuts | doc:d6207ea5f853
 CallSignature | @geoleaf-plugins/editor.history/shortcuts.detachShortcuts.detachShortcuts | doc:cfa48c09f737
 CallSignature | @geoleaf-plugins/editor.history/undo-stack.canRedo.canRedo | doc:3b8e6b5eceb9
 CallSignature | @geoleaf-plugins/editor.history/undo-stack.canUndo.canUndo | doc:2e44d88c6ddd
 CallSignature | @geoleaf-plugins/editor.history/undo-stack.clearHistory.clearHistory | doc:433cc6bfdbdc
-CallSignature | @geoleaf-plugins/editor.history/undo-stack.discardLastOperation.discardLastOperation | doc:67409756c01b
+CallSignature | @geoleaf-plugins/editor.history/undo-stack.discardOperations.discardOperations | doc:0b66579cb6bb
 CallSignature | @geoleaf-plugins/editor.history/undo-stack.getRedoDepth.getRedoDepth | doc:3ba3a66001b9
 CallSignature | @geoleaf-plugins/editor.history/undo-stack.getUndoDepth.getUndoDepth | doc:fc40f7eb4ad1
 CallSignature | @geoleaf-plugins/editor.history/undo-stack.initUndoStack.initUndoStack | doc:678e96b64f69
 CallSignature | @geoleaf-plugins/editor.history/undo-stack.initUndoStack.initUndoStack.onChange.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/editor.history/undo-stack.pushOperation.pushOperation | doc:e4922c76ee2e
 CallSignature | @geoleaf-plugins/editor.history/undo-stack.redo.redo | doc:5f179f2f732e
-CallSignature | @geoleaf-plugins/editor.history/undo-stack.sealOperations.sealOperations | doc:3dd2738dfbcc
+CallSignature | @geoleaf-plugins/editor.history/undo-stack.sealOperations.sealOperations | doc:592e593b8e01
 CallSignature | @geoleaf-plugins/editor.history/undo-stack.topRedoType.topRedoType | doc:369c91688fcd
 CallSignature | @geoleaf-plugins/editor.history/undo-stack.topUndoType.topUndoType | doc:74430a7473c7
 CallSignature | @geoleaf-plugins/editor.history/undo-stack.undo.undo | doc:efc592bbf454
@@ -283,7 +286,7 @@ CallSignature | @geoleaf-plugins/editor.sub-menu/floating-menu.destroyEditorMenu
 CallSignature | @geoleaf-plugins/editor.sub-menu/floating-menu.getEditorActiveTool.getEditorActiveTool | doc:42a71f788acd
 CallSignature | @geoleaf-plugins/editor.sub-menu/floating-menu.initEditorMenu.initEditorMenu | doc:30e7211ed2c7
 CallSignature | @geoleaf-plugins/editor.sub-menu/floating-menu.positionEditorMenuNear.positionEditorMenuNear | doc:57f9e76c23f4
-CallSignature | @geoleaf-plugins/editor.sub-menu/floating-menu.setEditorActiveTool.setEditorActiveTool | doc:647472a5b3c2
+CallSignature | @geoleaf-plugins/editor.sub-menu/floating-menu.setEditorActiveTool.setEditorActiveTool | doc:8582add8c602
 CallSignature | @geoleaf-plugins/editor.sub-menu/floating-menu.toggleEditorMenu.toggleEditorMenu | doc:3e52546d5307
 CallSignature | @geoleaf-plugins/editor.sub-menu/floating-menu.updatePendingQueueCount.updatePendingQueueCount | doc:c280055192fc
 CallSignature | @geoleaf-plugins/editor.sub-menu/floating-menu.updateUndoRedoState.updateUndoRedoState | doc:3fcf46b105f0
@@ -424,9 +427,9 @@ CallSignature | @geoleaf-plugins/measure.measure-engine.setOnFeatureAdded.setOnF
 CallSignature | @geoleaf-plugins/measure.measure-engine.setOnFeatureAdded.setOnFeatureAdded.cb.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/measure.measure-engine.startSession.startSession | doc:181272eabf31
 CallSignature | @geoleaf-plugins/measure.measure-engine.updateEnginePreview.updateEnginePreview | doc:f9de093b616b
-CallSignature | @geoleaf-plugins/measure.persistence.clearStorage.clearStorage | doc:d4407589178a
-CallSignature | @geoleaf-plugins/measure.persistence.initPersistence.initPersistence | doc:8e9efb411fff
-CallSignature | @geoleaf-plugins/measure.persistence.scheduleSave.scheduleSave | doc:954906ab9633
+CallSignature | @geoleaf-plugins/measure.persistence.clearStorage.clearStorage | doc:980e9263f3ae
+CallSignature | @geoleaf-plugins/measure.persistence.initPersistence.initPersistence | doc:5335ec2e63ba
+CallSignature | @geoleaf-plugins/measure.persistence.scheduleSave.scheduleSave | doc:a9bb0d337875
 CallSignature | @geoleaf-plugins/measure.persistence.scheduleSave.scheduleSave.getCollection.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/measure.recap-box.clearRecap.clearRecap | doc:2c848d283762
 CallSignature | @geoleaf-plugins/measure.recap-box.destroyRecapBox.destroyRecapBox | doc:b4f35dbbda5d
@@ -1762,7 +1765,7 @@ CallSignature | GeoLeaf Core API.capabilities/offline/cache/tile-math.latLngToTi
 CallSignature | GeoLeaf Core API.capabilities/offline/cache/url-guard.validateFetchUrl.validateFetchUrl | doc:da27bfc1ae3e
 CallSignature | GeoLeaf Core API.capabilities/offline/config-seam.coreConfigGet.coreConfigGet | doc:4150160cdbca
 CallSignature | GeoLeaf Core API.capabilities/offline/config-seam.coreProfileLayerConfig.__type.__type | doc:1c8236f87f58
-CallSignature | GeoLeaf Core API.capabilities/offline/config-seam.coreProfileLayers.__type.__type | doc:becadf529ce9
+CallSignature | GeoLeaf Core API.capabilities/offline/config-seam.coreProfileLayers.__type.__type | doc:f37313d6b4a6
 CallSignature | GeoLeaf Core API.capabilities/offline/data-origins.parseDataOrigins.parseDataOrigins | doc:fc43a9dd34a6
 CallSignature | GeoLeaf Core API.capabilities/offline/data-origins.prefetchVerdict.prefetchVerdict | doc:903669ac02d0
 CallSignature | GeoLeaf Core API.capabilities/offline/data-origins.publishDataOrigins.publishDataOrigins | doc:6324db242289
@@ -3046,7 +3049,7 @@ CallSignature | GeoLeaf Core API.kernel/security/validators.validateCoordinates.
 CallSignature | GeoLeaf Core API.kernel/security/validators.validateNumber.validateNumber | doc:74d6f8bb276c
 CallSignature | GeoLeaf Core API.kernel/security/validators.validateUrl.validateUrl | doc:5fa8cb12df63
 CallSignature | GeoLeaf Core API.kernel/shared.profileLayerConfig.profileLayerConfig | doc:1c8236f87f58
-CallSignature | GeoLeaf Core API.kernel/shared.profileLayers.profileLayers | doc:becadf529ce9
+CallSignature | GeoLeaf Core API.kernel/shared.profileLayers.profileLayers | doc:f37313d6b4a6
 CallSignature | GeoLeaf Core API.kernel/shared/drain-hooks-seam.BeforeDrainStep.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.kernel/shared/drain-hooks-seam.DrainHooksContract.__type._list._list | doc:490f9ea965c5
 CallSignature | GeoLeaf Core API.kernel/shared/drain-hooks-seam.DrainHooksContract.__type._reset._reset | doc:1f5704ada3fe
@@ -3054,7 +3057,7 @@ CallSignature | GeoLeaf Core API.kernel/shared/drain-hooks-seam.DrainHooksContra
 CallSignature | GeoLeaf Core API.kernel/shared/edition-permissions.grantsEdition.grantsEdition | doc:d0326b30c72a
 CallSignature | GeoLeaf Core API.kernel/shared/edition-permissions.mayEditLayer.mayEditLayer | doc:862b7a4b30a0
 CallSignature | GeoLeaf Core API.kernel/shared/edition-permissions.profileLayerConfig.profileLayerConfig | doc:1c8236f87f58
-CallSignature | GeoLeaf Core API.kernel/shared/edition-permissions.profileLayers.profileLayers | doc:becadf529ce9
+CallSignature | GeoLeaf Core API.kernel/shared/edition-permissions.profileLayers.profileLayers | doc:f37313d6b4a6
 CallSignature | GeoLeaf Core API.kernel/shared/layer-configs-state.getAllLayerConfigs.getAllLayerConfigs | doc:76dc326044f0
 CallSignature | GeoLeaf Core API.kernel/shared/layer-configs-state.setAllLayerConfigs.setAllLayerConfigs | doc:1d1c39cd9ba2
 CallSignature | GeoLeaf Core API.kernel/shared/lifecycle.registerLifecycleTeardown.registerLifecycleTeardown | doc:010fddfe109c
@@ -3743,6 +3746,8 @@ Function | @geoleaf-plugins/editor.add-form/placement-form.startPoiCapture | doc
 Function | @geoleaf-plugins/editor.config.accuracyFieldOf | doc:-
 Function | @geoleaf-plugins/editor.config.getEditableLayers | doc:-
 Function | @geoleaf-plugins/editor.config.getEditorConfig | doc:-
+Function | @geoleaf-plugins/editor.draft-state.beginDraft | doc:-
+Function | @geoleaf-plugins/editor.draft-state.discardDraft | doc:-
 Function | @geoleaf-plugins/editor.drawing/geo-compute.applyComputedFields | doc:-
 Function | @geoleaf-plugins/editor.drawing/geo-compute.centroid | doc:-
 Function | @geoleaf-plugins/editor.drawing/geo-compute.geoCompute | doc:-
@@ -3778,7 +3783,7 @@ Function | @geoleaf-plugins/editor.history/shortcuts.detachShortcuts | doc:-
 Function | @geoleaf-plugins/editor.history/undo-stack.canRedo | doc:-
 Function | @geoleaf-plugins/editor.history/undo-stack.canUndo | doc:-
 Function | @geoleaf-plugins/editor.history/undo-stack.clearHistory | doc:-
-Function | @geoleaf-plugins/editor.history/undo-stack.discardLastOperation | doc:-
+Function | @geoleaf-plugins/editor.history/undo-stack.discardOperations | doc:-
 Function | @geoleaf-plugins/editor.history/undo-stack.getRedoDepth | doc:-
 Function | @geoleaf-plugins/editor.history/undo-stack.getUndoDepth | doc:-
 Function | @geoleaf-plugins/editor.history/undo-stack.initUndoStack | doc:-
@@ -7324,6 +7329,7 @@ Module | @geoleaf-plugins/editor | doc:-
 Module | @geoleaf-plugins/editor.add-form/placement-form | doc:-
 Module | @geoleaf-plugins/editor.config | doc:-
 Module | @geoleaf-plugins/editor.css | doc:-
+Module | @geoleaf-plugins/editor.draft-state | doc:-
 Module | @geoleaf-plugins/editor.drawing/geo-compute | doc:-
 Module | @geoleaf-plugins/editor.drawing/load-once | doc:-
 Module | @geoleaf-plugins/editor.drawing/mode-names | doc:-
@@ -8356,6 +8362,9 @@ Parameter | @geoleaf-plugins/editor.add-form/placement-form.startPoiCapture.star
 Parameter | @geoleaf-plugins/editor.add-form/placement-form.startPoiCapture.startPoiCapture.onSettled | doc:d425c1507dda
 Parameter | @geoleaf-plugins/editor.config.accuracyFieldOf.accuracyFieldOf.layerId | doc:11194dc7779b
 Parameter | @geoleaf-plugins/editor.config.getEditableLayers.getEditableLayers.geometryType | doc:0da36cd3eae7
+Parameter | @geoleaf-plugins/editor.draft-state.beginDraft.beginDraft.cleanup | doc:08d1caa0796b
+Parameter | @geoleaf-plugins/editor.draft-state.beginDraft.beginDraft.id | doc:18a74936534d
+Parameter | @geoleaf-plugins/editor.draft-state.discardDraft.discardDraft.featureId | doc:8a496105c591
 Parameter | @geoleaf-plugins/editor.drawing/geo-compute.applyComputedFields.applyComputedFields.geometry | doc:-
 Parameter | @geoleaf-plugins/editor.drawing/geo-compute.applyComputedFields.applyComputedFields.schema | doc:-
 Parameter | @geoleaf-plugins/editor.drawing/geo-compute.centroid.centroid.coords | doc:-
@@ -8423,11 +8432,11 @@ Parameter | @geoleaf-plugins/editor.events.EditorWiringContext.showHost.__type._
 Parameter | @geoleaf-plugins/editor.events.buildSubmitContext.buildSubmitContext.wiring | doc:e567410168fd
 Parameter | @geoleaf-plugins/editor.events.dispatchFeatureConflict.dispatchFeatureConflict.detail | doc:-
 Parameter | @geoleaf-plugins/editor.events.initEventsBridge.initEventsBridge.adapter | doc:e6fa3812c482
-Parameter | @geoleaf-plugins/editor.events.initEventsBridge.initEventsBridge.openForm | doc:c9afc07ceffa
-Parameter | @geoleaf-plugins/editor.events.initEventsBridge.initEventsBridge.openForm.__type.__type.options | doc:-
+Parameter | @geoleaf-plugins/editor.events.initEventsBridge.initEventsBridge.openForm | doc:de2e30fed66a
 Parameter | @geoleaf-plugins/editor.events.initEventsBridge.initEventsBridge.wiring | doc:435165790cad
 Parameter | @geoleaf-plugins/editor.feature-id.resolveFeatureId.resolveFeatureId.feature | doc:740695863c35
 Parameter | @geoleaf-plugins/editor.history/shortcuts.attachShortcuts.attachShortcuts.handlers | doc:-
+Parameter | @geoleaf-plugins/editor.history/undo-stack.discardOperations.discardOperations.terradrawId | doc:83b5e87ad1cf
 Parameter | @geoleaf-plugins/editor.history/undo-stack.initUndoStack.initUndoStack.adapter | doc:c2d693b1f81e
 Parameter | @geoleaf-plugins/editor.history/undo-stack.initUndoStack.initUndoStack.cfg | doc:f9e325e9bbc3
 Parameter | @geoleaf-plugins/editor.history/undo-stack.initUndoStack.initUndoStack.onChange | doc:fcd45003a12a
@@ -12699,7 +12708,7 @@ Property | @geoleaf-plugins/connector.token-store.TokenStore.__type.save | doc:-
 Property | @geoleaf-plugins/connector.token-store.TokenStore.__type.saveIfCurrent | doc:-
 Property | @geoleaf-plugins/editor.add-form/placement-form.AddFormDeps.editExisting | doc:d686a2f45cfc
 Property | @geoleaf-plugins/editor.add-form/placement-form.AddFormDeps.getWiring | doc:8cfdce2a509f
-Property | @geoleaf-plugins/editor.add-form/placement-form.AddFormDeps.openForm | doc:1b06ad23f30d
+Property | @geoleaf-plugins/editor.add-form/placement-form.AddFormDeps.openForm | doc:e4b58883c6ae
 Property | @geoleaf-plugins/editor.add-form/placement-form.LatLng.accuracy | doc:459bc9924670
 Property | @geoleaf-plugins/editor.add-form/placement-form.LatLng.lat | doc:-
 Property | @geoleaf-plugins/editor.add-form/placement-form.LatLng.lng | doc:-
@@ -15571,6 +15580,7 @@ Property | GeoLeaf Core API.contracts/layer-data.contract.LayerDefinition.labels
 Property | GeoLeaf Core API.contracts/layer-data.contract.LayerDefinition.labels.__type.field | doc:-
 Property | GeoLeaf Core API.contracts/layer-data.contract.LayerDefinition.labels.__type.visibleByDefault | doc:-
 Property | GeoLeaf Core API.contracts/layer-data.contract.LayerDefinition.plugin | doc:140b78b5e28e
+Property | GeoLeaf Core API.contracts/layer-data.contract.LayerDefinition.showInLayerManager | doc:8234a9032a0d
 Property | GeoLeaf Core API.contracts/layer-data.contract.LayerDefinition.styles | doc:a9fae7a67105
 Property | GeoLeaf Core API.contracts/layer-data.contract.LayerDefinition.url | doc:562a817d8980
 Property | GeoLeaf Core API.contracts/layer-data.contract.LayerFeatureState.hover | doc:22f214d10242
@@ -16288,6 +16298,7 @@ Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.LayerConfi
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.LayerConfig.label | doc:c5d2e78880dc
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.LayerConfig.layerManagerId | doc:4ba63b036f6e
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.LayerConfig.name | doc:fae5fc3e0221
+Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.LayerConfig.showInLayerManager | doc:ffebdbde332f
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.LayerConfig.style | doc:ebbd47e2ad51
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.LayerConfig.url | doc:0e67eb57aca5
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.LayerConfig.visible | doc:5d80ca575f1c
@@ -17892,6 +17903,7 @@ TypeLiteral | @geoleaf-plugins/editor.add-form/placement-form.AddFormDeps.editEx
 TypeLiteral | @geoleaf-plugins/editor.add-form/placement-form.AddFormDeps.getWiring.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.add-form/placement-form.AddFormDeps.openForm.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.add-form/placement-form.startPoiCapture.startPoiCapture.onSettled.__type | doc:-
+TypeLiteral | @geoleaf-plugins/editor.draft-state.beginDraft.beginDraft.cleanup.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.drawing/load-once.loadOnce.loadOnce.load.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.drawing/placement-api.PlacementApi.activate.activate.callback.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.drawing/placement-mode.PlacementMode.__type | doc:-
@@ -17907,12 +17919,12 @@ TypeLiteral | @geoleaf-plugins/editor.drawing/styles.buildSelectStyles.buildSele
 TypeLiteral | @geoleaf-plugins/editor.drawing/styles.watchThemeChanges.watchThemeChanges.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.drawing/styles.watchThemeChanges.watchThemeChanges.onUpdate.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.editor-api.setDestroyHook.setDestroyHook.fn.__type | doc:-
+TypeLiteral | @geoleaf-plugins/editor.entry._openEditorForm._openEditorForm.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.events.EditorWiringContext.commitHost.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.events.EditorWiringContext.hideHost.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.events.EditorWiringContext.reloadFeature.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.events.EditorWiringContext.removeHost.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.events.EditorWiringContext.showHost.__type | doc:-
-TypeLiteral | @geoleaf-plugins/editor.events.initEventsBridge.initEventsBridge.openForm.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.history/undo-stack.initUndoStack.initUndoStack.onChange.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.modal/editor-form-modal.ModalOpenOptions.computeValues.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.modal/editor-form-modal.ModalOpenOptions.onCancel.__type | doc:-
