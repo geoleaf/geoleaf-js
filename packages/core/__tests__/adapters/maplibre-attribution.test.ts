@@ -84,7 +84,9 @@ describe("attribution des fonds — contrôle natif", () => {
 
 describe("attribution d'un fond vectoriel — transformation de style", () => {
     it("🔴 pose le crédit du profil sur les sources du fond qui n'en portent aucun, dès le premier chargement", () => {
-        const transform = buildGeoLeafStyleTransform(NOTHING_OWNED, { attribution: "© Profil" });
+        const transform = buildGeoLeafStyleTransform(() => NOTHING_OWNED, {
+            attribution: "© Profil",
+        });
         const out = transform(undefined, vectorStyle());
         const sources = out.sources as Record<string, { attribution?: string }>;
         expect(sources.base?.attribution).toBe("© Profil");
@@ -93,15 +95,19 @@ describe("attribution d'un fond vectoriel — transformation de style", () => {
 
     it("sans crédit déclaré, laisse le style tel quel", () => {
         const next = vectorStyle();
-        expect(buildGeoLeafStyleTransform(NOTHING_OWNED)(undefined, next)).toBe(next);
+        expect(buildGeoLeafStyleTransform(() => NOTHING_OWNED)(undefined, next)).toBe(next);
     });
 
     it("🔴 l'adaptateur rend une transformation dès qu'un crédit est déclaré, même sans couche possédée", () => {
         const adapter = new MaplibreAdapter();
-        expect(adapter.buildStyleChangeTransform()).toBeNull();
         expect(typeof adapter.buildStyleChangeTransform({ attribution: "© Profil" })).toBe(
             "function"
         );
+        // This case also asserted `toBeNull()` without a credit. That `null` was a defect, not a
+        // contract: an empty registry when the transform is BUILT says nothing about the registry
+        // when a style URL has downloaded and MapLibre RUNS it — the layers created meanwhile
+        // were erased. Inverted; the full proof is `maplibre-style-transform-ownership.test.ts`.
+        expect(typeof adapter.buildStyleChangeTransform()).toBe("function");
     });
 });
 

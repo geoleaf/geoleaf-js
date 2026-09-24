@@ -178,7 +178,7 @@ export function _applyWmtsBasemap(
  * raster→vector, vector→raster, vector→vector.
  *
  * The GeoLeaf-owned sources/layers of the current style are carried into the
- * incoming style via `transformStyle` (option de `setStyle` depuis la v5 ; voir l'adapter
+ * incoming style via `transformStyle` (a `setStyle` option since v5; see the adapter's
  * `buildStyleChangeTransform`), so they survive the swap natively — no teardown,
  * no re-injection (the former `geoleaf:style:rebuild` dance; audit redundancy #1).
  *
@@ -210,9 +210,11 @@ export function _applyViaStyleChange(
 
     const styleTarget = targetType === "vector" ? definition.style : EMPTY_STYLE;
 
-    // Snapshot the transform BEFORE setStyle so the GeoLeaf sources/layers are
-    // carried into the incoming style (null when nothing is owned yet and no credit is
-    // declared → plain setStyle, matching the first-load path).
+    // Build the transform BEFORE setStyle so the GeoLeaf sources/layers are carried into
+    // the incoming style. It reads what GeoLeaf owns when MapLibre RUNS it — for a style
+    // URL, once the style has downloaded — so the layers created in between are carried
+    // too: at boot, a vector default basemap's style downloads while the data layers land.
+    // `null` only when the adapter lacks the member or returns nothing: a plain setStyle.
     //
     // 🛑 A VECTOR basemap's declared credit travels HERE, and only here: the raster paths set it
     // on the source they build, but a vector style brings its own sources, so the credit can

@@ -392,6 +392,83 @@ test.describe("10-lifecycle — create → destroy → recreate", () => {
         expect(pageErrors, `uncaught errors during cycles: ${pageErrors.join(" | ")}`).toEqual([]);
     });
 
+    // The two windows the tests above reach only BY CHANCE — `waitForMap` returns once a native
+    // map exists, often before the boot has ended, and on the runner that decided the verdict
+    // (`:237`, `:305` and `:395` each failed there). Measured in the browser, both
+    // deterministic: 3 times out of 3 each, before the fix. Forced here.
+    test("destroy during the boot ends it cleanly: geoleaf:boot:aborted, no failure screen", async ({
+        page,
+    }) => {
+        const pageErrors = [];
+        page.on("pageerror", (e) => pageErrors.push(e.message));
+        await page.addInitScript(() => {
+            const w = /** @type {any} */ (window);
+            w.__bootSignals = [];
+            for (const name of ["geoleaf:boot:failed", "geoleaf:boot:aborted"]) {
+                document.addEventListener(name, (e) =>
+                    w.__bootSignals.push({
+                        name,
+                        reason: /** @type {any} */ (e).detail?.reason ?? null,
+                    })
+                );
+            }
+        });
+        await page.goto("/", { waitUntil: "domcontentloaded" });
+        // Destroy at the first native map — well before geoleaf:app:ready.
+        await page.evaluate(async () => {
+            const w = /** @type {any} */ (window);
+            while (!w.GeoLeaf?.Core?.getMap?.()?.getNativeMap?.()) {
+                await new Promise((r) => setTimeout(r, 2));
+            }
+            w.GeoLeaf.Core.destroy(w.GeoLeaf.Core.listMaps()[0]);
+        });
+        await expect
+            .poll(() => page.evaluate(() => /** @type {any} */ (window).__bootSignals), {
+                timeout: MAP_TIMEOUT,
+            })
+            .toEqual([{ name: "geoleaf:boot:aborted", reason: "destroyed" }]);
+        // The failure screen was the visible half of the defect: it stayed up over whatever
+        // the host drew next.
+        expect(await page.locator(".gl-boot-failure").count()).toBe(0);
+        expect(pageErrors, `uncaught errors: ${pageErrors.join(" | ")}`).toEqual([]);
+    });
+
+    test("destroy right after geoleaf:app:ready leaves no late mount on the destroyed map", async ({
+        page,
+    }) => {
+        const pageErrors = [];
+        page.on("pageerror", (e) => pageErrors.push(e.message));
+        // Once every app:ready listener has run — the capabilities that mount on the event
+        // are then mounted — but while the legend's debounced rebuild (150 ms) is still
+        // pending: the window where it mounted its control on the destroyed map. Measured in
+        // that window, the uncaught error came from the legend (stack decoded by source map).
+        // ⚠️ NOT inside the listener itself: a destroy there runs BEFORE the capabilities'
+        // own app:ready listeners, which then mount on the destroyed map — the scale control
+        // does, measured. That is the wider class of the lifecycle backlog (the capabilities'
+        // teardowns that `Core.destroy()` never reaches), not the window this test pins.
+        await page.addInitScript(() => {
+            document.addEventListener(
+                "geoleaf:app:ready",
+                () => {
+                    setTimeout(() => {
+                        const G = /** @type {any} */ (window).GeoLeaf;
+                        G.Core.destroy(G.Core.listMaps()[0]);
+                    }, 0);
+                },
+                { once: true }
+            );
+        });
+        await page.goto("/", { waitUntil: "domcontentloaded" });
+        await page.waitForFunction(
+            () => /** @type {any} */ (window).GeoLeaf?.Core?.listMaps?.().length === 0,
+            null,
+            { timeout: MAP_TIMEOUT }
+        );
+        // Long enough for every debounced rebuild to have fired.
+        await page.waitForTimeout(1500);
+        expect(pageErrors, `uncaught errors: ${pageErrors.join(" | ")}`).toEqual([]);
+    });
+
     test("[a11y] page passes WCAG 2.1 AA after a destroy → recreate cycle", async ({ page }) => {
         await waitForMap(page);
         const state = await readMapState(page);

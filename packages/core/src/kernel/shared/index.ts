@@ -62,3 +62,14 @@ export { armToolCursor, disarmToolCursor } from "./map-cursor.js";
 // sides of the app/capability boundary; a drifting copy would make the boot silently stop
 // seeing the user's choice. Motives in `profile-storage-keys.ts`.
 export { PROFILE_STORAGE_KEY, SELECTED_PROFILE_STORAGE_KEY } from "./profile-storage-keys.js";
+
+// Lifecycle teardown seam (24/09/2026) — re-exported because the boundary requires it:
+// `capabilities/legend/lifecycle.ts` registers its teardown here, and cannot import deep under
+// `kernel/**`. Again the gesture the rule DESIGNATES. The motive is a measured defect:
+// `Core.destroy()` runs THIS seam and nothing else, while the legend's teardown was reachable
+// only through `ModuleRegistry.destroy()`, which no production path calls — so a destroy landing
+// in the legend's debounced rebuild mounted its control on the destroyed map, and threw.
+//
+// ⚠️ `runLifecycleTeardowns` is NOT here, deliberately: its only caller is `kernel/map/facade.ts`,
+// on the same side of the boundary. A capability registers; it never runs the teardowns.
+export { registerLifecycleTeardown } from "./lifecycle.js";

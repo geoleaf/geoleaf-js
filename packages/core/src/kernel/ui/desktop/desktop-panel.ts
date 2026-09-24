@@ -11,7 +11,8 @@
  * Right-hand side panel with collapsible vertical tabs (>= 1440px).
  * Tabs: Filtres / Couches / Légende (user-facing labels, hence French).
  * Elements are moved into the panel once the secondary modules have been imported.
- * Call activateDesktopPanel() from init.ts after Legend + LayerManager.
+ * `init-deferred-ui.ts` calls activateDesktopPanel() after LayerManager.init(); an element
+ * built after the activation is adopted as soon as it appears.
  */
 
 import { getLabel } from "../../../utils/i18n/i18n.js";
@@ -79,7 +80,8 @@ let _showThemeToggle = true;
 let _themeObserver: MutationObserver | null = null;
 
 /**
- * One observer per registered pane whose element is not in the document yet.
+ * One observer per element adopted late — each registered pane, and the layer manager —
+ * whose element is not in the document yet.
  *
  * A list, and not two named fields like the built-ins above: how many panes are
  * registered is not known at authoring time. Every one of them is disconnected in
@@ -383,26 +385,26 @@ function handleTabClick(panel: HTMLElement, tabId: string): void {
 // Move / Restore
 
 /**
- * Moves a registered pane's element into its tab panel, now or as soon as it appears.
+ * Moves the element matching `selector` into `target`, now or as soon as it appears.
  *
  * ⚠️ The two branches are not a convenience. The built-in legend and filter panel already
  * needed this — both mount asynchronously, and both grew a hand-written observer here. A
- * plugin pane is worse: its bundle may not even have run yet. Registering a pane whose
- * element never arrives leaves an empty tab, which is a visible defect; adopting it late is
- * the only behaviour that is correct in both orders.
+ * plugin pane is worse: its bundle may not even have run yet. And the layer manager, which
+ * the boot builds BEFORE activating the panel, may be built after it by a host calling
+ * `LayerManager.init()` itself: moved only when already present, it stayed out of its tab.
+ * Adopting late is the only behaviour that is correct in both orders.
  *
- * @param pane - The registered pane to adopt.
+ * @param selector - Selects the element to adopt.
+ * @param target - The tab pane it moves into.
  */
-function adoptPane(pane: PanelPane): void {
-    const target = document.getElementById("gl-rp-pane-" + pane.id);
-    if (!target) return;
-    const el = document.querySelector<HTMLElement>(pane.selector);
+function adoptWhenPresent(selector: string, target: HTMLElement): void {
+    const el = document.querySelector<HTMLElement>(selector);
     if (el) {
         if (!target.contains(el)) storeAndMove(el, target);
         return;
     }
     const observer = new MutationObserver(() => {
-        const found = document.querySelector<HTMLElement>(pane.selector);
+        const found = document.querySelector<HTMLElement>(selector);
         if (!found || target.contains(found)) return;
         storeAndMove(found, target);
         observer.disconnect();
@@ -410,6 +412,20 @@ function adoptPane(pane: PanelPane): void {
     });
     observer.observe(document.body, { childList: true, subtree: true });
     _paneObservers.push(observer);
+}
+
+/**
+ * Moves a registered pane's element into its tab panel, now or as soon as it appears.
+ *
+ * Registering a pane whose element never arrives leaves an empty tab, which is a visible
+ * defect — hence {@link adoptWhenPresent}.
+ *
+ * @param pane - The registered pane to adopt.
+ */
+function adoptPane(pane: PanelPane): void {
+    const target = document.getElementById("gl-rp-pane-" + pane.id);
+    if (!target) return;
+    adoptWhenPresent(pane.selector, target);
 }
 
 function storeAndMove(node: HTMLElement, targetBody: HTMLElement): void {
@@ -447,10 +463,7 @@ function activatePanel(): void {
         });
         _filterObserver.observe(document.body, { childList: true, subtree: true });
     }
-    const layerManager = document.querySelector<HTMLElement>(".gl-layer-manager");
-    if (layerManager) {
-        storeAndMove(layerManager, pLayers);
-    }
+    adoptWhenPresent(".gl-layer-manager", pLayers);
     const legend = document.querySelector<HTMLElement>(".gl-map-legend");
     if (legend) {
         storeAndMove(legend, pLegend);
@@ -572,12 +585,15 @@ export function initDesktopPanel(options: DesktopPanelOptions): void {
     document.addEventListener("geoleaf:filters:applied", _refreshFilterTabIndicator);
     // Do NOT call activatePanel() here:
     // the elements (legend, layer-manager) do not exist in the DOM yet.
-    // init.ts calls activateDesktopPanel() after all secondary modules are loaded.
+    // init-deferred-ui.ts calls activateDesktopPanel() after the secondary modules are loaded.
 }
 
 /**
- * Moves the elements (filters, layers, legend) into the panels.
- * A appeler APRES Legend.init(), LayerManager.init().
+ * Moves the filter panel, the layer manager and the legend into their tabs of the side panel.
+ *
+ * Any of the three built after this call is adopted as soon as it appears, so the call need not
+ * follow `Legend.init()` or `LayerManager.init()`. A no-op before `initDesktopPanel()` and below
+ * the desktop breakpoint, whose crossing activates the panel on its own.
  */
 
 export function activateDesktopPanel(): void {

@@ -1094,12 +1094,17 @@ export interface GeoLeafRawEventMap {
      */
     "geoleaf:popup:action": GeoLeafPopupActionDetail;
     /**
-     * The `beforeBoot` hook threw: the host refused the boot — typically an authentication
-     * gate. Emitted by `app/boot-core.ts`, which then hides the loading veil and draws no
-     * failure screen: that interface belongs to the host.
+     * The host ended the boot — it is not a failure. Two causes:
+     * - the `beforeBoot` hook threw (typically an authentication gate): `reason` is whatever
+     *   it threw;
+     * - `GeoLeaf.Core.destroy()` removed the boot's map while the boot was still running (a
+     *   component unmounted right after mounting): `reason` is `"destroyed"`.
      *
-     * Lives HERE because `reason` is whatever the hook threw — usually an `Error`, which the
-     * sanitising bus would flatten to `{}`.
+     * Emitted by `app/boot-core.ts`, which then hides the loading veil and draws no failure
+     * screen: that interface belongs to the host.
+     *
+     * Lives HERE because `reason` may be whatever the hook threw — usually an `Error`, which
+     * the sanitising bus would flatten to `{}`.
      */
     "geoleaf:boot:aborted": { reason: unknown };
 }

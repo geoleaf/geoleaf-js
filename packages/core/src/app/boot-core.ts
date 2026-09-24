@@ -66,6 +66,8 @@ import {
     setBootPhase,
 } from "./boot-failure.js";
 import { hideBootVeil } from "./init-reveal.js";
+import { wasDestroyed } from "../kernel/map/facade.js";
+import type { IMapAdapter } from "../contracts/map-adapter.contract.js";
 import { registerPresetDeclarations, registerPresetModules } from "../presets/apply-preset.js";
 import { PROFILE_STORAGE_KEY, SELECTED_PROFILE_STORAGE_KEY } from "../kernel/shared/index.js";
 import type { ModuleInitFailure } from "../contracts/core-module.contract.js";
@@ -214,22 +216,56 @@ function _errorMessage(err: unknown): string {
     return err instanceof Error ? err.message : String(err);
 }
 
+/** Set once {@link _abortDestroyedBoot} has run for the current boot. */
+let _destroyedBootAborted = false;
+
+/**
+ * Ends a boot whose map the host destroyed: the same exit as a refused `beforeBoot` hook —
+ * `geoleaf:boot:aborted` (reason `"destroyed"`), no failure screen, the veil hidden. Idempotent:
+ * a second failing module finds the boot already aborted.
+ */
+function _abortDestroyedBoot(AppLog: AppNamespace["AppLog"]): void {
+    if (_destroyedBootAborted) return;
+    _destroyedBootAborted = true;
+    AppLog.info("[Registry] the map was destroyed during the boot — boot aborted");
+    abortBoot();
+    document.dispatchEvent(
+        new CustomEvent("geoleaf:boot:aborted", {
+            detail: { reason: "destroyed" },
+            bubbles: false,
+            cancelable: false,
+        })
+    );
+    hideBootVeil();
+}
+
 /**
  * What a module that throws does to the boot — decided by what depends on it.
  *
  * The interface chain is fatal: without `ui` the application is never revealed, so the boot
  * fails and names the module. Any other module is isolated: the registry skips the modules that
- * depend on it, and the rest of the application starts without them.
+ * depend on it, and the rest of the application starts without them. Before either: when the
+ * host destroyed the boot's map, the boot is aborted rather than failed, whatever the module.
  *
  * @param failure - The module that failed, as the registry reports it.
  * @param AppLog - The boot logger: the raw error, stack included, goes to the console.
- * @returns `"abort"` for the interface chain, `"continue"` otherwise.
+ * @param adapter - The boot's map adapter, checked against `wasDestroyed`.
+ * @returns `"abort"` for the interface chain or a destroyed map, `"continue"` otherwise.
  */
 function _onModuleError(
     failure: ModuleInitFailure,
-    AppLog: AppNamespace["AppLog"]
+    AppLog: AppNamespace["AppLog"],
+    adapter: IMapAdapter
 ): "continue" | "abort" {
     AppLog.warn(`[Registry] module '${failure.id}' failed in init():`, failure.error);
+    // The host destroyed the boot's map while the boot was running: the module failed on a
+    // map that is gone. Not a failed boot — the host ended it. Measured before this branch:
+    // `ui` threw "map is not ready", the boot failed, and its screen stayed up over the map
+    // the host had recreated.
+    if (wasDestroyed(adapter)) {
+        _abortDestroyedBoot(AppLog);
+        return "abort";
+    }
     const message = _errorMessage(failure.error);
     if (failure.id === "ui" || failure.skipped.includes("ui")) {
         failBoot({ reason: "module", phase: "registry", message, module: failure.id });
@@ -255,7 +291,9 @@ function _onModuleError(
  *
  * Returns early — before any signal — when the namespace is unusable, when
  * `GeoLeaf.loadConfig` is missing, or on a second boot call. A `beforeBoot` hook that rejects
- * aborts the boot: `geoleaf:boot:aborted`, and the veil is hidden for the host.
+ * aborts the boot: `geoleaf:boot:aborted`, and the veil is hidden for the host. So does a host
+ * that destroys the boot's map while the boot runs: a module failing on that map aborts the
+ * boot the same way, with `reason: "destroyed"`, instead of failing it.
  *
  * @param preset - The active preset manifest (the capabilities this bundle embarks).
  * @param ctx - The boot collaborators (see {@link BootContext}).
@@ -309,6 +347,7 @@ export async function bootWithPreset(
     // boot that stops progressing is reported by the watchdog — never a spinner that turns
     // forever. After the double-boot guard, so a refused second call cannot reset the first.
     beginBoot(options, GeoLeaf._version);
+    _destroyedBootAborted = false;
 
     // perf 5 — start bound of `geoleaf:startup-total`. UNCONDITIONAL on purpose, and it
     // must stay that way: the matching `geoleaf:initApp:ready` mark and the `measure()`
@@ -480,7 +519,7 @@ export async function bootWithPreset(
     try {
         _pm("geoleaf:boot:registry:start");
         await _registry.init(_adapter, effectiveCfg as unknown as IGeoLeafConfig, {
-            onModuleError: (failure) => _onModuleError(failure, AppLog),
+            onModuleError: (failure) => _onModuleError(failure, AppLog, _adapter),
         });
         _pm("geoleaf:boot:registry:end");
         AppLog.log(
@@ -493,6 +532,10 @@ export async function bootWithPreset(
         // refused the graph before any module ran — a dependency cycle, or a dependency that is
         // not registered.
         AppLog.warn("[Registry] init() failed:", err);
+        if (wasDestroyed(_adapter)) {
+            _abortDestroyedBoot(AppLog);
+            return;
+        }
         failBoot({ reason: "module", phase: "registry", message: _errorMessage(err) });
     }
     // ─────────────────────────────────────────────────────────────────────────

@@ -15,12 +15,18 @@
  * an O(layers × features) rebuild flagged by the native-alignment audit
  * (redundancy #1).
  *
- * `setStyle(next, { diff, transformStyle })` — introduit en MapLibre v5, toujours là en v6 —
- * nous laisse fusionner
- * the GeoLeaf-owned sources/layers of the **current** style into the **incoming**
- * one, so they survive the swap natively — no teardown, no re-injection, no
- * listener churn. This module builds that `transformStyle` callback from a
- * snapshot of the ids GeoLeaf owns.
+ * `setStyle(next, { diff, transformStyle })` — introduced in MapLibre v5, still there in v6 —
+ * lets us merge the GeoLeaf-owned sources/layers of the **current** style into the
+ * **incoming** one, so they survive the swap natively — no teardown, no re-injection, no
+ * listener churn. This module builds that `transformStyle` callback around a reader of
+ * the ids GeoLeaf owns, called when MapLibre RUNS the callback.
+ *
+ * 🛑 WHEN MATTERS. For a style given by URL, MapLibre downloads it first and runs the
+ * callback only once it has arrived, with the live style as `previous` (6.7.0,
+ * `Style.setState`). Ownership copied when the callback was BUILT missed every layer
+ * created during the download — and the arriving style erased them, while the layer
+ * registry still reported them present. A vector basemap applied at boot is exactly that
+ * window: the data layers land while its style downloads.
  *
  * Runtime images added via `map.addImage()` (POI sprite icons) are **not** part
  * of the style spec and are still wiped by `setStyle()`; the adapter re-registers
@@ -74,32 +80,40 @@ export type StyleTransform = (
  * basemap injection path re-inserts its layer at the bottom independently, so a
  * vector→raster swap keeps GeoLeaf layers on top as well.
  *
- * Ownership is passed in (snapshotted from the adapter's layer registry) rather
- * than inferred from id conventions, so the merge is authoritative. Preserved
- * layers keep their serialized paint/layout (e.g. taxonomy `match` expressions and
- * `visibility`), and GeoJSON sources keep their serialized `data` — hence the
+ * Ownership is read through `readOwned` (the adapter's layer registry) rather than
+ * inferred from id conventions, so the merge is authoritative. It is read when the
+ * callback RUNS, never when it is built: a layer created while a style URL downloads is
+ * GeoLeaf's too, and "nothing to preserve" is decided against the real `previous`.
+ * Preserved layers keep their serialized paint/layout (e.g. taxonomy `match` expressions
+ * and `visibility`), and GeoJSON sources keep their serialized `data` — hence the
  * rebuild is unnecessary.
  *
  * A declared basemap credit is set on the incoming style's own sources FIRST, before the merge,
- * so it never lands on a GeoLeaf data source. It applies on the first style load too — which is
- * why the adapter builds a transform for it even when GeoLeaf owns nothing yet.
+ * so it never lands on a GeoLeaf data source. It applies on the first style load too.
  *
- * @param owned - The source/layer ids GeoLeaf owns at swap time.
+ * @param readOwned - Returns the source/layer ids GeoLeaf owns at the moment it is called —
+ *   which is when MapLibre runs the transform.
  * @param options - The incoming basemap's declared credit, if any.
  * @returns A `transformStyle` callback for `map.setStyle(next, { transformStyle })`.
  * @example
- * const transform = buildGeoLeafStyleTransform(owned, { attribution: "© Provider" });
+ * // `layerIds` / `sourceIds`: live sets, kept up to date as layers come and go.
+ * const transform = buildGeoLeafStyleTransform(() => ({ layerIds, sourceIds }), {
+ *     attribution: "© Provider",
+ * });
  * map.setStyle(styleUrl, { diff: true, transformStyle: transform });
  */
 export function buildGeoLeafStyleTransform(
-    owned: OwnedStyleIds,
+    readOwned: () => OwnedStyleIds,
     options: StyleTransformOptions = {}
 ): StyleTransform {
     const credit = typeof options.attribution === "string" ? options.attribution.trim() : "";
     return (previous, incoming) => {
         const next = credit ? _withCredit(incoming, credit) : incoming;
-        // First style load (no previous) or nothing to preserve → apply next as-is.
-        if (!previous || owned.layerIds.size === 0) return next;
+        // First style load (no previous) → apply next as-is.
+        if (!previous) return next;
+        // Read NOW: for a style URL, this runs only once the style has downloaded.
+        const owned = readOwned();
+        if (owned.layerIds.size === 0) return next;
 
         const previousLayers = Array.isArray(previous.layers) ? previous.layers : [];
         const preservedLayers = previousLayers.filter((layer) => owned.layerIds.has(layer.id));

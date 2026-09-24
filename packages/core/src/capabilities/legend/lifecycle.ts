@@ -30,7 +30,7 @@
 // `./public-api.js`, which made legend the only capability whose lifecycle depended
 // on its own public API instead of the reverse.
 import { Legend } from "./legend.js";
-import { getAllLayerConfigs } from "../../kernel/shared/index.js";
+import { getAllLayerConfigs, registerLifecycleTeardown } from "../../kernel/shared/index.js";
 import { getLegendConfig } from "./config.js";
 import { Core } from "../../api/geoleaf.core.js";
 import { Log } from "../../utils/log/index.js";
@@ -99,6 +99,12 @@ export const LegendLifecycle = {
         // Deferred to app:ready (map + theme layers ready). The event is async
         // relative to registry.init(), so registering here catches it.
         document.addEventListener("geoleaf:app:ready", _onAppReady, { once: true });
+        // 🛑 `Core.destroy()` — the integrator's unmount path — runs the lifecycle seam and
+        // nothing else; `LegendModule.destroy()` is reached only by `ModuleRegistry.destroy()`,
+        // which no production path calls. Without this line a destroy landing in the legend's
+        // debounced rebuild (150 ms after app:ready) let the timer mount the control on the
+        // destroyed map: "map is not ready", uncaught. Registered once (the seam is a Set).
+        registerLifecycleTeardown(_teardownOnDestroy);
     },
 
     /** Detaches the listener and tears down the legend (module destroy / test). */
@@ -110,3 +116,8 @@ export const LegendLifecycle = {
         _started = false;
     },
 };
+
+/** The legend's teardown as the lifecycle seam runs it (see `LegendLifecycle.init`). */
+function _teardownOnDestroy(): void {
+    LegendLifecycle._reset();
+}

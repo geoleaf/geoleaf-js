@@ -33,6 +33,33 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ### Fixed
 
+- **`Core.destroy()` during the boot no longer fails the boot.** A host unmounting right after
+  mounting destroyed the map while the boot was still running: the remaining modules failed on
+  it, `geoleaf:boot:failed` was emitted, and the failure screen stayed up over the host's page —
+  over a recreated map too. The boot now ends the way a refused `beforeBoot` does:
+  `geoleaf:boot:aborted` with `reason: "destroyed"`, the loading veil hidden, no failure screen.
+- **`Core.destroy()` right after `geoleaf:app:ready` no longer throws.** The legend's debounced
+  rebuild (150 ms) survived the destroy and mounted its control on the destroyed map —
+  "MaplibreAdapter: map is not ready", uncaught. `Core.destroy()` now tears the legend down; its
+  teardown was only reachable through the module registry, which the integrator's path never
+  runs.
+- **A vector basemap applied at boot no longer erases the layers created while its style
+  downloads.** With a vector default basemap whose `style` is a URL, any layer created after the
+  switch began and before the style arrived — through `GeoLeaf.Layers.create`, for instance — was
+  erased when the style landed: its source and sub-layers were gone while the kernel still
+  reported the layer present, so `GeoJSON.updateLayerData` wrote into nothing. MapLibre runs the
+  `transformStyle` GeoLeaf passes to `setStyle` only once a style URL has downloaded, and the
+  layers it carries over were read when the switch started. They are now read when the style
+  arrives. A raster default basemap was never affected, and a switch made after the boot behaves
+  as before. An adapter implementing `IMapAdapter.buildStyleChangeTransform` must likewise read
+  what it owns when the callback runs; the contract no longer describes a `null` return for an
+  adapter that owns nothing yet.
+- **The layer manager lands in the side panel's layers tab even when it is built after the panel
+  is activated.** The desktop side panel adopted the filter panel and the legend whenever they
+  appeared, but moved the layer manager only if it already existed: a host calling
+  `GeoLeaf.LayerManager.init()` after `GeoLeaf.UI.activateDesktopPanel()` got a layer manager
+  outside its tab. It is now adopted as soon as it appears, in either order, and given back when
+  the panel deactivates. The boot, which builds the layer manager first, was not affected.
 - **`@geoleaf-plugins/measure` 1.0.5 — a measure finished just before a reload was lost.** Measures
   are saved to `localStorage` after a ~300 ms debounce, and a save still waiting for its timer when
   the page unloaded never ran. A pending save is now written at once when the page is hidden or

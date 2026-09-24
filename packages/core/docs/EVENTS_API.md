@@ -78,31 +78,31 @@ registered and the returned function does nothing.
 
 ## Full event reference
 
-| Event name                   | Dispatched when                   | Key payload fields                                                                            |
-| ---------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------- |
-| `geoleaf:app:ready`          | App fully initialised             | `version`, `timestamp`                                                                        |
-| `geoleaf:map:ready`          | MapLibre map created              | —                                                                                             |
-| `geoleaf:profile:loaded`     | JSON profile fully loaded         | `profileId`, `data`                                                                           |
-| `geoleaf:profile:failed`     | Declared profile resources failed | `profileId`, `fatal`, `failures[]` (`resource`, `url`, `required`, `message`) — cancelable    |
-| `geoleaf:boot:failed`        | The boot cannot complete          | `reason`, `phase`, `message`, `module?`, `provisional`, `timestamp` — cancelable              |
-| `geoleaf:module:failed`      | A module failed, the app goes on  | `module`, `message`, `skipped[]`, `timestamp` — cancelable                                    |
-| `geoleaf:boot:aborted`       | `beforeBoot` refused the boot     | `reason` — whatever the hook threw                                                            |
-| `geoleaf:basemap:change`     | Basemap changed                   | `key`, `previousKey`                                                                          |
-| `geoleaf:theme:applied`      | Theme applied (layers loaded)     | `themeName`, `layerCount`                                                                     |
-| `geoleaf:poi:click`          | 🛑 **Declared, never emitted**    | `poiId`, `layerId`, `source` — subscribing to it triggers nothing                             |
-| `geoleaf:poi:panel:open`     | Side panel opened on a POI        | `poiId`, `poiName`                                                                            |
-| `geoleaf:poi:panel:close`    | Side panel closed                 | `poiId`                                                                                       |
-| `geoleaf:panel:opened`       | Desktop tab panel opened a tab    | `tabId`                                                                                       |
-| `geoleaf:panel:closed`       | Desktop tab panel closed a tab    | `tabId`                                                                                       |
-| `geoleaf:layer:toggle`       | Layer shown or hidden             | `layerId`, `visible`, `source`                                                                |
-| `geoleaf:filter:apply`       | Filter applied to features        | `layerIds`, `geometryType?`, `activeCount`                                                    |
-| `geoleaf:filter:reset`       | Filter reset (everything visible) | `layerIds`                                                                                    |
-| `geoleaf:map:move`           | Map panned (MapLibre `moveend`)   | `center.lat`, `center.lng`, `zoom`                                                            |
-| `geoleaf:map:zoom`           | Zoom changed (MapLibre `zoomend`) | `zoom`, `oldZoom`, `center`                                                                   |
-| `geoleaf:plugin:loaded`      | Plugin registered synchronously   | `name`, `version`                                                                             |
-| `geoleaf:plugin:lazy-loaded` | Lazy plugin loaded asynchronously | `name`                                                                                        |
-| `geoleaf:plugin:failed`      | Lazy plugin failed to load        | `name`, `error`                                                                               |
-| `geoleaf:popup:action`       | Popup action button clicked       | `actionId`, `layerId`, `featureId`, `properties`, `lngLat?`, `button`, `setBusy()`, `close()` |
+| Event name                   | Dispatched when                   | Key payload fields                                                                                             |
+| ---------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `geoleaf:app:ready`          | App fully initialised             | `version`, `timestamp`                                                                                         |
+| `geoleaf:map:ready`          | MapLibre map created              | —                                                                                                              |
+| `geoleaf:profile:loaded`     | JSON profile fully loaded         | `profileId`, `data`                                                                                            |
+| `geoleaf:profile:failed`     | Declared profile resources failed | `profileId`, `fatal`, `failures[]` (`resource`, `url`, `required`, `message`) — cancelable                     |
+| `geoleaf:boot:failed`        | The boot cannot complete          | `reason`, `phase`, `message`, `module?`, `provisional`, `timestamp` — cancelable                               |
+| `geoleaf:module:failed`      | A module failed, the app goes on  | `module`, `message`, `skipped[]`, `timestamp` — cancelable                                                     |
+| `geoleaf:boot:aborted`       | The host ended the boot           | `reason` — whatever `beforeBoot` threw, or `"destroyed"` when `Core.destroy()` removed the map during the boot |
+| `geoleaf:basemap:change`     | Basemap changed                   | `key`, `previousKey`                                                                                           |
+| `geoleaf:theme:applied`      | Theme applied (layers loaded)     | `themeName`, `layerCount`                                                                                      |
+| `geoleaf:poi:click`          | 🛑 **Declared, never emitted**    | `poiId`, `layerId`, `source` — subscribing to it triggers nothing                                              |
+| `geoleaf:poi:panel:open`     | Side panel opened on a POI        | `poiId`, `poiName`                                                                                             |
+| `geoleaf:poi:panel:close`    | Side panel closed                 | `poiId`                                                                                                        |
+| `geoleaf:panel:opened`       | Desktop tab panel opened a tab    | `tabId`                                                                                                        |
+| `geoleaf:panel:closed`       | Desktop tab panel closed a tab    | `tabId`                                                                                                        |
+| `geoleaf:layer:toggle`       | Layer shown or hidden             | `layerId`, `visible`, `source`                                                                                 |
+| `geoleaf:filter:apply`       | Filter applied to features        | `layerIds`, `geometryType?`, `activeCount`                                                                     |
+| `geoleaf:filter:reset`       | Filter reset (everything visible) | `layerIds`                                                                                                     |
+| `geoleaf:map:move`           | Map panned (MapLibre `moveend`)   | `center.lat`, `center.lng`, `zoom`                                                                             |
+| `geoleaf:map:zoom`           | Zoom changed (MapLibre `zoomend`) | `zoom`, `oldZoom`, `center`                                                                                    |
+| `geoleaf:plugin:loaded`      | Plugin registered synchronously   | `name`, `version`                                                                                              |
+| `geoleaf:plugin:lazy-loaded` | Lazy plugin loaded asynchronously | `name`                                                                                                         |
+| `geoleaf:plugin:failed`      | Lazy plugin failed to load        | `name`, `error`                                                                                                |
+| `geoleaf:popup:action`       | Popup action button clicked       | `actionId`, `layerId`, `featureId`, `properties`, `lngLat?`, `button`, `setBusy()`, `close()`                  |
 
 > ⚠️ **Two `panel` families, and they are not the same panel.** `geoleaf:poi:panel:*` is the
 > **feature information** drawer, opened by clicking a POI and identified by `poiId`.

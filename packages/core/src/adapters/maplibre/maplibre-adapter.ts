@@ -770,19 +770,32 @@ export class MaplibreAdapter implements IMapAdapter {
      * instead of being torn down and re-injected from JS (the former
      * `geoleaf:style:rebuild` dance — audit redundancy #1).
      *
-     * Snapshots ownership from the layer registry (GeoJSON sub-layers + sources),
-     * the POI cluster ids, and the sentinel z-anchor. Returns `null` when nothing
-     * is owned yet (e.g. a switch before any data layer exists) AND the incoming basemap
-     * declares no credit, letting the caller fall back to a plain `setStyle()`.
+     * What GeoLeaf owns — the layer registry (GeoJSON sub-layers + sources), the POI
+     * cluster ids and the sentinel z-anchor — is read when MapLibre RUNS the callback,
+     * not here. For a style given by URL that is once the style has downloaded, and the
+     * layers created in between must be carried too.
+     *
+     * 🛑 Never `null`, even with nothing owned and no credit declared: an empty registry
+     * NOW says nothing about the registry when the style lands. Returning `null` handed
+     * the caller a plain `setStyle()`, which diffs the arriving style all the same and
+     * erased every layer created during the download — the boot of a vector default
+     * basemap, whose data layers land exactly then.
      *
      * Called by the basemap registry immediately before `setStyle()`.
      *
-     * @param options - The incoming basemap's declared credit — a transform is built for it
-     *   even when nothing is owned, since it must reach the very first style load.
-     * @returns The transform, or `null` when it would change nothing.
+     * @param options - The incoming basemap's declared credit, set on its sources that carry
+     *   none — from the very first style load.
+     * @returns The transform.
      */
-    buildStyleChangeTransform(options: StyleTransformOptions = {}): StyleTransform | null {
-        const credit = typeof options.attribution === "string" ? options.attribution.trim() : "";
+    buildStyleChangeTransform(options: StyleTransformOptions = {}): StyleTransform {
+        return buildGeoLeafStyleTransform(() => this._ownedStyleIds(), options);
+    }
+
+    /**
+     * The MapLibre ids GeoLeaf owns at this moment: every registered layer's sub-layers and
+     * source, the POI clusters', and the sentinel.
+     */
+    private _ownedStyleIds() {
         const layerIds = new Set<string>();
         const sourceIds = new Set<string>();
         for (const layerId of this._layerRegistry.getAllLayerIds()) {
@@ -798,11 +811,7 @@ export class MaplibreAdapter implements IMapAdapter {
         // The sentinel is added directly (not via the registry) but must be carried
         // over so its z-order boundary between GeoJSON and POI layers is preserved.
         if (this._sentinelCreated) layerIds.add(SENTINEL_POI);
-        if (layerIds.size === 0 && !credit) return null;
-        return buildGeoLeafStyleTransform(
-            { layerIds, sourceIds },
-            credit ? { attribution: credit } : {}
-        );
+        return { layerIds, sourceIds };
     }
 
     /**

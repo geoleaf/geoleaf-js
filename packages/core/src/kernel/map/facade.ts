@@ -122,6 +122,28 @@ function _notifyError(err: unknown): void {
     }
 }
 
+/**
+ * Adapters {@link destroy} took out of the registry, until one is registered again.
+ *
+ * Read by the boot through {@link wasDestroyed}: a host may destroy the map while the boot is
+ * still running (a component unmounted right after mounting), and the modules still to
+ * initialise then fail on a map that is gone. That is not a failed boot — the host ended it.
+ * The adapter itself cannot say so: `destroy()` leaves it re-initialisable, and a map never
+ * created reads exactly like one destroyed. A `WeakSet`, so it holds no adapter alive.
+ */
+const _destroyedAdapters = new WeakSet<IMapAdapter>();
+
+/**
+ * Tells whether `adapter` was taken out of the registry by {@link destroy} and not registered
+ * again since. Internal to the boot — not on the `GeoLeaf.Core` façade.
+ *
+ * @param adapter - The adapter the boot created.
+ * @returns `true` once `destroy()` has removed it, `false` before and after a new `init()`.
+ */
+export function wasDestroyed(adapter: IMapAdapter): boolean {
+    return _destroyedAdapters.has(adapter);
+}
+
 /** Creates and registers a new adapter for `id`. Theme binds to the first map only. */
 function _createInstance(id: string, options: NormalizedInitOptions): IMapAdapter {
     const container = resolveMapContainer(id);
@@ -132,6 +154,7 @@ function _createInstance(id: string, options: NormalizedInitOptions): IMapAdapte
 
     const isFirst = _instances.size === 0;
     _instances.set(id, adapter);
+    _destroyedAdapters.delete(adapter);
 
     // Theme binds to the first map only. The legend now mounts on
     // geoleaf:app:ready via LegendLifecycle (no boot-time init here).
@@ -231,6 +254,9 @@ function getMap(mapId?: string): IMapAdapter | null {
  * recreate cycle without leaked markers/layers/profile or a dead adapter
  * reference. Destroying one of several coexisting maps frees only that slot.
  *
+ * Destroying the map while the boot is still running ends the boot rather than failing it:
+ * `geoleaf:boot:aborted` with `reason: "destroyed"`, the loading veil hidden, no failure screen.
+ *
  * @param mapId - The id of the map to destroy.
  * @returns `true` if an instance was found and destroyed, `false` otherwise.
  */
@@ -247,6 +273,7 @@ function destroy(mapId: string): boolean {
         Log.warn(`${context} adapter destroy threw:`, e);
     }
     _instances.delete(mapId);
+    _destroyedAdapters.add(adapter);
 
     // Once the last map is gone, tear down the shared business state (POI,
     // GeoJSON, LayerManager, Profile) so a subsequent Core.init() starts clean —

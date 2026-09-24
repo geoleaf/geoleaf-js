@@ -291,7 +291,8 @@ describe("basemaps/registry (MapLibre native)", () => {
         registerBaseLayer("liberty", { type: "maplibre", style: styleUrl });
         setBaseLayer("liberty");
 
-        // setStyle(target, transform?) — 2nd arg undefined when no GeoLeaf layers to preserve.
+        // setStyle(target, transform?) — 2nd arg undefined: no adapter is wired here
+        // (`GeoLeaf.Core` is null), so there is no transform to hand over.
         expect(mockMap.setStyle).toHaveBeenCalledWith(styleUrl, undefined);
         expect(mockMap.once).toHaveBeenCalledWith("style.load", expect.any(Function));
         expect(getActiveKey()).toBe("liberty");

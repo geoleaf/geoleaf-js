@@ -437,6 +437,12 @@ interface, et une page sans voile ne reçoit aucun DOM. S'abonner **avant** `Geo
   d'URL, paramètres secrets, `Bearer` et `Basic`, JWT, membres JSON sensibles, adresses e-mail.
 - **`beforeBoot` qui lève n'est pas un échec** : `geoleaf:boot:aborted`, le voile est masqué, et
   aucun écran n'est dessiné — l'hôte possède cette interface.
+- **`Core.destroy()` pendant le boot n'est pas un échec non plus** (24/09/2026) : quand un module
+  échoue sur une carte que l'hôte a détruite, le boot s'interrompt par la même sortie —
+  `geoleaf:boot:aborted` avec `reason: "destroyed"`, voile masqué, aucun écran. Le registre des
+  cartes s'en souvient (`wasDestroyed`, interne) : l'adaptateur, réinitialisable, ne le peut pas.
+  Mesuré avant : le module `ui` levait « map is not ready », le boot échouait, et l'écran d'échec
+  restait par-dessus la carte que l'hôte venait de recréer.
 
 ### ModuleRegistry — dépendance circulaire
 

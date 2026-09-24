@@ -321,6 +321,34 @@ describe("activateDesktopPanel()", () => {
         const pFilters = document.getElementById("gl-rp-pane-filters");
         expect(pFilters.contains(filterPanel)).toBe(true);
     });
+
+    // 🔴 Seen red on the code that moved the layer manager only when it already existed.
+    test("activatePanel: layer manager absent → adopted into the layers pane once built, given back on deactivation", async () => {
+        mqMatches = true;
+        const home = document.createElement("div");
+        document.body.appendChild(home);
+        initPanel();
+        activateDesktopPanel(); // no .gl-layer-manager yet
+
+        // The boot builds the layer manager BEFORE activating the panel; the public API
+        // does not impose that order — `LayerManager.init()` may come after
+        // `UI.activateDesktopPanel()`.
+        const layerMgr = document.createElement("div");
+        layerMgr.className = "gl-layer-manager";
+        home.appendChild(layerMgr);
+
+        // Flush so the MutationObserver callback runs
+        await new Promise((resolve) => setTimeout(resolve, 50));
+
+        const pLayers = document.getElementById("gl-rp-pane-layers");
+        expect(pLayers.contains(layerMgr), "built after activation, left outside the pane").toBe(
+            true
+        );
+
+        // Leaving desktop width hands it back to where it was built.
+        changeListeners[0]({ matches: false });
+        expect(home.contains(layerMgr), "not given back on deactivation").toBe(true);
+    });
 });
 
 // ── 6. onMQChange ────────────────────────────────────────────────────────────

@@ -442,18 +442,18 @@ the event to draw your own interface instead — see [EVENTS_API.md](../EVENTS_A
 
 The boot system emits the following events on `document`:
 
-| Event                    | Emitted when                                                      | `detail` payload                                              |
-| ------------------------ | ----------------------------------------------------------------- | ------------------------------------------------------------- |
-| `geoleaf:profile:failed` | Resources the profile declares could not be obtained — cancelable | `{ profileId, fatal, failures }`                              |
-| `geoleaf:boot:failed`    | The boot cannot complete — cancelable                             | `{ reason, phase, message, module?, provisional, timestamp }` |
-| `geoleaf:boot:aborted`   | `beforeBoot` threw — the veil is hidden                           | `{ reason }`                                                  |
-| `geoleaf:theme:applying` | A theme starts loading (layers still being added)                 | —                                                             |
-| `geoleaf:theme:applied`  | A theme has finished loading (all layers visible)                 | `{ themeName, layerCount }`                                   |
-| `geoleaf:profile:loaded` | The JSON profile has been loaded and parsed                       | `{ profileId, data }`                                         |
-| `geoleaf:map:ready`      | Map visible, loader removed, fitBounds done                       | —                                                             |
-| `geoleaf:app:ready`      | Application fully initialised                                     | `{ version, timestamp }`                                      |
-| `geoleaf:map:move`       | End of a map movement                                             | `{ center, zoom }`                                            |
-| `geoleaf:map:zoom`       | End of a zoom change                                              | `{ zoom }`                                                    |
+| Event                    | Emitted when                                                                                                    | `detail` payload                                              |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `geoleaf:profile:failed` | Resources the profile declares could not be obtained — cancelable                                               | `{ profileId, fatal, failures }`                              |
+| `geoleaf:boot:failed`    | The boot cannot complete — cancelable                                                                           | `{ reason, phase, message, module?, provisional, timestamp }` |
+| `geoleaf:boot:aborted`   | The host ended the boot (`beforeBoot` threw, or `Core.destroy()` removed the map mid-boot) — the veil is hidden | `{ reason }` — `"destroyed"` in the second case               |
+| `geoleaf:theme:applying` | A theme starts loading (layers still being added)                                                               | —                                                             |
+| `geoleaf:theme:applied`  | A theme has finished loading (all layers visible)                                                               | `{ themeName, layerCount }`                                   |
+| `geoleaf:profile:loaded` | The JSON profile has been loaded and parsed                                                                     | `{ profileId, data }`                                         |
+| `geoleaf:map:ready`      | Map visible, loader removed, fitBounds done                                                                     | —                                                             |
+| `geoleaf:app:ready`      | Application fully initialised                                                                                   | `{ version, timestamp }`                                      |
+| `geoleaf:map:move`       | End of a map movement                                                                                           | `{ center, zoom }`                                            |
+| `geoleaf:map:zoom`       | End of a zoom change                                                                                            | `{ zoom }`                                                    |
 
 ```js
 // Listen for app ready

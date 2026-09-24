@@ -59,7 +59,8 @@ Object.defineProperty(window, "matchMedia", {
 });
 
 // Counts the `disconnect()`s of ALL MutationObservers built during the test.
-// `desktop-panel.ts` sets three: `_filterObserver`, `_legendObserver`, `_themeObserver`.
+// With nothing to adopt yet, `desktop-panel.ts` sets four: `_filterObserver`, `_legendObserver`,
+// `_themeObserver`, and the layer manager's, kept in `_paneObservers` with the late panes'.
 const disconnectSpy = vi.fn();
 const NativeMutationObserver = globalThis.MutationObserver;
 class CountingMutationObserver extends NativeMutationObserver {
@@ -124,13 +125,13 @@ describe("Core.destroy() démonte le panneau desktop (tâches 2.9 / 2.8)", () =>
         expect(document.getElementById("gl-right-panel")).toBeNull();
     });
 
-    it("les 3 MutationObserver du panneau sont déconnectés", () => {
+    it("les 4 MutationObserver du panneau sont déconnectés", () => {
         bootPanel("map-teardown-2");
         disconnectSpy.mockClear(); // ignore the activation phase's self-disconnects
 
         Core.destroy("map-teardown-2");
 
-        expect(disconnectSpy.mock.calls.length).toBeGreaterThanOrEqual(3);
+        expect(disconnectSpy.mock.calls.length).toBeGreaterThanOrEqual(4);
     });
 
     it("le cycle init → destroy → init ne laisse qu'UN seul panneau", () => {

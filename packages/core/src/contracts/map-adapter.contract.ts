@@ -501,14 +501,19 @@ export interface IMapAdapter {
     getNativeMap?(): unknown;
 
     /**
-     * Builds a `transformStyle` callback (`setStyle` option, depuis MapLibre v5) that
+     * Builds a `transformStyle` callback (`setStyle` option, since MapLibre v5) that
      * preserves the adapter-owned sources and layers across a basemap style swap,
      * so they survive natively rather than being torn down and re-injected, and
-     * carries the incoming basemap's declared credit onto its sources. Returns `null`
-     * when nothing is owned yet and no credit is declared.
+     * carries the incoming basemap's declared credit onto its sources.
+     *
+     * 🛑 What the adapter owns must be read when the engine RUNS the callback, not when it
+     * is built: for a style given by URL, that is once the style has downloaded, and the
+     * layers created in between are the adapter's too. For the same reason an empty
+     * registry at call time is no ground for returning nothing.
      *
      * Called by the basemap registry immediately before `setStyle()`. The return
-     * type is intentionally opaque here to keep the contract engine-agnostic.
+     * type is intentionally opaque here to keep the contract engine-agnostic. A falsy
+     * return makes the registry call a plain `setStyle()`, which carries nothing over.
      *
      * @param options - `attribution`: the incoming basemap's declared credit.
      */
