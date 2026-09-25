@@ -4,7 +4,7 @@ title: geocoding — la recherche d'adresse sur la carte
 plugin_id: geocoding
 package: "@geoleaf-plugins/geocoding"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 56909c7b1
+verifie_contre: f23819a3a
 date: 25 septembre 2026
 ---
 

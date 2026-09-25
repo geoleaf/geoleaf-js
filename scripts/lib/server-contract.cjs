@@ -252,7 +252,8 @@ inutile d'aller plus loin — rien d'autre ne peut fonctionner.
    HTTP nu, le navigateur réécrit **toutes** les sous-ressources en \`https://\` ; si le port 443
    n'écoute pas, chacune échoue en \`ERR_CONNECTION_REFUSED\`.
 2. Le *service worker* (mode hors-ligne, mise en cache) n'existe pas hors contexte sécurisé.
-3. \`crypto.subtle\` et \`navigator.storage.persist()\`, utilisés par le stockage local, non plus.
+3. \`crypto.randomUUID()\` (identifiants des photos de l'éditeur) et
+   \`navigator.storage.persist()\` (protection du stockage local), non plus.
 
 ⚠️ \`localhost\` est exempté par les navigateurs — c'est pourquoi un dossier qui fonctionne en
 local peut échouer une fois déployé, sans que rien n'ait changé dans le dossier.
@@ -450,7 +451,7 @@ server {
 
     # 🛑 HTTPS N'EST PAS OPTIONNEL. La page déclare \`upgrade-insecure-requests\` : en
     # HTTP nu, le navigateur réécrit toutes les sous-ressources en https:// et chacune
-    # échoue. Le service worker et crypto.subtle exigent un contexte sécurisé.
+    # échoue. Le service worker et crypto.randomUUID() exigent un contexte sécurisé.
     ssl_certificate     /chemin/vers/fullchain.pem;
     ssl_certificate_key /chemin/vers/privkey.pem;
 

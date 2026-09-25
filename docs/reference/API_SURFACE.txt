@@ -1925,7 +1925,7 @@ CallSignature | GeoLeaf Core API.capabilities/offline/write/outbox-drain-trigger
 CallSignature | GeoLeaf Core API.capabilities/offline/write/outbox-drain-triggers.disarmOutboxDrain.disarmOutboxDrain | doc:cab4b2a357a8
 CallSignature | GeoLeaf Core API.capabilities/offline/write/outbox-drain-triggers.requestDrain.requestDrain | doc:d6304d48f0d8
 CallSignature | GeoLeaf Core API.capabilities/offline/write/push-engine.pushOutbox.pushOutbox | doc:be4e7b89c695
-CallSignature | GeoLeaf Core API.capabilities/offline/write/quarantine-api.discardQuarantined.discardQuarantined | doc:b5cefc0e929b
+CallSignature | GeoLeaf Core API.capabilities/offline/write/quarantine-api.discardQuarantined.discardQuarantined | doc:9a6a2607024d
 CallSignature | GeoLeaf Core API.capabilities/offline/write/quarantine-api.requeueAll.requeueAll | doc:9eab90012a00
 CallSignature | GeoLeaf Core API.capabilities/offline/write/quarantine-api.requeueQuarantined.requeueQuarantined | doc:48021ac2786a
 CallSignature | GeoLeaf Core API.capabilities/offline/write/quarantine-api.requeueableReasons.requeueableReasons | doc:40c4daf42a41
@@ -3116,10 +3116,10 @@ CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type._requestOu
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type._unmountSyncBanner._unmountSyncBanner | doc:34a482066f20
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.applyEdit.applyEdit | doc:c5eb5141cd39
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.canQueueWrites.canQueueWrites | doc:e729c83e0085
-CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.clearAll.clearAll | doc:f3acf8dea437
+CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.clearAll.clearAll | doc:83647824d892
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.clearConflicts.clearConflicts | doc:4a1aa8f735b8
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.close.close | doc:26c74e1b2060
-CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.discardQuarantined.discardQuarantined | doc:e15c1aa02c21
+CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.discardQuarantined.discardQuarantined | doc:8909a6aa2dbf
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.getOfflineProfiles.getOfflineProfiles | doc:b2191b205d97
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.getStats.getStats | doc:f7a266ef8af5
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.getSyncReport.getSyncReport | doc:0637f67e2e13
@@ -3135,7 +3135,7 @@ CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.preflight.
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.pullLayer.pullLayer | doc:1cdf5750f43c
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.pushOutbox.pushOutbox | doc:7bea8336daa3
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.requeueAll.requeueAll | doc:7ba6d9ea4835
-CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.requeueQuarantined.requeueQuarantined | doc:c212ffb794e9
+CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.requeueQuarantined.requeueQuarantined | doc:7333a71967ad
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.requeueableReasons.requeueableReasons | doc:b83b97078406
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.resolveOptions.resolveOptions | doc:c7fb6f95c91d
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.whenReady.whenReady | doc:ed2ec013662b
@@ -15907,7 +15907,7 @@ Property | GeoLeaf Core API.contracts/sync.contract.LayerWriteTarget.enabled | d
 Property | GeoLeaf Core API.contracts/sync.contract.LayerWriteTarget.endpoint | doc:-
 Property | GeoLeaf Core API.contracts/sync.contract.LayerWriteTarget.geometryProperty | doc:43d5c0188b39
 Property | GeoLeaf Core API.contracts/sync.contract.LayerWriteTarget.properties | doc:35e357480403
-Property | GeoLeaf Core API.contracts/sync.contract.OutboxEntry.attempts | doc:8eb09fd32832
+Property | GeoLeaf Core API.contracts/sync.contract.OutboxEntry.attempts | doc:9d6a3b8d0ef0
 Property | GeoLeaf Core API.contracts/sync.contract.OutboxEntry.baseVersion | doc:45020b2d190a
 Property | GeoLeaf Core API.contracts/sync.contract.OutboxEntry.createdAt | doc:-
 Property | GeoLeaf Core API.contracts/sync.contract.OutboxEntry.id | doc:-
@@ -15943,7 +15943,7 @@ Property | GeoLeaf Core API.contracts/top-level-api.contract.GeoLeafTopLevelApi.
 Property | GeoLeaf Core API.contracts/top-level-api.contract.GeoLeafTopLevelApi.getModule | doc:844db7c3cc05
 Property | GeoLeaf Core API.contracts/top-level-api.contract.GeoLeafTopLevelApi.getNamespace | doc:c4b59aff825a
 Property | GeoLeaf Core API.contracts/top-level-api.contract.GeoLeafTopLevelApi.hasModule | doc:559f106091e7
-Property | GeoLeaf Core API.contracts/top-level-api.contract.GeoLeafTopLevelApi.init | doc:fb0e34b5e031
+Property | GeoLeaf Core API.contracts/top-level-api.contract.GeoLeafTopLevelApi.init | doc:f0e57e00a7aa
 Property | GeoLeaf Core API.contracts/top-level-api.contract.GeoLeafTopLevelApi.loadConfig | doc:f46643314778
 Property | GeoLeaf Core API.contracts/top-level-api.contract.GeoLeafTopLevelApi.setTheme | doc:bf82c81960b0
 Property | GeoLeaf Core API.contracts/ui-controls.contract.IGeoLocationControlConfig.ui | doc:-
@@ -18069,7 +18069,7 @@ TypeAlias | GeoLeaf Core API.contracts/sync.contract.LayerSyncMode | doc:ca3ee79
 TypeAlias | GeoLeaf Core API.contracts/sync.contract.LocalId | doc:2def768d86e7
 TypeAlias | GeoLeaf Core API.contracts/sync.contract.PullGranularity | doc:784e0ed16712
 TypeAlias | GeoLeaf Core API.contracts/sync.contract.QuarantineReason | doc:679b6d161dbc
-TypeAlias | GeoLeaf Core API.contracts/sync.contract.ServerDeletionPolicy | doc:4ee67eef4190
+TypeAlias | GeoLeaf Core API.contracts/sync.contract.ServerDeletionPolicy | doc:934113c0f502
 TypeAlias | GeoLeaf Core API.contracts/sync.contract.ServerId | doc:6501b89fdb70
 TypeAlias | GeoLeaf Core API.contracts/sync.contract.StoragePersistenceRegime | doc:ea64b5229f94
 TypeAlias | GeoLeaf Core API.contracts/sync.contract.SyncOperationKind | doc:8fb3c72dda2e

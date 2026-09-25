@@ -16,13 +16,16 @@
  * indefinitely.
  *
  * Two exits, arbitrated by Mattieu on 07/08/2026, and **each covers the half that
- * matches it** — because the five motives are not of the same nature:
+ * matches it** — because the motives are not of the same nature. There were five then;
+ * `authRequired` (03/09/2026) and `dialectNotSupported` (17/09/2026) joined the liftable half:
  *
  * | Motive | Can the cause be observed as lifted? |
  * | --- | --- |
  * | `retryBudgetExhausted` | **yes** — the server never answered, the network can return |
  * | `layerNoLongerWritable` | **yes** — and it is VERIFIABLE: does the layer have a `write`? |
  * | `notImplementedByServer` | **yes** — the server can be upgraded |
+ * | `authRequired` | **yes** — the operator signs back in; that gesture is the observation |
+ * | `dialectNotSupported` | **yes** — and it is VERIFIABLE: has the layer's declaration changed? |
  * | `deletedOnServer` | no — replaying would recreate what the server deleted |
  * | `rejectedByServer` | no — the contract defines it as "replay cannot fix" |
  *
@@ -123,6 +126,71 @@ interface QuarantineOutcome {
 }
 
 /** Resolves the queue module, or `null` when the engine is not wired. */
+/** A local entity record, as far as this module reads and writes it. */
+interface LocalRecord {
+    layerId: string;
+    localId: string;
+    serverId: string | null;
+    syncState: string;
+    quarantine?: QuarantineReason;
+    quarantineStatus?: number;
+    [key: string]: unknown;
+}
+
+interface FeaturesModule {
+    get(layerId: string, localId: string): Promise<LocalRecord | null>;
+    put(record: LocalRecord): Promise<void>;
+    remove(layerId: string, localId: string): Promise<void>;
+}
+
+function _features(): FeaturesModule | null {
+    const db = StorageContract.DB as QuarantineStore | null;
+    const mod = db?._ensureModule?.("Features") as Partial<FeaturesModule> | null | undefined;
+    return typeof mod?.get === "function" &&
+        typeof mod?.put === "function" &&
+        typeof mod?.remove === "function"
+        ? (mod as FeaturesModule)
+        : null;
+}
+
+/**
+ * Returns an entity's local record to the server's truth once its capture is destroyed.
+ *
+ * 🛑 **The quarantine lives on the queue entry, not on the record.** The record keeps the
+ * `pending` state the edit gave it, so removing the entry alone left a record claiming local
+ * work that no entry would ever push — and that the pull never replaces, since it preserves
+ * everything not `synced`. A layer that reads the device before the network drew it on every
+ * load: the entity the server deleted, the creation it refused, the edit it refused in place of
+ * its own version.
+ *
+ * - Another queue entry still names the entity: the record is live work, left untouched.
+ * - No server identity (a creation that never landed), or `deletedOnServer`: there is nothing
+ *   on the server to go back to, so the record is removed.
+ * - Otherwise the server still holds the entity: the record becomes `synced`, so the next pull
+ *   replaces it with the server's version, and a complete pull that no longer serves it sweeps
+ *   it. Until then the local content stays displayed.
+ *
+ * @param outbox - The queue, the entry already removed from it.
+ * @param found - The destroyed entry.
+ */
+async function _releaseLocalRecord(outbox: OutboxModule, found: QuarantinedEntry): Promise<void> {
+    const { layerId, localId } = found;
+    if (!layerId || !localId) return;
+    const stillQueued = (await outbox.list()).some(
+        (e) => e.id !== found.id && e.layerId === layerId && e.localId === localId
+    );
+    if (stillQueued) return;
+    const features = _features();
+    const record = features ? await features.get(layerId, localId) : null;
+    if (!features || !record) return;
+    if (!record.serverId || found.quarantine === "deletedOnServer") {
+        await features.remove(layerId, localId);
+        return;
+    }
+    const { quarantine: _reason, quarantineStatus: _status, ...rest } = record;
+    await features.put({ ...rest, syncState: "synced" });
+}
+
 function _outbox(): OutboxModule | null {
     const db = StorageContract.DB as QuarantineStore | null;
     const mod = db?._ensureModule?.("Outbox") as Partial<OutboxModule> | null | undefined;
@@ -323,6 +391,10 @@ export async function requeueAll(
  * amendment: what the contract forbids is the loss the operator did not SEE, not
  * destruction in itself.
  *
+ * The entity's local record then returns to the server's truth, unless another queue entry
+ * still names it: removed when the server has nothing to give back (a creation that never
+ * landed, `deletedOnServer`), marked `synced` otherwise, so the next pull replaces it.
+ *
  * @param id - The entry's contract identifier.
  * @param confirmedLocalId - This entry's `localId`, as the caller read it.
  * @returns The report; `confirmationMismatch` when the confirmation does not match.
@@ -354,5 +426,15 @@ export async function discardQuarantined(
         `[Offline.Quarantine] ${id} — DÉTRUITE sur confirmation (motif « ${found.quarantine} »). ` +
             "La saisie a été énumérée avant d'être jetée ; elle n'est pas récupérable."
     );
+    // The destruction is done and stays done: a record that cannot be released is SAID, it
+    // does not turn the operator's confirmed gesture into a failure.
+    try {
+        await _releaseLocalRecord(outbox, found);
+    } catch (err) {
+        Log.warn(
+            `[Offline.Quarantine] ${id} — l'enregistrement local n'a pas pu revenir à l'état du serveur :`,
+            err instanceof Error ? err.message : String(err)
+        );
+    }
     return { ok: true };
 }

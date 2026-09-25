@@ -3,7 +3,7 @@ type: spec-kernel
 title: kernel — @geoleaf/core
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: ffa392ff5
+verifie_contre: 9771c1cec
 date: 25 septembre 2026
 ---
 

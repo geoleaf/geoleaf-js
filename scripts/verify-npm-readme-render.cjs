@@ -29,11 +29,13 @@
  * 🛑 The rule is INVERSE elsewhere, and widening it would make it FALSE:
  *   • root `README.md`    → GitHub showcase (`private` package), which renders
  *                           alerts. 7 live there, legitimately, and must stay.
- *   • `docs/`             → rendered by VitePress, which renders them too.
- *   • a package's `docs/` → sometimes ships in the tarball, but npmjs.com renders
- *                           ONLY the package's root `README.md`. Downloaded,
- *                           never rendered — out of scope.
- * A gate reddening on those three surfaces would redden on the legitimate, and a
+ *   • root `docs/`        → rendered by GitHub, which renders alerts too.
+ *   • `packages/core/docs/` → the VitePress site (its `srcDir`), which renders them
+ *                           too.
+ *   • a package's `docs/` → never in the tarball: no published `files[]` lists one,
+ *                           and npmjs.com renders ONLY the package's root
+ *                           `README.md` anyway — out of scope.
+ * A gate reddening on those surfaces would redden on the legitimate, and a
  * gate reddening on the legitimate gets disabled. It thus needs its own perimeter.
  *
  * ## What is verified

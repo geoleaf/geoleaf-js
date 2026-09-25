@@ -172,7 +172,7 @@
 /* Position variants */
 .gl-geocoding-ctrl--top-right {
     top: 0.75rem;
-    right: 3rem; /* leaves room for MapLibre zoom controls */
+    right: 3rem; /* same inset as the top-left variant */
 }
 
 .gl-geocoding-ctrl--top-left {

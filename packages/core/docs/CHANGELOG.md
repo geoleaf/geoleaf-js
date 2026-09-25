@@ -11,6 +11,40 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **Documentation that contradicted the code, corrected against it.**
+    - `GeoLeaf.Storage.clearAll()` promised to wipe the `sync_queue` store, which no longer
+      exists. It wipes the cached profiles plus `preferences` and `metadata`, and never touches
+      the field captures (`features`, `outbox`).
+    - `GeoLeaf.init()`'s contract taught a `data` key. It reads `map` (`target`, `center`,
+      `zoom`, `mapOptions`) and `ui.theme`, or the flat shorthand, and ignores the rest; the
+      profile comes from the configuration `boot()` loads.
+    - The sync contract said a write ending on 401 **or 403** ends the session: only 401 does.
+      A 403 is a missing right, which no sign-in lifts.
+    - The requeueable quarantine motives are five, not three: `authRequired` and
+      `dialectNotSupported` were missing from `requeueQuarantined`'s documentation.
+    - A replay counter documented as surviving a requeue is reset by it.
+    - `ServerDeletionPolicy` promised that an entity deleted on the server leaves the map. It
+      stays on the device, with the operator's work, until the operator destroys the capture.
+- **Destroying a quarantined capture no longer leaves its entity on the device for good.** The
+  quarantine lives on the queue entry, so `Storage.discardQuarantined()` removed that entry and left
+  the local record claiming local work that no entry would push and that the pull never replaces.
+  A layer reading the device before the network drew it on every load, online too: an entity the
+  server deleted, a creation it refused, or an edit it refused in place of its own version. The
+  record now returns to the server's truth. It is removed when the server has nothing to give
+  back (a creation that never landed, `deletedOnServer`). Otherwise it is marked `synced`, so the
+  next pull replaces it. A record another queue entry still names is left untouched.
+- **Two dead CSS rules removed from the feature-info side panel.** They meant to shift MapLibre's
+  bottom-right controls when the panel opens. MapLibre's stylesheet is unlayered and overrode them,
+  and the controls already follow the map container, which the panel shifts. Nothing changes on
+  screen.
+- **`@geoleaf-plugins/geocoding` 1.1.1** — its stylesheet source said a 3rem inset left room for
+  MapLibre zoom controls, which GeoLeaf does not mount. The comment is corrected; the package ships
+  its sources, hence the version. No runtime change.
+
 ## [3.10.2] - 2026-09-25
 
 ### Fixed

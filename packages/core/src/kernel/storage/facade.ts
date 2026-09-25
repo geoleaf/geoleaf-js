@@ -748,9 +748,10 @@ const Storage = {
      * Requeues a quarantined entry, when its cause is LIFTED.
      *
      * Reserved for motives whose cause can be observed as lifted —
-     * `retryBudgetExhausted`, `layerNoLongerWritable` and `notImplementedByServer`.
-     * The other two name a server fact no local gesture undoes: their exit is
-     * {@link Storage.discardQuarantined}.
+     * `retryBudgetExhausted`, `layerNoLongerWritable`, `notImplementedByServer`,
+     * `authRequired` and `dialectNotSupported`. The other two, `deletedOnServer` and
+     * `rejectedByServer`, name a server fact no local gesture undoes: their exit is
+     * {@link Storage.discardQuarantined}. A requeued entry starts a fresh replay budget.
      *
      * @param id - The entry's contract identifier.
      * @returns `{ok}` and, on refusal, its motive.
@@ -802,6 +803,10 @@ const Storage = {
      * capture was enumerated before being discarded, as `ServerDeletionPolicy`
      * requires since its amendment: what the contract forbids is the loss the
      * operator did not SEE.
+     *
+     * The entity's local record then returns to the server's truth, unless another queue
+     * entry still names it: removed when the server has nothing to give back (a creation that
+     * never landed, `deletedOnServer`), marked `synced` otherwise, so the next pull replaces it.
      *
      * @param id - The entry's contract identifier.
      * @param confirmedLocalId - This entry's `localId`, as the caller read it.
@@ -1116,8 +1121,8 @@ const Storage = {
     },
 
     /**
-     * Wipe every cached profile plus the `sync_queue`, `preferences` and
-     * `metadata` IndexedDB stores.
+     * Wipe every cached profile plus the `preferences` and `metadata` IndexedDB stores.
+     * Field captures are never touched: `features` and `outbox` are left as they are.
      * @throws if the IndexedDB transaction fails.
      * @remarks Emits `geoleaf:storage:cleared` on success.
      */

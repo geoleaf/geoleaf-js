@@ -71,8 +71,10 @@ export interface GeoLeafTopLevelApi {
      * Initialises GeoLeaf and creates the map.
      *
      * ⚠️ `map.target` — or its shorthand `target`/`mapId` — is **required**:
-     * `APIInitializationManager._normalizeInitOptions` throws without it. The expected
-     * shape is `{ map: { target }, data: { activeProfile, profilesBasePath } }`.
+     * `APIInitializationManager._normalizeInitOptions` throws without it. It reads
+     * `{ map: { target, center, zoom, mapOptions }, ui: { theme } }`, or the flat shorthand
+     * `{ target, center, zoom, theme }`. Any other key is ignored — `data` included: the
+     * profile is chosen by the configuration that {@link GeoLeafTopLevelApi.boot} loads.
      *
      * ⚠️ Distinct from {@link GeoLeafTopLevelApi.boot}: `boot()` launches the
      * profile-driven application (config load then `registry.init()`), `init()` is the

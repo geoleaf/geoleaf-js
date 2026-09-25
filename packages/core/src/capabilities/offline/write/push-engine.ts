@@ -202,7 +202,8 @@ type PushFailure =
     /** The network did not answer. */
     | "networkError"
     /**
-     * The session is over — 401 or 403 on a write.
+     * The session is over — 401 on a write. A 403 is not a session state but a missing
+     * right, which no sign-in lifts: it stays `rejectedByServer` (see `UNAUTHORIZED_STATUS`).
      *
      * 🛑 **It is NOT a sub-case of `rejectedByServer`, and the difference decides the
      * capture's fate.** That member means "replay cannot fix this"; an expired session is

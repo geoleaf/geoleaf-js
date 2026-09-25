@@ -4,8 +4,8 @@ title: pwa — l'application installable
 capability_id: pwa
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 3d50daf78
-date: 17 septembre 2026
+verifie_contre: f23819a3a
+date: 25 septembre 2026
 ---
 
 # pwa — l'application installable

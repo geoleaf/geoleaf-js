@@ -48,11 +48,40 @@ let entries: Entry[];
 let updates: Array<[string, string, unknown]>;
 let removals: string[];
 
-/** Mounts a fake queue store, or no store at all. */
-function mountOutbox(list: Entry[] | null): void {
+/** A local entity record, as the `features` store holds it. */
+interface LocalRecord {
+    layerId: string;
+    localId: string;
+    serverId: string | null;
+    syncState: string;
+    feature: unknown;
+    quarantine?: string;
+}
+
+/** The fake `features` store, keyed `layerId|localId`; absent when the test mounts none. */
+let records: Map<string, LocalRecord> | null;
+
+/**
+ * Mounts a fake queue store, or no store at all — and, when given, a `features` store
+ * holding these local records.
+ */
+function mountOutbox(list: Entry[] | null, localRecords?: LocalRecord[]): void {
     entries = list ?? [];
     updates = [];
     removals = [];
+    records = localRecords
+        ? new Map(localRecords.map((r) => [`${r.layerId}|${r.localId}`, { ...r }]))
+        : null;
+    const features = records && {
+        get: async (layerId: string, localId: string) =>
+            records!.get(`${layerId}|${localId}`) ?? null,
+        put: async (record: LocalRecord) => {
+            records!.set(`${record.layerId}|${record.localId}`, record);
+        },
+        remove: async (layerId: string, localId: string) => {
+            records!.delete(`${layerId}|${localId}`);
+        },
+    };
     // ⚠️ `StorageContract.DB` is a read-only ACCESSOR — `init()` is its only
     // write point, and that is what `push-engine.test.js` does. Writing the
     // property directly throws "Cannot set property DB".
@@ -69,9 +98,12 @@ function mountOutbox(list: Entry[] | null): void {
                                 },
                                 remove: async (id: string) => {
                                     removals.push(id);
+                                    entries = entries.filter((e) => e.id !== id);
                                 },
                             }
-                          : null,
+                          : name === "Features"
+                            ? features
+                            : null,
               };
     (StorageContract as unknown as { init: (m: unknown) => void }).init({
         get DB() {
@@ -338,5 +370,76 @@ describe("discardQuarantined — la confirmation n'est PAS un booléen", () => {
             refused: "notQuarantined",
         });
         expect(removals).toEqual([]);
+    });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Destroying a capture returns its entity to the server's truth.
+//
+// The quarantine is written on the queue entry only: the entity's local record keeps its
+// `pending` state. Destroying the capture used to remove the entry and nothing else, which left
+// a record claiming local work that no queue entry would ever push — and that the pull never
+// replaces, since it preserves everything not `synced`. A layer that reads the device before the
+// network drew it on every load, online too: the entity the server deleted, the creation it
+// refused, or the edit it refused, in place of its own version.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("discardQuarantined — l'entité revient à la vérité du serveur", () => {
+    const record = (over: Partial<LocalRecord> = {}): LocalRecord => ({
+        layerId: "sites",
+        localId: "loc:abc",
+        serverId: "42",
+        syncState: "pending",
+        feature: { type: "Feature", properties: { name: "édité localement" } },
+        ...over,
+    });
+
+    it("`deletedOnServer` : l'enregistrement part — le serveur n'a plus rien à rendre", async () => {
+        mountOutbox(
+            [quarantined({ id: "update:sites:loc:abc:1", quarantine: "deletedOnServer" })],
+            [record()]
+        );
+        expect(await discardQuarantined("update:sites:loc:abc:1", "loc:abc")).toEqual({ ok: true });
+        expect(records!.has("sites|loc:abc")).toBe(false);
+    });
+
+    it("une création jamais arrivée (sans identité serveur) : l'enregistrement part", async () => {
+        mountOutbox(
+            [quarantined({ quarantine: "rejectedByServer" })],
+            [record({ serverId: null })]
+        );
+        expect(await discardQuarantined("create:sites:loc:abc:1", "loc:abc")).toEqual({ ok: true });
+        expect(records!.has("sites|loc:abc")).toBe(false);
+    });
+
+    it("une entité que le serveur a encore : l'enregistrement repasse `synced`", async () => {
+        // The next pull replaces a `synced` record with the server's version, and a complete
+        // pull that no longer serves it sweeps it: the device converges without a gesture.
+        mountOutbox(
+            [quarantined({ id: "update:sites:loc:abc:1", quarantine: "rejectedByServer" })],
+            [record({ quarantine: "rejectedByServer" })]
+        );
+        expect(await discardQuarantined("update:sites:loc:abc:1", "loc:abc")).toEqual({ ok: true });
+        const after = records!.get("sites|loc:abc");
+        expect(after?.syncState).toBe("synced");
+        expect(after?.serverId).toBe("42");
+        expect(after && "quarantine" in after).toBe(false);
+    });
+
+    it("🛑 une autre saisie de la même entité reste en file : l'enregistrement n'est pas touché", async () => {
+        mountOutbox(
+            [
+                quarantined({ id: "update:sites:loc:abc:1", quarantine: "rejectedByServer" }),
+                // A live entry of the same entity: no motive, it is still in the drain's hands.
+                {
+                    id: "update:sites:loc:abc:2",
+                    layerId: "sites",
+                    localId: "loc:abc",
+                    state: "pending",
+                },
+            ],
+            [record()]
+        );
+        expect(await discardQuarantined("update:sites:loc:abc:1", "loc:abc")).toEqual({ ok: true });
+        expect(records!.get("sites|loc:abc")).toEqual(record());
     });
 });

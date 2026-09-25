@@ -406,18 +406,15 @@ element.innerHTML = ""; // use DOMSecurity.clearElement instead
 
 ## Tests
 
-The Security module is covered by an extensive test suite:
+The Security module is covered by the suites under `packages/core/__tests__/security/` —
+sanitisation, DOM sinks, XSS injection vectors, prototype pollution, permalink injection:
 
 ```bash
-# Run security tests
-npm test -- security
-
-# Available test files
-packages/core/__tests__/security/security.test.js
-packages/core/__tests__/security/security-extended.test.js
+# From packages/core
+npx vitest run __tests__/security
 ```
 
-**Coverage**: 95%+ (187+ passing tests)
+The run prints the counts; they are not copied here, where they would drift.
 
 ---
 
@@ -433,4 +430,3 @@ packages/core/__tests__/security/security-extended.test.js
 
 - `GeoLeaf.Validators` — structured data validation
 - `GeoLeaf.Errors` — typed error handling
-- `GeoLeaf.POI` — how POI uses Security

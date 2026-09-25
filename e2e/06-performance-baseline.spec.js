@@ -1,7 +1,9 @@
 // @ts-check
 // E2E Performance Baseline
 // Measures init time, GeoJSON render, FPS, and heap memory under MapLibre GL JS.
-// Results populate perf-baseline.json — the post-migration performance contract.
+// Results are judged against perf-baseline.json — the post-migration performance contract —
+// and written to it only on `npm run perf:capture` (PERF_BASELINE_WRITE=1): a plain run is
+// read-only.
 
 import { test, expect, turnReliefOff } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";

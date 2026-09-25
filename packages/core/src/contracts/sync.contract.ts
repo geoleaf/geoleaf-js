@@ -133,7 +133,8 @@ export type QuarantineReason =
      */
     | "retryBudgetExhausted"
     /**
-     * The session is over — the server answered 401 or 403 on a write.
+     * The session is over — the server answered 401 on a write. A 403 says the identity is
+     * known and lacks the right, which no sign-in changes: it stays `rejectedByServer`.
      *
      * 🛑 **ADDED on 02/09/2026, and it closes the same asymmetry as
      * `notImplementedByServer`.** A 401 landed on `rejectedByServer`, the one motive this
@@ -239,7 +240,11 @@ export interface OutboxEntry {
      */
     readonly baseVersion: VersionMarker | null;
     readonly state: SyncState;
-    /** Replay attempts so far. A `failed` entry keeps its count when it is requeued. */
+    /**
+     * Replay attempts so far. The drain's failures increment it until the budget is spent.
+     * It goes back to 0 when the entry is requeued out of quarantine, or re-armed by a new
+     * local edit it absorbs.
+     */
     readonly attempts: number;
     readonly createdAt: number;
     readonly quarantine?: QuarantineReason;
@@ -451,9 +456,16 @@ export type ConflictPolicy = "lastWriteWins";
 /**
  * What happens when the server deleted an entity that was edited locally.
  *
- * `serverWinsPreserveLocal`: the entity leaves the map, and the local capture is moved to
- * `quarantined` with reason `deletedOnServer`. It is never SILENTLY destroyed — that is the
- * one outcome this contract exists to prevent.
+ * `serverWinsPreserveLocal`: the server's deletion wins for the push — replay never recreates
+ * the entity — and the local capture is preserved: its queue entry moves to `quarantined` with
+ * reason `deletedOnServer`. It is never SILENTLY destroyed — that is the one outcome this
+ * contract exists to prevent.
+ *
+ * ⚠️ **The entity stays on the device until the operator destroys the capture.** Its local
+ * record holds the operator's work, which the pull never sweeps (`db/features.ts`). Destroying
+ * the capture (`discardQuarantined`) removes that record too, since the server has nothing to
+ * give back. This sentence read « the entity leaves the map » until 25/09/2026: no code did that
+ * on the push, and the destruction removed only the queue entry.
  *
  * ⚠️ **This sentence read « It is never destroyed » until task 8.4, and the absolute form had
  * a cost that was measured rather than argued.** A quarantined entry had NO exit at all: not
@@ -470,6 +482,10 @@ export type ConflictPolicy = "lastWriteWins";
  *    layer regained its write target, the server was upgraded. Those entries go back to
  *    `pending`. The other two cannot: replaying a `deletedOnServer` would recreate what the
  *    server deleted, and `rejectedByServer` is defined as a reason replay cannot fix.
+ *
+ *    Two more have joined them since: `authRequired` (03/09/2026 — the operator signs back in)
+ *    and `dialectNotSupported` (17/09/2026 — the layer's declaration changes). The list that
+ *    decides is `REQUEUEABLE` in `write/quarantine-api.ts`.
  *
  *    ⚠️ **The third one was added on 09/08/2026, and its absence had turned exit 1 into exit 2 for
  *    a whole class of captures.** Every transient server outage was reported as

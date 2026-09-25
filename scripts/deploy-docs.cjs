@@ -29,8 +29,8 @@
  * **Inside `packages/core/docs/`** (steps 1, 2 and 2b): `api/`, `public/api/` and
  * `public/logo.png`. ⚠️ Those three STAY in place, and it is no oversight:
  * `public/` is VitePress's static-assets directory, resolved against `srcDir` —
- * moving it would break the build. They are gitignored and excluded from `files[]`
- * by negation, so they are neither versioned nor published: the targeted defect is
+ * moving it would break the build. They are gitignored, and `docs/` is not in the core's
+ * `files[]` at all, so they are neither versioned nor published: the targeted defect is
  * handled, the location was not the defect.
  */
 
@@ -341,12 +341,11 @@ function main() {
 
     // ⚠️ A step 6 used to live here: `docs/CHANGELOG.md` →
     // `packages/core/CHANGELOG.md`, announced "(npm consumers)". It reached NO npm
-    // consumer and was removed. Measured with `npm pack --dry-run -w @geoleaf/core`:
-    // the tarball contains `docs/CHANGELOG.md` (174.2 KB) — i.e. the copy's SOURCE —
-    // and no `CHANGELOG.md` at the package root. `files[]` lists `dist/`,
-    // `README.md`, `docs/` and `LICENSE`; npm auto-adds only package.json, README
-    // and LICENSE, not CHANGELOG. The written file was versioned noise: 35 KB, 0
-    // referents.
+    // consumer and was removed: npm auto-adds only package.json, README and LICENSE,
+    // never CHANGELOG, so the written file was versioned noise (35 KB, 0 referents).
+    // The tarball carries no changelog at all today: `files[]` lists `dist/`,
+    // `README.md` and `LICENSE`, and `docs/` left it — measured with
+    // `npm pack --dry-run --ignore-scripts --json -w @geoleaf/core` (0 `docs/` entry).
 
     console.log("\n═══════════════════════════════════════════════");
     // The target is named, never assumed: "geoleaf.dev/docs/" was hard-coded here

@@ -100,10 +100,10 @@ function _unregisterOwn(): void {
  * Requests origin-level persistent storage and logs the verdict.
  *
  * Browsers evict **per origin, not per store**: under disk pressure a "best-effort"
- * origin can lose the Cache API *and* IndexedDB together. IndexedDB holds `sync_queue`,
- * whose entries are field captures with no other copy — no server, no export. `persist()`
- * is the only lever that moves the whole origin out of that regime, and it covers every
- * store at once, so it stays correct whichever tile-storage arbitration lands later.
+ * origin can lose the Cache API *and* IndexedDB together. IndexedDB holds `features` and
+ * `outbox`, whose entries are field captures with no other copy — no server, no export.
+ * `persist()` is the only lever that moves the whole origin out of that regime, and it covers
+ * every store at once, so it stays correct whichever tile-storage arbitration lands later.
  *
  * Deliberately **not chained** onto `SWRegister.register()`: the data this protects is
  * written by the offline engine, which does not need the service worker to have come up.
@@ -192,7 +192,7 @@ export const PwaLifecycle = {
         }, SW_REGISTER_IDLE_CEILING_MS);
 
         // Origin-level eviction protection. Independent of the registration above — it
-        // guards IndexedDB (`sync_queue`) as much as the SW's caches.
+        // guards IndexedDB (`features`, `outbox`) as much as the SW's caches.
         _requestPersistentStorage();
 
         // Install prompt (opt-in sub-flag): Android banner / iOS instructions.

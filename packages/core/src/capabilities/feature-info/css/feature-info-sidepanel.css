@@ -222,11 +222,9 @@
         transition: right 0.28s ease;
     }
 
-    /* Shift legend/control boxes left so they remain visible (adjust margin) */
-    body.gl-poi-sidepanel-open .maplibregl-ctrl-bottom-right {
-        right: calc(var(--gl-sidepanel-width) + 10px);
-        transition: right 0.28s ease;
-    }
+    /* No rule for MapLibre's own control corners: they live inside the map container,
+       which the rule above already shifts, so they follow it. (A rule here would be dead
+       anyway: MapLibre's stylesheet is unlayered and beats this layer.) */
 
     body.gl-poi-sidepanel-open .gl-layer-manager,
     body.gl-poi-sidepanel-open .gl-layer-manager__wrapper {
@@ -245,10 +243,6 @@
         body.gl-poi-sidepanel-open #geoleaf-map,
         body.gl-poi-sidepanel-open .gl-map {
             right: 0;
-        }
-
-        body.gl-poi-sidepanel-open .maplibregl-ctrl-bottom-right {
-            right: 10px;
         }
     }
 
