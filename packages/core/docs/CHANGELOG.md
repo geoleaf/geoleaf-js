@@ -11,6 +11,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **A `layers.json` entry's `label` overrides its layer config's, as the schema promised.** With a
+  `configFile`, the loader built the layer from that file plus the entry's `layerManagerId`, and
+  dropped the entry's `label`. The override now reaches the layer, on the bundle path and on the
+  HTTP cascade alike. An entry without `configFile` is the layer itself, and its `label` was always
+  read.
+- **`layers.schema.json` no longer accepts `order` or `defaultVisible` on an entry.** No code read
+  either: a layer manager section lists its layers by descending `zIndex`, so that the list mirrors
+  the stacking on the map, and visibility at load follows the theme. A profile carrying them is
+  now refused by the schema instead of being silently ignored. The schema is not part of the npm
+  package, and a running map is unaffected.
+
 ## [3.10.1] - 2026-09-25
 
 ### Fixed

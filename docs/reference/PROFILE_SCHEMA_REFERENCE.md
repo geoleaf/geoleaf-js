@@ -365,11 +365,9 @@ layers.json — index of all layers loaded for a GeoLeaf profile. Hardened in Sp
 | `$schema` | string | — | — | — | — |
 | `layers` | array | — | — | — | Individual layer references. Each entry points to a layer config file. |
 | `layers[].configFile` | string | — | — | — | Relative path to the layer config JSON file. |
-| `layers[].defaultVisible` | boolean | — | — | — | Whether the layer is visible on load. |
 | `layers[].id` | string | oui | — | — | Unique layer identifier. |
 | `layers[].label` | string | — | — | — | Optional display label override (otherwise read from the layer config). |
 | `layers[].layerManagerId` | string | — | — | — | Layer manager section this layer belongs to. |
-| `layers[].order` | number | — | — | — | Optional ordering hint within the layer manager section. |
 | `layerTemplates` | array | — | — | — | Layer templates: one template expanded into N individual layer configs at runtime. |
 | `layerTemplates[].instances` | array | oui | — | — | One entry per expanded layer. Merged with template at runtime — kept permissive (per-instance layer-config overrides). |
 | `layerTemplates[].instances[].dataFile` | string | oui | — | — | Data file name relative to the template's data.directory. |

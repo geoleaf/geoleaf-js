@@ -236,7 +236,6 @@ profiles/
         "id": "villes_principales",
         "label": "Main cities",
         "configFile": "layers/villes_principales/villes_principales_config.json",
-        "visible": true,
         "layerManagerId": "group-geo"
     }
 ]

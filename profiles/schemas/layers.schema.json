@@ -29,14 +29,6 @@
                     "label": {
                         "type": "string",
                         "description": "Optional display label override (otherwise read from the layer config)."
-                    },
-                    "order": {
-                        "type": "number",
-                        "description": "Optional ordering hint within the layer manager section."
-                    },
-                    "defaultVisible": {
-                        "type": "boolean",
-                        "description": "Whether the layer is visible on load."
                     }
                 }
             }

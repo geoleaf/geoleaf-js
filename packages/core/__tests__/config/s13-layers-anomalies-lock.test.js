@@ -43,6 +43,26 @@ describe("config B5 — layer-config schema sanity", () => {
     });
 });
 
+describe("ANO-050 RÉSOLU — layers.json : `order` et `defaultVisible` retirés de l'index", () => {
+    // Both were accepted by `layers.schema.json` and read by no code: the loader builds a layer
+    // from its config file plus the entry's `layerManagerId` and `label`
+    // (`__tests__/config/layers-index-label-override.test.ts`), and a section lists its layers
+    // by descending `zIndex`, so that the list mirrors the stacking on the map. A key that
+    // promises an effect nobody delivers is refused rather than silently ignored.
+    const validateIndex = ajv.compile(readSchema("layers"));
+    const index = (entry) => ({ layers: [{ id: "a", configFile: "layers/a/a.json", ...entry }] });
+
+    it("schema: an entry with `label` is valid — the override is read", () => {
+        expect(validateIndex(index({ label: "A" }))).toBe(true);
+    });
+    it("schema: `order` on an entry is refused", () => {
+        expect(validateIndex(index({ order: 1 }))).toBe(false);
+    });
+    it("schema: `defaultVisible` on an entry is refused", () => {
+        expect(validateIndex(index({ defaultVisible: true }))).toBe(false);
+    });
+});
+
 describe("ANO-055 RÉSOLU (Archi S3) — data.vectorTiles.scheme déclaré (enum [xyz,tms])", () => {
     // live: s13-layer-data.test.js asserts loadVectorTileLayer builds the source with scheme:"tms"
     it("schema: data.vectorTiles.scheme is now ACCEPTED (enum xyz/tms)", () => {
@@ -147,9 +167,6 @@ describe("config B5 — S9 render slice: legacy attribute-config keys removed (s
 
 describe("config B5 — orphan / legacy / plugin keys (schema-accepted, locked it.todo)", () => {
     // Orphans — schema-accepted but no core consumer (registre)
-    it.todo(
-        "ANO-050 layers.json layers[].defaultVisible — 0 core consumer (visibility via theme B4)"
-    );
     it.todo(
         "ANO-051 layers.json layerTemplates[].templateId — not destructured by expandLayerTemplates"
     );

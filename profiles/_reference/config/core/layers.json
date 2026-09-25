@@ -5,9 +5,7 @@
             "id": "reference-points",
             "configFile": "layers/reference-points/reference-points_config.json",
             "layerManagerId": "section-poi",
-            "label": "Points de référence",
-            "order": 1,
-            "defaultVisible": true
+            "label": "Points de référence"
         }
     ],
     "layerTemplates": [

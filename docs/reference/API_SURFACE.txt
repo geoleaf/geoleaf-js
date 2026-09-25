@@ -2778,7 +2778,7 @@ CallSignature | GeoLeaf Core API.kernel/config/profile-loader-helpers.validateFi
 CallSignature | GeoLeaf Core API.kernel/config/profile-loader-helpers.validateFilesModules.validateFilesModules.warn.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.kernel/config/profile-loader-helpers.validateMapCenter.validateMapCenter | doc:7467cb93a197
 CallSignature | GeoLeaf Core API.kernel/config/profile-loader-helpers.validateMapCenter.validateMapCenter.warn.__type.__type | doc:-
-CallSignature | GeoLeaf Core API.kernel/config/profile-loader.ProfileLoader.__type._buildEnrichedProfile._buildEnrichedProfile | doc:5f33fecb97ce
+CallSignature | GeoLeaf Core API.kernel/config/profile-loader.ProfileLoader.__type._buildEnrichedProfile._buildEnrichedProfile | doc:cd64cac422c9
 CallSignature | GeoLeaf Core API.kernel/config/profile-loader.ProfileLoader.__type._loadBundledProfile._loadBundledProfile | doc:c0e501ee3b04
 CallSignature | GeoLeaf Core API.kernel/config/profile-loader.ProfileLoader.__type._loadLayerConfigs._loadLayerConfigs | doc:fb3abdab9095
 CallSignature | GeoLeaf Core API.kernel/config/profile-loader.ProfileLoader.__type._loadLayersFile._loadLayersFile | doc:9f18de97e216
@@ -16600,6 +16600,7 @@ Property | GeoLeaf Core API.kernel/config/profile-loader-helpers.LayerConfigResu
 Property | GeoLeaf Core API.kernel/config/profile-loader-helpers.LayerRef.configFile | doc:-
 Property | GeoLeaf Core API.kernel/config/profile-loader-helpers.LayerRef.id | doc:-
 Property | GeoLeaf Core API.kernel/config/profile-loader-helpers.LayerRef.inlineConfig | doc:3b65a89abc4e
+Property | GeoLeaf Core API.kernel/config/profile-loader-helpers.LayerRef.label | doc:acb476ab3958
 Property | GeoLeaf Core API.kernel/config/profile-loader-helpers.LayerRef.layerManagerId | doc:-
 Property | GeoLeaf Core API.kernel/config/profile-loader-helpers.ProfileWithFiles.Files | doc:-
 Property | GeoLeaf Core API.kernel/config/profile-loader-helpers.ProfileWithFiles.Files.__type.basemapsFile | doc:-

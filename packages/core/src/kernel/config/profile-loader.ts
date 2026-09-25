@@ -656,6 +656,10 @@ const ProfileLoader = {
      * Adding a key here means feeding it too — declaring one the loader never populates is
      * precisely how the sprite went uncached for months (C-7).
      *
+     * Each layer is its config file plus two keys of its `layers.json` entry: `layerManagerId`
+     * and, when the entry sets one, `label`, which overrides the config's. An entry whose config
+     * could not be obtained (none declared, or a failed fetch) is returned as the layer itself.
+     *
      * @param params - Object containing the base profile, themes, mapping, layersSource, and layersConfigs.
      * @returns The enriched profile record with resolved layers, themes, mapping, and metadata.
      */
@@ -668,10 +672,19 @@ const ProfileLoader = {
         if (themes) enrichedProfile.themes = themes;
         if (mapping) enrichedProfile.mapping = mapping;
         if (layersConfigs?.length > 0) {
+            // First entry wins on a duplicated id, as the `find` this map replaces did.
+            const refs = new Map<string, LayerRef>();
+            for (const ref of layersSource as LayerRef[]) {
+                if (!refs.has(ref.id)) refs.set(ref.id, ref);
+            }
             enrichedProfile.layers = layersConfigs.map((layerData) => {
                 if (layerData.config) {
+                    // The index entry's `label` overrides the config's, as `layers.schema.json`
+                    // promises. It used to be dropped here: only `layerManagerId` crossed over.
+                    const indexLabel = refs.get(layerData.id)?.label;
                     const normalized = {
                         ...layerData.config,
+                        ...(typeof indexLabel === "string" && { label: indexLabel }),
                         _layerDirectory: layerData.layerDirectory,
                         _profileId: profileId,
                         layerManagerId:
@@ -690,8 +703,9 @@ const ProfileLoader = {
                     if (derived) normalized.dataFile = derived;
                     return normalized;
                 }
-                const original = (layersSource as LayerRef[]).find((l) => l.id === layerData.id);
-                return original ?? { id: layerData.id, error: "Failed to load config" };
+                return (
+                    refs.get(layerData.id) ?? { id: layerData.id, error: "Failed to load config" }
+                );
             });
         }
         return enrichedProfile;

@@ -183,8 +183,6 @@ const FAMILIES = {
             "layers[].configFile",
             "layers[].layerManagerId",
             "layers[].label",
-            "layers[].order",
-            "layers[].defaultVisible",
             "layerTemplates[].templateId",
             "layerTemplates[].layerManagerId",
             "layerTemplates[].template",

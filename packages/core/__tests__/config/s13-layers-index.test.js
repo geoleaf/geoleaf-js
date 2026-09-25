@@ -3,12 +3,14 @@
  *
  * Read path: the modular profile loader reads config/core/layers.json through two
  * pure, exported seams in config/profile-loader-helpers.ts:
- *   - extractRawLayers(payload)       → the layers[] array (id/configFile/layerManagerId/label/order/defaultVisible)
+ *   - extractRawLayers(payload)       → the layers[] array (id/configFile/layerManagerId/label)
  *   - expandLayerTemplates(reg, file) → layerTemplates[] expanded into inline LayerRefs
  *   - validateFiles / validateFilesModules → the profile.json Files manifest (incl. layersFile)
- * The downstream HTTP fetch of each {id}_config.json (profile-loader.ts) and the
- * layerManager order sort (layer-manager-api.ts) are integration/DOM and are
- * exercised by e2e/cfg-c4 — here we lock the index wiring.
+ * The downstream fetch of each {id}_config.json and the index `label` override are pinned by
+ * `layers-index-label-override.test.ts`. There is no per-layer `order`: a section lists its
+ * layers by descending `zIndex` (`geojson/layers/integration.ts`), and `layers.schema.json`
+ * refuses `order` and `defaultVisible` (ANO-050, `s13-layers-anomalies-lock.test.js`).
+ * Here we lock the index wiring.
  *
  * Consumer: packages/core/src/kernel/config/profile-loader-helpers.ts. Inventory B5.
  * Source of truth: profiles/_reference/config/core/layers.json + profile.json.
@@ -31,8 +33,6 @@ describe("config B5 — layers.json layers[] (extractRawLayers)", () => {
             configFile: "layers/reference-points/reference-points_config.json",
             layerManagerId: "section-poi",
             label: "Points de référence",
-            order: 1,
-            defaultVisible: true,
         });
     });
 

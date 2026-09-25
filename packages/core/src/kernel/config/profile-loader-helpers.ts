@@ -50,6 +50,8 @@ export interface LayerRef {
     id: string;
     configFile?: string;
     layerManagerId?: string;
+    /** Display label. With a `configFile`, it overrides the config's own `label`. */
+    label?: string;
     /** Inline config generated from a layerTemplate expansion — skips HTTP fetch. */
     inlineConfig?: Record<string, unknown>;
 }

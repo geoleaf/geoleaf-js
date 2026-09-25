@@ -241,8 +241,7 @@ List of the profile's GeoJSON layers.
         {
             "id": "commerces",
             "configFile": "layers/commerces/commerces_config.json",
-            "layerManagerId": "commerces-locaux",
-            "visible": true
+            "layerManagerId": "commerces-locaux"
         }
     ]
 }
