@@ -31,12 +31,23 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.10.1 <Badge type="tip" text="2026-09-25" />
+## Release v3.10.2 <Badge type="tip" text="2026-09-25" />
 
-Two fixes for a host that embeds the map: loading the bundle no longer touches the page, and a
-value set with `Config.set` before anything reads the configuration is kept.
+A `layers.json` entry keeps the promises its schema makes: its `label` renames the layer, and the
+two keys that did nothing are gone.
 
 **Highlights:**
+
+- **Fixed** — an entry's `label` now overrides the label of the layer config its `configFile`
+  points to; the loader used to drop it.
+- **Fixed** — `layers.schema.json` no longer accepts `order` or `defaultVisible` on an entry. No
+  code read either: a layer manager section lists its layers by descending `zIndex`, and visibility
+  at load follows the theme. The schema is not part of the npm package; a running map is
+  unaffected.
+
+Release v3.10.1 (2026-09-25) — two fixes for a host that embeds the map: loading the bundle no
+longer touches the page, and a value set with `Config.set` before anything reads the configuration
+is kept:
 
 - **Fixed** — loading the bundle wrote `<html lang>`, before a host could set
   `ui.syncDocumentLang: false`: the layer manager's title and the branding's default text were
