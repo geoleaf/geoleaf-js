@@ -52,11 +52,11 @@ shim is a file.
 </script>
 
 <!-- GeoLeaf styles -->
-<link rel="stylesheet" href="https://unpkg.com/@geoleaf/core@3.9.0/dist/geoleaf-main.min.css" />
+<link rel="stylesheet" href="https://unpkg.com/@geoleaf/core@3.10.0/dist/geoleaf-main.min.css" />
 
 <!-- GeoLeaf ESM (via script type="module") -->
 <script type="module">
-    import { Core } from "https://unpkg.com/@geoleaf/core@3.9.0/dist/geoleaf.esm.js";
+    import { Core } from "https://unpkg.com/@geoleaf/core@3.10.0/dist/geoleaf.esm.js";
     // Optional — GeoJSON parsed off the main thread. A browser refuses a worker script from
     // another origin, so the CDN's copy cannot be used: serve your own copy of
     // dist/geojson-worker.js and point GeoLeaf at it before booting (see §7).
@@ -80,12 +80,12 @@ shim is a file.
 <!-- GeoLeaf styles -->
 <link
     rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.9.0/dist/geoleaf-main.min.css"
+    href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.10.0/dist/geoleaf-main.min.css"
 />
 
 <!-- GeoLeaf ESM -->
 <script type="module">
-    import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.9.0/dist/geoleaf.esm.js";
+    import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.10.0/dist/geoleaf.esm.js";
     // Optional — GeoJSON parsed off the main thread. A browser refuses a worker script from
     // another origin, so the CDN's copy cannot be used: serve your own copy of
     // dist/geojson-worker.js and point GeoLeaf at it before booting (see §7).
@@ -173,7 +173,7 @@ Core.init({
         <!-- GeoLeaf styles -->
         <link
             rel="stylesheet"
-            href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.9.0/dist/geoleaf-main.min.css"
+            href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3.10.0/dist/geoleaf-main.min.css"
         />
 
         <style>
@@ -193,7 +193,7 @@ Core.init({
         <div id="geoleaf-map"></div>
 
         <script type="module">
-            import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.9.0/dist/geoleaf.esm.js";
+            import { Core } from "https://cdn.jsdelivr.net/npm/@geoleaf/core@3.10.0/dist/geoleaf.esm.js";
             // Optional — GeoJSON off the main thread: serve your own copy of
             // dist/geojson-worker.js (a browser refuses a cross-origin worker), then:
             // GeoLeaf.GeoJSON.setWorkerUrl("/assets/geoleaf/geojson-worker.js");

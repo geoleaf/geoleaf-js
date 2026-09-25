@@ -31,24 +31,33 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.9.0 <Badge type="tip" text="2026-09-24" />
+## Release v3.10.0 <Badge type="tip" text="2026-09-25" />
 
-A layer can stay out of the layer manager, a vector basemap applied at startup keeps the layers
-created while its style downloads, and a host can unmount the map during its boot.
+A feature is found by its reference with no network, a form's option lists work off-network, the
+device says before going off-network whether it can leave, and layers placed outside the adapter
+survive a basemap switch.
 
 **Highlights:**
 
-- **New** — `showInLayerManager: false`, in a layer's config file or passed to
-  `GeoLeaf.Layers.create`, removes the layer's row from the layer manager, and nothing else: the
-  layer still loads, follows its theme and keeps its legend.
-- **New** — `@geoleaf-plugins/editor` 1.5.0: `GeoLeaf.Editor.discardDraft(featureId?)` abandons
-  the draft awaiting its form — nothing is persisted, no event is emitted.
-- **Fixed** — a vector basemap applied at startup no longer erases the layers created while its
-  style downloads: their sources and sub-layers stay in the style, and `GeoJSON.updateLayerData`
-  reaches them.
-- **Fixed** — `Core.destroy()` during the boot ends the boot instead of failing it, and right after
-  `geoleaf:app:ready` it no longer throws.
-- **Fixed** — `@geoleaf-plugins/measure` 1.0.5 keeps a measure finished just before a reload.
+- **New** — `GeoLeaf.Layers.search(query)` finds features by reference in the layers declaring
+  `searchable: { fields }`, from what the map holds; `GeoLeaf.Layers.focus(layerId, id)` frames one
+  and selects it — the `selected` state is now painted. `@geoleaf-plugins/geocoding` 1.1.0 exposes
+  it as the `layers` provider; given a list of providers, it skips the network ones off-network.
+- **New** — `GeoLeaf.Storage.resolveOptions(url)`: a dropdown's `fetchOptions` list is kept on the
+  device by the offline preparation and by any form opened online (`@geoleaf/field-renderer` 1.3.0,
+  `setOptionsResolver`; wired by `@geoleaf-plugins/editor`).
+- **New** — `GeoLeaf.Storage.preflight()`: whether the browser keeps the data, each layer that
+  declares something to pull and whether it is on the device, what the last preparation left out,
+  and a verdict. `@geoleaf-plugins/offline-ui` 1.6.0 shows it in the offline window.
+- **New** — `IMapAdapter.declareOwnedStyleIds`: sources and layers a plugin places on the engine
+  cross a basemap switch that replaces the style (`@geoleaf-plugins/measure` 1.0.6,
+  `@geoleaf-plugins/cog` 1.0.4, `@geoleaf-plugins/editor` 1.5.1).
+- **Deprecated** — `@geoleaf-plugins/geocoding`: an unknown single `provider` value now warns, and
+  will be refused by the next minor release.
+
+Release v3.9.0 (2026-09-24) — a layer can stay out of the layer manager, a vector basemap applied
+at startup keeps the layers created while its style downloads, and a host can unmount the map during
+its boot.
 
 Release v3.8.0 (2026-09-23) — the filter says which category a checked sub-category belongs to,
 and a selected shape in the editor moves when it is pressed near an edge.
