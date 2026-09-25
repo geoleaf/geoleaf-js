@@ -69,6 +69,12 @@ C.getModuleConfig = function <T = unknown>(moduleId: string, key?: string, defau
 };
 
 C.set = function (path: string, value: unknown): void {
+    // Same guard as `get`: a `set` made before anything read the configuration used to find
+    // the store unwired and drop the value — hidden only because a label resolved at import
+    // happened to call `get` first.
+    if (!this._isLoaded) {
+        this._initSubModules();
+    }
     const Storage = ConfigStore;
     if (Storage?.set) {
         Storage.set(path, value);

@@ -48,7 +48,11 @@ export interface BootOptions {
     config?: Record<string, unknown>;
     /** An explicit URL to fetch the configuration from. Used when `config` is absent. */
     configUrl?: string;
-    /** Runs after the configuration loads, before the map. Throwing aborts the boot. */
+    /**
+     * Runs after the configuration and the profile load, before the map. Throwing aborts the
+     * boot. This is where a host overrides a value that the profile declares, with
+     * `GeoLeaf.Config.set` (e.g. `ui.language`). No module has read the configuration yet.
+     */
     beforeBoot?: (context: { config: Readonly<Record<string, unknown>> }) => Promise<void> | void;
     /** Receives startup metrics once `geoleaf:app:ready` has fired. */
     onPerformanceMetrics?: (metrics: {

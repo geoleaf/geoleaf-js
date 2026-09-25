@@ -63,21 +63,36 @@ const _g: LMHost = (typeof globalThis !== "undefined"
 
 _g.GeoLeaf = _g.GeoLeaf || {};
 
-/** Builds the default LayerManager options (a fresh object on each call). */
+/**
+ * Builds the default LayerManager options (a fresh object on each call).
+ *
+ * ⚠️ No label here. This runs at IMPORT, to seed `_options`, and a label resolved at import is
+ * frozen in whatever the configuration said at that instant — the default language, before
+ * any profile or host has spoken. The default title is resolved in `init()`, when the control
+ * is built (see {@link _resolveDefaultTitle}).
+ */
 function _defaultLayerManagerOptions(): LayerManagerOptions {
     return {
         position: "bottomright",
-        title: getLabel("ui.layer_manager.title"),
         collapsible: true,
         collapsed: false,
         sections: [] as LMSection[],
     };
 }
 
+/**
+ * Gives `options` the translated default title, unless the caller or `layerManagerConfig`
+ * already set one. `undefined` only: a value explicitly set, even empty, is not replaced.
+ */
+function _resolveDefaultTitle(options: LayerManagerOptions): void {
+    if (options.title === undefined) options.title = getLabel("ui.layer_manager.title");
+}
+
 /** Internal options object held by the LayerManager module. */
 interface LayerManagerOptions {
     position: string;
-    title: string;
+    /** Absent until `init()` resolves the default — see `_resolveDefaultTitle`. */
+    title?: string;
     collapsible: boolean;
     collapsed: boolean;
     sections: LMSection[];
@@ -184,6 +199,8 @@ const LayerManagerModule = {
         this._autoPopulateBasemap();
         // Minimal auto-fill when no section is declared
         this._autoPopulateSections();
+        // Default title, resolved now that the language is (see _defaultLayerManagerOptions)
+        _resolveDefaultTitle(this._options);
         // Create the control through the sub-module
         if (!_g.GeoLeaf._LayerManagerControl) {
             Log?.error("[GeoLeaf.LayerManager] Module _LayerManagerControl not loaded");

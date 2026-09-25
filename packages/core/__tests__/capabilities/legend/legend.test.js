@@ -133,8 +133,16 @@ describe("GeoLeaf.LayerManager", () => {
         // whose FR default is « Gestionnaire de couches ». The panel becomes
         // translatable in passing (the neighbouring `ui.layer_manager.*` keys
         // already existed).
-        it("should resolve its default title through i18n", () => {
-            expect(Legend._options.title).toBe("Gestionnaire de couches");
+        //
+        // It is resolved when the control is BUILT, not at import: resolved at
+        // import, it was frozen in the default language before any profile or
+        // host had set one (`__tests__/i18n/labels-resolved-at-init.test.ts`).
+        it("should resolve its default title through i18n — at init, not at import", () => {
+            expect(Legend._options.title).toBeUndefined();
+            Legend.init({ map: mockMap });
+            expect(global.GeoLeaf._LayerManagerControl.create).toHaveBeenCalledWith(
+                expect.objectContaining({ title: "Gestionnaire de couches" })
+            );
         });
 
         it("should be collapsible by default", () => {

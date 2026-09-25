@@ -4,8 +4,8 @@ title: branding — la ligne de marque posée en surimpression sur la carte
 capability_id: branding
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 744132ca0
-date: 1er septembre 2026
+verifie_contre: 658165b84
+date: 25 septembre 2026
 ---
 
 # branding — la ligne de marque posée en surimpression sur la carte
@@ -57,7 +57,7 @@ natif via l'adaptateur, et en expose le pilotage impératif (`show` / `hide` / `
 | ----- | --------------------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
 | BR-01 | Surimpression montée sur la carte | `BrandingModule.init(adapter)`                             | Contrôle `.gl-branding` contenant `.gl-branding__content`, ajouté via `addControl` à `position`                                                                                                                                           | `branding.ts` → `init` puis `_createControl` |
 | BR-02 | Texte configurable                | `modules.branding.text`                                    | Le texte remplace le libellé par défaut                                                                                                                                                                                                   | `branding.ts` → `init`                       |
-| BR-03 | Texte par défaut traduit          | Aucun `text` configuré                                     | Libellé `ui.branding.default_text` de la langue active (fichiers `src/lang/lang-*.ts`)                                                                                                                                                    | `branding.ts` → graine `_options`            |
+| BR-03 | Texte par défaut traduit          | Aucun `text` configuré                                     | Libellé `ui.branding.default_text` de la langue active (fichiers `src/lang/lang-*.ts`)                                                                                                                                                    | `branding.ts` → `init`                       |
 | BR-04 | Texte vide = silence assumé       | `modules.branding.text` valant la chaîne vide              | **Aucun contrôle créé**, un `Log.info` le dit — ce n'est pas une erreur                                                                                                                                                                   | `branding.ts` → `init`, sortie anticipée     |
 | BR-05 | Position configurable             | `modules.branding.position`                                | Le contrôle est ajouté à la position demandée                                                                                                                                                                                             | `branding.ts` → `_createControl`             |
 | BR-06 | Injection HTML impossible         | Texte contenant du balisage                                | Rendu littéral — `textContent` sur les deux chemins d'écriture (création et `setText`)                                                                                                                                                    | `branding.ts` → `_createControl`, `setText`  |
@@ -82,7 +82,7 @@ Bloc `modules.branding` d'un profil. Conformité de cette table au code gardée 
 | Paramètre  | Type      | Défaut         | Où c'est lu                                                                                                |
 | ---------- | --------- | -------------- | ---------------------------------------------------------------------------------------------------------- |
 | `enabled`  | `boolean` | `false`        | `constants.ts` → `brandingConfigDefaults()` ; **le gate de déclaration** décide l'enregistrement du module |
-| `text`     | `string`  | —              | `branding.ts` → `init`. **Aucun défaut de configuration** : la graine vient de l'i18n, voir ci-dessous     |
+| `text`     | `string`  | —              | `branding.ts` → `init`. **Aucun défaut de configuration** : le défaut vient de l'i18n, voir ci-dessous     |
 | `position` | `string`  | `"bottomleft"` | `constants.ts` → `DEFAULT_BRANDING_POSITION`, appliqué par `_createControl`                                |
 
 ### Les trois copies du défaut, et le fichier qui les a réunies
@@ -114,8 +114,14 @@ Le texte
 affiché en l'absence de configuration vient de l'**i18n** (`ui.branding.default_text`), pas de la
 configuration : le mettre dans les défauts figerait une langue.
 
-⚠️ **Conséquence à connaître** : cette graine est évaluée **à l'évaluation du module**, à l'import.
-Un changement de langue après l'import ne réécrit pas le texte par défaut d'un contrôle déjà monté.
+⚠️ **Le défaut se résout à `init()`, jamais à l'import.** Jusqu'à la 3.10.0, il était une graine
+de `_options` évaluée à l'import du module. Or à l'import, la configuration est vide : le texte
+restait figé en français, quels que soient le `ui.language` et les `labels` du profil. Et cette
+résolution, la première de la page, écrivait `<html lang>` avant qu'un hôte ait pu l'interdire.
+`init()` le résout désormais après la fusion des options de l'appelant et de `cfg.text`, et
+seulement si aucun des deux n'a fourni de texte. Garde : `__tests__/i18n/labels-resolved-at-init.test.ts`.
+Un changement de langue après le montage ne réécrit toujours pas le texte : la bascule de langue
+recharge la page.
 
 ### Gate d'activation
 

@@ -37,6 +37,7 @@ const LANGS: Record<string, LangDict> = {
 
 let _active: LangDict = langFr;
 let _overrides: LangDict = {};
+/** Set by the boot's {@link initI18n} only: before it, every read resolves live. */
 let _initialized = false;
 
 // Plugin i18n support — namespace → { lang → dict }
@@ -47,21 +48,35 @@ let _pluginFr: LangDict = {};
 /**
  * Returns the active language code (`"fr"`, `"en"`, …).
  *
- * Resolution order: `?lang=` → `localStorage['gl-lang']` → `ui.language` → `"fr"` — the
- * same order {@link initI18n} applies, derived from the SAME state rather than
- * recomputed, so the two cannot drift.
+ * Resolution order: `?lang=` → `localStorage['gl-lang']` → `ui.language` → `"fr"`. The code
+ * is read back from the dictionary the labels use, never derived a second time, so the code
+ * and the labels cannot drift apart.
+ *
+ * Before the boot's {@link initI18n}, the code follows the live configuration, like
+ * {@link getLabel}: it answers what a label asked for right now would be written in.
+ * After it, the code is the one the boot fixed for the page.
  *
  * Exposed on `GeoLeaf.I18n` because the code was computed internally and never published:
  * consumers that need to format a number or a date in the profile's language had no way
  * to ask, and hard-coded `"fr-FR"` instead (CAPACITÉS B.26 named this gap).
  */
 export function getActiveLang(): string {
-    if (!_initialized) return "fr";
-    return Object.keys(LANGS).find((k) => LANGS[k] === _active) ?? "fr";
+    if (!_initialized) _resolve();
+    return _codeOf(_active);
+}
+
+/**
+ * The canonical code of a dictionary. `al` shares German's dictionary and comes after `de`
+ * in {@link LANGS}, so the first match is always the real subtag.
+ */
+function _codeOf(dict: LangDict): string {
+    return Object.keys(LANGS).find((k) => LANGS[k] === dict) ?? "fr";
 }
 
 function _rebuildPluginFlat(): void {
-    const activeLang = _initialized ? getActiveLang() : "fr";
+    // `_active` itself, never `getActiveLang()`: before the boot the latter resolves, and
+    // resolving rebuilds this table — a registration would re-enter itself.
+    const activeLang = _codeOf(_active);
     _pluginActive = {};
     _pluginFr = {};
     for (const dict of Object.values(_pluginDicts)) {
@@ -76,10 +91,10 @@ export const LANG_STORAGE_KEY = "gl-lang";
 /**
  * Reads the persisted language, or `null`.
  *
- * ⚠️ The `try/catch` is not defensive decoration: `initI18n()` runs BEFORE the first
- * `getLabel()` call, so an exception here takes the whole boot down. Storage access
- * throws outright in private browsing on some engines — the only acceptable outcome is
- * a silent fall-through to the configured language.
+ * ⚠️ The `try/catch` is not defensive decoration: every label resolved before the boot,
+ * and the boot's own `initI18n()`, go through here, so an exception takes the whole boot
+ * down. Storage access throws outright in private browsing on some engines — the only
+ * acceptable outcome is a silent fall-through to the configured language.
  */
 function _readStoredLang(): string | null {
     try {
@@ -90,15 +105,17 @@ function _readStoredLang(): string | null {
 }
 
 /**
- * Initialize i18n from config. Called once after config is loaded.
+ * Resolves the language and the profile's label overrides from the current state, and
+ * rebuilds the plugin table accordingly. Writes nothing outside this module.
  *
- * Also publishes the resolved language to `<html lang>`, unless `ui.syncDocumentLang` is
- * `false` — see {@link _syncDocumentLang}.
+ * Order: `?lang=` → `localStorage['gl-lang']` → `ui.language` → `"fr"`.
  */
-export function initI18n(): void {
-    const urlLang = new URLSearchParams(window.location.search).get("lang")?.toLowerCase() ?? null;
+function _resolve(): void {
+    const urlLang =
+        typeof location === "undefined"
+            ? null
+            : (new URLSearchParams(location.search).get("lang")?.toLowerCase() ?? null);
     const configCode = ConfigGet.get?.<string>("ui.language", "fr")?.toLowerCase() ?? "fr";
-    // Order: ?lang= → localStorage → ui.language → fr.
     // The URL parameter stays on TOP on purpose: a shared link must render the same for
     // its recipient as for its author. Were the stored preference to win, the same URL
     // would show a different language per visitor — the link would stop being a
@@ -106,8 +123,24 @@ export function initI18n(): void {
     const code = urlLang ?? _readStoredLang() ?? configCode;
     _active = LANGS[code] ?? langFr;
     _overrides = (ConfigGet.get?.<LangDict>("labels", {}) as LangDict) ?? {};
-    _initialized = true;
     _rebuildPluginFlat();
+}
+
+/**
+ * Fixes the page's language. Called by the boot (`SharedModule`), once the configuration,
+ * the profile and the `beforeBoot` hook have all run — the first moment the configuration
+ * is complete.
+ *
+ * From here on the language no longer follows the configuration: changing it means a
+ * reload, which is what the language switcher does. Before this call, labels already
+ * resolve, but from the live configuration and without fixing anything — see {@link getLabel}.
+ *
+ * Also publishes the resolved language to `<html lang>`, unless `ui.syncDocumentLang` is
+ * `false` — see {@link _syncDocumentLang}.
+ */
+export function initI18n(): void {
+    _resolve();
+    _initialized = true;
     _syncDocumentLang();
 }
 
@@ -132,9 +165,12 @@ export function initI18n(): void {
  * suppresses only the write: the language still resolves normally, so `getActiveLang()` and every
  * label are unaffected. Default `true` — the standalone application keeps the behaviour above.
  *
- * ⚠️ The guard is read HERE and not at the call site in {@link initI18n}, because `initI18n` has a
- * second, lazy caller: {@link getLabel} re-enters it when a label is resolved before boot. A guard
- * placed around the boot call would leave that path writing the attribute.
+ * 🛑 {@link initI18n} is the ONLY writer, and that is the other half of the opt-out. A label
+ * resolved before the boot (at a module's import, by a plugin) used to publish the attribute
+ * too. At that moment neither the host's `Config.set` nor the profile had run, so the opt-out
+ * was read at its default and the page's attribute was rewritten before the host could say
+ * `false`. A write that happens before the configuration is complete cannot honour a key
+ * of that configuration.
  */
 function _syncDocumentLang(): void {
     if (typeof document === "undefined") return;
@@ -159,11 +195,16 @@ export function registerDict(namespace: string, dictsByLang: Record<string, Lang
  * Returns the localised label for `key`, optionally interpolating positional args.
  * Resolution order: profile overrides → active lang (core + plugins) → French (core + plugins) → key.
  *
+ * Before the boot's {@link initI18n}, each call resolves the language from the live
+ * configuration, and fixes and writes nothing. A host's `Config.set` made in the meantime is
+ * read by the next label. A string meant to follow the profile's language must therefore be
+ * resolved when its control is built, never when its module is imported.
+ *
  * @example getLabel("toast.geoloc.position_found")
  * @example getLabel("toast.geoloc.error_timeout", "timeout")
  */
 export function getLabel(key: string, ...args: string[]): string {
-    if (!_initialized) initI18n();
+    if (!_initialized) _resolve();
     let label: string =
         _overrides[key] ??
         _active[key] ??

@@ -159,6 +159,10 @@ export function installBoot(preset: PresetManifest): BootInstallation {
      *   Return void to proceed, throw to abort boot: `geoleaf:boot:aborted` is emitted and the
      *   `#gl-loader` veil is hidden, so that whatever the host draws next is not covered.
      *   Use case: SSO / external auth gate (any identity provider) without the connector plugin.
+     *   It is also where a host overrides a value that the profile declares, with
+     *   `GeoLeaf.Config.set`. The profile has loaded by then, and no module has read the
+     *   configuration yet. A `set` made before `boot()` is replaced by any section the profile
+     *   declares.
      * @param options.onPerformanceMetrics - Callback to receive runtime metrics after geoleaf:app:ready.
      * @param options.config - A configuration object handed over in memory. When present, the
      *   boot applies it directly and issues no request for it. Wins over `configUrl`.
@@ -180,6 +184,12 @@ export function installBoot(preset: PresetManifest): BootInstallation {
      *   beforeBoot: async ({ config }) => {
      *     const ok = await checkSession();
      *     if (!ok) throw new Error('Not authenticated');
+     *   }
+     * });
+     * // Host override of a profile value — here the interface language
+     * GeoLeaf.boot({
+     *   beforeBoot: () => {
+     *     GeoLeaf.Config?.set('ui.language', 'en');
      *   }
      * });
      * // Performance metrics

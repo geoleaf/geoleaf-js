@@ -11,6 +11,27 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **Loading the bundle no longer writes `<html lang>`, and no label is frozen before the boot.**
+  Two defaults were translated when their module was imported: the layer manager's title and the
+  branding's default text. The first of them ran the page's first i18n resolution, before any host
+  or profile had configured anything. That resolution froze both strings in French, whatever the
+  profile's `ui.language` or `labels`. It also published `<html lang>` while
+  `ui.syncDocumentLang` still read its default, so an embedding host could not keep the page's
+  attribute from being rewritten. Both defaults are now resolved when their control is built.
+  Before the boot, a label follows the live configuration and writes nothing. The boot alone fixes
+  the language and publishes the attribute, reading `ui.syncDocumentLang` at that moment.
+- **`GeoLeaf.Config.set` keeps a value set before anything has read the configuration.** `set` had
+  no store guard, unlike `get`, `getAll` and `getModuleConfig`, and dropped such a value with a
+  warning. This was hidden until now because the label resolved at import happened to read the
+  configuration first. The TSDoc of `Config.set` and of `boot()`'s `beforeBoot` now states when
+  such a value survives the boot. The application configuration is merged over it, and a modular
+  profile replaces each top-level section it carries (`ui` among them). A host overriding a
+  profile value, such as `ui.language`, does it in `beforeBoot`.
+
 ## [3.10.0] - 2026-09-25
 
 ### Added

@@ -601,6 +601,29 @@ export interface ConfigFacade {
      */
     get<T = unknown>(path: string, defaultValue?: T): T;
     getModuleConfig<T = unknown>(moduleId: string, key?: string, defaultValue?: T): T;
+    /**
+     * Writes one field by dotted path, creating the intermediate objects.
+     *
+     * ⚠️ Before `boot()`, a value set here is not final. The boot then loads the application
+     * configuration, which is merged over it key by key. Then it loads the active profile. A
+     * modular profile (the kind the repository ships) REPLACES, whole, each top-level section
+     * it carries (`ui` among them). Two exceptions: `layers`, `themes` and `mapping` stay on
+     * the profile, and the `modules` bag is merged module by module. So a value that the
+     * profile also declares does not survive the boot.
+     *
+     * To override a value that the profile declares, call `set` from the `beforeBoot` hook.
+     * It runs after both loads, and before any module reads the configuration.
+     *
+     * @example
+     * ```ts
+     * GeoLeaf.boot({
+     *     beforeBoot: () => {
+     *         // The profile declares "fr"; this host's user reads English.
+     *         GeoLeaf.Config.set("ui.language", "en");
+     *     },
+     * });
+     * ```
+     */
     set(path: string, value: unknown): void;
     getSection(sectionName: string, defaultValue?: unknown): unknown;
     getActiveProfileId(): string | null;

@@ -34,7 +34,9 @@ const Branding: BrandingControl = {
         // applied one (`constants.ts`) — this seed used to be a third, independent
         // copy of the literal (B.24).
         position: DEFAULT_BRANDING_POSITION,
-        text: getLabel("ui.branding.default_text"),
+        // No `text` here: this literal is evaluated at IMPORT, and a label resolved then is
+        // frozen in the default language, before any profile or host has spoken. The default
+        // text is resolved in `init()`, when the overlay is built.
     },
 
     /**
@@ -64,6 +66,11 @@ const Branding: BrandingControl = {
 
             if (cfg.text) this._options.text = cfg.text;
             if (cfg.position) this._options.position = cfg.position;
+            // Neither the caller nor the config gave a text: the translated default, resolved
+            // now that the language is.
+            if (this._options.text === undefined) {
+                this._options.text = getLabel("ui.branding.default_text");
+            }
 
             this._createControl();
 
@@ -90,7 +97,7 @@ const Branding: BrandingControl = {
             const brandingElement = domCreate("div", "gl-branding__content", container);
 
             // SAFE: textContent prevents XSS
-            brandingElement.textContent = this._options.text;
+            brandingElement.textContent = this._options.text ?? "";
 
             // Store reference for direct access
             this._container = container;

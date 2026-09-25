@@ -928,6 +928,21 @@ Config.get("ui"); // Get UI config
 Config.set("key", value); // Set a config value
 ```
 
+⚠️ **A value set before `boot()` is not final.** The boot loads the application configuration,
+merged over it key by key, then the active profile. A modular profile **replaces** each
+top-level section it carries (`ui` among them). `layers`, `themes` and `mapping` stay on the
+profile, and the `modules` bag is merged module by module. To override a value
+that the profile declares, set it in the `beforeBoot` hook, which runs after both loads and
+before any module reads the configuration:
+
+```ts
+GeoLeaf.boot({
+    beforeBoot: () => {
+        GeoLeaf.Config?.set("ui.language", "en"); // the profile says "fr"
+    },
+});
+```
+
 ### Per-module configuration (`modules.*`)
 
 Plugin configuration is declared under a `modules.<id>` block in the profile (e.g. `modules.storage`, `modules.print`). Legacy root keys (`storage`, `poiAddConfig`, `printConfig`, `measureConfig`, `editorConfig`) are deprecated but keep working during the transition (a one-time console warning is emitted per module).

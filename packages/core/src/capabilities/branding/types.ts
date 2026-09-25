@@ -23,7 +23,8 @@ export interface BrandingMapLike {
 /** Branding control runtime options. */
 export interface BrandingOptions {
     position: string;
-    text: string;
+    /** Absent until `init()` resolves the translated default, when no caller or config set one. */
+    text?: string;
 }
 
 /** Branding control instance (members accessed via `this`). */

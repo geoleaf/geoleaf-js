@@ -96,8 +96,10 @@ describe("GeoLeaf.LayerManager Extended", () => {
         });
 
         // B.13 — titre passé par i18n (`ui.layer_manager.title`), franglais corrigé.
-        it("should have default title as Gestionnaire de couches", () => {
-            expect(LegendModule._options.title).toBe("Gestionnaire de couches");
+        // Resolved at `init()`, never at import: `legend.test.js` checks it when
+        // the control is built.
+        it("should not resolve its default title at import", () => {
+            expect(LegendModule._options.title).toBeUndefined();
         });
 
         it("should have collapsible enabled by default", () => {

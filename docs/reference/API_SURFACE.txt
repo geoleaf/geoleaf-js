@@ -2747,7 +2747,7 @@ CallSignature | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.Confi
 CallSignature | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.ConfigFacade.isProfilePoiMappingEnabled.isProfilePoiMappingEnabled | doc:-
 CallSignature | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.ConfigFacade.loadActiveProfileResources.loadActiveProfileResources | doc:-
 CallSignature | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.ConfigFacade.loadUrl.loadUrl | doc:2250498d9669
-CallSignature | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.ConfigFacade.set.set | doc:-
+CallSignature | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.ConfigFacade.set.set | doc:58fdce2565f2
 CallSignature | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.ConfigInitOptions.onError.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.ConfigInitOptions.onLoaded.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.kernel/config/geoleaf-config/module-config.mergeModulesBag.mergeModulesBag | doc:83ab155785be
@@ -3416,9 +3416,9 @@ CallSignature | GeoLeaf Core API.utils/geo/geometry-bounds.geometryBounds.geomet
 CallSignature | GeoLeaf Core API.utils/geo/geometry-bounds.representativePoint.representativePoint | doc:596fb0a9a68b
 CallSignature | GeoLeaf Core API.utils/geo/haversine.haversineDistance.haversineDistance | doc:64248350a6d8
 CallSignature | GeoLeaf Core API.utils/geo/wkt-parser.wktToGeoJSON.wktToGeoJSON | doc:82adf77733e7
-CallSignature | GeoLeaf Core API.utils/i18n/i18n.getActiveLang.getActiveLang | doc:e7fbb5a38e73
-CallSignature | GeoLeaf Core API.utils/i18n/i18n.getLabel.getLabel | doc:7dbf96635116
-CallSignature | GeoLeaf Core API.utils/i18n/i18n.initI18n.initI18n | doc:b3c925d62d53
+CallSignature | GeoLeaf Core API.utils/i18n/i18n.getActiveLang.getActiveLang | doc:ecd35a53c889
+CallSignature | GeoLeaf Core API.utils/i18n/i18n.getLabel.getLabel | doc:fd2522248613
+CallSignature | GeoLeaf Core API.utils/i18n/i18n.initI18n.initI18n | doc:965e14ccf618
 CallSignature | GeoLeaf Core API.utils/i18n/i18n.registerDict.registerDict | doc:69c70977c765
 CallSignature | GeoLeaf Core API.utils/i18n/i18n.t.t | doc:028add956ad8
 CallSignature | GeoLeaf Core API.utils/loaders/label-extractor.extractLabelConfig.extractLabelConfig | doc:6f7013b6a0e2
@@ -14567,7 +14567,7 @@ Property | GeoLeaf Core API.app/app-types.AppNamespace.checkPlugins | doc:c5763a
 Property | GeoLeaf Core API.app/app-types.AppNamespace.getProfilesBasePath | doc:f9c1ba5be342
 Property | GeoLeaf Core API.app/app-types.AppNamespace.showNotification | doc:30626588847b
 Property | GeoLeaf Core API.app/app-types.AppNamespace.startApp | doc:6569b88a8c89
-Property | GeoLeaf Core API.app/app-types.BootOptions.beforeBoot | doc:2cd737be9e8a
+Property | GeoLeaf Core API.app/app-types.BootOptions.beforeBoot | doc:bb43b0532b00
 Property | GeoLeaf Core API.app/app-types.BootOptions.beforeBoot.__type.__type.context.__type.config | doc:-
 Property | GeoLeaf Core API.app/app-types.BootOptions.config | doc:9659afd0b501
 Property | GeoLeaf Core API.app/app-types.BootOptions.configUrl | doc:783b4335dd0b
@@ -14648,7 +14648,7 @@ Property | GeoLeaf Core API.capabilities/branding/types.BrandingControl._control
 Property | GeoLeaf Core API.capabilities/branding/types.BrandingControl._map | doc:-
 Property | GeoLeaf Core API.capabilities/branding/types.BrandingControl._options | doc:-
 Property | GeoLeaf Core API.capabilities/branding/types.BrandingOptions.position | doc:-
-Property | GeoLeaf Core API.capabilities/branding/types.BrandingOptions.text | doc:-
+Property | GeoLeaf Core API.capabilities/branding/types.BrandingOptions.text | doc:eee49b4ecc12
 Property | GeoLeaf Core API.capabilities/cluster/public-api.ClusterPublicApi.getConfig | doc:bcd7399b9248
 Property | GeoLeaf Core API.capabilities/cluster/public-api.ClusterPublicApi.isEnabled | doc:22145cf693aa
 Property | GeoLeaf Core API.capabilities/cluster/types.ClusterConfig.clusterRadius | doc:18c20e7d65d2

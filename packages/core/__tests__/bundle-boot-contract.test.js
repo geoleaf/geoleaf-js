@@ -27,10 +27,15 @@
  *   3. PLUGIN CONTRACT end-to-end — an eager plugin registering its dictionary at top-level.
  *      Reproduces the exact failure mode of `46cd88dc`: optional chaining means a missing
  *      anchor throws nothing, mounts the plugin anyway, and just loses the labels.
+ *   4. NOTHING TOUCHES THE PAGE AT IMPORT — neither `<html lang>` nor `gl-lang`. A module-level
+ *      label in the Rollup chunk `ui-controls` resolved the language at import and published
+ *      it: a host embedding the map saw its page's `lang` rewritten before it could say
+ *      `ui.syncDocumentLang: false`. Only an EVALUATED chunk shows it — source tests import
+ *      modules one by one.
  *
- * Canary = `plugin-table` (flat dict, binary resolution). NOT `plugin-geocoding`: it registers
- * a NESTED dict and reads FLAT keys, so its labels never resolve — masked by a hardcoded
- * French fallback. That is a live bug (debt report §7 C-5), not a usable oracle.
+ * Canary = `plugin-table` (flat dict, binary resolution). It was chosen over `plugin-geocoding`
+ * when the latter registered a nested dict (debt report §7 C-5); geocoding's dict is flat
+ * since, but the canary stays — it reads no configuration at import, which section 4 relies on.
  *
  * Requires a prior build (`turbo run build`) — hence `vitest.bundle.config.ts`, not the
  * standard run.
@@ -113,15 +118,76 @@ const importArtefact = (p) => import(/* @vite-ignore */ pathToFileURL(p).href);
 // IMPORT_SURFACE now lives in `scripts/lib/namespace-surface.mjs`,
 // alongside the two other tiers — which is what makes `MIN ⊆ IMPORT ⊆ POST` assertable.
 
+/** The host page's own `<html lang>` — importing the map must leave it exactly as it is. */
+const HOST_LANG = "en-US";
+
+/**
+ * Records every write of `<html lang>` and of the `gl-lang` preference from now on.
+ * Setter-level, not a before/after comparison: a write of the SAME value is still a write the
+ * host did not ask for.
+ */
+function trapPageWrites() {
+    const langWrites = [];
+    const storedLangWrites = [];
+    // happy-dom's `lang` setter goes through `setAttribute`: without this flag, one write
+    // would be recorded twice.
+    let inLangSetter = false;
+    const langDesc = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "lang");
+    Object.defineProperty(HTMLElement.prototype, "lang", {
+        ...langDesc,
+        set(value) {
+            if (this === document.documentElement) langWrites.push(value);
+            inLangSetter = true;
+            try {
+                langDesc.set.call(this, value);
+            } finally {
+                inLangSetter = false;
+            }
+        },
+    });
+    const setAttribute = Element.prototype.setAttribute;
+    Element.prototype.setAttribute = function (name, value) {
+        if (
+            !inLangSetter &&
+            this === document.documentElement &&
+            String(name).toLowerCase() === "lang"
+        ) {
+            langWrites.push(value);
+        }
+        return setAttribute.call(this, name, value);
+    };
+    const setItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+        if (key === "gl-lang") storedLangWrites.push(value);
+        return setItem.call(this, key, value);
+    };
+    return {
+        langWrites,
+        storedLangWrites,
+        restore() {
+            Object.defineProperty(HTMLElement.prototype, "lang", langDesc);
+            Element.prototype.setAttribute = setAttribute;
+            Storage.prototype.setItem = setItem;
+        },
+    };
+}
+
 describe("Bundle boot contract — artefact tier", () => {
     let GeoLeaf;
     let importSurface;
     let healthAtImport;
+    /** What importing the bundle and the canary wrote to the page — see section 4. */
+    let pageWritesAtImport;
+    /** `getLabel` right after a host's `Config.set`, nothing having read the config before. */
+    let labelAfterHostSet;
 
     beforeAll(async () => {
         expect(fs.existsSync(BUNDLE), `missing ${BUNDLE} — run \`turbo run build\` first`).toBe(
             true
         );
+
+        document.documentElement.lang = HOST_LANG;
+        const trap = trapPageWrites();
 
         await importArtefact(BUNDLE);
         GeoLeaf = globalThis.GeoLeaf;
@@ -134,6 +200,22 @@ describe("Bundle boot contract — artefact tier", () => {
         // The canary: an eager plugin registering its dictionary at its own top-level,
         // exactly as a page does before calling GeoLeaf.boot().
         if (fs.existsSync(TABLE_PLUGIN)) await importArtefact(TABLE_PLUGIN);
+
+        trap.restore();
+        pageWritesAtImport = {
+            lang: document.documentElement.lang,
+            langWrites: [...trap.langWrites],
+            storedLangWrites: [...trap.storedLangWrites],
+        };
+
+        // A host's sequence, on the real artefact: import, then `Config.set`, then read — and
+        // NOTHING has read the configuration before (the canary reads none at import). Both
+        // halves are needed: the `set` must land although the store was never wired, and the
+        // label must follow it although a label may have been resolved earlier. Captured here,
+        // before section 3 reads any label, and undone at once so section 3 still reads French.
+        GeoLeaf.Config.set("ui.language", "en");
+        labelAfterHostSet = GeoLeaf.I18n.getLabel("ui.layer_manager.title");
+        GeoLeaf.Config.set("ui.language", undefined);
     });
 
     // ── 1. Import surface ────────────────────────────────────────────────────────
@@ -222,5 +304,17 @@ describe("Bundle boot contract — artefact tier", () => {
         expect(GeoLeaf.I18n.getLabel("ui.table.layer_placeholder")).toBe(
             "Sélectionner une couche..."
         );
+    });
+
+    // ── 4. Nothing touches the page at import ────────────────────────────────────
+
+    test("importer le bundle et un plugin n'écrit ni <html lang> ni gl-lang", () => {
+        expect(pageWritesAtImport.langWrites, "écritures de <html lang> à l'import").toEqual([]);
+        expect(pageWritesAtImport.lang).toBe(HOST_LANG);
+        expect(pageWritesAtImport.storedLangWrites, "écritures de gl-lang à l'import").toEqual([]);
+    });
+
+    test("un Config.set de l'hôte, avant toute lecture, est lu par le libellé suivant", () => {
+        expect(labelAfterHostSet).toBe("Layer manager");
     });
 });

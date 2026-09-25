@@ -483,29 +483,91 @@ describe("initI18n() — ui.syncDocumentLang", () => {
         expect(document.documentElement.lang).toBe("es");
     });
 
-    // 🛑 The case that dictates WHERE the guard lives. `initI18n` has a second,
-    // lazy caller: `getLabel()` re-enters it when a label is resolved before
-    // boot. A guard placed around the boot call site would leave this path
-    // writing the attribute — so the module is re-imported fresh here, and the
-    // FIRST thing done to it is a label lookup, never `initI18n()`.
-    it("respecte l'opt-out sur le chemin paresseux de getLabel()", async () => {
-        vi.resetModules();
-        document.documentElement.lang = "en";
-        mockConfigGet.mockImplementation((key, def) => {
-            if (key === "ui.syncDocumentLang") return false;
-            if (key === "ui.language") return "it";
-            return def;
-        });
-        const fresh = await import("../../src/utils/i18n/i18n.ts");
-        fresh.getLabel("ui.filter_panel.apply"); // triggers the lazy initI18n()
-        expect(fresh.getActiveLang()).toBe("it"); // it really did initialise
-        expect(document.documentElement.lang).toBe("en"); // and did not write
-    });
-
     afterAll(async () => {
         vi.resetModules();
         mockConfigGet.mockImplementation((key, def) => def);
         const fresh = await import("../../src/utils/i18n/i18n.ts");
         fresh.initI18n();
+    });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Before the boot: the language RESOLVES, but is neither frozen nor published.
+//
+// A label can be asked for before the boot's `initI18n()`: by a module at
+// import, by a plugin, or by a kernel module that initialises before `shared`.
+// At that moment the configuration is incomplete. A host has not yet called
+// `Config.set`, and the profile has not loaded. The first label used to freeze
+// the language on those defaults for the rest of the page. It also wrote
+// `<html lang>` with them, before any host could say `ui.syncDocumentLang: false`.
+//
+// Every case re-imports the module fresh, because `initI18n()` is the one-way
+// door under test. The last case pins the other side of the contract: once the
+// boot has resolved, nothing re-reads the configuration, and a language switch
+// reloads the page.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("avant le boot — la langue se résout en direct, sans figer ni publier", () => {
+    /** @returns {Promise<typeof import("../../src/utils/i18n/i18n.ts")>} */
+    const fresh = async () => {
+        vi.resetModules();
+        return import("../../src/utils/i18n/i18n.ts");
+    };
+    const configure = (values) =>
+        mockConfigGet.mockImplementation((key, def) => (key in values ? values[key] : def));
+
+    beforeEach(() => {
+        document.documentElement.lang = "en-US"; // the host page's own value
+        configure({});
+    });
+
+    it("getLabel() n'écrit jamais <html lang> avant initI18n() — même sans opt-out", async () => {
+        const i18n = await fresh();
+        i18n.getLabel("ui.layer_manager.title");
+        expect(document.documentElement.lang).toBe("en-US");
+    });
+
+    it("la résolution suit ui.language d'un libellé au suivant", async () => {
+        const i18n = await fresh();
+        configure({ "ui.language": "en" });
+        expect(i18n.getLabel("ui.layer_manager.title")).toBe("Layer manager");
+        configure({ "ui.language": "es" });
+        expect(i18n.getLabel("ui.layer_manager.title")).toBe("Gestor de capas");
+    });
+
+    it("un override `labels` posé entre deux libellés est lu", async () => {
+        const i18n = await fresh();
+        i18n.getLabel("ui.layer_manager.title");
+        configure({ labels: { "ui.layer_manager.title": "Réseau" } });
+        expect(i18n.getLabel("ui.layer_manager.title")).toBe("Réseau");
+    });
+
+    it("getActiveLang() suit la configuration en direct", async () => {
+        const i18n = await fresh();
+        configure({ "ui.language": "pt" });
+        expect(i18n.getActiveLang()).toBe("pt");
+        configure({ "ui.language": "al" });
+        expect(i18n.getActiveLang()).toBe("de"); // the alias still resolves to its canonical code
+    });
+
+    it("un dictionnaire de plugin suit la langue en direct", async () => {
+        const i18n = await fresh();
+        i18n.registerDict("probe", { fr: { "probe.k": "fr" }, en: { "probe.k": "en" } });
+        configure({ "ui.language": "en" });
+        expect(i18n.getLabel("probe.k")).toBe("en");
+    });
+
+    it("initI18n() fige et publie : la configuration n'est plus relue après le boot", async () => {
+        const i18n = await fresh();
+        configure({ "ui.language": "en" });
+        i18n.initI18n();
+        expect(document.documentElement.lang).toBe("en"); // the boot is the one writer
+        configure({ "ui.language": "es" });
+        expect(i18n.getLabel("ui.layer_manager.title")).toBe("Layer manager");
+        expect(i18n.getActiveLang()).toBe("en");
+    });
+
+    afterAll(async () => {
+        configure({});
+        (await fresh()).initI18n();
     });
 });
