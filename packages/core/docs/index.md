@@ -31,12 +31,25 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.10.2 <Badge type="tip" text="2026-09-25" />
+## Release v3.10.3 <Badge type="tip" text="2026-09-25" />
 
-A `layers.json` entry keeps the promises its schema makes: its `label` renames the layer, and the
-two keys that did nothing are gone.
+Destroying a set-aside field capture no longer leaves its entity on the map, and the documentation
+says what the code does.
 
 **Highlights:**
+
+- **Fixed** — destroying a quarantined capture (`GeoLeaf.Storage.discardQuarantined`) returns its
+  entity to the server's truth: the local record is removed when the server has nothing to give
+  back, and marked for replacement by the next pull otherwise. It used to stay on the device, drawn
+  on every load by layers that read the device first.
+- **Fixed** — documentation that contradicted the code: `Storage.clearAll()`, `GeoLeaf.init()`'s
+  accepted keys, the 401/403 session rule, the requeueable quarantine motives, and
+  `ServerDeletionPolicy`.
+- **Fixed** — two dead CSS rules of the feature-info side panel removed; nothing changes on screen.
+  `@geoleaf-plugins/geocoding` 1.1.1 carries a corrected source comment.
+
+Release v3.10.2 (2026-09-25) — a `layers.json` entry keeps the promises its schema makes: its
+`label` renames the layer, and the two keys that did nothing are gone:
 
 - **Fixed** — an entry's `label` now overrides the label of the layer config its `configFile`
   points to; the loader used to drop it.
