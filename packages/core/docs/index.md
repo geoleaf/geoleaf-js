@@ -31,13 +31,25 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.10.0 <Badge type="tip" text="2026-09-25" />
+## Release v3.10.1 <Badge type="tip" text="2026-09-25" />
 
-A feature is found by its reference with no network, a form's option lists work off-network, the
-device says before going off-network whether it can leave, and layers placed outside the adapter
-survive a basemap switch.
+Two fixes for a host that embeds the map: loading the bundle no longer touches the page, and a
+value set with `Config.set` before anything reads the configuration is kept.
 
 **Highlights:**
+
+- **Fixed** — loading the bundle wrote `<html lang>`, before a host could set
+  `ui.syncDocumentLang: false`: the layer manager's title and the branding's default text were
+  translated when their module was imported. They are now translated when their control is built,
+  so they follow the profile's `ui.language` and `labels`. The boot alone fixes the language and
+  writes the attribute.
+- **Fixed** — `GeoLeaf.Config.set` dropped a value set before anything had read the configuration.
+- **Documented** — the active profile replaces each top-level section it carries, `ui` included: a
+  host overrides a profile value, such as `ui.language`, from the `beforeBoot` hook.
+
+Release v3.10.0 (2026-09-25) — a feature is found by its reference with no network, a form's option
+lists work off-network, the device says before going off-network whether it can leave, and layers
+placed outside the adapter survive a basemap switch:
 
 - **New** — `GeoLeaf.Layers.search(query)` finds features by reference in the layers declaring
   `searchable: { fields }`, from what the map holds; `GeoLeaf.Layers.focus(layerId, id)` frames one
