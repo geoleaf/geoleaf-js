@@ -81,6 +81,11 @@ export interface OutboxRow {
 /** The core's write cycle, the queue's only writer. */
 export interface StorageWriteFacade {
     /**
+     * The choices of a dropdown declared by URL, kept on the device — `null` when nothing can
+     * answer. Core ≥ 3.10.0; absent before, and the dropdown then fetches itself.
+     */
+    resolveOptions?(url: string): Promise<Array<{ value: string; label: string }> | null>;
+    /**
      * Does the layer grant this operation?
      *
      * 🛑 **SYNCHRONOUS, and available WITHOUT the offline engine.** The

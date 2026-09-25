@@ -503,10 +503,12 @@ describe("_addBasemapResources — only offline basemaps, only on demand", () =>
             vectorZone: { bbox: [0, 0, 1, 1], maxZoom: 10 },
         });
 
-        expect(StyleResolver.enumerate).toHaveBeenCalledWith("s.json", {
-            bbox: [0, 0, 1, 1],
-            maxZoom: 10,
-        });
+        // Third argument: the preparation trace, absent when the caller passes none.
+        expect(StyleResolver.enumerate).toHaveBeenCalledWith(
+            "s.json",
+            { bbox: [0, 0, 1, 1], maxZoom: 10 },
+            undefined
+        );
         expect(CacheCalculator.enumerateTiles).not.toHaveBeenCalled();
         expect(resources).toEqual([{ url: "style.json", type: "style" }]);
     });
@@ -530,7 +532,7 @@ describe("_addVectorBasemapResources — a zone is optional, a style is not", ()
     test("without a download zone the style is still resolved (zone = null)", async () => {
         await ResourceEnumerator._addVectorBasemapResources({ id: "v", style: "s.json" }, {});
 
-        expect(StyleResolver.enumerate).toHaveBeenCalledWith("s.json", null);
+        expect(StyleResolver.enumerate).toHaveBeenCalledWith("s.json", null, undefined);
     });
 });
 

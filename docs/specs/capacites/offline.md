@@ -4,8 +4,8 @@ title: offline — le moteur hors ligne, et la façade que pilote son interface
 capability_id: offline
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: d8615d59d
-date: 19 septembre 2026
+verifie_contre: f1ef40e1f
+date: 25 septembre 2026
 ---
 
 # offline — le moteur hors ligne, et la façade que pilote son interface
@@ -754,6 +754,68 @@ capacité, elle, y **injecte** ses modules quand son moteur arrive.
 | `requeueableReasons()`             | **Les motifs qu'un geste d'opérateur lève** (17/09/2026) — voir ci-dessous                                     |
 | `listConflicts(layerId?)`          | **Les versions qu'un conflit tranché a écrasées** (v6, 17/09/2026)                                             |
 | `clearConflicts(layerId?)`         | La purge de ce magasin — **la seule, et manuelle à dessein**                                                   |
+| `resolveOptions(url)`              | **La liste d'un menu déroulant, gardée hors réseau** (3.10.0) — voir ci-dessous                                |
+| `preflight()`                      | **« Puis-je partir ? » en une lecture** (3.10.0) — voir ci-dessous                                             |
+
+#### `preflight()` — « puis-je partir ? », lu avant la coupure
+
+Chaque fait avait déjà sa porte — le rapport par couche (`getSyncReport`, qu'aucune surface produit
+n'appelait), la file (`getSyncStatus`), le quota (`getStats`), la dernière préparation (le
+manifeste du cache) — sauf un : **le navigateur garde-t-il les données de cette origine ?** La PWA
+demande la persistance au démarrage et **journalisait** seulement la réponse ; rien ne la relisait.
+`report/preflight.ts` la relit (`navigator.storage.persisted()`, projeté sur
+`StoragePersistenceRegime`, type du contrat qui attendait son implémenteur) et assemble le tout.
+
+| Champ         | Ce qu'il dit                                                                                                                                                                                                                                                                                                                               |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `verdict`     | `notReady` : une couche qui déclare une source n'est pas sur l'appareil (`declaredNeverPulled`, `pullFailed`) · `degraded` : départ possible, mais rapatriement incomplet ou ancien, entrées écartées, origine évinçable (`bestEffort`, `unsupported`), zooms non préparés, plafond de tuiles atteint, ressources en échec · `ready` sinon |
+| `persistence` | `persistent`, `bestEffort` ou `unsupported` — **lu**, jamais supposé ; Chromium sans tête refuse                                                                                                                                                                                                                                           |
+| `quota`       | la forme de `getStats().storage`, ou `null` quand le navigateur ne dit rien                                                                                                                                                                                                                                                                |
+| `layers`      | le rapport des seules couches qui déclarent une source (`notDeclared` exclues)                                                                                                                                                                                                                                                             |
+| `queue`       | `getSyncStatus()`                                                                                                                                                                                                                                                                                                                          |
+| `preparation` | `cachedAt`, nombre de ressources en échec, et la **trace** de l'énumération des tuiles — `null` sur un appareil jamais préparé                                                                                                                                                                                                             |
+
+- **La trace de préparation est neuve.** Un zoom sauté parce qu'il portait trop de tuiles, ou une
+  énumération arrêtée au plafond total, n'était que **journalisé** (`cache/calculator.ts`) : la
+  console d'un appareil sur le terrain ne se lit pas. `CacheManager.cacheProfile` crée désormais
+  une `TilePreparationTrace`, la fait descendre jusqu'au calculateur (énumérateur, résolveur de
+  style) et l'écrit au manifeste. Trouvé en chemin : `getCacheStatus().cachedAt` valait **toujours
+  `null`** — il lisait un champ que le manifeste n'écrivait pas ; il est écrit, et un manifeste
+  antérieur retombe sur son `generatedAt`.
+- **Ne jette jamais.** Chaque fait est lu seul : illisible, il est rapporté absent (`null`), sans
+  emporter les autres. Un rapport par couche illisible rend `notReady` — on ne peut rien garantir.
+  Sans moteur câblé : `null`.
+- **La session n'y est pas**, et c'est délibéré : la validité du jeton d'écriture est le savoir du
+  connecteur (qui la RENOUVELLE en la lisant), et en mode `getToken` personne d'autre que l'hôte ne
+  la connaît. Ligne ouverte au registre.
+
+La fenêtre d'`offline-ui` l'affiche à côté du téléchargement (`CDC_offline-ui.md`). Preuve sur le
+bundle livré : `e2e/61-preflight-flags-unpulled-layer.spec.js`.
+
+#### `resolveOptions(url)` — une saisie hors réseau n'est complète qu'avec ses listes
+
+Un champ `dropdown` qui charge ses choix par URL (`fetchOptions`, sur le champ ou sur son bloc
+`edit`) les refaisait venir du réseau à chaque rendu : hors réseau, il n'offrait que son invite. Le
+moteur garde désormais ces listes, **dans le magasin `preferences`** — clé `offline.optionList:<URL
+absolue>`, même geste que `offline.pullState`, aucune montée de schéma — et **pas dans `layers`**,
+où la préparation range ses autres ressources : `layers` est le magasin que le budget de cache
+évince, les plus anciens d'abord, et les ressources de configuration sont téléchargées les
+premières. Une liste rangée là serait la première à partir.
+
+- **Deux écrivains.** La préparation (`CacheManager.cacheProfile`) : l'énumérateur liste chaque
+  `fetchOptions` des couches choisies, sur ses **deux** branches (`configFile` et `layerTemplates`)
+  et sous ses **deux** clés, en ressource `optionList` que le téléchargement ne voit jamais ; puis
+  toute résolution en ligne — un formulaire ouvert une fois en ligne fonctionne ensuite hors réseau.
+- **Cache d'abord.** Une liste tenue répond aussitôt ; en ligne, elle est rafraîchie DERRIÈRE la
+  réponse. Hors réseau sans liste tenue : `null`, et aucune requête.
+- **Authentifiée comme la page.** La requête est le `fetch` de la page, borné : un connecteur qui
+  authentifie son origine l'authentifie aussi — le cas que le service worker ne sait pas garder.
+- **Ne jette jamais.** `null` quand rien ne peut répondre — sans moteur, hors réseau sans liste,
+  ou liste injoignable — et l'appelant va chercher lui-même. Ce qui n'est pas une liste de
+  `{ value, label }` n'est pas gardé.
+
+Le seul appelant du dépôt est `editor`, qui la branche dans `@geoleaf/field-renderer`
+(`setOptionsResolver`). Preuve sur le bundle livré : `e2e/60-option-list-offline.spec.js`.
 
 #### `requeueAll()` — parce qu'une sortie qu'on répète quarante fois n'est prise par personne
 
@@ -1021,14 +1083,24 @@ opposées et le magasin ne les distingue pas. Il a donc fallu un **marqueur pers
 gardé **local**, donc une saisie hors réseau le fait avancer sans qu'aucun rapatriement n'ait eu
 lieu. Il daterait l'édition, pas le rapatriement.
 
-| Statut                | Dérivé de                                                        |
-| --------------------- | ---------------------------------------------------------------- |
-| `notDeclared`         | la couche ne porte pas `offline.enabled`                         |
-| `declaredNeverPulled` | déclarée, **aucune entrée** dans `offline.pullState`             |
-| `pullFailed`          | dernière tentative en `outcome: "failed"`                        |
-| `pulledPartial`       | dernière tentative en `outcome: "partial"` — R9                  |
-| `pulledStale`         | `outcome: "ok"` **et** `now - at > offline.maxAgeMs` **déclaré** |
-| `pulled`              | `outcome: "ok"`, sinon                                           |
+| Statut                | Dérivé de                                                             |
+| --------------------- | --------------------------------------------------------------------- |
+| `notDeclared`         | la couche ne déclare pas de source à rapatrier (`offline.source.url`) |
+| `declaredNeverPulled` | source déclarée, **aucune entrée** dans `offline.pullState`           |
+| `pullFailed`          | dernière tentative en `outcome: "failed"`                             |
+| `pulledPartial`       | dernière tentative en `outcome: "partial"` — R9                       |
+| `pulledStale`         | `outcome: "ok"` **et** `now - at > offline.maxAgeMs` **déclaré**      |
+| `pulled`              | `outcome: "ok"`, sinon                                                |
+
+🛑 **« Déclarée » se juge sur la SOURCE, depuis le 25/09/2026 (3.10.0).** Le rapport lisait
+`offline.enabled`, et le rapatriement `offline.source.url` : une couche relue depuis le magasin local
+mais **sans source** — donc servie par son fichier de données, et que `pullLayer` refuse
+`noSource` — sortait `declaredNeverPulled` **pour toujours**, puisque rien ne pouvait écrire son
+marqueur. Mesuré sur les deux bundles livrés : deux couches rouges à vie, dont une parce que le
+build retire la source de preuve. Un pré-vol qui l'aurait lu aurait signalé, sur chaque appareil,
+une couche que rien ne pouvait réparer. Le rapport emploie désormais le prédicat du rapatriement
+(`declaresPullSource`, `cache/pull-declared-layers.ts`) : une seule définition. L'union des statuts
+n'a pas changé.
 
 ⚠️ **`pulledPartial` passe AVANT la péremption, et l'ordre n'est pas arbitraire.** Une course
 inachevée est un fait plus fort qu'une course ancienne : elle a laissé des trous dans le magasin, et

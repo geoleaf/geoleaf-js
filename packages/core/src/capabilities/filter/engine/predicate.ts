@@ -16,6 +16,7 @@
  */
 
 import { featureCentroid, getFieldTags, getFieldValue, haversine } from "./field-access.js";
+import { containsAllTerms, searchTerms } from "../../../utils/general/normalize-text.js";
 import type { ActiveField, FeatureLike } from "./types.js";
 import type { FilterFieldDescriptor } from "../types.js";
 
@@ -65,39 +66,23 @@ function _matchesRange(active: ActiveField, feature: FeatureLike): boolean {
 }
 
 /**
- * Diacritic- and case-insensitive text normalization: decomposes accents
- * (NFD) and drops the combining marks, then lowercases — so `recif` matches
- * `Récif`. Kept local (no dependency) and cheap enough for per-feature use.
- */
-function _normalizeText(s: string): string {
-    return s
-        .normalize("NFD")
-        .replace(/\p{Diacritic}/gu, "")
-        .toLowerCase();
-}
-
-/**
  * `text` — accent-insensitive, word-order-independent match against the
  * descriptor's `searchFields`. The query is split into whitespace-separated
- * terms; a field matches when it contains every term (in any order). A field
- * holding the terms contiguously still matches, so this is a strict superset of
- * the former single-substring behaviour (`recif` → `Récif`, `gilles récif` →
- * `Le Récif — Saint-Gilles`).
+ * terms; a field matches when it contains every term (in any order) — so `recif`
+ * finds `Récif`, and `gilles récif` finds `Le Récif — Saint-Gilles`.
+ *
+ * The matching rule itself lives in `utils/general/normalize-text.ts`, shared with the
+ * layer search: the same words must find the same features whether the user filters the
+ * map or searches it.
  */
 function _matchesText(active: ActiveField, feature: FeatureLike): boolean {
-    const terms = _normalizeText(active.text ?? "")
-        .split(/\s+/)
-        .filter(Boolean);
+    const terms = searchTerms(active.text ?? "");
     if (terms.length === 0) return true;
     const fields = active.descriptor.searchFields ?? [];
-    const fieldMatches = (val: unknown): boolean => {
-        const hay = _normalizeText(String(val));
-        return terms.every((t) => hay.includes(t));
-    };
     return fields.some((f) => {
         const val = getFieldValue(feature, f);
-        if (Array.isArray(val)) return val.some((x) => fieldMatches(x));
-        return val !== null && val !== undefined && fieldMatches(val);
+        if (Array.isArray(val)) return val.some((x) => containsAllTerms(x, terms));
+        return val !== null && val !== undefined && containsAllTerms(val, terms);
     });
 }
 

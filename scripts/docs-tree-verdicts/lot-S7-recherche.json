@@ -1,0 +1,98 @@
+{
+    "schemaVersion": 2,
+    "lot": "S7-recherche",
+    "scope": [
+        "packages/core/src/utils/general/normalize-text.ts",
+        "packages/core/src/utils/geo/geometry-bounds.ts",
+        "packages/core/src/kernel/geojson/layer-search.ts",
+        "packages/core/src/kernel/geojson/layer-focus.ts",
+        "packages/core/src/adapters/maplibre/maplibre-selection-paint.ts",
+        "packages/plugins/geocoding/src/provider-registry.ts"
+    ],
+    "verdicts": {
+        "packages/core/src/utils/general/normalize-text.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "La règle de correspondance texte — accents et casse ignorés, tous les mots dans n'importe quel ordre — partagée par le filtre et la recherche de couches",
+            "confidence": "haute",
+            "rationale": "Extraite du prédicat du filtre pour que les mêmes mots trouvent les mêmes entités qu'on filtre la carte ou qu'on la cherche. Sous `utils/` et non `kernel/shared/` : fonction pure sans état, et la règle R.8 (eslint bloc 6ter ter) laisse `utils/` ouvert aux capacités, précédent `utils/geo/haversine.ts`. Tenue par l'arête 5 de `__tests__/capabilities/kernel-reuse.test.js`, vue rougir sur une copie sans NFD"
+        },
+        "packages/core/src/utils/geo/geometry-bounds.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Boîte englobante et point représentatif d'une géométrie GeoJSON de tout type, collections comprises",
+            "confidence": "haute",
+            "rationale": "Deux lecteurs : la recherche de couches (position d'un résultat) et `GeoLeaf.Layers.focus` (cadrage). Le seul équivalent du noyau, `featureCentroid` du filtre, rend le PREMIER SOMMET — juste pour un test de proximité, faux pour cadrer un polygone"
+        },
+        "packages/core/src/kernel/geojson/layer-search.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Corps de `GeoLeaf.Layers.search` : les entités des couches `searchable` trouvées par référence dans le magasin mémoire, sans réseau, avec un index normalisé par couche",
+            "confidence": "haute",
+            "rationale": "Hors de `layers-public-api.ts` pour la même raison que ses mutations unitaires : la façade reste une liste de délégations. L'index vit sur l'entrée de couche (`_searchIndex`, patron `_diffable`) et ses trois points d'invalidation — `setLayerCollection`, `applyLayerDiff`, la branche silencieuse de `patchFeature` — sont chacun tenus par un test de fraîcheur vu rougir sur sa mutation"
+        },
+        "packages/core/src/kernel/geojson/layer-focus.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Corps de `GeoLeaf.Layers.focus` : cadre une entité puis la sélectionne, une sélection par carte, mémorisée par adaptateur",
+            "confidence": "haute",
+            "rationale": "Séparé de `layer-search.ts` : l'un lit, l'autre pilote la caméra et l'état de rendu. La mémoire de sélection est un `WeakMap` par adaptateur — une carte recréée n'hérite d'aucune sélection fantôme"
+        },
+        "packages/core/src/adapters/maplibre/maplibre-selection-paint.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Peinture de l'état `selected` : liseré d'un cercle, trait d'une ligne ou d'un contour, appliquée après le badge de synchronisation",
+            "confidence": "haute",
+            "rationale": "Même raison d'être que `maplibre-sync-badge.ts` : les deux constructeurs de peinture (création, re-style) l'appellent, et une copie par constructeur aurait perdu la sélection au premier changement de thème — défaut déjà payé par le badge. `LayerFeatureState.selected` était promis par le contrat et peint par rien"
+        },
+        "packages/plugins/geocoding/src/provider-registry.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Registre de fournisseurs du géocodage : noms enregistrés, fournisseur `layers` (entités de la carte, sans réseau), liste ordonnée qui saute le réseau hors ligne, et sort d'une valeur inconnue",
+            "confidence": "haute",
+            "rationale": "Remplace le `switch` fermé de `provider.ts` (1.1.0), patron du registre de `routing`. Séparé de `provider.ts` pour que les `fetch` restent sous leurs clés de baseline naked-fetch. La valeur inconnue seule garde son repli, NOMMÉ et annoncé comme refusé à la mineure suivante (VERSIONING_POLICY) ; dans une liste, refusée"
+        }
+    }
+}

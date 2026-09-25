@@ -516,17 +516,17 @@ try {
     // The engine existed, it simply was not wired to them. Same prelude, same
     // diagnostics filter, same baseline — one engine, two corpora.
     //
-    // ⚠️ **Examples going through the ambient `GeoLeaf.*` namespace are SET ASIDE, and
-    // that is a measurement, not a convenience.** Against the published types,
-    // `GeoLeaf` does not exist: `src/global.d.ts` is **never emitted** into
-    // `dist/types/` (TypeScript does not re-emit an entry `.d.ts`, so
-    // `emitDeclarationOnly` skips it), and no `declare global` ships in the tarball.
-    // Verified by compilation: a consumer writing `GeoLeaf.Core.setTheme("dark")` gets
-    // **TS2304 Cannot find name**. Compiling them here would fail them all on a code
-    // already ignored as an idiom (`Cannot find name`), i.e. scanning while seeing
-    // nothing — failure mode (1) this script's header refuses to have. They are thus
-    // COUNTED and shown, not drowned. The prerequisite is publishing the ambient
-    // namespace, not bending this gate.
+    // ⚠️ **Examples going through the ambient `GeoLeaf.*` namespace were once SET
+    // ASIDE, and that was a measurement, not a convenience.** Against the published
+    // types of the time, `GeoLeaf` did not exist: TypeScript does not re-emit an input
+    // `.d.ts`, so `emitDeclarationOnly` skipped `src/global.d.ts` and no
+    // `declare global` shipped in the tarball — a consumer writing
+    // `GeoLeaf.Core.setTheme("dark")` got **TS2304 Cannot find name**. Compiling them
+    // then would have failed them all on a code already ignored as an idiom, i.e.
+    // scanning while seeing nothing — failure mode (1) this script's header refuses to
+    // have. The prerequisite was publishing the ambient namespace, not bending this
+    // gate: `scripts/emit-ambient-types.cjs` now copies it into `dist/types/` at every
+    // core build, so these examples ARE compiled (see the note inside the loop below).
     for (const srcFile of walkSources()) {
         const relSrc = path.relative(ROOT, srcFile);
         for (const ex of extractTsdocExamples(fs.readFileSync(srcFile, "utf8"))) {

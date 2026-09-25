@@ -161,7 +161,16 @@ test.describe("VN — rendu carte et cycle de style (A.1, A.2, A.3)", () => {
     // removed, nothing to rebuild. **It was green when the manipulation had
     // failed.** Hence assertion no. 1 below: a scenario must assert its
     // manipulation happened before judging its effect.
-    test("A.1/A.3 — la bascule de fond tient et les labels sont reconstruits", async ({ page }) => {
+    //
+    // 🛑 AND EVEN WHEN IT HOLDS, NO STYLE IS RELOADED HERE. `terrain-terrarium`
+    // and `positron` are both RASTER basemaps in `tourism`: the switch rewrites
+    // the basemap source in place, never calls `setStyle`, and never removes a
+    // label layer. Assertion 2 proves the labels STAY — not that they are
+    // rebuilt; this block was once read as the proof of the latter, and was
+    // not. A switch that replaces the style is proven by `e2e/57` (a vector
+    // default basemap at boot) and `e2e/58` (a switch to and from a vector
+    // basemap, labels included).
+    test("A.1/A.3 — la bascule de fond tient et les labels restent", async ({ page }) => {
         await zoomAndExpectLabels(page, ZOOM_IN, true);
 
         const console_ = captureConsole(page);
@@ -177,11 +186,11 @@ test.describe("VN — rendu carte et cycle de style (A.1, A.2, A.3)", () => {
             })
             .toBe(ALT_BASEMAP);
 
-        // 2 — A.1: the labels are rebuilt on the new style.
+        // 2 — A.1: the labels are still there on the new basemap (no style replaced — see above).
         await expect
             .poll(() => labelLayerPresent(page), {
                 timeout: 20000,
-                message: "les labels n'ont pas été reconstruits après le rechargement de style",
+                message: "les labels ont disparu après la bascule de fond",
             })
             .toBe(true);
 

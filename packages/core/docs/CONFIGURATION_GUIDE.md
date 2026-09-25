@@ -1054,10 +1054,21 @@ await GeoLeaf.Theme.setActive("my-custom");
 | `zIndex`             | number  | No       | Render order (higher = drawn on top)                                                                                       |
 | `geometry`           | string  | Yes      | Geometry type: `"point"`, `"polyline"`, `"polygon"`, `"fill-extrusion"`                                                    |
 | `showInLayerManager` | boolean | No       | `false` keeps the layer out of the layer manager; it still loads, follows its theme and keeps its legend (default: `true`) |
+| `searchable`         | object  | No       | `{ fields: string[] }` — makes the layer findable by reference, off-network (see below)                                    |
 | `data.directory`     | string  | No       | Data subdirectory (default: `"data"`)                                                                                      |
 | `data.file`          | string  | Yes      | GeoJSON file (relative to the layer directory)                                                                             |
 | `data.ogcApi`        | object  | No       | OGC API Features source (see below). Replaces `data.file` / `data.directory`.                                              |
 | `styles.directory`   | string  | No       | Styles subdirectory (default: `"styles"`)                                                                                  |
+
+**Findable by reference — `searchable`.** A layer declaring `"searchable": { "fields": ["ref", "name"] }`
+is searched by `GeoLeaf.Layers.search` — and by the map's search box when `modules.geocoding.provider`
+lists `"layers"` — on each feature's id and on the listed properties (bare, or dotted as
+`"properties.ref"`). The search reads what the map holds, so it works off-network for a layer read
+from the device store; a layer never loaded (`active: false`) and a vector-tile layer are not found.
+Accents, case and word order are ignored, with the text filter's own rule. Selecting a result frames
+the feature and selects it (`GeoLeaf.Layers.focus`); a feature without `properties.id` is framed, not
+selected. Since 3.10.0. The key is `searchable`, never `search`: the former `search` block was removed
+from the schema, and a layer carrying it fails validation.
 
 ### `data.ogcApi` — OGC API Features source
 
@@ -1699,6 +1710,13 @@ Address search (geocoding) is no longer part of `@geoleaf/core`: it is provided 
 README (`packages/plugins/geocoding/README.md`).
 
 :::
+
+Since `@geoleaf-plugins/geocoding` 1.1.0, `modules.geocoding.provider` also takes an ordered list, and
+the name `"layers"` searches the features the map holds (see `searchable`, §per-layer config) — with no
+network: `"provider": ["layers", "nominatim"]` lists the map's features before any address, and while
+the browser is offline the address service is not asked at all. An unknown single value still falls
+back on the default service, now with a warning that names it; it will be refused from the plugin's
+next minor version.
 
 ---
 

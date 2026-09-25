@@ -15,13 +15,8 @@
  * Consumers: ../{provider,registry,control}.ts.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import {
-    createProvider,
-    AddokProvider,
-    NominatimProvider,
-    PhotonProvider,
-    CustomProvider,
-} from "../provider.js";
+import { AddokProvider, NominatimProvider, PhotonProvider, CustomProvider } from "../provider.js";
+import { createProvider } from "../provider-registry.js";
 import { mountGeocodingControl } from "../control.js";
 import { GeocodingRegistry } from "../registry.js";
 

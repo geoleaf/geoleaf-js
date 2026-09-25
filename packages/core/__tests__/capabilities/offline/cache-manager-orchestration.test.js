@@ -112,7 +112,12 @@ describe("cacheProfile — le pré-contrôle de quota (déplacé de la façade, 
             available: 9 * 1024 * 1024,
         });
 
-        await expect(CacheManager.cacheProfile("t")).resolves.toEqual({ ok: true });
+        // `preparation` rides along since 25/09/2026: what the enumeration left out, kept in the
+        // manifest for the pre-departure check.
+        await expect(CacheManager.cacheProfile("t")).resolves.toEqual({
+            ok: true,
+            preparation: { zone: null, skippedZooms: [], capped: false },
+        });
         expect(downloaderCacheProfile).toHaveBeenCalledTimes(1);
     });
 
@@ -130,7 +135,12 @@ describe("cacheProfile — le pré-contrôle de quota (déplacé de la façade, 
             percentage: 0,
         });
 
-        await expect(CacheManager.cacheProfile("t")).resolves.toEqual({ ok: true });
+        // `preparation` rides along since 25/09/2026: what the enumeration left out, kept in the
+        // manifest for the pre-departure check.
+        await expect(CacheManager.cacheProfile("t")).resolves.toEqual({
+            ok: true,
+            preparation: { zone: null, skippedZooms: [], capped: false },
+        });
     });
 
     test("le refus libère le verrou de profil — un second essai n'est pas « Already caching »", async () => {

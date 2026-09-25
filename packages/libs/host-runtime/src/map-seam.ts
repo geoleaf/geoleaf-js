@@ -19,7 +19,7 @@
  * plugin copies differed by nothing but that type argument.
  */
 
-import { getGeoLeaf } from "./host.js";
+import { getGeoLeaf, type HostDeclaredStyleIds, type HostMapAdapter } from "./host.js";
 
 /**
  * Returns the raw map instance behind `GeoLeaf.Core.getMap()`, narrowed to `T`, or
@@ -54,4 +54,45 @@ export function warnNoCore(scope: string, fnName: string): boolean {
         return true;
     }
     return false;
+}
+
+/**
+ * Declares, to the GeoLeaf adapter that drives `nativeMap`, engine layers and sources the caller
+ * placed on it directly — so that a basemap switch replacing the style carries them, as it
+ * carries the adapter's own. `null` withdraws the declaration made under `owner`.
+ *
+ * The adapter is FOUND, not assumed: among the host's maps (`Core.listMaps()`), the one whose
+ * engine is `nativeMap` — a plugin may be handed any map, and N maps may coexist. A core without
+ * `listMaps` offers its one map, taken only if it is that engine.
+ *
+ * @param nativeMap - The engine map the caller placed its layers on.
+ * @param owner - A stable key naming the caller, e.g. `"measure"` or `"cog:<layerId>"`.
+ * @param ids - The engine ids to carry, or `null` to withdraw.
+ * @returns `true` when an adapter took the declaration. `false` without a core, when no GeoLeaf
+ *   map drives `nativeMap`, or with a core older than the member (3.10.0) — the layers then do
+ *   not survive a style replacement, as before, and nothing throws.
+ */
+export function declareOwnedStyleIds(
+    nativeMap: unknown,
+    owner: string,
+    ids: HostDeclaredStyleIds | null
+): boolean {
+    const adapter = _adapterDriving(nativeMap);
+    if (typeof adapter?.declareOwnedStyleIds !== "function") return false;
+    adapter.declareOwnedStyleIds(owner, ids);
+    return true;
+}
+
+/** The adapter of the host's map whose engine is `nativeMap`, if any. */
+function _adapterDriving(nativeMap: unknown): HostMapAdapter | undefined {
+    const core = getGeoLeaf()?.Core;
+    if (!core || nativeMap === null || nativeMap === undefined) return undefined;
+    const candidates =
+        typeof core.listMaps === "function"
+            ? core.listMaps().map((id) => core.getMap?.(id))
+            : [core.getMap?.()];
+    return (
+        candidates.find((adapter) => !!adapter && adapter.getNativeMap?.() === nativeMap) ??
+        undefined
+    );
 }

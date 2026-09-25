@@ -361,6 +361,21 @@ export interface LayerDataDiff {
 }
 
 /**
+ * Engine layers and sources placed on the map OUTSIDE the adapter — by a capability or a plugin
+ * that talks to the engine directly — as declared through `IMapAdapter.declareOwnedStyleIds()`,
+ * so that a basemap switch replacing the style carries them.
+ */
+export interface DeclaredStyleIds {
+    /** Layer ids to carry. They keep the order they have in the live style, above the basemap. */
+    readonly layerIds?: readonly string[];
+    /**
+     * Source ids to carry with them. A source a carried layer reads is carried anyway; declaring
+     * it says so outright.
+     */
+    readonly sourceIds?: readonly string[];
+}
+
+/**
  * Handle on a marker previously created through `IMapAdapter.createMarker()`,
  * returned by `IMapAdapter.getMarkerHandle()`.
  *

@@ -130,7 +130,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Baril public de @geoleaf/host-runtime : ré-exporte les 11 symboles partagés — accès hôte, seam de notifications, drag, infobulles, positionnement de menu",
+            "description": "Baril public de @geoleaf/host-runtime : ré-exporte les symboles partagés — accès hôte, seams (notifications, journal, i18n, carte, DOM), interface partagée, surfaces modales, HTTP",
             "confidence": "haute",
             "rationale": "46 LOC composées uniquement d'`export … from` → N4 ne s'active pas. Les 0 importeurs de graph.json sont un artefact de résolution (les 13 plugins l'importent par specifier nu) : X1a écarté. C'est de CE fichier que PSF-01 dérive sa liste — le déplacer casse la gate"
         },

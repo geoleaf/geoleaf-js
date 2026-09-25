@@ -348,3 +348,41 @@ describe("Storage.pullLayer — tâche 4.1, l'attente du moteur est BORNÉE", ()
         expect(report.written).toBe(0);
     });
 });
+
+describe("Storage.resolveOptions — la liste d'un menu déroulant, cache d'abord", () => {
+    test("sans moteur câblé, elle répond null — le menu va chercher lui-même, sans attendre", async () => {
+        Storage.wireModules({});
+        await expect(Storage.resolveOptions("https://lists.example/a.json")).resolves.toBeNull();
+    });
+
+    test("avec le moteur, elle délègue et rend sa réponse", async () => {
+        const LIST = [{ value: "a", label: "A" }];
+        const resolveOptionList = vi.fn().mockResolvedValue(LIST);
+        Storage.wireModules({ ...fakeModules(), options: { resolveOptionList } });
+        await expect(Storage.resolveOptions("https://lists.example/a.json")).resolves.toEqual(LIST);
+        expect(resolveOptionList).toHaveBeenCalledWith("https://lists.example/a.json");
+    });
+
+    test("un moteur qui jette ne jette pas jusqu'au formulaire : null", async () => {
+        const resolveOptionList = vi.fn().mockRejectedValue(new Error("base fermée"));
+        Storage.wireModules({ ...fakeModules(), options: { resolveOptionList } });
+        await expect(Storage.resolveOptions("https://lists.example/a.json")).resolves.toBeNull();
+    });
+});
+
+describe("Storage.preflight — « puis-je partir ? » en une lecture", () => {
+    test("sans moteur câblé, elle répond null — elle ne rassure pas sur ce qu'elle n'a pas lu", async () => {
+        Storage.wireModules({});
+        await expect(Storage.preflight()).resolves.toBeNull();
+    });
+
+    test("avec le moteur, elle rend l'assemblage du moteur", async () => {
+        const report = { verdict: "ready", layers: [] };
+        const buildPreflight = vi.fn().mockResolvedValue(report);
+        Storage.wireModules({
+            ...fakeModules(),
+            report: { buildSyncReport: vi.fn(), buildPreflight },
+        });
+        await expect(Storage.preflight()).resolves.toBe(report);
+    });
+});

@@ -34,6 +34,34 @@ export interface PluginRegisterOptions {
 }
 
 /**
+ * A map adapter as plugins reach it through `GeoLeaf.Core.getMap()` — the members they call.
+ *
+ * Mirrors the core's `IMapAdapter` loosely, like the rest of this file: optional members and a
+ * permissive tail, since an older core may lack a member and a plugin must degrade, not throw.
+ */
+export interface HostMapAdapter {
+    /** The engine map behind the adapter. */
+    getNativeMap?(): unknown;
+    /**
+     * Declares engine layers and sources placed outside the adapter, so a basemap switch
+     * replacing the style carries them (core ≥ 3.10.0). `null` withdraws.
+     */
+    declareOwnedStyleIds?(owner: string, ids: HostDeclaredStyleIds | null): void;
+    [key: string]: unknown;
+}
+
+/**
+ * Engine ids a plugin placed on the map itself, as {@link HostMapAdapter.declareOwnedStyleIds}
+ * takes them.
+ */
+export interface HostDeclaredStyleIds {
+    /** Layer ids; they keep their order in the live style. */
+    readonly layerIds?: readonly string[];
+    /** Source ids carried with them. */
+    readonly sourceIds?: readonly string[];
+}
+
+/**
  * Structural shape of the global `GeoLeaf` namespace, as consumed by plugins.
  *
  * All members are optional (the namespace is assembled incrementally at boot and
@@ -54,7 +82,10 @@ export interface GeoLeafHost {
     };
     /** Core map façade (`GeoLeaf.Core`). */
     Core?: {
-        getMap?(): { getNativeMap?(): unknown; [key: string]: unknown } | undefined;
+        /** A map's adapter by id; without one, the first active map's. */
+        getMap?(mapId?: string): HostMapAdapter | null | undefined;
+        /** Ids of every active map (core ≥ 3.0). */
+        listMaps?(): string[];
         [key: string]: unknown;
     };
     /** Plugin registry / lifecycle façade (`GeoLeaf.plugins`). */
@@ -191,6 +222,18 @@ export interface GeoLeafHost {
         getFeatureCount?(layerId: string): number;
         listLayerIds?(): string[];
         hasLayer?(layerId: string): boolean;
+        /**
+         * Finds features by reference in the `searchable` layers the map holds. The results
+         * are the core's `FeatureMatch` — kept `unknown[]` here, which imports nothing of the
+         * core: the caller narrows with the type the core publishes.
+         */
+        search?(query: string, opts?: { limit?: number; layerIds?: readonly string[] }): unknown[];
+        /** Frames one feature and selects it; `false` when the layer does not hold it. */
+        focus?(layerId: string, id: string | number, opts?: { zoom?: number }): boolean;
+        /** Upserts features into the layer's store, by id — store AND source. */
+        mergeFeatures?(layerId: string, features: readonly unknown[]): void;
+        /** Removes one feature from the layer's store AND source; `true` when one went. */
+        removeFeature?(layerId: string, id: string | number): boolean;
         [key: string]: unknown;
     };
 

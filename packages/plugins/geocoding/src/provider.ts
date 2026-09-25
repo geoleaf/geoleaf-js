@@ -6,7 +6,8 @@
 
 /**
  *
- * Provider interface and built-in implementations (Addok BAN, Nominatim, Photon, custom).
+ * Provider interface and the built-in NETWORK implementations (Addok BAN, Nominatim, Photon,
+ * custom URL). Which of them a search asks is decided in `provider-registry.ts`.
  *
  * All providers normalize their responses into `GeocodingResult[]`.
  * User input is encoded with `encodeURIComponent` before being included in URLs.
@@ -28,6 +29,11 @@ export interface IGeocodingProvider {
      * @returns Normalized result array (empty array on error or no match).
      */
     search(query: string, limit: number): Promise<GeocodingResult[]>;
+    /**
+     * `false` for a provider that never touches the network, which is therefore asked
+     * off-network too. Absent means it needs the network.
+     */
+    readonly network?: boolean;
 }
 
 // ── Addok BAN (data.gouv.fr) ──────────────────────────────────────────────────
@@ -135,33 +141,6 @@ export class CustomProvider implements IGeocodingProvider {
         const separator = this._baseUrl.includes("?") ? "&" : "?";
         const url = `${this._baseUrl}${separator}q=${encodeURIComponent(query)}&limit=${limit}`;
         return _fetchAndParseGeoJSON(url);
-    }
-}
-
-// ── Factory ───────────────────────────────────────────────────────────────────
-
-/**
- * Creates the appropriate provider from a `GeocodingConfig`.
- * Defaults to `AddokProvider` for an unknown or missing provider value.
- * @internal
- */
-export function createProvider(config: GeocodingConfig): IGeocodingProvider {
-    const provider = config.provider ?? "addok";
-
-    switch (provider) {
-        case "addok":
-            return new AddokProvider(config);
-        case "nominatim":
-            return new NominatimProvider(config);
-        case "photon":
-            return new PhotonProvider(config);
-        default:
-            // Custom HTTPS URL — validate scheme before accepting
-            if (typeof provider === "string" && provider.startsWith("https://")) {
-                return new CustomProvider(provider);
-            }
-            // Unknown / unsafe value: fall back to Addok
-            return new AddokProvider(config);
     }
 }
 

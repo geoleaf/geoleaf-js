@@ -37,6 +37,7 @@ import { CacheManager } from "./cache/cache-manager.js";
 import { registerPoiRestore } from "./poi-restore/poi-restore-boot.js";
 import { pullLayer } from "./pull/layer-pull.js";
 import { buildSyncReport } from "./report/sync-report.js";
+import { buildPreflight } from "./report/preflight.js";
 import { readSyncStatus } from "./write/sync-status.js";
 import { applyEdit, canHoldWrites } from "./write/local-edit-api.js";
 import { pushOutbox } from "./write/push-engine.js";
@@ -49,6 +50,7 @@ import {
 import { listConflicts, clearConflicts } from "./write/conflict-store.js";
 import { armOutboxDrain, disarmOutboxDrain, requestDrain } from "./write/outbox-drain-triggers.js";
 import { mountSyncBanner, unmountSyncBanner } from "./ui/sync-banner.js";
+import { resolveOptionList } from "./options/option-lists.js";
 
 /** Storage façade surface this entry writes to (mounted on `GeoLeaf.Storage` at boot). */
 interface StorageFacadeLike {
@@ -60,6 +62,7 @@ interface StorageFacadeLike {
         report?: unknown;
         edit?: unknown;
         ui?: unknown;
+        options?: unknown;
     }): void;
 }
 
@@ -87,7 +90,7 @@ if (_g.GeoLeaf?.Storage) {
         // needed it: the core's own strip and `offline-ui`'s modal, and the second cannot
         // import the first (deep imports of `@geoleaf/core` are bundled as copies, with a
         // `StorageContract` singleton that stays empty).
-        report: { buildSyncReport, readSyncStatus },
+        report: { buildSyncReport, readSyncStatus, buildPreflight },
         // The optimistic write, sole writer of the `outbox`.
         // ⚠️ `mayEdit` is NOT injected here, and that is measured: the permission is
         // read from the PROFILE, not IndexedDB, and `editor` declares `requires: []`
@@ -99,6 +102,9 @@ if (_g.GeoLeaf?.Storage) {
         // the outbox, so it belongs where the outbox does — and it must not enter the
         // boot closure the capability's `loader` exists to keep it out of.
         ui: { mountSyncBanner, unmountSyncBanner },
+        // The option lists of dropdown fields, kept off-network. Deferred like the rest: it
+        // reads and writes IndexedDB, and fetches — neither belongs in the boot closure.
+        options: { resolveOptionList },
         // ⚠️ The three trigger members travel in the same bag as the drain they fire,
         // and for the same reason: they import `push-engine.js`, hence they belong to
         // the DEFERRED chunk. The facade only holds their handles.

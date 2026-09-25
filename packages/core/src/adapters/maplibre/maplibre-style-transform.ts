@@ -28,6 +28,12 @@
  * registry still reported them present. A vector basemap applied at boot is exactly that
  * window: the data layers land while its style downloads.
  *
+ * WHAT is carried is what GeoLeaf DECLARES it owns — the adapter's registry, and what code
+ * outside it declared through `IMapAdapter.declareOwnedStyleIds` (a plugin's own layers) —,
+ * never what an id's shape suggests. A label layer is deliberately NOT declared: its font is
+ * resolved against the outgoing style's glyph server, so the labels capability rebuilds it on
+ * `style.load` instead of letting it travel.
+ *
  * Runtime images added via `map.addImage()` (POI sprite icons) are **not** part
  * of the style spec and are still wiped by `setStyle()`; the adapter re-registers
  * them separately after the swap.
@@ -35,9 +41,12 @@
 
 /** Set of MapLibre source + layer ids that GeoLeaf owns and must preserve. */
 export interface OwnedStyleIds {
-    /** MapLibre layer ids to carry over (GeoJSON sub-layers, POI cluster layers, sentinel). */
+    /**
+     * MapLibre layer ids to carry over (GeoJSON sub-layers, POI cluster layers, sentinel, and the
+     * layers declared by code outside the adapter).
+     */
     readonly layerIds: ReadonlySet<string>;
-    /** MapLibre source ids to carry over (GeoJSON sources, POI cluster sources). */
+    /** MapLibre source ids to carry over (GeoJSON sources, POI cluster sources, declared ones). */
     readonly sourceIds: ReadonlySet<string>;
 }
 
@@ -80,10 +89,11 @@ export type StyleTransform = (
  * basemap injection path re-inserts its layer at the bottom independently, so a
  * vector→raster swap keeps GeoLeaf layers on top as well.
  *
- * Ownership is read through `readOwned` (the adapter's layer registry) rather than
- * inferred from id conventions, so the merge is authoritative. It is read when the
- * callback RUNS, never when it is built: a layer created while a style URL downloads is
- * GeoLeaf's too, and "nothing to preserve" is decided against the real `previous`.
+ * Ownership is read through `readOwned` (the adapter's layer registry, and what code outside
+ * the adapter declared to it) rather than inferred from id conventions, so the merge is
+ * authoritative. It is read when the callback RUNS, never when it is built: a layer created
+ * while a style URL downloads is GeoLeaf's too, and "nothing to preserve" is decided against
+ * the real `previous`.
  * Preserved layers keep their serialized paint/layout (e.g. taxonomy `match` expressions
  * and `visibility`), and GeoJSON sources keep their serialized `data` — hence the
  * rebuild is unnecessary.

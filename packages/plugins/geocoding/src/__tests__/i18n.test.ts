@@ -41,6 +41,7 @@ const REQUESTED_KEYS = [
     "geocoding.control.searchAriaLabel",
     "geocoding.control.submitAriaLabel",
     "geocoding.control.clearAriaLabel",
+    "geocoding.control.noResults",
 ] as const;
 
 const DICTS: Array<[string, Record<string, unknown>]> = [

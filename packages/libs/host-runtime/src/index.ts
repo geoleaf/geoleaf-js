@@ -37,6 +37,8 @@ export {
     ensureGeoLeaf,
     coreConfigGet,
     type GeoLeafHost,
+    type HostDeclaredStyleIds,
+    type HostMapAdapter,
     type PluginRegisterOptions,
 } from "./host.js";
 export { getUINotifications, type UINotificationsSeam } from "./notify-seam.js";
@@ -49,7 +51,7 @@ export {
     type IconOptions,
 } from "./core-utils-seam.js";
 export { downloadBlob } from "./download.js";
-export { getNativeMap, warnNoCore } from "./map-seam.js";
+export { declareOwnedStyleIds, getNativeMap, warnNoCore } from "./map-seam.js";
 export { createEl, applyStyleText } from "./dom-seam.js";
 export { adoptStylesheet } from "./ui/css-adopt.js";
 export { wireDrag } from "./ui/drag.js";

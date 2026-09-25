@@ -5,6 +5,7 @@
  * https://geoleaf.dev
  */
 
+import { declareOwnedStyleIds } from "@geoleaf/host-runtime";
 import type { CogLayerOptions, CogRasterData, MapLike } from "./types.js";
 
 // ─── MapLibre minimal typings ─────────────────────────────────────────────────
@@ -249,7 +250,9 @@ export async function canvasToDataUrl(
 
 /**
  * Injects a COG-rendered image into a MapLibre map as an image source + raster layer.
- * Uses the MapLibre public API directly (no GeoLeaf core internals).
+ * Uses the MapLibre public API directly (no GeoLeaf core internals), then declares the pair to
+ * the GeoLeaf adapter driving that map, if one does, so that a basemap switch replacing the
+ * style carries it. Undeclared, it sat outside the adapter's registry and the switch erased it.
  *
  * @param map - MapLibre Map instance
  * @param layerId - Unique id for the source and layer
@@ -289,13 +292,21 @@ export function injectImageSource(
             "raster-opacity": opts.opacity ?? 1,
         },
     });
+
+    declareOwnedStyleIds(map, _styleOwner(layerId), { layerIds: [layerId], sourceIds: [layerId] });
+}
+
+/** The key a COG layer's engine ids are declared under — one per layer. */
+function _styleOwner(layerId: string): string {
+    return `cog:${layerId}`;
 }
 
 /**
- * Removes the COG image source and raster layer from a MapLibre map.
- * Safe to call even if the layer/source no longer exist.
+ * Removes the COG image source and raster layer from a MapLibre map, and withdraws their
+ * declaration. Safe to call even if the layer/source no longer exist.
  */
 export function removeImageSource(map: MapLike, layerId: string): void {
+    declareOwnedStyleIds(map, _styleOwner(layerId), null);
     try {
         if (map.getLayer(layerId)) {
             map.removeLayer(layerId);

@@ -28,6 +28,7 @@ import { Log } from "../../../utils/log/index.js";
 import { StorageContract } from "../../../kernel/shared/index.js";
 import { coreProfileLayers } from "../config-seam.js";
 import { readPullState, type LayerPullState, type PullStateMap } from "./pull-state.js";
+import { declaresPullSource } from "../cache/pull-declared-layers.js";
 import type { LayerOfflineStatus, LayerSyncReport } from "../../../contracts/sync.contract.js";
 
 /** The part of the layer declaration this module reads. */
@@ -58,7 +59,7 @@ interface ReportStore {
  * absent marker, then the failure, then the unfinished run, and staleness only comes
  * last — on a pull that succeeded AND finished.
  *
- * @param declared - True when the layer carries `offline.enabled`.
+ * @param declared - True when the layer declares a pull source (`offline.source.url`).
  * @param state - The persisted marker, or `undefined` when no pull ever happened.
  * @param maxAgeMs - Expiry declared by the layer, or `undefined`.
  * @param now - Reference instant, injected to stay testable at a frozen clock.
@@ -131,7 +132,10 @@ export async function buildSyncReport(
             return {
                 layerId,
                 status: deriveStatus(
-                    layer.offline?.enabled === true,
+                    // The PULL's predicate, not `offline.enabled`: a layer read from the local
+                    // store with no source has nothing to pull, and was reported
+                    // `declaredNeverPulled` for ever — on both shipped bundles.
+                    declaresPullSource(layer as Record<string, unknown>),
                     state,
                     layer.offline?.maxAgeMs,
                     now

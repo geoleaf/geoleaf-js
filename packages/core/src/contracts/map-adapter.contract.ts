@@ -29,6 +29,7 @@ import type {
     GeoLeafControl,
     GeoLeafMarkerHandle,
     LayerDataDiff,
+    DeclaredStyleIds,
 } from "./map-adapter.types.js";
 import type { VectorTileLayerSpec, VectorTileStyleInput } from "./vector-tiles.contract.js";
 
@@ -502,9 +503,10 @@ export interface IMapAdapter {
 
     /**
      * Builds a `transformStyle` callback (`setStyle` option, since MapLibre v5) that
-     * preserves the adapter-owned sources and layers across a basemap style swap,
-     * so they survive natively rather than being torn down and re-injected, and
-     * carries the incoming basemap's declared credit onto its sources.
+     * preserves the adapter-owned sources and layers across a basemap style swap — with
+     * those declared to it through {@link IMapAdapter.declareOwnedStyleIds} —, so they
+     * survive natively rather than being torn down and re-injected, and carries the
+     * incoming basemap's declared credit onto its sources.
      *
      * 🛑 What the adapter owns must be read when the engine RUNS the callback, not when it
      * is built: for a style given by URL, that is once the style has downloaded, and the
@@ -518,6 +520,37 @@ export interface IMapAdapter {
      * @param options - `attribution`: the incoming basemap's declared credit.
      */
     buildStyleChangeTransform?(options?: { attribution?: string }): unknown;
+
+    /**
+     * Declares engine layers and sources placed on the map OUTSIDE this adapter — a plugin's
+     * own, drawn straight on the engine — so that a basemap switch replacing the style carries
+     * them into the incoming one, as it carries the adapter's own.
+     *
+     * Undeclared, such a layer is erased by the switch: the transform claims what is DECLARED,
+     * never what an id's shape suggests.
+     *
+     * Declarations are keyed by `owner`: a second call under the same key replaces the first,
+     * and `null` withdraws it. They are read when the switch RUNS, so a declaration made while
+     * a style downloads counts; an id no longer in the style by then is skipped, which makes a
+     * declaration that outlives its layers harmless. They die with the map, on `destroy()`.
+     *
+     * ⚠️ Only what does not depend on the basemap belongs here. A label layer resolves its font
+     * against the style's glyph server: carried as-is into another style, it would ask the new
+     * server for a font it may not serve. The labels capability rebuilds its layers on the new
+     * style instead.
+     *
+     * Optional, like {@link IMapAdapter.buildStyleChangeTransform}: an adapter without it
+     * carries nothing it did not create. Call it as `adapter.declareOwnedStyleIds?.(…)`.
+     *
+     * @param owner - A stable key naming the declarer, e.g. `"measure"` or `"cog:<layerId>"`.
+     * @param ids - The engine ids to carry, or `null` to withdraw the declaration.
+     * @example
+     * // A plugin placed its own source and line layer on the engine behind `adapter`.
+     * adapter.declareOwnedStyleIds?.("my-plugin", { layerIds: ["my-line"], sourceIds: ["my-src"] });
+     * // Once it removes them:
+     * adapter.declareOwnedStyleIds?.("my-plugin", null);
+     */
+    declareOwnedStyleIds?(owner: string, ids: DeclaredStyleIds | null): void;
 
     /**
      * Re-registers runtime images (e.g. POI sprite icons) wiped by

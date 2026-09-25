@@ -117,6 +117,7 @@ import {
     type CasingConfig,
 } from "./maplibre-style-converter.js";
 import { applyPendingBadgePaint } from "./maplibre-sync-badge.js";
+import { applyCircleSelectionPaint, applyLineSelectionPaint } from "./maplibre-selection-paint.js";
 import { applyTaxonomyMarkerPaint, resolveIconSize } from "./maplibre-taxonomy-paint.js";
 import { registerHatchPattern } from "./maplibre-hatch-patterns.js";
 import type { GeoJSONStyleRule } from "../../kernel/geojson/geojson-types.js";
@@ -432,9 +433,13 @@ function _addLineSubLayers(ctx: SubLayerCtx): SubLayerType[] {
         created.push("casing");
     }
 
-    const linePaint = options?.styleRules?.length
-        ? styleRulesToPaint(options.styleRules, flat, "line")
-        : toLinePaint(flat);
+    const linePaint = (
+        options?.styleRules?.length
+            ? styleRulesToPaint(options.styleRules, flat, "line")
+            : toLinePaint(flat)
+    ) as Record<string, unknown>;
+    // The `selected` feature-state, set by `GeoLeaf.Layers.focus` (maplibre-selection-paint.ts).
+    applyLineSelectionPaint(linePaint);
     map.addLayer(
         {
             id: toSubLayerId(id, "line"),
@@ -489,6 +494,9 @@ function _addPointSubLayers(ctx: SubLayerCtx): SubLayerType[] {
     //    whatever step 1 left as its fallback. Swapping these two would overwrite
     //    the badge. Visually neutral for features with no `_syncStatus` flag.
     applyPendingBadgePaint(circlePaint);
+    // 3. The selection halo wraps the badge in turn: the user's current gesture outranks
+    //    it while it lasts, and the badge comes back as its fallback.
+    applyCircleSelectionPaint(circlePaint);
 
     map.addLayer(
         {

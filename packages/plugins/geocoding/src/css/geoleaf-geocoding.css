@@ -238,6 +238,22 @@
     color: var(--gl-color-text-main, #1e293b);
 }
 
+/* A search that found nothing says so — an empty list reads as a bug. */
+.gl-geocoding-no-results {
+    margin: 0.35rem 0 0 0;
+    padding: 0.55rem 0.85rem;
+    font-size: 0.8125rem;
+    color: var(--gl-color-text-muted, #64748b);
+    background: var(--gl-color-bg-surface, #fff);
+    border: 1px solid var(--gl-color-border-soft, #e2e8f0);
+    border-radius: 10px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+.gl-geocoding-no-results[hidden] {
+    display: none;
+}
+
 /* ── Loading indicator ───────────────────────────────────────────────────── */
 /* Inline SVG spinner injected as background-image on the input to avoid
    adding extra DOM nodes. */

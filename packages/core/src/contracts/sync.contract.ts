@@ -692,7 +692,9 @@ export interface DataOriginDeclaration {
  *
  * `declaredNeverPulled` is the case that has no observable today: a layer marked for
  * offline use that was never actually fetched looks exactly like one that was, right up
- * to the moment the network drops.
+ * to the moment the network drops. "Marked" means it declares a pull source
+ * (`offline.source.url`); a layer read from the local store with no source has nothing to
+ * pull, and is `notDeclared`.
  */
 export type LayerOfflineStatus =
     | "notDeclared"
@@ -748,6 +750,34 @@ export interface SyncStatus {
     readonly lastSyncAt: number | null;
 }
 
+/** One zoom level an offline preparation left out, and why it was left. */
+interface TileZoomSkip {
+    /** What was being prepared — a layer or basemap id, else its tile URL template. */
+    source: string;
+    /** The zoom level left out. */
+    zoom: number;
+    /** How many tiles it would have taken — above the per-zoom cap, which is why it went. */
+    tiles: number;
+}
+
+/**
+ * What an offline preparation asked for, and what it left out — kept in the cache manifest so
+ * the device can say it later, off-network. Before it, a skipped zoom or a stopped enumeration
+ * was only LOGGED, and a console on a device in the field is read by nobody.
+ */
+export interface TilePreparationTrace {
+    /** The download zone the user chose for vector basemaps, or `null` when none was chosen. */
+    zone: {
+        bounds: { north: number; south: number; east: number; west: number };
+        minZoom: number;
+        maxZoom: number;
+    } | null;
+    /** Zoom levels left out because each held too many tiles. */
+    skippedZooms: TileZoomSkip[];
+    /** `true` when the enumeration stopped at the total tile cap — the rest was never listed. */
+    capped: boolean;
+}
+
 /**
  * Quota regime the origin is running under.
  *
@@ -769,6 +799,50 @@ export interface SyncStatus {
  * inferred.
  */
 export type StoragePersistenceRegime = "persistent" | "bestEffort" | "unsupported";
+
+/**
+ * "Can I leave?" — the facts a device must be read for before going off-network, in one read.
+ *
+ * Each fact already had its door (`getSyncReport`, `getSyncStatus`, `getStats`, the cache
+ * manifest); one had none — whether the browser keeps this origin's data, which the PWA
+ * requested at boot and only logged. `verdict` says what they mean together:
+ *
+ * - `notReady` — a layer that declares something to pull was never pulled, or its last pull
+ *   failed: its entities are not on the device.
+ * - `degraded` — the device can leave, but something will be missing or may go: an unfinished
+ *   or stale pull, entries set aside, an origin the browser may evict (`bestEffort` or
+ *   `unsupported`), zooms left out of a basemap, resources that failed to download.
+ * - `ready` — none of the above.
+ *
+ * ⚠️ **The session is not in it.** Whether the write token will still be valid in the field is
+ * the connector's knowledge, not the core's, and in `getToken` mode nobody but the host knows.
+ */
+export interface PreflightReport {
+    /** When the check was made, epoch ms. */
+    readonly at: number;
+    readonly verdict: "ready" | "degraded" | "notReady";
+    /** Whether the browser keeps this origin's data — read, never assumed. */
+    readonly persistence: StoragePersistenceRegime;
+    /** Storage used and available, or `null` when the browser does not say. */
+    readonly quota: {
+        readonly used: number;
+        readonly quota: number;
+        readonly percentage: number;
+    } | null;
+    /** One report per layer that declares something to pull — see {@link LayerSyncReport}. */
+    readonly layers: readonly LayerSyncReport[];
+    /** The write queue as a whole — see {@link SyncStatus}. */
+    readonly queue: SyncStatus;
+    /**
+     * The last offline preparation, or `null` when the device was never prepared: when it ran,
+     * how many resources failed, and what the tile enumeration asked for and left out.
+     */
+    readonly preparation: {
+        readonly cachedAt: number | null;
+        readonly failedResources: number;
+        readonly tiles: TilePreparationTrace | null;
+    } | null;
+}
 
 /* -------------------------------------------------------------------------- */
 /* Replay handlers — the seam both sides read                                  */

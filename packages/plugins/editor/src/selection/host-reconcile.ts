@@ -12,8 +12,19 @@
  * source data is only rewritten on save/delete, where a rewrite is unavoidable.
  * Features are matched on `properties.id` (the core convention — no `promoteId`
  * is set) with a fallback to the top-level `feature.id`.
+ *
+ * 🛑 SAVE AND DELETE WRITE THE LAYER STORE (`GeoLeaf.Layers`), not the map source alone.
+ * The store is what the layer search, `getFeatureById`, the filter's re-feed and the table
+ * read. Rewriting the source directly — this module's only path until 3.10.0 — left the
+ * store behind: the search recentred on a moved feature's OLD position and found a deleted
+ * one again. And it rewrote the source from what the source held, which under an active
+ * filter is a SUBSET, frozen as the layer's data by the save. The store's unit mutations
+ * feed the source themselves. The direct path remains for a layer the store does not hold
+ * (vector tiles) and for a core without the seam.
  * https://geoleaf.dev
  */
+
+import { getGeoLeaf } from "@geoleaf/host-runtime";
 
 /** Map-facade subset the reconciler needs (from `GeoLeaf.Core.getMap()`). */
 export interface HostMapFacade {
@@ -91,6 +102,12 @@ export function commitHostGeometry(
     geometry: unknown
 ): void {
     if (!featureId || !layerId) return;
+    const store = _storeHolding(layerId, featureId);
+    if (store) {
+        store.layers.mergeFeatures?.(layerId, [{ ...store.feature, geometry }]);
+        showHostFeature(deps, layerId);
+        return;
+    }
     const fc = _readSource(deps.nativeMap, layerId);
     if (!fc) {
         _warnNoSource(layerId);
@@ -114,6 +131,12 @@ export function removeHostFeature(
     featureId: string
 ): void {
     if (!featureId || !layerId) return;
+    const store = _storeHolding(layerId, featureId);
+    if (store) {
+        store.layers.removeFeature?.(layerId, featureId);
+        showHostFeature(deps, layerId);
+        return;
+    }
     const fc = _readSource(deps.nativeMap, layerId);
     if (!fc) {
         _warnNoSource(layerId);
@@ -136,6 +159,22 @@ export function resetHostReconcile(): void {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** The layer store, and the stored feature — when the store holds it and can be written. */
+function _storeHolding(
+    layerId: string,
+    featureId: string
+): { layers: NonNullable<ReturnType<typeof _layersSeam>>; feature: GeoFeature } | null {
+    const layers = _layersSeam();
+    if (!layers?.mergeFeatures || !layers.removeFeature || !layers.hasLayer?.(layerId)) return null;
+    const feature = layers.getFeatureById?.(layerId, featureId) as GeoFeature | null | undefined;
+    return feature ? { layers, feature } : null;
+}
+
+/** `GeoLeaf.Layers`, read at call time — the core may boot after this module loads. */
+function _layersSeam() {
+    return getGeoLeaf()?.Layers;
+}
 
 /** MapLibre filter excluding the feature whose `id` property equals featureId. */
 function _excludeFilter(featureId: string): unknown {

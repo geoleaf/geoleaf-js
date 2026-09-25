@@ -417,6 +417,8 @@ export interface LayerConfig {
     layerManagerId?: string;
     /** `false` keeps the layer out of the layer manager, and out of it only. Default true. */
     showInLayerManager?: boolean;
+    /** Makes the layer findable by `GeoLeaf.Layers.search`, on its id and these fields. */
+    searchable?: { fields: string[] };
     /** Whether the layer is visible on startup. Default true. */
     visible?: boolean;
     /** Active style ID applied to this layer. */

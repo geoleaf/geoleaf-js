@@ -133,6 +133,22 @@ const langStorageFr = {
     "storage.sync.warn.outro":
         "sur le serveur. Les données locales sont prioritaires et écraseront celles du serveur.",
     "storage.sync.loadError": "Erreur lors du chargement",
+    "storage.preflight.title": "Puis-je partir ?",
+    "storage.preflight.verdict.ready": "Prêt à partir",
+    "storage.preflight.verdict.degraded": "Départ possible — voir ci-dessous",
+    "storage.preflight.verdict.notReady": "Pas prêt : des données manquent sur l'appareil",
+    "storage.preflight.persistence.persistent": "Stockage persistant accordé par le navigateur",
+    "storage.preflight.persistence.bestEffort":
+        "Stockage non garanti : le navigateur peut effacer les données",
+    "storage.preflight.persistence.unsupported": "Persistance du stockage inconnue",
+    "storage.preflight.layer.declaredNeverPulled": "jamais téléchargée",
+    "storage.preflight.layer.pullFailed": "téléchargement en échec",
+    "storage.preflight.layer.pulledPartial": "téléchargement incomplet",
+    "storage.preflight.layer.pulledStale": "données anciennes",
+    "storage.preflight.layer.pulled": "sur l'appareil",
+    "storage.preflight.tiles.skipped": "Zooms non préparés : {0}",
+    "storage.preflight.tiles.capped": "Préparation arrêtée au plafond de tuiles",
+    "storage.preflight.failed": "{0} ressource(s) non téléchargée(s)",
 } satisfies Record<string, string>;
 
 export default langStorageFr;

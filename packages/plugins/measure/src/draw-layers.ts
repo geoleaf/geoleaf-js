@@ -6,6 +6,7 @@
  * All source/layer IDs are prefixed with "gl-measure-" to avoid collisions.
  * https://geoleaf.dev
  */
+import { declareOwnedStyleIds } from "@geoleaf/host-runtime";
 import { withClosingVertex } from "./compute.js";
 import { _getNativeMap } from "./internal.js";
 import type { MeasureMap } from "./types.js";
@@ -26,6 +27,15 @@ const LYR_POLY_LINE = "gl-measure-polygons-line";
 const LYR_VERTICES = "gl-measure-vertices-layer";
 const LYR_LABELS = "gl-measure-labels-layer";
 const LYR_PREVIEW = "gl-measure-preview-layer";
+
+/** Every source this module places, in creation order. */
+const SOURCES = [SRC_LINES, SRC_POLYGONS, SRC_VERTICES, SRC_LABELS, SRC_PREVIEW];
+
+/** Every layer this module places, in creation (hence paint) order. */
+const LAYERS = [LYR_POLY_FILL, LYR_POLY_LINE, LYR_LINES, LYR_PREVIEW, LYR_VERTICES, LYR_LABELS];
+
+/** The key this plugin declares its engine ids under. */
+const STYLE_OWNER = "measure";
 
 // ---------------------------------------------------------------------------
 // Module state
@@ -99,17 +109,16 @@ function _addLayer(map: MeasureMap, spec: Record<string, unknown>): void {
 // ---------------------------------------------------------------------------
 
 /**
- * Creates all measure sources and layers on the map.
+ * Creates all measure sources and layers on the map, and declares them to the GeoLeaf adapter
+ * driving it, so that a basemap switch replacing the map's style carries them — and every
+ * finished measure in them. Undeclared, they sat outside the adapter's registry and the switch
+ * erased them.
  * Idempotent: safe to call multiple times.
  */
 export function initLayers(map: MeasureMap): void {
     _map = map;
 
-    _addSource(map, SRC_LINES);
-    _addSource(map, SRC_POLYGONS);
-    _addSource(map, SRC_VERTICES);
-    _addSource(map, SRC_LABELS);
-    _addSource(map, SRC_PREVIEW);
+    for (const id of SOURCES) _addSource(map, id);
 
     _addLayer(map, {
         id: LYR_POLY_FILL,
@@ -174,6 +183,8 @@ export function initLayers(map: MeasureMap): void {
             "text-halo-width": 2,
         },
     });
+
+    declareOwnedStyleIds(map, STYLE_OWNER, { layerIds: LAYERS, sourceIds: SOURCES });
 }
 
 /** Updates finished line features in the lines source. */
@@ -234,9 +245,7 @@ export function clearPreview(): void {
 
 /** Empties all measure sources (finished geometries + preview). */
 export function clearAll(): void {
-    for (const src of [SRC_LINES, SRC_POLYGONS, SRC_VERTICES, SRC_LABELS, SRC_PREVIEW]) {
-        _setData(src, _emptyFC());
-    }
+    for (const src of SOURCES) _setData(src, _emptyFC());
 }
 
 /** Sets the map cursor style. */

@@ -10,6 +10,7 @@
  * @version 3.0.0
  */
 
+import type { TilePreparationTrace } from "../../../contracts/sync.contract.js";
 import { Log } from "../../../utils/log/index.js";
 import { fetchBounded } from "../../../utils/general/fetch-bounded.js";
 import { layerDataPath } from "../../../utils/general/layer-data-path.js";
@@ -71,6 +72,13 @@ interface ProfileLike {
     icons?: { spriteUrl?: string };
     Files?: Record<string, unknown>;
     bundleFile?: string;
+}
+
+/** The zone a preparation trace records — the vector download zone, or `null`. */
+function _traceZone(zone: ResolverZone | undefined): TilePreparationTrace["zone"] {
+    return zone
+        ? { bounds: { ...zone.bounds }, minZoom: zone.cacheMinZoom, maxZoom: zone.cacheMaxZoom }
+        : null;
 }
 
 /**
@@ -145,7 +153,8 @@ const ResourceEnumerator = {
     async enumerateAll(
         profile: ProfileLike,
         profileId: string,
-        selection?: LayerSelection | null
+        selection?: LayerSelection | null,
+        trace?: TilePreparationTrace
     ): Promise<CacheResource[]> {
         const resources: CacheResource[] = [];
         const profilesBasePath = coreConfigGet("data.profilesBasePath", "../profiles") as string;
@@ -162,15 +171,25 @@ const ResourceEnumerator = {
             includeTiles: (selection as LayerSelection & { includeTiles?: boolean })?.includeTiles,
         });
 
+        // The zone the user asked for, kept with what the preparation leaves out.
+        if (trace) trace.zone = _traceZone(selection?.vectorZone);
+
         // 1. Mandatory resources (config + sprites)
         this._addConfigResources(resources, profile, profileId, profilesBasePath);
         this._addSpriteResources(resources, profile);
 
         // 2. Selected layers
-        await this._addLayerResources(resources, profile, profileId, profilesBasePath, selection);
+        await this._addLayerResources(
+            resources,
+            profile,
+            profileId,
+            profilesBasePath,
+            selection,
+            trace
+        );
 
         // 3. Selected offline basemaps
-        await this._addBasemapResources(resources, profileId, selection);
+        await this._addBasemapResources(resources, profileId, selection, trace);
 
         Log.info(`[ResourceEnumerator] Enumerated ${resources.length} resources`);
         return resources;
@@ -277,7 +296,8 @@ const ResourceEnumerator = {
         profile: ProfileLike,
         profileId: string,
         basePath: string,
-        selection: LayerSelection | null
+        selection: LayerSelection | null,
+        trace?: TilePreparationTrace
     ) {
         if (!profile.layers || !Array.isArray(profile.layers)) return;
 
@@ -351,7 +371,7 @@ const ResourceEnumerator = {
             // Add tiles if tiled layer — only those of an origin that allows the preparation
             if (layer.type === "tile" && _tilesRequested(selection)) {
                 const tiles = _keepPrefetchable(
-                    await this._enumerateTiles(layer, profileId),
+                    await this._enumerateTiles(layer, profileId, trace),
                     `layer ${layer.id}`
                 );
                 Log.info(`[ResourceEnumerator] Layer ${layer.id}: ${tiles.length} tiles`);
@@ -420,6 +440,7 @@ const ResourceEnumerator = {
                     type?: string;
                 };
                 const dataPath = layerDataPath(layerConfig);
+                this._addOptionListResources(resources, layerConfig, layerIdPart);
 
                 if (dataPath && layer.configFile) {
                     const configDir = layer.configFile.substring(
@@ -548,6 +569,8 @@ const ResourceEnumerator = {
         basePath: string,
         layerIdPart: { layerId?: string }
     ): void {
+        // Before the early return below: a template without a data file may still declare lists.
+        this._addOptionListResources(resources, layer.inlineConfig, layerIdPart);
         const dataPath = layerDataPath(layer.inlineConfig);
         if (!dataPath || !layer.id) {
             Log.debug(
@@ -574,13 +597,46 @@ const ResourceEnumerator = {
     },
 
     /**
+     * Pushes the option lists a layer's fields declare by URL (`fetchOptions`), typed
+     * `optionList` — `CacheManager.cacheProfile` routes them to `options/option-lists.ts`,
+     * which keeps them where the cache budget does not evict.
+     *
+     * 🛑 **Called from BOTH branches**, for the reason `_addStyleResources` is. And it reads
+     * BOTH keys: a field's own `options.fetchOptions`, and `edit.options.fetchOptions`, which
+     * the editor's projection substitutes for the field's bag.
+     *
+     * @param resources - List under construction, mutated.
+     * @param layerConfig - The layer's configuration, raw.
+     * @param layerIdPart - `{layerId}` object part, or empty.
+     * @private
+     */
+    _addOptionListResources(
+        resources: CacheResource[],
+        layerConfig: unknown,
+        layerIdPart: { layerId?: string }
+    ): void {
+        const fields = (layerConfig as { attributes?: { fields?: unknown } } | null | undefined)
+            ?.attributes?.fields;
+        if (!Array.isArray(fields)) return;
+        type Bag = { fetchOptions?: unknown } | undefined;
+        for (const field of fields as Array<{ options?: Bag; edit?: { options?: Bag } }>) {
+            for (const url of [field?.options?.fetchOptions, field?.edit?.options?.fetchOptions]) {
+                if (typeof url === "string" && url.length > 0) {
+                    resources.push({ url, type: "optionList", priority: 2, ...layerIdPart });
+                }
+            }
+        }
+    },
+
+    /**
      * Adds resources for selected offline basemaps
      * @private
      */
     async _addBasemapResources(
         resources: CacheResource[],
         profileId: string,
-        selection: LayerSelection | null
+        selection: LayerSelection | null,
+        trace?: TilePreparationTrace
     ) {
         if (!_tilesRequested(selection)) return;
 
@@ -619,8 +675,8 @@ const ResourceEnumerator = {
             }
             const tiles = _keepPrefetchable(
                 isVector
-                    ? await this._addVectorBasemapResources(basemap, selection)
-                    : await this._enumerateTiles(basemap, profileId),
+                    ? await this._addVectorBasemapResources(basemap, selection, trace)
+                    : await this._enumerateTiles(basemap, profileId, trace),
                 `basemap ${basemap.id}`
             );
 
@@ -637,7 +693,8 @@ const ResourceEnumerator = {
      */
     async _addVectorBasemapResources(
         basemap: BasemapConfig,
-        selection: LayerSelection | null
+        selection: LayerSelection | null,
+        trace?: TilePreparationTrace
     ): Promise<CacheResource[]> {
         if (!basemap.style) {
             Log.warn(`[ResourceEnumerator] Vector basemap ${basemap.id} has no style URL`);
@@ -651,7 +708,7 @@ const ResourceEnumerator = {
             );
         }
 
-        return (await StyleResolver.enumerate(basemap.style, zone)) as CacheResource[];
+        return (await StyleResolver.enumerate(basemap.style, zone, trace)) as CacheResource[];
     },
 
     /**
@@ -679,12 +736,14 @@ const ResourceEnumerator = {
             url?: string;
             [key: string]: unknown;
         },
-        profileId: string
+        profileId: string,
+        trace?: TilePreparationTrace
     ): Promise<CacheResource[]> {
         try {
             return (await CacheCalculator.enumerateTiles(
                 layerOrBasemap as Parameters<typeof CacheCalculator.enumerateTiles>[0],
-                profileId
+                profileId,
+                trace
             )) as CacheResource[];
         } catch (error) {
             Log.error(

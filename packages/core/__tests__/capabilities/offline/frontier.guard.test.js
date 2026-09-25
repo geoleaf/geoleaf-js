@@ -39,9 +39,20 @@ const OFFLINE = join(SRC, "capabilities", "offline");
 // `ui/` added 05/09/2026 (R7, the sync banner). The list above is exactly what this
 // file's own comment demands of a new directory: declared, or the guard stays GREEN by
 // covering one directory fewer — which has already happened twice (`pull/`, `report/`).
-const ENGINE_DIRS = ["core", "db", "cache", "poi-restore", "pull", "report", "write", "ui"].map(
-    (d) => join(OFFLINE, d)
-);
+// `options/` added 25/09/2026 (the option lists kept off-network) — and this time
+// the guard said so itself: it turned red on `options/option-lists.ts → ../db/indexeddb.js`
+// before the directory was declared.
+const ENGINE_DIRS = [
+    "core",
+    "db",
+    "cache",
+    "poi-restore",
+    "pull",
+    "report",
+    "write",
+    "ui",
+    "options",
+].map((d) => join(OFFLINE, d));
 const ENGINE_ENTRY = join(OFFLINE, "offline-engine-entry.ts");
 
 /** True when `abs` is a heavy-engine module (or its composition root). */

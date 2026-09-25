@@ -41,7 +41,7 @@ import { getGeoLeaf } from "@geoleaf/host-runtime";
 // `type`-only, through the published subpath with no `import` condition — erased at build,
 // exactly like `core/sync-seam.ts` does for `SyncHandler`. Re-declaring the shape here is
 // what this whole file exists to stop: the four diverging copies of the toolbar seam.
-import type { SyncStatus } from "@geoleaf/core/contracts/sync.contract.js";
+import type { PreflightReport, SyncStatus } from "@geoleaf/core/contracts/sync.contract.js";
 
 /** The core namespace, or `undefined` before boot. */
 function _gl(): Record<string, unknown> | undefined {
@@ -172,6 +172,11 @@ export interface StorageContractShape {
      * picked its own set of states. The core owns the set; this package asks.
      */
     getSyncStatus(): Promise<SyncStatus>;
+    /**
+     * "Can I leave?" — the core's pre-departure check, in one read (core ≥ 3.10.0). The
+     * verdict is the core's: this package shows it, it never re-judges it.
+     */
+    preflight(): Promise<PreflightReport | null>;
     readonly DB: StorageContractDB;
     readonly CacheManager: StorageContractCacheManager;
     readonly Cache: StorageContractCache;
@@ -221,6 +226,12 @@ export const StorageContract = {
                   quarantined: 0,
                   lastSyncAt: null,
               });
+    },
+    preflight(): Promise<PreflightReport | null> {
+        const fn = _storage()?.["preflight"] as (() => Promise<PreflightReport | null>) | undefined;
+        // An older core has no check to give: `null`, and the block stays hidden rather than
+        // inventing a verdict.
+        return fn ? fn.call(_storage()) : Promise.resolve(null);
     },
     whenReady(): Promise<void> {
         const fn = _storage()?.["whenReady"] as (() => Promise<void>) | undefined;

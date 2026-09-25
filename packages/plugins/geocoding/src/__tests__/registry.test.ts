@@ -3,7 +3,7 @@
  *
  * Ported from the core suite (`__tests__/geocoding/geocoding-registry.test.js`).
  * Plugin adaptations:
- *  - mocked modules are `../provider.js` and `../control.js`;
+ *  - mocked modules are `../provider-registry.js` and `../control.js`;
  *  - config is read via `GeoLeaf.Config.get("modules.geocoding", …)`
  *    (the core read `getActiveProfile().geocodingConfig`) — see `setConfig`;
  *  - `mountGeocodingControl` returns a handle object `{ destroy, reveal }`,
@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({
     mountControl: vi.fn(() => ({ destroy: vi.fn(), reveal: vi.fn() })),
 }));
 
-vi.mock("../provider.js", () => ({
+vi.mock("../provider-registry.js", () => ({
     createProvider: vi.fn(() => mocks.provider),
 }));
 vi.mock("../control.js", () => ({

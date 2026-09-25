@@ -36,12 +36,15 @@ import { GeoJSONCore, applyLayerDiff } from "./core.js";
 import { loadLayerDefinition } from "./loader/profile.js";
 import type { GeoJSONFeature } from "./geojson-types.js";
 import { readFeaturePropId } from "./geojson-filter.js";
+import { searchLayers } from "./layer-search.js";
+import { focusFeature } from "./layer-focus.js";
 import type { LayerDataDiff } from "../../contracts/map-adapter.contract.js";
 import type {
     CreatedLayer,
     LayerDataApi,
     LayerDefinition,
     LayerFeatureState,
+    LayerFocusOptions,
     LayerStyleInfo,
     VisibilitySource,
 } from "../../contracts/layer-data.contract.js";
@@ -384,7 +387,13 @@ function patchFeatureImpl(
     // Bake into properties so the flag survives a source rebuild.
     target.properties = { ...(target.properties ?? {}), ...patch };
     // Silent by default (state only); rebuild + emit only when requested.
-    if (!opts?.rerender) return;
+    if (!opts?.rerender) {
+        // 🛑 The one writer that reaches neither `setLayerCollection` nor `applyLayerDiff`:
+        // the search index would keep the properties as they were (`layer-search.ts`).
+        const entry = GeoJSONShared.getLayerById(layerId);
+        if (entry) entry._searchIndex = undefined;
+        return;
+    }
     const targetId = diffId(target);
     if (targetId == null) {
         writeBase(layerId, features);
@@ -463,6 +472,13 @@ export function buildLayersPublicApi(): LayerDataApi {
 
         hasLayer(layerId: string): boolean {
             return GeoJSONShared.state.layers.has(layerId);
+        },
+
+        search: searchLayers,
+
+        focus(layerId: string, id: string | number, opts?: LayerFocusOptions): boolean {
+            const found = rawFeatures(layerId).find((f) => matchId(f, id));
+            return found ? focusFeature(layerId, found, opts) : false;
         },
 
         // ── visibility reads ──

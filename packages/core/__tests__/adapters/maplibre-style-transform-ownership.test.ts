@@ -182,3 +182,110 @@ describe("transformation de style — ce que GeoLeaf possède se lit quand MapLi
         expect(out.sources["gl-src-early"]).toBeDefined();
     });
 });
+
+/**
+ * A live style holding, on top of the basemap, what code OUTSIDE the adapter placed on the engine:
+ * a plugin's source and two layers reading it, and a layer nobody declared.
+ */
+function liveStyleWithForeign(): StyleLike {
+    return {
+        version: 8,
+        sources: {
+            "gl-measure-lines": { type: "geojson", data: POINTS },
+            "plugin-unread": { type: "geojson", data: POINTS },
+        },
+        layers: [
+            { id: "old-basemap", type: "background" },
+            { id: "gl-measure-lines-layer", type: "line", source: "gl-measure-lines" },
+            { id: "gl-measure-vertices-layer", type: "circle", source: "gl-measure-lines" },
+            { id: "host-own", type: "background" },
+        ],
+    };
+}
+
+const MEASURE_IDS = {
+    layerIds: ["gl-measure-lines-layer", "gl-measure-vertices-layer"],
+    sourceIds: ["gl-measure-lines"],
+};
+
+describe("transformation de style — ce que le code HORS de l'adaptateur a déclaré", () => {
+    it("🔴 les couches déclarées et leurs sources sont portées, dans leur ordre, au-dessus du fond entrant", () => {
+        const adapter = new MaplibreAdapter();
+        adapter.declareOwnedStyleIds("measure", MEASURE_IDS);
+        const transform = asTransform(adapter.buildStyleChangeTransform());
+        const live = liveStyleWithForeign();
+
+        const out = transform(live, incomingStyle());
+
+        expect(out.layers.map((l) => l.id)).toEqual([
+            "water",
+            "gl-measure-lines-layer",
+            "gl-measure-vertices-layer",
+        ]);
+        expect(out.sources["gl-measure-lines"]).toEqual(live.sources["gl-measure-lines"]);
+        // Declared, never deduced: a layer nobody declared is not GeoLeaf's to carry.
+        expect(Object.keys(out.sources)).not.toContain("plugin-unread");
+    });
+
+    it("🔴 une déclaration faite PENDANT le téléchargement du style est lue à son arrivée", () => {
+        const adapter = new MaplibreAdapter();
+        const transform = asTransform(adapter.buildStyleChangeTransform());
+        // The plugin declares after the switch began — the transform reads when it RUNS.
+        adapter.declareOwnedStyleIds("measure", MEASURE_IDS);
+
+        const out = transform(liveStyleWithForeign(), incomingStyle());
+
+        expect(out.layers.map((l) => l.id)).toContain("gl-measure-lines-layer");
+        expect(out.sources["gl-measure-lines"]).toBeDefined();
+    });
+
+    it("🔴 redéclarer sous la même clé remplace les ids, sans les cumuler", () => {
+        const adapter = new MaplibreAdapter();
+        adapter.declareOwnedStyleIds("measure", MEASURE_IDS);
+        adapter.declareOwnedStyleIds("measure", { layerIds: ["gl-measure-vertices-layer"] });
+        const transform = asTransform(adapter.buildStyleChangeTransform());
+
+        const out = transform(liveStyleWithForeign(), incomingStyle());
+
+        expect(out.layers.map((l) => l.id)).toEqual(["water", "gl-measure-vertices-layer"]);
+    });
+
+    it("🔴 `null` retire la déclaration : ses ids ne sont plus portés", () => {
+        const adapter = new MaplibreAdapter();
+        adapter.declareOwnedStyleIds("measure", MEASURE_IDS);
+        adapter.declareOwnedStyleIds("cog:e2e", { layerIds: ["host-own"] });
+        adapter.declareOwnedStyleIds("measure", null);
+        const transform = asTransform(adapter.buildStyleChangeTransform());
+
+        const out = transform(liveStyleWithForeign(), incomingStyle());
+
+        // The other declarer is untouched: withdrawing is per key.
+        expect(out.layers.map((l) => l.id)).toEqual(["water", "host-own"]);
+        expect(out.sources["gl-measure-lines"]).toBeUndefined();
+    });
+
+    it("🔴 un id déclaré qui n'est plus dans le style au moment de la bascule est ignoré", () => {
+        const adapter = new MaplibreAdapter();
+        adapter.declareOwnedStyleIds("cog:gone", { layerIds: ["gone"], sourceIds: ["gone"] });
+        adapter.declareOwnedStyleIds("measure", MEASURE_IDS);
+        const transform = asTransform(adapter.buildStyleChangeTransform());
+
+        const out = transform(liveStyleWithForeign(), incomingStyle());
+
+        expect(out.layers.map((l) => l.id)).not.toContain("gone");
+        expect(Object.keys(out.sources)).not.toContain("gone");
+    });
+
+    it("🔴 destroy() oublie les déclarations de la carte détruite", () => {
+        const adapter = new MaplibreAdapter();
+        adapter.init({ container: document.createElement("div") } as never);
+        adapter.declareOwnedStyleIds("measure", MEASURE_IDS);
+        adapter.destroy();
+        adapter.init({ container: document.createElement("div") } as never);
+        const transform = asTransform(adapter.buildStyleChangeTransform());
+
+        const out = transform(liveStyleWithForeign(), incomingStyle());
+
+        expect(out.layers.map((l) => l.id)).toEqual(["water"]);
+    });
+});

@@ -150,7 +150,7 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `attributes.fields[].edit.options.confirmKey` | string | — | — | — | `action` only — i18n key of the confirmation text. Takes precedence over `confirm`. |
 | `attributes.fields[].edit.options.currencies` | array | — | — | — | — |
 | `attributes.fields[].edit.options.emptyLabel` | string | — | — | — | — |
-| `attributes.fields[].edit.options.fetchOptions` | string | — | — | — | — |
+| `attributes.fields[].edit.options.fetchOptions` | string | — | — | — | URL of a JSON array `[{ value, label }]` — the choices of a `dropdown`, loaded instead of `options`. Kept on the device for off-network use: by the offline preparation, and by any form opened online; read from the device first, refreshed behind the answer while online. An `options` list declared beside it is the fallback when the list cannot load. |
 | `attributes.fields[].edit.options.firstDay` | string | — | — | "mon" \| "tue" \| "wed" \| "thu" \| "fri" \| "sat" \| "sun" | — |
 | `attributes.fields[].edit.options.format` | string | — | — | "integer" \| "decimal" | — |
 | `attributes.fields[].edit.options.halfStars` | boolean | — | — | — | — |
@@ -198,7 +198,7 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `attributes.fields[].options.confirmKey` | string | — | — | — | `action` only — i18n key of the confirmation text. Takes precedence over `confirm`. |
 | `attributes.fields[].options.currencies` | array | — | — | — | — |
 | `attributes.fields[].options.emptyLabel` | string | — | — | — | — |
-| `attributes.fields[].options.fetchOptions` | string | — | — | — | — |
+| `attributes.fields[].options.fetchOptions` | string | — | — | — | URL of a JSON array `[{ value, label }]` — the choices of a `dropdown`, loaded instead of `options`. Kept on the device for off-network use: by the offline preparation, and by any form opened online; read from the device first, refreshed behind the answer while online. An `options` list declared beside it is the fallback when the list cannot load. |
 | `attributes.fields[].options.firstDay` | string | — | — | "mon" \| "tue" \| "wed" \| "thu" \| "fri" \| "sat" \| "sun" | — |
 | `attributes.fields[].options.format` | string | — | — | "integer" \| "decimal" | — |
 | `attributes.fields[].options.halfStars` | boolean | — | — | — | — |
@@ -322,6 +322,8 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `offline.source.versionProperty` | string | — | — | — | Feature property carrying the per-entity freshness marker recorded as VersionMarker (kind `timestamp`), which task 4.6 compares. Defaults to `updated_at`. Declarable because it varies by backend — the sync contract names `updated_at` and `write_date` among the forms it has seen. |
 | `plugin` | string | — | — | — | Optional plugin tag associated with this layer. |
 | `realtimeLayer` | object | — | — | — | Per-layer realtime plugin block (realtime-layer/websocket) — plugin-owned, kept permissive. Architectural question (per-layer block vs modules.<id>) tracked in B7. |
+| `searchable` | object | — | — | — | Makes the layer findable by `GeoLeaf.Layers.search` — and by the geocoding search box when its `provider` lists `layers` — on the feature's id and on `fields`. Searches what the map holds, so it works off-network for a layer read from the device store; a layer never loaded, or a vector-tile layer, is not found. Accents, case and word order are ignored. Absent: the layer is never searched. |
+| `searchable.fields` | array | oui | — | — | Property names searched besides the id, bare (`ref`) or dotted (`properties.ref`). The first non-empty one is what a result displays. |
 | `showIconsOnMap` | boolean | — | — | — | Show custom icons on the map (requires taxonomy icon config). |
 | `showInLayerManager` | boolean | — | `true` | — | `false` keeps the layer out of the layer manager, and out of it only: the layer still loads, follows its theme's visibility, keeps its legend and stays drivable through `GeoLeaf.GeoJSON` / `GeoLeaf.Layers`. For a layer that must not be offered as a toggle (a snapping support, a computation layer). A section left with no listed layer is not created — unless `layerManagerConfig.sections` declares it, in which case its title shows with no rows. |
 | `styles` | object | — | — | — | Style references for this layer. |

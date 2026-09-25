@@ -24,6 +24,7 @@ import type {
     LabelsApi,
     LabelsGeoJSONCore,
     LabelsMapHandle,
+    LabelsNativeMap,
     LabelStyleLike,
     LabelUserConfig,
     LayerLabelState,
@@ -34,23 +35,28 @@ import type {
 const ScaleUtils = { isScaleInRange: _isScaleInRange, calculateMapScale: _calculateMapScale };
 
 /**
- * Module state. The listener slots are not bookkeeping: this module's `zoomend`
- * subscription is process-wide and `map.on` hands back nothing to unsubscribe
- * with. Keeping the map handle AND the exact handler is the only way `destroy()`
- * can release it, and resetting `zoomListenerAttached` there is what lets a later
- * `init()` re-arm. `zoomMap` is also the identity `_ensureZoomListener` compares
- * against, so an adapter swapped in place re-arms on the new map (B.40).
+ * Module state. The listener slots are not bookkeeping: this module's `zoomend` and
+ * `style.load` subscriptions are process-wide and `map.on` hands back nothing to
+ * unsubscribe with. Keeping the map handle AND the exact handler is the only way
+ * `destroy()` can release them, and resetting `zoomListenerAttached` there is what lets a
+ * later `init()` re-arm. `zoomMap` and `styleMap` are also the identities the arming
+ * compares against, so a map re-created without this module's `destroy()` —
+ * `Core.destroy()` then `Core.init()` — re-arms on the new one.
  */
 const _state: {
     layers: Map<string, LayerLabelState>;
     zoomListenerAttached: boolean;
     zoomMap: LabelsMapHandle | null;
     zoomHandler: (() => void) | null;
+    styleMap: LabelsNativeMap | null;
+    styleHandler: (() => void) | null;
 } = {
     layers: new Map(),
     zoomListenerAttached: false,
     zoomMap: null,
     zoomHandler: null,
+    styleMap: null,
+    styleHandler: null,
 };
 
 /**
@@ -72,6 +78,49 @@ function _detachZoomListener(): void {
     _state.zoomMap = null;
     _state.zoomHandler = null;
     _state.zoomListenerAttached = false;
+}
+
+/**
+ * Releases the `style.load` subscription, tolerating an engine without `off()` like
+ * {@link _detachZoomListener} does.
+ */
+function _detachStyleListener(): void {
+    const native = _state.styleMap;
+    const handler = _state.styleHandler;
+    if (native && handler && typeof native.off === "function") {
+        native.off("style.load", handler);
+    }
+    _state.styleMap = null;
+    _state.styleHandler = null;
+}
+
+/**
+ * Arms the `style.load` subscription on the CURRENT map's engine, once.
+ *
+ * 🛑 A basemap switch that REPLACES the style erases every label layer. The layer is not the
+ * adapter's — the renderer adds it to the engine directly, on its layer's source —, so the
+ * switch carries the source into the incoming style and the diff removes the label layer,
+ * while `tooltips` still reads "shown" and no zoom would ever rebuild it. The handler rebuilds
+ * each labelled layer through `refreshLabels`, which also re-reads the font from the incoming
+ * style: a label carried as-is would keep a font the new glyph server may not serve.
+ *
+ * ⚠️ The native event, and NOT `geoleaf:basemap:change`: that one is not emitted for a silent
+ * switch, and the boot's own activation of the default basemap is silent — labels built while a
+ * vector default style downloads would be erased at its arrival with nothing to rebuild them.
+ *
+ * @param self - The module, whose `refreshLabels` the handler calls.
+ */
+function _ensureStyleListener(self: LabelsApi): void {
+    const native = _getMap()?.getNativeMap?.() ?? null;
+    if (_state.styleMap === native) return;
+    if (_state.styleMap) _detachStyleListener();
+    if (!native || typeof native.on !== "function") return;
+    const handler = () => {
+        _state.layers.forEach((_, layerId) => self.refreshLabels(layerId));
+    };
+    native.on("style.load", handler);
+    _state.styleMap = native;
+    _state.styleHandler = handler;
 }
 
 /**
@@ -173,6 +222,7 @@ async function _doEnableLabels(
     const shouldShowLabels = _computeShouldShow(effectiveShowImmediately, layerData);
     if (shouldShowLabels) await self._createLabelsForLayer(layerId);
     self._ensureZoomListener();
+    _ensureStyleListener(self);
     if (Log) Log.debug("[Labels] Label config prepared for", layerId);
 }
 
@@ -319,7 +369,8 @@ const Labels: LabelsApi = {
      * instead — `geojson/loader/single-layer.ts` → `Labels.initializeLayerLabels()` —
      * and visibility / style changes go through `refreshLabels()` / `enableLabels()`.
      * The `zoomend` subscription is armed lazily by `_ensureZoomListener()`, once a
-     * layer actually has labels.
+     * layer actually has labels — and the engine's `style.load` with it, which rebuilds the
+     * label layers a basemap switch erases.
      */
     init(_options: Record<string, unknown> = {}): void {
         if (Log) Log.debug("[Labels] Labels module initialized");
@@ -468,10 +519,12 @@ const Labels: LabelsApi = {
     /**
      * Arms the `zoomend` subscription on the CURRENT map adapter.
      *
-     * The early return compares the adapter, not just the flag: a basemap switch or a
-     * theme change swaps the adapter **in place**, with no `destroy()` in between. On
-     * the flag alone the subscription stayed on the discarded map and labels silently
-     * stopped reacting to zoom for the rest of the session.
+     * The early return compares the adapter, not just the flag: a map destroyed and
+     * re-created — `Core.destroy()` then `Core.init()` — hands back a NEW adapter, with no
+     * `destroy()` of this module in between. On the flag alone the subscription stayed on
+     * the discarded map and labels silently stopped reacting to zoom for the rest of the
+     * session. (A basemap switch does not replace the adapter: it replaces the engine's
+     * style, which `_ensureStyleListener` answers.)
      */
     _ensureZoomListener(): void {
         const map = Core && Core.getMap ? (Core.getMap() as LabelsMapHandle | null) : null;
@@ -522,6 +575,7 @@ const Labels: LabelsApi = {
         _state.layers.forEach((_, layerId) => this.disableLabels(layerId));
         _state.layers.clear();
         _detachZoomListener();
+        _detachStyleListener();
     },
 };
 

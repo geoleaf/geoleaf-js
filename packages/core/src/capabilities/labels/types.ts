@@ -244,6 +244,14 @@ export interface LabelsNativeMap {
     getLayer: (id: string) => unknown;
     addLayer: (layer: Record<string, unknown>) => void;
     removeLayer: (id: string) => void;
+    /**
+     * Engine event subscription — `style.load`, the signal that a basemap switch replaced the
+     * style. Optional, like `off`: test doubles and partial engines may omit them, and the
+     * capability then simply does not subscribe.
+     */
+    on?: (event: string, handler: () => void) => unknown;
+    /** Symmetric detach for {@link LabelsNativeMap.on}. */
+    off?: (event: string, handler: () => void) => unknown;
     [key: string]: unknown;
 }
 
@@ -257,9 +265,9 @@ export interface LabelsApi {
     /**
      * Lifecycle entry point of the module. It only logs.
      *
-     * It subscribes to nothing: the `zoomend` listener is attached later, once a layer's labels
-     * are prepared, and the loader drives labels by direct calls. The labels capability calls it
-     * when it mounts; an integrator has no need to.
+     * It subscribes to nothing: the `zoomend` and `style.load` listeners are attached later, once
+     * a layer's labels are prepared, and the loader drives labels by direct calls. The labels
+     * capability calls it when it mounts; an integrator has no need to.
      *
      * @param options - Ignored.
      *
@@ -405,7 +413,9 @@ export interface LabelsApi {
     /**
      * Rebuilds a layer's labels against its current data.
      *
-     * Needed after the underlying features changed — enabling alone does not re-read them.
+     * Needed after the underlying features changed — enabling alone does not re-read them. It
+     * also re-reads the font the map's style serves: the capability calls it for every labelled
+     * layer when a basemap switch replaces the style.
      *
      * @param layerId - Layer to rebuild.
      *

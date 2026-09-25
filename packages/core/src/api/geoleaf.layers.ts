@@ -21,6 +21,8 @@
  * |---|---|
  * | `getFeatures(id)` / `getFeatureById` / `getFeatureCount` | Read a layer's features |
  * | `listLayerIds()` / `hasLayer(id)` | Enumerate / test layers |
+ * | `search(query, opts?)` | Find features by reference in the `searchable` layers the map holds, off-network |
+ * | `focus(layerId, id, opts?)` | Frame one feature and select it — one selection per map |
  * | `isVisible` / `isEnabled` | Visibility: what is painted, vs what is switched on |
  * | `isUserOverridden` / `getVisibilitySource` | Visibility: whether a user decided, and which authority did |
  * | `setVisibility` | Visibility write, naming its source (required) |

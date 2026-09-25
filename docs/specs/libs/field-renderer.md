@@ -4,8 +4,8 @@ title: field-renderer — les composants de champ, la modale et le pont de formu
 lib_id: field-renderer
 package: "@geoleaf/field-renderer"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 7c38efb2c
-date: 12 septembre 2026
+verifie_contre: bab04a7f8
+date: 25 septembre 2026
 ---
 
 # field-renderer — les composants de champ, la modale et le pont de formulaire
@@ -99,6 +99,7 @@ hôtes qui en poseraient un chacun se donneraient un résultat dépendant de l'o
 | **⚠️ Retirés**       | `createFocusTrap` et `confirmDialog` ne sont **plus exportés** — déplacés dans `@geoleaf/host-runtime` le 06/08/2026, **sans ré-export de compatibilité** ; la rupture est assumée et motivée dans `src/index.ts` |
 | **Pont**             | `createFieldRendererBridge(schema, values, ctx)`                                                                                                                                                                  |
 | **Téléversement**    | `setImageUploadStrategy(fn \| null)` · `setImagePreviewResolver(fn \| null)` + les types `ImageUploadStrategy`, `ImagePreviewResolver` — 5.1-d, puis le passage par jeton du 04/09/2026                           |
+| **Listes de choix**  | `setOptionsResolver(fn \| null)` + les types `OptionsResolver`, `DropdownOption` — 1.3.0 : l'hôte répond au `fetchOptions` d'un menu déroulant avant le réseau                                                    |
 | **Libellés**         | Catalogue **interne** `src/lang/` — 43 clés `form.*` × 6 locales (5.1c, **D6**). Aucun export : c'est `_getLabel` qui le sert                                                                                     |
 | **Aides DOM**        | `_el(tag, className?)` · `_getLabel(key)`                                                                                                                                                                         |
 | **Sécurité**         | `escapeHtml(...)` · `validateUrl(...)` · `safeUrl(...)`                                                                                                                                                           |
@@ -112,6 +113,21 @@ registre.
 ⚠️ **Ce qui est délibérément NON exporté** : l'application de texte CSS, et la **classe**
 d'implémentation du registre — seule l'instance singleton l'est. Un consommateur ne peut donc pas
 construire un second registre, ce qui est le point : voir §Décisions.
+
+✅ **Un export neuf en 1.3.0 : `setOptionsResolver`**. Un menu déroulant qui charge
+ses choix par URL (`fetchOptions`) les refaisait venir du réseau à chaque rendu, sans copie que
+l'appareil garde : hors réseau, il n'offrait que son invite, et la valeur enregistrée ne
+correspondait à aucune option, donc disparaissait. La bibliothèque ne peut pas garder une liste —
+c'est **D5** : persister tirerait un moteur de stockage dans un moteur de rendu. Elle demande donc
+à l'hôte **d'abord** ; l'hôte qui n'a rien répond `null`, et le composant va chercher comme avant.
+Dans le dépôt, l'hôte est `editor`, qui branche le cœur (`GeoLeaf.Storage.resolveOptions`). Trois
+changements de COMPORTEMENT accompagnent l'export, tous additifs : la valeur que l'entité porte
+reste offerte et sélectionnée quelle que soit la liste reçue ; une liste statique déclarée à côté
+de `fetchOptions` sert de repli quand la liste ne se charge pas, sans message d'erreur ; et un champ
+en lecture seule le reste après un échec (le chemin d'échec gardait le `<select>` de
+chargement et le réactivait ; tout résultat reconstruit désormais le `<select>`, qui honore
+`ctx.readOnly`). ⚠️ Le `fetch` de repli reste dans `formRender`, sous sa clé de la baseline
+`naked-fetch`.
 
 ✅ **Un export neuf le 04/09/2026 : `setImagePreviewResolver`** — la contrepartie de la stratégie de
 téléversement. Un hôte qui répond à un envoi par un **jeton opaque**, parce que le fichier n'est
@@ -226,7 +242,7 @@ correspond bien : les tailles tactiles y sont mesurées, pas supposées.
 
 | Décision                                                                        | Pourquoi                                                                                                                                                                                                                                                                                                                   | Alternative écartée                                              |
 | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| **Zéro dépendance d'exécution**                                                 | La bibliothèque est regroupée dans **trois** paquets consommateurs. La moindre dépendance y serait payée trois fois, ou dédupliquée par chance                                                                                                                                                                             | Un socle de composants tiers                                     |
+| **Zéro dépendance d'exécution**                                                 | La bibliothèque est regroupée dans chaque paquet qui la consomme — un seul aujourd'hui, `editor` (§Dépendances). Une dépendance y serait payée autant de fois qu'elle a de consommateurs, ou dédupliquée par chance                                                                                                        | Un socle de composants tiers                                     |
 | **DOM pur, aucun cadre applicatif**                                             | Imposer React ou Vue à un plugin cartographique aurait fixé un choix d'architecture pour tous les intégrateurs                                                                                                                                                                                                             | Un cadre applicatif                                              |
 | **Un registre singleton, et sa classe non exportée**                            | Deux registres, c'est deux catalogues qui divergent — et un composant introuvable selon l'ordre d'import. Ne pas publier la classe rend le cas impossible                                                                                                                                                                  | Exporter la classe                                               |
 | **Les validateurs sont purs et synchrones**                                     | Un validateur asynchrone impose une machine d'état à tout appelant. Le synchrone se compose sans cadre                                                                                                                                                                                                                     | Des validateurs asynchrones                                      |
@@ -238,6 +254,7 @@ correspond bien : les tailles tactiles y sont mesurées, pas supposées.
 | **La compression est ici, le stockage hors ligne ne l'est pas** (**D5**, 5.1-d) | Compresser est **pur** — un fichier entre, un fichier sort, aucune dépendance neuve. Persister hors ligne tire IndexedDB et le kernel offline : une bibliothèque de rendu de champs qui saurait persister serait une inversion de dépendance                                                                               | Absorber toute la chaîne image d'`addpoi`                        |
 | **`maxSizeMb` est la taille VISÉE, pas le plafond de refus** (5.1-d)            | Une photo de téléphone pèse 4 à 12 Mo ; le plafond par défaut de 5 Mo refusait donc la saisie la plus ordinaire, **sans recours**. Le refus porte désormais sur `maxSizeMb × PRECOMPRESSION_FACTOR`, et ce qui est entre les deux est compressé. ⚠️ **Le changement n'ôte rien** : tout fichier accepté avant l'est encore | Garder le refus sec, et laisser l'intégrateur monter `maxSizeMb` |
 | **La garde canvas est SYNCHRONE**                                               | `addpoi` ne la posait qu'à l'intérieur d'`img.onload`, qui ne se déclenche jamais sans canvas : la promesse ne se réglait ni en succès ni en échec, et le téléversement restait **pendu sans message**. La vérifier avant toute E/S rend le cas exprimable                                                                 | Vérifier dans `onload`, comme la source                          |
+| **La liste d'un menu se demande d'abord à l'hôte** (1.3.0)                      | Garder une liste hors réseau exige un stockage — l'hôte l'a, la bibliothèque non (**D5**). Un seam d'injection, comme pour le téléversement, garde la bibliothèque sans dépendance et laisse l'hôte décider où et combien de temps une liste est gardée                                                                    | Un cache en mémoire dans le composant, perdu au rechargement     |
 
 ---
 

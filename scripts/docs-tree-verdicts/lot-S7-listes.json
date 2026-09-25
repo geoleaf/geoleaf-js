@@ -1,0 +1,53 @@
+{
+    "schemaVersion": 2,
+    "lot": "S7-listes",
+    "scope": [
+        "packages/core/src/capabilities/offline/options/option-lists.ts",
+        "packages/plugins/editor/src/persistence/option-lists.ts",
+        "packages/core/src/capabilities/offline/options"
+    ],
+    "verdicts": {
+        "packages/core/src/capabilities/offline/options/option-lists.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Les listes de choix des menus déroulants déclarées par URL (`fetchOptions`), gardées sur l'appareil : cache d'abord, rafraîchies derrière la réponse en ligne",
+            "confidence": "haute",
+            "rationale": "Répertoire de moteur à part entière (déclaré dans `frontier.guard.test.js`, qui a rougi avant la déclaration) : il lit et écrit IndexedDB et va chercher, donc il vit dans le chunk différé. Range dans `preferences` et non `layers`, que le budget de cache évince les plus anciens d'abord — tenu par `option-lists.test.ts`, vu rougir sur une écriture détournée vers `cacheLayer`"
+        },
+        "packages/plugins/editor/src/persistence/option-lists.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Branche les menus déroulants des formulaires de l'éditeur sur les listes que le core garde (`setOptionsResolver` → `GeoLeaf.Storage.resolveOptions`)",
+            "confidence": "haute",
+            "rationale": "La bibliothèque de champs ne peut pas garder une liste (décision D5 de sa fiche) ; le core le peut ; l'éditeur rend les formulaires, donc c'est lui qui joint les deux — patron de `initImageUpload` dans `image-store.ts`. Tenu par `src/__tests__/option-lists.test.ts`"
+        },
+        "packages/core/src/capabilities/offline/options": {
+            "kind": "dir",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Les listes de choix des menus déroulants gardées hors réseau — un répertoire du moteur, chargé en différé",
+            "confidence": "haute",
+            "rationale": "Répertoire de moteur déclaré dans `ENGINE_DIRS` de `frontier.guard.test.js`, qui a rougi sur `options/option-lists.ts → ../db/indexeddb.js` avant la déclaration : il ne doit jamais entrer dans la clôture statique du boot. Séparé de `cache/` : la préparation (cache) n'est qu'un de ses deux écrivains, l'autre étant toute résolution en ligne par `Storage.resolveOptions`"
+        }
+    }
+}

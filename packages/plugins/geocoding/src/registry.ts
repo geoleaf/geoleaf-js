@@ -11,8 +11,9 @@
  * Lifecycle:
  * 1. `GeocodingRegistry.init()` is called by `entry.ts` at plugin load time.
  * 2. It subscribes to `geoleaf:map:ready` to mount the DOM control when the map is available.
- * 3. When a user selects a result, the map adapter's `flyTo()` or `fitBounds()` is called,
- *    and a `geoleaf:geocoding:result` CustomEvent is dispatched on `document`.
+ * 3. When a user selects a result, a feature found by the `layers` provider is focused
+ *    (`GeoLeaf.Layers.focus`), anything else flown to or fitted by the map adapter, and a
+ *    `geoleaf:geocoding:result` CustomEvent is dispatched on `document`.
  *
  * Config is read lazily from `modules.geocoding.*` via {@link getPluginConfig}
  * so profile hot-reload is supported without re-initialising the registry
@@ -20,7 +21,8 @@
  */
 
 import type { GeocodingConfig, GeocodingResult } from "./types.js";
-import { createProvider } from "./provider.js";
+import type { IGeocodingProvider } from "./provider.js";
+import { createProvider } from "./provider-registry.js";
 import { mountGeocodingControl, type GeocodingControlHandle } from "./control.js";
 import { getPluginConfig } from "./config.js";
 
@@ -43,6 +45,7 @@ interface GeocodingGlobalHost {
     GeoLeaf?: {
         Core?: { getMap?(): GeocodingMapAdapter | null };
         getAllMaps?(): GeocodingMapAdapter[];
+        Layers?: { focus?(layerId: string, id: string | number): boolean };
     };
 }
 
@@ -91,10 +94,18 @@ function _dispatchResult(result: GeocodingResult): void {
 
 /**
  * Handles a user-selected result: navigates the map and dispatches the event.
- * Uses `fitBounds` when the result has a bounding box, `flyTo` otherwise.
+ * A feature found by the `layers` provider is FOCUSED — framed and selected, through
+ * `GeoLeaf.Layers.focus`. Anything else uses `fitBounds` when the result has a bounding box,
+ * `flyTo` otherwise; so does a feature the core could not focus (no id, or an older core).
  * @internal
  */
 function _onSelect(result: GeocodingResult, flyToZoom: number): void {
+    if (result.layerId && result.featureId) {
+        if (_g.GeoLeaf?.Layers?.focus?.(result.layerId, result.featureId) === true) {
+            _dispatchResult(result);
+            return;
+        }
+    }
     // GeoLeaf.getMap(id) requires an explicit id — use Core.getMap() instead.
     const adapter = _g.GeoLeaf?.Core?.getMap?.() ?? _g.GeoLeaf?.getAllMaps?.()[0] ?? null;
     if (adapter) {
@@ -133,7 +144,11 @@ function _onMapReady(): void {
     // Tear down any previously mounted control (e.g. after config reload)
     _control?.destroy();
 
-    const provider = createProvider(config);
+    // Resolved at EACH search, not once here: a provider registered after the map is ready,
+    // or a profile reloaded since, must be the one asked.
+    const provider: IGeocodingProvider = {
+        search: (query, limit) => createProvider(_getConfig()).search(query, limit),
+    };
     const flyToZoom = config.flyToZoom ?? 15;
 
     _control = mountGeocodingControl(container, provider, config, (result) => {
@@ -183,10 +198,10 @@ export const GeocodingRegistry = {
     },
 
     /**
-     * Programmatically performs an address search without requiring the UI control.
+     * Programmatically searches the configured provider(s) without requiring the UI control.
      * Useful for scripts or integration tests.
      *
-     * @param query - Address or place name to search.
+     * @param query - Text to search: an address, a place name, a feature reference.
      * @param limit - Maximum number of results. Defaults to `resultLimit` or 5.
      */
     async search(query: string, limit?: number): Promise<GeocodingResult[]> {
@@ -198,8 +213,8 @@ export const GeocodingRegistry = {
     },
 
     /**
-     * Programmatically selects a result — flies the map to the location
-     * and dispatches `geoleaf:geocoding:result`.
+     * Programmatically selects a result — focuses a feature found by `layers`, flies to or
+     * fits anything else — and dispatches `geoleaf:geocoding:result`.
      *
      * @param result - A `GeocodingResult` obtained from `.search()`.
      */

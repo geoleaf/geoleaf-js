@@ -25,6 +25,7 @@ import {
     setPaintAt,
 } from "./maplibre-primitives.js";
 import { applyPendingBadgePaint } from "./maplibre-sync-badge.js";
+import { applyCircleSelectionPaint, applyLineSelectionPaint } from "./maplibre-selection-paint.js";
 import { applyTaxonomyMarkerPaint } from "./maplibre-taxonomy-paint.js";
 import {
     registerHatchPattern,
@@ -70,7 +71,7 @@ function _buildFillPaint(
 }
 
 /**
- * Builds the paint for a circle sub-layer, with the same two decorations
+ * Builds the paint for a circle sub-layer, with the same three decorations
  * `_addPointSubLayers` applies at creation time — and in the same order.
  *
  * This is the RE-STYLE path (a theme switch, `setLayerStyle`), and it rebuilds the
@@ -80,7 +81,8 @@ function _buildFillPaint(
  * time the user changed theme.
  *
  * Order is not negotiable: taxonomy replaces the DEFAULT branch, then the sync badge
- * WRAPS the result. Swap them and the badge is overwritten.
+ * WRAPS the result, then the selection halo wraps the badge. Swap the first two and the
+ * badge is overwritten.
  */
 function _buildCirclePaint(
     flat: Record<string, unknown>,
@@ -92,6 +94,7 @@ function _buildCirclePaint(
         : (toCirclePaint(flat) as Record<string, unknown>);
     applyTaxonomyMarkerPaint(paint, id);
     applyPendingBadgePaint(paint);
+    applyCircleSelectionPaint(paint);
     return paint;
 }
 
@@ -121,9 +124,11 @@ export function applyLayerStyle(
                 paint = _buildFillPaint(map, flat, rules, id);
                 break;
             case "line":
-                paint = _hasRules(rules)
-                    ? styleRulesToPaint(rules, flat, "line")
-                    : toLinePaint(flat);
+                paint = (
+                    _hasRules(rules) ? styleRulesToPaint(rules, flat, "line") : toLinePaint(flat)
+                ) as Record<string, unknown>;
+                // Rebuilt from scratch here: without this, a theme switch drops the selection.
+                applyLineSelectionPaint(paint);
                 break;
             case "casing":
                 paint = _buildCasingPaint(flat);

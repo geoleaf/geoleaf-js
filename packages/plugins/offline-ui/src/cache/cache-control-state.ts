@@ -74,6 +74,12 @@ export async function updateStatus(self: CacheControlState): Promise<void> {
     } catch (error) {
         if (Log) Log.error(`[CacheControl] Failed to update status: ${(error as Error).message}`);
     }
+
+    // The pre-departure check is re-read HERE, and not on `geoleaf:cache:completed`: that event
+    // leaves the downloader when the resources are in, before `cacheProfile` pulls the entities
+    // and writes their state — a layer just downloaded read as never downloaded. This update
+    // runs once `cacheProfile` has resolved, and after every other change of the cache.
+    await self._refreshPreflight?.();
 }
 
 // ─── Progress ────────────────────────────────────────────────────────

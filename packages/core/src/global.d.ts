@@ -1098,9 +1098,10 @@ declare global {
             /**
              * Per-layer synchronisation report.
              *
-             * Makes `declaredNeverPulled` observable: a layer declared offline but never
-             * pulled is otherwise indistinguishable from a pulled one, until the instant
-             * the network drops. Does not throw — with no engine wired, returns `[]`.
+             * Makes `declaredNeverPulled` observable: a layer declaring a pull source
+             * (`offline.source`) but never pulled is otherwise indistinguishable from a pulled
+             * one, until the instant the network drops. Does not throw — with no engine wired,
+             * returns `[]`.
              */
             getSyncReport?(): Promise<
                 ReadonlyArray<import("./contracts/sync.contract.js").LayerSyncReport>
@@ -1115,6 +1116,16 @@ declare global {
              * answers zeros, which is what "there is no queue here" looks like.
              */
             getSyncStatus?(): Promise<import("./contracts/sync.contract.js").SyncStatus>;
+            /**
+             * The choices of a dropdown declared by URL — held on the device first, fetched
+             * and kept otherwise. `null` when nothing can answer: the caller fetches itself.
+             */
+            resolveOptions?(url: string): Promise<Array<{ value: string; label: string }> | null>;
+            /**
+             * "Can I leave?" — persistence regime, quota, per-layer report, queue and last
+             * preparation in one read, with a verdict. `null` when the engine is not wired.
+             */
+            preflight?(): Promise<import("./contracts/sync.contract.js").PreflightReport | null>;
             [key: string]: unknown;
         };
         /**

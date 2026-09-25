@@ -8,13 +8,8 @@
  * only the import path changed (`built-in/geocoding/geocoding-provider` → `../provider`).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import {
-    createProvider,
-    AddokProvider,
-    NominatimProvider,
-    PhotonProvider,
-    CustomProvider,
-} from "../provider.js";
+import { AddokProvider, NominatimProvider, PhotonProvider, CustomProvider } from "../provider.js";
+import { createProvider } from "../provider-registry.js";
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 

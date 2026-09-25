@@ -4,6 +4,7 @@
  * https://geoleaf.dev
  */
 import type { GeoJSONStoreFeatures, GeoJSONStoreGeometries, TerraDraw } from "terra-draw";
+import { declareOwnedStyleIds } from "@geoleaf/host-runtime";
 import type { EditorConfig, EditorTool, EditorMap } from "../types.js";
 import {
     getModeNameForTool,
@@ -53,9 +54,13 @@ export interface TerraDrawAdapterCallbacks {
  * eager bundle, which is why the mode-name constants live in a separate, runtime-free module.
  */
 export interface TerraDrawAdapterInstance {
-    /** Starts Terra Draw event listeners. Must be called after map is ready. */
+    /**
+     * Starts Terra Draw event listeners, and declares the engine layers it placed to the GeoLeaf
+     * adapter driving the map — so a basemap switch replacing the style carries them. Must be
+     * called after map is ready.
+     */
     start(): void;
-    /** Stops Terra Draw (removes event listeners, clears store). */
+    /** Stops Terra Draw (removes event listeners, clears store) and withdraws the declaration. */
     stop(): void;
     /** Arms the given drawing mode, or returns to 'static' if tool is null. */
     setMode(tool: EditorTool | null): void;
@@ -85,7 +90,7 @@ export interface TerraDrawAdapterInstance {
     undo(): void;
     /** Redoes the last undone operation. */
     redo(): void;
-    /** Destroys Terra Draw and cleans up all resources. */
+    /** Destroys Terra Draw, withdraws its declaration and cleans up all resources. */
     destroy(): void;
 }
 
@@ -145,6 +150,40 @@ function _setCanvasCursor(map: EditorMap, cursor: string): void {
     }
 }
 
+/** The key the editor declares terra-draw's engine ids under. */
+const STYLE_OWNER = "editor";
+
+/**
+ * Runs `place` and returns the engine layers it added to `map`, with the sources they read.
+ *
+ * MEASURED around the call rather than listed: terra-draw names its sources and layers itself
+ * (`td-…` in 1.4.1) and nothing promises the names. `null` when the map cannot say — a test
+ * double without `getLayersOrder`.
+ *
+ * @param map - The engine map `place` draws on.
+ * @param place - What places the layers — `draw.start()`, which registers terra-draw's adapter.
+ * @returns The layers added, in paint order, and the sources they read.
+ */
+function _placedBy(
+    map: EditorMap,
+    place: () => void
+): { layerIds: string[]; sourceIds: string[] } | null {
+    const order = (): string[] | null =>
+        typeof map.getLayersOrder === "function" ? map.getLayersOrder() : null;
+    const before = order();
+    place();
+    const after = order();
+    if (!before || !after) return null;
+    const known = new Set(before);
+    const layerIds = after.filter((id) => !known.has(id));
+    const sourceIds = new Set<string>();
+    for (const id of layerIds) {
+        const source = map.getLayer?.(id)?.source;
+        if (typeof source === "string") sourceIds.add(source);
+    }
+    return { layerIds, sourceIds: [...sourceIds] };
+}
+
 /** Lifecycle + mode-arming surface (owns the active-tool and theme-watch state). */
 function _buildLifecycleApi(
     map: EditorMap,
@@ -157,7 +196,11 @@ function _buildLifecycleApi(
 
     return {
         start(): void {
-            draw.start();
+            // terra-draw's sources and layers sit outside the adapter's registry: declared, a
+            // basemap switch replacing the style carries them. Undeclared, the switch erased them
+            // and terra-draw's next render — `getSource(id).setData` in a frame callback — threw.
+            const placed = _placedBy(map, () => draw.start());
+            if (placed?.layerIds.length) declareOwnedStyleIds(map, STYLE_OWNER, placed);
             _stopThemeWatch = watchThemeChanges((c) => applyTheme(c));
         },
 
@@ -165,6 +208,7 @@ function _buildLifecycleApi(
             _stopThemeWatch?.();
             _stopThemeWatch = null;
             draw.stop();
+            declareOwnedStyleIds(map, STYLE_OWNER, null);
         },
 
         setMode(tool: EditorTool | null): void {
@@ -188,6 +232,7 @@ function _buildLifecycleApi(
             } catch {
                 /* already stopped */
             }
+            declareOwnedStyleIds(map, STYLE_OWNER, null);
             _setCanvasCursor(map, "");
         },
     };

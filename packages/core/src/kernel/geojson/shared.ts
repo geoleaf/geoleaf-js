@@ -127,6 +127,8 @@ const GeoJSONShared = {
         entry.geojson = data;
         const fc = data as { features?: GeoJSONFeature[] } | null | undefined;
         if (fc && Array.isArray(fc.features)) entry.features = fc.features;
+        // The layer search keeps an index of what this entry held (`layer-search.ts`).
+        entry._searchIndex = undefined;
     },
 };
 

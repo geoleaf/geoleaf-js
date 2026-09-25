@@ -102,6 +102,8 @@ export function applyLayerDiff(
     const entry = state.layers?.get(layerId);
     if (entry) {
         entry.features = features;
+        // A diff mutates the array in place: the search index cannot see it change.
+        entry._searchIndex = undefined;
         const fc = entry.geojson as { type?: unknown; features?: unknown } | null | undefined;
         // Republish the envelope only when it no longer wraps this very array —
         // `getLayerData()` reads it, and rebuilding it per mutation would allocate an object

@@ -10,6 +10,7 @@ const langGeocodingPt = {
     "geocoding.control.searchAriaLabel": "Pesquisa de endereços",
     "geocoding.control.submitAriaLabel": "Iniciar a pesquisa",
     "geocoding.control.clearAriaLabel": "Limpar a pesquisa",
+    "geocoding.control.noResults": "Nenhum resultado",
 } satisfies Record<string, string>;
 
 export default langGeocodingPt;

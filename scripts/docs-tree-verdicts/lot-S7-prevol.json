@@ -1,0 +1,53 @@
+{
+    "schemaVersion": 2,
+    "lot": "S7-prevol",
+    "scope": [
+        "packages/core/src/capabilities/offline/report/preflight.ts",
+        "packages/plugins/offline-ui/src/cache/preflight-block.ts",
+        "packages/plugins/offline-ui/src/css/cache-preflight.css"
+    ],
+    "verdicts": {
+        "packages/core/src/capabilities/offline/report/preflight.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Corps de `GeoLeaf.Storage.preflight()` : le régime de persistance, le quota, le rapport par couche, la file et la dernière préparation, assemblés en un verdict",
+            "confidence": "haute",
+            "rationale": "Dans `report/` : il ne fait que LIRE les magasins, comme `sync-report.ts`, et voyage dans le même sac du moteur différé. Les faits lui sont injectables (`PreflightSources`), pour que l'assemblage et le verdict se jugent seuls (`preflight.test.ts`, vu rougir sur la branche `notReady` retirée) ; le branchement réel se juge sur le bundle livré (`e2e/61`)"
+        },
+        "packages/plugins/offline-ui/src/cache/preflight-block.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "La check-list « puis-je partir ? » de la fenêtre hors ligne : le verdict du core, la persistance, les couches sourcées en alerte quand elles ne sont pas sur l'appareil, les zooms non préparés",
+            "confidence": "haute",
+            "rationale": "Patron de `sync-status-block.ts` : bloc reconstruit à chaque ouverture, écouteurs rangés dans `self._eventCleanups` (la modale n'appelle jamais `onRemove`). Ne juge rien — le verdict est celui du core. Tenu par `preflight-block.test.ts`, vu rougir sur un `data-alert` figé"
+        },
+        "packages/plugins/offline-ui/src/css/cache-preflight.css": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Styles de la check-list « puis-je partir ? » de la fenêtre hors ligne",
+            "confidence": "haute",
+            "rationale": "Feuille à part parce que `cache-control.css` atteignait le plafond de 700 lignes (PC-08, qui a refusé le commit avec le bloc dedans). Importée par `entry.ts` comme les trois autres feuilles du plugin (INV-CSS) ; attributs écrits en toutes lettres pour purgecss"
+        }
+    }
+}

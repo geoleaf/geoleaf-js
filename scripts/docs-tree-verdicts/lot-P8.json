@@ -461,9 +461,9 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Interface IGeocodingProvider, ses quatre implémentations — Addok, Nominatim, Photon, URL personnalisée — et la normalisation des réponses GeoJSON en GeocodingResult",
+            "description": "Interface IGeocodingProvider, ses implémentations RÉSEAU — Addok, Nominatim, Photon, URL personnalisée — et la normalisation des réponses GeoJSON en GeocodingResult",
             "confidence": "haute",
-            "rationale": "267 LOC, 2 importeurs (control.ts, registry.ts) ; 6 exports dont la fabrique createProvider. Un seul fichier pour les 4 fournisseurs reste sous la limite dure 700 et sous le soft-limit 500 — aucun déclencheur de découpe"
+            "rationale": "Un seul fichier pour les quatre fournisseurs réseau reste sous la limite dure 700 et sous le soft-limit 500. La fabrique `createProvider` en est sortie en 1.1.0 vers `provider-registry.ts`, qui choisit QUI interroger ; les `fetch` restent ici, sous leurs clés de la baseline naked-fetch (`provider.ts::_fetchAndParseGeoJSON`, `provider.ts::search`)"
         },
         "packages/plugins/geocoding/src/public-api.ts": {
             "kind": "file",

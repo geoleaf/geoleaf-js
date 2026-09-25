@@ -79,3 +79,6 @@ export type { ImageUploadStrategy } from "./types/field-media.js";
 // and only the host can read its own store.
 export { setImagePreviewResolver } from "./types/field-media.js";
 export type { ImagePreviewResolver } from "./types/field-media.js";
+// How a host answers a dropdown's `fetchOptions` before the network — the off-network list.
+export { setOptionsResolver } from "./types/dropdown.js";
+export type { DropdownOption, OptionsResolver } from "./types/dropdown.js";

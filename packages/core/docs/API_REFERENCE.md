@@ -303,6 +303,36 @@ A layer id is the one declared in the profile (`config/core/layers.json`).
 | `listLayerIds`    | `() => string[]`                   | Ids of every layer known to the store.                      |
 | `hasLayer`        | `(layerId) => boolean`             | `true` when a layer with this id exists.                    |
 
+**Find and focus** — since 3.10.0
+
+| Method   | Signature                                           | Description                                                                                                                                     |
+| -------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `search` | `(query, { limit?, layerIds? }?) => FeatureMatch[]` | Features found by reference in the layers declaring `searchable`, best first — **with no network**. Default limit 10.                           |
+| `focus`  | `(layerId, id, { zoom? }?) => boolean`              | Frames the feature — flies to a point (zoom 17 by default), fits a line or a polygon — and selects it. `false` when the layer does not hold it. |
+
+```js
+const [hit] = GeoLeaf.Layers.search("PT-4472");
+if (hit?.featureId) GeoLeaf.Layers.focus(hit.layerId, hit.featureId);
+```
+
+A layer is searched only when its configuration declares `searchable: { fields: [...] }` — on each
+feature's id and on those properties. Accents, case and word order are ignored, with the text
+filter's own rule; an exact id comes first, then an exact value, then an id or value starting with
+the query, then every word found somewhere. A `FeatureMatch` carries `label`, `lat`, `lng` and, for a
+line or a polygon, `bounds` — the shape of an address-search result, so a search box or a route can
+take either — plus `layerId`, `layerLabel` and `featureId`.
+
+> **It reads what the map holds, and only that.** A layer read from the device store is held, so
+> the search works off-network for what was prepared. A layer never loaded (`active: false`, not
+> yet switched on) holds nothing, and a vector-tile layer keeps no feature: neither is found.
+
+> **One selection per map.** `focus` clears the previously focused feature, on whatever layer,
+> before selecting the next. Selection is a feature-state addressed by `properties.id`: a feature
+> without one is framed, not selected, and a whole-collection write to its layer (`setData`, a
+> filter re-feed) clears it. The `selected` state is painted on a point's circle stroke and on a
+> line's or a polygon outline's stroke — `setFeatureState(layerId, id, { selected: true })` shows it
+> too.
+
 **Read — visibility**
 
 | Method                | Signature                                                      | Description                                                                                                             |

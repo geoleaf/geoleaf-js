@@ -10,6 +10,7 @@ const langGeocodingEn = {
     "geocoding.control.searchAriaLabel": "Address search",
     "geocoding.control.submitAriaLabel": "Run search",
     "geocoding.control.clearAriaLabel": "Clear search",
+    "geocoding.control.noResults": "No results",
 } satisfies Record<string, string>;
 
 export default langGeocodingEn;

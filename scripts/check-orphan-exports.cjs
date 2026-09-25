@@ -745,7 +745,7 @@ const ALLOWLIST = {
         "QuarantineReason",
         "ServerDeletionPolicy",
         "ServerId",
-        "StoragePersistenceRegime",
+        // `StoragePersistenceRegime` left on 25/09/2026: the pre-departure check reads it back.
         "SyncOperationKind",
         "SyncState",
         "VersionMarker",

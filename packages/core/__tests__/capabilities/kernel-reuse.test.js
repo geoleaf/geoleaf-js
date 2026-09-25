@@ -1,10 +1,10 @@
 /**
- * The 4 capability → kernel edges.
+ * The capability → kernel edges.
  *
- * Four capabilities consume a kernel primitive instead of reimplementing it.
+ * Each capability below consumes a kernel primitive instead of reimplementing it.
  * Each switch was made by a distinct sprint — legend → taxonomy/resolver,
- * scale → scale-utils, vector-tiles → adapter, proximity → haversine — and NO
- * guardrail held them.
+ * scale → scale-utils, vector-tiles → adapter, proximity → haversine, text filter
+ * → normalize-text — and NO guardrail held them.
  *
  * Why the existing gates do not suffice: `check-orphan-exports` and knip look
  * for exports WITHOUT consumers. Yet `scaleAtZoom` (scale-utils.ts, :190)
@@ -33,8 +33,11 @@ const { createProximityCircle } =
 const { haversineDistance, EARTH_RADIUS_M } = await import("../../src/utils/geo/haversine.js");
 const { buildVtLayerData } =
     await import("../../src/capabilities/vector-tiles/vector-tiles-layer-data.js");
+const { fieldPredicate } = await import("../../src/capabilities/filter/engine/predicate.js");
+const { normalizeText, searchTerms, containsAllTerms } =
+    await import("../../src/utils/general/normalize-text.js");
 
-describe("arête 1/4 — scale → modules/utils/general/scale-utils (S6)", () => {
+describe("arête 1/5 — scale → modules/utils/general/scale-utils (S6)", () => {
     const LAT = 48.8;
     let control;
 
@@ -97,7 +100,7 @@ describe("arête 1/4 — scale → modules/utils/general/scale-utils (S6)", () =
     });
 });
 
-describe("arête 2/4 — legend → capabilities/taxonomy/resolver (S4)", () => {
+describe("arête 2/5 — legend → capabilities/taxonomy/resolver (S4)", () => {
     // `resolveCategoryKey`'s 4 branches: exact key, UPPER variant, lower
     // variant, then case-insensitive sweep. A re-forked matcher implementing
     // only strict equality would pass the 1st case and fail the other 3.
@@ -158,7 +161,7 @@ describe("arête 2/4 — legend → capabilities/taxonomy/resolver (S4)", () => 
     });
 });
 
-describe("arête 3/4 — vector-tiles → adapters/maplibre (socle B.1)", () => {
+describe("arête 3/5 — vector-tiles → adapters/maplibre (socle B.1)", () => {
     const DEF = { geometry: "polygon", legends: { title: "T" }, paint: { "fill-color": "#f00" } };
 
     /** @returns the layer entry the capability builds. */
@@ -197,7 +200,7 @@ describe("arête 3/4 — vector-tiles → adapters/maplibre (socle B.1)", () => 
     });
 });
 
-describe("arête 4/4 — proximity → modules/utils/geo/haversine (S10)", () => {
+describe("arête 4/5 — proximity → modules/utils/geo/haversine (S10)", () => {
     const CENTER = { lat: 48.8566, lng: 2.3522 };
 
     /** Captures the polygon the capability pushes to the adapter. */
@@ -241,5 +244,40 @@ describe("arête 4/4 — proximity → modules/utils/geo/haversine (S10)", () =>
 
     it("la constante consommée est celle du kernel, pas une locale", () => {
         expect(EARTH_RADIUS_M).toBe(6_371_000);
+    });
+});
+
+describe("arête 5/5 — filter text → utils/general/normalize-text", () => {
+    // The same words must MATCH the same way whether the user filters the map or searches
+    // it: two matchers would let a feature the filter shows be missed by the search, or the
+    // reverse. The expectation is computed with the shared primitive, never hardcoded.
+    const FIELD = "properties.name";
+
+    /** What the filter's text predicate decides for one value and one query. */
+    function filterSays(value, query) {
+        const active = { descriptor: { kind: "text", searchFields: [FIELD] }, text: query };
+        return fieldPredicate(active, { properties: { name: value } });
+    }
+
+    it.each([
+        ["Le Récif — Saint-Gilles", "recif"],
+        ["Le Récif — Saint-Gilles", "gilles récif"],
+        ["Le Récif — Saint-Gilles", "RECIF saint"],
+        ["Le Récif — Saint-Gilles", "recifs"],
+        ["PT-4472", "pt-4472"],
+        ["PT-4472", "4472 pt"],
+        ["Çà et là", "ca la"],
+        ["Œuvre", "oeuvre"],
+    ])("« %s » / « %s » : le filtre répond comme la primitive", (value, query) => {
+        expect(filterSays(value, query)).toBe(containsAllTerms(value, searchTerms(query)));
+    });
+
+    it("une requête vide ne contraint rien, des deux côtés", () => {
+        expect(searchTerms("   ")).toEqual([]);
+        expect(filterSays("n'importe quoi", "   ")).toBe(true);
+    });
+
+    it("la normalisation retire les diacritiques et la casse, et rien d'autre", () => {
+        expect(normalizeText("Élévation À-Côté")).toBe("elevation a-cote");
     });
 });

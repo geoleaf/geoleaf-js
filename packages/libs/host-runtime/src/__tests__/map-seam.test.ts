@@ -6,7 +6,7 @@
  * `GeoLeaf` namespace off `globalThis`.
  */
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { getNativeMap, warnNoCore } from "../map-seam.js";
+import { declareOwnedStyleIds, getNativeMap, warnNoCore } from "../map-seam.js";
 import type { GeoLeafHost } from "../host.js";
 
 const carrier = globalThis as { GeoLeaf?: GeoLeafHost };
@@ -104,5 +104,77 @@ describe("warnNoCore", () => {
         const spy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
         warnNoCore("Measure", "fn");
         expect(spy).toHaveBeenCalledTimes(1);
+    });
+});
+
+// A plugin that places layers on the engine directly declares them to the adapter that drives
+// that engine, so a basemap switch replacing the style carries them. The adapter is FOUND among
+// the host's maps: a COG layer goes on whatever map the integrator passes, and N maps may coexist.
+describe("declareOwnedStyleIds", () => {
+    const IDS = { layerIds: ["plugin-layer"], sourceIds: ["plugin-src"] };
+
+    /** Mounts maps keyed by id, each `{ getNativeMap, declareOwnedStyleIds }`. */
+    const mountMaps = (maps: Record<string, Record<string, unknown>>, first?: string) => {
+        carrier.GeoLeaf = {
+            Core: {
+                listMaps: () => Object.keys(maps),
+                getMap: (id?: string) => maps[id ?? first ?? Object.keys(maps)[0] ?? ""],
+            },
+        } as unknown as GeoLeafHost;
+    };
+
+    it("🔴 déclare à l'adaptateur qui pilote CETTE carte native, pas au premier", () => {
+        const native = {};
+        const first = { getNativeMap: () => ({}), declareOwnedStyleIds: vi.fn() };
+        const second = { getNativeMap: () => native, declareOwnedStyleIds: vi.fn() };
+        mountMaps({ a: first, b: second });
+
+        expect(declareOwnedStyleIds(native, "plugin", IDS)).toBe(true);
+
+        expect(second.declareOwnedStyleIds).toHaveBeenCalledWith("plugin", IDS);
+        expect(first.declareOwnedStyleIds).not.toHaveBeenCalled();
+    });
+
+    it("🔴 transmet un retrait (`null`) tel quel", () => {
+        const native = {};
+        const only = { getNativeMap: () => native, declareOwnedStyleIds: vi.fn() };
+        mountMaps({ a: only });
+
+        expect(declareOwnedStyleIds(native, "plugin", null)).toBe(true);
+        expect(only.declareOwnedStyleIds).toHaveBeenCalledWith("plugin", null);
+    });
+
+    it("🔴 un cœur sans listMaps : la seule carte, si c'est bien elle", () => {
+        const native = {};
+        const only = { getNativeMap: () => native, declareOwnedStyleIds: vi.fn() };
+        carrier.GeoLeaf = { Core: { getMap: () => only } } as unknown as GeoLeafHost;
+
+        expect(declareOwnedStyleIds(native, "plugin", IDS)).toBe(true);
+        expect(declareOwnedStyleIds({}, "plugin", IDS)).toBe(false);
+        expect(only.declareOwnedStyleIds).toHaveBeenCalledTimes(1);
+    });
+
+    const NATIVE = {};
+    const REFUSALS: Array<[string, () => void]> = [
+        ["the namespace is absent", () => undefined],
+        ["Core is not mounted", () => void (carrier.GeoLeaf = {})],
+        [
+            "no GeoLeaf map drives this engine",
+            () => mountMaps({ a: { getNativeMap: () => ({}), declareOwnedStyleIds: vi.fn() } }),
+        ],
+        [
+            "the adapter predates the member (a core older than 3.10.0)",
+            () => mountMaps({ a: { getNativeMap: () => NATIVE } }),
+        ],
+    ];
+
+    it.each(REFUSALS)("rend false, sans lever, quand %s", (_why, setup) => {
+        setup();
+        expect(declareOwnedStyleIds(NATIVE, "plugin", IDS)).toBe(false);
+    });
+
+    it("rend false pour une carte absente", () => {
+        mountMaps({ a: { getNativeMap: () => null, declareOwnedStyleIds: vi.fn() } });
+        expect(declareOwnedStyleIds(null, "plugin", IDS)).toBe(false);
     });
 });

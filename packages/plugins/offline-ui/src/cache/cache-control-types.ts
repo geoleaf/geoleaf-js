@@ -84,6 +84,8 @@ export interface CacheControlState {
         collapsible?: boolean;
     };
     _eventCleanups: (number | (() => void))[];
+    /** Re-reads the pre-departure check — set by `preflight-block.ts`, called by `updateStatus`. */
+    _refreshPreflight?: () => Promise<void>;
     _map?: unknown;
     _container?: HTMLElement | null;
     _bodyEl?: HTMLElement | null;

@@ -6,7 +6,8 @@ GeoLeaf plugin that adds **address search (geocoding)** to an interactive map. T
 - Requires `@geoleaf/core` loaded before this plugin
 - ESM only — no CommonJS/UMD
 - **Zero runtime npm dependencies** (native `fetch` + a small inlined search-pill helper)
-- Four providers: **Addok / BAN** (France, default), **Nominatim** (worldwide), **Photon** (worldwide), or a **custom HTTPS endpoint**
+- Providers: **Addok / BAN** (France, default), **Nominatim** (worldwide), **Photon** (worldwide), a **custom HTTPS endpoint**, **`layers` — the map's own features, found by reference with no network** (1.1.0), or one you register
+- An ordered **list** of providers (1.1.0): `["layers", "nominatim"]` shows the map's features before any address, and asks no address service while the browser is offline
 
 > **Extracted from `@geoleaf/core`.** Address search used to be part of the core and configured via the root `geocodingConfig` profile key. It is now this plugin, configured under `modules.geocoding.*`. See [Migration from core](#migration-from-core) — this is a breaking change.
 
@@ -65,14 +66,17 @@ That is all the UI needs — the pill appears and works on its own. You can also
 
 ## Providers
 
-| `provider`             | Service                              | Coverage  | API key  | Geographic filters                      |
-| ---------------------- | ------------------------------------ | --------- | -------- | --------------------------------------- |
-| `"addok"` _(default)_  | Addok / BAN (Base Adresse Nationale) | France    | No       | `bbox` → proximity bias (centroid)      |
-| `"nominatim"`          | OpenStreetMap Nominatim              | Worldwide | No       | `bbox` (strict viewbox), `countrycodes` |
-| `"photon"`             | Photon (Komoot)                      | Worldwide | No       | `bbox` (strict)                         |
-| `"https://…"` (string) | Custom HTTPS endpoint                | Your own  | Your own | depends on the endpoint                 |
+| `provider`             | Service                                              | Coverage    | API key             | Geographic filters                      |
+| ---------------------- | ---------------------------------------------------- | ----------- | ------------------- | --------------------------------------- |
+| `"addok"` _(default)_  | Addok / BAN (Base Adresse Nationale)                 | France      | No                  | `bbox` → proximity bias (centroid)      |
+| `"nominatim"`          | OpenStreetMap Nominatim                              | Worldwide   | No                  | `bbox` (strict viewbox), `countrycodes` |
+| `"photon"`             | Photon (Komoot)                                      | Worldwide   | No                  | `bbox` (strict)                         |
+| `"https://…"` (string) | Custom HTTPS endpoint                                | Your own    | Your own            | depends on the endpoint                 |
+| `"layers"` _(1.1.0)_   | The features the map holds (`GeoLeaf.Layers.search`) | Your layers | No — **no network** | the layers declaring `searchable`       |
 
-- An unknown `provider`, or a custom URL that does not start with `https://`, **falls back to Addok**.
+- **`"layers"`** searches the layers whose configuration declares `searchable: { fields: [...] }`, on each feature's id and those fields — with no network, so it answers off-network for a layer read from the device store. Selecting one of its results frames the feature and selects it (`GeoLeaf.Layers.focus`). Requires `@geoleaf/core` 3.10.0; an older core answers nothing.
+- **A list** — `"provider": ["layers", "nominatim"]` — is asked in order, its results kept in that order within `resultLimit`. While the browser is offline, the providers that need the network are not asked at all.
+- ⚠️ **An unknown single `provider`**, or a custom URL that does not start with `https://`, **falls back to Addok** — which sends the search to that service — and, since 1.1.0, **a warning names it: this value will be refused from the next minor version.** Inside a list, an unknown name is refused already: nothing is asked for it.
 - **Nominatim** is the only provider that honours `countrycodes`; it enforces a max of **1 request/second** (the plugin sends an identifying `User-Agent`).
 - **Addok** has no strict `bbox` filter — the box centroid is used as a proximity bias.
 - A custom endpoint is called with `?q=<query>&limit=<n>` and must return a GeoJSON `FeatureCollection`.
@@ -81,18 +85,18 @@ That is all the UI needs — the pill appears and works on its own. You can also
 
 ## Configuration (`modules.geocoding.*`)
 
-| Key            | Type                                                           | Default                     | Description                                                                          |
-| -------------- | -------------------------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------ |
-| `enabled`      | `boolean`                                                      | `false`                     | Enables the search pill (the control mounts only when `true`).                       |
-| `provider`     | `"addok" \| "nominatim" \| "photon" \| string` (https URL)     | `"addok"`                   | Geocoding provider (see above).                                                      |
-| `debounceMs`   | `number`                                                       | `300`                       | Debounce delay before firing a search (ms).                                          |
-| `minChars`     | `number`                                                       | `3`                         | Minimum characters before a search is triggered.                                     |
-| `resultLimit`  | `number`                                                       | `5`                         | Maximum number of results.                                                           |
-| `position`     | `"top-left" \| "top-right" \| "bottom-left" \| "bottom-right"` | `"top-left"`                | Pill position on the map.                                                            |
-| `placeholder`  | `string`                                                       | `"Rechercher une adresse…"` | Input placeholder text.                                                              |
-| `flyToZoom`    | `number`                                                       | `15`                        | Zoom level when flying to a point result.                                            |
-| `bbox`         | `[west, south, east, north]` (WGS-84)                          | —                           | Restrict results to an area. Nominatim/Photon: strict filter; Addok: proximity bias. |
-| `countrycodes` | `string` (ISO 3166-1 alpha-2, comma-separated)                 | —                           | Restrict results to countries — **Nominatim only**.                                  |
+| Key            | Type                                                                                                                  | Default                     | Description                                                                          |
+| -------------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------ |
+| `enabled`      | `boolean`                                                                                                             | `false`                     | Enables the search pill (the control mounts only when `true`).                       |
+| `provider`     | `"addok" \| "nominatim" \| "photon" \| "layers" \| string` (https URL or registered name), or an ordered list of them | `"addok"`                   | Provider(s) asked (see above).                                                       |
+| `debounceMs`   | `number`                                                                                                              | `300`                       | Debounce delay before firing a search (ms).                                          |
+| `minChars`     | `number`                                                                                                              | `3`                         | Minimum characters before a search is triggered.                                     |
+| `resultLimit`  | `number`                                                                                                              | `5`                         | Maximum number of results.                                                           |
+| `position`     | `"top-left" \| "top-right" \| "bottom-left" \| "bottom-right"`                                                        | `"top-left"`                | Pill position on the map.                                                            |
+| `placeholder`  | `string`                                                                                                              | `"Rechercher une adresse…"` | Input placeholder text.                                                              |
+| `flyToZoom`    | `number`                                                                                                              | `15`                        | Zoom level when flying to a point result.                                            |
+| `bbox`         | `[west, south, east, north]` (WGS-84)                                                                                 | —                           | Restrict results to an area. Nominatim/Photon: strict filter; Addok: proximity bias. |
+| `countrycodes` | `string` (ISO 3166-1 alpha-2, comma-separated)                                                                        | —                           | Restrict results to countries — **Nominatim only**.                                  |
 
 ```json
 {
@@ -118,7 +122,7 @@ function isEnabled(): boolean;
 
 ### `search(query, limit?)`
 
-Performs an address search programmatically — no UI required. Resolves to an array of results (empty on no match or network error; never rejects). `limit` defaults to `resultLimit` or 5.
+Searches programmatically — no UI required — across the configured provider(s). Resolves to an array of results (empty on no match or network error; never rejects). `limit` defaults to `resultLimit` or 5.
 
 ```typescript
 interface GeocodingResult {
@@ -126,6 +130,9 @@ interface GeocodingResult {
     lat: number; // WGS-84 latitude
     lng: number; // WGS-84 longitude
     bounds?: { north: number; south: number; east: number; west: number };
+    layerId?: string; // set by "layers": the feature's layer
+    layerLabel?: string; // …and its display label
+    featureId?: string | null; // …and its id (null: framed, not selected)
 }
 
 function search(query: string, limit?: number): Promise<GeocodingResult[]>;
@@ -133,10 +140,23 @@ function search(query: string, limit?: number): Promise<GeocodingResult[]>;
 
 ### `selectResult(result)`
 
-Recenters the map on a result and emits `geoleaf:geocoding:result`. Uses `fitBounds` when the result has a `bounds`, `flyTo` (at `flyToZoom`) otherwise.
+Recenters the map on a result and emits `geoleaf:geocoding:result`. A feature found by `"layers"` is framed and selected through `GeoLeaf.Layers.focus`; any other result uses `fitBounds` when it has a `bounds`, `flyTo` (at `flyToZoom`) otherwise.
 
 ```typescript
 function selectResult(result: GeocodingResult): void;
+```
+
+### `registerProvider(name, factory)` _(1.1.0)_
+
+Makes a search service available under `name`, for `modules.geocoding.provider` to list. Registering an existing name replaces it. A provider's `search(query, limit)` resolves to results shaped like `GeocodingResult`; `network: false` lets it be asked off-network. Throws when `name` is empty or `factory` is not a function.
+
+```typescript
+interface GeocodingProvider {
+    search(query: string, limit: number): Promise<GeocodingResult[]>;
+    readonly network?: boolean;
+}
+
+function registerProvider(name: string, factory: (config: object) => GeocodingProvider): void;
 ```
 
 ### `open(button?)`
@@ -192,7 +212,8 @@ Before the extraction (`@geoleaf/core` ≤ v3), geocoding was part of the core: 
 ## Limitations
 
 - **Nominatim** is the only provider honouring `countrycodes`; **Addok** maps `bbox` to a proximity bias, not a strict filter.
-- A **custom endpoint must be HTTPS** (anything else falls back to Addok) and must return a GeoJSON `FeatureCollection` answering `?q=` and `&limit=`.
+- A **custom endpoint must be HTTPS** (anything else falls back to Addok, with a warning, until the next minor version refuses it) and must return a GeoJSON `FeatureCollection` answering `?q=` and `&limit=`.
+- **`"layers"` finds only what the map holds**: a layer never loaded (`active: false`) and a vector-tile layer are not searched. A search that finds nothing says so ("No results").
 - The pill mounts on the map returned by `GeoLeaf.Core.getMap()` — one map at a time (no per-`mapId` scoping yet).
 
 ---

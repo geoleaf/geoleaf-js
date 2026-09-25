@@ -148,6 +148,12 @@ export interface LayerDefinition {
      * snapping support or a computation layer. Absent or `true` lists it. Since 3.9.0.
      */
     showInLayerManager?: boolean;
+    /**
+     * Makes the layer findable by `GeoLeaf.Layers.search`, on the feature's id and on the
+     * listed `fields` — property names, bare (`"ref"`) or dotted (`"properties.ref"`). A layer
+     * without this block is never searched. Since 3.10.0.
+     */
+    searchable?: { fields: string[] };
     /** Point-clustering configuration. */
     clustering?: Record<string, unknown>;
     /** Geometry type, when it cannot be inferred from the features. */
@@ -157,6 +163,51 @@ export interface LayerDefinition {
     /** `false` skips the layer, as in a profile. */
     active?: boolean;
     [key: string]: unknown;
+}
+
+/** What {@link LayerDataApi.search} accepts beside the query. */
+export interface LayerSearchOptions {
+    /** Most results returned, best first. Default 10. */
+    limit?: number;
+    /** Restricts the search to these layers. Default: every layer declaring `searchable`. */
+    layerIds?: readonly string[];
+}
+
+/**
+ * One feature found by {@link LayerDataApi.search}.
+ *
+ * Its first three fields — `label`, `lat`, `lng`, and `bounds` when present — are the shape of
+ * an address-search result, deliberately: a search box listing addresses and features side by
+ * side, or a route computed to either, needs no second branch. The rest names the feature, so
+ * that {@link LayerDataApi.focus} can frame and select it.
+ */
+export interface FeatureMatch {
+    /** What to display: the first non-empty declared field, else the feature's id. */
+    label: string;
+    /**
+     * Latitude of a position standing for the feature — the point itself, a line's middle
+     * vertex, or the centre of anything else's bounding box.
+     */
+    lat: number;
+    /** Longitude of the same position. */
+    lng: number;
+    /** Bounding box of a line or a polygon, to frame it; absent for a point. */
+    bounds?: { north: number; south: number; east: number; west: number };
+    /** Layer the feature belongs to. */
+    layerId: string;
+    /** That layer's display label. */
+    layerLabel: string;
+    /**
+     * The feature's id (`properties.id`, else `id`), or `null` when it carries none — such a
+     * feature can be framed from `bounds` or `lat`/`lng`, but not selected.
+     */
+    featureId: string | null;
+}
+
+/** What {@link LayerDataApi.focus} accepts beside the feature. */
+export interface LayerFocusOptions {
+    /** Zoom a POINT is shown at. Default 17. A line or a polygon is fitted, whatever this says. */
+    zoom?: number;
 }
 
 /** What {@link LayerDataApi.create} hands back once a layer is on the map. */
@@ -187,6 +238,49 @@ export interface LayerDataApi {
     listLayerIds(): string[];
     /** `true` when a layer with this id exists in the store. */
     hasLayer(layerId: string): boolean;
+    /**
+     * Finds features by reference in the layers the map holds — with no network.
+     *
+     * Searches the layers that declare `searchable`, on the feature's id and the declared
+     * fields. Accents, case and word order are ignored, with the filter's own rule. Best
+     * first: an exact id, then an exact value, then an id or value starting with the query,
+     * then every word found somewhere.
+     *
+     * ⚠️ It reads what the map holds, and only that. A layer read from the device store is
+     * held, so this works off-network for what was prepared. A layer never loaded —
+     * `active: false`, not yet switched on — holds nothing, and a vector-tile layer keeps no
+     * feature: neither is found.
+     *
+     * @param query - What the user typed. A blank query finds nothing.
+     * @param opts - `limit` and `layerIds`.
+     * @returns The matches, best first, at most `limit`.
+     * @example
+     * const [hit] = GeoLeaf?.Layers?.search("PT-4472") ?? [];
+     * if (hit) console.log(hit.label, hit.layerId, hit.featureId);
+     */
+    search(query: string, opts?: LayerSearchOptions): FeatureMatch[];
+    /**
+     * Brings one feature into view and selects it — the gesture a search result or a list
+     * row ends with.
+     *
+     * A point is flown to (`opts.zoom`, default 17); a line or a polygon is fitted. The
+     * feature's `selected` feature-state is then set, and the previously focused feature, on
+     * whatever layer, is cleared first: one selection per map.
+     *
+     * ⚠️ Selection is addressed by `properties.id`: a feature without one is framed, not
+     * selected. A whole-collection write to its layer (`setData`, a filter re-feed) clears
+     * the selection.
+     *
+     * @param layerId - The feature's layer.
+     * @param id - Its id (`feature.id` or `properties.id`).
+     * @param opts - `zoom` for a point.
+     * @returns `true` once framed; `false` — and nothing moved — when the layer does not hold
+     *   that feature, or there is no map.
+     * @example
+     * const [hit] = GeoLeaf?.Layers?.search("PT-4472") ?? [];
+     * if (hit?.featureId) GeoLeaf?.Layers?.focus(hit.layerId, hit.featureId);
+     */
+    focus(layerId: string, id: string | number, opts?: LayerFocusOptions): boolean;
 
     // ── visibility reads ──
     //

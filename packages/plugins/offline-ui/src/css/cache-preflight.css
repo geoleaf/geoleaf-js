@@ -1,0 +1,98 @@
+/* ==========================================================================
+   @geoleaf-plugins/offline-ui — "Can I leave?" (`cache/preflight-block.ts`)
+   The core's pre-departure check, shown in the offline window under the sync
+   status. A file of its own: `cache-control.css` sits at the 700-line cap
+   (PC-08). Attributes are matched literally — `data-verdict`, `data-alert`,
+   `data-persistence`, `data-status` — for purgecss, which reads the source.
+   ========================================================================== */
+
+/* The theme defines no warning colour (measured — the editor's queue detail says the same),
+   so a `var(--gl-color-warning, …)` would fall back to its hex in silence, dead in dark mode.
+   The block owns its own token instead, with its dark value, as `cache-modal.css` does for
+   its warnings. */
+.gl-cache-preflight {
+    --gl-cache-preflight-warning: #b45309;
+    margin: 0 0 8px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--gl-color-border-soft, #e2e8f0);
+    background: var(--gl-color-bg-surface, #fff);
+    font-size: 0.8125rem;
+    line-height: 1.4;
+}
+
+body.gl-theme-dark .gl-cache-preflight {
+    --gl-cache-preflight-warning: #fbbf24;
+}
+
+.gl-cache-preflight[hidden] {
+    display: none;
+}
+
+.gl-cache-preflight__head {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    justify-content: space-between;
+    font-weight: 600;
+}
+
+.gl-cache-preflight__verdict {
+    font-weight: 500;
+}
+
+.gl-cache-preflight[data-verdict="notReady"] {
+    border-color: var(--gl-color-danger, #dc2626);
+}
+
+.gl-cache-preflight[data-verdict="notReady"] .gl-cache-preflight__verdict {
+    color: var(--gl-color-danger, #dc2626);
+}
+
+.gl-cache-preflight[data-verdict="degraded"] .gl-cache-preflight__verdict {
+    color: var(--gl-cache-preflight-warning);
+}
+
+.gl-cache-preflight[data-verdict="ready"] .gl-cache-preflight__verdict {
+    color: var(--gl-color-success, #15803d);
+}
+
+.gl-cache-preflight__persistence {
+    margin-top: 4px;
+    color: var(--gl-color-text-muted, #64748b);
+}
+
+.gl-cache-preflight__persistence[data-persistence="bestEffort"],
+.gl-cache-preflight__persistence[data-persistence="unsupported"] {
+    color: var(--gl-cache-preflight-warning);
+}
+
+.gl-cache-preflight__layers {
+    list-style: none;
+    margin: 6px 0 0;
+    padding: 0;
+}
+
+.gl-cache-preflight__layers[hidden],
+.gl-cache-preflight__tiles[hidden] {
+    display: none;
+}
+
+.gl-cache-preflight__layer {
+    padding: 2px 0;
+}
+
+.gl-cache-preflight__layer[data-alert="true"] {
+    color: var(--gl-color-danger, #dc2626);
+    font-weight: 600;
+}
+
+.gl-cache-preflight__layer[data-status="pulledPartial"],
+.gl-cache-preflight__layer[data-status="pulledStale"] {
+    color: var(--gl-cache-preflight-warning);
+}
+
+.gl-cache-preflight__tiles {
+    margin-top: 4px;
+    color: var(--gl-cache-preflight-warning);
+}

@@ -132,6 +132,23 @@ const langStoragePt: StorageLangDict = {
     "storage.sync.warn.outro":
         "no servidor. Os dados locais têm prioridade e substituirão os do servidor.",
     "storage.sync.loadError": "Erro ao carregar",
+    "storage.preflight.title": "Posso partir?",
+    "storage.preflight.verdict.ready": "Pronto para partir",
+    "storage.preflight.verdict.degraded": "Pode partir — ver abaixo",
+    "storage.preflight.verdict.notReady": "Não está pronto: faltam dados no dispositivo",
+    "storage.preflight.persistence.persistent":
+        "Armazenamento persistente concedido pelo navegador",
+    "storage.preflight.persistence.bestEffort":
+        "Armazenamento não garantido: o navegador pode apagar os dados",
+    "storage.preflight.persistence.unsupported": "Persistência do armazenamento desconhecida",
+    "storage.preflight.layer.declaredNeverPulled": "nunca descarregada",
+    "storage.preflight.layer.pullFailed": "falha no descarregamento",
+    "storage.preflight.layer.pulledPartial": "descarregamento incompleto",
+    "storage.preflight.layer.pulledStale": "dados antigos",
+    "storage.preflight.layer.pulled": "no dispositivo",
+    "storage.preflight.tiles.skipped": "Níveis de zoom não preparados: {0}",
+    "storage.preflight.tiles.capped": "Preparação interrompida no limite de mosaicos",
+    "storage.preflight.failed": "{0} recurso(s) não descarregado(s)",
 };
 
 export default langStoragePt;

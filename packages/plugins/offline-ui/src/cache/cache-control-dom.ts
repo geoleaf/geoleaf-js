@@ -9,6 +9,7 @@ import { Log } from "@geoleaf/host-runtime";
 import { createElement } from "../utils/dom-helpers.js";
 import { buildZoneSelectionSection } from "./cache-control-zone.js";
 import { buildSyncStatusBlock } from "./sync-status-block.js";
+import { buildPreflightBlock } from "./preflight-block.js";
 
 import type { CacheControlState } from "./cache-control-types.js";
 
@@ -82,6 +83,8 @@ function buildContent(self: CacheControlState): void {
     // CACHE — profile, size, quota, what was downloaded. This one reports what has not yet
     // LEFT, which no part of this modal said without the editor plugin loaded.
     buildSyncStatusBlock(self, bodyEl);
+    // "Can I leave?" — the core's pre-departure check, next to where the device is prepared.
+    buildPreflightBlock(self, bodyEl);
 
     const statusSection = createElement("div", "gl-cache-status", bodyEl);
 

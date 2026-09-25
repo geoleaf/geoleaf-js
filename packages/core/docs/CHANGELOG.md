@@ -11,6 +11,122 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **`IMapAdapter.declareOwnedStyleIds(owner, ids)` — engine layers placed outside the adapter can
+  cross a basemap switch.** A basemap switch that replaces the map's style carries into the
+  incoming style what the adapter owns; a layer added to the engine directly — a plugin's own, or
+  one an integrator adds through `getNativeMap()` — was erased by it. Declared through this member
+  (`{ layerIds, sourceIds }`, keyed by `owner`; `null` withdraws), it is carried like the
+  adapter's own, in place, with its data. Declarations are read when the switch runs and die with
+  the map. The type of the ids, `DeclaredStyleIds`, comes with `IMapAdapter`'s other types from
+  `@geoleaf/core/contracts/map-adapter.contract.js`. The member is optional on the contract: an
+  adapter without it carries nothing it did not create.
+- **`GeoLeaf.Layers.search(query, opts?)` — find a feature by its reference, off-network.** A layer
+  declaring `searchable: { fields }` is searched on each feature's id and on those properties,
+  accents, case and word order ignored — the text filter's own rule, now shared. Best first: exact
+  id, exact value, id or value starting with the query, then every word found. It reads what the
+  map holds, so it works with no network for a layer read from the device store; a layer never
+  loaded and a vector-tile layer are not found. A result (`FeatureMatch`, exported with the
+  contract's types) carries `label`, `lat`, `lng` and `bounds` — the shape of an address result —
+  plus `layerId`, `layerLabel` and `featureId`.
+- **`GeoLeaf.Layers.focus(layerId, id, opts?)` — frame a feature and select it.** A point is flown to
+  (zoom 17 unless `opts.zoom`), a line or a polygon fitted; its `selected` feature-state is set, and
+  the previous selection, on whatever layer, cleared: one per map. A feature without
+  `properties.id` is framed, not selected.
+- **The `selected` feature-state is painted.** Declared by `LayerFeatureState` as a "selection halo"
+  since the contract existed, it was read by no shipped paint: a point's circle stroke and a line's
+  or a polygon outline's stroke now show it, at creation and after every re-style.
+- **`searchable` in a layer's configuration**, validated by the profile schema: at least one field
+  name. The key is not `search` — that former block stays out of the schema.
+- **`@geoleaf-plugins/geocoding` 1.1.0 — the search box finds the map's own features, off-network
+  first.** `modules.geocoding.provider` takes an ordered list, and the name `"layers"` asks
+  `GeoLeaf.Layers.search`: `["layers", "nominatim"]` lists features before addresses, and while the
+  browser is offline the address service is not asked at all. Selecting a feature focuses it.
+  Providers resolve through a registry — `GeoLeaf.Geocoding.registerProvider(name, factory)` adds
+  one. A search that finds nothing now says "No results". Requires core 3.10.0 for `"layers"`;
+  with an older core it answers nothing.
+
+- **`GeoLeaf.Storage.resolveOptions(url)` — a dropdown's choices, kept for off-network use.** A
+  field loading its choices from a URL (`fetchOptions`) had no copy of them the device keeps: off
+  the network it offered its placeholder alone. The offline preparation (`CacheManager.cacheProfile`)
+  now fetches every list the chosen layers declare — on the field or on its `edit` block — and keeps
+  them in the `preferences` store, which the cache budget never evicts; any list resolved online is
+  kept too. A held list is answered at once, and refreshed behind the answer while online. It
+  answers `null` when nothing can: the caller then fetches itself.
+- **`@geoleaf/field-renderer` 1.3.0 — `setOptionsResolver(fn)`.** A dropdown asks its host for a
+  `fetchOptions` list before the network; with no answer it fetches as before. The value an entity
+  holds is always offered and selected, even when the list received no longer carries it, and a
+  static `options` list declared beside `fetchOptions` is the fallback when the list cannot load.
+- **`@geoleaf-plugins/editor` — its forms read the kept lists**, through `setOptionsResolver` wired
+  to `GeoLeaf.Storage.resolveOptions`. With an older core, a dropdown fetches as before.
+
+- **`GeoLeaf.Storage.preflight()` — "can I leave?", in one read.** Before going off-network, the
+  facts a device must be read for, assembled: whether the browser keeps this origin's data
+  (`navigator.storage.persisted()`, which the PWA requested at boot and only logged — now read,
+  as a `StoragePersistenceRegime`), the quota, each layer that declares a pull source and whether
+  it is on the device, the write queue, and the last offline preparation. A `verdict` says what
+  they mean together: `notReady`, `degraded` or `ready`. Never throws; `null` with no engine
+  wired. The write session is deliberately not in it: its validity is the connector's knowledge.
+- **The offline preparation records what it leaves out.** A zoom level skipped because it held
+  too many tiles, or an enumeration stopped at the total tile cap, was only logged; it is now
+  kept in the cache manifest (`TilePreparationTrace`, exported with the sync contract's types),
+  with the download zone asked for.
+- **`@geoleaf-plugins/offline-ui` 1.6.0 — the offline window answers "can I leave?"** Next to the
+  download: the core's verdict, the persistence regime, each sourced layer flagged when it is not
+  on the device, the zooms a preparation left out. Re-read after a download, a purge, and when the
+  queue or the network moves. Requires core 3.10.0; hidden with an older core.
+
+### Deprecated
+
+- **`@geoleaf-plugins/geocoding` — an unknown single `provider` value will be refused.** A typo or an
+  `http://` URL has always fallen back, silently, on the default address service — sending the
+  user's input to it. From 1.1.0 the fallback is kept but NAMED in a warning; **from the plugin's
+  next minor version, the value will be refused** and nothing asked for it. Inside the new list
+  form, an unknown name is refused already.
+
+### Fixed
+
+- **Labels survive a basemap switch that replaces the style, and a vector default basemap at
+  boot.** A label layer is added to the engine directly, on its layer's source: a switch to or
+  from a vector basemap carried the source and erased the label layer, and the capability, still
+  believing the labels shown, never rebuilt them — zooming did not either. The same happened at
+  boot with a vector default basemap, to every label built before its style arrived. The labels
+  capability now rebuilds its label layers whenever the style is replaced, and reads their font
+  from the incoming style, so that it is one the new glyph server serves. Labels the user switched
+  off stay off. Raster-to-raster switches, which never replace the style, were not affected.
+- **`@geoleaf-plugins/measure` 1.0.6 — measures survive a basemap switch.** A switch to or from a
+  vector basemap erased the plugin's sources and layers, and every finished measure with them;
+  they are now declared, and carried. Requires core 3.10.0; with an older core, the plugin behaves
+  as before.
+- **`@geoleaf-plugins/cog` 1.0.4 — a COG layer survives a basemap switch.** Same defect, same
+  remedy: the image source and raster layer are declared to the adapter driving the map passed to
+  `GeoLeaf.COG.addLayer`, and withdrawn by `remove()`. Requires core 3.10.0.
+- **`@geoleaf-plugins/editor` 1.5.1 — drawing after a basemap switch no longer throws.** The
+  drawing engine's layers were erased by a switch to or from a vector basemap, and its next render
+  threw an uncaught `TypeError` (`Cannot read properties of undefined (reading 'setData')`) — on
+  the next click, or on a theme change. The layers it places when a tool is first armed are now
+  declared, and carried. Requires core 3.10.0.
+- **`@geoleaf-plugins/editor` — a saved move or a deletion reaches the layer's data, not only the
+  map.** Saving an edited geometry or deleting a feature rewrote the map source directly and left
+  the core's layer store as it was: the store is what `GeoLeaf.Layers`, the filter and the table
+  read, so a search recentred on a moved feature's old position and found a deleted one again. The
+  same path rewrote the source from what it held, which under an active filter is a subset — the
+  save froze that subset as the layer's data. Both now go through the store's own unit mutations.
+  A feature CREATED in the session still reaches the store at the next load only.
+- **The sync report no longer flags, for ever, a layer that has nothing to pull.** It judged a
+  layer "declared offline" on `offline.enabled`, while the pull requires `offline.source.url`: a
+  layer read from the local store with no source was reported `declaredNeverPulled` on every
+  device, permanently — nothing could ever pull it. Such a layer is now `notDeclared`; the report
+  and the pull share one predicate.
+- **`getCacheStatus().cachedAt` is a date.** It read a manifest field nothing wrote, and was always
+  `null`; the manifest now writes it, and an older manifest falls back on its `generatedAt`.
+- **`@geoleaf/field-renderer` — a read-only dropdown stays read-only when its list fails to load.**
+  The failure path kept the loading `<select>` and re-enabled it, so a field meant to be read-only
+  became editable; and the value the entity held matched no option, and vanished from view.
+
 ## [3.9.0] - 2026-09-24
 
 ### Added

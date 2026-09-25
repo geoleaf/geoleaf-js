@@ -33,7 +33,11 @@
 import { Log } from "../../utils/log/index.js";
 import { StorageContract } from "../shared/storage-contract.js";
 import { mayEditLayer } from "../shared/edition-permissions.js";
-import type { LayerSyncReport, SyncStatus } from "../../contracts/sync.contract.js";
+import type {
+    LayerSyncReport,
+    PreflightReport,
+    SyncStatus,
+} from "../../contracts/sync.contract.js";
 
 interface GeoLeafStorageGlobal {
     GeoLeaf?: {
@@ -219,6 +223,16 @@ interface ReportLike {
      * injection is a runtime fact.
      */
     readSyncStatus?: () => Promise<SyncStatus>;
+    /** The pre-departure check — see `report/preflight.ts`. Optional for the same reason. */
+    buildPreflight?: () => Promise<PreflightReport>;
+}
+
+/**
+ * The option-list module, injected by the deferred chunk (`capabilities/offline/options/`).
+ * The facade never fetches a list itself: it is in the boot graph, the module is not.
+ */
+interface OptionsLike {
+    resolveOptionList: (url: string) => Promise<Array<{ value: string; label: string }> | null>;
 }
 
 /** Report returned by {@link Storage.pullLayer} — mirrors `capabilities/offline/pull/layer-pull.ts`. */
@@ -300,6 +314,7 @@ const Storage = {
         report?: ReportLike;
         edit?: EditLike;
         ui?: OfflineUiLike;
+        options?: OptionsLike;
     },
 
     /**
@@ -314,6 +329,7 @@ const Storage = {
         report?: unknown;
         edit?: unknown;
         ui?: unknown;
+        options?: unknown;
     }): void {
         this._modules = modules as {
             db?: DBLike;
@@ -323,6 +339,7 @@ const Storage = {
             report?: ReportLike;
             edit?: EditLike;
             ui?: OfflineUiLike;
+            options?: OptionsLike;
         };
     },
 
@@ -888,10 +905,11 @@ const Storage = {
     /**
      * Reports, layer by layer, what offline really has at hand.
      *
-     * 🛑 **The case it exists to make visible**: a layer declared offline but never
-     * pulled. The contract describes it as "the case with no observable until the
-     * outage" — everything works, until the field. It shows up here as
-     * `declaredNeverPulled`.
+     * 🛑 **The case it exists to make visible**: a layer that declares a pull source
+     * (`offline.source`) but was never pulled. The contract describes it as "the case with
+     * no observable until the outage" — everything works, until the field. It shows up here
+     * as `declaredNeverPulled`. A layer read from the local store with no source has nothing
+     * to pull, and is `notDeclared`.
      *
      * Never throws. With no engine wired, returns an **empty** array rather than a
      * reassuring report: a report saying "all is well" having read nothing would be
@@ -910,6 +928,38 @@ const Storage = {
             return [];
         }
         return report.buildSyncReport();
+    },
+
+    /**
+     * "Can I leave?" — what a device must be read for before going off-network, in one read.
+     *
+     * Assembles facts that each had their own door — the per-layer report, the queue, the
+     * quota, the last preparation (when it ran, what failed, which zooms of a basemap were
+     * left out) — and one that had none: whether the browser keeps this origin's data
+     * (`navigator.storage.persisted()`, which the PWA requested at boot and only logged).
+     * `verdict` says what they mean together: `notReady` when a layer declaring something to
+     * pull is not on the device, `degraded` when the device can leave with something missing
+     * or evictable, `ready` otherwise. The write session is not in it: its validity is the
+     * connector's knowledge.
+     *
+     * Never throws. With no engine wired, it answers `null` rather than a report that would
+     * reassure without having read anything. Since 3.10.0.
+     *
+     * @returns The check, or `null` when the engine is not wired.
+     * @example
+     * const check = await GeoLeaf?.Storage?.preflight?.();
+     * if (check?.verdict === "notReady") {
+     *     const missing = check.layers.filter((l) => l.status === "declaredNeverPulled");
+     *     console.warn("not on the device:", missing.map((l) => l.layerId));
+     * }
+     */
+    async preflight(): Promise<PreflightReport | null> {
+        const build = this._modules.report?.buildPreflight;
+        if (!build) {
+            Log.warn("[GeoLeaf.Storage] preflight — moteur hors-ligne non câblé.");
+            return null;
+        }
+        return build();
     },
 
     /**
@@ -943,6 +993,37 @@ const Storage = {
             };
         }
         return read();
+    },
+
+    /**
+     * The choices of a dropdown declared by URL (`fetchOptions`) — held on the device first,
+     * fetched and kept otherwise when the network is there.
+     *
+     * A form that works off-network needs its lists: they are kept where the cache budget
+     * evicts nothing (the `preferences` store), filled by the offline preparation
+     * (`CacheManager.cacheProfile`) and by any form opened online. A held list is answered
+     * at once, and refreshed behind the answer while online. The request is the page's own
+     * `fetch`, so a connector that authenticates its origin authenticates it too.
+     *
+     * Never throws. It answers `null` — with no engine wired, when nothing is held off-network,
+     * or when the list cannot be fetched — and the caller then fetches the URL itself, which is
+     * what a dropdown with no resolver does. Since 3.10.0.
+     *
+     * @param url - The list's URL, as the field declares it.
+     * @returns The choices, or `null`.
+     * @example
+     * const choices = await GeoLeaf?.Storage?.resolveOptions?.("lists/statut.json");
+     * if (choices) console.log(choices.map((c) => c.label));
+     */
+    async resolveOptions(url: string): Promise<Array<{ value: string; label: string }> | null> {
+        const options = this._modules.options;
+        if (!options?.resolveOptionList) return null;
+        try {
+            return await options.resolveOptionList(url);
+        } catch (err) {
+            Log.warn("[GeoLeaf.Storage] resolveOptions:", (err as Error)?.message);
+            return null;
+        }
     },
 
     /**

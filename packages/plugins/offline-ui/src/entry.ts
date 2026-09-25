@@ -32,6 +32,7 @@
 import "./css/cache-modal.css";
 import "./css/cache-control.css";
 import "./css/cache-sync.css";
+import "./css/cache-preflight.css";
 // Offline UI only — the engine (IndexedDB / cache / download / sync / poi-restore) now
 // lives in-core (`@geoleaf/core` `capabilities/offline`) and is loaded on demand by the
 // capability loader (dynamic `import()` on `ensureLoaded`). S14 Phase B (B3).

@@ -13,6 +13,7 @@
  * @phase Phase 5 - Storage Refactoring
  */
 
+import type { TilePreparationTrace } from "../../../contracts/sync.contract.js";
 import { Log } from "../../../utils/log/index.js";
 import { fetchBounded } from "../../../utils/general/fetch-bounded.js";
 import { formatFileSize } from "../../../utils/general/formatters.js";
@@ -47,6 +48,8 @@ interface ResourceWithSize {
     [key: string]: unknown;
 }
 interface LayerConfigWithBounds {
+    /** Names the source in a preparation trace. */
+    id?: string;
     bounds?: Bounds;
     offlineBounds?: Bounds;
     url?: string;
@@ -384,14 +387,30 @@ const CacheCalculator = {
     },
 
     /**
+     * How many tiles cover `bounds` at `zoom` — the figure the per-zoom cap is judged on.
+     *
+     * @param bounds - Area covered.
+     * @param zoom - Zoom level.
+     * @returns The tile count.
+     */
+    _tileCount(bounds: Bounds, zoom: number): number {
+        const min = this.latLngToTile(bounds.south, bounds.west, zoom);
+        const max = this.latLngToTile(bounds.north, bounds.east, zoom);
+        return (Math.abs(max.x - min.x) + 1) * (Math.abs(min.y - max.y) + 1);
+    },
+
+    /**
      * Enumerate all tile URLs for a layer or basemap
      * @param layerConfig - Layer or basemap configuration; supplies the bounds and zoom range.
      * @param _profileId - Unused, kept for call-shape compatibility with the sibling members.
+     * @param trace - Where to record the zooms left out and a stop at the total cap, so the
+     *   preparation can be read back later; nothing is recorded without one.
      * @returns One entry per tile, `{ url, type: "tile", x, y, z }`.
      */
     async enumerateTiles(
         layerConfig: LayerConfigWithBounds,
-        _profileId: string
+        _profileId: string,
+        trace?: TilePreparationTrace
     ): Promise<Array<{ url: string; type: string; x: number; y: number; z: number }>> {
         const tiles: Array<{ url: string; type: string; x: number; y: number; z: number }> = [];
 
@@ -431,12 +450,19 @@ const CacheCalculator = {
 
             if (coords.length === 0) {
                 Log.warn(`[CacheCalculator] Skipping zoom ${zoom}: too many tiles`);
+                // Kept, not only logged: the pre-departure check reads it back off-network.
+                trace?.skippedZooms.push({
+                    source: layerConfig.id ?? urlTemplate,
+                    zoom,
+                    tiles: this._tileCount(bounds, zoom),
+                });
                 continue;
             }
 
             // Build URLs for each tile
             for (const coord of coords) {
                 if (totalTiles >= maxTotalTiles) {
+                    if (trace) trace.capped = true;
                     Log.warn(
                         `[CacheCalculator] Reached maximum tile limit (${maxTotalTiles}), stopping enumeration`
                     );

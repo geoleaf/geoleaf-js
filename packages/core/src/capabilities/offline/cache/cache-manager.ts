@@ -11,6 +11,7 @@
  * @version 3.0.0
  */
 
+import type { TilePreparationTrace } from "../../../contracts/sync.contract.js";
 import { Log } from "../../../utils/log/index.js";
 import { Downloader } from "./downloader.js";
 import { ResourceEnumerator } from "./resource-enumerator.js";
@@ -20,6 +21,7 @@ import { formatFileSize } from "../../../utils/general/formatters.js";
 import { IndexedDB } from "../db/indexeddb.js";
 import { evictToQuota } from "../db/eviction.js";
 import { pullDeclaredLayers, type DeclaredPullReport } from "./pull-declared-layers.js";
+import { prefetchOptionLists } from "../options/option-lists.js";
 
 /**
  * Default byte budget for the persistent offline layer/tile cache. Generous
@@ -81,6 +83,8 @@ interface CacheResult {
      * which is the same distinction the sync report exists for one level down.
      */
     pulledLayers?: DeclaredPullReport[];
+    /** What the preparation asked for, and what it left out — kept in the manifest. */
+    preparation?: TilePreparationTrace;
     /**
      * True when « Stop » was pressed during this download. What was stored before the stop
      * stays; a pull under way ended at its page and removed nothing.
@@ -100,6 +104,8 @@ interface ManifestLike {
     totalSize?: number;
     resourcesCount?: number;
     cachedAt?: number | null;
+    /** ISO date — the only date a manifest carried until `cachedAt` was written (25/09/2026). */
+    generatedAt?: string;
     version?: string | null;
 }
 
@@ -221,13 +227,16 @@ const CacheManager = {
                 );
             }
 
+            // What the enumeration leaves out is RECORDED, not only logged — see `_saveManifest`.
+            const trace: TilePreparationTrace = { zone: null, skippedZooms: [], capped: false };
             const resources = await ResourceEnumerator.enumerateAll(
                 profile,
                 profileId,
                 options.selection as
                     | { layers?: string[]; basemaps?: string[]; includeTiles?: boolean }
                     | null
-                    | undefined
+                    | undefined,
+                trace
             );
             Log.info(`[CacheManager] Found ${resources.length} resources to cache`);
 
@@ -238,7 +247,7 @@ const CacheManager = {
             const result = await Downloader.cacheProfile(
                 profileId,
                 profile as Record<string, unknown>,
-                resources,
+                await this._keepOptionLists(resources),
                 options as { onProgress?: (p: Record<string, unknown>) => void }
             );
 
@@ -252,6 +261,7 @@ const CacheManager = {
             // gesture rather than two.
             await this._pullEntities(profileId, options.selection, controller.signal, result);
 
+            result.preparation = trace;
             await this._saveManifest(profileId, result);
 
             // Cap the persistent cache after the download settles (off the critical
@@ -361,6 +371,24 @@ const CacheManager = {
         if (signal.aborted) result.cancelled = true;
     },
 
+    /**
+     * Keeps the option lists the enumeration found, and hands back what remains to download.
+     *
+     * 🛑 **The lists leave the download.** The downloader keeps what it fetches in `layers`, the
+     * store the cache budget evicts first — and configuration resources are downloaded first,
+     * so a list stored there would be the first thing to go. `options/option-lists.ts` keeps it
+     * in `preferences`, which nothing evicts. Extracted from `cacheProfile` for its ESLint
+     * complexity ceiling (20), seen red at 21.
+     *
+     * @param resources - Everything the enumerator listed.
+     * @returns The resources the downloader must fetch — the option lists removed.
+     */
+    async _keepOptionLists<T extends { url: string; type: string }>(resources: T[]): Promise<T[]> {
+        const lists = resources.filter((r) => r.type === "optionList").map((r) => r.url);
+        if (lists.length > 0) await prefetchOptionLists(lists);
+        return resources.filter((r) => r.type !== "optionList");
+    },
+
     async _saveManifest(profileId: string, result: CacheResult) {
         const manifestData = {
             cached: result.cached || result.urls || [],
@@ -368,6 +396,7 @@ const CacheManager = {
             totalSize: result.totalSize || 0,
             resourcesCount: (result.cached || result.urls || []).length,
             duration: result.duration || 0,
+            ...(result.preparation && { preparation: result.preparation }),
         };
 
         try {
@@ -625,7 +654,11 @@ const CacheManager = {
                 size: manifest.totalSize || 0,
                 resourcesCount: resources.length || manifest.resourcesCount || 0,
                 resources,
-                cachedAt: manifest.cachedAt ?? null,
+                // `cachedAt` was read here for years and written nowhere: always `null`. A
+                // manifest from before it was written falls back on its ISO `generatedAt`.
+                cachedAt:
+                    manifest.cachedAt ??
+                    (manifest.generatedAt ? Date.parse(manifest.generatedAt) || null : null),
                 version: manifest.version ?? null,
             };
         } catch (error) {

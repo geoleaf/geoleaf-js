@@ -4,8 +4,8 @@ title: host-runtime — l'accès typé au namespace, et les seams que les plugin
 lib_id: host-runtime
 package: "@geoleaf/host-runtime"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 7c38efb2c
-date: 4 septembre 2026
+verifie_contre: 56909c7b1
+date: 25 septembre 2026
 ---
 
 # host-runtime — l'accès typé au namespace, et les seams que les plugins partagent
@@ -72,12 +72,12 @@ Exportée par `src/index.ts`. Trois familles, plus les primitives HTTP.
 
 | Famille                   | Exports                                                                                                                                                                                                |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Accès à l'hôte**        | `getGeoLeaf()` · `ensureGeoLeaf()` · `coreConfigGet(...)` · types `GeoLeafHost`, `PluginRegisterOptions`                                                                                               |
+| **Accès à l'hôte**        | `getGeoLeaf()` · `ensureGeoLeaf()` · `coreConfigGet(...)` · types `GeoLeafHost`, `HostMapAdapter`, `HostDeclaredStyleIds`, `PluginRegisterOptions`                                                     |
 | **Seam notifications**    | `getUINotifications()` · type `UINotificationsSeam`                                                                                                                                                    |
 | **Seam journalisation**   | `Log`                                                                                                                                                                                                  |
 | **Seam i18n**             | `tLabel(...)` · `getActiveLang()`                                                                                                                                                                      |
 | **Seam utilitaires core** | `getNestedValue(...)` · `createSVGIcon(...)` · `clearElementFast(...)` · type `IconOptions`                                                                                                            |
-| **Seam carte**            | `getNativeMap()` · `warnNoCore(...)`                                                                                                                                                                   |
+| **Seam carte**            | `getNativeMap()` · `warnNoCore(...)` · `declareOwnedStyleIds(...)`                                                                                                                                     |
 | **Seam DOM**              | `createEl(...)` · `applyStyleText(...)`                                                                                                                                                                |
 | **Téléchargement**        | `downloadBlob(...)`                                                                                                                                                                                    |
 | **Interface partagée**    | `adoptStylesheet(...)` · `wireDrag(...)` · `wireTouchDrag(...)` · `wireTooltips(...)` · `showTooltip(...)` · `hideTooltip(...)` · `positionMenuNear(...)` + type `MenuPositionOptions`                 |
@@ -91,6 +91,23 @@ sous-chemin »**, ce que cette ligne a affirmé : la carte `exports` du `package
 l'honore, et `rollup.config.mjs` n'émet qu'un seul fichier de sortie. Ce ne sont donc pas des exports
 en demi-état mais des helpers **internes au paquet** — leur seul consommateur est `src/ui/touch-drag.ts`,
 qui partage la géométrie avec le chemin souris pour qu'ils ne divergent pas.
+
+### `declareOwnedStyleIds` — l'adaptateur se TROUVE, il ne se suppose pas (24/09/2026)
+
+Un plugin qui pose ses propres sources et couches sur le moteur — `measure`, `cog`, le Terra Draw
+de `editor` — les perd à tout basculement de fond qui remplace le style : la transformation n'y
+porte que ce que l'adaptateur possède. Le core 3.10.0 lui laisse les **déclarer**
+(`IMapAdapter.declareOwnedStyleIds`) ; ce seam est le chemin des plugins jusqu'à ce membre.
+
+🛑 **Il cherche l'adaptateur dont la carte native EST celle qu'on lui passe**, parmi
+`Core.listMaps()` — il ne prend pas `Core.getMap()`. `cog` reçoit la carte de l'intégrateur, qui
+peut être la deuxième d'une page, ou une carte qu'aucun adaptateur GeoLeaf ne pilote ; déclarer à
+la première carte venue y porterait des ids qui n'y sont pas. Un cœur sans `listMaps` n'offre que
+sa carte unique, prise seulement si c'est bien elle.
+
+Il rend `false`, sans lever, sans cœur, sans carte GeoLeaf qui pilote ce moteur, ou avec un cœur
+antérieur au membre : les couches ne traversent alors pas un basculement, comme avant — c'est la
+dégradation voulue, et la raison pour laquelle les plugins n'ont pas relevé leur `peerDependencies`.
 
 ### `chooseDialog` — pourquoi deux issues ne suffisaient pas (04/09/2026)
 

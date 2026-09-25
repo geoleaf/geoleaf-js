@@ -104,8 +104,17 @@ export function mountGeocodingControl(
     resultsList.setAttribute("role", "listbox");
     resultsList.hidden = true;
 
+    // Outside the listbox, which may only hold options: a search that found nothing says so,
+    // politely, to a screen reader as to the eye.
+    const noResults = document.createElement("div");
+    noResults.className = "gl-geocoding-no-results";
+    noResults.setAttribute("role", "status");
+    noResults.textContent = t("geocoding.control.noResults", "Aucun résultat");
+    noResults.hidden = true;
+
     ctrlWrapper.appendChild(pillRoot);
     ctrlWrapper.appendChild(resultsList);
+    ctrlWrapper.appendChild(noResults);
     mapContainer.appendChild(ctrlWrapper);
 
     // ── Internal state ────────────────────────────────────────────────────────
@@ -137,6 +146,7 @@ export function mountGeocodingControl(
         _currentResults = [];
         resultsList.innerHTML = "";
         resultsList.hidden = true;
+        noResults.hidden = true;
         input.setAttribute("aria-expanded", "false");
     }
 
@@ -147,6 +157,7 @@ export function mountGeocodingControl(
             // Discard stale responses if the input changed while fetching
             if (input.value.trim() === query) {
                 _showResults(results);
+                noResults.hidden = results.length > 0;
             }
         } finally {
             ctrlWrapper.classList.remove("gl-geocoding-ctrl--loading");
@@ -158,6 +169,8 @@ export function mountGeocodingControl(
         const query = rawValue.trim();
 
         if (_debounceTimer !== null) clearTimeout(_debounceTimer);
+        // The previous answer no longer describes what is typed.
+        noResults.hidden = true;
 
         if (query.length < minChars) {
             _clearResults();

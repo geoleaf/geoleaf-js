@@ -202,5 +202,12 @@ export interface EditorMap {
      * test double that omits it must degrade rather than throw.
      */
     dragPan?: { enable?(): void; disable?(): void };
+    /**
+     * Layer ids in paint order — what lets the editor MEASURE the layers terra-draw places when
+     * it starts. Optional: a test double without it degrades to declaring nothing.
+     */
+    getLayersOrder?(): string[];
+    /** A layer's spec by id, read for the source it draws from. Optional, like `getLayersOrder`. */
+    getLayer?(id: string): { source?: unknown } | undefined;
     __geoleafExclusiveMode?: boolean;
 }

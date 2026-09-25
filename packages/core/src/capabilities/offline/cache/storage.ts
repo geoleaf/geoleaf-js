@@ -9,6 +9,7 @@
  * @fileoverview CacheStorage - IndexedDB operations for cache management
  */
 
+import type { TilePreparationTrace } from "../../../contracts/sync.contract.js";
 import { Log } from "../../../utils/log/index.js";
 import { fetchBounded, BoundedFetchError } from "../../../utils/general/fetch-bounded.js";
 import { coreConfigGet } from "../config-seam.js";
@@ -30,6 +31,8 @@ interface ManifestResults {
     totalSize: number;
     resourcesCount: number;
     duration: number;
+    /** What the preparation asked for and left out — read back by `Storage.preflight`. */
+    preparation?: TilePreparationTrace;
 }
 
 const CacheStorage = {
@@ -211,6 +214,9 @@ const CacheStorage = {
             totalSize: results.totalSize,
             resourcesCount: results.resourcesCount,
             duration: results.duration,
+            // Epoch ms — what `getCacheStatus().cachedAt` reads, and never found until now.
+            cachedAt: Date.now(),
+            preparation: results.preparation ?? null,
         };
 
         if (!IndexedDB?._db || "_isStub" in IndexedDB._db) {

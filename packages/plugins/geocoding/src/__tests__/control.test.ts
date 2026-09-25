@@ -127,6 +127,26 @@ describe("mountGeocodingControl", () => {
             expect(getItems()[0].textContent).toBe("Paris");
         });
 
+        it("says so when a search finds nothing — an empty list is indistinguishable from a bug", async () => {
+            // provider.search resolves [] by default
+            const input = getInput();
+            input.value = "PT-999999";
+            input.dispatchEvent(new Event("input"));
+            await new Promise((r) => setTimeout(r, 50));
+
+            const status = container.querySelector(".gl-geocoding-no-results");
+            expect(status).not.toBeNull();
+            expect(status.hidden).toBe(false);
+            expect(status.getAttribute("role")).toBe("status");
+            expect(status.textContent).toBe("Aucun résultat");
+            expect(getItems()).toHaveLength(0);
+
+            // …and stops saying it as soon as the query changes.
+            input.value = "PT";
+            input.dispatchEvent(new Event("input"));
+            expect(status.hidden).toBe(true);
+        });
+
         it("uses textContent for result labels (not innerHTML)", async () => {
             provider.search.mockResolvedValueOnce([
                 { label: "<script>xss</script>", lat: 0, lng: 0 },

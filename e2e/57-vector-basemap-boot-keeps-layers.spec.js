@@ -21,6 +21,13 @@
 // profile's initial layers AND creates its own through `GeoLeaf.Layers.create`, and only then lets
 // the style through. A fixed delay would make the window a lottery; holding the response makes it
 // certain.
+//
+// 🛑 AND THE LABELS OF THOSE LAYERS. A label layer is not the adapter's: `label-renderer.ts` adds it
+// to the engine directly, on its layer's source, so the arriving style erased it — the profile's own
+// `candelabres` labels, built before the style landed — and nothing rebuilt it, the capability's
+// bookkeeping still reading "shown". Seen red on the bundle before the fix. The fixture carries one
+// `symbol` layer so that a REBUILT label can be told from a carried one: a rebuild reads the incoming
+// style's first `text-font`; a carried layer keeps the font it was built with.
 
 import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
@@ -34,9 +41,16 @@ const STYLE_PATH = "/__e2e__/vector-basemap-style.json";
 const STYLE_NAME = "e2e-vector-fixture";
 const CREDIT = "© E2E vector fixture";
 const LATE_LAYER = "e2e-late";
+/** The label layer of `candelabres`, labelled at boot by the profile's default theme. */
+const LABEL_LAYER = "gl-candelabres-label-text";
+/** The only `text-font` of the fixture — no profile style and no GeoLeaf layer names it. */
+const FIXTURE_FONT = ["E2E Fixture Sans"];
 const WAIT_MS = 30_000;
 
-/** The fixture basemap: one GeoJSON source without a credit, and its layer, over a background. */
+/**
+ * The fixture basemap: one GeoJSON source without a credit, its fill and its labels, over a
+ * background. No `glyphs`: MapLibre draws the text locally, so no font server decides anything.
+ */
 const FIXTURE_STYLE = {
     version: 8,
     name: STYLE_NAME,
@@ -46,6 +60,12 @@ const FIXTURE_STYLE = {
     layers: [
         { id: "e2e-background", type: "background", paint: { "background-color": "#e8eef2" } },
         { id: "e2e-base-fill", type: "fill", source: "e2e-base" },
+        {
+            id: "e2e-base-label",
+            type: "symbol",
+            source: "e2e-base",
+            layout: { "text-field": ["get", "name"], "text-font": FIXTURE_FONT },
+        },
     ],
 };
 
@@ -69,10 +89,15 @@ function within(promise, ms, message) {
     );
 }
 
-test("un fond vectoriel par défaut garde les couches créées pendant le téléchargement de son style", async ({
-    page,
-    context,
-}) => {
+/**
+ * Boots the profile on the fixture vector basemap, whose style is HELD until `release()`.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {import('@playwright/test').BrowserContext} context
+ * @returns {Promise<{ release: () => void }>} Once settled, `setStyle` has requested the style and
+ *   the profile's phase-1 layers are loaded — while the empty boot style is still the live one.
+ */
+async function bootOnHeldVectorBasemap(page, context) {
     await selectProfile(page, PROFILE);
     // End of the profile's phase-1 loading — armed before any page script, so it cannot be missed.
     await page.addInitScript(() => {
@@ -135,6 +160,30 @@ test("un fond vectoriel par défaut garde les couches créées pendant le télé
     await page.waitForFunction(() => /** @type {any} */ (window).__glPhase1 >= 0, null, {
         timeout: WAIT_MS,
     });
+    return { release };
+}
+
+/**
+ * Waits until the fixture style is the live one and fully loaded.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+async function waitStyleArrived(page) {
+    await page.waitForFunction(
+        (name) => {
+            const native = /** @type {any} */ (window).GeoLeaf?.Core?.getMap?.()?.getNativeMap?.();
+            return native?.getStyle?.()?.name === name && native.isStyleLoaded() === true;
+        },
+        STYLE_NAME,
+        { timeout: WAIT_MS }
+    );
+}
+
+test("un fond vectoriel par défaut garde les couches créées pendant le téléchargement de son style", async ({
+    page,
+    context,
+}) => {
+    const { release } = await bootOnHeldVectorBasemap(page, context);
 
     // 3. The integrator's layer, created while the basemap's style is still downloading.
     const landed = await page.evaluate(async (id) => {
@@ -163,14 +212,7 @@ test("un fond vectoriel par défaut garde les couches créées pendant le télé
 
     // 4. The style arrives.
     release();
-    await page.waitForFunction(
-        (name) => {
-            const native = /** @type {any} */ (window).GeoLeaf?.Core?.getMap?.()?.getNativeMap?.();
-            return native?.getStyle?.()?.name === name && native.isStyleLoaded() === true;
-        },
-        STYLE_NAME,
-        { timeout: WAIT_MS }
-    );
+    await waitStyleArrived(page);
 
     // 5. What the kernel believes present IS present — the contradiction the report described.
     const registry = await page.evaluate(() => {
@@ -221,4 +263,47 @@ test("un fond vectoriel par défaut garde les couches créées pendant le télé
             ]?.attribution
     );
     expect(credit, "le crédit déclaré du fond vectoriel n'est pas posé").toBe(CREDIT);
+});
+
+test("un fond vectoriel par défaut garde les étiquettes posées avant l'arrivée de son style, dans la police de ce style", async ({
+    page,
+    context,
+}) => {
+    const { release } = await bootOnHeldVectorBasemap(page, context);
+
+    /** The label layer's `text-font`, or `null` when the layer is not in the live style. */
+    const labelFont = () =>
+        page.evaluate((id) => {
+            const native = /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap();
+            return native.getLayer(id) ? (native.getLayoutProperty(id, "text-font") ?? []) : null;
+        }, LABEL_LAYER);
+
+    // 1. PRECONDITION — the labels exist BEFORE the style lands. Without it, labels built after the
+    // arrival would read the fixture's font and pass this test having crossed no swap at all.
+    await page.waitForFunction(
+        (id) =>
+            !!(
+                /** @type {any} */ (window).GeoLeaf?.Core?.getMap?.()
+                    ?.getNativeMap?.()
+                    ?.getLayer?.(id)
+            ),
+        LABEL_LAYER,
+        { timeout: WAIT_MS }
+    );
+    const built = await labelFont();
+    expect(built, "les étiquettes ont été construites dans la police de la fixture").not.toEqual(
+        FIXTURE_FONT
+    );
+
+    // 2. The style arrives.
+    release();
+    await waitStyleArrived(page);
+
+    // 3. The labels are there, REBUILT against the incoming style.
+    await expect
+        .poll(labelFont, {
+            timeout: 15_000,
+            message: `${LABEL_LAYER} a été effacée par l'arrivée du style, ou portée sans être reconstruite`,
+        })
+        .toEqual(FIXTURE_FONT);
 });

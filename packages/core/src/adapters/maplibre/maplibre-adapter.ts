@@ -23,6 +23,7 @@ import type {
     GeoLeafControl,
     GeoLeafMarkerHandle,
     LayerDataDiff,
+    DeclaredStyleIds,
     VectorTileLayerSpec,
     VectorTileStyleInput,
 } from "../../contracts/map-adapter.contract.ts";
@@ -100,6 +101,8 @@ export class MaplibreAdapter implements IMapAdapter {
     private readonly _openPopups: Set<MaplibrePopup> = new Set();
     private readonly _markers: Map<string, MaplibreMarker> = new Map();
     private readonly _clusterIds: Map<string, ClusterLayerIds> = new Map();
+    /** Engine ids placed outside this adapter and declared to it, by declarer. */
+    private readonly _declaredStyleIds: Map<string, Required<DeclaredStyleIds>> = new Map();
 
     // Named handler refs — stored so destroy() can deregister them explicitly.
     private readonly _handleLoad = (): void => {
@@ -233,6 +236,7 @@ export class MaplibreAdapter implements IMapAdapter {
         }
         this._markers.clear();
         this._clusterIds.clear();
+        this._declaredStyleIds.clear();
         this._controls.clear();
         this._layerRegistry.clear();
         this._openPopups.clear();
@@ -771,9 +775,10 @@ export class MaplibreAdapter implements IMapAdapter {
      * `geoleaf:style:rebuild` dance — audit redundancy #1).
      *
      * What GeoLeaf owns — the layer registry (GeoJSON sub-layers + sources), the POI
-     * cluster ids and the sentinel z-anchor — is read when MapLibre RUNS the callback,
-     * not here. For a style given by URL that is once the style has downloaded, and the
-     * layers created in between must be carried too.
+     * cluster ids, the sentinel z-anchor, and what code outside the adapter declared through
+     * {@link declareOwnedStyleIds} — is read when MapLibre RUNS the callback, not here. For a
+     * style given by URL that is once the style has downloaded, and the layers created in
+     * between must be carried too.
      *
      * 🛑 Never `null`, even with nothing owned and no credit declared: an empty registry
      * NOW says nothing about the registry when the style lands. Returning `null` handed
@@ -792,8 +797,28 @@ export class MaplibreAdapter implements IMapAdapter {
     }
 
     /**
+     * Declares engine layers and sources placed on the map outside this adapter, so that a
+     * basemap swap carries them. See the contract: keyed by `owner`, `null` withdraws, read
+     * when the swap runs, forgotten on `destroy()`.
+     *
+     * @param owner - The declarer's key; a new call under it replaces its ids.
+     * @param ids - The engine ids to carry, or `null` to withdraw.
+     */
+    declareOwnedStyleIds(owner: string, ids: DeclaredStyleIds | null): void {
+        if (ids === null) {
+            this._declaredStyleIds.delete(owner);
+            return;
+        }
+        // Copied: the caller keeps its arrays, and a later mutation of them is not a declaration.
+        this._declaredStyleIds.set(owner, {
+            layerIds: [...(ids.layerIds ?? [])],
+            sourceIds: [...(ids.sourceIds ?? [])],
+        });
+    }
+
+    /**
      * The MapLibre ids GeoLeaf owns at this moment: every registered layer's sub-layers and
-     * source, the POI clusters', and the sentinel.
+     * source, the POI clusters', the sentinel, and what code outside the adapter declared.
      */
     private _ownedStyleIds() {
         const layerIds = new Set<string>();
@@ -811,6 +836,10 @@ export class MaplibreAdapter implements IMapAdapter {
         // The sentinel is added directly (not via the registry) but must be carried
         // over so its z-order boundary between GeoJSON and POI layers is preserved.
         if (this._sentinelCreated) layerIds.add(SENTINEL_POI);
+        for (const declared of this._declaredStyleIds.values()) {
+            for (const lid of declared.layerIds) layerIds.add(lid);
+            for (const sid of declared.sourceIds) sourceIds.add(sid);
+        }
         return { layerIds, sourceIds };
     }
 

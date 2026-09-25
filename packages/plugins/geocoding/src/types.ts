@@ -24,20 +24,28 @@ export interface GeocodingConfig {
     /** Enable the address search control on the map. Default false. */
     enabled?: boolean;
     /**
-     * Geocoding provider.
+     * Service(s) a search asks — one, or an ordered list of them (since 1.1.0).
      * - `"addok"` (default): French BAN (data.gouv.fr) — no API key required.
      * - `"nominatim"`: OpenStreetMap Nominatim — worldwide.
      * - `"photon"`: Photon by Komoot — worldwide, no API key.
+     * - `"layers"`: the features the map holds, in the layers declaring `searchable`
+     *   (`GeoLeaf.Layers.search`) — needs no network. Since 1.1.0.
      * - HTTPS URL string: custom endpoint returning a GeoJSON FeatureCollection.
+     * - A name added with `GeoLeaf.Geocoding.registerProvider`.
+     *
+     * A list is asked in order and its results kept in that order; off-network, the
+     * providers needing the network are skipped. An unknown single value falls back on
+     * `"addok"` with a warning, and will be refused from the next minor version; an
+     * unknown name inside a list is refused at once.
      */
-    provider?: "addok" | "nominatim" | "photon" | string;
+    provider?: "addok" | "nominatim" | "photon" | "layers" | string | readonly string[];
     /** Debounce delay in milliseconds. Default 300. */
     debounceMs?: number;
     /** Minimum characters before triggering search. Default 3. */
     minChars?: number;
     /** Maximum results to display. Default 5. */
     resultLimit?: number;
-    /** Control position on the map. Default "top-right". */
+    /** Control position on the map. Default "top-left". */
     position?: "top-left" | "top-right" | "bottom-left" | "bottom-right";
     /** Input placeholder text. Default "Rechercher une adresse…". */
     placeholder?: string;
@@ -77,6 +85,18 @@ export interface GeocodingResult {
      * When present, `fitBounds` is used instead of `flyTo`.
      */
     bounds?: { north: number; south: number; east: number; west: number };
+
+    /**
+     * Layer of the feature this result names — set by the `layers` provider, absent for an
+     * address. A result carrying it is focused (`GeoLeaf.Layers.focus`) when selected.
+     */
+    layerId?: string;
+
+    /** Display label of that layer. */
+    layerLabel?: string;
+
+    /** Id of the feature, or `null` when it has none (it is then framed, not selected). */
+    featureId?: string | null;
 
     /**
      * Raw provider response item.

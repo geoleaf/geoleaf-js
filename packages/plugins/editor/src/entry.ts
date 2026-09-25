@@ -41,6 +41,7 @@ import {
     destroyImageUpload,
     retryPendingImages,
 } from "./persistence/image-store.js";
+import { destroyOptionLists, initOptionLists } from "./persistence/option-lists.js";
 import {
     exportSessionFeatures,
     sessionFeatureCount,
@@ -437,6 +438,7 @@ function _initTerraDraw(): void {
     // that order, for every caller and not just this plugin's own wrapper. Full motive on
     // `registerBeforeDrainStep`.
     initImageUpload();
+    initOptionLists();
     registerBeforeDrainStep(retryPendingImages);
     // 🛑 NO `initSyncReplay` ANY MORE — the core arms the drain. This plugin's `online`
     // listener was the repo's ONLY automatic trigger, so an application without the editor
@@ -476,6 +478,7 @@ function _registerDestroyHook(): void {
         detachShortcuts();
         registerBeforeDrainStep(null);
         destroyImageUpload();
+        destroyOptionLists();
         destroyAddForm();
         resetSessionTracking();
         clearHistory();

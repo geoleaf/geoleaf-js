@@ -129,6 +129,22 @@ const langStorageEn: StorageLangDict = {
     "storage.sync.warn.outro":
         "on the server. Local data takes priority and will overwrite the server.",
     "storage.sync.loadError": "Loading failed",
+    "storage.preflight.title": "Can I leave?",
+    "storage.preflight.verdict.ready": "Ready to leave",
+    "storage.preflight.verdict.degraded": "You can leave — see below",
+    "storage.preflight.verdict.notReady": "Not ready: data is missing on this device",
+    "storage.preflight.persistence.persistent": "Persistent storage granted by the browser",
+    "storage.preflight.persistence.bestEffort":
+        "Storage not guaranteed: the browser may erase the data",
+    "storage.preflight.persistence.unsupported": "Storage persistence unknown",
+    "storage.preflight.layer.declaredNeverPulled": "never downloaded",
+    "storage.preflight.layer.pullFailed": "download failed",
+    "storage.preflight.layer.pulledPartial": "download incomplete",
+    "storage.preflight.layer.pulledStale": "data out of date",
+    "storage.preflight.layer.pulled": "on this device",
+    "storage.preflight.tiles.skipped": "Zoom levels not prepared: {0}",
+    "storage.preflight.tiles.capped": "Preparation stopped at the tile cap",
+    "storage.preflight.failed": "{0} resource(s) not downloaded",
 };
 
 export default langStorageEn;

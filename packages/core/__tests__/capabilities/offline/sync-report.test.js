@@ -57,9 +57,16 @@ describe("4.8 — rapport de synchronisation par couche", () => {
             {
                 id: "sites_rosario",
                 edition: { create: true, update: true },
-                offline: { enabled: true, maxFeatures: 5000 },
+                // A SOURCE, and it is what makes the layer pullable — the report's own
+                // predicate since 25/09/2026, the pull's since R9 (`declaresPullSource`).
+                offline: {
+                    enabled: true,
+                    maxFeatures: 5000,
+                    source: { url: "https://src.example/collections/sites/items" },
+                },
             },
             {
+                // Read from the local store, but with NOTHING to pull: no source.
                 id: "villes_principales",
                 edition: { create: true, update: true },
                 offline: { enabled: true },
@@ -122,6 +129,16 @@ describe("4.8 — rapport de synchronisation par couche", () => {
         expect(entry.status).toBe("pulled");
         expect(entry.featureCount).toBe(0);
         expect(entry.lastPullAt).toBe(1_700_000_000_000);
+    });
+
+    test("🛑 une couche lue hors ligne SANS source n'est pas « jamais rapatriée » : elle n'a rien à rapatrier", async () => {
+        // The defect this pins, measured on both shipped bundles: `offline.enabled` without
+        // `offline.source` was reported `declaredNeverPulled` FOREVER — no pull can ever write its
+        // marker, `pullLayer` refusing it `noSource`. A pre-departure check reading this would
+        // flag, on every device, a layer nothing could fix — and a flag that never clears is
+        // one nobody reads. Such a layer is served by its data file; the pull report is not its
+        // measure.
+        expect(byId(await buildSyncReport(), "villes_principales").status).toBe("notDeclared");
     });
 
     test("une source injoignable rend `pullFailed`, pas `declaredNeverPulled`", async () => {

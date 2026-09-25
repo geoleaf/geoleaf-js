@@ -215,7 +215,22 @@ const SEAMS = [
             "son module CSRF (3.4.0) — l'hôte décrivait un membre qui n'existe plus. RELU avant " +
             "ré-épinglage : `git diff` ne rend que cette ligne, aucune des TROIS fonctions " +
             "appariées n'est touchée, et l'hôte devient plus étroit, ce qui laisse HOST-03 " +
-            "(tout membre nommé de l'hôte existe côté core) vrai.",
+            "(tout membre nommé de l'hôte existe côté core) vrai. " +
+            "⚠️ 24/09/2026 — SIXIÈME fois, sur des TYPES : `GeoLeafHost.Core` nomme `listMaps()` " +
+            "et le paramètre `mapId` de `getMap()`, et deux interfaces neuves décrivent ce qu'un " +
+            "plugin appelle sur l'adaptateur (`HostMapAdapter`, dont `declareOwnedStyleIds`, core " +
+            "3.10.0) — pour que le seam de carte trouve l'adaptateur qui pilote une carte native " +
+            "donnée. RELU avant ré-épinglage : `git diff` ne rend que ces types, aucune des TROIS " +
+            "fonctions appariées n'est touchée, et le sens est celui que HOST-03 autorise — le " +
+            "core déclare déjà `getMap(mapId?)` et `listMaps()` sur `GeoLeafGlobal.Core`. " +
+            "⚠️ 25/09/2026 — SEPTIÈME fois, sur des TYPES : `GeoLeafHost.Layers` nomme `search`, " +
+            "`focus`, `mergeFeatures` et `removeFeature` (core 3.10.0) — sous la traîne " +
+            "`[key: string]: unknown` ils typaient `unknown`, donc le géocodage ne pouvait pas " +
+            "appeler la recherche locale, ni l'éditeur écrire dans le magasin des couches. RELU " +
+            "avant ré-épinglage : `git diff` ne rend que ces quatre membres optionnels et leurs " +
+            "commentaires, aucune des TROIS fonctions appariées n'est touchée, et HOST-SYNC le " +
+            "confirme dans le sens que HOST-03 autorise : les quatre existent sur " +
+            "`GeoLeafGlobal.Layers`.",
         files: [
             {
                 pkg: "core",
@@ -250,7 +265,10 @@ const SEAMS = [
                 // ⚠️ 2026-09-17 — re-pinned for a REMOVED type member: `Security.CSRFToken`,
                 // whose module the core deleted. `git diff` renders that one line; the three
                 // paired functions did not move. Targeted re-pin again.
-                hash: "7b26edfe20c83f5ec2b4a69fba6fc779a8c2eee09dfa2ae3e07fcb0ef6d9b682",
+                // ⚠️ 2026-09-24 — re-pinned for TYPES again: `Core.listMaps()`, `getMap(mapId)`
+                // and the adapter shape a plugin calls (`HostMapAdapter`). The three paired
+                // functions did not move. Targeted re-pin, this one hash.
+                hash: "d01b221853251c1d73b7b3be8f465c1321ff82b74f2cf946ec9d3860d027c6b2",
             },
         ],
     },

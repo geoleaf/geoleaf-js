@@ -20,6 +20,7 @@
  * @version 1.0.0
  */
 
+import type { TilePreparationTrace } from "../../../contracts/sync.contract.js";
 import { Log } from "../../../utils/log/index.js";
 import { fetchBounded } from "../../../utils/general/fetch-bounded.js";
 import { CacheCalculator } from "./calculator.js";
@@ -94,8 +95,13 @@ const StyleResolver = {
      *
      * @param styleUrl Absolute URL of the style JSON.
      * @param zone bbox + zoom ceiling chosen by the user (null → tiles skipped).
+     * @param trace Where the zooms left out are recorded, read back by the pre-departure check.
      */
-    async enumerate(styleUrl: string, zone: ResolverZone | null): Promise<StyleResource[]> {
+    async enumerate(
+        styleUrl: string,
+        zone: ResolverZone | null,
+        trace?: TilePreparationTrace
+    ): Promise<StyleResource[]> {
         const resources: StyleResource[] = [];
 
         const style = await this._fetchStyle(styleUrl);
@@ -109,7 +115,7 @@ const StyleResolver = {
 
         // Vector tiles (.pbf) for each vector source.
         if (zone) {
-            const tiles = await this._enumerateVectorTiles(style, styleUrl, zone);
+            const tiles = await this._enumerateVectorTiles(style, styleUrl, zone, trace);
             resources.push(...tiles);
         } else {
             Log.warn("[StyleResolver] No zone provided — vector tiles skipped");
@@ -171,7 +177,8 @@ const StyleResolver = {
     async _enumerateVectorTiles(
         style: MapLibreStyle,
         styleUrl: string,
-        zone: ResolverZone
+        zone: ResolverZone,
+        trace?: TilePreparationTrace
     ): Promise<StyleResource[]> {
         const out: StyleResource[] = [];
         const sources = style.sources || {};
@@ -209,7 +216,8 @@ const StyleResolver = {
                     cacheMaxZoom: maxZoom,
                     url: this._resolveUrl(template, styleUrl),
                 },
-                ""
+                "",
+                trace
             );
             out.push(...(tiles as StyleResource[]));
         }

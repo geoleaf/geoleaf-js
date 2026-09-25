@@ -83,7 +83,9 @@ export interface DeclaredPullReport {
 
 /**
  * True when the layer declares a pull source — the only declaration that means
- * "there are entities to fetch".
+ * "there are entities to fetch". Exported for the sync report, which judges "declared
+ * offline" by the SAME predicate since 25/09/2026 (it read `offline.enabled`, and reported
+ * layers with nothing to pull as never pulled, forever).
  *
  * ⚠️ **`offline.enabled` is NOT the predicate**, and using it would pull layers that
  * declare no source: `enabled` says the loader reads the local store, `source` says
@@ -91,7 +93,7 @@ export interface DeclaredPullReport {
  * by another path, and `pullLayer` would answer `refused: "noSource"` for it — a refusal
  * reported once per download, for a profile that is not misconfigured.
  */
-function declaresPullSource(layer: Record<string, unknown>): boolean {
+export function declaresPullSource(layer: Record<string, unknown>): boolean {
     const offline = layer.offline as { source?: { url?: unknown } } | undefined;
     return typeof offline?.source?.url === "string" && offline.source.url.length > 0;
 }

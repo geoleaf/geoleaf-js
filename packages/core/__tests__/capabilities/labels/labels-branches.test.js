@@ -329,9 +329,13 @@ describe("listener lifecycle (B.35b)", () => {
 
 // ─── B.40 — adapter swapped WITHOUT destroy() ───────────────────────────────
 //
-// A basemap switch or a theme change replaces the map adapter in place: no
-// `destroy()` runs, so `zoomListenerAttached` stays `true` and the subscription
-// stays on the map that no longer exists. Labels then stop reacting to zoom.
+// A map destroyed and re-created — `Core.destroy()` then `Core.init()` — hands back a
+// NEW adapter, and nothing runs this module's `destroy()` in between: without the
+// comparison `zoomListenerAttached` stays `true` and the subscription stays on the map
+// that no longer exists. Labels then stop reacting to zoom. (This header once blamed a
+// basemap switch or a theme change: neither creates an adapter — a basemap switch
+// replaces the engine's STYLE, answered by the `style.load` subscription, see
+// `labels-style-swap.test.ts`.)
 
 describe("adapter swap without destroy (B.40)", () => {
     function layerWithLabels() {
@@ -350,7 +354,7 @@ describe("adapter swap without destroy (B.40)", () => {
         const firstAttach = firstMap.on.mock.calls.filter(([evt]) => evt === "zoomend");
         expect(firstAttach).toHaveLength(1);
 
-        // Basemap / theme switch — a brand-new adapter, no destroy() in between.
+        // `Core.destroy()` then `Core.init()` — a brand-new adapter, no destroy() in between.
         const secondMap = { getZoom: vi.fn(() => 11), on: vi.fn(), off: vi.fn() };
         Core.getMap.mockReturnValue(secondMap);
         await Labels.enableLabels("ly-second", {}, true);

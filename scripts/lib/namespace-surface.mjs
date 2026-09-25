@@ -706,11 +706,14 @@ export const EXPECTED_FACADE_MEMBERS = {
     // visibility state, whose WRITE side was already public on `GeoJSON`. The two
     // booleans are separate on purpose: see the contract, and the rewritten note on
     // `_LayerVisibilityManager` in `global.d.ts`.
+    // `search` and `focus` admitted 2026-09-25: finding a feature by
+    // reference in what the map holds, and framing then selecting it.
     Layers: [
         "addFeature",
         "clear",
         "clearVisibleSubset",
         "create",
+        "focus",
         "getFeatureById",
         "getFeatureCount",
         "getFeatures",
@@ -724,6 +727,7 @@ export const EXPECTED_FACADE_MEMBERS = {
         "mergeFeatures",
         "patchFeature",
         "removeFeature",
+        "search",
         "setData",
         "setFeatureState",
         "setVisibility",
@@ -782,11 +786,13 @@ export const EXPECTED_FACADE_MEMBERS = {
         "isProfileAvailableOffline",
         "listConflicts",
         "mayEdit",
+        "preflight",
         "pullLayer",
         "pushOutbox",
         "requeueAll",
         "requeueableReasons",
         "requeueQuarantined",
+        "resolveOptions",
         "whenReady",
         "wireModules",
     ],

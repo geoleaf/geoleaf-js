@@ -29,6 +29,9 @@ import "../../src/globals/globals.js";
 const { _baseLayers, _resetStateForTesting, setMap } =
     await import("../../src/kernel/basemaps/registry.ts");
 const { GeoJSONShared } = await import("../../src/kernel/geojson/shared.ts");
+// Not installed by `globals.js` — the labels capability is mounted by its installer at boot. Its
+// module is what the installer mounts, driven here through its own API.
+const { Labels } = await import("../../src/capabilities/labels/labels.ts");
 
 /** A style layer as the fake engine stores it. */
 interface LayerSpec {
@@ -394,5 +397,156 @@ describe("boot sur un fond vectoriel par défaut — les couches créées pendan
         for (const layer of after.layers.filter((l) => l.source === "gl-src-late")) {
             expect(ids.indexOf(layer.id)).toBeGreaterThan(ids.indexOf(basemapLayer?.id ?? ""));
         }
+    });
+});
+
+/**
+ * `vectorStyle`, with one `symbol` layer whose `text-font` names `font`: the font a label layer
+ * built against this style must read.
+ */
+function labelledStyle(name: string, font: string[]): StyleJSON {
+    const style = vectorStyle(name);
+    style.layers.push({
+        id: "places",
+        type: "symbol",
+        source: "base",
+        layout: { "text-field": ["get", "name"], "text-font": font },
+    });
+    return style;
+}
+
+/** The label layer of `layerId`, as the live style holds it. */
+const labelLayerOf = (layerId: string): LayerSpec | undefined =>
+    engine.style().layers.find((l) => l.id === `gl-${layerId}-label-text`);
+
+/** Labels `layerId` through the capability's own API, and checks they reached the style. */
+async function labelNow(layerId: string): Promise<LayerSpec> {
+    await Labels.enableLabels(layerId, { enabled: true, labelId: "name" }, true);
+    const label = labelLayerOf(layerId);
+    expect(label, `les étiquettes de ${layerId} n'ont pas atteint le style`).toBeDefined();
+    return label as LayerSpec;
+}
+
+describe("étiquettes — posées hors du registre, reconstruites à chaque remplacement du style", () => {
+    afterEach(() => {
+        Labels.destroy();
+    });
+
+    it("🔴 au boot, les étiquettes posées pendant le téléchargement du style sont reconstruites dans sa police", async () => {
+        engine.setLoaded(false);
+        bootWithDefault({ type: "maplibre", style: STYLE_URL });
+        settleSources();
+        await createLayerNow("late");
+        // Built against the empty boot style: no symbol layer to read a font from.
+        const built = await labelNow("late");
+        expect(built.layout?.["text-font"]).not.toEqual(["Arrivée Sans"]);
+
+        engine.deliver(labelledStyle("vector", ["Arrivée Sans"]));
+
+        const label = labelLayerOf("late");
+        expect(label, "gl-late-label-text a été effacée par l'arrivée du style").toBeDefined();
+        expect(label?.source).toBe("gl-src-late");
+        expect(label?.layout?.["text-font"]).toEqual(["Arrivée Sans"]);
+    });
+
+    it("🔴 basculer vers un autre fond vectoriel reconstruit les étiquettes dans la police du nouveau style", async () => {
+        engine.setLoaded(false);
+        bootWithDefault({ type: "maplibre", style: STYLE_URL });
+        settleSources();
+        engine.deliver(labelledStyle("vector", ["Premier Sans"]));
+        await createLayerNow("late");
+        expect((await labelNow("late")).layout?.["text-font"]).toEqual(["Premier Sans"]);
+
+        GeoLeaf.Baselayers.registerBaseLayer("autre", { type: "maplibre", style: OTHER_STYLE_URL });
+        GeoLeaf.Baselayers.setBaseLayer("autre");
+        engine.deliver(labelledStyle("other", ["Second Sans"]));
+
+        const label = labelLayerOf("late");
+        expect(label, "gl-late-label-text a été effacée par la bascule").toBeDefined();
+        expect(label?.layout?.["text-font"]).toEqual(["Second Sans"]);
+        // Painted above the incoming basemap.
+        const ids = layerIds(engine.style());
+        expect(ids.indexOf("gl-late-label-text")).toBeGreaterThan(ids.indexOf("places"));
+    });
+
+    it("🔴 vers un fond raster — un style vide appliqué d'un bloc —, les étiquettes restent", async () => {
+        engine.setLoaded(false);
+        bootWithDefault({ type: "maplibre", style: STYLE_URL });
+        settleSources();
+        engine.deliver(labelledStyle("vector", ["Premier Sans"]));
+        await createLayerNow("late");
+        await labelNow("late");
+
+        // Not "plan": `bootWithDefault` registered the vector default under that key.
+        GeoLeaf.Baselayers.registerBaseLayer("raster", {
+            type: "tile",
+            url: "https://tiles.test/raster/{z}/{x}/{y}.png",
+        });
+        GeoLeaf.Baselayers.setBaseLayer("raster");
+        expect(GeoLeaf.Baselayers.getActiveKey(), "la bascule n'a pas eu lieu").toBe("raster");
+
+        const after = engine.style();
+        expect(after.sources[BASEMAP_SOURCE_ID], "le fond raster n'a pas été posé").toBeDefined();
+        expect(
+            labelLayerOf("late"),
+            "gl-late-label-text a été effacée par la bascule"
+        ).toBeDefined();
+    });
+
+    it("des étiquettes éteintes par l'utilisateur ne reviennent pas avec le nouveau style", async () => {
+        engine.setLoaded(false);
+        bootWithDefault({ type: "maplibre", style: STYLE_URL });
+        settleSources();
+        engine.deliver(labelledStyle("vector", ["Premier Sans"]));
+        await createLayerNow("late");
+        await labelNow("late");
+        Labels.disableLabels("late");
+        expect(labelLayerOf("late")).toBeUndefined();
+
+        GeoLeaf.Baselayers.registerBaseLayer("autre", { type: "maplibre", style: OTHER_STYLE_URL });
+        GeoLeaf.Baselayers.setBaseLayer("autre");
+        engine.deliver(labelledStyle("other", ["Second Sans"]));
+
+        expect(labelLayerOf("late")).toBeUndefined();
+    });
+});
+
+describe("couches posées hors de l'adaptateur et DÉCLARÉES — la forme d'un greffon", () => {
+    it("🔴 une source et ses couches déclarées traversent la bascule, dans leur ordre, avec leurs données", async () => {
+        engine.setLoaded(false);
+        bootWithDefault({ type: "maplibre", style: STYLE_URL });
+        settleSources();
+        engine.deliver(vectorStyle("vector"));
+        // What a plugin does: straight to the engine, then declared to the adapter.
+        const plugin = engine as unknown as {
+            addSource(id: string, spec: Record<string, unknown>): void;
+            addLayer(spec: LayerSpec): void;
+        };
+        plugin.addSource("plugin-src", { type: "geojson", data: points(2.36) });
+        plugin.addLayer({ id: "plugin-fill", type: "fill", source: "plugin-src" });
+        plugin.addLayer({ id: "plugin-line", type: "line", source: "plugin-src" });
+        const adapter = (GeoLeaf.Core as unknown as { getMap(): Record<string, unknown> }).getMap();
+        (
+            adapter as {
+                declareOwnedStyleIds(owner: string, ids: Record<string, string[]> | null): void;
+            }
+        ).declareOwnedStyleIds("plugin", {
+            layerIds: ["plugin-fill", "plugin-line"],
+            sourceIds: ["plugin-src"],
+        });
+
+        GeoLeaf.Baselayers.registerBaseLayer("autre", { type: "maplibre", style: OTHER_STYLE_URL });
+        GeoLeaf.Baselayers.setBaseLayer("autre");
+        engine.deliver(vectorStyle("other"));
+
+        const after = engine.style();
+        expect(after.name).toBe("other");
+        const ids = layerIds(after);
+        expect(ids.filter((id) => id.startsWith("plugin-"))).toEqual([
+            "plugin-fill",
+            "plugin-line",
+        ]);
+        expect(ids.indexOf("plugin-fill")).toBeGreaterThan(ids.indexOf("roads"));
+        expect(after.sources["plugin-src"]?.data).toEqual(points(2.36));
     });
 });
