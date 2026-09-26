@@ -31,11 +31,29 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.10.5 <Badge type="tip" text="2026-09-26" />
+## Release v3.10.6 <Badge type="tip" text="2026-09-26" />
 
-The mobile toolbar keeps its filter button whatever fixed buttons are turned off.
+A profile without a default theme boots with its legend, scale bar and coordinates, and starts on
+its first theme; the desktop side panel's tabs follow `ui.language`.
 
 **Highlights:**
+
+- **Fixed** — when `themes` declared no `defaultTheme`, or when a profile had no `themes`, the app
+  was revealed before the legend, scale, coordinates, filter and theme-selector capabilities had
+  started listening for `geoleaf:app:ready`: none of them mounted, and nothing was logged.
+  `geoleaf:app:ready` now fires once every module has started, and a capability that starts after
+  it mounts at once.
+- **Fixed** — a profile whose `themes` declares no `defaultTheme` starts exactly as if it declared
+  its first theme: only that theme's layers load at startup. Every other layer used to load in the
+  background and stay visible over it. The legacy `config.defautTheme` key is honoured wherever a
+  default theme is read.
+- **Fixed** — a modular profile without `themes` no longer keeps the loading veil up waiting for a
+  `themes.json` it does not have.
+- **Fixed** — without a profile title, the desktop side panel's three tabs read the same translated
+  labels as the mobile sheets, instead of French in every language.
+
+Release v3.10.5 (2026-09-26) — the mobile toolbar keeps its filter button whatever fixed buttons are
+turned off:
 
 - **Fixed** — with geolocation, the theme selector or the layer manager turned off, the mobile
   toolbar lost its filter button while the filter panel was on. The button now sits immediately
