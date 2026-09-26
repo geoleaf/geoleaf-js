@@ -175,11 +175,8 @@ function _getToolbarItems() {
 
 function _buildToolbarButton(
     b: { id: string; label: string; path: string; action?: string; tooltip: string },
-    index: number,
-    filterGroup: HTMLElement,
     scroll: HTMLElement
 ): void {
-    if (index === 6 && domState.options?.showFilterPanel !== false) scroll.appendChild(filterGroup);
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "gl-map-toolbar__btn";
@@ -191,6 +188,26 @@ function _buildToolbarButton(
         btn.setAttribute("aria-expanded", "false");
     btn.appendChild(createSvgIcon(b.path));
     scroll.appendChild(btn);
+}
+
+/**
+ * Places the filter group among the fixed buttons: immediately before the layers button, or
+ * after the last fixed button when the layer manager is off.
+ *
+ * Anchored on a NAMED neighbour, not on a rank. The group used to be appended when the button
+ * loop reached index 6 — but the fixed list varies with three flags (geolocation, theme selector,
+ * layer manager), and with any one of them off it stops at six entries: index 6 was never
+ * reached and the group was never created, without a word. The rank had already drifted once:
+ * set as "after proximity" while the search button was still in the list, it silently became
+ * "after themes" when the search left.
+ *
+ * Must run BEFORE the registry icons are appended, so that "no layers button" lands after the
+ * last fixed button rather than at the end of the bar.
+ */
+function _placeFilterGroup(scroll: HTMLElement, filterGroup: HTMLElement): void {
+    if (domState.options?.showFilterPanel === false) return;
+    // `insertBefore(…, null)` appends — the "no layers button" case.
+    scroll.insertBefore(filterGroup, scroll.querySelector('[data-gl-sheet="layers"]'));
 }
 
 function _attachNavScroll(btn: HTMLButtonElement, direction: number): void {
@@ -421,7 +438,8 @@ export function createToolbarDom(): HTMLElement {
     const filterGroup = _createFilterGroup();
 
     const items = _getToolbarItems();
-    items.forEach((b, index) => _buildToolbarButton(b, index, filterGroup, scroll));
+    items.forEach((b) => _buildToolbarButton(b, scroll));
+    _placeFilterGroup(scroll, filterGroup);
 
     // Render module-driven toolbar icons from registry UI slots
     _appendRegistryIcons(scroll);

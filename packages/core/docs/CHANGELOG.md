@@ -11,6 +11,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **The mobile toolbar keeps its filter button whatever fixed buttons are turned off.** The filter
+  group was inserted at the seventh fixed button, but only four are always there: with
+  geolocation, the theme selector or the layer manager turned off, the bar stopped at six and the
+  filter button was never created — no error, while the filter panel was on. The group now sits
+  immediately before the layers button, or after the last fixed button when there is none. A bar
+  with every fixed button on keeps its layout.
+
 ## [3.10.4] - 2026-09-26
 
 ### Fixed
