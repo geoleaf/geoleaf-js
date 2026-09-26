@@ -31,11 +31,19 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.10.4 <Badge type="tip" text="2026-09-26" />
+## Release v3.10.5 <Badge type="tip" text="2026-09-26" />
 
-The filter reaches line layers, and a vector-tile layer draws the labels it declares.
+The mobile toolbar keeps its filter button whatever fixed buttons are turned off.
 
 **Highlights:**
+
+- **Fixed** — with geolocation, the theme selector or the layer manager turned off, the mobile
+  toolbar lost its filter button while the filter panel was on. The button now sits immediately
+  before the layers button, or after the last fixed button when there is none; a bar with every
+  fixed button on keeps its layout.
+
+Release v3.10.4 (2026-09-26) — the filter reaches line layers, and a vector-tile layer draws the
+labels it declares:
 
 - **Fixed** — a filter field without `layers` now filters line layers too; they used to stay drawn
   under any search. To keep a layer out of a field, list the layers that field targets in its
