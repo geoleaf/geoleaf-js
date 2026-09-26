@@ -31,12 +31,24 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.10.6 <Badge type="tip" text="2026-09-26" />
+## Release v3.11.0 <Badge type="tip" text="2026-09-26" />
 
-A profile without a default theme boots with its legend, scale bar and coordinates, and starts on
-its first theme; the desktop side panel's tabs follow `ui.language`.
+The pre-departure check says whether the write session will let the captures made off-network reach
+the server.
 
 **Highlights:**
+
+- **New** — `GeoLeaf.Storage.preflight()` carries `session`: `valid` with its expiry, `expired`, or
+  `absent`, as the one holding the token tells it, or `null` when nobody does. An expired or absent
+  session makes the verdict `degraded`; a valid one leaves the verdict as it is.
+- **New** — `GeoLeaf.Sync.registerSessionReader(reader)`: the one holding the token registers a
+  reader of the write session, which must not renew it and answers within two seconds.
+  `@geoleaf-plugins/connector` 1.3.3 registers its own in `auth.endpoint` mode; a host that hands
+  its own token over (`getToken`) registers here to say its expiry. `@geoleaf-plugins/offline-ui`
+  1.6.1 shows the session in the offline window.
+
+Release v3.10.6 (2026-09-26) — a profile without a default theme boots with its legend, scale bar
+and coordinates, and starts on its first theme; the desktop side panel's tabs follow `ui.language`:
 
 - **Fixed** — when `themes` declared no `defaultTheme`, or when a profile had no `themes`, the app
   was revealed before the legend, scale, coordinates, filter and theme-selector capabilities had
