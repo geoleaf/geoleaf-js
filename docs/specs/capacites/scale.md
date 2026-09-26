@@ -4,8 +4,8 @@ title: scale — la barre d'échelle graphique, l'échelle numérique éditable 
 capability_id: scale
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: e52f91de
-date: 1er septembre 2026
+verifie_contre: 5302afc4d
+date: 26 septembre 2026
 ---
 
 # scale — l'échelle graphique, l'échelle numérique éditable et le niveau de zoom
@@ -66,7 +66,7 @@ Elle fournit aussi le conteneur auquel [`coordinates`](coordinates.md) vient s'a
 
 | ID    | Fonctionnalité                       | Entrée                                               | Sortie observable                                                                                                                                                                                                                                                      | Code                                                                           |
 | ----- | ------------------------------------ | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| SC-01 | Montage différé                      | Événement `geoleaf:app:ready`                        | Le bandeau apparaît une fois l'application prête — écouteur `{ once: true }`                                                                                                                                                                                           | `lifecycle.ts` → `init`, `_onAppReady`                                         |
+| SC-01 | Montage différé                      | Événement `geoleaf:app:ready`                        | Le bandeau apparaît une fois l'application prête — abonnement par `whenAppReady()` : écouteur `{ once: true }` avant le dévoilement, montage immédiat si l'`init()` arrive après                                                                                       | `lifecycle.ts` → `init`, `_onAppReady`                                         |
 | SC-02 | Conteneur unique                     | Montage                                              | `.gl-scale-main-wrapper` en mise en page horizontale, puis les blocs demandés                                                                                                                                                                                          | `scale-control.ts` → `_createMainContainer`                                    |
 | SC-03 | Barre d'échelle graphique            | `scaleGraphic: true`                                 | `.gl-scale-graphic` + `.gl-scale-graphic-line` dont la **largeur en pixels** et l'étiquette suivent une valeur ronde                                                                                                                                                   | `scale-control.ts` → `_addGraphicScaleToContainer`, `_updateScaleLine`         |
 | SC-04 | Arrondi à une valeur « propre »      | Distance mesurée quelconque                          | Longueur choisie dans la progression 1 / 2 / 3 / 5 / 10 de la puissance de dix courante                                                                                                                                                                                | `scale-control.ts` → `_getRoundNum`                                            |
@@ -150,10 +150,10 @@ citer de numéro de ligne pour ce fichier.
 
 ### Événements
 
-| Événement            | Sens                         | Rôle                                                     |
-| -------------------- | ---------------------------- | -------------------------------------------------------- |
-| `geoleaf:app:ready`  | **écouté**, `{ once: true }` | Déclenche le montage                                     |
-| `zoomend`, `moveend` | **écoutés sur l'adaptateur** | Recalculent la barre graphique et les relevés numériques |
+| Événement            | Sens                             | Rôle                                                                                |
+| -------------------- | -------------------------------- | ----------------------------------------------------------------------------------- |
+| `geoleaf:app:ready`  | **écouté**, par `whenAppReady()` | Déclenche le montage. `{ once: true }` avant le dévoilement, montage immédiat après |
+| `zoomend`, `moveend` | **écoutés sur l'adaptateur**     | Recalculent la barre graphique et les relevés numériques                            |
 
 La capacité **n'émet aucun événement**. Les écouteurs de carte sont mémorisés dans un sac de
 gestionnaires, ce qui permet un détachement exact au démontage — sur la **même référence** que
@@ -217,6 +217,12 @@ c'est ce qui permet de différer sans perdre la poignée de carte.
 
 Sa position dans `presets/manifest.full.ts` est celle du lot des contrôles de carte simples.
 
+🛑 **Le rang ne garantissait pas le montage.** `["geojson"]` place le module après `ui` : sur un
+profil **sans thème par défaut**, `ui` dévoilait l'application depuis son `init()` et émettait
+`geoleaf:app:ready` avant que ce module s'y abonne — le bandeau n'apparaissait jamais, sans un mot
+(signalé sur 3.10.3). Le dévoilement attend désormais la fin de `registry.init()`, et le cycle de
+vie s'abonne par `whenAppReady()`, qui monte aussitôt si l'événement est passé.
+
 ⚠️ **Ordre de fait avec `coordinates`** : `scale` doit avoir construit son conteneur pour que
 `coordinates` s'y amarre. Ce n'est **pas** garanti par une dépendance déclarée — les deux montent sur
 le même événement. C'est l'observateur de mutations de `coordinates` qui absorbe l'incertitude, avec
@@ -227,6 +233,7 @@ son délai de repli. Ne pas « simplifier » ce dispositif en supposant un ordre
 | Import                                       | Statut vis-à-vis de R.8                          |
 | -------------------------------------------- | ------------------------------------------------ |
 | `kernel/config/config-primitives.js`         | **Exception** nommée par la règle                |
+| `kernel/shared/index.js` (`whenAppReady`)    | **Baril de médiation**, depuis le 26/09/2026     |
 | La formule d'échelle (`scale-utils`, kernel) | Consommée, **jamais recopiée** — voir ci-dessous |
 
 Le reste passe par `utils/` : `utils/log`, `utils/general/dom-helpers` (`domCreate`),

@@ -11,8 +11,9 @@
  * Consolidates the legend init that was previously scattered across two external
  * amorces (`initLegendSafe` in the map factory + a block in `init-deferred-ui`)
  * into a single mount deferred to `geoleaf:app:ready`, mirroring the
- * filter / theme-selector pattern: the listener is registered during the
- * synchronous `registry.init()` and catches the async event.
+ * filter / theme-selector pattern. The subscription goes through `whenAppReady()`: an
+ * init that runs after the reveal mounts at once, instead of waiting for an event that
+ * already fired.
  *
  * On ready it late-gates on the merged `modules.legend.enabled` (the boot gate is
  * opt-out on the pre-merge baseCfg), then initialises `Legend` with the active map
@@ -23,14 +24,24 @@
  * Invoked by `LegendModule` (registered in `boot.ts` when `modules.legend.enabled`,
  * opt-out). `LegendModule` depends on `geojson` only (NOT `ui`), so it is dequeued
  * BEFORE `ThemeEngineModule` — the dispatcher of `geoleaf:app:ready` on the themed
- * path — and this listener is registered before the event fires.
+ * path.
+ *
+ * 🛑 That ordering was the ONLY thing that made the listener arrive in time, and it held on
+ * the themed path alone: a profile without a default theme revealed from inside
+ * `UIModule.init()`, which the registry runs BEFORE this module, and the legend stayed empty.
+ * The reveal now waits for the end of `registry.init()`, and `whenAppReady()` no longer needs
+ * the listener to arrive first.
  */
 
 // B.28 — the IMPLEMENTATION, not the facade. This import used to point at
 // `./public-api.js`, which made legend the only capability whose lifecycle depended
 // on its own public API instead of the reverse.
 import { Legend } from "./legend.js";
-import { getAllLayerConfigs, registerLifecycleTeardown } from "../../kernel/shared/index.js";
+import {
+    getAllLayerConfigs,
+    registerLifecycleTeardown,
+    whenAppReady,
+} from "../../kernel/shared/index.js";
 import { getLegendConfig } from "./config.js";
 import { Core } from "../../api/geoleaf.core.js";
 import { Log } from "../../utils/log/index.js";
@@ -96,9 +107,8 @@ export const LegendLifecycle = {
     init(): void {
         if (_started || typeof document === "undefined") return;
         _started = true;
-        // Deferred to app:ready (map + theme layers ready). The event is async
-        // relative to registry.init(), so registering here catches it.
-        document.addEventListener("geoleaf:app:ready", _onAppReady, { once: true });
+        // Deferred to app:ready (map + theme layers ready) — at once if the app is already.
+        whenAppReady(_onAppReady);
         // 🛑 `Core.destroy()` — the integrator's unmount path — runs the lifecycle seam and
         // nothing else; `LegendModule.destroy()` is reached only by `ModuleRegistry.destroy()`,
         // which no production path calls. Without this line a destroy landing in the legend's

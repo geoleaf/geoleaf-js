@@ -25,7 +25,8 @@ import type { ScaleMapLike } from "./scale-control.js";
 
 /**
  * Represents the GeoLeaf Scale control (scale bar + zoom-level indicator).
- * Depends on `geojson` so the `app:ready` subscription runs before the event fires.
+ * Depends on `geojson`: the rank of the late wave. The `app:ready` mount does not rest on it —
+ * the lifecycle subscribes through `whenAppReady()`, which mounts at once after the reveal.
  */
 export class ScaleModule implements ILifecycleModule {
     readonly id = "scale" as const;

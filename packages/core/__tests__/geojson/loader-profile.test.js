@@ -333,14 +333,23 @@ describe("geojson/loader/profile", () => {
         expect(set.size).toBe(0);
     });
 
-    it("_getDefaultThemeLayerIds handles undefined defaultTheme (no matching theme)", () => {
+    // 🛑 This test read « handles undefined defaultTheme (no matching theme) » and asserted an
+    // EMPTY set. It pinned the defect: `theme-engine` applies `themes[0]` to such a profile (the
+    // theme loader's fallback), while this loader answered « no default theme » and loaded every
+    // layer in the background — 19 to 21 layers visible for a 7-layer theme on tourism, a
+    // different count from one load to the next. The loader now resolves the default like the
+    // theme loader does (`kernel/config/default-theme.ts`).
+    it("_getDefaultThemeLayerIds falls back to the FIRST theme when no default is declared", () => {
         const profile = {
             themes: {
-                themes: [{ id: "t1", layers: [{ id: "x", visible: true }] }],
+                themes: [
+                    { id: "t1", layers: [{ id: "x", visible: true }] },
+                    { id: "t2", layers: [{ id: "y" }] },
+                ],
             },
         };
         const set = LoaderProfile._getDefaultThemeLayerIds(profile);
-        expect(set.size).toBe(0);
+        expect([...set]).toEqual(["x"]);
     });
 
     it("_loadLayersByBatch handles tasks that resolve null", async () => {
@@ -409,6 +418,39 @@ describe("geojson/loader/profile", () => {
 
         expect(calls).toContain("lyr1"); // in the default theme → loaded
         expect(calls).not.toContain("lyr2"); // off-theme → not loaded at boot (loads on switch)
+        globalThis.GeoLeaf = undefined;
+    });
+
+    it("F0: themes WITHOUT a declared default boot like `themes[0]` declared — its layers only", async () => {
+        const calls = [];
+        globalThis.GeoLeaf = {
+            Config: {
+                getActiveProfile: () => ({
+                    id: "p1",
+                    geojsonLayers: [
+                        { id: "lyr1", url: "https://example.com/d1.json" },
+                        { id: "lyr2", url: "https://example.com/d2.json" },
+                    ],
+                    themes: {
+                        themes: [
+                            { id: "t1", layers: [{ id: "lyr1" }] },
+                            { id: "t2", layers: [{ id: "lyr2" }] },
+                        ],
+                    },
+                }),
+            },
+            _GeoJSONLoader: {
+                _loadSingleLayer: vi.fn((id, label) => {
+                    calls.push(id);
+                    return Promise.resolve({ id, label });
+                }),
+            },
+        };
+        setupProfileDeps(_f0Deps(globalThis.GeoLeaf));
+        await LoaderProfile.loadFromActiveProfile();
+        await new Promise((r) => setTimeout(r, 250));
+
+        expect(calls).toEqual(["lyr1"]); // the theme `theme-engine` applies — nothing else
         globalThis.GeoLeaf = undefined;
     });
 

@@ -4,7 +4,7 @@ title: filter — le filtre attributaire générique, et son contrat sérialisab
 capability_id: filter
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 86ff0985c
+verifie_contre: 5302afc4d
 date: 26 septembre 2026
 ---
 
@@ -74,7 +74,7 @@ toutes les couches chargées (FI-21).
 
 | ID    | Fonctionnalité                                          | Entrée                                         | Sortie observable                                                                                                                                                                                                                                                                  | Code                                                      |
 | ----- | ------------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| FI-01 | Montage différé aux données                             | `geoleaf:app:ready`                            | Le panneau monte quand les couches sont chargées — sans quoi les options déduites des données seraient vides                                                                                                                                                                       | `lifecycle.ts` → `init`                                   |
+| FI-01 | Montage différé aux données                             | `geoleaf:app:ready`                            | Le panneau monte quand les couches sont chargées — sans quoi les options déduites des données seraient vides. Abonnement par `whenAppReady()` : montage immédiat si l'`init()` arrive après le dévoilement                                                                         | `lifecycle.ts` → `init`                                   |
 | FI-02 | **Double** gate tardif                                  | Configuration fusionnée                        | Éteint **ou** non migré (`fields` vide) → rien ne monte. Les deux conditions sont dans la même ligne                                                                                                                                                                               | `lifecycle.ts` → `_onAppReady`                            |
 | FI-03 | Panneau construit depuis la déclaration                 | `fields[]`                                     | Un contrôle par descripteur, selon son genre. Aucun rendu codé en dur, aucun `innerHTML`                                                                                                                                                                                           | `panel/render.ts`                                         |
 | FI-04 | Six genres de filtre                                    | `kind`                                         | `taxonomy`, `tag`, `range`, `text`, `boolean`, `proximity` — **six, pas sept** : il n'y a pas de genre `enum`                                                                                                                                                                      | `types.ts` → `FilterKind`, `engine/predicate.ts`          |
@@ -241,10 +241,10 @@ Ces cinq lecteurs remplacent les globaux `_UIFilterPanel*`, **supprimés**.
 
 ### Événements
 
-| Signal                    | Sens       | Rôle                                                           |
-| ------------------------- | ---------- | -------------------------------------------------------------- |
-| `geoleaf:app:ready`       | **écouté** | Déclenche le montage. `{ once: true }`, détaché par `_reset()` |
-| `geoleaf:filters:applied` | **émis**   | Un filtre vient d'être appliqué. Charge utile **vide**         |
+| Signal                    | Sens       | Rôle                                                                                                                               |
+| ------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `geoleaf:app:ready`       | **écouté** | Déclenche le montage, par `whenAppReady()` : `{ once: true }` avant le dévoilement, montage immédiat après. Détaché par `_reset()` |
+| `geoleaf:filters:applied` | **émis**   | Un filtre vient d'être appliqué. Charge utile **vide**                                                                             |
 
 ⚠️ **`geoleaf:filter:apply` et `geoleaf:filter:reset` ne sont PAS de cette capacité.** Ils sont
 déclarés au contrat, documentés par la façade d'événements, et **émis par le kernel** — le cœur
@@ -303,6 +303,11 @@ d'enregistrement qui départage le tri topologique. Le numéro d'ordre ne se rec
 déduire les options `"auto"` — **et** un besoin d'ordre. Contrairement à [`legend`](legend.md), le
 besoin de données est authentique ; c'est le cas le plus favorable des quatorze.
 
+🛑 **Le besoin d'ordre n'était pas tenu sur un profil sans thème par défaut** : `ui`, dépilé avant
+ce module, dévoilait l'application depuis son `init()`, et le panneau ne montait jamais (signalé
+sur 3.10.3). Le dévoilement attend désormais la fin de `registry.init()`, et le cycle de vie
+s'abonne par `whenAppReady()`.
+
 ### Frontière `capabilities/` → `kernel/` (règle ESLint R.8)
 
 | Import                                                          | Statut vis-à-vis de R.8                                                                                                                                         |
@@ -312,6 +317,7 @@ besoin de données est authentique ; c'est le cas le plus favorable des quatorze
 | `kernel/ui/index.js` (champ de recherche en pilule)             | **Baril**                                                                                                                                                       |
 | `kernel/events/index.js`                                        | **Baril**                                                                                                                                                       |
 | `kernel/shared/index.js` — `armToolCursor` / `disarmToolCursor` | **Baril**, élargi POUR ce consommateur : la proximité arme le curseur d'outil et pose `__geoleafExclusiveMode` en passant par lui, et le baril le dit sur place |
+| `kernel/shared/index.js` — `whenAppReady`                       | **Baril** — l'abonnement du montage, partagé avec `legend`, `scale`, `coordinates` et `theme-selector` (26/09/2026)                                             |
 
 ### ⚠️ Une frontière inter-capacités franchie en import profond
 

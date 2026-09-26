@@ -29,8 +29,30 @@ import type { IGeoLeafConfig } from "../../contracts/config.contract.ts";
 import { ensureGeoLeaf } from "../../utils/general/geoleaf-global.js";
 import { ThemeLoader } from "../../kernel/themes/theme-loader.js";
 import { ThemeApplierCore, type ThemeConfig } from "../../kernel/themes/theme-applier/core.js";
+import { ProfileLoader } from "../../kernel/config/profile-loader.js";
 import { asFn, type AppNamespace } from "../app-types.js";
 import { asObject } from "../../utils/general/type-guards.js";
+
+/**
+ * Whether the active profile is a MODULAR profile without a `themes` block — one that declares
+ * no theme.
+ *
+ * A modular profile resolves its themes INTO the active profile, which is where the theme loader
+ * reads them without a request. Without that block, the loader falls back to the legacy
+ * `profiles/<id>/themes.json`, which can only 404 for such a profile — retried after 1 s. The
+ * reveal of a profile without any theme waits for the end of the registry, i.e. for this module:
+ * measured on tourism stripped of its themes, four 404s and 1.1 to 2.1 s of veil. A LEGACY
+ * profile still goes through the loader: its themes do live in that file.
+ *
+ * @param config - The `GeoLeaf.Config` facade, read loosely.
+ * @returns `true` only when the active profile is readable, modular, and carries no `themes`.
+ */
+function _declaresNoThemes(config: Record<string, unknown> | null): boolean {
+    const getActiveProfile = asFn(config?.getActiveProfile);
+    const profile = asObject(getActiveProfile ? getActiveProfile.call(config) : null);
+    if (!profile || profile.themes !== undefined) return false;
+    return ProfileLoader.isModularProfile(profile);
+}
 
 /**
  * Applies the active profile's default theme once at boot, when themes exist.
@@ -48,6 +70,7 @@ export class ThemeEngineModule implements ILifecycleModule {
             const getActiveProfileId = asFn(config?.getActiveProfileId);
             const profileId = getActiveProfileId ? getActiveProfileId.call(config) : null;
             if (typeof profileId !== "string" || !profileId) return;
+            if (_declaresNoThemes(config)) return;
 
             // Same source as the (now UI-only) ThemeSelector.init: the loader resolves
             // `defaultTheme` to `themes[0]` when unset, and returns `null` only when the
@@ -61,7 +84,9 @@ export class ThemeEngineModule implements ILifecycleModule {
 
             // Dispatches `geoleaf:theme:applied` → reveal + permalink + toast + the
             // theme-selector `_onAppReady` (all already subscribed: this runs after `ui`
-            // and after every `geojson`-freed module).
+            // and after every `geojson`-freed module). Also on a profile whose `themes` has no
+            // `defaultTheme`: the loader resolved `themes[0]` above, and this apply reveals
+            // before the boot's own release (`releaseThemelessReveal`), which is then a no-op.
             await ThemeApplierCore.applyTheme(theme as ThemeConfig);
         } catch (e) {
             // init() MUST NOT reject — a rejection aborts the ModuleRegistry chain.

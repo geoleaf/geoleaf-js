@@ -10,9 +10,10 @@
  *
  * Mounts the mapping-driven panel and wires it to the sources. The data-dependent
  * mount is deferred to `geoleaf:app:ready` (POI / GeoJSON loaded — so `tag: "auto"`
- * options and the initial apply see the data), mirroring the taxonomy/labels
- * pattern of registering the listener during the synchronous `registry.init()` and
- * catching the async event.
+ * options and the initial apply see the data), through `whenAppReady()`: an init that
+ * runs after the reveal mounts at once. (It used to register a plain listener, « catching
+ * the async event » — which a profile without a default theme dispatched before this
+ * module's init, and the panel never mounted.)
  *
  * When the resolved config carries no `fields` (an un-migrated profile, still on
  * the legacy `searchConfig` panel), the lifecycle is inert — nothing mounts, so the
@@ -30,6 +31,7 @@ import { Core } from "../../api/geoleaf.core.js";
 import { FilterPanelProximity } from "./panel/proximity/proximity.js";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.js";
 import type { FilterConfig } from "./types.js";
+import { whenAppReady } from "../../kernel/shared/index.js";
 
 /** Debounce for auto-apply on control changes (kept from the legacy panel). */
 const DEBOUNCE_MS = 300;
@@ -117,9 +119,9 @@ export const FilterLifecycle = {
     init(): void {
         if (_started || typeof document === "undefined") return;
         _started = true;
-        // Data-dependent mount deferred to app:ready (POI/GeoJSON loaded). The event
-        // is async relative to registry.init(), so registering here catches it.
-        document.addEventListener("geoleaf:app:ready", _onAppReady, { once: true });
+        // Data-dependent mount deferred to app:ready (POI/GeoJSON loaded) — at once if the
+        // app is already.
+        whenAppReady(_onAppReady);
     },
 
     /** Detaches listeners, unmounts the panel and removes the shims (module destroy / test). */

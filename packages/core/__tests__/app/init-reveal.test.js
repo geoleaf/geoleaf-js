@@ -16,7 +16,7 @@ vi.mock("../../src/kernel/events/event-bus.js", async (importActual) => ({
     dispatchGeoLeafEvent: vi.fn(),
 }));
 
-const { setupReveal } = await import("../../src/app/init-reveal.js");
+const { setupReveal, releaseThemelessReveal } = await import("../../src/app/init-reveal.js");
 const { dispatchGeoLeafEvent } = await import("../../src/kernel/events/event-bus.js");
 
 const AppLog = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
@@ -31,7 +31,14 @@ function deps(over = {}) {
     return {
         GeoLeaf: {
             _version: "9.9.9",
-            Config: { getActiveProfile: () => ({ themes: { defaultTheme: "clair" } }) },
+            // A themed profile declares its themes: a `defaultTheme` naming no listed theme
+            // resolves to NO theme (`kernel/config/default-theme.ts`) — `theme-engine` would
+            // apply nothing, and the reveal would have waited for the 5 s net.
+            Config: {
+                getActiveProfile: () => ({
+                    themes: { defaultTheme: "clair", themes: [{ id: "clair" }] },
+                }),
+            },
             ...over.GeoLeaf,
         },
         map,
@@ -61,6 +68,8 @@ afterEach(() => {
     // `_appRevealed`, hence each counting one more reveal. Firing them here
     // consumes them (`once`).
     document.dispatchEvent(new CustomEvent("geoleaf:theme:applied"));
+    // Same purge for a reveal armed and never released (a profile without a default theme).
+    releaseThemelessReveal();
     vi.useRealTimers();
     document.body.innerHTML = "";
 });
@@ -74,9 +83,53 @@ describe("setupReveal — quand l'application est-elle dévoilée ?", () => {
         expect(readyCount()).toBe(1);
     });
 
-    test("un profil SANS thème par défaut est dévoilé tout de suite (il n'émettra jamais l'événement)", () => {
+    // 🛑 This test used to read « un profil SANS thème par défaut est dévoilé tout de suite » and
+    // asserted 1 right after `setupReveal()`. It pinned the defect: `setupReveal` runs inside
+    // `UIModule.init()`, and revealing there dispatched `geoleaf:app:ready` before the capability
+    // modules the registry runs after `ui` had subscribed — legend, scale bar and coordinates
+    // never mounted. The reveal is now armed, and the boot releases it after `registry.init()`.
+    test("un profil SANS thème par défaut n'est PAS dévoilé dans setupReveal — la libération de fin de registre le dévoile", () => {
         setupReveal(deps({ GeoLeaf: { Config: { getActiveProfile: () => ({ themes: {} }) } } }));
+        expect(readyCount()).toBe(0);
+
+        releaseThemelessReveal();
         expect(readyCount()).toBe(1);
+        // Released once: a second call has nothing left to reveal.
+        releaseThemelessReveal();
+        expect(readyCount()).toBe(1);
+    });
+
+    test("sans thème par défaut, le premier signal gagne : `theme:applied` avant la libération ne dévoile qu'une fois", () => {
+        setupReveal(deps({ GeoLeaf: { Config: { getActiveProfile: () => ({ themes: {} }) } } }));
+        // `themes` without `defaultTheme`: the loader falls back to `themes[0]`, and theme-engine
+        // applies it inside the registry — before the boot releases the armed reveal.
+        document.dispatchEvent(new CustomEvent("geoleaf:theme:applied"));
+        expect(readyCount()).toBe(1);
+        releaseThemelessReveal();
+        expect(readyCount()).toBe(1);
+    });
+
+    // 🛑 A `themes` list without `defaultTheme` HAS a default: the theme loader falls back to
+    // `themes[0]`, and `theme-engine` applies it. The reveal waits for it, like a declared one.
+    test("des thèmes SANS défaut déclaré attendent `theme:applied` — la libération ne dévoile rien", () => {
+        setupReveal(
+            deps({
+                GeoLeaf: {
+                    Config: { getActiveProfile: () => ({ themes: { themes: [{ id: "a" }] } }) },
+                },
+            })
+        );
+        releaseThemelessReveal();
+        expect(readyCount()).toBe(0);
+
+        document.dispatchEvent(new CustomEvent("geoleaf:theme:applied"));
+        expect(readyCount()).toBe(1);
+    });
+
+    test("la libération ne dévoile rien pour un profil À THÈME", () => {
+        setupReveal(deps());
+        releaseThemelessReveal();
+        expect(readyCount()).toBe(0);
     });
 
     test("le typo historique `defautTheme` compte comme un thème par défaut", () => {
@@ -84,11 +137,14 @@ describe("setupReveal — quand l'application est-elle dévoilée ?", () => {
             deps({
                 GeoLeaf: {
                     Config: {
-                        getActiveProfile: () => ({ themes: { config: { defautTheme: "x" } } }),
+                        getActiveProfile: () => ({
+                            themes: { config: { defautTheme: "x" }, themes: [{ id: "x" }] },
+                        }),
                     },
                 },
             })
         );
+        releaseThemelessReveal();
         expect(readyCount()).toBe(0);
     });
 

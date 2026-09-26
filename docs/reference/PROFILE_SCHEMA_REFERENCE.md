@@ -587,7 +587,7 @@ themes.json — layer visibility presets (themes) for a GeoLeaf profile. Hardene
 | ------ | ---- | ------ | ------ | ------- | ----------- |
 | `$schema` | string | — | — | — | — |
 | `config` | object | — | — | — | Global theme configuration. |
-| `config.defautTheme` | string | — | — | — | LEGACY/TYPO of defaultTheme (present in one profile). Use the root-level defaultTheme. See anomaly registry. |
+| `config.defautTheme` | string | — | — | — | LEGACY/TYPO of defaultTheme (present in one profile), read when the root-level defaultTheme names no theme of the list. Use the root-level defaultTheme. See anomaly registry. |
 | `config.primaryThemes` | object | — | — | — | — |
 | `config.primaryThemes.enabled` | boolean | — | — | — | Show primary themes UI. |
 | `config.primaryThemes.position` | string | — | — | "top-map" \| "top-layermanager" | Position of primary themes control. |
@@ -596,7 +596,7 @@ themes.json — layer visibility presets (themes) for a GeoLeaf profile. Hardene
 | `config.secondaryThemes.placeholder` | string | — | — | — | Placeholder text for secondary theme selector. |
 | `config.secondaryThemes.position` | string | — | — | "top-map" \| "top-layermanager" | Position of secondary themes control. |
 | `config.secondaryThemes.showNavigationButtons` | boolean | — | — | — | Show prev/next navigation buttons. |
-| `defaultTheme` | string | — | — | — | ID of the theme active on startup (canonical, root-level). |
+| `defaultTheme` | string | — | — | — | ID of the theme active on startup (canonical, root-level). Absent, or naming no theme of the list: the first theme with an id, which also decides the layers loaded at startup. |
 | `themes` | array | — | — | — | Theme definitions. |
 | `themes[].description` | string | — | — | — | Theme description. |
 | `themes[].icon` | string | — | — | — | Emoji or icon name. |

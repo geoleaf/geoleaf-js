@@ -31,6 +31,7 @@ import { getLabel } from "../../utils/i18n/i18n.js";
 import { FetchHelper } from "../../utils/general/fetch-helper.js";
 import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";
 import { asObject } from "../../utils/general/type-guards.js";
+import { resolveDefaultThemeId } from "../config/default-theme.js";
 
 /** A normalised theme entry produced by `_normalizeTheme`. */
 export interface NormalizedTheme {
@@ -77,6 +78,8 @@ interface RawThemesConfig {
     config?: {
         primaryThemes?: Partial<ThemeConfigSection>;
         secondaryThemes?: Partial<ThemeConfigSection>;
+        /** Historical typo of `defaultTheme`, tolerated by the schema. */
+        defautTheme?: string;
     };
     themes?: RawTheme[];
     defaultTheme?: string | null;
@@ -109,18 +112,26 @@ function _normalizeTheme(theme: RawTheme): NormalizedTheme | null {
     };
 }
 
-function _resolveDefaultTheme(validatedConfig: ValidatedThemesConfig): void {
-    const firstId = validatedConfig.themes[0]?.id;
-    if (!firstId) return;
-    if (!validatedConfig.defaultTheme) {
-        validatedConfig.defaultTheme = firstId;
-        return;
+/**
+ * Sets the theme the profile starts on, by the resolver every reader shares
+ * (`kernel/config/default-theme.ts`) — `theme-engine` applies what this says, so the GeoJSON
+ * loader and the boot reveal must say the same. It used to ignore the legacy
+ * `config.defautTheme` the other two honoured.
+ */
+function _resolveDefaultTheme(
+    validatedConfig: ValidatedThemesConfig,
+    rawConfig: RawThemesConfig
+): void {
+    const declared = rawConfig.defaultTheme || rawConfig.config?.defautTheme || null;
+    const resolved = resolveDefaultThemeId({
+        defaultTheme: rawConfig.defaultTheme,
+        config: rawConfig.config,
+        themes: validatedConfig.themes,
+    });
+    if (declared && resolved !== declared) {
+        Log?.warn(`[ThemeLoader] defaultTheme "${declared}" not found, using "${resolved}"`);
     }
-    const defaultExists = validatedConfig.themes.some((t) => t.id === validatedConfig.defaultTheme);
-    if (!defaultExists) {
-        Log?.warn("[ThemeLoader] defaultTheme not found, using first theme");
-        validatedConfig.defaultTheme = firstId;
-    }
+    validatedConfig.defaultTheme = resolved;
 }
 
 /**
@@ -306,7 +317,7 @@ const _ThemeLoader = {
         }
 
         // Check that the defaultTheme exists
-        _resolveDefaultTheme(validatedConfig);
+        _resolveDefaultTheme(validatedConfig, rawConfig);
 
         Log?.debug(
             "[ThemeLoader] Configuration validated:",

@@ -256,7 +256,10 @@ export interface IModuleUISlot {
  * it places the capability in the LATE init wave — after `config` has merged the profile,
  * after `core-map`, after `ui` has mounted its controls, and before `ThemeEngineModule`,
  * whose `init()` is what dispatches `geoleaf:theme:applied` (and through the reveal,
- * `geoleaf:app:ready`). Removing an edge moves the module to the FIRST wave, which visibly
+ * `geoleaf:app:ready`). On a profile without a default theme, the boot dispatches
+ * `geoleaf:app:ready` once `registry.init()` has returned — after every module either way. (It
+ * used to fire from inside `ui`'s `init()`, i.e. BEFORE this wave, and the capabilities that
+ * mount on it never did.) Removing an edge moves the module to the FIRST wave, which visibly
  * reorders map controls (stacking follows insertion), changes introspection ranks, and
  * re-times every listener armed at init relative to the kernel emitters. Do not delete an
  * edge because its init "reads nothing" — that was measured true for thirteen of fourteen,

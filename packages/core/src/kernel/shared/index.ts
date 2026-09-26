@@ -73,3 +73,14 @@ export { PROFILE_STORAGE_KEY, SELECTED_PROFILE_STORAGE_KEY } from "./profile-sto
 // ⚠️ `runLifecycleTeardowns` is NOT here, deliberately: its only caller is `kernel/map/facade.ts`,
 // on the same side of the boundary. A capability registers; it never runs the teardowns.
 export { registerLifecycleTeardown } from "./lifecycle.js";
+
+// App readiness (26/09/2026) — re-exported because the boundary requires it: the capabilities
+// that mount on `geoleaf:app:ready` subscribe through `whenAppReady()` in their lifecycle, and
+// cannot import deep under `kernel/**`. Again the gesture the rule DESIGNATES. The motive is a
+// measured defect: a profile without a default theme dispatched the event before five of them
+// had subscribed, and none of them ever mounted (motives in `app-ready.ts`).
+//
+// ⚠️ `markAppReady` and `resetAppReady` are NOT here, deliberately: their only callers are the
+// reveal and the boot (`app/`), outside `capabilities/`, which import the module directly. A
+// capability waits for the application; it never declares it ready.
+export { whenAppReady } from "./app-ready.js";

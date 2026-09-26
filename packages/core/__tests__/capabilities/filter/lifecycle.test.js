@@ -39,6 +39,7 @@ vi.mock("../../../src/capabilities/filter/panel/proximity/proximity.js", () => (
 }));
 
 const { FilterLifecycle } = await import("../../../src/capabilities/filter/lifecycle.ts");
+const { markAppReady, resetAppReady } = await import("../../../src/kernel/shared/app-ready.ts");
 
 function appReady() {
     document.dispatchEvent(new CustomEvent("geoleaf:app:ready"));
@@ -56,6 +57,7 @@ beforeEach(() => {
 
 afterEach(() => {
     FilterLifecycle._reset();
+    resetAppReady();
 });
 
 describe("FilterLifecycle — mount on app:ready", () => {
@@ -92,6 +94,14 @@ describe("FilterLifecycle — mount on app:ready", () => {
         FilterLifecycle.init();
         appReady();
         expect(document.querySelectorAll("#gl-filter-panel")).toHaveLength(1);
+    });
+
+    // 🛑 A profile without a default theme dispatched `geoleaf:app:ready` before this module's
+    // init() had run, and the panel never mounted. An init after the reveal mounts at once.
+    it("an init that runs AFTER the reveal mounts the panel at once", () => {
+        markAppReady();
+        FilterLifecycle.init();
+        expect(document.getElementById("gl-filter-panel")).toBeTruthy();
     });
 });
 

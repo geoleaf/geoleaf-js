@@ -1,0 +1,38 @@
+{
+    "schemaVersion": 2,
+    "lot": "themeless-reveal",
+    "scope": [
+        "packages/core/src/kernel/shared/app-ready.ts",
+        "packages/core/src/kernel/config/default-theme.ts"
+    ],
+    "verdicts": {
+        "packages/core/src/kernel/shared/app-ready.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Si l'application est dévoilée pour ce boot, et `whenAppReady()` : ce qui monte sur `geoleaf:app:ready` s'exécute aussitôt quand l'événement est déjà passé",
+            "confidence": "haute",
+            "rationale": "Né d'un défaut mesuré : sur un profil sans thème par défaut, `app:ready` partait avant que cinq capacités s'y abonnent, et aucune ne montait. Vit dans `kernel/shared/` parce que les capacités le lisent et que R.8 leur interdit l'import profond : seul `whenAppReady` passe le baril, les écrivains sont importés en direct par `app/`. Le drapeau retombe au début du boot et par le seam de teardown. Tenu par `__tests__/shared/app-ready.test.ts`, vu rougir sur deux mutations"
+        },
+        "packages/core/src/kernel/config/default-theme.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Le thème sur lequel démarre un profil — un résolveur pour les trois lecteurs (chargeur GeoJSON, dévoilement, chargeur de thèmes)",
+            "confidence": "haute",
+            "rationale": "Trois lecteurs répondaient différemment ; un `themes` sans défaut montrait 19 à 21 couches pour un thème de 7, mesuré sur tourism. Dans `kernel/config/`, à côté de `layer-geometry.ts` (même patron de résolveur unique), et sans import : `kernel/themes` importe déjà `kernel/geojson`, un résolveur logé dans l'un fermerait un cycle. Tenu par `__tests__/config/default-theme.test.ts`"
+        }
+    }
+}

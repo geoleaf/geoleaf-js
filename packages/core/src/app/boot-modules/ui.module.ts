@@ -144,7 +144,11 @@ export class UIModule implements ILifecycleModule {
         // #22 — Non-critical panels deferred to post-reveal.
         setupDeferredUIPanels({ GeoLeaf, cfg, map, AppLog, _pm });
 
-        // #23 — Loader reveal + permalink apply + `geoleaf:app:ready`.
+        // #23 — Loader reveal + permalink apply. Wires the reveal, it does not reveal:
+        // `geoleaf:app:ready` fires after every module's init() — from theme-engine's
+        // `geoleaf:theme:applied`, or from the boot once `registry.init()` has returned (a
+        // profile without a default theme). Revealing here fired it before the capabilities
+        // the registry runs after `ui` had subscribed.
         setupReveal({
             GeoLeaf,
             map,

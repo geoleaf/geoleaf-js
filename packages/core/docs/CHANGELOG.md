@@ -11,6 +11,36 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **The desktop side panel's tabs follow `ui.language`.** Without a profile title, the three tabs
+  of the panel (≥ 1440 px) were named « Filtres », « Couches » and « Legende » in every language,
+  while the mobile sheets were translated. They now read the same translated labels as the
+  sheets (`sheet.title.filters`, `sheet.title.layers`, `sheet.title.legend`), which a profile's
+  `labels` can override. In French, the legend tab reads « Légende ». A title set by the profile
+  (`modules.filter.title`, `layerManagerConfig.title`, `modules.legend.title`) still takes
+  precedence, and it names the panel header, the mobile sheet and the tab in one language: to get
+  translated tabs, leave these three keys out.
+- **A profile without a default theme boots with its legend, scale bar and coordinates.** When
+  `themes` declared no `defaultTheme` (or when the profile had no `themes` at all), the app was
+  revealed before the legend, scale, coordinates, filter and theme-selector capabilities had
+  started listening for `geoleaf:app:ready`. None of them mounted, `GeoLeaf.Legend.getAllLayers()`
+  stayed empty, and nothing was logged. `geoleaf:app:ready` now fires once every module has
+  started, whichever way the profile declares its themes, and a capability that starts after it
+  mounts at once. Declaring a `defaultTheme` is no longer needed as a workaround.
+- **A profile whose `themes` declares no `defaultTheme` starts exactly as if it declared its first
+  theme.** The first theme was applied, but every other layer kept loading in the background and
+  stayed visible over it. On the demo profile, that meant 19 to 21 layers for a 7-layer theme, and
+  a different count from one load to the next. Only the first theme's layers now load at startup,
+  the others load when their theme is chosen, and the loading veil lifts once the theme is applied.
+  The legacy `config.defautTheme` key is honoured wherever a default theme is read, after the root
+  `defaultTheme`.
+- **A modular profile without `themes` no longer keeps the loading veil up waiting for
+  `themes.json`.** The default-theme step asked for that file although such a profile has none; the
+  request could only fail, and it held the veil for one to two seconds. The step now skips it.
+
 ## [3.10.5] - 2026-09-26
 
 ### Fixed

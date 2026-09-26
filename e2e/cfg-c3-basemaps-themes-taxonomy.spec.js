@@ -41,6 +41,41 @@ async function bootMapStyleReady(page) {
     );
 }
 
+/**
+ * Removes the default theme from every `profile-bundle.json` the page receives —
+ * `themes.defaultTheme` and the legacy `themes.config.defautTheme` — through an in-page
+ * `window.fetch` patch (the vehicle of `cfg-c2-ui-controls.spec.js`). The themes themselves are
+ * kept: the loader then falls back to `themes[0]`, which is the profile an integrator reported.
+ *
+ * `window.__glDefaultThemeDropped` counts the bundles rewritten: the witness that it bit.
+ */
+async function dropDefaultTheme(page) {
+    await page.addInitScript(() => {
+        const w = /** @type {any} */ (window);
+        w.__glDefaultThemeDropped = 0;
+        const origFetch = window.fetch.bind(window);
+        window.fetch = async (input, init) => {
+            const url =
+                typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+            const res = await origFetch(input, init);
+            if (!url.includes("profile-bundle.json") || !res.ok) return res;
+            try {
+                const bundle = await res.clone().json();
+                if (!bundle.themes) return res;
+                delete bundle.themes.defaultTheme;
+                if (bundle.themes.config) delete bundle.themes.config.defautTheme;
+                w.__glDefaultThemeDropped += 1;
+                return new Response(JSON.stringify(bundle), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" },
+                });
+            } catch {
+                return res;
+            }
+        };
+    });
+}
+
 /** Read the native map style sources/layers + terrain + registered images. */
 async function readMapState(page) {
     return page.evaluate(() => {
@@ -291,6 +326,54 @@ test.describe("cfg-c3 — basemaps/themes/taxonomy (état map/DOM réel)", () =>
         );
         const state = await readMapState(page);
         expect(state.images.some((id) => String(id).startsWith("tourism-poi-cat-"))).toBeTruthy();
+    });
+
+    // ── themes: a profile WITHOUT a default theme ─────────────────────────────
+    // 🛑 Reported by an integrator on 3.10.3: without `defaultTheme`, the reveal ran inside
+    // `UIModule.init()` and dispatched `geoleaf:app:ready` before the legend, scale and
+    // coordinates capabilities had subscribed to it — none of them ever mounted, and nothing
+    // was logged. Seen red on the 3.10.6 deployment before the fix.
+    test("themes: sans thème par défaut, la légende, l'échelle et les coordonnées sont montées", async ({
+        page,
+    }) => {
+        await dropDefaultTheme(page);
+        await bootMapStyleReady(page);
+        expect(
+            await page.evaluate(() => /** @type {any} */ (window).__glDefaultThemeDropped)
+        ).toBeGreaterThan(0);
+
+        await expect(page.locator(".gl-scale-main-wrapper").first()).toBeVisible({
+            timeout: 15000,
+        });
+        await expect(page.locator(".gl-scale-coordinates").first()).toBeVisible({
+            timeout: 15000,
+        });
+        await page.waitForFunction(
+            () => {
+                const g = /** @type {any} */ (window).GeoLeaf;
+                return (g?.Legend?.getAllLayers?.()?.size ?? 0) > 0;
+            },
+            undefined,
+            { timeout: 15000 }
+        );
+
+        // 🛑 And the map is the one of the theme it starts on — `themes[0]`, which theme-engine
+        // applies. The kernel answered « no default theme » for this profile and loaded every
+        // layer in the background: measured, 19 to 21 layers for a 7-layer theme, never the same
+        // count twice. Let the idle loading run (it used to land within seconds), then compare.
+        await page.waitForTimeout(5000);
+        const { loaded, theme } = await page.evaluate(() => {
+            const g = /** @type {any} */ (window).GeoLeaf;
+            const first = g.Config.getActiveProfile().themes.themes[0];
+            return {
+                loaded: g.GeoJSON.getAllLayers().map((/** @type {any} */ l) => l.id),
+                theme: first.layers
+                    .filter((/** @type {any} */ l) => l.visible !== false)
+                    .map((/** @type {any} */ l) => l.id),
+            };
+        });
+        expect(loaded.length).toBeGreaterThan(0);
+        expect(loaded.filter((/** @type {string} */ id) => !theme.includes(id))).toEqual([]);
     });
 
     // ── themes: default theme applied + primary switch (DOM state) ──────────────

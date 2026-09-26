@@ -10,9 +10,11 @@
  * capability (S8/F2). Thin: delegates to `ThemeSelectorLifecycle`, which mounts the
  * theme switch bar on `geoleaf:app:ready`.
  *
- * Depends on `geojson` only (NOT `ui`/`theme-engine`): it must be dequeued BEFORE
- * ThemeEngineModule (deps `["geojson","ui"]`) so its `app:ready` listener is
- * registered before the engine dispatches `geoleaf:theme:applied` → `app:ready`.
+ * Depends on `geojson` only (NOT `ui`/`theme-engine`): it is dequeued BEFORE
+ * ThemeEngineModule (deps `["geojson","ui"]`), so its `app:ready` listener is
+ * registered before the engine dispatches `geoleaf:theme:applied` → `app:ready`. That rank
+ * no longer carries the mount on its own: the lifecycle subscribes through `whenAppReady()`,
+ * which mounts at once after the reveal.
  * Registered by the preset loop via `CapabilityRegistry.isEnabled("theme-selector", …)`
  * (`modules.theme-selector.enabled`, **opt-in** — défaut `false`, S8/F3).
  */

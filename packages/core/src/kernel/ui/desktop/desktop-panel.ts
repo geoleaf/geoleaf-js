@@ -9,7 +9,8 @@
  * desktop-panel.ts
  *
  * Right-hand side panel with collapsible vertical tabs (>= 1440px).
- * Tabs: Filtres / Couches / Légende (user-facing labels, hence French).
+ * Tabs: filters / layers / legend. Their titles come from the dictionary (`sheet.title.*`, the
+ * keys the mobile sheets read), unless the caller passes its own.
  * Elements are moved into the panel once the secondary modules have been imported.
  * `init-deferred-ui.ts` calls activateDesktopPanel() after LayerManager.init(); an element
  * built after the activation is adopted as soon as it appears.
@@ -39,8 +40,14 @@ import {
 
 interface DesktopPanelOptions {
     glMain: HTMLElement;
+    /**
+     * Title of the filters tab. Default: the `sheet.title.filters` label, resolved when
+     * `initDesktopPanel()` runs, so in the language the boot fixed.
+     */
     titleFilters?: string;
+    /** Title of the layers tab. Default: the `sheet.title.layers` label, resolved likewise. */
     titleLayers?: string;
+    /** Title of the legend tab. Default: the `sheet.title.legend` label, resolved likewise. */
     titleLegend?: string;
     showFilters?: boolean;
     showLayers?: boolean;
@@ -570,9 +577,9 @@ export function initDesktopPanel(options: DesktopPanelOptions): void {
     // AFTER the early return: a second call must not desync the flag from the built DOM.
     _showThemeToggle = options.showThemeToggle !== false;
     const titles = {
-        filters: options.titleFilters || "Filtres",
-        layers: options.titleLayers || "Couches",
-        legend: options.titleLegend || "Legende",
+        filters: options.titleFilters || getLabel("sheet.title.filters"),
+        layers: options.titleLayers || getLabel("sheet.title.layers"),
+        legend: options.titleLegend || getLabel("sheet.title.legend"),
     };
     const show = {
         filters: options.showFilters !== false,

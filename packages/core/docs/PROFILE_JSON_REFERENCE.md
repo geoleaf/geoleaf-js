@@ -1705,11 +1705,15 @@ const layerManagerConfig = GeoLeaf.Config.get("layerManagerConfig");
 
 #### `layerManagerConfig.title` (string, optional)
 
-**Description:** Title of the layer manager.
+**Description:** Title of the layer manager. It also names the layers sheet on mobile and the
+layers tab of the desktop side panel (≥ 1440 px). A title set here is in one language and fixes
+all three.
 
 **Possible values:** Free text
 
-**Default:** `"Couches"`
+**Default:** translated labels that follow `ui.language` — `ui.layer_manager.title` on the panel
+header (« Gestionnaire de couches » in French), `sheet.title.layers` on the sheet and the tab
+(« Couches »).
 
 **Status:** Active and functional
 
@@ -1829,11 +1833,14 @@ const raw = Config.get("modules.legend", {});
 
 #### `modules.legend.title` (string, optional)
 
-**Description:** Title of the legend (former `legendConfig.title`).
+**Description:** Title of the legend (former `legendConfig.title`). It also names the legend
+sheet on mobile and the legend tab of the desktop side panel (≥ 1440 px). A title set here is in
+one language and fixes all three.
 
 **Possible values:** Free text
 
-**Default:** `"Legend"`
+**Default:** translated labels that follow `ui.language` — `ui.legend.title` on the panel header,
+`sheet.title.legend` on the sheet and the tab (« Légende » in French for both).
 
 **Status:** Active and functional
 

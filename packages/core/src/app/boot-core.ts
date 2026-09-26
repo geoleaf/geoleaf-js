@@ -65,7 +65,8 @@ import {
     resumeWatchdog,
     setBootPhase,
 } from "./boot-failure.js";
-import { hideBootVeil } from "./init-reveal.js";
+import { hideBootVeil, releaseThemelessReveal } from "./init-reveal.js";
+import { resetAppReady } from "../kernel/shared/app-ready.js";
 import { wasDestroyed } from "../kernel/map/facade.js";
 import type { IMapAdapter } from "../contracts/map-adapter.contract.js";
 import { registerPresetDeclarations, registerPresetModules } from "../presets/apply-preset.js";
@@ -216,6 +217,18 @@ function _errorMessage(err: unknown): string {
     return err instanceof Error ? err.message : String(err);
 }
 
+/**
+ * Reveals a profile without a default theme, once `registry.init()` has returned — every
+ * module has run its `init()`, so every capability has subscribed to `geoleaf:app:ready`. Never
+ * from inside `UIModule.init()` (see `setupReveal`). Not on a map the host destroyed meanwhile:
+ * that boot is over.
+ *
+ * @param adapter - The boot's map adapter, checked against `wasDestroyed`.
+ */
+function _revealAfterRegistry(adapter: IMapAdapter): void {
+    if (!wasDestroyed(adapter)) releaseThemelessReveal();
+}
+
 /** Set once {@link _abortDestroyedBoot} has run for the current boot. */
 let _destroyedBootAborted = false;
 
@@ -289,6 +302,10 @@ function _onModuleError(
  * else it is isolated — `geoleaf:module:failed`, the modules that depend on it skipped, and the
  * reveal held on a screen that names it.
  *
+ * The reveal — and `geoleaf:app:ready` — always follows the last module's `init()`: a themed
+ * profile reveals when `theme-engine` has applied its theme; a profile without any theme is
+ * revealed here, once `registry.init()` has returned.
+ *
  * Returns early — before any signal — when the namespace is unusable, when
  * `GeoLeaf.loadConfig` is missing, or on a second boot call. A `beforeBoot` hook that rejects
  * aborts the boot: `geoleaf:boot:aborted`, and the veil is hidden for the host. So does a host
@@ -348,6 +365,8 @@ export async function bootWithPreset(
     // forever. After the double-boot guard, so a refused second call cannot reset the first.
     beginBoot(options, GeoLeaf._version);
     _destroyedBootAborted = false;
+    // Nothing is ready until THIS boot reveals — a capability initialised before then waits.
+    resetAppReady();
 
     // perf 5 — start bound of `geoleaf:startup-total`. UNCONDITIONAL on purpose, and it
     // must stay that way: the matching `geoleaf:initApp:ready` mark and the `measure()`
@@ -512,7 +531,9 @@ export async function bootWithPreset(
 
     // ── registry.init() is the sole runtime orchestrator. ────────────────────
     // Modules receive the complete merged config; CoreMapModule.init() creates
-    // the map, UIModule.init() wires UI + features + fires geoleaf:app:ready.
+    // the map, UIModule.init() wires UI + features and arms the reveal. `geoleaf:app:ready`
+    // fires AFTER every module's init(): from theme-engine's `geoleaf:theme:applied` on a
+    // themed profile, from the release just below the call otherwise.
     setBootPhase("registry");
     const _adapter = new MaplibreAdapter();
 
@@ -526,6 +547,7 @@ export async function bootWithPreset(
             "[Registry] Modules initialized:",
             _registry.getAll().map((m) => m.id)
         );
+        _revealAfterRegistry(_adapter);
     } catch (err) {
         // Two roads lead here. A module of the interface chain threw: `_onModuleError` has
         // already failed the boot and named it, so the call below is ignored. Or the registry

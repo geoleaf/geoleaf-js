@@ -9,13 +9,15 @@
  * Scale capability — lifecycle / mount wiring.
  *
  * Mounts the scale control on `geoleaf:app:ready` (preserving the former deferred
- * timing in `init-deferred-ui.ts`). Reads `modules.scale` via `getScaleConfig()`
+ * timing in `init-deferred-ui.ts`), through `whenAppReady()` — an init that runs after the
+ * reveal mounts at once. Reads `modules.scale` via `getScaleConfig()`
  * (merged config), late-gates on `enabled` (opt-out) and on at least one active
  * scale type — reproducing the former `initScaleControl` guard.
  */
 
 import { ScaleControl, type ScaleMapLike } from "./scale-control.js";
 import { getScaleConfig } from "./config.js";
+import { whenAppReady } from "../../kernel/shared/index.js";
 
 let _started = false;
 let _map: ScaleMapLike | null = null;
@@ -42,7 +44,7 @@ export const ScaleLifecycle = {
         if (_started || typeof document === "undefined") return;
         _started = true;
         _map = map;
-        document.addEventListener("geoleaf:app:ready", _onAppReady, { once: true });
+        whenAppReady(_onAppReady);
     },
 
     /** Detaches the listener and tears down the control (module destroy / test). */

@@ -22,6 +22,7 @@ vi.mock("../../../src/utils/general/geoleaf-global.js", () => ({
 
 const { ThemeSelectorLifecycle } =
     await import("../../../src/capabilities/theme-selector/lifecycle.ts");
+const { markAppReady, resetAppReady } = await import("../../../src/kernel/shared/app-ready.ts");
 
 /** Adds the two theme containers to the DOM; returns a cleanup function. */
 function addContainers() {
@@ -44,6 +45,17 @@ describe("ThemeSelectorLifecycle (S8/F2)", () => {
     });
     afterEach(() => {
         ThemeSelectorLifecycle._reset();
+        resetAppReady();
+    });
+
+    // 🛑 A profile without a default theme dispatched `geoleaf:app:ready` before this module's
+    // init() had run, and the bar never mounted. An init after the reveal mounts at once.
+    it("an init that runs AFTER the reveal mounts the selector at once", () => {
+        const cleanup = addContainers();
+        markAppReady();
+        ThemeSelectorLifecycle.init();
+        expect(mockInit).toHaveBeenCalledTimes(1);
+        cleanup();
     });
 
     it("mounts the selector on app:ready when profile + containers present", () => {

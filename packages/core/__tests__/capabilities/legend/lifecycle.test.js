@@ -41,6 +41,7 @@ vi.mock("../../../src/utils/general/geoleaf-global.js", () => ({
 }));
 
 const { LegendLifecycle } = await import("../../../src/capabilities/legend/lifecycle.ts");
+const { markAppReady, resetAppReady } = await import("../../../src/kernel/shared/app-ready.ts");
 
 describe("LegendLifecycle (S10/F1 mount + F2 late-gate)", () => {
     beforeEach(() => {
@@ -52,6 +53,20 @@ describe("LegendLifecycle (S10/F1 mount + F2 late-gate)", () => {
     });
     afterEach(() => {
         LegendLifecycle._reset();
+        resetAppReady();
+    });
+
+    // 🛑 A profile without a default theme dispatched `geoleaf:app:ready` before this module's
+    // init() had run: the `{ once: true }` listener it then added waited forever, and the legend
+    // stayed empty. An init that runs after the reveal must mount at once.
+    it("an init that runs AFTER the reveal mounts at once — the event will not come again", () => {
+        const loadLayerLegend = vi.fn();
+        mockGeoLeaf = { _GeoJSONLayerManager: { _loadLayerLegend: loadLayerLegend } };
+        setAllLayerConfigs([{ id: "a" }]);
+        markAppReady();
+        LegendLifecycle.init();
+        expect(mockLegendInit).toHaveBeenCalledWith(mockMap);
+        expect(loadLayerLegend).toHaveBeenCalledWith("a", { config: { id: "a" } });
     });
 
     it("initialises the legend on app:ready with the active map (options from modules.legend)", () => {

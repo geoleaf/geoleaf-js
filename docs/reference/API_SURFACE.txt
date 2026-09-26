@@ -1383,7 +1383,7 @@ CallSignature | GeoLeaf Core API.app/app-types.asGeoLeafConfig.asGeoLeafConfig |
 CallSignature | GeoLeaf Core API.app/app-types.buildFitBoundsOptions.buildFitBoundsOptions | doc:ccde0a9c5d13
 CallSignature | GeoLeaf Core API.app/app-types.member.member | doc:333b8309e0f7
 CallSignature | GeoLeaf Core API.app/app-types.perfWindow.perfWindow | doc:cf4841af3983
-CallSignature | GeoLeaf Core API.app/boot-core.bootWithPreset.bootWithPreset | doc:5b2a51941c37
+CallSignature | GeoLeaf Core API.app/boot-core.bootWithPreset.bootWithPreset | doc:512fa33b6a31
 CallSignature | GeoLeaf Core API.app/boot-failure-screen.BootFailureScreenActions.continueBoot.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.app/boot-failure-screen.BootFailureScreenActions.diagnostic.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.app/boot-failure-screen.BootFailureScreenActions.reload.__type.__type | doc:-
@@ -1421,7 +1421,8 @@ CallSignature | GeoLeaf Core API.app/init-features.initBasemaps.initBasemaps | d
 CallSignature | GeoLeaf Core API.app/init-features.initGeoJSON.initGeoJSON | doc:b6e741cded25
 CallSignature | GeoLeaf Core API.app/init-features.initUIPanels.initUIPanels | doc:f6e6340b6d4b
 CallSignature | GeoLeaf Core API.app/init-reveal.hideBootVeil.hideBootVeil | doc:57300423878e
-CallSignature | GeoLeaf Core API.app/init-reveal.setupReveal.setupReveal | doc:9d6684723351
+CallSignature | GeoLeaf Core API.app/init-reveal.releaseThemelessReveal.releaseThemelessReveal | doc:91980b97a38c
+CallSignature | GeoLeaf Core API.app/init-reveal.setupReveal.setupReveal | doc:78287020bbe5
 CallSignature | GeoLeaf Core API.app/module-registry.ModuleRegistry.destroy.destroy | doc:4d90864ad6e2
 CallSignature | GeoLeaf Core API.app/module-registry.ModuleRegistry.get.get | doc:f0b4dd748385
 CallSignature | GeoLeaf Core API.app/module-registry.ModuleRegistry.getActiveModules.getActiveModules | doc:38a7d491e882
@@ -2730,6 +2731,7 @@ CallSignature | GeoLeaf Core API.kernel/basemaps/wmts-resolver.buildWmsUrl.build
 CallSignature | GeoLeaf Core API.kernel/basemaps/wmts-resolver.parseWmtsCapabilities.parseWmtsCapabilities | doc:f31ceb788ab3
 CallSignature | GeoLeaf Core API.kernel/basemaps/wmts-resolver.resolveWmtsTilesUrl.resolveWmtsTilesUrl | doc:b47ca40dcea0
 CallSignature | GeoLeaf Core API.kernel/config/debug-flag.getDebugMode.getDebugMode | doc:5c522fb0d491
+CallSignature | GeoLeaf Core API.kernel/config/default-theme.resolveDefaultThemeId.resolveDefaultThemeId | doc:b9e50d81d1df
 CallSignature | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.ConfigFacade._applyConfig._applyConfig | doc:-
 CallSignature | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.ConfigFacade._initSubModules._initSubModules | doc:-
 CallSignature | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.ConfigFacade._maybeFireLoadedEvent._maybeFireLoadedEvent | doc:-
@@ -3085,6 +3087,10 @@ CallSignature | GeoLeaf Core API.kernel/security/validators.validateNumber.valid
 CallSignature | GeoLeaf Core API.kernel/security/validators.validateUrl.validateUrl | doc:5fa8cb12df63
 CallSignature | GeoLeaf Core API.kernel/shared.profileLayerConfig.profileLayerConfig | doc:1c8236f87f58
 CallSignature | GeoLeaf Core API.kernel/shared.profileLayers.profileLayers | doc:f37313d6b4a6
+CallSignature | GeoLeaf Core API.kernel/shared/app-ready.markAppReady.markAppReady | doc:867dd37efa4d
+CallSignature | GeoLeaf Core API.kernel/shared/app-ready.resetAppReady.resetAppReady | doc:23648d919587
+CallSignature | GeoLeaf Core API.kernel/shared/app-ready.whenAppReady.whenAppReady | doc:7fdcd4ef123f
+CallSignature | GeoLeaf Core API.kernel/shared/app-ready.whenAppReady.whenAppReady.listener.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.kernel/shared/drain-hooks-seam.BeforeDrainStep.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.kernel/shared/drain-hooks-seam.DrainHooksContract.__type._list._list | doc:490f9ea965c5
 CallSignature | GeoLeaf Core API.kernel/shared/drain-hooks-seam.DrainHooksContract.__type._reset._reset | doc:1f5704ada3fe
@@ -3564,7 +3570,7 @@ Class | GeoLeaf Core API.app/boot-modules/theme-engine.module.ThemeEngineModule 
 Class | GeoLeaf Core API.app/boot-modules/ui.module.UIModule | doc:033fb11805fd
 Class | GeoLeaf Core API.app/module-registry.ModuleRegistry | doc:be5ca98068cf
 Class | GeoLeaf Core API.capabilities/branding/module.BrandingModule | doc:86e91d3cf246
-Class | GeoLeaf Core API.capabilities/coordinates/module.CoordinatesModule | doc:364e5fbd38a9
+Class | GeoLeaf Core API.capabilities/coordinates/module.CoordinatesModule | doc:8d40364a8364
 Class | GeoLeaf Core API.capabilities/feature-info/module.FeatureInfoModule | doc:b88636bad05c
 Class | GeoLeaf Core API.capabilities/feature-info/render/lightbox.LightboxManager | doc:1b743c0b6d9d
 Class | GeoLeaf Core API.capabilities/filter/module.FilterModule | doc:56d336a65081
@@ -3575,7 +3581,7 @@ Class | GeoLeaf Core API.capabilities/legend/module.LegendModule | doc:232d9807f
 Class | GeoLeaf Core API.capabilities/permalink/share/module.ShareModule | doc:8189a4a9ee27
 Class | GeoLeaf Core API.capabilities/profile-switcher/module.ProfileSwitcherModule | doc:205f0e70859c
 Class | GeoLeaf Core API.capabilities/route/module.RouteModule | doc:1d7cc1b31155
-Class | GeoLeaf Core API.capabilities/scale/module.ScaleModule | doc:3e88304b0a5d
+Class | GeoLeaf Core API.capabilities/scale/module.ScaleModule | doc:78166aea0051
 Class | GeoLeaf Core API.capabilities/theme-palette/module.ThemePaletteModule | doc:c3cc1b698742
 Class | GeoLeaf Core API.capabilities/theme-selector/module.ThemeSelectorModule | doc:9350553c32f5
 Class | GeoLeaf Core API.capabilities/theme-toggle/module.ThemeToggleModule | doc:183461a55fd6
@@ -4474,6 +4480,7 @@ Function | GeoLeaf Core API.app/init-features.initBasemaps | doc:-
 Function | GeoLeaf Core API.app/init-features.initGeoJSON | doc:-
 Function | GeoLeaf Core API.app/init-features.initUIPanels | doc:-
 Function | GeoLeaf Core API.app/init-reveal.hideBootVeil | doc:-
+Function | GeoLeaf Core API.app/init-reveal.releaseThemelessReveal | doc:-
 Function | GeoLeaf Core API.app/init-reveal.setupReveal | doc:-
 Function | GeoLeaf Core API.bundle-esm-entry.applyCssText | doc:-
 Function | GeoLeaf Core API.bundle-esm-entry.showBootInfo | doc:-
@@ -4778,6 +4785,7 @@ Function | GeoLeaf Core API.kernel/basemaps/wmts-resolver.buildWmsUrl | doc:-
 Function | GeoLeaf Core API.kernel/basemaps/wmts-resolver.parseWmtsCapabilities | doc:-
 Function | GeoLeaf Core API.kernel/basemaps/wmts-resolver.resolveWmtsTilesUrl | doc:-
 Function | GeoLeaf Core API.kernel/config/debug-flag.getDebugMode | doc:-
+Function | GeoLeaf Core API.kernel/config/default-theme.resolveDefaultThemeId | doc:-
 Function | GeoLeaf Core API.kernel/config/geoleaf-config/module-config.mergeModulesBag | doc:-
 Function | GeoLeaf Core API.kernel/config/geoleaf-config/module-config.resolveModuleConfig | doc:-
 Function | GeoLeaf Core API.kernel/config/layer-geometry.geometryKindToGeoJSONTypes | doc:-
@@ -4872,6 +4880,9 @@ Function | GeoLeaf Core API.kernel/security/validators.validateNumber | doc:-
 Function | GeoLeaf Core API.kernel/security/validators.validateUrl | doc:-
 Function | GeoLeaf Core API.kernel/shared.profileLayerConfig | doc:-
 Function | GeoLeaf Core API.kernel/shared.profileLayers | doc:-
+Function | GeoLeaf Core API.kernel/shared/app-ready.markAppReady | doc:-
+Function | GeoLeaf Core API.kernel/shared/app-ready.resetAppReady | doc:-
+Function | GeoLeaf Core API.kernel/shared/app-ready.whenAppReady | doc:-
 Function | GeoLeaf Core API.kernel/shared/edition-permissions.grantsEdition | doc:-
 Function | GeoLeaf Core API.kernel/shared/edition-permissions.mayEditLayer | doc:-
 Function | GeoLeaf Core API.kernel/shared/edition-permissions.profileLayerConfig | doc:-
@@ -5660,7 +5671,7 @@ Interface | GeoLeaf Core API.contracts/capability.contract.ICapabilitySchema | d
 Interface | GeoLeaf Core API.contracts/capability.contract.ICapabilityStatus | doc:56821dd36f06
 Interface | GeoLeaf Core API.contracts/capability.contract.ICapabilityUnavailableFact | doc:864da29aea1e
 Interface | GeoLeaf Core API.contracts/config.contract.IGeoLeafConfig | doc:d82546356917
-Interface | GeoLeaf Core API.contracts/core-module.contract.ILifecycleModule | doc:25b044c05a61
+Interface | GeoLeaf Core API.contracts/core-module.contract.ILifecycleModule | doc:b204f1f8ad50
 Interface | GeoLeaf Core API.contracts/core-module.contract.IModuleRegistry | doc:a24ce5f35f12
 Interface | GeoLeaf Core API.contracts/core-module.contract.IModuleUISlot | doc:c00643c7a88d
 Interface | GeoLeaf Core API.contracts/core-module.contract.IUISlotModule | doc:ac102f3f8883
@@ -8185,6 +8196,7 @@ Module | GeoLeaf Core API.kernel/basemaps/wmts-resolver | doc:-
 Module | GeoLeaf Core API.kernel/config | doc:-
 Module | GeoLeaf Core API.kernel/config/config-primitives | doc:-
 Module | GeoLeaf Core API.kernel/config/debug-flag | doc:-
+Module | GeoLeaf Core API.kernel/config/default-theme | doc:-
 Module | GeoLeaf Core API.kernel/config/geoleaf-config/config-accessors | doc:-
 Module | GeoLeaf Core API.kernel/config/geoleaf-config/config-core | doc:-
 Module | GeoLeaf Core API.kernel/config/geoleaf-config/config-loaders | doc:-
@@ -8259,6 +8271,7 @@ Module | GeoLeaf Core API.kernel/security/escaping | doc:-
 Module | GeoLeaf Core API.kernel/security/sanitizers | doc:-
 Module | GeoLeaf Core API.kernel/security/validators | doc:-
 Module | GeoLeaf Core API.kernel/shared | doc:-
+Module | GeoLeaf Core API.kernel/shared/app-ready | doc:-
 Module | GeoLeaf Core API.kernel/shared/drain-hooks-seam | doc:-
 Module | GeoLeaf Core API.kernel/shared/edition-permissions | doc:-
 Module | GeoLeaf Core API.kernel/shared/geojson-state | doc:-
@@ -11511,6 +11524,7 @@ Parameter | GeoLeaf Core API.kernel/basemaps/wmts-resolver.parseWmtsCapabilities
 Parameter | GeoLeaf Core API.kernel/basemaps/wmts-resolver.parseWmtsCapabilities.parseWmtsCapabilities.xml | doc:f1d7d0bf388f
 Parameter | GeoLeaf Core API.kernel/basemaps/wmts-resolver.resolveWmtsTilesUrl.resolveWmtsTilesUrl.definition | doc:ab9e7acfee56
 Parameter | GeoLeaf Core API.kernel/basemaps/wmts-resolver.resolveWmtsTilesUrl.resolveWmtsTilesUrl.signal | doc:0f94e3424ebf
+Parameter | GeoLeaf Core API.kernel/config/default-theme.resolveDefaultThemeId.resolveDefaultThemeId.themes | doc:59fab3d1e3e6
 Parameter | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.ConfigFacade._applyConfig._applyConfig.cfg | doc:-
 Parameter | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.ConfigFacade._applyConfig._applyConfig.source | doc:-
 Parameter | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.ConfigFacade._validateConfig.__type.__type.cfg | doc:-
@@ -12051,6 +12065,7 @@ Parameter | GeoLeaf Core API.kernel/security/validators.validateUrl.validateUrl.
 Parameter | GeoLeaf Core API.kernel/security/validators.validateUrl.validateUrl.options | doc:4d0415c5f01a
 Parameter | GeoLeaf Core API.kernel/security/validators.validateUrl.validateUrl.url | doc:c1eb0d9589c5
 Parameter | GeoLeaf Core API.kernel/shared.profileLayerConfig.profileLayerConfig.layerId | doc:e5dd6c6ac374
+Parameter | GeoLeaf Core API.kernel/shared/app-ready.whenAppReady.whenAppReady.listener | doc:522186091b81
 Parameter | GeoLeaf Core API.kernel/shared/drain-hooks-seam.DrainHooksContract.__type.register.register.id | doc:4aaf33ee8e52
 Parameter | GeoLeaf Core API.kernel/shared/drain-hooks-seam.DrainHooksContract.__type.register.register.step | doc:0eff4fbd73b9
 Parameter | GeoLeaf Core API.kernel/shared/edition-permissions.grantsEdition.grantsEdition.declared | doc:cb73102d31b0
@@ -17927,6 +17942,7 @@ Reference | GeoLeaf Core API.kernel/shared.disarmToolCursor | doc:-
 Reference | GeoLeaf Core API.kernel/shared.getAllLayerConfigs | doc:-
 Reference | GeoLeaf Core API.kernel/shared.grantsEdition | doc:-
 Reference | GeoLeaf Core API.kernel/shared.registerLifecycleTeardown | doc:-
+Reference | GeoLeaf Core API.kernel/shared.whenAppReady | doc:-
 Reference | GeoLeaf Core API.kernel/shared/geojson-state.GeoJSONShared | doc:f87a9b87b662
 Reference | GeoLeaf Core API.kernel/shared/layer-visibility-state.LayerVisibilityManager | doc:cb41a2b9fbc5
 Reference | GeoLeaf Core API.kernel/shared/sync-handler-seam.SyncHandler | doc:f0ff33203435
@@ -19112,6 +19128,7 @@ TypeLiteral | GeoLeaf Core API.kernel/security/dom-security.DOMSecurity.__type.c
 TypeLiteral | GeoLeaf Core API.kernel/security/dom-security.DOMSecurity.__type.getIcon.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/security/dom-security.DOMSecurity.__type.setSafeHTML.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/security/dom-security.DOMSecurity.__type.setTextContent.__type | doc:-
+TypeLiteral | GeoLeaf Core API.kernel/shared/app-ready.whenAppReady.whenAppReady.listener.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/shared/drain-hooks-seam.BeforeDrainStep.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/shared/drain-hooks-seam.DrainHooksContract.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/shared/sync-handler-seam.SyncHandlerContract.__type | doc:-

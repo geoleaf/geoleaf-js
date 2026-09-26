@@ -11,9 +11,11 @@
  * `geoleaf:app:ready` (map + theme layers ready) and loads the active theme's
  * layer legends.
  *
- * Depends on `geojson` only (NOT `ui`): it must be dequeued BEFORE
- * ThemeEngineModule (deps `["geojson","ui"]`) so its `app:ready` listener is
- * registered before the engine dispatches `geoleaf:theme:applied` → `app:ready`.
+ * Depends on `geojson` only (NOT `ui`): it is dequeued BEFORE
+ * ThemeEngineModule (deps `["geojson","ui"]`), so its `app:ready` listener is
+ * registered before the engine dispatches `geoleaf:theme:applied` → `app:ready`. That rank
+ * no longer carries the mount on its own: `LegendLifecycle` subscribes through
+ * `whenAppReady()`, which mounts at once after the reveal.
  * The `app:ready` handler runs after `ui.init()` regardless (UI precedes every
  * geojson-gated module), so the panel DOM is present when the legend mounts.
  *

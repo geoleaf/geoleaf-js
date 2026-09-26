@@ -10,7 +10,7 @@
         "$schema": { "type": "string" },
         "defaultTheme": {
             "type": "string",
-            "description": "ID of the theme active on startup (canonical, root-level)."
+            "description": "ID of the theme active on startup (canonical, root-level). Absent, or naming no theme of the list: the first theme with an id, which also decides the layers loaded at startup."
         },
         "config": {
             "type": "object",
@@ -20,7 +20,7 @@
             "properties": {
                 "defautTheme": {
                     "type": "string",
-                    "description": "LEGACY/TYPO of defaultTheme (present in one profile). Use the root-level defaultTheme. See anomaly registry."
+                    "description": "LEGACY/TYPO of defaultTheme (present in one profile), read when the root-level defaultTheme names no theme of the list. Use the root-level defaultTheme. See anomaly registry."
                 },
                 "primaryThemes": {
                     "type": "object",

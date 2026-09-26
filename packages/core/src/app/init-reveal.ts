@@ -11,30 +11,43 @@
  * is private to this module; behavior, performance marks and listener-registration
  * order are preserved (the reveal `theme:applied` listener is registered AFTER the
  * notification one, exactly as before).
+ *
+ * The reveal dispatches `geoleaf:app:ready`, and the capabilities mount on it — so it must never
+ * run before the registry has run their `init()`. A themed profile reveals on
+ * `geoleaf:theme:applied`, which `theme-engine`, the last module of the registry, dispatches. A
+ * profile without a default theme has its reveal ARMED here and released by the boot once
+ * `registry.init()` has returned ({@link releaseThemelessReveal}).
  */
 
 import type { RevealDeps } from "./app-types.js";
 import { asFn, buildFitBoundsOptions, member } from "./app-types.js";
 import { dispatchGeoLeafEvent } from "../kernel/events/event-bus.js";
 import { holdReveal } from "./boot-failure.js";
+import { markAppReady } from "../kernel/shared/app-ready.js";
+import { resolveDefaultThemeId } from "../kernel/config/default-theme.js";
 
 /**
- * Whether the active profile declares a default theme. Drives the boot reveal signal:
- * themed profiles reveal on `geoleaf:theme:applied` (fully styled, no flash); theme-less
- * profiles reveal on the kernel's independent layer load (GeoJSONModule.init, F0/S8).
- * Mirrors the loader's `_resolveDefaultThemeId` (historical `defautTheme` config typo).
+ * The reveal of a profile without a default theme, armed by the last {@link setupReveal} and
+ * released by {@link releaseThemelessReveal}. `null` when nothing is armed.
+ */
+let _pendingThemelessReveal: (() => void) | null = null;
+
+/**
+ * Whether the active profile starts on a theme. Drives the boot reveal signal: themed profiles
+ * reveal on `geoleaf:theme:applied` (fully styled, no flash); profiles without any theme reveal
+ * once the registry has run every module (their layers were loaded by `GeoJSONModule.init`,
+ * F0/S8) — see {@link releaseThemelessReveal}.
+ *
+ * Resolved like every other reader (`kernel/config/default-theme.ts`): a `themes` list without a
+ * declared default starts on `themes[0]`, which `theme-engine` applies — so it waits for it.
  * Returns `true` on uncertainty so the reveal never fires prematurely.
  */
 function _profileHasDefaultTheme(GeoLeaf: GeoLeafGlobal): boolean {
     try {
         const getActiveProfile = asFn(member(GeoLeaf.Config, "getActiveProfile"));
         if (!getActiveProfile) return true;
-        const profile = getActiveProfile.call(GeoLeaf.Config) as {
-            themes?: { config?: { defautTheme?: string }; defaultTheme?: string };
-        } | null;
-        const themes = profile?.themes;
-        if (!themes) return false;
-        return !!(themes.config?.defautTheme || themes.defaultTheme);
+        const profile = getActiveProfile.call(GeoLeaf.Config) as { themes?: unknown } | null;
+        return resolveDefaultThemeId(profile?.themes) !== null;
     } catch {
         return true;
     }
@@ -69,7 +82,9 @@ export function hideBootVeil(): void {
 
 /**
  * Wires the loader reveal: applies stored permalink state, then reveals the app
- * on `geoleaf:theme:applied` (or a 5 s safety timeout).
+ * on `geoleaf:theme:applied` (or a 5 s safety timeout). For a profile without a default theme,
+ * the reveal is armed instead, and the boot releases it once `registry.init()` has returned
+ * ({@link releaseThemelessReveal}) — whichever comes first reveals, and only once.
  *
  * The reveal asks `holdReveal()` (`boot-failure.ts`) first: a failed boot keeps its failure
  * screen, and declared profile resources that failed hold the reveal on a screen whose
@@ -96,6 +111,8 @@ export function setupReveal({
         if (_appRevealed) return;
         if (holdReveal(() => revealApp(reason))) return;
         _appRevealed = true;
+        // Before the dispatches: a capability initialised from here on mounts at once.
+        markAppReady();
         hideBootVeil();
 
         // After removing the loader, tell the engine to recalculate its container
@@ -181,16 +198,38 @@ export function setupReveal({
         },
         { once: true }
     );
-    // F0 (S8): a profile WITHOUT a default theme never fires `geoleaf:theme:applied`.
+    // F0 (S8): a profile WITHOUT a default theme may never fire `geoleaf:theme:applied`.
     // Its layers are loaded independently by `GeoJSONModule.init()` (registry phase,
-    // already completed before this reveal runs) — reveal now instead of falling back to
-    // the 5 s safety net (deferred layers stream in during idle). `revealApp` is
-    // idempotent, so the theme path above still wins for themed profiles.
-    if (!_profileHasDefaultTheme(GeoLeaf)) {
-        revealApp("layers loaded (no default theme)");
-    }
+    // already completed before this runs), so it does not wait for the 5 s safety net.
+    //
+    // 🛑 But it does NOT reveal here. This runs inside `UIModule.init()`, and the registry runs
+    // every capability module that depends on `geojson` alone AFTER `ui` — legend, scale,
+    // coordinates, filter, theme-selector… Revealing here dispatched `geoleaf:app:ready` before
+    // they had subscribed to it, and none of them ever mounted, in silence. A microtask would not
+    // do either: the registry awaits each `init()`, so it would still run before the loop
+    // resumes. The reveal is armed, and the boot releases it after `registry.init()`.
+    //
+    // When `themes` exists without `defaultTheme`, the theme loader falls back to `themes[0]`:
+    // `theme-engine` applies it inside the registry, the listener above reveals first, and the
+    // release is a no-op (`revealApp` is idempotent).
+    _pendingThemelessReveal = _profileHasDefaultTheme(GeoLeaf)
+        ? null
+        : () => revealApp("layers loaded (no default theme)");
     // Safety: reveal after 5s max (slow network, error…) — perf 5.10: reduced from 15s to 5s
     setTimeout(function () {
         revealApp("safety timeout 5s");
     }, 5000);
+}
+
+/**
+ * Releases the reveal of a profile without a default theme, armed by {@link setupReveal}.
+ *
+ * Called by the boot once `registry.init()` has returned, i.e. once every module has run its
+ * `init()` and every capability has subscribed to `geoleaf:app:ready`. Does nothing when nothing
+ * is armed (a themed profile), and nothing more when the app is already revealed.
+ */
+export function releaseThemelessReveal(): void {
+    const reveal = _pendingThemelessReveal;
+    _pendingThemelessReveal = null;
+    reveal?.();
 }

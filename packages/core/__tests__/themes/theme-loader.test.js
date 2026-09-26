@@ -102,6 +102,17 @@ describe("themes/theme-loader (Phase 5.30)", () => {
         expect(cfg.defaultTheme).toBe("a");
     });
 
+    // 🛑 The GeoJSON loader and the boot reveal honoured the legacy `config.defautTheme`; this
+    // loader ignored it and applied `themes[0]`. On a profile declaring only the legacy key, the
+    // kernel loaded one theme's layers and `theme-engine` applied another.
+    it("_validateConfig honours the legacy config.defautTheme, like every other reader", () => {
+        const cfg = ThemeLoader._validateConfig({
+            config: { defautTheme: "second" },
+            themes: [{ id: "first" }, { id: "second" }],
+        });
+        expect(cfg.defaultTheme).toBe("second");
+    });
+
     it("_validateConfig with no defaultTheme uses first theme", () => {
         const cfg = ThemeLoader._validateConfig({
             themes: [{ id: "first" }, { id: "second" }],

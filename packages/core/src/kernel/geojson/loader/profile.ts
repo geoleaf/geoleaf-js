@@ -13,6 +13,7 @@
 import { GeoJSONShared } from "../shared.js";
 import { resolveClusteringNormalization } from "./clustering-normalize.js";
 import { getLog } from "../../../utils/general/di-accessors.js";
+import { resolveDefaultThemeId } from "../../config/default-theme.js";
 import type {
     GeoJSONLoaderLog,
     ConfigModule,
@@ -187,11 +188,6 @@ function _fitBoundsIfNeeded(
         }
     };
     map.on("moveend", onMoveEnd);
-}
-
-function _resolveDefaultThemeId(themesData: ProfileLike["themes"]): string | null {
-    const cfg = themesData && themesData.config;
-    return (cfg && cfg.defautTheme) || themesData?.defaultTheme || null;
 }
 
 function _resolveStyleLabels(layer: LayerStyleEntry): { styles: unknown; labels: unknown } {
@@ -393,9 +389,14 @@ function _splitTasksByTheme(
     // F0 (S8): when a default theme governs the boot, load ONLY its layers (immediate) —
     // the theme decides what shows, byte-identical to the pre-decoupling boot. Non-theme
     // layers are NOT loaded here; they load on demand when the user switches theme (the
-    // applier's ADD branch, still present in F0). With NO default theme the kernel shows
+    // applier's ADD branch, still present in F0). With NO theme at all the kernel shows
     // every declared layer, so all of them load (deferred/batched).
-    const hasDefaultTheme = !!_resolveDefaultThemeId(profile.themes);
+    //
+    // 🛑 A `themes` list without a declared default HAS one — `themes[0]`, which `theme-engine`
+    // applies (`kernel/config/default-theme.ts`). This line used to answer « no default » for it:
+    // every layer loaded in the background, and those landing after the theme was applied stayed
+    // visible — 19 to 21 layers for a 7-layer theme on tourism, never the same count twice.
+    const hasDefaultTheme = !!resolveDefaultThemeId(profile.themes);
     const immediateTasks: (() => Promise<unknown>)[] = [];
     const deferredTasks: (() => Promise<unknown>)[] = [];
     layersDef.forEach((def: unknown, index: number) => {
@@ -563,7 +564,7 @@ Loader._getDefaultThemeLayerIds = function (profile: ProfileLike): Set<string> {
     try {
         if (!profile || !profile.themes) return new Set();
         const themesData = profile.themes;
-        const defaultThemeId = _resolveDefaultThemeId(themesData);
+        const defaultThemeId = resolveDefaultThemeId(themesData);
         if (!defaultThemeId || !Array.isArray(themesData.themes)) return new Set();
         const defaultTheme = themesData.themes.find((t: { id: string }) => t.id === defaultThemeId);
         if (!defaultTheme || !Array.isArray(defaultTheme.layers)) return new Set();

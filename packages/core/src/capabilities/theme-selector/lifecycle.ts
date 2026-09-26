@@ -10,9 +10,8 @@
  *
  * Builds the theme switch bar (primary buttons + secondary dropdown) and reflects
  * the active theme. The data-dependent mount is deferred to `geoleaf:app:ready`
- * (layers loaded + default theme applied by ThemeEngineModule), mirroring the
- * filter/labels pattern of registering the listener during the synchronous
- * `registry.init()` and catching the async event.
+ * (layers loaded + default theme applied by ThemeEngineModule), through `whenAppReady()`:
+ * an init that runs after the reveal mounts at once.
  *
  * The DEFAULT theme is applied by ThemeEngineModule (kernel) — this only builds the
  * UI and reflects the current theme; `ThemeSelector.init` no longer applies (F2).
@@ -26,12 +25,18 @@
  *
  * `ThemeSelectorModule` depends on `geojson` (not `ui`/`theme-engine`) so this init()
  * — and thus the `app:ready` subscription below — runs BEFORE ThemeEngineModule
- * dispatches `geoleaf:theme:applied` → `geoleaf:app:ready`, so the event is caught.
+ * dispatches `geoleaf:theme:applied` → `geoleaf:app:ready`.
+ *
+ * 🛑 This header concluded « so the event is caught ». On a profile without a default theme
+ * it was not: that reveal ran inside `UIModule.init()`, before this module, and the bar never
+ * mounted. The reveal now waits for the end of `registry.init()`, and `whenAppReady()` no
+ * longer needs the subscription to arrive first.
  */
 
 import { ThemeSelector } from "./theme-selector.js";
 import { Log } from "../../utils/log/index.js";
 import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";
+import { whenAppReady } from "../../kernel/shared/index.js";
 
 let _started = false;
 
@@ -64,9 +69,8 @@ export const ThemeSelectorLifecycle = {
     init(): void {
         if (_started || typeof document === "undefined") return;
         _started = true;
-        // Deferred to app:ready (layers + default theme ready). The event is async
-        // relative to registry.init(), so registering here catches it.
-        document.addEventListener("geoleaf:app:ready", _onAppReady, { once: true });
+        // Deferred to app:ready (layers + default theme ready) — at once if the app is already.
+        whenAppReady(_onAppReady);
     },
 
     /** Detaches the listener and tears down the selector (module destroy / test). */
