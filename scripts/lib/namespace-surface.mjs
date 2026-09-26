@@ -796,7 +796,7 @@ export const EXPECTED_FACADE_MEMBERS = {
         "whenReady",
         "wireModules",
     ],
-    Sync: ["getHandler", "registerBeforeDrain", "registerHandler"],
+    Sync: ["getHandler", "registerBeforeDrain", "registerHandler", "registerSessionReader"],
     Taxonomy: [
         "ensureSprite",
         "getCategories",

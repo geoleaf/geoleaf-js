@@ -1,0 +1,38 @@
+{
+    "schemaVersion": 2,
+    "lot": "preflight-session",
+    "scope": [
+        "packages/core/src/kernel/shared/session-reader-seam.ts",
+        "packages/plugins/connector/src/session-reader.ts"
+    ],
+    "verdicts": {
+        "packages/core/src/kernel/shared/session-reader-seam.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "L'emplacement du lecteur de la session d'écriture — rempli par `GeoLeaf.Sync.registerSessionReader`, lu par le pré-vol",
+            "confidence": "haute",
+            "rationale": "Le pré-vol ne disait rien du jeton d'écriture, et le cœur n'authentifie rien : le détenteur du jeton (le connecteur, ou l'hôte en `getToken`) le lui DIT. Lire le namespace d'un plugin aurait fait dépendre le cœur d'une propriété de ce plugin, ce que la frontière core → plugins interdit. Un emplacement et non un registre : une page n'a qu'une session d'écriture à rapporter. Distinct de `drain-hooks-seam.ts` et de `sync-handler-seam.ts` parce que le rôle l'est ; le suffixe `-seam.ts` est l'exemption R.8 qui laisse `capabilities/offline/report/preflight.ts` l'importer sans élargir le baril. Tenu par `__tests__/shared/session-reader-seam.test.ts` et `__tests__/capabilities/offline/preflight.test.ts`, vus rougir par mutation"
+        },
+        "packages/plugins/connector/src/session-reader.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "La session d'écriture que le connecteur tient, dite au pré-vol du cœur — lue telle que stockée, jamais renouvelée",
+            "confidence": "haute",
+            "rationale": "Hors de `connector-api.ts` qui garde l'état : le lecteur reçoit un accesseur de la configuration, lu à chaque appel, pour la raison que ce fichier donne au crochet d'ouvrier. Lit `TokenStore.load`, jamais `resolveSession`, qui renouvelle un jeton expiré. N'inscrit rien en `getToken`, où l'hôte seul connaît l'expiration. Tenu par `src/__tests__/session-reader.test.ts`, vu rougir en substituant `resolveSession`, et prouvé entre les deux bundles par `e2e/66`"
+        }
+    }
+}

@@ -7,7 +7,8 @@
 
 /**
  * @description In-core public façade `GeoLeaf.Sync` (S14 Phase B) — thin delegate to the
- * {@link SyncHandlerContract} registry seam.
+ * {@link SyncHandlerContract} registry seam, and to two neighbours: the pre-drain steps
+ * (`drain-hooks-seam.ts`) and the write session reader (`session-reader-seam.ts`).
  *
  * Data plugins that own an offline sync flow register their handler here at their own
  * `entry.ts` (e.g. editor: `GeoLeaf.Sync.registerHandler("poi", EditorSyncHandler)`); the
@@ -23,9 +24,13 @@
 
 import { SyncHandlerContract, type SyncHandler } from "../kernel/shared/sync-handler-seam.js";
 import { DrainHooksContract, type BeforeDrainStep } from "../kernel/shared/drain-hooks-seam.js";
+import { SessionReaderContract, type SessionReader } from "../kernel/shared/session-reader-seam.js";
 import { ensureGeoLeaf } from "../utils/general/geoleaf-global.js";
 
-/** Public façade — mounted on `GeoLeaf.Sync`; all state lives in `SyncHandlerContract`. */
+/**
+ * Public façade — mounted on `GeoLeaf.Sync`; all state lives in the seams it delegates to
+ * (`SyncHandlerContract`, `DrainHooksContract`, `SessionReaderContract`).
+ */
 export const Sync = {
     /** Register (or replace) an offline sync handler under a stable id (e.g. `"poi"`). */
     registerHandler(id: string, handler: SyncHandler): void {
@@ -55,6 +60,27 @@ export const Sync = {
      */
     registerBeforeDrain(id: string, step: BeforeDrainStep | null): void {
         DrainHooksContract.register(id, step);
+    },
+    /**
+     * Registers the reader of the write session, which `Storage.preflight()` reports; `null`
+     * removes it.
+     *
+     * The core authenticates nothing, so it cannot know whether captures made off-network will
+     * reach the server: the one holding the token tells it. The connector registers its own
+     * when it manages the session (`auth.endpoint`); a host that hands its own token over
+     * (`getToken`) is the only one who knows its expiry, and registers here to say it.
+     *
+     * One slot: the last registration wins. The reader must not renew the session — a check
+     * made before leaving writes nothing. It is bounded in time: a reader that throws, or does
+     * not answer within two seconds, leaves `session` at `null` without holding up the check.
+     *
+     * @param reader - Answers `{ state, expiresAt }`, or `null` when it cannot say; synchronously
+     *   or with a promise. `null` unregisters.
+     * @example
+     * GeoLeaf?.Sync?.registerSessionReader?.(() => ({ state: "valid", expiresAt: null }));
+     */
+    registerSessionReader(reader: SessionReader | null): void {
+        SessionReaderContract.register(reader);
     },
     // BREAKING (3.1.0, 25/08/2026, pre-adoption window of VERSIONING_POLICY.md): the
     // plural accessor `getHandlers()` was removed from this façade and from the seam. It was

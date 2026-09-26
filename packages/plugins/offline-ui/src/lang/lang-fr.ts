@@ -149,6 +149,12 @@ const langStorageFr = {
     "storage.preflight.tiles.skipped": "Zooms non préparés : {0}",
     "storage.preflight.tiles.capped": "Préparation arrêtée au plafond de tuiles",
     "storage.preflight.failed": "{0} ressource(s) non téléchargée(s)",
+    "storage.preflight.session.valid": "Session d'écriture valide jusqu'au {0}",
+    "storage.preflight.session.validNoExpiry": "Session d'écriture ouverte",
+    "storage.preflight.session.expired":
+        "Session d'écriture expirée : les saisies attendront son renouvellement",
+    "storage.preflight.session.absent":
+        "Aucune session d'écriture : les saisies attendront une connexion",
 } satisfies Record<string, string>;
 
 export default langStorageFr;

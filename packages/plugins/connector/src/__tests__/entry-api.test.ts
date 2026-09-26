@@ -567,3 +567,36 @@ describe("reprise de la file — le module de reprise a-t-il un appelant ?", () 
         expect(pushOutbox).toHaveBeenCalledTimes(1);
     });
 });
+
+describe("le pré-vol apprend la session — `configure()` inscrit-il son lecteur ?", () => {
+    // A reader nothing registers would be one more orphan: the check would say nothing of the
+    // session, exactly as before.
+    let Connector: { configure: (cfg: ConnectorConfig) => Promise<void> };
+    const registerSessionReader = vi.fn();
+
+    beforeEach(async () => {
+        vi.resetModules();
+        vi.clearAllMocks();
+        (globalThis as Record<string, unknown>)["GeoLeaf"] = {
+            Sync: { registerSessionReader },
+        };
+        Connector = (await import("../connector-api.js")) as unknown as typeof Connector;
+    });
+
+    afterEach(async () => {
+        const { disarmSessionResume } = await import("../session-resume.js");
+        disarmSessionResume();
+        delete (globalThis as Record<string, unknown>)["GeoLeaf"];
+    });
+
+    it("en mode `auth.endpoint`, oui", async () => {
+        await Connector.configure(AUTH_UI_CONFIG);
+        expect(registerSessionReader).toHaveBeenCalledTimes(1);
+        expect(typeof registerSessionReader.mock.calls[0]?.[0]).toBe("function");
+    });
+
+    it("en mode `getToken`, non — la place reste à l'hôte", async () => {
+        await Connector.configure(GETTOKEN_CONFIG);
+        expect(registerSessionReader).not.toHaveBeenCalled();
+    });
+});

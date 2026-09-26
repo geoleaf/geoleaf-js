@@ -17,6 +17,9 @@ panel. The engine (IndexedDB, cache, download, sync) lives in `@geoleaf/core`, a
 - **Offline image handling** — local image storage, with deferred upload once connectivity is back
 - **Offline detector** — automatic connectivity monitoring with a built-in visual indicator
 - **Cache button** — a native MapLibre UI control to start and follow the offline download
+- **"Can I leave?"** — the core's pre-departure check (`GeoLeaf.Storage.preflight()`, core ≥ 3.10.0)
+  shown next to the download: storage persistence, each layer's offline state, what the
+  preparation left out, the write session (core ≥ 3.11.0), and the core's verdict
 
 ---
 

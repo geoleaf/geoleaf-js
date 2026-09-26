@@ -187,6 +187,27 @@ délégué de renouvellement, et n'ouvre jamais la fenêtre de connexion, `auth.
 compris, n'est jamais la sienne. ⚠️ Une session reste celle d'une `baseUrl` : une instance et
 `configure()` sur la même API partagent le jeton stocké.
 
+### Le pré-vol hors ligne et la session d'écriture
+
+`GeoLeaf.Storage.preflight()` — le « puis-je partir ? » que la fenêtre hors ligne affiche — porte la
+session d'écriture (`@geoleaf/core` ≥ 3.11.0) : `valid` et son expiration, `expired` ou `absent`. Une
+session expirée ou absente rend le verdict `degraded` : les saisies faites hors réseau attendront une
+connexion.
+
+Le cœur ne lit pas le jeton : on la lui dit. En mode `auth`, ce plugin la dit lui-même, depuis le
+jeton stocké et **sans le renouveler**. En mode `getToken`, il ignore l'expiration et ne dit rien :
+l'hôte, qui la connaît, la dit par `GeoLeaf.Sync.registerSessionReader`. Le lecteur ne renouvelle
+rien, et répond en moins de deux secondes — au-delà, la session est rapportée inconnue (`null`).
+
+```js
+GeoLeaf.Sync.registerSessionReader(() => {
+    const expiresAt = authClient.expiresAt; // epoch ms, ou null si inconnue
+    if (!authClient.token) return { state: "absent", expiresAt: null };
+    const expired = expiresAt !== null && expiresAt <= Date.now();
+    return { state: expired ? "expired" : "valid", expiresAt };
+});
+```
+
 ---
 
 ## Événements DOM

@@ -11,12 +11,13 @@
  * which facts make a device not ready, which only degrade it. The wiring to the real stores
  * is judged on the shipped bundle (`e2e/61`).
  */
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type {
     LayerSyncReport,
     PreflightReport,
     TilePreparationTrace,
+    WriteSession,
 } from "../../../src/contracts/sync.contract.js";
 
 const { buildPreflight } = await import("../../../src/capabilities/offline/report/preflight.js");
@@ -44,6 +45,7 @@ function facts(overrides: Record<string, unknown> = {}) {
             failedResources: [],
             preparation: TRACE,
         }),
+        session: async () => null,
         ...overrides,
     };
 }
@@ -126,5 +128,82 @@ describe("what the facts mean together", () => {
         const r = await buildPreflight(facts({ stats: broken, manifest: broken }));
         expect(r.quota).toBeNull();
         expect(r.preparation).toBeNull();
+    });
+});
+
+describe("the write session — told by its holder, never read by the core", () => {
+    const told = (answer: unknown) => ({ session: async () => answer });
+    const IN_AN_HOUR = 1_700_000_000_000;
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it("reports what the reader tells, and nothing when nobody tells it", async () => {
+        const valid: WriteSession = { state: "valid", expiresAt: IN_AN_HOUR };
+        expect((await buildPreflight(facts(told(valid)))).session).toEqual(valid);
+        expect((await buildPreflight(facts())).session).toBeNull();
+    });
+
+    it.each([
+        ["absent", { state: "absent", expiresAt: null }],
+        ["expired", { state: "expired", expiresAt: 1 }],
+    ])("degraded: a session %s — captures will wait for a sign-in", async (_what, answer) => {
+        expect((await buildPreflight(facts(told(answer)))).verdict).toBe("degraded");
+    });
+
+    it("a valid session does not make the verdict — nobody here knows how long the trip lasts", async () => {
+        const soon = { state: "valid", expiresAt: Date.now() + 60_000 };
+        expect((await buildPreflight(facts(told(soon)))).verdict).toBe("ready");
+    });
+
+    it("a missing session never makes a device not ready — no entity leaves with it", async () => {
+        const r = await buildPreflight(
+            facts({
+                ...told({ state: "absent", expiresAt: null }),
+                syncReport: async () => [layer("sites", "pulled")],
+            })
+        );
+        expect(r.verdict).toBe("degraded");
+    });
+
+    it.each([
+        ["an unknown state", { state: "maybe", expiresAt: null }],
+        ["a bare string", "valid"],
+    ])("an answer outside the contract is not believed: %s", async (_what, answer) => {
+        const r = await buildPreflight(facts(told(answer)));
+        expect(r.session).toBeNull();
+        expect(r.verdict).toBe("ready");
+    });
+
+    it("an expiry that is not a finite number is reported unknown", async () => {
+        const r = await buildPreflight(facts(told({ state: "valid", expiresAt: "demain" })));
+        expect(r.session).toEqual({ state: "valid", expiresAt: null });
+    });
+
+    it("a reader that throws leaves the session unknown, and takes no other fact down", async () => {
+        const r = await buildPreflight(
+            facts({
+                session: () => {
+                    throw new Error("hôte en panne");
+                },
+            })
+        );
+        expect(r.session).toBeNull();
+        expect(r.quota).toEqual({ used: 10, quota: 100, percentage: 10 });
+        expect(r.verdict).toBe("ready");
+    });
+
+    it("a reader that never answers does not hold the check: unknown after two seconds", async () => {
+        vi.useFakeTimers();
+        const pending = buildPreflight(facts({ session: () => new Promise(() => {}) }));
+        let settled = false;
+        void pending.then(() => (settled = true));
+        await vi.advanceTimersByTimeAsync(1_999);
+        expect(settled).toBe(false);
+        await vi.advanceTimersByTimeAsync(1);
+        const r = await pending;
+        expect(r.session).toBeNull();
+        expect(r.verdict).toBe("ready");
     });
 });

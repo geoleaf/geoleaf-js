@@ -11,6 +11,27 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [3.11.0] - 2026-09-26
+
+### Added
+
+- **The pre-departure check says the write session.** `GeoLeaf.Storage.preflight()` now carries
+  `session` — `{ state, expiresAt }`, `state` being `"valid"`, `"expired"` or `"absent"` — as the
+  one holding the token tells it, or `null` when nobody does. A session expired or absent makes
+  the verdict `degraded`: captures made off-network will wait for a sign-in. A valid session
+  leaves the verdict as it is: when it expires is reported, but whether that falls within the trip
+  is not known here. A missing session never makes a device `notReady`, since no entity leaves the
+  device with it. `@geoleaf-plugins/connector` 1.3.3 tells the session it manages
+  (`auth.endpoint`), read as stored and never renewed; `@geoleaf-plugins/offline-ui` 1.6.1 shows it
+  in the offline window.
+- **`GeoLeaf.Sync.registerSessionReader(reader)`** — registers the reader of the write session;
+  `null` removes it. The core authenticates nothing and reads no plugin's namespace: the one
+  holding the token tells it. A host that hands its own token to the connector (`getToken`) is the
+  only one who knows its expiry, and registers here to say it. One slot, the last registration
+  wins. The reader must not renew the session; one that throws, answers outside the contract, or
+  does not answer within two seconds leaves `session` at `null` without holding up the check. The
+  shape is exported as `WriteSession` from `@geoleaf/core/contracts/sync.contract.js`.
+
 ## [3.10.6] - 2026-09-26
 
 ### Fixed

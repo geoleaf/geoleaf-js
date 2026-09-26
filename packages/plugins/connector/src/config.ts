@@ -58,6 +58,12 @@ export interface ConnectorConfig {
      * `getToken` covers both, under a form that is strictly more general and keeps the
      * credential on one side of the boundary.
      *
+     * ## The pre-departure check does not learn the session from here
+     *
+     * In this mode the plugin knows nothing of the token's expiry, so it tells the core's
+     * `Storage.preflight()` nothing — its `session` stays `null`. The host, which knows, tells
+     * it itself through `GeoLeaf.Sync.registerSessionReader` (core ≥ 3.11.0).
+     *
      * @returns The current token, or `null` to leave the request unauthenticated.
      *
      * @example

@@ -10,8 +10,13 @@
  *
  * The facts are the core's, read in one call (`GeoLeaf.Storage.preflight()`, core ≥ 3.10.0):
  * whether the browser keeps this origin's data, each layer that declares something to pull and
- * whether it is on the device, what the last preparation left out, and a verdict. This block
- * says them next to the download — the one place a user comes to before going off-network.
+ * whether it is on the device, what the last preparation left out, the write session as its
+ * holder tells it (core ≥ 3.11.0), and a verdict. This block says them next to the download —
+ * the one place a user comes to before going off-network.
+ *
+ * ⚠️ **The session line is hidden when the check carries none** — no holder told it (no
+ * connector, a host token whose host said nothing), or a core older than 3.11.0. Nothing is
+ * shown rather than a session guessed.
  *
  * ## What it is NOT
  *
@@ -27,9 +32,9 @@
  *
  * Re-read when the control updates its status — which it does once a download has fully
  * resolved, pull included — and on the events that change its facts: the cache cleared, the
- * queue moving, the network coming and going. Listeners go through `self._eventCleanups`, for
- * the reason `sync-status-block.ts` gives: the modal never calls `onRemove`, and every round
- * trip through the Export tab rebuilds this body.
+ * queue moving, the network coming and going, the session opened, renewed, closed or refused.
+ * Listeners go through `self._eventCleanups`, for the reason `sync-status-block.ts` gives: the
+ * modal never calls `onRemove`, and every round trip through the Export tab rebuilds this body.
  */
 
 import { Log } from "@geoleaf/host-runtime";
@@ -53,6 +58,11 @@ const REFRESH_EVENTS = [
     "geoleaf:cache:cleared",
     "geoleaf:offline:outbox-queued",
     "geoleaf:offline:outbox-drained",
+    // The session's life, as the connector announces it — event names, no import.
+    "geoleaf:connector:authenticated",
+    "geoleaf:connector:token-refreshed",
+    "geoleaf:connector:signed-out",
+    "geoleaf:connector:auth-error",
 ];
 
 /** Layer statuses shown as an alert: the layer's entities are not on the device. */
@@ -82,6 +92,36 @@ function _layerLabel(layerId: string): string {
     return profile?.layers?.find((l) => l.id === layerId)?.label ?? layerId;
 }
 
+/**
+ * A clock reading of `at`, in the page's language — an expiry is compared with the trip's end,
+ * and a duration would go stale while the window stays open.
+ */
+function _clock(at: number): string {
+    const options: Intl.DateTimeFormatOptions = { dateStyle: "short", timeStyle: "short" };
+    try {
+        return new Date(at).toLocaleString(document.documentElement.lang || undefined, options);
+    } catch {
+        // A `lang` attribute that is not a valid tag — the browser's own locale then.
+        return new Date(at).toLocaleString(undefined, options);
+    }
+}
+
+/** The session line — hidden when the check carries no session. */
+function _paintSession(el: HTMLElement, session: PreflightReport["session"] | undefined): void {
+    if (!session) {
+        el.hidden = true;
+        return;
+    }
+    el.hidden = false;
+    el.setAttribute("data-session", session.state);
+    el.textContent =
+        session.state !== "valid"
+            ? t(`storage.preflight.session.${session.state}`)
+            : session.expiresAt === null
+              ? t("storage.preflight.session.validNoExpiry")
+              : t("storage.preflight.session.valid", _clock(session.expiresAt));
+}
+
 /** Writes the check into an already-built block. */
 function _paint(root: HTMLElement, check: PreflightReport): void {
     root.hidden = false;
@@ -97,6 +137,10 @@ function _paint(root: HTMLElement, check: PreflightReport): void {
         persistence.setAttribute("data-persistence", check.persistence);
         persistence.textContent = t(`storage.preflight.persistence.${check.persistence}`);
     }
+
+    const session = find("session");
+    // `?? null`: a core older than 3.11.0 answers a check without the field.
+    if (session) _paintSession(session, check.session ?? null);
 
     const list = find("layers");
     if (list) {
@@ -155,6 +199,8 @@ export function buildPreflightBlock(self: CacheControlState, bodyEl: HTMLElement
     title.textContent = t("storage.preflight.title");
     createElement("span", "gl-cache-preflight__verdict", head);
     createElement("div", "gl-cache-preflight__persistence", root);
+    const session = createElement("div", "gl-cache-preflight__session", root);
+    session.hidden = true;
     createElement("ul", "gl-cache-preflight__layers", root);
     const tiles = createElement("div", "gl-cache-preflight__tiles", root);
     tiles.hidden = true;

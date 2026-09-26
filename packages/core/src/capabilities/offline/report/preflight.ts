@@ -20,7 +20,11 @@
  * something to pull: a layer with nothing to pull has no offline state to report
  * (`notDeclared`).
  *
- * ⚠️ The session is not in it — see `PreflightReport` in the contract.
+ * The write session is the one fact the core cannot read: the token is its holder's. The holder
+ * TELLS it, through the slot `GeoLeaf.Sync.registerSessionReader` fills
+ * (`kernel/shared/session-reader-seam.ts`). That reader is foreign code — the connector's, or a
+ * host's — so it is bounded in time as well as in failure: one that does not answer leaves the
+ * session unknown, never the check unanswered.
  */
 
 import { Log } from "../../../utils/log/index.js";
@@ -29,6 +33,7 @@ import { IndexedDB } from "../db/indexeddb.js";
 import { CacheStorage } from "../cache/storage.js";
 import { buildSyncReport } from "./sync-report.js";
 import { readSyncStatus } from "../write/sync-status.js";
+import { SessionReaderContract } from "../../../kernel/shared/session-reader-seam.js";
 import type {
     LayerOfflineStatus,
     LayerSyncReport,
@@ -36,6 +41,7 @@ import type {
     StoragePersistenceRegime,
     SyncStatus,
     TilePreparationTrace,
+    WriteSession,
 } from "../../../contracts/sync.contract.js";
 
 /** The manifest fields the check reads — written by `CacheStorage.saveManifest`. */
@@ -54,6 +60,8 @@ interface PreflightSources {
     syncReport: () => Promise<readonly LayerSyncReport[]>;
     syncStatus: () => Promise<SyncStatus>;
     manifest: () => Promise<ManifestFacts | null>;
+    /** What the registered reader tells of the write session, as it answered it. */
+    session: () => Promise<unknown>;
 }
 
 /** Statuses that mean the layer's entities are not on the device. */
@@ -64,6 +72,15 @@ const NOT_ON_DEVICE: ReadonlySet<LayerOfflineStatus> = new Set([
 
 /** Statuses that mean the layer is on the device, but not whole or not fresh. */
 const INCOMPLETE: ReadonlySet<LayerOfflineStatus> = new Set(["pulledPartial", "pulledStale"]);
+
+/** Session states under which a capture made off-network will wait for a sign-in. */
+const SESSION_UNUSABLE: ReadonlySet<WriteSession["state"]> = new Set(["expired", "absent"]);
+
+/** Every state the contract names — a reader's answer outside them is not believed. */
+const SESSION_STATES: ReadonlySet<unknown> = new Set(["valid", "expired", "absent"]);
+
+/** How long the session reader is given to answer, ms. */
+const SESSION_READ_TIMEOUT_MS = 2000;
 
 /** The real sources, read at call time. */
 function realSources(): PreflightSources {
@@ -80,6 +97,10 @@ function realSources(): PreflightSources {
             const profileId = coreConfigGet("data.activeProfile", "") as string;
             if (!profileId) return null;
             return (await CacheStorage.getManifest(profileId)) as ManifestFacts | null;
+        },
+        session: async () => {
+            const reader = SessionReaderContract._get();
+            return reader ? await reader() : null;
         },
     };
 }
@@ -104,6 +125,44 @@ async function _regime(
     return kept ? "persistent" : "bestEffort";
 }
 
+/**
+ * The reader's answer, bounded in time — it must not hold up the check.
+ *
+ * @returns The answer, or a rejection when the reader fails or does not answer within
+ *   {@link SESSION_READ_TIMEOUT_MS} — which `_read` reports like any failure.
+ */
+async function _boundedSession(read: PreflightSources["session"]): Promise<unknown> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const late = new Promise<never>((_, reject) => {
+        timer = setTimeout(
+            () => reject(new Error(`no answer within ${SESSION_READ_TIMEOUT_MS} ms`)),
+            SESSION_READ_TIMEOUT_MS
+        );
+    });
+    try {
+        return await Promise.race([read(), late]);
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+/**
+ * The session in the contract's shape, or `null` — an answer outside it is not believed: a
+ * state the check does not know cannot say whether captures will reach the server.
+ */
+function _session(answer: unknown): WriteSession | null {
+    if (answer === null || answer === undefined) return null;
+    const { state, expiresAt } = answer as { state?: unknown; expiresAt?: unknown };
+    if (!SESSION_STATES.has(state)) {
+        Log.warn("[Offline.Preflight] session reader answered outside the contract:", answer);
+        return null;
+    }
+    return {
+        state: state as WriteSession["state"],
+        expiresAt: typeof expiresAt === "number" && Number.isFinite(expiresAt) ? expiresAt : null,
+    };
+}
+
 /** The last preparation, in the contract's shape — `null` when the device was never prepared. */
 function _preparation(m: ManifestFacts | null): PreflightReport["preparation"] {
     if (!m) return null;
@@ -120,7 +179,8 @@ function _verdict(
     layers: readonly LayerSyncReport[],
     queue: SyncStatus,
     persistence: StoragePersistenceRegime,
-    preparation: PreflightReport["preparation"]
+    preparation: PreflightReport["preparation"],
+    session: WriteSession | null
 ): PreflightReport["verdict"] {
     if (layers.some((l) => NOT_ON_DEVICE.has(l.status))) return "notReady";
     const tiles = preparation?.tiles;
@@ -130,7 +190,8 @@ function _verdict(
         persistence !== "persistent" ||
         (tiles?.skippedZooms.length ?? 0) > 0 ||
         tiles?.capped === true ||
-        (preparation?.failedResources ?? 0) > 0;
+        (preparation?.failedResources ?? 0) > 0 ||
+        (session !== null && SESSION_UNUSABLE.has(session.state));
     return degraded ? "degraded" : "ready";
 }
 
@@ -143,13 +204,15 @@ function _verdict(
 export async function buildPreflight(
     sources: PreflightSources = realSources()
 ): Promise<PreflightReport> {
-    const [persistence, quota, report, status, manifest] = await Promise.all([
+    const [persistence, quota, report, status, manifest, answer] = await Promise.all([
         _regime(sources.persisted),
         _read("quota", sources.stats),
         _read("sync report", sources.syncReport),
         _read("queue", sources.syncStatus),
         _read("preparation", sources.manifest),
+        _read("session", () => _boundedSession(sources.session)),
     ]);
+    const session = _session(answer);
     const layers = (report ?? []).filter((l) => l.status !== "notDeclared");
     const queue: SyncStatus = status ?? {
         online: typeof navigator === "undefined" || navigator.onLine !== false,
@@ -161,11 +224,15 @@ export async function buildPreflight(
     return {
         at: Date.now(),
         // A report that could not be read cannot vouch for any layer.
-        verdict: report === null ? "notReady" : _verdict(layers, queue, persistence, preparation),
+        verdict:
+            report === null
+                ? "notReady"
+                : _verdict(layers, queue, persistence, preparation, session),
         persistence,
         quota,
         layers,
         queue,
         preparation,
+        session,
     };
 }

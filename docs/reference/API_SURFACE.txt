@@ -58,7 +58,7 @@ CallSignature | @geoleaf-plugins/connector.config.validateConfig.validateConfig 
 CallSignature | @geoleaf-plugins/connector.connector-api.ConnectorInstance.destroy.destroy | doc:34bf1b8b3212
 CallSignature | @geoleaf-plugins/connector.connector-api.ConnectorInstance.getTokenAsync.getTokenAsync | doc:c18e504f5d2c
 CallSignature | @geoleaf-plugins/connector.connector-api.ConnectorInstance.getTokenSync.getTokenSync | doc:974ec04fa9c3
-CallSignature | @geoleaf-plugins/connector.connector-api.configure.configure | doc:4c5fea5b599d
+CallSignature | @geoleaf-plugins/connector.connector-api.configure.configure | doc:87afac25d4af
 CallSignature | @geoleaf-plugins/connector.connector-api.createConnector.createConnector | doc:45436161a130
 CallSignature | @geoleaf-plugins/connector.connector-api.isConfigured.isConfigured | doc:12f3aa6e97f7
 CallSignature | @geoleaf-plugins/connector.connector-api.logout.logout | doc:4368b5ca361d
@@ -76,6 +76,8 @@ CallSignature | @geoleaf-plugins/connector.login-ui.showLoginModal.showLoginModa
 CallSignature | @geoleaf-plugins/connector.maplibre-bridge.installMapLibreBridge.installMapLibreBridge | doc:22c53f5bdc7f
 CallSignature | @geoleaf-plugins/connector.renewal-retry.armRenewalRetry.armRenewalRetry | doc:0e7cadf9664a
 CallSignature | @geoleaf-plugins/connector.renewal-retry.disarmRenewalRetry.disarmRenewalRetry | doc:658beb719d5e
+CallSignature | @geoleaf-plugins/connector.session-reader.registerSessionReader.registerSessionReader | doc:d657b94bb9ac
+CallSignature | @geoleaf-plugins/connector.session-reader.registerSessionReader.registerSessionReader.currentConfig.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/connector.session-resume.armSessionResume.armSessionResume | doc:99931db0a53d
 CallSignature | @geoleaf-plugins/connector.session-resume.concernsSession.concernsSession | doc:8073042c56fe
 CallSignature | @geoleaf-plugins/connector.session-resume.disarmSessionResume.disarmSessionResume | doc:45f6dea94776
@@ -1361,6 +1363,7 @@ CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-vector-tiles.updateV
 CallSignature | GeoLeaf Core API.api/geoleaf.sync.Sync.__type.getHandler.getHandler | doc:bd1881605470
 CallSignature | GeoLeaf Core API.api/geoleaf.sync.Sync.__type.registerBeforeDrain.registerBeforeDrain | doc:62a6ccf306ab
 CallSignature | GeoLeaf Core API.api/geoleaf.sync.Sync.__type.registerHandler.registerHandler | doc:c477d43cddc3
+CallSignature | GeoLeaf Core API.api/geoleaf.sync.Sync.__type.registerSessionReader.registerSessionReader | doc:bbcac44ee7c6
 CallSignature | GeoLeaf Core API.api/geoleaf.taxonomy.Taxonomy.__type.ensureSprite.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.api/geoleaf.taxonomy.Taxonomy.__type.getCategories.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.api/geoleaf.taxonomy.Taxonomy.__type.getFieldMappings.__type.__type | doc:-
@@ -2443,6 +2446,7 @@ CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.resolveOpti
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Sync.__type.getHandler.getHandler | doc:405cace35fe0
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Sync.__type.registerBeforeDrain.registerBeforeDrain | doc:d3135297c773
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Sync.__type.registerHandler.registerHandler | doc:8898620ba9be
+CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Sync.__type.registerSessionReader.registerSessionReader | doc:324863d7f59e
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Taxonomy.__type.ensureSprite.ensureSprite | doc:a46322eac821
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Taxonomy.__type.getCategories.getCategories | doc:-
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Taxonomy.__type.getFieldMappings.getFieldMappings | doc:-
@@ -3106,6 +3110,10 @@ CallSignature | GeoLeaf Core API.kernel/shared/lifecycle.runLifecycleTeardowns.r
 CallSignature | GeoLeaf Core API.kernel/shared/map-cursor.armToolCursor.armToolCursor | doc:2d091c1885a6
 CallSignature | GeoLeaf Core API.kernel/shared/map-cursor.disarmToolCursor.disarmToolCursor | doc:987d2ca03cac
 CallSignature | GeoLeaf Core API.kernel/shared/map-cursor.isExclusiveMode.isExclusiveMode | doc:16db182af480
+CallSignature | GeoLeaf Core API.kernel/shared/session-reader-seam.SessionReader.__type.__type | doc:-
+CallSignature | GeoLeaf Core API.kernel/shared/session-reader-seam.SessionReaderContract.__type._get._get | doc:bee9bdead76c
+CallSignature | GeoLeaf Core API.kernel/shared/session-reader-seam.SessionReaderContract.__type._reset._reset | doc:f30468c450bc
+CallSignature | GeoLeaf Core API.kernel/shared/session-reader-seam.SessionReaderContract.__type.register.register | doc:19e3bfa2382b
 CallSignature | GeoLeaf Core API.kernel/shared/storage-contract.StorageContract.init.init | doc:151e3bbb1531
 CallSignature | GeoLeaf Core API.kernel/shared/storage-contract.StorageContract.isAvailable.isAvailable | doc:469941663ac7
 CallSignature | GeoLeaf Core API.kernel/shared/storage-contract.StorageContract.isPluginLoaded.isPluginLoaded | doc:0d8f497d29b8
@@ -3784,6 +3792,7 @@ Function | @geoleaf-plugins/connector.login-ui.showLoginModal | doc:-
 Function | @geoleaf-plugins/connector.maplibre-bridge.installMapLibreBridge | doc:-
 Function | @geoleaf-plugins/connector.renewal-retry.armRenewalRetry | doc:-
 Function | @geoleaf-plugins/connector.renewal-retry.disarmRenewalRetry | doc:-
+Function | @geoleaf-plugins/connector.session-reader.registerSessionReader | doc:-
 Function | @geoleaf-plugins/connector.session-resume.armSessionResume | doc:-
 Function | @geoleaf-plugins/connector.session-resume.concernsSession | doc:-
 Function | @geoleaf-plugins/connector.session-resume.disarmSessionResume | doc:-
@@ -5739,11 +5748,12 @@ Interface | GeoLeaf Core API.contracts/sync.contract.LayerSyncConfig | doc:70101
 Interface | GeoLeaf Core API.contracts/sync.contract.LayerSyncReport | doc:398eb33b3a64
 Interface | GeoLeaf Core API.contracts/sync.contract.LayerWriteTarget | doc:8e86142c3a90
 Interface | GeoLeaf Core API.contracts/sync.contract.OutboxEntry | doc:812736e4e9b1
-Interface | GeoLeaf Core API.contracts/sync.contract.PreflightReport | doc:2178710b3581
+Interface | GeoLeaf Core API.contracts/sync.contract.PreflightReport | doc:5722a56c6f0b
 Interface | GeoLeaf Core API.contracts/sync.contract.SyncHandler | doc:57e3640c28bd
 Interface | GeoLeaf Core API.contracts/sync.contract.SyncStatus | doc:be6d0cf1c1d3
 Interface | GeoLeaf Core API.contracts/sync.contract.TilePreparationTrace | doc:d10d95439819
 Interface | GeoLeaf Core API.contracts/sync.contract.VersionMarker | doc:72fb49a57be2
+Interface | GeoLeaf Core API.contracts/sync.contract.WriteSession | doc:f51755b91d29
 Interface | GeoLeaf Core API.contracts/top-level-api.contract.GeoLeafTopLevelApi | doc:b1b6756fa5e4
 Interface | GeoLeaf Core API.contracts/ui-controls.contract.IGeoLocationControlConfig | doc:25c916da2992
 Interface | GeoLeaf Core API.contracts/ui-controls.contract.IGeoLocationState | doc:28b8e80ec3ef
@@ -6354,6 +6364,7 @@ Method | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLaye
 Method | GeoLeaf Core API.api/geoleaf.sync.Sync.__type.getHandler | doc:-
 Method | GeoLeaf Core API.api/geoleaf.sync.Sync.__type.registerBeforeDrain | doc:-
 Method | GeoLeaf Core API.api/geoleaf.sync.Sync.__type.registerHandler | doc:-
+Method | GeoLeaf Core API.api/geoleaf.sync.Sync.__type.registerSessionReader | doc:-
 Method | GeoLeaf Core API.app/boot-modules/config.module.ConfigModule.destroy | doc:-
 Method | GeoLeaf Core API.app/boot-modules/config.module.ConfigModule.init | doc:-
 Method | GeoLeaf Core API.app/boot-modules/core-map-lifecycle.CoreMapLifecycle.__type._reset | doc:-
@@ -6958,6 +6969,7 @@ Method | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.resolveOptions | d
 Method | GeoLeaf Core API.global.GeoLeafGlobal.Sync.__type.getHandler | doc:-
 Method | GeoLeaf Core API.global.GeoLeafGlobal.Sync.__type.registerBeforeDrain | doc:-
 Method | GeoLeaf Core API.global.GeoLeafGlobal.Sync.__type.registerHandler | doc:-
+Method | GeoLeaf Core API.global.GeoLeafGlobal.Sync.__type.registerSessionReader | doc:-
 Method | GeoLeaf Core API.global.GeoLeafGlobal.Taxonomy.__type.ensureSprite | doc:-
 Method | GeoLeaf Core API.global.GeoLeafGlobal.Taxonomy.__type.getCategories | doc:-
 Method | GeoLeaf Core API.global.GeoLeafGlobal.Taxonomy.__type.getFieldMappings | doc:-
@@ -7242,6 +7254,9 @@ Method | GeoLeaf Core API.kernel/layer-manager/style-selector.StyleSelector.__ty
 Method | GeoLeaf Core API.kernel/shared/drain-hooks-seam.DrainHooksContract.__type._list | doc:-
 Method | GeoLeaf Core API.kernel/shared/drain-hooks-seam.DrainHooksContract.__type._reset | doc:-
 Method | GeoLeaf Core API.kernel/shared/drain-hooks-seam.DrainHooksContract.__type.register | doc:-
+Method | GeoLeaf Core API.kernel/shared/session-reader-seam.SessionReaderContract.__type._get | doc:-
+Method | GeoLeaf Core API.kernel/shared/session-reader-seam.SessionReaderContract.__type._reset | doc:-
+Method | GeoLeaf Core API.kernel/shared/session-reader-seam.SessionReaderContract.__type.register | doc:-
 Method | GeoLeaf Core API.kernel/shared/sync-handler-seam.SyncHandlerContract.__type._reset | doc:-
 Method | GeoLeaf Core API.kernel/shared/sync-handler-seam.SyncHandlerContract.__type.getHandler | doc:-
 Method | GeoLeaf Core API.kernel/shared/sync-handler-seam.SyncHandlerContract.__type.registerHandler | doc:-
@@ -7419,6 +7434,7 @@ Module | @geoleaf-plugins/connector.login-ui | doc:-
 Module | @geoleaf-plugins/connector.maplibre-bridge | doc:-
 Module | @geoleaf-plugins/connector.public-api | doc:-
 Module | @geoleaf-plugins/connector.renewal-retry | doc:-
+Module | @geoleaf-plugins/connector.session-reader | doc:-
 Module | @geoleaf-plugins/connector.session-resume | doc:-
 Module | @geoleaf-plugins/connector.token-store | doc:-
 Module | @geoleaf-plugins/editor | doc:-
@@ -8280,6 +8296,7 @@ Module | GeoLeaf Core API.kernel/shared/layer-visibility-state | doc:-
 Module | GeoLeaf Core API.kernel/shared/lifecycle | doc:-
 Module | GeoLeaf Core API.kernel/shared/map-cursor | doc:-
 Module | GeoLeaf Core API.kernel/shared/profile-storage-keys | doc:-
+Module | GeoLeaf Core API.kernel/shared/session-reader-seam | doc:-
 Module | GeoLeaf Core API.kernel/shared/storage-contract | doc:-
 Module | GeoLeaf Core API.kernel/shared/sync-handler-seam | doc:-
 Module | GeoLeaf Core API.kernel/storage | doc:-
@@ -8434,6 +8451,7 @@ Parameter | @geoleaf-plugins/connector.host-token.pullHostToken.pullHostToken.ge
 Parameter | @geoleaf-plugins/connector.login-ui.showLoginModal.showLoginModal.config | doc:-
 Parameter | @geoleaf-plugins/connector.maplibre-bridge.installMapLibreBridge.installMapLibreBridge.config | doc:2ca0b8aba98a
 Parameter | @geoleaf-plugins/connector.renewal-retry.armRenewalRetry.armRenewalRetry.baseUrl | doc:9d92c5ed97d2
+Parameter | @geoleaf-plugins/connector.session-reader.registerSessionReader.registerSessionReader.currentConfig | doc:ceb72e9748bf
 Parameter | @geoleaf-plugins/connector.session-resume.armSessionResume.armSessionResume.baseUrl | doc:d3228e2b1df7
 Parameter | @geoleaf-plugins/connector.session-resume.concernsSession.concernsSession.baseUrl | doc:7fc1684d7f0d
 Parameter | @geoleaf-plugins/connector.session-resume.concernsSession.concernsSession.event | doc:04b5946e3997
@@ -9937,6 +9955,7 @@ Parameter | GeoLeaf Core API.api/geoleaf.sync.Sync.__type.registerBeforeDrain.re
 Parameter | GeoLeaf Core API.api/geoleaf.sync.Sync.__type.registerBeforeDrain.registerBeforeDrain.step | doc:4709adf3e78e
 Parameter | GeoLeaf Core API.api/geoleaf.sync.Sync.__type.registerHandler.registerHandler.handler | doc:-
 Parameter | GeoLeaf Core API.api/geoleaf.sync.Sync.__type.registerHandler.registerHandler.id | doc:-
+Parameter | GeoLeaf Core API.api/geoleaf.sync.Sync.__type.registerSessionReader.registerSessionReader.reader | doc:7552b521b88a
 Parameter | GeoLeaf Core API.api/geoleaf.taxonomy.Taxonomy.__type.getCategories.__type.__type.ref | doc:f019830190a4
 Parameter | GeoLeaf Core API.api/geoleaf.taxonomy.Taxonomy.__type.getFieldMappings.__type.__type.ref | doc:f019830190a4
 Parameter | GeoLeaf Core API.api/geoleaf.taxonomy.Taxonomy.__type.getLayerCategories.__type.__type.layerId | doc:139fd52c490b
@@ -11179,6 +11198,7 @@ Parameter | GeoLeaf Core API.global.GeoLeafGlobal.Sync.__type.registerBeforeDrai
 Parameter | GeoLeaf Core API.global.GeoLeafGlobal.Sync.__type.registerBeforeDrain.registerBeforeDrain.step | doc:-
 Parameter | GeoLeaf Core API.global.GeoLeafGlobal.Sync.__type.registerHandler.registerHandler.handler | doc:-
 Parameter | GeoLeaf Core API.global.GeoLeafGlobal.Sync.__type.registerHandler.registerHandler.id | doc:-
+Parameter | GeoLeaf Core API.global.GeoLeafGlobal.Sync.__type.registerSessionReader.registerSessionReader.reader | doc:-
 Parameter | GeoLeaf Core API.global.GeoLeafGlobal.Taxonomy.__type.__index.key | doc:-
 Parameter | GeoLeaf Core API.global.GeoLeafGlobal.Taxonomy.__type.getCategories.getCategories.ref | doc:-
 Parameter | GeoLeaf Core API.global.GeoLeafGlobal.Taxonomy.__type.getFieldMappings.getFieldMappings.ref | doc:-
@@ -12079,6 +12099,7 @@ Parameter | GeoLeaf Core API.kernel/shared/map-cursor.armToolCursor.armToolCurso
 Parameter | GeoLeaf Core API.kernel/shared/map-cursor.armToolCursor.armToolCursor.map | doc:fbbb3e557b8c
 Parameter | GeoLeaf Core API.kernel/shared/map-cursor.disarmToolCursor.disarmToolCursor.map | doc:fcec13364374
 Parameter | GeoLeaf Core API.kernel/shared/map-cursor.isExclusiveMode.isExclusiveMode.map | doc:3889c6bf7e40
+Parameter | GeoLeaf Core API.kernel/shared/session-reader-seam.SessionReaderContract.__type.register.register.reader | doc:44418d6ddf28
 Parameter | GeoLeaf Core API.kernel/shared/storage-contract.StorageContract.init.init.storageModule | doc:8071f7a1589a
 Parameter | GeoLeaf Core API.kernel/shared/sync-handler-seam.SyncHandlerContract.__type.getHandler.getHandler.id | doc:-
 Parameter | GeoLeaf Core API.kernel/shared/sync-handler-seam.SyncHandlerContract.__type.registerHandler.registerHandler.handler | doc:-
@@ -12773,7 +12794,7 @@ Property | @geoleaf-plugins/connector.config.ConnectorConfig.auth.__type.forgotP
 Property | @geoleaf-plugins/connector.config.ConnectorConfig.auth.__type.signupUrl | doc:64fce709e1e1
 Property | @geoleaf-plugins/connector.config.ConnectorConfig.auth.__type.ui | doc:fd2ca5f0003b
 Property | @geoleaf-plugins/connector.config.ConnectorConfig.baseUrl | doc:6246153bec55
-Property | @geoleaf-plugins/connector.config.ConnectorConfig.getToken | doc:e1ae31b47a20
+Property | @geoleaf-plugins/connector.config.ConnectorConfig.getToken | doc:7f70a0123dc6
 Property | @geoleaf-plugins/connector.lang/lang-de.default.__type.connector.error.emptyFields | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-de.default.__type.connector.error.generic | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-de.default.__type.connector.error.invalidCredentials | doc:-
@@ -13630,6 +13651,10 @@ Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.prefl
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.preflight.persistence.bestEffort | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.preflight.persistence.persistent | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.preflight.persistence.unsupported | doc:-
+Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.preflight.session.absent | doc:-
+Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.preflight.session.expired | doc:-
+Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.preflight.session.valid | doc:-
+Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.preflight.session.validNoExpiry | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.preflight.tiles.capped | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.preflight.tiles.skipped | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.preflight.title | doc:-
@@ -15944,6 +15969,7 @@ Property | GeoLeaf Core API.contracts/sync.contract.PreflightReport.persistence 
 Property | GeoLeaf Core API.contracts/sync.contract.PreflightReport.preparation | doc:bfb341f3ab4e
 Property | GeoLeaf Core API.contracts/sync.contract.PreflightReport.queue | doc:ac49dd9f6b08
 Property | GeoLeaf Core API.contracts/sync.contract.PreflightReport.quota | doc:05261121e3f6
+Property | GeoLeaf Core API.contracts/sync.contract.PreflightReport.session | doc:aa8826b1882e
 Property | GeoLeaf Core API.contracts/sync.contract.PreflightReport.verdict | doc:-
 Property | GeoLeaf Core API.contracts/sync.contract.SyncStatus.lastSyncAt | doc:b7b19a831814
 Property | GeoLeaf Core API.contracts/sync.contract.SyncStatus.online | doc:344351fd0283
@@ -15954,6 +15980,8 @@ Property | GeoLeaf Core API.contracts/sync.contract.TilePreparationTrace.skipped
 Property | GeoLeaf Core API.contracts/sync.contract.TilePreparationTrace.zone | doc:550b7744b938
 Property | GeoLeaf Core API.contracts/sync.contract.VersionMarker.kind | doc:-
 Property | GeoLeaf Core API.contracts/sync.contract.VersionMarker.value | doc:-
+Property | GeoLeaf Core API.contracts/sync.contract.WriteSession.expiresAt | doc:3a7c3e5e84c7
+Property | GeoLeaf Core API.contracts/sync.contract.WriteSession.state | doc:-
 Property | GeoLeaf Core API.contracts/top-level-api.contract.GeoLeafTopLevelApi.createMap | doc:a431f81506b6
 Property | GeoLeaf Core API.contracts/top-level-api.contract.GeoLeafTopLevelApi.getAllMaps | doc:f2ddc32390c9
 Property | GeoLeaf Core API.contracts/top-level-api.contract.GeoLeafTopLevelApi.getHealth | doc:0a3b6d904e51
@@ -18109,6 +18137,7 @@ TypeAlias | GeoLeaf Core API.kernel/geojson/core-types.MapEventHandler | doc:36e
 TypeAlias | GeoLeaf Core API.kernel/geojson/geojson-types.GeoJSONGeometry | doc:866da2033929
 TypeAlias | GeoLeaf Core API.kernel/geojson/loader/loader-types.TaxonomySymbolResolver | doc:7f15e7f171ff
 TypeAlias | GeoLeaf Core API.kernel/shared/drain-hooks-seam.BeforeDrainStep | doc:5f85a1332a7d
+TypeAlias | GeoLeaf Core API.kernel/shared/session-reader-seam.SessionReader | doc:7dbcfad4a1dd
 TypeAlias | GeoLeaf Core API.lang/lang-fr.LangDict | doc:927c9c9af464
 TypeAlias | GeoLeaf Core API.utils/general/utils-namespace.UtilsNamespace | doc:eb12b42f4ae1
 TypeAlias | GeoLeaf Core API.utils/log/logger.LogLevelName | doc:b5c142ae763f
@@ -18123,6 +18152,7 @@ TypeLiteral | @geoleaf-plugins/connector.lang/lang-es.default.__type | doc:-
 TypeLiteral | @geoleaf-plugins/connector.lang/lang-fr.default.__type | doc:-
 TypeLiteral | @geoleaf-plugins/connector.lang/lang-it.default.__type | doc:-
 TypeLiteral | @geoleaf-plugins/connector.lang/lang-pt.default.__type | doc:-
+TypeLiteral | @geoleaf-plugins/connector.session-reader.registerSessionReader.registerSessionReader.currentConfig.__type | doc:-
 TypeLiteral | @geoleaf-plugins/connector.token-store.RefreshFn.__type | doc:-
 TypeLiteral | @geoleaf-plugins/connector.token-store.TokenStore.__type | doc:-
 TypeLiteral | @geoleaf-plugins/connector.token-store.TokenStore.__type.clear.__type | doc:-
@@ -19131,6 +19161,8 @@ TypeLiteral | GeoLeaf Core API.kernel/security/dom-security.DOMSecurity.__type.s
 TypeLiteral | GeoLeaf Core API.kernel/shared/app-ready.whenAppReady.whenAppReady.listener.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/shared/drain-hooks-seam.BeforeDrainStep.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/shared/drain-hooks-seam.DrainHooksContract.__type | doc:-
+TypeLiteral | GeoLeaf Core API.kernel/shared/session-reader-seam.SessionReader.__type | doc:-
+TypeLiteral | GeoLeaf Core API.kernel/shared/session-reader-seam.SessionReaderContract.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/shared/sync-handler-seam.SyncHandlerContract.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/storage/facade.Storage.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/storage/facade.Storage.__type._armOutboxDrain._armOutboxDrain.options.__type | doc:-
@@ -19535,7 +19567,7 @@ Variable | GeoLeaf Core API.api/geoleaf.language-switcher.LanguageSwitcher | doc
 Variable | GeoLeaf Core API.api/geoleaf.layers.Layers | doc:7209f13a6168
 Variable | GeoLeaf Core API.api/geoleaf.profile-switcher.ProfileSwitcher | doc:b0e5c9ee3067
 Variable | GeoLeaf Core API.api/geoleaf.scale.Scale | doc:b65886655bab
-Variable | GeoLeaf Core API.api/geoleaf.sync.Sync | doc:9f0cf526521b
+Variable | GeoLeaf Core API.api/geoleaf.sync.Sync | doc:e64c46e04e03
 Variable | GeoLeaf Core API.api/geoleaf.taxonomy.Taxonomy | doc:0e4e772550e4
 Variable | GeoLeaf Core API.api/geoleaf.theme-palette.ThemePalette | doc:e58067ef6c73
 Variable | GeoLeaf Core API.api/geoleaf.theme-toggle.ThemeToggle | doc:0ac8d03605bb
@@ -19735,6 +19767,7 @@ Variable | GeoLeaf Core API.kernel/security/validators.ALLOWED_DATA_URL_TYPES | 
 Variable | GeoLeaf Core API.kernel/shared/drain-hooks-seam.DrainHooksContract | doc:cce84b05e4ee
 Variable | GeoLeaf Core API.kernel/shared/profile-storage-keys.PROFILE_STORAGE_KEY | doc:46dbd7b33a24
 Variable | GeoLeaf Core API.kernel/shared/profile-storage-keys.SELECTED_PROFILE_STORAGE_KEY | doc:270f12cf8757
+Variable | GeoLeaf Core API.kernel/shared/session-reader-seam.SessionReaderContract | doc:0a3f6da3f3f2
 Variable | GeoLeaf Core API.kernel/shared/sync-handler-seam.SyncHandlerContract | doc:3df9c9a82d23
 Variable | GeoLeaf Core API.kernel/storage/facade.Storage | doc:-
 Variable | GeoLeaf Core API.kernel/storage/offline-detector.OfflineDetector | doc:-

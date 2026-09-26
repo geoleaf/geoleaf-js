@@ -77,6 +77,7 @@ beforeEach(() => {
         layers: [layer("sites", "declaredNeverPulled"), layer("routes", "pulled")],
         queue: { online: true, owed: 0, quarantined: 0, lastSyncAt: null },
         preparation: null,
+        session: null,
     };
 });
 
@@ -136,6 +137,64 @@ describe("the check says what the core read", () => {
         expect(tiles?.hidden).toBe(false);
         expect(tiles?.textContent).toContain("fond");
         expect(tiles?.textContent).toContain("16");
+        cleanup(self);
+    });
+});
+
+describe("the write session, as its holder told the core", () => {
+    const sessionLine = (self: any) =>
+        self._container.querySelector(".gl-cache-preflight__session") as HTMLElement | null;
+
+    test.each([
+        ["expired", "storage.preflight.session.expired"],
+        ["absent", "storage.preflight.session.absent"],
+    ])("a session %s is said", async (state, label) => {
+        check.session = { state, expiresAt: state === "expired" ? 1 : null };
+        const self = await mount();
+        expect(sessionLine(self)?.hidden).toBe(false);
+        expect(sessionLine(self)?.getAttribute("data-session")).toBe(state);
+        expect(sessionLine(self)?.textContent).toBe(label);
+        cleanup(self);
+    });
+
+    test("a valid session says until when — a clock reading, which a trip is compared with", async () => {
+        const expiresAt = Date.UTC(2026, 8, 26, 14, 32);
+        check.session = { state: "valid", expiresAt };
+        const self = await mount();
+        const line = sessionLine(self);
+        expect(line?.getAttribute("data-session")).toBe("valid");
+        const clock = new Date(expiresAt).toLocaleString(undefined, {
+            dateStyle: "short",
+            timeStyle: "short",
+        });
+        expect(line?.textContent).toBe(`storage.preflight.session.valid(${clock})`);
+        cleanup(self);
+    });
+
+    test("a valid session whose holder does not know the expiry says only that it is open", async () => {
+        check.session = { state: "valid", expiresAt: null };
+        const self = await mount();
+        expect(sessionLine(self)?.textContent).toBe("storage.preflight.session.validNoExpiry");
+        cleanup(self);
+    });
+
+    test.each([
+        ["nobody told it", (c: any) => (c.session = null)],
+        ["a core older than 3.11.0 answers without the field", (c: any) => delete c.session],
+    ])("hidden when %s — no session is guessed", async (_what, strip) => {
+        strip(check);
+        const self = await mount();
+        expect(sessionLine(self)?.hidden).toBe(true);
+        cleanup(self);
+    });
+
+    test("re-read when the session changes — a sign-in from the window shows at once", async () => {
+        const self = await mount();
+        expect(sessionLine(self)?.hidden).toBe(true);
+        check = { ...check, session: { state: "valid", expiresAt: null } };
+        document.dispatchEvent(new CustomEvent("geoleaf:connector:authenticated"));
+        await settle();
+        expect(sessionLine(self)?.getAttribute("data-session")).toBe("valid");
         cleanup(self);
     });
 });

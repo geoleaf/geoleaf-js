@@ -194,6 +194,21 @@ calls answer `engineUnavailable`. The plugin then waits for `GeoLeaf.Storage.whe
 the core's own first pass end, and makes the two calls — once per page, however many renewals
 came before.
 
+### What the pre-departure check learns of the session
+
+`GeoLeaf.Storage.preflight()` — the "can I leave?" check the offline window shows — carries the
+write session (`@geoleaf/core` ≥ 3.11.0): `valid` with its expiry, `expired`, or `absent`. An
+expired or absent session makes its verdict `degraded`. In `auth` mode this plugin tells it,
+reading the stored token without renewing it. In `getToken` mode it knows nothing of the expiry
+and tells nothing: the host, which knows, registers its own reader.
+
+```javascript
+GeoLeaf.Sync.registerSessionReader(() => ({ state: "valid", expiresAt: authClient.expiresAt }));
+```
+
+The reader must not renew the session, and answers within two seconds — past that, the session
+is reported unknown (`null`).
+
 ---
 
 ## Security

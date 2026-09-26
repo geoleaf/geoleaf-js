@@ -817,21 +817,43 @@ export interface TilePreparationTrace {
 export type StoragePersistenceRegime = "persistent" | "bestEffort" | "unsupported";
 
 /**
+ * The write session, as the one holding the token tells it — read, never renewed.
+ *
+ * The core does not know it: the token belongs to whoever authenticates the requests — the
+ * connector when it manages the session itself, the host when it hands its own token over. So
+ * the holder TELLS it, through `GeoLeaf.Sync.registerSessionReader`.
+ *
+ * - `valid` — a token is held, and its expiry is ahead.
+ * - `expired` — a token is held, and its expiry has passed. Whether it can still be renewed is
+ *   the server's call, when the network is back.
+ * - `absent` — no token: captures made off-network will wait for a sign-in.
+ */
+export interface WriteSession {
+    readonly state: "valid" | "expired" | "absent";
+    /** When the token expires, epoch ms — `null` when the holder does not know. */
+    readonly expiresAt: number | null;
+}
+
+/**
  * "Can I leave?" — the facts a device must be read for before going off-network, in one read.
  *
  * Each fact already had its door (`getSyncReport`, `getSyncStatus`, `getStats`, the cache
- * manifest); one had none — whether the browser keeps this origin's data, which the PWA
- * requested at boot and only logged. `verdict` says what they mean together:
+ * manifest); two had none — whether the browser keeps this origin's data, which the PWA
+ * requested at boot and only logged, and the write session, which only its holder knows.
+ * `verdict` says what they mean together:
  *
  * - `notReady` — a layer that declares something to pull was never pulled, or its last pull
  *   failed: its entities are not on the device.
  * - `degraded` — the device can leave, but something will be missing or may go: an unfinished
  *   or stale pull, entries set aside, an origin the browser may evict (`bestEffort` or
- *   `unsupported`), zooms left out of a basemap, resources that failed to download.
+ *   `unsupported`), zooms left out of a basemap, resources that failed to download, a write
+ *   session absent or expired.
  * - `ready` — none of the above.
  *
- * ⚠️ **The session is not in it.** Whether the write token will still be valid in the field is
- * the connector's knowledge, not the core's, and in `getToken` mode nobody but the host knows.
+ * ⚠️ **A session that is valid now does not make the verdict.** When it will expire is a fact
+ * (`session.expiresAt`); whether that falls within the trip is not — nobody here knows how
+ * long the trip lasts. And a session that is missing never makes a device `notReady`: no
+ * entity leaves the device with it, and the captures wait in the queue for a sign-in.
  */
 export interface PreflightReport {
     /** When the check was made, epoch ms. */
@@ -858,6 +880,12 @@ export interface PreflightReport {
         readonly failedResources: number;
         readonly tiles: TilePreparationTrace | null;
     } | null;
+    /**
+     * The write session, as its holder tells it — `null` when nobody does: no reader registered
+     * (no connector, or a host token whose holder registered none), or one that failed or did
+     * not answer in time. See {@link WriteSession}.
+     */
+    readonly session: WriteSession | null;
 }
 
 /* -------------------------------------------------------------------------- */

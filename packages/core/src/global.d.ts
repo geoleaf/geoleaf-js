@@ -673,6 +673,15 @@ declare global {
                 id: string,
                 step: import("./kernel/shared/drain-hooks-seam.js").BeforeDrainStep | null
             ): void;
+            /**
+             * Registers the reader of the write session, which `Storage.preflight()` reports;
+             * `null` removes it. One slot, the last registration wins. The reader tells the
+             * session without renewing it; one that throws, or does not answer within two
+             * seconds, leaves `session` at `null`. See `kernel/shared/session-reader-seam.ts`.
+             */
+            registerSessionReader(
+                reader: import("./kernel/shared/session-reader-seam.js").SessionReader | null
+            ): void;
         };
         /** Theme switch bar — in-core `theme-selector` capability (see above). */
         ThemeSelector?: GeoLeafThemeSelector;

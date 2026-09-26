@@ -3,7 +3,8 @@
    The core's pre-departure check, shown in the offline window under the sync
    status. A file of its own: `cache-control.css` sits at the 700-line cap
    (PC-08). Attributes are matched literally — `data-verdict`, `data-alert`,
-   `data-persistence`, `data-status` — for purgecss, which reads the source.
+   `data-persistence`, `data-session`, `data-status` — for purgecss, which reads
+   the source.
    ========================================================================== */
 
 /* The theme defines no warning colour (measured — the editor's queue detail says the same),
@@ -64,6 +65,20 @@ body.gl-theme-dark .gl-cache-preflight {
 
 .gl-cache-preflight__persistence[data-persistence="bestEffort"],
 .gl-cache-preflight__persistence[data-persistence="unsupported"] {
+    color: var(--gl-cache-preflight-warning);
+}
+
+.gl-cache-preflight__session {
+    margin-top: 4px;
+    color: var(--gl-color-text-muted, #64748b);
+}
+
+.gl-cache-preflight__session[hidden] {
+    display: none;
+}
+
+.gl-cache-preflight__session[data-session="expired"],
+.gl-cache-preflight__session[data-session="absent"] {
     color: var(--gl-cache-preflight-warning);
 }
 

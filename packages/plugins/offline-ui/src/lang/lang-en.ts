@@ -145,6 +145,11 @@ const langStorageEn: StorageLangDict = {
     "storage.preflight.tiles.skipped": "Zoom levels not prepared: {0}",
     "storage.preflight.tiles.capped": "Preparation stopped at the tile cap",
     "storage.preflight.failed": "{0} resource(s) not downloaded",
+    "storage.preflight.session.valid": "Write session valid until {0}",
+    "storage.preflight.session.validNoExpiry": "Write session open",
+    "storage.preflight.session.expired":
+        "Write session expired: captures will wait for its renewal",
+    "storage.preflight.session.absent": "No write session: captures will wait for a sign-in",
 };
 
 export default langStorageEn;

@@ -149,6 +149,12 @@ const langStorageDe: StorageLangDict = {
     "storage.preflight.tiles.skipped": "Nicht vorbereitete Zoomstufen: {0}",
     "storage.preflight.tiles.capped": "Vorbereitung an der Kachelgrenze gestoppt",
     "storage.preflight.failed": "{0} Ressource(n) nicht heruntergeladen",
+    "storage.preflight.session.valid": "Schreibsitzung gültig bis {0}",
+    "storage.preflight.session.validNoExpiry": "Schreibsitzung offen",
+    "storage.preflight.session.expired":
+        "Schreibsitzung abgelaufen: Erfassungen warten auf ihre Erneuerung",
+    "storage.preflight.session.absent":
+        "Keine Schreibsitzung: Erfassungen warten auf eine Anmeldung",
 };
 
 export default langStorageDe;

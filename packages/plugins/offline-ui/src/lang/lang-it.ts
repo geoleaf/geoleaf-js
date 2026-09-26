@@ -147,6 +147,12 @@ const langStorageIt: StorageLangDict = {
     "storage.preflight.tiles.skipped": "Livelli di zoom non preparati: {0}",
     "storage.preflight.tiles.capped": "Preparazione interrotta al limite di tasselli",
     "storage.preflight.failed": "{0} risorsa/e non scaricata/e",
+    "storage.preflight.session.valid": "Sessione di scrittura valida fino al {0}",
+    "storage.preflight.session.validNoExpiry": "Sessione di scrittura aperta",
+    "storage.preflight.session.expired":
+        "Sessione di scrittura scaduta: le acquisizioni attenderanno il suo rinnovo",
+    "storage.preflight.session.absent":
+        "Nessuna sessione di scrittura: le acquisizioni attenderanno un accesso",
 };
 
 export default langStorageIt;

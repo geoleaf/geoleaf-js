@@ -5,7 +5,7 @@
  */
 
 /**
- * The connector singleton's state and the two operations the public namespace exposes.
+ * The connector singleton's state and the three operations the public namespace exposes.
  *
  *
  * ## Why this module exists
@@ -19,12 +19,14 @@
  *
  * ## ⚠️ The state MUST live here, with its readers
  *
- * `_currentConfig` is read by three things at different moments:
+ * `_currentConfig` is read by four things at different moments:
  *
  *   1. `openLoginModal()`, at call time;
  *   2. the `__GEOLEAF_WORKER_HEADERS_HOOK__` hook set by `configure()` —
  *      which the CORE's worker-manager reads without ever importing this plugin;
- *   3. `isConfigured()`, invoked by the plugin registry's `healthCheck`.
+ *   3. `isConfigured()`, invoked by the plugin registry's `healthCheck`;
+ *   4. the session reader `configure()` registers for the core's pre-departure check
+ *      (`session-reader.ts`), through the accessor it is handed — never a captured value.
  *
  * Separating the writer from any of these readers produces a SILENT outage:
  * the hook would close over a `_currentConfig` nobody writes any more, and
@@ -54,6 +56,7 @@ import { installMapLibreBridge } from "./maplibre-bridge.js";
 import { AuthClient } from "./auth-client.js";
 import { showLoginModal } from "./login-ui.js";
 import { armSessionResume, disarmSessionResume } from "./session-resume.js";
+import { registerSessionReader } from "./session-reader.js";
 import { armRenewalRetry, disarmRenewalRetry } from "./renewal-retry.js";
 import { installCredentialButton, uninstallCredentialButton } from "./credential-button.js";
 
@@ -227,6 +230,8 @@ export function createConnector(config: ConnectorConfig): ConnectorInstance {
  * Initializes the Connector singleton.
  * Installs window.fetch monkey-patch, Worker headers hook and the page's renewal — none without
  * `auth.endpoint`; it alone installs and removes that one.
+ * With `auth.endpoint`, tells the core's pre-departure check the session it holds
+ * (`GeoLeaf.Sync.registerSessionReader`, core ≥ 3.11.0).
  * If auth.ui is true and no session is stored (or it was refused), shows the login modal.
  */
 export async function configure(config: ConnectorConfig): Promise<void> {
@@ -258,6 +263,8 @@ export async function configure(config: ConnectorConfig): Promise<void> {
     // SESSION IS READ: a renewal at boot emits `token-refreshed`, and the queue the previous
     // session set aside must hear it.
     armSessionResume(config.baseUrl);
+    // The pre-departure check learns the session from this plugin when it holds it.
+    registerSessionReader(() => _currentConfig);
 
     // Warm up RAM cache from IDB (required before the MapLibre bridge and the worker hook,
     // which read it synchronously) — and learn what the session is.

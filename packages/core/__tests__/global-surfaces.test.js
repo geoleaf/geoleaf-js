@@ -23,7 +23,7 @@ const { SyncHandlerContract } = await import("../src/kernel/shared/sync-handler-
 
 /** Members `global.d.ts` declares on each surface — keep in sync with the interface. */
 const DECLARED = {
-    Sync: ["registerHandler", "getHandler"],
+    Sync: ["registerHandler", "getHandler", "registerBeforeDrain", "registerSessionReader"],
     // GeoLeafThemeSelector (promoted from permalink-types.ts).
     ThemeSelector: ["getCurrentTheme", "setTheme"],
     // Typed as the capability's own export, the only shape covering BOTH kernel views.
