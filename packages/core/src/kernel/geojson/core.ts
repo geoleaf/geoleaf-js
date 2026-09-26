@@ -456,6 +456,11 @@ const GeoJSONModule = {
      * non-clustered layers with unique `properties.id`; clustered / id-less
      * layers fall back to re-feeding the filtered data (RM-P1).
      *
+     * Every geometry is filtered alike, lines included. `options.geometryType` narrows
+     * the pass to one family (`point`, `line`, `polygon`), and a layer joins it under any
+     * spelling its profile may declare (`polyline`, `multipolygon`, …). A vector-tile
+     * layer keeps no feature in memory and is left unfiltered.
+     *
      * @param {Function} filterFn - Fonction (feature, layerId) => boolean
      * @param {Object} [options] - Additional options
      * @returns {Object} - { filtered: number, total: number, visible: number }

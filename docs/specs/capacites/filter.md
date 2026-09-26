@@ -4,8 +4,8 @@ title: filter — le filtre attributaire générique, et son contrat sérialisab
 capability_id: filter
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 56909c7b1
-date: 25 septembre 2026
+verifie_contre: 86ff0985c
+date: 26 septembre 2026
 ---
 
 # filter — le filtre attributaire générique, et son contrat sérialisable
@@ -39,6 +39,14 @@ filtrable —, lit ce panneau en un état, et restreint l'affichage des couches 
 **agnostique à la géométrie** (point, ligne, polygone) et **indifférente à la source**. Et elle
 publie cet état sous une forme **sérialisable et sans DOM**, qui est ce que le permalien manipule.
 
+⚠️ **« Agnostique à la géométrie » n'était pas vrai des lignes jusqu'au 26/09/2026.** Le seam du
+kernel soustrayait toute couche de lignes au filtre, sauf si elle déclarait `search.enabled: true`.
+Or cette clé avait quitté le schéma de profil le 08/07 : aucun profil ne pouvait plus y faire entrer
+une ligne. Une recherche texte masquait donc les polygones et laissait toutes les routes dessinées.
+La capacité appliquait en outre trois passes, une par géométrie : une couche dont le type n'entrait
+dans aucune d'elles (`mixed`, `unknown`) n'était jamais filtrée. Il n'y a plus qu'une passe, sur
+toutes les couches chargées (FI-21).
+
 ### Ce qu'elle ne fait pas
 
 - **Elle n'écrit pas le filtre de couche elle-même.** Elle passe le prédicat au seam
@@ -52,6 +60,13 @@ publie cet état sous une forme **sérialisable et sans DOM**, qui est ce que le
   descripteur `text`, qui porte son propre libellé indicatif.
 - **Elle n'émet pas `geoleaf:filter:apply` ni `geoleaf:filter:reset`** — voir §Contrat exposé, où
   cette confusion est levée.
+- **Elle ne filtre pas une couche en tuiles vectorielles.** Le prédicat est du JavaScript qui
+  s'exécute sur les entités **en mémoire**, et une couche en tuiles n'en garde aucune : elle reste
+  entière sous le filtre, quel que soit le champ. Traduire le filtre en expression MapLibre n'en
+  donnerait qu'une partie. La taxonomie, la plage et le booléen s'y expriment. Le texte, lui,
+  ignore les accents, les tags sont des chaînes à séparateurs, et la proximité se mesure au
+  centroïde : aucun des trois n'a la même sémantique en expression. Limite documentée plutôt que
+  construite : aucun profil livré n'arme de couche en tuiles.
 
 ---
 
@@ -79,6 +94,7 @@ publie cet état sous une forme **sérialisable et sans DOM**, qui est ce que le
 | FI-18 | Signal d'application                                    | Appliquer, réinitialiser, restaurer            | `geoleaf:filters:applied` — l'onglet de bureau et le permalien s'en servent                                                                                                                                                                                                        | `apply.ts`, `public-api.ts`                               |
 | FI-19 | Démontage complet                                       | `FilterModule.destroy()`                       | Échéance annulée, écouteurs détachés, panneau retiré, et la proximité démontée **seulement si elle avait été montée**                                                                                                                                                              | `lifecycle.ts` → `_reset`                                 |
 | FI-20 | Le panneau préexistant est écarté au montage            | Second montage, panneau hérité                 | L'élément portant l'identifiant est retiré avant le rendu — sinon deux nœuds porteraient le même identifiant                                                                                                                                                                       | `lifecycle.ts` → `_mountPanel`                            |
+| FI-21 | **Une** passe, toutes géométries                        | Appliquer, restaurer                           | Le prédicat parcourt **toutes** les couches chargées en une passe, lignes comprises, quel que soit le type qu'elles déclarent (`polyline`, `multipolygon`, `mixed`…). Une couche en tuiles vectorielles n'a pas d'entité en mémoire : elle n'est pas filtrée                       | `apply.ts` → `kernel/geojson/geojson-filter.ts`           |
 
 Les tests qui couvrent ces lignes : `packages/core/__tests__/capabilities/filter/` — dont un fichier
 d'empreinte DOM du panneau, un dédié à la proximité, et un au moteur de prédicat.

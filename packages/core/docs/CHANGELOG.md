@@ -11,6 +11,35 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **The filter now reaches line layers.** A text search, a category or any other field without
+  `layers` filtered points and polygons and left every line layer drawn: the kernel skipped line
+  layers unless they declared `search.enabled: true`, a key the profile schema no longer accepts.
+  Line layers are now filtered like every other geometry. To keep a layer out of a field, list the
+  layers that field targets in its `layers`. `GeoLeaf.Layers.setVisibleSubset()` had the same hole:
+  it did nothing on a line layer, and now does. A leftover `search` block on a layer has no effect.
+- **The filter panel filters every loaded layer in one pass.** It used to run three passes, one per
+  geometry family, and a layer whose kind fitted none of them (`mixed`, or `unknown` for a layer
+  created empty and filled later) was never filtered. `geoleaf:filter:apply` is therefore emitted
+  once per application instead of three times, with the total `activeCount`.
+  `GeoLeaf.GeoJSON.filterFeatures(fn, { geometryType })` folds every spelling a profile may
+  declare into its family: a `polyline`, `multiline` or `LineString` layer joins `"line"`, a
+  `multipolygon` or `fill-extrusion` layer joins `"polygon"`.
+- **A vector-tile layer draws the labels it declares.** The label layer was added on the layer's
+  `vector` source without a `source-layer`. MapLibre refuses such a layer and reports it as an
+  `error` event on the map: the label toggle read "on" while nothing was drawn. It now names the
+  source-layer the layer's own sub-layers draw. A vector-tile layer created through
+  `GeoLeaf.Layers.create()` also arms its declared labels now, as a GeoJSON layer does.
+
+### Documentation
+
+- A vector-tile layer is **not** filtered by the filter panel, nor by `setVisibleSubset()`: the
+  predicate judges the features in memory, and a vector-tile layer keeps none. This is now written
+  where the switch to tiles is decided.
+
 ## [3.10.3] - 2026-09-25
 
 ### Fixed

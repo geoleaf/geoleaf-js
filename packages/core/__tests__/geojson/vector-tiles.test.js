@@ -265,6 +265,36 @@ describe("geojson/vector-tiles — branches T18", () => {
             );
         });
 
+        // The GeoJSON loader arms a layer's labels as it loads it; the vector-tile branch did not,
+        // so a VT layer that no theme re-styles — one created through `Layers.create()` — never
+        // armed the labels it declared.
+        it("arms the layer's labels when its definition declares them", async () => {
+            const initializeLayerLabels = vi.fn();
+            _g.GeoLeaf = { Core: { getMap: () => adapterMock }, Labels: { initializeLayerLabels } };
+            const def = {
+                id: "vtl",
+                _profileId: "p1",
+                _layerDirectory: "dir-l",
+                vectorTiles: { enabled: true, interactive: false },
+                labels: { enabled: true, field: "NAM" },
+            };
+            await VectorTiles.loadVectorTileLayer("vtl", "L", def, {});
+            expect(initializeLayerLabels).toHaveBeenCalledWith("vtl");
+        });
+
+        it("leaves labels alone when neither the definition nor a style declares them", async () => {
+            const initializeLayerLabels = vi.fn();
+            _g.GeoLeaf = { Core: { getMap: () => adapterMock }, Labels: { initializeLayerLabels } };
+            const def = {
+                id: "vtn",
+                _profileId: "p1",
+                _layerDirectory: "dir-n",
+                vectorTiles: { enabled: true, interactive: false },
+            };
+            await VectorTiles.loadVectorTileLayer("vtn", "L", def, {});
+            expect(initializeLayerLabels).not.toHaveBeenCalled();
+        });
+
         it("calls LayerManager.updateLayerVisibilityByZoom when present", async () => {
             const updateFn = vi.fn();
             _g.GeoLeaf = {

@@ -23,9 +23,11 @@ const nativeMap = {
     },
     getStyle: () => ({ layers: [] }),
 };
+/** What the adapter's registry answers for the layer — set per test; none by default. */
+let registryEntry;
 const mapAdapter = {
     getNativeMap: () => nativeMap,
-    getLayerRegistry: () => ({ getSourceId: (id) => `gl-src-${id}` }),
+    getLayerRegistry: () => ({ getSourceId: (id) => `gl-src-${id}`, get: () => registryEntry }),
 };
 
 vi.mock("../../../src/utils/log/index.js", () => ({ Log: logMock }));
@@ -201,5 +203,36 @@ describe("label symbol layout — label.offset placement", () => {
             offset: { placement: "top", distancePx: "14px" },
         });
         expect(Object.keys(layout).sort()).toEqual([...CENTRED_KEYS].sort());
+    });
+});
+
+/**
+ * A vector-tile layer — the label layer must name the source-layer it reads.
+ *
+ * A layer drawing a `vector` source is refused by MapLibre without a `source-layer`, and the refusal
+ * is an `error` EVENT on the map, never a throw: the label toggle read "on" while nothing rendered.
+ * Measured on a vector-tile layer armed over the shipped bundle before this fix.
+ */
+describe("label symbol layer — vector-tile source", () => {
+    afterEach(() => {
+        registryEntry = undefined;
+    });
+
+    it("names the source-layer the adapter registered for the layer", () => {
+        registryEntry = { isVectorTile: true, sourceLayer: "provinces" };
+        addedLayer = undefined;
+        LabelRenderer.createSymbolLayerForMapLibre("vt1", { labelId: "NAM" }, {}, new Map());
+        expect(addedLayer?.["source-layer"]).toBe("provinces");
+        expect(addedLayer?.source).toBe("gl-src-vt1");
+    });
+
+    it("adds no source-layer on a GeoJSON source", () => {
+        for (const entry of [undefined, { isVectorTile: false }]) {
+            registryEntry = entry;
+            addedLayer = undefined;
+            LabelRenderer.createSymbolLayerForMapLibre("gj1", { labelId: "name" }, {}, new Map());
+            expect(addedLayer, JSON.stringify(entry)).toBeDefined();
+            expect(Object.hasOwn(addedLayer, "source-layer"), JSON.stringify(entry)).toBe(false);
+        }
     });
 });

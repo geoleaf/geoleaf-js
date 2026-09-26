@@ -448,6 +448,10 @@ export interface LayerDataApi {
      * Displays only the features matching `predicate`, WITHOUT mutating the base
      * dataset — the subset is re-derived from the full base on each apply (GPU
      * `setFilter` id-match, JS predicate fallback).
+     *
+     * Every geometry is filtered alike, lines included. A vector-tile layer keeps
+     * no feature in memory, so the predicate has nothing to run on and the layer
+     * is left as it is.
      */
     setVisibleSubset(layerId: string, predicate: (f: GeoJSON.Feature) => boolean): void;
     /** Restores full visibility (clears any active subset). */

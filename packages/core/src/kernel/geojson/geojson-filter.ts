@@ -9,9 +9,16 @@
  * GeoLeaf GeoJSON — Feature Filter Helpers
  * Extracted from geojson/core.ts.
  * Handles geometry-type filtering and per-feature visibility for filterFeatures().
+ *
+ * The filter is geometry-agnostic: a line layer is filtered exactly like a point or polygon
+ * layer. It used to skip every line layer unless it declared `search.enabled: true` — a key the
+ * profile schema dropped, so no profile could opt a line layer back in and the documented
+ * behaviour was unreachable. A vector-tile layer keeps no feature in memory: the JS predicate has
+ * nothing to run on, so it is left unfiltered.
  */
 
 import { GeoJSONShared } from "./shared.ts";
+import { geometryKindToGeoJSONTypes } from "../config/layer-geometry.js";
 import type { GeoJSONFeature } from "./geojson-types.js";
 import type { GeoJSONLayerEntry, GeoJSONSharedState } from "./core-types.js";
 
@@ -56,24 +63,39 @@ export function _resolveGeometryFilteredIds(
 
     if (!options.geometryType) return layerIds;
 
-    const geoType = options.geometryType.toLowerCase();
-
-    const typeAliases: Record<string, string> = {
-        poi: "point",
-        route: "line",
-        linestring: "line",
-        area: "polygon",
-    };
-
-    const normalizedType = typeAliases[geoType] || geoType;
+    const requested = _geometryBucket(options.geometryType);
 
     return layerIds.filter((id) => {
         const data = state.layers.get(id);
         if (!data) return false;
-        const layerGeoType = (data.geometryType || "").toLowerCase();
-        const normalizedLayerType = typeAliases[layerGeoType] || layerGeoType;
-        return normalizedLayerType === normalizedType;
+        return _geometryBucket(data.geometryType || "") === requested;
     });
+}
+
+/** Legacy bucket names accepted by `filterFeatures({ geometryType })`, kept for its callers. */
+const _BUCKET_ALIASES: Readonly<Record<string, string>> = {
+    poi: "point",
+    route: "line",
+    area: "polygon",
+};
+
+/**
+ * The bucket (`point`, `line` or `polygon`) a declared geometry kind belongs to.
+ *
+ * Every spelling the profile schema accepts folds into its family — `polyline`, `multiline`,
+ * `multipoint`, `multipolygon`, `fill-extrusion` — and so do the GeoJSON names; the family table
+ * is the one `layer-geometry.ts` holds for the whole core. A kind that names no family (`mixed`,
+ * `unknown`) stays itself, lowercased, so it only ever matches itself.
+ */
+function _geometryBucket(kind: string): string {
+    const lower = kind.toLowerCase();
+    const alias = _BUCKET_ALIASES[lower];
+    if (alias) return alias;
+    const types = geometryKindToGeoJSONTypes(kind);
+    if (types.has("Point") || types.has("MultiPoint")) return "point";
+    if (types.has("LineString") || types.has("MultiLineString")) return "line";
+    if (types.has("Polygon") || types.has("MultiPolygon")) return "polygon";
+    return lower;
 }
 
 /** Opaque MapLibre filter expression at this module boundary. */
@@ -153,6 +175,9 @@ function _buildIdFilter(total: number, visible: GeoJSONFeature[]): FilterExpr {
 /**
  * Applies a filter predicate to all features in a single layer,
  * showing or hiding each feature via the visibility helpers.
+ *
+ * Every geometry goes through the same path. A layer with no feature in memory — empty, or a
+ * vector-tile layer — is left as it is and counts for nothing.
  * @internal
  */
 export function _applyFeatureVisibilityForLayer(
@@ -161,21 +186,8 @@ export function _applyFeatureVisibilityForLayer(
     layerId: string,
     stats: FilterStats
 ): void {
-    const isLineLayer = ["line", "linestring", "polyline"].includes(
-        (layerData.geometryType || "").toLowerCase()
-    );
-
-    const searchEnabled = (layerData.config?.search as { enabled?: boolean } | undefined)?.enabled;
-    const bypassFilter = searchEnabled === false || (isLineLayer && searchEnabled !== true);
-
     const features: GeoJSONFeature[] = layerData.features || [];
     if (!features.length) return;
-
-    if (bypassFilter) {
-        stats.total += features.length;
-        stats.visible += features.length;
-        return;
-    }
 
     const visibleFeatures = features.filter((feature) => filterFn(feature, layerId));
 

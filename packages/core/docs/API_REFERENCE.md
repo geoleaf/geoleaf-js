@@ -487,10 +487,10 @@ document.addEventListener("geoleaf:app:ready", async () => {
 
 **Filtered display** — without mutating the base dataset
 
-| Method               | Signature                      | Description                                                                                                                                   |
-| -------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `setVisibleSubset`   | `(layerId, predicate) => void` | Displays only matching features. The subset is re-derived from the full base on each apply (GPU `setFilter` id-match, JS predicate fallback). |
-| `clearVisibleSubset` | `(layerId) => void`            | Restores full visibility.                                                                                                                     |
+| Method               | Signature                      | Description                                                                                                                                                                                                                                                          |
+| -------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `setVisibleSubset`   | `(layerId, predicate) => void` | Displays only matching features. The subset is re-derived from the full base on each apply (GPU `setFilter` id-match, JS predicate fallback). Every geometry is filtered alike, lines included; a vector-tile layer keeps no feature in memory and is left as it is. |
+| `clearVisibleSubset` | `(layerId) => void`            | Restores full visibility.                                                                                                                                                                                                                                            |
 
 **Reactive paint & merge**
 

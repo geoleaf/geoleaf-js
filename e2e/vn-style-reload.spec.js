@@ -32,6 +32,7 @@
 import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { bootMap, waitMapLoaded, captureConsole } from "./helpers/boot.js";
+import { awaitSettledCamera } from "./helpers/camera.js";
 
 test.use({ baseURL: baseURL("core"), serviceWorkers: "block" });
 
@@ -92,6 +93,11 @@ test.describe("VN — rendu carte et cycle de style (A.1, A.2, A.3)", () => {
         await bootMap(page);
         await waitMapLoaded(page);
         await waitBasemapsReady(page);
+        // The boot's own camera work must be over before a test sets its zoom: measured on
+        // 26/09/2026, a `setZoom(10)` issued earlier was undone by the boot framing (back to
+        // 4.23, where the labels are out of range) — 3 runs out of 3 on `ports` for the second
+        // test of a worker, on the bundle before and after that day's fix alike.
+        await awaitSettledCamera(page);
     });
 
     // ── A.2 🔴 (verifiable part, without basemap switch) ──────────────────────────────

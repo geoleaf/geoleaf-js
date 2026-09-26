@@ -12,7 +12,7 @@
  * the GeoJSON layers through the kernel `GeoJSONCore.filterFeatures` seam, which
  * applies an id-based GPU `setLayerFilter` (zero re-tiling, RM-P1(b)) with a
  * `setData` fallback. The engine predicate (`featurePasses`) covers every kind,
- * every geometry (`point` included) and honours the per-layer `layers` scope.
+ * every geometry (lines included) and honours the per-layer `layers` scope.
  *
  * **The single writer of the layer filter.** A second, pure-native path lived in
  * `taxonomy-options.ts` until S5/N-4; it was retired rather than wired (see that module).
@@ -36,9 +36,6 @@ interface GeoJSONFilterLike {
     /** Live features of the loaded GeoJSON layers (optionally scoped) — for `"auto"` options. */
     getFeatures?(options?: { layerIds?: string[] }): FeatureLike[];
 }
-
-/** Geometry buckets the GeoJSON seam filters (mirrors the former applier). */
-const GEOMETRY_TYPES = ["polygon", "line", "point"] as const;
 
 /**
  * Gathers the features a `"auto"` tag field derives its options from: the GeoJSON
@@ -89,15 +86,19 @@ export function applyFilterFromPanel(panelEl: HTMLElement | null, config: Filter
 }
 
 /**
- * Applies an already-expanded active filter to the GeoJSON layers (every geometry,
- * `point` included). Geometry-agnostic; the per-layer `layers` scope is honoured via
- * `featurePasses`.
+ * Applies an already-expanded active filter to every loaded GeoJSON layer, in ONE pass.
+ * Geometry-agnostic; the per-layer `layers` scope is honoured via `featurePasses`.
+ *
+ * One pass, not one per geometry: the three passes this replaced (`polygon`, `line`, `point`)
+ * reached only the layers whose kind folded into one of them, so a layer created empty and filled
+ * later (`unknown`) was never filtered — while the predicate never looked at the geometry.
+ * A vector-tile layer keeps no feature in memory and is not filtered by the panel.
  */
 export function applyActiveFilterToSources(active: ActiveField[]): void {
     const gj = GeoJSONCore as unknown as GeoJSONFilterLike;
     if (gj && typeof gj.filterFeatures === "function") {
         const predicate = (feature: FeatureLike, layerId: string): boolean =>
             featurePasses(active, feature, layerId);
-        for (const geometryType of GEOMETRY_TYPES) gj.filterFeatures(predicate, { geometryType });
+        gj.filterFeatures(predicate);
     }
 }

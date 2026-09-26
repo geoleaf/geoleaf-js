@@ -215,9 +215,11 @@ export interface LabelsMapHandle {
     [key: string]: unknown;
 }
 
-/** Layer registry handle exposed by the MapLibre adapter (source-id lookup). */
+/** Layer registry handle exposed by the MapLibre adapter (source-id and source-layer lookup). */
 interface LabelsLayerRegistry {
     getSourceId?: (layerId: string) => string | undefined;
+    /** The layer's registry entry: a vector-tile layer carries the source-layer it draws. */
+    get?: (layerId: string) => { isVectorTile?: boolean; sourceLayer?: string } | undefined;
     [key: string]: unknown;
 }
 

@@ -60,10 +60,31 @@ function _resolveMapFontStack(nativeMap: LabelsNativeMap): string[] {
     return ["Noto Sans Regular"];
 }
 
+/** The registry lookup {@link _vectorSourceLayer} needs — structural, as the adapter's is. */
+interface SourceLayerRegistry {
+    get?: (layerId: string) => { isVectorTile?: boolean; sourceLayer?: string } | undefined;
+}
+
+/**
+ * The source-layer a label layer must name: the one the adapter registered for a vector-tile
+ * layer, and none for any other source.
+ */
+function _vectorSourceLayer(
+    registry: SourceLayerRegistry | undefined,
+    layerId: string
+): string | undefined {
+    const entry = registry?.get?.(layerId);
+    return entry?.isVectorTile === true ? entry.sourceLayer : undefined;
+}
+
 const _LabelRenderer: LabelRendererApi = {
     /**
-     * Creates a MapLibre native symbol layer for labels, on top of the existing
-     * GeoJSON source. Cleanup is handled by storing a removal function in `tooltipsMap`.
+     * Creates a MapLibre native symbol layer for labels, on top of the layer's existing
+     * source. Cleanup is handled by storing a removal function in `tooltipsMap`.
+     *
+     * On a vector-tile layer the symbol layer names the source-layer the adapter registered for
+     * it — the one its fill and line sub-layers draw. MapLibre refuses a layer on a `vector`
+     * source without one, and reports it as an `error` event on the map rather than a throw.
      */
     createSymbolLayerForMapLibre(
         layerId: string,
@@ -96,10 +117,12 @@ const _LabelRenderer: LabelRendererApi = {
         // CSS font names (e.g. "Lucida Sans") are not PBF glyphs — use whatever the
         // base style actually serves. Fall back to common OpenFreeMap/MapTiler names.
         const textFont = _resolveMapFontStack(nativeMap);
+        const sourceLayer = _vectorSourceLayer(registry, layerId);
         nativeMap.addLayer({
             id: labelLayerId,
             type: "symbol",
             source: sourceId,
+            ...(sourceLayer !== undefined && { "source-layer": sourceLayer }),
             layout: _buildLabelSymbolLayout(labelConfig, style, textFont),
             paint: _buildLabelSymbolPaint(style),
         });

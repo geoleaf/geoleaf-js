@@ -191,8 +191,9 @@ const VectorTiles = {
 
     /**
      * Creates a vector tile layer by delegating to the adapter, then binds
-     * interactions and records shared state. The adapter builds one `vector` source
-     * and up to 3 render layers (fill/line/circle) from the resolved spec.
+     * interactions, records shared state and arms the labels the layer declares.
+     * The adapter builds one `vector` source and up to 3 render layers
+     * (fill/line/circle) from the resolved spec.
      *
      * @param layerId - Unique layer ID.
      * @param layerLabel - Display label.
@@ -256,6 +257,13 @@ const VectorTiles = {
             LayerManagerModuleLike | undefined;
         if (LayerManager) {
             LayerManager.updateLayerVisibilityByZoom?.();
+        }
+
+        // Arm the declared labels, on the GeoJSON loader's own condition (a style was loaded, or
+        // the definition enables labels). A theme that re-styles the layer arms them too, but a
+        // layer created through `Layers.create()` is re-styled by none.
+        if (styleData || def.labels?.enabled === true) {
+            getGeoLeaf()?.Labels?.initializeLayerLabels(layerId);
         }
 
         Log.info(`[GeoLeaf.VectorTiles] VT layer loaded: ${layerId}`);

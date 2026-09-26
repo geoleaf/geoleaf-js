@@ -117,43 +117,37 @@ describe("geojson-filter — _applyFeatureVisibilityForLayer (chemin vivant)", (
         });
     });
 
-    describe("bypass — couches ligne et search désactivée", () => {
-        it("une couche ligne n'est PAS filtrée sans search.enabled explicite", () => {
-            const layer = { geometryType: "line", features: [feat("a"), feat("b")] };
-            const stats = newStats();
-            _applyFeatureVisibilityForLayer(layer, passNone, "lyr", stats);
+    describe("géométrie — une couche de lignes se filtre comme les autres", () => {
+        // The filter used to skip every line layer unless it declared `search.enabled: true` — a
+        // key the profile schema no longer accepts, so no profile could opt a line layer in.
+        // The documented contract is geometry-agnostic: a field without `layers` filters them all.
+        for (const geometryType of ["line", "linestring", "polyline", "multiline"]) {
+            it(`une couche « ${geometryType} » est filtrée`, () => {
+                const layer = { geometryType, features: [feat("a"), feat("b")] };
+                const stats = newStats();
+                _applyFeatureVisibilityForLayer(layer, passNone, "lyr", stats);
 
-            expect(setLayerFilter).not.toHaveBeenCalled();
-            expect(updateLayerData).not.toHaveBeenCalled();
-            // Bypass = everything stays visible, whatever the predicate.
-            expect(stats.visible).toBe(2);
-            expect(stats.filtered).toBe(0);
-        });
+                expect(setLayerFilter).toHaveBeenCalledWith("lyr", [
+                    "match",
+                    ["to-string", ["get", "id"]],
+                    ["__geoleaf_filter_none__"],
+                    true,
+                    false,
+                ]);
+                expect(stats).toEqual({ total: 2, visible: 0, filtered: 2 });
+            });
+        }
 
-        it("une couche ligne EST filtrée si search.enabled === true", () => {
-            const layer = {
-                geometryType: "line",
-                config: { search: { enabled: true } },
-                features: [feat("a"), feat("b")],
-            };
-            _applyFeatureVisibilityForLayer(
-                layer,
-                (f) => f.properties.id === "a",
-                "lyr",
-                newStats()
-            );
-            expect(setLayerFilter).toHaveBeenCalled();
-        });
-
-        it("search.enabled === false bypasse même une couche point", () => {
+        it("un bloc `search` résiduel ne soustrait plus une couche au filtre", () => {
             const layer = {
                 geometryType: "point",
                 config: { search: { enabled: false } },
                 features: [feat("a")],
             };
-            _applyFeatureVisibilityForLayer(layer, passNone, "lyr", newStats());
-            expect(setLayerFilter).not.toHaveBeenCalled();
-            expect(updateLayerData).not.toHaveBeenCalled();
+            const stats = newStats();
+            _applyFeatureVisibilityForLayer(layer, passNone, "lyr", stats);
+            expect(setLayerFilter).toHaveBeenCalled();
+            expect(stats.filtered).toBe(1);
         });
     });
 

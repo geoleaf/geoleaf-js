@@ -34,11 +34,13 @@ describe("capabilities/filter/apply — applyActiveFilterToSources", () => {
         readActiveFilter.mockReset().mockReturnValue([]);
     });
 
-    it("filtre les TROIS géométries — un filtre ne vise pas que les points", () => {
+    it("filtre TOUTES les couches en un seul passage, sans seau de géométrie", () => {
+        // Three passes by geometry bucket left out every layer whose kind was none of the three
+        // canonical names — `mixed`, `unknown` (a layer created empty, filled later) — while the
+        // predicate never depended on geometry. One pass reaches every loaded layer.
         applyActiveFilterToSources([]);
-        expect(filterFeatures).toHaveBeenCalledTimes(3);
-        const geometries = filterFeatures.mock.calls.map((c) => c[1].geometryType);
-        expect(geometries).toEqual(["polygon", "line", "point"]);
+        expect(filterFeatures).toHaveBeenCalledTimes(1);
+        expect(filterFeatures.mock.calls[0][1]?.geometryType).toBeUndefined();
     });
 
     it("passe un prédicat qui reçoit (feature, layerId) — le scope `layers` en dépend", () => {
@@ -90,7 +92,7 @@ describe("capabilities/filter/apply — applyFilterFromPanel", () => {
         applyFilterFromPanel(panel, config);
 
         expect(readActiveFilter).toHaveBeenCalledWith(panel, config);
-        expect(filterFeatures).toHaveBeenCalledTimes(3);
+        expect(filterFeatures).toHaveBeenCalledTimes(1);
         expect(dispatchGeoLeafEvent).toHaveBeenCalledWith("geoleaf:filters:applied", {});
     });
 

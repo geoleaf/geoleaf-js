@@ -141,6 +141,48 @@ describe("geojson/geojson-filter", () => {
             expect(_resolveGeometryFilteredIds(state, { geometryType: "point" })).toEqual([]);
         });
 
+        it("folds every declared spelling of a family into its bucket", () => {
+            // The profile schema accepts `polyline`, `multiline`, `multipoint`, `multipolygon` and
+            // `fill-extrusion` besides the three canonical names, and a layer keeps what it declared.
+            // A bucket that knew only the canonical names never selected such a layer.
+            const state = {
+                layers: new Map([
+                    ["pl", { geometryType: "polyline" }],
+                    ["ml", { geometryType: "multiline" }],
+                    ["gl", { geometryType: "LineString" }],
+                    ["mp", { geometryType: "multipoint" }],
+                    ["mg", { geometryType: "multipolygon" }],
+                    ["fx", { geometryType: "fill-extrusion" }],
+                ]),
+            };
+            expect(_resolveGeometryFilteredIds(state, { geometryType: "line" })).toEqual([
+                "pl",
+                "ml",
+                "gl",
+            ]);
+            expect(_resolveGeometryFilteredIds(state, { geometryType: "point" })).toEqual(["mp"]);
+            expect(_resolveGeometryFilteredIds(state, { geometryType: "polygon" })).toEqual([
+                "mg",
+                "fx",
+            ]);
+            expect(_resolveGeometryFilteredIds(state, { geometryType: "polyline" })).toEqual([
+                "pl",
+                "ml",
+                "gl",
+            ]);
+        });
+
+        it("keeps an undefined kind to an exact match — `mixed` is no family", () => {
+            const state = {
+                layers: new Map([
+                    ["mx", { geometryType: "mixed" }],
+                    ["ln", { geometryType: "line" }],
+                ]),
+            };
+            expect(_resolveGeometryFilteredIds(state, { geometryType: "line" })).toEqual(["ln"]);
+            expect(_resolveGeometryFilteredIds(state, { geometryType: "mixed" })).toEqual(["mx"]);
+        });
+
         it("layer with aliased geometryType (linestring) matches route filter", () => {
             const state = {
                 layers: new Map([["l1", { geometryType: "linestring" }]]),
@@ -169,70 +211,32 @@ describe("geojson/geojson-filter", () => {
             expect(stats.total).toBe(0);
         });
 
-        it("bypasses filter when config.search.enabled is false", () => {
-            const stats = { total: 0, visible: 0, filtered: 0 };
-            const layerData = {
-                geometryType: "point",
-                features: [{ id: 1 }, { id: 2 }],
-                config: { search: { enabled: false } },
-            };
-            _applyFeatureVisibilityForLayer(layerData, () => false, "l1", stats);
-            expect(stats.total).toBe(2);
-            expect(stats.visible).toBe(2);
-            expect(stats.filtered).toBe(0);
-        });
-
-        it("bypasses filter for line layer when search.enabled is not explicitly true", () => {
-            const stats = { total: 0, visible: 0, filtered: 0 };
-            const layerData = {
-                geometryType: "line",
-                features: [{ id: 1 }],
-                config: {},
-            };
-            _applyFeatureVisibilityForLayer(layerData, () => false, "l1", stats);
-            expect(stats.total).toBe(1);
-            expect(stats.visible).toBe(1);
-            expect(stats.filtered).toBe(0);
-        });
-
-        it("bypasses for linestring (alias) when search.enabled absent", () => {
-            const stats = { total: 0, visible: 0, filtered: 0 };
-            _applyFeatureVisibilityForLayer(
-                { geometryType: "linestring", features: [{ id: 1 }], config: {} },
-                () => false,
-                "l1",
-                stats
-            );
-            expect(stats.visible).toBe(1);
-        });
-
-        it("bypasses for polyline when search.enabled absent", () => {
-            const stats = { total: 0, visible: 0, filtered: 0 };
-            _applyFeatureVisibilityForLayer(
-                { geometryType: "polyline", features: [{ id: 1 }], config: {} },
-                () => false,
-                "l1",
-                stats
-            );
-            expect(stats.visible).toBe(1);
-        });
-
-        it("does NOT bypass for line layer when search.enabled is true", () => {
+        it("filters a line layer like any other geometry", () => {
             mockShared.state.adapter = null;
-            const stats = { total: 0, visible: 0, filtered: 0 };
-            _applyFeatureVisibilityForLayer(
-                {
-                    geometryType: "line",
-                    features: [{ id: 1 }, { id: 2 }],
-                    config: { search: { enabled: true } },
-                },
-                () => false,
-                "l1",
-                stats
-            );
-            expect(stats.total).toBe(2);
-            expect(stats.visible).toBe(0);
-            expect(stats.filtered).toBe(2);
+            for (const geometryType of ["line", "linestring", "polyline"]) {
+                const stats = { total: 0, visible: 0, filtered: 0 };
+                _applyFeatureVisibilityForLayer(
+                    { geometryType, features: [{ id: 1 }, { id: 2 }], config: {} },
+                    () => false,
+                    "l1",
+                    stats
+                );
+                expect(stats, geometryType).toEqual({ total: 2, visible: 0, filtered: 2 });
+            }
+        });
+
+        it("ignores a leftover `search` block, whatever it says", () => {
+            mockShared.state.adapter = null;
+            for (const search of [{ enabled: false }, { enabled: true }]) {
+                const stats = { total: 0, visible: 0, filtered: 0 };
+                _applyFeatureVisibilityForLayer(
+                    { geometryType: "point", features: [{ id: 1 }], config: { search } },
+                    () => false,
+                    "l1",
+                    stats
+                );
+                expect(stats.filtered, JSON.stringify(search)).toBe(1);
+            }
         });
 
         it("filters features and accumulates stats correctly", () => {

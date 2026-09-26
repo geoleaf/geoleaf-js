@@ -1539,7 +1539,7 @@ CallSignature | GeoLeaf Core API.capabilities/feature-info/types.FeatureInfoPubl
 CallSignature | GeoLeaf Core API.capabilities/feature-info/types.ISidePanelRenderer.closeSidePanel.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.capabilities/feature-info/types.ISidePanelRenderer.isSidePanelOpen.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.capabilities/feature-info/types.ISidePanelRenderer.openSidePanel.__type.__type | doc:-
-CallSignature | GeoLeaf Core API.capabilities/filter/apply.applyActiveFilterToSources.applyActiveFilterToSources | doc:bd98aab53261
+CallSignature | GeoLeaf Core API.capabilities/filter/apply.applyActiveFilterToSources.applyActiveFilterToSources | doc:707faed0db71
 CallSignature | GeoLeaf Core API.capabilities/filter/apply.applyFilterFromPanel.applyFilterFromPanel | doc:dd744b0c6375
 CallSignature | GeoLeaf Core API.capabilities/filter/apply.resolveOptionsWithData.resolveOptionsWithData | doc:9a2c17003c57
 CallSignature | GeoLeaf Core API.capabilities/filter/config.getFilterConfig.getFilterConfig | doc:a85519513922
@@ -2152,7 +2152,7 @@ CallSignature | GeoLeaf Core API.capabilities/vector-tiles/types.LayerManagerMod
 CallSignature | GeoLeaf Core API.capabilities/vector-tiles/vector-tiles-layer-data.buildVtLayerData.buildVtLayerData | doc:c35546f1e1c0
 CallSignature | GeoLeaf Core API.capabilities/vector-tiles/vector-tiles.VectorTiles.__type._getVTConfig._getVTConfig | doc:48a37271fd11
 CallSignature | GeoLeaf Core API.capabilities/vector-tiles/vector-tiles.VectorTiles.__type._resolveTileUrl._resolveTileUrl | doc:6f844075ebbc
-CallSignature | GeoLeaf Core API.capabilities/vector-tiles/vector-tiles.VectorTiles.__type.loadVectorTileLayer.loadVectorTileLayer | doc:7c3ea8628aed
+CallSignature | GeoLeaf Core API.capabilities/vector-tiles/vector-tiles.VectorTiles.__type.loadVectorTileLayer.loadVectorTileLayer | doc:0e1a1791f0ed
 CallSignature | GeoLeaf Core API.capabilities/vector-tiles/vector-tiles.VectorTiles.__type.shouldUseVectorTiles.shouldUseVectorTiles | doc:0d1112d5a3b9
 CallSignature | GeoLeaf Core API.capabilities/vector-tiles/vector-tiles.VectorTiles.__type.updateLayerStyle.updateLayerStyle | doc:5a449a805985
 CallSignature | GeoLeaf Core API.contracts/api.contract.IAPIManagerRecord.factory.__type.createMap.createMap | doc:-
@@ -2233,7 +2233,7 @@ CallSignature | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.sear
 CallSignature | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.setData.setData | doc:126087086f74
 CallSignature | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.setFeatureState.setFeatureState | doc:c677bdcfa4da
 CallSignature | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.setVisibility.setVisibility | doc:f3ec26d32ebc
-CallSignature | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.setVisibleSubset.setVisibleSubset | doc:c25d3d64e289
+CallSignature | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.setVisibleSubset.setVisibleSubset | doc:b1f2ce1365ee
 CallSignature | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.setVisibleSubset.setVisibleSubset.predicate.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.updateFeatureId.updateFeatureId | doc:24516ecb7380
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.addControl.addControl | doc:09074ca77f5c
@@ -2489,7 +2489,7 @@ CallSignature | GeoLeaf Core API.global.GeoLeafGlobal._UITheme.__type.initThemeT
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal._UITheme.__type.toggleTheme.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal._VectorTiles.__type._getVTConfig._getVTConfig | doc:48a37271fd11
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal._VectorTiles.__type._resolveTileUrl._resolveTileUrl | doc:6f844075ebbc
-CallSignature | GeoLeaf Core API.global.GeoLeafGlobal._VectorTiles.__type.loadVectorTileLayer.loadVectorTileLayer | doc:7c3ea8628aed
+CallSignature | GeoLeaf Core API.global.GeoLeafGlobal._VectorTiles.__type.loadVectorTileLayer.loadVectorTileLayer | doc:0e1a1791f0ed
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal._VectorTiles.__type.shouldUseVectorTiles.shouldUseVectorTiles | doc:0d1112d5a3b9
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal._VectorTiles.__type.updateLayerStyle.updateLayerStyle | doc:5a449a805985
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.boot.__type.__type | doc:-
@@ -2847,7 +2847,7 @@ CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.calculat
 CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.clearFeatureFilter.clearFeatureFilter | doc:6c29ed0a10a0
 CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.evaluateStyleCondition.__type.__type | doc:cc2ca9d03975
 CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.extractCoordinates.__type.__type | doc:19373961b753
-CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.filterFeatures.filterFeatures | doc:989a5f96d49b
+CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.filterFeatures.filterFeatures | doc:58ad8f523042
 CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.filterFeatures.filterFeatures.filterFn.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.getAllLayers.getAllLayers | doc:-
 CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.getFeatureProperty.__type.__type | doc:20b1fbb923b2
@@ -5140,6 +5140,7 @@ IndexSignature | GeoLeaf Core API.capabilities/taxonomy/resolver.TaxonomyFeature
 IndexSignature | GeoLeaf Core API.capabilities/vector-tiles/types.VtConfig.__index | doc:-
 IndexSignature | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.__index | doc:-
 IndexSignature | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.data.__type.__index | doc:-
+IndexSignature | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.labels.__type.__index | doc:-
 IndexSignature | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.popup.__type.__index | doc:-
 IndexSignature | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.styles.__type.__index | doc:-
 IndexSignature | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.tooltip.__type.__index | doc:-
@@ -10806,6 +10807,7 @@ Parameter | GeoLeaf Core API.capabilities/vector-tiles/types.LayerConfigModuleLi
 Parameter | GeoLeaf Core API.capabilities/vector-tiles/types.VtConfig.__index.key | doc:-
 Parameter | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.__index.key | doc:-
 Parameter | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.data.__type.__index.key | doc:-
+Parameter | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.labels.__type.__index.key | doc:-
 Parameter | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.popup.__type.__index.key | doc:-
 Parameter | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.styles.__type.__index.key | doc:-
 Parameter | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.tooltip.__type.__index.key | doc:-
@@ -15338,6 +15340,8 @@ Property | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.data.__ty
 Property | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.geometry | doc:-
 Property | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.geometryType | doc:-
 Property | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.id | doc:-
+Property | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.labels | doc:-
+Property | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.labels.__type.enabled | doc:-
 Property | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.legends | doc:-
 Property | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.popup | doc:-
 Property | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.popup.__type.enabled | doc:-
@@ -18612,6 +18616,7 @@ TypeLiteral | GeoLeaf Core API.capabilities/toast-renderer/public-api.Notificati
 TypeLiteral | GeoLeaf Core API.capabilities/vector-tiles/types.LayerConfigModuleLike.loadDefaultStyle.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/vector-tiles/types.LayerManagerModuleLike.updateLayerVisibilityByZoom.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.data.__type | doc:-
+TypeLiteral | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.labels.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.popup.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.styles.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/vector-tiles/types.VtLayerDef.tooltip.__type | doc:-

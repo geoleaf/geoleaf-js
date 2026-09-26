@@ -368,35 +368,35 @@ describe("geojson/core", () => {
             });
         });
 
-        it("filterFeatures: line layer sans search.enabled → bypassFilter=true", () => {
+        it("filterFeatures: une couche ligne est filtrée comme les autres géométries", () => {
             sharedState.layers.set("l1", {
                 features: [{ type: "Feature" }],
                 geometryType: "linestring",
                 config: {},
             });
             const result = GeoJSON.filterFeatures(() => false);
-            expect(result.visible).toBe(1);
-            expect(sharedState.adapter.updateLayerData).not.toHaveBeenCalled();
+            expect(result.filtered).toBe(1);
+            expect(sharedState.adapter.updateLayerData).toHaveBeenCalled();
         });
 
-        it("filterFeatures: search.enabled=false → bypassFilter=true pour tout type", () => {
+        it("filterFeatures: un bloc `search` résiduel est ignoré", () => {
             sharedState.layers.set("l1", {
                 features: [{ type: "Feature" }],
                 geometryType: "point",
                 config: { search: { enabled: false } },
             });
             const result = GeoJSON.filterFeatures(() => false);
-            expect(result.visible).toBe(1);
+            expect(result.filtered).toBe(1);
         });
 
-        it("filterFeatures: line layer avec search.enabled=true → filtre appliqué", () => {
+        it("filterFeatures: `{ layerIds }` sur une couche ligne — le chemin de `Layers.setVisibleSubset` — filtre", () => {
             sharedState.layers.set("l1", {
-                features: [{ type: "Feature" }],
-                geometryType: "line",
-                config: { search: { enabled: true } },
+                features: [{ type: "Feature" }, { type: "Feature" }],
+                geometryType: "polyline",
+                config: {},
             });
-            const result = GeoJSON.filterFeatures(() => false);
-            expect(result.filtered).toBe(1);
+            const result = GeoJSON.filterFeatures(() => false, { layerIds: "l1" });
+            expect(result).toEqual({ filtered: 2, total: 2, visible: 0 });
         });
 
         // ---- _resolveGeometryFilteredIds branches ----

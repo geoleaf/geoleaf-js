@@ -60,6 +60,7 @@ export interface VtLayerDef {
     popup?: { enabled?: boolean; fields?: unknown[]; [key: string]: unknown };
     tooltip?: { enabled?: boolean; fields?: VtTooltipField[]; [key: string]: unknown };
     legends?: unknown;
+    labels?: { enabled?: boolean; [key: string]: unknown };
     _profileId?: string;
     _layerDirectory?: string;
     [key: string]: unknown;
