@@ -31,12 +31,24 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.10.3 <Badge type="tip" text="2026-09-25" />
+## Release v3.10.4 <Badge type="tip" text="2026-09-26" />
 
-Destroying a set-aside field capture no longer leaves its entity on the map, and the documentation
-says what the code does.
+The filter reaches line layers, and a vector-tile layer draws the labels it declares.
 
 **Highlights:**
+
+- **Fixed** — a filter field without `layers` now filters line layers too; they used to stay drawn
+  under any search. To keep a layer out of a field, list the layers that field targets in its
+  `layers`. `GeoLeaf.Layers.setVisibleSubset()` now works on a line layer.
+- **Fixed** — the filter panel filters every loaded layer in one pass, so a layer of any declared
+  kind is reached; `geoleaf:filter:apply` is emitted once per application.
+- **Fixed** — a vector-tile layer's labels name their source-layer and are drawn; a vector-tile layer
+  created through `GeoLeaf.Layers.create()` arms the labels it declares.
+- **Documented** — a vector-tile layer is not filtered by the filter panel: it keeps no feature in
+  memory.
+
+Release v3.10.3 (2026-09-25) — destroying a set-aside field capture no longer leaves its entity on
+the map, and the documentation says what the code does:
 
 - **Fixed** — destroying a quarantined capture (`GeoLeaf.Storage.discardQuarantined`) returns its
   entity to the server's truth: the local record is removed when the server has nothing to give
