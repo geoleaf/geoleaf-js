@@ -4,8 +4,8 @@ title: offline-ui — l'interface du hors-ligne, sur un moteur qu'elle ne contie
 plugin_id: offline-ui
 package: "@geoleaf-plugins/offline-ui"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: f85213dd9
-date: 26 septembre 2026
+verifie_contre: 862f02e18
+date: 27 septembre 2026
 ---
 
 # offline-ui — l'interface du hors-ligne, sur un moteur qu'elle ne contient pas
@@ -13,6 +13,11 @@ date: 26 septembre 2026
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/offline-ui` ·
 **Code :** `packages/plugins/offline-ui/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 dix jours plus tôt que le frontmatter.
+
+> ⚠️ **Ce que l'estampille du 27/09/2026 ajoute.** Le poids des dictionnaires (§Internationalisation) :
+> six embarqués, deux lus par page, et le motif qui empêche de les découper ici. Et la clé de
+> l'éviction (§③) : celle du core, la copie du greffon retirée en 1.6.2. Relu : le reste du delta
+> ne touche que des commentaires et la version.
 
 > ⚠️ **Ce que l'estampille du 26/09/2026 ajoute.** La ligne de session du « puis-je partir ? »
 > (OU-16) : le bloc dit la session que le core rapporte, ne la devine jamais — cachée sans elle,
@@ -344,6 +349,12 @@ préfixe `storage.`**. Ce n'est pas une incohérence laissée en place : c'est u
 surcharge** que des profils livrés utilisent déjà, et la renommer les casserait sans avertissement.
 Le motif est écrit dans `entry.ts`.
 
+Les six dictionnaires sont embarqués et enregistrés au chargement du bundle. Une page n'en lit
+que deux, sa langue et le français de repli, et ils pèsent plus du quart du bundle. Les découper
+en chunks chargés à la demande attend un mécanisme de plateforme : un chunk paresseux n'est pas
+pré-caché par le service worker, et un utilisateur hors ligne lirait le repli français. Le motif
+est écrit à côté du budget de taille du plugin (`scripts/check-bundle-size.cjs`).
+
 ### Événements écoutés
 
 Le vocabulaire du plugin est centralisé dans une constante unique (`cache/cache-control-types.ts`) —
@@ -432,7 +443,9 @@ ton _erreur_ : le navigateur a refusé une écriture, la capture suivante peut n
 ③ L'**éviction par budget** est rendue **par le core** depuis le 16/08/2026
 (`kernel/storage/eviction-notice.ts`), sur un chemin de boot inconditionnel — donc sur toutes les
 variantes livrées, et pour ses deux émetteurs. ⚠️ **Ne pas la restaurer ici « pour l'interface
-riche »** : les deux écouteurs afficheraient deux notices sur `deploy-full`.
+riche »** : les deux écouteurs afficheraient deux notices sur `deploy-full`. Sa clé,
+`storage.notif.cacheEvicted`, est celle des dictionnaires du core, lus avant ceux d'un plugin.
+La copie que portait ce paquet n'a jamais été lue, et elle est retirée depuis la 1.6.2.
 
 Ces constats étaient tous de la même famille — un vocabulaire déclaré d'un côté et non honoré de
 l'autre. Ils sont **soldés**, et chacun par un geste différent : l'annulation a reçu son émetteur,

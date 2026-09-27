@@ -214,7 +214,7 @@ Add an `editorConfig` key to your GeoLeaf profile JSON. All fields are optional 
 | `minVerticesPolygon`             | number                 | `3`           | Min vertices for a Polygon.                                                                                                                                                                                                                                                                           |
 | `api.baseUrl`                    | string                 | `""`          | Base URL for persistence requests.                                                                                                                                                                                                                                                                    |
 | `api.authHeader`                 | string \| null         | `null`        | Optional `Authorization` header value.                                                                                                                                                                                                                                                                |
-| `api.timeoutMs`                  | number                 | `8000`        | Network timeout before falling back to the offline queue.                                                                                                                                                                                                                                             |
+| `api.timeoutMs`                  | number                 | `8000`        | Network timeout of a DIRECT write (mode `online`, or a layer this device cannot hold). A write the outbox holds is sent by the core's drain, under its own budget.                                                                                                                                    |
 | `api.geometryProperty`           | string                 | `"geom"`      | Geometry property key in the `"collection"` dialect.                                                                                                                                                                                                                                                  |
 | `persistence.mode`               | string                 | `"auto"`      | `"auto"` (online/offline detection), `"online"`, or `"offline"`.                                                                                                                                                                                                                                      |
 | `persistence.dialect`            | string                 | `"rest"`      | `"rest"` (`{feature, layerId}` envelope) or `"collection"` (flat OGC/PostgREST body, create-only).                                                                                                                                                                                                    |
@@ -231,11 +231,22 @@ Add an `editorConfig` key to your GeoLeaf profile JSON. All fields are optional 
 
 ## Persistence
 
-| Mode             | Behaviour                                                                                                                                                                |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `online`         | Always uses the REST adapter (`POST/PUT/DELETE` to `api.baseUrl`).                                                                                                       |
-| `offline`        | Always writes through the IndexedDB sync queue (requires `@geoleaf-plugins/offline-ui`).                                                                                 |
-| `auto` (default) | Detects connectivity (`navigator.onLine` + cached HEAD ping); falls back to the queue on transport failure, replays `editor.*` queued entries autonomously on reconnect. |
+| Mode             | Behaviour                                                                                                                                                                                                                                 |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `online`         | Always the direct adapter (`POST/PUT/DELETE` to `api.baseUrl`, in `persistence.dialect`). A failed write is reported; it is never queued. For a deployment without a local store.                                                         |
+| `offline`        | Always the outbox: the core's offline capability holds the write, and its drain sends it to the layer's `write.endpoint`.                                                                                                                 |
+| `auto` (default) | The outbox whenever this device can hold the layer's writes (`GeoLeaf.Storage.canQueueWrites`: the offline capability is on and the profile carries the layer) — online or not; the direct adapter otherwise. A write never changes path. |
+
+**What a creation does.** Once its write has left — to the server, or to the outbox — the new
+feature enters its layer's store (`GeoLeaf.Layers`) under the identity the write returned: the
+server's id, or, for a write the outbox holds, the client key the core minted (`loc:…`), which
+the layer keeps for the rest of the session. The layer draws it, `GeoLeaf.Layers.search` and
+`getFeatureById` find it, and `geoleaf:editor:feature-saved` carries that identity. A drawn shape
+is handed over: it leaves the drawing layer and is selected through its layer like any other
+feature, so its later edits reach the outbox or the server under that identity. Drawn by its layer, it
+follows the layer's visibility and zoom range. The shape stays in the drawing layer only when the
+layer cannot take the feature: a vector-tile layer, a layer the store does not hold, or a backend
+answering a creation without an id.
 
 **REST dialect** (`dialect: "rest"`): `POST/PUT/DELETE {baseUrl}/features?layerId=…` with a `{ feature, layerId }` envelope.
 **Collection dialect** (`dialect: "collection"`): `POST {baseUrl}/{layerId}` with a flat `{ ...properties, geom: geometry }` body (OGC API Features / PostgREST). Create-only at this time.

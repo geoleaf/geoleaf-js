@@ -69,9 +69,9 @@ const _g = (typeof globalThis !== "undefined" ? globalThis : {}) as { GeoLeaf?: 
 // which stays `storage.*`. The two are independent: `registerDict(ns, dicts)`
 // files under `_pluginDicts[ns]` then flattens everything, and `getLabel`
 // resolves on the flat key alone — the namespace is just a bucket. Renaming the
-// prefix would be a distinct and far larger gesture: 105 keys × 6 locales, 121
-// call sites, and above all a PROFILE OVERRIDE surface (`_overrides[key]`), hence
-// a public contract the package rename does not commit.
+// prefix would be a distinct and far larger gesture: every key in all six locales,
+// every call site, and above all a PROFILE OVERRIDE surface (`_overrides[key]`),
+// hence a public contract the package rename does not commit.
 _g.GeoLeaf?.I18n?.registerDict?.("offline-ui", {
     fr: langFr,
     en: langEn,

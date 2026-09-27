@@ -243,7 +243,20 @@ const PLUGIN_BUDGETS_GZ_KB = {
     // no `minify` flag to turn on. Moved onto the stack at 6.3′: 79.4 → 31.5 KB gz, −59 %.
     // Re-anchored again when `field-renderer` left its dependency list — the
     // responsive modal that came with the import went with it — 31.5 → 28.7.
-    "offline-ui": { boot: { warn: 33, fail: 38 }, total: { warn: 33, fail: 38 } }, // 28.7
+    // 🛑 RE-ANCHORED UPWARD on 2026-09-27, 28.7 → 34.1, and the growth is FEATURES: corridor
+    // selection, the pre-flight block, the sync band, the fetch-back into the download, the
+    // write-session line. The warn had been lit on every run since 33.5 — a warn that always
+    // fires cannot flag the next real rise, which is the defect this table exists to prevent.
+    // Before re-anchoring, the bundle was decomposed through its sourcemap (remove a module,
+    // re-gzip, read the gap). The only dead weight was one dictionary key the core shadows.
+    // What is left is the six i18n dictionaries: 9.0 KB gz, over a quarter of the bundle,
+    // of which a page reads two (its language and the French fallback). They cannot be split
+    // out here: a dynamic-import chunk is not precached by the service worker (see
+    // `scripts/lib/boot-assets.cjs`), so an offline user in another language would get the
+    // French labels, and in the offline plugin of all places. Loading locales on demand is a
+    // platform mechanism — the core carries the same weight in its boot chunk — not a
+    // one-plugin trim.
+    "offline-ui": { boot: { warn: 40, fail: 45 }, total: { warn: 40, fail: 45 } }, // 34.09
     // measure — Turf. ⚠️ Was measured at 44.5 against a warn of 45: 0.5 KB from firing, on
     // no regression at all. Re-anchored like the rest.
     measure: { boot: { warn: 25, fail: 28 }, total: { warn: 25, fail: 28 } }, // 21.5
@@ -256,7 +269,15 @@ const PLUGIN_BUDGETS_GZ_KB = {
     table: { boot: { warn: 18, fail: 20 }, total: { warn: 18, fail: 20 } }, // 15.10
     // taxonomy + feature-info reclassified into @geoleaf/core (SR0) — no longer standalone
     // plugin bundles; their weight is counted in the core boot closure (`npm run size`).
-    connector: { boot: { warn: 10, fail: 12 }, total: { warn: 10, fail: 12 } }, // 8.56
+    // connector — 🛑 RE-ANCHORED UPWARD on 2026-09-27, 8.56 → 11.06 (+29 %), and every byte of
+    // the growth is session work: the security audit's hardening, renewal that survives a
+    // transient outage, queue resumption scoped to its session, the host token reaching the
+    // worker and the tiles, the session reader. Decomposed through the sourcemap first: no dead
+    // i18n key (non-French dictionaries 0.84 KB), the only lever is the inline CSS strings,
+    // which esbuild leaves verbatim — 0.19 KB gz through postcss, at the price of adopting the
+    // sheet at boot instead of when the sign-in modal first opens. Not taken. Nor the shared
+    // `createFocusTrap`: it is five times the size of the local trap, so it would grow this.
+    connector: { boot: { warn: 13, fail: 15 }, total: { warn: 13, fail: 15 } }, // 11.06
     websocket: { boot: { warn: 5, fail: 6 }, total: { warn: 5, fail: 6 } }, // 4.3
     // routing / navigation — the navigation module's two halves, `lazyChunks: false`,
     // hence boot = total. Measured 2026-08-21 at the first pass: 1.56 and 1.49 KB gz.

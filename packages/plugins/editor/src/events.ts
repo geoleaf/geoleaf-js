@@ -9,6 +9,7 @@
  * https://geoleaf.dev
  */
 import type { Geometry } from "geojson";
+import { Log } from "@geoleaf/host-runtime";
 // SINGLE, typed emission point — see `editor-events.ts` for the false green
 // that made it necessary (three of nine emitters escaped typing).
 import { dispatchEditorEvent } from "./editor-events.js";
@@ -29,10 +30,11 @@ import {
     pushOperation,
     discardOperations,
     sealOperations,
+    currentTerradrawId,
     type OperationType,
 } from "./history/undo-stack.js";
 import { beginDraft } from "./draft-state.js";
-import { submitFeature, type SubmitContext } from "./persistence/submit.js";
+import { submitFeature, type SubmitContext, type SubmitOutcome } from "./persistence/submit.js";
 import type { ConflictStrategy } from "./persistence/conflict-resolution.js";
 import type {
     ConflictEventDetail,
@@ -54,6 +56,8 @@ export interface EditorWiringContext {
     showHost: (layerId: string) => void;
     /** Commits a geometry to the host source feature. */
     commitHost: (layerId: string, featureId: string, geometry: unknown) => void;
+    /** Puts a created feature into its host layer; `true` when the layer now holds it. */
+    addHost?: SubmitContext["addHost"];
     /** Removes the host source feature. */
     removeHost: (layerId: string, featureId: string) => void;
     /** Repaints the host feature from the server state (server-wins). */
@@ -237,11 +241,7 @@ function _handleCreate(
                         feature: _toEditorFeature(feature, values),
                         layerId,
                         isUpdate: false,
-                    }).then(() => {
-                        // Submitted — so the `create` entry stops being offered. Undoing it would
-                        // have wiped the shape off the screen and left the write where it was.
-                        sealOperations(id);
-                    })
+                    }).then((outcome) => _settleCreated(adapter, id, outcome))
                 );
             },
             // Removes the drawn geometry and its undo entries (`_discardDrawn`).
@@ -251,12 +251,49 @@ function _handleCreate(
 }
 
 /**
+ * Closes the drawing side of a creation whose write has left.
+ *
+ * Submitted — so the `create` entry stops being offered: undoing it would have wiped the shape
+ * off the screen and left the write where it was. And when the host layer now holds the
+ * feature, the shape is HANDED OVER: the layer draws it, and it becomes a feature like any
+ * other — selected through the layer, under its identity, so moving or deleting it reaches the
+ * outbox or the server. Kept as a drawing, it was selectable with no identity at all: its moves
+ * were never persisted, and deleting it left its creation queued, back at the next load.
+ *
+ * ⚠️ By its CURRENT id: a redo while the form was open gave the shape a new one.
+ * ⚠️ Never throws: the write is done, and a failure here would reopen a form whose "retry"
+ * would write the feature twice.
+ */
+function _settleCreated(
+    adapter: TerraDrawAdapterInstance,
+    drawnId: string,
+    outcome: SubmitOutcome | null
+): void {
+    const id = currentTerradrawId(drawnId);
+    sealOperations(id);
+    if (!outcome?.hosted) return;
+    try {
+        // A selection still naming the shape would make the next delete remove an id the
+        // drawing engine no longer holds — which it throws on.
+        if (getSelection()?.terradrawId === id) clearSelection();
+        if (adapter.getFeature(id)) adapter.removeFeatures([id]);
+    } catch (err) {
+        Log?.warn?.(
+            "[GeoLeaf.Editor] The layer holds the new feature, but its drawing stayed:",
+            err
+        );
+    }
+}
+
+/**
  * Removes an abandoned draft's shape and its history.
  *
  * The shape may already be gone — an undo reached the stack while the form was open — and
- * the drawing engine throws on an id it does not hold, so it is looked up first.
+ * the drawing engine throws on an id it does not hold, so it is looked up first. It may also
+ * have been redrawn under a new id (a redo), hence the current one.
  */
-function _discardDrawn(adapter: TerraDrawAdapterInstance, id: string): void {
+function _discardDrawn(adapter: TerraDrawAdapterInstance, drawnId: string): void {
+    const id = currentTerradrawId(drawnId);
     if (adapter.getFeature(id)) adapter.removeFeatures([id]);
     discardOperations(id);
 }
@@ -448,6 +485,7 @@ export function buildSubmitContext(wiring: EditorWiringContext): SubmitContext {
         adapter: wiring.adapter,
         strategy: wiring.strategy,
         commitHost: wiring.commitHost,
+        ...(wiring.addHost && { addHost: wiring.addHost }),
         reloadFeature: wiring.reloadFeature,
         dispatchSaved: (detail) => dispatchEditorEvent("geoleaf:editor:feature-saved", detail),
     };
@@ -461,14 +499,22 @@ function _toEditorFeature(
     return { geometry: feature.geometry as Geometry, properties: values };
 }
 
-/** Reads a host feature's persisted attributes, stripping the internal `mode` key. */
+/**
+ * Keys a host feature's copy carries that are not its attributes: the drawing engine's own
+ * (`mode`, `selected`) and the pending badge the restore of queued edits bakes
+ * (`_syncStatus`). Sent back with an edit, a layer declaring no property whitelist would push
+ * them to the server as columns.
+ */
+const _NOT_ATTRIBUTES = ["mode", "selected", "_syncStatus"] as const;
+
+/** Reads a host feature's persisted attributes, without the keys that are not attributes. */
 function _hostProps(
     adapter: TerraDrawAdapterInstance,
     terradrawId: string
 ): Record<string, unknown> {
     const feature = adapter.getFeature(terradrawId);
     const props = { ...(feature?.properties ?? {}) } as Record<string, unknown>;
-    delete props["mode"];
+    for (const key of _NOT_ATTRIBUTES) delete props[key];
     return props;
 }
 

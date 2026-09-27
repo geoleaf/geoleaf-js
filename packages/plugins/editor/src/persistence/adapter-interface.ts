@@ -26,7 +26,11 @@ export interface EditorFeature {
 
 /** A feature as confirmed by the backend after a successful save/update. */
 export interface SavedFeature {
-    /** Server-assigned (or echoed) feature id. */
+    /**
+     * The feature's identity: server-assigned or echoed — or, for a creation the offline
+     * outbox holds, the client key the core minted (`loc:…`). Empty when a backend answers a
+     * creation without an id.
+     */
     id: string;
     /** Target host-layer id. */
     layerId: string;

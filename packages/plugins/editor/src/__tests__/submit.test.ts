@@ -1,7 +1,11 @@
 /**
  * Tests for the save/update submission flow — Sprint S10 (EDT.10.4 / EDT.10.6).
- * Covers success (create + update commit), the toast/error mapping, and the
- * conflict branch (resolves without rethrow, hands off to resolution).
+ * Covers success (create hosted in its layer + update commit), the toast/error mapping, and
+ * the conflict branch (resolves without rethrow, hands off to resolution).
+ *
+ * 🛑 THE FIRST TEST USED TO PIN THE DEFECT: "create: … no host commit". A created feature
+ * never reached its host layer — nothing could find it, move it or delete it until the next
+ * load. It is REWRITTEN: a create now hands the saved feature to `addHost`, before the event.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { submitFeature, type SubmitContext } from "../persistence/submit.js";
@@ -29,6 +33,7 @@ let notify: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn>
 
 function makeCtx(adapter: Partial<SubmitContext["adapter"]>): SubmitContext & {
     commitHost: ReturnType<typeof vi.fn>;
+    addHost: ReturnType<typeof vi.fn>;
     dispatchSaved: ReturnType<typeof vi.fn>;
     reloadFeature: ReturnType<typeof vi.fn>;
 } {
@@ -36,6 +41,7 @@ function makeCtx(adapter: Partial<SubmitContext["adapter"]>): SubmitContext & {
         adapter: adapter as SubmitContext["adapter"],
         strategy: "client-wins",
         commitHost: vi.fn<SubmitContext["commitHost"]>(),
+        addHost: vi.fn(() => true),
         reloadFeature: vi.fn<SubmitContext["reloadFeature"]>(),
         dispatchSaved: vi.fn<SubmitContext["dispatchSaved"]>(),
     };
@@ -47,11 +53,20 @@ beforeEach(() => {
 });
 
 describe("submitFeature — success", () => {
-    it("create: calls save, dispatches feature-saved, toasts, no host commit", async () => {
+    it("🛑 create: hosts the saved feature in its layer, BEFORE feature-saved", async () => {
         const ctx = makeCtx({ save: vi.fn().mockResolvedValue(SAVED) });
-        await submitFeature(ctx, { feature: FEATURE, layerId: "L", isUpdate: false });
+        const outcome = await submitFeature(ctx, {
+            feature: FEATURE,
+            layerId: "L",
+            isUpdate: false,
+        });
         expect(ctx.adapter.save as any).toHaveBeenCalledWith(FEATURE, "L");
+        expect(ctx.addHost).toHaveBeenCalledWith("L", SAVED);
         expect(ctx.commitHost).not.toHaveBeenCalled();
+        // A listener of the event already finds the feature where its layer holds it.
+        expect(ctx.addHost.mock.invocationCallOrder[0]).toBeLessThan(
+            ctx.dispatchSaved.mock.invocationCallOrder[0] as number
+        );
         expect(ctx.dispatchSaved).toHaveBeenCalledWith({
             featureId: "f1",
             layerId: "L",
@@ -59,6 +74,45 @@ describe("submitFeature — success", () => {
             isUpdate: false,
         });
         expect(notify.success).toHaveBeenCalledWith("editor.toast.saved");
+        expect(outcome).toEqual({ saved: SAVED, hosted: true });
+    });
+
+    it("🛑 create: a layer that could not take it is NOT hosted — the drawing stays", async () => {
+        const ctx = makeCtx({ save: vi.fn().mockResolvedValue(SAVED) });
+        ctx.addHost.mockReturnValue(false);
+        const outcome = await submitFeature(ctx, {
+            feature: FEATURE,
+            layerId: "L",
+            isUpdate: false,
+        });
+        expect(outcome).toEqual({ saved: SAVED, hosted: false });
+    });
+
+    it("🛑 create: the layer failing to follow does NOT fail a write that has left", async () => {
+        // Rejected, the form would stay open on a creation already written — and its retry
+        // would write it twice.
+        const ctx = makeCtx({ save: vi.fn().mockResolvedValue(SAVED) });
+        ctx.addHost.mockImplementation(() => {
+            throw new Error("layer gone");
+        });
+        const outcome = await submitFeature(ctx, {
+            feature: FEATURE,
+            layerId: "L",
+            isUpdate: false,
+        });
+        expect(outcome).toEqual({ saved: SAVED, hosted: false });
+        expect(notify.error).not.toHaveBeenCalled();
+        expect(ctx.dispatchSaved).toHaveBeenCalledTimes(1);
+    });
+
+    it("create without `addHost` wired: saved, not hosted — as before", async () => {
+        const { addHost: _unwired, ...ctx } = makeCtx({ save: vi.fn().mockResolvedValue(SAVED) });
+        const outcome = await submitFeature(ctx, {
+            feature: FEATURE,
+            layerId: "L",
+            isUpdate: false,
+        });
+        expect(outcome).toEqual({ saved: SAVED, hosted: false });
     });
 
     it("update: calls update and commits the saved geometry to the host", async () => {
@@ -138,7 +192,7 @@ describe("submitFeature — conflict", () => {
         // Does NOT reject — the form modal must close while resolution runs.
         await expect(
             submitFeature(ctx, { feature: FEATURE, layerId: "L", isUpdate: false })
-        ).resolves.toBeUndefined();
+        ).resolves.toBeNull();
         // client-wins force-updates, commits and dispatches on success.
         await new Promise((r) => setTimeout(r, 0));
         expect(update).toHaveBeenCalledWith(FEATURE, "L", { force: true });

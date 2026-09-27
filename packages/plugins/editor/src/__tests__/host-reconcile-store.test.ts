@@ -13,11 +13,15 @@
  * subset as the layer's whole data.
  *
  * The store is written through its unit mutations (`mergeFeatures`, `removeFeature`), which
- * feed the source themselves. The direct path stays for a layer the store does not hold
- * (vector tiles), or a core without the seam.
+ * feed the source themselves. The direct path stays for a feature the store does not hold
+ * (a vector-tile layer keeps none), or a core without the seam.
+ *
+ * 🛑 A CREATION reaches the store too (`addHostFeature`), under the identity its write
+ * returned. It used not to: nothing could find, move or delete it until the next load.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
+    addHostFeature,
     commitHostGeometry,
     removeHostFeature,
     resetHostReconcile,
@@ -129,5 +133,71 @@ describe("the direct path stays where the store cannot answer", () => {
         const deps = makeDeps({ type: "FeatureCollection", features: [pt("f1", 0)] });
         commitHostGeometry(deps, "VT", "f1", { type: "Point", coordinates: [9, 9] });
         expect(deps.updateLayerData).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe("🛑 a CREATED feature enters its layer's store", () => {
+    const SAVED = {
+        id: "loc:abc",
+        geometry: { type: "Point", coordinates: [5, 5] },
+        properties: { name: "Nouveau" },
+    };
+
+    it("under its identity, in `id` AND `properties.id` — what the map and the lookups read", () => {
+        const layers: Record<string, F[]> = { L: [pt("f1", 0)] };
+        const api = mountStore(layers);
+
+        expect(addHostFeature("L", SAVED)).toBe(true);
+
+        expect(api.mergeFeatures).toHaveBeenCalledTimes(1);
+        const held = api.getFeatureById("L", "loc:abc");
+        expect(held).toEqual({
+            type: "Feature",
+            id: "loc:abc",
+            geometry: SAVED.geometry,
+            properties: { name: "Nouveau", id: "loc:abc" },
+        });
+        expect(layers.L).toHaveLength(2);
+    });
+
+    it("idempotent: hosting the same identity twice keeps ONE feature", () => {
+        const layers: Record<string, F[]> = { L: [] };
+        mountStore(layers);
+
+        addHostFeature("L", SAVED);
+        addHostFeature("L", SAVED);
+
+        expect(layers.L).toHaveLength(1);
+    });
+
+    it("refused without an identity — a backend answering a creation without one", () => {
+        const api = mountStore({ L: [] });
+        expect(addHostFeature("L", { ...SAVED, id: "" })).toBe(false);
+        expect(api.mergeFeatures).not.toHaveBeenCalled();
+    });
+
+    it("refused on a layer the store does not hold — a merge there would REPLACE its source", () => {
+        const api = mountStore({ L: [] });
+        expect(addHostFeature("other", SAVED)).toBe(false);
+        expect(api.mergeFeatures).not.toHaveBeenCalled();
+    });
+
+    it("refused on a vector-tile layer — its store holds no feature, by construction", () => {
+        const api = mountStore({ L: [] });
+        _g.GeoLeaf.GeoJSON = { getLayerById: vi.fn(() => ({ isVectorTile: true })) };
+        expect(addHostFeature("L", SAVED)).toBe(false);
+        expect(api.mergeFeatures).not.toHaveBeenCalled();
+    });
+
+    it("a GeoJSON layer that DECLARES tiles but did not load as tiles is hosted", () => {
+        // The profile's `vectorTiles` block with `enabled: false` — only the runtime flag says.
+        mountStore({ L: [] });
+        _g.GeoLeaf.GeoJSON = { getLayerById: vi.fn(() => ({ isVectorTile: false })) };
+        expect(addHostFeature("L", SAVED)).toBe(true);
+    });
+
+    it("refused without a store — a core without the seam", () => {
+        _g.GeoLeaf = {};
+        expect(addHostFeature("L", SAVED)).toBe(false);
     });
 });

@@ -109,10 +109,9 @@ const langStorageEn: StorageLangDict = {
     "storage.notif.clear.success": "Cache cleared",
     "storage.notif.clear.error": "Clear failed",
     "storage.notif.resourcesDeleted": "resources deleted",
-    // ENGINE signals made visible — the quota is an ERROR (a write was REFUSED),
-    // eviction a WARNING (requested data is no longer there).
+    // ENGINE signal made visible — the quota is an ERROR (a write was REFUSED).
+    // Budget eviction is announced by the core, under its own key.
     "storage.notif.quotaExceeded": "Storage full: the last item could not be saved",
-    "storage.notif.cacheEvicted": "{count} offline item(s) removed to free space",
     // POI sync section (S7)
     "storage.sync.title": "ENTERED DATA",
     "storage.sync.toggle": "Toggle synchronisation",

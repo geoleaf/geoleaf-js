@@ -11,6 +11,48 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [3.11.2] - 2026-09-27
+
+### Removed
+
+- **`storage.notif.cacheEvicted` leaves the dictionaries of `@geoleaf-plugins/offline-ui`**
+  (1.6.2). The core announces a budget eviction itself, under the same key in its own six
+  dictionaries, and a core label is read before a plugin one: the plugin's copy was never shown,
+  with any core version. Nothing changes for an integrator — a profile's `labels` override of
+  the key still applies.
+
+### Fixed
+
+- **A feature created with the editor is in its layer at once, under its identity**
+  (`@geoleaf-plugins/editor` 1.5.3). Modifying and deleting already went through the layer's
+  store (`GeoLeaf.Layers`); creating did not. A point placed with « add a point » vanished with
+  its marker until the next load. A drawn shape stayed in the drawing layer with no identity, so
+  moving it was never saved, and deleting it left its creation queued, back at the next load.
+  Nothing found either one: not `GeoLeaf.Layers.search`, not `getFeatureById`, not the session
+  export. The created feature now enters its layer's store under the identity its write returned,
+  and the layer draws it. That identity is the server's id, or, for a write the offline outbox
+  holds, the client key the core minted (`loc:…`), kept for the rest of the session. A drawn
+  shape is then handed over to its layer: it is selected through the layer like any other
+  feature, and its later edits reach the outbox or the server under that identity. The drawing stays only
+  when the layer cannot take the feature: a vector-tile layer, a layer the store does not hold,
+  or a backend answering a creation without an id. The open table and an active filter do not
+  follow the new feature until their next refresh, as for an edit.
+- **`geoleaf:editor:feature-saved` carries the identity of a creation.** `featureId` was `""`
+  for any creation the outbox held; it is now the client key (`loc:…`).
+- **A queued creation comes back once, under its identity, at the next load.** The device stores
+  a creation as the form submitted it, with no `id`. The restore of pending edits put it back on
+  its layer without one: one more copy per restore pass (up to two per boot), none findable by
+  `getFeatureById`, none editable. The device-first read of a layer served it the same way. Both
+  now give the feature its record's identity: the server's id once it has one, else its client
+  key.
+- **The client key never leaves as an attribute.** An edit of a created feature sends its
+  properties back, the client key among them. Stored as an attribute, it left for the server as
+  `id: "loc:…"` on any layer declaring no property whitelist. It is now kept out of the stored
+  feature: the key already travels as the client identity (`local_id`).
+- **An edit no longer sends back a photo token already delivered** (`@geoleaf-plugins/editor`
+  1.5.3). Once a photo is uploaded, its URL is written on the stored feature, while the copy the
+  layer holds still carries the token. An edit sent that token back, and it replaced the URL.
+
 ## `@geoleaf/field-renderer` 1.4.0 · `@geoleaf-plugins/editor` 1.5.2 - 2026-09-27
 
 Published without a core release: `@geoleaf/core` stays at 3.11.1.

@@ -272,9 +272,18 @@ interface GeoLeafEditorFeatureCreatedDetail {
 
 /** Detail payload for `geoleaf:editor:feature-saved`. */
 interface GeoLeafEditorFeatureSavedDetail {
+    /**
+     * The identity the layer holds the feature under: the server's when the write reached it;
+     * for a write the offline outbox holds, its client identity (`loc:…`) — kept by the layer
+     * for the rest of the session, the next load naming it by its server id once pushed.
+     * Empty when neither exists: a backend answering a creation without an id.
+     */
     featureId: string;
     layerId: string;
-    /** The feature as CONFIRMED by the backend — may differ from what was sent. */
+    /**
+     * The feature as the write returned it: CONFIRMED by the backend — and possibly different
+     * from what was sent — when the write reached it; echoed as sent when the outbox holds it.
+     */
     saved: GeoLeafEditorFeature & {
         id: string;
         layerId: string;

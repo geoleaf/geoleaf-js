@@ -27,7 +27,7 @@ import {
     type SavedFeature,
 } from "./adapter-interface.js";
 import { dispatchEditorEvent } from "../editor-events.js";
-import { claimImages } from "./image-store.js";
+import { claimImages, dropSettledImageTokens } from "./image-store.js";
 
 /** Emits `geoleaf:editor:feature-sync-queued` once an entry is persisted. */
 function _dispatchQueued(kind: string, layerId: string, entryId: string): void {
@@ -53,7 +53,8 @@ function _dispatchQueued(kind: string, layerId: string, entryId: string): void {
  * @param layerId - Host layer.
  * @param localId - Entity identity; absent for a create, which the core mints.
  * @param feature - The edited entity. Absent for a delete.
- * @returns The queue entry's identifier.
+ * @returns The queue entry's identifier, and the key the core holds the entity under — for a
+ *   create, the client identity it just minted.
  * @throws When the storage engine is absent, or the core refuses the edit.
  */
 async function _enqueue(
@@ -61,7 +62,7 @@ async function _enqueue(
     layerId: string,
     localId: string | undefined,
     feature?: EditorFeature
-): Promise<string> {
+): Promise<{ entryId: string; localId: string }> {
     // 🛑 THE RECEIVER IS MANDATORY, AND ITS ABSENCE WAS THE DEFECT.
     //
     // This body did `const applyEdit = facade?.applyEdit` then `applyEdit({…})` —
@@ -139,17 +140,30 @@ async function _enqueue(
     // to the network, which is the very coupling the outbox exists to break. The drain
     // serialises itself, so a burst of captures produces one pass, not one per capture.
     storageFacade()?._requestOutboxDrain?.("write");
-    return entryId;
+    return { entryId, localId: report.localId ?? "" };
 }
 
 /**
- * Optimistic {@link SavedFeature} echoed back to the caller. Offline we have no
- * server id, so we keep the local id — enough for host-reconcile to commit the
- * geometry to the host layer; the real id arrives when the queue is flushed.
+ * Optimistic {@link SavedFeature} echoed back to the caller, under the identity the host layer
+ * holds the entity by.
+ *
+ * 🛑 **A CREATE RETURNS THE CLIENT IDENTITY THE CORE MINTED**, never an empty one. It used to
+ * echo `feature.id`, which a create does not have: `""` came back, the created entity had no
+ * name — not in `feature-saved`, not in the session export, not in its host layer. The
+ * outbox's key (`loc:…`) is the name every later edit of the entity must use: the core
+ * resolves it to the same record before and after the push.
+ *
+ * ⚠️ An UPDATE keeps the id it was given, and not the core's resolved key: an entity the
+ * server named is addressed by the id the layer shows (`42`), which the core keys `srv:42` —
+ * returned here, it would no longer match the layer's feature.
+ *
+ * @param feature - The feature as submitted.
+ * @param layerId - Its host layer.
+ * @param id - The identity to echo.
  */
-function _optimisticSaved(feature: EditorFeature, layerId: string): SavedFeature {
+function _optimisticSaved(feature: EditorFeature, layerId: string, id: string): SavedFeature {
     return {
-        id: feature.id ?? "",
+        id,
         layerId,
         geometry: feature.geometry,
         properties: feature.properties,
@@ -169,13 +183,16 @@ function _optimisticSaved(feature: EditorFeature, layerId: string): SavedFeature
 export function createStorageQueueAdapter(): EditorPersistenceAdapter {
     return {
         async save(feature: EditorFeature, layerId: string): Promise<SavedFeature> {
-            await _enqueue("create", layerId, feature.id, feature);
-            return _optimisticSaved(feature, layerId);
+            const { localId } = await _enqueue("create", layerId, feature.id, feature);
+            return _optimisticSaved(feature, layerId, feature.id ?? localId);
         },
 
         async update(feature: EditorFeature, layerId: string): Promise<SavedFeature> {
-            await _enqueue("update", layerId, feature.id, feature);
-            return _optimisticSaved(feature, layerId);
+            // The photos this edit carries back as tokens already delivered would overwrite,
+            // on the stored entity, the URL their upload wrote there (`dropSettledImageTokens`).
+            const properties = await dropSettledImageTokens(feature.properties);
+            await _enqueue("update", layerId, feature.id, { ...feature, properties });
+            return _optimisticSaved(feature, layerId, feature.id ?? "");
         },
 
         async delete(featureId: string, layerId: string): Promise<void> {

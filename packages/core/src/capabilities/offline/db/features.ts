@@ -384,6 +384,50 @@ function sweepSynced(db: IDBDatabase, layerId: string, keep: ReadonlySet<string>
     });
 }
 
+/** A GeoJSON-shaped value, narrowed to what the identity reads and writes. */
+interface FeatureLike {
+    [key: string]: unknown;
+    id?: unknown;
+    properties?: Record<string, unknown> | null;
+}
+
+/**
+ * The stored entity as a LAYER must hold it: carrying the record's identity.
+ *
+ * 🛑 A CREATION IS STORED WITHOUT AN IDENTITY OF ITS OWN. The capture is kept as the form
+ * submitted it — a geometry and attributes; its identity is the record's KEY, never an
+ * attribute (`local-edit.ts` refuses to store the client key as one). Everything that puts a
+ * stored entity back on a layer — the restore of pending edits, the device-first read — used
+ * to hand it over id-less: `mergeFeatures` never dedups an id-less feature, so each restore
+ * pass drew one more copy, none of them findable by `getFeatureById`, none of them editable.
+ *
+ * ⚠️ `serverId` BEFORE `localId`: once pushed, the entity is what the server serves under its
+ * own id, and a layer loaded from the network holds it under that id. Stamped with its client
+ * key, a created-then-pushed entity with an edit still queued would show BESIDE the server's
+ * row instead of replacing it. Before the push it has no other name than its client key — the
+ * one the editor addresses it by, and the store resolves either back to the same record.
+ *
+ * A feature already carrying an `id` or a `properties.id` is returned as stored: those are
+ * the server's, and the stamp never overrides one.
+ *
+ * @param record - The stored record (its feature, key and server identity).
+ * @returns A copy of the feature carrying `id` and `properties.id` — never the stored object —
+ *   or the stored feature itself when it already names itself or is not an object.
+ * @example
+ * const feature = presentRecordFeature(record); // { id: "loc:…", properties: { id: "loc:…", … } }
+ */
+export function presentRecordFeature(
+    record: Pick<FeatureRecord, "feature" | "localId" | "serverId">
+): unknown {
+    const feature = record.feature as FeatureLike | null | undefined;
+    if (!feature || typeof feature !== "object") return record.feature;
+    const props =
+        feature.properties && typeof feature.properties === "object" ? feature.properties : {};
+    if (feature.id != null || props["id"] != null) return feature;
+    const identity = record.serverId ?? record.localId;
+    return { ...feature, id: identity, properties: { ...props, id: identity } };
+}
+
 Log.debug("[DB.Features] Module loaded");
 
 /** Registry entry consumed by `db-modules-registry.ts`. */

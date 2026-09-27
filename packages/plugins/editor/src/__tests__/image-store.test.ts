@@ -63,6 +63,7 @@ const {
     initImageUpload,
     destroyImageUpload,
     claimImages,
+    dropSettledImageTokens,
 } = await import("../persistence/image-store.js");
 
 /**
@@ -90,7 +91,7 @@ const _stored: unknown[] = [];
 let _pending: unknown[] = [];
 const _statusCalls: Array<[string, { uploaded: boolean; url?: string }]> = [];
 const _bindCalls: Array<[string, { layerId: string; localId: string }]> = [];
-let _localImages: Record<string, { blob: Blob }> = {};
+let _localImages: Record<string, { blob?: Blob; uploaded?: number }> = {};
 
 function mountCore(opts: { db?: boolean; csrf?: string | null } = {}) {
     const db = {
@@ -598,6 +599,60 @@ describe("claimImages — lier les photos à leur entité", () => {
         const db = mountCore();
         db.bindLocalImage.mockRejectedValueOnce(new Error("quota"));
         await expect(claimImages({ photo: "gl-img:i1" }, "L", "loc:a")).resolves.toBeUndefined();
+    });
+});
+
+/**
+ * 🛑 A DELIVERED TOKEN WOULD OVERWRITE ITS OWN URL. Once uploaded, the URL is written onto the
+ * stored entity — but its host layer's copy still carries the token, and an edit sends that
+ * copy's attributes back. The token then replaced the URL, and left for the server with it.
+ */
+describe("dropSettledImageTokens — une modification ne renvoie pas un jeton livré", () => {
+    it("🛑 retire un jeton dont l'image est marquée téléversée", async () => {
+        mountCore();
+        _localImages = { i1: { uploaded: 1 } };
+        const out = await dropSettledImageTokens({ photo: `${TOKEN}i1`, nom: "L7" });
+        expect(out).toEqual({ nom: "L7" });
+    });
+
+    it("🛑 retire un jeton dont l'image a été purgée après son téléversement", async () => {
+        mountCore();
+        const out = await dropSettledImageTokens({ photo: `${TOKEN}gone`, nom: "L7" });
+        expect(out).toEqual({ nom: "L7" });
+    });
+
+    it("garde un jeton encore en attente — photo non téléversée, ou prise pendant l'édition", async () => {
+        mountCore();
+        _localImages = { i1: { uploaded: 0 } };
+        const props = { photo: `${TOKEN}i1`, nom: "L7" };
+        expect(await dropSettledImageTokens(props)).toBe(props);
+    });
+
+    it("garde une galerie qui porte une photo encore en attente", async () => {
+        mountCore();
+        _localImages = { i1: { uploaded: 1 }, i2: { uploaded: 0 } };
+        const props = { galerie: [`${TOKEN}i1`, `${TOKEN}i2`] };
+        expect(await dropSettledImageTokens(props)).toBe(props);
+    });
+
+    it("🛑 retire une galerie dont toutes les photos sont livrées", async () => {
+        mountCore();
+        _localImages = { i1: { uploaded: 1 } };
+        const out = await dropSettledImageTokens({ galerie: [`${TOKEN}i1`, "https://srv/a.jpg"] });
+        expect(out).toEqual({});
+    });
+
+    it("sans magasin d'images, rien n'est jugé", async () => {
+        mountCore({ db: false });
+        const props = { photo: `${TOKEN}i1` };
+        expect(await dropSettledImageTokens(props)).toBe(props);
+    });
+
+    it("un magasin illisible garde le jeton plutôt que de le perdre", async () => {
+        const db = mountCore();
+        db.getLocalImage.mockRejectedValueOnce(new Error("closed"));
+        const props = { photo: `${TOKEN}i1` };
+        expect(await dropSettledImageTokens(props)).toBe(props);
     });
 });
 

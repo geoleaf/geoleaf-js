@@ -54,6 +54,8 @@ import {
     hideHostFeature,
     showHostFeature,
     commitHostGeometry,
+    addHostFeature,
+    reloadHostFeature,
     removeHostFeature,
     resetHostReconcile,
     type HostReconcileDeps,
@@ -92,7 +94,6 @@ import { confirmDialog } from "@geoleaf/host-runtime";
 // Toolbar seam shape imported from the published contract instead of a local
 // re-declaration: the 7 plugins carried 4 diverging shapes of it.
 import type { GeoLeafRawEventMap } from "@geoleaf/core";
-import { resolveFeatureId } from "./feature-id.js";
 // Replaced at build time by rollup/replace — must be a plain string literal.
 const _VERSION = "__GEOLEAF_VERSION__";
 
@@ -163,29 +164,15 @@ function _buildWiring(
         commitHost: (layerId, featureId, geometry) => {
             if (deps) commitHostGeometry(deps, layerId, featureId, geometry);
         },
+        // The store alone: a creation hides no original, so it needs no map facade.
+        addHost: addHostFeature,
         removeHost: (layerId, featureId) => {
             if (deps) removeHostFeature(deps, layerId, featureId);
         },
-        reloadFeature: (serverData, layerId) => _reloadHostFeature(deps, layerId, serverData),
+        reloadFeature: (serverData, layerId) => {
+            if (deps) reloadHostFeature(deps, layerId, serverData);
+        },
     };
-}
-
-/** server-wins repaint: applies the server geometry to the host, or restores it. */
-function _reloadHostFeature(
-    deps: HostReconcileDeps | null,
-    layerId: string,
-    serverData: unknown
-): void {
-    if (!deps) return;
-    const sd = serverData as {
-        id?: string | number;
-        geometry?: unknown;
-        properties?: Record<string, unknown>;
-    } | null;
-    // Same reading order as the picker — `./feature-id.js`.
-    const fid = resolveFeatureId(sd);
-    if (fid && sd?.geometry) commitHostGeometry(deps, layerId, fid, sd.geometry);
-    else showHostFeature(deps, layerId);
 }
 
 /** Opens the attribute form; returns its forced close, which fires the form's cancel. */

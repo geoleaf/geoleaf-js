@@ -254,6 +254,63 @@ export async function claimImages(
 }
 
 /**
+ * The properties an EDIT may send, without the image tokens already delivered.
+ *
+ * 🛑 **A DELIVERED TOKEN WOULD OVERWRITE ITS OWN URL.** Once an upload succeeds, the URL is
+ * written onto the stored entity (`_reconcile`) — but the copy its host layer holds, which the
+ * form and the geometry commit read back, still carries the token. Sent back with an edit, the
+ * token REPLACED the URL on the stored entity (an edit's attributes win key by key), and left
+ * for the server with it. Leaving the key out keeps what the entity holds: the URL, or the
+ * token itself while its upload is pending.
+ *
+ * A token is delivered when its image is marked uploaded, or no longer held at all — the purge
+ * reclaims an image once its upload is acknowledged. A token whose image is still pending is
+ * sent as is: a photo not yet uploaded, or one captured during this very edit. A list (a
+ * gallery) is left out only when it holds a delivered token and no pending one.
+ *
+ * Without the image store nothing can be judged, and the properties are returned unchanged.
+ *
+ * @param properties - The attributes an edit is about to send.
+ * @returns `properties` itself when nothing was delivered; otherwise a copy without those keys.
+ * @example
+ * const properties = await dropSettledImageTokens(feature.properties);
+ */
+export async function dropSettledImageTokens(
+    properties: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+    const db = _imagesDb();
+    if (!db?.getLocalImage) return properties;
+    const kept: [string, unknown][] = [];
+    for (const [key, value] of Object.entries(properties)) {
+        if (!(await _holdsOnlyDeliveredTokens(db, value))) kept.push([key, value]);
+    }
+    return kept.length === Object.keys(properties).length ? properties : Object.fromEntries(kept);
+}
+
+/** Whether a value holds at least one delivered token and no pending one. */
+async function _holdsOnlyDeliveredTokens(db: ImagesDb, value: unknown): Promise<boolean> {
+    let delivered = false;
+    for (const candidate of Array.isArray(value) ? value : [value]) {
+        const imageId = _imageIdOfToken(candidate);
+        if (!imageId) continue;
+        if (!(await _isDelivered(db, imageId))) return false;
+        delivered = true;
+    }
+    return delivered;
+}
+
+/** Whether an image's upload is done — marked uploaded, or already purged after it. */
+async function _isDelivered(db: ImagesDb, imageId: string): Promise<boolean> {
+    try {
+        const record = (await db.getLocalImage?.(imageId)) as { uploaded?: unknown } | null;
+        return !record || record.uploaded === 1 || record.uploaded === true;
+    } catch {
+        // Unreadable: nothing is known, and the token is sent as before rather than dropped.
+        return false;
+    }
+}
+
+/**
  * The upload strategy: network first, local storage as backup.
  *
  * @param file      - File already validated and compressed by `field-renderer`.

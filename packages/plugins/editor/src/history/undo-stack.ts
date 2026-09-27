@@ -61,6 +61,8 @@ let _maxSize = 100;
 let _onChange: (() => void) | null = null;
 const _undo: Operation[] = [];
 const _redo: Operation[] = [];
+/** Every drawing id a re-add replaced, to the id that replaced it — see {@link currentTerradrawId}. */
+const _remapped = new Map<string, string>();
 
 // ---------------------------------------------------------------------------
 // Lifecycle
@@ -83,6 +85,7 @@ export function initUndoStack(
     _onChange = onChange ?? null;
     _undo.length = 0;
     _redo.length = 0;
+    _remapped.clear();
     _notify();
 }
 
@@ -114,6 +117,32 @@ export function redo(): void {
     _applyForward(op);
     _undo.push(op);
     _notify();
+}
+
+/**
+ * The id a drawing feature carries NOW, from any id it has carried.
+ *
+ * 🛑 A REDO GIVES A SHAPE A NEW ID, AND ITS HOLDERS ARE NOT TOLD. Re-adding a feature makes the
+ * drawing engine assign a fresh id; this stack rewrites its own entries and the selection
+ * (`_remapId`), and nothing else. A creation's form, opened on the first id, would then seal,
+ * hand over or discard a shape that no longer exists under it — and the redrawn shape stayed on
+ * screen, orphaned, beside the feature its layer now draws.
+ *
+ * @param terradrawId - A drawing id, current or replaced.
+ * @returns The id of the same shape now; `terradrawId` itself when it was never replaced.
+ * @example
+ * sealOperations(currentTerradrawId(drawnId));
+ */
+export function currentTerradrawId(terradrawId: string): string {
+    let id = terradrawId;
+    // Bounded by the number of replacements: the engine never reuses an id, so the chain has
+    // no cycle — the bound only keeps a corrupted map from looping.
+    for (let hops = 0; hops < _remapped.size; hops++) {
+        const next = _remapped.get(id);
+        if (next === undefined) break;
+        id = next;
+    }
+    return id;
 }
 
 /**
@@ -179,6 +208,7 @@ function _keepOthers(stack: Operation[], terradrawId: string): void {
 export function clearHistory(): void {
     _undo.length = 0;
     _redo.length = 0;
+    _remapped.clear();
     _notify();
 }
 
@@ -306,6 +336,7 @@ function _readd(op: Operation): void {
 }
 
 function _remapId(oldId: string, newId: string): void {
+    _remapped.set(oldId, newId);
     for (const o of _undo) if (o.terradrawId === oldId) o.terradrawId = newId;
     for (const o of _redo) if (o.terradrawId === oldId) o.terradrawId = newId;
     const sel = getSelection();

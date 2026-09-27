@@ -111,12 +111,10 @@ const langStorageFr = {
     "storage.notif.clear.success": "Cache vidé",
     "storage.notif.clear.error": "Erreur d'effacement",
     "storage.notif.resourcesDeleted": "ressources supprimées",
-    // ENGINE signals made visible — the quota is an ERROR (a write was REFUSED),
-    // eviction a WARNING (requested data is no longer there).
+    // ENGINE signal made visible — the quota is an ERROR (a write was REFUSED).
+    // Budget eviction is announced by the core, under its own key.
     "storage.notif.quotaExceeded":
         "Stockage plein : la dernière donnée n'a pas pu être enregistrée",
-    "storage.notif.cacheEvicted":
-        "{count} élément(s) hors ligne supprimé(s) pour libérer de la place",
     // POI sync section (S7)
     "storage.sync.title": "DONNÉES SAISIES",
     "storage.sync.toggle": "Basculer la synchronisation",

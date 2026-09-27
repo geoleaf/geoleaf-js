@@ -19,7 +19,7 @@ import { isUnsafeKey } from "../../../utils/general/object-path-guard.js";
 import { StorageHelperModule as StorageHelper } from "./storage-helper.js";
 import { DBModulesRegistry } from "./db-modules-registry.js";
 import { clearPullMarks, readPullState } from "../report/pull-state.js";
-import type { PreservingPutTally } from "./features.js";
+import { presentRecordFeature, type PreservingPutTally } from "./features.js";
 import type { LocalEditInput, LocalEditTally } from "./local-edit.js";
 import type { FeatureRecord } from "../../../contracts/sync.contract.js";
 
@@ -529,10 +529,7 @@ const StorageDB = {
         if (!this._db) await this.init();
         const module = this._ensureModule("Features");
         if (!module?.listByLayer) return null;
-        const records = (await module.listByLayer(layerId)) as Array<{
-            feature?: unknown;
-            localId?: string;
-        }> | null;
+        const records = (await module.listByLayer(layerId)) as FeatureRecord[] | null;
         if (!Array.isArray(records) || records.length === 0) {
             return (await concludedPull(this, layerId))
                 ? { type: "FeatureCollection", features: [] }
@@ -558,7 +555,9 @@ const StorageDB = {
         // Every entity of the layer is locally deleted: that is an EMPTY layer, not an
         // unstored one. Returning `null` here would re-trigger the network and make
         // what the user just deleted reappear.
-        return { type: "FeatureCollection", features: visible.map((r) => r.feature) };
+        // ⚠️ Each entity carries its record's identity: a creation is stored without one
+        // (`presentRecordFeature`), and an id-less feature can be neither found nor edited.
+        return { type: "FeatureCollection", features: visible.map(presentRecordFeature) };
     },
 
     /**

@@ -11,8 +11,10 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 
 const _claimImages = vi.fn(async () => undefined);
+const _dropSettled = vi.fn(async (props: Record<string, unknown>) => props);
 vi.mock("../persistence/image-store.js", () => ({
     claimImages: (...a: unknown[]) => _claimImages(...(a as [])),
+    dropSettledImageTokens: (props: Record<string, unknown>) => _dropSettled(props),
 }));
 
 const { createStorageQueueAdapter } = await import("../persistence/storage-queue-adapter.js");
@@ -163,5 +165,56 @@ describe("createStorageQueueAdapter — les photos trouvent leur entité", () =>
         mountStorage();
         await createStorageQueueAdapter().save(FEATURE, "l1");
         expect(_claimImages).not.toHaveBeenCalled();
+    });
+});
+
+/**
+ * 🛑 A CREATION HAS A NAME: the client identity the core minted. `save` used to echo
+ * `feature.id`, which a creation does not have — `""` came back, so the created entity was
+ * named nowhere: not in `feature-saved`, not in the session export, not in its host layer.
+ */
+describe("createStorageQueueAdapter — l'identité d'une création", () => {
+    afterEach(() => {
+        delete (globalThis as Record<string, unknown>).GeoLeaf;
+        _dropSettled.mockClear();
+    });
+
+    const CREATED = {
+        geometry: { type: "Point", coordinates: [1, 2] },
+        properties: { title: "T" },
+    } as never;
+
+    it("🛑 une création rend la clé client frappée par le core", async () => {
+        mountStorage({ entryId: "op-1", localId: "loc:abc", refused: null } as never);
+        const saved = await createStorageQueueAdapter().save(CREATED, "l1");
+        expect(saved.id).toBe("loc:abc");
+    });
+
+    it("une modification rend l'identité reçue, pas la clé résolue par le core", async () => {
+        // The core keys a server-named entity `srv:f1`; the layer shows it as `f1`.
+        mountStorage({ entryId: "op-1", localId: "srv:f1", refused: null } as never);
+        const saved = await createStorageQueueAdapter().update(FEATURE, "l1");
+        expect(saved.id).toBe("f1");
+    });
+
+    it("🛑 une modification n'envoie pas les jetons photo déjà livrés", async () => {
+        const applyEdit = mountStorage();
+        _dropSettled.mockImplementationOnce(async () => ({ title: "T" }));
+        const withPhoto = {
+            id: "loc:abc",
+            geometry: { type: "Point", coordinates: [1, 2] },
+            properties: { title: "T", photo: "gl-img:image_1" },
+        } as never;
+
+        await createStorageQueueAdapter().update(withPhoto, "l1");
+
+        expect(_dropSettled).toHaveBeenCalledWith({ title: "T", photo: "gl-img:image_1" });
+        expect(applyEdit.mock.calls[0][0].feature.properties).toEqual({ title: "T" });
+    });
+
+    it("une création n'est pas filtrée : ses jetons sont tous neufs", async () => {
+        mountStorage({ entryId: "op-1", localId: "loc:abc", refused: null } as never);
+        await createStorageQueueAdapter().save(CREATED, "l1");
+        expect(_dropSettled).not.toHaveBeenCalled();
     });
 });

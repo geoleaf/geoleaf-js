@@ -170,6 +170,7 @@ CallSignature | @geoleaf-plugins/editor.editor-api.toggleEditorMenu.toggleEditor
 CallSignature | @geoleaf-plugins/editor.editor-events.dispatchEditorEvent.dispatchEditorEvent | doc:30cc1300e8fc
 CallSignature | @geoleaf-plugins/editor.entry._openEditorForm._openEditorForm | doc:e4c547a5f1b7
 CallSignature | @geoleaf-plugins/editor.entry._openEditorForm._openEditorForm.__type.__type | doc:-
+CallSignature | @geoleaf-plugins/editor.events.EditorWiringContext.addHost.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/editor.events.EditorWiringContext.commitHost.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/editor.events.EditorWiringContext.hideHost.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/editor.events.EditorWiringContext.reloadFeature.__type.__type | doc:-
@@ -184,6 +185,7 @@ CallSignature | @geoleaf-plugins/editor.history/shortcuts.detachShortcuts.detach
 CallSignature | @geoleaf-plugins/editor.history/undo-stack.canRedo.canRedo | doc:3b8e6b5eceb9
 CallSignature | @geoleaf-plugins/editor.history/undo-stack.canUndo.canUndo | doc:2e44d88c6ddd
 CallSignature | @geoleaf-plugins/editor.history/undo-stack.clearHistory.clearHistory | doc:433cc6bfdbdc
+CallSignature | @geoleaf-plugins/editor.history/undo-stack.currentTerradrawId.currentTerradrawId | doc:d8cad216e6b1
 CallSignature | @geoleaf-plugins/editor.history/undo-stack.discardOperations.discardOperations | doc:0b66579cb6bb
 CallSignature | @geoleaf-plugins/editor.history/undo-stack.getRedoDepth.getRedoDepth | doc:3ba3a66001b9
 CallSignature | @geoleaf-plugins/editor.history/undo-stack.getUndoDepth.getUndoDepth | doc:fc40f7eb4ad1
@@ -227,6 +229,7 @@ CallSignature | @geoleaf-plugins/editor.persistence/editor-sync-replay.requeueBy
 CallSignature | @geoleaf-plugins/editor.persistence/editor-sync-replay.requeueableReasons.requeueableReasons | doc:7683c6ee796f
 CallSignature | @geoleaf-plugins/editor.persistence/image-store.claimImages.claimImages | doc:f8999975c289
 CallSignature | @geoleaf-plugins/editor.persistence/image-store.destroyImageUpload.destroyImageUpload | doc:8b4f769ed8f8
+CallSignature | @geoleaf-plugins/editor.persistence/image-store.dropSettledImageTokens.dropSettledImageTokens | doc:8185d4a4dd35
 CallSignature | @geoleaf-plugins/editor.persistence/image-store.initImageUpload.initImageUpload | doc:ad3fe10d8ed0
 CallSignature | @geoleaf-plugins/editor.persistence/image-store.retryPendingImages.retryPendingImages | doc:89fdc793fbd6
 CallSignature | @geoleaf-plugins/editor.persistence/image-store.storeImageLocally.storeImageLocally | doc:923d01170d59
@@ -263,10 +266,11 @@ CallSignature | @geoleaf-plugins/editor.persistence/storage-seam.StorageWriteFac
 CallSignature | @geoleaf-plugins/editor.persistence/storage-seam.StorageWriteFacade.resolveOptions.resolveOptions | doc:8fbf1509e92a
 CallSignature | @geoleaf-plugins/editor.persistence/storage-seam.storageDb.storageDb | doc:1f2e3328804e
 CallSignature | @geoleaf-plugins/editor.persistence/storage-seam.storageFacade.storageFacade | doc:fd7895523e3c
+CallSignature | @geoleaf-plugins/editor.persistence/submit.SubmitContext.addHost.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/editor.persistence/submit.SubmitContext.commitHost.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/editor.persistence/submit.SubmitContext.dispatchSaved.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/editor.persistence/submit.SubmitContext.reloadFeature.__type.__type | doc:-
-CallSignature | @geoleaf-plugins/editor.persistence/submit.submitFeature.submitFeature | doc:ecc9de985a50
+CallSignature | @geoleaf-plugins/editor.persistence/submit.submitFeature.submitFeature | doc:c640c37ea79c
 CallSignature | @geoleaf-plugins/editor.persistence/sync-handler.EditorSyncHandler.__type.getSyncSummary.getSyncSummary | doc:048d10b57d94
 CallSignature | @geoleaf-plugins/editor.persistence/sync-handler.EditorSyncHandler.__type.processSyncQueue.processSyncQueue | doc:1130bea1c01c
 CallSignature | @geoleaf-plugins/editor.persistence/sync-handler.registerBeforeDrainStep.registerBeforeDrainStep | doc:41b0c51b282f
@@ -274,9 +278,11 @@ CallSignature | @geoleaf-plugins/editor.persistence/sync-handler.registerSyncHan
 CallSignature | @geoleaf-plugins/editor.public-api.buildPublicApi.buildPublicApi | doc:-
 CallSignature | @geoleaf-plugins/editor.selection/host-reconcile.HostMapFacade.setLayerFilter.setLayerFilter | doc:-
 CallSignature | @geoleaf-plugins/editor.selection/host-reconcile.HostMapFacade.updateLayerData.updateLayerData | doc:-
+CallSignature | @geoleaf-plugins/editor.selection/host-reconcile.addHostFeature.addHostFeature | doc:134189820a46
 CallSignature | @geoleaf-plugins/editor.selection/host-reconcile.commitHostGeometry.commitHostGeometry | doc:2188b72804db
 CallSignature | @geoleaf-plugins/editor.selection/host-reconcile.getHiddenHost.getHiddenHost | doc:9b18d335da35
 CallSignature | @geoleaf-plugins/editor.selection/host-reconcile.hideHostFeature.hideHostFeature | doc:702bdd40246a
+CallSignature | @geoleaf-plugins/editor.selection/host-reconcile.reloadHostFeature.reloadHostFeature | doc:c9915715158c
 CallSignature | @geoleaf-plugins/editor.selection/host-reconcile.removeHostFeature.removeHostFeature | doc:0f6606fa072c
 CallSignature | @geoleaf-plugins/editor.selection/host-reconcile.resetHostReconcile.resetHostReconcile | doc:c9b54962bda4
 CallSignature | @geoleaf-plugins/editor.selection/host-reconcile.showHostFeature.showHostFeature | doc:216f4d772866
@@ -1821,6 +1827,7 @@ CallSignature | GeoLeaf Core API.capabilities/offline/db/features.FeaturesDBInst
 CallSignature | GeoLeaf Core API.capabilities/offline/db/features.FeaturesDBInstance.putManyPreservingLocal.putManyPreservingLocal | doc:5b86f738b893
 CallSignature | GeoLeaf Core API.capabilities/offline/db/features.FeaturesDBInstance.remove.remove | doc:-
 CallSignature | GeoLeaf Core API.capabilities/offline/db/features.FeaturesDBInstance.sweepSynced.sweepSynced | doc:a5da8a2c4447
+CallSignature | GeoLeaf Core API.capabilities/offline/db/features.presentRecordFeature.presentRecordFeature | doc:3064c85557aa
 CallSignature | GeoLeaf Core API.capabilities/offline/db/images.ImagesDBInstance._ensureInitialized._ensureInitialized | doc:-
 CallSignature | GeoLeaf Core API.capabilities/offline/db/images.ImagesDBInstance.bindLocalImage.bindLocalImage | doc:-
 CallSignature | GeoLeaf Core API.capabilities/offline/db/images.ImagesDBInstance.cleanUploadedImages.cleanUploadedImages | doc:-
@@ -3842,6 +3849,7 @@ Function | @geoleaf-plugins/editor.history/shortcuts.detachShortcuts | doc:-
 Function | @geoleaf-plugins/editor.history/undo-stack.canRedo | doc:-
 Function | @geoleaf-plugins/editor.history/undo-stack.canUndo | doc:-
 Function | @geoleaf-plugins/editor.history/undo-stack.clearHistory | doc:-
+Function | @geoleaf-plugins/editor.history/undo-stack.currentTerradrawId | doc:-
 Function | @geoleaf-plugins/editor.history/undo-stack.discardOperations | doc:-
 Function | @geoleaf-plugins/editor.history/undo-stack.getRedoDepth | doc:-
 Function | @geoleaf-plugins/editor.history/undo-stack.getUndoDepth | doc:-
@@ -3874,6 +3882,7 @@ Function | @geoleaf-plugins/editor.persistence/editor-sync-replay.requeueByReaso
 Function | @geoleaf-plugins/editor.persistence/editor-sync-replay.requeueableReasons | doc:-
 Function | @geoleaf-plugins/editor.persistence/image-store.claimImages | doc:-
 Function | @geoleaf-plugins/editor.persistence/image-store.destroyImageUpload | doc:-
+Function | @geoleaf-plugins/editor.persistence/image-store.dropSettledImageTokens | doc:-
 Function | @geoleaf-plugins/editor.persistence/image-store.initImageUpload | doc:-
 Function | @geoleaf-plugins/editor.persistence/image-store.retryPendingImages | doc:-
 Function | @geoleaf-plugins/editor.persistence/image-store.storeImageLocally | doc:-
@@ -3901,9 +3910,11 @@ Function | @geoleaf-plugins/editor.persistence/submit.submitFeature | doc:-
 Function | @geoleaf-plugins/editor.persistence/sync-handler.registerBeforeDrainStep | doc:-
 Function | @geoleaf-plugins/editor.persistence/sync-handler.registerSyncHandler | doc:-
 Function | @geoleaf-plugins/editor.public-api.buildPublicApi | doc:-
+Function | @geoleaf-plugins/editor.selection/host-reconcile.addHostFeature | doc:-
 Function | @geoleaf-plugins/editor.selection/host-reconcile.commitHostGeometry | doc:-
 Function | @geoleaf-plugins/editor.selection/host-reconcile.getHiddenHost | doc:-
 Function | @geoleaf-plugins/editor.selection/host-reconcile.hideHostFeature | doc:-
+Function | @geoleaf-plugins/editor.selection/host-reconcile.reloadHostFeature | doc:-
 Function | @geoleaf-plugins/editor.selection/host-reconcile.removeHostFeature | doc:-
 Function | @geoleaf-plugins/editor.selection/host-reconcile.resetHostReconcile | doc:-
 Function | @geoleaf-plugins/editor.selection/host-reconcile.showHostFeature | doc:-
@@ -4624,6 +4635,7 @@ Function | GeoLeaf Core API.capabilities/offline/data-origins.parseDataOrigins |
 Function | GeoLeaf Core API.capabilities/offline/data-origins.prefetchVerdict | doc:-
 Function | GeoLeaf Core API.capabilities/offline/data-origins.publishDataOrigins | doc:-
 Function | GeoLeaf Core API.capabilities/offline/db/eviction.evictToQuota | doc:-
+Function | GeoLeaf Core API.capabilities/offline/db/features.presentRecordFeature | doc:-
 Function | GeoLeaf Core API.capabilities/offline/options/option-lists.prefetchOptionLists | doc:-
 Function | GeoLeaf Core API.capabilities/offline/options/option-lists.resolveOptionList | doc:-
 Function | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore-boot.registerPoiRestore | doc:-
@@ -5273,6 +5285,7 @@ Interface | @geoleaf-plugins/editor.persistence/storage-seam.PendingEdit | doc:7
 Interface | @geoleaf-plugins/editor.persistence/storage-seam.StorageWriteFacade | doc:d1e826e24969
 Interface | @geoleaf-plugins/editor.persistence/submit.FeatureSavedDetail | doc:29e1ec76cf53
 Interface | @geoleaf-plugins/editor.persistence/submit.SubmitContext | doc:72a27387657a
+Interface | @geoleaf-plugins/editor.persistence/submit.SubmitOutcome | doc:1fe2491c07ea
 Interface | @geoleaf-plugins/editor.persistence/sync-handler.SyncResults | doc:0000cdc8cc88
 Interface | @geoleaf-plugins/editor.persistence/sync-handler.SyncSummary | doc:7177d44dfefd
 Interface | @geoleaf-plugins/editor.selection/host-reconcile.HostMapFacade | doc:60a32e0e84f3
@@ -8548,6 +8561,8 @@ Parameter | @geoleaf-plugins/editor.editor-api.toggleEditorMenu.toggleEditorMenu
 Parameter | @geoleaf-plugins/editor.editor-events.dispatchEditorEvent.dispatchEditorEvent.detail | doc:21393fbba626
 Parameter | @geoleaf-plugins/editor.editor-events.dispatchEditorEvent.dispatchEditorEvent.eventName | doc:f0f4a1736460
 Parameter | @geoleaf-plugins/editor.entry._openEditorForm._openEditorForm.options | doc:-
+Parameter | @geoleaf-plugins/editor.events.EditorWiringContext.addHost.__type.__type.layerId | doc:-
+Parameter | @geoleaf-plugins/editor.events.EditorWiringContext.addHost.__type.__type.saved | doc:-
 Parameter | @geoleaf-plugins/editor.events.EditorWiringContext.commitHost.__type.__type.featureId | doc:-
 Parameter | @geoleaf-plugins/editor.events.EditorWiringContext.commitHost.__type.__type.geometry | doc:-
 Parameter | @geoleaf-plugins/editor.events.EditorWiringContext.commitHost.__type.__type.layerId | doc:-
@@ -8565,6 +8580,7 @@ Parameter | @geoleaf-plugins/editor.events.initEventsBridge.initEventsBridge.ope
 Parameter | @geoleaf-plugins/editor.events.initEventsBridge.initEventsBridge.wiring | doc:435165790cad
 Parameter | @geoleaf-plugins/editor.feature-id.resolveFeatureId.resolveFeatureId.feature | doc:740695863c35
 Parameter | @geoleaf-plugins/editor.history/shortcuts.attachShortcuts.attachShortcuts.handlers | doc:-
+Parameter | @geoleaf-plugins/editor.history/undo-stack.currentTerradrawId.currentTerradrawId.terradrawId | doc:dd21d0787ad7
 Parameter | @geoleaf-plugins/editor.history/undo-stack.discardOperations.discardOperations.terradrawId | doc:83b5e87ad1cf
 Parameter | @geoleaf-plugins/editor.history/undo-stack.initUndoStack.initUndoStack.adapter | doc:c2d693b1f81e
 Parameter | @geoleaf-plugins/editor.history/undo-stack.initUndoStack.initUndoStack.cfg | doc:f9e325e9bbc3
@@ -8608,6 +8624,7 @@ Parameter | @geoleaf-plugins/editor.persistence/editor-sync-replay.requeueByReas
 Parameter | @geoleaf-plugins/editor.persistence/image-store.claimImages.claimImages.layerId | doc:5960daf59b09
 Parameter | @geoleaf-plugins/editor.persistence/image-store.claimImages.claimImages.localId | doc:d3738c1ad2d6
 Parameter | @geoleaf-plugins/editor.persistence/image-store.claimImages.claimImages.properties | doc:b9c4b2f748ee
+Parameter | @geoleaf-plugins/editor.persistence/image-store.dropSettledImageTokens.dropSettledImageTokens.properties | doc:d28ac7121d6b
 Parameter | @geoleaf-plugins/editor.persistence/image-store.storeImageLocally.storeImageLocally.endpoint | doc:a9228129e096
 Parameter | @geoleaf-plugins/editor.persistence/image-store.storeImageLocally.storeImageLocally.fieldPath | doc:ce06bf0f2cfa
 Parameter | @geoleaf-plugins/editor.persistence/image-store.storeImageLocally.storeImageLocally.file | doc:c228aa58ba23
@@ -8645,19 +8662,23 @@ Parameter | @geoleaf-plugins/editor.persistence/storage-seam.StorageWriteFacade.
 Parameter | @geoleaf-plugins/editor.persistence/storage-seam.StorageWriteFacade.mayEdit.mayEdit.layerId | doc:-
 Parameter | @geoleaf-plugins/editor.persistence/storage-seam.StorageWriteFacade.requeueAll.requeueAll.reason | doc:-
 Parameter | @geoleaf-plugins/editor.persistence/storage-seam.StorageWriteFacade.resolveOptions.resolveOptions.url | doc:-
+Parameter | @geoleaf-plugins/editor.persistence/submit.SubmitContext.addHost.__type.__type.layerId | doc:-
+Parameter | @geoleaf-plugins/editor.persistence/submit.SubmitContext.addHost.__type.__type.saved | doc:-
 Parameter | @geoleaf-plugins/editor.persistence/submit.SubmitContext.commitHost.__type.__type.featureId | doc:-
 Parameter | @geoleaf-plugins/editor.persistence/submit.SubmitContext.commitHost.__type.__type.geometry | doc:-
 Parameter | @geoleaf-plugins/editor.persistence/submit.SubmitContext.commitHost.__type.__type.layerId | doc:-
 Parameter | @geoleaf-plugins/editor.persistence/submit.SubmitContext.dispatchSaved.__type.__type.detail | doc:-
 Parameter | @geoleaf-plugins/editor.persistence/submit.SubmitContext.reloadFeature.__type.__type.layerId | doc:-
 Parameter | @geoleaf-plugins/editor.persistence/submit.SubmitContext.reloadFeature.__type.__type.serverData | doc:-
-Parameter | @geoleaf-plugins/editor.persistence/submit.submitFeature.submitFeature.args | doc:-
-Parameter | @geoleaf-plugins/editor.persistence/submit.submitFeature.submitFeature.ctx | doc:-
+Parameter | @geoleaf-plugins/editor.persistence/submit.submitFeature.submitFeature.args | doc:591e710305f0
+Parameter | @geoleaf-plugins/editor.persistence/submit.submitFeature.submitFeature.ctx | doc:7f11ce4b5bcc
 Parameter | @geoleaf-plugins/editor.persistence/sync-handler.registerBeforeDrainStep.registerBeforeDrainStep.step | doc:a6db3306f6d1
 Parameter | @geoleaf-plugins/editor.selection/host-reconcile.HostMapFacade.setLayerFilter.setLayerFilter.filter | doc:-
 Parameter | @geoleaf-plugins/editor.selection/host-reconcile.HostMapFacade.setLayerFilter.setLayerFilter.id | doc:-
 Parameter | @geoleaf-plugins/editor.selection/host-reconcile.HostMapFacade.updateLayerData.updateLayerData.data | doc:-
 Parameter | @geoleaf-plugins/editor.selection/host-reconcile.HostMapFacade.updateLayerData.updateLayerData.id | doc:-
+Parameter | @geoleaf-plugins/editor.selection/host-reconcile.addHostFeature.addHostFeature.layerId | doc:f6793aa88d7d
+Parameter | @geoleaf-plugins/editor.selection/host-reconcile.addHostFeature.addHostFeature.saved | doc:024931c04889
 Parameter | @geoleaf-plugins/editor.selection/host-reconcile.commitHostGeometry.commitHostGeometry.deps | doc:-
 Parameter | @geoleaf-plugins/editor.selection/host-reconcile.commitHostGeometry.commitHostGeometry.featureId | doc:-
 Parameter | @geoleaf-plugins/editor.selection/host-reconcile.commitHostGeometry.commitHostGeometry.geometry | doc:-
@@ -8665,6 +8686,9 @@ Parameter | @geoleaf-plugins/editor.selection/host-reconcile.commitHostGeometry.
 Parameter | @geoleaf-plugins/editor.selection/host-reconcile.hideHostFeature.hideHostFeature.deps | doc:-
 Parameter | @geoleaf-plugins/editor.selection/host-reconcile.hideHostFeature.hideHostFeature.featureId | doc:-
 Parameter | @geoleaf-plugins/editor.selection/host-reconcile.hideHostFeature.hideHostFeature.layerId | doc:-
+Parameter | @geoleaf-plugins/editor.selection/host-reconcile.reloadHostFeature.reloadHostFeature.deps | doc:9a07c65ce814
+Parameter | @geoleaf-plugins/editor.selection/host-reconcile.reloadHostFeature.reloadHostFeature.layerId | doc:be29d67c2e98
+Parameter | @geoleaf-plugins/editor.selection/host-reconcile.reloadHostFeature.reloadHostFeature.serverData | doc:69718ecd3289
 Parameter | @geoleaf-plugins/editor.selection/host-reconcile.removeHostFeature.removeHostFeature.deps | doc:-
 Parameter | @geoleaf-plugins/editor.selection/host-reconcile.removeHostFeature.removeHostFeature.featureId | doc:-
 Parameter | @geoleaf-plugins/editor.selection/host-reconcile.removeHostFeature.removeHostFeature.layerId | doc:-
@@ -10509,6 +10533,7 @@ Parameter | GeoLeaf Core API.capabilities/offline/db/features.FeaturesDBInstance
 Parameter | GeoLeaf Core API.capabilities/offline/db/features.FeaturesDBInstance.remove.remove.localId | doc:-
 Parameter | GeoLeaf Core API.capabilities/offline/db/features.FeaturesDBInstance.sweepSynced.sweepSynced.keep | doc:-
 Parameter | GeoLeaf Core API.capabilities/offline/db/features.FeaturesDBInstance.sweepSynced.sweepSynced.layerId | doc:-
+Parameter | GeoLeaf Core API.capabilities/offline/db/features.presentRecordFeature.presentRecordFeature.record | doc:ad4a4742473b
 Parameter | GeoLeaf Core API.capabilities/offline/db/images.ImagesDBInstance.bindLocalImage.bindLocalImage.id | doc:-
 Parameter | GeoLeaf Core API.capabilities/offline/db/images.ImagesDBInstance.bindLocalImage.bindLocalImage.owner | doc:-
 Parameter | GeoLeaf Core API.capabilities/offline/db/images.ImagesDBInstance.deleteLocalImage.deleteLocalImage.id | doc:-
@@ -12990,6 +13015,7 @@ Property | @geoleaf-plugins/editor.drawing/styles.buildSelectStyles.buildSelectS
 Property | @geoleaf-plugins/editor.drawing/styles.buildSelectStyles.buildSelectStyles.__type.selectionPointOutlineWidth | doc:-
 Property | @geoleaf-plugins/editor.drawing/styles.buildSelectStyles.buildSelectStyles.__type.selectionPointWidth | doc:-
 Property | @geoleaf-plugins/editor.events.EditorWiringContext.adapter | doc:-
+Property | @geoleaf-plugins/editor.events.EditorWiringContext.addHost | doc:fee602e70e73
 Property | @geoleaf-plugins/editor.events.EditorWiringContext.commitHost | doc:6375f2ce6fd7
 Property | @geoleaf-plugins/editor.events.EditorWiringContext.hideHost | doc:2aadb4f672ff
 Property | @geoleaf-plugins/editor.events.EditorWiringContext.reloadFeature | doc:42b5deaa2680
@@ -13025,7 +13051,7 @@ Property | @geoleaf-plugins/editor.persistence/adapter-interface.PersistenceErro
 Property | @geoleaf-plugins/editor.persistence/adapter-interface.PersistenceError.serverData | doc:-
 Property | @geoleaf-plugins/editor.persistence/adapter-interface.PersistenceError.status | doc:-
 Property | @geoleaf-plugins/editor.persistence/adapter-interface.SavedFeature.geometry | doc:d20e3ea38e5e
-Property | @geoleaf-plugins/editor.persistence/adapter-interface.SavedFeature.id | doc:b557427327e9
+Property | @geoleaf-plugins/editor.persistence/adapter-interface.SavedFeature.id | doc:0011e957b6bd
 Property | @geoleaf-plugins/editor.persistence/adapter-interface.SavedFeature.layerId | doc:1ce40623432e
 Property | @geoleaf-plugins/editor.persistence/adapter-interface.SavedFeature.properties | doc:02c7649e3011
 Property | @geoleaf-plugins/editor.persistence/adapter-interface.SavedFeature.raw | doc:691fd38c9cd5
@@ -13078,10 +13104,13 @@ Property | @geoleaf-plugins/editor.persistence/submit.FeatureSavedDetail.isUpdat
 Property | @geoleaf-plugins/editor.persistence/submit.FeatureSavedDetail.layerId | doc:-
 Property | @geoleaf-plugins/editor.persistence/submit.FeatureSavedDetail.saved | doc:-
 Property | @geoleaf-plugins/editor.persistence/submit.SubmitContext.adapter | doc:-
+Property | @geoleaf-plugins/editor.persistence/submit.SubmitContext.addHost | doc:9cb5f9edb29e
 Property | @geoleaf-plugins/editor.persistence/submit.SubmitContext.commitHost | doc:1d0591370e05
 Property | @geoleaf-plugins/editor.persistence/submit.SubmitContext.dispatchSaved | doc:5418da4e4142
 Property | @geoleaf-plugins/editor.persistence/submit.SubmitContext.reloadFeature | doc:42b5deaa2680
 Property | @geoleaf-plugins/editor.persistence/submit.SubmitContext.strategy | doc:-
+Property | @geoleaf-plugins/editor.persistence/submit.SubmitOutcome.hosted | doc:47a9768c788d
+Property | @geoleaf-plugins/editor.persistence/submit.SubmitOutcome.saved | doc:024931c04889
 Property | @geoleaf-plugins/editor.persistence/sync-handler.SyncResults.failed | doc:-
 Property | @geoleaf-plugins/editor.persistence/sync-handler.SyncResults.skipped | doc:-
 Property | @geoleaf-plugins/editor.persistence/sync-handler.SyncResults.success | doc:-
@@ -13626,7 +13655,6 @@ Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.modal
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.modal.tab.export | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.modal.tab.import | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.modal.title | doc:-
-Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.notif.cacheEvicted | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.notif.clear.error | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.notif.clear.success | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.notif.clearPois.error | doc:-
@@ -18195,6 +18223,7 @@ TypeLiteral | @geoleaf-plugins/editor.drawing/styles.watchThemeChanges.watchThem
 TypeLiteral | @geoleaf-plugins/editor.drawing/styles.watchThemeChanges.watchThemeChanges.onUpdate.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.editor-api.setDestroyHook.setDestroyHook.fn.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.entry._openEditorForm._openEditorForm.__type | doc:-
+TypeLiteral | @geoleaf-plugins/editor.events.EditorWiringContext.addHost.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.events.EditorWiringContext.commitHost.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.events.EditorWiringContext.hideHost.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.events.EditorWiringContext.reloadFeature.__type | doc:-
@@ -18211,6 +18240,7 @@ TypeLiteral | @geoleaf-plugins/editor.persistence/rest-wire-mapping.restFetch.re
 TypeLiteral | @geoleaf-plugins/editor.persistence/storage-seam.OutboxAccess._ensureModule.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.persistence/storage-seam.OutboxAccess.listPendingEdits.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.persistence/storage-seam.StorageWriteFacade.applyEdit.applyEdit.input.__type | doc:-
+TypeLiteral | @geoleaf-plugins/editor.persistence/submit.SubmitContext.addHost.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.persistence/submit.SubmitContext.commitHost.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.persistence/submit.SubmitContext.dispatchSaved.__type | doc:-
 TypeLiteral | @geoleaf-plugins/editor.persistence/submit.SubmitContext.reloadFeature.__type | doc:-

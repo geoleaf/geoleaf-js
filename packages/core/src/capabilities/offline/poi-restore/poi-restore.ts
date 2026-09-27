@@ -43,6 +43,10 @@
  */
 import { Log } from "../../../utils/log/index.js";
 import { StorageContract } from "../../../kernel/shared/index.js";
+// ⚠️ The one `db/` import of this module, and it does not break the rule below: that rule keeps
+// the store's INSTANCES behind the contract (a deep import would reach a copy the engine never
+// wired). This is a pure function with no state — how a record presents itself to a layer.
+import { presentRecordFeature } from "../db/features.js";
 
 /**
  * Entry states that stay on screen.
@@ -84,7 +88,14 @@ interface OutboxReader {
     list(): Promise<QueueRow[]>;
 }
 interface FeaturesReader {
-    get(layerId: string, localId: string): Promise<{ feature?: unknown } | null>;
+    get(layerId: string, localId: string): Promise<StoredEntity | null>;
+}
+
+/** A `features` record, reduced to what restoration reads from it. */
+interface StoredEntity {
+    feature?: unknown;
+    /** Present once the server created the entity — it then names the entity on a layer. */
+    serverId?: string | null;
 }
 
 /** Net operation for one entity of one layer (last write wins). */
@@ -215,7 +226,7 @@ async function _applyNetOps(
     byLayer: Map<string, Map<string, NetOp>>,
     layers: LayerLike,
     result: PoiRestoreResult,
-    readFeature: (layerId: string, localId: string) => Promise<{ feature?: unknown } | null>
+    readFeature: (layerId: string, localId: string) => Promise<StoredEntity | null>
 ): Promise<void> {
     for (const [layerId, ops] of byLayer) {
         if (!layers.hasLayer(layerId)) {
@@ -234,7 +245,18 @@ async function _applyNetOps(
             // `[layerId, localId]`, and the current state is held by the optimistic
             // write.
             const record = await readFeature(layerId, op.localId);
-            const feature = record?.feature as GeoJSON.Feature | undefined;
+            // 🛑 WITH THE RECORD'S IDENTITY. A creation is stored without one, and an id-less
+            // feature is never deduped by `mergeFeatures`: every pass of this restore (up to
+            // two per boot) drew one more copy, none findable by `getFeatureById`.
+            const feature = (
+                record
+                    ? presentRecordFeature({
+                          feature: record.feature,
+                          localId: op.localId,
+                          serverId: record.serverId ?? null,
+                      })
+                    : undefined
+            ) as GeoJSON.Feature | undefined;
             if (!feature || typeof feature !== "object") {
                 result.skipped++;
                 continue;

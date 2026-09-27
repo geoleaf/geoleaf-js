@@ -10,8 +10,8 @@
  *
  * Hiding is filter-based (non-destructive, reversible in one call); the host
  * source data is only rewritten on save/delete, where a rewrite is unavoidable.
- * Features are matched on `properties.id` (the core convention — no `promoteId`
- * is set) with a fallback to the top-level `feature.id`.
+ * Features are matched on `properties.id` (the core convention, which the core promotes to
+ * the rendered feature's id) with a fallback to the top-level `feature.id`.
  *
  * 🛑 SAVE AND DELETE WRITE THE LAYER STORE (`GeoLeaf.Layers`), not the map source alone.
  * The store is what the layer search, `getFeatureById`, the filter's re-feed and the table
@@ -19,12 +19,22 @@
  * store behind: the search recentred on a moved feature's OLD position and found a deleted
  * one again. And it rewrote the source from what the source held, which under an active
  * filter is a SUBSET, frozen as the layer's data by the save. The store's unit mutations
- * feed the source themselves. The direct path remains for a layer the store does not hold
- * (vector tiles) and for a core without the seam.
+ * feed the source themselves.
+ *
+ * 🛑 A CREATION ENTERS THE STORE TOO ({@link addHostFeature}). It used not to: a drawn shape
+ * stayed in the drawing layer with no identity, so moving it was never persisted and deleting
+ * it left its creation queued; a placed point vanished with its marker. Nothing could find
+ * either — search, `getFeatureById`, the export — until the next load.
+ *
+ * ⚠️ The direct path remains for a feature the store does not hold — a vector-tile layer
+ * keeps none — and for a core without the seam. It reads the source `gl-<id>` or `<id>`,
+ * while the core names a layer's GeoJSON source `gl-src-<id>`: against a real map it finds
+ * nothing, warns and skips.
  * https://geoleaf.dev
  */
 
 import { getGeoLeaf } from "@geoleaf/host-runtime";
+import { resolveFeatureId } from "../feature-id.js";
 
 /** Map-facade subset the reconciler needs (from `GeoLeaf.Core.getMap()`). */
 export interface HostMapFacade {
@@ -122,6 +132,74 @@ export function commitHostGeometry(
     showHostFeature(deps, layerId);
 }
 
+/** A feature just created and saved, reduced to what hosting it reads. */
+interface HostableFeature {
+    /** The identity the write returned: the server's, or the outbox's client key. */
+    id: string;
+    geometry: unknown;
+    properties: Record<string, unknown>;
+}
+
+/**
+ * Puts a feature just CREATED into its host layer's store, under the identity its write
+ * returned — so the layer draws it, and search, `getFeatureById` and the next edit find it.
+ *
+ * Nothing is inserted, and `false` comes back, when the store cannot hold it: no identity (a
+ * backend answering a creation without one), no layer store for `layerId` — `mergeFeatures` on
+ * an unknown layer REPLACES the adapter's source with the incoming feature alone — or a
+ * vector-tile layer, whose store holds no feature by construction: one merged there would be
+ * the only feature the next filter pass judges, and it would hide the whole layer. The caller
+ * then keeps its own copy of the shape.
+ *
+ * ⚠️ The layer's filter is never touched: this is not an edit of a hidden original.
+ *
+ * @param layerId - Host layer the feature was saved to.
+ * @param saved - The feature as the write returned it.
+ * @returns `true` when the layer's store now holds the feature.
+ * @example
+ * if (addHostFeature("sites", { id: "loc:…", geometry, properties })) adapter.removeFeatures([drawnId]);
+ */
+export function addHostFeature(layerId: string, saved: HostableFeature): boolean {
+    if (!layerId || !saved.id) return false;
+    const layers = _layersSeam();
+    if (!layers?.mergeFeatures || !layers.hasLayer?.(layerId) || _isVectorTile(layerId)) {
+        return false;
+    }
+    layers.mergeFeatures(layerId, [
+        {
+            type: "Feature",
+            id: saved.id,
+            geometry: saved.geometry,
+            properties: { ...saved.properties, id: saved.id },
+        },
+    ]);
+    return true;
+}
+
+/**
+ * Server-wins repaint: applies the server's geometry to the host feature, or, when the server
+ * state names no feature or carries no geometry, restores the hidden original as it was.
+ *
+ * @param deps - Map facade and native map.
+ * @param layerId - Host layer of the feature in conflict.
+ * @param serverData - The server's state of the feature, as the conflict carried it.
+ */
+export function reloadHostFeature(
+    deps: HostReconcileDeps,
+    layerId: string,
+    serverData: unknown
+): void {
+    const sd = serverData as {
+        id?: string | number;
+        geometry?: unknown;
+        properties?: Record<string, unknown>;
+    } | null;
+    // Same reading order as the picker — `../feature-id.js`.
+    const fid = resolveFeatureId(sd);
+    if (fid && sd?.geometry) commitHostGeometry(deps, layerId, fid, sd.geometry);
+    else showHostFeature(deps, layerId);
+}
+
 /**
  * Removes the host source feature entirely, then clears the hide filter.
  */
@@ -169,6 +247,17 @@ function _storeHolding(
     if (!layers?.mergeFeatures || !layers.removeFeature || !layers.hasLayer?.(layerId)) return null;
     const feature = layers.getFeatureById?.(layerId, featureId) as GeoFeature | null | undefined;
     return feature ? { layers, feature } : null;
+}
+
+/**
+ * Whether a layer is drawn from vector tiles — read on the core's layer entry, the flag the
+ * vector-tile capability sets once the layer really loaded as tiles. A profile's `vectorTiles`
+ * block does not say it: an editable layer may declare one with `enabled: false`.
+ */
+function _isVectorTile(layerId: string): boolean {
+    const entry = getGeoLeaf()?.GeoJSON?.getLayerById?.(layerId) as
+        { isVectorTile?: unknown } | null | undefined;
+    return entry?.isVectorTile === true;
 }
 
 /** `GeoLeaf.Layers`, read at call time — the core may boot after this module loads. */

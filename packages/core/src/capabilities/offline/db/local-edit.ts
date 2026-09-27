@@ -241,6 +241,40 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
+ * What an edit brings, without the CLIENT key it may carry as an attribute.
+ *
+ * 🛑 **THE IDENTITY TRAVELS AS THE KEY, NEVER AS AN ATTRIBUTE.** A layer holds an entity created
+ * on the device under its client key (`features.ts#presentRecordFeature`), in `id` and
+ * `properties.id` — the only way the map, the store's lookups and a later edit can name it. An
+ * edit of that entity sends its properties back, the key with them: stored as an attribute, it
+ * would leave for the server as `id: "loc:…"` on any layer that declares no property whitelist
+ * (`write/push-engine.ts`, `buildCollectionBody`), and the key is already sent, as the client
+ * identity, where it belongs.
+ *
+ * ⚠️ **Compared with the RESOLVED key, and only a client one.** An entity the server named is
+ * addressed by its server id — `PT-42`, resolved to `srv:PT-42` — and its `properties.id` IS
+ * that server id: an attribute the server gave it, which must stay. Compared with the edit's
+ * raw identity instead, it would be removed, and the stored entity would come back id-less.
+ *
+ * @param incoming - What the edit brings, if anything.
+ * @param key - The key the store resolved the edit's identity to.
+ * @returns `incoming` itself when it carries no client key; otherwise a copy without it.
+ */
+function withoutClientKey(incoming: unknown, key: string): unknown {
+    if (!key.startsWith(CLIENT_KEY_PREFIX) || !isRecord(incoming)) return incoming;
+    const props = isRecord(incoming.properties) ? incoming.properties : null;
+    const keyInProps = props !== null && props.id === key;
+    if (incoming.id !== key && !keyInProps) return incoming;
+    const { id, ...rest } = incoming;
+    const stripped: Record<string, unknown> = id === key ? rest : { ...rest, id };
+    if (keyInProps) {
+        const { id: _key, ...attributes } = props;
+        stripped.properties = attributes;
+    }
+    return stripped;
+}
+
+/**
  * The entity an edit leaves behind: what the edit brings, over what the store already holds.
  *
  * 🛑 **A PARTIAL ENTITY USED TO REPLACE THE WHOLE ONE.** The rule "an edit does not destroy
@@ -339,7 +373,7 @@ function landEdit(
         // `updateExistingPoi` logs "missing geometry" and enqueues anyway — and the photo
         // reconciliation sends one attribute and nothing else. Both are merged over the
         // stored entity rather than written in its place (`mergeEdit`).
-        feature: mergeEdit(current?.feature, input.feature),
+        feature: mergeEdit(current?.feature, withoutClientKey(input.feature, input.localId)),
     };
     features.put(record);
 
