@@ -11,7 +11,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
-## [Unreleased]
+## `@geoleaf/field-renderer` 1.4.0 · `@geoleaf-plugins/editor` 1.5.2 - 2026-09-27
+
+Published without a core release: `@geoleaf/core` stays at 3.11.1.
 
 ### Removed — BREAKING: the dropdown cascade of `@geoleaf/field-renderer` 1.4.0
 
