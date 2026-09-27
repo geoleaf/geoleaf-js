@@ -31,11 +31,30 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.11.2 <Badge type="tip" text="2026-09-27" />
+## Release v3.12.0 <Badge type="tip" text="2026-09-27" />
 
-A feature created with the editor is in its layer at once, under its identity.
+What reads a layer follows its edits, and every package carries the licenses of the code it
+bundles.
 
 **Highlights:**
+
+- **New** — `geoleaf:layer:updated` (`{ layerId }`): a layer's store changed through
+  `GeoLeaf.Layers`, once per call. The open table (`@geoleaf-plugins/table` 1.1.1) and the active
+  filter follow it: a feature created, edited, deleted or restored reaches them at once.
+- **New** — `GeoLeaf.Layers.hideFeatures(layerId, ids | null)` hides features without touching the
+  store or the layer's filter. `@geoleaf-plugins/editor` 1.5.4 hides the feature it edits this way:
+  editing under an active filter no longer lifts the filter.
+- **New** — `THIRD_PARTY_LICENSES.txt` in the core and in eight plugins: the license texts and
+  notices of the third-party code each bundle carries, which minification had stripped.
+- **Fixed** — the editor deletes the selected feature, from the pill, the `Delete` key or a
+  confirmation given from the keyboard; `Enter` presses the pill's buttons.
+- **Fixed** — a filter set on a clustered layer no longer draws its clusters as points and its
+  points as bubbles; a vector-tile layer is created once at boot, without an error; the
+  « pending » badge leaves an entity once it is pushed; and a device that edited features before
+  3.4.0 no longer draws them twice (local database version 7).
+
+Release v3.11.2 (2026-09-27) — a feature created with the editor is in its layer at once, under
+its identity:
 
 - **Fixed** — a point placed or a shape drawn with `@geoleaf-plugins/editor` 1.5.3 enters its
   layer's store (`GeoLeaf.Layers`) under the identity its write returned: the server's id, or the
